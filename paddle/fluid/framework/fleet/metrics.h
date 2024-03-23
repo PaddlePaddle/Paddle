@@ -32,7 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/timer.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 
 #if defined(PADDLE_WITH_GLOO)
 #include <gloo/allreduce.h>
@@ -86,7 +86,7 @@ class BasicAucCalculator {
 
   void compute();
   void computeWuAuc();
-  WuaucRocData computeSingelUserAuc(const std::vector<WuaucRecord>& records);
+  WuaucRocData computeSingleUserAuc(const std::vector<WuaucRecord>& records);
   int table_size() const { return _table_size; }
   double bucket_error() const { return _bucket_error; }
   double auc() const { return _auc; }

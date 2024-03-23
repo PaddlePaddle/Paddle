@@ -34,12 +34,12 @@ limitations under the License. */
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/operators/cuda_graph_with_in_out.h"
 #endif
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 
-PHI_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace operators {
@@ -196,6 +196,20 @@ static cudaStreamCaptureMode StringToCUDAGraphCaptureMode(
         "Unsupported CUDA Graph capture mode %s", mode));
   }
 }
+#elif defined(PADDLE_WITH_HIP)
+static hipStreamCaptureMode StringToCUDAGraphCaptureMode(
+    const std::string &mode) {
+  if (mode == "global") {
+    return hipStreamCaptureModeGlobal;
+  } else if (mode == "thread_local") {
+    return hipStreamCaptureModeThreadLocal;
+  } else if (mode == "relaxed") {
+    return hipStreamCaptureModeRelaxed;
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Unsupported CUDA Graph capture mode %s", mode));
+  }
+}
 #endif
 
 }  // namespace details
@@ -211,7 +225,7 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
       return;
     }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto mode = details::StringToCUDAGraphCaptureMode(capture_mode);
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()),
@@ -408,7 +422,7 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
       return;
     }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto mode = details::StringToCUDAGraphCaptureMode(capture_mode);
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()),

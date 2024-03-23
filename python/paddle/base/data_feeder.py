@@ -185,7 +185,7 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
         return
 
     # NOTE: `in_to_static_mode` is used to determined whether this op is called under
-    # @to_static in transformation from dygrah to static layer. We add Tensor in
+    # @to_static in transformation from dygraph to static layer. We add Tensor in
     # expected_type to skip checking because Tensor may be created and used in unusual way.
     from .dygraph.base import in_to_static_mode
 
@@ -229,18 +229,22 @@ def check_dtype(
 def check_shape(
     shape,
     op_name,
-    expected_shape_type=(list, tuple, Variable),
-    expected_element_type=(int, Variable),
+    expected_shape_type=(list, tuple, Variable, Value),
+    expected_element_type=(int, Variable, Value),
     expected_tensor_dtype=('int32', 'int64'),
 ):
     # See NOTE [ Why skip dynamic graph check ]
     if in_dygraph_mode():
         return
     check_type(shape, 'shape', expected_shape_type, op_name)
-    if expected_element_type is not None and not isinstance(shape, Variable):
+    if expected_element_type is not None and not isinstance(
+        shape, (Variable, Value)
+    ):
         for item in shape:
             check_type(item, 'element of shape', expected_element_type, op_name)
-            if expected_tensor_dtype is not None and isinstance(item, Variable):
+            if expected_tensor_dtype is not None and isinstance(
+                item, (Variable, Value)
+            ):
                 check_dtype(
                     item.dtype,
                     'element of shape',
@@ -250,7 +254,9 @@ def check_shape(
                         ', '.join(expected_tensor_dtype)
                     ),
                 )
-    if expected_tensor_dtype is not None and isinstance(shape, Variable):
+    if expected_tensor_dtype is not None and isinstance(
+        shape, (Variable, Value)
+    ):
         check_dtype(shape.dtype, 'shape', expected_tensor_dtype, op_name)
 
 
@@ -259,11 +265,11 @@ class DataToLoDTensorConverter:
         self.place = place
         self.lod_level = lod_level
         self.shape = shape
-        negtive_count = 0
+        negative_count = 0
         for s in self.shape:
             if s < 0:
-                negtive_count += 1
-            if negtive_count > 1:
+                negative_count += 1
+            if negative_count > 1:
                 self.shape = None
                 break
         self.dtype = convert_dtype(dtype)

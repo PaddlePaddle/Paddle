@@ -23,11 +23,11 @@
 #include <vector>
 
 #include "paddle/phi/core/enforce.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/ir_printer.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace cinn {
 namespace dialect {
@@ -73,8 +73,9 @@ std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
     if (!operand || !(operand.source())) {
       continue;
     }
-    auto* source_op = operand.source().defining_op();
-    producers.insert(source_op);
+    if (auto* source_op = operand.source().defining_op()) {
+      producers.insert(source_op);
+    }
   }
   return producers;
 }
@@ -161,7 +162,7 @@ phi::DDim GetFirstInputShape(const ::pir::Operation* op) {
   return in.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
 }
 
-phi::DDim GetValueShape(const ::pir::Value& value) {
+const phi::DDim& GetValueShape(const ::pir::Value& value) {
   return value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
 }
 
@@ -248,10 +249,7 @@ class OpFusionPassHelper {
  public:
   explicit OpFusionPassHelper(
       const std::vector<pir::Operation*>& op_list,
-      const std::vector<pir::Operation*>& output_op_list = {},
-      const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis =
-          nullptr)
-      : shape_analysis_(shape_analysis) {
+      const std::vector<pir::Operation*>& output_op_list = {}) {
     // init fusion relation
     InitFusionRelation();
     // filter op data, create group for each op
@@ -295,7 +293,7 @@ class OpFusionPassHelper {
         // use current op as master op for schedule
         group->master_ops.insert(op);
 
-        // get opration unique id
+        // get operation unique id
         group->group_id = "id_" + std::to_string(index++);
         fusion_groups_[op] = group;
       }
@@ -492,7 +490,7 @@ class OpFusionPassHelper {
                return true;
              }
 
-             // NOTE, original code is below, if produer is not output op,
+             // NOTE, original code is below, if producer is not output op,
              // result always be true
              // !helper->output_ops_set_.count(producer);
              return true;
@@ -625,10 +623,6 @@ class OpFusionPassHelper {
     return false;
   }
 
-  std::shared_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis() const {
-    return CHECK_NOTNULL(shape_analysis_.lock());
-  }
-
   std::vector<::pir::Operation*> ops_;
   std::unordered_map<const ::pir::Operation*, GroupPtr> fusion_groups_;
   std::unordered_set<const ::pir::Operation*> output_ops_set_;
@@ -642,21 +636,18 @@ class OpFusionPassHelper {
   struct FusionRelation {
     // producer -> consumer
     std::unordered_set<OpPatternKind> op_kind = {};
-    // producer -> fusion sonsumer
+    // producer -> fusion consumer
     std::unordered_map<OpPatternKind, ConditionFunction> fusion_op_kind = {};
   };
   std::unordered_map<OpPatternKind, FusionRelation> fusion_relation_map_;
-  std::weak_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_;
 };
 
 GroupList OpFusionPassInternal(
     const std::vector<pir::Operation*>& op_list,
-    const std::vector<pir::Operation*>& output_op_list,
-    const std::shared_ptr<pir::ShapeConstraintIRAnalysis>& shape_analysis) {
+    const std::vector<pir::Operation*>& output_op_list) {
   VLOG(3) << "OpFusionPass...!";
 
-  auto op_fusion_helper =
-      OpFusionPassHelper(op_list, output_op_list, shape_analysis);
+  auto op_fusion_helper = OpFusionPassHelper(op_list, output_op_list);
   auto res = op_fusion_helper();
 
   if (VLOG_IS_ON(6)) {

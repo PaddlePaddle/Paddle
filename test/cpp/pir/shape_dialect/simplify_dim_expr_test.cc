@@ -14,7 +14,7 @@
 
 #include <atomic>
 #include "gtest/gtest.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr_simplify.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 namespace symbol::test {
 
@@ -55,6 +55,15 @@ TEST(Simplify, UnitReciprocal) {
   DimExpr unit{Reciprocal<DimExpr>{DimExpr{1}}};
 
   DimExpr simplified_dim_expr = SimplifyDimExpr(unit);
+  ASSERT_TRUE((simplified_dim_expr.Has<std::int64_t>()));
+  ASSERT_EQ((simplified_dim_expr.Get<std::int64_t>()), 1);
+}
+
+TEST(Simplify, DoubleNegative) {
+  DimExpr inner_expr{Negative<DimExpr>(DimExpr{1})};
+  DimExpr expr{Negative<DimExpr>(inner_expr)};
+
+  DimExpr simplified_dim_expr = SimplifyDimExpr(expr);
   ASSERT_TRUE((simplified_dim_expr.Has<std::int64_t>()));
   ASSERT_EQ((simplified_dim_expr.Get<std::int64_t>()), 1);
 }

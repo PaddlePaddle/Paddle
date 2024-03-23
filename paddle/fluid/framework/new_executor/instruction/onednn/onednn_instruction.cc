@@ -26,9 +26,9 @@
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/type_defs.h"
 
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
 
 #include "dnnl.hpp"  // NOLINT
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
@@ -86,6 +86,16 @@ static phi::Attribute ConvertPirAttribute2RuntimeAttribute(
       }
     }
     return vec_res;
+  } else if (attr_type_name == "paddle::dialect::IntArrayAttribute") {
+    std::vector<int64_t> int_array =
+        attr.dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();
+    return int_array;
+  } else if (attr_type_name == "paddle::dialect::DataTypeAttribute") {
+    phi::DataType dtype =
+        attr.dyn_cast<paddle::dialect::DataTypeAttribute>().data();
+    return dtype;
+  } else if (attr_type_name == "paddle::dialect::ScalarAttribute") {
+    return attr.dyn_cast<dialect::ScalarAttribute>().data();
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "ConvertPirAttribute2RuntimeAttribute not support [%s] ",
@@ -108,7 +118,8 @@ void TensorNameMap(pir::Operation* op,
 
   auto& name2id = op_yaml_info.InputName2Id();
 
-  std::string fluid_op_name = op_yaml_info.GetOriginOpName();
+  std::string fluid_op_name =
+      phi::TransToFluidOpName(op_yaml_info.OpRuntimeInfo().kernel_func);
 
   auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
 
@@ -236,16 +247,16 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
   }
   VLOG(6) << "finish process infer meta context";
 
-  auto kernel_name =
+  auto kernel_name_ =
       op_attributes.at("kernel_name").dyn_cast<pir::StrAttribute>().AsString();
-  auto kernel_key = op_attributes.at("kernel_key")
-                        .dyn_cast<paddle::dialect::KernelAttribute>()
-                        .data();
+  auto kernel_key_ = op_attributes.at("kernel_key")
+                         .dyn_cast<paddle::dialect::KernelAttribute>()
+                         .data();
 
   phi_kernel_ = new phi::Kernel(
-      phi::KernelFactory::Instance().SelectKernel(kernel_name, kernel_key));
+      phi::KernelFactory::Instance().SelectKernel(kernel_name_, kernel_key_));
   PADDLE_ENFORCE_EQ(
-      phi_kernel_->IsValid(), true, "not found kernel for [%s]", kernel_name);
+      phi_kernel_->IsValid(), true, "not found kernel for [%s]", kernel_name_);
   VLOG(6) << "finish process select kernel";
 
   BuildPhiContext<phi::KernelContext,
@@ -257,13 +268,13 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
       op, *value_exec_info_, yaml_info_parser, &kernel_context_);
 
   kernel_context_.SetDeviceContext(phi::DeviceContextPool::Instance().Get(
-      phi::TransToPhiPlace(kernel_key.backend())));
+      phi::TransToPhiPlace(kernel_key_.backend())));
   VLOG(6) << "finish process kernel context";
 
   SetDeviceContext(
       ParseDeviceContext(op,
                          phi::DeviceContextPool::Instance().Get(
-                             phi::TransToPhiPlace(kernel_key.backend())),
+                             phi::TransToPhiPlace(kernel_key_.backend())),
                          place,
                          GetExecutionStream(),
                          GetStreamPriority()));
@@ -319,7 +330,8 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
             .dyn_cast<pir::ArrayAttribute>()
             .AsVector();
     auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
-    std::string fluid_op_name = yaml_info_parser.GetOriginOpName();
+    std::string fluid_op_name =
+        phi::TransToFluidOpName(yaml_info_parser.OpRuntimeInfo().kernel_func);
 
     for (auto& attr : extra_args_attr) {
       auto attr_name = attr.dyn_cast<pir::StrAttribute>().AsString();
@@ -353,6 +365,26 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
   phi::MetaConfig new_config = infer_meta_context_.GetMetaConfig();
   new_config.is_run_mkldnn_kernel = true;
   infer_meta_context_.SetMetaConfig(new_config);
+
+  // Step5: Handle skip_transform_inputs
+  if (op_attributes.count("skip_transform_inputs")) {
+    std::vector<pir::Attribute> skip_transform_inputs =
+        op->attributes()
+            .at("skip_transform_inputs")
+            .dyn_cast<pir::ArrayAttribute>()
+            .AsVector();
+
+    for (auto& input : skip_transform_inputs) {
+      auto input_name = input.dyn_cast<pir::StrAttribute>().AsString();
+      auto pair = kernel_context_.InputRangeAt(
+          yaml_info_parser.InputName2Id().at(input_name));
+      VLOG(6) << "skip_transform_input = " << input_name;
+      for (int i = pair.first; i < pair.second; ++i) {
+        skip_format_tensors_.insert(i);
+        VLOG(6) << input_name << " index = " << i;
+      }
+    }
+  }
 }
 
 OneDNNPhiKernelInstruction::~OneDNNPhiKernelInstruction() {
@@ -373,31 +405,48 @@ void OneDNNPhiKernelInstruction::Run() {
     if (!input->initialized()) {
       continue;
     }
+    if (skip_format_tensors_.count(i)) {
+      continue;
+    }
     VLOG(6) << "input[" << i << "].layout() = " << input->layout();
     if (input->layout() != phi::DataLayout::ONEDNN) {
       phi::DataLayout from_layout = input->layout();
-
-      //  Handle 'layout_transform' in
-      //  ops_onednn_extra.yaml(GetKernelTypeForVar)
-      if (data_format_tensors_.count(i) &&
-          input_layout_ != phi::DataLayout::kAnyLayout) {
-        from_layout = input_layout_;
-      }
-      VLOG(6) << "from_layout = " << from_layout;
-
       auto transed_tensor = const_cast<phi::DenseTensor*>(input);
 
-      if (from_layout == DataLayout::kNHWC ||
-          from_layout == DataLayout::kNDHWC) {
-        phi::funcs::MatchShapeToLayout(
-            transed_tensor, from_layout, phi::DataLayout::ONEDNN);
-        // We register only NHWC assuming that model is consistent e.g. either
-        // NHWC or NCHW
-        phi::OneDNNContext::tls().set_cur_paddle_data_layout(from_layout);
-      }
+      std::set<std::string> elementwise_kernels = {
+          "add", "subtract", "multiply", "divide"};
+      if (elementwise_kernels.count(kernel_name_)) {
+        if (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+                phi::DataLayout::kNHWC &&
+            !(kernel_key_.dtype() == phi::DataType::COMPLEX64 ||
+              kernel_key_.dtype() == phi::DataType::COMPLEX128)) {
+          phi::funcs::MatchShapeToLayout(
+              transed_tensor, from_layout, phi::DataLayout::ONEDNN);
+          from_layout = phi::DataLayout::kNHWC;
+        } else {
+          continue;
+        }
+      } else {
+        //  Handle 'layout_transform' in
+        //  ops_onednn_extra.yaml(GetKernelTypeForVar)
+        if (data_format_tensors_.count(i) &&
+            input_layout_ != phi::DataLayout::kAnyLayout) {
+          from_layout = input_layout_;
+        }
+        VLOG(6) << "from_layout = " << from_layout;
 
-      if (from_layout == DataLayout::kAnyLayout) {
-        from_layout = phi::OneDNNContext::tls().get_cur_paddle_data_layout();
+        if (from_layout == DataLayout::kNHWC ||
+            from_layout == DataLayout::kNDHWC) {
+          phi::funcs::MatchShapeToLayout(
+              transed_tensor, from_layout, phi::DataLayout::ONEDNN);
+          // We register only NHWC assuming that model is consistent e.g. either
+          // NHWC or NCHW
+          phi::OneDNNContext::tls().set_cur_paddle_data_layout(from_layout);
+        }
+
+        if (from_layout == DataLayout::kAnyLayout) {
+          from_layout = phi::OneDNNContext::tls().get_cur_paddle_data_layout();
+        }
       }
 
       dnnl::memory::desc out_mem_desc =

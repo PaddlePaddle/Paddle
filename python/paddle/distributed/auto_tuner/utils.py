@@ -295,7 +295,11 @@ def default_candidates(tuner_cfg):
         raise ValueError(
             f"recompute_granularity only supports auto/{'/'.join(__SUPPORTED_RECOMPUTE_GRANULARITY__)}, but got {recompute_granularity}"
         )
-
+    custom_search_dim = tuner_cfg.get("custom_search_dim", None)
+    if custom_search_dim is not None:
+        candidates["custom_search_dim"] = []
+        for key, value in custom_search_dim.items():
+            candidates["custom_search_dim"].append(value["value"])
     return candidates
 
 
@@ -360,7 +364,19 @@ def search_all(tuner_cfg):
         )
     )
 
+    custom_search_dim = tuner_cfg.get("custom_search_dim", None)
+    if custom_search_dim is not None:
+        custom_search_dim_candidates = candidates["custom_search_dim"]
+        custom_dim_cfgs = list(itertools.product(*custom_search_dim_candidates))
+        other_cfgs_without_cumtom = other_dim_cfgs
+        other_dim_cfgs = []
+        for cfg_without_cumtom in other_cfgs_without_cumtom:
+            for custom_cfg in custom_dim_cfgs:
+                cfg = list(cfg_without_cumtom) + list(custom_cfg)
+                other_dim_cfgs.append(cfg)
+
     all_cfgs = []
+    refined_recompute = tuner_cfg.get("refined_recompute", None)
     for valid_degree in valid_degrees:
         for other_dim_cfg in other_dim_cfgs:
             mp_degree, sharding_degree, pp_degree, dp_degree = valid_degree
@@ -370,7 +386,7 @@ def search_all(tuner_cfg):
                 vpp,
                 use_recompute,
                 recompute_granularity,
-            ) = list(other_dim_cfg)
+            ) = list(other_dim_cfg[:5])
             if (
                 tuner_cfg["model_cfg"]["global_batch_size"]
                 % (mbs * sharding_degree * dp_degree)
@@ -379,8 +395,70 @@ def search_all(tuner_cfg):
                 continue
             if tuner_cfg["model_cfg"]["num_layers"] % (pp_degree * vpp) != 0:
                 continue
-            cfg = list(valid_degree) + list(other_dim_cfg)
-            all_cfgs.append(cfg)
+
+            if refined_recompute is not None:
+                # if refine recompute is not valid, set 0 for all rr op.
+                if (
+                    (pp_degree == 1)
+                    or (not use_recompute)
+                    or (use_recompute and recompute_granularity != "full")
+                ):
+                    cfg = (
+                        list(valid_degree)
+                        + list(other_dim_cfg)
+                        + [0 for i in range(len(refined_recompute))]
+                    )
+                    if cfg not in all_cfgs:
+                        all_cfgs.append(cfg)
+                else:
+                    max_value = (
+                        tuner_cfg["model_cfg"]["num_layers"] // pp_degree
+                    )
+                    rr_valid_values = list(range(0, max_value + 1))
+                    # The previous operator has reached its maximum value, and the current operator can only be turned on
+                    op_count = len(refined_recompute)
+
+                    # first op values
+                    rr_dim_cfgs = []
+                    for value in rr_valid_values:
+                        cfg = [value]
+                        cfg.extend([0 for _ in range(op_count - 1)])
+                        if cfg not in rr_dim_cfgs:
+                            rr_dim_cfgs.append(cfg)
+                    # other ops values
+                    i = 1
+                    while i < op_count:
+                        for value in rr_valid_values:
+                            cfg = [max_value for _ in range(i)]
+                            cfg.extend([value])
+                            cfg.extend([0 for _ in range(op_count - i - 1)])
+                            if cfg not in rr_dim_cfgs:
+                                rr_dim_cfgs.append(cfg)
+                        i += 1
+
+                    if tuner_cfg.get("schedule_mode") != "performance":
+                        # momory sort
+                        for rr_dim_cfg in rr_dim_cfgs:
+                            cfg = (
+                                list(valid_degree)
+                                + list(other_dim_cfg)
+                                + list(rr_dim_cfg)
+                            )
+                            if cfg not in all_cfgs:
+                                all_cfgs.append(cfg)
+                    else:
+                        rr_dim_cfgs.sort(reverse=True)
+                        for rr_dim_cfg in rr_dim_cfgs:
+                            cfg = (
+                                list(valid_degree)
+                                + list(other_dim_cfg)
+                                + list(rr_dim_cfg)
+                            )
+                            if cfg not in all_cfgs:
+                                all_cfgs.append(cfg)
+            else:
+                cfg = list(valid_degree) + list(other_dim_cfg)
+                all_cfgs.append(cfg)
 
     mapping = {
         0: "mp_degree",
@@ -393,20 +471,27 @@ def search_all(tuner_cfg):
         7: "use_recompute",
         8: "recompute_granularity",
     }
+
+    if custom_search_dim is not None:
+        for key, _ in custom_search_dim.items():
+            mapping[len(mapping)] = key
+
+    if refined_recompute is not None:
+        for dim in refined_recompute:
+            mapping[len(mapping)] = dim
     new_all_cfgs = []
     for cfg in all_cfgs:
         new_cfg = {}
         for idx, val in enumerate(cfg):
             new_cfg[mapping[idx]] = val
         new_all_cfgs.append(new_cfg)
-
     search_space_size_before_prune = len(new_all_cfgs)
     pruned_all_cfgs = []
     tuner_cfg["num_gpus"] = num_gpus
     for cur_cfg in new_all_cfgs:
         pruned = False
         for func in _PRUNE_FUNC:
-            result = func(tuner_cfg, cur_cfg, [])
+            result = func(tuner_cfg, cur_cfg, pruned_all_cfgs)
             if result:
                 pruned = True
                 break
@@ -416,7 +501,130 @@ def search_all(tuner_cfg):
     logger.info(
         f"{search_space_size_before_prune - search_space_size_after_prune} tasks are pruned before launching."
     )
+    if tuner_cfg.get("schedule_prior", False):
+        pruned_all_cfgs = sort_by_special(pruned_all_cfgs, tuner_cfg)
     return pruned_all_cfgs
+
+
+def sort_by_special(cfgs, tuner_cfg):
+    assert tuner_cfg.get("schedule_prior", False)
+    prior_strategy = tuner_cfg["schedule_prior"]
+    prior_strategy.sort(reverse=True)
+    for strategy in prior_strategy:
+        idx = 0
+        matched_count = 0
+        while idx < len(cfgs):
+            cfg = cfgs[idx]
+            if _matched(cfg, strategy):
+                cfgs.pop(idx)
+                cfgs.insert(0, cfg)
+                matched_count += 1
+            idx += 1
+        tmp = cfgs[:matched_count]
+        tmp.reverse()
+        cfgs[:matched_count] = tmp
+    return cfgs
+
+
+def memory_sort(cfg):
+    # ascending order in default
+    return (
+        -cfg['mp_degree'],
+        -cfg['pp_degree'],
+        -cfg['vpp_degree'],
+        -cfg["sharding_degree"],
+        -cfg["sharding_stage"],
+        cfg["micro_batch_size"],
+        -cfg["use_recompute"],
+    )
+
+
+def performance_sort(cfg):
+    return -cfg["micro_batch_size"]
+
+
+def _matched(cur_cfg, strategy):
+    mapping = {
+        "dp_degree": "dp",
+        "mp_degree": "mp",
+        "pp_degree": "pp",
+        "vpp_degree": "vpp",
+        "micro_batch_size": "mbs",
+        "sharding_degree": "sharding",
+        "sharding_stage": "stage",
+        "use_recompute": "recompute",
+        "recompute_granularity": "granularity",
+    }
+    granularity_mapping = {0: "full", 1: "full_attn", 2: "core_attn"}
+    reversed_mapping = {}
+    for key in mapping:
+        reversed_mapping[mapping[key]] = key
+
+    assert isinstance(strategy, str)
+    dims = strategy.split("_")
+    has_matched = 0
+    for dim in dims:
+        matched = None
+        for key in reversed_mapping:
+            if dim.startswith(key):
+                matched = key
+                break
+        if matched:
+            value = dim[len(matched)]
+            # * means this strategy turned on
+            if matched in ["dp", "mp", "pp", "vpp", "sharding"]:
+                if value == "*":
+                    if cur_cfg[reversed_mapping[matched]] > 1:
+                        has_matched += 1
+                        continue
+                else:
+                    value = int(value)
+                    if cur_cfg[reversed_mapping[matched]] == value:
+                        has_matched += 1
+                        continue
+            elif matched == "recompute":
+                if value == "*":
+                    if cur_cfg[reversed_mapping[matched]]:
+                        has_matched += 1
+                        continue
+                else:
+                    value = bool(int(value))
+                    if cur_cfg[reversed_mapping[matched]] == value:
+                        has_matched += 1
+                        continue
+            elif matched == "stage":
+                if value == "*":
+                    if cur_cfg[reversed_mapping["sharding"]] > 1:
+                        has_matched += 1
+                        continue
+                else:
+                    value = int(value)
+                    if cur_cfg[reversed_mapping[matched]] == value:
+                        has_matched += 1
+                        continue
+            elif matched == "mbs":
+                if value == "*":
+                    has_matched += 1
+                    continue
+                else:
+                    value = int(value)
+                    if cur_cfg[reversed_mapping[matched]] == value:
+                        has_matched += 1
+                        continue
+            elif matched == "granularity":
+                if value == "*":
+                    if cur_cfg[reversed_mapping["use_recompute"]]:
+                        has_matched += 1
+                        continue
+                else:
+                    value = int(value)
+                    granularity = granularity_mapping[value]
+                    if cur_cfg[reversed_mapping[matched]] == granularity:
+                        has_matched += 1
+                        continue
+    if has_matched == len(dims):
+        return True
+    return False
 
 
 def _param2range(param_from_json_file, max_value, param_key):
@@ -490,7 +698,7 @@ def search_by_dp_estimation(tuner_cfg):
         if task not in new_all_cfgs and task["nodes"] <= tuner_cfg["nodes"]:
             new_all_cfgs.append(task)
 
-    # expanding sharding degree to run overlap and nonoverlap to calculate overlap benefits
+    # expanding sharding degree to run overlap and non-overlap to calculate overlap benefits
     sharding_all_cfgs = []
     if tuner_cfg["search_algo"].get("sharding_overlap", None):
         for task in new_all_cfgs:
@@ -587,6 +795,103 @@ def add_overlap_performance(cur_cfg, tuner_cfg, history_cfgs):
                 if key.startswith("bw_") and raw_cfg[key]:
                     mew_key = "overlap_" + key
                     raw_cfg[mew_key] = round(raw_cfg[key] * (1 + ratio), 5)
+
+
+def gen_sharding_overlap_args_of_grid_search(res_args, cfg, tuner_cfg):
+    """Generate args of sharding overlap."""
+    if "sharding_overlap" not in tuner_cfg["search_algo"]:
+        return
+    cmd = copy.deepcopy(tuner_cfg["search_algo"]["sharding_overlap"])
+    valid_hybrid_strategy = [
+        "sharding_mp",
+        "sharding_pp",
+        "sharding_mp_pp",
+        "no_overlap",
+    ]
+    for key in cmd:
+        if key not in valid_hybrid_strategy:
+            raise ValueError(
+                f"Only support {valid_hybrid_strategy}, but got {key}."
+            )
+    sharding_degree = cfg["sharding_degree"]
+    mp_degree = cfg["mp_degree"]
+    pp_degree = cfg["pp_degree"]
+    arg = None
+    if mp_degree > 1 and pp_degree == 1 and sharding_degree > 1:
+        arg = "sharding_mp"
+    elif mp_degree == 1 and pp_degree > 1 and sharding_degree > 1:
+        arg = "sharding_pp"
+    elif mp_degree > 1 and pp_degree > 1 and sharding_degree > 1:
+        arg = "sharding_mp_pp"
+    else:
+        arg = "no_overlap"
+    assert arg is not None
+    if arg in cmd:
+        if "--" in cmd[arg][0]:
+            arg_map_len = len(cmd[arg])
+            assert arg_map_len % 2 == 0
+            i = 0
+            while i < arg_map_len:
+                new_arg = [cmd[arg][i], str(cmd[arg][i + 1])]
+                res_args.extend(new_arg)
+                i += 2
+        elif "-o" in cmd[arg][0]:
+            res_args.extend(cmd[arg])
+        elif ".json" in cmd[arg][0]:
+            import json
+
+            file_path = cmd[arg][0]
+            try:
+                with open(file_path, "r") as f:
+                    cmd_cfg = json.load(f)
+            except:
+                raise ValueError(
+                    "Please check your auto tuner json whether valid."
+                )
+            keys = cmd[arg][1].split(".")
+            value = None
+            for key in keys[: len(keys) - 1]:
+                if value:
+                    value = value[key]
+                else:
+                    value = cmd_cfg[key]
+            if value:
+                value[keys[-1]] = cmd[arg][2]
+            else:
+                cmd_cfg[keys[-1]] = cmd[arg][2]
+            json.dump(cmd_cfg, open(cmd[arg][0], "w"))
+
+        elif ".yaml" in cmd[arg][0]:
+            import yaml
+
+            file_path = cmd[arg][0]
+            try:
+                with open(file_path, "r") as f:
+                    cmd_cfg = yaml.safe_load(f)
+            except:
+                raise ValueError(
+                    "Please check your auto tuner json whether valid."
+                )
+            arg_map_len = len(cmd[arg]) - 1
+            assert arg_map_len % 2 == 0
+
+            i = 1
+            while i < arg_map_len:
+                keys = cmd[arg][i].split(".")
+                value = None
+                for key in keys[: len(keys) - 1]:
+                    if value:
+                        value = value[key]
+                    else:
+                        value = cmd_cfg[key]
+                if value:
+                    i += 1
+                    value[keys[-1]] = cmd[arg][i]
+                else:
+                    i += 1
+                    cmd_cfg[keys[-1]] = cmd[arg][i]
+                i += 1
+            yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
 
 
 def gen_sharding_overlap_args(res_args, cfg, tuner_cfg):
@@ -1102,23 +1407,109 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                     )
                 yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
 
+        elif arg == "refined_recompute" and arg in cmd:
+            if "--" in cmd["refined_recompute"][0]:
+                raise NotImplementedError(
+                    "refined recompute is not supported by command in autotuner."
+                )
+            elif "-o" in cmd["refined_recompute"][0]:
+                raise NotImplementedError(
+                    "refined recompute is not supported by '-o' in autotuner."
+                )
+            elif ".json" in cmd[arg][0]:
+                import json
+
+                file_path = cmd[arg][0]
+                if len(cmd[arg]) >= 3:
+                    raise ValueError(
+                        "The 3rd arg is not supported in refined_recompute"
+                    )
+                try:
+                    with open(file_path, "r") as f:
+                        cmd_cfg = json.load(f)
+                except:
+                    raise ValueError(
+                        "Please check your auto tuner json whether valid."
+                    )
+                keys = cmd[arg][1].split(".")
+                value = None
+                rr_values = {}
+                rr = tuner_cfg.get("refined_recompute", None)
+                if not rr:
+                    return
+                for key in rr:
+                    rr_values[key] = cfg[key]
+                for key in keys[: len(keys) - 1]:
+                    if not value:
+                        value = cmd_cfg[key]
+                    else:
+                        value = value[key]
+                if value:
+                    value[keys[-1]] = rr_values
+                else:
+                    cmd_cfg[keys[-1]] = rr_values
+                json.dump(cmd_cfg, open(cmd[arg][0], "w"))
+            elif ".yaml" in cmd[arg][0]:
+                import yaml
+
+                file_path = cmd[arg][0]
+                if len(cmd[arg]) >= 3:
+                    raise ValueError(
+                        "The 3rd arg is not supported in refined_recompute"
+                    )
+                try:
+                    with open(file_path, "r") as f:
+                        cmd_cfg = yaml.safe_load(f)
+                except:
+                    raise ValueError(
+                        "Please check your auto tuner json whether valid."
+                    )
+                keys = cmd[arg][1].split(".")
+                value = None
+                rr_values = {}
+                rr = tuner_cfg.get("refined_recompute", None)
+                if not rr:
+                    return
+                for key in rr:
+                    rr_values[key] = cfg[key]
+                for key in keys[: len(keys) - 1]:
+                    if not value:
+                        value = cmd_cfg[key]
+                    else:
+                        value = value[key]
+                if value:
+                    value[keys[-1]] = rr_values
+                else:
+                    cmd_cfg[keys[-1]] = rr_values
+                yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
+
     assert "run_cmd" in tuner_cfg
     cmd = copy.deepcopy(tuner_cfg["run_cmd"])
     res_args = copy.deepcopy(raw_args)
 
-    _gen_new_arg("dp_degree", cmd, cfg, res_args, tuner_cfg)
-    _gen_new_arg("mp_degree", cmd, cfg, res_args, tuner_cfg)
-    _gen_new_arg("pp_degree", cmd, cfg, res_args, tuner_cfg)
-    _gen_new_arg("vpp_degree", cmd, cfg, res_args, tuner_cfg)
-    _gen_new_arg("micro_batch_size", cmd, cfg, res_args, tuner_cfg)
-    _gen_new_arg("sharding_degree", cmd, cfg, res_args, tuner_cfg)
-    _gen_new_arg("sharding_stage", cmd, cfg, res_args, tuner_cfg)
-    _gen_new_arg("use_recompute", cmd, cfg, res_args, tuner_cfg)
-    _gen_new_arg("recompute_granularity", cmd, cfg, res_args, tuner_cfg)
-    _gen_new_arg("local_batch_size", cmd, cfg, res_args, tuner_cfg)
-    _gen_new_arg("gradient_accumulation_steps", cmd, cfg, res_args, tuner_cfg)
-    _gen_new_arg("global_batch_size", cmd, cfg, res_args, tuner_cfg)
-    _gen_new_arg("sequence_parallel", cmd, cfg, res_args, tuner_cfg)
+    new_args = [
+        "dp_degree",
+        "mp_degree",
+        "pp_degree",
+        "vpp_degree",
+        "micro_batch_size",
+        "sharding_degree",
+        "sharding_stage",
+        "use_recompute",
+        "recompute_granularity",
+        "local_batch_size",
+        "gradient_accumulation_steps",
+        "global_batch_size",
+        "sequence_parallel",
+        "refined_recompute",
+    ]
+
+    if "custom_search_dim" in tuner_cfg:
+        for key in tuner_cfg["custom_search_dim"]:
+            new_args.append(key)
+
+    for arg in new_args:
+        _gen_new_arg(arg, cmd, cfg, res_args, tuner_cfg)
 
     if tuner_cfg["run_cmd"].get("search_stage", None) and not run_best:
         cmd = copy.deepcopy(tuner_cfg["run_cmd"]["search_stage"])
@@ -1229,7 +1620,10 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                 yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
 
     # sharding overlap args
-    gen_sharding_overlap_args(res_args, cfg, tuner_cfg)
+    if tuner_cfg["search_algo"]["name"] == "grid":
+        gen_sharding_overlap_args_of_grid_search(res_args, cfg, tuner_cfg)
+    else:
+        gen_sharding_overlap_args(res_args, cfg, tuner_cfg)
 
     return res_args
 
@@ -1555,11 +1949,11 @@ def gbs_default_candidates(tuner_cfg):
         dp_candidate, mp_candidate, pp_candidate = gbs_dp_mp_pp_candidates(
             tuner_cfg, num_gpus, num_nodes
         )
-        sharding_dgree_candidate = dp_candidate
+        sharding_degree_candidate = dp_candidate
         candidates["dp_degree"] = [1]
         candidates["mp_degree"] = [mp_candidate]
         candidates["pp_degree"] = [pp_candidate]
-        candidates["sharding_degree"] = [sharding_dgree_candidate]
+        candidates["sharding_degree"] = [sharding_degree_candidate]
         candidates["sharding_stage"] = [1]
         candidates["use_recompute"] = [False]
         candidates["recompute_granularity"] = [None]

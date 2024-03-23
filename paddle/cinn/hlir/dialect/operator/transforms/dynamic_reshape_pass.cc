@@ -17,12 +17,49 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_type_interfaces.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/include/core/builtin_type_interfaces.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace cinn {
 namespace dialect {
 namespace ir {
+
+bool ReplaceOpWithReshapeOp(pir::Operation* op,
+                            pir::ShapeConstraintIRAnalysis* shape_analysis,
+                            pir::PatternRewriter& rewriter) {  // NOLINT
+  pir::Value output = op->result(0);
+  // Try to Get more detail output info
+  const auto& GetOutputShape = [&]() -> std::vector<int> {
+    std::vector<int> shape = phi::vectorize<int>(
+        output.type().dyn_cast<pir::DenseTensorType>().dims());
+
+    if (shape_analysis->HasShapeOrDataForValue(op->result(0))) {
+      const auto& shape_info =
+          shape_analysis->GetShapeOrDataForValue(op->result(0)).shape();
+      int temp_dim = -1;
+
+      for (size_t i = 0; i < shape_info.size(); ++i) {
+        if (shape_info[i].isa<int64_t>()) {
+          shape[i] = shape_info[i].Get<int64_t>();
+        } else {
+          shape[i] = temp_dim;
+          temp_dim = 1;
+        }
+      }
+    }
+    return shape;
+  };
+
+  auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
+      op->operand_source(0), GetOutputShape());
+
+  shape_analysis->SetShapeOrDataForValue(
+      cinn_reshape.result(0), shape_analysis->GetShapeOrDataForValue(output));
+
+  rewriter.ReplaceAllUsesWith(output, cinn_reshape.result(0));
+  rewriter.EraseOp(op);
+  return true;
+}
 
 class DynamicReshapeOpPattern
     : public pir::OpRewritePattern<paddle::dialect::ReshapeOp> {
@@ -33,76 +70,66 @@ class DynamicReshapeOpPattern
 
   bool MatchAndRewrite(paddle::dialect::ReshapeOp op,
                        pir::PatternRewriter& rewriter) const override {
-    auto scale_factor_gen_op = op->operand_source(1).defining_op();
-    auto output = op.result(0);
-
-    // The value of shape attribute is fake, we only use the output shape info
-    // in shape analysis.
-    std::vector<int> shape(
-        output.type().dyn_cast<pir::ShapedTypeInterface>().GetRank(), 1);
-    shape[0] = -1;
-
-    auto cinn_reshape =
-        rewriter.Build<cinn::dialect::ReshapeOp>(op->operand_source(0), shape);
-
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
 
-    CHECK(shape_analysis.HasShapeOrDataForValue(output))
-        << "Can't find DimExpr for output of reshape in shape_analysis.";
-    const auto& out_origin_expr_shape =
-        shape_analysis.GetShapeOrDataForValue(output);
-    shape_analysis.SetShapeOrDataForValue(cinn_reshape.result(0),
-                                          out_origin_expr_shape);
-
-    for (auto out : op->results()) {
-      VLOG(0) << " OUT:";
-      for (auto it = out.use_begin(); it != out.use_end(); ++it) {
-        VLOG(0) << " user: " << it->owner()->name();
-      }
-    }
-    rewriter.ReplaceAllUsesWith(output, cinn_reshape.result(0));
-    rewriter.EraseOp(op);
-
-    return true;
+    return ReplaceOpWithReshapeOp(op, &shape_analysis, rewriter);
   }
 };
 
-class DynamicReshapeOpPass : public pir::Pass {
+class DynamicSqueezeOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::SqueezeOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::SqueezeOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::SqueezeOp op,
+                       pir::PatternRewriter& rewriter) const override {
+    auto& shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+
+    const auto& axis_shape_expr =
+        shape_analysis.GetShapeOrDataForValue(op.axis());
+    CHECK(axis_shape_expr.data().has_value());
+
+    return ReplaceOpWithReshapeOp(op, &shape_analysis, rewriter);
+  }
+};
+
+class DynamicUnsqueezeOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::UnsqueezeOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::UnsqueezeOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::UnsqueezeOp op,
+                       pir::PatternRewriter& rewriter) const override {
+    auto& shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+
+    const auto& axis_shape_expr =
+        shape_analysis.GetShapeOrDataForValue(op.axis());
+    CHECK(axis_shape_expr.data().has_value());
+
+    return ReplaceOpWithReshapeOp(op, &shape_analysis, rewriter);
+  }
+};
+
+class DynamicReshapeOpPass : public pir::PatternRewritePass {
  public:
   DynamicReshapeOpPass()
-      : pir::Pass("cinn_dynamic_reshape_op_pass", /*opt_level=*/1) {}
+      : pir::PatternRewritePass("cinn_dynamic_reshape_op_pass", 1) {}
 
-  bool Initialize(pir::IrContext* context) override {
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add<DynamicReshapeOpPattern>(context);
-    patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
-    return true;
-  }
-
-  void Run(pir::Operation* op) override {
-    pir::GreedyRewriteConfig cfg;
-    cfg.use_top_down_traversal = true;
-    cfg.max_iterations = 10;
-    for (uint32_t i = 0; i < op->num_regions(); ++i) {
-      for (auto& block : op->region(i)) {
-        for (auto& op : block) {
-          if (op.isa<cinn::dialect::FusionOp>()) {
-            auto [_, num_rewrites] =
-                pir::ApplyPatternsGreedily(&op, patterns_, cfg);
-            AddStatistics(num_rewrites);
-          }
-        }
-      }
-    }
+    // Comment out the DynamicReshapeOpPattern to use pd_op.reshape in
+    // cinn.group ps.Add<DynamicReshapeOpPattern>(context);
+    ps.Add<DynamicSqueezeOpPattern>(context);
+    ps.Add<DynamicUnsqueezeOpPattern>(context);
+    return ps;
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->num_regions() > 0;
+    return op->isa<cinn::dialect::GroupOp>() && op->num_regions() > 0;
   }
-
- private:
-  pir::FrozenRewritePatternSet patterns_;
 };
 
 std::unique_ptr<pir::Pass> CreateDynamicReshapeOpPass() {

@@ -111,7 +111,8 @@ class TransposeFoldingInputPass : public TransposeFoldingBase {
                                  : false;
               dot->SetAttr("trans_b", static_cast<bool>(trans_b ^ true));
             } else {
-              LOG(FATAL) << "The matmul should only have two inputs.";
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "The matmul should only have two inputs."));
             }
 
             // shape has changed, the ignore op should update shape
@@ -138,7 +139,7 @@ class TransposeFoldingInputPass : public TransposeFoldingBase {
             }
             continue;
           } else {
-            // invlid folding op, skip
+            // invalid folding op, skip
             continue;
           }
 

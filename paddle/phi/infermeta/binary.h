@@ -210,6 +210,34 @@ void DistributeFpnProposalsInferMeta(
     MetaTensor* restore_index,
     MetaConfig config = MetaConfig());
 
+void DistributedFusedLambInitInferMeta(
+    const std::vector<const MetaTensor*>& param,
+    const std::vector<const MetaTensor*>& grad,
+    float beta1,
+    float beta2,
+    const std::vector<int>& apply_weight_decay,
+    int alignment,
+    int rank,
+    int nranks,
+    MetaTensor* fp32_fused_param,
+    MetaTensor* fp32_fused_grad,
+    MetaTensor* fp16_fused_param,
+    MetaTensor* fp16_fused_grad,
+    MetaTensor* moment1,
+    MetaTensor* moment2,
+    MetaTensor* beta1_pow,
+    MetaTensor* beta2_pow,
+    MetaTensor* fused_param_offsets,
+    MetaTensor* fp32_shard_fused_param_offsets,
+    MetaTensor* fp16_shard_fused_param_offsets,
+    MetaTensor* param_info,
+    MetaTensor* param_order,
+    std::vector<MetaTensor*> param_out,
+    std::vector<MetaTensor*> master_param_out,
+    std::vector<MetaTensor*> grad_out,
+    MetaTensor* global_scale,
+    MetaTensor* step);
+
 void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
 void DropoutInferMeta(const MetaTensor& x,
@@ -352,6 +380,11 @@ void IndexAddInferMeta(const MetaTensor& x,
 
 void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
+void LimitByCapacityInferMeta(const MetaTensor& expert_count,
+                              const MetaTensor& capacity,
+                              int n_worker,
+                              MetaTensor* out);
+
 void LogicalBinaryInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             MetaTensor* out);
@@ -464,6 +497,12 @@ void PriorBoxInferMeta(const MetaTensor& input,
                        MetaTensor* out,
                        MetaTensor* var);
 
+void PruneGateByCapacityInferMeta(const MetaTensor& gate_idx,
+                                  const MetaTensor& expert_count,
+                                  int64_t n_expert,
+                                  int64_t n_worker,
+                                  MetaTensor* new_gate_idx);
+
 void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            const MetaTensor& value,
                            bool out_int32,
@@ -544,6 +583,8 @@ void ValueCompareInferMeta(const MetaTensor& x,
                            MetaConfig config = MetaConfig());
 
 void SolveInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+
+void SwiGLUInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
 void UnpoolInferMeta(const MetaTensor& x,
                      const MetaTensor& indices,

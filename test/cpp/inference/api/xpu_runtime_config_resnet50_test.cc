@@ -15,7 +15,7 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <cmath>
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 #include "test/cpp/inference/api/tester_helper.h"
 #include "xpu/runtime.h"
 #include "xpu/xdnn.h"

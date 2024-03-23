@@ -107,7 +107,7 @@ class TensorGroup {
 
   /**
    * Returns tensors in topological order and remove those args
-   * Becuase the order is used for generating function body, we don't have to
+   * Because the order is used for generating function body, we don't have to
    * generate args
    */
   std::vector<ir::Tensor> GetGenFuncTopoOrder(

@@ -151,7 +151,7 @@ def _setitem_for_tensor_array(var, item, value):
     assert (
         not paddle.in_dynamic_mode()
     ), "setitem for tensor_array must be called in static graph mode."
-    if isinstance(item, (Variable, int)):
+    if isinstance(item, (Variable, paddle.pir.Value, int)):
         from paddle.jit.dy2static.convert_operators import to_static_variable
         from paddle.tensor import array_write
 
@@ -173,12 +173,12 @@ def deal_advanced_index(
     Transpose origin Tensor and advanced indices to the front.
 
     Returns:
-        transed_tensor (Tensor): transposed tensor, corresbonding with advanced indices
-        transed_index (List): advanced indices transed to the front
+        transed_tensor (Tensor): transposed tensor, corresponding with advanced indices
+        transed_index (List): advanced indices transposed to the front
         trans_back_dim (List): order of axes to transpose back to original order. Only used in __setitem__.
         pos_of_new_dim (int):  axis of new dim in the result. Only used in __getitem__.
         rank_of_new_dim (int): rank of new dim in the result. Only used in __getitem__.
-        transed_value_tensor (Tensor): value tensor transed to the front. Only used in __setitem__.
+        transed_value_tensor (Tensor): value tensor transposed to the front. Only used in __setitem__.
     """
     transed_dim = []
     transed_index = []
@@ -248,16 +248,20 @@ def slice_is_same_to_original(start, end, step):
     return start == 0 and end == MAX_INTEGER and step == 1
 
 
-def parse_index(x, indices):
+def is_tensor_array_type(value):
     from .framework import in_pir_mode
 
     if in_pir_mode():
-        is_tensor_array = x.is_dense_tensor_array_type()
+        return value.is_dense_tensor_array_type()
     else:
-        is_tensor_array = (
-            hasattr(x, "desc")
-            and x.desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+        return (
+            hasattr(value, "desc")
+            and value.desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY
         )
+
+
+def parse_index(x, indices):
+    is_tensor_array = is_tensor_array_type(x)
 
     advanced_index = (
         [] if is_tensor_array else [None] * 2 * len(x.shape)
@@ -448,7 +452,9 @@ def _setitem_static(x, indices, values):
     from . import in_dynamic_or_pir_mode
     from .framework import Variable, default_main_program, in_pir_mode
 
-    if x.type == paddle.base.core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+    is_tensor_array = is_tensor_array_type(x)
+
+    if is_tensor_array:
         return _setitem_for_tensor_array(x, indices, values)
 
     # step1: parsing the index and recording them
@@ -765,7 +771,7 @@ def get_tensor_with_basic_indexing(
             else:
                 stride = attrs['strides']
             if use_strided_slice:
-                # TODO(zoooo0820): suppport strided_slice_array until PIR API is ready
+                # TODO(zoooo0820): support strided_slice_array until PIR API is ready
 
                 out = paddle._C_ops.strided_slice(x, axes, st, end, stride)
                 if len(decrease_axes) > 0:
@@ -877,7 +883,7 @@ def _getitem_static(x, indices):
             _,
         ) = deal_advanced_index(out, advanced_index, False, None)
 
-        # TODO(zooooo0820): Replacing gather_nd to another advanded OP for handling of mixed indexes more efficiently
+        # TODO(zooooo0820): Replacing gather_nd to another advanced OP for handling of mixed indexes more efficiently
         if len(adjusted_advanced_index) == 1 and adjusted_advanced_index[
             0
         ].dtype in (paddle.bool, paddle.base.libpaddle.BOOL):
@@ -902,8 +908,8 @@ def _getitem_static(x, indices):
 
         if pos_of_new_dim != 0:
             perm = (
-                list(range(pos_of_new_dim, pos_of_new_dim + rank_of_new_dim))
-                + list(range(0, pos_of_new_dim))
+                list(range(rank_of_new_dim, pos_of_new_dim + rank_of_new_dim))
+                + list(range(0, rank_of_new_dim))
                 + list(range(pos_of_new_dim + rank_of_new_dim, out.ndim))
             )
             out = out.transpose(perm)
@@ -913,7 +919,7 @@ def _getitem_static(x, indices):
 
 def parse_bool_and_broadcast_indices(indices):
     # deal with multiple Tensors and translating bool tensor to int tensor.
-    # In static mode, bool-tensor cannot be broadcasted since its corressponding int tensor's shape cannot be infered.
+    # In static mode, bool-tensor cannot be broadcasted since its corresponding int tensor's shape cannot be infered.
     for i, indice in enumerate(indices):
         if (
             indice.dtype == paddle.bool

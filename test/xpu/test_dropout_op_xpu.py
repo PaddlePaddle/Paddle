@@ -155,7 +155,7 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                 with base.dygraph.guard(place):
                     input_np = np.random.random([40, 40]).astype(self.in_type)
                     result_np = input_np
-                    input = base.dygraph.to_variable(input_np)
+                    input = paddle.to_tensor(input_np)
                     m = paddle.nn.Dropout(p=0.0)
                     m.eval()
                     result = m(input)
@@ -176,10 +176,15 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
         def test_backward_downscale_in_infer(self):
             for place in self.places:
                 with base.dygraph.guard(place):
-                    input = paddle.uniform([40, 40], dtype=self.in_type)
+                    prob = 0.1
+                    input = paddle.uniform([100, 40], dtype=self.in_type)
                     input.stop_gradient = False
                     out, mask = _legacy_C_ops.dropout(
-                        input, 'dropout_prob', 0.5
+                        input, 'dropout_prob', prob
+                    )
+                    nonzero = paddle.count_nonzero(out)
+                    np.testing.assert_allclose(
+                        prob, 1 - nonzero / 4000, atol=0.02
                     )
                     out.backward()
 
@@ -192,7 +197,7 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
             for place in self.places:
                 with base.dygraph.guard(place):
                     prob = 0.5
-                    input = paddle.uniform([40, 40], dtype=self.in_type)
+                    input = paddle.uniform([100, 40], dtype=self.in_type)
                     input.stop_gradient = False
                     out, mask = _legacy_C_ops.dropout(
                         input,
@@ -200,6 +205,10 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                         prob,
                         "dropout_implementation",
                         "upscale_in_train",
+                    )
+                    nonzero = paddle.count_nonzero(out)
+                    np.testing.assert_allclose(
+                        prob, 1 - nonzero / 4000, atol=0.02
                     )
                     out.backward()
 
@@ -211,8 +220,8 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
         def test_backward_upscale_train_2(self):
             for place in self.places:
                 with base.dygraph.guard(place):
-                    prob = 0.3
-                    input = paddle.uniform([40, 40], dtype=self.in_type)
+                    prob = 0.2
+                    input = paddle.uniform([100, 40], dtype=self.in_type)
                     input.stop_gradient = False
                     out, mask = _legacy_C_ops.dropout(
                         input,
@@ -220,6 +229,10 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                         prob,
                         "dropout_implementation",
                         "upscale_in_train",
+                    )
+                    nonzero = paddle.count_nonzero(out)
+                    np.testing.assert_allclose(
+                        prob, 1 - nonzero / 4000, atol=0.02
                     )
                     out.backward()
 

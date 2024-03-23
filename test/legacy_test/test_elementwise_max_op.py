@@ -65,7 +65,7 @@ class TestElementwiseOp(OpTest):
                 ['X', 'Y'], 'Out', check_prim=True, check_prim_pir=True
             )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         if hasattr(self, 'attrs') and self.attrs['axis'] != -1:
             self.check_grad(
                 ['Y'],
@@ -84,7 +84,7 @@ class TestElementwiseOp(OpTest):
                 check_prim_pir=True,
             )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         if hasattr(self, 'attrs') and self.attrs['axis'] != -1:
             self.check_grad(
                 ['X'],
@@ -222,7 +222,7 @@ class TestElementwiseBF16Op(OpTest):
                 check_prim_pir=True,
             )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad(
             ['Y'],
             'Out',
@@ -232,7 +232,7 @@ class TestElementwiseBF16Op(OpTest):
             check_prim_pir=True,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.check_grad(
             ['X'],
             'Out',

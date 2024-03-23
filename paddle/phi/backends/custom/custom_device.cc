@@ -534,8 +534,8 @@ class CustomDevice : public DeviceInterface {
     if (pimpl_->device_extra_padding_size) {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->device_extra_padding_size(device, &padding_size));
-      VLOG(10) << Type() << " extra padding size " << (padding_size >> 20)
-               << "M";
+      VLOG(10) << Type() << " extra padding size:" << padding_size;
+      return padding_size;
     } else {
       return DeviceInterface::GetExtraPaddingSize(dev_id);
     }
@@ -569,29 +569,6 @@ class CustomDevice : public DeviceInterface {
     return version;
   }
 
-  C_DataType ToXCCLDataType(ccl::CCLDataType data_type) {
-#define return_result(in, ret) \
-  case ccl::CCLDataType::in:   \
-    return C_DataType::ret
-    switch (data_type) {
-      return_result(CCL_DATA_TYPE_FP64, FLOAT64);
-      return_result(CCL_DATA_TYPE_FP32, FLOAT32);
-      return_result(CCL_DATA_TYPE_FP16, FLOAT16);
-      return_result(CCL_DATA_TYPE_BF16, BFLOAT16);
-      return_result(CCL_DATA_TYPE_INT64, INT64);
-      return_result(CCL_DATA_TYPE_INT32, INT32);
-      return_result(CCL_DATA_TYPE_INT16, INT16);
-      return_result(CCL_DATA_TYPE_INT8, INT8);
-      return_result(CCL_DATA_TYPE_UINT8, UINT8);
-      default: {
-        PADDLE_THROW(phi::errors::Unavailable(
-            "DataType is not supported on %s.", Type()));
-        return C_DataType::UNDEFINED;
-      }
-    }
-#undef return_result
-  }
-
   C_CCLReduceOp ToXCCLReduceOp(ccl::CCLReduceOp reduce_op) {
 #define return_result(in, ret) \
   case ccl::CCLReduceOp::in:   \
@@ -615,13 +592,21 @@ class CustomDevice : public DeviceInterface {
   case in:                     \
     return C_DataType::ret
     switch (data_type) {
-      return_result(phi::DataType::FLOAT64, FLOAT64);
-      return_result(phi::DataType::FLOAT32, FLOAT32);
-      return_result(phi::DataType::FLOAT16, FLOAT16);
-      return_result(phi::DataType::INT64, INT64);
-      return_result(phi::DataType::INT32, INT32);
-      return_result(phi::DataType::INT16, INT16);
+      return_result(phi::DataType::BOOL, BOOL);
+      return_result(phi::DataType::UINT8, UINT8);
+      return_result(phi::DataType::UINT16, UINT16);
+      return_result(phi::DataType::UINT32, UINT32);
+      return_result(phi::DataType::UINT64, UINT64);
       return_result(phi::DataType::INT8, INT8);
+      return_result(phi::DataType::INT16, INT16);
+      return_result(phi::DataType::INT32, INT32);
+      return_result(phi::DataType::INT64, INT64);
+      return_result(phi::DataType::FLOAT16, FLOAT16);
+      return_result(phi::DataType::FLOAT32, FLOAT32);
+      return_result(phi::DataType::FLOAT64, FLOAT64);
+      return_result(phi::DataType::BFLOAT16, BFLOAT16);
+      return_result(phi::DataType::COMPLEX64, COMPLEX64);
+      return_result(phi::DataType::COMPLEX128, COMPLEX128);
       default: {
         PADDLE_THROW(phi::errors::Unavailable(
             "DataType is not supported on %s.", Type()));
@@ -666,10 +651,16 @@ class CustomDevice : public DeviceInterface {
         pimpl_->xccl_destroy_comm(reinterpret_cast<C_CCLComm>(comm)));
   }
 
+  void CCLCommName(ccl::CCLComm comm, char* comm_name) {
+    CHECK_PTR(pimpl_->xccl_get_comm_name);
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_get_comm_name(
+        reinterpret_cast<C_CCLComm>(comm), comm_name));
+  }
+
   void CCLAllReduce(void* send_buf,
                     void* recv_buf,
                     size_t count,
-                    ccl::CCLDataType data_type,
+                    phi::DataType data_type,
                     ccl::CCLReduceOp op,
                     const ccl::CCLComm& comm,
                     const stream::Stream& stream) override {
@@ -678,7 +669,7 @@ class CustomDevice : public DeviceInterface {
         send_buf,
         recv_buf,
         count,
-        ToXCCLDataType(data_type),
+        ToCDatatType(data_type),
         ToXCCLReduceOp(op),
         reinterpret_cast<C_CCLComm>(comm),
         reinterpret_cast<C_Stream>(stream.raw_stream())));
@@ -686,7 +677,7 @@ class CustomDevice : public DeviceInterface {
 
   void CCLBroadcast(void* buf,
                     size_t count,
-                    ccl::CCLDataType data_type,
+                    phi::DataType data_type,
                     size_t root,
                     const ccl::CCLComm& comm,
                     const stream::Stream& stream) override {
@@ -694,7 +685,7 @@ class CustomDevice : public DeviceInterface {
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_broadcast(
         buf,
         count,
-        ToXCCLDataType(data_type),
+        ToCDatatType(data_type),
         root,
         reinterpret_cast<C_CCLComm>(comm),
         reinterpret_cast<C_Stream>(stream.raw_stream())));
@@ -703,7 +694,7 @@ class CustomDevice : public DeviceInterface {
   void CCLReduce(void* in_data,
                  void* out_data,
                  size_t num,
-                 ccl::CCLDataType data_type,
+                 phi::DataType data_type,
                  ccl::CCLReduceOp reduce_op,
                  size_t root_id,
                  const ccl::CCLComm& comm,
@@ -713,7 +704,7 @@ class CustomDevice : public DeviceInterface {
         pimpl_->xccl_reduce(in_data,
                             out_data,
                             num,
-                            ToXCCLDataType(data_type),
+                            ToCDatatType(data_type),
                             ToXCCLReduceOp(reduce_op),
                             root_id,
                             reinterpret_cast<C_CCLComm>(comm),
@@ -723,7 +714,7 @@ class CustomDevice : public DeviceInterface {
   void CCLAllGather(void* send_buf,
                     void* recv_buf,
                     size_t count,
-                    ccl::CCLDataType data_type,
+                    phi::DataType data_type,
                     const ccl::CCLComm& comm,
                     const stream::Stream& stream) override {
     CHECK_PTR(pimpl_->xccl_all_gather);
@@ -731,7 +722,7 @@ class CustomDevice : public DeviceInterface {
         send_buf,
         recv_buf,
         count,
-        ToXCCLDataType(data_type),
+        ToCDatatType(data_type),
         reinterpret_cast<C_CCLComm>(comm),
         reinterpret_cast<C_Stream>(stream.raw_stream())));
   }
@@ -739,7 +730,7 @@ class CustomDevice : public DeviceInterface {
   void CCLReduceScatter(void* send_buf,
                         void* recv_buf,
                         size_t count,
-                        ccl::CCLDataType data_type,
+                        phi::DataType data_type,
                         ccl::CCLReduceOp reduce_op,
                         const ccl::CCLComm& comm,
                         const stream::Stream& stream) override {
@@ -748,7 +739,7 @@ class CustomDevice : public DeviceInterface {
         send_buf,
         recv_buf,
         count,
-        ToXCCLDataType(data_type),
+        ToCDatatType(data_type),
         ToXCCLReduceOp(reduce_op),
         reinterpret_cast<C_CCLComm>(comm),
         reinterpret_cast<C_Stream>(stream.raw_stream())));
@@ -768,7 +759,7 @@ class CustomDevice : public DeviceInterface {
 
   void CCLSend(void* send_buf,
                size_t count,
-               ccl::CCLDataType data_type,
+               phi::DataType data_type,
                size_t dest_rank,
                const ccl::CCLComm& comm,
                const stream::Stream& stream) override {
@@ -776,7 +767,7 @@ class CustomDevice : public DeviceInterface {
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
         pimpl_->xccl_send(send_buf,
                           count,
-                          ToXCCLDataType(data_type),
+                          ToCDatatType(data_type),
                           dest_rank,
                           reinterpret_cast<C_CCLComm>(comm),
                           reinterpret_cast<C_Stream>(stream.raw_stream())));
@@ -784,7 +775,7 @@ class CustomDevice : public DeviceInterface {
 
   void CCLRecv(void* recv_buf,
                size_t count,
-               ccl::CCLDataType data_type,
+               phi::DataType data_type,
                size_t src_rank,
                const ccl::CCLComm& comm,
                const stream::Stream& stream) override {
@@ -792,7 +783,7 @@ class CustomDevice : public DeviceInterface {
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
         pimpl_->xccl_recv(recv_buf,
                           count,
-                          ToXCCLDataType(data_type),
+                          ToCDatatType(data_type),
                           src_rank,
                           reinterpret_cast<C_CCLComm>(comm),
                           reinterpret_cast<C_Stream>(stream.raw_stream())));
@@ -800,10 +791,10 @@ class CustomDevice : public DeviceInterface {
 
   void CCLAllToAll(const void** send_buf,
                    const size_t* send_count,
-                   const ccl::CCLDataType* send_dtype,
+                   const phi::DataType* send_dtype,
                    void** recv_buf,
                    const size_t* recv_count,
-                   const ccl::CCLDataType* recv_dtype,
+                   const phi::DataType* recv_dtype,
                    size_t rank,
                    size_t nranks,
                    const ccl::CCLComm& comm,
@@ -811,8 +802,8 @@ class CustomDevice : public DeviceInterface {
     if (pimpl_->xccl_all_to_all) {
       std::vector<C_DataType> c_send_dtype, c_recv_dtype;
       for (size_t i = 0; i < nranks; ++i) {
-        c_send_dtype.push_back(ToXCCLDataType(send_dtype[i]));
-        c_recv_dtype.push_back(ToXCCLDataType(recv_dtype[i]));
+        c_send_dtype.push_back(ToCDatatType(send_dtype[i]));
+        c_recv_dtype.push_back(ToCDatatType(recv_dtype[i]));
       }
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_all_to_all(
           send_buf,
@@ -832,7 +823,7 @@ class CustomDevice : public DeviceInterface {
         PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
             pimpl_->xccl_recv(recv_buf[i],
                               recv_count[i],
-                              ToXCCLDataType(recv_dtype[i]),
+                              ToCDatatType(recv_dtype[i]),
                               i,
                               reinterpret_cast<C_CCLComm>(comm),
                               reinterpret_cast<C_Stream>(stream.raw_stream())));
@@ -842,7 +833,7 @@ class CustomDevice : public DeviceInterface {
           PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_send(
               const_cast<void*>(send_buf[i]),
               send_count[i],
-              ToXCCLDataType(send_dtype[i]),
+              ToCDatatType(send_dtype[i]),
               i,
               reinterpret_cast<C_CCLComm>(comm),
               reinterpret_cast<C_Stream>(stream.raw_stream())));
@@ -851,14 +842,13 @@ class CustomDevice : public DeviceInterface {
       MemoryCopyD2D(rank,
                     recv_buf[rank],
                     send_buf[rank],
-                    send_count[rank] *
-                        phi::SizeOf(phi::ccl::ToPhiDataType(send_dtype[rank])),
+                    send_count[rank] * phi::SizeOf(send_dtype[rank]),
                     &stream);
       for (size_t i = rank + 1; i < nranks; ++i) {
         PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
             pimpl_->xccl_recv(recv_buf[i],
                               recv_count[i],
-                              ToXCCLDataType(recv_dtype[i]),
+                              ToCDatatType(recv_dtype[i]),
                               i,
                               reinterpret_cast<C_CCLComm>(comm),
                               reinterpret_cast<C_Stream>(stream.raw_stream())));
@@ -1106,7 +1096,7 @@ void LoadCustomRuntimeLib(const std::string& dso_lib_path, void* dso_handle) {
   }
   LoadCustomRuntimeLib(
       runtime_params, std::move(device_interface), dso_lib_path, dso_handle);
-  LOG(INFO) << "Successed in loading custom runtime in lib: " << dso_lib_path;
+  LOG(INFO) << "Succeed in loading custom runtime in lib: " << dso_lib_path;
 }
 
 #undef INTERFACE_UNIMPLEMENT

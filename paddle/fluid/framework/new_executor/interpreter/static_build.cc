@@ -27,7 +27,7 @@
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
-PHI_DECLARE_bool(cache_inference_while_scope);
+COMMON_DECLARE_bool(cache_inference_while_scope);
 
 std::set<std::string> OperatorBasesMustRunInStaticBuild = {
     "create_double_buffer_reader", "create_py_reader"};
@@ -498,7 +498,7 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
       const framework::VariableNameMap& output_var_names = item->Outputs();
       for (auto& ipt : input_var_names) {
         for (const std::string& var_name : ipt.second) {
-          if (operators::StrInVaraiableNameMap(var_name, output_var_names)) {
+          if (operators::StrInVariableNameMap(var_name, output_var_names)) {
             no_copy_var_names.insert(var_name);
           }
         }

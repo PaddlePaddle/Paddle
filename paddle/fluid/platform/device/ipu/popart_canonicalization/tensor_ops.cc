@@ -214,7 +214,7 @@ Node *cast_handler(Graph *graph, Node *node) {
                              node->inputs,
                              node->outputs,
                              static_cast<VarType::Type>(otype));
-  // Cast op created in mixed-precision has no pipline attrs
+  // Cast op created in mixed-precision has no pipeline attrs
   auto &prev_nodes = node->inputs.front()->inputs;
   if (!prev_nodes.empty()) {
     auto *prev_op = prev_nodes.front()->Op();

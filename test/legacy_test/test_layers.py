@@ -25,7 +25,7 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core, dygraph
-from paddle.base.framework import Program, default_main_program, program_guard
+from paddle.base.framework import Program, program_guard
 from paddle.incubate.layers.nn import (
     batch_fc,
     partial_concat,
@@ -2230,7 +2230,7 @@ class TestBook(LayerTest):
                 name='X', shape=[-1, 4, 50], dtype='float32', lod_level=0
             )
             out1 = shuffle_batch(x)
-            default_main_program().random_seed = 1000
+            paddle.seed(1000)
             out2 = shuffle_batch(x)
             self.assertIsNotNone(out1)
             self.assertIsNotNone(out2)

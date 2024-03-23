@@ -112,6 +112,7 @@ std::vector<paddle::Tensor> RunBackward(
     const std::vector<paddle::Tensor>& no_grad_vars = {}) {
   VLOG(3) << "Start Backward";
 
+  egr::EagerBackwardStateGuard guard;
   auto place = egr::Controller::Instance().GetExpectedPlace();
 
   // *Gradient Hook should happen at node-level
@@ -252,10 +253,6 @@ std::vector<paddle::Tensor> RunBackward(
   while (!queue.empty()) {
     GradNodeBase* node = queue.front();
     VLOG(3) << "Preparing GradNode:" << node->name() << " addr:" << node;
-    paddle::platform::RecordEvent node_record_event(
-        std::string((*node).name()),
-        paddle::platform::TracerEventType::Operator,
-        1);
 
     if (queue.size() > 1 && node_in_degree_map[node] != 0) {
       queue.pop_front();
@@ -279,14 +276,29 @@ std::vector<paddle::Tensor> RunBackward(
     EnforceGradNodeHasInput(node);
 
     VLOG(7) << "Run Backward Kernel with GradTensorHolder.";
+
+    // This 'Global_XXXGradNode' record event is different with
+    // 'Local_XXXGradNode' event.
+    // * 'Global_XXXGradNode' will not only cover execution time of this
+    // function, but also include gradient
+    //    accumulation when the output(s) of corresponding forward OP are shared
+    //    by other OP(s), which may have extra overhead of accumulation than
+    //    'Local_XXXGradNode'.
+    // * 'Local_XXXGradNode' will only cover execution time of GradNode
+    // function.
+    paddle::platform::RecordEvent grad_node_record_event(
+        "Global_" + std::string((*node).name()),
+        paddle::platform::TracerEventType::Operator,
+        1);
+
     // Run Pre Backward Node and get outputs
     paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
         grad_output_tensors = (*node)(
             node_input_buffer->Buffers(), create_graph, is_general_grad);
 
     if (!inputs.empty() && is_general_grad) {
-      GeneralGrad::Instance().SetResultForEnddingNodes(grad_output_tensors,
-                                                       node);
+      GeneralGrad::Instance().SetResultForEndingNodes(grad_output_tensors,
+                                                      node);
     }
 
     // retain_grad or not
@@ -381,8 +393,7 @@ std::vector<paddle::Tensor> RunBackward(
                 "Node's in-degree cannot be negative.",
                 next_node->name()));
 
-        auto add_next_node_func = [&node_in_degree_map,
-                                   &queue](GradNodeBase* next_node) {
+        auto add_next_node_func = [&queue](GradNodeBase* next_node) {
           if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
             queue.push_front(next_node);
           } else {

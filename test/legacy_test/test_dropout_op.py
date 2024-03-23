@@ -690,7 +690,7 @@ class TestDropoutFAPI(unittest.TestCase):
                 in_np = np.random.random([40, 40]).astype("float32")
                 res_np = in_np
                 res_np2 = np.zeros_like(in_np)
-                input = base.dygraph.to_variable(in_np)
+                input = paddle.to_tensor(in_np)
 
                 res1 = paddle.nn.functional.dropout(
                     x=input, p=0.0, training=False
@@ -907,7 +907,7 @@ class TestDropoutCAPI(unittest.TestCase):
             with base.dygraph.guard(place):
                 input_np = np.random.random([40, 40]).astype("float32")
                 result_np = input_np
-                input = base.dygraph.to_variable(input_np)
+                input = paddle.to_tensor(input_np)
                 m = paddle.nn.Dropout(p=0.0)
                 m.eval()
                 result = m(input)
@@ -961,7 +961,7 @@ class TestDropout2DFAPI(unittest.TestCase):
             with base.dygraph.guard(place):
                 in_np = np.random.random([2, 3, 4, 5]).astype("float32")
                 res_np = in_np
-                input = base.dygraph.to_variable(in_np)
+                input = paddle.to_tensor(in_np)
 
                 res1 = paddle.nn.functional.dropout2d(
                     x=input, p=0.0, training=False, data_format='NCHW'
@@ -1014,7 +1014,7 @@ class TestDropout2DCAPI(unittest.TestCase):
             with base.dygraph.guard(place):
                 input_np = np.random.random([2, 3, 4, 5]).astype("float32")
                 result_np = input_np
-                input = base.dygraph.to_variable(input_np)
+                input = paddle.to_tensor(input_np)
                 m = paddle.nn.Dropout2D(p=0.0)
                 m.eval()
                 result = m(input)
@@ -1093,7 +1093,7 @@ class TestDropout3DFAPI(unittest.TestCase):
             with base.dygraph.guard(place):
                 in_np = np.random.random([2, 3, 4, 5, 6]).astype("float32")
                 res_np = in_np
-                input = base.dygraph.to_variable(in_np)
+                input = paddle.to_tensor(in_np)
 
                 res1 = paddle.nn.functional.dropout3d(
                     x=input, p=0.0, training=False, data_format='NCDHW'
@@ -1146,7 +1146,7 @@ class TestDropout3DCAPI(unittest.TestCase):
             with base.dygraph.guard(place):
                 input_np = np.random.random([2, 3, 4, 5, 6]).astype("float32")
                 result_np = input_np
-                input = base.dygraph.to_variable(input_np)
+                input = paddle.to_tensor(input_np)
                 m = paddle.nn.Dropout3D(p=0.0)
                 m.eval()
                 result = m(input)
@@ -1202,7 +1202,7 @@ class TestAlphaDropoutFAPI(unittest.TestCase):
                 in_np = np.random.random([40, 40]).astype("float32")
                 res_np = in_np
                 res_np3 = np.zeros_like(in_np)
-                input = base.dygraph.to_variable(in_np)
+                input = paddle.to_tensor(in_np)
 
                 res1 = paddle.nn.functional.alpha_dropout(x=input, p=0.0)
                 res2 = paddle.nn.functional.alpha_dropout(
@@ -1276,7 +1276,7 @@ class TestAlphaDropoutCAPI(unittest.TestCase):
             with base.dygraph.guard(place):
                 input_np = np.random.random([40, 40]).astype("float32")
                 result_np = input_np
-                input = base.dygraph.to_variable(input_np)
+                input = paddle.to_tensor(input_np)
                 m = paddle.nn.AlphaDropout(p=0.0)
                 m.eval()
                 result = m(input)

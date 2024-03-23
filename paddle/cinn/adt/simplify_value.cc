@@ -21,7 +21,7 @@
 #include "paddle/cinn/adt/index_expr_infer_context.h"
 #include "paddle/cinn/adt/match.h"
 #include "paddle/cinn/adt/simplify_value.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr_simplify.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 namespace cinn::adt {
 
@@ -55,19 +55,19 @@ struct SimplifyRedundantBroadcastedIterator {
       BroadcastedIterator<BroadcastedIterator<Value, DimExpr>, DimExpr>;
 
   Value MatchAndRewrite(const Value& value, const IndexExprInferContext& ctx) {
-    const auto& [outter_iterator, outter_dim] =
+    const auto& [outer_iterator, outer_dim] =
         value.Get<BroadcastedIterator<Value, DimExpr>>().tuple();
     const auto& [inner_iterator, inner_dim] =
-        outter_iterator.Get<BroadcastedIterator<Value, DimExpr>>().tuple();
+        outer_iterator.Get<BroadcastedIterator<Value, DimExpr>>().tuple();
 
-    if (outter_dim == inner_dim) {
-      return SimplifyValue(outter_iterator, ctx);
+    if (outer_dim == inner_dim) {
+      return SimplifyValue(outer_iterator, ctx);
     } else {
-      const auto& bd = MakeBroadcastedDim(outter_dim, inner_dim);
+      const auto& bd = MakeBroadcastedDim(outer_dim, inner_dim);
       const auto& simplified_bd = DimExpr{symbol::SimplifyDimExpr(bd)};
       return BroadcastedIterator<Value, DimExpr>{inner_iterator, simplified_bd};
     }
-    LOG(FATAL) << "Dead code";
+    PADDLE_THROW(phi::errors::Fatal("Dead code"));
   }
 };
 
@@ -368,7 +368,7 @@ struct SymbolicDim_SimplifyDotUndot {
       return IndexDotValue<Value, List<DimExpr>>{
           SimplifyValue(list_get_item_values, ctx), dot_dims};
     }
-    LOG(FATAL) << "Dead code";
+    PADDLE_THROW(phi::errors::Fatal("Dead code"));
   }
 };
 
@@ -415,7 +415,7 @@ struct SymbolicDim_SimplifyDotUndot_DimExpr {
       return IndexDotValue<Value, List<DimExpr>>{
           SimplifyValue(list_get_item_values, ctx), dot_dims};
     }
-    LOG(FATAL) << "Dead code";
+    PADDLE_THROW(phi::errors::Fatal("Dead code"));
   }
 };
 

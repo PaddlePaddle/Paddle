@@ -20,9 +20,12 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/to_static/run_program_op_node.h"
 #include "paddle/fluid/eager/utils.h"
+#include "paddle/fluid/framework/tensor_ref_array.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 
 // Filter params without grads in global block. In this case, we will
 // tag its AutogradMeta with stop_gradient = True to avoid fault from
@@ -119,9 +122,10 @@ static std::vector<paddle::Tensor> Trans2ContiguousTensors(
              .is_contiguous()) {
       res.emplace_back(
           std::make_shared<phi::DenseTensor>(
-              std::move(paddle::experimental::Trans2Contiguous(
-                  *(std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()))))),
-          t.mutable_autograd_meta());
+              paddle::experimental::Trans2Contiguous(
+                  *(std::dynamic_pointer_cast<phi::DenseTensor>(t.impl())))),
+          t.mutable_autograd_meta(),
+          t.name());
     } else {
       res.emplace_back(t);
     }
@@ -244,8 +248,9 @@ inline void pir_run_program_ad_func(
       trace_backward, &p_autograd_x, &p_autograd_params);
 
   // Create Middle Output for GradNode.
-  auto middle_size =
-      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fm")).size();
+  auto middle_values =
+      PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fm"));
+  auto middle_size = middle_values.size();
   auto output_size =
       PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fo")).size();
   auto middles = std::vector<paddle::Tensor*>();
@@ -264,8 +269,14 @@ inline void pir_run_program_ad_func(
     grad_node->GetMiddle().resize(middle_size);
     grad_node->GetOutputs().resize(output_size);
     for (size_t i = 0; i < middle_size; ++i) {
-      grad_node->GetMiddle()[i] =
-          paddle::Tensor(std::make_shared<phi::DenseTensor>());
+      auto middle_value = middle_values[i];
+      if (middle_value.type().isa<pir::DenseTensorType>()) {
+        grad_node->GetMiddle()[i] =
+            paddle::Tensor(std::make_shared<phi::DenseTensor>());
+      } else if (middle_value.type().isa<pir::OutletType>()) {
+        grad_node->GetMiddle()[i] = paddle::Tensor(
+            std::make_shared<paddle::framework::VariableRefArray>());
+      }
       middles.push_back(&grad_node->GetMiddle()[i]);
     }
 

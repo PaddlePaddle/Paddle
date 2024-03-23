@@ -473,7 +473,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                 ctx, op_dist_attr.process_mesh, rank_id
             )
 
-        # A generalized method to calculate embedding offset using cartisian product
+        # A generalized method to calculate embedding offset using cartesian product
         relative_idx = _get_idx_in_axis(
             process_mesh_group,
             process_mesh_shape,
@@ -632,7 +632,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         process_mesh_shape = dist_attr.process_mesh.shape
         process_mesh_group = dist_attr.process_mesh.process_ids
 
-        # A generalized method to calculate embedding offset using cartisian product
+        # A generalized method to calculate embedding offset using cartesian product
         relative_idx = _get_idx_in_axis(
             process_mesh_group,
             process_mesh_shape,

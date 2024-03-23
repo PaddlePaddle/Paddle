@@ -110,7 +110,7 @@ def validate_rhs(rhs, input_labels, n_bcast_dims):
     rhs = rhs.replace('...', '')
     rhs_set = set(rhs)
 
-    # Hidden assumption: availble labels don't include '.'
+    # Hidden assumption: available labels don't include '.'
     assert '.' not in input_labels
 
     # Verify that output labels all come from the set of input labels
@@ -195,7 +195,7 @@ def build_global_view(nop_labels, rhs, n_bcast_dims):
     rhs:
         The equation right hand side
     n_bcast_dims:
-        The maxium number of broadcast dimensions
+        The maximum number of broadcast dimensions
 
     Returns
     -------
@@ -336,7 +336,7 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
     plan matmul
     '''
     # Transpose and re-shape op1 and op2 in I, J1, K and I, J2, K
-    # Then apply matmul(x, y, transpose_x=False, tranpose_y=True)
+    # Then apply matmul(x, y, transpose_x=False, transpose_y=True)
     var1, var2 = f'op{op1}', f'op{op2}'
 
     op1_view, op2_view = (g_view[op] for op in (op1, op2))
@@ -366,7 +366,7 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
         step = transpose, [var2], var2, list(op2_dims)
         plan.add_step(step)
 
-    # Check if conditions hold for turnning the operation into a matmul
+    # Check if conditions hold for turning the operation into a matmul
     if (
         j1 + j2 > 0
         and k > 0
@@ -538,7 +538,7 @@ def plan_broadcast(plan, operands, nop_axes):
     varnames = [f'op{i}' for i in range(nop)]
 
     for i, op_axes in zip(range(nop), nop_axes):
-        # Re-arrange the dimesions according to the global layout
+        # Re-arrange the dimensions according to the global layout
         perm, fill = rearrange(op_axes)
         var = varnames[i]
         if perm:
@@ -698,6 +698,41 @@ def plan_einsum(operands, g_view, g_shape, g_supports, g_count, n_bcast):
     return plan
 
 
+def replace_ellipsis(left_equation, rhs, *operands):
+    """
+    we replace ... as unused variables to simplify the EinsumOp implementation.
+    """
+    ellipsis_strings = None
+    max_ndim = 0
+    new_operands = []
+    unused_variables = {chr(c) for c in range(ord('a'), ord('z'))}
+    for equ, operand in zip(left_equation.split(','), operands):
+        ndims = len(operand.shape) - len(equ.replace("...", ""))
+        max_ndim = max(max_ndim, ndims)
+        for c in equ:
+            unused_variables.discard(c)
+
+    for equ, operand in zip(left_equation.split(','), operands):
+        if '...' in equ:
+            start_unsqueeze_idx = equ.index('...')
+            to_squeeze_num = max_ndim - (
+                len(operand.shape) - len(equ.replace("...", ""))
+            )
+            operand = unsqueeze(
+                operand,
+                axis=[i + start_unsqueeze_idx for i in range(to_squeeze_num)],
+            )
+        new_operands.append(operand)
+
+    operands = new_operands
+    ellipsis_strings = ''.join(unused_variables.pop() for _ in range(max_ndim))
+
+    if ellipsis_strings is not None:
+        left_equation = left_equation.replace('...', ellipsis_strings)
+        rhs = rhs.replace('...', ellipsis_strings)
+    return left_equation, rhs, operands
+
+
 def preprocess(equation, *operands):
     """
     check equation / raise error, default right labels generation
@@ -727,7 +762,8 @@ def preprocess(equation, *operands):
         '...' in lhs and '...' not in rhs
     ), 'Invalid equation: missing ellipsis in output labels.'
 
-    return lhs, rhs, labels
+    lhs, rhs, operands = replace_ellipsis(lhs, rhs, *operands)
+    return lhs, rhs, labels, operands
 
 
 def parse_fake_shape(equation, operands, labels):
@@ -806,7 +842,7 @@ def einsum_v2(equation, *operands):
     3. V2 use opt_einsum.contract_path to optimize the multivariable einsum.
     """
     n_op = len(operands)
-    lhs, rhs, labels = preprocess(equation, *operands)
+    lhs, rhs, labels, operands = preprocess(equation, *operands)
 
     if n_op <= 2:
         return gen_einsum_op(lhs + '->' + rhs, *operands)

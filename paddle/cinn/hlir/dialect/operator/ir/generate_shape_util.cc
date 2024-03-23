@@ -14,8 +14,8 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include <unordered_set>
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
 
 namespace cinn::dialect {
 using namespace symbol;  // NOLINT
@@ -561,7 +561,7 @@ void GenerateSymbolBindings(
         dim_exprs.shape(), symbol_names, i, symbol_bindings);
     if (dim_exprs.data().has_value()) {
       AppendSymbolBindings<GenerateShapeOp::DataSymbolBinding>(
-          dim_exprs.shape(), symbol_names, i, symbol_bindings);
+          dim_exprs.data().value(), symbol_names, i, symbol_bindings);
     }
   }
 }
@@ -575,7 +575,7 @@ std::vector<pir::Value> GetMinimalInputs(
       [&](pir::Value input_tensor,
           const std::vector<symbol::DimExpr>& dim_exprs) {
         for (const auto& dim_expr : dim_exprs) {
-          if (dim_expr.isa<int64_t>()) continue;
+          if (!dim_expr.isa<std::string>()) continue;
           if (handled_dim_exprs.insert(dim_expr).second) {
             first_occurred_input_tensors.insert(input_tensor);
           }

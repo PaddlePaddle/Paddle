@@ -18,7 +18,7 @@
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/phi/core/extended_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace paddle {
 namespace primitive {

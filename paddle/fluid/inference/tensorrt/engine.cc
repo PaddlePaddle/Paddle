@@ -28,7 +28,7 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-thread_local int TensorRTEngine::predictor_id_per_thread = -1;
+thread_local int TensorRTEngine::predictor_id_per_thread = 0;
 
 void TensorRTEngine::Weight::SetDataType(phi::DataType type) {
   nvinfer1::DataType nv_type = nvinfer1::DataType::kFLOAT;
@@ -52,7 +52,7 @@ void TensorRTEngine::Weight::SetDataType(phi::DataType type) {
 #endif
     default:
       paddle::platform::errors::InvalidArgument(
-          "Paddle-TRT loads weighths failed, found not supported data type %s.",
+          "Paddle-TRT loads weights failed, found not supported data type %s.",
           type);
       break;
   }

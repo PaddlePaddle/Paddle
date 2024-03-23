@@ -11,24 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import sys
+from os.path import dirname
+
+sys.path.append(dirname(dirname(__file__)))
 
 import unittest
 
 import numpy as np
+import utils
 
 import paddle
 from paddle.static import InputSpec
-
-
-def apply_to_static(net, use_cinn, input_spec=None):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(
-        net,
-        input_spec=input_spec,
-        build_strategy=build_strategy,
-        full_graph=True,
-    )
 
 
 def broadcast_add(x, y):
@@ -62,6 +56,19 @@ class TestCinnSubGraphBase(unittest.TestCase):
         self.y = paddle.randn(self.y_shape, dtype="float32")
         self.y.stop_gradient = False
 
+    def check_jit_kernel_info(self, static_fn):
+        utils.check_jit_kernel_number(static_fn, 3)
+        utils.check_jit_kernel_structure(
+            static_fn,
+            {
+                'if_0': {utils.JIT_KERNEL_NAME: 1},
+                'else_0': {
+                    'if_0_0': {utils.JIT_KERNEL_NAME: 1},
+                    'else_0_0': {utils.JIT_KERNEL_NAME: 1},
+                },
+            },
+        )
+
     def eval_symbolic(self, use_cinn):
         paddle.seed(2022)
         net = CINNSubGraphNet()
@@ -69,12 +76,14 @@ class TestCinnSubGraphBase(unittest.TestCase):
             InputSpec(shape=[None, 128], dtype='float32'),
             InputSpec(shape=[None, 128], dtype='float32'),
         ]
-        net = apply_to_static(net, use_cinn, input_spec)
+        net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
         out = net(self.x, self.y)
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
         return out
 
-    def test_eval_symolic(self):
+    def test_eval_symbolic(self):
         cinn_out = self.eval_symbolic(use_cinn=True)
         dy_out = self.eval_symbolic(use_cinn=False)
         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)

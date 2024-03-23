@@ -13,19 +13,11 @@
 # limitations under the License.
 import unittest
 
+import numpy as np
+import utils
+
 import paddle
 from paddle import nn
-
-
-def apply_to_static(net, use_cinn, input_spec=None):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(
-        net,
-        input_spec=input_spec,
-        build_strategy=build_strategy,
-        full_graph=True,
-    )
 
 
 class RotaryPosEmb(nn.Layer):
@@ -55,10 +47,10 @@ class TestRotaryPosEmb(unittest.TestCase):
         self.prepare_data()
 
     def prepare_data(self):
-        self.q = paddle.randn([1, 2048, 8, 96], dtype="float32")
+        self.q = paddle.randn([61, 2048, 8, 96], dtype="float32")
         self.q.stop_gradient = False
 
-        self.k = paddle.randn([1, 2048, 8, 96], dtype="float32")
+        self.k = paddle.randn([61, 2048, 8, 96], dtype="float32")
         self.k.stop_gradient = False
 
         self.cos = paddle.randn([1, 2048, 1, 96], dtype="float32")
@@ -70,25 +62,30 @@ class TestRotaryPosEmb(unittest.TestCase):
         self.position_ids = paddle.arange(end=2048, dtype="int64").unsqueeze(0)
         self.position_ids.stop_gradient = False
 
+    def check_jit_kernel_info(self, static_fn):
+        utils.check_jit_kernel_number(static_fn, 1)
+        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
+
     def eval(self, use_cinn):
         paddle.seed(2022)
         net = RotaryPosEmb()
+        net = utils.apply_to_static(net, use_cinn)
         net.eval()
-        if use_cinn:
-            net = apply_to_static(net, use_cinn)
-
         out = net(self.q, self.k, self.cos, self.sin, self.position_ids)
+
+        # TODO(phlrain): Need to Fuse to one Kernel
+        # if use_cinn:
+        #     self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):
         cinn_outs = self.eval(use_cinn=True)
-        # dy_outs = self.eval(use_cinn=False)
+        dy_outs = self.eval(use_cinn=False)
 
-        # TODO(phlrain): Need to check result
-        # for cinn_out, dy_out in zip(cinn_outs, dy_outs):
-        #     np.testing.assert_allclose(
-        #         cinn_out.numpy(), dy_out.numpy(), atol=1e-8
-        #     )
+        for cinn_out, dy_out in zip(cinn_outs, dy_outs):
+            np.testing.assert_allclose(
+                cinn_out.numpy(), dy_out.numpy(), atol=1e-8
+            )
 
 
 if __name__ == '__main__':

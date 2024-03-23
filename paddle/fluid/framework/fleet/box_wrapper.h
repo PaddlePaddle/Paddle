@@ -45,7 +45,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/timer.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 #define BUF_SIZE 1024 * 1024
 
 extern void comlog_set_log_level(int log_level);
@@ -362,7 +362,7 @@ class BoxWrapper {
   virtual ~BoxWrapper() {}
   BoxWrapper() {}
 
-  void FeedPass(int date, const std::vector<uint64_t>& feasgin_to_box) const;
+  void FeedPass(int date, const std::vector<uint64_t>& feasign_to_box) const;
   void BeginFeedPass(int date, boxps::PSAgentBase** agent) const;
   void EndFeedPass(boxps::PSAgentBase* agent) const;
   void BeginPass() const;

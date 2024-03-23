@@ -163,6 +163,7 @@
     data_type : x
   backward : fused_bias_dropout_residual_layer_norm_grad
   intermediate : bias_dropout_residual_out, dropout_mask_out, ln_mean, ln_variance
+  support_dygraph_mode : true
 
 - op : fused_bias_residual_layernorm
   args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, float residual_alpha, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)
@@ -272,7 +273,7 @@
   optional : cache_kv, pre_caches, rotary_pos_emb, time_step, seq_lengths, src_mask, gather_index
 
 - op : fused_rotary_position_embedding
-  args : (Tensor q, Tensor k, Tensor v, Tensor sin, Tensor cos, Tensor position_ids, bool use_neox_rotary_style = true)
+  args : (Tensor q, Tensor k, Tensor v, Tensor sin, Tensor cos, Tensor position_ids, bool use_neox_rotary_style = true, bool time_major = false)
   output : Tensor(out_q), Tensor(out_k), Tensor(out_v)
   infer_meta :
     func : FusedRopeInferMeta
@@ -399,7 +400,7 @@
   backward : max_pool2d_v2_grad
 
 - op : multi_encoder_xpu
-  args : (Tensor x, Tensor[] fc_weight, Tensor[] fc_weight_max, Tensor[] fc_bias, Tensor[] ln_scale, Tensor[] ln_bias, Tensor mask, Tensor seq_lod, Tensor max_seq_len, int layer_num, bool norm_before, int hidden_dim, int head_num, int size_per_head, int ffn_hidden_dim_scale, int act_type, int relative_type, int slice_idx)
+  args : (Tensor x, Tensor[] fc_input_max, Tensor[] fc_weight, Tensor[] fc_weight_max, Tensor[] fc_bias, Tensor[] ln_scale, Tensor[] ln_bias, Tensor[] smooth_scale_weight, Tensor[] roformer_embedding, Tensor mask, Tensor seq_lod, Tensor max_seq_len, int layer_num, bool norm_before, int hidden_dim, int head_num, int size_per_head, int ffn_hidden_dim_scale, int act_type, int relative_type, int slice_idx, bool is_per_channel, int max_pos_len, float[] softmax_max_value, str[] quant_types)
   output : Tensor(out), Tensor(x_fp16), Tensor(out_fp16)
   infer_meta :
     func : MultiEncoderXPUInferMeta
@@ -435,6 +436,15 @@
     func : QuantizeXPUInferMeta
   kernel :
     func : quantize_xpu
+    data_type : x
+
+- op : roformer_relative_embedding_xpu
+  args : (Tensor x, Tensor sin_emb, Tensor cos_emb, int max_pos_len)
+  output : Tensor(out)
+  infer_meta :
+    func : RoformerRelativePosXPUInferMeta
+  kernel :
+    func : roformer_relative_embedding_xpu
     data_type : x
 
 - op : self_dp_attention

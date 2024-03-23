@@ -17,8 +17,8 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_type_interfaces.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/include/core/builtin_type_interfaces.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace cinn {
 namespace dialect {
@@ -33,12 +33,6 @@ class DynamicExpandOpPattern
 
   bool MatchAndRewrite(paddle::dialect::ExpandOp op,
                        pir::PatternRewriter& rewriter) const override {
-    if (!op->operand_source(1)
-             .defining_op()
-             ->isa<cinn::dialect::GenerateShapeOp>()) {
-      return false;
-    }
-
     const ::pir::Operation* broadcast = [&] {
       int x_rank = op->operand_source(0)
                        .type()
@@ -52,7 +46,28 @@ class DynamicExpandOpPattern
       for (size_t i = 0; i < x_rank; ++i) {
         broadcast_axes[i] = i + index_gap;
       }
-      std::vector<int64_t> out_shape(out_rank, -1);
+
+      pir::ShapeConstraintIRAnalysis& shape_analysis =
+          pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+
+      const auto& GetOutputShapeByDimExpr = [&]() -> std::vector<int64_t> {
+        std::vector<int64_t> out_shape(out_rank, -1);
+        if (shape_analysis.HasShapeOrDataForValue(op->result(0))) {
+          VLOG(3) << "found shape dialect";
+          auto shape_info =
+              shape_analysis.GetShapeOrDataForValue(op->result(0)).shape();
+
+          for (size_t i = 0; i < shape_info.size(); ++i) {
+            if (shape_info[i].isa<int64_t>()) {
+              out_shape[i] = shape_info[i].Get<int64_t>();
+            }
+          }
+        }
+        return out_shape;
+      };
+
+      auto out_shape = GetOutputShapeByDimExpr();
+
       return rewriter.Build<cinn::dialect::BroadcastOp>(
           op->operand_source(0), broadcast_axes, out_shape);
     }();
@@ -65,6 +80,20 @@ class DynamicExpandOpPattern
         broadcast->result(0),
         shape_analysis.GetShapeOrDataForValue(op.result(0)));
 
+    if (auto pre_full = broadcast->operand_source(0)
+                            .defining_op()
+                            ->dyn_cast<paddle::dialect::FullOp>()) {
+      auto input_dim = pre_full.result(0)
+                           .type()
+                           .dyn_cast<paddle::dialect::DenseTensorType>()
+                           .dims();
+      if (input_dim.size() == 1 && input_dim[0] == 1) {
+        shape_analysis.SetShapeOrDataForValue(
+            pre_full->result(0),
+            shape_analysis.GetShapeOrDataForValue(op.result(0)));
+      }
+    }
+
     rewriter.ReplaceAllUsesWith(op->result(0), broadcast->result(0));
     rewriter.EraseOp(op);
 
@@ -72,41 +101,20 @@ class DynamicExpandOpPattern
   }
 };
 
-class ReplaceDynamicExpandOpPass : public pir::Pass {
+class ReplaceDynamicExpandOpPass : public pir::PatternRewritePass {
  public:
   ReplaceDynamicExpandOpPass()
-      : pir::Pass("replace_dynamic_expand_op_pass", /*opt_level=*/1) {}
+      : pir::PatternRewritePass("replace_dynamic_expand_op_pass", 1) {}
 
-  bool Initialize(pir::IrContext* context) override {
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
     ps.Add<DynamicExpandOpPattern>(context);
-    patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
-    return true;
-  }
-
-  void Run(pir::Operation* op) override {
-    pir::GreedyRewriteConfig cfg;
-    cfg.use_top_down_traversal = true;
-    cfg.max_iterations = 10;
-    for (uint32_t i = 0; i < op->num_regions(); ++i) {
-      for (auto& block : op->region(i)) {
-        for (auto& op : block) {
-          if (op.isa<cinn::dialect::FusionOp>()) {
-            const auto& [_, num_rewrites] =
-                pir::ApplyPatternsGreedily(&op, patterns_, cfg);
-            AddStatistics(num_rewrites);
-          }
-        }
-      }
-    }
+    return ps;
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->num_regions() > 0;
+    return op->isa<cinn::dialect::GroupOp>() && op->num_regions() > 0;
   }
-
- private:
-  pir::FrozenRewritePatternSet patterns_;
 };
 
 std::unique_ptr<pir::Pass> CreateReplaceDynamicExpandOpPass() {

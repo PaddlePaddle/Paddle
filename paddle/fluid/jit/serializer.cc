@@ -20,14 +20,14 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/jit/engine/interpreter_engine.h"
 #include "paddle/fluid/jit/engine/predictor_engine.h"
 #include "paddle/fluid/jit/layer.h"
 #include "paddle/fluid/jit/property.h"
 #include "paddle/fluid/jit/serializer_utils.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_string(jit_engine_type);
+COMMON_DECLARE_string(jit_engine_type);
 
 namespace paddle {
 namespace jit {
@@ -104,8 +104,8 @@ void Deserializer::ReadTensorData(
     VLOG(3) << "load Tensor: " << item;
     Variable v;
     // TODO(dev): Support framework::Vocab
-    DenseTensor* dense_tesnor = v.GetMutable<DenseTensor>();
-    framework::DeserializeFromStream(fin, dense_tesnor, dev_ctx);
+    DenseTensor* dense_tensor = v.GetMutable<DenseTensor>();
+    framework::DeserializeFromStream(fin, dense_tensor, dev_ctx);
     (*params_dict)[item] = std::make_shared<Variable>(v);
   }
 }

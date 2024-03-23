@@ -12,7 +12,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager_utils.h"
 #include <Python.h>
 #include "paddle/common/exception.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/value.h"
 // Avoid a problem with copysign defined in pyconfig.h on Windows.
 #ifdef copysign
 #undef copysign
@@ -21,6 +21,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
@@ -46,11 +47,10 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/placement_types.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
-#include "paddle/phi/core/flags.h"
-#include "paddle/pir/core/attribute.h"
+#include "paddle/pir/include/core/attribute.h"
 
-PHI_DECLARE_bool(check_nan_inf);
-PHI_DECLARE_int32(check_nan_inf_level);
+COMMON_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_int32(check_nan_inf_level);
 namespace paddle {
 namespace pybind {
 
@@ -518,7 +518,7 @@ std::vector<int64_t> CastPyArg2VectorOfInt64(PyObject* obj, size_t arg_pos) {
   } else if (obj == Py_None) {
     return {};
   } else if (PyObject_CheckLongOrConvertToLong(&obj)) {
-    return {static_cast<int64_t>(PyLong_AsLong(obj))};
+    return {static_cast<int64_t>(PyLong_AsLong(obj))};  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "argument (position %d) must be "
@@ -566,7 +566,7 @@ std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos) {
   } else if (obj == Py_None) {
     return {};
   } else if (PyObject_CheckLongOrConvertToLong(&obj)) {
-    return {PyLong_AsSize_t(obj)};
+    return {PyLong_AsSize_t(obj)};  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "argument (position %d) must be "
@@ -614,7 +614,7 @@ std::vector<float> CastPyArg2VectorOfFloat(PyObject* obj, size_t arg_pos) {
   } else if (obj == Py_None) {
     return {};
   } else if (PyObject_CheckFloatOrConvertToFloat(&obj)) {
-    return {static_cast<float>(PyFloat_AsDouble(obj))};
+    return {static_cast<float>(PyFloat_AsDouble(obj))};  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "argument (position %d) must be "
@@ -647,7 +647,7 @@ std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
 
 platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
   platform::Place place;
-  if (PyObject_TypeCheck(obj, g_place_pytype)) {
+  if (PyObject_TypeCheck(obj, g_place_pytype)) {  // NOLINT
     place = ::pybind11::handle(obj).cast<platform::Place>();
   } else if (PyObject_TypeCheck(obj, g_cudaplace_pytype)) {
     place = ::pybind11::handle(obj).cast<platform::CUDAPlace>();
@@ -761,7 +761,8 @@ std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
             i));
       }
     }
-  } else if (PyObject_TypeCheck(obj, g_framework_lodtensorarray_pytype)) {
+  } else if (PyObject_TypeCheck(obj,
+                                g_framework_lodtensorarray_pytype)) {  // NOLINT
     for (auto& tensor :
          (::pybind11::handle(obj).cast<framework::LoDTensorArray>())) {
       result.emplace_back(tensor);
@@ -788,7 +789,7 @@ using phi::distributed::Shard;
 Placements CastPyArg2VectorOfPlacement(PyObject* obj, ssize_t arg_pos) {
   Placements result;
   auto check_and_emplace = [&](PyObject* item, ssize_t i) {
-    if (PyObject_TypeCheck(item, g_placement_shard_pytype)) {
+    if (PyObject_TypeCheck(item, g_placement_shard_pytype)) {  // NOLINT
       result.emplace_back(
           std::make_shared<Shard>(::pybind11::handle(item).cast<Shard>()));
     } else if (PyObject_TypeCheck(item, g_placement_replicated_pytype)) {
@@ -1072,6 +1073,12 @@ PyObject* ToPyObject(const paddle::framework::proto::VarType& type) {
 
 PyObject* ToPyObject(const phi::DenseTensor* value) {
   auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
+  obj.inc_ref();
+  return obj.ptr();
+}
+
+PyObject* ToPyObject(const phi::DataType& dtype) {
+  auto obj = ::pybind11::cast(dtype);
   obj.inc_ref();
   return obj.ptr();
 }
@@ -2409,9 +2416,11 @@ paddle::DataType CastPyArg2DataType(PyObject* obj,
   if (obj == Py_None) {
     return phi::DataType::UNDEFINED;
   }
-
-  framework::proto::VarType::Type type = CastPyArg2ProtoType(obj, arg_pos);
-  return framework::TransToPhiDataType(type);
+  if (PyObject_TypeCheck(obj, g_vartype_pytype)) {
+    framework::proto::VarType::Type type = CastPyArg2ProtoType(obj, arg_pos);
+    return framework::TransToPhiDataType(type);
+  }
+  return CastPyArg2DataTypeDirectly(obj, op_type, arg_pos);
 }
 
 paddle::Tensor PyTensorHook::operator()(const paddle::Tensor& var) {

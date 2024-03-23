@@ -141,6 +141,9 @@ class ValueSet:
         for val in other:
             self.add(val)
 
+    def pop(self):
+        return self._set.pop()._value
+
     def __and__(self, other: ValueSet):
         return ValueSet(self._set & other._set)
 
@@ -168,7 +171,7 @@ class ValueSet:
 class State:
     """
     record relationship of forward op/value and backward op/value
-    one state must be bining with a block, if block has parent block,
+    one state must be binding with a block, if block has parent block,
     state will include parent block info.
 
     """
@@ -188,7 +191,7 @@ class State:
         self.opgrad_to_op = collections.defaultdict(list)
         # only for controlflow
         # inside_value is sub block value, which will yield to parent block,
-        # parant block value is outside_value
+        # parent block value is outside_value
         self.inside_value_to_outside_value_map = ValueDict()
 
     def turn_map(self) -> None:
@@ -246,7 +249,7 @@ def _check_vjp_dynamic_shape(op, inputs):
 def dynamic_shape_prim_vjp_guard(op, inputs):
     skip_prim = (
         core._is_bwd_prim_enabled()
-        and core._enable_prim_dynamic_shape()
+        and core._enable_prim_skip_dynamic_shape()
         and _check_vjp_dynamic_shape(op, inputs)
     )
     try:
@@ -272,19 +275,7 @@ def _as_list(x):
 
 
 def some_in_set(value_list, value_set):
-    def operand2value(values):
-        value_set = ValueSet()
-        for item in values:
-            if isinstance(item, pir.OpOperand):
-                value_set.add(item.source())
-            else:
-                value_set.add(item)
-        return value_set
-
-    if operand2value(value_list) & operand2value(value_set):
-        return True
-    else:
-        return False
+    return any(v in value_set for v in value_list)
 
 
 def is_control_flow(op):
@@ -319,7 +310,7 @@ def inverse_sort_op(ops):
 
     '''
 
-    # init pending_count[op] which descibes number of
+    # init pending_count[op] which describes number of
     # pending edges for its grad_op
 
     pending_count = collections.defaultdict(int)
@@ -379,16 +370,16 @@ def inverse_sort_op(ops):
     return sorted_list
 
 
-def inplace_net(op_list):
+def is_inplace_net(op_list):
     '''
-    when program has inpalce op , it's difficult to find the actual pending_count.
+    when program has inplace op , it's difficult to find the actual pending_count.
     '''
     for op in op_list:
         if op.name() in ["pd_op.array_write_", "pd_op.assign_out_"]:
             return True
         if is_control_flow(op):
             for block in op.blocks():
-                if inplace_net(block.ops):
+                if is_inplace_net(block.ops):
                     return True
 
     return False
@@ -414,21 +405,35 @@ def remove_op(block, op, state):
                 )
 
 
+def while_prune_check(while_tuple_ops):
+    if len(while_tuple_ops) != 0:
+        for opresult in while_tuple_ops[0].results():
+            if not opresult.use_empty():
+                return False
+        return True
+    return False
+
+
 def remove_useless_full_like_ops(block, ops, state):
     '''
     remove ops which are not in use recursively,
 
     '''
+    remove_ops = []
+    inverse_ops = inverse_sort_op(list(ops))
     # from output to input
-    for op in inverse_sort_op(list(ops)):
-        if op.name() == 'pd_op.full_like':
+    for op in inverse_ops:
+        if op.name() == "pd_op.full_like":
             if op.result(0).use_empty():
                 full_op = op.operand_source(1).get_defining_op()
-                remove_op(block, op, state)
-                remove_op(block, full_op, state)
+                remove_ops.append(op)
+                remove_ops.append(full_op)
         elif is_control_flow(op):
             for sub_block in op.blocks():
                 remove_useless_full_like_ops(sub_block, sub_block.ops, state)
+
+    for op in remove_ops:
+        remove_op(block, op, state)
 
 
 def all_stop_gradient_true(block):
@@ -439,10 +444,18 @@ def all_stop_gradient_true(block):
     return True
 
 
+def all_output_grad_none(list_of_list):
+    for list_ in list_of_list:
+        for value in list_:
+            if value is not None:
+                return False
+    return True
+
+
 def parent_total_ops(block):
     '''
     when block is sub_block, forward op should include its parent block ops
-    (sub block nest should Add on demand to aviod block copy)
+    (sub block nest should Add on demand to avoid block copy)
     '''
     total_ops = []
     if block.parent_block is not None:
@@ -452,3 +465,68 @@ def parent_total_ops(block):
     total_ops += block.ops
 
     return total_ops
+
+
+# only for control_flow to find corresponding value or value_list
+def return_map_value(value, map):
+    output = value
+    while output in map:
+        output = map[output]
+    return output
+
+
+def return_map_value_list(value, map):
+    output = []
+    for i in range(len(value)):
+        if value[i] in map:
+            output.append(map[value[i]])
+        else:
+            output.append(value[i])
+    return output
+
+
+def argument_to_value(while_op):
+    '''
+    return while op's relationship of (block_argument to input value) and (input value to block_argument).
+    '''
+    if while_op.name() != "pd_op.while":
+        return ValueDict(), ValueDict()
+
+    assert len(while_op.as_while_op().block_arguments()) + 1 == len(
+        while_op.operands_source()
+    ), "while op's block_arguments size + 1 should same to while op's operands_source size"
+    arg_to_value_map = ValueDict()
+    value_to_arg_map = ValueDict()
+    for arg, value in zip(
+        while_op.as_while_op().block_arguments(),
+        while_op.operands_source()[1:],
+    ):
+        arg_to_value_map[arg] = value
+        value_to_arg_map[value] = arg
+    return arg_to_value_map, value_to_arg_map
+
+
+def get_grad_semantic_info(op):
+    '''
+    return whether op's inputs has grad, usually handled from yaml.
+    some op has uncertain inputs need special handling.
+    '''
+    if op.name() in [
+        "builtin.combine",
+        "pd_op.if",
+        "pd_op.while",
+        "cf.tuple_push",
+    ]:
+        grad_semantic_info = [True for _ in range(len(get_real_op_inputs(op)))]
+        if op.name() == "pd_op.if":
+            grad_semantic_info[0] = False
+    else:
+        grad_semantic_info = op.get_input_grad_semantics()
+    return grad_semantic_info
+
+
+def get_split_op(value):
+    for op in value.all_used_ops():
+        if op.name() == "builtin.split":
+            return op
+    return None
