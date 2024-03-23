@@ -1,8 +1,22 @@
-#include <paddle/cinn/runtime/sycl/sycl_module.h>
-#include <paddle/cinn/runtime/sycl/sycl_backend_api.h>
+// Copyright (c) 2024 CINN Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include <dlfcn.h>
 #include <glog/logging.h>
 #include <glog/raw_logging.h>
+#include <paddle/cinn/runtime/sycl/sycl_backend_api.h>
+#include <paddle/cinn/runtime/sycl/sycl_module.h>
 
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/cinn/utils/profiler.h"
@@ -11,7 +25,9 @@ namespace cinn {
 namespace runtime {
 namespace Sycl {
 
-SYCLModule::SYCLModule(const std::string& source_code, std::string& shared_library, Kind kind)
+SYCLModule::SYCLModule(const std::string& source_code,
+                       const std::string& shared_library,
+                       Kind kind)
     : source_code_(source_code), shared_library_(shared_library), kind_(kind) {
   CHECK(!shared_library.empty());
 }
@@ -19,7 +35,7 @@ SYCLModule::SYCLModule(const std::string& source_code, std::string& shared_libra
 SYCLModule::~SYCLModule() {
   std::cout << "destructor for SYCLModule" << std::endl;
   if (so_handler_ != nullptr) {
-    //dlclose(so_handler_);
+    // dlclose(so_handler_);
   }
 }
 
@@ -29,9 +45,14 @@ void* SYCLModule::GetFunction(const std::string& func_name) {
   }
   VLOG(5) << "getting function " << func_name;
   CHECK(so_handler_ != nullptr) << "ERROR:" << dlerror();
-  void (*kernel_func)(sycl::queue& Q, sycl::range<3> k0_dimGrid, sycl::range<3> k0_dimBlock, void** void_args) =
-      (void (*)(sycl::queue& Q, sycl::range<3> k0_dimGrid, sycl::range<3> k0_dimBlock, void** void_args))dlsym(
-          so_handler_, func_name.c_str());
+  void (*kernel_func)(sycl::queue & Q,
+                      sycl::range<3> k0_dimGrid,
+                      sycl::range<3> k0_dimBlock,
+                      void** void_args) =
+      (void (*)(sycl::queue & Q,
+                sycl::range<3> k0_dimGrid,
+                sycl::range<3> k0_dimBlock,
+                void** void_args)) dlsym(so_handler_, func_name.c_str());
   CHECK(kernel_func != nullptr) << "ERROR:" << dlerror() << ":dlsym\n";
   return reinterpret_cast<void*>(kernel_func);
 }
@@ -46,17 +67,21 @@ void cinn_call_sycl_kernel(void* kernel_fn,
                            int block_y,
                            int block_z,
                            void* stream) {
-  VLOG(3) << "cinn_call_sycl_kernel, grid_dim={" << grid_x << ", " << grid_y << ", " << grid_z << "}, block_dim={"
-          << block_x << ", " << block_y << ", " << block_z << "}, num_args=" << num_args << ", stream=" << stream;
+  VLOG(3) << "cinn_call_sycl_kernel, grid_dim={" << grid_x << ", " << grid_y
+          << ", " << grid_z << "}, block_dim={" << block_x << ", " << block_y
+          << ", " << block_z << "}, num_args=" << num_args
+          << ", stream=" << stream;
 
   std::vector<void*> kernel_args;
   {
-    cinn::utils::RecordEvent record_run("prepare_args", cinn::utils::EventType::kInstruction);
+    cinn::utils::RecordEvent record_run("prepare_args",
+                                        cinn::utils::EventType::kInstruction);
     kernel_args.reserve(num_args);
     cinn_pod_value_t* args = static_cast<cinn_pod_value_t*>(v_args);
     for (int idx = 0; idx < num_args; ++idx) {
       if (args[idx].type_code() == ::cinn_type_code<cinn_buffer_t*>()) {
-        kernel_args.emplace_back(&((cinn_buffer_t*)(args[idx]))->memory);
+        kernel_args.emplace_back(
+            &(static_cast<cinn_buffer_t*>(args[idx]))->memory);
       } else {
         kernel_args.emplace_back((args[idx].data_addr()));
       }
@@ -64,14 +89,22 @@ void cinn_call_sycl_kernel(void* kernel_fn,
   }
 
   {
-    cinn::utils::RecordEvent record_run("syclLaunchKernel", cinn::utils::EventType::kInstruction);
-    void (*kernel_func)(sycl::queue& Q, sycl::range<3> k0_dimGrid, sycl::range<3> k0_dimBlock, void** void_args) =
-        (void (*)(sycl::queue& Q, sycl::range<3> k0_dimGrid, sycl::range<3> k0_dimBlock, void** void_args))(kernel_fn);
+    cinn::utils::RecordEvent record_run("syclLaunchKernel",
+                                        cinn::utils::EventType::kInstruction);
+    void (*kernel_func)(sycl::queue & Q,
+                        sycl::range<3> k0_dimGrid,
+                        sycl::range<3> k0_dimBlock,
+                        void** void_args) =
+        (void (*)(sycl::queue & Q,
+                  sycl::range<3> k0_dimGrid,
+                  sycl::range<3> k0_dimBlock,
+                  void** void_args))(kernel_fn);
     sycl::queue* Queue = SYCLBackendAPI::Global()->get_now_queue();
     sycl::range<3> Grid(grid_z, grid_y, grid_x);
     sycl::range<3> Block(block_z, block_y, block_x);
     // need malloc_shared
-    // std::cout << "kernel args :" << (float* )(*(void **)(kernel_args[0]))[0] << std::endl;
+    // std::cout << "kernel args :" << (float* )(*(void **)(kernel_args[0]))[0]
+    // << std::endl;
     kernel_func(*Queue, Grid, Block, kernel_args.data());
   }
 }

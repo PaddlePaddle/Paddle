@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #include <sycl/sycl.hpp>
-#include "paddle/cinn/runtime/backend_api.h"
 #include <vector>
 #include "paddle/cinn/common/target.h"
+#include "paddle/cinn/runtime/backend_api.h"
 using cinn::common::Target;
 
 namespace cinn {
@@ -24,7 +26,7 @@ namespace Sycl {
 
 inline const char* SYCLGetErrorString(std::error_code error_code) {
   sycl::errc error_code_value = static_cast<sycl::errc>(error_code.value());
-  switch(error_code_value){
+  switch (error_code_value) {
     case sycl::errc::success:
       return "SUCCESS";
     case sycl::errc::runtime:
@@ -56,7 +58,7 @@ inline const char* SYCLGetErrorString(std::error_code error_code) {
     case sycl::errc::backend_mismatch:
       return "BACKEND MISMATCH";
     default:
-        return "";
+      return "";
   }
 }
 
@@ -64,21 +66,23 @@ inline const char* SYCLGetErrorString(std::error_code error_code) {
  * \brief Protected SYCL call
  * \param func Expression to call.
  */
-#define SYCL_CALL(func)                                                       \
-  {                                                                           \
-    try{                                                                      \
-      func;                                                                   \
-    }catch(const sycl::exception &e){                                         \
-      if(e.code() != sycl::errc::success){                                    \
-        LOG(FATAL) << "SYCL Error, error code" << " = " << SYCLGetErrorString(e.code())<<", message:"<< e.what();\
-      }                                                                       \
-    }                                                                         \
+#define SYCL_CALL(func)                                     \
+  {                                                         \
+    try {                                                   \
+      func;                                                 \
+    } catch (const sycl::exception& e) {                    \
+      if (e.code() != sycl::errc::success) {                \
+        LOG(FATAL) << "SYCL Error, error code"              \
+                   << " = " << SYCLGetErrorString(e.code()) \
+                   << ", message:" << e.what();             \
+      }                                                     \
+    }                                                       \
   }
 
 class SYCLBackendAPI final : public BackendAPI {
  public:
-  SYCLBackendAPI(){};
-  ~SYCLBackendAPI(){};
+  SYCLBackendAPI() {}
+  ~SYCLBackendAPI() {}
   static SYCLBackendAPI* Global();
   /*!
    * \brief
@@ -88,13 +92,17 @@ class SYCLBackendAPI final : public BackendAPI {
   Target::Arch Init(Target::Arch arch);
   void set_device(int device_id) final;
   int get_device() final;
-  std::variant<int, std::array<int, 3>> get_device_property(DeviceProperty device_property,
-                            std::optional<int> device_id = std::nullopt) final;
+  std::variant<int, std::array<int, 3>> get_device_property(
+      DeviceProperty device_property,
+      std::optional<int> device_id = std::nullopt) final;
   void* malloc(size_t numBytes) final;
   // void set_active_devices(std::vector<int> device_ids) final;
   void free(void* data) final;
   void memset(void* data, int value, size_t numBytes) final;
-  void memcpy(void* dest, const void* src, size_t numBytes, MemcpyType type) final;
+  void memcpy(void* dest,
+              const void* src,
+              size_t numBytes,
+              MemcpyType type) final;
   void device_sync() final;
   void stream_sync(void* stream) final;
   sycl::queue* get_now_queue();
