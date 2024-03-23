@@ -27,8 +27,8 @@
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/argument.h"
-#include "paddle/fluid/string/pretty_log.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace inference {
@@ -170,6 +170,21 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set(
           "output_tensor_names",
           new std::vector<std::string>(argument->trt_output_tensor_names()));
+      pass->Set(
+          "trt_exclude_var_names",
+          new std::vector<std::string>(argument->trt_exclude_var_names()));
+      pass->Set(
+          "trt_parameter_run_fp16",
+          new std::vector<std::string>(argument->trt_parameter_run_fp16()));
+      pass->Set(
+          "trt_parameter_run_int8",
+          new std::vector<std::string>(argument->trt_parameter_run_int8()));
+      pass->Set(
+          "trt_parameter_run_bfp16",
+          new std::vector<std::string>(argument->trt_parameter_run_bfp16()));
+      pass->Set("forbid_dynamic_op",
+                new bool(argument->trt_forbid_dynamic_op()));
+
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
       pass->Set("predictor_id", new int(argument->predictor_id()));

@@ -120,8 +120,7 @@ class TestImperativeMnist(unittest.TestCase):
         traced_layer = None
 
         with base.dygraph.guard():
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
+            paddle.seed(seed)
 
             mnist = MNIST()
             sgd = paddle.optimizer.SGD(
@@ -177,8 +176,7 @@ class TestImperativeMnist(unittest.TestCase):
                         dy_param_value[param.name] = param.numpy()
 
         with new_program_scope():
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
+            paddle.seed(seed)
 
             exe = base.Executor(
                 base.CPUPlace()

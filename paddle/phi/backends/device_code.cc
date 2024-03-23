@@ -21,9 +21,9 @@ limitations under the License. */
 #include <set>
 #include <utility>
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/flags.h"
 
 PHI_DECLARE_string(cuda_dir);
 
@@ -186,7 +186,8 @@ static std::string FindCUDAIncludePath() {
     }
     for (std::string suffix : {"/lib", "/lib64"}) {
       if (EndWith(FLAGS_cuda_dir, suffix)) {
-        cuda_include_path.erase(cuda_include_path.end() - suffix.length());
+        cuda_include_path.erase(cuda_include_path.end() -
+                                suffix.length());  // NOLINT
         break;
       }
     }

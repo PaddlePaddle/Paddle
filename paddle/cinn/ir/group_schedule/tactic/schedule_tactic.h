@@ -16,6 +16,8 @@
 
 #include <string>
 #include "paddle/cinn/common/integer_set.h"
+#include "paddle/cinn/ir/group_schedule/config/group_tile_config.h"
+#include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule_block_graph.h"
 
@@ -47,20 +49,30 @@ struct IterativeSpaceInfo {
   // the memory consistent order axis is [A, B, C], and the B axis is reduce，
   // the rb last order axis is [A, C, B], and rb_last_order is [0, 2, 1].
   std::vector<int> rb_last_order;
-};
 
-struct BucketInfo {
-  int sp_lower_bound = 0;
-  int sp_upper_bound = UINT_MAX;
-  int rb_lower_bound = 0;
-  int rb_upper_bound = UINT_MAX;
+  std::string PrintIterSpace() const {
+    std::stringstream ss;
+    ss << "[sp space]: ";
+    for (const auto& axis : sp_space) {
+      ss << "<" << std::get<0>(axis) << ", AxisType = ["
+         << static_cast<int>(std::get<1>(axis)) << "]>  ";
+    }
+    ss << "\n[rb space]: ";
+    for (const auto& axis : rb_space) {
+      ss << "<" << std::get<0>(axis) << ", AxisType = ["
+         << static_cast<int>(std::get<1>(axis)) << "]>  ";
+    }
+    return ss.str();
+  }
 };
 
 struct ScheduleContext {
+  // TODO(BiynXu): Unify fields with similar meanings
   std::unordered_set<std::string> output_names;
   Target target;
   IterativeSpaceInfo iter_space_info;
   BucketInfo bucket_info;
+  ScheduleConfig config;
 };
 
 class ScheduleTactic {

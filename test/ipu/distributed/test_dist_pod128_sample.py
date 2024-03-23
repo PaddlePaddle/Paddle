@@ -49,8 +49,7 @@ def TestDistTraining():
     scope = paddle.base.core.Scope()
     main_prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
-    main_prog.random_seed = 42
-    startup_prog.random_seed = 42
+    paddle.seed(42)
 
     np.random.seed(42)
     input_data = np.random.uniform(0, 127, size=[128, 3, 2, 1]).astype(np.int32)

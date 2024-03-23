@@ -11,10 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import unittest
 
 import numpy as np
-from test_cinn_sub_graph import TestCinnSubGraphBase, apply_to_static
+import utils
+from test_cinn_sub_graph import TestCinnSubGraphBase
 
 import paddle
 from paddle import nn
@@ -45,14 +47,18 @@ class TestLlamaRMSNorm(TestCinnSubGraphBase):
         self.hidden_states = paddle.randn(self.shape, dtype="float32")
         self.hidden_states.stop_gradient = False
 
+    def check_jit_kernel_info(self, static_fn):
+        utils.check_jit_kernel_number(static_fn, 1)
+        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
+
     def eval(self, use_cinn):
         paddle.seed(2022)
         net = LlamaRMSNorm()
-        # TODO(Aurelius84): Need to remove it after verify CINN
-        if use_cinn:
-            net = apply_to_static(net, use_cinn)
+        net = utils.apply_to_static(net, use_cinn)
         net.eval()
         out = net(self.hidden_states)
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):

@@ -14,7 +14,7 @@
 #pragma once
 
 #include "paddle/phi/common/place.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/program.h"
 
 namespace paddle {
 namespace dialect {

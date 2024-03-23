@@ -27,9 +27,9 @@
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
-#include "paddle/pir/dialect/shape/utils/shape_analysis.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace cinn {
 namespace dialect {
@@ -181,7 +181,7 @@ inline bool reduce_fuse_reduce(
 
 inline bool is_horizontal_relation(::pir::Operation* producer,
                                    const std::shared_ptr<Group>& consumer) {
-  auto check_depency = [&](::pir::Operation* op) {
+  auto check_dependency = [&](::pir::Operation* op) {
     std::queue<::pir::Operation*> candidates;
     std::unordered_set<::pir::Operation*> visited_set;
     candidates.push(op);
@@ -192,7 +192,7 @@ inline bool is_horizontal_relation(::pir::Operation* producer,
       // visit all producer op
       for (size_t i = 0; i < candidate->num_operands(); ++i) {
         auto tmp_op = candidate->operand_source(i).defining_op();
-        // check depency.
+        // check dependency.
         if (producer == tmp_op) {
           return true;
         }
@@ -216,7 +216,7 @@ inline bool is_horizontal_relation(::pir::Operation* producer,
         consumer->op_pattern_kind) {
       continue;
     }
-    if (check_depency(op)) {
+    if (check_dependency(op)) {
       return false;
     }
   }
@@ -246,6 +246,11 @@ inline bool horizontal_or_vertical_reduce_relation(
   // check producer has same shape with reducer op.
   auto reduce_shape = ::common::vectorize(GetFirstInputShape(reducer));
   auto reduce_axes = GetVectorAttr(reducer, "dim");
+  if (reduce_axes.empty()) {
+    for (size_t i = 0; i < reduce_shape.size(); ++i) {
+      reduce_axes.push_back(i);
+    }
+  }
 
   for (auto& axis : reduce_axes) {
     // if axis = -1, set as shape.size() - 1
@@ -271,22 +276,22 @@ inline bool horizontal_or_vertical_reduce_relation(
     return false;
   }
 
-  int succesive_reduce_dimension = reduce_shape.at(reduce_axes.back());
+  int successive_reduce_dimension = reduce_shape.at(reduce_axes.back());
   for (int idx = reduce_axes.size() - 2; idx >= 0; --idx) {
     if (reduce_axes[idx] == reduce_axes[idx + 1] - 1) {
-      succesive_reduce_dimension *= reduce_shape[reduce_axes[idx]];
+      successive_reduce_dimension *= reduce_shape[reduce_axes[idx]];
       continue;
     }
     break;
   }
 
   // helper->target_ == cinn::common::DefaultNVGPUTarget()
-  // succesive_reduce_dimension <= helper->target_.max_num_threads()
+  // successive_reduce_dimension <= helper->target_.max_num_threads()
   // TODO(phlrain): support is_gpu_target and max_thread
   bool is_gpu_target = true;
   int max_thread = 32 * 1024;
   return is_gpu_target
-             ? (succesive_reduce_dimension <= max_thread ? true : false)
+             ? (successive_reduce_dimension <= max_thread ? true : false)
              : true;
 }
 

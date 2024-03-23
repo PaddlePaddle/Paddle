@@ -388,7 +388,7 @@ class TestMatrixPowerSingularAPI(unittest.TestCase):
         for place in self.places:
             with base.dygraph.guard(place):
                 input_np = np.ones([4, 4]).astype("float64")
-                input = base.dygraph.to_variable(input_np)
+                input = paddle.to_tensor(input_np)
                 try:
                     result = paddle.linalg.matrix_power(input, -2)
                 except RuntimeError as ex:

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);

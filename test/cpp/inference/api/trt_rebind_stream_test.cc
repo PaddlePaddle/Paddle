@@ -16,8 +16,8 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <thread>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/utils/flags.h"
 #include "test/cpp/inference/api/tester_helper.h"
 
 namespace paddle {
@@ -41,8 +41,8 @@ TEST(ReBindStream_single, use_gpu) {
   auto predictor = paddle_infer::CreatePredictor(config);
   auto x_t = predictor->GetInputHandle("x");
   x_t->Reshape({1, 3, 224, 224});
-  float x_data[3 * 224 * 224] = {0};
-  x_t->CopyFromCpu(x_data);
+  std::array<float, 3 * 224 * 224> x_data = {0};
+  x_t->CopyFromCpu(x_data.data());
   ASSERT_TRUE(predictor->Run());
   cudaDeviceSynchronize();
   ASSERT_TRUE(paddle_infer::experimental::InternalUtils::RunWithExternalStream(

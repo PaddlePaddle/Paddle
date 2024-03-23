@@ -16,8 +16,8 @@
 
 #include <functional>
 
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/dialect/shape/utils/shape_or_data_expr.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 
 namespace pir {
 
@@ -35,7 +35,7 @@ struct ShapeOrDataDimExprsAccessor {
       SetShapeOrDataDimExprs;
 };
 
-// Returns true if at least one GenerateShapeOp rewrited.
+// Returns true if at least one GenerateShapeOp rewrote.
 bool MoveGenerateShapeOpsToPrologue(
     pir::IrContext* ir_context,
     pir::Block* block,

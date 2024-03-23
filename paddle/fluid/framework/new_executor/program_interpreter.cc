@@ -34,17 +34,17 @@
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/device_manager.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-PD_DECLARE_bool(enable_host_event_recorder_hook);
+COMMON_DECLARE_bool(enable_host_event_recorder_hook);
 PD_DECLARE_bool(log_memory_stats);
-PHI_DECLARE_string(static_runtime_data_save_path);
-PHI_DECLARE_bool(save_static_runtime_data);
+COMMON_DECLARE_string(static_runtime_data_save_path);
+COMMON_DECLARE_bool(save_static_runtime_data);
 namespace paddle {
 namespace framework {
 
@@ -191,7 +191,7 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
     if (fetch_var) {
       auto fetch_list =
           std::move(*fetch_var->GetMutable<framework::FetchList>());
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (platform::IsCUDAGraphCapturing()) {
         PADDLE_ENFORCE_EQ(fetch_list.empty(),
                           true,
@@ -269,7 +269,7 @@ FetchList ProgramInterpreter::Run(
     if (fetch_var) {
       auto fetch_list =
           std::move(*fetch_var->GetMutable<framework::FetchList>());
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (platform::IsCUDAGraphCapturing()) {
         PADDLE_ENFORCE_EQ(fetch_list.empty(),
                           true,
@@ -533,7 +533,7 @@ void ProgramInterpreter::BuildInplace() {
 
 void ProgramInterpreter::PrepareForCUDAGraphCapture() {
   if (!FLAGS_new_executor_use_cuda_graph) return;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_EQ(
       platform::IsCUDAGraphCapturing(),
       false,
@@ -579,7 +579,7 @@ void ProgramInterpreter::PrepareForCUDAGraphCapture() {
 
 void ProgramInterpreter::CheckCUDAGraphBeforeRun(
     const std::vector<std::string>& feed_names) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::IsCUDAGraphCapturing()) {
     PADDLE_ENFORCE_EQ(
         feed_names.empty(),
@@ -862,7 +862,7 @@ void ProgramInterpreter::BuildOpFuncNode(
     auto& op_func_node = nodes[op_idx];
     stream_analyzer_.SetForceEventsToWaitInfo(force_events_to_wait_);
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (FLAGS_new_executor_use_cuda_graph) {
       auto& op = op_func_node.operator_base_;
       auto& op_type = op->Type();

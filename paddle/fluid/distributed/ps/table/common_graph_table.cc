@@ -22,6 +22,7 @@
 #include <sstream>
 #include <tuple>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
@@ -29,17 +30,16 @@
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/platform/timer.h"
-#include "paddle/fluid/string/printf.h"
-#include "paddle/fluid/string/string_helper.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/generator.h"
+#include "paddle/utils/string/printf.h"
+#include "paddle/utils/string/string_helper.h"
 
-PHI_DECLARE_bool(graph_load_in_parallel);
-PHI_DECLARE_bool(graph_get_neighbor_id);
-PHI_DECLARE_int32(gpugraph_storage_mode);
-PHI_DECLARE_uint64(gpugraph_slot_feasign_max_num);
-PHI_DECLARE_bool(graph_metapath_split_opt);
-PHI_DECLARE_double(graph_neighbor_size_percent);
+COMMON_DECLARE_bool(graph_load_in_parallel);
+COMMON_DECLARE_bool(graph_get_neighbor_id);
+COMMON_DECLARE_int32(gpugraph_storage_mode);
+COMMON_DECLARE_uint64(gpugraph_slot_feasign_max_num);
+COMMON_DECLARE_bool(graph_metapath_split_opt);
+COMMON_DECLARE_double(graph_neighbor_size_percent);
 
 PHI_DEFINE_EXPORTED_bool(graph_edges_split_only_by_src_id,
                          false,
@@ -1621,11 +1621,10 @@ void GraphTable::clear_edge_shard() {
   std::vector<std::future<int>> tasks;
   for (auto &type_shards : edge_shards) {
     for (auto &shard : type_shards) {
-      tasks.push_back(
-          load_node_edge_task_pool->enqueue([&shard, this]() -> int {
-            delete shard;
-            return 0;
-          }));
+      tasks.push_back(load_node_edge_task_pool->enqueue([&shard]() -> int {
+        delete shard;
+        return 0;
+      }));
     }
   }
   for (auto &task : tasks) task.get();
@@ -1643,11 +1642,10 @@ void GraphTable::clear_feature_shard() {
   std::vector<std::future<int>> tasks;
   for (auto &type_shards : feature_shards) {
     for (auto &shard : type_shards) {
-      tasks.push_back(
-          load_node_edge_task_pool->enqueue([&shard, this]() -> int {
-            delete shard;
-            return 0;
-          }));
+      tasks.push_back(load_node_edge_task_pool->enqueue([&shard]() -> int {
+        delete shard;
+        return 0;
+      }));
     }
   }
   for (auto &task : tasks) task.get();
@@ -1665,11 +1663,10 @@ void GraphTable::clear_node_shard() {
   std::vector<std::future<int>> tasks;
   for (auto &type_shards : node_shards) {
     for (auto &shard : type_shards) {
-      tasks.push_back(
-          load_node_edge_task_pool->enqueue([&shard, this]() -> int {
-            delete shard;
-            return 0;
-          }));
+      tasks.push_back(load_node_edge_task_pool->enqueue([&shard]() -> int {
+        delete shard;
+        return 0;
+      }));
     }
   }
   for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
@@ -2898,7 +2895,7 @@ int32_t GraphTable::get_nodes_ids_by_ranges(
         first -= total_size;
         second -= total_size;
         tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
-            [&shards, this, first, second, i, &res, &mutex]() -> size_t {
+            [&shards, first, second, i, &res, &mutex]() -> size_t {
               std::vector<uint64_t> keys;
               shards[i]->get_ids_by_range(first, second, &keys);
 
@@ -3322,8 +3319,7 @@ int32_t GraphTable::pull_graph_list(GraphTableType table_type,
     int count = std::min(1 + (size + cur_size - start - 1) / step, total_size);
     int end = start + (count - 1) * step + 1;
     tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
-        [&search_shards, this, i, start, end, step, size]()
-            -> std::vector<Node *> {
+        [&search_shards, i, start, end, step, size]() -> std::vector<Node *> {
           return search_shards[i]->get_batch(start - size, end - size, step);
         }));
     start += count * step;

@@ -27,12 +27,12 @@ from .utils import (
 
 def check_state_dict(state_dict, process_group):
     local_keys = list(state_dict.keys())
-    gloabl_keys = []
-    paddle.distributed.all_gather_object(gloabl_keys, local_keys, process_group)
-    for keys in gloabl_keys[1:]:
+    global_keys = []
+    paddle.distributed.all_gather_object(global_keys, local_keys, process_group)
+    for keys in global_keys[1:]:
         assert (
-            keys == gloabl_keys[0]
-        ), f"keys:{keys} != first_keys: {gloabl_keys[0]}"
+            keys == global_keys[0]
+        ), f"keys:{keys} != first_keys: {global_keys[0]}"
 
 
 def check_file_name(file_name, process_group):

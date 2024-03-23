@@ -20,14 +20,13 @@ limitations under the License. */
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_manager.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_manager.h"
 
 std::shared_ptr<::pir::Program> BuildAllOpSupportCinnGraph() {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();

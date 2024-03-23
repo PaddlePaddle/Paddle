@@ -115,7 +115,7 @@ void ForwardGraphExtractPass::ApplyImpl(ir::Graph* graph) const {
 
   VLOG(10) << "Remove Node: ";
   for (auto* node : rm_nodes) {
-    // rm node releations
+    // rm node relations
     for (auto* node_in : node->inputs) {
       for (size_t i = 0; i < node_in->outputs.size(); ++i) {
         if (node_in->outputs[i] == node) {

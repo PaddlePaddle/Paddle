@@ -18,7 +18,7 @@
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace paddle {
 namespace dialect {
@@ -89,6 +89,12 @@ pir::Value slice_array_dense(pir::Value input, pir::Value starts);
 
 pir::Value assign(const pir::Value& x);
 
+std::tuple<pir::Value, pir::Value> fused_gemm_epilogue(pir::Value x,
+                                                       pir::Value y,
+                                                       pir::Value bias,
+                                                       bool trans_x,
+                                                       bool trans_y,
+                                                       std::string activation);
 pir::Value array_pop(pir::Value input, int index);
 
 }  // namespace dialect

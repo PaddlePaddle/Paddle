@@ -187,6 +187,13 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
                            domain_without_reduce_axis,
                            op,
                            reduce_axis);
+  const auto set_keep_dim_for_tensor = [&]() {
+    for (int i = 0; i < _axis.size(); ++i) {
+      const auto &axis_var = _axis.at(i);
+      tensor->axis_[i]->is_keepdim = axis_var.as_var_ref()->is_keepdim;
+    }
+  };
+  set_keep_dim_for_tensor();
   return tensor;
 }
 

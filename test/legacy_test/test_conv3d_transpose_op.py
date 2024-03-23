@@ -92,12 +92,12 @@ def conv3dtranspose_forward_naive(input_, filter_, attrs):
         pad_h_0, pad_h_1 = pad[2], pad[3]
         pad_w_0, pad_w_1 = pad[4], pad[5]
 
-    d_bolck_d = dilations[0] * (f_d - 1) + 1
-    d_bolck_h = dilations[1] * (f_h - 1) + 1
-    d_bolck_w = dilations[2] * (f_w - 1) + 1
-    out_d = (in_d - 1) * stride[0] + d_bolck_d
-    out_h = (in_h - 1) * stride[1] + d_bolck_h
-    out_w = (in_w - 1) * stride[2] + d_bolck_w
+    d_block_d = dilations[0] * (f_d - 1) + 1
+    d_block_h = dilations[1] * (f_h - 1) + 1
+    d_block_w = dilations[2] * (f_w - 1) + 1
+    out_d = (in_d - 1) * stride[0] + d_block_d
+    out_h = (in_h - 1) * stride[1] + d_block_h
+    out_w = (in_w - 1) * stride[2] + d_block_w
     out = np.zeros((in_n, out_c, out_d, out_h, out_w))
 
     for n in range(in_n):
@@ -125,9 +125,9 @@ def conv3dtranspose_forward_naive(input_, filter_, attrs):
                                 ],
                                 axis=0,
                             )
-                            d1, d2 = d * stride[0], d * stride[0] + d_bolck_d
-                            i1, i2 = i * stride[1], i * stride[1] + d_bolck_h
-                            j1, j2 = j * stride[2], j * stride[2] + d_bolck_w
+                            d1, d2 = d * stride[0], d * stride[0] + d_block_d
+                            i1, i2 = i * stride[1], i * stride[1] + d_block_h
+                            j1, j2 = j * stride[2], j * stride[2] + d_block_w
                             out[
                                 n,
                                 g * f_out_c + k,

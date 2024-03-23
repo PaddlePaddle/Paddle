@@ -17,7 +17,7 @@ limitations under the License. */
 #include <paddle/common/ddim.h>
 #include <string>
 #include <vector>
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 
 namespace phi {
 

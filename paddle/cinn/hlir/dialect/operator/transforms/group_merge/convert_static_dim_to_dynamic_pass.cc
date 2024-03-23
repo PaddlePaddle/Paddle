@@ -14,14 +14,16 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_static_dim_to_dynamic_pass.h"
 
-#include "paddle/cinn/common/dim_expr_util.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/runtime/flags.h"
+#include "paddle/common/enforce.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/dialect/shape/utils/shape_or_data_expr.h"
-#include "paddle/utils/flags.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 
 PD_DECLARE_string(cinn_convert_static_dim_to_dynamic_dim);
 
@@ -30,7 +32,7 @@ namespace cinn::dialect::ir {
 namespace {
 
 template <typename DoEachT>
-void ForEachRawStaticDimToDyanmicPair(const DoEachT& DoEach) {
+void ForEachRawStaticDimToDynamicPair(const DoEachT& DoEach) {
   const std::string& env_var = FLAGS_cinn_convert_static_dim_to_dynamic_dim;
   size_t start = 0;
   while (true) {
@@ -41,7 +43,7 @@ void ForEachRawStaticDimToDyanmicPair(const DoEachT& DoEach) {
   }
 }
 
-std::optional<std::pair<int64_t, std::string>> ParseRawStaticDimToDyanmicPair(
+std::optional<std::pair<int64_t, std::string>> ParseRawStaticDimToDynamicPair(
     const std::string& raw_pair) {
   size_t pos = raw_pair.find(":", 0);
   if (pos == std::string::npos) return std::nullopt;
@@ -66,10 +68,10 @@ std::optional<std::pair<int64_t, std::string>> ParseRawStaticDimToDyanmicPair(
   return std::pair{int64_t{constant}, symbol};
 }
 
-std::unordered_map<int64_t, std::string> GetStaticDimToDyanmicFromFlag() {
+std::unordered_map<int64_t, std::string> GetStaticDimToDynamicFromFlag() {
   std::unordered_map<int64_t, std::string> map;
-  ForEachRawStaticDimToDyanmicPair([&](const std::string& raw_pair) {
-    if (auto pair = ParseRawStaticDimToDyanmicPair(raw_pair)) {
+  ForEachRawStaticDimToDynamicPair([&](const std::string& raw_pair) {
+    if (auto pair = ParseRawStaticDimToDynamicPair(raw_pair)) {
       map.insert(pair.value());
     }
   });
@@ -81,7 +83,7 @@ using GlobalStaticDimToDynamicMapT =
 
 std::optional<GlobalStaticDimToDynamicMapT> CalcGlobalStaticDimToDynamicMap() {
   std::unordered_map<int64_t, std::string> map =
-      GetStaticDimToDyanmicFromFlag();
+      GetStaticDimToDynamicFromFlag();
   if (map.empty()) return std::nullopt;
   auto DividedByOther = [&](int64_t constant) {
     for (const auto& [other_constant, _] : map) {
@@ -378,7 +380,7 @@ struct StaticDimToDynamicConverter {
             symbol::TensorShapeOrDataDimExprs(old)};
       }
     }
-    LOG(FATAL) << "Dead code";
+    PADDLE_THROW(phi::errors::Fatal("Dead code"));
   }
 
   template <typename ConverterT>
