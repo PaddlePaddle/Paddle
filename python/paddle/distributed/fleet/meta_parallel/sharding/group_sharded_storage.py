@@ -191,8 +191,6 @@ class ParamStorage(InternalStorage):
         # Copy the current param value
 
         with device_guard(self.dev_id, "cpu"):
-            print("gongweibao test1", flush=True)
-
             if convert_gpu:
                 param_cpu = param.cpu()
                 param._clear_data()
