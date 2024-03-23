@@ -1349,9 +1349,13 @@ class Layer:
                 name = layer_prefix + ('.' if layer_prefix else '') + key
                 yield name, buffer
 
-    def clear_gradients(self):
+    def clear_gradients(self, set_to_zero=True):
         """
         Clear the gradients of all parameters for this layer.
+
+        Args:
+            set_to_zero (bool, optional): Whether to set the trainable parameters'
+                gradients to zero or None. Default is True.
 
         Returns:
             None
@@ -1375,7 +1379,7 @@ class Layer:
         """
         for p in self.parameters():
             if p.trainable:
-                p.clear_gradient()
+                p.clear_gradient(set_to_zero)
 
     def _build_once(self, *args, **kwargs):
         pass
