@@ -191,14 +191,14 @@ class ParamStorage(InternalStorage):
         # Copy the current param value
 
         with device_guard(self.dev_id, "cpu"):
-            tmp_var = self.buffer._slice(self._fill, var_end)
+            print("gongweibao test1", flush=True)
+
             if convert_gpu:
                 param_cpu = param.cpu()
                 param._clear_data()
-                tmp_var.set_value(param_cpu)
+                self.buffer._slice(self._fill, var_end).set_value(param_cpu)
             else:
-                tmp_var.set_value(param)
-            del tmp_var
+                self.buffer._slice(self._fill, var_end).set_value(param)
 
         self._fill = offset
         return p_shape
