@@ -210,19 +210,9 @@ class ShardingGradView:
             self._slice_grad = self._grad_buffer._slice(
                 self._param_begin, self._param_end
             )
-
-            self._grad_buffer._slice(
-                self._param_begin, self._param_end
-            )._share_buffer_to(self._slice_grad)
-
         tmp_grad = self._grad_buffer._slice(
             self._index, self._index + self._param._numel()
         )
-
-        self._grad_buffer._slice(
-            self._index, self._index + self._param._numel()
-        )._share_buffer_to(tmp_grad)
-
         return tmp_grad
 
     def _link_grad_to_buffer(self):
@@ -238,14 +228,12 @@ class ShardingGradView:
         stop_gradient = self._param.stop_gradient
         self._param.stop_gradient = True
         self._param.flatten_()
-
         paddle.assign(
             self._param,
             self._param_buffer._slice(
                 self._index, self._index + self._param._numel()
             ),
         )
-
         self._param.get_tensor()._set_dims(param_shape)
         self._param.stop_gradient = stop_gradient
         self._param_buffer._slice(
@@ -261,12 +249,9 @@ class ShardingGradView:
             assert slice_param.shape[0] == (slice_end - slice_begin)
         slice_begin = self._param_begin
         slice_end = self._param_end
-
         slice_buffer = self._param_buffer._slice(slice_begin, slice_end)
         slice_param.get_tensor()._set_dims([slice_end - slice_begin])
-        self._param_buffer._slice(slice_begin, slice_end)._share_buffer_to(
-            slice_param
-        )
+        slice_buffer._share_buffer_to(slice_param)
 
     def assign_slice_grad(self, slice_param):
         assert self._param_buffer._is_shared_buffer_with(self._param)
@@ -500,14 +485,9 @@ class FusedCommBuffer:
         else:
             grad_end = self.param2offset[param.name] + np.prod(param.shape)
             assert grad_end <= self.buffer_size
-
             tmp_var = self.grad_storage._slice(
                 self.param2offset[param.name], grad_end
             )
-
-            self.grad_storage._slice(
-                self.param2offset[param.name], grad_end
-            )._share_buffer_to(tmp_var)
 
         grad_var = param.main_grad if self.use_main_grad else param.grad
         grad_var.stop_gradient = True
@@ -575,10 +555,7 @@ class FusedCommBuffer:
         shard_size = full_buffer._numel() // group.nranks
         begin = shard_size * group.rank
         end = begin + shard_size
-
-        slice_buffer = paddle.empty([end - begin], dtype=full_buffer.dtype)
-        paddle.assign(full_buffer._slice(begin, end), slice_buffer)
-
+        slice_buffer = full_buffer._slice(begin, end)
         group.process_group.all_gather(slice_buffer, full_buffer).wait()
 
     @property
@@ -628,14 +605,7 @@ class FusedCommBuffer:
             shard_size = self.grad_storage._numel() // self._comm_group.nranks
             begin = shard_size * self._comm_group.rank
             end = begin + shard_size
-
-            reduce_scattered = paddle.empty(
-                [end - begin], dtype=self.grad_storage.dtype
-            )
-            paddle.assign(
-                self.grad_storage._slice(begin, end), reduce_scattered
-            )
-
+            reduce_scattered = self.grad_storage._slice(begin, end)
             task = paddle.distributed.reduce_scatter(
                 reduce_scattered,
                 self.grad_storage,
