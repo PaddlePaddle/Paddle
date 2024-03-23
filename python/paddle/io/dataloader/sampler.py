@@ -160,8 +160,11 @@ class RandomSampler(Sampler):
                 object which implemented :code:`__len__` to get indices as the range of :code:`dataset` length. Default None.
         replacement(bool, optional): If False, sample the whole dataset, If True,
                 set :attr:`num_samples` for how many samples to draw. Default False.
-        num_samples(int, optional): set sample number to draw if :attr:`replacement`
-                is True, then it will take samples according to the number you set. Default None, disabled.
+        num_samples(int, optional): Set sample number to draw. If :attr:`replacement`
+                is True, it will take samples according to the number you set. If
+                :attr:`replacement` is False, then it will yield randonly permutated
+                indices of the whohle dataset for :code:`num_samples//len(data_source)`
+                times and then yield indices without replacement for :code:`num_samples % len(data_source)` times. Default None.
         generator(Generator, optional): specify a generator to sample the :code:`data_source`. Default None, disabled.
 
     Returns:
@@ -212,11 +215,6 @@ class RandomSampler(Sampler):
                 f"replacement={self.replacement}"
             )
 
-        if self._num_samples is not None and not replacement:
-            raise ValueError(
-                "num_samples should not be specified while replacement is False"
-            )
-
         if not isinstance(self.num_samples, int) or self.num_samples <= 0:
             raise ValueError(
                 "num_samples should be a positive integer, "
@@ -245,8 +243,13 @@ class RandomSampler(Sampler):
                 ).tolist():
                     yield index
             else:
+                for _ in range(self.num_samples // n):
+                    for index in np.random.choice(
+                        np.arange(n), n, replace=False
+                    ).tolist():
+                        yield index
                 for index in np.random.choice(
-                    np.arange(n), n, replace=False
+                    np.arange(n), self.num_samples % n, replace=False
                 ).tolist():
                     yield index
 

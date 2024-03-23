@@ -134,6 +134,26 @@ class TestRandomSplitApi(unittest.TestCase):
         self.assertTrue(len(elements_list) == 0)
 
 
+class TestRandomSplitApi2(unittest.TestCase):
+    def test_main(self):
+        paddle.seed(1)
+
+        dataset1, dataset2 = paddle.io.random_split(range(5), [0.3, 0.0, 0.7])
+
+        self.assertTrue(len(dataset1) == 2)
+        self.assertTrue(len(dataset2) == 3)
+
+        elements_list = list(range(5))
+
+        for _, val in enumerate(dataset1):
+            elements_list.remove(val)
+
+        for _, val in enumerate(dataset2):
+            elements_list.remove(val)
+
+        self.assertTrue(len(elements_list) == 0)
+
+
 class TestRandomSplitError(unittest.TestCase):
     def test_errors(self):
         paddle.seed(1)
@@ -141,6 +161,9 @@ class TestRandomSplitError(unittest.TestCase):
         self.assertRaises(ValueError, paddle.io.random_split, range(5), [3, 8])
         self.assertRaises(ValueError, paddle.io.random_split, range(5), [8])
         self.assertRaises(ValueError, paddle.io.random_split, range(5), [])
+        self.assertRaises(
+            ValueError, paddle.io.random_split, range(5), [-0.2, 1.2]
+        )
 
 
 class TestSubsetDataset(unittest.TestCase):
