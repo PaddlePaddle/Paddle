@@ -86,6 +86,7 @@ from .auto_parallel.api import (
     shard_optimizer,
     to_static,
     Strategy,
+    DistModel,
 )
 
 from .fleet import BoxPSDataset  # noqa: F401
@@ -167,4 +168,5 @@ __all__ = [
     "shard_optimizer",
     "to_static",
     "Strategy",
+    "DistModel",
 ]
