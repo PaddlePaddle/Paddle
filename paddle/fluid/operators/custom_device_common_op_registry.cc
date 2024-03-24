@@ -120,7 +120,7 @@ class CConcatOpCustomDeviceKernel : public framework::OpKernel<T> {
           reinterpret_cast<void*>(const_cast<T*>(send_buff)),
           recv_buff,
           send_numel,
-          phi::ccl::ToCCLDataType(x->dtype()),
+          x->dtype(),
           comm->GetXcclComm(),
           stream);
     }
@@ -560,7 +560,7 @@ class CAllReduceOpCustomDeviceKernel : public framework::OpKernel<T> {
     int rid = ctx.Attr<int>("ring_id");
 
     auto place = ctx.GetPlace();
-    auto dtype = phi::ccl::ToCCLDataType(in->dtype());
+    auto dtype = in->dtype();
     int64_t numel = in->numel();
     const void* sendbuff = in->data<T>();
     out->Resize(in->dims());
@@ -651,7 +651,7 @@ class CBroadcastOpCustomDeviceKernel : public framework::OpKernel<T> {
     }
 
     int numel = x->numel();
-    auto dtype = phi::ccl::ToCCLDataType(x->dtype());
+    auto dtype = x->dtype();
     if (root == comm->GetRank()) {
       phi::DeviceManager::CCLBroadcast(place.GetDeviceType(),
                                        const_cast<void*>(x->data()),
@@ -712,7 +712,7 @@ class BarrierOpCustomDeviceKernel : public framework::OpKernel<T> {
                                      const_cast<void*>(sendbuff),
                                      recvbuff,
                                      numel,
-                                     phi::ccl::ToCCLDataType(in->dtype()),
+                                     in->dtype(),
                                      phi::ccl::CCLReduceOp::SUM,
                                      comm->GetXcclComm(),
                                      *stream);
@@ -1059,7 +1059,7 @@ class GlobalScatterOpCustomDeviceKernel : public framework::OpKernel<T> {
                 place.GetDeviceType(),
                 reinterpret_cast<void*>(recv_buf + recv_ptr * in_feat),
                 cpu_global_count_data[idx] * in_feat,
-                phi::ccl::ToCCLDataType(x->dtype()),
+                x->dtype(),
                 j,
                 comm->GetXcclComm(),
                 *stream);
@@ -1075,7 +1075,7 @@ class GlobalScatterOpCustomDeviceKernel : public framework::OpKernel<T> {
                   const_cast<void*>(reinterpret_cast<const void*>(
                       send_buf + expert_ptr[idx] * in_feat)),
                   cpu_local_count_data[idx] * in_feat,
-                  phi::ccl::ToCCLDataType(x->dtype()),
+                  x->dtype(),
                   j,
                   comm->GetXcclComm(),
                   *stream);
@@ -1098,7 +1098,7 @@ class GlobalScatterOpCustomDeviceKernel : public framework::OpKernel<T> {
                 place.GetDeviceType(),
                 reinterpret_cast<void*>(recv_buf + recv_ptr * in_feat),
                 cpu_global_count_data[idx] * in_feat,
-                phi::ccl::ToCCLDataType(x->dtype()),
+                x->dtype(),
                 j,
                 comm->GetXcclComm(),
                 *stream);
@@ -1269,7 +1269,7 @@ class GlobalGatherOpCustomDeviceKernel : public framework::OpKernel<T> {
             phi::DeviceManager::CCLRecv(place.GetDeviceType(),
                                         recv_buf + expert_ptr[idx] * in_feat,
                                         cpu_local_count_data[idx] * in_feat,
-                                        phi::ccl::ToCCLDataType(x->dtype()),
+                                        x->dtype(),
                                         j,
                                         comm->GetXcclComm(),
                                         *stream);
@@ -1284,7 +1284,7 @@ class GlobalGatherOpCustomDeviceKernel : public framework::OpKernel<T> {
                   const_cast<void*>(reinterpret_cast<const void*>(
                       send_buf + send_ptr * in_feat)),
                   cpu_global_count_data[idx] * in_feat,
-                  phi::ccl::ToCCLDataType(x->dtype()),
+                  x->dtype(),
                   j,
                   comm->GetXcclComm(),
                   *stream);
@@ -1305,7 +1305,7 @@ class GlobalGatherOpCustomDeviceKernel : public framework::OpKernel<T> {
             phi::DeviceManager::CCLRecv(place.GetDeviceType(),
                                         recv_buf + expert_ptr[idx] * in_feat,
                                         cpu_local_count_data[idx] * in_feat,
-                                        phi::ccl::ToCCLDataType(x->dtype()),
+                                        x->dtype(),
                                         j,
                                         comm->GetXcclComm(),
                                         *stream);

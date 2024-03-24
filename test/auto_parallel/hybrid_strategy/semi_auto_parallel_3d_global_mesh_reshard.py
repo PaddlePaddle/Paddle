@@ -64,8 +64,18 @@ class TestSemiAutoParallel3DGlobalMeshReshard:
             verbose=True,
         )
 
+    def test_3d_mesh_with_any_status(self):
+        dense_tensor = paddle.ones(shape=[2, 6], dtype='float32')
+        dist_tensor = dist.shard_tensor(
+            dense_tensor,
+            self._global_mesh,
+            [dist.Replicate(), dist.Shard(0), dist.Replicate()],
+        )
+        np.testing.assert_equal(dist_tensor._local_shape, [1, 6])
+
     def run_test_case(self):
         self.test_basic()
+        self.test_3d_mesh_with_any_status()
 
 
 if __name__ == '__main__':

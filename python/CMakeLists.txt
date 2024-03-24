@@ -35,9 +35,6 @@ if(WITH_CINN)
   add_custom_target(COPY_CINN_CORE_API ALL DEPENDS ${CINN_CORE_API}
                                                    ${CINN_PY_FILES})
 
-  if(CINN_ONLY)
-    return()
-  endif()
 endif()
 
 file(GLOB UTILS_PY_FILES . ./paddle/legacy/utils/*.py)
@@ -192,6 +189,7 @@ add_custom_target(paddle_python ALL
 if(BUILD_WHL_PACKAGE AND NOT WITH_SETUP_INSTALL)
   add_custom_target(paddle_copy ALL
                     DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp_wheel)
+  add_dependencies(paddle_copy paddle_python)
 endif()
 
 set(PADDLE_PYTHON_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/dist/)

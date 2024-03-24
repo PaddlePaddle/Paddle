@@ -15,6 +15,7 @@
 #include <sstream>
 #include <string>
 #include <tuple>
+#include <unordered_set>
 
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
@@ -181,6 +182,11 @@ void AnalysisConfig::EnableXpu(int l3_size,
                                bool transformer_encoder_adaptive_seqlen,
                                bool enable_multi_stream) {
 #if defined(PADDLE_WITH_XPU) || defined(LITE_SUBGRAPH_WITH_XPU)
+  LOG_FIRST_N(WARNING, 1)
+      << "Parameters in EnableXpu/enable_xpu is deprecated since version "
+         "2.6.1, and will be removed in version 3.0! Please use "
+         "EnableXpu/enable_xpu without parameters, and use "
+         "SetXpuConfig/set_xpu_config to set options.";
   use_xpu_ = true;
   xpu_config_.l3_size = l3_size;
   xpu_config_.conv_autotune_level = conv_autotune;
@@ -462,6 +468,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_min_subgraph_size_);
   CP_MEMBER(tensorrt_precision_mode_);
   CP_MEMBER(trt_mark_output_);
+  CP_MEMBER(trt_parameters_run_fp16_);
+  CP_MEMBER(trt_parameters_run_int8_);
+  CP_MEMBER(trt_parameters_run_bfp16_);
+  CP_MEMBER(trt_forbid_dynamic_op_)
   CP_MEMBER(trt_output_tensor_names_);
   CP_MEMBER(trt_disabled_ops_);
   CP_MEMBER(trt_use_dla_);
@@ -582,6 +592,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   CP_MEMBER(use_new_executor_);
   CP_MEMBER(use_pir_);
+  CP_MEMBER(custom_passes_);
 
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_,
@@ -781,6 +792,11 @@ void AnalysisConfig::MarkTrtEngineOutputs(
   trt_output_tensor_names_ = output_tensor_names;
 }
 
+void AnalysisConfig::Exp_DisableTensorRTDynamicShapeOPs(
+    bool trt_forbid_dynamic_op) {
+  trt_forbid_dynamic_op_ = trt_forbid_dynamic_op;
+}
+
 void AnalysisConfig::EnableTensorRTMemoryOptim(bool engine_memory_sharing,
                                                int sharing_identifier) {
   PADDLE_ENFORCE_EQ(
@@ -874,6 +890,21 @@ void AnalysisConfig::Exp_DisableTensorRtSubgraph(
                                 var_name_not_trt.end());
 }
 
+void AnalysisConfig::Exp_SpecifyTensorRTSubgraphPrecision(
+    const std::vector<std::string> &trt_parameters_run_fp16,
+    const std::vector<std::string> &trt_parameters_run_int8,
+    const std::vector<std::string> &trt_parameters_run_bfp16) {
+  trt_parameters_run_fp16_.insert(trt_parameters_run_fp16_.end(),
+                                  trt_parameters_run_fp16.begin(),
+                                  trt_parameters_run_fp16.end());
+  trt_parameters_run_int8_.insert(trt_parameters_run_int8_.end(),
+                                  trt_parameters_run_int8.begin(),
+                                  trt_parameters_run_int8.end());
+  trt_parameters_run_bfp16_.insert(trt_parameters_run_bfp16_.end(),
+                                   trt_parameters_run_bfp16.begin(),
+                                   trt_parameters_run_bfp16.end());
+}
+
 void AnalysisConfig::EnableVarseqlen() { trt_use_varseqlen_ = true; }
 
 void AnalysisConfig::SetTensorRtOptimizationLevel(int level) {
@@ -891,6 +922,11 @@ void AnalysisConfig::SetTensorRtOptimizationLevel(int level) {
 void AnalysisConfig::Update() {
   auto &&info = SerializeInfoCache();
   if (info == serialized_info_cache_) return;
+
+  std::unordered_set<std::string> deleted_passes;
+  if (pass_builder_) {
+    deleted_passes = pass_builder_->GetAllDeletedPasses();
+  }
 
   // Transfer pass_builder and copy the existing compatible passes.
   if (!pass_builder_ || ((use_gpu() ^ pass_builder_->use_gpu())) ||
@@ -1104,7 +1140,7 @@ void AnalysisConfig::Update() {
         "but did not have the option -DWITH_CUSTOM_DEVICE compiled."));
 #endif
   }
-  for (auto &delete_pass : pass_builder()->GetAllDeletedPasses()) {
+  for (const auto &delete_pass : deleted_passes) {
     pass_builder_->DeletePass(delete_pass);
   }
 }
@@ -1129,6 +1165,13 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << tensorrt_max_batchsize_;
   ss << tensorrt_min_subgraph_size_;
   ss << trt_mark_output_;
+  for (auto &name : trt_parameters_run_fp16_) ss << name.c_str();
+  ss << ";";
+  for (auto &name : trt_parameters_run_int8_) ss << name.c_str();
+  ss << ";";
+  for (auto &name : trt_parameters_run_bfp16_) ss << name.c_str();
+  ss << ";";
+  ss << trt_forbid_dynamic_op_;
 
   ss << use_dlnne_;
   ss << dlnne_min_subgraph_size_;
@@ -1418,6 +1461,8 @@ std::string AnalysisConfig::Summary() {
       os.InsertRow({"trt_engine_memory_sharing",
                     trt_engine_memory_sharing_ ? "true" : "false"});
       os.InsertRow({"trt_mark_output", trt_mark_output_ ? "true" : "false"});
+      os.InsertRow(
+          {"trt_forbid_dynamic_op", trt_forbid_dynamic_op_ ? "true" : "false"});
 #endif
     }
   }
@@ -1618,5 +1663,10 @@ void AnalysisConfig::EnableCINN() {
 }
 
 bool AnalysisConfig::cinn_enabled() const { return use_cinn_; }
+
+void AnalysisConfig::EnableCustomPasses(
+    const std::vector<std::string> &passes) {
+  custom_passes_ = passes;
+}
 
 }  // namespace paddle

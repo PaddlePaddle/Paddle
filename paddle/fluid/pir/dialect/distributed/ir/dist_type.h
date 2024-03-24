@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_interface.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/type.h"
 
@@ -23,21 +24,32 @@ namespace dialect {
 
 class DistDenseTensorTypeStorage;
 
+common::DDim InferLocalDDim(const common::DDim& global_ddim,
+                            TensorDistAttribute dist_attr);
 class DistDenseTensorType
-    : public pir::Type::
-          TypeBase<DistDenseTensorType, pir::Type, DistDenseTensorTypeStorage> {
+    : public pir::Type::TypeBase<DistDenseTensorType,
+                                 pir::Type,
+                                 DistDenseTensorTypeStorage,
+                                 pir::WrapTypeInterface,
+                                 DistTypeInterface> {
  public:
   using Base::Base;
+  using LoD = pir::DenseTensorTypeStorage::LoD;
 
   pir::DenseTensorType dense_tensor_type() const;
   TensorDistAttribute tensor_dist_attr() const;
-  const common::DDim& global_ddim() const;
-  const common::DDim& local_ddim() const { return dense_tensor_type().dims(); }
+  const common::DDim& global_ddim() const { return dense_tensor_type().dims(); }
+  const common::DDim& local_ddim() const;
   Type dtype() const { return dense_tensor_type().dtype(); }
   DataLayout data_layout() const { return dense_tensor_type().data_layout(); }
+  const LoD& lod() const { return dense_tensor_type().lod(); }
+  size_t offset() const { return dense_tensor_type().offset(); }
 
-  const phi::distributed::ProcessMesh& process_mesh() const {
-    return tensor_dist_attr().process_mesh();
+  Type prim_type() { return dense_tensor_type(); }
+  Type local_type() const;
+
+  ProcessMeshAttribute process_mesh_attr() const {
+    return tensor_dist_attr().process_mesh_attr();
   }
   const std::vector<int64_t>& dims_mapping() const {
     return tensor_dist_attr().dims_mapping();
@@ -52,7 +64,14 @@ class DistDenseTensorType
   static DistDenseTensorType get(pir::IrContext* ctx,
                                  pir::DenseTensorType dense_tensor_type,
                                  TensorDistAttribute tensor_dist_attr,
-                                 const common::DDim& global_ddim);
+                                 const common::DDim& local_ddim);
+  static DistDenseTensorType get(pir::IrContext* ctx,
+                                 pir::DenseTensorType dense_tensor_type,
+                                 TensorDistAttribute tensor_dist_attr) {
+    auto local_ddim =
+        InferLocalDDim(dense_tensor_type.dims(), tensor_dist_attr);
+    return get(ctx, dense_tensor_type, tensor_dist_attr, local_ddim);
+  }
 };
 
 }  // namespace dialect

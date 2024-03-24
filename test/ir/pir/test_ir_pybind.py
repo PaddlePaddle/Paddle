@@ -115,7 +115,7 @@ class TestPybind(unittest.TestCase):
         )
         # test opresult print
         self.assertTrue(
-            'dtype=pd_op.tensor<4x4xf32>'
+            'dtype=builtin.tensor<4x4xf32>'
             in add_op.operands_source()[0].__str__()
         )
         # test opresult == value
@@ -132,7 +132,8 @@ class TestPybind(unittest.TestCase):
             tanh_op.operands()[0].source().get_defining_op().name(), "pd_op.add"
         )
         self.assertTrue(
-            'pd_op.tensor<4x4xf32>' in tanh_op.operands()[0].source().__str__()
+            'builtin.tensor<4x4xf32>'
+            in tanh_op.operands()[0].source().__str__()
         )
         add_op.replace_all_uses_with(matmul_op.results())
         self.assertEqual(

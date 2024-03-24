@@ -73,6 +73,7 @@ prim_white_list = [
     "add_triple_grad",
     "silu_double_grad",
     "tanh_triple_grad",
+    "minimum_double_grad",
 ]
 
 # white ops list whose kernel can automaically do type promotion.
@@ -208,6 +209,12 @@ class {} : public egr::GradNodeBase {{
 GRAD_FUNCTION_TEMPLATE = """
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}::operator()(paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {{
   VLOG(3) << \"Running AD API GRAD: \" << \"{}\";
+
+   // This 'Local_XXXGradNode' record event is different with 'Global_XXXGradNode' event.
+   // * 'Local_XXXGradNode' will only cover execution time of this function.
+   // * 'Global_XXXGradNode' will not only cover execution time of this function, but also include gradient
+   //    accumulation when the output(s) of corresponding forward OP are shared by other OP(s), which may have extra accumulation overhead than 'Local_XXXGradNode'.
+  paddle::platform::RecordEvent grad_node_record_event_inner(\"Local_{}\", paddle::platform::TracerEventType::OperatorInner, 1);
 
   // Fill Zero For GradIn Tensors
 {}
@@ -1147,7 +1154,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             for name, (ttype, pos) in forward_inputs_position_map.items():
                 if name in need_pre_contiguous_set:
                     pre_contiguous_list.append(
-                        f"{indent}const auto& {name}_tmp = (require_any_grad && {name}.is_dense_tensor() && !std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl())->meta().is_contiguous()) ? paddle::Tensor(std::make_shared<phi::DenseTensor>(std::move(paddle::experimental::Trans2Contiguous(*(std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl()))))), {name}.mutable_autograd_meta()) : {name};"
+                        f"{indent}const auto& {name}_tmp = (require_any_grad && {name}.is_dense_tensor() && !std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl())->meta().is_contiguous()) ? paddle::Tensor(std::make_shared<phi::DenseTensor>(paddle::experimental::Trans2Contiguous(*(std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl())))), {name}.mutable_autograd_meta(), {name}.name()) : {name};"
                     )
                     self.inputs_call_list_tmp[pos] = (
                         self.inputs_call_list_tmp[pos] + '_tmp'
@@ -2115,7 +2122,10 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                 next_grad_node_creation_str = "\n".join(
                     next_grad_node_creation_str
                 )
-                next_grad_node_creation_str = f"""
+                if self.backward_api_name in prim_white_list:
+                    next_grad_node_creation_str = ""
+                else:
+                    next_grad_node_creation_str = f"""
   if (!paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() || need_skip) {{
 {next_grad_node_creation_str}
   }}
@@ -2584,7 +2594,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             def _gen_api_call_code_block(
                 in_prim_white_list: bool,
                 has_kernel_impl: bool,
-                has_higher_order_node: bool,
                 indention: int,
             ):
                 """This function will generate code block for calling composite or
@@ -2602,7 +2611,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                 Args:
                     in_prim_white_list (bool): Whether current op in `prim_white_list`.
                     has_kernel_impl (bool): Whether current op has kernel implementation.
-                    has_higher_order_node (bool): Whether current op has next grad op.
                     indention (int): Number of single space for whole code block indention.
                 """
                 if in_prim_white_list:
@@ -2617,8 +2625,6 @@ if (!create_graph) {{
 {indent}egr::Controller::Instance().SetHasGrad(original_global_grad);
 }}
 """
-                    if has_higher_order_node:
-                        code = f"auto need_skip = false;{code}"
                 else:
                     code = f"""
 std::string grad_op_name = "{composite_grad_api_name}";
@@ -2670,14 +2676,12 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
                 grad_function_call_str = _gen_api_call_code_block(
                     self.backward_api_name in prim_white_list,
                     has_kernel_impl,
-                    has_higher_order_node,
                     0,
                 )
             else:
                 grad_function_call_str = _gen_api_call_code_block(
                     self.backward_api_name in prim_white_list,
                     has_kernel_impl,
-                    has_higher_order_node,
                     2,
                 )
         else:
@@ -2790,6 +2794,7 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
         self.node_definition_str = GRAD_FUNCTION_TEMPLATE.format(
             grad_node_name,
             self.backward_api_name,
+            grad_node_name,
             fill_zero_str,
             get_grad_in_args_str,
             grad_function_prepare_str,

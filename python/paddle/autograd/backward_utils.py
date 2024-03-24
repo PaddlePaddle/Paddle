@@ -141,6 +141,9 @@ class ValueSet:
         for val in other:
             self.add(val)
 
+    def pop(self):
+        return self._set.pop()._value
+
     def __and__(self, other: ValueSet):
         return ValueSet(self._set & other._set)
 
@@ -272,19 +275,7 @@ def _as_list(x):
 
 
 def some_in_set(value_list, value_set):
-    def operand2value(values):
-        value_set = ValueSet()
-        for item in values:
-            if isinstance(item, pir.OpOperand):
-                value_set.add(item.source())
-            else:
-                value_set.add(item)
-        return value_set
-
-    if operand2value(value_list) & operand2value(value_set):
-        return True
-    else:
-        return False
+    return any(v in value_set for v in value_list)
 
 
 def is_control_flow(op):
@@ -412,6 +403,15 @@ def remove_op(block, op, state):
                 raise ValueError(
                     'input_grad in [%s] is value which need to sum ', op.name()
                 )
+
+
+def while_prune_check(while_tuple_ops):
+    if len(while_tuple_ops) != 0:
+        for opresult in while_tuple_ops[0].results():
+            if not opresult.use_empty():
+                return False
+        return True
+    return False
 
 
 def remove_useless_full_like_ops(block, ops, state):
