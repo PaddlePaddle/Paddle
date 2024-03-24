@@ -856,7 +856,6 @@ struct MergeAverage<phi::CPUContext, T> {
     auto input_height = has_value_input->height();
     phi::SelectedRows& out = *output;
     std::set<int64_t> merged_row_set;
-    size_t row_num = 0;
     for (auto* input : inputs) {
       if (input->rows().empty()) {
         continue;
@@ -870,7 +869,6 @@ struct MergeAverage<phi::CPUContext, T> {
           input_height,
           input->height(),
           phi::errors::InvalidArgument("All input should have same height."));
-      row_num += input->rows().size();
       merged_row_set.insert(input->rows().begin(), input->rows().end());
     }
 

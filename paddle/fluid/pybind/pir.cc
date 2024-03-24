@@ -44,25 +44,26 @@
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/embedding_eltwise_layernorm_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fc_elementwise_layernorm_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fc_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fused_dot_product_attention_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fused_dropout_add_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fused_gemm_epilogue_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fused_weight_only_linear_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/matmul_scale_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/multihead_matmul_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/silu_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/transpose_flatten_concat_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/identity_op_clean_pass.h"
-#include "paddle/fluid/pir/transforms/inplace_pass.h"
-#include "paddle/fluid/pir/transforms/map_op_to_another_pass.h"
-#include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
+#include "paddle/fluid/pir/transforms/general/identity_op_clean_pass.h"
+#include "paddle/fluid/pir/transforms/general/inplace_pass.h"
+#include "paddle/fluid/pir/transforms/general/map_op_to_another_pass.h"
+#include "paddle/fluid/pir/transforms/general/matmul_scale_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/general/matmul_transpose_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/general/replace_fetch_with_shadow_output_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/conv2d_add_act_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/conv2d_add_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/conv2d_bn_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/embedding_eltwise_layernorm_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/fc_elementwise_layernorm_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/fc_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/fused_dot_product_attention_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/fused_dropout_add_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/fused_gemm_epilogue_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/fused_linear_param_grad_add_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/fused_weight_only_linear_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/multihead_matmul_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/silu_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/transpose_flatten_concat_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -107,6 +108,9 @@ using paddle::dialect::PyLayerOp;
 using paddle::dialect::SelectedRowsType;
 using paddle::dialect::WhileOp;
 
+using paddle::dialect::OperationDistAttribute;
+using paddle::dialect::TensorDistAttribute;
+
 using pir::Attribute;
 using pir::Block;
 using pir::BlockArgument;
@@ -136,6 +140,7 @@ USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
 USE_PIR_PASS(identity_op_clean_pass);
 USE_PIR_PASS(map_op_to_another_pass);
 USE_PIR_PASS(matmul_scale_fuse_pass);
+USE_PIR_PASS(matmul_transpose_fuse_pass);
 USE_PIR_PASS(fc_fuse_pass);
 USE_PIR_PASS(silu_fuse_pass);
 USE_PIR_PASS(fc_elementwise_layernorm_fuse_pass);
@@ -531,8 +536,13 @@ void BindOperation(py::module *m) {
              for (auto &pair : self.attributes()) {
                // SymbolAttribute is only used in PIR, no need to pass to Python
                if (pair.second.isa<pir::shape::SymbolAttribute>()) continue;
-               attrs_dict[pair.first.c_str()] =
-                   paddle::dialect::GetAttributeData(pair.second);
+               if (pair.first == kAttrOpDistAttr) {
+                 attrs_dict[pair.first.c_str()] =
+                     pair.second.dyn_cast<OperationDistAttribute>();
+               } else {
+                 attrs_dict[pair.first.c_str()] =
+                     paddle::dialect::GetAttributeData(pair.second);
+               }
              }
              return attrs_dict;
            })
@@ -630,6 +640,7 @@ void BindOperation(py::module *m) {
       .def("as_while_op",
            [](Operation &self) { return PyWhileOp(self.dyn_cast<WhileOp>()); })
       .def("__repr__",
+
            [](Operation &self) {
              std::ostringstream print_stream;
              print_stream << "Operation(";
@@ -644,8 +655,58 @@ void BindOperation(py::module *m) {
             return ApiBuilder::Instance().GetBuilder()->Insert(op);
           },
           return_value_policy::reference)
-      .def("move_before", [](Operation &self, Operation &other) {
-        self.MoveTo(other.GetParent(), Block::Iterator{other});
+      .def("move_before",
+           [](Operation &self, Operation &other) {
+             self.MoveTo(other.GetParent(), Block::Iterator{other});
+           })
+      .def_property(
+          "callstack",
+          [](Operation &self) -> py::list {
+            py::list callstack_list;
+            pir::Attribute op_callstack = self.attribute<pir::Attribute>(
+                paddle::framework::OpProtoAndCheckerMaker::
+                    OpCreationCallstackAttrName());
+            PADDLE_ENFORCE(op_callstack.isa<pir::ArrayAttribute>(),
+                           phi::errors::PreconditionNotMet(
+                               "The callstack of operation `%s` should be an "
+                               "array attribute.",
+                               self.name()));
+            auto op_callstack_array_attr =
+                op_callstack.dyn_cast<pir::ArrayAttribute>();
+            for (size_t i = 0; i < op_callstack_array_attr.size(); ++i) {
+              PADDLE_ENFORCE(
+                  op_callstack_array_attr.at(i).isa<pir::StrAttribute>(),
+                  phi::errors::PreconditionNotMet(
+                      "The callstack info of operation `%s` should be array of "
+                      "string attribute.",
+                      self.name()));
+              callstack_list.append(op_callstack_array_attr.at(i)
+                                        .dyn_cast<pir::StrAttribute>()
+                                        .AsString());
+            }
+            return callstack_list;
+          },
+          [](Operation &self,
+             const std::vector<std::string> &callstack) -> void {
+            std::vector<pir::Attribute> op_callstack_infos;
+            for (auto str : callstack) {
+              op_callstack_infos.push_back(
+                  pir::StrAttribute::get(pir::IrContext::Instance(), str));
+            }
+
+            self.set_attribute(
+                paddle::framework::OpProtoAndCheckerMaker::
+                    OpCreationCallstackAttrName(),
+                pir::ArrayAttribute::get(pir::IrContext::Instance(),
+                                         op_callstack_infos));
+          })
+      .def("dist_attr", [](Operation &self) {
+        if (self.HasAttribute(kAttrOpDistAttr)) {
+          return self.attribute<OperationDistAttribute>(kAttrOpDistAttr);
+        } else {
+          PADDLE_THROW(
+              phi::errors::InvalidArgument("dist_attr is only for dist op."));
+        }
       });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
@@ -878,6 +939,7 @@ void BindValue(py::module *m) {
            [](Value self) { return self.type().isa<DenseTensorArrayType>(); })
       .def("is_dist_dense_tensor_type",
            [](Value self) { return self.type().isa<DistDenseTensorType>(); })
+      .def("value_assign", [](Value &self, Value value) { self = value; })
       .def("replace_all_uses_with",
            [](Value self, Value value) { self.ReplaceAllUsesWith(value); })
       .def("replace_grad_users_with",
@@ -913,51 +975,13 @@ void BindValue(py::module *m) {
              return out;
            })
       .def("__repr__", &Value2String)
-      .def_property(
-          "dims_mapping",
-          [](Value self) {
-            if (!self.type().isa<DistDenseTensorType>()) {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "dims_mapping is only for distdense tensor."));
-            }
-            return self.type().dyn_cast<DistDenseTensorType>().dims_mapping();
-          },
-          [](Value self, const std::vector<int> &shape) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
-                "set dims_mapping when building static graph is un-supported "
-                "now."));
-          })
-      .def_property(
-          "partial_dims",
-          [](Value self) {
-            if (!self.type().isa<DistDenseTensorType>()) {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "partial_dims is only for distdense tensor."));
-            }
-            return self.type().dyn_cast<DistDenseTensorType>().partial_dims();
-          },
-          [](Value self, const std::vector<int> &shape) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
-                "set partial_dims when building static graph is un-supported "
-                "now."));
-          })
-      .def_property(
-          "process_mesh",
-          [](Value self) {
-            if (!self.type().isa<DistDenseTensorType>()) {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "process_mesh is only for distdense tensor."));
-            }
-            return self.type()
-                .dyn_cast<DistDenseTensorType>()
-                .process_mesh_attr()
-                .process_mesh();
-          },
-          [](Value self, const std::vector<int> &shape) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
-                "set process_mesh when building static graph is un-supported "
-                "now."));
-          });
+      .def("dist_attr", [](Value &self) {
+        if (!self.type().isa<DistDenseTensorType>()) {
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "dist_attr is only for distdense tensor."));
+        }
+        return self.type().dyn_cast<DistDenseTensorType>().tensor_dist_attr();
+      });
 }
 
 void BindOpOperand(py::module *m) {
@@ -1557,7 +1581,7 @@ void BindUtils(pybind11::module *m) {
       "translate_to_pir",
       [](const ::paddle::framework::ProgramDesc &legacy_program) {
         std::shared_ptr<Program> ret =
-            std::move(paddle::TranslateLegacyProgramToProgram(legacy_program));
+            paddle::TranslateLegacyProgramToProgram(legacy_program);
         return ret;
       },
       R"DOC(
@@ -1766,8 +1790,7 @@ void BindPassManager(pybind11::module *m) {
            py::arg("opt_level") = 2)
       .def("add_pass",
            [](PassManager &self, const std::string &pass_name) {
-             self.AddPass(
-                 std::move(pir::PassRegistry::Instance().Get(pass_name)));
+             self.AddPass(pir::PassRegistry::Instance().Get(pass_name));
            })
       .def("passes",
            [](PassManager &self) {

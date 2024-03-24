@@ -95,7 +95,7 @@ class AllocatorFacade {
   void SetDefaultStream(const platform::CUDAPlace& place, gpuStream_t stream);
 #endif
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void PrepareMemoryPoolForCUDAGraph(int64_t id);
   void RemoveMemoryPoolOfCUDAGraph(int64_t id);
 #endif
@@ -116,7 +116,7 @@ class AllocatorFacade {
  private:
   AllocatorFacade();
   AllocatorFacadePrivate* m_;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::unordered_map<int64_t, std::unique_ptr<AllocatorFacadePrivate>>
       cuda_graph_map_;
   std::unordered_map<int64_t, int64_t> cuda_graph_ref_cnt_;

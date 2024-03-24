@@ -22,7 +22,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-struct CudnnRNNCache {
+class CudnnRNNCache {
+ public:
   CudnnRNNCache() {
     x_desc_ = NULL;
     y_desc_ = NULL;

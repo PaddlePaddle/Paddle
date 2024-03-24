@@ -316,9 +316,19 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastToSymbolic(
     CINNValuePack pack_args = args[0];
     CHECK(!pack_args.empty())
         << "The input tensors of broadcast_to compute is empty! Please check.";
-    CHECK_GE(pack_args.size(), 2U);
-    CHECK(pack_args[1].is_string());
-    std::string tensor_name = pack_args[1].operator std::string();
+    std::string tensor_name = [&] {
+      if (pack_args.size() == 2) {
+        return pack_args[1].operator std::string();
+      } else {
+        PADDLE_ENFORCE_EQ(pack_args.size(),
+                          3,
+                          ::common::errors::InvalidArgument(
+                              "The number of input tensors is wrong. "
+                              "The expected inputs is 3, but now is %d.",
+                              pack_args.size()));
+        return pack_args[2].operator std::string();
+      }
+    }();
 
     Expr A_expr = pack_args[0];
     CHECK(A_expr.as_tensor());
@@ -421,8 +431,9 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastGrad(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<int>> &output_shapes,
     const Target &target) {
-  LOG(FATAL) << "Gradient operator will be decomposed into several primitive "
-                "operators. Please Use Decomposer Program Pass.";
+  PADDLE_THROW(phi::errors::Fatal(
+      "Gradient operator will be decomposed into several primitive "
+      "operators. Please Use Decomposer Program Pass."));
 }
 
 std::shared_ptr<OpStrategy> StrategyForIsClose(

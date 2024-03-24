@@ -24,6 +24,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/type_storage.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/transforms/param_to_variable.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/pir/include/core/builtin_type_interfaces.h"
 #include "paddle/pir/include/core/interface_value.h"
 #include "paddle/pir/include/core/ir_printer.h"
@@ -37,17 +38,6 @@
 
 namespace paddle {
 namespace dialect {
-
-static std::unordered_map<std::string, std::string> kCustomTypeMap = {
-    {"bool", "pir::BoolAttribute"},
-    {"int", "pir::Int32Attribute"},
-    {"float", "pir::FloatAttribute"},
-    {"int64_t", "pir::Int64Attribute"},
-    {"std::string", "pir::StrAttribute"},
-    {"std::vector<int>", "pir::ArrayAttribute<pir::Int32Attribute>"},
-    {"std::vector<float>", "pir::ArrayAttribute<pir::FloatAttribute>"},
-    {"std::vector<int64_t>", "pir::ArrayAttribute<pir::Int64Attribute>"},
-    {"std::vector<std::string>", "pir::ArrayAttribute<pir::StrAttribute>"}};
 
 struct CombineOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
@@ -159,6 +149,26 @@ struct ShadowOutputOpInferSymbolicShapeInterfaceModel
       : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
 };
 
+struct SliceOpInferSymbolicShapeInterfaceModel
+    : public InferSymbolicShapeInterface::Concept {
+  static inline bool InferSymbolicShape(
+      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+    const auto index =
+        op->attributes().at("index").dyn_cast<pir::Int32Attribute>().data();
+    const auto output_value =
+        (op->operand(0).type().dyn_cast<pir::VectorType>())[index]
+            .dyn_cast<pir::Value>();
+
+    shape_analysis->SetShapeOrDataForValue(
+        op->result(0), shape_analysis->GetShapeOrDataForValue(output_value));
+
+    return true;
+  }
+
+  SliceOpInferSymbolicShapeInterfaceModel()
+      : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
+};
+
 struct SplitOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
@@ -203,24 +213,23 @@ OperatorDialect::OperatorDialect(pir::IrContext* ctx)
   ctx->GetOrRegisterDialect<::pir::ControlFlowDialect>();
 
   auto info = ctx->GetRegisteredOpInfo(pir::TuplePushOp::name());
-  info.AttachInterface(std::move(
-      pir::InterfaceValue::Get<VjpInterface, TuplePushOpVjpInterfaceModel>()));
+  info.AttachInterface(
+      pir::InterfaceValue::Get<VjpInterface, TuplePushOpVjpInterfaceModel>());
 
   info = ctx->GetRegisteredOpInfo(pir::CombineOp::name());
-  info.AttachInterface(std::move(
+  info.AttachInterface(
       pir::InterfaceValue::Get<InferSymbolicShapeInterface,
-                               CombineOpInferSymbolicShapeInterfaceModel>()));
+                               CombineOpInferSymbolicShapeInterfaceModel>());
 
   info = ctx->GetRegisteredOpInfo(pir::ParameterOp::name());
-  info.AttachInterface(std::move(
+  info.AttachInterface(
       pir::InterfaceValue::Get<InferSymbolicShapeInterface,
-                               ParameterOpInferSymbolicShapeInterfaceModel>()));
+                               ParameterOpInferSymbolicShapeInterfaceModel>());
 
   info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
-  info.AttachInterface(
-      std::move(pir::InterfaceValue::Get<
-                InferSymbolicShapeInterface,
-                ShadowOutputOpInferSymbolicShapeInterfaceModel>()));
+  info.AttachInterface(pir::InterfaceValue::Get<
+                       InferSymbolicShapeInterface,
+                       ShadowOutputOpInferSymbolicShapeInterfaceModel>());
 
   info = ctx->GetRegisteredOpInfo(pir::SplitOp::name());
   info.AttachInterface(std::move(
@@ -228,9 +237,9 @@ OperatorDialect::OperatorDialect(pir::IrContext* ctx)
                                SplitOpInferSymbolicShapeInterfaceModel>()));
 
   info = ctx->GetRegisteredOpInfo(pir::YieldOp::name());
-  info.AttachInterface(std::move(
+  info.AttachInterface(
       pir::InterfaceValue::Get<InferSymbolicShapeInterface,
-                               YieldOpInferSymbolicShapeInterfaceModel>()));
+                               YieldOpInferSymbolicShapeInterfaceModel>());
 }
 
 void PrintTypeImpl(pir::Type type, std::ostream& os) {
@@ -290,6 +299,8 @@ void PrintOperationImpl(pir::Operation* op,
 
 void OperatorDialect::initialize() {
   RegisterTypes<paddle::dialect::SelectedRowsType,
+                paddle::dialect::SparseCooTensorType,
+                paddle::dialect::SparseCsrTensorType,
                 paddle::dialect::DenseTensorArrayType>();
 
   RegisterAttributes<paddle::dialect::IntArrayAttribute,
@@ -495,7 +506,7 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
       auto attr_name = attr_name_and_type[0];
       auto attr_type_str = attr_name_and_type[1];
       param_names.push_back(attr_name);
-      if (kCustomTypeMap.find(attr_type_str) == kCustomTypeMap.end()) {
+      if (AttrTypeMap().find(attr_type_str) == AttrTypeMap().end()) {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported `%s` type value as custom attribute now. "
             "Supported data types include `bool`, `int`, `float`, "
@@ -505,9 +516,8 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
             "the attribute data type and data type string are matched.",
             attr_type_str));
       }
-      std::string attr_pir_type = kCustomTypeMap[attr_type_str];
-      attributes_info.push_back(
-          paddle::dialect::OpAttributeInfo{attr_name, attr_pir_type, ""});
+      std::string attr_pir_type = AttrTypeMap().at(attr_type_str);
+      attributes_info.emplace_back(attr_name, attr_pir_type, "");
     }
 
     // translate output info
@@ -532,8 +542,8 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
     }
 
     std::vector<std::pair<std::string, std::string>> vec_inplace;
-    for (auto inplace_map : inplace_maps) {
-      vec_inplace.push_back(inplace_map);
+    for (const auto& inplace_map : inplace_maps) {
+      vec_inplace.emplace_back(inplace_map);
     }
 
     // we only need kernel params name in run_time_info
