@@ -94,7 +94,13 @@ template <typename T, typename Context>
 void AbsCooKernel(const Context& dev_ctx,
                   const SparseCooTensor& x,
                   SparseCooTensor* out) {
-  EmptyLikeCooRealComplexKernel<T, Context>(dev_ctx, x, out);
+  *(out->mutable_indices()) = x.indices();
+
+  DenseTensor* out_values = out->mutable_values();
+  const DenseTensor& x_values = x.values();
+  out_values->Resize(x_values.dims());
+  dev_ctx.template Alloc<T>(out_values);
+
   phi::AbsKernel<T, Context>(
       dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements());
 
@@ -105,7 +111,14 @@ template <typename T, typename Context>
 void AbsCsrKernel(const Context& dev_ctx,
                   const SparseCsrTensor& x,
                   SparseCsrTensor* out) {
-  EmptyLikeCsrRealComplexKernel<T, Context>(dev_ctx, x, out);
+  *(out->mutable_crows()) = x.crows();
+  *(out->mutable_cols()) = x.cols();
+
+  DenseTensor* out_values = out->mutable_values();
+  const DenseTensor& x_values = x.values();
+  out_values->Resize(x_values.dims());
+  dev_ctx.template Alloc<T>(out_values);
+
   phi::AbsKernel<T, Context>(
       dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements());
 }
