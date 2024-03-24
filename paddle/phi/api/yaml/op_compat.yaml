@@ -3260,11 +3260,13 @@
     strided_slice_grad : GetStridedSliceGradExpectedKernelType
 
 - op : subtract (elementwise_sub)
-  backward : subtract_grad (elementwise_sub_grad)
+  backward : subtract_grad (elementwise_sub_grad), subtract_double_grad (elementwise_sub_grad_grad)
   inputs :
     {x : X, y: Y}
   outputs :
-    out : Out
+    {out : Out}
+  attrs :
+    {scale_x : Scale_x, scale_y : Scale_y, scale_out : Scale_out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
