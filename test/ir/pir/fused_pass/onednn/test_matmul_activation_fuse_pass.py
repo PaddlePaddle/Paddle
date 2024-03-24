@@ -935,5 +935,56 @@ class TestFusedMatmulsigmoidFusePattern(PassTest):
         self.check_pass_correct()
 
 
+class TestMatmulGeluTanhFusePatternCase14(PassTest):
+    r'''
+    x     y
+     \   /
+     matmul
+       |
+      gelu
+       |
+      out
+    '''
+
+    def is_program_valid(self, program=None):
+        return True
+
+    def build_ir_program(self):
+        with paddle.pir_utils.IrGuard():
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.pir.core.program_guard(main_prog, start_prog):
+                x = paddle.static.data(
+                    name='x', shape=[5, 5, 5, 5], dtype='float32'
+                )
+                y = paddle.static.data(
+                    name='y', shape=[5, 5, 5, 5], dtype='float32'
+                )
+                matmul_out = paddle.matmul(x, y)
+                out = paddle.nn.functional.gelu(matmul_out, approximate=True)
+                out = paddle.assign(out)
+                self.pass_list = ['matmul_activation_fuse_pass']
+                self.feeds = {
+                    "x": np.random.random((5, 5, 5, 5)).astype("float32"),
+                    "y": np.random.random((5, 5, 5, 5)).astype("float32"),
+                }
+                self.fetch_list = [out]
+                self.valid_op_map = {
+                    "onednn_op.fused_matmul": 1,
+                    "pd_op.matmul": 0,
+                    "pd_op.gelu": 0,
+                }
+                return [main_prog, start_prog]
+
+    def sample_program(self):
+        yield self.build_ir_program(), False
+
+    def setUp(self):
+        self.places.append(paddle.CPUPlace())
+
+    def test_check_output(self):
+        self.check_pass_correct()
+
+
 if __name__ == "__main__":
     unittest.main()

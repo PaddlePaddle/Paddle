@@ -101,10 +101,11 @@ class MatmulActivationFusePattern : public paddle::drr::DrrPatternBase {
       }
       return true;
     });
-    bool result_gelu = false;
+
     if (act_type_ == paddle::dialect::GeluOp::name()) {
       pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-        result_gelu = match_ctx.Attr<bool>("approximate");
+        auto result_gelu = match_ctx.Attr<bool>("approximate");
+        if (result_gelu) return false;
         return true;
       });
     }
@@ -137,8 +138,6 @@ class MatmulActivationFusePattern : public paddle::drr::DrrPatternBase {
       fused_attrs.emplace("fuse_beta", pat.Attr("fuse_beta"));
     } else if (act_type_ == paddle::dialect::LeakyReluOp::name()) {
       fused_attrs.emplace("fuse_alpha", pat.Attr("fuse_alpha"));
-    } else if (act_type_ == paddle::dialect::GeluOp::name() && result_gelu) {
-      fused_attrs.emplace("fuse_activation", res.StrAttr("gelu_tanh"));
     } else if (act_type_ == paddle::dialect::SwishOp::name()) {
       fused_attrs.emplace("fuse_alpha", res.Float32Attr(1.0f));
     } else if (act_type_ == paddle::dialect::Relu6Op::name()) {
@@ -149,6 +148,82 @@ class MatmulActivationFusePattern : public paddle::drr::DrrPatternBase {
                                       res.StrAttr(activation_type[act_type_])));
     fused_attrs.insert(std::make_pair("fuse_alpha", res.Float32Attr(0.0f)));
     fused_attrs.insert(std::make_pair("fuse_beta", res.Float32Attr(0.0f)));
+
+    const auto &fused_matmul = res.Op(fused_matmul_name_, fused_attrs);
+
+    fused_matmul({&res.Tensor("X"), &res.Tensor("Y"), &res.InputNoneTensor()},
+                 {&res.Tensor("act_out")});
+  }
+};
+
+class MatmulGeluTanhFusePattern : public paddle::drr::DrrPatternBase {
+ private:
+  std::string matmul_name_;
+  std::string fused_matmul_name_;
+  uint32_t benefit_;
+
+ public:
+  MatmulGeluTanhFusePattern(const std::string &matmul_name,
+                            const std::string &fused_matmul_name,
+                            uint32_t benefit)
+      : matmul_name_(matmul_name),
+        fused_matmul_name_(fused_matmul_name),
+        benefit_(benefit) {}
+
+  std::string name() const override { return "MatmulActivationFusePattern"; }
+
+  uint32_t benefit() const override { return benefit_; }
+
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
+
+    const auto &matmul = pat.Op(matmul_name_,
+                                {{"transpose_x", pat.Attr("transpose_x")},
+                                 {"transpose_y", pat.Attr("transpose_y")}});
+
+    const auto &act = pat.Op(paddle::dialect::GeluOp::name(),
+                             {{"approximate", pat.Attr("approximate")}});
+    matmul({&pat.Tensor("X"), &pat.Tensor("Y")}, {&pat.Tensor("Out")});
+
+    pat.Tensor("act_out") = act(pat.Tensor("Out"));
+
+    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      std::set<bool> bool_sets = {true, false};
+      auto result_x = match_ctx.Attr<bool>("transpose_x");
+      auto result_y = match_ctx.Attr<bool>("transpose_y");
+      if (bool_sets.count(result_x) == 0 || bool_sets.count(result_y) == 0) {
+        return false;
+      }
+      return true;
+    });
+    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      auto result_gelu = match_ctx.Attr<bool>("approximate");
+      if (!result_gelu) return false;
+      return true;
+    });
+
+    paddle::drr::ResultPattern res = pat.ResultPattern();
+
+    std::unordered_map<std::string, paddle::drr::Attribute> fused_attrs{
+        {"trans_x", pat.Attr("transpose_x")},
+        {"trans_y", pat.Attr("transpose_y")},
+        {"matmul_alpha", res.Float32Attr(1.0f)},
+        {"fuse_activation", res.StrAttr("gelu_tanh")},
+        {"fuse_alpha", res.Float32Attr(0.0f)},
+        {"fuse_beta", res.Float32Attr(0.0f)},
+        {"fused_output_scale", res.Float32Attr(1.0f)},
+        {"fused_reshape_x", res.VectorInt32Attr({})},
+        {"fused_transpose_x", res.VectorInt32Attr({})},
+        {"fused_reshape_y", res.VectorInt32Attr({})},
+        {"fused_transpose_y", res.VectorInt32Attr({})},
+        {"fused_reshape_out", res.VectorInt32Attr({})},
+        {"fused_transpose_out", res.VectorInt32Attr({})},
+        {"mkldnn_data_type", res.StrAttr("float32")},
+        {"scale_x", res.Float32Attr(1.0f)},
+        {"scale_y", res.Float32Attr(1.0f)},
+        {"scale_in_eltwise", res.Float32Attr(0.0f)},
+        {"scale_out", res.Float32Attr(1.0f)},
+        {"force_fp32_output", res.BoolAttr(false)}};
 
     const auto &fused_matmul = res.Op(fused_matmul_name_, fused_attrs);
 
@@ -310,10 +385,10 @@ class FusedMatmulActivationFusePattern : public paddle::drr::DrrPatternBase {
       }
       return true;
     });
-    bool result_gelu = false;
     if (act_type_ == paddle::dialect::GeluOp::name()) {
       pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-        result_gelu = match_ctx.Attr<bool>("approximate");
+        auto result_gelu = match_ctx.Attr<bool>("approximate");
+        if (result_gelu) return false;
         return true;
       });
     }
@@ -346,8 +421,6 @@ class FusedMatmulActivationFusePattern : public paddle::drr::DrrPatternBase {
       fused_attrs.emplace("fuse_beta", pat.Attr("fuse_beta"));
     } else if (act_type_ == paddle::dialect::LeakyReluOp::name()) {
       fused_attrs.emplace("fuse_alpha", pat.Attr("fuse_alpha"));
-    } else if (act_type_ == paddle::dialect::GeluOp::name() && result_gelu) {
-      fused_attrs.emplace("fuse_activation", res.StrAttr("gelu_tanh"));
     } else if (act_type_ == paddle::dialect::SwishOp::name()) {
       fused_attrs.emplace("fuse_alpha", res.Float32Attr(1.0f));
     } else if (act_type_ == paddle::dialect::Relu6Op::name()) {
@@ -358,6 +431,103 @@ class FusedMatmulActivationFusePattern : public paddle::drr::DrrPatternBase {
                                       res.StrAttr(activation_type[act_type_])));
     fused_attrs.insert(std::make_pair("fuse_alpha", res.Float32Attr(0.0f)));
     fused_attrs.insert(std::make_pair("fuse_beta", res.Float32Attr(0.0f)));
+
+    const auto &fused_matmul = res.Op(fused_matmul_name_, fused_attrs);
+
+    fused_matmul({&res.Tensor("X"), &res.Tensor("Y"), &res.Tensor("residual")},
+                 {&res.Tensor("act_out")});
+  }
+};
+
+class FusedMatmulGeluTanhFusePattern : public paddle::drr::DrrPatternBase {
+ private:
+  std::string matmul_name_;
+  std::string fused_matmul_name_;
+  uint32_t benefit_;
+
+ public:
+  FusedMatmulGeluTanhFusePattern(const std::string &matmul_name,
+                                 const std::string &fused_matmul_name,
+                                 uint32_t benefit)
+      : matmul_name_(matmul_name),
+        fused_matmul_name_(fused_matmul_name),
+        benefit_(benefit) {}
+
+  std::string name() const override {
+    return "FusedMatmulActivationFusePattern";
+  }
+
+  uint32_t benefit() const override { return benefit_; }
+
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
+
+    const auto &matmul =
+        pat.Op(matmul_name_,
+               {{"trans_x", pat.Attr("transpose_x")},
+                {"trans_y", pat.Attr("transpose_y")},
+                {"matmul_alpha", pat.Attr("matmul_alpha")},
+                {"fuse_activation", pat.Attr("fuse_activation")},
+                {"fused_output_scale", pat.Attr("fused_output_scale")},
+                {"fused_reshape_x", pat.Attr("fused_reshape_x")},
+                {"fused_transpose_x", pat.Attr("fused_transpose_x")},
+                {"fused_reshape_y", pat.Attr("fused_reshape_y")},
+                {"fused_transpose_y", pat.Attr("fused_transpose_y")},
+                {"fused_reshape_out", pat.Attr("fused_reshape_out")},
+                {"fused_transpose_out", pat.Attr("fused_transpose_out")},
+                {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                {"scale_x", pat.Attr("scale_x")},
+                {"scale_y", pat.Attr("scale_y")},
+                {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
+                {"scale_out", pat.Attr("scale_out")},
+                {"force_fp32_output", pat.Attr("force_fp32_output")}});
+
+    const auto &act = pat.Op(paddle::dialect::GeluOp::name(),
+                             {{"approximate", pat.Attr("approximate")}});
+    matmul({&pat.Tensor("X"), &pat.Tensor("Y"), &pat.Tensor("residual")},
+           {&pat.Tensor("Out")});
+
+    pat.Tensor("act_out") = act(pat.Tensor("Out"));
+
+    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      std::set<bool> bool_sets = {true, false};
+      auto result_x = match_ctx.Attr<bool>("transpose_x");
+      auto result_y = match_ctx.Attr<bool>("transpose_y");
+      auto act_type = match_ctx.Attr<std::string>("fuse_activation");
+      if (bool_sets.count(result_x) == 0 || bool_sets.count(result_y) == 0 ||
+          act_type != "") {
+        return false;
+      }
+      return true;
+    });
+    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      auto result_gelu = match_ctx.Attr<bool>("approximate");
+      if (!result_gelu) return false;
+      return true;
+    });
+
+    paddle::drr::ResultPattern res = pat.ResultPattern();
+
+    std::unordered_map<std::string, paddle::drr::Attribute> fused_attrs{
+        {"trans_x", pat.Attr("transpose_x")},
+        {"trans_y", pat.Attr("transpose_y")},
+        {"matmul_alpha", pat.Attr("matmul_alpha")},
+        {"fuse_activation", res.StrAttr("gelu_tanh")},
+        {"fuse_alpha", res.Float32Attr(0.0f)},
+        {"fuse_beta", res.Float32Attr(0.0f)},
+        {"fused_output_scale", pat.Attr("fused_output_scale")},
+        {"fused_reshape_x", pat.Attr("fused_reshape_x")},
+        {"fused_transpose_x", pat.Attr("fused_transpose_x")},
+        {"fused_reshape_y", pat.Attr("fused_reshape_y")},
+        {"fused_transpose_y", pat.Attr("fused_transpose_y")},
+        {"fused_reshape_out", pat.Attr("fused_reshape_out")},
+        {"fused_transpose_out", pat.Attr("fused_transpose_out")},
+        {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+        {"scale_x", pat.Attr("scale_x")},
+        {"scale_y", pat.Attr("scale_y")},
+        {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
+        {"scale_out", pat.Attr("scale_out")},
+        {"force_fp32_output", pat.Attr("force_fp32_output")}};
 
     const auto &fused_matmul = res.Op(fused_matmul_name_, fused_attrs);
 
@@ -486,6 +656,11 @@ class MatmulActivationFusePass : public pir::PatternRewritePass {
           act_op));
       benefit_idx++;
     }
+    ps.Add(paddle::drr::Create<MatmulGeluTanhFusePattern>(
+        context,
+        paddle::dialect::MatmulOp::name(),
+        paddle::onednn::dialect::FusedMatmulOp::name(),
+        benefit_idx++));
     ps.Add(paddle::drr::Create<MatmulClipFusePattern>(
         context,
         paddle::dialect::MatmulOp::name(),
@@ -500,6 +675,11 @@ class MatmulActivationFusePass : public pir::PatternRewritePass {
           act_op));
       benefit_idx++;
     }
+    ps.Add(paddle::drr::Create<FusedMatmulGeluTanhFusePattern>(
+        context,
+        paddle::onednn::dialect::FusedMatmulOp::name(),
+        paddle::onednn::dialect::FusedMatmulOp::name(),
+        benefit_idx++));
     ps.Add(paddle::drr::Create<FusedMatmulClipFusePattern>(
         context,
         paddle::onednn::dialect::FusedMatmulOp::name(),
