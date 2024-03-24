@@ -28,8 +28,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 
-#include "paddle/cinn/frontend/cluster_ops/cluster_ops.h"
-#include "paddle/cinn/frontend/cluster_ops/group_pattern.h"
+#include "paddle/cinn/frontend/group_cluster/group_cluster.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/attribute_storage.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
@@ -836,37 +835,6 @@ std::vector<GroupClusterNode> NodeMergeWithNode(
   return second_stage_output;
 }
 
-// This structure is the visitor function of fetching pattern's operator list.
-// For IS or PS patterns, directly use their operator list;
-// For Reduce patterns, the operator list is the concatenation of reduce op and
-// its inputs.
-struct GetPatternOpList {
-  std::vector<const pir::Operation*> operator()(const std::monostate& pattern) {
-    return {};
-  }
-
-  std::vector<const pir::Operation*> operator()(
-      const api::InjectiveSourcePattern<frontend::FrontendPattern>& pattern) {
-    return pattern.ops;
-  }
-
-  std::vector<const pir::Operation*> operator()(
-      const api::PartialShardablePattern<frontend::FrontendPattern>& pattern) {
-    return pattern.ops;
-  }
-
-  std::vector<const pir::Operation*> operator()(
-      const api::ReductionPattern<frontend::FrontendPattern>& pattern) {
-    std::vector<const pir::Operation*> ops_list = {
-        pattern.reduce_op_pattern.reduce_op};
-    std::vector<const pir::Operation*> input_ops =
-        std::visit(GetPatternOpList(), pattern.input);
-    ops_list.insert(ops_list.end(), input_ops.begin(), input_ops.end());
-
-    return ops_list;
-  }
-};
-
 std::vector<GroupClusterNode> NewOpMergeWithOp(
     cinn::dialect::GroupOp group_op) {
   const auto cluster_result = frontend::ClusterOps(group_op);
@@ -876,28 +844,14 @@ std::vector<GroupClusterNode> NewOpMergeWithOp(
   // cluster node.
   VLOG(4) << "Start Creating Cluster Nodes!";
   std::vector<GroupClusterNode> output_cluster_nodes;
-  for (const auto& stmts_pattern : cluster_result.loop_alignable_list) {
+  for (const auto& op_set : cluster_result) {
     GroupClusterNode cluster_node;
-    std::set<const pir::Operation*>
-        node_ops_set;  // The set of all ops in the cluster node, for deleting
-                       // repeated elements.
-    bool is_reduce_node =
-        false;  // A flag indicating whether current node is a reduce node.
-    for (const auto& pattern : stmts_pattern.stmts) {
-      std::vector<const pir::Operation*> pattern_ops =
-          std::visit(GetPatternOpList(), pattern);
-      node_ops_set.insert(pattern_ops.begin(), pattern_ops.end());
-      if (std::holds_alternative<
-              api::ReductionPattern<frontend::FrontendPattern>>(pattern)) {
-        is_reduce_node = true;
-      }
-    }
-    for (const auto& op : node_ops_set) {
+    for (const auto* op : op_set) {
       cluster_node.ops.push_back(const_cast<pir::Operation*>(op));
+      auto op_kind = cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op);
+      cluster_node.group_kind =
+          cluster_node.group_kind > op_kind ? cluster_node.group_kind : op_kind;
     }
-    cluster_node.group_kind = is_reduce_node
-                                  ? cinn::hlir::framework::kReduction
-                                  : cinn::hlir::framework::kInjective;
     output_cluster_nodes.push_back(cluster_node);
   }
   VLOG(4) << "Finished Creating Cluster Nodes!";
