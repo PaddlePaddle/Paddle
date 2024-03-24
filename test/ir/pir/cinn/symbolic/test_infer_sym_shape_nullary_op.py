@@ -113,5 +113,28 @@ class GaussianOpInferSymbolicShapeTest(TestBase):
         return True
 
 
+class UniformNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        out = paddle.tensor.random.uniform(shape=[12, 32], min=1.0, max=2.0)
+        return out
+
+
+class UniformOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.expected = ['shape[12, 32], data[NULL]']
+
+    def test_eval_symbolic(self):
+        net = UniformNet()
+        x_spec = InputSpec(shape=[None, None, 2], dtype='float32')
+        input_spec = [x_spec]
+        net = apply_to_static(net, False, input_spec)
+        net.eval()
+        check_infer_results(net, input_spec, 'pd_op.uniform', self.expected)
+        return True
+
+
 if __name__ == '__main__':
     unittest.main()

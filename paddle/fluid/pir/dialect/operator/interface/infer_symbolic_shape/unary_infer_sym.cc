@@ -758,6 +758,7 @@ bool TopkOpInferSymbolicShape(pir::Operation *op,
   }();
 
   int x_rank = in_dims_sym.size();
+
   int k = k_shape_or_data.data().value()[0].Get<int64_t>();
 
   if (axis < 0) axis += x_rank;
@@ -777,6 +778,7 @@ bool TopkOpInferSymbolicShape(pir::Operation *op,
       symbol::TensorShapeOrDataDimExprs(out_sym_shape)};
 
   shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+  shape_analysis->SetShapeOrDataForValue(op->result(1), shape_data);
 
   return true;
 }

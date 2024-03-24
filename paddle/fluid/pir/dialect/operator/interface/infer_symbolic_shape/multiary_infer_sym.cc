@@ -126,6 +126,7 @@ bool LinspaceOpInferSymbolicShape(
     return symbol::ShapeOrDataDimExprs{
         symbol::TensorShapeOrDataDimExprs(out_dims)};
   }();
+  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
   return true;
 }
 bool LogspaceOpInferSymbolicShape(
