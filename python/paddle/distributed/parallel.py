@@ -717,6 +717,15 @@ class ParallelEnv:
         assert (
             self._nrings < 9
         ), "nccl_nrings should be less than 9, which is enough in most scenarios."
+        print(
+            f"gongwb env: s_rank={self._rank}, \
+              s_world_size={self._world_size}, \
+             dev_type={self._device_type}, \
+             device_id={self._device_id}, \
+             trainer_endpoints={self._trainer_endpoints}, \
+             current_endpoint={self._current_endpoint}, \
+             nrings={self._nrings}"
+        )
 
     @property
     def rank(self):
@@ -1003,6 +1012,10 @@ def init_parallel_env():
     global _global_parallel_env
     # when call init_parallel_env, need update `_global_parallel_env`
     _global_parallel_env = ParallelEnv()
+    print(
+        f"gongwb get global_parallel_env: {_global_parallel_env}",
+        flush=True,
+    )
     parallel_env = _global_parallel_env
     # if not parallel, `init_parallel_env` do nothing
     if parallel_env.world_size < 2:
@@ -1013,6 +1026,7 @@ def init_parallel_env():
     # NOTE(xiongkun): support cpu gloo only, add this environment variable to
     #                 enable cpu only gloo parallel training)
     backend = os.environ.get('PADDLE_DISTRI_BACKEND', 'auto')
+    print("gongwb backen:", backend, flush=True)
     is_cpu_only = _is_cpuonly(backend)
     # 1. gpu xpu check, must be gpu or xpu,
     if not (

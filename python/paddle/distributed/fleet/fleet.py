@@ -273,6 +273,7 @@ class Fleet:
                     "The dygraph parallel environment has been initialized."
                 )
             else:
+                print("gongwb: flags_nccl_nrings", flush=True)
                 # FLAGS_nccl_nrings is used for dynamic graph multi-stream communication
                 if "FLAGS_nccl_nrings" in os.environ:
                     logger.warning(
@@ -286,6 +287,11 @@ class Fleet:
                     )
                 paddle.distributed.init_parallel_env()
 
+            print(
+                "gongwb hter_ccl_mode:",
+                self._user_defined_strategy.heter_ccl_mode,
+                flush=True,
+            )
             # hybrid parallel not support for npu/xpu
             if not self._user_defined_strategy.heter_ccl_mode:
                 # init hybrid parallel environment in dygraph

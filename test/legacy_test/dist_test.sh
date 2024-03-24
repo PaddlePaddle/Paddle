@@ -17,6 +17,8 @@
 unset https_proxy http_proxy
 export FLAGS_rpc_disable_reuse_port=1
 
+export PYTHONPATH=/usr/local/Ascend/ascend-toolkit/latest/python/site-packages:/usr/local/Ascend/ascend-toolkit/latest/opp/built-in/op_impl/ai_core/tbe:/root/go/src/github.com/paddlepaddle/Paddle/build/python:$PYTHONPATH
+
 name=${TEST_TARGET_NAME}
 TEST_TIMEOUT=${TEST_TIMEOUT}
 
