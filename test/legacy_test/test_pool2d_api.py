@@ -357,6 +357,22 @@ class TestPool2D_API(unittest.TestCase):
             result = avg_pool2d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
+    def check_max_pool_return_mask_ceil(self, place):
+        with base.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 33, 33]).astype("float32")
+            input = paddle.to_tensor(input_np)
+            result, _ = max_pool2d(
+                input, kernel_size=5, ceil_mode=True, return_mask=True
+            )
+            result_np = pool2D_forward_naive(
+                input_np,
+                ksize=[5, 5],
+                strides=[5, 5],
+                paddings=[0, 0],
+                ceil_mode=True,
+            )
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
     def test_pool2d(self):
         for place in self.places:
             self.check_max_dygraph_results(place)
@@ -368,6 +384,7 @@ class TestPool2D_API(unittest.TestCase):
             self.check_max_dygraph_padding_results(place)
             self.check_max_dygraph_ceilmode_results(place)
             self.check_max_dygraph_nhwc_results(place)
+            self.check_max_pool_return_mask_ceil(place)
 
     @test_with_pir_api
     def test_pool2d_static(self):

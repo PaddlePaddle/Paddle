@@ -629,7 +629,7 @@ def max_pool1d(
     if in_dynamic_or_pir_mode():
         if return_mask:
             pool_out = _C_ops.max_pool2d_with_index(
-                x, kernel_size, stride, padding, False, False
+                x, kernel_size, stride, padding, False, False, ceil_mode
             )
             return (
                 (squeeze(pool_out[0], [2]), squeeze(pool_out[1], [2]))
@@ -1201,7 +1201,7 @@ def max_pool2d(
     if in_dynamic_or_pir_mode():
         if return_mask:
             output = _C_ops.max_pool2d_with_index(
-                x, kernel_size, stride, padding, False, False
+                x, kernel_size, stride, padding, False, False, ceil_mode
             )
             return output if return_mask else output[0]
         else:
@@ -1366,7 +1366,7 @@ def max_pool3d(
     if in_dynamic_or_pir_mode():
         if return_mask:
             output = _C_ops.max_pool3d_with_index(
-                x, kernel_size, stride, padding, False, False
+                x, kernel_size, stride, padding, False, False, ceil_mode
             )
             return output if return_mask else output[0]
         else:
