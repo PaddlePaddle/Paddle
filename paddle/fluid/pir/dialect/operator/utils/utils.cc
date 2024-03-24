@@ -91,7 +91,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     FakeQuantizeAbsMaxOp::name(),
     // FakeQuantOrWithDequantAbsMaxOp::name(),
     FakeQuantizeDequantizeMovingAverageAbsMaxOp::name(),
-    // StraightThroughEstimatorGradOp::name(),
+    StraightThroughEstimatorGradOp::name(),
     FakeQuantizeRangeAbsMaxOp::name(),
     FakeQuantizeMovingAverageAbsMaxOp::name(),
     DequantizeLinearOp::name(),

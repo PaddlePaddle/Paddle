@@ -1887,7 +1887,7 @@
     func: fake_quantize_dequantize_moving_average_abs_max
     data_type: x
   optional: out_state, out_accum
-  backward: fake_quantize_dequantize_moving_average_abs_max_grad
+  backward: straight_through_estimator_grad
 
 - op: fake_quantize_moving_average_abs_max
   args: (Tensor x, Tensor in_scale, Tensor in_accum, Tensor in_state, float moving_rate = 0.9, int bit_length = 8, int round_type = 0, bool is_test = false)
