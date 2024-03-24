@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/elementwise_utils.h"
 
 namespace phi {
 
@@ -174,24 +175,249 @@ struct DivDoubleDY_Only_DDY {
   }
 };
 
-// template <typename T>
-// struct DivDoubleDDOut {
-//   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-//     return (x - out * y) / dout;
-//   }
-// };
+// ddOut = ddX / Y - Out * ddY / Y = (ddX - Out * ddY) / Y
+template <typename T>
+struct DivDoubleDDOut {
+  HOSTDEVICE T operator()(const T& ddx,
+                          const T& ddy,
+                          const T& y,
+                          const T& out) const {
+    return (ddx - out * ddy) / y;
+  }
+};
 
-// template <typename T>
-// struct DivDoubleDDOut_Only_DDX {
-//   HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return x / dout; }
-// };
+template <typename T>
+struct DivDoubleDDOut_Only_DDY {
+  HOSTDEVICE T operator()(const T& ddx,
+                          const T& ddy,
+                          const T& y,
+                          const T& out) const {
+    return -out * ddy / y;
+  }
+};
 
-// template <typename T>
-// struct DivDoubleDDOut_Only_DDY {
-//   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-//     return -out * y / dout;
-//   }
-// };
+template <typename T, typename DDout_OP, typename OutType = T>
+void ComputeDDoutWithoutBroadcast(const CPUContext& dev_ctx UNUSED,
+                                  const phi::DenseTensor& ddx,
+                                  const phi::DenseTensor& ddy,
+                                  const phi::DenseTensor& y,
+                                  const phi::DenseTensor& out,
+                                  phi::DenseTensor* ddout,
+                                  DDout_OP dout_op) {
+  auto out_numel = out.numel();
+  auto* ddx_data = ddx.data<T>();
+  auto* ddy_data = ddy.data<T>();
+  auto* y_data = y.data<T>();
+  auto* out_data = out.data<T>();
+  auto* ddout_data = ddout->data<T>();
+  for (int i = 0; i < out_numel; i++) {
+    ddout_data[i] = dout_op(ddx_data[i], ddy_data[i], y_data[i], out_data[i]);
+  }
+}
+
+template <typename T, typename DDout_OP, typename OutType = T>
+void ComputeDDoutWithBroadcast(const CPUContext& dev_ctx UNUSED,
+                               const phi::DenseTensor& ddx,
+                               const phi::DenseTensor& ddy,
+                               const phi::DenseTensor& y,
+                               const phi::DenseTensor& out,
+                               phi::DenseTensor* ddout,
+                               const int* x_dims_array,
+                               const int* y_dims_array,
+                               const int* out_dims_array,
+                               const int max_dim,
+                               DDout_OP dout_op) {
+  auto out_numel = out.numel();
+  auto* ddx_data = ddx.data<T>();
+  auto* ddy_data = ddy.data<T>();
+  auto* y_data = y.data<T>();
+  auto* out_data = out.data<T>();
+  auto* ddout_data = ddout->data<T>();
+  std::vector<int> index_array(max_dim, 0);
+  for (int i = 0; i < out_numel; i++) {
+    int x_index = phi::funcs::GetElementwiseIndex(
+        x_dims_array, max_dim, index_array.data());
+    int y_index = phi::funcs::GetElementwiseIndex(
+        y_dims_array, max_dim, index_array.data());
+    ddout_data[i] = dout_op(
+        ddx_data[x_index], ddy_data[y_index], y_data[y_index], out_data[i]);
+    phi::funcs::UpdateElementwiseIndexArray(
+        out_dims_array, max_dim, index_array.data());
+  }
+}
+
+#if defined(__NVCC__)
+
+template <typename T, typename DDout_OP, typename OutType = T>
+__global__ void ComputeDDoutWithoutBroadcastGPUKernel(const T* ddx_data,
+                                                      const T* ddy_data,
+                                                      const T* y_data,
+                                                      const T* out_data,
+                                                      T* ddout_data,
+                                                      int numel,
+                                                      DDout_OP dout_op) {
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  if (tid >= numel) return;
+  ddout_data[tid] =
+      dout_op(ddx_data[tid], ddy_data[tid], y_data[tid], out_data[tid]);
+}
+template <typename T, typename DDout_OP, typename OutType = T>
+void ComputeDDoutWithoutBroadcast(const GPUContext& dev_ctx UNUSED,
+                                  const phi::DenseTensor& ddx,
+                                  const phi::DenseTensor& ddy,
+                                  const phi::DenseTensor& y,
+                                  const phi::DenseTensor& out,
+                                  phi::DenseTensor* ddout,
+                                  DDout_OP dout_op) {
+  auto out_numel = out.numel();
+  auto* ddx_data = ddx.data<T>();
+  auto* ddy_data = ddy.data<T>();
+  auto* y_data = y.data<T>();
+  auto* out_data = out.data<T>();
+  auto* ddout_data = ddout->data<T>();
+  int block = 512;
+  int64_t grid = (out_numel + block - 1) / block;
+  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+  ComputeDDoutWithoutBroadcastGPUKernel<T, DDout_OP, T>
+      <<<grid, block, 0, stream>>>(
+          ddx_data, ddy_data, y_data, out_data, ddout_data, out_numel, dout_op);
+}
+
+template <typename T, typename DDout_OP, typename OutType = T>
+__global__ void ComputeDDoutWithBroadcastGPUKernel(const T* ddx_data,
+                                                   const T* ddy_data,
+                                                   const T* y_data,
+                                                   const T* out_data,
+                                                   T* ddout_data,
+                                                   int numel,
+                                                   const int* x_dims_array,
+                                                   const int* y_dims_array,
+                                                   const int* out_dims_array,
+                                                   const int max_dim,
+                                                   DDout_OP dout_op) {
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  if (tid >= numel) return;
+  int x_index = 0, y_index = 0, x_index_prod = 1, y_index_prod = 1,
+      out_index = tid, dim_index;
+  for (int64_t i = max_dim - 1; i >= 0; i--) {
+    if (out_index == 0) break;
+    dim_index = out_index % out_dims_array[i];
+    out_index = out_index / out_dims_array[i];
+    if (x_dims_array[i] > 1) {
+      x_index += dim_index * x_index_prod;
+      x_index_prod *= x_dims_array[i];
+    }
+    if (y_dims_array[i] > 1) {
+      y_index += dim_index * y_index_prod;
+      y_index_prod *= y_dims_array[i];
+    }
+  }
+  ddout_data[tid] = dout_op(
+      ddx_data[x_index], ddy_data[y_index], y_data[y_index], out_data[tid]);
+}
+
+template <typename T, typename DDout_OP, typename OutType = T>
+void ComputeDDoutWithBroadcast(const GPUContext& dev_ctx UNUSED,
+                               const phi::DenseTensor& ddx,
+                               const phi::DenseTensor& ddy,
+                               const phi::DenseTensor& y,
+                               const phi::DenseTensor& out,
+                               phi::DenseTensor* ddout,
+                               const int* x_dims_array,
+                               const int* y_dims_array,
+                               const int* out_dims_array,
+                               const int max_dim,
+                               DDout_OP dout_op) {
+  auto out_numel = out.numel();
+  auto* ddx_data = ddx.data<T>();
+  auto* ddy_data = ddy.data<T>();
+  auto* y_data = y.data<T>();
+  auto* out_data = out.data<T>();
+  auto* ddout_data = ddout->data<T>();
+  DenseTensor x_dims_array_gpu;
+  x_dims_array_gpu.Resize({max_dim});
+  int* x_dims_array_gpu_data = dev_ctx.template Alloc<int>(&x_dims_array_gpu);
+  cudaMemcpy(x_dims_array_gpu_data,
+             x_dims_array,
+             sizeof(int) * max_dim,
+             cudaMemcpyHostToDevice);
+  DenseTensor y_dims_array_gpu;
+  y_dims_array_gpu.Resize({max_dim});
+  int* y_dims_array_gpu_data = dev_ctx.template Alloc<int>(&y_dims_array_gpu);
+  cudaMemcpy(y_dims_array_gpu_data,
+             y_dims_array,
+             sizeof(int) * max_dim,
+             cudaMemcpyHostToDevice);
+  DenseTensor out_dims_array_gpu;
+  out_dims_array_gpu.Resize({max_dim});
+  int* out_dims_array_gpu_data =
+      dev_ctx.template Alloc<int>(&out_dims_array_gpu);
+  cudaMemcpy(out_dims_array_gpu_data,
+             out_dims_array,
+             sizeof(int) * max_dim,
+             cudaMemcpyHostToDevice);
+  int block = 512;
+  int64_t grid = (out_numel + block - 1) / block;
+  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+  ComputeDDoutWithBroadcastGPUKernel<T, DDout_OP, T>
+      <<<grid, block, 0, stream>>>(ddx_data,
+                                   ddy_data,
+                                   y_data,
+                                   out_data,
+                                   ddout_data,
+                                   out_numel,
+                                   x_dims_array_gpu_data,
+                                   y_dims_array_gpu_data,
+                                   out_dims_array_gpu_data,
+                                   max_dim,
+                                   dout_op);
+}
+
+#endif
+
+template <typename DeviceContext,
+          typename T,
+          typename DDout_OP,
+          typename Tout = T>
+void DivDoubleDDoutCompute(const DeviceContext& dev_ctx,
+                           const phi::DenseTensor& ddx,
+                           const phi::DenseTensor& ddy,
+                           const phi::DenseTensor& y,
+                           const phi::DenseTensor& out,
+                           int axis,
+                           phi::DenseTensor* ddout,
+                           DDout_OP dout_op) {
+  auto x_dims = ddx.dims();
+  auto y_dims = ddy.dims();
+  if (x_dims == y_dims) {
+    ComputeDDoutWithoutBroadcast<T, DDout_OP, T>(
+        dev_ctx, ddx, ddy, y, out, ddout, dout_op);
+  } else {
+    int max_dim = std::max(x_dims.size(), y_dims.size());
+    axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
+    std::vector<int> x_dims_array(max_dim, 0);
+    std::vector<int> y_dims_array(max_dim, 0);
+    std::vector<int> out_dims_array(max_dim, 0);
+    phi::funcs::GetBroadcastDimsArrays(x_dims,
+                                       y_dims,
+                                       x_dims_array.data(),
+                                       y_dims_array.data(),
+                                       out_dims_array.data(),
+                                       max_dim,
+                                       axis);
+    ComputeDDoutWithBroadcast<T, DDout_OP, T>(dev_ctx,
+                                              ddx,
+                                              ddy,
+                                              y,
+                                              out,
+                                              ddout,
+                                              x_dims_array.data(),
+                                              y_dims_array.data(),
+                                              out_dims_array.data(),
+                                              max_dim,
+                                              dout_op);
+  }
+}
 
 template <typename T, typename Context>
 void DivideDoubleGradKernel(const Context& dev_ctx,
@@ -318,36 +544,25 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
           dev_ctx, *ddx_tensor, y, ddout, axis);
     } else if (!ddx_tensor && ddy_tensor) {
       // ddOut = - Out * ddY / Y
-      funcs::DefaultElementwiseOperator<Context,
-                                        T,
-                                        funcs::MultiplyFunctor<T>,
-                                        funcs::InverseMultiplyFunctor<T>>(
-          dev_ctx, out, *ddy_tensor, &tmp, axis);
-      // VLOG(4) << "5";
-      funcs::DefaultElementwiseOperator<Context,
-                                        T,
-                                        funcs::DivideFunctor<T>,
-                                        funcs::InverseDivideFunctor<T>>(
-          dev_ctx, tmp, y, ddout, axis);
-      auto& place = *dev_ctx.eigen_device();
-      auto ddout_result = phi::EigenVector<T>::Flatten(*ddout);
-      ddout_result.device(place) = static_cast<T>(-1) * ddout_result;
+      DivDoubleDDoutCompute<Context, T, DivDoubleDDOut_Only_DDY<T>, T>(
+          dev_ctx,
+          *ddx_tensor,
+          *ddy_tensor,
+          y,
+          out,
+          axis,
+          ddout,
+          DivDoubleDDOut_Only_DDY<T>());
     } else {
-      funcs::DefaultElementwiseOperator<Context,
-                                        T,
-                                        funcs::MultiplyFunctor<T>,
-                                        funcs::InverseMultiplyFunctor<T>>(
-          dev_ctx, out, *ddy_tensor, &tmp, axis);
-      funcs::DefaultElementwiseOperator<Context,
-                                        T,
-                                        funcs::SubtractFunctor<T>,
-                                        funcs::InverseSubtractFunctor<T>>(
-          dev_ctx, *ddx_tensor, tmp, &tmp, axis);
-      funcs::DefaultElementwiseOperator<Context,
-                                        T,
-                                        funcs::DivideFunctor<T>,
-                                        funcs::InverseDivideFunctor<T>>(
-          dev_ctx, tmp, y, ddout, axis);
+      DivDoubleDDoutCompute<Context, T, DivDoubleDDOut<T>, T>(
+          dev_ctx,
+          *ddx_tensor,
+          *ddy_tensor,
+          y,
+          out,
+          axis,
+          ddout,
+          DivDoubleDDOut<T>());
     }
   }
 
