@@ -29,7 +29,9 @@ if(WITH_TESTING)
          eigen3
          dlpack
          common
-         allocator)
+         init
+         allocator
+         phi_utils)
   if(WITH_MKLDNN)
     add_dependencies(paddle_gtest_main_new mkldnn)
   endif()
