@@ -23,15 +23,7 @@ if(WITH_TESTING)
   cc_library(
     paddle_gtest_main_new
     SRCS paddle_gtest_main.cc
-    DEPS gtest
-         xxhash
-         framework_proto
-         eigen3
-         dlpack
-         common
-         init
-         allocator
-         phi_utils)
+    DEPS ${paddle_gtest_main_deps})
   if(WITH_MKLDNN)
     add_dependencies(paddle_gtest_main_new mkldnn)
   endif()
