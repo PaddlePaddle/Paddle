@@ -74,6 +74,11 @@ PD_DEFINE_bool(group_schedule_tiling_first,
                BoolFromEnv("FLAGS_group_schedule_tiling_first", false),
                "Whether to enable new group scheduler tiling first strategy.");
 
+PD_DEFINE_bool(cinn_new_cluster_op_method,
+               BoolFromEnv("FLAGS_cinn_new_cluster_op_method", false),
+               "Whether to enable newly developed clustering method of group "
+               "op for cinn.");
+
 PD_DEFINE_bool(support_reduce_stride_read,
                BoolFromEnv("FLAGS_support_reduce_stride_read", false),
                "Whether to enable new group scheduler tiling first strategy.");
@@ -263,6 +268,11 @@ PD_DEFINE_string(cinn_convert_dynamic_dim_to_static_dim,
                                ""),
                  "A test flag whether to convert dynamic to static dim, e.g.: "
                  "FLAGS_cinn_convert_dynamic_dim_to_static_dim=s0:128,s1:299");
+
+PD_DEFINE_string(cinn_symbol_dim_constraints,
+                 StringFromEnv("FLAGS_cinn_symbol_dim_constraints", ""),
+                 "A flag to add constraints for symbol dim, e.g.: "
+                 "FLAGS_cinn_symbol_dim_constraints=S0==S1,S1==S2");
 
 namespace cinn {
 namespace runtime {

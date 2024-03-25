@@ -912,9 +912,36 @@ DimExpr Simplify(const DimExpr& expr) {
   return ret;
 }
 
+template <typename T>
+bool IsDimExprGTOne(const T& dim_expr) {
+  return false;
+}
+
+bool IsDimExprGTOne(const std::int64_t& dim_expr) { return dim_expr > 1; }
+
+bool IsDimExprGTOne(const symbol::Broadcast<symbol::DimExpr>& dim_expr) {
+  for (const auto& expr : *(dim_expr.operands)) {
+    if (IsDimExprGTOne(expr)) return true;
+  }
+  return false;
+}
+
+bool IsDimExprGTOne(const symbol::Add<symbol::DimExpr>& dim_expr) {
+  return true;
+}
+
+bool IsDimExprGTOne(const symbol::DimExpr& dim_expr) {
+  return std::visit([](const auto& expr) { return IsDimExprGTOne(expr); },
+                    dim_expr.variant());
+}
+
 }  // namespace
 
 DimExpr SimplifyDimExpr(const DimExpr& expr) { return Simplify(expr); }
+
+bool IsDimExprGreaterThanOne(const symbol::DimExpr& dim_expr) {
+  return IsDimExprGTOne(dim_expr);
+}
 
 }  // namespace symbol
 

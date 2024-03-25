@@ -22,6 +22,7 @@
 #include "paddle/cinn/hlir/framework/op_lowering_impl_base.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/framework/pir/group.h"
+#include "paddle/cinn/hlir/framework/pir/trivial_op_impl.h"
 #include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
@@ -260,6 +261,11 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
                                const ::pir::Value& value);
 
   std::shared_ptr<GroupInfo> GetGroupInfo(
+      const GroupPtr& group,
+      const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map);
+
+  std::shared_ptr<GroupInfo> GetGroupInfo(
+      const FusionGroupInfo& fusion_group_info,
       const GroupPtr& group,
       const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map);
 
