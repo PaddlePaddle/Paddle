@@ -44,6 +44,7 @@ void InstanceNormKernel(const Context& dev_ctx,
   const int C = static_cast<int>(x_dims[1]);
   const int NxC = N * C;
   const int sample_size = static_cast<int>(x.numel() / N / C);
+  T HxW = static_cast<T>(sample_size);
   auto* place = dev_ctx.eigen_device();
 
   Eigen::DSizes<int, 2> shape(NxC, sample_size);
@@ -88,9 +89,11 @@ void InstanceNormKernel(const Context& dev_ctx,
   auto x_e = EigenVector<T>::Flatten(x);
   auto x_arr = x_e.reshape(shape);
 
-  saved_mean_e.device(*place) = x_arr.mean(rdims);
+  saved_mean_e.device(*place) = x_arr.sum(rdims) / HxW;
+
   auto saved_variance_arr =
-      (x_arr - saved_mean_e.broadcast(bcast)).square().mean(rdims) + epsilon;
+      (x_arr - saved_mean_e.broadcast(bcast)).square().sum(rdims) / HxW +
+      epsilon;
 
   saved_variance_e.device(*place) = saved_variance_arr.sqrt().inverse();
 
