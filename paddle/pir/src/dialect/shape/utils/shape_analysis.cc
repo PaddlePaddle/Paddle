@@ -309,7 +309,7 @@ bool CanDimExprSubstitute(const symbol::DimExpr& lhs,
                           const symbol::DimExpr& rhs) {
   int priority_lhs = GetDimExprPriority(lhs);
   int priority_rhs = GetDimExprPriority(rhs);
-  if (priority_lhs >= 2 || priority_rhs >= 2) return false;
+  if (priority_lhs >= 2 && priority_rhs >= 2) return false;
   return true;
 }
 
@@ -346,8 +346,15 @@ void ShapeConstraintIRAnalysis::AddEqCstr(const symbol::DimExpr& lhs,
                                           const symbol::DimExpr& rhs) {
   if (lhs == rhs) return;
   eq_cstr_set.Union(lhs, rhs);
-  VLOG(1) << "AddEqCstr the constraint: " << lhs << " == " << rhs;
+  VLOG(8) << "AddEqCstr the constraint: " << lhs << " == " << rhs;
 
+  auto PrintShapeOrData = [&]() {
+    for (auto it = value_to_shape_or_data_.begin();
+         it != value_to_shape_or_data_.end();
+         it++) {
+      VLOG(8) << it->second;
+    }
+  };
   if (CanDimExprSubstitute(lhs, rhs)) {
     std::unordered_map<symbol::DimExpr, symbol::DimExpr> substitution_pattern;
     int is_lhs_prior_rhs = CompareDimExpr(lhs, rhs);
@@ -357,12 +364,8 @@ void ShapeConstraintIRAnalysis::AddEqCstr(const symbol::DimExpr& lhs,
       substitution_pattern[lhs] = rhs;
     }
 
-    VLOG(1) << "before substitute##########";
-    for (auto it = value_to_shape_or_data_.begin();
-         it != value_to_shape_or_data_.end();
-         it++) {
-      VLOG(1) << it->second;
-    }
+    VLOG(8) << "before substitute##########";
+    PrintShapeOrData();
     for (auto it = value_to_shape_or_data_.begin();
          it != value_to_shape_or_data_.end();
          it++) {
@@ -370,12 +373,8 @@ void ShapeConstraintIRAnalysis::AddEqCstr(const symbol::DimExpr& lhs,
           SubstituteShapeOrData(it->second, substitution_pattern);
       SetShapeOrDataForValue(it->first, substituted_shape_or_data);
     }
-    VLOG(1) << "after substitute##########";
-    for (auto it = value_to_shape_or_data_.begin();
-         it != value_to_shape_or_data_.end();
-         it++) {
-      VLOG(1) << it->second;
-    }
+    VLOG(8) << "after substitute##########";
+    PrintShapeOrData();
   }
 }
 
