@@ -578,7 +578,14 @@ void BindAutoParallel(py::module *m) {
       .def("__str__", &TensorDistAttr::to_string)
       .def(
           "_is_partial", &TensorDistAttr::is_partial, py::arg("mesh_axis") = -1)
+      .def("_set_partial_status",
+           static_cast<void (TensorDistAttr::*)(
+               const std::vector<int64_t> &dims, const phi::ReduceType &type)>(
+               &TensorDistAttr::set_partial_status),
+           py::arg("dims"),
+           py::arg("type") = phi::ReduceType::kRedSum)
       .def("_partial_dims", &TensorDistAttr::partial_dims)
+      .def("_partial_status", &TensorDistAttr::partial_status_for_python)
       .def("_clean_partial_dims", &TensorDistAttr::clean_partial_dims)
       .def("_set_partial_dims",
            [](TensorDistAttr &self, const std::vector<int64_t> &dims) {

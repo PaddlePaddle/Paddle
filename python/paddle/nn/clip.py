@@ -782,9 +782,14 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     else clip_var
                 )
                 if clip_input.process_mesh != g.process_mesh:
-                    clip_input = paddle.distributed.reshard(
-                        clip_input, g.process_mesh, clip_input.placements
-                    )
+                    if set(g.process_mesh.process_ids) < set(
+                        clip_input.process_mesh.process_ids
+                    ):
+                        clip_input = clip_input._local_value()
+                    else:
+                        clip_input = paddle.distributed.reshard(
+                            clip_input, g.process_mesh, clip_input.placements
+                        )
                 new_grad = paddle.multiply(g, clip_input)
                 params_and_grads.append((p, new_grad))
             else:
