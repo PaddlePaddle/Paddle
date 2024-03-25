@@ -330,6 +330,35 @@ bool MinOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool NonzeroOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  const auto &x_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &x_shape = x_shape_or_data.shape();
+  const auto &x_data = x_shape_or_data.data();
+
+  PADDLE_ENFORCE_GE(
+      x_shape.size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "Input(x) should have number of dimension at least 1."));
+
+  PADDLE_ENFORCE_EQ(
+      x_data.has_value(),
+      false,
+      phi::errors::InvalidArgument(
+          "InferSymbolicShape of NonzeroOp only support input with "
+          "value now."));
+
+  auto out_shape = x_shape;
+  out_shape.insert(out_shape.begin(), -1);
+
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(out_shape)};
+  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+  return true;
+}
+
 bool PadOpInferSymbolicShape(pir::Operation *op,
                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
   PADDLE_THROW(phi::errors::Unimplemented(

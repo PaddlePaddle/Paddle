@@ -2094,6 +2094,7 @@
   kernel :
     func : nonzero
     data_type: condition
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : npu_identity
   args : (Tensor x, int format = -1)
