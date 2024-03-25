@@ -128,7 +128,7 @@ class Pipeline1F1BPass(PipelinePassBase):
                 break
 
             backward_op_to_overlap = backward_ops[backward_op_id]
-            backward_cost_to_overlap = 400
+            backward_cost_to_overlap = 350
             backward_op_id += 1
 
             forward_op_to_overlap = forward_ops[forward_op_id]
@@ -143,6 +143,23 @@ class Pipeline1F1BPass(PipelinePassBase):
             )
             '''
 
+            if backward_cost_to_overlap < forward_cost_to_overlap:
+                section_num = (
+                    forward_cost_to_overlap + backward_cost_to_overlap - 1
+                ) // backward_cost_to_overlap
+                if self._split_large_cost_op(
+                    forward_program, forward_op_id, section_num
+                ):
+                    forward_op_id += 1
+                    forward_op_to_overlap = forward_ops[forward_op_id]
+                    forward_cost_to_overlap = self._op_cost(
+                        forward_op_to_overlap
+                    )
+                    # Debug messages:
+                    logger.info(
+                        f"forward_op_to_overlap : {forward_op_to_overlap}, cost = {self._op_cost(forward_op_to_overlap)}"
+                    )
+
             while (
                 forward_op_id < num_forward_ops
                 and backward_cost_to_overlap >= forward_cost_to_overlap
@@ -150,12 +167,11 @@ class Pipeline1F1BPass(PipelinePassBase):
                 forward_op_id += 1
                 forward_op_to_overlap = forward_ops[forward_op_id]
                 forward_cost_to_overlap += self._op_cost(forward_op_to_overlap)
-                '''
+
                 # Debug messages:
                 logger.info(
                     f"forward_op_to_overlap : {forward_op_to_overlap}, cost = {self._op_cost(forward_op_to_overlap)}"
                 )
-                '''
 
                 if self.is_comm_op_valid_to_overlap(
                     forward_ops[forward_op_id - 1]
@@ -301,6 +317,7 @@ class Pipeline1F1BPass(PipelinePassBase):
     def _op_cost(self, op):
         handwritten_cost_map = {
             "c_allreduce_sum": 0,
+            "concat": 50,
             "elementwise_add": 40,
             "split": 76,
             "transpose2": 40,
@@ -319,14 +336,20 @@ class Pipeline1F1BPass(PipelinePassBase):
         if op_type == "matmul_v2":
             var_name = op.output_arg_names[0]
             shape = op.block._var_recursive(var_name).shape
-            if shape == (1, 1024, 6144):
-                return 399
+            if shape == (1, 16, 1024, 128):
+                return 95
             elif shape == (1, 16, 1024, 1024):
                 return 112
-            elif shape == (1, 16, 1024, 128):
-                return 95
+            elif shape == (1, 251, 8192):
+                return 275
+            elif shape == (1, 502, 8192):
+                return 550
             elif shape == (1, 1024, 4096):
                 return 244
+            elif shape == (1, 1024, 6144):
+                return 345
+            elif shape == (1, 1024, 8192):
+                return 1100
 
         if op_type == "scale":
             var_name = op.output_arg_names[0]
@@ -380,6 +403,105 @@ class Pipeline1F1BPass(PipelinePassBase):
         logger.debug(f"jobs_in_stable_phase = {self.jobs_in_stable_phase}")
 
         return types, sub_programs
+
+    def _split_large_cost_op(self, program, op_id, section_num):
+        block = program.global_block()
+        op_to_split = block.ops[op_id]
+
+        if not (
+            op_to_split.type == "matmul_v2"
+            and op_to_split.attr("trans_x") is False
+            and op_to_split.attr("trans_y") is False
+        ):
+            logger.info(f"Unsupport split large cost op: {op_to_split}.")
+            return False
+
+        def split_var(block, var_name, section_num):
+            var = block.var(var_name)
+            shape = list(var.shape)
+
+            first_splitable_axis = 0
+            while (
+                first_splitable_axis < len(shape)
+                and shape[first_splitable_axis] < 2
+            ):
+                first_splitable_axis += 1
+
+            sections = []
+            split_var_names = []
+            for i in range(section_num):
+                section = (
+                    (
+                        shape[first_splitable_axis]
+                        - shape[first_splitable_axis]
+                        // section_num
+                        * (section_num - 1)
+                    )
+                    if i == section_num - 1
+                    else (shape[first_splitable_axis] // section_num)
+                )
+                sections.append(section)
+                split_var_names.append(
+                    block.create_var(
+                        name=f"{var_name}@split_{i}",
+                        dtype=var.dtype,
+                        shape=shape[:first_splitable_axis]
+                        + [section]
+                        + shape[first_splitable_axis + 1 :],
+                        persistable=False,
+                    )
+                )
+
+            return first_splitable_axis, split_var_names, sections
+
+        # Split large-cost matmul into multiple small-cost op.
+        # Replace Out = matmul(X, Y) with:
+        # (X0, X1, ...) = split(X)
+        # Out0 = matmul(X0, Y)
+        # Out1 = matmul(X1, Y)
+        # ...
+        # Out = concat(Out0, Out1, ...)
+        x = op_to_split.input("X")[0]
+        x_split_axis, x_split_var_names, x_sections = split_var(
+            block, x, section_num
+        )
+        block._insert_op_without_sync(
+            index=op_id + 1,
+            type="split",
+            inputs={"X": x},
+            outputs={"Out": x_split_var_names},
+            attrs={
+                "sections": x_sections,
+                "axis": x_split_axis,
+            },
+        )
+
+        y = op_to_split.input("Y")[0]
+        out = op_to_split.output("Out")[0]
+        out_split_axis, out_split_var_names, out_sections = split_var(
+            block, out, section_num
+        )
+        for i in range(section_num):
+            block._insert_op_without_sync(
+                index=op_id + i + 2,
+                type="matmul_v2",
+                inputs={"X": x_split_var_names[i], "Y": y},
+                outputs={"Out": out_split_var_names[i]},
+                attrs={"trans_x": False, "trans_y": False},
+            )
+
+        block._insert_op_without_sync(
+            index=op_id + section_num + 2,
+            type="concat",
+            inputs={"X": out_split_var_names},
+            outputs={"Out": out},
+            attrs={"axis": out_split_axis},
+        )
+
+        block._remove_op(op_id)
+        block._sync_with_cpp()
+
+        return True
 
     def _split_program_for_overlapping(self, job_type, program, split_points):
         assert job_type in [
