@@ -1087,12 +1087,13 @@ class ShardingStage3(_ShardingStageBase):
             param.get_tensor()._share_data_with(shard_param.get_tensor())
 
     def _unshard_parameter(self, param):
-        new_placements = param.placements
-        if isinstance(new_placements[self._sharding_mesh_axis], dist.Shard):
-            new_placements[self._sharding_mesh_axis] = dist.Replicate()
+        if param.is_dist():
+            new_placements = param.placements
+            if isinstance(new_placements[self._sharding_mesh_axis], dist.Shard):
+                new_placements[self._sharding_mesh_axis] = dist.Replicate()
 
-        new_param = dist.reshard(param, param.process_mesh, new_placements)
-        param.get_tensor()._share_data_with(new_param.get_tensor())
+            new_param = dist.reshard(param, param.process_mesh, new_placements)
+            param.get_tensor()._share_data_with(new_param.get_tensor())
 
     def __call__(self, key, param, accumulator):
         if param.is_dist():
