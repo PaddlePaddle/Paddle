@@ -82,6 +82,8 @@
 #include "paddle/fluid/inference/api/mkldnn_quantizer.h"
 #include "paddle/fluid/pir/transforms/onednn/batch_norm_act_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/onednn/conv_bias_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/onednn/conv_elementwise_add_mkldnn_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/onednn/matmul_elementwise_add_fuse_pass.h"
 #endif
 
 #ifdef PADDLE_WITH_ONNXRUNTIME
@@ -114,24 +116,25 @@
 
 #include "paddle/common/flags.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
-#include "paddle/fluid/pir/transforms/constant_folding_pass.h"
-#include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/embedding_eltwise_layernorm_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fc_elementwise_layernorm_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fc_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/matmul_scale_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/multihead_matmul_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/silu_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/transpose_flatten_concat_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/identity_op_clean_pass.h"
-#include "paddle/fluid/pir/transforms/inplace_pass.h"
-#include "paddle/fluid/pir/transforms/map_op_to_another_pass.h"
-#include "paddle/fluid/pir/transforms/params_sync_among_devices_pass.h"
+#include "paddle/fluid/pir/transforms/general/constant_folding_pass.h"
+#include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
+#include "paddle/fluid/pir/transforms/general/identity_op_clean_pass.h"
+#include "paddle/fluid/pir/transforms/general/inplace_pass.h"
+#include "paddle/fluid/pir/transforms/general/map_op_to_another_pass.h"
+#include "paddle/fluid/pir/transforms/general/matmul_scale_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/general/matmul_transpose_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/general/params_sync_among_devices_pass.h"
+#include "paddle/fluid/pir/transforms/general/replace_fetch_with_shadow_output_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/conv2d_add_act_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/conv2d_add_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/conv2d_bn_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/embedding_eltwise_layernorm_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/fc_elementwise_layernorm_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/fc_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/multihead_matmul_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/silu_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/transpose_flatten_concat_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
-#include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
@@ -895,8 +898,8 @@ bool AnalysisPredictor::PrepareExecutor() {
     execution_config.skip_gc_vars.insert(output_names.begin(),
                                          output_names.end());
     if (config_.new_ir_enabled()) {
-      pir_program_ = std::move(
-          paddle::TranslateLegacyProgramToProgram(*inference_program_));
+      pir_program_ =
+          paddle::TranslateLegacyProgramToProgram(*inference_program_);
 
       if (!config_.custom_passes_.empty()) {
         ::pir::PassManager custom_pm(::pir::IrContext::Instance(), 2);
@@ -964,6 +967,7 @@ bool AnalysisPredictor::PrepareExecutor() {
         gpu_pm.AddPass(::pir::CreateFcFusePass());
         gpu_pm.AddPass(::pir::CreateFcElementwiseLayerNormFusePass());
         gpu_pm.AddPass(::pir::CreateMatmulScaleFusePass());
+        gpu_pm.AddPass(::pir::CreateMatmulTransposeFusePass());
         gpu_pm.AddPass(::pir::CreateTransposeFlattenConcatFusePass());
         //----------------------------------------------------------------------------------------------//
 
@@ -999,6 +1003,8 @@ bool AnalysisPredictor::PrepareExecutor() {
         mkldnn_pm.AddPass(::pir::CreateConv2dTransposeBiasFusePass());
         mkldnn_pm.AddPass(::pir::CreateConv3dBiasFusePass());
         mkldnn_pm.AddPass(::pir::CreateBatchNormActFusePass());
+        mkldnn_pm.AddPass(::pir::CreateMatmulElementwiseAddFusePass());
+        mkldnn_pm.AddPass(::pir::CreateConvElementwiseAddFusePass());
 
         auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
         constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place_);
@@ -1036,8 +1042,8 @@ bool AnalysisPredictor::PrepareExecutor() {
         cpu_pm.Run(pir_program_.get());
       }
 
-      pir_program_ = std::move(
-          paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_));
+      pir_program_ =
+          paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_);
 
       ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
       if (FLAGS_pir_apply_inplace_pass) {
@@ -2689,7 +2695,7 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
                              int32_tensor.data<int>(),
                              int32_tensor.numel() * sizeof(int));
       } else if (platform::is_gpu_place(tensor->place())) {
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         auto *dev_ctx = pool.Get(tensor->place());
         auto &int32_tensor = *tensor;
         if (tensor->dtype() == phi::DataType::INT64) {
@@ -2912,7 +2918,7 @@ bool AnalysisPredictor::LoadParameters() {
 }
 
 uint64_t AnalysisPredictor::TryShrinkMemory() {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (config_.use_gpu()) {
     paddle::platform::EmptyCache();
   }
@@ -3605,44 +3611,50 @@ bool InternalUtils::RunWithRuntimeConfig(paddle_infer::Predictor *p,
 
 void InternalUtils::UpdateConfigInterleaved(paddle_infer::Config *c,
                                             bool with_interleaved) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   c->trt_with_interleaved_ = with_interleaved;
 #endif
 }
 
 void InternalUtils::SetTransformerPosid(
     paddle_infer::Config *c, const std::string &tensorrt_transformer_posid) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   c->tensorrt_transformer_posid_ = tensorrt_transformer_posid;
 #endif
 }
 
 void InternalUtils::SetTransformerMaskid(
     paddle_infer::Config *c, const std::string &tensorrt_transformer_maskid) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   c->tensorrt_transformer_maskid_ = tensorrt_transformer_maskid;
 #endif
 }
 
 void InternalUtils::DisableTensorRtHalfOps(
     paddle_infer::Config *c, const std::unordered_set<std::string> &ops) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   c->trt_ops_run_float_ = ops;
 #endif
 }
 
 void InternalUtils::SyncStream(paddle_infer::Predictor *p) {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   auto *pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
   paddle::platform::DeviceContextPool &pool =
       paddle::platform::DeviceContextPool::Instance();
   auto *dev_ctx = reinterpret_cast<phi::GPUContext *>(pool.Get(pred->place_));
-  cudaStreamSynchronize(dev_ctx->stream());
+  paddle::gpuStreamSynchronize(dev_ctx->stream());
 #endif
 }
 void InternalUtils::SyncStream(cudaStream_t stream) {
 #ifdef PADDLE_WITH_CUDA
   cudaStreamSynchronize(stream);
+#endif
+}
+
+void InternalUtils::SyncStream(hipStream_t stream) {
+#ifdef PADDLE_WITH_HIP
+  hipStreamSynchronize(stream);
 #endif
 }
 

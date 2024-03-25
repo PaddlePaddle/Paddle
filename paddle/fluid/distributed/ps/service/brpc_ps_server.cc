@@ -140,8 +140,10 @@ std::future<int32_t> BrpcPsServer::SendPServer2PServerMsg(
   auto promise = std::make_shared<std::promise<int32_t>>();
   std::future<int> fut = promise->get_future();
   if (static_cast<size_t>(to_pserver_id) >= _pserver_channels.size()) {
-    LOG(FATAL) << "to_pserver_id is out of range pservers, which size is "
-               << _pserver_channels.size();
+    std::stringstream ss;
+    ss << "to_pserver_id is out of range pservers, which size is "
+       << _pserver_channels.size();
+    PADDLE_THROW(phi::errors::Fatal(ss.str()));
     promise->set_value(-1);
     return fut;
   }

@@ -14,9 +14,20 @@
 
 #pragma once
 #include "paddle/cinn/common/target.h"
+#include "paddle/cinn/ir/group_schedule/config/group_tile_config.h"
 #include "paddle/cinn/ir/group_schedule/tactic/schedule_tactic.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule_block_graph.h"
+
+namespace cinn {
+namespace hlir {
+namespace framework {
+namespace pir {
+struct GroupInfo;
+}
+}  // namespace framework
+}  // namespace hlir
+}  // namespace cinn
 
 namespace cinn {
 namespace ir {
@@ -28,14 +39,15 @@ using SymbolicPredicate = Expr;
  */
 class GroupScheduler {
  public:
-  GroupScheduler(ir::IRSchedule* ir_sch,
-                 const std::unordered_set<std::string>& output_tensor_names,
-                 const cinn::common::Target& target,
-                 const std::shared_ptr<GroupTileInfo>& group_tile_info)
+  GroupScheduler(
+      ir::IRSchedule* ir_sch,
+      const std::unordered_set<std::string>& output_tensor_names,
+      const cinn::common::Target& target,
+      const std::shared_ptr<hlir::framework::pir::GroupInfo>& group_info)
       : ir_sch_(ir_sch),
         output_tensor_names_(output_tensor_names),
         target_(target),
-        group_tile_info_(group_tile_info) {
+        group_info_(group_info) {
     schedule_block_graph_ = std::make_unique<ir::ScheduleBlockGraph>(*ir_sch_);
   }
 
@@ -44,7 +56,8 @@ class GroupScheduler {
       const std::unordered_set<std::string>& output_tensor_names,
       const cinn::common::Target& target,
       bool is_dy_shape = false,
-      const std::shared_ptr<GroupTileInfo>& group_tile_info = nullptr);
+      const std::shared_ptr<hlir::framework::pir::GroupInfo>& group_info =
+          nullptr);
 
   virtual ~GroupScheduler() = default;
 
@@ -62,7 +75,7 @@ class GroupScheduler {
   // ScheduleBlock in IR.
   std::unique_ptr<ir::ScheduleBlockGraph> schedule_block_graph_;
 
-  std::shared_ptr<GroupTileInfo> group_tile_info_;
+  std::shared_ptr<hlir::framework::pir::GroupInfo> group_info_;
 };
 
 }  // namespace ir
