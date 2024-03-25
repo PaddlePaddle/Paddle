@@ -2660,7 +2660,7 @@
     {table_id : TableId, scale_data_norm : ScaleDataNorm, input_names: InputNames}
 
 - op : pull_gpups_sparse
-  backward : pull_gpups_sparse_grad
+  backward : push_gpups_sparse
   inputs :
     {w : W, ids : Ids}
   outputs :
