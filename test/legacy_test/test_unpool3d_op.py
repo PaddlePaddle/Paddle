@@ -383,14 +383,14 @@ class TestUnpool3DOpAPI_dygraph4(unittest.TestCase):
             input_data = (
                 np.arange(3 * 4 * 4 * 6)
                 .reshape([1, 3, 4, 4, 6])
-                .astype("int64")
+                .astype("float32")
             )
             input_x = paddle.to_tensor(input_data)
             output, indices = F.max_pool3d(
                 input_x, kernel_size=2, stride=2, return_mask=True
             )
             output_unpool = F.max_unpool3d(
-                output,
+                output.astype("int64"),
                 indices,
                 kernel_size=2,
                 stride=2,

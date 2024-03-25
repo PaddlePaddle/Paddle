@@ -142,13 +142,13 @@ class TestUnpool1DOpAPI_dygraph4(unittest.TestCase):
             places.append(paddle.CUDAPlace(0))
         for place in places:
             paddle.disable_static()
-            input_data = np.arange(3 * 16).reshape([1, 3, 16]).astype("int64")
+            input_data = np.arange(3 * 16).reshape([1, 3, 16]).astype("float32")
             input_x = paddle.to_tensor(input_data)
             output, indices = F.max_pool1d(
                 input_x, kernel_size=2, stride=2, return_mask=True
             )
             output_unpool = F.max_unpool1d(
-                output,
+                output.astype("int64"),
                 indices,
                 kernel_size=2,
                 stride=2,

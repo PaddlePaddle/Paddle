@@ -425,13 +425,13 @@ class TestUnpoolOpAPI_dy4(unittest.TestCase):
                         ]
                     ]
                 ]
-            ).astype("int64")
+            ).astype("float32")
             input_x = paddle.to_tensor(input_data)
             output, indices = F.max_pool2d(
                 input_x, kernel_size=2, stride=2, return_mask=True
             )
             out_pp = F.max_unpool2d(
-                output,
+                output.astype("int64"),
                 indices,
                 kernel_size=2,
                 stride=None,

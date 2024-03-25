@@ -108,7 +108,7 @@ class TestKLDivLossDygraph(unittest.TestCase):
         gt_loss = kldiv_loss(x, target, reduction, log_target)
 
         with paddle.base.dygraph.guard():
-            kldiv_criterion = paddle.nn.KLDivLoss(reduction)
+            kldiv_criterion = paddle.nn.KLDivLoss(reduction, log_target)
             pred_loss = kldiv_criterion(
                 paddle.to_tensor(x), paddle.to_tensor(target)
             )
