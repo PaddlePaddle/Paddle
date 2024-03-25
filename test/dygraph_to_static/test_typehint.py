@@ -85,7 +85,7 @@ class TestTypeHints(Dy2StTestBase):
 
 class TestAnnAssign(Dy2StTestBase):
     def assert_fn_dygraph_and_static_unified(self, dygraph_fn, x):
-        static_fn = paddle.jit.to_static(fn_annotation_assign_with_value)
+        static_fn = paddle.jit.to_static(dygraph_fn)
         dygraph_fn = dygraph_fn
         static_res = static_fn(x)
         dygraph_res = dygraph_fn(x)
