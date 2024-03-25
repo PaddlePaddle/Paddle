@@ -106,12 +106,12 @@ void TileFirstGeneralTactic::Init(ScheduleContext* context) {
 void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
                                    const std::string& block_id) {
   if (ir::IsReduceInitTensorName(block_id)) return;
-  MergeFlattenAxis(sch, block_id);
-  VLOG(6) << "After MergeFlattenAxis on block: [" << block_id
-          << "], loop nest:\n"
-          << sch->GetLoops(block_id)[0];
   MergeReduceAxis(sch, block_id);
   VLOG(6) << "After MergeReduceAxis on block: [" << block_id
+          << "], loop nest:\n"
+          << sch->GetLoops(block_id)[0];
+  MergeFlattenAxis(sch, block_id);
+  VLOG(6) << "After MergeFlattenAxis on block: [" << block_id
           << "], loop nest:\n"
           << sch->GetLoops(block_id)[0];
   SplitSptialInner(sch, block_id);
@@ -149,18 +149,8 @@ void TileFirstGeneralTactic::MergeFlattenAxis(ir::IRSchedule* sch,
 
 void TileFirstGeneralTactic::MergeReduceAxis(ir::IRSchedule* sch,
                                              const std::string& block_id) {
-  // should down reduce axis
-  std::vector<int32_t> fuse_axis = vec_reduce_axis_;
-  if (vec_reduce_axis_.size() >= 2) {
-    for (size_t i = 0; i < fuse_axis.size(); ++i) {
-      if (vec_flatten_axis_.size() > 2) {
-        fuse_axis[i] -= (vec_flatten_axis_.size() - 1);
-      }
-    }
-  }
-
   if (vec_reduce_axis_.size() >= 2 && !ir::IsReduceInitTensorName(block_id)) {
-    sch->Fuse(block_id, fuse_axis);
+    sch->Fuse(block_id, vec_reduce_axis_);
   }
 }
 

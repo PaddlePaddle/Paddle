@@ -82,6 +82,8 @@
 #include "paddle/fluid/inference/api/mkldnn_quantizer.h"
 #include "paddle/fluid/pir/transforms/onednn/batch_norm_act_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/onednn/conv_bias_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/onednn/conv_elementwise_add_mkldnn_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/onednn/matmul_elementwise_add_fuse_pass.h"
 #endif
 
 #ifdef PADDLE_WITH_ONNXRUNTIME

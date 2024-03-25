@@ -92,6 +92,35 @@ def swiglu_net2(x):
     return paddle.incubate.nn.functional.swiglu(x)
 
 
+def group_norm_net1(x):
+    group_norm = paddle.nn.GroupNorm(num_channels=x.shape[1], num_groups=32)
+    return group_norm(x)
+
+
+def group_norm_net2(x):
+    group_norm = paddle.nn.GroupNorm(
+        num_channels=x.shape[1], num_groups=32, weight_attr=False
+    )
+    return group_norm(x)
+
+
+def group_norm_net3(x):
+    group_norm = paddle.nn.GroupNorm(
+        num_channels=x.shape[1], num_groups=32, bias_attr=False
+    )
+    return group_norm(x)
+
+
+def group_norm_net4(x):
+    group_norm = paddle.nn.GroupNorm(
+        num_channels=x.shape[1],
+        num_groups=32,
+        weight_attr=False,
+        bias_attr=False,
+    )
+    return group_norm(x)
+
+
 def layer_norm_net1(x):
     return paddle.nn.functional.layer_norm(x, x.shape[1:])
 
@@ -361,6 +390,58 @@ class TestPrimFlatten2(TestPrimBase):
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = flatten_net
         self.necessary_ops = "pd_op.flatten"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimGroupNorm1(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [50, 640, 10, 20]
+        self.init_x_shape = [None, 640, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = group_norm_net1
+        self.necessary_ops = "pd_op.group_norm"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimGroupNorm2(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [50, 640, 10, 20]
+        self.init_x_shape = [None, 640, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = group_norm_net2
+        self.necessary_ops = "pd_op.group_norm"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimGroupNorm3(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [50, 640, 10, 20]
+        self.init_x_shape = [None, 640, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = group_norm_net3
+        self.necessary_ops = "pd_op.group_norm"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimGroupNorm4(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [50, 640, 10, 20]
+        self.init_x_shape = [None, 640, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = group_norm_net4
+        self.necessary_ops = "pd_op.group_norm"
         self.enable_cinn = False
         self.tol = 1e-6
 
