@@ -24,6 +24,7 @@
 #include "paddle/cinn/common/test_helper.h"
 #include "paddle/cinn/runtime/cpu/host_intrinsics.h"
 #include "paddle/cinn/runtime/cpu/use_extern_funcs.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace runtime {
@@ -97,10 +98,10 @@ void TestCallElementwise(const std::string &fn_name,
     PADDLE_ENFORCE_EQ(
         x->num_elements(),
         out->num_elements(),
-        phi::error::InvalidArgument("X's number of elements (%d) should "
-                                    "be equal to output's (%d).",
-                                    x->num_elements(),
-                                    out->num_elements()));
+        phi::errors::InvalidArgument("X's number of elements (%d) should "
+                                     "be equal to output's (%d).",
+                                     x->num_elements(),
+                                     out->num_elements()));
     A_buf = CreateBuffer({10, 10}, false, set_value);
   } else {
     A_buf = CreateBuffer({10, 10});

@@ -27,6 +27,7 @@
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/profiler.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace runtime {
@@ -35,7 +36,7 @@ namespace cuda {
 CUDAModule::CUDAModule(const std::string& data, Kind kind)
     : data_(data), kind_(kind) {
   PADDLE_ENFORCE_NE(
-      data.empty(), true, phi::error::PreconditionNotMet("data is is empty!"));
+      data.empty(), true, phi::errors::PreconditionNotMet("data is is empty!"));
 
   cudaGetDeviceCount(&num_devices_);
   PADDLE_ENFORCE_GT(

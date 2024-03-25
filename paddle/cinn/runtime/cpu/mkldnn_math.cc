@@ -18,6 +18,7 @@
 
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/common/cas.h"
+#include "paddle/common/enforce.h"
 
 using dnnl::algorithm;
 using dnnl::memory;
@@ -165,7 +166,7 @@ CINN_REGISTER_HELPER(cinn_cpu_mkldnn) {
       [](const std::vector<Expr>& args, int offset) {
         PADDLE_ENFORCE_EQ(args.size(),
                           16UL,
-                          phi::error::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "Wrong number of arguments passed in."));
         auto N = cinn::common::AutoSimplify(args[0]);
         int input_h = cinn::common::AutoSimplify(args[2]).as_int32();
