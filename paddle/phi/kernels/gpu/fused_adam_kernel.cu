@@ -97,17 +97,20 @@ struct FusedAdamFunctor {
       t_info.GetChunkIdAndTensorId(&chunk_id, &tensor_id);
 
       n = t_info.sizes[tensor_id];
-      int offset = chunk_id * chunk_size;
-      g_ptr = static_cast<const T*>(t_info.grads[tensor_id]) + offset;
-      p_ptr = static_cast<T*>(t_info.tensor_addrs[0][tensor_id]) + offset;
-      mom1_ptr = static_cast<MT*>(t_info.tensor_addrs[1][tensor_id]) + offset;
-      mom2_ptr = static_cast<MT*>(t_info.tensor_addrs[2][tensor_id]) + offset;
-      mp_ptr =
-          IsMultiPrecision
-              ? static_cast<MT*>(t_info.tensor_addrs[3][tensor_id]) + offset
-              : nullptr;
+      g_ptr = static_cast<const T*>(t_info.grads[tensor_id]) +
+              chunk_id * chunk_size;
+      p_ptr = static_cast<T*>(t_info.tensor_addrs[0][tensor_id]) +
+              chunk_id * chunk_size;
+      mom1_ptr = static_cast<MT*>(t_info.tensor_addrs[1][tensor_id]) +
+                 chunk_id * chunk_size;
+      mom2_ptr = static_cast<MT*>(t_info.tensor_addrs[2][tensor_id]) +
+                 chunk_id * chunk_size;
+      mp_ptr = IsMultiPrecision
+                   ? static_cast<MT*>(t_info.tensor_addrs[3][tensor_id]) +
+                         chunk_id * chunk_size
+                   : nullptr;
 
-      n -= offset;
+      n -= chunk_id * chunk_size;
       if (n > chunk_size) {
         n = chunk_size;
       }
@@ -122,6 +125,7 @@ struct FusedAdamFunctor {
       phi::AlignedVector<MT, VecSize> mp_vec;
       phi::AlignedVector<MT, VecSize> mom1_vec;
       phi::AlignedVector<MT, VecSize> mom2_vec;
+
       if (idx <= n - VecSize) {
         if (IsMultiPrecision) {
           phi::Load<MT, VecSize>(mp_ptr + idx, &mp_vec);
@@ -132,8 +136,8 @@ struct FusedAdamFunctor {
         phi::Load<MT, VecSize>(mom1_ptr + idx, &mom1_vec);
         phi::Load<MT, VecSize>(mom2_ptr + idx, &mom2_vec);
       } else {
-        int size = n - idx;
-        for (int j = 0; j < size; j++) {
+#pragma unroll
+        for (int j = 0; j < n - idx; j++) {
           if (IsMultiPrecision) {
             mp_vec[j] = mp_ptr[idx + j];
           } else {
@@ -144,7 +148,7 @@ struct FusedAdamFunctor {
           mom2_vec[j] = static_cast<MT>(mom2_ptr[idx + j]);
         }
 #pragma unroll
-        for (int j = size; j < VecSize; j++) {
+        for (int j = n - idx; j < VecSize; j++) {
           g_vec[j] = T(0);
           p_vec[j] = T(0);
           mp_vec[j] = MT(0);
@@ -152,7 +156,6 @@ struct FusedAdamFunctor {
           mom2_vec[j] = MT(0);
         }
       }
-
 #pragma unroll
       for (int j = 0; j < VecSize; j++) {
         MT p = IsMultiPrecision ? mp_vec[j] : static_cast<MT>(p_vec[j]);
@@ -177,12 +180,14 @@ struct FusedAdamFunctor {
         if (IsMultiPrecision) {
           phi::Store<MT, VecSize>(mp_vec, mp_ptr + idx);
         }
+#pragma unroll
         for (int j = 0; j < VecSize; j++) {
-          p_ptr[idx + j] = static_cast<T>(mp_vec[j]);
+          p_vec[j] = static_cast<T>(mp_vec[j]);
         }
+        phi::Store<T, VecSize>(p_vec, p_ptr + idx);
       } else {
-        int size = n - idx;
-        for (int j = 0; j < size; j++) {
+#pragma unroll
+        for (int j = 0; j < n - idx; j++) {
           if (IsMultiPrecision) {
             mp_ptr[idx + j] = mp_vec[j];
           }
