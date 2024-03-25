@@ -2900,7 +2900,6 @@ void PullBoxSparseInferMeta(const std::vector<const MetaTensor*>& ids,
                             int size,
                             std::vector<MetaTensor*> out) {
   auto hidden_size = static_cast<int64_t>(size);
-  auto all_ids_dim = ids[0]->dims();
   const size_t n_ids = ids.size();
   for (size_t i = 0; i < n_ids; ++i) {
     MetaTensor* output = out[i];
