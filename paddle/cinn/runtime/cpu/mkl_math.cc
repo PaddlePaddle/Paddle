@@ -26,13 +26,19 @@
 
 #define CINN_MKL_VECTOR_MATH_FP(fn__, name__)                             \
   void cinn_mkl_##name__##_v_fp32(cinn_buffer_t *x, cinn_buffer_t *out) { \
-    CHECK_EQ(x->num_elements(), out->num_elements());                     \
+    PADDLE_ENFORCE_EQ(x->num_elements(), out->num_elements(),             \
+      phi::error::InvalidArgument("X's number of elements (%d) should "   \
+      "be equal to output's (%d).", x->num_elements(), out->num_elements()\
+      )); \
     vs##fn__(x->num_elements(),                                           \
              reinterpret_cast<float *>(x->memory),                        \
              reinterpret_cast<float *>(out->memory));                     \
   }                                                                       \
   void cinn_mkl_##name__##_v_fp64(cinn_buffer_t *x, cinn_buffer_t *out) { \
-    CHECK_EQ(x->num_elements(), out->num_elements());                     \
+    PADDLE_ENFORCE_EQ(x->num_elements(), out->num_elements(),             \
+      phi::error::InvalidArgument("X's number of elements (%d) should "   \
+      "be equal to output's (%d).", x->num_elements(), out->num_elements()\
+      )); \
     vd##fn__(x->num_elements(),                                           \
              reinterpret_cast<double *>(x->memory),                       \
              reinterpret_cast<double *>(out->memory));                    \

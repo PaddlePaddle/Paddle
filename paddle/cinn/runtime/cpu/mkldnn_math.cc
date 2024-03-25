@@ -163,7 +163,8 @@ CINN_REGISTER_HELPER(cinn_cpu_mkldnn) {
 
   FunctionProto::shape_inference_t inference_shape_conv2d_nchw =
       [](const std::vector<Expr>& args, int offset) {
-        CHECK_EQ(args.size(), 16UL) << "Wrong number of arguments passed in";
+        PADDLE_ENFORCE_EQ(args.size(), 16UL,
+          phi::error::InvalidArgument("Wrong number of arguments passed in."));
         auto N = cinn::common::AutoSimplify(args[0]);
         int input_h = cinn::common::AutoSimplify(args[2]).as_int32();
         int input_w = cinn::common::AutoSimplify(args[3]).as_int32();

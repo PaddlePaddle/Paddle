@@ -89,11 +89,16 @@ void TestCallElementwise(const std::string &fn_name,
 
   jit->Link(module);
   auto fn = jit->Lookup("fn");
-  CHECK(fn);
+  PADDLE_ENFORCE_NOT_NULL(
+    fn, phi::errors::NotFound("fn is not found."));
   auto fn_ = reinterpret_cast<void (*)(void *, int32_t)>(fn);
 
   cinn_buffer_t *A_buf;
   if (set_value != 0) {
+    PADDLE_ENFORCE_EQ(x->num_elements(), out->num_elements(),
+      phi::error::InvalidArgument("X's number of elements (%d) should "
+      "be equal to output's (%d).", x->num_elements(), out->num_elements()
+      ));
     A_buf = CreateBuffer({10, 10}, false, set_value);
   } else {
     A_buf = CreateBuffer({10, 10});
