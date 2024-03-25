@@ -66,6 +66,9 @@ void NonZeroKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    nonzero, XPU, ALL_LAYOUT, phi::NonZeroKernel, int, bool, float, int64_t) {
+    nonzero, XPU, ALL_LAYOUT, phi::NonZeroKernel, int, bool, float, int64_t, uint8_t,
+    phi::dtype::float16,
+    phi::dtype::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
 }
+
