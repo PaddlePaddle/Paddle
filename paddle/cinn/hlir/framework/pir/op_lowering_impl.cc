@@ -671,7 +671,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
         .emplace_back(arg_tensor->buffer, ir::Argument::IO::kInput);
     arg_name_set.insert(arg_tensor->buffer->name);
   }
-
+  // add kernel input here
   group->output_names.clear();
 
   // collect all output tensor.
@@ -750,8 +750,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
           continue;
         }
         int_args_set.insert(symbol_name);
-        group_func_args->emplace_back(
-            ir::_Var_::Make(symbol_name, cinn::common::Int(64)));
+        group_func_args->emplace_back(ir::_Var_::Make(
+            symbol_name, cinn::common::Int(64)));  // or update here
         group->int_args_map[non_tensor_arg_idx++] = {tensor_arg_idx,
                                                      tensor_arg_dim_idx};
         VLOG(4) << "device kernel func's " << symbol_name << " is from "

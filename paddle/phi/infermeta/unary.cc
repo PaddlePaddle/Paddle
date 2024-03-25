@@ -3843,6 +3843,11 @@ void ShapeInferMeta(const MetaTensor& input, MetaTensor* out) {
   out->set_dtype(DataType::INT32);
 }
 
+void SliceDimInferMeta(const MetaTensor& input, int index, MetaTensor* out) {
+  out->set_dims(common::make_ddim({1}));
+  out->set_dtype(DataType::INT64);
+}
+
 void ShardIndexInferMeta(const MetaTensor& in,
                          int index_num,
                          int nshards,
