@@ -29,10 +29,10 @@ def sum_as_net(x, y):
     axis = []
     for i in range(diff):
         axis.append(i)
-    for i in len(y.shape):
+    for i in range(len(y.shape)):
         if y.shape[i] != x.shape[i + diff]:
             axis.append(i + diff)
-    return np.sum(x, axis=axis, dtype=out_dtype)
+    return np.sum(x, axis=tuple(axis), dtype=out_dtype)
 
 
 class TestSumAsOp(OpTest):
@@ -52,7 +52,7 @@ class TestSumAsOp(OpTest):
         pass
 
     def init_config(self):
-        self.x = np.random.randn(200, 600).astype('float64')
+        self.x = np.random.randn(300, 200, 600).astype('float64')
         self.y = np.random.randn(200, 600).astype('float64')
 
 
