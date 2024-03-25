@@ -72,8 +72,8 @@ bool ArangeOpInferSymbolicShape(
 
 bool AssignValueOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  const std::vector<int> shape =
-      paddle::dialect::details::GetVectorAttr<int>(op, "shape");
+  const std::vector<int64_t> shape =
+      paddle::dialect::details::GetVectorAttr<int64_t>(op, "shape");
   std::vector<symbol::DimExpr> sym_dims;
   sym_dims.reserve(shape.size());
   for (const int64_t &dim : shape) {
