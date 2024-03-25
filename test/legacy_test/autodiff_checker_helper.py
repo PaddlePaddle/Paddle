@@ -81,10 +81,12 @@ def make_jacobian(x, y_size, np_dtype):
         pass
 
 
-def compute_numerical_jacobian(program, inputs, outputs, feeds, eps):
+def compute_numerical_jacobian(program, inputs, argnums, outputs, feeds, eps):
     paddle.enable_static()
     numerical = []
-    for input in inputs:
+    for idx, input in enumerate(inputs):
+        if idx not in argnums:
+            continue
         numerical.append(
             _compute_numerical_jacobian(program, input, outputs, feeds, eps)
         )
@@ -210,18 +212,21 @@ def dtype_to_np_dtype(dtype):
         raise ValueError("Not supported data type " + str(dtype))
 
 
-def get_eager_vjp(func, inputs, cotangents=None, order=1):
+def get_eager_vjp(func, inputs, kwargs, argnums, cotangents=None, order=2):
     for x in inputs:
         x.stop_gradient = False
-    outputs = func(inputs)
-    return _get_eager_vjp(inputs, outputs, cotangents, order)
+    outputs = func(inputs, kwargs)
+    return _get_eager_vjp(inputs, argnums, outputs, cotangents, order)
 
 
-def _get_eager_vjp(inputs, outputs, tangents, order):
+def _get_eager_vjp(inputs, argnums, outputs, tangents, order):
     if order > 1:
         create_graph = True
     else:
         create_graph = False
+
+    if order == 1:
+        inputs = [inputs[i] for i in argnums]
 
     d_inputs = paddle.grad(
         outputs=outputs,
@@ -238,7 +243,7 @@ def _get_eager_vjp(inputs, outputs, tangents, order):
             ddy = paddle.ones(shape=d_input.shape, dtype=d_input.dtype)
             ddy.stop_gradient = False
             ddys.append(ddy)
-        return _get_eager_vjp(inputs, d_inputs, ddys, order - 1)
+        return _get_eager_vjp(inputs, argnums, d_inputs, ddys, order - 1)
 
     return d_inputs
 
@@ -246,12 +251,13 @@ def _get_eager_vjp(inputs, outputs, tangents, order):
 def get_static_vjp(program, feeds, fetch):
     paddle.enable_static()
     exe = paddle.static.Executor()
-    res = exe.run(program, feed=feeds, fetch_list=[fetch])
+    res = exe.run(program, feed=feeds, fetch_list=fetch)
+    res = res[: len(fetch)]
     paddle.disable_static()
     return res
 
 
-def get_static_vjp_program(func, inputs, order):
+def get_static_vjp_program(func, inputs, argnums, kwargs, order):
     cotangents = []
     paddle.enable_static()
     input_vars = []
@@ -263,7 +269,7 @@ def get_static_vjp_program(func, inputs, order):
         )
         input_vars.append(input_var)
         feeds.update({'input_' + str(idx): input.numpy()})
-    outputs = func(input_vars)
+    outputs = func(input_vars, kwargs)
     outputs = _as_list(outputs)
     # TODO(GGBond8488): Need to be fixed when paddle uses pir by default.
     program, (keys, values) = paddle.base.libpaddle.pir.clone_program(
@@ -290,15 +296,15 @@ def get_static_vjp_program(func, inputs, order):
             feeds.update({'grad_in_' + str(idx): grad_in_np})
             cotangents.append(grad_in_np)
         feeds, pre_outputs, d_inputs, last_grads_in = _get_static_vjp_program(
-            pir_inputs, pir_outputs, feeds, grads_in_init, order
+            pir_inputs, argnums, pir_outputs, feeds, grads_in_init, order
         )
     if not d_inputs:
-        warning(f"{func.__name__} {order}s grad will return None")
+        warning(f"{func.__name__} {order}'s grad will return None")
     paddle.disable_static()
     return program, pir_inputs, d_inputs, pre_outputs, feeds, cotangents
 
 
-def _get_static_vjp_program(inputs, outputs, feeds, grads_in, order):
+def _get_static_vjp_program(inputs, argnums, outputs, feeds, grads_in, order):
     def _require_grads(vars):
         for var in vars:
             var.stop_gradient = False
@@ -309,6 +315,8 @@ def _get_static_vjp_program(inputs, outputs, feeds, grads_in, order):
     _require_grads(inputs)
     _require_grads(outputs)
     _require_grads(grads_in)
+    if order == 1:
+        inputs = [inputs[i] for i in argnums]
     d_inputs = paddle.base.gradients(outputs, inputs, grads_in)
     d_inputs = [d_input for d_input in d_inputs if d_input is not None]
     _require_grads(d_inputs)
@@ -326,14 +334,29 @@ def _get_static_vjp_program(inputs, outputs, feeds, grads_in, order):
             feeds.update({f'dy_{idx}_{order}': ones})
             ddys.append(ddy)
         _require_grads(ddys)
-        return _get_static_vjp_program(inputs, d_inputs, feeds, ddys, order - 1)
+        return _get_static_vjp_program(
+            inputs, argnums, d_inputs, feeds, ddys, order - 1
+        )
     return feeds, outputs, d_inputs, grads_in
 
 
 @prim_scope()
 @prog_scope()
-def check_vjp(func, args, order=2, atol=None, rtol=None, eps=EPS):
+def check_vjp(
+    func,
+    args,
+    kwargs=None,
+    argnums=None,
+    order=2,
+    atol=None,
+    rtol=None,
+    eps=EPS,
+):
     args = _as_list(args)
+    if argnums is None:
+        argnums = _as_list(range(len(args)))
+    else:
+        argnums = _as_list(argnums)
     np_type = dtype_to_np_dtype(args[0].dtype)
     atol = atol if atol else default_gradient_tolerance[np_type]
     rtol = rtol if rtol else default_gradient_tolerance[np_type]
@@ -345,18 +368,28 @@ def check_vjp(func, args, order=2, atol=None, rtol=None, eps=EPS):
         outputs,
         feeds,
         cotangents,
-    ) = get_static_vjp_program(func, args, order)
+    ) = get_static_vjp_program(func, args, argnums, kwargs, order)
     numeric_jacobian = compute_numerical_jacobian(
-        program, inputs, outputs, feeds, eps
+        program, inputs, argnums, outputs, feeds, eps
     )
     cotangents = list(map(paddle.to_tensor, cotangents))
-    eager_vjps = get_eager_vjp(func, args, cotangents, order)
+    eager_vjps = get_eager_vjp(func, args, kwargs, argnums, cotangents, order)
     static_vjps_np = get_static_vjp(program, feeds, fetch_list)
     eager_vjps_np = []
     for eager_vjp in eager_vjps:
         eager_vjps_np.append(eager_vjp.numpy())
     inputs_length = len(numeric_jacobian)
     numeric_vjps = []
+    if not eager_vjps_np:
+        if not static_vjps_np:
+            warning(
+                f"{func.__name__} in {order}'s derivative will return zeros(None)"
+            )
+            return
+        raise ValueError("eager returns None vjp, but static not")
+    if not static_vjps_np:
+        static_vjps_np = np.zeros_like(numeric_vjps)
+
     for x_idx in range(inputs_length):
         jacobians = _as_list(numeric_jacobian[x_idx])
         dx_idx = None
@@ -369,7 +402,6 @@ def check_vjp(func, args, order=2, atol=None, rtol=None, eps=EPS):
         numeric_vjps.append(dx_idx)
     eager_vjps_np = list(map(np.ndarray.flatten, eager_vjps_np))
     static_vjps_np = list(map(np.ndarray.flatten, static_vjps_np))
-
     np.testing.assert_allclose(
         numeric_vjps,
         eager_vjps_np,

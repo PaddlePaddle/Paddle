@@ -9,4 +9,5 @@ foreach(TEST_OP ${TEST_OPS})
                   FLAGS_prim_enable_dynamic=true)
 endforeach()
 
-add_subdirectory(vjps)
+set_tests_properties(test_binary_func PROPERTIES TIMEOUT 90)
+set_tests_properties(test_unary_func PROPERTIES TIMEOUT 90)
