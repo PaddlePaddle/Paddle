@@ -1697,6 +1697,66 @@ void Blas<DeviceContext>::MatMul(const T *mat_a,
   }
 }
 
+template <typename DeviceContext>
+template <typename Ta, typename Tb, typename Tc>
+void Blas<DeviceContext>::MatMulWrapper(const Ta *mat_a,
+                                        const MatDescriptor &dim_a,
+                                        const Tb *mat_b,
+                                        const MatDescriptor &dim_b,
+                                        Tc alpha,
+                                        Tc *mat_out,
+                                        Tc beta) const {
+  PADDLE_ENFORCE_EQ(
+      dim_a.width_,
+      dim_b.height_,
+      phi::errors::InvalidArgument(
+          "The fisrt matrix width should be same as second matrix height,"
+          "but received fisrt matrix width %d"
+          ", second matrix height %d",
+          dim_a.width_,
+          dim_b.height_));
+
+  CBLAS_TRANSPOSE transA = !dim_a.trans_ ? CblasNoTrans : CblasTrans;
+  CBLAS_TRANSPOSE transB = !dim_b.trans_ ? CblasNoTrans : CblasTrans;
+  if (dim_a.batch_size_ == 0 && dim_b.batch_size_ == 0) {
+    this->template GEMMWrapper(transA,
+                               transB,
+                               dim_a.height_,
+                               dim_b.width_,
+                               dim_a.width_,
+                               alpha,
+                               mat_a,
+                               mat_b,
+                               beta,
+                               mat_out);
+  } else {
+    PADDLE_ENFORCE_EQ(
+        dim_a.batch_size_ == dim_b.batch_size_ || dim_a.batch_size_ == 0 ||
+            dim_b.batch_size_ == 0,
+        true,
+        phi::errors::InvalidArgument(
+            "dim_a.batch_size should be equal to dim_b.batch_size, or "
+            "one of dim_a.batch_size and dim_b.batch_size should be 0. "
+            "But got dim_a.batch_size = %d, dim_b.batch_size = %d.",
+            dim_a.batch_size_,
+            dim_b.batch_size_));
+    this->template BatchedGEMMWrapper(
+        transA,
+        transB,
+        dim_a.height_,
+        dim_b.width_,
+        dim_a.width_,
+        alpha,
+        mat_a,
+        mat_b,
+        beta,
+        mat_out,
+        dim_a.batch_size_ == 0 ? dim_b.batch_size_ : dim_a.batch_size_,
+        dim_a.stride_,
+        dim_b.stride_);
+  }
+}
+
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
     !defined(PADDLE_WITH_HIP)
 // @{ Group Blas MKLML: MatMulWithHead

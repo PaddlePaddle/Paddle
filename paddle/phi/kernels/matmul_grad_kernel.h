@@ -84,4 +84,16 @@ void MatmulWithFlattenDoubleGradKernel(
     DenseTensor* y_grad,
     DenseTensor* out_grad_grad);
 
+template <typename T, typename Context>
+void MatmulAmpGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& y,
+                         const DenseTensor& dout,
+                         bool transpose_x,
+                         bool transpose_y,
+                         int dx_type,
+                         int dy_type,
+                         DenseTensor* dx,
+                         DenseTensor* dy);
+
 }  // namespace phi

@@ -2720,7 +2720,7 @@ class OpTest(unittest.TestCase):
                         outputs={"Out": cast_outputs},
                         type="cast",
                         attrs={
-                            "in_dtype": core.VarDesc.VarType.BF16,
+                            "in_dtype": cast_inputs[0].dtype,
                             "out_dtype": core.VarDesc.VarType.FP32,
                         },
                     )

@@ -27,6 +27,7 @@ from .tensor import segment_sum
 from .tensor import segment_mean
 from .tensor import segment_max
 from .tensor import segment_min
+from .tensor import matmul
 from .tensor import _npu_identity
 from .passes import fuse_resnet_unit_pass
 

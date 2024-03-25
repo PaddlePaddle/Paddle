@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -124,6 +125,33 @@ void MatMul(const Context& dev_ctx,
               static_cast<T>(flag));
 }
 
+template <typename InT, typename OutT>
+void MatMulGPU(const phi::GPUContext& dev_ctx,
+               const DenseTensor& a,
+               bool trans_a,
+               const DenseTensor& b,
+               bool trans_b,
+               DenseTensor* out,
+               bool flag = false) {
+  auto blas = phi::funcs::GetBlas<phi::GPUContext, InT>(dev_ctx);
+  auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
+  auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b.dims(), 0, trans_b);
+  if (a.dims().size() == 3 && b.dims().size() <= 2) {
+    // the transpose_X must be false, if is true, the transpose cost much time
+    if (!trans_a) {
+      mat_dim_a.height_ *= mat_dim_a.batch_size_;
+      mat_dim_a.batch_size_ = 0;
+    }
+  }
+  blas.MatMulWrapper(a.data<InT>(),
+                     mat_dim_a,
+                     b.data<InT>(),
+                     mat_dim_b,
+                     static_cast<OutT>(1),
+                     dev_ctx.template Alloc<OutT>(out),
+                     static_cast<OutT>(flag));
+}
+
 /**
  * Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
  * original x_dim is returned.
@@ -211,6 +239,37 @@ void CalcInputGrad(const Context& dev_ctx,
         trans_a,
         is_fold_init_dims_b ? FoldInitDims(b)
                             : FoldHeadAndLastDims<Context, T>(dev_ctx, b),
+        trans_b,
+        out,
+        flag);
+  }
+}
+
+template <typename InT, typename OutT>
+void CalcInputGradGPU(const phi::GPUContext& dev_ctx,
+                      const DenseTensor& a,
+                      bool trans_a,
+                      bool is_fold_init_dims_a,
+                      const DenseTensor& b,
+                      bool trans_b,
+                      bool is_fold_init_dims_b,
+                      DenseTensor* out,
+                      bool flag = false) {
+  if (out == nullptr) return;
+  bool need_combine =
+      (a.dims().size() == 3 || b.dims().size() == 3) && out->dims().size() == 2;
+  if (!need_combine) {
+    MatMulGPU<InT, OutT>(dev_ctx, a, trans_a, b, trans_b, out, flag);
+  } else {
+    MatMulGPU<InT, OutT>(
+        dev_ctx,
+        is_fold_init_dims_a
+            ? FoldInitDims(a)
+            : FoldHeadAndLastDims<phi::GPUContext, InT>(dev_ctx, a),
+        trans_a,
+        is_fold_init_dims_b
+            ? FoldInitDims(b)
+            : FoldHeadAndLastDims<phi::GPUContext, InT>(dev_ctx, b),
         trans_b,
         out,
         flag);
@@ -2012,4 +2071,233 @@ void MatmulWithFlattenDoubleGradKernel(
   }
 }
 
+/*
+T : the dtype of x/y in forward propagation.
+Tout: the dtype of out/out_grad.
+Tdx: the dtype of dx.
+Tdy: the dtype of dy.
+*/
+template <typename Context,
+          typename T,
+          typename Tdx,
+          typename Tdy,
+          typename Tout>
+void MatmulAmpGradFuntion(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& y,
+                          const DenseTensor& out_grad,
+                          DenseTensor* dx,
+                          DenseTensor* dy,
+                          bool transpose_x,
+                          bool transpose_y) {
+  // get dims
+  std::vector<std::int64_t> x_dims = vectorize(x.dims());
+  std::vector<std::int64_t> y_dims = vectorize(y.dims());
+  std::vector<std::int64_t> dout_dims = vectorize(out_grad.dims());
+
+  DenseTensor out_grad_casted;
+  out_grad_casted.Resize(out_grad.dims());
+  phi::CastKernel<Tout, Context>(
+      dev_ctx, out_grad, x.dtype(), &out_grad_casted);
+
+  int x_ndim = x_dims.size();
+  int y_ndim = y_dims.size();
+  int ndim = dout_dims.size();
+
+  bool is_broadcast = true;
+  if (x_ndim <= 2 || y_ndim <= 2) {
+    is_broadcast = false;
+  } else if (x_ndim != y_ndim) {
+    is_broadcast = true;
+  } else {
+    is_broadcast = !std::equal(
+        x_dims.cbegin(), x_dims.cbegin() + x_ndim - 2, y_dims.cbegin());
+  }
+
+  // Case2: no broadcast or no batch size, it aims to speed and it is same as
+  // matmul in old version.
+  if (!is_broadcast) {
+    DenseTensor x_help = x;
+    DenseTensor y_help = y;
+    DenseTensor out_grad_help = out_grad_casted;
+
+    ReshapeXYOutIntoMatrixSequence(
+        &x_help, &y_help, &out_grad_help, transpose_x, transpose_y);
+
+    DDim dx_dims;
+    if (dx) {
+      dx_dims = dx->dims();
+      if (dx_dims != x_help.dims()) {
+        dx->Resize(x_help.dims());
+      }
+    }
+
+    DDim dy_dims;
+    if (dy) {
+      dy_dims = dy->dims();
+      if (dy_dims != y_help.dims()) {
+        dy->Resize(y_help.dims());
+      }
+    }
+
+    if (transpose_x && transpose_y) {
+      CalcInputGradGPU<T, Tdx>(
+          dev_ctx, y_help, true, true, out_grad_help, true, false, dx);
+      CalcInputGradGPU<T, Tdy>(
+          dev_ctx, out_grad_help, true, true, x_help, true, false, dy);
+    } else if (transpose_x) {
+      CalcInputGradGPU<T, Tdx>(
+          dev_ctx, y_help, false, false, out_grad_help, true, false, dx);
+      CalcInputGradGPU<T, Tdy>(
+          dev_ctx, x_help, false, false, out_grad_help, false, true, dy);
+    } else if (transpose_y) {
+      CalcInputGradGPU<T, Tdx>(
+          dev_ctx, out_grad_help, false, false, y_help, false, true, dx);
+      CalcInputGradGPU<T, Tdy>(
+          dev_ctx, out_grad_help, true, true, x_help, false, true, dy);
+    } else {
+      CalcInputGradGPU<T, Tdx>(
+          dev_ctx, out_grad_help, false, false, y_help, true, false, dx);
+      CalcInputGradGPU<T, Tdy>(
+          dev_ctx, x_help, true, true, out_grad_help, false, true, dy);
+    }
+
+    if (dx) {
+      if (dx_dims != x_help.dims()) {
+        dx->Resize(dx_dims);
+      }
+    }
+    if (dy) {
+      if (dy_dims != y_help.dims()) {
+        dy->Resize(dy_dims);
+      }
+    }
+  } else {
+    // Case3: broadcast. It need cost much time to reduce sum for the
+    // broadcast and wastes the memory.
+    // So we should avoid the case in reality.
+    VLOG(3) << "It need cost much time to reduce sum for the broadcast and "
+               "wastes the memory. So we should avoid the case in reality";
+
+    DenseTensor dx_help;
+    DenseTensor dy_help;
+
+    if (transpose_x) {
+      if (transpose_y) {
+        // X'Y': dA = Y'G', dB = G'X'
+        if (dx)
+          MatmulAmpFunction<Context, T, Tdx>(
+              dev_ctx, y, out_grad_casted, &dx_help, true, true);
+        if (dy)
+          MatmulAmpFunction<Context, T, Tdy>(
+              dev_ctx, out_grad_casted, x, &dy_help, true, true);
+      } else {
+        // X'Y: dX = YG', dY = XG
+        if (dx)
+          MatmulAmpFunction<Context, T, Tdx>(
+              dev_ctx, y, out_grad_casted, &dx_help, false, true);
+        if (dy)
+          MatmulAmpFunction<Context, T, Tdy>(
+              dev_ctx, x, out_grad_casted, &dy_help, false, false);
+      }
+    } else {
+      if (transpose_y) {
+        // XY': dX = GY, dY = G'X
+        if (dx)
+          MatmulAmpFunction<Context, T, Tdx>(
+              dev_ctx, out_grad_casted, y, &dx_help, false, false);
+        if (dy)
+          MatmulAmpFunction<Context, T, Tdy>(
+              dev_ctx, out_grad_casted, x, &dy_help, true, false);
+      } else {
+        // XY: dX = GY', dY = X'G
+        if (dx)
+          MatmulAmpFunction<Context, T, Tdx>(
+              dev_ctx, out_grad_casted, y, &dx_help, false, true);
+        if (dy)
+          MatmulAmpFunction<Context, T, Tdy>(
+              dev_ctx, x, out_grad_casted, &dy_help, true, false);
+      }
+    }
+
+    // get help dims
+    const std::vector<std::int64_t> dx_help_dims = vectorize(dx_help.dims());
+    const std::vector<std::int64_t> dy_help_dims = vectorize(dy_help.dims());
+
+    std::vector<std::int64_t> dx_broadcast_dims(ndim);
+    std::vector<std::int64_t> dy_broadcast_dims(ndim);
+
+    std::fill(
+        dx_broadcast_dims.data(), dx_broadcast_dims.data() + ndim - x_ndim, 1);
+    std::fill(
+        dy_broadcast_dims.data(), dy_broadcast_dims.data() + ndim - y_ndim, 1);
+    std::copy(x_dims.data(),
+              x_dims.data() + x_ndim,
+              dx_broadcast_dims.data() + ndim - x_ndim);
+    std::copy(y_dims.data(),
+              y_dims.data() + y_ndim,
+              dy_broadcast_dims.data() + ndim - y_ndim);
+
+    std::vector<int> dx_reduce_dims;
+    std::vector<int> dy_reduce_dims;
+    for (int idx = 0; idx <= ndim - 3; idx++) {
+      if (dx_help_dims[idx] != 1 && dx_broadcast_dims[idx] == 1) {
+        dx_reduce_dims.push_back(idx);
+      }
+      if (dy_help_dims[idx] != 1 && dy_broadcast_dims[idx] == 1) {
+        dy_reduce_dims.push_back(idx);
+      }
+    }
+    // reduce sum to get grad by ReduceSum
+    if (dx) {
+      if (dx_reduce_dims.empty()) {
+        *dx = std::move(dx_help);
+      } else {
+        ReduceSumForMatmulGrad<Context, Tdx>()(
+            dev_ctx, dx_help, dx, dx_reduce_dims);
+      }
+      dx->Resize(x.dims());
+    }
+    if (dy) {
+      if (dy_reduce_dims.empty()) {
+        *dy = std::move(dy_help);
+      } else {
+        ReduceSumForMatmulGrad<Context, Tdy>()(
+            dev_ctx, dy_help, dy, dy_reduce_dims);
+      }
+      dy->Resize(y.dims());
+    }
+    // Get the OutputGrad(out)
+  }
+}
+
+template <typename T, typename Context>
+void MatmulAmpGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& y,
+                         const DenseTensor& out_grad,
+                         bool transpose_x,
+                         bool transpose_y,
+                         int dx_type,
+                         int dy_type,
+                         DenseTensor* dx,
+                         DenseTensor* dy) {
+  if (dx_type == 22 && dy_type == 22) {
+    MatmulAmpGradFuntion<Context,
+                         T,
+                         phi::dtype::bfloat16,
+                         phi::dtype::bfloat16,
+                         float>(
+        dev_ctx, x, y, out_grad, dx, dy, transpose_x, transpose_y);
+  } else if (dx_type == 22 && dy_type == 5) {
+    MatmulAmpGradFuntion<Context, T, phi::dtype::bfloat16, float, float>(
+        dev_ctx, x, y, out_grad, dx, dy, transpose_x, transpose_y);
+  } else if (dx_type == 5 && dy_type == 22) {
+    MatmulAmpGradFuntion<Context, T, float, phi::dtype::bfloat16, float>(
+        dev_ctx, x, y, out_grad, dx, dy, transpose_x, transpose_y);
+  } else {
+    MatmulAmpGradFuntion<Context, T, float, float, float>(
+        dev_ctx, x, y, out_grad, dx, dy, transpose_x, transpose_y);
+  }
+}
 }  // namespace phi

@@ -39,6 +39,14 @@ void MatmulWithFlattenKernel(const Context& dev_ctx,
                              DenseTensor* out);
 
 template <typename T, typename Context>
+void MatmulAMPKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     bool transpose_x,
+                     bool transpose_y,
+                     DenseTensor* out);
+
+template <typename T, typename Context>
 DenseTensor Matmul(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
