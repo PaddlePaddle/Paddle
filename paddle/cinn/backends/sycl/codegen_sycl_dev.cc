@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2024 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,7 +51,7 @@ std::string CodeGenSYCL_Dev::Compile(const ir::Module &module,
 
 void CodeGenSYCL_Dev::Compile(const ir::Module &module,
                               const Outputs &outputs) {
-  LOG(FATAL) << "CINN_SYCL_codegen_NOT_IMPLEMENTED";
+  PADDLE_THROW(::common::errors::Fatal("CINN_SYCL_codegen_NOT_IMPLEMENTED"));
 }
 
 void CodeGenSYCL_Dev::Compile(const ir::LoweredFunc &func) {
@@ -153,7 +153,10 @@ void CodeGenSYCL_Dev::Visit(const ir::_Var_ *op) {
 }
 
 void CodeGenSYCL_Dev::Visit(const ir::Alloc *op) {
-  CHECK(op->destination.as_buffer());
+  PADDLE_ENFORCE_NE(
+      op->destination.as_buffer(),
+      nullptr,
+      ::common::errors::InvalidArgument("ir::Alloc's buffer cannot nullptr."));
   PrintTempBufferCreation(op->destination.as_buffer_ref());
 }
 
@@ -255,7 +258,7 @@ std::string CodeGenSYCL_Dev::Compile(const ir::Module &module,
       Compile(func);
     }
   } else {
-    LOG(FATAL) << "Not supported OutputKind";
+    PADDLE_THROW(::common::errors::Fatal("Not supported OutputKind"));
   }
 
   if (for_syclrtc_) {
@@ -269,7 +272,10 @@ std::string CodeGenSYCL_Dev::Compile(const ir::Module &module,
 void CodeGenSYCL_Dev::PrintIncludes() { str_ += GetSourceHeader(); }
 
 void CodeGenSYCL_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
-  CHECK_NE(buffer->type(), Void());
+  PADDLE_ENFORCE_NE(buffer->type(),
+                    Void(),
+                    ::common::errors::InvalidArgument(
+                        "Buffer type cannot be void in CodeGenSYCL_Dev"));
   auto print_gpu_memory = [&](const std::string &mark) {
     str_ += mark;
     str_ += GetTypeRepr(buffer->dtype);
@@ -308,8 +314,10 @@ void CodeGenSYCL_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
       break;
 
     default:
-      LOG(FATAL) << "SYCL device codegen not support memory " << buffer->name
-                 << ", type " << buffer->memory_type;
+      PADDLE_THROW(::common::errors::Fatal(
+          "SYCL device codegen not support memory %s, %s",
+          buffer->name,
+          buffer->memory_type));
   }
 }
 
@@ -367,7 +375,11 @@ void CodeGenSYCL_Dev::Visit(const ir::Call *op) {
 }
 
 void CodeGenSYCL_Dev::Visit(const ir::Let *op) {
-  CHECK(op->type().valid());
+  PADDLE_ENFORCE_EQ(
+      op->type().valid(),
+      true,
+      ::common::errors::InvalidArgument(
+          "ir::Let's op type cannot be valid in CodeGenSYCL_Dev"));
 
   // identify vectorized tensors by checking their dtypes are customized_type
   // with customized_type::kcuda_builtin_vector_t prefix, and save their names
@@ -405,7 +417,11 @@ bool CodeGenSYCL_Dev::PrintBuiltinVectorAccess(const ir::LoadStoreAddrMnger *op,
     return false;
   }
   auto *tensor = op->tensor.As<ir::_Tensor_>();
-  CHECK(tensor);
+  PADDLE_ENFORCE_NE(tensor,
+                    nullptr,
+                    ::common::errors::InvalidArgument(
+                        "Tensor in CodeGenSYCL_Dev::PrintBuiltinVectorAccess "
+                        "cannot be NULL."));
 
   // identify vectorized tensors by their names
   if (!vectorized_tensor_names_.count(tensor->name)) {

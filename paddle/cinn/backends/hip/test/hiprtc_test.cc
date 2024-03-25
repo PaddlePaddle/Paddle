@@ -20,6 +20,8 @@
 #include <numeric>
 #include <vector>
 
+#include "glog/logging.h"
+
 template <class BidirectionalIterator>
 inline std::string format_range(const BidirectionalIterator begin,
                                 const BidirectionalIterator end) {
@@ -122,12 +124,12 @@ __global__ void saxpy_kernel(const real a, const realptr d_x, realptr d_y, const
   if (log_size) {
     std::string log(log_size, '\0');
     hiprtcGetProgramLog(prog, &log[0]);
-    std::cout << log << std::endl;
+    VLOG(6) << log << std::endl;
   }
 
   // If the compilation failed, say so and exit.
   if (compile_result != HIPRTC_SUCCESS) {
-    std::cout << "Error: compilation failed." << std::endl;
+    VLOG(6) << "Error: compilation failed." << std::endl;
     return EXIT_FAILURE;
   }
   size_t bi_size;
@@ -243,8 +245,8 @@ __global__ void saxpy_kernel(const real a, const realptr d_x, realptr d_y, const
                     &offset,
                     HIP_LAUNCH_PARAM_END};
 
-  std::cout << "Calculating y[i] = a * x[i] + y[i] over " << size
-            << " elements." << std::endl;
+  VLOG(6) << "Calculating y[i] = a * x[i] + y[i] over " << size << " elements."
+          << std::endl;
 
   // Launch the kernel on the NULL stream and with the above configuration.
   HIP_CHECK(hipModuleLaunchKernel(kernel,
@@ -274,7 +276,7 @@ __global__ void saxpy_kernel(const real a, const realptr d_x, realptr d_y, const
 
   // Print the first few elements of the results for validation.
   constexpr size_t elements_to_print = 10;
-  std::cout << "First " << elements_to_print << " elements of the results: "
+  VLOG(6) << "First " << elements_to_print << " elements of the results: "
             << format_range(y.begin(), y.begin() + elements_to_print)
             << std::endl;
 

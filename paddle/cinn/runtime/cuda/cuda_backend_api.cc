@@ -97,7 +97,7 @@ std::variant<int, std::array<int, 3>> CUDABackendAPI::get_device_property(
       break;
     }
     default:
-      LOG(FATAL) << "Not supported device property!";
+      PADDLE_THROW(::common::errors::Fatal("Not supported device property!"));
   }
   return rv_variant;
 }

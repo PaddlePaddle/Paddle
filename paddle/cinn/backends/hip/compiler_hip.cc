@@ -60,10 +60,10 @@ std::vector<std::string> Compiler::FindHIPIncludePaths() {
     return {hip_include_path};
   }
 #endif
-  LOG(FATAL) << "Cannot find hip include path."
-             << "ROCM_PATH is not set or HIP is not installed in the default "
-                "installation path."
-             << "In other than linux, it is necessary to set ROCM_PATH.";
+  PADDLE_THROW(::common::errors::Fatal(
+      "Cannot find hip include path. ROCM_PATH is not set or HIP is not "
+      "installed in the default installation path. In other than linux, it is "
+      "necessary to set ROCM_PATH."));
   return {hip_include_path};
 }
 
@@ -110,7 +110,8 @@ std::string Compiler::CompileHipSource(const std::string& code,
     std::string log;
     log.resize(log_size);
     HIPRTC_CALL(hiprtcGetProgramLog(prog, &log[0]));
-    CHECK_EQ(compile_res, HIPRTC_SUCCESS) << log;
+    PADDLE_ENFORCE_EQ(
+        compile_res, HIPRTC_SUCCESS, ::common::errors::External(log));
   }
 
   size_t size;
@@ -140,7 +141,10 @@ std::string Compiler::ReadFile(const std::string& file_name,
                                std::ios_base::openmode mode) {
   // open cubin file
   std::ifstream ifs(file_name, mode);
-  CHECK(ifs.is_open()) << "Fail to open file " << file_name;
+  PADDLE_ENFORCE_EQ(
+      ifs.is_open(),
+      true,
+      ::common::errors::PreconditionNotMet("Fail to open file %s", file_name));
   ifs.seekg(std::ios::end);
   auto len = ifs.tellg();
   ifs.seekg(0);

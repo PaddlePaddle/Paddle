@@ -180,9 +180,12 @@ void BindFramework(pybind11::module *m) {
            [](hlir::framework::Tensor &self,
               py::array array,
               const cinn::common::Target &target) {
-             CHECK(array.dtype().is(
-                 py::dtype(cinn::common::Type2Str(self->type()))))
-                 << "currently only support float32 data type as input";
+             PADDLE_ENFORCE_EQ(
+                 array.dtype().is(
+                     py::dtype(cinn::common::Type2Str(self->type()))),
+                 true,
+                 ::common::errors::InvalidArgument(
+                     "currently only support float32 data type as input"));
              hlir::framework::shape_t shape;
              std::copy_n(
                  array.shape(), array.ndim(), std::back_inserter(shape));

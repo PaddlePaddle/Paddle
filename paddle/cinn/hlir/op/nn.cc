@@ -347,7 +347,11 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
         // called. When cinn support backward_filter/backward_data code gen,
         // this code is to be removed.
         if (conv_type != "forward") {
-          CHECK_EQ(vec_ast.size(), 1);
+          PADDLE_ENFORCE_EQ(
+              vec_ast.size(),
+              1,
+              ::common::errors::InvalidArgument(
+                  "The input argument is invalid for conv2d backward"));
           pe::IRCudaScheduleInjective(ir_sch, output_shapes.front(), target);
           std::vector<CINNValue> res{
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};

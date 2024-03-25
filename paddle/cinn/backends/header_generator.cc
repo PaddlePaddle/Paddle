@@ -26,8 +26,11 @@ HeaderGeneratorBase& JitSafeHeaderGenerator::GetInstance() {
 }
 
 const size_t JitSafeHeaderGenerator::size() const {
-  CHECK_EQ(include_names_.size(), headers_.size())
-      << "Internal error in size of header files.";
+  PADDLE_ENFORCE_EQ(include_names_.size(),
+                    headers_.size(),
+                    true,
+                    ::common::errors::PreconditionNotMet(
+                        "Size of header files doesn't match include names"));
   return include_names_.size();
 }
 

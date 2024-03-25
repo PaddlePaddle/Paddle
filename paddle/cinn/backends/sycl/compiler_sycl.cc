@@ -57,7 +57,10 @@ std::string Compiler::CompileToSo(const std::string& source_code,
   shared_lib_path = filename + ".so";
   // write source file
   std::ofstream ofs(source_file_path.c_str(), std::ios::out);
-  CHECK(ofs.is_open()) << "Fail to open file " << source_file_path;
+  PADDLE_ENFORCE_EQ(ofs.is_open(),
+                    true,
+                    ::common::errors::PreconditionNotMet("Fail to open file %s",
+                                                         source_file_path));
   ofs << source_code;
   ofs.close();
   // set compile command
@@ -73,7 +76,10 @@ std::string Compiler::CompileToSo(const std::string& source_code,
   // compile
   LOG(INFO) << "compile command: " << command;
   VLOG(2) << "compile command: " << command;
-  CHECK(system(command.c_str()) == 0) << command;
+  PADDLE_ENFORCE_EQ(system(command.c_str()),
+                    0,
+                    ::common::errors::External(
+                        "Following compile command failed:\n%s", commond));
   return shared_lib_path;
 }
 
@@ -96,8 +102,8 @@ void Compiler::SetDeviceArchOptions(const Target::Arch gpu_type) {
       device_arch_options = "-fsycl";
       break;
     default:
-      LOG(ERROR)
-          << "valid gpu value in target! possible options: intel/amd/nvidia.";
+      PADDLE_THROW(::common::errors::Fatal(
+          "valid gpu value in target! possible options: intel/amd/nvidia."));
   }
 }
 

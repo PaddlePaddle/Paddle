@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2024 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,7 +51,10 @@ void CodeGenHIP_Dev::Compile(const ir::Module &module, const Outputs &outputs) {
     auto source = Compile(module, OutputKind::CHeader);
     str_ = "";
     std::ofstream file(outputs.c_header_name);
-    CHECK(file.is_open()) << "failed to open file " << outputs.c_header_name;
+    PADDLE_ENFORCE_EQ(file.is_open(),
+                      true,
+                      ::common::errors::PreconditionNotMet(
+                          "failed to open file %s", outputs.c_header_name));
     file << source;
     file.close();
     LOG(WARNING) << "Output C header to file " << outputs.c_header_name;
@@ -61,7 +64,10 @@ void CodeGenHIP_Dev::Compile(const ir::Module &module, const Outputs &outputs) {
     auto source = Compile(module, OutputKind::CImpl);
     str_ = "";
     std::ofstream file(outputs.cuda_source_name);
-    CHECK(file.is_open()) << "failed to open file " << outputs.cuda_source_name;
+    PADDLE_ENFORCE_EQ(file.is_open(),
+                      true,
+                      ::common::errors::PreconditionNotMet(
+                          "failed to open file %s", outputs.cuda_source_name));
     file << source;
     file.close();
     LOG(WARNING) << "Output C source to file " << outputs.cuda_source_name;
@@ -147,7 +153,10 @@ void CodeGenHIP_Dev::Visit(const ir::_Var_ *op) {
 }
 
 void CodeGenHIP_Dev::Visit(const ir::Alloc *op) {
-  CHECK(op->destination.as_buffer());
+  PADDLE_ENFORCE_NE(op->destination.as_buffer(),
+                    nullptr,
+                    ::common::errors::PreconditionNotMet(
+                        "Buffer shouldn't be null in Alloc instruction."));
   PrintTempBufferCreation(op->destination.as_buffer_ref());
 }
 
@@ -231,7 +240,7 @@ std::string CodeGenHIP_Dev::Compile(const ir::Module &module,
       Compile(func);
     }
   } else {
-    LOG(FATAL) << "Not supported OutputKind";
+    PADDLE_THROW(::common::errors::Fatal("Not supported OutputKind"));
   }
 
   if (for_hiprtc_) {
@@ -243,7 +252,10 @@ std::string CodeGenHIP_Dev::Compile(const ir::Module &module,
 void CodeGenHIP_Dev::PrintIncludes() { str_ += GetSourceHeader(); }
 
 void CodeGenHIP_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
-  CHECK_NE(buffer->type(), Void());
+  PADDLE_ENFORCE_NE(buffer->type(),
+                    Void(),
+                    ::common::errors::PreconditionNotMet(
+                        "BUffer type can not be Void in CodeGenHIP_Dev"));
   auto print_gpu_memory = [&](const std::string &mark) {
     str_ += mark;
     str_ += GetTypeRepr(buffer->dtype);
@@ -270,8 +282,10 @@ void CodeGenHIP_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
       break;
 
     default:
-      LOG(FATAL) << "HIP device codegen not support memory " << buffer->name
-                 << ", type " << buffer->memory_type;
+      PADDLE_THROW(::common::errors::Fatal(
+          "HIP device codegen not support memory %s, %s",
+          buffer->name,
+          buffer->memory_type));
   }
 }
 
@@ -320,8 +334,10 @@ void CodeGenHIP_Dev::Visit(const ir::Call *op) {
 }
 
 void CodeGenHIP_Dev::Visit(const ir::Let *op) {
-  CHECK(op->type().valid());
-
+  PADDLE_ENFORCE_TRUE(
+      op->type().valid(),
+      true,
+      ::common::errors::PreconditionNetMet("Let op type must be valid."));
   // identify vectorized tensors by checking their dtypes are customized_type
   // with customized_type::kcuda_builtin_vector_t prefix, and save their names
   if (op->type().is_customized() &&
@@ -358,7 +374,11 @@ bool CodeGenHIP_Dev::PrintBuiltinVectorAccess(const ir::LoadStoreAddrMnger *op,
     return false;
   }
   auto *tensor = op->tensor.As<ir::_Tensor_>();
-  CHECK(tensor);
+  PADDLE_ENFORCE_NE(tensor,
+                    nullptr,
+                    ::common::errors::InvalidArgument(
+                        "LoadStoreAddrMnger contains NULL tensor, which is an "
+                        "illegal argument"));
 
   // identify vectorized tensors by their names
   if (!vectorized_tensor_names_.count(tensor->name)) {

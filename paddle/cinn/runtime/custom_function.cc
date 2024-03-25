@@ -38,8 +38,10 @@ void AssertTrueMsgTool::SetMsg(int key, const std::string& msg) {
 }
 
 const std::string& AssertTrueMsgTool::GetMsg(int key) {
-  CHECK(global_msg_.find(key) != global_msg_.end())
-      << "Cannot find assert_true message key " << key;
+  PADDLE_ENFORCE_NE(global_msg_.find(key),
+                    global_msg_.end(),
+                    ::common::errors::InvalidArgument(
+                        "Cannot find assert_true message key %s", key));
   return global_msg_[key];
 }
 
@@ -70,9 +72,12 @@ void AssertTrueMsgTool::InitFlagInfo() {
       continue;
     }
     const auto& flag_arg = cinn::utils::Split(str, "=");
-    CHECK_EQ(flag_arg.size(), 2UL)
-        << "The FLAGS_cinn_check_fusion_accuracy_pass must be the format of "
-           "\"only_warning=false;rtol=1e-5;atol=1e-8;equal_nan=false\"";
+    PADDLE_ENFORCE_EQ(
+        flag_arg.size(),
+        2UL,
+        ::common::errors::InvalidArgument(
+            "The FLAGS_cinn_check_fusion_accuracy_pass must be the format of "
+            "\"only_warning=false;rtol=1e-5;atol=1e-8;equal_nan=false\""));
 
     if (flag_arg[0] == "only_warning" || flag_arg[0] == "equal_nan") {
       // bool type parameter
@@ -148,8 +153,8 @@ bool MemcpyToDevice(void* dst,
                     static_cast<cudaStream_t>(stream));
     return true;
 #else
-    LOG(FATAL)
-        << "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check.";
+    PADDLE_THROW(::common::errors::Fatal(
+        "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check."));
     return false;
 #endif
   } else if (input_target.arch_is_gpu()) {
@@ -161,10 +166,12 @@ bool MemcpyToDevice(void* dst,
     memcpy(dst, src, bytes);
     return true;
   }
-  LOG(FATAL) << "MemcpyToDevice Only support cpu or gpu, but here the "
-                "input target is "
-             << input_target << "! Please check.";
+  PADDLE_THROW(
+      ::common::errors::Fatal("MemcpyToDevice Only support cpu or gpu, but "
+                              "here the input target is %s! Please check.",
+                              input_target));
 }
+
 }  // namespace utils
 
 void CheckAssertTrue(const bool* x,

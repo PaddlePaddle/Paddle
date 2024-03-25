@@ -655,9 +655,11 @@ void PaddleModelToProgram::TransposeVar(const std::string& name) {
             reinterpret_cast<void*>(tensor->mutable_data<float>(target_)),
             tensor->shape().numel() * sizeof(float),
             BackendAPI::MemcpyType::DeviceToHost);
-        CHECK(tensor->shape().size() == 2)
-            << "The y data's shape size of op [mul] is not equal to 2! Please "
-               "check.";
+        PADDLE_ENFORCE_EQ(tensor->shape().size(),
+                          2,
+                          ::common::errors::InvalidArgument(
+                              "The y data's shape size of op [mul] is not "
+                              "equal to 2! Please check."));
         TransposeData(
             data.data(), tensor->shape().data()[0], tensor->shape().data()[1]);
         BackendAPI::get_backend(target_)->memcpy(

@@ -77,36 +77,48 @@ int Target::runtime_arch() const {
 }
 
 int Target::max_num_threads() const {
-  CHECK(arch == Arch::NVGPU || arch == Arch::AMDGPU || arch == Arch::IntelGPU)
-      << "The target cannot get MaxThreadsPerBlock";
+  PADDLE_ENFORCE_EQ(
+      arch == Arch::NVGPU || arch == Arch::AMDGPU || arch == Arch::IntelGPU,
+      true,
+      ::common::errors::Fatal("The target cannot get MaxThreadsPerBlock"));
   return std::get<int>(BackendAPI::get_backend(language)->get_device_property(
       BackendAPI::DeviceProperty::MaxThreadsPerBlock));
 }
 
 int Target::get_warp_size() const {
-  CHECK(arch == Arch::NVGPU || arch == Arch::AMDGPU || arch == Arch::IntelGPU)
-      << "The target cannot get MaxThreadsPerBlock";
+  PADDLE_ENFORCE_EQ(
+      arch == Arch::NVGPU || arch == Arch::AMDGPU || arch == Arch::IntelGPU,
+      true,
+      ::common::errors::Fatal("The target cannot get MaxThreadsPerBlock"));
   return std::get<int>(BackendAPI::get_backend(language)->get_device_property(
       BackendAPI::DeviceProperty::WarpSize));
 }
 
 int Target::get_multi_processor_count() const {
-  CHECK(arch == Arch::NVGPU || arch == Arch::AMDGPU || arch == Arch::IntelGPU)
-      << "The target cannot get multi processor count";
+  PADDLE_ENFORCE_EQ(
+      arch == Arch::NVGPU || arch == Arch::AMDGPU || arch == Arch::IntelGPU,
+      true,
+      ::common::errors::Fatal("The target cannot get multi processor count"));
   return std::get<int>(BackendAPI::get_backend(language)->get_device_property(
       BackendAPI::DeviceProperty::MultiProcessorCount));
 }
 
 int Target::get_max_threads_per_sm() const {
-  CHECK(arch == Arch::NVGPU || arch == Arch::AMDGPU || arch == Arch::IntelGPU)
-      << "The target cannot get max threads per stream processor";
+  PADDLE_ENFORCE_EQ(
+      arch == Arch::NVGPU || arch == Arch::AMDGPU || arch == Arch::IntelGPU,
+      true,
+      ::common::errors::Fatal(
+          "The target cannot get max threads per stream processor"));
   return std::get<int>(BackendAPI::get_backend(language)->get_device_property(
       BackendAPI::DeviceProperty::MaxThreadsPerSM));
 }
 
 int Target::get_max_blocks_per_sm() const {
-  CHECK(arch == Arch::NVGPU || arch == Arch::AMDGPU || arch == Arch::IntelGPU)
-      << "The target cannot get max blocks per stream processor";
+  PADDLE_ENFORCE_EQ(
+      arch == Arch::NVGPU || arch == Arch::AMDGPU || arch == Arch::IntelGPU,
+      true,
+      ::common::errors::Fatal(
+          "The target cannot get max blocks per stream processor"));
   return std::get<int>(BackendAPI::get_backend(language)->get_device_property(
       BackendAPI::DeviceProperty::MaxBlocksPerSM));
 }
@@ -145,9 +157,10 @@ std::string Target::arch_str() const {
 }
 
 void Target::SetActiveDevices(std::vector<int> deviceIds) {
-  if (language != Target::Language::sycl) {
-    LOG(ERROR) << "set device only supported for sycl backend!";
-  }
+  PADDLE_ENFORCE_EQ(language,
+                    Target::Language::sycl,
+                    ::common::errors::PreconditionNotMet(
+                        "Set device only supported for sycl backend!"));
   // BackendAPI::get_backend(language)->SetActiveDevices(deviceIds);
   // SYCLWorkspace::Global()->SetActiveDevices(deviceIds);
 }

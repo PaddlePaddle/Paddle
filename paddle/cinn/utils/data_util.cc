@@ -46,7 +46,10 @@ void SetRandInt(hlir::framework::Tensor tensor,
         BackendAPI::MemcpyType::HostToDevice);
     return;
   }
-  CHECK(target == common::DefaultHostTarget());
+  PADDLE_ENFORCE_EQ(target,
+                    common::DefaultHostTarget(),
+                    ::common::errors::PreconditionNotMet(
+                        "Target precondition not met for CINN util."));
   std::copy(random_data.begin(), random_data.end(), data);
 }
 
@@ -76,7 +79,10 @@ void SetRandData<int>(hlir::framework::Tensor tensor,
         BackendAPI::MemcpyType::HostToDevice);
     return;
   }
-  CHECK(target == common::DefaultHostTarget());
+  PADDLE_ENFORCE_EQ(target,
+                    common::DefaultHostTarget(),
+                    ::common::errors::PreconditionNotMet(
+                        "Target precondition not met for CINN util."));
   std::copy(random_data.begin(), random_data.end(), data);
 }
 
@@ -106,7 +112,10 @@ void SetRandData<float>(hlir::framework::Tensor tensor,
         BackendAPI::MemcpyType::HostToDevice);
     return;
   }
-  CHECK(target == common::DefaultHostTarget());
+  PADDLE_ENFORCE_EQ(target,
+                    common::DefaultHostTarget(),
+                    ::common::errors::PreconditionNotMet(
+                        "Target precondition not met for CINN util."));
   std::copy(random_data.begin(), random_data.end(), data);
 }
 
@@ -123,7 +132,10 @@ std::vector<T> GetTensorData(const hlir::framework::Tensor& tensor,
         size * sizeof(T),
         BackendAPI::MemcpyType::DeviceToHost);
   } else {
-    CHECK(target == common::DefaultHostTarget());
+    PADDLE_ENFORCE_EQ(target,
+                      common::DefaultHostTarget(),
+                      ::common::errors::PreconditionNotMet(
+                          "Target precondition not met for CINN util."));
     std::copy(tensor->data<T>(), tensor->data<T>() + size, data.begin());
   }
   return data;
