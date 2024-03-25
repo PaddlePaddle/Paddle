@@ -829,7 +829,6 @@ pir::Value apply(Value self, py::object func) {
           Py_DECREF(python_obj);                                             \
         };                                                                   \
         PyObject *pointer_data = obj.release().ptr();                        \
-        Py_INCREF(pointer_data);                                             \
         pir::Property value_property(reinterpret_cast<void *>(pointer_data), \
                                      deleter);                               \
         self.set_property(name, value_property);                             \
