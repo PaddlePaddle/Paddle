@@ -22,7 +22,7 @@ namespace hlir {
 namespace framework {
 
 PirCompiler::CompileResult PirCompiler::Build(
-    const std::vector<pir::GroupPtr>& groups) {
+    const std::vector<pir::OpLoweringGroupPtr>& groups) {
   std::vector<pir::CINNKernelInfo> cinn_kernel_info_vecs(groups.size());
   for (int i = 0; i < groups.size(); ++i) {
     group_compilation_contexts_.emplace_back(target_, groups[i]);
