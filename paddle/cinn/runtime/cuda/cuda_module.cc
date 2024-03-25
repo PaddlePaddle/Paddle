@@ -34,13 +34,12 @@ namespace cuda {
 
 CUDAModule::CUDAModule(const std::string& data, Kind kind)
     : data_(data), kind_(kind) {
-  PADDLE_ENFORCE_NE(data.empty(), true,
-    phi::error::PreconditionNotMet("data is is empty!"));
-
+  PADDLE_ENFORCE_NE(
+      data.empty(), true, phi::error::PreconditionNotMet("data is is empty!"));
 
   cudaGetDeviceCount(&num_devices_);
-  PADDLE_ENFORCE_GT(num_devices_, 0,
-    phi::errors::ResourceExhausted("No available devices!"));
+  PADDLE_ENFORCE_GT(
+      num_devices_, 0, phi::errors::ResourceExhausted("No available devices!"));
 
   // TODO(Superjomn) Determine whether to initialize all the devices.
   int current_device_id;
@@ -64,8 +63,10 @@ void CUDAModule::LaunchKernel(int device_id,
           << ", blockDim.y:" << blockDim.y << ", blockDim.z:" << blockDim.z
           << ", share_memory_size:" << share_memory_size;
   auto function = GetFunction(device_id, func_name);
-  PADDLE_ENFORCE_NOT_NULL(function,
-    phi::errors::NotFound("%s function not found on device %d.", func_name, device_id));
+  PADDLE_ENFORCE_NOT_NULL(
+      function,
+      phi::errors::NotFound(
+          "%s function not found on device %d.", func_name, device_id));
   cinn::utils::RecordEvent record_run("cuLaunchKernel",
                                       cinn::utils::EventType::kInstruction);
   CUDA_DRIVER_CALL(cuLaunchKernel(function,
