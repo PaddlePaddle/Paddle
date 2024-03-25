@@ -208,8 +208,7 @@ class LowerCinnFusionOpPass : public pir::PatternRewritePass {
   bool CanApplyOn(pir::Operation* op) const override {
     if (op->isa<pir::ModuleOp>()) {
       VLOG(5) << "start to pre-analysis all fusion ops in ModuleOp with static "
-                 "shape mode: "
-              << op->id();
+                 "shape mode.";
       FusionOpAnalysis(&pre_analysis_info_, /*is_dy_shape=*/false).Run(op);
     }
     return op->num_regions() > 0;
@@ -252,8 +251,7 @@ class LowerCinnDyShapeFusionOpPass : public pir::PatternRewritePass {
   bool CanApplyOn(pir::Operation* op) const override {
     if (op->isa<pir::ModuleOp>()) {
       VLOG(5) << "start to pre-analysis all fusion ops in ModuleOp with "
-                 "dynamic shape mode: "
-              << op->id();
+                 "dynamic shape mode.";
       FusionOpAnalysis(&pre_analysis_info_, /*is_dy_shape=*/true).Run(op);
     }
     return op->num_regions() > 0;
@@ -469,14 +467,12 @@ std::shared_ptr<Group> RebuildGroup(pir::Operation* fusion_op_ptr,
   // Because the group is rebuilt, the order of group.output_values generated
   // by BuildCUDAJITInfo may not be same with the order bound in the yield op,
   // so a mapping is required.
-  if (is_dy_shape) {
-    auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
-        fusion_op->GetParentProgram());
-    group->set_value_to_shape_or_data_exprs(
-        CreateGroupShapeOrDataExprs(group, shape_analysis));
-    if (FLAGS_cinn_enable_map_expr) {
-      cinn::adt::TryGenerateMapExprFromGroup(group);
-    }
+  auto& shape_analysis =
+      pir::ShapeAnalysisManager::Instance().Get(fusion_op->GetParentProgram());
+  group->set_value_to_shape_or_data_exprs(
+      CreateGroupShapeOrDataExprs(group, shape_analysis));
+  if (FLAGS_cinn_enable_map_expr) {
+    cinn::adt::TryGenerateMapExprFromGroup(group);
   }
   // Rebuild other informations
   // TODO(zhangyuqin1998): Do we need group.master_ops?
