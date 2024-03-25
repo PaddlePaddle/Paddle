@@ -30,13 +30,13 @@ PatternNode::PatternNode(PatternNodePtr fused_up_node,
     return std::find(vec.begin(), vec.end(), item);
   };
 
-  ExtendVector(upstream_, fused_up_node->upstream_);
-  ExtendVector(upstream_, fused_down_node->upstream_);
+  ExtendVector(&upstream_, fused_up_node->upstream_);
+  ExtendVector(&upstream_, fused_down_node->upstream_);
 
   upstream_.erase(FindFromVector(upstream_, fused_up_node));
 
-  ExtendVector(downstream_, fused_up_node->downstream_);
-  ExtendVector(downstream_, fused_down_node->downstream_);
+  ExtendVector(&downstream_, fused_up_node->downstream_);
+  ExtendVector(&downstream_, fused_down_node->downstream_);
   downstream_.erase(FindFromVector(downstream_, fused_down_node));
 
   std::vector<PatternNodePtr>::iterator iter;

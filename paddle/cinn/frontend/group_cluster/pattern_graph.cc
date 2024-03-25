@@ -30,7 +30,6 @@ std::vector<std::vector<const pir::Operation*>> PatternGraph::ClusterOps() {
 
 void PatternGraph::SinkTrivialPattern() {
   // TODO(wuzhanfei): need consider Unsupport op here
-  auto visited = std::unordered_set<PatternNodePtr>();
   const auto FindTrivialNode =
       [](std::unordered_set<PatternNodePtr> all_nodes) -> PatternNodePtr {
     for (PatternNodePtr node : all_nodes) {

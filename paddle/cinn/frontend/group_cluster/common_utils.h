@@ -57,13 +57,13 @@ bool IsReducePattern(const StmtPattern& pattern);
 bool IsUnsupportPattern(const StmtPattern& pattern);
 
 template <typename T>
-void ExtendVector(std::vector<T>& first, const std::vector<T>& second) {
+void ExtendVector(std::vector<T>* first, const std::vector<T>& second) {
   std::unordered_set<T> visited =
-      std::unordered_set<T>(first.begin(), first.end());
+      std::unordered_set<T>(first->begin(), first->end());
   for (auto iter = second.begin(); iter != second.end(); iter++) {
     if (visited.find(*iter) == visited.end()) {
       visited.emplace(*iter);
-      first.emplace_back(*iter);
+      first->emplace_back(*iter);
     }
   }
 }
@@ -72,7 +72,7 @@ template <typename T>
 std::vector<T> MergeVector(const std::vector<T>& first,
                            const std::vector<T>& second) {
   std::vector<T> result = std::vector<T>(first);
-  ExtendVector(result, second);
+  ExtendVector(&result, second);
   return result;
 }
 

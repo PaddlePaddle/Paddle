@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+
 #include <variant>
 #include <vector>
 #include "paddle/pir/include/core/operation.h"
