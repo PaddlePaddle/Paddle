@@ -290,9 +290,9 @@ endfunction()
 #add_definitions("-DCUDA_TOOLKIT_ROOT_DIR=\"${CUDA_TOOLKIT_ROOT_DIR}\"")
 #
 ## setting nvcc arch flags
-#select_nvcc_arch_flags(NVCC_FLAGS_EXTRA NVCC_ARCH_BIN)
-#set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${NVCC_FLAGS_EXTRA}")
-#message(STATUS "NVCC_FLAGS_EXTRA: ${NVCC_FLAGS_EXTRA}")
+select_nvcc_arch_flags(NVCC_FLAGS_EXTRA NVCC_ARCH_BIN)
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${NVCC_FLAGS_EXTRA}")
+message(STATUS "NVCC_FLAGS_EXTRA: ${NVCC_FLAGS_EXTRA}")
 
 # Set C++14 support
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -std=c++17")

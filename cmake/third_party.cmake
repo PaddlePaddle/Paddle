@@ -561,21 +561,21 @@ if(WITH_CUSPARSELT)
   list(APPEND third_party_deps extern_cusparselt)
 endif()
 
-# if(WITH_GPU
-#    AND NOT WITH_ARM
-#    AND NOT WIN32
-#    AND NOT APPLE)
-#   if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.4)
-#     foreach(arch ${NVCC_ARCH_BIN})
-#       if(${arch} GREATER_EQUAL 80)
-#         include(external/flashattn)
-#         list(APPEND third_party_deps extern_flashattn)
-#         set(WITH_FLASHATTN ON)
-#         break()
-#       endif()
-#     endforeach()
-#   endif()
-# endif()
+if(WITH_GPU
+   AND NOT WITH_ARM
+   AND NOT WIN32
+   AND NOT APPLE)
+  if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.4)
+    foreach(arch ${NVCC_ARCH_BIN})
+      if(${arch} GREATER_EQUAL 80)
+        include(external/flashattn)
+        list(APPEND third_party_deps extern_flashattn)
+        set(WITH_FLASHATTN ON)
+        break()
+      endif()
+    endforeach()
+  endif()
+endif()
 
 if(WITH_CUDNN_FRONTEND)
   include(external/cudnn-frontend) # download cudnn-frontend

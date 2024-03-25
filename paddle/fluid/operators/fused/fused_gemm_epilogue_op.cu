@@ -177,19 +177,19 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-PD_REGISTER_STRUCT_KERNEL(fused_gemm_epilogue,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::FusedGemmEpilogueKernel,
-                          float,
-                          double,
-                          plat::float16,
-                          plat::bfloat16) {}
-PD_REGISTER_STRUCT_KERNEL(fused_gemm_epilogue_grad,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::FusedGemmEpilogueGradKernel,
-                          float,
-                          double,
-                          plat::float16,
-                          plat::bfloat16) {}
+// PD_REGISTER_STRUCT_KERNEL(fused_gemm_epilogue,
+//                           GPU,
+//                           ALL_LAYOUT,
+//                           ops::FusedGemmEpilogueKernel,
+//                           float,
+//                           double,
+//                           plat::float16,
+//                           plat::bfloat16) {}
+// PD_REGISTER_STRUCT_KERNEL(fused_gemm_epilogue_grad,
+//                           GPU,
+//                           ALL_LAYOUT,
+//                           ops::FusedGemmEpilogueGradKernel,
+//                           float,
+//                           double,
+//                           plat::float16,
+//                           plat::bfloat16) {}
