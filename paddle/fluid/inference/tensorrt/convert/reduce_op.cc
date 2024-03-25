@@ -64,6 +64,12 @@ class ReduceOpConverter : public OpConverter {
       for (int i = 0; i < input_dims; ++i) {
         reduce_dim |= 1 << i;
       }
+      if (op_type == "reduce_sum" &&
+          x->getType() == nvinfer1::DataType::kBOOL) {
+        auto* temp_layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *x);
+        temp_layer->setOutputType(0, nvinfer1::DataType::kINT32);
+        x = temp_layer->getOutput(0);
+      }
       layer = TRT_ENGINE_ADD_LAYER(engine_,
                                    Reduce,
                                    *x,
@@ -83,6 +89,12 @@ class ReduceOpConverter : public OpConverter {
         }
         return res;
       };
+      if (op_type == "reduce_sum" &&
+          x->getType() == nvinfer1::DataType::kBOOL) {
+        auto* temp_layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *x);
+        temp_layer->setOutputType(0, nvinfer1::DataType::kINT32);
+        x = temp_layer->getOutput(0);
+      }
       layer = TRT_ENGINE_ADD_LAYER(engine_,
                                    Reduce,
                                    *x,
