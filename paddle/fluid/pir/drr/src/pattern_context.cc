@@ -14,9 +14,11 @@
 
 #include <memory>
 
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
 #include "paddle/fluid/pir/drr/src/pattern_graph.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
@@ -140,10 +142,12 @@ Tensor& Op::operator()() const {
 }
 
 thread_local int64_t Op::count = 0;
-const char* Op::prefix = "@drr_temp@_";
+constexpr char Op::prefix[] = "@drr_temp@_";
 
-const char Tensor::INPUT_NONE_TENSOR_NAME[] = "__@input_none_tensor@__";
-const char Tensor::OUTPUT_NONE_TENSOR_NAME[] = "__@output_none_tensor@__";
+constexpr char Tensor::SOURCE_INPUT_NONE_TENSOR_NAME[] = "__@source_input_none_tensor@__";
+constexpr char Tensor::SOURCE_OUTPUT_NONE_TENSOR_NAME[] = "__@source_output_none_tensor@__";
+constexpr char Tensor::RESULT_INPUT_NONE_TENSOR_NAME[] = "__@result_input_none_tensor@__";
+constexpr char Tensor::RESULT_OUTPUT_NONE_TENSOR_NAME[] = "__@result_output_none_tensor@__";
 
 void Tensor::Assign(const Tensor& other) {
   dynamic_cast<ResultPatternGraph*>(pattern_graph_)->AssignTensor(*this, other);
@@ -161,6 +165,126 @@ void Tensor::operator=(const Tensor& other) const {  // NOLINT
       name_.find(Op::prefix) == std::string::npos) {
     other.pattern_graph_->UpdateTmpTensor(other.name_, this->name_);
   }
+}
+
+const drr::Op& ResultPattern::Op(
+    const std::string& op_type,
+    const std::unordered_map<std::string, Attribute>& attributes) {
+  return ctx_->ResultOpPattern(op_type, attributes);
+}
+
+drr::Tensor& ResultPattern::Tensor(const std::string& name) {
+  return ctx_->ResultTensorPattern(name);
+}
+
+drr::Tensor& ResultPattern::InputNoneTensor() {
+  return ctx_->ResultTensorPattern(Tensor::RESULT_INPUT_NONE_TENSOR_NAME);
+}
+
+drr::Tensor& ResultPattern::OutputNoneTensor() {
+  return ctx_->ResultTensorPattern(Tensor::RESULT_OUTPUT_NONE_TENSOR_NAME);
+}
+
+Attribute ResultPattern::StrAttr(const std::string& value) const {
+  return ComputeAttr(
+      [=](const MatchContext& match_ctx) -> std::string { return value; });
+}
+
+Attribute ResultPattern::BoolAttr(bool value) const {
+  return ComputeAttr(
+      [=](const MatchContext& match_ctx) -> bool { return value; });
+}
+
+Attribute ResultPattern::Int32Attr(int32_t value) const {
+  return ComputeAttr(
+      [=](const MatchContext& match_ctx) -> int32_t { return value; });
+}
+
+Attribute ResultPattern::Int64Attr(int64_t value) const {
+  return ComputeAttr(
+      [=](const MatchContext& match_ctx) -> int64_t { return value; });
+}
+
+Attribute ResultPattern::Float32Attr(float value) const {
+  return ComputeAttr(
+      [=](const MatchContext& match_ctx) -> float { return value; });
+}
+
+Attribute ResultPattern::VectorInt64Attr(
+    const std::vector<int64_t>& value) const {
+  return ComputeAttr(
+      [=](const MatchContext& match_ctx) -> std::vector<int64_t> {
+        return value;
+      });
+}
+
+Attribute ResultPattern::VectorInt32Attr(
+    const std::vector<int32_t>& value) const {
+  return ComputeAttr(
+      [=](const MatchContext& match_ctx) -> std::vector<int32_t> {
+        return value;
+      });
+}
+
+Attribute ResultPattern::VectorFloatAttr(
+    const std::vector<float>& value) const {
+  return ComputeAttr([=](const MatchContext& match_ctx) -> std::vector<float> {
+    return value;
+  });
+}
+
+Attribute ResultPattern::DataTypeAttr(const std::string& value) const {
+  return ComputeAttr([=](const MatchContext& match_ctx) -> phi::DataType {
+    PADDLE_ENFORCE_EQ(dialect::DataTypeMap().count(value) > 0,
+                      true,
+                      "The DataTypeAttr %s is not supported.",
+                      value);
+    return dialect::DataTypeMap().at(value);
+  });
+}
+
+Attribute ResultPattern::ComputeAttr(
+    const AttrComputeFunc& attr_compute_func) const {
+  return ComputeAttribute(attr_compute_func);
+}
+
+drr::ResultPattern SourcePattern::ResultPattern() const {
+  return drr::ResultPattern(ctx_);
+}
+
+const drr::Op& SourcePattern::Op(
+    const std::string& op_type,
+    const std::unordered_map<std::string, Attribute>& attributes) {
+  return ctx_->SourceOpPattern(op_type, attributes);
+}
+
+const drr::Tensor& SourcePattern::Tensor(const std::string& name) {
+  return ctx_->SourceTensorPattern(name);
+}
+
+Attribute SourcePattern::Attr(const std::string& attr_name) const {
+  return NormalAttribute(attr_name);
+}
+
+void SourcePattern::RequireEqual(const TensorShape& first,
+                                 const TensorShape& second) {
+  ctx_->RequireEqual(first, second);
+}
+void SourcePattern::RequireEqual(const TensorDataType& first,
+                                 const TensorDataType& second) {
+  ctx_->RequireEqual(first, second);
+}
+
+void SourcePattern::RequireNativeCall(const ConstraintFunction& custom_fn) {
+  ctx_->RequireNativeCall(custom_fn);
+}
+
+drr::Tensor& SourcePattern::InputNoneTensor() {
+  return ctx_->ResultTensorPattern(Tensor::SOURCE_INPUT_NONE_TENSOR_NAME);
+}
+
+drr::Tensor& SourcePattern::OutputNoneTensor() {
+  return ctx_->ResultTensorPattern(Tensor::SOURCE_OUTPUT_NONE_TENSOR_NAME);
 }
 
 }  // namespace drr

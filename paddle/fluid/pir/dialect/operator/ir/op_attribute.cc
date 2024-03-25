@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/common/enforce.h"
 
 namespace paddle {
 namespace dialect {
@@ -73,30 +74,13 @@ IntArrayAttribute IntArrayAttribute::Parse(pir::IrParser &parser) {  // NOLINT
 //                       |complex128|Undefined|psting|flaot16
 //                       |bfloat16|num_data_types|all_dtype
 DataTypeAttribute DataTypeAttribute::Parse(pir::IrParser &parser) {  // NOLINT
-  std::unordered_map<std::string, phi::DataType> StringToDataType{
-      {"bool", phi::DataType::BOOL},
-      {"uint8", phi::DataType::UINT8},
-      {"int8", phi::DataType::INT8},
-      {"uint16", phi::DataType::UINT16},
-      {"int16", phi::DataType::INT16},
-      {"uint32", phi::DataType::UINT32},
-      {"int32", phi::DataType::INT32},
-      {"uint64", phi::DataType::UINT64},
-      {"int64", phi::DataType::INT64},
-      {"float32", phi::DataType::FLOAT32},
-      {"complex64", phi::DataType::COMPLEX64},
-      {"complex128", phi::DataType::COMPLEX128},
-      {"Undefined", phi::DataType::UNDEFINED},
-      {"psting", phi::DataType::PSTRING},
-      {"float16", phi::DataType::FLOAT16},
-      {"bfloat16", phi::DataType::BFLOAT16},
-      {"float64", phi::DataType::FLOAT64}};
   std::string datatype_token_val = parser.ConsumeToken().val_;
-  IR_ENFORCE(StringToDataType.count(datatype_token_val) > 0,
-             datatype_token_val + " is not defined in DataType." +
-                 parser.GetErrorLocationInfo());
+  PADDLE_ENFORCE_EQ(DataTypeMap().count(datatype_token_val) > 0,
+                    true,
+                    datatype_token_val + " is not defined in DataType." +
+                        parser.GetErrorLocationInfo());
   return DataTypeAttribute::get(parser.ctx,
-                                StringToDataType[datatype_token_val]);
+                                DataTypeMap().at(datatype_token_val));
 }
 
 // Parse a PlaceAttribute

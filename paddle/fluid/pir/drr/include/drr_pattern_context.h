@@ -192,15 +192,20 @@ class Op {
 
 class Tensor {
  public:
-  static const char INPUT_NONE_TENSOR_NAME[];
-  static const char OUTPUT_NONE_TENSOR_NAME[];
+  static constexpr char RESULT_INPUT_NONE_TENSOR_NAME[];
+  static constexpr char RESULT_OUTPUT_NONE_TENSOR_NAME[];
+  static constexpr char SOURCE_INPUT_NONE_TENSOR_NAME[];
+  static constexpr char SOURCE_OUTPUT_NONE_TENSOR_NAME[];
 
   TensorShape shape() const { return TensorShape(name()); }
 
   TensorDataType dtype() const { return TensorDataType(name()); }
 
   bool is_none() const {
-    return name_ == INPUT_NONE_TENSOR_NAME || name_ == OUTPUT_NONE_TENSOR_NAME;
+    return name_ == RESULT_INPUT_NONE_TENSOR_NAME ||
+           name_ == RESULT_OUTPUT_NONE_TENSOR_NAME ||
+           name_ == SOURCE_INPUT_NONE_TENSOR_NAME ||
+           name_ == SOURCE_OUTPUT_NONE_TENSOR_NAME;
   }
 
   TEST_API void Assign(const Tensor& other);
@@ -263,13 +268,9 @@ class ResultPattern {
  public:
   const drr::Op& Op(
       const std::string& op_type,
-      const std::unordered_map<std::string, Attribute>& attributes = {}) {
-    return ctx_->ResultOpPattern(op_type, attributes);
-  }
+      const std::unordered_map<std::string, Attribute>& attributes = {});
 
-  drr::Tensor& Tensor(const std::string& name) {
-    return ctx_->ResultTensorPattern(name);
-  }
+  drr::Tensor& Tensor(const std::string& name);
 
   // Represent the input tensor which is none.
   // Example:
@@ -278,9 +279,7 @@ class ResultPattern {
   // When scale is none, we can write a instance_norm op in drr as follow:
   // res.Op("instance_norm")(res.Tensor("x"), res.InputNoneTensor(),
   // res.Tensor("bias"));
-  drr::Tensor& InputNoneTensor() {
-    return ctx_->ResultTensorPattern(Tensor::INPUT_NONE_TENSOR_NAME);
-  }
+  drr::Tensor& InputNoneTensor();
 
   // Represent the output tensor which is none.
   // Example:
@@ -288,59 +287,27 @@ class ResultPattern {
   // it may be none). We can write a reshape op in drr as follow:
   // res.Op("reshape")({res.Tensor("x")}, {res.Tensor("out"),
   // res.OutputNoneTensor()});
-  drr::Tensor& OutputNoneTensor() {
-    return ctx_->ResultTensorPattern(Tensor::OUTPUT_NONE_TENSOR_NAME);
-  }
+  drr::Tensor& OutputNoneTensor();
 
-  Attribute StrAttr(const std::string& value) const {
-    return ComputeAttr(
-        [=](const MatchContext& match_ctx) -> std::string { return value; });
-  }
+  Attribute StrAttr(const std::string& value) const;
 
-  Attribute BoolAttr(bool value) const {
-    return ComputeAttr(
-        [=](const MatchContext& match_ctx) -> bool { return value; });
-  }
+  Attribute BoolAttr(bool value) const;
 
-  Attribute Int32Attr(int32_t value) const {
-    return ComputeAttr(
-        [=](const MatchContext& match_ctx) -> int32_t { return value; });
-  }
+  Attribute Int32Attr(int32_t value) const;
 
-  Attribute Int64Attr(int64_t value) const {
-    return ComputeAttr(
-        [=](const MatchContext& match_ctx) -> int64_t { return value; });
-  }
+  Attribute Int64Attr(int64_t value) const;
 
-  Attribute Float32Attr(float value) const {
-    return ComputeAttr(
-        [=](const MatchContext& match_ctx) -> float { return value; });
-  }
+  Attribute Float32Attr(float value) const;
 
-  Attribute VectorInt64Attr(const std::vector<int64_t>& value) const {
-    return ComputeAttr(
-        [=](const MatchContext& match_ctx) -> std::vector<int64_t> {
-          return value;
-        });
-  }
+  Attribute VectorInt64Attr(const std::vector<int64_t>& value) const;
 
-  Attribute VectorInt32Attr(const std::vector<int32_t>& value) const {
-    return ComputeAttr(
-        [=](const MatchContext& match_ctx) -> std::vector<int32_t> {
-          return value;
-        });
-  }
+  Attribute VectorInt32Attr(const std::vector<int32_t>& value) const;
 
-  Attribute VectorFloatAttr(const std::vector<float>& value) const {
-    return ComputeAttr(
-        [=](const MatchContext& match_ctx) -> std::vector<float> {
-          return value;
-        });
-  }
+  Attribute VectorFloatAttr(const std::vector<float>& value) const;
 
-  Attribute ComputeAttr(const AttrComputeFunc& attr_compute_func) const {
-    return ComputeAttribute(attr_compute_func);
-  }
+  Attribute DataTypeAttr(const std::string& value) const;
+
+  Attribute ComputeAttr(const AttrComputeFunc& attr_compute_func) const;
 
  private:
   friend class SourcePattern;
@@ -352,32 +319,27 @@ class ResultPattern {
 
 class SourcePattern {
  public:
-  drr::ResultPattern ResultPattern() const { return drr::ResultPattern(ctx_); }
+  drr::ResultPattern ResultPattern() const;
 
   const drr::Op& Op(
       const std::string& op_type,
-      const std::unordered_map<std::string, Attribute>& attributes = {}) {
-    return ctx_->SourceOpPattern(op_type, attributes);
-  }
+      const std::unordered_map<std::string, Attribute>& attributes = {});
 
-  const drr::Tensor& Tensor(const std::string& name) {
-    return ctx_->SourceTensorPattern(name);
-  }
+  const drr::Tensor& Tensor(const std::string& name);
 
-  Attribute Attr(const std::string& attr_name) const {
-    return NormalAttribute(attr_name);
-  }
+  Attribute Attr(const std::string& attr_name) const;
 
-  void RequireEqual(const TensorShape& first, const TensorShape& second) {
-    ctx_->RequireEqual(first, second);
-  }
-  void RequireEqual(const TensorDataType& first, const TensorDataType& second) {
-    ctx_->RequireEqual(first, second);
-  }
+  void RequireEqual(const TensorShape& first, const TensorShape& second);
 
-  void RequireNativeCall(const ConstraintFunction& custom_fn) {
-    ctx_->RequireNativeCall(custom_fn);
-  }
+  void RequireEqual(const TensorDataType& first, const TensorDataType& second);
+
+  void RequireNativeCall(const ConstraintFunction& custom_fn);
+
+  // Same as a ResultPattern::InputNoneTensor
+  drr::Tensor& InputNoneTensor();
+
+  // Same as a ResultPattern::OutputNoneTensor
+  drr::Tensor& OutputNoneTensor();
 
  private:
   friend class DrrPatternContext;

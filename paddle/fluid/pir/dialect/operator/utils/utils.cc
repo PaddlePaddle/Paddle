@@ -509,5 +509,27 @@ const std::unordered_map<std::string, std::string>& AttrTypeMap() {
   return attr_type_map;
 }
 
+const std::unordered_map<std::string, phi::DataType>& DataTypeMap() {
+  static std::unordered_map<std::string, phi::DataType> data_type_map{
+      {"bool", phi::DataType::BOOL},
+      {"uint8", phi::DataType::UINT8},
+      {"int8", phi::DataType::INT8},
+      {"uint16", phi::DataType::UINT16},
+      {"int16", phi::DataType::INT16},
+      {"uint32", phi::DataType::UINT32},
+      {"int32", phi::DataType::INT32},
+      {"uint64", phi::DataType::UINT64},
+      {"int64", phi::DataType::INT64},
+      {"float32", phi::DataType::FLOAT32},
+      {"complex64", phi::DataType::COMPLEX64},
+      {"complex128", phi::DataType::COMPLEX128},
+      {"Undefined", phi::DataType::UNDEFINED},
+      {"psting", phi::DataType::PSTRING},
+      {"float16", phi::DataType::FLOAT16},
+      {"bfloat16", phi::DataType::BFLOAT16},
+      {"float64", phi::DataType::FLOAT64}};
+  return data_type_map;
+}
+
 }  // namespace dialect
 }  // namespace paddle

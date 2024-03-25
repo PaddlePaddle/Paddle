@@ -169,5 +169,7 @@ std::vector<int64_t> ParseValueShape(const pir::Value& shape_,
 
 const std::unordered_map<std::string, std::string>& AttrTypeMap();
 
+const std::unordered_map<std::string, phi::DataType>& DataTypeMap();
+
 }  // namespace dialect
 }  // namespace paddle
