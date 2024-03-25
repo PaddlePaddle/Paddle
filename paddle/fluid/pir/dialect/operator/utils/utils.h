@@ -167,9 +167,9 @@ phi::DataType GetValueDataType(const pir::Value& value);
 std::vector<int64_t> ParseValueShape(const pir::Value& shape_,
                                      bool* is_from_tensor);
 
-const std::unordered_map<std::string, std::string>& AttrTypeMap();
+const std::unordered_map<std::string, std::string>& CppTypeToPirAttrTypeMap();
 
-const std::unordered_map<std::string, phi::DataType>& DataTypeMap();
+const std::unordered_map<std::string, phi::DataType>& StringToPhiDataType();
 
 }  // namespace dialect
 }  // namespace paddle

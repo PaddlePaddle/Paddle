@@ -142,15 +142,15 @@ Tensor& Op::operator()() const {
 }
 
 thread_local int64_t Op::count = 0;
-constexpr char Op::prefix[] = "@drr_temp@_";
+const char* Op::prefix = "@drr_temp@_";
 
-constexpr char Tensor::SOURCE_INPUT_NONE_TENSOR_NAME[] =
+const char Tensor::SOURCE_INPUT_NONE_TENSOR_NAME[] =
     "__@source_input_none_tensor@__";
-constexpr char Tensor::SOURCE_OUTPUT_NONE_TENSOR_NAME[] =
+const char Tensor::SOURCE_OUTPUT_NONE_TENSOR_NAME[] =
     "__@source_output_none_tensor@__";
-constexpr char Tensor::RESULT_INPUT_NONE_TENSOR_NAME[] =
+const char Tensor::RESULT_INPUT_NONE_TENSOR_NAME[] =
     "__@result_input_none_tensor@__";
-constexpr char Tensor::RESULT_OUTPUT_NONE_TENSOR_NAME[] =
+const char Tensor::RESULT_OUTPUT_NONE_TENSOR_NAME[] =
     "__@result_output_none_tensor@__";
 
 void Tensor::Assign(const Tensor& other) {
@@ -239,11 +239,11 @@ Attribute ResultPattern::VectorFloatAttr(
 
 Attribute ResultPattern::DataTypeAttr(const std::string& value) const {
   return ComputeAttr([=](const MatchContext& match_ctx) -> phi::DataType {
-    PADDLE_ENFORCE_EQ(dialect::DataTypeMap().count(value) > 0,
+    PADDLE_ENFORCE_EQ(dialect::StringToPhiDataType().count(value) > 0,
                       true,
                       "The DataTypeAttr %s is not supported.",
                       value);
-    return dialect::DataTypeMap().at(value);
+    return dialect::StringToPhiDataType().at(value);
   });
 }
 

@@ -495,7 +495,7 @@ std::vector<int64_t> ParseValueShape(const pir::Value& shape,
   return vec_shape;
 }
 
-const std::unordered_map<std::string, std::string>& AttrTypeMap() {
+const std::unordered_map<std::string, std::string>& CppTypeToPirAttrTypeMap() {
   static const std::unordered_map<std::string, std::string> attr_type_map = {
       {"bool", "pir::BoolAttribute"},
       {"int", "pir::Int32Attribute"},
@@ -509,7 +509,7 @@ const std::unordered_map<std::string, std::string>& AttrTypeMap() {
   return attr_type_map;
 }
 
-const std::unordered_map<std::string, phi::DataType>& DataTypeMap() {
+const std::unordered_map<std::string, phi::DataType>& StringToPhiDataType() {
   static std::unordered_map<std::string, phi::DataType> data_type_map{
       {"bool", phi::DataType::BOOL},
       {"uint8", phi::DataType::UINT8},

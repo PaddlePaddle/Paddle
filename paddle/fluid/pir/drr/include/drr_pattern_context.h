@@ -192,10 +192,10 @@ class Op {
 
 class Tensor {
  public:
-  static constexpr char RESULT_INPUT_NONE_TENSOR_NAME[];
-  static constexpr char RESULT_OUTPUT_NONE_TENSOR_NAME[];
-  static constexpr char SOURCE_INPUT_NONE_TENSOR_NAME[];
-  static constexpr char SOURCE_OUTPUT_NONE_TENSOR_NAME[];
+  static const char RESULT_INPUT_NONE_TENSOR_NAME[];
+  static const char RESULT_OUTPUT_NONE_TENSOR_NAME[];
+  static const char SOURCE_INPUT_NONE_TENSOR_NAME[];
+  static const char SOURCE_OUTPUT_NONE_TENSOR_NAME[];
 
   TensorShape shape() const { return TensorShape(name()); }
 

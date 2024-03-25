@@ -75,12 +75,12 @@ IntArrayAttribute IntArrayAttribute::Parse(pir::IrParser &parser) {  // NOLINT
 //                       |bfloat16|num_data_types|all_dtype
 DataTypeAttribute DataTypeAttribute::Parse(pir::IrParser &parser) {  // NOLINT
   std::string datatype_token_val = parser.ConsumeToken().val_;
-  PADDLE_ENFORCE_EQ(DataTypeMap().count(datatype_token_val) > 0,
+  PADDLE_ENFORCE_EQ(StringToPhiDataType().count(datatype_token_val) > 0,
                     true,
                     datatype_token_val + " is not defined in DataType." +
                         parser.GetErrorLocationInfo());
   return DataTypeAttribute::get(parser.ctx,
-                                DataTypeMap().at(datatype_token_val));
+                                StringToPhiDataType().at(datatype_token_val));
 }
 
 // Parse a PlaceAttribute
