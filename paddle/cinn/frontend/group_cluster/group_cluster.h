@@ -14,44 +14,40 @@
 
 #pragma once
 
-#include "paddle/cinn/frontend/cluster_ops/clustering_engine.h"
+#include "paddle/cinn/frontend/group_cluster/cluster_policy/general_topo_policy.h"
+#include "paddle/cinn/frontend/group_cluster/cluster_policy/shardable_axes_policy/shardable_axes_policy.h"
+#include "paddle/cinn/frontend/group_cluster/pattern_graph.h"
 
 namespace cinn::frontend {
 
-cluster_ops::ClusteringResult ClusterOps(
+inline std::vector<std::vector<const pir::Operation*>> ClusterOps(
     const cinn::dialect::GroupOp& group_op) {
   const auto& ops = [&] {
     std::vector<const pir::Operation*> ops;
     for (const auto& op : group_op.GetOperators()) {
-      ops.push_back(op);
+      ops.emplace_back(op);
     }
     return ops;
   }();
 
   VLOG(4) << "Start Cluster Ops!";
   VLOG(4) << "Input Group with size " << ops.size() << " :\n"
-          << cluster_ops::OpsDebugStr(ops);
+          << group_cluster::OpsDebugStr(ops);
 
-  auto shardable_axes_provider = [&] {
-    auto* program = group_op->GetParentProgram();
-    const auto* shape_analysis =
-        &pir::ShapeAnalysisManager::Instance().Get(program);
-    return cluster_ops::MakeDefaultShardableAxesProvider(shape_analysis);
-  }();
+  const auto* shape_analysis =
+      &pir::ShapeAnalysisManager::Instance().Get(group_op->GetParentProgram());
 
-  auto cluster_policy = [&] {
-    auto* program = group_op->GetParentProgram();
-    const auto* shape_analysis =
-        &pir::ShapeAnalysisManager::Instance().Get(program);
-    return cluster_ops::MakeLoopAlignableClusteringPolicy(shape_analysis);
-  }();
+  auto shardable_axes_policy =
+      std::make_shared<group_cluster::policy::ShardableAxesPolicy>(
+          ops, shape_analysis);
+  auto general_topo_policy =
+      std::make_shared<group_cluster::policy::GeneralTopoPolicy>();
 
-  cluster_ops::ShardableAxesInferer inferer(shardable_axes_provider);
-  cluster_ops::ClusteringEngine engine(ops, inferer, cluster_policy);
+  auto policy_manager = group_cluster::policy::PolicyManager(
+      {shardable_axes_policy, general_topo_policy});
 
-  auto result = engine.ClusterOps();
-  VLOG(4) << result.DebugStr();
-  VLOG(4) << "Finished Cluster Ops!";
-  return result;
+  group_cluster::PatternGraph graph(ops, policy_manager);
+  return graph.ClusterOps();
 }
+
 }  // namespace cinn::frontend
