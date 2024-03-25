@@ -241,7 +241,6 @@ class FusedMatmulElementwiseAddFusePattern
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
     matmul({&pat.Tensor("X"), &pat.Tensor("Y"), &pat.Tensor("none")},
            {&pat.Tensor("Out")});
-    // matmul({&pat.Tensor("X"), &pat.Tensor("Y")}, {&pat.Tensor("Out")});
 
     pat.Tensor("add_out") =
         as_x_ ? add(pat.Tensor("Out"), pat.Tensor("residual"))
