@@ -62,8 +62,7 @@ bool IsProhibitScheduleExternCallBlock(ir::Expr block) {
       sch_block->body, [&](const Expr* x) { return x->As<ir::Call>(); });
   for (ir::Expr call : find_call) {
     ir::Call* call_node = call.As<ir::Call>();
-    if (cinn::utils::GetProhibitScheduleExternalFuncNames().count(
-            call_node->name) != 0) {
+    if (call_node != nullptr && call_node->is_extern_call()) {
       return true;
     }
   }

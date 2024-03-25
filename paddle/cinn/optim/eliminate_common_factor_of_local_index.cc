@@ -96,12 +96,9 @@ class GatherProhibitedLocalVarVisitor : public ir::IRMutator<> {
       return;
     }
     const auto& local_var_name = store->tensor.as_tensor_ref()->buffer->name;
-    if (store->value.As<ir::Call>()) {
-      const auto& call_name = store->value.As<ir::Call>()->name;
-      if (cinn::utils::GetProhibitScheduleExternalFuncNames().count(call_name) >
-          0) {
-        prohibited_local_vars_.insert(local_var_name);
-      }
+    if (store->value.As<ir::Call>() &&
+        store->value.As<ir::Call>()->is_extern_call()) {
+      prohibited_local_vars_.insert(local_var_name);
     }
   }
 
