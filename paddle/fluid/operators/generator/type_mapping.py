@@ -88,8 +88,8 @@ output_type_map = {
 }
 
 optional_output_type_map = {
-    'Tensor': 'const paddle::optional<Tensor>',
-    'Tensor[]': 'const paddle::optional<std::vector<Tensor>>',
+    'Tensor': 'paddle::optional<Tensor>',
+    'Tensor[]': 'paddle::optional<std::vector<Tensor>>',
 }
 
 # ------------------------------ phi attr ------------------------------
