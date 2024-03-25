@@ -34,8 +34,11 @@ elseif(LINUX)
     file(TO_NATIVE_PATH
          ${SOURCE_DIR}/unsupported/Eigen/CXX11/src/Tensor/TensorReductionGpu.h
          native_dst1)
-    set(EIGEN_PATCH_COMMAND cp ${native_src} ${native_dst} && cp ${native_src1}
-                            ${native_dst1})
+    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Memory.h native_src2)
+    file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/Eigen/src/Core/util/Memory.h native_dst2)
+    set(EIGEN_PATCH_COMMAND cp ${native_src} ${native_dst} && 
+                            cp ${native_src1} ${native_dst1} &&
+                            cp ${native_src2} ${native_dst2})
   endif()
 endif()
 
