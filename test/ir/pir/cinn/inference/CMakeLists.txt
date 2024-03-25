@@ -4,9 +4,6 @@ if(WITH_GPU)
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
     "test_*.py")
 
-  list(REMOVE_ITEM CINN_PIR_INFER_TEST "test_llama_while"
-       "test_infer_sym_shape_multinary_op")
-
   foreach(cinn_pir_test_name ${CINN_PIR_INFER_TEST})
     string(REGEX REPLACE ".py" "" cinn_pir_test_name ${cinn_pir_test_name})
     add_test(
