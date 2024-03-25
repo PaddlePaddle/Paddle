@@ -613,8 +613,8 @@ def GenDistBranch(args, op_info):
     ProcessMeshAttribute op_mesh;
     auto ctx = pir::IrContext::Instance();
     for(auto value : input_values) {{
-      if (auto dist_type = value.type().dyn_cast<DistDenseTensorType>()) {{
-        op_mesh = dist_type.process_mesh_attr();
+      if (auto dist_interface = value.type().dyn_cast<DistTypeInterface>()) {{
+        op_mesh = dist_interface.process_mesh_attr();
         break;
       }}
     }}"""
