@@ -100,8 +100,7 @@ class MatmulElementwiseAddFusePattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class FusedMatmulElementwiseAddFusePattern
-    : public paddle::drr::DrrPatternBase {
+class MatmulElementwiseAddAddFusePattern : public paddle::drr::DrrPatternBase {
  private:
   std::string matmul_name_;
   std::string fused_matmul_name_;
@@ -110,11 +109,11 @@ class FusedMatmulElementwiseAddFusePattern
   bool as_x2_;  // Decide input direction of 2nd add
 
  public:
-  FusedMatmulElementwiseAddFusePattern(const std::string &matmul_name,
-                                       const std::string &fused_matmul_name,
-                                       uint32_t benefit,
-                                       bool as_x,
-                                       bool as_x2)
+  MatmulElementwiseAddAddFusePattern(const std::string &matmul_name,
+                                     const std::string &fused_matmul_name,
+                                     uint32_t benefit,
+                                     bool as_x,
+                                     bool as_x2)
       : matmul_name_(matmul_name),
         fused_matmul_name_(fused_matmul_name),
         benefit_(benefit),
@@ -122,7 +121,7 @@ class FusedMatmulElementwiseAddFusePattern
         as_x2_(as_x2) {}
 
   std::string name() const override {
-    return "FusedMatmulElementwiseAddFusePattern";
+    return "MatmulElementwiseAddAddFusePattern";
   }
 
   uint32_t benefit() const override { return benefit_; }
@@ -190,6 +189,113 @@ class FusedMatmulElementwiseAddFusePattern
   }
 };
 
+class FusedMatmulElementwiseAddFusePattern
+    : public paddle::drr::DrrPatternBase {
+ private:
+  std::string matmul_name_;
+  std::string fused_matmul_name_;
+  uint32_t benefit_;
+  bool as_x_;  // Decide input direction of add
+
+ public:
+  FusedMatmulElementwiseAddFusePattern(const std::string &matmul_name,
+                                       const std::string &fused_matmul_name,
+                                       uint32_t benefit,
+                                       bool as_x)
+      : matmul_name_(matmul_name),
+        fused_matmul_name_(fused_matmul_name),
+        benefit_(benefit),
+        as_x_(as_x) {}
+
+  std::string name() const override {
+    return "FusedMatmulElementwiseAddFusePattern";
+  }
+
+  uint32_t benefit() const override { return benefit_; }
+
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
+
+    const auto &matmul =
+        pat.Op(matmul_name_,
+               {{"trans_x", pat.Attr("transpose_x")},
+                {"trans_y", pat.Attr("transpose_y")},
+                {"matmul_alpha", pat.Attr("matmul_alpha")},
+                {"fuse_activation", pat.Attr("fuse_activation")},
+                {"fuse_alpha", pat.Attr("fuse_alpha")},
+                {"fuse_beta", pat.Attr("fuse_beta")},
+                {"fused_output_scale", pat.Attr("fused_output_scale")},
+                {"fused_reshape_x", pat.Attr("fused_reshape_x")},
+                {"fused_transpose_x", pat.Attr("fused_transpose_x")},
+                {"fused_reshape_y", pat.Attr("fused_reshape_y")},
+                {"fused_transpose_y", pat.Attr("fused_transpose_y")},
+                {"fused_reshape_out", pat.Attr("fused_reshape_out")},
+                {"fused_transpose_out", pat.Attr("fused_transpose_out")},
+                {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                {"scale_x", pat.Attr("scale_x")},
+                {"scale_y", pat.Attr("scale_y")},
+                {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
+                {"scale_out", pat.Attr("scale_out")},
+                {"force_fp32_output", pat.Attr("force_fp32_output")}});
+
+    const auto &add = pat.Op(paddle::dialect::AddOp::name());
+    matmul({&pat.Tensor("X"), &pat.Tensor("Y"), &pat.Tensor("none")},
+           {&pat.Tensor("Out")});
+    // matmul({&pat.Tensor("X"), &pat.Tensor("Y")}, {&pat.Tensor("Out")});
+
+    pat.Tensor("add_out") =
+        as_x_ ? add(pat.Tensor("Out"), pat.Tensor("residual"))
+              : add(pat.Tensor("residual"), pat.Tensor("Out"));
+
+    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      std::set<bool> bool_sets = {true, false};
+      auto result_x = match_ctx.Attr<bool>("transpose_x");
+      auto result_y = match_ctx.Attr<bool>("transpose_y");
+      if (bool_sets.count(result_x) == 0 || bool_sets.count(result_y) == 0) {
+        return false;
+      }
+      return true;
+    });
+
+    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      auto none_tensor = match_ctx.Tensor("none");
+      if (none_tensor.impl() != nullptr) {
+        return false;
+      }
+      return true;
+    });
+
+    paddle::drr::ResultPattern res = pat.ResultPattern();
+
+    const auto &fused_matmul =
+        res.Op(fused_matmul_name_,
+               {{
+                   {"trans_x", pat.Attr("transpose_x")},
+                   {"trans_y", pat.Attr("transpose_y")},
+                   {"matmul_alpha", pat.Attr("matmul_alpha")},
+                   {"fuse_activation", pat.Attr("fuse_activation")},
+                   {"fuse_alpha", pat.Attr("fuse_alpha")},
+                   {"fuse_beta", pat.Attr("fuse_beta")},
+                   {"fused_output_scale", pat.Attr("fused_output_scale")},
+                   {"fused_reshape_x", pat.Attr("fused_reshape_x")},
+                   {"fused_transpose_x", pat.Attr("fused_transpose_x")},
+                   {"fused_reshape_y", pat.Attr("fused_reshape_y")},
+                   {"fused_transpose_y", pat.Attr("fused_transpose_y")},
+                   {"fused_reshape_out", pat.Attr("fused_reshape_out")},
+                   {"fused_transpose_out", pat.Attr("fused_transpose_out")},
+                   {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                   {"scale_x", pat.Attr("scale_x")},
+                   {"scale_y", pat.Attr("scale_y")},
+                   {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
+                   {"scale_out", pat.Attr("scale_out")},
+                   {"force_fp32_output", pat.Attr("force_fp32_output")},
+               }});
+
+    fused_matmul({&res.Tensor("X"), &res.Tensor("Y"), &res.Tensor("residual")},
+                 {&res.Tensor("add_out")});
+  }
+};
+
 class MatmulElementwiseAddFusePass : public pir::PatternRewritePass {
  public:
   MatmulElementwiseAddFusePass()
@@ -211,7 +317,7 @@ class MatmulElementwiseAddFusePass : public pir::PatternRewritePass {
 
     for (auto as_x : bool_set)
       for (auto as_x2 : bool_set) {
-        ps.Add(paddle::drr::Create<FusedMatmulElementwiseAddFusePattern>(
+        ps.Add(paddle::drr::Create<MatmulElementwiseAddAddFusePattern>(
             context,
             paddle::dialect::MatmulOp::name(),
             paddle::onednn::dialect::FusedMatmulOp::name(),
@@ -220,6 +326,15 @@ class MatmulElementwiseAddFusePass : public pir::PatternRewritePass {
             as_x2));
         benefit_idx++;
       }
+    for (auto as_x : bool_set) {
+      ps.Add(paddle::drr::Create<FusedMatmulElementwiseAddFusePattern>(
+          context,
+          paddle::onednn::dialect::FusedMatmulOp::name(),
+          paddle::onednn::dialect::FusedMatmulOp::name(),
+          benefit_idx,
+          as_x));
+      benefit_idx++;
+    }
     return ps;
   }
 };
@@ -230,6 +345,7 @@ namespace pir {
 
 std::unique_ptr<Pass> CreateMatmulElementwiseAddFusePass() {
   // pd_op.matmul + pd_op.add -> onednn_op.fused_matmul
+  // pd_op.add + onednn_op.fused_matmul -> onednn_op.fused_matmul
   // pd_op.matmul + pd_op.add + pd_op.add -> pd_op.add + onednn_op.fused_matmul
   // -> onednn_op.fused_matmul
   return std::make_unique<MatmulElementwiseAddFusePass>();
