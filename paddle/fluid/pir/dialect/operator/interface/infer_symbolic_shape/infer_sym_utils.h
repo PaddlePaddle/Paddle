@@ -16,7 +16,10 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
+
+COMMON_DECLARE_string(pir_dyshape_sym2value);
 
 inline bool GetBoolAttr(const pir::Operation *op, const std::string &str) {
   const auto &attr_map = op->attributes();
@@ -114,6 +117,104 @@ inline ExprVec GetExprVecFromShape(const ShapeOrData &shapeordata) {
 std::optional<std::vector<int64_t>> VecExpr2Int64(const ExprVec &expr_vec);
 
 ExprVec VecInt642Expr(const std::vector<int64_t> &int_vec);
+
+template <typename T = int64_t>
+inline std::string PrintVec(const std::vector<T> &vec) {
+  std::ostringstream os;
+  os << "[";
+
+  for (size_t idx = 0; idx < vec.size(); idx++) {
+    os << vec[idx];
+    if (idx < vec.size() - 1) os << ", ";
+  }
+  os << "]";
+
+  return os.str();
+}
+
+inline std::string PrintShapeOrData(const ShapeOrData &shapeordata) {
+  std::ostringstream os;
+  os << "{" << shapeordata << "]";
+  return os.str();
+}
+
+inline std::vector<std::string> Split(const std::string &str,
+                                      const std::string &splitter) {
+  std::vector<std::string> results;
+  std::string::size_type pos1, pos2;
+  pos2 = str.find(splitter);
+  pos1 = 0;
+  while (std::string::npos != pos2) {
+    results.push_back(str.substr(pos1, pos2 - pos1));
+    pos1 = pos2 + splitter.size();
+    pos2 = str.find(splitter, pos1);
+  }
+  if (pos1 != str.length()) {
+    results.push_back(str.substr(pos1));
+  }
+  return results;
+}
+
+inline std::unordered_map<symbol::DimExpr, symbol::DimExpr>
+GetSymValueFromFlag() {
+  std::unordered_map<symbol::DimExpr, symbol::DimExpr> map_sym2value;
+  std::string &flag_str = FLAGS_pir_dyshape_sym2value;
+  for (auto str : Split(flag_str, ",")) {
+    std::vector<std::string> sym_value = Split(str, "=");
+    PADDLE_ENFORCE_EQ(sym_value.size(),
+                      2,
+                      phi::errors::OutOfRange(
+                          "FLAGS_pir_dyshape_sym2value's format should be like "
+                          "'S0=1,S1=128', but receive too many '='s."));
+    map_sym2value[sym_value[0]] = std::stoi(sym_value[1]);
+  }
+
+  return map_sym2value;
+}
+
+inline void CheckSymShapeByValue(
+    const std::int64_t op_id,
+    const std::string &op_name,
+    const ::common::DDim &ddim,
+    const ShapeOrData &shapeordata,
+    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>
+        &additional_cstrs = {}) {
+  std::string op_info = "op_" + std::to_string(op_id) + "(" + op_name + ")";
+  auto sym_value_map = GetSymValueFromFlag();
+  if (shapeordata.isa<TensorListExprs>()) {
+    VLOG(3) << "********** " << op_info
+            << " 's shapeordata.isa<TensorListExprs>()";
+  } else {
+    auto sym_shape = shapeordata.shape();
+    std::vector<std::int64_t> sym_value_shape;
+    for (auto dim_expr : sym_shape) {
+      symbol::DimExpr substitute_expr =
+          symbol::SubstituteDimExpr(dim_expr, sym_value_map);
+      symbol::DimExpr ret = symbol::SimplifyDimExpr(substitute_expr);
+      PADDLE_ENFORCE_EQ(ret.Has<std::int64_t>(),
+                        true,
+                        platform::errors::PreconditionNotMet(
+                            "after SubstituteDimExpr&SimplifyDimExpr, dim_expr "
+                            "must have int value"));
+      sym_value_shape.emplace_back(ret.Get<std::int64_t>());
+    }
+
+    auto real_shape = ::common::vectorize(ddim);
+    std::ostringstream os;
+
+    std::string real_shape_str = "real_shape" + PrintVec(real_shape);
+    std::string sym_shape_str = "sym_val_shape" + PrintVec(sym_value_shape) +
+                                " -> " + PrintShapeOrData(shapeordata);
+
+    if (real_shape != sym_value_shape) {
+      VLOG(3) << "!!!!! [ShapeCheckFailed] " << op_info << ": "
+              << real_shape_str << " != " << sym_shape_str;
+    } else {
+      VLOG(3) << "===== [ShapeCheckPassed] op_" << op_info << ": "
+              << real_shape_str << " == " << sym_shape_str;
+    }
+  }
+}
 
 bool ReduceInferDim(pir::Operation *op,
                     pir::ShapeConstraintIRAnalysis *shape_analysis,

@@ -24,6 +24,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -82,6 +83,7 @@ COMMON_DECLARE_bool(dynamic_static_unified_comm);
 COMMON_DECLARE_bool(enable_pir_in_executor);
 COMMON_DECLARE_bool(enable_pir_in_executor_trace_run);
 COMMON_DECLARE_int32(low_precision_op_list);
+COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
 
 #define CREATE_INSTR(instr_name)                                   \
   vec_instruction_base_.emplace_back(std::make_unique<instr_name>( \
@@ -1785,6 +1787,23 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
               << " runs on " << platform::GetCurrentThreadName() << "\n"
               << "After: " << cur_place << " "
               << instr_node->DebugStringEx(scope_, value_exe_info_.get());
+      if (FLAGS_pir_apply_shape_optimization_pass) {
+        auto source_op_id_attr = instr_node->Operation()
+                                     ->attribute("source_op_id")
+                                     .dyn_cast<pir::IndexAttribute>();
+        if (source_op_id_attr) {
+          auto out_ddims =
+              instr_node->GetOutputDims(scope_, value_exe_info_.get());
+          auto shapeordata = instr_node->Operation()
+                                 ->attribute("sym_shapedata")
+                                 .dyn_cast<pir::shape::SymbolAttribute>()
+                                 .data();
+          auto source_op_id = source_op_id_attr.data();
+          paddle::dialect::details::CheckSymShapeByValue(
+              source_op_id, instr_node->Name(), out_ddims[0], shapeordata);
+        }
+      }
+
       CheckGC(instr_node);
       VLOG(4) << "done CheckGC";
       memory::LogDeviceMemoryStats(cur_place, instr_node->Name());

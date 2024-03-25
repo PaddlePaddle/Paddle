@@ -2504,6 +2504,7 @@ pir::Operation* BuildKernelOp(
     std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
   std::unordered_map<std::string, pir::Attribute> op_attribute{
       {"op_name", pir::StrAttribute::get(ctx, op_item->name())},
+      {"source_op_id", pir::IndexAttribute::get(ctx, op_item->id())},
       {"kernel_name", pir::StrAttribute::get(ctx, kernel_fn_str)},
       {"kernel_key", KernelAttribute::get(ctx, kernel_key)}};
   auto op_attr_map = op_item->attributes();

@@ -1537,6 +1537,18 @@ PHI_DEFINE_EXPORTED_bool(pir_apply_shape_optimization_pass,
                          "Whether to apply shape_optimization pass "
                          "to infer symbolic shape");
 
+/**
+ * Set value to Symbol for dynamic shape validation
+ * Name: pir_dyshape_sym2value
+ * Since Version: 3.0.0
+ * Value Range: string, default=""
+ * Example:
+ * export FLAGS_pir_dyshape_sym2value=S0=1,S1=128
+ */
+PHI_DEFINE_EXPORTED_string(pir_dyshape_sym2value,
+                           "",
+                           "Set value to Symbol for dynamic shape validation");
+
 PHI_DEFINE_EXPORTED_string(
     cudnn_dir,  // NOLINT
     "",
