@@ -74,7 +74,7 @@ using FusibleOp = std::variant<ReduceOp, TrivialOp>;
 
 ir::Expr _GetRootExpr(const FusibleOp& op);
 
-void _SetFuncBody(FusibleOp& op, ir::Expr new_body);
+void _SetFuncBody(FusibleOp& op, ir::Expr new_body);  // NOLINT
 ir::Expr GetComputeBody(const FusibleOp& op);
 
 ir::Tensor GetOutputTensor(const FusibleOp& op);
@@ -205,7 +205,8 @@ struct FusionGroupInfo {
   }
 };
 
-FusionGroupInfo GetFusionGroupInfo(const std::vector<ir::Expr>& op_compute_bodies);
+FusionGroupInfo GetFusionGroupInfo(
+    const std::vector<ir::Expr>& op_compute_bodies);
 
 std::vector<ir::Expr> OperationFusion(
     const std::vector<::pir::Operation*>& ops,

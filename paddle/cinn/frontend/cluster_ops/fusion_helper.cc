@@ -133,7 +133,7 @@ GroupPattern StmtFusionHelper::FuseToGroupPattern() {
   VLOG(4) << "Step 1 Finished, Get " << stmt_patterns.size()
           << " StmtPattern :";
   for (const auto& stmt : stmt_patterns) {
-    VLOG(4) << "\n" <<StmtPatternDebugStr(stmt);
+    VLOG(4) << "\n" << StmtPatternDebugStr(stmt);
   }
   return stmt_patterns;
 }
