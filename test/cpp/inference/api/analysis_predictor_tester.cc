@@ -552,7 +552,7 @@ TEST(Tensor, GpuShareExternalData) {
       std::accumulate(
           out_shape.begin(), out_shape.end(), 1, std::multiplies<int>()) *
       sizeof(float);
-  cudaMalloc(reinterpret_cast<void**>(out_data), out_size * sizeof(float));
+  cudaMalloc(reinterpret_cast<void**>(&out_data), out_size * sizeof(float));
   out->ShareExternalData<float>(out_data, out_shape, PlaceType::kGPU);
 
   predictor->Run();
@@ -699,7 +699,7 @@ TEST(Tensor, RunWithExternalStream) {
       std::accumulate(
           out_shape.begin(), out_shape.end(), 1, std::multiplies<int>()) *
       sizeof(float);
-  cudaMalloc(reinterpret_cast<void**>(out_data), out_size * sizeof(float));
+  cudaMalloc(reinterpret_cast<void**>(&out_data), out_size * sizeof(float));
   out->ShareExternalData<float>(out_data, out_shape, PlaceType::kGPU);
 
   cudaStream_t external_stream;

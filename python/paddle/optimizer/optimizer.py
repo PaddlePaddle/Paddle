@@ -1261,6 +1261,7 @@ class Optimizer:
         # Get custom finish ops for subclasses
         # FIXME: Need to fix this once we figure out how to handle dependencies
         self._finish_update(target_block, parameters_and_grads)
+        paddle.base.core._set_warmup(False)
 
         end = len(target_block.ops)
         return target_block._slice_ops(start, end)
@@ -1334,6 +1335,7 @@ class Optimizer:
         # Get custom finish ops for subclasses
         # FIXME: Need to fix this once we figure out how to handle dependencies
         self._finish_update(target_block, parameters_and_grads)
+        paddle.base.core._set_warmup(False)
 
         end = len(target_block.ops)
         return target_block._slice_ops(start, end)
