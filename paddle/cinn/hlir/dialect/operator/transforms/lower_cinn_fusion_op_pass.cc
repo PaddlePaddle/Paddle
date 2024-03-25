@@ -1122,35 +1122,42 @@ symbol::ShapeOrDataDimExprs TrySubstitute(
   return SubstituteShapeOrData(shape_or_data, dim_expr_map);
 }
 
+void InferSymbolicShapeForOperation(
+    pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  auto infer_symbolic_shape_interface =
+      op->dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
+  if (infer_symbolic_shape_interface) {
+    infer_symbolic_shape_interface.InferSymbolicShape(shape_analysis);
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
+  }
+}
+
 std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
 CreateGroupShapeOrDataExprs(
     const OpLoweringGroupPtr& group,
-    pir::ShapeConstraintIRAnalysis& shape_analysis) {  // NOLINT
+    pir::ShapeConstraintIRAnalysis& global_shape_analysis) {  // NOLINT
   std::unordered_map<symbol::DimExpr, symbol::DimExpr> dim_expr_map =
-      CollectSubstituteDimExprMap(group, shape_analysis);
+      CollectSubstituteDimExprMap(group, global_shape_analysis);
   std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs> value2shape;
+  pir::ShapeConstraintIRAnalysis local_shape_analysis({});
+
+  // process input values.
+  VisitEachInputValue(group, [&](::pir::Value value) {
+    auto new_shape_expr = TrySubstitute(
+        global_shape_analysis.GetShapeOrDataForValue(value), dim_expr_map);
+    local_shape_analysis.SetShapeOrDataForValue(value, new_shape_expr);
+    value2shape.insert({value, new_shape_expr});
+  });
+
+  // process the result values of each op.
   for (auto* op : group->ops()) {
-    for (size_t i = 0; i < op->num_operands(); ++i) {
-      auto operand = op->operand_source(i);
-      if (operand && value2shape.find(operand) == value2shape.end() &&
-          shape_analysis.HasShapeOrDataForValue(operand)) {
-        VLOG(6) << "Add value_to_shape_or_data_exprs for " << operand.impl();
-        value2shape.insert(
-            {operand,
-             TrySubstitute(shape_analysis.GetShapeOrDataForValue(operand),
-                           dim_expr_map)});
-      }
-    }
+    InferSymbolicShapeForOperation(op, &local_shape_analysis);
     for (size_t i = 0; i < op->num_results(); ++i) {
       auto result = op->result(i);
-      if (result && value2shape.find(result) == value2shape.end() &&
-          shape_analysis.HasShapeOrDataForValue(result)) {
-        VLOG(6) << "Add value_to_shape_or_data_exprs for " << result.impl();
-        value2shape.insert(
-            {result,
-             TrySubstitute(shape_analysis.GetShapeOrDataForValue(result),
-                           dim_expr_map)});
-      }
+      value2shape.insert(
+          {result, local_shape_analysis.GetShapeOrDataForValue(result)});
     }
   }
   VLOG(5) << group.get()
