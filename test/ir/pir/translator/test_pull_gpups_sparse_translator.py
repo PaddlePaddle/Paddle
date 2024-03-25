@@ -17,10 +17,21 @@ import unittest
 import test_op_translator
 
 import paddle
+from paddle.base import core
 from paddle.base.layer_helper import LayerHelper
 
 
-class TestPullGpupsSparseOpTranslator(test_op_translator.TestOpTranslator):
+class TestPullGpupsSparseOpTranslator(
+    test_op_translator.TestOpWithBackwardTranslator
+):
+    def setUp(self):
+        self.place = core.Place()
+        self.place.set_place(paddle.CPUPlace())
+        self.new_scope = paddle.static.Scope()
+        self.main_program = paddle.static.Program()
+        self.forward_op_type = "pull_gpups_sparse"
+        self.backward_op_type = "push_gpups_sparse"
+
     def append_op(self):
         self.op_type = "pull_gpups_sparse"
         ids = paddle.ones(shape=(1,), dtype='int64')
