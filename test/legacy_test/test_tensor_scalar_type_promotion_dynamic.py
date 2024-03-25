@@ -719,5 +719,14 @@ create_test_case(
     TestTensorModScalar, 'float64', 'float64', 'float64', 'complex128'
 )
 
+
+class Test0DTensor(unittest.TestCase):
+    def test_0d_add_0d(self):
+        a = paddle.ones([], dtype='int32')
+        b = paddle.ones([], dtype='int64')
+        res = a / b
+        return res
+
+
 if __name__ == '__main__':
     unittest.main()

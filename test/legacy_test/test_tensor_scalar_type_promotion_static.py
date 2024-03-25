@@ -776,5 +776,18 @@ create_test_case(
 )
 
 
+class Test0DTensor(unittest.TestCase):
+    def test_0d_add_0d(self):
+        paddle.enable_static()
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            a = paddle.ones([], dtype='complex128')
+            b = paddle.ones([], dtype='complex64')
+            out = a + b
+            # mod API not support complex
+            res = self.exe.run(prog, fetch_list=[out])
+        return res
+
+
 if __name__ == '__main__':
     unittest.main()
