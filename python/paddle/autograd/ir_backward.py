@@ -650,6 +650,7 @@ def append_backward_ops(
                         "pd_op.while",
                         "pd_op.if",
                         "pd_op.increment_",
+                        "pd_op.array_read",
                     ]:
                         continue
 
