@@ -763,7 +763,7 @@ def max_unpool1d(
         x (Tensor): The input tensor of unpooling operator which is a 3-D tensor with
                           shape [N, C, L]. The format of input tensor is `"NCL"`,
                           where `N` is batch size, `C` is the number of channels, `L` is
-                          the length of the feature. The data type is float32 or float64.
+                          the length of the feature. The data type is float32, float64 or int64.
         indices (Tensor): The indices given out by maxpooling1d which is a 3-D tensor with
                           shape [N, C, L]. The format of input tensor is `"NCL"` ,
                           where `N` is batch size, `C` is the number of channels, `L` is
@@ -821,6 +821,8 @@ def max_unpool1d(
     # use 2d to implenment 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
 
+    if output_size is not None:
+        output_size = output_size[:2] + [1] + output_size[2:]
     output_size = _unpool_output_size(
         x, kernel_size, stride, padding, output_size
     )
@@ -871,7 +873,7 @@ def max_unpool2d(
                           shape [N, C, H, W]. The format of input tensor is `"NCHW"`,
                           where `N` is batch size, `C` is the number of channels,
                           `H` is the height of the feature, and `W` is the width of the
-                          feature. The data type if float32 or float64.
+                          feature. The data type if  float32, float64 or int64.
         indices (Tensor): The indices given out by maxpooling2d which is a 4-D tensor with
                           shape [N, C, H, W]. The format of input tensor is `"NCHW"` ,
                           where `N` is batch size, `C` is the number of channels,
@@ -1019,7 +1021,7 @@ def max_unpool3d(
                           shape [N, C, D, H, W]. The format of input tensor is `"NCDHW"`,
                           where `N` is batch size, `C` is the number of channels, `D` is
                           the depth of the feature, `H` is the height of the feature,
-                          and `W` is the width of the feature. The data type is float32 or float64.
+                          and `W` is the width of the feature. The data type is float32, float64 or int64.
         indices (Tensor): The indices given out by maxpooling3d which is a 5-D tensor with
                           shape [N, C, D, H, W]. The format of input tensor is `"NCDHW"` ,
                           where `N` is batch size, `C` is the number of channels, `D` is
