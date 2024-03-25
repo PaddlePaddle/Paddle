@@ -24,7 +24,7 @@ namespace phi {
 using Array1 = Eigen::DSizes<int64_t, 1>;
 template <typename T>
 struct KLDivLossForward {
-  HOSTDEVICE bool LogTarget = false;
+  bool LogTarget = false;
 
   HOSTDEVICE KLDivLossForward(bool _log_target) : LogTarget(_log_target) {}
 
