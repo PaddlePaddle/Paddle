@@ -110,12 +110,14 @@ class FusionOpAnalysis final {
 };
 
 std::vector<pir::Value> GetBlockOutsideInput(
-    const std::vector<pir::Operation*>&);
+    const std::vector<pir::Operation*>& ops);
 
-pir::Operation* ProcessDyShapeGroup(const GroupPtr&,
-                                    pir::ShapeConstraintIRAnalysis&,  // NOLINT
-                                    const PreAnalysisInfo&,
-                                    pir::PatternRewriter&);
+pir::Operation* ProcessDyShapeGroup(
+    const GroupPtr& group,
+    pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
+    const PreAnalysisInfo& pre_analysis_info,
+    pir::PatternRewriter& rewriter  // NOLINT
+);
 
 std::unordered_map<std::string, ::pir::Attribute> GetJitKernelAttr(
     const GroupPtr& group) {
@@ -261,7 +263,8 @@ class LowerCinnDyShapeFusionOpPass : public pir::PatternRewritePass {
   mutable PreAnalysisInfo pre_analysis_info_;
 };
 
-std::shared_ptr<Group> RebuildGroup(pir::Operation*, bool);
+std::shared_ptr<Group> RebuildGroup(pir::Operation* fusion_op,
+                                    bool is_dy_shape);
 
 void FusionOpAnalysis::GatherGroup(pir::Operation* fusion_op) {
   std::shared_ptr<Group> group_ptr = RebuildGroup(fusion_op, is_dy_shape_);
@@ -363,12 +366,13 @@ void BroadcastTreeInfo::ConstructBroadcastTree(const GroupPtr& group) {
 }
 
 pir::Operation* CompileBroadcastTreeToConditionBlock(
-    const BroadcastTreeInfo&,
-    const GroupPtr&,
-    pir::ShapeConstraintIRAnalysis&,  // NOLINT
-    const std::vector<pir::Value>&,
-    const std::vector<pir::Type>&,
-    pir::PatternRewriter&);
+    const BroadcastTreeInfo& broadcast_tree_info,
+    const GroupPtr& group,
+    pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
+    const std::vector<pir::Value>& group_inputs,
+    const std::vector<pir::Type>& output_types,
+    pir::PatternRewriter& rewriter  // NOLINT
+);
 
 pir::Operation* ProcessDyShapeGroup(
     const GroupPtr& group,
@@ -423,7 +427,10 @@ pir::Operation* ProcessDyShapeGroup(
 }
 
 std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
-CreateGroupShapeOrDataExprs(const GroupPtr&, pir::ShapeConstraintIRAnalysis&);
+CreateGroupShapeOrDataExprs(
+    const GroupPtr& group,
+    pir::ShapeConstraintIRAnalysis& shape_analysis  // NOLINT
+);
 
 std::shared_ptr<Group> RebuildGroup(pir::Operation* fusion_op_ptr,
                                     bool is_dy_shape) {

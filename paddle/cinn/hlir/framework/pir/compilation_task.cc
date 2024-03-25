@@ -89,7 +89,7 @@ void CompilationTask::BuildPirCINNKernelInfo(const ir::Module& module) {
   auto compilation_result =
       std::make_shared<pir::CompilationResult>(context_->target_);
   pir::BackendResource& backend_resource =
-      compilation_result->GetBackendResource();
+      compilation_result->MutableBackendResource();
   backend_resource.GetBackendCompiler()->Build(module, "");
   backend_resource.SetHostFnName(context_->group_->FuncName());
   backend_resource.SetInferFnName(context_->group_->FuncName() +

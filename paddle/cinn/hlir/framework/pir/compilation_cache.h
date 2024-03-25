@@ -60,7 +60,7 @@ class CompilationResult final {
   explicit CompilationResult(const Target& target)
       : target_(target), backend_resource_(target) {}
 
-  BackendResource& GetBackendResource() { return backend_resource_; }
+  BackendResource& MutableBackendResource() { return backend_resource_; }
   const BackendResource& GetBackendResource() const {
     return backend_resource_;
   }
