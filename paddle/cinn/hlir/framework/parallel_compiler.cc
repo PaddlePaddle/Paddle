@@ -34,6 +34,7 @@
 #include "paddle/cinn/runtime/flags.h"
 
 PD_DECLARE_int32(cinn_parallel_compile_thread);
+PD_DECLARE_bool(cinn_use_cutlass);
 
 namespace cinn {
 namespace hlir {
