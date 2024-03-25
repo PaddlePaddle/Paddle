@@ -2641,6 +2641,10 @@
   outputs :
     out : Out
 
+- op : pull_box_sparse
+  inputs :
+    { w : W, ids: Ids}
+
 - op : push_sparse_v2
   inputs :
     { x : Ids, W : w}
