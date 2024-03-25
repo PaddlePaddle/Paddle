@@ -1808,7 +1808,7 @@ All parameter, weight, gradient are variables in Paddle.
     device_types = phi::DeviceManager::GetAllDeviceTypes();
 #else
           VLOG(1) << string::Sprintf(
-              "Cannot use get_all_device_type because you have installed"
+              "Cannot use get_all_device_type because you have installed "
               "CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_all_device_type, please try to install"
               "CustomDevice version "
@@ -1822,8 +1822,8 @@ All parameter, weight, gradient are variables in Paddle.
     device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
 #else
           VLOG(1) << string::Sprintf(
-              "Cannot use get_all_custom_device_type because you have installed"
-              "CPU/GPU version PaddlePaddle.\n"
+              "Cannot use get_all_custom_device_type because you have "
+              "installed CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_all_custom_device_type, please try to "
               "install CustomDevice version "
               "PaddlePaddle by: pip install paddlepaddle\n");
@@ -1836,7 +1836,7 @@ All parameter, weight, gradient are variables in Paddle.
     devices = phi::DeviceManager::GetAllDeviceList();
 #else
           VLOG(1) << string::Sprintf(
-              "Cannot use get_available_device because you have installed"
+              "Cannot use get_available_device because you have installed "
               "CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_available_device, please try to install"
               "CustomDevice version "
@@ -1851,8 +1851,7 @@ All parameter, weight, gradient are variables in Paddle.
 #else
           VLOG(1) << string::Sprintf(
               "Cannot use get_available_custom_device because you have "
-              "installed"
-              "CPU/GPU version PaddlePaddle.\n"
+              "installed CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_available_custom_device, please try to "
               "install"
               "CustomDevice version "
@@ -1870,8 +1869,7 @@ All parameter, weight, gradient are variables in Paddle.
 #else
           VLOG(1) << string::Sprintf(
               "Cannot use get_custom_device_count because you have "
-              "installed"
-              "CPU/GPU version PaddlePaddle.\n"
+              "installed CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_custom_device_count, please try to "
               "install"
               "CustomDevice version "

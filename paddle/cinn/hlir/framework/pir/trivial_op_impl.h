@@ -34,8 +34,6 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
-// #include "paddle/cinn/frontend/group_pattern_util.h"
-
 namespace cinn {
 namespace hlir {
 namespace framework {

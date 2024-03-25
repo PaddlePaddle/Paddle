@@ -201,8 +201,8 @@ static void ShareTensorsIntoScopeWithName(
     const std::vector<std::string> &tensor_names,
     paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
-    VLOG(4) << "Share Tensor Into Scope: " << i;
     auto name = tensor_names[i];
+    VLOG(4) << "Share Tensor Into Scope: " << name;
     if (name == paddle::framework::kFakeVarName ||
         name == paddle::framework::kEmptyVarName) {
       continue;

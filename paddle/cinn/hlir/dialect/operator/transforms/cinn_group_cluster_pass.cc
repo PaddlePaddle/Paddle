@@ -28,8 +28,8 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 
-#include "paddle/cinn/frontend/group_pattern.h"
-#include "paddle/cinn/frontend/group_pattern_util.h"
+#include "paddle/cinn/frontend/cluster_ops/cluster_ops.h"
+#include "paddle/cinn/frontend/cluster_ops/group_pattern.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/attribute_storage.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
@@ -869,32 +869,7 @@ struct GetPatternOpList {
 
 std::vector<GroupClusterNode> NewOpMergeWithOp(
     cinn::dialect::GroupOp group_op) {
-  const auto& ops = [&] {
-    std::vector<const pir::Operation*> ops;
-    for (const auto& op : *group_op.block()) {
-      ops.push_back(&op);
-    }
-    return ops;
-  }();
-
-  auto shardable_axes_provider = [&] {
-    auto* program = group_op->GetParentProgram();
-    const auto* shape_analysis =
-        &pir::ShapeAnalysisManager::Instance().Get(program);
-    return frontend::MakeDefaultShardableAxesProvider(shape_analysis);
-  }();
-
-  auto cluster_policy = [&] {
-    auto* program = group_op->GetParentProgram();
-    const auto* shape_analysis =
-        &pir::ShapeAnalysisManager::Instance().Get(program);
-    return frontend::MakeLoopAlignableClusteringPolicy(shape_analysis);
-  }();
-
-  VLOG(4) << "Start Clustering Ops!";
-  const auto cluster_result = frontend::ClusterOps(
-      ops, std::move(shardable_axes_provider), std::move(cluster_policy));
-  VLOG(4) << "Finished Clustering Ops!";
+  const auto cluster_result = frontend::ClusterOps(group_op);
 
   // Each stmts corresponds to each fusion op(cluster node).
   // Concat all the ops of patterns in the stmts, and make them the op list of
@@ -995,9 +970,11 @@ std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op) {
 
 std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
   // stage 1
-  auto first_stage_output = FLAGS_cinn_new_cluster_op_method
-                                ? NewOpMergeWithOp(group_op)
-                                : OpMergeWithOp(group_op);
+  if (FLAGS_cinn_new_cluster_op_method) {
+    return NewOpMergeWithOp(group_op);
+  }
+
+  auto first_stage_output = OpMergeWithOp(group_op);
 
   if (first_stage_output.size() <= 1) {
     return first_stage_output;

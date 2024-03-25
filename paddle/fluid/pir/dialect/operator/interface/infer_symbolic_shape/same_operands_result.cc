@@ -133,13 +133,25 @@ bool ScaleOpInferSymbolicShape(pir::Operation *op,
       shape_analysis->GetShapeOrDataForValue(operand_source);
   std::vector<symbol::DimExpr> shape(operand_shape_or_data.shape());
 
-  std::vector<symbol::DimExpr> data;
   if (operand_shape_or_data.data()) {
-    for (auto &val : *(operand_shape_or_data.data())) {
-      int scale = op->attribute("scale").dyn_cast<pir::FloatAttribute>().data();
+    const std::vector<symbol::DimExpr> data = [&] {
+      const symbol::DimExpr scale = [&]() -> symbol::DimExpr {
+        if (op->num_operands() == 2) {
+          return shape_analysis->GetShapeOrDataForValue(op->operand_source(1))
+              .data()
+              ->at(0);
+        }
+        return static_cast<int64_t>(
+            op->attribute("scale").dyn_cast<pir::FloatAttribute>().data());
+      }();
       int bias = op->attribute("bias").dyn_cast<pir::FloatAttribute>().data();
-      data.push_back(val * scale + bias);
-    }
+
+      std::vector<symbol::DimExpr> data;
+      for (auto &val : *(operand_shape_or_data.data())) {
+        data.push_back(val * scale + bias);
+      }
+      return data;
+    }();
 
     shape_analysis->SetShapeOrDataForValue(
         op->result(0), symbol::TensorShapeOrDataDimExprs(shape, data));
