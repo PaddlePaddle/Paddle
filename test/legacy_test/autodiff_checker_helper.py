@@ -352,6 +352,19 @@ def check_vjp(
     rtol=None,
     eps=EPS,
 ):
+    """
+    Args:
+        func: function to check at ``f(args, kwargs)``.
+        args: tuple of paddle.tensor.
+        kwargs: attributes required by the func
+        order: vjp up to this order are checked.
+        atol: absolute tolerance for gradient equality.
+        rtol: relative tolerance for gradient equality.
+        eps: step size used for finite differences.
+
+    Raises:
+        AssertionError: if vjp do not match.
+    """
     args = _as_list(args)
     if argnums is None:
         argnums = _as_list(range(len(args)))
