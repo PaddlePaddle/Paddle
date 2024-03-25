@@ -153,7 +153,7 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
   } else {
 #if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_ARM) &&  \
     !defined(PADDLE_WITH_SW) && !defined(PADDLE_WITH_MIPS) && \
-    !defined(PADDLE_WITH_LOONGARCH)
+    !defined(PADDLE_WITH_LOONGARCH) && !defined(PADDLE_WITH_RISCV)
     std::array<int, 4> reg;
     cpuid(reg.data(), 0);
     int nIds = reg[0];
