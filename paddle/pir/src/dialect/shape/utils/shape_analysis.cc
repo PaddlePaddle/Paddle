@@ -350,7 +350,6 @@ void ShapeConstraintIRAnalysis::AddEqCstr(const symbol::DimExpr& lhs,
 
   if (CanDimExprSubstitute(lhs, rhs)) {
     std::unordered_map<symbol::DimExpr, symbol::DimExpr> substitution_pattern;
-    int is_lhs_prior_rhs = CompareDimExpr(lhs, rhs);
     if (CompareDimExpr(lhs, rhs) < 0) {
       substitution_pattern[rhs] = lhs;
     } else {
