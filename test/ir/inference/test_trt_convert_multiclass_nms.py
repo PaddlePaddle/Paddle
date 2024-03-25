@@ -40,7 +40,6 @@ class TrtConvertMulticlassNMSTest(TrtLayerAutoScanTest):
                 min_subgraph_size=self.trt_param.min_subgraph_size,
                 precision_mode=self.trt_param.precision,
                 use_static=self.trt_param.use_static,
-                use_calib_mode=self.trt_param.use_calib_mode,
             )
             if (
                 len(self.dynamic_shape.min_input_shape) != 0

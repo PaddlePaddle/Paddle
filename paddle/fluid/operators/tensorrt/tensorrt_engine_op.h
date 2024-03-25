@@ -188,7 +188,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
     device_id_ = Attr<int>("gpu_device_id");
     enable_int8_ = Attr<bool>("enable_int8");
     enable_fp16_ = Attr<bool>("enable_fp16");
-    use_calib_mode_ = Attr<bool>("use_calib_mode");
     calibration_data_ = Attr<std::string>("calibration_data");
     engine_key_ = Attr<std::string>("engine_key");
     calibration_engine_key_ = Attr<std::string>("calibration_engine_key");
@@ -211,8 +210,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     }
     // calibration_mode is true represents we need to
     // generate the calibration table data.
-    calibration_mode_ =
-        (enable_int8_ && calibration_data_.empty() && use_calib_mode_);
+    calibration_mode_ = (enable_int8_ && calibration_data_.empty());
 
     VLOG(4) << "calibration_mode: " << calibration_mode_;
     if (enable_int8_ && !calibration_data_.empty()) {

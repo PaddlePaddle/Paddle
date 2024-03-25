@@ -199,8 +199,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       bool inspector_serialize = argument->tensorrt_inspector_serialize();
       bool model_from_memory = argument->model_from_memory();
       std::string optim_cache_dir = argument->optim_cache_dir();
-      bool int8_valid = !(model_from_memory && optim_cache_dir.empty() &&
-                          enable_int8 && use_calib_mode);
+      bool int8_valid =
+          !(model_from_memory && optim_cache_dir.empty() && enable_int8);
       PADDLE_ENFORCE_EQ(
           int8_valid,
           true,

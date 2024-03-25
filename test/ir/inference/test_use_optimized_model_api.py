@@ -88,7 +88,6 @@ class UseOptimizedModel(InferencePassTest):
             min_subgraph_size=1,
             precision_mode=paddle.inference.PrecisionType.Float32,
             use_static=True,
-            use_calib_mode=False,
         )
         config.enable_tuned_tensorrt_dynamic_shape()
         config.exp_disable_tensorrt_ops(["elementwise_add"])

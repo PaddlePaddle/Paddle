@@ -102,7 +102,6 @@ class TestTRTOptimizationLevel(unittest.TestCase):
             min_subgraph_size=3,
             precision_mode=PrecisionType.Half,
             use_static=False,
-            use_calib_mode=False,
         )
         config.enable_memory_optim()
         config.disable_glog_info()

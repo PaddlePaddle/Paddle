@@ -134,7 +134,6 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
             min_subgraph_size=1,
             precision_mode=paddle_infer.PrecisionType.Float32,
             use_static=False,
-            use_calib_mode=False,
         )
         yield config, ['fused_conv2d_add_act'], (1e-4, 1e-4)
 

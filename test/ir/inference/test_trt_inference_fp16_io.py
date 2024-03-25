@@ -104,7 +104,6 @@ class TestEnableLowPrecisionIOWithTRTAllGraph(
             min_subgraph_size=3,
             precision_mode=PrecisionType.Half,
             use_static=False,
-            use_calib_mode=False,
         )
         config.enable_tensorrt_memory_optim(True, 1)
         config.enable_tuned_tensorrt_dynamic_shape()
@@ -130,7 +129,6 @@ class TestEnableLowPrecisionIOWithTRTSubGraph(
             min_subgraph_size=3,
             precision_mode=PrecisionType.Half,
             use_static=False,
-            use_calib_mode=False,
         )
         config.enable_tensorrt_memory_optim(True, 1)
         config.enable_tuned_tensorrt_dynamic_shape()
