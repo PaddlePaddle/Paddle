@@ -3793,9 +3793,8 @@ class TestLog_Complex64(TestLog):
             if device == 'cpu' or (
                 device == 'gpu' and paddle.is_compiled_with_cuda()
             ):
-                paddle.set_device(device)
                 np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=self.dtype)
-                x = paddle.to_tensor(np_x, dtype=self.dtype)
+                x = paddle.to_tensor(np_x, dtype=self.dtype, place=device)
                 y = paddle.log(x)
                 x_expect = np.log(np_x)
                 np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
@@ -3925,9 +3924,8 @@ class TestLog2_Complex64(TestLog2):
             if device == 'cpu' or (
                 device == 'gpu' and paddle.is_compiled_with_cuda()
             ):
-                paddle.set_device(device)
                 np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=self.dtype)
-                x = paddle.to_tensor(np_x, dtype=self.dtype)
+                x = paddle.to_tensor(np_x, dtype=self.dtype, place=device)
                 y = paddle.log2(x)
                 x_expect = np.log2(np_x)
                 np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
@@ -4012,9 +4010,8 @@ class TestLog10_Complex64(TestLog10):
             if device == 'cpu' or (
                 device == 'gpu' and paddle.is_compiled_with_cuda()
             ):
-                paddle.set_device(device)
                 np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=self.dtype)
-                x = paddle.to_tensor(np_x, dtype=self.dtype)
+                x = paddle.to_tensor(np_x, dtype=self.dtype, place=device)
                 y = paddle.log10(x)
                 x_expect = np.log10(np_x)
                 np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
@@ -4133,9 +4130,8 @@ class TestLog1p_Complex64(TestLog1p):
             if device == 'cpu' or (
                 device == 'gpu' and paddle.is_compiled_with_cuda()
             ):
-                paddle.set_device(device)
                 np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=self.dtype)
-                x = paddle.to_tensor(np_x, dtype=self.dtype)
+                x = paddle.to_tensor(np_x, dtype=self.dtype, place=device)
                 y = paddle.log1p(x)
                 x_expect = np.log1p(np_x)
                 np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
