@@ -25,25 +25,25 @@
 
 namespace pir {
 
+class IR_API ShapeConstraintIRAnalysis;
+
 class UnionFindSet {
  public:
+  friend class ShapeConstraintIRAnalysis;
+
+ private:
   const symbol::DimExpr& Find(const symbol::DimExpr& x);
 
   void Union(const symbol::DimExpr& p, const symbol::DimExpr& q);
 
   std::vector<std::vector<symbol::DimExpr>> Clusters();
 
- private:
   std::unordered_map<symbol::DimExpr, symbol::DimExpr> parent_;
 };
 
 // The implementation is based on shape constraint ir.
 class IR_API ShapeConstraintIRAnalysis {
  public:
-  std::unordered_map<Value, symbol::ShapeOrDataDimExprs>
-  GetValueToShapeOrData() {
-    return value_to_shape_or_data_;
-  }
   void Init();
 
   const std::string GetNextSymName();

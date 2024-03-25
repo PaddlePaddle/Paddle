@@ -348,13 +348,6 @@ void ShapeConstraintIRAnalysis::AddEqCstr(const symbol::DimExpr& lhs,
   eq_cstr_set.Union(lhs, rhs);
   VLOG(8) << "AddEqCstr the constraint: " << lhs << " == " << rhs;
 
-  auto PrintShapeOrData = [&]() {
-    for (auto it = value_to_shape_or_data_.begin();
-         it != value_to_shape_or_data_.end();
-         it++) {
-      VLOG(8) << it->second;
-    }
-  };
   if (CanDimExprSubstitute(lhs, rhs)) {
     std::unordered_map<symbol::DimExpr, symbol::DimExpr> substitution_pattern;
     int is_lhs_prior_rhs = CompareDimExpr(lhs, rhs);
@@ -364,8 +357,6 @@ void ShapeConstraintIRAnalysis::AddEqCstr(const symbol::DimExpr& lhs,
       substitution_pattern[lhs] = rhs;
     }
 
-    VLOG(8) << "before substitute##########";
-    PrintShapeOrData();
     for (auto it = value_to_shape_or_data_.begin();
          it != value_to_shape_or_data_.end();
          it++) {
@@ -373,8 +364,6 @@ void ShapeConstraintIRAnalysis::AddEqCstr(const symbol::DimExpr& lhs,
           SubstituteShapeOrData(it->second, substitution_pattern);
       SetShapeOrDataForValue(it->first, substituted_shape_or_data);
     }
-    VLOG(8) << "after substitute##########";
-    PrintShapeOrData();
   }
 }
 
