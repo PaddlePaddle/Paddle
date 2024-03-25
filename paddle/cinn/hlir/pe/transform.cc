@@ -1070,18 +1070,25 @@ ir::Tensor SliceSymbolic(const ir::Tensor& A,
     input_shape.emplace_back(shape);
   }
 
-  std::vector<int> new_starts(starts);
+  std::vector<Expr> new_starts;
+  std::transform(starts.begin(),
+                 starts.end(),
+                 std::back_inserter(new_starts),
+                 [](const int start) { return ir::Expr(start); });
+
   for (int i = 0; i < axes.size(); i++) {
-    CHECK(input_shape[axes[i]].is_constant())
-        << "Not supported Slice in dynamic dimensions, because the "
-           "relationship between slice range and symbol size cannot be "
-           "determined at compile time";
-    if (new_starts[i] < -input_shape[axes[i]].as_int64()) {
-      new_starts[i] = 0;
-    } else if (new_starts[i] < 0) {
-      new_starts[i] = input_shape[axes[i]].as_int64() + new_starts[i];
-    } else if (new_starts[i] > input_shape[axes[i]].as_int64()) {
-      new_starts[i] = input_shape[axes[i]].as_int64() - 1;
+    if (input_shape[axes[i]].is_constant()) {
+      if (new_starts[i].as_int64() < -input_shape[axes[i]].as_int64()) {
+        new_starts[i] = ir::Expr(0);
+      } else if (new_starts[i].as_int64() < 0) {
+        new_starts[i] = input_shape[axes[i]].as_int64() + new_starts[i];
+      } else if (new_starts[i].as_int64() > input_shape[axes[i]].as_int64()) {
+        new_starts[i] = input_shape[axes[i]].as_int64() - ir::Expr(1);
+      }
+    } else {
+      if (new_starts[i].as_int64() < 0) {
+        new_starts[i] = ir::Add::Make(input_shape[axes[i]], new_starts[i]);
+      }
     }
   }
 
@@ -1099,18 +1106,23 @@ ir::Tensor SliceSymbolic(const ir::Tensor& A,
         std::vector<Expr> temp;
         int indice_i = 0;
         for (int i = 0; i < input_shape.size(); ++i) {
+          VLOG(-1) << "xx ";
           if (std::find(decrease_axis.cbegin(), decrease_axis.cend(), i) !=
               decrease_axis.cend()) {
+            VLOG(-1) << "xx ";
             temp.emplace_back(0);
           } else {
+            VLOG(-1) << "xx ";
             temp.emplace_back(indice[indice_i]);
             indice_i++;
           }
         }
         for (int i = 0; i < axes.size(); i++) {
+          VLOG(-1) << "xx ";
           temp[axes[i]] =
               temp[axes[i]] * Expr(strides[i]) + Expr(new_starts[i]);
         }
+        VLOG(-1) << "xx ";
         return A(temp);
       },
       output_name);
@@ -1244,8 +1256,8 @@ ir::Tensor Gather(const ir::Tensor& x,
         // 1) indice is got from `output_shape`
         // 2) transformed_indice is used in the input `x`
         std::vector<Expr> transformed_indice = indice;
-        // The element type of index maybe int64, but the index type is limited
-        // to int32 in CINN. See the below link for more details:
+        // The element type of index maybe int64, but the index type is
+        // limited to int32 in CINN. See the below link for more details:
         // https://github.com/PaddlePaddle/CINN/blob/85ab4981a38926dc5c1dbf672762cec335d2b857/cinn/ir/ir.cc#L477
         transformed_indice[axis] =
             ir::Cast::Make(cinn::common::Int(32), index(indice));
@@ -1262,7 +1274,8 @@ ir::Tensor ScatterAssign(const ir::Tensor& input,
                          const int axis,
                          const std::string& output_name) {
   CHECK_EQ(index->type(), cinn::common::Int(32))
-      << "Param [Index] of ScatterAssign only support int32 ! Please Check.\n";
+      << "Param [Index] of ScatterAssign only support int32 ! Please "
+         "Check.\n";
   std::string extern_fun_name;
   if (target.arch == cinn::common::Target::Arch::NVGPU) {
     extern_fun_name.assign("cinn_cuda_find_int");
