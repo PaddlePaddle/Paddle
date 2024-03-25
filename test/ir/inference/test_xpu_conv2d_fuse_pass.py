@@ -120,7 +120,7 @@ class TestConv2dXPUFusePass(PassAutoScanTest):
         ew_bias_shape = [w_shape[0]]
 
         # Random choose if add a relu operator
-        has_relu = True
+        has_relu = False
 
         def generate_data(shape):
             return np.random.random(shape).astype(np.float32)
@@ -159,6 +159,11 @@ class TestConv2dXPUFusePass(PassAutoScanTest):
             )
             ops.append(relu_op)
 
+        else:
+            elu_op = OpConfig(
+                "elu", inputs={"X": ["add_out"]}, outputs={"Out": ["elu_out"]}
+            )
+            ops.append(elu_op)
         program_config = ProgramConfig(
             ops=ops,
             inputs={
