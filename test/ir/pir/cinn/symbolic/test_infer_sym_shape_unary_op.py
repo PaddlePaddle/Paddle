@@ -142,6 +142,84 @@ class CumSumProdOpInferSymbolicShapeTest(TestBase):
         return True
 
 
+class SumNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        out_sum = paddle.sum(x)
+        out_sum = paddle.sum(x, 0)
+        out_sum = paddle.sum(x, 1)
+        out_sum = paddle.sum(x, -1)
+        out_sum = paddle.sum(x, -2)
+        # keepdim=True
+        out_sum = paddle.sum(x, keepdim=True)
+        out_sum = paddle.sum(x, 0, keepdim=True)
+        out_sum = paddle.sum(x, 1, keepdim=True)
+        out_sum = paddle.sum(x, -1, keepdim=True)
+        out_sum = paddle.sum(x, -2, keepdim=True)
+
+        out_sum = paddle.sum(x, [1, 2])
+        out_sum = paddle.sum(x, [1, 2], keepdim=True)
+
+        out_logsumexp = paddle.logsumexp(x)
+        out_logsumexp = paddle.logsumexp(x, 0)
+        out_logsumexp = paddle.logsumexp(x, 1)
+        out_logsumexp = paddle.logsumexp(x, -1)
+        out_logsumexp = paddle.logsumexp(x, -2)
+        # keepdim=True
+        out_logsumexp = paddle.logsumexp(x, keepdim=True)
+        out_logsumexp = paddle.logsumexp(x, 0, keepdim=True)
+        out_logsumexp = paddle.logsumexp(x, 1, keepdim=True)
+        out_logsumexp = paddle.logsumexp(x, -1, keepdim=True)
+        out_logsumexp = paddle.logsumexp(x, -2, keepdim=True)
+
+        out_logsumexp = paddle.logsumexp(x, [1, 2])
+        out_logsumexp = paddle.logsumexp(x, [1, 2], keepdim=True)
+        # return out_sum, out_logsumexp
+        return out_logsumexp
+
+
+class SumOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.cases = [np.random.rand(4, 5, 6)]
+        self.expected = [
+            'shape[], data[NULL]',
+            'shape[S1, S2], data[NULL]',
+            'shape[S0, S2], data[NULL]',
+            'shape[S0, S1], data[NULL]',
+            'shape[S0, S2], data[NULL]',
+            # keepdim=True
+            'shape[1, 1, 1], data[NULL]',
+            'shape[1, S1, S2], data[NULL]',
+            'shape[S0, 1, S2], data[NULL]',
+            'shape[S0, S1, 1], data[NULL]',
+            'shape[S0, 1, S2], data[NULL]',
+            'shape[S0], data[NULL]',
+            'shape[S0, 1, 1], data[NULL]',
+        ]
+
+    def test_eval_symbolic(self):
+        net = SumNet()
+
+        for i in range(len(self.cases)):
+            x = self.cases[i]
+            x_spec = InputSpec(
+                shape=[None for index in range(len(x.shape))], dtype='float32'
+            )
+
+            input_spec = [x_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+
+            # check the infer result
+            check_infer_results(
+                net, input_spec, 'pd_op.logsumexp', self.expected
+            )
+
+        return True
+
+
 class DiagEmbedNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()

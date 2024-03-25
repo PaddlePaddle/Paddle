@@ -291,8 +291,10 @@ bool LogcumsumexpOpInferSymbolicShape(
 
 bool LogsumexpOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  // same as SumOpInferSymbolicShape
-  return SumOpInferSymbolicShape(op, shape_analysis);
+  bool keepdim = GetBoolAttr(op, "keepdim");
+  std::vector<int64_t> axis = details::GetVectorAttr(op, "axis");
+  bool reduce_all = axis.size() == 0 ? true : false;
+  return details::ReduceInferDim(op, shape_analysis, axis, keepdim, reduce_all);
 }
 
 bool MaxOpInferSymbolicShape(pir::Operation *op,
