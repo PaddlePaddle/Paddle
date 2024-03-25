@@ -2751,6 +2751,15 @@
     func : stanh
   backward : stanh_grad
 
+- op : sum_as
+  args : (Tensor x, Tensor y, DataType dtype=DataType::UNDEFINED, bool keepdim=false)
+  output : Tensor(out)
+  infer_meta :
+    func : SumAsInferMeta
+  kernel :
+    func : sum_as
+    data_type : x
+
 - op : svd
   args : (Tensor x, bool full_matrices = false)
   output : Tensor(u), Tensor(s), Tensor(vh)

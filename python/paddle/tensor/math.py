@@ -1581,6 +1581,92 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         return out
 
 
+def sum_as(x, y, dtype=None, keepdim=False, name=None):
+    """
+    Computes the sum_as of tensor elements over the given dimension.
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is bool, float16, float32, float64, int32 or int64.
+        axis (int|list|tuple, optional): The dimensions along which the sum is performed. If
+            :attr:`None`, sum all elements of :attr:`x` and return a
+            Tensor with a single element, otherwise must be in the
+            range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
+            the dimension to reduce is :math:`rank + axis[i]`.
+        dtype (str, optional): The dtype of output Tensor. The default value is None, the dtype
+            of output is the same as input Tensor `x`.
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result Tensor will have one fewer dimension
+            than the :attr:`x` unless :attr:`keepdim` is true, default
+            value is False.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: Results of summation operation on the specified axis of input Tensor `x`,
+        if `x.dtype='bool'`, `x.dtype='int32'`, it's data type is `'int64'`,
+        otherwise it's data type is the same as `x`.
+
+    Examples:
+
+    """
+
+    dtype_flag = False
+    if dtype is not None:
+        dtype_flag = True
+        dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if in_dynamic_or_pir_mode():
+        return _C_ops.sum_as(x, y, dtype, keepdim)
+    else:
+        attrs = {'keep_dim': keepdim}
+
+        if dtype_flag:
+            attrs.update({'in_dtype': x.dtype, 'out_dtype': dtype})
+
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'bool',
+                'uint16',
+                'float16',
+                'float32',
+                'float64',
+                'int16',
+                'int32',
+                'int64',
+            ],
+            'sum_as',
+        )
+        check_variable_and_dtype(
+            y,
+            'y',
+            [
+                'bool',
+                'uint16',
+                'float16',
+                'float32',
+                'float64',
+                'int16',
+                'int32',
+                'int64',
+            ],
+            'sum_as',
+        )
+
+        helper = LayerHelper('sum_as', **locals())
+        if dtype_flag:
+            out = helper.create_variable_for_type_inference(dtype=dtype)
+        else:
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='sum_x',
+            inputs={'x': x, 'Y': y},
+            outputs={'out': out},
+            attrs=attrs,
+        )
+        return out
+
+
 def nan_to_num(x, nan=0.0, posinf=None, neginf=None, name=None):
     """
     Replaces NaN, positive infinity, and negative infinity values in input tensor.

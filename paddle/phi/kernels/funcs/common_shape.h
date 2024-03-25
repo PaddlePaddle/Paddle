@@ -297,5 +297,23 @@ inline void FCOutputSize(const DDim &in_dims,
   out_dims.push_back(w_dims1);
 }
 
+inline std::vector<int64_t> GetReduceDims(const DenseTensor &in,
+                                          const DenseTensor &out) {
+  std::vector<int64_t> reduce_dims;
+  auto in_dims = in.dims();
+  auto out_dims = out.dims();
+
+  int diff = in_dims.size() - out_dims.size();
+  for (int i = 0; i < diff; ++i) {
+    reduce_dims.push_back(i);
+  }
+  for (int i = diff; i < in_dims.size(); ++i) {
+    if (out_dims[i - diff] != in_dims[i]) {
+      reduce_dims.push_back(i);
+    }
+  }
+  return reduce_dims;
+}
+
 }  // namespace funcs
 }  // namespace phi
