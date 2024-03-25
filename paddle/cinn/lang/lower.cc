@@ -337,12 +337,11 @@ ir::LoweredFunc LowerToAst(const std::string& name,
                            const Target& target) {
   std::vector<ir::LoweredFunc> result =
       LowerToAstVec(name, tensor_args, tensor_group, target);
-  PADDLE_ENFORCE_EQ(
-      result.size(),
-      1UL,
-      phi::errors::InvalidArgument(
-          "LowerToAst contains not only 1 LoweredFunc, "
-          "use LowerToAstVec instead."));
+  PADDLE_ENFORCE_EQ(result.size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "LowerToAst contains not only 1 LoweredFunc, "
+                        "use LowerToAstVec instead."));
   return result[0];
 }
 
