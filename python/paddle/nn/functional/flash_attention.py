@@ -620,7 +620,20 @@ def flash_attention_with_sparse_mask(
             >>> # doctest: +SKIP('bfloat need V100 compile')
             >>> import paddle
             >>> import numpy as np
-    @@ -398,7 +467,7 @@ def flash_attention_with_mask(
+            >>> def generate_start_rows(bz, num_head, rows, cols, start_row):
+            >>>     assert rows == cols, f"rows {rows} must be equal to cols {cols}."
+            >>>     start_rows_list = []
+            >>>     for bz_idx in range(bz):
+            >>>         for head_idx in range(num_head):
+            >>>             start_rows = np.array([rows+1] * cols)
+            >>>             mask_pos = np.random.choice(cols-1, cols - start_row, replace=False)
+            >>>             index = np.arange(start_row, rows)
+            >>>             mask_pos = np.concatenate([mask_pos[mask_pos < index - 1], mask_pos[mask_pos >= index - 1]])
+            >>>             start_rows[mask_pos] = index
+            >>>             start_rows_list.append(start_rows)
+            >>>     start_rows_arr = np.array(start_rows_list).reshape([bz, num_head, rows])
+            >>>     return start_rows_arr
+            >>> q = paddle.rand((1, 128, 2, 16), dtype=paddle.bfloat16)
             >>> attn_mask_start_row = 48
             >>> start_row_indices = generate_start_rows(1, 2, 128, 128, attn_mask_start_row)
             >>> attn_mask_start_row_indices = paddle.to_tensor(start_row_indices, dtype=paddle.int32)
@@ -628,7 +641,9 @@ def flash_attention_with_sparse_mask(
             >>>     q, q, q,
             >>>     attn_mask_start_row_indices=attn_mask_start_row_indices,
             >>>     attn_mask_start_row=attn_mask_start_row,
-    @@ -408,43 +477,53 @@ def flash_attention_with_mask(
+            >>>     dropout_p=0.9,
+            >>>     is_causal=True,
+            >>> )
             >>> print(output)
             >>> # doctest: -SKIP
     """
