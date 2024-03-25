@@ -42,8 +42,7 @@ const Op& DrrPatternContext::SourceOpPattern(
   return *owned_ops_.back();
 }
 
-const drr::Tensor& DrrPatternContext::SourceTensorPattern(
-    const std::string& name) {
+drr::Tensor& DrrPatternContext::SourceTensorPattern(const std::string& name) {
   return source_pattern_graph_->AddTensor(std::shared_ptr<drr::Tensor>(
       new drr::Tensor(name, source_pattern_graph_.get())));
 }

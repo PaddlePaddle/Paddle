@@ -125,7 +125,7 @@ class TEST_API DrrPatternContext {
   const Op& SourceOpPattern(
       const std::string& op_type,
       const std::unordered_map<std::string, Attribute>& attributes = {});
-  const drr::Tensor& SourceTensorPattern(const std::string& name);
+  drr::Tensor& SourceTensorPattern(const std::string& name);
 
   const Op& ResultOpPattern(
       const std::string& op_type,
