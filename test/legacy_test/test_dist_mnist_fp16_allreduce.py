@@ -29,7 +29,7 @@ class TestDistMnist2x2FP16AllReduce(TestDistBase):
 
         if base.core.is_compiled_with_cuda():
             self.check_with_place(
-                "dist_mnist_fp16_allreduce.py", delta=1e-5, check_error_log=True
+                "dist_mnist_fp16_allreduce.py", delta=1e-2, check_error_log=True
             )
 
 

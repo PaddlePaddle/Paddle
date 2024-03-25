@@ -50,6 +50,7 @@ inline void InplaceCompareKernelImpl(const Context& ctx,
                                      int axis,
                                      DenseTensor* out) {
   auto x_origin = x;
+  out->clear();
   out->set_type(phi::DataType::BOOL);
   ctx.template Alloc<bool>(out);
   if (x_origin.dims().size() >= y.dims().size()) {

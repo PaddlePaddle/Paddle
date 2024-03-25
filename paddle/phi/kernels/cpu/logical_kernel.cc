@@ -40,6 +40,7 @@ void InplaceLogicalKernelImpl(const Context& dev_ctx,
                               DenseTensor* out) {
   Functor binary_func;
   auto x_origin = x;
+  out->clear();
   out->set_type(phi::DataType::BOOL);
   funcs::ElementwiseCompute<Functor, T, bool>(
       dev_ctx, x_origin, y, binary_func, out);
@@ -74,6 +75,7 @@ void LogicalNotKernel(const Context& dev_ctx,
   phi::Transform<Context> trans;
   if (out->IsSharedWith(x)) {
     auto x_origin = x;
+    out->clear();
     out->set_type(phi::DataType::BOOL);
     auto* out_ptr = dev_ctx.template Alloc<bool>(out);
     trans(dev_ctx,
