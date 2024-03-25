@@ -164,17 +164,17 @@ ir::Expr SubstitudeIndexVector(const Expr& source,
 }
 }  // namespace ComposeUtils
 
-namespace SearchUtils {
+namespace ExprSetFinderUtils {
 
 using ExprSet = std::vector<ir::Expr>;
-using Func = std::function<ExprSet(const ir::Expr& x)>;
-Mapping::Mapping(Func f, std::string s) {
+using Expr2ExprSet = std::function<ExprSet(const ir::Expr& x)>;
+ExprSetFinder::ExprSetFinder(Expr2ExprSet f, std::string s) {
   f_ = f;
   name = s;
 }
-ExprSet Mapping::operator()(const ir::Expr& x) const { return f_(x); }
-ir::Expr Mapping::GetSingle(const ir::Expr& x) const {
-  Mapping call = (*this) * Mapping::GetIdentity();
+ExprSet ExprSetFinder::operator()(const ir::Expr& x) const { return f_(x); }
+ir::Expr ExprSetFinder::GetSingle(const ir::Expr& x) const {
+  ExprSetFinder call = (*this) * ExprSetFinder::GetIdentity();
   const auto& o = call.operator()(x);
   if (o.size() != 1) {
     PADDLE_THROW("Try to get single result, but we get %d.", o.size());
@@ -182,10 +182,10 @@ ir::Expr Mapping::GetSingle(const ir::Expr& x) const {
   return *o.begin();
 }
 
-Mapping Mapping::operator*(Mapping x) const {
+ExprSetFinder ExprSetFinder::operator*(ExprSetFinder x) const {
   auto new_f = [self = *this, x = x](const ir::Expr& e) -> ExprSet {
     const auto& rs = self.f_(e);
-    VLOG(6) << "Mapping Info : " << self.name;
+    VLOG(6) << "ExprSetFinder Info : " << self.name;
     VLOG(6) << "        Inputs  :" << e;
     for (const auto& r : rs) {
       VLOG(6) << "      Outputs : \n" << r;
@@ -197,17 +197,17 @@ Mapping Mapping::operator*(Mapping x) const {
     }
     return res;
   };
-  return Mapping(std::function(new_f), x.name + "*" + this->name);
+  return ExprSetFinder(std::function(new_f), x.name + "*" + this->name);
 }
 
-Mapping Mapping::GetIdentity() {
-  return Mapping([](const ir::Expr& e) { return std::vector<ir::Expr>{e}; },
-                 "identity");
+ExprSetFinder ExprSetFinder::GetIdentity() {
+  return ExprSetFinder(
+      [](const ir::Expr& e) { return std::vector<ir::Expr>{e}; }, "identity");
 }
 
-Mapping Identity = Mapping::GetIdentity();
+ExprSetFinder Identity = ExprSetFinder::GetIdentity();
 
-Mapping Store2Value = Mapping(
+ExprSetFinder Store2Value = ExprSetFinder(
     [](const ir::Expr& e) -> ExprSet {
       if (e.As<ir::Store>()) {
         return {e.As<ir::Store>()->value};
@@ -216,7 +216,7 @@ Mapping Store2Value = Mapping(
     },
     "Store2Value");
 
-Mapping Realizer2ScheduleBlock = Mapping(
+ExprSetFinder Realizer2ScheduleBlock = ExprSetFinder(
     [](const ir::Expr& e) -> ExprSet {
       if (e.As<ir::ScheduleBlockRealize>()) {
         return {e.As<ir::ScheduleBlockRealize>()->schedule_block};
@@ -225,7 +225,7 @@ Mapping Realizer2ScheduleBlock = Mapping(
     },
     "Realizer2ScheduleBlock");
 
-Mapping ScheduleBlock2Body = Mapping(
+ExprSetFinder ScheduleBlock2Body = ExprSetFinder(
     [](const ir::Expr& e) -> ExprSet {
       if (e.As<ir::ScheduleBlock>()) {
         return {e.As<ir::ScheduleBlock>()->body};
@@ -234,7 +234,7 @@ Mapping ScheduleBlock2Body = Mapping(
     },
     "ScheduleBlock2Body");
 
-Mapping ScheduleBlockRealizeNotRoot = FilterMaker(
+ExprSetFinder ScheduleBlockRealizeNotRoot = FilterMaker(
     [](const ir::Expr& e) -> bool {
       return (e.As<ir::ScheduleBlockRealize>() &&
               e.As<ir::ScheduleBlockRealize>()
@@ -243,7 +243,7 @@ Mapping ScheduleBlockRealizeNotRoot = FilterMaker(
     },
     "ScheduleBlockRealizeNotRoot");
 
-Mapping ScheduleBlockRealizeIsNotInit = FilterMaker(
+ExprSetFinder ScheduleBlockRealizeIsNotInit = FilterMaker(
     [](const ir::Expr& e) -> bool {
       return (e.As<ir::ScheduleBlockRealize>() &&
               e.As<ir::ScheduleBlockRealize>()
@@ -252,7 +252,7 @@ Mapping ScheduleBlockRealizeIsNotInit = FilterMaker(
     },
     "ScheduleBlockRealizeIsNotInit");
 
-Mapping ScheduleBlockRealizeIsInit = FilterMaker(
+ExprSetFinder ScheduleBlockRealizeIsInit = FilterMaker(
     [](const ir::Expr& e) -> bool {
       return (e.As<ir::ScheduleBlockRealize>() &&
               e.As<ir::ScheduleBlockRealize>()
@@ -261,20 +261,20 @@ Mapping ScheduleBlockRealizeIsInit = FilterMaker(
     },
     "ScheduleBlockRealizeIsInit");
 
-Mapping IsFor = FilterMaker(
+ExprSetFinder IsFor = FilterMaker(
     [](const ir::Expr& e) -> bool { return e.As<ir::For>(); }, "IsFor");
 
-Mapping ChildScheduleBlocks =
+ExprSetFinder ChildScheduleBlocks =
     Collector([](const ir::Expr* e) { return e->As<ir::ScheduleBlock>(); },
               "ChildScheduleBlocks");
 
-Mapping ChildScheduleBlockRealizes =
+ExprSetFinder ChildScheduleBlockRealizes =
     Collector(
         [](const ir::Expr* e) { return e->As<ir::ScheduleBlockRealize>(); },
         "ChildScheduleBlockRealizes") *
     ScheduleBlockRealizeNotRoot;
 
-Mapping IsForIterVar(const ir::Var& var) {
+ExprSetFinder IsForIterVar(const ir::Var& var) {
   return FilterMaker(
       [var = var](const ir::Expr& e) -> bool {
         return e.As<ir::For>() && e.As<ir::For>()->loop_var == var;
@@ -282,30 +282,30 @@ Mapping IsForIterVar(const ir::Var& var) {
       "IsForIterVar");
 }
 
-Mapping For2Min =
-    Mapping([](const ir::Expr& e) -> ExprSet { return {e.As<ir::For>()->min}; },
-            "For2Min");
+ExprSetFinder For2Min = ExprSetFinder(
+    [](const ir::Expr& e) -> ExprSet { return {e.As<ir::For>()->min}; },
+    "For2Min");
 
-Mapping For2Max = Mapping(
+ExprSetFinder For2Max = ExprSetFinder(
     [](const ir::Expr& e) -> ExprSet { return {e.As<ir::For>()->extent}; },
     "For2Max");
 
-Mapping ChildStores = Collector(
+ExprSetFinder ChildStores = Collector(
     [](const ir::Expr* e) { return e->As<ir::Store>(); }, "ChildStores");
 
-Mapping ChildTensorLoads = Collector(
+ExprSetFinder ChildTensorLoads = Collector(
     [](const ir::Expr* e) {
       return e->As<ir::Load>() && e->As<ir::Load>()->is_addr_tensor();
     },
     "ChildLoads");
 
-Mapping ChildTensorStores = Collector(
+ExprSetFinder ChildTensorStores = Collector(
     [](const ir::Expr* e) {
       return e->As<ir::Load>() && e->As<ir::Store>()->is_addr_tensor();
     },
     "ChildTensorStores");
 
-Mapping FilterLoadByTensor(const ir::Tensor& tensor) {
+ExprSetFinder FilterLoadByTensor(const ir::Tensor& tensor) {
   return FilterMaker(
       [tensor = tensor](const ir::Expr& e) -> bool {
         return e.As<ir::Load>() &&
@@ -314,36 +314,36 @@ Mapping FilterLoadByTensor(const ir::Tensor& tensor) {
       "FilterLoadByTensor(" + tensor->name + ")");
 }
 
-Mapping ChildFors =
+ExprSetFinder ChildFors =
     Collector([](const ir::Expr* e) { return e->As<ir::For>(); }, "ChildFors");
 
-Mapping FindFather(const ir::Expr& root) {
+ExprSetFinder FindFather(const ir::Expr& root) {
   const auto& f = [&](const auto& child) -> ExprSet {
-    Mapping find_child =
+    ExprSetFinder find_child =
         Collector([child](const ir::Expr* e) { return *e == child; });
     const auto& father_collector = Collector(
         [&](const ir::Expr* current) { return !find_child(*current).empty(); });
     return father_collector(root);
   };
-  return Mapping(f, "FindFather");
+  return ExprSetFinder(f, "FindFather");
 }
-}  // namespace SearchUtils
+}  // namespace ExprSetFinderUtils
 
-namespace TransformerUtils {
-using TransformFunc = std::function<ir::Expr(ir::Expr)>;
+namespace ExprTransformerUtils {
+using ExprTransformFunc = std::function<ir::Expr(ir::Expr)>;
 
-Transformer::Transformer(TransformFunc f) { f_ = f; }
-ir::Expr Transformer::operator()(const ir::Expr& x) const { return f_(x); }
-Transformer Transformer::operator*(const Transformer& x) const {
+ExprTransformer::ExprTransformer(ExprTransformFunc f) { f_ = f; }
+ir::Expr ExprTransformer::operator()(const ir::Expr& x) const { return f_(x); }
+ExprTransformer ExprTransformer::operator*(const ExprTransformer& x) const {
   auto new_f = [self = *this, x = x](const ir::Expr& e) -> ir::Expr {
     const auto& rs = self.f_(e);
     return x.f_(rs);
   };
-  return Transformer(std::function(new_f));
+  return ExprTransformer(std::function(new_f));
 }
 
-Transformer Identity = Transformer([](const ir::Expr& e) { return e; });
-Transformer WrapForTransformer(const ir::Var& v) {
+ExprTransformer Identity = ExprTransformer([](const ir::Expr& e) { return e; });
+ExprTransformer WrapForTransformer(const ir::Var& v) {
   const auto& f = [=](const ir::Expr& e) -> ir::Expr {
     auto block = e;
     if (!block.As<ir::Block>()) {
@@ -356,43 +356,43 @@ Transformer WrapForTransformer(const ir::Var& v) {
                          ir::DeviceAPI::Host,
                          block);
   };
-  return Transformer(f);
+  return ExprTransformer(f);
 }
 
-Transformer WrapForsTransformer(const std::vector<ir::Var>& vs) {
+ExprTransformer WrapForsTransformer(const std::vector<ir::Var>& vs) {
   const auto& f = [&](const ir::Expr& e) -> ir::Expr {
-    Transformer t = Identity;
+    ExprTransformer t = Identity;
     for (const auto& v : vs) {
       t = WrapForTransformer(v) * t;
     }
     return t(e);
   };
-  return Transformer(f);
+  return ExprTransformer(f);
 }
 
-Transformer ChangeTensorLoadTransformer(const ir::Tensor& tensor,
-                                        const ir::Expr& dst_load) {
+ExprTransformer ChangeTensorLoadTransformer(const ir::Tensor& tensor,
+                                            const ir::Expr& dst_load) {
   const auto& f = [&](const ir::Expr& e) -> ir::Expr {
     auto copied_e = ir::ir_utils::IRCopy(e);
-    const auto& load = (SearchUtils::ChildTensorLoads *
-                        SearchUtils::FilterLoadByTensor(tensor))
+    const auto& load = (ExprSetFinderUtils::ChildTensorLoads *
+                        ExprSetFinderUtils::FilterLoadByTensor(tensor))
                            .GetSingle(copied_e);
     ComposeUtils::MappingTargetExprToDestExprMutator(load, dst_load)(&copied_e);
     return copied_e;
   };
-  return Transformer(f);
+  return ExprTransformer(f);
 }
 
 void ReplaceTarget(ir::Expr* e, const ir::Expr& t, const ir::Expr dst) {
   ComposeUtils::MappingTargetExprToDestExprMutator(t, dst)(e);
 }
 
-Transformer WrapStoreTransformer(const ir::Tensor& tensor,
-                                 const std::vector<ir::Expr>& indices) {
+ExprTransformer WrapStoreTransformer(const ir::Tensor& tensor,
+                                     const std::vector<ir::Expr>& indices) {
   const auto& f = [=](const ir::Expr& e) -> ir::Expr {
     return ir::Store::Make(tensor, e, indices);
   };
-  return Transformer(f);
+  return ExprTransformer(f);
 }
 
 std::vector<ir::Var> CreateInnerBlockVars(
@@ -406,20 +406,20 @@ std::vector<ir::Var> CreateInnerBlockVars(
   return vars;
 }
 
-Transformer ChangeVarTransformer(const std::vector<ir::Var>& target_vars,
-                                 const std::vector<ir::Var>& dest_vars) {
+ExprTransformer ChangeVarTransformer(const std::vector<ir::Var>& target_vars,
+                                     const std::vector<ir::Var>& dest_vars) {
   const auto& f = [=](const ir::Expr& e) -> ir::Expr {
     return ComposeUtils::CopyedReplaceExpr(
         e,
         target_vars,
         std::vector<ir::Expr>(dest_vars.begin(), dest_vars.end()));
   };
-  return Transformer(f);
+  return ExprTransformer(f);
 }
 
-Transformer WrapReduceOperation(const ir::Reduce::ReduceType& reduce_type,
-                                const ir::Tensor& tensor,
-                                const std::vector<ir::Expr>& axis_exprs) {
+ExprTransformer WrapReduceOperation(const ir::Reduce::ReduceType& reduce_type,
+                                    const ir::Tensor& tensor,
+                                    const std::vector<ir::Expr>& axis_exprs) {
   const auto& f = [=](const ir::Expr& e) -> ir::Expr {
     switch (reduce_type) {
       case ir::Reduce::kSum:
@@ -438,26 +438,26 @@ Transformer WrapReduceOperation(const ir::Reduce::ReduceType& reduce_type,
         return ir::Store::Make(tensor, tensor(axis_exprs) || e, axis_exprs);
       default:
         CINN_NOT_IMPLEMENTED
-    };
+    }
   };
-  return Transformer(f);
+  return ExprTransformer(f);
 }
 
-Transformer SubstitudeByScheduleBlockRealize(const ir::Expr& realize) {
+ExprTransformer SubstitudeByScheduleBlockRealize(const ir::Expr& realize) {
   const auto& f = [=](const ir::Expr& e) -> ir::Expr {
     const auto& iter_values =
         realize.As<ir::ScheduleBlockRealize>()->iter_values;
     const auto& iter_vars = realize.As<ir::ScheduleBlockRealize>()
                                 ->schedule_block.As<ir::ScheduleBlock>()
                                 ->iter_vars;
-    return TransformerUtils::ChangeVarTransformer(
+    return ExprTransformerUtils::ChangeVarTransformer(
         iter_vars, ComposeUtils::ExprVec2VarVec(iter_values))(e);
   };
-  return Transformer(f);
+  return ExprTransformer(f);
 }
 
-Transformer WrapScheduleRealizer(const std::vector<ir::Var>& block_vars,
-                                 const std::string& tensor_name) {
+ExprTransformer WrapScheduleRealizer(const std::vector<ir::Var>& block_vars,
+                                     const std::string& tensor_name) {
   const auto& f = [=](const ir::Expr& e) -> ir::Expr {
     if (e.As<ir::ScheduleBlock>()) {
       PADDLE_THROW("please input a non-schedule block expr.");
@@ -472,9 +472,9 @@ Transformer WrapScheduleRealizer(const std::vector<ir::Var>& block_vars,
         schedule_block);
     return schedule_realizer;
   };
-  return Transformer(f);
+  return ExprTransformer(f);
 }
-}  // namespace TransformerUtils
+}  // namespace ExprTransformerUtils
 
 std::vector<OpPatternKind> GetOpPatternKindVector(
     const std::vector<::pir::Operation*>& ops) {

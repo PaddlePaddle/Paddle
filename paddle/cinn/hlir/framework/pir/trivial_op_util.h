@@ -97,24 +97,24 @@ void ReplaceDownstreamLoadExprWithUpstreamComputeBody(
 }
 }  // namespace ComposeUtils
 
-namespace SearchUtils {
+namespace ExprSetFinderUtils {
 
 using ExprSet = std::vector<ir::Expr>;
-using Func = std::function<ExprSet(const ir::Expr& x)>;
-struct Mapping {
-  Func f_;
+using Expr2ExprSet = std::function<ExprSet(const ir::Expr& x)>;
+struct ExprSetFinder {
+  Expr2ExprSet f_;
   std::string name;
-  explicit Mapping(Func f, std::string s = "");
+  explicit ExprSetFinder(Expr2ExprSet f, std::string s = "");
 
   ExprSet operator()(const ir::Expr& x) const;
   ir::Expr GetSingle(const ir::Expr& x) const;
-  Mapping operator*(Mapping x) const;
-  static Mapping GetIdentity();
+  ExprSetFinder operator*(ExprSetFinder x) const;
+  static ExprSetFinder GetIdentity();
 };
 
 template <typename Teller>
-Mapping Collector(Teller t, std::string name = "") {
-  return Mapping(
+ExprSetFinder Collector(Teller t, std::string name = "") {
+  return ExprSetFinder(
       [=](const ir::Expr& x) -> ExprSet {
         const auto& rs = cinn::ir::ir_utils::CollectIRNodesWithoutTensor(x, t);
         return std::vector(rs.begin(), rs.end());
@@ -123,8 +123,8 @@ Mapping Collector(Teller t, std::string name = "") {
 }
 
 template <typename FilterFunc>
-Mapping FilterMaker(FilterFunc t, std::string name) {
-  return Mapping(
+ExprSetFinder FilterMaker(FilterFunc t, std::string name) {
+  return ExprSetFinder(
       [=](const ir::Expr& x) -> ExprSet {
         if (t(x)) {
           return {x};
@@ -134,43 +134,43 @@ Mapping FilterMaker(FilterFunc t, std::string name) {
       name);
 }
 
-extern Mapping Identity;
+extern ExprSetFinder Identity;
 
-extern Mapping Store2Value;
+extern ExprSetFinder Store2Value;
 
-extern Mapping Realizer2ScheduleBlock;
+extern ExprSetFinder Realizer2ScheduleBlock;
 
-extern Mapping ScheduleBlock2Body;
+extern ExprSetFinder ScheduleBlock2Body;
 
-extern Mapping ScheduleBlockRealizeNotRoot;
+extern ExprSetFinder ScheduleBlockRealizeNotRoot;
 
-extern Mapping ScheduleBlockRealizeIsNotInit;
+extern ExprSetFinder ScheduleBlockRealizeIsNotInit;
 
-extern Mapping ScheduleBlockRealizeIsInit;
+extern ExprSetFinder ScheduleBlockRealizeIsInit;
 
-extern Mapping IsFor;
+extern ExprSetFinder IsFor;
 
-extern Mapping ChildScheduleBlocks;
+extern ExprSetFinder ChildScheduleBlocks;
 
-extern Mapping ChildScheduleBlockRealizes;
+extern ExprSetFinder ChildScheduleBlockRealizes;
 
-extern Mapping For2Min;
+extern ExprSetFinder For2Min;
 
-extern Mapping For2Max;
+extern ExprSetFinder For2Max;
 
-extern Mapping ChildStores;
+extern ExprSetFinder ChildStores;
 
-extern Mapping ChildTensorLoads;
+extern ExprSetFinder ChildTensorLoads;
 
-extern Mapping ChildTensorStores;
+extern ExprSetFinder ChildTensorStores;
 
-extern Mapping ChildFors;
+extern ExprSetFinder ChildFors;
 
-Mapping IsForIterVar(const ir::Var& var);
+ExprSetFinder IsForIterVar(const ir::Var& var);
 
-Mapping FilterLoadByTensor(const ir::Tensor& tensor);
+ExprSetFinder FilterLoadByTensor(const ir::Tensor& tensor);
 
-Mapping FindFather(const ir::Expr& root);
+ExprSetFinder FindFather(const ir::Expr& root);
 
 template <class T, class M>
 std::vector<T> MapVector(const std::vector<T>& as, M func) {
@@ -180,45 +180,45 @@ std::vector<T> MapVector(const std::vector<T>& as, M func) {
   }
   return res;
 }
-}  // namespace SearchUtils
+}  // namespace ExprSetFinderUtils
 
-namespace TransformerUtils {
-using TransformFunc = std::function<ir::Expr(ir::Expr)>;
-struct Transformer {
-  TransformFunc f_;
-  explicit Transformer(TransformFunc f);
+namespace ExprTransformerUtils {
+using ExprTransformFunc = std::function<ir::Expr(ir::Expr)>;
+struct ExprTransformer {
+  ExprTransformFunc f_;
+  explicit ExprTransformer(ExprTransformFunc f);
   ir::Expr operator()(const ir::Expr& x) const;
-  Transformer operator*(const Transformer& x) const;
+  ExprTransformer operator*(const ExprTransformer& x) const;
 };
 
-extern Transformer Identity;
+extern ExprTransformer Identity;
 
-Transformer WrapForTransformer(const ir::Var& v);
+ExprTransformer WrapForTransformer(const ir::Var& v);
 
-Transformer WrapForsTransformer(const std::vector<ir::Var>& vs);
-Transformer ChangeTensorLoadTransformer(const ir::Tensor& tensor,
-                                        const ir::Expr& dst_load);
+ExprTransformer WrapForsTransformer(const std::vector<ir::Var>& vs);
+ExprTransformer ChangeTensorLoadTransformer(const ir::Tensor& tensor,
+                                            const ir::Expr& dst_load);
 
 void ReplaceTarget(ir::Expr* e, const ir::Expr& t, const ir::Expr dst);
 
-Transformer WrapStoreTransformer(const ir::Tensor& tensor,
-                                 const std::vector<ir::Expr>& indices);
+ExprTransformer WrapStoreTransformer(const ir::Tensor& tensor,
+                                     const std::vector<ir::Expr>& indices);
 
-Transformer WrapReduceOperation(const ir::Reduce::ReduceType& reduce_type,
-                                const ir::Tensor& tensor,
-                                const std::vector<ir::Expr>& axis_exprs);
+ExprTransformer WrapReduceOperation(const ir::Reduce::ReduceType& reduce_type,
+                                    const ir::Tensor& tensor,
+                                    const std::vector<ir::Expr>& axis_exprs);
 
 std::vector<ir::Var> CreateInnerBlockVars(
     const std::vector<ir::Var>& block_vars);
 
-Transformer ChangeVarTransformer(const std::vector<ir::Var>& target_vars,
-                                 const std::vector<ir::Var>& dest_vars);
+ExprTransformer ChangeVarTransformer(const std::vector<ir::Var>& target_vars,
+                                     const std::vector<ir::Var>& dest_vars);
 
-Transformer SubstitudeByScheduleBlockRealize(const ir::Expr& realize);
+ExprTransformer SubstitudeByScheduleBlockRealize(const ir::Expr& realize);
 
-Transformer WrapScheduleRealizer(const std::vector<ir::Var>& block_vars,
-                                 const std::string& tensor_name);
-}  // namespace TransformerUtils
+ExprTransformer WrapScheduleRealizer(const std::vector<ir::Var>& block_vars,
+                                     const std::string& tensor_name);
+}  // namespace ExprTransformerUtils
 
 std::vector<OpPatternKind> GetOpPatternKindVector(
     const std::vector<::pir::Operation*>& ops);
