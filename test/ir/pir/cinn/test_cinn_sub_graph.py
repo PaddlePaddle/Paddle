@@ -167,7 +167,6 @@ class TestCinnSoftmax(TestCinnSubGraphBase):
 
         loss = out.sum()
         loss.backward()
-        print(self.x.gradient())
         return out, self.x.gradient()
 
     def test_forward(self):
