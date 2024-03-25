@@ -36,6 +36,14 @@ void AngleGradInferMeta(const MetaTensor& x,
                         const MetaTensor& out_grad,
                         MetaTensor* x_grad);
 
+void BatchFCGradInferMeta(const MetaTensor& input,
+                          const MetaTensor& w,
+                          const MetaTensor& bias,
+                          const MetaTensor& out_grad,
+                          MetaTensor* intput_grad,
+                          MetaTensor* w_grad,
+                          MetaTensor* bias_grad);
+
 void BilinearGradInferMeta(const MetaTensor& x,
                            const MetaTensor& y,
                            const MetaTensor& weight,
@@ -372,6 +380,9 @@ void NanmedianGradInferMeta(const MetaTensor& x,
                             bool keep_dim,
                             const std::string& mode,
                             MetaTensor* x_grad);
+
+void PartialConcatGradInferMeta(const std::vector<const MetaTensor*>& xs,
+                                std::vector<MetaTensor*> x_grads);
 
 void PartialSumGradInferMeta(const std::vector<const MetaTensor*>& xs,
                              std::vector<MetaTensor*> x_grads);
