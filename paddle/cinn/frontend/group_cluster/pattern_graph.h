@@ -25,7 +25,6 @@ class PatternGraph {
                const policy::PolicyManager policy_manager);
 
   std::vector<std::vector<const pir::Operation*>> ClusterOps();
-  ~PatternGraph();
 
  private:
   void SinkTrivialPattern();

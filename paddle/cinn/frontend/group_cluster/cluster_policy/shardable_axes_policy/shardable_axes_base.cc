@@ -88,11 +88,11 @@ ShardableAxesSignature CreateSignatureForElementWise(const pir::Operation* op) {
 
   for (int i = 0; i < op->num_operands(); ++i) {
     CHECK(rank == GetRank(op->operand_source(i)));
-    result.inputs.push_back(same_axes);
+    result.inputs.emplace_back(same_axes);
   }
   for (int i = 0; i < op->num_results(); ++i) {
     CHECK(rank == GetRank(op->result(i)));
-    result.outputs.push_back(same_axes);
+    result.outputs.emplace_back(same_axes);
   }
   return result;
 }

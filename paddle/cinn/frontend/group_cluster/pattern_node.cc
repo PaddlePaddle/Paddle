@@ -24,34 +24,40 @@ PatternNode::PatternNode(PatternNodePtr fused_up_node,
     : sink_op_(fused_down_node->sink_op_),
       stmt_pattern_(MergePattern(fused_up_node->stmt_pattern_,
                                  fused_down_node->stmt_pattern_)) {
+  const auto FindFromVector =
+      [](std::vector<PatternNodePtr> vec,
+         PatternNodePtr item) -> std::vector<PatternNodePtr>::iterator {
+    return std::find(vec.begin(), vec.end(), item);
+  };
+
   ExtendVector(upstream_, fused_up_node->upstream_);
   ExtendVector(upstream_, fused_down_node->upstream_);
+
   upstream_.erase(FindFromVector(upstream_, fused_up_node));
 
   ExtendVector(downstream_, fused_up_node->downstream_);
   ExtendVector(downstream_, fused_down_node->downstream_);
   downstream_.erase(FindFromVector(downstream_, fused_down_node));
 
+  std::vector<PatternNodePtr>::iterator iter;
   for (const auto& upstream_node : upstream_) {
-    if (auto iter = FindFromVector(upstream_node->downstream_, fused_up_node) !=
-                    upstream_node->downstream_.end()) {
+    iter = FindFromVector(upstream_node->downstream_, fused_up_node);
+    if (iter != upstream_node->downstream_.end()) {
       upstream_node->downstream_.erase(iter);
     }
-    if (auto iter =
-            FindFromVector(upstream_node->downstream_, fused_down_node) !=
-            upstream_node->downstream_.end()) {
+    iter = FindFromVector(upstream_node->downstream_, fused_down_node);
+    if (iter != upstream_node->downstream_.end()) {
       upstream_node->downstream_.erase(iter);
     }
   }
 
   for (const auto& downstream_node : downstream_) {
-    if (auto iter = FindFromVector(downstream_node->upstream_, fused_up_node) !=
-                    downstream_node->upstream_.end()) {
+    iter = FindFromVector(downstream_node->upstream_, fused_up_node);
+    if (iter != downstream_node->upstream_.end()) {
       downstream_node->upstream_.erase(iter);
     }
-    if (auto iter =
-            FindFromVector(downstream_node->upstream_, fused_down_node) !=
-            downstream_node->upstream_.end()) {
+    iter = FindFromVector(downstream_node->upstream_, fused_down_node);
+    if (iter != downstream_node->upstream_.end()) {
       downstream_node->upstream_.erase(iter);
     }
   }

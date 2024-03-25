@@ -57,12 +57,13 @@ bool IsReducePattern(const StmtPattern& pattern);
 bool IsUnsupportPattern(const StmtPattern& pattern);
 
 template <typename T>
-void ExtendVector(const std::vector<T>& first, const std::vector<T>& second) {
-  std::unordered_set<T> visited = std::unordered_set<T>(first);
-  for (int iter = second.begin(); i != second.end(); i++) {
+void ExtendVector(std::vector<T>& first, const std::vector<T>& second) {
+  std::unordered_set<T> visited =
+      std::unordered_set<T>(first.begin(), first.end());
+  for (auto iter = second.begin(); iter != second.end(); iter++) {
     if (visited.find(*iter) == visited.end()) {
       visited.emplace(*iter);
-      first.push_back(*iter);
+      first.emplace_back(*iter);
     }
   }
 }
@@ -73,11 +74,6 @@ std::vector<T> MergeVector(const std::vector<T>& first,
   std::vector<T> result = std::vector<T>(first);
   ExtendVector(result, second);
   return result;
-}
-
-template <typename T, typename R>
-R FindFromVector(const std::vector<T>& vec, T item) {
-  return std::find(vec.begin(), vec.end(), item);
 }
 
 std::vector<const pir::Operation*> GetOpsInPattern(const StmtPattern& pattern);
