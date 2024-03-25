@@ -3109,6 +3109,15 @@ bool ExpandOp::InferSymbolicShape(
     return dims;
   }();
 
+  std::cerr << "expand !!!\n";
+  for (size_t i = 0; i < x_shape_or_data.shape().size(); ++i) {
+    std::cerr << "expand constrain " << i << "\t" << x_shape_or_data.shape()[i]
+              << "\t"
+              << expand_shape[i + expand_shape.size() -
+                              x_shape_or_data.shape().size()]
+              << std::endl;
+  }
+
   std::vector<symbol::DimExpr> out_shape = expand_shape;
   for (size_t i = 0; i < expand_shape.size(); i++) {
     if (expand_shape[i] == -1) {  // copy the dim from x
@@ -3901,13 +3910,11 @@ namespace {
 
 symbol::DimExpr GetBroadcastDimExpr(const symbol::DimExpr &lhs,
                                     const symbol::DimExpr &rhs) {
-  if (lhs.isa<std::int64_t>() && rhs.isa<std::int64_t>()) {
-    return std::max(lhs.dyn_cast<std::int64_t>(), rhs.dyn_cast<std::int64_t>());
-  } else if (lhs.isa<std::int64_t>()) {
-    return lhs.dyn_cast<std::int64_t>() == 1 ? rhs : lhs;
-  } else if (rhs.isa<std::int64_t>()) {
-    return rhs.dyn_cast<std::int64_t>() == 1 ? lhs : rhs;
-  } else if (lhs == rhs) {
+  if (lhs == rhs) {
+    return lhs;
+  } else if (lhs == 1 || symbol::IsDimExprGreaterThanOne(rhs)) {
+    return rhs;
+  } else if (rhs == 1 || symbol::IsDimExprGreaterThanOne(lhs)) {
     return lhs;
   } else {
     return symbol::Broadcast<symbol::DimExpr>{

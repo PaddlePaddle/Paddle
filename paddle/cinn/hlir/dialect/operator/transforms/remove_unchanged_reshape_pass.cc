@@ -115,6 +115,7 @@ class RemoveUnchangedReshapePass : public pir::PatternRewritePass {
     // remove out_shape equal in_shape reshape op
     ps.Add<RemoveUnchangedReshapePattern<cinn::dialect::ReshapeOp>>(context);
     ps.Add<RemoveUnchangedReshapePattern<paddle::dialect::ReshapeOp>>(context);
+    ps.Add<RemoveUnchangedReshapePattern<paddle::dialect::ExpandOp>>(context);
     ps.Add<MergeReshapePattern>(context);
     ps.Add<RefreshCombineOpPattern>(context);
 

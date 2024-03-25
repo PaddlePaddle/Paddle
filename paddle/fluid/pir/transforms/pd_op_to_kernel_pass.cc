@@ -1823,6 +1823,7 @@ void HandleForSpecialOp(
         vec_inputs.emplace_back();
         continue;
       }
+
       auto new_in = GetNewInput(
           cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
       // For data transform
@@ -1834,6 +1835,10 @@ void HandleForSpecialOp(
             (in_place.GetType() != phi::AllocationType::UNDEFINED) &&
             (paddle::experimental::NeedTransformPlace(
                 in_place, dst_backend, {}));
+        if (cur_in.defining_op() &&
+            cur_in.defining_op()->name() == "pd_op.slice_dim") {
+          need_trans = false;
+        }
         if (need_trans) {
           VLOG(6) << "need trans from " << in_place << " to " << dst_backend;
           auto value_type =

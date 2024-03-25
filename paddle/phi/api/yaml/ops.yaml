@@ -1443,6 +1443,7 @@
   backward : index_sample_grad
   data_transform :
     skip_transform : index
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : index_select
   args : (Tensor x, Tensor index, int axis = 0)
@@ -2617,6 +2618,17 @@
   inplace: (x -> out)
   backward : sinh_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : slice_dim
+  args : (Tensor input, int index)
+  output : Tensor(out)
+  infer_meta :
+    func : SliceDimInferMeta
+  kernel :
+    func : slice_dim
+  data_transform:
+    skip_transform : input
+  # interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : slogdet
   args : (Tensor x)

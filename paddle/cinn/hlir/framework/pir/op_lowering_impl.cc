@@ -159,7 +159,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
                                                      bool apply_op_schedule,
                                                      bool apply_group_schedule,
                                                      bool apply_pass) {
-  VLOG(4) << "BucketLower Group : \n" << *group;
+  VLOG(0) << "BucketLower Group : \n" << *group;
   // 1.Do compute, lower and schedule for each op.
   auto& ops = group->ops;
   if (ops.size() == 1 && ops[0]->name() == "custom_call") {
@@ -671,7 +671,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
         .emplace_back(arg_tensor->buffer, ir::Argument::IO::kInput);
     arg_name_set.insert(arg_tensor->buffer->name);
   }
-
+  // add kernel input here
   group->output_names.clear();
 
   // collect all output tensor.
@@ -680,6 +680,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       continue;
     }
     auto tensor = tensor_map.at(op_result);
+
     if (group->HasShapeOrDataExprs(op_result)) {
       tensor->shape.clear();
       for (size_t i = 0;
@@ -698,6 +699,20 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
 
     if (arg_name_set.count(tensor->buffer->name) != 0) {
       continue;
+    }
+
+    tensor->shape.clear();
+    for (size_t i = 0; i < group->GetShapeOrDataExprs(op_result).shape().size();
+         ++i) {
+      ir::Dim t(tensor->name, group->GetShapeOrDataExprs(op_result).shape()[i]);
+      tensor->shape.push_back(t->dim_expr);
+    }
+
+    infer_shape_arg_tensor->push_back(tensor);
+
+    if ((op_result.defining_op()->name() == "cinn_op.reshape") &&
+        erase_reshape.count(op_result.defining_op())) {
+      tensor = tensor_map.at(op_result.defining_op()->operand_source(0));
     }
 
     // output arg tensors
@@ -750,8 +765,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
           continue;
         }
         int_args_set.insert(symbol_name);
-        group_func_args->emplace_back(
-            ir::_Var_::Make(symbol_name, cinn::common::Int(64)));
+        group_func_args->emplace_back(ir::_Var_::Make(
+            symbol_name, cinn::common::Int(64)));  // or update here
         group->int_args_map[non_tensor_arg_idx++] = {tensor_arg_idx,
                                                      tensor_arg_dim_idx};
         VLOG(4) << "device kernel func's " << symbol_name << " is from "
@@ -1183,8 +1198,8 @@ bool OpLowererImpl::IsInTensorMap(
 
 ir::LoweredFunc OpLowererImpl::GenerateInferShapeFunc(
     const GroupPtr& group,
-    const std::vector<ir::Tensor> group_func_arg_tensors,
-    const std::vector<ir::Argument> group_func_args) {
+    const std::vector<ir::Tensor>& group_func_arg_tensors,
+    const std::vector<ir::Argument>& group_func_args) {
   // CHECK_EQ(group_func_arg_tensors.size(), group_func_args.size());
   std::vector<ir::Expr> ir_bodys;
   int output_tensor_idx = 0;
@@ -1194,6 +1209,7 @@ ir::LoweredFunc OpLowererImpl::GenerateInferShapeFunc(
     int tensor_dim_size = tensor_dim.size();
     auto tensor_shape = group_func_arg_tensors[tensor_arg_idx]->shape;
 
+    std::cerr << "tensor shape " << tensor_shape << std::endl;
     ir::Var tensor_shape_args(TENSOR_SHAPE_ARGS, type_of<int64_t**>());
     for (int i = 0; i < tensor_shape.size(); i++) {
       ir::Expr call_set_infer_shape_value =

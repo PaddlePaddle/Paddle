@@ -319,6 +319,16 @@ bool GatherNdOpInferSymbolicShape(
   return true;
 }
 
+bool IndexSampleOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  pir::Value operand_source = op->operand_source(1);
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(operand_source);
+
+  shape_analysis->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
+  return true;
+}
+
 bool KronOpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
   const auto &x_shape_or_data =
@@ -435,20 +445,32 @@ bool MatmulOpInferSymbolicShape(
 
   if ((ndims_x == ndims_y) && ndims_x >= 2) {
     if (transpose_x_attr == false && transpose_y_attr == false) {
+      std::cerr << "matmul constrin " << x_dims[ndims_x - 1] << "\t"
+                << y_dims[ndims_x - 2] << std::endl;
       shape_analysis->DimExprBuilder().CstrEq(x_dims[ndims_x - 1],
                                               y_dims[ndims_x - 2]);
     } else if (transpose_x_attr == false && transpose_y_attr == true) {
+      std::cerr << "matmul constrin " << x_dims[ndims_x - 1] << "\t"
+                << y_dims[ndims_x - 1] << std::endl;
+
       shape_analysis->DimExprBuilder().CstrEq(x_dims[ndims_x - 1],
                                               y_dims[ndims_x - 1]);
     } else if (transpose_x_attr == true && transpose_y_attr == false) {
+      std::cerr << "matmul constrin " << x_dims[ndims_x - 2] << "\t"
+                << y_dims[ndims_x - 2] << std::endl;
+
       shape_analysis->DimExprBuilder().CstrEq(x_dims[ndims_x - 2],
                                               y_dims[ndims_x - 2]);
     } else {
+      std::cerr << "matmul constrin " << x_dims[ndims_x - 2] << "\t"
+                << y_dims[ndims_x - 1] << std::endl;
       shape_analysis->DimExprBuilder().CstrEq(x_dims[ndims_x - 2],
                                               y_dims[ndims_x - 1]);
     }
 
     for (size_t i = 0; i < ndims_x - 2; ++i) {
+      std::cerr << "matmul constrin " << x_dims[i] << "\t" << y_dims[i]
+                << std::endl;
       shape_analysis->DimExprBuilder().CstrEq(x_dims[i], y_dims[i]);
     }
   }

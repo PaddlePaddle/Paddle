@@ -22,7 +22,11 @@
 namespace cinn {
 namespace dialect {
 
-const char* JitKernelOp::attributes_name[attributes_num] = {kAttrName};
+const char* JitKernelOp::attributes_name[attributes_num] = {kAttrName,
+                                                            kKernelTensorNumber,
+                                                            "input_dim_exprs",
+                                                            "symbol_bindings",
+                                                            "output_dim_exprs"};
 
 void JitKernelOp::Build(::pir::Builder& builder,
                         pir::OperationArgument& argument,
@@ -50,6 +54,20 @@ void JitKernelOp::VerifySig() {
                             .isa<cinn::dialect::CINNKernelInfoAttribute>(),
                     true,
                     "Type of attribute: instruction is not right.");
+
+  PADDLE_ENFORCE_EQ(
+      attributes.count(kKernelTensorNumber),
+      true,
+      "Type of attribute:  Kernel tensor number should in attribute map");
+  auto kernel_tensor_number =
+      attribute(kKernelTensorNumber).dyn_cast<pir::Int64Attribute>().data();
+
+  PADDLE_ENFORCE_EQ(
+      kernel_tensor_number > 0 && kernel_tensor_number <= this->num_operands(),
+      true,
+      "Kernel tensor number [%d] should > 0 and < [%d] input number",
+      kernel_tensor_number,
+      this->num_operands());
 }
 
 const hlir::framework::pir::CINNKernelInfo& JitKernelOp::cinn_kernel_info() {
@@ -57,6 +75,10 @@ const hlir::framework::pir::CINNKernelInfo& JitKernelOp::cinn_kernel_info() {
       .at(kAttrName)
       .dyn_cast<cinn::dialect::CINNKernelInfoAttribute>()
       .data();
+}
+
+int64_t JitKernelOp::kernel_tensor_number() {
+  return attribute(kKernelTensorNumber).dyn_cast<pir::Int64Attribute>().data();
 }
 
 }  // namespace dialect

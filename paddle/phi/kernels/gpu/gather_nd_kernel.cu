@@ -26,6 +26,17 @@ void GatherNdKernel(const Context &ctx,
                     const DenseTensor &x,
                     const DenseTensor &index,
                     DenseTensor *out) {
+  DenseTensor cpu_tensor;
+
+  phi::Copy(ctx, index, phi::CPUPlace(), true, &cpu_tensor);
+
+  std::cerr << " x dims " << x.dims() << std::endl;
+  std::cerr << "gather index \n";
+
+  for (size_t i = 0; i < cpu_tensor.numel(); ++i) {
+    std::cerr << cpu_tensor.data<int64_t>()[i] << " ";
+  }
+  std::cerr << "\n";
   ctx.template Alloc<T>(out);
   if (x.numel() == 0) return;
   if (index.dims()[0] == 0 && index.numel() == 0) return;
