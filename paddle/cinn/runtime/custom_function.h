@@ -46,13 +46,13 @@ class AssertTrueMsgTool {
     PADDLE_ENFORCE_GT(
         flag_values_.count(param),
         0,
-        phi::error::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The FLAGS_cinn_check_fusion_accuracy_pass only support parameter "
             "\"only_warning/rtol/atol/equal_nan\" now."));
     PADDLE_ENFORCE_GT(
         absl::holds_alternative<T>(flag_values_.at(param)),
         0,
-        phi::error::InvalidArgument("Try get value from a error type!"));
+        phi::errors::InvalidArgument("Try get value from a error type!"));
     return absl::get<T>(flag_values_.at(param));
   }
 

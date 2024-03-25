@@ -74,7 +74,7 @@ void AssertTrueMsgTool::InitFlagInfo() {
     PADDLE_ENFORCE_EQ(
         flag_arg.size(),
         2UL,
-        phi::error::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The FLAGS_cinn_check_fusion_accuracy_pass must be the format of "
             "\"only_warning=false;rtol=1e-5;atol=1e-8;equal_nan=false\"."));
 
