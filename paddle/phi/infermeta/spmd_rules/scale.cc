@@ -16,7 +16,7 @@ namespace phi {
 namespace distributed {
 SpmdInfo ScaleInferSpmd(const DistMetaTensor& x,
                         const Scalar& scale,
-                        const Scalar& bias,
+                        float bias,
                         bool bias_after_scale) {
   return ElementwiseUnaryInferSpmd(x);
 }

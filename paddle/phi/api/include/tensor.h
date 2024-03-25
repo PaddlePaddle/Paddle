@@ -715,7 +715,7 @@ class PADDLE_API Tensor final {
   Tensor maximum(const Tensor& y) const;
   Tensor minimum(const Tensor& y) const;
   Tensor scale(const Scalar& scale = 1.0,
-               const Scalar& bias = 0.0,
+               float bias = 0.0,
                bool bias_after_scale = true) const;
   Tensor sum(const IntArray& axis = {},
              DataType dtype = DataType::UNDEFINED,

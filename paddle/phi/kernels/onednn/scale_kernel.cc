@@ -23,11 +23,11 @@ template <typename T, typename Context>
 void ScaleKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const Scalar& scale,
-                 const Scalar& bias,
+                 float bias,
                  bool bias_after_scale,
                  DenseTensor* out) {
   float alpha = scale.to<float>();
-  float beta = bias_after_scale ? bias.to<float>() : bias.to<float>() * alpha;
+  float beta = bias_after_scale ? bias : bias * alpha;
 
   funcs::ActivationOneDNNHandler<T> handler(dnnl::algorithm::eltwise_linear,
                                             alpha,
