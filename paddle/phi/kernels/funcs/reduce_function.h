@@ -43,6 +43,7 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/index_calculator.h"
+#include "paddle/phi/kernels/gpu/unary.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 #include "paddle/utils/string/string_helper.h"
 
@@ -1063,9 +1064,7 @@ void ReduceKernel(const KPDevice& dev_ctx,
   auto x_dim = common::vectorize<int>(x.dims());
 
   if (x_dim.size() == 0) {
-    std::vector<const DenseTensor*> inputs = {&x};
-    std::vector<DenseTensor*> outputs = {y};
-    funcs::ElementwiseKernel<Ty>(dev_ctx, inputs, &outputs, transform);
+    UnaryKernel<Ty, KPDevice>(dev_ctx, &x, y, transform);
     return;
   }
 
@@ -1085,9 +1084,7 @@ void ReduceKernel(const KPDevice& dev_ctx,
   auto y_data = y->data<Ty>();
 
   if (config.reduce_num == 1) {
-    std::vector<const DenseTensor*> inputs = {&x};
-    std::vector<DenseTensor*> outputs = {y};
-    funcs::ElementwiseKernel<Ty>(dev_ctx, inputs, &outputs, transform);
+    UnaryKernel<Ty, KPDevice>(dev_ctx, &x, y, transform);
     return;
   }
 
