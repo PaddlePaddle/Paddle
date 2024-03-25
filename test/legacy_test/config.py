@@ -19,24 +19,24 @@ TOLERANCE = {
         "jit_comp": {"rtol": 1e-15, "atol": 1e-15},
         "fw_comp": {"rtol": 1e-15, "atol": 1e-15},
         "rev_comp": {"rtol": 1e-15, "atol": 1e-15},
-        "cinn": {"rtol": 1e-14, "atol": 1e-14},
+        "cinn": {"rtol": 1e-15, "atol": 1e-15},
     },
     np.dtype('float32'): {
         "jit_comp": {"rtol": 1e-6, "atol": 1e-6},
         "fw_comp": {"rtol": 1e-6, "atol": 1e-6},
         "rev_comp": {"rtol": 1e-6, "atol": 1e-6},
-        "cinn": {"rtol": 1e-5, "atol": 1e-5},
+        "cinn": {"rtol": 1e-6, "atol": 1e-6},
     },
     np.dtype('float16'): {
         "jit_comp": {"rtol": 1e-3, "atol": 1e-3},
         "fw_comp": {"rtol": 1e-3, "atol": 1e-3},
         "rev_comp": {"rtol": 1e-3, "atol": 1e-3},
-        "cinn": {"rtol": 1e-2, "atol": 1e-2},
+        "cinn": {"rtol": 1e-3, "atol": 1e-3},
     },
     np.dtype('uint16'): {
         "jit_comp": {"rtol": 1e-2, "atol": 1e-2},
         "fw_comp": {"rtol": 1e-2, "atol": 1e-2},
         "rev_comp": {"rtol": 1e-2, "atol": 1e-2},
-        "cinn": {"rtol": 1e-1, "atol": 1e-1},
+        "cinn": {"rtol": 1e-2, "atol": 1e-2},
     },
 }
