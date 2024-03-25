@@ -38,6 +38,7 @@ if [ "$1" == "gcc82" ]; then
   patch -p0 libsanitizer/sanitizer_common/sanitizer_platform_limits_posix.cc sanitizer_platform_limits_posix.cc.patch
   patch -p0 libsanitizer/sanitizer_common/sanitizer_platform_limits_posix.h sanitizer_platform_limits_posix.h.patch
   unset LIBRARY_PATH CPATH C_INCLUDE_PATH PKG_CONFIG_PATH CPLUS_INCLUDE_PATH INCLUDE && \
+  sed -i "s/ftp/http/g" ./contrib/download_prerequisites && \
   ./contrib/download_prerequisites && \
   cd .. && mkdir temp_gcc82 && cd temp_gcc82 && \
   ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib && \
@@ -54,6 +55,7 @@ elif [ "$1" == "gcc122" ]; then
   tar -xzf gcc-12.2.0.tar.gz && \
   cd gcc-12.2.0 && \
   unset LIBRARY_PATH CPATH C_INCLUDE_PATH PKG_CONFIG_PATH CPLUS_INCLUDE_PATH INCLUDE && \
+  sed -i "s/ftp/http/g" ./contrib/download_prerequisites && \
   ./contrib/download_prerequisites && \
   cd .. && mkdir temp_gcc122 && cd temp_gcc122 && \
   ../gcc-12.2.0/configure --prefix=/usr/local/gcc-12.2 --enable-checking=release --enable-languages=c,c++ --disable-multilib && \
