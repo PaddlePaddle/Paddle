@@ -2909,8 +2909,8 @@ void PullBoxSparseInferMeta(const std::vector<const MetaTensor*>& ids,
     auto ids_dims = ids[i]->dims();
     int ids_rank = ids[i].size();
     PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1],
-                      1,
-                      platform::errors::InvalidArgument(
+                      1UL,
+                      phi::errors::InvalidArgument(
                           "Shape error in %lu id, the last dimension of the "
                           "'Ids' tensor must be 1.",
                           i));
