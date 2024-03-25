@@ -78,6 +78,7 @@ struct SimplifyUnitOneOperand {
 /*
  * Simplify Example:
  * Negative(Negative(dim_expr)) => dim_expr
+ * Negative(int) => -int
  */
 struct SimplifyDoubleNeg {
   using dim_expr_type = Negative<DimExpr>;
@@ -87,6 +88,8 @@ struct SimplifyDoubleNeg {
     if (inner_expr.Has<Negative<DimExpr>>()) {
       const auto& ret_expr = inner_expr.Get<Negative<DimExpr>>()->data;
       return ret_expr;
+    } else if (inner_expr.Has<std::int64_t>()) {
+      return -inner_expr.Get<std::int64_t>();
     } else {
       return expr;
     }
@@ -626,7 +629,10 @@ struct FoldOperandTrait<Mul> {
                                    List<DimExpr>* ret) {
     const auto& [num, dem] = value;
     (*ret)->emplace_back(num);
-    CHECK_NE(dem, 0);
+    PADDLE_ENFORCE_NE(dem,
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The denominator of rational can not be zero."));
     if (dem != 1) {
       (*ret)->emplace_back(Reciprocal<DimExpr>{DimExpr{dem}});
     }
@@ -662,7 +668,13 @@ struct FoldOperandTrait<Broadcast> {
     if (*value == 1) {
       *value = expr_value;
     } else if (expr_value != 1) {
-      CHECK_EQ(*value, expr_value);
+      PADDLE_ENFORCE_EQ(
+          *value,
+          expr_value,
+          phi::errors::InvalidArgument("The value (%d) should be equel to expr "
+                                       "(%d) when they are both not 1.",
+                                       *value,
+                                       expr_value));
     } else {
       // do nothing.
     }
@@ -791,7 +803,15 @@ struct FoldRedundantSymbolicBroadcast {
       if (ret.has_value()) {
         if (int64_value > 1) {
           if (ret.value().value > 1) {
-            CHECK_EQ(ret.value().value, int64_value);
+            PADDLE_ENFORCE_EQ(
+                ret.value().value,
+                int64_value,
+                phi::errors::InvalidArgument(
+                    "The value of return (%d) should be equel to expr (%d) of "
+                    "operands at index (%d) when they are both > 1.",
+                    ret.value().value,
+                    int64_value,
+                    i));
           }
           ret = MaxInt64{int64_value, i};
         }

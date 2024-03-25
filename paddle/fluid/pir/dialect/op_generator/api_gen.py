@@ -105,7 +105,7 @@ AMP_LOGIC_TEMPLATE = """
         auto op_name = phi::TransToFluidOpName("{op_name}");
         paddle::small_vector<std::vector<pir::Value>, egr::kSlotSmallVectorSize> amp_values_vector = {{ {no_optional_inputs} }};
         {optional_inputs}
-        auto amp_dst_dtype = paddle::imperative::GetAmpDestDtype("{op_name}", amp_values_vector);
+        auto amp_dst_dtype = paddle::imperative::GetAmpDestDtype(op_name, amp_values_vector);
         {new_inputs}
         {{
             paddle::imperative::AutoCastGuard guard(egr::Controller::Instance().GetCurrentAmpAttrs(), paddle::imperative::AmpLevel::O0);

@@ -132,6 +132,22 @@
     param : [shape, dtype, values]
     data_type : dtype
     backend : place > output
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : barrier
+  args : (Tensor x, int ring_id=0)
+  output : Tensor(out)
+  kernel :
+    func : barrier
+
+- op : batch_fc
+  args : (Tensor input, Tensor w, Tensor bias)
+  output : Tensor(out)
+  infer_meta:
+    func : BatchFCInferMeta
+  kernel :
+    func : batch_fc
+    data_type: input
 
 - op : batch_norm
   args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_format, bool use_global_stats, bool trainable_statistics)
@@ -749,7 +765,7 @@
   kernel :
     func : fused_adam
     data_type : params
-  optional : skip_update, master_params
+  optional : skip_update, master_params, master_params_out
   inplace : (params -> params_out), (moments1 -> moments1_out), (moments2 -> moments2_out), (beta1_pows -> beta1_pows_out), (beta2_pows -> beta2_pows_out), (master_params -> master_params_out)
 
 - op : fused_batch_norm_act
@@ -805,6 +821,14 @@
     func : fused_softmax_mask_upper_triangle
   backward: fused_softmax_mask_upper_triangle_grad
 
+- op : fused_token_prune
+  args : (Tensor attn, Tensor x, Tensor mask, Tensor new_mask, bool keep_first_token = true, bool keep_order = false)
+  output : Tensor(slimmed_x), Tensor(cls_inds)
+  infer_meta :
+    func : FusedTokenPruneInferMeta
+  kernel:
+    func : fused_token_prune
+
 - op : gaussian
   args : (IntArray shape, float mean, float std, int seed, DataType dtype, Place place={})
   output: Tensor(out)
@@ -825,6 +849,15 @@
     func : UnchangedInferMeta
   kernel:
     func: get_tensor_from_selected_rows {selected_rows -> dense}
+
+- op : global_scatter
+  args : (Tensor x, Tensor local_count, Tensor global_count, int ring_id=0, bool use_calc_stream=false)
+  output : Tensor(out)
+  infer_meta :
+    func : GlobalScatterInferMeta
+  kernel :
+    func : global_scatter
+    data_type : x
 
 - op : greater_equal
   args : (Tensor x, Tensor y)
@@ -904,6 +937,15 @@
     support_trans_dtype : x, y
   inplace: (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : limit_by_capacity
+  args : (Tensor expert_count, Tensor capacity, int n_worker)
+  output : Tensor(out)
+  infer_meta :
+    func : LimitByCapacityInferMeta
+  kernel :
+    func : limit_by_capacity
+    data_type : expert_count
 
 - op : linspace
   args : (Tensor start, Tensor stop, Tensor number, DataType dtype, Place place)
@@ -1172,6 +1214,25 @@
   backward : pad_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : partial_allgather
+  args : (Tensor x, int nranks, int rank, int ring_id = 0, bool use_calc_stream = false)
+  output : Tensor(out)
+  infer_meta :
+    func: PartialAllgatherInferMeta
+  kernel :
+    func : partial_allgather
+  inplace : (x -> out)
+
+- op : partial_concat
+  args : (Tensor[] x, int start_index = 0, int length = -1)
+  output : Tensor(out)
+  infer_meta :
+    func : PartialConcatInferMeta
+  kernel :
+    func : partial_concat
+    data_type : x
+  backward : partial_concat_grad
+
 - op : partial_recv
   args : (int ring_id = 0, int peer = 0, DataType dtype=DataType::FLOAT32, int[] out_shape= {}, bool use_calc_stream = false, int num = 1, int id = 0)
   output : Tensor(out)
@@ -1180,6 +1241,16 @@
   kernel :
     func : partial_recv
     data_type : dtype
+
+- op : partial_sum
+  args : (Tensor[] x, int start_index = 0, int length = -1)
+  output : Tensor(out)
+  infer_meta :
+    func : PartialSumInferMeta
+  kernel :
+    func : partial_sum
+    data_type : x
+  backward : partial_sum_grad
 
 - op : pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
@@ -1223,6 +1294,15 @@
     func : prod
   backward : prod_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : prune_gate_by_capacity
+  args : (Tensor gate_idx, Tensor expert_count, int64_t n_expert, int64_t n_worker)
+  output : Tensor(new_gate_idx)
+  infer_meta :
+    func : PruneGateByCapacityInferMeta
+  kernel :
+    func : prune_gate_by_capacity
+    data_type : gate_idx
 
 - op : push_sparse_v2
   args : (Tensor[] ids, Tensor[] w, Tensor[] out_grad_in, int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, str[] inputnames = {}, bool is_distributed = true)

@@ -219,7 +219,9 @@ Expr Abs(Expr e) {
     }
     return ir::Select::Make(e > Zero(e->type()), e, -e);
   } else {
-    LOG(FATAL) << "Abs Not support data type " << type;
+    std::stringstream ss;
+    ss << "Abs Not support data type " << type;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return e;
 }
@@ -235,7 +237,9 @@ Expr IsNan(Expr e) {
     }
     return CallExtern("isnan", {e}, {{"vectorizable", false}});
   } else {
-    LOG(FATAL) << type << "is not supported for isnan op.";
+    std::stringstream ss;
+    ss << type << "is not supported for isnan op.";
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     return e;
   }
 }
@@ -251,7 +255,9 @@ Expr Infinity(const Type& type) {
       return make_const(type, std::numeric_limits<float16>::infinity());
     }
   }
-  LOG(FATAL) << "Cannot decide infinity for type " << type;
+  std::stringstream ss;
+  ss << "Cannot decide infinity for type " << type;
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   return Expr();
 }
 
@@ -266,7 +272,9 @@ Expr IsInf(Expr e) {
     }
     return CallExtern("isinf", {e}, {{"vectorizable", false}});
   } else {
-    LOG(FATAL) << type << "is not supported for isinf op.";
+    std::stringstream ss;
+    ss << type << "is not supported for isinf op.";
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     return e;
   }
 }

@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/common/flags.h"
 #include "paddle/phi/core/enforce.h"
 
-PD_DECLARE_bool(enable_host_event_recorder_hook);
+PHI_DECLARE_bool(enable_host_event_recorder_hook);
 
 namespace phi {
 

@@ -37,6 +37,8 @@ namespace dialect {
 
 const std::unordered_set<std::string> LegacyOpList = {
     LoadCombineOp::name(),
+    BatchFcOp::name(),
+    BatchFcGradOp::name(),
     CConcatOp::name(),
     CBroadcast_Op::name(),
     CSyncCalcStream_Op::name(),
@@ -45,6 +47,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     FtrlOp::name(),
     FusedElemwiseAddActivationOp::name(),
     FusedElemwiseAddActivationGradOp::name(),
+    FusedTokenPruneOp::name(),
     DpsgdOp::name(),
     SendV2Op::name(),
     RecvV2Op::name(),
@@ -72,8 +75,12 @@ const std::unordered_set<std::string> LegacyOpList = {
     SoftReluGradOp::name(),
     MatchMatrixTensorOp::name(),
     MatchMatrixTensorGradOp::name(),
+    PartialConcatOp::name(),
+    PartialConcatGradOp::name(),
     NceOp::name(),
     NceGradOp::name(),
+    PartialSumOp::name(),
+    PartialSumGradOp::name(),
     LrnOp::name(),
     LrnGradOp::name(),
     MovingAverageAbsMaxScaleOp::name(),
@@ -314,7 +321,9 @@ std::set<std::string> GetRegisterDataType(const std::string& op_name) {
       data_type.insert(phi::DataTypeToString(info_pair.first.dtype()));
     }
   }
-
+  if (data_type.empty()) {
+    VLOG(6) << "No data type is registered for " << op_name;
+  }
   return data_type;
 }
 

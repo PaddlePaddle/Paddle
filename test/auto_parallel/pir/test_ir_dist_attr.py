@@ -46,11 +46,9 @@ class TestBuildFakeProgram(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     tmp = input._local_shape
                 with self.assertRaises(ValueError):
-                    tmp = input.dims_mapping
+                    tmp = input.dist_attr()
                 with self.assertRaises(ValueError):
-                    tmp = w0.process_mesh
-                with self.assertRaises(ValueError):
-                    tmp = w0.partial_dims
+                    tmp = w0.dist_attr()
 
                 dist_input = dtensor_from_local(input, mesh, [dist.Replicate()])
                 dist_w0 = dtensor_from_local(w0, mesh, [dist.Replicate()])
@@ -83,35 +81,44 @@ class TestBuildFakeProgram(unittest.TestCase):
         self.assertTrue(w0.shape == [HIDDEN_SIZE, HIDDEN_SIZE])
         self.assertTrue(dist_input.shape == dist_input._local_shape)
         self.assertTrue(w0.shape == w0._local_shape)
-        self.assertTrue(dist_input.dims_mapping == [-1, -1, -1])
+        self.assertTrue(dist_input.dist_attr().dims_mapping == [-1, -1, -1])
         self.assertTrue(
             isinstance(
-                dist_input.process_mesh, paddle.base.libpaddle.ProcessMesh
+                dist_input.dist_attr().process_mesh,
+                paddle.base.libpaddle.ProcessMesh,
             )
         )
-        self.assertTrue(dist_input.process_mesh.shape == [2])
-        self.assertTrue(dist_input.process_mesh.process_ids == [0, 1])
-        self.assertTrue(len(dist_input.partial_dims) == 0)
-        self.assertTrue(dist_w0.dims_mapping == [-1, -1])
+        self.assertTrue(dist_input.dist_attr().process_mesh.shape == [2])
         self.assertTrue(
-            isinstance(dist_w0.process_mesh, paddle.base.libpaddle.ProcessMesh)
+            dist_input.dist_attr().process_mesh.process_ids == [0, 1]
         )
-        self.assertTrue(dist_w0.process_mesh.shape == [2])
-        self.assertTrue(dist_w0.process_mesh.process_ids == [0, 1])
-        self.assertTrue(len(dist_w0.partial_dims) == 0)
+        self.assertTrue(len(dist_input.dist_attr().partial_dims) == 0)
+        self.assertTrue(dist_w0.dist_attr().dims_mapping == [-1, -1])
+        self.assertTrue(
+            isinstance(
+                dist_w0.dist_attr().process_mesh,
+                paddle.base.libpaddle.ProcessMesh,
+            )
+        )
+        self.assertTrue(dist_w0.dist_attr().process_mesh.shape == [2])
+        self.assertTrue(dist_w0.dist_attr().process_mesh.process_ids == [0, 1])
+        self.assertTrue(len(dist_w0.dist_attr().partial_dims) == 0)
 
         # matmul out
         self.assertTrue(dist_out.shape == [BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE])
         self.assertTrue(
             dist_out._local_shape == [BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE]
         )
-        self.assertTrue(dist_out.dims_mapping == [-1, -1, -1])
+        self.assertTrue(dist_out.dist_attr().dims_mapping == [-1, -1, -1])
         self.assertTrue(
-            isinstance(dist_out.process_mesh, paddle.base.libpaddle.ProcessMesh)
+            isinstance(
+                dist_out.dist_attr().process_mesh,
+                paddle.base.libpaddle.ProcessMesh,
+            )
         )
-        self.assertTrue(dist_out.process_mesh.shape == [2])
-        self.assertTrue(dist_out.process_mesh.process_ids == [0, 1])
-        self.assertTrue(len(dist_out.partial_dims) == 0)
+        self.assertTrue(dist_out.dist_attr().process_mesh.shape == [2])
+        self.assertTrue(dist_out.dist_attr().process_mesh.process_ids == [0, 1])
+        self.assertTrue(len(dist_out.dist_attr().partial_dims) == 0)
 
     def test_build_col_parallel_program(self):
         with paddle.pir_utils.IrGuard():
@@ -143,21 +150,24 @@ class TestBuildFakeProgram(unittest.TestCase):
         self.assertTrue(
             w0._local_shape == [HIDDEN_SIZE, HIDDEN_SIZE // MP_SIZE]
         )
-        self.assertTrue(dist_input.dims_mapping == [-1, -1, -1])
-        self.assertTrue(dist_w0.dims_mapping == [-1, 0])
+        self.assertTrue(dist_input.dist_attr().dims_mapping == [-1, -1, -1])
+        self.assertTrue(dist_w0.dist_attr().dims_mapping == [-1, 0])
         # matmul out
         self.assertTrue(dist_out.shape == [BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE])
         self.assertTrue(
             dist_out._local_shape
             == [BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE // MP_SIZE]
         )
-        self.assertTrue(dist_out.dims_mapping == [-1, -1, 0])
+        self.assertTrue(dist_out.dist_attr().dims_mapping == [-1, -1, 0])
         self.assertTrue(
-            isinstance(dist_out.process_mesh, paddle.base.libpaddle.ProcessMesh)
+            isinstance(
+                dist_out.dist_attr().process_mesh,
+                paddle.base.libpaddle.ProcessMesh,
+            )
         )
-        self.assertTrue(dist_out.process_mesh.shape == [2])
-        self.assertTrue(dist_out.process_mesh.process_ids == [0, 1])
-        self.assertTrue(len(dist_out.partial_dims) == 0)
+        self.assertTrue(dist_out.dist_attr().process_mesh.shape == [2])
+        self.assertTrue(dist_out.dist_attr().process_mesh.process_ids == [0, 1])
+        self.assertTrue(len(dist_out.dist_attr().partial_dims) == 0)
 
     def test_build_row_parallel_program(self):
         with paddle.pir_utils.IrGuard():
@@ -193,20 +203,23 @@ class TestBuildFakeProgram(unittest.TestCase):
         self.assertTrue(
             w0._local_shape == [HIDDEN_SIZE // MP_SIZE, HIDDEN_SIZE]
         )
-        self.assertTrue(dist_input.dims_mapping == [-1, -1, 0])
-        self.assertTrue(dist_w0.dims_mapping == [0, -1])
+        self.assertTrue(dist_input.dist_attr().dims_mapping == [-1, -1, 0])
+        self.assertTrue(dist_w0.dist_attr().dims_mapping == [0, -1])
         # matmul out
         self.assertTrue(dist_out.shape == [BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE])
         self.assertTrue(
             dist_out._local_shape == [BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE]
         )
-        self.assertTrue(dist_out.dims_mapping == [-1, -1, -1])
+        self.assertTrue(dist_out.dist_attr().dims_mapping == [-1, -1, -1])
         self.assertTrue(
-            isinstance(dist_out.process_mesh, paddle.base.libpaddle.ProcessMesh)
+            isinstance(
+                dist_out.dist_attr().process_mesh,
+                paddle.base.libpaddle.ProcessMesh,
+            )
         )
-        self.assertTrue(dist_out.process_mesh.shape == [2])
-        self.assertTrue(dist_out.process_mesh.process_ids == [0, 1])
-        self.assertTrue(dist_out.partial_dims == {0})
+        self.assertTrue(dist_out.dist_attr().process_mesh.shape == [2])
+        self.assertTrue(dist_out.dist_attr().process_mesh.process_ids == [0, 1])
+        self.assertTrue(dist_out.dist_attr().partial_dims == {0})
 
     def test_build_with_shard_tensor(self):
         with paddle.pir_utils.IrGuard():
