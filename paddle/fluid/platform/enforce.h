@@ -65,7 +65,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
 
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
 #include "paddle/utils/string/printf.h"
 #include "paddle/utils/string/to_string.h"
 
