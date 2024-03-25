@@ -118,10 +118,7 @@ class TestProcessGroupFp32(unittest.TestCase):
             paddle.device.xpu.synchronize()
         # rank 1
         else:
-            tensor_out_list = [
-                paddle.empty_like(tensor_x),
-                paddle.empty_like(tensor_x),
-            ]
+            tensor_out_list = []
             task = dist.all_gather(tensor_out_list, tensor_y)
             paddle.device.xpu.synchronize()
             tensor_out = paddle.concat(tensor_out_list)

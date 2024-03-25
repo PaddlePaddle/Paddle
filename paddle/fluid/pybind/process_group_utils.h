@@ -43,6 +43,9 @@ struct SplitDenseTensor {
     std::vector<const phi::DenseTensor *> shape_refer;
     shape_refer.reserve(out->size());
     for (auto *p_tensor : *out) {
+      if (in.dims().size() == 1) {
+        p_tensor->Resize(phi::make_ddim({1, 1}));
+      }
       shape_refer.emplace_back(p_tensor);
     }
     phi::funcs::SplitFunctor<DeviceContext, T> split_functor;
