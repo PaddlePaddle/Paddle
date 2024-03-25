@@ -751,7 +751,8 @@ void cinn_call_cudnn_conv2d_forward(void *v_args,
                                     int output_h,
                                     int output_w,
                                     void *stream) {
-  CHECK_EQ(num_args, 3);
+  PADDLE_ENFORCE_EQ(num_args, 3,
+    phi::error::InvalidArgument("Expected number of argruments is 3, but recived %d.", num_args));
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
   CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
@@ -901,7 +902,8 @@ void cinn_call_cudnn_conv2d_backward_data(void *v_args,
                                           int output_h,
                                           int output_w,
                                           void *stream) {
-  CHECK_EQ(num_args, 3);
+  PADDLE_ENFORCE_EQ(num_args, 3,
+    phi::error::InvalidArgument("Expected number of argruments is 3, but recived %d.", num_args));
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
   CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
@@ -1054,7 +1056,8 @@ void cinn_call_cudnn_conv2d_backward_filter(void *v_args,
                                             int output_h,
                                             int output_w,
                                             void *stream) {
-  CHECK_EQ(num_args, 3);
+  PADDLE_ENFORCE_EQ(num_args, 3,
+    phi::error::InvalidArgument("Expected number of argruments is 3, but recived %d.", num_args));
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
   CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
@@ -1204,7 +1207,8 @@ void cinn_call_cudnn_pool2d_forward(void *v_args,
                                     int output_h,
                                     int output_w,
                                     void *stream) {
-  CHECK_EQ(num_args, 2);
+  PADDLE_ENFORCE_EQ(num_args, 2,
+    phi::error::InvalidArgument("Expected number of argruments is 2, but recived %d.", num_args));
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
   CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
@@ -1298,7 +1302,8 @@ void cinn_call_cudnn_pool2d_backward(void *v_args,
                                      int output_h,
                                      int output_w,
                                      void *stream) {
-  CHECK_EQ(num_args, 4);
+  PADDLE_ENFORCE_EQ(num_args, 4,
+    phi::error::InvalidArgument("Expected number of argruments is 4, but recived %d.", num_args));
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
   CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
@@ -1408,7 +1413,8 @@ void cinn_call_cudnn_softmax_forward(void *v_args,
                                      int output_h,
                                      int output_w,
                                      void *stream) {
-  CHECK_EQ(num_args, 2);
+  PADDLE_ENFORCE_EQ(num_args, 2,
+    phi::error::InvalidArgument("Expected number of argruments is 2, but recived %d.", num_args));
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
   CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
@@ -1478,7 +1484,8 @@ void cinn_call_cudnn_softmax_backward(void *v_args,
                                       int output_h,
                                       int output_w,
                                       void *stream) {
-  CHECK_EQ(num_args, 3);
+  PADDLE_ENFORCE_EQ(num_args, 3,
+    phi::error::InvalidArgument("Expected number of argruments is 3, but recived %d.", num_args));
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
   CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
@@ -1574,9 +1581,9 @@ void Gemm(const cublasHandle_t &cublas,
   }
 
   int contracting_size = lhs_trans ? lhs_row : lhs_col;
-  CHECK_EQ(contracting_size, (rhs_trans ? rhs_col : rhs_row))
-      << "The contracting dimension value of lhs matrix should be equal to the "
-         "one of rhs matrix.";
+  PADDLE_ENFORCE_EQ(contracting_size, (rhs_trans ? rhs_col : rhs_row),
+    phi::error::PreconditionNotMet("The contracting dimension value of lhs matrix should be equal to the "
+         "one of rhs matrix."));
   auto trans_a = rhs_trans ? CUBLAS_OP_T : CUBLAS_OP_N;
   auto trans_b = lhs_trans ? CUBLAS_OP_T : CUBLAS_OP_N;
   cublasSgemm(cublas,
@@ -1617,8 +1624,10 @@ void GemmStridedBatched(const cublasHandle_t &cublas,
   int output_bs = output_shape[0];
   int output_row = output_shape[1];
   int output_col = output_shape[2];
-  CHECK_EQ(lhs_bs, rhs_bs);
-  CHECK_EQ(lhs_bs, output_bs);
+  PADDLE_ENFORCE_EQ(lhs_bs, rhs_bs,
+    phi::error::InvalidArgument("bs of lhs and rhs dismatch."));
+  PADDLE_ENFORCE_EQ(lhs_bs, output_bs,
+    phi::error::InvalidArgument("bs of lhs and output dismatch."));
 
   // copy values of bias_data to the output_data
   if (bias_data != nullptr) {
@@ -1630,9 +1639,9 @@ void GemmStridedBatched(const cublasHandle_t &cublas,
   }
 
   int contracting_size = lhs_trans ? lhs_row : lhs_col;
-  CHECK_EQ(contracting_size, (rhs_trans ? rhs_col : rhs_row))
-      << "The contracting dimension value of lhs matrix should be equal to the "
-         "one of rhs matrix.";
+  PADDLE_ENFORCE_EQ(contracting_size, (rhs_trans ? rhs_col : rhs_row),
+    phi::error::PreconditionNotMet("The contracting dimension value of lhs matrix should be equal to the "
+         "one of rhs matrix."));
   auto trans_a = rhs_trans ? CUBLAS_OP_T : CUBLAS_OP_N;
   auto trans_b = lhs_trans ? CUBLAS_OP_T : CUBLAS_OP_N;
   int64_t lhs_stride = lhs_row * lhs_col;
@@ -1693,7 +1702,8 @@ void cinn_call_cholesky_nvgpu(void *v_args,
   size_t numel = x->num_elements();
   uint8_t bits = x->type.bits;
   uint8_t bytes = bits / 8;
-  CHECK_EQ(x->type.code, cinn_type_code_t::cinn_type_float);
+  PADDLE_ENFORCE_EQ(x->type.code, cinn_type_code_t::cinn_type_float,
+    phi::error::InvalidArgument("x's type code (%d) is inequal to %d.", x->type.code, cinn_type_code_t::cinn_type_float));
   PADDLE_ENFORCE_EQ(bias == 32 || bits == 64, true,
     phi::error::InvalidArgument("Unsupported bits = %d float data type for cholesky", bias));
 
@@ -1776,13 +1786,16 @@ void cinn_call_triangular_solve_nvgpu(void *v_args,
   cinn_buffer_t *input2 = args[1].operator cinn_buffer_t *();
   cinn_buffer_t *output = args[2].operator cinn_buffer_t *();
 
-  CHECK_EQ(input1->type.code, cinn_type_code_t::cinn_type_float);
-  CHECK_EQ(input2->type.code, cinn_type_code_t::cinn_type_float);
-  CHECK_EQ(input1->type.bits, input2->type.bits);
+  PADDLE_ENFORCE_EQ(input1->type.code, cinn_type_code_t::cinn_type_float,
+    phi::error::InvalidArgument("input1's type code (%d) is inequal to %d.", input1->type.code, cinn_type_code_t::cinn_type_float));
+  PADDLE_ENFORCE_EQ(input2->type.code, cinn_type_code_t::cinn_type_float,
+    phi::error::InvalidArgument("input1's type code (%d) is inequal to %d.", input2->type.code, cinn_type_code_t::cinn_type_float));
+  PADDLE_ENFORCE_EQ(input1->type.bits, input2->type.bits, 
+    phi::error::InvalidArgument("input1 and ipnput2's type bits is dismatch.")); 
   uint8_t bits = input1->type.bits;
   uint8_t bytes = bits / 8;
-  CHECK(bits == 32 || bits == 64) << "unsupported bits = " << bits
-                                  << " float data type for triangular solve";
+  PADDLE_ENFORCE_EQ(bias == 32 || bits == 64, true,
+    phi::error::InvalidArgument("Unsupported bits = %d float data type for triangular solve", bias));
 
   std::string debug_info =
       "triangular solve op: left_side=" + std::to_string(left_side) +
