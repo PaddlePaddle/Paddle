@@ -16,8 +16,8 @@
 #include <algorithm>
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/contiguous_kernel.h"
 #include "paddle/phi/kernels/funcs/strided_reshape_utils.h"
+#include "paddle/phi/kernels/funcs/strided_utils.h"
 
 namespace phi {
 template <typename Context>
@@ -49,8 +49,7 @@ void ReshapeStridedKernel(const Context& dev_ctx,
     tmp_x.set_strides(x_stride);
     tmp.set_meta(tmp_x.meta());
     PD_VISIT_ALL_TYPES(x.dtype(), "ReshapeStridedKernel", ([&] {
-                         phi::ContiguousKernel<data_t, Context>(
-                             dev_ctx, tmp_x, &tmp);
+                         phi::StridedTensorContiguous<data_t>(tmp_x, &tmp);
                        }));
     out->set_strides(DenseTensorMeta::calc_strides(out->dims()));
     out->set_offset(0);
@@ -59,5 +58,7 @@ void ReshapeStridedKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    reshape, STRIDED, phi::ReshapeStridedKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(reshape,
+                                         STRIDED,
+                                         phi::ReshapeStridedKernel) {}

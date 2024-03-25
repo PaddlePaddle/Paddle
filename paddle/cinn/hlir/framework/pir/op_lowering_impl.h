@@ -131,7 +131,8 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
       bool done_op_schedule,
       std::vector<ir::Expr> func_bodies,
       std::vector<ir::Tensor>* group_func_arg_tensors,
-      std::vector<ir::Argument>* group_func_args);
+      std::vector<ir::Argument>* group_func_args,
+      std::vector<ir::Tensor>* infer_shape_arg_tensor);
 
   /**
    * @brief Lower an Op set to CINN IR.

@@ -1786,6 +1786,7 @@
     data_type : out_grad
   backward: pow_double_grad
   inplace : (out_grad -> x_grad)
+  composite: pow_grad(x, out_grad, y, x_grad)
 
 - backward_op : pow_triple_grad
   forward : pow_double_grad(Tensor x, Tensor grad_out, Tensor grad_grad_x, Scalar y) -> Tensor(grad_x), Tensor(grad_grad_out)
