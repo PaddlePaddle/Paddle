@@ -644,7 +644,6 @@ cudnnDataType_t convert_to_cudnn_dtype(void *v_args, int num_args) {
                     0,
                     phi::errors::PreconditionNotMet(
                         "the number of arguments must larger than zero"));
-  VLOG(4) << "call cinn_call_cuda_memcpy with count=" << count;
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
   auto type_code = args[0].operator cinn_buffer_t *()->type.code;
   int bits = args[0].operator cinn_buffer_t *()->type.bits;
