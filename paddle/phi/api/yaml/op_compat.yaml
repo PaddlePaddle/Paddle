@@ -2684,6 +2684,14 @@
   attrs :
     {table_id : TableId, scale_data_norm : ScaleDataNorm, input_names: InputNames}
 
+- op : pull_sparse_v2
+    inputs :
+    { ids : Ids, W : w}
+  outputs :
+    out : Out
+  extra :
+    attrs : [int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, 'str[] inputnames = {}', bool is_distributed = true]
+
 - op : push_sparse_v2
   inputs :
     { x : Ids, W : w}

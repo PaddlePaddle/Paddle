@@ -28,6 +28,7 @@ list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_partial_recv_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST
      test_prune_gate_by_capacity_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_pull_gpups_sparse_translator)
+list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_pull_sparse_v2_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_random_routing_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_limit_by_capacity_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_global_scatter_translator)

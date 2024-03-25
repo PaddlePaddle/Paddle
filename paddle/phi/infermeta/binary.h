@@ -480,6 +480,18 @@ void PullGpupsSparseInferMeta(const MetaTensor& w,
                               bool is_distributed,
                               std::vector<MetaTensor*> out);
 
+void PullSparseV2InferMeta(const std::vector<MetaTensor>& ids,
+                           const std::vector<MetaTensor>& w,
+                           int embeddingdim,
+                           int tableid,
+                           const std::string& accessorclass,
+                           const std::string& ctrlabelname,
+                           int paddingid,
+                           bool scalesparsegrad,
+                           const std::string& inputnames,
+                           bool is_distributed,
+                           std::vector<MetaTensor*> out);
+
 void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
                                               const MetaTensor& repeats,
                                               int dim,
