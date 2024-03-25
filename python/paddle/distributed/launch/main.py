@@ -653,6 +653,7 @@ def launch():
                 os.path.dirname(ctx.args.auto_tuner_json), log_dir
             )
 
+            cur_cfg["log_dir_name"] = log_dir
             # generate script args of task
             new_args = gen_new_args(raw_args, cur_cfg, tuner_cfg)
             ctx.args.training_script_args = new_args
