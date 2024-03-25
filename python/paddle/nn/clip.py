@@ -14,6 +14,7 @@
 
 import copy
 import warnings
+from collections import defaultdict
 from sqlite3 import NotSupportedError
 
 import paddle
@@ -543,6 +544,114 @@ class ClipGradByNorm(ClipGradBase):
 
     def _create_operators(self, param, grad):
         new_grad = clip_by_norm(x=grad, max_norm=self.clip_norm)
+        return param, new_grad
+
+
+class ClipGradByAdaptiveNorm(ClipGradBase):
+    def __init__(
+        self, clip_ratio=1.2, start_clip_steps=0, beta=0.98, epsilon=1e-8
+    ):
+        super().__init__()
+        self.clip_ratio = clip_ratio
+        self.beta = beta
+        self.epsilon = epsilon
+        self.state = defaultdict(dict)
+        self.start_clip_steps = start_clip_steps
+        self.steps = 0
+
+    def __str__(self):
+        return "Gradient Clip By Norm, clip_ratio=%f" % self.self.clip_ratio
+
+    def clip_by_norm(self, param, grad):
+        norm_value = paddle.sqrt(_squared_l2_norm(grad))
+        state = self.state[param.name]
+        if len(state) == 0:
+            state['norm_value'] = norm_value
+
+        avg_norm_value = state['norm_value']
+
+        if (
+            self.steps > self.start_clip_steps
+            and norm_value > self.clip_ratio * avg_norm_value
+        ):
+            # clip grad
+            coef = (self.clip_ratio * avg_norm_value) / (
+                norm_value + self.epsilon
+            )
+            grad = grad * coef
+            norm_value = self.clip_ratio * avg_norm_value
+
+        state['norm_value'] = avg_norm_value * self.beta + norm_value * (
+            1.0 - self.beta
+        )
+        return grad
+
+    @paddle.no_grad()
+    def _dygraph_clip(self, params_grads):
+        params_and_grads = []
+        for p, g in params_grads:
+            if g is None:
+                continue
+            if getattr(p, 'need_clip', True) is False:
+                params_and_grads.append((p, g))
+                continue
+            new_grad = self.clip_by_norm(p, g)
+            params_and_grads.append((p, new_grad))
+        self.steps += 1
+        return params_and_grads
+
+    @framework.dygraph_only
+    def state_dict(self):
+        state_dict = {k: v for k, v in self.state.items()}
+        state_dict["steps"] = self.steps
+        state_dict["clip_ratio"] = self.clip_ratio
+        state_dict["beta"] = self.beta
+        state_dict["epsilon"] = self.epsilon
+        state_dict["start_clip_steps"] = self.start_clip_steps
+        return state_dict
+
+    @framework.dygraph_only
+    def set_state_dict(self, state_dict):
+        self.steps = state_dict["steps"]
+        self.clip_ratio = state_dict["clip_ratio"]
+        self.beta = state_dict["beta"]
+        self.epsilon = state_dict["epsilon"]
+        self.start_clip_steps = state_dict["start_clip_steps"]
+        for k in state_dict:
+            if k in [
+                "steps",
+                "clip_ratio",
+                "beta",
+                "epsilon",
+                "start_clip_steps",
+            ]:
+                continue
+            self.state[k] = copy.deepcopy(state_dict[k])
+
+    def _static_clip(self, params_grads):
+        params_and_grads = []
+        with framework.name_scope('gradient_clip'):
+            param_new_grad_name_dict = {}
+            for p, g in params_grads:
+                if g is None:
+                    continue
+                if getattr(p, 'need_clip', True) is False:
+                    params_and_grads.append((p, g))
+                    continue
+
+                with p.block.program._optimized_guard([p, g]):
+                    new_grad = self.clip_by_norm(p, g)
+                param_new_grad_name_dict[p.name] = new_grad.name
+                params_and_grads.append((p, new_grad))
+        _correct_clip_op_role_var(params_and_grads, param_new_grad_name_dict)
+        self.steps += 1
+        return params_and_grads
+
+    def _process_context(self, context, param, grad):
+        pass
+
+    def _create_operators(self, param, grad):
+        new_grad = self.clip_by_norm(param, grad)
         return param, new_grad
 
 
