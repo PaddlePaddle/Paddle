@@ -1292,7 +1292,7 @@
     param : [ids, table_id, scale_data_norm, input_names]
   kernel :
     func : push_dense
-    data_type : ids
+    data_type : DataType::FLOAT32
 
 - op : push_sparse_v2
   args : (Tensor[] ids, Tensor[] w, Tensor[] out_grad_in, int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, str[] inputnames = {}, bool is_distributed = true)
