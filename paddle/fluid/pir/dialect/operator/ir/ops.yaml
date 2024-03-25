@@ -791,6 +791,17 @@
   view : (mean -> mean_out), (variance -> variance_out)
   backward : fused_bn_add_activation_grad
 
+- op : fused_conv2d_add_act
+  args : (Tensor input, Tensor filter, Tensor bias, Tensor residual_data, int[] strides={1, 1}, int[] paddings={0, 0}, str padding_algorithm="EXPLICIT", int[] dilations={1, 1} , int groups=1, str data_format="NCHW", str activation="relu", int[] split_channels={}, bool exhaustive_search=false, int workspace_size_MB=32, float fuse_alpha=0.0f)
+  output : Tensor(output), Tensor[](outputs){split_channels.size()}
+  infer_meta :
+    func : FusedConv2dAddActInferMeta
+    param : [input, filter, bias, residual_data, strides, paddings, padding_algorithm, dilations, groups, data_format, activation, split_channels]
+  kernel :
+    func : fused_conv2d_add_act
+    data_type : input
+  optional : bias, residual_data, outputs
+  
 - op : fused_multi_transformer
   args : (Tensor x, Tensor[] ln_scales, Tensor[] ln_biases, Tensor[] qkv_weights, Tensor[] qkv_biases, Tensor[] cache_kvs, Tensor[] pre_caches, Tensor rotary_tensor, Tensor time_step, Tensor seq_lengths, Tensor src_mask, Tensor[] out_linear_weights, Tensor[] out_linear_biases, Tensor[] ffn_ln_scales, Tensor[] ffn_ln_biases, Tensor[] ffn1_weights, Tensor[] ffn1_biases, Tensor[] ffn2_weights, Tensor[] ffn2_biases, bool pre_layer_norm = true, float epsilon = 1e-5, float dropout_rate = .5f, int rotary_emb_dims = 0, bool is_test = false, str dropout_implementation = "downgrade_in_infer", str act_method = "gelu", bool trans_qkvw =true, int ring_id = -1)
   optional : qkv_biases, cache_kvs, pre_caches, rotary_tensor, time_step, seq_lengths, src_mask, out_linear_biases, ffn1_biases, ffn2_biases, cache_kv_outs
