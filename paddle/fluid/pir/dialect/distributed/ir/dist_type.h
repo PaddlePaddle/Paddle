@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_interface.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/type.h"
 
@@ -29,9 +30,11 @@ class DistDenseTensorType
     : public pir::Type::TypeBase<DistDenseTensorType,
                                  pir::Type,
                                  DistDenseTensorTypeStorage,
-                                 pir::WrapTypeInterface> {
+                                 pir::WrapTypeInterface,
+                                 DistTypeInterface> {
  public:
   using Base::Base;
+  using LoD = pir::DenseTensorTypeStorage::LoD;
 
   pir::DenseTensorType dense_tensor_type() const;
   TensorDistAttribute tensor_dist_attr() const;
@@ -39,8 +42,11 @@ class DistDenseTensorType
   const common::DDim& local_ddim() const;
   Type dtype() const { return dense_tensor_type().dtype(); }
   DataLayout data_layout() const { return dense_tensor_type().data_layout(); }
+  const LoD& lod() const { return dense_tensor_type().lod(); }
+  size_t offset() const { return dense_tensor_type().offset(); }
 
   Type prim_type() { return dense_tensor_type(); }
+  Type local_type() const;
 
   ProcessMeshAttribute process_mesh_attr() const {
     return tensor_dist_attr().process_mesh_attr();

@@ -593,12 +593,10 @@ def monkey_patch_tensor():
                 device = t.place
             if dtype is None:
                 dtype = t.dtype
-            if type(dtype) is str:
-                dtype = framework.convert_np_dtype_to_dtype_(dtype)
-
             # 1. gpu place need to determine whether the memory is sufficient for allocation.
             if t.place.is_gpu_place():
-                size_dtype = core.size_of_dtype(dtype)
+                proto_dtype = framework.convert_to_proto_type(dtype)
+                size_dtype = core.size_of_dtype(proto_dtype)
                 # Note(weilong wu): Paddle GPU minimum memory allocation unit is 256 bytes,
                 # waiting_alloc_memory will compute the memory space occupied by 't'.
                 # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.

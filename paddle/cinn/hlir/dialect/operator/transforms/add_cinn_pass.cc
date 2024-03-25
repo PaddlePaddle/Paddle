@@ -109,14 +109,14 @@ void ApplyBuildGroupOpPass(
     const std::function<std::shared_ptr<pir::PassManager>()>&
         CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
-  if (HasDynamicShape(*program)) {
+  bool has_dynamic_shape = HasDynamicShape(*program);
+  if (has_dynamic_shape) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
-    pass_manager->AddPass(
-        cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
   }
+  pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
+
   pass_manager->AddPass(pir::CreateBuildCinnPass());
-  if (HasDynamicShape(*program)) {
-    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
+  if (has_dynamic_shape) {
     pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
   }
   pass_manager->Run(program);
