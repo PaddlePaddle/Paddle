@@ -405,6 +405,7 @@ class ProgBarLogger(Callback):
                     % (samples / (timer['data_time'] + timer['batch_time'])),
                 )
             )
+
             timer['count'] = 0
             timer['samples'] = 0
             timer['data_time'] = 0.0

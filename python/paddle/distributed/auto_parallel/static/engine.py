@@ -1131,6 +1131,7 @@ class Engine:
         callbacks=None,
         verbose=2,
         nvprof_range=[-1, -1],
+        enable_synchronized_IPS=False,
     ):
         """
         Trains the model for a fixed number of epochs. If `valid_data` is set,
@@ -1168,8 +1169,13 @@ class Engine:
                 0. Default None.
             callbacks (Callback|None, optional): A list of `Callback` instances to apply
                 during training. Default: None. (Unused for now)
-            nvprof_range(list, optional): A list of integers indicating nvprof ranges in form of [start_step, end_step]. Note that if start_step >= end_step, the nvprof will not apply.
-
+            nvprof_range(list, optional): A list of integers indicating nvprof ranges in form of
+                [start_step, end_step]. Note that if start_step >= end_step, the nvprof will not apply.
+            enable_synchronized_IPS(bool, optional): Enable synchronization between CPU and GPU
+                when measuring IPS metric. Default: False.
+                == NOTE ==
+                ONLY enable this for performance benchmarking during development as
+                synchronization may cause significant performance drop!
         Returns:
             None
 
@@ -1241,6 +1247,15 @@ class Engine:
 
         fetch_names, fetch_indices = self._prepare_fetch(None, mode=self._mode)
 
+        synchronized_IPS_configs = {
+            'enabled': enable_synchronized_IPS,
+            'sync_every_n_steps': 10,
+            'visualize_sync_time': False,
+        }
+        if nvprof_range[0] >= 0 or nvprof_range[1] >= 0:
+            # if nv profiler is enabled, then visualize IPS sync time on the timeline
+            synchronized_IPS_configs["visualize_sync_time"] = True
+
         cbks = config_callbacks(
             callbacks,
             engine=self,
@@ -1252,6 +1267,7 @@ class Engine:
             save_dir=save_dir,
             verbose=verbose,
             metrics=self._metrics_name(),
+            synchronized_IPS_configs=synchronized_IPS_configs,
             acc_step=1
             if self._strategy.pipeline.enable
             else self._acc_steps,  # lr update once every local batch
