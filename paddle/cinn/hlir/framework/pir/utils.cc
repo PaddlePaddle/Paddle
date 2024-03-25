@@ -135,14 +135,12 @@ class OpTransInfo {
       "dropout",
       "pool2d",
       "pool2d_grad",
-      "split",
       "matmul",
       "matmul_grad",
       "embedding_grad",
       "embedding",
       "softmax",
       "arange",
-      "gather",
   };
 };
 
