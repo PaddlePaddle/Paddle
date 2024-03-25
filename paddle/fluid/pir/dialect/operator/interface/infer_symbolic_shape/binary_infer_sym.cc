@@ -204,8 +204,25 @@ bool SparseWeightEmbeddingOpInferSymbolicShape(
 
 bool ExpandAsOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  const auto &y_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+
+  // TODO(fty1777): Why is `y` marked optional in the yaml file? What is the use
+  // of target_shape? The assumed implementation of this function should `y` be
+  // not provided
+  // // target_shape
+  // std::vector<int> target_shape =
+  //     paddle::dialect::details::GetVectorAttr<int>(op, "target_shape");
+  // const std::vector<symbol::DimExpr> &output_dims = [&] {
+  //   std::vector<symbol::DimExpr> output_dims;
+  //   output_dims.reserve(target_shape.size());
+  //   for (int shape : target_shape) {
+  //     output_dims.push_back(shape_analysis->DimExprBuilder().ConstSize(shape));
+  //   }
+  //   return output_dims;
+  // }();
+
+  shape_analysis->SetShapeOrDataForValue(op->result(0), y_shape_or_data);
   return true;
 }
 
@@ -354,8 +371,16 @@ bool KronOpInferSymbolicShape(pir::Operation *op,
 
 bool MaskedSelectOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  const std::vector<symbol::DimExpr> &out_dims = [&] {
+    std::vector<symbol::DimExpr> out_dims;
+    symbol::DimExpr out_shape =
+        shape_analysis->GetNextSymName();  // unknown until runtime
+    out_dims.push_back(out_shape);
+    return out_dims;
+  }();
+  // TODO(fty1777): Add constrains between the shapes of x and mask
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs{out_dims});
   return true;
 }
 
@@ -462,8 +487,12 @@ bool MatmulOpInferSymbolicShape(
 
 bool SearchsortedOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  // The shape of output is the same as input `values` (op->operand_source(1))
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+  // TODO(fty1777): Add constrains between the shapes of `sorted_sequence` and
+  // `values`
+  shape_analysis->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
   return true;
 }
 

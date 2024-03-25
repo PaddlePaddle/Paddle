@@ -902,6 +902,7 @@
   kernel :
     func : pad
   backward : pad_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
@@ -1275,6 +1276,7 @@
     func : unique
     data_type : x
   optional : indices, inverse, counts
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : unpool
   args: (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding, IntArray output_size, str data_format)

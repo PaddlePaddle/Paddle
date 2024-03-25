@@ -22,6 +22,7 @@ from test_infer_sym_shape_utils import (
 )
 
 import paddle
+import paddle.nn.functional as F
 from paddle.static import InputSpec
 
 
@@ -182,7 +183,7 @@ class DiagEmbedOpInferSymbolicShapeTest(TestBase):
 
             # check the infer result
             check_infer_results(
-                net, input_spec, 'pd_op.diag_embed', self.expected[0]
+                net, input_spec, 'pd_op.diag_embed', self.expected[i]
             )
 
         return True
@@ -231,7 +232,7 @@ class DiagonalOpInferSymbolicShapeTest(TestBase):
             net.eval()
 
             check_infer_results(
-                net, input_spec, 'pd_op.diagonal', self.expected[0]
+                net, input_spec, 'pd_op.diagonal', self.expected[i]
             )
 
         return True
@@ -269,7 +270,7 @@ class KthvalueOpInferSymbolicShapeTest(TestBase):
             net = apply_to_static(net, False, input_spec)
             net.eval()
             check_infer_results(
-                net, input_spec, 'pd_op.kthvalue', self.expected[0]
+                net, input_spec, 'pd_op.kthvalue', self.expected[i]
             )
 
         return True
@@ -418,7 +419,7 @@ class ReshapeOpInferSymbolicShapeTest(TestBase):
             net.eval()
 
             check_infer_results(
-                net, input_spec, 'pd_op.reshape', self.expected[0]
+                net, input_spec, 'pd_op.reshape', self.expected[i]
             )
 
         return True
@@ -434,6 +435,7 @@ class SplitNet(paddle.nn.Layer):
         out = paddle.split(x, [1, -1], axis=1)
         out = paddle.split(x, [1, 2, 3], axis=1)
         out = paddle.split(x, [1, 2, x.shape[1]], axis=1)
+        out = paddle.split(x, [1, 2, x.shape[1]], axis=-2)
 
         out = x.split([-1], axis=1)
         out = x.split([1, 2, -1], axis=1)
@@ -452,6 +454,7 @@ class SplitOpInferSymbolicShapeTest(TestBase):
             'shape[S0, 1, S2], data[NULL], shape[S0, 2, S2], data[NULL], shape[S0, Add(S1, -3), S2], data[NULL]',
             'shape[S0, 1, S2], data[NULL], shape[S0, Add(S1, -1), S2], data[NULL]',
             'shape[S0, 1, S2], data[NULL], shape[S0, 2, S2], data[NULL], shape[S0, 3, S2], data[NULL]',
+            'shape[S0, 1, S2], data[NULL], shape[S0, 2, S2], data[NULL], shape[S0, S1, S2], data[NULL]',
             'shape[S0, 1, S2], data[NULL], shape[S0, 2, S2], data[NULL], shape[S0, S1, S2], data[NULL]',
             'shape[S0, S1, S2], data[NULL]',
             'shape[S0, 1, S2], data[NULL], shape[S0, 2, S2], data[NULL], shape[S0, Add(S1, -3), S2], data[NULL]',
@@ -515,6 +518,243 @@ class SplitWithNumOpInferSymbolicShapeTest(TestBase):
             # check the infer result
             check_infer_results(
                 net, input_spec, 'pd_op.split_with_num', self.expected
+            )
+
+        return True
+
+
+class PadNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        out1 = F.pad(x, [1, 2, 3, 4, 5, 6])
+        out2 = F.pad(x, [0, 1, 2, 2, 0, 0])
+        return out1, out2
+
+
+class PadOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.cases = [np.random.rand(4, 5, 6)]
+        self.expected = [
+            [
+                'shape[Add(S0, 3), Add(S1, 7), Add(S2, 11)], data[NULL]',
+                'shape[Add(S0, 1), Add(S1, 4), S2], data[NULL]',
+            ]
+        ]
+
+    def test_eval_symbolic(self):
+        net = PadNet()
+
+        for i in range(len(self.cases)):
+            x = self.cases[i]
+            x_spec = InputSpec(
+                shape=[None for index in range(len(x.shape))], dtype='float32'
+            )
+
+            input_spec = [x_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+
+            check_infer_results(net, input_spec, 'pd_op.pad', self.expected[i])
+
+        return True
+
+
+# FIXME: unbind infer sym shape causes
+#           terminate called after throwing an instance of 'std::length_error'
+#           what():  cannot create std::vector larger than max_size()
+# class UnbindNet(paddle.nn.Layer):
+#     def __init__(self):
+#         super().__init__()
+
+#     def forward(self, x):
+#         out1 = paddle.unbind(x)
+#         out2 = paddle.unbind(x, axis=0)
+#         out3 = paddle.unbind(x, axis=2)
+#         out4 = paddle.unbind(x, axis=-2)
+#         out5 = paddle.unbind(x, axis=-3)
+#         return out1, out2, out3, out4, out5
+
+
+# class UnbindOpInferSymbolicShapeTest(TestBase):
+#     def prepare_data(self):
+#         self.cases = [np.random.rand(4, 5, 6)]
+#         self.expected = [
+#             [
+#                 ', '.join(['shape[S1, S2], data[NULL]'] * 4),
+#                 ', '.join(['shape[S1, S2], data[NULL]'] * 4),
+#                 ', '.join(['shape[S0, S1], data[NULL]'] * 6),
+#                 ', '.join(['shape[S0, S2], data[NULL]'] * 5),
+#                 ', '.join(['shape[S1, S2], data[NULL]'] * 4),
+#             ]
+#         ]
+
+#     def test_eval_symbolic(self):
+#         net = UnbindNet()
+
+#         for i in range(len(self.cases)):
+#             x = self.cases[i]
+#             x_spec = InputSpec(
+#                 shape=[None for index in range(len(x.shape))], dtype='float32'
+#             )
+
+#             input_spec = [x_spec]
+#             net = apply_to_static(net, False, input_spec)
+#             net.eval()
+
+#             check_infer_results(
+#                 net, input_spec, 'pd_op.unbind', self.expected[i]
+#             )
+
+#         return True
+
+
+class UniqueNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        out1 = paddle.unique(x)
+        out2 = paddle.unique(x, axis=0)
+        out3 = paddle.unique(x, axis=-1)
+        out4 = paddle.unique(x, axis=2)
+        return out1, out2, out3, out4
+
+
+class UniqueOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.cases = [np.random.rand(4, 5, 6)]
+        self.expected = [
+            [
+                # ', '.join(
+                #     [
+                #         'shape[S3], data[NULL]',
+                #         'shape[S3], data[NULL]',
+                #         'shape[Mul(Mul(S0, S1), S2)], data[NULL]',
+                #         'shape[S3], data[NULL]',
+                #     ]
+                # ),
+                # ', '.join(
+                #     [
+                #         'shape[S4, S1, S2], data[NULL]',
+                #         'shape[S4], data[NULL]',
+                #         'shape[S0], data[NULL]',
+                #         'shape[S3], data[NULL]',
+                #     ]
+                # ),
+                # ', '.join(
+                #     [
+                #         'shape[S0, S1, S5], data[NULL]',
+                #         'shape[S3], data[NULL]',
+                #         'shape[S2], data[NULL]',
+                #         'shape[S5], data[NULL]',
+                #     ]
+                # ),
+                # ', '.join(
+                #     [
+                #         'shape[S0, S1, S6], data[NULL]',
+                #         'shape[S3], data[NULL]',
+                #         'shape[S2], data[NULL]',
+                #         'shape[S6], data[NULL]',
+                #     ]
+                # ),
+                # FIXME: Now only the first output is exported to sym_shape_str.
+                'shape[S3], data[NULL]',
+                'shape[S4, S1, S2], data[NULL]',
+                'shape[S0, S1, S5], data[NULL]',
+                'shape[S0, S1, S6], data[NULL]',
+            ]
+        ]
+
+    def test_eval_symbolic(self):
+        net = UniqueNet()
+
+        for i in range(len(self.cases)):
+            x = self.cases[i]
+            x_spec = InputSpec(
+                shape=[None for index in range(len(x.shape))], dtype='float32'
+            )
+
+            input_spec = [x_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+
+            check_infer_results(
+                net, input_spec, 'pd_op.unique', self.expected[i]
+            )
+
+        return True
+
+
+class UniqueConsecutiveNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        out1 = paddle.unique_consecutive(x)
+        out2 = paddle.unique_consecutive(x, axis=0)
+        out3 = paddle.unique_consecutive(x, axis=-1)
+        out4 = paddle.unique_consecutive(x, axis=2)
+        return out1, out2, out3, out4
+
+
+class UniqueConsecutiveOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.cases = [np.random.rand(4, 5, 6)]
+        self.expected = [
+            [
+                # ', '.join(
+                #     [
+                #         'shape[S3], data[NULL]',
+                #         'shape[Mul(Mul(S0, S1), S2)], data[NULL]',
+                #         'shape[S3], data[NULL]',
+                #     ]
+                # ),
+                # ', '.join(
+                #     [
+                #         'shape[S4, S1, S2], data[NULL]',
+                #         'shape[S0], data[NULL]',
+                #         'shape[S4], data[NULL]',
+                #     ]
+                # ),
+                # ', '.join(
+                #     [
+                #         'shape[S0, S1, S5], data[NULL]',
+                #         'shape[S2], data[NULL]',
+                #         'shape[S5], data[NULL]',
+                #     ]
+                # ),
+                # ', '.join(
+                #     [
+                #         'shape[S0, S1, S6], data[NULL]',
+                #         'shape[S2], data[NULL]',
+                #         'shape[S6], data[NULL]',
+                #     ]
+                # ),
+                # FIXME: Now only the first output is exported to sym_shape_str.
+                'shape[S3], data[NULL]',
+                'shape[S4, S1, S2], data[NULL]',
+                'shape[S0, S1, S5], data[NULL]',
+                'shape[S0, S1, S6], data[NULL]',
+            ]
+        ]
+
+    def test_eval_symbolic(self):
+        net = UniqueConsecutiveNet()
+
+        for i in range(len(self.cases)):
+            x = self.cases[i]
+            x_spec = InputSpec(
+                shape=[None for index in range(len(x.shape))], dtype='float32'
+            )
+
+            input_spec = [x_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+
+            check_infer_results(
+                net, input_spec, 'pd_op.unique_consecutive', self.expected[i]
             )
 
         return True
