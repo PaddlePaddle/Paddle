@@ -617,7 +617,8 @@ const std::vector<std::string> kPirMkldnnPasses{
     "conv2d_bias_fuse_pass",
     "conv2d_transpose_bias_fuse_pass",
     "conv3d_bias_fuse_pass",
-    "batch_norm_act_fuse_pass"};
+    "batch_norm_act_fuse_pass",
+    "conv_elementwise_add_mkldnn_fuse_pass"};
 
 const std::vector<std::string> kPirCpuPasses{};
 
