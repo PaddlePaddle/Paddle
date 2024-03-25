@@ -111,6 +111,7 @@ list(
   temporal_shift_op.cc
   einsum_op.cc
   unbind_op.cc
+  linspace_op.cc
   assign_op.cc
   flip_op.cc
   quantize_linear_op.cc
