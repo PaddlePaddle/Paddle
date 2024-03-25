@@ -179,6 +179,7 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
                     break
 
                 partial_data = []
+                all_dp_part_data = []
                 for i, d in enumerate(batch):
                     array = np.array(d)
                     if not self.split_data:
@@ -191,13 +192,21 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
                     ), "batch_size [{}] is not divisible by dp_world_size [{}]".format(
                         str(batch_size), str(self.dp_world_sizes[i])
                     )
-                    partial_data.append(
-                        np.split(array, self.dp_world_sizes[i])[
-                            self.dp_ranks[i]
-                        ]
-                    )
 
-                yield partial_data
+                    dp_part_data = np.split(array, self.dp_world_sizes[i])[
+                        self.dp_ranks[i]
+                    ]
+                    dp_part_data = np.split(dp_part_data, self.acc_steps)
+                    all_dp_part_data.append(dp_part_data)
+
+                if len(partial_data) != 0:
+                    yield partial_data
+                else:
+                    for i in range(self.acc_steps):
+                        part_data = []
+                        for data in all_dp_part_data:
+                            part_data.append(data[i])
+                        yield part_data
 
         dataloader = paddle.base.io.DataLoader.from_generator(
             feed_list=self.feed_list,
