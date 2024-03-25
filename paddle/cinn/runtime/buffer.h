@@ -16,6 +16,7 @@
 #include <glog/logging.h>
 
 #include <string>
+#include "paddle/common/enforce.h"
 /**
  * runtime::Buffer is an encapsulation of memory operations.
  */
