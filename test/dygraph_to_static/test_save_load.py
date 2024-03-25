@@ -73,7 +73,7 @@ class TestDyToStaticSaveLoad(Dy2StTestBase):
         x_data = np.random.randn(30, 10, 32).astype('float32')
         batch_num = 3
 
-        x = base.dygraph.to_variable(x_data)
+        x = paddle.to_tensor(x_data)
         net = Linear(32, 64)
         adam = Adam(learning_rate=0.1, parameters=net.parameters())
 
@@ -100,7 +100,7 @@ class TestDyToStaticSaveLoad(Dy2StTestBase):
         # Switch into eval mode.
         dygraph_net.eval()
 
-        x = base.dygraph.to_variable(x_data)
+        x = paddle.to_tensor(x_data)
         # predict output
         with enable_to_static_guard(False):
             dygraph_out, dygraph_loss = dygraph_net(x)

@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
-#include "paddle/pir/core/op_base.h"
+#include "paddle/pir/include/core/op_base.h"
 
 using OpInfoTuple = std::tuple<std::vector<paddle::dialect::OpInputInfo>,
                                std::vector<paddle::dialect::OpAttributeInfo>,
@@ -28,26 +28,28 @@ namespace dialect {
 class OpYamlInfoInterface : public pir::OpInterfaceBase<OpYamlInfoInterface> {
  public:
   struct Concept {
-    explicit Concept(OpInfoTuple (*get_op_info)())
+    explicit Concept(OpInfoTuple (*get_op_info)(const std::string& op_name))
         : get_op_info_(get_op_info) {}
-    OpInfoTuple (*get_op_info_)();
+    OpInfoTuple (*get_op_info_)(const std::string& op_name);
   };
 
   template <class ConcreteOp>
   struct Model : public Concept {
-    static OpInfoTuple GetOpInfo() { return ConcreteOp::GetOpInfo(); }
+    static OpInfoTuple GetOpInfo(const std::string& op_name) {
+      return ConcreteOp::GetOpInfo();
+    }
 
     Model() : Concept(GetOpInfo) {}
   };
 
   /// Constructor
-  OpYamlInfoInterface(pir::Operation *op, Concept *impl)
+  OpYamlInfoInterface(pir::Operation* op, Concept* impl)
       : pir::OpInterfaceBase<OpYamlInfoInterface>(op), impl_(impl) {}
 
-  OpInfoTuple GetOpInfo() { return impl_->get_op_info_(); }
+  OpInfoTuple GetOpInfo() { return impl_->get_op_info_(operation_->name()); }
 
  private:
-  Concept *impl_;
+  Concept* impl_;
 };
 
 }  // namespace dialect

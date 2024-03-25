@@ -23,7 +23,7 @@ def check_input_type(input, name, op_name):
         if not isinstance(input, paddle.Tensor):
             raise ValueError(f"The input: {input} must be tensor.")
     else:
-        check_type(input, name, Variable, op_name)
+        check_type(input, name, (Variable, paddle.pir.Value), op_name)
 
 
 def check_initial_inverse_hessian_estimate(H0):

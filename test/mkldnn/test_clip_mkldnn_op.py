@@ -62,10 +62,12 @@ class TestClipOneDNNOp(OpTest):
         self.attrs = {'min': 7.2, 'max': 9.6, 'use_mkldnn': True}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output(check_dygraph=False, check_pir_onednn=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_dygraph=False)
+        self.check_grad(
+            ['X'], 'Out', check_dygraph=False, check_pir_onednn=True
+        )
 
 
 class TestClipOneDNNOp_ZeroDim(TestClipOneDNNOp):
@@ -114,7 +116,9 @@ def create_bf16_test_class(parent):
                         self.dx[j][i] = self.dout[j][i]
 
         def test_check_output(self):
-            self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
+            self.check_output_with_place(
+                core.CPUPlace(), check_dygraph=False, check_pir_onednn=True
+            )
 
         def test_check_grad(self):
             self.calculate_grads()
@@ -125,6 +129,7 @@ def create_bf16_test_class(parent):
                 user_defined_grads=[self.dx],
                 user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
                 check_dygraph=False,
+                check_pir_onednn=True,
             )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16")

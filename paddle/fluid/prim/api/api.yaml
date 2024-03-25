@@ -38,9 +38,6 @@
 - sqrt
 - cumsum
 - put_along_axis
-- equal
-- greater_than
-- less_equal
 - sin
 - cos
 - where

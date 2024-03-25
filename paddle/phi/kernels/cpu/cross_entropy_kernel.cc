@@ -40,8 +40,8 @@ void CrossEntropy(const CPUContext& dev_ctx,
       axis_dim,
       0,
       phi::errors::InvalidArgument(
-          "The axis dimention should be larger than 0, but received "
-          "axis dimention is %d.",
+          "The axis dimension should be larger than 0, but received "
+          "axis dimension is %d.",
           axis_dim));
 
   dev_ctx.template Alloc<T>(out);

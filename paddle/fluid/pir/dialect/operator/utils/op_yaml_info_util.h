@@ -15,8 +15,9 @@
 #pragma once
 
 #include "paddle/fluid/pir/dialect/operator/ir/type_storage.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_type.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/operation_utils.h"
 
 namespace paddle {
 namespace dialect {
@@ -93,6 +94,13 @@ struct OpRunTimeInfo {
   std::vector<std::string> kernel_key_backend;
   std::vector<std::pair<std::string, std::string>> inplace;
   std::vector<std::pair<std::string, std::string>> view;
+  std::vector<std::string> extra_args;
+  std::vector<std::string> skip_transform_inputs;
+  pir::AttributeMap extra_args_default_value;
+  std::vector<std::string> data_format_tensors;
+  bool is_onednn_only;
+  bool dynamic_fallback;
+
   OpRunTimeInfo(const std::string& infer_meta_func,
                 const std::vector<std::string>& infer_meta_param,
                 const std::string& kernel_func,
@@ -100,7 +108,13 @@ struct OpRunTimeInfo {
                 const std::vector<std::string>& dtype,
                 const std::vector<std::string>& backend,
                 const std::vector<std::pair<std::string, std::string>>& inplace,
-                const std::vector<std::pair<std::string, std::string>>& view)
+                const std::vector<std::pair<std::string, std::string>>& view,
+                const std::vector<std::string>& extra_args = {},
+                const std::vector<std::string>& skip_transform_inputs = {},
+                const pir::AttributeMap& extra_args_default_value = {{}},
+                const std::vector<std::string>& data_format_tensors = {},
+                bool is_onednn_only = false,
+                bool dynamic_fallback = false)
       : infer_meta_func(infer_meta_func),
         infer_meta_param(infer_meta_param),
         kernel_func(kernel_func),
@@ -108,7 +122,13 @@ struct OpRunTimeInfo {
         kernel_key_dtype(dtype),
         kernel_key_backend(backend),
         inplace(inplace),
-        view(view) {}
+        view(view),
+        extra_args(extra_args),
+        skip_transform_inputs(skip_transform_inputs),
+        extra_args_default_value(extra_args_default_value),
+        data_format_tensors(data_format_tensors),
+        is_onednn_only(is_onednn_only),
+        dynamic_fallback(dynamic_fallback) {}
 };
 
 }  // namespace dialect

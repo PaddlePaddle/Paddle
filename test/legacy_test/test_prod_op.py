@@ -151,6 +151,7 @@ class TestProdOp(unittest.TestCase):
 
 
 class TestProdOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_error(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -159,13 +160,13 @@ class TestProdOpError(unittest.TestCase):
             bool_x = paddle.static.data(
                 name='bool_x', shape=[2, 2, 4], dtype='bool'
             )
-            # The argument x shoule be a Tensor
+            # The argument x should be a Tensor
             self.assertRaises(TypeError, paddle.prod, [1])
 
             # The data type of x should be float32, float64, int32, int64
             self.assertRaises(TypeError, paddle.prod, bool_x)
 
-            # The argument axis's type shoule be int ,list or tuple
+            # The argument axis's type should be int ,list or tuple
             self.assertRaises(TypeError, paddle.prod, x, 1.5)
 
             # The argument dtype of prod_op should be float32, float64, int32 or int64.

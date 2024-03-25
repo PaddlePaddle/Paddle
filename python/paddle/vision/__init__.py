@@ -30,7 +30,7 @@ from .datasets import (  # noqa: F401
     Flowers,
     ImageFolder,
 )
-from .image import (  # noqa: F401
+from .image import (
     get_image_backend,
     image_load,
     set_image_backend,

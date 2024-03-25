@@ -124,7 +124,7 @@ std::vector<Group> PartitionGraphByIterationDomain(cinn::common::Graph* graph) {
   }
 
   // NOTE DEBUG
-  // check there are same count of nodes both in the orginal graph and the
+  // check there are same count of nodes both in the original graph and the
   // groups.
   // @{
   int num_node_in_groups = 0;
@@ -237,7 +237,7 @@ std::vector<Group> TopoSortGroups(std::vector<Group>& groups) {  // NOLINT
 /**
  * Naive idea to split a graph.
  *
- * 1. treat each stage as a seperate group.
+ * 1. treat each stage as a separate group.
  * 2. If ComputeAt is set between two stages and their iteration domain matches,
  * the stages will be put in a group with relative order.
  */
@@ -266,8 +266,9 @@ std::vector<Group> NaivePartitionGraph(cinn::common::Graph* graph) {
       auto* node0 = node;
       if (name2node.count(compute_at.stage->id()) == 0) {
         continue;
-        LOG(FATAL) << "Didn't find node with name " << compute_at.stage->id()
-                   << " !";
+        std::stringstream ss;
+        ss << "Didn't find node with name " << compute_at.stage->id() << " !";
+        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
       }
       auto* node1 = name2node[compute_at.stage->id()];
       VLOG(3) << "a -> b: " << node0->id() << " -> " << node1->id();

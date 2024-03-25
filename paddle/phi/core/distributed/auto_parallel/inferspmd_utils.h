@@ -107,7 +107,7 @@ struct InferSpmdFnImpl<Return (*)(Args...), infer_spmd_fn> {
     }
   };
 
-  // for vecotr slot
+  // for vector slot
   template <typename... Tail>
   struct InferSpmdFnCallHelper<const std::vector<const DistMetaTensor*>&,
                                Tail...> {

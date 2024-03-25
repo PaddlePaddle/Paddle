@@ -225,8 +225,9 @@ void PowOpMapper(const paddle::cpp::OpDesc& op_desc,
                                     cinn::UniqName(x_name + "_factor"),
                                     cinn::common::Type2Str(x->type));
   } else {
-    LOG(FATAL) << "Cannot found [FactorTensor] input or [factor] attribute in "
-                  "paddle.pow! Please check.";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Cannot found [FactorTensor] input or [factor] attribute in "
+        "paddle.pow! Please check."));
   }
 
   VLOG(4) << out_name << " = pow(" << x_name << ", " << y.value()->id << ")";

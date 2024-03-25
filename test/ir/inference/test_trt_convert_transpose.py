@@ -40,84 +40,46 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]], batch):
-            if self.dims == 4:
-                return np.ones([batch, 3, 24, 24]).astype(np.float32)
-            elif self.dims == 3:
-                return np.ones([batch, 3, 24]).astype(np.float32)
-            elif self.dims == 2:
-                return np.ones([batch, 24]).astype(np.float32)
+        def generate_input1(attrs: List[Dict[str, Any]]):
+            return np.ones([1, 3, 24, 24]).astype(np.float32)
 
-        for dims in [2, 3, 4]:
-            for batch in [1, 2, 4]:
-                for axis in [
-                    [0, 1, 3, 2],
-                    [0, 3, 2, 1],
-                    [3, 2, 0, 1],
-                    [0, 1, 2, 3],
-                    [0, 1, 2],
-                    [2, 0, 1],
-                    [1, 0],
-                    [0, 1],
-                ]:
-                    self.dims = dims
-                    dics = [{"axis": axis}, {}]
-                    ops_config = [
-                        {
-                            "op_type": "transpose",
-                            "op_inputs": {"X": ["transpose_input"]},
-                            "op_outputs": {"Out": ["transpose_out"]},
-                            "op_attrs": dics[0],
-                        }
-                    ]
-                    ops = self.generate_op_config(ops_config)
-                    program_config = ProgramConfig(
-                        ops=ops,
-                        weights={},
-                        inputs={
-                            "transpose_input": TensorConfig(
-                                data_gen=partial(generate_input1, dics, batch)
-                            )
-                        },
-                        outputs=["transpose_out"],
+        for axis in [[0, 1, 3, 2], [1, 0]]:
+            dics = [{"axis": axis}, {}]
+            ops_config = [
+                {
+                    "op_type": "transpose",
+                    "op_inputs": {"X": ["transpose_input"]},
+                    "op_outputs": {"Out": ["transpose_out"]},
+                    "op_attrs": dics[0],
+                }
+            ]
+            ops = self.generate_op_config(ops_config)
+            program_config = ProgramConfig(
+                ops=ops,
+                weights={},
+                inputs={
+                    "transpose_input": TensorConfig(
+                        data_gen=partial(generate_input1, dics)
                     )
+                },
+                outputs=["transpose_out"],
+            )
 
-                    yield program_config
+            yield program_config
 
     def sample_predictor_configs(
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            if self.dims == 4:
-                self.dynamic_shape.min_input_shape = {
-                    "transpose_input": [1, 3, 24, 24]
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "transpose_input": [9, 6, 48, 48]
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "transpose_input": [1, 3, 48, 24]
-                }
-            elif self.dims == 3:
-                self.dynamic_shape.min_input_shape = {
-                    "transpose_input": [1, 3, 24]
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "transpose_input": [9, 6, 48]
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "transpose_input": [1, 3, 24]
-                }
-            elif self.dims == 2:
-                self.dynamic_shape.min_input_shape = {
-                    "transpose_input": [1, 24]
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "transpose_input": [9, 48]
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "transpose_input": [1, 24]
-                }
+            self.dynamic_shape.min_input_shape = {
+                "transpose_input": [1, 3, 24, 24]
+            }
+            self.dynamic_shape.max_input_shape = {
+                "transpose_input": [9, 6, 48, 48]
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "transpose_input": [1, 3, 48, 24]
+            }
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}

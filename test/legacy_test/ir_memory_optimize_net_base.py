@@ -56,8 +56,7 @@ class BuildIrMemOptBase(unittest.TestCase):
                 'Skip use_parallel_executor=True because Paddle comes without parallel support on windows'
             )
             return
-        base.default_startup_program().random_seed = 100
-        base.default_main_program().random_seed = 100
+        paddle.seed(100)
 
         data = paddle.static.data(
             name="words", shape=[-1, 1], dtype="int64", lod_level=1

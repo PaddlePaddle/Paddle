@@ -56,7 +56,7 @@ class XPUQuantizeSquashPass : public FusePassBase {
   void OpDequantSquash(Graph* graph) const;
 
   /*
-   * Squash quantize if several quatize ops have the same scale
+   * Squash quantize if several quantize ops have the same scale
    */
   void MultipleQuantizeSquash(Graph* graph) const;
 

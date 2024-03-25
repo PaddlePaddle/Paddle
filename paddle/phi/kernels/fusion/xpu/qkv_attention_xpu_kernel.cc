@@ -6,7 +6,7 @@
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
 //
-// Unless required by applicable law or agreed to in writing, sofint16_tare
+// Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
@@ -32,6 +32,7 @@ void QKVAttentionXPUKernelImpl(const Context& ctx,
                                float alpha,
                                int head_num,
                                int head_dim,
+                               bool qkv_fc_fusion,
                                DenseTensor* qkv,
                                DenseTensor* qkv_max) {
   using XPUTypeX = typename XPUTypeTrait<T_X>::Type;
@@ -40,8 +41,10 @@ void QKVAttentionXPUKernelImpl(const Context& ctx,
   auto* q_data = reinterpret_cast<const XPUTypeX*>(q.data<T_X>());
   auto* k_data = reinterpret_cast<const XPUTypeX*>(k.data<T_X>());
   auto* v_data = reinterpret_cast<const XPUTypeX*>(v.data<T_X>());
-  k_data += head_num * head_dim;
-  v_data += 2 * head_num * head_dim;
+  if (qkv_fc_fusion) {
+    k_data += head_num * head_dim;
+    v_data += 2 * head_num * head_dim;
+  }
   const float* q_max_data =
       q_max.get_ptr() == nullptr ? nullptr : q_max.get_ptr()->data<float>();
   const float* k_max_data =
@@ -54,9 +57,7 @@ void QKVAttentionXPUKernelImpl(const Context& ctx,
   auto* qkv_max_data = ctx.template Alloc<float>(qkv_max);
   int batch = q.dims()[0];
   int max_seq_len = q.dims()[1];
-  // int qkv_shape = 2; // B x H x L x D
   int qkv_shape = 0;  // B x L x H x D
-  bool do_fc_qkv_fusion = true;
   int hidden_dim = head_num * head_dim;
   // no mask input, construct a fake LOD to compute via vsl
   std::vector<int> lod;
@@ -69,7 +70,8 @@ void QKVAttentionXPUKernelImpl(const Context& ctx,
   qkv_attn_param.qkv_shape = qkv_shape;
   qkv_attn_param.hidden_dim = hidden_dim;
   qkv_attn_param.alpha = alpha;
-  qkv_attn_param.do_fc_qkv_fusion = do_fc_qkv_fusion;
+  qkv_attn_param.do_fc_qkv_fusion = qkv_fc_fusion;
+
   // TODO(tianrui): ctrl by env
   // This feature may cause precision diff,
   // but it is more efficient, especially in long seqL cases
@@ -126,6 +128,7 @@ void QKVAttentionXPUKernelImpl(const Context& ctx,
       alpha,                                                             \
       head_num,                                                          \
       head_dim,                                                          \
+      qkv_fc_fusion,                                                     \
       qkv,                                                               \
       qkv_max);
 
@@ -140,6 +143,7 @@ void QKVAttentionXPUKernel(const Context& ctx,
                            float alpha,
                            int head_num,
                            int head_dim,
+                           bool qkv_fc_fusion,
                            DataType qkv_dtype,
                            DenseTensor* qkv,
                            DenseTensor* qkv_max) {

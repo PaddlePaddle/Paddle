@@ -20,14 +20,6 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-USE_OP_ITSELF(share_buffer);
-
-PD_DECLARE_KERNEL(share_buffer, CPU, ALL_LAYOUT);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_DECLARE_KERNEL(share_buffer, GPU, ALL_LAYOUT);
-#endif
-
 namespace paddle {
 namespace framework {
 

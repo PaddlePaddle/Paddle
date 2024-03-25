@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.base.dygraph.base import to_variable
 
 
 class SimpleNet(paddle.nn.Layer):
@@ -91,7 +90,7 @@ class TestSimpleNet(unittest.TestCase):
                     grad_clip = paddle.nn.ClipGradByGlobalNorm(5.0)
 
                     input_word = np.array([[1, 2], [2, 1]]).astype('int64')
-                    input = to_variable(input_word)
+                    input = paddle.to_tensor(input_word)
 
                     simplenet = SimpleNet(20, 32, "float32")
                     adam = paddle.optimizer.SGD(

@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/fleet/heter_wrapper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
 
@@ -180,7 +180,7 @@ void HeterCpuWorker::Initialize(const TrainerDesc& desc) {
             << dest_table;
     copy_dense_tables_.push_back(std::make_pair(src_table, dest_table));
   }
-  for (auto& m : copy_table_config_.table_denpendency_map()) {
+  for (auto& m : copy_table_config_.table_dependency_map()) {
     if (sparse_key_names_.find(m.key()) != sparse_key_names_.end()) {
       // currently only support one dependency
       for (auto& value : m.values()) {

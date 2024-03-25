@@ -232,7 +232,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 return False
         return True
 
-    def _generte_cond_para_map(
+    def _generate_cond_para_map(
         self, op, _fill_value_dict, _equal_fill_dict, _now_program, _all_params
     ):
         # generate cond value to parameter map recursively
@@ -257,7 +257,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
             ops_cond = _now_program.block(int(op.attr('sub_block').id)).ops
             for op in ops_cond:
                 if op.type == 'conditional_block':
-                    self._generte_cond_para_map(
+                    self._generate_cond_para_map(
                         op,
                         _fill_value_dict,
                         _equal_fill_dict,
@@ -540,7 +540,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                     if op.type == 'equal':
                         equal_fill_dict[op.output('Out')[0]] = op.input('Y')[0]
                     if op.type == 'conditional_block':
-                        self._generte_cond_para_map(
+                        self._generate_cond_para_map(
                             op,
                             fill_value_dict,
                             equal_fill_dict,

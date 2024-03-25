@@ -20,7 +20,6 @@ from test_imperative_base import new_program_scope
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.base.dygraph.base import to_variable
 from paddle.nn import BatchNorm, Linear
 
 
@@ -210,7 +209,7 @@ class EncoderNet(paddle.nn.Layer):
             h_0 = np.zeros(
                 (Config.batch_size, rnn_hidden_size), dtype="float32"
             )
-            h_0 = to_variable(h_0)
+            h_0 = paddle.to_tensor(h_0)
         else:
             h_0 = paddle.tensor.fill_constant(
                 shape=[Config.batch_size, rnn_hidden_size],
@@ -464,10 +463,10 @@ class TestDygraphOCRAttention(unittest.TestCase):
                 dy_param_init_value[param.name] = param.numpy()
             for epoch in range(epoch_num):
                 for batch_id in range(batch_num):
-                    label_in = to_variable(label_in_np)
-                    label_out = to_variable(label_out_np)
+                    label_in = paddle.to_tensor(label_in_np)
+                    label_out = paddle.to_tensor(label_out_np)
                     label_out.stop_gradient = True
-                    img = to_variable(image_np)
+                    img = paddle.to_tensor(image_np)
                     dy_prediction = ocr_attention(img, label_in)
                     label_out = paddle.reshape(label_out, [-1, 1])
                     dy_prediction = paddle.reshape(

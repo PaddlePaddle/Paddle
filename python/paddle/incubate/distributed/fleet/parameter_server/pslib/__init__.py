@@ -30,8 +30,10 @@ from paddle.incubate.distributed.fleet.role_maker import (
     MPISymetricRoleMaker,
 )
 
-from .optimizer_factory import DistributedAdam  # noqa: F401
-from .optimizer_factory import FLEET_GLOBAL_DICT
+from .optimizer_factory import (
+    FLEET_GLOBAL_DICT,
+    DistributedAdam,  # noqa: F401
+)
 
 
 class PSLib(Fleet):
@@ -1310,7 +1312,7 @@ class DownpourOptimizer(DistributedOptimizer):
 
     def _remove_collective_ops(self, program, name):
         """
-        colective init op should call once, so remove other call.
+        collective init op should call once, so remove other call.
         """
         block = program.global_block()
         for ids, op in list(enumerate(block.ops)):

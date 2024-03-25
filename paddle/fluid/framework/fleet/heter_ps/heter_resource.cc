@@ -23,11 +23,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 #include "paddle/utils/string/string_helper.h"
 
-PHI_DECLARE_bool(enable_auto_detect_gpu_topo);
-PHI_DECLARE_bool(enable_auto_rdma_trans);
+COMMON_DECLARE_bool(enable_auto_detect_gpu_topo);
+COMMON_DECLARE_bool(enable_auto_rdma_trans);
 
 namespace paddle {
 namespace framework {
@@ -124,7 +124,7 @@ void HeterPsResource::enable_p2p() {
   }
 #endif
 }
-static std::string excute_cmd_result(const std::string &cmd) {
+static std::string execute_cmd_result(const std::string &cmd) {
   FILE *fp = popen(cmd.c_str(), "r");
   if (fp == NULL) {
     fprintf(stderr, "cmd %s open failed\n", cmd.c_str());
@@ -171,7 +171,8 @@ bool GpuRDMAChecker::check_device_status(const int &device_count,
     return false;
   }
   // a100
-  std::string str = excute_cmd_result("source ~/.bashrc && nvidia-smi topo -m");
+  std::string str =
+      execute_cmd_result("source ~/.bashrc && nvidia-smi topo -m");
   if (str.empty()) {  // a100 auto gpu card rdma status
     return false;
   }

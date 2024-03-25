@@ -31,7 +31,7 @@ namespace cpp {
 
 /*
  * The cpp::OpDesc is the internal representation for Op. All the internal
- * imprementation should use it, not the pb::OpDesc.
+ * implementation should use it, not the pb::OpDesc.
  */
 class OpDesc : public OpDescAPI {
  public:

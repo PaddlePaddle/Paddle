@@ -237,9 +237,9 @@ def recompute(op):
 
 def exclude_ops_in_recompute(run_function):
     """
-    Exclude some operators in recompute segements.
+    Exclude some operators in recompute segments.
         Args:
-        run_function (callabe): The callabe function to be excluded.
+        run_function (callable): The callable function to be excluded.
 
     Returns:
         ExcludeOperator: The callable object.
@@ -319,6 +319,11 @@ _g_mesh = None
 def get_mesh():
     global _g_mesh
     return _g_mesh
+
+
+def set_mesh(mesh):
+    global _g_mesh
+    _g_mesh = mesh
 
 
 def create_mesh(mesh_dims: List[Tuple[str, int]]):

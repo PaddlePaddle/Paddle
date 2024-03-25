@@ -120,8 +120,8 @@ struct SkipLayerNorm : public PatternBase {
 // (word, weights_0)                lookup_table     ->  word_emb
 // (pos, weights_1)                 lookup_table     ->  pos_emb
 // (sent, weights_2)                lookup_table     ->  sent_emb
-// (word_emb, pos_emb)              elementweise_add -> elementwise_out_0
-// (elemtwise_out_0, sent_emb)      elementweise_add -> elementwise_out_1
+// (word_emb, pos_emb)              elementwise_add -> elementwise_out_0
+// (elemtwise_out_0, sent_emb)      elementwise_add -> elementwise_out_1
 // (elementwise_out_1, scale, bias) layer_norm       -> layer_norm_out
 //
 // and then convert the corresponding subgraph to:

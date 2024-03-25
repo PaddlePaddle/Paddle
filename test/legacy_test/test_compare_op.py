@@ -524,6 +524,7 @@ create_bf16_case('not_equal', lambda _a, _b: _a != _b, True)
 
 
 class TestCompareOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_int16_support(self):
         paddle.enable_static()
         with paddle.static.program_guard(

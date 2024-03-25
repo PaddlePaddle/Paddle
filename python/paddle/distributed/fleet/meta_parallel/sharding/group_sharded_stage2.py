@@ -623,7 +623,7 @@ class GroupShardedStage2(nn.Layer):
         for dtype in self._grad_storages.keys():
             for dst_rank, grad_storage in self._grad_storages[dtype].items():
                 if self._offload or dst_rank != self._rank:
-                    grad_storage.manumal_relase()
+                    grad_storage.manual_release()
                     grad_storage.rebuild()
 
     def _rank_buffer_size(self, buffer_max_size, model_size):

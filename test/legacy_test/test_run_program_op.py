@@ -427,8 +427,8 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
         self.check_output()
 
     def test_check_grad(self):
-        # NOTE: fecth not support SelectedRows, catnot compare
-        # sparse gradients with staic mode, only run dygraph
+        # NOTE: fetch not support SelectedRows, cannot compare
+        # sparse gradients with static mode, only run dygraph
         places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))

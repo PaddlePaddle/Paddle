@@ -22,7 +22,7 @@ from filters import (
     assert_dense_or_sr,
     cartesian_prod_mapping,
     delete_last_underline,
-    find_optinal_inputs_name,
+    find_optional_inputs_name,
     get_infer_var_type_func,
     to_composite_grad_opmaker_name,
     to_input_name,
@@ -70,7 +70,7 @@ env.filters["to_composite_grad_opmaker_name"] = to_composite_grad_opmaker_name
 env.filters["to_variable_names"] = to_variable_names
 env.filters["get_infer_var_type_func"] = get_infer_var_type_func
 env.filters["assert_dense_or_sr"] = assert_dense_or_sr
-env.filters["find_optinal_inputs_name"] = find_optinal_inputs_name
+env.filters["find_optional_inputs_name"] = find_optional_inputs_name
 env.tests["base_op"] = is_base_op
 env.tests["composite_op"] = is_composite_op
 env.tests["only_composite_op"] = is_only_composite_op
@@ -125,7 +125,8 @@ def process_scalar(op_item, scalar_configs):
                         '"' + attr_item['default_value'] + '"'
                     )
                 if attr_item['is_support_tensor'] is False:
-                    attr_item['tensor_name'] = scalar_config['tensor_name']
+                    if 'tensor_name' in scalar_config:
+                        attr_item['tensor_name'] = scalar_config['tensor_name']
 
 
 def process_int_array(op_item, int_array_configs):

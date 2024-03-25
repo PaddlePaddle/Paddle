@@ -60,7 +60,7 @@ class TestFillConstant2DOneDNNOp(OpTest):
         self.attrs = {'shape': (3, 5), 'use_mkldnn': True, 'value': self.value}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir_onednn=True)
 
 
 class TestFillZerosLike4DShapeTensorPriorityOneDNNOp(

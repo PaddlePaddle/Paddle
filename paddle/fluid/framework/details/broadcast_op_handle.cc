@@ -151,7 +151,7 @@ void BroadcastOpHandle::BroadcastOneVar(
     }
 #else
     PADDLE_THROW(
-        platform::errors::PreconditionNotMet("Not compiled with NCLL."));
+        platform::errors::PreconditionNotMet("Not compiled with NCCL."));
 #endif
   } else {
 #if defined(PADDLE_WITH_XPU_BKCL)

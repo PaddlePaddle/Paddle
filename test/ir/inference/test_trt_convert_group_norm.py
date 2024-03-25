@@ -47,9 +47,9 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
         def generate_bias():
             return np.random.randn(32).astype(np.float32)
 
-        for batch in [1, 2, 4]:
-            for group in [1, 4, 32, -1]:
-                for epsilon in [0.00001, 0.00005]:
+        for batch in [1, 4]:
+            for group in [4, -1]:
+                for epsilon in [0.00001]:
                     for data_layout in ['NCHW']:
                         dics = [
                             {

@@ -29,6 +29,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/ps/service/communicator/communicator_common.h"
 #include "paddle/fluid/distributed/ps/service/coordinator_client.h"
 #include "paddle/fluid/distributed/ps/service/ps_client.h"
@@ -39,12 +40,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/split.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
-#include "paddle/utils/flags.h"
+#include "paddle/utils/string/split.h"
 
 namespace paddle {
 namespace distributed {
@@ -53,7 +52,7 @@ struct CommContext;
 }  // namespace distributed
 }  // namespace paddle
 
-PHI_DECLARE_bool(communicator_is_sgd_optimizer);
+COMMON_DECLARE_bool(communicator_is_sgd_optimizer);
 
 namespace paddle {
 namespace distributed {
@@ -347,7 +346,7 @@ class Communicator {
 
   static Communicator *GetInstance() { return communicator_.get(); }
 
-  static std::shared_ptr<Communicator> GetInstantcePtr() {
+  static std::shared_ptr<Communicator> GetInstancePtr() {
     return communicator_;
   }
 
@@ -528,7 +527,7 @@ class HalfAsyncCommunicator : public AsyncCommunicator {
       : AsyncCommunicator(envs) {}
 
   void InitEnvs() {
-    // enfore to recv after send
+    // enforce to recv after send
     independent_recv_ = false;
     min_send_grad_num_before_recv_ = 0;
     thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));

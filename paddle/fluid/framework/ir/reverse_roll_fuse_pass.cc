@@ -31,7 +31,7 @@
   GET_IR_NODE(reshape2_30_op);    \
   GET_IR_NODE(reshape2_30_out);   \
   GET_IR_NODE(reshape2_50_op);    \
-  GET_IR_NODE(reshaep2_50_out);
+  GET_IR_NODE(reshape2_50_out);
 
 namespace paddle {
 namespace framework {
@@ -168,7 +168,7 @@ int ReverseRollFusePass::ApplyPattern(ir::Graph* graph, bool with_roll) const {
     OpDesc reverse_roll_desc(reshape2_00_op->Op()->Block());
     reverse_roll_desc.SetType("reverse_roll");
     reverse_roll_desc.SetInput("X", {subgraph.at(x)->Name()});
-    reverse_roll_desc.SetOutput("Out", {reshaep2_50_out->Name()});
+    reverse_roll_desc.SetOutput("Out", {reshape2_50_out->Name()});
     reverse_roll_desc.SetAttr("window_number", window_number);
     reverse_roll_desc.SetAttr("window_size", window_size);
     reverse_roll_desc.SetAttr("window_len", window_len);
@@ -176,7 +176,7 @@ int ReverseRollFusePass::ApplyPattern(ir::Graph* graph, bool with_roll) const {
     reverse_roll_desc.SetAttr("input_resolution", input_resolution);
     auto reverse_roll_node = graph->CreateOpNode(&reverse_roll_desc);
     IR_NODE_LINK_TO(subgraph.at(x), reverse_roll_node);
-    IR_NODE_LINK_TO(reverse_roll_node, reshaep2_50_out);
+    IR_NODE_LINK_TO(reverse_roll_node, reshape2_50_out);
     GraphSafeRemoveNodes(graph, del_node_set);
     ++fuse_count;
   };

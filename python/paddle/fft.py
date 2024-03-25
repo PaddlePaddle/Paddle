@@ -61,7 +61,7 @@ def _check_normalization(norm):
 def _check_fft_n(n):
     if not isinstance(n, int):
         raise ValueError(
-            f"Invalid FFT argument n({n}), it shoule be an integer."
+            f"Invalid FFT argument n({n}), it should be an integer."
         )
     if n <= 0:
         raise ValueError(f"Invalid FFT argument n({n}), it should be positive.")
@@ -71,7 +71,7 @@ def _check_fft_shape(x, s):
     ndim = x.ndim
     if not isinstance(s, Sequence):
         raise ValueError(
-            "Invaid FFT argument s({}), it should be a sequence of integers."
+            "Invalid FFT argument s({}), it should be a sequence of integers."
         )
 
     if len(s) > ndim:
@@ -87,7 +87,7 @@ def _check_fft_shape(x, s):
 def _check_fft_axis(x, axis):
     ndim = x.ndim
     if not isinstance(axis, int):
-        raise ValueError(f"Invalid FFT axis ({axis}), it shoule be an integer.")
+        raise ValueError(f"Invalid FFT axis ({axis}), it should be an integer.")
     if axis < -ndim or axis >= ndim:
         raise ValueError(
             f"Invalid FFT axis ({axis}), it should be in range [-{ndim}, {ndim})"
@@ -177,7 +177,7 @@ def fft(x, n=None, axis=-1, norm="backward", name=None):
             pair and what normalization factor to use. The parameter value must be one
             of "forward" or "backward" or "ortho". Default is "backward", meaning no normalization on
             the forward transforms and scaling by ``1/n`` on the `ifft`. "forward" instead applies
-            the ``1/n`` factor on the forward tranform. For ``norm="ortho"``, both directions are
+            the ``1/n`` factor on the forward transform. For ``norm="ortho"``, both directions are
             scaled by ``1/sqrt(n)``.
         name (str, optional): The default value is None.  Normally there is no need for user to set
             this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -240,7 +240,7 @@ def ifft(x, n=None, axis=-1, norm="backward", name=None):
             pair and what normalization factor to use. The parameter value must be one
             of "forward" or "backward" or "ortho". Default is "backward", meaning no normalization on
             the forward transforms and scaling by ``1/n`` on the `ifft`. "forward" instead applies
-            the ``1/n`` factor on the forward tranform. For ``norm="ortho"``, both directions are
+            the ``1/n`` factor on the forward transform. For ``norm="ortho"``, both directions are
             scaled by ``1/sqrt(n)``.
         name (str, optional): The default value is None.  Normally there is no need for user to set
             this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -300,7 +300,7 @@ def rfft(x, n=None, axis=-1, norm="backward", name=None):
 
                 - "backward": The factor of forward direction and backward direction are ``1`` and ``1/n`` respectively;
                 - "forward": The factor of forward direction and backward direction are ``1/n`` and ``1`` respectively;
-                - "ortho": The factor of forward direction and backword direction are both ``1/sqrt(n)``.
+                - "ortho": The factor of forward direction and backward direction are both ``1/sqrt(n)``.
 
             Where ``n`` is the multiplication of each element in  ``s`` .
         name(str, optional): The default value is None.  Normally there is no
@@ -496,7 +496,7 @@ def fftn(x, s=None, axes=None, norm="backward", name=None):
             pair and what normalization factor to use. The parameter value must be one
             of "forward" or "backward" or "ortho". Default is "backward", meaning no normalization on
             the forward transforms and scaling by ``1/n`` on the `ifft`. "forward" instead applies
-            the ``1/n`` factor on the forward tranform. For ``norm="ortho"``, both directions are
+            the ``1/n`` factor on the forward transform. For ``norm="ortho"``, both directions are
             scaled by ``1/sqrt(n)``.
         name (str, optional): The default value is None.  Normally there is no need for user to set
             this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -573,7 +573,7 @@ def ifftn(x, s=None, axes=None, norm="backward", name=None):
             pair and what normalization factor to use. The parameter value must be one
             of "forward" or "backward" or "ortho". Default is "backward", meaning no normalization on
             the forward transforms and scaling by ``1/n`` on the `ifft`. "forward" instead applies
-            the ``1/n`` factor on the forward tranform. For ``norm="ortho"``, both directions are
+            the ``1/n`` factor on the forward transform. For ``norm="ortho"``, both directions are
             scaled by ``1/sqrt(n)``.
         name (str, optional): The default value is None.  Normally there is no need for user to set
             this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -649,7 +649,7 @@ def rfftn(x, s=None, axes=None, norm="backward", name=None):
                   and ``1/n`` respectively;
                 - "forward": The factor of forward direction and backward direction are ``1/n``
                   and ``1`` respectively;
-                - "ortho": The factor of forward direction and backword direction are both ``1/sqrt(n)``.
+                - "ortho": The factor of forward direction and backward direction are both ``1/sqrt(n)``.
 
             Where ``n`` is the multiplication of each element in  ``s`` .
         name(str, optional): The default value is None.  Normally there is no
@@ -724,7 +724,7 @@ def irfftn(x, s=None, axes=None, norm="backward", name=None):
 
                 - "backward": The factor of forward direction and backward direction are ``1`` and ``1/n`` respectively;
                 - "forward": The factor of forward direction and backward direction are ``1/n`` and ``1`` respectively;
-                - "ortho": The factor of forward direction and backword direction are both ``1/sqrt(n)``.
+                - "ortho": The factor of forward direction and backward direction are both ``1/sqrt(n)``.
 
             Where ``n`` is the multiplication of each element in  ``s`` .
         name (str, optional): The default value is None.  Normally there is no need for user to set
@@ -1003,7 +1003,7 @@ def rfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
 
                 - "backward": The factor of forward direction and backward direction are ``1`` and ``1/n`` respectively;
                 - "forward": The factor of forward direction and backward direction are ``1/n`` and ``1`` respectively;
-                - "ortho": The factor of forward direction and backword direction are both ``1/sqrt(n)``.
+                - "ortho": The factor of forward direction and backward direction are both ``1/sqrt(n)``.
 
             Where ``n`` is the multiplication of each element in  ``s`` .
         name(str, optional): The default value is None.  Normally there is no
@@ -1060,7 +1060,7 @@ def irfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
 
                 - "backward": The factor of forward direction and backward direction are ``1`` and ``1/n`` respectively;
                 - "forward": The factor of forward direction and backward direction are ``1/n`` and ``1`` respectively;
-                - "ortho": The factor of forward direction and backword direction are both ``1/sqrt(n)``.
+                - "ortho": The factor of forward direction and backward direction are both ``1/sqrt(n)``.
 
             Where ``n`` is the multiplication of each element in  ``s`` .
         name (str, optional): The default value is None.  Normally there is no need for user to set
@@ -1151,7 +1151,7 @@ def ihfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     Args:
         x(Tensor): Input tensor.
         s(Sequence[int], optional): Shape of the real input to the inverse FFT.
-        axes(Sequance[int], optional): The axes over which to compute the
+        axes(Sequence[int], optional): The axes over which to compute the
             inverse fft. Default is the last two axes.
         norm(str, optional): {"backward", "ortho", "forward"}. Default is
             "backward".

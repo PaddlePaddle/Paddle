@@ -101,8 +101,7 @@ class TestBert(Dy2StTestBase):
 
     def train(self, bert_config, data_reader, to_static):
         with unique_name.guard():
-            base.default_main_program().random_seed = SEED
-            base.default_startup_program().random_seed = SEED
+            paddle.seed(SEED)
 
             fake_dataset = FakeBertDataset(data_reader, STEP_NUM)
             data_loader = paddle.io.DataLoader(

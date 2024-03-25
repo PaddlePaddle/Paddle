@@ -34,17 +34,16 @@ class TestVariable(unittest.TestCase):
         np.random.seed(2022)
 
     def test_np_dtype_convert(self):
-        DT = core.VarDesc.VarType
         convert = convert_np_dtype_to_dtype_
-        self.assertEqual(DT.FP32, convert(np.float32))
-        self.assertEqual(DT.FP16, convert("float16"))
-        self.assertEqual(DT.FP64, convert("float64"))
-        self.assertEqual(DT.INT32, convert("int32"))
-        self.assertEqual(DT.INT16, convert("int16"))
-        self.assertEqual(DT.INT64, convert("int64"))
-        self.assertEqual(DT.BOOL, convert("bool"))
-        self.assertEqual(DT.INT8, convert("int8"))
-        self.assertEqual(DT.UINT8, convert("uint8"))
+        self.assertEqual(paddle.float32, convert(np.float32))
+        self.assertEqual(paddle.float16, convert("float16"))
+        self.assertEqual(paddle.float64, convert("float64"))
+        self.assertEqual(paddle.int32, convert("int32"))
+        self.assertEqual(paddle.int16, convert("int16"))
+        self.assertEqual(paddle.int64, convert("int64"))
+        self.assertEqual(paddle.bool, convert("bool"))
+        self.assertEqual(paddle.int8, convert("int8"))
+        self.assertEqual(paddle.uint8, convert("uint8"))
 
     def test_var(self):
         b = default_main_program().current_block()
@@ -52,14 +51,14 @@ class TestVariable(unittest.TestCase):
             dtype="float64", shape=[784, 100], lod_level=0, name="fc.w"
         )
         self.assertNotEqual(str(w), "")
-        self.assertEqual(core.VarDesc.VarType.FP64, w.dtype)
+        self.assertEqual(paddle.float64, w.dtype)
         self.assertEqual((784, 100), w.shape)
         self.assertEqual("fc.w", w.name)
         self.assertEqual("fc.w@GRAD", w.grad_name)
         self.assertEqual(0, w.lod_level)
 
         w = b.create_var(name='fc.w')
-        self.assertEqual(core.VarDesc.VarType.FP64, w.dtype)
+        self.assertEqual(paddle.float64, w.dtype)
         self.assertEqual((784, 100), w.shape)
         self.assertEqual("fc.w", w.name)
         self.assertEqual("fc.w@GRAD", w.grad_name)
@@ -440,7 +439,7 @@ class TestVariable(unittest.TestCase):
 
             self.assertTrue(var.name.startswith('_generated_var_'))
             self.assertEqual(var.shape, (1, 1))
-            self.assertEqual(var.dtype, base.core.VarDesc.VarType.FP64)
+            self.assertEqual(var.dtype, paddle.float64)
             self.assertEqual(var.type, base.core.VarDesc.VarType.LOD_TENSOR)
 
     def test_create_selected_rows(self):

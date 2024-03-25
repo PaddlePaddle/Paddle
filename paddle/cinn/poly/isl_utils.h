@@ -56,13 +56,13 @@ isl::union_set isl_sets_to_union_set(const std::vector<isl::set>& sets);
 std::string isl_map_get_statement_repr(__isl_keep isl_map* map,
                                        isl_dim_type type);
 
-isl_set* __isl_give isl_get_precending_aixs(isl_set* set,
-                                            int level,
-                                            bool with_tuple_name);
+isl_set* __isl_give isl_get_preceding_axis(isl_set* set,
+                                           int level,
+                                           bool with_tuple_name);
 
 //! If the min and max bounds of the axis are same, isl will remove this axis
 //! after ast_build. Counts the removed axes before the given axis.
-int isl_get_precending_removed_axes_counts(isl_set __isl_keep* a, int level);
+int isl_get_preceding_removed_axes_counts(isl_set __isl_keep* a, int level);
 
 //! Get the original level from the level after removing axes.
 int isl_get_original_axes_from_optimized_level(isl_set __isl_keep* a,
@@ -122,9 +122,9 @@ isl::set SetGetDims(isl::set set, const std::vector<int>& dims);
  * @param dim_in_names The names of input dims to remove.
  * @return The edited map.
  */
-isl::map RemoveAxiesByInputNames(const isl::map& x,
-                                 const isl::set& origin_domain,
-                                 const std::vector<std::string>& dim_in_names);
+isl::map RemoveAxesByInputNames(const isl::map& x,
+                                const isl::set& origin_domain,
+                                const std::vector<std::string>& dim_in_names);
 
 /**
  * Given an isl::map and a vector of names of dim_out,
@@ -133,22 +133,21 @@ isl::map RemoveAxiesByInputNames(const isl::map& x,
  * @param dim_in_names The names of output dims to remove.
  * @return The edited map.
  */
-isl::map RemoveAxiesByOutputNames(
-    const isl::map& x,
-    const isl::set& origin_domain,
-    const std::vector<std::string>& dim_out_names);
+isl::map RemoveAxesByOutputNames(const isl::map& x,
+                                 const isl::set& origin_domain,
+                                 const std::vector<std::string>& dim_out_names);
 
 /**
  * Given an isl::map and a vector of names of dim_out,
  * get the names of related input dims.
  * @param x The input map.
  * @param dim_out_names The names of output dims.
- * @param strict Indicates whether computes the strictly related input axies.
+ * @param strict Indicates whether computes the strictly related input axes.
  * For example, if strict == true, then input 'j' is related to output
  * 'j_outer_inner_outer'
  * @return The vector of names of related input dims.
  */
-std::vector<std::string> GetRelatedInputAxies(
+std::vector<std::string> GetRelatedInputAxes(
     const isl::map& x,
     const isl::set& origin_domain,
     const std::vector<std::string>& dim_out_names,
@@ -161,7 +160,7 @@ std::vector<std::string> GetRelatedInputAxies(
  * @param dim_in_names The names of input dims.
  * @return The vector of names of related output dims.
  */
-std::vector<std::string> GetRelatedOutputAxies(
+std::vector<std::string> GetRelatedOutputAxes(
     const isl::map& x,
     const isl::set& origin_domain,
     const std::vector<std::string>& dim_in_names);

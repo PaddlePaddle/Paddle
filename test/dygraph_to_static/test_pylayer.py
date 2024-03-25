@@ -322,7 +322,7 @@ class TestPyLayerBase(unittest.TestCase):
                 dygraph_inp_kwargs[k].stop_gradient = False
                 static_inp_kwargs[k].stop_gradient = False
 
-        # Step2. Run the dygraph and the static seperately
+        # Step2. Run the dygraph and the static separately
         dygraph_res = self._run_dygraph(*dygraph_inp_args, **dygraph_inp_kwargs)
         static_res = self._run_static(*static_inp_args, **static_inp_kwargs)
 
@@ -623,9 +623,7 @@ class TestPyLayerJitSaveLoad(unittest.TestCase):
         train_layer.eval()
         infer_layer.eval()
         # inference & compare
-        x = paddle.base.dygraph.to_variable(
-            np.random.random((1, 784)).astype('float32')
-        )
+        x = paddle.to_tensor(np.random.random((1, 784)).astype('float32'))
         train_layer_result = train_layer(x).numpy()
         infer_layer_result = infer_layer(x).numpy()
 

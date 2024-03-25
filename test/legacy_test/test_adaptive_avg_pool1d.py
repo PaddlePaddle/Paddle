@@ -87,7 +87,7 @@ class TestPool1D_API(unittest.TestCase):
     def check_adaptive_avg_dygraph_results(self, place):
         with base.dygraph.guard(place):
             input_np = np.random.random([2, 3, 32]).astype("float32")
-            input = base.dygraph.to_variable(input_np)
+            input = paddle.to_tensor(input_np)
             result = F.adaptive_avg_pool1d(input, output_size=16)
             result_np = avg_pool1D_forward_naive(
                 input_np, ksize=[16], strides=[0], paddings=[0], adaptive=True

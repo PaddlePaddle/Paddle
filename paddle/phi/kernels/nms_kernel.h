@@ -14,8 +14,8 @@
 
 #pragma once
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/hostdevice.h"
 
 namespace phi {
 

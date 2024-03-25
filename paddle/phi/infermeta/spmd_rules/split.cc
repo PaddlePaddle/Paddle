@@ -29,7 +29,7 @@ using phi::distributed::auto_parallel::str_join;
 SpmdInfo SplitWithNumInferSpmd(const DistMetaTensor& x, int num, int axis) {
   // Step0: Verify input args based on split logic
   auto x_shape = common::vectorize(x.dims());
-  int x_ndim = x_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
   auto x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
@@ -57,7 +57,7 @@ SpmdInfo SplitWithNumInferSpmd(const DistMetaTensor& x, int num, int axis) {
   // with the special '1' to set its dim mapping to -1.
   out_axes[axis] = '1';
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: merge input shardings
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors({{x_axes, x_dims_mapping}});
@@ -104,10 +104,10 @@ SpmdInfo SplitWithNumInferSpmdReverse(
     int num,
     int axis) {
   // Step0: Verify input args based on split logic
-  int nouts = outs.size();
-  int out_ndim = common::vectorize(outs[0]->dims()).size();
+  int nouts = static_cast<int>(outs.size());
+  int out_ndim = static_cast<int>(common::vectorize(outs[0]->dims()).size());
   auto x_shape = common::vectorize(x.dims());
-  int x_ndim = x_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
   auto x_dist_attr = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr.dims_mapping();
   PADDLE_ENFORCE_EQ(nouts,
@@ -126,9 +126,9 @@ SpmdInfo SplitWithNumInferSpmdReverse(
                                    out_ndim));
   for (int i = 0; i < num; i++) {
     auto shape = common::vectorize(outs[i]->dims());
-    int ndim = shape.size();
+    int ndim = static_cast<int>(shape.size());
     auto dist_attr = outs[i]->dist_attr();
-    int dims_mapping_size = dist_attr.dims_mapping().size();
+    int dims_mapping_size = static_cast<int>(dist_attr.dims_mapping().size());
     PADDLE_ENFORCE_EQ(
         ndim,
         dims_mapping_size,
@@ -154,7 +154,7 @@ SpmdInfo SplitWithNumInferSpmdReverse(
   std::string out_axes(x_axes);
   out_axes[axis] = 'k';
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: merge output shardings
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
   for (int i = 0; i < nouts; i++) {
@@ -206,7 +206,7 @@ SpmdInfo SplitWithNumInferSpmdReverse(
 SpmdInfo SplitInferSpmd(const DistMetaTensor& x,
                         const std::vector<int>& sections,
                         int axis) {
-  int num = sections.size();
+  int num = static_cast<int>(sections.size());
   return SplitWithNumInferSpmd(x, num, axis);
 }
 
@@ -214,7 +214,7 @@ SpmdInfo SplitInferSpmdReverse(const DistMetaTensor& x,
                                const std::vector<const DistMetaTensor*>& outs,
                                const std::vector<int>& sections,
                                int axis) {
-  int num = sections.size();
+  int num = static_cast<int>(sections.size());
   return SplitWithNumInferSpmdReverse(x, outs, num, axis);
 }
 

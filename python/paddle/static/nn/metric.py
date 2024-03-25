@@ -265,7 +265,7 @@ def auc(
     # historical batch-level values, and the last bucket stores the sum values of
     # previous slide_step buckets.
     # The index of bucket that the newest batch will use is determined by batch_id mod slide_steps,
-    # and batch_id is store in the last posision of following variable
+    # and batch_id is store in the last position of following variable
     batch_stat_pos = helper.create_global_variable(
         persistable=True,
         dtype='int64',
@@ -370,6 +370,8 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
         local_abserr(Tensor): Local sum of abs error
         local_prob(Tensor): Local sum of predicted ctr
         local_q(Tensor): Local sum of q value
+        local_pos_num (Tensor): Local number of positive examples
+        local_ins_num (Tensor): Local number of instances
 
     Examples:
         .. code-block:: python

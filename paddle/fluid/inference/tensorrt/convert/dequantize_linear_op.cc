@@ -32,7 +32,7 @@ class DequantizeLinearOpConverter : public OpConverter {
     // Create constant layer for scale
     PADDLE_ENFORCE_NOT_NULL(
         scale_var,
-        platform::errors::NotFound("Can not find %s presistale var in scope.",
+        platform::errors::NotFound("Can not find %s presistable var in scope.",
                                    op_desc.Input("Scale")[0]));
     auto* scale_t = scale_var->GetMutable<phi::DenseTensor>();
     int n_scale = scale_t->numel();
@@ -49,7 +49,7 @@ class DequantizeLinearOpConverter : public OpConverter {
       layer->setAxis(axis);
     }
     auto output_name = op_desc.Output("Y")[0];
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         layer, "dequantize_linear", {output_name}, test_model);
 #else
     PADDLE_THROW(

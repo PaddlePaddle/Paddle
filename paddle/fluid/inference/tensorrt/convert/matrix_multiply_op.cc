@@ -261,7 +261,7 @@ class MatrixMultiplyOpConverter : public OpConverter {
                                    nvinfer1::ElementWiseOperation::kPROD);
       SupportFP32MixPrecision(output_name, op_desc.Type(), layer);
     }
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         layer, "matrix_multiply_op", {output_name}, test_mode);
   }
 };

@@ -18,8 +18,8 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-PHI_DECLARE_bool(enable_pir_in_executor);
-PHI_DECLARE_bool(enable_pir_api);
+COMMON_DECLARE_bool(enable_pir_in_executor);
+COMMON_DECLARE_bool(enable_pir_api);
 
 namespace phi {
 class DenseTensor;
@@ -97,7 +97,7 @@ FetchType& GetFetchVariable(const Scope& scope,
                             const std::string& var_name,
                             size_t index) {
   // Since we want to fetch FetchType from a variable, the variable must
-  // be created alreadly.
+  // be created already.
   Variable* g_fetch_value = scope.FindVar(var_name);
   PADDLE_ENFORCE_NOT_NULL(g_fetch_value,
                           platform::errors::NotFound(

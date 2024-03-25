@@ -1,4 +1,4 @@
-cc_test(
+nv_test(
   test_elementwise_add_op_inplace
   SRCS test_elementwise_add_op_inplace.cc
   DEPS executor

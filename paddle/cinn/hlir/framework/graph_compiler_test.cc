@@ -33,7 +33,7 @@ namespace framework {
 using cinn::common::Float;
 using frontend::Placeholder;
 
-TEST(GraphCompilerTest, TestRemoveInvaildVariables) {
+TEST(GraphCompilerTest, TestRemoveInvalidVariables) {
   frontend::NetBuilder builder("test");
   auto a = builder.CreateInput(Float(32), {1, 64, 112, 112}, "A");
   auto b = builder.CreateInput(Float(32), {64}, "B");

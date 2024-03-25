@@ -45,16 +45,16 @@ class SimpleNet(paddle.nn.Layer):
 class LayoutAutoTune(unittest.TestCase):
     def test_config(self):
         paddle.base.core.enable_layout_autotune()
-        if self.use_autoune():
+        if self.use_autotune():
             self.assertEqual(paddle.base.core.use_layout_autotune(), True)
             paddle.base.core.disable_layout_autotune()
         self.assertEqual(paddle.base.core.use_layout_autotune(), False)
-        self.use_autoune()
+        self.use_autotune()
 
     def setUp(self):
-        self.use_autoune()
+        self.use_autotune()
 
-    def use_autoune(self):
+    def use_autotune(self):
         if paddle.is_compiled_with_cuda():
             paddle.incubate.autotune.set_config(
                 config={"layout": {"enable": True}}
@@ -167,7 +167,7 @@ class LayoutAutoTune(unittest.TestCase):
         self.assertEqual(conv_out1.shape, [1, 8, 14, 12])
         self.assertEqual(out.shape, [2, 8, 14, 12])
 
-    def test_padding_tranpose(self):
+    def test_padding_transpose(self):
         conv = paddle.nn.Conv2D(3, 8, (3, 3))
         data = paddle.rand([1, 3, 16, 14])
         mode = "constant"

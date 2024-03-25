@@ -110,16 +110,23 @@ class Dim;
   macro__(Product)                          \
   macro__(Sum)                              \
   macro__(PrimitiveNode)                    \
-  macro__(IntrinsicOp)                      \
   macro__(_BufferRange_)                    \
   macro__(ScheduleBlock)                    \
   macro__(ScheduleBlockRealize)             \
   macro__(_Dim_)                            \
 
+#define NODETY_CONTROL_OP_FOR_INTRINSIC(macro__) \
+  macro__(IntrinsicOp)                      \
 
 #define NODETY_FORALL(__m)              \
   NODETY_PRIMITIVE_TYPE_FOR_EACH(__m)   \
   NODETY_OP_FOR_EACH(__m)               \
+  NODETY_CONTROL_OP_FOR_INTRINSIC(__m)  \
+  NODETY_CONTROL_OP_FOR_EACH(__m)
+
+#define NODETY_FORALL_EXCEPT_INTRINSIC(__m)              \
+  NODETY_PRIMITIVE_TYPE_FOR_EACH(__m)                    \
+  NODETY_OP_FOR_EACH(__m)                                \
   NODETY_CONTROL_OP_FOR_EACH(__m)
 // clang-format on
 
@@ -155,7 +162,9 @@ class IrNode : public cinn::common::Object {
 
   virtual IrNodeTy node_type() const { return IrNodeTy::kUnk; }
   virtual Type type() const { return type_; }
-  void set_type(Type type) { type_ = type; }
+  void set_type(Type type);
+  //! Elevate int32 to int64 if needed
+  void convert_int32_to_int64();
 
   //! Get i-th operand
   const Expr& operand(int i);
@@ -483,7 +492,7 @@ static std::ostream& operator<<(std::ostream& os, MemoryType t) {
     MEMORY_TYPE_FOR_ALL(__)
 
     default:
-      LOG(FATAL) << "Not supported memory type";
+      PADDLE_THROW(phi::errors::InvalidArgument("Not supported memory type"));
 #undef __
   }
   return os;
@@ -491,9 +500,11 @@ static std::ostream& operator<<(std::ostream& os, MemoryType t) {
 
 template <typename T>
 Expr ExprNode<T>::Copy() const {
-  LOG(FATAL) << "Not Implemented";
+  PADDLE_THROW(phi::errors::Unimplemented("Not Implemented"));
   return Expr();
 }
+
+void TryElevateInt32ToInt64(const std::vector<Expr>& expr_vec);
 
 }  // namespace ir
 }  // namespace cinn

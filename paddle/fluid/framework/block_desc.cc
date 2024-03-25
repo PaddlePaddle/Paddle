@@ -320,7 +320,7 @@ void BlockDesc::MoveFrom(BlockDesc *block) {
         std::vector<framework::BlockDesc *> old_block_desc;
         // NOTE(GhostScreaming): don't use program->proto()->blocks_size(),
         // previous assignment of new Variable in vars_ use std::move,
-        // which makes 'var_ptr' which holded by 'block' a nullptr.
+        // which makes 'var_ptr' which held by 'block' a nullptr.
         // block->Program()->proto() will calls Flush() at first,
         // a null var_ptr will cause segmentation fault.
         int block_size = static_cast<int>(program->Size());

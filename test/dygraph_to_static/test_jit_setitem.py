@@ -18,9 +18,6 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    IrMode,
-    ToStaticMode,
-    disable_test_case,
     test_legacy_and_pt_and_pir,
 )
 
@@ -205,8 +202,6 @@ class TestCase12(TestSetItemBase):
         y = func()
         return (y,)
 
-    # TODO: Open PIR test when while_loop dy2st fixed
-    @disable_test_case((ToStaticMode.AST, IrMode.PIR))
     @test_legacy_and_pt_and_pir
     def test_case(self):
         func = self.init_func()

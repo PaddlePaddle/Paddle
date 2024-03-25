@@ -520,9 +520,9 @@ class DyGraphTrainModel:
             self.d_optimizer.clear_gradients()
 
     def run(self, image_real, label_org, label_trg):
-        image_real = base.dygraph.to_variable(image_real)
-        label_org = base.dygraph.to_variable(label_org)
-        label_trg = base.dygraph.to_variable(label_trg)
+        image_real = paddle.to_tensor(image_real)
+        label_org = paddle.to_tensor(label_org)
+        label_trg = paddle.to_tensor(label_trg)
 
         g_loss = get_generator_loss(
             image_real,

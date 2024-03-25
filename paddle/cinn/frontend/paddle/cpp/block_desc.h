@@ -24,7 +24,7 @@ namespace cinn::frontend::paddle::cpp {
 
 /*
  * The cpp::BlockDesc is the internal representation for Op. All the internal
- * imprementation should use it, not the pb::BlockDesc.
+ * implementation should use it, not the pb::BlockDesc.
  */
 class BlockDesc : public BlockDescAPI {
  public:

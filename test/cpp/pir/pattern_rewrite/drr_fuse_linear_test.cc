@@ -18,10 +18,10 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/transforms/fusion/fused_gemm_epilogue_pass.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/pass/pass_manager.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/fluid/pir/transforms/gpu/fused_gemm_epilogue_pass.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/pass/pass_manager.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 void BuildProgram(pir::Builder &builder) {  // NOLINT
   paddle::dialect::FullOp full_input_op1 =

@@ -19,7 +19,7 @@ from paddle.base import core
 
 from ..utils.log_utils import get_logger
 from .pass_base import PassBase
-from .pass_utils import set_skip_gc_vars
+from .pass_utils import set_skip_gc_vars, shadow_var_between_sub_programs
 
 logger = get_logger(logging.INFO)
 
@@ -58,24 +58,30 @@ class PipelinePassBase(PassBase):
         to implement two interfaces above, 'create_job_list' and 'partial_programs'.
         """
         job_types, sub_programs = self._partial_programs(main_program)
+
+        enable_pir_in_executor = paddle.framework.get_flags(
+            "FLAGS_enable_pir_in_executor"
+        )['FLAGS_enable_pir_in_executor']
+        if enable_pir_in_executor:
+            shadow_var_between_sub_programs(sub_programs)
+
         for i in range(len(job_types)):
             logger.debug(
                 f"sub_program type: {job_types[i]}, sum_program:\n{sub_programs[i]}"
             )
-        jobs = self._create_job_list()
 
+        jobs = self._create_job_list()
         type_to_program = set_skip_gc_vars(
             self.get_attr("num_micro_batches"), job_types, sub_programs, jobs
         )
 
         for type in type_to_program.keys():
-            if paddle.framework.get_flags("FLAGS_enable_pir_in_executor")[
-                'FLAGS_enable_pir_in_executor'
-            ]:
+            if enable_pir_in_executor:
                 type_to_program[type] = paddle.pir.translate_to_pir(
                     type_to_program[type].desc
                 )
             else:
                 type_to_program[type] = type_to_program[type].desc
+
         plan = core.Plan(jobs, type_to_program)
         context.set_attr("plan", plan)

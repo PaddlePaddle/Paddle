@@ -172,7 +172,7 @@ class HeterContext {
         }
       }
     } else {
-      VLOG(3) << "Reset gpu task with dynamic mf dimention";
+      VLOG(3) << "Reset gpu task with dynamic mf dimension";
       for (size_t i = 0; i < feature_dim_keys_.size(); i++) {
         for (size_t j = 0; j < feature_dim_keys_[i].size(); j++) {
           feature_dim_keys_[i][j].clear();
@@ -262,7 +262,7 @@ class HeterContext {
           threads.push_back(std::thread(unique_dynamic_mf_func, i, j));
         }
       }
-      VLOG(3) << "heter_context unique keys with dynamic mf dimention";
+      VLOG(3) << "heter_context unique keys with dynamic mf dimension";
     }
     for (std::thread& t : threads) {
       t.join();

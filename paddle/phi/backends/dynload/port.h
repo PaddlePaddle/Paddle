@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+#include "paddle/utils/test_macros.h"
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 
@@ -38,7 +39,7 @@
 #define S_ISDIR(mode) (((mode)&S_IFMT) == S_IFDIR)
 #endif  // S_ISDIR
 
-void *dlsym(void *handle, const char *symbol_name);
+TEST_API void *dlsym(void *handle, const char *symbol_name);
 
 void *dlopen(const char *filename, int flag);
 

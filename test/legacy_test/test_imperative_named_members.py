@@ -91,7 +91,7 @@ class TestImperativeNamedParameters(unittest.TestCase):
                     self.linear2 = paddle.nn.Linear(5, 5)
                     self.conv2d = paddle.nn.Conv2D(3, 2, 3)
                     self.embedding = paddle.nn.Embedding(128, 16)
-                    self.h_0 = base.dygraph.to_variable(
+                    self.h_0 = paddle.to_tensor(
                         np.zeros([10, 10]).astype('float32')
                     )
                     self.weight = self.create_parameter(

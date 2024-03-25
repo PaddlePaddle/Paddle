@@ -99,13 +99,29 @@ class Normal(distribution.Distribution):
             check_type(
                 loc,
                 'loc',
-                (int, float, np.ndarray, Variable, list, tuple),
+                (
+                    int,
+                    float,
+                    np.ndarray,
+                    Variable,
+                    paddle.pir.Value,
+                    list,
+                    tuple,
+                ),
                 'Normal',
             )
             check_type(
                 scale,
                 'scale',
-                (int, float, np.ndarray, Variable, list, tuple),
+                (
+                    int,
+                    float,
+                    np.ndarray,
+                    Variable,
+                    paddle.pir.Value,
+                    list,
+                    tuple,
+                ),
                 'Normal',
             )
 
@@ -143,7 +159,7 @@ class Normal(distribution.Distribution):
 
     @property
     def mean(self):
-        """Mean of multinomial distribuion.
+        """Mean of normal distribution.
 
         Returns:
             Tensor: mean value.
@@ -152,7 +168,7 @@ class Normal(distribution.Distribution):
 
     @property
     def variance(self):
-        """Variance of lognormal distribution.
+        """Variance of normal distribution.
 
         Returns:
             Tensor: variance value.

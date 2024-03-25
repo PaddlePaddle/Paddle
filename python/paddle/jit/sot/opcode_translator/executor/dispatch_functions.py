@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This file stores the customed function that will be called by the dispatch mechanism.
+# This file stores the customized function that will be called by the dispatch mechanism.
 
 from ...utils import BreakGraphError, FallbackError
 

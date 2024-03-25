@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from .base import (  # noqa: F401
-    ConstTypes,
     VariableBase,
     VariableFactory,
     find_traceable_vars,
@@ -30,6 +29,7 @@ from .basic import (  # noqa: F401
     NullVariable,
     NumpyVariable,
     ObjectVariable,
+    ParameterVariable,
     SliceVariable,
     TensorVariable,
 )
@@ -44,7 +44,7 @@ from .callable import (  # noqa: F401
     PaddleApiVariable,
     PaddleLayerVariable,
     UserDefinedFunctionVariable,
-    UserDefinedGeneratorVariable,
+    UserDefinedGeneratorFunctionVariable,
     UserDefinedLayerVariable,
 )
 from .container import (  # noqa: F401

@@ -653,7 +653,7 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
           weight_scale.size(),
           mean_len,
           platform::errors::InvalidArgument(
-              "Weight max_scale size must equal batch_norm sacle/mean size."));
+              "Weight max_scale size must equal batch_norm scale/mean size."));
       for (int i = 0; i < mean_len; i++) {
         weight_scale[i] *= fabs(bn_scale_ptr[i]);
       }

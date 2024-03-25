@@ -561,6 +561,7 @@ uint8_t cinn_pod_value_to_uint8(cinn_pod_value_t* value);
 bool cinn_pod_value_to_bool(cinn_pod_value_t* value);
 
 void* cinn_pod_value_to_void_p(cinn_pod_value_t* value);
+int32_t* cinn_pod_value_to_int32_p(cinn_pod_value_t* value);
 cinn_buffer_t* cinn_pod_value_to_buffer_p(cinn_pod_value_t* value);
 // @}
 

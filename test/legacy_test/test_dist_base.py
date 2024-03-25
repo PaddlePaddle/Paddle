@@ -726,8 +726,7 @@ class TestParallelDyGraphRunnerBase:
             assert "Only support CUDAPlace or XPUPlace or CPU(Gloo) for now."
 
         with base.dygraph.guard(place):
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
+            paddle.seed(seed)
             np.random.seed(seed)
             import random
 
@@ -795,8 +794,7 @@ class TestParallelDyGraphRunnerBase:
 
         # 2. init seed
         seed = 90
-        paddle.static.default_startup_program().random_seed = seed
-        paddle.static.default_main_program().random_seed = seed
+        paddle.seed(seed)
         np.random.seed(seed)
         random.seed(seed)
         # get trainer id
@@ -836,8 +834,7 @@ class TestParallelDyGraphRunnerBase:
 
         # 2. init seed
         seed = 90
-        paddle.static.default_startup_program().random_seed = seed
-        paddle.static.default_main_program().random_seed = seed
+        paddle.seed(seed)
         np.random.seed(seed)
         random.seed(seed)
         # get trainer id

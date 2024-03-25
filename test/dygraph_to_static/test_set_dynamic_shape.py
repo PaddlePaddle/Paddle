@@ -25,10 +25,11 @@ import paddle
 
 class TestSetDynamicShape(Dy2StTestBase):
     @test_ast_only
+    @test_legacy_and_pt_and_pir
     def test_start(self):
         def dygraph_func(loop_number):
             mask = paddle.randn([2, 2])
-            paddle.jit.dy2static.utils_helper.set_dynamic_shape(mask, [-1, 2])
+            paddle.jit.api.set_dynamic_shape(mask, [-1, 2])
             n = paddle.randn([1, 2])
             for i in range(loop_number):
                 mask = paddle.concat([mask, n], axis=0)
@@ -46,7 +47,7 @@ class TestSetDynamicShape(Dy2StTestBase):
     def test_pir_ast(self):
         def dygraph_func():
             mask = paddle.randn([2, 2])
-            paddle.jit.dy2static.utils_helper.set_dynamic_shape(mask, [-1, 2])
+            paddle.jit.api.set_dynamic_shape(mask, [-1, 2])
             return mask.shape[0]
 
         out = paddle.jit.to_static(dygraph_func)()

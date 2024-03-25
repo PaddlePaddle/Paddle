@@ -25,9 +25,9 @@ static PyObject *eager_api_linear(PyObject *self,
                                   PyObject *kwargs) {
   PyThreadState *tstate = nullptr;
   try {
-    auto x = GetTensorFromArgs("linear", "X", args, 0, false);
-    auto weight = GetTensorFromArgs("linear", "weight", args, 1, false);
-    auto bias = GetTensorFromArgs("linear", "Bias", args, 2, true);
+    auto &x = GetTensorFromArgs("linear", "X", args, 0, false);
+    auto &weight = GetTensorFromArgs("linear", "weight", args, 1, false);
+    auto &bias = GetTensorFromArgs("linear", "Bias", args, 2, true);
 
     tstate = PyEval_SaveThread();
 

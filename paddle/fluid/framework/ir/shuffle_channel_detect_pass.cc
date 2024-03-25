@@ -174,7 +174,7 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
         }
       }
 
-      // shuffle_channel dosen't change shape
+      // shuffle_channel doesn't change shape
       if ((reshape2_shape[0] != -1) && (x_shape1[0] != reshape2_shape[0])) {
         return;
       }

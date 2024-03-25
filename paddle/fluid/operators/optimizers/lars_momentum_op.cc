@@ -71,14 +71,14 @@ class LarsMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddAttr<float>("mu", "(float) Momentum coefficient");
     AddAttr<float>("lars_coeff", "(float, default 0.001) LARS coefficient.")
-        .SetDefault(0.001);
+        .SetDefault(0.001f);
     AddAttr<std::vector<float>>(
         "lars_weight_decay",
         "(std::vector<float>, default 0.0005) LARS weight decay params")
-        .SetDefault({0.0005});
+        .SetDefault({0.0005f});
     AddAttr<float>("epsilon",
                    "(float, default 0.0) epsilon to avoid Division by Zero.")
-        .SetDefault(0.0);
+        .SetDefault(0.0f);
     AddAttr<bool>("multi_precision",
                   "(bool, default false) "
                   "Whether to use multi-precision during weight updating.")

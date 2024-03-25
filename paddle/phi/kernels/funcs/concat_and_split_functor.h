@@ -40,7 +40,8 @@ namespace funcs {
  *               [5,6]]
  */
 template <typename Context, typename T>
-struct ConcatFunctor {
+class ConcatFunctor {
+ public:
   void operator()(const Context& context,
                   const std::vector<phi::DenseTensor>& input,
                   int axis,

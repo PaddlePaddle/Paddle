@@ -57,7 +57,7 @@ class Dataset {
                          const std::string tree_path UNUSED,
                          const std::vector<uint16_t> tdm_layer_counts UNUSED,
                          const uint16_t start_sample_layer UNUSED,
-                         const bool with_hierachy UNUSED,
+                         const bool with_hierarchy UNUSED,
                          const uint16_t seed_ UNUSED,
                          const uint16_t sample_slot UNUSED) {}
   // set file list
@@ -154,7 +154,7 @@ class Dataset {
   virtual void ClearLocalTables() = 0;
   // create preload readers
   virtual void CreatePreLoadReaders() = 0;
-  // destroy preload readers after prelaod done
+  // destroy preload readers after preload done
   virtual void DestroyPreLoadReaders() = 0;
   // set preload thread num
   virtual void SetPreLoadThreadNum(int thread_num) = 0;
@@ -388,7 +388,7 @@ class MultiSlotDataset : public DatasetImpl<Record> {
                          const std::string tree_path,
                          const std::vector<uint16_t> tdm_layer_counts,
                          const uint16_t start_sample_layer,
-                         const bool with_hierachy,
+                         const bool with_hierarchy,
                          const uint16_t seed_,
                          const uint16_t sample_slot);
   virtual void MergeByInsId();

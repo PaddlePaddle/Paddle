@@ -1478,12 +1478,12 @@ void MatmulKernel(const Context& ctx,
       common::product(x.dims()),
       0,
       phi::errors::InvalidArgument("The Input(X) dims size must not be equal "
-                                   "0, but reviced dims size is 0."));
+                                   "0, but received dims size is 0."));
   PADDLE_ENFORCE_NE(
       common::product(y.dims()),
       0,
       phi::errors::InvalidArgument("The Input(Y) dims size must not be equal "
-                                   "0, but reviced dims size is 0."));
+                                   "0, but received dims size is 0."));
   const std::vector<std::int64_t> x_dims = common::vectorize(x.dims());
   const std::vector<std::int64_t> y_dims = common::vectorize(y.dims());
   MatmulJudgeDtypeKernel<Context, T>(

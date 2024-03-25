@@ -20,8 +20,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/flags.h"
-#include "paddle/utils/flags.h"
 
 #include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
@@ -38,18 +38,18 @@
 #include "paddle/fluid/platform/device_event.h"
 #include "paddle/phi/backends/device_manager.h"
 
-PD_DECLARE_bool(new_executor_serial_run);
+COMMON_DECLARE_bool(new_executor_serial_run);
 PD_DECLARE_bool(new_executor_static_build);
 PD_DECLARE_bool(new_executor_use_inplace);
 PD_DECLARE_bool(new_executor_use_local_scope);
 
-PHI_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_nan_inf);
 PD_DECLARE_bool(benchmark);
-PHI_DECLARE_uint64(executor_log_deps_every_microseconds);
-PHI_DECLARE_bool(new_executor_use_cuda_graph);
-PHI_DECLARE_bool(enable_pir_in_executor);
+COMMON_DECLARE_uint64(executor_log_deps_every_microseconds);
+COMMON_DECLARE_bool(new_executor_use_cuda_graph);
+COMMON_DECLARE_bool(enable_pir_in_executor);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PHI_DECLARE_bool(sync_nccl_allreduce);
+COMMON_DECLARE_bool(sync_nccl_allreduce);
 #endif
 
 constexpr const char* kExceptionCaught = "ExceptionCaught";
@@ -68,13 +68,15 @@ class InterpreterBaseImpl {
       const std::vector<std::string>& feed_names,
       const std::vector<phi::DenseTensor>& feed_tensors,
       bool need_fetch = true,
-      bool enable_job_schedule_profiler = false) = 0;
+      bool enable_job_schedule_profiler = false,
+      bool switch_stream = false) = 0;
 
   virtual paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
       bool need_fetch = true,
       bool enable_job_schedule_profiler = false,
-      bool enable_op_profiling = false) = 0;
+      bool enable_op_profiling = false,
+      bool switch_stream = false) = 0;
 
   virtual void ShareWorkQueueFrom(InterpreterBaseImpl* src) = 0;
 

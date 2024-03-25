@@ -56,7 +56,7 @@ class TestSoftplusOneDNNOp(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir_onednn=True)
 
 
 class TestSoftplus4DOneDNNOp(TestSoftplusOneDNNOp):

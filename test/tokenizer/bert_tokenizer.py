@@ -466,7 +466,7 @@ class BertTokenizer(PretrainedTokenizer):
         Args:
             token_ids_0 (List[int]):
                 A list of `inputs_ids` for the first sequence.
-            token_ids_1 (List[int], optinal):
+            token_ids_1 (List[int], optional):
                 Optional second list of IDs for sequence pairs. Defaults to None.
             already_has_special_tokens (bool, optional): Whether or not the token list is already
                 formatted with special tokens for the model. Defaults to None.

@@ -78,7 +78,7 @@ class CinnSubgraphDetector {
   // SubGraph Fusion
   void DoSubGraphFusion();
   bool FuseSubGraph(CinnSubGraphPtr);
-  // check exist depency.
+  // check exist dependency.
   bool IsDependency(const CinnSubGraphPtr &,
                     const CinnSubGraphPtr &,
                     const std::unordered_set<CinnSubGraphPtr> &);

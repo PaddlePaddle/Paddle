@@ -137,7 +137,7 @@ class DataLoaderBase:
         arr = np.asarray(item)
         if arr.dtype == np.object_:
             raise TypeError(
-                "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
+                "\n\tFailed to convert input data to a regular ndarray :\n\t* Usually "
                 "this means the input data contains nested lists with different lengths. "
                 "\n\t* Check the reader function passed to 'decorate_batch_generator'"
                 " to locate the data causes this issue.\n\t* Please consider using "
@@ -532,7 +532,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
         # NOTE: the C++ LoDTensorBlockingQueue instance
         self._blocking_queue = None
         # NOTE: 1. In multiprocess mode, this thread is used to get next batch data from
-        # self._data_queue, then push it into self._blocking_queue; 2. In singleprocess
+        # self._data_queue, then push it into self._blocking_queue; 2. In single process
         # mode, this thread is used to get next batch data from self._batch_reader, then
         # push it into self._blocking_queue
         self._thread = None
@@ -616,7 +616,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
             # or just hang, the main process will hang waiting for data, so here need to deal
             # with SIGSEGV and SIGBUS of child process; 2. if the main process end before child
             # process, it shuts the all its daemonic children down with a SIGTERM (instead of
-            # joining them without a timeout), so here nedd to deal with SIGTERM.
+            # joining them without a timeout), so here need to deal with SIGTERM.
             core._set_process_pids(id(self), [self._process.pid])
             _set_SIGCHLD_handler()
 
@@ -1102,7 +1102,7 @@ class GeneratorLoader(DataLoaderBase):
         else:
             if places is not None:
                 logging.info(
-                    'places would be ommited when DataLoader is not iterable'
+                    'places would be omitted when DataLoader is not iterable'
                 )
         return self
 

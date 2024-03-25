@@ -21,10 +21,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/inference/capi_exp/pd_config.h"
 #include "paddle/fluid/inference/capi_exp/pd_inference_api.h"
 #include "paddle/fluid/inference/capi_exp/pd_utils.h"
-#include "paddle/utils/flags.h"
 
 PD_DEFINE_string(infer_model, "", "model path");
 
@@ -53,8 +53,8 @@ void predictor_run() {
   const int width = 318;
   float *input = new float[batch_size * channels * height * width]();
 
-  int32_t shape[4] = {batch_size, channels, height, width};
-  PD_TensorReshape(tensor, 4, shape);
+  std::array<int32_t, 4> shape = {batch_size, channels, height, width};
+  PD_TensorReshape(tensor, 4, shape.data());
   PD_TensorCopyFromCpuFloat(tensor, input);
   EXPECT_TRUE(PD_PredictorRun(predictor));
 

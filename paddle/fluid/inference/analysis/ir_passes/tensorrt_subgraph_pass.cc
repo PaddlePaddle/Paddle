@@ -14,7 +14,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
-
 #include <fcntl.h>
 #include <cstddef>
 #include <memory>
@@ -142,7 +141,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
       static_cast<phi::DataType>(Get<int>("model_precision"));
   if (model_precision == phi::DataType::BFLOAT16) {
     LOG(WARNING)
-        << "Paddle-TRT not support bf16 mixed precison, just fallback.";
+        << "Paddle-TRT not support bf16 mixed precision, just fallback.";
     return;
   }
 
@@ -153,12 +152,14 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   auto trt_disabled_ops = Get<std::vector<std::string>>("trt_disabled_ops");
   auto with_dynamic_shape = Get<bool>("with_dynamic_shape");
   auto use_explicit_quantization = Get<bool>("use_explicit_quantization");
+  auto forbid_dynamic_op = Get<bool>("forbid_dynamic_op");
   auto teller = [&](const framework::ir::Node *node) {
     if (!node->IsOp() || !node->Op()) return false;
     if (find(trt_disabled_ops.begin(),
              trt_disabled_ops.end(),
              node->Op()->Type()) != trt_disabled_ops.end()) {
       VLOG(3) << node->Op()->Type().c_str()
+
               << " is diabled by config in TensorRT";
       return false;
     }
@@ -172,8 +173,11 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
         }
       }
     }
-    bool is_ok = tensorrt::OpTeller::Global().Tell(
-        node, no_calib_int8, with_dynamic_shape, use_explicit_quantization);
+    bool is_ok = tensorrt::OpTeller::Global().Tell(node,
+                                                   no_calib_int8,
+                                                   with_dynamic_shape,
+                                                   forbid_dynamic_op,
+                                                   use_explicit_quantization);
     if (!is_ok)
       VLOG(3) << node->Op()->Type().c_str() << " op is not in TensorRT";
     return is_ok;
@@ -183,6 +187,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
       graph,
       teller,
       Get<int>("min_subgraph_size") /*min subgraph size*/,
+      Get<std::vector<std::string>>("trt_exclude_var_names"),
       "tensorrt_engine");
   fuser();
 
@@ -193,6 +198,12 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   std::vector<std::string> repetitive_params;
   std::vector<std::string> engine_names;
   for (auto *node : graph->Nodes()) {
+    // load optimized model may update shape_range_info_path
+    auto shape_range_info_path = Get<std::string>("trt_shape_range_info_path");
+    if (node->IsOp() && node->Op()->Type() == "tensorrt_engine" &&
+        !shape_range_info_path.empty()) {
+      node->Op()->SetAttr("shape_range_info_path", shape_range_info_path);
+    }
     if (node->IsOp() && !framework::ir::Agent(node).subgraph()->empty()) {
       engine_names.push_back(CreateTensorRTOp(
           node, graph, graph_param_names, &repetitive_params, use_cuda_graph));
@@ -227,7 +238,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
               .Has(name),
           true,
           platform::errors::PreconditionNotMet(
-              "TRTEnegineManager shoud has engine %s, but not found.", name));
+              "TRTEngineManager should has engine %s, but not found.", name));
       paddle::inference::Singleton<
           inference::tensorrt::TRTEngineManager>::Global()
           .Get(name)
@@ -237,7 +248,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
 
   // some ops are only implemented in paddle-trt,
   // but not in paddle ,we should revert it.
-  for (auto *op_node : framework::ir::TopologyVarientSort(
+  for (auto *op_node : framework::ir::TopologyVariantSort(
            *graph, static_cast<framework::ir::SortKind>(0))) {
     if (op_node->Op()->Type() == "matrix_multiply") {
       auto origin_type =
@@ -275,7 +286,7 @@ std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
   engine_hash_key += precision;
 
   engine_hash_key += "#";
-  engine_hash_key += use_cuda_graph;
+  engine_hash_key += std::to_string(use_cuda_graph);
 
   auto engine_key = std::to_string(std::hash<std::string>()(engine_hash_key));
   VLOG(2) << "TRT engine hash key: " << engine_hash_key;
@@ -464,9 +475,47 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   }
   auto precision_mode =
       static_cast<phi::DataType>(Get<int>("trt_precision_mode"));
+  auto trt_params_run_fp16 =
+      Get<std::vector<std::string>>("trt_parameter_run_fp16");
+  auto trt_params_run_int8 =
+      Get<std::vector<std::string>>("trt_parameter_run_int8");
+  auto trt_params_run_bfp16 =
+      Get<std::vector<std::string>>("trt_parameter_run_bfp16");
+
+  for (const auto &para : parameters) {
+    if (std::find(trt_params_run_fp16.begin(),
+                  trt_params_run_fp16.end(),
+                  para) != trt_params_run_fp16.end()) {
+      precision_mode = phi::DataType::FLOAT16;
+      break;
+    }
+  }
+
   bool enable_fp16 = false;
   if (precision_mode == phi::DataType::FLOAT16) enable_fp16 = true;
   auto enable_int8 = Get<bool>("enable_int8");
+
+  for (const auto &para : parameters) {
+    if (std::find(trt_params_run_int8.begin(),
+                  trt_params_run_int8.end(),
+                  para) != trt_params_run_int8.end()) {
+      enable_int8 = true;
+      precision_mode = phi::DataType::INT8;
+      break;
+    }
+  }
+
+  for (const auto &para : parameters) {
+    if (std::find(trt_params_run_bfp16.begin(),
+                  trt_params_run_bfp16.end(),
+                  para) != trt_params_run_bfp16.end()) {
+      precision_mode = phi::DataType::BFLOAT16;
+      break;
+    }
+  }
+  bool enable_bfp16 = false;
+  if (precision_mode == phi::DataType::BFLOAT16) enable_bfp16 = true;
+
   auto use_calib_mode = Get<bool>("use_calib_mode");
   auto &subgraph_nodes = *framework::ir::Agent(node).subgraph();
   auto min_input_shape =
@@ -499,8 +548,8 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
                                            &max_shape_tensor,
                                            &optim_shape_tensor);
     } else {
-      shape_range_info_path =
-          Get<std::string>("model_opt_cache_dir") + "shape_range_info.pbtxt";
+      shape_range_info_path = Get<std::string>("model_opt_cache_dir") + "/" +
+                              "shape_range_info.pbtxt";
       if (open(shape_range_info_path.c_str(), O_RDONLY) != -1) {
         VLOG(1) << "trt dynamic_shape deserialize from "
                 << shape_range_info_path;
@@ -712,6 +761,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("calibration_data", calibration_data);
   op_desc->SetAttr("enable_int8", enable_int8);
   op_desc->SetAttr("enable_fp16", enable_fp16);
+  op_desc->SetAttr("enbale_bfp16", enable_bfp16);
   op_desc->SetAttr("use_calib_mode", use_calib_mode);
   op_desc->SetAttr("engine_key", engine_key);
   op_desc->SetAttr("calibration_engine_key", calibration_engine_key);
@@ -747,7 +797,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   bool calibration_mode =
       (enable_int8 && calibration_data.empty() && use_calib_mode);
   if (calibration_mode) {
-    // calibraion mode means generate int8 calibration table data process.
+    // calibration mode means generate int8 calibration table data process.
     return calibration_engine_key;
   }
 
@@ -838,7 +888,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
             << GetTrtEngineSerializedPath(
                    Get<std::string>("model_opt_cache_dir"), engine_key)
             << ". Engine deserialization failed: Serialized Engine Version "
-               "does not match Current Version, TRT engine will be rebuilded";
+               "does not match Current Version, TRT engine will be rebuilt";
       }
     }
   }
@@ -850,7 +900,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   }
 
   // the following code will NOT run in following situation:
-  // 1. calibraion mode (generate trt int8 calibraiton table data)
+  // 1. calibration mode (generate trt int8 calibration table data)
   // 2. already load serialized trt engine info.
   LOG(INFO) << "Prepare TRT engine (Optimize model structure, Select OP "
                "kernel etc). This process may cost a lot of time.";

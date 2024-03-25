@@ -123,9 +123,21 @@ void TriangularSolveKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+#ifdef PADDLE_WITH_CUDA
+PD_REGISTER_KERNEL(triangular_solve,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::TriangularSolveKernel,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+#else  // PADDLE_WITH_HIP
+// blas_impl.hip.h not support CUBlas<T>::TRSM for complex
 PD_REGISTER_KERNEL(triangular_solve,
                    GPU,
                    ALL_LAYOUT,
                    phi::TriangularSolveKernel,
                    float,
                    double) {}
+#endif

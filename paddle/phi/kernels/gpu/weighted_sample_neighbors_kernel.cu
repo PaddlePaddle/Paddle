@@ -26,9 +26,9 @@
 #endif
 
 #include "math.h"  // NOLINT
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/block_radix_topk.cuh"
 #include "paddle/phi/kernels/funcs/random.cuh"

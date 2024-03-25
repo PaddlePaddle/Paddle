@@ -13,11 +13,14 @@
 // limitations under the License.
 
 #pragma once
+
+#include <glog/logging.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/cinn/utils/type_defs.h"
-#include "paddle/pir/core/operation.h"
+#include "paddle/pir/include/core/operation.h"
 
 namespace cinn {
 namespace hlir {
@@ -30,7 +33,7 @@ enum MapperType {
 };
 
 class OpMapper {
-  using OprandIndexsFunction = std::function<std::vector<size_t>()>;
+  using OperandIndexsFunction = std::function<std::vector<size_t>()>;
   using AppendAttrFunction =
       std::function<void(const ::pir::Operation& op,
                          utils::AttributeMap& attrs)>;  // NOLINT
@@ -50,10 +53,10 @@ class OpMapper {
     return false;
   }
 
-  std::vector<::pir::Value> RealOprandSources(
+  std::vector<::pir::Value> RealOperandSources(
       const ::pir::Operation& op) const {
     CHECK(has(op, MapperType::OPERAND))
-        << "Not register OprandIndexsFunction for " << op.name();
+        << "Not register OperandIndexsFunction for " << op.name();
     std::vector<::pir::Value> inputs;
     for (auto idx : operand_funcs_.at(op.name())()) {
       inputs.push_back(op.operand_source(idx));
@@ -72,7 +75,7 @@ class OpMapper {
   OpMapper() { RegisterMapRules(); }
   void RegisterMapRules();
 
-  std::unordered_map<std::string, OprandIndexsFunction> operand_funcs_;
+  std::unordered_map<std::string, OperandIndexsFunction> operand_funcs_;
   std::unordered_map<std::string, AppendAttrFunction> attr_funcs_;
 };
 

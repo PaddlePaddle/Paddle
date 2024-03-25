@@ -25,8 +25,7 @@ HIDDEN_SIZE = 256
 N = 5
 
 # Fix seed for test
-base.default_startup_program().random_seed = 1
-base.default_main_program().random_seed = 1
+paddle.seed(1)
 
 
 class TestDistWord2vec2x2(TestDistRunnerBase):

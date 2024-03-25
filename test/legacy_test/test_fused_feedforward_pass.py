@@ -103,9 +103,8 @@ class TestFusedFeedforwadPass(unittest.TestCase):
         )
 
         main_prog = paddle.static.Program()
-        main_prog.random_seed = 1234
         startup_prog = paddle.static.Program()
-        startup_prog.random_seed = 1234
+        paddle.seed(1234)
 
         with paddle.static.program_guard(main_prog, startup_prog):
             data = paddle.static.data(

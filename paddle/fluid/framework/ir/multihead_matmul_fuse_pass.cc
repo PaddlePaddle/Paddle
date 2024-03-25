@@ -452,7 +452,7 @@ PDNode* MultiHeadMatmulPattern::operator()() {
 }
 
 PDNode* MultiHeadMatmulV3Pattern::operator()() {
-  // Add mul op to support huggingface onnx model convertsion by x2paddle
+  // Add mul op to support huggingface onnx model conversion by x2paddle
   std::unordered_set<std::string> matmul_ops{"mul", "matmul", "matmul_v2"};
   auto* input0 = pattern->NewNode(input0_repr());
   input0->assert_is_ops_input(matmul_ops);
@@ -709,13 +709,13 @@ void MultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
 
 MultiHeadMatmulV2FusePass::MultiHeadMatmulV2FusePass() {
   AddOpCompat(OpCompat("mul"))
-      .AddInput("X")  // the shape shoule be (B, S, N*H)
+      .AddInput("X")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
-      .AddInput("Y")  // the shape shoule be (N*H, N*H)
+      .AddInput("Y")  // the shape should be (N*H, N*H)
       .IsTensor()
       .End()
-      .AddOutput("Out")  // the shape shoule be (B, S, N*H)
+      .AddOutput("Out")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
       .AddAttr("x_num_col_dims")
@@ -1177,13 +1177,13 @@ void MultiHeadMatmulV2FusePass::ApplyImpl(Graph* graph) const {
 
 MultiHeadMatmulV3FusePass::MultiHeadMatmulV3FusePass() {
   AddOpCompat(OpCompat("mul"))
-      .AddInput("X")  // the shape shoule be (B, S, N*H)
+      .AddInput("X")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
-      .AddInput("Y")  // the shape shoule be (N*H, N*H)
+      .AddInput("Y")  // the shape should be (N*H, N*H)
       .IsTensor()
       .End()
-      .AddOutput("Out")  // the shape shoule be (B, S, N*H)
+      .AddOutput("Out")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
       .AddAttr("x_num_col_dims")

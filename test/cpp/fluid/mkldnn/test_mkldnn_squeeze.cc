@@ -101,6 +101,3 @@ TEST(SqueezeOpConverter_2, normal) { test_squeeze2(); }
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
-
-USE_OP_ITSELF(squeeze2);
-PD_DECLARE_KERNEL(squeeze_infer, OneDNN, ONEDNN);

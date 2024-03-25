@@ -83,10 +83,12 @@ class TestMatMulV2VectorXVectorOneDNNOp(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir_onednn=True, check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(
+            ['X', 'Y'], 'Out', check_pir_onednn=True, check_dygraph=False
+        )
 
 
 class TestMatMulV2VectorXMatrixTransposeYOneDNNOp(
@@ -313,7 +315,9 @@ def create_bf16_test_class(parent):
             self.attrs['mkldnn_data_type'] = "bfloat16"
 
         def test_check_output(self):
-            self.check_output_with_place(core.CPUPlace())
+            self.check_output_with_place(
+                core.CPUPlace(), check_pir_onednn=True, check_dygraph=False
+            )
 
         def test_check_grad(self):
             self.calculate_grads()
@@ -323,6 +327,8 @@ def create_bf16_test_class(parent):
                 "Out",
                 user_defined_grads=[self.dx, self.dy],
                 user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
+                check_pir_onednn=True,
+                check_dygraph=False,
             )
 
         def matmul_grad(self, x, transpose_x, y, transpose_y):

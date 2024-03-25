@@ -89,7 +89,7 @@ class KernelKey {
     // Note: Now the number of bits we need does not exceed 32 bits, so there is
     // no need to use 64 bits. If needed in the future, it can be expanded,
     // but now we don’t over-design.
-    uint32_t operator()(const KernelKey& key) const;
+    TEST_API uint32_t operator()(const KernelKey& key) const;
   };
 
   uint32_t hash_value() const { return Hash()(*this); }
@@ -282,6 +282,8 @@ class Kernel {
   }
 
   GetKernelTypeForVarFn get_kerneltype_forvar_fn_{nullptr};
+  std::function<bool(const KernelContext* ctx)> check_if_onednn_kernel_support_{
+      nullptr};
 
  private:
   KernelFn fn_{nullptr};

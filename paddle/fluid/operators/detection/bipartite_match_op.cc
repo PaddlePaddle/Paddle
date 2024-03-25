@@ -254,7 +254,7 @@ class BipartiteMatchOpMaker : public framework::OpProtoAndCheckerMaker {
         "represented by each row and each column. For example, assumed one "
         "entity is A with shape [K], another entity is B with shape [M]. The "
         "DistMat[i][j] is the distance between A[i] and B[j]. The bigger "
-        "the distance is, the better macthing the pairs are. Please note, "
+        "the distance is, the better matching the pairs are. Please note, "
         "This tensor can contain LoD information to represent a batch of "
         "inputs. One instance of this batch can contain different numbers of "
         "entities.");

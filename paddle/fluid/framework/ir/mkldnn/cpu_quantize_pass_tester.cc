@@ -61,7 +61,7 @@ void SetOp(ProgramDesc* prog,
     op->SetOutput("Output", {outputs[0]});
   } else if (type == "pool2d" || type == "fused_transpose" ||
              type == "reshape2" || type == "nearest_interp" ||
-             type == "nearest_interp_v2") {
+             type == "nearest_interp_v2" || type == "dropout") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
   } else if (type == "slice") {
@@ -70,9 +70,6 @@ void SetOp(ProgramDesc* prog,
   } else if (type == "split") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs});
-  } else if (type == "dropout") {
-    op->SetInput("X", {inputs[0]});
-    op->SetOutput("Out", {outputs[0]});
   } else if (type == "fc") {
     op->SetInput("Input", {inputs[0]});
     if (inputs.size() > 1) op->SetInput("W", {inputs[1]});
@@ -754,7 +751,7 @@ const std::vector<std::string> churn_out_vars(ProgramDesc* prog,
 
 void create_vars(ProgramDesc* prog,
                  const std::initializer_list<std::string>& names) {
-  for (auto name : names) prog->MutableBlock(0)->Var(name);
+  for (auto const& name : names) prog->MutableBlock(0)->Var(name);
 }
 
 void SetMultiGruOp(ProgramDesc* prog,

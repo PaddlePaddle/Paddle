@@ -84,7 +84,7 @@ class TestExceptionNoCStack(unittest.TestCase):
         with base.dygraph.guard(place):
             x = numpy.random.random(size=(10, 2)).astype('float32')
             linear = paddle.nn.Linear(1, 10)
-            data = base.dygraph.to_variable(x)
+            data = paddle.to_tensor(x)
             with self.assertRaises(ValueError):
                 res = linear(data)
 

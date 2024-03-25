@@ -649,6 +649,7 @@ struct WeightOnlyConverter<half, WeightOnlyQuantType::Int8b> {
   }
 };
 
+#ifdef PADDLE_CUDA_BF16
 template <>
 struct WeightOnlyConverter<__nv_bfloat16, WeightOnlyQuantType::Int8b> {
   static __device__ inline void convert(__nv_bfloat16 halves[4],
@@ -689,6 +690,7 @@ struct WeightOnlyConverter<__nv_bfloat16, WeightOnlyQuantType::Int8b> {
 #endif
   }
 };
+#endif
 
 template <>
 struct WeightOnlyConverter<half, WeightOnlyQuantType::Int4b> {
@@ -766,6 +768,7 @@ struct WeightOnlyConverter<half, WeightOnlyQuantType::Int4b> {
   }
 };
 
+#ifdef PADDLE_CUDA_BF16
 template <>
 struct WeightOnlyConverter<__nv_bfloat16, WeightOnlyQuantType::Int4b> {
   static __device__ inline void convert(__nv_bfloat16 halves[8],
@@ -817,6 +820,7 @@ struct WeightOnlyConverter<__nv_bfloat16, WeightOnlyQuantType::Int4b> {
 #endif
   }
 };
+#endif
 
 template <typename VecType, typename T0, typename T1>
 __device__ __forceinline__ void load(T0* dst, T1* src, size_t offset = 0) {
@@ -1401,7 +1405,7 @@ template void WeightOnlyGemvWrapper(const phi::GPUContext& ctx,
                                     const std::string& weight_only_type,
                                     const std::string& act_method,
                                     phi::dtype::float16* output);
-
+#ifdef PADDLE_CUDA_BF16
 template void WeightOnlyGemvWrapper(const phi::GPUContext& ctx,
                                     const phi::dtype::bfloat16* input,
                                     const int8_t* weight,
@@ -1415,4 +1419,6 @@ template void WeightOnlyGemvWrapper(const phi::GPUContext& ctx,
                                     const std::string& weight_only_type,
                                     const std::string& act_method,
                                     phi::dtype::bfloat16* output);
+#endif
+
 }  // namespace phi

@@ -340,7 +340,6 @@ HostTraceEventNode* NodeTrees::BuildTreeRelationship(
 
   // build relationship between host event node and op supplement node
   for (auto it = post_order_nodes.begin(); it < post_order_nodes.end(); ++it) {
-    int op_supplement_count = 0;
     bool hasenter = false;
     std::vector<OperatorSupplementEventNode*>::iterator firstposition;
     std::vector<OperatorSupplementEventNode*>::iterator lastposition =
@@ -355,7 +354,6 @@ HostTraceEventNode* NodeTrees::BuildTreeRelationship(
           hasenter = true;
         }
         (*it)->SetOperatorSupplementNode(*op_supplement_it);
-        op_supplement_count += 1;
       } else {
         if ((*op_supplement_it)->TimeStampNs() > (*it)->EndNs()) {
           lastposition = op_supplement_it;
@@ -434,10 +432,8 @@ void NodeTrees::HandleTrees(
       }
       for (auto event_node : (*hostnode)->GetRuntimeTraceEventNodes()) {
         runtime_event_node_handle(event_node);
-        for (auto devicenode = event_node->GetDeviceTraceEventNodes().begin();
-             devicenode != event_node->GetDeviceTraceEventNodes().end();
-             ++devicenode) {
-          device_event_node_handle(*devicenode);
+        for (auto devicenode : event_node->GetDeviceTraceEventNodes()) {
+          device_event_node_handle(devicenode);
         }
       }
       for (auto event_node : (*hostnode)->GetMemTraceEventNodes()) {

@@ -37,7 +37,8 @@ namespace pass {
   else if (absl::holds_alternative<int64_t>(OLD_VALUE))         \
     NEW_VALUE = FUNC(absl::get<int64_t>(OLD_VALUE));            \
   else                                                          \
-    LOG(FATAL) << "fill_constant Only support float32/float64/int32/int64";
+    PADDLE_THROW(phi::errors::InvalidArgument(                  \
+        "fill_constant Only support float32/float64/int32/int64"));
 
 #define MATH_FUNC_REWRITER(op_name)                                            \
   {                                                                            \
@@ -168,7 +169,7 @@ class FillConstantRewriterPass : public ProgramPass {
     VLOG(3) << "FillConstantRewriterPass Remove " << remove_instr.size()
             << " instruction";
 
-    NetBuilder builder("reshape_rewritter_builder");
+    NetBuilder builder("reshape_rewriter_builder");
     for (auto& var : program->GetInputs()) {
       builder.CreateInput(var);
     }

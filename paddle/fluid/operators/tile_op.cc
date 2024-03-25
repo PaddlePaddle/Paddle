@@ -185,7 +185,7 @@ class TileCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
           "We don't support RepeatTimes from tensor or repeat_times_tensor for "
           "tile composite grad for now. "));
     } else {
-      VLOG(6) << "Runing tile_grad composite func";
+      VLOG(6) << "Running tile_grad composite func";
       prim::tile_grad<prim::DescTensor>(
           x, out_grad, paddle::experimental::IntArray(repeat_times), dx_ptr);
       this->RecoverOutputName(x_grad, dx_name);

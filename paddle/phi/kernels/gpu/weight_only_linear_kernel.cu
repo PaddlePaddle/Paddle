@@ -89,6 +89,7 @@ we havenot support sm70 weightonly gemv, because sm70 weight layout is RowMajor.
             m,
             n,
             k,
+            group_size,
             "none",
             mixgemm_workspace_data,
             mixgemm_workspace_size_bytes,
@@ -104,6 +105,7 @@ we havenot support sm70 weightonly gemv, because sm70 weight layout is RowMajor.
             m,
             n,
             k,
+            group_size,
             mixgemm_workspace_data,
             mixgemm_workspace_size_bytes,
             dev_ctx.stream());
@@ -134,6 +136,7 @@ we havenot support sm70 weightonly gemv, because sm70 weight layout is RowMajor.
             m,
             n,
             k,
+            group_size,
             "none",
             mixgemm_workspace_data,
             mixgemm_workspace_size_bytes,
@@ -149,6 +152,7 @@ we havenot support sm70 weightonly gemv, because sm70 weight layout is RowMajor.
             m,
             n,
             k,
+            group_size,
             mixgemm_workspace_data,
             mixgemm_workspace_size_bytes,
             dev_ctx.stream());

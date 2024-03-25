@@ -16,9 +16,9 @@
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_factory.h"
-#include "paddle/pir/core/attribute.h"
-#include "paddle/pir/core/attribute_base.h"
-#include "paddle/pir/core/utils.h"
+#include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/attribute_base.h"
+#include "paddle/pir/include/core/utils.h"
 
 namespace paddle {
 namespace dialect {

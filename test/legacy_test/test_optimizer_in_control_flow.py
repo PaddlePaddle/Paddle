@@ -37,8 +37,7 @@ def static(
 ):
     startup_program = Program()
     main_program = Program()
-    startup_program.random_seed = SEED
-    main_program.random_seed = SEED
+    paddle.seed(SEED)
 
     with program_guard(main_program, startup_program):
 
@@ -175,8 +174,7 @@ class DygraphLayer(paddle.nn.Layer):
 def dynamic(train_data, use_cuda=False, use_parallel_exe=False):
     place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
     with base.dygraph.guard(place):
-        base.default_startup_program().random_seed = SEED
-        base.default_main_program().random_seed = SEED
+        paddle.seed(SEED)
         dy_layer = DygraphLayer()
         adam = paddle.optimizer.Adam(
             learning_rate=LR, parameters=dy_layer.parameters()
@@ -187,8 +185,8 @@ def dynamic(train_data, use_cuda=False, use_parallel_exe=False):
 
         for epoch in range(EPOCH_NUM):
             image_data, label = train_data[epoch]
-            var_input = base.dygraph.to_variable(image_data)
-            var_label = base.dygraph.to_variable(label)
+            var_input = paddle.to_tensor(image_data)
+            var_label = paddle.to_tensor(label)
             hidden, prediction = dy_layer(var_input)
 
             if epoch % 2 == 0:
@@ -235,7 +233,7 @@ class TestMultiTask(unittest.TestCase):
         for epoch in range(EPOCH_NUM):
             self.train_data.append(self.random_input(epoch))
 
-    def test_optimzier_in_switch(self):
+    def test_optimizer_in_switch(self):
         self.init_train_data()
         use_cuda = core.is_compiled_with_cuda()
         hidden_2, pre_2, loss_2 = dynamic(self.train_data, use_cuda)

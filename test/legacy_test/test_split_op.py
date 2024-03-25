@@ -19,7 +19,8 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import core
+from paddle.framework import in_pir_mode
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -361,35 +362,39 @@ class TestSplitAPI(unittest.TestCase):
             np.testing.assert_array_equal(res_5, out[2])
 
 
-class TestSplitOpError(unittest.TestCase):
-    def test_errors(self):
+class TestSplitOpErrorStatic(unittest.TestCase):
+    @test_with_pir_api
+    def test_errors_with_static(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             # The type of axis in split_op should be int or Variable.
             def test_axis_type():
-                x6 = paddle.static.data(
-                    shape=[-1, 4], dtype='float16', name='x3'
+                x5 = paddle.static.data(
+                    shape=[-1, 4], dtype='float16', name='x5'
                 )
-                paddle.split(x=x6, num_or_sections=2, axis=3.2)
+                paddle.split(x=x5, num_or_sections=2, axis=3.2)
 
             self.assertRaises(TypeError, test_axis_type)
 
-            # The type of axis in split_op should be int or Variable.
-            def test_axis_variable_type():
-                x9 = paddle.static.data(
-                    shape=[-1, 4], dtype='float16', name='x9'
-                )
-                x10 = paddle.static.data(
-                    shape=[-1, 1], dtype='float16', name='x10'
-                )
-                paddle.split(x=x9, num_or_sections=2, axis=x10)
+            if not in_pir_mode():
+                # The type of axis in split_op should be int or Variable.
+                def test_axis_variable_type():
+                    x9 = paddle.static.data(
+                        shape=[-1, 4], dtype='float16', name='x9'
+                    )
+                    x10 = paddle.static.data(
+                        shape=[-1, 1], dtype='float16', name='x10'
+                    )
+                    paddle.split(x=x9, num_or_sections=2, axis=x10)
 
-            self.assertRaises(TypeError, test_axis_variable_type)
+                self.assertRaises(TypeError, test_axis_variable_type)
 
             # The type of num_or_sections in split_op should be int, tuple or list.
             def test_num_or_sections_type():
                 x6 = paddle.static.data(
-                    shape=[-1, 4], dtype='float16', name='x4'
+                    shape=[-1, 4], dtype='float16', name='x6'
                 )
                 paddle.split(x=x6, num_or_sections=2.1, axis=3)
 
@@ -397,7 +402,7 @@ class TestSplitOpError(unittest.TestCase):
 
             def test_num_or_sections_type_tensor():
                 x7 = paddle.static.data(
-                    shape=[-1, 4], dtype='float16', name='x5'
+                    shape=[-1, 4], dtype='float16', name='x7'
                 )
                 paddle.split(input=x7, num_or_sections=2.1, dim=3)
 
@@ -405,13 +410,16 @@ class TestSplitOpError(unittest.TestCase):
 
             def test_axis_type_tensor():
                 x8 = paddle.static.data(
-                    shape=[-1, 4], dtype='float16', name='x6'
+                    shape=[-1, 4], dtype='float16', name='x8'
                 )
                 paddle.split(input=x8, num_or_sections=2, dim=3.2)
 
             self.assertRaises(TypeError, test_axis_type_tensor)
         paddle.disable_static()
 
+
+class TestSplitOpErrorDynamic(unittest.TestCase):
+    def test_errors_with_dynamic(self):
         with paddle.base.dygraph.guard():
 
             def test_0_num_tensor():
@@ -559,9 +567,11 @@ class API_TestDygraphFluidSplit(unittest.TestCase):
             eager_x2_out = x2.numpy()
             loss = x0.sum()
             loss.backward()
-            manul_grad = np.zeros_like(input_1)
-            manul_grad[:, :2, :] = 1
-            np.testing.assert_allclose(input.gradient(), manul_grad, rtol=1e-05)
+            manual_grad = np.zeros_like(input_1)
+            manual_grad[:, :2, :] = 1
+            np.testing.assert_allclose(
+                input.gradient(), manual_grad, rtol=1e-05
+            )
             np.testing.assert_allclose(ex_x0, eager_x0_out, rtol=1e-05)
             np.testing.assert_allclose(ex_x1, eager_x1_out, rtol=1e-05)
             np.testing.assert_allclose(ex_x2, eager_x2_out, rtol=1e-05)
@@ -589,9 +599,11 @@ class API_TestDygraphFluidSplit(unittest.TestCase):
             eager_x2_out = x2.numpy()
             loss = x0.sum()
             loss.backward()
-            manul_grad = np.zeros_like(input_1)
-            manul_grad[:, :2, :] = 1
-            np.testing.assert_allclose(input.gradient(), manul_grad, rtol=1e-05)
+            manual_grad = np.zeros_like(input_1)
+            manual_grad[:, :2, :] = 1
+            np.testing.assert_allclose(
+                input.gradient(), manual_grad, rtol=1e-05
+            )
             np.testing.assert_allclose(ex_x0, eager_x0_out, rtol=1e-05)
             np.testing.assert_allclose(ex_x1, eager_x1_out, rtol=1e-05)
             np.testing.assert_allclose(ex_x2, eager_x2_out, rtol=1e-05)
@@ -622,9 +634,11 @@ class API_TestDygraphSplit(unittest.TestCase):
             eager_x2_out = x2.numpy()
             loss = x0.sum()
             loss.backward()
-            manul_grad = np.zeros_like(input_1)
-            manul_grad[:, :2, :] = 1
-            np.testing.assert_allclose(input.gradient(), manul_grad, rtol=1e-05)
+            manual_grad = np.zeros_like(input_1)
+            manual_grad[:, :2, :] = 1
+            np.testing.assert_allclose(
+                input.gradient(), manual_grad, rtol=1e-05
+            )
             np.testing.assert_allclose(ex_x0, eager_x0_out, rtol=1e-05)
             np.testing.assert_allclose(ex_x1, eager_x1_out, rtol=1e-05)
             np.testing.assert_allclose(ex_x2, eager_x2_out, rtol=1e-05)

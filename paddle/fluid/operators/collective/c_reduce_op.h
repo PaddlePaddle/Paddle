@@ -28,9 +28,9 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -50,7 +50,7 @@ PHI_DECLARE_bool(dynamic_static_unified_comm);
 namespace paddle {
 namespace operators {
 
-enum ReduceType { kRedSum, kRedMax, kRedMin, kRedProd };
+enum ReduceType { kRedSum, kRedMax, kRedMin, kRedProd, kRedAvg };
 
 class CReduceOp : public framework::OperatorWithKernel {
  public:
@@ -303,6 +303,12 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
       case kRedProd:
         nccl_red_type = ncclProd;
         break;
+
+#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+      case kRedAvg:
+        nccl_red_type = ncclAvg;
+        break;
+#endif
 
       default:
         PADDLE_ENFORCE_EQ(true,

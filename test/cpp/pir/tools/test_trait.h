@@ -15,7 +15,7 @@
 #include <gtest/gtest.h>
 #include <sstream>
 
-#include "paddle/pir/core/op_base.h"
+#include "paddle/pir/include/core/op_base.h"
 #include "test/cpp/pir/tools/macros_utils.h"
 
 namespace test {

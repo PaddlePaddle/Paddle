@@ -334,11 +334,11 @@ struct DimsSimplifiedLogger {
     VLOG(6) << op_name << "`s dims after simplification is below :";
     for (size_t i = 0; i < ins.size(); ++i) {
       VLOG(6) << "input i=" << i << ": origin_dims={" << ins[i]->dims()
-              << "}, simplied_dims={"
+              << "}, simplified_dims={"
               << ReversedVectorToString(dims_simplifier.in_dims[i]) << "}";
     }
     VLOG(6) << "output: origin_dims={" << (*outs)[0]->dims()
-            << "}, simplied_dims={"
+            << "}, simplified_dims={"
             << ReversedVectorToString(dims_simplifier.out_dims) << "}";
   }
 

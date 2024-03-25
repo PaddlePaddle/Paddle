@@ -22,7 +22,7 @@ class DistributedAssign(DistributedOperatorImplContainer):
         super().__init__(op_type)
 
 
-# TODO reomve assign dist op
+# TODO remove assign dist op
 # register_distributed_operator_impl_container(DistributedAssign("assign"))
 
 

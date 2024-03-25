@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.base import dygraph
 
 
 class TestImperativeLayerTrainable(unittest.TestCase):
@@ -26,7 +25,7 @@ class TestImperativeLayerTrainable(unittest.TestCase):
         with base.dygraph.guard():
             label = np.random.uniform(-1, 1, [10, 10]).astype(np.float32)
 
-            label = dygraph.to_variable(label)
+            label = paddle.to_tensor(label)
 
             linear = paddle.nn.Linear(10, 10)
             y = linear(label)

@@ -106,10 +106,6 @@ if (WITH_GPU OR WITH_ROCM)
     register_cu_kernel(class_center_sample_op SRCS class_center_sample_op.cu DEPS ${OP_HEADER_DEPS})
 endif()
 
-if (WITH_MKLDNN)
-    register_mkldnn_kernel(layer_norm_op SRCS layer_norm_mkldnn_op.cc DEPS ${OP_HEADER_DEPS})
-endif()
-
 if (WITH_GPU OR WITH_ROCM)
     op_library(activation_op SRCS activation_op.cc activation_op.kps soft_relu_op.cu DEPS ${OP_HEADER_DEPS})
 elseif (WITH_XPU_KP)

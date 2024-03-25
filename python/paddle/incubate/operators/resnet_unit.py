@@ -151,7 +151,7 @@ def resnet_unit(
 class ResNetUnit(Layer):
     r"""
     ******Temporary version******.
-    ResNetUnit is designed for optimize the performence by using cudnnv8 API.
+    ResNetUnit is designed for optimize the performance by using cudnnv8 API.
     """
 
     def __init__(

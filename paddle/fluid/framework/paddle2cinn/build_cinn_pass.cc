@@ -27,6 +27,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/use_op_mappers.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/io/save_runtime_graph.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -38,8 +39,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/cinn/cinn_launch_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
-#include "paddle/phi/core/flags.h"
-#include "paddle/utils/flags.h"
 
 PD_DECLARE_string(allow_cinn_ops);
 PD_DECLARE_string(deny_cinn_ops);
@@ -49,6 +48,8 @@ PHI_DECLARE_bool(save_static_runtime_data);
 namespace paddle {
 namespace framework {
 namespace paddle2cinn {
+
+static int64_t cinn_cluster_index = 0;
 
 using framework::ir::Graph;
 using framework::ir::Node;
@@ -724,7 +725,7 @@ void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
       << "All deny var names are: " << GetDebugInfo(deny_var_set);
 
   auto* cinn_compiler = CinnCompiler::GetInstance();
-  int i = 0;
+
   for (const auto& node_vec : clusters) {
     // Classify var node to inputs, outputs, and internals.
     GraphNodeSet cluster_set(node_vec.begin(), node_vec.end());
@@ -753,20 +754,21 @@ void SearchAllSubgraphs(Graph* graph, bool is_inference_stage) {
           subgraph->GetOrInit<std::unordered_set<std::string>>(kSkipGcVarNames);
       sub_skip_gc_vars = all_skip_gc_vars;
     }
+    auto compilation_key = cinn_compiler->AddGraph(std::move(subgraph));
+    VLOG(4) << "Compilation Key:\n"
+            << cinn_compiler->ReadableKey(compilation_key);
+
     if (FLAGS_save_static_runtime_data) {
       paddle::framework::save_runtime_cinn_graph(
-          *subgraph,
+          cinn_compiler->FindGraph(compilation_key),
+          compilation_key,
           cluster_debug_info(cluster_set),
           cluster_debug_info(cluster_inputs),
           cluster_debug_info(cluster_outputs),
           cluster_debug_info(cluster_internals),
           FLAGS_static_runtime_data_save_path + "/cluster_" +
-              std::to_string(++i));
+              std::to_string(cinn_cluster_index++));
     }
-    auto compilation_key = cinn_compiler->AddGraph(std::move(subgraph));
-    VLOG(4) << "Compilation Key:\n"
-            << cinn_compiler->ReadableKey(compilation_key);
-
     // Replace the found cluster to a new cinn op node
     ReplaceSubGraphWithCinnOpNode(cluster_set,
                                   cluster_inputs,

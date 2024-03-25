@@ -15,4 +15,9 @@ if(WITH_GPU OR WITH_ROCM)
     "*.cu")
 endif()
 
+# Note(qili93): remove kernels not supported on DCU yet
+if(WITH_ROCM)
+  list(REMOVE_ITEM func_cu_srcs "weight_only_gemv.cu")
+endif()
+
 collect_srcs(kernels_srcs SRCS ${func_cc_srcs} ${func_cu_srcs})

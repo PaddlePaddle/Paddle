@@ -72,7 +72,7 @@ class Softmax(Layer):
         Only support axis=-1 for SparseCsrTensor, which is faster when read data
         by row (axis=-1).
 
-    Transform x to dense matix, and :math:`i` is row index, :math:`j` is column index.
+    Transform x to dense matrix, and :math:`i` is row index, :math:`j` is column index.
     If axis=-1, We have:
 
     .. math::

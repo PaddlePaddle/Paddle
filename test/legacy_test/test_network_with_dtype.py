@@ -49,7 +49,7 @@ class TestNetWithDtype(unittest.TestCase):
         exe.run(startup)
         for data in train_reader():
             exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
-            # the main program is runable, the datatype is fully supported
+            # the main program is runnable, the datatype is fully supported
             break
 
     def init_dtype(self):
@@ -66,7 +66,7 @@ class TestNetWithDtype(unittest.TestCase):
         self.run_net_on_place(place)
 
 
-# TODO(dzhwinter): make sure the fp16 is runable
+# TODO(dzhwinter): make sure the fp16 is runnable
 # class TestFloat16(TestNetWithDtype):
 #     def init_dtype(self):
 #         self.dtype = "float16"

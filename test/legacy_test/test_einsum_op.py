@@ -120,6 +120,29 @@ class TestEinsumWithReduction(TestEinsumBinary):
         self.equation = "ijk,kl->jl"
 
 
+class TestEinsumAPI(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.set_mandatory()
+
+    def test_api(self):
+        inputs = []
+        for shape, ty in zip(self.shapes, self.types):
+            x = paddle.randn(shape).astype(ty)
+            x.stop_gradient = False
+            inputs.append(x)
+        output = paddle.einsum(self.equation, *inputs)
+        expect = np.einsum(self.equation, *[x.numpy() for x in inputs])
+        np.testing.assert_allclose(output.numpy(), expect)
+        output = output.mean()
+        output.backward()
+
+    def set_mandatory(self):
+        self.shapes = [(10,), (10,)]
+        self.types = [np.float64, np.float64]
+        self.equation = "...,..."
+
+
 class TestEinsumWithReduction1(TestEinsumBinary):
     def set_mandatory(self):
         self.shapes = [(10, 3, 3, 5), (10, 5, 10, 10)]
@@ -145,31 +168,38 @@ class TestEinsumWithBroadcast1(TestEinsumBinary):
     def set_mandatory(self):
         self.shapes = [(5, 10, 3, 3)]
         self.types = [np.float64]
+        self.equation = "ixyz->xyz"
+
+
+class TestEinsumWithBroadcast1API(TestEinsumAPI):
+    def set_mandatory(self):
+        self.shapes = [(5, 10, 3, 3)]
+        self.types = [np.float64]
         self.equation = "i...->..."
 
 
-class TestEinsumWithBroadcast2(TestEinsumBinary):
+class TestEinsumWithBroadcast2(TestEinsumAPI):
     def set_mandatory(self):
         self.shapes = [(10, 11), (3, 4, 5, 10)]
         self.types = [np.float64, np.float64]
         self.equation = "...ij,...i->j..."
 
 
-class TestEinsumWithBroadcast3(TestEinsumBinary):
+class TestEinsumWithBroadcast3(TestEinsumAPI):
     def set_mandatory(self):
         self.shapes = [(10, 3, 2, 3, 4), (12, 10)]
         self.types = [np.float64, np.float64]
         self.equation = "k...,...jk->...k"
 
 
-class TestEinsumWithBroadcast4(TestEinsumBinary):
+class TestEinsumWithBroadcast4(TestEinsumAPI):
     def set_mandatory(self):
         self.shapes = [(10, 3, 2, 3, 4), (12, 10)]
         self.types = [np.float64, np.float64]
         self.equation = "a...d,...cb->...abcd"
 
 
-class TestEinsumWithBroadcast5(TestEinsumBinary):
+class TestEinsumWithBroadcast5(TestEinsumAPI):
     def set_mandatory(self):
         self.shapes = [(3, 2, 2, 10), (10, 3, 2, 2)]
         self.types = [np.float64, np.float64]
@@ -181,6 +211,13 @@ class TestEinsumWithBroadcast6(TestEinsumBinary):
         self.shapes = [(100), (100)]
         self.types = [np.float64, np.float64]
         self.equation = "i,i->"
+
+
+class TestEinsumWithBroadcast7(TestEinsumAPI):
+    def set_mandatory(self):
+        self.shapes = [(32, 13, 13, 12, 12), (1, 12)]
+        self.types = [np.float64, np.float64]
+        self.equation = "...ii,...i->...i"
 
 
 class TestEinsumWithDiagonal(TestEinsumBinary):
@@ -201,10 +238,24 @@ class TestEinsumWithDiagonal3(TestEinsumBinary):
     def set_mandatory(self):
         self.shapes = [(5, 3, 2, 1, 4, 5)]
         self.types = [np.float64]
+        self.equation = "axyzwa->xyzw"
+
+
+class TestEinsumWithDiagonal3API(TestEinsumAPI):
+    def set_mandatory(self):
+        self.shapes = [(5, 3, 2, 1, 4, 5)]
+        self.types = [np.float64]
         self.equation = "a...a->..."
 
 
 class TestEinsumWithDiagonal4(TestEinsumBinary):
+    def set_mandatory(self):
+        self.shapes = [(5, 3, 2, 1, 4, 5)]
+        self.types = [np.float64]
+        self.equation = "axyzwa->axyzw"
+
+
+class TestEinsumWithDiagonal4API(TestEinsumAPI):
     def set_mandatory(self):
         self.shapes = [(5, 3, 2, 1, 4, 5)]
         self.types = [np.float64]

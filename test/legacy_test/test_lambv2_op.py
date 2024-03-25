@@ -120,8 +120,7 @@ class TestLambOpWithCombinedOp(unittest.TestCase):
 
         def _build_static_model(main, startup, seed=100):
             with base.program_guard(main, startup):
-                main.random_seed = seed
-                startup.random_seed = seed
+                paddle.seed(seed)
                 x = paddle.static.data(
                     name='X', shape=[-1, 13], dtype='float32'
                 )

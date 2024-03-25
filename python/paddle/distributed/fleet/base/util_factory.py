@@ -70,7 +70,7 @@ class UtilBase:
         Args:
             input (list|tuple|numpy.array): The input variable to do all_reduce between specified collection.
             mode (str): "sum" or "min" or "max".
-            comm_world (str, optional): Collection used to execute all_reduce operation. Supported collections incude `worker` , `server` and `all` . The default is `worker` .
+            comm_world (str, optional): Collection used to execute all_reduce operation. Supported collections include `worker` , `server` and `all` . The default is `worker` .
 
         Returns:
             output(Numpy.array|None): A numpy array with the same shape as the `input` .
@@ -118,7 +118,7 @@ class UtilBase:
         Barrier between specified collection.
 
         Args:
-            comm_world (str, optional): Collection used to execute barrier operation. Supported collections incude `worker` , `server` and `all` . The default is `worker` .
+            comm_world (str, optional): Collection used to execute barrier operation. Supported collections include `worker` , `server` and `all` . The default is `worker` .
 
         Examples:
 
@@ -160,7 +160,7 @@ class UtilBase:
 
         Args:
             input (Int|Float): The input variable to do all_gather between specified collection.
-            comm_world (str, optional): Collection used to execute all_reduce operation. Supported collections incude `worker` , `server` and `all` . The default is `worker` .
+            comm_world (str, optional): Collection used to execute all_reduce operation. Supported collections include `worker` , `server` and `all` . The default is `worker` .
 
         Returns:
             output (List): A list of gathered values.
@@ -289,7 +289,7 @@ class UtilBase:
 
     def print_on_rank(self, message, rank_id):
         """
-        Woker of rank `rank_id` print some message.
+        Worker of rank `rank_id` print some message.
 
         Args:
             message(str): Log to be printed.

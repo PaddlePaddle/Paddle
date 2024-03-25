@@ -227,7 +227,7 @@ def step_save(strategy, output_dir, seed):
 
 
 def step_load(
-    saved_strategy, curent_strateggy, saved_dir, load_way, output_path, seed
+    saved_strategy, current_strategy, saved_dir, load_way, output_path, seed
 ):
     python_exe = sys.executable
     os.makedirs(f"{saved_dir}/load/logs", exist_ok=True)
@@ -235,7 +235,7 @@ def step_load(
     # load dp
     cmd = (
         f"{python_exe} -m paddle.distributed.launch --log_dir {saved_dir}/load/logs"
-        f" --gpus 0,1  {filename} --cmd load --strategy {curent_strateggy} --output_dir {saved_dir} --load_dir {saved_dir}/{saved_strategy}/save --load_way {load_way}"
+        f" --gpus 0,1  {filename} --cmd load --strategy {current_strategy} --output_dir {saved_dir} --load_dir {saved_dir}/{saved_strategy}/save --load_way {load_way}"
         f" --output_param_path {output_path} --seed {seed}"
     )
     p = subprocess.Popen(cmd.split())

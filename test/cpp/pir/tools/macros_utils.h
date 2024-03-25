@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/pir/core/type_id.h"
+#include "paddle/pir/include/core/type_id.h"
 
 #define IR_DECLARE_EXPLICIT_TEST_TYPE_ID(TYPE_CLASS) \
   namespace pir {                                    \

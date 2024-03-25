@@ -42,8 +42,8 @@ class LookAhead(Optimizer):
 
     Args:
         inner_optimizer (Optimizer): The optimizer that update fast params step by step.
-        alpha (float, optinal): The learning rate of Lookahead. The default value is 0.5.
-        k (int, optinal): The slow params is updated every k steps. The default value is 5.
+        alpha (float, optional): The learning rate of Lookahead. The default value is 0.5.
+        k (int, optional): The slow params is updated every k steps. The default value is 5.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.

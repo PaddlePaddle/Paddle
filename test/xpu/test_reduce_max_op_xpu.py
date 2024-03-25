@@ -20,6 +20,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -45,8 +46,13 @@ class XPUTestReduceMaxOp(XPUOpTestWrapper):
                 'keep_dim': self.keep_dim,
                 'dim': self.axis,
             }
+            self.temp_x = np.random.random(self.shape)
             self.dtype = self.in_type
-            self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
+            if self.dtype == np.uint16:  # bfloat16 actually
+                self.x = convert_float_to_uint16(self.temp_x)
+            else:
+                self.x = self.temp_x.astype(self.dtype)
+            self.inputs = {'X': self.x}
             if self.attrs['reduce_all']:
                 self.outputs = {'Out': self.inputs['X'].max()}
             else:

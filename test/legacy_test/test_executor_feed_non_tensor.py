@@ -58,7 +58,7 @@ class TestExecutor(unittest.TestCase):
                     return_numpy=False,
                 )
             self.assertEqual(_lr._dtype(), lr.dtype)
-            self.assertEqual(_lr._dtype(), base.core.VarDesc.VarType.FP32)
+            self.assertEqual(_lr._dtype(), paddle.float32)
             self.assertEqual(type(a), float)
 
     def test_program_feed_int(self):
@@ -84,7 +84,7 @@ class TestExecutor(unittest.TestCase):
                     return_numpy=False,
                 )
             self.assertEqual(_lr._dtype(), lr.dtype)
-            self.assertEqual(_lr._dtype(), base.core.VarDesc.VarType.FP32)
+            self.assertEqual(_lr._dtype(), paddle.float32)
             self.assertEqual(type(a), int)
 
     def test_program_feed_list(self):
@@ -106,7 +106,7 @@ class TestExecutor(unittest.TestCase):
                     return_numpy=False,
                 )
             self.assertEqual(_lr._dtype(), lr.dtype)
-            self.assertEqual(_lr._dtype(), base.core.VarDesc.VarType.FP32)
+            self.assertEqual(_lr._dtype(), paddle.float32)
             self.assertEqual(type(y_true), list)
 
     def test_compiled_program_feed_scalar(self):
@@ -134,24 +134,20 @@ class TestExecutor(unittest.TestCase):
                     return_numpy=False,
                 )
                 self.assertEqual(_lr._dtype(), lr.dtype)
-                self.assertEqual(_lr._dtype(), base.core.VarDesc.VarType.FP32)
+                self.assertEqual(_lr._dtype(), paddle.float32)
                 self.assertEqual(type(a), float)
 
 
 class TestAsLodTensor(unittest.TestCase):
     def test_as_lodtensor_int32(self):
         cpu = base.CPUPlace()
-        tensor = base.executor._as_lodtensor(
-            1.0, cpu, base.core.VarDesc.VarType.INT32
-        )
-        self.assertEqual(tensor._dtype(), base.core.VarDesc.VarType.INT32)
+        tensor = base.executor._as_lodtensor(1.0, cpu, paddle.int32)
+        self.assertEqual(tensor._dtype(), paddle.int32)
 
     def test_as_lodtensor_fp64(self):
         cpu = base.CPUPlace()
-        tensor = base.executor._as_lodtensor(
-            1, cpu, base.core.VarDesc.VarType.FP64
-        )
-        self.assertEqual(tensor._dtype(), base.core.VarDesc.VarType.FP64)
+        tensor = base.executor._as_lodtensor(1, cpu, paddle.float64)
+        self.assertEqual(tensor._dtype(), paddle.float64)
 
     def test_as_lodtensor_assertion_error(self):
         cpu = base.CPUPlace()
@@ -169,17 +165,13 @@ class TestAsLodTensor(unittest.TestCase):
 
     def test_as_lodtensor_list(self):
         cpu = base.CPUPlace()
-        tensor = base.executor._as_lodtensor(
-            [1, 2], cpu, base.core.VarDesc.VarType.FP64
-        )
-        self.assertEqual(tensor._dtype(), base.core.VarDesc.VarType.FP64)
+        tensor = base.executor._as_lodtensor([1, 2], cpu, paddle.float64)
+        self.assertEqual(tensor._dtype(), paddle.float64)
 
     def test_as_lodtensor_tuple(self):
         cpu = base.CPUPlace()
-        tensor = base.executor._as_lodtensor(
-            (1, 2), cpu, base.core.VarDesc.VarType.FP64
-        )
-        self.assertEqual(tensor._dtype(), base.core.VarDesc.VarType.FP64)
+        tensor = base.executor._as_lodtensor((1, 2), cpu, paddle.float64)
+        self.assertEqual(tensor._dtype(), paddle.float64)
 
     def test_as_lodtensor_nested_list(self):
         cpu = base.CPUPlace()

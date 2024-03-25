@@ -22,6 +22,7 @@ from test_softmax_op import stable_softmax
 import paddle
 import paddle.nn.functional as F
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 CUDA_BLOCK_SIZE = 32
 
@@ -109,7 +110,7 @@ class CTCForward:
         required_times = labels_a_sequence.shape[0]
         old_label = -1
         for i in range(labels_a_sequence.shape[0]):
-            # two contingous labels with the same value
+            # two contiguous labels with the same value
             if labels_a_sequence[i, 0] == old_label:
                 required_times = required_times + 1
             old_label = labels_a_sequence[i, 0]
@@ -526,6 +527,7 @@ class TestWarpCTCOpFp64(OpTest):
 
 
 class TestWarpCTCOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
         main_program = paddle.static.Program()

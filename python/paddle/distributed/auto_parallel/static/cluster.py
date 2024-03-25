@@ -741,7 +741,7 @@ class Cluster:
                 cluster_info.get("alpha_latency")
             )
         else:
-            self._alpha_latecy = None
+            self._alpha_latency = None
 
     def build_from_file(self, json_file_path):
         with open(json_file_path) as json_file:

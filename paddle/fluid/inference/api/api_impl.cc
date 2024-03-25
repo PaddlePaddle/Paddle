@@ -63,7 +63,7 @@ bool NativePaddlePredictor::Init(
     std::shared_ptr<framework::Scope> parent_scope) {
   VLOG(3) << "Predictor::init()";
   if (FLAGS_profile) {
-    LOG(WARNING) << "Profiler is actived, might affect the performance";
+    LOG(WARNING) << "Profiler is activated, might affect the performance";
     LOG(INFO) << "You can turn off by set gflags '-profile false'";
 
     auto tracking_device = config_.use_gpu ? platform::ProfilerState::kAll
@@ -101,7 +101,7 @@ bool NativePaddlePredictor::Init(
   executor_ = std::make_unique<paddle::framework::Executor>(place_);
 
   // Initialize the inference program
-  if (!config_.model_dir.empty()) {
+  if (!config_.model_dir.empty()) {  // NOLINT
     // Parameters are saved in separate files sited in
     // the specified `dirname`.
     inference_program_ = paddle::inference::Load(
@@ -286,7 +286,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     }
     input.set_lod(lod);
     int idx = -1;
-    if (config_.specify_input_name) {
+    if (config_.specify_input_name) {  // NOLINT
       idx = static_cast<int>(feed_names_[inputs[i].name]);
     } else {
       idx = PADDLE_GET_CONST(int, feeds_[i]->GetAttr("col"));

@@ -60,7 +60,7 @@ TEST(dist_tensor, constructor) {
   bool caught_exception = false;
   try {
     dist_x2.AllocateFrom(alloc, phi::DataType::FLOAT32, 12L, false);
-  } catch (phi::EnforceNotMet& error) {
+  } catch (common::enforce::EnforceNotMet& error) {
     caught_exception = true;
     EXPECT_NE(std::string(error.what()).find("Unavailable"), 0UL);
   }

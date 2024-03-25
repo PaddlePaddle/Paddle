@@ -14,11 +14,11 @@
 
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/platform/enforce.h"
 
-#include "paddle/fluid/platform/init_phi.h"
-
 REGISTER_FILE_SYMBOLS(aligned_allocator);
+
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -39,8 +39,8 @@ class AlignedAllocation : public Allocation {
 };
 
 AlignedAllocator::AlignedAllocator(
-    const std::shared_ptr<Allocator>& underlyning_allocator, size_t alignment)
-    : underlying_allocator_(underlyning_allocator), alignment_(alignment) {
+    const std::shared_ptr<Allocator>& underlying_allocator, size_t alignment)
+    : underlying_allocator_(underlying_allocator), alignment_(alignment) {
   PADDLE_ENFORCE_GT(
       alignment_,
       0,

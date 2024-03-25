@@ -149,7 +149,7 @@ class OpGroup {
   // Example: Get the all Reduction op_nodes in the group.
   //   OpGroup group = ...;
   //   std::set<api::OpNode> reduce_ op_set;
-  //   // The lambda funtion of VisitOpNode to get reduction op_nodes.
+  //   // The lambda function of VisitOpNode to get reduction op_nodes.
   //   auto get_reduce_op = [&reduce_op_set](const api::OpNode& op){
   //     if (op.kind() == OpPatternKind::kReduction) {
   //       reduce_op_set.insert(op);

@@ -361,7 +361,7 @@ void MatrixRankTolKernel(const Context& dev_ctx,
     rtol_T = std::numeric_limits<T>::epsilon() * std::max(rows, cols);
   }
 
-  // Must Copy X once, because the gesvdj will destory the content when exit.
+  // Must Copy X once, because the gesvdj will destroy the content when exit.
   DenseTensor x_tmp;
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &x_tmp);
   auto info = phi::memory_utils::Alloc(

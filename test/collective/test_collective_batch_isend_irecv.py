@@ -14,12 +14,14 @@
 
 import unittest
 
-from legacy_test.test_parallel_dygraph_dataparallel import TestMultipleGpus
+from legacy_test.test_parallel_dygraph_dataparallel import (
+    TestMultipleAccelerators,
+)
 
 
-class TestCollectiveBatchIsendIrecv(TestMultipleGpus):
+class TestCollectiveBatchIsendIrecv(TestMultipleAccelerators):
     def test_collective_batch_isend_irecv(self):
-        self.run_mnist_2gpu('collective_batch_isend_irecv.py')
+        self.run_mnist_2accelerators('collective_batch_isend_irecv.py')
 
 
 if __name__ == "__main__":

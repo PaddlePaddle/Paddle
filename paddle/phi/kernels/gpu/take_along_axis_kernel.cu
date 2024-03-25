@@ -41,7 +41,7 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
   } else {
     PADDLE_THROW(
         phi::errors::InvalidArgument("The data type of input index is expected "
-                                     "to be int32 or int64, but recieved %s.",
+                                     "to be int32 or int64, but received %s.",
                                      phi::DataTypeToString(index_type)));
   }
 }

@@ -15,13 +15,13 @@
 #include <gtest/gtest.h>
 #include <map>
 
-#include "paddle/pir/core/attribute.h"
-#include "paddle/pir/core/attribute_base.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/attribute_base.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/ir_context.h"
 #include "test/cpp/pir/tools/macros_utils.h"
 
 class AttributeA {};

@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include <type_traits>
 
-#include "paddle/phi/core/hostdevice.h"
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/kernels/funcs/detail/activation_functions.h"
 
 // TODO(guosheng): refine code style in gru_kernel

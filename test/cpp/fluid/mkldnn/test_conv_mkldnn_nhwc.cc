@@ -26,9 +26,6 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-USE_OP_ITSELF(conv2d);
-PD_DECLARE_KERNEL(conv2d, OneDNN, ONEDNN);
-
 template <typename DataType>
 void AddVarToScope(const std::string var_name,
                    paddle::framework::Scope* scope,

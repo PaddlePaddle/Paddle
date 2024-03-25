@@ -25,8 +25,6 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
-using phi::distributed::auto_parallel::str_join;
-
 std::tuple<std::string, std::string> FillConcatNotation(int64_t n_axis,
                                                         int64_t concat_axis) {
   PADDLE_ENFORCE_GT(
@@ -76,7 +74,7 @@ SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
       });
   auto non_empty_index = non_empty_iter - tensor_shapes.begin();
   int64_t ndim = static_cast<int64_t>(tensor_shapes[non_empty_index].size());
-  // normlize dim
+  // normalize dim
   auto dim = axis < 0 ? ndim + axis : axis;
   std::vector<TensorDistAttr> input_attrs;
   std::transform(
@@ -84,10 +82,10 @@ SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
         return meta.dist_attr();
       });
 
-  std::string all_aixs;
+  std::string all_axis;
   std::string align_axis;
-  std::tie(all_aixs, align_axis) = FillConcatNotation(ndim, dim);
-  std::vector<std::string> axis_names(input_attrs.size(), all_aixs);
+  std::tie(all_axis, align_axis) = FillConcatNotation(ndim, dim);
+  std::vector<std::string> axis_names(input_attrs.size(), all_axis);
   AlignDimsSharding(
       &input_attrs, tensor_shapes, axis_names, {}, align_axis, true);
 
@@ -140,7 +138,7 @@ SpmdInfo ConcatGradInferSpmdDynamic(const std::vector<DistMetaTensor>& x,
   auto non_empty_index = non_empty_iter - tensor_shapes.begin();
   int64_t ndim = static_cast<int64_t>(tensor_shapes[non_empty_index].size());
   auto dim = axis.to<int64_t>();
-  // normlize dim
+  // normalize dim
   dim = dim < 0 ? ndim + dim : dim;
   std::vector<TensorDistAttr> input_attrs;
   std::transform(
@@ -149,10 +147,10 @@ SpmdInfo ConcatGradInferSpmdDynamic(const std::vector<DistMetaTensor>& x,
       });
   input_attrs.push_back(output_grad.dist_attr());
   tensor_shapes.push_back(common::vectorize<int64_t>(output_grad.dims()));
-  std::string all_aixs;
+  std::string all_axis;
   std::string align_axis;
-  std::tie(all_aixs, align_axis) = FillConcatNotation(ndim, dim);
-  std::vector<std::string> axis_names(input_attrs.size(), all_aixs);
+  std::tie(all_axis, align_axis) = FillConcatNotation(ndim, dim);
+  std::vector<std::string> axis_names(input_attrs.size(), all_axis);
   AlignDimsSharding(
       &input_attrs, tensor_shapes, axis_names, {}, align_axis, true);
   auto output_grad_attr = input_attrs.back();

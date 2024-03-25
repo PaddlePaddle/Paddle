@@ -20,7 +20,6 @@ from test_imperative_base import new_program_scope
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.base.dygraph.base import to_variable
 from paddle.nn import Linear
 
 SEED = 123123111
@@ -132,8 +131,8 @@ class TestDygraphMultiForward(unittest.TestCase):
                         .reshape(128, 1)
                     )
 
-                    img = to_variable(dy_x_data)
-                    label = to_variable(y_data)
+                    img = paddle.to_tensor(dy_x_data)
+                    label = paddle.to_tensor(y_data)
                     label.stop_gradient = True
 
                     cost = mnist(img)

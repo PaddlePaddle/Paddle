@@ -48,7 +48,7 @@ void RToPReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                const DistTensor& in,
                                const TensorDistAttr& out_dist_attr,
                                DistTensor* out) {
-  VLOG(3) << "Call RToPReshardFunction Eval";
+  VLOG(3) << "Call " << Name();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
   int64_t local_rank = GetCurRankCoordInMesh(out_process_mesh)[0];
   const auto& in_reduce_type = out_dist_attr.partial_status().at(0);
@@ -95,7 +95,7 @@ void RToPReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
                                         const DistTensor& in,
                                         const TensorDistAttr& out_dist_attr,
                                         DistTensor* out) {
-  VLOG(3) << "Call RToPReshardFunctionCrossMesh Eval";
+  VLOG(3) << "Call " << Name();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
 
   DistTensor tmp_result;

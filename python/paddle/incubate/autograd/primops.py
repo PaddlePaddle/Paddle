@@ -144,7 +144,7 @@ def batch_norm(
         momentum (float, optional): The value used for the running_mean and
             running_var computation. Can be set to None for cumulative moving
             average (i.e. simple average). Defaults to 0.9.
-        use_run_stat (bool, optional): Whether or not using runing statistics.
+        use_run_stat (bool, optional): Whether or not using running statistics.
             Defaults to False.
     """
     reduce_axes = tuple(i for i in range(len(x.shape)) if i != axis)

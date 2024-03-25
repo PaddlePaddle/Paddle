@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/cinn/hlir/framework/pir/utils.h"
-#include "paddle/pir/core/op_base.h"
+#include "paddle/pir/include/core/op_base.h"
 
 namespace cinn {
 

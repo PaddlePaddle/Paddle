@@ -45,7 +45,7 @@ std::vector<int64_t> DistTensorMeta::dim_mapping() const {
               " sharding strategies yet (i.e. [Shard(0), Shard(0)])",
               shard_dim,
               dim_map[shard_dim]));
-      dim_map[shard_dim] = i;
+      dim_map[shard_dim] = i;  // NOLINT
     }
   }
   return dim_map;

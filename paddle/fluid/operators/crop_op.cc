@@ -207,7 +207,7 @@ class CropGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(GropNoNeedBufferVarInferer, "Y");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(CropNoNeedBufferVarInferer, "Y");
 
 }  // namespace operators
 }  // namespace paddle
@@ -218,7 +218,7 @@ REGISTER_OPERATOR(crop,
                   ops::CropOpMaker,
                   ops::CropGradOpMaker<paddle::framework::OpDesc>,
                   ops::CropGradOpMaker<paddle::imperative::OpBase>,
-                  ops::GropNoNeedBufferVarInferer);
+                  ops::CropNoNeedBufferVarInferer);
 REGISTER_OPERATOR(crop_grad, ops::CropOpGrad);
 REGISTER_OP_CPU_KERNEL(crop,
                        ops::CropKernel<phi::CPUContext, float>,

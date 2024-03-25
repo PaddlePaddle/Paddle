@@ -514,28 +514,30 @@ class ReduceBaseOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "The input dim dimensions of ReduceBaseOp "
                           "should be greater than 0. But received the dim "
-                          "dimesions of Reduce = %d.",
+                          "dimensions of Reduce = %d.",
                           dims.size()));
 
     for (size_t i = 0; i < dims.size(); ++i) {
-      PADDLE_ENFORCE_LT(dims[i],
-                        x_rank,
-                        platform::errors::InvalidArgument(
-                            "The reduce dim index %d should be in the "
-                            "range [-dimension(X), dimension(X)] "
-                            "which dimesion = %d. But received dim index = %d.",
-                            i,
-                            x_rank,
-                            dims[i]));
-      PADDLE_ENFORCE_GE(dims[i],
-                        -x_rank,
-                        platform::errors::InvalidArgument(
-                            "The reduce dim index %d should be in the "
-                            "range [-dimension(X), dimension(X)] "
-                            "which dimesion = %d. But received dim index = %d.",
-                            i,
-                            x_rank,
-                            dims[i]));
+      PADDLE_ENFORCE_LT(
+          dims[i],
+          x_rank,
+          platform::errors::InvalidArgument(
+              "The reduce dim index %d should be in the "
+              "range [-dimension(X), dimension(X)] "
+              "which dimension = %d. But received dim index = %d.",
+              i,
+              x_rank,
+              dims[i]));
+      PADDLE_ENFORCE_GE(
+          dims[i],
+          -x_rank,
+          platform::errors::InvalidArgument(
+              "The reduce dim index %d should be in the "
+              "range [-dimension(X), dimension(X)] "
+              "which dimension = %d. But received dim index = %d.",
+              i,
+              x_rank,
+              dims[i]));
       if (dims[i] < 0) dims[i] = x_rank + dims[i];
     }
     sort(dims.begin(), dims.end());
@@ -671,7 +673,7 @@ class ReduceGradOp : public framework::OperatorWithKernel {
             platform::errors::InvalidArgument(
                 "The reduce dim index %d should be in the "
                 "range [-dimension(X), dimension(X)], "
-                "which dimesion = %d. But received dim index = %d.",
+                "which dimension = %d. But received dim index = %d.",
                 i,
                 x_rank,
                 dims[i]));

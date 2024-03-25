@@ -300,7 +300,7 @@ PD_REGISTER_STRUCT_KERNEL(fake_channel_wise_dequantize_max_abs,
 REGISTER_OP_VERSION(fake_channel_wise_dequantize_max_abs)
     .AddCheckpoint(
         R"ROC(add new attributes [quant_axis] for applying per-channel "
-        "dequantization to conv2d_tranpose and mul ops.)ROC",
+        "dequantization to conv2d_transpose and mul ops.)ROC",
         paddle::framework::compatible::OpVersionDesc().NewAttr(
             "quant_axis", "The axis for dequantization.", 0))
     .AddCheckpoint(

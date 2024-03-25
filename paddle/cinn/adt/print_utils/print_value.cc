@@ -40,7 +40,7 @@ struct ToTxtStringStruct {
 
   std::string operator()(const DimExpr& value) {
     std::string ret;
-    ret += ToTxtString(value);
+    ret += ToString(value);
     return ret;
   }
 
@@ -79,15 +79,15 @@ struct ToTxtStringStruct {
   std::string operator()(const ListGetItem<Value, DimExpr>& list_get_item) {
     std::string ret;
     const auto& [value, constant] = list_get_item.tuple();
-    ret += "ListGetItem(" + ToTxtString(value) + ", " + ToTxtString(constant) +
-           ")";
+    ret +=
+        "ListGetItem(" + ToTxtString(value) + ", " + ToString(constant) + ")";
     return ret;
   }
 
   std::string operator()(const BroadcastedIterator<Value, DimExpr>& broadcast) {
     std::string ret;
     const auto& [value, constant] = broadcast.tuple();
-    ret += "BI(" + ToTxtString(value) + ", " + ToTxtString(constant) + ")";
+    ret += "BI(" + ToTxtString(value) + ", " + ToString(constant) + ")";
     return ret;
   }
 

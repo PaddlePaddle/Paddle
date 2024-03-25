@@ -39,7 +39,7 @@ def masked_multihead_attention(
 ):
     r"""
     Masked Multi-head attention for text summarization.
-    This is a fusion operator to compute masked multihead attention in transformer model architecture.
+    This is a fusion operator to compute masked multi-head attention in transformer model architecture.
     This operator only supports running on GPU.
 
     Args:

@@ -86,7 +86,7 @@ DeleteQuantDequantLinearOpPass::DeleteQuantDequantLinearOpPass() {
 }
 // Delete quantize_linear_op dequantize_linear_op, then add input_scales
 void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
-  const std::string pattern_name = "delete_quantdequant_linear_op_pattern";
+  const std::string pattern_name = "delete_quant_dequant_linear_op_pattern";
   FusePassBase::Init(pattern_name, graph);
 
   GraphPatternDetector gpd;
@@ -124,6 +124,17 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
     */
+    // Scale and ZeroPoint tensor should be removed in save_optimized_model_pass
+    std::vector<std::string> vars2rm = {};
+    vars2rm.emplace_back(quantize_linear_op->Op()->Input("Scale")[0]);
+    vars2rm.emplace_back(quantize_linear_op->Op()->Input("ZeroPoint")[0]);
+    vars2rm.emplace_back(dequantize_linear_op->Op()->Input("Scale")[0]);
+    vars2rm.emplace_back(dequantize_linear_op->Op()->Input("ZeroPoint")[0]);
+    auto& scale_and_zero_point_param = g->GetOrInit<std::vector<std::string>>(
+        framework::ir::kScaleAndZeroPointParamAttr);
+    scale_and_zero_point_param.insert(
+        scale_and_zero_point_param.end(), vars2rm.begin(), vars2rm.end());
+
     std::unordered_set<const Node*> nodes2rm = {};
 
     // Get input scale from tensor

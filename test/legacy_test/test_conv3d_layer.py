@@ -27,7 +27,7 @@ class Conv3DTestCase(unittest.TestCase):
         self,
         methodName='runTest',
         batch_size=4,
-        spartial_shape=(8, 8, 8),
+        spatial_shape=(8, 8, 8),
         num_channels=6,
         num_filters=8,
         filter_size=3,
@@ -43,7 +43,7 @@ class Conv3DTestCase(unittest.TestCase):
         self.batch_size = batch_size
         self.num_channels = num_channels
         self.num_filters = num_filters
-        self.spartial_shape = spartial_shape
+        self.spatial_shape = spatial_shape
         self.filter_size = filter_size
 
         self.padding = padding
@@ -58,13 +58,13 @@ class Conv3DTestCase(unittest.TestCase):
         self.channel_last = self.data_format == "NDHWC"
         if self.channel_last:
             input_shape = (
-                (self.batch_size,) + self.spartial_shape + (self.num_channels,)
+                (self.batch_size,) + self.spatial_shape + (self.num_channels,)
             )
         else:
             input_shape = (
                 self.batch_size,
                 self.num_channels,
-            ) + self.spartial_shape
+            ) + self.spatial_shape
         self.input = np.random.randn(*input_shape).astype(self.dtype)
 
         if isinstance(self.filter_size, int):

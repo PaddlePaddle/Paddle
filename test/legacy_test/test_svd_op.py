@@ -72,13 +72,13 @@ class TestSvdOp(OpTest):
         paddle.enable_static()
 
     def check_S_grad(self):
-        self.check_grad(['X'], ['S'], numeric_grad_delta=0.001)
+        self.check_grad(['X'], ['S'], numeric_grad_delta=0.001, check_pir=True)
 
     def check_U_grad(self):
-        self.check_grad(['X'], ['U'], numeric_grad_delta=0.001)
+        self.check_grad(['X'], ['U'], numeric_grad_delta=0.001, check_pir=True)
 
     def check_V_grad(self):
-        self.check_grad(['X'], ['VH'], numeric_grad_delta=0.001)
+        self.check_grad(['X'], ['VH'], numeric_grad_delta=0.001, check_pir=True)
 
     def test_check_grad(self):
         """
@@ -90,7 +90,7 @@ class TestSvdOp(OpTest):
 
 
 class TestSvdCheckGrad2(TestSvdOp):
-    # NOTE(xiongkun03): because we want to construct some full rank matrics,
+    # NOTE(xiongkun03): because we want to construct some full rank matrices,
     #                   so we can't specifize matrices which numel() > 100
 
     no_need_check_grad = True

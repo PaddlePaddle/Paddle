@@ -193,7 +193,7 @@ class TestPir(unittest.TestCase):
         )
 
     def test_pp(self):
-        # navie pipeline parallel without schedule
+        # naive pipeline parallel without schedule
         self.enable_pir(False)
         engine_pp_prog = self.get_engine("pp", name="pp_prog0")
         out_pp_prog = engine_pp_prog.fit(

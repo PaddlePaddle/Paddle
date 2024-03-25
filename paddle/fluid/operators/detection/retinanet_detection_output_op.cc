@@ -648,7 +648,7 @@ threshold NMS based on parameters of nms_threshold and nms_eta.
 After NMS step, at most keep_top_k number of total bounding boxes are to be kept
 per image if keep_top_k is larger than -1.
 This operator support multi-class and batched inputs. It applying NMS
-independently for each class. The outputs is a 2-D LoDTenosr, for each
+independently for each class. The outputs is a 2-D LoDTensor, for each
 image, the offsets in first dimension of phi::DenseTensor are called LoD, the number
 of offset is N + 1, where N is the batch size. If LoD[i + 1] - LoD[i] == 0,
 means there is no detected bounding box for this image. If there is no detected boxes

@@ -154,9 +154,9 @@ class TestFunctionalConv2D(TestCase):
 
     def dygraph_case(self):
         with dg.guard(self.place):
-            x = dg.to_variable(self.input)
-            weight = dg.to_variable(self.weight)
-            bias = None if self.no_bias else dg.to_variable(self.bias)
+            x = paddle.to_tensor(self.input)
+            weight = paddle.to_tensor(self.weight)
+            bias = None if self.no_bias else paddle.to_tensor(self.bias)
             y = F.conv2d_transpose(
                 x,
                 weight,
@@ -542,12 +542,12 @@ class TestFunctionalConv2DErrorCase10(TestCase):
 
     def dygraph_case(self):
         with dg.guard():
-            x = dg.to_variable(self.input, dtype=paddle.float32)
-            w = dg.to_variable(self.filter, dtype=paddle.float32)
+            x = paddle.to_tensor(self.input, dtype=paddle.float32)
+            w = paddle.to_tensor(self.filter, dtype=paddle.float32)
             b = (
                 None
                 if self.bias is None
-                else dg.to_variable(self.bias, dtype=paddle.float32)
+                else paddle.to_tensor(self.bias, dtype=paddle.float32)
             )
             y = F.conv2d_transpose(
                 x,

@@ -169,7 +169,7 @@ class OpcodeExecutorCache:
                     result = guard(frame)
                 except Exception as e:
                     print(
-                        f"[Cache]: skip checking {guard_str}\n         because error occured {e}"
+                        f"[Cache]: skip checking {guard_str}\n         because error occurred {e}"
                     )
                 if result is False:
                     print(f"[Cache]: missed at {guard_str}")
@@ -205,7 +205,7 @@ def start_translate(frame: types.FrameType, **kwargs) -> GuardedFunction:
             raise InnerError(
                 f"{simulator._code.co_name} should not fallback, but got '{e}'"
             )
-        # if disable_eval_frame is True, it means we want fallback to speedup rather than error occured
+        # if disable_eval_frame is True, it means we want fallback to speedup rather than error occurred
         if is_strict_mode() and e.disable_eval_frame is False:
             raise
         log(

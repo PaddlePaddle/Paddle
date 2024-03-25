@@ -33,7 +33,7 @@ from auto_parallel_gpt_model import (
 )
 
 
-class AutoPallelPassTestBase(DistPassTestBase):
+class AutoParallelPassTestBase(DistPassTestBase):
     def setUp(self):
         paddle.enable_static()
         seed = int(os.environ.get('SEED', -1))

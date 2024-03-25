@@ -498,6 +498,16 @@ class TestLbfgs(unittest.TestCase):
             paddle.to_tensor([1.0]),
             max_ls=1,
         )
+        lbfgs._strong_wolfe(
+            func2,
+            paddle.to_tensor([1.0]),
+            -0.001,
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
+            max_ls=1,
+        )
 
         lbfgs._strong_wolfe(
             func3,

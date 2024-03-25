@@ -28,23 +28,6 @@
 namespace phi {
 namespace distributed {
 
-namespace {
-
-std::vector<int64_t> GetUnionProcessIds(std::vector<int64_t> in_process_ids,
-                                        std::vector<int64_t> out_process_ids) {
-  std::vector<int64_t> result;
-  std::sort(in_process_ids.begin(), in_process_ids.end());
-  std::sort(out_process_ids.begin(), out_process_ids.end());
-  std::set_union(in_process_ids.begin(),
-                 in_process_ids.end(),
-                 out_process_ids.begin(),
-                 out_process_ids.end(),
-                 std::back_inserter(result));
-  return result;
-}
-
-}  // namespace
-
 bool XToRShrinkReshardFunction::IsSuitable(
     const DistTensor& in, const TensorDistAttr& out_dist_attr) {
   const auto& in_dist_attr = in.dist_attr();
@@ -66,7 +49,7 @@ void XToRShrinkReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                      const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr,
                                      DistTensor* out) {
-  VLOG(3) << "Call XToRShrinkReshardFunction Eval";
+  VLOG(3) << "Call " << Name();
   const auto& in_dist_attr = in.dist_attr();
   const auto& in_dims_mapping = in_dist_attr.dims_mapping();
   const auto& in_mesh = in_dist_attr.process_mesh();

@@ -63,7 +63,7 @@ def _check_input(
             raise ValueError(f"{name} values should be between {bound}")
     else:
         raise TypeError(
-            f"{name} should be a single number or a list/tuple with lenght 2."
+            f"{name} should be a single number or a list/tuple with length 2."
         )
 
     if value[0] == value[1] == center:
@@ -81,7 +81,7 @@ class Compose:
 
     Returns:
         A compose object which is callable, __call__ for this Compose
-        object will call each given :attr:`transforms` sequencely.
+        object will call each given :attr:`transforms` sequently.
 
     Examples:
 
@@ -412,7 +412,7 @@ class RandomResizedCrop(BaseTransform):
     """Crop the input data to random size and aspect ratio.
     A crop of random size (default: of 0.08 to 1.0) of the original size and a random
     aspect ratio (default: of 3/4 to 1.33) of the original aspect ratio is made.
-    After applying crop transfrom, the input data will be resized to given size.
+    After applying crop transform, the input data will be resized to given size.
 
     Args:
         size (int|list|tuple): Target size of output image, with (height, width) shape.
@@ -897,7 +897,7 @@ class BrightnessTransform(BaseTransform):
 
     Shape:
         - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
-        - output(PIL.Image|np.ndarray|Paddle.Tensor): An image with a transform in brghtness.
+        - output(PIL.Image|np.ndarray|Paddle.Tensor): An image with a transform in brightness.
 
     Returns:
         A callable object of BrightnessTransform.
@@ -1307,7 +1307,7 @@ class Pad(BaseTransform):
 
     Shape:
         - img(PIL.Image|np.ndarray|Paddle.Tensor): The input image with shape (H x W x C).
-        - output(PIL.Image|np.ndarray|Paddle.Tensor): A paded image.
+        - output(PIL.Image|np.ndarray|Paddle.Tensor): A padded image.
 
     Returns:
         A callable object of Pad.
@@ -1841,7 +1841,7 @@ class RandomErasing(BaseTransform):
         ratio (sequence, optional): Aspect ratio range of the erased area. Default: (0.3, 3.3).
         value (int|float|sequence|str, optional): The value each pixel in erased area will be replaced with.
                                If value is a single number, all pixels will be erased with this value.
-                               If value is a sequence with length 3, the R, G, B channels will be ereased
+                               If value is a sequence with length 3, the R, G, B channels will be erased
                                respectively. If value is set to "random", each pixel will be erased with
                                random values. Default: 0.
         inplace (bool, optional): Whether this transform is inplace. Default: False.
@@ -1920,7 +1920,7 @@ class RandomErasing(BaseTransform):
             scale (sequence, optional): The proportional range of the erased area to the input image.
             ratio (sequence, optional): Aspect ratio range of the erased area.
             value (sequence | None): The value each pixel in erased area will be replaced with.
-                               If value is a sequence with length 3, the R, G, B channels will be ereased
+                               If value is a sequence with length 3, the R, G, B channels will be erased
                                respectively. If value is None, each pixel will be erased with random values.
 
         Returns:
@@ -1970,7 +1970,7 @@ class RandomErasing(BaseTransform):
             scale (sequence, optional): The proportional range of the erased area to the input image.
             ratio (sequence, optional): Aspect ratio range of the erased area.
             value (sequence | None): The value each pixel in erased area will be replaced with.
-                               If value is a sequence with length 3, the R, G, B channels will be ereased
+                               If value is a sequence with length 3, the R, G, B channels will be erased
                                respectively. If value is None, each pixel will be erased with random values.
 
         Returns:

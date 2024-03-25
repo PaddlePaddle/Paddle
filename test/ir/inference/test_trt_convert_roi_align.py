@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from itertools import product
+from typing import Any, Generator
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -28,13 +31,13 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]], batch):
+        def generate_input1(attrs: list[dict[str, Any]], batch):
             return np.ones([batch, 256, 32, 32]).astype(np.float32)
 
-        def generate_input2(attrs: List[Dict[str, Any]], batch):
+        def generate_input2(attrs: list[dict[str, Any]], batch):
             return np.random.random([3, 4]).astype(np.float32)
 
-        def generate_input3(attrs: List[Dict[str, Any]], batch):
+        def generate_input3(attrs: list[dict[str, Any]], batch):
             if batch == 1:
                 return np.array([3]).astype(np.int32)
             if batch == 2:
@@ -50,93 +53,93 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
             if batch == 4:
                 return [[0, 1, 2, 2, 3]]
 
-        for num_input in [0, 1]:
-            for batch in [1, 2, 4]:
-                for spatial_scale in [0.5, 0.6]:
-                    for pooled_height in [7, 1]:
-                        for pooled_width in [7, 1]:
-                            for sampling_ratio in [-1, 4, 8]:
-                                for aligned in [True, False]:
-                                    self.num_input = num_input
-                                    if num_input == 1:
-                                        batch = 1
-                                    dics = [
-                                        {
-                                            "spatial_scale": spatial_scale,
-                                            "pooled_height": pooled_height,
-                                            "pooled_width": pooled_width,
-                                            "sampling_ratio": sampling_ratio,
-                                            "aligned": aligned,
-                                        },
-                                        {},
-                                    ]
-                                    dics_input = [
-                                        {
-                                            "X": ["roi_align_input"],
-                                            "ROIs": ["ROIs"],
-                                            "RoisNum": ["RoisNum"],
-                                        },
-                                        {
-                                            "X": ["roi_align_input"],
-                                            "ROIs": ["ROIs"],
-                                        },
-                                    ]
-                                    program_input = [
-                                        {
-                                            "roi_align_input": TensorConfig(
-                                                data_gen=partial(
-                                                    generate_input1, dics, batch
-                                                )
-                                            ),
-                                            "ROIs": TensorConfig(
-                                                data_gen=partial(
-                                                    generate_input2, dics, batch
-                                                )
-                                            ),
-                                            "RoisNum": TensorConfig(
-                                                data_gen=partial(
-                                                    generate_input3, dics, batch
-                                                )
-                                            ),
-                                        },
-                                        {
-                                            "roi_align_input": TensorConfig(
-                                                data_gen=partial(
-                                                    generate_input1, dics, batch
-                                                )
-                                            ),
-                                            "ROIs": TensorConfig(
-                                                data_gen=partial(
-                                                    generate_input2, dics, batch
-                                                ),
-                                                lod=generate_lod(batch),
-                                            ),
-                                        },
-                                    ]
-                                    ops_config = [
-                                        {
-                                            "op_type": "roi_align",
-                                            "op_inputs": dics_input[num_input],
-                                            "op_outputs": {
-                                                "Out": ["roi_align_out"]
-                                            },
-                                            "op_attrs": dics[0],
-                                        }
-                                    ]
-                                    ops = self.generate_op_config(ops_config)
-                                    program_config = ProgramConfig(
-                                        ops=ops,
-                                        weights={},
-                                        inputs=program_input[num_input],
-                                        outputs=["roi_align_out"],
-                                        no_cast_list=["RoisNum"],
-                                    )
+        for (
+            num_input,
+            batch,
+            spatial_scale,
+            pooled_height,
+            pooled_width,
+            sampling_ratio,
+            aligned,
+        ) in product(
+            [0, 1],
+            [1, 2, 4],
+            [0.5, 0.6],
+            [7, 1],
+            [7, 1],
+            [-1, 4, 8],
+            [True, False],
+        ):
+            self.num_input = num_input
+            if num_input == 1:
+                batch = 1
+            dics = [
+                {
+                    "spatial_scale": spatial_scale,
+                    "pooled_height": pooled_height,
+                    "pooled_width": pooled_width,
+                    "sampling_ratio": sampling_ratio,
+                    "aligned": aligned,
+                },
+                {},
+            ]
+            dics_input = [
+                {
+                    "X": ["roi_align_input"],
+                    "ROIs": ["ROIs"],
+                    "RoisNum": ["RoisNum"],
+                },
+                {
+                    "X": ["roi_align_input"],
+                    "ROIs": ["ROIs"],
+                },
+            ]
+            program_input = [
+                {
+                    "roi_align_input": TensorConfig(
+                        data_gen=partial(generate_input1, dics, batch)
+                    ),
+                    "ROIs": TensorConfig(
+                        data_gen=partial(generate_input2, dics, batch)
+                    ),
+                    "RoisNum": TensorConfig(
+                        data_gen=partial(generate_input3, dics, batch)
+                    ),
+                },
+                {
+                    "roi_align_input": TensorConfig(
+                        data_gen=partial(generate_input1, dics, batch)
+                    ),
+                    "ROIs": TensorConfig(
+                        data_gen=partial(generate_input2, dics, batch),
+                        lod=generate_lod(batch),
+                    ),
+                },
+            ]
+            ops_config = [
+                {
+                    "op_type": "roi_align",
+                    "op_inputs": dics_input[num_input],
+                    "op_outputs": {"Out": ["roi_align_out"]},
+                    "op_attrs": dics[0],
+                }
+            ]
+            ops = self.generate_op_config(ops_config)
+            program_config = ProgramConfig(
+                ops=ops,
+                weights={},
+                inputs=program_input[num_input],
+                outputs=["roi_align_out"],
+                no_cast_list=["RoisNum"],
+            )
 
-                                    yield program_config
+            yield program_config
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> Generator[
+        Any, Any, tuple[paddle_infer.Config, list[int], float] | None
+    ]:
         def generate_dynamic_shape(attrs):
             if self.num_input == 0:
                 self.dynamic_shape.min_input_shape = {

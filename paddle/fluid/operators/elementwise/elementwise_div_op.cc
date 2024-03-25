@@ -89,7 +89,7 @@ class ElementwiseDivCompositeGradOpMaker
         -1,
         phi::errors::InvalidArgument(
             "We only support axis = -1 in composite div but we got: ", axis));
-    VLOG(6) << "Runing div_grad composite func";
+    VLOG(6) << "Running div_grad composite func";
     prim::divide_grad<prim::DescTensor>(
         x, y, out, out_grad, axis, dx_ptr, dy_ptr);
     this->RecoverOutputName(dx, dx_name);

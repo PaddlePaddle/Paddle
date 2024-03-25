@@ -106,8 +106,13 @@ class XPUOpTest(OpTest):
             if not core.is_float16_supported(place):
                 return
 
-        if self.dtype == np.float16:
+        if self.dtype == np.uint16:
+            if not core.is_bfloat16_supported(place):
+                return
+
+        if self.dtype == np.float16 or self.dtype == np.uint16:
             atol = 0.1
+
         return super().check_output_with_place(
             place,
             atol,
@@ -181,6 +186,10 @@ class XPUOpTest(OpTest):
 
         if self.dtype == np.float16:
             if not core.is_float16_supported(place):
+                return
+
+        if self.dtype == np.uint16:
+            if not core.is_bfloat16_supported(place):
                 return
 
         if self.dtype == np.float16 or self.dtype == np.uint16:

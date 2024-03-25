@@ -27,7 +27,7 @@ static framework::DDim GetBitmaskDims(std::vector<int> out_shape) {
                                 std::multiplies<int>()) /  // NOLINT
                 c;
   int32_t c_int32_elems = ((c + 63) & ~63) / 32;
-  int32_t nhw_int32_elems = ((nhw + 31) & ~31);
+  int32_t nhw_int32_elems = static_cast<int32_t>(((nhw + 31) & ~31));
   std::vector<int> bitmask_shape = {nhw_int32_elems, c_int32_elems, 1};
   return common::make_ddim(bitmask_shape);
 }

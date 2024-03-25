@@ -71,7 +71,7 @@ class LoDTensor2BatchFunctor {
           lods.size(),
           2UL,
           phi::errors::InvalidArgument(
-              "The LoD of LoDTensor should inlcude at least 2-level "
+              "The LoD of LoDTensor should include at least 2-level "
               "sequence information, but got the LoD level is %lu. Please "
               "check the input value.",
               lods.size()));
@@ -184,7 +184,7 @@ class Batch2LoDTensorFunctor {
         in_lod.size(),
         2UL,
         phi::errors::InvalidArgument(
-            "The LoD of LoDTensor should inlcude at least 2-level "
+            "The LoD of LoDTensor should include at least 2-level "
             "sequence information, but got the LoD level is %lu. Please check "
             "the input value.",
             in_lod.size()));

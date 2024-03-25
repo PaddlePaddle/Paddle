@@ -22,7 +22,6 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core
-from paddle.base.dygraph.base import to_variable
 from paddle.optimizer import Adam
 
 
@@ -123,12 +122,12 @@ class TestDygraphGNN(unittest.TestCase):
             labels = np.ones([100, 1], dtype=np.int64)
 
             model = GCN('test_gcn', 50)
-            logits = model(to_variable(features), to_variable(adj))
+            logits = model(paddle.to_tensor(features), paddle.to_tensor(adj))
             logits = paddle.reshape(logits, logits.shape[1:])
             # In other example, it's nll with log_softmax. However, paddle's
             # log_loss only supports binary classification now.
             loss = paddle.nn.functional.softmax_with_cross_entropy(
-                logits, to_variable(labels)
+                logits, paddle.to_tensor(labels)
             )
             loss = paddle.sum(loss)
             loss.backward()
@@ -149,12 +148,14 @@ class TestDygraphGNN(unittest.TestCase):
             labels2 = np.ones([100, 1], dtype=np.int64)
 
             model2 = GCN('test_gcn', 50)
-            logits2 = model2(to_variable(features2), to_variable(adj2))
+            logits2 = model2(
+                paddle.to_tensor(features2), paddle.to_tensor(adj2)
+            )
             logits2 = paddle.reshape(logits2, logits2.shape[1:])
             # In other example, it's nll with log_softmax. However, paddle's
             # log_loss only supports binary classification now.
             loss2 = paddle.nn.functional.softmax_with_cross_entropy(
-                logits2, to_variable(labels2)
+                logits2, paddle.to_tensor(labels2)
             )
             loss2 = paddle.sum(loss2)
             loss2.backward()

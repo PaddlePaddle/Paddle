@@ -80,6 +80,7 @@ class TestFunctionalPReluAPI(unittest.TestCase):
         self.dygraph_check(self.weight_np_0)
         self.dygraph_check(self.weight_np_1)
 
+    @test_with_pir_api
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program()):
             weight_fp32 = paddle.static.data(
@@ -93,10 +94,11 @@ class TestFunctionalPReluAPI(unittest.TestCase):
             )
             self.assertRaises(TypeError, F.prelu, x=x_int32, weight=weight_fp32)
             # support the input dtype is float16
-            x_fp16 = paddle.static.data(
-                name='x_fp16', shape=[2, 3], dtype='float16'
-            )
-            F.prelu(x=x_fp16, weight=weight_fp32)
+            if core.is_compiled_with_cuda():
+                x_fp16 = paddle.static.data(
+                    name='x_fp16', shape=[2, 3], dtype='float16'
+                )
+                F.prelu(x=x_fp16, weight=weight_fp32)
 
 
 class TestNNPReluAPI(unittest.TestCase):
@@ -419,7 +421,7 @@ def create_test_bf16_class(
     @unittest.skipIf(
         not core.is_compiled_with_cuda()
         or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-        "core is not complied with CUDA and not support the bfloat16",
+        "core is not compiled with CUDA and not support the bfloat16",
     )
     class TestPReluBF16Op(parent):
         def setUp(self):

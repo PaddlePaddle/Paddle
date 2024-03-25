@@ -41,7 +41,7 @@ void SetOp(ProgramDesc* prog,
   if (type != "dropout" && type != "quantize" && type != "dequantize") {
     op->SetAttr("mkldnn_data_type", mkldnn_data_type);
   }
-  if (type == "pool2d") {
+  if (type == "pool2d") {  // NOLINT
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
     if (!scale.empty()) op->SetAttr("Scale_in", scale[0]);
@@ -1018,10 +1018,10 @@ TEST(CpuQuantizeSquashPass, fc_dequant_more_than_one_op_after_dequant) {
 
 // a->Concat1->b
 // b->Concat2
-// b->Quatize1(Scale)->c
+// b->Quantize1(Scale)->c
 // c->Fc1
 // c->Fc2
-TEST(CpuQuantizeSquashPass, quatize_with_same_scale) {
+TEST(CpuQuantizeSquashPass, quantize_with_same_scale) {
   auto first_scale = 1.2345f;
   auto second_scale = 1.2345f;
   auto use_mkldnn = true;
@@ -1033,7 +1033,7 @@ TEST(CpuQuantizeSquashPass, quatize_with_same_scale) {
 }
 
 // if scales are not the same, do not fuse
-TEST(CpuQuantizeSquashPass, quatize_with_different_scale) {
+TEST(CpuQuantizeSquashPass, quantize_with_different_scale) {
   auto first_scale = 1.2345f;
   auto second_scale = 1.5432f;
   auto use_mkldnn = true;

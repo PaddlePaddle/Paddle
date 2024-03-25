@@ -11,7 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/selected_rows_utils.h"
 
-#include <time.h>
+#include <ctime>
 
 #include <thread>  // NOLINT
 

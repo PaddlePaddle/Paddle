@@ -30,17 +30,24 @@ namespace common {
 
 class NVGPUDevInfo : public DevInfoBase {
  public:
+  // Note(LiuYang):Since CI own zero GPU while compiling CINN_WITH_CUDA, here
+  // I can't use CUDA_CALL to check ret of cuda_runtime_api, devops should
+  // always check IsValid before use other api functions.
   explicit NVGPUDevInfo(int device_num = 0) : DevInfoBase(device_num) {
-    CUDA_CALL(cudaGetDeviceProperties(&prop_, device_num));
+    if (cudaGetDeviceProperties(&prop_, device_num) != cudaSuccess)
+      is_valid_ = false;
   }
 
+  bool IsValid() const { return is_valid_; }
   std::array<int, 3> GetMaxGridDims() const;
   std::array<int, 3> GetMaxBlockDims() const;
   int GetMultiProcessorCount() const;
   int GetMaxThreadsPerMultiProcessor() const;
   int GetMaxThreadsPerBlock() const;
+  size_t GetMaxSharedMemPerBlock() const;
 
  private:
+  bool is_valid_{true};
   cudaDeviceProp prop_;
 };
 }  // namespace common

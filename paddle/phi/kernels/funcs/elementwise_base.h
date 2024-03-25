@@ -49,7 +49,7 @@ class RowwiseTransformIterator;
 template <typename T, typename DeviceContext>
 class MidWiseTransformIterator;
 
-// NOTE(dzhwinter): ptrdiff_t in iterator is deperecated in c++17
+// NOTE(dzhwinter): ptrdiff_t in iterator is deprecated in c++17
 template <typename T>
 class RowwiseTransformIterator<T, CPUContext>
     : public std::iterator<std::random_access_iterator_tag,

@@ -27,6 +27,7 @@
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/common/ddim.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
@@ -43,14 +44,13 @@
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/printf.h"
-#include "paddle/phi/core/flags.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/utils/string/printf.h"
 #include "paddle/utils/string/string_helper.h"
 
-PHI_DECLARE_string(static_runtime_data_save_path);
-PHI_DECLARE_bool(save_static_runtime_data);
+COMMON_DECLARE_string(static_runtime_data_save_path);
+COMMON_DECLARE_bool(save_static_runtime_data);
 namespace paddle {
 namespace operators::details {
 
@@ -77,6 +77,15 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
       [](const auto& name_view) { return std::string(name_view.data()); });
   // build name map between the original variables and compiled ones
   BuildVarNameMap(compiled_obj.paddle2cinn_varmap, cinn_argument_names_);
+  if (FLAGS_save_static_runtime_data) {
+    auto graph_compilation_key =
+        std::hash<const framework::ir::Graph*>()((&graph));
+    paddle::framework::save_paddle2cinn_varmap(
+        paddle2cinn_varmap_,
+        graph_compilation_key,
+        FLAGS_static_runtime_data_save_path +
+            "/paddle2cinn_varmap/paddle2cinn_varmap.txt");
+  }
 
   const auto& input_var_names =
       graph.Get<std::vector<std::string>>(framework::paddle2cinn::kInputVars);
@@ -190,15 +199,9 @@ void CinnLaunchContext::BuildVarNameMap(
       paddle2cinn_varmap_.size(),
       cinn2paddle_varmap_.size(),
       platform::errors::PreconditionNotMet(
-          "Size of variables is not euqal, paddle[%ld] vs cinn[%ld]",
+          "Size of variables is not equal, paddle[%ld] vs cinn[%ld]",
           paddle2cinn_varmap_.size(),
           cinn2paddle_varmap_.size()));
-  if (FLAGS_save_static_runtime_data) {
-    paddle::framework::save_paddle2cinn_varmap(
-        paddle2cinn_varmap_,
-        FLAGS_static_runtime_data_save_path +
-            "/paddle2cinn_varmap/paddle2cinn_varmap.txt");
-  }
 }
 
 std::unordered_set<std::string> CinnLaunchContext::GetVisibleVarNames() const {
@@ -409,10 +412,10 @@ std::unique_ptr<framework::ProgramDesc> CinnLaunchContext::BuildCompiledProgram(
 
   // build a map that links the name of a Paddle variable to its VarDesc
   const std::unordered_set<framework::ir::Node*>& nodes = graph.Nodes();
-  std::unordered_map<std::string, framework::VarDesc*> original_vardescs;
+  std::unordered_map<std::string, framework::VarDesc*> original_var_descs;
   for (auto* node : nodes) {
     if (node->IsVar() && node->Var()) {
-      original_vardescs.emplace(node->Name(), node->Var());
+      original_var_descs.emplace(node->Name(), node->Var());
     }
   }
 
@@ -423,15 +426,15 @@ std::unique_ptr<framework::ProgramDesc> CinnLaunchContext::BuildCompiledProgram(
   //   to the new VarDesc.
   //   (2) For all variables, the shape, data type of their VarDescs
   //   are set by values of the corresponding compiled tensors,
-  //   including the in/out variables where the equiality between their tensors
+  //   including the in/out variables where the equality between their tensors
   //   and the CINN compiled ones is verified in corresponding cinn_launch_op.
   for (auto&& arg : cinn_argument_names_) {
     const std::string& var_name = cinn2paddle_varmap_.at(arg);
     framework::VarDesc* var_desc = block->Var(var_name);
     var_desc->SetType(framework::proto::VarType::LOD_TENSOR);
 
-    auto res = original_vardescs.find(var_name);
-    if (res != original_vardescs.end()) {
+    auto res = original_var_descs.find(var_name);
+    if (res != original_var_descs.end()) {
       auto* ori_desc = res->second;
       var_desc->SetPersistable(ori_desc->Persistable());
       var_desc->SetIsParameter(ori_desc->IsParameter());

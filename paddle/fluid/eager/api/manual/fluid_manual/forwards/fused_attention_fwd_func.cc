@@ -14,10 +14,10 @@
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/amp_auto_cast.h"
-#include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/api/manual/fluid_manual/dygraph_forward_api.h"
 #include "paddle/fluid/eager/api/manual/fluid_manual/nodes/nodes.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/imperative/amp_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 std::tuple<paddle::Tensor,
@@ -76,8 +76,8 @@ fused_attention_dygraph_function(
     if (Ln2Scale.initialized()) amp_tensors_vector.push_back({Ln2Scale});
     if (Ln2Bias.initialized()) amp_tensors_vector.push_back({Ln2Bias});
 
-    auto amp_dst_dtype =
-        egr::GetAmpDestDtype("fused_attention", amp_tensors_vector);
+    auto amp_dst_dtype = paddle::imperative::GetAmpDestDtype(
+        "fused_attention", amp_tensors_vector);
 
     auto NEW_X = egr::AmpAutoCast("X", X, amp_dst_dtype, "fused_attention");
     auto NEW_QKVW =
@@ -128,7 +128,7 @@ fused_attention_dygraph_function(
 
     {
       paddle::imperative::AutoCastGuard guard(
-          egr::Controller::Instance().GetCurrentTracer(),
+          egr::Controller::Instance().GetCurrentAmpAttrs(),
           paddle::imperative::AmpLevel::O0);
       return fused_attention_dygraph_function(NEW_X,
                                               NEW_LnScale,
@@ -403,27 +403,27 @@ fused_attention_dygraph_function(
       grad_node->SetAttrMap(std::move(attrs));
       grad_node->SetDefaultAttrMap(std::move(default_attrs));
 
-      grad_node->SetTensorWrapperX(X);
-      grad_node->SetTensorWrapperQKVW(QKVW);
-      grad_node->SetTensorWrapperOutLinearW(OutLinearW);
-      grad_node->SetTensorWrapperQKVOut(QKVOut);
-      grad_node->SetTensorWrapperTransposeOut2(TransposeOut2);
-      grad_node->SetTensorWrapperQKOut(QKOut);
-      grad_node->SetTensorWrapperQKTVOut(QKTVOut);
-      grad_node->SetTensorWrapperSoftmaxOut(SoftmaxOut);
-      grad_node->SetTensorWrapperAttnDropoutMaskOut(AttnDropoutMaskOut);
-      grad_node->SetTensorWrapperAttnDropoutOut(AttnDropoutOut);
-      grad_node->SetTensorWrapperFMHAOut(FMHAOut);
-      grad_node->SetTensorWrapperOutLinearOut(OutLinearOut);
-      grad_node->SetTensorWrapperDropoutMaskOut(DropoutMaskOut);
+      grad_node->SetTensorWrapper_X(X);
+      grad_node->SetTensorWrapper_QKVW(QKVW);
+      grad_node->SetTensorWrapper_OutLinearW(OutLinearW);
+      grad_node->SetTensorWrapper_QKVOut(QKVOut);
+      grad_node->SetTensorWrapper_TransposeOut2(TransposeOut2);
+      grad_node->SetTensorWrapper_QKOut(QKOut);
+      grad_node->SetTensorWrapper_QKTVOut(QKTVOut);
+      grad_node->SetTensorWrapper_SoftmaxOut(SoftmaxOut);
+      grad_node->SetTensorWrapper_AttnDropoutMaskOut(AttnDropoutMaskOut);
+      grad_node->SetTensorWrapper_AttnDropoutOut(AttnDropoutOut);
+      grad_node->SetTensorWrapper_FMHAOut(FMHAOut);
+      grad_node->SetTensorWrapper_OutLinearOut(OutLinearOut);
+      grad_node->SetTensorWrapper_DropoutMaskOut(DropoutMaskOut);
 
       grad_node->SetGradOutMeta(X, 0);
       grad_node->SetGradOutMeta(QKVW, 3);
       grad_node->SetGradOutMeta(OutLinearW, 7);
 
       if (QKVBias.initialized()) {
-        grad_node->SetTensorWrapperQKVBias(QKVBias);
-        grad_node->SetTensorWrapperQKVBiasOut(QKVBiasOut);
+        grad_node->SetTensorWrapper_QKVBias(QKVBias);
+        grad_node->SetTensorWrapper_QKVBiasOut(QKVBiasOut);
         grad_node->SetGradOutMeta(QKVBias, 4);
 
         auto QKVBiasOut_accumulation_node =
@@ -436,8 +436,8 @@ fused_attention_dygraph_function(
       }
 
       if (SrcMask.initialized()) {
-        grad_node->SetTensorWrapperSrcMask(SrcMask);
-        grad_node->SetTensorWrapperSrcMaskOut(SrcMaskOut);
+        grad_node->SetTensorWrapper_SrcMask(SrcMask);
+        grad_node->SetTensorWrapper_SrcMaskOut(SrcMaskOut);
 
         auto SrcMaskOut_accumulation_node =
             std::make_shared<egr::GradNodeAccumulation>(p_autograd_SrcMaskOut);
@@ -449,21 +449,21 @@ fused_attention_dygraph_function(
       }
 
       if (OutLinearBias.initialized()) {
-        grad_node->SetTensorWrapperOutLinearBias(OutLinearBias);
+        grad_node->SetTensorWrapper_OutLinearBias(OutLinearBias);
         grad_node->SetGradOutMeta(OutLinearBias, 8);
       }
 
       if (pre_layer_norm) {
         if (LnScale.initialized()) {
-          grad_node->SetTensorWrapperLnScale(LnScale);
+          grad_node->SetTensorWrapper_LnScale(LnScale);
           grad_node->SetGradOutMeta(LnScale, 1);
         }
         if (LnBias.initialized()) {
-          grad_node->SetTensorWrapperLnBias(LnBias);
+          grad_node->SetTensorWrapper_LnBias(LnBias);
           grad_node->SetGradOutMeta(LnBias, 2);
         }
         if (LnOut.initialized()) {
-          grad_node->SetTensorWrapperLnOut(LnOut);
+          grad_node->SetTensorWrapper_LnOut(LnOut);
 
           auto LnOut_accumulation_node =
               std::make_shared<egr::GradNodeAccumulation>(p_autograd_LnOut);
@@ -474,24 +474,24 @@ fused_attention_dygraph_function(
           grad_node->SetGradOutMeta(LnOut, 13);
         }
         if (LnMean.initialized()) {
-          grad_node->SetTensorWrapperLnMean(LnMean);
+          grad_node->SetTensorWrapper_LnMean(LnMean);
         }
         if (LnVariance.initialized()) {
-          grad_node->SetTensorWrapperLnVariance(LnVariance);
+          grad_node->SetTensorWrapper_LnVariance(LnVariance);
         }
       } else {
         if (Ln2Scale.initialized()) {
-          grad_node->SetTensorWrapperLn2Scale(Ln2Scale);
+          grad_node->SetTensorWrapper_Ln2Scale(Ln2Scale);
           grad_node->SetGradOutMeta(Ln2Scale, 9);
         }
         if (Ln2Bias.initialized()) {
-          grad_node->SetTensorWrapperLn2Bias(Ln2Bias);
+          grad_node->SetTensorWrapper_Ln2Bias(Ln2Bias);
           grad_node->SetGradOutMeta(Ln2Bias, 10);
         }
-        grad_node->SetTensorWrapperBiasDropoutResidualOut(
+        grad_node->SetTensorWrapper_BiasDropoutResidualOut(
             BiasDropoutResidualOut);
-        grad_node->SetTensorWrapperLn2Mean(Ln2Mean);
-        grad_node->SetTensorWrapperLn2Variance(Ln2Variance);
+        grad_node->SetTensorWrapper_Ln2Mean(Ln2Mean);
+        grad_node->SetTensorWrapper_Ln2Variance(Ln2Variance);
 
         auto BiasDropoutResidualOut_accumulation_node =
             std::make_shared<egr::GradNodeAccumulation>(

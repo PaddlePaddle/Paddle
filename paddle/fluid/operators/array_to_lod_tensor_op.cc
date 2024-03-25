@@ -119,7 +119,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
           platform::errors::InvalidArgument(
               "The dimension of the %zu'th element in LoDTensorArray "
               "differs from previous ones."
-              "The current dimension is %d, and the previous dimesion is %d.",
+              "The current dimension is %d, and the previous dimension is %d.",
               i,
               ins_i_dims,
               ins_dims));

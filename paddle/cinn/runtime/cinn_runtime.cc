@@ -375,6 +375,9 @@ uint8_t cinn_pod_value_to_uint8(cinn_pod_value_t* value) { return *value; }
 bool cinn_pod_value_to_bool(cinn_pod_value_t* value) { return *value; }
 
 void* cinn_pod_value_to_void_p(cinn_pod_value_t* value) { return *value; }
+int32_t* cinn_pod_value_to_int32_p(cinn_pod_value_t* value) {
+  return reinterpret_cast<int32_t*>(value->data_addr());
+}
 cinn_buffer_t* cinn_pod_value_to_buffer_p(cinn_pod_value_t* value) {
   return *value;
 }

@@ -896,7 +896,7 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
             entry_attr = get_entry_attr(param)
 
             if fuse:
-                # remove origin optimzier op
+                # remove origin optimizer op
                 opt_block._remove_op(opt_idx)
 
             # training/infer

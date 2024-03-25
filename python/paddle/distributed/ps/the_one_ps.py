@@ -594,8 +594,8 @@ class CommonAccessor(Accessor):
 
 
 class Tensor:
-    def __init__(self, tesnor_dcit):
-        self.tensor_dict = tesnor_dcit
+    def __init__(self, tensor_dict):
+        self.tensor_dict = tensor_dict
 
     def _set(self, tensor_proto):
         tensor_proto.main_program_id = self.tensor_dict.get(
@@ -1268,7 +1268,7 @@ class TheOnePSRuntime(RuntimeBase):
                 )
             scopes = [paddle.static.global_scope()]
         if len(self.origin_main_programs) != len(scopes):
-            raise VauleError("len(programs) != len(scopes)")
+            raise ValueError("len(programs) != len(scopes)")
 
         self.scopes = scopes
         if not is_test:

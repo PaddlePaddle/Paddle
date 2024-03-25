@@ -36,12 +36,10 @@ std::vector<Tensor> add_n_grad<LazyTensor>(const std::vector<Tensor>& x,
   auto op_res = paddle::dialect::add_n_grad(x_res, out_grad_res);
 
   std::vector<Tensor> x_grad(op_res.size());
-  std::transform(op_res.begin(),
-                 op_res.end(),
-                 x_grad.begin(),
-                 [](const pir::OpResult& res) {
-                   return Tensor(std::make_shared<LazyTensor>(res));
-                 });
+  std::transform(
+      op_res.begin(), op_res.end(), x_grad.begin(), [](const pir::Value& res) {
+        return Tensor(std::make_shared<LazyTensor>(res));
+      });
   return x_grad;
 }
 

@@ -20,7 +20,7 @@ import yaml
 from filters import (
     assert_dense_or_sr,
     cartesian_prod_mapping,
-    find_optinal_inputs_name,
+    find_optional_inputs_name,
     get_infer_var_type_func,
     to_composite_grad_opmaker_name,
     to_input_name,
@@ -64,7 +64,7 @@ env.filters["to_int_array_tensor_name"] = to_int_array_tensor_name
 env.filters["to_int_array_tensors_name"] = to_int_array_tensors_name
 env.filters["to_input_name"] = to_input_name
 env.filters["assert_dense_or_sr"] = assert_dense_or_sr
-env.filters["find_optinal_inputs_name"] = find_optinal_inputs_name
+env.filters["find_optional_inputs_name"] = find_optional_inputs_name
 env.filters["to_opmaker_name_cstr"] = to_opmaker_name_cstr
 env.filters["cartesian_prod_mapping"] = cartesian_prod_mapping
 env.filters["to_composite_grad_opmaker_name"] = to_composite_grad_opmaker_name
@@ -108,12 +108,49 @@ def main(op_yaml_path, backward_yaml_path, output_op_path, output_arg_map_path):
         op['name'] = op['op_name']
         if op["backward"] is not None:
             op["backward"] = SPARSE_OP_PREFIX + op["backward"]
+        if op['name'] in [
+            SPARSE_OP_PREFIX + "batch_norm",
+            SPARSE_OP_PREFIX + "sync_batch_norm",
+        ]:
+            for item in op["attrs"]:
+                if item["name"] == "data_format":
+                    item["name"] = "data_layout"
+            value = op["attr_dict"].pop('data_format')
+            op["attr_dict"]['data_layout'] = value
+            for i in range(len(op["kernel"]["param"])):
+                if op["kernel"]["param"][i] == "data_format":
+                    op["kernel"]["param"][i] = "data_layout"
+            for i in range(len(op["infer_meta"]["param"])):
+                if op["infer_meta"]["param"][i] == "data_format":
+                    op["infer_meta"]["param"][i] = "data_layout"
         add_fluid_name(op["inputs"])
         add_fluid_name(op["attrs"])
         add_fluid_name(op["outputs"])
+
     for bw_op in backward_ops:
         bw_op['op_name'] = SPARSE_OP_PREFIX + bw_op['name']
         bw_op['name'] = bw_op['op_name']
+
+        if bw_op['name'] in [
+            SPARSE_OP_PREFIX + "batch_norm_grad",
+            SPARSE_OP_PREFIX + "sync_batch_norm_grad",
+        ]:
+            for item in bw_op["attrs"]:
+                if item["name"] == "data_format":
+                    item["name"] = "data_layout"
+            for item in bw_op["forward"]["attrs"]:
+                if item["name"] == "data_format":
+                    item["name"] = "data_layout"
+                    item["fluid_name"] = "data_layout"
+            value = bw_op["attr_dict"].pop('data_format')
+            bw_op["attr_dict"]['data_layout'] = value
+            for i in range(len(bw_op["kernel"]["param"])):
+                if bw_op["kernel"]["param"][i] == "data_format":
+                    bw_op["kernel"]["param"][i] = "data_layout"
+            for i in range(len(bw_op["infer_meta"]["param"])):
+                if bw_op["infer_meta"]["param"][i] == "data_format":
+                    bw_op["infer_meta"]["param"][i] = "data_layout"
+
         add_fluid_name(bw_op["inputs"])
         add_fluid_name(bw_op["attrs"])
         add_fluid_name(bw_op["outputs"])

@@ -19,7 +19,6 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-from paddle.base import core
 
 
 class TestSequencePadOp(OpTest):
@@ -191,7 +190,7 @@ class TestSequencePadOpError(unittest.TestCase):
             x=x, pad_value=pad_value
         )
         # check if the dtype of length is int64 in compile time
-        self.assertEqual(length.dtype, core.VarDesc.VarType.INT64)
+        self.assertEqual(length.dtype, paddle.int64)
 
 
 if __name__ == '__main__':

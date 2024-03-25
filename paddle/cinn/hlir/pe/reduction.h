@@ -64,7 +64,7 @@ ir::Tensor ReduceProd(const ir::Tensor& A,
                       const std::string& output_name = "T_Reduce_Prod_out");
 
 /**
- * @brief find the maxium of array elements over a given axis
+ * @brief find the maximum of array elements over a given axis
  *
  * @param A The input Tensor
  * @param stages The stage map

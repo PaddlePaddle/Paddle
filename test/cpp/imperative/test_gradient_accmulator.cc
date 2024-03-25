@@ -23,9 +23,6 @@
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace imperative = paddle::imperative;
-namespace platform = paddle::platform;
-namespace framework = paddle::framework;
 namespace paddle {
 namespace imperative {
 
@@ -379,7 +376,7 @@ static framework::Variable RandomSelectedRows(framework::DDim dims,
 
 static std::unique_ptr<GradientAccumulator> CreateAccumulator(
     const std::shared_ptr<VariableWrapper>& var, bool sort_gradient) {
-  if (sort_gradient) {
+  if (sort_gradient) {  // NOLINT
     return std::unique_ptr<GradientAccumulator>(
         new SortedGradientAccumulator(var.get()));
   } else {
@@ -403,7 +400,7 @@ static void TestGradientAccumulatorTestUnchangeInput(
   std::mt19937 engine(seed);
 
   auto create_var = [&](bool use_tensor) {
-    if (use_tensor) {
+    if (use_tensor) {  // NOLINT
       return RandomTensor<float>(dim, place);
     } else {
       return RandomSelectedRows<float>(dim, place, dist(engine));
@@ -418,13 +415,13 @@ static void TestGradientAccumulatorTestUnchangeInput(
        *    test accumulate on this graph
        */
       auto g_var1 = std::make_shared<VariableWrapper>("g_var1");
-      g_var1->SetOverridedStopGradient(false);
+      g_var1->SetOverriddenStopGradient(false);
       auto g_accum1 = CreateAccumulator(g_var1, sort_gradient);
       g_accum1->IncreaseRefCnt();
       g_accum1->IncreaseRefCnt();
 
       auto g_var2 = std::make_shared<VariableWrapper>("g_var2");
-      g_var2->SetOverridedStopGradient(false);
+      g_var2->SetOverriddenStopGradient(false);
       auto g_accum2 = CreateAccumulator(g_var2, sort_gradient);
       g_accum2->IncreaseRefCnt();
       g_accum2->IncreaseRefCnt();
@@ -473,8 +470,8 @@ static void TestGradientAccumulatorTestUnchangeInput(
       auto var3 = create_var(use_tensor1);
       auto var_wrapper3_3 = std::make_shared<VariableWrapper>("tmp1_3");
       auto var_wrapper4_3 = std::make_shared<VariableWrapper>("tmp2_3");
-      var_wrapper3_3->SetOverridedStopGradient(false);
-      var_wrapper4_3->SetOverridedStopGradient(false);
+      var_wrapper3_3->SetOverriddenStopGradient(false);
+      var_wrapper4_3->SetOverriddenStopGradient(false);
       CopyVar(var3, var_wrapper3_3->MutableVar());
       CopyVar(var3, var_wrapper4_3->MutableVar());
 

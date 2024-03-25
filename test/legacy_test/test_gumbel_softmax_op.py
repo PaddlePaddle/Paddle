@@ -278,7 +278,7 @@ class TestGumbelSoftmaxOpError(unittest.TestCase):
             x = paddle.to_tensor([0.2, 0.3, 0.4])
             paddle.nn.functional.gumbel_softmax(x, axis=1.1)
 
-        self.assertRaises(ValueError, test_argument2)
+        self.assertRaises(TypeError, test_argument2)
 
         paddle.enable_static()
 

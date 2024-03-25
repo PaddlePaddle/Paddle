@@ -19,7 +19,7 @@ void SequenceMaskKernel(const Context& ctx,
                         const DenseTensor& x,
                         const paddle::optional<DenseTensor>& max_len_tensor,
                         int maxlen,
-                        int out_dtype,
+                        DataType out_dtype,
                         DenseTensor* y);
 
 }  // namespace phi

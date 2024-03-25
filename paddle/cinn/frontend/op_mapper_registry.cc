@@ -83,7 +83,9 @@ Variable OpMapperContext::GetVar(const std::string& origin_name) const {
     return local_var;
   }
 
-  LOG(FATAL) << "No var called [" << origin_name << "] exists";
+  std::stringstream ss;
+  ss << "No var called [" << origin_name << "] exists";
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   return Variable();
 }
 

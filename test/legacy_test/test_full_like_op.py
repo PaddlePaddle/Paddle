@@ -23,7 +23,6 @@ from paddle.base import core
 from paddle.base.framework import convert_np_dtype_to_dtype_
 from paddle.framework import in_pir_mode
 from paddle.pir_utils import test_with_pir_api
-from paddle.static import Program, program_guard
 
 
 def fill_any_like_wrapper(x, value, out_dtype=None, name=None):
@@ -98,8 +97,11 @@ class TestFullOp(unittest.TestCase):
 
 
 class TestFullOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             # for ci coverage
 
             input_data = paddle.static.data(
@@ -209,7 +211,7 @@ class TestFullLikeFP16Op(TestFullLikeOp1):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestFullLikeBF16Op(TestFullLikeOp1):
     def init_data(self):

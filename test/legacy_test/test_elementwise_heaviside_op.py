@@ -47,10 +47,10 @@ class TestElementwiseOp(OpTest):
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_pir=True)
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_pir=True)
 
 

@@ -24,7 +24,7 @@
 #endif
 #include "paddle/fluid/platform/flags.h"
 
-PHI_DECLARE_bool(cache_inference_while_scope);
+COMMON_DECLARE_bool(cache_inference_while_scope);
 
 namespace paddle {
 namespace framework {
@@ -113,7 +113,7 @@ class WhileOp : public framework::OperatorBase {
         const framework::VariableNameMap &output_var_names = op->Outputs();
         for (auto &ipt : input_var_names) {
           for (const std::string &var_name : ipt.second) {
-            if (StrInVaraiableNameMap(var_name, output_var_names)) {
+            if (StrInVariableNameMap(var_name, output_var_names)) {
               no_copy_var_names.insert(var_name);
             }
           }

@@ -24,7 +24,7 @@ from paddle.static import InputSpec
 from paddle.vision import models
 
 
-# test the predicted resutls of static graph and dynamic graph are equal
+# test the predicted results of static graph and dynamic graph are equal
 # when used pretrained model
 class TestPretrainedModel(unittest.TestCase):
     def infer(self, arch):

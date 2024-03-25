@@ -16,6 +16,7 @@ import copy
 from collections import defaultdict
 
 import paddle
+import paddle.static.amp.fp16_utils as amp_utils
 from paddle.common_ops_import import check_type, check_variable_and_dtype
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     OperatorDistAttr,
@@ -79,7 +80,7 @@ def set_auto_cast_attr(cast_op, block):
     ), f"in_var {in_name} or out_var {out_name} is None of cast op"
     if is_forward_op(cast_op):
         cast_op._set_attr('in_dtype', in_var.dtype)
-        cast_op._set_attr('out_dtype', out_var.dtype)
+        out_var.desc.set_dtype(paddle.dtype(cast_op.attr('out_dtype')))
     elif is_backward_op(cast_op):
         in_var_fw = block._find_var_recursive(in_name[: in_name.find("@")])
         out_var_fw = block._find_var_recursive(out_name[: out_name.find("@")])
@@ -89,7 +90,7 @@ def set_auto_cast_attr(cast_op, block):
         out_var.desc.set_dtype(out_var_fw.dtype)
 
 
-# adapot for backward op
+# adapt for backward op
 # TODO check if bf16 and fp16 still share the same logic
 def _keep_fp32_input(op, in_name):
     if not op.amp_options.enable:
@@ -209,6 +210,9 @@ class FP16State:
         for block in self.program.blocks:
             self.resolute_tensor_dtype(block)
 
+        for block in self.program.blocks:
+            self.resolute_cast_op(block)
+
         # insert cast ops
         for block in self.program.blocks:
             self.cast_block(block)
@@ -293,8 +297,21 @@ class FP16State:
         ):
             return
 
-        if var.dtype == core.VarDesc.VarType.FP32:
+        if var.dtype == paddle.float32:
             var.desc.set_dtype(__target_dtype__)
+
+    def resolute_cast_op(self, block):
+        """
+        Deal the "cast_op" from "FP32" to "FP16" or "BF16" in the model.
+        """
+        for op in block.ops:
+            if op.type == "cast":
+                in_name = op.input('X')[0]
+                out_name = op.output('Out')[0]
+                in_var = block._find_var_recursive(in_name)
+                out_var = block._find_var_recursive(out_name)
+                op._set_attr("in_dtype", in_var.dtype)
+                op._set_attr("out_dtype", out_var.dtype)
 
     def resolute_tensor_dtype(self, block):
         for op in block.ops:
@@ -428,9 +445,7 @@ class FP16State:
         num_cast_ops = 0
 
         for in_name in op.input_names:
-            if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_input(
-                op, in_name
-            ):
+            if src_dtype == paddle.float32 and _keep_fp32_input(op, in_name):
                 continue
 
             consume_op_attr = dist_context.get_op_dist_attr_for_program(op)
@@ -675,7 +690,7 @@ def _check_and_update_gradient(grads, loss_scaling, name, dist_context):
 
 def _split_grads(params_grads):
     grads = [g for _, g in params_grads]
-    fp32_grads = [g for g in grads if g.dtype == core.VarDesc.VarType.FP32]
+    fp32_grads = [g for g in grads if g.dtype == paddle.float32]
     fp16_grads = [g for g in grads if g.dtype == __target_dtype__]
     assert len(fp32_grads) + len(fp16_grads) == len(
         grads
@@ -792,7 +807,7 @@ def cast_startup_program():
                     'dtype'
                 ), f"initialization op is supported to has dtype attribute but got {str(op)}."
                 out_var = startup_program.global_block().var(output_name)
-                if out_var.dtype == core.VarDesc.VarType.FP32:
+                if out_var.dtype == paddle.float32:
                     out_var.desc.set_dtype(__target_dtype__)
                 if op.attr('dtype') == core.VarDesc.VarType.FP32:
                     op._set_attr('dtype', __target_dtype__)
@@ -815,19 +830,12 @@ class FP16Pass(AMPPass):
         if self.use_optimizer_fp16 is None:
             self.use_optimizer_fp16 = self.get_attr("level", None) == "o3"
 
-        # swith enviroment for fp16 / bf16.
+        AMPList = amp_utils.AutoMixedPrecisionLists
+        # switch environment for fp16 / bf16.
         if self.target_dtype == "float16":
-            import paddle.static.amp.fp16_utils as amp_utils
-
-            AMPList = amp_utils.AutoMixedPrecisionLists
             __target_dtype = core.VarDesc.VarType.FP16
-
         elif self.target_dtype == "bfloat16":
-            from paddle.static.amp.bf16 import amp_utils
-
-            AMPList = amp_utils.AutoMixedPrecisionListsBF16
             __target_dtype = core.VarDesc.VarType.BF16
-
         else:
             raise NotImplementedError(
                 f"target dtype [{self.target_dtype}] is for amp o2 not supported yet."
@@ -840,9 +848,10 @@ class FP16Pass(AMPPass):
             set(self.get_attr("custom_white_list")),
             set(self.get_attr("custom_black_list")),
             None,
+            dtype=self.target_dtype,
         )
 
-        # NOTE don't not change input data dtype, since it is controled by dataloader
+        # NOTE don't not change input data dtype, since it is controlled by dataloader
         # and which is out of control of FP16 Pass
         input_data_var_names = [var.name for var in self.get_attr("input_data")]
         with paddle.static.program_guard(main_program, startup_program):

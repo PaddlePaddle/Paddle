@@ -30,7 +30,7 @@ os.environ['CPU_NUM'] = str(4)
 class ModelHyperParams:
     # Dictionary size for source and target language. This model directly uses
     # paddle.dataset.wmt16 in which <bos>, <eos> and <unk> token has
-    # alreay been added, but the <pad> token is not added. Transformer requires
+    # already been added, but the <pad> token is not added. Transformer requires
     # sequences in a mini-batch are padded to have the same length. A <pad> token is
     # added into the original dictionary in paddle.dateset.wmt16.
 
@@ -39,7 +39,7 @@ class ModelHyperParams:
     # index for <pad> token in source language.
     src_pad_idx = src_vocab_size
 
-    # size of target word dictionay
+    # size of target word dictionary
     trg_vocab_size = 10000
     # index for <pad> token in target language.
     trg_pad_idx = trg_vocab_size
@@ -170,7 +170,7 @@ feed_data_reader = None
 
 
 def transformer(use_feed):
-    assert not use_feed, "transfomer doesn't support feed yet"
+    assert not use_feed, "transformer doesn't support feed yet"
     return transformer_model.transformer(
         ModelHyperParams.src_vocab_size + 1,
         ModelHyperParams.trg_vocab_size + 1,

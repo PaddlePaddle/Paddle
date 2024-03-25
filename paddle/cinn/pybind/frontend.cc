@@ -229,7 +229,8 @@ void BindFrontend(pybind11::module *m) {
                                      in_tensor->shape().numel() * dtype.bytes(),
                                      cudaMemcpyHostToDevice));
 #else
-     LOG(FATAL) <<"To use CUDA backends, you need to set WITH_CUDA ON!";
+     PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
+     "you need to set WITH_CUDA ON!"));
 #endif
               } else if (target.arch == Target::Arch::X86) {
                 memcpy(data,
@@ -323,7 +324,8 @@ void BindFrontend(pybind11::module *m) {
                                      in_tensor->shape().numel() * sizeof(float),
                                      cudaMemcpyHostToDevice));
 #else
-     LOG(FATAL) <<"To use CUDA backends, you need to set WITH_CUDA ON!";
+     PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
+     "you need to set WITH_CUDA ON!"));
 #endif
               } else if (target.arch == Target::Arch::X86) {
                 for (size_t j = 0; j < in_tensor->shape().numel(); j++) {
@@ -373,7 +375,8 @@ void BindFrontend(pybind11::module *m) {
                                      in_tensor->shape().numel() * sizeof(float),
                                      cudaMemcpyHostToDevice));
 #else
-     LOG(FATAL) <<"To use CUDA backends, you need to set WITH_CUDA ON!";
+     PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
+     "you need to set WITH_CUDA ON!"));
 #endif
               } else if (target.arch == Target::Arch::X86) {
                 for (size_t j = 0; j < in_tensor->shape().numel(); j++) {

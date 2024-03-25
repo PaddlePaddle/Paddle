@@ -101,9 +101,9 @@ Equation EraseIndexes(
 std::vector<Index> GenerateWriteBroadcastTensorIndexs(
     const std::shared_ptr<config::NaiveOpEquationContext>& ctx,
     const Equations& in_msg2out_msg_equations) {
-  const auto& eqaution_graph_view =
+  const auto& equation_graph_view =
       Graph<Variable, Equation>::New(ctx->equations())->GetGraphView();
-  GraphView graph_view = eqaution_graph_view.Merge(
+  GraphView graph_view = equation_graph_view.Merge(
       Graph<Variable, Equation>::New(in_msg2out_msg_equations)->GetGraphView());
   std::vector<Index> ret{};
   const auto& fake_op_placeholder = ctx->fake_op_placeholder();

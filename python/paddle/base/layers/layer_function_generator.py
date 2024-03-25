@@ -86,7 +86,7 @@ def _generate_doc_string_(
         buf.write(" (Tensor): ")
         buf.write(escape_math(each_input.comment))
         if each_input.duplicable:
-            buf.write("  Duplicatable.")
+            buf.write("  Duplicable.")
         if each_input.dispensable:
             buf.write("  Optional.")
         buf.write('\n')
@@ -327,7 +327,7 @@ def generate_inplace_fn(inplace_op_type):
                 and x.is_view_var
             ):
                 raise ValueError(
-                    'Sorry about what\'s happend. In to_static mode, {}\'s output variable {} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You must find the location of the strided API be called, and call {} = {}.assign().'.format(
+                    'Sorry about what\'s happened. In to_static mode, {}\'s output variable {} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You must find the location of the strided API be called, and call {} = {}.assign().'.format(
                         inplace_op_type, x.name, x.name, x.nameb
                     )
                 )

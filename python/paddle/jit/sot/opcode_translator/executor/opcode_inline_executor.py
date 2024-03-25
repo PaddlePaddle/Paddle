@@ -17,6 +17,7 @@ from __future__ import annotations
 import contextlib
 import inspect
 import re
+import sys
 from typing import TYPE_CHECKING
 
 from ...profiler import event_register
@@ -283,6 +284,10 @@ class OpcodeInlineExecutor(OpcodeExecutorBase):
         self.return_value = self.stack.pop()
         return Stop(state="Return")
 
+    def RETURN_CONST(self, instr: Instruction):
+        self.return_value = self._co_consts[instr.arg]
+        return Stop(state="Return")
+
     def _break_graph_when_if(self, result, instr: Instruction):
         """
         Helper method to raise a BreakGraphError when breaking the graph in a jump operation.
@@ -295,23 +300,13 @@ class OpcodeInlineExecutor(OpcodeExecutorBase):
             "OpcodeInlineExecutor want break graph when simulate `if`."
         )
 
-    def _create_resume_fn(self, index: int, stack_size: int = 0):
-        """
-        Helper method to create a resume function for the executor.
-
-        Args:
-            index (int): The index of the instruction to resume execution from.
-            stack_size (int, optional): The size of the stack. Defaults to 0.
-        """
-        raise BreakGraphError("_create_resume_fn.")
-
     def FOR_ITER(self, instr: Instruction):
         iterator = self.stack.top
         assert isinstance(iterator, IterVariable)
 
         self._graph.add_global_guarded_variable(iterator)
 
-        # simplely get next
+        # simply get next
         if isinstance(
             iterator,
             SequenceIterVariable,
@@ -322,6 +317,9 @@ class OpcodeInlineExecutor(OpcodeExecutorBase):
                 self.stack.pop()
                 assert isinstance(instr.jump_to, Instruction)
                 self._lasti = self.indexof(instr.jump_to)
+                if sys.version_info >= (3, 12):
+                    assert self._instructions[self._lasti].opname == "END_FOR"
+                    self._lasti += 1
 
         else:
             self._graph.remove_global_guarded_variable(iterator)

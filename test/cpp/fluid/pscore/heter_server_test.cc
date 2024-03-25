@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/distributed/ps/service/heter_server.h"
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include <memory>
 #include <random>
@@ -149,7 +149,7 @@ void InitTensorsOnServer(framework::Scope* scope,
   auto ptr = w_value->mutable_data<float>(*place);
 
   for (int64_t i = 0; i < w_value->numel(); ++i) {
-    ptr[i] = static_cast<float>(i / 10);
+    ptr[i] = static_cast<float>(i) / 10.0;
   }
 }
 

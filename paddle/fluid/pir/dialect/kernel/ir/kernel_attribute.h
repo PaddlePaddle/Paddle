@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/pir/dialect/kernel/ir/attribute_storage.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/pir/core/attribute.h"
+#include "paddle/pir/include/core/attribute.h"
 
 namespace paddle {
 namespace dialect {

@@ -27,7 +27,7 @@ class InstructionBase;
 namespace interpreter {
 
 // DependencyBuilder provides some dependency adding function to handle the
-// dependency that cannot be explicitly expresed by a Program. It is a
+// dependency that cannot be explicitly expressed by a Program. It is a
 // compromise of the incomplete expression ability of the Program. Do not add
 // too many functions here at will, that will bring great burden to the
 // Interpretercore.
@@ -59,7 +59,7 @@ class DependencyBuilder {
 
  protected:
   void AddDependencyForCoalesceTensorOp();
-  void AddDependencyForCommunicationOp();
+  virtual void AddDependencyForCommunicationOp();
   virtual void AddDependencyForRandomOp();
   void AddDependencyForReadOp();
   void AddDependencyForSequentialRun();
@@ -117,6 +117,8 @@ class PirDependencyBuilder : public DependencyBuilder {
   void ShareDependencyFrom(const PirDependencyBuilder& src);
 
  private:
+  void AddDependencyForCommunicationOp() override;
+
   void AddDependencyForRandomOp() override;
 
   std::vector<paddle::framework::InstructionBase*> instructions_;  // not_owned
@@ -146,7 +148,7 @@ class DependencyBuilderSimplify {
         phi::errors::Unavailable("op_happen_before is not yet built"));
     return op_happens_before_.at(prior_op_idx).at(posterior_op_idx);
   }
-  std::vector<size_t> get_new_exexutor_order();
+  std::vector<size_t> get_new_executor_order();
 
  private:
   void AddDependencyForCoalesceTensorOp();

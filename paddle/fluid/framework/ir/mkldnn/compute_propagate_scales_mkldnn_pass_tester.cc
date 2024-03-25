@@ -56,7 +56,7 @@ static const std::initializer_list<std::string> rnn_variable_names{
 
 class ComputePropagateScalesMkldnnPassTest : public testing::Test {
  public:
-  ComputePropagateScalesMkldnnPassTest() {
+  ComputePropagateScalesMkldnnPassTest() {  // NOLINT
     pass = std::make_unique<ComputePropagateScalesMkldnnPass>();
   }
 
@@ -161,7 +161,7 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
           begin(wh[i]),
           end(wh[i]),
           wh_tensor->mutable_data<float>(phi::CPUPlace()) + i * wh[0].size());
-    if (type == "gru") {
+    if (type == "gru") {  // NOLINT
       ComputeGruWeightScales(
           graph, &scope, wx_name, wh_name, &var_quant_scales);
     } else {

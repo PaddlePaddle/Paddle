@@ -17,10 +17,17 @@ from __future__ import annotations
 import dataclasses
 import dis
 import sys
+from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from ...utils import InnerError
-from .opcode_info import ABS_JUMP, ALL_JUMP, REL_BWD_JUMP, REL_JUMP
+from .opcode_info import (
+    ABS_JUMP,
+    ALL_JUMP,
+    PYOPCODE_CACHE_SIZE,
+    REL_BWD_JUMP,
+    REL_JUMP,
+)
 
 if TYPE_CHECKING:
     import types
@@ -38,7 +45,7 @@ class Instruction:
     jump_to: Instruction | None = None
     is_generated: bool = True
 
-    # for analys EXTENDED_ARG
+    # for analysis EXTENDED_ARG
     first_ex_arg: Instruction | None = None
     ex_arg_for: Instruction | None = None
 
@@ -109,7 +116,7 @@ def get_instructions(code: types.CodeType) -> list[Instruction]:
                 jump_offset += 1
 
             if origin_jump_target != jump_offset:
-                # copy infos from EXETENDED_ARG to other opcode
+                # copy infos from EXTENDED_ARG to other opcode
 
                 if instrs[origin_jump_target].is_jump_target:
                     instrs[jump_offset].is_jump_target = instrs[
@@ -238,7 +245,8 @@ def relocate_jump_target(instructions: list[Instruction]) -> None:
             if instr.opname in ABS_JUMP:
                 new_arg = jump_target
             else:  # instr.opname in REL_JUMP
-                new_arg = jump_target - instr.offset - 2
+                cache_size = PYOPCODE_CACHE_SIZE.get(instr.opname, 0)
+                new_arg = jump_target - (2 * cache_size) - instr.offset - 2
                 if instr.opname in REL_BWD_JUMP:
                     new_arg = -new_arg
 
@@ -314,12 +322,12 @@ def modify_extended_args(instructions: list[Instruction]) -> bool:
     return modify_completed
 
 
-def modify_vars(instructions, code_options):
+def modify_vars(instructions: list[Instruction], code_options):
     co_names = code_options['co_names']
     co_varnames = code_options['co_varnames']
     co_freevars = code_options['co_freevars']
     for instrs in instructions:
-        if instrs.opname == 'LOAD_FAST' or instrs.opname == 'STORE_FAST':
+        if instrs.opname in ['LOAD_FAST', 'LOAD_FAST_CHECK', 'STORE_FAST']:
             assert (
                 instrs.argval in co_varnames
             ), f"`{instrs.argval}` not in {co_varnames}"
@@ -410,3 +418,10 @@ def calc_stack_effect(instr: Instruction, *, jump: bool | None = None) -> int:
             assert instr.arg is not None
             return -instr.arg - 1
     return dis.stack_effect(instr.opcode, instr.arg, jump=jump)
+
+
+class Space(Enum):
+    locals = 1
+    globals = 2
+    cells = 3
+    not_found = 4

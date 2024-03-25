@@ -25,7 +25,7 @@ if paddle.is_compiled_with_cuda():
     DEVICES.append(paddle.CUDAPlace(0))
 
 TEST_CASE_NAME = 'suffix'
-# All test case will use float64 for compare percision, refs:
+# All test case will use float64 for compare precision, refs:
 # https://github.com/PaddlePaddle/Paddle/wiki/Upgrade-OP-Precision-to-Float64
 RTOL = {
     'float32': 1e-03,
@@ -171,7 +171,7 @@ class TestIfft(unittest.TestCase):
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
-        ('test_n_nagative', rand_x(2), -1, -1, 'backward', ValueError),
+        ('test_n_negative', rand_x(2), -1, -1, 'backward', ValueError),
         ('test_n_zero', rand_x(2), 0, -1, 'backward', ValueError),
         ('test_axis_out_of_range', rand_x(1), None, 10, 'backward', ValueError),
         (
@@ -194,7 +194,7 @@ class TestIfft(unittest.TestCase):
 )
 class TestFftException(unittest.TestCase):
     def test_fft(self):
-        """Test fft with buoudary condition
+        """Test fft with boundary condition
         Test case include:
         - n out of range
         - axis out of range
@@ -266,7 +266,7 @@ class TestFft2(unittest.TestCase):
             ValueError,
         ),
         ('test_x_1dim_tensor', rand_x(1), None, (0, 1), None, ValueError),
-        ('test_n_nagative', rand_x(2), -1, (0, 1), 'backward', ValueError),
+        ('test_n_negative', rand_x(2), -1, (0, 1), 'backward', ValueError),
         (
             'test_n_len_not_equal_axis',
             rand_x(5, max_dim_len=5),
@@ -305,7 +305,7 @@ class TestFft2(unittest.TestCase):
 )
 class TestFft2Exception(unittest.TestCase):
     def test_fft2(self):
-        """Test fft2 with buoudary condition
+        """Test fft2 with boundary condition
         Test case include:
         - input type error
         - input dim error
@@ -785,7 +785,7 @@ class TestIrfft2(unittest.TestCase):
             RuntimeError,
         ),
         (
-            'test_n_nagative',
+            'test_n_negative',
             np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),
             -1,
             -1,
@@ -836,7 +836,7 @@ class TestIrfft2(unittest.TestCase):
 )
 class TestHfftException(unittest.TestCase):
     def test_hfft(self):
-        """Test hfft with buoudary condition
+        """Test hfft with boundary condition
         Test case include:
         Test case include:
         - n out of range
@@ -857,7 +857,7 @@ class TestHfftException(unittest.TestCase):
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
         (
-            'test_n_nagative',
+            'test_n_negative',
             np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),
             -1,
             -1,
@@ -909,7 +909,7 @@ class TestHfftException(unittest.TestCase):
 class TestIrfftException(unittest.TestCase):
     def test_irfft(self):
         """
-        Test irfft with buoudary condition
+        Test irfft with boundary condition
         Test case include:
         - n out of range
         - n type error
@@ -939,7 +939,7 @@ class TestIrfftException(unittest.TestCase):
             RuntimeError,
         ),
         (
-            'test_n_nagative',
+            'test_n_negative',
             np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),
             (-1, -2),
             (-2, -1),
@@ -999,7 +999,7 @@ class TestIrfftException(unittest.TestCase):
 class TestHfft2Exception(unittest.TestCase):
     def test_hfft2(self):
         """
-        Test hfft2 with buoudary condition
+        Test hfft2 with boundary condition
         Test case include:
         - input type error
         - n type error
@@ -1020,7 +1020,7 @@ class TestHfft2Exception(unittest.TestCase):
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
         (
-            'test_n_nagative',
+            'test_n_negative',
             np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),
             (-1, -2),
             (-2, -1),
@@ -1088,7 +1088,7 @@ class TestHfft2Exception(unittest.TestCase):
 class TestIrfft2Exception(unittest.TestCase):
     def test_irfft2(self):
         """
-        Test irfft2 with buoudary condition
+        Test irfft2 with boundary condition
         Test case include:
         - input type error
         - n type error
@@ -1119,7 +1119,7 @@ class TestIrfft2Exception(unittest.TestCase):
             RuntimeError,
         ),
         (
-            'test_n_nagative',
+            'test_n_negative',
             np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),
             (-1, -2),
             (-2, -1),
@@ -1178,7 +1178,7 @@ class TestIrfft2Exception(unittest.TestCase):
 )
 class TestHfftnException(unittest.TestCase):
     def test_hfftn(self):
-        """Test hfftn with buoudary condition
+        """Test hfftn with boundary condition
         Test case include:
         - input type error
         - n type error
@@ -1199,7 +1199,7 @@ class TestHfftnException(unittest.TestCase):
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
         (
-            'test_n_nagative',
+            'test_n_negative',
             np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),
             (-1, -2),
             (-2, -1),
@@ -1258,7 +1258,7 @@ class TestHfftnException(unittest.TestCase):
 )
 class TestIrfftnException(unittest.TestCase):
     def test_irfftn(self):
-        """Test irfftn with buoudary condition
+        """Test irfftn with boundary condition
         Test case include:
         - n out of range
         - n type error
@@ -1315,7 +1315,7 @@ class TestRfft(unittest.TestCase):
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
-        ('test_n_nagative', rand_x(2), -1, -1, 'backward', ValueError),
+        ('test_n_negative', rand_x(2), -1, -1, 'backward', ValueError),
         ('test_n_zero', rand_x(2), 0, -1, 'backward', ValueError),
         ('test_axis_out_of_range', rand_x(1), None, 10, 'backward', ValueError),
         (
@@ -1338,7 +1338,7 @@ class TestRfft(unittest.TestCase):
 )
 class TestRfftException(unittest.TestCase):
     def test_rfft(self):
-        """Test rfft with buoudary condition
+        """Test rfft with boundary condition
         Test case include:
         - n out of range
         - axis out of range
@@ -1404,7 +1404,7 @@ class TestRfft2(unittest.TestCase):
             RuntimeError,
         ),
         ('test_x_1dim_tensor', rand_x(1), None, (0, 1), 'backward', ValueError),
-        ('test_n_nagative', rand_x(2), -1, (0, 1), 'backward', ValueError),
+        ('test_n_negative', rand_x(2), -1, (0, 1), 'backward', ValueError),
         ('test_n_zero', rand_x(2), 0, (0, 1), 'backward', ValueError),
         (
             'test_axis_out_of_range',
@@ -1435,7 +1435,7 @@ class TestRfft2(unittest.TestCase):
 )
 class TestRfft2Exception(unittest.TestCase):
     def test_rfft2(self):
-        """Test rfft2 with buoudary condition
+        """Test rfft2 with boundary condition
         Test case include:
         - input type error
         - input dim error
@@ -1502,7 +1502,7 @@ class TestRfftn(unittest.TestCase):
             RuntimeError,
         ),
         (
-            'test_n_nagative',
+            'test_n_negative',
             rand_x(4),
             (-1, -1),
             (1, 2),
@@ -1524,7 +1524,7 @@ class TestRfftn(unittest.TestCase):
 )
 class TestRfftnException(unittest.TestCase):
     def test_rfftn(self):
-        """Test rfftn with buoudary condition
+        """Test rfftn with boundary condition
         Test case include:
         - n out of range
         - axis out of range
@@ -1580,7 +1580,7 @@ class TestIhfft(unittest.TestCase):
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n', 'axis', 'norm', 'expect_exception'),
     [
-        ('test_n_nagative', rand_x(2), -1, -1, 'backward', ValueError),
+        ('test_n_negative', rand_x(2), -1, -1, 'backward', ValueError),
         ('test_n_zero', rand_x(2), 0, -1, 'backward', ValueError),
         ('test_axis_out_of_range', rand_x(1), None, 10, 'backward', ValueError),
         (
@@ -1603,7 +1603,7 @@ class TestIhfft(unittest.TestCase):
 )
 class TestIhfftException(unittest.TestCase):
     def test_ihfft(self):
-        """Test ihfft with buoudary condition
+        """Test ihfft with boundary condition
         Test case include:
         - axis type error
         - axis out of range
@@ -1668,7 +1668,7 @@ class TestIhfft2(unittest.TestCase):
             ValueError,
         ),
         ('test_x_1dim_tensor', rand_x(1), None, (0, 1), None, ValueError),
-        ('test_n_nagative', rand_x(2), -1, (0, 1), 'backward', ValueError),
+        ('test_n_negative', rand_x(2), -1, (0, 1), 'backward', ValueError),
         (
             'test_n_len_not_equal_axis',
             rand_x(5, max_dim_len=5),
@@ -1707,7 +1707,7 @@ class TestIhfft2(unittest.TestCase):
 )
 class TestIhfft2Exception(unittest.TestCase):
     def test_ihfft2(self):
-        """Test ihfft2 with buoudary condition
+        """Test ihfft2 with boundary condition
         Test case include:
         - input type error
         - input dim error
@@ -1773,7 +1773,7 @@ class TestIhfftn(unittest.TestCase):
             'backward',
             RuntimeError,
         ),
-        ('test_n_nagative', rand_x(4), -1, None, 'backward', ValueError),
+        ('test_n_negative', rand_x(4), -1, None, 'backward', ValueError),
         ('test_n_zero', rand_x(4), 0, None, 'backward', ValueError),
         (
             'test_axis_out_of_range',
@@ -1788,7 +1788,7 @@ class TestIhfftn(unittest.TestCase):
 )
 class TestIhfftnException(unittest.TestCase):
     def test_ihfftn(self):
-        """Test ihfftn with buoudary condition
+        """Test ihfftn with boundary condition
         Test case include:
         - input type error
         - n out of range

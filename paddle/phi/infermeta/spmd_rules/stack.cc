@@ -55,7 +55,7 @@ SpmdInfo StackInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
   auto non_empty_index = all_empty ? 0 : non_empty_iter - tensor_shapes.begin();
   auto ndim = tensor_shapes[non_empty_index].size();
   // normlize dim
-  auto dim = axis < 0 ? static_cast<int64_t>(ndim) + axis : axis;
+  auto dim = axis < 0 ? static_cast<int64_t>(ndim) + axis + 1 : axis;
   std::vector<TensorDistAttr> input_attrs;
   std::transform(
       x.begin(), x.end(), std::back_inserter(input_attrs), [](auto& meta) {
@@ -88,10 +88,11 @@ SpmdInfo StackInferSpmdReverse(const std::vector<DistMetaTensor>& x,
   auto n_inputs = x.size();
   TensorDistAttr input_attr = CopyTensorDistAttrForOutput(out_dist_attr);
   auto ndim = output.dims().size();
+  auto dim = axis < 0 ? static_cast<int64_t>(ndim) + axis : axis;
   std::vector<int64_t> dim_mapping(ndim - 1, -1);
   const auto& input_dim_mapping = out_dist_attr.dims_mapping();
   for (size_t i = 0; i < static_cast<size_t>(ndim - 1); i++) {
-    size_t out_index = i < static_cast<size_t>(axis) ? i : (i + 1);
+    size_t out_index = i < static_cast<size_t>(dim) ? i : (i + 1);
     dim_mapping[i] = input_dim_mapping[out_index];
   }
   input_attr.set_dims_mapping(dim_mapping);
@@ -102,13 +103,14 @@ SpmdInfo StackInferSpmdReverse(const std::vector<DistMetaTensor>& x,
 SpmdInfo StackGradInferSpmd(const DistMetaTensor& output_grad, int axis) {
   auto out_dist_attr = output_grad.dist_attr();
   out_dist_attr = UnShardTensorDim(out_dist_attr, axis);
-  auto n_inputs = output_grad.dims().at(axis);
   TensorDistAttr input_attr = CopyTensorDistAttrForOutput(out_dist_attr);
   auto ndim = output_grad.dims().size();
+  auto dim = axis < 0 ? static_cast<int64_t>(ndim) + axis : axis;
+  auto n_inputs = output_grad.dims().at(dim);
   std::vector<int64_t> dim_mapping(ndim - 1, -1);
   const auto& input_dim_mapping = out_dist_attr.dims_mapping();
   for (size_t i = 0; i < static_cast<size_t>(ndim - 1); i++) {
-    size_t out_index = i < static_cast<size_t>(axis) ? i : (i + 1);
+    size_t out_index = i < static_cast<size_t>(dim) ? i : (i + 1);
     dim_mapping[i] = input_dim_mapping[out_index];
   }
   input_attr.set_dims_mapping(dim_mapping);

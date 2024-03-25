@@ -877,7 +877,7 @@ struct CBlas<phi::dtype::complex<float>> {
                    const phi::dtype::complex<float> alpha,
                    const phi::dtype::complex<float> *A,
                    const int lda,
-                   phi::dtype::complex<double> *B,
+                   phi::dtype::complex<float> *B,
                    const int ldb) {
     cblas_ctrsm(layout, side, uplo, transA, diag, M, N, &alpha, A, lda, B, ldb);
   }
@@ -1518,8 +1518,8 @@ void Blas<phi::CPUContext>::BatchedGEMMWithHead(CBLAS_TRANSPOSE transA,
         W1,
         H2,
         phi::errors::InvalidArgument(
-            "The fisrt matrix width should be same as second matrix height,"
-            "but received fisrt matrix width %d"
+            "The first matrix width should be same as second matrix height,"
+            "but received first matrix width %d"
             ", second matrix height %d",
             W1,
             H2));
@@ -1650,8 +1650,8 @@ void Blas<DeviceContext>::MatMul(const T *mat_a,
       dim_a.width_,
       dim_b.height_,
       phi::errors::InvalidArgument(
-          "The fisrt matrix width should be same as second matrix height,"
-          "but received fisrt matrix width %d"
+          "The first matrix width should be same as second matrix height,"
+          "but received first matrix width %d"
           ", second matrix height %d",
           dim_a.width_,
           dim_b.height_));

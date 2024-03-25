@@ -41,7 +41,7 @@
 #include "paddle/cinn/hlir/op/use_ops.h"
 #include "paddle/cinn/hlir/pass/use_pass.h"
 #include "paddle/cinn/utils/data_util.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 PD_DECLARE_bool(cinn_use_op_fusion);
 

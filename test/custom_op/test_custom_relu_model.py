@@ -53,7 +53,7 @@ custom_module = load(
 
 class Net(nn.Layer):
     """
-    A simple exmaple for Regression Model.
+    A simple example for Regression Model.
     """
 
     def __init__(self, in_dim, out_dim, use_custom_op=False):
@@ -102,7 +102,7 @@ class TestDygraphModel(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.model_save_dir = os.path.join(self.temp_dir.name, 'infer_model')
         self.model_path_template = os.path.join(
-            self.model_save_dir, 'custom_relu_dygaph_model_{}.pdparams'
+            self.model_save_dir, 'custom_relu_dygraph_model_{}.pdparams'
         )
         self.model_dy2stat_path = os.path.join(
             self.model_save_dir, 'infer_model/custom_relu_model_dy2sta'

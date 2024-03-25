@@ -152,7 +152,7 @@ $$ h_t = o_t \\odot tanh(c_t) $$
   which is computed based on the current input and the previous hidden state.
 
 Where sigmoid is the sigmoid operator: sigmoid(x) = 1 / (1 + e^-x), * represents a point-wise multiplication,
-X represensts a matrix multiplication
+X represents a matrix multiplication
 
 
 )DOC");

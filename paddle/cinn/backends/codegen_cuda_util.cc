@@ -15,6 +15,7 @@
 #include "paddle/cinn/backends/codegen_cuda_util.h"
 
 #include "paddle/cinn/backends/cuda_util.h"
+#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 
 PD_DECLARE_bool(cinn_bucket_compile);
@@ -88,18 +89,35 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
   // process host func
   ir::Var kernel_ptr(GenDeviceKernelName(func_node->name, predicate),
                      type_of<std::string>());
+
+  // shared_mem_bytes Can be calculated after codegen_cuda_dev buffer creation
+  // however, this make CodeGenCUDA_Dev before spliting the host and device
+  // module Maybe we could reorder the process.
+  CodeGenCUDA_Dev codegen_dev(cinn::common::DefaultNVGPUTarget());
+  codegen_dev.Compile(ir::LoweredFunc(func.as_lowered_func_ref()));
+  Expr shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
+
+  VLOG(6) << "Add a call node for func_node->name " << func_node->name << "\n"
+          << "grid_dim: (" << func_node->cuda_axis_info.grid_dim(0) << ", "
+          << func_node->cuda_axis_info.grid_dim(1) << ", "
+          << func_node->cuda_axis_info.grid_dim(2) << "), "
+          << "block_dim: (" << func_node->cuda_axis_info.block_dim(0) << ", "
+          << func_node->cuda_axis_info.block_dim(1) << ", "
+          << func_node->cuda_axis_info.block_dim(2) << "), "
+          << "shared_mem: " << shared_mem_bytes;
   ir::Expr call_extern_api =
       ir::Call::Make(Void(),
                      runtime::intrinsic::call_cuda_kernel,
                      {kernel_ptr,
                       kernel_args_,
                       kernel_args_num_,
-                      Expr(func_node->cuda_axis_info.grid_dim(0)),   // grid_x
-                      Expr(func_node->cuda_axis_info.grid_dim(1)),   // grid_y
-                      Expr(func_node->cuda_axis_info.grid_dim(2)),   // grid_z
-                      Expr(func_node->cuda_axis_info.block_dim(0)),  // block_x
-                      Expr(func_node->cuda_axis_info.block_dim(1)),  // block_y
-                      Expr(func_node->cuda_axis_info.block_dim(2)),  // block_z
+                      func_node->cuda_axis_info.grid_dim(0),   // grid_x
+                      func_node->cuda_axis_info.grid_dim(1),   // grid_y
+                      func_node->cuda_axis_info.grid_dim(2),   // grid_z
+                      func_node->cuda_axis_info.block_dim(0),  // block_x
+                      func_node->cuda_axis_info.block_dim(1),  // block_y
+                      func_node->cuda_axis_info.block_dim(2),  // block_z
+                      shared_mem_bytes,                        // shared_mem
                       kernel_stream_},
                      {},
                      ir::CallType::Extern,
@@ -114,15 +132,16 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessArgs(
   for (int i = 0; i < args.size(); ++i) {
     if (args[i].is_var()) {
       ir::Expr call_get_value_in_kernel_args =
-          ir::Call::Make(Int(32),
+          ir::Call::Make(Int(64),
                          runtime::intrinsic::get_value_in_cuda_kernel_args,
                          {kernel_args_, ir::Expr(i)},
                          {},
                          ir::CallType::Extern,
                          ir::FunctionRef(),
                          0);
-      ir::Expr stmt = ir::Let::Make(ir::Expr(args[i].var_arg()),
-                                    call_get_value_in_kernel_args);
+      ir::Expr let_symbol = ir::Expr(args[i].var_arg());
+      let_symbol->set_type(type_of<int64_t>());
+      ir::Expr stmt = ir::Let::Make(let_symbol, call_get_value_in_kernel_args);
       arg_defs_.push_back(stmt);
     }
   }

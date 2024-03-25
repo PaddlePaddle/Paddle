@@ -52,6 +52,10 @@ struct Dim {
   Dim(std::string id, uint32_t lower_bound, uint32_t upper_bound)
       : id(std::move(id)), lower_bound(lower_bound), upper_bound(upper_bound) {}
 
+  //! Construct a dimension with int64_t range.
+  Dim(std::string id, int64_t lower_bound, int64_t upper_bound)
+      : id(std::move(id)), lower_bound(lower_bound), upper_bound(upper_bound) {}
+
   //! Construct a dimension with expression range.
   Dim(std::string id, ir::Expr lower_bound, ir::Expr upper_bound);
 

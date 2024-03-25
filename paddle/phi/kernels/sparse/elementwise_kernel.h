@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
-#include "paddle/phi/kernels/sparse/elementwise_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 
 #include "paddle/phi/core/dense_tensor.h"

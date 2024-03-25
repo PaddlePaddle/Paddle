@@ -99,8 +99,7 @@ class TestUserDefinedQuantization(unittest.TestCase):
         weight_quantize_func=None,
     ):
         def build_program(main, startup, is_test):
-            main.random_seed = seed
-            startup.random_seed = seed
+            paddle.seed(seed)
             with paddle.utils.unique_name.guard():
                 with paddle.static.program_guard(main, startup):
                     img = paddle.static.data(

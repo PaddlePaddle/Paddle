@@ -16,10 +16,10 @@
 
 #ifndef __xpu__
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace Eigen {

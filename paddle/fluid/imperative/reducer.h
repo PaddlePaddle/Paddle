@@ -160,7 +160,7 @@ class Reducer {
 
   void FinalizeBackward();
 
-  std::vector<std::vector<size_t>> RebuildGruops();
+  std::vector<std::vector<size_t>> RebuildGroups();
 
   inline bool NeedRebuildGroup() {
     return !has_rebuilt_group_ && !find_unused_vars_each_step_;

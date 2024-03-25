@@ -14,8 +14,8 @@
 #include <string>
 #include <vector>
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 

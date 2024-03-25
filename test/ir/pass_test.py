@@ -187,16 +187,16 @@ class PassTest(unittest.TestCase):
         if program is None or program == self.main_program:
             program = self._apply_ir_passes()
 
-        acctual_num_fused_ops = 0
-        # Ir passes can only be applyed to block 0.
+        actual_num_fused_ops = 0
+        # Ir passes can only be applied to block 0.
         for op in program.block(0).ops:
             if op.type == self.fused_op_type:
-                acctual_num_fused_ops += 1
+                actual_num_fused_ops += 1
         self.assertTrue(
-            self.num_fused_ops == acctual_num_fused_ops,
+            self.num_fused_ops == actual_num_fused_ops,
             "Checking of the number of fused operator < {} > failed. "
             "Expected: {}, Received: {}".format(
-                self.fused_op_type, self.num_fused_ops, acctual_num_fused_ops
+                self.fused_op_type, self.num_fused_ops, actual_num_fused_ops
             ),
         )
 

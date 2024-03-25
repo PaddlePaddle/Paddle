@@ -319,7 +319,7 @@ int TrtFlashMultiHeadMatmulFusePass::BuildFlashFusion(
     // check the scale
     int hidden_out = head_number * head_size;
     if (abs(scale_attr - 1.0f / sqrt(static_cast<float>(head_size))) > 1e-5) {
-      VLOG(3) << "scale of muilthead matmul do not fit the requirement of "
+      VLOG(3) << "scale of multi-head matmul do not fit the requirement of "
                  "flash attention plugin, Stop fusing.";
       return;
     }

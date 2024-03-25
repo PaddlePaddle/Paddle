@@ -90,7 +90,7 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
     const std::string& op_name,
     const paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>& tensors_vector,
-    paddle::experimental::IntArray* padddings,
+    paddle::experimental::IntArray* paddings,
     std::string* attr) {
   // for pad
   if ((DesiredLayout() == phi::DataLayout::UNDEFINED)) {
@@ -135,7 +135,7 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
         paddle::imperative::LayoutAutoTune::Instance().SetDefaultLayout(
             phi::DataLayout::NCHW);
       } else {
-        VLOG(4) << "DisableLayoutAutoTune accoding to Conv op"
+        VLOG(4) << "DisableLayoutAutoTune according to Conv op"
                 << " dtype : " << data_type << " format : " << (*attr);
         egr::Controller::Instance().DisableLayoutAutoTune();
         return transposer;
@@ -209,15 +209,15 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune<int, int>(
     int* start_axis,
     int* stop_axis) {
   if (DesiredLayout() == phi::DataLayout::UNDEFINED) {
-    VLOG(4) << "Optimze Layout was not started" << op_name;
+    VLOG(4) << "Optimize Layout was not started" << op_name;
     return std::make_shared<EagerLayoutTransformer>(
         op_name, tensors_vector, tensors_vector[0][0].layout());
   }
 
-  bool no_tranpose = tensors_vector[0][0].layout() == DesiredLayout();
+  bool no_transpose = tensors_vector[0][0].layout() == DesiredLayout();
   bool is_valid = ((*start_axis) == 1 && (*stop_axis) == 3);
   if (op_name == "flatten" || op_name == "flatten_contiguous_range") {
-    if (no_tranpose && is_valid) {
+    if (no_transpose && is_valid) {
       return std::make_shared<EagerFlattenOpTransformer>(op_name);
     }
   }
@@ -232,7 +232,7 @@ EagerLayoutAutotune<paddle::experimental::Scalar>(
                                kSlotSmallVectorSize>& tensors_vector,
     paddle::experimental::Scalar* axis) {
   if (DesiredLayout() == phi::DataLayout::UNDEFINED) {
-    VLOG(4) << "Optimze Layout was not started" << op_name;
+    VLOG(4) << "Optimize Layout was not started" << op_name;
     return std::make_shared<EagerLayoutTransformer>(
         op_name, tensors_vector, tensors_vector[0][0].layout());
   }

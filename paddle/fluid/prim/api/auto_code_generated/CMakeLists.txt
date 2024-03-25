@@ -1,8 +1,8 @@
 set(api_yaml_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/ops.parsed.yaml"
+    "${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/ops.parsed.yaml"
 )
 set(legacy_api_yaml_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/legacy_ops.parsed.yaml"
+    "${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/legacy_ops.parsed.yaml"
 )
 set(api_compat_yaml_path
     "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml")

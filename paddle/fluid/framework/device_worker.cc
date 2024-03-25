@@ -387,31 +387,31 @@ void DeviceWorker::DumpField(const Scope& scope,
         VLOG(3) << dims.size() << " " << dims[0] << " * " << dims[1];
         continue;
       }
-      size_t acutal_thread_num =
+      size_t actual_thread_num =
           std::min(static_cast<size_t>(batch_size), tensor_iterator_thread_num);
-      for (size_t i = 0; i < acutal_thread_num; i++) {
-        size_t average_size = batch_size / acutal_thread_num;
+      for (size_t i = 0; i < actual_thread_num; i++) {
+        size_t average_size = batch_size / actual_thread_num;
         size_t begin =
-            average_size * i + std::min(batch_size % acutal_thread_num, i);
+            average_size * i + std::min(batch_size % actual_thread_num, i);
         size_t end =
-            begin + average_size + (i < batch_size % acutal_thread_num ? 1 : 0);
+            begin + average_size + (i < batch_size % actual_thread_num ? 1 : 0);
         threads[i] = std::thread(set_output_str, begin, end, tensor);
       }
-      for (size_t i = 0; i < acutal_thread_num; i++) threads[i].join();
+      for (size_t i = 0; i < actual_thread_num; i++) threads[i].join();
     }
     auto end1 = std::chrono::steady_clock::now();
     auto tt =
         std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
     VLOG(2) << "writing a batch takes " << tt.count() << " us";
 
-    size_t acutal_thread_num =
+    size_t actual_thread_num =
         std::min(static_cast<size_t>(batch_size), tensor_iterator_thread_num);
-    for (size_t i = 0; i < acutal_thread_num; i++) {
-      size_t average_size = batch_size / acutal_thread_num;
+    for (size_t i = 0; i < actual_thread_num; i++) {
+      size_t average_size = batch_size / actual_thread_num;
       size_t begin =
-          average_size * i + std::min(batch_size % acutal_thread_num, i);
+          average_size * i + std::min(batch_size % actual_thread_num, i);
       size_t end =
-          begin + average_size + (i < batch_size % acutal_thread_num ? 1 : 0);
+          begin + average_size + (i < batch_size % actual_thread_num ? 1 : 0);
       for (size_t j = begin + 1; j < end; j++) {
         if (!ars[begin].empty() && !ars[j].empty()) ars[begin] += "\n";
         ars[begin] += ars[j];

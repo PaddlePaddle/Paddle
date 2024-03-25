@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _legacy_C_ops
+from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_or_pir_mode
 
 
 def graph_khop_sampler(
@@ -84,7 +84,7 @@ def graph_khop_sampler(
 
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if return_eids:
             if sorted_eids is None:
                 raise ValueError(
@@ -96,14 +96,12 @@ def graph_khop_sampler(
                 sample_index,
                 reindex_nodes,
                 edge_eids,
-            ) = _legacy_C_ops.graph_khop_sampler(
+            ) = _C_ops.graph_khop_sampler(
                 row,
-                sorted_eids,
                 colptr,
                 input_nodes,
-                "sample_sizes",
+                sorted_eids,
                 sample_sizes,
-                "return_eids",
                 True,
             )
             return edge_src, edge_dst, sample_index, reindex_nodes, edge_eids
@@ -114,14 +112,12 @@ def graph_khop_sampler(
                 sample_index,
                 reindex_nodes,
                 _,
-            ) = _legacy_C_ops.graph_khop_sampler(
+            ) = _C_ops.graph_khop_sampler(
                 row,
-                None,
                 colptr,
                 input_nodes,
-                "sample_sizes",
+                None,
                 sample_sizes,
-                "return_eids",
                 False,
             )
             return edge_src, edge_dst, sample_index, reindex_nodes

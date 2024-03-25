@@ -166,7 +166,7 @@ popart::AdamMode AdamModeFromStr(const std::string& str,
       return popart::AdamMode::LambNoBias;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Uknown AdamMode: %s, AdamMode must be one of these values: adam, "
+        "Unknown AdamMode: %s, AdamMode must be one of these values: adam, "
         "adamax or lamb",
         str));
   }
@@ -183,7 +183,7 @@ popart::AdaptiveMode AdaptiveModeFromStr(const std::string& str) {
     return popart::AdaptiveMode::CenteredRMSProp;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Uknown AdaptiveMode: %s, AdaptiveMode must be one of these values: "
+        "Unknown AdaptiveMode: %s, AdaptiveMode must be one of these values: "
         "adadelta, adagrad, rmsprop or centered_rmsprop",
         str));
   }
@@ -196,7 +196,7 @@ popart::WeightDecayMode WeightDecayModeFromStr(const std::string& str) {
     return popart::WeightDecayMode::L2Regularization;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Uknown WeightDecayMode: %s, WeightDecayMode must be decay or "
+        "Unknown WeightDecayMode: %s, WeightDecayMode must be decay or "
         "l2_regularization",
         str));
   }
@@ -807,9 +807,9 @@ void Compiler::LowerOptimizer(const Scope* scope) {
 
 void Compiler::PostLower(const std::vector<std::string>& tensor_ids,
                          const OpDesc* op_desc) {
-  // Set pipline
+  // Set pipeline
   // Due to the limitation of popart, if an op has multiple outputs,
-  // pipline settings needs to be set at the same time
+  // pipeline settings needs to be set at the same time
   auto tensor_ids_set =
       std::set<std::string>(tensor_ids.begin(), tensor_ids.end());
   if (op_desc->HasAttr(sIpuIndexAttr)) {
@@ -851,9 +851,9 @@ void Compiler::PostLower(const std::string& tensor_id, const OpDesc* op_desc) {
 
 void Compiler::PostLower(const std::string& tensor_id,
                          const OpDesc* op_desc,
-                         bool skip_pipline) {
-  // Set pipline
-  if (!skip_pipline && op_desc->HasAttr(sIpuIndexAttr)) {
+                         bool skip_pipeline) {
+  // Set pipeline
+  if (!skip_pipeline && op_desc->HasAttr(sIpuIndexAttr)) {
     auto ipu_index = PADDLE_GET_CONST(int, op_desc->GetAttr(sIpuIndexAttr));
     builder_->virtualGraph(tensor_id, ipu_index);
     VLOG(10) << "set " << sIpuIndexAttr << " = " << ipu_index

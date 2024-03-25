@@ -16,8 +16,8 @@ import unittest
 
 import numpy as np
 
+import paddle
 from paddle import base
-from paddle.base.dygraph.base import to_variable
 from paddle.nn import ClipGradByGlobalNorm, ClipGradByNorm, ClipGradByValue
 
 
@@ -64,8 +64,8 @@ class TestGradClipByGlobalNorm(unittest.TestCase):
             gloabl_norm_clip = ClipGradByGlobalNorm(self.max_global_norm)
             p_g_var = []
             for p, g in self.para_and_grad:
-                new_p = to_variable(p)
-                new_g = to_variable(g)
+                new_p = paddle.to_tensor(p)
+                new_g = paddle.to_tensor(g)
                 p_g_var.append((new_p, new_g))
 
             new_p_g_var = gloabl_norm_clip(p_g_var)
@@ -136,8 +136,8 @@ class TestGradClipByNorm(unittest.TestCase):
             norm_clip = ClipGradByNorm(self.max_norm)
             p_g_var = []
             for p, g in self.para_and_grad:
-                new_p = to_variable(p)
-                new_g = to_variable(g)
+                new_p = paddle.to_tensor(p)
+                new_g = paddle.to_tensor(g)
                 p_g_var.append((new_p, new_g))
 
             new_p_g_var = norm_clip(p_g_var)
@@ -204,8 +204,8 @@ class TestGradClipByValue(unittest.TestCase):
             value_clip = ClipGradByValue(max=self.max_value, min=self.min_value)
             p_g_var = []
             for p, g in self.para_and_grad:
-                new_p = to_variable(p)
-                new_g = to_variable(g)
+                new_p = paddle.to_tensor(p)
+                new_g = paddle.to_tensor(g)
                 p_g_var.append((new_p, new_g))
 
             new_p_g_var = value_clip(p_g_var)

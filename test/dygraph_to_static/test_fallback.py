@@ -36,7 +36,7 @@ def unsupport_func(x):
     return paddle.to_tensor(t)
 
 
-class SuppportNet(paddle.nn.Layer):
+class SupportNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
@@ -44,7 +44,7 @@ class SuppportNet(paddle.nn.Layer):
         return support_func(x)
 
 
-class UnsuppportNet(paddle.nn.Layer):
+class UnsupportNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
@@ -76,8 +76,8 @@ class TestFallback(Dy2StTestBase):
         np.testing.assert_allclose(output.numpy(), unsupport_func(self.x))
 
     def test_case_net_fallback(self):
-        s_net = SuppportNet()
-        u_net = UnsuppportNet()
+        s_net = SupportNet()
+        u_net = UnsupportNet()
         np.testing.assert_allclose(
             paddle.jit.to_static(s_net)(self.x).numpy(), 4
         )
@@ -92,8 +92,8 @@ class TestFallback(Dy2StTestBase):
 
     @test_ast_only
     def test_case_net_error(self):
-        s_net = SuppportNet()
-        u_net = UnsuppportNet()
+        s_net = SupportNet()
+        u_net = UnsupportNet()
         np.testing.assert_allclose(
             paddle.jit.to_static(s_net)(self.x).numpy(), 4
         )
@@ -111,18 +111,18 @@ class TestFallback(Dy2StTestBase):
         build_strategy = paddle.static.BuildStrategy()
         build_strategy.build_cinn_pass = True
         u_net = paddle.jit.to_static(
-            UnsuppportNet(), build_strategy=build_strategy
+            UnsupportNet(), build_strategy=build_strategy
         )
         u_net.eval()
         np.testing.assert_allclose(u_net(self.x).numpy(), [1, 1])
         assert u_net.training is False, "Training must be false."
 
-    @test_legacy_and_pt_and_pir
     def test_case_save_error(self):
         """
         test the save will raise error.
         """
-        u_net = UnsuppportNet()
+        # TODO(pir-save-load): Open this case after pir support save and load.
+        u_net = UnsupportNet()
         u_net = paddle.jit.to_static(
             u_net, input_spec=[paddle.static.InputSpec(name='x', shape=[1])]
         )
@@ -133,7 +133,7 @@ class TestFallback(Dy2StTestBase):
         """
         test the save will raise error.
         """
-        u_net = UnsuppportNet()
+        u_net = UnsupportNet()
         build_strategy = paddle.static.BuildStrategy()
         build_strategy.build_cinn_pass = True
         u_net = paddle.jit.to_static(u_net, build_strategy=build_strategy)

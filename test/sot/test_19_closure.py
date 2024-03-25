@@ -170,7 +170,7 @@ def create_closure():
     return closure
 
 
-class TestExecutor(TestCaseBase):
+class TestClosure(TestCaseBase):
     def test_closure(self):
         self.assert_results(foo, 1, paddle.to_tensor(2))
         self.assert_results(foo2, paddle.to_tensor(2))
@@ -187,7 +187,7 @@ class TestExecutor(TestCaseBase):
             )
 
 
-class TestExecutor2(TestCaseBase):
+class TestClosure2(TestCaseBase):
     def test_closure(self):
         self.assert_results(foo7)
 
@@ -210,7 +210,7 @@ def test_slice_in_for_loop(x, iter_num=3):
     return out
 
 
-class TestExecutor3(TestCaseBase):
+class TestClosure3(TestCaseBase):
     def test_closure(self):
         tx = paddle.to_tensor([1.0, 2.0, 3.0])
         # need side effect of list.
@@ -237,7 +237,7 @@ def non_local_test(t: paddle.Tensor):
     return t
 
 
-class TestExecutor4(TestCaseBase):
+class TestClosure4(TestCaseBase):
     def test_closure(self):
         tx = paddle.to_tensor([1.0])
         self.assert_results(non_local_test, tx)

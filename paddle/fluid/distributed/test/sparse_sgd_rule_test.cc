@@ -37,8 +37,8 @@ TEST(sparse_value_naive_sgd_test, init_and_update) {
 
   // check init_value for zero
   const int kItemSize = 10;
-  float w[kItemSize];
-  float grad[kItemSize];
+  float w[kItemSize];     // NOLINT
+  float grad[kItemSize];  // NOLINT
   rule.InitValue(w, w + 9, true);
 
   for (float item : w) {
@@ -56,18 +56,18 @@ TEST(sparse_value_naive_sgd_test, init_and_update) {
     item = 0;
   }
   for (auto i = 0u; i < kItemSize; ++i) {
-    grad[i] = (i + 1) * 1.0;
+    grad[i] = static_cast<float>(i + 1) * 1.0;
   }
-  float label[] = {-0.100000,
-                   -0.200000,
-                   -0.300000,
-                   -0.400000,
-                   -0.500000,
-                   -0.600000,
-                   -0.700000,
-                   -0.800000,
-                   -0.900000,
-                   -1.000000};
+  std::array<float, 10> label = {-0.100000,
+                                 -0.200000,
+                                 -0.300000,
+                                 -0.400000,
+                                 -0.500000,
+                                 -0.600000,
+                                 -0.700000,
+                                 -0.800000,
+                                 -0.900000,
+                                 -1.000000};
   const float* ptr_grad = grad;
   rule.UpdateValue(w, w + 9, ptr_grad);
 
@@ -93,7 +93,7 @@ TEST(downpour_sparse_adagrad_test, test_init_and_update) {
   // check init_value for zero
   const int kValueSize = 11;
   int kEmbSize = 10;
-  float w[kValueSize];
+  float w[kValueSize];  // NOLINT
 
   rule.InitValue(w, w + 10, true);
 
@@ -114,24 +114,24 @@ TEST(downpour_sparse_adagrad_test, test_init_and_update) {
     w[i] = 0;
   }
   w[kEmbSize] = 0;
-  float grad[kEmbSize];
+  float grad[kEmbSize];  // NOLINT
   for (int i = 0; i < kEmbSize; ++i) {
-    grad[i] = (i + 1) * 1.0;
+    grad[i] = static_cast<float>(i + 1) * 1.0;
   }
 
   const float* ptr_grad = grad;
   rule.UpdateValue(w, w + 10, ptr_grad);
-  float label[] = {-0.100000,
-                   -0.200000,
-                   -0.300000,
-                   -0.400000,
-                   -0.500000,
-                   -0.600000,
-                   -0.700000,
-                   -0.800000,
-                   -0.900000,
-                   -1.000000,
-                   38.500000};
+  std::array<float, 11> label = {-0.100000,
+                                 -0.200000,
+                                 -0.300000,
+                                 -0.400000,
+                                 -0.500000,
+                                 -0.600000,
+                                 -0.700000,
+                                 -0.800000,
+                                 -0.900000,
+                                 -1.000000,
+                                 38.500000};
   for (auto i = 0u; i < kValueSize; ++i) {
     ASSERT_FLOAT_EQ(w[i], label[i]);
   }
@@ -161,8 +161,8 @@ TEST(downpour_sparse_adam_test, test_init_and_update) {
   rule.LoadConfig(param, embed_dim);
 
   // check init_value for zero
-  const int rule_dim =
-      rule.Dim();  // dims of gsum + g2sum + beta1_pow + beta2_pow in adam
+  // dims of gsum + g2sum + beta1_pow + beta2_pow in adam
+  const int rule_dim = static_cast<int>(rule.Dim());
   const int value_dim = embed_dim + rule_dim;  // total dims of w + rule
   float* value = new float[value_dim];
   rule.InitValue(value, value + embed_dim, true);
@@ -187,17 +187,17 @@ TEST(downpour_sparse_adam_test, test_init_and_update) {
   rule.InitValue(value, value + embed_dim, true);
   float* grad = new float[embed_dim];
   for (auto i = 0u; i < embed_dim; ++i) {
-    grad[i] = (i + 1) * 1.0;
+    grad[i] = static_cast<float>(i + 1) * 1.0;
   }
 
-  float label[] = {-0.0999999642,  -0.099999994, -0.099999994,  -0.099999994,
-                   -0.099999994,   -0.099999994, -0.099999994,  -0.100000001,
-                   -0.100000009,   -0.100000001, 0.100000024,   0.200000048,
-                   0.300000072,    0.400000095,  0.500000119,   0.600000143,
-                   0.700000167,    0.800000191,  0.900000215,   1.00000024,
-                   0.000999987125, 0.0039999485, 0.00899988413, 0.015999794,
-                   0.0249996781,   0.0359995365, 0.0489993691,  0.063999176,
-                   0.0809989572,   0.0999987125, 0.809999943,   0.998001039};
+  std::array<float, 32> label = {
+      -0.0999999642,  -0.099999994, -0.099999994,  -0.099999994, -0.099999994,
+      -0.099999994,   -0.099999994, -0.100000001,  -0.100000009, -0.100000001,
+      0.100000024,    0.200000048,  0.300000072,   0.400000095,  0.500000119,
+      0.600000143,    0.700000167,  0.800000191,   0.900000215,  1.00000024,
+      0.000999987125, 0.0039999485, 0.00899988413, 0.015999794,  0.0249996781,
+      0.0359995365,   0.0489993691, 0.063999176,   0.0809989572, 0.0999987125,
+      0.809999943,    0.998001039};
 
   rule.UpdateValue(value, value + embed_dim, grad);
 

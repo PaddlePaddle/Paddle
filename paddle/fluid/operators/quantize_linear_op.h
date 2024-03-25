@@ -15,13 +15,13 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/common/ddim.h"
+#include "paddle/common/hostdevice.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/fake_quantize_op.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/transform.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 
 namespace paddle {

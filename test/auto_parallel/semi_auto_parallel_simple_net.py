@@ -94,7 +94,7 @@ class TestSimpleNetForSemiAutoParallel:
 
     def pp_shard_fn(self, layer_name, layer, process_mesh):
         if layer_name == 'linear_0':
-            # shard_layer doens't support cross-mesh now.
+            # shard_layer doesn't support cross-mesh now.
             # input process_mesh of pp_shard_fn is useless,
             # it's defined just for unified format.
             weight_dist_attr = (self._pp_mesh0, [Replicate()])
@@ -186,7 +186,7 @@ class TestSimpleNetForSemiAutoParallel:
     def test_pp_demo_net(self):
         self.set_random_seed(self._seed)
 
-        # Send/Recv operators doens't support CPU now.
+        # Send/Recv operators doesn't support CPU now.
         if self._backend != "gpu":
             return
 

@@ -27,8 +27,8 @@
 #include <curand_kernel.h>
 #endif
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/graph_sample_neighbors_kernel.h"
 

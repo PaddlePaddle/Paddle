@@ -782,21 +782,7 @@ def is_not_func(var: VariableBase, other: VariableBase):
 # is None
 Dispatcher.register(
     operator_is_none,
-    ("TensorVariable",),
-    lambda var: ConstantVariable(False, var.graph, DummyTracker([var])),
-)
-
-# is not None
-Dispatcher.register(
-    operator_is_not_none,
-    ("TensorVariable",),
-    lambda var: ConstantVariable(True, var.graph, DummyTracker([var])),
-)
-
-# is None
-Dispatcher.register(
-    operator_is_none,
-    ("VariableBase",),
+    ("ConstantVariable",),
     lambda var: BuiltinVariable(operator.is_, var.graph, DanglingTracker())(
         var, ConstantVariable.wrap_literal(None, var.graph)
     ),
@@ -805,10 +791,24 @@ Dispatcher.register(
 # is not None
 Dispatcher.register(
     operator_is_not_none,
-    ("VariableBase",),
+    ("ConstantVariable",),
     lambda var: BuiltinVariable(operator.is_not, var.graph, DanglingTracker())(
         var, ConstantVariable.wrap_literal(None, var.graph)
     ),
+)
+
+# is None
+Dispatcher.register(
+    operator_is_none,
+    ("VariableBase",),
+    lambda var: ConstantVariable(False, var.graph, DummyTracker([var])),
+)
+
+# is not None
+Dispatcher.register(
+    operator_is_not_none,
+    ("VariableBase",),
+    lambda var: ConstantVariable(True, var.graph, DummyTracker([var])),
 )
 
 
@@ -862,6 +862,7 @@ for binary_fn in BINARY_OPS:
 fallback_tensor_unary_method = {
     int,
     bool,
+    float,
     operator.truth,
 }
 
@@ -971,7 +972,7 @@ for binary_fn in BINARY_OPS:
             raise FallbackError('Numpy operator need fallback to dygraph')
 
 
-# Register dispatch for DataVariable: directy call and return a wrapped variable.
+# Register dispatch for DataVariable: directly call and return a wrapped variable.
 def data_variable_binary_dispatcher(var, other, operator):
     return VariableFactory.from_value(
         operator(var.get_py_value(), other.get_py_value()),

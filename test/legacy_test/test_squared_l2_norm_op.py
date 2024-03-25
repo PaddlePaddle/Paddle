@@ -19,6 +19,7 @@ from numpy import linalg as LA
 from op_test import OpTest
 
 import paddle
+import paddle.distributed as dist
 from paddle import _C_ops, _legacy_C_ops
 from paddle.framework import in_dynamic_mode
 
@@ -73,12 +74,17 @@ class TestSquaredL2NormF16Op2(TestSquaredL2NormF16Op):
 class TestL2LossOp(OpTest):
     """Test squared_l2_norm"""
 
+    def config(self):
+        self.x_shape = (13, 19)
+        self.check_auto_parallel = False
+
     def setUp(self):
+        self.config()
         self.python_api = test_squared_l2_norm
         self.op_type = "squared_l2_norm"
         self.max_relative_error = 0.05
 
-        X = np.random.uniform(-1, 1, (13, 19)).astype("float32")
+        X = np.random.uniform(-1, 1, self.x_shape).astype("float32")
         X[np.abs(X) < self.max_relative_error] = 0.1
         self.inputs = {'X': X}
         self.outputs = {'Out': np.array([np.square(LA.norm(X))])}
@@ -91,7 +97,35 @@ class TestL2LossOp(OpTest):
             ['X'],
             'Out',
             max_relative_error=self.max_relative_error,
+            check_auto_parallel=self.check_auto_parallel,
         )
+
+
+class TestSquaredL2NormAutoParallel_1(TestL2LossOp):
+    def config(self):
+        self.x_shape = (14, 18)
+        self.check_auto_parallel = True
+        self.placements = {
+            'X': [dist.Replicate()],
+        }
+
+
+class TestSquaredL2NormAutoParallel_2(TestL2LossOp):
+    def config(self):
+        self.x_shape = (14, 18)
+        self.check_auto_parallel = True
+        self.placements = {
+            'X': [dist.Shard(0)],
+        }
+
+
+class TestSquaredL2NormAutoParallel_3(TestL2LossOp):
+    def config(self):
+        self.x_shape = (14, 18)
+        self.check_auto_parallel = True
+        self.placements = {
+            'X': [dist.Shard(1)],
+        }
 
 
 class TestL2LossDeterministic(unittest.TestCase):

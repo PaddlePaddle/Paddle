@@ -14,7 +14,7 @@
 
 #pragma once
 #include "paddle/cinn/hlir/dialect/operator/ir/attribute_storage.h"
-#include "paddle/pir/core/attribute_base.h"
+#include "paddle/pir/include/core/attribute_base.h"
 
 namespace cinn {
 namespace dialect {

@@ -90,7 +90,7 @@ class TestNonZeroAPI(unittest.TestCase):
     def test_dygraph_api(self):
         data_x = np.array([[True, False], [False, True]])
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(data_x)
+            x = paddle.to_tensor(data_x)
             z = paddle.nonzero(x)
             np_z = z.numpy()
         expect_out = np.array([[0, 0], [1, 1]])

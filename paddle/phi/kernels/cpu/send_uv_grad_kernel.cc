@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/send_uv_grad_kernel.h"
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -172,7 +172,7 @@ void GraphSendUVGradOpKernelLaunchHelper(const Context& ctx,
       index_size,
       0,
       errors::InvalidArgument("The first dimension of src_index or dst_index "
-                              "shoule be greater than 0, but received %d.",
+                              "should be greater than 0, but received %d.",
                               index_size));
 
   ctx.template Alloc<T>(x_grad);

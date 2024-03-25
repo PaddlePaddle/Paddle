@@ -14,17 +14,17 @@
 
 #include <gtest/gtest.h>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/phi/core/flags.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PHI_DECLARE_double(fraction_of_gpu_memory_to_use);
-PHI_DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
-PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
-PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
+COMMON_DECLARE_double(fraction_of_gpu_memory_to_use);
+COMMON_DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
+COMMON_DECLARE_uint64(initial_gpu_memory_in_mb);
+COMMON_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 PD_DECLARE_int64(gpu_allocator_retry_time);
 #endif
-PHI_DECLARE_string(allocator_strategy);
+COMMON_DECLARE_string(allocator_strategy);
 
 namespace paddle {
 namespace memory {

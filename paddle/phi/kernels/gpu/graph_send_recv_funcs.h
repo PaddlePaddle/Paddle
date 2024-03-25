@@ -19,9 +19,9 @@
 #include <algorithm>
 #include <vector>
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/send_u_recv_kernel.h"
 
 namespace phi {

@@ -47,7 +47,7 @@ class Adagrad(Optimizer):
         parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
             This parameter is required in dygraph mode. And you can specify different options for
             different parameter groups such as the learning rate, weight decay, etc,
-            then the parameters are list of dict. Note that the learning_rate in paramter groups
+            then the parameters are list of dict. Note that the learning_rate in parameter groups
             represents the scale of base learning_rate.
             The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization.
@@ -57,8 +57,8 @@ class Adagrad(Optimizer):
             the regularization setting here in optimizer will be ignored for this parameter.
             Otherwise, the regularization setting here in optimizer will take effect.
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
-            some derived class of ``GradientClipBase`` . There are three cliping strategies,
+        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three clipping strategies,
             ClipGradByGlobalNorm, ClipGradByNorm and ClipGradByValue. Default None,
             meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
@@ -142,7 +142,7 @@ class Adagrad(Optimizer):
             parameters = self._update_param_group(parameters)
 
         for p in parameters:
-            if p.name in self._already_create_accumulater:
+            if p.name in self._already_create_accumulator:
                 continue
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
@@ -151,7 +151,7 @@ class Adagrad(Optimizer):
                     master_p,
                     fill_value=self.initial_accumulator_value,
                 )
-                self._already_create_accumulater.add(p.name)
+                self._already_create_accumulator.add(p.name)
                 continue
             if (
                 self._is_dtype_fp16_or_bf16(p.dtype)
@@ -166,7 +166,7 @@ class Adagrad(Optimizer):
                 p,
                 fill_value=self.initial_accumulator_value,
             )
-            self._already_create_accumulater.add(p.name)
+            self._already_create_accumulator.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)

@@ -117,9 +117,9 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
                 merge_grad = clip.merge_selected_rows(g)
                 merge_grad = clip.get_tensor_from_selected_rows(merge_grad)
             sum_square = _squared_l2_norm(merge_grad)
-            if sum_square.dtype == core.VarDesc.VarType.FP16:
+            if sum_square.dtype == paddle.float16:
                 sum_square_list_fp16.append(sum_square)
-            elif sum_square.dtype == core.VarDesc.VarType.FP32:
+            elif sum_square.dtype == paddle.float32:
                 sum_square_list_fp32.append(sum_square)
             else:
                 sum_square_list.append(sum_square)
@@ -222,7 +222,7 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
             # TODO(wangxi): use inplace elementwise_mul
             clip_input = (
                 clip_var.astype('float16')
-                if g.dtype == core.VarDesc.VarType.FP16
+                if g.dtype == paddle.float16
                 else clip_var
             )
             new_grad = paddle.multiply(x=g, y=clip_input)

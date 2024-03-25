@@ -131,7 +131,7 @@ class Transform:
 
     def __call__(self, input):
         """Make this instance as a callable object. The return value is
-        depening on the input type.
+        depending on the input type.
 
         * If the input is a ``Tensor`` instance, return
           ``self.forward(input)`` .
@@ -160,7 +160,7 @@ class Transform:
         Useful for turning one random outcome into another.
 
         Args:
-            x (Tensos): Input parameter, generally is a sample generated
+            x (Tensor): Input parameter, generally is a sample generated
                 from ``Distribution``.
 
         Returns:
@@ -299,7 +299,7 @@ class Transform:
         return variable.real
 
     def _forward(self, x):
-        """Inner method for publid API ``forward``, subclass should
+        """Inner method for public API ``forward``, subclass should
         overwrite this method for supporting forward transformation.
         """
         raise NotImplementedError('Forward not implemented')
@@ -340,8 +340,8 @@ class Transform:
         return shape
 
     def _inverse_shape(self, shape):
-        """Inner method called by ``inverse_shape``, whic is used to infer the
-        invese shape. Subclass should overwrite this method for supporting
+        """Inner method called by ``inverse_shape``, which is used to infer the
+        inverse shape. Subclass should overwrite this method for supporting
         ``inverse_shape``.
         """
         return shape
@@ -355,7 +355,7 @@ class AbsTransform(Transform):
     distributions with the absolute value function, which maps ``(-inf, inf)``
     to ``[0, inf)`` .
 
-    * For ``y`` in ``(0, inf)`` , ``AbsTransform.inverse(y)`` returns the set invese
+    * For ``y`` in ``(0, inf)`` , ``AbsTransform.inverse(y)`` returns the set inverse
       ``{x  in (-inf, inf) : |x| = y}`` as a tuple, ``-y, y`` .
     * For ``y`` equal ``0`` , ``AbsTransform.inverse(0)`` returns ``0, 0``, which is not
       the set inverse (the set inverse is the singleton {0}), but "works" in
@@ -595,9 +595,9 @@ class ChainTransform(Transform):
         # Suppose the dimensions of input tensor is N, and chain [t0,...ti,...tm],
         # ti(in) denotes ti.domain.event_rank, ti(out) denotes ti.codomain.event_rank,
         # delta(ti) denotes (ti(out) - ti(in)).
-        # For transform ti, N shoud satisfy the constraint:
+        # For transform ti, N should satisfy the constraint:
         #   N + delta(t0) + delta(t1)...delta(t(i-1)) >= ti(in)
-        # So, for all transform in chain, N shoud satisfy follow constraints:
+        # So, for all transform in chain, N should satisfy follow constraints:
         #   t0: N >= t0(in)
         #   t1: N >= t1(in) - delta(t0)
         #   ...
@@ -681,13 +681,13 @@ class IndependentTransform(Transform):
     some of the rightmost batch axes as event axes.
 
     Generally, it is used to expand the event axes. This has no effect on the
-    forward or inverse transformaion, but does sum out the
-    ``reinterpretd_bach_rank`` rightmost dimensions in computing the determinant
+    forward or inverse transformation, but does sum out the
+    ``reinterpreted_batch_rank`` rightmost dimensions in computing the determinant
     of Jacobian matrix.
 
     To see this, consider the ``ExpTransform`` applied to a Tensor which has
     sample, batch, and event ``(S,B,E)`` shape semantics. Suppose the Tensor's
-    paritioned-shape is ``(S=[4], B=[2, 2], E=[3])`` , reinterpreted_batch_rank
+    partitioned-shape is ``(S=[4], B=[2, 2], E=[3])`` , reinterpreted_batch_rank
     is 1. Then the reinterpreted Tensor's shape  is ``(S=[4], B=[2], E=[2, 3])`` .
     The shape returned by ``forward`` and ``inverse`` is unchanged, ie,
     ``[4,2,2,3]`` . However the shape returned by ``inverse_log_det_jacobian``
@@ -875,7 +875,7 @@ class ReshapeTransform(Transform):
         ):
             raise TypeError(
                 f"Expected type of 'in_event_shape' and 'out_event_shape' is "
-                f"Squence[int], but got 'in_event_shape': {in_event_shape}, "
+                f"Sequence[int], but got 'in_event_shape': {in_event_shape}, "
                 f"'out_event_shape': {out_event_shape}"
             )
         in_size = 1

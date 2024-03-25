@@ -264,7 +264,7 @@ TEST(TransposeFoldingInput, TransposeTwiceWithMatmul) {
       &program, target, input_ids, {dot1->id, dot2->id}, 1, passes, 123, true);
 }
 
-TEST(TransposeFoldingInput, TransposeWithMultiMamtul) {
+TEST(TransposeFoldingInput, TransposeWithMultiMatmul) {
   if (!cinn::runtime::IsCompiledWithCUDA()) {
     return;
   }

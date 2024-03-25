@@ -39,7 +39,7 @@ class FusedTokenPruneOpMaker : public framework::OpProtoAndCheckerMaker {
         "The input of fused_token_prune op, whose shape should be [bsz, "
         "num_head, "
         "max_seq_len, max_seq_len] and dtype should be float32/float64."
-        "Mask is corresponding to Attn's elemnts one by one. Elements of Attn "
+        "Mask is corresponding to Attn's elements one by one. Elements of Attn "
         "will be set to zero if their corresponding mask is smaller than 0."
         "This process happens before sorting X by attn.");
 
@@ -56,7 +56,7 @@ class FusedTokenPruneOpMaker : public framework::OpProtoAndCheckerMaker {
               "slimmed_seq_len, C]."
               "The tokens of X will be sorted by Attn firstly and then the "
               "last (max_seq_len - slimmed_seq_len)"
-              "tokens will be deleted. SlimmedX is the remainning part of X. "
+              "tokens will be deleted. SlimmedX is the remaining part of X. "
               "");
 
     AddOutput(
@@ -82,7 +82,7 @@ class FusedTokenPruneOpMaker : public framework::OpProtoAndCheckerMaker {
                 1. Elements of Attn will be set to zero if their corresponding mask is smaller than 0.
                 2. The second dimension of X will be sorted by Attn.
                 3. The last (max_seq_len - slimmed_seq_len) lines of X will be pruned.
-                4. The remainning part of sorted X will output.
+                4. The remaining part of sorted X will output.
                 )DOC");
   }
 };
@@ -110,19 +110,19 @@ class FusedTokenPruneOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(mask_dim.size(),
                       4,
                       platform::errors::InvalidArgument(
-                          "The input mask must be 4-dimention"));
+                          "The input mask must be 4-dimension"));
     PADDLE_ENFORCE_EQ(attn_dim.size(),
                       4,
                       platform::errors::InvalidArgument(
-                          "The input attn must be 4-dimention"));
+                          "The input attn must be 4-dimension"));
     PADDLE_ENFORCE_EQ(
         x_dim.size(),
         3,
-        platform::errors::InvalidArgument("The input x must be 4-dimention"));
+        platform::errors::InvalidArgument("The input x must be 4-dimension"));
     PADDLE_ENFORCE_EQ(new_mask_dim.size(),
                       4,
                       platform::errors::InvalidArgument(
-                          "The input attn must be 4-dimention"));
+                          "The input attn must be 4-dimension"));
 
     // check input dims relations
     PADDLE_ENFORCE_EQ(mask_dim[0],

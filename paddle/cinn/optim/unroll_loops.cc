@@ -62,10 +62,10 @@ struct UnrollMutator : public ir::IRMutator<Expr*> {
   void Visit(const ir::For* op, Expr* expr) override {
     IRMutator<>::Visit(op, expr);
     if (op->extent.As<ir::IntImm>() == nullptr) {
-      VLOG(5) << "loop to be unrolled should have a contant extent";
+      VLOG(5) << "loop to be unrolled should have a constant extent";
       return;
     }
-    int extent = op->extent.as_int32();
+    int64_t extent = op->extent.as_int64();
 
     // predicate this for-loop can be unrolled by auto-unroll conditions
     bool unrollable =
@@ -94,7 +94,8 @@ struct UnrollMutator : public ir::IRMutator<Expr*> {
 
     for (int i = min->value; i < extent->value; i++) {
       Expr start = op->min + i;
-      body.push_back(ir::ir_utils::IRCopy(op->body));
+      body.push_back(
+          ir::ir_utils::IRCopy(op->body, /* copy_buffer_node = */ false));
       cinn::ir::ir_utils::IrReplaceVarBroadcast(
           &body.back(), op->loop_var, start);
     }
@@ -109,7 +110,7 @@ struct UnrollMutator : public ir::IRMutator<Expr*> {
   int max_unroll_extent_ = 50;
 
   // the number of steps that have been unrolled or plain statement
-  int flat_step_ = 0;
+  int64_t flat_step_ = 0;
   // the number of nested loops not to be unrolled
   int not_unrolled_depth_ = 0;
 };

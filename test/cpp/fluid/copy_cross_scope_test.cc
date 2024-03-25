@@ -26,14 +26,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/string/printf.h"
+#include "paddle/utils/string/printf.h"
 
 #define Conn(x, y) x##y
 
 namespace f = paddle::framework;
 namespace p = paddle::platform;
-
-USE_NO_KERNEL_OP(copy_cross_scope);
 
 template <typename T>
 void Compare1(f::Scope* scope,

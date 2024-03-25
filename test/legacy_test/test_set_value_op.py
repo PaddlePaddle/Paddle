@@ -23,6 +23,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle.base import core
 from paddle.base.layer_helper import LayerHelper
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestSetValueBase(unittest.TestCase):
@@ -57,12 +58,13 @@ class TestSetValueBase(unittest.TestCase):
 class TestSetValueApi(TestSetValueBase):
     def _run_static(self):
         paddle.enable_static()
-        with paddle.static.program_guard(self.program):
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             x = self._call_setitem_static_api(x)
 
         exe = paddle.static.Executor(paddle.CPUPlace())
-        out = exe.run(self.program, fetch_list=[x])
+        out = exe.run(main_program, fetch_list=[x])
         paddle.disable_static()
         return out
 
@@ -74,6 +76,7 @@ class TestSetValueApi(TestSetValueBase):
         paddle.enable_static()
         return out
 
+    @test_with_pir_api
     def test_api(self):
         static_out = self._run_static()
         dynamic_out = self._run_dynamic()
@@ -262,7 +265,7 @@ class TestSetValueItemSliceStep4(TestSetValueApi):
 
 
 # 1.2.3 step < 0
-class TestSetValueItemSliceNegetiveStep(TestSetValueApi):
+class TestSetValueItemSliceNegativeStep(TestSetValueApi):
     def set_shape(self):
         self.shape = [5, 2]
 
@@ -280,7 +283,7 @@ class TestSetValueItemSliceNegetiveStep(TestSetValueApi):
         self.data[5:2:-1] = self.value
 
 
-class TestSetValueItemSliceNegetiveStep2(TestSetValueApi):
+class TestSetValueItemSliceNegativeStep2(TestSetValueApi):
     def set_shape(self):
         self.shape = [5]
 
@@ -298,7 +301,7 @@ class TestSetValueItemSliceNegetiveStep2(TestSetValueApi):
         self.data[1::-1] = self.value
 
 
-class TestSetValueItemSliceNegetiveStep3(TestSetValueApi):
+class TestSetValueItemSliceNegativeStep3(TestSetValueApi):
     def set_shape(self):
         self.shape = [3]
 
@@ -316,7 +319,7 @@ class TestSetValueItemSliceNegetiveStep3(TestSetValueApi):
         self.data[::-1] = self.value
 
 
-class TestSetValueItemSliceNegetiveStep4(TestSetValueApi):
+class TestSetValueItemSliceNegativeStep4(TestSetValueApi):
     def set_shape(self):
         self.shape = [3, 4, 5]
 
@@ -1501,14 +1504,14 @@ class TestGradientTruncated(unittest.TestCase):
         np.testing.assert_array_equal(
             inps.grad.numpy(),
             input_grad,
-            err_msg='The gradient of value should be \n{},\n but reveived {}'.format(
+            err_msg='The gradient of value should be \n{},\n but received {}'.format(
                 input_grad, inps.grad.numpy()
             ),
         )
         np.testing.assert_array_equal(
             value.grad.numpy(),
             value_grad,
-            err_msg='The gradient of input should be \n{},\n but reveived {}'.format(
+            err_msg='The gradient of input should be \n{},\n but received {}'.format(
                 value_grad, value.grad.numpy()
             ),
         )
@@ -1535,14 +1538,14 @@ class TestGradientTruncated(unittest.TestCase):
         np.testing.assert_array_equal(
             inps2.grad.numpy(),
             input_grad2,
-            err_msg='The gradient of value should be \n{},\n but reveived {}'.format(
+            err_msg='The gradient of value should be \n{},\n but received {}'.format(
                 input_grad, inps2.grad.numpy()
             ),
         )
         np.testing.assert_array_equal(
             value2.grad.numpy(),
             value_grad2,
-            err_msg='The gradient of input should be \n{},\n but reveived {}'.format(
+            err_msg='The gradient of input should be \n{},\n but received {}'.format(
                 value_grad, value2.grad.numpy()
             ),
         )
@@ -1589,14 +1592,14 @@ class TestGradientTruncated(unittest.TestCase):
         np.testing.assert_array_equal(
             inps.grad.numpy(),
             input_grad,
-            err_msg='The gradient of value should be \n{},\n but reveived {}'.format(
+            err_msg='The gradient of value should be \n{},\n but received {}'.format(
                 input_grad, inps.grad.numpy()
             ),
         )
         np.testing.assert_array_equal(
             value.grad.numpy(),
             value_grad,
-            err_msg='The gradient of input should be \n{},\n but reveived {}'.format(
+            err_msg='The gradient of input should be \n{},\n but received {}'.format(
                 value_grad, value.grad.numpy()
             ),
         )
@@ -1637,14 +1640,14 @@ class TestGradientTruncated(unittest.TestCase):
         np.testing.assert_array_equal(
             inps.grad.numpy(),
             input_grad,
-            err_msg='The gradient of value should be \n{},\n but reveived {}'.format(
+            err_msg='The gradient of value should be \n{},\n but received {}'.format(
                 input_grad, inps.grad.numpy()
             ),
         )
         np.testing.assert_array_equal(
             value.grad.numpy(),
             value_grad,
-            err_msg='The gradient of input should be \n{},\n but reveived {}'.format(
+            err_msg='The gradient of input should be \n{},\n but received {}'.format(
                 value_grad, value.grad.numpy()
             ),
         )
@@ -1689,14 +1692,14 @@ class TestGradientTruncated(unittest.TestCase):
         np.testing.assert_array_equal(
             inps.grad.numpy(),
             input_grad,
-            err_msg='The gradient of value should be \n{},\n but reveived {}'.format(
+            err_msg='The gradient of value should be \n{},\n but received {}'.format(
                 input_grad, inps.grad.numpy()
             ),
         )
         np.testing.assert_array_equal(
             value.grad.numpy(),
             value_grad,
-            err_msg='The gradient of input should be \n{},\n but reveived {}'.format(
+            err_msg='The gradient of input should be \n{},\n but received {}'.format(
                 value_grad, value.grad.numpy()
             ),
         )
@@ -1942,7 +1945,7 @@ class TestSetValueIsSamePlace(unittest.TestCase):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestSetValueBFloat16(OpTest):
     def setUp(self):

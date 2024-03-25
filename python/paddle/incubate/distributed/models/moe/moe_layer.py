@@ -263,7 +263,7 @@ def prepare_forward(gate, num_expert, world_size, moe_group):
 class MoELayer(nn.Layer):
     """MoE Layer
     Args:
-        d_model (int): Model dimention.
+        d_model (int): Model dimension.
         experts (nn.LayerList): Expert networks list.
         gate (dict|NaiveGate|SwitchGate|NaiveGate):
 

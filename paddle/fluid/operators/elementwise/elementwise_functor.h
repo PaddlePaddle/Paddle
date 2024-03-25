@@ -55,7 +55,7 @@ using InverseDivFunctor = phi::funcs::InverseDivideFunctor<T>;
 template <typename T>
 using MaxFunctor = phi::funcs::MaximumFunctor<T>;
 
-// Minmum
+// Minimum
 template <typename T>
 using MinFunctor = phi::funcs::MinimumFunctor<T>;
 

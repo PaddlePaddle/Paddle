@@ -195,8 +195,8 @@ void BasicAucCalculator::calculate_bucket_error() {
 
 // Deprecated: should use BeginFeedPass & EndFeedPass
 void BoxWrapper::FeedPass(int date,
-                          const std::vector<uint64_t>& feasgin_to_box) const {
-  int ret = boxps_ptr_->FeedPass(date, feasgin_to_box);
+                          const std::vector<uint64_t>& feasign_to_box) const {
+  int ret = boxps_ptr_->FeedPass(date, feasign_to_box);
   PADDLE_ENFORCE_EQ(
       ret,
       0,

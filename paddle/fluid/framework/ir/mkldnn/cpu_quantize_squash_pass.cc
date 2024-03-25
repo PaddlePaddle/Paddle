@@ -426,7 +426,8 @@ void CPUQuantizeSquashPass::MultipleQuantizeSquash(Graph* graph) const {
                       platform::errors::InvalidArgument(
                           "Quantize scale(%f) should not be equal 0.", scale));
 
-    for (int iter = prev_out->outputs.size() - 1; iter >= 0; iter--) {
+    for (int iter = static_cast<int>(prev_out->outputs.size()) - 1; iter >= 0;
+         iter--) {
       auto quant_op = prev_out->outputs[iter];
       if (quant_op->IsOp() && quant_op->Op()->Type() == "quantize" &&
           quant_op->id() != first_quant_op->id() &&

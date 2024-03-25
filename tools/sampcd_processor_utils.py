@@ -603,7 +603,7 @@ def get_docstring(full_test=False):
     '''
     this function will get the docstring for test.
     '''
-    import paddle  # noqa: F401
+    import paddle
     import paddle.static.quantization  # noqa: F401
 
     if full_test:

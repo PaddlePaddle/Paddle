@@ -50,13 +50,12 @@ static void XcclAllReduce(const phi::DenseTensor &src,
   auto *dst_ptr = phi::DeviceContextPool::Instance()
                       .Get(src.place())
                       ->Alloc(dst, src.dtype());
-  auto xccl_dtype = phi::ccl::ToCCLDataType(src.dtype());
 
   phi::DeviceManager::CCLAllReduce(place.GetDeviceType(),
                                    src_ptr,
                                    dst_ptr,
                                    src.numel(),
-                                   xccl_dtype,
+                                   src.dtype(),
                                    phi::ccl::CCLReduceOp::SUM,
                                    comm,
                                    stream);
@@ -201,12 +200,11 @@ void XCCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
   auto stream = comm->stream();
 
   void *src_ptr = src_tensor->data();
-  auto xccl_dtype = phi::ccl::ToCCLDataType(src_tensor->dtype());
 
   phi::DeviceManager::CCLBroadcast(place_.GetDeviceType(),
                                    src_ptr,
                                    src_tensor->numel(),
-                                   xccl_dtype,
+                                   src_tensor->dtype(),
                                    0,
                                    comm->comm(),
                                    *stream);

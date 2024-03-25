@@ -69,12 +69,13 @@ class LayerNormOpConverter : public OpConverter {
           ("layer_norm Scale: reshape: (Output(" + output_name + ")").c_str());
       auto layer = TRT_ENGINE_ADD_LAYER(
           engine_, Normalization, *X, *Scale_reshape, *Bias_reshape, axisMask);
+      SupportFP32MixPrecision(output_name, op_desc.Type(), layer);
       layer->setEpsilon(eps);
-      RreplenishLayerAndOutput(layer, "layer_norm", {output_name}, test_mode);
+      ReplenishLayerAndOutput(layer, "layer_norm", {output_name}, test_mode);
 #endif
 #if IS_TRT_VERSION_LT(8600)
       // For dynamic shape & trt<8.6,
-      // the shape of mean and variance will be determine in configuPlugin.
+      // the shape of mean and variance will be determine in configurePlugin.
       auto* X = engine_->GetITensor(op_desc.Input("X").front());
       auto* Bias_v = scope.FindVar(op_desc.Input("Bias").front());
       auto* Scale_v = scope.FindVar(op_desc.Input("Scale").front());
@@ -113,7 +114,7 @@ class LayerNormOpConverter : public OpConverter {
               variance_shape,
               with_fp16);
       layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
-      RreplenishLayerAndOutput(
+      ReplenishLayerAndOutput(
           layernorm_layer, "layer_norm", {output_name}, test_mode);
 #endif
     } else {
@@ -160,7 +161,7 @@ class LayerNormOpConverter : public OpConverter {
           with_fp16);
       auto* layernorm_layer = engine_->AddPlugin(
           &X, 1, reinterpret_cast<plugin::PluginTensorRT*>(plugin));
-      RreplenishLayerAndOutput(
+      ReplenishLayerAndOutput(
           layernorm_layer, "layer_norm", {output_name}, test_mode);
     }
   }

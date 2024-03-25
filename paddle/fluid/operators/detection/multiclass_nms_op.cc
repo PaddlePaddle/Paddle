@@ -556,13 +556,13 @@ of boxes and scores.
 In the NMS step, this operator greedily selects a subset of detection bounding
 boxes that have high scores larger than score_threshold, if providing this
 threshold, then selects the largest nms_top_k confidences scores if nms_top_k
-is larger than -1. Then this operator pruns away boxes that have high IOU
+is larger than -1. Then this operator prunes away boxes that have high IOU
 (intersection over union) overlap with already selected boxes by adaptive
 threshold NMS based on parameters of nms_threshold and nms_eta.
-Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
+After NMS step, at most keep_top_k number of total bboxes are to be kept
 per image if keep_top_k is larger than -1.
 This operator support multi-class and batched inputs. It applying NMS
-independently for each class. The outputs is a 2-D LoDTenosr, for each
+independently for each class. The outputs is a 2-D LoDTensor, for each
 image, the offsets in first dimension of phi::DenseTensor are called LoD, the number
 of offset is N + 1, where N is the batch size. If LoD[i + 1] - LoD[i] == 0,
 means there is no detected bbox for this image.

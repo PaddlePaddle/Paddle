@@ -31,12 +31,12 @@ namespace distributed {
 // transformed from the input shape. Each element in vector<DimTrans*>
 // describes the transformation of one output axis. For example, when
 // a reshape operator reshapes a tensor from the shape of (6, 12, 48)
-// to (72, 6, 8), this transfromation can be described as:
+// to (72, 6, 8), this transformation can be described as:
 // [Flatten(Dim(0), Dim(1)), Split(Dim(2), (6,8), 0), Split(Dim(2), (6,8), 1)]
 // meaning that dim0 in output is flattened from dim0 and dim1 in input,
 // dim1 and dim2 in output are obtained by splitting dim2 in input, the
-// splitted shape is (6, 8), dim1 referes to the first shape value in (6, 8)
-// and dim2 referes to the second shape value in (6, 8).
+// splitted shape is (6, 8), dim1 refers to the first shape value in (6, 8)
+// and dim2 refers to the second shape value in (6, 8).
 class DimTrans {
  public:
   enum class Type { INPUTDIM, SINGLETON, FLATTEN, SPLIT };
@@ -57,7 +57,7 @@ class DimTrans {
   Type type_;
 };
 
-// InputDim indicates that the output dimention
+// InputDim indicates that the output dimension
 // is obtained directed from one input dimension.
 class InputDim : public DimTrans {
  public:

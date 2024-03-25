@@ -117,13 +117,12 @@ def _get_cache_or_reload(repo, force_reload, verbose=True, source='github'):
             hub_dir,
             check_exist=not force_reload,
             decompress=False,
-            method=('wget' if source == 'gitee' else 'get'),
         )
         shutil.move(fpath, cached_file)
 
         with zipfile.ZipFile(cached_file) as cached_zipfile:
-            extraced_repo_name = cached_zipfile.infolist()[0].filename
-            extracted_repo = os.path.join(hub_dir, extraced_repo_name)
+            extracted_repo_name = cached_zipfile.infolist()[0].filename
+            extracted_repo = os.path.join(hub_dir, extracted_repo_name)
             _remove_if_exists(extracted_repo)
             # Unzip the code and rename the base folder
             cached_zipfile.extractall(hub_dir)

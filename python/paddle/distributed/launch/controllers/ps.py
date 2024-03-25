@@ -16,21 +16,21 @@ import json
 import os
 import shutil
 
-from .controller import ControleMode, Controller
+from .controller import Controller, ControllerMode
 
 
 class PSController(Controller):
     @classmethod
     def enable(cls, ctx):
         if (
-            ctx.args.run_mode == ControleMode.PS
+            ctx.args.run_mode == ControllerMode.PS
             or ctx.args.server_num
             or len(ctx.args.servers) > 0
             or ctx.args.trainer_num
             or len(ctx.args.trainers) > 0
         ):
             ctx.logger.debug(f"{cls.__name__} enabled")
-            ctx.args.run_mode = ControleMode.PS
+            ctx.args.run_mode = ControllerMode.PS
             return True
         else:
             return False

@@ -18,23 +18,36 @@ import numpy as np
 
 import paddle
 from paddle import base, nn
+from paddle.framework import in_pir_mode
+from paddle.pir_utils import test_with_pir_api
+
+
+def get_value_by_name(name, ops):
+    for op in ops:
+        if op.name() == "builtin.parameter" or op.name() == "pd_op.data":
+            value = op.result(0)
+            if value.name == name:
+                return value
 
 
 class TestModelAverage(unittest.TestCase):
+    @test_with_pir_api
     def test_model_average_static(self):
         paddle.enable_static()
         place = base.CPUPlace()
         shape = [2, 3, 8, 8]
         exe = base.Executor(place)
-        train_program = base.Program()
-        startup = base.Program()
-        test_program = base.Program()
-        with base.program_guard(train_program, startup):
+        train_program = paddle.static.Program()
+        startup = paddle.static.Program()
+        test_program = paddle.static.Program()
+        with paddle.static.program_guard(train_program, startup):
             with base.unique_name.guard():
                 data = paddle.static.data(
                     name='X', shape=[None, 1], dtype='float32'
                 )
-                hidden = paddle.static.nn.fc(x=data, size=10)
+                hidden = paddle.nn.Linear(
+                    in_features=data.shape[1], out_features=10
+                )(data)
                 loss = paddle.mean(hidden)
                 test_program = train_program.clone()
                 optimizer = paddle.optimizer.Momentum(
@@ -48,6 +61,23 @@ class TestModelAverage(unittest.TestCase):
                 )
 
         exe.run(startup)
+        params_list = [
+            'linear_0.b_0',
+            'linear_0.b_0_sum_1_0',
+            'linear_0.b_0_sum_2_0',
+            'linear_0.b_0_sum_3_0',
+            'linear_0.b_0_num_accumulates_0',
+            'linear_0.b_0_old_num_accumulates_0',
+            'linear_0.b_0_num_updates_0',
+        ]
+        if in_pir_mode():
+            ops = train_program.global_block().ops
+            fetch_list = [
+                get_value_by_name(param, ops) for param in params_list
+            ]
+        else:
+            fetch_list = params_list
+
         for i in range(10):
             x = np.random.random(size=(10, 1)).astype('float32')
             (
@@ -61,15 +91,7 @@ class TestModelAverage(unittest.TestCase):
             ) = exe.run(
                 program=train_program,
                 feed={'X': x},
-                fetch_list=[
-                    'fc_0.b_0',
-                    'fc_0.b_0_sum_1_0',
-                    'fc_0.b_0_sum_2_0',
-                    'fc_0.b_0_sum_3_0',
-                    'fc_0.b_0_num_accumulates_0',
-                    'fc_0.b_0_old_num_accumulates_0',
-                    'fc_0.b_0_num_updates_0',
-                ],
+                fetch_list=fetch_list,
             )
         self.assertTrue(
             np.equal(sum_1, np.zeros(shape=[10], dtype='float32')).all()
@@ -90,13 +112,21 @@ class TestModelAverage(unittest.TestCase):
         average_b = (sum_1 + sum_2 + sum_3) / (
             num_accumulates + old_num_accumulates
         )
+        if in_pir_mode():
+            ops = test_program.global_block().ops
+            fetch_list = [
+                ops[-1].result(0),
+                get_value_by_name("linear_0.b_0", ops),
+            ]
+        else:
+            fetch_list = [loss.name, 'linear_0.b_0']
         # apply ModelAverage
         with model_average.apply(exe):
             x = np.random.random(size=(10, 1)).astype('float32')
             outs, b = exe.run(
                 program=test_program,
                 feed={'X': x},
-                fetch_list=[loss.name, 'fc_0.b_0'],
+                fetch_list=fetch_list,
             )
             self.assertAlmostEqual(np.mean(average_b), np.mean(b))
 
@@ -104,7 +134,7 @@ class TestModelAverage(unittest.TestCase):
         outs, b = exe.run(
             program=test_program,
             feed={'X': x},
-            fetch_list=[loss.name, 'fc_0.b_0'],
+            fetch_list=fetch_list,
         )
         self.assertAlmostEqual(np.mean(latest_b), np.mean(b))
 
@@ -225,7 +255,7 @@ class TestModelAverage(unittest.TestCase):
             model_average._get_accumulator('restore', layer.bias)
         ).numpy()
         # print(check_param)
-        # print("\nEvaluate With Restored Paramters")
+        # print("\nEvaluate With Restored Parameters")
         model_average.restore()
         evaluate(layer, eval_loader, loss_fn, check_param)
 

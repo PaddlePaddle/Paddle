@@ -270,7 +270,7 @@ class TestTransformsCV2(unittest.TestCase):
         fake_img = self.create_image((500, 400, 3))
         fake_img_gray = trans_gray3(fake_img)
 
-    def test_tranpose(self):
+    def test_transpose(self):
         trans = transforms.Compose([transforms.Transpose()])
         self.do_transform(trans)
 
@@ -892,22 +892,22 @@ class TestFunctional(unittest.TestCase):
         pil_img = Image.fromarray(np_img)
         tensor_img = F.to_tensor(pil_img, 'CHW') * 255
 
-        np_reseized_img = F.resize(np_img, 40)
-        pil_reseized_img = F.resize(pil_img, 40)
-        tensor_reseized_img = F.resize(tensor_img, 40)
-        tensor_reseized_img2 = F.resize(tensor_img, (46, 40))
+        np_resized_img = F.resize(np_img, 40)
+        pil_resized_img = F.resize(pil_img, 40)
+        tensor_resized_img = F.resize(tensor_img, 40)
+        tensor_resized_img2 = F.resize(tensor_img, (46, 40))
 
         np.testing.assert_almost_equal(
-            np_reseized_img, np.array(pil_reseized_img)
+            np_resized_img, np.array(pil_resized_img)
         )
         np.testing.assert_almost_equal(
-            np_reseized_img,
-            tensor_reseized_img.numpy().transpose((1, 2, 0)),
+            np_resized_img,
+            tensor_resized_img.numpy().transpose((1, 2, 0)),
             decimal=3,
         )
         np.testing.assert_almost_equal(
-            np_reseized_img,
-            tensor_reseized_img2.numpy().transpose((1, 2, 0)),
+            np_resized_img,
+            tensor_resized_img2.numpy().transpose((1, 2, 0)),
             decimal=3,
         )
 

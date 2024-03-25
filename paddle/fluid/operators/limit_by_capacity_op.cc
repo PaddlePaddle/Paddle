@@ -71,7 +71,7 @@ class LimitByCapacityOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("capacity", "(Tensor) The input capacity.");
     AddOutput("Out",
               "(Tensor) The output tensor expert count limit by capacity.");
-    AddAttr<int>("n_worker", "（int), The number of works.");
+    AddAttr<int>("n_worker", "(int), The number of works.");
     AddComment(
         R"DOC(limit_by_capacity Operator.limit expert count by capacity.)DOC");
   }

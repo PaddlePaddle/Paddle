@@ -39,7 +39,7 @@ dygraph_guard = wrap_decorator(_dygraph_guard_)
 def random_var(size, low=-1, high=1, dtype='float32'):
     np.random.seed(2021)
     x_np = np.random.uniform(low=low, high=high, size=size).astype(dtype)
-    return base.dygraph.to_variable(x_np)
+    return paddle.to_tensor(x_np)
 
 
 class TestDygraphTripleGradMatmul(TestCase):

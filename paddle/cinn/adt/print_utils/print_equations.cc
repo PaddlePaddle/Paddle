@@ -21,7 +21,7 @@
 #include "paddle/cinn/adt/equation_graph.h"
 #include "paddle/cinn/adt/print_utils/print_dim_expr.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
-#include "paddle/pir/core/operation.h"
+#include "paddle/pir/include/core/operation.h"
 
 namespace cinn::adt {
 

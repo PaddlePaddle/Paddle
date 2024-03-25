@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-static constexpr char kParallelScopes[] = "parallel_scopes";
+static constexpr char kParallelScopes[] = "parallel_scopes";  // NOLINT
 
 // NCCLinitOp
 class NCCLInitOp : public framework::OperatorBase {

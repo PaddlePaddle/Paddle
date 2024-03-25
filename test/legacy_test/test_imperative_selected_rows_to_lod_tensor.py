@@ -20,7 +20,6 @@ from test_imperative_base import new_program_scope
 import paddle
 from paddle import base
 from paddle.base import core, framework
-from paddle.base.dygraph.base import to_variable
 from paddle.nn import Embedding
 
 
@@ -142,8 +141,8 @@ class TestDygraphSimpleNet(unittest.TestCase):
                         x_data = x_data.reshape((-1, num_steps))
                         y_data = y_data.reshape((-1, 1))
 
-                        x = to_variable(x_data)
-                        y = to_variable(y_data)
+                        x = paddle.to_tensor(x_data)
+                        y = paddle.to_tensor(y_data)
                         outs = simple_net(x, y)
                         dy_loss = outs
                         if i == 0:

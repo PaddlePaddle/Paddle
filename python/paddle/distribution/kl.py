@@ -23,7 +23,9 @@ from paddle.distribution.cauchy import Cauchy
 from paddle.distribution.continuous_bernoulli import ContinuousBernoulli
 from paddle.distribution.dirichlet import Dirichlet
 from paddle.distribution.distribution import Distribution
+from paddle.distribution.exponential import Exponential
 from paddle.distribution.exponential_family import ExponentialFamily
+from paddle.distribution.gamma import Gamma
 from paddle.distribution.geometric import Geometric
 from paddle.distribution.laplace import Laplace
 from paddle.distribution.lognormal import LogNormal
@@ -71,13 +73,13 @@ def kl_divergence(p, q):
 
 
 def register_kl(cls_p, cls_q):
-    """Decorator for register a KL divergence implemention function.
+    """Decorator for register a KL divergence implementation function.
 
-    The ``kl_divergence(p, q)`` function will search concrete implemention
+    The ``kl_divergence(p, q)`` function will search concrete implementation
     functions registered by ``register_kl``, according to multi-dispatch pattern.
-    If an implemention function is found, it will return the result, otherwise,
+    If an implementation function is found, it will return the result, otherwise,
     it will raise ``NotImplementError`` exception. Users can register
-    implemention function by the decorator.
+    implementation function by the decorator.
 
     Args:
         cls_p (Distribution): The Distribution type of Instance p. Subclass derived from ``Distribution``.
@@ -108,16 +110,16 @@ def _dispatch(cls_p, cls_q):
     """Multiple dispatch into concrete implement function."""
 
     # find all matched super class pair of p and q
-    matchs = [
+    matches = [
         (super_p, super_q)
         for super_p, super_q in _REGISTER_TABLE
         if issubclass(cls_p, super_p) and issubclass(cls_q, super_q)
     ]
-    if not matchs:
+    if not matches:
         raise NotImplementedError
 
-    left_p, left_q = min(_Compare(*m) for m in matchs).classes
-    right_p, right_q = min(_Compare(*reversed(m)) for m in matchs).classes
+    left_p, left_q = min(_Compare(*m) for m in matches).classes
+    right_p, right_q = min(_Compare(*reversed(m)) for m in matches).classes
 
     if _REGISTER_TABLE[left_p, left_q] is not _REGISTER_TABLE[right_p, right_q]:
         warnings.warn(
@@ -269,6 +271,16 @@ def _kl_expfamily_expfamily(p, q):
         kl -= _sum_rightmost(term, len(q.event_shape))
 
     return kl
+
+
+@register_kl(Exponential, Exponential)
+def _kl_exponential_exponential(p, q):
+    return p.kl_divergence(q)
+
+
+@register_kl(Gamma, Gamma)
+def _kl_gamma_gamma(p, q):
+    return p.kl_divergence(q)
 
 
 @register_kl(LogNormal, LogNormal)

@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #if defined PADDLE_WITH_PSCORE
-#include <stdlib.h>
+#include <cstdlib>
 
 #include <memory>
 #include <random>
@@ -22,9 +22,9 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/ps/service/heter_client.h"
 #include "paddle/fluid/distributed/ps/service/heter_server.h"
-#include "paddle/utils/flags.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;

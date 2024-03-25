@@ -28,11 +28,11 @@ limitations under the License. */
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
-#include "paddle/phi/core/flags.h"
 
 PD_DECLARE_bool(benchmark);
-PHI_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace framework {
@@ -99,7 +99,7 @@ void Executor::CreateVariables(const ProgramDesc& pdesc,
   while (ancestor_scope->parent()) {
     ancestor_scope = ancestor_scope->parent();
   }
-  if (ancestor_scope != scope) {
+  if (ancestor_scope != scope) {  // NOLINT
     for (auto& var : global_block.AllVars()) {
       if (var->Name() == framework::kEmptyVarName) {
         continue;

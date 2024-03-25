@@ -77,7 +77,7 @@ void SplitFeedTensors(const std::vector<std::string>& feed_names,
                       0,
                       phi::errors::InvalidArgument(
                           "Split expects feed data (%s)'s dim[0] (%d) is "
-                          "diviable by micro_batch_num (%d).",
+                          "divisible by micro_batch_num (%d).",
                           feed_names[i],
                           numel_size,
                           micro_batch_num));
@@ -113,7 +113,13 @@ void FetchTensors(const std::vector<std::string>& job_fetch_names,
     auto& src = var->Get<phi::DenseTensor>();
     auto* dst =
         &(PADDLE_GET(phi::DenseTensor, fetch_list->at(micro_batch_id)[col]));
-    TensorCopy(src, platform::CPUPlace(), dst);
+    if (src.IsInitialized()) {
+      TensorCopy(src, platform::CPUPlace(), dst);
+      dst->set_lod(src.lod());
+    } else {
+      VLOG(6) << "Found " << var_name
+              << " is not initialized and skip TensorCopy.";
+    }
   }
 }
 
@@ -125,7 +131,7 @@ void MergeFetchTensors(const FetchUnmergedList& fetch_list,
   PADDLE_ENFORCE_EQ(
       fetch_list.size(),
       micro_batch_num,
-      phi::errors::Unavailable("The fetch_list size (%lld) shoule be equal to "
+      phi::errors::Unavailable("The fetch_list size (%lld) should be equal to "
                                "the micro_batch_num (%lld)",
                                fetch_list.size(),
                                micro_batch_num));
@@ -206,7 +212,7 @@ void MergeTensors(const std::vector<const phi::DenseTensor*>& tensors,
               tensor_dims[j],
               new_dim[j],
               phi::errors::InvalidArgument(
-                  "DenseTensor.ddim[%d] should eaqual to %d, but is %d",
+                  "DenseTensor.ddim[%d] should equal to %d, but is %d",
                   j,
                   new_dim[j],
                   tensor_dims[j]));

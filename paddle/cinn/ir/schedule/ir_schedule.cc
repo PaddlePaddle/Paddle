@@ -85,10 +85,11 @@ std::unique_ptr<ScheduleBase> ScheduleBase::Make(ModuleExpr&& module_expr,
  * @param err_msg_level A ScheduleErrorMessageLevel enum, level of error message
  * printing
  */
-#define CINN_IR_SCHEDULE_END(err_msg_level)                    \
-  }                                                            \
-  catch (const utils::ErrorHandler& err_hanlder) {             \
-    CINN_THROW(err_hanlder.FormatErrorMessage(err_msg_level)); \
+#define CINN_IR_SCHEDULE_END(err_msg_level)                                 \
+  }                                                                         \
+  catch (const utils::ErrorHandler& err_handler) {                          \
+    PADDLE_THROW(                                                           \
+        phi::errors::Fatal(err_handler.FormatErrorMessage(err_msg_level))); \
   }
 
 void BaseInliner::operator()(Expr* expr) {
@@ -384,7 +385,7 @@ std::vector<Expr> IRSchedule::Split(const Expr& loop,
                                     const std::vector<int>& factors) {
   if (IsDynamicShape()) return impl_->Split(loop, factors);
   std::vector<Expr> decision = SamplePerfectTile(
-      loop, factors.size(), loop.As<ir::For>()->extent.as_int32(), factors);
+      loop, factors.size(), loop.As<ir::For>()->extent.as_int64(), factors);
   auto results = Split(loop, decision);
   return results;
 }
@@ -405,11 +406,16 @@ std::vector<Expr> IRSchedule::Split(const std::string& block_name,
 std::vector<Expr> IRSchedule::Split(const Expr& loop,
                                     const std::vector<Expr>& factors) {
   std::vector<int> int_factors;
-  std::transform(factors.begin(),
-                 factors.end(),
-                 std::back_inserter(int_factors),
-                 [](Expr x) { return x.as_int32(); });
-  auto results = impl_->Split(loop, int_factors);
+  std::vector<Expr> results;
+  std::for_each(factors.begin(), factors.end(), [&int_factors](const Expr& e) {
+    if (e.is_constant()) int_factors.push_back(e.as_int64());
+  });
+  if (int_factors.size() == factors.size()) {
+    results = impl_->Split(loop, int_factors);
+  } else {
+    results = impl_->Split(loop, factors);
+  }
+
   trace_.Append(ScheduleDesc::Step(
       "Split",
       {{"loop", std::vector<Expr>({loop})}, {"factors", factors}},
@@ -442,6 +448,16 @@ Expr IRSchedule::Fuse(const Expr& block, const std::vector<int>& loops_index) {
                                    {{"loops_index", loops_index}},
                                    {result}));
   return result;
+}
+
+void IRSchedule::Broadcast(const std::string& block_name,
+                           const BroadcastInfo& info) {
+  impl_->Broadcast(block_name, info);
+}
+
+void IRSchedule::BroadcastToElementwise(const std::string& block_name,
+                                        const std::vector<int64_t>& axes) {
+  impl_->BroadcastToElementwise(block_name, axes);
 }
 
 void IRSchedule::ComputeAt(const Expr& block,
@@ -614,12 +630,17 @@ Expr IRSchedule::Rfactor(const Expr& rf_loop, int rf_axis) {
   return result;
 }
 
-Expr IRSchedule::FactorizeReduction(const Expr& rf_loop, int rf_axis) {
-  auto result = impl_->FactorizeReduction(rf_loop, rf_axis);
-  trace_.Append(ScheduleDesc::Step("FactorizeReduction",
-                                   {{"rf_loop", std::vector<Expr>({rf_loop})}},
-                                   {{"rf_axis", rf_axis}},
-                                   {result}));
+Expr IRSchedule::FactorizeReduction(const Expr& rf_loop,
+                                    int rf_axis,
+                                    bool with_write_back_block_init) {
+  auto result =
+      impl_->FactorizeReduction(rf_loop, rf_axis, with_write_back_block_init);
+  trace_.Append(ScheduleDesc::Step(
+      "FactorizeReduction",
+      {{"rf_loop", std::vector<Expr>({rf_loop})}},
+      {{"rf_axis", rf_axis},
+       {"with_write_back_block_init", with_write_back_block_init}},
+      {result}));
   return result;
 }
 
@@ -643,7 +664,9 @@ void IRSchedule::Annotate(const Expr& block,
   TRACE_ANNOTATE_ITEM(std::string, AnnotateStringAttr)
 #undef TRACE_ANNOTATE_ITEM
 
-  LOG(FATAL) << "Value of attribute:" << key << " input unsupported data type";
+  std::stringstream ss;
+  ss << "Value of attribute:" << key << " input unsupported data type";
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
 }
 
 void IRSchedule::Unannotate(Expr& block, const std::string& key) {

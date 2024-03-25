@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/cinn/adt/adt.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace cinn::adt::adapter {
 

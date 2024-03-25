@@ -106,10 +106,10 @@ void weight_permute_gpu(const GPUContext& dev_ctx,
   }
 }
 
-template <typename T, int VectorSize = 8>
+template <typename T, int VectorSize = 8, typename ScaleT>
 __global__ void per_channel_quant_gpu(const T* weight_data,
                                       int8_t* quanted_weight_data,
-                                      T* scale_data,
+                                      ScaleT* scale_data,
                                       int total_k,
                                       int total_vec_n) {
   int n = blockIdx.x * blockDim.x + threadIdx.x;
@@ -133,10 +133,10 @@ __global__ void per_channel_quant_gpu(const T* weight_data,
         abs_max[i] = fmaxf((abs_max[i]), fabsf((weight[i])));
       }
     }
-    phi::AlignedVector<T, VectorSize> scale;
+    phi::AlignedVector<ScaleT, VectorSize> scale;
 #pragma unroll
     for (int i = 0; i < VectorSize; ++i) {
-      scale[i] = static_cast<T>(abs_max[i] / static_cast<float>(127.0f));
+      scale[i] = static_cast<ScaleT>(abs_max[i] / static_cast<float>(127.0f));
     }
     *reinterpret_cast<float4*>(scale_data + VectorSize * n) =
         *reinterpret_cast<float4*>(&scale);
@@ -161,11 +161,11 @@ __global__ void per_channel_quant_gpu(const T* weight_data,
     }
   }
 }
-template <typename T, typename GPUContext>
+template <typename T, typename GPUContext, typename ScaleT>
 void weight_quant_gpu(const GPUContext& dev_ctx,
                       const T* weight_data,
                       int8_t* quanted_weight_data,
-                      T* scale_data,
+                      ScaleT* scale_data,
                       const std::vector<int>& shape) {
   int total_k = shape[0];
   int total_n = shape[1];

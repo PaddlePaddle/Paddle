@@ -137,7 +137,7 @@ class TestBase(IPUOpTest):
         self.check()
 
 
-class TestPipline(TestBase):
+class TestPipeline(TestBase):
     @IPUOpTest.static_graph
     def build_model(self, exec_mode):
         feed_shape = list(self.feed_shape[0])

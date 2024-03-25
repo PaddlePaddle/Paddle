@@ -66,7 +66,7 @@ class ParallelTuner:
             self._seed,
             "mode",
             self._mode,
-            "num_machies",
+            "num_machines",
             self._num_machines,
             "num_devices_per_machine",
             self._num_devices_per_machine,

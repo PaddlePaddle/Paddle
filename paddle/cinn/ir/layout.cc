@@ -59,7 +59,9 @@ Layout::Layout(const std::string& name) {
       axes.push_back(ir::Var(factor, std::string(1, c)));
       factor = 0;
     } else {
-      LOG(FATAL) << "Invalid layout: " << name;
+      std::stringstream ss;
+      ss << "Invalid layout: " << name;
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
   }
   name_ = name;

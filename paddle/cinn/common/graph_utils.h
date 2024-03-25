@@ -251,7 +251,7 @@ class Graph {
   GraphNode* RegisterNode(const std::string& key, GraphNode* node);
   //! @}
 
-  //! Retrive a node.
+  //! Retrieve a node.
   //! @{
   GraphNode* RetrieveNode(size_t key) const;
   GraphNode* RetrieveNode(const std::string& key) const;

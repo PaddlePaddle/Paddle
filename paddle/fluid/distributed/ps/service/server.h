@@ -100,7 +100,8 @@ class PSServer {
       int msg_type UNUSED,
       int to_pserver_id UNUSED,
       const std::string &msg UNUSED) {
-    LOG(FATAL) << "NotImplementError: PSServer::send_pserver2pserver_msg";
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "NotImplementError: PSServer::send_pserver2pserver_msg"));
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
     promise.set_value(-1);
@@ -130,7 +131,8 @@ class PSServer {
   virtual int32_t ReceiveFromPServer(int msg_type UNUSED,
                                      int pserver_id UNUSED,
                                      const std::string &msg UNUSED) {
-    LOG(FATAL) << "NotImplementError::PSServer::ReceiveFromPServer";
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "NotImplementError::PSServer::ReceiveFromPServer"));
     return -1;
   }
 
@@ -194,7 +196,7 @@ class PsBaseService : public PsService {
                                  const char *err_msg) {
     response.set_err_msg(err_msg);
     response.set_err_code(err_code);
-    LOG(WARNING) << "Resonse err_code:" << err_code << " msg:" << err_msg;
+    LOG(WARNING) << "Response err_code:" << err_code << " msg:" << err_msg;
   }
 
   virtual int32_t Initialize() = 0;

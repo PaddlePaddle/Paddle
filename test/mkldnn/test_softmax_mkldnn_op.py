@@ -26,6 +26,7 @@ from test_softmax_op import (
     TestSoftmaxOp6,
     TestSoftmaxOp_ZeroDim1,
 )
+from utils import compare_legacy_with_pt
 
 import paddle
 from paddle.base import core
@@ -71,9 +72,11 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_dygraph=False)
+            self.check_output_with_place(
+                place, check_dygraph=False, check_pir_onednn=True
+            )
         else:
-            self.check_output(check_dygraph=False)
+            self.check_output(check_dygraph=False, check_pir_onednn=True)
 
     def test_check_grad(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -86,10 +89,15 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
                     "Out",
                     max_relative_error=0.01,
                     check_dygraph=False,
+                    check_pir_onednn=True,
                 )
         else:
             self.check_grad(
-                ["X"], "Out", max_relative_error=0.01, check_dygraph=False
+                ["X"],
+                "Out",
+                max_relative_error=0.01,
+                check_dygraph=False,
+                check_pir_onednn=True,
             )
 
     def init_kernel_type(self):
@@ -101,36 +109,42 @@ class TestSoftmaxMKLDNNOp2(TestSoftmaxOp2):
         self.use_mkldnn = True
         # oneDNN doesn't support float64 dtype
         self.dtype = np.float32
+        self.check_pir_onednn = True
 
 
 class TestSoftmaxMKLDNNOp3(TestSoftmaxOp3):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.dtype = np.float32
+        self.check_pir_onednn = True
 
 
 class TestSoftmaxMKLDNNOp4(TestSoftmaxOp4):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.dtype = np.float32
+        self.check_pir_onednn = True
 
 
 class TestSoftmaxMKLDNNOp5(TestSoftmaxOp5):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.dtype = np.float32
+        self.check_pir_onednn = True
 
 
 class TestSoftmaxMKLDNNOp6(TestSoftmaxOp6):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.dtype = np.float32
+        self.check_pir_onednn = True
 
 
 class TestSoftmaxMKLDNNOp_ZeroDim(TestSoftmaxOp_ZeroDim1):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.dtype = np.float32
+        self.check_pir_onednn = True
 
 
 # Check if primitives already exist in backward
@@ -149,6 +163,7 @@ class TestSoftmaxMKLDNNPrimitivesAlreadyExist(unittest.TestCase):
     def __softmax_bwd(self, out, out_grad):
         return out * (out_grad - np.dot(out, out_grad))
 
+    @compare_legacy_with_pt
     def test_check(self):
         check_if_mkldnn_primitives_exist_in_bwd(
             self, self.op_type, self.x, self.out, self.out_grad, self.x_grad

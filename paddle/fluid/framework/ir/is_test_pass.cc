@@ -23,7 +23,7 @@ namespace ir {
 class Graph;
 
 void IsTestPass::ApplyImpl(ir::Graph* graph) const {
-  VLOG(3) << "Sets is_test attrbiute to true and if it is missing, inserts it "
+  VLOG(3) << "Sets is_test attribute to true and if it is missing, inserts it "
              "for activations and pooling.";
   auto op_list = {"pool2d",      "sigmoid",      "logsigmoid",
                   "softshrink",  "exp",          "brelu",

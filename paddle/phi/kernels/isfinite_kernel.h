@@ -20,7 +20,7 @@ namespace phi {
 
 #define DEFINE_ISFINITE_KERNEL(isfinite_kernel) \
   template <typename T, typename Context>       \
-  void isfinite_kernel(                         \
+  TEST_API void isfinite_kernel(                \
       const Context& ctx, const DenseTensor& x, DenseTensor* out);
 
 DEFINE_ISFINITE_KERNEL(IsinfKernel)

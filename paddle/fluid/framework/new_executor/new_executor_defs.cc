@@ -39,8 +39,6 @@ VariableScope::VariableScope(Scope* scope) {
           "You have passed a nullptr to construct VariableScope."));
 }
 
-VariableScope::~VariableScope() = default;
-
 Scope* VariableScope::GetMutableScope() const { return scope_; }
 
 Scope* VariableScope::GetMutableLocalScope() const { return local_scope_; }
@@ -96,7 +94,7 @@ void VariableScope::AddVar(const std::string& name,
     auto id = VarSize();
     name2id_[name] = static_cast<int>(id);
     vec_meta_info_.emplace_back(0, var_desc);
-    if (local_scope_ != nullptr) {
+    if (local_scope_ != nullptr) {  // NOLINT
       var_list_.push_back(local_scope_->FindVar(name));
     } else {
       var_list_.push_back(scope_->FindVar(name));
@@ -125,14 +123,14 @@ paddle::framework::VarDesc* VariableScope::VarDesc(int id) const {
   return vec_meta_info_[id].var_desc_;
 }
 
-void VariableScope::SetVarSikpInplace(const std::string& name, bool skip) {
+void VariableScope::SetVarSkipInplace(const std::string& name, bool skip) {
   CheckExist(name);
-  vec_meta_info_[VarId(name)].sikp_inplace_ = skip;
+  vec_meta_info_[VarId(name)].skip_inplace_ = skip;
 }
 
-bool VariableScope::GetVarSikpInplace(int id) const {
+bool VariableScope::GetVarSkipInplace(int id) const {
   CheckExist(id);
-  return vec_meta_info_[id].sikp_inplace_;
+  return vec_meta_info_[id].skip_inplace_;
 }
 
 void VariableScope::CheckExist(int id) const {
@@ -315,7 +313,7 @@ void Instruction::AddInplace(Variable* in, Variable* out) {
 void Instruction::ClearInplace() { vec_inplace_in_to_out_.clear(); }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-void Instruction::UpdataRecordStreamForGcInfo() {
+void Instruction::UpdateRecordStreamForGcInfo() {
   if (!IsInterpretercoreFastGCEnabled() ||
       KernelType() != OpFuncType::kGpuAsync) {
     return;

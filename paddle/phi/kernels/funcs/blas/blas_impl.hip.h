@@ -14,13 +14,13 @@
 
 #pragma once
 
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 #include "paddle/phi/backends/dynload/rocblas.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-PD_DECLARE_bool(enable_cublas_tensor_op_math);
+COMMON_DECLARE_bool(enable_cublas_tensor_op_math);
 
 namespace phi {
 namespace funcs {

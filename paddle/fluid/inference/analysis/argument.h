@@ -165,6 +165,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(model_params_path, ModelParamsPath, std::string);
   DECL_ARGUMENT_FIELD(model_from_memory, ModelFromMemory, bool);
   DECL_ARGUMENT_FIELD(save_optimized_model, SaveOptimizedModel, bool);
+  DECL_ARGUMENT_FIELD(optimized_model_save_path,
+                      OptimizedModelSavePath,
+                      std::string);
   DECL_ARGUMENT_FIELD(optim_cache_dir, OptimCacheDir, std::string);
   DECL_ARGUMENT_FIELD(enable_ir_optim, EnableIrOptim, bool);
 
@@ -224,6 +227,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(use_cutlass, UseCutlass, bool);
   DECL_ARGUMENT_FIELD(use_fc_padding, UseFcPadding, bool);
   DECL_ARGUMENT_FIELD(gpu_device_id, GPUDeviceId, int);
+  DECL_ARGUMENT_FIELD(use_pir, UsePIR, bool);
 
   // Usually use for trt dynamic shape.
   // TRT will select the best kernel according to opt shape
@@ -244,8 +248,22 @@ struct Argument {
   DECL_ARGUMENT_FIELD(trt_output_tensor_names,
                       TRTOutputTensorNames,
                       std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(trt_exclude_var_names,
+                      TRTExcludeVarNames,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(trt_forbid_dynamic_op, TRTForbidDynamicOp, bool);
+
   DECL_ARGUMENT_FIELD(tensorrt_disabled_ops,
                       TensorRtDisabledOPs,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(trt_parameter_run_fp16,
+                      TRTParameterRunFp16,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(trt_parameter_run_int8,
+                      TRTParameterRunInt8,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(trt_parameter_run_bfp16,
+                      TRTParameterRunBfp16,
                       std::vector<std::string>);
   DECL_ARGUMENT_FIELD(tensorrt_precision_mode, TensorRtPrecisionMode, int);
   DECL_ARGUMENT_FIELD(tensorrt_use_static_engine,

@@ -18,9 +18,6 @@ from collections import Counter
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    IrMode,
-    ToStaticMode,
-    disable_test_case,
     enable_to_static_guard,
     test_ast_only,
     test_legacy_and_pt_and_pir,
@@ -28,7 +25,6 @@ from dygraph_to_static_utils import (
 from test_fetch_feed import Linear, Pool2D
 
 import paddle
-from paddle import base
 from paddle.jit.dy2static import convert_to_static
 
 
@@ -140,7 +136,7 @@ class TestCacheProgramWithOptimizer(Dy2StTestBase):
 
 
 def simple_func(x):
-    inputs = base.dygraph.to_variable(x)
+    inputs = paddle.assign(x)
     mean = paddle.mean(inputs)
     return mean
 
@@ -155,7 +151,7 @@ class TestConvertWithCache(Dy2StTestBase):
 
 
 def sum_even_until_limit(max_len, limit):
-    ret_sum = base.dygraph.to_variable(np.zeros(1).astype('int32'))
+    ret_sum = paddle.to_tensor(np.zeros(1).astype('int32'))
     for i in range(max_len):
         if i % 2 > 0:
             continue
@@ -167,16 +163,16 @@ def sum_even_until_limit(max_len, limit):
 
 
 def sum_under_while(limit):
-    i = base.dygraph.to_variable(np.zeros(1).astype('int32'))
-    ret_sum = base.dygraph.to_variable(np.zeros(1).astype('int32'))
+    i = paddle.to_tensor(np.zeros(1).astype('int32'))
+    ret_sum = paddle.to_tensor(np.zeros(1).astype('int32'))
     while i <= limit:
         ret_sum += i
         i += 1
     return ret_sum
 
 
-@disable_test_case((ToStaticMode.AST, IrMode.PT))
 class TestToOutputWithCache(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_output(self):
         ret = paddle.jit.to_static(sum_even_until_limit)(80, 10)
         self.assertEqual(ret.numpy(), 30)

@@ -21,8 +21,8 @@ limitations under the License. */
 #if defined PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #endif
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/program_utils.h"
-#include "paddle/phi/core/flags.h"
 
 PHI_DEFINE_EXPORTED_bool(enable_dump_main_program,
                          false,

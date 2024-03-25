@@ -24,7 +24,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-// Fusing of self-attetion structure
+// Fusing of self-attention structure
 
 class Graph;
 

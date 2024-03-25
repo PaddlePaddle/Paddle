@@ -62,7 +62,7 @@ static std::vector<int64_t> GetAttnMaskDims(const DenseTensor* attn_mask) {
         4,
         phi::errors::InvalidArgument(
             "The number of dimensions of attn_mask is expected to be greater "
-            "or equal to 4, but recieved %d. The shape of attn_mask is {%s}",
+            "or equal to 4, but received %d. The shape of attn_mask is {%s}",
             rank,
             origin_dims));
 
@@ -114,7 +114,7 @@ struct FlashAttnParamsBase {
         max_seqlen_q(_max_seqlen_q),
         max_seqlen_k(_max_seqlen_k),
         num_heads(_num_heads),
-        num_heads_k(_num_heads),
+        num_heads_k(_num_heads_k),
         head_size(_head_size),
         softmax_scale(_scale),
         causal(_causal),

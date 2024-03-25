@@ -202,8 +202,7 @@ class TestAccuracyStatic(TestAccuracyDynamic):
 
         main_prog = base.Program()
         startup_prog = base.Program()
-        main_prog.random_seed = 1024
-        startup_prog.random_seed = 1024
+        paddle.seed(1024)
         with base.program_guard(main_prog, startup_prog):
             pred = paddle.static.data(
                 name='pred', shape=[None, self.class_num], dtype='float32'

@@ -27,11 +27,11 @@ namespace interpreter {
  * A Helper class to implement data transform operation.
  * It will apply layout/dtype/device transfer by turns.
  */
-class DataTranferHelper {
+class DataTransferHelper {
  public:
-  DataTranferHelper(const platform::Place& place,
-                    VariableScope* var_scope,
-                    Scope* local_scope)
+  DataTransferHelper(const platform::Place& place,
+                     VariableScope* var_scope,
+                     Scope* local_scope)
       : place_(place), var_scope_(var_scope), scope_(local_scope) {}
 
   bool apply(const phi::KernelKey& kernel_type_for_var,

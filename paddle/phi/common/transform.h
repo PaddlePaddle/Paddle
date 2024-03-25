@@ -17,9 +17,9 @@ limitations under the License. */
 #include <algorithm>
 #include <type_traits>
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/hostdevice.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include <thrust/execution_policy.h>
@@ -29,7 +29,7 @@ limitations under the License. */
 
 namespace phi {
 
-// Transform applys a unary or a binary functor on each element in a
+// Transform applies a unary or a binary functor on each element in a
 // range defined by a pair of iterators.
 //
 // - The specialization for CPU calls std::transform.

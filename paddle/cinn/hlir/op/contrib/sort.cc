@@ -56,7 +56,8 @@ std::vector<ir::Tensor> ArgSort(const ir::Tensor &A,
   } else if (target.arch == cinn::common::Target::Arch::X86) {
     find_func_name.assign("cinn_host_next_smallest_int32");
   } else {
-    LOG(FATAL) << "ArgSort only supports X86 and NVGPU ! Please Check.\n";
+    PADDLE_THROW(phi::errors::Fatal(
+        "ArgSort only supports X86 and NVGPU ! Please Check.\n"));
   }
   if (is_ascend) {
     index_func_name =

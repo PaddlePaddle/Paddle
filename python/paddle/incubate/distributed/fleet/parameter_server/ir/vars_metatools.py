@@ -104,7 +104,7 @@ class VarDistributed:
             is_slice(bool|None): slice or not, slice_var=True/False and its block size > 8192 are the judgement standard.
             block_id(int|None): the number about the slice var.
             offset(int|None): if the slice var is sliced, offset is the numel before the var.
-            vtype(str|None): a tag, such as Optimizer/Param/RemoteProfetch.
+            vtype(str|None): a tag, such as Optimizer/Param/RemotePrefetch.
             endpoint(str|None): which parameter the slice var on, such as "127.0.0.1:1001"
         """
 
@@ -213,7 +213,7 @@ class VarsDistributed:
             is_slice(bool|None): slice or not, slice_var=True/False and its block size > 8192 are the judgement standard.
             block_id(int|None): the number about the slice var.
             offset(int|None): if the slice var is sliced, offset is the numel before the var.
-            vtype(str|None): a tag, such as Optimizer/Param/RemoteProfetch.
+            vtype(str|None): a tag, such as Optimizer/Param/RemotePrefetch.
             endpoint(str|None): which parameter the slice var on, such as "127.0.0.1:1001"
         Returns:
             None

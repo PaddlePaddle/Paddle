@@ -21,10 +21,10 @@
 #include <algorithm>
 #include <random>
 #include <vector>
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_bool(gpugraph_debug_gpu_memory);
+COMMON_DECLARE_bool(gpugraph_debug_gpu_memory);
 
 namespace paddle {
 namespace framework {
@@ -96,7 +96,7 @@ inline void debug_gpu_memory_info(int gpu_id, const char* desc) {
       err,
       cudaSuccess,
       platform::errors::InvalidArgument("cudaMemGetInfo failed!"));
-  VLOG(0) << "updatex gpu memory on device " << gpu_id << ", "
+  VLOG(0) << "update gpu memory on device " << gpu_id << ", "
           << "avail=" << avail / 1024.0 / 1024.0 / 1024.0 << "g, "
           << "total=" << total / 1024.0 / 1024.0 / 1024.0 << "g, "
           << "use_rate=" << (total - avail) / static_cast<double>(total)

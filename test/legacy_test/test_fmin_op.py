@@ -155,8 +155,8 @@ class TestElementwiseFminOp(OpTest):
         """test_check_grad_normal"""
         self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
-    def test_check_grad_ingore_x(self):
-        """test_check_grad_ingore_x"""
+    def test_check_grad_ignore_x(self):
+        """test_check_grad_ignore_x"""
         self.check_grad(
             ['Y'],
             'Out',
@@ -165,8 +165,8 @@ class TestElementwiseFminOp(OpTest):
             check_pir=True,
         )
 
-    def test_check_grad_ingore_y(self):
-        """test_check_grad_ingore_y"""
+    def test_check_grad_ignore_y(self):
+        """test_check_grad_ignore_y"""
         self.check_grad(
             ['X'],
             'Out',
@@ -202,8 +202,8 @@ class TestElementwiseFmin2Op(OpTest):
         """test_check_grad_normal"""
         self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
-    def test_check_grad_ingore_x(self):
-        """test_check_grad_ingore_x"""
+    def test_check_grad_ignore_x(self):
+        """test_check_grad_ignore_x"""
         self.check_grad(
             ['Y'],
             'Out',
@@ -212,8 +212,8 @@ class TestElementwiseFmin2Op(OpTest):
             check_pir=True,
         )
 
-    def test_check_grad_ingore_y(self):
-        """test_check_grad_ingore_y"""
+    def test_check_grad_ignore_y(self):
+        """test_check_grad_ignore_y"""
         self.check_grad(
             ['X'],
             'Out',

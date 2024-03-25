@@ -14,10 +14,10 @@
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/amp_auto_cast.h"
-#include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/api/manual/fluid_manual/dygraph_forward_api.h"
 #include "paddle/fluid/eager/api/manual/fluid_manual/nodes/nodes.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/imperative/amp_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 std::tuple<paddle::Tensor,
@@ -49,7 +49,7 @@ fused_bias_dropout_residual_layer_norm_dygraph_function(
     if (LnScale.initialized()) amp_tensors_vector.push_back({LnScale});
     if (LnBias.initialized()) amp_tensors_vector.push_back({LnBias});
 
-    auto amp_dst_dtype = egr::GetAmpDestDtype(
+    auto amp_dst_dtype = paddle::imperative::GetAmpDestDtype(
         "fused_bias_dropout_residual_layer_norm", amp_tensors_vector);
 
     auto NEW_X = egr::AmpAutoCast(
@@ -83,7 +83,7 @@ fused_bias_dropout_residual_layer_norm_dygraph_function(
 
     {
       paddle::imperative::AutoCastGuard guard(
-          egr::Controller::Instance().GetCurrentTracer(),
+          egr::Controller::Instance().GetCurrentAmpAttrs(),
           paddle::imperative::AmpLevel::O0);
       return fused_bias_dropout_residual_layer_norm_dygraph_function(
           NEW_X, NEW_Residual, NEW_Bias, NEW_LnScale, NEW_LnBias, attr_map);
@@ -193,15 +193,16 @@ fused_bias_dropout_residual_layer_norm_dygraph_function(
       grad_node->SetDefaultAttrMap(std::move(default_attrs));
 
       // Set Tensor Wrappers
-      grad_node->SetTensorWrapperBias(Bias);
-      grad_node->SetTensorWrapperBiasDropoutResidualOut(BiasDropoutResidualOut);
-      grad_node->SetTensorWrapperDropoutMaskOut(DropoutMaskOut);
-      grad_node->SetTensorWrapperLnBias(LnBias);
-      grad_node->SetTensorWrapperLnMean(LnMean);
-      grad_node->SetTensorWrapperLnScale(LnScale);
-      grad_node->SetTensorWrapperLnVariance(LnVariance);
-      grad_node->SetTensorWrapperResidual(Residual);
-      grad_node->SetTensorWrapperX(X);
+      grad_node->SetTensorWrapper_Bias(Bias);
+      grad_node->SetTensorWrapper_BiasDropoutResidualOut(
+          BiasDropoutResidualOut);
+      grad_node->SetTensorWrapper_DropoutMaskOut(DropoutMaskOut);
+      grad_node->SetTensorWrapper_LnBias(LnBias);
+      grad_node->SetTensorWrapper_LnMean(LnMean);
+      grad_node->SetTensorWrapper_LnScale(LnScale);
+      grad_node->SetTensorWrapper_LnVariance(LnVariance);
+      grad_node->SetTensorWrapper_Residual(Residual);
+      grad_node->SetTensorWrapper_X(X);
 
       grad_node->SetGradOutMeta(X, 0);
       grad_node->SetGradOutMeta(Residual, 1);

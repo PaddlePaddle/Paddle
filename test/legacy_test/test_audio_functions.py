@@ -160,7 +160,7 @@ class TestAudioFuncitons(unittest.TestCase):
         [64, 128, 256], [0.0, 0.5, 1.0], [10000, 11025], [False, True]
     )
     # TODO(MarioLulab) May cause precision error. Fix it soon
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_audio_function_mel_static(
         self, n_mels: int, f_min: float, f_max: float, htk_flag: bool
     ):

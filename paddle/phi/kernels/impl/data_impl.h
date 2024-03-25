@@ -27,15 +27,24 @@ template <typename T, typename Context>
 void ShadowFeedKernel(const Context& ctx,
                       const DenseTensor& x,
                       DenseTensor* out) {
-  ctx.template Alloc<T>(out);
   if (!x.initialized()) {
+    ctx.template Alloc<T>(out);
     return;
   }
-  if (x.place() == out->place()) {
+  if (x.place() == ctx.GetPlace()) {
     out->ShareDataWith(x);
     out->set_lod(x.lod());
   } else {
     phi::Copy<Context>(ctx, x, ctx.GetPlace(), true, out);
+  }
+}
+
+template <typename T, typename Context>
+void ShadowFeedTensorsKernel(const Context& ctx,
+                             const std::vector<const DenseTensor*>& xs,
+                             std::vector<DenseTensor*> outs) {
+  for (size_t i = 0; i < xs.size(); ++i) {
+    ShadowFeedKernel<T, Context>(ctx, *(xs[i]), outs[i]);
   }
 }
 

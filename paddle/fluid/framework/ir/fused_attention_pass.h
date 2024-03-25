@@ -117,9 +117,9 @@ struct FusedAttentionPattern : public PatternBase {
   PATTERN_DECL_NODE(out_linear_ele_add_bias);
   PATTERN_DECL_NODE(out_linear_ele_add_out);
 
-  // allreudce for mp
-  PATTERN_DECL_NODE(mp_allreudce_sum_op);
-  PATTERN_DECL_NODE(mp_allreudce_sum_out);
+  // allreduce for mp
+  PATTERN_DECL_NODE(mp_allreduce_sum_op);
+  PATTERN_DECL_NODE(mp_allreduce_sum_out);
 
   PATTERN_DECL_NODE(out_linear_dropout_op);
   PATTERN_DECL_NODE(out_linear_dropout_out);
@@ -174,8 +174,8 @@ struct FusedAttentionGradPattern : public PatternBase {
   PATTERN_DECL_NODE(out_linear_dropout_grad_out);
 
   // c_identity for mp
-  PATTERN_DECL_NODE(mp_allreudce_sum_grad_op);  // c_identity
-  PATTERN_DECL_NODE(mp_allreudce_sum_grad_out);
+  PATTERN_DECL_NODE(mp_allreduce_sum_grad_op);  // c_identity
+  PATTERN_DECL_NODE(mp_allreduce_sum_grad_out);
 
   PATTERN_DECL_NODE(out_linear_ele_add_grad_op);
   PATTERN_DECL_NODE(out_linear_ele_add_grad_x);

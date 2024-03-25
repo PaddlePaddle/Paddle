@@ -57,7 +57,7 @@ class DistributedLayerNorm(DistributedOperatorImplContainer):
 
         # step2: infer spmd
         rule = get_phi_spmd_rule("layer_norm")
-        # tensor order following order in PHI defition
+        # tensor order following order in PHI definition
         fw_results = rule.infer_forward(
             x_spec, scale_spec, bias_spec, 1.0, begin_norm_axis
         )
@@ -73,7 +73,7 @@ class DistributedLayerNorm(DistributedOperatorImplContainer):
         )
 
         # step3: update dist_attr
-        # tensor order following order in PHI defition
+        # tensor order following order in PHI definition
         changed = update_op_dims_mapping(
             dist_op,
             [x_name, scale_name, bias_name],

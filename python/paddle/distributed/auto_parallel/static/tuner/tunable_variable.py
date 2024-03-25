@@ -20,7 +20,7 @@ import numpy as np
 
 class TunableVariable:
     """
-    Tunablevariable base class.
+    TunableVariable base class.
     """
 
     def __init__(self, name, default=None):

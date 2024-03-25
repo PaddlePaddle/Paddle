@@ -330,7 +330,7 @@ def _shufflenet_v2(arch, pretrained=False, **kwargs):
 
 def shufflenet_v2_x0_25(pretrained=False, **kwargs):
     """ShuffleNetV2 with 0.25x output channels, as described in
-    `"ShuffleNet V2: Practical Guidelines for Ecient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
+    `"ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
 
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
@@ -365,7 +365,7 @@ def shufflenet_v2_x0_25(pretrained=False, **kwargs):
 
 def shufflenet_v2_x0_33(pretrained=False, **kwargs):
     """ShuffleNetV2 with 0.33x output channels, as described in
-    `"ShuffleNet V2: Practical Guidelines for Ecient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
+    `"ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
 
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
@@ -400,7 +400,7 @@ def shufflenet_v2_x0_33(pretrained=False, **kwargs):
 
 def shufflenet_v2_x0_5(pretrained=False, **kwargs):
     """ShuffleNetV2 with 0.5x output channels, as described in
-    `"ShuffleNet V2: Practical Guidelines for Ecient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
+    `"ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
 
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
@@ -435,7 +435,7 @@ def shufflenet_v2_x0_5(pretrained=False, **kwargs):
 
 def shufflenet_v2_x1_0(pretrained=False, **kwargs):
     """ShuffleNetV2 with 1.0x output channels, as described in
-    `"ShuffleNet V2: Practical Guidelines for Ecient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
+    `"ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
 
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
@@ -470,7 +470,7 @@ def shufflenet_v2_x1_0(pretrained=False, **kwargs):
 
 def shufflenet_v2_x1_5(pretrained=False, **kwargs):
     """ShuffleNetV2 with 1.5x output channels, as described in
-    `"ShuffleNet V2: Practical Guidelines for Ecient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
+    `"ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
 
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
@@ -505,7 +505,7 @@ def shufflenet_v2_x1_5(pretrained=False, **kwargs):
 
 def shufflenet_v2_x2_0(pretrained=False, **kwargs):
     """ShuffleNetV2 with 2.0x output channels, as described in
-    `"ShuffleNet V2: Practical Guidelines for Ecient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
+    `"ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
 
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
@@ -540,7 +540,7 @@ def shufflenet_v2_x2_0(pretrained=False, **kwargs):
 
 def shufflenet_v2_swish(pretrained=False, **kwargs):
     """ShuffleNetV2 with swish activation function, as described in
-    `"ShuffleNet V2: Practical Guidelines for Ecient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
+    `"ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_.
 
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained

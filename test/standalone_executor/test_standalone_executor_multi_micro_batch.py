@@ -28,7 +28,7 @@ from paddle.nn import TransformerEncoderLayer
 paddle.enable_static()
 
 
-class TestEncorderMulitMicroBatchRun(unittest.TestCase):
+class TestEncoderMultiMicroBatchRun(unittest.TestCase):
     def setUp(self):
         self.place_desc = (
             paddle.CUDAPlace(0)
@@ -213,7 +213,7 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
         return res
 
     def check_result(self, expected_result, actual_result):
-        # FIXME(Ruibiao): The output result of Encorder layers is unstable in some case.
+        # FIXME(Ruibiao): The output result of Encoder layers is unstable in some case.
         if self.place.is_cpu_place() or platform.system().lower() == "windows":
             np.testing.assert_allclose(
                 expected_result, actual_result, atol=1e-6, rtol=1e-6

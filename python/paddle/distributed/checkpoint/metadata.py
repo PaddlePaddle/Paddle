@@ -40,3 +40,4 @@ class LocalTensorIndex:
 class Metadata:
     state_dict_metadata: Dict[str, List[LocalTensorMetadata]] = None
     storage_metadata: Dict[LocalTensorIndex, str] = None
+    flat_mapping: Dict[str, Tuple[str]] = None

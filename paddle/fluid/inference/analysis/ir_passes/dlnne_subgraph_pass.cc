@@ -24,7 +24,7 @@
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/ir_passes/dlnne_subgraph_pass.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace inference {
@@ -81,7 +81,7 @@ void analysis::DlnneSubgraphPass::InferShapeForDlnneMainGraph() const {
   std::vector<framework::OpDesc *> all_ops = block->AllOps();
 
   for (size_t i = 0; i < block->OpSize(); i++) {
-    // the output_shape of bilinear_interp_v2 cannot be inferd by input shape,
+    // the output_shape of bilinear_interp_v2 cannot be inferred by input shape,
     // it also need the value of input tensor, so when call OpDesc->InferShape,
     // the output_shape of bilinear_interp_v2 is still dynamic, here we try to
     // infer the output_shape of bilinear_interp_v2 infer shape for
@@ -349,6 +349,7 @@ void analysis::DlnneSubgraphPass::ApplyImpl(framework::ir::Graph *graph) const {
       graph,
       teller,
       Get<int>("min_subgraph_size") /*min subgraph size*/,
+      {},
       "dlnne_engine");
   fuser();
 

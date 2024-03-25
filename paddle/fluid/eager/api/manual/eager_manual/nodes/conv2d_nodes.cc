@@ -24,11 +24,11 @@
 #include "paddle/phi/api/backward/backward_api.h"
 #include "paddle/phi/api/backward/sparse_bw_api.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
 #include "paddle/phi/api/include/sparse_api.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_nan_inf);
 
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
 Conv2dGradNodeFinal::operator()(
@@ -38,6 +38,19 @@ Conv2dGradNodeFinal::operator()(
     bool is_new_grad) {
   // Fill Zero For GradIn Tensors
   VLOG(3) << " Running Conv2dGradNodeFinal: " << this;
+  // This 'Local_XXXGradNode' record event is different with
+  // 'Global_XXXGradNode' event.
+  // * 'Local_XXXGradNode' will only cover execution time of this function.
+  // * 'Global_XXXGradNode' will not only cover execution time of this function,
+  // but also include gradient
+  //    accumulation when the output(s) of corresponding forward OP are shared
+  //    by other OP(s), which may have extra accumulation overhead than
+  //    'Local_XXXGradNode'.
+  paddle::platform::RecordEvent node_execution_inner(
+      "Local_Conv2dGradNodeFinal",
+      paddle::platform::TracerEventType::OperatorInner,
+      1);
+
   // Apply Gradient Hooks
   auto hooked_grads = ApplyGradientHooks(grads);
 
@@ -126,16 +139,16 @@ Conv2dGradNodeFinal::operator()(
     auto grad_node = std::shared_ptr<Conv2dDoubleGradNodeFinal>(  // NOLINT
         new Conv2dDoubleGradNodeFinal(2, 3));
     // SetAttributes if needed
-    grad_node->SetAttributestrides(strides);
-    grad_node->SetAttributepaddings(paddings);
-    grad_node->SetAttributepadding_algorithm(padding_algorithm);
-    grad_node->SetAttributegroups(groups);
-    grad_node->SetAttributedilations(dilations);
-    grad_node->SetAttributedata_format(data_format);
+    grad_node->SetAttribute_strides(strides);
+    grad_node->SetAttribute_paddings(paddings);
+    grad_node->SetAttribute_padding_algorithm(padding_algorithm);
+    grad_node->SetAttribute_groups(groups);
+    grad_node->SetAttribute_dilations(dilations);
+    grad_node->SetAttribute_data_format(data_format);
     // Set TensorWrappers for Forward Inputs if needed
-    grad_node->SetTensorWrapperinput(input);
-    grad_node->SetTensorWrapperfilter(filter);
-    grad_node->SetTensorWrappergrad_out(grad_out);
+    grad_node->SetTensorWrapper_input(input);
+    grad_node->SetTensorWrapper_filter(filter);
+    grad_node->SetTensorWrapper_grad_out(grad_out);
     // SetGradOutMeta & SetEdges
     if (grad_filter_autograd_meta) {
       grad_node->SetGradOutMeta(input, 0);
@@ -208,6 +221,19 @@ Conv2dDoubleGradNodeFinal::operator()(
                          egr::kSlotSmallVectorSize>& grads,
     bool create_graph,
     bool is_new_grad) {
+  // This 'Local_XXXGradNode' record event is different with
+  // 'Global_XXXGradNode' event.
+  // * 'Local_XXXGradNode' will only cover execution time of this function.
+  // * 'Global_XXXGradNode' will not only cover execution time of this function,
+  // but also include gradient
+  //    accumulation when the output(s) of corresponding forward OP are shared
+  //    by other OP(s), which may have extra accumulation overhead than
+  //    'Local_XXXGradNode'.
+  paddle::platform::RecordEvent node_execution_inner(
+      "Local_Conv2dDoubleGradNodeFinal",
+      paddle::platform::TracerEventType::OperatorInner,
+      1);
+
   // Fill Zero For GradIn Tensors
   const auto& input_metas = this->InputMeta();
   egr::EagerUtils::FillZeroForEmptyOptionalGradInput(&grads[0][0],

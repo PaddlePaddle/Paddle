@@ -26,14 +26,13 @@
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/basic_engine.h"
-#include "paddle/fluid/imperative/jit/program_desc_tracer.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/utils/test_macros.h"
 
-PHI_DECLARE_bool(use_stride_kernel);
+COMMON_DECLARE_bool(use_stride_kernel);
 namespace paddle {
 namespace imperative {
 
@@ -63,7 +62,6 @@ class Tracer {
  public:
   Tracer()
       : basic_engine_(new BasicEngine()),
-        program_desc_tracer_(new jit::ProgramDescTracer()),
         generator_(new UniqueNameGenerator()) {
     expected_place_ = platform::CPUPlace();
   }
@@ -126,14 +124,6 @@ class Tracer {
                            const NameTensorMap& outs,
                            bool trace_backward);
 
-  void SetEnableProgramDescTracing(bool enabled);
-
-  bool IsProgramDescTracingEnabled() const;
-
-  jit::ProgramDescTracer* GetProgramDescTracer() {
-    return program_desc_tracer_.get();
-  }
-
   // Note(Aurelius84): The `tmp` is used as prefix key while naming a temporary
   // intermediate var both in imperative and static graph mode. But the
   // `UniqueNameGenerator` in C++ and `unique_name.py` in Python doesn't share
@@ -187,7 +177,6 @@ class Tracer {
 
  private:
   std::unique_ptr<BasicEngine> basic_engine_;
-  std::unique_ptr<jit::ProgramDescTracer> program_desc_tracer_;
   std::unique_ptr<UniqueNameGenerator> generator_;
   platform::Place expected_place_;
   GarbageCollectorMap gcs_;
@@ -195,14 +184,12 @@ class Tracer {
   static thread_local bool enable_program_desc_tracing_;
   static thread_local bool use_layout_autotune_;
   static thread_local bool has_grad_;
-  static thread_local bool use_promote_;
-  static thread_local AmpLevel amp_level_;
-  static thread_local phi::DataType amp_dtype_;
 };
 
 // To access static variable current_tracer
 const std::shared_ptr<Tracer>& GetCurrentTracer();
 TEST_API void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer_);
+const std::shared_ptr<AmpAttrs>& GetCurrentAmpAttrs();
 void IncreaseVarbaseReferenceCountUntilCopyComplete(
     const std::shared_ptr<imperative::VarBase>& var,
     const platform::Place& place);

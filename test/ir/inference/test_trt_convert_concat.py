@@ -79,7 +79,7 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
                         self.num_input = num_input
                         self.dims = dims
                         dics = [{"axis": axis}, {}]
-                        dics_intput = [
+                        dics_input = [
                             {
                                 "X": [
                                     "concat_input1",
@@ -138,7 +138,7 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
                         ops_config = [
                             {
                                 "op_type": "concat",
-                                "op_inputs": dics_intput[num_input],
+                                "op_inputs": dics_input[num_input],
                                 "op_outputs": {"Out": ["concat_output"]},
                                 "op_attrs": dics[0],
                             }

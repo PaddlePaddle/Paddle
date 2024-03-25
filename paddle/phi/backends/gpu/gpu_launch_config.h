@@ -133,11 +133,11 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(const phi::GPUContext& context,
   int64_t active_threads_num = numel / vec_size;
   if (active_threads_num / (sm_count << 1) < limit_threads) {
     // Round up threads number into an exponential multiple of 2, while number
-    // of acitve blocks is about twice of SM, to acquire better performance.
+    // of active blocks is about twice of SM, to acquire better performance.
     threads = RoundToPowerOfTwo(active_threads_num / (sm_count << 1));
   } else if (active_threads_num / (sm_count << 2) < limit_threads) {
     // Round up threads number into an exponential multiple of 2, while number
-    // of acitve blocks is about 4 times of SM, to acquire better performance.
+    // of active blocks is about 4 times of SM, to acquire better performance.
     threads = RoundToPowerOfTwo(active_threads_num / (sm_count << 2));
   }
   // Number of threads per block shall be larger than 64.
@@ -216,10 +216,13 @@ inline GpuLaunchConfig GetGpuLaunchConfig3D(const phi::GPUContext& context,
   int block_y = std::min(GetLastPow2(height), max_threads / block_x);
   int block_z = std::min(num_img, max_threads / block_x / block_y);
 
-  std::array<int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
-  int grid_x = std::min(max_grid_dim[0], DivUp<int>(width, block_x));
-  int grid_y = std::min(max_grid_dim[1], DivUp<int>(height, block_y));
-  int grid_z = std::min(max_grid_dim[2], DivUp<int>(num_img, block_z * 4));
+  std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+  unsigned int grid_x =
+      std::min(max_grid_dim[0], DivUp<unsigned int>(width, block_x));
+  unsigned int grid_y =
+      std::min(max_grid_dim[1], DivUp<unsigned int>(height, block_y));
+  unsigned int grid_z =
+      std::min(max_grid_dim[2], DivUp<unsigned int>(num_img, block_z * 4));
 
   const int capability = context.GetComputeCapability();
   GpuLaunchConfig config;

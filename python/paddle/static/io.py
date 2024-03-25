@@ -33,7 +33,12 @@ from paddle.base import (
     unique_name,
 )
 from paddle.base.executor import Executor, global_scope
-from paddle.base.framework import Parameter, dygraph_not_support, static_only
+from paddle.base.framework import (
+    Parameter,
+    dygraph_not_support,
+    process_type_promotion,
+    static_only,
+)
 from paddle.base.log_helper import get_logger
 from paddle.framework.io_utils import (
     _clone_var_in_block_,
@@ -137,6 +142,11 @@ def _clone_var_in_block(block, var):
         )
 
 
+def _safe_load_pickle(file, encoding="ASCII"):
+    load_dict = pickle.Unpickler(file, encoding=encoding).load()
+    return load_dict
+
+
 def prepend_feed_ops(
     inference_program, feed_target_names, feed_holder_name='feed'
 ):
@@ -197,7 +207,7 @@ def normalize_program(program, feed_vars, fetch_vars, **kwargs):
         feed_vars(Tensor | list[Tensor]): Variables needed by inference.
         fetch_vars(Tensor | list[Tensor]): Variables returned by inference.
         kwargs: Supported keys including ``skip_prune_program``.
-            - skip_prune_program(bool): whether to skip prunning program. Defaults to False.
+            - skip_prune_program(bool): whether to skip pruning program. Defaults to False.
 
     Returns:
         Program: Normalized/Optimized program.
@@ -211,7 +221,7 @@ def normalize_program(program, feed_vars, fetch_vars, **kwargs):
 
             >>> path_prefix = "./infer_model"
 
-            # User defined network, here a softmax regession example
+            # User defined network, here a softmax regression example
             >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
             >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
             >>> predict = paddle.static.nn.fc(image, 10, activation='softmax')
@@ -283,10 +293,10 @@ def normalize_program(program, feed_vars, fetch_vars, **kwargs):
                 # remove backward block
                 copy_program.blocks.pop(backward_block_id)
                 # update attrs ``blocks``
-                reserverd_blocks = []
+                reserved_blocks = []
                 for block_id in sub_blocks_ids[:-1]:
-                    reserverd_blocks.append(copy_program.block(block_id))
-                op._update_desc_attr("blocks", reserverd_blocks)
+                    reserved_blocks.append(copy_program.block(block_id))
+                op._update_desc_attr("blocks", reserved_blocks)
 
     for idx in remove_op_idx[::-1]:
         global_block._remove_op(idx)
@@ -332,7 +342,7 @@ def serialize_program(feed_vars, fetch_vars, **kwargs):
 
             >>> path_prefix = "./infer_model"
 
-            # User defined network, here a softmax regession example
+            # User defined network, here a softmax regression example
             >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
             >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
             >>> predict = paddle.static.nn.fc(image, 10, activation='softmax')
@@ -391,7 +401,7 @@ def serialize_persistables(feed_vars, fetch_vars, executor, **kwargs):
 
             >>> path_prefix = "./infer_model"
 
-            # User defined network, here a softmax regession example
+            # User defined network, here a softmax regression example
             >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
             >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
             >>> predict = paddle.static.nn.fc(image, 10, activation='softmax')
@@ -431,7 +441,7 @@ def _serialize_persistables(program, executor):
             "variables in your model to save"
         )
         return None
-    # create a new program and clone persitable vars to it
+    # create a new program and clone persistable vars to it
     save_program = Program()
     save_block = save_program.global_block()
     save_var_map = {}
@@ -543,7 +553,7 @@ def save_inference_model(
 
             >>> path_prefix = "./infer_model"
 
-            # User defined network, here a softmax regession example
+            # User defined network, here a softmax regression example
             >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
             >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
             >>> predict = paddle.static.nn.fc(image, 10, activation='softmax')
@@ -587,6 +597,10 @@ def save_inference_model(
     _check_vars('fetch_vars', fetch_vars)
 
     program = _get_valid_program(kwargs.get('program', None))
+
+    # do type promotion
+    program = process_type_promotion(program)
+
     clip_extra = kwargs.get('clip_extra', True)
     program = normalize_program(
         program,
@@ -644,7 +658,7 @@ def deserialize_program(data):
 
             >>> path_prefix = "./infer_model"
 
-            # User defined network, here a softmax regession example
+            # User defined network, here a softmax regression example
             >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
             >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
             >>> predict = paddle.static.nn.fc(image, 10, activation='softmax')
@@ -693,7 +707,7 @@ def deserialize_persistables(program, data, executor):
 
             >>> path_prefix = "./infer_model"
 
-            # User defined network, here a softmax regession example
+            # User defined network, here a softmax regression example
             >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
             >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
             >>> predict = paddle.static.nn.fc(image, 10, activation='softmax')
@@ -903,6 +917,9 @@ def load_inference_model(path_prefix, executor, **kwargs):
         # deserialize bytes to program
         program = deserialize_program(program_bytes)
 
+        # do type promotion
+        program = process_type_promotion(program)
+
         vars = list(filter(is_persistable, program.list_vars()))
         if len(vars) > 0:
             load_vars(
@@ -957,6 +974,9 @@ def load_inference_model(path_prefix, executor, **kwargs):
 
         # deserialize bytes to program
         program = deserialize_program(program_bytes)
+
+        # do type promotion
+        program = process_type_promotion(program)
 
         vars = list(filter(is_persistable, program.list_vars()))
         if len(vars) > 0:
@@ -1620,7 +1640,7 @@ def load(program, model_path, executor=None, var_list=None):
             program_var_list = program.list_vars()
             program_var_name_set = {var.name for var in program_var_list}
 
-            # check all the variable inlcuded in program
+            # check all the variable included in program
             for var in var_list:
                 if var.name not in program_var_name_set:
                     raise LookupError(
@@ -1682,7 +1702,7 @@ def load(program, model_path, executor=None, var_list=None):
         if sys.platform == 'darwin' and sys.version_info.major == 3:
             load_dict = _pickle_loads_mac(parameter_file_name, f)
         else:
-            load_dict = pickle.load(f, encoding='latin1')
+            load_dict = _safe_load_pickle(f, encoding='latin1')
         load_dict = _pack_loaded_dict(load_dict)
     for v in parameter_list:
         assert (
@@ -1706,7 +1726,7 @@ def load(program, model_path, executor=None, var_list=None):
             )
 
         with open(opt_file_name, 'rb') as f:
-            load_dict = pickle.load(f, encoding='latin1')
+            load_dict = _safe_load_pickle(f, encoding='latin1')
         for v in optimizer_var_list:
             assert (
                 v.name in load_dict
@@ -1804,7 +1824,7 @@ def set_program_state(program, state_dict):
             unused_para_list.append(k)
     if len(unused_para_list) > 0:
         warnings.warn(
-            "This list is not set, Because of Paramerter not found in program. There are: {}".format(
+            "This list is not set, Because of Parameter not found in program. There are: {}".format(
                 " ".join(unused_para_list)
             )
         )
@@ -2000,13 +2020,13 @@ def load_program_state(model_path, var_list=None):
         if sys.platform == 'darwin' and sys.version_info.major == 3:
             para_dict = _pickle_loads_mac(parameter_file_name, f)
         else:
-            para_dict = pickle.load(f, encoding='latin1')
+            para_dict = _safe_load_pickle(f, encoding='latin1')
     para_dict = _pack_loaded_dict(para_dict)
 
     opt_file_name = model_prefix + ".pdopt"
     if os.path.exists(opt_file_name):
         with open(opt_file_name, 'rb') as f:
-            opti_dict = pickle.load(f, encoding='latin1')
+            opti_dict = _safe_load_pickle(f, encoding='latin1')
 
         para_dict.update(opti_dict)
 

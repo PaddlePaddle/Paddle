@@ -16,6 +16,7 @@ limitations under the License. */
 #include <vector>
 
 #include "gtest/gtest.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -23,22 +24,14 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/cudnn_bn_stats_finalize.cu.h"
 #include "paddle/fluid/operators/fused/cudnn_scale_bias_add_relu.cu.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-PHI_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
+COMMON_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace op = paddle::operators;
-
-USE_OP_ITSELF(batch_norm);
-USE_OP_ITSELF(fused_bn_add_activation);
-USE_OP_ITSELF(fused_bn_add_activation_grad);
-PD_DECLARE_KERNEL(batch_norm, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(fused_bn_add_activation, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(fused_bn_add_activation_grad, GPU, ALL_LAYOUT);
 
 template <typename T>
 void InitRandomTensor(const std::vector<int64_t> &dims,
@@ -764,7 +757,7 @@ class CudnnBNAddReluTester {
     int c = channels_;
     int64_t nhw = ele_count_;
     int32_t c_int32_elems = ((c + 63) & ~63) / 32;
-    int32_t nhw_int32_elems = (nhw + 31) & ~31;
+    int32_t nhw_int32_elems = (static_cast<int32_t>(nhw) + 31) & ~31;
     bitmask.Resize(common::make_ddim({nhw_int32_elems, c_int32_elems, 1}));
 
     auto data_shape = common::vectorize<int>(x.dims());

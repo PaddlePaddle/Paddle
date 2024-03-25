@@ -31,7 +31,13 @@ TEST(Convert, AddExpr) {
 
   ir::Expr expr1 =
       ir::Add::Make(ir::Expr(std::int64_t(4)), ir::Expr(std::int64_t(5)));
-  ir::Expr dst_expr = ir::Add::Make(expr1, ir::_Var_::Make("sym_0", Int(64)));
+  ir::Expr dst_expr =
+      ir::Add::Make(expr1,
+                    ir::_Var_::Make(ir::Expr(static_cast<int64_t>(1)),
+                                    ir::Expr(INT32_MAX),
+                                    "sym_0",
+                                    /* is_reduce  = */ false,
+                                    /* is_symbolic_constant = */ true));
   ASSERT_TRUE(MathEqual(src_expr, dst_expr));
 }
 
@@ -39,8 +45,13 @@ TEST(Convert, SubExpr) {
   DimExpr dim_expr = DimExpr(4) - DimExpr("sym_0");
   ir::Expr src_expr = DimExprConverter().ConvertToIrExpr(dim_expr);
 
-  ir::Expr expr1 = ir::Sub::Make(ir::Expr(std::int64_t(0)),
-                                 ir::_Var_::Make("sym_0", Int(64)));
+  ir::Expr expr1 =
+      ir::Sub::Make(ir::Expr(std::int64_t(0)),
+                    ir::_Var_::Make(ir::Expr(static_cast<int64_t>(1)),
+                                    ir::Expr(INT32_MAX),
+                                    "sym_0",
+                                    /* is_reduce  = */ false,
+                                    /* is_symbolic_constant = */ true));
   ir::Expr dst_expr = ir::Add::Make(ir::Expr(std::int64_t(4)), expr1);
   ASSERT_TRUE(MathEqual(src_expr, dst_expr));
 }
@@ -52,7 +63,13 @@ TEST(Convert, MulExpr) {
 
   ir::Expr expr1 =
       ir::Mul::Make(ir::Expr(std::int64_t(4)), ir::Expr(std::int64_t(5)));
-  ir::Expr dst_expr = ir::Mul::Make(expr1, ir::_Var_::Make("sym_0", Int(64)));
+  ir::Expr dst_expr =
+      ir::Mul::Make(expr1,
+                    ir::_Var_::Make(ir::Expr(static_cast<int64_t>(1)),
+                                    ir::Expr(INT32_MAX),
+                                    "sym_0",
+                                    /* is_reduce  = */ false,
+                                    /* is_symbolic_constant = */ true));
   ASSERT_TRUE(MathEqual(src_expr, dst_expr));
 }
 

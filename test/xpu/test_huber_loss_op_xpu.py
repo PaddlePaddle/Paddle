@@ -89,12 +89,12 @@ class XPUTestHuberLossOp(XPUOpTestWrapper):
         def test_check_grad_normal(self):
             self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')
 
-        def test_check_grad_ingore_x(self):
+        def test_check_grad_ignore_x(self):
             self.check_grad_with_place(
                 self.place, ['Y'], 'Out', no_grad_set=set("residual")
             )
 
-        def test_check_grad_ingore_y(self):
+        def test_check_grad_ignore_y(self):
             self.check_grad_with_place(
                 self.place, ['X'], 'Out', no_grad_set=set('residual')
             )

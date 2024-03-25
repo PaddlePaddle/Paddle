@@ -70,7 +70,7 @@ class SkipGroupnormActOpConverter : public OpConverter {
       nvinfer1::ILayer* groupnorm_layer =
           engine_->AddDynamicPlugin(inputs.data(), 2, plugin);
       auto output_name = op_desc.Output("Out")[0];
-      RreplenishLayerAndOutput(
+      ReplenishLayerAndOutput(
           groupnorm_layer, "skip_groupnorm_act", {output_name}, test_mode);
     }
   }

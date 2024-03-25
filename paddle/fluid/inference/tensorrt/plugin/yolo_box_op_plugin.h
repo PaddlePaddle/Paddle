@@ -93,7 +93,7 @@ class YoloBoxPlugin : public nvinfer1::IPluginV2Ext {
                        const bool* input_is_broadcast,
                        const bool* output_is_broadcast,
                        nvinfer1::PluginFormat float_format,
-                       int max_batct_size) TRT_NOEXCEPT override;
+                       int max_batch_size) TRT_NOEXCEPT override;
   nvinfer1::IPluginV2Ext* clone() const TRT_NOEXCEPT override;
 
  private:

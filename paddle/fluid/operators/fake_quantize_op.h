@@ -16,12 +16,12 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/common/transform.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
@@ -446,7 +446,7 @@ class MovingAverageAbsMaxScaleKernel : public framework::OpKernel<T> {
 };
 
 template <typename T, typename DeviceContext>
-class StrightThroughEstimatorGradKernel : public framework::OpKernel<T> {
+class StraightThroughEstimatorGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *d_out =
@@ -455,7 +455,7 @@ class StrightThroughEstimatorGradKernel : public framework::OpKernel<T> {
     auto *d_x = context.Output<phi::DenseTensor>(x_grad_name);
     PADDLE_ENFORCE_NOT_NULL(d_x,
                             platform::errors::PreconditionNotMet(
-                                "StrightThroughEstimatorGradKernel "
+                                "StraightThroughEstimatorGradKernel "
                                 "doesn't have the output named %s.",
                                 x_grad_name));
 

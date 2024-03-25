@@ -84,7 +84,7 @@ class AnchorGeneratorPlugin : public nvinfer1::IPluginV2Ext {
                        const bool* input_is_broadcast,
                        const bool* output_is_broadcast,
                        nvinfer1::PluginFormat float_format,
-                       int max_batct_size) TRT_NOEXCEPT override;
+                       int max_batch_size) TRT_NOEXCEPT override;
   nvinfer1::IPluginV2Ext* clone() const TRT_NOEXCEPT override;
 
  private:
@@ -148,10 +148,11 @@ class AnchorGeneratorPluginDynamic : public DynamicPluginTensorRT {
   AnchorGeneratorPluginDynamic(void const* data, size_t length);
   ~AnchorGeneratorPluginDynamic();
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override;
-  nvinfer1::DimsExprs getOutputDimensions(int outputIndex,
-                                          const nvinfer1::DimsExprs* inputs,
-                                          int nbInputs,
-                                          nvinfer1::IExprBuilder& exprBuilder)
+  nvinfer1::DimsExprs getOutputDimensions(
+      int outputIndex,
+      const nvinfer1::DimsExprs* inputs,
+      int nbInputs,
+      nvinfer1::IExprBuilder& exprBuilder)  // NOLINT
       TRT_NOEXCEPT override;
   bool supportsFormatCombination(int pos,
                                  const nvinfer1::PluginTensorDesc* inOut,

@@ -138,7 +138,7 @@ CinnGraphSymbolization::CreateCinnScope(const FeedInfoMap& feed_map) {
                                    param_name.c_str()));
 
     // if cannot find var in graph input, skip.
-    // scope accepte the CINN format name, so here we need transform
+    // scope accept the CINN format name, so here we need transform
     // paddle format name to CINN format.
     auto valid_name = ::cinn::utils::TransValidVarName(param_name);
     auto* cinn_var = cinn_scope->Var<CinnTensor>(valid_name);

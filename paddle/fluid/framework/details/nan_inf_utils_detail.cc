@@ -19,8 +19,8 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/phi/common/amp_type_traits.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
 namespace paddle {
@@ -264,7 +264,7 @@ void CheckOpHasNanOrInf(const framework::OperatorBase& op,
 
   if (IsSkipOp(op)) return;
 
-  if (op_var_nan_inf_white_list().count(op.Type()) == 0) {
+  if (op_var_nan_inf_white_list().count(op.Type()) == 0) {  // NOLINT
     // NOTE. vname may destruct in the end of this func.
     for (auto& vname : op.OutputVars(true)) {
       auto* var = exec_scope.FindVar(vname);

@@ -1107,7 +1107,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
     int fea_dim,
     uint64_t padding_id,
     bool scale_sparse,
-    const std::string& accesor,
+    const std::string& accessor,
     const std::string& click_name,
     platform::Place place,
     const std::vector<std::string>& input_names,
@@ -1121,18 +1121,18 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   int slot_offset = 0;
   int grad_dim = 0;
   // don't worry, user do not have to care about all these flags
-  if (accesor == "DownpourCtrAccessor" ||
-      accesor == "DownpourCtrDymfAccessor") {
+  if (accessor == "DownpourCtrAccessor" ||
+      accessor == "DownpourCtrDymfAccessor") {
     dump_slot = true;
     slot_offset = 1;
     grad_dim = fea_dim - 2;
     show_index = 1;
     click_index = 2;
-  } else if (accesor == "DownpourFeatureValueAccessor") {
+  } else if (accessor == "DownpourFeatureValueAccessor") {
     dump_slot = false;
     slot_offset = 0;
     grad_dim = fea_dim - 2;
-  } else if (accesor == "DownpourSparseValueAccessor") {
+  } else if (accessor == "DownpourSparseValueAccessor") {
     dump_slot = false;
     slot_offset = 0;
     grad_dim = fea_dim;

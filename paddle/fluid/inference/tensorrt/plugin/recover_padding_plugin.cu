@@ -148,7 +148,7 @@ int RecoverPaddingPlugin::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
   const dim3 num_blocks(
       input1_desc.dims.d[0] - 1,
       input2_desc.dims.d[1],
-      vector_length / num_threads);  //  batchs, max sequnce length
+      vector_length / num_threads);  //  batches, max sequnce length
                                      //  (mask_id.dims.d[1]),
                                      //  input.dims.d[1]/***
   RecoverPaddingKernel<<<num_blocks, num_threads, 0, stream>>>(

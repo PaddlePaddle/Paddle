@@ -47,12 +47,20 @@ class TestConcatAxis0OneDNNOp(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
+        self.check_output_with_place(
+            core.CPUPlace(), check_dygraph=False, check_pir_onednn=True
+        )
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', check_dygraph=False)
-        self.check_grad(['x1'], 'Out', check_dygraph=False)
-        self.check_grad(['x2'], 'Out', check_dygraph=False)
+        self.check_grad(
+            ['x0'], 'Out', check_dygraph=False, check_pir_onednn=True
+        )
+        self.check_grad(
+            ['x1'], 'Out', check_dygraph=False, check_pir_onednn=True
+        )
+        self.check_grad(
+            ['x2'], 'Out', check_dygraph=False, check_pir_onednn=True
+        )
 
     def init_test_data(self):
         self.x0 = np.random.random(self.x0_shape).astype(np.float32)
@@ -124,7 +132,9 @@ class TestConcatLargeInputNum(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
+        self.check_output_with_place(
+            core.CPUPlace(), check_dygraph=False, check_pir_onednn=True
+        )
 
     def init_test_data(self):
         self.x = np.ones(self.shape).astype(np.float32)

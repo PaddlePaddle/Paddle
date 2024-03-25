@@ -63,7 +63,7 @@ class TestBincountOpAPI(unittest.TestCase):
     def test_dygraph(self):
         with base.dygraph.guard():
             inputs_np = np.array([0, 1, 1, 3, 2, 1, 7]).astype(np.int64)
-            inputs = base.dygraph.to_variable(inputs_np)
+            inputs = paddle.to_tensor(inputs_np)
             actual = paddle.bincount(inputs)
             expected = np.bincount(inputs)
             self.assertTrue(
@@ -259,8 +259,8 @@ class TestTensorMinlength(unittest.TestCase):
         paddle.enable_static()
         np_x = np.random.randn(100).astype('float32')
         main_prog = paddle.static.Program()
-        starup_prog = paddle.static.Program()
-        with paddle.static.program_guard(main_prog, starup_prog):
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             # run static
             x = paddle.static.data(shape=np_x.shape, name='x', dtype=np_x.dtype)
             linear = paddle.nn.Linear(np_x.shape[0], np_x.shape[0])
@@ -272,7 +272,7 @@ class TestTensorMinlength(unittest.TestCase):
             )
 
             exe = paddle.static.Executor(self.place)
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             static_out = exe.run(feed={'x': np_x}, fetch_list=[out])
 
             # run infer

@@ -725,7 +725,7 @@ class TestAdamOpV2(unittest.TestCase):
     def test_adam_op_dygraph(self):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
-        a = base.dygraph.to_variable(value)
+        a = paddle.to_tensor(value)
         linear = paddle.nn.Linear(13, 5)
 
         adam = paddle.optimizer.Adam(
@@ -758,7 +758,7 @@ class TestAdamOpV2(unittest.TestCase):
         state_dict = adam.state_dict()
         adam.set_state_dict(state_dict)
 
-        # leanrning_rate is Tensor
+        # learning_rate is Tensor
         with self.assertRaises(TypeError):
             learning_rate = np.array([0.01]).astype("float32")
             learning_rate = paddle.to_tensor(learning_rate)
@@ -773,7 +773,7 @@ class TestAdamOpV2(unittest.TestCase):
     def test_adam_with_grad_clip(self):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
-        a = base.dygraph.to_variable(value)
+        a = paddle.to_tensor(value)
         linear = paddle.nn.Linear(13, 5)
         clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
         adam = paddle.optimizer.Adam(

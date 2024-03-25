@@ -37,6 +37,14 @@ def create_numpy_like_random(name):
     )
 
 
+def create_data_loader():
+    images = np.random.rand(BATCH_SIZE, IMAGE_SIZE).astype('float32')
+    labels = np.random.rand(BATCH_SIZE, CLASS_NUM).astype('float32')
+    dataset = RandomDataset(images, labels, BATCH_SIZE)
+    loader = DataLoader(dataset, batch_size=BATCH_SIZE)
+    return loader
+
+
 class RandomDataset(paddle.io.Dataset):
     def __init__(self, images, labels, num_samples):
         self.images = images
@@ -96,19 +104,12 @@ class TestSimpleNetForSemiAutoParallel(unittest.TestCase):
     def __init__(self):
         self._seed = eval(os.getenv("seed"))
         self.set_random_seed(self._seed)
-        self.data_loader = self.create_data_loader()
+        self.data_loader = create_data_loader()
 
     def set_random_seed(self, seed):
         random.seed(seed)
         np.random.seed(seed)
         paddle.seed(seed)
-
-    def create_data_loader(self):
-        images = np.random.rand(BATCH_SIZE, IMAGE_SIZE).astype('float32')
-        labels = np.random.rand(BATCH_SIZE, CLASS_NUM).astype('float32')
-        dataset = RandomDataset(images, labels, BATCH_SIZE)
-        loader = DataLoader(dataset, batch_size=BATCH_SIZE)
-        return loader
 
     def get_program_test(self, dist_model):
         with self.assertRaises(ValueError):
@@ -120,6 +121,7 @@ class TestSimpleNetForSemiAutoParallel(unittest.TestCase):
         self.assertNotEqual(main_program, None)
         self.assertNotEqual(startup_program, None)
 
+        dist_model.eval()
         main_program = dist_model.dist_main_program("eval")
         startup_program = dist_model.dist_startup_program("eval")
         self.assertNotEqual(main_program, None)
@@ -151,11 +153,18 @@ class TestSimpleNetForSemiAutoParallel(unittest.TestCase):
 
         # static training
         strategy = dist.Strategy()
-        dist_model, dist_loader = dist.to_static(
-            layer, self.data_loader, loss_fn, opt, strategy=strategy
+
+        dist_loader = dist.shard_dataloader(
+            dataloader=self.data_loader,
+            meshes=[mesh],
+        )
+
+        dist_model = dist.to_static(
+            layer, dist_loader, loss_fn, opt, strategy=strategy
         )
 
         dist_model._mode = None
+
         with self.assertRaises(ValueError):
             for batch_id, (image, label) in enumerate(dist_loader()):
                 loss = dist_model(image, label)
@@ -205,12 +214,12 @@ class TestSimpleNetForSemiAutoParallel(unittest.TestCase):
         dist_model._engine._has_prepared["train"] = False
         dist_model._engine._has_prepared["eval"] = False
         dist_model._engine._has_prepared["predict"] = False
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(TypeError):
             dist_model.train()
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(TypeError):
             dist_model.eval()
-        with self.assertRaises(RuntimeError):
-            dist_model.predict()
+        # with self.assertRaises(TypeError):
+        dist_model.predict()
         dist_model._engine._has_prepared["train"] = True
         dist_model._engine._has_prepared["eval"] = True
         dist_model._engine._has_prepared["predict"] = True

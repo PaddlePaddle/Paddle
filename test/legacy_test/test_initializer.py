@@ -1354,7 +1354,8 @@ class TestNumpyArrayInitializer(unittest.TestCase):
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'assign_value')
-        assert (init_op.attr('fp32_values') == np_array).all()
+        values = framework.extract_plain_list(init_op.attr('values'))
+        assert values == np_array.ravel().tolist()
         return block
 
     def test_numpy_array_initializer_fp16(self):
@@ -1444,8 +1445,8 @@ class TestNumpyArrayInitializerPir(unittest.TestCase):
 
 
 class TestSetGlobalInitializer(unittest.TestCase):
-    def test_set_global_weight_initilizer(self):
-        """Test Set Global Param initilizer with UniformInitializer"""
+    def test_set_global_weight_initializer(self):
+        """Test Set Global Param initializer with UniformInitializer"""
         main_prog = framework.Program()
         startup_prog = framework.Program()
         base.set_global_initializer(
@@ -1453,7 +1454,7 @@ class TestSetGlobalInitializer(unittest.TestCase):
         )
         with base.program_guard(main_prog, startup_prog):
             x = paddle.static.data(name="x", shape=[1, 3, 32, 32])
-            # default initilizer of param in layers.conv2d is NormalInitializer
+            # default initializer of param in layers.conv2d is NormalInitializer
             conv = paddle.static.nn.conv2d(x, 5, 3)
 
         block = startup_prog.global_block()
@@ -1471,8 +1472,8 @@ class TestSetGlobalInitializer(unittest.TestCase):
         self.assertEqual(param_init_op.attr('seed'), 0)
         base.set_global_initializer(None)
 
-    def test_set_global_bias_initilizer(self):
-        """Test Set Global Bias initilizer with NormalInitializer"""
+    def test_set_global_bias_initializer(self):
+        """Test Set Global Bias initializer with NormalInitializer"""
         main_prog = framework.Program()
         startup_prog = framework.Program()
         base.set_global_initializer(
@@ -1481,7 +1482,7 @@ class TestSetGlobalInitializer(unittest.TestCase):
         )
         with base.program_guard(main_prog, startup_prog):
             x = paddle.static.data(name="x", shape=[1, 3, 32, 32])
-            # default initilizer of bias in layers.conv2d is ConstantInitializer
+            # default initializer of bias in layers.conv2d is ConstantInitializer
             conv = paddle.static.nn.conv2d(x, 5, 3)
 
         block = startup_prog.global_block()
@@ -1530,7 +1531,7 @@ class TestUniformInitializerDygraph(unittest.TestCase):
 
 
 class TestXavierInitializerDygraph(unittest.TestCase):
-    def test_xvarier_initializer(self, dtype="float32"):
+    def test_xavier_initializer(self, dtype="float32"):
         """
         In dygraph mode, we can use initializer directly to initialize a tensor.
         """
@@ -1575,7 +1576,7 @@ class TestMSRAInitializerDygraph(unittest.TestCase):
         paddle.enable_static()
 
 
-class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
+class TestConsistencyOfDynamicAndStaticGraph(unittest.TestCase):
     def test_order(self):
         paddle.set_device('cpu')
         SEED = 123

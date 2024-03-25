@@ -209,6 +209,46 @@ void MinimumGradKernel(const Context& dev_ctx,
         dev_ctx, place, axis, ins, dout, dy, funcs::MinGradYFunctor<T>());
   }
 }
+
+template <typename T, typename Context>
+void CopySignGradKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        const DenseTensor& out_grad,
+                        DenseTensor* x_grad,
+                        DenseTensor* y_grad) {
+  const auto place = dev_ctx.GetPlace();
+  int axis = -1;
+  if (x_grad != nullptr && y_grad != nullptr) {
+    std::vector<const DenseTensor*> ins = {&x, &y, &out_grad};
+    GetGradXAndYOut<T>(dev_ctx,
+                       place,
+                       axis,
+                       ins,
+                       out_grad,
+                       x_grad,
+                       y_grad,
+                       funcs::CopySignGradXYFunctor<T, T>());
+  } else if (x_grad != nullptr && y_grad == nullptr) {
+    std::vector<const DenseTensor*> ins = {&x, &y, &out_grad};
+    GetGradXOrYOut<T>(dev_ctx,
+                      place,
+                      axis,
+                      ins,
+                      out_grad,
+                      x_grad,
+                      funcs::CopySignGradXFunctor<T>());
+  } else if (y_grad != nullptr && x_grad == nullptr) {
+    std::vector<const DenseTensor*> ins = {&x, &y, &out_grad};
+    GetGradXOrYOut<T>(dev_ctx,
+                      place,
+                      axis,
+                      ins,
+                      out_grad,
+                      y_grad,
+                      funcs::CopySignGradYFunctor<T>());
+  }
+}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(fmax_grad,
@@ -414,3 +454,18 @@ PD_REGISTER_KERNEL(subtract_double_grad,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(copysign_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CopySignGradKernel,
+                   bool,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

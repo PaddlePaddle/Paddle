@@ -85,7 +85,7 @@ class HardSwishOpConverter : public OpConverter {
                                    nvinfer1::ElementWiseOperation::kDIV);
     }
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "hard_swish", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "hard_swish", {output_name}, test_mode);
   }
 };
 

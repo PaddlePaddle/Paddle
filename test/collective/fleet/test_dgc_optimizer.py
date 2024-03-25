@@ -144,7 +144,7 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
                 self.assertAlmostEqual(op.attr('regular_coeff'), coeff)
                 print("dgc regular_coeff=" + str(coeff))
 
-    def test_tpyeError(self):
+    def test_typeError(self):
         # the type of DGCMomentumOptimizer(grad_clip=) must be 'ClipGradByNorm'
         with self.assertRaises(TypeError):
             dgc_momentum_optimizer = self.MockDGCMomentum(

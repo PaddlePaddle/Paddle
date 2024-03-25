@@ -793,7 +793,7 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 
@@ -837,7 +837,7 @@ class TestConcatTripleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 
@@ -938,6 +938,30 @@ class TestConcatOpAutoParallel(OpTest):
 
     def if_enable_cinn(self):
         pass
+
+
+class TestConcatOpErrorWithPir(unittest.TestCase):
+    @test_with_pir_api
+    def test_errors_with_pir(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            # The type of axis in concat_op should be int or Variable.
+            x6 = paddle.static.data(shape=[-1, 4], dtype='float32', name='x6')
+            x7 = paddle.static.data(shape=[-1, 4], dtype='float32', name='x7')
+            x8 = paddle.static.data(shape=[-1, 4], dtype='float64', name='x8')
+
+            def test_axis_type():
+                paddle.concat([x6, x7], 3.2)
+
+            self.assertRaises(TypeError, test_axis_type)
+
+            # The input dtype must be same.
+            def test_input_same_dtype():
+                paddle.concat([x7, x8])
+
+            self.assertRaises(TypeError, test_input_same_dtype)
 
 
 if __name__ == '__main__':

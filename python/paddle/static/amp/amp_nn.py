@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle import _C_ops
-from paddle.base import core
 from paddle.base.data_feeder import check_type, check_variable_and_dtype
-from paddle.base.framework import Variable, in_dygraph_mode
+from paddle.base.framework import (
+    Variable,
+    in_dynamic_or_pir_mode,
+)
 from paddle.base.layer_helper import LayerHelper
 
 
@@ -36,14 +39,12 @@ def check_finite_and_unscale(x, scale, name=None, float_status=None):
         float_status(Tensor): (Only used on NPU) The float status to check overflow.
     """
 
-    helper = LayerHelper("check_finite_and_unscale", **locals())
-
-    found_inf = helper.create_variable_for_type_inference(dtype='bool')
-
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         x, found_inf = _C_ops.check_finite_and_unscale_(x, scale)
         return x, found_inf
 
+    helper = LayerHelper("check_finite_and_unscale", **locals())
+    found_inf = helper.create_variable_for_type_inference(dtype='bool')
     check_type(x, 'x', (tuple, list), 'check_finite_and_unscale')
     for e in x:
         check_variable_and_dtype(
@@ -101,7 +102,7 @@ def update_loss_scaling(
         decr_ratio(float): The less-than-one-multiplier to use when decreasing
                            loss scaling.
     """
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         _C_ops.update_loss_scaling_(
             x,
             found_inf,
@@ -130,9 +131,9 @@ def update_loss_scaling(
             ['float16', 'float32', 'float64', 'uint16'],
             'update_loss_scaling',
         )
-        if e.dtype in [core.VarDesc.VarType.FP16, core.VarDesc.VarType.BF16]:
+        if e.dtype in [paddle.float16, paddle.bfloat16]:
             assert (
-                prev_loss_scaling.dtype == core.VarDesc.VarType.FP32
+                prev_loss_scaling.dtype == paddle.float32
             ), "The dtype of prev_loss_scaling should be float32 when the dtype of x is float16 or bfloat16."
         else:
             assert (

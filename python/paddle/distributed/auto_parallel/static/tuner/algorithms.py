@@ -58,7 +58,7 @@ class AlgorithmBase(ABC):
         Collect the model static info (from programs) that could be used to
         pruning candidate trials and saving tuning time. For instance,
         model info like number of model parameters and activation memory could be
-        used to prune candidated trial and decide the next trial.
+        used to prune candidate trial and decide the next trial.
         """
         pass
 
@@ -158,7 +158,7 @@ class ShardingStageAlgorithm(AlgorithmBase):
 
 
 @register_algor("recompute")
-class ReccomputeCheckpointAlgorithm(AlgorithmBase):
+class RecomputeCheckpointAlgorithm(AlgorithmBase):
     def __init__(self, config):
         super().__init__(config)
         self._changed_configs = ["recompute"]

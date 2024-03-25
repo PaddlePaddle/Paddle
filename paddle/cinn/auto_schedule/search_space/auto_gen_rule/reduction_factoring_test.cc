@@ -40,7 +40,7 @@ class TestReductionFactoring : public TestAutoGenRuleBase {
                          const std::string& block_name,
                          const std::string& expected_ir) {
     Initialize(cinn::common::DefaultNVGPUTarget());
-    // In order to forcibly use the most basic Compute of reduction
+    // In order to forcibly use the most basic compute of reduction
     FLAGS_cinn_new_group_scheduler = 1;
     auto test_program = tests::ReduceBuilder().Build(
         {{"X", shape}}, {{"reduce_dim", reduce_dim}});

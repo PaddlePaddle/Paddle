@@ -53,7 +53,7 @@ class TranspilerTest(unittest.TestCase):
 
     def get_main_program(self):
         main = base.Program()
-        main.random_seed = 1
+        paddle.seed(1)
         with base.program_guard(main):
             self.net_conf()
         self.origin_prog = main.clone()

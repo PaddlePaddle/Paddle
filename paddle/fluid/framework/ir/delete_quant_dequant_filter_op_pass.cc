@@ -73,7 +73,7 @@ DeleteQuantDequantFilterOpPass::DeleteQuantDequantFilterOpPass() {
 }
 // Delete quant_dequant_op, then quantize and dequantize weight
 void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
-  const std::string pattern_name = "delete_quantdequant_filter_op_pattern";
+  const std::string pattern_name = "delete_quant_dequant_filter_op_pattern";
   FusePassBase::Init(pattern_name, graph);
 
   GraphPatternDetector gpd;
@@ -141,7 +141,7 @@ void DeleteQuantDequantFilterOpPass::ApplyImpl(ir::Graph* graph) const {
                             "the received is %d",
                             quant_axis));
 
-      // To Do @Wangzheee: use "OutScale" to quantdequant
+      // To Do @Wangzheee: use "OutScale" to quant_dequant
       /*auto scales_name = quant_dequant_op->Op()->Output("OutScale");
       PADDLE_ENFORCE_EQ(scales_name.size(), 1,
                         platform::errors::InvalidArgument(

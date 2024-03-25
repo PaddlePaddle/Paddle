@@ -520,6 +520,21 @@ function(op_library TARGET)
     endif()
   endforeach()
 
+  # pybind USE_OP_DEVICE_KERNEL for operators/mkldnn/*
+  list(APPEND mkldnn_srcs ${mkldnn_cc_srcs})
+  foreach(mkldnn_src ${mkldnn_srcs})
+    set(op_name "")
+    # Add PHI Kernel Registry Message
+    find_phi_register(${mkldnn_src} ${pybind_file} "PD_REGISTER_KERNEL")
+    find_phi_register(${mkldnn_src} ${pybind_file} "PD_REGISTER_STRUCT_KERNEL")
+    find_phi_register(${mkldnn_src} ${pybind_file}
+                      "PD_REGISTER_KERNEL_FOR_ALL_DTYPE")
+    find_register(${mkldnn_src} "REGISTER_OP_CUDA_KERNEL" op_name)
+    if(NOT ${op_name} EQUAL "")
+      file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, CUDA);\n")
+      set(pybind_flag 1)
+    endif()
+  endforeach()
   # pybind USE_OP_DEVICE_KERNEL for ROCm
   list(APPEND hip_srcs ${hip_cc_srcs})
   # message("hip_srcs ${hip_srcs}")

@@ -23,12 +23,12 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/phi/core/flags.h"
 
 namespace paddle {
 namespace framework {
@@ -38,7 +38,7 @@ struct ExecutorPrepareContext;
 }  // namespace framework
 }  // namespace paddle
 
-PHI_DECLARE_double(eager_delete_tensor_gb);
+COMMON_DECLARE_double(eager_delete_tensor_gb);
 
 namespace paddle {
 namespace distributed {
@@ -185,7 +185,7 @@ class GlobalStepTable : public DenseTensorTable {
     }
 
     if (main_program_id_ != -1) {
-      // Run main porgram, if program is used for learning decay
+      // Run main program, if program is used for learning decay
       auto main_program_desc = sub_program_->at(main_program_id_);
       auto main_ctx = executor_->Prepare(main_program_desc, 0);
       exec_context_ = std::move(main_ctx);

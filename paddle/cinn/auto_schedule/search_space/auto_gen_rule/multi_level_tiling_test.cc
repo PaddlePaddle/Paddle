@@ -144,7 +144,7 @@ TEST(MultiLevelTile, SimpleLoops) {
 
 // TODO(SunNy820828449): fix in future
 /*
-TEST(MulitLevelTile, MatrixMultiply) {
+TEST(MultiLevelTile, MatrixMultiply) {
   srand(0);
   Context::Global().ResetNameId();
 #ifdef CINN_WITH_CUDA

@@ -86,7 +86,7 @@ class TestFillAnyInplace(unittest.TestCase):
             var.fill_(0)
             self.assertEqual(var.inplace_version, 3)
 
-    def test_fill_any_eqaul(self):
+    def test_fill_any_equal(self):
         with paddle.base.dygraph.guard():
             tensor = paddle.to_tensor(
                 np.random.random((20, 30)).astype(np.float32)

@@ -210,7 +210,7 @@ class CastCollapsingPass : public ProgramPass {
       if (!can_remove) {
         VLOG(4) << "The cast op " << cast_info
                 << " is useless but fetched, replace with identity.";
-        // cannot remove, but we can replace the cast with indentiy for more
+        // cannot remove, but we can replace the cast with identity for more
         // fusion opportunity
         ReplaceWithIdentity(cast);
       } else {

@@ -110,7 +110,3 @@ TEST(cpuQuantizePass, ConvReLU6) {
 
 }  // namespace pass
 }  // namespace paddle
-
-USE_PASS(conv_activation_mkldnn_fuse_pass);
-USE_PASS(cpu_quantize_placement_pass);
-USE_PASS(cpu_quantize_pass);

@@ -34,7 +34,7 @@ limitations under the License. */
 namespace phi {
 
 template <typename Context, typename T>
-struct ReduceSumForSolvelGrad {
+struct ReduceSumForSolveGrad {
   void operator()(const Context& dev_ctx,
                   const DenseTensor& input,
                   DenseTensor* output,
@@ -43,7 +43,7 @@ struct ReduceSumForSolvelGrad {
 };
 
 template <typename T>
-struct ReduceSumForSolvelGrad<CPUContext, T> {
+struct ReduceSumForSolveGrad<CPUContext, T> {
   void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& input,
                   DenseTensor* output,
@@ -58,7 +58,7 @@ struct ReduceSumForSolvelGrad<CPUContext, T> {
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T>
-struct ReduceSumForSolvelGrad<GPUContext, T> {
+struct ReduceSumForSolveGrad<GPUContext, T> {
   void operator()(const GPUContext& dev_ctx,
                   const DenseTensor& input,
                   DenseTensor* output,
@@ -210,7 +210,7 @@ void SolveGradKernel(const Context& dev_ctx,
         if (dy_help.dims().size() != dy->dims().size()) {
           keep_dim = false;
         }
-        ReduceSumForSolvelGrad<Context, T>()(
+        ReduceSumForSolveGrad<Context, T>()(
             dev_ctx, dy_help, dy, dy_reduce_dims, keep_dim);
       }
       dy->Resize(y.dims());
@@ -257,7 +257,7 @@ void SolveGradKernel(const Context& dev_ctx,
         if (dx_help.dims().size() != dx->dims().size()) {
           keep_dim = false;
         }
-        ReduceSumForSolvelGrad<Context, T>()(
+        ReduceSumForSolveGrad<Context, T>()(
             dev_ctx, dx_help, dx, dx_reduce_dims, keep_dim);
       }
       dx->Resize(x.dims());

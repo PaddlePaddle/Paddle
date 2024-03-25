@@ -14,16 +14,16 @@
 
 #include <gtest/gtest.h>
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/type.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/type.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "test/cpp/pir/tools/test_dialect.h"
 #include "test/cpp/pir/tools/test_op.h"
 
-TEST(shapedtype_test, shapedtype_test) {
+TEST(shape_dtype_test, shape_dtype_test) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   pir::Dialect *test_dialect = ctx->GetOrRegisterDialect<test::TestDialect>();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -51,9 +51,8 @@ TEST(shapedtype_test, shapedtype_test) {
   EXPECT_EQ(
       dense_tensor_type_interface.GetElementType().isa<pir::Float32Type>(),
       true);
-  EXPECT_EQ(dense_tensor_type_interface.GetDyShape(), common::vectorize(dims));
-  EXPECT_EQ(dense_tensor_type_interface.kDynamic,
-            std::numeric_limits<int64_t>::min());
+  EXPECT_EQ(dense_tensor_type_interface.GetShape(), dims);
+  EXPECT_EQ(dense_tensor_type_interface.kDynamic, std::int64_t(-1));
   EXPECT_EQ(dense_tensor_type_interface.GetRank(), 2);
   EXPECT_EQ(dense_tensor_type_interface.IsDynamic(2), false);
   EXPECT_EQ(dense_tensor_type_interface.IsDynamicShape(), false);

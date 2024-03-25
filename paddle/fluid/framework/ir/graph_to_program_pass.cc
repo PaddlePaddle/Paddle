@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <algorithm>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
-#include "paddle/utils/flags.h"
 
 namespace paddle {
 namespace framework {

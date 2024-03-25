@@ -4,7 +4,7 @@ cc_library(
   DEPS phi common)
 cc_library(
   var_helper
-  SRCS var_helper.cc
+  SRCS var_helper.cc type_defs.cc
   DEPS tensor phi common)
 if(WITH_XPU)
   cc_library(
@@ -19,7 +19,6 @@ if(WITH_XPU)
          var_type_traits
          op_kernel_type
          data_transform
-         nan_inf_utils
          phi
          common
          var_helper
@@ -37,7 +36,6 @@ else()
          var_type_traits
          op_kernel_type
          data_transform
-         nan_inf_utils
          phi
          common
          var_helper
@@ -54,7 +52,6 @@ cc_library(
        variable_helper
        op_registry
        var_helper)
-add_subdirectory(jit)
 if(WITH_GPU)
   cc_library(
     layout_autotune
@@ -75,7 +72,6 @@ cc_library(
   SRCS tracer.cc
   DEPS layer
        engine
-       program_desc_tracer
        amp
        denormal
        garbage_collector

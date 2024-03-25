@@ -95,7 +95,7 @@ nvinfer1::DimsExprs GatherNdPluginDynamic::getOutputDimensions(
   int32_t x_dims_size = x_dims.nbDims;
   int32_t index_dims_size = index_dims.nbDims;
 
-  // TODO(wilber): The result dims shoule be Index.shape[:-1] +
+  // TODO(wilber): The result dims should be Index.shape[:-1] +
   // X.shape[Index.shape[-1]:], but the trt DimsExprs is an expression we can't
   // get the actual value. So we only support one scenario: input_dims.size ==
   // index_dims.size.

@@ -597,7 +597,7 @@ struct DotTripleGradFunction {
                   DenseTensor* out_tensor_d_ddy);
 };
 
-// TODO(wuweilong): enable this function when the unittests framewark for multi
+// TODO(wuweilong): enable this function when the unittest framework for multi
 // grad is ok (dtype: complex64 or complex128).
 template <typename DeviceContext, typename T>
 struct DotTripleGradFunction<DeviceContext, T, phi::funcs::EnableComplex<T>> {

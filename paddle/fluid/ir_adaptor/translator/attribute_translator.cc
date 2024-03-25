@@ -70,7 +70,9 @@ class AttributeVisitor {
   virtual pir::Attribute operator()(
       const paddle::experimental::Scalar& scalar) {
     VLOG(10) << "translating scalar";
-    IR_THROW("not support translating paddle::experimental::Scalar");
+    PADDLE_THROW(
+        phi::errors::Unimplemented("not support "
+                                   "translating paddle::experimental::Scalar"));
   }
 
   virtual pir::Attribute operator()(const std::vector<std::string>& strs) {
@@ -187,6 +189,21 @@ class Int64AttributeVisitor : public AttributeVisitor {
   }
 };
 
+class Int32ArrayAttributeVisitor : public AttributeVisitor {
+ public:
+  using AttributeVisitor::AttributeVisitor;
+
+  pir::Attribute operator()(const std::vector<int64_t>& i64s) override {
+    VLOG(10) << "translating vector<int64> size: " << i64s.size();
+    std::vector<pir::Attribute> attrs;
+    attrs.reserve(i64s.size());
+    for (const auto& v : i64s) {
+      attrs.push_back(pir::Int32Attribute::get(ctx, v));
+    }
+    return pir::ArrayAttribute::get(ctx, attrs);
+  }
+};
+
 class IntArrayAttributeVisitor : public AttributeVisitor {
  public:
   using AttributeVisitor::AttributeVisitor;
@@ -240,6 +257,8 @@ AttributeTranslator::AttributeTranslator() {
       new PlaceAttributeVisitor();
   special_visitors["pir::ArrayAttribute<pir::Int64Attribute>"] =
       new Int64ArrayAttributeVisitor();
+  special_visitors["pir::ArrayAttribute<pir::Int32Attribute>"] =
+      new Int32ArrayAttributeVisitor();
   special_visitors["pir::Int64Attribute"] = new Int64AttributeVisitor();
 }
 

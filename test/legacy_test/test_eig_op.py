@@ -329,7 +329,7 @@ class TestEigDyGraph(unittest.TestCase):
         grad_x = eig_backward(real_w, real_v, grad_w, grad_v)
 
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(input_np)
+            x = paddle.to_tensor(input_np)
             x.stop_gradient = False
             w, v = paddle.linalg.eig(x)
             (w.sum() + v.sum()).backward()

@@ -145,7 +145,7 @@ class MultiHeadAttention(nn.Layer):
 
     def _prepare_qkv(self, query, key, value, use_cache=False, cache=None):
         r"""
-        Prapares linear projected queries, keys and values for usage of subsequnt
+        Prepares linear projected queries, keys and values for usage of subsequent
         multiple parallel attention. If `cache` is not None, using cached results
         to reduce redundant calculations.
         """
@@ -209,7 +209,7 @@ class MultiHeadAttention(nn.Layer):
 
     def gen_cache(self, key, value=None, type=Cache):
         """
-        Generates cache for `forward` usage in inference accroding to arguments.
+        Generates cache for `forward` usage in inference according to arguments.
         The generated cache is an instance of `MultiHeadAttention.Cache` or an
         instance of `MultiHeadAttention.StaticCache`.
         """
@@ -375,7 +375,7 @@ class TransformerDecoder(nn.Layer):
 class TransformerDecoderLayer(nn.Layer):
     """
     The transformer decoder layer.
-    It contains multiheadattention and some linear layers.
+    It contains multi-head attention and some linear layers.
     """
 
     def __init__(
@@ -530,7 +530,7 @@ class GPTEmbeddings(nn.Layer):
             seq_length = paddle.cumsum(ones, axis=-1)
             position_ids = seq_length - ones
 
-        input_embedings = self.word_embeddings(input_ids)
+        input_embeddings = self.word_embeddings(input_ids)
 
         if _global_parallel_strategy in ["mp", "dp_mp"]:
             auto.shard_tensor(
@@ -540,7 +540,7 @@ class GPTEmbeddings(nn.Layer):
             )
 
         position_embeddings = self.position_embeddings(position_ids)
-        embeddings = input_embedings + position_embeddings
+        embeddings = input_embeddings + position_embeddings
         embeddings = self.dropout(embeddings)
         return embeddings
 
@@ -574,8 +574,8 @@ class GPTModel(nn.Layer):
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
 
-        self.pipline_mode = topo is not None and topo.pp_info.size > 1
-        if self.pipline_mode:
+        self.pipeline_mode = topo is not None and topo.pp_info.size > 1
+        if self.pipeline_mode:
             self.layer_per_stage = num_hidden_layers // self.topo.pp_info.size
 
         self.embeddings = GPTEmbeddings(

@@ -244,9 +244,18 @@ void InitDistTensorWithTensor(TensorObject* self,
         std::make_shared<DistTensor>(tensor, process_mesh, placements));
     VLOG(4) << "Same place, do ShareDataWith for DistTensor.";
   } else {
-    std::shared_ptr<phi::DenseTensor> tensor =
-        std::static_pointer_cast<phi::DenseTensor>(
-            src.copy_to(place, true).impl());
+    std::shared_ptr<phi::DenseTensor> tensor;
+    if (src.initialized()) {
+      tensor = std::static_pointer_cast<phi::DenseTensor>(
+          src.copy_to(place, true).impl());
+    } else {
+      // lazy init branch. The src tensor is on undefined place.
+      PADDLE_ENFORCE(
+          src.place().GetType() == phi::AllocationType::UNDEFINED,
+          phi::errors::InvalidArgument("Only undefined place is support for "
+                                       "uninitialized input tensor."));
+      tensor = std::static_pointer_cast<phi::DenseTensor>(src.impl());
+    }
     self->tensor.set_impl(
         std::make_shared<DistTensor>(tensor, process_mesh, placements));
     VLOG(4) << "Different place, do TensorCopy for DistTensor.";
@@ -433,7 +442,7 @@ Placements ParsePlacementsArgs(
   Placements placements;
   const std::string& placements_key = "placements";
 
-  if (kw_order_map[placements_key] <= args_num) {
+  if (kw_order_map[placements_key] <= args_num) {  // NOLINT
     placements = CastPyArg2VectorOfPlacement(
         PyTuple_GET_ITEM(args, kw_order_map[placements_key] - 1),
         kw_order_map[placements_key] - 1);

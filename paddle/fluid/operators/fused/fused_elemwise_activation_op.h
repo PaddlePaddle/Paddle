@@ -149,8 +149,8 @@ static void RunBinaryCompoundGradFunctors(
                                               UnaryFunctor,
                                               UnaryGradFunctor,
                                               InPlace>;
-  using BinaryCompoundDIntermedaiteOutFunctor =
-      phi::funcs::BinaryCompoundGradDIntermedaiteOutFunctor<T,
+  using BinaryCompoundDIntermediateOutFunctor =
+      phi::funcs::BinaryCompoundGradDIntermediateOutFunctor<T,
                                                             BinaryGradFunctor,
                                                             UnaryFunctor>;
 
@@ -160,7 +160,7 @@ static void RunBinaryCompoundGradFunctors(
         T,
         BinaryCompoundDxFunctor,
         BinaryCompoundDyFunctor,
-        BinaryCompoundDIntermedaiteOutFunctor,
+        BinaryCompoundDIntermediateOutFunctor,
         true /*UseIntermediateOut*/,
         false /*SameShapeOfIntermediateOutAndOut*/>(
         ctx,
@@ -176,7 +176,7 @@ static void RunBinaryCompoundGradFunctors(
         BinaryCompoundDxFunctor(binary_grad_functor, unary_functor),
         BinaryCompoundDyFunctor(
             binary_grad_functor, unary_functor, unary_grad_functor),
-        BinaryCompoundDIntermedaiteOutFunctor(binary_grad_functor,
+        BinaryCompoundDIntermediateOutFunctor(binary_grad_functor,
                                               unary_functor));
   } else {
     FusedElemwiseAndActGradComputeEx<
@@ -184,7 +184,7 @@ static void RunBinaryCompoundGradFunctors(
         T,
         BinaryCompoundDxFunctor,
         BinaryCompoundDyFunctor,
-        BinaryCompoundDIntermedaiteOutFunctor,
+        BinaryCompoundDIntermediateOutFunctor,
         false /*UseIntermediateOut*/,
         false /*SameShapeOfIntermediateOutAndOut*/>(
         ctx,
@@ -200,7 +200,7 @@ static void RunBinaryCompoundGradFunctors(
         BinaryCompoundDxFunctor(binary_grad_functor, unary_functor),
         BinaryCompoundDyFunctor(
             binary_grad_functor, unary_functor, unary_grad_functor),
-        BinaryCompoundDIntermedaiteOutFunctor(binary_grad_functor,
+        BinaryCompoundDIntermediateOutFunctor(binary_grad_functor,
                                               unary_functor));
   }
 }

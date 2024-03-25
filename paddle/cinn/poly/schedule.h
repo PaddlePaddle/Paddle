@@ -180,7 +180,7 @@ class SchedulerBase {
  * Schedule Kind.
  */
 enum class ScheduleKind {
-  //! Basic strategy, each status is scheduled seperately.
+  //! Basic strategy, each status is scheduled separately.
   Naive = 0,
   //! The strategy with iteration domain considered.
   Poly = 1,

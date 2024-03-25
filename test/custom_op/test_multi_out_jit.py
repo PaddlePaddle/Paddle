@@ -20,6 +20,7 @@ from utils import check_output, extra_cc_args, paddle_includes
 
 import paddle
 from paddle import static
+from paddle.pir_utils import test_with_pir_api
 from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
@@ -69,13 +70,36 @@ def discrete_out_static(use_custom, device, dtype, np_w, np_x, np_y, np_z):
             y.stop_gradient = False
             z.stop_gradient = False
             if use_custom:
+                print(static.default_main_program())
                 out = multi_out_module.discrete_out(w, x, y, z)
+                print(static.default_main_program())
             else:
                 out = w * 1 + x * 2 + y * 3 + z * 4
             static.append_backward(out)
-
+            print(static.default_main_program())
             exe = static.Executor()
             exe.run(static.default_startup_program())
+
+            if paddle.framework.in_pir_mode():
+                ops = static.default_main_program().global_block().ops
+                if use_custom:
+                    fetch_list = [
+                        out,
+                        ops[-1].result(0),  # w_grad
+                        ops[-1].result(1),
+                    ]  # y_grad
+                else:
+                    fetch_list = [
+                        out,
+                        ops[-2].result(0),  # w_grad
+                        ops[-3].result(0),
+                    ]  # y_grad
+            else:
+                fetch_list = [
+                    out.name,
+                    w.name + "@GRAD",
+                    y.name + "@GRAD",
+                ]
 
             out_v, w_grad_v, y_grad_v = exe.run(
                 static.default_main_program(),
@@ -85,11 +109,7 @@ def discrete_out_static(use_custom, device, dtype, np_w, np_x, np_y, np_z):
                     "y": np_y.astype(dtype),
                     "z": np_z.astype(dtype),
                 },
-                fetch_list=[
-                    out.name,
-                    w.name + "@GRAD",
-                    y.name + "@GRAD",
-                ],
+                fetch_list=fetch_list,
             )
     paddle.disable_static()
     return out_v, w_grad_v, y_grad_v
@@ -138,6 +158,7 @@ class TestMultiOutputDtypes(unittest.TestCase):
         self.assertTrue('int32' in str(one_int32.dtype))
         check_output(one_int32, np.ones([4, 8]).astype('int32'), "one_int32")
 
+    @test_with_pir_api
     def test_multi_out_static(self):
         paddle.enable_static()
         for device in self.devices:
@@ -157,6 +178,7 @@ class TestMultiOutputDtypes(unittest.TestCase):
                 self.assertTrue(len(outs) == 3)
                 self.check_multi_outputs(outs, True)
 
+    @test_with_pir_api
     def test_discrete_out_static(self):
         for device in self.devices:
             for dtype in self.dtypes:

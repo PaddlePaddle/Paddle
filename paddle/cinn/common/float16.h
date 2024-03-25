@@ -195,7 +195,7 @@ struct CINN_ALIGN(2) float16 {
     return *this;
   }
 
-// Conversion opertors
+// Conversion operators
 #ifdef CINN_CUDA_FP16
   __host__ __device__ inline half to_half() const {
 #if CUDA_VERSION >= 9000

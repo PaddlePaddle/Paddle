@@ -23,13 +23,13 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/cublasLt.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_helper.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/memory_utils.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 
-PHI_DECLARE_int64(cublaslt_exhaustive_search_times);
+COMMON_DECLARE_int64(cublaslt_exhaustive_search_times);
 #endif
 
 namespace phi {
@@ -426,7 +426,7 @@ struct MatmulGradDescriptor : MatmulDescriptor {
     this->SetFusedEpilogueOpDescriptor(
         planner, trans_x, trans_y, TransX ? M : K);
 
-    // Create operation desciriptor; see cublasLtMatmulDescAttributes_t for
+    // Create operation descriptor; see cublasLtMatmulDescAttributes_t for
     // details about defaults; just need to set the transforms for A and B
     this->CreateMatrixLayout(&x_desc, mat_type, N, M, true);
     if (grad_for_dx) {
@@ -557,7 +557,7 @@ struct CublasLtBase {
                                                 &returned_results));
     PADDLE_ENFORCE_GT(returned_results,
                       0,
-                      phi::errors::Unavailable("No GEMM algorithm avaliable."));
+                      phi::errors::Unavailable("No GEMM algorithm available."));
     int best_algo_idx = -1;
     if (returned_results == 1 || FLAGS_cublaslt_exhaustive_search_times <= 0) {
       best_algo_idx = 0;
@@ -748,7 +748,7 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
                                                 &returned_results));
     PADDLE_ENFORCE_GT(returned_results,
                       0,
-                      phi::errors::Unavailable("No GEMM algorithm avaliable."));
+                      phi::errors::Unavailable("No GEMM algorithm available."));
     int best_algo_idx = -1;
     if (returned_results == 1 || FLAGS_cublaslt_exhaustive_search_times <= 0) {
       best_algo_idx = 0;
@@ -927,9 +927,9 @@ struct DescriptorSetter {
       sub_key = planner->GenSubKey();
     }
 
-    auto& mamtul_cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
-    if (mamtul_cache.FindSubKey(sub_key)) {
-      desc = *(reinterpret_cast<DescT*>(mamtul_cache.GetSubKey(sub_key)));
+    auto& matmul_cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
+    if (matmul_cache.FindSubKey(sub_key)) {
+      desc = *(reinterpret_cast<DescT*>(matmul_cache.GetSubKey(sub_key)));
       desc.template SetFusedEpiloguePtr<DYT>(planner);
       VLOG(7) << desc.GetDescResultString("[Heap CublasltDescriptor] ");
     } else {

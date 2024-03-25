@@ -87,7 +87,7 @@ def monkey_patch_math_tensor():
                 >>> print("new tensor's dtype is: {}".format(new_tensor.dtype))
                 new tensor's dtype is: paddle.float32
         """
-        if not isinstance(dtype, core.VarDesc.VarType):
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
         return _C_ops.cast(self, dtype)
 
@@ -167,9 +167,7 @@ def monkey_patch_math_tensor():
     def _T_(var):
         if len(var.shape) == 1:
             return var
-        perm = []
-        for i in range(len(var.shape)):
-            perm.insert(0, i)
+        perm = list(reversed(range(len(var.shape))))
         out = _C_ops.transpose(var, perm)
         return out
 

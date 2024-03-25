@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/program.h"
 
 namespace paddle {
 namespace test {

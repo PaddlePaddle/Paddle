@@ -15,8 +15,8 @@
 #include "paddle/fluid/distributed/ps/table/ctr_double_accessor.h"
 
 #include "glog/logging.h"
-#include "paddle/fluid/string/string_helper.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
 namespace distributed {

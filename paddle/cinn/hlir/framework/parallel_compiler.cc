@@ -50,13 +50,13 @@ namespace framework {
  */
 #define CINN_COMPILE_STEP_END(err_msg_level, idx)                              \
   }                                                                            \
-  catch (const CompileErrorHandler& err_hanlder) {                             \
-    std::string err_msg = err_hanlder.FormatErrorMessage(err_msg_level);       \
+  catch (const CompileErrorHandler& err_handler) {                             \
+    std::string err_msg = err_handler.FormatErrorMessage(err_msg_level);       \
     err_msg =                                                                  \
         "Group Idx: " + std::to_string(idx) + ",  Compile Error.\n" + err_msg; \
     LOG(WARNING) << "\n" << err_msg;                                           \
     result_.SetMessage(idx, err_msg);                                          \
-    result_.SetStatus(idx, err_hanlder.Status());                              \
+    result_.SetStatus(idx, err_handler.Status());                              \
     continue;                                                                  \
   }
 

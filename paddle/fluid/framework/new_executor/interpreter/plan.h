@@ -22,7 +22,7 @@
 
 #include "paddle/common/macros.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/program.h"
 
 namespace paddle {
 namespace framework {

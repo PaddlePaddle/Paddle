@@ -138,7 +138,7 @@ bool GraphGroupFuseHelper<FusePassCtxT>::AllOutputsSameSize(
 template <typename FusePassCtxT>
 bool GraphGroupFuseHelper<FusePassCtxT>::HorizontalElementwiseFuseReduce(
     const OpGroupPtr& src, const OpGroupPtr& dst) const {
-  return honrizontal_elementwise_fuse_reduce(
+  return horizontal_elementwise_fuse_reduce(
       &ctx_->graph_group_fusion_helper(), src.GetGroup(), dst.GetGroup());
 }
 

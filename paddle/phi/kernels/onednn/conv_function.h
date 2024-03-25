@@ -60,6 +60,10 @@ static dnnl::memory::data_type GetDstType(
           NAME, ::paddle::DataType::FLOAT32, float, __VA_ARGS__)          \
       PD_PRIVATE_CASE_TYPE(                                               \
           NAME, ::paddle::DataType::INT8, int8_t, __VA_ARGS__)            \
+      PD_PRIVATE_CASE_TYPE(NAME,                                          \
+                           ::paddle::DataType::BFLOAT16,                  \
+                           ::phi::dtype::bfloat16,                        \
+                           __VA_ARGS__)                                   \
       default:                                                            \
         PD_THROW("function " #NAME " is not implemented for data type `", \
                  __dtype__,                                               \

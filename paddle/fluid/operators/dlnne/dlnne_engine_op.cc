@@ -147,9 +147,9 @@ class DlnneEngineOpMaker : public framework::OpProtoAndCheckerMaker {
                          "'01', '23', '0123' ");
     // when use_calib_mode is true and enable_int8 is true,
     // the calibration_runtime start,
-    // when calibration_mode is true, the calibration_runtiime
+    // when calibration_mode is true, the calibration_runtime
     // go to the first stage of calibration, and when finish
-    // fisrt stage, the calibration_mode is set false, the
+    // first stage, the calibration_mode is set false, the
     // calibration_runtime go to the second stage
     AddAttr<bool>("use_calib_mode", "dlnne use calib mode");
     AddAttr<bool>("enable_int8", "dlnne enable int8");

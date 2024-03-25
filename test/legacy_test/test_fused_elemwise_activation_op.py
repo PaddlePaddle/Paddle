@@ -96,7 +96,7 @@ def create_test_class(
             else:
                 self.check_grad(['X', 'Y'], ['Out'], check_dygraph=False)
 
-        def test_check_grad_ingore_x(self):
+        def test_check_grad_ignore_x(self):
             if not grad_chek:
                 return
             if self.attrs["save_intermediate_out"]:
@@ -116,7 +116,7 @@ def create_test_class(
                     check_dygraph=False,
                 )
 
-        def test_check_grad_ingore_y(self):
+        def test_check_grad_ignore_y(self):
             if not grad_chek:
                 return
             if self.attrs["save_intermediate_out"]:

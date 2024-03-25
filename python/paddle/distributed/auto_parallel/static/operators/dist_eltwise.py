@@ -49,19 +49,19 @@ class DistributedElementwise(DistributedOperatorImplContainer):
         op_desc = dist_op.serial_op.desc
         assert (
             len(op_desc.input_arg_names()) >= 1
-        ), "elementwsie op [{}] has [{}] inputs".format(
+        ), "elementwise op [{}] has [{}] inputs".format(
             op_desc.type, len(op_desc.input_arg_names())
         )
         input_arg_names = op_desc.input_arg_names()
         assert (
             len(op_desc.output_arg_names()) == 1
-        ), "elementwsie op [{}] has [{}] outputs".format(
+        ), "elementwise op [{}] has [{}] outputs".format(
             str(dist_op.serial_op), len(op_desc.output_arg_names())
         )
         output_arg_name = op_desc.output_arg_names()[0]
         num_inputs = len(input_arg_names)
 
-        # TODO (zhangyichen) replace dist tensor spece by dist tensor in future.
+        # TODO (zhangyichen) replace dist tensor specs by dist tensor in future.
         input_specs = []
         for i in range(num_inputs):
             input_specs.append(
@@ -77,7 +77,7 @@ class DistributedElementwise(DistributedOperatorImplContainer):
         bw_results = rule.infer_backward(*input_specs, output_spec)
 
         # step3: update dist_attr
-        # tensor order following order in PHI defition
+        # tensor order following order in PHI definition
         changed = update_op_dims_mapping(
             dist_op, input_arg_names, [output_arg_name], fw_results, bw_results
         )

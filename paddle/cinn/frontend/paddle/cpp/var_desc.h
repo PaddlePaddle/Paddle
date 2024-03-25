@@ -19,7 +19,7 @@ namespace cinn::frontend::paddle::cpp {
 
 /*
  * The cpp::VarDesc is the internal representation for Op. All the internal
- * imprementation should use it, not the pb::VarDesc.
+ * implementation should use it, not the pb::VarDesc.
  */
 class VarDesc : public VarDescAPI {
  public:

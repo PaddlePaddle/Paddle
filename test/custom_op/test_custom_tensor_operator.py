@@ -25,6 +25,7 @@ from utils import (
 
 import paddle
 from paddle import static
+from paddle.pir_utils import test_with_pir_api
 from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
@@ -34,6 +35,14 @@ file = f'{get_build_directory()}\\custom_tensor_operator\\custom_tensor_operator
 if os.name == 'nt' and os.path.isfile(file):
     cmd = f'del {file}'
     run_cmd(cmd, True)
+
+custom_module = load(
+    name='custom_tensor_operator',
+    sources=['custom_tensor_operator.cc'],
+    extra_include_paths=paddle_includes,  # add for Coverage CI
+    extra_cxx_cflags=extra_cc_args,  # test for cc flags
+    verbose=True,
+)
 
 
 def test_custom_add_dynamic(func, device, dtype, np_x, use_func=True):
@@ -74,7 +83,7 @@ def test_custom_add_static(func, device, dtype, np_x, use_func=True):
             out_v = exe.run(
                 static.default_main_program(),
                 feed={'X': np_x},
-                fetch_list=[out.name],
+                fetch_list=[out],
             )
 
     paddle.disable_static()
@@ -119,7 +128,7 @@ def test_custom_subtract_static(func, device, dtype, np_x, use_func=True):
             out_v = exe.run(
                 static.default_main_program(),
                 feed={'X': np_x},
-                fetch_list=[out.name],
+                fetch_list=[out],
             )
 
     paddle.disable_static()
@@ -164,7 +173,7 @@ def test_custom_multiply_static(func, device, dtype, np_x, use_func=True):
             out_v = exe.run(
                 static.default_main_program(),
                 feed={'X': np_x},
-                fetch_list=[out.name],
+                fetch_list=[out],
             )
 
     paddle.disable_static()
@@ -208,7 +217,7 @@ def test_custom_divide_static(func, device, dtype, np_x, use_func=True):
             out_v = exe.run(
                 static.default_main_program(),
                 feed={'X': np_x},
-                fetch_list=[out.name],
+                fetch_list=[out],
             )
 
     paddle.disable_static()
@@ -217,40 +226,49 @@ def test_custom_divide_static(func, device, dtype, np_x, use_func=True):
 
 class TestJITLoad(unittest.TestCase):
     def setUp(self):
-        self.custom_module = load(
-            name='custom_tensor_operator',
-            sources=['custom_tensor_operator.cc'],
-            extra_include_paths=paddle_includes,  # add for Coverage CI
-            extra_cxx_cflags=extra_cc_args,  # test for cc flags
-            verbose=True,
-        )
+        self.custom_module = custom_module
         self.devices = ['cpu']
         self.dtypes = ['float32', 'float64']
         if paddle.is_compiled_with_cuda():
             self.devices.append('gpu')
             self.dtypes.append('float16')
 
-    def test_all(self):
+    def test_dynamic(self):
         self.add = self.custom_module.custom_add
         self.subtract = self.custom_module.custom_subtract
         self.multiply = self.custom_module.custom_multiply
         self.divide = self.custom_module.custom_divide
-        self._test_static()
         self._test_dynamic()
         self.add = self.custom_module.custom_scalar_add
         self.subtract = self.custom_module.custom_scalar_subtract
         self.multiply = self.custom_module.custom_scalar_multiply
         self.divide = self.custom_module.custom_scalar_divide
-        self._test_static()
         self._test_dynamic()
         self.add = self.custom_module.custom_left_scalar_add
         self.subtract = self.custom_module.custom_left_scalar_subtract
         self.multiply = self.custom_module.custom_left_scalar_multiply
         self.divide = self.custom_module.custom_left_scalar_divide
-        self._test_static()
         self._test_dynamic()
         self._test_logical_operants()
         self._test_compare_operants()
+
+    @test_with_pir_api
+    def test_static(self):
+        self.add = self.custom_module.custom_add
+        self.subtract = self.custom_module.custom_subtract
+        self.multiply = self.custom_module.custom_multiply
+        self.divide = self.custom_module.custom_divide
+        self._test_static()
+        self.add = self.custom_module.custom_scalar_add
+        self.subtract = self.custom_module.custom_scalar_subtract
+        self.multiply = self.custom_module.custom_scalar_multiply
+        self.divide = self.custom_module.custom_scalar_divide
+        self._test_static()
+        self.add = self.custom_module.custom_left_scalar_add
+        self.subtract = self.custom_module.custom_left_scalar_subtract
+        self.multiply = self.custom_module.custom_left_scalar_multiply
+        self.divide = self.custom_module.custom_left_scalar_divide
+        self._test_static()
 
     def _test_static(self):
         for device in self.devices:

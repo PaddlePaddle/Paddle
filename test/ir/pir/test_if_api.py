@@ -68,7 +68,7 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
         self.assertEqual(last_op.name(), "pd_op.if")
         self.assertEqual(len(out), 2)
 
-        # check Operaion::as_if_op interface
+        # check Operation::as_if_op interface
         if_op = last_op.as_if_op()
         true_block = if_op.true_block()
         self.assertEqual(len(true_block), 3)
@@ -77,7 +77,7 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
         build_pipe_for_block(true_block)
         self.assertEqual(len(true_block), 4)
 
-        # check Operaion::blocks interface
+        # check Operation::blocks interface
         block_list = []
         for block in out[0].get_defining_op().blocks():
             block_list.append(block)
@@ -94,7 +94,7 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
             out_grad = paddle.full(shape=[6, 1], dtype='float32', fill_value=3)
             # check vjp interface for if_op
             if_input = [[input] for input in get_used_external_value(if_op)]
-            if_input_stop_graditents = [[True], [False], [False], [True]]
+            if_input_stop_gradients = [[False], [False], [True]]
             if_output = [if_op.results()]
             if_output_grad = [[out_grad]]
             self.assertEqual(has_vjp(if_op), True)
@@ -103,10 +103,10 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
                 if_input,
                 if_output,
                 if_output_grad,
-                if_input_stop_graditents,
+                if_input_stop_gradients,
             )
 
-            self.assertEqual(grad_outs[0][0], None)
+            self.assertEqual(len(grad_outs), len(if_input) - 1)
 
             if_grad_op = grad_outs[1][0].get_defining_op()
             self.assertEqual(if_grad_op.name(), "pd_op.if")

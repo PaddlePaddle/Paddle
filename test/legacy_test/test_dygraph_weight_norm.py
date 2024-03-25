@@ -132,7 +132,7 @@ class TestDygraphWeightNorm(unittest.TestCase):
         wn = weight_norm(linear, dim=self.dim)
         outputs = []
         for name, data in self.data.items():
-            output = linear(base.dygraph.to_variable(data))
+            output = linear(paddle.to_tensor(data))
             outputs.append(output.numpy())
         after_weight = linear.weight
         self.actual_outputs = [linear.weight_g.numpy(), linear.weight_v.numpy()]

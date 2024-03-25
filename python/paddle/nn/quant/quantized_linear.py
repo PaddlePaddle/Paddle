@@ -301,3 +301,42 @@ def llm_int8_linear(
             attrs=attrs,
         )
         return out
+
+
+def apply_per_channel_scale(x, scales):
+    """
+    Apply pre-quant per channel scale on activations
+
+    Args:
+        x (Tensor): Input tensor representing the activations, the data type can be float16 or bfloat16.
+        scales(Tensor): Per-channel scale factors for pre-quantization. Data type should be compatible with x.
+
+    Returns:
+        out (Tensor): The Tensor which is the pre-quant results, the data type is compatible with x.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +SKIP('No testing required')
+            >>> import paddle
+            >>> from paddle.nn.quant import apply_per_channel_scale
+
+            >>> paddle.seed(2023)
+            >>> x = paddle.rand(shape=[64, 32], dtype=paddle.float16)
+            >>> scales = paddle.rand(shape=[32], dtype=paddle.float16)
+            >>> out = apply_per_channel_scale(x, scales)
+    """
+
+    if in_dynamic_mode():
+        return _C_ops.apply_per_channel_scale(x, scales)
+    else:
+        type = "apply_per_channel_scale"
+        helper = LayerHelper(type, **locals())
+        out = helper.create_variable_for_type_inference(x.dtype)
+
+        helper.append_op(
+            type=type,
+            inputs={"x": [x], "scales": [scales]},
+            outputs={"out": out},
+        )
+        return out

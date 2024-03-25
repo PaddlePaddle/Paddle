@@ -83,9 +83,10 @@ inline cinn::common::Type CppVarType2CommonType(
     // so here need convert back to unkown type.
     SET_TYPE_CASE_ITEM(RAW, Type)
     default:
-      LOG(FATAL) << "Unknown VarDesc type: "
-                 << var_type_names_[static_cast<int>(type)] << "("
-                 << static_cast<int>(type) << ")";
+      std::stringstream ss;
+      ss << "Unknown VarDesc type: " << var_type_names_[static_cast<int>(type)]
+         << "(" << static_cast<int>(type) << ")";
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 #undef SET_DATA_TYPE_CASE_ITEM
   return cinn::common::Type();

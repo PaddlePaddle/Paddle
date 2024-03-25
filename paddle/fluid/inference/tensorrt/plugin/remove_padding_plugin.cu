@@ -141,7 +141,7 @@ int RemovePaddingPlugin::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
       input0_desc.dims.d[0],
       input0_desc.dims.d[1],
       vector_length /
-          num_threads);  //  batchs, max sequnce length, input0.dims.d[2]/***
+          num_threads);  //  batches, max sequnce length, input0.dims.d[2]/***
 
   RemovePaddingKernel<<<num_blocks, num_threads, 0, stream>>>(
       input0, input1, output);

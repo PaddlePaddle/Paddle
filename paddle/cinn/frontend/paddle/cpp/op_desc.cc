@@ -41,7 +41,7 @@ inline std::string AttrTypeToString(
     EXPAND_SWITCH_CASE(SCALARS)
 #undef EXPAND_SWITCH_CASE
   }
-  return "Invlid AttrType";
+  return "Invalid AttrType";
 }
 
 #define SET_ATTR_IMPL(T, repr__)                                 \
@@ -76,16 +76,16 @@ FindAttr(const OpDesc& desc, const std::string& name) {
   return std::make_pair(it, attr_it);
 }
 
-#define GET_IMPL_ONE(T, repr__)                                              \
-  template <>                                                                \
-  T OpDesc::GetAttr<T>(const std::string& name) const {                      \
-    auto pair = FindAttr(*this, name);                                       \
-    CHECK(pair.second->second == AttrType::repr__)                           \
-        << "The op \"" << Type() << "\"'s attrbute \"" << pair.second->first \
-        << "\"'s type doesn't match the target type! Try get \"" << #repr__  \
-        << "\", but real \"" << AttrTypeToString(pair.second->second)        \
-        << "\". Please check.";                                              \
-    return absl::any_cast<T>(pair.first->second);                            \
+#define GET_IMPL_ONE(T, repr__)                                               \
+  template <>                                                                 \
+  T OpDesc::GetAttr<T>(const std::string& name) const {                       \
+    auto pair = FindAttr(*this, name);                                        \
+    CHECK(pair.second->second == AttrType::repr__)                            \
+        << "The op \"" << Type() << "\"'s attribute \"" << pair.second->first \
+        << "\"'s type doesn't match the target type! Try get \"" << #repr__   \
+        << "\", but real \"" << AttrTypeToString(pair.second->second)         \
+        << "\". Please check.";                                               \
+    return absl::any_cast<T>(pair.first->second);                             \
   }
 
 GET_IMPL_ONE(int32_t, INT);

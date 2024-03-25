@@ -74,7 +74,7 @@ static void GetInfoFromTheTmpOp(
 
   const std::string suffix = "_" + key_suffix + "_" + flag;
   for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+       ir::TopologyVariantSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp() || op_node->Op()->Type() != "save") continue;
 
     auto* op_desc = op_node->Op();
@@ -106,7 +106,7 @@ static void GetInfoFromTheTmpOp(ir::Graph* graph,
   const std::string suffix = "_" + key_suffix + "_" + flag;
   const std::string suffix_is_unsigned = suffix + unsigned_flag;
   for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+       ir::TopologyVariantSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp() || op_node->Op()->Type() != "save") continue;
 
     auto* op_desc = op_node->Op();
@@ -147,6 +147,7 @@ static void GetInfoFromTheTmpOp(ir::Graph* graph,
 inline void ConvertToFusedOp(OpDesc* op) {
   const std::map<std::string, std::string> fused_ops = {
       {"conv2d", "fused_conv2d"},
+      {"conv2d_transpose", "conv2d_transpose_bias"},
       {"depthwise_conv2d", "fused_conv2d"},
       {"elementwise_add", "fused_elementwise_add"},
       {"elementwise_sub", "fused_elementwise_sub"},

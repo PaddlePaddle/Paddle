@@ -24,6 +24,7 @@ from paddle import enable_static
 class TestOneDNNElementwiseAddOp(TestElementwiseAddOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
+        self.check_pir_onednn = True
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -53,7 +54,7 @@ class TestOneDNNElementwiseAddOp4(TestOneDNNElementwiseAddOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         pass
 
 
@@ -94,28 +95,28 @@ class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestOneDNNElementwiseAddOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         pass
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         pass
 
 
-class TestOneDNNlementwiseAddOpZeroDim(TestOneDNNElementwiseAddOp):
+class TestOneDNNElementwiseAddOpZeroDim(TestOneDNNElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.random((100,)).astype(self.dtype)
         self.y = np.array(3.0).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
 
-class TestOneDNNlementwiseAddOpZeroDim2(TestOneDNNElementwiseAddOp):
+class TestOneDNNElementwiseAddOpZeroDim2(TestOneDNNElementwiseAddOp):
     def init_input_output(self):
         self.x = np.array(3.0).astype(self.dtype)
         self.y = np.random.random((100,)).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
 
-class TestOneDNNlementwiseAddOpZeroDim3(TestOneDNNElementwiseAddOp):
+class TestOneDNNElementwiseAddOpZeroDim3(TestOneDNNElementwiseAddOp):
     def init_input_output(self):
         self.x = np.array(3.0).astype(self.dtype)
         self.y = np.array(3.0).astype(self.dtype)
@@ -126,12 +127,13 @@ class TestOneDNNlementwiseAddOpZeroDim3(TestOneDNNElementwiseAddOp):
 
 
 @skip_check_grad_ci(
-    reason="oneDNN's int8 elementwise_ops don't implemend grad kernel."
+    reason="oneDNN's int8 elementwise_ops don't implement grad kernel."
 )
 class TestInt8(TestElementwiseAddOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self._cpu_only = True
+        self.check_pir_onednn = True
 
     def init_dtype(self):
         self.dtype = np.int8
@@ -149,15 +151,18 @@ class TestInt8(TestElementwiseAddOp):
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.init_scales()
-        self.check_output(check_dygraph=(not self.use_mkldnn))
+        self.check_output(
+            check_dygraph=(not self.use_mkldnn),
+            check_pir_onednn=self.check_pir_onednn,
+        )
 
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         pass
 
 

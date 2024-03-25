@@ -46,9 +46,8 @@ void NonZeroKernel(const Context& dev_ctx,
       std::strcmp(std::getenv("XPUSIM_SKIP_RUN"), "1") == 0) {
     VLOG(3) << "WARNING: In the simulator mode, the variable true_num_cpu "
                "stores an uninitialized value. To avoid allocating a memory of "
-               "random size, we limit the value of true_num_cpu to the range 0 "
-               "<= true_num_cpu < numel";
-    true_num_cpu = std::min(std::max(true_num_cpu, 0), static_cast<int>(numel));
+               "random size, we assign numel to true_num_cpu";
+    true_num_cpu = numel;
   }
 
   out->Resize(common::make_ddim({static_cast<int64_t>(true_num_cpu), rank}));

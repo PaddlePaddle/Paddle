@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 """Definition of Server and Worker."""
 
-# NOTE: reduce removed in fuctools in python3
+# NOTE: reduce removed in functools in python3
 from functools import reduce
 
 from . import ps_pb2 as pslib
@@ -133,10 +133,10 @@ class DownpourServer(Server):
             if key not in support_sparse_key_list:
                 raise ValueError("strategy key '%s' not support" % (key))
 
-        support_table_calss = ['DownpourSparseTable', 'DownpourSparseSSDTable']
+        support_table_class = ['DownpourSparseTable', 'DownpourSparseSSDTable']
         if strategy.get('sparse_table_class') is not None:
             table_class = strategy.get('sparse_table_class')
-            if table_class not in support_table_calss:
+            if table_class not in support_table_class:
                 raise ValueError(
                     "support sparse_table_class: [ 'DownpourSparseTable', 'DownpourSparseSSDTable'], \
                         but actual %s"

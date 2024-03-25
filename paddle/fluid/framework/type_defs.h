@@ -26,8 +26,8 @@ limitations under the License. */
 
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/infermeta_utils.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/value.h"
 #include "paddle/utils/blank.h"
 #include "paddle/utils/small_vector.h"
 #include "paddle/utils/variant.h"

@@ -102,6 +102,8 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"scale_y", ExtraAttrProperty::ONEDNN},
         {"scale_out", ExtraAttrProperty::ONEDNN},
         {"Scale_in", ExtraAttrProperty::ONEDNN},
+        {"Scale_data", ExtraAttrProperty::ONEDNN},
+        {"Shift_data", ExtraAttrProperty::ONEDNN},
         {"Scale_in_eltwise", ExtraAttrProperty::ONEDNN},
         {"Scale_x", ExtraAttrProperty::ONEDNN},
         {"Scale_y", ExtraAttrProperty::ONEDNN},

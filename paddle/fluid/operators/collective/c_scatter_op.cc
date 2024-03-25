@@ -68,7 +68,7 @@ class CScatterOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0);
     AddAttr<int>("root", "(int default 0) root id for broadcasting.")
         .SetDefault(0);
-    AddAttr<int>("nranks", "(int default 1) number of ranks.").SetDefault(0);
+    AddAttr<int>("nranks", "(int default 0) number of ranks.").SetDefault(0);
     AddAttr<bool>(
         "use_calc_stream",
         "(bool default false) eject CUDA operations to calculation stream.")

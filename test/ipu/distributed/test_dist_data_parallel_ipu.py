@@ -56,8 +56,7 @@ class TestBase(IPUOpTest):
         scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
-        main_prog.random_seed = seed
-        startup_prog.random_seed = seed
+        paddle.seed(seed)
 
         bs = self.ipu_bs if self.enable_ipu else self.cpu_bs
         data = np.random.rand(1, 3, 10, 10).astype(np.float32)

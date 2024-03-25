@@ -44,7 +44,7 @@ class TransposeOpConverter : public OpConverter {
     layer->setFirstTranspose(perm);
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "transpose", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "transpose", {output_name}, test_mode);
   }
 };
 

@@ -25,7 +25,7 @@ class TestImperativeContainerSequential(unittest.TestCase):
     def test_sequential(self):
         data = np.random.uniform(-1, 1, [5, 10]).astype('float32')
         with base.dygraph.guard():
-            data = base.dygraph.to_variable(data)
+            data = paddle.to_tensor(data)
             model1 = paddle.nn.Sequential(Linear(10, 1), Linear(1, 2))
             res1 = model1(data)
             self.assertListEqual(res1.shape, [5, 2])
@@ -59,7 +59,7 @@ class TestImperativeContainerSequential(unittest.TestCase):
     def test_sequential_list_params(self):
         data = np.random.uniform(-1, 1, [5, 10]).astype('float32')
         with base.dygraph.guard():
-            data = base.dygraph.to_variable(data)
+            data = paddle.to_tensor(data)
             model1 = paddle.nn.Sequential(Linear(10, 1), Linear(1, 2))
             res1 = model1(data)
             self.assertListEqual(res1.shape, [5, 2])

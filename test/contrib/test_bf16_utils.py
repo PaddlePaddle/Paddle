@@ -158,7 +158,7 @@ class AMPTest2(unittest.TestCase):
 
         var1 = block.create_var(name="X", shape=[3], dtype='float32')
         var2 = block.create_var(name="Y", shape=[3], dtype='float32')
-        inititializer_op = startup_block._prepend_op(
+        initializer_op = startup_block._prepend_op(
             type="fill_constant",
             outputs={"Out": var1},
             attrs={"shape": var1.shape, "dtype": var1.dtype, "value": 1.0},
@@ -168,11 +168,11 @@ class AMPTest2(unittest.TestCase):
             type="abs", inputs={"X": [var1]}, outputs={"Out": [var2]}
         )
         result = amp.bf16.amp_utils.find_true_post_op(
-            block.ops, inititializer_op, "X", search_all=False
+            block.ops, initializer_op, "X", search_all=False
         )
         assert len(result) == 0
         result = amp.bf16.amp_utils.find_true_post_op(
-            block.ops, inititializer_op, "X", search_all=True
+            block.ops, initializer_op, "X", search_all=True
         )
         assert result == [op1]
 

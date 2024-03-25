@@ -162,8 +162,7 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
         imperative_qat = self.imperative_qat
         seed = 1
         np.random.seed(seed)
-        paddle.static.default_main_program().random_seed = seed
-        paddle.static.default_startup_program().random_seed = seed
+        paddle.seed(seed)
         lenet = ImperativeLenet()
         fixed_state = {}
         param_init_map = {}

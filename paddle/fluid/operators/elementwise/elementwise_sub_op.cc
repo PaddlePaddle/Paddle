@@ -50,7 +50,7 @@ class ElementwiseSubOpMaker : public ElementwiseOpMaker {
   }
 
   std::string GetOpFunctionality() const override {
-    return "Substract two tensors element-wise";
+    return "Subtract two tensors element-wise";
   }
 };
 
@@ -76,7 +76,7 @@ class ElementwiseSubCompositeGradOpMaker
         phi::errors::InvalidArgument(
             "We only support axis = -1 in composite sub_grad but we got: ",
             axis));
-    VLOG(6) << "Runing sub_grad composite func";
+    VLOG(6) << "Running sub_grad composite func";
     prim::subtract_grad<prim::DescTensor>(x, y, out_grad, axis, dx_ptr, dy_ptr);
     this->RecoverOutputName(dx, dx_name);
     this->RecoverOutputName(dy, dy_name);
@@ -131,7 +131,7 @@ class ElementwiseSubCompositeDoubleGradOpMaker
     paddle::Tensor* grad_out_grad = this->GetOutputPtr(&grad_out_grad_t);
     std::string grad_out_grad_name = this->GetOutputName(grad_out_grad_t);
 
-    VLOG(6) << "Runing subtract_double_grad composite func";
+    VLOG(6) << "Running subtract_double_grad composite func";
     prim::subtract_double_grad<prim::DescTensor>(
         y, out_grad, ddx, ddy, axis, grad_out_grad);
     this->RecoverOutputName(grad_out_grad_t, grad_out_grad_name);

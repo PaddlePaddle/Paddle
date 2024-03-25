@@ -33,5 +33,7 @@ void FlattenGradStridedKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    flatten_grad, STRIDED, phi::FlattenGradStridedKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(flatten_grad,
+                                         STRIDED,
+                                         phi::FlattenGradStridedKernel) {}

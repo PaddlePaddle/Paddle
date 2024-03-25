@@ -143,7 +143,7 @@ class OpGroup {
   // Example: Get the all Reduction op_nodes in the group.
   //   OpGroup group = ...;
   //   std::set<cinn::dialect::ir::OpNode> reduce_ op_set;
-  //   // The lambda funtion of VisitOpNode to get reduction op_nodes.
+  //   // The lambda function of VisitOpNode to get reduction op_nodes.
   //   auto get_reduce_op = [&reduce_op_set](const cinn::dialect::ir::OpNode&
   //   op){
   //     if (op.kind() == OpPatternKind::kReduction) {

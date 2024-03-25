@@ -17,10 +17,10 @@
 #include <thread>
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/utils/flags.h"
 
-PD_DECLARE_int32(dist_threadpool_size);
+COMMON_DECLARE_int32(dist_threadpool_size);
 PD_DEFINE_int32(io_threadpool_size,
                 100,
                 "number of threads used for doing IO, default 100");
@@ -54,7 +54,7 @@ void ThreadPool::Init() {
 ThreadPool::ThreadPool(int num_threads) : running_(true) {
   threads_.resize(num_threads);
   for (auto& thread : threads_) {
-    // TODO(Yancey1989): binding the thread on the specify CPU numberw
+    // TODO(Yancey1989): binding the thread on the specify CPU number
     thread = std::make_unique<std::thread>([this] { ThreadPool::TaskLoop(); });
   }
 }

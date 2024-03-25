@@ -75,6 +75,72 @@ def test_reorder_overlapped():
     assert_llir_equal(reorder_overlapped, reorder_overlapped_gt)
 
 
+def test_reorder_elementwise_dynamic():
+    @to_cinn_llir
+    def reorder_elementwise(
+        X: DataArray((-1, 64, 64, 64)),
+        Y: DataArray((-1, 64, 64, 64)),
+        N: ir.Var(),
+    ):
+        for i in range(N):
+            for j in range(64):
+                for k in range(64):
+                    for l in range(8):
+                        with ir.ScheduleBlockContext("Y") as Y_block:
+                            vi, vj, vk, vl = ir.AxisMap(
+                                "SSSS", [i, j, k, 8 * l]
+                            )
+                            Y[vi, vj, vk, vl] = X[vi, vj, vk, vl] * 2.0
+        sch.reorder([Y_block.k, Y_block.l, Y_block.i])
+
+    @to_cinn_llir
+    def reorder_elementwise_gt(
+        X: DataArray((-1, 64, 64, 64)),
+        Y: DataArray((-1, 64, 64, 64)),
+        N: ir.Var(),
+    ):
+        for k in range(64):
+            for j in range(64):
+                for l in range(8):
+                    for i in range(N):
+                        with ir.ScheduleBlockContext("Y"):
+                            vi, vj, vk, vl = ir.AxisMap(
+                                "SSSS", [i, j, k, 8 * l]
+                            )
+                            Y[vi, vj, vk, vl] = X[vi, vj, vk, vl] * 2.0
+
+    assert_llir_equal(reorder_elementwise, reorder_elementwise_gt)
+
+
+def test_reorder_overlapped_dynamic():
+    @to_cinn_llir
+    def reorder_overlapped(
+        X: DataArray((-1, 8)), Y: DataArray((-1, 8)), N: ir.Var()
+    ):
+        for i in range(N / 4):
+            for j in range(4):
+                for k in range(4):
+                    with ir.ScheduleBlockContext("Y"):
+                        vi, vj = ir.AxisMap("SS", [i, j])
+                        sch.reorder([i, k, j])
+                        Y[vi, vj] = X[vi, vj] + 1.0
+
+    @to_cinn_llir
+    def reorder_overlapped_gt(
+        X: DataArray((-1, 8)), Y: DataArray((-1, 8)), N: ir.Var()
+    ):
+        for i in range(N / 4):
+            for k in range(4):
+                for j in range(4):
+                    with ir.ScheduleBlockContext("Y"):
+                        vi, vj = ir.AxisMap("SS", [i, j])
+                        Y[vi, vj] = X[vi, vj] + 1.0
+
+    assert_llir_equal(reorder_overlapped, reorder_overlapped_gt)
+
+
 if __name__ == '__main__':
     test_reorder_elementwise()
     test_reorder_overlapped()
+    test_reorder_elementwise_dynamic()
+    test_reorder_overlapped_dynamic()

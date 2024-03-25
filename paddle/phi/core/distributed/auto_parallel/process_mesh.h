@@ -20,13 +20,16 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/phi/core/distributed/auto_parallel/auto_parallel.pb.h"
 #include "paddle/phi/core/distributed/auto_parallel/device_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace phi {
 namespace distributed {
+
+namespace auto_parallel {
+class ProcessMeshProto;
+}
 
 class ProcessMesh {
  public:
@@ -64,11 +67,13 @@ class ProcessMesh {
   bool empty() const { return (shape_.empty() || process_ids_.empty()); }
   bool contains(int64_t process_id) const;
 
+  size_t hash() const { return std::hash<std::string>{}(to_string()); }
+
   // ProcessMesh from_string(const std::string& mesh_str);
   std::string to_string() const;
 
   static ProcessMesh from_proto(const auto_parallel::ProcessMeshProto& proto);
-  auto_parallel::ProcessMeshProto to_proto() const;
+  void to_proto(auto_parallel::ProcessMeshProto* proto) const;
 
  private:
   std::vector<int64_t> shape_;

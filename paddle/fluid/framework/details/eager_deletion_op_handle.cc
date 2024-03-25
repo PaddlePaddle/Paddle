@@ -74,7 +74,7 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
   }
 }
 
-EagerDeletionOpHandle::~EagerDeletionOpHandle() {
+EagerDeletionOpHandle::~EagerDeletionOpHandle() {  // NOLINT
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (event_) {
     auto gpu_place = dev_ctx_->GetPlace();

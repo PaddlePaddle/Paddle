@@ -194,9 +194,6 @@ class TestOneHotOpApi(unittest.TestCase):
         ).reshape([6, 1])
         with base.dygraph.guard():
             one_hot_label = paddle.nn.functional.one_hot(
-                base.dygraph.to_variable(label), depth
-            )
-            one_hot_label = paddle.nn.functional.one_hot(
                 paddle.to_tensor(label), depth
             )
 

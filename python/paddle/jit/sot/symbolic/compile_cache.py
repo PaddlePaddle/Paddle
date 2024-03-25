@@ -25,6 +25,7 @@ from paddle.framework import _dygraph_tracer, use_pir_api
 from ..infer_meta import convert_meta_to_input_spec
 from ..profiler import EventGuard
 from ..utils import (
+    ENV_SOT_EXPORT,
     Cache,
     GraphLogger,
     Singleton,
@@ -33,6 +34,7 @@ from ..utils import (
     log_do,
     map_if,
 )
+from .export import export
 from .interpreter import compile_sir
 
 if TYPE_CHECKING:
@@ -63,6 +65,7 @@ class FallbackWrapper:
         self.concrete_program = None
         self.SIR = SIR  # for debug
         self.is_training = is_training
+        self.exported = False
 
     def amp_cast_inputs(self, args, kwargs):
         """Prepare inputs for amp, cast float16 into float32 if needed."""
@@ -113,7 +116,8 @@ class FallbackWrapper:
                 2,
                 lambda: print("[FallbackWrapper] start run SIR: \n", self.SIR),
             )
-            args, kwargs = self.amp_cast_inputs(args, kwargs)
+            if not use_pir_api():
+                args, kwargs = self.amp_cast_inputs(args, kwargs)
             log_do(
                 4,
                 lambda: print(
@@ -143,6 +147,10 @@ class FallbackWrapper:
                 4,
                 lambda: print("[CompileCache] run sir forward success."),
             )
+            if ENV_SOT_EXPORT.get() != "" and not self.exported:
+                export(self.SIR, ENV_SOT_EXPORT.get())
+                self.exported = True
+
             return outputs
 
 
@@ -168,7 +176,7 @@ class CompileSIRCache(Cache):
             The hash key of the SIR
         """
         sir = context.get_sir(sir_name)
-        # NOTE(dev): Is str(sir) a heavy opearation ?
+        # NOTE(dev): Is str(sir) a heavy operation ?
         hash_key = hash((str(sir), kwargs['training']))
         return hash_key
 

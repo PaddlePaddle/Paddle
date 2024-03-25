@@ -18,7 +18,6 @@
 #include <vector>
 
 #include "paddle/cinn/adt/dim_expr.h"
-#include "paddle/cinn/adt/dim_expr_simplifier.h"
 #include "paddle/cinn/adt/equation_value_match_trait.h"
 #include "paddle/cinn/adt/inline_translator.h"
 #include "paddle/cinn/adt/map_expr.h"
@@ -31,7 +30,7 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/runtime/flags.h"
-#include "paddle/pir/dialect/shape/ir/shape_op.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_op.h"
 
 PD_DECLARE_bool(cinn_enable_map_expr_inline);
 
@@ -52,15 +51,11 @@ using LoopDescriptor4LoopIteratorT =
 
 class MapExprToIrTranslator {
  public:
-  explicit MapExprToIrTranslator(
-      const MapExpr& map_expr,
-      const Node2LoweredFuncs& node2lowered_funcs,
-      const std::unordered_map<SymbolicDim, ::pir::shape::SymbolicDimOp>&
-          map_expr_symbolic2dialect_symbolic,
-      const cinn::common::Target& target)
+  explicit MapExprToIrTranslator(const MapExpr& map_expr,
+                                 const Node2LoweredFuncs& node2lowered_funcs,
+                                 const cinn::common::Target& target)
       : map_expr_(map_expr),
         node2lowered_funcs_(&node2lowered_funcs),
-        map_expr_symbolic2dialect_symbolic_(map_expr_symbolic2dialect_symbolic),
         target_(target) {
     const auto& [anchored_map_stmts, _0, _1] = map_expr.tuple();
     CHECK_EQ(anchored_map_stmts->size(), 1);
@@ -163,8 +158,9 @@ class MapExprToIrTranslator {
         DoEach(expr);
         break;
       default:
-        LOG(FATAL) << "Visit node_type = " << expr.node_type()
-                   << ", not supported!";
+        std::stringstream ss;
+        ss << "Visit node_type = " << expr.node_type() << ", not supported!";
+        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
         break;
     }
   }
@@ -225,7 +221,7 @@ class MapExprToIrTranslator {
     } else {
       return NoInlineTranslator<MapStmt, OpCall, Tensor>::Call(internal_stmt);
     }
-    LOG(FATAL) << "Dead code";
+    PADDLE_THROW(phi::errors::Fatal("Dead code"));
   }
 
   std::optional<ir::Expr> TranslateOpExprImpl(
@@ -238,7 +234,8 @@ class MapExprToIrTranslator {
   std::vector<ir::Expr> TranslateTensorIndexImpl(
       const OpCall<OpExpr>& op_call,
       const IterExprs4TensorT& IterExprs4Tensor) const {
-    LOG(FATAL) << "Dead code, no TensorIndexExpr for OpCall";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Dead code, no TensorIndexExpr for OpCall"));
   }
 
   std::vector<ir::Expr> TranslateTensorIndexImpl(
@@ -386,7 +383,7 @@ class MapExprToIrTranslator {
       return (this->*make_store_rvalue_expr)(
           store_rvalue, op_expr_children, IterExprs4Tensor);
     }
-    LOG(FATAL) << "Dead code";
+    PADDLE_THROW(phi::errors::Fatal("Dead code"));
   }
 
   std::optional<ir::Expr> TranslateOpCallImpl(
@@ -690,13 +687,13 @@ class MapExprToIrTranslator {
   std::tuple<ir::ForType, ir::VectorizeInfo, ir::BindInfo>
   GetForTypeAndInfoImpl(const Vectorize& loop_type,
                         const LoopDescriptor& ld) const {
-    LOG(FATAL) << "Vectorize not supported yet";
+    PADDLE_THROW(phi::errors::InvalidArgument("Vectorize not supported yet"));
   }
 
   std::tuple<ir::ForType, ir::VectorizeInfo, ir::BindInfo>
   GetForTypeAndInfoImpl(const Unroll& loop_type,
                         const LoopDescriptor& ld) const {
-    LOG(FATAL) << "Unroll not supported yet";
+    PADDLE_THROW(phi::errors::InvalidArgument("Unroll not supported yet"));
   }
 
   std::tuple<ir::ForType, ir::VectorizeInfo, ir::BindInfo> GetForTypeAndInfo(
@@ -709,7 +706,7 @@ class MapExprToIrTranslator {
 
   ir::Expr Accumulate(const std::vector<ir::Expr>& ir_exprs) const {
     if (ir_exprs.size() == 0) {
-      LOG(FATAL) << "Dead code";
+      PADDLE_THROW(phi::errors::Fatal("Dead code"));
     } else if (ir_exprs.size() == 1) {
       return ir_exprs.at(0);
     } else {
@@ -719,12 +716,12 @@ class MapExprToIrTranslator {
       }
       return ret;
     }
-    LOG(FATAL) << "Dead code";
+    PADDLE_THROW(phi::errors::Fatal("Dead code"));
   }
 
   ir::Expr Multiply(const std::vector<ir::Expr>& ir_exprs) const {
     if (ir_exprs.size() == 0) {
-      LOG(FATAL) << "Dead code";
+      PADDLE_THROW(phi::errors::Fatal("Dead code"));
     } else if (ir_exprs.size() == 1) {
       return ir_exprs.at(0);
     } else {
@@ -734,7 +731,7 @@ class MapExprToIrTranslator {
       }
       return ret;
     }
-    LOG(FATAL) << "Dead code";
+    PADDLE_THROW(phi::errors::Fatal("Dead code"));
   }
 
   ir::Expr GetStride(const List<DimExpr>& dims, int start) const {
@@ -789,43 +786,52 @@ class MapExprToIrTranslator {
   }
 
   ir::Expr TranslateDimExprImpl(const SymbolicDim& dim_expr) const {
-    CHECK_GT(map_expr_symbolic2dialect_symbolic_.count(dim_expr), 0);
-    return ir::Var{
-        map_expr_symbolic2dialect_symbolic_.at(dim_expr).GetSymName()};
+    return ir::Var{dim_expr};
   }
 
-  ir::Expr TranslateDimExprImpl(const Negative<DimExpr>& dim_expr) const {
-    const auto& [inner_dim_expr] = dim_expr.tuple();
+  ir::Expr TranslateDimExprImpl(
+      const ::symbol::Negative<DimExpr>& dim_expr) const {
+    const auto& [inner_dim_expr] = *dim_expr;
     ir::Expr inner_expr = TranslateDimExpr(inner_dim_expr);
     return ir::Sub::Make(ir::Expr(0), inner_expr);
   }
 
-  ir::Expr TranslateDimExprImpl(const Reciprocal<DimExpr>& dim_expr) const {
-    const auto& [inner_dim_expr] = dim_expr.tuple();
+  ir::Expr TranslateDimExprImpl(
+      const ::symbol::Reciprocal<DimExpr>& dim_expr) const {
+    const auto& [inner_dim_expr] = *dim_expr;
     ir::Expr inner_expr = TranslateDimExpr(inner_dim_expr);
     return ir::Div::Make(ir::Expr(1), inner_expr);
   }
 
-  ir::Expr TranslateDimExprImpl(const Sum<DimExpr>& dim_expr) const {
+  ir::Expr TranslateDimExprImpl(const ::symbol::Add<DimExpr>& dim_expr) const {
     std::vector<ir::Expr> ir_exprs{};
-    const auto& [exprs] = dim_expr.tuple();
+    const auto& [exprs] = dim_expr;
     for (const auto& expr : *exprs) {
       ir_exprs.emplace_back(TranslateDimExpr(expr));
     }
     return Accumulate(ir_exprs);
   }
 
-  ir::Expr TranslateDimExprImpl(const Product<DimExpr>& dim_expr) const {
+  ir::Expr TranslateDimExprImpl(const ::symbol::Mul<DimExpr>& dim_expr) const {
     std::vector<ir::Expr> ir_exprs{};
-    const auto& [exprs] = dim_expr.tuple();
+    const auto& [exprs] = dim_expr;
     for (const auto& expr : *exprs) {
       ir_exprs.emplace_back(TranslateDimExpr(expr));
     }
     return Multiply(ir_exprs);
   }
 
-  ir::Expr TranslateDimExprImpl(const BroadcastedDim<DimExpr>& dim_expr) const {
-    LOG(FATAL) << "Not Supported yet";
+  ir::Expr TranslateDimExprImpl(const ::symbol::Max<DimExpr>& dim_expr) const {
+    PADDLE_THROW(phi::errors::Unimplemented("Not supported yet"));
+  }
+
+  ir::Expr TranslateDimExprImpl(const ::symbol::Min<DimExpr>& dim_expr) const {
+    PADDLE_THROW(phi::errors::Unimplemented("Not supported yet"));
+  }
+
+  ir::Expr TranslateDimExprImpl(
+      const ::symbol::Broadcast<DimExpr>& dim_expr) const {
+    PADDLE_THROW(phi::errors::Unimplemented("Not supported yet"));
   }
 
   ir::Expr TranslateDimExpr(const Value& value) const {
@@ -855,7 +861,9 @@ class MapExprToIrTranslator {
     } else if (Match<BroadcastedSymbolicIterator>(value)) {
       return TranslateBI(value);
     } else {
-      LOG(FATAL) << "Not supported yet! " << ToTxtString(value);
+      std::stringstream ss;
+      ss << "Not supported yet! " << ToTxtString(value);
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
   }
 
@@ -873,8 +881,6 @@ class MapExprToIrTranslator {
   const cinn::common::Target target_;
   TensorIteratorExpr4TensorT TensorIteratorExpr4Tensor;
   LoopDescriptor4LoopIteratorT LoopDescriptor4LoopIterator;
-  std::unordered_map<SymbolicDim, ::pir::shape::SymbolicDimOp>
-      map_expr_symbolic2dialect_symbolic_;
 };
 
 }  // namespace
@@ -882,10 +888,8 @@ class MapExprToIrTranslator {
 ir::Expr MapExprToIr(const MapExprCtx& map_expr_ctx,
                      const cinn::common::Target& target) {
   const auto& expr =
-      MapExprToIrTranslator(map_expr_ctx.map_expr(),
-                            map_expr_ctx.node2lowered_funcs(),
-                            map_expr_ctx.map_expr_symbolic2dialect_symbolic(),
-                            target)
+      MapExprToIrTranslator(
+          map_expr_ctx.map_expr(), map_expr_ctx.node2lowered_funcs(), target)
           .Translate();
   VLOG(1) << "Finish MapExprToIr\n" << expr;
   return expr;

@@ -116,7 +116,7 @@ class TrilTriuOpDefaultTestBF16(TrilTriuOpDefaultTest):
 def case_generator(op_type, Xshape, diagonal, expected, dtype):
     """
     Generate testcases with the params shape of X, diagonal and op_type.
-    If arg`expercted` is 'success', it will register an Optest case and expect to pass.
+    If arg `expected` is 'success', it will register an OpTest case and expect to pass.
     Otherwise, it will register an API case and check the expect failure.
     """
     cls_name = (
@@ -287,7 +287,7 @@ class TestTrilTriuOpAPI(unittest.TestCase):
                         np.random.uniform(-1, 1, [1, 9, 9, 4])
                         + 1j * np.random.uniform(-1, 1, [1, 9, 9, 4])
                     ).astype(dtype)
-                x = base.dygraph.to_variable(data)
+                x = paddle.to_tensor(data)
                 tril_out, triu_out = (
                     tensor.tril(x).numpy(),
                     tensor.triu(x).numpy(),

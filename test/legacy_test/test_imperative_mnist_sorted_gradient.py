@@ -21,7 +21,6 @@ from test_imperative_mnist import MNIST
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.base.dygraph.base import to_variable
 
 
 class TestImperativeMnistSortGradient(unittest.TestCase):
@@ -30,8 +29,7 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
         epoch_num = 1
 
         with base.dygraph.guard():
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
+            paddle.seed(seed)
             base.set_flags({'FLAGS_sort_sum_gradient': True})
 
             mnist2 = MNIST()
@@ -55,8 +53,8 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
                         .reshape(128, 1)
                     )
 
-                    img2 = to_variable(dy_x_data2)
-                    label2 = to_variable(y_data2)
+                    img2 = paddle.to_tensor(dy_x_data2)
+                    label2 = paddle.to_tensor(y_data2)
                     label2.stop_gradient = True
 
                     cost2 = mnist2(img2)
@@ -82,8 +80,7 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
                         break
 
         with new_program_scope():
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
+            paddle.seed(seed)
 
             exe = base.Executor(
                 base.CPUPlace()

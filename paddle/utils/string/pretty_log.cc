@@ -14,7 +14,7 @@
 
 #include "paddle/utils/string/pretty_log.h"
 
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 namespace paddle {
 namespace string {}  // namespace string

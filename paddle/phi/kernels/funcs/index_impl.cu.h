@@ -18,9 +18,9 @@ limitations under the License. */
 #include <thrust/host_vector.h>
 #include <thrust/random.h>
 
+#include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 

@@ -94,22 +94,22 @@ class DemoNet(nn.Layer):
         self.mlp0 = MLP(mesh, False, "block0")
         self.mlp1 = MLP(mesh, False, "block1")
         self.mlp2 = MLP(mesh, True, "block2")
-        self.varnmes = []
+        self.varnames = []
 
     def forward(self, x):
         # TP Region
         out0 = self.mlp0(x)
 
         # SP Region
-        self.varnmes.append(out0.name)
+        self.varnames.append(out0.name)
         out0 = dist.reshard(out0, self._mesh, [Shard(0), Replicate()])
-        self.varnmes.append(out0.name)
+        self.varnames.append(out0.name)
         out1 = self.mlp1(out0)
 
         # TP Region
-        self.varnmes.append(out1.name)
+        self.varnames.append(out1.name)
         out1 = dist.reshard(out1, self._mesh, [Replicate(), Replicate()])
-        self.varnmes.append(out1.name)
+        self.varnames.append(out1.name)
         out2 = self.mlp2(out1)
 
         return out2
@@ -145,8 +145,9 @@ class TestStaticReshard(unittest.TestCase):
 
         # static training
         data_loader = self.create_data_loader()
-        dist_model, dist_loader = dist.to_static(
-            dy2static_layer, data_loader, loss_fn, dy2static_opt
+        dist_loader = dist.shard_dataloader(data_loader, [mesh])
+        dist_model = dist.to_static(
+            dy2static_layer, dist_loader, loss_fn, dy2static_opt
         )
 
         program = dist_model._engine._dist_contexts["train"].dist_main_programs[
@@ -155,7 +156,7 @@ class TestStaticReshard(unittest.TestCase):
         block = program.global_block()
         # filter
         varnames = []
-        for varname in dy2static_layer.varnmes:
+        for varname in dy2static_layer.varnames:
             if varname not in varnames:
                 varnames.append(varname)
 

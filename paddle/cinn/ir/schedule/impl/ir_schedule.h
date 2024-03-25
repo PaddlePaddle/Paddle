@@ -49,6 +49,7 @@ class DyScheduleImpl : public ScheduleBase {
   std::vector<Expr> GetChildBlocks(const Expr& expr) const;
   Expr GetBlock(const std::string& block_name) const;
   std::vector<Expr> Split(const Expr& loop, const std::vector<int>& factors);
+  std::vector<Expr> Split(const Expr& loop, const std::vector<Expr>& factors);
   std::vector<Expr> SamplePerfectTile(
       utils::LinearRandomEngine::StateType* rand_seed,
       const Expr& loop,
@@ -86,7 +87,9 @@ class DyScheduleImpl : public ScheduleBase {
   void ReverseComputeInline(const Expr& schedule_block);
   void Bind(const Expr& loop, const std::string& thread_axis);
   Expr Rfactor(const Expr& rf_loop, int rf_axis);
-  Expr FactorizeReduction(const Expr& rf_loop, int rf_axis);
+  Expr FactorizeReduction(const Expr& rf_loop,
+                          int rf_axis,
+                          bool with_write_back_block_init = true);
   Expr AddUnitLoop(const Expr& block) const;
   void Annotate(const Expr& block, const std::string& key, const attr_t& value);
   void Unannotate(Expr& block, const std::string& key);  // NOLINT
@@ -122,6 +125,7 @@ class StScheduleImpl : public ScheduleBase {
   std::vector<Expr> GetChildBlocks(const Expr& expr) const;
   Expr GetBlock(const std::string& block_name) const;
   std::vector<Expr> Split(const Expr& loop, const std::vector<int>& factors);
+  std::vector<Expr> Split(const Expr& loop, const std::vector<Expr>& factors);
   std::vector<Expr> SamplePerfectTile(
       utils::LinearRandomEngine::StateType* rand_seed,
       const Expr& loop,
@@ -159,7 +163,9 @@ class StScheduleImpl : public ScheduleBase {
   void ReverseComputeInline(const Expr& schedule_block);
   void Bind(const Expr& loop, const std::string& thread_axis);
   Expr Rfactor(const Expr& rf_loop, int rf_axis);
-  Expr FactorizeReduction(const Expr& rf_loop, int rf_axis);
+  Expr FactorizeReduction(const Expr& rf_loop,
+                          int rf_axis,
+                          bool with_write_back_block_init = true);
   Expr AddUnitLoop(const Expr& block) const;
   void Annotate(const Expr& block, const std::string& key, const attr_t& value);
   void Unannotate(Expr& block, const std::string& key);  // NOLINT

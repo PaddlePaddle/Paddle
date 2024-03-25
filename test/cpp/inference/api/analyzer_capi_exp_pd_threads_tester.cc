@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
 
 #include <fstream>
 #include <iostream>
@@ -24,8 +24,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/inference/capi_exp/pd_inference_api.h"
-#include "paddle/utils/flags.h"
 
 PD_DEFINE_string(infer_model, "", "model path");
 
@@ -84,13 +84,13 @@ void threads_run(int thread_num) {
       reinterpret_cast<pthread_t*>(malloc(thread_num * sizeof(pthread_t)));
   RunParameter* params = reinterpret_cast<RunParameter*>(
       malloc(thread_num * sizeof(RunParameter)));
-  int32_t shapes[4] = {1, 3, 300, 300};
+  std::array<int32_t, 4> shapes = {1, 3, 300, 300};
   float* input =
       reinterpret_cast<float*>(malloc(1 * 3 * 300 * 300 * sizeof(float)));
   memset(input, 0, 1 * 3 * 300 * 300 * sizeof(float));
   for (int i = 0; i < thread_num; ++i) {
     params[i].predictor = PD_PredictorClone(predictor);
-    params[i].shapes = shapes;
+    params[i].shapes = shapes.data();
     params[i].shape_size = 4;
     params[i].input_data = input;
     params[i].out_size = 0;

@@ -19,7 +19,7 @@
 #include <string>
 #include <type_traits>
 
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 
 #define __PADDLE_DEFINE_EXPORTED_FLAG(                                        \
     __name, __is_writable, __cpp_type, __gflag_type, __default_value, __doc)  \

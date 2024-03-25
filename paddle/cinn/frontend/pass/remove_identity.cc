@@ -101,8 +101,8 @@ bool check_reduce_to_reshape(const Instruction& instr) {
     }
   }
 
-  for (auto aixs : dims) {
-    if (input_shape[aixs] != 1) {
+  for (auto axis : dims) {
+    if (input_shape[axis] != 1) {
       return false;
     }
   }

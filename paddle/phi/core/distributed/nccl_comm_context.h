@@ -39,7 +39,10 @@ namespace distributed {
 
 class NCCLCommContext final : public CommContext {
  public:
-  NCCLCommContext(int rank, int size, ncclUniqueId nccl_id);
+  NCCLCommContext(int rank,
+                  int size,
+                  ncclUniqueId nccl_id,
+                  int nccl_comm_init_option = 0);
   ~NCCLCommContext() override = default;
 
   int GetNcclVersion();
