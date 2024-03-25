@@ -38,6 +38,9 @@ def download_file():
     if len(data.strip()) == 0 or status_code != 200:
         sys.exit(1)
     else:
+        if os.getenv("QUICKLY_DISABLE_UT") == "OFF":
+            print("^disable_ut$")
+            sys.exit(0)
         lt = data.strip().split('\n')
         lt = '^' + '$|^'.join(lt) + '$'
         print(lt)
