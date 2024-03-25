@@ -14,23 +14,26 @@
 
 #pragma once
 
-#include "paddle/cinn/frontend/group_cluster/pattern_base.h"
+#include "paddle/cinn/frontend/group_cluster/common_utils.h"
 
 namespace cinn::frontend::group_cluster {
 
 struct PatternNode {
+  using PatternNodePtr = std::shared_ptr<PatternNode>;
+
   explicit PatternNode(const pir::Operation* op);
-  explicit PatternNode(PatternNode* fused_up_node,
-                       PatternNode* fused_down_node);
+  explicit PatternNode(PatternNodePtr fused_up_node,
+                       PatternNodePtr fused_down_node);
 
   bool IsTrivial() const;
-  std::unordered_set<const pir::Operation*> GetOps() const;
+  std::vector<const pir::Operation*> GetOps() const;
 
   StmtPattern stmt_pattern_;
   const pir::Operation* sink_op_;
 
-  std::unordered_set<PatternNode*> upstream_;
-  std::unordered_set<PatternNode*> downstream_;
+  std::vector<PatternNodePtr> upstream_;
+  std::vector<PatternNodePtr> downstream_;
 };
 
+using PatternNodePtr = PatternNode::PatternNodePtr;
 }  // namespace cinn::frontend::group_cluster

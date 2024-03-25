@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <memory>
 #include <optional>
 #include <typeinfo>
 #include <unordered_map>
@@ -24,6 +25,8 @@
 #include <vector>
 
 #include "glog/logging.h"
+
+#include "paddle/cinn/frontend/group_cluster/pattern.h"
 
 #include "paddle/cinn/common/bfs_walker.h"
 #include "paddle/cinn/common/topo_walker.h"
@@ -39,15 +42,47 @@ namespace cinn::frontend::group_cluster {
 using OpPatternKind = cinn::hlir::framework::OpPatternKind;
 
 OpPatternKind GetOpPatternKind(const ::pir::Operation* op);
-
 size_t GetRank(pir::Value value);
-
 std::vector<int64_t> GetReduceAxisIdx(const pir::Operation* reduce_op);
-
 bool GetReduceOpKeepDims(const pir::Operation* reduce_op);
-
 std::string OpsDebugStr(std::vector<const pir::Operation*> ops);
-
 std::optional<std::pair<pir::Value, pir::Value>> GetBroadcastOpInputOuputValue(
     const pir::Operation* op);
+}  // namespace cinn::frontend::group_cluster
+
+namespace cinn::frontend::group_cluster {
+
+bool IsTrivialPattern(const StmtPattern& pattern);
+bool IsReducePattern(const StmtPattern& pattern);
+bool IsUnsupportPattern(const StmtPattern& pattern);
+
+template <typename T>
+void ExtendVector(const std::vector<T>& first, const std::vector<T>& second) {
+  std::unordered_set<T> visited = std::unordered_set<T>(first);
+  for (int iter = second.begin(); i != second.end(); i++) {
+    if (visited.find(*iter) == visited.end()) {
+      visited.emplace(*iter);
+      first.push_back(*iter);
+    }
+  }
+}
+
+template <typename T>
+std::vector<T> MergeVector(const std::vector<T>& first,
+                           const std::vector<T>& second) {
+  std::vector<T> result = std::vector<T>(first);
+  ExtendVector(result, second);
+  return result;
+}
+
+template <typename T, typename R>
+R FindFromVector(const std::vector<T>& vec, T item) {
+  return std::find(vec.begin(), vec.end(), item);
+}
+
+std::vector<const pir::Operation*> GetOpsInPattern(const StmtPattern& pattern);
+std::string StmtPatternDebugStr(const StmtPattern& pattern);
+StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second);
+
+StmtPattern ConvertToStmtPattern(const pir::Operation* op);
 }  // namespace cinn::frontend::group_cluster

@@ -20,7 +20,7 @@
 
 namespace cinn::frontend {
 
-std::vector<std::unordered_set<const pir::Operation*>> ClusterOps(
+inline std::vector<std::vector<const pir::Operation*>> ClusterOps(
     const cinn::dialect::GroupOp& group_op) {
   const auto& ops = [&] {
     std::vector<const pir::Operation*> ops;
@@ -49,4 +49,5 @@ std::vector<std::unordered_set<const pir::Operation*>> ClusterOps(
   group_cluster::PatternGraph graph(ops, policy_manager);
   return graph.ClusterOps();
 }
+
 }  // namespace cinn::frontend

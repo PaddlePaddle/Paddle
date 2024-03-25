@@ -74,3 +74,56 @@ std::optional<std::pair<pir::Value, pir::Value>> GetBroadcastOpInputOuputValue(
   return std::nullopt;
 }
 }  // namespace cinn::frontend::group_cluster
+
+namespace cinn::frontend::group_cluster {
+
+bool IsTrivialPattern(const StmtPattern& pattern) {
+  return std::holds_alternative<TrivialPattern>(pattern);
+}
+
+bool IsReducePattern(const StmtPattern& pattern) {
+  return std::holds_alternative<ReducePattern>(pattern);
+}
+
+bool IsUnsupportPattern(const StmtPattern& pattern) {
+  return std::holds_alternative<UnsupportPattern>(pattern);
+}
+
+std::vector<const pir::Operation*> GetOpsInPattern(const StmtPattern& pattern) {
+  return std::visit([](const auto& impl) { return impl.ops_; }, pattern);
+}
+
+std::string StmtPatternDebugStr(const StmtPattern& stmt) {
+  std::stringstream ss;
+  auto all_ops = GetOpsInPattern(stmt);
+  ss << "StmtPattern, size " << all_ops.size() << " :\n";
+  ss << OpsDebugStr(all_ops);
+  return ss.str();
+}
+
+StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second) {
+  std::vector<const pir::Operation*> ops =
+      MergeVector(GetOpsInPattern(first), GetOpsInPattern(second));
+  if (IsUnsupportPattern(first) || IsUnsupportPattern(second)) {
+    return UnsupportPattern(ops);
+  } else if (IsReducePattern(first) || IsReducePattern(second)) {
+    return ReducePattern(ops);
+  } else {
+    return TrivialPattern(ops);
+  }
+}
+
+StmtPattern ConvertToStmtPattern(const pir::Operation* op) {
+  const auto& kind = GetOpPatternKind(op);
+  if (kind == hlir::framework::kReduction) {
+    return ReducePattern({op});
+  } else if (kind == hlir::framework::kElementWise ||
+             kind == hlir::framework::kBroadcast ||
+             kind == hlir::framework::kInjective) {
+    return TrivialPattern({op});
+  } else {
+    return UnsupportPattern({op});
+  }
+}
+
+}  // namespace cinn::frontend::group_cluster

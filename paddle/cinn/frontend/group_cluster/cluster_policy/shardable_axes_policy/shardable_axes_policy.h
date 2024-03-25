@@ -23,7 +23,7 @@ class ShardableAxesPolicy final : virtual public Policy {
   ShardableAxesPolicy(const std::vector<const pir::Operation*>& ops,
                       const pir::ShapeConstraintIRAnalysis* shape_analysis)
       : axes_info_(ops, shape_analysis) {}
-  bool CanFuse(const PatternNode* upstream, const PatternNode* downstream);
+  bool CanFuse(const PatternNodePtr upstream, const PatternNodePtr downstream);
 
  private:
   ShardableAxesInfoManager axes_info_;

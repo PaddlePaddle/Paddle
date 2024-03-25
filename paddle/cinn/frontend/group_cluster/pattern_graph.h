@@ -14,6 +14,7 @@
 #pragma once
 
 #include "paddle/cinn/frontend/group_cluster/cluster_policy/policy_manager.h"
+#include "paddle/cinn/frontend/group_cluster/common_utils.h"
 #include "paddle/cinn/frontend/group_cluster/pattern_node.h"
 
 namespace cinn::frontend::group_cluster {
@@ -23,20 +24,20 @@ class PatternGraph {
   PatternGraph(const std::vector<const pir::Operation*>& ops,
                const policy::PolicyManager policy_manager);
 
-  std::vector<std::unordered_set<const pir::Operation*>> ClusterOps();
+  std::vector<std::vector<const pir::Operation*>> ClusterOps();
   ~PatternGraph();
 
  private:
   void SinkTrivialPattern();
   void FuseReducePattern();
 
-  void RemoveNode(PatternNode* node);
-  void AppendNode(PatternNode* node);
+  void RemoveNode(PatternNodePtr node);
+  void AppendNode(PatternNodePtr node);
 
  private:
-  std::unordered_set<PatternNode*> all_pattern_nodes_;
-  std::unordered_set<PatternNode*> entrance_nodes_;
-  std::unordered_set<PatternNode*> exit_nodes_;
+  std::unordered_set<PatternNodePtr> all_pattern_nodes_;
+  std::unordered_set<PatternNodePtr> entrance_nodes_;
+  std::unordered_set<PatternNodePtr> exit_nodes_;
 
   const policy::PolicyManager policy_manager_;
 };

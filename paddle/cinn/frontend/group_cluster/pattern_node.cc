@@ -19,48 +19,45 @@ namespace cinn::frontend::group_cluster {
 PatternNode::PatternNode(const pir::Operation* op)
     : sink_op_(op), stmt_pattern_(ConvertToStmtPattern(op)) {}
 
-PatternNode::PatternNode(PatternNode* fused_up_node,
-                         PatternNode* fused_down_node)
-    : stmt_pattern_(MergePattern(fused_up_node->stmt_pattern_,
+PatternNode::PatternNode(PatternNodePtr fused_up_node,
+                         PatternNodePtr fused_down_node)
+    : sink_op_(fused_down_node->sink_op_),
+      stmt_pattern_(MergePattern(fused_up_node->stmt_pattern_,
                                  fused_down_node->stmt_pattern_)) {
-  sink_op_ = fused_down_node->sink_op_;
+  ExtendVector(upstream_, fused_up_node->upstream_);
+  ExtendVector(upstream_, fused_down_node->upstream_);
+  upstream_.erase(FindFromVector(upstream_, fused_up_node));
 
-  upstream_.insert(fused_up_node->upstream_.begin(),
-                   fused_up_node->upstream_.end());
-  upstream_.insert(fused_down_node->upstream_.begin(),
-                   fused_down_node->upstream_.end());
-  upstream_.erase(fused_up_node);
-
-  downstream_.insert(fused_up_node->downstream_.begin(),
-                     fused_up_node->downstream_.end());
-  downstream_.insert(fused_down_node->downstream_.begin(),
-                     fused_down_node->downstream_.end());
-  downstream_.erase(fused_down_node);
+  ExtendVector(downstream_, fused_up_node->downstream_);
+  ExtendVector(downstream_, fused_down_node->downstream_);
+  downstream_.erase(FindFromVector(downstream_, fused_down_node));
 
   for (const auto& upstream_node : upstream_) {
-    if (upstream_node->downstream_.find(fused_up_node) !=
-        upstream_node->downstream_.end()) {
-      upstream_node->downstream_.erase(fused_up_node);
+    if (auto iter = FindFromVector(upstream_node->downstream_, fused_up_node) !=
+                    upstream_node->downstream_.end()) {
+      upstream_node->downstream_.erase(iter);
     }
-    if (upstream_node->downstream_.find(fused_down_node) !=
-        upstream_node->downstream_.end()) {
-      upstream_node->downstream_.erase(fused_down_node);
+    if (auto iter =
+            FindFromVector(upstream_node->downstream_, fused_down_node) !=
+            upstream_node->downstream_.end()) {
+      upstream_node->downstream_.erase(iter);
     }
   }
 
   for (const auto& downstream_node : downstream_) {
-    if (downstream_node->upstream_.find(fused_up_node) !=
-        downstream_node->upstream_.end()) {
-      downstream_node->upstream_.erase(fused_up_node);
+    if (auto iter = FindFromVector(downstream_node->upstream_, fused_up_node) !=
+                    downstream_node->upstream_.end()) {
+      downstream_node->upstream_.erase(iter);
     }
-    if (downstream_node->upstream_.find(fused_down_node) !=
-        downstream_node->upstream_.end()) {
-      downstream_node->upstream_.erase(fused_down_node);
+    if (auto iter =
+            FindFromVector(downstream_node->upstream_, fused_down_node) !=
+            downstream_node->upstream_.end()) {
+      downstream_node->upstream_.erase(iter);
     }
   }
 }
 
-std::unordered_set<const pir::Operation*> PatternNode::GetOps() const {
+std::vector<const pir::Operation*> PatternNode::GetOps() const {
   return GetOpsInPattern(stmt_pattern_);
 }
 

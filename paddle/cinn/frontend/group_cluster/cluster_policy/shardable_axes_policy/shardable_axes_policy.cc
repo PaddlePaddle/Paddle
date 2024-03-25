@@ -16,8 +16,8 @@
 
 namespace cinn::frontend::group_cluster::policy {
 
-bool ShardableAxesPolicy::CanFuse(const PatternNode* upstream,
-                                  const PatternNode* downstream) {
+bool ShardableAxesPolicy::CanFuse(const PatternNodePtr upstream,
+                                  const PatternNodePtr downstream) {
   // TODO(wuzhanfei) shardable axes policy
   return false;
 }

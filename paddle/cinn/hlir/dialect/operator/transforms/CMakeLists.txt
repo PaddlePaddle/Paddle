@@ -7,7 +7,6 @@ set(cinn_transforms_deps
     cinn_op_dialect
     op_dialect_vjp
     cinn_runtime_dialect
-    # cluster_ops
     group_cluster
     pir_compiler)
 
