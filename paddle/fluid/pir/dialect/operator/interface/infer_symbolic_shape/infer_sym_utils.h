@@ -21,6 +21,8 @@
 
 COMMON_DECLARE_string(pir_dyshape_sym2value);
 
+constexpr int vlog_level = 3;
+
 inline bool GetBoolAttr(const pir::Operation *op, const std::string &str) {
   const auto &attr_map = op->attributes();
   PADDLE_ENFORCE(
@@ -31,6 +33,7 @@ inline bool GetBoolAttr(const pir::Operation *op, const std::string &str) {
 }
 
 // To make codes shorter
+using DimExpr = symbol::DimExpr;
 using ExprVec = std::vector<symbol::DimExpr>;
 using ShapeOrData = symbol::ShapeOrDataDimExprs;
 using TensorExprs = symbol::TensorShapeOrDataDimExprs;
@@ -155,9 +158,8 @@ inline std::vector<std::string> Split(const std::string &str,
   return results;
 }
 
-inline std::unordered_map<symbol::DimExpr, symbol::DimExpr>
-GetSymValueFromFlag() {
-  std::unordered_map<symbol::DimExpr, symbol::DimExpr> map_sym2value;
+inline std::unordered_map<DimExpr, DimExpr> GetSymValueFromFlag() {
+  std::unordered_map<DimExpr, DimExpr> map_sym2value;
   std::string &flag_str = FLAGS_pir_dyshape_sym2value;
   for (auto str : Split(flag_str, ",")) {
     std::vector<std::string> sym_value = Split(str, "=");
@@ -177,20 +179,18 @@ inline void CheckSymShapeByValue(
     const std::string &op_name,
     const ::common::DDim &ddim,
     const ShapeOrData &shapeordata,
-    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>
-        &additional_cstrs = {}) {
+    const std::unordered_map<DimExpr, DimExpr> &additional_cstrs = {}) {
   std::string op_info = "op_" + std::to_string(op_id) + "(" + op_name + ")";
   auto sym_value_map = GetSymValueFromFlag();
   if (shapeordata.isa<TensorListExprs>()) {
-    VLOG(3) << "********** " << op_info
-            << " 's shapeordata.isa<TensorListExprs>()";
+    VLOG(vlog_level) << "********** " << op_info
+                     << " 's shapeordata.isa<TensorListExprs>()";
   } else {
     auto sym_shape = shapeordata.shape();
     std::vector<std::int64_t> sym_value_shape;
     for (auto dim_expr : sym_shape) {
-      symbol::DimExpr substitute_expr =
-          symbol::SubstituteDimExpr(dim_expr, sym_value_map);
-      symbol::DimExpr ret = symbol::SimplifyDimExpr(substitute_expr);
+      DimExpr subs_expr = symbol::SubstituteDimExpr(dim_expr, sym_value_map);
+      DimExpr ret = symbol::SimplifyDimExpr(subs_expr);
       PADDLE_ENFORCE_EQ(ret.Has<std::int64_t>(),
                         true,
                         platform::errors::PreconditionNotMet(
@@ -207,11 +207,11 @@ inline void CheckSymShapeByValue(
                                 " -> " + PrintShapeOrData(shapeordata);
 
     if (real_shape != sym_value_shape) {
-      VLOG(3) << "!!!!! [ShapeCheckFailed] " << op_info << ": "
-              << real_shape_str << " != " << sym_shape_str;
+      VLOG(vlog_level) << "!!!!! [ShapeCheckFailed] " << op_info << ": "
+                       << real_shape_str << " != " << sym_shape_str;
     } else {
-      VLOG(3) << "===== [ShapeCheckPassed] op_" << op_info << ": "
-              << real_shape_str << " == " << sym_shape_str;
+      VLOG(vlog_level) << "===== [ShapeCheckPassed] op_" << op_info << ": "
+                       << real_shape_str << " == " << sym_shape_str;
     }
   }
 }
