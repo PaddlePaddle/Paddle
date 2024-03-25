@@ -23,6 +23,8 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
+DECLARE_int32(fused_multi_transformer_cache_kv_seq_len);
+
 namespace paddle {
 namespace framework {
 namespace ir {
