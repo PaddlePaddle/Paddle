@@ -1066,13 +1066,11 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
     T b = paddle::pybind::TensorGetElement<T>(tensor, offset);               \
     Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];                  \
     Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];               \
-    py_dims[0] = 1;                                                          \
-    py_strides[0] = 1;                                                       \
     auto& api = pybind11::detail::npy_api::get();                            \
     PyObject* array = api.PyArray_NewFromDescr_(                             \
         api.PyArray_Type_,                                                   \
         api.PyArray_DescrFromType_(numpy_dtype),                             \
-        1,                                                                   \
+        0,                                                                   \
         py_dims,                                                             \
         py_strides,                                                          \
         nullptr,                                                             \
