@@ -177,6 +177,16 @@
     func : dist_concat
     param: [x, nranks]
 
+- op : dist_identity
+  args : (Tensor x, int ring_id = 0)
+  output : Tensor(out)
+  infer_meta :
+    func : DistIdentityInferMeta
+    param: [x]
+  kernel :
+    func : dist_identity
+    param: [x]
+
 - op : einsum
   args : (Tensor[] x, str equation)
   output : Tensor(out), Tensor[](inner_cache){x.size()}, Tensor[](xshape){x.size()}
