@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 from collections.abc import Sequence
 from logging import warning
 
@@ -35,6 +36,30 @@ default_gradient_tolerance = {
     np.complex64: 1e-3,
     np.complex128: 1e-5,
 }
+
+
+@contextlib.contextmanager
+def prim_guard():
+    orig_eager_prim = paddle.framework.core._is_eager_prim_enabled()
+    orig_static_prim = paddle.framework.core._is_all_prim_enabled()
+    paddle.framework.core.set_prim_eager_enabled(True)
+    paddle.framework.core._set_prim_all_enabled(True)
+    try:
+        yield
+    finally:
+        paddle.framework.core.set_prim_eager_enabled(orig_eager_prim)
+        paddle.framework.core._set_prim_all_enabled(orig_static_prim)
+
+
+def prim_scope():
+    def __impl__(fn):
+        def __fn__(*args, **kwargs):
+            with prim_guard():
+                fn(*args, **kwargs)
+
+        return __fn__
+
+    return __impl__
 
 
 def _product(t):
@@ -305,10 +330,9 @@ def _get_static_vjp_program(inputs, outputs, feeds, grads_in, order):
     return feeds, outputs, d_inputs, grads_in
 
 
+@prim_scope()
 @prog_scope()
 def check_vjp(func, args, order=2, atol=None, rtol=None, eps=EPS):
-    paddle.framework.core.set_prim_eager_enabled(True)
-    paddle.framework.core._set_prim_all_enabled(True)
     args = _as_list(args)
     np_type = dtype_to_np_dtype(args[0].dtype)
     atol = atol if atol else default_gradient_tolerance[np_type]
