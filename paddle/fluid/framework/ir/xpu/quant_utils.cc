@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/xpu/quant_utils.h"
+#include <thread>
 #include <vector>
 #include "paddle/fluid/framework/ir/quantize_helper.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -22,6 +23,14 @@
 #include "paddle/phi/kernels/assign_kernel.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
+
+DECLARE_int32(fuse_multi_transformer_threads);
+PADDLE_DEFINE_EXPORTED_int32(
+    fuse_multi_transformer_threads,
+    1,
+    "fuse_multi_transformer is the thread of fuse thread cpu "
+    "The default value is a experimental result. If the "
+    "fuse_multi_transformer is 1, it means that the thread num is.");
 
 namespace paddle {
 namespace framework {
@@ -158,14 +167,46 @@ void CastToFp16(phi::DenseTensor* in, phi::DenseTensor* out) {
   CastTo(in, out, phi::DataType::FLOAT16);
 }
 
-static float FindMaxAbs(const float* data, int len) {
+void ThFindMaxAbs(int id, int start, int end, const float* data, float* out) {
   float max_f = 0.0f;
-  for (int i = 0; i < len; ++i) {
+  for (int i = start; i < end; ++i) {
     float max = std::abs(data[i]);
     if (max > max_f) {
       max_f = max;
     }
   }
+  out[id] = max_f;
+}
+
+static float FindMaxAbs(const float* data, int len) {
+  int32_t numThreads = FLAGS_fuse_multi_transformer_threads;
+  std::cout << "===current cpu thread num " << numThreads << std::endl;
+  std::vector<std::thread> threads;
+  threads.reserve(numThreads);
+  int chunkSize = len / numThreads;
+  int remainder = len % numThreads;
+  int start = 0;
+  int end = 0;
+  float* out = new float[numThreads];
+  for (int i = 0; i < numThreads; i++) {
+    start = end;
+    end = start + chunkSize + (remainder-- > 0 ? 1 : 0);
+    threads.emplace_back(
+        ThFindMaxAbs, i, start, end, std::ref(data), std::ref(out));
+  }
+
+  for (auto& thread : threads) {
+    thread.join();
+  }
+
+  // need
+  float max_f = out[0];
+  for (int i = 1; i < numThreads; i++) {
+    if (out[i] > max_f) {
+      max_f = out[i];
+    }
+  }
+  delete[] out;
   return max_f;
 }
 
@@ -243,6 +284,17 @@ static T Fp32ToIntx(const float f, float max) {
   return ret;
 }
 
+void ThFp32ToIntx(int id,
+                  int start,
+                  int end,
+                  const float* src_ptr,
+                  int16_t* dst_ptr,
+                  float max_val) {
+  for (int i = start; i < end; i++) {
+    dst_ptr[i] = Fp32ToIntx<int16_t, 32767>(src_ptr[i], max_val);
+  }
+}
+
 template <typename T>
 static void QuantFP32ToIntX(const float* src_ptr,
                             T* dst_ptr,
@@ -266,8 +318,27 @@ void QuantFP32ToIntX<int16_t>(const float* src_ptr,
                               int16_t* dst_ptr,
                               float max_val,
                               int numel) {
-  for (int i = 0; i < numel; i++) {
-    dst_ptr[i] = Fp32ToIntx<int16_t, 32767>(src_ptr[i], max_val);
+  int32_t numThreads = FLAGS_fuse_multi_transformer_threads;
+  std::vector<std::thread> threads;
+  threads.reserve(numThreads);
+  int chunkSize = numel / numThreads;
+  int remainder = numel % numThreads;
+  int start = 0;
+  int end = 0;
+  for (int i = 0; i < numThreads; i++) {
+    start = end;
+    end = start + chunkSize + (remainder-- > 0 ? 1 : 0);
+    threads.emplace_back(ThFp32ToIntx,
+                         i,
+                         start,
+                         end,
+                         std::ref(src_ptr),
+                         std::ref(dst_ptr),
+                         max_val);
+  }
+
+  for (auto& thread : threads) {
+    thread.join();
   }
 }
 
