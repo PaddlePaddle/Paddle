@@ -74,29 +74,31 @@ ir::Expr _GetRootExpr(const FusibleOp& op) {
   return std::visit([](auto&& arg) { return arg.GetFuncBody(); }, op);
 }
 
-void _SetFuncBody(FusibleOp& op, ir::Expr new_body) {
+void _SetFuncBody(FusibleOp& op, ir::Expr new_body) {  // NOLINT
   std::visit([&](auto&& arg) { arg._SetFuncBody(new_body); }, op);
 }
 
 ir::Expr GetComputeBody(const FusibleOp& op) {
   struct Visitor {
     ir::Expr operator()(const ReduceOp& op) {
-      const auto& compute_realize = (SearchUtils::ChildScheduleBlockRealizes *
-                                     SearchUtils::ScheduleBlockRealizeIsNotInit)
-                                        .GetSingle(_GetRootExpr(op));
+      const auto& compute_realize =
+          (ExprSetFinderUtils::ChildScheduleBlockRealizes *
+           ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit)
+              .GetSingle(_GetRootExpr(op));
       const auto& compute_body =
-          (SearchUtils::ChildStores * SearchUtils::Store2Value)
+          (ExprSetFinderUtils::ChildStores * ExprSetFinderUtils::Store2Value)
               .GetSingle(compute_realize);
-      return TransformerUtils::SubstitudeByScheduleBlockRealize(
+      return ExprTransformerUtils::SubstitudeByScheduleBlockRealize(
           compute_realize)(compute_body);
     }
     ir::Expr operator()(const TrivialOp& op) {
       const auto& compute_realize =
-          (SearchUtils::ChildScheduleBlockRealizes).GetSingle(_GetRootExpr(op));
+          (ExprSetFinderUtils::ChildScheduleBlockRealizes)
+              .GetSingle(_GetRootExpr(op));
       const auto& compute_body =
-          (SearchUtils::ChildStores * SearchUtils::Store2Value)
+          (ExprSetFinderUtils::ChildStores * ExprSetFinderUtils::Store2Value)
               .GetSingle(compute_realize);
-      return TransformerUtils::SubstitudeByScheduleBlockRealize(
+      return ExprTransformerUtils::SubstitudeByScheduleBlockRealize(
           compute_realize)(compute_body);
     }
   };
@@ -107,15 +109,17 @@ ir::Expr GetComputeBody(const FusibleOp& op) {
 ir::Tensor GetOutputTensor(const FusibleOp& op) {
   struct Visitor {
     ir::Tensor operator()(const ReduceOp& op) {
-      const auto& compute_body = (SearchUtils::ChildScheduleBlockRealizes *
-                                  SearchUtils::ScheduleBlockRealizeIsNotInit *
-                                  SearchUtils::ChildStores)
-                                     .GetSingle(_GetRootExpr(op));
+      const auto& compute_body =
+          (ExprSetFinderUtils::ChildScheduleBlockRealizes *
+           ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit *
+           ExprSetFinderUtils::ChildStores)
+              .GetSingle(_GetRootExpr(op));
       return compute_body.As<ir::Store>()->tensor.as_tensor_ref();
     }
     ir::Tensor operator()(const TrivialOp& op) {
       const auto& compute_body =
-          (SearchUtils::ChildScheduleBlockRealizes * SearchUtils::ChildStores)
+          (ExprSetFinderUtils::ChildScheduleBlockRealizes *
+           ExprSetFinderUtils::ChildStores)
               .GetSingle(_GetRootExpr(op));
       return compute_body.As<ir::Store>()->tensor.as_tensor_ref();
     }
@@ -126,32 +130,37 @@ ir::Tensor GetOutputTensor(const FusibleOp& op) {
 
 std::vector<ir::Var> AppendBound(const std::vector<ir::Var> vars,
                                  const ir::Expr& root) {
-  return SearchUtils::MapVector<ir::Var>(vars, [&](const auto& v) -> ir::Var {
-    VLOG(4) << "AppendBound for " << v << ", lower: "
-            << (SearchUtils::ChildFors * SearchUtils::IsForIterVar(v) *
-                SearchUtils::For2Min)
-                   .GetSingle(root)
-            << ", upper: "
-            << (SearchUtils::ChildFors * SearchUtils::IsForIterVar(v) *
-                SearchUtils::For2Max)
-                   .GetSingle(root);
-    return ir::Var((SearchUtils::ChildFors * SearchUtils::IsForIterVar(v) *
-                    SearchUtils::For2Min)
-                       .GetSingle(root),
-                   (SearchUtils::ChildFors * SearchUtils::IsForIterVar(v) *
-                    SearchUtils::For2Max)
-                       .GetSingle(root),
-                   v->name,
-                   v->is_reduce_axis);
-  });
+  return ExprSetFinderUtils::MapVector<ir::Var>(
+      vars, [&](const auto& v) -> ir::Var {
+        VLOG(4) << "AppendBound for " << v << ", lower: "
+                << (ExprSetFinderUtils::ChildFors *
+                    ExprSetFinderUtils::IsForIterVar(v) *
+                    ExprSetFinderUtils::For2Min)
+                       .GetSingle(root)
+                << ", upper: "
+                << (ExprSetFinderUtils::ChildFors *
+                    ExprSetFinderUtils::IsForIterVar(v) *
+                    ExprSetFinderUtils::For2Max)
+                       .GetSingle(root);
+        return ir::Var(
+            (ExprSetFinderUtils::ChildFors *
+             ExprSetFinderUtils::IsForIterVar(v) * ExprSetFinderUtils::For2Min)
+                .GetSingle(root),
+            (ExprSetFinderUtils::ChildFors *
+             ExprSetFinderUtils::IsForIterVar(v) * ExprSetFinderUtils::For2Max)
+                .GetSingle(root),
+            v->name,
+            v->is_reduce_axis);
+      });
 }
 
 std::vector<ir::Var> GetOutputIters(const FusibleOp& op) {
   struct Visitor {
     std::vector<ir::Var> operator()(const ReduceOp& op) {
-      ir::Expr init_block_realize = (SearchUtils::ChildScheduleBlockRealizes *
-                                     SearchUtils::ScheduleBlockRealizeIsInit)
-                                        .GetSingle(_GetRootExpr(op));
+      ir::Expr init_block_realize =
+          (ExprSetFinderUtils::ChildScheduleBlockRealizes *
+           ExprSetFinderUtils::ScheduleBlockRealizeIsInit)
+              .GetSingle(_GetRootExpr(op));
       const std::vector<Expr>& outer_iter_expr =
           init_block_realize.As<ir::ScheduleBlockRealize>()->iter_values;
       return trivial_fusion_detail::ComposeUtils::ExprVec2VarVec(
@@ -159,7 +168,8 @@ std::vector<ir::Var> GetOutputIters(const FusibleOp& op) {
     }
     std::vector<ir::Var> operator()(const TrivialOp& op) {
       const auto& compute_realize =
-          (SearchUtils::ChildScheduleBlockRealizes).GetSingle(_GetRootExpr(op));
+          (ExprSetFinderUtils::ChildScheduleBlockRealizes)
+              .GetSingle(_GetRootExpr(op));
       const std::vector<Expr>& outer_iter_expr =
           compute_realize.As<ir::ScheduleBlockRealize>()->iter_values;
       return trivial_fusion_detail::ComposeUtils::ExprVec2VarVec(
@@ -173,8 +183,8 @@ std::vector<ir::Var> GetOutputIters(const FusibleOp& op) {
 std::vector<ir::Var> GetReduceIters(const ReduceOp& op) {
   auto GetUnorderedAllIterVars = [](const ReduceOp& op) {
     ir::Expr compute_schedule_block_realize =
-        (SearchUtils::ChildScheduleBlockRealizes *
-         SearchUtils::ScheduleBlockRealizeIsNotInit)
+        (ExprSetFinderUtils::ChildScheduleBlockRealizes *
+         ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit)
             .GetSingle(_GetRootExpr(op));
 
     const std::vector<Expr>& all_iter_expr =
@@ -201,10 +211,11 @@ std::vector<ir::Var> GetReduceIters(const ReduceOp& op) {
 }
 
 ir::Expr GetInitExpr(const ReduceOp& op) {
-  const auto result = (SearchUtils::ChildScheduleBlockRealizes *
-                       SearchUtils::ScheduleBlockRealizeIsInit *
-                       SearchUtils::ChildStores * SearchUtils::Store2Value)
-                          .GetSingle(op.GetFuncBody());
+  const auto result =
+      (ExprSetFinderUtils::ChildScheduleBlockRealizes *
+       ExprSetFinderUtils::ScheduleBlockRealizeIsInit *
+       ExprSetFinderUtils::ChildStores * ExprSetFinderUtils::Store2Value)
+          .GetSingle(op.GetFuncBody());
   VLOG(4) << "GetInitExpr: " << result;
   return result;
 }
@@ -244,24 +255,26 @@ ir::Expr CreateReduceExpr(
   new_init_tensor->WithBuffer();
 
   const auto& init_schedule_block =
-      (TransformerUtils::WrapStoreTransformer(new_init_tensor, indice_expr) *
-       TransformerUtils::WrapScheduleRealizer(
+      (ExprTransformerUtils::WrapStoreTransformer(new_init_tensor,
+                                                  indice_expr) *
+       ExprTransformerUtils::WrapScheduleRealizer(
            output_iters, new_init_tensor->name))(init_body);
 
   const auto& reduce_schedule_block =
-      (TransformerUtils::ChangeTensorLoadTransformer(
+      (ExprTransformerUtils::ChangeTensorLoadTransformer(
            origin_write_tensor, new_write_tensor(indice_expr)) *
-       TransformerUtils::WrapStoreTransformer(new_write_tensor, indice_expr) *
-       TransformerUtils::WrapScheduleRealizer(
+       ExprTransformerUtils::WrapStoreTransformer(new_write_tensor,
+                                                  indice_expr) *
+       ExprTransformerUtils::WrapScheduleRealizer(
            ComposeUtils::ConcatVector(output_iters, reduce_iters),
            new_write_tensor->name) *
-       TransformerUtils::WrapForsTransformer(reduce_iters))(reduce_body);
+       ExprTransformerUtils::WrapForsTransformer(reduce_iters))(reduce_body);
 
   const auto& gather_body = ir::Block::Make(
       std::vector<ir::Expr>({init_schedule_block, reduce_schedule_block}));
   return ir::Block::Make(
-      {(TransformerUtils::WrapForsTransformer(output_iters) *
-        TransformerUtils::WrapScheduleRealizer({}, "root"))(gather_body)});
+      {(ExprTransformerUtils::WrapForsTransformer(output_iters) *
+        ExprTransformerUtils::WrapScheduleRealizer({}, "root"))(gather_body)});
 }
 
 ir::Expr CreateTrivialExpr(const std::vector<ir::Var>& output_iters,
@@ -281,12 +294,13 @@ ir::Expr CreateTrivialExpr(const std::vector<ir::Var>& output_iters,
   const std::vector<ir::Expr> indice_expr =
       std::vector<ir::Expr>(trivial_iters.begin(), trivial_iters.end());
   const auto& compute_body_schedule_block =
-      (TransformerUtils::WrapStoreTransformer(new_write_tensor, indice_expr) *
-       TransformerUtils::WrapScheduleRealizer(
+      (ExprTransformerUtils::WrapStoreTransformer(new_write_tensor,
+                                                  indice_expr) *
+       ExprTransformerUtils::WrapScheduleRealizer(
            trivial_iters, new_write_tensor->name))(function_body);
   return ir::Block::Make(
-      {(TransformerUtils::WrapForsTransformer(trivial_iters) *
-        TransformerUtils::WrapScheduleRealizer({}, "root"))(
+      {(ExprTransformerUtils::WrapForsTransformer(trivial_iters) *
+        ExprTransformerUtils::WrapScheduleRealizer({}, "root"))(
           ir::Block::Make({compute_body_schedule_block}))});
 }
 
@@ -409,7 +423,7 @@ std::vector<FusibleOp> TransformReduceLoopRange(const ReduceOp& upstream,
         new_tensor,
         GetOutputTensor(upstream));
     results.emplace_back(ReduceOp(new_reduce));
-    TransformerUtils::ReplaceTarget(
+    ExprTransformerUtils::ReplaceTarget(
         &modified_downstream_compute_body,
         load_tensor,
         new_tensor(ComposeUtils::VarVec2ExprVec(GetOutputIters(*downstream))));
@@ -436,11 +450,11 @@ FusibleOp TrivialFusion(FusionNode* upstream, FusionNode* downstream) {
 FusibleOp SinkTrivialLoopAlign(TrivialOp trivial_op, ReduceOp reduce_op) {
   ir::Expr new_trivial_body = ir::ir_utils::IRCopy(trivial_op.GetFuncBody());
   ir::Var last_iter = GetOutputIters(trivial_op).back();
-  ir::Expr trivial_last_for =
-      (SearchUtils::ChildFors * SearchUtils::IsForIterVar(last_iter))
-          .GetSingle(new_trivial_body);
+  ir::Expr trivial_last_for = (ExprSetFinderUtils::ChildFors *
+                               ExprSetFinderUtils::IsForIterVar(last_iter))
+                                  .GetSingle(new_trivial_body);
   ir::Expr new_for_body = trivial_last_for.As<ir::For>()->body;
-  new_for_body = TransformerUtils::WrapForsTransformer(
+  new_for_body = ExprTransformerUtils::WrapForsTransformer(
       GetReduceIters(reduce_op))(new_for_body);
   trivial_last_for.As<ir::For>()->body = new_for_body;
   return TrivialOp(new_trivial_body);
@@ -580,9 +594,9 @@ std::vector<ir::Expr> GetShapeFromVars(const std::vector<ir::Var>& vars) {
 void DebugPrintReduceVar(const FusibleOp& op) {
   VLOG(4) << "DebugPrint Op: " << GetOutputTensor(op);
   VLOG(4) << "DebugPrint Op: " << GetComputeBody(op);
-  const auto& block = (SearchUtils::ChildScheduleBlockRealizes *
-                       SearchUtils::ScheduleBlockRealizeIsNotInit *
-                       SearchUtils::Realizer2ScheduleBlock)
+  const auto& block = (ExprSetFinderUtils::ChildScheduleBlockRealizes *
+                       ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit *
+                       ExprSetFinderUtils::Realizer2ScheduleBlock)
                           .GetSingle(_GetRootExpr(op));
   const std::vector<ir::Var>& iter_vars =
       block.As<ir::ScheduleBlock>()->iter_vars;
@@ -601,7 +615,7 @@ void FusionGraph::SplitReduceTransform() {
       ir::Tensor reduce_out_tensor = GetOutputTensor(reduce_op);
       // substitude compute_body with a new init value.
       ir::Expr trivial_compute_body =
-          TransformerUtils::ChangeTensorLoadTransformer(
+          ExprTransformerUtils::ChangeTensorLoadTransformer(
               GetOutputTensor(fop),
               GetInitExpr(reduce_op))(GetComputeBody(reduce_op));
 
@@ -640,17 +654,20 @@ void FusionGraph::SplitReduceTransform() {
           << GetOutputTensor(reduce_op)->body().As<ir::Reduce>()->reduce_type;
       VLOG(4) << "WrapReduceOperation new_trivial_tensor: "
               << new_trivial_tensor(ComposeUtils::VarVec2ExprVec(all_iters));
-      const ir::Expr& new_reduce_body = TransformerUtils::WrapReduceOperation(
-          GetOutputTensor(reduce_op)->body().As<ir::Reduce>()->reduce_type,
-          GetOutputTensor(reduce_op),
-          ComposeUtils::VarVec2ExprVec(GetOutputIters(reduce_op)))(
-          new_trivial_tensor(ComposeUtils::VarVec2ExprVec(all_iters)));
+      const ir::Expr& new_reduce_body =
+          ExprTransformerUtils::WrapReduceOperation(
+              GetOutputTensor(reduce_op)->body().As<ir::Reduce>()->reduce_type,
+              GetOutputTensor(reduce_op),
+              ComposeUtils::VarVec2ExprVec(GetOutputIters(reduce_op)))(
+              new_trivial_tensor(ComposeUtils::VarVec2ExprVec(all_iters)));
       VLOG(4) << "Splited ReduceOp body is " << new_reduce_body;
       VLOG(4) << "Splited ReduceOp is "
               << CreateExprWithNewComputeBody(
-                     fop, SearchUtils::Store2Value.GetSingle(new_reduce_body));
+                     fop,
+                     ExprSetFinderUtils::Store2Value.GetSingle(
+                         new_reduce_body));
       result.emplace_back(ReduceOp(CreateExprWithNewComputeBody(
-          fop, SearchUtils::Store2Value.GetSingle(new_reduce_body))));
+          fop, ExprSetFinderUtils::Store2Value.GetSingle(new_reduce_body))));
     } else {
       result.emplace_back(fop);
     }
@@ -766,13 +783,15 @@ std::vector<ir::Expr> OperationFusion(
 
 FusionGroupInfo GetFusionGroupInfo(
     const std::vector<ir::Expr>& op_compute_bodies) {
-  using namespace trivial_fusion_detail;
+  using trivial_fusion_detail::ReduceOp;
+  using trivial_fusion_detail::ComposeUtils::ConcatVector;
+  using trivial_fusion_detail::ExprSetFinderUtils::ChildScheduleBlockRealizes;
+  using trivial_fusion_detail::ExprSetFinderUtils::ScheduleBlockRealizeIsInit;
 
   FusionGroupInfo group_info = FusionGroupInfo();
 
   const auto IsReduceBody = [](const ir::Expr& expr_body) {
-    return !(SearchUtils::ChildScheduleBlockRealizes *
-             SearchUtils::ScheduleBlockRealizeIsInit)(expr_body)
+    return !(ChildScheduleBlockRealizes * ScheduleBlockRealizeIsInit)(expr_body)
                 .empty();
   };
 
@@ -781,7 +800,7 @@ FusionGroupInfo GetFusionGroupInfo(
       ReduceOp op = ReduceOp(body);
       if (group_info.reduce_var_name.empty()) {
         std::vector<ir::Var> all_iters =
-            ComposeUtils::ConcatVector(GetOutputIters(op), GetReduceIters(op));
+            ConcatVector(GetOutputIters(op), GetReduceIters(op));
         std::transform(all_iters.begin(),
                        all_iters.end(),
                        std::back_inserter(group_info.loop_ranges),
@@ -806,7 +825,8 @@ FusionGroupInfo GetFusionGroupInfo(
   }
 
   if (group_info.reduce_var_name.empty()) {
-    TrivialOp op = TrivialOp(*(op_compute_bodies.begin()));
+    trivial_fusion_detail::TrivialOp op =
+        trivial_fusion_detail::TrivialOp(*(op_compute_bodies.begin()));
     std::vector<ir::Var> iters = GetOutputIters(op);
     std::transform(iters.begin(),
                    iters.end(),
