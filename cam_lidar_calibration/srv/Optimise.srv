@@ -1,0 +1,7 @@
+int8 operation
+
+int8 READY=0
+int8 CAPTURE=1
+int8 DISCARD=2
+---
+uint8 samples

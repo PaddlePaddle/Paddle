@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Example: roslaunch cam_lidar_calibration assess_results.launch csv:="/home/user/data/src/cam_lidar_calibration/output/2020-06-09_18-05-53.csv" -->
+
+<launch>
+	<arg name="visualise" default="false"/>	
+
+	<param name="use_sim_time" value="false" />
+	
+	<!-- Only uses the board dimensions for error assessment -->
+	<rosparam file="$(find cam_lidar_calibration)/cfg/params.yaml" />
+
+	<!-- Make sure to double check that camera_info is for the correct camera -->
+	<rosparam file="$(find cam_lidar_calibration)/cfg/camera_info.yaml" />
+
+	<!-- Filters outliers with z-score and fits a gaussian. Sends results to assess_node -->
+	<node pkg="cam_lidar_calibration" type="visualise_results.py" name="visualise_results" output="screen">
+		<param name="csv" value="$(arg csv)"/>
+
+		<!-- degree: true to display plot in degrees, false for radians -->
+		<!-- bin sizes in metres (translation) and degrees (rotation) -->
+		<param name="degree" value="false"/>
+		<param name="trans_binwidth" value="0.01"/>
+		<param name="rot_binwidth_deg" value="0.5"/>
+	</node>
+
+	<!-- Waits for input from visualise_results before computing reprojection errors -->
+	<node pkg="cam_lidar_calibration" type="assess_node" name="assess" output="screen" required="true" >
+		<param name="csv" value="$(arg csv)"/>
+		
+		<!-- Specify path of pose - if you want to visualise, it'll take png and pcd files from this folder -->
+	    <param name="visualise" value="$(arg visualise)"/>
+	    <param name="visualise_pose_num" value="16"/>
+
+  	</node>
+</launch>

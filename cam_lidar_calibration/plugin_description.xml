@@ -1,0 +1,7 @@
+<library path="lib/libcam_lidar_calibration">
+  <class name="cam_lidar_calibration/CamLidarCalibration" type="cam_lidar_calibration::CamLidarPanel" base_class_type="rviz::Panel">
+    <description>
+      Select or drop samples for calibration
+    </description>
+  </class>
+</library>

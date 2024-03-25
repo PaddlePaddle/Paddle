@@ -1,0 +1,26 @@
+# Topics
+camera_topic: "/camera/color/image_raw"
+camera_info: "/camera/color/camera_info"
+lidar_topic: "/velodyne_points"
+
+# Dynamic rqt_reconfigure default bounds 点云的选取范围，用默认的就是，之后可以在线调
+feature_extraction:
+  x_min: -10.0
+  x_max: 10.0
+  y_min: -8.0
+  y_max: 8.0
+  z_min: -5.0
+  z_max: 5.0
+
+# Properties of chessboard calibration target  ,单位mm
+chessboard:
+  pattern_size:   # 棋盘格内部顶点7*5
+    height: 7
+    width: 5  
+  square_length: 95  # 棋盘格方格边长 单位mm
+  board_dimension:  # 棋盘格打印的背板的宽和高度 单位mm
+    width: 600
+    height: 840
+  translation_error: # 棋盘格中心与背板中心的偏移量,一般为0
+    x: 0
+    y: 0
