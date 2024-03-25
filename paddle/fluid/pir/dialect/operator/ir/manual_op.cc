@@ -2352,14 +2352,14 @@ std::vector<pir::Type> TensorToArrayOp::InferMeta(
   VLOG(4) << "Builder construction attributes";
   pir::AttributeMap argument_attributes = {};
 
-  PADDLE_ENFORCE_NE(attributes.find("axis"),
-                    attributes.end(),
+  PADDLE_ENFORCE_EQ(attributes.find("axis") != attributes.end(),
+                    true,
                     phi::errors::InvalidArgument(
                         "'value' Attribute is expected for IncrementOp. "));
   int32_t axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
 
-  PADDLE_ENFORCE_NE(attributes.find("use_stack"),
-                    attributes.end(),
+  PADDLE_ENFORCE_EQ(attributes.find("use_stack") != attributes.end(),
+                    true,
                     phi::errors::InvalidArgument(
                         "'value' Attribute is expected for IncrementOp. "));
   bool use_stack =
@@ -2967,7 +2967,7 @@ void AssignArray_Op::VerifySig() {
     auto output_size = num_results();
     PADDLE_ENFORCE_EQ(
         output_size,
-        1u,
+        1UL,
         phi::errors::InvalidArgument(
             "The size %d of outputs must be equal to 1.", output_size));
     PADDLE_ENFORCE_EQ(
@@ -3094,8 +3094,8 @@ void ExpandOp::Build(pir::Builder &builder,
                      pir::AttributeMap attributes) {
   VLOG(4) << "Start build ExpandOp";
 
-  PADDLE_ENFORCE_NE(attributes.find("shape"),
-                    attributes.end(),
+  PADDLE_ENFORCE_EQ(attributes.find("shape") != attributes.end(),
+                    true,
                     phi::errors::InvalidArgument(
                         "'shape' Attribute is expected for ExpandOp. "));
   std::vector<int64_t> shape =
@@ -3432,8 +3432,8 @@ void IncrementOp::Build(pir::Builder &builder,
                         pir::AttributeMap attributes) {
   VLOG(4) << "Start build IncrementOp";
 
-  PADDLE_ENFORCE_NE(attributes.find("value"),
-                    attributes.end(),
+  PADDLE_ENFORCE_EQ(attributes.find("value") != attributes.end(),
+                    true,
                     phi::errors::InvalidArgument(
                         "'value' Attribute is expected for IncrementOp. "));
   float value = attributes.at("value").dyn_cast<pir::FloatAttribute>().data();
@@ -3524,8 +3524,8 @@ std::vector<pir::Type> IncrementOp::InferMeta(
                         input_values.size()));
   pir::Value x_ = input_values[0];
 
-  PADDLE_ENFORCE_NE(attributes.find("value"),
-                    attributes.end(),
+  PADDLE_ENFORCE_EQ(attributes.find("value") != attributes.end(),
+                    true,
                     phi::errors::InvalidArgument(
                         "'value' Attribute is expected for IncrementOp."));
   float value = attributes.at("value").dyn_cast<pir::FloatAttribute>().data();
@@ -3636,8 +3636,7 @@ void Increment_Op::Build(pir::Builder &builder,
                          pir::AttributeMap attributes) {
   VLOG(4) << "Start build Increment_Op";
 
-  PADDLE_ENFORCE_NE(attributes.find("value"),
-                    attributes.end(),
+  PADDLE_ENFORCE_EQ(attributes.find("value") != attributes.end(),
                     phi::errors::InvalidArgument(
                         "'value' Attribute is expected for Increment_Op. "));
   float value = attributes.at("value").dyn_cast<pir::FloatAttribute>().data();
@@ -3729,8 +3728,8 @@ std::vector<pir::Type> Increment_Op::InferMeta(
                         input_values.size()));
   pir::Value x_ = input_values[0];
 
-  PADDLE_ENFORCE_NE(attributes.find("value"),
-                    attributes.end(),
+  PADDLE_ENFORCE_EQ(attributes.find("value") != attributes.end(),
+                    true,
                     phi::errors::InvalidArgument(
                         "'value' Attribute is expected for Increment_Op. "));
   float value = attributes.at("value").dyn_cast<pir::FloatAttribute>().data();
@@ -4090,11 +4089,11 @@ bool ShapeBroadcastOp::InferSymbolicShape(
   pir::Value x = operand_source(0);
   pir::Value y = operand_source(1);
 
-  PADDLE_ENFORCE_GT(shape_analysis->HasShapeOrDataForValue(x),
-                    0UL,
+  PADDLE_ENFORCE_EQ(shape_analysis->HasShapeOrDataForValue(x) > 0,
+                    true,
                     phi::errors::InvalidArgument("Value x does not exist."));
-  PADDLE_ENFORCE_GT(shape_analysis->HasShapeOrDataForValue(y),
-                    0UL,
+  PADDLE_ENFORCE_EQ(shape_analysis->HasShapeOrDataForValue(y) > 0,
+                    true,
                     phi::errors::InvalidArgument("Value y does not exist."));
   const auto &x_data_shape = shape_analysis->GetShapeOrDataForValue(x);
   const auto &y_data_shape = shape_analysis->GetShapeOrDataForValue(y);
@@ -4397,8 +4396,8 @@ std::vector<pir::Type> ArrayPopOp::InferMeta(
         "paddle::dialect::AllocatedDenseTensorArrayType"));
   }
 
-  PADDLE_ENFORCE_NE(attributes.find("index"),
-                    attributes.end(),
+  PADDLE_ENFORCE_EQ(attributes.find("index") != attributes.end(),
+                    true,
                     phi::errors::InvalidArgument(
                         "'index' Attribute is expected for ArrayPopOp. "));
   int index = attributes.at("index").dyn_cast<pir::Int32Attribute>().data();

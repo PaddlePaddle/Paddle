@@ -976,30 +976,30 @@ void SelectInputOp::VerifySig() {
       auto tensor1 = input1.dyn_cast<paddle::dialect::DenseTensorType>();
       auto tensor2 = input2.dyn_cast<paddle::dialect::DenseTensorType>();
       PADDLE_ENFORCE_EQ(
-          tensor1.dtype(),
-          tensor2.dtype(),
+          tensor1.dtype() == tensor2.dtype(),
+          true,
           phi::errors::InvalidArgument(
               "The 1st input dtype %s should be equal to 2ed input dtype %s.",
               tensor1.dtype(),
               tensor2.dtype()));
       PADDLE_ENFORCE_EQ(
-          tensor1.data_layout(),
-          tensor2.data_layout(),
+          tensor1.data_layout() == tensor2.data_layout(),
+          true,
           phi::errors::InvalidArgument(
               "The 1st input data_layout %s should be equal to 2ed input "
               "data_layout %s.",
               tensor1.data_layout(),
               tensor2.data_layout()));
       PADDLE_ENFORCE_EQ(
-          tensor1.lod(),
-          tensor2.lod(),
+          tensor1.lod() == tensor2.lod(),
+          true,
           phi::errors::InvalidArgument(
               "The 1st input lod %s should be equal to 2ed input lod %s.",
               tensor1.lod(),
               tensor2.lod()));
       PADDLE_ENFORCE_EQ(
-          tensor1.offset(),
-          tensor2.offset(),
+          tensor1.offset() == tensor2.offset(),
+          true,
           phi::errors::InvalidArgument(
               "The 1st input offset %s should be equal to 2ed input offset %s.",
               tensor1.offset(),
@@ -1011,45 +1011,45 @@ void SelectInputOp::VerifySig() {
       auto tensor2 =
           input1.dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
       PADDLE_ENFORCE_EQ(
-          tensor1.dtype(),
-          tensor2.dtype(),
+          tensor1.dtype() == tensor2.dtype(),
+          true,
           phi::errors::InvalidArgument(
               "The 1st input dtype %s should be equal to 2ed input dtype %s.",
               tensor1.dtype(),
               tensor2.dtype()));
       PADDLE_ENFORCE_EQ(
-          tensor1.data_layout(),
-          tensor2.data_layout(),
+          tensor1.data_layout() == tensor2.data_layout(),
+          true,
           phi::errors::InvalidArgument(
               "The 1st input data_layout %s should be equal to 2ed input "
               "data_layout %s.",
               tensor1.data_layout(),
               tensor2.data_layout()));
       PADDLE_ENFORCE_EQ(
-          tensor1.lod(),
-          tensor2.lod(),
+          tensor1.lod() == tensor2.lod(),
+          true,
           phi::errors::InvalidArgument(
               "The 1st input lod %s should be equal to 2ed input lod %s.",
               tensor1.lod(),
               tensor2.lod()));
       PADDLE_ENFORCE_EQ(
-          tensor1.offset(),
-          tensor2.offset(),
+          tensor1.offset() == tensor2.offset(),
+          true,
           phi::errors::InvalidArgument(
               "The 1st input offset %s should be equal to 2ed input offset %s.",
               tensor1.offset(),
               tensor2.offset()));
       PADDLE_ENFORCE_EQ(
-          tensor1.place(),
-          tensor2.place(),
+          tensor1.place() == tensor2.place(),
+          true,
           phi::errors::InvalidArgument(
               "The 1st input place %s should be equal to 2ed input place %s.",
               tensor1.place(),
               tensor2.place()));
     } else {
       PADDLE_ENFORCE_EQ(
-          input1,
-          input2,
+          input1 == input2,
+          true,
           phi::errors::InvalidArgument(
               "The 1st input type %s should be equal to 2ed input type %s.",
               input1,
@@ -1135,30 +1135,30 @@ void SelectOutputOp::VerifySig() {
       auto tensor1 = out1.dyn_cast<paddle::dialect::DenseTensorType>();
       auto tensor2 = out2.dyn_cast<paddle::dialect::DenseTensorType>();
       PADDLE_ENFORCE_EQ(
-          tensor1.dtype(),
-          tensor2.dtype(),
+          tensor1.dtype() == tensor2.dtype(),
+          true,
           phi::errors::InvalidArgument(
               "The 1st input dtype %s should be equal to 2ed input dtype %s.",
               tensor1.dtype(),
               tensor2.dtype()));
       PADDLE_ENFORCE_EQ(
-          tensor1.data_layout(),
-          tensor2.data_layout(),
+          tensor1.data_layout() == tensor2.data_layout(),
+          true,
           phi::errors::InvalidArgument(
               "The 1st input data_layout %s should be equal to 2ed input "
               "data_layout %s.",
               tensor1.data_layout(),
               tensor2.data_layout()));
       PADDLE_ENFORCE_EQ(
-          tensor1.lod(),
-          tensor2.lod(),
+          tensor1.lod() == tensor2.lod(),
+          true,
           phi::errors::InvalidArgument(
               "The 1st input lod %s should be equal to 2ed input lod %s.",
               tensor1.lod(),
               tensor2.lod()));
       PADDLE_ENFORCE_EQ(
-          tensor1.offset(),
-          tensor2.offset(),
+          tensor1.offset() == tensor2.offset(),
+          true,
           phi::errors::InvalidArgument(
               "The 1st input offset %s should be equal to 2ed input offset %s.",
               tensor1.offset(),
@@ -1168,45 +1168,45 @@ void SelectOutputOp::VerifySig() {
       auto tensor1 = out1.dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
       auto tensor2 = out2.dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
       PADDLE_ENFORCE_EQ(
-          tensor1.dtype(),
-          tensor2.dtype(),
+          tensor1.dtype() == tensor2.dtype(),
+          true,
           phi::errors::InvalidArgument(
               "The 1st input dtype %s should be equal to 2ed input dtype %s.",
               tensor1.dtype(),
               tensor2.dtype()));
       PADDLE_ENFORCE_EQ(
-          tensor1.data_layout(),
-          tensor2.data_layout(),
+          tensor1.data_layout() == tensor2.data_layout(),
+          true,
           phi::errors::InvalidArgument(
               "The 1st input data_layout %s should be equal to 2ed input "
               "data_layout %s.",
               tensor1.data_layout(),
               tensor2.data_layout()));
       PADDLE_ENFORCE_EQ(
-          tensor1.lod(),
-          tensor2.lod(),
+          tensor1.lod() == tensor2.lod(),
+          true,
           phi::errors::InvalidArgument(
               "The 1st input lod %s should be equal to 2ed input lod %s.",
               tensor1.lod(),
               tensor2.lod()));
       PADDLE_ENFORCE_EQ(
-          tensor1.offset(),
-          tensor2.offset(),
+          tensor1.offset() == tensor2.offset(),
+          true,
           phi::errors::InvalidArgument(
               "The 1st input offset %s should be equal to 2ed input offset %s.",
               tensor1.offset(),
               tensor2.offset()));
       PADDLE_ENFORCE_EQ(
-          tensor1.place(),
-          tensor2.place(),
+          tensor1.place() == tensor2.place(),
+          true,
           phi::errors::InvalidArgument(
               "The 1st input place %s should be equal to 2ed input place %s.",
               tensor1.place(),
               tensor2.place()));
     } else {
       PADDLE_ENFORCE_EQ(
-          out1,
-          out2,
+          out1 == out2,
+          true,
           phi::errors::InvalidArgument(
               "The 1st input type %s should be equal to 2ed input type %s.",
               out1,

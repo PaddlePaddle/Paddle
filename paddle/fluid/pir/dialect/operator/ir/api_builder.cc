@@ -22,15 +22,15 @@ namespace dialect {
 ApiBuilder::ApiBuilder()
     : ctx_(pir::IrContext::Instance()),
       builder_(std::make_shared<pir::Builder>(ctx_)) {
-  PADDLE_ENFORCE_NE(
-      builder_.get(),
-      nullptr,
+  PADDLE_ENFORCE_EQ(
+      builder_ != nullptr,
+      true,
       phi::errors::InvalidArgument("api builder construct error!"));
 }
 
 void ApiBuilder::SetProgram(pir::Program* program) {
-  PADDLE_ENFORCE_NE(
-      program->parameters().empty(),
+  PADDLE_ENFORCE_EQ(
+      program != nullptr,
       true,
       phi::errors::InvalidArgument("argument of program is nullptr"));
   builder_->SetInsertionPointToBlockEnd(program->block());

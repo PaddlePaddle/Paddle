@@ -124,8 +124,8 @@ void ExpandOp::Build(pir::Builder& builder,
                      pir::AttributeMap attributes) {
   VLOG(4) << "Start build ExpandOp";
 
-  PADDLE_ENFORCE_NE(attributes.find("shape"),
-                    attributes.end(),
+  PADDLE_ENFORCE_EQ(attributes.find("shape") != attributes.end(),
+                    true,
                     phi::errors::InvalidArgument(
                         "'shape' Attribute is expected for ExpandOp. "));
   std::vector<int64_t> shape =
@@ -134,9 +134,9 @@ void ExpandOp::Build(pir::Builder& builder,
           .data()
           .GetData();
 
-  PADDLE_ENFORCE_NE(
-      attributes.find("mkldnn_data_type"),
-      attributes.end(),
+  PADDLE_ENFORCE_EQ(
+      attributes.find("mkldnn_data_type") != attributes.end(),
+      true,
       phi::errors::InvalidArgument(
           "'mkldnn_data_type' Attribute is expected for ExpandOp. "));
   std::string mkldnn_data_type = attributes.at("mkldnn_data_type")
