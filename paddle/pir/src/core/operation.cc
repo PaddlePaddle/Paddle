@@ -415,6 +415,9 @@ void Operation::set_value_property(const std::string &key,
     value_properties_.resize(index + 1);
   }
   auto &property_map = value_properties_[index];
+  if (property_map.count(key)) {
+    property_map[key].second(property_map[key].first);
+  }
   property_map[key] = value;
 }
 
