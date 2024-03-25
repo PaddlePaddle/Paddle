@@ -2071,6 +2071,70 @@ void MatmulInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void SMPMatmulInferMeta(const MetaTensor& x,
+                        const MetaTensor& y,
+                        bool x_row_shard,
+                        bool y_row_shard,
+                        bool out_row_shard,
+                        int smp_rank,
+                        int smp_ranks,
+                        bool trans_y,
+                        MetaTensor* out) {
+  std::vector<int64_t> dims_x = phi::vectorize(x.dims());
+  std::vector<int64_t> dims_y = phi::vectorize(y.dims());
+  auto ndims_x = dims_x.size();
+  auto ndims_y = dims_y.size();
+  PADDLE_ENFORCE_GT(ndims_x,
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The Input(x) dims size must be greater than 1,"
+                        " but reviced dims size is 0. "));
+  PADDLE_ENFORCE_EQ(
+      ndims_y,
+      2UL,
+      phi::errors::InvalidArgument("The Input(y) dims size must be equal to 2,"
+                                   " but reviced dims size is %d. ",
+                                   ndims_y));
+
+  size_t M, K, N;
+  std::vector<int64_t> new_dims;
+
+  if (x_row_shard && !y_row_shard && !out_row_shard) {
+    K = dims_x[ndims_x - 1];
+    if (trans_y) {
+      M = dims_y[ndims_y - 1];
+      N = dims_y[ndims_y - 2];
+    } else {
+      N = dims_y[ndims_y - 1];
+      M = dims_y[ndims_y - 2];
+    }
+
+    PADDLE_ENFORCE_EQ(K % smp_ranks,
+                      0UL,
+                      phi::errors::InvalidArgument(
+                          "The last dimension of Input(x) [%d] should be "
+                          "divide by [%d]",
+                          K,
+                          smp_ranks));
+
+    PADDLE_ENFORCE_EQ(K,
+                      N,
+                      phi::errors::InvalidArgument(
+                          "The last dimension of Input(x) [%d] should be "
+                          "equal to th dimension of Input(y) [%d]",
+                          K,
+                          N));
+
+    new_dims.assign(dims_x.begin(), dims_x.end() - 2);
+    new_dims.push_back(M);
+  }
+  auto ddim_out = phi::make_ddim(new_dims);
+
+  out->set_dims(ddim_out);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+}
+
 void MatmulWithFlattenInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
                                 int x_num_col_dims,

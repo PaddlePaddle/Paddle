@@ -337,6 +337,16 @@ void MatmulInferMeta(const MetaTensor& x,
                      bool trans_y,
                      MetaTensor* out);
 
+void SMPMatmulInferMeta(const MetaTensor& x,
+                        const MetaTensor& y,
+                        bool x_row_shard,
+                        bool y_row_shard,
+                        bool out_row_shard,
+                        int smp_rank,
+                        int smp_ranks,
+                        bool trans_y,
+                        MetaTensor* out);
+
 void MatmulWithFlattenInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
                                 int x_num_col_dims,
