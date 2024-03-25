@@ -2667,6 +2667,7 @@ def svd_lowrank(x, q=None, niter=2, M=None, name=None):
     if M is None:
         M_t = None
     else:
+        M = M.broadcast_to(x.shape)
         M_t = _transpose(M)
     A_t = _transpose(x)
 

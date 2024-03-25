@@ -53,8 +53,9 @@ class TestSvdLowrankAPI(unittest.TestCase):
             actual_rank, rows, columns, *batches
         )
         a = a_input
+        m = a_input.mean(axis=-2, keepdim=True)
 
-        u, s, v = svd(a_input, q=guess_rank, **options)
+        u, s, v = svd(a_input - m, q=guess_rank, **options)
 
         self.assertEqual(s.shape[-1], guess_rank)
         self.assertEqual(u.shape[-2], rows)
@@ -168,8 +169,9 @@ class TestStaticSvdLowrankAPI(unittest.TestCase):
                 actual_rank, rows, columns, *batches
             )
             a = a_input
+            m = a_input.mean(axis=-2, keepdim=True)
 
-            u, s, v = svd(a_input, q=guess_rank, **options)
+            u, s, v = svd(a_input, q=guess_rank, M=m, **options)
 
             self.assertEqual(s.shape[-1], guess_rank)
             self.assertEqual(u.shape[-2], rows)
