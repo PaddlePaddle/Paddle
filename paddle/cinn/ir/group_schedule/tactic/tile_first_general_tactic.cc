@@ -153,9 +153,7 @@ void TileFirstGeneralTactic::MergeReduceAxis(ir::IRSchedule* sch,
   std::vector<int32_t> fuse_axis = vec_reduce_axis_;
   if (vec_reduce_axis_.size() >= 2) {
     for (size_t i = 0; i < fuse_axis.size(); ++i) {
-      if (vec_flatten_axis_.size() > 2) {
-        fuse_axis[i] -= (vec_flatten_axis_.size() - 1);
-      }
+      fuse_axis[i] -= std::max((vec_flatten_axis_.size() - 1), 0UL);
     }
   }
 
