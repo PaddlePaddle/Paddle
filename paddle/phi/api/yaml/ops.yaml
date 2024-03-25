@@ -1039,6 +1039,7 @@
     func : flash_attn
     data_type : q
   backward : flash_attn_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : flash_attn_unpadded
   args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, Tensor fixed_seed_offset, Tensor attn_mask, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
@@ -2417,7 +2418,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : scale
-  args : (Tensor x, Scalar scale=1.0, float bias=0.0, bool bias_after_scale=true)
+  args : (Tensor x, Scalar scale=1.0, Scalar bias=0.0, bool bias_after_scale=true)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta

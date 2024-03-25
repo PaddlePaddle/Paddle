@@ -335,6 +335,13 @@
   outputs :
     out : Out
 
+- op : batch_fc
+  backward : batch_fc_grad
+  inputs :
+    {input : Input, w : W, bias : Bias}
+  outputs :
+    out : Out
+
 - op : batch_norm
   backward : batch_norm_grad, batch_norm_double_grad(batch_norm_grad_grad)
   inputs:
@@ -2496,6 +2503,15 @@
   outputs :
     out : Out
 
+- op : partial_concat
+  backward : partial_concat_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  extra :
+    attrs : [bool use_mkldnn = false]
+
 - op : partial_recv
   outputs :
     out : Out
@@ -2878,6 +2894,9 @@
     scale :
       data_type : float
       tensor_name : ScaleTensor
+    bias :
+      data_type : float
+      support_tensor : false
   extra :
     attrs : [bool use_mkldnn = false]
 

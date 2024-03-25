@@ -172,5 +172,33 @@ class MatmulOpInferSymbolicShapeTest(TestBase):
         return True
 
 
+class Conv2dNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.conv = paddle.nn.Conv2D(4, 6, (3, 3))
+
+    def forward(self, x):
+        z = paddle.empty(shape=[2, 4, 8, 8])
+        out = self.conv(z)
+        return out
+
+
+class Conv2dOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.expected = ['shape[2, 6, 6, 6], data[NULL]']
+
+    def test_eval_symbolic(self):
+        net = Conv2dNet()
+
+        x_spec = InputSpec(shape=[None, None, None], dtype='float32')
+
+        input_spec = [x_spec]
+        net = apply_to_static(net, False, input_spec)
+        net.eval()
+        check_infer_results(net, input_spec, 'pd_op.conv2d', self.expected)
+
+        return True
+
+
 if __name__ == '__main__':
     unittest.main()

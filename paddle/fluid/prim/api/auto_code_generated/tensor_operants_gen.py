@@ -95,11 +95,11 @@ namespace paddle {
 namespace prim {
 
 Tensor EagerTensorOperants::add(const Tensor& x, const Scalar& y) {
-  return ::add_ad_func(x, ::full_like_ad_func(x, y));
+  return ::scale_ad_func(x, 1.0f, y, true);
 }
 
 Tensor EagerTensorOperants::subtract(const Tensor& x, const Scalar& y) {
-  return ::subtract_ad_func(x, ::full_like_ad_func(x, y));
+  return ::scale_ad_func(x, 1.0f, -y, true);
 }
 
 Tensor EagerTensorOperants::multiply(const Tensor& x, const Scalar& y) {
@@ -111,11 +111,11 @@ Tensor EagerTensorOperants::divide(const Tensor& x, const Scalar& y) {
 }
 
 Tensor EagerTensorOperants::add(const Scalar& x, const Tensor& y) {
-  return ::add_ad_func(::full_like_ad_func(y, x), y);
+  return ::scale_ad_func(y, 1.0f, x, true);
 }
 
 Tensor EagerTensorOperants::subtract(const Scalar& x, const Tensor& y) {
-  return ::subtract_ad_func(::full_like_ad_func(y, x), y);
+  return ::scale_ad_func(y, -1.0f, x, true);
 }
 
 Tensor EagerTensorOperants::multiply(const Scalar& x, const Tensor& y) {

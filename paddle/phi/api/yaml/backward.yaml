@@ -1786,6 +1786,7 @@
     data_type : out_grad
   backward: pow_double_grad
   inplace : (out_grad -> x_grad)
+  composite: pow_grad(x, out_grad, y, x_grad)
 
 - backward_op : pow_triple_grad
   forward : pow_double_grad(Tensor x, Tensor grad_out, Tensor grad_grad_x, Scalar y) -> Tensor(grad_x), Tensor(grad_grad_out)
@@ -2001,7 +2002,7 @@
   inplace : (out_grad -> x_grad)
 
 - backward_op : scale_grad
-  forward : scale (Tensor x, Scalar scale, float bias, bool bias_after_scale) -> Tensor(out)
+  forward : scale (Tensor x, Scalar scale, Scalar bias, bool bias_after_scale) -> Tensor(out)
   args : (Tensor out_grad, Scalar scale=1.0)
   output : Tensor(x_grad)
   invoke : scale(out_grad, scale, 0.0f, true)
