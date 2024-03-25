@@ -495,7 +495,7 @@ std::vector<int64_t> ParseValueShape(const pir::Value& shape,
   return vec_shape;
 }
 
-const std::unordered_map<std::string, std::string>& CppTypeToPirAttrTypeMap() {
+const std::unordered_map<std::string, std::string>& CppTypeToAttrTypeMap() {
   static const std::unordered_map<std::string, std::string> attr_type_map = {
       {"bool", "pir::BoolAttribute"},
       {"int", "pir::Int32Attribute"},
@@ -509,7 +509,7 @@ const std::unordered_map<std::string, std::string>& CppTypeToPirAttrTypeMap() {
   return attr_type_map;
 }
 
-const std::unordered_map<std::string, phi::DataType>& StringToPhiDataType() {
+const std::unordered_map<std::string, phi::DataType>& StringToDataTypeMap() {
   static std::unordered_map<std::string, phi::DataType> data_type_map{
       {"bool", phi::DataType::BOOL},
       {"uint8", phi::DataType::UINT8},
@@ -529,6 +529,34 @@ const std::unordered_map<std::string, phi::DataType>& StringToPhiDataType() {
       {"bfloat16", phi::DataType::BFLOAT16},
       {"float64", phi::DataType::FLOAT64}};
   return data_type_map;
+}
+
+const std::unordered_map<std::string, phi::Place>& StringToPlaceMap() {
+  static std::unordered_map<std::string, phi::Place> place_map{
+      {"cpu", phi::CPUPlace{}},
+      {"gpu", phi::GPUPlace{}},
+      {"gpu_pinned", phi::GPUPinnedPlace{}},
+      {"xpu", phi::XPUPlace{}},
+      {"ipu", phi::IPUPlace{}},
+      {":", phi::CustomPlace{}},
+      {"undefined", phi::Place{}}};
+  return place_map;
+}
+
+const std::unordered_map<std::string, phi::DataLayout>&
+StringToDataLayoutMap() {
+  static std::unordered_map<std::string, phi::DataLayout> data_layout_map{
+      {"NHWC", phi::DataLayout::kNHWC},
+      {"NCHW", phi::DataLayout::kNCHW},
+      {"Undefined", phi::DataLayout::kAnyLayout},
+      {"ONEDNN", phi::DataLayout::ONEDNN},
+      {"SPARSE_COO", phi::DataLayout::SPARSE_COO},
+      {"SPARSE_CSR", phi::DataLayout::SPARSE_CSR},
+      {"NDHWC", phi::DataLayout::kNDHWC},
+      {"NCDHW", phi::DataLayout::kNCDHW},
+      {"PSTRING_UNION", phi::DataLayout::PSTRING_UNION},
+      {"STRIDED", phi::DataLayout::STRIDED}};
+  return data_layout_map;
 }
 
 }  // namespace dialect

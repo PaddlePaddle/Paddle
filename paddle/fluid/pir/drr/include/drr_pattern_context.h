@@ -304,6 +304,10 @@ class TEST_API ResultPattern {
 
   Attribute DataTypeAttr(const std::string& value) const;
 
+  Attribute PlaceAttr(const std::string& value) const;
+
+  Attribute DataLayoutAttr(const std::string& value) const;
+
   Attribute ComputeAttr(const AttrComputeFunc& attr_compute_func) const;
 
  private:

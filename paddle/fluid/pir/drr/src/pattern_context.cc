@@ -14,6 +14,7 @@
 
 #include <memory>
 
+#include "paddle/common/layout.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
 #include "paddle/fluid/pir/drr/src/pattern_graph.h"
@@ -239,11 +240,31 @@ Attribute ResultPattern::VectorFloatAttr(
 
 Attribute ResultPattern::DataTypeAttr(const std::string& value) const {
   return ComputeAttr([=](const MatchContext& match_ctx) -> phi::DataType {
-    PADDLE_ENFORCE_EQ(dialect::StringToPhiDataType().count(value) > 0,
+    PADDLE_ENFORCE_EQ(dialect::StringToDataTypeMap().count(value) > 0,
                       true,
                       "The DataTypeAttr %s is not supported.",
                       value);
-    return dialect::StringToPhiDataType().at(value);
+    return dialect::StringToDataTypeMap().at(value);
+  });
+}
+
+Attribute ResultPattern::PlaceAttr(const std::string& value) const {
+  return ComputeAttr([=](const MatchContext& match_ctx) -> phi::Place {
+    PADDLE_ENFORCE_EQ(dialect::StringToPlaceMap().count(value) > 0,
+                      true,
+                      "The PlaceAttr %s is not supported.",
+                      value);
+    return dialect::StringToPlaceMap().at(value);
+  });
+}
+
+Attribute ResultPattern::DataLayoutAttr(const std::string& value) const {
+  return ComputeAttr([=](const MatchContext& match_ctx) -> phi::DataLayout {
+    PADDLE_ENFORCE_EQ(dialect::StringToDataLayoutMap().count(value) > 0,
+                      true,
+                      "The DataLayoutAttr %s is not supported.",
+                      value);
+    return dialect::StringToDataLayoutMap().at(value);
   });
 }
 
@@ -284,11 +305,11 @@ void SourcePattern::RequireNativeCall(const ConstraintFunction& custom_fn) {
 }
 
 drr::Tensor& SourcePattern::InputNoneTensor() {
-  return ctx_->ResultTensorPattern(Tensor::SOURCE_INPUT_NONE_TENSOR_NAME);
+  return ctx_->SourceTensorPattern(Tensor::SOURCE_INPUT_NONE_TENSOR_NAME);
 }
 
 drr::Tensor& SourcePattern::OutputNoneTensor() {
-  return ctx_->ResultTensorPattern(Tensor::SOURCE_OUTPUT_NONE_TENSOR_NAME);
+  return ctx_->SourceTensorPattern(Tensor::SOURCE_OUTPUT_NONE_TENSOR_NAME);
 }
 
 }  // namespace drr

@@ -75,30 +75,22 @@ IntArrayAttribute IntArrayAttribute::Parse(pir::IrParser &parser) {  // NOLINT
 //                       |bfloat16|num_data_types|all_dtype
 DataTypeAttribute DataTypeAttribute::Parse(pir::IrParser &parser) {  // NOLINT
   std::string datatype_token_val = parser.ConsumeToken().val_;
-  PADDLE_ENFORCE_EQ(StringToPhiDataType().count(datatype_token_val) > 0,
+  PADDLE_ENFORCE_EQ(StringToDataTypeMap().count(datatype_token_val) > 0,
                     true,
                     datatype_token_val + " is not defined in DataType." +
                         parser.GetErrorLocationInfo());
   return DataTypeAttribute::get(parser.ctx,
-                                StringToPhiDataType().at(datatype_token_val));
+                                StringToDataTypeMap().at(datatype_token_val));
 }
 
 // Parse a PlaceAttribute
 // PlaceAttribute   :=    Place(cpu)|Place(gpu:0)|Place(gpu_pinned)
 //                        |Place(xpu:0)|Place(ipu:0)|Place(:0)|undefined
 PlaceAttribute PlaceAttribute::Parse(pir::IrParser &parser) {  // NOLINT
-  std::unordered_map<std::string, phi::Place> StringToPlace{
-      {"cpu", phi::CPUPlace{}},
-      {"gpu", phi::GPUPlace{}},
-      {"gpu_pinned", phi::GPUPinnedPlace{}},
-      {"xpu", phi::XPUPlace{}},
-      {"ipu", phi::IPUPlace{}},
-      {":", phi::CustomPlace{}},
-      {"undefined", phi::Place{}}};
   parser.ConsumeAToken("Place");
   parser.ConsumeAToken("(");
   std::string place_token_val = parser.ConsumeToken().val_;
-  IR_ENFORCE(StringToPlace.count(place_token_val) > 0,
+  IR_ENFORCE(StringToPlaceMap().count(place_token_val) > 0,
              place_token_val + " is not defined in Place." +
                  parser.GetErrorLocationInfo());
   if (parser.PeekToken().val_ == ":") {
@@ -108,7 +100,8 @@ PlaceAttribute PlaceAttribute::Parse(pir::IrParser &parser) {  // NOLINT
     parser.ConsumeToken();
   }
   parser.ConsumeAToken(")");
-  return PlaceAttribute::get(parser.ctx, StringToPlace[place_token_val]);
+  return PlaceAttribute::get(parser.ctx,
+                             StringToPlaceMap().at(place_token_val));
 }
 
 // Parse a DataLayoutAttribute
@@ -117,19 +110,8 @@ PlaceAttribute PlaceAttribute::Parse(pir::IrParser &parser) {  // NOLINT
 //                           |NCDHW|PSTRING_UNION|STRIDED
 DataLayoutAttribute DataLayoutAttribute::Parse(
     pir::IrParser &parser) {  // NOLINT
-  std::unordered_map<std::string, phi::DataLayout> StringToDataLayout{
-      {"NHWC", phi::DataLayout::kNHWC},
-      {"NCHW", phi::DataLayout::kNCHW},
-      {"Undefined", phi::DataLayout::kAnyLayout},
-      {"ONEDNN", phi::DataLayout::ONEDNN},
-      {"SPARSE_COO", phi::DataLayout::SPARSE_COO},
-      {"SPARSE_CSR", phi::DataLayout::SPARSE_CSR},
-      {"NDHWC", phi::DataLayout::kNDHWC},
-      {"NCDHW", phi::DataLayout::kNCDHW},
-      {"PSTRING_UNION", phi::DataLayout::PSTRING_UNION},
-      {"STRIDED", phi::DataLayout::STRIDED}};
   std::string datalayout_token_val = parser.ConsumeToken().val_;
-  IR_ENFORCE(StringToDataLayout.count(datalayout_token_val) > 0,
+  IR_ENFORCE(StringToDataLayoutMap().count(datalayout_token_val) > 0,
              datalayout_token_val + " is not defined in DataLayout." +
                  parser.GetErrorLocationInfo());
   if (datalayout_token_val == "Undefined") {
@@ -137,8 +119,8 @@ DataLayoutAttribute DataLayoutAttribute::Parse(
     parser.ConsumeAToken("AnyLayout");
     parser.ConsumeAToken(")");
   }
-  return DataLayoutAttribute::get(parser.ctx,
-                                  StringToDataLayout[datalayout_token_val]);
+  return DataLayoutAttribute::get(
+      parser.ctx, StringToDataLayoutMap().at(datalayout_token_val));
 }
 
 }  // namespace dialect
