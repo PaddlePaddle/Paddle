@@ -207,6 +207,9 @@ class LowerCinnFusionOpPass : public pir::PatternRewritePass {
 
   bool CanApplyOn(pir::Operation* op) const override {
     if (op->isa<pir::ModuleOp>()) {
+      VLOG(5) << "start to pre-analysis all fusion ops in ModuleOp with static "
+                 "shape mode: "
+              << op->id();
       FusionOpAnalysis(&pre_analysis_info_, /*is_dy_shape=*/false).Run(op);
     }
     return op->num_regions() > 0;
@@ -248,7 +251,10 @@ class LowerCinnDyShapeFusionOpPass : public pir::PatternRewritePass {
 
   bool CanApplyOn(pir::Operation* op) const override {
     if (op->isa<pir::ModuleOp>()) {
-      FusionOpAnalysis(&pre_analysis_info_, /*is_dy_shape=*/false).Run(op);
+      VLOG(5) << "start to pre-analysis all fusion ops in ModuleOp with "
+                 "dynamic shape mode: "
+              << op->id();
+      FusionOpAnalysis(&pre_analysis_info_, /*is_dy_shape=*/true).Run(op);
     }
     return op->num_regions() > 0;
   }
@@ -261,6 +267,8 @@ std::shared_ptr<Group> RebuildGroup(pir::Operation*, bool);
 
 void FusionOpAnalysis::GatherGroup(pir::Operation* fusion_op) {
   std::shared_ptr<Group> group_ptr = RebuildGroup(fusion_op, is_dy_shape_);
+  VLOG(6) << "Gather Group " << group_ptr->FuncName()
+          << " for fusion_op : " << fusion_op->id();
   pre_analysis_info_->group_infos.insert({fusion_op, group_ptr});
   if (is_dy_shape_) {
     auto broadcast_tree_info = std::make_shared<BroadcastTreeInfo>(group_ptr);
@@ -301,6 +309,7 @@ void FusionOpAnalysis::PreCompileGroup() {
     EnqueueGroup(group_info.second);
   }
   // Build and trigger compilaion cache.
+  VLOG(4) << "Parallel Pre-Compile for Group with size: " << groups.size();
   PirCompiler pir_compiler(cinn::common::DefaultNVGPUTarget());
   pir_compiler.Build(groups);
 }

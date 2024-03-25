@@ -23,7 +23,9 @@ namespace pir {
 void* BackendResource::GetHostFuncPtr() const {
   VLOG(4) << "Lookup kernel name: " << host_fn_name_;
   void* ptr = backend_compiler_->Lookup(host_fn_name_);
-  PADDLE_ENFORCE_NOT_NULL(ptr, "Can't find kernel function %s", host_fn_name_);
+  PADDLE_ENFORCE_NOT_NULL(ptr,
+                          phi::errors::InvalidArgument(
+                              "Can't find kernel function %s", host_fn_name_));
   return ptr;
 }
 
@@ -31,7 +33,9 @@ void* BackendResource::GetInferFuncPtr() const {
   VLOG(4) << "Lookup infer shape fn name: " << infer_fn_name_;
   void* ptr = backend_compiler_->Lookup(infer_fn_name_);
   PADDLE_ENFORCE_NOT_NULL(
-      ptr, "Can't find infer shape function %s", infer_fn_name_);
+      ptr,
+      phi::errors::InvalidArgument("Can't find infer shape function %s",
+                                   infer_fn_name_));
   return ptr;
 }
 
@@ -64,11 +68,18 @@ pir::CINNKernelInfo BackendResource::GernerateKernelInfo(
 }  // namespace pir
 
 bool CompilationCache::Has(const CacheKey& key) const {
-  return cache_.find(KeyHash(key)) != cache_.end();
+  const bool has_existed = cache_.find(KeyHash(key)) != cache_.end();
+  VLOG(6) << "Check IsExisted in CompilationCache: " << key->FuncName() << " "
+          << has_existed;
+  return has_existed;
 }
 
 const CompilationCache::CacheValue& CompilationCache::Get(
     const CacheKey& key) const {
+  PADDLE_ENFORCE_EQ(
+      Has(key),
+      true,
+      phi::errors::NotFound("%s is not in CompliatonCache.", key->FuncName()));
   return cache_.at(KeyHash(key));
 }
 
@@ -77,24 +88,15 @@ pir::CINNKernelInfo CompilationCache::GetKernelInfo(const CacheKey& key) const {
 }
 
 void CompilationCache::Insert(const CacheKey& key, const CacheValue& value) {
+  VLOG(6) << "Insert CompilationCache for: " << key->FuncName();
   cache_.insert({KeyHash(key), value});
 }
 
 void CompilationCache::Clear() { cache_.clear(); }
 
-// struct StringsHash {
-//   size_t operator()(const& std::vector<std::string> values) const {
-//     size_t seed = values.size();
-//     for (auto& value : values) {
-//       seed ^= value + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-//     }
-//     return seed;
-//   }
-// };
-
 size_t CompilationCache::KeyHash(const CacheKey& key) const {
-  // TODO(Aurelius84): use a better hash function
-  return pir::Group::SharedGroupHasher()(key);
+  // TODO(Aurelius84): use a better hash function in next pr.
+  return std::hash<std::string>{}(key->FuncName());
 }
 
 }  // namespace cinn::hlir::framework

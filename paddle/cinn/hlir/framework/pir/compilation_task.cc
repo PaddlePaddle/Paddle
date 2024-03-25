@@ -43,6 +43,7 @@ std::string GroupCompilationContext::PrintPredicate2Funcs() const {
 }
 
 void CompilationTask::operator()() {
+  VLOG(4) << "Run Compilation Task for : " << context_->group_.get();
   if (CompilationCache::Instance().Has(context_->group_)) {
     VLOG(4) << "Found cached kernel info for group: "
             << context_->group_->FuncName();
