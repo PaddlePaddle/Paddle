@@ -100,7 +100,7 @@ class MeshgridOpInferSymbolicShapeTest(TestBase):
                 shape=[None for _ in range(len(x.shape))], dtype='float32'
             )
             y_spec = InputSpec(
-                shape=[None for index in range(len(y.shape))], dtype='float32'
+                shape=[None for _ in range(len(y.shape))], dtype='float32'
             )
 
             input_spec = [x_spec, y_spec]
