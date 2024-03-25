@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,17 +14,13 @@
 
 #pragma once
 
-#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
+#include <memory>
+#include "paddle/pir/include/core/dll_decl.h"
 
-namespace paddle::dialect {
+namespace pir {
 
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(Concat)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(FullWithTensor)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(FlashAttn)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(Linspace)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(Logspace)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(Stack)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(Where)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(Where_)
+class Pass;
 
-}  // namespace paddle::dialect
+IR_API std::unique_ptr<Pass> CreateConvElementwiseAddFusePass();
+
+}  // namespace pir
