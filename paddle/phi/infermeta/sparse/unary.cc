@@ -36,5 +36,21 @@ void ValuesInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
+void CastInferMeta(const MetaTensor& x,
+                   DataType index_dtype,
+                   DataType out_dtype,
+                   MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_layout(x.layout());
+  out->share_lod(x);
+  // In inplace case, setting the dtype of out will reset the dtype of x at the
+  // same time, which will cause bugs, so move the dtype setting of out to the
+  // kernel
+
+  if (!(out->is_same_tensor(x))) {
+    out->set_dtype(out_dtype);
+  }
+}
+
 }  // namespace sparse
 }  // namespace phi

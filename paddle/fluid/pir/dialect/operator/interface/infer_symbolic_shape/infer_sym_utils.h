@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
@@ -88,6 +89,25 @@ inline ExprVec GetExprVecFromData(const ShapeOrData &shapeordata) {
     return result;
   } else {
     return shapeordata.data().value();
+  }
+}
+
+inline ExprVec GetExprVecFromShape(const ShapeOrData &shapeordata) {
+  const auto GetShapeExprsFromList = [&]() {
+    ExprVec result;
+    TensorListExprs list =
+        shapeordata.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+    for (size_t i = 0; i < list.size(); i++) {
+      for (auto expr : list[i].data().value()) {
+        result.emplace_back(expr);
+      }
+    }
+    return result;
+  };
+  if (shapeordata.isa<TensorListExprs>()) {
+    return GetShapeExprsFromList();
+  } else {
+    return shapeordata.shape();
   }
 }
 

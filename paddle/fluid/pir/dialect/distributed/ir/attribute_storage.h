@@ -27,7 +27,8 @@
 namespace paddle {
 namespace dialect {
 
-struct ProcessMeshAttrStorage : public pir::AttributeStorage {
+class ProcessMeshAttrStorage : public pir::AttributeStorage {
+ public:
   ///
   /// \brief Declare ParamKey according to parameter type.
   ///
@@ -59,7 +60,8 @@ struct ProcessMeshAttrStorage : public pir::AttributeStorage {
   ParamKey process_mesh;
 };
 
-struct TensorDistAttrStorage : public pir::AttributeStorage {
+class TensorDistAttrStorage : public pir::AttributeStorage {
+ public:
   ///
   /// \brief Declare ParamKey according to parameter type.
   ///
@@ -113,7 +115,8 @@ struct TensorDistAttrStorage : public pir::AttributeStorage {
   flat_hash_map<int64_t, phi::ReduceType> partial_status;
 };
 
-struct OperationDistAttrStorage : public pir::AttributeStorage {
+class OperationDistAttrStorage : public pir::AttributeStorage {
+ public:
   ///
   /// \brief Declare ParamKey according to parameter type.
   ///

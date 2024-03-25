@@ -63,6 +63,10 @@ struct Group {
                                ::pir::IrMapping& ir_mapping,
                                const Options& option = Options()) const;
 
+  bool HasShapeOrDataExprs(const ::pir::Value& value) const {
+    return value_to_shape_or_data_exprs_.count(value);
+  }
+
   const symbol::ShapeOrDataDimExprs& GetShapeOrDataExprs(
       const ::pir::Value& value) const {
     CHECK(value_to_shape_or_data_exprs_.count(value))
@@ -126,6 +130,7 @@ struct Group {
       alignment_schedule_info;
   std::vector<int64_t> reduce_axis;
   std::vector<int64_t> loop_ranges;
+  std::vector<symbol::DimExpr> loop_ranges_expr;
 
   struct SharedGroupHasher {
     size_t operator()(const std::shared_ptr<Group>& group) const noexcept {
