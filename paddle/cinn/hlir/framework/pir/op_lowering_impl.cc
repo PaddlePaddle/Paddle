@@ -276,7 +276,6 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(const GroupPtr& group,
   }
   std::vector<ir::Tensor> group_func_arg_tensors_copy = group_func_arg_tensors;
   std::vector<ir::Argument> group_func_args;
-  VLOG(4) << "Start PostProcess.";
   std::vector<ir::Tensor> infer_shape_tensor_args;
   std::vector<ir::LoweredFunc> funcs = PostProcess(group,
                                                    tensor_map,
@@ -742,7 +741,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
         tensor->shape.push_back(t->dim_expr);
       }
     }
-
     infer_shape_arg_tensor->push_back(tensor);
     if ((op_result.defining_op()->name() == "cinn_op.reshape") &&
         erase_reshape.count(op_result.defining_op())) {
