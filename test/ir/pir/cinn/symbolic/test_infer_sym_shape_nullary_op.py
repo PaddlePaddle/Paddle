@@ -90,6 +90,92 @@ class EmptyOpInferSymbolicShapeTest(TestBase):
         return True
 
 
+class TriuIndicesNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        out = paddle.triu_indices(row=10, col=10, offset=0)
+        out = paddle.triu_indices(row=10, col=10, offset=2)
+        out = paddle.triu_indices(row=10, col=10, offset=-2)
+        out = paddle.triu_indices(row=10, col=3, offset=0)
+        out = paddle.triu_indices(row=10, col=3, offset=2)
+        out = paddle.triu_indices(row=10, col=3, offset=-2)
+        out = paddle.triu_indices(row=3, col=10, offset=0)
+        out = paddle.triu_indices(row=3, col=10, offset=2)
+        out = paddle.triu_indices(row=3, col=10, offset=-2)
+        return out
+
+
+class TriuIndicesOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.expected = [
+            'shape[2, 55], data[NULL]',
+            'shape[2, 36], data[NULL]',
+            'shape[2, 72], data[NULL]',
+            'shape[2, 6], data[NULL]',
+            'shape[2, 1], data[NULL]',
+            'shape[2, 12], data[NULL]',
+            'shape[2, 27], data[NULL]',
+            'shape[2, 21], data[NULL]',
+            'shape[2, 30], data[NULL]',
+        ]
+
+    def test_eval_symbolic(self):
+        net = TriuIndicesNet()
+        x_spec = InputSpec(shape=[None, None, None], dtype='float32')
+        input_spec = [x_spec]
+        net = apply_to_static(net, False, input_spec)
+        net.eval()
+        check_infer_results(
+            net, input_spec, 'pd_op.triu_indices', self.expected
+        )
+        return True
+
+
+class TrilIndicesNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        out = paddle.tril_indices(row=10, col=10, offset=0)
+        out = paddle.tril_indices(row=10, col=10, offset=2)
+        out = paddle.tril_indices(row=10, col=10, offset=-2)
+        out = paddle.tril_indices(row=10, col=3, offset=0)
+        out = paddle.tril_indices(row=10, col=3, offset=2)
+        out = paddle.tril_indices(row=10, col=3, offset=-2)
+        out = paddle.tril_indices(row=3, col=10, offset=0)
+        out = paddle.tril_indices(row=3, col=10, offset=2)
+        out = paddle.tril_indices(row=3, col=10, offset=-2)
+        return out
+
+
+class TrilIndicesOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.expected = [
+            'shape[2, 55], data[NULL]',
+            'shape[2, 72], data[NULL]',
+            'shape[2, 36], data[NULL]',
+            'shape[2, 27], data[NULL]',
+            'shape[2, 30], data[NULL]',
+            'shape[2, 21], data[NULL]',
+            'shape[2, 6], data[NULL]',
+            'shape[2, 12], data[NULL]',
+            'shape[2, 1], data[NULL]',
+        ]
+
+    def test_eval_symbolic(self):
+        net = TrilIndicesNet()
+        x_spec = InputSpec(shape=[None, None, None], dtype='float32')
+        input_spec = [x_spec]
+        net = apply_to_static(net, False, input_spec)
+        net.eval()
+        check_infer_results(
+            net, input_spec, 'pd_op.tril_indices', self.expected
+        )
+        return True
+
+
 class GaussianNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
