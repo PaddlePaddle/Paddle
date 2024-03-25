@@ -108,16 +108,24 @@ class CumSumProdNet(paddle.nn.Layer):
 
     def forward(self, x):
         cumsum_out = paddle.cumsum(x)
+        cumsum_out = paddle.cumsum(x, axis=1)
+        logcumsumexp_out = paddle.logcumsumexp(x)
+        logcumsumexp_out = paddle.logcumsumexp(x, axis=1)
         cumprod_out = paddle.cumprod(x, dim=1)
-        return cumsum_out, cumprod_out
+        return cumsum_out, logcumsumexp_out, cumprod_out
 
 
 class CumSumProdOpInferSymbolicShapeTest(TestBase):
     def prepare_data(self):
         self.cases = [np.random.rand(4, 5, 6)]
         self.expected = [
-            ['shape[Mul(S0, S1, S2)], data[NULL]'],
-            ['shape[S0, S1, S2], data[NULL]'],
+            [
+                'shape[Mul(S0, S1, S2)], data[NULL]',
+                'shape[S0, S1, S2], data[NULL]',
+            ],
+            [
+                'shape[S0, S1, S2], data[NULL]',
+            ],
         ]
 
     def test_eval_symbolic(self):
@@ -134,6 +142,9 @@ class CumSumProdOpInferSymbolicShapeTest(TestBase):
             net.eval()
             check_infer_results(
                 net, input_spec, 'pd_op.cumsum', self.expected[0]
+            )
+            check_infer_results(
+                net, input_spec, 'pd_op.logcumsumexp', self.expected[0]
             )
             check_infer_results(
                 net, input_spec, 'pd_op.cumprod', self.expected[1]
@@ -176,8 +187,7 @@ class SumNet(paddle.nn.Layer):
 
         out_logsumexp = paddle.logsumexp(x, [1, 2])
         out_logsumexp = paddle.logsumexp(x, [1, 2], keepdim=True)
-        # return out_sum, out_logsumexp
-        return out_logsumexp
+        return out_sum, out_logsumexp
 
 
 class SumOpInferSymbolicShapeTest(TestBase):
@@ -213,6 +223,7 @@ class SumOpInferSymbolicShapeTest(TestBase):
             net.eval()
 
             # check the infer result
+            check_infer_results(net, input_spec, 'pd_op.sum', self.expected)
             check_infer_results(
                 net, input_spec, 'pd_op.logsumexp', self.expected
             )
