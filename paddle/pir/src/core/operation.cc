@@ -264,7 +264,7 @@ std::vector<Value> Operation::results() const {
 ///
 /// \brief op input related public interfaces
 ///
-std::vector<OpOperand> Operation::operands() {
+std::vector<OpOperand> Operation::operands() const {
   std::vector<OpOperand> res;
   for (uint32_t i = 0; i < num_operands(); ++i) {
     res.push_back(operand(i));

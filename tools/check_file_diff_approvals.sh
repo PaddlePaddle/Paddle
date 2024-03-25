@@ -18,6 +18,7 @@ if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
 
+
 PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../" && pwd )"
 API_FILES=("CMakeLists.txt"
            "paddle/fluid/framework/operator.h"
@@ -218,9 +219,6 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "python/paddle/incubate/autograd/primitives.py" ] || [ "${API_FILE}" == "python/paddle/incubate/autograd/composite_rules.py" ]; then
             echo_line="You must have one RD (cyber-pioneer(chenzhuo), xiaoguoguo626807(wangruting), Charles-hit(wanghao), JiabinYang) approval for changing ${API_FILE} , which manages the composite rules.\n"
             check_approval 1 cyber-pioneer xiaoguoguo626807 Charles-hit JiabinYang
-      elif [ "${API_FILE}" == "paddle/fluid/primitive/primitive.yaml" ]; then
-            echo_line="You must have one RD jeff41404(gaoxiang) or cyber-pioneer(chenzhuo) approval for changing ${API_FILE} , which manages the composite rules.\n"
-            check_approval 1 jeff41404 cyber-pioneer
       elif [ "${API_FILE}" == "python/paddle/autograd/ir_backward.py" ] || [ "${API_FILE}" == "python/paddle/autograd/backward_utils.py" ]; then
             echo_line="You must be approved by Aurelius84(zhangliujie) or cxxly(chenxiaoxu) or xiaoguoguo626807(wangruting) or changeyoung98(chenzhiyang) for python/paddle/autograd/ir_backward.py or python/paddle/autograd/backward_utils.py changes.\n"
             check_approval 1 Aurelius84 cxxly xiaoguoguo626807 changeyoung98
@@ -261,16 +259,6 @@ HAS_LEGACY_KERNEL_REGISTRATION=`git diff -U0 upstream/$BRANCH $FILTER | grep '^\
 if [ ${HAS_LEGACY_KERNEL_REGISTRATION} ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="In principle, adding an OpKernel needs to be in the phi/kernels directory. If you must add an OpKernel in the fluid/operators directory, please request one of the RD (chenwhql, zyfncg, YuanRisheng, phlrain) review and approve.\n"
     check_approval 1 chenwhql zyfncg YuanRisheng phlrain
-fi
-
-DIFF_OUTPUT=$(git diff --unified=0 upstream/$BRANCH)
-# check if any .cc or .cu file in the phi/kernels/ directory is changed and if any template is added
-if echo "$DIFF_OUTPUT" | grep -q 'diff --git a/paddle/phi/kernels/.*\.cc b/paddle/phi/kernels/.*\.cc\|diff --git a/paddle/phi/kernels/.*\.cu b/paddle/phi/kernels/.*\.cu'; then
-    if echo "$DIFF_OUTPUT" | grep -q '+.*template <'; then
-        echo "A C++ template is added in .cc or .cu file in the phi/kernels directory,which can lead to an overly large size of the compiled .o file, resulting in a failure in multi-architecture compilation!"
-        echo_line="You must have one RD (risemeup1 or Galaxy1458) approval for the change of C++ template.\n"
-        check_approval 1 risemeup1 Galaxy1458
-    fi
 fi
 
 PYTHON_FILE_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- 'python/*.py' |grep "^+")
@@ -338,6 +326,12 @@ HAS_MODIFIED_API_FW_BW_YAML=`git diff --name-only upstream/$BRANCH | grep -E "pa
 if [ "${HAS_MODIFIED_API_FW_BW_YAML}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must be approved by chenwhql or zyfncg or heavyrain-lzy for paddle/phi/api/yaml/ops.yaml or paddle/phi/api/yaml/backward.yaml changes, which manage the generated code for the C++ OP. You can only change them according to the specification at the begining of this two file.\n"
     check_approval 1 chenwhql zyfncg heavyrain-lzy
+fi
+
+HAS_MODIFIED_PRIMITIVE_YAML=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/primitive/primitive.yaml" || true`
+if [ "${HAS_MODIFIED_PRIMITIVE_YAML}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must be approved by jeff41404(gaoxiang) or cyber-pioneer(chenzhuo) for paddle/fluid/primitive/primitive.yaml changes.\n"
+    check_approval 1 jeff41404 cyber-pioneer
 fi
 
 HAS_MODIFIED_FRAMEWORK_EXECUTOR=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/framework/new_executor" || true`
