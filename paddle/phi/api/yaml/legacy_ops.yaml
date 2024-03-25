@@ -1078,6 +1078,7 @@
     spmd_rule : SliceInferSpmdDynamic
   kernel :
     func : slice
+  view : (input -> out)
   backward : slice_grad
 
 - op : softmax
@@ -1119,6 +1120,7 @@
     spmd_rule : StridedSliceInferSpmdDynamic
   kernel :
     func : strided_slice
+  view : (x -> out)
   backward : strided_slice_grad
 
 - op : subtract
