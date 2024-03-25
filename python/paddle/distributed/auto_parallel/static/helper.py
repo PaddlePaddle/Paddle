@@ -441,6 +441,7 @@ class ProgramHelper:
                 # No need to construct backward.
                 with paddle.no_grad():
                     tmp = paddle.base.core.reshard(param, var_dist_attr)
+                print("**** helper.init ****:", param, var, var_dist_attr)
                 if tmp._is_initialized():
                     param.get_tensor()._share_data_with(tmp.get_tensor())
                 else:

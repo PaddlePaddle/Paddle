@@ -924,7 +924,8 @@ class DistributedContext:
                 dist_tensor = self._dist_tensors_for_program.get(
                     serial_tensor_id, None
                 )
-            dist_tensor.dist_attr.process_mesh = self.process_meshes[0]
+            if not dist_tensor.dist_attr.is_annotated("process_mesh"):
+                dist_tensor.dist_attr.process_mesh = self.process_meshes[0]
 
     def amend_dist_attr_for_program(self):
         for dist_tensor in self._dist_tensors_for_program.values():

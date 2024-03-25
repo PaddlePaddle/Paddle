@@ -769,10 +769,14 @@ class Engine:
             self.concrete_program = self.program_helper.concrete_program
             serial_main_prog = self.program_helper.main_program
             serial_startup_prog = self.program_helper.startup_program
+            print("engine.py:682, self.concrete_program: ")
+            print(self.concrete_program)
+            print("engine.py:684, serial_main_prog: ")
+            print(serial_main_prog)
 
             self._inputs = self.program_helper.input_vars
             self._labels = self.program_helper.label_vars
-            # self._process_dist_input_specs()
+            self._process_dist_input_specs()
             outputs = self.program_helper.output_vars
             self._losses = self.program_helper.loss_vars
             self._loss_names = self.program_helper.loss_names

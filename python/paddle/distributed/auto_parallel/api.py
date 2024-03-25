@@ -35,6 +35,7 @@ from paddle.distributed.auto_parallel.interface import (
     shard_tensor as shard_tensor_static,
 )
 from paddle.distributed.auto_parallel.placement_type import (
+    to_dim_map,
     to_placements,
 )
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
@@ -266,7 +267,43 @@ def shard_tensor(
 def dtensor_from_local(local_tensor, mesh, placements):
     # assume the each rank has the same tensor shape for now, just use the local shape to calculate the global shape
     global_dims = list(local_tensor.shape)
+    local_mesh_dim = -1
+    local_mesh = None
+    if paddle.in_dynamic_mode():
+        if local_tensor.is_dist():
+            local_mesh = local_tensor.process_mesh
+            local_val = local_tensor._local_value()
+        else:
+            local_val = local_tensor
+    else:
+        dist_attr = local_tensor.dist_attr
+        if dist_attr is not None:
+            local_mesh = dist_attr.process_mesh
+
+    if local_mesh is not None:
+        assert (
+            len(local_mesh.shape) == 1
+        ), "dtensor_from_local only support 1D local mesh now when the input ``local_tensor`` is a dist_tensor."
+        local_process_ids = local_mesh.process_ids
+
+        if len(local_process_ids) > 1:
+            diff = local_process_ids[1] - local_process_ids[0]
+            global_mesh_shape = mesh.shape
+            for i in range(len(global_mesh_shape) - 1, -1, -1):
+                diff = diff // global_mesh_shape[i]
+                if diff == 0:
+                    local_mesh_dim = i
+                    break
+            assert (
+                local_mesh_dim == len(global_mesh_shape) - 1
+            ), "Only support the local mesh to be the last dimension of global mesh now."
+        local_placement = local_tensor.placements[0]
+        # if local_mesh_dim > -1 and local_placement != placements[local_mesh_dim]:
+        #     raise ValueError("The local placements of the input ``local_tensor`` must be compatible with the input ``mesh``")
+
     for idx, placement in enumerate(placements):
+        if idx == local_mesh_dim:
+            continue
         if placement.is_shard():
             shard_dim = placement.get_dim()
             local_dim_size = global_dims[shard_dim]
@@ -277,7 +314,7 @@ def dtensor_from_local(local_tensor, mesh, placements):
         place = paddle.framework._get_paddle_place(place)
 
         return paddle.Tensor(
-            local_tensor,
+            local_val,
             dims=global_dims,
             process_mesh=mesh,
             placements=placements,
@@ -304,9 +341,46 @@ def dtensor_from_local(local_tensor, mesh, placements):
         local_tensor.set_type(dist_dense_tensor_type)
         return local_tensor
     else:
-        raise RuntimeError(
-            "dtensor_from_local() are only supported in dynamic or pir mode."
+        main_program = default_main_program()
+        default_dist_ctx = get_default_distributed_context()
+
+        out_var = main_program.current_block().create_var(
+            name=unique_name.generate_with_ignorable_key(
+                ".".join(['dtensor_from_local_api', 'tmp'])
+            ),
+            dtype=local_tensor.dtype,
+            shape=global_dims,
+            type=local_tensor.type,
+            persistable=local_tensor.persistable,
+            stop_gradient=local_tensor.stop_gradient,
         )
+
+        trans_op = main_program.current_block().append_op(
+            type='assign',
+            inputs={'X': [local_tensor]},
+            outputs={'Out': [out_var]},
+        )
+
+        dist_op = DistributedOperator(trans_op)
+        dist_op.dist_attr.process_mesh = mesh
+        dist_op.dist_attr.mark_annotated("process_mesh")
+        dist_op.dist_attr.chunk_id = 0
+
+        global_dims_mapping = to_dim_map(placements, len(global_dims))
+        input_dist_attr = dist_op.dist_attr.get_input_dist_attr(
+            local_tensor.name
+        )
+        input_dist_attr.dims_mapping = local_tensor.dist_attr.dims_mapping
+        input_dist_attr.mark_annotated("dims_mapping")
+
+        output_dist_attr = dist_op.dist_attr.get_output_dist_attr(out_var.name)
+        output_dist_attr.dims_mapping = global_dims_mapping
+        output_dist_attr.mark_annotated("dims_mapping")
+
+        default_dist_ctx.add_dist_op_for_program(dist_op)
+        mark_as_sharding_propagation_skip_op(trans_op)
+
+        return out_var
 
 
 def dtensor_from_fn(fn, mesh, placements, *args, **kwargs):
@@ -438,6 +512,124 @@ def reshard(dist_tensor, mesh, placements):
         mark_as_sharding_propagation_skip_op(trans_op)
         # trans_op = shard_op_static(paddle.assign, mesh, [sharding_specs])
         # out_var = trans_op(dist_tensor)
+
+        return out_var
+
+
+def local_tensor_from_dist(
+    dist_tensor, global_mesh=None, local_mesh_dim=None, global_placements=None
+):
+    """
+    Get the local part of the ``dist_tensor`` on the specific ``local_mesh_dim``.
+    """
+    if (
+        global_mesh is not None
+        and local_mesh_dim is not None
+        and global_placements is not None
+    ):
+        mesh_shape = global_mesh.shape
+        process_ids = np.array(global_mesh.process_ids).reshape(mesh_shape)
+        splitted_process_ids = np.split(
+            process_ids, mesh_shape[local_mesh_dim], axis=local_mesh_dim
+        )
+        local_process_ids = splitted_process_ids[dist.get_rank()]
+        local_mesh = dist.ProcessMesh(local_process_ids)
+        local_placements = list(global_placements)
+        local_placements.pop(local_mesh_dim)
+        if local_placements == []:
+            local_placements.append(dist.Replicate())
+
+    if paddle.framework.in_dynamic_mode():
+        if (
+            global_mesh is None
+            and local_mesh_dim is None
+            and global_placements is None
+        ):
+            return dist_tensor._local_value()
+        else:
+            if (
+                global_mesh is None
+                or local_mesh_dim is None
+                or global_placements is None
+            ):
+                raise ValueError(
+                    "the args global_mesh, local_mesh_dim and global_placements should be set together"
+                )
+            ori_mesh = dist_tensor.process_mesh
+            if global_mesh != dist_tensor.process_mesh:
+                raise ValueError(
+                    "the global_mesh should be the same as dist_tensor's process_mesh."
+                )
+            assert check_placements_equal(
+                global_placements, dist_tensor.placements
+            ), "the global_placements should be the same as dist_tensor's placements."
+            return dtensor_from_local(
+                dist_tensor._local_value(), local_mesh, local_placements
+            )
+    else:
+        assert isinstance(
+            dist_tensor, Variable
+        ), "in dy2static mode, local_tensor_from_dist's input should be Variable, but got [{}]".format(
+            dist_tensor
+        )
+        if (
+            global_mesh is None
+            or local_mesh_dim is None
+            or global_placements is None
+        ):
+            raise ValueError(
+                "the args global_mesh, local_mesh_dim and global_placements must be set in dy2static."
+            )
+
+        global_shape = dist_tensor.shape
+        # mesh = dist_tensor.dist_attr.process_mesh
+        # mesh_shape = mesh.shape
+        global_dims_mapping = to_dim_map(global_placements, dist_tensor.ndim)
+        local_shape = []
+        for i, shape in enumerate(global_shape):
+            if global_dims_mapping[i] == -1:
+                local_shape.append(shape)
+            else:
+                local_shape.append(shape // mesh_shape[global_dims_mapping[i]])
+
+        main_program = default_main_program()
+        default_dist_ctx = get_default_distributed_context()
+
+        out_var = main_program.current_block().create_var(
+            name=unique_name.generate_with_ignorable_key(
+                ".".join(['local_tensor_api', 'tmp'])
+            ),
+            dtype=dist_tensor.dtype,
+            shape=local_shape,
+            type=dist_tensor.type,
+            persistable=dist_tensor.persistable,
+            stop_gradient=dist_tensor.stop_gradient,
+        )
+
+        trans_op = main_program.current_block().append_op(
+            type='assign',
+            inputs={'X': [dist_tensor]},
+            outputs={'Out': [out_var]},
+        )
+
+        dist_op = DistributedOperator(trans_op)
+        dist_op.dist_attr.process_mesh = local_mesh
+        dist_op.dist_attr.mark_annotated("process_mesh")
+        dist_op.dist_attr.chunk_id = 0
+
+        local_dims_mapping = to_dim_map(local_placements, len(local_shape))
+        input_dist_attr = dist_op.dist_attr.get_input_dist_attr(
+            dist_tensor.name
+        )
+        # input_dist_attr.dims_mapping = global_dims_mapping
+        input_dist_attr.mark_annotated("dims_mapping")
+
+        output_dist_attr = dist_op.dist_attr.get_output_dist_attr(out_var.name)
+        output_dist_attr.dims_mapping = local_dims_mapping
+        output_dist_attr.mark_annotated("dims_mapping")
+
+        default_dist_ctx.add_dist_op_for_program(dist_op)
+        mark_as_sharding_propagation_skip_op(trans_op)
 
         return out_var
 
@@ -1694,6 +1886,12 @@ class DistModel:
                 self._engine._inputs_spec,
                 self._engine._labels_spec,
             ) = self._engine._prepare_data_spec_from_dataloader(loader)
+            print(
+                "input_spec:",
+                self._engine._inputs_spec,
+                "label_spec:",
+                self._engine._labels_spec,
+            )
         else:
             batch_size = loader.batch_sampler.batch_size
             (

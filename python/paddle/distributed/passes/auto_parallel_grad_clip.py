@@ -158,7 +158,10 @@ class ClipHelper:
     def __init__(
         self, params_grads, rank_id, block, dist_context, pass_context
     ):
-        params, _ = zip(*params_grads)
+        if params_grads == []:
+            params = []
+        else:
+            params, _ = zip(*params_grads)
         self.params = list(params)
         self.params_name = [p.name for p in self.params]
         self.rank_id = rank_id

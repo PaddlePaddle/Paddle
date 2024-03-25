@@ -64,6 +64,22 @@ _skip_propagation_prefix = "Auto_Parallel_Completion_Skipped"
 _max_propagation_step = 500
 
 
+def log_program(dist_context, name=""):
+    import paddle
+
+    if name in ["before_update", "after_update", "final"]:
+        from .dist_context import set_default_distributed_context
+
+        set_default_distributed_context(dist_context)
+        print(f"================== {name} ==================")
+        print(dist_context.serial_main_program)
+        if paddle.distributed.get_rank() == 0:
+            with open(f"./main_program_{name}.txt", "w+") as f:
+                f.write(str(dist_context.serial_main_program))
+            with open(f"./startup_program_{name}.txt", "w+") as f:
+                f.write(str(dist_context.serial_startup_program))
+
+
 def mark_as_sharding_propagation_skip_op(op):
     prefix = op.attr("op_namescope") if op.has_attr("op_namescope") else '/'
     op._set_attr('op_namescope', prefix + _skip_propagation_prefix)
@@ -1030,6 +1046,7 @@ class Completer:
         )
         if not is_naive_data_parallel(self._dist_context):
             self._dist_context.initialize(with_graph=True)
+            log_program(self._dist_context, "before_update")
             self._prepare()
             self._update_process_mesh()
             self._update_dims_mapping()
@@ -1042,6 +1059,7 @@ class Completer:
             self._update_dist_attr_for_dp()
 
         self._complete_with_global_mesh(serial_main_program, tensor_names, ops)
+        log_program(self._dist_context, "final")
         # NOTE:[HighOrderGrad] update vars and ops distributed attribute in high order gradient
         self._complete_high_order_grad_annotation(serial_main_program)
         self._complete_chunk_id(serial_main_program)
@@ -1777,6 +1795,48 @@ class Completer:
                 grad_op_dist_attr.set_output_dims_mapping(
                     output_var.name, ref_dims_mapping
                 )
+            elif grad_op.type == "assign" and (
+                "local_tensor_api" in grad_op.input_arg_names[0]
+                or "dtensor_from_local_api" in grad_op.input_arg_names[0]
+            ):
+                # Specific completion for local_tensor_from_dist and dtensor_from_local api.
+                # These two apis are used to get local_tensor or dist_tensor, so the process_meshes
+                # of their input and output are different. Here use a specific completion
+                # to set their grad_op's output var dist_attr identical to forward op's input
+                # var dist_attr.
+                input_name = grad_op.input_arg_names[0]
+                fwd_var_name = grad_var_to_var[input_name]
+                ref_dims_mapping = fwd_op_dist_attr.get_output_dims_mapping(
+                    fwd_var_name
+                )
+                grad_op_dist_attr.set_input_dims_mapping(
+                    input_name, ref_dims_mapping
+                )
+
+                output_name = grad_op.output_arg_names[0]
+                fwd_var_name = grad_var_to_var[output_name]
+                ref_dist_attr = vars[fwd_var_name].dist_attr
+                ref_dims_mapping = ref_dist_attr.dims_mapping
+                ref_process_mesh = ref_dist_attr.process_mesh
+                print(
+                    "grad_op:",
+                    grad_op,
+                    "ref_dims_mapping:",
+                    ref_dims_mapping,
+                    "ref_process_mesh:",
+                    ref_process_mesh,
+                )
+                output_var = vars[output_name]
+                set_var_dist_attr(
+                    self._dist_context,
+                    output_var,
+                    ref_dims_mapping,
+                    ref_process_mesh,
+                    chunk_id=ref_chunk_id,
+                )
+                grad_op_dist_attr.set_output_dims_mapping(
+                    output_name, ref_dims_mapping
+                )
             else:
                 # complete grad_op's input_dist_attrs, no need to complete input_var's tensor_dist_attr
                 for input_name in grad_op.input_arg_names:
@@ -1967,6 +2027,7 @@ class Completer:
 
         for idx in range(first_backward_op_idx, len(ops)):
             grad_op = ops[idx]
+            print("grad_op:", grad_op)
             # complete the initial grad loss op
             if idx == first_backward_op_idx:
                 assert grad_op.type == "fill_constant"
