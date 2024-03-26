@@ -298,7 +298,7 @@
 
 - op : assign_pos
   inputs :
-    {x : X, cum_count : cum_count, eff_num_len : eff_num_len}
+    {x : X}
   outputs :
     out : Out
 
