@@ -183,11 +183,7 @@ class DimsEq1SignatureInferer:
             MakeDimsEq1Signature(x)
             for x in _ZipDAGDimsInstr(dag_gen_instructions, dims_eq1_gen_instructions)
         ]
-        return DList(
-            dag_gen_instructions,
-            dims_eq1_signatures,
-            lambda dag_instr: dag_instr.GetHashValue()
-        )
+        return DList(dag_gen_instructions, dims_eq1_signatures)
 
 def _ZipDAGDimsInstr(dag_gen_instructions, dims_eq1_gen_instructions):
     return [

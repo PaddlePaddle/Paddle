@@ -26,7 +26,7 @@ class DAGGenRequirement:
     max_num_sinks: int = 5
     min_width: int = 1
     max_width: int = 10
-    max_instructions: int
+    max_body_instructions: int
     dag_tag: str
     pick_probability: DAGGenTypePickProbability
 
@@ -153,7 +153,7 @@ class AddSinkTensor:
         ctx: DAGGenContext,
         requirement: DAGGenRequirement
     ) -> bool:
-        return True
+        return ctx.num_sink_tensors <= requirement.max_num_sinks
 
 
 @dataclass
@@ -562,7 +562,7 @@ class MutDAGGenInstructions:
         self.current_num_source_tensors += type(top).GetDeltaNumSourceTensors()
         self.current_num_sink_tensors += type(top).GetDeltaNumSinkTensors()
 
-class TailAndBodyDAGGenerator:
+class BodyAndHeaderDAGGenerator:
     def __init__(
         self,
         requirement: DAGGenRequirement
@@ -573,14 +573,33 @@ class TailAndBodyDAGGenerator:
             requirement.pick_probability
         )
 
-    def GenerateTailAndBody(self) -> List["DAGGenInstruction"]:
-        def MakeInstruction(ctx: DAGGenContext):
-            return self._MakeRandomInstruction(ctx)
-        for i in range(self.requirement.max_instructions):
-            self._GenerateOneInstruction(MakeInstruction)
+    def GenerateBodyAndHeader(self) -> List["DAGGenInstruction"]:
+        self.GenerateBody()
+        self.GenerateHeader()
         return self.result_dag_gen_instructions.instructions
 
-    def _GenerateOneInstruction(self, Converter):
+    def GenerateBody(self):
+        def MakeInstruction(ctx: DAGGenContext):
+            return self._MakeRandomInstruction(ctx)
+        for i in range(self.requirement.max_body_instructions):
+            self._GenerateOneInstruction(MakeInstruction)
+
+    def GenerateHeader(self):
+        CheckDeadLoop = DeadLoopChecker()
+        def CurrentNumSources():
+            return self.result_dag_gen_instructions.current_num_source_tensors
+        def IncreaseCurrentNumSourcesByAddBinaryOp(ctx):
+            return AddBinaryOp.RandomGenerate(self.requirement, ctx)
+        while CurrentNumSources() < self.requirement.min_num_sources:
+            self._GenerateOneInstruction(IncreaseCurrentNumSourcesByAddBinaryOp)
+            CheckDeadLoop()
+        def DecreaseCurrentNumSourcesByAddBinaryClone(ctx):
+            return AddBinaryClone.RandomGenerate(self.requirement, ctx)
+        while CurrentNumSources() > self.requirement.max_num_sources:
+            self._GenerateOneInstruction(DecreaseCurrentNumSourcesByAddBinaryClone)
+            CheckDeadLoop()
+
+    def _GenerateOneInstruction(self, NewInstruction):
         ctx = DAGGenContext(
             num_source_tensors = (
                 self.result_dag_gen_instructions.current_num_source_tensors
@@ -589,7 +608,7 @@ class TailAndBodyDAGGenerator:
                 self.result_dag_gen_instructions.current_num_sink_tensors
             )
         )
-        new_instruction = Converter(ctx)
+        new_instruction = NewInstruction(ctx)
         is_valid = new_instruction.IsValidSourceTensorIndex(ctx)
         if is_valid:
             self.result_dag_gen_instructions.Push(new_instruction)
@@ -611,43 +630,14 @@ class DAGGenerator:
     
     # Instructions generating sink nodes of DAG are on the front of list.
     def Generate(self) -> List["DAGGenInstruction"]:
-        tail_and_body_generator = TailAndBodyDAGGenerator(self.requirement)
-        dag_gen_instructions = tail_and_body_generator.GenerateTailAndBody()
-        dag_gen_instructions = self._FixByMaxNumSinkTensors(dag_gen_instructions)
-        dag_gen_instructions = self._FixByMinNumSourceTensors(dag_gen_instructions)
+        body_and_head_generator = BodyAndHeaderDAGGenerator(self.requirement)
+        return body_and_head_generator.GenerateBodyAndHeader()
 
-    def _FixByMinNumSourceTensors(
-        self,
-        dag_gen_instructions: List["DAGGenInstruction"]
-    ) -> List["DAGGenInstruction"]:
-        TODO()
 
-    def _FixByMaxNumSinkTensors(
-        self,
-        dag_gen_instructions: List["DAGGenInstruction"]
-    ) -> List["DAGGenInstruction"]:
-        num_sink_tensors = 0
-        num_source_tensors = 0
-        def TryReplaceAddSinkTensor(dag_gen_instruction):
-            nonlocal num_sink_tensors
-            if type(dag_gen_instruction) is not AddSinkTensor:
-                return dag_gen_instruction
-            if num_sink_tensors < self.requirement.max_num_sinks:
-                num_sink_tensors += 1
-                return dag_gen_instruction
-            assert num_source_tensors > 0
-            source_tensor_index = random.randomint(0, num_source_tensors - 1)
-            # replace AddSinkTensor with AddBinaryOp
-            return AddBinaryOp(
-                source_tensor_index=source_tensor_index,
-                dag_tag=self.requirement.dag_tag
-            )
-        def TryReplaceAddSinkTensorAndInferNumSourceTensors(instr):
-            ret_instr = TryReplaceAddSinkTensor(instr)
-            nonlocal num_source_tensors
-            num_source_tensors += type(instr).GetDeltaNumSourceTensors()
-            return ret_instr
-        return [
-            TryReplaceAddSinkTensorAndInferNumSourceTensors(x)
-            for x in dag_gen_instructions
-        ]
+def DeadLoopChecker(limit=100000):
+    counter = 0
+    def Checker():
+        nonlocal counter
+        counter += 1
+        assert counter < limit, "dead loop detected"
+    return Checker

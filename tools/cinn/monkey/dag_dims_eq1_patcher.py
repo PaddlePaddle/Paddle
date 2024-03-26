@@ -255,9 +255,7 @@ class DAGDimsEq1Patcher:
 
         pairs = zip(
             instruction_ids,
-            guarded_dims_eq1_sigs.Unguard(
-                lambda key: key.GetHashValue()
-            )
+            guarded_dims_eq1_sigs.Unguard()
         )
 
         triples = [

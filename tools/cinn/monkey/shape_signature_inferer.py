@@ -186,11 +186,7 @@ class ShapeSignatureInferer:
             MakeShapeSignature(x)
             for x in zip(dag_gen_instructions, dims_eq1_signatures)
         ]
-        return DList(
-            dag_gen_instructions,
-            shape_signatures,
-            lambda dag_instr: dag_instr.GetHashValue()
-        )
+        return DList(dag_gen_instructions, shape_signatures)
 
 
 def _GetStaticShape(
