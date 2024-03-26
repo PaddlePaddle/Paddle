@@ -38,9 +38,9 @@ class SparseCooTensor : public TensorBase,
   /// tensor.
   /// \param non_zero_elements The non zero elements of original dense tensor.
   /// \param dims The dims of original dense tensor.
-  SparseCooTensor(const DenseTensor& non_zero_indices,
-                  const DenseTensor& non_zero_elements,
-                  const DDim& dims);
+  TEST_API SparseCooTensor(const DenseTensor& non_zero_indices,
+                           const DenseTensor& non_zero_elements,
+                           const DDim& dims);
 
   /// \brief Create the sparse coo tensor
   /// \param non_zero_indices The indices of non zero elements in original dense
@@ -52,7 +52,7 @@ class SparseCooTensor : public TensorBase,
                   const DDim& dims);
 
   /// \brief SparseCooTensor shallow copy constructor.
-  SparseCooTensor(const SparseCooTensor& other);
+  TEST_API SparseCooTensor(const SparseCooTensor& other);
 
   /// \brief move constructor
   SparseCooTensor(SparseCooTensor&& other) noexcept;
@@ -91,7 +91,7 @@ class SparseCooTensor : public TensorBase,
 
   /// \brief Returns the total number of non zero elements in original
   /// DenseTensor
-  int64_t nnz() const;
+  TEST_API int64_t nnz() const;
 
   /// \brief Return the number of elements contained in original dense tensor
   /// \return The number of elements contained in original dense tensor
@@ -138,9 +138,9 @@ class SparseCooTensor : public TensorBase,
   /// \param dense_dims The dims of original dense tensor.
   /// \param sparse_dim number of sparse dimensions
   /// \param non_zero_num The total number of non zero element
-  void Resize(const DDim& dense_dim,
-              const int64_t sparse_dim,
-              const int64_t non_zero_num);
+  TEST_API void Resize(const DDim& dense_dim,
+                       const int64_t sparse_dim,
+                       const int64_t non_zero_num);
 
   /// \brief set the member of sparse coo tensor.
   /// \param non_zero_indices The indices of non zero elements in original dense

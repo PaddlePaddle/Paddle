@@ -315,7 +315,7 @@ struct KernelResult {
  */
 class KernelFactory {
  public:
-  static KernelFactory& Instance();
+  TEST_API static KernelFactory& Instance();
 
   KernelNameMap& kernels() { return kernels_; }
 
@@ -330,13 +330,13 @@ class KernelFactory {
   bool HasKernel(const std::string& kernel_name,
                  const KernelKey& kernel_key) const;
 
-  const Kernel& SelectKernel(const std::string& kernel_name,
-                             const KernelKey& kernel_key) const;
+  TEST_API const Kernel& SelectKernel(const std::string& kernel_name,
+                                      const KernelKey& kernel_key) const;
 
   const Kernel& SelectKernelWithGPUDNN(const std::string& kernel_name,
                                        const KernelKey& kernel_key) const;
 
-  KernelKeyMap SelectKernelMap(const std::string& kernel_name) const;
+  TEST_API KernelKeyMap SelectKernelMap(const std::string& kernel_name) const;
 
   const KernelArgsDef& GetFirstKernelArgsDef(
       const std::string& kernel_name) const;
@@ -363,10 +363,11 @@ inline std::ostream& operator<<(std::ostream& os, const KernelKey& kernel_key) {
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os, AttributeType attr_type);
+TEST_API std::ostream& operator<<(std::ostream& os, AttributeType attr_type);
 
-std::ostream& operator<<(std::ostream& os, const Kernel& kernel);
+TEST_API std::ostream& operator<<(std::ostream& os, const Kernel& kernel);
 
-std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory);
+TEST_API std::ostream& operator<<(std::ostream& os,
+                                  KernelFactory& kernel_factory);
 
 }  // namespace phi
