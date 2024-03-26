@@ -13,12 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/onednn/reshape_transpose_matmul_fuse_pass.h"
-#include "glog/logging.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
-#include "paddle/fluid/pir/utils/general_functions.h"
 
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
