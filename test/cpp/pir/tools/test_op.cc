@@ -33,12 +33,11 @@ void BranchOp::Build(pir::Builder &builder,             // NOLINT
 
 void BranchOp::VerifySig() const {
   PADDLE_ENFORCE_EQ(
-      (*this)->num_successors(),
-      1UL,
+      (*this)->num_successors() == 1UL,
+      true,
       phi::errors::InvalidArgument("successors number must equal to 1."));
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_NOT_NULL(
       (*this)->successor(0),
-      nullptr,
       phi::errors::InvalidArgument("successor[0] can't be nullptr"));
 }
 
