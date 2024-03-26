@@ -431,6 +431,16 @@ class FakeQuantOrWithDequantAbsMaxOpMaker
                                 "the received is %d",
                                 bit_length));
         });
+    AddAttr<int>("round_type", "(int, default 0)")
+        .SetDefault(0)
+        .AddCustomChecker([](const int &round_type) {
+          PADDLE_ENFORCE_EQ(round_type == 0 || round_type == 1,
+                            true,
+                            platform::errors::InvalidArgument(
+                                "'round_type' should be between 0 or 1, but "
+                                "the received is %d",
+                                round_type));
+        });
     AddComment(R"DOC(
 This is a Base Op which supports FakeQuantAbsMaxOpMaker and FakeQuantDequantAbsMaxOpMaker.
 FakeQuantAbsMaxOp operator is used in the dynamic quantization.
@@ -509,6 +519,16 @@ class FakeChannelWiseQuantizeAbsMaxOpMaker
                                 "'bit_length' should be between 1 and 16, but "
                                 "the received is %d",
                                 bit_length));
+        });
+    AddAttr<int>("round_type", "(int, default 0)")
+        .SetDefault(0)
+        .AddCustomChecker([](const int &round_type) {
+          PADDLE_ENFORCE_EQ(round_type == 0 || round_type == 1,
+                            true,
+                            platform::errors::InvalidArgument(
+                                "'round_type' should be between 0 or 1, but "
+                                "the received is %d",
+                                round_type));
         });
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
@@ -659,6 +679,16 @@ class FakeQuantizeRangeAbsMaxOpMaker
                                 "the received is %d",
                                 bit_length));
         });
+    AddAttr<int>("round_type", "(int, default 0)")
+        .SetDefault(0)
+        .AddCustomChecker([](const int &round_type) {
+          PADDLE_ENFORCE_EQ(round_type == 0 || round_type == 1,
+                            true,
+                            platform::errors::InvalidArgument(
+                                "'round_type' should be between 0 or 1, but "
+                                "the received is %d",
+                                round_type));
+        });
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
@@ -739,6 +769,16 @@ class FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker
                                 "'bit_length' should be between 1 and 16, but "
                                 "the received is %d",
                                 bit_length));
+        });
+    AddAttr<int>("round_type", "(int, default 0)")
+        .SetDefault(0)
+        .AddCustomChecker([](const int &round_type) {
+          PADDLE_ENFORCE_EQ(round_type == 0 || round_type == 1,
+                            true,
+                            platform::errors::InvalidArgument(
+                                "'round_type' should be between 0 or 1, but "
+                                "the received is %d",
+                                round_type));
         });
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "

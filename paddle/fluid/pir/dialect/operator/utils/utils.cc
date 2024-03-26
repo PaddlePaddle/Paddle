@@ -87,6 +87,13 @@ const std::unordered_set<std::string> LegacyOpList = {
     MovingAverageAbsMaxScale_Op::name(),
     QuantizeLinearOp::name(),
     QuantizeLinear_Op::name(),
+    FakeChannelWiseQuantizeAbsMaxOp::name(),
+    FakeQuantizeAbsMaxOp::name(),
+    // FakeQuantOrWithDequantAbsMaxOp::name(),
+    FakeQuantizeDequantizeMovingAverageAbsMaxOp::name(),
+    StraightThroughEstimatorGradOp::name(),
+    FakeQuantizeRangeAbsMaxOp::name(),
+    FakeQuantizeMovingAverageAbsMaxOp::name(),
     DequantizeLinearOp::name(),
     DequantizeLinear_Op::name(),
 #ifdef PADDLE_WITH_DNNL
