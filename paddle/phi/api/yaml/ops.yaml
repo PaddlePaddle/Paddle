@@ -613,6 +613,7 @@
     func : conv3d
     data_type : input
   backward : conv3d_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : conv3d_transpose
   args : (Tensor x, Tensor filter, int[] strides={1, 1, 1}, int[] paddings={0, 0, 0}, int[] output_padding={}, int[] output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1, 1}, str data_format="NCHW")
@@ -1039,6 +1040,7 @@
     func : flash_attn
     data_type : q
   backward : flash_attn_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : flash_attn_unpadded
   args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, Tensor fixed_seed_offset, Tensor attn_mask, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
@@ -2034,13 +2036,12 @@
   backward : mv_grad
 
 - op : nanmedian
-  args : (Tensor x, IntArray axis = {}, bool keepdim = true)
+  args : (Tensor x, IntArray axis = {}, bool keepdim = true, str mode="avg")
   output : Tensor(out), Tensor(medians)
   infer_meta :
     func : NanmedianInferMeta
   kernel :
     func : nanmedian
-  intermediate : medians
   backward : nanmedian_grad
 
 - op : nearest_interp
@@ -2418,7 +2419,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : scale
-  args : (Tensor x, Scalar scale=1.0, float bias=0.0, bool bias_after_scale=true)
+  args : (Tensor x, Scalar scale=1.0, Scalar bias=0.0, bool bias_after_scale=true)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta

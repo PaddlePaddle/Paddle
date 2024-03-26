@@ -44,26 +44,26 @@
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/embedding_eltwise_layernorm_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fc_elementwise_layernorm_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fc_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fused_dot_product_attention_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fused_dropout_add_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fused_gemm_epilogue_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fused_weight_only_linear_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/matmul_scale_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/matmul_transpose_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/multihead_matmul_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/silu_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/transpose_flatten_concat_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/identity_op_clean_pass.h"
-#include "paddle/fluid/pir/transforms/inplace_pass.h"
-#include "paddle/fluid/pir/transforms/map_op_to_another_pass.h"
-#include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
+#include "paddle/fluid/pir/transforms/general/identity_op_clean_pass.h"
+#include "paddle/fluid/pir/transforms/general/inplace_pass.h"
+#include "paddle/fluid/pir/transforms/general/map_op_to_another_pass.h"
+#include "paddle/fluid/pir/transforms/general/matmul_scale_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/general/matmul_transpose_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/general/replace_fetch_with_shadow_output_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/conv2d_add_act_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/conv2d_add_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/conv2d_bn_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/embedding_eltwise_layernorm_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/fc_elementwise_layernorm_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/fc_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/fused_dot_product_attention_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/fused_dropout_add_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/fused_gemm_epilogue_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/fused_linear_param_grad_add_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/fused_weight_only_linear_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/multihead_matmul_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/silu_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/transpose_flatten_concat_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -96,6 +96,8 @@
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/pir/transforms/onednn/batch_norm_act_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/onednn/conv_elementwise_add_mkldnn_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/onednn/matmul_elementwise_add_fuse_pass.h"
 #endif
 
 namespace py = pybind11;
@@ -116,6 +118,7 @@ using pir::Block;
 using pir::BlockArgument;
 using pir::BoolAttribute;
 using pir::CloneOptions;
+using pir::IrContext;
 using pir::IrMapping;
 using pir::IrParser;
 using pir::Operation;
@@ -152,6 +155,8 @@ USE_PIR_PASS(fused_dot_product_attention_pass);
 
 #ifdef PADDLE_WITH_DNNL
 USE_PIR_PASS(batch_norm_act_fuse_pass);
+USE_PIR_PASS(matmul_elementwise_add_fuse_pass);
+USE_PIR_PASS(conv_elementwise_add_mkldnn_fuse_pass);
 #endif
 
 COMMON_DECLARE_bool(print_ir);
@@ -217,6 +222,20 @@ std::string GetValueInfo(Value v) {
     ss << ", stop_gradient=True";
   }
   return ss.str();
+}
+
+Value GetOutputValueByName(const Program &program, const std::string &name) {
+  auto &block = *program.block();
+  pir::StrAttribute name_attr =
+      pir::StrAttribute::get(IrContext::Instance(), name);
+  for (auto &op : block) {
+    if (op.isa<pir::ShadowOutputOp>()) {
+      if (op.attribute("output_name") == name_attr) {
+        return op.operand_source(0);
+      }
+    }
+  }
+  return nullptr;
 }
 
 void BindProgram(py::module *m) {
@@ -330,6 +349,10 @@ void BindProgram(py::module *m) {
           [](std::shared_ptr<Program> self, int64_t random_seed) {
             SetProgramInt64Attr(self, "random_seed", random_seed);
           })
+      .def("get_output_value_by_name",
+           [](Program &self, const std::string &name) {
+             return GetOutputValueByName(self, name);
+           })
       .def("num_ops", [](Program &self) { return self.num_ops(); });
 }
 

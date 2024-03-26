@@ -16,8 +16,7 @@
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/complex_kernel.h"
-#include "paddle/phi/kernels/fill_kernel.h"
-#include "paddle/phi/kernels/strided_copy_kernel.h"
+#include "paddle/phi/kernels/funcs/strided_utils.h"
 
 namespace phi {
 
@@ -28,14 +27,13 @@ void RealGradStridedKernel(const Context& dev_ctx,
   dev_ctx.Alloc(dx, dx->dtype());
   dx->set_strides(DenseTensorMeta::calc_strides(dx->dims()));
   PD_VISIT_ALL_TYPES(dx->dtype(), "RealGradStridedKernel", ([&] {
-                       phi::FillKernel<data_t, Context>(dev_ctx, *dx, 0, dx);
+                       phi::StridedTensorFill<data_t>(*dx, 0, dx);
                      }));
   DenseTensor tmp;
   tmp.set_meta(dout.meta());
   RealStridedKernel<T, Context>(dev_ctx, *dx, &tmp);
   PD_VISIT_ALL_TYPES(dout.dtype(), "RealGradStridedKernel", ([&] {
-                       phi::StridedCopyKernel<data_t, Context>(
-                           dev_ctx,
+                       phi::StridedTensorCopy<data_t>(
                            dout,
                            common::vectorize<int64_t>(tmp.dims()),
                            common::vectorize<int64_t>(tmp.strides()),
@@ -51,15 +49,14 @@ void ImagGradStridedKernel(const Context& dev_ctx,
   dev_ctx.Alloc(dx, dx->dtype());
   dx->set_strides(DenseTensorMeta::calc_strides(dx->dims()));
   PD_VISIT_ALL_TYPES(dx->dtype(), "ImagGradStridedKernel", ([&] {
-                       phi::FillKernel<data_t, Context>(dev_ctx, *dx, 0, dx);
+                       phi::StridedTensorFill<data_t>(*dx, 0, dx);
                      }));
 
   DenseTensor tmp;
   tmp.set_meta(dout.meta());
   ImagStridedKernel<T, Context>(dev_ctx, *dx, &tmp);
   PD_VISIT_ALL_TYPES(dout.dtype(), "ImagGradStridedKernel", ([&] {
-                       phi::StridedCopyKernel<data_t, Context>(
-                           dev_ctx,
+                       phi::StridedTensorCopy<data_t>(
                            dout,
                            common::vectorize<int64_t>(tmp.dims()),
                            common::vectorize<int64_t>(tmp.strides()),
@@ -100,6 +97,26 @@ PD_REGISTER_KERNEL(real_grad,
 
 PD_REGISTER_KERNEL(imag_grad,
                    GPU,
+                   STRIDED,
+                   phi::ImagGradStridedKernel,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+PD_REGISTER_KERNEL(real_grad,
+                   Custom,
+                   STRIDED,
+                   phi::RealGradStridedKernel,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}
+
+PD_REGISTER_KERNEL(imag_grad,
+                   Custom,
                    STRIDED,
                    phi::ImagGradStridedKernel,
                    phi::dtype::complex<float>,

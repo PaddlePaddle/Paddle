@@ -19,7 +19,7 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
 
 namespace phi {
 namespace dynload {
@@ -51,13 +51,33 @@ extern bool HasCUDADriver();
   __macro(hipModuleLoadData);                                 \
   __macro(hipModuleGetFunction);                              \
   __macro(hipModuleUnload);                                   \
-  /*rocm3.5 not support the function*/                        \
+  /* DTK not support the function*/                           \
   /* __macro(hipOccupancyMaxActiveBlocksPerMultiprocessor);*/ \
   __macro(hipModuleLaunchKernel);                             \
   __macro(hipLaunchKernel);                                   \
   __macro(hipGetDevice);                                      \
   __macro(hipGetDeviceCount);                                 \
-  __macro(hipDevicePrimaryCtxGetState)
+  __macro(hipDevicePrimaryCtxGetState);                       \
+  __macro(hipDeviceGetAttribute);                             \
+  __macro(hipDeviceGet)
+
+#define ROCM_ROUTINE_EACH_VVM(__macro)     \
+  __macro(hipMemGetAllocationGranularity); \
+  __macro(hipMemAddressReserve);           \
+  __macro(hipMemCreate);                   \
+  __macro(hipMemMap);                      \
+  __macro(hipMemSetAccess);                \
+  __macro(hipMemUnmap);                    \
+  __macro(hipMemRelease);                  \
+  __macro(hipMemAddressFree)
+
+#define ROCM_ROUTINE_EACH_GPU_GRAPH(__macro) \
+  __macro(hipGraphNodeGetType);              \
+  __macro(hipGraphKernelNodeGetParams);      \
+  __macro(hipGraphExecKernelNodeSetParams)
+
+ROCM_ROUTINE_EACH_VVM(DECLARE_DYNAMIC_LOAD_ROCM_WRAP);
+ROCM_ROUTINE_EACH_GPU_GRAPH(DECLARE_DYNAMIC_LOAD_ROCM_WRAP);
 
 ROCM_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_ROCM_WRAP);
 

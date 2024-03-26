@@ -112,6 +112,11 @@ class InsertBroadcastPass : public pir::PatternRewritePass {
     ps.Add<InsertBroadcastPattern<paddle::dialect::GreaterThanOp>>(context);
     ps.Add<InsertBroadcastPattern<paddle::dialect::GreaterEqualOp>>(context);
 
+    // logical ops
+    ps.Add<InsertBroadcastPattern<paddle::dialect::LogicalAndOp>>(context);
+    ps.Add<InsertBroadcastPattern<paddle::dialect::LogicalOrOp>>(context);
+    ps.Add<InsertBroadcastPattern<paddle::dialect::LogicalXorOp>>(context);
+
     // bitwise ops
     ps.Add<InsertBroadcastPattern<paddle::dialect::BitwiseOrOp>>(context);
     ps.Add<InsertBroadcastPattern<paddle::dialect::BitwiseXorOp>>(context);
