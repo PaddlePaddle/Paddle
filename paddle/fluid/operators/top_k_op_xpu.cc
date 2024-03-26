@@ -60,7 +60,7 @@ class TopkXPUKernel : public framework::OpKernel<T> {
     int* indices_int_data = RAII_GUARD.alloc_l3_or_gm<int>(indices->numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(indices_int_data);
 
-    // reshape input to a flattern matrix(like flat_inner_dims)
+    // reshape input to a flatten matrix(like flat_inner_dims)
     framework::DDim inputdims = input->dims();
     const size_t row =
         common::product(common::slice_ddim(inputdims, 0, inputdims.size() - 1));

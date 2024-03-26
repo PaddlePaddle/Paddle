@@ -19,7 +19,7 @@
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
 
 namespace paddle {
 namespace inference {
@@ -33,6 +33,7 @@ TEST(Analyzer, analysis_without_tensorrt) {
   argument.SetModelDir(FLAGS_inference_model_dir);
   argument.SetEnableIrOptim(false);
   argument.SetUseGPU(false);
+  argument.SetUsePIR(false);
   argument.SetAnalysisPasses({"ir_graph_build_pass",
                               "ir_analysis_pass",
                               "ir_params_sync_among_devices_pass"});
@@ -49,6 +50,7 @@ TEST(Analyzer, analysis_with_tensorrt) {
   argument.SetTensorRtWorkspaceSize(1 << 20);
   argument.SetModelDir(FLAGS_inference_model_dir);
   argument.SetUseGPU(false);
+  argument.SetUsePIR(false);
   argument.SetAnalysisPasses({"ir_graph_build_pass",
                               "ir_analysis_pass",
                               "ir_params_sync_among_devices_pass"});

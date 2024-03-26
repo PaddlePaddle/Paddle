@@ -16,6 +16,8 @@
 
 #include <string>
 #include "paddle/cinn/common/integer_set.h"
+#include "paddle/cinn/ir/group_schedule/config/group_tile_config.h"
+#include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule_block_graph.h"
 
@@ -64,18 +66,13 @@ struct IterativeSpaceInfo {
   }
 };
 
-struct BucketInfo {
-  int sp_lower_bound = 0;
-  int sp_upper_bound = UINT_MAX;
-  int rb_lower_bound = 0;
-  int rb_upper_bound = UINT_MAX;
-};
-
 struct ScheduleContext {
+  // TODO(BiynXu): Unify fields with similar meanings
   std::unordered_set<std::string> output_names;
   Target target;
   IterativeSpaceInfo iter_space_info;
   BucketInfo bucket_info;
+  ScheduleConfig config;
 };
 
 class ScheduleTactic {

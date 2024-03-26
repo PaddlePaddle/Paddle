@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <glog/logging.h>
 #include <cstdint>
 #include <ostream>
 
@@ -263,7 +264,7 @@ std::vector<Value> Operation::results() const {
 ///
 /// \brief op input related public interfaces
 ///
-std::vector<OpOperand> Operation::operands() {
+std::vector<OpOperand> Operation::operands() const {
   std::vector<OpOperand> res;
   for (uint32_t i = 0; i < num_operands(); ++i) {
     res.push_back(operand(i));
@@ -371,9 +372,13 @@ void Operation::Verify() {
 }
 
 int32_t Operation::ComputeOpResultOffset(uint32_t index) const {
-  if (index >= num_results_) {
-    LOG(FATAL) << "index exceeds OP op result range.";
-  }
+  PADDLE_ENFORCE_LT(
+      index,
+      num_results_,
+      common::errors::PreconditionNotMet(
+          "The op result index [%u] must less than results size[%u].",
+          index,
+          num_results_));
   if (index < OUTLINE_RESULT_IDX) {
     return -static_cast<int32_t>((index + 1u) * sizeof(OpInlineResultImpl));
   }
@@ -383,9 +388,13 @@ int32_t Operation::ComputeOpResultOffset(uint32_t index) const {
 }
 
 int32_t Operation::ComputeOpOperandOffset(uint32_t index) const {
-  if (index >= num_operands_) {
-    LOG(FATAL) << "index exceeds OP op operand range.";
-  }
+  PADDLE_ENFORCE_LT(
+      index,
+      num_operands_,
+      common::errors::PreconditionNotMet(
+          "The op operand index [%u] must less than operands size[%u].",
+          index,
+          num_operands_));
   return static_cast<int32_t>(index * sizeof(OpOperandImpl) +
                               sizeof(Operation));
 }

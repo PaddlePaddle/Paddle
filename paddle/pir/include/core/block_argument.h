@@ -16,6 +16,7 @@
 
 #include "paddle/pir/include/core/operation_utils.h"
 #include "paddle/pir/include/core/value.h"
+
 namespace pir {
 class Block;
 

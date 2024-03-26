@@ -41,7 +41,7 @@ class NOP : public OperatorBase {
 
 class SumOpMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "").AsDuplicable();
     AddOutput("Out", "");
     AddComment("");

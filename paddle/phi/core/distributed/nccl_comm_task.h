@@ -46,7 +46,7 @@ class NCCLCommTask : public CommTask {
                gpuStream_t = nullptr,
                CommType comm_type = CommType::UNKNOWN,
                int64_t timeout = DefaultTimeout);
-  ~NCCLCommTask() = default;
+  ~NCCLCommTask() override = default;
 
   // check whether the nccl kernel started
   bool IsStarted() override;
@@ -59,8 +59,8 @@ class NCCLCommTask : public CommTask {
   std::string GetCommErrors() override;
   void AbortComm() override;
 
-  void StartRecord();
-  void EndRecord();
+  void StartRecord() override;
+  void EndRecord() override;
   void ClearRecord() override;
 
   bool CudaEventQuery(gpuEvent_t event);

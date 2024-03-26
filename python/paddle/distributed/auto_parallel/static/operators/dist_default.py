@@ -49,6 +49,7 @@ __op_has_shape_attr__ = [
     "fill_constant_batch_size_like",
     "fill_constant",
     "expand_v2",
+    "expand_as_v2",
 ]
 
 
@@ -534,12 +535,15 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         # replicate op in dist program
         dst_op = copy_op_without_infer_shape(src_op, main_block, ctx, kwargs)
 
-        if (
-            src_op.has_attr('shape')
-            and src_op.attr('shape')
-            and src_op.type in __op_has_shape_attr__
-        ):
-            shape_list = src_op.attr('shape')
+        def get_shape_attr_name():
+            for name in ["shape", "target_shape"]:
+                if src_op.has_attr(name) and src_op.attr(name):
+                    return name
+            return None
+
+        shape_attr_name = get_shape_attr_name()
+        if shape_attr_name and src_op.type in __op_has_shape_attr__:
+            shape_list = src_op.attr(shape_attr_name)
             Out_var = main_block._var_recursive(kwargs['Out'][0])
             op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
             dim_mapping = op_dist_attr.get_output_dims_mapping(Out_var.name)
@@ -552,7 +556,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                         shape_list[idx] = (
                             shape_list[idx] // process_mesh_shape[axis]
                         )
-            dst_op.desc._set_attr('shape', shape_list)
+            dst_op.desc._set_attr(shape_attr_name, shape_list)
 
         # data parallel synchronization for primitive operators
         from paddle.incubate.autograd import prim_enabled

@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #pragma once
+
 #include <functional>
+
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/op_base.h"
 #include "paddle/pir/include/core/op_trait.h"
@@ -82,6 +84,7 @@ class IR_API TuplePopOp : public Op<TuplePopOp, SideEffectTrait> {
   void VerifySig();
   void VerifyRegion();
 
+  bool has_container() { return outlet().defining_op(); }
   Value container() { return container_interface().container(); }
   Value inlet() { return container_interface().inlet(); }
   Value outlet() { return operand_source(0); }

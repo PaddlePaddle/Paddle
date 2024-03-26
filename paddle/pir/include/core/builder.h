@@ -107,7 +107,8 @@ class Builder {
 
   /// Set the insertion point to the end of the specified block.
   void SetInsertionPointToBlockEnd(Block *block) {
-    IR_ENFORCE(block != nullptr, "argument of block is nullptr");
+    PADDLE_ENFORCE_NOT_NULL(
+        block, phi::errors::PreconditionNotMet("argument of block is nullptr"));
     set_insertion_point(block, block->end());
   }
 
@@ -125,6 +126,8 @@ class Builder {
                           const AttributeMap &attribute,
                           const std::vector<Type> &output_types,
                           pir::OpInfo op_info);
+
+  Operation *Insert(Operation *op);
 
   /// Create an operation of specific op type at the current insertion point.
   template <typename OpTy, typename... Args>
@@ -157,8 +160,6 @@ class Builder {
   IR_API Complex128Attribute complex128_attr(phi::dtype::complex<double> value);
 
  private:
-  Operation *Insert(Operation *op);
-
   IrContext *context_;
 
   InsertionPoint insertion_point_;

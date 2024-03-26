@@ -313,6 +313,7 @@ try:
         _set_fuse_parameter_group_size,
         _set_fuse_parameter_memory_size,
         _set_paddle_lib_path,
+        _set_warmup,
         _switch_tracer,
         _test_enforce_gpu_success,
         _xpu_device_synchronize,
@@ -529,6 +530,14 @@ def _enable_prim_skip_dynamic_shape():
 
 def _enable_prim_dynamic_shape():
     flag = os.getenv("FLAGS_prim_enable_dynamic")
+    if flag and flag.lower() in ("1", "true"):
+        return True
+    else:
+        return False
+
+
+def _enable_auto_recompute():
+    flag = os.getenv("FLAGS_enable_auto_recompute")
     if flag and flag.lower() in ("1", "true"):
         return True
     else:

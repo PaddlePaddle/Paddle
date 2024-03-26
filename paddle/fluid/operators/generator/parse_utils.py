@@ -369,7 +369,7 @@ def check_op_config(op_entry, op_name):
         'traits',
         'interfaces',
     )
-    infer_meta_key_set = ('func', 'param', 'spmd_rule')
+    infer_meta_key_set = ('func', 'param', 'spmd_rule', 'local_shape')
     kernel_key_set = (
         'func',
         'param',

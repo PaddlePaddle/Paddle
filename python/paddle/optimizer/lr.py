@@ -2615,7 +2615,7 @@ def noam_decay(d_model, warmup_steps, learning_rate=1.0):
         d_model(Variable): The dimensionality of input and output of model.
         warmup_steps(Variable): A super parameter.
         learning_rate(Variable|float|int): The initial learning rate. If the type
-            is Variable, it's a tensor with shape [1], the data type can be
+            is Variable, it's a 0-D Tensor with shape [], the data type can be
             float32 or float64. It also can be set to python int number. Default 1.0
 
     Returns:
