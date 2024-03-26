@@ -131,7 +131,7 @@ Tensor EagerTensorOperants::pow(const Tensor& x, const Tensor& y) {
 }
 
 Tensor EagerTensorOperants::pow(const Tensor& x, const Scalar& y) {
-  return ::elementwise_pow_ad_func(x, ::full_like_ad_func(x, y));
+  return ::pow_ad_func(x, y);
 }
 
 """

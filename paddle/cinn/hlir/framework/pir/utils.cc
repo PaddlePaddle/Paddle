@@ -133,18 +133,13 @@ class OpTransInfo {
       "depthwise_conv2d",
       "depthwise_conv2d_grad",
       "dropout",
-      "slice",
-      "concat",
-      "gather_nd",
       "pool2d",
       "pool2d_grad",
       "split",
       "matmul",
       "matmul_grad",
-      "transpose",
       "embedding_grad",
       "embedding",
-      "gather",
       "arange",
   };
 };
