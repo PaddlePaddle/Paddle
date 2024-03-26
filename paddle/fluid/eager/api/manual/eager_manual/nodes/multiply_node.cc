@@ -127,21 +127,21 @@ MultiplyGradNode::operator()(
   auto need_skip =
       paddle::prim::StaticCompositeContext::Instance().CheckSkipCompOps(
           grad_op_name);
-  if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {
+  if (!need_skip) {
     bool original_global_grad = egr::Controller::Instance().HasGrad();
     if (!create_graph) {
       egr::Controller::Instance().SetHasGrad(create_graph);
     }
     paddle::prim::multiply_grad<paddle::Tensor>(
         x, y, grad_out, axis, api_output_0, api_output_1);
-    VLOG(4) << "Composite api multiply_grad is called ";
+    VLOG(4) << "Composite api multiply_grad is called";
     if (!create_graph) {
       egr::Controller::Instance().SetHasGrad(original_global_grad);
     }
   } else {
     paddle::experimental::multiply_grad(
         x, y, grad_out, axis, api_output_0, api_output_1);
-    VLOG(4) << "Fused api multiply_grad is called ";
+    VLOG(4) << "Fused api multiply_grad is called";
   }
 
   // Check NaN and Inf id needed
@@ -173,7 +173,7 @@ MultiplyGradNode::operator()(
 
   // Create Grad Node
 
-  if (!paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() || need_skip) {
+  if (need_skip) {
     if (trace_backward) {
       paddle::platform::RecordEvent node_creation_record_event(
           "multiply_grad node_creation",
