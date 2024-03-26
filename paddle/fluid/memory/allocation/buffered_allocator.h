@@ -32,7 +32,7 @@ namespace allocation {
 // underlying_allocator_
 class BufferedAllocator : public Allocator {
  public:
-  explicit BufferedAllocator(std::shared_ptr<Allocator> allocator);
+  TEST_API explicit BufferedAllocator(std::shared_ptr<Allocator> allocator);
 
   ~BufferedAllocator();
 
@@ -42,7 +42,7 @@ class BufferedAllocator : public Allocator {
   inline void ClearCache() { FreeCache(-1UL); }
 
  private:
-  void FreeCache(size_t size);
+  TEST_API void FreeCache(size_t size);
 
  protected:
   void FreeImpl(phi::Allocation *allocation) override;

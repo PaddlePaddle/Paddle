@@ -1,17 +1,9 @@
-cc_test(
-  memory_stats_test
-  SRCS memory_stats_test.cc
-  DEPS)
-cc_test(
-  stats_test
-  SRCS stats_test.cc
-  DEPS)
+paddle_test(memory_stats_test SRCS memory_stats_test.cc)
+paddle_test(stats_test SRCS stats_test.cc)
 
-cc_test(
-  naive_best_fit_allocator_test
-  SRCS naive_best_fit_allocator_test.cc
-  DEPS allocator)
-cc_test(
+paddle_test(naive_best_fit_allocator_test SRCS naive_best_fit_allocator_test.cc
+            DEPS allocator)
+nv_test(
   buffered_allocator_test
   SRCS buffered_allocator_test.cc
   DEPS allocator)
@@ -40,18 +32,15 @@ elseif(WITH_ROCM)
     SRCS best_fit_allocator_test.cc best_fit_allocator_test.cu
     DEPS allocator)
 else()
-  cc_test(
-    best_fit_allocator_test
-    SRCS best_fit_allocator_test.cc
-    DEPS allocator)
+  paddle_test(best_fit_allocator_test SRCS best_fit_allocator_test.cc)
 endif()
 
-cc_test(
+nv_test(
   test_aligned_allocator
   SRCS test_aligned_allocator.cc
   DEPS allocator)
 
-cc_test(
+nv_test(
   retry_allocator_test
   SRCS retry_allocator_test.cc
   DEPS allocator)
@@ -60,12 +49,10 @@ if(TEST retry_allocator_test)
                                                        "RUN_TYPE=EXCLUSIVE")
 endif()
 
-cc_test(
-  allocator_facade_abs_flags_test
-  SRCS allocator_facade_abs_flags_test.cc
-  DEPS allocator)
+paddle_test(allocator_facade_abs_flags_test SRCS
+            allocator_facade_abs_flags_test.cc)
 
-cc_test(
+nv_test(
   allocator_facade_frac_flags_test
   SRCS allocator_facade_frac_flags_test.cc
   DEPS allocator)
@@ -131,28 +118,36 @@ if(WITH_GPU AND WITH_TESTING)
                                     FLAGS_use_stream_safe_cuda_allocator=true;")
 endif()
 
-cc_test(
+paddle_test(
   auto_growth_best_fit_allocator_facade_test
   SRCS auto_growth_best_fit_allocator_facade_test.cc
   DEPS allocator)
-cc_test(
+nv_test(
   auto_growth_best_fit_allocator_test
   SRCS auto_growth_best_fit_allocator_test.cc
   DEPS allocator)
 
 if(NOT WIN32)
-  cc_test(
+  paddle_test(
     mmap_allocator_test
     SRCS mmap_allocator_test.cc
     DEPS allocator)
 endif()
 
-cc_test(
+paddle_test(
   system_allocator_test
   SRCS system_allocator_test.cc
   DEPS allocator)
 
-cc_test(
+paddle_test(
   buddy_allocator_test
   SRCS buddy_allocator_test.cc
   DEPS allocator)
+
+if(WITH_ONNXRUNTIME AND WIN32)
+  # Copy onnxruntime for some c++ test in Windows, since the test will
+  # be build only in CI, so suppose the generator in Windows is Ninja.
+  copy_onnx(memory_stats_test)
+  copy_onnx(stats_test)
+  copy_onnx(naive_best_fit_allocator_test)
+endif()

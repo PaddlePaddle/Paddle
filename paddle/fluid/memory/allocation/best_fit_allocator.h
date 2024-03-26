@@ -105,13 +105,13 @@ class BestFitAllocation : public Allocation {
 // the prev-chunk and the next-chunk when possible.
 class BestFitAllocator : public Allocator {
  public:
-  explicit BestFitAllocator(phi::Allocation* allocation);
+  TEST_API explicit BestFitAllocator(phi::Allocation* allocation);
 
   void* BasePtr() const { return allocation_->ptr(); }
 
   const platform::Place& Place() const { return allocation_->place(); }
 
-  size_t NumFreeChunks() const;
+  TEST_API size_t NumFreeChunks() const;
 
   bool IsAllocThreadSafe() const override { return true; }
 
