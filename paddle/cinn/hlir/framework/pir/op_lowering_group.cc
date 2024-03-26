@@ -12,25 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/hlir/framework/pir/group.h"
+#include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
 
 namespace cinn {
 namespace hlir {
 namespace framework {
 namespace pir {
 
-std::shared_ptr<Group> Group::Clone(::pir::Block* target_block,
-                                    ::pir::IrMapping& ir_mapping,
-                                    const Options& option) const {
-  CHECK_EQ(option.OnlyCloneOps(), true)
-      << "Only Support Clone Group ops information.";
+std::shared_ptr<OpLoweringGroup> OpLoweringGroup::Clone(
+    ::pir::Block* target_block, ::pir::IrMapping* ir_mapping) const {
   std::vector<::pir::Operation*> new_ops;
   // Mapper from original to new ops.
   std::unordered_map<::pir::Operation*, ::pir::Operation*> ops_mapper;
   auto clone_options = ::pir::CloneOptions(false, true, false);
-  for (auto* op : ops) {
+  for (auto* op : ops_) {
     VLOG(4) << "clone op :" << op->name();
-    auto* new_op = op->Clone(ir_mapping, clone_options);
+    auto* new_op = op->Clone(*ir_mapping, clone_options);
     // NOTE(dev): Must call block.insert to deal with ownership, otherwise it
     // will lead memory-leak.
     target_block->insert(target_block->end(), new_op);
@@ -39,21 +36,28 @@ std::shared_ptr<Group> Group::Clone(::pir::Block* target_block,
   }
 
   // Construct Base information for new Group
-  auto new_group = std::make_shared<Group>(new_ops);
-  for (auto& iter : this->input_ops) {
-    new_group->input_ops[ops_mapper.at(iter.first)] = iter.second;
+  auto new_group = std::make_shared<OpLoweringGroup>(new_ops);
+  for (auto* op : this->output_ops_) {
+    new_group->output_ops_.insert(ops_mapper.at(op));
   }
-  for (auto* op : this->output_ops) {
-    new_group->output_ops.insert(ops_mapper.at(op));
+  for (const auto& output_value : this->output_values_) {
+    new_group->output_values_.push_back(ir_mapping->Lookup(output_value));
   }
 
+  new_group->input_names_ = this->input_names_;
+  new_group->output_names_ = this->output_names_;
+  new_group->fn_name_ = this->fn_name_;
+  new_group->int_args_map_ = this->int_args_map_;
+  new_group->alignment_schedule_info_ = this->alignment_schedule_info_;
+  new_group->reduce_axis_ = this->reduce_axis_;
+  new_group->loop_ranges_ = this->loop_ranges_;
   return new_group;
 }
 
-std::ostream& operator<<(std::ostream& os, const Group& group) {
+std::ostream& operator<<(std::ostream& os, const OpLoweringGroup& group) {
   ::pir::IrPrinter printer(os);
-  os << "Group " << group.group_id << " :\n";
-  for (auto* op : group.ops) {
+  os << "Group " << group.group_id() << " :\n";
+  for (auto* op : group.ops()) {
     printer.PrintOperation(op);
     os << "\n";
   }

@@ -57,7 +57,7 @@ void CompilationTask::operator()() {
 }
 
 void CompilationTask::Lowering() {
-  auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(context_->target_);
+  auto op_lowerer = CreateOpLowerer<pir::OpLoweringGroupPtr>(context_->target_);
   context_->SetLoweredFuncs(
       op_lowerer.BucketLower(context_->group_,
                              /* apply op schedule = */ false,
@@ -94,7 +94,7 @@ pir::CINNKernelInfo CompilationTask::BuildPirCINNKernelInfo() {
   cinn_kernel_info.fn_name = fn_name;
   cinn_kernel_info.fn_ptr = fn_ptr;
   cinn_kernel_info.infer_shape_fn_ptr = infer_shape_fn_ptr;
-  cinn_kernel_info.int_args_map = context_->group_->int_args_map;
+  cinn_kernel_info.int_args_map = context_->group_->int_args_map();
   return cinn_kernel_info;
 }
 

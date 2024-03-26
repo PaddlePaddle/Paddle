@@ -30,7 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
