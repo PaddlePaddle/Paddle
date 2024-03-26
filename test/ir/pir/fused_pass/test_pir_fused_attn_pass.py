@@ -23,37 +23,40 @@ from paddle.base import core
 np.random.seed(42)
 paddle.enable_static()
 
+
+# FlashAttn
 class TestFlashAttnPatternQscaleCast(PassTest):
     r"""
-    Q          K           V
-    |          |           |
-transpose  transpose   transpose
-    |          |           |
-  scale    transpose       |
-    |          |           |
-    -- matmul--            |
-         |                 |
-       mask                |
-         |                 |
-       cast                |
-         |                 |
-      softmax              |
-         |                 |
-        cast               |
-         |                 |
-         ------matmul------
-                 |
-                out
+        Q          K           V
+        |          |           |
+    transpose  transpose   transpose
+        |          |           |
+      scale    transpose       |
+        |          |           |
+        -- matmul--            |
+             |                 |
+           mask                |
+             |                 |
+           cast                |
+             |                 |
+          softmax              |
+             |                 |
+            cast               |
+             |                 |
+             ------matmul------
+                     |
+                    out
 
-    Q   K   V   None   mask
-    |   |   |     |      |
-    ------flash_attn------
-              |
-             out
+        Q   K   V   None   mask
+        |   |   |     |      |
+        ------flash_attn------
+                  |
+                 out
     """
+
     def is_program_valid(self, program=None):
         return True
-    
+
     def build_ir_program(self):
         for bs in [1]:
             for seq_len in [128]:
@@ -84,13 +87,11 @@ transpose  transpose   transpose
                                 mask = paddle.static.data(
                                     name='mask',
                                     shape=mask_shape,
-                                    dtype='float16'
+                                    dtype='float16',
                                 )
                                 qt = paddle.transpose(Q, [0, 2, 1, 3])
                                 q_scale = paddle.scale(
-                                    qt,
-                                    scale=0.125,
-                                    bias=0.0
+                                    qt, scale=0.125, bias=0.0
                                 )
                                 kt = paddle.transpose(K, [0, 2, 1, 3])
                                 kt = paddle.transpose(kt, [0, 1, 3, 2])
@@ -101,11 +102,15 @@ transpose  transpose   transpose
                                 softmax_out = paddle.nn.functional.softmax(
                                     cast_out
                                 )
-                                softmax_out = paddle.cast(softmax_out, 'float16')
+                                softmax_out = paddle.cast(
+                                    softmax_out, 'float16'
+                                )
                                 attention_out = paddle.matmul(softmax_out, vt)
-                                attention_out = paddle.transpose(attention_out, [0, 2, 1, 3]) 
+                                attention_out = paddle.transpose(
+                                    attention_out, [0, 2, 1, 3]
+                                )
                                 out = paddle.assign(attention_out)
-                                self.pass_list = ['flash_attn_fuse_pass']     
+                                self.pass_list = ['attn_fuse_pass']
                                 self.feeds = {
                                     "Q": np.random.random(
                                         (bs, seq_len, num_heads, head_dim)
@@ -119,10 +124,10 @@ transpose  transpose   transpose
                                     "mask": np.random.random(
                                         (bs, num_heads, seq_len, seq_len)
                                     ).astype("float16"),
-                                }                         
+                                }
                                 self.fetch_list = [out]
                                 self.valid_op_map = {
-                                        "pd_op.flash_attn": 1,
+                                    "pd_op.flash_attn": 1,
                                 }
                                 return [main_prog, start_prog]
 
@@ -137,35 +142,37 @@ transpose  transpose   transpose
         self.check_pass_correct(atol=1e-3, rtol=1e-3)
 
 
+# FlashAttn
 class TestFlashAttnPatternQscaleNoCast(PassTest):
     r"""
-    Q          K           V
-    |          |           |
-transpose  transpose   transpose
-    |          |           |
-  scale    transpose       |
-    |          |           |
-    -- matmul--            |
-         |                 |
-       mask                |
-         |                 |               
-         |                 |
-      softmax              |
-         |                 |             
-         |                 |
-         ------matmul------
-                 |
-                out
+        Q          K           V
+        |          |           |
+    transpose  transpose   transpose
+        |          |           |
+      scale    transpose       |
+        |          |           |
+        -- matmul--            |
+             |                 |
+           mask                |
+             |                 |
+             |                 |
+          softmax              |
+             |                 |
+             |                 |
+             ------matmul------
+                     |
+                    out
 
-    Q   K   V   None   mask
-    |   |   |     |      |
-    ------flash_attn------
-              |
-             out
+        Q   K   V   None   mask
+        |   |   |     |      |
+        ------flash_attn------
+                  |
+                 out
     """
+
     def is_program_valid(self, program=None):
         return True
-    
+
     def build_ir_program(self):
         for bs in [1]:
             for seq_len in [128]:
@@ -196,13 +203,11 @@ transpose  transpose   transpose
                                 mask = paddle.static.data(
                                     name='mask',
                                     shape=mask_shape,
-                                    dtype='float16'
+                                    dtype='float16',
                                 )
                                 qt = paddle.transpose(Q, [0, 2, 1, 3])
                                 q_scale = paddle.scale(
-                                    qt,
-                                    scale=0.125,
-                                    bias=0.0
+                                    qt, scale=0.125, bias=0.0
                                 )
                                 kt = paddle.transpose(K, [0, 2, 1, 3])
                                 kt = paddle.transpose(kt, [0, 1, 3, 2])
@@ -213,9 +218,11 @@ transpose  transpose   transpose
                                     score
                                 )
                                 attention_out = paddle.matmul(softmax_out, vt)
-                                attention_out = paddle.transpose(attention_out, [0, 2, 1, 3]) 
+                                attention_out = paddle.transpose(
+                                    attention_out, [0, 2, 1, 3]
+                                )
                                 out = paddle.assign(attention_out)
-                                self.pass_list = ['flash_attn_fuse_pass']     
+                                self.pass_list = ['attn_fuse_pass']
                                 self.feeds = {
                                     "Q": np.random.random(
                                         (bs, seq_len, num_heads, head_dim)
@@ -229,10 +236,10 @@ transpose  transpose   transpose
                                     "mask": np.random.random(
                                         (bs, num_heads, seq_len, seq_len)
                                     ).astype("float16"),
-                                }                         
+                                }
                                 self.fetch_list = [out]
                                 self.valid_op_map = {
-                                        "pd_op.flash_attn": 1,
+                                    "pd_op.flash_attn": 1,
                                 }
                                 return [main_prog, start_prog]
 
@@ -247,154 +254,41 @@ transpose  transpose   transpose
         self.check_pass_correct(atol=1e-3, rtol=1e-3)
 
 
+# FlashAttn
 class TestFlashAttnPatternOutscaleCast(PassTest):
     r"""
-    Q          K           V
-    |          |           |
-transpose  transpose   transpose
-    |          |           |
-    |      transpose       |
-    |          |           |
-    -- matmul--            |
-         |                 |
-       scale               |
-         |                 |
-       mask                |
-         |                 |
-       cast                |
-         |                 |
-      softmax              |
-         |                 |
-        cast               |
-         |                 |
-         ------matmul------
-                 |
-                out
+        Q          K           V
+        |          |           |
+    transpose  transpose   transpose
+        |          |           |
+        |      transpose       |
+        |          |           |
+        -- matmul--            |
+             |                 |
+           scale               |
+             |                 |
+           mask                |
+             |                 |
+           cast                |
+             |                 |
+          softmax              |
+             |                 |
+            cast               |
+             |                 |
+             ------matmul------
+                     |
+                    out
 
-    Q   K   V   None   mask
-    |   |   |     |      |
-    ------flash_attn------
-              |
-             out
+        Q   K   V   None   mask
+        |   |   |     |      |
+        ------flash_attn------
+                  |
+                 out
     """
+
     def is_program_valid(self, program=None):
         return True
-    
-    def build_ir_program(self):
-        for bs in [1]:
-            for seq_len in [128]:
-                for head_dim in [64]:
-                    for num_heads in [8]:  
-                        with paddle.pir_utils.IrGuard():
-                            main_prog = paddle.static.Program()
-                            start_prog = paddle.static.Program()
-                            with paddle.pir.core.program_guard(
-                                main_prog, start_prog
-                            ):
-                                mask_shape = (bs, num_heads, seq_len, seq_len)
-                                Q = paddle.static.data(
-                                    name='Q',
-                                    shape=[bs, seq_len, num_heads, head_dim],
-                                    dtype='float16',
-                                )
-                                K = paddle.static.data(
-                                    name='K',
-                                    shape=[bs, seq_len, num_heads, head_dim],
-                                    dtype='float16',
-                                )
-                                V = paddle.static.data(
-                                    name='V',
-                                    shape=[bs, seq_len, num_heads, head_dim],
-                                    dtype='float16',
-                                )
-                                mask = paddle.static.data(
-                                    name='mask',
-                                    shape=mask_shape,
-                                    dtype='float16'
-                                )
-                                qt = paddle.transpose(Q, [0, 2, 1, 3])
-                                kt = paddle.transpose(K, [0, 2, 1, 3])
-                                kt = paddle.transpose(kt, [0, 1, 3, 2])
-                                vt = paddle.transpose(V, [0, 2, 1, 3])
 
-                                score = paddle.matmul(qt, kt)
-                                score_scale = paddle.scale(
-                                    score,
-                                    scale=0.125,
-                                    bias=0.0
-                                )
-                                score = paddle.add(score_scale, mask)
-                                cast_out = paddle.cast(score, 'float16')
-                                softmax_out = paddle.nn.functional.softmax(
-                                    cast_out
-                                )
-                                softmax_out = paddle.cast(softmax_out, 'float16')
-                                attention_out = paddle.matmul(softmax_out, vt)
-                                attention_out = paddle.transpose(attention_out, [0, 2, 1, 3]) 
-                                out = paddle.assign(attention_out)
-                                self.pass_list = ['flash_attn_fuse_pass']     
-                                self.feeds = {
-                                    "Q": np.random.random(
-                                        (bs, seq_len, num_heads, head_dim)
-                                    ).astype("float16"),
-                                    "K": np.random.random(
-                                        (bs, seq_len, num_heads, head_dim)
-                                    ).astype("float16"),
-                                    "V": np.random.random(
-                                        (bs, seq_len, num_heads, head_dim)
-                                    ).astype("float16"),
-                                    "mask": np.random.random(
-                                        (bs, num_heads, seq_len, seq_len)
-                                    ).astype("float16"),
-                                }                         
-                                self.fetch_list = [out]
-                                self.valid_op_map = {
-                                        "pd_op.flash_attn": 1,
-                                }
-                                return [main_prog, start_prog]
-
-    def sample_program(self):
-        yield self.build_ir_program(), False
-
-    def setUp(self):
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
-
-    def test_check_output(self):
-        self.check_pass_correct(atol=1e-3, rtol=1e-3)
-
-
-class TestFlashAttnPatternOutscaleNoCast(PassTest):
-    r"""
-    Q          K           V
-    |          |           |
-transpose  transpose   transpose
-    |          |           |
-    |    transpose         |
-    |          |           |
-    -- matmul--            |
-         |                 |
-       scale               |
-         |                 |
-       mask                |
-         |                 |
-         |                 |
-      softmax              |
-         |                 |
-         |                 |
-         ------matmul------
-                 |
-                out
-
-    Q   K   V   None   mask
-    |   |   |     |      |
-    ------flash_attn------
-              |
-             out
-    """
-    def is_program_valid(self, program=None):
-        return True
-    
     def build_ir_program(self):
         for bs in [1]:
             for seq_len in [128]:
@@ -425,7 +319,7 @@ transpose  transpose   transpose
                                 mask = paddle.static.data(
                                     name='mask',
                                     shape=mask_shape,
-                                    dtype='float16'
+                                    dtype='float16',
                                 )
                                 qt = paddle.transpose(Q, [0, 2, 1, 3])
                                 kt = paddle.transpose(K, [0, 2, 1, 3])
@@ -434,18 +328,22 @@ transpose  transpose   transpose
 
                                 score = paddle.matmul(qt, kt)
                                 score_scale = paddle.scale(
-                                    score,
-                                    scale=0.125,
-                                    bias=0.0
+                                    score, scale=0.125, bias=0.0
                                 )
                                 score = paddle.add(score_scale, mask)
+                                cast_out = paddle.cast(score, 'float16')
                                 softmax_out = paddle.nn.functional.softmax(
-                                    score
+                                    cast_out
+                                )
+                                softmax_out = paddle.cast(
+                                    softmax_out, 'float16'
                                 )
                                 attention_out = paddle.matmul(softmax_out, vt)
-                                attention_out = paddle.transpose(attention_out, [0, 2, 1, 3]) 
+                                attention_out = paddle.transpose(
+                                    attention_out, [0, 2, 1, 3]
+                                )
                                 out = paddle.assign(attention_out)
-                                self.pass_list = ['flash_attn_fuse_pass']     
+                                self.pass_list = ['attn_fuse_pass']
                                 self.feeds = {
                                     "Q": np.random.random(
                                         (bs, seq_len, num_heads, head_dim)
@@ -459,10 +357,10 @@ transpose  transpose   transpose
                                     "mask": np.random.random(
                                         (bs, num_heads, seq_len, seq_len)
                                     ).astype("float16"),
-                                }                         
+                                }
                                 self.fetch_list = [out]
                                 self.valid_op_map = {
-                                        "pd_op.flash_attn": 1,
+                                    "pd_op.flash_attn": 1,
                                 }
                                 return [main_prog, start_prog]
 
@@ -475,6 +373,592 @@ transpose  transpose   transpose
 
     def test_check_output(self):
         self.check_pass_correct(atol=1e-3, rtol=1e-3)
+
+
+# FlashAttn
+class TestFlashAttnPatternOutscaleNoCast(PassTest):
+    r"""
+        Q          K           V
+        |          |           |
+    transpose  transpose   transpose
+        |          |           |
+        |    transpose         |
+        |          |           |
+        -- matmul--            |
+             |                 |
+           scale               |
+             |                 |
+           mask                |
+             |                 |
+             |                 |
+          softmax              |
+             |                 |
+             |                 |
+             ------matmul------
+                     |
+                    out
+
+        Q   K   V   None   mask
+        |   |   |     |      |
+        ------flash_attn------
+                  |
+                 out
+    """
+
+    def is_program_valid(self, program=None):
+        return True
+
+    def build_ir_program(self):
+        for bs in [1]:
+            for seq_len in [128]:
+                for head_dim in [64]:
+                    for num_heads in [8]:
+                        with paddle.pir_utils.IrGuard():
+                            main_prog = paddle.static.Program()
+                            start_prog = paddle.static.Program()
+                            with paddle.pir.core.program_guard(
+                                main_prog, start_prog
+                            ):
+                                mask_shape = (bs, num_heads, seq_len, seq_len)
+                                Q = paddle.static.data(
+                                    name='Q',
+                                    shape=[bs, seq_len, num_heads, head_dim],
+                                    dtype='float16',
+                                )
+                                K = paddle.static.data(
+                                    name='K',
+                                    shape=[bs, seq_len, num_heads, head_dim],
+                                    dtype='float16',
+                                )
+                                V = paddle.static.data(
+                                    name='V',
+                                    shape=[bs, seq_len, num_heads, head_dim],
+                                    dtype='float16',
+                                )
+                                mask = paddle.static.data(
+                                    name='mask',
+                                    shape=mask_shape,
+                                    dtype='float16',
+                                )
+                                qt = paddle.transpose(Q, [0, 2, 1, 3])
+                                kt = paddle.transpose(K, [0, 2, 1, 3])
+                                kt = paddle.transpose(kt, [0, 1, 3, 2])
+                                vt = paddle.transpose(V, [0, 2, 1, 3])
+
+                                score = paddle.matmul(qt, kt)
+                                score_scale = paddle.scale(
+                                    score, scale=0.125, bias=0.0
+                                )
+                                score = paddle.add(score_scale, mask)
+                                softmax_out = paddle.nn.functional.softmax(
+                                    score
+                                )
+                                attention_out = paddle.matmul(softmax_out, vt)
+                                attention_out = paddle.transpose(
+                                    attention_out, [0, 2, 1, 3]
+                                )
+                                out = paddle.assign(attention_out)
+                                self.pass_list = ['attn_fuse_pass']
+                                self.feeds = {
+                                    "Q": np.random.random(
+                                        (bs, seq_len, num_heads, head_dim)
+                                    ).astype("float16"),
+                                    "K": np.random.random(
+                                        (bs, seq_len, num_heads, head_dim)
+                                    ).astype("float16"),
+                                    "V": np.random.random(
+                                        (bs, seq_len, num_heads, head_dim)
+                                    ).astype("float16"),
+                                    "mask": np.random.random(
+                                        (bs, num_heads, seq_len, seq_len)
+                                    ).astype("float16"),
+                                }
+                                self.fetch_list = [out]
+                                self.valid_op_map = {
+                                    "pd_op.flash_attn": 1,
+                                }
+                                return [main_prog, start_prog]
+
+    def sample_program(self):
+        yield self.build_ir_program(), False
+
+    def setUp(self):
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def test_check_output(self):
+        self.check_pass_correct(atol=1e-3, rtol=1e-3)
+
+
+# Scale Dot Porduct Attention
+class TestSDPAttnPatternQscaleCast(PassTest):
+    r"""
+        Q          K           V
+        |          |           |
+    transpose  transpose   transpose
+        |          |           |
+      scale    transpose       |
+        |          |           |
+        -- matmul--            |
+             |                 |
+           mask                |
+             |                 |
+           cast                |
+             |                 |
+          softmax              |
+             |                 |
+            cast               |
+             |                 |
+             ------matmul------
+                     |
+                    out
+
+        Q   K   V          mask
+        |   |   |            |
+        --scale_dot_product---
+                  |
+                 out
+    """
+
+    def is_program_valid(self, program=None):
+        return True
+
+    def build_ir_program(self):
+        for bs in [1]:
+            for seq_len in [128]:
+                for head_dim in [64]:
+                    for num_heads in [8]:
+                        with paddle.pir_utils.IrGuard():
+                            main_prog = paddle.static.Program()
+                            start_prog = paddle.static.Program()
+                            with paddle.pir.core.program_guard(
+                                main_prog, start_prog
+                            ):
+                                mask_shape = (bs, num_heads, seq_len, seq_len)
+                                Q = paddle.static.data(
+                                    name='Q',
+                                    shape=[bs, seq_len, num_heads, head_dim],
+                                    dtype='float16',
+                                )
+                                K = paddle.static.data(
+                                    name='K',
+                                    shape=[bs, seq_len, num_heads, head_dim],
+                                    dtype='float16',
+                                )
+                                V = paddle.static.data(
+                                    name='V',
+                                    shape=[bs, seq_len, num_heads, head_dim],
+                                    dtype='float16',
+                                )
+                                mask = paddle.static.data(
+                                    name='mask',
+                                    shape=mask_shape,
+                                    dtype='float16',
+                                )
+                                qt = paddle.transpose(Q, [0, 2, 1, 3])
+                                q_scale = paddle.scale(
+                                    qt, scale=0.125, bias=0.0
+                                )
+                                kt = paddle.transpose(K, [0, 2, 1, 3])
+                                kt = paddle.transpose(kt, [0, 1, 3, 2])
+                                vt = paddle.transpose(V, [0, 2, 1, 3])
+                                score = paddle.matmul(q_scale, kt)
+                                mask_cast = paddle.cast(mask, 'float16')
+                                score = paddle.add(score, mask_cast)
+                                cast_out = paddle.cast(score, 'float16')
+                                softmax_out = paddle.nn.functional.softmax(
+                                    cast_out
+                                )
+                                softmax_out = paddle.cast(
+                                    softmax_out, 'float16'
+                                )
+                                attention_out = paddle.matmul(softmax_out, vt)
+                                attention_out = paddle.transpose(
+                                    attention_out, [0, 2, 1, 3]
+                                )
+                                out = paddle.assign(attention_out)
+                                self.pass_list = ['attn_fuse_pass']
+                                self.feeds = {
+                                    "Q": np.random.random(
+                                        (bs, seq_len, num_heads, head_dim)
+                                    ).astype("float16"),
+                                    "K": np.random.random(
+                                        (bs, seq_len, num_heads, head_dim)
+                                    ).astype("float16"),
+                                    "V": np.random.random(
+                                        (bs, seq_len, num_heads, head_dim)
+                                    ).astype("float16"),
+                                    "mask": np.random.random(
+                                        (bs, num_heads, seq_len, seq_len)
+                                    ).astype("float16"),
+                                }
+                                self.fetch_list = [out]
+                                self.valid_op_map = {
+                                    "pd_op.fused_dot_product_attention": 1,
+                                }
+                                return [main_prog, start_prog]
+
+    def sample_program(self):
+        yield self.build_ir_program(), False
+
+    def setUp(self):
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def test_check_output(self):
+        self.check_pass_correct(atol=1e-3, rtol=1e-3)
+
+
+# Scale Dot Porduct Attention
+class TestSDPAttnPatternQscaleNoCast(PassTest):
+    r"""
+        Q          K           V
+        |          |           |
+    transpose  transpose   transpose
+        |          |           |
+      scale    transpose       |
+        |          |           |
+        -- matmul--            |
+             |                 |
+           mask                |
+             |                 |
+             |                 |
+          softmax              |
+             |                 |
+             |                 |
+             ------matmul------
+                     |
+                    out
+
+        Q   K   V          mask
+        |   |   |            |
+        --scale_dot_product---
+                  |
+                 out
+    """
+
+    def is_program_valid(self, program=None):
+        return True
+
+    def build_ir_program(self):
+        for bs in [1]:
+            for seq_len in [128]:
+                for head_dim in [64]:
+                    for num_heads in [8]:
+                        with paddle.pir_utils.IrGuard():
+                            main_prog = paddle.static.Program()
+                            start_prog = paddle.static.Program()
+                            with paddle.pir.core.program_guard(
+                                main_prog, start_prog
+                            ):
+                                mask_shape = (bs, num_heads, seq_len, seq_len)
+                                Q = paddle.static.data(
+                                    name='Q',
+                                    shape=[bs, seq_len, num_heads, head_dim],
+                                    dtype='float16',
+                                )
+                                K = paddle.static.data(
+                                    name='K',
+                                    shape=[bs, seq_len, num_heads, head_dim],
+                                    dtype='float16',
+                                )
+                                V = paddle.static.data(
+                                    name='V',
+                                    shape=[bs, seq_len, num_heads, head_dim],
+                                    dtype='float16',
+                                )
+                                mask = paddle.static.data(
+                                    name='mask',
+                                    shape=mask_shape,
+                                    dtype='float16',
+                                )
+                                qt = paddle.transpose(Q, [0, 2, 1, 3])
+                                q_scale = paddle.scale(
+                                    qt, scale=0.125, bias=0.0
+                                )
+                                kt = paddle.transpose(K, [0, 2, 1, 3])
+                                kt = paddle.transpose(kt, [0, 1, 3, 2])
+                                vt = paddle.transpose(V, [0, 2, 1, 3])
+                                score = paddle.matmul(q_scale, kt)
+                                mask_cast = paddle.cast(mask, 'float16')
+                                score = paddle.add(score, mask_cast)
+                                softmax_out = paddle.nn.functional.softmax(
+                                    score
+                                )
+                                attention_out = paddle.matmul(softmax_out, vt)
+                                attention_out = paddle.transpose(
+                                    attention_out, [0, 2, 1, 3]
+                                )
+                                out = paddle.assign(attention_out)
+                                self.pass_list = ['attn_fuse_pass']
+                                self.feeds = {
+                                    "Q": np.random.random(
+                                        (bs, seq_len, num_heads, head_dim)
+                                    ).astype("float16"),
+                                    "K": np.random.random(
+                                        (bs, seq_len, num_heads, head_dim)
+                                    ).astype("float16"),
+                                    "V": np.random.random(
+                                        (bs, seq_len, num_heads, head_dim)
+                                    ).astype("float16"),
+                                    "mask": np.random.random(
+                                        (bs, num_heads, seq_len, seq_len)
+                                    ).astype("float16"),
+                                }
+                                self.fetch_list = [out]
+                                self.valid_op_map = {
+                                    "pd_op.fused_dot_product_attention": 1,
+                                }
+                                return [main_prog, start_prog]
+
+    def sample_program(self):
+        yield self.build_ir_program(), False
+
+    def setUp(self):
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def test_check_output(self):
+        self.check_pass_correct(atol=1e-3, rtol=1e-3)
+
+
+# Scale Dot Porduct Attention
+class TestSDPAttnPatternOutscaleCast(PassTest):
+    r"""
+        Q          K           V
+        |          |           |
+    transpose  transpose   transpose
+        |          |           |
+        |      transpose       |
+        |          |           |
+        -- matmul--            |
+             |                 |
+           scale               |
+             |                 |
+           mask                |
+             |                 |
+           cast                |
+             |                 |
+          softmax              |
+             |                 |
+            cast               |
+             |                 |
+             ------matmul------
+                     |
+                    out
+
+        Q   K   V          mask
+        |   |   |            |
+        --scale_dot_product---
+                  |
+                 out
+    """
+
+    def is_program_valid(self, program=None):
+        return True
+
+    def build_ir_program(self):
+        for bs in [1]:
+            for seq_len in [128]:
+                for head_dim in [64]:
+                    for num_heads in [8]:
+                        with paddle.pir_utils.IrGuard():
+                            main_prog = paddle.static.Program()
+                            start_prog = paddle.static.Program()
+                            with paddle.pir.core.program_guard(
+                                main_prog, start_prog
+                            ):
+                                mask_shape = (bs, num_heads, seq_len, seq_len)
+                                Q = paddle.static.data(
+                                    name='Q',
+                                    shape=[bs, seq_len, num_heads, head_dim],
+                                    dtype='float16',
+                                )
+                                K = paddle.static.data(
+                                    name='K',
+                                    shape=[bs, seq_len, num_heads, head_dim],
+                                    dtype='float16',
+                                )
+                                V = paddle.static.data(
+                                    name='V',
+                                    shape=[bs, seq_len, num_heads, head_dim],
+                                    dtype='float16',
+                                )
+                                mask = paddle.static.data(
+                                    name='mask',
+                                    shape=mask_shape,
+                                    dtype='float16',
+                                )
+                                qt = paddle.transpose(Q, [0, 2, 1, 3])
+                                kt = paddle.transpose(K, [0, 2, 1, 3])
+                                kt = paddle.transpose(kt, [0, 1, 3, 2])
+                                vt = paddle.transpose(V, [0, 2, 1, 3])
+                                score = paddle.matmul(qt, kt)
+                                score_scale = paddle.scale(
+                                    score, scale=0.125, bias=0.0
+                                )
+                                mask_cast = paddle.cast(mask, 'float16')
+                                score = paddle.add(score, mask_cast)
+                                cast_out = paddle.cast(score, 'float16')
+                                softmax_out = paddle.nn.functional.softmax(
+                                    cast_out
+                                )
+                                softmax_out = paddle.cast(
+                                    softmax_out, 'float16'
+                                )
+                                attention_out = paddle.matmul(softmax_out, vt)
+                                attention_out = paddle.transpose(
+                                    attention_out, [0, 2, 1, 3]
+                                )
+                                out = paddle.assign(attention_out)
+                                self.pass_list = ['attn_fuse_pass']
+                                self.feeds = {
+                                    "Q": np.random.random(
+                                        (bs, seq_len, num_heads, head_dim)
+                                    ).astype("float16"),
+                                    "K": np.random.random(
+                                        (bs, seq_len, num_heads, head_dim)
+                                    ).astype("float16"),
+                                    "V": np.random.random(
+                                        (bs, seq_len, num_heads, head_dim)
+                                    ).astype("float16"),
+                                    "mask": np.random.random(
+                                        (bs, num_heads, seq_len, seq_len)
+                                    ).astype("float16"),
+                                }
+                                self.fetch_list = [out]
+                                self.valid_op_map = {
+                                    "pd_op.fused_dot_product_attention": 1,
+                                }
+                                return [main_prog, start_prog]
+
+    def sample_program(self):
+        yield self.build_ir_program(), False
+
+    def setUp(self):
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def test_check_output(self):
+        self.check_pass_correct(atol=1e-3, rtol=1e-3)
+
+
+# Scale Dot Porduct Attention
+class TestSDPAttnPatternOutscaleNoCast(PassTest):
+    r"""
+        Q          K           V
+        |          |           |
+    transpose  transpose   transpose
+        |          |           |
+        |    transpose         |
+        |          |           |
+        -- matmul--            |
+             |                 |
+           scale               |
+             |                 |
+           mask                |
+             |                 |
+             |                 |
+          softmax              |
+             |                 |
+             |                 |
+             ------matmul------
+                     |
+                    out
+
+        Q   K   V          mask
+        |   |   |            |
+        --scale_dot_product---
+                  |
+                 out
+    """
+
+    def is_program_valid(self, program=None):
+        return True
+
+    def build_ir_program(self):
+        for bs in [1]:
+            for seq_len in [128]:
+                for head_dim in [64]:
+                    for num_heads in [8]:
+                        with paddle.pir_utils.IrGuard():
+                            main_prog = paddle.static.Program()
+                            start_prog = paddle.static.Program()
+                            with paddle.pir.core.program_guard(
+                                main_prog, start_prog
+                            ):
+                                mask_shape = (bs, num_heads, seq_len, seq_len)
+                                Q = paddle.static.data(
+                                    name='Q',
+                                    shape=[bs, seq_len, num_heads, head_dim],
+                                    dtype='float16',
+                                )
+                                K = paddle.static.data(
+                                    name='K',
+                                    shape=[bs, seq_len, num_heads, head_dim],
+                                    dtype='float16',
+                                )
+                                V = paddle.static.data(
+                                    name='V',
+                                    shape=[bs, seq_len, num_heads, head_dim],
+                                    dtype='float16',
+                                )
+                                mask = paddle.static.data(
+                                    name='mask',
+                                    shape=mask_shape,
+                                    dtype='float16',
+                                )
+                                qt = paddle.transpose(Q, [0, 2, 1, 3])
+                                kt = paddle.transpose(K, [0, 2, 1, 3])
+                                kt = paddle.transpose(kt, [0, 1, 3, 2])
+                                vt = paddle.transpose(V, [0, 2, 1, 3])
+                                score = paddle.matmul(qt, kt)
+                                score_scale = paddle.scale(
+                                    score, scale=0.125, bias=0.0
+                                )
+                                mask_cast = paddle.cast(mask, 'float16')
+                                score = paddle.add(score, mask_cast)
+                                softmax_out = paddle.nn.functional.softmax(
+                                    score
+                                )
+                                attention_out = paddle.matmul(softmax_out, vt)
+                                attention_out = paddle.transpose(
+                                    attention_out, [0, 2, 1, 3]
+                                )
+                                out = paddle.assign(attention_out)
+                                self.pass_list = ['attn_fuse_pass']
+                                self.feeds = {
+                                    "Q": np.random.random(
+                                        (bs, seq_len, num_heads, head_dim)
+                                    ).astype("float16"),
+                                    "K": np.random.random(
+                                        (bs, seq_len, num_heads, head_dim)
+                                    ).astype("float16"),
+                                    "V": np.random.random(
+                                        (bs, seq_len, num_heads, head_dim)
+                                    ).astype("float16"),
+                                    "mask": np.random.random(
+                                        (bs, num_heads, seq_len, seq_len)
+                                    ).astype("float16"),
+                                }
+                                self.fetch_list = [out]
+                                self.valid_op_map = {
+                                    "pd_op.fused_dot_product_attention": 1,
+                                }
+                                return [main_prog, start_prog]
+
+    def sample_program(self):
+        yield self.build_ir_program(), False
+
+    def setUp(self):
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def test_check_output(self):
+        self.check_pass_correct(atol=1e-3, rtol=1e-3)
+
+if __name__ == "__main__":
+    unittest.main()
 
 if __name__ == "__main__":
     unittest.main()
