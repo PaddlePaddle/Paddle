@@ -18,7 +18,11 @@ namespace cinn::frontend::group_cluster {
 
 std::vector<std::vector<const pir::Operation*>> PatternGraph::ClusterOps() {
   SinkTrivialPattern();
-  FuseReducePattern();
+  // ReducePattern -> ReduceTreePattern
+  ReduceLiftReduceTree();
+  ReduceTreeGrown();
+  // ReduceTreePattern + TrivialPattern fusion.
+  ReduceTree_Trivial_Fusion();
   // TODO(wuzhanfei) need sort here, or do not return from all_pattern_nodes_
   std::vector<std::vector<const pir::Operation*>> result;
   std::transform(all_pattern_nodes_.begin(),
@@ -52,8 +56,36 @@ void PatternGraph::SinkTrivialPattern() {
   }
 }
 
-void PatternGraph::FuseReducePattern() {
-  // TODO(wuzhanfei) reduce fusion, similar with implementation in backend
+void PatternGraph::ReduceTreeGrown() {
+  const auto FindReduceTree =
+      [](std::unordered_set<PatternNodePtr> all_nodes) -> PatternNodePtr {
+    for (PatternNodePtr node : all_nodes) {
+      if (node->IsReduceTree() && !node->downstream_.empty()) return node;
+    }
+    return nullptr;
+  };
+  PatternNodePtr upstream;
+  while ((upstream = FindReduceTree(all_pattern_nodes_)) != nullptr) {
+    CHECK(upstream->downstream_.size() == 1);
+    if (policy_manager_.CanFuse(upstream, upstream->downstream_.at(0))) {
+      //
+    }
+  }
+}
+
+void PatternGraph::ReduceLiftReduceTree() {
+  const auto FindCanLiftReducePattern =
+      [](std::unordered_set<PatternNodePtr> all_nodes) -> PatternNodePtr {
+    for (PatternNodePtr node : all_nodes) {
+      if (node->IsReduce() && !(node->downstream_.size() < 2)) return node;
+    }
+    return nullptr;
+  };
+  PatternNodePtr op;
+  while ((op = FindCanLiftReducePattern(all_pattern_nodes_)) != nullptr) {
+    const auto& reduce_pattern = ToReducePattern(op->stmt_pattern_);
+    op->stmt_pattern_ = ReduceTreePattern({reduce_pattern}, reduce_pattern);
+  }
 }
 
 PatternGraph::PatternGraph(const std::vector<const pir::Operation*>& ops,
@@ -61,11 +93,11 @@ PatternGraph::PatternGraph(const std::vector<const pir::Operation*>& ops,
     : policy_manager_(policy_manager) {
   std::unordered_map<const pir::Operation*, PatternNodePtr> op_to_node_map;
 
-  for (int i = 0; i < ops.size(); ++i) {
-    PatternNodePtr node = std::make_shared<PatternNode>(ops[i]);
-    op_to_node_map[ops[i]] = node;
+  for (const auto& op : ops) {
+    PatternNodePtr node = std::make_shared<PatternNode>(op);
+    op_to_node_map[op] = node;
     all_pattern_nodes_.emplace(node);
-    node->sink_op_ = ops[i];
+    node->sink_op_ = op;
   }
 
   for (const pir::Operation* op : ops) {

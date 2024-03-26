@@ -16,8 +16,8 @@
 
 namespace cinn::frontend::group_cluster::policy {
 
-bool GeneralTopoPolicy::CanFuse(const PatternNodePtr upstream,
-                                const PatternNodePtr downstream) {
+bool GeneralTopoPolicy::CanFuse(const PatternNodePtr& upstream,
+                                const PatternNodePtr& downstream) {
   // TODO(wuzhanfei) topo policy (if lead to loop)
   return false;
 }

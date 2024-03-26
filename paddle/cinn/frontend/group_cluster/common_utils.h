@@ -54,6 +54,7 @@ namespace cinn::frontend::group_cluster {
 
 bool IsTrivialPattern(const StmtPattern& pattern);
 bool IsReducePattern(const StmtPattern& pattern);
+bool IsReduceTreePattern(const StmtPattern& pattern);
 bool IsUnsupportPattern(const StmtPattern& pattern);
 
 template <typename T>
@@ -76,9 +77,19 @@ std::vector<T> MergeVector(const std::vector<T>& first,
   return result;
 }
 
+template <typename T>
+std::vector<T> ConcatVector(const std::vector<T>& first,
+                            const std::vector<T>& second) {
+  std::vector<T> result = first;
+  result.insert(result.end(), second.begin(), second.end());
+  return result;
+}
+
 std::vector<const pir::Operation*> GetOpsInPattern(const StmtPattern& pattern);
 std::string StmtPatternDebugStr(const StmtPattern& pattern);
 StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second);
+ReducePattern ToReducePattern(const StmtPattern& second);
 
 StmtPattern ConvertToStmtPattern(const pir::Operation* op);
+std::unordered_set<pir::Value> GetPatternInputValues(const StmtPattern& A);
 }  // namespace cinn::frontend::group_cluster

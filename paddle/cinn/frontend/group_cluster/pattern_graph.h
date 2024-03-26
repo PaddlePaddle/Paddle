@@ -29,6 +29,9 @@ class PatternGraph {
  private:
   void SinkTrivialPattern();
   void FuseReducePattern();
+  void ReduceLiftReduceTree();
+  void ReduceTreeGrown();
+  void ReduceTree_Trivial_Fusion();
 
   void RemoveNode(PatternNodePtr node);
   void AppendNode(PatternNodePtr node);

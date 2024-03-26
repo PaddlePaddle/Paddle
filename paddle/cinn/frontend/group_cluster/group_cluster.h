@@ -37,10 +37,10 @@ inline std::vector<std::vector<const pir::Operation*>> ClusterOps(
   const auto* shape_analysis =
       &pir::ShapeAnalysisManager::Instance().Get(group_op->GetParentProgram());
 
-  auto shardable_axes_policy =
+  const auto& shardable_axes_policy =
       std::make_shared<group_cluster::policy::ShardableAxesPolicy>(
           ops, shape_analysis);
-  auto general_topo_policy =
+  const auto& general_topo_policy =
       std::make_shared<group_cluster::policy::GeneralTopoPolicy>();
 
   auto policy_manager = group_cluster::policy::PolicyManager(

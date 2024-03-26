@@ -20,8 +20,8 @@ namespace cinn::frontend::group_cluster::policy {
 
 class Policy {
  public:
-  virtual bool CanFuse(const PatternNodePtr upstream,
-                       const PatternNodePtr downstream) = 0;
+  virtual bool CanFuse(const PatternNodePtr& upstream,
+                       const PatternNodePtr& downstream) = 0;
 };
 
 using PolicyPtr = std::shared_ptr<Policy>;
@@ -30,7 +30,8 @@ class PolicyManager {
  public:
   explicit PolicyManager(const std::vector<PolicyPtr>& policies)
       : policies_(policies) {}
-  bool CanFuse(const PatternNodePtr upstream, const PatternNodePtr downstream);
+  bool CanFuse(const PatternNodePtr& upstream,
+               const PatternNodePtr& downstream) const;
 
  private:
   std::vector<PolicyPtr> policies_;

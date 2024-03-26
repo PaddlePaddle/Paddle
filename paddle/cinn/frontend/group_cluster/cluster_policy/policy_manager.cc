@@ -17,8 +17,8 @@
 
 namespace cinn::frontend::group_cluster::policy {
 
-bool PolicyManager::CanFuse(const PatternNodePtr upstream,
-                            const PatternNodePtr downstream) {
+bool PolicyManager::CanFuse(const PatternNodePtr& upstream,
+                            const PatternNodePtr& downstream) const {
   for (const auto& policy : policies_) {
     if (!policy->CanFuse(upstream, downstream)) return false;
   }

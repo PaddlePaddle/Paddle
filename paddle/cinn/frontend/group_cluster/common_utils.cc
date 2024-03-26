@@ -85,12 +85,50 @@ bool IsReducePattern(const StmtPattern& pattern) {
   return std::holds_alternative<ReducePattern>(pattern);
 }
 
+bool IsReduceTreePattern(const StmtPattern& pattern) {
+  return std::holds_alternative<ReduceTreePattern>(pattern);
+}
+
+std::unordered_set<pir::Value> GetPatternInputValuesIncludeInner(
+    const StmtPattern& A) {
+  std::unordered_set<pir::Value> result;
+  for (const auto& op : GetOpsInPattern(A)) {
+    for (const auto& value : op->operands()) {
+      result.insert(value.source());
+    }
+  }
+  return result;
+}
+
+std::unordered_set<pir::Value> GetPatternOutputValuesIncludedInner(
+    const StmtPattern& A) {
+  std::unordered_set<pir::Value> result;
+  for (const auto& op : GetOpsInPattern(A)) {
+    for (const auto& value : op->operands()) {
+      result.insert(value.source());
+    }
+  }
+  return result;
+}
+
+std::unordered_set<pir::Value> GetPatternInputValues(const StmtPattern& A) {
+  auto all_input_values = GetPatternInputValuesIncludeInner(A);
+  for (const auto& value : GetPatternOutputValuesIncludedInner(A)) {
+    all_input_values.erase(value);
+  }
+  return all_input_values;
+}
+
+bool IsOpsDependents(const StmtPattern& pattern) {
+  return std::holds_alternative<ReduceTreePattern>(pattern);
+}
+
 bool IsUnsupportPattern(const StmtPattern& pattern) {
   return std::holds_alternative<UnsupportPattern>(pattern);
 }
 
 std::vector<const pir::Operation*> GetOpsInPattern(const StmtPattern& pattern) {
-  return std::visit([](const auto& impl) { return impl.ops_; }, pattern);
+  return std::visit([](const auto& impl) { return impl.ops(); }, pattern);
 }
 
 std::string StmtPatternDebugStr(const StmtPattern& stmt) {
@@ -106,10 +144,17 @@ StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second) {
       MergeVector(GetOpsInPattern(first), GetOpsInPattern(second));
   if (IsUnsupportPattern(first) || IsUnsupportPattern(second)) {
     return UnsupportPattern(ops);
-  } else if (IsReducePattern(first) || IsReducePattern(second)) {
-    return ReducePattern(ops);
-  } else {
+  } else if (IsReduceTreePattern(first) || IsReduceTreePattern(second)) {
+    const auto& merged =
+        ConcatVector(std::get<ReduceTreePattern>(first).reduce_patterns_,
+                     std::get<ReduceTreePattern>(second).reduce_patterns_);
+    return ReduceTreePattern(
+        merged, std::get<ReduceTreePattern>(second).GetRootPattern());
+  } else if (IsTrivialPattern(first) && IsTrivialPattern(second)) {
     return TrivialPattern(ops);
+  } else {
+    // Not Implementation.
+    CHECK(false);
   }
 }
 
@@ -124,6 +169,10 @@ StmtPattern ConvertToStmtPattern(const pir::Operation* op) {
   } else {
     return UnsupportPattern({op});
   }
+}
+
+ReducePattern ToReducePattern(const StmtPattern& second) {
+  return std::get<ReducePattern>(second);
 }
 
 }  // namespace cinn::frontend::group_cluster

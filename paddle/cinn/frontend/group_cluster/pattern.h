@@ -24,18 +24,51 @@ struct TrivialPattern {
   explicit TrivialPattern(const std::vector<const pir::Operation*>& ops)
       : ops_(ops) {}
   std::vector<const pir::Operation*> ops_;
+  std::vector<const pir::Operation*> ops() const { return ops_; }
 };
 
 struct ReducePattern {
   explicit ReducePattern(const std::vector<const pir::Operation*>& ops)
       : ops_(ops) {}
   std::vector<const pir::Operation*> ops_;
+  std::vector<const pir::Operation*> ops() const { return ops_; }
+  const pir::Operation* GetReduceOp() const { return ops_.back(); }
+};
+
+struct ReduceTreePattern {
+  explicit ReduceTreePattern(const std::vector<ReducePattern>& v,
+                             const ReducePattern& root)
+      : reduce_patterns_(v), root_(root) {}
+  std::vector<ReducePattern> reduce_patterns_;
+  const ReducePattern& GetRootPattern() const { return root_; }
+  std::vector<const pir::Operation*> ops() const {
+    std::vector<const pir::Operation*> ops;
+    for (const auto& reduce_pattern : reduce_patterns_) {
+      for (const auto& op : reduce_pattern.ops()) {
+        ops.push_back(op);
+      }
+    }
+    return ops;
+  }
+
+ private:
+  ReducePattern root_;
+};
+
+struct ReduceTreePlusTrivialPattern {
+  explicit ReduceTreePlusTrivialPattern(const ReduceTreePattern& tree,
+                                        const TrivialPattern& sink_trivial)
+      : tree(tree), sink_trivial(sink_trivial) {}
+  ReduceTreePattern tree;
+  TrivialPattern sink_trivial;
+  std::vector<const pir::Operation*> ops() const { return {}; }
 };
 
 struct UnsupportPattern {
   explicit UnsupportPattern(const std::vector<const pir::Operation*>& ops)
       : ops_(ops) {}
   std::vector<const pir::Operation*> ops_;
+  std::vector<const pir::Operation*> ops() const { return ops_; }
 };
 
 // UnsupportedPattern can't fuse with any pattern
@@ -47,7 +80,10 @@ struct UnsupportPattern {
 // StmtPattern = std::variant<TrivialPattern, ReducePattern, MatmulPattern,
 // UnsupportPattern>; Fusion with different Pattern will have specialized logic
 // to Judge, Update policy logic for MatmulPattern
-using StmtPattern =
-    std::variant<TrivialPattern, ReducePattern, UnsupportPattern>;
+using StmtPattern = std::variant<TrivialPattern,
+                                 ReducePattern,
+                                 ReduceTreePattern,
+                                 ReduceTreePlusTrivialPattern,
+                                 UnsupportPattern>;
 
 }  // namespace cinn::frontend::group_cluster

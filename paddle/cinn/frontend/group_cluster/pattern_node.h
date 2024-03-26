@@ -26,6 +26,8 @@ struct PatternNode {
                        PatternNodePtr fused_down_node);
 
   bool IsTrivial() const;
+  bool IsReduce() const;
+  bool IsReduceTree() const;
   std::vector<const pir::Operation*> GetOps() const;
 
   StmtPattern stmt_pattern_;

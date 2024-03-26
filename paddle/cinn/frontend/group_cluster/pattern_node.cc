@@ -68,5 +68,9 @@ std::vector<const pir::Operation*> PatternNode::GetOps() const {
 }
 
 bool PatternNode::IsTrivial() const { return IsTrivialPattern(stmt_pattern_); }
+bool PatternNode::IsReduce() const { return IsReducePattern(stmt_pattern_); }
+bool PatternNode::IsReduceTree() const {
+  return IsReduceTreePattern(stmt_pattern_);
+}
 
 }  // namespace cinn::frontend::group_cluster
