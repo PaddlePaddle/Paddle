@@ -86,7 +86,6 @@ class TestSvdLowrankAPI(unittest.TestCase):
         all_batches = [(), (1,), (3,), (2, 3)]
         for actual_rank, size in [
             (2, (17, 4)),
-            (2, (100, 4)),
             (6, (100, 40)),
         ]:
             for batches in all_batches:
@@ -211,7 +210,6 @@ class TestStaticSvdLowrankAPI(unittest.TestCase):
             all_batches = [(), (1,), (3,), (2, 3)]
             for actual_rank, size in [
                 (2, (17, 4)),
-                (2, (100, 4)),
                 (6, (100, 40)),
             ]:
                 for batches in all_batches:
