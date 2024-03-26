@@ -23,55 +23,58 @@ import autodiff_checker_helper as ad_checker
 import parameterized as param
 
 import paddle
+from paddle.base import core
 
 
 class TestMulHigherOrderAD(unittest.TestCase):
-    order = 2
-
     def wrap_func(self, args, kwargs):
         return paddle.multiply(args[0], args[1])
 
     @param.parameterized.expand(
         [
-            ([2, 3, 2], [2, 3, 2], 'float32', 'cpu'),
-            ([2, 3, 2], [2, 3, 2], 'float32', 'gpu'),
-            ([2, 3, 2], [2, 3, 2], 'float32', 'cpu'),
-            ([2, 3, 2, 1], [2, 3, 2, 4], 'float64', 'gpu'),
+            ([2, 3, 2], [2, 3, 2], 'float32', 2, ('cpu', 'gpu')),
+            ([2, 3, 2], [2, 3, 2], 'float64', 2, ('cpu', 'gpu')),
+            ([2, 3, 2, 1], [2, 3, 2, 4], 'float64', 2, ('cpu', 'gpu')),
         ]
     )
-    def test_high_order_autodiff(self, shape1, shape2, dtype, place):
+    def test_high_order_autodiff(self, shape1, shape2, dtype, order, places):
         var_1 = np.random.randn(*shape1).astype(dtype)
         var_2 = np.random.randn(*shape2).astype(dtype)
-        var1 = paddle.to_tensor(var_1, place=place)
-        var2 = paddle.to_tensor(var_2, place=place)
-        var1, var2 = paddle.broadcast_tensors(input=[var1, var2])
-        for order in range(2, self.order + 1):
-            ad_checker.check_vjp(
-                self.wrap_func, [var1, var2], argnums=(0, 1), order=order
-            )
+        for place in places:
+            if place == 'gpu' and not core.is_compiled_with_cuda():
+                continue
+            var1 = paddle.to_tensor(var_1, place=place)
+            var2 = paddle.to_tensor(var_2, place=place)
+            var1, var2 = paddle.broadcast_tensors(input=[var1, var2])
+            for diff_order in range(2, order + 1):
+                ad_checker.check_vjp(
+                    self.wrap_func,
+                    [var1, var2],
+                    argnums=(0, 1),
+                    order=diff_order,
+                )
 
 
 class TestSinHigherOrderAD(unittest.TestCase):
-    order = 4
-
     def wrap_func(self, args, kwargs):
         return paddle.sin(args[0])
 
     @param.parameterized.expand(
         [
-            ([2, 3, 2], 'float32', 'cpu'),
-            ([2, 3, 2], 'float32', 'gpu'),
-            ([2, 3, 2], 'float32', 'cpu'),
-            ([2, 3, 2, 4], 'float64', 'gpu'),
+            ([2, 3, 2], 'float32', 4, ('cpu', 'gpu')),
+            ([2, 3, 2, 4], 'float64', 4, ('cpu', 'gpu')),
         ]
     )
-    def test_high_order_autodiff(self, shape, dtype, place):
+    def test_high_order_autodiff(self, shape, dtype, order, places):
         var_1 = np.random.randn(*shape).astype(dtype)
-        var1 = paddle.to_tensor(var_1, place=place)
-        for order in range(2, self.order + 1):
-            ad_checker.check_vjp(
-                self.wrap_func, [var1], argnums=(0), order=order
-            )
+        for place in places:
+            if place == 'gpu' and not core.is_compiled_with_cuda():
+                continue
+            var1 = paddle.to_tensor(var_1, place=place)
+            for diff_order in range(2, order + 1):
+                ad_checker.check_vjp(
+                    self.wrap_func, [var1], argnums=(0), order=diff_order
+                )
 
 
 class TestCosHigherOrderAD(TestSinHigherOrderAD):
