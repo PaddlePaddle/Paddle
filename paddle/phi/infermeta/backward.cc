@@ -39,6 +39,21 @@ void AngleGradInferMeta(const MetaTensor& x,
   UnchangedInferMeta(x, x_grad);
 }
 
+void BatchFCGradInferMeta(const MetaTensor& input,
+                          const MetaTensor& w,
+                          const MetaTensor& bias,
+                          const MetaTensor& out_grad,
+                          MetaTensor* input_grad,
+                          MetaTensor* w_grad,
+                          MetaTensor* bias_grad) {
+  input_grad->set_dims(input.dims());
+  input_grad->set_dtype(input.dtype());
+  w_grad->set_dims(w.dims());
+  w_grad->set_dtype(w.dtype());
+  bias_grad->set_dims(bias.dims());
+  bias_grad->set_dtype(bias.dtype());
+}
+
 void BilinearGradInferMeta(const MetaTensor& x,
                            const MetaTensor& y,
                            const MetaTensor& weight,
@@ -850,6 +865,16 @@ void NanmedianGradInferMeta(const MetaTensor& x,
   x_grad->set_dtype(x.dtype());
 }
 
+void PartialConcatGradInferMeta(const std::vector<const MetaTensor*>& xs,
+                                std::vector<MetaTensor*> x_grads) {
+  auto input_num = xs.size();
+  for (size_t i = 0; i < input_num; i++) {
+    auto x_dims = xs[i]->dims();
+    x_grads[i]->set_dims(x_dims);
+    x_grads[i]->set_dtype(xs[i]->dtype());
+  }
+}
+
 void NceGradInferMeta(const MetaTensor& input,
                       const MetaTensor& bias,
                       const MetaTensor& weight,
@@ -874,6 +899,16 @@ void NceGradInferMeta(const MetaTensor& input,
   if (bias_grad) {
     bias_grad->set_dims(bias_dims);
     bias_grad->set_dtype(bias.dtype());
+  }
+}
+
+void PartialSumGradInferMeta(const std::vector<const MetaTensor*>& xs,
+                             std::vector<MetaTensor*> x_grads) {
+  auto input_num = xs.size();
+  for (size_t i = 0; i < input_num; i++) {
+    auto x_dims = xs[i]->dims();
+    x_grads[i]->set_dims(x_dims);
+    x_grads[i]->set_dtype(xs[i]->dtype());
   }
 }
 

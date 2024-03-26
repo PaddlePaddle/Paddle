@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.base import Program, program_guard
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -26,6 +25,7 @@ from paddle.pir_utils import test_with_pir_api
 class TestFullAPI(unittest.TestCase):
     @test_with_pir_api
     def test_api(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             positive_2_int32 = paddle.tensor.fill_constant([1], "int32", 2)
 
@@ -98,6 +98,7 @@ class TestFullAPI(unittest.TestCase):
         np.testing.assert_array_equal(
             res_7, np.full([1, 2], 1.1, dtype="float32")
         )
+        paddle.disable_static()
 
     def test_api_eager(self):
         with base.dygraph.base.guard():
@@ -184,8 +185,12 @@ class TestFullAPI(unittest.TestCase):
 
 
 class TestFullOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             # for ci coverage
             self.assertRaises(
                 TypeError, paddle.full, shape=[1], fill_value=5, dtype='uint4'
@@ -216,6 +221,7 @@ class TestFullOpError(unittest.TestCase):
                 paddle.full(shape=[shape, 2], dtype="float32", fill_value=1)
 
             self.assertRaises(TypeError, test_shape_tensor_list_dtype)
+        paddle.disable_static()
 
 
 if __name__ == "__main__":
