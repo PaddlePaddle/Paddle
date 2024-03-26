@@ -263,10 +263,18 @@ static void ShareTensorsFromScopeByValue(
     const std::vector<::pir::Value> &values,
     paddle::framework::Scope *scope) {
   auto names = GetNameFromValue(block, values, false);
+  auto input_names = GetNameFromValue(block, values, true);
   for (size_t i = 0; i < tensors.size(); ++i) {
-    auto &name = names[i];
+    auto name = names[i];
+    auto input_name = input_names[i];
     auto &value = values[i];
+    if (name == paddle::framework::kFakeVarName) {
+      name = input_name;
+    }
     VLOG(2) << "share " << name << " from scope";
+    VLOG(0) << "share " << name << " from scope";
+    // VLOG(0) << "defining op is " << value.defining_op()->name();
+
     if (value.impl() == nullptr) {
       // skip stop_gradient.
       continue;
@@ -422,6 +430,7 @@ inline void PirRunProgramAPI(
     bool require_any_grad,
     const paddle::framework::AttributeMap &attrs,
     const int64_t &place_hash_key) {
+  VLOG(0) << "[RunProgramOp] Forward start";
   VLOG(2) << "RunProgramOpKernel Compute";
   // In the original run_program OP, the default value of the is_test
   // attribute is false, we should check if there is is_test parameter
@@ -564,6 +573,21 @@ inline void PirRunProgramAPI(
     // Step 2. update scope for cache interpretercore
     details::ShareTensorsIntoScopeByValue(
         forward_global_block, x, input_values, global_inner_scope);
+    // auto names = details::GetNameFromValue(forward_global_block,
+    // param_values, true); std::vector<std::string> names_re; for (auto name :
+    // names) {
+    //   if (name == "parameter_52") {
+    //     names_re.push_back("output_3776");
+    //   }
+    //   else if (name == "parameter_53") {
+    //     names_re.push_back("output_3777");
+    //   }
+    //   else {
+    //     names_re.push_back(name);
+    //   }
+    // }
+    // details::ShareTensorsIntoScopeWithName(params, names_re,
+    // global_inner_scope);
     details::ShareTensorsIntoScopeByValue(
         forward_global_block, params, param_values, global_inner_scope);
     // TODO(xiongkun): new ir how to build scope.
@@ -588,8 +612,10 @@ inline void PirRunProgramAPI(
     paddle::platform::RecordEvent record_event(
         "fetch_and_gc", paddle::platform::TracerEventType::UserDefined, 1);
     // Get Output, and Middle Outputs
+    VLOG(0) << "Start to share output from scope";
     details::ShareTensorsFromScopeByValue(
         forward_global_block, out, output_values, global_inner_scope);
+    VLOG(0) << "Start to share middles from scope";
     details::ShareTensorsFromScopeByValue(
         forward_global_block, middles, middle_values, global_inner_scope);
 
@@ -1019,6 +1045,7 @@ inline void PirRunProgramGradAPI(
     std::vector<paddle::Tensor *> &x_grad,       // NOLINT
     std::vector<paddle::Tensor *> &params_grad,  // NOLINT
     const int64_t &place_hash_key) {
+  VLOG(0) << "[RunProgramOp] Backward start";
   // if all output vars are set to stop_gradient, grad op no need to executed
   if (x_grad.empty() && params_grad.empty()) return;
   auto *out_scope_vec = &step_scope;

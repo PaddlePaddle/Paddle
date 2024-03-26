@@ -1083,6 +1083,119 @@ void range_block_do(const Block *block, std::vector<int> range, F fn) {
   }
 }
 
+std::map<int, int> GetOpInplaceInfo(const pir::Operation *op) {
+  std::map<int, int> inplace_info;
+  if (!op->HasTrait<paddle::dialect::InplaceTrait>()) {
+    return inplace_info;
+  }
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  std::string op_name = op->name();
+  if (op->attributes().count("op_name")) {
+    op_name =
+        op->attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+  }
+
+  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
+  paddle::dialect::OpYamlInfoParser yaml_parser(
+      op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
+          ->get_op_info_(op_name),
+      paddle::dialect::IsLegacyOp(op_name));
+
+  for (size_t i = 0; i < op->num_results(); ++i) {
+    std::string value_name = yaml_parser.OutputNames()[i];
+    if (yaml_parser.HasInplace(value_name)) {
+      const std::string &inplace_name = yaml_parser.InplaceName(value_name);
+      inplace_info[i] = yaml_parser.InputName2Id().at(inplace_name);
+    }
+    if (yaml_parser.HasView(value_name)) {
+      const std::string &view_name = yaml_parser.ViewName(value_name);
+      inplace_info[i] = yaml_parser.InputName2Id().at(view_name);
+    }
+  }
+
+  return inplace_info;
+}
+
+std::vector<std::vector<pir::Value>> GetOpInplaceChains(const Block *block) {
+  std::vector<std::vector<pir::Value>> inplace_chains;
+  std::map<pir::Value, int> value_to_inplace_chain_index;
+
+  for (auto &op : *block) {
+    pir::Walk(&op, [&](Operation *inner_op) {
+      auto op_inplace_info = GetOpInplaceInfo(inner_op);
+      for (auto &[out_idx, in_idx] : op_inplace_info) {
+        auto target_value = inner_op->results()[out_idx];
+        auto source_value = inner_op->operands()[in_idx].source();
+        VLOG(8) << "Inplace Mapping: " << Value2String(source_value) << " -> "
+                << Value2String(target_value);
+
+        if (value_to_inplace_chain_index.count(source_value) == 0 &&
+            value_to_inplace_chain_index.count(target_value) == 0) {
+          size_t chain_insertion_idx = inplace_chains.size();
+          inplace_chains.push_back({source_value, target_value});
+          value_to_inplace_chain_index.insert(
+              {source_value, chain_insertion_idx});
+          value_to_inplace_chain_index.insert(
+              {target_value, chain_insertion_idx});
+        } else {
+          PADDLE_ENFORCE_NE(
+              value_to_inplace_chain_index.count(source_value),
+              0,
+              phi::errors::Unavailable("source value should be in the chain"));
+          PADDLE_ENFORCE_EQ(value_to_inplace_chain_index.count(target_value),
+                            0,
+                            phi::errors::Unavailable(
+                                "target value should not be in the chain"));
+          size_t chain_insertion_idx =
+              value_to_inplace_chain_index[source_value];
+          inplace_chains[chain_insertion_idx].push_back(target_value);
+          value_to_inplace_chain_index.insert(
+              {target_value, chain_insertion_idx});
+        }
+      }
+    });
+  }
+  return inplace_chains;
+}
+
+std::optional<pir::Value> FindInplaceSource(
+    const std::vector<std::vector<pir::Value>> inplace_chains,
+    pir::Value value) {
+  if (value.impl() == nullptr) {
+    return std::nullopt;
+  }
+  for (auto &chain : inplace_chains) {
+    for (auto &v : chain) {
+      if (v == value) {
+        return chain[0];
+      }
+    }
+  }
+  return std::nullopt;
+}
+
+std::map<pir::Value, pir::Value> ReplaceValueWithInplaceSource(
+    const std::vector<pir::Value> &source_values,
+    std::vector<pir::Value> &target_values,
+    const std::vector<std::vector<pir::Value>> inplace_chains) {
+  std::map<pir::Value, pir::Value> replacements;
+  for (auto &target_value : target_values) {
+    auto inplace_source = FindInplaceSource(inplace_chains, target_value);
+    if (!inplace_source.has_value()) {
+      continue;
+    }
+    if (std::find(source_values.begin(),
+                  source_values.end(),
+                  inplace_source.value()) != source_values.end()) {
+      VLOG(0) << "Replace " << Value2String(target_value) << " with "
+              << Value2String(inplace_source.value());
+      replacements.insert({target_value, inplace_source.value()});
+      target_value = inplace_source.value();
+    }
+  }
+  return replacements;
+}
+
 std::pair<std::vector<pir::Value>, std::unordered_set<pir::Value>>
 AnalysisMiddleVariable(const Program &program,
                        const std::vector<pir::Value> &forward_inputs,
@@ -1268,8 +1381,16 @@ SplitedResult SplitForwardBackward(
   auto backward_program = std::make_shared<Program>(ctx);
   std::vector<pir::Value> middle_values;
   std::unordered_set<pir::Value> backward_inputs;
+  const auto &inplace_chains = GetOpInplaceChains(program.block());
   std::tie(middle_values, backward_inputs) = AnalysisMiddleVariable(
       program, forward_in_out_values, forward_range, backward_range);
+
+  // Replace inplace value with source value.
+  auto replacement_middles_in_fx = ReplaceValueWithInplaceSource(
+      forward_inputs, middle_values, inplace_chains);
+  auto replacement_middles_in_fp = ReplaceValueWithInplaceSource(
+      forward_params, middle_values, inplace_chains);
+  // TODO: replace backward bx_g and bp_g
   pir::Block &backward_block = *backward_program->block();
   bool has_backward = (backward_range[1] > backward_range[0]);
 
@@ -1277,6 +1398,7 @@ SplitedResult SplitForwardBackward(
   VLOG(4) << "start create forward program.";
   pir::IrMapping forward_mapper;
   auto clone_options = pir::CloneOptions::All();
+  VLOG(0) << "start clone forward program";
   range_block_do(
       program.block(),
       forward_range,
@@ -1284,6 +1406,7 @@ SplitedResult SplitForwardBackward(
         auto *cloned_op = op->Clone(forward_mapper, clone_options);
         forward_program->block()->push_back(cloned_op);
       });
+  VLOG(0) << "end clone forward program";
   auto &forward_value_map = forward_mapper.GetMutableMap<pir::Value>();
 
   // backward program construct.
@@ -1304,8 +1427,17 @@ SplitedResult SplitForwardBackward(
   auto create_output_fn_forward = [&ctx,
                                    &forward_value_map,
                                    &counter,
-                                   &forward_program](const pir::Value &v) {
+                                   &forward_program,
+                                   &forward_inputs,
+                                   &forward_params](const pir::Value &v) {
     if (v.impl() == nullptr) {
+      return;
+    }
+    // Skip the value that already in forward_inputs or forward_params.
+    if (std::find(forward_inputs.begin(), forward_inputs.end(), v) !=
+            forward_inputs.end() ||
+        std::find(forward_params.begin(), forward_params.end(), v) !=
+            forward_params.end()) {
       return;
     }
     // NOTE(Aurelius84): we should skip insert ShadowOutputOp repeatedly by
@@ -1361,7 +1493,6 @@ SplitedResult SplitForwardBackward(
     counter += 1;
   };
 
-  // counter = 0;
   if (has_backward) {
     VLOG(4) << "start create backward inputs, creating keyword argument.";
     VLOG(4)
@@ -1391,9 +1522,16 @@ SplitedResult SplitForwardBackward(
                   create_kwarg_fn);
     VLOG(4) << "Create keyword argument for backward program end. input_"
             << counter;
+
+    // Update the value map with inplace source value.
+    for (auto &[target, source] : replacement_middles_in_fx) {
+      backward_value_map.insert({target, backward_value_map[source]});
+    }
+    for (auto &[target, source] : replacement_middles_in_fp) {
+      backward_value_map.insert({target, backward_value_map[source]});
+    }
   }
 
-  // counter = 0;
   VLOG(4) << "start create forward outputs, inserting set_parameter ops.";
   std::for_each(
       middle_values.begin(), middle_values.end(), create_output_fn_forward);
@@ -1402,6 +1540,7 @@ SplitedResult SplitForwardBackward(
 
   // Step2. copy backward ops .
   VLOG(4) << "start copy backward ops";
+  VLOG(0) << "start clone backward program";
   range_block_do(
       program.block(),
       backward_range,
@@ -1409,7 +1548,7 @@ SplitedResult SplitForwardBackward(
         auto *cloned_op = op->Clone(backward_mapper, clone_options);
         backward_program->block()->push_back(cloned_op);
       });
-  // counter = 0;
+  VLOG(0) << "end clone backward program";
   VLOG(4) << "start create backward outputs, inserting set_parameter ops.";
   if (has_backward) {
     std::for_each(forward_inputs_grads.begin(),
@@ -1511,39 +1650,6 @@ void ResetShadowOutputName(pir::Operation *op, const std::string &name) {
   if (op->isa<pir::ShadowOutputOp>()) {
     op->set_attribute("output_name", pir::StrAttribute::get(ctx, name));
   }
-}
-
-std::map<int, int> GetOpInplaceInfo(const pir::Operation *op) {
-  std::map<int, int> inplace_info;
-  if (!op->HasTrait<paddle::dialect::InplaceTrait>()) {
-    return inplace_info;
-  }
-  pir::IrContext *ctx = pir::IrContext::Instance();
-  std::string op_name = op->name();
-  if (op->attributes().count("op_name")) {
-    op_name =
-        op->attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
-  }
-
-  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
-  paddle::dialect::OpYamlInfoParser yaml_parser(
-      op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
-          ->get_op_info_(op_name),
-      paddle::dialect::IsLegacyOp(op_name));
-
-  for (size_t i = 0; i < op->num_results(); ++i) {
-    std::string value_name = yaml_parser.OutputNames()[i];
-    if (yaml_parser.HasInplace(value_name)) {
-      const std::string &inplace_name = yaml_parser.InplaceName(value_name);
-      inplace_info[i] = yaml_parser.InputName2Id().at(inplace_name);
-    }
-    if (yaml_parser.HasView(value_name)) {
-      const std::string &view_name = yaml_parser.ViewName(value_name);
-      inplace_info[i] = yaml_parser.InputName2Id().at(view_name);
-    }
-  }
-
-  return inplace_info;
 }
 
 void BindUtils(pybind11::module *m) {
