@@ -43,6 +43,8 @@ std::string Compiler::operator()(const std::string& code,
 
 Compiler::Compiler() {}
 
+bool Compiler::compile_to_hipbin() { return compile_to_hipbin_; }
+
 std::vector<std::string> Compiler::FindHIPIncludePaths() {
   const std::string delimiter = "/";
   std::string hip_include_path;
@@ -125,8 +127,46 @@ std::string Compiler::CompileHipSource(const std::string& code,
 }
 
 std::string Compiler::CompileWithHipcc(const std::string& hip_c) {
-  // todo，参考hipcc_test.cc
-  return "";
+  // hipcc compile command
+  std::string options = "hipcc -O3 --genco";
+  // arch
+  // Get device properties from the first device available.
+  hipDeviceProp_t props;
+  constexpr unsigned int device_id = 0;
+  hipGetDeviceProperties(&props, device_id);
+  if (props.gcnArchName[0]) {
+    options += std::string(" --offload-arch=") + props.gcnArchName;
+  }
+
+  auto include_dir = common::Context::Global().runtime_include_dir();
+  std::string include_dir_str = "";
+  for (auto dir : include_dir) {
+    if (include_dir_str.empty()) {
+      include_dir_str = dir;
+    } else {
+      include_dir_str += ":" + dir;
+    }
+  }
+
+  std::string dir = "./source";
+  prefix_name_ = dir + "/" + common::UniqName("hip_tmp");
+
+  auto hip_c_file = prefix_name_ + ".cc";
+  std::ofstream ofs(hip_c_file, std::ios::out);
+  PADDLE_ENFORCE_EQ(ofs.is_open(),
+                    true,
+                    ::common::errors::PreconditionNotMet(
+                        "Fail to open file %s to compile HIP.", hip_c_file));
+  ofs << hip_c;
+  ofs.close();
+
+  options += " -I " + include_dir_str;
+  options += " -o " + prefix_name_ + ".hsaco";
+  options += " " + prefix_name_ + ".cc";
+
+  std::cout << options << std::endl;
+  system(options.c_str());
+  return prefix_name_ + ".hsaco";
 }
 
 std::string Compiler::GetDeviceArch() {

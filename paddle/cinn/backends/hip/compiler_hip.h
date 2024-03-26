@@ -44,6 +44,11 @@ class Compiler {
    */
   std::string operator()(const std::string& code, bool include_headers = true);
 
+  /** Compile into hipbin or not
+   * @return Compile into hipbin or not.
+   */
+  bool compile_to_hipbin();
+
  private:
   /**
    * Get the directories of HIP's header files.
@@ -71,6 +76,8 @@ class Compiler {
   std::string ReadFile(const std::string&, std::ios_base::openmode);
 
   std::string prefix_name_{""};
+
+  bool compile_to_hipbin_{true};
 };
 
 }  // namespace hiprtc

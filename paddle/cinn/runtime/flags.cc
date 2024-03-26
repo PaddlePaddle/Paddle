@@ -158,6 +158,10 @@ PD_DEFINE_bool(
     "technique which contract fp multiplication and addition/subtraction into "
     "multiply-add operation. It may result in different fp precision.");
 
+PD_DEFINE_bool(cinn_compile_with_hiprtc,
+               BoolFromEnv("FLAGS_cinn_compile_with_hiprtc", true),
+               "Whether compile hip source with hiprtc.");
+
 // FLAGS for performance analysis and accuracy debug
 PD_DEFINE_bool(cinn_sync_run,
                BoolFromEnv("FLAGS_cinn_sync_run", false),
@@ -327,7 +331,7 @@ bool CanUseNvccCompiler() {
          (!FLAGS_cinn_compile_with_nvrtc);
 }
 
-bool CanUseHipccCompiler() { return false; }
+bool CanUseHipccCompiler() { return !FLAGS_cinn_compile_with_hiprtc; }
 
 bool IsCompiledWithCUDA() {
 #if !defined(CINN_WITH_CUDA)

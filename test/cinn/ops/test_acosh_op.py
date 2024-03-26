@@ -13,16 +13,15 @@
 # limitations under the License.
 
 
-from cinn.common import is_compiled_with_cuda
 from cinn.frontend import NetBuilder
-from op_test import OpTest, OpTestTool
+from op_test import OpTest, OpTestTool, is_compile_with_device
 from op_test_helper import TestCaseHelper
 
 import paddle
 
 
 @OpTestTool.skip_if(
-    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+    not is_compile_with_device, "x86 test will be skipped due to timeout."
 )
 class TestAcoshOp(OpTest):
     def setUp(self):
