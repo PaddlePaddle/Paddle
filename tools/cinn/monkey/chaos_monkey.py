@@ -46,15 +46,7 @@ def Generate(
 if __name__ == '__main__':
     unit_test_case_spec=UnitTestCaseSpec(
         dag_gen_requirement=dag_generator.DAGGenRequirement(
-            pick_probability=dag_generator.DAGGenTypePickProbability(
-                nope=PickWeight(0),
-                add_sink_tensor=PickWeight(1),
-                add_unary_op=PickWeight(1),
-                add_binary_op=PickWeight(1),
-                insert_binary_op=PickWeight(1),
-                add_binary_clone=PickWeight(1),
-                add_source_op=PickWeight(1)
-            )
+            pick_probability=dag_generator.DAGGenTypePickProbability()
         ),
         dims_eq1_gen_requirement=dims_eq1_generator.DimsEq1GenRequirement(
             dims_eq1_probability=[0.1, 0.2, 0.3]

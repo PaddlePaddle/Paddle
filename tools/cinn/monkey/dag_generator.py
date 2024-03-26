@@ -8,12 +8,24 @@ from .hash_combine import HashCombine
 
 @dataclass
 class DAGGenTypePickProbability:
-    nope: PickWeight
-    add_sink_tensor: PickWeight
-    add_unary_op: PickWeight
-    add_binary_op: PickWeight
-    add_binary_clone: PickWeight
-    add_source_op: PickWeight
+    nope: PickWeight = field(
+        default_factory=lambda: PickWeight(0)
+    )
+    add_sink_tensor: PickWeight = field(
+        default_factory=lambda: PickWeight(0.1)
+    )
+    add_unary_op: PickWeight = field(
+        default_factory=lambda: PickWeight(1)
+    )
+    add_binary_op: PickWeight = field(
+        default_factory=lambda: PickWeight(1)
+    )
+    add_binary_clone: PickWeight = field(
+        default_factory=lambda: PickWeight(0.5)
+    )
+    add_source_op: PickWeight = field(
+        default_factory=lambda: PickWeight(0.5)
+    )
 
 @dataclass
 class DAGGenRequirement:
