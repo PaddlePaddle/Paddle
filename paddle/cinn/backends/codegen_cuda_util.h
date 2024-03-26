@@ -19,8 +19,11 @@
 #include <string>
 #include <tuple>
 #include <vector>
-
+#ifdef CINN_WITH_CUDA
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
+#elif defined(CINN_WITH_ROCM)
+#include "paddle/cinn/backends/hip/codegen_hip_dev.h"
+#endif
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"
@@ -115,9 +118,18 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
     // shared_mem_bytes Can be calculated after codegen_cuda_dev buffer creation
     // however, this make CodeGenCUDA_Dev before spliting the host and device
     // module Maybe we could reorder the process.
+    Expr shared_mem_bytes;
+#ifdef CINN_WITH_CUDA
     CodeGenCUDA_Dev codegen_dev(cinn::common::DefaultNVGPUTarget());
     codegen_dev.Compile(ir::LoweredFunc(func));
-    Expr shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
+    shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
+#elif defined(CINN_WITH_ROCM)
+    CodeGenHIP_Dev codegen_dev(target_);
+    codegen_dev.Compile(ir::LoweredFunc(func));
+    shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
+#elif defined(CINN_WITH_SYCL)
+    CINN_NOT_IMPLEMENTED
+#endif
 
     VLOG(6) << "Add a call node for func->name " << func->name << "\n"
             << "grid_dim: (" << func->cuda_axis_info.grid_dim(0) << ", "
