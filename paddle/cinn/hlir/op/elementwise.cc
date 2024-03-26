@@ -1393,6 +1393,63 @@ std::vector<Type> InferDtypeForLogicalNot(const std::vector<Type> &inputs_type,
   return {cinn::common::Bool()};
 }
 
+std::shared_ptr<OpStrategy> StrategyForTrilu(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<ir::Dim>> &output_shapes,
+    const Target &target) {
+  framework::CINNCompute trilu_compute([=](lang::Args args,
+                                           lang::RetValue *ret) {
+    PADDLE_ENFORCE_NE(args.empty(),
+                      false,
+                      phi::errors::InvalidArgument(
+                          "The input arguments of trilu compute is empty"));
+    CINNValuePack pack_args = args[0];
+    PADDLE_ENFORCE_EQ(
+        pack_args.size(),
+        1U,
+        phi::errors::InvalidArgument("only 1 input tensor for trilu compute"));
+    Expr A = pack_args[0];
+    PADDLE_ENFORCE_NOT_NULL(
+        A.as_tensor(),
+        phi::errors::InvalidArgument(
+            "first input argument in trilu should be tensor"));
+    int diagonal = absl::get<int>(attrs.attr_store.at("diagonal"));
+    std::vector<int> new_shape =
+        absl::get<std::vector<int>>(attrs.attr_store.at("shape"));
+    auto tensor_A = A.as_tensor_ref();
+    auto stages = CreateStages({tensor_A});
+
+    PADDLE_ENFORCE_NE(output_shapes.empty(),
+                      false,
+                      phi::errors::InvalidArgument(
+                          "output shape of tril should not be empty."));
+    VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
+            << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
+
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "args of trilu compute should be equal to 2"));
+    PADDLE_ENFORCE_EQ(pack_args[1].is_string(),
+                      true,
+                      "The second argument of tril should be string");
+    std::string tensor_name = pack_args[1].operator std::string();
+
+    ir::Tensor out =
+        pe::Trilu(tensor_A, diagonal, output_shapes[0], tensor_name);
+    std::vector<CINNValue> res;
+    stages->InsertLazily(out);
+    res.push_back(CINNValue(out));
+    CHECK(!out_type.empty())
+        << "Output type of Reshape is empty! Please check.\n";
+    res.push_back(CINNValue(stages));
+
+    *ret = CINNValuePack{res};
+  });
+}
+
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn
@@ -1712,6 +1769,17 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
       .set_support_level(4);
+
+  CINN_REGISTER_OP(trilu)
+      .describe(
+          "Filters out the upper portion of an input tensor on one side of a "
+          "diagonal")
+      .set_num_inputs(2)
+      .set_num_outputs(1)
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
+          "CINNStrategySymbolic", cinn::hlir::op::StrategyForTrilu)
+      .set_attr<cinn::hlir::framework::OpPatternKind>(
+          "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise);
 
   return true;
 }

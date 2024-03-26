@@ -333,6 +333,20 @@ ir::Tensor Arange(const float start,
   return res;
 }
 
+ir::Tensor Trilu(const ir::Tensor& A,
+                 const int diagonal,
+                 const std::vector<ir::Dim>& out_shape,
+                 const std::string& name) {
+  ir::Tensor res = Compute(
+      ToCinnExprs(out_shape),
+      [=](const std::vector<Expr>& indice) {
+        return ir::Select::Make(
+            indice[1] + diagonal > indice[0], ir::Expr(0.), A(indice));
+      },
+      name);
+  return res;
+}
+
 }  // namespace pe
 }  // namespace hlir
 }  // namespace cinn
