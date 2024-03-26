@@ -865,7 +865,8 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     var_ = maximum<T>(
         var_tmp_,
         backend::full_with_tensor<T>(shape<T>(var_tmp_), 0, var_tmp_.dtype()));
-    Tensor var_inv = rsqrt<T>(var_ + epsilon);
+    Tensor var_inv =
+        rsqrt<T>(var_ + full<T>(empty_shape, epsilon, var_.dtype()));
     Tensor res = (x_cast - mean_) * var_inv;
     out = backend::reshape<T>(res, x_dim);
   } else {
@@ -878,7 +879,7 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     auto var_tmp_ = mean_decomp<T>(x_cast * x_cast, IntArray(one_axis), true) -
                     mean_ * mean_;
     var_ = maximum<T>(var_tmp_, full<T>(var_tmp_.shape(), 0, var_tmp_.dtype()));
-    auto var_inv = rsqrt<T>(var_ + epsilon);
+    auto var_inv = rsqrt<T>(var_ + full<T>(empty_shape, epsilon, var_.dtype()));
     auto res = (x_cast - mean_) * var_inv;
     out = reshape<T>(res, x_dim);
   }
