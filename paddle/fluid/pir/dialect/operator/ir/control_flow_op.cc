@@ -828,8 +828,8 @@ void HasElementsOp::VerifySig() {
   VLOG(4) << "Verifying inputs, outputs ,attributes for: HasElementsOp.";
   // Verify inputs:
   PADDLE_ENFORCE_EQ(
-      num_operands(),
-      1UL,
+      num_operands() == 1UL,
+      true,
       phi::errors::InvalidArgument("The size of inputs must equal to 1."));
   PADDLE_ENFORCE_EQ(
       operand_type(0).isa<pir::ContainerType>(),
@@ -841,8 +841,8 @@ void HasElementsOp::VerifySig() {
 
   // Verify outputs:
   PADDLE_ENFORCE_EQ(
-      num_results(),
-      1UL,
+      num_results() == 1UL,
+      true,
       phi::errors::InvalidArgument("The size of outputs must be equal to 1."));
   PADDLE_ENFORCE_EQ((*this)->result_type(0).isa<DenseTensorType>(),
                     true,

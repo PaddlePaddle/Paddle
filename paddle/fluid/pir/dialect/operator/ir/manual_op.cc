@@ -2148,14 +2148,14 @@ std::vector<pir::Type> ArrayToTensorOp::InferMeta(
                         input_values.size()));
   pir::Value x_ = input_values[0];
 
-  PADDLE_ENFORCE_NE(attributes.find("axis"),
-                    attributes.end(),
+  PADDLE_ENFORCE_EQ(attributes.find("axis") != attributes.end(),
+                    true,
                     phi::errors::InvalidArgument(
                         "'value' Attribute is expected for IncrementOp. "));
   int32_t axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
 
-  PADDLE_ENFORCE_NE(attributes.find("use_stack"),
-                    attributes.end(),
+  PADDLE_ENFORCE_EQ(attributes.find("use_stack") != attributes.end(),
+                    true,
                     phi::errors::InvalidArgument(
                         "'value' Attribute is expected for IncrementOp. "));
   bool use_stack =
@@ -4064,9 +4064,9 @@ symbol::DimExpr GetBroadcastDimExpr(const symbol::DimExpr &lhs,
 std::vector<symbol::DimExpr> ComputeBroadcastShape(
     const std::vector<symbol::DimExpr> &large_shape,
     const std::vector<symbol::DimExpr> &small_shape) {
-  PADDLE_ENFORCE_GE(
-      large_shape.size(),
-      small_shape.size(),
+  PADDLE_ENFORCE_EQ(
+      large_shape.size() >= small_shape.size(),
+      true,
       phi::errors::InvalidArgument(
           "Size of large_shape is expected to be greater or equal size of "
           "small_shape, but got [%d] >= [%d].",
@@ -4174,9 +4174,9 @@ void MemcpyD2hMultiIoOp::VerifySig() {
   VLOG(4) << "Verifying attributes:";
   {
     auto &attributes = this->attributes();
-    PADDLE_ENFORCE_GT(
-        attributes.count("dst_place_type"),
-        0UL,
+    PADDLE_ENFORCE_EQ(
+        attributes.count("dst_place_type") > 0UL,
+        true,
         phi::errors::InvalidArgument("dst_place_type does not exist."));
     PADDLE_ENFORCE_EQ(
         attributes.at("dst_place_type").isa<pir::Int32Attribute>(),
@@ -4314,8 +4314,8 @@ void ArrayPopOp::VerifySig() {
   VLOG(4) << "Verifying attributes:";
   {
     auto &attributes = this->attributes();
-    PADDLE_ENFORCE_GT(attributes.count("index"),
-                      0UL,
+    PADDLE_ENFORCE_EQ(attributes.count("index") > 0UL,
+                      true,
                       phi::errors::InvalidArgument("Index does not exist."));
     PADDLE_ENFORCE_EQ(
         attributes.at("index").isa<pir::Int32Attribute>(),
