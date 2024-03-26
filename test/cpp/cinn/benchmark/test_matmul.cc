@@ -95,8 +95,8 @@ std::vector<ir::Tensor> MatmulBlockTester::CreateSpecificStrategy(
                     2UL,
                     phi::errors::InvalidArgument(
                         "matmul's input tensor's shape should be 2."));
-  PADDLE_ENFORCE_EQ(input_shapes_[0][1],
-                    input_shapes_[1][0],
+  PADDLE_ENFORCE_EQ(input_shapes_[0][1] == input_shapes_[1][0],
+                    true,
                     phi::errors::InvalidArgument(
                         "matmul's reduce axis shape should be same"));
   auto C = Compute(
@@ -143,8 +143,8 @@ std::vector<ir::Tensor> MatmulVectorizeTester::CreateSpecificStrategy(
                     2UL,
                     phi::errors::InvalidArgument(
                         "matmul's input tensor's shape should be 2."));
-  PADDLE_ENFORCE_EQ(input_shapes_[0][1],
-                    input_shapes_[1][0],
+  PADDLE_ENFORCE_EQ(input_shapes_[0][1] == input_shapes_[1][0],
+                    true,
                     phi::errors::InvalidArgument(
                         "matmul's reduce axis shape should be same"));
   auto C = Compute(
@@ -192,8 +192,8 @@ std::vector<ir::Tensor> MatmulLoopPermutationTester::CreateSpecificStrategy(
                     2UL,
                     phi::errors::InvalidArgument(
                         "matmul's input tensor's shape should be 2."));
-  PADDLE_ENFORCE_EQ(input_shapes_[0][1],
-                    input_shapes_[1][0],
+  PADDLE_ENFORCE_EQ(input_shapes_[0][1] == input_shapes_[1][0],
+                    true,
                     phi::errors::InvalidArgument(
                         "matmul's reduce axis shape should be same"));
   auto C = Compute(
@@ -241,8 +241,8 @@ std::vector<ir::Tensor> MatmulArrayPackingTester::CreateSpecificStrategy(
                     2UL,
                     phi::errors::InvalidArgument(
                         "matmul's input tensor's shape should be 2."));
-  PADDLE_ENFORCE_EQ(input_shapes_[0][1],
-                    input_shapes_[1][0],
+  PADDLE_ENFORCE_EQ(input_shapes_[0][1] == input_shapes_[1][0],
+                    true,
                     phi::errors::InvalidArgument(
                         "matmul's reduce axis shape should be same"));
 

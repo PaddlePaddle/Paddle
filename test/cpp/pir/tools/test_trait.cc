@@ -19,8 +19,8 @@
 namespace test {
 void OneRegionTrait::Verify(pir::Operation *op) {
   VLOG(1) << "here";
-  PADDLE_ENFORCE_EQ(op->num_regions(),
-                    1UL,
+  PADDLE_ENFORCE_EQ(op->num_regions() == 1UL,
+                    true,
                     phi::errors::InvalidArgument(
                         "%s op has one region trait, but its region size is %u",
                         op->name(),

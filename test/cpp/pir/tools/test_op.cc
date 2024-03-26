@@ -36,7 +36,7 @@ void BranchOp::VerifySig() const {
       (*this)->num_successors(),
       1UL,
       phi::errors::InvalidArgument("successors number must equal to 1."));
-  PADDLE_ENFORCE_NE(
+  PADDLE_ENFORCE_EQ(
       (*this)->successor(0),
       nullptr,
       phi::errors::InvalidArgument("successor[0] can't be nullptr"));

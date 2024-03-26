@@ -208,8 +208,8 @@ void OpBenchmarkTester::CreateBuffer() {
   }
   CHECK(!output_shapes_.empty()) << "output shapes shouldn't be empty\n";
   PADDLE_ENFORCE_EQ(
-      output_shapes_.size(),
-      out_types_.size(),
+      output_shapes_.size() == out_types_.size(),
+      true,
       phi::errors::InvalidArgument(
           "output_shapes_ size should be equal to out_types_ size"));
   for (size_t i = 0; i < output_shapes_.size(); i++) {
