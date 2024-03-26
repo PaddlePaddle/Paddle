@@ -14,13 +14,14 @@
 
 #include <memory>
 
+#include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
 #include "paddle/common/layout.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
 #include "paddle/fluid/pir/drr/src/pattern_graph.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace drr {
@@ -162,9 +163,9 @@ void Tensor::operator=(const Tensor& other) const {  // NOLINT
   PADDLE_ENFORCE_EQ(
       this->pattern_graph_,
       other.pattern_graph_,
-      phi::errors::InvalidArgument("Matching failed."
-                                   "Two Tensors must be in the same pattern "
-                                   "graph to make the '=' judgment."));
+      common::errors::InvalidArgument("Matching failed."
+                                      "Two Tensors must be in the same pattern "
+                                      "graph to make the '=' judgment."));
   if (other.name_.find(Op::prefix) == 0 &&
       name_.find(Op::prefix) == std::string::npos) {
     other.pattern_graph_->UpdateTmpTensor(other.name_, this->name_);
@@ -241,8 +242,8 @@ Attribute ResultPattern::DataTypeAttr(const std::string& value) const {
   return ComputeAttr([=](const MatchContext& match_ctx) -> phi::DataType {
     PADDLE_ENFORCE_EQ(dialect::StringToDataTypeMap().count(value) > 0,
                       true,
-                      "The DataTypeAttr %s is not supported.",
-                      value);
+                      common::errors::InvalidArgument(
+                          "The DataTypeAttr %s is not supported.", value));
     return dialect::StringToDataTypeMap().at(value);
   });
 }
@@ -251,8 +252,8 @@ Attribute ResultPattern::PlaceAttr(const std::string& value) const {
   return ComputeAttr([=](const MatchContext& match_ctx) -> phi::Place {
     PADDLE_ENFORCE_EQ(dialect::StringToPlaceMap().count(value) > 0,
                       true,
-                      "The PlaceAttr %s is not supported.",
-                      value);
+                      common::errors::InvalidArgument(
+                          "The PlaceAttr %s is not supported.", value));
     return dialect::StringToPlaceMap().at(value);
   });
 }
@@ -261,8 +262,8 @@ Attribute ResultPattern::DataLayoutAttr(const std::string& value) const {
   return ComputeAttr([=](const MatchContext& match_ctx) -> phi::DataLayout {
     PADDLE_ENFORCE_EQ(dialect::StringToDataLayoutMap().count(value) > 0,
                       true,
-                      "The DataLayoutAttr %s is not supported.",
-                      value);
+                      common::errors::InvalidArgument(
+                          "The DataLayoutAttr %s is not supported.", value));
     return dialect::StringToDataLayoutMap().at(value);
   });
 }

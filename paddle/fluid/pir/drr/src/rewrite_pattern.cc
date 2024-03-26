@@ -347,6 +347,9 @@ bool DrrRewritePattern::MatchFromOutputToInput(
     const auto& drr_input_tensors = drr_node->inputs();
     auto ir_input_values = ir_node->operands_source();
     for (size_t i = 0; i < drr_input_tensors.size(); ++i) {
+      if (drr_input_tensors[i]->is_none()) {
+        continue;
+      }
       if (HasVisitedOperands(drr_input_tensors[i], ir_input_values[i])) {
         matched = false;
         VLOG(8) << " tensor_map key[" << drr_input_tensors[i]->name()

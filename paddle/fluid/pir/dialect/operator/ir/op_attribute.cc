@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
 
 namespace paddle {
 namespace dialect {
@@ -77,8 +78,9 @@ DataTypeAttribute DataTypeAttribute::Parse(pir::IrParser &parser) {  // NOLINT
   std::string datatype_token_val = parser.ConsumeToken().val_;
   PADDLE_ENFORCE_EQ(StringToDataTypeMap().count(datatype_token_val) > 0,
                     true,
-                    datatype_token_val + " is not defined in DataType." +
-                        parser.GetErrorLocationInfo());
+                    common::errors::InvalidArgument(
+                        datatype_token_val + " is not defined in DataType." +
+                        parser.GetErrorLocationInfo()));
   return DataTypeAttribute::get(parser.ctx,
                                 StringToDataTypeMap().at(datatype_token_val));
 }
@@ -90,9 +92,11 @@ PlaceAttribute PlaceAttribute::Parse(pir::IrParser &parser) {  // NOLINT
   parser.ConsumeAToken("Place");
   parser.ConsumeAToken("(");
   std::string place_token_val = parser.ConsumeToken().val_;
-  IR_ENFORCE(StringToPlaceMap().count(place_token_val) > 0,
-             place_token_val + " is not defined in Place." +
-                 parser.GetErrorLocationInfo());
+  PADDLE_ENFORCE_EQ(StringToPlaceMap().count(place_token_val) > 0,
+                    true,
+                    common::errors::InvalidArgument(
+                        place_token_val + " is not defined in Place." +
+                        parser.GetErrorLocationInfo()));
   if (parser.PeekToken().val_ == ":") {
     parser.ConsumeAToken(":");
     parser.ConsumeToken();
@@ -111,9 +115,12 @@ PlaceAttribute PlaceAttribute::Parse(pir::IrParser &parser) {  // NOLINT
 DataLayoutAttribute DataLayoutAttribute::Parse(
     pir::IrParser &parser) {  // NOLINT
   std::string datalayout_token_val = parser.ConsumeToken().val_;
-  IR_ENFORCE(StringToDataLayoutMap().count(datalayout_token_val) > 0,
-             datalayout_token_val + " is not defined in DataLayout." +
-                 parser.GetErrorLocationInfo());
+  PADDLE_ENFORCE_EQ(
+      StringToDataLayoutMap().count(datalayout_token_val) > 0,
+      true,
+      common::errors::InvalidArgument(datalayout_token_val +
+                                      " is not defined in DataLayout." +
+                                      parser.GetErrorLocationInfo()));
   if (datalayout_token_val == "Undefined") {
     parser.ConsumeAToken("(");
     parser.ConsumeAToken("AnyLayout");
