@@ -8,14 +8,16 @@ import .dims_eq1_generator as dims_eq1_generator
 import .op_name_generator as op_name_generator
 import .shape_signature_inferer as shape_signature_inferer
 import .instruction_util as instruction_util
+from unit_test_case_spec import (
+    UnitTestCaseRequirement,
+    UnitTestCaseSpec,
+    GenerateRandomUnitTestCaseSpec
+)
 
 @dataclass
-class SearchSpec:
+class SearchRequirement:
     total_try_cnt: int = 1024
-    dag_gen_requirement: dag_gen_generator.DAGGenRequirement
-    dims_eq1_gen_requirement: dims_eq1_generator.DimsEq1GenRequirement
-    op_name_gen_requirement: op_name_generator.OpNameGenRequirement
-    dim_size_requirement: shape_signature_inferer.DimSizeRequirement
+    unit_test_case_requirement: UnitTestCaseRequirement
 
 @dataclass
 class UnitTestCaseSpec:
@@ -28,24 +30,10 @@ class ExecResult:
     is_error: bool
 
 def GenerateUnitTestCaseSpec(
-    search_spec: SearchSpec
+    search_requirement: SearchRequirement
 ) -> UnitTestCaseSpec:
-    
-    instructions = instruction_util.GenerateInstructions(
-        dag_gen_requirement=search_spec.dag_gen_requirement,
-        dims_eq1_gen_requirement=search_spec.dims_eq1_gen_requirement,
-        op_name_gen_requirement=search_spec.op_name_gen_requirement,
-    )
-    patched_patched_instructions = instruction_util.PatchInstructions(
-        instructions=instructions
-    )
-    code_gen_spec = instruction_util.InferCodeGenSpecs(
-        instructions=patched_patched_instructions
-    )
-    return UnitTestCaseSpec(
-        instructions=instructions,
-        patched_patched_instructions=patched_patched_instructions,
-        code_gen_spec=code_gen_spec
+    return GenerateRandomUnitTestCaseSpec(
+        requirement=search_requirement.unit_test_case_requirement
     )
 
 def CodeGen(
@@ -57,9 +45,9 @@ def ExecCode(code: str) -> ExecResult:
     TODO()
 
 def GenerateAndRun(
-    search_spec: SearchSpec
+    search_requirement: SearchRequirement
 ) -> Tuple[UnitTestCaseSpec, ExecResult]:
-    unit_test_case_spec = GenerateUnitTestCaseSpec(search_spec)
+    unit_test_case_spec = GenerateUnitTestCaseSpec(search_requirement)
     code = CodeGen(unit_test_case_spec)
     return unit_test_case_spec, ExecCode(code)
 
@@ -85,10 +73,10 @@ class FailedSimplestCase:
     failed_case: UnitTestCaseSpec
 
 def GenerateBadCasesAndBinarySearchBug(
-    search_spec: SearchSpec
+    search_requirement: SearchRequirement
 ) -> Generator[Union[SmallDifferedGoodAndBadCases, FailedSimplestCase]]:
-    for i in range(search_spec.total_try_cnt):
-        unit_test_case_spec, exec_result = GenerateAndRun(search_spec)
+    for i in range(search_requirement.total_try_cnt):
+        unit_test_case_spec, exec_result = GenerateAndRun(search_requirement)
         if not exec_result.is_error:
             continue
         bad_case, simplier_case, simplier_case_exec_result = BinarySearchBug(

@@ -10,6 +10,7 @@ from .instruction import IrGenerator
 from .instruction_id import MakeUniqueInstructionId,InstructionId
 from .dag_dims_eq1_patcher import DAGDimsEq1Patcher
 from .op_name_patcher import OpNamePatcher
+from .shape_signature_inferer import ShapeSignatureInferer
 
 def GenerateInstructions(
     dag_gen_requirement: dag_gen_generator.DAGGenRequirement,
@@ -83,6 +84,32 @@ def PatchInstructions(
     )
 
 def InferCodeGenSpecs(
-    instructions: List["Instruction"]
+    instructions: List["Instruction"],
+    dim_size_requirement: "DimSizeRequirement"
 ) -> DList["Instruction", "CodeGenSpec"]:
-    TODO()
+    def GetComponentList(base_cls):
+        return [
+            instruction.GetComponent(base_cls)
+            for instruction in instructions
+        ]
+    dag_gen_instructions = GetComponentList(dag_gen_generator.DAGGenInstruction)
+    instruction_ids = GetComponentList(InstructionId)
+    dims_eq1_instructions = GetComponentList(dims_eq1_generator.DimsEq1GenInstruction)
+    InferDimsEq1Signature = dims_eq1_signature_inferer.DimsEq1SignatureInferer().Infer
+    guarded_dims_eq1_sigs = InferDimsEq1Signature(
+        dag_gen_instructions=dag_gen_instructions,
+        dims_eq1_gen_instructions=dims_eq1_instructions,
+    )
+    dims_eq1_signatures = [v for k,v in guarded_dims_eq1_sigs.Unguard()]
+    InferShapeSignature = ShapeSignatureInferer(dim_size_requirement).Infer
+    shape_signatures = InferShapeSignature(
+        dag_gen_instructions=dag_gen_instructions,
+        dims_eq1_signatures=dims_eq1_signatures
+    )
+    InferCodeGenSpec = code_gen_spec_inferer.CodeGenSpecInferer().Infer
+    code_gen_specs = InferCodeGenSpec(
+        dag_gen_instructions=dag_gen_instructions,
+        dims_eq1_signatures=dims_eq1_signatures,
+        shape_signatures=shape_signatures,
+    )
+    return DList(instructions, code_gen_specs)

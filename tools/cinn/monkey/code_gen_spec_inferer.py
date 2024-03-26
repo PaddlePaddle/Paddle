@@ -41,12 +41,12 @@ class CodeGenSpecInferer:
     def __init__(self):
         pass
     
-    def Generate(
+    def Infer(
         self,
         dag_gen_instructions: List["DAGGenInstruction"],
         dims_eq1_signatures: List["DimsEq1Signature"],
         shape_signatures: List["ShapeSignature"]
-    ) -> List["Instruction"]:
+    ) -> List[CodeGenSpec]:
         def CreateCodeGenSpec(dag_gen_instr, *signatures):
             params = dict()
             for signature in signatures:
