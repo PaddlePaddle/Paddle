@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/cinn/frontend/group_cluster/cluster_policy/general_topo_policy.h"
+#include "paddle/cinn/frontend/group_cluster/cluster_policy/relative_judge_policy.h"
 #include "paddle/cinn/frontend/group_cluster/cluster_policy/shardable_axes_policy/shardable_axes_policy.h"
 #include "paddle/cinn/frontend/group_cluster/pattern_graph.h"
 
@@ -37,8 +38,11 @@ inline std::vector<std::vector<const pir::Operation*>> ClusterOps(
   const auto* shape_analysis =
       &pir::ShapeAnalysisManager::Instance().Get(group_op->GetParentProgram());
 
+  // const auto& shardable_axes_policy =
+  // std::make_shared<group_cluster::policy::RelativeJudgePolicy>(
+  // ops, shape_analysis);
   const auto& shardable_axes_policy =
-      std::make_shared<group_cluster::policy::ShardableAxesRRFusePolicy>(
+      std::make_shared<group_cluster::policy::RelativeJudgePolicy>(
           ops, shape_analysis);
   const auto& general_topo_policy =
       std::make_shared<group_cluster::policy::GeneralTopoPolicy>();
