@@ -34,10 +34,15 @@ std::vector<std::vector<const pir::Operation*>> PatternGraph::ClusterOps() {
 
 void PatternGraph::SinkTrivialPattern() {
   // TODO(wuzhanfei): need consider Unsupport op here
+  auto visited = std::unordered_set<PatternNodePtr>();
   const auto FindTrivialNode =
-      [](std::unordered_set<PatternNodePtr> all_nodes) -> PatternNodePtr {
+      [&](std::unordered_set<PatternNodePtr> all_nodes) -> PatternNodePtr {
     for (PatternNodePtr node : all_nodes) {
-      if (node->IsTrivial() && !node->downstream_.empty()) return node;
+      if (node->IsTrivial() && !node->downstream_.empty() &&
+          visited.find(node) == visited.end()) {
+        visited.emplace(node);
+        return node;
+      }
     }
     return nullptr;
   };
@@ -66,7 +71,7 @@ void PatternGraph::ReduceTreeGrown() {
   };
   PatternNodePtr upstream;
   while ((upstream = FindReduceTree(all_pattern_nodes_)) != nullptr) {
-    CHECK(upstream->downstream_.size() == 1);
+    CHECK_EQ(upstream->downstream_.size(), 1);
     if (policy_manager_.CanFuse(upstream, upstream->downstream_.at(0))) {
       //
     }
