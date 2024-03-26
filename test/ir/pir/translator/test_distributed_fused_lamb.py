@@ -43,7 +43,6 @@ class TestDistributedFusedLambOpTranslator(test_op_translator.TestOpTranslator):
         self._use_master_acc_grad = True
         self._nproc_per_node = None
         self._use_hierarchical_allreduce = False
-        assert self._gradient_accumulation_steps >= 1
 
         self.helper = LayerHelper("distributed_fused_lamb")
         self._supports_check_nan_inf = True  # very import flag for AMP
@@ -56,14 +55,11 @@ class TestDistributedFusedLambOpTranslator(test_op_translator.TestOpTranslator):
         )
         self._step = None
 
-        if self._gradient_accumulation_steps > 1:
-            self._stop_update = main_block.create_var(
-                name=unique_name.generate("stop_update"),
-                shape=[1],
-                dtype=core.VarDesc.VarType.BOOL,
-            )
-        else:
-            self._stop_update = None
+        self._stop_update = main_block.create_var(
+            name=unique_name.generate("stop_update"),
+            shape=[1],
+            dtype=core.VarDesc.VarType.BOOL,
+        )
 
         self._param_to_master_param = {}
 
@@ -156,24 +152,17 @@ class TestDistributedFusedLambOpTranslator(test_op_translator.TestOpTranslator):
         param_order = self._create_persistable_var("param_order", dtype="int32")
         param_order.is_distributed = True
 
-        if self._gradient_accumulation_steps > 1:
-            fp32_acc_fused_grad = [
-                self._create_persistable_var("fp32_acc_fused_grad")
-            ]
-            fp16_acc_fused_grad = [
-                self._create_persistable_var(
-                    "fp16_acc_fused_grad", dtype="float16"
-                )
-            ]
-            acc_step = [self._create_persistable_var("acc_step", dtype="int64")]
-        else:
-            fp32_acc_fused_grad = []
-            fp16_acc_fused_grad = []
-            acc_step = []
+        fp32_acc_fused_grad = [
+            self._create_persistable_var("fp32_acc_fused_grad")
+        ]
+        fp16_acc_fused_grad = [
+            self._create_persistable_var("fp16_acc_fused_grad", dtype="float16")
+        ]
+        acc_step = [self._create_persistable_var("acc_step", dtype="int64")]
 
-        scale = self._get_or_create_scale()
+        scale = self._create_scale_from_constant()
 
-        step = self._get_or_create_step()
+        step = self._create_persistable_var('step', dtype='int64')
 
         ring_ids = []
 
