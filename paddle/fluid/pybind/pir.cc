@@ -228,14 +228,19 @@ Value GetOutputValueByName(const Program &program, const std::string &name) {
   auto &block = *program.block();
   pir::StrAttribute name_attr =
       pir::StrAttribute::get(IrContext::Instance(), name);
+  Value value;
   for (auto &op : block) {
     if (op.isa<pir::ShadowOutputOp>()) {
       if (op.attribute("output_name") == name_attr) {
-        return op.operand_source(0);
+        if (value) {
+          PADDLE_THROW(common::errors::PreconditionNotMet(
+              "More than one shadow ouput named with %s found.", name));
+        }
+        value = op.operand_source(0);
       }
     }
   }
-  return nullptr;
+  return value;
 }
 
 void BindProgram(py::module *m) {
