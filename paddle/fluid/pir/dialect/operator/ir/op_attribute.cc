@@ -92,8 +92,8 @@ DataTypeAttribute DataTypeAttribute::Parse(pir::IrParser &parser) {  // NOLINT
       {"bfloat16", phi::DataType::BFLOAT16},
       {"float64", phi::DataType::FLOAT64}};
   std::string datatype_token_val = parser.ConsumeToken().val_;
-  PADDLE_ENFORCE_GT(StringToDataType.count(datatype_token_val),
-                    0UL,
+  PADDLE_ENFORCE_EQ(StringToDataType.count(datatype_token_val) > 0UL,
+                    true,
                     phi::errors::InvalidArgument(
                         datatype_token_val + " is not defined in DataType." +
                         parser.GetErrorLocationInfo()));
@@ -116,8 +116,8 @@ PlaceAttribute PlaceAttribute::Parse(pir::IrParser &parser) {  // NOLINT
   parser.ConsumeAToken("Place");
   parser.ConsumeAToken("(");
   std::string place_token_val = parser.ConsumeToken().val_;
-  PADDLE_ENFORCE_GT(StringToPlace.count(place_token_val),
-                    0UL,
+  PADDLE_ENFORCE_EQ(StringToPlace.count(place_token_val) > 0UL,
+                    true,
                     phi::errors::InvalidArgument(
                         place_token_val + " is not defined in Place." +
                         parser.GetErrorLocationInfo()));
@@ -149,9 +149,9 @@ DataLayoutAttribute DataLayoutAttribute::Parse(
       {"PSTRING_UNION", phi::DataLayout::PSTRING_UNION},
       {"STRIDED", phi::DataLayout::STRIDED}};
   std::string datalayout_token_val = parser.ConsumeToken().val_;
-  PADDLE_ENFORCE_GT(
-      StringToDataLayout.count(datalayout_token_val),
-      0UL,
+  PADDLE_ENFORCE_EQ(
+      StringToDataLayout.count(datalayout_token_val) > 0UL,
+      true,
       phi::errors::InvalidArgument(datalayout_token_val +
                                    " is not defined in DataLayout." +
                                    parser.GetErrorLocationInfo()));

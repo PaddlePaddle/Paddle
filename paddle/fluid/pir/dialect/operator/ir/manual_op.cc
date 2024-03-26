@@ -4197,7 +4197,8 @@ void MemcpyD2hMultiIoOp::VerifySig() {
     PADDLE_ENFORCE_EQ(
         output_0_type.isa<paddle::dialect::DenseTensorArrayType>(),
         true,
-        "Type validation failed for the 0th output.");
+        phi::errors::InvalidArgument(
+            "Type validation failed for the 0th output."));
   }
   VLOG(4) << "End Verifying for: MemcpyD2hMultiIoOp.";
 }
