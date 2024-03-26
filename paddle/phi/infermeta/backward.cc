@@ -1054,6 +1054,7 @@ void RankAttentionGradInferMeta(const MetaTensor& x,
                                 int max_size,
                                 MetaTensor* rank_param_grad) {
   rank_param_grad->set_dims(rank_param.dims());
+  rank_param_grad->set_dtype(rank_param.dtype());
 }
 
 void RealAndImagGradInferMeta(const MetaTensor& out_grad, MetaTensor* dx) {
