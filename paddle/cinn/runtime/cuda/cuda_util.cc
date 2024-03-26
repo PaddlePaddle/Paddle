@@ -1752,10 +1752,10 @@ void cinn_call_cholesky_nvgpu(void *v_args,
                                    x->type.code,
                                    cinn_type_code_t::cinn_type_float));
   PADDLE_ENFORCE_EQ(
-      bias == 32 || bits == 64,
+      bits == 32 || bits == 64,
       true,
       phi::errors::InvalidArgument(
-          "Unsupported bits = %d float data type for cholesky", bias));
+          "Unsupported bits = %d float data type for cholesky", bits));
 
   auto cuda_stream = static_cast<cudaStream_t>(stream);
 
@@ -1858,10 +1858,10 @@ void cinn_call_triangular_solve_nvgpu(void *v_args,
   uint8_t bits = input1->type.bits;
   uint8_t bytes = bits / 8;
   PADDLE_ENFORCE_EQ(
-      bias == 32 || bits == 64,
+      bits == 32 || bits == 64,
       true,
       phi::errors::InvalidArgument(
-          "Unsupported bits = %d float data type for triangular solve", bias));
+          "Unsupported bits = %d float data type for triangular solve", bits));
 
   std::string debug_info =
       "triangular solve op: left_side=" + std::to_string(left_side) +
