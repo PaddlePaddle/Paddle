@@ -7,6 +7,11 @@ class InstructionId
     def __hash__(self):
         return hash(self.instruction_id)
 
+    @classmethod
+    def GetDAGGenClassToDerivedClassMap(cls):
+        return InstructionId
+
+
 def MakeUniqueInstructionId():
     return InstructionId(
         instruction_id=GetUniqueInstructionId()

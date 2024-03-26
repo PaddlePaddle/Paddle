@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Union
+from typing import List
 from collections import namedtuple
 import .dag_generator as dag_generator
 import .dims_eq1_generator as dims_eq1_generator
@@ -8,6 +8,7 @@ from .guarded_box import GuardedBox
 from .defensive_list import DList
 
 DAGDimsEq1GenInstruction = namedtuple("DAGDimsEq1GenInstruction", ["dag", "dims_eq1"])
+
 
 class DimsEq1InferContext:
     def __init__(self):
@@ -19,12 +20,18 @@ class DimsEq1InferContext:
         dag_dims_eq1_gen_instruction: DAGDimsEq1GenInstruction
     ):
         dag_gen_class = type(dag_dims_eq1_gen_instruction.dag)
-        cls = kDAGGenClassToDAGDimsEq1GenClassMap[dag_gen_class]
+        cls = kDAGGenClassToDerivedClass[dag_gen_class]
         cls.InferDimsEq1Signature(dag_dims_eq1_gen_instruction, self)
+
+@dataclass
+class DimsEq1Signature:
+    @classmethod
+    def GetDAGGenClassToDerivedClassMap(cls):
+        return kDAGGenClassToDerivedClass
 
 
 @dataclass
-class Nope:
+class Nope(DimsEq1Signature):
 
     @classmethod
     def InferDimsEq1Signature(
@@ -36,7 +43,7 @@ class Nope:
 
 
 @dataclass
-class AddSinkTensor:
+class AddSinkTensor(DimsEq1Signature):
     sink_tensor_dims_eq1: List[bool]
 
     @classmethod
@@ -55,7 +62,7 @@ class AddSinkTensor:
 
 
 @dataclass
-class AddUnaryOp:
+class AddUnaryOp(DimsEq1Signature):
     input_dims_eq1: List[bool]
     output_dims_eq1: List[bool]
 
@@ -76,7 +83,7 @@ class AddUnaryOp:
        
 
 @dataclass
-class AddBinaryOp:
+class AddBinaryOp(DimsEq1Signature):
     lhs_input_dims_eq1: List[bool]
     rhs_input_dims_eq1: List[bool]
     output_dims_eq1: List[bool]
@@ -105,7 +112,7 @@ class AddBinaryOp:
 
 
 @dataclass
-class AddBinaryClone:
+class AddBinaryClone(DimsEq1Signature):
     lhs_output_dims_eq1: List[bool]
     rhs_output_dims_eq1: List[bool]
 
@@ -127,7 +134,7 @@ class AddBinaryClone:
 
 
 @dataclass
-class AddSourceOp:
+class AddSourceOp(DimsEq1Signature):
     output_dims_eq1: List[bool]
 
     @classmethod
@@ -142,17 +149,7 @@ class AddSourceOp:
         return AddSourceOp(output_dims_eq1=output_dims_eq1)
 
 
-DimsEq1Signature = Union[
-    Nope,
-    AddSinkTensor,
-    AddUnaryOp,
-    AddBinaryOp,
-    AddBinaryClone,
-    AddSourceOp
-]
-
-
-kDAGGenClassToDAGDimsEq1InfererClassMap = {
+kDAGGenClassToDerivedClass = {
     dag_generator.Nope: Nope,
     dag_generator.AddSinkTensor: AddSinkTensor,
     dag_generator.AddUnaryOp: AddUnaryOp,
@@ -174,7 +171,7 @@ class DimsEq1SignatureInferer:
         infer_ctx = DimsEq1InferContext()
         def MakeDimsEq1Signature(dag_dims_eq1_gen_instruction):
             dag_gen_class = type(dag_dims_eq1_gen_instruction.dag)
-            cls = kDAGGenClassToDAGDimsEq1InfererClassMap[dag_gen_class]
+            cls = kDAGGenClassToDerivedClass[dag_gen_class]
             return cls.InferDimsEq1Signature(
                 dag_dims_eq1_gen_instruction,
                 infer_ctx

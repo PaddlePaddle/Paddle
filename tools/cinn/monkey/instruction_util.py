@@ -7,7 +7,9 @@ import .code_gen_spec_inferer as code_gen_spec_inferer
 import .dims_eq1_signature_inferer as dims_eq1_signature_inferer
 from .defensive_list import DList
 from .instruction import IrGenerator
-from .instruction_id import MakeUniqueInstructionId
+from .instruction_id import MakeUniqueInstructionId,InstructionId
+from .dag_dims_eq1_patcher import DAGDimsEq1Patcher
+from .op_name_patcher import OpNamePatcher
 
 def GenerateInstructions(
     dag_gen_requirement: dag_gen_generator.DAGGenRequirement,
@@ -42,10 +44,43 @@ def GenerateInstructions(
 
 
 def PatchInstructions(
-    instructions: List["Instruction"]
+    instructions: List["Instruction"],
+    op_name_gen_requirement: op_name_generator.OpNameGenRequirement
 ) -> List["Instruction"]:
-    TODO()
-
+    def GetComponentList(base_cls):
+        return [
+            instruction.GetComponent(base_cls)
+            for instruction in instructions
+        ]
+    dag_gen_instructions = GetComponentList(dag_gen_generator.DAGGenInstruction)
+    instruction_ids = GetComponentList(InstructionId)
+    dims_eq1_instructions = GetComponentList(dims_eq1_generator.DimsEq1GenInstruction)
+    op_name_instructions = GetComponentList(op_name_generator.OpNameGenInstruction)
+    PatchDAGDimsEq1 = DAGDimsEq1Patcher().Patch
+    new_dag_gen_instrs, new_instr_ids, new_dims_eq1_instrs = PatchDAGDimsEq1(
+        dag_gen_instructions=dag_gen_instructions,
+        instruction_ids=instruction_ids,
+        dims_eq1_gen_instructions=dims_eq1_instructions
+    )
+    instruction_id2existed_op_name = {
+        instruction_id:existed_op_name_instr
+        for instruction_id, existed_op_name_instr in zip(
+            instruction_ids, op_name_instructions
+        )
+    }
+    PatchOpName = OpNameGenerator(op_name_gen_requirement).Patch
+    new_op_name_instrs = PatchOpName(
+        dag_gen_instructions=new_dag_gen_instrs,
+        instruction_ids=new_instr_ids,
+        instruction_id2existed_op_name=instruction_id2existed_op_name
+    )
+    GenerateInstructions = IrGenerator().Generate
+    return GenerateInstructions(
+        dag_gen_instructions=new_dag_gen_instrs,
+        instruction_ids=new_instr_ids,
+        dims_eq1_gen_instructions=new_dims_eq1_instrs,
+        op_name_gen_instructions=new_op_name_instrs
+    )
 
 def InferCodeGenSpecs(
     instructions: List["Instruction"]

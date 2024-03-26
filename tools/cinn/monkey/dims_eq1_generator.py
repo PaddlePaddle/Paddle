@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import .dag_generator as dag_generator
 import .dim_eq1_generator as dim_eq1_generator
 from .pick_weight import PickWeight
-from typing import List, Union
+from typing import List
 from .hash_combine import HashCombine
 
 @dataclass
@@ -10,7 +10,14 @@ class DimsEq1GenRequirement:
     dims_eq1_probability: List[float]
 
 @dataclass
-class Nope:
+class DimsEq1GenInstruction:
+    @classmethod
+    def GetDAGGenClassToDerivedClassMap(cls):
+        return kDAGGenClassToDerivedClass
+
+
+@dataclass
+class Nope(DimsEq1GenInstruction):
 
     def __hash__(self):
         return hash(id(Nope))
@@ -21,7 +28,7 @@ class Nope:
 
 
 @dataclass
-class AddSinkTensor:
+class AddSinkTensor(DimsEq1GenInstruction):
     sink_tensor_dims_eq1: List[bool]
 
     def __hash__(self):
@@ -41,7 +48,7 @@ class AddSinkTensor:
 
 
 @dataclass
-class AddUnaryOp:
+class AddUnaryOp(DimsEq1GenInstruction):
     source_tensor_dims_eq1: List[bool]
 
     def __hash__(self):
@@ -61,7 +68,7 @@ class AddUnaryOp:
 
 
 @dataclass
-class AddBinaryOp:
+class AddBinaryOp(DimsEq1GenInstruction):
     lhs_source_tensor_dims_eq1: List[bool]
     rhs_source_tensor_dims_eq1: List[bool]
 
@@ -88,7 +95,7 @@ class AddBinaryOp:
 
 
 @dataclass
-class AddBinaryClone:
+class AddBinaryClone(DimsEq1GenInstruction):
 
     def __hash__(self):
         return hash(id(AddBinaryClone))
@@ -99,7 +106,7 @@ class AddBinaryClone:
 
 
 @dataclass
-class AddSourceOp:
+class AddSourceOp(DimsEq1GenInstruction):
 
     def __hash__(self):
         return hash(id(AddSourceOp))
@@ -109,17 +116,7 @@ class AddSourceOp:
         return AddSourceOp()
 
 
-DimsEq1GenInstruction = Union[
-    Nope,
-    AddSinkTensor,
-    AddUnaryOp,
-    AddBinaryOp,
-    AddBinaryClone,
-    AddSourceOp
-]
-
-
-kDAGGenClassToDimsEq1GenClassMap = {
+kDAGGenClassToDerivedClass = {
     dag_generator.Nope: Nope,
     dag_generator.AddSinkTensor: AddSinkTensor,
     dag_generator.AddUnaryOp: AddUnaryOp,

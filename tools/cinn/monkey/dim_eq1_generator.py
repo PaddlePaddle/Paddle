@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import .dag_generator as dag_generator
 from .pick_weight import PickWeight
-from typing import List, Union
+from typing import List
 import random
 
 @dataclass
@@ -13,14 +13,22 @@ class DimEq1GenRequirement:
     pick_probability: DimEq1GenTypePickProbability
 
 @dataclass
-class Nope:
+class DimEq1GenInstruction:
+    
+    @classmethod
+    def GetDAGGenClassToDerivedClassMap(cls):
+        return kDAGGenClassToDerivedClass
+
+
+@dataclass
+class Nope(DimEq1GenInstruction):
     @classmethod
     def MakeRandomInstance(cls, requirement: DimEq1GenRequirement):
         return Nope()
 
 
 @dataclass
-class AddSinkTensor:
+class AddSinkTensor(DimEq1GenInstruction):
     sink_tensor_dim_eq1: bool
 
     @classmethod
@@ -31,7 +39,7 @@ class AddSinkTensor:
 
 
 @dataclass
-class AddUnaryOp:
+class AddUnaryOp(DimEq1GenInstruction):
     source_tensor_dim_eq1: bool
 
     @classmethod
@@ -42,7 +50,7 @@ class AddUnaryOp:
 
 
 @dataclass
-class AddBinaryOp:
+class AddBinaryOp(DimEq1GenInstruction):
     lhs_source_tensor_dim_eq1: bool
     rhs_source_tensor_dim_eq1: bool
 
@@ -54,7 +62,7 @@ class AddBinaryOp:
 
 
 @dataclass
-class AddBinaryClone:
+class AddBinaryClone(DimEq1GenInstruction):
 
     @classmethod
     def MakeRandomInstance(cls, requirement: DimEq1GenRequirement):
@@ -62,23 +70,14 @@ class AddBinaryClone:
 
 
 @dataclass
-class AddSourceOp:
+class AddSourceOp(DimEq1GenInstruction):
 
     @classmethod
     def MakeRandomInstance(cls, requirement: DimEq1GenRequirement):
         return AddSourceOp()
 
 
-DimEq1GenInstruction = Union[
-    Nope,
-    AddSinkTensor,
-    AddUnaryOp,
-    AddBinaryOp,
-    AddBinaryClone,
-    AddSourceOp
-]
-
-kDAGGenClassToDimEq1GenClassMap = {
+kDAGGenClassToDerivedClass = {
     dag_generator.Nope: Nope,
     dag_generator.AddSinkTensor: AddSinkTensor,
     dag_generator.AddUnaryOp: AddUnaryOp,
@@ -98,7 +97,7 @@ class DimEq1Generator:
     ) -> Dict["DAGGenInstruction", "DimEq1GenInstruction"]:
         def CreateDimEq1GenInstruction(dag_gen_instruction):
             dag_gen_class = type(dag_gen_instruction)
-            dim_eq1_gen_class = kDAGGenClassToDimEq1GenClassMap[dag_gen_class]
+            dim_eq1_gen_class = kDAGGenClassToDerivedClass[dag_gen_class]
             return dim_eq1_gen_class.MakeRandomInstance(self.requirement)
         return {
             x: CreateDimEq1GenInstruction(x)

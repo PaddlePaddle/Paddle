@@ -185,7 +185,7 @@ class AddSourceOp:
         )
 
 
-kDAGGenClassToDAGDimsEq1GenClassMap = {
+kDAGGenClassToDerivedClass = {
     dag_generator.Nope: Nope,
     dag_generator.AddSinkTensor: AddSinkTensor,
     dag_generator.AddUnaryOp: AddUnaryOp,
@@ -201,35 +201,37 @@ class DAGDimsEq1Patcher:
 
     def Patch(
         self,
-        dag_gen_instrs: List["DAGGenInstruction"],
+        dag_gen_instructions: List["DAGGenInstruction"],
         instruction_ids: List[InstructionId],
-        dims_eq1_gen_instrs: List["DimsEq1GenInstruction"]
+        dims_eq1_instructions: List["DimsEq1GenInstruction"]
     ) -> Tuple[
             List["DAGGenInstruction"],
             List[InstructionId],
             List["DimsEq1GenInstruction"]
         ]:
         # inferer
-        inferer = DimsEq1SignatureInferer()
+        Infer = DimsEq1SignatureInferer().Infer
         # first patching
-        guarded_dims_eq1_sigs = inferer(dag_gen_instrs, dims_eq1_gen_instrs)
-        dag_gen_instrs, instruction_ids, dims_eq1_gen_instrs = self.PatchOnce(
+        dag_gen_instrs = dag_gen_instructions
+        dims_eq1_instrs = dims_eq1_instructions
+        guarded_dims_eq1_sigs = Infer(dag_gen_instrs, dims_eq1_instrs)
+        dag_gen_instrs, instruction_ids, dims_eq1_instrs = self.PatchOnce(
             instruction_ids, guarded_dims_eq1_sigs
         )
         # second patching
-        guarded_dims_eq1_sigs = inferer(dag_gen_instrs, dims_eq1_gen_instrs)
-        dag_gen_instrs, instruction_ids, dims_eq1_gen_instrs = self.PatchOnce(
+        guarded_dims_eq1_sigs = Infer(dag_gen_instrs, dims_eq1_instrs)
+        dag_gen_instrs, instruction_ids, dims_eq1_instrs = self.PatchOnce(
             instruction_ids, guarded_dims_eq1_sigs
         )
         # third patching
-        guarded_dims_eq1_sigs = inferer(dag_gen_instrs, dims_eq1_gen_instrs)
+        guarded_dims_eq1_sigs = Infer(dag_gen_instrs, dims_eq1_instrs)
         third_time_patched_triple = self.PatchOnce(
             instruction_ids, guarded_dims_eq1_sigs
         )
         assert third_time_patched_triple[0] == dag_gen_instrs 
         assert third_time_patched_triple[1] == instruction_ids
-        assert third_time_patched_triple[2] == dims_eq1_gen_instrs
-        return dag_gen_instrs, instruction_ids, dims_eq1_gen_instrs
+        assert third_time_patched_triple[2] == dims_eq1_instrs
+        return dag_gen_instrs, instruction_ids, dims_eq1_instrs
 
     def PatchOnce(
         self,
@@ -238,7 +240,7 @@ class DAGDimsEq1Patcher:
     ) -> Tuple[List["DAGGenInstruction"], List["DimsEq1GenInstruction"]]:
         def CreateDAGDimsEq1GenInstructions(instruction_id, pair):
             dag_instr, dims_eq1_sig = *pair
-            cls = kDAGGenClassToDAGDimsEq1GenClassMap[type(dag_instr.dag)]
+            cls = kDAGGenClassToDerivedClass[type(dag_instr.dag)]
             flat_mapped = cls.Patch(
                 PatchContext(
                     dag_gen_instruction=dag_instr,

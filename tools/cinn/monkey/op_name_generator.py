@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 import .dag_generator as dag_generator
 from .defensive_list import DList
 from .pick_weight import PickWeight
-from typing import List, Set, Union
+from typing import List, Set
 import random
 
 @dataclass
@@ -30,7 +30,14 @@ class OpNameGenRequirement:
     )
 
 @dataclass
-class Nope:
+class OpNameGenInstruction:
+    @classmethod
+    def GetDAGGenClassToDerivedClassMap(cls):
+        return kDAGGenClassToDerivedClass
+
+
+@dataclass
+class Nope(OpNameGenInstruction):
 
     def __hash__(self):
         return hash(id(Nope))
@@ -45,7 +52,7 @@ class Nope:
 
 
 @dataclass
-class AddSinkTensor:
+class AddSinkTensor(OpNameGenInstruction):
 
     def __hash__(self):
         return hash(id(AddSinkTensor))
@@ -60,7 +67,7 @@ class AddSinkTensor:
 
 
 @dataclass
-class AddUnaryOp:
+class AddUnaryOp(OpNameGenInstruction):
     op_name: str
 
     def __hash__(self):
@@ -116,7 +123,7 @@ class AddUnaryOp:
 
 
 @dataclass
-class AddBinaryOp:
+class AddBinaryOp(OpNameGenInstruction):
     op_name: str
 
     def __hash__(self):
@@ -134,7 +141,7 @@ class AddBinaryOp:
 
 
 @dataclass
-class AddBinaryClone:
+class AddBinaryClone(OpNameGenInstruction):
 
     def __hash__(self):
         return hash(id(AddBinaryClone))
@@ -149,7 +156,7 @@ class AddBinaryClone:
 
 
 @dataclass
-class AddSourceOp:
+class AddSourceOp(OpNameGenInstruction):
     op_name: str
 
     def __hash__(self):
@@ -164,16 +171,7 @@ class AddSourceOp:
         return AddSourceOp(op_name=_GetRandomSourceOpName(requirement))
 
 
-OpNameGenInstruction = Union[
-    Nope,
-    AddSinkTensor,
-    AddUnaryOp,
-    AddBinaryOp,
-    AddBinaryClone,
-    AddSourceOp
-]
-
-kDAGGenClassToOpNameGenClassMap = {
+kDAGGenClassToDerivedClass = {
     dag_generator.Nope: Nope,
     dag_generator.AddSinkTensor: AddSinkTensor,
     dag_generator.AddUnaryOp: AddUnaryOp,
@@ -182,19 +180,19 @@ kDAGGenClassToOpNameGenClassMap = {
     dag_generator.AddSourceOp: AddSourceOp,
 }
 
-def _GetRandomReduceOpName(requirement: DimEq1GenRequirement):
+def _GetRandomReduceOpName(requirement: OpNameGenRequirement):
     return _GetRandomOpName(requirement.reduce_op_names)
 
-def _GetRandomBroadcastOpName(requirement: DimEq1GenRequirement):
+def _GetRandomBroadcastOpName(requirement: OpNameGenRequirement):
     return _GetRandomOpName(requirement.broadcast_op_names)
 
-def _GetRandomUnaryOpName(requirement: DimEq1GenRequirement):
+def _GetRandomUnaryOpName(requirement: OpNameGenRequirement):
     return _GetRandomOpName(requirement.unary_elementwise_op_names)
 
-def _GetRandomBinaryOpName(requirement: DimEq1GenRequirement):
+def _GetRandomBinaryOpName(requirement: OpNameGenRequirement):
     return _GetRandomOpName(requirement.binary_elementwise_op_names)
 
-def _GetRandomSourceOpName(requirement: DimEq1GenRequirement):
+def _GetRandomSourceOpName(requirement: OpNameGenRequirement):
     return _GetRandomOpName(requirement.source_op_names)
 
 def _GetRandomOpName(op_names: List[str]):
@@ -204,7 +202,7 @@ def _GetRandomOpName(op_names: List[str]):
     return op_names[random_int]
 
 class OpNameGenerator:
-    def __init__(self, requirement: DimEq1GenRequirement):
+    def __init__(self, requirement: OpNameGenRequirement):
         self.requirement = requirement
     
     # Instructions generating sink nodes of DAG are on put the front of list.
@@ -213,7 +211,7 @@ class OpNameGenerator:
         dag_gen_instructions: DList[DAGGenInstruction]
     ) -> List["OpNameGenInstruction"]:
         def CreateOpNameGenInstruction(dag_gen_instruction):
-            cls = kDAGGenClassToOpNameGenClassMap[type(dag_gen_instruction)]
+            cls = kDAGGenClassToDerivedClass[type(dag_gen_instruction)]
             return cls.MakeRandomInstance(
                 self.requirement,
                 dag_gen_instruction

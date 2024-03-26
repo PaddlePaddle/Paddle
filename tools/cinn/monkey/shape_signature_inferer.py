@@ -27,7 +27,14 @@ class ShapeInferContext:
     dim_size_requirement: DimSizeRequirement
 
 @dataclass
-class Nope:
+class ShapeSignature:
+    @classmethod
+    def GetDAGGenClassToDerivedClassMap(cls):
+        return kDAGGenClassToDerivedClass
+
+
+@dataclass
+class Nope(ShapeSignature):
     
     @classmethod
     def InferShape(
@@ -37,7 +44,7 @@ class Nope:
         return Nope()
 
 @dataclass
-class AddSinkTensor:
+class AddSinkTensor(ShapeSignature):
     sink_tensor_shape: List[int]
 
     @classmethod
@@ -54,7 +61,7 @@ class AddSinkTensor:
         )
 
 @dataclass
-class AddUnaryOp:
+class AddUnaryOp(ShapeSignature):
     input_shape: List[int]
     output_shape: List[int]
 
@@ -78,7 +85,7 @@ class AddUnaryOp:
        
 
 @dataclass
-class AddBinaryOp:
+class AddBinaryOp(ShapeSignature):
     lhs_input_shape: List[int]
     rhs_input_shape: List[int]
     output_shape: List[int]
@@ -108,7 +115,7 @@ class AddBinaryOp:
 
 
 @dataclass
-class AddBinaryClone:
+class AddBinaryClone(ShapeSignature):
 
     @classmethod
     def InferShape(
@@ -128,7 +135,7 @@ class AddBinaryClone:
 
 
 @dataclass
-class AddSourceOp:
+class AddSourceOp(ShapeSignature):
     output_shape: List[int]
 
     @classmethod
@@ -144,16 +151,7 @@ class AddSourceOp:
             output_shape=output_shape
         )
 
-ShapeSignature = Union[
-    Nope,
-    AddSinkTensor,
-    AddUnaryOp,
-    AddBinaryOp,
-    AddBinaryClone,
-    AddSourceOp
-]
-
-kDAGGenClassToShapeInfererClassMap = {
+kDAGGenClassToDerivedClass = {
     dag_generator.Nope: Nope,
     dag_generator.AddSinkTensor: AddSinkTensor,
     dag_generator.AddUnaryOp: AddUnaryOp,
@@ -175,7 +173,7 @@ class ShapeSignatureInferer:
         def MakeShapeSignature(pair):
             dag_gen_instruction, dims_eq1_signature = *pair
             dag_gen_class = type(dag_gen_instruction)
-            cls = kDAGGenClassToShapeInfererClassMap[dag_gen_class]
+            cls = kDAGGenClassToDerivedClass[dag_gen_class]
             return cls.InferShape(
                 ShapeInferContext(
                     .dims_eq1_signature=dims_eq1_signature,

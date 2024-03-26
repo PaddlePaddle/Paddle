@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from .pick_weight import PickWeight
-from typing import List, Union
+from typing import List
 from collections import namedtuple
 import functools
 import random
@@ -43,9 +43,12 @@ class DAGGenContext:
     num_source_tensors: int
     num_sink_tensors: int
 
+@dataclass
+class DAGGenInstruction:
+    pass
 
 @dataclass
-class Nope:
+class Nope(DAGGenInstruction):
 
     def __hash__(self):
         return self.GetHashValue()
@@ -99,7 +102,7 @@ class Nope:
         return True
 
 @dataclass
-class AddSinkTensor:
+class AddSinkTensor(DAGGenInstruction):
     dag_tag: str
 
     def __hash__(self):
@@ -155,33 +158,29 @@ class AddSinkTensor:
     ) -> bool:
         return ctx.num_sink_tensors <= requirement.max_num_sinks
 
-
 @dataclass
-class NoConvertType:
+class ConvertType:
     pass
 
 @dataclass
-class ReduceConvertType:
+class NoConvertType(ConvertType):
     pass
 
 @dataclass
-class BroadcastConvertType:
+class ReduceConvertType(ConvertType):
     pass
 
 @dataclass
-class UnclassifiedConvertType:
+class BroadcastConvertType(ConvertType):
+    pass
+
+@dataclass
+class UnclassifiedConvertType(ConvertType):
     pass
 
 
-ConvertType = Union[
-    NoConvertType,
-    ReduceConvertType,
-    BroadcastConvertType,
-    UnclassifiedConvertType,
-]
-
 @dataclass
-class AddUnaryOp:
+class AddUnaryOp(DAGGenInstruction):
     source_tensor_index: int
     dag_tag: str
     convert_type: ConvertType
@@ -247,7 +246,7 @@ class AddUnaryOp:
 
 
 @dataclass
-class AddBinaryOp:
+class AddBinaryOp(DAGGenInstruction):
     source_tensor_index: int
     dag_tag: str
 
@@ -311,7 +310,7 @@ class AddBinaryOp:
 
 
 @dataclass
-class AddBinaryClone:
+class AddBinaryClone(DAGGenInstruction):
     lhs_source_tensor_index: int
     rhs_source_tensor_index: int
     dag_tag: str
@@ -388,7 +387,7 @@ class AddBinaryClone:
 
 
 @dataclass
-class AddSourceOp:
+class AddSourceOp(DAGGenInstruction):
     source_tensor_index: int
     dag_tag: str
 
@@ -452,15 +451,6 @@ class AddSourceOp:
     ) -> bool:
         return ctx.num_sink_tensors >= requirement.min_num_sinks
 
-
-DAGGenInstruction = Union[
-    Nope,
-    AddSinkTensor,
-    AddUnaryOp,
-    AddBinaryOp,
-    AddBinaryClone,
-    AddSourceOp
-]
 
 kDAGGenInstructionClasses = [
     Nope,
