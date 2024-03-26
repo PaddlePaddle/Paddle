@@ -718,7 +718,13 @@ std::vector<Expr> LowerImpl::GenerateFunctionBody(
   std::unordered_map<std::string, std::vector<Expr>> resized_buffer_cache;
 
   for (auto& group : schedule->groups) {
-    CHECK_GT(group.nodes.size(), 0) << "group is empty";
+    PADDLE_ENFORCE_GT(
+        group.nodes.size(),
+        0,
+        phi::errors::InvalidArgument(
+            "Group is empty"
+            "Expected size of group is larger than 0, but receive %d. ",
+            group.nodes.size()));
     bool all_temp_tensor = true;
     for (auto& node : group.nodes) {
       if (!tensor_map.count(node->id())) {

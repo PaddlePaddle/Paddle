@@ -81,6 +81,7 @@ COMMON_DECLARE_bool(dynamic_static_unified_comm);
 
 COMMON_DECLARE_bool(enable_pir_in_executor);
 COMMON_DECLARE_bool(enable_pir_in_executor_trace_run);
+COMMON_DECLARE_int32(low_precision_op_list);
 
 #define CREATE_INSTR(instr_name)                                   \
   vec_instruction_base_.emplace_back(std::make_unique<instr_name>( \
@@ -88,6 +89,21 @@ COMMON_DECLARE_bool(enable_pir_in_executor_trace_run);
 
 namespace paddle {
 namespace framework {
+
+void RecordLowPrecisionOp(const InstructionBase* instr_node) {
+  if (FLAGS_low_precision_op_list) {
+    std::string op_name = instr_node->Name();
+    ::pir::Operation* op = instr_node->Operation();
+    if (op->HasAttribute("kernel_key")) {
+      phi::KernelKey kernel_key =
+          op->attribute("kernel_key")
+              .dyn_cast<paddle::dialect::KernelAttribute>()
+              .data();
+      phi::KernelFactory::Instance().AddToLowPrecisionKernelList(
+          op_name, kernel_key.dtype());
+    }
+  }
+}
 
 PirInterpreter::PirInterpreter(const platform::Place& place,
                                const std::vector<std::string>& fetch_var_names,
@@ -1735,6 +1751,9 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
       }
     }
 #endif
+
+    RecordLowPrecisionOp(instr_node);
+
     VLOG(2) << "\nbegin: " << __func__ << " OP id:" << instr_node->Id()
             << " name:" << instr_node->Name() << " type:"
             << (instr_node->KernelType() == OpFuncType::kCpuSync

@@ -78,13 +78,14 @@ inline OpLowerer<GroupPtr> CreateOpLowerer(
 }
 
 #ifndef CINN_WITH_ONLY
-template <typename T = pir::GroupPtr>
+template <typename T = pir::OpLoweringGroupPtr>
 OpLowerer<T> CreateOpLowerer(const Target&);
 
 template <>
-inline OpLowerer<pir::GroupPtr> CreateOpLowerer(const Target& target) {
+inline OpLowerer<pir::OpLoweringGroupPtr> CreateOpLowerer(
+    const Target& target) {
   auto* impl_base = new pir::OpLowererImpl(target);
-  return OpLowerer<pir::GroupPtr>(impl_base);
+  return OpLowerer<pir::OpLoweringGroupPtr>(impl_base);
 }
 #endif
 

@@ -108,6 +108,24 @@ bool FullWithTensorOpInferSymbolicShape(
   return true;
 }
 
+bool FlashAttnOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  pir::Value operand_source = op->operand_source(0);
+  const symbol::ShapeOrDataDimExprs &q =
+      shape_analysis->GetShapeOrDataForValue(operand_source);
+
+  const symbol::ShapeOrDataDimExprs &v =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(2));
+
+  std::vector<symbol::DimExpr> out_shape = q.shape();
+
+  out_shape.back() = v.shape().back();
+
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(out_shape));
+  return true;
+}
+
 bool LinspaceOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   PADDLE_THROW(phi::errors::Unimplemented(
