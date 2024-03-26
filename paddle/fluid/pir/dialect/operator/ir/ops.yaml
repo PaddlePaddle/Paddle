@@ -476,7 +476,6 @@
   kernel :
     func : dgc_momentum
     data_type : param
-  backward : divide_grad
   optional : master_param, master_param_out
 
 - op : disable_check_model_nan_inf
