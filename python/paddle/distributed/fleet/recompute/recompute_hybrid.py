@@ -280,7 +280,7 @@ def recompute_hybrid(ctx, function, *args, **kwargs):
     partition = ctx.get('partition', False)
 
     if framework._dygraph_tracer()._has_grad:
-        check_recompute_necessary(args)
+        check_recompute_necessary(args, kwargs)
 
     all_outputs = []
     _HPRecomputeFunction.apply(

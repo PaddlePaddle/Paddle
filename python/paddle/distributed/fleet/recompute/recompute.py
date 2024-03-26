@@ -75,16 +75,25 @@ def detach_variable(inputs):
     return tuple(out)
 
 
-def check_recompute_necessary(inputs):
+def check_recompute_necessary(inputs, kwargs=None):
     necessary_for_each_input = []
-    for input_ in inputs:
-        if isinstance(input_, (core.eager.Tensor, paddle.Tensor)):
-            necessary_for_each_input.append(input_.stop_gradient)
-        elif type(input_) is tuple:
-            for i in input_:
+
+    def add_trainable(x):
+        if isinstance(x, (core.eager.Tensor, paddle.Tensor)):
+            necessary_for_each_input.append(x.stop_gradient)
+        elif type(x) is tuple:
+            for i in x:
                 # traverse all tensors in the tuple
                 if isinstance(i, (core.eager.Tensor, paddle.Tensor)):
                     necessary_for_each_input.append(i.stop_gradient)
+
+    for input_ in inputs:
+        add_trainable(input_)
+
+    if kwargs is not None:
+        for k, v in kwargs.items():
+            add_trainable(v)
+
     if all(necessary_for_each_input):
         logger.warning(
             "[Recompute]: None of the inputs to current recompute block need grad, "
@@ -531,7 +540,7 @@ def recompute(function, *args, **kwargs):
         )
 
     if framework._dygraph_tracer()._has_grad:
-        check_recompute_necessary(args)
+        check_recompute_necessary(args, kwargs)
 
     if use_reentrant:
         return RecomputeFunction.apply(function, preserve, *args)
