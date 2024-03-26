@@ -18,30 +18,6 @@
 
 namespace paddle {
 namespace framework {
-namespace details {
-SSAGraphExecutor::~SSAGraphExecutor() = default;
-
-void ClearFetchOp(ir::Graph* graph, std::vector<OpHandleBase*>* fetch_ops) {
-  if (fetch_ops->empty()) return;
-
-  for (auto& op : *fetch_ops) {
-    PADDLE_ENFORCE_EQ(dynamic_cast<FetchOpHandle*>(op) != nullptr ||
-                          dynamic_cast<FetchAsyncOpHandle*>(op) != nullptr,
-                      true,
-                      platform::errors::PreconditionNotMet(
-                          "The input ops of ClearFetchOp function should be "
-                          "FetchOpHandle or FetchAsyncOpHandle."));
-    for (auto& out_var : op->Node()->outputs) {
-      graph->RemoveNode(out_var);
-    }
-    for (auto& in_var : op->Inputs()) {
-      in_var->RemoveOutput(op, op->Node());
-    }
-    graph->RemoveNode(op->Node());
-  }
-  fetch_ops->clear();
-}
-
-}  // namespace details
+namespace details {}  // namespace details
 }  // namespace framework
 }  // namespace paddle

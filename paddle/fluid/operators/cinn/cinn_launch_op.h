@@ -162,13 +162,6 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
         auto* interpreter_core = launch_context->InitializeInterpreterCore(
             place, const_cast<framework::Scope*>(&scope));
         interpreter_core->Run({}, false);
-      } else {
-        platform::RecordEvent record_event_4(
-            "Step 4. Execute the runtime graph by PE.");
-        VLOG(4) << "Execute the runtime graph by PE";
-        framework::Scope& exec_scope = scope.NewScope();
-        auto* pe = launch_context->InitializePE(place, &exec_scope);
-        pe->RunWithoutFetch(launch_context->GetSkipEagerVars());
       }
     } else {
       platform::RecordEvent record_event_4(

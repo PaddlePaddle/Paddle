@@ -32,37 +32,6 @@ struct VarInfo {
   bool persistable_;
 };
 
-class AsyncSSAGraphExecutor final : public SSAGraphExecutor {
- public:
-  AsyncSSAGraphExecutor(const ExecutionStrategy &strategy,
-                        const std::vector<Scope *> &local_scopes,
-                        const std::vector<Scope *> &local_exec_scopes,
-                        const std::vector<platform::Place> &places,
-                        std::vector<ir::Graph *> graphs);
-  ~AsyncSSAGraphExecutor() final = default;
-  const ir::Graph &Graph() const override { return *graphs_[0]; }
-
-  FetchResultType Run(const std::vector<std::string> &fetch_tensors,
-                      bool return_merged) override;
-
- private:
-  void StartOffPythonTrainLoop(bool return_merged);
-  void HandleException();
-
- private:
-  ExecutionStrategy strategy_;
-  std::vector<Scope *> local_scopes_;
-  std::vector<Scope *> local_exec_scopes_;
-  std::unique_ptr<::ThreadPool> pool_{nullptr};
-  std::vector<platform::Place> places_;
-  std::vector<ir::Graph *> graphs_;
-
-  std::vector<std::unique_ptr<details::ThreadedSSAGraphExecutor>> executors_;
-  ExceptionHolder exception_holder_;
-  std::vector<std::future<void>> run_futures_;
-  std::vector<VarInfo> var_infos_;
-};
-
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

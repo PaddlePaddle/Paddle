@@ -483,39 +483,6 @@ std::unique_ptr<framework::ProgramDesc> CinnLaunchContext::BuildCompiledProgram(
   return program_desc;
 }
 
-ParallelExecutor* CinnLaunchContext::InitializePE(const platform::Place& place,
-                                                  framework::Scope* scope) {
-  if (!parallel_executor_) {
-    framework::details::ExecutionStrategy exec_strategy;
-    exec_strategy.num_threads_ = 1;
-    exec_strategy.use_device_ = platform::Place2DeviceType(place);
-    framework::details::BuildStrategy build_strategy;
-    parallel_executor_ = std::make_unique<ParallelExecutor>(
-        place, scope, exec_strategy, build_strategy, runtime_graph_.get());
-  }
-
-  // update the scope bound to an OpHandle and rebuild temporary variables
-  VLOG(4) << "Reset scope and initialize temporary variables";
-  std::unordered_map<Scope*, Scope*> scope_map = {
-      {parallel_executor_->GetLocalScopes().front(), scope}};
-  parallel_executor_->ResetOpHandleScopeMapOfGraphs(scope_map);
-  // instead of using the PrepareVariables function of ParallelExecutor to
-  // initialize all variables, here we only initialize internal variables
-  // because external variables are already included in parent scope.
-  for (auto&& var_name : internal_var_names_) {
-    auto* var = scope->FindVar(var_name);
-    if (var != nullptr) {
-      VLOG(5) << "internal variable:" << var_name
-              << " has been initialized beforehand in global scope, skipped.";
-      continue;
-    }
-    framework::InitializeVariable(scope->Var(var_name),
-                                  framework::proto::VarType::LOD_TENSOR);
-  }
-
-  return parallel_executor_.get();
-}
-
 framework::InterpreterCore* CinnLaunchContext::InitializeInterpreterCore(
     const platform::Place& place, framework::Scope* scope) {
   if (!interpreter_core_ || scope != cached_scope_) {

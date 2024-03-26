@@ -69,12 +69,6 @@ class CinnLaunchContext {
   explicit CinnLaunchContext(const framework::ir::Graph& graph,
                              const CinnCompiledObject& compiled_obj);
 
-  // Initialize a ParallelExecutor to execute the runtime graph,
-  // it will be constructed in the first call, and just update
-  // the execution scope in the following usage.
-  framework::ParallelExecutor* InitializePE(const platform::Place& place,
-                                            framework::Scope* scope);
-
   framework::InterpreterCore* InitializeInterpreterCore(
       const platform::Place& place, framework::Scope* scope);
 
@@ -173,8 +167,7 @@ class CinnLaunchContext {
 
   // the ir::Graph object converted from the program compiled by CINN
   std::unique_ptr<framework::ir::Graph> runtime_graph_;
-  // a ParallelExecutor to execute the runtime graph
-  std::unique_ptr<framework::ParallelExecutor> parallel_executor_;
+
   // the name list of skip_eager_vars in runtime for ParallelExecutor execution
   std::vector<std::string> skip_eager_vars_;
 
