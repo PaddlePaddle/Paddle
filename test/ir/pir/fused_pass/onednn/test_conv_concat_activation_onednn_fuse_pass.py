@@ -1,0 +1,166 @@
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import unittest
+
+import numpy as np
+from pass_test import PassTest
+
+import paddle
+
+paddle.enable_static()
+
+@unittest.skipIf(
+    not paddle.base.core.is_compiled_with_mkldnn(),
+    "Test case only for OneDNN pass.",
+)
+class TestConv2dConcatReluFusePass(PassTest):
+    def is_program_valid(self, program=None):
+        return True
+
+    def build_ir_program(self):
+        with paddle.pir_utils.IrGuard():
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.pir.core.program_guard(main_prog, start_prog):
+                x = paddle.static.data(
+                    name='x', shape=[5, 5, 5, 5], dtype='float32'
+                )
+                conv2d = paddle.nn.Conv2D(
+                    in_channels=5,
+                    out_channels=1,
+                    kernel_size=[1, 1],
+                    groups=1,
+                    stride=[1, 1],
+                    padding=[1, 1, 1, 1],
+                    dilation=[1, 1],
+                    data_format='NCHW',
+                    bias_attr=False,
+                )
+                act_op = paddle.nn.ReLU()
+                concat_out = paddle.concat([conv2d(x)])
+
+                out = act_op(concat_out)
+                out = paddle.assign(out)
+                self.pass_list = ['conv_concat_activation_mkldnn_fuse_pass']
+                self.feeds = {
+                    "x": np.random.random((5, 5, 5, 5)).astype("float32"),
+                }
+                self.fetch_list = [out]
+                self.valid_op_map = {
+                    "pd_op.relu": 0,
+                    "pd_op.conv2d": 0,
+                    "pd_op.concat": 1,
+                    "onednn_op.fused_conv2d": 1,
+                }
+                return [main_prog, start_prog]
+
+    def sample_program(self):
+        yield self.build_ir_program(), False
+
+    def setUp(self):
+        self.places.append(paddle.CPUPlace())
+
+    def test_check_output(self):
+        self.check_pass_correct()
+
+@unittest.skipIf(
+    not paddle.base.core.is_compiled_with_mkldnn(),
+    "Test case only for OneDNN pass.",
+)
+class TestConv2dConcat3ReluFusePass(PassTest):
+    def is_program_valid(self, program=None):
+        return True
+
+    def build_ir_program(self):
+        with paddle.pir_utils.IrGuard():
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.pir.core.program_guard(main_prog, start_prog):
+                x = paddle.static.data(
+                    name='x', shape=[5, 5, 5, 5], dtype='float32'
+                )
+                conv2d = paddle.nn.Conv2D(
+                    in_channels=5,
+                    out_channels=1,
+                    kernel_size=[1, 1],
+                    groups=1,
+                    stride=[1, 1],
+                    padding=[1, 1, 1, 1],
+                    dilation=[1, 1],
+                    data_format='NCHW',
+                    bias_attr=False,
+                )
+                x1 = paddle.static.data(
+                    name='x1', shape=[5, 5, 5, 5], dtype='float32'
+                )
+                conv2d1 = paddle.nn.Conv2D(
+                    in_channels=5,
+                    out_channels=1,
+                    kernel_size=[1, 1],
+                    groups=1,
+                    stride=[1, 1],
+                    padding=[1, 1, 1, 1],
+                    dilation=[1, 1],
+                    data_format='NCHW',
+                    bias_attr=False,
+                )
+                x2 = paddle.static.data(
+                    name='x2', shape=[5, 5, 5, 5], dtype='float32'
+                )
+                conv2d2 = paddle.nn.Conv2D(
+                    in_channels=5,
+                    out_channels=1,
+                    kernel_size=[1, 1],
+                    groups=1,
+                    stride=[1, 1],
+                    padding=[1, 1, 1, 1],
+                    dilation=[1, 1],
+                    data_format='NCHW',
+                    bias_attr=False,
+                )
+
+
+                act_op = paddle.nn.ReLU()
+                concat_out = paddle.concat([conv2d(x), conv2d1(x1), conv2d2(x2)])
+
+                out = act_op(concat_out)
+                out = paddle.assign(out)
+                self.pass_list = ['conv_concat_activation_mkldnn_fuse_pass']
+                # self.pass_list = ['conv_elementwise_add_mkldnn_fuse_pass', 'conv_concat_activation_mkldnn_fuse_pass']
+                self.feeds = {
+                    "x": np.random.random((5, 5, 5, 5)).astype("float32"),
+                    "x1": np.random.random((5, 5, 5, 5)).astype("float32"),
+                    "x2": np.random.random((5, 5, 5, 5)).astype("float32"),
+                }
+                self.fetch_list = [out]
+                self.valid_op_map = {
+                    "pd_op.relu": 0,
+                    "pd_op.conv2d": 0,
+                    "pd_op.concat": 1,
+                    "onednn_op.fused_conv2d": 3,
+                }
+                return [main_prog, start_prog]
+
+    def sample_program(self):
+        yield self.build_ir_program(), False
+
+    def setUp(self):
+        self.places.append(paddle.CPUPlace())
+
+    def test_check_output(self):
+        self.check_pass_correct()
+         
+
+if __name__ == "__main__":
+    unittest.main()
