@@ -3637,6 +3637,7 @@ void Increment_Op::Build(pir::Builder &builder,
   VLOG(4) << "Start build Increment_Op";
 
   PADDLE_ENFORCE_EQ(attributes.find("value") != attributes.end(),
+                    true,
                     phi::errors::InvalidArgument(
                         "'value' Attribute is expected for Increment_Op. "));
   float value = attributes.at("value").dyn_cast<pir::FloatAttribute>().data();
