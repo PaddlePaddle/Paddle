@@ -954,8 +954,8 @@ def crop(x, shape=None, offsets=None, name=None):
 @dygraph_only
 def fill_(x, value):
     """
-    **Notes**:
-        **This API is ONLY available in Dygraph mode**
+    Note:
+        This API is ONLY available in Dygraph mode
 
     This function fill the Tensor with value inplace.
 
@@ -989,8 +989,8 @@ def fill_(x, value):
 @dygraph_only
 def zero_(x):
     """
-    **Notes**:
-        **This API is ONLY available in Dygraph mode**
+    Note:
+        This API is ONLY available in Dygraph mode
 
     This function fill the Tensor with zero inplace.
 

@@ -254,10 +254,10 @@ void BindProgram(py::module *m) {
     program Paddle will prune some content which is irrelevant to test, eg.
     backward ops and vars.
 
-    **Notes**:
-        **we have** :ref:`api_paddle_static_default_startup_program` **and** :ref:`api_paddle_static_default_main_program`
-        **by default, a pair of them will shared the parameters. The** :ref:`api_paddle_static_default_startup_program` **only run once to initialize parameters,**
-        :ref:`api_paddle_static_default_main_program` **run in every mini batch and adjust the weights.**
+    Note:
+        we have :ref:`api_paddle_static_default_startup_program` and :ref:`api_paddle_static_default_main_program`
+        by default, a pair of them will shared the parameters. The :ref:`api_paddle_static_default_startup_program` only run once to initialize parameters,
+        :ref:`api_paddle_static_default_main_program` run in every mini batch and adjust the weights.
 
     Returns:
         Program: An empty Program.

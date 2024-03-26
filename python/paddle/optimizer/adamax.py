@@ -80,7 +80,7 @@ class Adamax(Optimizer):
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
 
-    **Notes**:
+    Note:
         **Currently, Adamax doesn't support sparse parameter optimization.**
 
     Examples:

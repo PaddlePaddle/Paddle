@@ -27,7 +27,7 @@ __all__ = []
 
 class Rprop(Optimizer):
     r"""
-    **Notes: This optimizer is only applicable to full-batch training.**
+    Note: This optimizer is only applicable to full-batch training.
     Optimizer of the Rprop algorithm.Please refer to this for details:
     `A direct adaptive method for faster backpropagation learning : The RPROP algorithm <https://ieeexplore.ieee.org/document/298623>`_.
 

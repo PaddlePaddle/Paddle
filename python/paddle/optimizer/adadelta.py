@@ -26,7 +26,7 @@ __all__ = []
 
 class Adadelta(Optimizer):
     r"""
-    **Notes: This API does not support sparse parameter optimization.**
+    Note: This API does not support sparse parameter optimization.
 
     Adadelta Optimizer. Please refer to this for details:
     `ADADELTA: AN ADAPTIVE LEARNING RATE METHOD <https://arxiv.org/abs/1212.5701>`_.

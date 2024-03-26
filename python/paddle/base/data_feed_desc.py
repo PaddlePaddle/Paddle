@@ -130,7 +130,7 @@ class DataFeedDesc:
 
     def set_dense_slots(self, dense_slots_name):
         r"""
-        Set slots in :attr:`dense_slots_name` as dense slots. **Note: In default, all slots are sparse slots.**
+        Set slots in :attr:`dense_slots_name` as dense slots. Note: In default, all slots are sparse slots.
 
         Features for a dense slot will be fed into a Tensor, while those for a
         sparse slot will be fed into a LoDTensor.

@@ -175,7 +175,7 @@ def chain(*readers):
     chains the outputs of input readers together as its output, and it do not change
     the format of the outputs.
 
-    **Note**:
+    Note:
         ``paddle.reader.chain`` is the alias of ``paddle.base.io.chain``, and
         ``paddle.base.io.chain`` is recommended to use.
 

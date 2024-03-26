@@ -151,7 +151,7 @@ def enabled():
     You can enable dynamic graph mode with :ref:`api_paddle_disable_static` api,
     or disable dynamic graph mode with :ref:`api_paddle_enable_static` .
 
-    **Note**:
+    Note:
         ``base.dygraph.enabled`` is the alias of ``base.in_dygraph_mode``, and
         ``base.in_dygraph_mode`` is recommended to use for now.
 

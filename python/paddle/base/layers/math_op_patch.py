@@ -290,7 +290,7 @@ def monkey_patch_variable():
 
     def astype(self, dtype):
         """
-        **Notes**:
+        Note:
             **The variable must be a** :ref:`api_paddle_Tensor`
 
         Cast a variable to a specified data type.

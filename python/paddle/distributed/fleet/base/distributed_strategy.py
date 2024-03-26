@@ -426,7 +426,7 @@ class DistributedStrategy:
         training has several configurable settings that can be configured through
         a dict.
 
-        **Notes**:
+        Note:
             k_step(int): number of local optimization updates before communication
 
             max_merge_var_num(int): maximum number of merged gradients before communication
@@ -473,7 +473,7 @@ class DistributedStrategy:
 
         Set trainer desc configurations.
 
-        **Notes**:
+        Note:
             dump_fields_path(str): the path of dump fields
 
             dump_fields(list(str)): the fields that you want to dump
@@ -985,7 +985,7 @@ class DistributedStrategy:
         Set automatic mixed precision training configurations. In general, amp has several configurable
         settings that can be configured through a dict.
 
-        **Notes**:
+        Note:
             init_loss_scaling(float): The initial loss scaling factor. Default 32768.
 
             use_dynamic_loss_scaling(bool): Whether to use dynamic loss scaling. Default True.
@@ -1097,7 +1097,7 @@ class DistributedStrategy:
         """
         Set quantization training configurations. In general, qat has several configurable
         settings that can be configured through a dict.
-        **Notes**:
+        Note:
             channel_wise_abs_max(bool): Whether to use `per_channel` quantization training. Default is True.
             weight_bits(int): quantization bit number for weight. Default is 8.
             activation_bits(int): quantization bit number for activation. Default is 8.
@@ -1415,7 +1415,7 @@ class DistributedStrategy:
 
         Set recompute configurations.
 
-        **Note**:
+        Note:
         checkpoints(list): list of string name of checkpoints. In general, the recompute
         strategy of current implementation should have some manually assign checkpoints.
 
@@ -1488,7 +1488,7 @@ class DistributedStrategy:
 
         Set sharding configurations.
 
-        **Note**:
+        Note:
             sharding_segment_strategy(string, optional): strategy used to segment the program(forward & backward operations). two strategise are
             available: "segment_broadcast_MB" and "segment_anchors". segment is a concept used in sharding to overlap computation and
             communication. Default is segment_broadcast_MB.
@@ -1719,7 +1719,7 @@ class DistributedStrategy:
         pipeline parallelism is to make the size of Tensor in Tensor queue smaller,
         so that we will have a faster producer for downstream consumers.
 
-        **Notes**:
+        Note:
             **Detailed arguments for pipeline_configs**
 
             **micro_batch_size**: the number of small batches in each user defined batch
@@ -1774,7 +1774,7 @@ class DistributedStrategy:
 
         Set tensor_parallel configurations.
 
-        **Notes**:
+        Note:
             **Detailed arguments for tensor_parallel_configs**
 
             **tensor_parallel_degree**: degree of tensor parallel
@@ -1813,7 +1813,7 @@ class DistributedStrategy:
 
         total_number_GPUs = dp_degree * mp_degree * pp_degree * sharding_degree * sep_degree
 
-        **Note**:
+        Note:
             **dp_degree(int)**: set number of GPUs in a data parallel group. Default -1.
                                     This value should be an integer greater than 0.
                                     If it is not set, or set to -1, its value will be inferred
@@ -1902,7 +1902,7 @@ class DistributedStrategy:
         Set LocalSGD training configurations. LocalSGD has a configurable
         setting that can be configured through a dict.
 
-        **Notes**:
+        Note:
             k_steps(int) The local steps for training before parameter synchronization. Default 1.
             begin_step(int) The step of beginning training by localsgd. Default 1.
 
@@ -1960,7 +1960,7 @@ class DistributedStrategy:
         Set AdaptiveLocalSGD training configurations. AdaptiveLocalSGD has a configurable
         setting that can be configured through a dict.
 
-        **Notes**:
+        Note:
             init_k_steps(int) The initial steps for training before adaptive localsgd.
                               Then, the adaptive localsgd method will modify init_k_steps automatically.
                               Default 1.
@@ -2024,7 +2024,7 @@ class DistributedStrategy:
         Set Deep Gradient Compression training configurations. In general, dgc has several configurable
         settings that can be configured through a dict.
 
-        **Notes**:
+        Note:
             rampup_begin_step(int): The beginning step from which gradient compression is implemented. Default 0.
 
             rampup_step(int): Time steps used in sparsity warm-up periods. Default is 1. \
@@ -2116,7 +2116,7 @@ class DistributedStrategy:
 
         the key-value configs of distribute_strategy
 
-        **Note**:
+        Note:
             k_steps(int): the update period of the parameters.
 
             avg(bool): whether to average the gradients of each mini-batch, the default value is `True`
@@ -2174,7 +2174,7 @@ class DistributedStrategy:
 
         Set Lars training configurations.
 
-        **Notes**:
+        Note:
         **lars_coeff (float)**: trust ratio in lars formula.
         **lars_weight_decay** (float): weight decay coefficient in lars formula.
         **epsilon (float)**: argument is used to avoid potential division-by-zero
@@ -2240,7 +2240,7 @@ class DistributedStrategy:
 
         Set Lars training configurations.
 
-        **Notes**:
+        Note:
         **lamb_weight_decay** (float): weight decay coefficient in lamb formula.
         **exclude_from_weight_decay ([string])**: is a list of name strings of layers which
         will be exclude from weight decay in lamb formula.
@@ -2434,7 +2434,7 @@ class DistributedStrategy:
         Set quantization training configurations. In general, qat has several configurable
         settings that can be configured through a dict.
 
-        **Notes**:
+        Note:
             channel_wise_abs_max(bool): Whether to use `per_channel` quantization training. Default is True.
 
             weight_bits(int): quantization bit number for weight. Default is 8.

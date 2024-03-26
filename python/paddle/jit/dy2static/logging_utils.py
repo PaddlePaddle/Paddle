@@ -195,7 +195,7 @@ def set_verbosity(level=0, also_to_stdout=False):
     2. Set environment variable `TRANSLATOR_VERBOSITY`
 
 
-    **Note**:
+    Note:
     `set_verbosity` has a higher priority than the environment variable.
 
     Args:
@@ -234,7 +234,7 @@ def set_code_level(level=LOG_AllTransformer, also_to_stdout=False):
     2. Set environment variable `TRANSLATOR_CODE_LEVEL`
 
 
-    **Note**:
+    Note:
     `set_code_level` has a higher priority than the environment variable.
 
     Args:
