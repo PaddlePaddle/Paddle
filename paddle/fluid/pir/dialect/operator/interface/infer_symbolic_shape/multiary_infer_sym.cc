@@ -204,6 +204,11 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool TrilinearInterpOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return BicubicInterpOpInferSymbolicShape(op, shape_analysis);
+}
+
 bool WhereOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   shape_analysis->SetShapeOrDataForValue(
