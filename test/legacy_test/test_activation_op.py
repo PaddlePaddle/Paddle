@@ -3800,6 +3800,23 @@ class TestLog_Complex64(TestLog):
                 np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
         paddle.enable_static()
 
+    def test_grad_grad(self):
+        paddle.disable_static()
+        x_numpy = (
+            np.random.uniform(0.1, 1, self.shape)
+            + 1j * np.random.uniform(0.1, 1, self.shape)
+        ).astype(self.dtype)
+
+        expected_ddx = np.conj(-1 / np.power(x_numpy, 2))
+
+        x = paddle.to_tensor(x_numpy, stop_gradient=False)
+        y = paddle.log(x)
+        dx = paddle.grad(
+            outputs=[y], inputs=[x], create_graph=True, retain_graph=True
+        )[0]
+        ddx = paddle.grad(outputs=[dx], inputs=[x], retain_graph=True)[0]
+        np.testing.assert_allclose(ddx.numpy(), expected_ddx, rtol=1e-3)
+
 
 class TestLog_Complex128(TestLog_Complex64):
     def init_dtype(self):
