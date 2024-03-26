@@ -8,25 +8,25 @@ import random
 @dataclass
 class OpNameGenRequirement:
     unary_elementwise_op_names: List[str] = field(
-        default_factory=lambda: ["add"]
+        default_factory=lambda: ["Add"]
     )
     binary_elementwise_op_names: List[str] = field(
-        default_factory=lambda: ["negative"]
+        default_factory=lambda: ["Negative"]
     )
     broadcast_op_names: List[str] = field(
-        default_factory=lambda: ["expand"]
+        default_factory=lambda: ["Expand"]
     )
     reduce_op_names: List[str] = field(
-        default_factory=lambda: ["reduce_sum"]
+        default_factory=lambda: ["ReduceSum"]
     )
     reshape_op_names: List[str] = field(
-        default_factory=lambda: ["reshape"]
+        default_factory=lambda: ["Reshape"]
     )
     permute_op_names: List[str] = field(
-        default_factory=lambda: ["transpose"]
+        default_factory=lambda: ["Transpose"]
     )
     source_op_names: List[str] = field(
-        default_factory=lambda: ["zeros", "ones"]
+        default_factory=lambda: ["Zeros", "Ones"]
     )
 
 @dataclass

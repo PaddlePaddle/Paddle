@@ -2,10 +2,15 @@ from dataclasses import dataclass
 import .dag_generator as dag_generator
 import .dims_eq1_signature_inferer as dims_eq1_signature_inferer
 import .shape_signature_inferer as shape_signature_inferer
+import .tensor_name_signature_inferer as tensor_name_signature_inferer
 from typing import List
 from .hash_combine import HashCombine
 
-kBaseClassModules = (dims_eq1_signature_inferer, shape_signature_inferer)
+kComponentClasses = (
+    dims_eq1_signature_inferer.DimsEq1Signature,
+    shape_signature_inferer.ShapeSignature,
+    tensor_name_signature_inferer.TensorNameSignature
+)
 
 @dataclass
 class CodeGenSpec:
@@ -15,17 +20,21 @@ class CodeGenSpec:
         return kDAGGenClassToDerivedClass
 
 
-def MergeCodeGenSpecClßass(class_name, modules):
+def MergeClass(dag_gen_cls, component_classes):
+    class_name = dag_gen_cls.__name__
     base_classes = (CodeGenSpec,)
-    base_classes += tuple(getattr(m, class_name) for m in modules)
+    base_classes += tuple(
+        component_class.GetDAGGenClassToDerivedClassMap()[dag_gen_cls]
+        for component_class in component_classes
+    )
     return dataclass(type(class_name, base_classes, {}))
 
-Nope = MergeCodeGenSpecClass("Nope", kBaseClassModules)
-AddSinkTensor = MergeCodeGenSpecClass("AddSinkTensor", kBaseClassModules)
-AddUnaryOp = MergeCodeGenSpecClass("AddUnaryOp", kBaseClassModules)
-AddBinaryOp = MergeCodeGenSpecClass("AddBinaryOp", kBaseClassModules)
-AddBinaryClone = MergeCodeGenSpecClass("AddBinaryClone", kBaseClassModules)
-AddSourceOp = MergeCodeGenSpecClass("AddSourceOp", kBaseClassModules)
+Nope = MergeClass(dag_generator.Nope, kComponentClasses)
+AddSinkTensor = MergeClass(dag_generator.AddSinkTensor, kComponentClasses)
+AddUnaryOp = MergeClass(dag_generator.AddUnaryOp, kComponentClasses)
+AddBinaryOp = MergeClass(dag_generator.AddBinaryOp, kComponentClasses)
+AddBinaryClone = MergeClass(dag_generator.AddBinaryClone, kComponentClasses)
+AddSourceOp = MergeClass(dag_generator.AddSourceOp, kComponentClasses)
 
 
 kDAGGenClassToDerivedClass = {
@@ -45,7 +54,8 @@ class CodeGenSpecInferer:
         self,
         dag_gen_instructions: List["DAGGenInstruction"],
         dims_eq1_signatures: List["DimsEq1Signature"],
-        shape_signatures: List["ShapeSignature"]
+        shape_signatures: List["ShapeSignature"],
+        tensor_name_signatures: List["TensorNameSignature"]
     ) -> List[CodeGenSpec]:
         def CreateCodeGenSpec(dag_gen_instr, *signatures):
             params = dict()
@@ -56,5 +66,9 @@ class CodeGenSpecInferer:
             return code_gen_spec_class(*params)
         return [
             CreateCodeGenSpec(*x)
-            for x in zip(dag_gen_instructions, dims_eq1_signatures, shape_signatures)
+            for x in zip(
+                dag_gen_instructions,
+                dims_eq1_signatures,
+                shape_signatures,
+                tensor_name_signatures)
         ]

@@ -11,23 +11,20 @@ class DAGGenTypePickProbability:
     nope: PickWeight
     add_sink_tensor: PickWeight
     add_unary_op: PickWeight
-    # append to core DAG.
     add_binary_op: PickWeight
-    # modify core DAG
-    insert_binary_op: PickWeight
     add_binary_clone: PickWeight
     add_source_op: PickWeight
 
 @dataclass
 class DAGGenRequirement:
     min_num_sources: int = 1
-    max_num_sources: int = 5
+    max_num_sources: int = 1
     min_num_sinks: int = 1
-    max_num_sinks: int = 5
+    max_num_sinks: int = 1
     min_width: int = 1
     max_width: int = 10
-    max_body_instructions: int
-    dag_tag: str
+    max_body_instructions: int = 10
+    dag_tag: str = ""
     pick_probability: DAGGenTypePickProbability
 
     def CheckFields(self):

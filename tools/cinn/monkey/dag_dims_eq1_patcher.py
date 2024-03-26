@@ -30,11 +30,7 @@ class Nope:
         cls,
         ctx: PatchContext
     ) -> Generator[DAGDimsEq1Instruction]:
-        yield DAGDimsEq1Instruction(
-            dag_gen_instruction=ctx.dag_gen_instruction,
-            instruction_id=ctx.instruction_id
-            dims_eq1_instruction=dims_eq1_generator.Nope()
-        )
+        yield from []
 
 
 @dataclass
@@ -68,10 +64,10 @@ class AddUnaryOp:
         ]
         if middle_dims_eq1 != output_dims_eq1:
             yield DAGDimsEq1Instruction(
-                dag_gen_instruction=dag_gen_generator.AddUnaryOp(
+                dag_gen_instruction=dag_generator.AddUnaryOp(
                     .source_tensor_index=ctx.dag_gen_instruction.source_tensor_index
                     .dag_tag=ctx.dag_gen_instruction.dag_tag,
-                    .convert_type=dag_gen_generator.ReduceConvertType()
+                    .convert_type=dag_generator.ReduceConvertType()
                 ),
                 instruction_id=MakeUniqueInstructionId(),
                 dims_eq1_instruction=dims_eq1_generator.AddUnaryOp(
@@ -80,10 +76,10 @@ class AddUnaryOp:
             )
         if input_dims_eq1 != middle_dims_eq1:
             yield DAGDimsEq1Instruction(
-                dag_gen_instruction=dag_gen_generator.AddUnaryOp(
+                dag_gen_instruction=dag_generator.AddUnaryOp(
                     .source_tensor_index=ctx.dag_gen_instruction.source_tensor_index
                     .dag_tag=ctx.dag_gen_instruction.dag_tag,
-                    .convert_type=dag_gen_generator.BroadcastConvertType()
+                    .convert_type=dag_generator.BroadcastConvertType()
                 ),
                 instruction_id=MakeUniqueInstructionId(),
                 dims_eq1_instruction=dims_eq1_generator.AddUnaryOp(
@@ -91,10 +87,10 @@ class AddUnaryOp:
                 )
             )
         yield DAGDimsEq1Instruction(
-            dag_gen_instruction=dag_gen_generator.AddUnaryOp(
+            dag_gen_instruction=dag_generator.AddUnaryOp(
                 .source_tensor_index=ctx.dag_gen_instruction.source_tensor_index
                 .dag_tag=ctx.dag_gen_instruction.dag_tag,
-                .convert_type=dag_gen_generator.NoConvertType()
+                .convert_type=dag_generator.NoConvertType()
             ),
             instruction_id=ctx.instruction_id,
             dims_eq1_instruction=dims_eq1_generator.AddUnaryOp(
