@@ -426,8 +426,7 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
     auto var_tmp1 = difference * difference;
     auto variance = mean_decomp<T>(var_tmp1, axis, true);
     auto var_tmp3 = variance + full<T>(empty_shape, epsilon, variance.dtype());
-    auto rsqrt_var = elementwise_pow<T>(
-        var_tmp3, full<T>(empty_shape, -0.5, var_tmp3.dtype()));
+    auto rsqrt_var = rsqrt<T>(var_tmp3);
     auto out = difference * rsqrt_var;
 
     Tensor slice_shape_l = get_slice_vec<T>(shape<T>(x), 0, begin_norm_axis);
@@ -482,8 +481,7 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   auto var_tmp1 = difference * difference;
   auto variance = mean_decomp<T>(var_tmp1, axis, true);
   auto var_tmp3 = variance + epsilon;
-  auto rsqrt_var = elementwise_pow<T>(
-      var_tmp3, full<T>(empty_shape, -0.5, var_tmp3.dtype()));
+  auto rsqrt_var = rsqrt<T>(var_tmp3);
   auto out = difference * rsqrt_var;
 
   auto scale_ptr = scale.get_ptr();
