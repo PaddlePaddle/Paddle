@@ -763,7 +763,6 @@ class FullWithTensorOpPattern
     auto shape = op->operand_source(0);
     auto value = op->operand_source(1);
 
-    // TODO(phlrain): support cast dtype
     if (paddle::dialect::TransToPhiDataType(
             value.type()
                 .dyn_cast<paddle::dialect::DenseTensorType>()
