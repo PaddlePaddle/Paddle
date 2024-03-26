@@ -670,8 +670,7 @@ bool AutoMixedPrecisionPass::InputVarsNotConvert(
       return true;
     }
   } else if (GetOpOriginalType(op_desc->Type()) == "instance_norm" ||
-             GetOpOriginalType(op_desc->Type()) == "layer_norm" ||
-             GetOpOriginalType(op_desc->Type()) == "group_norm") {
+             GetOpOriginalType(op_desc->Type()) == "layer_norm") {
     auto vecs = op_desc->Input("Bias");
     if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
       return true;
