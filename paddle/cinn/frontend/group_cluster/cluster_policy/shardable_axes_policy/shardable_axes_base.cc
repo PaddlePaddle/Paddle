@@ -67,7 +67,7 @@ ShardableAxesSignature CreateSignatureForReduce(
     if (std::find(reduce_axis_idx.begin(), reduce_axis_idx.end(), i) !=
         reduce_axis_idx.end()) {
       if (keep_dim) {
-        output_axes.emplace_back("constant_1");
+        output_axes.emplace_back(ShardableAxesInfoManager::GetUniqueName());
       }  // else do nothing
     } else {
       output_axes.emplace_back(input_axes[i]);
@@ -97,17 +97,43 @@ ShardableAxesSignature CreateSignatureForElementWise(const pir::Operation* op) {
   return result;
 }
 
-ShardableAxesSignature CreateSignatureForBroadcast(const pir::Operation* op) {
+ShardableAxesSignature CreateSignatureForBroadcast(
+    const pir::Operation* op,
+    const pir::ShapeConstraintIRAnalysis* shape_analysis) {
   const auto& broad_cast_value = GetBroadcastOpInputOuputValue(op);
   if (!broad_cast_value.has_value()) {
     return CreateDefaultSignature(op);
   }
   const auto& [input, output] = broad_cast_value.value();
-  // TODO(wuzhanfei) support broadcast
-  return CreateDefaultSignature(op);
+  const int input_rank = GetRank(input);
+  const int output_rank = GetRank(output);
+  CHECK_GE(output_rank - input_rank, 0);
+
+  int same_dim_rank = input_rank;
+  for (int i = input_rank - 1; i >= 0; i--) {
+    if (!shape_analysis->IsProductEqual(input, {i}, output, {i})) break;
+    same_dim_rank--;
+  }
+
+  ShardableAxesSignature result = ShardableAxesSignature();
+  for (int i = 0; i < op->num_operands(); ++i) {
+    auto axes_name = CreateNewNamesWithRank(GetRank(op->operand_source(i)));
+    if (op->operand_source(i) == input) {
+      auto output_same_dim_part = std::vector<std::string>(
+          axes_name.begin(), axes_name.begin() + same_dim_rank);
+      auto output_different_part =
+          CreateNewNamesWithRank(output_rank - same_dim_rank);
+      result.outputs.emplace_back(
+          MergeVector(output_same_dim_part, output_different_part));
+    }
+    result.inputs.emplace_back(axes_name);
+  }
+
+  return result;
 }
 
-ShardableAxesSignature CreateShardableSignature(const pir::Operation* op) {
+ShardableAxesSignature ShardableAxesInfoManager::CreateShardableSignature(
+    const pir::Operation* op) {
   auto special_result = CreateSignatureForSpecialOps(op);
   if (special_result != std::nullopt) {
     return special_result.value();
@@ -122,7 +148,7 @@ ShardableAxesSignature CreateShardableSignature(const pir::Operation* op) {
   } else if (kind == hlir::framework::kElementWise) {
     result = CreateSignatureForElementWise(op);
   } else if (kind == hlir::framework::kBroadcast) {
-    result = CreateSignatureForBroadcast(op);
+    result = CreateSignatureForBroadcast(op, shape_analysis_);
   } else {
     result = CreateDefaultSignature(op);
   }
@@ -139,7 +165,56 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
     op_signature_map_[op] = CreateShardableSignature(op);
   }
 
-  // TODO(wuzhanfei) update value_axes_map_ name_union_
+  const auto FindRoot =
+      [&](const std::string& non_root) {
+        std::string result = non_root;
+        while (name_union_[result] != result) {
+          result = name_union_[result];
+        }
+        return result
+      }
+
+  const auto CombineAxes =
+      [&](const ShardableAxes& root, const ShardableAxes& non_root) {
+        CHECK_EQ(root.axis_names.size(), non_root.axis_names.size());
+        for (int i = 0; i < non_root.axis_names.size(); i++) {
+          name_union_[non_root.axis_names[i]] = FindRoot(root.axis_names[i]);
+        }
+      };
+
+  for (const auto& [op, axes_signature] : op_signature_map_) {
+    for (int i = 0; i < op->num_operands(); ++i) {
+      auto value = op->operand_source(i);
+      auto axes = axes_signature.inputs[i];
+      if (value_axes_map_.find(value) == value_axes_map_.end()) {
+        value_axes_map_[value] = axes;
+        for (const auto& axis_name : axes.axis_names) {
+          name_union_[axis_name] = axis_name;
+        }
+      } else {
+        CombineAxes(value_axes_map_[value], axes);
+      }
+    }
+    for (int i = 0; i < op->num_results(); ++i) {
+      auto value = op->result(i);
+      auto axes = axes_signature.outputs[i];
+      if (value_axes_map_.find(value) == value_axes_map_.end()) {
+        value_axes_map_[value] = axes;
+        for (const auto& axis_name : axes.axis_names) {
+          name_union_[axis_name] = axis_name;
+        }
+      } else {
+        CombineAxes(value_axes_map_[value], axes);
+      }
+    }
+  }
+
+  VLOG(4)
+      << "[ShardableAxesInfoManager] NameUnion : " for (const auto& [non_root,
+                                                                     root] :
+                                                        name_union_) {
+    VLOG(4) << non_root << " => " << root;
+  }
 }
 
 std::string ShardableAxes::DebugStr() {
