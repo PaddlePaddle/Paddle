@@ -32,7 +32,7 @@ def array_length(array):
         array (list|Tensor): The input array that will be used to compute the length. In dynamic mode, ``array`` is a Python list. But in static graph mode, array is a Tensor whose VarType is LOD_TENSOR_ARRAY.
 
     Returns:
-        Tensor: 1-D Tensor with shape [1], which is the length of array.
+        Tensor: 0-D Tensor with shape [], which is the length of array.
 
     Examples:
         .. code-block:: python
@@ -169,7 +169,7 @@ def array_write(x, i, array=None):
     Args:
         x (Tensor): The input data to be written into array. It's multi-dimensional
             Tensor or LoDTensor. Data type: float32, float64, int32, int64 and bool.
-        i (Tensor): 1-D Tensor with shape [1], which represents the position into which
+        i (Tensor): 0-D Tensor with shape [], which represents the position into which
             ``x`` is written.
         array (list|Tensor, optional): The array into which ``x`` is written. The default value is None,
             when a new array will be created and returned as a result. In dynamic mode, ``array`` is a Python list.

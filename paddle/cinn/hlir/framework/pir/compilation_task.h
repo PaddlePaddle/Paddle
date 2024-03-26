@@ -29,7 +29,8 @@ class CompilationTask;
 
 class GroupCompilationContext {
  public:
-  GroupCompilationContext(const Target& target, const pir::GroupPtr& group)
+  GroupCompilationContext(const Target& target,
+                          const pir::OpLoweringGroupPtr& group)
       : target_(target), group_(group) {}
 
   void SetLoweredFuncs(BucketLoweredFuncsWrapper&& funcs);
@@ -38,7 +39,7 @@ class GroupCompilationContext {
  private:
   friend class CompilationTask;
   const Target& target_;
-  const pir::GroupPtr& group_;
+  const pir::OpLoweringGroupPtr& group_;
   std::vector<ir::SymbolicPredicate> predicates_;
   std::vector<ir::LoweredFunc> lowered_funcs_;
   ir::LoweredFunc infer_shape_lowered_func_;

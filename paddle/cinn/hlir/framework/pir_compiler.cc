@@ -20,7 +20,7 @@
 namespace cinn::hlir::framework {
 
 std::vector<pir::CINNKernelInfo> PirCompiler::Build(
-    const std::vector<pir::GroupPtr>& groups) {
+    const std::vector<pir::OpLoweringGroupPtr>& groups) {
   std::vector<pir::CINNKernelInfo> kernel_infos(groups.size());
   for (int i = 0; i < groups.size(); ++i) {
     group_compilation_contexts_.emplace_back(target_, groups[i]);

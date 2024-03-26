@@ -74,6 +74,7 @@ from .core import (  # noqa: F401
     XPUPlace,
     _cuda_synchronize,
     _Scope,
+    _set_warmup,
 )
 from .data_feed_desc import DataFeedDesc  # noqa: F401
 from .data_feeder import DataFeeder  # noqa: F401

@@ -21,6 +21,7 @@ from distutils.util import strtobool
 
 import yaml
 from decomp_interface_gen_op_list import decomp_interface_declare_gen_op_list
+from gen_utils import to_pascal_case
 from infer_symbolic_shape_gen import gen_infer_symbolic_shape_str
 from op_all_func_gen import gen_op_all_func
 from op_build_gen import gen_build_func_str, gen_build_func_str_by_invoke
@@ -32,7 +33,6 @@ from op_kerneltype_gen import gen_kernel_type_for_var_str
 from op_verify_gen import gen_verify_func_str
 from ops_onednn_extra_parser import parse_data_format_tensors, parse_extra_args
 from parse_kernel_key_gen import gen_parse_kernel_key_str
-from utils import to_pascal_case
 from vjp_interface_black_list import vjp_interface_black_list
 
 # import from paddle/fluid/primitive/code_gen/gen.py
