@@ -42,6 +42,7 @@ class StatBase {
   virtual int64_t GetCurrentValue() = 0;
   virtual int64_t GetPeakValue() = 0;
   virtual void Update(int64_t) = 0;
+  virtual void ResetPeak() = 0;
 
  private:
   DISABLE_COPY_AND_ASSIGN(StatBase);
@@ -67,6 +68,18 @@ class Stat : public StatBase {
   }
 
   int64_t GetPeakValue() override { return peak_value_; }
+
+  void ResetPeak() override {
+    auto& thread_data_registry =
+        ThreadDataRegistry<ThreadLocalStatType>::GetInstance();
+    ThreadLocalStatType* thread_local_stat =
+        thread_data_registry.GetMutableCurrentThreadData();
+    thread_local_stat->peak = 0;
+
+    int64_t prev_value = peak_value_;
+    while (!peak_value_.compare_exchange_weak(prev_value, 0)) {
+    }
+  }
 
   void Update(int64_t increment) override {
     auto& thread_data_registry =
@@ -170,6 +183,8 @@ void PinnedMemoryStatUpdate(const std::string& stat_type,
   DEVICE_MEMORY_STAT_FUNC(item, id, GetPeakValue)
 #define DEVICE_MEMORY_STAT_UPDATE(item, id, increment) \
   DEVICE_MEMORY_STAT_FUNC(item, id, Update, increment)
+#define DEVICE_MEMORY_STAT_RESET_PEAK(item, id) \
+  DEVICE_MEMORY_STAT_FUNC(item, id, ResetPeak)
 
 #define HOST_MEMORY_STAT_FUNC(item, id, func, ...)                     \
   [&] {                                                                \
