@@ -16,10 +16,10 @@
 
 #include "paddle/common/errors.h"
 #include "paddle/phi/backends/context_pool.h"
-#include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/common/port.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/enforce.h"
 

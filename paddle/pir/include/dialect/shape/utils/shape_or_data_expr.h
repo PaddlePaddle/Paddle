@@ -28,18 +28,25 @@ class ShapeOrData {
       : shape_(shape), data_(data) {
     // Valid check
     if (shape.size() == 0) {
-      IR_ENFORCE(data.size() == 1,
-                 "When shape is 0-D, size of data should be 1, but got %d.",
-                 data.size());
+      PADDLE_ENFORCE_EQ(
+          data.size(),
+          1UL,
+          phi::errors::InvalidArgument(
+              "When shape is 0-D, size of data should be 1, but got %d.",
+              data.size()));
     } else if (shape.size() == 1) {
-      IR_ENFORCE(shape[0].template Has<int64_t>(),
-                 "When shape is 1-D, value of shape should be int");
-      IR_ENFORCE(
+      PADDLE_ENFORCE_EQ(shape[0].template Has<int64_t>(),
+                        true,
+                        phi::errors::InvalidArgument(
+                            "When shape is 1-D, value of shape should be int"));
+      PADDLE_ENFORCE_EQ(
           shape[0].template Get<int64_t>() == static_cast<int64_t>(data.size()),
-          "When shape is 1-D, size of data should be the same as "
-          "value[%d] of shape, but got [%d].",
-          shape[0].template Get<std::int64_t>(),
-          data.size());
+          true,
+          phi::errors::InvalidArgument(
+              "When shape is 1-D, size of data should be the same as "
+              "value[%d] of shape, but got [%d].",
+              shape[0].template Get<std::int64_t>(),
+              data.size()));
     } else {
       IR_THROW("Size of shape should be 0 or 1, but got %d", shape.size());
     }
@@ -128,26 +135,32 @@ class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
   }
 
   const std::vector<DimExpr>& shape() const {
-    IR_ENFORCE(
+    PADDLE_ENFORCE_EQ(
         std::holds_alternative<TensorShapeOrDataDimExprs>(*this),
-        "Shape of ShapeOrData is not a vector, check whether the value is a "
-        "tensor-list or not.");
+        true,
+        phi::errors::PreconditionNotMet("Shape of ShapeOrData is not a vector, "
+                                        "check whether the value is a "
+                                        "tensor-list or not."));
     return std::get<TensorShapeOrDataDimExprs>(*this).shape();
   }
 
   const std::optional<std::vector<DimExpr>>& data() const {
-    IR_ENFORCE(
+    PADDLE_ENFORCE_EQ(
         std::holds_alternative<TensorShapeOrDataDimExprs>(*this),
-        "Data of ShapeOrData is not a vector, check whether the value is a "
-        "tensor-list or not.");
+        true,
+        phi::errors::PreconditionNotMet(
+            "Data of ShapeOrData is not a vector, check whether the value is a "
+            "tensor-list or not."));
     return std::get<TensorShapeOrDataDimExprs>(*this).data();
   }
 
   void SetData(const std::vector<DimExpr>& data) {
-    IR_ENFORCE(
+    PADDLE_ENFORCE_EQ(
         std::holds_alternative<TensorShapeOrDataDimExprs>(*this),
-        "Data of ShapeOrData is not a vector, check whether the value is a "
-        "tensor-list or not.");
+        true,
+        phi::errors::PreconditionNotMet(
+            "Data of ShapeOrData is not a vector, check whether the value is a "
+            "tensor-list or not."));
 
     std::get<TensorShapeOrDataDimExprs>(*this).SetData(data);
   }

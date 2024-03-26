@@ -44,6 +44,7 @@ DEFAULT_RECOMPUTABLE_OPS: List[str] = [
     "pd_op.add",
     "pd_op.multiply",
     "pd_op.elementwise_pow",
+    "pd_op.rsqrt",
     "pd_op.reshape",
     "pd_op.full_like",
     "pd_op.assign",
