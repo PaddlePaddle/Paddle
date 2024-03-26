@@ -12,12 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/include/core/serialize_deserialize/ir_deserialize.h"
-namespace pir{
-void ReadModule(const std::string& file_path, pir::Program& program)
-{
-    std::ifstream f(file_path);
-    Json data = Json::parse(f);
-}
-
-}//namespace pir
+#include "paddle/fluid/pir/serialize_deserialize/include/ir_deserialize.h"
+namespace pir {}  // namespace pir

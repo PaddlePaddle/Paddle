@@ -11,46 +11,49 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#ifndef PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_IR_SERIALIZE_H_
+#define PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_IR_SERIALIZE_H_
 #include <nlohmann/json.hpp>
-#include "paddle/pir/include/core/serialize_deserialize/json_utils.h"
+#include "paddle/pir/include/core/program.h"
+using Json = nlohmann::json;
+namespace pir {
 
-namespace pir{
+class ProgramWriter {
+ public:
+  explicit ProgramWriter(const uint64_t version) : version_(version) {}
 
-class ProgramWriter{
-    public:
-        explicit ProgramWriter(const uint64_t version):version_(version){};
+  ProgramWriter(ProgramWriter&&) = delete;
+  ProgramWriter(const ProgramWriter& ProgramWriter) = delete;
+  ProgramWriter& operator=(const ProgramWriter&) = delete;
+  ProgramWriter& operator=(ProgramWriter&&);
 
-        ProgramWriter(ProgramWriter&&) = delete;
-        ProgramWriter(const ProgramWriter& ProgramWriter) = delete;
-        ProgramWriter& operator=(const ProgramWriter&) = delete;
-        ProgramWriter& operator=(ProgramWriter&&);
-        
-        //static void staticInit()
-        
-        Json GetProgramJson(const pir::Program* program);
-        ~ProgramWriter() = default;
+  // static void staticInit()
 
-    private:
-        uint64_t version_;
-        Json program_json;
-        std::map<pir::Value, int64_t> value_id_map;
-        int64_t region_id_ = 0;
-        int64_t block_id_ = 0;
-        int64_t value_id_ = 1;
-        int64_t blockarg_id_ = -1;
+  Json GetProgramJson(const pir::Program* program);
+  ~ProgramWriter() = default;
 
-        Json WriteProgram(const pir::Program* program);
-        Json WriteRegion(const pir::Region* region, const std::string& region_name);
-        Json WriteBlock(const pir::Block* block, const std::string& block_name);
-        Json WriteOp(const pir::Operation& op);
-        Json WriteBlockArg(const pir::Value& value);
-        Json WriteValue(const pir::Value& value);
-        Json WriteOpOperand(const pir::OpOperand& op_operand);
-        Json WriteAttributesMap_0(const AttributeMap& attr_map);
-        Json WriteAttributesMap_1(const AttributeMap& attr_map);
-        Json WriteAttribute(const std::string& op_attr_name, const pir::Attribute& attr);
-        Json WriteType(const pir::Type& type);
+ private:
+  uint64_t version_;
+  Json program_json;
+  std::map<pir::Value, int64_t> value_id_map;
+  int64_t region_id_ = 0;
+  int64_t block_id_ = 0;
+  int64_t value_id_ = 1;
+  int64_t blockarg_id_ = -1;
+
+  Json WriteProgram(const pir::Program* program);
+  Json WriteRegion(const pir::Region* region, const std::string& region_name);
+  Json WriteBlock(const pir::Block* block, const std::string& block_name);
+  Json WriteOp(const pir::Operation& op);
+  Json WriteBlockArg(const pir::Value& value);
+  Json WriteValue(const pir::Value& value);
+  Json WriteOpOperand(const pir::OpOperand& op_operand);
+  Json WriteAttributesMap_0(const AttributeMap& attr_map);
+  Json WriteAttributesMap_1(const AttributeMap& attr_map);
+  Json WriteAttribute(const std::string& op_attr_name,
+                      const pir::Attribute& attr);
+  Json WriteType(const pir::Type& type);
 };
 
-void WriteModule(const pir::Program &program, const std::string& file_path, const uint64_t &pir_version, bool overwrite);
-}//namepsace pir
+}  // namespace pir
+#endif  // PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_IR_SERIALIZE_H_

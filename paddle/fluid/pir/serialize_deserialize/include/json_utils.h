@@ -11,28 +11,224 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include <nlohmann/json.hpp>
-#include <string>
-#include <vector>
+#ifndef PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_JSON_UTILS_H_
+#define PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_JSON_UTILS_H_
 #include <fstream>
 #include <initializer_list>
-#include "paddle/phi/backends/dynload/port.h"
+#include <string>
+#include <vector>
+
+#include "glog/logging.h"
+#include "nlohmann/json.hpp"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_type.h"
-#include "paddle/pir/include/core/program.h"
-#include "paddle/common/enforce.h"
-#include "glog/logging.h"
 
 using Json = nlohmann::json;
-namespace pir{
-    
-    Json writeType(const pir::Type& type);
-    Json writeAttr(const pir::Attribute& attr);
+namespace pir {
 
-    template<typename T>
-    Json serializeTypeToJson(const T& type);
+template <typename T>
+Json serializeTypeToJson(const T type) {
+  Json j;
+  j["id"] = type.name();
+  return j;
+}
 
-    template<typename T>
-    Json serializeAttrToJson(const T& attr);
-    
-}//namepsace pir
+template <typename T>
+Json serializeAttrToJson(const T attr) {
+  Json j;
+  j["id"] = attr.name();
+  j["data"] = attr.data();
+  return j;
+}
+
+template <>
+Json serializeAttrToJson<pir::StrAttribute>(const pir::StrAttribute attr) {
+  Json j;
+  j["id"] = attr.name();
+  j["data"] = attr.AsString();
+  return j;
+}
+
+template <>
+Json serializeAttrToJson<pir::Complex64Attribute>(
+    const pir::Complex64Attribute attr) {
+  Json j;
+  j["id"] = attr.name();
+  j["data"] = {attr.data().real, attr.data().imag};
+  return j;
+}
+
+template <>
+Json serializeAttrToJson<pir::Complex128Attribute>(
+    const pir::Complex128Attribute attr) {
+  Json j;
+  j["id"] = attr.name();
+  j["data"] = {attr.data().real, attr.data().imag};
+  return j;
+}
+
+Json writeType(const pir::Type& type) {
+  Json type_json = Json::object();
+  if (type.isa<pir::BoolType>()) {
+    VLOG(8) << "Write BoolType ... ";
+    return pir::serializeTypeToJson<pir::BoolType>(
+        type.dyn_cast<pir::BoolType>());
+  } else if (type.isa<pir::BFloat16Type>()) {
+    VLOG(8) << "Write BFloat16Type ... ";
+    return pir::serializeTypeToJson<pir::BFloat16Type>(
+        type.dyn_cast<pir::BFloat16Type>());
+  } else if (type.isa<pir::Float16Type>()) {
+    VLOG(8) << "Write Float16Type ... ";
+    return pir::serializeTypeToJson<pir::Float16Type>(
+        type.dyn_cast<pir::Float16Type>());
+  } else if (type.isa<pir::Float32Type>()) {
+    VLOG(8) << "Write Float32Type ... ";
+    return pir::serializeTypeToJson<pir::Float32Type>(
+        type.dyn_cast<pir::Float32Type>());
+  } else if (type.isa<pir::Float64Type>()) {
+    VLOG(8) << "Write Float64Type ... ";
+    return pir::serializeTypeToJson<pir::Float64Type>(
+        type.dyn_cast<pir::Float64Type>());
+  } else if (type.isa<pir::Int8Type>()) {
+    VLOG(8) << "Write Int8Type ... ";
+    return pir::serializeTypeToJson<pir::Int8Type>(
+        type.dyn_cast<pir::Int8Type>());
+  } else if (type.isa<pir::UInt8Type>()) {
+    VLOG(8) << "Write UInt8Type ... ";
+    return pir::serializeTypeToJson<pir::UInt8Type>(
+        type.dyn_cast<pir::UInt8Type>());
+  } else if (type.isa<pir::Int16Type>()) {
+    VLOG(8) << "Write Int16Type ... ";
+    return pir::serializeTypeToJson<pir::Int16Type>(
+        type.dyn_cast<pir::Int16Type>());
+  } else if (type.isa<pir::Int32Type>()) {
+    VLOG(8) << "Write Int32Type ... ";
+    return pir::serializeTypeToJson<pir::Int32Type>(
+        type.dyn_cast<pir::Int32Type>());
+  } else if (type.isa<pir::Int64Type>()) {
+    VLOG(8) << "Write Int64Type ... ";
+    return pir::serializeTypeToJson<pir::Int64Type>(
+        type.dyn_cast<pir::Int64Type>());
+  } else if (type.isa<pir::IndexType>()) {
+    VLOG(8) << "Write IndexType ... ";
+    return pir::serializeTypeToJson<pir::IndexType>(
+        type.dyn_cast<pir::IndexType>());
+  } else if (type.isa<pir::Complex64Type>()) {
+    VLOG(8) << "Write Complex64Type ... ";
+    return pir::serializeTypeToJson<pir::Complex64Type>(
+        type.dyn_cast<pir::Complex64Type>());
+  } else if (type.isa<pir::Complex128Type>()) {
+    VLOG(8) << "Write Complex128Type ... ";
+    return pir::serializeTypeToJson<pir::Complex128Type>(
+        type.dyn_cast<pir::Complex128Type>());
+  } else if (type.isa<pir::VectorType>()) {
+    VLOG(8) << "Write VectorType ... ";
+    auto type_ = type.dyn_cast<pir::VectorType>();
+    type_json["id"] = type_.name();
+    Json content = Json::array();
+    for (auto type_x : type_.data()) {
+      content.push_back(writeType(type_x));
+    }
+    type_json["data"] = content;
+    return type_json;
+  } else if (type.isa<pir::DenseTensorType>()) {
+    VLOG(8) << "Write DenseTensorType ... ";
+    auto type_ = type.dyn_cast<pir::DenseTensorType>();
+
+    type_json["id"] = type_.name();
+    Json content = Json::array();
+    content.push_back(writeType(type_.dtype()));
+
+    std::vector<int64_t> dims_;
+    for (auto i = 0; i < type_.dims().size(); i++) {
+      dims_.push_back(type_.dims().at(i));
+    }
+    content.push_back(dims_);
+
+    content.push_back(DataLayoutToString(type_.data_layout()));
+
+    content.push_back(type_.lod());
+
+    content.push_back(type_.offset());
+    type_json["data"] = content;
+    return type_json;
+  }
+  VLOG(8) << "Finish write Type ... ";
+
+  return type_json;
+}
+
+template <>
+Json serializeAttrToJson<pir::TypeAttribute>(const pir::TypeAttribute attr) {
+  Json j;
+  j["id"] = attr.name();
+  j["data"] = writeType(attr.data());
+  return j;
+}
+
+Json writeAttr(const pir::Attribute& attr) {
+  Json attr_json = Json::object();
+  if (attr.isa<pir::BoolAttribute>()) {
+    VLOG(8) << "write BoolAttribute .";
+    return pir::serializeAttrToJson<pir::BoolAttribute>(
+        attr.dyn_cast<pir::BoolAttribute>());
+  } else if (attr.isa<pir::FloatAttribute>()) {
+    VLOG(8) << "write FloatAttribute .";
+    return pir::serializeAttrToJson<pir::FloatAttribute>(
+        attr.dyn_cast<pir::FloatAttribute>());
+  } else if (attr.isa<pir::DoubleAttribute>()) {
+    VLOG(8) << "write DoubleAttribute .";
+    return pir::serializeAttrToJson<pir::DoubleAttribute>(
+        attr.dyn_cast<pir::DoubleAttribute>());
+  } else if (attr.isa<pir::Int32Attribute>()) {
+    VLOG(8) << "write Int32Attribute .";
+    return pir::serializeAttrToJson<pir::Int32Attribute>(
+        attr.dyn_cast<pir::Int32Attribute>());
+  } else if (attr.isa<pir::Int64Attribute>()) {
+    VLOG(8) << "write Int64Attribute .";
+    return pir::serializeAttrToJson<pir::Int64Attribute>(
+        attr.dyn_cast<pir::Int64Attribute>());
+  } else if (attr.isa<pir::IndexAttribute>()) {
+    VLOG(8) << "write IndexAttribute .";
+    return pir::serializeAttrToJson<pir::IndexAttribute>(
+        attr.dyn_cast<pir::IndexAttribute>());
+  } else if (attr.isa<pir::ArrayAttribute>()) {
+    VLOG(8) << "write ArrayAttribute .";
+    auto attr_ = attr.dyn_cast<pir::ArrayAttribute>();
+    Json val = Json::array();
+    for (size_t i = 0; i < attr_.size(); i++) {
+      val.push_back(writeAttr(attr_.at(i)));
+    }
+    attr_json["id"] = attr_.name();
+    attr_json["data"] = val;
+    return attr_json;
+  } else if (attr.isa<pir::TypeAttribute>()) {
+    VLOG(8) << "write TypeAttribute .";
+    return pir::serializeAttrToJson<pir::TypeAttribute>(
+        attr.dyn_cast<pir::TypeAttribute>());
+  } else if (attr.isa<pir::TensorNameAttribute>()) {
+    VLOG(8) << "write TensorNameAttribute .";
+    return pir::serializeAttrToJson<pir::TensorNameAttribute>(
+        attr.dyn_cast<pir::TensorNameAttribute>());
+  } else if (attr.isa<pir::Complex64Attribute>()) {
+    VLOG(8) << "write Complex64Attribute .";
+    return pir::serializeAttrToJson<pir::Complex64Attribute>(
+        attr.dyn_cast<pir::Complex64Attribute>());
+  } else if (attr.isa<pir::Complex128Attribute>()) {
+    VLOG(8) << "write Complex128Attribute .";
+    return pir::serializeAttrToJson<pir::Complex128Attribute>(
+        attr.dyn_cast<pir::Complex128Attribute>());
+  } else if (attr.isa<pir::StrAttribute>()) {
+    VLOG(8) << "write StrAttribute .";
+    return pir::serializeAttrToJson<pir::StrAttribute>(
+        attr.dyn_cast<pir::StrAttribute>());
+  }
+
+  VLOG(8) << "Finish write Attr ... ";
+
+  return attr_json;
+}
+
+}  // namespace pir
+
+#endif  // PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_JSON_UTILS_H_

@@ -11,15 +11,18 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#ifndef PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_IR_DESERIALIZE_H_
-#define PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_IR_DESERIALIZE_H_
-#include <fstream>
-#include <nlohmann/json.hpp>
-#include "paddle/common/enforce.h"
+#ifndef PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_INTERFACE_H_
+#define PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_INTERFACE_H_
 #include "paddle/pir/include/core/program.h"
+namespace pir {
 
-using Json = nlohmann::json;
+void WriteModule(const pir::Program& program,
+                 const std::string& file_path,
+                 const uint64_t& pir_version,
+                 bool overwrite,
+                 bool readable);
 
-namespace pir {}
+void ReadModule(const std::string& file_path, pir::Program* program);
 
-#endif  // PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_IR_DESERIALIZE_H_
+}  // namespace pir
+#endif  // PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_INTERFACE_H_
