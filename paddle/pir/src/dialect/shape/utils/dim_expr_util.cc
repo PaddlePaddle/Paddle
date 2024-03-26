@@ -1045,3 +1045,23 @@ std::unordered_set<std::string> CollectDimExprSymbols(const DimExpr& dim_expr) {
 }
 
 }  // namespace symbol
+
+namespace symbol {
+
+IR_API bool IsDimExprGreaterThanOne(const symbol::DimExpr& dim_expr) {
+  if (std::holds_alternative<std::int64_t>(dim_expr)) {
+    if (std::get<std::int64_t>(dim_expr) > 1) return true;
+  } else if (std::holds_alternative<symbol::Add<symbol::DimExpr>>(dim_expr)) {
+    const auto& sub_dim_exprs =
+        *std::get<symbol::Add<symbol::DimExpr>>(dim_expr).operands;
+    for (auto sub_dim_expr : sub_dim_exprs) {
+      if (std::holds_alternative<std::int64_t>(sub_dim_expr)) {
+        if (std::get<std::int64_t>(sub_dim_expr) > 1) return true;
+      }
+    }
+  } else {
+    return false;
+  }
+}
+
+}  // namespace symbol
