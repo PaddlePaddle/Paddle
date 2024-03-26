@@ -3,6 +3,7 @@ from collections import namedtuple
 from typing import Generator, Union
 from .defensive_list import DList
 from .dag_generator import PickWeight
+from .script import Script
 import .dag_generator as dag_generator
 import .dim_eq1_generator as dim_eq1_generator
 import .dims_eq1_generator as dims_eq1_generator
@@ -22,9 +23,6 @@ from unit_test_case_spec import (
 class ChaosMonkeySpec:
     unit_test_case_requirement: UnitTestCaseRequirement
 
-@dataclass
-class Script:
-    file_content: str
 
 def GenerateUnitTestCaseSpec(
     chaos_monkey_spec: ChaosMonkeySpec
