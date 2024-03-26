@@ -95,8 +95,13 @@ void ExpandAsKernel(const Context& ctx,
                     const paddle::optional<DenseTensor>& y,
                     const std::vector<int>& target_shape,
                     DenseTensor* out) {
+  std::vector<int> real_target_shape = target_shape;
+  if (y && y->IsInitialized()) {
+    real_target_shape = common::vectorize<int>(y->dims());
+  }
+
   auto rank = x.dims().size();
-  auto target_rank = target_shape.size();
+  auto target_rank = real_target_shape.size();
   PADDLE_ENFORCE_GE(target_rank,
                     rank,
                     phi::errors::InvalidArgument(
@@ -118,7 +123,7 @@ void ExpandAsKernel(const Context& ctx,
                         "expand_as_v2 op must be less than or equal to %d.",
                         target_rank,
                         MAX_RANK_SUPPORTED));
-  ExpandAs<Context, T>(ctx, x, target_shape, out);
+  ExpandAs<Context, T>(ctx, x, real_target_shape, out);
 }
 }  // namespace phi
 
