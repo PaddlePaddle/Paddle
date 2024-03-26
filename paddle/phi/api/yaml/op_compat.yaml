@@ -2644,6 +2644,12 @@
 - op : pull_box_sparse
   inputs :
     { w : W, ids: Ids}
+  outputs :
+    out : Out
+  attrs :
+    sparse : is_sparse
+  extra :
+    attrs : [bool is_sparse = false, bool is_distributed = false, int size = 1]
 
 - op : push_sparse_v2
   inputs :
