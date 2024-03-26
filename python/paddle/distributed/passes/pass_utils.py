@@ -276,11 +276,10 @@ def set_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
             f"Skip gc vars for {job_type}-({micro_batch_id}): {skip_gc_vars}"
         )
 
-        if job_type == "backward":
-            if not ("backward_b" in job_types or "backward_w" in job_types):
-                assert (
-                    len(skip_gc_vars) == 0
-                ), f"When enabling pipeline parallelism strategy, the skip_gc_vars for backward subprogram must be empty, but it is {skip_gc_vars}."
+        if job_type in ["backward", "backward_w"]:
+            assert (
+                len(skip_gc_vars) == 0
+            ), f"When enabling pipeline parallelism strategy, the skip_gc_vars for {job_type} subprogram must be empty, but it is {skip_gc_vars}."
 
         job.set_skip_gc_vars(skip_gc_vars)
         suffixed_required_vars[micro_batch_id] |= required_vars
@@ -773,16 +772,15 @@ def _program_for_vpp(
 
 
 def _get_backward_op_type(block, op):
-    only_backward_w = 0
     for name in op.output_arg_names:
         name = name.split("@")[0]
-        if block._find_var_recursive(name):
-            var = block._find_var_recursive(name)
-            if not var.is_parameter:
-                return "backward_b"
-            else:
-                only_backward_w = 1
-    return "backward_w" if only_backward_w else "backward_b"
+        if not block._find_var_recursive(name):
+            return "backward_b"
+        var = block._find_var_recursive(name)
+        if not var.is_parameter:
+            return "backward_b"
+
+    return "backward_w"
 
 
 def _program_for_zero_bubble(program):

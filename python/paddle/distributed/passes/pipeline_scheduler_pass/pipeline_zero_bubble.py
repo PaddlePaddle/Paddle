@@ -84,8 +84,6 @@ class PipelineZeroBubblePipelinePass(PipelinePassBase):
             job_list.append(backward_job)
             backward_micro_batch_id += 1
 
-        backward_w_micro_batch_id = 0
-
         if pp_stage > 0:
             backward_b_job = core.Job(BACKWARD + '_b')
             backward_b_job.set_micro_batch_id(backward_micro_batch_id)
@@ -115,7 +113,11 @@ class PipelineZeroBubblePipelinePass(PipelinePassBase):
             matmul_grad_op_idx = []
             ops = block.ops
             for i, op_i in enumerate(ops):
-                if op_i.type == "matmul_v2_grad":
+                if (
+                    op_i.type == "matmul_v2_grad"
+                    and not op_i.attr("trans_x")
+                    and not op_i.attr("trans_y")
+                ):
                     matmul_grad_op_idx.append(i)
 
             for matmul_grad_id in reversed(matmul_grad_op_idx):
