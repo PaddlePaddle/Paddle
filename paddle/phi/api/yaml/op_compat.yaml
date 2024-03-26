@@ -2685,7 +2685,7 @@
     {table_id : TableId, scale_data_norm : ScaleDataNorm, input_names: InputNames}
 
 - op : pull_sparse_v2
-    inputs :
+  inputs :
     { ids : Ids, W : w}
   outputs :
     out : Out
