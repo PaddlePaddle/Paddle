@@ -25,6 +25,7 @@ void KLDivLossGradKernel(const Context& dev_ctx,
                          const DenseTensor& label,
                          const DenseTensor& d_out,
                          const std::string& reduction,
+                         bool log_target,
                          DenseTensor* d_x) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(d_x);
