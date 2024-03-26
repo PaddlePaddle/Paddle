@@ -264,8 +264,8 @@ bool RandintOpInferSymbolicShape(
 bool TrilIndicesOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   const auto &attributes = op->attributes();
-  int rows = attributes.at("row").dyn_cast<pir::Int32Attribute>().data();
-  int cols = attributes.at("col").dyn_cast<pir::Int32Attribute>().data();
+  int rows = attributes.at("rows").dyn_cast<pir::Int32Attribute>().data();
+  int cols = attributes.at("cols").dyn_cast<pir::Int32Attribute>().data();
   int offset = attributes.at("offset").dyn_cast<pir::Int32Attribute>().data();
 
   const auto &out_sym_shape = [&] {
