@@ -310,6 +310,7 @@ try:
         _set_cached_executor_build_strategy,
         _set_current_stream,
         _set_eager_deletion_mode,
+        _set_falsh_attn_lib_path,
         _set_fuse_parameter_group_size,
         _set_fuse_parameter_memory_size,
         _set_paddle_lib_path,

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib
+
 import paddle
 import paddle.nn.functional as F
 from paddle import _C_ops, in_dynamic_mode
@@ -22,6 +24,7 @@ from paddle.base.wrapped_decorator import signature_safe_contextmanager
 g_enable_math = None
 g_enable_flash = None
 g_enable_mem_efficient = None
+g_enable_flash_attn_advanced = False
 
 
 @signature_safe_contextmanager
@@ -142,6 +145,19 @@ def _select_sdp(head_dim):
     if g_enable_flash is True:
         return "flash_attn"
     return "mem_efficient"
+
+
+def set_flash_attn_lib():
+    global g_enable_flash_attn_advanced
+    package_path = importlib.util.find_spec('paddle_flash_attn')
+    if package_path is not None:
+        paddle.base.core._set_falsh_attn_lib_path(
+            package_path.submodule_search_locations[0]
+        )
+        g_enable_flash_attn_advanced = True
+
+
+set_flash_attn_lib()
 
 
 def flash_attention(
@@ -506,6 +522,10 @@ def scaled_dot_product_attention(
         out, _ = flash_attention(query, key, value, dropout_p, is_causal)
         return out
     else:
+        if not g_enable_flash_attn_advanced:
+            raise RuntimeError(
+                "attn_mask requires advanced flash attention. Try : pip install paddle_flash_attn."
+            )
         if in_dynamic_or_pir_mode():
             fixed_seed_offset = (None,)
             return_softmax = False

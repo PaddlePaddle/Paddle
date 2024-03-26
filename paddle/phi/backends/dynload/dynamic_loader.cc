@@ -44,6 +44,7 @@ COMMON_DECLARE_string(cusparselt_dir);
 COMMON_DECLARE_string(curand_dir);
 COMMON_DECLARE_string(cusolver_dir);
 COMMON_DECLARE_string(cusparse_dir);
+
 #ifdef PADDLE_WITH_HIP
 
 PHI_DEFINE_string(miopen_dir,
@@ -87,6 +88,7 @@ static constexpr char cuda_lib_path[] = "/usr/local/cuda/lib64";  // NOLINT
 #endif
 
 static PathNode s_py_site_pkg_path;
+static PathNode s_pkg_flash_attn_path;
 
 #if defined(_WIN32) && defined(PADDLE_WITH_CUDA)
 static constexpr char* win_cudnn_lib = "cudnn64_" CUDNN_MAJOR_VERSION ".dll";
@@ -166,6 +168,15 @@ static inline std::vector<std::string> split(
 void SetPaddleLibPath(const std::string& py_site_pkg_path) {
   s_py_site_pkg_path.path = py_site_pkg_path;
   VLOG(3) << "Set paddle lib path : " << py_site_pkg_path;
+}
+
+void SetFalshAttnLibPath(const std::string& py_site_pkg_path) {
+  s_pkg_flash_attn_path.path = py_site_pkg_path;
+  VLOG(3) << "Set paddle lib path : " << py_site_pkg_path;
+}
+
+bool IsFlashAttnAdvancedSupported() {
+  return !s_pkg_flash_attn_path.path.empty();
 }
 
 static inline void* GetDsoHandleFromSpecificPath(const std::string& spec_path,
@@ -557,11 +568,21 @@ void* GetFlashAttnDsoHandle() {
     flashattn_dir = s_py_site_pkg_path.path;
   }
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(flashattn_dir, "libflashattn.dylib");
+  return GetDsoHandleFromSearchPath(
+      s_pkg_flash_attn_path.path,
+      "libflashattn_advanced.dylib;libflashattn.dylib",
+      true,
+      {flashattn_dir});
 #elif defined(_WIN32)
-  return GetDsoHandleFromSearchPath(flashattn_dir, "flashattn.dll");
+  return GetDsoHandleFromSearchPath(s_pkg_flash_attn_path.path,
+                                    "flashattn_advanced.dll;flashattn.dll",
+                                    true,
+                                    {flashattn_dir});
 #else
-  return GetDsoHandleFromSearchPath(flashattn_dir, "libflashattn.so");
+  return GetDsoHandleFromSearchPath(s_pkg_flash_attn_path.path,
+                                    "libflashattn_advanced.so;libflashattn.so",
+                                    true,
+                                    {flashattn_dir});
 #endif
 }
 

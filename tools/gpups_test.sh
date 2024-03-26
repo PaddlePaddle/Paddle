@@ -80,7 +80,8 @@ parallel_list="^init_phi_test$|\
 ^test_dist_fleet_ps11$|\
 ^test_dist_fleet_ps12$|\
 ^test_executor_feed_non_tensor$|\
-^test_flash_attention$|\
+^test_flash_attn$|\
+^test_flash_attention_deterministic$|\
 ^test_fuse_resunit_pass$|\
 ^test_fused_adam_op$|\
 ^test_fused_attention_no_dropout$|\
@@ -139,6 +140,9 @@ tmpfile1=$tmp_dir/$tmpfile1_rand"_"$i
 set +e
 
 get_quickly_disable_ut||disable_ut_quickly='disable_ut'
+
+pip uninstall -y paddle-flash-attn
+python -m pip install --no-cache-dir https://paddle-qa.cdn.bcebos.com/xieyunshen/TempBuild/paddle_flash_attn-2.0.8%2Bcu12.0-py3-none-linux_x86_64.whl
 
 NUM_PROC=4
 EXIT_CODE=0
