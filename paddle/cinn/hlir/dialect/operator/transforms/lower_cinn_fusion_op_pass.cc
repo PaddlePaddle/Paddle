@@ -846,19 +846,20 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     auto ir_compiler =
         cinn::hlir::framework::PirCompilerManager::Create(target);
     auto group = RebuildGroup(fusion_op);
-    // Because the group is rebuilt, the order of group.output_values generated
-    // by BuildCUDAJITInfo may not be same with the order bound in the yield op,
-    // so a mapping is required.
 
-    std::unordered_map<symbol::DimExpr, symbol::DimExpr> update_map;
-    group->set_value_to_shape_or_data_exprs(
-        CreateGroupShapeOrDataExprs(group, shape_analysis, &update_map));
-
-    for (size_t i = 0; i < group->loop_ranges_expr.size(); ++i) {
-      if (update_map.count(group->loop_ranges_expr[i])) {
-        group->loop_ranges_expr[i] = update_map.at(group->loop_ranges_expr[i]);
+    const std::vector<symbol::DimExpr> new_loop_ranges_expr = [&] {
+      std::unordered_map<symbol::DimExpr, symbol::DimExpr> update_map;
+      group->set_value_to_shape_or_data_exprs(
+          CreateGroupShapeOrDataExprs(group, shape_analysis, &update_map));
+      std::vector<symbol::DimExpr> new_loop_ranges_expr =
+          group->loop_ranges_expr();
+      for (size_t i = 0; i < new_loop_ranges_expr.size(); ++i) {
+        if (update_map.count(new_loop_ranges_expr[i])) {
+          new_loop_ranges_expr[i] = update_map.at(new_loop_ranges_expr[i]);
+        }
       }
-    }
+    }();
+    group->set_loop_ranges_expr(new_loop_ranges_expr);
 
     if (FLAGS_cinn_enable_map_expr) {
       cinn::adt::TryGenerateMapExprFromGroup(group);
