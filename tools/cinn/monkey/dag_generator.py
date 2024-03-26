@@ -1,6 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from .pick_weight import PickWeight
-from typing import List
+from typing import List, Union
 from collections import namedtuple
 import functools
 import random
@@ -21,21 +21,41 @@ class DAGGenTypePickProbability:
 @dataclass
 class DAGGenRequirement:
     min_num_sources: int = 1
-    max_width: int
+    max_num_sources: int = 5
+    min_num_sinks: int = 1
+    max_num_sinks: int = 5
+    min_width: int = 1
+    max_width: int = 10
     max_instructions: int
     dag_tag: str
     pick_probability: DAGGenTypePickProbability
 
+    def CheckFields(self):
+        assert self.min_num_sources >= 0
+        assert self.max_num_sources >= self.min_num_sources
+        assert self.min_num_sinks > 0
+        assert self.max_num_sinks >= self.min_num_sinks
+        assert self.min_width > 0
+        assert self.max_width >= self.min_width
+
+@dataclass
+class DAGGenContext:
+    num_source_tensors: int
+    num_sink_tensors: int
+
+
 @dataclass
 class Nope:
+
+    def __hash__(self):
+        return self.GetHashValue()
 
     def GetHashValue(self):
         return int(id(Nope))
 
     def IsValidSourceTensorIndex(
         self,
-        num_core_source_tensors: int,
-        num_source_tensors: int
+        ctx: DAGGenContext
     ) -> bool:
         return True
     
@@ -44,11 +64,14 @@ class Nope:
         return 0
 
     @classmethod
+    def GetDeltaNumSinkTensors(cls):
+        return 0
+
+    @classmethod
     def RandomGenerate(
         cls,
         requirement: DAGGenRequirement,
-        num_core_source_tensors: int,
-        num_source_tensors: int
+        ctx: DAGGenContext
     ):
         return Nope()
 
@@ -62,22 +85,36 @@ class Nope:
     @classmethod
     def IsValidNumSourceTensors(
         cls,
-        num_core_source_tensors: int,
-        num_source_tensors: int,
+        ctx: DAGGenContext,
+        requirement: DAGGenRequirement
+    ) -> bool:
+        return True
+
+    @classmethod
+    def IsValidNumSinkTensors(
+        cls,
+        ctx: DAGGenContext,
         requirement: DAGGenRequirement
     ) -> bool:
         return True
 
 @dataclass
 class AddSinkTensor:
-    
+    dag_tag: str
+
+    def __hash__(self):
+        return self.GetHashValue()
+
     def GetHashValue(self):
         return int(id(AddSinkTensor))
 
+    @classmethod
+    def GetDeltaNumSinkTensors(cls):
+        return 1
+
     def IsValidSourceTensorIndex(
         self,
-        num_core_source_tensors: int,
-        num_source_tensors: int
+        ctx: DAGGenContext
     ) -> bool:
         return True
     
@@ -89,10 +126,11 @@ class AddSinkTensor:
     def RandomGenerate(
         cls,
         requirement: DAGGenRequirement,
-        num_core_source_tensors: int,
-        num_source_tensors: int
+        ctx: DAGGenContext
     ):
-        return AddSinkTensor()
+        return AddSinkTensor(
+            dag_tag=requirement.dag_tag
+        )
 
     @classmethod
     def GetWeight(
@@ -104,16 +142,52 @@ class AddSinkTensor:
     @classmethod
     def IsValidNumSourceTensors(
         cls,
-        num_core_source_tensors: int,
-        num_source_tensors: int,
+        ctx: DAGGenContext,
         requirement: DAGGenRequirement
     ) -> bool:
-        return num_source_tensors <= requirement.max_width
+        return ctx.num_source_tensors <= requirement.max_width
+
+    @classmethod
+    def IsValidNumSinkTensors(
+        cls,
+        ctx: DAGGenContext,
+        requirement: DAGGenRequirement
+    ) -> bool:
+        return True
+
+
+@dataclass
+class NoConvertType:
+    pass
+
+@dataclass
+class ReduceConvertType:
+    pass
+
+@dataclass
+class BroadcastConvertType:
+    pass
+
+@dataclass
+class UnclassifiedConvertType:
+    pass
+
+
+ConvertType = Union[
+    NoConvertType,
+    ReduceConvertType,
+    BroadcastConvertType,
+    UnclassifiedConvertType,
+]
 
 @dataclass
 class AddUnaryOp:
     source_tensor_index: int
     dag_tag: str
+    convert_type: ConvertType
+
+    def __hash__(self):
+        return self.GetHashValue()
 
     def GetHashValue(self):
         hash_value = int(id(AddUnaryOp))
@@ -123,31 +197,29 @@ class AddUnaryOp:
 
     def IsValidSourceTensorIndex(
         self,
-        num_core_source_tensors: int,
-        num_source_tensors: int
+        ctx: DAGGenContext
     ) -> bool:
-        return (self.source_tensor_index >= num_core_source_tensors
-            and self.source_tensor_index < num_source_tensors
-        )
+        return self.source_tensor_index < ctx.num_source_tensors
         
     @classmethod
     def GetDeltaNumSourceTensors(cls):
         return 0
 
     @classmethod
+    def GetDeltaNumSinkTensors(cls):
+        return 0
+
+    @classmethod
     def RandomGenerate(
         cls,
         requirement: DAGGenRequirement,
-        num_core_source_tensors: int,
-        num_source_tensors: int
+        ctx: DAGGenContext
     ):
-        random_int = random.randomint(
-            num_core_source_tensors,
-            num_source_tensors - 1
-        )
+        source_tensor_index = random.randomint(0, ctx.num_source_tensors - 1)
         return AddUnaryOp(
             source_tensor_index=source_tensor_index,
-            dag_tag=requirement.dag_tag
+            dag_tag=requirement.dag_tag,
+            convert_type=NoConvertType()
         )
 
     @classmethod
@@ -160,16 +232,27 @@ class AddUnaryOp:
     @classmethod
     def IsValidNumSourceTensors(
         cls,
-        num_core_source_tensors: int,
-        num_source_tensors: int,
+        ctx: DAGGenContext,
         requirement: DAGGenRequirement
     ) -> bool:
-        return num_core_source_tensors < num_source_tensors
+        return ctx.num_source_tensors > 0
+
+    @classmethod
+    def IsValidNumSinkTensors(
+        cls,
+        ctx: DAGGenContext,
+        requirement: DAGGenRequirement
+    ) -> bool:
+        return ctx.num_sink_tensors >= requirement.min_num_sinks
+
 
 @dataclass
 class AddBinaryOp:
     source_tensor_index: int
     dag_tag: str
+
+    def __hash__(self):
+        return self.GetHashValue()
 
     def GetHashValue(self):
         hash_value = int(id(AddBinaryOp))
@@ -179,28 +262,25 @@ class AddBinaryOp:
 
     def IsValidSourceTensorIndex(
         self,
-        num_core_source_tensors: int,
-        num_source_tensors: int
+        ctx: DAGGenContext
     ) -> bool:
-        return (self.source_tensor_index >= num_core_source_tensors
-            and self.source_tensor_index < num_source_tensors
-        )
+        return self.source_tensor_index < ctx.num_source_tensors
         
     @classmethod
     def GetDeltaNumSourceTensors(cls):
         return 1
 
     @classmethod
+    def GetDeltaNumSinkTensors(cls):
+        return 0
+
+    @classmethod
     def RandomGenerate(
         cls,
         requirement: DAGGenRequirement,
-        num_core_source_tensors: int,
-        num_source_tensors: int
+        ctx: DAGGenContext
     ):
-        random_int = random.randomint(
-            num_core_source_tensors,
-            num_source_tensors - 1
-        )
+        source_tensor_index = random.randomint(0, ctx.num_source_tensors - 1)
         return AddBinaryOp(
             source_tensor_index=source_tensor_index,
             dag_tag=requirement.dag_tag
@@ -216,18 +296,27 @@ class AddBinaryOp:
     @classmethod
     def IsValidNumSourceTensors(
         cls,
-        num_core_source_tensors: int,
-        num_source_tensors: int,
+        ctx: DAGGenContext,
         requirement: DAGGenRequirement
     ) -> bool:
-        return (num_source_tensors <= requirement.max_width
-            and num_core_source_tensors < num_source_tensors
-        )
+        return ctx.num_source_tensors <= requirement.max_width
+
+    @classmethod
+    def IsValidNumSinkTensors(
+        cls,
+        ctx: DAGGenContext,
+        requirement: DAGGenRequirement
+    ) -> bool:
+        return ctx.num_sink_tensors >= requirement.min_num_sinks
+
 
 @dataclass
 class InsertBinaryOp:
     source_tensor_index: int
     dag_tag: str
+
+    def __hash__(self):
+        return self.GetHashValue()
 
     def GetHashValue(self):
         hash_value = int(id(InsertBinaryOp))
@@ -237,27 +326,27 @@ class InsertBinaryOp:
 
     def IsValidSourceTensorIndex(
         self,
-        num_core_source_tensors: int,
-        num_source_tensors: int
+        ctx: DAGGenContext
     ) -> bool:
-        return (self.source_tensor_index >= 0
-            and self.source_tensor_index < num_core_source_tensors
-        )
+        return self.source_tensor_index < ctx.num_source_tensors
     
     @classmethod
     def GetDeltaNumSourceTensors(cls):
         return 1
 
     @classmethod
+    def GetDeltaNumSinkTensors(cls):
+        return 0
+
+    @classmethod
     def RandomGenerate(
         cls,
         requirement: DAGGenRequirement,
-        num_core_source_tensors: int,
-        num_source_tensors: int
+        ctx: DAGGenContext
     ):
-        random_int = random.randomint(
+        source_tensor_index = random.randomint(
             0,
-            num_core_source_tensors - 1
+            ctx.num_source_tensors - 1
         )
         return InsertBinaryOp(
             source_tensor_index=source_tensor_index,
@@ -274,18 +363,28 @@ class InsertBinaryOp:
     @classmethod
     def IsValidNumSourceTensors(
         cls,
-        num_core_source_tensors: int,
-        num_source_tensors: int,
+        ctx: DAGGenContext,
         requirement: DAGGenRequirement
     ) -> bool:
-        return (num_source_tensors <= requirement.max_width
-            and num_core_source_tensors > 0
-        )
+        return ctx.num_source_tensors <= requirement.max_width
+
+    @classmethod
+    def IsValidNumSinkTensors(
+        cls,
+        ctx: DAGGenContext,
+        requirement: DAGGenRequirement
+    ) -> bool:
+        return ctx.num_sink_tensors >= requirement.min_num_sinks
+
 
 @dataclass
 class AddBinaryClone:
     lhs_source_tensor_index: int
     rhs_source_tensor_index: int
+    dag_tag: str
+
+    def __hash__(self):
+        return self.GetHashValue()
 
     def GetHashValue(self):
         hash_value = int(id(AddBinaryClone))
@@ -295,13 +394,13 @@ class AddBinaryClone:
 
     def IsValidSourceTensorIndex(
         self,
-        num_core_source_tensors: int,
-        num_source_tensors: int
+        ctx: DAGGenContext
     ) -> bool:
         return (self.lhs_source_tensor_index >= 0
-            and self.lhs_source_tensor_index < num_source_tensors
-            and self.rhs_source_tensor_index >= num_core_source_tensors
-            and self.rhs_source_tensor_index < num_source_tensors
+            and self.lhs_source_tensor_index < ctx.num_source_tensors
+            and self.rhs_source_tensor_index >= 0
+            and self.rhs_source_tensor_index < ctx.num_source_tensors
+            and self.lhs_source_tensor_index != self.rhs_source_tensor_index
         )
 
     @classmethod
@@ -309,22 +408,26 @@ class AddBinaryClone:
         return -1
 
     @classmethod
+    def GetDeltaNumSinkTensors(cls):
+        return 0
+
+    @classmethod
     def RandomGenerate(
         cls,
         requirement: DAGGenRequirement,
-        num_core_source_tensors: int,
-        num_source_tensors: int
+        ctx: DAGGenContext
     ):
         lhs_random_int = random.randomint(
-            0, num_source_tensors - 1
+            0, ctx.num_source_tensors - 1
         )
         rhs_random_int = random.randomint(
-            num_core_source_tensors,
-            num_source_tensors - 1
+            0,
+            ctx.num_source_tensors - 1
         )
         return AddBinaryClone(
             lhs_source_tensor_index=lhs_random_int,
             rhs_source_tensor_index=rhs_random_int,
+            dag_tag=requirement.dag_tag
         )
 
     @classmethod
@@ -337,15 +440,27 @@ class AddBinaryClone:
     @classmethod
     def IsValidNumSourceTensors(
         cls,
-        num_core_source_tensors: int,
-        num_source_tensors: int,
+        ctx: DAGGenContext,
         requirement: DAGGenRequirement
     ) -> bool:
-        return num_core_source_tensors < num_source_tensors
+        return ctx.num_source_tensors > 1
+
+    @classmethod
+    def IsValidNumSinkTensors(
+        cls,
+        ctx: DAGGenContext,
+        requirement: DAGGenRequirement
+    ) -> bool:
+        return ctx.num_sink_tensors >= requirement.min_num_sinks
+
 
 @dataclass
 class AddSourceOp:
     source_tensor_index: int
+    dag_tag: str
+
+    def __hash__(self):
+        return self.GetHashValue()
 
     def GetHashValue(self):
         hash_value = int(id(AddBinaryClone))
@@ -354,27 +469,27 @@ class AddSourceOp:
 
     def IsValidSourceTensorIndex(
         self,
-        num_core_source_tensors: int,
-        num_source_tensors: int
+        ctx: DAGGenContext
     ) -> bool:
-        return (self.source_tensor_index >= num_core_source_tensors
-            and self.source_tensor_index < num_source_tensors
-        )
+        return self.source_tensor_index < ctx.num_source_tensors
 
     @classmethod
     def GetDeltaNumSourceTensors(cls):
         return -1
 
     @classmethod
+    def GetDeltaNumSinkTensors(cls):
+        return 0
+
+    @classmethod
     def RandomGenerate(
         cls,
         requirement: DAGGenRequirement,
-        num_core_source_tensors: int,
-        num_source_tensors: int
+        ctx: DAGGenContext
     ):
-        random_int = random.randomint(
-            num_core_source_tensors,
-            num_source_tensors - 1
+        source_tensor_index = random.randomint(
+            0,
+            ctx.num_source_tensors - 1
         )
         return AddSourceOp(
             source_tensor_index=source_tensor_index,
@@ -391,23 +506,29 @@ class AddSourceOp:
     @classmethod
     def IsValidNumSourceTensors(
         cls,
-        num_core_source_tensors: int,
-        num_source_tensors: int,
+        ctx: DAGGenContext,
         requirement: DAGGenRequirement
     ) -> bool:
-        return (
-            num_core_source_tensors < num_source_tensors
-            and num_source_tensors > requirement.min_num_sources
-        )
+        return ctx.num_source_tensors > requirement.min_width
 
-# DAGGenInstruction = ( Nope
-#                     | AddSinkTensor
-#                     | AddUnaryOp
-#                     | AddBinaryOp
-#                     | InsertBinaryOp
-#                     | AddBinaryClone
-#                     | AddSourceOp
-#                     )
+    @classmethod
+    def IsValidNumSinkTensors(
+        cls,
+        ctx: DAGGenContext,
+        requirement: DAGGenRequirement
+    ) -> bool:
+        return ctx.num_sink_tensors >= requirement.min_num_sinks
+
+
+DAGGenInstruction = Union[
+    Nope,
+    AddSinkTensor,
+    AddUnaryOp,
+    AddBinaryOp,
+    InsertBinaryOp,
+    AddBinaryClone,
+    AddSourceOp
+]
 
 kDAGGenInstructionClasses = [
     Nope,
@@ -439,19 +560,17 @@ class DAGGenClassGenerator:
     
     def GetRandomDAGGenClass(
         self,
-        num_core_source_tensors: int,
-        num_source_tensors: int,
+        ctx: DAGGenContext,
         requirement: DAGGenRequirement
     ) -> type:
-        def IsValidNumSources(dag_gen_class):
-            return dag_gen_class.IsValidNumSourceTensors(
-                num_core_source_tensors,
-                num_source_tensors,
-                requirement
+        def IsValidDAGGenClass(dag_gen_class):
+            return (
+                dag_gen_class.IsValidNumSourceTensors(ctx, requirement)
+                and dag_gen_class.IsValidNumSinkTensors(ctx, requirement)
             )
         rolling_ranges = type(self)._MakeRollingRange(
             self.pick_probability,
-            [x for x in kDAGGenInstructionClasses if IsValidNumSources(x)]
+            [x for x in kDAGGenInstructionClasses if IsValidDAGGenClass(x)]
         )
         def Roll():
             random_int = random.randomint(0, type(self)._RollingLimit())
@@ -497,106 +616,107 @@ class DAGGenClassGenerator:
         return 10000
 
 
-class ConstDAGGenInstructions:
-    def __init__(
-        self,
-        instructions: List["DAGGenInstruction"]
-    ):
-        self.instructions = instructions[:]
-        self.current_num_source_tensors = 0
-
-    def Top(self):
-        if len(self.instructions) == 0:
-            return None
-        return self.instructions[0]
-
-    def TryPop(self):
-        if len(self.instructions) == 0:
-            if self.current_num_source_tensors > 0:
-                self.current_num_source_tensors = 0
-            return
-        top = self.instructions[0]
-        self.current_num_source_tensors += type(top).GetDeltaNumSourceTensors()
-        self.instructions.pop(0)
-
 class MutDAGGenInstructions:
     def __init__(self):
         self.instructions = []
         self.current_num_source_tensors = 0
+        self.current_num_sink_tensors = 0
 
     def Push(
         self,
         instruction: "DAGGenInstruction"
     ):
-        self.instructions.insert(0, instruction)
+        self.instructions.append(instruction)
         top = instruction
         self.current_num_source_tensors += type(top).GetDeltaNumSourceTensors()
+        self.current_num_sink_tensors += type(top).GetDeltaNumSinkTensors()
 
-class DAGGenContext:
+class TailAndBodyDAGGenerator:
     def __init__(
         self,
-        requirement: DAGGenRequirement,
-        core_dag_gen_instructions: List["DAGGenInstruction"]
+        requirement: DAGGenRequirement
     ):
         self.requirement = requirement
-        self.core_dag_gen_instructions = ConstDAGGenInstructions(
-            core_dag_gen_instructions
-        )
         self.result_dag_gen_instructions = MutDAGGenInstructions()
-
-    def result_instructions(self):
-        return self.result_dag_gen_instructions.instructions
-
-    def GenerateOneInstruction(self, Converter):
-        ctx.result_dag_gen_instructions.Push(self.core_dag_gen_instructions.Top())
-        self.core_dag_gen_instructions.TryPop()
-        num_core_source_tensors = (
-            self.core_dag_gen_instructions.current_num_source_tensors
-        )
-        num_source_tensors = (
-            self.result_dag_gen_instructions.current_num_source_tensors
-        )
-        new_instruction = Converter(num_core_source_tensors, num_source_tensors)
-        is_valid = new_instruction.IsValidSourceTensorIndex(
-            num_core_source_tensors,
-            num_source_tensors
-        )
-        if is_valid:
-            ctx.result_dag_gen_instructions.Push(new_instruction)
-
-class DAGGenerator:
-    def __init__(self, requirement: DAGGenRequirement):
-        self.requirement = requirement
         self.dag_gen_class_generator = DAGGenClassGenerator(
             requirement.pick_probability
         )
-    
-    # Instructions generating sink nodes of DAG are on the front of list.
-    def Generate(
-            self,
-            core_instructions: List["DAGGenInstruction"]
-        ) -> List["DAGGenInstruction"]:
-        core_instructions = core_instructions[:]
-        ctx = DAGGenContext(self.requirement, core_instructions)
-        def MakeInstruction(num_core_sources: int, num_sources: int):
-            return self._MakeRandomInstruction(ctx, num_core_sources, num_sources)
+
+    def GenerateTailAndBody(self) -> List["DAGGenInstruction"]:
+        def MakeInstruction(ctx: DAGGenContext):
+            return self._MakeRandomInstruction(ctx)
         for i in range(self.requirement.max_instructions):
-            ctx.GenerateOneInstruction(MakeInstruction)
-        return list(reversed(ctx.result_instructions()))
+            self._GenerateOneInstruction(MakeInstruction)
+        return self.result_dag_gen_instructions.instructions
+
+    def _GenerateOneInstruction(self, Converter):
+        ctx = DAGGenContext(
+            num_source_tensors = (
+                self.result_dag_gen_instructions.current_num_source_tensors
+            ),
+            num_sink_tensors = (
+                self.result_dag_gen_instructions.current_num_sink_tensors
+            )
+        )
+        new_instruction = Converter(ctx)
+        is_valid = new_instruction.IsValidSourceTensorIndex(ctx)
+        if is_valid:
+            self.result_dag_gen_instructions.Push(new_instruction)
 
     def _MakeRandomInstruction(
             self,
-            ctx: DAGGenContext,
-            num_core_source_tensors: int,
-            num_source_tensors: int
+            ctx: DAGGenContext
         ):
         dag_gen_class = self.dag_gen_class_generator.GetRandomDAGGenClass(
-            num_core_source_tensors,
-            num_source_tensors,
+            ctx,
             self.requirement
         )
-        return dag_gen_class.RandomGenerate(
-            ctx.requirement,
-            num_core_source_tensors,
-            num_source_tensors
-        )
+        return dag_gen_class.RandomGenerate(self.requirement, ctx)
+
+class DAGGenerator:
+    def __init__(self, requirement: DAGGenRequirement):
+        requirement.CheckFields()
+        self.requirement = requirement
+    
+    # Instructions generating sink nodes of DAG are on the front of list.
+    def Generate(self) -> List["DAGGenInstruction"]:
+        tail_and_body_generator = TailAndBodyDAGGenerator(self.requirement)
+        dag_gen_instructions = tail_and_body_generator.GenerateTailAndBody()
+        dag_gen_instructions = self._FixByMaxNumSinkTensors(dag_gen_instructions)
+        dag_gen_instructions = self._FixByMinNumSourceTensors(dag_gen_instructions)
+
+    def _FixByMinNumSourceTensors(
+        self,
+        dag_gen_instructions: List["DAGGenInstruction"]
+    ) -> List["DAGGenInstruction"]:
+        TODO()
+
+    def _FixByMaxNumSinkTensors(
+        self,
+        dag_gen_instructions: List["DAGGenInstruction"]
+    ) -> List["DAGGenInstruction"]:
+        num_sink_tensors = 0
+        num_source_tensors = 0
+        def TryReplaceAddSinkTensor(dag_gen_instruction):
+            nonlocal num_sink_tensors
+            if type(dag_gen_instruction) is not AddSinkTensor:
+                return dag_gen_instruction
+            if num_sink_tensors < self.requirement.max_num_sinks:
+                num_sink_tensors += 1
+                return dag_gen_instruction
+            assert num_source_tensors > 0
+            source_tensor_index = random.randomint(0, num_source_tensors - 1)
+            # replace AddSinkTensor with InsertBinaryOp
+            return InsertBinaryOp(
+                source_tensor_index=source_tensor_index,
+                dag_tag=self.requirement.dag_tag
+            )
+        def TryReplaceAddSinkTensorAndInferNumSourceTensors(instr):
+            ret_instr = TryReplaceAddSinkTensor(instr)
+            nonlocal num_source_tensors
+            num_source_tensors += type(instr).GetDeltaNumSourceTensors()
+            return ret_instr
+        return [
+            TryReplaceAddSinkTensorAndInferNumSourceTensors(x)
+            for x in dag_gen_instructions
+        ]

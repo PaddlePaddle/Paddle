@@ -6,20 +6,34 @@ from .pick_weight import PickWeight
 from typing import List, Generator
 from collections import namedtuple
 from .defensive_list import DList
+from .instruction_id import InstructionId, MakeUniqueInstructionId
+
+
+@dataclass
+class PatchContext:
+    dag_gen_instruction: "DAGGenInstruction"
+    instruction_id: InstructionId
+    dims_eq1_signature: "DimsEq1Signature"
+
+@dataclass
+class DAGDimsEq1Instruction:
+    dag_gen_instruction: "DAGGenInstruction"
+    instruction_id: InstructionId
+    dims_eq1_instruction: "DimsEq1GenInstruction"
 
 
 @dataclass
 class Nope:
 
     @classmethod
-    def GetPatchedDAGDimsEq1GenInstruction(
+    def Patch(
         cls,
-        dag_gen_instruction: "DAGGenInstruction",
-        dims_eq1_signature: "DimsEq1Signature"
-    ) -> Generator["DAGGenInstruction", "DimsEq1GenInstruction"]:
-        yield (
-            dag_generator.Nope(),
-            dims_eq1_generator.Nope()
+        ctx: PatchContext
+    ) -> Generator[DAGDimsEq1Instruction]:
+        yield DAGDimsEq1Instruction(
+            dag_gen_instruction=ctx.dag_gen_instruction,
+            instruction_id=ctx.instruction_id
+            dims_eq1_instruction=dims_eq1_generator.Nope()
         )
 
 
@@ -27,14 +41,14 @@ class Nope:
 class AddSinkTensor:
 
     @classmethod
-    def GetPatchedDAGDimsEq1GenInstruction(
+    def Patch(
         cls,
-        dag_gen_instruction: "DAGGenInstruction",
-        dims_eq1_signature: "DimsEq1Signature"
-    ) -> Generator["DAGGenInstruction", "DimsEq1GenInstruction"]:
-        yield (
-            dag_generator.AddSinkTensor(),
-            dims_eq1_generator.AddSinkTensor()
+        ctx: PatchContext
+    ) -> Generator[DAGDimsEq1Instruction]:
+        yield DAGDimsEq1Instruction(
+            dag_gen_instruction=ctx.dag_gen_instruction,
+            instruction_id=ctx.instruction_id
+            dims_eq1_instruction=dims_eq1_generator.AddSinkTensor()
         )
 
 
@@ -42,62 +56,84 @@ class AddSinkTensor:
 class AddUnaryOp:
 
     @classmethod
-    def GetPatchedDAGDimsEq1GenInstruction(
+    def Patch(
         cls,
-        dag_gen_instruction: "DAGGenInstruction",
-        dims_eq1_signature: "DimsEq1Signature"
-    ) -> Generator["DAGGenInstruction", "DimsEq1GenInstruction"]:
-        input_dims_eq1 = dims_eq1_signature.input_dims_eq1
-        output_dims_eq1 = dims_eq1_signature.output_dims_eq1
+        ctx: PatchContext
+    ) -> Generator[DAGDimsEq1Instruction]:
+        input_dims_eq1 = ctx.dims_eq1_signature.input_dims_eq1
+        output_dims_eq1 = ctx.dims_eq1_signature.output_dims_eq1
         middle_dims_eq1 = [
             x and y
             for x, y in zip(input_dims_eq1, output_dims_eq1)
         ]
         if middle_dims_eq1 != output_dims_eq1:
-            yield (
-                dag_gen_instruction,
-                dims_eq1_generator.AddUnaryOp(
+            yield DAGDimsEq1Instruction(
+                dag_gen_instruction=dag_gen_generator.AddUnaryOp(
+                    .source_tensor_index=ctx.dag_gen_instruction.source_tensor_index
+                    .dag_tag=ctx.dag_gen_instruction.dag_tag,
+                    .convert_type=dag_gen_generator.ReduceConvertType()
+                ),
+                instruction_id=MakeUniqueInstructionId(),
+                dims_eq1_instruction=dims_eq1_generator.AddUnaryOp(
                     source_tensor_dim_eq1=middle_dims_eq1
                 )
             )
-        yield (
-            dag_gen_instruction,
-            dims_eq1_generator.AddUnaryOp(
+        if input_dims_eq1 != middle_dims_eq1:
+            yield DAGDimsEq1Instruction(
+                dag_gen_instruction=dag_gen_generator.AddUnaryOp(
+                    .source_tensor_index=ctx.dag_gen_instruction.source_tensor_index
+                    .dag_tag=ctx.dag_gen_instruction.dag_tag,
+                    .convert_type=dag_gen_generator.BroadcastConvertType()
+                ),
+                instruction_id=MakeUniqueInstructionId(),
+                dims_eq1_instruction=dims_eq1_generator.AddUnaryOp(
+                    source_tensor_dim_eq1=input_dims_eq1
+                )
+            )
+        yield DAGDimsEq1Instruction(
+            dag_gen_instruction=dag_gen_generator.AddUnaryOp(
+                .source_tensor_index=ctx.dag_gen_instruction.source_tensor_index
+                .dag_tag=ctx.dag_gen_instruction.dag_tag,
+                .convert_type=dag_gen_generator.NoConvertType()
+            ),
+            instruction_id=ctx.instruction_id,
+            dims_eq1_instruction=dims_eq1_generator.AddUnaryOp(
                 source_tensor_dim_eq1=input_dims_eq1
             )
         )
-
 
 @dataclass
 class AddBinaryOp:
 
     @classmethod
-    def GetPatchedDAGDimsEq1GenInstruction(
+    def Patch(
         cls,
-        dag_gen_instruction: "DAGGenInstruction",
-        dims_eq1_signature: "DimsEq1Signature"
-    ) -> Generator["DAGGenInstruction", "DimsEq1GenInstruction"]:
-        lhs_input_dims_eq1 = dims_eq1_signature.lhs_input_dims_eq1
-        rhs_input_dims_eq1 = dims_eq1_signature.rhs_input_dims_eq1
-        output_dims_eq1 = dims_eq1_signature.output_dims_eq1
-        output_idx = dag_gen_instruction.source_tensor_index
+        ctx: PatchContext
+    ) -> Generator[DAGDimsEq1Instruction]:
+        lhs_input_dims_eq1 = ctx.dims_eq1_signature.lhs_input_dims_eq1
+        rhs_input_dims_eq1 = ctx.dims_eq1_signature.rhs_input_dims_eq1
+        output_dims_eq1 = ctx.dims_eq1_signature.output_dims_eq1
+        output_idx = ctx.dag_gen_instruction.source_tensor_index
         broadcast_dims_eq1 = [
             x or y
             for x, y in zip(lhs_input_dims_eq1, rhs_input_dims_eq1)
         ]
         if broadcast_dims_eq1 != output_dims_eq1:
-            yield (
-                dag_generator.AddUnaryOp(
+            yield DAGDimsEq1Instruction(
+                dag_gen_instruction=dag_generator.AddUnaryOp(
                     source_tensor_index=output_idx,
-                    dag_tag=dims_eq1_signature.dag_tag
+                    dag_tag=dims_eq1_signature.dag_tag,
+                    convert_type=dag_generator.UnclassifiedConvertType()
                 ),
-                dims_eq1_generator.AddUnaryOp(
+                instruction_id=MakeUniqueInstructionId(),
+                dims_eq1_instruction=dims_eq1_generator.AddUnaryOp(
                     source_tensor_dim_eq1=broadcast_dims_eq1
                 )
             )
-        yield (
-            dag_gen_instruction,
-            dim_eq1_generator.AddBinaryOp(
+        yield DAGDimsEq1Instruction(
+            dag_gen_instruction=ctx.dag_gen_instruction,
+            instruction_id=ctx.instruction_id
+            dims_eq1_instruction=dim_eq1_generator.AddBinaryOp(
                 lhs_source_tensor_dim_eq1=lhs_input_dims_eq1,
                 rhs_source_tensor_dim_eq1=rhs_input_dims_eq1
             )
@@ -108,33 +144,35 @@ class AddBinaryOp:
 class InsertBinaryOp:
 
     @classmethod
-    def GetPatchedDAGDimsEq1GenInstruction(
+    def Patch(
         cls,
-        dag_gen_instruction: "DAGGenInstruction",
-        dims_eq1_signature: "DimsEq1Signature"
-    ) -> Generator["DAGGenInstruction", "DimsEq1GenInstruction"]:
-        lhs_input_dims_eq1 = dims_eq1_signature.lhs_input_dims_eq1
-        rhs_input_dims_eq1 = dims_eq1_signature.rhs_input_dims_eq1
-        output_dims_eq1 = dims_eq1_signature.output_dims_eq1
-        output_idx = dag_gen_instruction.source_tensor_index
+        ctx: PatchContext
+    ) -> Generator[DAGDimsEq1Instruction]:
+        lhs_input_dims_eq1 = ctx.dims_eq1_signature.lhs_input_dims_eq1
+        rhs_input_dims_eq1 = ctx.dims_eq1_signature.rhs_input_dims_eq1
+        output_dims_eq1 = ctx.dims_eq1_signature.output_dims_eq1
+        output_idx = ctx.dag_gen_instruction.source_tensor_index
         middle_dims_eq1 = [
             x and y
             for x, y in zip(output_dims_eq1, rhs_input_dims_eq1)
         ]
-        yield (
-            dag_gen_instruction,
-            dims_eq1_gen_instructions.InsertBinaryOp(
+        yield DAGDimsEq1Instruction(
+            dag_gen_instruction=ctx.dag_gen_instruction,
+            instruction_id=ctx.instruction_id,
+            dims_eq1_instruction=dims_eq1_gen_instructions.InsertBinaryOp(
                 rhs_source_tensor_dim_eq1=middle_dims_eq1
             )
         )
         new_output_idx = dims_eq1_signature.rhs_input_source_tensor_index
         if rhs_input_dims_eq1 != middle_dims_eq1:
-            yield (
-                dag_generator.AddUnaryOp(
+            yield DAGDimsEq1Instruction(
+                dag_gen_instruction=dag_generator.AddUnaryOp(
                     source_tensor_index=new_output_idx,
-                    dag_tag=dag_gen_instruction.dag_tag
+                    dag_tag=dag_gen_instruction.dag_tag,
+                    convert_type=dag_generator.UnclassifiedConvertType()
                 ),
-                dims_eq1_generator.AddUnaryOp(
+                instruction_id=MakeUniqueInstructionId(),
+                dims_eq1_instruction=dims_eq1_generator.AddUnaryOp(
                     source_tensor_dim_eq1=rhs_input_dims_eq1
                 )
             )
@@ -144,27 +182,29 @@ class InsertBinaryOp:
 class AddBinaryClone:
 
     @classmethod
-    def GetPatchedDAGDimsEq1GenInstruction(
+    def Patch(
         cls,
-        dag_gen_instruction: "DAGGenInstruction",
-        dims_eq1_signature: "DimsEq1Signature"
-    ) -> Generator["DAGGenInstruction", "DimsEq1GenInstruction"]:
-        lhs_input_dims_eq1 = dims_eq1_signature.lhs_input_dims_eq1
-        rhs_input_dix = dag_gen_instruction.rhs_source_tensor_index
-        rhs_input_dims_eq1 = dims_eq1_signature.rhs_input_dims_eq1
+        ctx: PatchContext
+    ) -> Generator[DAGDimsEq1Instruction]:
+        lhs_input_dims_eq1 = ctx.dims_eq1_signature.lhs_input_dims_eq1
+        rhs_input_dix = ctx.dag_gen_instruction.rhs_source_tensor_index
+        rhs_input_dims_eq1 = ctx.dims_eq1_signature.rhs_input_dims_eq1
         if lhs_input_dims_eq1 != rhs_input_dims_eq1:
-            yield (
-                dag_generator.AddUnaryOp(
+            yield DAGDimsEq1Instruction(
+                dag_gen_instruction=dag_generator.AddUnaryOp(
                     source_tensor_index=rhs_input_dix,
-                    dag_tag=dag_gen_instruction.dag_tag
+                    dag_tag=dag_gen_instruction.dag_tag,
+                    convert_type=dag_generator.UnclassifiedConvertType()
                 ),
-                dims_eq1_generator.AddUnaryOp(
+                instruction_id=MakeUniqueInstructionId(),
+                dims_eq1_instruction=dims_eq1_generator.AddUnaryOp(
                     source_tensor_dim_eq1=lhs_input_dims_eq1
                 )
             )
-        yield (
-            dag_gen_instruction,
-            dims_eq1_generator.AddBinaryClone()
+        yield DAGDimsEq1Instruction(
+            dag_gen_instruction=ctx.dag_gen_instruction,
+            instruction_id=ctx.instruction_id,
+            dims_eq1_instruction=dims_eq1_generator.AddBinaryClone()
         )
 
 
@@ -172,12 +212,15 @@ class AddBinaryClone:
 class AddSourceOp:
 
     @classmethod
-    def GetPatchedDAGDimsEq1GenInstruction(
+    def Patch(
         cls,
-        dag_gen_instruction: "DAGGenInstruction",
-        dims_eq1_signature: "DimsEq1Signature"
-    ) -> Generator["DAGGenInstruction", "DimsEq1GenInstruction"]:
-        yield dag_gen_instruction, dims_eq1_generator.AddSourceOp()
+        ctx: PatchContext
+    ) -> Generator[DAGDimsEq1Instruction]:
+        yield DAGDimsEq1Instruction(
+            dag_gen_instruction=ctx.dag_gen_instruction,
+            instruction_id=ctx.instruction_id,
+            dims_eq1_instruction=dims_eq1_generator.AddSourceOp()
+        )
 
 
 kDAGGenClassToDAGDimsEq1GenClassMap = {
@@ -197,51 +240,72 @@ class DAGDimsEq1Patcher:
 
     def Patch(
         self,
-        dag_gen_instruction: List["DAGGenInstruction"],
-        dims_eq1_gen_instructions: List["DimsEq1GenInstruction"]
-    ) -> Tuple[List["DAGGenInstruction"], List["DimsEq1GenInstruction"]]:
+        dag_gen_instrs: List["DAGGenInstruction"],
+        instruction_ids: List[InstructionId],
+        dims_eq1_gen_instrs: List["DimsEq1GenInstruction"]
+    ) -> Tuple[
+            List["DAGGenInstruction"],
+            List[InstructionId],
+            List["DimsEq1GenInstruction"]
+        ]:
+        # inferer
+        inferer = DimsEq1SignatureInferer()
         # first patching
-        guarded_dims_eq1_sigs = DimsEq1SignatureInferer(
-            dag_gen_instruction, dims_eq1_gen_instructions
-        )
-        dag_gen_instruction, dims_eq1_gen_instructions = self.PatchOnce(
-            guarded_dims_eq1_sigs
+        guarded_dims_eq1_sigs = inferer(dag_gen_instrs, dims_eq1_gen_instrs)
+        dag_gen_instrs, instruction_ids, dims_eq1_gen_instrs = self.PatchOnce(
+            instruction_ids, guarded_dims_eq1_sigs
         )
         # second patching
-        guarded_dims_eq1_sigs = DimsEq1SignatureInferer(
-            dag_gen_instruction, dims_eq1_gen_instructions
+        guarded_dims_eq1_sigs = inferer(dag_gen_instrs, dims_eq1_gen_instrs)
+        dag_gen_instrs, instruction_ids, dims_eq1_gen_instrs = self.PatchOnce(
+            instruction_ids, guarded_dims_eq1_sigs
         )
-        dag_gen_instruction, dims_eq1_gen_instructions = self.PatchOnce(
-            guarded_dims_eq1_sigs
+        # third patching
+        guarded_dims_eq1_sigs = inferer(dag_gen_instrs, dims_eq1_gen_instrs)
+        third_time_patched_triple = self.PatchOnce(
+            instruction_ids, guarded_dims_eq1_sigs
         )
-        # thrid patching
-        guarded_dims_eq1_sigs = DimsEq1SignatureInferer(
-            dag_gen_instruction, dims_eq1_gen_instructions
-        )
-        ret_dag_gen_instruction, ret_dims_eq1_gen_instructions = self.PatchOnce(
-            guarded_dims_eq1_sigs
-        )
-        assert len(dag_gen_instruction) == len(ret_dag_gen_instruction)
-        assert len(dims_eq1_gen_instructions) == len(ret_dims_eq1_gen_instructions)
-        return ret_dag_gen_instruction, ret_dims_eq1_gen_instructions
-
-
+        assert third_time_patched_triple[0] == dag_gen_instrs 
+        assert third_time_patched_triple[1] == instruction_ids
+        assert third_time_patched_triple[2] == dims_eq1_gen_instrs
+        return dag_gen_instrs, instruction_ids, dims_eq1_gen_instrs
 
     def PatchOnce(
         self,
+        instruction_ids: List[InstructionId],
         guarded_dims_eq1_sigs: DList["DAGGenInstruction", "DimsEq1Signature"]
     ) -> Tuple[List["DAGGenInstruction"], List["DimsEq1GenInstruction"]]:
-        def CreateDAGDimsEq1GenInstructions(dag_instr, dims_eq1_sig):
+        def CreateDAGDimsEq1GenInstructions(instruction_id, pair):
+            dag_instr, dims_eq1_sig = *pair
             cls = kDAGGenClassToDAGDimsEq1GenClassMap[type(dag_instr.dag)]
-            yield from cls.GetPatchedDAGDimsEq1GenInstruction(
-                dag_instr, dims_eq1_sig,
+            flat_mapped = cls.Patch(
+                PatchContext(
+                    dag_gen_instruction=dag_instr,
+                    instruction_id=instruction_id,
+                    dims_eq1_signature=dims_eq1_sig
+                ),
             )
+            for instruction in flat_mapped:
+                yield (
+                    instruction.dag_gen_instruction,
+                    instruction.instruction_id,
+                    instruction.dims_eq1_instruction
+                )
 
-        pairs = [
-            pair
-            for pair in CreateDAGDimsEq1GenInstructions(*x)
-            for x in guarded_dims_eq1_sigs.Unguard(
+        pairs = zip(
+            instruction_ids,
+            guarded_dims_eq1_sigs.Unguard(
                 lambda key: key.GetHashValue()
             )
+        )
+
+        triples = [
+            triple
+            for triple in CreateDAGDimsEq1GenInstructions(*x)
+            for x in pairs
         ]
-        return [x for x,_ in pairs], [y for _,y for pairs]
+        return (
+            [x for x,y,z in triples],
+            [y for x,y,z in triples],
+            [z for x,y,z in triples]
+        )

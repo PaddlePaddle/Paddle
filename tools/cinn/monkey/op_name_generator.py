@@ -31,12 +31,15 @@ class OpNameGenRequirement:
 
 @dataclass
 class Nope:
+
+    def __hash__(self):
+        return hash(id(Nope))
+
     @classmethod
     def MakeRandomInstance(
         cls,
         requirement: OpNameGenRequirement,
         dag_gen_instruction: "DAGGenInstruction",
-        dims_eq1_signature: "DimsEq1Signature"
     ) -> "OpNameGenInstruction":
         return Nope()
 
@@ -44,59 +47,87 @@ class Nope:
 @dataclass
 class AddSinkTensor:
 
+    def __hash__(self):
+        return hash(id(AddSinkTensor))
+
     @classmethod
     def MakeRandomInstance(
         cls,
         requirement: OpNameGenRequirement,
         dag_gen_instruction: "DAGGenInstruction",
-        dims_eq1_signature: "DimsEq1Signature"
     ) -> "OpNameGenInstruction":
         return AddSinkTensor()
+
 
 @dataclass
 class AddUnaryOp:
     op_name: str
 
+    def __hash__(self):
+        return hash(self.op_name)
+
     @classmethod
     def MakeRandomInstance(
         cls,
         requirement: OpNameGenRequirement,
         dag_gen_instruction: "DAGGenInstruction",
-        dims_eq1_signature: "DimsEq1Signature"
     ) -> "OpNameGenInstruction":
-        input_dims_eq1 = dims_eq1_signature.input_dims_eq1
-        output_idx = dag_gen_instruction.source_tensor_index
-        output_dims_eq1 = dims_eq1_signature.output_dims_eq1
-        if _IsReduceOp(input_dims_eq1, output_dims_eq1):
-            return AddUnaryOp(
-                op_name=_GetRandomReduceOpName(requirement)
-            )
-        if _IsBroadcastOp(input_dims_eq1, output_dims_eq1):
-            return AddUnaryOp(
-                op_name=_GetRandomBroadcastOpName(requirement)
-            )
-        assert input_dims_eq1 == output_dims_eq1
+        convert_type = dag_gen_instruction.convert_type
+        method_name = "MakeRandomInstance_" + type(convert_type).__name__
+        return getattr(cls, method_name)(requirement, dag_gen_instruction)
+
+    @classmethod
+    def MakeRandomInstance_NoConvertType(
+        cls,
+        requirement: OpNameGenRequirement,
+        dag_gen_instruction: "DAGGenInstruction"
+    ) -> "OpNameGenInstruction":
         return AddUnaryOp(
             op_name=_GetRandomUnaryOpName(requirement)
         )
+
+    @classmethod
+    def MakeRandomInstance_ReduceConvertType(
+        cls,
+        requirement: OpNameGenRequirement,
+        dag_gen_instruction: "DAGGenInstruction"
+    ) -> "OpNameGenInstruction":
+        return AddUnaryOp(
+            op_name=_GetRandomReduceOpName(requirement)
+        )
+
+    @classmethod
+    def MakeRandomInstance_BroadcastConvertType(
+        cls,
+        requirement: OpNameGenRequirement,
+        dag_gen_instruction: "DAGGenInstruction"
+    ) -> "OpNameGenInstruction":
+        return AddUnaryOp(
+            op_name=_GetRandomBroadcastOpName(requirement)
+        )
+
+    @classmethod
+    def MakeRandomInstance_UnclassifiedConvertType(
+        cls,
+        requirement: OpNameGenRequirement,
+        dag_gen_instruction: "DAGGenInstruction"
+    ) -> "OpNameGenInstruction":
+        raise NotImplementedError("UnclassifiedConvertType not supported.")
 
 
 @dataclass
 class AddBinaryOp:
     op_name: str
 
+    def __hash__(self):
+        return hash(self.op_name)
+
     @classmethod
     def MakeRandomInstance(
         cls,
         requirement: OpNameGenRequirement,
         dag_gen_instruction: "DAGGenInstruction",
-        dims_eq1_signature: "DimsEq1Signature"
     ) -> "OpNameGenInstruction":
-        lhs_input_dims_eq1 = dims_eq1_signature.lhs_input_dims_eq1
-        rhs_input_dims_eq1 = dims_eq1_signature.rhs_input_dims_eq1
-        output_dims_eq1 = dims_eq1_signature.output_dims_eq1
-        assert _IsLhsGreaterThanRhs(output_dims_eq1, lhs_input_dims_eq1)
-        assert _IsLhsGreaterThanRhs(output_dims_eq1, rhs_input_dims_eq1)
         return AddBinaryOp(
             op_name=_GetRandomBinaryOpName(requirement)
         )
@@ -106,16 +137,15 @@ class AddBinaryOp:
 class InsertBinaryOp:
     op_name: str
 
+    def __hash__(self):
+        return hash(self.op_name)
+
     @classmethod
     def MakeRandomInstance(
         cls,
         requirement: OpNameGenRequirement,
         dag_gen_instruction: "DAGGenInstruction",
-        dims_eq1_signature: "DimsEq1Signature"
     ) -> "OpNameGenInstruction":
-        rhs_input_dims_eq1 = dims_eq1_signature.rhs_input_dims_eq1
-        output_dims_eq1 = dims_eq1_signature.output_dims_eq1
-        assert _IsLhsGreaterThanRhs(output_dims_eq1, rhs_input_dims_eq1)
         return InsertBinaryOp(
             op_name=_GetRandomBinaryOpName(requirement)
         )
@@ -124,16 +154,15 @@ class InsertBinaryOp:
 @dataclass
 class AddBinaryClone:
 
+    def __hash__(self):
+        return hash(id(AddBinaryClone))
+
     @classmethod
     def MakeRandomInstance(
         cls,
         requirement: OpNameGenRequirement,
         dag_gen_instruction: "DAGGenInstruction",
-        dims_eq1_signature: "DimsEq1Signature"
     ) -> "OpNameGenInstruction":
-        lhs_output_dims_eq1 = dims_eq1_signature.lhs_output_dims_eq1
-        rhs_output_dims_eq1 = dims_eq1_signature.rhs_output_dims_eq1
-        assert lhs_output_dims_eq1 == rhs_output_dims_eq1
         return AddBinaryClone()
 
 
@@ -141,24 +170,27 @@ class AddBinaryClone:
 class AddSourceOp:
     op_name: str
 
+    def __hash__(self):
+        return hash(self.op_name)
+
     @classmethod
     def MakeRandomInstance(
         cls,
         requirement: OpNameGenRequirement,
         dag_gen_instruction: "DAGGenInstruction",
-        dims_eq1_signature: "DimsEq1Signature"
     ) -> "OpNameGenInstruction":
         return AddSourceOp(op_name=_GetRandomSourceOpName(requirement))
 
 
-# OpNameGenInstruction = ( Nope
-#                        | AddSinkTensor
-#                        | AddUnaryOp
-#                        | AddBinaryOp
-#                        | InsertBinaryOp
-#                        | AddBinaryClone
-#                        | AddSourceOp
-#                        )
+OpNameGenInstruction = Union[
+    Nope,
+    AddSinkTensor,
+    AddUnaryOp,
+    AddBinaryOp,
+    InsertBinaryOp,
+    AddBinaryClone,
+    AddSourceOp
+]
 
 kDAGGenClassToOpNameGenClassMap = {
     dag_generator.Nope: Nope,
@@ -169,19 +201,6 @@ kDAGGenClassToOpNameGenClassMap = {
     dag_generator.AddBinaryClone: AddBinaryClone,
     dag_generator.AddSourceOp: AddSourceOp,
 }
-
-def _IsReduceOp(input_dims_eq1: List[bool], output_dims_eq1:  List[bool]):
-    return _IsLhsGreaterThanRhs(input_dims_eq1, output_dims_eq1)
-
-def _IsBroadcastOp(input_dims_eq1: List[bool], output_dims_eq1:  List[bool]):
-    return _IsLhsGreaterThanRhs(output_dims_eq1, input_dims_eq1)
-
-def _IsLhsGreaterThanRhs(lhs: List[bool], rhs:  List[bool]):
-    assert len(lhs) == len(rhs)
-    for i in range(len(lhs)):
-        if not (lhs[i] > rhs[i]):
-            return False
-    return True
 
 def _GetRandomReduceOpName(requirement: DimEq1GenRequirement):
     return _GetRandomOpName(requirement.reduce_op_names)
@@ -211,18 +230,15 @@ class OpNameGenerator:
     # Instructions generating sink nodes of DAG are on put the front of list.
     def Generate(
         self,
-        guarded_dims_eq1_sigs: DList["DAGGenInstruction", "DimsEq1Signature"]
+        dag_gen_instructions: DList[DAGGenInstruction]
     ) -> List["OpNameGenInstruction"]:
-        def CreateOpNameGenInstruction(dag_instr, dims_eq1_sig):
-            cls = kDAGGenClassToOpNameGenClassMap[type(dag_instr)]
+        def CreateOpNameGenInstruction(dag_gen_instruction):
+            cls = kDAGGenClassToOpNameGenClassMap[type(dag_gen_instruction)]
             return cls.MakeRandomInstance(
                 self.requirement,
-                dag_instr,
-                dims_eq1_sig
+                dag_gen_instruction
             )
         return [
-            CreateOpNameGenInstruction(*x)
-            for x in guarded_dims_eq1_sigs.Unguard(
-                lambda key: key.GetHashValue()
-            )
+            CreateOpNameGenInstruction(x)
+            for x in dag_gen_instructions
         ]

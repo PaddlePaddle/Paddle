@@ -1,12 +1,12 @@
 from dataclasses import dataclass
 import .dag_generator as dag_generator
 from .pick_weight import PickWeight
-from typing import List
+from typing import List,Union
 import random
 
 @dataclass
 class DimEq1GenTypePickProbability:
-    jump_to_one_ratio: PickWeight
+    dim_eq1_probability: PickWeight
 
 @dataclass
 class DimEq1GenRequirement:
@@ -21,12 +21,12 @@ class Nope:
 
 @dataclass
 class AddSinkTensor:
-    source_tensor_dim_eq1: bool
+    sink_tensor_dim_eq1: bool
 
     @classmethod
     def MakeRandomInstance(cls, requirement: DimEq1GenRequirement):
         return AddSinkTensor(
-            source_tensor_dim_eq1=_GetRandomBool(requirement)
+            sink_tensor_dim_eq1=_GetRandomBool(requirement)
         )
 
 
@@ -80,14 +80,15 @@ class AddSourceOp:
         return AddSourceOp()
 
 
-# DimEq1GenInstruction = ( Nope
-#                        | AddSinkTensor
-#                        | AddUnaryOp
-#                        | AddBinaryOp
-#                        | InsertBinaryOp
-#                        | AddBinaryClone
-#                        | AddSourceOp
-#                        )
+DimEq1GenInstruction = Union[
+    Nope,
+    AddSinkTensor,
+    AddUnaryOp,
+    AddBinaryOp,
+    InsertBinaryOp,
+    AddBinaryClone,
+    AddSourceOp
+]
 
 kDAGGenClassToDimEq1GenClassMap = {
     dag_generator.Nope: Nope,
@@ -107,18 +108,18 @@ class DimEq1Generator:
     def Generate(
         self,
         dag_gen_instructions: List["DAGGenInstruction"]
-    ) -> List["DimEq1GenInstruction"]:
+    ) -> Dict["DAGGenInstruction", "DimEq1GenInstruction"]:
         def CreateDimEq1GenInstruction(dag_gen_instruction):
             dag_gen_class = type(dag_gen_instruction)
             dim_eq1_gen_class = kDAGGenClassToDimEq1GenClassMap[dag_gen_class]
             return dim_eq1_gen_class.MakeRandomInstance(self.requirement)
-        return [
-            CreateDimEq1GenInstruction(dag_gen_instruction)
-            for dag_gen_instruction in dag_gen_instructions
-        ]
+        return {
+            x: CreateDimEq1GenInstruction(x)
+            for x in dag_gen_instructions
+        }
 
 def _GetRandomBool(requirement: DimEq1GenRequirement):
-    ratio = requirement.jump_to_one_ratio.weight
+    ratio = requirement.dim_eq1_probability.weight
     kRangeMax = 10000
     random_int = random.randomint(0, kRangeMax)
     return random_int < ratio * kRangeMax

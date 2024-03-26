@@ -3,13 +3,18 @@ import .dag_generator as dag_generator
 import .dim_eq1_generator as dim_eq1_generator
 from .pick_weight import PickWeight
 from typing import List
+from .hash_combine import HashCombine
 
 @dataclass
 class DimsEq1GenRequirement:
-    jump_to_one_ratios: List[float]
+    dims_eq1_probability: List[float]
 
 @dataclass
 class Nope:
+
+    def __hash__(self):
+        return hash(id(Nope))
+
     @classmethod
     def Merge(cls, dim_eq1_gen_instructions: List["DimEq1GenInstruction"]):
         return Nope()
@@ -17,13 +22,19 @@ class Nope:
 
 @dataclass
 class AddSinkTensor:
-    source_tensor_dim_eq1: List[bool]
+    sink_tensor_dims_eq1: List[bool]
+
+    def __hash__(self):
+        hash_value = 0
+        for dim_eq1 in self.sink_tensor_dims_eq1:
+            hash_value = HashCombine(hash_value, hash(dim_eq1))
+        return hash_value
 
     @classmethod
     def Merge(cls, dim_eq1_gen_instructions: List["DimEq1GenInstruction"]):
         return AddSinkTensor(
-            source_tensor_dim_eq1=tuple(
-                dim_eq1_gen_instance.source_tensor_dim_eq1
+            sink_tensor_dims_eq1=tuple(
+                dim_eq1_gen_instance.sink_tensor_dim_eq1
                 for dim_eq1_gen_instance in dim_eq1_gen_instructions
             )
         )
@@ -31,12 +42,18 @@ class AddSinkTensor:
 
 @dataclass
 class AddUnaryOp:
-    source_tensor_dim_eq1: List[bool]
+    source_tensor_dims_eq1: List[bool]
+
+    def __hash__(self):
+        hash_value = 0
+        for dim_eq1 in self.source_tensor_dims_eq1:
+            hash_value = HashCombine(hash_value, hash(dim_eq1))
+        return hash_value
 
     @classmethod
     def Merge(cls, dim_eq1_gen_instructions: List["DimEq1GenInstruction"]):
         return AddUnaryOp(
-            source_tensor_dim_eq1=tuple(
+            source_tensor_dims_eq1=tuple(
                 dim_eq1_gen_instance.source_tensor_dim_eq1
                 for dim_eq1_gen_instance in dim_eq1_gen_instructions
             )
@@ -45,17 +62,25 @@ class AddUnaryOp:
 
 @dataclass
 class AddBinaryOp:
-    lhs_source_tensor_dim_eq1: List[bool]
-    rhs_source_tensor_dim_eq1: List[bool]
+    lhs_source_tensor_dims_eq1: List[bool]
+    rhs_source_tensor_dims_eq1: List[bool]
+
+    def __hash__(self):
+        hash_value = 0
+        for dim_eq1 in self.lhs_source_tensor_dims_eq1:
+            hash_value = HashCombine(hash_value, hash(dim_eq1))
+        for dim_eq1 in self.rhs_source_tensor_dims_eq1:
+            hash_value = HashCombine(hash_value, hash(dim_eq1))
+        return hash_value
 
     @classmethod
     def Merge(cls, dim_eq1_gen_instructions: List["DimEq1GenInstruction"]):
         return AddBinaryOp(
-            lhs_source_tensor_dim_eq1=tuple(
+            lhs_source_tensor_dims_eq1=tuple(
                 dim_eq1_gen_instance.lhs_source_tensor_dim_eq1
                 for dim_eq1_gen_instance in dim_eq1_gen_instructions
             ),
-            rhs_source_tensor_dim_eq1=tuple(
+            rhs_source_tensor_dims_eq1=tuple(
                 dim_eq1_gen_instance.rhs_source_tensor_dim_eq1
                 for dim_eq1_gen_instance in dim_eq1_gen_instructions
             )
@@ -64,12 +89,18 @@ class AddBinaryOp:
 
 @dataclass
 class InsertBinaryOp:
-    rhs_source_tensor_dim_eq1: List[bool]
+    rhs_source_tensor_dims_eq1: List[bool]
+
+    def __hash__(self):
+        hash_value = 0
+        for dim_eq1 in self.rhs_source_tensor_dims_eq1:
+            hash_value = HashCombine(hash_value, hash(dim_eq1))
+        return hash_value
 
     @classmethod
     def Merge(cls, dim_eq1_gen_instructions: List["DimEq1GenInstruction"]):
         return InsertBinaryOp(
-            rhs_source_tensor_dim_eq1=tuple(
+            rhs_source_tensor_dims_eq1=tuple(
                 dim_eq1_gen_instance.rhs_source_tensor_dim_eq1
                 for dim_eq1_gen_instance in dim_eq1_gen_instructions
             )
@@ -79,6 +110,9 @@ class InsertBinaryOp:
 @dataclass
 class AddBinaryClone:
 
+    def __hash__(self):
+        return hash(id(AddBinaryClone))
+
     @classmethod
     def Merge(cls, dim_eq1_gen_instructions: List["DimEq1GenInstruction"]):
         return AddBinaryClone()
@@ -87,19 +121,24 @@ class AddBinaryClone:
 @dataclass
 class AddSourceOp:
 
+    def __hash__(self):
+        return hash(id(AddSourceOp))
+
     @classmethod
     def Merge(cls, dim_eq1_gen_instructions: List["DimEq1GenInstruction"]):
         return AddSourceOp()
 
 
-# DimsEq1GenInstruction = ( Nope
-#                         | AddSinkTensor
-#                         | AddUnaryOp
-#                         | AddBinaryOp
-#                         | InsertBinaryOp
-#                         | AddBinaryClone
-#                         | AddSourceOp
-#                         )
+DimsEq1GenInstruction = Union[
+    Nope,
+    AddSinkTensor,
+    AddUnaryOp,
+    AddBinaryOp,
+    InsertBinaryOp,
+    AddBinaryClone,
+    AddSourceOp
+]
+
 
 kDAGGenClassToDimsEq1GenClassMap = {
     dag_generator.Nope: Nope,
@@ -121,7 +160,7 @@ class DimsEq1Generator:
             return type(self)._MakeDimEq1Generator(ratio)
         self.dim_eq1_generators = [
             MakeDimEq1Generator(ratio)
-            for ratio in requirement.jump_to_one_ratios
+            for ratio in requirement.dims_eq1_probability
         ]
 
     # Instructions generating sink nodes of DAG are on put the front of list.
@@ -130,7 +169,7 @@ class DimsEq1Generator:
         dag_gen_instructions: List["DAGGenInstruction"]
     ) -> List["DimsEq1GenInstruction"]:
         dim_eq1_gen_instructions = [
-            dim_eq1_generator.Generate(dag_gen_instructions)
+            [v for _, v in dim_eq1_generator.Generate(dag_gen_instructions)]
             for dim_eq1_generator in dim_eq1_generators
         ]
         instructions = zip(
@@ -140,18 +179,18 @@ class DimsEq1Generator:
         def MakeDimsEq1GenInstruction(dag_gen_instruction, dim_eq1_gen_instructions):
             dag_gen_class = type(dag_gen_instruction)
             return dag_gen_class.Merge(dim_eq1_gen_instructions)
-        return [
-            MakeDimsEq1GenInstruction(dag_gen_instruction, dim_eq1_gen_instructions)
-            for dag_gen_instruction, dim_eq1_gen_instructions in instructions
-        ]
+        return {
+            x: MakeDimsEq1GenInstruction(x, dim_eq1_gen_instructions)
+            for x, dim_eq1_gen_instructions in instructions
+        }
 
     @classmethod
     def _MakeDimEq1Generator(
         cls,
-        jump_to_one_ratio
+        dim_eq1_probability: float
     ):
         pick_probability = dim_eq1_generator.DimEq1GenTypePickProbability(
-            jump_to_one_ratio=PickWeight(jump_to_one_ratio)
+            dim_eq1_probability=PickWeight(dim_eq1_probability)
         )
         requirement = dim_eq1_generator.DimEq1GenRequirement(
             pick_probability

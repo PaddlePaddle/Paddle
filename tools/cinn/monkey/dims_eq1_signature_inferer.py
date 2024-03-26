@@ -37,6 +37,7 @@ class Nope:
 
 @dataclass
 class AddSinkTensor:
+    sink_tensor_dims_eq1: List[bool]
 
     @classmethod
     def InferDimsEq1Signature(
@@ -44,16 +45,19 @@ class AddSinkTensor:
         dag_dims_eq1_gen_instruction: DAGDimsEq1GenInstruction,
         infer_ctx: DimsEq1InferContext
     ):
-        infer_ctx.current_source_tensor_dim_eq1.append(
+        sink_tensor_dims_eq1 = (
             dag_dims_eq1_gen_instruction.dims_eq1.source_tensor_dim_eq1
         )
-        return AddSinkTensor()
+        infer_ctx.current_source_tensor_dim_eq1.append(sink_tensor_dims_eq1)
+        return AddSinkTensor(
+            sink_tensor_dims_eq1=sink_tensor_dims_eq1
+        )
 
 
 @dataclass
 class AddUnaryOp:
-    input_dims_eq1: List[int]
-    output_dims_eq1: List[int]
+    input_dims_eq1: List[bool]
+    output_dims_eq1: List[bool]
 
     @classmethod
     def InferDimsEq1Signature(
@@ -73,9 +77,9 @@ class AddUnaryOp:
 
 @dataclass
 class AddBinaryOp:
-    lhs_input_dims_eq1: List[int]
-    rhs_input_dims_eq1: List[int]
-    output_dims_eq1: List[int]
+    lhs_input_dims_eq1: List[bool]
+    rhs_input_dims_eq1: List[bool]
+    output_dims_eq1: List[bool]
 
     @classmethod
     def InferDimsEq1Signature(
@@ -101,9 +105,9 @@ class AddBinaryOp:
     
 @dataclass
 class InsertBinaryOp:
-    lhs_input_dims_eq1: List[int]
-    rhs_input_dims_eq1: List[int]
-    output_dims_eq1: List[int]
+    lhs_input_dims_eq1: List[bool]
+    rhs_input_dims_eq1: List[bool]
+    output_dims_eq1: List[bool]
     rhs_input_source_tensor_index: int
 
     @classmethod
@@ -131,8 +135,8 @@ class InsertBinaryOp:
 
 @dataclass
 class AddBinaryClone:
-    lhs_output_dims_eq1: List[int]
-    rhs_output_dims_eq1: List[int]
+    lhs_output_dims_eq1: List[bool]
+    rhs_output_dims_eq1: List[bool]
 
     @classmethod
     def InferDimsEq1Signature(
@@ -153,7 +157,7 @@ class AddBinaryClone:
 
 @dataclass
 class AddSourceOp:
-    output_dims_eq1: List[int]
+    output_dims_eq1: List[bool]
 
     @classmethod
     def InferDimsEq1Signature(
@@ -167,14 +171,15 @@ class AddSourceOp:
         return AddSourceOp(output_dims_eq1=output_dims_eq1)
 
 
-# DimsEq1Signature = ( Nope
-#                      | AddSinkTensor
-#                      | AddUnaryOp
-#                      | AddBinaryOp
-#                      | InsertBinaryOp
-#                      | AddBinaryClone
-#                      | AddSourceOp
-#                      )
+DimsEq1Signature = Union[
+    Nope,
+    AddSinkTensor,
+    AddUnaryOp,
+    AddBinaryOp,
+    InsertBinaryOp,
+    AddBinaryClone,
+    AddSourceOp
+]
 
 
 kDAGGenClassToDAGDimsEq1InfererClassMap = {
