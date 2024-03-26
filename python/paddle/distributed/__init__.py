@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import atexit  # noqa: F401
-from . import io
+from . import io  # noqa: F401
 from .spawn import spawn
 from .launch.main import launch
 from .parallel import (  # noqa: F401
@@ -116,7 +116,6 @@ from .checkpoint.save_state_dict import save_state_dict
 from .checkpoint.load_state_dict import load_state_dict
 
 __all__ = [
-    "io",
     "spawn",
     "launch",
     "scatter",
