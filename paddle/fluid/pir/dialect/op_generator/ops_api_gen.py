@@ -192,6 +192,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'partial_allgather_',
     'nop',
     'nop_',
+    'push_dense',
     'limit_by_capacity',
     'global_scatter',
 ]
