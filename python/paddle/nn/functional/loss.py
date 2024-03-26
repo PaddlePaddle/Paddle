@@ -1709,8 +1709,16 @@ def kl_div(input, label, reduction='mean', log_target=False, name=None):
     ):
         label = paddle.cast(label, 'float64')
 
+    compiled_with_xpu = paddle.is_compiled_with_xpu()
+    if compiled_with_xpu:
+        if log_target:
+            label = paddle.exp(label)
+
     if in_dynamic_or_pir_mode():
-        out = _C_ops.kldiv_loss(input, label, 'none', log_target)
+        if compiled_with_xpu:
+            out = _C_ops.kldiv_loss(input, label, 'none')
+        else:
+            out = _C_ops.kldiv_loss(input, label, 'none', log_target)
         if reduction == 'mean':
             out = paddle.mean(out)
         elif reduction == 'sum':
@@ -1732,11 +1740,15 @@ def kl_div(input, label, reduction='mean', log_target=False, name=None):
         base.data_feeder.check_type(reduction, 'reduction', str, 'kl_div')
 
         loss = helper.create_variable_for_type_inference(dtype=input.dtype)
+        if compiled_with_xpu:
+            attrs = {'reduction': 'none'}
+        else:
+            attrs = {'reduction': 'none', 'log_target': log_target}
         helper.append_op(
             type='kldiv_loss',
             inputs={'X': input, 'Target': label},
             outputs={'Loss': loss},
-            attrs={'reduction': 'none', 'log_target': log_target},
+            attrs=attrs,
         )
 
         if reduction == 'mean':
