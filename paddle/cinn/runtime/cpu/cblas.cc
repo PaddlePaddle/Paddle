@@ -182,8 +182,9 @@ CINN_REGISTER_HELPER(cinn_cpu_mkl) {
         int total = 1;
         for (auto& v : A_tensor->shape) {
           auto val = cinn::common::AutoSimplify(v);
-          PADDLE_ENFORCE_NE(
+          PADDLE_ENFORCE_EQ(
               val.is_constant(),
+              true,
               phi::errors::InvalidArgument("expected type is constant."));
           shape.push_back(val);
           total *= val.as_int32();
