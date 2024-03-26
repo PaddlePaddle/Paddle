@@ -823,6 +823,40 @@ pir::Value apply(Value self, py::object func) {
   return out;
 }
 
+#define DEF_VALUE_BOOL_PROPERTY(name)                                         \
+  def_property(                                                               \
+      name,                                                                   \
+      [](Value self) {                                                        \
+        auto bool_data = self.attribute<BoolAttribute>(name);                 \
+        return !bool_data || bool_data.data();                                \
+      },                                                                      \
+      [](Value self, bool bool_data) {                                        \
+        self.set_attribute(                                                   \
+            name, BoolAttribute::get(pir::IrContext::Instance(), bool_data)); \
+      })
+
+#define DEF_VALUE_POINTER_PROPERTY(name)                                     \
+  def_property(                                                              \
+      name,                                                                  \
+      [](Value self) -> py::object {                                         \
+        auto prop_ptr = self.property(name);                                 \
+        if (!prop_ptr) {                                                     \
+          return py::cast<py::none>(Py_None);                                \
+        }                                                                    \
+        auto py_data = reinterpret_cast<PyObject *>(prop_ptr);               \
+        py::object obj = py::object(py::handle(py_data), true);              \
+        return obj;                                                          \
+      },                                                                     \
+      [](Value self, py::object obj) {                                       \
+        pir::PropertiesDeleter deleter = [](void *python_obj) {              \
+          Py_DECREF(python_obj);                                             \
+        };                                                                   \
+        PyObject *pointer_data = obj.release().ptr();                        \
+        pir::Property value_property(reinterpret_cast<void *>(pointer_data), \
+                                     deleter);                               \
+        self.set_property(name, value_property);                             \
+      })
+
 void BindValue(py::module *m) {
   py::class_<Value> value(*m,
                           "Value",
@@ -834,8 +868,7 @@ void BindValue(py::module *m) {
         The constructor of Value should not be invoked directly. Value can be automatically constructed
         when build network.
 
-  )DOC",
-                          pybind11::dynamic_attr());
+  )DOC");
   g_ir_value_pytype = reinterpret_cast<PyTypeObject *>(value.ptr());
   value.def(py::init<>())
       .def_property_readonly(
@@ -916,30 +949,15 @@ void BindValue(py::module *m) {
                return true;
              }
            })
-      .def_property(
-          "stop_gradient",
-          [](Value self) {
-            auto stop_gradient =
-                self.attribute<BoolAttribute>(kAttrStopGradients);
-            return !stop_gradient || stop_gradient.data();
-          },
-          [](Value self, bool stop_gradient) {
-            self.set_attribute(
-                kAttrStopGradients,
-                BoolAttribute::get(pir::IrContext::Instance(), stop_gradient));
-          })
-      .def_property(
-          "persistable",
-          [](Value self) {
-            auto persistable =
-                self.attribute<BoolAttribute>(kAttrIsPersistable);
-            return !persistable || persistable.data();
-          },
-          [](Value self, bool persistable) {
-            self.set_attribute(
-                kAttrIsPersistable,
-                BoolAttribute::get(pir::IrContext::Instance(), persistable));
-          })
+      .DEF_VALUE_BOOL_PROPERTY("stop_gradient")
+      .DEF_VALUE_BOOL_PROPERTY("trainable")
+      .DEF_VALUE_BOOL_PROPERTY("persistable")
+      .DEF_VALUE_BOOL_PROPERTY("need_clip")
+      .DEF_VALUE_BOOL_PROPERTY("is_distributed")
+      .DEF_VALUE_BOOL_PROPERTY("is_parameter")
+      .DEF_VALUE_POINTER_PROPERTY("optimize_attr")
+      .DEF_VALUE_POINTER_PROPERTY("regularizer")
+      .DEF_VALUE_POINTER_PROPERTY("do_model_average")
       .def("all_used_ops",
            [](Value &self) -> py::list {
              py::list op_list;

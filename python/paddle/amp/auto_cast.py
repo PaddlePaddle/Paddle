@@ -260,8 +260,15 @@ def _pir_transform(t, dtype):
         paddle.pir.reset_insertion_point_to_start()
         block = main.global_block()
         cast_param = paddle._pir_ops.parameter(t.name)
+        cast_param.trainable = t.trainable
         cast_param.stop_gradient = t.stop_gradient
         cast_param.persistable = t.persistable
+        cast_param.optimize_attr = t.optimize_attr
+        cast_param.regularizer = t.regularizer
+        cast_param.do_model_average = t.do_model_average
+        cast_param.need_clip = t.need_clip
+        cast_param.is_distributed = t.is_distributed
+        cast_param.is_parameter = t.is_parameter
         op = t.get_defining_op()
         t.replace_all_uses_with(cast_param)
         block.remove_op(op)
