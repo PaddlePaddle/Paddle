@@ -114,9 +114,6 @@ void ApplyBuildGroupOpPass(
   pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
 
   pass_manager->AddPass(pir::CreateBuildCinnPass());
-  if (has_dynamic_shape) {
-    pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
-  }
   pass_manager->Run(program);
 }
 
@@ -125,6 +122,7 @@ void ApplyGroupOpPass(::pir::Program* program,
                           CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   if (HasDynamicShape(*program)) {
+    pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
     pass_manager->AddPass(::pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(cinn::dialect::ir::CreateSimplifyDimExprPass());
     pass_manager->AddPass(
