@@ -1395,7 +1395,7 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_with_pt_in_dy2st,
  * Example:
  * Note: If True, New IR API will be used in Python
  */
-PHI_DEFINE_EXPORTED_bool(enable_pir_api, false, "Enable new IR API in Python");
+PHI_DEFINE_EXPORTED_bool(enable_pir_api, true, "Enable new IR API in Python");
 
 /**
  * Using PIR in executor FLAG
