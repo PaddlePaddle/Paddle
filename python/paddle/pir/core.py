@@ -288,16 +288,10 @@ def create_parameter(
     name=None,
     **kwargs,
 ):
-    regularizer = None
-    need_clip = None
     if 'initializer' not in kwargs:
         raise ValueError(
             "initializer is None, if you want to create parameter, please pass its initializer."
         )
-    if 'regularizer' in kwargs:
-        regularizer = kwargs['regularizer']
-    if 'need_clip' in kwargs:
-        need_clip = kwargs['need_clip']
     if dtype is not None:
         if not isinstance(dtype, DataType):
             dtype = convert_np_dtype_to_dtype_(dtype)
@@ -320,12 +314,16 @@ def create_parameter(
     with program_guard(default_main_program()):
         reset_insertion_point_to_start()
         param = parameter(value_name)
-        trainable = kwargs.get('trainable', True)
-        param.stop_gradient = not trainable
         param.persistable = True
 
-    param.regularizer = regularizer
-    param.need_clip = need_clip
+    param.trainable = kwargs.get('trainable', True)
+    param.stop_gradient = not param.trainable
+    param.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
+    param.regularizer = kwargs.get('regularizer', None)
+    param.do_model_average = kwargs.get('do_model_average', None)
+    param.need_clip = kwargs.get('need_clip', True)
+    param.is_distributed = False
+    param.is_parameter = True
     return param
 
 
