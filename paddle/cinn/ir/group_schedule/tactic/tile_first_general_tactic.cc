@@ -28,15 +28,6 @@ bool IsInnerThreadSpatialLoopGT(const ScheduleConfig& config, int num) {
   return config.tile_config.spatial_inner_num > num;
 }
 
-bool IsPerThreadReduceGELoopExtent(const ScheduleConfig& config,
-                                   const ir::Expr& loop) {
-  if (loop.As<ir::For>()->extent.is_constant()) {
-    int extent = ir::GetLoopExtent(loop);
-    return extent <= config.tile_config.tree_reduce_num;
-  }
-  return false;
-}
-
 bool IsReduceBlock(const ScheduleConfig& config, const std::string& block_id) {
   return config.base_info->reduce_tensor_names.count(block_id) > 0;
 }
@@ -173,10 +164,6 @@ void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
 
   auto loops = sch->GetLoops(block_id);
   auto reduce_loop = loops[reduce_current_axis_].As<ir::For>();
-
-  if (IsPerThreadReduceGELoopExtent(context_->config, reduce_loop)) {
-    return;
-  }
 
   if (FLAGS_support_reduce_stride_read) {
     if (context_->config.base_info->reduce_numel <= 256) {

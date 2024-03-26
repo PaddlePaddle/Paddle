@@ -1926,7 +1926,21 @@ class DistModel:
         if self._mode == "eval":
             if self._engine._loss is None:
                 raise ValueError("Please set loss function before evaluation.")
-        feeds = self._make_feeds(list(args))
+
+        feed_list = []
+        for feed_item in list(args):
+            if isinstance(feed_item, (list, tuple)):
+                feed_list += list(feed_item)
+            elif isinstance(feed_item, paddle.Tensor):
+                feed_list += [feed_item]
+            elif isinstance(feed_item, core.LoDTensor):
+                feed_list += [feed_item]
+            else:
+                raise TypeError(
+                    f"The inputs of DistModel should be list or tensor, but got {type(feed_item)}"
+                )
+
+        feeds = self._make_feeds(feed_list)
         outs = self._engine.run(feeds)
 
         if self._mode == "predict":

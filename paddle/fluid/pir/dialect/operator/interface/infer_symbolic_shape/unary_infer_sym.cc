@@ -634,8 +634,36 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
 
 bool SplitWithNumOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  int64_t axis = op->operand_source(1)
+                     .defining_op<paddle::dialect::FullOp>()
+                     .attributes()
+                     .at("value")
+                     .dyn_cast<paddle::dialect::ScalarAttribute>()
+                     .data()
+                     .to<int64_t>();
+  const auto &attributes = op->attributes();
+  int num = attributes.at("num").dyn_cast<pir::Int32Attribute>().data();
+  const auto &x_s_or_d =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+  int rank = x_s_or_d.shape().size();
+  axis = axis < 0 ? axis + rank : axis;
+
+  symbol::DimExpr input_axis_dim = x_s_or_d.shape().at(axis);
+  symbol::DimExpr axis_shape = input_axis_dim / symbol::DimExpr{num};
+
+  const auto &out_s_d = [&] {
+    std::vector<symbol::DimExpr> out_s_d;
+    for (size_t i = 0; i < x_s_or_d.shape().size(); ++i) {
+      const auto &sym_dim =
+          axis == static_cast<int64_t>(i) ? axis_shape : x_s_or_d.shape()[i];
+      out_s_d.push_back(sym_dim);
+    }
+    return symbol::TensorShapeOrDataDimExprs(out_s_d);
+  }();
+
+  symbol::TensorListShapeOrDataDimExprs outs_s_d(num, out_s_d);
+  shape_analysis->SetShapeOrDataForValue(op->result(0),
+                                         symbol::ShapeOrDataDimExprs{outs_s_d});
   return true;
 }
 
@@ -781,18 +809,6 @@ bool TransposeOpInferSymbolicShape(
 bool Transpose_OpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return TransposeOpInferSymbolicShape(op, shape_analysis);
-}
-
-bool TriuOpInferSymbolicShape(pir::Operation *op,
-                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
-}
-
-bool Triu_OpInferSymbolicShape(pir::Operation *op,
-                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  return TriuOpInferSymbolicShape(op, shape_analysis);
 }
 
 bool SqueezeOpInferSymbolicShape(
