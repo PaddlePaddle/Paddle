@@ -131,6 +131,17 @@ struct ParameterOpInferSymbolicShapeInterfaceModel
       : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
 };
 
+struct SetParameterOpInferSymbolicShapeInterfaceModel
+    : public InferSymbolicShapeInterface::Concept {
+  static inline bool InferSymbolicShape(
+      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+    return true;
+  }
+
+  SetParameterOpInferSymbolicShapeInterfaceModel()
+      : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
+};
+
 struct ShadowOutputOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
@@ -240,6 +251,16 @@ OperatorDialect::OperatorDialect(pir::IrContext* ctx)
   info.AttachInterface(
       pir::InterfaceValue::Get<InferSymbolicShapeInterface,
                                YieldOpInferSymbolicShapeInterfaceModel>());
+
+  info = ctx->GetRegisteredOpInfo(pir::SetParameterOp::name());
+  info.AttachInterface(pir::InterfaceValue::Get<
+                       InferSymbolicShapeInterface,
+                       SetParameterOpInferSymbolicShapeInterfaceModel>());
+
+  info = ctx->GetRegisteredOpInfo(pir::SliceOp::name());
+  info.AttachInterface(
+      pir::InterfaceValue::Get<InferSymbolicShapeInterface,
+                               SliceOpInferSymbolicShapeInterfaceModel>());
 }
 
 void PrintTypeImpl(pir::Type type, std::ostream& os) {

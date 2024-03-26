@@ -4,6 +4,7 @@ gather_srcs(
   SRCS
   group.cc
   utils.cc
+  op_lowering_group.cc
   op_lowering_impl.cc
   op_mapper.cc
   op_lowering_util.cc

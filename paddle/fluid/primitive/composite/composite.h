@@ -371,25 +371,6 @@ Tensor relu6_decomp(const Tensor& x) {
 }
 
 template <typename T>
-Tensor rsqrt_decomp(const Tensor& x) {
-  auto org_dtype = x.dtype();
-  Tensor x_cast = x;
-
-  bool need_cast = is_half_dtype(org_dtype);
-  if (need_cast) {
-    x_cast = cast<T>(x, DataType::FLOAT32);
-  }
-
-  auto ans =
-      elementwise_pow<T>(x_cast, full<T>(empty_shape, -0.5, x_cast.dtype()));
-  if (need_cast) {
-    return cast<T>(ans, org_dtype);
-  } else {
-    return ans;
-  }
-}
-
-template <typename T>
 std::tuple<Tensor, Tensor> squeeze_decomp(const Tensor& x,
                                           const IntArray& axis) {
   auto axis_ = process_dims(x, axis.GetData());
@@ -634,8 +615,7 @@ Tensor sqrt_decomp(const Tensor& x) {
     x_cast = cast<T>(x, DataType::FLOAT32);
   }
 
-  auto ans =
-      elementwise_pow<T>(x_cast, full<T>(empty_shape, 0.5, x_cast.dtype()));
+  auto ans = 1.0 / rsqrt<T>(x_cast);
   if (need_cast) {
     return cast<T>(ans, org_dtype);
   } else {

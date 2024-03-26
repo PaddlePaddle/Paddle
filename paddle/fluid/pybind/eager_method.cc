@@ -1987,7 +1987,7 @@ This hook will be called every time the gradient of current Tensor has been full
 
 There are two differences with `_register_grad_hook`:
 1. This backward hook will be executed after the gradient accumulation completed across batches,
-  but the hook registered by `_register_grad_hook` will be executed the gradient accumulation
+  but the hook registered by `_register_grad_hook` will be executed before the gradient accumulation
   completed in current batch.
 2. This backward hook function should have the following signature:
 
