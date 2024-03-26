@@ -122,9 +122,10 @@ static std::vector<paddle::Tensor> Trans2ContiguousTensors(
              .is_contiguous()) {
       res.emplace_back(
           std::make_shared<phi::DenseTensor>(
-              std::move(paddle::experimental::Trans2Contiguous(
-                  *(std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()))))),
-          t.mutable_autograd_meta());
+              paddle::experimental::Trans2Contiguous(
+                  *(std::dynamic_pointer_cast<phi::DenseTensor>(t.impl())))),
+          t.mutable_autograd_meta(),
+          t.name());
     } else {
       res.emplace_back(t);
     }

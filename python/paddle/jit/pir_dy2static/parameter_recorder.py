@@ -47,9 +47,21 @@ class ParametersRecorder:
                 type=tensor.type,
                 initializer=non_used_initializer,
             )
+
+            if tensor.placements is not None:  # import for shard tensor api
+                import paddle.distributed as dist
+
+                value = dist.shard_tensor(
+                    value,
+                    tensor.process_mesh,
+                    tensor.placements,
+                    stop_gradient=value.stop_gradient,
+                )
+
             if isinstance(tensor, paddle.Tensor):
                 params.add(tensor)
             mappings[id(tensor)] = value
+
         return mappings[id(tensor)]
 
     def pop(self, program):

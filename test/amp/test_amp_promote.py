@@ -188,6 +188,100 @@ class TestEagerAmpPromoteStats(AmpTestBase):
     or paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
 )
+class TestPirAmpPromoteStats(AmpTestBase):
+    def check_promote_results(
+        self, dtype, level, use_promote, expected_op_calls, debug_info
+    ):
+        with paddle.pir_utils.IrGuard():
+            startup = paddle.static.Program()
+            main = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                model, optimizer, scaler = build_conv_model(
+                    use_amp=True,
+                    amp_dtype=dtype,
+                    amp_level=level,
+                    use_promote=use_promote,
+                )
+                model.train()
+
+                with paddle.amp.auto_cast(
+                    enable=True,
+                    dtype=dtype,
+                    level=level,
+                    use_promote=use_promote,
+                ):
+                    x = paddle.static.data(
+                        'x', shape=[1, 1, 6, 6], dtype='float32'
+                    )
+                    out = model(x)
+                    loss = paddle.mean(out)
+                scaled = scaler.scale(loss)
+                scaler.minimize(optimizer, scaled)
+
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(startup)
+                paddle.amp.debugging.enable_operator_stats_collection()
+                exe.run(
+                    main,
+                    feed={
+                        'x': np.random.random([1, 1, 6, 6]).astype('float32'),
+                    },
+                    fetch_list=[loss],
+                )
+                paddle.amp.debugging.disable_operator_stats_collection()
+                op_stats = paddle.base.core.get_low_precision_op_list()
+
+                self._check_op_calls(
+                    op_stats,
+                    expected_fp16_calls=expected_op_calls,
+                    debug_info=debug_info,
+                )
+
+    def test_o2_promote_on(self):
+        paddle.set_flags({"FLAGS_pir_apply_inplace_pass": 0})
+        expected_fp16_calls = {
+            "pd_op.conv2d": 1,
+            "pd_op.add": 2,
+            "pd_op.relu": 0,
+            "pd_op.matmul": 1,
+            "pd_op.softmax": 1,
+            "pd_op.mean": 1,
+            "pd_op.adamw_": 4,
+        }
+        self.check_promote_results(
+            'float16',
+            'O2',
+            use_promote=True,
+            expected_op_calls=expected_fp16_calls,
+            debug_info="TestEagerAmpPromoteStats/test_o2_promote_on",
+        )
+
+    def test_o2_promote_off(self):
+        paddle.set_flags({"FLAGS_pir_apply_inplace_pass": 0})
+        expected_fp16_calls = {
+            "pd_op.conv2d": 1,
+            "pd_op.add": 2,
+            "pd_op.relu": 1,
+            "pd_op.matmul": 1,
+            "pd_op.softmax": 1,
+            "pd_op.mean": 1,
+            "pd_op.adamw_": 4,
+        }
+        self.check_promote_results(
+            'float16',
+            'O2',
+            use_promote=False,
+            expected_op_calls=expected_fp16_calls,
+            debug_info="TestEagerAmpPromoteStats/test_o2_promote_off",
+        )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "run test when gpu's compute capability is at least 7.0.",
+)
 class TestEagerAmpPromoteSimple(AmpTestBase):
     def setUp(self):
         self._conv = paddle.nn.Conv2D(
@@ -218,6 +312,53 @@ class TestEagerAmpPromoteSimple(AmpTestBase):
         self.assertEqual(conv_out.dtype, paddle.float16)
         self.assertEqual(add_out.dtype, paddle.float16)
         self.assertEqual(linear_out.dtype, paddle.float16)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "run test when gpu's compute capability is at least 7.0.",
+)
+class TestPirAmpPromoteSimple(AmpTestBase):
+    def init_net(self):
+        self._conv = paddle.nn.Conv2D(
+            in_channels=1, out_channels=6, kernel_size=3, bias_attr=False
+        )
+        self._linear = paddle.nn.Linear(in_features=4, out_features=4)
+
+    def test_o2_use_promote_on(self):
+        with paddle.pir_utils.IrGuard():
+            startup = paddle.static.Program()
+            main = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                self.init_net()
+                with paddle.amp.auto_cast(level='O2'):
+                    x = paddle.rand(shape=[1, 1, 6, 6], dtype='float32')
+                    conv_out = self._conv(x)
+                    y = paddle.rand(shape=conv_out.shape, dtype='float16')
+                    add_out = conv_out + y
+                    linear_out = self._linear(add_out)
+
+            self.assertEqual(conv_out.dtype, paddle.float16)
+            self.assertEqual(add_out.dtype, paddle.float16)
+            self.assertEqual(linear_out.dtype, paddle.float32)
+
+    def test_o2_use_promote_off(self):
+        with paddle.pir_utils.IrGuard():
+            startup = paddle.static.Program()
+            main = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                self.init_net()
+                with paddle.amp.auto_cast(level='O2', use_promote=False):
+                    x = paddle.rand(shape=[1, 1, 6, 6], dtype='float32')
+                    conv_out = self._conv(x)
+                    y = paddle.rand(shape=conv_out.shape, dtype='float16')
+                    add_out = conv_out + y
+                    linear_out = self._linear(add_out)
+
+            self.assertEqual(conv_out.dtype, paddle.float16)
+            self.assertEqual(add_out.dtype, paddle.float16)
+            self.assertEqual(linear_out.dtype, paddle.float16)
 
 
 if __name__ == '__main__':

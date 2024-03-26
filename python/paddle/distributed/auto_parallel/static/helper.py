@@ -58,6 +58,7 @@ class ProxyLayer(Layer):
         self._label_vars = defaultdict(list)
         self._output_vars = defaultdict(list)
         self._loss_vars = defaultdict(list)
+        self._loss_names = defaultdict(list)
         self._metric_vars = defaultdict(list)
 
         # Consider ProxyLayer as not Paddle inner function because it contains
@@ -65,6 +66,12 @@ class ProxyLayer(Layer):
         as_not_paddle_func(
             inspect.getmodule(ProxyLayer).__name__ + ".ProxyLayer"
         )
+
+    @paddle.jit.not_to_static
+    def append_loss_to_shadow_output(self, mode):
+        name = paddle.utils.unique_name.generate('loss')
+        paddle._pir_ops.set_persistable_value(self._loss_vars[mode], name)
+        self._loss_names[mode] = name
 
     def _train(self, inputs, labels):
         """
@@ -81,6 +88,10 @@ class ProxyLayer(Layer):
         # step 3. calculate loss if needed
         new_inputs = self._prepare(self.output_vars, labels)
         self._loss_vars[mode] = self.call_loss(new_inputs)
+        if paddle.base.framework.get_flags("FLAGS_enable_pir_api")[
+            "FLAGS_enable_pir_api"
+        ]:
+            self.append_loss_to_shadow_output(mode)
 
         # step 4. calculate metrics if needed
         self._metric_vars[mode] = self.call_metrics(new_inputs)
@@ -103,6 +114,10 @@ class ProxyLayer(Layer):
         # step 3. calculate loss if needed
         new_inputs = self._prepare(self.output_vars, labels)
         self._loss_vars[mode] = self.call_loss(new_inputs)
+        if paddle.base.framework.get_flags("FLAGS_enable_pir_api")[
+            "FLAGS_enable_pir_api"
+        ]:
+            self.append_loss_to_shadow_output(mode)
 
         # step 4. calculate metrics if needed
         self._metric_vars[mode] = self.call_metrics(new_inputs)
@@ -181,6 +196,10 @@ class ProxyLayer(Layer):
         return self._loss_vars[self.mode]
 
     @property
+    def loss_names(self):
+        return self._loss_names[self.mode]
+
+    @property
     def metric_vars(self):
         return self._metric_vars[self.mode]
 
@@ -255,9 +274,7 @@ class ProgramHelper:
 
         # NOTE(dev): Because @to_static is a Lazy mechanism, so we explicitly call this to trigger
         # generating Program IR immediately.
-        concrete_program = getattr(
-            self.proxy_layer, func_name
-        ).concrete_program  # noqa: B018
+        concrete_program = getattr(self.proxy_layer, func_name).concrete_program
 
         # TODO(zhiqiu): prepare_op_amp_options is not supported for PIR program
         # It will to use dynamic-static unified amp in pir program, and there is
@@ -366,10 +383,14 @@ class ProgramHelper:
                     var
                 )
                 is_comm = True
-                tmp = paddle.base.core.reshard(param, var_dist_attr)
+                # No need to construct backward.
+                with paddle.no_grad():
+                    tmp = paddle.base.core.reshard(param, var_dist_attr)
                 if tmp._is_initialized():
                     param.get_tensor()._share_data_with(tmp.get_tensor())
                 else:
+                    # Only setting the "param" to "None" can't release the memory
+                    param.get_tensor()._clear()
                     param = None
             paddle.device.synchronize()
 
@@ -377,6 +398,8 @@ class ProgramHelper:
             if param is None:
                 continue
             if param.name not in main_program.global_block().vars:
+                # Release the reduntant params
+                param.get_tensor()._clear()
                 continue
             if param.is_dense():
                 # get param_var's dist_attr
@@ -516,6 +539,10 @@ class ProgramHelper:
     @property
     def loss_vars(self):
         return to_list(self.proxy_layer.loss_vars)
+
+    @property
+    def loss_names(self):
+        return to_list(self.proxy_layer.loss_names)
 
     @property
     def metric_vars(self):
