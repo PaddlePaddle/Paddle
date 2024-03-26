@@ -18,6 +18,7 @@
 #include <mutex>  // NOLINT
 
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
+#include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/flags.h"
@@ -26,6 +27,11 @@
 
 PD_DECLARE_bool(free_idle_chunk);
 PD_DECLARE_bool(free_when_no_cache_hit);
+
+PADDLE_DEFINE_EXPORTED_bool(
+    free_idel_when_switch_to_normal,
+    false,
+    "Whether to free idel when switch to normal auto growth.");
 
 namespace paddle {
 namespace memory {
@@ -99,8 +105,9 @@ phi::Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(
               << static_cast<void *>(p) << ") by strict_matching_state.";
     }
   } else {
-    if (is_first_switch_to_regular_) {
+    if (is_first_switch_to_regular_ && FLAGS_free_idel_when_switch_to_normal) {
       FreeIdleChunks();
+      DEVICE_MEMORY_STAT_RESET_PEAK(Reserved, place_.device);
       is_first_switch_to_regular_ = false;
     }
     auto iter = free_blocks_.lower_bound(std::make_pair(size, nullptr));
