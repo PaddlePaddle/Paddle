@@ -1,7 +1,4 @@
-cc_test(
-  test_math_function
-  SRCS test_math_function.cc
-  DEPS phi common)
+paddle_test(test_math_function SRCS test_math_function.cc DEPS phi common)
 if(WITH_GPU)
   nv_test(
     test_math_function_gpu
