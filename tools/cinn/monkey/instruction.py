@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import .dag_generator as dag_generator
 import .dims_eq1_generator as dims_eq1_generator
 import .op_name_generator as op_name_generator
-from typing import List
+from typing import List, Union
 from .hash_combine import HashCombine
 from .instruction_id import InstructionId, MakeUniqueInstructionId
 
@@ -29,7 +29,6 @@ Nope = MergeInstructionClass("Nope", kBaseClassModules)
 AddSinkTensor = MergeInstructionClass("AddSinkTensor", kBaseClassModules)
 AddUnaryOp = MergeInstructionClass("AddUnaryOp", kBaseClassModules)
 AddBinaryOp = MergeInstructionClass("AddBinaryOp", kBaseClassModules)
-InsertBinaryOp = MergeInstructionClass("InsertBinaryOp", kBaseClassModules)
 AddBinaryClone = MergeInstructionClass("AddBinaryClone", kBaseClassModules)
 AddSourceOp = MergeInstructionClass("AddSourceOp", kBaseClassModules)
 
@@ -39,7 +38,6 @@ Instruction = Union[
     AddSinkTensor,
     AddUnaryOp,
     AddBinaryOp,
-    InsertBinaryOp,
     AddBinaryClone,
     AddSourceOp
 ]
@@ -49,7 +47,6 @@ kDAGGenClassToIrGenClassMap = {
     dag_generator.AddSinkTensor: AddSinkTensor,
     dag_generator.AddUnaryOp: AddUnaryOp,
     dag_generator.AddBinaryOp: AddBinaryOp,
-    dag_generator.InsertBinaryOp: InsertBinaryOp,
     dag_generator.AddBinaryClone: AddBinaryClone,
     dag_generator.AddSourceOp: AddSourceOp,
 }

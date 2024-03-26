@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import .dag_generator as dag_generator
 from .pick_weight import PickWeight
-from typing import List,Union
+from typing import List, Union
 import random
 
 @dataclass
@@ -54,17 +54,6 @@ class AddBinaryOp:
 
 
 @dataclass
-class InsertBinaryOp:
-    rhs_source_tensor_dim_eq1: bool
-
-    @classmethod
-    def MakeRandomInstance(cls, requirement: DimEq1GenRequirement):
-        return InsertBinaryOp(
-            rhs_source_tensor_dim_eq1=_GetRandomBool(requirement)
-        )
-
-
-@dataclass
 class AddBinaryClone:
 
     @classmethod
@@ -85,7 +74,6 @@ DimEq1GenInstruction = Union[
     AddSinkTensor,
     AddUnaryOp,
     AddBinaryOp,
-    InsertBinaryOp,
     AddBinaryClone,
     AddSourceOp
 ]
@@ -95,7 +83,6 @@ kDAGGenClassToDimEq1GenClassMap = {
     dag_generator.AddSinkTensor: AddSinkTensor,
     dag_generator.AddUnaryOp: AddUnaryOp,
     dag_generator.AddBinaryOp: AddBinaryOp,
-    dag_generator.InsertBinaryOp: InsertBinaryOp,
     dag_generator.AddBinaryClone: AddBinaryClone,
     dag_generator.AddSourceOp: AddSourceOp,
 }

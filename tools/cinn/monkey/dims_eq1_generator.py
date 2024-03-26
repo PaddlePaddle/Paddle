@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import .dag_generator as dag_generator
 import .dim_eq1_generator as dim_eq1_generator
 from .pick_weight import PickWeight
-from typing import List
+from typing import List, Union
 from .hash_combine import HashCombine
 
 @dataclass
@@ -88,26 +88,6 @@ class AddBinaryOp:
 
 
 @dataclass
-class InsertBinaryOp:
-    rhs_source_tensor_dims_eq1: List[bool]
-
-    def __hash__(self):
-        hash_value = 0
-        for dim_eq1 in self.rhs_source_tensor_dims_eq1:
-            hash_value = HashCombine(hash_value, hash(dim_eq1))
-        return hash_value
-
-    @classmethod
-    def Merge(cls, dim_eq1_gen_instructions: List["DimEq1GenInstruction"]):
-        return InsertBinaryOp(
-            rhs_source_tensor_dims_eq1=tuple(
-                dim_eq1_gen_instance.rhs_source_tensor_dim_eq1
-                for dim_eq1_gen_instance in dim_eq1_gen_instructions
-            )
-        )
-
-
-@dataclass
 class AddBinaryClone:
 
     def __hash__(self):
@@ -134,7 +114,6 @@ DimsEq1GenInstruction = Union[
     AddSinkTensor,
     AddUnaryOp,
     AddBinaryOp,
-    InsertBinaryOp,
     AddBinaryClone,
     AddSourceOp
 ]
@@ -145,7 +124,6 @@ kDAGGenClassToDimsEq1GenClassMap = {
     dag_generator.AddSinkTensor: AddSinkTensor,
     dag_generator.AddUnaryOp: AddUnaryOp,
     dag_generator.AddBinaryOp: AddBinaryOp,
-    dag_generator.InsertBinaryOp: InsertBinaryOp,
     dag_generator.AddBinaryClone: AddBinaryClone,
     dag_generator.AddSourceOp: AddSourceOp,
 }

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import .dag_generator as dag_generator
 import .dims_eq1_signature_inferer as dims_eq1_signature_inferer
 import .shape_signature_inferer as shape_signature_inferer
-from typing import List
+from typing import List, Union
 from .hash_combine import HashCombine
 
 kBaseClassModules = (dims_eq1_signature_inferer, shape_signature_inferer)
@@ -15,7 +15,6 @@ Nope = MergeCodeGenSpecClass("Nope", kBaseClassModules)
 AddSinkTensor = MergeCodeGenSpecClass("AddSinkTensor", kBaseClassModules)
 AddUnaryOp = MergeCodeGenSpecClass("AddUnaryOp", kBaseClassModules)
 AddBinaryOp = MergeCodeGenSpecClass("AddBinaryOp", kBaseClassModules)
-InsertBinaryOp = MergeCodeGenSpecClass("InsertBinaryOp", kBaseClassModules)
 AddBinaryClone = MergeCodeGenSpecClass("AddBinaryClone", kBaseClassModules)
 AddSourceOp = MergeCodeGenSpecClass("AddSourceOp", kBaseClassModules)
 
@@ -25,7 +24,6 @@ CodeGenSpec = Union[
     AddSinkTensor,
     AddUnaryOp,
     AddBinaryOp,
-    InsertBinaryOp,
     AddBinaryClone,
     AddSourceOp
 ]
@@ -36,7 +34,6 @@ kDAGGenClassToCodeGenSpecClassMap = {
     dag_generator.AddSinkTensor: AddSinkTensor,
     dag_generator.AddUnaryOp: AddUnaryOp,
     dag_generator.AddBinaryOp: AddBinaryOp,
-    dag_generator.InsertBinaryOp: InsertBinaryOp,
     dag_generator.AddBinaryClone: AddBinaryClone,
     dag_generator.AddSourceOp: AddSourceOp,
 }

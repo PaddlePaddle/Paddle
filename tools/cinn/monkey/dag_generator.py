@@ -311,73 +311,6 @@ class AddBinaryOp:
 
 
 @dataclass
-class InsertBinaryOp:
-    source_tensor_index: int
-    dag_tag: str
-
-    def __hash__(self):
-        return self.GetHashValue()
-
-    def GetHashValue(self):
-        hash_value = int(id(InsertBinaryOp))
-        hash_value = HashCombine(hash_value, hash(self.source_tensor_index))
-        hash_value = HashCombine(hash_value, hash(self.dag_tag))
-        return hash_value
-
-    def IsValidSourceTensorIndex(
-        self,
-        ctx: DAGGenContext
-    ) -> bool:
-        return self.source_tensor_index < ctx.num_source_tensors
-    
-    @classmethod
-    def GetDeltaNumSourceTensors(cls):
-        return 1
-
-    @classmethod
-    def GetDeltaNumSinkTensors(cls):
-        return 0
-
-    @classmethod
-    def RandomGenerate(
-        cls,
-        requirement: DAGGenRequirement,
-        ctx: DAGGenContext
-    ):
-        source_tensor_index = random.randomint(
-            0,
-            ctx.num_source_tensors - 1
-        )
-        return InsertBinaryOp(
-            source_tensor_index=source_tensor_index,
-            dag_tag=requirement.dag_tag
-        )
-
-    @classmethod
-    def GetWeight(
-        cls,
-        pick_probability: DAGGenTypePickProbability
-    ) -> float:
-        return pick_probability.insert_binary_op.weight
-
-    @classmethod
-    def IsValidNumSourceTensors(
-        cls,
-        ctx: DAGGenContext,
-        requirement: DAGGenRequirement
-    ) -> bool:
-        return ctx.num_source_tensors <= requirement.max_width
-
-    @classmethod
-    def IsValidNumSinkTensors(
-        cls,
-        ctx: DAGGenContext,
-        requirement: DAGGenRequirement
-    ) -> bool:
-        return ctx.num_sink_tensors >= requirement.min_num_sinks
-
-
-@dataclass
 class AddBinaryClone:
     lhs_source_tensor_index: int
     rhs_source_tensor_index: int
@@ -525,7 +458,6 @@ DAGGenInstruction = Union[
     AddSinkTensor,
     AddUnaryOp,
     AddBinaryOp,
-    InsertBinaryOp,
     AddBinaryClone,
     AddSourceOp
 ]
@@ -535,7 +467,6 @@ kDAGGenInstructionClasses = [
     AddSinkTensor,
     AddUnaryOp,
     AddBinaryOp,
-    InsertBinaryOp,
     AddBinaryClone,
     AddSourceOp,
 ]
@@ -706,8 +637,8 @@ class DAGGenerator:
                 return dag_gen_instruction
             assert num_source_tensors > 0
             source_tensor_index = random.randomint(0, num_source_tensors - 1)
-            # replace AddSinkTensor with InsertBinaryOp
-            return InsertBinaryOp(
+            # replace AddSinkTensor with AddBinaryOp
+            return AddBinaryOp(
                 source_tensor_index=source_tensor_index,
                 dag_tag=self.requirement.dag_tag
             )

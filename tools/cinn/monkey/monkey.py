@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from collections import namedtuple
-from typing import Generator
+from typing import Generator, Union
 from .defensive_list import DList
 import .dag_gen_generator as dag_gen_generator
 import .dim_eq1_generator as dim_eq1_generator

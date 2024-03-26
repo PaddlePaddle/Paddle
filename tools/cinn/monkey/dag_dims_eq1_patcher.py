@@ -139,44 +139,6 @@ class AddBinaryOp:
             )
         )
 
-    
-@dataclass
-class InsertBinaryOp:
-
-    @classmethod
-    def Patch(
-        cls,
-        ctx: PatchContext
-    ) -> Generator[DAGDimsEq1Instruction]:
-        lhs_input_dims_eq1 = ctx.dims_eq1_signature.lhs_input_dims_eq1
-        rhs_input_dims_eq1 = ctx.dims_eq1_signature.rhs_input_dims_eq1
-        output_dims_eq1 = ctx.dims_eq1_signature.output_dims_eq1
-        output_idx = ctx.dag_gen_instruction.source_tensor_index
-        middle_dims_eq1 = [
-            x and y
-            for x, y in zip(output_dims_eq1, rhs_input_dims_eq1)
-        ]
-        yield DAGDimsEq1Instruction(
-            dag_gen_instruction=ctx.dag_gen_instruction,
-            instruction_id=ctx.instruction_id,
-            dims_eq1_instruction=dims_eq1_gen_instructions.InsertBinaryOp(
-                rhs_source_tensor_dim_eq1=middle_dims_eq1
-            )
-        )
-        new_output_idx = dims_eq1_signature.rhs_input_source_tensor_index
-        if rhs_input_dims_eq1 != middle_dims_eq1:
-            yield DAGDimsEq1Instruction(
-                dag_gen_instruction=dag_generator.AddUnaryOp(
-                    source_tensor_index=new_output_idx,
-                    dag_tag=dag_gen_instruction.dag_tag,
-                    convert_type=dag_generator.UnclassifiedConvertType()
-                ),
-                instruction_id=MakeUniqueInstructionId(),
-                dims_eq1_instruction=dims_eq1_generator.AddUnaryOp(
-                    source_tensor_dim_eq1=rhs_input_dims_eq1
-                )
-            )
- 
 
 @dataclass
 class AddBinaryClone:
@@ -228,7 +190,6 @@ kDAGGenClassToDAGDimsEq1GenClassMap = {
     dag_generator.AddSinkTensor: AddSinkTensor,
     dag_generator.AddUnaryOp: AddUnaryOp,
     dag_generator.AddBinaryOp: AddBinaryOp,
-    dag_generator.InsertBinaryOp: InsertBinaryOp,
     dag_generator.AddBinaryClone: AddBinaryClone,
     dag_generator.AddSourceOp: AddSourceOp,
 }

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Union
 from collections import namedtuple
 import .dag_generator as dag_generator
 import .dims_eq1_generator as dims_eq1_generator
@@ -102,36 +102,7 @@ class AddBinaryOp:
             rhs_input_dims_eq1=rhs_input_dims_eq1,
             output_dims_eq1=output_dims_eq1
         )
-    
-@dataclass
-class InsertBinaryOp:
-    lhs_input_dims_eq1: List[bool]
-    rhs_input_dims_eq1: List[bool]
-    output_dims_eq1: List[bool]
-    rhs_input_source_tensor_index: int
 
-    @classmethod
-    def InferDimsEq1Signature(
-        cls,
-        dag_dims_eq1_gen_instruction: DAGDimsEq1GenInstruction,
-        infer_ctx: DimsEq1InferContext
-    ):
-        source_tensor_index = dag_dims_eq1_gen_instruction.dag.source_tensor_index
-        lhs_input_dims_eq1 = infer_ctx.current_source_tensor_dim_eq1[
-            source_tensor_index
-        ]
-        rhs_input_dims_eq1 = (
-            dag_dims_eq1_gen_instruction.dims_eq1.rhs_source_tensor_dim_eq1
-        )
-        rhs_input_source_tensor_index = len(infer_ctx.current_source_tensor_dim_eq1)
-        output_dims_eq1 = lhs_input_dims_eq1
-        infer_ctx.current_source_tensor_dim_eq1.append(rhs_input_dims_eq1)
-        return InsertBinaryOp(
-            lhs_input_dims_eq1=lhs_input_dims_eq1,
-            rhs_input_dims_eq1=rhs_input_dims_eq1,
-            output_dims_eq1=output_dims_eq1,
-            rhs_input_source_tensor_index=rhs_input_source_tensor_index
-        )
 
 @dataclass
 class AddBinaryClone:
@@ -176,7 +147,6 @@ DimsEq1Signature = Union[
     AddSinkTensor,
     AddUnaryOp,
     AddBinaryOp,
-    InsertBinaryOp,
     AddBinaryClone,
     AddSourceOp
 ]
@@ -187,7 +157,6 @@ kDAGGenClassToDAGDimsEq1InfererClassMap = {
     dag_generator.AddSinkTensor: AddSinkTensor,
     dag_generator.AddUnaryOp: AddUnaryOp,
     dag_generator.AddBinaryOp: AddBinaryOp,
-    dag_generator.InsertBinaryOp: InsertBinaryOp,
     dag_generator.AddBinaryClone: AddBinaryClone,
     dag_generator.AddSourceOp: AddSourceOp,
 }

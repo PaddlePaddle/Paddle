@@ -6,7 +6,7 @@ import .op_name_generator as op_name_generator
 import .code_gen_spec_inferer as code_gen_spec_inferer
 import .dims_eq1_signature_inferer as dims_eq1_signature_inferer
 from .defensive_list import DList
-from .instruction import IrGenGenerator
+from .instruction import IrGenerator
 from .instruction_id import MakeUniqueInstructionId
 
 def GenerateInstructions(
@@ -23,7 +23,7 @@ def GenerateInstructions(
     op_name_gen = op_name_generator.OpNameGenerator(
         requirement=op_name_gen_requirement
     )
-    ir_gen = IrGenGenerator()
+    ir_gen = IrGenerator()
     # inferers
     dims_eq1_sig_inferer = dims_eq1_signature_inferer.DimsEq1SignatureInferer()
     # instructions

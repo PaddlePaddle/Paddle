@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Union
 from collections import namedtuple
 import .dag_generator as dag_generator
 import .dims_eq1_generator as dims_eq1_generator
@@ -105,35 +105,6 @@ class AddBinaryOp:
             rhs_input_shape=rhs_input_shape,
             output_shape=output_shape
         )
-    
-@dataclass
-class InsertBinaryOp:
-    lhs_input_shape: List[int]
-    rhs_input_shape: List[int]
-    output_shape: List[int]
-
-    @classmethod
-    def InferShape(
-        cls,
-        infer_ctx: ShapeInferContext
-    ):
-        lhs_input_shape = _GetStaticShape(
-            total_shape=infer_ctx.dim_size_requirement.dim_size,
-            dims_eq1=infer_ctx.dims_eq1_signature.lhs_input_dims_eq1
-        )
-        rhs_input_shape = _GetStaticShape(
-            total_shape=infer_ctx.dim_size_requirement.dim_size,
-            dims_eq1=infer_ctx.dims_eq1_signature.rhs_input_dims_eq1
-        )
-        output_shape = _GetStaticShape(
-            total_shape=infer_ctx.dim_size_requirement.dim_size,
-            dims_eq1=infer_ctx.dims_eq1_signature.output_dims_eq1
-        )
-        return InsertBinaryOp(
-            lhs_input_shape=lhs_input_shape,
-            rhs_input_shape=rhs_input_shape,
-            output_shape=output_shape
-        )
 
 
 @dataclass
@@ -178,7 +149,6 @@ ShapeSignature = Union[
     AddSinkTensor,
     AddUnaryOp,
     AddBinaryOp,
-    InsertBinaryOp,
     AddBinaryClone,
     AddSourceOp
 ]
@@ -188,7 +158,6 @@ kDAGGenClassToShapeInfererClassMap = {
     dag_generator.AddSinkTensor: AddSinkTensor,
     dag_generator.AddUnaryOp: AddUnaryOp,
     dag_generator.AddBinaryOp: AddBinaryOp,
-    dag_generator.InsertBinaryOp: InsertBinaryOp,
     dag_generator.AddBinaryClone: AddBinaryClone,
     dag_generator.AddSourceOp: AddSourceOp,
 }

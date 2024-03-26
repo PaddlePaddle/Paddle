@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 import .dag_generator as dag_generator
 from .defensive_list import DList
 from .pick_weight import PickWeight
-from typing import List, Set
+from typing import List, Set, Union
 import random
 
 @dataclass
@@ -134,24 +134,6 @@ class AddBinaryOp:
 
 
 @dataclass
-class InsertBinaryOp:
-    op_name: str
-
-    def __hash__(self):
-        return hash(self.op_name)
-
-    @classmethod
-    def MakeRandomInstance(
-        cls,
-        requirement: OpNameGenRequirement,
-        dag_gen_instruction: "DAGGenInstruction",
-    ) -> "OpNameGenInstruction":
-        return InsertBinaryOp(
-            op_name=_GetRandomBinaryOpName(requirement)
-        )
-
-
-@dataclass
 class AddBinaryClone:
 
     def __hash__(self):
@@ -187,7 +169,6 @@ OpNameGenInstruction = Union[
     AddSinkTensor,
     AddUnaryOp,
     AddBinaryOp,
-    InsertBinaryOp,
     AddBinaryClone,
     AddSourceOp
 ]
@@ -197,7 +178,6 @@ kDAGGenClassToOpNameGenClassMap = {
     dag_generator.AddSinkTensor: AddSinkTensor,
     dag_generator.AddUnaryOp: AddUnaryOp,
     dag_generator.AddBinaryOp: AddBinaryOp,
-    dag_generator.InsertBinaryOp: InsertBinaryOp,
     dag_generator.AddBinaryClone: AddBinaryClone,
     dag_generator.AddSourceOp: AddSourceOp,
 }
