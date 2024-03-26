@@ -20,6 +20,16 @@
 
 namespace paddle::dialect {
 
+bool BicubicInterpOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return true;
+}
+
+bool BilinearInterpOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return BicubicInterpOpInferSymbolicShape(op, shape_analysis);
+}
+
 bool ConcatOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   pir::Value operand_source = op->operand_source(0);
@@ -132,11 +142,22 @@ bool LinspaceOpInferSymbolicShape(
       op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
   return true;
 }
+
+bool LinearInterpOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return BicubicInterpOpInferSymbolicShape(op, shape_analysis);
+}
+
 bool LogspaceOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   PADDLE_THROW(phi::errors::Unimplemented(
       op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
   return true;
+}
+
+bool NearestInterpOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return BicubicInterpOpInferSymbolicShape(op, shape_analysis);
 }
 
 bool StackOpInferSymbolicShape(pir::Operation *op,
