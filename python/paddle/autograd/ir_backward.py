@@ -639,20 +639,19 @@ def append_backward_ops(
                     # all(zero_flag) support this op has no contribution for grad
                     # should be delete (prune sub_graph)
                     if (
-                        len(output_grads) == 0
-                        or all(zero_flag)
-                        or all_output_grad_none(output_grads)
-                        or all(
-                            all(stop_gradients)
-                            for stop_gradients in input_grad_stopgradients
+                        (
+                            len(output_grads) == 0
+                            or all(zero_flag)
+                            or all_output_grad_none(output_grads)
+                            or all(
+                                all(stop_gradients)
+                                for stop_gradients in input_grad_stopgradients
+                            )
                         )
-                    ) and op.name() not in [
-                        "pd_op.while",
-                        "pd_op.if",
-                        "pd_op.increment_",
-                        "pd_op.array_read",
-                        "pd_op.array_write_",
-                    ]:
+                        and op.name()
+                        not in ["pd_op.increment_", "pd_op.array_read"]
+                        and not is_inplace_net([op])
+                    ):
                         continue
 
                     if op.name() == "pd_op.if":
