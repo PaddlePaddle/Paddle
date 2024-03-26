@@ -18,13 +18,30 @@
 
 namespace cinn::frontend::group_cluster::policy {
 
-ShardableAxesSignature ShardableAxesInfoManager::GetSignature(
-    const pir::Operation* op) {
-  return op_signature_map_[op];
+ShardableAxes ShardableAxesInfoManager::ReplaceShardableAxesWithRootName(
+    const ShardableAxes& axes) {
+  std::vector<std::string> names;
+  for (auto name : axes.axis_names) {
+    names.push_back(name_union_[name]);
+  }
+  return ShardableAxes(names);
 }
 
-ShardableAxes ShardableAxesInfoManager::GetAxes(const pir::Value value) {
-  return name_union_[value_axes_map_[value]];
+ShardableAxesSignature ShardableAxesInfoManager::GetSignature(
+    const pir::Operation* op) {
+  auto result = ShardableAxesSignature();
+  auto origin_sig = op_signature_map_[op];
+  for (const auto& axes : origin_sig.inputs) {
+    result.inputs.emplace_back(ReplaceShardableAxesWithRootName(axes));
+  }
+  for (const auto& axes : origin_sig.outputs) {
+    result.outputs.emplace_back(ReplaceShardableAxesWithRootName(axes));
+  }
+  return result;
+}
+
+ShardableAxes ShardableAxesInfoManager::GetAxes(pir::Value value) {
+  return ReplaceShardableAxesWithRootName(value_axes_map_[value]);
 }
 
 std::string ShardableAxesInfoManager::GetUniqueName() {

@@ -32,6 +32,8 @@ std::vector<std::vector<const pir::Operation*>> PatternGraph::ClusterOps() {
   return result;
 }
 
+void PatternGraph::ReduceTree_Trivial_Fusion() {}
+
 void PatternGraph::SinkTrivialPattern() {
   // TODO(wuzhanfei): need consider Unsupport op here
   auto visited = std::unordered_set<PatternNodePtr>();

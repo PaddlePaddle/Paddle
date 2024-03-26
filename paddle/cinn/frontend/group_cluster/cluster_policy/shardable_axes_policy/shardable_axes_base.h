@@ -37,8 +37,9 @@ struct ShardableAxesInfoManager {
       const std::vector<const pir::Operation*>& ops,
       const pir::ShapeConstraintIRAnalysis* shape_analysis);
   ShardableAxesSignature GetSignature(const pir::Operation* op);
-  ShardableAxes GetAxes(const pir::Value value);
+  ShardableAxes GetAxes(pir::Value value);
   ShardableAxesSignature CreateShardableSignature(const pir::Operation* op);
+  ShardableAxes ReplaceShardableAxesWithRootName(const ShardableAxes& axes);
   static std::string GetUniqueName();
 
  private:
@@ -47,7 +48,7 @@ struct ShardableAxesInfoManager {
 
   std::unordered_map<const pir::Operation*, ShardableAxesSignature>
       op_signature_map_;
-  std::unordered_map<const pir::Value, ShardableAxes> value_axes_map_;
+  std::unordered_map<pir::Value, ShardableAxes> value_axes_map_;
   std::unordered_map<std::string, std::string> name_union_;
 };
 

@@ -16,8 +16,8 @@
 
 namespace cinn::frontend::group_cluster::policy {
 
-bool ShardableAxesPolicy::IsDownstreamStmtDependReduceOp(
-    const pir::Operation*& reduce, const StmtPattern& downstream) {
+bool ShardableAxesRRFusePolicy::IsDownstreamStmtDependReduceOp(
+    const pir::Operation* reduce, const StmtPattern& downstream) {
   const auto& values = GetPatternInputValues(downstream);
   for (const auto& value : reduce->results()) {
     if (std::find(values.begin(), values.end(), value) != values.end()) {
@@ -27,7 +27,8 @@ bool ShardableAxesPolicy::IsDownstreamStmtDependReduceOp(
   return false;
 }
 
-std::optional<ReducePattern> ShardableAxesPolicy::GetDownstreamFromCandidate(
+std::optional<ReducePattern>
+ShardableAxesRRFusePolicy::GetDownstreamFromCandidate(
     const ReducePattern& upstream,
     const std::vector<ReducePattern>& candidates) {
   const pir::Operation* reduce = upstream.GetReduceOp();
@@ -50,7 +51,7 @@ static std::set<std::string> GetReduceAxesName(
   return res;
 }
 
-bool ShardableAxesPolicy::ReduceTreeGrownCanMerge(
+bool ShardableAxesRRFusePolicy::ReduceTreeGrownCanMerge(
     const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
   if (!upstream->IsReduceTree() || !downstream->IsReduceTree()) {
     return false;
@@ -80,8 +81,8 @@ bool ShardableAxesPolicy::ReduceTreeGrownCanMerge(
   return true;
 }
 
-bool ShardableAxesPolicy::CanFuse(const PatternNodePtr& upstream,
-                                  const PatternNodePtr& downstream) {
+bool ShardableAxesRRFusePolicy::CanFuse(const PatternNodePtr& upstream,
+                                        const PatternNodePtr& downstream) {
   // TODO(wuzhanfei) shardable axes policy
   return ReduceTreeGrownCanMerge(upstream, downstream);
 }
