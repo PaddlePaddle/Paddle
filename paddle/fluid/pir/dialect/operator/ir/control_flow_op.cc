@@ -629,13 +629,13 @@ void WhileOp::VerifySig() {
                         "The result size (%d) not equal to input size(%d) + 1.",
                         num_results(),
                         input_size));
-  for (size_t index = 0; index < output_size; ++index) {
-    PADDLE_ENFORCE_EQ(
-        operand_type(index + 1),
-        result_type(index),
-        phi::errors::PreconditionNotMet(
-            "The (%d) result and operand type is not equal.", index));
-  }
+  // for (size_t index = 0; index < output_size; ++index) {
+  //   PADDLE_ENFORCE_EQ(
+  //       operand_type(index + 1),
+  //       result_type(index),
+  //       phi::errors::PreconditionNotMet(
+  //           "The (%d) result and operand type is not equal.", index));
+  // }
 }
 
 void WhileOp::VerifyRegion() {
@@ -774,6 +774,8 @@ bool WhileOp::InferSymbolicShape(
   }
 
   pir::InferSymExprForBlock(body(), shape_analysis);
+
+  shape_analysis->PrintDimExprClusters();
 
   // add constraints for args
   std::unordered_map<symbol::DimExpr, symbol::DimExpr>

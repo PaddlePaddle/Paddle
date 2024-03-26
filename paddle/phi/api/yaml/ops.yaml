@@ -613,6 +613,7 @@
     func : conv3d
     data_type : input
   backward : conv3d_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : conv3d_transpose
   args : (Tensor x, Tensor filter, int[] strides={1, 1, 1}, int[] paddings={0, 0, 0}, int[] output_padding={}, int[] output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1, 1}, str data_format="NCHW")
@@ -1039,6 +1040,7 @@
     func : flash_attn
     data_type : q
   backward : flash_attn_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : flash_attn_unpadded
   args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, Tensor fixed_seed_offset, Tensor attn_mask, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")

@@ -27,7 +27,7 @@ class PirCompiler final {
   using CompileResult = std::vector<pir::CINNKernelInfo>;
   PirCompiler(const Target& target) : target_(target) {}
 
-  CompileResult Build(const std::vector<pir::GroupPtr>& groups);
+  CompileResult Build(const std::vector<pir::OpLoweringGroupPtr>& groups);
 
  private:
   CINN_DISALLOW_COPY_AND_ASSIGN(PirCompiler);

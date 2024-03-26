@@ -150,6 +150,11 @@ bool Conv2dOpInferSymbolicShape(
   return true;
 }
 
+bool Conv3dOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return Conv2dOpInferSymbolicShape(op, shape_analysis);
+}
+
 bool EmbeddingOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   const auto x_shape_or_data =

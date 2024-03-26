@@ -40,6 +40,13 @@ class UnionFindSet {
 // The implementation is based on shape constraint ir.
 class IR_API ShapeConstraintIRAnalysis {
  public:
+  enum CompareResult {
+    EQUAL,
+    GREATER,
+    LESSER,
+    UNKNOWN,
+  };
+
   void Init();
 
   const std::string GetNextSymName();
@@ -71,6 +78,11 @@ class IR_API ShapeConstraintIRAnalysis {
                       const std::vector<int>& rhs_dim_idxs) const;
 
   void AddEqCstr(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs);
+
+  void AddBroadcastableCstr(const symbol::DimExpr& lhs,
+                            const symbol::DimExpr& rhs);
+
+  void AddGTOneCstr(const symbol::DimExpr& dim_expr);
 
   bool IsDimExprEqual(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs);
 

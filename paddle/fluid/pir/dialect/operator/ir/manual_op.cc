@@ -3918,7 +3918,8 @@ symbol::DimExpr GetBroadcastDimExpr(const symbol::DimExpr &lhs,
 
 std::vector<symbol::DimExpr> ComputeBroadcastShape(
     const std::vector<symbol::DimExpr> &large_shape,
-    const std::vector<symbol::DimExpr> &small_shape) {
+    const std::vector<symbol::DimExpr> &small_shape,
+    pir::ShapeConstraintIRAnalysis *shape_analysis) {
   IR_ENFORCE(large_shape.size() >= small_shape.size(),
              "Size of large_shape is expected to be greater or equal size of "
              "small_shape, but got [%d] >= [%d].",
@@ -3931,6 +3932,16 @@ std::vector<symbol::DimExpr> ComputeBroadcastShape(
     output_data.emplace_back(large_shape.at(i));
   }
   for (size_t i = 0; i < small_shape.size(); ++i) {
+    const auto &lhs = large_shape.at(i + rank_gap);
+    const auto &rhs = small_shape.at(i);
+    if (symbol::IsDimExprGreaterThanOne(lhs) &&
+        symbol::IsDimExprGreaterThanOne(rhs)) {
+      auto simplify_dim_expr_pair = SimplifyDimExprEqualCstr(lhs, rhs);
+      shape_analysis->DimExprBuilder().CstrEq(simplify_dim_expr_pair.first,
+                                              simplify_dim_expr_pair.second);
+      shape_analysis->AddEqCstr(simplify_dim_expr_pair.first,
+                                simplify_dim_expr_pair.second);
+    }
     output_data.emplace_back(
         GetBroadcastDimExpr(large_shape.at(i + rank_gap), small_shape.at(i)));
   }
@@ -3956,8 +3967,9 @@ bool ShapeBroadcastOp::InferSymbolicShape(
   const auto &y_data = y_data_shape.data().value();
 
   std::vector<symbol::DimExpr> output_data =
-      x_data.size() > y_data.size() ? ComputeBroadcastShape(x_data, y_data)
-                                    : ComputeBroadcastShape(y_data, x_data);
+      x_data.size() > y_data.size()
+          ? ComputeBroadcastShape(x_data, y_data, shape_analysis)
+          : ComputeBroadcastShape(y_data, x_data, shape_analysis);
 
   pir::Value res = result(0);
   std::vector<symbol::DimExpr> shape{std::int64_t(output_data.size())};

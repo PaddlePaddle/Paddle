@@ -26,7 +26,8 @@ namespace framework {
 
 class GroupCompilationContext {
  public:
-  GroupCompilationContext(const Target& target, const pir::GroupPtr& group)
+  GroupCompilationContext(const Target& target,
+                          const pir::OpLoweringGroupPtr& group)
       : target_(target), group_(group) {}
 
   void SetLoweredFuncs(BucketLoweredFuncsWrapper&& funcs);
@@ -38,7 +39,7 @@ class GroupCompilationContext {
   friend class CompilationTask;
 
   const Target& target_;
-  const pir::GroupPtr& group_;
+  const pir::OpLoweringGroupPtr& group_;
 
   size_t func_size_ = 0;
   std::vector<ir::SymbolicPredicate> predicates_;

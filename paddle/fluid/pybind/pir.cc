@@ -96,6 +96,7 @@
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/pir/transforms/onednn/batch_norm_act_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/onednn/conv_elementwise_add_mkldnn_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/onednn/matmul_elementwise_add_fuse_pass.h"
 #endif
 
@@ -117,6 +118,7 @@ using pir::Block;
 using pir::BlockArgument;
 using pir::BoolAttribute;
 using pir::CloneOptions;
+using pir::IrContext;
 using pir::IrMapping;
 using pir::IrParser;
 using pir::Operation;
@@ -154,6 +156,7 @@ USE_PIR_PASS(fused_dot_product_attention_pass);
 #ifdef PADDLE_WITH_DNNL
 USE_PIR_PASS(batch_norm_act_fuse_pass);
 USE_PIR_PASS(matmul_elementwise_add_fuse_pass);
+USE_PIR_PASS(conv_elementwise_add_mkldnn_fuse_pass);
 #endif
 
 COMMON_DECLARE_bool(print_ir);
@@ -219,6 +222,20 @@ std::string GetValueInfo(Value v) {
     ss << ", stop_gradient=True";
   }
   return ss.str();
+}
+
+Value GetOutputValueByName(const Program &program, const std::string &name) {
+  auto &block = *program.block();
+  pir::StrAttribute name_attr =
+      pir::StrAttribute::get(IrContext::Instance(), name);
+  for (auto &op : block) {
+    if (op.isa<pir::ShadowOutputOp>()) {
+      if (op.attribute("output_name") == name_attr) {
+        return op.operand_source(0);
+      }
+    }
+  }
+  return nullptr;
 }
 
 void BindProgram(py::module *m) {
@@ -332,6 +349,10 @@ void BindProgram(py::module *m) {
           [](std::shared_ptr<Program> self, int64_t random_seed) {
             SetProgramInt64Attr(self, "random_seed", random_seed);
           })
+      .def("get_output_value_by_name",
+           [](Program &self, const std::string &name) {
+             return GetOutputValueByName(self, name);
+           })
       .def("num_ops", [](Program &self) { return self.num_ops(); });
 }
 

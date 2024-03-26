@@ -132,6 +132,7 @@
     param : [shape, dtype, values]
     data_type : dtype
     backend : place > output
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : barrier
   args : (Tensor x, int ring_id=0)
@@ -737,6 +738,7 @@
   infer_meta :
     func : CreateLikeInferMeta
     param : [x, dtype]
+    spmd_rule : FullLikeInferSpmd
   kernel :
     func : full_like
     param : [x, value, dtype]

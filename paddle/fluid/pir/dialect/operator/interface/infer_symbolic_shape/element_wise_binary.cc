@@ -62,6 +62,15 @@ bool InferSymbolicShapeElementWiseBinary(
     std::vector<symbol::DimExpr> shapes;
     symbol::DimExprBuilder builder{nullptr};
     for (size_t i = 0; i < shape_0.size(); i++) {
+      if (symbol::IsDimExprGreaterThanOne(shape_0[i]) &&
+          symbol::IsDimExprGreaterThanOne(shape_1[i])) {
+        auto simplify_dim_expr_pair =
+            SimplifyDimExprEqualCstr(shape_0[i], shape_1[i]);
+        shape_analysis->DimExprBuilder().CstrEq(simplify_dim_expr_pair.first,
+                                                simplify_dim_expr_pair.second);
+        shape_analysis->AddEqCstr(simplify_dim_expr_pair.first,
+                                  simplify_dim_expr_pair.second);
+      }
       if (shape_0[i] == shape_1[i]) {
         shapes.emplace_back(shape_0[i]);
       } else if (shape_0[i] == 1 ||

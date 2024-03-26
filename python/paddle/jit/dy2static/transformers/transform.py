@@ -92,6 +92,7 @@ class DygraphToStaticAst(BaseTransformer):
         self.visit(node)
 
         transformers = [
+            TypeHintTransformer,  # remove all typehint
             RegisterHookTransformer,
             EarlyReturnTransformer,
             AttributeJstTransformer,  # Tensor.size -> Tensor.size(), it's unnecessary in PIR mode
@@ -107,7 +108,6 @@ class DygraphToStaticAst(BaseTransformer):
             CastTransformer,  # type casting statement
             DecoratorTransformer,  # transform decorators to function call
             NameloadJstTransformer,
-            TypeHintTransformer,  # remove all typehint in gast.Name
         ]
 
         apply_optimization(transformers)

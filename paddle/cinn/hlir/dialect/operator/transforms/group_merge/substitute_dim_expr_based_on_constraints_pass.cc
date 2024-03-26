@@ -297,7 +297,8 @@ std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetDimExprSubstitution(
       }
     }
     for (const auto& dim_expr : dim_expr_cluster) {
-      if (dim_expr != dim_expr_root) {
+      if (dim_expr != dim_expr_root &&
+          (dim_expr_root.isa<int64_t>() || dim_expr_root.isa<std::string>())) {
         substitution_pattern[dim_expr] = dim_expr_root;
       }
     }

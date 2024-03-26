@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <paddle/phi/backends/dynload/port.h>
+#include <paddle/phi/common/port.h>
 
 #include <array>
 #include <memory>
