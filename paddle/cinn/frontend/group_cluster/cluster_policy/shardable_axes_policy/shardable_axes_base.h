@@ -19,9 +19,10 @@
 namespace cinn::frontend::group_cluster::policy {
 
 struct ShardableAxes {
+  ShardableAxes() : axis_names({}) {}
   explicit ShardableAxes(const std::vector<std::string>& names)
       : axis_names(names) {}
-  std::vector<const std::string> axis_names;
+  std::vector<std::string> axis_names;
   std::string DebugStr();
 };
 
@@ -38,7 +39,7 @@ struct ShardableAxesInfoManager {
   ShardableAxesSignature GetSignature(const pir::Operation* op);
   ShardableAxes GetAxes(const pir::Value value);
   ShardableAxesSignature CreateShardableSignature(const pir::Operation* op);
-  static const std::string GetUniqueName();
+  static std::string GetUniqueName();
 
  private:
   const std::vector<const pir::Operation*>& ops_;
@@ -47,7 +48,7 @@ struct ShardableAxesInfoManager {
   std::unordered_map<const pir::Operation*, ShardableAxesSignature>
       op_signature_map_;
   std::unordered_map<pir::Value, ShardableAxes> value_axes_map_;
-  std::unordered_map<const std::string, const std::string> name_union_;
+  std::unordered_map<std::string, std::string> name_union_;
 };
 
 }  // namespace cinn::frontend::group_cluster::policy

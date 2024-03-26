@@ -165,22 +165,21 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
     op_signature_map_[op] = CreateShardableSignature(op);
   }
 
-  const auto FindRoot =
-      [&](const std::string& non_root) {
-        std::string result = non_root;
-        while (name_union_[result] != result) {
-          result = name_union_[result];
-        }
-        return result
-      }
+  const auto FindRoot = [&](std::string non_root) {
+    std::string result = non_root;
+    while (name_union_[result] != result) {
+      result = name_union_[result];
+    }
+    return result;
+  };
 
-  const auto CombineAxes =
-      [&](const ShardableAxes& root, const ShardableAxes& non_root) {
-        CHECK_EQ(root.axis_names.size(), non_root.axis_names.size());
-        for (int i = 0; i < non_root.axis_names.size(); i++) {
-          name_union_[non_root.axis_names[i]] = FindRoot(root.axis_names[i]);
-        }
-      };
+  const auto CombineAxes = [&](const ShardableAxes& root,
+                               const ShardableAxes& non_root) {
+    CHECK_EQ(root.axis_names.size(), non_root.axis_names.size());
+    for (int i = 0; i < non_root.axis_names.size(); i++) {
+      name_union_[non_root.axis_names[i]] = FindRoot(root.axis_names[i]);
+    }
+  };
 
   for (const auto& [op, axes_signature] : op_signature_map_) {
     for (int i = 0; i < op->num_operands(); ++i) {
@@ -188,7 +187,7 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
       auto axes = axes_signature.inputs[i];
       if (value_axes_map_.find(value) == value_axes_map_.end()) {
         value_axes_map_[value] = axes;
-        for (const auto& axis_name : axes.axis_names) {
+        for (auto& axis_name : axes.axis_names) {
           name_union_[axis_name] = axis_name;
         }
       } else {
@@ -200,7 +199,7 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
       auto axes = axes_signature.outputs[i];
       if (value_axes_map_.find(value) == value_axes_map_.end()) {
         value_axes_map_[value] = axes;
-        for (const auto& axis_name : axes.axis_names) {
+        for (auto& axis_name : axes.axis_names) {
           name_union_[axis_name] = axis_name;
         }
       } else {
@@ -209,10 +208,8 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
     }
   }
 
-  VLOG(4)
-      << "[ShardableAxesInfoManager] NameUnion : " for (const auto& [non_root,
-                                                                     root] :
-                                                        name_union_) {
+  VLOG(4) << "[ShardableAxesInfoManager] NameUnion : ";
+  for (const auto& [non_root, root] : name_union_) {
     VLOG(4) << non_root << " => " << root;
   }
 }
