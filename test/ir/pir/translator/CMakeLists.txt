@@ -34,6 +34,10 @@ if(NOT WITH_DISTRIBUTE)
   list(REMOVE_ITEM TEST_INTERP_CASES ${DISTRIBUTED_OP_TRANSLATOR_TEST})
 endif()
 
+if(NOT WITH_DGC)
+  list(REMOVE_ITEM TEST_INTERP_CASES test_dgc_translator)
+endif()
+
 foreach(target ${TEST_INTERP_CASES})
   py_test_modules(${target} MODULES ${target})
 endforeach()
