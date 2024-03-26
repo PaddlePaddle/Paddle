@@ -83,6 +83,7 @@ from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 from .dygraph.base import enable_dygraph, disable_dygraph
 from .dygraph.varbase_patch_methods import monkey_patch_varbase
 from .core import _cuda_synchronize
+from .core import _set_warmup
 from .trainer_desc import (
     TrainerDesc,
     DistMultiTrainer,

@@ -197,6 +197,10 @@ limitations under the License. */
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator_v2.h"
+#endif
+
 DECLARE_bool(use_mkldnn);
 
 // disable auto conversion to list in Python
@@ -1913,7 +1917,12 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("_cuda_synchronize", [](const platform::CUDAPlace &place) {
     platform::DeviceContextPool::Instance().Get(place)->Wait();
   });
-
+  m.def("_set_warmup", [](bool warmup) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    paddle::memory::allocation::AutoGrowthBestFitAllocatorV2State::GetInstance()
+        .SetWarmup(warmup);
+#endif
+  });
   m.def("get_float_stats", []() {
     std::vector<paddle::platform::ExportedStatValue<float>> float_stats;
     paddle::platform::StatRegistry<float>::Instance().publish(float_stats);

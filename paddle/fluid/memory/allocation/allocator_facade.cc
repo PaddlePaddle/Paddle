@@ -19,6 +19,7 @@
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator.h"
+#include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator_v2.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/naive_best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
@@ -93,6 +94,12 @@ PADDLE_DEFINE_EXPORTED_bool(use_cuda_managed_memory,
                             "strategy");
 
 DECLARE_bool(use_auto_growth_pinned_allocator);
+
+PADDLE_DEFINE_EXPORTED_bool(
+    use_auto_growth_v2,
+    false,
+    "Whether to use AutoGrowthBestFitAllocatorV2 for auto_growth "
+    "strategy");
 
 DECLARE_string(allocator_strategy);
 DECLARE_uint64(auto_growth_chunk_size_in_mb);
@@ -560,11 +567,22 @@ class AllocatorFacadePrivate {
             << FLAGS_auto_growth_chunk_size_in_mb;
 #if defined(PADDLE_WITH_HIP)
     auto cuda_allocator = CreateCUDAAllocator(p);
-    cuda_allocators_[p][stream] = std::make_shared<AutoGrowthBestFitAllocator>(
-        cuda_allocator,
-        platform::GpuMinChunkSize(),
-        chunk_size,
-        allow_free_idle_chunk_);
+    if (FLAGS_use_auto_growth_v2) {
+      cuda_allocators_[p][stream] =
+          std::make_shared<AutoGrowthBestFitAllocatorV2>(
+              cuda_allocator,
+              platform::GpuMinChunkSize(),
+              p,
+              chunk_size,
+              allow_free_idle_chunk_);
+    } else {
+      cuda_allocators_[p][stream] =
+          std::make_shared<AutoGrowthBestFitAllocator>(
+              cuda_allocator,
+              platform::GpuMinChunkSize(),
+              chunk_size,
+              allow_free_idle_chunk_);
+    }
 #endif
 
 #if defined(PADDLE_WITH_CUDA)
@@ -591,12 +609,22 @@ class AllocatorFacadePrivate {
               cuda_allocator, platform::GpuMinChunkSize(), p);
     } else {
       auto cuda_allocator = CreateCUDAAllocator(p);
-      cuda_allocators_[p][stream] =
-          std::make_shared<AutoGrowthBestFitAllocator>(
-              cuda_allocator,
-              platform::GpuMinChunkSize(),
-              /*chunk_size=*/chunk_size,
-              allow_free_idle_chunk_);
+      if (FLAGS_use_auto_growth_v2) {
+        cuda_allocators_[p][stream] =
+            std::make_shared<AutoGrowthBestFitAllocatorV2>(
+                cuda_allocator,
+                platform::GpuMinChunkSize(),
+                p,
+                /*chunk_size=*/chunk_size,
+                allow_free_idle_chunk_);
+      } else {
+        cuda_allocators_[p][stream] =
+            std::make_shared<AutoGrowthBestFitAllocator>(
+                cuda_allocator,
+                platform::GpuMinChunkSize(),
+                /*chunk_size=*/chunk_size,
+                allow_free_idle_chunk_);
+      }
     }
 #else
     auto cuda_allocator = CreateCUDAAllocator(p);
@@ -631,9 +659,21 @@ class AllocatorFacadePrivate {
       VLOG(10) << "not use AlignedAllocator with alignment: " << alignment;
       underlying_allocator = cuda_allocator;
     }
-
-    cuda_allocators_[p][stream] = std::make_shared<AutoGrowthBestFitAllocator>(
-        underlying_allocator, alignment, chunk_size, allow_free_idle_chunk_);
+    if (FLAGS_use_auto_growth_v2) {
+      cuda_allocators_[p][stream] =
+          std::make_shared<AutoGrowthBestFitAllocatorV2>(
+              underlying_allocator,
+              alignment,
+              p,
+              chunk_size,
+              allow_free_idle_chunk_);
+    } else {
+      cuda_allocators_[p][stream] =
+          std::make_shared<AutoGrowthBestFitAllocator>(underlying_allocator,
+                                                       alignment,
+                                                       chunk_size,
+                                                       allow_free_idle_chunk_);
+    }
 #endif
 #endif
   }
@@ -646,11 +686,20 @@ class AllocatorFacadePrivate {
             << FLAGS_auto_growth_chunk_size_in_mb;
 #if defined(PADDLE_WITH_HIP)
     auto cuda_allocator = CreateCUDAAllocator(p);
-    allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
-        cuda_allocator,
-        platform::GpuMinChunkSize(),
-        /*chunk_size=*/chunk_size,
-        allow_free_idle_chunk);
+    if (FLAGS_use_auto_growth_v2) {
+      allocators_[p] = std::make_shared<AutoGrowthBestFitAllocatorV2>(
+          cuda_allocator,
+          platform::GpuMinChunkSize(),
+          p,
+          /*chunk_size=*/chunk_size,
+          allow_free_idle_chunk);
+    } else {
+      allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
+          cuda_allocator,
+          platform::GpuMinChunkSize(),
+          /*chunk_size=*/chunk_size,
+          allow_free_idle_chunk);
+    }
 #endif
 
 #if defined(PADDLE_WITH_CUDA)
@@ -677,11 +726,20 @@ class AllocatorFacadePrivate {
               cuda_allocator, platform::GpuMinChunkSize(), p);
     } else {
       auto cuda_allocator = CreateCUDAAllocator(p);
-      allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
-          cuda_allocator,
-          platform::GpuMinChunkSize(),
-          /*chunk_size=*/chunk_size,
-          allow_free_idle_chunk);
+      if (FLAGS_use_auto_growth_v2) {
+        allocators_[p] = std::make_shared<AutoGrowthBestFitAllocatorV2>(
+            cuda_allocator,
+            platform::GpuMinChunkSize(),
+            p,
+            /*chunk_size=*/chunk_size,
+            allow_free_idle_chunk);
+      } else {
+        allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
+            cuda_allocator,
+            platform::GpuMinChunkSize(),
+            /*chunk_size=*/chunk_size,
+            allow_free_idle_chunk);
+      }
     }
 
 #else
@@ -717,8 +775,18 @@ class AllocatorFacadePrivate {
       VLOG(10) << "not use AlignedAllocator with alignment: " << alignment;
       underlying_allocator = cuda_allocator;
     }
-    allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
-        underlying_allocator, alignment, chunk_size, allow_free_idle_chunk);
+
+    if (FLAGS_use_auto_growth_v2) {
+      allocators_[p] =
+          std::make_shared<AutoGrowthBestFitAllocatorV2>(underlying_allocator,
+                                                         alignment,
+                                                         p,
+                                                         chunk_size,
+                                                         allow_free_idle_chunk);
+    } else {
+      allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
+          underlying_allocator, alignment, chunk_size, allow_free_idle_chunk);
+    }
 #endif
 #endif
   }
