@@ -452,6 +452,30 @@ struct CUBlas<phi::dtype::float16> {
 
 template <>
 struct CUBlas<phi::dtype::complex<float>> {
+  static void SCAL(cublasHandle_t handle,
+                   int n,
+                   const float *alpha,
+                   phi::dtype::complex<float> *x,
+                   int incx) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasCsscal(
+        handle, n, alpha, reinterpret_cast<cuFloatComplex *>(x), incx));
+  }
+
+  static void VCOPY(cublasHandle_t handle,
+                    int n,
+                    const phi::dtype::complex<float> *x,
+                    int incx,
+                    phi::dtype::complex<float> *y,
+                    int incy) {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cublasCcopy(handle,
+                                  n,
+                                  reinterpret_cast<const cuFloatComplex *>(x),
+                                  incx,
+                                  reinterpret_cast<cuFloatComplex *>(y),
+                                  incy));
+  }
+
   static void GEMV(cublasHandle_t handle,
                    cublasOperation_t transa,
                    int m,
@@ -1483,6 +1507,15 @@ template <typename T>
 void Blas<phi::GPUContext>::SCAL(int n, const T alpha, T *x) const {
   context_.CublasCall(
       [&](cublasHandle_t handle) { CUBlas<T>::SCAL(handle, n, &alpha, x, 1); });
+}
+// 新添加的SCAL函数重载的实现
+template <>
+void Blas<phi::GPUContext>::SCAL(int n,
+                                 const float alpha,
+                                 phi::dtype::complex<float> *x) const {
+  context_.CublasCall([&](cublasHandle_t handle) {
+    CUBlas<phi::dtype::complex<float>>::SCAL(handle, n, &alpha, x, 1);
+  });
 }
 
 template <>

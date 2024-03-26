@@ -45,8 +45,10 @@ namespace dynload {
   __macro(cublasZaxpy_v2);                \
   __macro(cublasSscal_v2);                \
   __macro(cublasDscal_v2);                \
+  __macro(cublasCsscal_v2);               \
   __macro(cublasScopy_v2);                \
   __macro(cublasDcopy_v2);                \
+  __macro(cublasCcopy_v2);                \
   __macro(cublasSgemv_v2);                \
   __macro(cublasDgemv_v2);                \
   __macro(cublasCgemv_v2);                \

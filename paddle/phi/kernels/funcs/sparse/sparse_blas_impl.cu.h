@@ -42,6 +42,10 @@ cudaDataType_t GetGpuDataType() {
     return CUDA_R_64F;
   } else if (std::is_same<T, phi::dtype::float16>::value) {
     return CUDA_R_16F;
+  } else if (std::is_same<T, phi::dtype::complex<float>>::value) {
+    return CUDA_C_32F;
+  } else if (std::is_same<T, phi::dtype::complex<double>>::value) {
+    return CUDA_C_64F;
   }
 }
 
@@ -139,7 +143,7 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
       2,
       phi::errors::InvalidArgument("the dim size of SparseCsrTensor must be "
                                    "greater than or equal to 2."));
-
+  VLOG(8) << "CreateCooDescriptor rabit hole 1";
   int64_t M = xdim_vec[x_ndims - 2];
   int64_t N = xdim_vec[x_ndims - 1];
   int batch_size = 1;
@@ -147,14 +151,18 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
     batch_size *= xdim_vec[i];
   }
   int64_t nnz = x.nnz();
-
+  VLOG(8) << "CreateCooDescriptor rabit hole 2";
   const IntT* indices_data = x.non_zero_indices().data<IntT>();
   const T* values_data = x.non_zero_elements().data<T>();
   auto rows_data = indices_data + (x_ndims - 2) * nnz;
   auto cols_data = indices_data + (x_ndims - 1) * nnz;
 
   int64_t batch_nnz = nnz / batch_size;
+  VLOG(8) << "CreateCooDescriptor rabit hole 3";
+  VLOG(8) << "rows_data" << rows_data;
+  VLOG(8) << "GetGpuDataType";
   cudaDataType_t gpu_type = GetGpuDataType<T>();
+  VLOG(8) << "gpu_type" << cols_data;
   cusparseIndexType_t index_type = GetCusparseIndexType<IntT>();
   dev_ctx.CusparseCall([&](cusparseHandle_t handle) {
     phi::dynload::cusparseCreateCoo(descriptor,
@@ -168,7 +176,7 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
                                     CUSPARSE_INDEX_BASE_ZERO,
                                     gpu_type);
   });
-
+  VLOG(8) << "CreateCooDescriptor rabit hole 4";
   if (batch_size > 1) {
 #if CUDA_VERSION >= 11080
     dev_ctx.CusparseCall([&](cusparseHandle_t handle) {
@@ -181,6 +189,7 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
         "supported from CUDA 11.8"));
 #endif
   }
+  VLOG(8) << "CreateCooDescriptor rabit hole 5";
 }
 
 template <typename T>
@@ -199,6 +208,7 @@ class CuSparseSpMatDescriptor {
   explicit CuSparseSpMatDescriptor(const phi::SparseCooTensor& x,
                                    const phi::GPUContext& dev_ctx)
       : dev_ctx_(dev_ctx) {
+    VLOG(8) << "Start Create cusparseSpMatDescr_t";
     PD_VISIT_BASE_INTEGRAL_TYPES(
         x.non_zero_indices().dtype(), "Coo CuSparseSpMatDescriptor", ([&] {
           CreateCooDescriptor<T, data_t>(x, dev_ctx_, &descriptor_);
@@ -241,8 +251,9 @@ class CuSparseDnMatDescriptor {
     for (int i = 0; i < x_ndims - 2; i++) {
       batch_size *= xdim_vec[i];
     }
-
+    VLOG(8) << "Create CuSparseDnMatDescriptor 1";
     const T* x_data = x.data<T>();
+    VLOG(8) << "Create CuSparseDnMatDescriptor 2";
     cudaDataType_t gpu_type = GetGpuDataType<T>();
     dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
       phi::dynload::cusparseCreateDnMat(&descriptor_,
@@ -253,7 +264,7 @@ class CuSparseDnMatDescriptor {
                                         gpu_type,
                                         CUSPARSE_ORDER_ROW);
     });
-
+    VLOG(8) << "Create CuSparseDnMatDescriptor 3";
     PADDLE_ENFORCE_EQ(x.numel(), batch_size * M * N);
     if (batch_size > 1) {
 #if CUDA_VERSION >= 11080
@@ -332,10 +343,13 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
                                        const phi::DenseTensor& mat_b,
                                        T beta,
                                        phi::DenseTensor* mat_out) const {
+  VLOG(8) << "rabit hole 1";
   auto a_descriptor = CuSparseSpMatDescriptor<T>(mat_a, dev_ctx_);
+  VLOG(8) << "rabit hole 2";
   auto b_descriptor = CuSparseDnMatDescriptor<T>(mat_b, dev_ctx_);
+  VLOG(8) << "rabit hole 3";
   auto out_descriptor = CuSparseDnMatDescriptor<T>(*mat_out, dev_ctx_);
-
+  VLOG(8) << "rabit hole 4";
   cudaDataType_t gpu_type = GetGpuDataType<T>();
   size_t buffer_size = 0;
   dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
