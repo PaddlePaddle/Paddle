@@ -18,6 +18,15 @@
 
 namespace cinn::frontend::group_cluster::policy {
 
+ShardableAxesSignature ShardableAxesInfoManager::GetSignature(
+    const pir::Operation* op) {
+  return op_signature_map_[op];
+}
+
+ShardableAxes ShardableAxesInfoManager::GetAxes(const pir::Value value) {
+  return name_union_[value_axes_map_[value]];
+}
+
 std::string ShardableAxesInfoManager::GetUniqueName() {
   static std::atomic<int64_t> counter = 0;
   return "D" + std::to_string(counter);

@@ -47,7 +47,7 @@ struct ShardableAxesInfoManager {
 
   std::unordered_map<const pir::Operation*, ShardableAxesSignature>
       op_signature_map_;
-  std::unordered_map<pir::Value, ShardableAxes> value_axes_map_;
+  std::unordered_map<const pir::Value, ShardableAxes> value_axes_map_;
   std::unordered_map<std::string, std::string> name_union_;
 };
 

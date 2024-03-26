@@ -16,22 +16,27 @@
 
 namespace cinn::frontend::group_cluster::policy {
 
-bool FindDownstreamNode(const PatternNodePtr start,
-                        const PatternNodePtr target) {
+bool IsDownstreamNode(const PatternNodePtr start, const PatternNodePtr target) {
   if (start == target) return true;
   for (const auto& down_node : start->downstream_) {
-    if (FindDownstreamNode(down_node, target)) return true;
+    if (IsDownstreamNode(down_node, target)) return true;
   }
   return false;
 }
 
-bool GeneralTopoPolicy::CanFuse(const PatternNodePtr upstream,
-                                const PatternNodePtr downstream) {
-  for (const auto& down_node : upstream->downstream_) {
-    if (down_node == downstream) continue;
-    if (FindDownstreamNode(down_node, downstream)) return false;
+bool IsIndirectDownstreamNode(const PatternNodePtr start,
+                              const PatternNodePtr target) {
+  for (const auto& node : start->downstream_) {
+    if (node == target) continue;
+    if (IsDownstreamNode(node, target)) return true;
   }
-  return true;
+  return false;
+}
+
+bool GeneralTopoPolicy::CanFuse(const PatternNodePtr first,
+                                const PatternNodePtr second) {
+  return !(IsIndirectDownstreamNode(first, second) ||
+           IsIndirectDownstreamNode(second, first));
 }
 
 }  // namespace cinn::frontend::group_cluster::policy
