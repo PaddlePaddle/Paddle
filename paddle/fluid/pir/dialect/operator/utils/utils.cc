@@ -107,7 +107,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     PartialSendOp::name(),
     SendAndRecvOp::name(),
     PartialRecvOp::name()};
-};
 
 enum class AttrType {
   UNDEFINED = 0,
