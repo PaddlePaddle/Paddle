@@ -118,6 +118,7 @@ using pir::Block;
 using pir::BlockArgument;
 using pir::BoolAttribute;
 using pir::CloneOptions;
+using pir::IrContext;
 using pir::IrMapping;
 using pir::IrParser;
 using pir::Operation;
@@ -221,6 +222,20 @@ std::string GetValueInfo(Value v) {
     ss << ", stop_gradient=True";
   }
   return ss.str();
+}
+
+Value GetOutputValueByName(const Program &program, const std::string &name) {
+  auto &block = *program.block();
+  pir::StrAttribute name_attr =
+      pir::StrAttribute::get(IrContext::Instance(), name);
+  for (auto &op : block) {
+    if (op.isa<pir::ShadowOutputOp>()) {
+      if (op.attribute("output_name") == name_attr) {
+        return op.operand_source(0);
+      }
+    }
+  }
+  return nullptr;
 }
 
 void BindProgram(py::module *m) {
@@ -334,6 +349,10 @@ void BindProgram(py::module *m) {
           [](std::shared_ptr<Program> self, int64_t random_seed) {
             SetProgramInt64Attr(self, "random_seed", random_seed);
           })
+      .def("get_output_value_by_name",
+           [](Program &self, const std::string &name) {
+             return GetOutputValueByName(self, name);
+           })
       .def("num_ops", [](Program &self) { return self.num_ops(); });
 }
 

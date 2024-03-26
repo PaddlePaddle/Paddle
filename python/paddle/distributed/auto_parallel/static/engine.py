@@ -638,11 +638,10 @@ class Engine:
         dist_program = paddle.base.libpaddle.pir.apply_mix2dist_pass(
             mix_fw_program
         )
-
-        # TODO(winter-wang) Step 1.2: pir backward
-        # with program_guard(dist_program):
-        #     params_grads = append_backward_pir(self._loss, parameter_list=self._parameter_list)
-
+        # Step 1.2: pir backward
+        if mode != "predict" and self._loss:
+            loss = dist_program.get_output_value_by_name(self._loss_names[0])
+            paddle.autograd.ir_backward.append_backward(loss)
         # TODO(winter-wang) Step 1.3:  adapot opt.minimize() for pir-auto-parallel
         # with program_guard(dist_program):
         #     ptimizer_ops = self._optimizer.apply_gradients(params_grads)
@@ -767,6 +766,7 @@ class Engine:
             # self._process_dist_input_specs()
             outputs = self.program_helper.output_vars
             self._losses = self.program_helper.loss_vars
+            self._loss_names = self.program_helper.loss_names
             metrics = self.program_helper.metric_vars
 
             paddle.enable_static()
