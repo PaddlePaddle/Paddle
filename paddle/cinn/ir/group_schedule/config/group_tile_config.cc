@@ -167,7 +167,7 @@ BuildStaticSpatialConfig(
         /* warp_num = */ 8,
         /* tree_reduce_num = */ 256,
         /* spatial_inner_num = */ 1,
-        /* reduce_method = */ WarpReduceMethod()};
+        /* reduce_method = */ BlockReduceMethod()};
     return {{bucket_info, tile_config}};
   } else {
     BucketInfo bucket_info_1_256{/* sp_lower_bound = */ 1,
@@ -220,17 +220,27 @@ BuildStaticReduceConfig(
         /* tree_reduce_num = */ 1,
         /* spatial_inner_num = */ 1,
         /* reduce_method = */ NoneReduceMethod()};
-    BucketInfo bucket_info__1024_INF{/* sp_lower_bound = */ 1024,
-                                     /* sp_upper_bound = */ kMaxNumel,
-                                     /* rb_lower_bound = */ 1,
-                                     /* rb_upper_bound = */ 1};
-    ScheduleConfig::TileConfig tile_config__1024_INF{
+    BucketInfo bucket_info__1024_1M{/* sp_lower_bound = */ 1024,
+                                    /* sp_upper_bound = */ 1024 * 1024 - 1,
+                                    /* rb_lower_bound = */ 1,
+                                    /* rb_upper_bound = */ 1};
+    ScheduleConfig::TileConfig tile_config__1024_1M{
         /* warp_num = */ 32,
         /* tree_reduce_num = */ 1,
         /* spatial_inner_num = */ 1,
         /* reduce_method = */ NoneReduceMethod()};
+    BucketInfo bucket_info__1M_INF{/* sp_lower_bound = */ 1024 * 1024,
+                                   /* sp_upper_bound = */ kMaxNumel,
+                                   /* rb_lower_bound = */ 1,
+                                   /* rb_upper_bound = */ 1};
+    ScheduleConfig::TileConfig tile_config__1M_INF{
+        /* warp_num = */ 32,
+        /* tree_reduce_num = */ 1,
+        /* spatial_inner_num = */ 16,
+        /* reduce_method = */ NoneReduceMethod()};
     return {{bucket_info__1_1023, tile_config__1_1023},
-            {bucket_info__1024_INF, tile_config__1024_INF}};
+            {bucket_info__1024_1M, tile_config__1024_1M},
+            {bucket_info__1M_INF, tile_config__1M_INF}};
   } else if (base_info->reduce_numel <= 256) {
     BucketInfo bucket_info{/* sp_lower_bound = */ 1,
                            /* sp_upper_bound = */ kMaxNumel,
@@ -307,15 +317,19 @@ BuildScheduleConfig(
   std::shared_ptr<ScheduleConfig::BaseInfo> base_info =
       InitBasicInfo(group_info);
   if (!base_info->has_dynamic_reduce && !base_info->has_dynamic_spatial) {
+    VLOG(6) << "Building static sptial and static reduce config.";
     return CombineBaseInfoAndConfig(
         BuildPureStaticShapeConfig(base_info, target), base_info);
   } else if (base_info->has_dynamic_reduce && !base_info->has_dynamic_spatial) {
+    VLOG(6) << "Building static sptial and dynamic reduce config.";
     return CombineBaseInfoAndConfig(BuildStaticSpatialConfig(base_info, target),
                                     base_info);
   } else if (!base_info->has_dynamic_reduce && base_info->has_dynamic_spatial) {
+    VLOG(6) << "Building dynamic sptial and static reduce config.";
     return CombineBaseInfoAndConfig(BuildStaticReduceConfig(base_info, target),
                                     base_info);
   } else {  // (base_info->has_dynamic_reduce && base_info->has_dynamic_spatial)
+    VLOG(6) << "Building dynamic sptial and dynamic reduce config.";
     return CombineBaseInfoAndConfig(BuildDynamicShapeConfig(base_info, target),
                                     base_info);
   }

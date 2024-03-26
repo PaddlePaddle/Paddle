@@ -1239,7 +1239,21 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool cinn_enabled() const;
 
-  void EnableCustomPasses(const std::vector<std::string>& passes);
+  ///
+  /// \brief Set the custom passes list .
+  ///
+  /// \param passes The custom passes list.
+  /// \param custom_pass_only Custom pass run mode. The default is false,
+  /// which means that paddle pass will run after custom pass.
+  ///
+  void EnableCustomPasses(const std::vector<std::string>& passes,
+                          bool custom_pass_only = false);
+
+  ///
+  /// \brief Set passmanager opt level.Pass level lower than
+  /// opt level which will be added to passmanager
+  ///
+  void SetOptimizationLevel(int opt_level);
 
  protected:
   // Update the config.
@@ -1468,8 +1482,9 @@ struct PD_INFER_DECL AnalysisConfig {
   bool skip_load_params_{false};
 
   bool use_pir_{false};
-
   std::vector<std::string> custom_passes_;
+  bool custom_pass_only_{false};
+  int pm_opt_level_{2};
 };
 
 }  // namespace paddle

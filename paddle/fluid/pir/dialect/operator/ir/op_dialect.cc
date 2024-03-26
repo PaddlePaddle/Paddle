@@ -131,6 +131,17 @@ struct ParameterOpInferSymbolicShapeInterfaceModel
       : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
 };
 
+struct SetParameterOpInferSymbolicShapeInterfaceModel
+    : public InferSymbolicShapeInterface::Concept {
+  static inline bool InferSymbolicShape(
+      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+    return true;
+  }
+
+  SetParameterOpInferSymbolicShapeInterfaceModel()
+      : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
+};
+
 struct ShadowOutputOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
@@ -240,6 +251,16 @@ OperatorDialect::OperatorDialect(pir::IrContext* ctx)
   info.AttachInterface(
       pir::InterfaceValue::Get<InferSymbolicShapeInterface,
                                YieldOpInferSymbolicShapeInterfaceModel>());
+
+  info = ctx->GetRegisteredOpInfo(pir::SetParameterOp::name());
+  info.AttachInterface(pir::InterfaceValue::Get<
+                       InferSymbolicShapeInterface,
+                       SetParameterOpInferSymbolicShapeInterfaceModel>());
+
+  info = ctx->GetRegisteredOpInfo(pir::SliceOp::name());
+  info.AttachInterface(
+      pir::InterfaceValue::Get<InferSymbolicShapeInterface,
+                               SliceOpInferSymbolicShapeInterfaceModel>());
 }
 
 void PrintTypeImpl(pir::Type type, std::ostream& os) {
@@ -299,6 +320,8 @@ void PrintOperationImpl(pir::Operation* op,
 
 void OperatorDialect::initialize() {
   RegisterTypes<paddle::dialect::SelectedRowsType,
+                paddle::dialect::SparseCooTensorType,
+                paddle::dialect::SparseCsrTensorType,
                 paddle::dialect::DenseTensorArrayType>();
 
   RegisterAttributes<paddle::dialect::IntArrayAttribute,
@@ -504,7 +527,7 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
       auto attr_name = attr_name_and_type[0];
       auto attr_type_str = attr_name_and_type[1];
       param_names.push_back(attr_name);
-      if (AttrTypeMap().find(attr_type_str) == AttrTypeMap().end()) {
+      if (CppTypeToAttrTypeMap().count(attr_type_str) == 0) {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported `%s` type value as custom attribute now. "
             "Supported data types include `bool`, `int`, `float`, "
@@ -514,7 +537,7 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
             "the attribute data type and data type string are matched.",
             attr_type_str));
       }
-      std::string attr_pir_type = AttrTypeMap().at(attr_type_str);
+      std::string attr_pir_type = CppTypeToAttrTypeMap().at(attr_type_str);
       attributes_info.emplace_back(attr_name, attr_pir_type, "");
     }
 
