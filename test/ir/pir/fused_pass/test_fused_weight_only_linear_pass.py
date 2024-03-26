@@ -197,8 +197,9 @@ class TestFusedWeightOnlyLinearPass_NoBias(PassTest):
     def sample_program(self):
         for dtype in ['float16', "float32"]:
             for w_shape in [[4096, 2048], [4096, 1024]]:
-                rand_value = 0.001 * \
-                    paddle.rand(shape=w_shape, dtype=dtype).numpy()
+                rand_value = (
+                    0.001 * paddle.rand(shape=w_shape, dtype=dtype).numpy()
+                )
                 with paddle.pir_utils.IrGuard():
                     start_prog = paddle.static.Program()
                     main_prog = paddle.static.Program()
@@ -219,7 +220,8 @@ class TestFusedWeightOnlyLinearPass_NoBias(PassTest):
                         out = paddle.assign(out)
                         self.pass_list = ['fused_weight_only_linear_pass']
                         self.feeds = {
-                            "x": 0.01 * np.random.random((3, 128, 4096)).astype(dtype),
+                            "x": 0.01
+                            * np.random.random((3, 128, 4096)).astype(dtype),
                         }
                         self.fetch_list = [out]
                         self.get_valid_op_map(dtype, w_shape)
