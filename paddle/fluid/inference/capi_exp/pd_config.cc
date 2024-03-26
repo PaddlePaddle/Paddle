@@ -187,9 +187,11 @@ int32_t PD_ConfigXpuDeviceId(__pd_keep PD_Config* pd_config) {
 
 void PD_ConfigEnableCustomDevice(__pd_keep PD_Config* pd_config,
                                  char* device_type,
-                                 int32_t device_id) {
+                                 int32_t device_id,
+                                 PD_PrecisionType precision) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  config->EnableCustomDevice(device_type, device_id);
+  config->EnableCustomDevice(
+      device_type, device_id, ConvertToCxxPrecisionType(precision));
 }
 PD_Bool PD_ConfigUseCustomDevice(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
