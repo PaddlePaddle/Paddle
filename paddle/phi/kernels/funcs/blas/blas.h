@@ -519,6 +519,11 @@ class BlasT : private Blas<DeviceContext> {
   }
 
   template <typename... ARGS>
+  void CSCAL(ARGS... args) const {
+    Base()->template SCAL<T>(args...);
+  }
+
+  template <typename... ARGS>
   T ASUM(ARGS... args) const {
     return Base()->template ASUM<T>(args...);
   }
