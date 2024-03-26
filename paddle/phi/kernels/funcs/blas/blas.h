@@ -256,14 +256,14 @@ class Blas {
   void VPOW(int n, const T* x, T alpha, T* y) const;
 
   template <typename T>
-  void GEMV(bool trans_a,
-            int M,
-            int N,
-            T alpha,
-            const T* A,
-            const T* B,
-            T beta,
-            T* C) const;
+  TEST_API void GEMV(bool trans_a,
+                     int M,
+                     int N,
+                     T alpha,
+                     const T* A,
+                     const T* B,
+                     T beta,
+                     T* C) const;
 
   template <typename T>
   T DOT(int n, const T* x, const T* y) const;
