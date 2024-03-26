@@ -156,7 +156,7 @@ function(inference_base_test_build TARGET)
   if(APPLE)
     target_link_libraries(
       ${TARGET}
-      "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi> -Wl,-rpath,$<TARGET_FILE_DIR:pir>"
+      "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi> -Wl,-rpath,$<TARGET_FILE_DIR:pir> -Wl,-rpath,../.."
     )
   endif()
   target_link_libraries(${TARGET} ${base_test_DEPS} paddle_gtest_main_new gtest
