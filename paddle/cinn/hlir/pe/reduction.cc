@@ -851,7 +851,8 @@ std::vector<ir::Tensor> TwoStepBlockReduceInternal(
     }
   }
   int warp_reduce_need_sm_count = ceil(
-      (need_reduce_last_count * 32) /
+      (need_reduce_last_count *
+       runtime::CurrentTarget::GetCurrentTarget().get_warp_size()) /
       static_cast<float>(
           runtime::CurrentTarget::GetCurrentTarget().get_max_threads_per_sm()));
   // Set Num_max_threads to 32 is Warp Reduce

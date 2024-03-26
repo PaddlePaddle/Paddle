@@ -766,10 +766,6 @@ std::vector<ir::Tensor> Conv2d_NHWC(const ir::Tensor &input,
   Var fc(weights->shape[1], UniqName("fc"));
   Var fy(weights_dilation->shape[2], UniqName("fy"));
   Var fx(weights_dilation->shape[3], UniqName("fx"));
-  LOG(INFO) << weights->shape[0] << " " << weights->shape[1] << " "
-            << weights->shape[2] << " " << weights->shape[3];
-  LOG(INFO) << input->shape[0] << " " << input->shape[1] << " "
-            << input->shape[2] << " " << input->shape[3];
   CHECK(MathEqual((weights->shape[0] * weights->shape[1]) % input->shape[3],
                   Expr(0)))
       << "filter's output channel size must be divisible by group\n";
