@@ -33,8 +33,8 @@ class PatternGraph {
   void ReduceTreeGrown();
   void ReduceTree_Trivial_Fusion();
 
-  void RemoveNode(PatternNodePtr node);
-  void AppendNode(PatternNodePtr node);
+  void RemoveNode(const PatternNodePtr& node);
+  void AppendNode(const PatternNodePtr& node);
 
  private:
   std::unordered_set<PatternNodePtr> all_pattern_nodes_;

@@ -28,6 +28,7 @@ struct PatternNode {
   bool IsTrivial() const;
   bool IsReduce() const;
   bool IsReduceTree() const;
+  bool IsUnsupport() const;
   std::vector<const pir::Operation*> GetOps() const;
 
   StmtPattern stmt_pattern_;

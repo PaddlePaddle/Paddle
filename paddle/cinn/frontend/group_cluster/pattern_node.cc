@@ -72,5 +72,8 @@ bool PatternNode::IsReduce() const { return IsReducePattern(stmt_pattern_); }
 bool PatternNode::IsReduceTree() const {
   return IsReduceTreePattern(stmt_pattern_);
 }
+bool PatternNode::IsUnsupport() const {
+  return IsUnsupportPattern(stmt_pattern_);
+}
 
 }  // namespace cinn::frontend::group_cluster
