@@ -112,7 +112,9 @@ PD_REGISTER_KERNEL(shuffle_batch,
                    float,
                    double,
                    int32_t,
-                   int64_t) {
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
   kernel->OutputAt(2).SetDataType(phi::DataType::INT64);
 }

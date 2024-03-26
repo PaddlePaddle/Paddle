@@ -58,6 +58,11 @@ class TestChannelShuffleOp(OpTest):
         groups = 3
 
         x = np.random.random(shape).astype(self.dtype)
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
+            x = (np.random.random(shape) + 1j * np.random.random(shape)).astype(
+                self.dtype
+            )
+
         npresult = channel_shuffle_np(x, groups, self.format)
 
         self.inputs = {'X': x}
@@ -82,12 +87,46 @@ class TestChannelLast(TestChannelShuffleOp):
         self.format = "NHWC"
 
 
+class TestChannelShuffleOp_complex64(TestChannelShuffleOp):
+    def init_dtype(self):
+        self.dtype = 'complex64'
+
+
+class TestChannelLast_complex64(TestChannelLast):
+    def init_dtype(self):
+        self.dtype = 'complex64'
+
+
+class TestChannelShuffleOp_complex128(TestChannelShuffleOp):
+    def init_dtype(self):
+        self.dtype = 'complex128'
+
+
+class TestChannelLast_complex128(TestChannelLast):
+    def init_dtype(self):
+        self.dtype = 'complex128'
+
+
 class TestChannelShuffleAPI(unittest.TestCase):
     def setUp(self):
-        self.x_2_np = np.random.random([2, 4, 4, 9]).astype("float64")
+        self.init_dtype()
+        self.x_2_np = np.random.random([2, 4, 4, 9]).astype(self.dtype)
+        self.x_1_np = np.random.random([2, 9, 4, 4]).astype(self.dtype)
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
+            self.x_2_np = (
+                np.random.random([2, 4, 4, 9])
+                + 1j * np.random.random([2, 4, 4, 9])
+            ).astype(self.dtype)
+            self.x_1_np = (
+                np.random.random([2, 9, 4, 4])
+                + 1j * np.random.random([2, 9, 4, 4])
+            ).astype(self.dtype)
+
         self.out_2_np = channel_shuffle_np(self.x_2_np, 3, "NHWC")
-        self.x_1_np = np.random.random([2, 9, 4, 4]).astype("float64")
         self.out_1_np = channel_shuffle_np(self.x_1_np, 3)
+
+    def init_dtype(self):
+        self.dtype = 'float64'
 
     @test_with_pir_api
     def test_static_graph_functional(self):
@@ -101,7 +140,7 @@ class TestChannelShuffleAPI(unittest.TestCase):
 
                 paddle.enable_static()
                 x_1 = paddle.static.data(
-                    name="x", shape=[2, 9, 4, 4], dtype="float64"
+                    name="x", shape=[2, 9, 4, 4], dtype=self.dtype
                 )
                 out_1 = F.channel_shuffle(x_1, 3)
 
@@ -128,7 +167,7 @@ class TestChannelShuffleAPI(unittest.TestCase):
 
                 paddle.enable_static()
                 x_1 = paddle.static.data(
-                    name="x", shape=[2, 9, 4, 4], dtype="float64"
+                    name="x", shape=[2, 9, 4, 4], dtype=self.dtype
                 )
                 # init instance
                 ps_1 = paddle.nn.ChannelShuffle(3)
@@ -157,7 +196,7 @@ class TestChannelShuffleAPI(unittest.TestCase):
 
                 paddle.enable_static()
                 x_2 = paddle.static.data(
-                    name="x2", shape=[2, 4, 4, 9], dtype="float64"
+                    name="x2", shape=[2, 4, 4, 9], dtype=self.dtype
                 )
                 out_2 = F.channel_shuffle(x_2, 3, "NHWC")
 
@@ -183,7 +222,7 @@ class TestChannelShuffleAPI(unittest.TestCase):
 
                 paddle.enable_static()
                 x_2 = paddle.static.data(
-                    name="x2", shape=[2, 4, 4, 9], dtype="float64"
+                    name="x2", shape=[2, 4, 4, 9], dtype=self.dtype
                 )
                 # init instance
                 ps_2 = paddle.nn.ChannelShuffle(3, "NHWC")
@@ -209,7 +248,11 @@ class TestChannelShuffleAPI(unittest.TestCase):
         if data_format == "NHWC":
             shape = [n, h, w, c]
 
-        x = np.random.random(shape).astype("float64")
+        x = np.random.random(shape).astype(self.dtype)
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
+            x = (np.random.random(shape) + 1j * np.random.random(shape)).astype(
+                self.dtype
+            )
 
         npresult = channel_shuffle_np(x, groups, data_format)
 
@@ -246,35 +289,63 @@ class TestChannelShuffleAPI(unittest.TestCase):
         self.run_dygraph(3, "NHWC")
 
 
+class TestChannelShuffleAPI_complex64(TestChannelShuffleAPI):
+    def init_dtype(self):
+        self.dtype = 'complex64'
+
+
+class TestChannelShuffleAPI_complex128(TestChannelShuffleAPI):
+    def init_dtype(self):
+        self.dtype = 'complex128'
+
+
 class TestChannelShuffleError(unittest.TestCase):
+    def setUp(self):
+        self.init_dtype()
+        self.x = np.random.random([2, 9, 4, 4]).astype(self.dtype)
+        self.x_other = np.random.random([9, 4, 4]).astype(self.dtype)
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
+            self.x = (
+                np.random.random([2, 9, 4, 4])
+                + 1j * np.random.random([2, 9, 4, 4])
+            ).astype(self.dtype)
+            self.x_other = (
+                np.random.random([9, 4, 4]) + 1j * np.random.random([9, 4, 4])
+            ).astype(self.dtype)
+
+    def init_dtype(self):
+        self.dtype = 'float64'
+
     @test_with_pir_api
     def test_error_functional(self):
         def error_input():
             with paddle.base.dygraph.guard():
-                x = np.random.random([9, 4, 4]).astype("float64")
-                channel_shuffle = F.channel_shuffle(paddle.to_tensor(x), 3)
+                channel_shuffle = F.channel_shuffle(
+                    paddle.to_tensor(self.x_other), 3
+                )
 
         self.assertRaises(ValueError, error_input)
 
         def error_groups_1():
             with paddle.base.dygraph.guard():
-                x = np.random.random([2, 9, 4, 4]).astype("float64")
-                channel_shuffle = F.channel_shuffle(paddle.to_tensor(x), 3.33)
+                channel_shuffle = F.channel_shuffle(
+                    paddle.to_tensor(self.x), 3.33
+                )
 
         self.assertRaises(TypeError, error_groups_1)
 
         def error_groups_2():
             with paddle.base.dygraph.guard():
-                x = np.random.random([2, 9, 4, 4]).astype("float64")
-                channel_shuffle = F.channel_shuffle(paddle.to_tensor(x), -1)
+                channel_shuffle = F.channel_shuffle(
+                    paddle.to_tensor(self.x), -1
+                )
 
         self.assertRaises(ValueError, error_groups_2)
 
         def error_data_format():
             with paddle.base.dygraph.guard():
-                x = np.random.random([2, 9, 4, 4]).astype("float64")
                 channel_shuffle = F.channel_shuffle(
-                    paddle.to_tensor(x), 3, "WOW"
+                    paddle.to_tensor(self.x), 3, "WOW"
                 )
 
         self.assertRaises(ValueError, error_data_format)
@@ -283,32 +354,38 @@ class TestChannelShuffleError(unittest.TestCase):
     def test_error_layer(self):
         def error_input_layer():
             with paddle.base.dygraph.guard():
-                x = np.random.random([9, 4, 4]).astype("float64")
                 cs = paddle.nn.ChannelShuffle(3)
-                cs(paddle.to_tensor(x))
+                cs(paddle.to_tensor(self.x_other))
 
         self.assertRaises(ValueError, error_input_layer)
 
         def error_groups_layer_1():
             with paddle.base.dygraph.guard():
-                x = np.random.random([2, 9, 4, 4]).astype("float64")
                 cs = paddle.nn.ChannelShuffle(3.33)
 
         self.assertRaises(TypeError, error_groups_layer_1)
 
         def error_groups_layer_2():
             with paddle.base.dygraph.guard():
-                x = np.random.random([2, 9, 4, 4]).astype("float64")
                 cs = paddle.nn.ChannelShuffle(-1)
 
         self.assertRaises(ValueError, error_groups_layer_2)
 
         def error_data_format_layer():
             with paddle.base.dygraph.guard():
-                x = np.random.random([2, 9, 4, 4]).astype("float64")
                 cs = paddle.nn.ChannelShuffle(3, "MEOW")
 
         self.assertRaises(ValueError, error_data_format_layer)
+
+
+class TestChannelShuffleError_complex64(TestChannelShuffleError):
+    def init_dtype(self):
+        self.dtype = 'complex64'
+
+
+class TestChannelShuffleError_complex128(TestChannelShuffleError):
+    def init_dtype(self):
+        self.dtype = 'complex128'
 
 
 class TestChannelShuffleFP16OP(TestChannelShuffleOp):

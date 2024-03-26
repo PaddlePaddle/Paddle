@@ -23,4 +23,6 @@ PD_REGISTER_KERNEL(channel_shuffle,
                    ALL_LAYOUT,
                    phi::ChannelShuffleKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
