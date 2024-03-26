@@ -16,10 +16,22 @@
 
 namespace cinn::frontend::group_cluster::policy {
 
+bool FindDownstreamNode(const PatternNodePtr start,
+                        const PatternNodePtr target) {
+  if (start == target) return true;
+  for (const auto& down_node : start->downstream_) {
+    if (FindDownstreamNode(down_node, target)) return true;
+  }
+  return false;
+}
+
 bool GeneralTopoPolicy::CanFuse(const PatternNodePtr upstream,
                                 const PatternNodePtr downstream) {
-  // TODO(wuzhanfei) topo policy (if lead to loop)
-  return false;
+  for (const auto& down_node : upstream->downstream_) {
+    if (down_node == downstream) continue;
+    if (FindDownstreamNode(down_node, downstream)) return false;
+  }
+  return true;
 }
 
 }  // namespace cinn::frontend::group_cluster::policy
