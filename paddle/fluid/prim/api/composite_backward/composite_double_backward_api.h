@@ -109,9 +109,28 @@ void minimum_double_grad(const Tensor& x,
       auto y_mask = cast<T>(greater_equal<T>(x, y), grad_y_grad.get().dtype());
       auto ddout = grad_y_grad.get() * y_mask;
       set_output<T>(ddout, grad_out_grad);
-    } else {
-      grad_out_grad = nullptr;
     }
+  }
+}
+template <typename T>
+void pow_double_grad(const Tensor& x,
+                     const Tensor& grad_out,
+                     const Tensor& grad_x_grad,
+                     const Scalar& y,
+                     Tensor* x_grad,
+                     Tensor* grad_out_grad) {
+  // pow grad grad : ddout = y * pow(x, y-1) * ddx, dx = y * (y-1) * pow(x, y-2)
+  // * dout * ddx
+  auto y_value = y.to<float>();
+  if (grad_out_grad) {
+    auto grad_out_grad_tmp = y_value * x.pow(y_value - 1) * grad_x_grad;
+    set_output<T>(grad_out_grad_tmp, grad_out_grad);
+  }
+
+  if (x_grad) {
+    auto x_grad_tmp =
+        y_value * (y_value - 1) * x.pow(y_value - 2) * grad_out * grad_x_grad;
+    set_output<T>(x_grad_tmp, x_grad);
   }
 }
 
@@ -148,12 +167,12 @@ void tanh_triple_grad(const Tensor& out,
                       Tensor* out_grad,
                       Tensor* grad_out_forward_grad,
                       Tensor* grad_x_grad_forward_grad) {
-  /*
-  dy = -2 * dy * ddx * ddy - 2 * y * ddx * dddy
-  ddy = -2 * y * ddx * ddy
-  dddx = -2 * y * dy * ddy + (1 - y^2) * dddy
-  */
   if (grad_out_new_grad && grad_out_grad_grad) {
+    /*
+    dy = -2 * dy * ddx * ddy - 2 * y * ddx * dddy
+    ddy = -2 * y * ddx * ddy
+    dddx = -2 * y * dy * ddy + (1 - y^2) * dddy
+    */
     /* precompute '-2 * y' to prevent duplicated computation*/
     Tensor neg_2_out;
     if (grad_out_forward_grad || grad_x_grad_forward_grad) {
@@ -183,7 +202,13 @@ void tanh_triple_grad(const Tensor& out,
            neg_2_out * grad_out_forward_mul_grad_out_new_grad);
       set_output<T>(grad_x_grad_forward_grad_tmp, grad_x_grad_forward_grad);
     }
+
   } else if (grad_out_new_grad) {
+    /*
+    dy = -2 * dy * ddx * ddy
+    ddy = -2 * y * ddx * ddy
+    dddx = -2 * y * dy * ddy
+    */
     // regard 'grad_out_grad_grad' is zero
     /* precompute '-2 * y' to prevent duplicated computation*/
     Tensor neg_2_out;
@@ -212,7 +237,13 @@ void tanh_triple_grad(const Tensor& out,
           (neg_2_out * grad_out_forward_mul_grad_out_new_grad);
       set_output<T>(grad_x_grad_forward_grad_tmp, grad_x_grad_forward_grad);
     }
+
   } else if (grad_out_grad_grad) {
+    /*
+    dy = -2 * y * ddx * dddy
+    ddy = 0
+    dddx = (1 - y^2) * dddy
+    */
     // regard 'grad_out_new_grad' is zero
     if (out_grad) {
       auto out_grad_tmp = (scale<T>(grad_x_grad_forward, -2.0) *
@@ -229,7 +260,13 @@ void tanh_triple_grad(const Tensor& out,
           (scale<T>(out * out, -1.0, 1.0) * grad_out_grad_grad.get());
       set_output<T>(grad_x_grad_forward_grad_tmp, grad_x_grad_forward_grad);
     }
+
   } else {
+    /*
+    dy = 0
+    ddy = 0
+    dddx = 0
+    */
     if (out_grad) {
       auto out_grad_tmp =
           full<T>(common::vectorize(out.dims()), 0, out.dtype());
@@ -567,16 +604,17 @@ void silu_double_grad(const Tensor& x,
                       const Tensor& grad_x_grad,
                       Tensor* grad_x,
                       Tensor* grad_out_grad) {
-  auto sigmoid = 1 / (1 + exp<T>(-x));
-  auto tmp1 = 1 - sigmoid;
-  auto tmp2 = 1 + tmp1 * x;
+  auto sigmoid = 1 / (scale<T>(exp<T>(scale<T>(x, -1.0)), 1.0, 1.0));
+  auto tmp1 = scale<T>(sigmoid, -1.0, 1.0);
+  auto tmp2 = scale<T>(tmp1 * x, 1.0, 1.0);
   auto grad_x_grad_mul_sigmoid = grad_x_grad * sigmoid;
   if (grad_out_grad) {
     auto ddout = grad_x_grad_mul_sigmoid * tmp2;
     set_output<T>(ddout, grad_out_grad);
   }
   if (grad_x) {
-    auto dx = grad_x_grad_mul_sigmoid * out_grad * (1 + (tmp2 - out)) * tmp1;
+    auto dx = grad_x_grad_mul_sigmoid * out_grad *
+              (scale<T>(tmp2 - out, 1.0, 1.0)) * tmp1;
     set_output<T>(dx, grad_x);
   }
 }
@@ -661,16 +699,15 @@ void add_double_grad(const Tensor& y,
                      Tensor* grad_out_grad) {
   if (grad_out_grad) {
     // ddout = ddx + ddy
-    if (!grad_x_grad && !grad_y_grad) {
-      Tensor ddout =
-          full<T>(common::vectorize(grad_out.dims()), 0.0, y.dtype());
-      set_output<T>(ddout, grad_out_grad);
-    } else if (grad_x_grad && !grad_y_grad) {
+    if (grad_x_grad && grad_y_grad) {
+      set_output<T>(grad_x_grad.get() + grad_y_grad.get(), grad_out_grad);
+    } else if (grad_x_grad) {
       set_output<T>(grad_x_grad.get(), grad_out_grad);
-    } else if (grad_y_grad && !grad_x_grad) {
+    } else if (grad_y_grad) {
       set_output<T>(grad_y_grad.get(), grad_out_grad);
     } else {
-      set_output<T>(grad_x_grad.get() + grad_y_grad.get(), grad_out_grad);
+      set_output<T>(full<T>(common::vectorize(grad_out.dims()), 0.0, y.dtype()),
+                    grad_out_grad);
     }
   }
 }

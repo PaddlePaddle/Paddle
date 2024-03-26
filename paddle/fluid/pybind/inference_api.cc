@@ -1036,7 +1036,13 @@ void BindAnalysisConfig(py::module *m) {
             return dynamic_cast<PaddlePassBuilder *>(self.pass_builder());
           },
           py::return_value_policy::reference)
-      .def("enable_custom_passes", &AnalysisConfig::EnableCustomPasses)
+      .def("enable_custom_passes",
+           &AnalysisConfig::EnableCustomPasses,
+           py::arg("passes") = std::vector<std::string>(),
+           py::arg("custom_pass_only") = false)
+      .def("set_optimization_level",
+           &AnalysisConfig::SetOptimizationLevel,
+           py::arg("opt_level") = 2)
       .def("nnadapter", &AnalysisConfig::NNAdapter)
       .def("set_dist_config", &AnalysisConfig::SetDistConfig)
       .def("dist_config", &AnalysisConfig::dist_config);

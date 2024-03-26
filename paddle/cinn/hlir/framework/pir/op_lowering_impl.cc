@@ -22,6 +22,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/compile_error.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_util.h"
+#include "paddle/cinn/hlir/framework/pir/trivial_op_impl.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/hlir/op/external_api_registry.h"
 #include "paddle/cinn/hlir/pe/map_expr_to_ir.h"
@@ -71,6 +72,42 @@ NodeAttr CollectAttrs(const ::pir::Operation& op) {
 }
 
 }  // namespace details
+
+std::shared_ptr<GroupInfo> OpLowererImpl::GetGroupInfo(
+    const FusionGroupInfo& fusion_group_info,
+    const OpLoweringGroupPtr& group,
+    const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map) {
+  std::shared_ptr<GroupInfo> group_info = std::make_shared<GroupInfo>();
+  group_info->data_space = fusion_group_info.loop_ranges;
+  group_info->reduce_axis = fusion_group_info.reduce_axis;
+  group_info->reduce_var_names =
+      std::set<std::string>(fusion_group_info.reduce_var_name.begin(),
+                            fusion_group_info.reduce_var_name.end());
+
+  for (auto& op : group->output_ops()) {
+    group_info->direct_output_var_names.insert(ValueName(op->result(0)));
+    // collect all output tensor.
+    if (op->name() == "cinn_op.yield_store") {
+      auto input_var_name = ValueName(op->operand_source(0));
+      if (group_info->broadcast_info.count(input_var_name)) {
+        auto base_info = group_info->broadcast_info[input_var_name];
+        base_info.with_constrain = true;
+        group_info->broadcast_info[ValueName(op->result(0))] = base_info;
+      }
+    }
+    for (auto opresult : op->results()) {
+      if (tensor_map.count(opresult) == 0) {
+        continue;
+      }
+      group_info->direct_output_var_names.insert(ValueName(opresult));
+    }
+  }
+
+  for (auto& val : group->output_values()) {
+    group_info->direct_output_var_names.insert(ValueName(val));
+  }
+  return group_info;
+}
 
 std::shared_ptr<GroupInfo> OpLowererImpl::GetGroupInfo(
     const OpLoweringGroupPtr& group,
@@ -181,6 +218,13 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
                &tensor_map,
                &tmp_tensor_info);
 
+  // =========== OpFusion ============
+
+  func_bodies = OperationFusion(ops, func_bodies);
+  const auto& fusion_group_info = GetFusionGroupInfo(func_bodies);
+
+  // =========== CodeGen And Optimizer ================
+
   // 2.Do group schedule.
   ir::ModuleExpr mod_expr(func_bodies);
   ir::IRSchedule ir_sch(
@@ -203,7 +247,8 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
       output_tensor_names.insert(ValueName(value));
     }
 
-    std::shared_ptr<GroupInfo> group_info = GetGroupInfo(group, tensor_map);
+    std::shared_ptr<GroupInfo> group_info =
+        GetGroupInfo(fusion_group_info, group, tensor_map);
     std::unique_ptr<ir::GroupScheduler> group_scheduler =
         ir::GroupScheduler::Make(&ir_sch,
                                  output_tensor_names,
@@ -211,9 +256,12 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
                                  /* is_dy_shape = */ true,
                                  group_info);
 
+    VLOG(4) << "Start apply group_scheduler->Schedule()";
     group_scheduler->Schedule();
+    VLOG(4) << "End   apply group_scheduler->Schedule()";
 
     cond2func_bodies = group_scheduler->GetIRs();
+    VLOG(4) << "End   group_scheduler->GetIRs";
   } else {
     cond2func_bodies.emplace_back(ir::Expr(true),
                                   ir_sch.GetModule().GetExprs()[0]);
@@ -246,6 +294,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   funcs_wrapper.infer_shape_func =
       GenerateInferShapeFunc(group, infer_shape_tensor_args, group_func_args);
 
+  VLOG(4) << "End This function.";
   return funcs_wrapper;
 }
 
@@ -410,6 +459,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
                &tensor_map,
                &tmp_tensor_info);
 
+  // func_bodies = TrivialOpFusion(ops, func_bodies);
   std::unordered_set<::pir::Value> inner_genevalue;
   std::unordered_set<::pir::Operation*> ops_set(ops.begin(), ops.end());
   for (auto* op : ops) {
@@ -865,12 +915,6 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     // 2.Perform the lower process of Op
     std::vector<ir::LoweredFunc> funcs = DoOpLower(
         op_impl, op, tensor_map, tmp_tensor_info, &op_func_arg_tensors);
-
-    if (ops.size() > 1 && not_used_op.count(op) &&
-        (op->name() == "cinn_op.reshape")) {
-      erase_reshape.insert(op);
-      continue;
-    }
 
     for (const ir::LoweredFunc& func : funcs) {
       func_bodies.push_back(func->body);

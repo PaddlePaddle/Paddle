@@ -80,10 +80,6 @@
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/inference/api/mkldnn_quantizer.h"
-#include "paddle/fluid/pir/transforms/onednn/batch_norm_act_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/onednn/conv_bias_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/onednn/conv_elementwise_add_mkldnn_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/onednn/matmul_elementwise_add_fuse_pass.h"
 #endif
 
 #ifdef PADDLE_WITH_ONNXRUNTIME
@@ -118,22 +114,11 @@
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/pir/transforms/general/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
-#include "paddle/fluid/pir/transforms/general/identity_op_clean_pass.h"
 #include "paddle/fluid/pir/transforms/general/inplace_pass.h"
-#include "paddle/fluid/pir/transforms/general/map_op_to_another_pass.h"
-#include "paddle/fluid/pir/transforms/general/matmul_scale_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/general/matmul_transpose_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/general/params_sync_among_devices_pass.h"
 #include "paddle/fluid/pir/transforms/general/replace_fetch_with_shadow_output_pass.h"
-#include "paddle/fluid/pir/transforms/gpu/conv2d_add_act_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/gpu/conv2d_add_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/gpu/conv2d_bn_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/gpu/embedding_eltwise_layernorm_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/gpu/fc_elementwise_layernorm_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/gpu/fc_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/gpu/multihead_matmul_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/gpu/silu_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/gpu/transpose_flatten_concat_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/passes.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
@@ -901,21 +886,6 @@ bool AnalysisPredictor::PrepareExecutor() {
       pir_program_ =
           paddle::TranslateLegacyProgramToProgram(*inference_program_);
 
-      if (!config_.custom_passes_.empty()) {
-        ::pir::PassManager custom_pm(::pir::IrContext::Instance(), 2);
-        for (const auto &custom_pass : config_.custom_passes_) {
-          custom_pm.AddPass(
-              std::move(pir::PassRegistry::Instance().Get(custom_pass)));
-        }
-        if (!config_.glog_info_disabled()) {
-          custom_pm.EnablePrintStatistics();
-        }
-        if (config_.ir_debug_) {
-          custom_pm.EnableIRPrinting();
-        }
-        custom_pm.Run(pir_program_.get());
-      }
-
 #ifdef PADDLE_WITH_CINN
       if (paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
         VLOG(4) << "[Prim] Decomp program in predictor begin.";
@@ -948,99 +918,63 @@ bool AnalysisPredictor::PrepareExecutor() {
       }
 #endif
 
+      ::pir::PassManager pass_pm(::pir::IrContext::Instance(),
+                                 config_.pm_opt_level_);
+      if (!config_.custom_passes_.empty()) {
+        for (const auto &custom_pass : config_.custom_passes_) {
+          pass_pm.AddPass(
+              std::move(pir::PassRegistry::Instance().Get(custom_pass)));
+        }
+      }
       if (config_.use_gpu()) {
-        ::pir::PassManager gpu_pm(::pir::IrContext::Instance(), 2);
-        //----------------------------------------------------------------------------------------------//
-        // Functional pass
-        gpu_pm.AddPass(::pir::CreateMapOpToAnotherPass());
-        gpu_pm.AddPass(::pir::CreateIdentityOpCleanPass());
-        //----------------------------------------------------------------------------------------------//
-
-        //----------------------------------------------------------------------------------------------//
-        // Operator fusion pass
-        gpu_pm.AddPass(::pir::CreateSiluFusePass());
-        gpu_pm.AddPass(::pir::CreateConv2dBnFusePass());
-        gpu_pm.AddPass(::pir::CreateConv2dAddActFusePass());
-        gpu_pm.AddPass(::pir::CreateConv2dAddFusePass());
-        gpu_pm.AddPass(::pir::CreateFusedEmbeddingEltwiseLayerNormPass());
-        gpu_pm.AddPass(::pir::CreateMultiHeadMatmulFusePass());
-        gpu_pm.AddPass(::pir::CreateFcFusePass());
-        gpu_pm.AddPass(::pir::CreateFcElementwiseLayerNormFusePass());
-        gpu_pm.AddPass(::pir::CreateMatmulScaleFusePass());
-        gpu_pm.AddPass(::pir::CreateMatmulTransposeFusePass());
-        gpu_pm.AddPass(::pir::CreateTransposeFlattenConcatFusePass());
-        //----------------------------------------------------------------------------------------------//
-
-        //----------------------------------------------------------------------------------------------//
+        // gpu
+        if (!config_.custom_pass_only_) {
+          for (const auto &gpu_pass : kPirGpuPasses) {
+            pass_pm.AddPass(
+                std::move(pir::PassRegistry::Instance().Get(gpu_pass)));
+          }
+        }
         // Basic pass required by the framework
         auto params_sync_among_devices_pass =
             ::pir::CreateParamsSyncAmongDevicesPass();
         params_sync_among_devices_pass->SetNotOwned(pir::kPlaceAttr, &place_);
         params_sync_among_devices_pass->SetNotOwned(pir::kParamScopeAttr,
                                                     sub_scope_);
-        gpu_pm.AddPass(std::move(params_sync_among_devices_pass));
+        pass_pm.AddPass(std::move(params_sync_among_devices_pass));
 
-        auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
-        constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place_);
-        constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, sub_scope_);
-        gpu_pm.AddPass(std::move(constant_folding_pass));
-
-        gpu_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
-        gpu_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
-        //----------------------------------------------------------------------------------------------//
-        if (!config_.glog_info_disabled()) {
-          gpu_pm.EnablePrintStatistics();
-        }
-        if (config_.ir_debug_) {
-          gpu_pm.EnableIRPrinting();
-        }
-        gpu_pm.Run(pir_program_.get());
 #ifdef PADDLE_WITH_DNNL
       } else if (config_.mkldnn_enabled()) {
-        ::pir::PassManager mkldnn_pm(::pir::IrContext::Instance(), 2);
-
-        mkldnn_pm.AddPass(::pir::CreateConv2dBiasFusePass());
-        mkldnn_pm.AddPass(::pir::CreateConv2dTransposeBiasFusePass());
-        mkldnn_pm.AddPass(::pir::CreateConv3dBiasFusePass());
-        mkldnn_pm.AddPass(::pir::CreateBatchNormActFusePass());
-        mkldnn_pm.AddPass(::pir::CreateMatmulElementwiseAddFusePass());
-        mkldnn_pm.AddPass(::pir::CreateConvElementwiseAddFusePass());
-
-        auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
-        constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place_);
-        constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, sub_scope_);
-
-        mkldnn_pm.AddPass(std::move(constant_folding_pass));
-        mkldnn_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
-        mkldnn_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
-        //----------------------------------------------------------------------------------------------//
-        if (!config_.glog_info_disabled()) {
-          mkldnn_pm.EnablePrintStatistics();
+        // mkldnn
+        if (!config_.custom_pass_only_) {
+          for (const auto &mkldnn_pass : kPirMkldnnPasses) {
+            pass_pm.AddPass(
+                std::move(pir::PassRegistry::Instance().Get(mkldnn_pass)));
+          }
         }
-        if (config_.ir_debug_) {
-          mkldnn_pm.EnableIRPrinting();
-        }
-        mkldnn_pm.Run(pir_program_.get());
 #endif
       } else {
-        ::pir::PassManager cpu_pm(::pir::IrContext::Instance(), 2);
-
-        auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
-        constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place_);
-        constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, sub_scope_);
-
-        cpu_pm.AddPass(std::move(constant_folding_pass));
-        cpu_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
-        cpu_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
-        //----------------------------------------------------------------------------------------------//
-        if (!config_.glog_info_disabled()) {
-          cpu_pm.EnablePrintStatistics();
+        // cpu
+        if (!config_.custom_pass_only_) {
+          for (const auto &cpu_pass : kPirCpuPasses) {
+            pass_pm.AddPass(
+                std::move(pir::PassRegistry::Instance().Get(cpu_pass)));
+          }
         }
-        if (config_.ir_debug_) {
-          cpu_pm.EnableIRPrinting();
-        }
-        cpu_pm.Run(pir_program_.get());
       }
+      auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
+      constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place_);
+      constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, sub_scope_);
+      pass_pm.AddPass(std::move(constant_folding_pass));
+      pass_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
+      pass_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
+      //----------------------------------------------------------------------------------------------//
+      if (!config_.glog_info_disabled()) {
+        pass_pm.EnablePrintStatistics();
+      }
+      if (config_.ir_debug_) {
+        pass_pm.EnableIRPrinting();
+      }
+      pass_pm.Run(pir_program_.get());
 
       pir_program_ =
           paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_);

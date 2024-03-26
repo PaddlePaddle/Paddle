@@ -2641,6 +2641,12 @@
   outputs :
     out : Out
 
+- op : push_dense
+  inputs :
+    ids : Ids
+  attrs :
+    {table_id : TableId, scale_data_norm : ScaleDataNorm, input_names: InputNames}
+
 - op : push_sparse_v2
   inputs :
     { x : Ids, W : w}
