@@ -935,6 +935,10 @@ class TestFusedMatmulsigmoidFusePattern(PassTest):
         self.check_pass_correct()
 
 
+@unittest.skipIf(
+    not paddle.base.core.is_compiled_with_mkldnn(),
+    "Test case only for OneDNN pass.",
+)
 class TestMatmulGeluTanhFusePatternCase14(PassTest):
     r'''
     x     y
