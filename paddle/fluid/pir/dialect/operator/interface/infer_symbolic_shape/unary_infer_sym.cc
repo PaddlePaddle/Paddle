@@ -379,6 +379,7 @@ bool RepeatInterleaveOpInferSymbolicShape(
   }();
 
   int x_rank = in_dims_sym.size();
+  if (axis < 0) axis += x_rank;
 
   const auto &out_sym_shape = [&] {
     std::vector<symbol::DimExpr> out_sym_shape;
