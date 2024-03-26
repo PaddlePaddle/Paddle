@@ -797,6 +797,14 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
                                const int32_t group_size,
                                MetaTensor* out);
 
+void XFTWeightOnlyLinearInferMeta(const MetaTensor& x,
+                                  const MetaTensor& weight,
+                                  const MetaTensor& bias,
+                                  const MetaTensor& weight_scale,
+                                  const MetaTensor& weight_zero_point,
+                                  const std::string& weight_dtype,
+                                  MetaTensor* out);
+
 void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
                                       const MetaTensor& col_ptr,
                                       const MetaTensor& edge_weight,
