@@ -858,6 +858,7 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
           new_loop_ranges_expr[i] = update_map.at(new_loop_ranges_expr[i]);
         }
       }
+      return new_loop_ranges_expr;
     }();
     group->set_loop_ranges_expr(new_loop_ranges_expr);
 
