@@ -93,7 +93,7 @@ def check_recompute_necessary(inputs):
 
 
 @contextlib.contextmanager
-def swith_rng_state_tracker(rng_state, tracker):
+def switch_rng_state_tracker(rng_state, tracker):
     orig_rng_state = paddle.get_rng_state()
     orig_rng_tracker = get_rng_state_tracker().get_states_tracker()
     paddle.set_rng_state(rng_state)
@@ -155,8 +155,8 @@ class RecomputeFunction(PyLayer):
                 ctx.inputs.append(arg)
         ctx.save_for_backward(*tensor_inputs)
 
-        # NOTE recompute with restore RNG only support one senario where one process for one cuda gpu.
-        # one process with multiple gpu and mix-gpu-cpu senarios are not support
+        # NOTE recompute with restore RNG only support one scenario where one process for one cuda gpu.
+        # one process with multiple gpu and mix-gpu-cpu scenarios are not support
         if ctx.preserve_rng_state:
             ctx.fw_rng_state = paddle.get_rng_state()
             ctx.fwd_rng_state_tracker = (
@@ -208,7 +208,7 @@ class RecomputeFunction(PyLayer):
             # NOTE support AMP
             # need restore auto_cast state as well as w/b list
             if ctx.preserve_rng_state:
-                with swith_rng_state_tracker(
+                with switch_rng_state_tracker(
                     ctx.fw_rng_state, ctx.fwd_rng_state_tracker
                 ):
                     with paddle.amp.auto_cast(
@@ -273,7 +273,7 @@ class RecomputeFunction(PyLayer):
                         # all tensors in the tuple doesn't need grad, only return a None for the whole tuple
                         grads.append(None)
                     else:
-                        # all tensors in the tuple nees grad, should return a tuple of grads
+                        # all tensors in the tuple need grad, should return a tuple of grads
                         grads.append(tuple(i._grad_ivar() for i in inp))
 
             if in_dynamic_mode():
@@ -303,7 +303,7 @@ def _recompute_without_reentrant(
             fw_cuda_rng_state = paddle.get_rng_state(cur_device)
         else:
             raise RuntimeError(
-                "Recompute with RNG perserve is not support current device: {}.".format(
+                "Recompute with RNG preserve is not support current device: {}.".format(
                     cur_device
                 )
             )
@@ -358,10 +358,10 @@ def _recompute_without_reentrant(
                 return
 
             def inner_unpack(inner_x):
-                raise Exception("An unexcepted backward called on a tensor!")
+                raise Exception("An unexpected backward called on a tensor!")
 
             if preserve_rng_state:
-                with swith_rng_state_tracker(
+                with switch_rng_state_tracker(
                     fw_cuda_rng_state, fwd_cuda_rng_state_tracker
                 ):
                     with paddle.set_grad_enabled(True):

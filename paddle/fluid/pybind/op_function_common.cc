@@ -64,6 +64,7 @@ class OpAttrTypeMap {
 };
 
 extern PyTypeObject* g_vartype_pytype;
+extern PyTypeObject* g_data_type_pytype;
 extern PyTypeObject* g_blockdesc_pytype;
 extern PyTypeObject* p_tensor_type;
 
@@ -72,6 +73,7 @@ bool PyObject_CheckBool(PyObject** obj) { return PyBool_Check(*obj); }
 bool PyObject_CheckLongOrToLong(PyObject** obj) {
   if ((PyLong_Check(*obj) && !PyBool_Check(*obj)) ||
       PyObject_TypeCheck(*obj, g_vartype_pytype) ||        // NOLINT
+      PyObject_TypeCheck(*obj, g_data_type_pytype) ||      // NOLINT
       (PyObject_TypeCheck(*obj, p_tensor_type) &&          // NOLINT
        (((TensorObject*)(*obj))->tensor.numel() == 1))) {  // NOLINT
     return true;
@@ -521,7 +523,7 @@ std::vector<int64_t> CastPyArg2Longs(PyObject* obj,
   } else if (obj == Py_None) {
     return {};
   } else if (PyObject_CheckLongOrToLong(&obj)) {
-    return {(int64_t)PyLong_AsLongLong(obj)};
+    return {(int64_t)PyLong_AsLongLong(obj)};  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "%s(): argument (position %d) must be "

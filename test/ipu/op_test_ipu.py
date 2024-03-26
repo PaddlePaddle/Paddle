@@ -44,7 +44,7 @@ class ExecutionModeFull(IntEnum):
     CPU_FP32 = 1
     # Run fp32 model on ipu
     IPU_FP32 = 2
-    # Convert model to fp16 using mixed-precision approch
+    # Convert model to fp16 using mixed-precision approach
     # All parameters will be converted to fp16
     IPU_FP16 = 3
 

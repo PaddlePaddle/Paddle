@@ -249,7 +249,7 @@ def less_than_ver(a, b):
 # NOTE(zhiqiu): An error may occurs when import paddle in linux platform with glibc < 2.22,
 # the error message of which is "dlopen: cannot load any more object with static TLS".
 # This happens when:
-# (1) the number of dynamic shared librarys (DSO) loaded > 14,
+# (1) the number of dynamic shared libraries (DSO) loaded > 14,
 # (2) after that, load a dynamic shared library (DSO) with static TLS.
 # For paddle, the problem is that 'libgomp' is a DSO with static TLS, and it is loaded after 14 DSOs.
 # So, here is a tricky way to solve the problem by pre load 'libgomp' before 'libpaddle.so'.
@@ -291,8 +291,8 @@ try:
         _device_synchronize,
         _dygraph_debug_level,
         _get_all_register_op_kernels,
+        _get_amp_attrs,
         _get_amp_op_list,
-        _get_amp_state,
         _get_current_stream,
         _get_eager_deletion_vars,
         _get_phi_kernel_name,
@@ -313,6 +313,7 @@ try:
         _set_fuse_parameter_group_size,
         _set_fuse_parameter_memory_size,
         _set_paddle_lib_path,
+        _set_warmup,
         _switch_tracer,
         _test_enforce_gpu_success,
         _xpu_device_synchronize,
@@ -320,7 +321,7 @@ try:
 
     # isort: off
 
-    # custom devivce
+    # custom device
     from .libpaddle import (  # noqa: F401
         CustomDeviceEvent,
         CustomDeviceStream,
@@ -483,7 +484,7 @@ def _test_use_sync(value):
     __sync_stat_with_flag(value)
 
 
-# ops in forward_blacklisk will not be replaced by composite ops.
+# ops in forward_blacklist will not be replaced by composite ops.
 prim_config = {"forward_blacklist": set(), "composite_ops_record": set()}
 
 
@@ -529,6 +530,14 @@ def _enable_prim_skip_dynamic_shape():
 
 def _enable_prim_dynamic_shape():
     flag = os.getenv("FLAGS_prim_enable_dynamic")
+    if flag and flag.lower() in ("1", "true"):
+        return True
+    else:
+        return False
+
+
+def _enable_auto_recompute():
+    flag = os.getenv("FLAGS_enable_auto_recompute")
     if flag and flag.lower() in ("1", "true"):
         return True
     else:

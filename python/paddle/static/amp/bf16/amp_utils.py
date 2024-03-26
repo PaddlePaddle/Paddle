@@ -518,7 +518,7 @@ def rewrite_program_bf16(main_prog, amp_lists=None):
     bf16_op_set = set()
     fp32_op_set = set()
     for op in ops:
-        # NOTE(zhiqiu): 'create_py_reader' and 'read' is used in non-iterable DataLoder,
+        # NOTE(zhiqiu): 'create_py_reader' and 'read' is used in non-iterable DataLoader,
         # we don't need to handle reader op and the input of 'create_py_reader' is not
         # in block, which may result in errors.
         # See GeneratorLoader._init_non_iterable() for details.

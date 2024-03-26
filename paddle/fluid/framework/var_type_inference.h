@@ -220,7 +220,7 @@ class InferVarTypeContext {
     this->SetVarLoDLevel(var_name, lod_level);
   }
 
-  // add a speical API for save_op
+  // add a special API for save_op
   // avoid use this API for common logic
   virtual void InsertVar(const std::string& var_name,
                          proto::VarType::Type var_type) {

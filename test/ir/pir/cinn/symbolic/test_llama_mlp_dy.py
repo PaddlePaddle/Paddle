@@ -34,13 +34,19 @@ class LlamaMLP(nn.Layer):
         self.hidden_size = 768
         self.intermediate_size = 1008
         self.gate_proj = nn.Linear(
-            self.hidden_size, self.intermediate_size, bias_attr=False
+            self.hidden_size,
+            self.intermediate_size,
+            bias_attr=False,
         )
         self.up_proj = nn.Linear(
-            self.hidden_size, self.intermediate_size, bias_attr=False
+            self.hidden_size,
+            self.intermediate_size,
+            bias_attr=False,
         )
         self.down_proj = nn.Linear(
-            self.intermediate_size, self.hidden_size, bias_attr=False
+            self.intermediate_size,
+            self.hidden_size,
+            bias_attr=False,
         )
 
     def forward(self, x):
@@ -62,6 +68,7 @@ class TestLlamaMLP(unittest.TestCase):
         utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
 
     def eval(self, use_cinn):
+        paddle.seed(2024)
         net = LlamaMLP()
         input_spec = [
             InputSpec(shape=[1, None, 768], dtype='float32'),
@@ -75,11 +82,10 @@ class TestLlamaMLP(unittest.TestCase):
 
     def test_eval(self):
         dy_out = self.eval(use_cinn=False)
-        if utils.unittest_use_cinn():
-            cinn_out = self.eval(use_cinn=True)
-            np.testing.assert_allclose(
-                cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
-            )
+        cinn_out = self.eval(use_cinn=True)
+        np.testing.assert_allclose(
+            cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+        )
 
 
 if __name__ == '__main__':

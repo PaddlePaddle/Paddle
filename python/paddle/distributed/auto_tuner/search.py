@@ -63,7 +63,9 @@ class GridSearch(SearchAlgo):
         stop = False
         if history_cfgs:
             if history_cfgs[-1].get("time", -1) > 0:
-                if self.baseline is None:
+                if self.baseline is None and self.tuner_cfg.get(
+                    "need_baseline", False
+                ):
                     from .utils import performance_sort
 
                     self.baseline = history_cfgs[-1]
@@ -72,9 +74,9 @@ class GridSearch(SearchAlgo):
                         key=performance_sort,
                     )
                     if self.tuner_cfg.get("schedule_prior", False):
-                        from .utils import sort_by_sepecial
+                        from .utils import sort_by_special
 
-                        self.all_tasks[self.idx :] = sort_by_sepecial(
+                        self.all_tasks[self.idx :] = sort_by_special(
                             self.all_tasks[self.idx :], self.tuner_cfg
                         )
         while not stop:
@@ -146,7 +148,7 @@ class CustomizeSearch(SearchAlgo):
         self.configs_csv = tuner_cfg.get("configs_csv", None)
         assert os.path.exists(
             self.configs_csv
-        ), "configs_csv file is neccessary in CustomizeSearch mode."
+        ), "configs_csv file is necessary in CustomizeSearch mode."
         self.all_tasks = load_configs_from_csv(self.configs_csv)
 
     def search_once(self, history_cfgs):

@@ -15,6 +15,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
@@ -22,6 +23,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_applicator.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
@@ -172,54 +174,96 @@ class AddBroadcastToElementwisePattern : public pir::OpRewritePattern<OPTYPE> {
   }
 };
 
-AddBroadcastToElementwisePass::AddBroadcastToElementwisePass()
-    : pir::PatternRewritePass("add_broadcast_to_elementwise_pass", 1) {}
+class DeleteUselessBroadcastPattern
+    : public pir::OpRewritePattern<cinn::dialect::BroadcastOp> {
+ public:
+  using pir::OpRewritePattern<cinn::dialect::BroadcastOp>::OpRewritePattern;
 
-pir::RewritePatternSet AddBroadcastToElementwisePass::InitializePatterns(
-    pir::IrContext* context) {
-  pir::RewritePatternSet ps(context);
-  // elementwise ops
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::AddOp>>(context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::SubtractOp>>(
-      context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::MultiplyOp>>(
-      context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::DivideOp>>(context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::ElementwisePowOp>>(
-      context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::RemainderOp>>(
-      context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::FloorDivideOp>>(
-      context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::MaximumOp>>(context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::MinimumOp>>(context);
+  bool MatchAndRewrite(cinn::dialect::BroadcastOp broadcast,
+                       pir::PatternRewriter& rewriter) const override {
+    if (!broadcast->GetParentOp()->isa<cinn::dialect::FusionOp>()) {
+      rewriter.ReplaceAllUsesWith(broadcast.result(0),
+                                  broadcast->operand_source(0));
+      rewriter.EraseOp(broadcast);
+      return true;
+    }
+    return false;
+  }
+};
 
-  // compare ops
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::LessThanOp>>(
-      context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::LessEqualOp>>(
-      context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::EqualOp>>(context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::NotEqualOp>>(
-      context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::GreaterThanOp>>(
-      context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::GreaterEqualOp>>(
-      context);
+class AddBroadcastToElementwisePass : public pir::PatternRewritePass {
+ public:
+  AddBroadcastToElementwisePass()
+      : pir::PatternRewritePass("add_broadcast_to_elementwise_pass", 1) {}
 
-  // bitwise ops
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseOrOp>>(
-      context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseXorOp>>(
-      context);
-  ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseNotOp>>(
-      context);
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
+    pir::RewritePatternSet ps(context);
+    // elementwise ops
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::AddOp>>(context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::SubtractOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::MultiplyOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::DivideOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::ElementwisePowOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::RemainderOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::FloorDivideOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::MaximumOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::MinimumOp>>(
+        context);
 
-  return ps;
+    // compare ops
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::LessThanOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::LessEqualOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::EqualOp>>(context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::NotEqualOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::GreaterThanOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::GreaterEqualOp>>(
+        context);
+
+    // bitwise ops
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseOrOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseXorOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseNotOp>>(
+        context);
+
+    return ps;
+  }
+
+  bool CanApplyOn(pir::Operation* op) const override {
+    return op->num_regions() > 0;
+  }
+};
+
+class DeleteUselessBroadcastPass : public pir::PatternRewritePass {
+ public:
+  DeleteUselessBroadcastPass()
+      : pir::PatternRewritePass("delete_useless_broadcast_pass", 1) {}
+
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
+    pir::RewritePatternSet ps(context);
+    ps.Add<DeleteUselessBroadcastPattern>(context);
+    return ps;
+  }
+};
+
+std::unique_ptr<pir::Pass> CreateAddBroadcastToElementwisePass() {
+  return std::make_unique<AddBroadcastToElementwisePass>();
 }
 
-bool AddBroadcastToElementwisePass::CanApplyOn(pir::Operation* op) const {
-  return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+std::unique_ptr<pir::Pass> CreateDeleteUselessBroadcastPass() {
+  return std::make_unique<DeleteUselessBroadcastPass>();
 }
 
 }  // namespace ir

@@ -113,13 +113,14 @@ class PD_INFER_DECL PaddlePassBuilder {
 
  protected:
   /// \cond Protected
-  std::vector<std::string> analysis_passes_{
-      {"ir_graph_build_pass",
-       "ir_analysis_pass",
-       "save_optimized_model_pass",
-       "ir_params_sync_among_devices_pass",
-       "adjust_cudnn_workspace_size_pass",
-       "inference_op_replace_pass"}};
+  std::vector<std::string> analysis_passes_{{
+      "ir_graph_build_pass",
+      "ir_analysis_pass",
+      "ir_params_sync_among_devices_pass",
+      "adjust_cudnn_workspace_size_pass",
+      "inference_op_replace_pass",
+      "save_optimized_model_pass",
+  }};
   std::vector<std::string> passes_;
   std::unordered_set<std::string> deleted_passes_;
   /// \endcond
@@ -351,5 +352,9 @@ PD_INFER_DECL extern const std::vector<std::string> kCINNCompilerPasses;
 /// running errors. After fusion operator supports low precision, delete this.
 PD_INFER_DECL extern const std::vector<std::string> kGpuLowerPrecisionPasses;
 PD_INFER_DECL extern const std::vector<std::string> kTrtLowerPrecisionPasses;
+
+PD_INFER_DECL extern const std::vector<std::string> kPirGpuPasses;
+PD_INFER_DECL extern const std::vector<std::string> kPirCpuPasses;
+PD_INFER_DECL extern const std::vector<std::string> kPirMkldnnPasses;
 
 }  // namespace paddle

@@ -114,7 +114,7 @@ std::vector<ir::Buffer> GetTempBuffers(
         return x->as_tensor() && x->as_tensor()->buffer.defined() &&
                ((!buffer_arg_names.count(x->as_tensor()->buffer->name) &&
                  !tensor_arg_names.count(x->as_tensor()->name)) ||
-                utils::Endswith(x->as_tensor()->buffer->name, "temp_buffer"));
+                utils::EndsWith(x->as_tensor()->buffer->name, "temp_buffer"));
       });
   for (auto& e : all_temp_tensors) {
     auto buffer_name = e.as_tensor()->buffer->name;
@@ -158,7 +158,7 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<Tensor>& tensor_args,
                (!tensor_group.Contain(x->as_tensor()->name) ||
                 ((!buffer_arg_names.count(x->as_tensor()->buffer->name) &&
                   !tensor_arg_names.count(x->as_tensor()->name)) ||
-                 utils::Endswith(x->as_tensor()->buffer->name, "temp_buffer")));
+                 utils::EndsWith(x->as_tensor()->buffer->name, "temp_buffer")));
       });
   for (auto& e : all_temp_tensors) {
     auto buffer_name = e.as_tensor()->buffer->name;
@@ -202,7 +202,7 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<Tensor>& tensor_args,
                 !stage_map[x->as_tensor()]->inlined()) &&
                ((!buffer_arg_names.count(x->as_tensor()->buffer->name) &&
                  !tensor_arg_names.count(x->as_tensor()->name)) ||
-                utils::Endswith(x->as_tensor()->buffer->name, "temp_buffer"));
+                utils::EndsWith(x->as_tensor()->buffer->name, "temp_buffer"));
       });
   for (auto& e : all_temp_tensors) {
     auto buffer_name = e.as_tensor()->buffer->name;
@@ -250,7 +250,7 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<ir::Argument>& args,
       ir::ir_utils::CollectIRNodesWithoutTensor(body, [&](const Expr* x) {
         return x->as_tensor() && x->as_tensor()->buffer.defined() &&
                (!buffer_arg_names.count(x->as_tensor()->buffer->name) ||
-                utils::Endswith(x->as_tensor()->buffer->name, "temp_buffer"));
+                utils::EndsWith(x->as_tensor()->buffer->name, "temp_buffer"));
       });
   for (auto& e : all_temp_tensors) {
     auto buffer_name = e.as_tensor()->buffer->name;
@@ -337,8 +337,11 @@ ir::LoweredFunc LowerToAst(const std::string& name,
                            const Target& target) {
   std::vector<ir::LoweredFunc> result =
       LowerToAstVec(name, tensor_args, tensor_group, target);
-  CHECK_EQ(result.size(), 1UL) << "LowerToAst contains not only 1 LoweredFunc, "
-                                  "use LowerToAstVec instead.";
+  PADDLE_ENFORCE_EQ(result.size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "LowerToAst contains not only 1 LoweredFunc, "
+                        "use LowerToAstVec instead."));
   return result[0];
 }
 

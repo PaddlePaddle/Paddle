@@ -115,7 +115,7 @@ def group_sharded_parallel(
         ]
         or device in paddle.device.get_all_custom_device_type()
     ), "group_sharded_parallel only support gpu, xpu and custom_device now"
-    # check optition type
+    # check option type
     assert isinstance(
         model, paddle.nn.Layer
     ), "The model must be the instance of paddle.nn.Layer."

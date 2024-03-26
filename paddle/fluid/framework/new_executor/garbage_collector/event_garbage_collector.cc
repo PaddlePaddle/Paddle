@@ -31,8 +31,8 @@ InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector(
                            /*allow_spinning*/ true,
                            /*track_task*/ false);
   queue_ = CreateSingleThreadedWorkQueue(options);
-  for (auto& instruc : vec_instruction) {
-    gc_event_.emplace_back(instruc.DeviceContext().GetPlace(),
+  for (auto& instruct : vec_instruction) {
+    gc_event_.emplace_back(instruct.DeviceContext().GetPlace(),
                            platform::GenerateDeviceEventFlag());
   }
 }
@@ -44,13 +44,14 @@ InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector(
                            /*allow_spinning*/ true,
                            /*track_task*/ false);
   queue_ = CreateSingleThreadedWorkQueue(options);
-  for (auto& instruc : vec_instruction) {
-    gc_event_.emplace_back(instruc->DeviceContext().GetPlace(),
+  for (auto& instruct : vec_instruction) {
+    gc_event_.emplace_back(instruct->DeviceContext().GetPlace(),
                            platform::GenerateDeviceEventFlag());
   }
 }
 
-InterpreterCoreEventGarbageCollector::~InterpreterCoreEventGarbageCollector() {
+InterpreterCoreEventGarbageCollector::
+    ~InterpreterCoreEventGarbageCollector() {  // NOLINT
   queue_.reset(nullptr);
 }
 

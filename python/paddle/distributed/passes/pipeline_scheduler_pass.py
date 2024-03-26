@@ -262,10 +262,10 @@ class Pipeline1F1BPass(PipelinePassBase):
         for program_id, program in enumerate(programs):
             last_op = program.global_block().ops[-1]
             if self.is_comm_op_valid_to_overlap(last_op):
-                # TODO(Ruibiao): Assign different stream to FORWAD and BACKWARD CommOps,
+                # TODO(Ruibiao): Assign different stream to FORWARD and BACKWARD CommOps,
                 # and set a lower priority for FORWARD Comm stream. It can reduce the
-                # impact of FORWARD Comm on BACKWARD Comp. Now the defalut stream prirotiy
-                # in standalone executor is already the lowest priority (correspongding to
+                # impact of FORWARD Comm on BACKWARD Comp. Now the default stream priority
+                # in standalone executor is already the lowest priority (corresponding to
                 # 0 in V100), cannot set a lower one. Maybe we need to support setting
                 # default stream for executor.
                 last_op.dist_attr.execution_stream = (
@@ -297,7 +297,7 @@ class Pipeline1F1BPass(PipelinePassBase):
                             _add_event_dependency(last_op, posterior_op)
 
     # TODO(Ruibiao): The cost here is just the experience value for a specific task (GPT-3-6.7B-MP2-PP4).
-    # A more genereal cost estimation scheme is required.
+    # A more general cost estimation scheme is required.
     def _op_cost(self, op):
         handwritten_cost_map = {
             "c_allreduce_sum": 0,
@@ -565,7 +565,7 @@ def apply_pass(main_program, startup_program, pass_name, pass_attr={}):
         "1F1B",
         "Eager1F1B",
         "VPP",
-    ], f"pipeline scheduler only support FThenB, 1F1B and Eager1F1B, but recieve {pass_name}"
+    ], f"pipeline scheduler only support FThenB, 1F1B and Eager1F1B, but receive {pass_name}"
 
     if pass_name == "1F1B":
         # TODO(Ruibiao): Move FLAGS_1f1b_backward_forward_overlap and

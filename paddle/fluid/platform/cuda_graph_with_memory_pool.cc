@@ -25,7 +25,7 @@ COMMON_DECLARE_bool(new_executor_use_cuda_graph);
 namespace paddle {
 namespace platform {
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void InitCUDNNRelatedHandle(phi::GPUContext* dev_ctx) {
   dev_ctx->cudnn_workspace_handle().ResetWorkspace();
 
@@ -69,7 +69,7 @@ phi::DeviceContext* SelectCUDAGraphDeviceContext(phi::GPUPlace place,
       mutable_dev_ctx =
           phi::backends::gpu::CUDAGraphContextManager::Instance().Get(
               *pool_id, place, 0);
-    } else if (num_stream == 1) {
+    } else {
       VLOG(4) << "Use recorded stream to capture cuda graph. Used in "
                  "single-stream scenarios with new executor.";
       mutable_dev_ctx = *(all_capturing_dev_ctxs.begin());
@@ -82,7 +82,7 @@ phi::DeviceContext* SelectCUDAGraphDeviceContext(phi::GPUPlace place,
 }
 
 void BeginCUDAGraphCapture(phi::GPUPlace place,
-                           cudaStreamCaptureMode mode,
+                           gpuStreamCaptureMode mode,
                            int64_t pool_id) {
   auto* mutable_dev_ctx = SelectCUDAGraphDeviceContext(place, &pool_id);
   auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
@@ -144,7 +144,7 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
               << " wait for cuda graph dev_ctx: " << dev_ctx;
     }
   }
-  AddResetCallbackIfCapturingCUDAGraph([pool_id] {
+  AddPostResetCallbackIfCapturingCUDAGraph([pool_id] {
     memory::allocation::AllocatorFacade::Instance().RemoveMemoryPoolOfCUDAGraph(
         pool_id);
   });

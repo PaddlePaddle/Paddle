@@ -82,6 +82,9 @@ message PpConfig {
     optional bool sharding_comm_overlap = 4 [ default = false ];
     optional bool profiling = 5 [ default = false ];
     optional bool release_gradients = 6 [ default = false ];
+    optional bool overlap_p2p_comm = 7 [default = false];
+    optional bool clear_every_step_cache = 8 [default = false];
+    optional bool use_batch_p2p_comm = 9 [default = true];
 }
 
 message DygraphShardingConfig {
@@ -90,6 +93,7 @@ message DygraphShardingConfig {
   optional bool comm_overlap = 3 [ default = false ];
   optional bool split_param = 4 [ default = false ];
   optional bool fuse_optimizer = 5 [ default = true ];
+  optional bool use_reduce_avg = 6 [ default = true ];
 }
 
 message HybridConfig {

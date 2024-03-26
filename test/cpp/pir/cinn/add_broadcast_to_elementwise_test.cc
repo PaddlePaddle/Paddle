@@ -87,8 +87,7 @@ TEST(PatternRewrite, broadcast_elementwise) {
   BuildProgram(builder);
 
   pir::PassManager pm(ctx);
-  pm.AddPass(
-      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  pm.AddPass(cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
 
   pm.Run(&program);
 
@@ -113,8 +112,7 @@ TEST(PatternRewrite, broadcast_elementwise_both) {
   BuildProgramBoth(builder);
 
   pir::PassManager pm(ctx);
-  pm.AddPass(
-      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  pm.AddPass(cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
 
   pm.Run(&program);
 
@@ -141,8 +139,7 @@ TEST(PatternRewrite, broadcast_elementwise_sub_both) {
   BuildProgramSubBoth(builder);
 
   pir::PassManager pm(ctx);
-  pm.AddPass(
-      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  pm.AddPass(cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
 
   pm.Run(&program);
 

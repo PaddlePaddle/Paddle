@@ -134,8 +134,11 @@ if(WITH_GPU)
     DEPS ${PHI_DEPS})
 
 elseif(WITH_ROCM)
-  hip_add_library(phi ${PHI_BUILD_TYPE} ${PHI_SRCS})
-  target_link_libraries(phi ${PHI_DEPS})
+  hip_library(
+    phi ${PHI_BUILD_TYPE}
+    SRCS ${PHI_SRCS}
+    DEPS ${PHI_DEPS})
+
 elseif(WITH_XPU_KP)
   xpu_library(
     phi ${PHI_BUILD_TYPE}

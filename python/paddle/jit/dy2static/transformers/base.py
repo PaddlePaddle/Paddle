@@ -14,7 +14,7 @@
 
 from paddle.base import unique_name
 from paddle.jit.dy2static.utils import (
-    ORIGI_INFO,
+    ORIGIN_INFO,
     ast_to_source_code,
 )
 from paddle.utils import gast
@@ -37,7 +37,7 @@ class BaseTransformer(gast.NodeTransformer):
         if not isinstance(node, gast.AST):
             msg = f'Expected "gast.AST", but got "{type(node)}".'
             raise ValueError(msg)
-        origin_info = getattr(node, ORIGI_INFO, None)
+        origin_info = getattr(node, ORIGIN_INFO, None)
 
         result = super().visit(node)
 
@@ -47,7 +47,7 @@ class BaseTransformer(gast.NodeTransformer):
                 iter_result = (iter_result,)
             if origin_info is not None:
                 for n in iter_result:
-                    setattr(n, ORIGI_INFO, origin_info)
+                    setattr(n, ORIGIN_INFO, origin_info)
 
         return result
 
@@ -225,7 +225,7 @@ class ForNodeVisitor:
         #   - for i, x enumerate(var|var.numpy())
         self.iter_node = self._get_iter_node()
 
-        # - enumeate i:
+        # - enumerate i:
         #   - for i, x enumerate(var|var.numpy())
         self.enum_idx_name = self._get_enum_idx_name()
 
@@ -394,7 +394,7 @@ class ForNodeVisitor:
 
     def _build_iter_node(self):
         """
-        Process special cases for iter_node inclue:
+        Process special cases for iter_node include:
           - Case 1 (for zip):
 
             - for i, val in enumerate(zip(x, y))  # original code:

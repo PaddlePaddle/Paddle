@@ -11,6 +11,7 @@ set(ALLOCATOR_SRCS
     allocator_strategy.cc
     allocator_facade.cc
     auto_growth_best_fit_allocator.cc
+    auto_growth_best_fit_allocator_v2.cc
     virtual_memory_auto_growth_best_fit_allocator.cc
     retry_allocator.cc
     memory_block.cc
@@ -25,6 +26,7 @@ if(WITH_GPU OR WITH_ROCM)
     ALLOCATOR_SRCS
     cuda_allocator.cc
     cuda_managed_allocator.cc
+    cuda_malloc_async_allocator.cc
     pinned_allocator.cc
     stream_safe_cuda_allocator.cc
     thread_local_allocator.cc)

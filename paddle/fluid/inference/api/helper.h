@@ -35,8 +35,8 @@
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/printf.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
+#include "paddle/utils/string/printf.h"
 
 extern std::string paddle::framework::DataTypeToString(
     const framework::proto::VarType::Type type);
@@ -431,7 +431,7 @@ static bool IsFileExists(const std::string &path) {
   return exists;
 }
 
-void RegisterAllCustomOperator();
+void RegisterAllCustomOperator(bool use_pir);
 
 void InitGflagsFromEnv();
 

@@ -60,8 +60,8 @@ std::vector<float> ComputePropagateScalesMkldnnPass::GetScales(
                     platform::errors::InvalidArgument(
                         "The input tensor's rank is required to be 2."));
 
-  const int rows = dims.at(0);
-  const int columns = dims.at(1);
+  const int rows = static_cast<int>(dims.at(0));
+  const int columns = static_cast<int>(dims.at(1));
   std::vector<float> scales;
   if (axis == 0) {
     for (int i = 0; i < columns; i++) {
@@ -69,7 +69,7 @@ std::vector<float> ComputePropagateScalesMkldnnPass::GetScales(
       for (int j = 0; j < rows; j++) {
         max_value = std::max(max_value, std::abs(data[j + i * rows]));
       }
-      max_value = 1.0 / max_value;
+      max_value = static_cast<float>(1.0) / max_value;
       if (std::isinf(max_value) || std::isnan(max_value)) {
         max_value = 0.0;
       }
@@ -81,7 +81,7 @@ std::vector<float> ComputePropagateScalesMkldnnPass::GetScales(
       for (int j = i * columns; j < (i + 1) * columns; j++) {
         max_value = std::max(max_value, std::abs(data[j]));
       }
-      max_value = 1.0 / max_value;
+      max_value = static_cast<float>(1.0) / max_value;
       if (std::isinf(max_value) || std::isnan(max_value)) {
         max_value = 0.0;
       }

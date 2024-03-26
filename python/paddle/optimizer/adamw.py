@@ -67,10 +67,10 @@ class AdamW(Optimizer):
             represents the scale of base learning_rate.
             The default value is None in static graph mode, at this time all parameters will be updated.
         beta1 (float|Tensor, optional): The exponential decay rate for the 1st moment estimates.
-            It should be a float number or a Tensor with shape [1] and data type as float32.
+            It should be a float number or a 0-D Tensor with shape [] and data type as float32.
             The default value is 0.9.
         beta2 (float|Tensor, optional): The exponential decay rate for the 2nd moment estimates.
-            It should be a float number or a Tensor with shape [1] and data type as float32.
+            It should be a float number or a 0-D Tensor with shape [] and data type as float32.
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
@@ -177,9 +177,9 @@ class AdamW(Optimizer):
         assert epsilon is not None
         if not isinstance(beta1, Value) and not 0 <= beta1 < 1:
             raise ValueError("Invalid value of beta1, expect beta1 in [0,1).")
-        if not isinstance(beta1, Value) and not 0 <= beta2 < 1:
+        if not isinstance(beta2, Value) and not 0 <= beta2 < 1:
             raise ValueError("Invalid value of beta2, expect beta2 in [0,1).")
-        if not isinstance(beta1, Value) and not 0 <= epsilon:
+        if not isinstance(epsilon, Value) and not 0 <= epsilon:
             raise ValueError("Invalid value of epsilon, expect epsilon >= 0.")
         if not isinstance(weight_decay, float) and not isinstance(
             weight_decay, (framework.Variable, Value)
@@ -252,7 +252,7 @@ class AdamW(Optimizer):
         # Dictionary of accumulators. Some optimizer subclasses need to
         # allocate and manage extra tensors associated with the parameters
         # to train. These tensors are called accumulators.
-        # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
+        # {accum_name : { parameter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: {})
         self.helper = None
         self._opti_name_list = []
@@ -293,7 +293,7 @@ class AdamW(Optimizer):
         self._use_multi_tensor = None
         self.regularization = None
         self._auxiliary_vars = {}
-        self._already_create_accumulater = set()
+        self._already_create_accumulator = set()
 
         self._create_master_grad_states()
 
@@ -311,7 +311,7 @@ class AdamW(Optimizer):
         Add a param group to parameter_list.
 
         Args:
-            param_group (dict): The group of Tensors to be optimzed with
+            param_group (dict): The group of Tensors to be optimized with
             different optimization options.
         """
         params = param_group['params']
@@ -400,12 +400,12 @@ class AdamW(Optimizer):
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
-            if p.name in self._already_create_accumulater:
+            if p.name in self._already_create_accumulator:
                 continue
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_moments_pows(master_p)
-                self._already_create_accumulater.add(p.name)
+                self._already_create_accumulator.add(p.name)
                 continue
             if (
                 self._is_dtype_fp16_or_bf16(p.dtype)
@@ -416,7 +416,7 @@ class AdamW(Optimizer):
                     "Consider using multi_precision=True option of the Adam optimizer."
                 )
             self._add_moments_pows(p)
-            self._already_create_accumulater.add(p.name)
+            self._already_create_accumulator.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, (framework.Block, pir.Block))
@@ -473,6 +473,10 @@ class AdamW(Optimizer):
                 else self._beta2.item(0)
             )
 
+            found_inf = (
+                self._get_auxiliary_var('found_inf') if in_pir_mode() else None
+            )
+
             _, _, _, _, _, _ = _C_ops.adamw_(
                 param_and_grad[0],
                 param_and_grad[1],
@@ -482,7 +486,7 @@ class AdamW(Optimizer):
                 beta1_pow_acc,
                 beta2_pow_acc,
                 master_weight,
-                None,
+                found_inf,
                 _beta1,
                 _beta2,
                 self._epsilon,

@@ -202,7 +202,7 @@ class Allocator : public phi::Allocator {
 };
 
 inline size_t AlignedSize(size_t size, size_t alignment) {
-  auto remaining = size % alignment;
+  auto remaining = size % alignment;  // NOLINT
   return remaining == 0 ? size : size + alignment - remaining;
 }
 

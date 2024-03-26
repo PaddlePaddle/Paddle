@@ -277,6 +277,16 @@
     data_type : x
   backward : conv2d_transpose_grad
 
+- op : conv2d_transpose_bias
+  args : (Tensor x, Tensor filter, Tensor bias, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
+  output : Tensor(out)
+  infer_meta :
+    func : Conv2dTransposeInferMeta
+    param: [x, filter, strides, paddings, output_padding, output_size, padding_algorithm, groups, dilations, data_format]
+  kernel :
+    func : conv2d_transpose_bias
+    data_type : x
+
 - op : copy_to
   args : (Tensor x, Place place, bool blocking)
   output : Tensor(out)
@@ -384,7 +394,7 @@
   infer_meta :
     func : EmbeddingInferMeta
     param : [x, weight, padding_idx]
-    spmd_rule: EmbeddingInferSpmdUnspportVocabParallel
+    spmd_rule: EmbeddingInferSpmdUnsupportVocabParallel
   kernel :
     func : embedding {dense, dense -> dense}
            sparse_weight_embedding {dense, selected_rows -> dense}
@@ -591,6 +601,16 @@
   invoke : fused_gemm_epilogue_impl(x, y, bias, trans_x, trans_y, activation)
   backward: fused_gemm_epilogue_grad
   optional: reserve_space
+
+- op : fused_multi_transformer
+  args : (Tensor x, Tensor[] ln_scales, Tensor[] ln_biases, Tensor[] qkv_weights, Tensor[] qkv_biases, Tensor[] cache_kvs, Tensor[] pre_caches, Tensor rotary_tensor, Tensor time_step, Tensor seq_lengths, Tensor src_mask, Tensor[] out_linear_weights, Tensor[] out_linear_biases, Tensor[] ffn_ln_scales, Tensor[] ffn_ln_biases, Tensor[] ffn1_weights, Tensor[] ffn1_biases, Tensor[] ffn2_weights, Tensor[] ffn2_biases, bool pre_layer_norm = true, float epsilon = 1e-5, float dropout_rate = .5f, int rotary_emb_dims = 0, bool is_test = false, str dropout_implementation = "downgrade_in_infer", str act_method = "gelu", bool trans_qkvw =true, int ring_id = -1)
+  optional : qkv_biases, cache_kvs, pre_caches, rotary_tensor, time_step, seq_lengths, src_mask, out_linear_biases, ffn1_biases, ffn2_biases, cache_kv_outs
+  output :  Tensor[](cache_kv_outs){out_linear_weights.size()}, Tensor(out)
+  infer_meta :
+    func : FusedMultiTransformerInferMeta
+  kernel :
+    func : fused_multi_transformer
+    data_type : x
 
 - op : fused_softmax_mask
   args : (Tensor x, Tensor mask)
@@ -985,6 +1005,7 @@
   infer_meta :
     func : ReshapeWithXShapeInferMeta
     spmd_rule : ReshapeInferSpmdDynamic
+    local_shape: shape
   kernel :
     func : reshape
   inplace : (x -> out)
@@ -1078,6 +1099,7 @@
   kernel :
     func : split
   backward : split_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : split_with_num
   args : (Tensor x, int num, Scalar(int) axis)

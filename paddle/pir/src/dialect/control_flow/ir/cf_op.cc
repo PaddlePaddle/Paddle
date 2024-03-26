@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include <glog/logging.h>
+#include "paddle/phi/core/enforce.h"
+
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 
 namespace pir {
@@ -47,14 +50,19 @@ void TuplePushOp::VerifySig() {
   IR_ENFORCE(num_operands() >= 1u, "The size of inputs must no less than 1.");
   IR_ENFORCE(operand_source(0).type().isa<InletType>(),
              "The first input of cf.tuple_push must be inlet_type.");
-  IR_ENFORCE(operand_source(0).HasOneUse(),
-             "The inlet value of cf.tuple_push can only be used once.");
 
   // No attributes should be verify.
 
   // Verify outputs:
   IR_ENFORCE(num_results() == 0u, "The size of outputs must be equal to 0.");
   VLOG(4) << "End Verifying for TuplePushOp.";
+}
+
+void TuplePushOp::VerifyRegion() {
+  // Note(winter-wang):Constraints on the number of uses can only can be placed
+  // in VerifyRegion, Otherwise cloning would fail.
+  IR_ENFORCE(operand_source(0).HasOneUse(),
+             "The inlet value of cf.tuple_push can only be used once.");
 }
 
 size_t TuplePushOp::tuple_size() {
@@ -89,27 +97,40 @@ void TuplePopOp::VerifySig() {
   IR_ENFORCE(num_operands() == 1u, "The size of inputs must equal to 1.");
   IR_ENFORCE(operand_source(0).type().isa<OutletType>(),
              "The first input of cf.tuple_pop must be outlet_type.");
-  IR_ENFORCE(operand_source(0).HasOneUse(),
-             "The outlet value of cf.tuple_pop can only be used once.");
 
   // No attributes should be verify.
 
   // Verify outputs:
+}
+
+void TuplePopOp::VerifyRegion() {
+  IR_ENFORCE(operand_source(0).HasOneUse(),
+             "The outlet value of cf.tuple_pop can only be used once.");
 
   // Verify stack validity:
-  auto pop_op = container_interface().tuple_pop_op();
-  IR_ENFORCE(*this == pop_op,
-             "The pop_op of tuple_pop_op must be this tuple_pop_op self.");
+  if (has_container()) {
+    // can be verified only if TuplePopOp and TuplePushOp are in the same
+    // sub_program
+    auto pop_op = container_interface().tuple_pop_op();
+    PADDLE_ENFORCE(
+        *this == pop_op,
+        phi::errors::InvalidArgument(
+            "The pop_op of tuple_pop_op must be this tuple_pop_op self."));
 
-  auto inlet_size = tuple_push_op().tuple_size();
-  IR_ENFORCE(inlet_size == tuple_size(),
-             "The pop elements size must equal to push elements size.");
-  for (size_t index = 0; index < inlet_size; ++index) {
-    IR_ENFORCE(outlet_element(index).type() == inlet_element(index).type(),
-               "The %d element's push type (%s) isn't equal to pop type (%s)",
-               index,
-               outlet_element(index).type(),
-               inlet_element(index).type());
+    auto inlet_size = tuple_push_op().tuple_size();
+    PADDLE_ENFORCE(
+        inlet_size == tuple_size(),
+        phi::errors::InvalidArgument(
+            "The pop elements size must equal to push elements size."));
+    for (size_t index = 0; index < inlet_size; ++index) {
+      PADDLE_ENFORCE(
+          outlet_element(index).type() == inlet_element(index).type(),
+          phi::errors::InvalidArgument(
+              "The %d element's push type (%s) isn't equal to pop type (%s)",
+              index,
+              outlet_element(index).type(),
+              inlet_element(index).type()));
+    }
   }
   VLOG(4) << "End Verifying for TuplePopOp.";
 }

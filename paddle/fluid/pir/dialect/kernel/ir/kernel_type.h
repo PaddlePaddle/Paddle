@@ -24,7 +24,8 @@ namespace dialect {
 class AllocatedDenseTensorType
     : public pir::Type::TypeBase<AllocatedDenseTensorType,
                                  pir::Type,
-                                 AllocatedDenseTensorTypeStorage> {
+                                 AllocatedDenseTensorTypeStorage,
+                                 pir::WrapTypeInterface> {
  public:
   using Base::Base;
 
@@ -49,6 +50,8 @@ class AllocatedDenseTensorType
         ctx, place, dense_tensor_type);
   }
 
+  pir::Type prim_type();
+
   const phi::Place &place() const;
 
   pir::Type dtype() const;
@@ -65,7 +68,8 @@ class AllocatedDenseTensorType
 class AllocatedSelectedRowsType
     : public pir::Type::TypeBase<AllocatedSelectedRowsType,
                                  pir::Type,
-                                 AllocatedSelectedRowsTypeStorage> {
+                                 AllocatedSelectedRowsTypeStorage,
+                                 pir::WrapTypeInterface> {
  public:
   using Base::Base;
 
@@ -90,6 +94,8 @@ class AllocatedSelectedRowsType
         ctx, place, type);
   }
 
+  pir::Type prim_type();
+
   const phi::Place &place() const;
 
   pir::Type dtype() const;
@@ -106,7 +112,8 @@ class AllocatedSelectedRowsType
 class AllocatedDenseTensorArrayType
     : public pir::Type::TypeBase<AllocatedDenseTensorArrayType,
                                  pir::Type,
-                                 AllocatedDenseTensorArrayTypeStorage> {
+                                 AllocatedDenseTensorArrayTypeStorage,
+                                 pir::WrapTypeInterface> {
  public:
   using Base::Base;
 
@@ -128,6 +135,8 @@ class AllocatedDenseTensorArrayType
     return pir::TypeManager::template get<AllocatedDenseTensorArrayType>(
         ctx, place, type);
   }
+
+  pir::Type prim_type();
 
   const phi::Place &place() const;
 

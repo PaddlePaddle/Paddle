@@ -312,6 +312,9 @@ def _uncompress_file_tar(filepath, mode="r:*"):
         file_list_tmp = files.getnames()
         file_list = []
         for file in file_list_tmp:
+            assert (
+                file[0] != "/"
+            ), f"uncompress file path {file} should not start with /"
             file_list.append(file.replace("../", ""))
 
         file_dir = os.path.dirname(filepath)

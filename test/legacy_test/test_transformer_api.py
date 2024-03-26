@@ -252,9 +252,9 @@ def layer_norm(x, normalized_shape, norm, epsilon=1e-05, act=None):
         batch_size, src_len, d_model = x.shape
         x = x.reshape((batch_size * src_len, d_model))
         mu = np.mean(x, axis=1, keepdims=True)
-        sigma_squar = np.sum(np.square(x - mu), axis=1) / d_model
+        sigma_square = np.sum(np.square(x - mu), axis=1) / d_model
         x1_up = x - mu
-        x1_down_1 = sigma_squar + epsilon
+        x1_down_1 = sigma_square + epsilon
         x1_down = np.sqrt(x1_down_1)
         x1_down = x1_down.reshape((x1_down.shape[0], 1))
         x1 = x1_up / x1_down

@@ -2323,7 +2323,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
                               const std::vector<int64_t>& slot_lengths,
                               const std::vector<int>& slot_dim,
                               const int hidden_size) {
-  VLOG(3) << "Begine Gpu Ps PullSparse";
+  VLOG(3) << "Begin Gpu Ps PullSparse";
   platform::Timer all_timer;
   platform::Timer pull_gpups_timer;
   all_timer.Start();
@@ -2565,7 +2565,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
 #endif
   } else if (platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU_KP
-    VLOG(3) << "Begine Xpu Ps PullSparse";
+    VLOG(3) << "Begin Xpu Ps PullSparse";
     size_t total_length =
         std::accumulate(slot_lengths.begin(), slot_lengths.end(), 0UL);
     FeatureValue* total_values_gpu = nullptr;

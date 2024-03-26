@@ -57,7 +57,7 @@ void CompilationTask::operator()() {
 }
 
 void CompilationTask::Lowering() {
-  auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(context_->target_);
+  auto op_lowerer = CreateOpLowerer<pir::OpLoweringGroupPtr>(context_->target_);
   context_->SetLoweredFuncs(
       op_lowerer.BucketLower(context_->group_,
                              /* apply op schedule = */ false,
@@ -82,25 +82,6 @@ void CompilationTask::CodegenAndJit() {
   context_->backend_compiler_->Build(ir_module, "");
 }
 
-std::unique_ptr<Instruction> CompilationTask::BuildInstruction() {
-  std::string fn_name = context_->group_->FuncName();
-  std::unique_ptr<Instruction> instr =
-      std::make_unique<Instruction>(context_->target_,
-                                    context_->scope_.get(),
-                                    context_->group_->input_names,
-                                    context_->group_->output_names,
-                                    fn_name);
-  VLOG(4) << "Lookup kernel name: " << fn_name;
-  auto* fn_ptr = context_->backend_compiler_->Lookup(fn_name);
-  CHECK(fn_ptr);
-  auto* infer_shape_fn_ptr =
-      context_->backend_compiler_->Lookup(fn_name + "_infer_shape" + fn_name);
-  CHECK(infer_shape_fn_ptr);
-  instr->SetLoweredFunc(reinterpret_cast<void*>(fn_ptr), fn_name);
-  instr->Finalize();
-  return instr;
-}
-
 pir::CINNKernelInfo CompilationTask::BuildPirCINNKernelInfo() {
   std::string fn_name = context_->group_->FuncName();
   VLOG(4) << "Lookup kernel name: " << fn_name;
@@ -110,9 +91,10 @@ pir::CINNKernelInfo CompilationTask::BuildPirCINNKernelInfo() {
       context_->backend_compiler_->Lookup(fn_name + "_infer_shape");
   CHECK(infer_shape_fn_ptr);
   pir::CINNKernelInfo cinn_kernel_info;
+  cinn_kernel_info.fn_name = fn_name;
   cinn_kernel_info.fn_ptr = fn_ptr;
   cinn_kernel_info.infer_shape_fn_ptr = infer_shape_fn_ptr;
-  cinn_kernel_info.int_args_map = context_->group_->int_args_map;
+  cinn_kernel_info.int_args_map = context_->group_->int_args_map();
   return cinn_kernel_info;
 }
 

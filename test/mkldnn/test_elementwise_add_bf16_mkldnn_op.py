@@ -63,7 +63,7 @@ class TestElementwiseAddBf16MklDNNOp(OpTest):
             check_pir_onednn=True,
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad_with_place(
             core.CPUPlace(),
             ["Y"],
@@ -74,7 +74,7 @@ class TestElementwiseAddBf16MklDNNOp(OpTest):
             check_pir_onednn=True,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.check_grad_with_place(
             core.CPUPlace(),
             ["X"],
@@ -112,7 +112,7 @@ class TestElementwiseAddBroadCastingBf16MklDNNOp(
             check_pir_onednn=True,
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad_with_place(
             core.CPUPlace(),
             ["Y"],

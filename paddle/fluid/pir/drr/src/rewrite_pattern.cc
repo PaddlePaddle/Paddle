@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <glog/logging.h>
 #include <queue>
 
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
@@ -33,7 +34,7 @@ DrrRewritePattern::DrrRewritePattern(
     pir::PatternBenefit benefit,
     const std::shared_ptr<const DrrPatternBase>& drr_pattern_owner)
     : pir::RewritePattern(
-          drr_context.source_pattern_graph()->AnchorNode()->name(),
+          (*drr_context.source_pattern_graph()->OutputNodes().begin())->name(),
           benefit,
           context,
           {}),
@@ -58,7 +59,7 @@ bool DrrRewritePattern::MatchAndRewrite(
   if (PatternGraphMatch(op, src_match_ctx.get())) {
     VLOG(4) << "DRR pattern (" << pattern_name_ << ") is matched in program.";
     PatternGraphRewrite(*src_match_ctx, rewriter);
-    VLOG(4) << "DRR pattern (" << pattern_name_ << ") is rewrited in program.";
+    VLOG(4) << "DRR pattern (" << pattern_name_ << ") is rewritten in program.";
     return true;
   }
   return false;
@@ -67,7 +68,7 @@ bool DrrRewritePattern::MatchAndRewrite(
 bool DrrRewritePattern::PatternGraphMatch(
     pir::Operation* op, MatchContextImpl* source_pattern_match_ctx) const {
   VLOG(6) << "PatternGraphMatch Start: op(" << op->name() << ")";
-  const OpCall* anchor = source_pattern_graph_->AnchorNode();
+  const OpCall* anchor = *source_pattern_graph_->OutputNodes().begin();
   std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>
       bind_map =
           FindCandidateIrOutputOp(op, anchor, *(source_pattern_graph_.get()));
@@ -75,6 +76,7 @@ bool DrrRewritePattern::PatternGraphMatch(
     return false;
   }
   std::vector<const OpCall*> drr_output_sequence;
+  drr_output_sequence.reserve(bind_map.size());
   std::vector<pir::Operation*> ir_output_sequence;
   std::unordered_map<const OpCall*, pir::Operation*> output_op_map;
   for (const auto& pair : bind_map) {
@@ -256,85 +258,131 @@ bool DrrRewritePattern::MatchFromOutputToInput(
   std::unordered_set<pir::Operation*> ir_visited;
   std::queue<const OpCall*> drr_q;
   std::queue<pir::Operation*> ir_q;
+  // Initialize DRR matched queue.
+  const auto& InitDrrQueue = [&]() -> void {
+    for (auto it = output_op_map.begin(); it != output_op_map.end(); ++it) {
+      VLOG(6) << "match (" << it->first->name() << " @" << it->first << " : @"
+              << it->second << ") in source_pattern_graph ";
+      drr_q.push(it->first);
+      drr_visited.insert(it->first);
+      ir_q.push(it->second);
+      ir_visited.insert(it->second);
+    }
+  };
+  // Check whether DrrNode and Operation have the same Operands and Results
+  // information.
+  const auto& IsSameOperandsAndResults =
+      [](const OpCall* drr_node, const pir::Operation* ir_node) -> bool {
+    if (drr_node->name() != ir_node->name()) {
+      VLOG(8) << "Match failed: drr_node(" << drr_node->name()
+              << ") != pir_node(" << ir_node->name() << ").";
+      return false;
+    }
+    const auto& drr_input_tensors = drr_node->inputs();
+    auto ir_input_value_size = ir_node->num_operands();
+    if (drr_input_tensors.size() != ir_input_value_size) {
+      VLOG(8) << drr_node->name() << " Match failed: drr input tensors("
+              << drr_input_tensors.size() << ") != pir input tensors("
+              << ir_input_value_size << ").";
+      return false;
+    }
+    if (drr_node->outputs().size() != ir_node->num_results()) {
+      VLOG(8) << drr_node->name() << " Match failed: drr output tensors("
+              << drr_node->outputs().size() << ") != pir output tensors("
+              << ir_node->num_results() << ").";
+      return false;
+    }
+    return true;
+  };
+  // Check whether source_pattern_match_ctx has visited Operation's Operands.
+  const auto& HasVisitedOperands = [&](const Tensor* drr_input_tensor,
+                                       pir::Value ir_value) -> bool {
+    const auto& tensor_name = drr_input_tensor->name();
+    if (ir_value.isa<pir::BlockArgument>()) {
+      VLOG(8) << "Match Attention! Found BlockArgument as input of "
+              << tensor_name;
+    }
+    return source_pattern_match_ctx->tensor_map().count(tensor_name) != 0 &&
+           ir_value != source_pattern_match_ctx->tensor_map().at(tensor_name);
+  };
+  // Update drr_q et.al information. Return false if faild.
+  const auto& TryUpdateDrrQueue = [&](const OpCall* drr_producer_op,
+                                      pir::Operation* ir_producer_op) -> bool {
+    // still return true if both visited.
+    if (drr_visited.count(drr_producer_op) &&
+        ir_visited.count(ir_producer_op)) {
+      return true;
+    }
+    // insert map if both not visited.
+    if (!drr_visited.count(drr_producer_op) &&
+        !ir_visited.count(ir_producer_op)) {
+      drr_q.push(drr_producer_op);
+      ir_q.push(ir_producer_op);
+      drr_visited.insert(drr_producer_op);
+      ir_visited.insert(ir_producer_op);
+      return true;
+    }
+    return false;
+  };
+
+  // Step 1: Initialize DRR matched queue.
   bool matched = true;
   size_t step = 0;
-  for (auto it = output_op_map.begin(); it != output_op_map.end(); ++it) {
-    VLOG(6) << "match (" << it->first->name() << " @" << it->first << " : @"
-            << it->second << ") in source_pattern_graph ";
-    drr_q.push(it->first);
-    drr_visited.insert(it->first);
-    ir_q.push(it->second);
-    ir_visited.insert(it->second);
-  }
+  InitDrrQueue();
+
   while (!drr_q.empty()) {
     if (!matched) break;
     auto* drr_node = drr_q.front();
     auto* ir_node = ir_q.front();
     drr_q.pop();
     ir_q.pop();
-    if (drr_node->name() != ir_node->name()) {
+    if (!IsSameOperandsAndResults(drr_node, ir_node)) {
       matched = false;
-      VLOG(8) << "Match failed: drr_node(" << drr_node->name()
-              << ") != pir_node(" << ir_node->name() << ").";
       break;
     }
-    const auto& drr_input_tensors = drr_node->inputs();
-    auto ir_input_value_size = ir_node->num_operands();
-    if (drr_input_tensors.size() != ir_input_value_size) {
-      matched = false;
-      VLOG(8) << drr_node->name() << " Match failed: drr input tensors("
-              << drr_input_tensors.size() << ") != pir input tensors("
-              << ir_input_value_size << ").";
-      break;
-    }
-    if (drr_node->outputs().size() != ir_node->num_results()) {
-      matched = false;
-      VLOG(8) << drr_node->name() << " Match failed: drr output tensors("
-              << drr_node->outputs().size() << ") != pir output tensors("
-              << ir_node->num_results() << ").";
-      break;
-    }
+    // Step 1: Bind Operation of current op to match_ctx.
     source_pattern_match_ctx->BindIrOperation(drr_node, ir_node);
-    // binding input_tensor of current_op
+
+    // Step 2: Bind input_tensor of current op to match_ctx.
+    const auto& drr_input_tensors = drr_node->inputs();
+    auto ir_input_values = ir_node->operands_source();
     for (size_t i = 0; i < drr_input_tensors.size(); ++i) {
-      source_pattern_match_ctx->BindIrValue(drr_input_tensors[i]->name(),
-                                            ir_node->operand(i).source());
-      if (ir_node->operand_source(i).isa<pir::BlockArgument>()) {
+      if (drr_input_tensors[i]->is_none()) {
+        continue;
+      }
+      if (HasVisitedOperands(drr_input_tensors[i], ir_input_values[i])) {
         matched = false;
-        VLOG(8) << drr_node->name()
-                << " Match failed: it's input value is a block argument.";
+        VLOG(8) << " tensor_map key[" << drr_input_tensors[i]->name()
+                << "] already exists,but value is different!";
         break;
       }
-
+      source_pattern_match_ctx->BindIrValue(drr_input_tensors[i]->name(),
+                                            ir_input_values[i]);
+      // Skip it while drr_producer_op is nullptr for trigger pattern boundary.
       auto* drr_producer_op = drr_input_tensors[i]->producer();
       if (drr_producer_op == nullptr) {
         continue;
       }
-
+      // Check whether tensor and value have the same use_count.
       if (drr_input_tensors[i]->consumers().size() !=
-          ir_node->operand(i).source().use_count()) {
+          ir_input_values[i].use_count()) {
         matched = false;
         VLOG(8) << drr_node->name() << " Match failed: consumers of drr intput["
                 << i << "] { " << drr_node->outputs().size()
                 << " } != consumers of pir intput[" << i << "] { "
-                << ir_node->operand(i).source().use_count() << " }.";
+                << ir_input_values[i].use_count() << " }.";
         break;
       }
 
-      auto* ir_producer_op = ir_node->operand_source(i).defining_op();
-      // bfs producer_op of current_op
-      if (drr_visited.count(drr_producer_op) &&
-          ir_visited.count(ir_producer_op)) {
-        continue;
+      auto* ir_producer_op = ir_input_values[i].defining_op();
+      // Tigger early stop while operand is BlockArgument with
+      // producer_op==nullptr.
+      if (drr_producer_op && ir_producer_op == nullptr) {
+        matched = false;
+        break;
       }
-
-      if (!drr_visited.count(drr_producer_op) &&
-          !ir_visited.count(ir_producer_op)) {
-        drr_q.push(drr_producer_op);
-        ir_q.push(ir_producer_op);
-        drr_visited.insert(drr_producer_op);
-        ir_visited.insert(ir_producer_op);
-      } else {
+      // bfs producer_op of current_op
+      if (!TryUpdateDrrQueue(drr_producer_op, ir_producer_op)) {
         matched = false;
         VLOG(8) << "Match failed: status of visiting for" << drr_node->name()
                 << " is different.";
@@ -403,13 +451,13 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
   // add input tensors info for res_match_ctx
   for (const auto& in_tensor : result_pattern_graph.input_tensors()) {
     PADDLE_ENFORCE_NE(
-        result_pattern_graph.id2owend_tensor().count(in_tensor),
+        result_pattern_graph.id2owned_tensor().count(in_tensor),
         0,
         phi::errors::NotFound("Not found the input tensor."
                               "Drr input tensor [%s] must exist in the result "
                               "pattern graph to be obtained.",
                               in_tensor));
-    if (!result_pattern_graph.id2owend_tensor().at(in_tensor)->is_none()) {
+    if (!result_pattern_graph.id2owned_tensor().at(in_tensor)->is_none()) {
       res_match_ctx.BindIrValue(in_tensor, src_match_ctx.GetIrValue(in_tensor));
     }
   }
@@ -460,10 +508,10 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
     }
     if (max_input_op_index == 0UL) {
       VLOG(6) << "Not found producer op for (" << op_call.name() << ")";
-      pir::Operation* source_patter_first_op = src_match_ctx.IrOperation(
+      pir::Operation* source_pattern_first_op = src_match_ctx.IrOperation(
           source_pattern_graph.owned_op_call()[0].get());
-      max_input_op_index = op_2_temp_program_index[source_patter_first_op];
-      rewriter.set_insertion_point(source_patter_first_op);
+      max_input_op_index = op_2_temp_program_index[source_pattern_first_op];
+      rewriter.set_insertion_point(source_pattern_first_op);
     } else {
       rewriter.SetInsertionPointAfter(max_index_op);
     }
@@ -497,7 +545,7 @@ void DrrRewritePattern::ReplaceOutputTensor(
     const MatchContextImpl& res_match_ctx,
     pir::PatternRewriter& rewriter) const {  // NOLINT
   for (const auto& output_name : result_pattern_graph_->output_tensors()) {
-    if (source_pattern_graph_->id2owend_tensor().count(output_name)) {
+    if (source_pattern_graph_->id2owned_tensor().count(output_name)) {
       const auto& src_ir_tensor = src_match_ctx.GetIrValue(output_name);
       const auto& res_ir_tensor = res_match_ctx.GetIrValue(output_name);
       rewriter.ReplaceAllUsesWith(src_ir_tensor, res_ir_tensor);
@@ -519,27 +567,34 @@ void DrrRewritePattern::DeleteSourcePatternOp(
   GraphTopo graph_topo_visit(&source_pattern_graph);
   graph_topo_visit.WalkGraphNodesTopoOrder([&](const OpCall& op_call) {
     pir::Operation* op = src_match_ctx.IrOperation(&op_call);
-    VLOG(5) << "DRR delete op: " << op->name() << " pointer: " << op;
+    VLOG(6) << "DRR delete op: " << op->name() << " pointer: " << op;
     if (delete_ops_set.count(op) == 0 && op->use_empty()) {
       delete_ops_que.push(op);
       delete_ops_set.insert(op);
     }
   });
+  const auto& DeleteOpAndUpdateQueue =
+      [&](pir::Operation* op,
+          std::queue<pir::Operation*>* delete_ops_que) -> void {
+    const std::vector<pir::Value> inputs = op->operands_source();
+    rewriter.EraseOp(op);
+    for (const auto& input : inputs) {
+      const bool use_empty =
+          (input && input.defining_op() && input.defining_op()->use_empty());
+      auto* defining_op = input.defining_op();
+      if (use_empty && delete_ops_set.count(defining_op) == 0U) {
+        delete_ops_set.insert(defining_op);
+        delete_ops_que->push(defining_op);
+      }
+    }
+  };
 
   while (!delete_ops_que.empty()) {
     pir::Operation* op = delete_ops_que.front();
     delete_ops_que.pop();
-    std::vector<pir::Value> inputs = op->operands_source();
-    VLOG(5) << "Delete (" << op->name() << " @" << op
+    VLOG(6) << "Delete (" << op->name() << " @" << op
             << ") in source_pattern_graph.";
-    rewriter.EraseOp(op);
-    for (const auto& input : inputs) {
-      if (input && input.defining_op()->use_empty() &&
-          delete_ops_set.count(input.defining_op()) == 0) {
-        delete_ops_set.insert(input.defining_op());
-        delete_ops_que.push(input.defining_op());
-      }
-    }
+    DeleteOpAndUpdateQueue(op, &delete_ops_que);
   }
 }
 

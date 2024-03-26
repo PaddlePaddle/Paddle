@@ -381,6 +381,7 @@
   kernel :
     func : maximum_grad
   composite : maximum_grad(x, y, out_grad, x_grad, y_grad)
+  backward : maximum_double_grad
 
 - backward_op : mean_double_grad
   forward: mean_grad (Tensor x, Tensor grad_out, IntArray axis={},  bool keepdim=false, bool reduce_all = false) -> Tensor(grad_x)
@@ -421,6 +422,7 @@
   kernel :
     func : minimum_grad
   composite : minimum_grad(x, y, out_grad, axis, x_grad, y_grad)
+  backward : minimum_double_grad
 
 - backward_op : mish_grad
   forward : mish (Tensor x, float lambda) -> Tensor(out)
@@ -461,7 +463,7 @@
   backward : multiply_double_grad
 
 - backward_op : multiply_triple_grad
-  forward : multiply_double_grad (Tensor x, Tensor y, Tensor fwd_grad_out, Tensor fwd_grad_grad_x, Tensor fwd_grad_grad_y, int aixs = -1) -> Tensor(grad_x), Tensor(grad_y), Tensor(grad_grad_out)
+  forward : multiply_double_grad (Tensor x, Tensor y, Tensor fwd_grad_out, Tensor fwd_grad_grad_x, Tensor fwd_grad_grad_y, int axis = -1) -> Tensor(grad_x), Tensor(grad_y), Tensor(grad_grad_out)
   args : (Tensor x, Tensor y, Tensor fwd_grad_out, Tensor fwd_grad_grad_x, Tensor fwd_grad_grad_y, Tensor grad_x_grad, Tensor grad_y_grad, Tensor grad_grad_out_grad, int axis = -1)
   output : Tensor(x_grad), Tensor(y_grad), Tensor(fwd_grad_out_grad), Tensor(fwd_grad_grad_x_grad), Tensor(fwd_grad_grad_y_grad)
   infer_meta :
@@ -875,6 +877,19 @@
   kernel:
     func : fused_gemm_epilogue_grad
   optional : reserve_space
+
+- backward_op: maximum_double_grad
+  forward: maximum_grad(Tensor x, Tensor y, Tensor grad_out) -> Tensor(grad_x), Tensor(grad_y)
+  args: (Tensor x, Tensor y, Tensor grad_x_grad, Tensor grad_y_grad)
+  output: Tensor(grad_out_grad)
+  composite: maximum_double_grad(x, y, grad_x_grad, grad_y_grad, grad_out_grad)
+
+- backward_op: minimum_double_grad
+  forward: minimum_grad(Tensor x, Tensor y, Tensor grad_out) -> Tensor(grad_x), Tensor(grad_y)
+  args: (Tensor x, Tensor y, Tensor grad_x_grad, Tensor grad_y_grad)
+  output: Tensor(grad_out_grad)
+  composite: minimum_double_grad(x, y, grad_x_grad, grad_y_grad, grad_out_grad)
+  optional : grad_x_grad, grad_y_grad
 
 - backward_op: unpool_grad
   forward: unpool (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding,  IntArray output_size, str data_format) -> Tensor(out)

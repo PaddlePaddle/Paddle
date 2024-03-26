@@ -38,6 +38,7 @@ from ..auto_parallel.static.utils import (
     insert_dependencies_for_vars,
     is_gradient_clip_op,
     is_optimize_op,
+    is_reshard_op,
 )
 from .auto_parallel_sharding import ShardingPass
 from .pass_base import PassBase, register_pass
@@ -286,7 +287,7 @@ class ClipHelper:
 
 
 @register_pass("auto_parallel_grad_clip")
-class ClipGradByGloblNormPass(PassBase):
+class ClipGradByGlobalNormPass(PassBase):
     """
     1. Remove norm-compute op and grad-scale op when the grad is not in current rank
        or is independent of the calculation of norm.
@@ -431,7 +432,7 @@ class ClipGradByGloblNormPass(PassBase):
                     op.desc.set_input("X", reserved_vars)
 
         for idx, op in reversed(list(enumerate(block.ops))):
-            if not is_optimize_op(op):
+            if not (is_optimize_op(op) or is_reshard_op(op)):
                 break
             if not is_gradient_clip_op(op):
                 continue
@@ -439,7 +440,7 @@ class ClipGradByGloblNormPass(PassBase):
                 block._remove_op(idx, sync=False)
 
         for idx, op in reversed(list(enumerate(block.ops))):
-            if not is_optimize_op(op):
+            if not (is_optimize_op(op) or is_reshard_op(op)):
                 break
             if not is_gradient_clip_op(op):
                 continue

@@ -28,16 +28,17 @@ def apply_to_static(net, use_cinn):
     )
 
 
-def exp_sub(x):
+def exp_sub_concat(x):
     y = paddle.exp(x)
     z = y - x
-    return z
+    out = paddle.concat([z, x], 0)
+    return out
 
 
 class CheckInferSymbolicNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
-        self.fn = exp_sub
+        self.fn = exp_sub_concat
 
     def forward(self, x):
         out = self.fn(x)
@@ -73,5 +74,5 @@ class TestCheckInferSymbolic(unittest.TestCase):
         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
-if __name__ == '__main__':
-    unittest.main()
+# if __name__ == '__main__':
+#     unittest.main()

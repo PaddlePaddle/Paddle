@@ -20,7 +20,6 @@ from semi_auto_parallel_llama_model import (
     LlamaForCausalLMAuto,
     LlamaPretrainingCriterionAuto,
     get_mesh,
-    set_global_mesh,
 )
 
 import paddle
@@ -140,7 +139,7 @@ class TestLlamaAuto:
             0, reduce(lambda x, y: x * y, mesh_shape, 1)
         ).reshape(mesh_shape)
         global_mesh = dist.ProcessMesh(mesh_arr, dim_names)
-        set_global_mesh(global_mesh)
+        dist.auto_parallel.set_mesh(global_mesh)
 
     def run_llama(self, to_static=0):
         if self.config.use_lazy_init:
@@ -206,8 +205,21 @@ class TestLlamaAuto:
             for epoch_idx in range(1):
                 for step, inputs in enumerate(dist_loader()):
                     input_ids, labels = inputs
+                    custom_black_list = [
+                        "reduce_sum",
+                        "c_softmax_with_cross_entropy",
+                    ]
+                    custom_white_list = []
+                    if self.amp_level == "O2":
+                        custom_white_list.extend(
+                            ["lookup_table", "lookup_table_v2"]
+                        )
                     with paddle.amp.auto_cast(
-                        self.amp, level=self.amp_level, dtype=self.amp_dtype
+                        self.amp,
+                        custom_black_list=set(custom_black_list),
+                        custom_white_list=set(custom_white_list),
+                        level=self.amp_level,
+                        dtype=self.amp_dtype,
                     ):
                         logits = model(input_ids)
                         tr_loss_step = criterion(logits, labels)
@@ -237,19 +249,19 @@ class TestLlamaAuto:
                     if global_step // self.gradient_accumulation_steps >= 10:
                         break
         else:
-            strategy = None
+            strategy = dist.Strategy()
             if self.gradient_accumulation_steps > 1:
-                strategy = dist.Strategy()
                 strategy.pipeline.accumulate_steps = (
                     self.gradient_accumulation_steps
                 )
-                if self.amp:
-                    amp = strategy.amp
-                    amp.enable = self.amp
-                    amp.dtype = self.amp_dtype
-                    amp.level = self.amp_level.lower()
-                    if self.amp_master_grad:
-                        amp.use_master_grad = True
+
+            if self.amp:
+                amp = strategy.amp
+                amp.enable = self.amp
+                amp.dtype = self.amp_dtype
+                amp.level = self.amp_level.lower()
+                if self.amp_master_grad:
+                    amp.use_master_grad = True
 
             dist_model = dist.to_static(
                 model,

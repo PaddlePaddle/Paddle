@@ -39,7 +39,7 @@ class BaseQuanter(Layer, metaclass=abc.ABCMeta):
     def scales(self) -> Union[paddle.Tensor, np.ndarray]:
         r"""
         Get the scales used for quantization.
-        It can be none which meams the quanter didn't hold scales for quantization.
+        It can be none which means the quanter didn't hold scales for quantization.
         """
         pass
 
@@ -47,7 +47,7 @@ class BaseQuanter(Layer, metaclass=abc.ABCMeta):
     def zero_points(self) -> Union[paddle.Tensor, np.ndarray]:
         r"""
         Get the zero points used for quantization.
-        It can be none which meams the quanter didn't hold zero points for quantization.
+        It can be none which means the quanter didn't hold zero points for quantization.
         """
         pass
 

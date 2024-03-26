@@ -24,7 +24,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a multihead_mamul_roformer op to a corresponding "
+    VLOG(3) << "convert a multihead_matmul_roformer op to a corresponding "
                "tensorrt "
                "network structure";
     framework::OpDesc op_desc(op, nullptr);
@@ -193,7 +193,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
           "You can use the config.SetTRTDynamicShapeInfo(...) interface to set "
           "the shape information to run the dynamic shape mode."));
     }
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         layer, "multihead_matmul_roformer", {output_name}, test_mode);
   }
 };

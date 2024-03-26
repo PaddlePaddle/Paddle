@@ -14,6 +14,7 @@
 
 #include "paddle/pir/include/core/ir_context.h"
 
+#include <glog/logging.h>
 #include <unordered_map>
 
 #include "paddle/pir/include/core/attribute_base.h"
@@ -125,7 +126,7 @@ class IrContextImpl {
 
   void RegisterDialect(std::string name, Dialect *dialect) {
     std::lock_guard<pir::SpinLock> guard(registed_dialect_lock_);
-    VLOG(6) << "Register a dialect of: [name=" << name
+    VLOG(8) << "Register a dialect of: [name=" << name
             << ", dialect_ptr=" << dialect << "].";
     registed_dialect_.emplace(name, dialect);
   }
@@ -138,7 +139,7 @@ class IrContextImpl {
     std::lock_guard<pir::SpinLock> guard(registed_dialect_lock_);
     auto iter = registed_dialect_.find(name);
     if (iter != registed_dialect_.end()) {
-      VLOG(6) << "Found a cached dialect of: [name=" << name
+      VLOG(8) << "Found a cached dialect of: [name=" << name
               << ", dialect_ptr=" << iter->second << "].";
       return iter->second;
     }

@@ -47,7 +47,7 @@ class MixPrecisionLayer(nn.Layer):
                 param._register_grad_hook(self._update_main_grad_hook(param))
 
     def _update_main_grad_hook(self, param):
-        """Create the update_main_grad hook for backprop."""
+        """Create the update_main_grad hook for back-prop."""
 
         # Hook used for back-prop and grad-merge.
         @paddle.autograd.no_grad()
@@ -110,6 +110,8 @@ class MixPrecisionOptimizer:
                 if param.stop_gradient:
                     continue
                 grad_var = param.main_grad
+                if grad_var is None:
+                    continue
                 if paddle.in_dynamic_mode():
                     if (
                         hasattr(grad_var, "is_selected_rows")
@@ -141,6 +143,8 @@ class MixPrecisionOptimizer:
                     if param.stop_gradient:
                         continue
                     grad_var = param.main_grad
+                    if grad_var is None:
+                        continue
                     if paddle.in_dynamic_mode():
                         if (
                             hasattr(grad_var, "is_selected_rows")

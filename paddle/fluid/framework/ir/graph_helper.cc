@@ -134,11 +134,10 @@ bool VarDescIsConsistency(const Graph &graph) {
   }
   for (auto &iter : var_name2node_set) {
     auto &first_node = *iter.second.begin();
-    bool is_persistable = std::any_of(iter.second.begin(),
-                                      iter.second.end(),
-                                      [&first_node](const ir::Node *node) {
-                                        return node->Var()->Persistable();
-                                      });
+    bool is_persistable = std::any_of(
+        iter.second.begin(), iter.second.end(), [](const ir::Node *node) {
+          return node->Var()->Persistable();
+        });
     if (is_persistable) {
       bool is_consistency =
           std::all_of(iter.second.begin(),
@@ -297,21 +296,19 @@ std::vector<ir::Node *> TopologyDfsSortOperations(const Graph &graph) {
 
   // traverse the graph
   int num_ops = static_cast<int>(op_queue.size());
-  while (num_ops) {
-    for (auto cur_op : op_queue) {
-      if (!cur_op || in_degree[cur_op] > 0) continue;
-      // visit this node
-      // put all the output var of this op valid.
-      for (auto *out_var : cur_op->outputs) {
-        if (!out_var) continue;
-        set_out_ops_ready(out_var);
-      }
-      VLOG(8) << "visit " << cur_op->Name();
-      nodes.push_back(cur_op);
-
-      cur_op = nullptr;
-      num_ops--;
+  for (auto cur_op : op_queue) {
+    if (!cur_op || in_degree[cur_op] > 0) continue;
+    // visit this node
+    // put all the output var of this op valid.
+    for (auto *out_var : cur_op->outputs) {
+      if (!out_var) continue;
+      set_out_ops_ready(out_var);
     }
+    VLOG(8) << "visit " << cur_op->Name();
+    nodes.push_back(cur_op);
+
+    cur_op = nullptr;
+    num_ops--;
   }
 
   return nodes;

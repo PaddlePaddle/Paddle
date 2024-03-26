@@ -1365,7 +1365,7 @@ class ReduceOnPlateau(LRScheduler):
             rate will reduce when ``loss`` stops ascending. Default: ``'min'`` .
         factor (float, optional): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * factor`` .
             It should be less than 1.0. Default: 0.1.
-        patience (int, optional): When ``loss`` doesn't improve for this number of epochs, learing rate will be reduced.
+        patience (int, optional): When ``loss`` doesn't improve for this number of epochs, learning rate will be reduced.
             Default: 10.
         threshold (float, optional): ``threshold`` and ``threshold_mode`` will determine the minimum change of ``loss`` .
             This make tiny changes of ``loss`` will be ignored. Default: 1e-4.
@@ -2615,7 +2615,7 @@ def noam_decay(d_model, warmup_steps, learning_rate=1.0):
         d_model(Variable): The dimensionality of input and output of model.
         warmup_steps(Variable): A super parameter.
         learning_rate(Variable|float|int): The initial learning rate. If the type
-            is Variable, it's a tensor with shape [1], the data type can be
+            is Variable, it's a 0-D Tensor with shape [], the data type can be
             float32 or float64. It also can be set to python int number. Default 1.0
 
     Returns:

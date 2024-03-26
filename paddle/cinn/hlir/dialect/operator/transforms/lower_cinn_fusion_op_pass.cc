@@ -25,9 +25,10 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/refresh_combine_pattern.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
-#include "paddle/cinn/hlir/framework/pir/group.h"
+#include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/cinn/runtime/flags.h"
@@ -37,6 +38,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 #include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
@@ -45,8 +47,8 @@ PD_DECLARE_bool(cinn_enable_map_expr);
 
 namespace {
 
-using Group = cinn::hlir::framework::pir::Group;
-using GroupPtr = std::shared_ptr<Group>;
+using OpLoweringGroup = cinn::hlir::framework::pir::OpLoweringGroup;
+using OpLoweringGroupPtr = std::shared_ptr<OpLoweringGroup>;
 using cinn::hlir::framework::pir::CompatibleInfo;
 
 using ShapeOrDataDimExprs4ValueT =
@@ -88,7 +90,7 @@ bool EraseOneExpand(
   return false;
 }
 
-void EraseUneccessaryExpandsInBlock(
+void EraseUnnecessaryExpandsInBlock(
     pir::Block* block,
     pir::PatternRewriter& rewriter,  // NOLINT
     const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value) {
@@ -99,7 +101,7 @@ void EraseUneccessaryExpandsInBlock(
 
 void ReplaceExpandWithBroadcast(pir::IrContext* ir_context,
                                 pir::Block* block,
-                                const GroupPtr& group) {
+                                const OpLoweringGroupPtr& group) {
   std::vector<pir::Operation*> op_list;
   for (auto& op : *block) {
     op_list.push_back(&op);
@@ -226,15 +228,15 @@ std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
       lhs_eq_rhs_cond, lhs_eq_one_cond, rhs_eq_one_cond);
 }
 
-GroupPtr CloneGroup(const GroupPtr& group,
-                    pir::Block* block,
-                    pir::IrMapping* ir_mapping) {
-  return group->Clone(block, *ir_mapping);
+OpLoweringGroupPtr CloneGroup(const OpLoweringGroupPtr& group,
+                              pir::Block* block,
+                              pir::IrMapping* ir_mapping) {
+  return group->Clone(block, ir_mapping);
 }
 
 void UpdateGroupShapeExprs(
-    const GroupPtr& new_group,
-    const GroupPtr& origin_group,
+    const OpLoweringGroupPtr& new_group,
+    const OpLoweringGroupPtr& origin_group,
     const pir::IrMapping& ir_mapping,
     const cinn::common::BroadcastLeaf& value_dim_exprs_list,
     const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx) {
@@ -259,20 +261,20 @@ void UpdateGroupShapeExprs(
 }
 
 void SetLeafBlockByGroupView(
-    const GroupPtr& origin_group,
+    const OpLoweringGroupPtr& origin_group,
     const cinn::common::BroadcastLeaf& value_dim_exprs_list,
     const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx,
     pir::Builder& builder,  // NOLINT
     pir::Block* block,
-    std::unordered_map<pir::Block*, GroupPtr>* group_map) {
+    std::unordered_map<pir::Block*, OpLoweringGroupPtr>* group_map) {
   pir::IrMapping ir_mapping;
-  auto origin_group_inputs = GetBlockOutsideInput(origin_group->ops);
+  auto origin_group_inputs = GetBlockOutsideInput(origin_group->ops());
   for (auto input : origin_group_inputs) {
     ir_mapping.Add(input, input);
   }
 
   auto new_group = CloneGroup(origin_group, block, &ir_mapping);
-  CHECK_EQ(origin_group->ops.size(), new_group->ops.size());
+  CHECK_EQ(origin_group->ops().size(), new_group->ops().size());
   UpdateGroupShapeExprs(new_group,
                         origin_group,
                         ir_mapping,
@@ -310,14 +312,14 @@ void InsertYieldOpForCondBlock(pir::Operation* cond_op,
 // Visit broadcast_tree by dfs
 pir::Operation* CreateConditionBlock(
     const cinn::common::BroadcastTree& broadcast_tree,
-    const GroupPtr& origin_group,
+    const OpLoweringGroupPtr& origin_group,
     pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
     const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx,
     const std::vector<pir::Value>& group_inputs,
     const std::vector<pir::Type>& output_types,
     pir::Builder& builder,  // NOLINT
     pir::Block* block,
-    std::unordered_map<pir::Block*, GroupPtr>* group_map) {
+    std::unordered_map<pir::Block*, OpLoweringGroupPtr>* group_map) {
   if (broadcast_tree.Has<cinn::common::BroadcastLeaf>()) {
     const auto& broadcast_leaf =
         broadcast_tree.Get<cinn::common::BroadcastLeaf>();
@@ -392,13 +394,15 @@ pir::Operation* CreateConditionBlock(
   }
 }
 
-std::unordered_map<GroupPtr, std::unordered_map<std::string, pir::Attribute>>
-ComplieGroupAsOpAttribute(
+std::unordered_map<OpLoweringGroupPtr,
+                   std::unordered_map<std::string, pir::Attribute>>
+CompileGroupAsOpAttribute(
     const std::shared_ptr<cinn::hlir::framework::PirCompiler>& pir_compiler,
-    const std::vector<GroupPtr>& group_list) {
-  auto fn_ptr_res = pir_compiler->BuildCUDAJITInfo(group_list);
+    const std::vector<OpLoweringGroupPtr>& group_list) {
+  auto fn_ptr_res = pir_compiler->Build(group_list);
 
-  std::unordered_map<GroupPtr, std::unordered_map<std::string, pir::Attribute>>
+  std::unordered_map<OpLoweringGroupPtr,
+                     std::unordered_map<std::string, pir::Attribute>>
       result;
   for (size_t i = 0; i < group_list.size(); ++i) {
     std::unordered_map<std::string, ::pir::Attribute> op_attrs{
@@ -413,24 +417,21 @@ ComplieGroupAsOpAttribute(
 
 void SimplyConditionBlock(
     pir::PatternRewriter& rewriter,  // NOLINT
-    std::unordered_map<pir::Block*, GroupPtr>* group_map) {
+    std::unordered_map<pir::Block*, OpLoweringGroupPtr>* group_map) {
   VLOG(4) << "simply condition block";
   using DoEachMutBlockGroupT =
-      std::function<void(pir::Block*, const GroupPtr&)>;
+      std::function<void(pir::Block*, const OpLoweringGroupPtr&)>;
   const auto& ForEachMutBlockGroup = [&](const DoEachMutBlockGroupT& DoEach) {
     for (auto& [block, group] : *group_map) {
       DoEach(block, group);
       std::vector<pir::Operation*> group_new_ops;
       group_new_ops.reserve(block->size());
-      std::unordered_set<pir::Operation*> group_ops_set;
       for (auto& op : *block) {
         if (!op.isa<pir::YieldOp>()) {
           group_new_ops.push_back(&op);
-          group_ops_set.insert(&op);
         }
       }
-      group->ops = group_new_ops;
-      group->ops_set = group_ops_set;
+      group->SetOps(group_new_ops);
     }
   };
   ForEachMutBlockGroup([&](auto* block, const auto& group) {
@@ -438,10 +439,7 @@ void SimplyConditionBlock(
         [&group](pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
       return group->GetShapeOrDataExprs(value);
     };
-    EraseUneccessaryExpandsInBlock(block, rewriter, GetShapeOrDataForValue);
-  });
-  ForEachMutBlockGroup([&](auto* block, const auto& group) {
-    ReplaceExpandWithBroadcast(rewriter.ir_context(), block, group);
+    EraseUnnecessaryExpandsInBlock(block, rewriter, GetShapeOrDataForValue);
   });
 }
 
@@ -449,24 +447,24 @@ void CompileGroupToJitKernelOp(
     const std::vector<pir::Value>& group_inputs,
     const std::shared_ptr<cinn::hlir::framework::PirCompiler>& pir_compiler,
     pir::PatternRewriter& rewriter,  // NOLINT
-    std::unordered_map<pir::Block*, GroupPtr>* group_map) {
+    std::unordered_map<pir::Block*, OpLoweringGroupPtr>* group_map) {
   // prepare attribute for jit_kernel_op
-  std::vector<GroupPtr> group_list;
+  std::vector<OpLoweringGroupPtr> group_list;
   group_list.reserve(group_map->size());
   for (const auto& [_, group] : *group_map) {
     group_list.push_back(group);
   }
-  auto op_attr_map = ComplieGroupAsOpAttribute(pir_compiler, group_list);
+  auto op_attr_map = CompileGroupAsOpAttribute(pir_compiler, group_list);
   VLOG(4) << "The size of group_map is : " << group_map->size();
   for (auto& [block, group] : *group_map) {
     std::vector<pir::Type> output_types;
-    const auto& group_output_values = group->output_values;
+    const auto& group_output_values = group->output_values();
     for (size_t i = 0; i < group_output_values.size(); ++i) {
       output_types.push_back(group_output_values[i].type());
     }
-    auto& yeild_op = block->back();
-    CHECK(yeild_op.isa<pir::YieldOp>()) << "Last op of block should be yield";
-    rewriter.set_insertion_point(&yeild_op);
+    auto& yield_op = block->back();
+    CHECK(yield_op.isa<pir::YieldOp>()) << "Last op of block should be yield";
+    rewriter.set_insertion_point(&yield_op);
     auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
         group_inputs, op_attr_map.at(group), output_types);
     CHECK(jit_kernel_op.num_results() == group_output_values.size());
@@ -490,9 +488,9 @@ void CompileGroupToJitKernelOp(
   }
 }
 
-pir::Operation* ComplieBroadcastTreeToConditionBlock(
+pir::Operation* CompileBroadcastTreeToConditionBlock(
     const cinn::common::BroadcastTree& broadcast_tree,
-    const GroupPtr& group,
+    const OpLoweringGroupPtr& group,
     pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
     const std::shared_ptr<cinn::hlir::framework::PirCompiler>& pir_compiler,
     const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx,
@@ -501,7 +499,7 @@ pir::Operation* ComplieBroadcastTreeToConditionBlock(
     pir::PatternRewriter& rewriter) {  // NOLINT
   // 1. broadcast tree to condition op
   VLOG(4) << "broadcast tree to condition op";
-  std::unordered_map<pir::Block*, GroupPtr> group_map;
+  std::unordered_map<pir::Block*, OpLoweringGroupPtr> group_map;
   pir::Operation* cond_op = CreateConditionBlock(broadcast_tree,
                                                  group,
                                                  shape_analysis,
@@ -512,21 +510,21 @@ pir::Operation* ComplieBroadcastTreeToConditionBlock(
                                                  rewriter.block(),
                                                  &group_map);
   // 2. simply every condition block
-  auto* program = group->ops.front()->GetParentProgram();
+  auto* program = group->ops().front()->GetParentProgram();
   VLOG(6) << "Before simply condition block: " << *program;
 
   SimplyConditionBlock(rewriter, &group_map);
   VLOG(6) << "After simply condition block: " << *program;
 
-  // 3. complie condition block to jit_kernel_op
+  // 3. compile condition block to jit_kernel_op
   CompileGroupToJitKernelOp(group_inputs, pir_compiler, rewriter, &group_map);
-  VLOG(6) << "complie condition block to jit_kernel_op: " << *program;
+  VLOG(6) << "compile condition block to jit_kernel_op: " << *program;
 
   return cond_op;
 }
 
 pir::Operation* ProcessDyShapeGroup(
-    const GroupPtr& group,
+    const OpLoweringGroupPtr& group,
     pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
     const std::shared_ptr<cinn::hlir::framework::PirCompiler>& pir_compiler,
     pir::PatternRewriter& rewriter) {  // NOLINT
@@ -561,7 +559,7 @@ pir::Operation* ProcessDyShapeGroup(
           cinn::common::BroadcastLeaf(all_value_dim_exprs));
   VLOG(4) << "broadcast-tree: \n" << ToTxtString(broadcast_tree);
 
-  auto group_inputs = GetBlockOutsideInput(group->ops);
+  auto group_inputs = GetBlockOutsideInput(group->ops());
 
   // has multiple branch
   if (broadcast_tree
@@ -571,7 +569,7 @@ pir::Operation* ProcessDyShapeGroup(
     for (size_t i = 0; i < group_output_values.size(); ++i) {
       output_types.push_back(group_output_values[i].type());
     }
-    return ComplieBroadcastTreeToConditionBlock(broadcast_tree,
+    return CompileBroadcastTreeToConditionBlock(broadcast_tree,
                                                 group,
                                                 shape_analysis,
                                                 pir_compiler,
@@ -580,12 +578,30 @@ pir::Operation* ProcessDyShapeGroup(
                                                 output_types,
                                                 rewriter);
   } else {  // no condition block
-    // complie group to jit_kernel_op
-    auto op_attr_map = ComplieGroupAsOpAttribute(pir_compiler, {group});
+    // compile group to jit_kernel_op
+    auto op_attr_map = CompileGroupAsOpAttribute(pir_compiler, {group});
     std::vector<pir::Type> output_types;
-    const auto& group_output_values = group->output_values;
+    const auto& group_output_values = group->output_values();
     for (size_t i = 0; i < group_output_values.size(); ++i) {
-      output_types.push_back(group_output_values[i].type());
+      auto base_type =
+          group_output_values[i].type().dyn_cast<::pir::DenseTensorType>();
+      auto dim_info = base_type.dims();
+      if (shape_analysis.HasShapeOrDataForValue(group_output_values[i])) {
+        auto shape = group->GetShapeOrDataExprs(group_output_values[i]).shape();
+        for (size_t k = 0; k < shape.size(); ++k) {
+          if (shape[k].isa<int64_t>()) {
+            dim_info[k] = shape[k].Get<int64_t>();
+          }
+        }
+      }
+      auto new_type = ::pir::DenseTensorType::get(pir::IrContext::Instance(),
+                                                  base_type.dtype(),
+                                                  dim_info,
+                                                  base_type.data_layout(),
+                                                  base_type.lod(),
+                                                  base_type.offset());
+
+      output_types.push_back(new_type);
     }
     auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
         group_inputs, op_attr_map.at(group), output_types);
@@ -593,18 +609,194 @@ pir::Operation* ProcessDyShapeGroup(
   }
 }
 
+namespace {
+
+bool IsComplicatedDimExpr(const symbol::DimExpr& dim_expr) {
+  auto lambdas = symbol::Overloaded{
+      [](std::int64_t dim_expr) { return false; },
+      [](const std::string& dim_expr) { return false; },
+      [](const symbol::Negative<symbol::DimExpr>& dim_expr) { return true; },
+      [](const symbol::Reciprocal<symbol::DimExpr>& dim_expr) { return true; },
+      [](const symbol::Add<symbol::DimExpr>& dim_expr) { return true; },
+      [](const symbol::Mul<symbol::DimExpr>& dim_expr) { return true; },
+      [](const symbol::Max<symbol::DimExpr>& dim_expr) { return true; },
+      [](const symbol::Min<symbol::DimExpr>& dim_expr) { return true; },
+      [](const symbol::Broadcast<symbol::DimExpr>& dim_expr) { return true; }};
+  return std::visit(lambdas, dim_expr.variant());
+}
+
+template <typename DoEachT>
+void VisitEachInputValue(const OpLoweringGroupPtr& group,
+                         const DoEachT& DoEach) {
+  for (pir::Value value : GetBlockOutsideInput(group->ops())) {
+    DoEach(value);
+  }
+}
+
+template <typename DoEachT>
+void VisitEachDimExprFromTensorShapeOrData(
+    const symbol::TensorShapeOrDataDimExprs& shape_or_data,
+    const DoEachT& DoEach) {
+  for (const auto& dim_expr : shape_or_data.shape()) {
+    DoEach(dim_expr);
+  }
+  if (!shape_or_data.data().has_value()) {
+    return;
+  }
+  for (const auto& dim_expr : shape_or_data.data().value()) {
+    DoEach(dim_expr);
+  }
+}
+
+template <typename DoEachT>
+void VisitEachDimExpr(const symbol::ShapeOrDataDimExprs& shape_or_data,
+                      const DoEachT& DoEach) {
+  auto lambdas = symbol::Overloaded{
+      [&](const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data) {
+        VisitEachDimExprFromTensorShapeOrData(tensor_shape_or_data, DoEach);
+      },
+      [&](const symbol::TensorListShapeOrDataDimExprs& tensor_list) {
+        symbol::TensorListShapeOrDataDimExprs simplified_tensor_list;
+        for (const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data :
+             tensor_list) {
+          VisitEachDimExprFromTensorShapeOrData(tensor_shape_or_data, DoEach);
+        }
+      }};
+  return std::visit(lambdas, shape_or_data.variant());
+}
+
+std::unordered_map<symbol::DimExpr, symbol::DimExpr>
+CollectSubstituteDimExprMap(
+    const OpLoweringGroupPtr& group,
+    pir::ShapeConstraintIRAnalysis& shape_analysis) {  // NOLINT
+  std::unordered_map<symbol::DimExpr, symbol::DimExpr> dim_expr_map;
+  std::unordered_set<std::string> base_dim_expr_set;
+
+  VisitEachInputValue(group, [&](::pir::Value value) {
+    if (!shape_analysis.HasShapeOrDataForValue(value)) {
+      return;
+    }
+    auto& shape_or_data = shape_analysis.GetShapeOrDataForValue(value);
+    VisitEachDimExpr(shape_or_data, [&](const symbol::DimExpr& dim_expr) {
+      if (IsComplicatedDimExpr(dim_expr) &&
+          dim_expr_map.find(dim_expr) == dim_expr_map.end()) {
+        dim_expr_map[dim_expr] =
+            symbol::DimExpr(shape_analysis.GetNextSymName());
+      }
+      if (dim_expr.isa<std::string>()) {
+        base_dim_expr_set.insert(dim_expr.Get<std::string>());
+      }
+    });
+  });
+
+  const std::unordered_set<symbol::DimExpr> dim_exprs_no_outer_symbol = [&] {
+    auto HasOuterBasicSymbol = [&](const symbol::DimExpr& dim_expr) {
+      for (const auto& symbol : symbol::CollectDimExprSymbols(dim_expr)) {
+        if (base_dim_expr_set.count(symbol) == 0) {
+          return true;
+        }
+      }
+      return false;
+    };
+    std::unordered_set<symbol::DimExpr> result;
+    for (const auto& kv : dim_expr_map) {
+      if (IsComplicatedDimExpr(kv.first) && !HasOuterBasicSymbol(kv.first)) {
+        result.insert(kv.first);
+      }
+    }
+    return result;
+  }();
+  for (const auto& dim_expr : dim_exprs_no_outer_symbol) {
+    dim_expr_map.erase(dim_expr);
+  }
+
+  return dim_expr_map;
+}
+
+bool IsShapeOrDataNeedSubstitute(
+    const symbol::ShapeOrDataDimExprs& shape_or_data,
+    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>& dim_expr_map) {
+  bool ret = false;
+  VisitEachDimExpr(shape_or_data, [&](const symbol::DimExpr& dim_expr) {
+    if (dim_expr_map.find(dim_expr) != dim_expr_map.end()) {
+      ret = true;
+    }
+  });
+  return ret;
+}
+
+symbol::TensorShapeOrDataDimExprs SubstituteTensorShapeOrData(
+    const symbol::TensorShapeOrDataDimExprs& shape_or_data,
+    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>& dim_expr_map) {
+  const auto& SimplifyDimExpr =
+      [&](const std::vector<symbol::DimExpr>& original_dim_expr)
+      -> std::vector<symbol::DimExpr> {
+    std::vector<symbol::DimExpr> simplified_dim_expr{};
+    for (const symbol::DimExpr& dim_expr : original_dim_expr) {
+      simplified_dim_expr.push_back(symbol::SimplifyDimExpr(
+          symbol::SubstituteDimExpr(dim_expr, dim_expr_map)));
+    }
+    return simplified_dim_expr;
+  };
+
+  std::vector<symbol::DimExpr> simplified_shape =
+      SimplifyDimExpr(shape_or_data.shape());
+  if (!shape_or_data.data().has_value()) {
+    return symbol::ShapeOrData<symbol::DimExpr>(simplified_shape);
+  }
+  std::vector<symbol::DimExpr> simplified_data =
+      SimplifyDimExpr(shape_or_data.data().value());
+  return symbol::ShapeOrData<symbol::DimExpr>(simplified_shape,
+                                              simplified_data);
+}
+
+symbol::ShapeOrDataDimExprs SubstituteShapeOrData(
+    const symbol::ShapeOrDataDimExprs& shape_or_data,
+    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>& dim_expr_map) {
+  auto lambdas = symbol::Overloaded{
+      [&](const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data) {
+        return symbol::ShapeOrDataDimExprs(
+            SubstituteTensorShapeOrData(tensor_shape_or_data, dim_expr_map));
+      },
+      [&](const symbol::TensorListShapeOrDataDimExprs& tensor_list) {
+        symbol::TensorListShapeOrDataDimExprs simplified_tensor_list;
+        for (symbol::TensorShapeOrDataDimExprs tensor_shape_or_data :
+             tensor_list) {
+          simplified_tensor_list.push_back(
+              SubstituteTensorShapeOrData(tensor_shape_or_data, dim_expr_map));
+        }
+        return symbol::ShapeOrDataDimExprs(simplified_tensor_list);
+      }};
+  return std::visit(lambdas, shape_or_data.variant());
+}
+
+symbol::ShapeOrDataDimExprs TrySubstitute(
+    const symbol::ShapeOrDataDimExprs& shape_or_data,
+    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>& dim_expr_map) {
+  if (!IsShapeOrDataNeedSubstitute(shape_or_data, dim_expr_map)) {
+    return shape_or_data;
+  }
+  return SubstituteShapeOrData(shape_or_data, dim_expr_map);
+}
+
+}  // namespace
+
 std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
 CreateGroupShapeOrDataExprs(
-    const GroupPtr& group,
+    const OpLoweringGroupPtr& group,
     pir::ShapeConstraintIRAnalysis& shape_analysis) {  // NOLINT
+  std::unordered_map<symbol::DimExpr, symbol::DimExpr> dim_expr_map =
+      CollectSubstituteDimExprMap(group, shape_analysis);
   std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs> value2shape;
-  for (auto* op : group->ops) {
+  for (auto* op : group->ops()) {
     for (size_t i = 0; i < op->num_operands(); ++i) {
       auto operand = op->operand_source(i);
       if (operand && value2shape.find(operand) == value2shape.end() &&
           shape_analysis.HasShapeOrDataForValue(operand)) {
         value2shape.insert(
-            {operand, shape_analysis.GetShapeOrDataForValue(operand)});
+            {operand,
+             TrySubstitute(shape_analysis.GetShapeOrDataForValue(operand),
+                           dim_expr_map)});
       }
     }
     for (size_t i = 0; i < op->num_results(); ++i) {
@@ -612,13 +804,14 @@ CreateGroupShapeOrDataExprs(
       if (result && value2shape.find(result) == value2shape.end() &&
           shape_analysis.HasShapeOrDataForValue(result)) {
         value2shape.insert(
-            {result, shape_analysis.GetShapeOrDataForValue(result)});
+            {result,
+             TrySubstitute(shape_analysis.GetShapeOrDataForValue(result),
+                           dim_expr_map)});
       }
     }
   }
   return value2shape;
 }
-
 class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
  public:
   explicit FusionOpPattern(::pir::IrContext* context)
@@ -627,20 +820,19 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
   bool MatchAndRewrite(cinn::dialect::FusionOp fusion_op,
                        pir::PatternRewriter& rewriter) const override {
     ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-    auto target = cinn::common::DefaultNVGPUTarget();
-    // TODO(Aurelius84): Remove scope after cleaning PirCompiler usless Build
-    // Interface
-    auto scope = std::make_shared<cinn::hlir::framework::Scope>();
     auto* program = fusion_op->GetParentProgram();
-    auto ir_compiler = cinn::hlir::framework::PirCompilerManager::Create(
-        *program, target, scope);
+    auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
+        fusion_op->GetParentProgram());
+    VLOG(4) << "Program before lowering: \n"
+            << pir::CustomPrintHelper(*program, shape_analysis.PrintHook());
+    auto target = cinn::common::DefaultNVGPUTarget();
+    auto ir_compiler =
+        cinn::hlir::framework::PirCompilerManager::Create(target);
     auto group = RebuildGroup(fusion_op);
     // Because the group is rebuilt, the order of group.output_values generated
     // by BuildCUDAJITInfo may not be same with the order bound in the yield op,
     // so a mapping is required.
 
-    auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
-        fusion_op->GetParentProgram());
     group->set_value_to_shape_or_data_exprs(
         CreateGroupShapeOrDataExprs(group, shape_analysis));
     if (FLAGS_cinn_enable_map_expr) {
@@ -648,14 +840,14 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     }
 
     // TODO(zhangyuqin1998): Replace pir::Group with a new structure
-    pir::Operation* complied_op =
+    pir::Operation* compiled_op =
         ProcessGroup(group, shape_analysis, ir_compiler, rewriter);
 
     for (size_t i = 0; i < fusion_op.num_results(); ++i) {
-      rewriter.ReplaceAllUsesWith(fusion_op.result(i), complied_op->result(i));
+      rewriter.ReplaceAllUsesWith(fusion_op.result(i), compiled_op->result(i));
       if (shape_analysis.HasShapeOrDataForValue(fusion_op.result(i))) {
         shape_analysis.SetShapeOrDataForValue(
-            complied_op->result(i),
+            compiled_op->result(i),
             shape_analysis.GetShapeOrDataForValue(fusion_op.result(i)));
       } else {
         LOG(WARNING) << "No shape_data for "
@@ -670,15 +862,15 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
 
  protected:
   virtual pir::Operation* ProcessGroup(
-      const GroupPtr& group,
+      const OpLoweringGroupPtr& group,
       pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
       const std::shared_ptr<cinn::hlir::framework::PirCompiler>& pir_compiler,
       pir::PatternRewriter& rewriter) const {  // NOLINT
-    auto group_inputs = GetBlockOutsideInput(group->ops);
-    // complie group to jit_kernel_op
-    auto op_attr_map = ComplieGroupAsOpAttribute(pir_compiler, {group});
+    auto group_inputs = GetBlockOutsideInput(group->ops());
+    // compile group to jit_kernel_op
+    auto op_attr_map = CompileGroupAsOpAttribute(pir_compiler, {group});
     std::vector<pir::Type> output_types;
-    const auto& group_output_values = group->output_values;
+    const auto& group_output_values = group->output_values();
     for (size_t i = 0; i < group_output_values.size(); ++i) {
       output_types.push_back(group_output_values[i].type());
     }
@@ -688,31 +880,43 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
   }
 
  private:
-  std::shared_ptr<Group> RebuildGroup(cinn::dialect::FusionOp fusion_op) const {
-    auto group = std::make_shared<Group>();
-    group->op_pattern_kind = cinn::hlir::framework::OpPatternKind::kElementWise;
+  std::shared_ptr<OpLoweringGroup> RebuildGroup(
+      cinn::dialect::FusionOp fusion_op) const {
+    auto group = std::make_shared<OpLoweringGroup>();
+    group->set_op_pattern_kind(
+        cinn::hlir::framework::OpPatternKind::kElementWise);
+    if (fusion_op.attributes().count("group_info")) {
+      auto attr = fusion_op.attribute("group_info")
+                      .dyn_cast<cinn::dialect::GroupInfoAttribute>()
+                      .data();
+
+      group->set_op_pattern_kind(attr.op_pattern_kind);
+      group->set_loop_ranges(attr.loop_ranges);
+      group->set_loop_ranges_expr(attr.loop_ranges_expr);
+      group->set_reduce_axis(attr.reduce_axis);
+      group->set_alignment_schedule_info(attr.alignment_schedule_info);
+    }
 
     // Rebuild ops of the group
     for (auto op : fusion_op.GetOperators()) {
       if (!op->isa<::pir::YieldOp>()) {
-        group->ops.push_back(op);
-        group->ops_set.insert(op);
-        group->op_pattern_kind =
+        group->mut_ops().push_back(op);
+        group->set_op_pattern_kind(
             static_cast<int>(CompatibleInfo::OpKind(*op)) >
-                    static_cast<int>(group->op_pattern_kind)
+                    static_cast<int>(group->op_pattern_kind())
                 ? CompatibleInfo::OpKind(*op)
-                : group->op_pattern_kind;
+                : group->op_pattern_kind());
       }
     }
 
     // Rebuild output_ops and input_ops of the group
     auto yield_op = fusion_op.GetOperators().back();
     for (size_t i = 0; i < yield_op->num_operands(); ++i) {
-      group->output_ops.insert(yield_op->operand_source(i).defining_op());
+      auto in = yield_op->operand_source(i);
+      group->mut_output_ops().insert(in.defining_op());
+      group->mut_output_values().push_back(in);
     }
 
-    // Rebuild other informations
-    // TODO(zhangyuqin1998): Do we need group.master_ops?
     return group;
   }
 };
@@ -723,7 +927,7 @@ class DyShapeFusionOpPattern : public FusionOpPattern {
 
  protected:
   virtual pir::Operation* ProcessGroup(
-      const GroupPtr& group,
+      const OpLoweringGroupPtr& group,
       pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
       const std::shared_ptr<cinn::hlir::framework::PirCompiler>& pir_compiler,
       pir::PatternRewriter& rewriter) const {  // NOLINT
@@ -748,7 +952,7 @@ class LowerCinnFusionOpPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+    return op->num_regions() > 0;
   }
 };
 
@@ -764,12 +968,13 @@ class LowerCinnDyShapeFusionOpPass : public pir::PatternRewritePass {
 
     pir::RewritePatternSet ps(context);
     ps.Add<DyShapeFusionOpPattern>(context);
+    ps.Add<RefreshCombineOpPattern>(context);
 
     return ps;
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+    return op->num_regions() > 0;
   }
 };
 

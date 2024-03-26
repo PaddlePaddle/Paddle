@@ -60,7 +60,7 @@ from .process_group import get_all_process_groups, new_process_group
 
 class Engine:
     """
-    An High-Level API for auto parallel, which could be used for distributed Training (engine.fit) and Inferenced (engine.predict).
+    An High-Level API for auto parallel, which could be used for distributed Training (engine.fit) and Inference (engine.predict).
     Static graph mode is supported natively, Dynamic graph mode is also supported under `@to_static <https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/api/paddle/jit/to_static_cn.html#to-static>`_ .
 
     Args:
@@ -205,9 +205,10 @@ class Engine:
             fleet.init(is_collective=True)
 
         # for compute cost
-        # TODO: remove _fwd_main_progs and _orig_optimizer
+        # TODO: remove _fwd_main_progs and _orig_optimizer and _pir_main_progs
         self._fwd_dist_contexts = {}
         self._fwd_main_progs = {}
+        self._pir_main_progs = {}
         self._orig_optimizer = copy.deepcopy(self._optimizer)
 
         self._executor = None
@@ -239,6 +240,9 @@ class Engine:
         self._dygraph_mode = False
         self._tuning = self._strategy.tuning
         self._acc_steps = 1
+        self._in_pir_mode = paddle.base.framework.get_flags(
+            "FLAGS_enable_pir_api"
+        )["FLAGS_enable_pir_api"]
         if self._strategy.gradient_merge.enable:
             self._acc_steps = self._strategy.gradient_merge.k_steps
         elif self._strategy.pipeline.enable:
@@ -256,6 +260,11 @@ class Engine:
 
         paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
         paddle.framework.set_flags({'FLAGS_new_executor_static_build': 1})
+
+        if auto_utils.use_new_executor():
+            is_pir_mode = os.environ.get("FLAGS_enable_pir_in_executor", None)
+            if is_pir_mode is None:
+                paddle.framework.set_flags({'FLAGS_enable_pir_in_executor': 1})
 
         self.enable_job_schedule_profiler = False
 
@@ -610,9 +619,97 @@ class Engine:
         logs["fetches"] = logs_fetch
         return logs
 
+    def _parallel_pir(self, mode):
+        """A concise and light weight parallel transform for auto parallel in pir mode.
+        Its logic consist of Four parts:
+            1. Complete program: build a completion program with forward-backward-optimizer from a forward program. (if in train mode, maybe re-placed.)
+            2. Parallelism completion: rule-based entire-graph sharding propagation(Semi-Auto) Or algorithm/random-based parallel search(Fully-Auto).
+            3. Graph partition: Partition(Pipeline-like parallel) and Reshard Pass(SPMD parallel).
+            4. Parallel related Optimization Pass. (maybe re-placed.)
+
+        It is experimental and subject to change.
+        """
+        mix_fw_program = self._fwd_main_progs[mode]
+
+        # Part 1: Complete program
+        # Step 1.1: Mix2Dense Pass
+        # TODO(JZ-LIANG) regulization pass with pass management.
+
+        dist_program = paddle.base.libpaddle.pir.apply_mix2dist_pass(
+            mix_fw_program
+        )
+        # Step 1.2: pir backward
+        if mode != "predict" and self._loss:
+            loss = dist_program.get_output_value_by_name(self._loss_names[0])
+            if loss.initialized():
+                paddle.autograd.ir_backward.append_backward(loss)
+            else:
+                self._logger.info(
+                    "loss value is not found, skip append backward."
+                )
+        # TODO(winter-wang) Step 1.3:  adapot opt.minimize() for pir-auto-parallel
+        # with program_guard(dist_program):
+        #     ptimizer_ops = self._optimizer.apply_gradients(params_grads)
+
+        # Part 2: Parallelism search
+        # NOTE make all parallelis search logic work as Pass,
+        # and all the Pass in this Part should be optional to allow consistence in dynamic and static mode.
+        if self._strategy.auto_mode == "semi-auto":
+            # TODO(xxxx) Step 2.1 Entire Graph Completion in Pir.
+            # dist_program = apply_complition_pass(dist_program)
+            pass
+        elif self._strategy.auto_mode == "random" or "full_random":
+            # TODO(caozhou) Step 2.3 Basic Random / MCMC Algorithm for Fully Auto Parallel Search.
+            # dist_program = apply_mcmc_parallel_search_pass(dist_program)
+            pass
+        elif self._strategy.auto_mode == "pattern-based":
+            # TODO(caozhou) Step 2.3 pattern based Algorithm for Fully Auto Parallel Search.
+            # dist_program = apply_pattern_based_parallel_search_pass(dist_program)
+            pass
+        else:
+            raise ValueError("auto_mode [] is not supported yet.".format())
+
+        # Part 3: Graph partition
+        # TODO(JZ-LIANG) Step 3.1: Partition Pass
+        #   insert reshard op if operand tensor's placements if different from what the cumsumer op need.
+        #   Partition the computation graph into different pipeline stage if need.
+        # dist_program = apply_partition_pass(dist_program)
+
+        # TODO(hitywt) Step 3.2: Reshard Pass
+        #   resolute the reshard op into special collective operation.
+        #   collect the communicator created during resolution.
+        # dist_program = apply_reshard_pass(dist_program)
+
+        # Part 4: Optimization Pass
+        # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
+
+        # TODO(xxxx) Step 4.1 DP Optimization Pass
+        if self._strategy.dp_optimization.enable:
+            # dist_program = apply_dp_optimization_pass(dist_program)
+            pass
+
+        # TODO(xxxx) Step 4.2 SP Optimization Pass
+        if self._strategy.sp_optimization.enable:
+            # dist_program = apply_sp_optimization_pass(dist_program)
+            pass
+
+            # TODO(xxxx) Step 4.3 Sharding Optimization Pass
+            # if self._strategy.sharding_optimization.enable:
+            # dist_program = apply_sharding_optimization_pass(dist_program)
+            pass
+
+        # TODO(JZ-LIANG) Step 4.4 Dist2Dense Pass
+        # NOTE All optimization pass that need dist_attr info should be called before Dist2Dense Pass.
+        #   dense_program = apply_dist2dense_pass_optimization_pass(dist_program)
+        self._pir_main_progs[mode] = dist_program
+
     def _prepare_program(self, mode, init_parameters=True):
         # Do the build process
         self._build(mode)
+        # TODO(zhiqiu): fit the processes below for pir
+        if self._in_pir_mode:
+            self._parallel_pir(mode)
+            return
         # Do the planning process
         self._plan(mode)
         # Do the parallel process
@@ -621,7 +718,7 @@ class Engine:
         self._init_comm()
         # startup program
         self._initialize(mode, init_parameters)
-        # mark main program for futher decompose
+        # mark main program for further decompose
         self._mark_prim(mode)
         self._has_prepared[mode] = True
 
@@ -671,9 +768,10 @@ class Engine:
 
             self._inputs = self.program_helper.input_vars
             self._labels = self.program_helper.label_vars
-            self._process_dist_input_specs()
+            # self._process_dist_input_specs()
             outputs = self.program_helper.output_vars
             self._losses = self.program_helper.loss_vars
+            self._loss_names = self.program_helper.loss_names
             metrics = self.program_helper.metric_vars
 
             paddle.enable_static()
@@ -723,6 +821,21 @@ class Engine:
                     self._loss, Variable
                 ), "the type of `loss` of the Engine arguments should be Variable."
                 self._losses = auto_utils.to_list(self._loss)
+
+        # TODO(zhiqiu): distributed_context is no longer used in pir_program
+        # so, just return here and need to reimplement the logics below
+        if self._in_pir_mode:
+            # TODO(ljz): pir not support clone_for_test,
+            # so we need to update the method to create eval/test program in engine.
+
+            # if mode != "train":
+            #     self._fwd_main_progs[mode] = serial_main_prog.clone(
+            #         for_test=True
+            #     )
+            # else:
+
+            self._fwd_main_progs[mode] = serial_main_prog
+            return
 
         default_ctx = get_default_distributed_context()
         if not default_ctx.has_annotation:
@@ -774,6 +887,11 @@ class Engine:
             self._json_config,
         )
         self._dist_contexts[mode].gradient_scale = self._strategy.gradient_scale
+        self._dist_contexts[
+            mode
+        ].gradient_scale_using_allreduce_avg = (
+            self._strategy.gradient_scale_using_allreduce_avg
+        )
         self._fwd_main_progs[mode] = serial_main_prog.clone()
 
     def _optimization_tuning(self, mode, dataset, batch_size):
@@ -879,6 +997,12 @@ class Engine:
 
     def _init_comm(self):
         if self._nranks > 1:
+            if self._in_pir_mode:
+                # TODO(hitywt) Initialize the communicator collected in Reshard Pass.
+                # pir_init_comms()
+                pass
+                return
+
             # Traverse different rank programs and traverse each op of them,
             # instantiate communication by process_mapping.
             all_process_groups = get_all_process_groups()
@@ -892,6 +1016,12 @@ class Engine:
                     process_group.instantiate()
 
     def _initialize(self, mode, init_parameters=True):
+        if self._in_pir_mode:
+            # TODO(xxxxx) Share the parameter tensor data from dygraph tensor to pir value.
+            # _pir_initialize()
+            pass
+            return
+
         self._place = _get_device()
         if isinstance(self._place, paddle.framework.CUDAPlace):
             self._place = paddle.framework.CUDAPlace(
@@ -1816,7 +1946,7 @@ class Engine:
             return [None]
 
         if self._strategy.pipeline.enable or self._acc_steps == 1:
-            # pp with schedule or navie-pp
+            # pp with schedule or naive-pp
             return batch
         else:
             # split feed data with gradient_merge k_steps
@@ -2073,7 +2203,7 @@ class Engine:
         # Check parallel mode
         if self._strategy.auto_mode == "full":
             self._logger.info(
-                "The cost will be calcudated in the search process when the auto mode is full."
+                "The cost will be calculated in the search process when the auto mode is full."
             )
             return
 

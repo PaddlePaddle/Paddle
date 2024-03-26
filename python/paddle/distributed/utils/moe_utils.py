@@ -29,7 +29,7 @@ def global_scatter(
     The global_count of the rank 0 is [2, 0, , ], rank 1 is [2, 0, ,](Due to the limited space, only the data calculated on rank 0 is shown here).
     In the global_scatter operator, local_count[i] represents sending local_count[i] data to the (i % n_expert)th expert of the (i // n_expert)th card,
     global_count[i] represents receiving global_count[i] data from the (i // n_expert)th card to the (i % n_expert)th expert of this card. The rank in the
-    figure respresent the rank of the current card in all cards.
+    figure represent the rank of the current card in all cards.
 
     The process of global_scatter sending data is as follows:
 
@@ -161,7 +161,7 @@ def global_gather(
     The global_count of the rank 0 is [2, 0, , ], rank 1 is [2, 0, ,](Due to the limited space, only the data calculated on rank 0 is shown here).
     In the global_gather operator, the meaning of the global_count and local_count is opposed to global_scatter, global_count[i] represents sending global_count[i] data to the (i % n_expert)th expert of the (i // n_expert)th card,
     local_count[i] represents receiving local_count[i] data from the (i // n_expert)th card to the (i % n_expert)th expert of this card. The data sent will be arranged according to the experts of each card.
-    The rank in the figure respresent the rank of the current card in all cards.
+    The rank in the figure represent the rank of the current card in all cards.
 
     The process of global_gather sending data is as follows:
 

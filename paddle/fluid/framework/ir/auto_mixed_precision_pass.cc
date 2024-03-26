@@ -96,7 +96,8 @@ inline bool VarNodeHasDtype(Node* var_node) {
   auto type = var_node->Var()->GetType();
   return (type == VarType::SELECTED_ROWS) || (type == VarType::LOD_TENSOR) ||
          (type == VarType::LOD_TENSOR_ARRAY) || (type == VarType::STRINGS) ||
-         (type == VarType::VOCAB);
+         (type == VarType::VOCAB) || (type == VarType::SPARSE_COO) ||
+         (type == VarType::SPARSE_CSR);
 }
 
 inline bool IsFP32(VarType::Type type) { return type == VarType::FP32; }
@@ -123,12 +124,21 @@ void DoInsertCastOp(Graph* graph,
                               const std::string& x_name,
                               const std::string& out_name,
                               const int in_dtype,
-                              const int out_dtype) {
-    desc.SetType("cast");
-    desc.SetInput("X", {x_name});
-    desc.SetOutput("Out", {out_name});
-    desc.SetAttr("in_dtype", in_dtype);
-    desc.SetAttr("out_dtype", out_dtype);
+                              const int out_dtype,
+                              const VarType::Type t) {
+    if (t == VarType::SPARSE_COO || t == VarType::SPARSE_CSR) {
+      desc.SetType("sparse_cast");
+      desc.SetInput("x", {x_name});
+      desc.SetOutput("out", {out_name});
+      desc.SetAttr("index_dtype", -1);
+      desc.SetAttr("value_dtype", to_type);
+    } else {
+      desc.SetType("cast");
+      desc.SetInput("X", {x_name});
+      desc.SetOutput("Out", {out_name});
+      desc.SetAttr("in_dtype", in_dtype);
+      desc.SetAttr("out_dtype", out_dtype);
+    }
     desc.SetAttr("use_mkldnn", false);
     desc.SetAttr("with_quant_attr", false);
     desc.Flush();
@@ -140,17 +150,21 @@ void DoInsertCastOp(Graph* graph,
     std::string cast_output_name = var_node->Var()->Name() +
                                    "_cast_auto_mixed.tmp_" +
                                    std::to_string((*suffix)++);
+    VarType::Type var_type = var_node->Var()->GetType();
     framework::OpDesc cast_op_desc(block_desc);
     update_cast_desc(cast_op_desc,
                      cast_input_name,
                      cast_output_name,
                      static_cast<int>(from_type),
-                     static_cast<int>(to_type));
+                     static_cast<int>(to_type),
+                     var_type);
     auto* cast_op_node = graph->CreateOpNode(&cast_op_desc);
     auto* cast_output_vardesc = block_desc->Var(cast_output_name);
+    cast_output_vardesc->SetType(var_type);
     cast_output_vardesc->SetPersistable(false);
     cast_output_vardesc->SetDataType(to_type);
     cast_output_vardesc->SetShape(var_node->Var()->GetShape());
+    cast_output_vardesc->Flush();
     auto* cast_output_node = graph->CreateVarNode(cast_output_vardesc);
     IR_NODE_LINK_TO(cast_op_node, cast_output_node);
     (*cache)[var_node] = cast_output_node;
@@ -452,8 +466,8 @@ void AutoMixedPrecisionPass::GetOpPrecision() const {
           }
         }
 
-        // if op's input var and output var is not dense tensor, the op should
-        // not run at low precision.
+        // op's input var and output var only support
+        // dense/sparse_coo/sparse_csr tensor.
         for (auto* in_var_node : op_node->inputs) {
           CHECK_EQ(in_var_node->IsVar(), true);
           auto* real_in_var_node = real_vars_.at(in_var_node->Var()->Name());
@@ -461,7 +475,9 @@ void AutoMixedPrecisionPass::GetOpPrecision() const {
 
           support_low_precision =
               support_low_precision &&
-              (real_in_var_node->Var()->GetType() == VarType::LOD_TENSOR);
+              (real_in_var_node->Var()->GetType() == VarType::LOD_TENSOR ||
+               real_in_var_node->Var()->GetType() == VarType::SPARSE_COO ||
+               real_in_var_node->Var()->GetType() == VarType::SPARSE_CSR);
         }
         for (auto* out_var_node : op_node->outputs) {
           CHECK_EQ(out_var_node->IsVar(), true);
@@ -470,7 +486,9 @@ void AutoMixedPrecisionPass::GetOpPrecision() const {
 
           support_low_precision =
               support_low_precision &&
-              (real_out_var_node->Var()->GetType() == VarType::LOD_TENSOR);
+              (real_out_var_node->Var()->GetType() == VarType::LOD_TENSOR ||
+               real_out_var_node->Var()->GetType() == VarType::SPARSE_COO ||
+               real_out_var_node->Var()->GetType() == VarType::SPARSE_CSR);
         }
       }
 
@@ -634,6 +652,23 @@ bool AutoMixedPrecisionPass::InputVarsNotConvert(
     if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
       return true;
     }
+  } else if (GetOpOriginalType(op_desc->Type()) == "sparse_batch_norm") {
+    auto vecs = op_desc->Input("bias");
+    if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+      return true;
+    }
+    vecs = op_desc->Input("mean");
+    if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+      return true;
+    }
+    vecs = op_desc->Input("scale");
+    if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+      return true;
+    }
+    vecs = op_desc->Input("variance");
+    if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+      return true;
+    }
   } else if (GetOpOriginalType(op_desc->Type()) == "instance_norm") {
     auto vecs = op_desc->Input("Bias");
     if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
@@ -725,6 +760,27 @@ bool AutoMixedPrecisionPass::OutputVarsNotConvert(
       return true;
     }
     vecs = op_desc->Output("SavedVariance");
+    if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+      return true;
+    }
+  } else if (GetOpOriginalType(op_desc->Type()) == "sparse_batch_norm") {
+    auto vecs = op_desc->Output("mean_out");
+    if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+      return true;
+    }
+    vecs = op_desc->Output("variance_out");
+    if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+      return true;
+    }
+    vecs = op_desc->Output("saved_mean");
+    if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+      return true;
+    }
+    vecs = op_desc->Output("saved_variance");
+    if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+      return true;
+    }
+    vecs = op_desc->Output("reserve_space");
     if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
       return true;
     }

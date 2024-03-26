@@ -221,7 +221,7 @@ class QuantizationPass(PassBase):
         return program
 
     def reset_scope_var(self, quant_program, dist_context, scope, place):
-        # The var_value, created by qatization_passes, should has same shape with the value after parallel.
+        # The var_value, created by quantization_passes, should has same shape with the value after parallel.
         for var in quant_program.list_vars():
             scope_var = scope.find_var(var.name)
             if not (scope_var and scope_var.get_tensor()._is_initialized()):

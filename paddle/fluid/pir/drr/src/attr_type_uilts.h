@@ -37,18 +37,20 @@ PD_SPECIALIZE_CppTypeToIrAttribute(int32_t, pir::Int32Attribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(int64_t, pir::Int64Attribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(float, pir::FloatAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(std::string, pir::StrAttribute);
-PD_SPECIALIZE_CppTypeToIrAttribute(phi::DataType,
-                                   paddle::dialect::DataTypeAttribute);
-PD_SPECIALIZE_CppTypeToIrAttribute(phi::Place, paddle::dialect::PlaceAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(std::vector<int32_t>, pir::ArrayAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(std::vector<int64_t>,
                                    paddle::dialect::IntArrayAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(std::vector<float>, pir::ArrayAttribute);
+PD_SPECIALIZE_CppTypeToIrAttribute(phi::DataType,
+                                   paddle::dialect::DataTypeAttribute);
+PD_SPECIALIZE_CppTypeToIrAttribute(phi::Place, paddle::dialect::PlaceAttribute);
+PD_SPECIALIZE_CppTypeToIrAttribute(phi::DataLayout,
+                                   paddle::dialect::DataLayoutAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(phi::IntArray,
                                    paddle::dialect::IntArrayAttribute);
 
 template <typename T>
-struct IrAttrbuteCreator {
+struct IrAttributeCreator {
   typename CppTypeToIrAttribute<T>::type operator()(T obj) const {
     return CppTypeToIrAttribute<T>::type::template get(
         pir::IrContext::Instance(), obj);
@@ -56,7 +58,7 @@ struct IrAttrbuteCreator {
 };
 
 template <>
-struct IrAttrbuteCreator<std::vector<int32_t>> {
+struct IrAttributeCreator<std::vector<int32_t>> {
   pir::ArrayAttribute operator()(std::vector<int32_t> obj) const {
     std::vector<pir::Attribute> attr_vec;
     attr_vec.reserve(obj.size());
@@ -69,7 +71,7 @@ struct IrAttrbuteCreator<std::vector<int32_t>> {
 };
 
 template <>
-struct IrAttrbuteCreator<std::vector<float>> {
+struct IrAttributeCreator<std::vector<float>> {
   pir::ArrayAttribute operator()(std::vector<float> obj) const {
     std::vector<pir::Attribute> attr_vec;
     attr_vec.reserve(obj.size());

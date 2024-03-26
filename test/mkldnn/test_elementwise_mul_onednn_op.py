@@ -54,7 +54,7 @@ class TestOneDNNElementwiseMulOp4(TestOneDNNElementwiseMulOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         pass
 
 
@@ -68,10 +68,10 @@ class TestOneDNNElementwiseMulOp5(TestOneDNNElementwiseMulOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         pass
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         pass
 
 
@@ -84,10 +84,10 @@ class TestOneDNNElementwiseMulOpZeroDim(TestOneDNNElementwiseMulOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         pass
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         pass
 
 
@@ -100,10 +100,10 @@ class TestOneDNNElementwiseMulOpZeroDim2(TestOneDNNElementwiseMulOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         pass
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         pass
 
 
@@ -116,10 +116,10 @@ class TestOneDNNElementwiseMulOpZeroDim3(TestOneDNNElementwiseMulOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         pass
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         pass
 
 
@@ -156,10 +156,10 @@ class TestInt8(ElementwiseMulOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         pass
 
 

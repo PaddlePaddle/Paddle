@@ -68,7 +68,7 @@ function make_ce_framework_dockcerfile(){
 }
 
 
-function make_unbuntu20_cu12_dockerfile(){
+function make_ubuntu20_cu12_dockerfile(){
   dockerfile_name="Dockerfile.cuda117_cudnn8_gcc82_ubuntu18_coverage"
   sed "s#<baseimg>#nvidia/cuda:12.0.1-cudnn8-devel-ubuntu20.04#g" ./Dockerfile.ubuntu20 >${dockerfile_name}
   sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-12.0/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" ${dockerfile_name}
@@ -123,7 +123,7 @@ function make_ubuntu20_cu112_dockerfile(){
 function main() {
   make_cpu_dockerfile
   make_ce_framework_dockcerfile
-  make_unbuntu20_cu12_dockerfile
+  make_ubuntu20_cu12_dockerfile
   make_ubuntu20_cu112_dockerfile
 }
 
