@@ -47,36 +47,6 @@ void EmptyLikeCsrKernel(const Context& dev_ctx,
   out->set_meta(x.meta());
   dev_ctx.template Alloc<T>(out_values);
 }
-
-template <typename T, typename Context>
-void EmptyLikeCooRealComplexKernel(const Context& dev_ctx,
-                                   const SparseCooTensor& x,
-                                   SparseCooTensor* out) {
-  *(out->mutable_indices()) = x.indices();
-
-  const DenseTensor& x_values = x.values();
-  DenseTensor* out_values = out->mutable_values();
-  out_values->Resize(x_values.dims());
-  // For certain c2r or r2c op, the meta-information has already been processed
-  // in the infermeta function.
-  dev_ctx.template Alloc<T>(out_values);
-}
-
-template <typename T, typename Context>
-void EmptyLikeCsrRealComplexKernel(const Context& dev_ctx,
-                                   const SparseCsrTensor& x,
-                                   SparseCsrTensor* out) {
-  *(out->mutable_crows()) = x.crows();
-  *(out->mutable_cols()) = x.cols();
-
-  const DenseTensor& x_values = x.values();
-  DenseTensor* out_values = out->mutable_values();
-  out_values->Resize(x_values.dims());
-  // For certain c2r or r2c op, the meta-information has already been processed
-  // in the infermeta function.
-  dev_ctx.template Alloc<T>(out_values);
-}
-
 }  // namespace sparse
 }  // namespace phi
 
@@ -101,40 +71,6 @@ PD_REGISTER_KERNEL(empty_like_csr,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::EmptyLikeCsrKernel,
-                   float,
-                   double,
-                   int8_t,
-                   uint8_t,
-                   int16_t,
-                   int,
-                   int64_t,
-                   bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
-  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
-}
-
-PD_REGISTER_KERNEL(empty_like_coo_real_comlex,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::sparse::EmptyLikeCooRealComplexKernel,
-                   float,
-                   double,
-                   int8_t,
-                   uint8_t,
-                   int16_t,
-                   int,
-                   int64_t,
-                   bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
-  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
-}
-
-PD_REGISTER_KERNEL(empty_like_csr_real_comlex,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::sparse::EmptyLikeCsrRealComplexKernel,
                    float,
                    double,
                    int8_t,
@@ -184,39 +120,5 @@ PD_REGISTER_KERNEL(empty_like_csr,
                    phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
-PD_REGISTER_KERNEL(empty_like_coo_real_comlex,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::sparse::EmptyLikeCooRealComplexKernel,
-                   phi::dtype::float16,
-                   float,
-                   double,
-                   int8_t,
-                   uint8_t,
-                   int16_t,
-                   int,
-                   int64_t,
-                   bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
-  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
-}
 
-PD_REGISTER_KERNEL(empty_like_csr_real_comlex,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::sparse::EmptyLikeCsrRealComplexKernel,
-                   phi::dtype::float16,
-                   float,
-                   double,
-                   int8_t,
-                   uint8_t,
-                   int16_t,
-                   int,
-                   int64_t,
-                   bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
-  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
-}
 #endif

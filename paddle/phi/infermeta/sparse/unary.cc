@@ -37,16 +37,5 @@ void ValuesInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
-void SparseUnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {
-  out->set_dims(x.dims());
-  out->set_dtype(x.dtype());
-  out->set_layout(x.layout());
-}
-
-void SparseC2RInferMeta(const MetaTensor& x, MetaTensor* out) {
-  SparseUnchangedInferMeta(x, out);
-  out->set_dtype(dtype::ToReal(x.dtype()));
-}
-
 }  // namespace sparse
 }  // namespace phi

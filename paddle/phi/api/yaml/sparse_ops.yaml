@@ -2,7 +2,7 @@
   args : (Tensor x)
   output : Tensor(out)
   infer_meta :
-    func : sparse::SparseC2RInferMeta
+    func : RealAndImagInferMeta
   kernel :
     func : abs_coo{sparse_coo -> sparse_coo},
            abs_csr{sparse_csr -> sparse_csr}
