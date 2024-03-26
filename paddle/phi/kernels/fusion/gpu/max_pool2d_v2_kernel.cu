@@ -149,9 +149,8 @@ void MaxPoolV2CUDNNKernel(const Context& ctx,
 
   // Create maxpooling descriptor
   auto const nan_opt = CUDNN_NOT_PROPAGATE_NAN;
-  auto const mode = cudnn_frontend::cudnnResampleMode_t::CUDNN_RESAMPLE_MAXPOOL;
-  auto const padding_mode =
-      cudnn_frontend::cudnnPaddingMode_t::CUDNN_NEG_INF_PAD;
+  auto const mode = cudnn_frontend::ResampleMode_t::MAXPOOL;
+  auto const padding_mode = cudnn_frontend::PaddingMode_t::NEG_INF_PAD;
   auto pool_desc = cudnn_frontend::ResampleDescBuilder_v8()
                        .setComputeType(CUDNN_DATA_FLOAT)
                        .setNanPropagation(nan_opt)
