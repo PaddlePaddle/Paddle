@@ -51,8 +51,8 @@ using OpLoweringGroup = cinn::hlir::framework::pir::OpLoweringGroup;
 using OpLoweringGroupPtr = std::shared_ptr<OpLoweringGroup>;
 using GroupInfoMap = std::unordered_map<::pir::Operation*, OpLoweringGroupPtr>;
 using cinn::hlir::framework::pir::CompatibleInfo;
-using SharedGroupHasher = Group::SharedGroupHasher;
-using SharedGroupComparator = Group::SharedGroupComparator;
+using SharedGroupHasher = OpLoweringGroup::SharedGroupHasher;
+using SharedGroupComparator = OpLoweringGroup::SharedGroupComparator;
 using ShapeOrDataDimExprs4ValueT =
     std::function<const symbol::ShapeOrDataDimExprs&(pir::Value)>;
 using cinn::hlir::framework::CompilationCache;
@@ -177,10 +177,10 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
       const OpLoweringGroupPtr& group,
       pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
       pir::PatternRewriter& rewriter) const {          // NOLINT
-    auto group_inputs = GetBlockOutsideInput(group->ops);
+    auto group_inputs = GetBlockOutsideInput(group->ops());
     // compile group to jit_kernel_op
     std::vector<pir::Type> output_types;
-    const auto& group_output_values = group->output_values;
+    const auto& group_output_values = group->output_values();
     for (size_t i = 0; i < group_output_values.size(); ++i) {
       output_types.push_back(group_output_values[i].type());
     }
@@ -263,11 +263,10 @@ class LowerCinnDyShapeFusionOpPass : public pir::PatternRewritePass {
   mutable PreAnalysisInfo pre_analysis_info_;
 };
 
-std::shared_ptr<Group> RebuildGroup(pir::Operation* fusion_op,
-                                    bool is_dy_shape);
+OpLoweringGroupPtr RebuildGroup(pir::Operation* fusion_op, bool is_dy_shape);
 
 void FusionOpAnalysis::GatherGroup(pir::Operation* fusion_op) {
-  std::shared_ptr<Group> group_ptr = RebuildGroup(fusion_op, is_dy_shape_);
+  OpLoweringGroupPtr group_ptr = RebuildGroup(fusion_op, is_dy_shape_);
   VLOG(6) << "Gather Group " << group_ptr->FuncName()
           << " for fusion_op : " << fusion_op->id();
   pre_analysis_info_->group_infos.insert({fusion_op, group_ptr});
@@ -335,7 +334,8 @@ bool BroadcastTreeInfo::HasMultiBranch() const {
       ->Has<cinn::common::BroadcastBranch<cinn::common::BroadcastTree>>();
 }
 
-void BroadcastTreeInfo::ConstructBroadcastTree(const OpLoweringGroupPtr& group) {
+void BroadcastTreeInfo::ConstructBroadcastTree(
+    const OpLoweringGroupPtr& group) {
   std::unordered_set<pir::Value> value_view;
   group->WalkOps([&group, &value_view](pir::Operation* op) {
     for (size_t i = 0; i < op->num_operands(); ++i) {
@@ -382,7 +382,7 @@ pir::Operation* ProcessDyShapeGroup(
   // 1. construct broadcast tree
   const auto& broadcast_tree_info =
       pre_analysis_info.broadcast_tree_infos.at(group);
-  auto group_inputs = GetBlockOutsideInput(group->ops);
+  auto group_inputs = GetBlockOutsideInput(group->ops());
   // has multiple branch
   if (broadcast_tree_info->HasMultiBranch()) {
     std::vector<pir::Type> output_types;
@@ -399,7 +399,7 @@ pir::Operation* ProcessDyShapeGroup(
   } else {  // no condition block
     // compile group to jit_kernel_op
     std::vector<pir::Type> output_types;
-    const auto& group_output_values = group->output_values;
+    const auto& group_output_values = group->output_values();
     for (size_t i = 0; i < group_output_values.size(); ++i) {
       auto base_type =
           group_output_values[i].type().dyn_cast<::pir::DenseTensorType>();
@@ -432,34 +432,34 @@ CreateGroupShapeOrDataExprs(
     pir::ShapeConstraintIRAnalysis& shape_analysis  // NOLINT
 );
 
-std::shared_ptr<Group> RebuildGroup(pir::Operation* fusion_op_ptr,
-                                    bool is_dy_shape) {
+OpLoweringGroupPtr RebuildGroup(pir::Operation* fusion_op_ptr,
+                                bool is_dy_shape) {
   auto fusion_op = fusion_op_ptr->dyn_cast<cinn::dialect::FusionOp>();
-  auto group = std::make_shared<Group>();
-  group->op_pattern_kind = cinn::hlir::framework::OpPatternKind::kElementWise;
+  auto group = std::make_shared<OpLoweringGroup>();
+  group->set_op_pattern_kind(
+      cinn::hlir::framework::OpPatternKind::kElementWise);
   if (fusion_op.attributes().count("group_info")) {
     auto attr = fusion_op.attribute("group_info")
                     .dyn_cast<cinn::dialect::GroupInfoAttribute>()
                     .data();
 
-    group->op_pattern_kind = attr.op_pattern_kind;
-    group->loop_ranges = attr.loop_ranges;
-    group->loop_ranges_expr = attr.loop_ranges_expr;
+    group->set_op_pattern_kind(attr.op_pattern_kind);
+    group->set_loop_ranges(attr.loop_ranges);
+    group->set_loop_ranges_expr(attr.loop_ranges_expr);
 
-    group->reduce_axis = attr.reduce_axis;
-    group->alignment_schedule_info = attr.alignment_schedule_info;
+    group->set_reduce_axis(attr.reduce_axis);
+    group->set_alignment_schedule_info(attr.alignment_schedule_info);
   }
 
   // Rebuild ops of the group
   for (auto op : fusion_op.GetOperators()) {
     if (!op->isa<::pir::YieldOp>()) {
-      group->ops.push_back(op);
-
-      group->ops_set.insert(op);
-      group->op_pattern_kind = static_cast<int>(CompatibleInfo::OpKind(*op)) >
-                                       static_cast<int>(group->op_pattern_kind)
-                                   ? CompatibleInfo::OpKind(*op)
-                                   : group->op_pattern_kind;
+      group->mut_ops().push_back(op);
+      auto op_pattern_kind = static_cast<int>(CompatibleInfo::OpKind(*op)) >
+                                     static_cast<int>(group->op_pattern_kind())
+                                 ? CompatibleInfo::OpKind(*op)
+                                 : group->op_pattern_kind();
+      group->set_op_pattern_kind(op_pattern_kind);
     }
   }
 
@@ -467,8 +467,8 @@ std::shared_ptr<Group> RebuildGroup(pir::Operation* fusion_op_ptr,
   auto yield_op = fusion_op.GetOperators().back();
   for (size_t i = 0; i < yield_op->num_operands(); ++i) {
     auto in = yield_op->operand_source(i);
-    group->output_values.push_back(in);
-    group->output_ops.insert(in.defining_op());
+    group->mut_output_values().push_back(in);
+    group->mut_output_ops().insert(in.defining_op());
   }
 
   // Because the group is rebuilt, the order of group.output_values generated
@@ -825,7 +825,7 @@ pir::Operation* CreateConditionBlock(
     return lhs_eq_rhs_cond_op;
   }
 }
-  
+
 std::unordered_map<OpLoweringGroupPtr,
                    std::unordered_map<std::string, pir::Attribute>>
 CompileGroupAsOpAttribute(const std::vector<OpLoweringGroupPtr>& group_list) {

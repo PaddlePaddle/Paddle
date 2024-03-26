@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/framework/pir/compilation_cache.h"
-#include "paddle/cinn/hlir/framework/pir/group.h"
+#include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
 
 #include "paddle/common/enforce.h"
 
@@ -57,12 +57,12 @@ void BackendResource::SetInferFnName(const std::string& name) {
 }
 
 pir::CINNKernelInfo BackendResource::GernerateKernelInfo(
-    const std::shared_ptr<pir::Group>& group) const {
+    const std::shared_ptr<pir::OpLoweringGroup>& group) const {
   pir::CINNKernelInfo kernel_info;
   kernel_info.fn_name = host_fn_name_;
   kernel_info.fn_ptr = GetHostFuncPtr();
   kernel_info.infer_shape_fn_ptr = GetInferFuncPtr();
-  kernel_info.int_args_map = group->int_args_map;
+  kernel_info.int_args_map = group->int_args_map();
   return kernel_info;
 }
 }  // namespace pir

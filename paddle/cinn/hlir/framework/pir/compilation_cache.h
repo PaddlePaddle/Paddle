@@ -24,7 +24,7 @@
 namespace cinn::hlir::framework {
 
 namespace pir {
-class Group;
+class OpLoweringGroup;
 class BackendResource final {
  public:
   BackendResource(const Target& target) {
@@ -41,7 +41,7 @@ class BackendResource final {
   void* GetHostFuncPtr() const;
   void* GetInferFuncPtr() const;
   pir::CINNKernelInfo GernerateKernelInfo(
-      const std::shared_ptr<pir::Group>& group) const;
+      const std::shared_ptr<pir::OpLoweringGroup>& group) const;
   std::shared_ptr<backends::Compiler>& GetBackendCompiler();
   const std::shared_ptr<backends::Compiler>& GetBackendCompiler() const;
   void SetHostFnName(const std::string& name);
@@ -64,7 +64,8 @@ class CompilationResult final {
   const BackendResource& GetBackendResource() const {
     return backend_resource_;
   }
-  pir::CINNKernelInfo GetKernelInfo(const std::shared_ptr<pir::Group>& group) {
+  pir::CINNKernelInfo GetKernelInfo(
+      const std::shared_ptr<pir::OpLoweringGroup>& group) {
     return backend_resource_.GernerateKernelInfo(group);
   }
 
@@ -76,7 +77,7 @@ class CompilationResult final {
 
 class CompilationCache {
  public:
-  using CacheKey = std::shared_ptr<pir::Group>;
+  using CacheKey = std::shared_ptr<pir::OpLoweringGroup>;
   using CacheValue = std::shared_ptr<pir::CompilationResult>;
 
   static CompilationCache& Instance() {
