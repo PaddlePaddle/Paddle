@@ -2893,8 +2893,8 @@ void PruneGateByCapacityInferMeta(const MetaTensor& gate_idx,
   new_gate_idx->set_dtype(gate_idx.dtype());
 }
 
-void PullBoxSparseInferMeta(const std::vector<const MetaTensor*>& ids,
-                            const MetaTensor& w,
+void PullBoxSparseInferMeta(const MetaTensor& w,
+                            const std::vector<const MetaTensor*>& ids,
                             bool is_sparse,
                             bool is_distributed,
                             int size,

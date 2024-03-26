@@ -469,8 +469,8 @@ void PReluInferMeta(const MetaTensor& x,
                     MetaTensor* out,
                     MetaConfig config = MetaConfig());
 
-void PullBoxSparseInferMeta(const std::vector<const MetaTensor*>& ids,
-                            const MetaTensor& w,
+void PullBoxSparseInferMeta(const MetaTensor& w,
+                            const std::vector<const MetaTensor*>& ids,
                             bool is_sparse,
                             bool is_distributed,
                             int size,

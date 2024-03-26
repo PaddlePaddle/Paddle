@@ -1308,12 +1308,9 @@
   output : Tensor[](out){ids.size()}
   infer_meta :
     func : PullBoxSparseInferMeta
-    param : [ids, w, is_sparse, is_distributed, size]
   kernel :
     func : pull_box_sparse
-    param : [ids, w, is_sparse, is_distributed, size]
     data_type : ids
-  optional : w
 
 - op : push_sparse_v2
   args : (Tensor[] ids, Tensor[] w, Tensor[] out_grad_in, int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, str[] inputnames = {}, bool is_distributed = true)
