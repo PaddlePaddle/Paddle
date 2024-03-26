@@ -188,7 +188,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
       pass->Set("predictor_id", new int(argument->predictor_id()));
-      bool use_calib_mode = argument->tensorrt_use_calib_mode();
+      bool use_calib_mode = false;
       pass->Set("use_calib_mode", new bool(use_calib_mode));
       pass->Set("trt_precision_mode", new int(trt_precision_mode));
       pass->Set("context_memory_sharing",
@@ -199,15 +199,6 @@ void IRPassManager::CreatePasses(Argument *argument,
       bool inspector_serialize = argument->tensorrt_inspector_serialize();
       bool model_from_memory = argument->model_from_memory();
       std::string optim_cache_dir = argument->optim_cache_dir();
-      bool int8_valid =
-          !(model_from_memory && optim_cache_dir.empty() && enable_int8);
-      PADDLE_ENFORCE_EQ(
-          int8_valid,
-          true,
-          platform::errors::PreconditionNotMet(
-              "When you are in TRT INT8 mode, and load model from "
-              "memory, you should set optim_cache_dir using "
-              "config.SetOptimCacheDir()"));
       if (model_from_memory && use_static_engine) {
         PADDLE_ENFORCE_EQ(
             optim_cache_dir.empty(),

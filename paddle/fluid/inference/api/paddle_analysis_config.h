@@ -666,7 +666,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param precision The precision used in TensorRT.
   /// \param use_static Serialize optimization information to disk for reusing.
   /// \param use_calib_mode Use TRT int8 calibration(post training
-  /// quantization) Abandoned
+  /// quantization) deprecated
   /// \param use_cuda_graph Use CudaGraph to reduce the time consumption of
   /// enqueue. Note that this option can only be enabled when your input is
   /// constant (including the batch dimension).
@@ -1300,7 +1300,7 @@ struct PD_INFER_DECL AnalysisConfig {
   int tensorrt_min_subgraph_size_{3};
   Precision tensorrt_precision_mode_{Precision::kFloat32};
   bool trt_use_static_engine_{false};
-  bool trt_use_calib_mode_{false};
+  // bool trt_use_calib_mode_{false};
   bool trt_use_cuda_graph_{false};
   bool trt_use_varseqlen_{false};
   bool trt_with_interleaved_{false};

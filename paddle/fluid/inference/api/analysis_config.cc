@@ -471,7 +471,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_use_dla_);
   CP_MEMBER(trt_dla_core_);
   CP_MEMBER(trt_use_static_engine_);
-  CP_MEMBER(trt_use_calib_mode_);
   CP_MEMBER(trt_use_cuda_graph_);
   CP_MEMBER(trt_use_varseqlen_);
   CP_MEMBER(trt_with_interleaved_);
@@ -770,7 +769,6 @@ void AnalysisConfig::EnableTensorRtEngine(int64_t workspace_size,
   tensorrt_min_subgraph_size_ = min_subgraph_size;
   tensorrt_precision_mode_ = precision_mode;
   trt_use_static_engine_ = use_static;
-  trt_use_calib_mode_ = use_calib_mode;
   trt_use_cuda_graph_ = use_cuda_graph;
   if (use_cuda_graph) {
     LOG_FIRST_N(INFO, 1) << "You have enabled Trt Cuda Graph, you must ensure "
@@ -1428,8 +1426,6 @@ std::string AnalysisConfig::Summary() {
                     std::to_string(tensorrt_min_subgraph_size_)});
       os.InsertRow({"tensorrt_use_static_engine",
                     trt_use_static_engine_ ? "true" : "false"});
-      os.InsertRow(
-          {"tensorrt_use_calib_mode", trt_use_calib_mode_ ? "true" : "false"});
       os.InsertRow(
           {"tensorrt_use_cuda_graph", trt_use_cuda_graph_ ? "true" : "false"});
 
