@@ -72,7 +72,7 @@ struct Operation {
 
 class OperationMap {
  public:
-  OperationMap();
+  TEST_API OperationMap();
 
   static OperationMap& Instance() {
     PADDLE_ENFORCE_NOT_NULL(
@@ -119,7 +119,7 @@ class OperationMap {
   void InsertMultivariateElementwiseOperations();
 
  private:
-  static OperationMap* map;
+  TEST_API static OperationMap* map;
   std::unordered_map<std::string, Operation> operations_;
   DISABLE_COPY_AND_ASSIGN(OperationMap);
 };
