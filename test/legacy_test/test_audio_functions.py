@@ -28,7 +28,7 @@ def parameterize(*params):
     return parameterized.expand(list(itertools.product(*params)))
 
 
-class TestAudioFuncitons(unittest.TestCase):
+class TestAudioFunctions(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.initParmas()
@@ -394,6 +394,97 @@ class TestAudioFuncitons(unittest.TestCase):
         np.testing.assert_array_almost_equal(
             feature_librosa, feature_paddle, decimal=5
         )
+
+
+class TestAudioFunctionsStatic(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+        self.initParmas()
+
+    @test_with_pir_api
+    def initParmas(self):
+        if not paddle.framework.in_pir_mode():
+            return
+
+        def get_wav_data(dtype: str, num_channels: int, num_frames: int):
+            program = paddle.static.Program()
+            with paddle.static.program_guard(program):
+                start = paddle.full(shape=[], fill_value=-1.0)
+                stop = paddle.full(shape=[], fill_value=1.0)
+                num = paddle.full(
+                    shape=[], fill_value=num_frames, dtype="int32"
+                )
+                out = paddle.linspace(start, stop, num, dtype=dtype) * 0.1
+                data = paddle.tile(out, [num_channels, 1])
+                if len(data.shape) == 2:  # (C, T)
+                    data = paddle.squeeze(data, axis=0)
+                exe = paddle.static.Executor(self.place)
+                (res,) = exe.run(fetch_list=[data])
+                return res
+
+        self.n_fft = 512
+        self.hop_length = 128
+        self.n_mels = 40
+        self.n_mfcc = 20
+        self.fmin = 0.0
+        self.window_str = 'hann'
+        self.pad_mode = 'reflect'
+        self.top_db = 80.0
+        self.duration = 0.5
+        self.num_channels = 1
+        self.sr = 16000
+        self.dtype = "float32"
+        self.window_size = 1024
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.core.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+        waveform = get_wav_data(
+            self.dtype, self.num_channels, num_frames=self.duration * self.sr
+        )
+        self.waveform = waveform
+
+    @parameterize(
+        [128, 256, 512], ["hamming", "hann", "triang", "bohman"], [True, False]
+    )
+    @test_with_pir_api
+    def test_spect_static(self, n_fft: int, window_str: str, center_flag: bool):
+        paddle.enable_static()
+        hop_length = int(n_fft / 4)
+        feature_librosa = librosa.core.stft(
+            y=self.waveform,
+            n_fft=n_fft,
+            hop_length=hop_length,
+            win_length=None,
+            window=window_str,
+            center=center_flag,
+            dtype=None,
+            pad_mode=self.pad_mode,
+        )
+        feature_bg = np.power(np.abs(feature_librosa), 2.0)
+        with paddle.static.program_guard(paddle.static.Program()):
+            data = paddle.static.data('x', self.waveform.shape, self.dtype)
+            x = paddle.unsqueeze(data, axis=0)
+            feature_extractor = paddle.audio.features.Spectrogram(
+                n_fft=n_fft,
+                hop_length=hop_length,
+                win_length=None,
+                window=window_str,
+                power=2.0,
+                center=center_flag,
+                pad_mode=self.pad_mode,
+            )
+            feature = feature_extractor(x)
+            feature_layer = paddle.squeeze(feature, axis=0)
+            exe = paddle.static.Executor(self.place)
+            (feature_res,) = exe.run(
+                feed={'x': self.waveform}, fetch_list=[feature_layer]
+            )
+            np.testing.assert_array_almost_equal(
+                feature_res, feature_bg, decimal=3
+            )
+        paddle.disable_static()
 
 
 if __name__ == '__main__':
