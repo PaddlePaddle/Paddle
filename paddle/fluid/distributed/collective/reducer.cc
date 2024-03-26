@@ -378,6 +378,17 @@ void SplitTensorsWithType<platform::XPUDeviceContext>(
 #endif
 
 void EagerGroup::ConcatTensors(const platform::Place &place) {
+  if (dense_tensors_.size() == 1) {
+    if (dense_contents_.impl() == nullptr) {
+      dense_contents_.set_impl(std::make_shared<phi::DenseTensor>());
+    }
+    auto dense_contents_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(dense_contents_.impl());
+    dense_contents_tensor->ShareDataWith(dense_tensors_[0]);
+    dense_contents_tensor->ShareInplaceVersionCounterWith(dense_tensors_[0]);
+    return;
+  }
+
   dense_contents_ =
       paddle::experimental::empty(IntArray({all_length_}), dtype_, place);
 
@@ -428,6 +439,9 @@ void EagerGroup::ConcatTensors(const platform::Place &place) {
 
 void EagerGroup::SplitTensors(const platform::DeviceContext &context) {
   auto place = context.GetPlace();
+  if (dense_tensors_.size() == 1) {
+    return;
+  }
   if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto &gpu_context = static_cast<const phi::GPUContext &>(context);
