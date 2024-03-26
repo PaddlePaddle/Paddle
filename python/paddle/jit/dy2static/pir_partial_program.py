@@ -869,10 +869,10 @@ class PartialProgramLayer:
 
     def _prepare_attributes(self):
         attrs = [
-            'forward_global_block',
-            self.program.forward_program.global_block(),
-            'backward_global_block',
-            self.program.backward_program.global_block(),
+            'forward_program',
+            self.program.forward_program,
+            'backward_program',
+            self.program.backward_program,
             'is_test',
             not self.training,
             'program_id',

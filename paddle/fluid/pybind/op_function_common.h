@@ -199,6 +199,7 @@ void ConstructAttrMapForRunProgram(
     PyObject* args,
     ssize_t attr_start,
     ssize_t attr_end,
+    std::vector<PyObject*>& blocks_to_hold,   // NOLINT
     paddle::framework::AttributeMap& attrs);  // NOLINT
 
 unsigned long GetUnsignedLongFromArgs(  // NOLINT
