@@ -1071,4 +1071,46 @@ std::unordered_set<std::string> CollectDimExprSymbols(const DimExpr& dim_expr) {
   return symbols;
 }
 
+int64_t GetConstValue(const symbol::Add<DimExpr>& add) {
+  int64_t ret = 0;
+  for (const auto& operand : *add.operands) {
+    if (operand.isa<std::int64_t>()) ret += operand.dyn_cast<std::int64_t>();
+  }
+  return ret;
+}
+
+symbol::List<symbol::DimExpr> GetSymbolExprs(const symbol::Add<DimExpr>& add) {
+  symbol::List<symbol::DimExpr> ret;
+  for (const auto& operand : *add.operands) {
+    if (!operand.isa<std::int64_t>()) {
+      ret->push_back(operand);
+    }
+  }
+  return ret;
+}
+
+std::pair<DimExpr, DimExpr> SimplifyDimExprEqualCstr(const DimExpr& lhs,
+                                                     const DimExpr& rhs) {
+  if (lhs.variant().index() != rhs.variant().index()) return {lhs, rhs};
+
+  if (lhs.isa<symbol::Add<DimExpr>>()) {
+    const auto& lhs_add = lhs.dyn_cast<symbol::Add<DimExpr>>();
+    const auto& rhs_add = rhs.dyn_cast<symbol::Add<DimExpr>>();
+
+    int64_t lhs_const = GetConstValue(lhs_add);
+    int64_t rhs_const = GetConstValue(rhs_add);
+    if (lhs_const != 0 && lhs_const == rhs_const) {
+      const symbol::List<symbol::DimExpr>& lhs_symbols =
+          GetSymbolExprs(lhs_add);
+      const symbol::List<symbol::DimExpr>& rhs_symbols =
+          GetSymbolExprs(rhs_add);
+      if (lhs_symbols->size() == 1 && rhs_symbols->size() == 1) {
+        return {lhs_symbols->at(0), rhs_symbols->at(0)};
+      }
+    }
+  }
+
+  return {lhs, rhs};
+}
+
 }  // namespace symbol
