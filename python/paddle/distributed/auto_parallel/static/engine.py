@@ -1083,9 +1083,16 @@ class Engine:
                 uninitialized.append(var)
             # Make sure the number of communication operators is consistent
             commu_ops = []
+            dist_startup_vars = dist_startup_prog.global_block().vars
             for op in dist_startup_prog.global_block().ops:
                 if auto_utils.is_comm_op(op):
-                    commu_ops.append(op)
+                    input_name = op.input_arg_names[0]
+                    # Only reserve the communication ops associated with vars in program or scope.
+                    if (
+                        input_name in dist_startup_vars
+                        or global_scope().find_var(var.name)
+                    ):
+                        commu_ops.append(op)
             reserved_vars_and_ops = uninitialized + commu_ops
             if reserved_vars_and_ops:
                 prune_startup_prog = dist_startup_prog._prune(
