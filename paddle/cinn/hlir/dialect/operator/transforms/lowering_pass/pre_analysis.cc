@@ -21,15 +21,10 @@ namespace cinn::dialect::ir::details {
 using cinn::hlir::framework::PirCompiler;
 
 void FusionOpAnalysis::GatherGroup(pir::Operation* fusion_op) {
-  OpLoweringGroupPtr group_ptr = RebuildGroup(fusion_op, is_dy_shape_);
+  OpLoweringGroupPtr group_ptr = RebuildGroup(fusion_op);
   VLOG(6) << "Gather Group " << group_ptr->FuncName()
           << " for fusion_op : " << fusion_op->id();
-  pre_analysis_info_->group_infos.insert({fusion_op, group_ptr});
-  if (is_dy_shape_) {
-    auto broadcast_tree_info = std::make_shared<BroadcastTreeInfo>(group_ptr);
-    pre_analysis_info_->broadcast_tree_infos.insert(
-        {group_ptr, broadcast_tree_info});
-  }
+  group_infos_->insert({fusion_op, group_ptr});
 }
 
 void FusionOpAnalysis::RunImpl(pir::Operation* op) {
@@ -48,20 +43,9 @@ void FusionOpAnalysis::RunImpl(pir::Operation* op) {
 
 void FusionOpAnalysis::PreCompileGroup() {
   std::vector<OpLoweringGroupPtr> groups;
-  const auto& EnqueueGroup = [&](const OpLoweringGroupPtr& group) {
-    const bool has_broadcast_tree =
-        pre_analysis_info_->broadcast_tree_infos.count(group) > 0;
-    if (has_broadcast_tree) {
-      const auto broadcast_tree =
-          pre_analysis_info_->broadcast_tree_infos.at(group);
-      if (broadcast_tree->HasMultiBranch()) {
-        return;  // do nothing
-      }
-    }
-    groups.push_back(group);
-  };
-  for (auto& group_info : pre_analysis_info_->group_infos) {
-    EnqueueGroup(group_info.second);
+  for (auto& group_info : *group_infos_) {
+    if (NeedBroadcastWithCF(group_info.second)) continue;
+    groups.push_back(group_info.second);
   }
   // Build and trigger compilaion cache.
   VLOG(4) << "Parallel Pre-Compile for Group with size: " << groups.size();

@@ -86,8 +86,7 @@ std::unordered_map<std::string, ::pir::Attribute> GetJitKernelAttr(
   return attrs;
 }
 
-OpLoweringGroupPtr RebuildGroup(pir::Operation* fusion_op_ptr,
-                                bool is_dy_shape) {
+OpLoweringGroupPtr RebuildGroup(pir::Operation* fusion_op_ptr) {
   auto fusion_op = fusion_op_ptr->dyn_cast<cinn::dialect::FusionOp>();
   auto group = std::make_shared<OpLoweringGroup>();
   group->set_op_pattern_kind(

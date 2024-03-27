@@ -28,29 +28,35 @@ using BroadcastTreeInfoMap =
                        SharedGroupHasher,
                        SharedGroupComparator>;
 
-class BroadcastTreeInfo final {
- public:
-  explicit BroadcastTreeInfo(const OpLoweringGroupPtr& group) {
-    ConstructBroadcastTree(group);
-  }
-  const std::shared_ptr<cinn::common::BroadcastTree>& GetBroadcastTree() const;
-  const cinn::adt::List<std::vector<symbol::DimExpr>> GetAllValueDimExprs()
-      const;
-  const std::unordered_map<pir::Value, size_t>& GetValueToDimExprIdx() const;
-  bool HasMultiBranch() const;
-
- private:
-  void ConstructBroadcastTree(const OpLoweringGroupPtr& group);
-
-  std::shared_ptr<cinn::common::BroadcastTree> broadcast_tree_;
-  cinn::adt::List<std::vector<symbol::DimExpr>> all_value_dim_exprs_;
-  std::unordered_map<pir::Value, size_t> value_to_dim_expr_idx_;
+struct GroupDimExprInfo {
+  adt::List<std::vector<symbol::DimExpr>> all_value_dim_exprs;
+  std::unordered_map<pir::Value, size_t> value_to_dim_expr_idx;
 };
 
+class BroadcastTreeInfo final {
+ public:
+  explicit BroadcastTreeInfo(
+      const adt::List<std::vector<symbol::DimExpr>>& leaves) {
+    ConstructBroadcastTree(leaves);
+  }
+  const std::shared_ptr<cinn::common::BroadcastTree>& GetBroadcastTree() const;
+
+ private:
+  void ConstructBroadcastTree(
+      const adt::List<std::vector<symbol::DimExpr>>& leaves);
+
+  std::shared_ptr<cinn::common::BroadcastTree> broadcast_tree_;
+};
+
+bool NeedBroadcastWithCF(const OpLoweringGroupPtr& group);
+bool NeedBroadcastWithCF(const adt::List<std::vector<symbol::DimExpr>>& leaves);
+GroupDimExprInfo GetGroupDimExprInfo(const OpLoweringGroupPtr& group);
+
 pir::Operation* CompileBroadcastTreeToConditionBlock(
-    const BroadcastTreeInfo& broadcast_tree_info,
     const OpLoweringGroupPtr& group,
+    const BroadcastTreeInfo& broadcast_tree_info,
     pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
+    const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx,
     const std::vector<pir::Value>& group_inputs,
     const std::vector<pir::Type>& output_types,
     pir::PatternRewriter& rewriter  // NOLINT

@@ -29,7 +29,6 @@ CompileGroupAsOpAttribute(const std::vector<OpLoweringGroupPtr>& group_list);
 std::unordered_map<std::string, ::pir::Attribute> GetJitKernelAttr(
     const OpLoweringGroupPtr& group);
 
-OpLoweringGroupPtr RebuildGroup(pir::Operation* fusion_op_ptr,
-                                bool is_dy_shape);
+OpLoweringGroupPtr RebuildGroup(pir::Operation* fusion_op_ptr);
 
 }  // namespace cinn::dialect::ir::details

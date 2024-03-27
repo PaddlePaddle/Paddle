@@ -22,15 +22,9 @@ using OpLoweringGroup = cinn::hlir::framework::pir::OpLoweringGroup;
 using OpLoweringGroupPtr = std::shared_ptr<OpLoweringGroup>;
 using GroupInfoMap = std::unordered_map<::pir::Operation*, OpLoweringGroupPtr>;
 
-struct PreAnalysisInfo {
-  GroupInfoMap group_infos;
-  BroadcastTreeInfoMap broadcast_tree_infos;
-};
-
 class FusionOpAnalysis final {
  public:
-  FusionOpAnalysis(PreAnalysisInfo* pre_analysis_info, bool is_dy_shape)
-      : pre_analysis_info_(pre_analysis_info), is_dy_shape_(is_dy_shape) {}
+  FusionOpAnalysis(GroupInfoMap* group_infos) : group_infos_(group_infos) {}
   void Run(pir::Operation* module_op) {
     RunImpl(module_op);
     PreCompileGroup();
@@ -42,7 +36,6 @@ class FusionOpAnalysis final {
   void PreCompileGroup();
 
  private:
-  PreAnalysisInfo* pre_analysis_info_;  // not_owned
-  bool is_dy_shape_;
+  GroupInfoMap* group_infos_;  // not_owned
 };
 }  // namespace cinn::dialect::ir::details

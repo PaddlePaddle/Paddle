@@ -427,23 +427,17 @@ BroadcastTreeInfo::GetBroadcastTree() const {
   return broadcast_tree_;
 }
 
-const cinn::adt::List<std::vector<symbol::DimExpr>>
-BroadcastTreeInfo::GetAllValueDimExprs() const {
-  return all_value_dim_exprs_;
-}
-
-const std::unordered_map<pir::Value, size_t>&
-BroadcastTreeInfo::GetValueToDimExprIdx() const {
-  return value_to_dim_expr_idx_;
-}
-
-bool BroadcastTreeInfo::HasMultiBranch() const {
-  return broadcast_tree_
-      ->Has<cinn::common::BroadcastBranch<cinn::common::BroadcastTree>>();
-}
-
 void BroadcastTreeInfo::ConstructBroadcastTree(
-    const OpLoweringGroupPtr& group) {
+    const adt::List<std::vector<symbol::DimExpr>>& leaves) {
+  VLOG(6) << "before constructed. broadcast-leaf: \n"
+          << ToTxtString(cinn::common::BroadcastTree(leaves));
+  broadcast_tree_ = std::make_shared<cinn::common::BroadcastTree>(
+      cinn::common::ConstructBroadcastTree(
+          cinn::common::BroadcastLeaf(leaves)));
+  VLOG(4) << "broadcast-tree: \n" << ToTxtString(*broadcast_tree_);
+}
+
+GroupDimExprInfo GetGroupDimExprInfo(const OpLoweringGroupPtr& group) {
   std::unordered_set<pir::Value> value_view;
   group->WalkOps([&group, &value_view](pir::Operation* op) {
     for (size_t i = 0; i < op->num_operands(); ++i) {
@@ -453,37 +447,46 @@ void BroadcastTreeInfo::ConstructBroadcastTree(
       value_view.insert(op->result(i));
     }
   });
-  // construct broadcast tree
-  VLOG(4) << "construct broadcast tree";
+
+  GroupDimExprInfo group_dim_expr_info;
   for (auto value : value_view) {
     const auto& shape_dim_expr = group->GetShapeOrDataExprs(value);
     const auto& data_shape = shape_dim_expr.data();
     if (data_shape) {
-      all_value_dim_exprs_->push_back(*data_shape);
+      group_dim_expr_info.all_value_dim_exprs->push_back(*data_shape);
     } else {
-      all_value_dim_exprs_->push_back(shape_dim_expr.shape());
+      group_dim_expr_info.all_value_dim_exprs->push_back(
+          shape_dim_expr.shape());
     }
-    value_to_dim_expr_idx_[value] = all_value_dim_exprs_->size() - 1;
+    group_dim_expr_info.value_to_dim_expr_idx[value] =
+        group_dim_expr_info.all_value_dim_exprs->size() - 1;
   }
-  VLOG(6) << "before constructed. broadcast-leaf: \n"
-          << ToTxtString(cinn::common::BroadcastTree(all_value_dim_exprs_));
-  broadcast_tree_ = std::make_shared<cinn::common::BroadcastTree>(
-      cinn::common::ConstructBroadcastTree(
-          cinn::common::BroadcastLeaf(all_value_dim_exprs_)));
-  VLOG(4) << "broadcast-tree: \n" << ToTxtString(*broadcast_tree_);
+  return group_dim_expr_info;
+}
+
+bool NeedBroadcastWithCF(const OpLoweringGroupPtr& group) {
+  GroupDimExprInfo group_dim_expr_info = GetGroupDimExprInfo(group);
+  const auto& leaves = group_dim_expr_info.all_value_dim_exprs;
+  return NeedBroadcastWithCF(leaves);
+}
+
+bool NeedBroadcastWithCF(
+    const adt::List<std::vector<symbol::DimExpr>>& leaves) {
+  std::optional<symbol::Broadcastable<symbol::DimExpr>>
+      broadcastable_condition = cinn::common::GetFirstCstrBroadcastable(leaves);
+  return broadcastable_condition.has_value();
 }
 
 pir::Operation* CompileBroadcastTreeToConditionBlock(
-    const BroadcastTreeInfo& broadcast_tree_info,
     const OpLoweringGroupPtr& group,
+    const BroadcastTreeInfo& broadcast_tree_info,
     pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
+    const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx,
     const std::vector<pir::Value>& group_inputs,
     const std::vector<pir::Type>& output_types,
     pir::PatternRewriter& rewriter) {  // NOLINT
   // 1. broadcast tree to condition op
   VLOG(4) << "broadcast tree to condition op";
-  const auto& value_to_dim_expr_idx =
-      broadcast_tree_info.GetValueToDimExprIdx();
   const auto& broadcast_tree = broadcast_tree_info.GetBroadcastTree();
   std::unordered_map<pir::Block*, OpLoweringGroupPtr> group_map;
   pir::Operation* cond_op = CreateConditionBlock(*broadcast_tree,
