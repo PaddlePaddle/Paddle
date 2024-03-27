@@ -21,6 +21,6 @@ namespace pir {
 
 class Pass;
 
-IR_API std::unique_ptr<Pass> CreateAttnFusePass();
+IR_API std::unique_ptr<Pass> CreateFlashAttnFusePass();
 
 }  // namespace pir
