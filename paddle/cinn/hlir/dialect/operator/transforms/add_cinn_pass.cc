@@ -80,7 +80,7 @@ void ApplyCinnPreprocessPass(
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   bool has_dynamic_shape = HasDynamicShape(*program);
 
-  pass_manager->AddPass(cinn::dialect::ir::CreateConvert0DTo1DPass());
+  // pass_manager->AddPass(cinn::dialect::ir::CreateConvert0DTo1DPass());
   if (!has_dynamic_shape && FLAGS_check_infer_symbolic) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(cinn::dialect::ir::CreateCheckInferSymbolicPass());
@@ -92,9 +92,9 @@ void ApplyCinnPreprocessPass(
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
 
   if (has_dynamic_shape) {
-    pass_manager->AddPass(cinn::dialect::ir::CreateConvert0DTo1DPass());
+    // pass_manager->AddPass(cinn::dialect::ir::CreateConvert0DTo1DPass());
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
-    pass_manager->AddPass(cinn::dialect::ir::CreateConvert0DTo1DPass());
+    // pass_manager->AddPass(cinn::dialect::ir::CreateConvert0DTo1DPass());
     pass_manager->AddPass(
         cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
