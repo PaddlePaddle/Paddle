@@ -223,6 +223,7 @@ test_qr_op
 test_randint_op
 test_randperm_op
 test_range
+test_rank_attention_op
 test_reduce_op
 test_reduce_op_static_build
 test_repeat_interleave_op
