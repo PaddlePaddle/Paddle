@@ -29,7 +29,19 @@ void TransposeKernel(const Context& ctx,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
   size_t x_rank = x.dims().size();
+
+  if (x_rank != axis.size()) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Input(perm) is the permutation of dimensions of Input(x), "
+        "its length should be equal to dimensions of Input(x), "
+        "but received dimension of Input(x) is %d, "
+        "the length of Input(perm) is %d.",
+        x_rank,
+        axis.size()));
+  }
+
   std::vector<int> formatted_axis = axis;
+
   for (size_t i = 0; i < axis.size(); i++) {
     if (axis[i] < 0) {
       formatted_axis[i] = static_cast<int>(axis[i] + x_rank);
