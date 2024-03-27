@@ -85,11 +85,6 @@ class CinnLaunchContext {
   void CheckTensorEquivalent(const std::string& var_name,
                              const phi::DenseTensor& paddle_tensor);
 
-  // Return the name list of variables skipped eager deletion
-  const std::vector<std::string>& GetSkipEagerVars() const {
-    return skip_eager_vars_;
-  }
-
   // Redirect the name of a Paddle variable to the original if it was inplaced
   std::string RedirectVarName(const std::string& var_name) const;
 
@@ -167,9 +162,6 @@ class CinnLaunchContext {
 
   // the ir::Graph object converted from the program compiled by CINN
   std::unique_ptr<framework::ir::Graph> runtime_graph_;
-
-  // the name list of skip_eager_vars in runtime for ParallelExecutor execution
-  std::vector<std::string> skip_eager_vars_;
 
   // because a cinn_pod_value_t does not own a cinn_buffer_t object,
   // an extra storage is necessary to keep those objects and they can

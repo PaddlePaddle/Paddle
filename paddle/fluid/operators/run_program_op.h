@@ -219,12 +219,12 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto &capture_mode = ctx.Attr<std::string>("cuda_graph_capture_mode");
-    // auto is_test = ctx.Attr<bool>("is_test");
     if (capture_mode.empty()) {
       return;
     }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    auto is_test = ctx.Attr<bool>("is_test");
     auto mode = details::StringToCUDAGraphCaptureMode(capture_mode);
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()),
