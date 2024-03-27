@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/gpu/fused_attention_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/fused_flash_attention_pass.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
@@ -527,7 +527,7 @@ class FlashAttnPatternOutscaleNoCast : public paddle::drr::DrrPatternBase {
 
 class AttnFusePass : public pir::PatternRewritePass {
  public:
-  AttnFusePass() : pir::PatternRewritePass("attn_fuse_pass", 2) {}
+  AttnFusePass() : pir::PatternRewritePass("flash_attn_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
@@ -544,9 +544,9 @@ class AttnFusePass : public pir::PatternRewritePass {
 }  // namespace
 
 namespace pir {
-std::unique_ptr<Pass> CreateAttnFusePass() {
-  return std::make_unique<AttnFusePass>();
+std::unique_ptr<Pass> CreateFlashAttnFusePass() {
+  return std::make_unique<FlashAttnFusePass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(attn_fuse_pass, AttnFusePass);
+REGISTER_IR_PASS(flash_attn_fuse_pass, FlashAttnFusePass);
