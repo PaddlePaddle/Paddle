@@ -527,7 +527,7 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
       auto attr_name = attr_name_and_type[0];
       auto attr_type_str = attr_name_and_type[1];
       param_names.push_back(attr_name);
-      if (AttrTypeMap().find(attr_type_str) == AttrTypeMap().end()) {
+      if (CppTypeToAttrTypeMap().count(attr_type_str) == 0) {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported `%s` type value as custom attribute now. "
             "Supported data types include `bool`, `int`, `float`, "
@@ -537,7 +537,7 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
             "the attribute data type and data type string are matched.",
             attr_type_str));
       }
-      std::string attr_pir_type = AttrTypeMap().at(attr_type_str);
+      std::string attr_pir_type = CppTypeToAttrTypeMap().at(attr_type_str);
       attributes_info.emplace_back(attr_name, attr_pir_type, "");
     }
 

@@ -44,26 +44,7 @@
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/fluid/pir/transforms/general/identity_op_clean_pass.h"
-#include "paddle/fluid/pir/transforms/general/inplace_pass.h"
-#include "paddle/fluid/pir/transforms/general/map_op_to_another_pass.h"
-#include "paddle/fluid/pir/transforms/general/matmul_scale_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/general/matmul_transpose_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/general/replace_fetch_with_shadow_output_pass.h"
-#include "paddle/fluid/pir/transforms/gpu/conv2d_add_act_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/gpu/conv2d_add_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/gpu/conv2d_bn_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/gpu/embedding_eltwise_layernorm_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/gpu/fc_elementwise_layernorm_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/gpu/fc_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/gpu/fused_dot_product_attention_pass.h"
-#include "paddle/fluid/pir/transforms/gpu/fused_dropout_add_pass.h"
-#include "paddle/fluid/pir/transforms/gpu/fused_gemm_epilogue_pass.h"
-#include "paddle/fluid/pir/transforms/gpu/fused_linear_param_grad_add_pass.h"
-#include "paddle/fluid/pir/transforms/gpu/fused_weight_only_linear_pass.h"
-#include "paddle/fluid/pir/transforms/gpu/multihead_matmul_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/gpu/silu_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/gpu/transpose_flatten_concat_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/passes.h"
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -92,12 +73,6 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
-#endif
-
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/pir/transforms/onednn/batch_norm_act_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/onednn/conv_elementwise_add_mkldnn_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/onednn/matmul_elementwise_add_fuse_pass.h"
 #endif
 
 namespace py = pybind11;
@@ -130,34 +105,6 @@ using pir::Program;
 using pir::Type;
 using pir::Value;
 using pybind11::return_value_policy;
-
-USE_PIR_PASS(dead_code_elimination_pass);
-USE_PIR_PASS(multihead_matmul_fuse_pass);
-USE_PIR_PASS(transpose_flatten_concat_fuse_pass);
-USE_PIR_PASS(fused_gemm_epilogue_pass);
-USE_PIR_PASS(fused_dropout_add_pass);
-USE_PIR_PASS(fused_weight_only_linear_pass);
-USE_PIR_PASS(fused_linear_param_grad_add_pass);
-USE_PIR_PASS(inplace_pass);
-USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
-USE_PIR_PASS(identity_op_clean_pass);
-USE_PIR_PASS(map_op_to_another_pass);
-USE_PIR_PASS(matmul_scale_fuse_pass);
-USE_PIR_PASS(matmul_transpose_fuse_pass);
-USE_PIR_PASS(fc_fuse_pass);
-USE_PIR_PASS(silu_fuse_pass);
-USE_PIR_PASS(fc_elementwise_layernorm_fuse_pass);
-USE_PIR_PASS(conv2d_bn_fuse_pass);
-USE_PIR_PASS(conv2d_add_fuse_pass);
-USE_PIR_PASS(conv2d_add_act_fuse_pass);
-USE_PIR_PASS(embedding_eltwise_layernorm_fuse_pass);
-USE_PIR_PASS(fused_dot_product_attention_pass);
-
-#ifdef PADDLE_WITH_DNNL
-USE_PIR_PASS(batch_norm_act_fuse_pass);
-USE_PIR_PASS(matmul_elementwise_add_fuse_pass);
-USE_PIR_PASS(conv_elementwise_add_mkldnn_fuse_pass);
-#endif
 
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
@@ -228,14 +175,19 @@ Value GetOutputValueByName(const Program &program, const std::string &name) {
   auto &block = *program.block();
   pir::StrAttribute name_attr =
       pir::StrAttribute::get(IrContext::Instance(), name);
+  Value value;
   for (auto &op : block) {
     if (op.isa<pir::ShadowOutputOp>()) {
       if (op.attribute("output_name") == name_attr) {
-        return op.operand_source(0);
+        if (value) {
+          PADDLE_THROW(common::errors::PreconditionNotMet(
+              "More than one shadow ouput named with %s found.", name));
+        }
+        value = op.operand_source(0);
       }
     }
   }
-  return nullptr;
+  return value;
 }
 
 void BindProgram(py::module *m) {
@@ -1751,15 +1703,14 @@ void BindUtils(pybind11::module *m) {
                 {'matmul_v2_0.tmp_0': [Value(define_op_name=pd_op.matmul, index=0, dtype=builtin.tensor<4x4xf32>)], 'x': [Value(define_op_name=pd_op.data, index=0, dtype=builtin.tensor<4x4xf32>)], 'tanh_0.tmp_0': [Value(define_op_name=pd_op.tanh, index=0, dtype=builtin.tensor<4x4xf32>)], 'elementwise_add_0': [Value(define_op_name=pd_op.add, index=0, dtype=builtin.tensor<4x4xf32>)]}
     )DOC");
 
-  m->def(
-      "clear_pir_compiler_manager",
-      []() {
+  m->def("clear_cinn_compilation_cache",
+         []() {
 #ifdef PADDLE_WITH_CINN
-        pybind11::gil_scoped_release release;
-        VLOG(4) << "clear PirCompilerManager and free PirCompiler resources.";
-        cinn::hlir::framework::PirCompilerManager::Instance().clear();
+           pybind11::gil_scoped_release release;
+           VLOG(4) << "clear CINN CompilationCache and free BackendResource.";
+           cinn::hlir::framework::CompilationCache::Instance().Clear();
 #endif
-      }),
+         }),
       m->def("apply_mix2dist_pass", paddle::dialect::MixToDistPass);
 }
 

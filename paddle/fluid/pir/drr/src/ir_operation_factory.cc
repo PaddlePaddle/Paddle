@@ -14,6 +14,7 @@
 
 #include <any>
 
+#include "paddle/common/layout.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
@@ -209,6 +210,9 @@ pir::Attribute CreateIrAttribute(const std::any& obj) {
           std::any_cast<phi::DataType>(obj));
     } else if (obj.type() == typeid(phi::Place)) {
       return IrAttributeCreator<phi::Place>()(std::any_cast<phi::Place>(obj));
+    } else if (obj.type() == typeid(phi::DataLayout)) {
+      return IrAttributeCreator<phi::DataLayout>()(
+          std::any_cast<phi::DataLayout>(obj));
     } else if (obj.type() == typeid(std::vector<int32_t>)) {  // NOLINT
       return IrAttributeCreator<std::vector<int32_t>>()(
           std::any_cast<std::vector<int32_t>>(obj));
