@@ -1219,7 +1219,7 @@ void EinsumRawInferMeta(const std::vector<const MetaTensor*>& inputs,
 void ExpandInferMeta(const MetaTensor& x,
                      const IntArray& shape,
                      MetaTensor* out) {
-#define MAX_RANK_SUPPORTED 6
+#define MAX_RANK_SUPPORTED 8
   auto x_dims = x.dims();
   auto expand_shape = shape.GetData();
 
@@ -4722,7 +4722,7 @@ void TileInferMeta(const MetaTensor& x,
                    const IntArray& repeat_times,
                    MetaTensor* out,
                    MetaConfig config) {
-#define MAX_RANK_SUPPORTED 6
+#define MAX_RANK_SUPPORTED 8
 
   auto repeat_times_data = repeat_times.GetData();
   auto x_dims = x.dims();
