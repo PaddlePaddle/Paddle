@@ -78,6 +78,7 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'warprnnt',
     'bilateral_slice',
     'cast',
+    'standard_gamma',
 ]
 
 NO_FP16_CHECK_GRAD_OP_LIST = [
