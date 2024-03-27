@@ -63,6 +63,52 @@ class ExpandOpInferSymbolicShapeTest(TestBase):
         return out
 
 
+class LinspaceNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        out = paddle.linspace(start=0, stop=5, num=10)
+        return out
+
+
+class LinspaceOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.expected = ['shape[10], data[NULL]']
+
+    def test_eval_symbolic(self):
+        net = LinspaceNet()
+        x_spec = InputSpec(shape=[None, None, 2], dtype='float32')
+        input_spec = [x_spec]
+        net = apply_to_static(net, False, input_spec)
+        net.eval()
+        check_infer_results(net, input_spec, 'pd_op.linspace', self.expected)
+        return True
+
+
+class LogspaceNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        out = paddle.logspace(start=1, stop=5, num=10)
+        return out
+
+
+class LogspaceOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.expected = ['shape[10], data[NULL]']
+
+    def test_eval_symbolic(self):
+        net = LogspaceNet()
+        x_spec = InputSpec(shape=[None, None, 2], dtype='float32')
+        input_spec = [x_spec]
+        net = apply_to_static(net, False, input_spec)
+        net.eval()
+        check_infer_results(net, input_spec, 'pd_op.logspace', self.expected)
+        return True
+
+
 class SliceNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
@@ -185,6 +231,38 @@ class TransposeOpInferSymbolicShapeTest(TestBase):
             check_infer_results(
                 net, input_spec, 'pd_op.transpose', self.expected
             )
+
+        return True
+
+
+class PoissonNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        out = paddle.poisson(x)
+
+        return out
+
+
+class PoissonOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.cases = [np.random.rand(2, 3, 4)]
+        self.expected = ['shape[S0, S1, S2], data[NULL]']
+
+    def test_eval_symbolic(self):
+        net = PoissonNet()
+
+        for i in range(len(self.cases)):
+            x = self.cases[i]
+            x_spec = InputSpec(
+                shape=[None for index in range(len(x.shape))], dtype='float32'
+            )
+
+            input_spec = [x_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+            check_infer_results(net, input_spec, 'pd_op.poisson', self.expected)
 
         return True
 
