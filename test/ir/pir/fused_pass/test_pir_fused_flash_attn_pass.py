@@ -139,7 +139,7 @@ class TestFlashAttnPatternQscaleCast(PassTest):
             self.places.append(paddle.CUDAPlace(0))
 
     def test_check_output(self):
-        self.check_pass_correct(atol=1e-3, rtol=1e-3)
+        self.check_pass_correct()
 
 
 # FlashAttn
@@ -251,7 +251,7 @@ class TestFlashAttnPatternQscaleNoCast(PassTest):
             self.places.append(paddle.CUDAPlace(0))
 
     def test_check_output(self):
-        self.check_pass_correct(atol=1e-3, rtol=1e-3)
+        self.check_pass_correct()
 
 
 # FlashAttn
@@ -372,7 +372,7 @@ class TestFlashAttnPatternOutscaleCast(PassTest):
             self.places.append(paddle.CUDAPlace(0))
 
     def test_check_output(self):
-        self.check_pass_correct(atol=1e-3, rtol=1e-3)
+        self.check_pass_correct()
 
 
 # FlashAttn
@@ -487,10 +487,7 @@ class TestFlashAttnPatternOutscaleNoCast(PassTest):
             self.places.append(paddle.CUDAPlace(0))
 
     def test_check_output(self):
-        self.check_pass_correct(atol=1e-3, rtol=1e-3)
-
-if __name__ == "__main__":
-    unittest.main()
+        self.check_pass_correct()
 
 if __name__ == "__main__":
     unittest.main()
