@@ -6,6 +6,8 @@ paddle_test(drr_fuse_linear_test SRCS drr_fuse_linear_test.cc)
 if(WITH_GPU AND WITH_CINN)
   paddle_test(merge_parallel_matmul_pass_test SRCS
               merge_parallel_matmul_pass_test.cc)
+  set_tests_properties(merge_parallel_matmul_pass_test
+                       PROPERTIES LABELS "RUN_TYPE=CINN")
 endif()
 
 paddle_test(drr_fuse_linear_param_grad_add_test SRCS
