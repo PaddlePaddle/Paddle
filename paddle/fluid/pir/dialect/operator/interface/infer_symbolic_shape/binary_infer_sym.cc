@@ -324,6 +324,16 @@ bool GatherNdOpInferSymbolicShape(
   return true;
 }
 
+bool IndexSampleOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  pir::Value operand_source = op->operand_source(1);
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(operand_source);
+
+  shape_analysis->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
+  return true;
+}
+
 bool KronOpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
   const auto &x_shape_or_data =
@@ -442,19 +452,24 @@ bool MatmulOpInferSymbolicShape(
     if (transpose_x_attr == false && transpose_y_attr == false) {
       shape_analysis->DimExprBuilder().CstrEq(x_dims[ndims_x - 1],
                                               y_dims[ndims_x - 2]);
+      shape_analysis->AddEqCstr(x_dims[ndims_x - 1], y_dims[ndims_x - 2]);
     } else if (transpose_x_attr == false && transpose_y_attr == true) {
       shape_analysis->DimExprBuilder().CstrEq(x_dims[ndims_x - 1],
                                               y_dims[ndims_x - 1]);
+      shape_analysis->AddEqCstr(x_dims[ndims_x - 1], y_dims[ndims_x - 1]);
     } else if (transpose_x_attr == true && transpose_y_attr == false) {
       shape_analysis->DimExprBuilder().CstrEq(x_dims[ndims_x - 2],
                                               y_dims[ndims_x - 2]);
+      shape_analysis->AddEqCstr(x_dims[ndims_x - 2], y_dims[ndims_x - 2]);
     } else {
       shape_analysis->DimExprBuilder().CstrEq(x_dims[ndims_x - 2],
                                               y_dims[ndims_x - 1]);
+      shape_analysis->AddEqCstr(x_dims[ndims_x - 2], y_dims[ndims_x - 1]);
     }
 
     for (size_t i = 0; i < ndims_x - 2; ++i) {
       shape_analysis->DimExprBuilder().CstrEq(x_dims[i], y_dims[i]);
+      shape_analysis->AddEqCstr(x_dims[i], y_dims[i]);
     }
   }
   return true;

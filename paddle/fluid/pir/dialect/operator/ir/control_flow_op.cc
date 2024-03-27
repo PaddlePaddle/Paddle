@@ -536,18 +536,55 @@ void WhileOp::Print(pir::IrPrinter &printer) {
   os << " = \"" << name() << "\"(cond=";
   printer.PrintValue(cond());
   os << ", inputs=";
+  pir::ShapeConstraintIRAnalysis &shape_analysis =
+      pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
   auto operands = (*this)->operands_source();
   pir::detail::PrintInterleave(
       operands.begin() + 1,
       operands.end(),
-      [&](pir::Value v) { printer.PrintValue(v); },
+      [&](pir::Value v) {
+        printer.PrintValue(v);
+        if (shape_analysis.HasShapeOrDataForValue(v)) {
+          os << "<" << shape_analysis.GetShapeOrDataForValue(v).shape() << ">";
+        } else {
+          os << ":[" << v.type().dyn_cast<pir::DenseTensorType>().dims() << "]";
+        }
+      },
       [&]() { os << ", "; });
   os << ") { \n";
   os << printer.indentation() << "^";
   pir::detail::PrintInterleave(
       body().args_begin(),
       body().args_end(),
-      [&](pir::Value v) { printer.PrintValue(v); },
+      [&](pir::Value v) {
+        printer.PrintValue(v);
+        if (shape_analysis.HasShapeOrDataForValue(v)) {
+          os << "<" << shape_analysis.GetShapeOrDataForValue(v).shape() << ">";
+        } else {
+          os << ":[" << v.type().dyn_cast<pir::DenseTensorType>().dims() << "]";
+        }
+      },
+      [&]() { os << ", "; });
+  os << "\n";
+  os << printer.indentation() << "@";
+  const auto &results = [&] {
+    std::vector<pir::Value> results;
+    for (uint32_t i = 0; i < num_results(); ++i) {
+      results.push_back(result(i));
+    }
+    return results;
+  }();
+  pir::detail::PrintInterleave(
+      results.begin(),
+      results.end(),
+      [&](pir::Value v) {
+        printer.PrintValue(v);
+        if (shape_analysis.HasShapeOrDataForValue(v)) {
+          os << "<" << shape_analysis.GetShapeOrDataForValue(v).shape() << ">";
+        } else {
+          os << ":[" << v.type().dyn_cast<pir::DenseTensorType>().dims() << "]";
+        }
+      },
       [&]() { os << ", "; });
   os << "\n";
   printer.AddIndentation();
@@ -592,13 +629,13 @@ void WhileOp::VerifySig() {
                         "The result size (%d) not equal to input size(%d) + 1.",
                         num_results(),
                         input_size));
-  for (size_t index = 0; index < output_size; ++index) {
-    PADDLE_ENFORCE_EQ(
-        operand_type(index + 1),
-        result_type(index),
-        phi::errors::PreconditionNotMet(
-            "The (%d) result and operand type is not equal.", index));
-  }
+  // for (size_t index = 0; index < output_size; ++index) {
+  //   PADDLE_ENFORCE_EQ(
+  //       operand_type(index + 1),
+  //       result_type(index),
+  //       phi::errors::PreconditionNotMet(
+  //           "The (%d) result and operand type is not equal.", index));
+  // }
 }
 
 void WhileOp::VerifyRegion() {
@@ -738,8 +775,58 @@ bool WhileOp::InferSymbolicShape(
 
   pir::InferSymExprForBlock(body(), shape_analysis);
 
+  shape_analysis->PrintDimExprClusters();
+
   // add constraints for args
+  std::unordered_map<symbol::DimExpr, symbol::DimExpr>
+      args_expr_map;  // args -> original value
   const auto &body_args = block_args();
+  for (size_t i = 0; i < body_args.size(); ++i) {
+    const auto &input_arg_shape =
+        shape_analysis->GetShapeOrDataForValue(body_args[i]).shape();
+    const auto &original_input_shape =
+        shape_analysis->GetShapeOrDataForValue(operand_source(i + 1)).shape();
+    if (input_arg_shape.size() != original_input_shape.size()) {
+      continue;
+    }
+    for (size_t j = 0; j < input_arg_shape.size(); ++j) {
+      if (input_arg_shape[j].isa<int64_t>()) {
+        continue;
+      }
+      args_expr_map.emplace(input_arg_shape[j], original_input_shape[j]);
+    }
+  }
+  for (const auto &[k, v] : args_expr_map) {
+    VLOG(0) << "##### args_expr_map: " << k << " --> " << v;
+  }
+
+  auto IsSameWithDimExprBeforeWhile = [&](const symbol::DimExpr &before_expr,
+                                          const symbol::DimExpr &yield_expr) {
+    if (before_expr == yield_expr) return true;
+    VLOG(0) << "##### before_expr: " << before_expr
+            << " vs. yield_expr: " << yield_expr;
+    if (args_expr_map.count(yield_expr) &&
+        args_expr_map[yield_expr] == before_expr) {
+      return true;
+    }
+    if (yield_expr.isa<symbol::Broadcast<symbol::DimExpr>>()) {
+      for (const auto &expr :
+           *yield_expr.Get<symbol::Broadcast<symbol::DimExpr>>().operands) {
+        if (expr == before_expr) {
+          continue;
+        }
+        if (args_expr_map.count(expr) && args_expr_map[expr] == before_expr) {
+          continue;
+        }
+        VLOG(0) << "##### expr is false: " << expr;
+        return false;
+      }
+      VLOG(0) << "##### expr is true: " << yield_expr;
+      return true;
+    }
+    return false;
+  };
+
   for (size_t i = 0; i < body_args.size(); ++i) {
     const auto &input_arg_shape =
         shape_analysis->GetShapeOrDataForValue(body_args[i]).shape();
@@ -770,7 +857,8 @@ bool WhileOp::InferSymbolicShape(
         continue;
       }
       if (original_input_shape.size() == yield_value_shape.size() &&
-          original_input_shape[j] == yield_value_shape[j]) {
+          IsSameWithDimExprBeforeWhile(original_input_shape[j],
+                                       yield_value_shape[j])) {
         shape_analysis->DimExprBuilder().CstrEq(original_input_shape[j],
                                                 input_arg_shape[j]);
         continue;

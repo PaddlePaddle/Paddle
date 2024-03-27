@@ -429,8 +429,8 @@ pir::Operation* ProcessDyShapeGroup(
 std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
 CreateGroupShapeOrDataExprs(
     const OpLoweringGroupPtr& group,
-    pir::ShapeConstraintIRAnalysis& shape_analysis  // NOLINT
-);
+    pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
+    std::unordered_map<symbol::DimExpr, symbol::DimExpr>* update_map);
 
 OpLoweringGroupPtr RebuildGroup(pir::Operation* fusion_op_ptr,
                                 bool is_dy_shape) {
@@ -471,13 +471,18 @@ OpLoweringGroupPtr RebuildGroup(pir::Operation* fusion_op_ptr,
     group->mut_output_ops().insert(in.defining_op());
   }
 
-  // Because the group is rebuilt, the order of group.output_values generated
-  // by BuildCUDAJITInfo may not be same with the order bound in the yield op,
-  // so a mapping is required.
   auto& shape_analysis =
       pir::ShapeAnalysisManager::Instance().Get(fusion_op->GetParentProgram());
+  std::unordered_map<symbol::DimExpr, symbol::DimExpr> update_map;
   group->set_value_to_shape_or_data_exprs(
-      CreateGroupShapeOrDataExprs(group, shape_analysis));
+      CreateGroupShapeOrDataExprs(group, shape_analysis, &update_map));
+  std::vector<symbol::DimExpr> new_loop_ranges_expr = group->loop_ranges_expr();
+  for (size_t i = 0; i < new_loop_ranges_expr.size(); ++i) {
+    if (update_map.count(new_loop_ranges_expr[i])) {
+      new_loop_ranges_expr[i] = update_map.at(new_loop_ranges_expr[i]);
+    }
+  }
+  group->set_loop_ranges_expr(new_loop_ranges_expr);
   if (FLAGS_cinn_enable_map_expr) {
     cinn::adt::TryGenerateMapExprFromGroup(group);
   }
@@ -945,7 +950,7 @@ pir::Operation* CompileBroadcastTreeToConditionBlock(
   VLOG(6) << "Before simply condition block: " << *program;
 
   SimplyConditionBlock(rewriter, &group_map);
-  VLOG(6) << "After simply condition block: " << *program;
+  VLOG(0) << "After simply condition block: " << *program;
 
   // 3. compile condition block to jit_kernel_op
   CompileGroupToJitKernelOp(group_inputs, rewriter, &group_map);
@@ -1119,13 +1124,16 @@ symbol::ShapeOrDataDimExprs TrySubstitute(
   if (!IsShapeOrDataNeedSubstitute(shape_or_data, dim_expr_map)) {
     return shape_or_data;
   }
+  VLOG(0) << "##### Needs Substitute : " << shape_or_data << " -> "
+          << SubstituteShapeOrData(shape_or_data, dim_expr_map);
   return SubstituteShapeOrData(shape_or_data, dim_expr_map);
 }
 
 std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
 CreateGroupShapeOrDataExprs(
     const OpLoweringGroupPtr& group,
-    pir::ShapeConstraintIRAnalysis& shape_analysis) {  // NOLINT
+    pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
+    std::unordered_map<symbol::DimExpr, symbol::DimExpr>* update_map) {
   std::unordered_map<symbol::DimExpr, symbol::DimExpr> dim_expr_map =
       CollectSubstituteDimExprMap(group, shape_analysis);
   std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs> value2shape;
@@ -1134,11 +1142,15 @@ CreateGroupShapeOrDataExprs(
       auto operand = op->operand_source(i);
       if (operand && value2shape.find(operand) == value2shape.end() &&
           shape_analysis.HasShapeOrDataForValue(operand)) {
-        VLOG(6) << "Add value_to_shape_or_data_exprs for " << operand.impl();
-        value2shape.insert(
-            {operand,
-             TrySubstitute(shape_analysis.GetShapeOrDataForValue(operand),
-                           dim_expr_map)});
+        auto res = TrySubstitute(shape_analysis.GetShapeOrDataForValue(operand),
+                                 dim_expr_map);
+        value2shape.insert({operand, res});
+        auto base = shape_analysis.GetShapeOrDataForValue(operand).shape();
+        for (size_t i = 0; i < res.shape().size(); ++i) {
+          if (base[i] != res.shape()[i]) {
+            update_map->emplace(base[i], res.shape()[i]);
+          }
+        }
       }
     }
     for (size_t i = 0; i < op->num_results(); ++i) {
@@ -1157,6 +1169,7 @@ CreateGroupShapeOrDataExprs(
           << " value_to_shape_or_data_exprs.size() : " << value2shape.size();
   return value2shape;
 }
+
 }  // namespace
 
 namespace cinn::dialect::ir {

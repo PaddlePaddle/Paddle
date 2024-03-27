@@ -23,6 +23,7 @@
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_fusion_op_pass.h"
@@ -186,14 +187,54 @@ void ApplyCinnLowerPass(
   pass_manager->Run(program);
 }
 
+int64_t GetFusionOpNum(const ::pir::Operation* op) {
+  int64_t count = 0;
+  for (auto& region : *op) {
+    for (auto& block : region) {
+      for (auto& sub_op : block) {
+        if (sub_op.isa<cinn::dialect::FusionOp>()) {
+          count++;
+          continue;
+        }
+        if (sub_op.num_regions() > 0) {
+          count += GetFusionOpNum(&sub_op);
+        }
+      }
+    }
+  }
+  return count;
+}
+
+int64_t GetFusionOpNum(const ::pir::Program& program) {
+  return GetFusionOpNum(program.module_op());
+}
+
 void ApplyCinnPass(::pir::Program* program,
                    const std::function<std::shared_ptr<pir::PassManager>()>&
                        CreatePassManager) {
+  auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(program);
+  // std::cout << "Program before ApplyBuildGroupOpPass: \n"
+  //           << *program << std::endl;
   ApplyCinnPreprocessPass(program, CreatePassManager);
+  std::cout << "Program before ApplyBuildGroupOpPass: \n"
+            << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())
+            << std::endl;
   ApplyBuildGroupOpPass(program, CreatePassManager);
+  // std::cout << "Program before ApplyGroupOpPass: \n"
+  //           << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())
+  //           << std::endl;
   ApplyGroupOpPass(program, CreatePassManager);
+  // std::cout << "Program before ApplyDivideGroupOpToFusionOpPass: \n"
+  //           << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())
+  //           << std::endl;
   ApplyDivideGroupOpToFusionOpPass(program, CreatePassManager);
+  std::cout << "Program before lowering: \n"
+            << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())
+            << std::endl;
+  VLOG(0) << " Fusion Op Count: *****[ " << GetFusionOpNum(*program)
+          << " ]*****";
   ApplyCinnLowerPass(program, CreatePassManager);
+  VLOG(0) << "####### ApplyCinnPass Finish #######";
 }
 
 }  // namespace cinn::dialect::ir

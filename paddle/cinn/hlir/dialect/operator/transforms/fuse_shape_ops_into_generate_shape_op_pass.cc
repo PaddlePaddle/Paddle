@@ -331,6 +331,9 @@ std::optional<pir::Value> GetOutOfRewrittenGenerateShapeOp(
                                               /*minimal inputs*/ &input_tensors,
                                               &output_dim_expr_attrs,
                                               &symbol_bindings);
+  if (!success) {
+    LOG(ERROR) << "####### GetOutOfRewrittenGenerateShapeOp is error ######";
+  }
   if (!success) return std::nullopt;
   return rewriter
       ->Build<cinn::dialect::GenerateShapeOp>(

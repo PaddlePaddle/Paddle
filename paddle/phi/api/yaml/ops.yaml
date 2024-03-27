@@ -1444,6 +1444,7 @@
   backward : index_sample_grad
   data_transform :
     skip_transform : index
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : index_select
   args : (Tensor x, Tensor index, int axis = 0)
