@@ -179,7 +179,10 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
                                                    forbid_dynamic_op,
                                                    use_explicit_quantization);
     if (!is_ok)
-      VLOG(3) << node->Op()->Type().c_str() << " op is not in TensorRT";
+    {
+    //  std::cout << node->Op()->Type().c_str() << " op is not in TensorRT" << std::endl;
+     // std::cout << node->outputs[0]->Name() << " name is not in TensorRT" << std::endl;
+    }
     return is_ok;
   };
 
@@ -347,6 +350,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   auto *scope = param_scope();
   // The node->inputs contains input tensors and parameters.
   for (auto *x : node->inputs) {
+    //std::cout << "子图输入：" <<  x->Name() << std::endl;
     input_names.insert(x->Name());
     input_names_with_id.insert(
         RenameVarBeUnique(x->Name(), std::to_string(x->id())));
@@ -376,7 +380,9 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   // var may have the same name but not have the same id.
   // e.g., var(batch_norm2d_0.w_1) may have id: 10, 13, 25.... in a graph.
   // so we must find all the var_name+id.
+  // input_names = real_input + parameters!这两部分都不可以重命名的！
   // https://github.com/PaddlePaddle/Paddle/pull/53184
+  // 这个会触发set_value的bug啊！！，我改正了下吧！！
   for (auto *n : graph->Nodes()) {
     if (n->IsVar() &&
         find(graph_params.begin(), graph_params.end(), n->Name()) !=

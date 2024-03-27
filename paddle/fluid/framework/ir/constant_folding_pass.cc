@@ -127,6 +127,14 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
       }
     }
     for (auto out_node : op_node->outputs) {
+
+      for (auto next_op : out_node->outputs) {
+        if (next_op->Name() == "while")
+        {
+          input_persis = false;
+        }
+      }
+      
       map[out_node->Name()] = 0;
       if (out_node->Var() == nullptr) {
         input_persis = false;
@@ -138,6 +146,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
         if (node->IsVar() && node->Name() == iter.first) {
           map[node->Name()]++;
           if (map[node->Name()] > 1) {
+          // 如果想更多的折叠，就把下面的语句注释掉
             input_persis = false;
           }
         }

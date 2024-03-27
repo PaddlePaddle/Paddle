@@ -35,6 +35,20 @@
 #ifdef PADDLE_WITH_LITE
 #include "paddle/fluid/operators/lite/lite_engine_op.h"
 #endif
+#include "paddle/fluid/platform/flags.h"
+
+PADDLE_DEFINE_EXPORTED_bool(
+    naive_executor_sync_op,
+    false,
+    "Enable sync after each op run, used for debug.");
+PADDLE_DEFINE_EXPORTED_bool(
+    naive_executor_print_dims_after_op,
+    false,
+    "used for debug.");
+PADDLE_DEFINE_EXPORTED_bool(
+    naive_executor_print_value_after_op,
+    false,
+    "used for debug.");
 
 namespace paddle {
 namespace framework {
@@ -85,6 +99,16 @@ void NaiveExecutor::RunInterpreterCore(
 #endif
 }
 
+template <typename T>
+void print(T *cpu_data, int num, std::string var_name) {
+  std::string file_name = std::string("/root/paddlejob/workspace/env_run/zkk/cpp/") + var_name; 
+  FILE* f = fopen(file_name.c_str(), "a+");
+  for (int i = 0; i < num; i++) {
+    fprintf(f,"%f\n", cpu_data[i]);
+  }
+  fclose(f);
+}
+
 void NaiveExecutor::Run() {
 #ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToMKLDNNKey(this, place_);
@@ -99,6 +123,39 @@ void NaiveExecutor::Run() {
             << op->DebugStringEx(scope_) << " on scope " << scope_;
     op->SetIsCalledByExecutor(false);
 
+
+std::vector<std::string> result = {
+  "data_preprocess",
+  "img_bkb",
+  "img_neck",
+  "long_temp_fusion",
+  "ldmap_routing_fusion",
+  "ego_info_fusion",
+  "cam2bev_modules",
+  "2d_traffic_light",
+  "pts_det_traj_head",
+  "admap_head",
+  "occ_head",
+  "2d_occ_head",
+  "pnc_head",
+  "pnc_post_process",
+  "traj_head",
+};
+bool nvtx = false;
+std::string output_name = op->OutputVars(true).front();
+
+
+
+for (auto ele:result) {
+  if(output_name.find(ele) != std::string::npos) {
+    nvtx = true;
+  }
+}
+nvtx = true;
+if(nvtx && 0){
+  std::cout << 0 << std::endl;
+}
+
     for (auto &func : input_hookfuncs_) {
       func(op.get(), scope_);
     }
@@ -112,7 +169,112 @@ void NaiveExecutor::Run() {
     platform::CudaNvtxRangePush(op->Type() + "|" + op->OutputVars(true).front(),
                                 platform::NvtxRangeColor::Green);
 #endif
+
+if (FLAGS_naive_executor_sync_op)
+{
+  std::cout << op->Type() << "run" << std::endl;
+}
+
+    // if (op->Type() == "while") {
+    //   op->SetOutputHooks(hookfuncs_);
+    // }
+
     op->Run(*scope_, place_);
+
+  if (FLAGS_naive_executor_sync_op)
+  {
+    std::cout << op->OutputVars(true).front() << std::endl;
+    paddle::platform::DeviceContextPool &pool = paddle::platform::DeviceContextPool::Instance();
+    auto *dev_ctx = reinterpret_cast<phi::GPUContext *>(pool.Get(place_));
+    auto success = cudaStreamSynchronize(dev_ctx->stream());
+      std::cout <<  cudaGetErrorString( cudaGetLastError() ) << std::endl;
+      PADDLE_ENFORCE_GPU_SUCCESS(success);
+
+
+    if (FLAGS_naive_executor_print_dims_after_op) {
+      for (auto name : op->OutputVars(true)) {
+        std::cout << name << ": ";
+        auto var = scope_->FindVar(name);
+        if (!var->IsType<phi::DenseTensor>()) continue;
+        auto tensor = FindTensor(name);
+        if (tensor->numel() <= 0) continue;
+        auto dims = tensor->dims();
+        std::cout << "[";
+        for (int64_t i = 0; i < dims.size(); i++) {
+          std::cout << dims[i] << " ";
+        }
+        std::cout << "]";
+        std::cout << std::endl;
+        // 是否打印值
+        if (FLAGS_naive_executor_print_value_after_op) {
+          int want_num = std::min(100000, (int)(tensor->numel()));
+          if (tensor->dtype() == paddle::DataType::FLOAT32) {
+            float *cpu_data = new float[tensor->numel()];
+            float *tensor_data = tensor->data<float>();
+            if (tensor->place() == platform::CPUPlace()) {
+              memcpy(cpu_data, tensor_data, sizeof(float) * want_num);
+            } else {
+              cudaMemcpy(cpu_data, tensor_data, sizeof(float) * want_num,
+                        cudaMemcpyDeviceToHost);
+            }
+            float max_value = -10000;
+            float min_value = 10000;
+
+            for(int i = 0; i < want_num; i++) {
+              if(cpu_data[i] > 10000 || cpu_data[i] < -10000) {
+                if (cpu_data[i] > max_value) {
+                  max_value = cpu_data[i];
+                }
+                if (cpu_data[i] < min_value) {
+                  min_value = cpu_data[i];
+                }
+              }
+            }
+            if (max_value > 10000) {
+              std::cout << "输出最大值：" << max_value << std::endl;
+            }
+            if (min_value < -10000) {
+              std::cout << "输出最小值：" << min_value << std::endl;
+            }
+            delete[] cpu_data;
+          }
+          
+          want_num = 1;
+          if (tensor->dtype() == paddle::DataType::INT32) {
+            int *cpu_data = new int[want_num];
+            int *tensor_data = tensor->data<int>();
+            if (tensor->place() == platform::CPUPlace()) {
+              memcpy(cpu_data, tensor_data, sizeof(int) * want_num);
+            } else {
+              cudaMemcpy(cpu_data, tensor_data, sizeof(int) * want_num,
+                        cudaMemcpyDeviceToHost);
+            }
+            
+            for(int i = 0; i < want_num; i++) {
+              std::cout << "int32 数字" << cpu_data[i] << std::endl;
+            }
+            delete[] cpu_data;
+          }
+          if (tensor->dtype() == paddle::DataType::INT64) {
+            int64_t *cpu_data = new int64_t[want_num];
+            int64_t *tensor_data = tensor->data<int64_t>();
+            if (tensor->place() == platform::CPUPlace()) {
+              memcpy(cpu_data, tensor_data, sizeof(int64_t) * want_num);
+            } else {
+              cudaMemcpy(cpu_data, tensor_data, sizeof(int64_t) * want_num,
+                        cudaMemcpyDeviceToHost);
+            }
+            
+            for(int i = 0; i < want_num; i++) {
+              std::cout << "int64 数字" << cpu_data[i] << std::endl;
+            }
+            delete[] cpu_data;
+          }
+        }
+      }
+    }
+  }
+
 #ifdef PADDLE_WITH_NVTX
     platform::CudaNvtxRangePop();
 #endif

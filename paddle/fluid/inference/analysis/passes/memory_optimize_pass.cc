@@ -127,7 +127,6 @@ void MemoryOptimizePass::CollectVarMemorySize(
     // lod operator reuse may cause unknown errors.
     std::set<std::string> invalid_op = {"while",
                                         "conditional_block",
-                                        "tensorrt_engine",
                                         "conditional_block_infer",
                                         "merge_lod_tensor_infer",
                                         "merge_lod_tensor",

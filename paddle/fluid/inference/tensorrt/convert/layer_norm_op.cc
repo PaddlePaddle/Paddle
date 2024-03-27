@@ -15,6 +15,14 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/layer_norm_op_plugin.h"
 
+#include "paddle/fluid/platform/flags.h"
+#include "paddle/utils/string/split.h"
+
+PADDLE_DEFINE_EXPORTED_bool(
+    force_layer_norm_run_fp32,
+    false,
+    "force layer_norm op run in trt fp32 mode");
+
 namespace paddle {
 namespace inference {
 namespace tensorrt {
@@ -71,6 +79,9 @@ class LayerNormOpConverter : public OpConverter {
           engine_, Normalization, *X, *Scale_reshape, *Bias_reshape, axisMask);
       SupportFP32MixPrecision(output_name, op_desc.Type(), layer);
       layer->setEpsilon(eps);
+      if(FLAGS_force_layer_norm_run_fp32) {
+        layer->setPrecision(nvinfer1::DataType::kFLOAT);
+      }
       ReplenishLayerAndOutput(layer, "layer_norm", {output_name}, test_mode);
 #endif
 #if IS_TRT_VERSION_LT(8600)

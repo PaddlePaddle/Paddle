@@ -173,6 +173,28 @@ class OpConverter {
         platform::errors::Unimplemented("no OpConverter for optype [%s]",
                                         op_desc.Type()));
 
+    std::string all_outpus_name = "(Outputs:";
+    std::string all_inpus_name = "(Inputs:";
+    for (auto it1 : op_desc.OutputNames()) {
+      for (auto it2 : op_desc.Output(it1)) {
+        all_outpus_name += it2;
+        all_outpus_name += ",";
+      }
+    }
+    all_outpus_name += ")";
+
+    all_outpus_name += ",";
+
+    for (auto it1 : op_desc.InputNames()) {
+      for (auto it2 : op_desc.Input(it1)) {
+        all_inpus_name += it2;
+        all_inpus_name += ",";
+      }
+    }
+
+    std::cout << op_desc.Type() << all_inpus_name << all_outpus_name
+              << " are to be converted to TensorRT layer." << std::endl;
+
     it->SetEngine(engine);
     engine->SetScope(&scope);
     it->SetBlockDesc(block);
@@ -251,6 +273,8 @@ class OpConverter {
                     const std::unordered_set<std::string>& parameters,
                     const framework::Scope& scope,
                     TensorRTEngine* engine) {
+    std::cout << "Convert a fluid block to tensorrt network" << std::endl;
+
     std::unique_lock<std::mutex> lk(mut_);
     for (int i = 0; i < block.ops_size(); i++) {
       const auto& op = block.ops(i);
@@ -779,16 +803,18 @@ class OpConverter {
       layer_name += output_tensor_names[i];
       if (i != num_out - 1) layer_name += ", ";
     }
+
     for (size_t i = 0; i < num_out; i++) {
       nvinfer1::Dims tmp_dims = layer->getOutput(i)->getDimensions();
       std::vector<int> tmp_vec;
       for (int i = 0; i < tmp_dims.nbDims; i++)
         tmp_vec.push_back(tmp_dims.d[i]);
 
-      VLOG(3) << output_tensor_names[i] << "'s dimension :["
-              << string::join_strings(tmp_vec, ',') << "]";
+      std::cout << "Paddle-TRT inferred " << output_tensor_names[i]
+                << "'s dimension is :[" << string::join_strings(tmp_vec, ',')
+                << "]" << std::endl;
       // The following check may cause errors in CI, but is necessary in the
-      // latest version.
+      // // latest version.
       // PADDLE_ENFORCE_GE(
       //     layer->getOutput(i)->getDimensions().nbDims,
       //     0,

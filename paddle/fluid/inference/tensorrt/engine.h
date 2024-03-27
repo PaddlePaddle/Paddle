@@ -270,6 +270,7 @@ class TensorRTEngine {
   void Deserialize(const std::string& engine_serialized_data);
 
   bool WithFp16() {
+    return false;
     bool enable_fp16 = (precision() == phi::DataType::FLOAT16);
     bool support_fp16 = infer_builder_->platformHasFastFp16();
     // below is consistent with setFlag in engine.cc

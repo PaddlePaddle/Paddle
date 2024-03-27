@@ -614,6 +614,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         }
       } else {
 #if IS_TRT_VERSION_GE(6000)
+
 #if IS_TRT_VERSION_GE(8500)
         if (engine->engine()->isShapeBinding(bind_index) &&
             engine->engine()->bindingIsInput(bind_index)) {
@@ -651,6 +652,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
 #else
         trt_context->setBindingDimensions(
             bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
+
         // If this x is a shape tensor, we need call setInputShapeBinding
         if (engine->engine()->isShapeBinding(bind_index) &&
             engine->engine()->bindingIsInput(bind_index)) {

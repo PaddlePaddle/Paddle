@@ -16,6 +16,18 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/fluid/platform/flags.h"
+#include "paddle/utils/string/split.h"
+
+// export FLAGS_specified_names_enter_into_trt=
+PADDLE_DEFINE_EXPORTED_string(specified_names_enter_into_trt,
+                              "",
+                              "var names seperated by comma");
+
+PADDLE_DEFINE_EXPORTED_string(specified_names_not_into_trt,
+                              "",
+                              "var names seperated by comma");
+
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -419,6 +431,8 @@ void DetachDeletedNodes(framework::ir::Graph *graph) {
     }
   }
 }
+
+
 
 void SubGraphFuser::ReplaceNodesWithSubGraphs() {
   auto subgraphs = SubgraphDetector(graph_, node_inside_subgraph_teller_)();

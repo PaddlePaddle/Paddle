@@ -29,7 +29,9 @@ class QuantizeLinearOpConverter : public OpConverter {
     auto* x = engine_->GetITensor(op_desc.Input("X")[0]);
     auto* scale_var = scope.FindVar(op_desc.Input("Scale")[0]);
     int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("quant_axis"));
-
+    if (axis == -1) {
+       axis = 1;
+    }
     // Create constant layer for scale
     PADDLE_ENFORCE_NOT_NULL(
         scale_var,

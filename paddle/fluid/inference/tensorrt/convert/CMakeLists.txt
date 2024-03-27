@@ -114,6 +114,9 @@ list(
   assign_op.cc
   flip_op.cc
   quantize_linear_op.cc
+  ms_deform_attn_op.cc
+  put_along_axis_op.cc
+  atan2_op.cc
   dequantize_linear_op.cc
   share_data_op.cc)
 

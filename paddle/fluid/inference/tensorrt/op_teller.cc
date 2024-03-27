@@ -24,6 +24,12 @@
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 
+#include "paddle/fluid/platform/flags.h"
+PADDLE_DEFINE_EXPORTED_bool(
+    forbid_dynamic_op_enter_into_trt,
+    false,
+    "Enable sync after each op run, used for debug.");
+
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -130,6 +136,26 @@ struct SimpleOpTypeSetTeller : public Teller {
                   bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
 
+
+    // {
+    //   std::cout << "we are telling " << op_type << " if can enter into trt." << std::endl;
+
+    //   auto inputs = desc.Inputs();
+    //   for (auto iter : inputs) {
+    //     for (auto var_name : iter.second) {
+    //       std::cout << var_name << std::endl;
+    //     }
+    //   }
+
+    //   auto outputs = desc.Outputs();
+    //   for (auto iter : outputs) {
+    //     for (auto var_name : iter.second) {
+    //       std::cout << var_name << std::endl;
+    //     }
+    //   }
+    // }
+
+
     std::unordered_set<std::string> control_set = {"conditional_block",
                                                    "while"};
     std::unordered_set<std::string> feed_fetch_set = {"feed", "fetch"};
@@ -143,6 +169,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (forbid_dynamic_op_enter_into_trt && IsDynamicShapeOp(desc)) {
       return false;
     }
+
 
     // do not support the op which is labeled the `skip_quant`
     if ((desc.HasAttr("namescope") &&
@@ -431,6 +458,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "range") {
+      return false;
       if (!with_dynamic_shape) {
         return false;
       }
@@ -1257,6 +1285,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "roll") {
+      //return false;
 #if !IS_TRT_VERSION_GE(7000)
       VLOG(3) << "roll converter does not support trt versions below 7.0";
       return false;
@@ -1799,7 +1828,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       std::vector<int> paddings =
           PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
       int pad_size = paddings.size();
-      if (nbDims < 2) {
+      if (nbDims <= 3) {
         return false;
       }
       if (nbDims * 2 != pad_size) {
@@ -2281,6 +2310,13 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVarRecursive(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
+
+      auto dtype = x_var_desc->GetDataType();
+
+if (dtype != framework::proto::VarType::FP32) {
+  return false;
+}
+
       if (!with_dynamic_shape && (x_shape.size() == 1 || x_shape.empty())) {
         VLOG(3) << op_type
                 << " op does not support input's dim is 1 or 0 in tensorrt "
@@ -2328,8 +2364,23 @@ struct SimpleOpTypeSetTeller : public Teller {
         }
       }
 
+
       auto dtype = x_var_desc->GetDataType();
+#if IS_TRT_VERSION_LT(7000)
+      if (dtype != framework::proto::VarType::FP32) {
+        VLOG(3) << "reduce op input data type must be float32 using TensorRT "
+                   "< 7.0";
+        return false;
+      }
+#endif
+if (dtype ==  framework::proto::VarType::BOOL)
+{
+  return false;
+}
+
+      
       if (op_type == "reduce_all" || op_type == "reduce_any") {
+        auto dtype = x_var_desc->GetDataType();
         if (dtype != framework::proto::VarType::BOOL) {
           VLOG(3)
               << "reduce_all and reduce_any op input data type must be bool";
@@ -2356,6 +2407,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         }
 #endif
       }
+
     }
 #if IS_TRT_VERSION_GE(7000)
     if (op_type == "tile") {
@@ -2882,6 +2934,32 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
     }
 
+
+    if (op_type == "atan2") {
+#if !IS_TRT_VERSION_GE(8400)
+      VLOG(3) << "these are not supported when TensorRT < 8.4";
+      return false;
+#endif
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the atan2 does not support "
+                   "static shape yet";
+        return false;
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto* x1_var_desc = block->FindVar(desc.Input("X1")[0]);
+      if (x1_var_desc->GetDataType() !=
+          paddle::framework::proto::VarType_Type::VarType_Type_FP32) {
+        VLOG(3) << "atan2 only support float32 datatype in TensorRT.";
+        return false;
+      }
+    }
+
     if (use_no_calib_int8) {
       return int8_teller_set.count(op_type);
     } else {
@@ -3055,6 +3133,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unbind",
       "assign",
       "flip",
+     "ms_deform_attn",
+        "atan2",
+     "put_along_axis",
       "quantize_linear",
       "dequantize_linear",
       "share_data",
@@ -3063,6 +3144,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "size"};
 
   std::unordered_set<std::string> teller_set{
+   "ms_deform_attn",
+      "atan2",
+   "put_along_axis",
       "matrix_multiply",
       "bmm",
       "range",

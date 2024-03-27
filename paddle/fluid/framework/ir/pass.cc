@@ -119,6 +119,7 @@ Graph *Pass::Apply(Graph *graph) const {
       false,
       platform::errors::InvalidArgument(
           "Illegal pass %s. Generated graph shouldn't contain cycle.", Type()));
+  // 有的时候需要注释掉他
   PADDLE_ENFORCE_EQ(
       VarDescIsConsistency(*graph),
       true,

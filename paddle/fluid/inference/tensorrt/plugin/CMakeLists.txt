@@ -41,6 +41,7 @@ list(
   generic_plugin.cu
   custom_generic_plugin.cu
   many_emb_layernorm_plugin.cu
+  ms_deform_attn_op_plugin.cu
   many_emb_layernorm_kernel.cu
   prompt_tuning_emb_layernorm_varseqlen_kernel_hface.cu
   prompt_tuning_emb_layernorm_varseqlen_plugin.cu)

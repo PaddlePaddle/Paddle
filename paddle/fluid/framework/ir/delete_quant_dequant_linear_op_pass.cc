@@ -166,6 +166,14 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
       auto* any_op_desc = dequantize_linear_op_out->outputs[i]->Op();
       any_op_desc->SetAttr("Input_scale_" + quantize_linear_op_x->Var()->Name(),
                            input_scale);
+      if (any_op_desc->Type() == "conv2d") {
+        any_op_desc->SetAttr("Input", input_scale);
+      } else if (any_op_desc->Type() == "matrix_multiply") {
+        any_op_desc->SetAttr("X", input_scale);
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented("%s is not supported.",
+                                                   any_op_desc->Type().c_str()));
+      }
       if (!var_quant_scales.count(quantize_linear_op_x->Var()->Name())) {
         var_quant_scales.insert(
             std::make_pair(quantize_linear_op_x->Var()->Name(),

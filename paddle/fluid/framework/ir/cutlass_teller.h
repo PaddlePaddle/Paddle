@@ -53,6 +53,8 @@ class CutlassTeller {
 
     for (const auto &filter_name : filter_names) {
       auto *filter_var = scope->FindLocalVar(filter_name);
+      // this filter is not a persistable tensor, we can
+      if (!filter_var) return false;
       const auto &filter_tensor = filter_var->Get<phi::DenseTensor>();
       CHECK_EQ(filter_tensor.dims().size() == 4UL, true);
       auto groups = op_desc->GetAttrIfExists<int>("groups");
@@ -106,6 +108,8 @@ class CutlassTeller {
 
     for (const auto &filter_name : filter_names) {
       auto *filter_var = scope->FindLocalVar(filter_name);
+      // this filter is not a persistable tensor, we can
+      if (!filter_var) return false;
       const auto &filter_tensor = filter_var->Get<phi::DenseTensor>();
       CHECK_EQ(filter_tensor.dims().size() == 4UL, true);
       auto groups = op_desc->GetAttrIfExists<int>("groups");
