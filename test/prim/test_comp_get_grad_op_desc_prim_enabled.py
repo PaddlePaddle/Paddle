@@ -43,8 +43,7 @@ from paddle.base import core, framework
             (),
             (
                 'elementwise_mul',
-                'fill_constant',
-                'elementwise_sub',
+                'scale',
                 'elementwise_mul',
             ),
         ),
