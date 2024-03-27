@@ -39,13 +39,14 @@ std::vector<int64_t> GetReduceAxisIdx(const pir::Operation* reduce_op) {
     CHECK_LT(axis, input_rank);
     reduce_axis_idx.push_back(axis);
   }
+  VLOG(4) << "GetReduceAxisIdx: " << utils::Join(reduce_axis_idx, ",");
   return reduce_axis_idx;
 }
 
 bool GetReduceOpKeepDims(const pir::Operation* reduce_op) {
   const auto& attr_val = reduce_op->attributes().at("keep_dim");
   CHECK(attr_val.isa<::pir::BoolAttribute>());
-  return attr_val.dyn_cast<::pir::BoolAttribute>();
+  return attr_val.dyn_cast<::pir::BoolAttribute>().data();
 }
 
 std::string OpsDebugStr(std::vector<const pir::Operation*> ops) {

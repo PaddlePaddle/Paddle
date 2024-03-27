@@ -33,12 +33,36 @@ std::vector<std::vector<const pir::Operation*>> PatternGraph::ClusterOps() {
   VLOG(4) << "Start Pattern Flatten.";
   // TODO(wuzhanfei) need sort here, or do not return from all_pattern_nodes_
   std::vector<std::vector<const pir::Operation*>> result;
-  std::transform(all_pattern_nodes_.begin(),
-                 all_pattern_nodes_.end(),
+  const auto& sorted_topo_nodes = SortByTopoOrder();
+  std::transform(sorted_topo_nodes.begin(),
+                 sorted_topo_nodes.end(),
                  std::back_inserter(result),
                  [](const PatternNodePtr node) { return node->GetOps(); });
   VLOG(4) << "ClusterOps returns " << result.size() << " Groups";
   return result;
+}
+
+std::vector<PatternNodePtr> PatternGraph::SortByTopoOrder() {
+  // sort all_pattern_nodes_ by topo order.
+  std::vector<PatternNodePtr> res;
+  std::list<PatternNodePtr> topo_queue(entrance_nodes_.begin(),
+                                       entrance_nodes_.end());
+  std::map<PatternNodePtr, int> degree;
+  for (const auto& node : all_pattern_nodes_) {
+    degree[node] = node->upstream_.size();
+  }
+  while (!topo_queue.empty()) {
+    PatternNodePtr node = topo_queue.front();
+    topo_queue.pop_front();
+    res.push_back(node);
+    for (const auto& downstream_op : node->downstream_) {
+      degree[downstream_op] = degree[downstream_op] - 1;
+      if (degree[downstream_op] == 0) {
+        topo_queue.push_back(downstream_op);
+      }
+    }
+  }
+  return res;
 }
 
 void PatternGraph::SinkTrivialPattern() {

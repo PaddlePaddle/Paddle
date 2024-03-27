@@ -54,6 +54,7 @@ class PatternGraph {
   void PrintGraph();
   void MergeNode(const PatternNodePtr& upstream,
                  const PatternNodePtr& downstream);
+  std::vector<PatternNodePtr> SortByTopoOrder();
 
  private:
   PatternNodePtrSet all_pattern_nodes_;
