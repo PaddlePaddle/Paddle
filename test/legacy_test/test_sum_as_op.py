@@ -48,8 +48,7 @@ class TestSumAsOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        # self.check_grad(['x', 'y'], ['out'])
-        pass
+        self.check_grad(['x'], ['out'])
 
     def init_config(self):
         self.x = np.random.randn(300, 200, 600).astype('float64')

@@ -2759,6 +2759,7 @@
   kernel :
     func : sum_as
     data_type : x
+  backward : sum_as_grad
 
 - op : svd
   args : (Tensor x, bool full_matrices = false)

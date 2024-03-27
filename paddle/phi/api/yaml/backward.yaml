@@ -2388,6 +2388,16 @@
   kernel :
     func : stanh_grad
 
+- backward_op : sum_as_grad
+  forward : sum_as(Tensor x, Tensor y, DataType dtype=DataType::UNDEFINED, bool keepdim=false) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad, bool keepdim)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : sum_as_grad
+
 - backward_op : svd_grad
   forward : svd (Tensor x, bool full_matrices = false) -> Tensor(u), Tensor(s), Tensor(vh)
   args : (Tensor x, Tensor u, Tensor vh, Tensor s, Tensor u_grad, Tensor vh_grad, Tensor s_grad, bool full_matrices)
