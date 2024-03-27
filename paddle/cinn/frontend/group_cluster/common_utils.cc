@@ -109,8 +109,8 @@ std::unordered_set<pir::Value> GetPatternOutputValuesIncludedInner(
     const StmtPattern& A) {
   std::unordered_set<pir::Value> result;
   for (const auto& op : GetOpsInPattern(A)) {
-    for (const auto& value : op->operands()) {
-      result.insert(value.source());
+    for (const auto& value : op->results()) {
+      result.insert(value);
     }
   }
   return result;
@@ -121,6 +121,7 @@ std::unordered_set<pir::Value> GetPatternInputValues(const StmtPattern& A) {
   for (const auto& value : GetPatternOutputValuesIncludedInner(A)) {
     all_input_values.erase(value);
   }
+  VLOG(4) << "GetPatternInputValues: " << all_input_values.size();
   return all_input_values;
 }
 

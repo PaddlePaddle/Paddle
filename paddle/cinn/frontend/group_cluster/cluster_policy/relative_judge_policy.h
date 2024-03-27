@@ -29,6 +29,14 @@ struct ValueDim {
   bool operator==(const ValueDim& v) const {
     return (idx_ == v.idx_) && (v_ == v.v_);
   }
+  std::string DebugStr() const {
+    std::ostringstream oss;
+    oss << "ValueDim Print: ";
+    oss << "Defining Op";
+    v_.defining_op()->Print(oss);
+    oss << "Index: " << idx_;
+    return oss.str();
+  }
 };
 
 struct ValueDimHash {

@@ -70,22 +70,31 @@ bool RelativeJudgePolicy::IsBroadcastEdge(
 
 bool RelativeJudgePolicy::ReduceTreeGrownCanMerge(
     const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
-  if (!upstream->IsReduceTree() || !downstream->IsReduceTree()) {
-    return false;
-  }
   const auto& upstream_tree =
       std::get<ReduceTreePattern>(upstream->stmt_pattern_);
+  VLOG(4) << "upstream->stmt_pattern_:"
+          << OpsDebugStr(GetOpsInPattern(upstream_tree));
   const auto& downstream_tree =
       std::get<ReduceTreePattern>(downstream->stmt_pattern_);
+  VLOG(4) << "downstream->stmt_pattern_"
+          << OpsDebugStr(GetOpsInPattern(downstream_tree));
   const auto& maybe_downstream_op = GetDownstreamFromCandidate(
       upstream_tree.GetRootPattern(), downstream_tree.reduce_patterns_);
+  int idx = 0;
+  for (const auto& r_pattern : downstream_tree.reduce_patterns_) {
+    idx += 1;
+    VLOG(4) << "downstream_tree.reduce_patterns_"
+            << "[" << idx << "]" << OpsDebugStr(GetOpsInPattern(r_pattern));
+  }
   if (!maybe_downstream_op.has_value()) {
+    VLOG(4) << "can't find candidate from patterns. can fuse return false.";
     return false;
   }
   const pir::Value& reduce_out_value =
       upstream_tree.GetRootPattern().GetReduceOp()->result(0);
   const pir::Operation* downstream_reduce_op =
       maybe_downstream_op.value().GetReduceOp();
+  VLOG(4) << "downstream_reduce_op: " << OpsDebugStr({downstream_reduce_op});
   const auto& reduce_value_dims =
       GetReduceAxesValueDims(axes_info_.GetSignature(downstream_reduce_op),
                              downstream_reduce_op->result(0));
@@ -95,6 +104,9 @@ bool RelativeJudgePolicy::ReduceTreeGrownCanMerge(
 
 bool RelativeJudgePolicy::CanFuse(const PatternNodePtr& upstream,
                                   const PatternNodePtr& downstream) {
+  if (!upstream->IsReduceTree() || !downstream->IsReduceTree()) {
+    return true;
+  }
   return ReduceTreeGrownCanMerge(upstream, downstream);
 }
 }  // namespace cinn::frontend::group_cluster::policy
