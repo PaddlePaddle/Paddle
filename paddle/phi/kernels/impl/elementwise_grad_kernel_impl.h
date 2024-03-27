@@ -165,12 +165,20 @@ struct DivDoubleDY {
 
 template <typename T>
 struct DivDoubleDY_Only_DDX {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return -x * dout; }
+  HOSTDEVICE T operator()(const T& x,
+                          const T& y,
+                          const T& out,
+                          const T& dout) const {
+    return -x * dout;
+  }
 };
 
 template <typename T>
 struct DivDoubleDY_Only_DDY {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+  HOSTDEVICE T operator()(const T& x,
+                          const T& y,
+                          const T& out,
+                          const T& dout) const {
     return y * out * dout;
   }
 };
