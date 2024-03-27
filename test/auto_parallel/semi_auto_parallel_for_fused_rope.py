@@ -42,6 +42,7 @@ class TestFusedRopeApiForSemiAutoParallel(SemiAutoParallelTestBase):
             self._num_heads,
             self._head_dim,
         ]
+        self._group_num = 4
         self._sin_cos_shape = [1, self._seq_len, 1, self._head_dim]
         self._position_ids_shape = [self._bs, self._seq_len]
 
@@ -97,7 +98,7 @@ class TestFusedRopeApiForSemiAutoParallel(SemiAutoParallelTestBase):
         out_q.backward()
         self.check_tensor_eq(dist_q.grad, q.grad)
 
-    def test_common_case(self):
+    def test_common_case(self, is_gqa=False):
         paddle.seed(self._seed)
         np.random.seed(self._seed)
         # [bs, seq_len, num_heads, head_dim]
@@ -106,8 +107,16 @@ class TestFusedRopeApiForSemiAutoParallel(SemiAutoParallelTestBase):
 
         dist_q = dist.shard_tensor(q, self._mesh, dist.Shard(0))
         dist_q.stop_gradient = False
-
-        k = paddle.randn(self._qkv_shape, self._dtype)
+        if is_gqa:
+            k_shape = [
+                self._bs,
+                self._seq_len,
+                self._num_heads // self._group_num,
+                self._head_dim,
+            ]
+        else:
+            k_shape = self._qkv_shape
+        k = paddle.randn(k_shape, self._dtype)
         k.stop_gradient = False
         dist_k = dist.shard_tensor(k, self._mesh, dist.Shard(2))
         dist_k.stop_gradient = False
@@ -151,8 +160,8 @@ class TestFusedRopeApiForSemiAutoParallel(SemiAutoParallelTestBase):
         self.check_tensor_eq(out_q, dist_out_q)
         self.check_tensor_eq(out_k, dist_out_k)
 
-        dist_out = dist_out_q + dist_out_k
-        out = out_q + out_k
+        dist_out = paddle.sum(dist_out_q) + paddle.sum(dist_out_k)
+        out = paddle.sum(out_q) + paddle.sum(out_k)
         dist_out.backward()
         out.backward()
         self.check_tensor_eq(dist_q.grad, q.grad)
@@ -293,6 +302,7 @@ class TestFusedRopeApiForSemiAutoParallel(SemiAutoParallelTestBase):
         self.test_only_q_input()
         self.test_only_q_input_time_major()
         self.test_common_case()
+        self.test_common_case(is_gqa=True)
         self.test_common_case_time_major()
         self.test_common_case_time_major_shard_seq()
 

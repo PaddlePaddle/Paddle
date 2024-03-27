@@ -15,6 +15,7 @@
 #include <sstream>
 #include <string>
 #include <tuple>
+#include <unordered_set>
 
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
@@ -592,6 +593,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_new_executor_);
   CP_MEMBER(use_pir_);
   CP_MEMBER(custom_passes_);
+  CP_MEMBER(pm_opt_level_);
 
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_,
@@ -922,6 +924,11 @@ void AnalysisConfig::Update() {
   auto &&info = SerializeInfoCache();
   if (info == serialized_info_cache_) return;
 
+  std::unordered_set<std::string> deleted_passes;
+  if (pass_builder_) {
+    deleted_passes = pass_builder_->GetAllDeletedPasses();
+  }
+
   // Transfer pass_builder and copy the existing compatible passes.
   if (!pass_builder_ || ((use_gpu() ^ pass_builder_->use_gpu())) ||
       ((use_xpu() ^ pass_builder_->use_xpu())) ||
@@ -1134,7 +1141,7 @@ void AnalysisConfig::Update() {
         "but did not have the option -DWITH_CUSTOM_DEVICE compiled."));
 #endif
   }
-  for (auto &delete_pass : pass_builder()->GetAllDeletedPasses()) {
+  for (const auto &delete_pass : deleted_passes) {
     pass_builder_->DeletePass(delete_pass);
   }
 }
@@ -1658,9 +1665,13 @@ void AnalysisConfig::EnableCINN() {
 
 bool AnalysisConfig::cinn_enabled() const { return use_cinn_; }
 
-void AnalysisConfig::EnableCustomPasses(
-    const std::vector<std::string> &passes) {
+void AnalysisConfig::EnableCustomPasses(const std::vector<std::string> &passes,
+                                        bool custom_pass_only) {
   custom_passes_ = passes;
+  custom_pass_only_ = custom_pass_only;
 }
 
+void AnalysisConfig::SetOptimizationLevel(int opt_level) {
+  pm_opt_level_ = opt_level;
+}
 }  // namespace paddle

@@ -740,6 +740,16 @@ class _ShardOptimizer:
                 target_name + "_" + key
             )
 
+    def _reset_placements(self, param):
+        if param.is_dist():
+            if isinstance(self._shard_fn, (ShardingStage1, ShardingStage2)):
+                new_placement = param.placements
+                new_placement[self._sharding_mesh_axis] = dist.Replicate()
+                out_param = dist.reshard(
+                    param, param.process_mesh, new_placement
+                )
+                param.get_tensor()._share_data_with(out_param.get_tensor())
+
     def step(self):
         if not isinstance(self._inner_opt._parameter_list[0], dict):
             params_grads = []
@@ -754,6 +764,10 @@ class _ShardOptimizer:
             self._inner_opt._apply_optimize(
                 loss=None, startup_program=None, params_grads=params_grads
             )
+
+            # reset the parameter and grad to right placements
+            for p, _ in params_grads:
+                self._reset_placements(p)
         else:
             for param_group in self._inner_opt._param_groups:
                 params_grads = defaultdict(lambda: [])
@@ -772,6 +786,11 @@ class _ShardOptimizer:
                 self._inner_opt._apply_optimize(
                     loss=None, startup_program=None, params_grads=params_grads
                 )
+
+                # reset the parameter and grad to right placements
+                for p, _ in params_grads['params']:
+                    self._reset_placements(p)
+
             # only generate once.
             self._generate_flag = True
 
@@ -1405,6 +1424,54 @@ class Strategy(auto_strategy.BaseConfig):
         )
         self._fused_passes = FusePasses(config_dict)
 
+        # template interface
+        config_dict = self._config_dict.get(
+            auto_strategy.constants.RECOMPUTE, None
+        )
+        self._recompute = auto_strategy.RecomputeConfig(config_dict)
+
+        config_dict = self._config_dict.get(
+            auto_strategy.constants.MP_OPTIMIZATION, None
+        )
+        self._mp_optimization = auto_strategy.MPOptimizationConfig(config_dict)
+
+        config_dict = self._config_dict.get(
+            auto_strategy.constants.DP_OPTIMIZATION, None
+        )
+        self._dp_optimization = auto_strategy.DPOptimizationConfig(config_dict)
+        config_dict = self._config_dict.get(
+            auto_strategy.constants.SP_OPTIMIZATION, None
+        )
+        self._sp_optimization = auto_strategy.SPOptimizationConfig(config_dict)
+
+    def _from_legacy_strategy(self, auto_stragety):
+        """
+        NOTE(lizhiyu): This is a template function to get `dist.Strategy` from `fleet.auto.Strategy`.
+        """
+        import copy
+
+        self._fused_passes.enable = auto_stragety.fused_passes.enable
+        if (
+            "fused_gemm_epilogue_pass"
+            in auto_stragety.fused_passes.fused_passes_list
+        ):
+            self._fused_passes.gemm_epilogue = True
+        if (
+            "fused_dropout_add_pass"
+            in auto_stragety.fused_passes.fused_passes_list
+        ):
+            self._fused_passes.dropout_add = True
+
+        self._amp = copy.deepcopy(auto_stragety.amp)
+        self._sharding = copy.deepcopy(auto_stragety.sharding)
+        self._gradient_merge = copy.deepcopy(auto_stragety.gradient_merge)
+        self._pipeline = copy.deepcopy(auto_stragety.pipeline)
+        # The below are template interfaces
+        self._recompute = copy.deepcopy(auto_stragety.recompute)
+        self._mp_optimization = copy.deepcopy(auto_stragety.mp_optimization)
+        self._dp_optimization = copy.deepcopy(auto_stragety.dp_optimization)
+        self._sp_optimization = copy.deepcopy(auto_stragety.sp_optimization)
+
     @property
     def sharding(self):
         """
@@ -1788,31 +1855,30 @@ class DistModel:
                         tensor._local_value().get_tensor()
                     )
                 else:
-                    # infer dtype from tensor
-                    if tensor.is_integer():
-                        dtype = paddle.iinfo(tensor.dtype).dtype
-                    else:
-                        dtype = paddle.finfo(tensor.dtype).dtype
-                    tensor_np_value = np.zeros(
-                        tensor._local_value().shape, dtype=dtype
-                    )
-                    lodtensor.set(
-                        tensor_np_value,
-                        paddle.framework._current_expected_place(),
-                    )
+                    lodtensor = None
             else:
                 lodtensor._share_data_with(tensor.get_tensor())
 
             return lodtensor
 
         feed_list = []
-        for data in data_list:
+        no_data_ids = []
+        # If the feed_var is None, its feed_name should be deleted.
+        # This scenario is very common if using `PipeLine Parallelism`.
+        for idx, data in enumerate(data_list):
             if isinstance(data, paddle.Tensor):
-                feed_list.append(_to_lodtensor(data))
+                feed_var = _to_lodtensor(data)
+                if feed_var is None:
+                    no_data_ids.append(idx)
+                else:
+                    feed_list.append(feed_var)
             else:
                 feed_list.append(data)
-
-        return dict(zip(feed_name_list, feed_list))
+        feed_name_list_with_data = []
+        for idx, feed_name in enumerate(feed_name_list):
+            if idx not in no_data_ids:
+                feed_name_list_with_data.append(feed_name)
+        return dict(zip(feed_name_list_with_data, feed_list))
 
     def __convert_strategy(self, strategy):
         import copy
@@ -1834,6 +1900,18 @@ class DistModel:
         inner_strategy.sharding = copy.deepcopy(strategy.sharding)
         inner_strategy.gradient_merge = copy.deepcopy(strategy.gradient_merge)
         inner_strategy.pipeline = copy.deepcopy(strategy.pipeline)
+        # The below are template interfaces
+        inner_strategy.recompute = copy.deepcopy(strategy._recompute)
+        inner_strategy.mp_optimization = copy.deepcopy(
+            strategy._mp_optimization
+        )
+        inner_strategy.dp_optimization = copy.deepcopy(
+            strategy._dp_optimization
+        )
+        inner_strategy.sp_optimization = copy.deepcopy(
+            strategy._sp_optimization
+        )
+
         return inner_strategy
 
     @switch_to_static_graph
@@ -1848,7 +1926,21 @@ class DistModel:
         if self._mode == "eval":
             if self._engine._loss is None:
                 raise ValueError("Please set loss function before evaluation.")
-        feeds = self._make_feeds(list(args))
+
+        feed_list = []
+        for feed_item in list(args):
+            if isinstance(feed_item, (list, tuple)):
+                feed_list += list(feed_item)
+            elif isinstance(feed_item, paddle.Tensor):
+                feed_list += [feed_item]
+            elif isinstance(feed_item, core.LoDTensor):
+                feed_list += [feed_item]
+            else:
+                raise TypeError(
+                    f"The inputs of DistModel should be list or tensor, but got {type(feed_item)}"
+                )
+
+        feeds = self._make_feeds(feed_list)
         outs = self._engine.run(feeds)
 
         if self._mode == "predict":
@@ -2302,6 +2394,8 @@ class ShardDataloader:
                 worker_init_fn=dataloader.worker_init_fn,
                 persistent_workers=dataloader._persistent_workers,
             )
+        # Note(lizhiyu): In dygraph mode, the flag "pin_memory" is defualt "True", but it decrease the speed of `AutoParallel`
+        self._dataloader.pin_memory = False
 
     def _process_shard_dims(self, shard_dims):
         if isinstance(shard_dims, (int, str)) or shard_dims is None:

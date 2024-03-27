@@ -329,6 +329,19 @@
   outputs :
     {auc : AUC, stat_pos_out : StatPosOut, stat_neg_out : StatNegOut}
 
+- op : barrier
+  inputs :
+    {x : X}
+  outputs :
+    out : Out
+
+- op : batch_fc
+  backward : batch_fc_grad
+  inputs :
+    {input : Input, w : W, bias : Bias}
+  outputs :
+    out : Out
+
 - op : batch_norm
   backward : batch_norm_grad, batch_norm_double_grad(batch_norm_grad_grad)
   inputs:
@@ -843,6 +856,10 @@
     out : Out
 
 - op : distributed_push_sparse
+  inputs :
+    {ids : Ids, shows : Shows, clicks: Clicks}
+  outputs :
+    output : Outputs
   extra :
     attrs : ['int[] slots = {}']
 
@@ -1250,6 +1267,15 @@
       data_type : float
       support_tensor : true
 
+- op : fused_adam_(fused_adam)
+  inputs :
+    {params : Params, grads : Grads, learning_rate : LearningRate, moments1 : Moments1,
+     moments2 : Moments2, beta1_pows : Beta1Pows, beta2_pows : Beta2Pows, master_params : MasterParams,
+     skip_update : SkipUpdate}
+  outputs :
+    {params_out : ParamsOut, moments1_out : Moments1Out, moments2_out : Moments2Out,
+     beta1_pows_out : Beta1PowsOut, beta2_pows_out : Beta2PowsOut, master_params_out : MasterParamsOut}
+
 - op : fused_attention
   backward: fused_attention_grad
   inputs:
@@ -1603,6 +1629,12 @@
     {rpn_rois : RpnRois, rpn_roi_probs : RpnRoiProbs, rpn_rois_num : RpnRoisNum}
   attrs :
     {pre_nms_top_n : pre_nms_topN, post_nms_top_n : post_nms_topN}
+
+- op : global_scatter
+  inputs :
+    {x : X}
+  outputs :
+    out : Out
 
 - op : grad_add
   inputs :
@@ -2465,12 +2497,31 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : partial_allgather
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : partial_concat
+  backward : partial_concat_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  extra :
+    attrs : [bool use_mkldnn = false]
+
 - op : partial_recv
   outputs :
     out : Out
 
 - op : partial_sum
   backward : partial_sum_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -2589,6 +2640,12 @@
     {x : X, boxes : ROIs, boxes_num : RoisNum}
   outputs :
     out : Out
+
+- op : push_dense
+  inputs :
+    ids : Ids
+  attrs :
+    {table_id : TableId, scale_data_norm : ScaleDataNorm, input_names: InputNames}
 
 - op : push_sparse_v2
   inputs :
@@ -2843,6 +2900,9 @@
     scale :
       data_type : float
       tensor_name : ScaleTensor
+    bias :
+      data_type : float
+      support_tensor : false
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -3615,6 +3675,12 @@
   outputs :
     out: Out
 
+- op: c_scatter
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
 - op: c_sync_calc_stream
   inputs :
     x : X
@@ -3696,11 +3762,24 @@
   attrs :
     {scale_x : Scale_x, scale_y : Scale_y, scale_out : Scale_out, scale_in_eltwise : Scale_in_eltwise, fused_reshape_x : fused_reshape_X, fused_transpose_x : fused_transpose_X, fused_reshape_y : fused_reshape_Y, fused_transpose_y : fused_transpose_Y, fused_reshape_out : fused_reshape_Out, fused_transpose_out : fused_transpose_Out}
 
+- op: fused_softmax_mask
+  backward : fused_softmax_mask_grad
+  inputs :
+    {x: X, mask: Mask}
+  outputs :
+    {out : Out}
+
 - op: fused_softplus
   inputs :
     {x: X}
   outputs :
     {out : Out}
+
+- op: fused_token_prune
+  inputs :
+    {attn: Attn, x: X, mask: Mask, new_mask: NewMask}
+  outputs :
+    {slimmed_x : SlimmedX, cls_inds : CLSInds}
 
 - op: fusion_squared_mat_sub
   inputs :
@@ -3729,6 +3808,10 @@
     {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
   outputs :
     {param_out: ParamOut, velocity_out: VelocityOut, master_param_out: MasterParamOut}
+
+- op: limit_by_capacity
+  outputs :
+    out : Out
 
 - op: lod_array_length
   inputs :
@@ -3793,11 +3876,26 @@
   inputs :
     x : X
 
+- op: prune_gate_by_capacity
+  inputs:
+    {gate_idx: GateIdx, expert_count: ExpertCount}
+  outputs:
+    new_gate_idx: NewGateIdx
+
 - op: random_routing
   inputs:
     {prob : Prob, topk_value : TopK_Value, topk_idx : TopK_Idx}
   outputs:
     out : Out
+
+- op: rank_attention
+  backward: rank_attention_grad
+  inputs:
+    {x : X, rank_offset : RankOffset, rank_param : RankParam}
+  outputs:
+    {input_help : InputHelp, out : Out, ins_rank: InsRank}
+  attrs:
+    {max_rank : MaxRank, max_size : MaxSize}
 
 - op: read_from_array
   inputs:

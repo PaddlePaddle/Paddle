@@ -18,6 +18,7 @@ import warnings
 import paddle
 from paddle.base import core
 from paddle.base.framework import (
+    _current_expected_place,
     _dygraph_tracer,
     dygraph_only,
     in_dynamic_or_pir_mode,
@@ -143,6 +144,14 @@ def _is_gpu_bfloat16_supported():
     return prop[0] >= 8 and cuda_version_check
 
 
+def _is_custom_device_bfloat16_supported():
+    """
+    Judge whether current custom device support bfloat16 amp.
+    """
+    place = _current_expected_place()
+    return place.get_device_type() == 'npu'
+
+
 def need_keep_fp32(layer, dtype):
     need_keep_fp32 = False
     # Highest priority. Because all the layers except BN will use bfloat16 params in bfloat16 training,
@@ -248,10 +257,18 @@ def _pir_transform(t, dtype):
                 break
     main.set_parameters_from(startup)
     with paddle.static.program_guard(main):
+        paddle.pir.reset_insertion_point_to_start()
         block = main.global_block()
         cast_param = paddle._pir_ops.parameter(t.name)
+        cast_param.trainable = t.trainable
         cast_param.stop_gradient = t.stop_gradient
         cast_param.persistable = t.persistable
+        cast_param.optimize_attr = t.optimize_attr
+        cast_param.regularizer = t.regularizer
+        cast_param.do_model_average = t.do_model_average
+        cast_param.need_clip = t.need_clip
+        cast_param.is_distributed = t.is_distributed
+        cast_param.is_parameter = t.is_parameter
         op = t.get_defining_op()
         t.replace_all_uses_with(cast_param)
         block.remove_op(op)
@@ -471,7 +488,7 @@ def amp_guard(
                 "current_tracer is None, maybe it is not in imperative mode."
             )
         # check device_type:
-        # NOTE: Now, amp only support gpu for float16 and bfloat16, xpu for float16, npu for float16.
+        # NOTE: Now, amp only support gpu for float16 and bfloat16, xpu for float16, npu for float16 and bfloat16.
         # Maybe we will support cpu for bfloat16.
         if enable and not (
             tracer._expected_place.is_gpu_place()
@@ -489,8 +506,10 @@ def amp_guard(
                 warnings.warn('XPUPlace only support float16 amp.')
                 enable = False
             # For custom device:
-            if tracer._expected_place.is_custom_place() and (
-                dtype == 'bfloat16'
+            if (
+                tracer._expected_place.is_custom_place()
+                and not _is_custom_device_bfloat16_supported()
+                and (dtype == 'bfloat16')
             ):
                 warnings.warn('CustomPlace only support float16 amp.')
                 enable = False
@@ -753,7 +772,11 @@ def amp_decorate(
         else:
             return models, optimizers
     # For custom device:
-    if tracer._expected_place.is_custom_place() and (dtype == 'bfloat16'):
+    if (
+        tracer._expected_place.is_custom_place()
+        and not _is_custom_device_bfloat16_supported()
+        and (dtype == 'bfloat16')
+    ):
         if optimizers is None:
             return models
         else:
