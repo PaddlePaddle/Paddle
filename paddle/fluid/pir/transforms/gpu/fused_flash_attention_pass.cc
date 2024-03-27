@@ -23,9 +23,6 @@
 
 namespace {
 
-// cast + mask = SDPAttn
-// mask = FlashAttn
-
 // FlashAttn
 // 1. scale before matmul
 // 2. cast before and after softmax
@@ -525,9 +522,9 @@ class FlashAttnPatternOutscaleNoCast : public paddle::drr::DrrPatternBase {
   }
 };
 
-class AttnFusePass : public pir::PatternRewritePass {
+class FlashAttnFusePass : public pir::PatternRewritePass {
  public:
-  AttnFusePass() : pir::PatternRewritePass("flash_attn_fuse_pass", 2) {}
+  FlashAttnFusePass() : pir::PatternRewritePass("flash_attn_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
