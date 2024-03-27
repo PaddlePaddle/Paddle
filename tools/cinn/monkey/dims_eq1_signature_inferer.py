@@ -6,22 +6,11 @@ import .dims_eq1_generator as dims_eq1_generator
 from .pick_weight import PickWeight
 from .guarded_box import GuardedBox
 from .defensive_list import DList
+from .signature_constructor import NaiveSignatureConstructor
+from .signature_inferer import SignatureInferer, InputIdx
 
 DAGDimsEq1GenInstruction = namedtuple("DAGDimsEq1GenInstruction", ["dag", "dims_eq1"])
 
-
-class DimsEq1InferContext:
-    def __init__(self):
-        self.current_source_tensor_dim_eq1 = []
-
-
-    def InferDimsEq1Signature(
-        self,
-        dag_dims_eq1_gen_instruction: DAGDimsEq1GenInstruction
-    ):
-        dag_gen_class = type(dag_dims_eq1_gen_instruction.dag)
-        cls = kDAGGenClassToDerivedClass[dag_gen_class]
-        cls.InferDimsEq1Signature(dag_dims_eq1_gen_instruction, self)
 
 @dataclass
 class DimsEq1Signature:
@@ -34,28 +23,25 @@ class DimsEq1Signature:
 class Nope(DimsEq1Signature):
 
     @classmethod
-    def InferDimsEq1Signature(
+    def Make(
         cls,
-        dag_dims_eq1_gen_instruction: DAGDimsEq1GenInstruction,
-        infer_ctx: DimsEq1InferContext
+        dag_dims_eq1_gen_instruction: DAGDimsEq1GenInstruction
     ):
         return Nope()
 
 
 @dataclass
 class AddSinkTensor(DimsEq1Signature):
-    sink_tensor_dims_eq1: List[bool]
+    sink_tensor_dims_eq1: List[bool] = InputIdx(0)
 
     @classmethod
-    def InferDimsEq1Signature(
+    def Make(
         cls,
-        dag_dims_eq1_gen_instruction: DAGDimsEq1GenInstruction,
-        infer_ctx: DimsEq1InferContext
+        dag_dims_eq1_gen_instruction: DAGDimsEq1GenInstruction
     ):
         sink_tensor_dims_eq1 = (
             dag_dims_eq1_gen_instruction.dims_eq1.source_tensor_dim_eq1
         )
-        infer_ctx.current_source_tensor_dim_eq1.append(sink_tensor_dims_eq1)
         return AddSinkTensor(
             sink_tensor_dims_eq1=sink_tensor_dims_eq1
         )
@@ -63,19 +49,16 @@ class AddSinkTensor(DimsEq1Signature):
 
 @dataclass
 class AddUnaryOp(DimsEq1Signature):
-    input_dims_eq1: List[bool]
+    input_dims_eq1: List[bool] = InputIdx(0)
     output_dims_eq1: List[bool]
 
     @classmethod
-    def InferDimsEq1Signature(
+    def Make(
         cls,
         dag_dims_eq1_gen_instruction: DAGDimsEq1GenInstruction,
-        infer_ctx: DimsEq1InferContext
+        output_dims_eq1: List[bool]
     ):
-        idx = dag_dims_eq1_gen_instruction.dag.source_tensor_index
         input_dims_eq1 = dag_dims_eq1_gen_instruction.dims_eq1.source_tensor_dim_eq1
-        output_dims_eq1 = infer_ctx.current_source_tensor_dim_eq1[idx]
-        infer_ctx.current_source_tensor_dim_eq1[idx] = input_dims_eq1
         return AddUnaryOp(
             input_dims_eq1=input_dims_eq1,
             output_dims_eq1=output_dims_eq1
@@ -84,26 +67,22 @@ class AddUnaryOp(DimsEq1Signature):
 
 @dataclass
 class AddBinaryOp(DimsEq1Signature):
-    lhs_input_dims_eq1: List[bool]
-    rhs_input_dims_eq1: List[bool]
+    lhs_input_dims_eq1: List[bool] = InputIdx(0)
+    rhs_input_dims_eq1: List[bool] = InputIdx(1)
     output_dims_eq1: List[bool]
 
     @classmethod
-    def InferDimsEq1Signature(
+    def Make(
         cls,
         dag_dims_eq1_gen_instruction: DAGDimsEq1GenInstruction,
-        infer_ctx: DimsEq1InferContext
+        output_dims_eq1: List[bool]
     ):
-        lhs_input_idx = dag_dims_eq1_gen_instruction.dag.source_tensor_index
         lhs_input_dims_eq1 = (
             dag_dims_eq1_gen_instruction.dims_eq1.lhs_source_tensor_dim_eq1
         )
         rhs_input_dims_eq1 = (
             dag_dims_eq1_gen_instruction.dims_eq1.rhs_source_tensor_dim_eq1
         )
-        output_dims_eq1 = infer_ctx.current_source_tensor_dim_eq1[lhs_input_idx]
-        infer_ctx.current_source_tensor_dim_eq1[lhs_input_idx] = lhs_input_dims_eq1
-        infer_ctx.current_source_tensor_dim_eq1.append(rhs_input_dims_eq1)
         return AddBinaryOp(
             lhs_input_dims_eq1=lhs_input_dims_eq1,
             rhs_input_dims_eq1=rhs_input_dims_eq1,
@@ -117,16 +96,13 @@ class AddBinaryClone(DimsEq1Signature):
     rhs_output_dims_eq1: List[bool]
 
     @classmethod
-    def InferDimsEq1Signature(
+    def Make(
         cls,
         dag_dims_eq1_gen_instruction: DAGDimsEq1GenInstruction,
-        infer_ctx: DimsEq1InferContext
+        infer_ctx: DimsEq1InferContext,
+        lhs_output_dims_eq1: List[bool],
+        rhs_output_dims_eq1: List[bool]
     ):
-        lhs_output_idx = dag_dims_eq1_gen_instruction.dag.lhs_source_tensor_index
-        lhs_output_dims_eq1 = infer_ctx.current_source_tensor_dim_eq1[lhs_output_idx]
-        rhs_output_idx = dag_dims_eq1_gen_instruction.dag.rhs_source_tensor_index
-        rhs_output_dims_eq1 = infer_ctx.current_source_tensor_dim_eq1[rhs_output_idx]
-        infer_ctx.current_source_tensor_dim_eq1.pop(rhs_output_idx)
         return AddBinaryClone(
             lhs_output_dims_eq1=lhs_output_dims_eq1,
             rhs_output_dims_eq1=rhs_output_dims_eq1
@@ -138,14 +114,11 @@ class AddSourceOp(DimsEq1Signature):
     output_dims_eq1: List[bool]
 
     @classmethod
-    def InferDimsEq1Signature(
+    def Make(
         cls,
         dag_dims_eq1_gen_instruction: DAGDimsEq1GenInstruction,
-        infer_ctx: DimsEq1InferContext
+        output_dims_eq1: List[bool]
     ):
-        output_idx = dag_dims_eq1_gen_instruction.dag.source_tensor_index
-        output_dims_eq1 = infer_ctx.current_source_tensor_dim_eq1[output_idx]
-        infer_ctx.current_source_tensor_dim_eq1.pop(output_idx)
         return AddSourceOp(output_dims_eq1=output_dims_eq1)
 
 
@@ -168,13 +141,15 @@ class DimsEq1SignatureInferer:
         dims_eq1_gen_instructions: List["DimsEq1GenInstruction"]
     ) -> DList["DAGGenInstruction", "DimsEq1Signature"]:
         assert len(dag_gen_instructions) == len(dims_eq1_gen_instructions)
-        infer_ctx = DimsEq1InferContext()
-        def MakeDimsEq1Signature(dag_dims_eq1_gen_instruction):
-            dag_gen_class = type(dag_dims_eq1_gen_instruction.dag)
+        signature_inferer = SignatureInferer()
+        def MakeDimsEq1Signature(ctx):
+            dag_gen_class = type(ctx.dag)
             cls = kDAGGenClassToDerivedClass[dag_gen_class]
-            return cls.InferDimsEq1Signature(
-                dag_dims_eq1_gen_instruction,
-                infer_ctx
+            return signature_inferer.Infer(
+                NaiveSignatureConstructor(
+                    .dag_gen_instruction=ctx.dag,
+                    .constructor=lambda *args: cls.Make(ctx, *args)
+                )
             )
         dims_eq1_signatures = [
             MakeDimsEq1Signature(x)
