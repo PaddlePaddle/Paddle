@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import test_op_translator
@@ -20,85 +19,6 @@ import test_op_translator
 import paddle
 from paddle.base import core, unique_name
 from paddle.base.layer_helper import LayerHelper
-
-
-def init_communicator(block, rank, ranks, ring_id):
-    eps = os.environ['PADDLE_TRAINER_ENDPOINTS']
-    eps = [ep.strip() for ep in eps.split(",") if ep.strip()]
-    cur_ep = eps[rank]
-    other_eps = [eps[r] for r in ranks if r != rank]
-
-    local_rank = ranks.index(rank)
-    comm_var_name = unique_name.generate('comm_id')
-    comm_id_var = block.create_var(
-        name=comm_var_name, persistable=True, type=core.VarDesc.VarType.RAW
-    )
-    if core.is_compiled_with_cuda():
-        block.append_op(
-            type='c_gen_nccl_id',
-            inputs={},
-            outputs={'Out': comm_id_var},
-            attrs={
-                'rank': local_rank,
-                'endpoint': cur_ep,
-                'other_endpoints': other_eps,
-                'ring_id': ring_id,
-            },
-        )
-    elif core.is_compiled_with_xpu():
-        block.append_op(
-            type='c_gen_bkcl_id',
-            inputs={},
-            outputs={'Out': comm_id_var},
-            attrs={
-                'rank': local_rank,
-                'endpoint': cur_ep,
-                'other_endpoints': other_eps,
-                'ring_id': ring_id,
-            },
-        )
-    elif (
-        paddle.distributed.ParallelEnv().device_type
-        in paddle.device.get_all_custom_device_type()
-    ):
-        block.append_op(
-            type='c_gen_xccl_id',
-            inputs={},
-            outputs={'Out': comm_id_var},
-            attrs={
-                'rank': local_rank,
-                'endpoint': cur_ep,
-                'other_endpoints': other_eps,
-                'ring_id': ring_id,
-            },
-        )
-    block.append_op(
-        type='c_comm_init',
-        inputs={'X': comm_id_var},
-        outputs={},
-        attrs={
-            'nranks': len(ranks),
-            'rank': local_rank,
-            'ring_id': ring_id,
-            'endpoints': ','.join(eps),
-        },
-    )
-    tmp_var = block.create_var(name=unique_name.generate('tmp'))
-    block.append_op(
-        type='fill_constant', outputs={'Out': tmp_var}, attrs={'value': 1}
-    )
-    block.append_op(
-        type='c_allreduce_sum',
-        inputs={'X': tmp_var},
-        outputs={'Out': tmp_var},
-        attrs={'ring_id': ring_id, 'use_calc_stream': True},
-    )
-    block.append_op(
-        type='c_sync_calc_stream',
-        inputs={'X': tmp_var},
-        outputs={'Out': tmp_var},
-    )
-    return ring_id
 
 
 class TestDistributedFusedLambOpTranslator(test_op_translator.TestOpTranslator):
@@ -225,8 +145,7 @@ class TestDistributedFusedLambOpTranslator(test_op_translator.TestOpTranslator):
         step = self._create_persistable_var('step', dtype='int64')
 
         ring_ids = []
-        startup_block = self.helper.startup_program.global_block()
-        ring_id = init_communicator(startup_block, rank, list(range(nranks)), 0)
+        ring_id = 0
         ring_ids.append(ring_id)
 
         attrs = {
