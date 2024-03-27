@@ -121,33 +121,10 @@ struct FusionNode {
   bool IsTrivial() const;
 };
 
-template <class DownStreamOp>
-DownStreamOp TrivalxOther_Fusion(TrivialOp upstream, DownStreamOp downstream) {
-  VLOG(4) << "Trivial x OtherFusion begin.";
-
-  const auto& replaced_tensor = GetOutputTensor(upstream);
-  VLOG(4) << "upstream is " << upstream.GetFuncBody();
-  VLOG(4) << "downstream is " << downstream.GetFuncBody();
-
-  ir::Expr modified_body = ir::ir_utils::IRCopy(downstream.GetFuncBody());
-  SequenceMutator(
-      ComposeUtils::GetEachTensorLoadExpr(modified_body, replaced_tensor),
-      &modified_body,
-      [&](const ir::Expr& downstream_load_expr, ir::Expr* downstream_body) {
-        ComposeUtils::ReplaceDownstreamLoadExprWithUpstreamComputeBody(
-            upstream, downstream_load_expr, downstream_body);
-      });
-
-  VLOG(4) << "TTFusion end:\n" << modified_body;
-  return DownStreamOp(modified_body);
-}
-
 bool CheckAllLoopRangeEq(ReduceOp reduce_upper, TrivialOp trivial_down);
 
 std::vector<FusibleOp> TransformReduceLoopRange(const ReduceOp& upstream,
                                                 FusibleOp* downstream);
-
-FusibleOp TrivialFusion(FusionNode* upstream, FusionNode* downstream);
 
 FusibleOp SinkTrivialLoopAlign(TrivialOp trivial_op, ReduceOp reduce_op);
 
@@ -181,6 +158,31 @@ struct FusionGraph {
   void AppendNode(FusionNode* node);
 
   FusionNode* FindReduceUpstream(FusionNode* node);
+
+ private:
+  FusibleOp TrivialFusion(FusionNode* upstream, FusionNode* downstream);
+
+  template <class DownStreamOp>
+  DownStreamOp TrivalxOther_Fusion(TrivialOp upstream,
+                                   DownStreamOp downstream) {
+    VLOG(4) << "Trivial x OtherFusion begin.";
+
+    const auto& replaced_tensor = GetOutputTensor(upstream);
+    VLOG(4) << "upstream is " << upstream.GetFuncBody();
+    VLOG(4) << "downstream is " << downstream.GetFuncBody();
+
+    ir::Expr modified_body = ir::ir_utils::IRCopy(downstream.GetFuncBody());
+    SequenceMutator(
+        ComposeUtils::GetEachTensorLoadExpr(modified_body, replaced_tensor),
+        &modified_body,
+        [&](const ir::Expr& downstream_load_expr, ir::Expr* downstream_body) {
+          ComposeUtils::ReplaceDownstreamLoadExprWithUpstreamComputeBody(
+              upstream, downstream_load_expr, downstream_body);
+        });
+
+    VLOG(4) << "TTFusion end:\n" << modified_body;
+    return DownStreamOp(modified_body);
+  }
 
  private:
   std::unordered_set<FusionNode*> all_fusion_nodes_;

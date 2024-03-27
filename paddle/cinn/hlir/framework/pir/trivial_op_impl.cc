@@ -436,7 +436,8 @@ std::vector<FusibleOp> TransformReduceLoopRange(const ReduceOp& upstream,
   return results;
 }
 
-FusibleOp TrivialFusion(FusionNode* upstream, FusionNode* downstream) {
+FusibleOp FusionGraph::TrivialFusion(FusionNode* upstream,
+                                     FusionNode* downstream) {
   CHECK(upstream->IsTrivial());
   if (downstream->IsTrivial()) {
     return TrivalxOther_Fusion(std::get<TrivialOp>(upstream->fusible_op),
