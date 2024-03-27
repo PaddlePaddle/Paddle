@@ -111,6 +111,7 @@ struct PD_INFER_DECL XpuConfig {
   bool conv_autotune_file_writeback{false};
 
   // Fc autotune level. The Optional values are 0-9. Default 0 means no
+  // autotune.
   int fc_autotune_level{0};
   // Base fc autotune info is read from fc_autotune_file.
   std::string fc_autotune_file;
@@ -367,7 +368,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void EnableXpu(int l3_size = 0xfffc00,
                  bool l3_locked = false,
-                 bool conv_autotune = true,
+                 bool conv_autotune = false,
                  const std::string& conv_autotune_file = "",
                  const std::string& transformer_encoder_precision = "int16",
                  bool transformer_encoder_adaptive_seqlen = false,
@@ -810,9 +811,27 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void Exp_DisableTensorRtOPs(const std::vector<std::string>& ops);
 
+  ///
+  /// \brief Prevent TensorRtSubgraph running in Paddle-TRT
+  /// NOTE: just experimental, not an official stable API, easy to be broken.
+  ///
   void Exp_DisableTensorRtSubgraph(
       const std::vector<std::string>& var_name_not_trt);
 
+  ///
+  /// \brief Specify TensorRT subgraph precision,fp16, int8 or bfp16(TensorRT
+  /// Version>=9.0) NOTE: just experimental, not an official stable API, easy to
+  /// be broken.
+  ///
+  void Exp_SpecifyTensorRTSubgraphPrecision(
+      const std::vector<std::string>& trt_parameters_fp16,
+      const std::vector<std::string>& trt_parameters_int8,
+      const std::vector<std::string>& trt_parameters_bfp16);
+
+  ///
+  /// \brief Prevent DynamicShape OPs running in Paddle-TRT
+  /// NOTE: just experimental, not an official stable API, easy to be broken.
+  ///
   void Exp_DisableTensorRTDynamicShapeOPs(bool trt_forbid_dynamic_op);
 
   ///
@@ -1220,6 +1239,22 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool cinn_enabled() const;
 
+  ///
+  /// \brief Set the custom passes list .
+  ///
+  /// \param passes The custom passes list.
+  /// \param custom_pass_only Custom pass run mode. The default is false,
+  /// which means that paddle pass will run after custom pass.
+  ///
+  void EnableCustomPasses(const std::vector<std::string>& passes,
+                          bool custom_pass_only = false);
+
+  ///
+  /// \brief Set passmanager opt level.Pass level lower than
+  /// opt level which will be added to passmanager
+  ///
+  void SetOptimizationLevel(int opt_level);
+
  protected:
   // Update the config.
   void Update();
@@ -1289,6 +1324,10 @@ struct PD_INFER_DECL AnalysisConfig {
 
   std::vector<std::string> trt_output_tensor_names_{};
   std::vector<std::string> trt_exclude_var_names_{};
+  std::vector<std::string> trt_parameters_run_fp16_{};
+  std::vector<std::string> trt_parameters_run_int8_{};
+  std::vector<std::string> trt_parameters_run_bfp16_{};
+
   std::string tensorrt_transformer_posid_{""};
   std::string tensorrt_transformer_maskid_{""};
   bool trt_use_dla_{false};
@@ -1443,6 +1482,9 @@ struct PD_INFER_DECL AnalysisConfig {
   bool skip_load_params_{false};
 
   bool use_pir_{false};
+  std::vector<std::string> custom_passes_;
+  bool custom_pass_only_{false};
+  int pm_opt_level_{2};
 };
 
 }  // namespace paddle

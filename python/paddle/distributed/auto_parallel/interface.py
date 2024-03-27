@@ -321,6 +321,11 @@ def get_mesh():
     return _g_mesh
 
 
+def set_mesh(mesh):
+    global _g_mesh
+    _g_mesh = mesh
+
+
 def create_mesh(mesh_dims: List[Tuple[str, int]]):
     """
     Create a global process_mesh for auto parallel.

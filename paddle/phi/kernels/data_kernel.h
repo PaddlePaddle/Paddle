@@ -37,6 +37,11 @@ void ShadowFeedKernel(const Context& ctx,
                       DenseTensor* out);
 
 template <typename T, typename Context>
+void ShadowFeedTensorsKernel(const Context& ctx,
+                             const std::vector<const DenseTensor*>& xs,
+                             std::vector<DenseTensor*> outs);
+
+template <typename T, typename Context>
 void PrintKernel(const Context& ctx,
                  const DenseTensor& x,
                  int first_n,

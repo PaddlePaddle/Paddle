@@ -50,7 +50,8 @@ class IR_API GroupOp
                     const cinn::dialect::GroupInfo &group_info);
 
   pir::Block *block();
-  std::vector<pir::Operation *> GetOperators();
+  pir::Block *block() const;
+  std::vector<pir::Operation *> GetOperators() const;
 
   bool InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis);
 
@@ -77,6 +78,7 @@ class IR_API FusionOp : public pir::Op<FusionOp> {
 
   pir::Block *block();
   std::vector<pir::Operation *> GetOperators();
+  std::vector<pir::Operation *> GetOperators() const;
 
   void VerifySig();
   void Print(pir::IrPrinter &printer);  // NOLINT

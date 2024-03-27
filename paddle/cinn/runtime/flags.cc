@@ -22,6 +22,7 @@
 #include <unordered_set>
 
 #include "paddle/cinn/common/target.h"
+#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 
 #ifdef CINN_WITH_CUDNN
@@ -71,6 +72,15 @@ PD_DEFINE_bool(cinn_bucket_compile,
 
 PD_DEFINE_bool(group_schedule_tiling_first,
                BoolFromEnv("FLAGS_group_schedule_tiling_first", false),
+               "Whether to enable new group scheduler tiling first strategy.");
+
+PD_DEFINE_bool(cinn_new_cluster_op_method,
+               BoolFromEnv("FLAGS_cinn_new_cluster_op_method", false),
+               "Whether to enable newly developed clustering method of group "
+               "op for cinn.");
+
+PD_DEFINE_bool(support_reduce_stride_read,
+               BoolFromEnv("FLAGS_support_reduce_stride_read", false),
                "Whether to enable new group scheduler tiling first strategy.");
 
 PD_DEFINE_bool(cinn_use_common_subexpression_elimination,
@@ -290,7 +300,8 @@ bool GetCinnCudnnDeterministic() {
 #ifdef CINN_WITH_CUDNN
   return FLAGS_cinn_cudnn_deterministic;
 #else
-  LOG(FATAL) << "CINN is compiled without cuDNN, this api is invalid!";
+  PADDLE_THROW(phi::errors::Fatal(
+      "CINN is compiled without cuDNN, this api is invalid!"));
   return false;
 #endif
 }
@@ -337,8 +348,9 @@ cinn::common::Target CurrentTarget::target_ = cinn::common::DefaultTarget();
 void CurrentTarget::SetCurrentTarget(const cinn::common::Target& target) {
   if (!IsCompiledWithCUDA() &&
       target.arch == cinn::common::Target::Arch::NVGPU) {
-    LOG(FATAL) << "Current CINN version does not support NVGPU, please try to "
-                  "recompile with -DWITH_CUDA.";
+    PADDLE_THROW(phi::errors::Fatal(
+        "Current CINN version does not support NVGPU, please try to "
+        "recompile with -DWITH_CUDA."));
   } else {
     target_ = target;
   }

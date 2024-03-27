@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
@@ -63,8 +64,17 @@ void set_parameter(const pir::Value& parameter, const std::string& name) {
 }
 
 void shadow_output(const pir::Value& persist_value, const std::string& name) {
-  ApiBuilder::Instance().GetBuilder()->Build<pir::ShadowOutputOp>(persist_value,
-                                                                  name);
+  auto& builder = ApiBuilder::Instance().GetBuilder();
+  auto op = builder->Build<pir::ShadowOutputOp>(persist_value, name);
+  if (auto dist_interface =
+          persist_value.type().dyn_cast<DistTypeInterface>()) {
+    op->set_attribute(
+        kAttrOpDistAttr,
+        OperationDistAttribute::get(builder->ir_context(),
+                                    dist_interface.process_mesh_attr(),
+                                    {dist_interface.tensor_dist_attr()},
+                                    {}));
+  }
 }
 
 pir::Value embedding_grad(const pir::Value& x,

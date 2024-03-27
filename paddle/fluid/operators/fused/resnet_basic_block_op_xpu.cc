@@ -386,7 +386,7 @@ class ResNetBasicBlockXPUKernel : public framework::OpKernel<T> {
 
       XPUType* conv3_input_l3_data = nullptr;
       XPUType* conv3_filter_l3_data =
-          RAII_GUARD.alloc_l3<XPUType>(attr.conv3_filter_numel);
+          RAII_GUARD.alloc_l3_or_gm<XPUType>(attr.conv3_filter_numel);
 
       if (attr.find_max) {
         r = xpu::findmax_copy_fusion(dev_ctx.x_context(),
@@ -490,7 +490,7 @@ class ResNetBasicBlockXPUKernel : public framework::OpKernel<T> {
     // 2. conv1
     XPUType* conv1_input_l3_data = nullptr;
     XPUType* conv1_filter_l3_data =
-        RAII_GUARD.alloc_l3<XPUType>(attr.conv1_filter_numel);
+        RAII_GUARD.alloc_l3_or_gm<XPUType>(attr.conv1_filter_numel);
     if (attr.find_max) {
       r = xpu::findmax_copy_fusion(dev_ctx.x_context(),
                                    x_data,
@@ -589,7 +589,7 @@ class ResNetBasicBlockXPUKernel : public framework::OpKernel<T> {
     // 4. conv2
     XPUType* conv2_input_l3_data = nullptr;
     XPUType* conv2_filter_l3_data =
-        RAII_GUARD.alloc_l3<XPUType>(attr.conv2_filter_numel);
+        RAII_GUARD.alloc_l3_or_gm<XPUType>(attr.conv2_filter_numel);
     if (attr.find_max) {
       phi::DenseTensor* max_input2 = ctx.Output<phi::DenseTensor>("MaxInput2");
       phi::DenseTensor* max_filter2 =

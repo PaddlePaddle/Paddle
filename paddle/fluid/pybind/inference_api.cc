@@ -803,7 +803,7 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::EnableXpu,
            py::arg("l3_size") = 16 * 1024 * 1024,
            py::arg("l3_locked") = false,
-           py::arg("conv_autotune") = true,
+           py::arg("conv_autotune") = false,
            py::arg("conv_autotune_file") = "",
            py::arg("transformer_encoder_precision") = "int16",
            py::arg("transformer_encoder_adaptive_seqlen") = false,
@@ -937,6 +937,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("exp_disable_tensorrt_ops", &AnalysisConfig::Exp_DisableTensorRtOPs)
       .def("exp_disable_tensorrt_subgraph",
            &AnalysisConfig::Exp_DisableTensorRtSubgraph)
+      .def("exp_specify_tensorrt_subgraph_precision",
+           &AnalysisConfig::Exp_SpecifyTensorRTSubgraphPrecision)
       .def("exp_disable_tensorrt_dynamic_shape_ops",
            &AnalysisConfig::Exp_DisableTensorRTDynamicShapeOPs)
       .def("enable_tensorrt_dla",
@@ -1034,6 +1036,13 @@ void BindAnalysisConfig(py::module *m) {
             return dynamic_cast<PaddlePassBuilder *>(self.pass_builder());
           },
           py::return_value_policy::reference)
+      .def("enable_custom_passes",
+           &AnalysisConfig::EnableCustomPasses,
+           py::arg("passes") = std::vector<std::string>(),
+           py::arg("custom_pass_only") = false)
+      .def("set_optimization_level",
+           &AnalysisConfig::SetOptimizationLevel,
+           py::arg("opt_level") = 2)
       .def("nnadapter", &AnalysisConfig::NNAdapter)
       .def("set_dist_config", &AnalysisConfig::SetDistConfig)
       .def("dist_config", &AnalysisConfig::dist_config);

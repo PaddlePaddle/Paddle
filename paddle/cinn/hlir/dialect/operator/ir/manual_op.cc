@@ -28,7 +28,7 @@
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/op_base.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/include/dialect/shape/utils/dim_expr_simplify.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 namespace cinn {
 namespace dialect {
@@ -81,7 +81,13 @@ pir::Block* GroupOp::block() {
   return &region.front();
 }
 
-std::vector<pir::Operation*> GroupOp::GetOperators() {
+pir::Block* GroupOp::block() const {
+  pir::Region& region = (*this)->region(0);
+  CHECK(!region.empty());
+  return &region.front();
+}
+
+std::vector<pir::Operation*> GroupOp::GetOperators() const {
   std::vector<pir::Operation*> rt_ops;
   for (auto& op : *block()) {
     rt_ops.push_back(&op);
@@ -118,6 +124,10 @@ bool GroupOp::InferSymbolicShape(
     shape_analysis->SetShapeOrDataForValue(result(rst_idx), shape);
   }
 
+  if (VLOG_IS_ON(4)) {
+    ::std::cerr << ">>>>>>>>>>>>>>>>>>>> cinn_op.group(op_id: op_"
+                << block()->back().id() << ") END." << ::std::endl;
+  }
   return true;
 }
 

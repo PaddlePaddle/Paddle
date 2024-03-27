@@ -142,8 +142,8 @@ void PoolRawGPUDNNKernel(const Context& ctx,
     transformed_output = *output;
   }
 
-  const T* tranformed_input_data = transformed_input.data<T>();
-  T* tranformed_output_data = ctx.template Alloc<T>(&transformed_output);
+  const T* transformed_input_data = transformed_input.data<T>();
+  T* transformed_output_data = ctx.template Alloc<T>(&transformed_output);
 
   // ------------------- cudnn descriptors ---------------------
   ScopedTensorDescriptor input_desc;
@@ -192,10 +192,10 @@ void PoolRawGPUDNNKernel(const Context& ctx,
                                     cudnn_pool_desc,
                                     &alpha,
                                     cudnn_input_desc,
-                                    tranformed_input_data,
+                                    transformed_input_data,
                                     &beta,
                                     cudnn_output_desc,
-                                    tranformed_output_data,
+                                    transformed_output_data,
                                     false,
                                     pool_workspace,
                                     pool_workernel_size_));
@@ -206,10 +206,10 @@ void PoolRawGPUDNNKernel(const Context& ctx,
                                    cudnn_pool_desc,
                                    &alpha,
                                    cudnn_input_desc,
-                                   tranformed_input_data,
+                                   transformed_input_data,
                                    &beta,
                                    cudnn_output_desc,
-                                   tranformed_output_data));
+                                   transformed_output_data));
 #endif
   // add
   if (data_format == str_NDHWC) {
