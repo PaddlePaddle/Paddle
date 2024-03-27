@@ -158,18 +158,11 @@ struct DivGradDY<phi::dtype::complex<T>> {
 
 template <typename T>
 struct DivDoubleDY {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    return (y * out - x) * dout;
-  }
-};
-
-template <typename T>
-struct DivDoubleDY_Only_DDX {
   HOSTDEVICE T operator()(const T& x,
                           const T& y,
                           const T& out,
                           const T& dout) const {
-    return -x * dout;
+    return (y * out - x) * dout;
   }
 };
 
