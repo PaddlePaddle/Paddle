@@ -92,9 +92,7 @@ class TestStftOp(OpTest):
 class TestStftOpReal(unittest.TestCase):
     def test_as_real(self):
         input = np.random.randn(4410)
-        x = paddle.to_tensor(
-            data=input, dtype='float32', place=paddle.CUDAPlace(0)
-        )
+        x = paddle.to_tensor(data=input, dtype='float32')
         n_fft = 400
         res0 = paddle.signal.stft(n_fft=n_fft, x=x)
         res_a = paddle.as_real(res0)

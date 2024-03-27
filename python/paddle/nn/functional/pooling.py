@@ -1816,7 +1816,7 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
     x = unsqueeze(x, [2])
     if in_dygraph_mode():
         pool_out = _C_ops.max_pool2d_with_index(
-            x, pool_size, [1, 1], [0, 0], False, True
+            x, pool_size, [1, 1], [0, 0], False, True, False
         )
         return (
             (squeeze(pool_out[0], [2]), squeeze(pool_out[1], [2]))
@@ -1847,6 +1847,7 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
                 "pooling_type": 'max',
                 "ksize": pool_size,
                 "adaptive": True,
+                "ceil_mode": False,
             },
         )
 
@@ -1910,7 +1911,7 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
             output_size[1] = in_w
     if in_dygraph_mode():
         pool_out = _C_ops.max_pool2d_with_index(
-            x, output_size, [1, 1], [0, 0], False, True
+            x, output_size, [1, 1], [0, 0], False, True, False
         )
         return pool_out if return_mask else pool_out[0]
     else:
@@ -1937,6 +1938,7 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
                 "pooling_type": 'max',
                 "ksize": output_size,
                 "adaptive": True,
+                "ceil_mode": False,
             },
         )
         return (pool_out, mask) if return_mask else pool_out
@@ -2002,7 +2004,7 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
     if in_dygraph_mode():
         # By default, strides is [1,1,1] and paddings is [0, 0, 0]
         pool_out = _C_ops.max_pool3d_with_index(
-            x, output_size, [1, 1, 1], [0, 0, 0], False, True
+            x, output_size, [1, 1, 1], [0, 0, 0], False, True, False
         )
         return pool_out if return_mask else pool_out[0]
     else:
@@ -2029,6 +2031,7 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
                 "pooling_type": 'max',
                 "ksize": output_size,
                 "adaptive": True,
+                "ceil_mode": False,
             },
         )
 
