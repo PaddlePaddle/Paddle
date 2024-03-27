@@ -110,7 +110,7 @@ class TestFlashAttnPatternQscaleCast(PassTest):
                                     attention_out, [0, 2, 1, 3]
                                 )
                                 out = paddle.assign(attention_out)
-                                self.pass_list = ['attn_fuse_pass']
+                                self.pass_list = ['flash_attn_fuse_pass']
                                 self.feeds = {
                                     "Q": np.random.random(
                                         (bs, seq_len, num_heads, head_dim)
@@ -222,7 +222,7 @@ class TestFlashAttnPatternQscaleNoCast(PassTest):
                                     attention_out, [0, 2, 1, 3]
                                 )
                                 out = paddle.assign(attention_out)
-                                self.pass_list = ['attn_fuse_pass']
+                                self.pass_list = ['flash_attn_fuse_pass']
                                 self.feeds = {
                                     "Q": np.random.random(
                                         (bs, seq_len, num_heads, head_dim)
@@ -343,7 +343,7 @@ class TestFlashAttnPatternOutscaleCast(PassTest):
                                     attention_out, [0, 2, 1, 3]
                                 )
                                 out = paddle.assign(attention_out)
-                                self.pass_list = ['attn_fuse_pass']
+                                self.pass_list = ['flash_attn_fuse_pass']
                                 self.feeds = {
                                     "Q": np.random.random(
                                         (bs, seq_len, num_heads, head_dim)
@@ -458,7 +458,7 @@ class TestFlashAttnPatternOutscaleNoCast(PassTest):
                                     attention_out, [0, 2, 1, 3]
                                 )
                                 out = paddle.assign(attention_out)
-                                self.pass_list = ['attn_fuse_pass']
+                                self.pass_list = ['flash_attn_fuse_pass']
                                 self.feeds = {
                                     "Q": np.random.random(
                                         (bs, seq_len, num_heads, head_dim)
