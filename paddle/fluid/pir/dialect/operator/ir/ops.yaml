@@ -471,8 +471,10 @@
   inplace : (scale -> out_scale, in_accum -> out_accum, in_state -> out_state)
 
 - op : dgc_momentum
-  args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, Tensor current_step, Tensor nranks, float mu, bool use_nesterov=false, str regularization_method="", float regularization_coeff=0.0f, bool multi_precision=false, float rescale_grad=1.0f, float rampup_begin_step=-1.0f)
+  args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, Tensor current_step_tensor, Tensor nranks_tensor, float mu, bool use_nesterov=false, str regularization_method="", float regularization_coeff=0.0f, bool multi_precision=false, float rescale_grad=1.0f, float rampup_begin_step=-1.0f)
   output : Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out), Tensor(grad_out)
+  infer_meta :
+    func : DGCMomentumInferMeta
   kernel :
     func : dgc_momentum
     data_type : param
