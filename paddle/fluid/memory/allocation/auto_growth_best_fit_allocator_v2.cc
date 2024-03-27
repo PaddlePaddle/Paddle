@@ -33,13 +33,17 @@ PADDLE_DEFINE_EXPORTED_bool(
     false,
     "Whether to free idel when switch to normal auto growth.");
 
-PADDLE_DEFINE_EXPORTED_int(autogrowth_bestfit_v2_warmup_steps,
-                           1,
-                           "Warmup step count.");
+PADDLE_DEFINE_EXPORTED_int64(autogrowth_bestfit_v2_warmup_steps,
+                             1,
+                             "Warmup step count.");
 
-PADDLE_DEFINE_EXPORTED_int(autogrowth_bestfit_v2_dbg_level,
-                           0,
-                           "Print dbg info level.");
+PADDLE_DEFINE_EXPORTED_int64(autogrowth_bestfit_v2_dbg_level,
+                             0,
+                             "Print dbg info level.");
+
+PADDLE_DEFINE_EXPORTED_bool(autogrowth_bestfit_v2_stop_warmup_when_mem_full,
+                            false,
+                            "Whether switch to regular when memory full.");
 
 namespace paddle {
 namespace memory {
@@ -84,11 +88,17 @@ phi::Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(
         chunks_.emplace_back(static_unique_ptr_cast<Allocation>(
             underlying_allocator_->Allocate(size)));
       } catch (BadAlloc &ex) {
-        if (FLAGS_autogrowth_bestfit_v2_dbg_level > 0) {
-          std::cout << "warmup mem full" << std::endl;
+        if (FLAGS_autogrowth_bestfit_v2_stop_warmup_when_mem_full) {
+          if (FLAGS_autogrowth_bestfit_v2_dbg_level > 0) {
+            std::cout << "warmup mem full" << std::endl;
+          }
+          warmup_done_ = true;
+          throw ex;
+        } else {
+          FreeIdleChunks();
+          chunks_.emplace_back(static_unique_ptr_cast<Allocation>(
+              underlying_allocator_->Allocate(size)));
         }
-        warmup_done_ = true;
-        throw ex;
       }
 
       auto *chunk = &(*chunks_.rbegin());
@@ -186,8 +196,8 @@ phi::Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(
   return new BlockAllocation(block_it);
 }
 
-void AutoGrowthBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
-  platform::RecordEvent record("AutoGrowthBestFitAllocator::Free",
+void AutoGrowthBestFitAllocatorV2::FreeImpl(phi::Allocation *allocation) {
+  platform::RecordEvent record("AutoGrowthBestFitAllocatorV2::Free",
                                platform::TracerEventType::UserDefined,
                                9 /*level*/);
   VLOG(10) << "Free " << allocation->size()
