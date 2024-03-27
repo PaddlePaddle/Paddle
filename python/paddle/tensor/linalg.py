@@ -2182,7 +2182,9 @@ def bmm(x, y, name=None):
         return out
 
 
-def histogram(input, bins=100, min=0, max=0, name=None):
+def histogram(
+    input, weight=None, density: bool = False, bins=100, min=0, max=0, name=None
+):
     """
     Computes the histogram of a tensor. The elements are sorted into equal width bins between min and max.
     If min and max are both zero, the minimum and maximum values of the data are used.
@@ -2210,20 +2212,77 @@ def histogram(input, bins=100, min=0, max=0, name=None):
             [0, 2, 1, 0])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.histogram(input, bins, min, max)
+        return _C_ops.histogram(input, weight, density, bins, min, max)
     else:
         helper = LayerHelper('histogram', **locals())
         check_variable_and_dtype(
             input, 'X', ['int32', 'int64', 'float32', 'float64'], 'histogram'
         )
-        out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
+
+        if density or weight:
+            check_variable_and_dtype(
+                weight,
+                "Weight",
+                ["int32", "int64", "float32", "float64"],
+                "histogram",
+            )
+            out = helper.create_variable_for_type_inference(
+                dtype=VarDesc.VarType.FLOAT32
+            )
+        else:
+            out = helper.create_variable_for_type_inference(
+                dtype=VarDesc.VarType.INT64
+            )
         helper.append_op(
             type='histogram',
-            inputs={'X': input},
+            inputs={'X': input, "Weight": weight},
             outputs={'Out': out},
-            attrs={'bins': bins, 'min': min, 'max': max},
+            attrs={'density': density, 'bins': bins, 'min': min, 'max': max},
         )
         return out
+
+
+def histogram_bin_edges(input, bins=100, range=None, name=None):
+    """
+    Computes only the edges of the bins used by the histogram function.
+    Args:
+        input (Tensor): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor
+            should be float32, float64, int32, int64.
+        bins (int, optional): number of histogram bins.
+        range (list | tuple):  The lower and upper range of the bins. If None, `range` is simply (input.min(), input.max()).
+            The first element of the range must be less than or equal to the second. Default: None.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+    Returns:
+        Tensor: the values of the histogram and the bin edges. The output data type will be float32.
+    Examples:
+        .. code-block:: python
+            import paddle
+            inputs = paddle.to_tensor([1, 2, 1])
+            result = paddle.histogram_bin_edges(inputs, bins=4, range=(0, 3))
+            print(result) # [0., 0.75, 1.5, 2.25, 3.]
+    """
+    check_type(input, 'input', (Variable), 'histogram_bin_edges')
+    check_dtype(
+        input.dtype,
+        'input',
+        ['float32', 'float64', 'int32', 'int64'],
+        'histogram_bin_edges',
+    )
+    check_type(bins, 'bins', int, 'histogram_bin_edges')
+    if range is None:
+        start = paddle.max(input)
+        stop = paddle.min(input)
+    else:
+        check_type(range, 'range', (list, tuple), 'histogram_bin_edges')
+        if len(range) != 2:
+            raise ValueError("The length of range should be equal 2")
+        start, stop = range
+        if start > stop:
+            raise ValueError("max must be larger than min in range parameter")
+    if (stop - start) == 0:
+        start = start - 0.5
+        stop = stop + 0.5
+    return paddle.linspace(start, stop, bins + 1, name=name)
 
 
 def bincount(x, weights=None, minlength=0, name=None):
@@ -4331,9 +4390,11 @@ def householder_product(x, tau, name=None):
                 Q = paddle.static.setitem(
                     Q,
                     (slice(None), slice(i, None)),
-                    Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i])
-                    if x.dtype in [paddle.complex128, paddle.complex64]
-                    else Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i]),
+                    (
+                        Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i])
+                        if x.dtype in [paddle.complex128, paddle.complex64]
+                        else Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i])
+                    ),
                 )
         return Q[:, :n]
 

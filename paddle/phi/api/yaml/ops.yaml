@@ -1336,8 +1336,9 @@
   backward : heaviside_grad
 
 - op : histogram
-  args : (Tensor input, int64_t bins = 100, int min = 0, int max = 0)
+  args : (Tensor input, Tensor weight, bool density = false, int64_t bins = 100, int min = 0, int max = 0)
   output : Tensor(out)
+  optional: weight
   infer_meta :
     func : HistogramInferMeta
   kernel :
@@ -2837,7 +2838,7 @@
   no_need_buffer : input
 
 - op : thresholded_relu
-  args : (Tensor x, float threshold = 1.0)
+  args : (Tensor x, float threshold = 1.0, float value = 0.0)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
