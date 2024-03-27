@@ -60,12 +60,16 @@ std::ostream& operator<<(std::ostream& os, const OpLoweringGroup& group) {
     os << " {";
     for (uint32_t i = 0; i < op.num_operands(); ++i) {
       if (i > 0) os << ",";
-      os << "<" << group.GetShapeOrDataExprs(op.operand_source(i)) << ">";
+      if (group.HasShapeOrDataExprs(op.operand_source(i))) {
+        os << "<" << group.GetShapeOrDataExprs(op.operand_source(i)) << ">";
+      }
     }
     os << "} -> {";
     for (uint32_t i = 0; i < op.num_results(); ++i) {
       if (i > 0) os << ",";
-      os << "<" << group.GetShapeOrDataExprs(op.result(i)) << ">";
+      if (group.HasShapeOrDataExprs(op.result(i))) {
+        os << "<" << group.GetShapeOrDataExprs(op.result(i)) << ">";
+      }
     }
     os << "}";
   };
