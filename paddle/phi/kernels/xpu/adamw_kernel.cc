@@ -286,7 +286,7 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
           master_in_data,
           master_out_data,
           param.numel());
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw_v2");
     } else {
       int r = xpu::adamw_v2<XPUType, XPUType, MPDType>(
           dev_ctx.x_context(),
@@ -314,7 +314,7 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
           master_in_data,
           master_out_data,
           param.numel());
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw_v2");
     }
     if (!use_global_beta_pow) {
       // Cpu update
@@ -359,7 +359,7 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
           master_in_data,
           master_out_data,
           param.numel());
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw_v2");
     } else {
       int r = xpu::adamw_v2<XPUType, XPUType, MPDType>(
           dev_ctx.x_context(),
@@ -387,7 +387,7 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
           master_in_data,
           master_out_data,
           param.numel());
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw_v2");
     }
     if (!use_global_beta_pow) {
       // update beta1_pow and beta2_pow
