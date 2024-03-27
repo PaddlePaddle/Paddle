@@ -50,12 +50,6 @@ class TestDistributedFusedLambOpTranslator(test_op_translator.TestOpTranslator):
         )
         self._step = None
 
-        self._stop_update = main_block.create_var(
-            name=unique_name.generate("stop_update"),
-            shape=[1],
-            dtype=core.VarDesc.VarType.BOOL,
-        )
-
         self._param_to_master_param = {}
 
     def _create_persistable_var(self, name=None, shape=[-1], dtype="float32"):
@@ -147,7 +141,17 @@ class TestDistributedFusedLambOpTranslator(test_op_translator.TestOpTranslator):
         ring_ids = []
         ring_id = 0
         ring_ids.append(ring_id)
-
+        main_block = self.helper.main_program.global_block()
+        _found_inf = main_block.create_var(
+            name=unique_name.generate("found_inf"),
+            shape=[1],
+            dtype=core.VarDesc.VarType.BOOL,
+        )
+        _stop_update = main_block.create_var(
+            name=unique_name.generate("stop_update"),
+            shape=[1],
+            dtype=core.VarDesc.VarType.BOOL,
+        )
         attrs = {
             "weight_decay": 0.01,
             "beta1": 0.9,
@@ -196,11 +200,11 @@ class TestDistributedFusedLambOpTranslator(test_op_translator.TestOpTranslator):
                 "Beta2PowOut": [beta2pow],
                 "ParamOut": params,
                 "GradOut": grads,
-                "FoundInf": [self._found_inf],
+                "FoundInf": [_found_inf],
                 "FP32AccFusedGrad": fp32_acc_fused_grad,
                 "FP16AccFusedGrad": fp16_acc_fused_grad,
                 "AccStep": acc_step,
-                "StopUpdate": self._stop_update,
+                "StopUpdate": _stop_update,
                 "Step": [step],
             },
             attrs=attrs,
