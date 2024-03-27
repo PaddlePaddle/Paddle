@@ -176,8 +176,8 @@ bool RelativeJudgePolicy::CanFuse(const PatternNodePtr& upstream,
          ReducePlusTrivialCanMerge(upstream, downstream);
 }
 
-PatternNodePtr Merge(const PatternNodePtr& upstream,
-                     const PatternNodePtr& downstream) {
+PatternNodePtr RelativeJudgePolicy::Merge(const PatternNodePtr& upstream,
+                                          const PatternNodePtr& downstream) {
   return nullptr;
 }
 

@@ -39,8 +39,8 @@ bool GeneralTopoPolicy::CanFuse(const PatternNodePtr& first,
            IsIndirectDownstreamNode(second, first));
 }
 
-PatternNodePtr Merge(const PatternNodePtr& upstream,
-                     const PatternNodePtr& downstream) {
+PatternNodePtr GeneralTopoPolicy::Merge(const PatternNodePtr& upstream,
+                                        const PatternNodePtr& downstream) {
   return nullptr;
 }
 

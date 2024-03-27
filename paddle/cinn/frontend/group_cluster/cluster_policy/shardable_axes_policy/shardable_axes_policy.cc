@@ -87,8 +87,8 @@ bool ShardableAxesRRFusePolicy::CanFuse(const PatternNodePtr& upstream,
   return ReduceTreeGrownCanMerge(upstream, downstream);
 }
 
-PatternNodePtr Merge(const PatternNodePtr& upstream,
-                     const PatternNodePtr& downstream) {
+PatternNodePtr ShardableAxesRRFusePolicy::Merge(
+    const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
   return nullptr;
 }
 
