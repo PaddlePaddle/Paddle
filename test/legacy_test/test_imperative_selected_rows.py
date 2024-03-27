@@ -69,10 +69,10 @@ class TestSimpleNet(unittest.TestCase):
                     adam.minimize(input_emb)
                     self.assertIsNotNone(emb.weight.gradient())
 
-                    emb.clear_gradients()
+                    emb.clear_gradients(True)
                     self.assertIsNone(emb.weight.gradient())
 
-                    input_emb.clear_gradient()
+                    input_emb.clear_gradient(True)
                     self.assertIsNotNone(input_emb.gradient())
                     paddle.enable_static()
 
@@ -108,10 +108,10 @@ class TestSimpleNet(unittest.TestCase):
                     adam.minimize(input_emb)
                     self.assertIsNotNone(emb.weight.gradient())
 
-                    emb.clear_gradients()
+                    emb.clear_gradients(True)
                     self.assertIsNone(emb.weight.gradient())
 
-                    input_emb.clear_gradient()
+                    input_emb.clear_gradient(True)
                     self.assertIsNotNone(input_emb.gradient())
 
 

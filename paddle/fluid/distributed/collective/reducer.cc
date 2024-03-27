@@ -1043,13 +1043,6 @@ void EagerReducer::ProcessUnusedDenseVars() {
         continue;
       }
 
-      // NOTE(haohongxiang): Calling SetFakeEmpty here is to make sure that
-      // gradient accumulation can continue normally after clear_gradients()
-      // especially in cases including complex control flow.
-      std::static_pointer_cast<egr::GradNodeAccumulation>(
-          GetGradNodeFromTensor(&tensors_[var_index]))
-          ->SetFakeEmpty(false);
-
       Tensor grad_value(std::make_shared<phi::DenseTensor>(src_tensor));
 
       auto dest_var_base = tensors_[var_index];
