@@ -35,17 +35,37 @@ void AddmmCooDenseGradKernel(const Context& dev_ctx,
                              SparseCooTensor* dx,
                              DenseTensor* dy) {
   auto blas = funcs::GetBlas<Context, T>(dev_ctx);
-  if (dinput) {
-    dinput->Resize(input.dims());
-    dev_ctx.template Alloc<T>(dinput);
+  if constexpr (std::is_same<T, phi::dtype::complex<float>>::value) {
+    // 当 T 是 phi::dtype::complex<float> 时的特定实现
+    phi::dtype::complex<float> complex_alpha(
+        alpha, 0.0f);  // 实部为原来的 beta，虚部为 0.0
+    phi::dtype::complex<float> complex_beta(
+        beta, 0.0f);  // 实部为原来的 beta，虚部为 0.0
 
-    blas.VCOPY(input.numel(), dout.data<T>(), dinput->data<T>());
-    blas.SCAL(input.numel(), beta, dinput->data<T>());
+    if (dinput) {
+      dinput->Resize(input.dims());
+      dev_ctx.template Alloc<T>(dinput);
+
+      blas.VCOPY(input.numel(), dout.data<T>(), dinput->data<T>());
+      blas.SCAL(input.numel(), complex_beta, dinput->data<T>());
+    }
+    DenseTensor dout_scale = phi::EmptyLike<T, Context>(dev_ctx, dout);
+    blas.VCOPY(dout.numel(), dout.data<T>(), dout_scale.data<T>());
+    blas.SCAL(dout.numel(), complex_alpha, dout_scale.data<T>());
+    MatmulCooDenseGradKernel<T, Context>(dev_ctx, x, y, dout_scale, dx, dy);
+  } else {
+    if (dinput) {
+      dinput->Resize(input.dims());
+      dev_ctx.template Alloc<T>(dinput);
+
+      blas.VCOPY(input.numel(), dout.data<T>(), dinput->data<T>());
+      blas.SCAL(input.numel(), beta, dinput->data<T>());
+    }
+    DenseTensor dout_scale = phi::EmptyLike<T, Context>(dev_ctx, dout);
+    blas.VCOPY(dout.numel(), dout.data<T>(), dout_scale.data<T>());
+    blas.SCAL(dout.numel(), alpha, dout_scale.data<T>());
+    MatmulCooDenseGradKernel<T, Context>(dev_ctx, x, y, dout_scale, dx, dy);
   }
-  DenseTensor dout_scale = phi::EmptyLike<T, Context>(dev_ctx, dout);
-  blas.VCOPY(dout.numel(), dout.data<T>(), dout_scale.data<T>());
-  blas.SCAL(dout.numel(), alpha, dout_scale.data<T>());
-  MatmulCooDenseGradKernel<T, Context>(dev_ctx, x, y, dout_scale, dx, dy);
 }
 
 // Backward of "DENSE + CSR @ DENSE -> DENSE"
