@@ -215,7 +215,7 @@ def dtype_to_np_dtype(dtype):
 def get_eager_vjp(func, inputs, kwargs, argnums, cotangents=None, order=2):
     for x in inputs:
         x.stop_gradient = False
-    outputs = func(inputs, kwargs)
+    outputs = func(*inputs, **kwargs)
     return _get_eager_vjp(inputs, argnums, outputs, cotangents, order)
 
 
@@ -269,7 +269,7 @@ def get_static_vjp_program(func, inputs, argnums, kwargs, order):
         )
         input_vars.append(input_var)
         feeds.update({'input_' + str(idx): input.numpy()})
-    outputs = func(input_vars, kwargs)
+    outputs = func(*input_vars, **kwargs)
     outputs = _as_list(outputs)
     # TODO(GGBond8488): Need to be fixed when paddle uses pir by default.
     program, (keys, values) = paddle.base.libpaddle.pir.clone_program(
@@ -340,12 +340,10 @@ def _get_static_vjp_program(inputs, argnums, outputs, feeds, grads_in, order):
     return feeds, outputs, d_inputs, grads_in
 
 
-@prim_scope()
-@prog_scope()
 def check_vjp(
     func,
     args,
-    kwargs=None,
+    kwargs={},
     argnums=None,
     order=2,
     atol=None,
@@ -365,6 +363,22 @@ def check_vjp(
     Raises:
         AssertionError: if vjp do not match.
     """
+    for ad_order in range(2, order + 1):
+        _check_vjp(func, args, kwargs, argnums, ad_order, atol, rtol, eps)
+
+
+@prim_scope()
+@prog_scope()
+def _check_vjp(
+    func,
+    args,
+    kwargs={},
+    argnums=None,
+    order=2,
+    atol=None,
+    rtol=None,
+    eps=EPS,
+):
     args = _as_list(args)
     if argnums is None:
         argnums = _as_list(range(len(args)))
