@@ -820,7 +820,7 @@
 
 - op : dgc_momentum
   inputs :
-    {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam, float mu, bool use_nesterov, str regularization_method, float regularization_coeff, bool multi_precision, float rescale_grad, float rampup_begin_step}
+    {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam, current_step_tensor : current_step, nranks_tensor : nranks}
   outputs :
     {param_out : ParamOut, velocity_out : VelocityOut, master_param_out : MasterParamOut, grad_out : Grad_out}
 
