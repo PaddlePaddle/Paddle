@@ -843,6 +843,12 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     // TODO(chengyanfu): support NHWC data format
     PADDLE_THROW(phi::errors::Unimplemented("Only support NCHW format."));
   }
+  size_t rank = x.shape().size();
+  if (rank != 3 && rank != 4) {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("Only support NCHW format in rank 3 or 4."));
+  }
+
   auto org_dtype = x.dtype();
   Tensor x_cast = x;
 
@@ -850,9 +856,12 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
   if (need_cast) {
     x_cast = cast<T>(x, DataType::FLOAT32);
   }
+  if (rank == 3) {
+    x_cast.unsqueeze<T>(x_cast, {-1});
+  }
   Tensor out, mean_, var_;
-  if (has_dynamic_shape(x.shape())) {
-    Tensor x_dim = shape<T>(x);
+  if (has_dynamic_shape(x_cast.shape())) {
+    Tensor x_dim = shape<T>(x_cast);
     std::vector<int64_t> one_axis(1, 1);
     Tensor x_shape = get_slice<T>(x_dim, 0) * groups;
     Tensor dim_1 = full<T>({1}, -1, x_dim.type());
@@ -870,7 +879,7 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     Tensor res = (x_cast - mean_) * var_inv;
     out = backend::reshape<T>(res, x_dim);
   } else {
-    auto x_dim = x.shape();
+    auto x_dim = x_cast.shape();
     std::vector<int64_t> one_axis(1, 1);
 
     std::vector<int64_t> x_shape{x_dim[0] * groups, -1};
@@ -902,21 +911,24 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     out = out + bias_cast;
   }
   Tensor mean_out, var_out;
-  if (has_dynamic_shape(x.shape())) {
-    Tensor x_dim = shape<T>(x);
+  if (has_dynamic_shape(x_cast.shape())) {
+    Tensor x_dim = shape<T>(x_cast);
     Tensor x_shape = get_slice<T>(x_dim, 0);
     Tensor dim_1 = full<T>({1}, groups, x_shape.type());
     x_shape = concat<T>({x_shape, dim_1});
     mean_out = backend::reshape<T>(mean_, x_shape);
     var_out = backend::reshape<T>(var_, x_shape);
   } else {
-    auto x_dim = x.shape();
+    auto x_dim = x_cast.shape();
     std::vector<int64_t> res_shape{x_dim[0], groups};
     mean_out = reshape<T>(mean_, res_shape);
     var_out = reshape<T>(var_, res_shape);
   }
   if (need_cast) {
     out = cast<T>(out, org_dtype);
+  }
+  if (rank == 3) {
+    out = squeeze<T>(out, {-1});
   }
 
   return std::make_tuple(out, mean_out, var_out);
