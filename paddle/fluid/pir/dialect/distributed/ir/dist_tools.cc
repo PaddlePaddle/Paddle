@@ -46,10 +46,16 @@ void CvtAllInputsToDist(const std::vector<pir::Value>& inputs,
       auto dist_type = DistDenseTensorType::get(ctx, dense_type, mesh_attr);
       value.set_type(dist_type);
       if (auto define_op = value.defining_op()) {
-        if (define_op->num_operands() != 0u || define_op->num_results() != 1u) {
+        if (define_op->num_operands() != 0u) {
           PADDLE_THROW(common::errors::InvalidArgument(
               "Currently only allowed add dist attribue for leaf nodes "
               "operation. The current op is %s",
+              define_op->name()));
+        }
+        if (define_op->num_results() != 1u) {
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "Currently only allowed add dist attribue for operation with "
+              "single output. The current op is %s",
               define_op->name()));
         }
         define_op->set_attribute(
