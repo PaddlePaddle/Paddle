@@ -614,6 +614,7 @@ const std::vector<std::string> kPirGpuPasses{
     "transpose_flatten_concat_fuse_pass"};
 
 const std::vector<std::string> kPirMkldnnPasses{
+    "depthwise_conv_mkldnn_pass",
     "conv2d_bias_fuse_pass",
     "conv2d_transpose_bias_fuse_pass",
     "conv3d_bias_fuse_pass",
