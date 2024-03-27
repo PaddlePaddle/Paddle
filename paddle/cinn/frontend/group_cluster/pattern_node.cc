@@ -16,7 +16,7 @@
 
 namespace cinn::frontend::group_cluster {
 
-PatternNode::PatternNode(const pir::Operation* op)
+PatternNode::PatternNode(pir::Operation* op)
     : sink_op_(op), stmt_pattern_(ConvertToStmtPattern(op)) {}
 
 PatternNode::PatternNode(PatternNodePtr fused_up_node,
@@ -63,7 +63,7 @@ PatternNode::PatternNode(PatternNodePtr fused_up_node,
   }
 }
 
-std::vector<const pir::Operation*> PatternNode::GetOps() const {
+std::vector<pir::Operation*> PatternNode::GetOps() const {
   return GetOpsInPattern(stmt_pattern_);
 }
 

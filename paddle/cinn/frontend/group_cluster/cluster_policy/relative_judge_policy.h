@@ -48,7 +48,7 @@ using ValueDimRelation =
 // ValueDimRelation[in][out] = True; means f(out) = in is related.
 
 static std::optional<ValueDimRelation> CreateOpRelativenessForSpecialOps(
-    const pir::Operation* op) {
+    pir::Operation* op) {
   return {};
 }
 
@@ -61,7 +61,7 @@ static std::vector<ValueDim> GetAllValueDimFromValue(const pir::Value& v) {
   return value_dims;
 }
 
-static std::vector<ValueDim> GetAllInputValueDim(const pir::Operation* op) {
+static std::vector<ValueDim> GetAllInputValueDim(pir::Operation* op) {
   std::vector<ValueDim> value_dims;
   for (const auto& v : op->operands()) {
     value_dims = ConcatVector(value_dims, GetAllValueDimFromValue(v.source()));
@@ -69,7 +69,7 @@ static std::vector<ValueDim> GetAllInputValueDim(const pir::Operation* op) {
   return value_dims;
 }
 
-static std::vector<ValueDim> GetAllOutputValueDim(const pir::Operation* op) {
+static std::vector<ValueDim> GetAllOutputValueDim(pir::Operation* op) {
   std::vector<ValueDim> value_dims;
   for (const auto& v : op->results()) {
     value_dims = ConcatVector(value_dims, GetAllValueDimFromValue(v));
@@ -78,7 +78,7 @@ static std::vector<ValueDim> GetAllOutputValueDim(const pir::Operation* op) {
 }
 
 static ValueDimRelation CreateOpRelativenessForElementWise(
-    const pir::Operation* op) {
+    pir::Operation* op) {
   ValueDimRelation res;
   for (const auto& v : op->operands()) {
     const auto& value_dims = GetAllValueDimFromValue(v.source());
@@ -91,7 +91,7 @@ static ValueDimRelation CreateOpRelativenessForElementWise(
   return res;
 }
 
-static std::vector<size_t> GetNonBroadCastDims(const pir::Operation* op) {
+static std::vector<size_t> GetNonBroadCastDims(pir::Operation* op) {
   // TODO: only static shape here!
   std::vector<size_t> res;
   if (op->name() == "cinn_op.broadcast") {
@@ -113,7 +113,7 @@ static std::vector<size_t> GetNonBroadCastDims(const pir::Operation* op) {
 }
 
 static ValueDimRelation CreateOpRelativenessForBroadcast(
-    const pir::Operation* op) {
+    pir::Operation* op) {
   ValueDimRelation res;
   const auto& in_value = op->operand(0).source();
   const auto& out_value = op->result(0);
@@ -124,7 +124,7 @@ static ValueDimRelation CreateOpRelativenessForBroadcast(
 }
 
 static ValueDimRelation CreateOpRelativenessForDefault(
-    const pir::Operation* op) {
+    pir::Operation* op) {
   ValueDimRelation res;
   for (const auto& out_dim : GetAllOutputValueDim(op)) {
     for (const auto& in_dim : GetAllInputValueDim(op)) {
@@ -134,7 +134,7 @@ static ValueDimRelation CreateOpRelativenessForDefault(
   return res;
 }
 
-static ValueDimRelation GetSingleOpRelation(const pir::Operation* op) {
+static ValueDimRelation GetSingleOpRelation(pir::Operation* op) {
   auto special_result = CreateOpRelativenessForSpecialOps(op);
   if (special_result != std::nullopt) {
     return special_result.value();
@@ -167,10 +167,10 @@ static std::vector<std::pair<ValueDim, ValueDim>> FlattenRelation(
 }
 
 static ValueDimRelation AnalysisIndexExprRelation(
-    const std::vector<const pir::Operation*>& ops) {
+    const std::vector<pir::Operation*>& ops) {
   ValueDimRelation res;
   for (size_t i = ops.size() - 1; i >= 0; --i) {
-    const pir::Operation* op = ops[i];
+    pir::Operation* op = ops[i];
     const auto& value_dim_relation = GetSingleOpRelation(op);
     for (const auto& in_out_pair : FlattenRelation(value_dim_relation)) {
       for (const auto& out_relation : res[in_out_pair.second]) {
@@ -184,7 +184,7 @@ static ValueDimRelation AnalysisIndexExprRelation(
 
 class RelativeJudgePolicy final : public Policy {
  public:
-  RelativeJudgePolicy(const std::vector<const pir::Operation*>& ops,
+  RelativeJudgePolicy(const std::vector<pir::Operation*>& ops,
                       const pir::ShapeConstraintIRAnalysis* shape_analysis)
       : axes_info_(ops, shape_analysis) {
     index_expr_map_ = AnalysisIndexExprRelation(ops);
@@ -202,7 +202,7 @@ class RelativeJudgePolicy final : public Policy {
   std::optional<ReducePattern> GetDownstreamFromCandidate(
       const ReducePattern& upstream,
       const std::vector<ReducePattern>& candidates);
-  bool IsDownstreamStmtDependReduceOp(const pir::Operation* reduce,
+  bool IsDownstreamStmtDependReduceOp(pir::Operation* reduce,
                                       const StmtPattern& downstream);
   bool IsBroadcastEdge(const std::vector<ValueDim>& upstream_out_dims,
                        const std::vector<ValueDim>&);

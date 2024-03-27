@@ -28,7 +28,7 @@ ShardableAxes ShardableAxesInfoManager::ReplaceShardableAxesWithRootName(
 }
 
 ShardableAxesSignature ShardableAxesInfoManager::GetSignature(
-    const pir::Operation* op) {
+    pir::Operation* op) {
   auto result = ShardableAxesSignature();
   auto origin_sig = op_signature_map_[op];
   for (const auto& axes : origin_sig.inputs) {
@@ -57,7 +57,7 @@ std::vector<std::string> CreateNewNamesWithRank(int64_t rank) {
   return result;
 }
 
-ShardableAxesSignature CreateDefaultSignature(const pir::Operation* op) {
+ShardableAxesSignature CreateDefaultSignature(pir::Operation* op) {
   ShardableAxesSignature result = ShardableAxesSignature();
   for (int i = 0; i < op->num_operands(); ++i) {
     result.inputs.emplace_back(
@@ -70,7 +70,7 @@ ShardableAxesSignature CreateDefaultSignature(const pir::Operation* op) {
 }
 
 std::optional<ShardableAxesSignature> CreateSignatureForSpecialOps(
-    const pir::Operation* op) {
+    pir::Operation* op) {
   if (op->isa<cinn::dialect::ReshapeOp>()) {
     return CreateDefaultSignature(op);
   }
@@ -78,7 +78,7 @@ std::optional<ShardableAxesSignature> CreateSignatureForSpecialOps(
 }
 
 ShardableAxesSignature CreateSignatureForReduce(
-    const pir::Operation* reduce_op) {
+    pir::Operation* reduce_op) {
   CHECK_EQ(reduce_op->num_operands(), 1);
   CHECK_EQ(reduce_op->num_results(), 1);
   ShardableAxesSignature result = ShardableAxesSignature();
@@ -106,7 +106,7 @@ ShardableAxesSignature CreateSignatureForReduce(
   return result;
 }
 
-ShardableAxesSignature CreateSignatureForElementWise(const pir::Operation* op) {
+ShardableAxesSignature CreateSignatureForElementWise(pir::Operation* op) {
   ShardableAxesSignature result = ShardableAxesSignature();
 
   int64_t rank = GetRank(op->result(0));
@@ -124,7 +124,7 @@ ShardableAxesSignature CreateSignatureForElementWise(const pir::Operation* op) {
 }
 
 ShardableAxesSignature CreateSignatureForBroadcast(
-    const pir::Operation* op,
+    pir::Operation* op,
     const pir::ShapeConstraintIRAnalysis* shape_analysis) {
   const auto& broad_cast_value = GetBroadcastOpInputOuputValue(op);
   if (!broad_cast_value.has_value()) {
@@ -159,7 +159,7 @@ ShardableAxesSignature CreateSignatureForBroadcast(
 }
 
 ShardableAxesSignature ShardableAxesInfoManager::CreateShardableSignature(
-    const pir::Operation* op) {
+    pir::Operation* op) {
   auto special_result = CreateSignatureForSpecialOps(op);
   if (special_result != std::nullopt) {
     return special_result.value();
@@ -184,7 +184,7 @@ ShardableAxesSignature ShardableAxesInfoManager::CreateShardableSignature(
 }
 
 ShardableAxesInfoManager::ShardableAxesInfoManager(
-    const std::vector<const pir::Operation*>& ops,
+    const std::vector<pir::Operation*>& ops,
     const pir::ShapeConstraintIRAnalysis* shape_analysis)
     : ops_(ops), shape_analysis_(shape_analysis) {
   for (const auto& op : ops) {

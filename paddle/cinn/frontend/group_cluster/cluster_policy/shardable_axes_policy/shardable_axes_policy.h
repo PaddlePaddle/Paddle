@@ -21,7 +21,7 @@ namespace cinn::frontend::group_cluster::policy {
 class ShardableAxesRRFusePolicy final : public Policy {
  public:
   ShardableAxesRRFusePolicy(
-      const std::vector<const pir::Operation*>& ops,         // NOLINT
+      const std::vector<pir::Operation*>& ops,         // NOLINT
       const pir::ShapeConstraintIRAnalysis* shape_analysis)  // NOLINT
       : axes_info_(ops, shape_analysis) {}
   bool CanFuse(const PatternNodePtr& upstream,
@@ -33,7 +33,7 @@ class ShardableAxesRRFusePolicy final : public Policy {
       const ReducePattern& upstream,
       const std::vector<ReducePattern>& candidates);
   ShardableAxesInfoManager axes_info_;
-  bool IsDownstreamStmtDependReduceOp(const pir::Operation* reduce,
+  bool IsDownstreamStmtDependReduceOp(pir::Operation* reduce,
                                       const StmtPattern& downstream);
 };
 

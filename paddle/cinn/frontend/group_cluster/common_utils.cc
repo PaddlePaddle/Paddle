@@ -24,7 +24,7 @@ size_t GetRank(pir::Value value) {
   return value.type().dyn_cast<pir::DenseTensorType>().dims().size();
 }
 
-std::vector<int64_t> GetReduceAxisIdx(const pir::Operation* reduce_op) {
+std::vector<int64_t> GetReduceAxisIdx(pir::Operation* reduce_op) {
   const size_t input_rank = GetRank(reduce_op->operand_source(0));
   const auto& attr_val = reduce_op->attributes().at("dim");
   CHECK(attr_val.isa<::pir::ArrayAttribute>());
@@ -42,13 +42,13 @@ std::vector<int64_t> GetReduceAxisIdx(const pir::Operation* reduce_op) {
   return reduce_axis_idx;
 }
 
-bool GetReduceOpKeepDims(const pir::Operation* reduce_op) {
+bool GetReduceOpKeepDims(pir::Operation* reduce_op) {
   const auto& attr_val = reduce_op->attributes().at("keep_dim");
   CHECK(attr_val.isa<::pir::BoolAttribute>());
   return attr_val.dyn_cast<::pir::BoolAttribute>();
 }
 
-std::string OpsDebugStr(std::vector<const pir::Operation*> ops) {
+std::string OpsDebugStr(std::vector<pir::Operation*> ops) {
   std::stringstream ss;
   pir::IrPrinter printer(ss);
   for (const auto* op : ops) {
@@ -59,7 +59,7 @@ std::string OpsDebugStr(std::vector<const pir::Operation*> ops) {
 }
 
 std::optional<std::pair<pir::Value, pir::Value>> GetBroadcastOpInputOuputValue(
-    const pir::Operation* op) {
+    pir::Operation* op) {
   auto* mut_op = const_cast<pir::Operation*>(op);
   if (op->isa<paddle::dialect::ExpandOp>()) {
     auto expand_op = mut_op->dyn_cast<paddle::dialect::ExpandOp>();
@@ -127,7 +127,7 @@ bool IsUnsupportPattern(const StmtPattern& pattern) {
   return std::holds_alternative<UnsupportPattern>(pattern);
 }
 
-std::vector<const pir::Operation*> GetOpsInPattern(const StmtPattern& pattern) {
+std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern& pattern) {
   return std::visit([](const auto& impl) { return impl.ops(); }, pattern);
 }
 
@@ -140,7 +140,7 @@ std::string StmtPatternDebugStr(const StmtPattern& stmt) {
 }
 
 StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second) {
-  std::vector<const pir::Operation*> ops =
+  std::vector<pir::Operation*> ops =
       MergeVector(GetOpsInPattern(first), GetOpsInPattern(second));
   if (IsUnsupportPattern(first) || IsUnsupportPattern(second)) {
     return UnsupportPattern(ops);
@@ -158,7 +158,7 @@ StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second) {
   }
 }
 
-StmtPattern ConvertToStmtPattern(const pir::Operation* op) {
+StmtPattern ConvertToStmtPattern(pir::Operation* op) {
   const auto& kind = GetOpPatternKind(op);
   if (kind == hlir::framework::kReduction) {
     return ReducePattern({op});

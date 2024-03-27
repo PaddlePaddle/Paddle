@@ -14,6 +14,7 @@
 #pragma once
 
 #include <variant>
+#include <unordered_map>
 
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/compile_error.h"
@@ -123,14 +124,7 @@ struct FusionNode {
 
 bool CheckAllLoopRangeEq(ReduceOp reduce_upper, TrivialOp trivial_down);
 
-std::vector<FusibleOp> TransformReduceLoopRange(const ReduceOp& upstream,
-                                                FusibleOp* downstream);
-
 FusibleOp SinkTrivialLoopAlign(TrivialOp trivial_op, ReduceOp reduce_op);
-
-std::vector<FusibleOp> ReduceTransformRecursive(FusibleOp root_op,
-                                                FusionNode* fusion_tree);
-std::vector<FusibleOp> ReduceTransform(FusionNode* downstream);
 
 FusibleOp CreateFusibleOp(ir::Expr compute_body, OpPatternKind op_pattern);
 
@@ -144,19 +138,12 @@ struct FusionGraph {
 
  private:
   FusionNode* FindTrivialFusibleNode();
-
   void DoTrivialFusion();
-
   void ReduceLoopTranform();
-
   void SplitReduceTransform();
-
   std::vector<ir::Expr> GetExprResults();
-
   void RemoveNode(FusionNode* node);
-
   void AppendNode(FusionNode* node);
-
   FusionNode* FindReduceUpstream(FusionNode* node);
 
  private:
@@ -184,12 +171,19 @@ struct FusionGraph {
     return DownStreamOp(modified_body);
   }
 
+  std::vector<FusibleOp> ReduceTransform(FusionNode* downstream);
+  std::vector<FusibleOp> ReduceTransformRecursive(FusibleOp root_op,
+                                                  FusionNode* fusion_tree);
+  std::vector<FusibleOp> TransformReduceLoopRange(const ReduceOp& upstream,
+                                                  FusibleOp* downstream);
+
  private:
   std::unordered_set<FusionNode*> all_fusion_nodes_;
   std::vector<FusibleOp> fusion_results_;
   std::unordered_set<FusionNode*> entrance_nodes_;
   std::unordered_set<FusionNode*> exit_nodes_;
 
+  std::unordered_map<const ::pir::Operation*, std::vector<int>> sink_trivial_reduce_iter_idx_;
   // std::unordered_map<::pir::Value, ShardableAxes> shardable_axes_;
 };
 

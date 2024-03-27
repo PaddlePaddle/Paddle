@@ -17,7 +17,7 @@
 namespace cinn::frontend::group_cluster::policy {
 
 bool ShardableAxesRRFusePolicy::IsDownstreamStmtDependReduceOp(
-    const pir::Operation* reduce, const StmtPattern& downstream) {
+    pir::Operation* reduce, const StmtPattern& downstream) {
   const auto& values = GetPatternInputValues(downstream);
   for (const auto& value : reduce->results()) {
     if (std::find(values.begin(), values.end(), value) != values.end()) {
@@ -31,7 +31,7 @@ std::optional<ReducePattern>
 ShardableAxesRRFusePolicy::GetDownstreamFromCandidate(
     const ReducePattern& upstream,
     const std::vector<ReducePattern>& candidates) {
-  const pir::Operation* reduce = upstream.GetReduceOp();
+  pir::Operation* reduce = upstream.GetReduceOp();
   for (const auto& candidate : candidates) {
     if (IsDownstreamStmtDependReduceOp(reduce, candidate)) {
       return candidate;
@@ -67,7 +67,7 @@ bool ShardableAxesRRFusePolicy::ReduceTreeGrownCanMerge(
   }
   const pir::Value& reduce_out_value =
       upstream_tree.GetRootPattern().GetReduceOp()->result(0);
-  const pir::Operation* downstream_reduce_op =
+  pir::Operation* downstream_reduce_op =
       maybe_downstream_op.value().GetReduceOp();
   const auto& reduce_names =
       GetReduceAxesName(axes_info_.GetSignature(downstream_reduce_op));

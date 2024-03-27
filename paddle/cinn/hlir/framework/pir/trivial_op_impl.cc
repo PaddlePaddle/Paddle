@@ -16,6 +16,8 @@
 
 #include <variant>
 
+#include "paddle/cinn/frontend/group_cluster/group_cluster.h"
+
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/compile_error.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_util.h"
@@ -385,7 +387,7 @@ bool FusionNode::IsTrivial() const {
 
 bool CheckAllLoopRangeEq(ReduceOp reduce_upper, TrivialOp trivial_down) {}
 
-std::vector<FusibleOp> TransformReduceLoopRange(const ReduceOp& upstream,
+std::vector<FusibleOp> FusionGraph::TransformReduceLoopRange(const ReduceOp& upstream,
                                                 FusibleOp* downstream) {
   // downstream will be mutated by this transform.
   VLOG(4) << "RRTransform begin";
@@ -410,11 +412,23 @@ std::vector<FusibleOp> TransformReduceLoopRange(const ReduceOp& upstream,
     return result;
   };
 
+  const auto get_new_reduce_output_iters = [&](const FusibleOp& downstream) -> std::vector<ir::Var>{
+    struct Visitor {
+      std::vector<ir::Var> operator()(const ReduceOp& op) {
+        return GetOutputIters(op);
+      }
+      std::vector<ir::Var> operator()(const TrivialOp& op) {
+        auto output_iter= GetOutputIters(op);
+      }
+    };
+    return std::visit(Visitor(), downstream);
+  };
+
   for (const auto& load_tensor : load_upstream_expr) {
     const auto& new_tensor =
         create_new_tensor(load_tensor.As<ir::Load>()->tensor.as_tensor_ref());
     ir::Expr new_reduce = CreateReduceExpr(
-        GetOutputIters(*downstream),
+        get_new_reduce_output_iters(*downstream),
         GetReduceIters(upstream),
         GetInitExpr(upstream),
         ComposeUtils::CopyedReplaceExpr(GetComputeBody(upstream),
@@ -461,7 +475,7 @@ FusibleOp SinkTrivialLoopAlign(TrivialOp trivial_op, ReduceOp reduce_op) {
   return TrivialOp(new_trivial_body);
 }
 
-std::vector<FusibleOp> ReduceTransformRecursive(FusibleOp root_op,
+std::vector<FusibleOp> FusionGraph::ReduceTransformRecursive(FusibleOp root_op,
                                                 FusionNode* fusion_tree) {
   VLOG(4) << "ReduceTransformRecursive: " << *_GetFuncBodyPointer(root_op);
   std::vector<FusibleOp> result;
@@ -486,7 +500,7 @@ std::vector<FusibleOp> ReduceTransformRecursive(FusibleOp root_op,
   return result;
 }
 
-std::vector<FusibleOp> ReduceTransform(FusionNode* downstream) {
+std::vector<FusibleOp> FusionGraph::ReduceTransform(FusionNode* downstream) {
   if (downstream->IsTrivial() && downstream->upstream.empty()) {
     return {downstream->fusible_op};
   }
@@ -772,13 +786,24 @@ FusionNode* FusionGraph::FindReduceUpstream(FusionNode* node) {
 std::vector<ir::Expr> OperationFusion(
     const std::vector<::pir::Operation*>& ops,
     const std::vector<ir::Expr>& op_compute_bodies) {
-  trivial_fusion_detail::FusionGraph graph =
-      trivial_fusion_detail::FusionGraph(ops, op_compute_bodies);
-  auto output = graph.DoFusion();
-  VLOG(4) << "Fusion Result: output size is " << output.size();
-  for (const auto& expr : output) {
-    VLOG(4) << expr;
+
+  auto frontend_cluster_result = cinn::frontend::ClusterOps(ops);
+  for (const auto& frontend_node: frontend_cluster_result){
+
+    if (frontend_node->IsReduceTrivial()){
+      //TODO
+      sink_trivial_reduce_iter_idx_[frontend_node->sink_op_] = Getxxx(frontend_node);
+    }
+
+    trivial_fusion_detail::FusionGraph graph =
+        trivial_fusion_detail::FusionGraph(ops, op_compute_bodies);
+    auto output = graph.DoFusion();
+    VLOG(4) << "Fusion Result: output size is " << output.size();
+    for (const auto& expr : output) {
+      VLOG(4) << expr;
+    }
   }
+
   return output;
 }
 

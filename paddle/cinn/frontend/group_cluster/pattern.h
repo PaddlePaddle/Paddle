@@ -21,18 +21,18 @@
 namespace cinn::frontend::group_cluster {
 
 struct TrivialPattern {
-  explicit TrivialPattern(const std::vector<const pir::Operation*>& ops)
+  explicit TrivialPattern(const std::vector<pir::Operation*>& ops)
       : ops_(ops) {}
-  std::vector<const pir::Operation*> ops_;
-  std::vector<const pir::Operation*> ops() const { return ops_; }
+  std::vector<pir::Operation*> ops_;
+  std::vector<pir::Operation*> ops() const { return ops_; }
 };
 
 struct ReducePattern {
-  explicit ReducePattern(const std::vector<const pir::Operation*>& ops)
+  explicit ReducePattern(const std::vector<pir::Operation*>& ops)
       : ops_(ops) {}
-  std::vector<const pir::Operation*> ops_;
-  std::vector<const pir::Operation*> ops() const { return ops_; }
-  const pir::Operation* GetReduceOp() const { return ops_.back(); }
+  std::vector<pir::Operation*> ops_;
+  std::vector<pir::Operation*> ops() const { return ops_; }
+  pir::Operation* GetReduceOp() const { return ops_.back(); }
 };
 
 struct ReduceTreePattern {
@@ -41,8 +41,8 @@ struct ReduceTreePattern {
       : reduce_patterns_(v), root_(root) {}
   std::vector<ReducePattern> reduce_patterns_;
   const ReducePattern& GetRootPattern() const { return root_; }
-  std::vector<const pir::Operation*> ops() const {
-    std::vector<const pir::Operation*> ops;
+  std::vector<pir::Operation*> ops() const {
+    std::vector<pir::Operation*> ops;
     for (const auto& reduce_pattern : reduce_patterns_) {
       for (const auto& op : reduce_pattern.ops()) {
         ops.push_back(op);
@@ -61,14 +61,14 @@ struct ReduceTreePlusTrivialPattern {
       : tree(tree), sink_trivial(sink_trivial) {}
   ReduceTreePattern tree;
   TrivialPattern sink_trivial;
-  std::vector<const pir::Operation*> ops() const { return {}; }
+  std::vector<pir::Operation*> ops() const { return {}; }
 };
 
 struct UnsupportPattern {
-  explicit UnsupportPattern(const std::vector<const pir::Operation*>& ops)
+  explicit UnsupportPattern(const std::vector<pir::Operation*>& ops)
       : ops_(ops) {}
-  std::vector<const pir::Operation*> ops_;
-  std::vector<const pir::Operation*> ops() const { return ops_; }
+  std::vector<pir::Operation*> ops_;
+  std::vector<pir::Operation*> ops() const { return ops_; }
 };
 
 // UnsupportedPattern can't fuse with any pattern

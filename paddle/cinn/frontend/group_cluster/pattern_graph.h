@@ -21,10 +21,10 @@ namespace cinn::frontend::group_cluster {
 
 class PatternGraph {
  public:
-  PatternGraph(const std::vector<const pir::Operation*>& ops,
+  PatternGraph(const std::vector<pir::Operation*>& ops,
                const policy::PolicyManager policy_manager);
 
-  std::vector<std::vector<const pir::Operation*>> ClusterOps();
+  std::unordered_set<PatternNodePtr> ClusterOps();
 
  private:
   void SinkTrivialPattern();

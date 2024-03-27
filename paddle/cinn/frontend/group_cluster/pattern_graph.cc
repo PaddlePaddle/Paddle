@@ -16,20 +16,14 @@
 
 namespace cinn::frontend::group_cluster {
 
-std::vector<std::vector<const pir::Operation*>> PatternGraph::ClusterOps() {
+std::unordered_set<PatternNodePtr> PatternGraph::ClusterOps() {
   SinkTrivialPattern();
   // ReducePattern -> ReduceTreePattern
   ReduceLiftReduceTree();
   ReduceTreeGrown();
   // ReduceTreePattern + TrivialPattern fusion.
   ReduceTree_Trivial_Fusion();
-  // TODO(wuzhanfei) need sort here, or do not return from all_pattern_nodes_
-  std::vector<std::vector<const pir::Operation*>> result;
-  std::transform(all_pattern_nodes_.begin(),
-                 all_pattern_nodes_.end(),
-                 std::back_inserter(result),
-                 [](const PatternNodePtr node) { return node->GetOps(); });
-  return result;
+  return all_pattern_nodes_;
 }
 
 void PatternGraph::SinkTrivialPattern() {
@@ -124,10 +118,10 @@ void PatternGraph::ReduceTree_Trivial_Fusion() {
   }
 }
 
-PatternGraph::PatternGraph(const std::vector<const pir::Operation*>& ops,
+PatternGraph::PatternGraph(const std::vector<pir::Operation*>& ops,
                            const policy::PolicyManager policy_manager)
     : policy_manager_(policy_manager) {
-  std::unordered_map<const pir::Operation*, PatternNodePtr> op_to_node_map;
+  std::unordered_map<pir::Operation*, PatternNodePtr> op_to_node_map;
 
   for (const auto& op : ops) {
     PatternNodePtr node = std::make_shared<PatternNode>(op);
@@ -136,7 +130,7 @@ PatternGraph::PatternGraph(const std::vector<const pir::Operation*>& ops,
     node->sink_op_ = op;
   }
 
-  for (const pir::Operation* op : ops) {
+  for (pir::Operation* op : ops) {
     PatternNodePtr cur_node = op_to_node_map[op];
 
     // add upstream nodes
