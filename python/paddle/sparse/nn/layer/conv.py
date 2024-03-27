@@ -170,6 +170,7 @@ class _Conv2D(Layer):
         weight_attr=None,
         bias_attr=None,
         data_format="NHWC",
+        backend=None,
     ):
         super().__init__()
         assert (
@@ -183,11 +184,16 @@ class _Conv2D(Layer):
         self._data_format = data_format
         self._subm = subm
         self._key = key
+        self._backend = backend
 
         assert (
             padding_mode == 'zeros'
         ), "Currently, only support padding_mode='zeros'"
         assert groups == 1, "Currently, only support groups=1"
+        assert backend in [
+            None,
+            'igemm',
+        ], "The value of 'backend' in Conv3D should be None or 'igemm'."
 
         valid_format = {'NHWC'}
         if data_format not in valid_format:
@@ -228,18 +234,38 @@ class _Conv2D(Layer):
         )
 
     def forward(self, x):
-        out = F.conv._conv2d(
-            x,
-            self.weight,
-            bias=self.bias,
-            stride=self._stride,
-            padding=self._updated_padding,
-            dilation=self._dilation,
-            groups=self._groups,
-            subm=self._subm,
-            key=self._key,
-            data_format=self._data_format,
-        )
+        if self._backend is None:
+            out = F.conv._conv2d(
+                x,
+                self.weight,
+                bias=self.bias,
+                stride=self._stride,
+                padding=self._updated_padding,
+                dilation=self._dilation,
+                groups=self._groups,
+                subm=self._subm,
+                key=self._key,
+                data_format=self._data_format,
+            )
+        elif self._backend == 'igemm':
+            out = F.conv._conv2d_igemm(
+                x,
+                self.weight,
+                bias=self.bias,
+                stride=self._stride,
+                padding=self._updated_padding,
+                dilation=self._dilation,
+                groups=self._groups,
+                subm=self._subm,
+                key=self._key,
+                data_format=self._data_format,
+            )
+        else:
+            raise ValueError(
+                "The value of 'backend' in Conv2D should be None or 'igemm', but got {}.".format(
+                    self._backend
+                )
+            )
         return out
 
     def extra_repr(self):
@@ -792,6 +818,7 @@ class SubmConv2D(_Conv2D):
         weight_attr=None,
         bias_attr=None,
         data_format="NHWC",
+        backend=None,
     ):
         super().__init__(
             in_channels,
@@ -807,4 +834,5 @@ class SubmConv2D(_Conv2D):
             weight_attr=weight_attr,
             bias_attr=bias_attr,
             data_format=data_format,
+            backend=backend,
         )

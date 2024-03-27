@@ -946,25 +946,6 @@ __global__ void __launch_bounds__(128) conv_forward_cuda_setting3_mode0_f32f32f3
    }
 }
 
-__global__ void rearange_kernel(int num_node, const int* in_indices, int* out_indices) {
-  int idx = threadIdx.x + blockIdx.x * blockDim.x;
-  int4 vec;
-  if (idx < num_node) {
-    vec.x = in_indices[idx + num_node * 1];
-    vec.y = in_indices[idx + num_node * 2];
-    vec.z = in_indices[idx + num_node * 3];
-    vec.w = in_indices[idx + num_node * 0];
-    reinterpret_cast<int4*>(out_indices)[idx] = vec;
-  }
-}
-
-void rearange_indices(const phi::GPUContext& dev_ctx, const phi::DenseTensor& in_indices, phi::DenseTensor* out_indices) {
-  auto num_node = in_indices.dims()[1];
-  auto num_idx = in_indices.dims()[0];
-  assert(num_idx == 4 && out_indices->dims()[0] == num_node && out_indices->dims()[1] == num_idx);
-
-  rearange_kernel<<<(num_node + 127) / 128, 128, 0, dev_ctx.stream()>>>(num_node, in_indices.data<int>(), out_indices->data<int>());
-}
 
 void conv_forward_implicit_gemm_cuda(
     const phi::GPUContext& dev_ctx,
