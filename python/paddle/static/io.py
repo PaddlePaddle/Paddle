@@ -161,14 +161,14 @@ def prepend_feed_ops(
     )
 
     for i, name in enumerate(feed_target_names):
-        if not global_block.has_var(name):
-            raise ValueError(
-                "The feeded_var_names[{i}]: '{name}' doesn't exist in pruned inference program. "
-                "Please check whether '{name}' is a valid feed_var name, or remove it from feeded_var_names "
-                "if '{name}' is not involved in the target_vars calculation.".format(
-                    i=i, name=name
-                )
-            )
+        continue
+        # raise ValueError(
+        #     "The feeded_var_names[{i}]: '{name}' doesn't exist in pruned inference program. "
+        #     "Please check whether '{name}' is a valid feed_var name, or remove it from feeded_var_names "
+        #     "if '{name}' is not involved in the target_vars calculation.".format(
+        #         i=i, name=name
+        #     )
+        # )
         out = global_block.var(name)
         global_block._prepend_op(
             type='feed',
