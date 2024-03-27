@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import test_op_translator
@@ -21,13 +22,91 @@ from paddle.base import core, unique_name
 from paddle.base.layer_helper import LayerHelper
 
 
+def init_communicator(block, rank, ranks, ring_id):
+    eps = os.environ['PADDLE_TRAINER_ENDPOINTS']
+    eps = [ep.strip() for ep in eps.split(",") if ep.strip()]
+    cur_ep = eps[rank]
+    other_eps = [eps[r] for r in ranks if r != rank]
+
+    local_rank = ranks.index(rank)
+    comm_var_name = unique_name.generate('comm_id')
+    comm_id_var = block.create_var(
+        name=comm_var_name, persistable=True, type=core.VarDesc.VarType.RAW
+    )
+    if core.is_compiled_with_cuda():
+        block.append_op(
+            type='c_gen_nccl_id',
+            inputs={},
+            outputs={'Out': comm_id_var},
+            attrs={
+                'rank': local_rank,
+                'endpoint': cur_ep,
+                'other_endpoints': other_eps,
+                'ring_id': ring_id,
+            },
+        )
+    elif core.is_compiled_with_xpu():
+        block.append_op(
+            type='c_gen_bkcl_id',
+            inputs={},
+            outputs={'Out': comm_id_var},
+            attrs={
+                'rank': local_rank,
+                'endpoint': cur_ep,
+                'other_endpoints': other_eps,
+                'ring_id': ring_id,
+            },
+        )
+    elif (
+        paddle.distributed.ParallelEnv().device_type
+        in paddle.device.get_all_custom_device_type()
+    ):
+        block.append_op(
+            type='c_gen_xccl_id',
+            inputs={},
+            outputs={'Out': comm_id_var},
+            attrs={
+                'rank': local_rank,
+                'endpoint': cur_ep,
+                'other_endpoints': other_eps,
+                'ring_id': ring_id,
+            },
+        )
+    block.append_op(
+        type='c_comm_init',
+        inputs={'X': comm_id_var},
+        outputs={},
+        attrs={
+            'nranks': len(ranks),
+            'rank': local_rank,
+            'ring_id': ring_id,
+            'endpoints': ','.join(eps),
+        },
+    )
+    tmp_var = block.create_var(name=unique_name.generate('tmp'))
+    block.append_op(
+        type='fill_constant', outputs={'Out': tmp_var}, attrs={'value': 1}
+    )
+    block.append_op(
+        type='c_allreduce_sum',
+        inputs={'X': tmp_var},
+        outputs={'Out': tmp_var},
+        attrs={'ring_id': ring_id, 'use_calc_stream': True},
+    )
+    block.append_op(
+        type='c_sync_calc_stream',
+        inputs={'X': tmp_var},
+        outputs={'Out': tmp_var},
+    )
+    return ring_id
+
+
 class TestDistributedFusedLambOpTranslator(test_op_translator.TestOpTranslator):
     def setUp(self):
         super().setUp()
         assert (
             not paddle.in_dynamic_mode()
         ), "DistributedFusedLamb does not support dygraph mode"
-        self.name = None
         self._beta1 = 0.9
         self._beta2 = 0.999
         self._epsilon = 1e-6
@@ -36,16 +115,12 @@ class TestDistributedFusedLambOpTranslator(test_op_translator.TestOpTranslator):
         self._alignment = 128
         self._clip_after_allreduce = True
         self._is_grad_scaled_by_nranks = True
-        self._exclude_from_weight_decay_fn = None
         self._scale = None
         self._use_master_param_norm = True
         self._gradient_accumulation_steps = 1
         self._use_master_acc_grad = True
-        self._nproc_per_node = None
         self._use_hierarchical_allreduce = False
-
         self.helper = LayerHelper("distributed_fused_lamb")
-        self._supports_check_nan_inf = True  # very import flag for AMP
 
         main_block = self.helper.main_program.global_block()
         self._found_inf = main_block.create_var(
@@ -94,16 +169,6 @@ class TestDistributedFusedLambOpTranslator(test_op_translator.TestOpTranslator):
             persistable=True,
         )
 
-    def _get_or_create_scale(self):
-        if self._scale is None:
-            self._scale = self._create_scale_from_constant(1.0)
-        return self._scale
-
-    def _get_or_create_step(self):
-        if self._step is None:
-            self._step = self._create_persistable_var('step', dtype='int64')
-        return self._step
-
     def append_op(self):
         self.op_type = "distributed_fused_lamb"
         params = [paddle.ones(shape=(1, 1), dtype="float32")]
@@ -119,11 +184,6 @@ class TestDistributedFusedLambOpTranslator(test_op_translator.TestOpTranslator):
         fp16_fused_grad = self._create_persistable_var(
             "fp16_fused_grad", dtype="float16"
         )
-
-        master_params = []
-        for p in params:
-            master_p = self._create_persistable_var("master_weight")
-            master_params.append(master_p)
 
         moment1 = self._create_persistable_var("moment1")
         moment1.is_distributed = True
@@ -160,27 +220,30 @@ class TestDistributedFusedLambOpTranslator(test_op_translator.TestOpTranslator):
         ]
         acc_step = [self._create_persistable_var("acc_step", dtype="int64")]
 
-        scale = self._create_scale_from_constant()
+        scale = self._create_scale_from_constant(1.0)
 
         step = self._create_persistable_var('step', dtype='int64')
 
         ring_ids = []
+        startup_block = self.helper.startup_program.global_block()
+        ring_id = init_communicator(startup_block, rank, list(range(nranks)), 0)
+        ring_ids.append(ring_id)
 
         attrs = {
-            "weight_decay": self._weight_decay,
-            "beta1": self._beta1,
-            "beta2": self._beta2,
-            "epsilon": self._epsilon,
-            "max_global_grad_norm": self._max_global_grad_norm,
-            "clip_after_allreduce": self._clip_after_allreduce,
+            "weight_decay": 0.01,
+            "beta1": 0.9,
+            "beta2": 0.999,
+            "epsilon": 1e-6,
+            "max_global_grad_norm": -1.0,
+            "clip_after_allreduce": True,
             "rank": rank,
             "nranks": nranks,
             "ring_ids": ring_ids,
-            "use_master_param_norm": self._use_master_param_norm,
-            "is_grad_scaled_by_nranks": self._is_grad_scaled_by_nranks,
-            "acc_steps": self._gradient_accumulation_steps,
-            "use_master_acc_grad": self._use_master_acc_grad,
-            "use_hierarchical_allreduce": self._use_hierarchical_allreduce,
+            "use_master_param_norm": True,
+            "is_grad_scaled_by_nranks": True,
+            "acc_steps": 1,
+            "use_master_acc_grad": True,
+            "use_hierarchical_allreduce": False,
         }
 
         helper = LayerHelper(self.op_type)
