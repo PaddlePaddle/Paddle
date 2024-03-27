@@ -641,7 +641,12 @@ class Engine:
         # Step 1.2: pir backward
         if mode != "predict" and self._loss:
             loss = dist_program.get_output_value_by_name(self._loss_names[0])
-            paddle.autograd.ir_backward.append_backward(loss)
+            if loss.initialized():
+                paddle.autograd.ir_backward.append_backward(loss)
+            else:
+                self._logger.info(
+                    "loss value is not found, skip append backward."
+                )
         # TODO(winter-wang) Step 1.3:  adapot opt.minimize() for pir-auto-parallel
         # with program_guard(dist_program):
         #     ptimizer_ops = self._optimizer.apply_gradients(params_grads)
