@@ -39,10 +39,13 @@ class AutoGrowthBestFitAllocatorV2 : public AutoGrowthBestFitAllocator {
 
  protected:
   phi::Allocation *AllocateImpl(size_t size) override;
+  void FreeImpl(phi::Allocation *allocation) override;
+  void PrintChunks();
 
  private:
   platform::CUDAPlace place_;
   bool is_first_switch_to_regular_{true};
+  bool warmup_done_{false};
 };
 
 class AutoGrowthBestFitAllocatorV2State {
@@ -51,9 +54,14 @@ class AutoGrowthBestFitAllocatorV2State {
 
   ~AutoGrowthBestFitAllocatorV2State() {}
 
-  void SetWarmup(bool warmup) { is_warmup_ = warmup; }
+  void SetWarmup(bool warmup) {
+    is_warmup_ = warmup;
+    warmup_count_++;
+  }
 
   bool IsWarmup() { return is_warmup_; }
+
+  int WarmupCount() { return warmup_count_; }
 
   static AutoGrowthBestFitAllocatorV2State &GetInstance() {
     static AutoGrowthBestFitAllocatorV2State instance;
@@ -62,6 +70,7 @@ class AutoGrowthBestFitAllocatorV2State {
 
  private:
   bool is_warmup_{true};
+  int warmup_count_{0};
 };
 
 }  // namespace allocation

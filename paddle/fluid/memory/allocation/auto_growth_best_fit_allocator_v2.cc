@@ -29,9 +29,17 @@ DECLARE_bool(free_idle_chunk);
 DECLARE_bool(free_when_no_cache_hit);
 
 PADDLE_DEFINE_EXPORTED_bool(
-    free_idel_when_switch_to_normal,
+    autogrowth_bestfit_v2_free_idel_when_switch_to_normal,
     false,
     "Whether to free idel when switch to normal auto growth.");
+
+PADDLE_DEFINE_EXPORTED_int(autogrowth_bestfit_v2_warmup_steps,
+                           1,
+                           "Warmup step count.");
+
+PADDLE_DEFINE_EXPORTED_int(autogrowth_bestfit_v2_dbg_level,
+                           0,
+                           "Print dbg info level.");
 
 namespace paddle {
 namespace memory {
@@ -60,7 +68,9 @@ phi::Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(
   std::lock_guard<SpinLock> guard(spinlock_);
 
   BlockIt block_it;
-  if (AutoGrowthBestFitAllocatorV2State::GetInstance().IsWarmup()) {
+  if (!warmup_done_ &&
+      AutoGrowthBestFitAllocatorV2State::GetInstance().WarmupCount() <
+          FLAGS_autogrowth_bestfit_v2_warmup_steps) {
     auto iter = free_blocks_.lower_bound(std::make_pair(size, nullptr));
     if (iter != free_blocks_.end() && iter->second->size_ >= unaligned_size &&
         iter->second->size_ <= size) {
@@ -70,25 +80,16 @@ phi::Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(
       VLOG(10) << "Allocate " << size << " bytes from chunk size "
                << block_it->size_ << " by strict_matching_state.";
     } else {
-      size_t actual_avail, actual_total;
-      {
-        platform::CUDADeviceGuard guard(place_.device);
-#ifdef PADDLE_WITH_HIP
-        auto result = hipMemGetInfo(&actual_avail, &actual_total);
-#else
-        auto result = cudaMemGetInfo(&actual_avail, &actual_total);
-#endif
-        if (result != gpuSuccess) {
-          actual_avail = 0;
+      try {
+        chunks_.emplace_back(static_unique_ptr_cast<Allocation>(
+            underlying_allocator_->Allocate(size)));
+      } catch (BadAlloc &ex) {
+        if (FLAGS_autogrowth_bestfit_v2_dbg_level > 0) {
+          std::cout << "warmup mem full" << std::endl;
         }
+        warmup_done_ = true;
+        throw ex;
       }
-
-      if (actual_avail < size) {
-        FreeIdleChunks();
-      }
-
-      chunks_.emplace_back(static_unique_ptr_cast<Allocation>(
-          underlying_allocator_->Allocate(size)));
 
       auto *chunk = &(*chunks_.rbegin());
       size = chunk->allocation_->size();
@@ -100,11 +101,22 @@ phi::Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(
               << static_cast<void *>(p) << ") by strict_matching_state.";
     }
   } else {
-    if (is_first_switch_to_regular_ && FLAGS_free_idel_when_switch_to_normal) {
-      FreeIdleChunks();
-      DEVICE_MEMORY_STAT_RESET_PEAK(Reserved, place_.device);
+    if (is_first_switch_to_regular_) {
+      if (FLAGS_autogrowth_bestfit_v2_free_idel_when_switch_to_normal) {
+        FreeIdleChunks();
+        DEVICE_MEMORY_STAT_RESET_PEAK(Reserved, place_.device);
+      }
+      if (FLAGS_autogrowth_bestfit_v2_dbg_level > 0) {
+        std::cout
+            << "switch to regular, warmup_done = " << warmup_done_
+            << ", warmup_steps = "
+            << AutoGrowthBestFitAllocatorV2State::GetInstance().WarmupCount()
+            << std::endl;
+        PrintChunks();
+      }
       is_first_switch_to_regular_ = false;
     }
+
     auto iter = free_blocks_.lower_bound(std::make_pair(size, nullptr));
 
     if (iter != free_blocks_.end()) {
@@ -127,16 +139,19 @@ phi::Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(
         block_it->is_free_ = false;
       }
     } else {
-      if (FLAGS_free_when_no_cache_hit) {
-        FreeIdleChunks();
-      }
       size_t realloc_size = std::max(size, chunk_size_);
+      if (FLAGS_autogrowth_bestfit_v2_dbg_level > 0) {
+        std::cout << "auto growth try alloc " << realloc_size << std::endl;
+        PrintChunks();
+      }
 
       try {
         chunks_.emplace_back(static_unique_ptr_cast<Allocation>(
             underlying_allocator_->Allocate(realloc_size)));
       } catch (BadAlloc &ex) {
-        if (FLAGS_free_when_no_cache_hit) throw ex;
+        if (FLAGS_autogrowth_bestfit_v2_dbg_level > 0) {
+          std::cout << "auto growth try alloc OOM, try free idel" << std::endl;
+        }
         FreeIdleChunks();
         chunks_.emplace_back(static_unique_ptr_cast<Allocation>(
             underlying_allocator_->Allocate(realloc_size)));
@@ -163,7 +178,84 @@ phi::Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(
   ++total_alloc_times_;
   total_alloc_size_ += size;
   VLOG(10) << "Alloc " << block_it->size_ << " bytes, ptr = " << block_it->ptr_;
+  if (FLAGS_autogrowth_bestfit_v2_dbg_level > 1) {
+    std::cout << "Alloc " << block_it->size_
+              << " bytes, ptr = " << block_it->ptr_ << std::endl;
+  }
+
   return new BlockAllocation(block_it);
+}
+
+void AutoGrowthBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
+  platform::RecordEvent record("AutoGrowthBestFitAllocator::Free",
+                               platform::TracerEventType::UserDefined,
+                               9 /*level*/);
+  VLOG(10) << "Free " << allocation->size()
+           << " bytes, ptr = " << allocation->ptr();
+  if (FLAGS_autogrowth_bestfit_v2_dbg_level > 1) {
+    std::cout << "Free " << allocation->size()
+              << " bytes, ptr = " << allocation->ptr() << std::endl;
+  }
+
+  std::lock_guard<SpinLock> guard(spinlock_);
+  auto block_it = static_cast<BlockAllocation *>(allocation)->block_it_;
+  auto &blocks = block_it->chunk_->blocks_;
+
+  total_free_times_ += 1;
+  total_free_size_ += block_it->size_;
+
+  block_it->is_free_ = true;
+
+  if (block_it != blocks.begin()) {
+    auto prev_it = block_it;
+    --prev_it;
+
+    if (prev_it->is_free_) {
+      free_blocks_.erase(std::make_pair(prev_it->size_, prev_it->ptr_));
+      prev_it->size_ += block_it->size_;
+      blocks.erase(block_it);
+      block_it = prev_it;
+    }
+  }
+
+  auto next_it = block_it;
+  ++next_it;
+
+  if (next_it != blocks.end() && next_it->is_free_) {
+    free_blocks_.erase(std::make_pair(next_it->size_, next_it->ptr_));
+    block_it->size_ += next_it->size_;
+    blocks.erase(next_it);
+  }
+
+  free_blocks_.emplace(std::make_pair(block_it->size_, block_it->ptr_),
+                       block_it);
+
+  delete allocation;
+}
+
+void AutoGrowthBestFitAllocatorV2::PrintChunks() {
+  size_t totol_free = 0;
+  for (auto &c : chunks_) {
+    std::stringstream ss_f;
+    std::stringstream ss_nf;
+    size_t tmp = 0;
+    size_t tmp2 = 0;
+    for (auto &l : c.blocks_) {
+      if (l.is_free_) {
+        ss_f << "(" << l.ptr_ << "," << l.size_ << "),";
+        tmp += l.size_;
+      } else {
+        ss_nf << "(" << l.ptr_ << "," << l.size_ << "),";
+        tmp2 += l.size_;
+      }
+    }
+    totol_free += tmp;
+    std::cout << "Chunk FreeSize: " << tmp << ", "
+              << "AllocedSize: " << tmp2 << ", Free: " << ss_f.str()
+              << "Alloced: " << ss_nf.str() << "Chunk end";
+  }
+  std::cout << std::endl;
+  std::cout << "totol_free = " << totol_free << std::endl;
 }
 
 }  // namespace allocation
