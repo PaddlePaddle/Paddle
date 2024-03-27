@@ -62,7 +62,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
 
   bool Initialize(pir::IrContext* context) override {
     PADDLE_ENFORCE_EQ(
-        Has(pir::kPlaceAttr),
+        Has(pir::Pass::kPlaceAttr),
         true,
         phi::errors::InvalidArgument(
             "Pass initialize failed."
@@ -77,7 +77,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
             "required!"
             "Use Set method to set the scope attribute."));
 
-    place_ = Get<phi::Place>(pir::kPlaceAttr);
+    place_ = Get<phi::Place>(pir::Pass::kPlaceAttr);
     precision_mode_ = Get<phi::DataType>("__mixed_precision_mode__");
     context_ = context;
     enable_low_precision_io_ = false;
