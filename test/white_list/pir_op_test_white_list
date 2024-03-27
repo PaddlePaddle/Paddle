@@ -115,6 +115,7 @@ test_fused_adam_op
 test_fused_attention_op
 test_fused_attention_op_api
 test_fused_bias_dropout_residual_layer_norm_op
+test_fused_conv2d_add_act_op
 test_fused_fc_elementwise_layernorm_op
 test_fused_feedforward_op
 test_fused_gate_attention_op
@@ -222,6 +223,7 @@ test_qr_op
 test_randint_op
 test_randperm_op
 test_range
+test_rank_attention_op
 test_reduce_op
 test_reduce_op_static_build
 test_repeat_interleave_op

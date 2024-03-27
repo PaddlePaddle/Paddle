@@ -982,6 +982,24 @@ class SubstituteDimExprHelper final {
 
   template <typename T>
   std::optional<DimExpr> SubstituteVariadic(const T& dim_expr) {
+    auto opt_result = SubstituteEntireExpr(dim_expr);
+
+    if (opt_result.has_value()) {
+      if (opt_result->template isa<T>()) {
+        auto new_result =
+            SubstituteSubOperands(opt_result->template dyn_cast<T>());
+        if (new_result.has_value()) {
+          return new_result;
+        }
+      }
+      return opt_result;
+    } else {
+      return SubstituteSubOperands(dim_expr);
+    }
+  }
+
+  template <typename T>
+  std::optional<DimExpr> SubstituteEntireExpr(const T& dim_expr) {
     const auto& operands = *(dim_expr.operands);
     List<DimExpr> substituted_operands{};
     size_t replace_cnt = 0;
@@ -993,7 +1011,38 @@ class SubstituteDimExprHelper final {
                                           : operand);
     }
     if (replace_cnt == 0) return std::nullopt;
-    return T{substituted_operands};
+    return SimplifyDimExpr(T{substituted_operands});
+  }
+
+  template <typename T>
+  std::optional<DimExpr> SubstituteSubOperands(const T& dim_expr) {
+    const std::unordered_set<DimExpr> operands_set{dim_expr.operands->begin(),
+                                                   dim_expr.operands->end()};
+
+    auto CanReplaceSubOperands = [&operands_set](const T& dim_expr) {
+      for (const auto& operand : *dim_expr.operands) {
+        if (operands_set.find(operand) == operands_set.end()) return false;
+      }
+      return true;
+    };
+
+    for (const auto& kv : pattern_to_replacement_) {
+      if (!kv.first.isa<T>()) continue;
+      const auto& dim_expr_pattern = kv.first.dyn_cast<T>();
+      if (!CanReplaceSubOperands(dim_expr_pattern)) continue;
+
+      List<DimExpr> ret_operands{kv.second};
+      for (const auto& operand : operands_set) {
+        if (std::find(dim_expr_pattern.operands->begin(),
+                      dim_expr_pattern.operands->end(),
+                      operand) == dim_expr_pattern.operands->end()) {
+          ret_operands->push_back(operand);
+        }
+      }
+      return SimplifyDimExpr(T{ret_operands});
+    }
+
+    return std::nullopt;
   }
 
   std::unordered_map<DimExpr, DimExpr> pattern_to_replacement_;

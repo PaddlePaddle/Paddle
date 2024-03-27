@@ -300,6 +300,20 @@ bool IsShapeComputeOp(const ::pir::Operation& op) {
     all_input_has_shape_data = false;
     break;
   }
+
+  for (uint32_t i = 0; i < op.num_results(); ++i) {
+    if (shape_analysis.HasShapeOrDataForValue(op.result(i))) {
+      const auto& shape_expr =
+          shape_analysis.GetShapeOrDataForValue(op.result(i));
+      if (shape_expr.isa<symbol::TensorShapeOrDataDimExprs>() &&
+          shape_expr.data()) {  // has shape data
+        continue;
+      }
+    }
+    all_input_has_shape_data = false;
+    break;
+  }
+
   return all_input_has_shape_data;
 }
 

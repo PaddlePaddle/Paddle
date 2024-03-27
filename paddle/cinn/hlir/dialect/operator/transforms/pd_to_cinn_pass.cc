@@ -19,6 +19,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/core/builtin_op.h"
@@ -751,6 +752,43 @@ class UniformOpPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
+class FullWithTensorOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::FullWithTensorOp> {
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::FullWithTensorOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::FullWithTensorOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto shape = op->operand_source(0);
+    auto value = op->operand_source(1);
+
+    if (paddle::dialect::TransToPhiDataType(
+            value.type()
+                .dyn_cast<paddle::dialect::DenseTensorType>()
+                .dtype()) != op.attribute("dtype")
+                                 .dyn_cast<paddle::dialect::DataTypeAttribute>()
+                                 .data()) {
+      value = rewriter
+                  .Build<paddle::dialect::CastOp>(
+                      value,
+                      op.attribute("dtype")
+                          .dyn_cast<paddle::dialect::DataTypeAttribute>()
+                          .data())
+                  .result(0);
+    }
+
+    auto out =
+        rewriter.Build<paddle::dialect::ExpandOp>(value, shape).result(0);
+
+    rewriter.ReplaceAllUsesWith(op.result(0), out);
+
+    rewriter.EraseOp(op);
+
+    return true;
+  }
+};
+
 PdOpToCinnOpPass::PdOpToCinnOpPass()
     : pir::PatternRewritePass("pd_to_cinn_pass", 1) {}
 
@@ -772,6 +810,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<ExpandOpPattern>(context);
   ps.Add<IsCloseOpPattern>(context);
   ps.Add<ElementwisePowOpPattern>(context);
+  ps.Add<FullWithTensorOpPattern>(context);
 
   return ps;
 }
