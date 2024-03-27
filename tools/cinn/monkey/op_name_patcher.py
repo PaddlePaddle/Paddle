@@ -1,11 +1,11 @@
 from typing import List, Dict
-from .op_name_generator import (
+from op_name_generator import (
     OpNameGenRequirement,
     OpNameGenInstruction,
     OpNameGenerator
 )
-from .instruction_id import InstructionId
-from .dag_gen_generator import DAGGenInstruction
+from instruction_id import InstructionId
+from dag_generator import DAGGenInstruction
 
 class OpNamePatcher:
     def __init__(self, requirement: OpNameGenRequirement):

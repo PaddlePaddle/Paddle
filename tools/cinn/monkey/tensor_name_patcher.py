@@ -1,11 +1,11 @@
 from typing import List, Dict
-from .tensor_name_generator import (
+from tensor_name_generator import (
     TensorNameGenRequirement,
     TensorNameGenInstruction,
     TensorNameGenerator
 )
-from .instruction_id import InstructionId
-from .dag_generator import DAGGenInstruction
+from instruction_id import InstructionId
+from dag_generator import DAGGenInstruction
 
 class TensorNamePatcher:
     def __init__(self, requirement: TensorNameGenRequirement):

@@ -1,7 +1,8 @@
 from dataclasses import dataclass
-import .dag_generator as dag_generator
-from .pick_weight import PickWeight
-from typing import List
+import dag_generator as dag_generator
+from pick_weight import PickWeight
+from typing import List,Dict
+from defensive_list import DList
 import random
 
 @dataclass
@@ -16,8 +17,8 @@ class DimEq1GenRequirement:
 class DimEq1GenInstruction:
     
     @classmethod
-    def GetDAGGenClassToDerivedClassMap(cls):
-        return kDAGGenClassToDerivedClass
+    def GetDerivedClassByDAGGenClass(cls, dag_gen_class):
+        return kDAGGenClassToDerivedClass[dag_gen_class]
 
 
 @dataclass
@@ -94,18 +95,16 @@ class DimEq1Generator:
     def Generate(
         self,
         dag_gen_instructions: List["DAGGenInstruction"]
-    ) -> Dict["DAGGenInstruction", "DimEq1GenInstruction"]:
+    ) -> List["DimEq1GenInstruction"]:
         def CreateDimEq1GenInstruction(dag_gen_instruction):
             dag_gen_class = type(dag_gen_instruction)
             dim_eq1_gen_class = kDAGGenClassToDerivedClass[dag_gen_class]
-            return dim_eq1_gen_class.MakeRandomInstance(self.requirement)
-        return {
-            x: CreateDimEq1GenInstruction(x)
-            for x in dag_gen_instructions
-        }
+            dim_eq1_gen_instr = dim_eq1_gen_class.MakeRandomInstance(self.requirement)
+            return dim_eq1_gen_instr
+        return [CreateDimEq1GenInstruction(x) for x in dag_gen_instructions]
 
 def _GetRandomBool(requirement: DimEq1GenRequirement):
-    ratio = requirement.dim_eq1_probability.weight
+    ratio = requirement.pick_probability.dim_eq1_probability.weight
     kRangeMax = 10000
-    random_int = random.randomint(0, kRangeMax)
+    random_int = random.randint(0, kRangeMax)
     return random_int < ratio * kRangeMax

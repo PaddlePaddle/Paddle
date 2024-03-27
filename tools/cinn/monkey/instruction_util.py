@@ -1,26 +1,25 @@
-from typing as List
-import .dag_generator as dag_generator
-import .dim_eq1_generator as dim_eq1_generator
-import .dims_eq1_generator as dims_eq1_generator
-import .op_name_generator as op_name_generator
-import .tensor_name_generator as tensor_name_generator
-import .code_gen_spec_inferer as code_gen_spec_inferer
-import .dims_eq1_signature_inferer as dims_eq1_signature_inferer
-from .defensive_list import DList
-from .instruction import IrGenerator
-from .instruction_id import MakeUniqueInstructionId,InstructionId
-from .dag_dims_eq1_patcher import DAGDimsEq1Patcher
-from .op_name_patcher import OpNamePatcher
-from .tensor_name_patcher import TensorNamePatcher
-from .shape_signature_inferer import ShapeSignatureInferer
-from .tensor_name_signature_inferer import TensorNameSignatureInferer
+from typing import List
+import dag_generator as dag_generator
+import dim_eq1_generator as dim_eq1_generator
+import dims_eq1_generator as dims_eq1_generator
+import op_name_generator as op_name_generator
+import tensor_name_generator as tensor_name_generator
+import code_gen_spec_inferer as code_gen_spec_inferer
+import dims_eq1_signature_inferer as dims_eq1_signature_inferer
+from defensive_list import DList
+from instruction import IrGenerator
+from instruction_id import MakeUniqueInstructionId,InstructionId
+from dag_dims_eq1_patcher import DAGDimsEq1Patcher
+from op_name_patcher import OpNamePatcher
+from tensor_name_patcher import TensorNamePatcher
+from shape_signature_inferer import ShapeSignatureInferer
+from tensor_name_signature_inferer import TensorNameSignatureInferer
 
 def GenerateInstructions(
     dag_gen_requirement: dag_generator.DAGGenRequirement,
     dims_eq1_gen_requirement: dims_eq1_generator.DimsEq1GenRequirement,
     op_name_gen_requirement: op_name_generator.OpNameGenRequirement,
     tensor_name_gen_requirement: tensor_name_generator.TensorNameGenRequirement
-    shape_rank: int
 ) -> List["Instruction"]:
     # generators
     dag_gen = dag_generator.DAGGenerator(requirement=dag_gen_requirement)
@@ -31,7 +30,7 @@ def GenerateInstructions(
         requirement=op_name_gen_requirement
     )
     tensor_name_gen = tensor_name_generator.TensorNameGenerator(
-        requirement.tensor_name_gen_requirement
+        requirement=tensor_name_gen_requirement
     )
     ir_gen = IrGenerator()
     # inferers
@@ -64,6 +63,7 @@ def PatchInstructions(
             for instruction in instructions
         ]
     dag_gen_instructions = GetComponentList(dag_generator.DAGGenInstruction)
+
     instruction_ids = GetComponentList(InstructionId)
     dims_eq1_instructions = GetComponentList(dims_eq1_generator.DimsEq1GenInstruction)
     op_name_instructions = GetComponentList(op_name_generator.OpNameGenInstruction)
@@ -134,20 +134,22 @@ def InferCodeGenSpecs(
     )
     dims_eq1_signatures = [v for k,v in guarded_dims_eq1_sigs.Unguard()]
     InferShapeSignature = ShapeSignatureInferer(dim_size_requirement).Infer
-    shape_signatures = InferShapeSignature(
+    guarded_shape_signatures = InferShapeSignature(
         dag_gen_instructions=dag_gen_instructions,
         dims_eq1_signatures=dims_eq1_signatures
     )
     InferTensorNameSignature = TensorNameSignatureInferer().Infer
-    tensor_name_signature = InferTensorNameSignature(
+    guarded_tensor_name_signatures = InferTensorNameSignature(
         dag_gen_instructions=dag_gen_instructions,
         tensor_name_gen_instructions=tensor_name_gen_instructions
     )
+    shape_signatures = [v for k,v in guarded_shape_signatures.Unguard()]
+    tensor_name_signatures = [v for k,v in guarded_tensor_name_signatures.Unguard()]
     InferCodeGenSpec = code_gen_spec_inferer.CodeGenSpecInferer().Infer
     code_gen_specs = InferCodeGenSpec(
         dag_gen_instructions=dag_gen_instructions,
         dims_eq1_signatures=dims_eq1_signatures,
         shape_signatures=shape_signatures,
-        tensor_name_signature=tensor_name_signature
+        tensor_name_signatures=tensor_name_signatures
     )
     return DList(instructions, code_gen_specs)

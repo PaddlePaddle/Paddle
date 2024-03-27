@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 from typing import List, Union
 from collections import namedtuple
-import .dag_generator as dag_generator
-import .dims_eq1_generator as dims_eq1_generator
-from .pick_weight import PickWeight
-from .guarded_box import GuardedBox
-from .defensive_list import DList
+import dag_generator as dag_generator
+import dims_eq1_generator as dims_eq1_generator
+from pick_weight import PickWeight
+from guarded_box import GuardedBox
+from defensive_list import DList
 
 @dataclass
 class StaticDim:
@@ -29,8 +29,8 @@ class ShapeInferContext:
 @dataclass
 class ShapeSignature:
     @classmethod
-    def GetDAGGenClassToDerivedClassMap(cls):
-        return kDAGGenClassToDerivedClass
+    def GetDerivedClassByDAGGenClass(cls, dag_gen_class):
+        return kDAGGenClassToDerivedClass[dag_gen_class]
 
 
 @dataclass
@@ -147,7 +147,7 @@ class AddSourceOp(ShapeSignature):
             total_shape=infer_ctx.dim_size_requirement.dim_size,
             dims_eq1=infer_ctx.dims_eq1_signature.output_dims_eq1
         )
-        return AddBinaryOp(
+        return AddSourceOp(
             output_shape=output_shape
         )
 
@@ -171,13 +171,13 @@ class ShapeSignatureInferer:
     ) -> DList["DAGGenInstruction", "ShapeSignature"]:
         assert len(dag_gen_instructions) == len(dims_eq1_signatures)
         def MakeShapeSignature(pair):
-            dag_gen_instruction, dims_eq1_signature = *pair
+            dag_gen_instruction, dims_eq1_signature = pair
             dag_gen_class = type(dag_gen_instruction)
             cls = kDAGGenClassToDerivedClass[dag_gen_class]
             return cls.InferShape(
                 ShapeInferContext(
-                    .dims_eq1_signature=dims_eq1_signature,
-                    .dim_size_requirement=self.requirement
+                    dims_eq1_signature=dims_eq1_signature,
+                    dim_size_requirement=self.requirement
                 )
             )
         shape_signatures = [
@@ -188,7 +188,7 @@ class ShapeSignatureInferer:
 
 
 def _GetStaticShape(
-    total_shape: List[Union[StaticDim, DynamicDim]]
+    total_shape: List[Union[StaticDim, DynamicDim]],
     dims_eq1: List[bool]
 ) -> List[int]:
     assert len(total_shape) == len(dims_eq1)

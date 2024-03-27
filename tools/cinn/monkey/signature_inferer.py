@@ -1,6 +1,6 @@
 from typing import List
-from dataclasses import dataclass, field
-from .signature_constructor import SignatureConstructor
+from dataclasses import dataclass, field, fields
+from signature_constructor import SignatureConstructor
 
 def InputIdx(idx):
     return field(metadata=dict(input_idx=idx))

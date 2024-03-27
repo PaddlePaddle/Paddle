@@ -1,17 +1,17 @@
 from dataclasses import dataclass, field
-import .dag_generator as dag_generator
-from .defensive_list import DList
-from .pick_weight import PickWeight
+import dag_generator as dag_generator
+from defensive_list import DList
+from pick_weight import PickWeight
 from typing import List, Set
 import random
 
 @dataclass
 class OpNameGenRequirement:
     unary_elementwise_op_names: List[str] = field(
-        default_factory=lambda: ["Add"]
+        default_factory=lambda: ["Negative"]
     )
     binary_elementwise_op_names: List[str] = field(
-        default_factory=lambda: ["Negative"]
+        default_factory=lambda: ["Add"]
     )
     broadcast_op_names: List[str] = field(
         default_factory=lambda: ["Expand"]
@@ -32,8 +32,8 @@ class OpNameGenRequirement:
 @dataclass
 class OpNameGenInstruction:
     @classmethod
-    def GetDAGGenClassToDerivedClassMap(cls):
-        return kDAGGenClassToDerivedClass
+    def GetDerivedClassByDAGGenClass(cls, dag_gen_class):
+        return kDAGGenClassToDerivedClass[dag_gen_class]
 
 
 @dataclass
@@ -198,7 +198,7 @@ def _GetRandomSourceOpName(requirement: OpNameGenRequirement):
 def _GetRandomOpName(op_names: List[str]):
     kRangeMax = len(op_names) - 1
     assert 0 <= kRangeMax
-    random_int = random.randomint(0, kRangeMax)
+    random_int = random.randint(0, kRangeMax)
     return op_names[random_int]
 
 class OpNameGenerator:
@@ -208,14 +208,15 @@ class OpNameGenerator:
     # Instructions generating sink nodes of DAG are on put the front of list.
     def Generate(
         self,
-        dag_gen_instructions: DList[DAGGenInstruction]
+        dag_gen_instructions: List["DAGGenInstruction"]
     ) -> List["OpNameGenInstruction"]:
         def CreateOpNameGenInstruction(dag_gen_instruction):
             cls = kDAGGenClassToDerivedClass[type(dag_gen_instruction)]
-            return cls.MakeRandomInstance(
+            ret = cls.MakeRandomInstance(
                 self.requirement,
                 dag_gen_instruction
             )
+            return ret
         return [
             CreateOpNameGenInstruction(x)
             for x in dag_gen_instructions

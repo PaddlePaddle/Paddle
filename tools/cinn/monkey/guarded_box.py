@@ -7,7 +7,7 @@ class GuardedBox(Generic[T]):
         self.hash_key_ = hash_key
         self.value_ = value
 
-    def Get(self, hash_key: int)
+    def Get(self, hash_key: int):
         assert self.hash_key_ == hash_key
         return self.value_
 

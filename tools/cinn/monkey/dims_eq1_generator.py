@@ -1,9 +1,10 @@
 from dataclasses import dataclass
-import .dag_generator as dag_generator
-import .dim_eq1_generator as dim_eq1_generator
-from .pick_weight import PickWeight
+import dag_generator as dag_generator
+import dim_eq1_generator as dim_eq1_generator
+from pick_weight import PickWeight
 from typing import List
-from .hash_combine import HashCombine
+from hash_combine import HashCombine
+from defensive_list import DList
 
 @dataclass
 class DimsEq1GenRequirement:
@@ -12,8 +13,8 @@ class DimsEq1GenRequirement:
 @dataclass
 class DimsEq1GenInstruction:
     @classmethod
-    def GetDAGGenClassToDerivedClassMap(cls):
-        return kDAGGenClassToDerivedClass
+    def GetDerivedClassByDAGGenClass(cls, dag_gen_class):
+        return kDAGGenClassToDerivedClass[dag_gen_class]
 
 
 @dataclass
@@ -41,8 +42,8 @@ class AddSinkTensor(DimsEq1GenInstruction):
     def Merge(cls, dim_eq1_gen_instructions: List["DimEq1GenInstruction"]):
         return AddSinkTensor(
             sink_tensor_dims_eq1=tuple(
-                dim_eq1_gen_instance.sink_tensor_dim_eq1
-                for dim_eq1_gen_instance in dim_eq1_gen_instructions
+                dim_eq1_gen_instruction.sink_tensor_dim_eq1
+                for dim_eq1_gen_instruction in dim_eq1_gen_instructions
             )
         )
 
@@ -84,12 +85,12 @@ class AddBinaryOp(DimsEq1GenInstruction):
     def Merge(cls, dim_eq1_gen_instructions: List["DimEq1GenInstruction"]):
         return AddBinaryOp(
             lhs_source_tensor_dims_eq1=tuple(
-                dim_eq1_gen_instance.lhs_source_tensor_dim_eq1
-                for dim_eq1_gen_instance in dim_eq1_gen_instructions
+                dim_eq1_gen_instruction.lhs_source_tensor_dim_eq1
+                for dim_eq1_gen_instruction in dim_eq1_gen_instructions
             ),
             rhs_source_tensor_dims_eq1=tuple(
-                dim_eq1_gen_instance.rhs_source_tensor_dim_eq1
-                for dim_eq1_gen_instance in dim_eq1_gen_instructions
+                dim_eq1_gen_instruction.rhs_source_tensor_dim_eq1
+                for dim_eq1_gen_instruction in dim_eq1_gen_instructions
             )
         )
 
@@ -143,21 +144,22 @@ class DimsEq1Generator:
         self,
         dag_gen_instructions: List["DAGGenInstruction"]
     ) -> List["DimsEq1GenInstruction"]:
-        dim_eq1_gen_instructions = [
-            [v for _, v in dim_eq1_generator.Generate(dag_gen_instructions)]
-            for dim_eq1_generator in dim_eq1_generators
+        dim_eq1_gen_instructions_tuple = [
+            generator.Generate(dag_gen_instructions)
+            for generator in self.dim_eq1_generators
         ]
         instructions = zip(
             dag_gen_instructions,
-            zip(dim_eq1_gen_instructions)
+            zip(*dim_eq1_gen_instructions_tuple)
         )
+
         def MakeDimsEq1GenInstruction(dag_gen_instruction, dim_eq1_gen_instructions):
-            dag_gen_class = type(dag_gen_instruction)
-            return dag_gen_class.Merge(dim_eq1_gen_instructions)
-        return {
-            x: MakeDimsEq1GenInstruction(x, dim_eq1_gen_instructions)
+            cls = kDAGGenClassToDerivedClass[type(dag_gen_instruction)]
+            return cls.Merge(dim_eq1_gen_instructions)
+        return [
+            MakeDimsEq1GenInstruction(x, dim_eq1_gen_instructions)
             for x, dim_eq1_gen_instructions in instructions
-        }
+        ]
 
     @classmethod
     def _MakeDimEq1Generator(

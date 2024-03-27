@@ -1,8 +1,11 @@
-from .unit_test_case_spec import UnitTestCaseSpec
-from .instruction import Instruction
-from .code_gen_spec_inferer import CodeGenSpec
-from .op_call_code_gen import op_call_code_gen,CodeGenRequirement,CodeGenContext
-from .script import Script
+from dataclasses import dataclass
+from unit_test_case_spec import UnitTestCaseSpec
+from instruction import Instruction
+from code_gen_spec_inferer import CodeGenSpec
+import op_call_code_gen
+from op_call_code_gen import OpCallCodeGenRequirement,CodeGenContext
+from script import Script
+import dag_generator
 
 
 @dataclass
@@ -58,8 +61,8 @@ kDAGGenClassToCodeGenClass = {
     dag_generator.AddSourceOp: AddSourceOp,
 }
 
-class PaddleCodeGenerator:
-    def __init__(self, requirement: CodeGenRequirement):
+class PaddleEagerGenerator:
+    def __init__(self, requirement: OpCallCodeGenRequirement):
         self.requirement = requirement
 
     def Generate(
@@ -79,6 +82,7 @@ class PaddleCodeGenerator:
             GenerateInstructionCodeStr(*pair)
             for pair in unit_test_case_spec.pached_instruction_code_gen_spec.Unguard()
         ]
+        instruction_code_strs = reversed(instruction_code_strs)
         file_content = "\n".join(instruction_code_strs)
         return PaddleEagerScript(
             file_content=file_content

@@ -1,14 +1,16 @@
 from dataclasses import dataclass
+from typing import List
+from axis_flag_util import IsLhsGreaterThanRhs
 
 @dataclass
-class CodeGenRequirement:
+class OpCallCodeGenRequirement:
     module_name: str
 
 @dataclass
 class CodeGenContext:
-    requirement: CodeGenRequirement
-    instruction: Instruction
-    code_gen_spec: CodeGenSpec
+    requirement: OpCallCodeGenRequirement
+    instruction: "Instruction"
+    code_gen_spec: "CodeGenSpec"
 
 
 class Add:
@@ -39,22 +41,15 @@ class ReduceSum:
     def GetReduceAxes(cls, ctx: CodeGenContext):
         input_dims_eq1 = ctx.code_gen_spec.input_dims_eq1
         output_dims_eq1 = ctx.code_gen_spec.output_dims_eq1
-        assert input_dims_eq1 == [
-            x and y
-            for x,y in zip(input_dims_eq1, output_dims_eq1)
-        ]
-        assert output_dims_eq1 == [
-            x or y
-            for x,y in zip(input_dims_eq1, output_dims_eq1)
-        ]
+        assert IsLhsGreaterThanRhs(output_dims_eq1, input_dims_eq1)
         is_reduced = [
             (not x) and y
             for x, y in zip(input_dims_eq1, output_dims_eq1)
         ]
         return [
-            axis
-            for axis in ([i] if is_reduced else [])
+            i
             for i, is_reduced in enumerate(is_reduced)
+            if is_reduced
         ]
 
 class Expand:

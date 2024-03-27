@@ -1,37 +1,39 @@
 from dataclasses import dataclass
-import .dag_generator as dag_generator
-import .dims_eq1_generator as dims_eq1_generator
-import .op_name_generator as op_name_generator
-import .tensor_name_generator as tensor_name_generator
-from typing import List
-from .hash_combine import HashCombine
-from .instruction_id import InstructionId, MakeUniqueInstructionId
+import dag_generator as dag_generator
+import dims_eq1_generator as dims_eq1_generator
+import op_name_generator as op_name_generator
+import tensor_name_generator as tensor_name_generator
+from typing import List, get_type_hints
+from hash_combine import HashCombine
+from instruction_id import InstructionId, MakeUniqueInstructionId
 
 
 @dataclass
 class Instruction:
     @classmethod
-    def GetDAGGenClassToDerivedClassMap(cls):
-        return kDAGGenClassToDerivedClass
+    def GetDerivedClassByDAGGenClass(cls, dag_gen_class):
+        return kDAGGenClassToDerivedClass[dag_gen_class]
 
 
 def GetHashValue(class_name):
     def Func(self):
+        dag_gen_class = self.GetDAGGenClass()
         hash_value = 0
-        for m in kBaseClassModules:
-            cls = getattr(m, class_name)
-            hash_func = getattr(cls, "__hash__")
-            hash_value = HashCombine(hash_value, hash_func(self))
+        for base_class in kComponentClasses:
+            cls = base_class.GetDerivedClassByDAGGenClass(dag_gen_class)
+            hash_value = HashCombine(hash_value, cls.__hash__(self))
+        return hash_value
     return Func
 
 def GetComponent(self, base_class):
     dag_gen_class = self.GetDAGGenClass()
-    cls = base_class.GetDAGGenClassToDerivedClassMap()[dag_gen_class]
+    cls = base_class.GetDerivedClassByDAGGenClass(dag_gen_class)
     params = {
         field_name: getattr(self, field_name)
-        for field_name in cls.__annotations__.keys()
+        for field_name in get_type_hints(cls).keys()
     }
-    return cls(*params)
+    ret = cls(**params)
+    return ret
 
 kComponentClasses = (
     dag_generator.DAGGenInstruction,
@@ -44,7 +46,7 @@ def MergeClass(dag_gen_class, component_classes):
     class_name = dag_gen_class.__name__
     base_classes = (Instruction, InstructionId,)
     base_classes += tuple(
-        component_class.GetDAGGenClassToDerivedClassMap()[dag_gen_cls]
+        component_class.GetDerivedClassByDAGGenClass(dag_gen_class)
         for component_class in component_classes
     )
     methods = dict(
@@ -84,10 +86,11 @@ class IrGenerator:
         tensor_name_gen_instructions: List["TensorNameGenInstruction"]
     ) -> List["Instruction"]:
         def CreateIrGenInstruction(dag_gen_instr, *other_instr):
+            params = {}
             for instr in [dag_gen_instr, *other_instr]:
                 params.update(vars(instr))
             ir_gen_class = kDAGGenClassToDerivedClass[type(dag_gen_instr)]
-            return ir_gen_class(*params)
+            return ir_gen_class(**params)
         return [
             CreateIrGenInstruction(*triple)
             for triple in zip(

@@ -1,10 +1,10 @@
 from dataclasses import dataclass, field
-from .pick_weight import PickWeight
+from pick_weight import PickWeight
 from typing import List
 from collections import namedtuple
 import functools
 import random
-from .hash_combine import HashCombine
+from hash_combine import HashCombine
 
 @dataclass
 class DAGGenTypePickProbability:
@@ -37,7 +37,9 @@ class DAGGenRequirement:
     max_width: int = 10
     max_body_instructions: int = 10
     dag_tag: str = ""
-    pick_probability: DAGGenTypePickProbability
+    pick_probability: DAGGenTypePickProbability = field(
+        default_factory=lambda: DAGGenTypePickProbability()
+    )
 
     def CheckFields(self):
         assert self.min_num_sources >= 0
@@ -54,7 +56,9 @@ class DAGGenContext:
 
 @dataclass
 class DAGGenInstruction:
-    pass
+    @classmethod
+    def GetDerivedClassByDAGGenClass(cls, dag_gen_class):
+        return dag_gen_class
 
 @dataclass
 class Nope(DAGGenInstruction):
@@ -223,7 +227,7 @@ class AddUnaryOp(DAGGenInstruction):
         requirement: DAGGenRequirement,
         ctx: DAGGenContext
     ):
-        source_tensor_index = random.randomint(0, ctx.num_source_tensors - 1)
+        source_tensor_index = random.randint(0, ctx.num_source_tensors - 1)
         return AddUnaryOp(
             source_tensor_index=source_tensor_index,
             dag_tag=requirement.dag_tag,
@@ -288,7 +292,7 @@ class AddBinaryOp(DAGGenInstruction):
         requirement: DAGGenRequirement,
         ctx: DAGGenContext
     ):
-        source_tensor_index = random.randomint(0, ctx.num_source_tensors - 1)
+        source_tensor_index = random.randint(0, ctx.num_source_tensors - 1)
         return AddBinaryOp(
             source_tensor_index=source_tensor_index,
             dag_tag=requirement.dag_tag
@@ -358,10 +362,10 @@ class AddBinaryClone(DAGGenInstruction):
         requirement: DAGGenRequirement,
         ctx: DAGGenContext
     ):
-        lhs_random_int = random.randomint(
+        lhs_random_int = random.randint(
             0, ctx.num_source_tensors - 1
         )
-        rhs_random_int = random.randomint(
+        rhs_random_int = random.randint(
             0,
             ctx.num_source_tensors - 1
         )
@@ -428,7 +432,7 @@ class AddSourceOp(DAGGenInstruction):
         requirement: DAGGenRequirement,
         ctx: DAGGenContext
     ):
-        source_tensor_index = random.randomint(
+        source_tensor_index = random.randint(
             0,
             ctx.num_source_tensors - 1
         )
@@ -478,8 +482,13 @@ def GetTotalWeight(
         return dag_gen_class.GetWeight(pick_probability)
     return functools.reduce(
         lambda a, b: a + b,
-        functools.map(GetWeight, dag_gen_classes)
+        map(GetWeight, dag_gen_classes)
     )
+
+DAGGenClassRollingRange = namedtuple(
+    "DAGGenClassRollingRange",
+    ["start", "end", "dag_gen_class"]
+)
 
 class DAGGenClassGenerator:
     def __init__(
@@ -503,7 +512,7 @@ class DAGGenClassGenerator:
             [x for x in kDAGGenInstructionClasses if IsValidDAGGenClass(x)]
         )
         def Roll():
-            random_int = random.randomint(0, type(self)._RollingLimit())
+            random_int = random.randint(0, type(self)._RollingLimit())
             for start, end, dag_gen_class in rolling_ranges:
                 if random_int >= start and random_int < end:
                     return dag_gen_class
@@ -514,11 +523,6 @@ class DAGGenClassGenerator:
             if cls is not None:
                 return cls
         return Nope()
-
-    DAGGenClassRollingRange = namedtuple(
-        "DAGGenClassRollingRange",
-        ["start", "end", "dag_gen_class"]
-    )
 
     @classmethod
     def _MakeRollingRange(
@@ -533,11 +537,12 @@ class DAGGenClassGenerator:
             current_start = start
             current_end = current_start
             weight = dag_gen_class.GetWeight(pick_probability)
-            start += weight * cls._RollingLimit() / total_weight
+            current_end += weight * cls._RollingLimit() / total_weight
+            start = current_end
             return DAGGenClassRollingRange(
-                .start=current_start,
-                .end=current_end,
-                .dag_gen_class=dag_gen_class,
+                start=current_start,
+                end=current_end,
+                dag_gen_class=dag_gen_class,
             )
         return [GetRange(cls) for cls in dag_gen_classes]
 
@@ -593,6 +598,8 @@ class BodyAndHeaderDAGGenerator:
             self._GenerateOneInstruction(IncreaseCurrentNumSourcesByAddBinaryOp)
             CheckDeadLoop()
         def DecreaseCurrentNumSourcesByAddBinaryClone(ctx):
+            if CurrentNumSources() == 1:
+                return AddSourceOp.RandomGenerate(self.requirement, ctx)
             return AddBinaryClone.RandomGenerate(self.requirement, ctx)
         while CurrentNumSources() > self.requirement.max_num_sources:
             self._GenerateOneInstruction(DecreaseCurrentNumSourcesByAddBinaryClone)
@@ -633,7 +640,7 @@ class DAGGenerator:
         return body_and_head_generator.GenerateBodyAndHeader()
 
 
-def DeadLoopChecker(limit=100000):
+def DeadLoopChecker(limit=10000):
     counter = 0
     def Checker():
         nonlocal counter

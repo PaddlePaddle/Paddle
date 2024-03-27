@@ -1,6 +1,6 @@
-from typing import TypeVar, Generic, List, Callable, Generator
-from .guarded_box import GuardedBox
-from .hash_combine import HashCombine
+from typing import TypeVar, Generic, List, Callable, Iterator, Tuple
+from guarded_box import GuardedBox
+from hash_combine import HashCombine
 
 K = TypeVar('K')
 V = TypeVar('V')
@@ -17,7 +17,7 @@ class DList(Generic[K, V]):
             hash_value = HashCombine(hash_value, hash(keys[i]))
             self.defensive_list.append((keys[i], GuardedBox(hash_value, values[i])))
 
-    def Unguard(self) -> Generator[K, V]:
+    def Unguard(self) -> Iterator[Tuple[K, V]]:
         hash_value = 0
         for key, guarded_value in self.defensive_list:
             hash_value = HashCombine(hash_value, hash(key))

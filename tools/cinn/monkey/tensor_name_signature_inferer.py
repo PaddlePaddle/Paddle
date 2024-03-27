@@ -1,11 +1,11 @@
 from dataclasses import dataclass, field
-import .dag_generator as dag_generator
-from .defensive_list import DList
-from .pick_weight import PickWeight
+import dag_generator as dag_generator
+from defensive_list import DList
+from pick_weight import PickWeight
 from typing import List, Set
 import random
-from .signature_constructor import NaiveSignatureConstructor
-from .signature_inferer import SignatureInferer, InputIdx
+from signature_constructor import NaiveSignatureConstructor
+from signature_inferer import SignatureInferer, InputIdx
 
 @dataclass
 class InferContext:
@@ -16,8 +16,8 @@ class InferContext:
 @dataclass
 class TensorNameSignature:
     @classmethod
-    def GetDAGGenClassToDerivedClassMap(cls):
-        return kDAGGenClassToDerivedClass
+    def GetDerivedClassByDAGGenClass(cls, dag_gen_class):
+        return kDAGGenClassToDerivedClass[dag_gen_class]
 
 
 @dataclass
@@ -94,7 +94,7 @@ class AddBinaryClone(TensorNameSignature):
         cls,
         ctx: InferContext,
         lhs_output_tensor_name: str,
-        lhs_output_tensor_name: str
+        rhs_output_tensor_name: str
     ):
         return AddBinaryClone(
             lhs_output_tensor_name=lhs_output_tensor_name,
@@ -125,19 +125,19 @@ kDAGGenClassToDerivedClass = {
     dag_generator.AddSourceOp: AddSourceOp,
 }
 
-class TensorNameGenerator:
+class TensorNameSignatureInferer:
     def __init__(self):
         pass
     
     # Instructions generating sink nodes of DAG are on put the front of list.
-    def Generate(
+    def Infer(
         self,
-        dag_gen_instructions: List[DAGGenInstruction],
+        dag_gen_instructions: List["DAGGenInstruction"],
         tensor_name_gen_instructions: List["TensorNameGenInstruction"]
-    ) -> List["TensorNameSignature"]:
+    ) -> DList["DAGGenInstruction", "TensorNameSignature"]:
         signature_inferer = SignatureInferer()
         def CreateTensorNameSignature(pair):
-            dag_gen_instruction, tensor_name_gen_instruction = *pair
+            dag_gen_instruction, tensor_name_gen_instruction = pair
             ctx = InferContext(
                 dag_gen_instruction=dag_gen_instruction,
                 tensor_name_gen_instruction=tensor_name_gen_instruction
@@ -149,10 +149,10 @@ class TensorNameGenerator:
                     constructor=lambda *args: cls.Make(ctx, *args),
                 )
             )
-        return [
+        return DList(dag_gen_instructions, [
             CreateTensorNameSignature(x)
             for x in zip(
                 dag_gen_instructions,
                 tensor_name_gen_instructions
             )
-        ]
+        ])

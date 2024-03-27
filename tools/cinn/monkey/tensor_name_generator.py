@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
-import .dag_generator as dag_generator
-from .defensive_list import DList
-from .pick_weight import PickWeight
+import dag_generator as dag_generator
+from defensive_list import DList
+from pick_weight import PickWeight
 from typing import List, Set
+from hash_combine import HashCombine
 import random
 
 @dataclass
@@ -38,8 +39,8 @@ class TensorNameGenContext:
 @dataclass
 class TensorNameGenInstruction:
     @classmethod
-    def GetDAGGenClassToDerivedClassMap(cls):
-        return kDAGGenClassToDerivedClass
+    def GetDerivedClassByDAGGenClass(cls, dag_gen_class):
+        return kDAGGenClassToDerivedClass[dag_gen_class]
 
 
 @dataclass
@@ -156,7 +157,7 @@ class TensorNameGenerator:
     # Instructions generating sink nodes of DAG are on put the front of list.
     def Generate(
         self,
-        dag_gen_instructions: List[DAGGenInstruction]
+        dag_gen_instructions: List["DAGGenInstruction"]
     ) -> List["TensorNameGenInstruction"]:
         def CreateTensorNameGenInstruction(dag_gen_instruction):
             cls = kDAGGenClassToDerivedClass[type(dag_gen_instruction)]
@@ -167,9 +168,9 @@ class TensorNameGenerator:
                     tensor_seq_counter=_global_tensor_seq_counter
                 )
             )
-        return [
+        return reversed([
             CreateTensorNameGenInstruction(x)
-            for x in dag_gen_instructions
-        ]
+            for x in reversed(dag_gen_instructions)
+        ])
 
 _global_tensor_seq_counter = TensorSeqCounter()

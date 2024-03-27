@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 from typing import List
 from collections import namedtuple
-import .dag_generator as dag_generator
-import .dims_eq1_generator as dims_eq1_generator
-from .pick_weight import PickWeight
-from .guarded_box import GuardedBox
-from .defensive_list import DList
-from .signature_constructor import NaiveSignatureConstructor
-from .signature_inferer import SignatureInferer, InputIdx
+import dag_generator as dag_generator
+import dims_eq1_generator as dims_eq1_generator
+from pick_weight import PickWeight
+from guarded_box import GuardedBox
+from defensive_list import DList
+from signature_constructor import NaiveSignatureConstructor
+from signature_inferer import SignatureInferer, InputIdx
 
 DAGDimsEq1GenInstruction = namedtuple("DAGDimsEq1GenInstruction", ["dag", "dims_eq1"])
 
@@ -15,8 +15,8 @@ DAGDimsEq1GenInstruction = namedtuple("DAGDimsEq1GenInstruction", ["dag", "dims_
 @dataclass
 class DimsEq1Signature:
     @classmethod
-    def GetDAGGenClassToDerivedClassMap(cls):
-        return kDAGGenClassToDerivedClass
+    def GetDerivedClassByDAGGenClass(cls, dag_gen_class):
+        return kDAGGenClassToDerivedClass[dag_gen_class]
 
 
 @dataclass
@@ -40,7 +40,7 @@ class AddSinkTensor(DimsEq1Signature):
         dag_dims_eq1_gen_instruction: DAGDimsEq1GenInstruction
     ):
         sink_tensor_dims_eq1 = (
-            dag_dims_eq1_gen_instruction.dims_eq1.source_tensor_dim_eq1
+            dag_dims_eq1_gen_instruction.dims_eq1.sink_tensor_dims_eq1
         )
         return AddSinkTensor(
             sink_tensor_dims_eq1=sink_tensor_dims_eq1
@@ -58,7 +58,7 @@ class AddUnaryOp(DimsEq1Signature):
         dag_dims_eq1_gen_instruction: DAGDimsEq1GenInstruction,
         output_dims_eq1: List[bool]
     ):
-        input_dims_eq1 = dag_dims_eq1_gen_instruction.dims_eq1.source_tensor_dim_eq1
+        input_dims_eq1 = dag_dims_eq1_gen_instruction.dims_eq1.source_tensor_dims_eq1
         return AddUnaryOp(
             input_dims_eq1=input_dims_eq1,
             output_dims_eq1=output_dims_eq1
@@ -78,10 +78,10 @@ class AddBinaryOp(DimsEq1Signature):
         output_dims_eq1: List[bool]
     ):
         lhs_input_dims_eq1 = (
-            dag_dims_eq1_gen_instruction.dims_eq1.lhs_source_tensor_dim_eq1
+            dag_dims_eq1_gen_instruction.dims_eq1.lhs_source_tensor_dims_eq1
         )
         rhs_input_dims_eq1 = (
-            dag_dims_eq1_gen_instruction.dims_eq1.rhs_source_tensor_dim_eq1
+            dag_dims_eq1_gen_instruction.dims_eq1.rhs_source_tensor_dims_eq1
         )
         return AddBinaryOp(
             lhs_input_dims_eq1=lhs_input_dims_eq1,
@@ -99,7 +99,6 @@ class AddBinaryClone(DimsEq1Signature):
     def Make(
         cls,
         dag_dims_eq1_gen_instruction: DAGDimsEq1GenInstruction,
-        infer_ctx: DimsEq1InferContext,
         lhs_output_dims_eq1: List[bool],
         rhs_output_dims_eq1: List[bool]
     ):
@@ -147,8 +146,8 @@ class DimsEq1SignatureInferer:
             cls = kDAGGenClassToDerivedClass[dag_gen_class]
             return signature_inferer.Infer(
                 NaiveSignatureConstructor(
-                    .dag_gen_instruction=ctx.dag,
-                    .constructor=lambda *args: cls.Make(ctx, *args)
+                    dag_gen_instruction=ctx.dag,
+                    constructor=lambda *args: cls.Make(ctx, *args)
                 )
             )
         dims_eq1_signatures = [

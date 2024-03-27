@@ -1,10 +1,10 @@
 from dataclasses import dataclass
-import .dag_generator as dag_generator
-import .dims_eq1_signature_inferer as dims_eq1_signature_inferer
-import .shape_signature_inferer as shape_signature_inferer
-import .tensor_name_signature_inferer as tensor_name_signature_inferer
+import dag_generator as dag_generator
+import dims_eq1_signature_inferer as dims_eq1_signature_inferer
+import shape_signature_inferer as shape_signature_inferer
+import tensor_name_signature_inferer as tensor_name_signature_inferer
 from typing import List
-from .hash_combine import HashCombine
+from hash_combine import HashCombine
 
 kComponentClasses = (
     dims_eq1_signature_inferer.DimsEq1Signature,
@@ -16,15 +16,15 @@ kComponentClasses = (
 class CodeGenSpec:
     
     @classmethod
-    def GetDAGGenClassToDerivedClassMap(cls):
-        return kDAGGenClassToDerivedClass
+    def GetDerivedClassByDAGGenClass(cls, dag_gen_class):
+        return kDAGGenClassToDerivedClass[dag_gen_class]
 
 
 def MergeClass(dag_gen_cls, component_classes):
     class_name = dag_gen_cls.__name__
     base_classes = (CodeGenSpec,)
     base_classes += tuple(
-        component_class.GetDAGGenClassToDerivedClassMap()[dag_gen_cls]
+        component_class.GetDerivedClassByDAGGenClass(dag_gen_cls)
         for component_class in component_classes
     )
     return dataclass(type(class_name, base_classes, {}))
@@ -63,7 +63,7 @@ class CodeGenSpecInferer:
                 params.update(vars(signature))
             dag_gen_cls = type(dag_gen_instr)
             code_gen_spec_class = kDAGGenClassToDerivedClass[dag_gen_cls]
-            return code_gen_spec_class(*params)
+            return code_gen_spec_class(**params)
         return [
             CreateCodeGenSpec(*x)
             for x in zip(

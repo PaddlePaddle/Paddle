@@ -1,14 +1,14 @@
 from dataclasses import dataclass
 
 @dataclass
-class InstructionId
+class InstructionId:
     instruction_id: int
 
     def __hash__(self):
         return hash(self.instruction_id)
 
     @classmethod
-    def GetDAGGenClassToDerivedClassMap(cls):
+    def GetDerivedClassByDAGGenClass(cls, dag_gen_class):
         return InstructionId
 
 
