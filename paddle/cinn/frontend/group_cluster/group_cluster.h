@@ -24,17 +24,6 @@ namespace cinn::frontend {
 inline std::unordered_set<group_cluster::PatternNodePtr> ClusterOps(
     const std::vector<pir::Operation*>& ops) {
 
-  const auto& ops = [&] {
-    std::vector<const pir::Operation*> ops;
-    for (const auto& op : group_op.GetOperators()) {
-      if (op->name() == "cf.yield") {  // just skip cf.yield.
-        continue;
-      }
-      ops.emplace_back(op);
-    }
-    return ops;
-  }();
-
   CHECK(ops.size() > 0);
   VLOG(4) << "Start Cluster Ops!";
   VLOG(4) << "Input Group with size " << ops.size() << " :\n"

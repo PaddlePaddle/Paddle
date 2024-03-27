@@ -133,10 +133,7 @@ static ValueDimRelation CreateOpRelativenessForDefault(
   return res;
 }
 
-<<<<<<< HEAD
-static ValueDimRelation GetSingleOpRelation(pir::Operation* op) {
-  auto special_result = CreateOpRelativenessForSpecialOps(op);
-=======
+
 static std::optional<ValueDimRelation> CreateOpRelativenessForSpecialOps(
     const pir::Operation* op) {
   if (op->name() == "cinn_op.reshape") {
@@ -149,7 +146,6 @@ static std::optional<ValueDimRelation> CreateOpRelativenessForSpecialOps(
 static ValueDimRelation GetSingleOpRelation(const pir::Operation* op) {
   VLOG(4) << "GetSingleOpRelation for " << op->name();
   const auto& special_result = CreateOpRelativenessForSpecialOps(op);
->>>>>>> 7b4aa079e5c62d202e7b3afbda16ddd2e4b2c27c
   if (special_result != std::nullopt) {
     return special_result.value();
   }
@@ -182,14 +178,11 @@ static std::vector<std::pair<ValueDim, ValueDim>> FlattenRelation(
 static ValueDimRelation AnalysisIndexExprRelation(
     const std::vector<pir::Operation*>& ops) {
   ValueDimRelation res;
-<<<<<<< HEAD
-  for (size_t i = ops.size() - 1; i >= 0; --i) {
-    pir::Operation* op = ops[i];
-=======
+
   for (size_t i = ops.size(); i >= 1; --i) {
     const pir::Operation* op = ops[i - 1];
     if (op->name() == "cf.yield") continue;
->>>>>>> 7b4aa079e5c62d202e7b3afbda16ddd2e4b2c27c
+
     const auto& value_dim_relation = GetSingleOpRelation(op);
     for (const auto& in_out_pair : FlattenRelation(value_dim_relation)) {
       for (const auto& out_relation : res[in_out_pair.second]) {
