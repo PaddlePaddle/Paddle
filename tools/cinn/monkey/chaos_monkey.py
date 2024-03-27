@@ -57,7 +57,7 @@ if __name__ == '__main__':
             pick_probability=dag_generator.DAGGenTypePickProbability()
         ),
         dims_eq1_gen_requirement=dims_eq1_generator.DimsEq1GenRequirement(
-            dims_eq1_probability=[0.1, 0.15, 0.2]
+            dims_eq1_probability=[0.1, 0.2, 0.2]
         ),
         op_name_gen_requirement=op_name_generator.OpNameGenRequirement(),
         tensor_name_gen_requirement=tensor_name_generator.TensorNameGenRequirement(),
@@ -73,4 +73,5 @@ if __name__ == '__main__':
             unit_test_case_requirement=unit_test_case_requirement
         )
     )
+    print("import paddle")
     print(script.file_content)
