@@ -148,6 +148,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_zero_dim_sundry_static_api_part1$|\
 ^test_zero_dim_sundry_static_api_part2$|\
 ^test_zero_dim_sundry_static_api_part3$|\
+^test_zero_dim_sundry_static_api_part4$|\
 ^paddle_infer_api_copy_tensor_tester$|\
 ^cudnn_helper_test$|\
 ^test_analyzer_small_dam$|\
@@ -702,19 +703,23 @@ export FLAGS_call_stack_level=2
 if [ "${WITH_GPU:-OFF}" == "ON" ];then
 
     single_ut_mem_0_startTime_s=`date +%s`
-    while read line
-    do
-        run_unittest_gpu "$line" 16
-    done < $PADDLE_ROOT/tools/single_card_tests_mem0_new
-    single_ut_mem_0_endTime_s=`date +%s`
-    single_ut_mem_0_Time_s=`expr $single_ut_mem_0_endTime_s - $single_ut_mem_0_startTime_s`
-    echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: $single_ut_mem_0_Time_s s" 
+    if [ ${WIN_UNITTEST_LEVEL:-2} == "0" ]; then
+        echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: 0 s"
+    else
+        while read line
+        do
+            run_unittest_gpu "$line" 16
+        done < $PADDLE_ROOT/tools/single_card_tests_mem0_new
+        single_ut_mem_0_endTime_s=`date +%s`
+        single_ut_mem_0_Time_s=`expr $single_ut_mem_0_endTime_s - $single_ut_mem_0_startTime_s`
+        echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: $single_ut_mem_0_Time_s s"
+    fi
 
     single_ut_startTime_s=`date +%s`
     while read line
     do
         num=`echo $line | awk -F"$" '{print NF-1}'`
-        para_num=`expr $num / 3`
+        para_num=`expr $num / 2`
         if [ $para_num -eq 0 ]; then
             para_num=4
         fi
@@ -737,7 +742,7 @@ if [ "${WITH_GPU:-OFF}" == "ON" ];then
     while read line
     do
         num=`echo $line | awk -F"$" '{print NF-1}'`
-        para_num=`expr $num / 3`
+        para_num=`expr $num / 2`
         if [ $para_num -eq 0 ]; then
             para_num=4
         fi
@@ -762,7 +767,7 @@ if [ "${WITH_GPU:-OFF}" == "ON" ];then
     while read line
     do
         num=`echo $line | awk -F"$" '{print NF-1}'`
-        para_num=`expr $num / 3`
+        para_num=`expr $num / 2`
         if [ $para_num -eq 0 ]; then
             para_num=4
         fi
@@ -775,7 +780,7 @@ if [ "${WITH_GPU:-OFF}" == "ON" ];then
     noparallel_ut_startTime_s=`date +%s`
     while read line
     do
-        run_unittest_gpu "$line" 3
+        run_unittest_gpu "$line" 8
     done < $PADDLE_ROOT/tools/no_parallel_case_file
     noparallel_ut_endTime_s=`date +%s`
     noparallel_ut_Time_s=`expr $noparallel_ut_endTime_s - $noparallel_ut_startTime_s`

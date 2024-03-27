@@ -649,14 +649,14 @@ class P2pHelper:
         self._send_recv_meta = SendRecvMeta()
         self._use_cache = use_cache
 
-    def _send_meta(self, output_tensor):
+    def _send_meta(self, output_tensor, skip_check_meta=False):
         if not self._send_recv_meta.has_send_meta:
             self._send_recv_meta.set_send_message(output_tensor)
             self._send_recv_meta.send_meta(
                 output_tensor, _hcg.get_pipe_parallel_group()
             )
             self._send_recv_meta.has_send_meta = self._use_cache
-        else:
+        elif not skip_check_meta:
             self._send_recv_meta.check_send_message(output_tensor)
 
     def _recv_meta(self):
@@ -709,12 +709,18 @@ class P2pHelper:
             _timers("recv_backward").stop()
         return output_tensor_grad
 
-    def send_forward(self, output_tensor, pp_last_stage, batch_p2p_comm=True):
+    def send_forward(
+        self,
+        output_tensor,
+        pp_last_stage,
+        batch_p2p_comm=True,
+        skip_check_meta=False,
+    ):
         global _timers
         if _timers is not None:
             _timers("send_forward").start()
         if not pp_last_stage:
-            self._send_meta(output_tensor)
+            self._send_meta(output_tensor, skip_check_meta=skip_check_meta)
 
             _p2p_helper(
                 tensor_send_next=output_tensor,

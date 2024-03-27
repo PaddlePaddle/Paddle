@@ -9,6 +9,7 @@ set(TEST_PRIM_PURE_PIR_CASES
     test_prim_dynamic
     test_prim_jit_dynamic
     test_auto_recompute
+    test_auto_recompute_dy2static
     test_prim_sub_graph_dynamic_shape
     test_decompose_control_flow)
 
@@ -24,6 +25,7 @@ foreach(target ${TEST_PRIM_PURE_PIR_CASES})
 endforeach()
 
 set_tests_properties(test_auto_recompute PROPERTIES TIMEOUT 40)
+set_tests_properties(test_auto_recompute_dy2static PROPERTIES TIMEOUT 40)
 
 set(TEST_PRIM_PURE_PIR_CINN test_prim_rms_norm_st_shape
                             test_prim_flags_check_ops)
@@ -36,6 +38,7 @@ if(WITH_CINN)
       ${target}
       ENVS
       GLOG_v=1
+      FLAGS_group_schedule_tiling_first=true
       FLAGS_prim_check_ops=true
       FLAGS_enable_pir_api=true
       FLAGS_prim_enable_dynamic=true

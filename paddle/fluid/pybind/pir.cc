@@ -44,25 +44,7 @@
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/fluid/pir/transforms/fusion/conv2d_add_act_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/conv2d_add_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/conv2d_bn_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/embedding_eltwise_layernorm_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fc_elementwise_layernorm_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fc_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fused_dot_product_attention_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fused_dropout_add_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fused_gemm_epilogue_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/fused_weight_only_linear_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/matmul_scale_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/multihead_matmul_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/silu_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/transpose_flatten_concat_fuse_pass.h"
-#include "paddle/fluid/pir/transforms/identity_op_clean_pass.h"
-#include "paddle/fluid/pir/transforms/inplace_pass.h"
-#include "paddle/fluid/pir/transforms/map_op_to_another_pass.h"
-#include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
+#include "paddle/fluid/pir/transforms/passes.h"
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -93,10 +75,6 @@
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #endif
 
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/pir/transforms/onednn/batch_norm_act_fuse_pass.h"
-#endif
-
 namespace py = pybind11;
 using paddle::dialect::ApiBuilder;
 using paddle::dialect::DenseTensorArrayType;
@@ -107,11 +85,15 @@ using paddle::dialect::PyLayerOp;
 using paddle::dialect::SelectedRowsType;
 using paddle::dialect::WhileOp;
 
+using paddle::dialect::OperationDistAttribute;
+using paddle::dialect::TensorDistAttribute;
+
 using pir::Attribute;
 using pir::Block;
 using pir::BlockArgument;
 using pir::BoolAttribute;
 using pir::CloneOptions;
+using pir::IrContext;
 using pir::IrMapping;
 using pir::IrParser;
 using pir::Operation;
@@ -123,31 +105,6 @@ using pir::Program;
 using pir::Type;
 using pir::Value;
 using pybind11::return_value_policy;
-
-USE_PIR_PASS(dead_code_elimination_pass);
-USE_PIR_PASS(multihead_matmul_fuse_pass);
-USE_PIR_PASS(transpose_flatten_concat_fuse_pass);
-USE_PIR_PASS(fused_gemm_epilogue_pass);
-USE_PIR_PASS(fused_dropout_add_pass);
-USE_PIR_PASS(fused_weight_only_linear_pass);
-USE_PIR_PASS(fused_linear_param_grad_add_pass);
-USE_PIR_PASS(inplace_pass);
-USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
-USE_PIR_PASS(identity_op_clean_pass);
-USE_PIR_PASS(map_op_to_another_pass);
-USE_PIR_PASS(matmul_scale_fuse_pass);
-USE_PIR_PASS(fc_fuse_pass);
-USE_PIR_PASS(silu_fuse_pass);
-USE_PIR_PASS(fc_elementwise_layernorm_fuse_pass);
-USE_PIR_PASS(conv2d_bn_fuse_pass);
-USE_PIR_PASS(conv2d_add_fuse_pass);
-USE_PIR_PASS(conv2d_add_act_fuse_pass);
-USE_PIR_PASS(embedding_eltwise_layernorm_fuse_pass);
-USE_PIR_PASS(fused_dot_product_attention_pass);
-
-#ifdef PADDLE_WITH_DNNL
-USE_PIR_PASS(batch_norm_act_fuse_pass);
-#endif
 
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
@@ -212,6 +169,25 @@ std::string GetValueInfo(Value v) {
     ss << ", stop_gradient=True";
   }
   return ss.str();
+}
+
+Value GetOutputValueByName(const Program &program, const std::string &name) {
+  auto &block = *program.block();
+  pir::StrAttribute name_attr =
+      pir::StrAttribute::get(IrContext::Instance(), name);
+  Value value;
+  for (auto &op : block) {
+    if (op.isa<pir::ShadowOutputOp>()) {
+      if (op.attribute("output_name") == name_attr) {
+        if (value) {
+          PADDLE_THROW(common::errors::PreconditionNotMet(
+              "More than one shadow ouput named with %s found.", name));
+        }
+        value = op.operand_source(0);
+      }
+    }
+  }
+  return value;
 }
 
 void BindProgram(py::module *m) {
@@ -325,6 +301,10 @@ void BindProgram(py::module *m) {
           [](std::shared_ptr<Program> self, int64_t random_seed) {
             SetProgramInt64Attr(self, "random_seed", random_seed);
           })
+      .def("get_output_value_by_name",
+           [](Program &self, const std::string &name) {
+             return GetOutputValueByName(self, name);
+           })
       .def("num_ops", [](Program &self) { return self.num_ops(); });
 }
 
@@ -531,8 +511,13 @@ void BindOperation(py::module *m) {
              for (auto &pair : self.attributes()) {
                // SymbolAttribute is only used in PIR, no need to pass to Python
                if (pair.second.isa<pir::shape::SymbolAttribute>()) continue;
-               attrs_dict[pair.first.c_str()] =
-                   paddle::dialect::GetAttributeData(pair.second);
+               if (pair.first == kAttrOpDistAttr) {
+                 attrs_dict[pair.first.c_str()] =
+                     pair.second.dyn_cast<OperationDistAttribute>();
+               } else {
+                 attrs_dict[pair.first.c_str()] =
+                     paddle::dialect::GetAttributeData(pair.second);
+               }
              }
              return attrs_dict;
            })
@@ -689,7 +674,15 @@ void BindOperation(py::module *m) {
                     OpCreationCallstackAttrName(),
                 pir::ArrayAttribute::get(pir::IrContext::Instance(),
                                          op_callstack_infos));
-          });
+          })
+      .def("dist_attr", [](Operation &self) {
+        if (self.HasAttribute(kAttrOpDistAttr)) {
+          return self.attribute<OperationDistAttribute>(kAttrOpDistAttr);
+        } else {
+          PADDLE_THROW(
+              phi::errors::InvalidArgument("dist_attr is only for dist op."));
+        }
+      });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
     The Operation_BlockContainer only use to walk all blocks in the operation.
@@ -782,6 +775,40 @@ pir::Value apply(Value self, py::object func) {
   return out;
 }
 
+#define DEF_VALUE_BOOL_PROPERTY(name)                                         \
+  def_property(                                                               \
+      name,                                                                   \
+      [](Value self) {                                                        \
+        auto bool_data = self.attribute<BoolAttribute>(name);                 \
+        return !bool_data || bool_data.data();                                \
+      },                                                                      \
+      [](Value self, bool bool_data) {                                        \
+        self.set_attribute(                                                   \
+            name, BoolAttribute::get(pir::IrContext::Instance(), bool_data)); \
+      })
+
+#define DEF_VALUE_POINTER_PROPERTY(name)                                     \
+  def_property(                                                              \
+      name,                                                                  \
+      [](Value self) -> py::object {                                         \
+        auto prop_ptr = self.property(name);                                 \
+        if (!prop_ptr) {                                                     \
+          return py::cast<py::none>(Py_None);                                \
+        }                                                                    \
+        auto py_data = reinterpret_cast<PyObject *>(prop_ptr);               \
+        py::object obj = py::object(py::handle(py_data), true);              \
+        return obj;                                                          \
+      },                                                                     \
+      [](Value self, py::object obj) {                                       \
+        pir::PropertiesDeleter deleter = [](void *python_obj) {              \
+          Py_DECREF(python_obj);                                             \
+        };                                                                   \
+        PyObject *pointer_data = obj.release().ptr();                        \
+        pir::Property value_property(reinterpret_cast<void *>(pointer_data), \
+                                     deleter);                               \
+        self.set_property(name, value_property);                             \
+      })
+
 void BindValue(py::module *m) {
   py::class_<Value> value(*m,
                           "Value",
@@ -793,8 +820,7 @@ void BindValue(py::module *m) {
         The constructor of Value should not be invoked directly. Value can be automatically constructed
         when build network.
 
-  )DOC",
-                          pybind11::dynamic_attr());
+  )DOC");
   g_ir_value_pytype = reinterpret_cast<PyTypeObject *>(value.ptr());
   value.def(py::init<>())
       .def_property_readonly(
@@ -875,30 +901,15 @@ void BindValue(py::module *m) {
                return true;
              }
            })
-      .def_property(
-          "stop_gradient",
-          [](Value self) {
-            auto stop_gradient =
-                self.attribute<BoolAttribute>(kAttrStopGradients);
-            return !stop_gradient || stop_gradient.data();
-          },
-          [](Value self, bool stop_gradient) {
-            self.set_attribute(
-                kAttrStopGradients,
-                BoolAttribute::get(pir::IrContext::Instance(), stop_gradient));
-          })
-      .def_property(
-          "persistable",
-          [](Value self) {
-            auto persistable =
-                self.attribute<BoolAttribute>(kAttrIsPersistable);
-            return !persistable || persistable.data();
-          },
-          [](Value self, bool persistable) {
-            self.set_attribute(
-                kAttrIsPersistable,
-                BoolAttribute::get(pir::IrContext::Instance(), persistable));
-          })
+      .DEF_VALUE_BOOL_PROPERTY("stop_gradient")
+      .DEF_VALUE_BOOL_PROPERTY("trainable")
+      .DEF_VALUE_BOOL_PROPERTY("persistable")
+      .DEF_VALUE_BOOL_PROPERTY("need_clip")
+      .DEF_VALUE_BOOL_PROPERTY("is_distributed")
+      .DEF_VALUE_BOOL_PROPERTY("is_parameter")
+      .DEF_VALUE_POINTER_PROPERTY("optimize_attr")
+      .DEF_VALUE_POINTER_PROPERTY("regularizer")
+      .DEF_VALUE_POINTER_PROPERTY("do_model_average")
       .def("all_used_ops",
            [](Value &self) -> py::list {
              py::list op_list;
@@ -957,51 +968,13 @@ void BindValue(py::module *m) {
              return out;
            })
       .def("__repr__", &Value2String)
-      .def_property(
-          "dims_mapping",
-          [](Value self) {
-            if (!self.type().isa<DistDenseTensorType>()) {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "dims_mapping is only for distdense tensor."));
-            }
-            return self.type().dyn_cast<DistDenseTensorType>().dims_mapping();
-          },
-          [](Value self, const std::vector<int> &shape) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
-                "set dims_mapping when building static graph is un-supported "
-                "now."));
-          })
-      .def_property(
-          "partial_dims",
-          [](Value self) {
-            if (!self.type().isa<DistDenseTensorType>()) {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "partial_dims is only for distdense tensor."));
-            }
-            return self.type().dyn_cast<DistDenseTensorType>().partial_dims();
-          },
-          [](Value self, const std::vector<int> &shape) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
-                "set partial_dims when building static graph is un-supported "
-                "now."));
-          })
-      .def_property(
-          "process_mesh",
-          [](Value self) {
-            if (!self.type().isa<DistDenseTensorType>()) {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "process_mesh is only for distdense tensor."));
-            }
-            return self.type()
-                .dyn_cast<DistDenseTensorType>()
-                .process_mesh_attr()
-                .process_mesh();
-          },
-          [](Value self, const std::vector<int> &shape) {
-            PADDLE_THROW(phi::errors::InvalidArgument(
-                "set process_mesh when building static graph is un-supported "
-                "now."));
-          });
+      .def("dist_attr", [](Value &self) {
+        if (!self.type().isa<DistDenseTensorType>()) {
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "dist_attr is only for distdense tensor."));
+        }
+        return self.type().dyn_cast<DistDenseTensorType>().tensor_dist_attr();
+      });
 }
 
 void BindOpOperand(py::module *m) {
@@ -1730,15 +1703,14 @@ void BindUtils(pybind11::module *m) {
                 {'matmul_v2_0.tmp_0': [Value(define_op_name=pd_op.matmul, index=0, dtype=builtin.tensor<4x4xf32>)], 'x': [Value(define_op_name=pd_op.data, index=0, dtype=builtin.tensor<4x4xf32>)], 'tanh_0.tmp_0': [Value(define_op_name=pd_op.tanh, index=0, dtype=builtin.tensor<4x4xf32>)], 'elementwise_add_0': [Value(define_op_name=pd_op.add, index=0, dtype=builtin.tensor<4x4xf32>)]}
     )DOC");
 
-  m->def(
-      "clear_pir_compiler_manager",
-      []() {
+  m->def("clear_cinn_compilation_cache",
+         []() {
 #ifdef PADDLE_WITH_CINN
-        pybind11::gil_scoped_release release;
-        VLOG(4) << "clear PirCompilerManager and free PirCompiler resources.";
-        cinn::hlir::framework::PirCompilerManager::Instance().clear();
+           pybind11::gil_scoped_release release;
+           VLOG(4) << "clear CINN CompilationCache and free BackendResource.";
+           cinn::hlir::framework::CompilationCache::Instance().Clear();
 #endif
-      }),
+         }),
       m->def("apply_mix2dist_pass", paddle::dialect::MixToDistPass);
 }
 

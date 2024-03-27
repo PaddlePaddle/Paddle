@@ -19,6 +19,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/core/builtin_op.h"
@@ -428,6 +429,46 @@ class PowOpPattern : public pir::OpRewritePattern<paddle::dialect::PowOp> {
   }
 };
 
+class ElementwisePowOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::ElementwisePowOp> {
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::ElementwisePowOp>::OpRewritePattern;
+
+  bool Match(paddle::dialect::ElementwisePowOp op) const override {
+    const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
+    auto y_op = op->operand_source(1)
+                    .defining_op()
+                    ->dyn_cast<paddle::dialect::FullOp>();
+    return !is_denied && y_op;
+  }
+
+  void Rewrite(paddle::dialect::ElementwisePowOp op,
+               pir::PatternRewriter &rewriter) const override {
+    auto y_op = op->operand_source(1)
+                    .defining_op()
+                    ->dyn_cast<paddle::dialect::FullOp>();
+    auto factor =
+        y_op.attribute("value").dyn_cast<::pir::FloatAttribute>().data();
+    if (factor == 2.0) {
+      auto multiply = rewriter.Build<paddle::dialect::MultiplyOp>(
+          op->operand_source(0), op->operand_source(0));
+      rewriter.ReplaceAllUsesWith(op.result(0), multiply.result(0));
+      rewriter.EraseOp(op);
+    } else if (factor == -0.5) {
+      auto rsqrt =
+          rewriter.Build<paddle::dialect::RsqrtOp>(op->operand_source(0));
+      rewriter.ReplaceAllUsesWith(op.result(0), rsqrt.result(0));
+      rewriter.EraseOp(op);
+    } else if (factor == 0.5) {
+      auto sqrt =
+          rewriter.Build<paddle::dialect::SqrtOp>(op->operand_source(0));
+      rewriter.ReplaceAllUsesWith(op.result(0), sqrt.result(0));
+      rewriter.EraseOp(op);
+    }
+  }
+};
+
 static void ReplaceSliceOp(const cinn::dialect::SplitOp &cinn_split,
                            pir::Operation *slice_op,
                            pir::PatternRewriter &rewriter) {  // NOLINT
@@ -711,6 +752,43 @@ class UniformOpPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
+class FullWithTensorOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::FullWithTensorOp> {
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::FullWithTensorOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::FullWithTensorOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto shape = op->operand_source(0);
+    auto value = op->operand_source(1);
+
+    if (paddle::dialect::TransToPhiDataType(
+            value.type()
+                .dyn_cast<paddle::dialect::DenseTensorType>()
+                .dtype()) != op.attribute("dtype")
+                                 .dyn_cast<paddle::dialect::DataTypeAttribute>()
+                                 .data()) {
+      value = rewriter
+                  .Build<paddle::dialect::CastOp>(
+                      value,
+                      op.attribute("dtype")
+                          .dyn_cast<paddle::dialect::DataTypeAttribute>()
+                          .data())
+                  .result(0);
+    }
+
+    auto out =
+        rewriter.Build<paddle::dialect::ExpandOp>(value, shape).result(0);
+
+    rewriter.ReplaceAllUsesWith(op.result(0), out);
+
+    rewriter.EraseOp(op);
+
+    return true;
+  }
+};
+
 PdOpToCinnOpPass::PdOpToCinnOpPass()
     : pir::PatternRewritePass("pd_to_cinn_pass", 1) {}
 
@@ -725,9 +803,14 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add(paddle::drr::Create<ProdOpPattern>(context));
   ps.Add<ReshapeOpPattern>(context);
   ps.Add<PowOpPattern>(context);
+  ps.Add<ConcatOpPattern>(context);
+  ps.Add<SliceOpPattern>(context);
   ps.Add<AddNOpPattern>(context);
+  // ps.Add<SplitWithNumOpPattern>(context);
   ps.Add<ExpandOpPattern>(context);
   ps.Add<IsCloseOpPattern>(context);
+  ps.Add<ElementwisePowOpPattern>(context);
+  ps.Add<FullWithTensorOpPattern>(context);
 
   return ps;
 }
