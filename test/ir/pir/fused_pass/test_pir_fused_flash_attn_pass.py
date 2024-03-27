@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import re
 import unittest
 
 import numpy as np
@@ -23,18 +25,41 @@ from paddle.base import core
 np.random.seed(42)
 paddle.enable_static()
 
-is_sm8x = (
+
+def get_cuda_version():
+    result = os.popen("nvcc --version").read()
+    regex = r'release (\S+),'
+    match = re.search(regex, result)
+    if match:
+        num = str(match.group(1))
+        integer, decimal = num.split('.')
+        return int(integer) * 1000 + int(float(decimal) * 10)
+    else:
+        return -1
+
+
+is_sm_supported = (
     core.is_compiled_with_cuda()
-    and paddle.device.cuda.get_device_capability()[0] == 8
+    and paddle.device.cuda.get_device_capability()[0] >= 8
     and paddle.device.cuda.get_device_capability()[1] >= 0
 )
 
-is_sm_supported = is_sm8x
+
+def is_flashattn_supported():
+    if (
+        not core.is_compiled_with_cuda()
+        or get_cuda_version() < 11040
+        or not is_sm_supported
+    ):
+        return False
+    return True
+
 
 # FlashAttn
-@unitest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11040 or not is_sm_supported,
-    "flash_attn only support NVIDIA A100 or NVIDIA H100",
+@unittest.skipIf(
+    not is_flashattn_supported(),
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must >= 8.x",
 )
 class TestFlashAttnPatternQscaleCast(PassTest):
     r"""
@@ -154,9 +179,10 @@ class TestFlashAttnPatternQscaleCast(PassTest):
 
 
 # FlashAttn
-@unitest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11040 or not is_sm_supported,
-    "flash_attn only support NVIDIA A100 or NVIDIA H100",
+@unittest.skipIf(
+    not is_flashattn_supported(),
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must >= 8.x",
 )
 class TestFlashAttnPatternQscaleNoCast(PassTest):
     r"""
@@ -270,9 +296,10 @@ class TestFlashAttnPatternQscaleNoCast(PassTest):
 
 
 # FlashAttn
-@unitest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11040 or not is_sm_supported,
-    "flash_attn only support NVIDIA A100 or NVIDIA H100",
+@unittest.skipIf(
+    not is_flashattn_supported(),
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must >= 8.x",
 )
 class TestFlashAttnPatternOutscaleCast(PassTest):
     r"""
@@ -395,9 +422,10 @@ class TestFlashAttnPatternOutscaleCast(PassTest):
 
 
 # FlashAttn
-@unitest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11040 or not is_sm_supported,
-    "flash_attn only support NVIDIA A100 or NVIDIA H100",
+@unittest.skipIf(
+    not is_flashattn_supported(),
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must >= 8.x",
 )
 class TestFlashAttnPatternOutscaleNoCast(PassTest):
     r"""
@@ -511,6 +539,7 @@ class TestFlashAttnPatternOutscaleNoCast(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct(atol=1e-3, rtol=1e-3)
+
 
 if __name__ == "__main__":
     unittest.main()
