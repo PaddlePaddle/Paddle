@@ -88,7 +88,7 @@ class SliceOpInferSymbolicShapeTest(TestBase):
             )
 
             input_spec = [x_spec]
-            net = apply_to_static(net, True, input_spec)
+            net = apply_to_static(net, False, input_spec)
             net.eval()
             check_infer_results(net, input_spec, 'pd_op.slice', self.expected)
 
