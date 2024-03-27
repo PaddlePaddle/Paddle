@@ -38,8 +38,16 @@ bool ConcatOpInferSymbolicShape(
                      .to<int64_t>();
   size_t rank = shape_data_list[0].shape().size();
   axis = axis >= 0 ? axis : std::max(int64_t(0), int64_t(axis + rank));
+  bool has_value = true;
 
-  if (shape_data_list[0].data().has_value()) {
+  for (auto &shape_data : shape_data_list) {
+    if (!shape_data.data().has_value()) {
+      has_value = false;
+      break;
+    }
+  }
+
+  if (has_value) {
     if (rank == 1) {
       ExprVec data = details::GetExprVecFromData(
           shape_analysis->GetShapeOrDataForValue(operand_source));
