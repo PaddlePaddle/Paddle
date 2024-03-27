@@ -57,11 +57,10 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
 
     PADDLE_ENFORCE_NOT_NULL(
         scope_, phi::errors::InvalidArgument("scope can not be nullptr"));
-    PADDLE_ENFORCE(
-        paddle::platform::is_gpu_place(place_) ||
-            paddle::platform::is_cpu_place(place_),
-        phi::errors::PreconditionNotMet(
-            "params_sync_among_devices_pass should run on cpu or gpu."));
+    PADDLE_ENFORCE(paddle::platform::is_gpu_place(place_)
+                       phi::errors::PreconditionNotMet(
+                           "params_sync_among_devices_pass should run on gpu , "
+                           "xpu will be supported in the future"));
     return true;
   }
 
@@ -106,6 +105,9 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
+    if (!paddle::platform::is_gpu_place(place_)) {
+      return false;
+    }
     return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
   }
 

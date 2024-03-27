@@ -1250,8 +1250,10 @@ struct PD_INFER_DECL AnalysisConfig {
                           bool custom_pass_only = false);
 
   ///
-  /// \brief Set passmanager opt level.Pass level lower than
-  /// opt level which will be added to passmanager
+  /// \brief Set passmanager opt level. Pass level lower than
+  /// opt level which will be added to passmanager.
+  /// \param opt_level PassManager Level, which should be 0-4 .
+  ///
   ///
   void SetOptimizationLevel(int opt_level);
 

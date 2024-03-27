@@ -115,7 +115,6 @@
 #include "paddle/fluid/pir/transforms/general/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/general/inplace_pass.h"
-#include "paddle/fluid/pir/transforms/general/matmul_transpose_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/general/params_sync_among_devices_pass.h"
 #include "paddle/fluid/pir/transforms/general/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
@@ -934,14 +933,6 @@ bool AnalysisPredictor::PrepareExecutor() {
                 std::move(pir::PassRegistry::Instance().Get(gpu_pass)));
           }
         }
-        // Basic pass required by the framework
-        auto params_sync_among_devices_pass =
-            ::pir::CreateParamsSyncAmongDevicesPass();
-        params_sync_among_devices_pass->SetNotOwned(pir::kPlaceAttr, &place_);
-        params_sync_among_devices_pass->SetNotOwned(pir::kParamScopeAttr,
-                                                    sub_scope_);
-        pass_pm.AddPass(std::move(params_sync_among_devices_pass));
-
 #ifdef PADDLE_WITH_DNNL
       } else if (config_.mkldnn_enabled()) {
         // mkldnn
@@ -961,6 +952,13 @@ bool AnalysisPredictor::PrepareExecutor() {
           }
         }
       }
+      // Basic pass required by the framework
+      auto params_sync_among_devices_pass =
+          ::pir::CreateParamsSyncAmongDevicesPass();
+      params_sync_among_devices_pass->SetNotOwned(pir::kPlaceAttr, &place_);
+      params_sync_among_devices_pass->SetNotOwned(pir::kParamScopeAttr,
+                                                  sub_scope_);
+      pass_pm.AddPass(std::move(params_sync_among_devices_pass));
       auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
       constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place_);
       constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, sub_scope_);
