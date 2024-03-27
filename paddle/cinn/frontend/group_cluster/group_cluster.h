@@ -21,10 +21,9 @@
 
 namespace cinn::frontend {
 
-inline std::unordered_set<group_cluster::PatternNodePtr> ClusterOps(
+inline group_cluster::PatternNodePtrSet ClusterOps(
     const std::vector<pir::Operation*>& ops) {
-
-  CHECK(ops.size() > 0);
+  CHECK_GT(ops.size(), 0);
   VLOG(4) << "Start Cluster Ops!";
   VLOG(4) << "Input Group with size " << ops.size() << " :\n"
           << group_cluster::OpsDebugStr(ops);

@@ -16,7 +16,7 @@
 
 namespace cinn::frontend::group_cluster {
 
-std::unordered_set<PatternNodePtr> PatternGraph::ClusterOps() {
+PatternNodePtrSet PatternGraph::ClusterOps() {
   SinkTrivialPattern();
   // ReducePattern -> ReduceTreePattern
   VLOG(4) << "ReduceLiftReduceTree";
@@ -28,20 +28,8 @@ std::unordered_set<PatternNodePtr> PatternGraph::ClusterOps() {
 
   VLOG(4) << "ReduceTree_Trivial_Fusion";
   ReduceTree_Trivial_Fusion();
-<<<<<<< HEAD
-  return all_pattern_nodes_;
-=======
 
-  VLOG(4) << "Start Pattern Flatten.";
-  // TODO(wuzhanfei) need sort here, or do not return from all_pattern_nodes_
-  std::vector<std::vector<const pir::Operation*>> result;
-  std::transform(all_pattern_nodes_.begin(),
-                 all_pattern_nodes_.end(),
-                 std::back_inserter(result),
-                 [](const PatternNodePtr node) { return node->GetOps(); });
-  VLOG(4) << "ClusterOps returns " << result.size() << " Groups";
-  return result;
->>>>>>> 7b4aa079e5c62d202e7b3afbda16ddd2e4b2c27c
+  return all_pattern_nodes_;
 }
 
 void PatternGraph::SinkTrivialPattern() {

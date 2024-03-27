@@ -16,8 +16,6 @@
 
 #include <variant>
 
-#include "paddle/cinn/frontend/group_cluster/group_cluster.h"
-
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/compile_error.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_util.h"
@@ -387,8 +385,8 @@ bool FusionNode::IsTrivial() const {
 
 bool CheckAllLoopRangeEq(ReduceOp reduce_upper, TrivialOp trivial_down) {}
 
-std::vector<FusibleOp> FusionGraph::TransformReduceLoopRange(const ReduceOp& upstream,
-                                                FusibleOp* downstream) {
+std::vector<FusibleOp> FusionGraph::TransformReduceLoopRange(
+    const ReduceOp& upstream, FusibleOp* downstream) {
   // downstream will be mutated by this transform.
   VLOG(4) << "RRTransform begin";
   VLOG(4) << "RRTransform Upstream is \n" << _GetRootExpr(upstream);
@@ -412,16 +410,29 @@ std::vector<FusibleOp> FusionGraph::TransformReduceLoopRange(const ReduceOp& ups
     return result;
   };
 
-  const auto get_new_reduce_output_iters = [&](const FusibleOp& downstream) -> std::vector<ir::Var>{
+  const auto get_new_reduce_output_iters =
+      [this](const FusibleOp& downstream) -> std::vector<ir::Var> {
     struct Visitor {
       std::vector<ir::Var> operator()(const ReduceOp& op) {
         return GetOutputIters(op);
       }
       std::vector<ir::Var> operator()(const TrivialOp& op) {
-        auto output_iter= GetOutputIters(op);
+        auto result = std::vector<ir::Var>();
+        auto output_iter = GetOutputIters(op);
+        for (int i = 0; i < output_iter.size(); i++) {
+          if (std::find(trivial_reduce_iter_idx_.begin(),
+                        this->trivial_reduce_iter_idx_.end(),
+                        1) == trivial_reduce_iter_idx_.end()) {
+            result.emplace_back(output_iter.at(i));
+          }
+        }
+        return result;
       }
+      explicit Visitor(const std::vector<int>& trivial_reduce_iter_idx)
+          : trivial_reduce_iter_idx_(trivial_reduce_iter_idx) {}
+      std::vector<int> trivial_reduce_iter_idx_;
     };
-    return std::visit(Visitor(), downstream);
+    return std::visit(Visitor(trivial_reduce_iter_idx_), downstream);
   };
 
   for (const auto& load_tensor : load_upstream_expr) {
@@ -475,8 +486,8 @@ FusibleOp SinkTrivialLoopAlign(TrivialOp trivial_op, ReduceOp reduce_op) {
   return TrivialOp(new_trivial_body);
 }
 
-std::vector<FusibleOp> FusionGraph::ReduceTransformRecursive(FusibleOp root_op,
-                                                FusionNode* fusion_tree) {
+std::vector<FusibleOp> FusionGraph::ReduceTransformRecursive(
+    FusibleOp root_op, FusionNode* fusion_tree) {
   VLOG(4) << "ReduceTransformRecursive: " << *_GetFuncBodyPointer(root_op);
   std::vector<FusibleOp> result;
   for (auto& pair : fusion_tree->upstream) {
@@ -527,10 +538,24 @@ std::vector<T> FilterVector(const std::vector<T>& ops, const F& f) {
   return res;
 }
 
-FusionGraph::FusionGraph(const std::vector<::pir::Operation*>& ops,
-                         const std::vector<ir::Expr>& op_compute_bodies) {
-  // shardable_axes_ = InferShardableAxes(ops);
+FusionGraph::FusionGraph(
+    const cinn::frontend::group_cluster::PatternNodePtr& pattern_node,
+    const std::unordered_map<::pir::Operation*, ir::Expr>& op_expr_map) {
   VLOG(4) << "CreateFusionGraph";
+
+  std::vector<::pir::Operation*> ops = pattern_node->GetOps();
+  std::vector<ir::Expr> op_compute_bodies = std::vector<ir::Expr>();
+  std::transform(ops.begin(),
+                 ops.end(),
+                 std::back_inserter(op_compute_bodies),
+                 [&](::pir::Operation* op) { return op_expr_map.at(op); });
+
+  if (pattern_node->IsReduceTrivial()) {
+    trivial_reduce_iter_idx_ = GetTrivialReduceIter(
+        std::get<cinn::frontend::group_cluster::ReduceTreePlusTrivialPattern>(
+            pattern_node->stmt_pattern_));
+  }
+
   const auto& filtered_ops = FilterVector(ops, [](const ::pir::Operation* op) {
     if (op->name() == "cinn_op.generate_shape") {
       return false;
@@ -786,24 +811,22 @@ FusionNode* FusionGraph::FindReduceUpstream(FusionNode* node) {
 std::vector<ir::Expr> OperationFusion(
     const std::vector<::pir::Operation*>& ops,
     const std::vector<ir::Expr>& op_compute_bodies) {
+  auto output = std::vector<ir::Expr>();
+  auto op_expr_map =
+      trivial_fusion_detail::ComposeUtils::MakeMap(ops, op_compute_bodies);
 
   auto frontend_cluster_result = cinn::frontend::ClusterOps(ops);
-  for (const auto& frontend_node: frontend_cluster_result){
-
-    if (frontend_node->IsReduceTrivial()){
-      //TODO
-      sink_trivial_reduce_iter_idx_[frontend_node->sink_op_] = Getxxx(frontend_node);
-    }
-
+  for (const auto& frontend_node : frontend_cluster_result) {
     trivial_fusion_detail::FusionGraph graph =
-        trivial_fusion_detail::FusionGraph(ops, op_compute_bodies);
-    auto output = graph.DoFusion();
-    VLOG(4) << "Fusion Result: output size is " << output.size();
-    for (const auto& expr : output) {
-      VLOG(4) << expr;
-    }
+        trivial_fusion_detail::FusionGraph(frontend_node, op_expr_map);
+    output = trivial_fusion_detail::ComposeUtils::ConcatVector(
+        output, graph.DoFusion());
   }
 
+  VLOG(4) << "Fusion Result: output size is " << output.size();
+  for (const auto& expr : output) {
+    VLOG(4) << expr;
+  }
   return output;
 }
 

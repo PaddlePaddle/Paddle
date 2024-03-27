@@ -127,6 +127,10 @@ bool IsUnsupportPattern(const StmtPattern& pattern) {
   return std::holds_alternative<UnsupportPattern>(pattern);
 }
 
+bool IsReduceTrivialPattern(const StmtPattern& pattern) {
+  return std::holds_alternative<ReduceTreePlusTrivialPattern>(pattern);
+}
+
 std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern& pattern) {
   return std::visit([](const auto& impl) { return impl.ops(); }, pattern);
 }
@@ -173,6 +177,11 @@ StmtPattern ConvertToStmtPattern(pir::Operation* op) {
 
 ReducePattern ToReducePattern(const StmtPattern& second) {
   return std::get<ReducePattern>(second);
+}
+
+std::vector<int> GetTrivialReduceIter(
+    const ReduceTreePlusTrivialPattern& pattern) {
+  return {};
 }
 
 }  // namespace cinn::frontend::group_cluster

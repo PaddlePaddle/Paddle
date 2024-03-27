@@ -46,7 +46,7 @@ ShardableAxes ShardableAxesInfoManager::GetAxes(pir::Value value) {
 
 std::string ShardableAxesInfoManager::GetUniqueName() {
   static std::atomic<int64_t> counter = 0;
-  return "D" + std::to_string(counter);
+  return "D" + std::to_string(counter++);
 }
 
 std::vector<std::string> CreateNewNamesWithRank(int64_t rank) {
@@ -77,8 +77,7 @@ std::optional<ShardableAxesSignature> CreateSignatureForSpecialOps(
   return std::nullopt;
 }
 
-ShardableAxesSignature CreateSignatureForReduce(
-    pir::Operation* reduce_op) {
+ShardableAxesSignature CreateSignatureForReduce(pir::Operation* reduce_op) {
   CHECK_EQ(reduce_op->num_operands(), 1);
   CHECK_EQ(reduce_op->num_results(), 1);
   ShardableAxesSignature result = ShardableAxesSignature();
@@ -124,8 +123,7 @@ ShardableAxesSignature CreateSignatureForElementWise(pir::Operation* op) {
 }
 
 ShardableAxesSignature CreateSignatureForBroadcast(
-    pir::Operation* op,
-    const pir::ShapeConstraintIRAnalysis* shape_analysis) {
+    pir::Operation* op, const pir::ShapeConstraintIRAnalysis* shape_analysis) {
   const auto& broad_cast_value = GetBroadcastOpInputOuputValue(op);
   if (!broad_cast_value.has_value()) {
     return CreateDefaultSignature(op);

@@ -28,8 +28,7 @@ struct TrivialPattern {
 };
 
 struct ReducePattern {
-  explicit ReducePattern(const std::vector<pir::Operation*>& ops)
-      : ops_(ops) {}
+  explicit ReducePattern(const std::vector<pir::Operation*>& ops) : ops_(ops) {}
   std::vector<pir::Operation*> ops_;
   std::vector<pir::Operation*> ops() const { return ops_; }
   pir::Operation* GetReduceOp() const { return ops_.back(); }
@@ -62,6 +61,7 @@ struct ReduceTreePlusTrivialPattern {
   ReduceTreePattern tree;
   TrivialPattern sink_trivial;
   std::vector<pir::Operation*> ops() const { return {}; }
+  std::vector<int> reduce_iter_idx_for_trivial;
 };
 
 struct UnsupportPattern {

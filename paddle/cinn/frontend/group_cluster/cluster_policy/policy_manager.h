@@ -22,6 +22,8 @@ class Policy {
  public:
   virtual bool CanFuse(const PatternNodePtr& upstream,
                        const PatternNodePtr& downstream) = 0;
+  virtual PatternNodePtr Merge(const PatternNodePtr& upstream,
+                               const PatternNodePtr& downstream) = 0;
 };
 
 using PolicyPtr = std::shared_ptr<Policy>;

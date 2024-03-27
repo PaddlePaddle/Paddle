@@ -21,6 +21,8 @@ class GeneralTopoPolicy final : virtual public Policy {
  public:
   bool CanFuse(const PatternNodePtr& upstream,
                const PatternNodePtr& downstream) override;
+  PatternNodePtr Merge(const PatternNodePtr& upstream,
+                       const PatternNodePtr& downstream) override;
 };
 
 }  // namespace cinn::frontend::group_cluster::policy

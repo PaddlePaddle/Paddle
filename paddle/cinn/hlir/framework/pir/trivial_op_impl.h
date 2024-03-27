@@ -13,9 +13,10 @@
 // limitations under the License.
 #pragma once
 
-#include <variant>
 #include <unordered_map>
+#include <variant>
 
+#include "paddle/cinn/frontend/group_cluster/group_cluster.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/compile_error.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_util.h"
@@ -129,8 +130,9 @@ FusibleOp SinkTrivialLoopAlign(TrivialOp trivial_op, ReduceOp reduce_op);
 FusibleOp CreateFusibleOp(ir::Expr compute_body, OpPatternKind op_pattern);
 
 struct FusionGraph {
-  explicit FusionGraph(const std::vector<::pir::Operation*>& ops,
-                       const std::vector<ir::Expr>& op_compute_bodies);
+  explicit FusionGraph(
+      const cinn::frontend::group_cluster::PatternNodePtr& pattern_node,
+      const std::unordered_map<::pir::Operation*, ir::Expr>& op_expr_map);
 
   ~FusionGraph();
 
@@ -183,7 +185,7 @@ struct FusionGraph {
   std::unordered_set<FusionNode*> entrance_nodes_;
   std::unordered_set<FusionNode*> exit_nodes_;
 
-  std::unordered_map<const ::pir::Operation*, std::vector<int>> sink_trivial_reduce_iter_idx_;
+  std::vector<int> trivial_reduce_iter_idx_;
   // std::unordered_map<::pir::Value, ShardableAxes> shardable_axes_;
 };
 

@@ -56,6 +56,7 @@ bool IsTrivialPattern(const StmtPattern& pattern);
 bool IsReducePattern(const StmtPattern& pattern);
 bool IsReduceTreePattern(const StmtPattern& pattern);
 bool IsUnsupportPattern(const StmtPattern& pattern);
+bool IsReduceTrivialPattern(const StmtPattern& pattern);
 
 template <typename T>
 void ExtendVector(std::vector<T>* first, const std::vector<T>& second) {
@@ -92,4 +93,7 @@ ReducePattern ToReducePattern(const StmtPattern& second);
 
 StmtPattern ConvertToStmtPattern(pir::Operation* op);
 std::unordered_set<pir::Value> GetPatternInputValues(const StmtPattern& A);
+
+std::vector<int> GetTrivialReduceIter(
+    const ReduceTreePlusTrivialPattern& pattern);
 }  // namespace cinn::frontend::group_cluster
