@@ -55,7 +55,7 @@ std::shared_ptr<OpLoweringGroup> OpLoweringGroup::Clone(
 }
 
 std::ostream& operator<<(std::ostream& os, const OpLoweringGroup& group) {
-  auto PrintSymbolDim = [&](const ::pir::Operation& op) {
+  auto PrintSymbolDims = [&](const ::pir::Operation& op) {
     if (group.value_to_shape_or_data_exprs_.empty()) return;
     os << " {";
     for (uint32_t i = 0; i < op.num_operands(); ++i) {
@@ -73,7 +73,7 @@ std::ostream& operator<<(std::ostream& os, const OpLoweringGroup& group) {
   os << "Group " << group.group_id() << " :\n";
   for (auto* op : group.ops()) {
     printer.PrintOperation(op);
-    PrintSymbolDim(*op);
+    PrintSymbolDims(*op);
     os << "\n";
   }
   return os;
