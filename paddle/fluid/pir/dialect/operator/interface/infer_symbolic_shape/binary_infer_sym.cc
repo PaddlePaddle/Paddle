@@ -450,7 +450,8 @@ bool MatmulOpInferSymbolicShape(
     }
 
     for (size_t i = 0; i < ndims_x - 2; ++i) {
-      shape_analysis->AddEqCstr(x_dims[i], y_dims[i]);
+      // TODO(jiawenxuan): AddBroadcastCstr
+      // shape_analysis->AddEqCstr(x_dims[i], y_dims[i]);
     }
   }
   return true;
