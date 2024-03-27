@@ -154,7 +154,7 @@ StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second) {
     return TrivialPattern(ops);
   } else {
     // Not Implementation.
-    CHECK(false);
+    CHECK(false) << "Not support!";
   }
 }
 

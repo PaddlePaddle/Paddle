@@ -166,7 +166,7 @@ ShardableAxesSignature ShardableAxesInfoManager::CreateShardableSignature(
   }
 
   CHECK(op->num_results() == 1)
-      << "Now we do not support op with multi outputs";
+      << "Now we do not support op with multi outputs: " << op->name();
   ShardableAxesSignature result;
   const hlir::framework::OpPatternKind kind = GetOpPatternKind(op);
   if (kind == hlir::framework::kReduction) {
@@ -188,6 +188,7 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
     const pir::ShapeConstraintIRAnalysis* shape_analysis)
     : ops_(ops), shape_analysis_(shape_analysis) {
   for (const auto& op : ops) {
+    if (op->name() == "cf.yield") continue;
     op_signature_map_[op] = CreateShardableSignature(op);
   }
 

@@ -19,6 +19,22 @@
 
 namespace cinn::frontend::group_cluster {
 
+struct PatternNodePtrHash {
+  size_t operator()(const PatternNodePtr& node) const {
+    return std::hash<PatternNode*>()(node.get());
+  }
+};
+
+struct PatternNodePtrCompare {
+  bool operator()(const std::shared_ptr<PatternNode>& a,
+                  const std::shared_ptr<PatternNode>& b) const {
+    return a.get() == b.get();
+  }
+};
+
+using PatternNodePtrSet = std::
+    unordered_set<PatternNodePtr, PatternNodePtrHash, PatternNodePtrCompare>;
+
 class PatternGraph {
  public:
   PatternGraph(const std::vector<const pir::Operation*>& ops,
@@ -35,12 +51,14 @@ class PatternGraph {
 
   void RemoveNode(const PatternNodePtr& node);
   void AppendNode(const PatternNodePtr& node);
+  void PrintGraph();
+  void MergeNode(const PatternNodePtr& upstream,
+                 const PatternNodePtr& downstream);
 
  private:
-  std::unordered_set<PatternNodePtr> all_pattern_nodes_;
-  std::unordered_set<PatternNodePtr> entrance_nodes_;
-  std::unordered_set<PatternNodePtr> exit_nodes_;
-
+  PatternNodePtrSet all_pattern_nodes_;
+  PatternNodePtrSet entrance_nodes_;
+  PatternNodePtrSet exit_nodes_;
   const policy::PolicyManager policy_manager_;
 };
 
