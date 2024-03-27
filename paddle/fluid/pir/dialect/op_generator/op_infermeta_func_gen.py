@@ -609,40 +609,12 @@ def GenDistBranch(args, op_info):
         return ""
     TEMPLATE = """
   // Auto Parallel condition
-  if(HasDistInput(input_values)) {{
-    ProcessMeshAttribute op_mesh;
+  ProcessMeshAttribute op_mesh;
+  if(HasDistInput(input_values, &op_mesh)) {{
+    CvtAllInputsToDist(input_values, op_mesh);
     auto ctx = pir::IrContext::Instance();
-    for(auto value : input_values) {{
-      if (auto dist_interface = value.type().dyn_cast<DistTypeInterface>()) {{
-        op_mesh = dist_interface.process_mesh_attr();
-        break;
-      }}
-    }}"""
-    dist_branch_str = TEMPLATE.format()
-    TEMPLATE = """
-    if(!{name}.FromTensor()) {{
-      auto dist_type = DistDenseTensorType::get(ctx, {name}_.type().dyn_cast<DenseTensorType>(), op_mesh);
-      {name}_.set_type(dist_type);
-      {name}_.defining_op()->set_attribute(
-        kAttrOpDistAttr,
-          OperationDistAttribute::get(
-            ctx,
-            op_mesh,
-            {{dist_type.tensor_dist_attr() }},
-            {{}}
-          )
-      );
-    }}
-    """
-    for mutable_attr_name in op_info.mutable_attribute_name_list:
-        dist_branch_str += TEMPLATE.format(name=mutable_attr_name)
-    TEMPLATE = """
-    if(!AllInputAreDist(input_values)) {{
-        PADDLE_THROW(common::errors::Unimplemented(
-            "Mixed inputs with DenseTensor and DistDenseTensor are not supported yet."));
-    }}
     std::vector<TensorDistAttribute> operand_dist_attrs, result_dist_attrs;"""
-    dist_branch_str += TEMPLATE.format()
+    dist_branch_str = TEMPLATE.format()
     infer_spmd_args_list = []
     # Prepare inputs_meta_tensor & attributes for infer spmd
     for name in op_info.spmd_params:
