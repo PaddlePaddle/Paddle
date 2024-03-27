@@ -27,6 +27,7 @@ def fused_rotary_position_embedding(
     position_ids=None,
     use_neox_rotary_style=True,
     time_major=False,
+    rotary_emb_base=10000.0
 ):
     r"""
     Fused rotary position embedding.
@@ -91,7 +92,7 @@ def fused_rotary_position_embedding(
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.fused_rotary_position_embedding(
-            q, k, v, sin, cos, position_ids, use_neox_rotary_style, time_major
+            q, k, v, sin, cos, position_ids, use_neox_rotary_style, time_major, rotary_emb_base
         )
 
     helper = LayerHelper('fused_rotary_position_embedding', **locals())
@@ -123,6 +124,7 @@ def fused_rotary_position_embedding(
         attrs={
             'use_neox_rotary_style': use_neox_rotary_style,
             'time_major': time_major,
+            'rotary_emb_base': rotary_emb_base,
         },
     )
 

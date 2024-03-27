@@ -34,7 +34,8 @@ using VectorizedFusedRopeCudaKernelFunc =
              int64_t seq_stride,
              phi::Array<T*, 3> outs_data,
              int num_inputs,
-             MPType div_c);
+             MPType div_c,
+             float rotary_emb_base);
 
 template <typename T, typename MPType, int VecSize = 2>
 __device__ void VectorizedGetSinCos(phi::Array<const T*, 2> sin_cos_data,
@@ -49,7 +50,8 @@ __device__ void VectorizedGetSinCos(phi::Array<const T*, 2> sin_cos_data,
                                     int64_t seq_stride,
                                     MPType* out_sin,
                                     MPType* out_cos,
-                                    MPType div_c) {
+                                    MPType div_c,
+                                    float rotary_emb_base) {
   MPType* sin_value = out_sin;
   MPType* cos_value = out_cos;
 
@@ -81,8 +83,8 @@ __device__ void VectorizedGetSinCos(phi::Array<const T*, 2> sin_cos_data,
 
       MPType idx = static_cast<MPType>(((index + nx) % head_dim) / 2 * 2.0);
       MPType indicses =
-          static_cast<MPType>(1) /
-          pow(static_cast<MPType>(10000), idx * static_cast<MPType>(div_c));
+          static_cast<MPType>(1) / pow(static_cast<MPType>(rotary_emb_base),
+                                       idx * static_cast<MPType>(div_c));
       MPType value = pos_seq * indicses;
       sin_value[nx] = sin(value);
       cos_value[nx] = cos(value);
@@ -105,7 +107,8 @@ __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
     int64_t seq_stride,
     phi::Array<T*, 3> outs_data,
     int num_inputs,
-    MPType div_c) {
+    MPType div_c,
+    float rotary_emb_base) {
   int64_t index =
       (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
        threadIdx.x) *
@@ -133,7 +136,8 @@ __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
                         seq_stride,
                         sin_value,
                         cos_value,
-                        div_c);
+                        div_c,
+                        rotary_emb_base);
 
 #pragma unroll
     for (int iter = 0; iter < 3; iter++) {
@@ -185,7 +189,8 @@ __global__ void VectorizedFusedRopeWithRotateHalfKernel(
     int64_t seq_stride,
     phi::Array<T*, 3> outs_data,
     int num_inputs,
-    MPType div_c) {
+    MPType div_c,
+    float rotary_emb_base) {
   int64_t index =
       (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
        threadIdx.x) *
@@ -213,7 +218,8 @@ __global__ void VectorizedFusedRopeWithRotateHalfKernel(
                         seq_stride,
                         sin_value,
                         cos_value,
-                        div_c);
+                        div_c,
+                        rotary_emb_base);
 
     // use rotate_half mode
     int stride_r = head_dim / 2;
