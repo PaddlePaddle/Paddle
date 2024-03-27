@@ -577,8 +577,10 @@ def flash_attention_with_sparse_mask(
 ):
     r"""
     The equation is:
+    
     .. math::
         result=softmax(\frac{ Q * K^T }{\sqrt{d}}) * V
+        
     where : ``Q``, ``K``, and ``V`` represent the three input parameters of the attention module.
     The dimensions of the three parameters are the same.
     ``d`` represents the size of the last dimension of the three parameters.
