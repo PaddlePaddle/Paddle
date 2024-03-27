@@ -224,12 +224,7 @@ void ParallelCompiler::Task::Lowering() {
             << "Group " << group_id << " {\n"
             << context->graph->DebugGroupedGraph(group->CollectNodes())
             << "}\n";
-    // std::cout <<"group "<< group_id << "\n";
-    // std::cout << group->CollectNodes()[0]->op()->name << ":\n";
-    // LOG(INFO) << group->CollectNodes()[0]->op()->name;
     auto lowered_funcs = op_lowerer.Lower(group);
-    // std::cout << lowered_funcs[0]->body << "\n";
-    // LOG(INFO) << lowered_funcs[0]->body;
     if (lowered_funcs.size() != 1) {
       std::ostringstream err_msg;
       err_msg << "Lowering Group: " << group_id

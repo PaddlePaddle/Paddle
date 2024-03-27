@@ -33,7 +33,7 @@ SYCLModule::SYCLModule(const std::string& source_code,
 }
 
 SYCLModule::~SYCLModule() {
-  std::cout << "destructor for SYCLModule" << std::endl;
+  LOG(INFO) << "destructor for SYCLModule";
   if (so_handler_ != nullptr) {
     // dlclose(so_handler_);
   }
