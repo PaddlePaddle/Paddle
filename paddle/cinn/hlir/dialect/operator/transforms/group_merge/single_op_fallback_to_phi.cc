@@ -40,20 +40,33 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     if (fusion_op.GetOperators().size() > 2) {
       return false;
     }
-    CHECK_EQ(fusion_op.GetOperators().size(), 2);
-    CHECK(fusion_op.GetOperators()[1]->isa<::pir::YieldOp>());
+    PADDLE_ENFORCE_EQ(
+        fusion_op.GetOperators().size(),
+        2,
+        phi::errors::InvalidArgument(
+            "fusion_op should have two operators inside, but got %d",
+            fusion_op.GetOperators().size()));
+    PADDLE_ENFORCE(
+        fusion_op.GetOperators()[1]->isa<::pir::YieldOp>(),
+        phi::errors::InvalidArgument(
+            "The last operator of fusion_op must be YieldOp, but got %s",
+            fusion_op.GetOperators()[1]->name()));
 
     auto* program = fusion_op->GetParentProgram();
     auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
         fusion_op->GetParentProgram());
-    pir::Operation* paddle_op =
+    std::optional<pir::Operation*> paddle_op =
         FallBackOp(fusion_op.GetOperators()[0], rewriter);
+    if (!paddle_op.has_value()) {
+      return false;
+    }
 
     for (size_t i = 0; i < fusion_op.num_results(); ++i) {
-      rewriter.ReplaceAllUsesWith(fusion_op.result(i), paddle_op->result(i));
+      rewriter.ReplaceAllUsesWith(fusion_op.result(i),
+                                  paddle_op.value()->result(i));
       if (shape_analysis.HasShapeOrDataForValue(fusion_op.result(i))) {
         shape_analysis.SetShapeOrDataForValue(
-            paddle_op->result(i),
+            paddle_op.value()->result(i),
             shape_analysis.GetShapeOrDataForValue(fusion_op.result(i)));
       } else {
         LOG(WARNING) << "No shape_data for "
@@ -73,14 +86,20 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
   pir::Operation* ReshapeOpPattern(
       pir::Operation* op,
       pir::PatternRewriter& rewriter) const {  // NOLINT
+    PADDLE_ENFORCE(op->isa<cinn::dialect::ReshapeOp>(),
+                   phi::errors::InvalidArgument(
+                       "Input should be cinn::dialect::ReshapeOp, but got %s",
+                       op->name()));
     auto reshape_op = op->dyn_cast<cinn::dialect::ReshapeOp>();
-    CHECK(reshape_op);
 
     const std::vector<int64_t> vec_out_shape = [&]() {
       auto out_shape_attr = reshape_op.attribute("shape")
                                 .dyn_cast<pir::ArrayAttribute>()
                                 .AsVector();
-      CHECK_GT(out_shape_attr.size(), 0);
+      PADDLE_ENFORCE_GT(out_shape_attr.size(),
+                        0,
+                        phi::errors::InvalidArgument(
+                            "The shape attribute should not be empty"));
 
       std::vector<int64_t> ret;
       std::transform(
@@ -105,11 +124,13 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     return handler_map;
   }
 
-  pir::Operation* FallBackOp(pir::Operation* op,
-                             pir::PatternRewriter& rewriter) const {  // NOLINT
+  std::optional<pir::Operation*> FallBackOp(
+      pir::Operation* op,
+      pir::PatternRewriter& rewriter) const {  // NOLINT
     auto it = op_handler_map().find(op->name());
     if (it == op_handler_map().end()) {
-      LOG(FATAL) << "No fallback handler for op: " << op->name();
+      LOG(WARNING) << "No fallback handler for op: " << op->name();
+      return std::nullopt;
     }
     return (this->*(it->second))(op, rewriter);
   }
