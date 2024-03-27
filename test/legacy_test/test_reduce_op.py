@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
-from utils import static_guard
+from utils import dygraph_guard, static_guard
 
 import paddle
 from paddle import base
@@ -964,10 +964,11 @@ class TestAll8DOpWithKeepDim(OpTest):
 
 class TestAllOpError(unittest.TestCase):
     def test_errors(self):
-        with program_guard(Program(), Program()):
-            # The input type of reduce_all_op must be Variable.
-            input1 = 12
-            self.assertRaises(TypeError, paddle.all, input1)
+        with static_guard():
+            with program_guard(Program(), Program()):
+                # The input type of reduce_all_op must be Variable.
+                input1 = 12
+                self.assertRaises(TypeError, paddle.all, input1)
 
 
 def reduce_any_wrapper(x, axis=None, keepdim=False, reduce_all=True, name=None):
@@ -1122,10 +1123,11 @@ class TestAny8DOpWithKeepDim(OpTest):
 
 class TestAnyOpError(unittest.TestCase):
     def test_errors(self):
-        with program_guard(Program(), Program()):
-            # The input type of reduce_any_op must be Variable.
-            input1 = 12
-            self.assertRaises(TypeError, paddle.any, input1)
+        with static_guard():
+            with program_guard(Program(), Program()):
+                # The input type of reduce_any_op must be Variable.
+                input1 = 12
+                self.assertRaises(TypeError, paddle.any, input1)
 
 
 class Test1DReduce(OpTest):
@@ -1673,17 +1675,20 @@ class API_TestSumOp(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for place in places:
-            with base.program_guard(base.Program(), base.Program()):
-                data = paddle.static.data("data", shape=shape, dtype=x_dtype)
-                result_sum = paddle.sum(
-                    x=data, axis=attr_axis, dtype=attr_dtype
-                )
+            with static_guard():
+                with base.program_guard(base.Program(), base.Program()):
+                    data = paddle.static.data(
+                        "data", shape=shape, dtype=x_dtype
+                    )
+                    result_sum = paddle.sum(
+                        x=data, axis=attr_axis, dtype=attr_dtype
+                    )
 
-                exe = base.Executor(place)
-                input_data = np.random.rand(*shape).astype(x_dtype)
-                (res,) = exe.run(
-                    feed={"data": input_data}, fetch_list=[result_sum]
-                )
+                    exe = base.Executor(place)
+                    input_data = np.random.rand(*shape).astype(x_dtype)
+                    (res,) = exe.run(
+                        feed={"data": input_data}, fetch_list=[result_sum]
+                    )
 
             np.testing.assert_allclose(
                 res,
@@ -1743,59 +1748,65 @@ class API_TestSumOp(unittest.TestCase):
 class TestAllAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        paddle.enable_static()
         self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with base.program_guard(main, startup):
-            input = paddle.static.data(name="input", shape=[4, 4], dtype="bool")
-            result = paddle.all(x=input)
-            input_np = np.random.randint(0, 2, [4, 4]).astype("bool")
+        with static_guard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with base.program_guard(main, startup):
+                input = paddle.static.data(
+                    name="input", shape=[4, 4], dtype="bool"
+                )
+                result = paddle.all(x=input)
+                input_np = np.random.randint(0, 2, [4, 4]).astype("bool")
 
-            exe = base.Executor(place)
-            fetches = exe.run(
-                main,
-                feed={"input": input_np},
-                fetch_list=[result],
-            )
+                exe = base.Executor(place)
+                fetches = exe.run(
+                    main,
+                    feed={"input": input_np},
+                    fetch_list=[result],
+                )
             self.assertTrue((fetches[0] == np.all(input_np)).all())
 
     def check_static_float_result(self, place):
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with base.program_guard(main, startup):
-            input = paddle.static.data(
-                name="input", shape=[4, 4], dtype="float"
-            )
-            result = paddle.all(x=input)
-            input_np = np.random.randint(0, 2, [4, 4]).astype("float")
+        with static_guard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with base.program_guard(main, startup):
+                input = paddle.static.data(
+                    name="input", shape=[4, 4], dtype="float"
+                )
+                result = paddle.all(x=input)
+                input_np = np.random.randint(0, 2, [4, 4]).astype("float")
 
-            exe = base.Executor(place)
-            fetches = exe.run(
-                main,
-                feed={"input": input_np},
-                fetch_list=[result],
-            )
+                exe = base.Executor(place)
+                fetches = exe.run(
+                    main,
+                    feed={"input": input_np},
+                    fetch_list=[result],
+                )
             self.assertTrue((fetches[0] == np.all(input_np)).all())
 
     def check_static_int_result(self, place):
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with base.program_guard(main, startup):
-            input = paddle.static.data(name="input", shape=[4, 4], dtype="int")
-            result = paddle.all(x=input)
-            input_np = np.random.randint(0, 2, [4, 4]).astype("int")
+        with static_guard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with base.program_guard(main, startup):
+                input = paddle.static.data(
+                    name="input", shape=[4, 4], dtype="int"
+                )
+                result = paddle.all(x=input)
+                input_np = np.random.randint(0, 2, [4, 4]).astype("int")
 
-            exe = base.Executor(place)
-            fetches = exe.run(
-                main,
-                feed={"input": input_np},
-                fetch_list=[result],
-            )
+                exe = base.Executor(place)
+                fetches = exe.run(
+                    main,
+                    feed={"input": input_np},
+                    fetch_list=[result],
+                )
             self.assertTrue((fetches[0] == np.all(input_np)).all())
 
     @test_with_pir_api
@@ -1806,104 +1817,108 @@ class TestAllAPI(unittest.TestCase):
             self.check_static_int_result(place=place)
 
     def test_dygraph(self):
-        paddle.disable_static()
-        for place in self.places:
-            with base.dygraph.guard(place):
-                np_x = np.random.randint(0, 2, (12, 10)).astype(np.bool_)
-                x = paddle.assign(np_x)
-                x = paddle.cast(x, 'bool')
+        with dygraph_guard():
+            for place in self.places:
+                with base.dygraph.guard(place):
+                    np_x = np.random.randint(0, 2, (12, 10)).astype(np.bool_)
+                    x = paddle.assign(np_x)
+                    x = paddle.cast(x, 'bool')
 
-                out1 = paddle.all(x)
-                np_out1 = out1.numpy()
-                expect_res1 = np.all(np_x)
-                self.assertTrue((np_out1 == expect_res1).all())
+                    out1 = paddle.all(x)
+                    np_out1 = out1.numpy()
+                    expect_res1 = np.all(np_x)
+                    self.assertTrue((np_out1 == expect_res1).all())
 
-                out2 = paddle.all(x, axis=0)
-                np_out2 = out2.numpy()
-                expect_res2 = np.all(np_x, axis=0)
-                self.assertTrue((np_out2 == expect_res2).all())
+                    out2 = paddle.all(x, axis=0)
+                    np_out2 = out2.numpy()
+                    expect_res2 = np.all(np_x, axis=0)
+                    self.assertTrue((np_out2 == expect_res2).all())
 
-                out3 = paddle.all(x, axis=-1)
-                np_out3 = out3.numpy()
-                expect_res3 = np.all(np_x, axis=-1)
-                self.assertTrue((np_out3 == expect_res3).all())
+                    out3 = paddle.all(x, axis=-1)
+                    np_out3 = out3.numpy()
+                    expect_res3 = np.all(np_x, axis=-1)
+                    self.assertTrue((np_out3 == expect_res3).all())
 
-                out4 = paddle.all(x, axis=1, keepdim=True)
-                np_out4 = out4.numpy()
-                expect_res4 = np.all(np_x, axis=1, keepdims=True)
-                self.assertTrue((np_out4 == expect_res4).all())
+                    out4 = paddle.all(x, axis=1, keepdim=True)
+                    np_out4 = out4.numpy()
+                    expect_res4 = np.all(np_x, axis=1, keepdims=True)
+                    self.assertTrue((np_out4 == expect_res4).all())
 
-                x = paddle.cast(x, 'float')
-                out5 = paddle.all(x)
-                np_out5 = out5.numpy()
-                expect_res5 = np.all(np_x)
-                self.assertTrue((np_out5 == expect_res5).all())
+                    x = paddle.cast(x, 'float')
+                    out5 = paddle.all(x)
+                    np_out5 = out5.numpy()
+                    expect_res5 = np.all(np_x)
+                    self.assertTrue((np_out5 == expect_res5).all())
 
-                x = paddle.cast(x, 'int')
-                out6 = paddle.all(x)
-                np_out6 = out6.numpy()
-                expect_res6 = np.all(np_x)
-                self.assertTrue((np_out6 == expect_res6).all())
-
-        paddle.enable_static()
+                    x = paddle.cast(x, 'int')
+                    out6 = paddle.all(x)
+                    np_out6 = out6.numpy()
+                    expect_res6 = np.all(np_x)
+                    self.assertTrue((np_out6 == expect_res6).all())
 
 
 class TestAnyAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        paddle.enable_static()
         self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with base.program_guard(main, startup):
-            input = paddle.static.data(name="input", shape=[4, 4], dtype="bool")
-            result = paddle.any(x=input)
-            input_np = np.random.randint(0, 2, [4, 4]).astype("bool")
+        with static_guard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with base.program_guard(main, startup):
+                input = paddle.static.data(
+                    name="input", shape=[4, 4], dtype="bool"
+                )
+                result = paddle.any(x=input)
+                input_np = np.random.randint(0, 2, [4, 4]).astype("bool")
 
-            exe = base.Executor(place)
-            fetches = exe.run(
-                main,
-                feed={"input": input_np},
-                fetch_list=[result],
-            )
+                exe = base.Executor(place)
+                fetches = exe.run(
+                    main,
+                    feed={"input": input_np},
+                    fetch_list=[result],
+                )
             self.assertTrue((fetches[0] == np.any(input_np)).all())
 
     def check_static_float_result(self, place):
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with base.program_guard(main, startup):
-            input = paddle.static.data(
-                name="input", shape=[4, 4], dtype="float"
-            )
-            result = paddle.any(x=input)
-            input_np = np.random.randint(0, 2, [4, 4]).astype("float")
+        with static_guard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with base.program_guard(main, startup):
+                input = paddle.static.data(
+                    name="input", shape=[4, 4], dtype="float"
+                )
+                result = paddle.any(x=input)
+                input_np = np.random.randint(0, 2, [4, 4]).astype("float")
 
-            exe = base.Executor(place)
-            fetches = exe.run(
-                main,
-                feed={"input": input_np},
-                fetch_list=[result],
-            )
+                exe = base.Executor(place)
+                fetches = exe.run(
+                    main,
+                    feed={"input": input_np},
+                    fetch_list=[result],
+                )
             self.assertTrue((fetches[0] == np.any(input_np)).all())
 
     def check_static_int_result(self, place):
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with base.program_guard(main, startup):
-            input = paddle.static.data(name="input", shape=[4, 4], dtype="int")
-            result = paddle.any(x=input)
-            input_np = np.random.randint(0, 2, [4, 4]).astype("int")
+        with static_guard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with base.program_guard(main, startup):
+                input = paddle.static.data(
+                    name="input", shape=[4, 4], dtype="int"
+                )
+                result = paddle.any(x=input)
+                input_np = np.random.randint(0, 2, [4, 4]).astype("int")
 
-            exe = base.Executor(place)
-            fetches = exe.run(
-                main,
-                feed={"input": input_np},
-                fetch_list=[result],
-            )
+                exe = base.Executor(place)
+                fetches = exe.run(
+                    main,
+                    feed={"input": input_np},
+                    fetch_list=[result],
+                )
             self.assertTrue((fetches[0] == np.any(input_np)).all())
 
     @test_with_pir_api
@@ -1914,49 +1929,47 @@ class TestAnyAPI(unittest.TestCase):
             self.check_static_int_result(place=place)
 
     def test_dygraph(self):
-        paddle.disable_static()
-        for place in self.places:
-            with base.dygraph.guard(place):
-                np_x = np.random.randint(0, 2, (12, 10)).astype(np.bool_)
-                x = paddle.assign(np_x)
-                x = paddle.cast(x, 'bool')
+        with dygraph_guard():
+            for place in self.places:
+                with base.dygraph.guard(place):
+                    np_x = np.random.randint(0, 2, (12, 10)).astype(np.bool_)
+                    x = paddle.assign(np_x)
+                    x = paddle.cast(x, 'bool')
 
-                out1 = paddle.any(x)
-                np_out1 = out1.numpy()
-                expect_res1 = np.any(np_x)
-                self.assertTrue((np_out1 == expect_res1).all())
+                    out1 = paddle.any(x)
+                    np_out1 = out1.numpy()
+                    expect_res1 = np.any(np_x)
+                    self.assertTrue((np_out1 == expect_res1).all())
 
-                out2 = paddle.any(x, axis=0)
-                np_out2 = out2.numpy()
-                expect_res2 = np.any(np_x, axis=0)
-                self.assertTrue((np_out2 == expect_res2).all())
+                    out2 = paddle.any(x, axis=0)
+                    np_out2 = out2.numpy()
+                    expect_res2 = np.any(np_x, axis=0)
+                    self.assertTrue((np_out2 == expect_res2).all())
 
-                out3 = paddle.any(x, axis=-1)
-                np_out3 = out3.numpy()
-                expect_res3 = np.any(np_x, axis=-1)
-                self.assertTrue((np_out3 == expect_res3).all())
+                    out3 = paddle.any(x, axis=-1)
+                    np_out3 = out3.numpy()
+                    expect_res3 = np.any(np_x, axis=-1)
+                    self.assertTrue((np_out3 == expect_res3).all())
 
-                out4 = paddle.any(x, axis=1, keepdim=True)
-                np_out4 = out4.numpy()
-                expect_res4 = np.any(np_x, axis=1, keepdims=True)
-                self.assertTrue((np_out4 == expect_res4).all())
+                    out4 = paddle.any(x, axis=1, keepdim=True)
+                    np_out4 = out4.numpy()
+                    expect_res4 = np.any(np_x, axis=1, keepdims=True)
+                    self.assertTrue((np_out4 == expect_res4).all())
 
-                np_x = np.random.randint(0, 2, (12, 10)).astype(np.float32)
-                x = paddle.assign(np_x)
-                x = paddle.cast(x, 'float32')
+                    np_x = np.random.randint(0, 2, (12, 10)).astype(np.float32)
+                    x = paddle.assign(np_x)
+                    x = paddle.cast(x, 'float32')
 
-                out5 = paddle.any(x)
-                np_out5 = out5.numpy()
-                expect_res5 = np.any(np_x)
-                self.assertTrue((np_out5 == expect_res5).all())
+                    out5 = paddle.any(x)
+                    np_out5 = out5.numpy()
+                    expect_res5 = np.any(np_x)
+                    self.assertTrue((np_out5 == expect_res5).all())
 
-                x = paddle.cast(x, 'int')
-                out6 = paddle.any(x)
-                np_out6 = out6.numpy()
-                expect_res6 = np.any(np_x)
-                self.assertTrue((np_out6 == expect_res6).all())
-
-        paddle.enable_static()
+                    x = paddle.cast(x, 'int')
+                    out6 = paddle.any(x)
+                    np_out6 = out6.numpy()
+                    expect_res6 = np.any(np_x)
+                    self.assertTrue((np_out6 == expect_res6).all())
 
 
 class TestAllZeroError(unittest.TestCase):
@@ -1972,5 +1985,4 @@ class TestAllZeroError(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()
