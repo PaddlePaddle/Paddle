@@ -30,4 +30,6 @@ IR_API DimExpr SubstituteDimExpr(
 IR_API std::unordered_set<std::string> CollectDimExprSymbols(
     const DimExpr& dim_expr);
 
+IR_API bool IsDimExprGreaterThanOne(const symbol::DimExpr& dim_expr);
+
 }  // namespace symbol

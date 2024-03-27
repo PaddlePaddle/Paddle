@@ -419,6 +419,10 @@ bool MatmulOpInferSymbolicShape(
     symbol::DimExprBuilder builder{nullptr};
     for (size_t i = 0; i < ndims_x - 2; ++i) {
       out_dims.emplace_back(builder.Broadcast(x_dims[i], y_dims[i]));
+      if (IsDimExprGreaterThanOne(x_dims[i]) &&
+          IsDimExprGreaterThanOne(y_dims[i])) {
+        shape_analysis->DimExprBuilder().CstrEq(x_dims[i], y_dims[i]);
+      }
     }
   }
 

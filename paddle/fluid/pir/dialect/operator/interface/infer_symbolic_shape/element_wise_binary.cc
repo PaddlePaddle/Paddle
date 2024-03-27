@@ -70,6 +70,10 @@ bool InferSymbolicShapeElementWiseBinary(
         shapes.emplace_back(shape_0[i]);
       } else {
         shapes.emplace_back(builder.Broadcast(shape_0[i], shape_1[i]));
+        if (IsDimExprGreaterThanOne(shape_0[i]) &&
+            IsDimExprGreaterThanOne(shape_1[i])) {
+          shape_analysis->DimExprBuilder().CstrEq(shape_0[i], shape_1[i]);
+        }
       }
     }
     return shapes;
