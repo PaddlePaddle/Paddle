@@ -616,7 +616,7 @@ def flash_attention_with_sparse_mask(
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
     Returns:
-        out(Tensor): The attention tensor.
+        out(Tensor), The attention tensor.
                     4-D tensor with shape: [batch_size, seq_len, num_heads, head_dim].
                     The dtype can be float16 or bfloat16.
     Examples:
