@@ -522,9 +522,9 @@ class FlashAttnPatternOutscaleNoCast : public paddle::drr::DrrPatternBase {
   }
 };
 
-class FlashAttnFusePass : public pir::PatternRewritePass {
+class FusedFlashAttnPass : public pir::PatternRewritePass {
  public:
-  FlashAttnFusePass() : pir::PatternRewritePass("flash_attn_fuse_pass", 2) {}
+  FusedFlashAttnPass() : pir::PatternRewritePass("fused_flash_attn_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
@@ -541,9 +541,9 @@ class FlashAttnFusePass : public pir::PatternRewritePass {
 }  // namespace
 
 namespace pir {
-std::unique_ptr<Pass> CreateFlashAttnFusePass() {
-  return std::make_unique<FlashAttnFusePass>();
+std::unique_ptr<Pass> CreateFusedFlashAttnPass() {
+  return std::make_unique<FusedFlashAttnPass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(flash_attn_fuse_pass, FlashAttnFusePass);
+REGISTER_IR_PASS(fused_flash_attn_pass, FusedFlashAttnPass);
