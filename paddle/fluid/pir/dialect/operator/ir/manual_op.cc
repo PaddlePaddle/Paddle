@@ -4056,7 +4056,7 @@ symbol::DimExpr GetBroadcastDimExpr(const symbol::DimExpr &lhs,
     return symbol::Broadcast<symbol::DimExpr>{
         symbol::List<symbol::DimExpr>{lhs, rhs}};
   }
-  LOG(FATAL) << "Dead code";
+  PADDLE_THROW(phi::errors::Fatal("Dead code"));
 }
 
 }  // namespace

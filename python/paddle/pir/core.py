@@ -58,6 +58,18 @@ np_type_to_paddle_type = {
     np.dtype("int8"): DataType.INT8,
     np.dtype("complex64"): DataType.COMPLEX64,
     np.dtype("complex128"): DataType.COMPLEX128,
+    np.float16: DataType.FLOAT16,
+    np.float32: DataType.FLOAT32,
+    np.float64: DataType.FLOAT64,
+    np.int32: DataType.INT32,
+    np.int16: DataType.INT16,
+    np.int64: DataType.INT64,
+    np.bool_: DataType.BOOL,
+    np.uint16: DataType.BFLOAT16,
+    np.uint8: DataType.UINT8,
+    np.int8: DataType.INT8,
+    np.complex64: DataType.COMPLEX64,
+    np.complex128: DataType.COMPLEX128,
 }
 
 
@@ -74,12 +86,14 @@ def convert_np_dtype_to_dtype_(np_dtype):
 
     """
     # Convert the data type string to numpy data type.
-    if isinstance(np_dtype, str) and np_dtype == "bfloat16":
+    if np_dtype == "bfloat16":
         # since there is still no support for bfloat16 in NumPy,
         # uint16 is used for casting bfloat16
         dtype = np.dtype("uint16")
-    else:
+    elif isinstance(np_dtype, str):
         dtype = np.dtype(np_dtype)
+    else:
+        dtype = np_dtype
 
     if dtype in np_type_to_paddle_type.keys():
         return np_type_to_paddle_type[dtype]
@@ -274,16 +288,10 @@ def create_parameter(
     name=None,
     **kwargs,
 ):
-    regularizer = None
-    need_clip = None
     if 'initializer' not in kwargs:
         raise ValueError(
             "initializer is None, if you want to create parameter, please pass its initializer."
         )
-    if 'regularizer' in kwargs:
-        regularizer = kwargs['regularizer']
-    if 'need_clip' in kwargs:
-        need_clip = kwargs['need_clip']
     if dtype is not None:
         if not isinstance(dtype, DataType):
             dtype = convert_np_dtype_to_dtype_(dtype)
@@ -306,12 +314,16 @@ def create_parameter(
     with program_guard(default_main_program()):
         reset_insertion_point_to_start()
         param = parameter(value_name)
-        trainable = kwargs.get('trainable', True)
-        param.stop_gradient = not trainable
         param.persistable = True
 
-    param.regularizer = regularizer
-    param.need_clip = need_clip
+    param.trainable = kwargs.get('trainable', True)
+    param.stop_gradient = not param.trainable
+    param.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
+    param.regularizer = kwargs.get('regularizer', None)
+    param.do_model_average = kwargs.get('do_model_average', None)
+    param.need_clip = kwargs.get('need_clip', True)
+    param.is_distributed = False
+    param.is_parameter = True
     return param
 
 

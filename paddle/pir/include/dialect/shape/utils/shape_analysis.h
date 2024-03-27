@@ -28,8 +28,6 @@ namespace pir {
 // The implementation is based on shape constraint ir.
 class IR_API ShapeConstraintIRAnalysis {
  public:
-  explicit ShapeConstraintIRAnalysis(ModuleOp m);
-
   void Init();
 
   const std::string GetNextSymName();
@@ -74,6 +72,9 @@ class IR_API ShapeConstraintIRAnalysis {
   bool IsSameNumel(Value lhs, Value rhs) const;
 
   pir::PrintHooks PrintHook() const;
+
+  symbol::DimExpr GetProductDimExpr(Value lhs,
+                                    const std::vector<int>& lhs_dim_idxs) const;
 
  private:
   ModuleOp m_;

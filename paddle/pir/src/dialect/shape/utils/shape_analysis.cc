@@ -26,8 +26,6 @@ static std::string GetValueId(Value val) {
          std::to_string(val_idx);
 }
 
-ShapeConstraintIRAnalysis::ShapeConstraintIRAnalysis(ModuleOp m) : m_(m) {}
-
 void ShapeConstraintIRAnalysis::Init() {
   value_to_shape_or_data_.clear();
   next_sym_idx_ = 0;
@@ -208,6 +206,27 @@ bool ShapeConstraintIRAnalysis::IsSameNumel(Value lhs, Value rhs) const {
                         static_cast<int>(rhs_type.GetRank()));
 }
 
+symbol::DimExpr ShapeConstraintIRAnalysis::GetProductDimExpr(
+    Value value, const std::vector<int>& dim_idxs) const {
+  // For static shape
+  auto value_type = value.type().dyn_cast<ShapedTypeInterface>();
+  if (value_type.IsStaticShape()) {
+    int64_t product = 1;
+    for (int i : dim_idxs) {
+      product *= value_type.GetShape()[i];
+    }
+    return symbol::DimExpr{product};
+  }
+
+  // For dynamic shape
+  const auto& shape_data = GetShapeOrDataForValue(value);
+  symbol::DimExpr product{1};
+  for (int i : dim_idxs) {
+    product = product * shape_data.shape()[i];
+  }
+  return symbol::SimplifyDimExpr(product);
+}
+
 pir::PrintHooks ShapeConstraintIRAnalysis::PrintHook() const {
   pir::PrintHooks print_hook;
   print_hook.op_print_hook = [&](Operation* op, IrPrinter& printer) {
@@ -240,7 +259,7 @@ ShapeConstraintIRAnalysis& ShapeAnalysisManager::Get(pir::Program* program) {
   if (it == tables_.end()) {
     it = tables_
              .emplace(program->module_op().operation()->id(),
-                      ShapeConstraintIRAnalysis(program->module_op()))
+                      ShapeConstraintIRAnalysis())
              .first;
   }
 
