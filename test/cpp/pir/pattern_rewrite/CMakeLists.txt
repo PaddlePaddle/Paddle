@@ -4,6 +4,9 @@ paddle_test(drr_same_type_binding_test SRCS drr_same_type_binding_test.cc)
 
 paddle_test(drr_fuse_linear_test SRCS drr_fuse_linear_test.cc)
 
+paddle_test(merge_parallel_matmul_pass_test SRCS
+            merge_parallel_matmul_pass_test.cc)
+
 paddle_test(drr_fuse_linear_param_grad_add_test SRCS
             drr_fuse_linear_param_grad_add_test.cc)
 
