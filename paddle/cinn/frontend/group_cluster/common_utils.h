@@ -79,6 +79,14 @@ std::vector<T> MergeVector(const std::vector<T>& first,
 }
 
 template <typename T>
+void RemoveFromVector(std::vector<T>* vec, T item) {
+  auto iter = std::find(vec->begin(), vec->end(), item);
+  if (iter != vec->end()) {
+    vec->erase(iter);
+  }
+}
+
+template <typename T>
 std::vector<T> ConcatVector(const std::vector<T>& first,
                             const std::vector<T>& second) {
   std::vector<T> result = first;
@@ -90,10 +98,8 @@ std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern& pattern);
 std::string StmtPatternDebugStr(const StmtPattern& pattern);
 StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second);
 ReducePattern ToReducePattern(const StmtPattern& second);
+std::string GetPatternName(const StmtPattern& s);
 
 StmtPattern ConvertToStmtPattern(pir::Operation* op);
 std::unordered_set<pir::Value> GetPatternInputValues(const StmtPattern& A);
-
-std::vector<int> GetTrivialReduceIter(
-    const ReduceTreePlusTrivialPattern& pattern);
 }  // namespace cinn::frontend::group_cluster

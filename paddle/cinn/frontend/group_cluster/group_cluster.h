@@ -37,14 +37,14 @@ inline group_cluster::PatternNodePtrSet ClusterOps(
   // std::make_shared<group_cluster::policy::RelativeJudgePolicy>(
   // ops, shape_analysis);
   VLOG(4) << "Start Create Policies and PolicyManager!";
-  const auto& shardable_axes_policy =
+  const auto& relative_judge_policy =
       std::make_shared<group_cluster::policy::RelativeJudgePolicy>(
           ops, shape_analysis);
   const auto& general_topo_policy =
       std::make_shared<group_cluster::policy::GeneralTopoPolicy>();
 
   auto policy_manager = group_cluster::policy::PolicyManager(
-      {shardable_axes_policy, general_topo_policy});
+      {relative_judge_policy, general_topo_policy});
 
   VLOG(4) << "Start Create PatternGraph";
   group_cluster::PatternGraph graph(ops, policy_manager);

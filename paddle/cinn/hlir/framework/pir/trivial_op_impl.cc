@@ -419,20 +419,19 @@ std::vector<FusibleOp> FusionGraph::TransformReduceLoopRange(
       std::vector<ir::Var> operator()(const TrivialOp& op) {
         auto result = std::vector<ir::Var>();
         auto output_iter = GetOutputIters(op);
-        for (int i = 0; i < output_iter.size(); i++) {
-          if (std::find(trivial_reduce_iter_idx_.begin(),
-                        this->trivial_reduce_iter_idx_.end(),
-                        1) == trivial_reduce_iter_idx_.end()) {
+        for (size_t i = 0; i < output_iter.size(); i++) {
+          if (std::find(fake_iter_idx_.begin(), fake_iter_idx_.end(), i) ==
+              fake_iter_idx_.end()) {
             result.emplace_back(output_iter.at(i));
           }
         }
         return result;
       }
-      explicit Visitor(const std::vector<int>& trivial_reduce_iter_idx)
-          : trivial_reduce_iter_idx_(trivial_reduce_iter_idx) {}
-      std::vector<int> trivial_reduce_iter_idx_;
+      explicit Visitor(const std::vector<size_t>& fake_iter_idx)
+          : fake_iter_idx_(fake_iter_idx) {}
+      std::vector<size_t> fake_iter_idx_;
     };
-    return std::visit(Visitor(trivial_reduce_iter_idx_), downstream);
+    return std::visit(Visitor(fake_reduce_iter_idx_), downstream);
   };
 
   for (const auto& load_tensor : load_upstream_expr) {
@@ -473,16 +472,39 @@ FusibleOp FusionGraph::TrivialFusion(FusionNode* upstream,
   }
 }
 
-FusibleOp SinkTrivialLoopAlign(TrivialOp trivial_op, ReduceOp reduce_op) {
+FusibleOp FusionGraph::SinkTrivialLoopAlign(TrivialOp trivial_op,
+                                            ReduceOp reduce_op) {
   ir::Expr new_trivial_body = ir::ir_utils::IRCopy(trivial_op.GetFuncBody());
-  ir::Var last_iter = GetOutputIters(trivial_op).back();
-  ir::Expr trivial_last_for = (ExprSetFinderUtils::ChildFors *
-                               ExprSetFinderUtils::IsForIterVar(last_iter))
-                                  .GetSingle(new_trivial_body);
+  std::vector<ir::Var> all_out_iter_vars = GetOutputIters(trivial_op);
+  std::vector<ir::Var> non_reduce_iter_vars;
+  std::vector<ir::Var> fake_reduce_iter_vars;
+
+  for (size_t i = 0; i < all_out_iter_vars.size(); i++) {
+    if (std::find(fake_reduce_iter_idx_.begin(),
+                  fake_reduce_iter_idx_.end(),
+                  i) == fake_reduce_iter_idx_.end()) {
+      non_reduce_iter_vars.emplace_back(
+          all_out_iter_vars.at(static_cast<int>(i)));
+    }
+  }
+  for (const auto& idx : fake_reduce_iter_idx_) {
+    fake_reduce_iter_vars.emplace_back(
+        all_out_iter_vars.at(static_cast<int>(idx)));
+  }
+
+  ir::Expr trivial_last_for =
+      (ExprSetFinderUtils::ChildFors *
+       ExprSetFinderUtils::IsForIterVar(all_out_iter_vars.back()))
+          .GetSingle(new_trivial_body);
   ir::Expr new_for_body = trivial_last_for.As<ir::For>()->body;
   new_for_body = ExprTransformerUtils::WrapForsTransformer(
-      GetReduceIters(reduce_op))(new_for_body);
-  trivial_last_for.As<ir::For>()->body = new_for_body;
+      fake_reduce_iter_vars)(new_for_body);
+
+  ir::Expr last_non_reduce_for =
+      (ExprSetFinderUtils::ChildFors *
+       ExprSetFinderUtils::IsForIterVar(non_reduce_iter_vars.back()))
+          .GetSingle(new_trivial_body);
+  last_non_reduce_for.As<ir::For>()->body = new_for_body;
   return TrivialOp(new_trivial_body);
 }
 
@@ -551,9 +573,10 @@ FusionGraph::FusionGraph(
                  [&](::pir::Operation* op) { return op_expr_map.at(op); });
 
   if (pattern_node->IsReduceTrivial()) {
-    trivial_reduce_iter_idx_ = GetTrivialReduceIter(
+    fake_reduce_iter_idx_ =
         std::get<cinn::frontend::group_cluster::ReduceTreePlusTrivialPattern>(
-            pattern_node->stmt_pattern_));
+            pattern_node->stmt_pattern_)
+            .fake_reduce_iter_idx;
   }
 
   const auto& filtered_ops = FilterVector(ops, [](const ::pir::Operation* op) {

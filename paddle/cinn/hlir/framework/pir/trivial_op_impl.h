@@ -125,8 +125,6 @@ struct FusionNode {
 
 bool CheckAllLoopRangeEq(ReduceOp reduce_upper, TrivialOp trivial_down);
 
-FusibleOp SinkTrivialLoopAlign(TrivialOp trivial_op, ReduceOp reduce_op);
-
 FusibleOp CreateFusibleOp(ir::Expr compute_body, OpPatternKind op_pattern);
 
 struct FusionGraph {
@@ -178,6 +176,7 @@ struct FusionGraph {
                                                   FusionNode* fusion_tree);
   std::vector<FusibleOp> TransformReduceLoopRange(const ReduceOp& upstream,
                                                   FusibleOp* downstream);
+  FusibleOp SinkTrivialLoopAlign(TrivialOp trivial_op, ReduceOp reduce_op);
 
  private:
   std::unordered_set<FusionNode*> all_fusion_nodes_;
@@ -185,7 +184,7 @@ struct FusionGraph {
   std::unordered_set<FusionNode*> entrance_nodes_;
   std::unordered_set<FusionNode*> exit_nodes_;
 
-  std::vector<int> trivial_reduce_iter_idx_;
+  std::vector<size_t> fake_reduce_iter_idx_;
   // std::unordered_map<::pir::Value, ShardableAxes> shardable_axes_;
 };
 

@@ -26,8 +26,7 @@ class ShardableAxesRRFusePolicy final : public Policy {
       : axes_info_(ops, shape_analysis) {}
   bool CanFuse(const PatternNodePtr& upstream,
                const PatternNodePtr& downstream) override;
-  PatternNodePtr Merge(const PatternNodePtr& upstream,
-                       const PatternNodePtr& downstream) override;
+  std::string Name() { return "ShardableAxesRRFusePolicy"; }
 
  private:
   bool ReduceTreeGrownCanMerge(const PatternNodePtr&, const PatternNodePtr&);

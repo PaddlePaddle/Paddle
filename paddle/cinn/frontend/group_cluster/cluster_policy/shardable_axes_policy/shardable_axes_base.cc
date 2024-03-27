@@ -46,7 +46,8 @@ ShardableAxes ShardableAxesInfoManager::GetAxes(pir::Value value) {
 
 std::string ShardableAxesInfoManager::GetUniqueName() {
   static std::atomic<int64_t> counter = 0;
-  return "D" + std::to_string(counter++);
+  counter += 1;
+  return "D" + std::to_string(counter);
 }
 
 std::vector<std::string> CreateNewNamesWithRank(int64_t rank) {

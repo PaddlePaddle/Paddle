@@ -249,7 +249,6 @@ std::vector<::pir::Value> GenerateOutputValue(
       if (outside_need_value.count(op->result(i))) {
         if (!inserted_val.count(op->result(i))) {
           temp_out.push_back(op->result(i));
-
           inserted_val.insert(op->result(i));
         }
       }
@@ -1049,14 +1048,12 @@ class CinnGroupClusterPattern
       // update ir mapping
       for (size_t i = 0; i < output_values.size(); ++i) {
         ir_mapping.Add(output_values[i], new_group_op->result(i));
-
         if (shape_analysis.HasShapeOrDataForValue(output_values[i])) {
           shape_analysis.SetShapeOrDataForValue(
               new_group_op->result(i),
               shape_analysis.GetShapeOrDataForValue(output_values[i]));
         }
       }
-
       for (size_t i = 0; i < output_values.size(); ++i) {
         auto find_it = all_output_values.find(output_values[i]);
         if ((find_it != all_output_values.end()) &&
@@ -1067,6 +1064,11 @@ class CinnGroupClusterPattern
         }
       }
     }
+
+    std::ostringstream oss;
+    group_op->GetParentProgram()->Print(oss);
+    VLOG(4) << oss.str();
+
     rewriter.EraseOp(group_op);
 
     return true;

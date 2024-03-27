@@ -25,4 +25,14 @@ bool PolicyManager::CanFuse(const PatternNodePtr& upstream,
   return true;
 }
 
+std::vector<size_t> PolicyManager::GetFakeReduceIterIdx(
+    const PatternNodePtr& upstream, const PatternNodePtr& downstream) const {
+  for (const auto& policy : policies_) {
+    if (policy->Name() == "RelativeJudgePolicy") {
+      return policy->GetFakeReduceIterIdx(upstream, downstream);
+    }
+  }
+  return {};
+}
+
 }  // namespace cinn::frontend::group_cluster::policy

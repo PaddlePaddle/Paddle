@@ -29,7 +29,19 @@ struct ValueDim {
   bool operator==(const ValueDim& v) const {
     return (idx_ == v.idx_) && (v_ == v.v_);
   }
-  size_t GetNumbericValue() const;
+
+  size_t GetNumbericValue() const {
+    return v_.type().dyn_cast<pir::DenseTensorType>().dims().at(idx_);
+  }
+
+  std::string DebugStr() const {
+    std::ostringstream oss;
+    oss << "ValueDim: ";
+    oss << "Index: " << idx_;
+    oss << ", ";
+    v_.defining_op()->Print(oss);
+    return oss.str();
+  }
 };
 
 struct ValueDimHash {
@@ -189,6 +201,19 @@ static ValueDimRelation AnalysisIndexExprRelation(
 struct SplitedDims {
   std::vector<ValueDim> related;
   std::vector<ValueDim> non_related;
+
+  std::string DebugStr() const {
+    std::stringstream ss;
+    ss << "SplitedDims:\nrelated:\n";
+    for (const auto& dim : related) {
+      ss << dim.DebugStr() << "\n";
+    }
+    ss << "non_related:\n";
+    for (const auto& dim : non_related) {
+      ss << dim.DebugStr() << "\n";
+    }
+    return ss.str();
+  }
 };
 
 class RelativeJudgePolicy final : public Policy {
@@ -202,8 +227,13 @@ class RelativeJudgePolicy final : public Policy {
   }
   bool CanFuse(const PatternNodePtr& upstream,
                const PatternNodePtr& downstream) override;
-  PatternNodePtr Merge(const PatternNodePtr& upstream,
-                       const PatternNodePtr& downstream) override;
+
+  std::string Name() { return "RelativeJudgePolicy"; }
+
+  std::vector<size_t> GetFakeReduceIterIdx(
+      const PatternNodePtr& upstream,
+      const PatternNodePtr& downstream) override;
+
   bool IsRelated(ValueDim in, ValueDim out) {
     return index_expr_map_[in].count(out) == 1;
   }

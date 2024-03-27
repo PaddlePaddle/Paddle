@@ -39,13 +39,18 @@ std::vector<int64_t> GetReduceAxisIdx(pir::Operation* reduce_op) {
     CHECK_LT(axis, input_rank);
     reduce_axis_idx.push_back(axis);
   }
+  VLOG(4) << "GetReduceAxisIdx: " << utils::Join(reduce_axis_idx, ",");
   return reduce_axis_idx;
 }
 
 bool GetReduceOpKeepDims(pir::Operation* reduce_op) {
   const auto& attr_val = reduce_op->attributes().at("keep_dim");
   CHECK(attr_val.isa<::pir::BoolAttribute>());
-  return attr_val.dyn_cast<::pir::BoolAttribute>();
+  return attr_val.dyn_cast<::pir::BoolAttribute>().data();
+}
+
+std::string GetPatternName(const StmtPattern& s) {
+  return std::visit([](const auto& impl) { return impl.name(); }, s);
 }
 
 std::string OpsDebugStr(std::vector<pir::Operation*> ops) {
@@ -104,8 +109,8 @@ std::unordered_set<pir::Value> GetPatternOutputValuesIncludedInner(
     const StmtPattern& A) {
   std::unordered_set<pir::Value> result;
   for (const auto& op : GetOpsInPattern(A)) {
-    for (const auto& value : op->operands()) {
-      result.insert(value.source());
+    for (const auto& value : op->results()) {
+      result.insert(value);
     }
   }
   return result;
@@ -116,6 +121,7 @@ std::unordered_set<pir::Value> GetPatternInputValues(const StmtPattern& A) {
   for (const auto& value : GetPatternOutputValuesIncludedInner(A)) {
     all_input_values.erase(value);
   }
+  VLOG(4) << "GetPatternInputValues: " << all_input_values.size();
   return all_input_values;
 }
 
@@ -154,11 +160,13 @@ StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second) {
                      std::get<ReduceTreePattern>(second).reduce_patterns_);
     return ReduceTreePattern(
         merged, std::get<ReduceTreePattern>(second).GetRootPattern());
+  } else if (IsTrivialPattern(first) && IsReducePattern(second)) {
+    return ReducePattern(ops);
   } else if (IsTrivialPattern(first) && IsTrivialPattern(second)) {
     return TrivialPattern(ops);
   } else {
     // Not Implementation.
-    CHECK(false) << "Not support!";
+    CHECK(false) << "Found not support merge!";
   }
 }
 
@@ -177,11 +185,6 @@ StmtPattern ConvertToStmtPattern(pir::Operation* op) {
 
 ReducePattern ToReducePattern(const StmtPattern& second) {
   return std::get<ReducePattern>(second);
-}
-
-std::vector<int> GetTrivialReduceIter(
-    const ReduceTreePlusTrivialPattern& pattern) {
-  return {};
 }
 
 }  // namespace cinn::frontend::group_cluster
