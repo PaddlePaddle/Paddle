@@ -37,15 +37,32 @@ def get_cuda_version():
 
 class TestAddmm(unittest.TestCase):
     # input: dense, x: sparse, y: dense, out: dense
-    def check_result(self, input_shape, x_shape, y_shape, format):
+
+    def generate_complex(self, input_shape, dtype='complex64'):
+        if dtype == 'complex64':
+            rc_type = 'float32'
+        else:  # 'complex128'
+            rc_type = 'float64'
+        origin_real = paddle.rand(input_shape, rc_type)
+        origin_com = paddle.rand(input_shape, rc_type)
+        origin_x = (origin_real + 1j * origin_com).astype(dtype)
+        return origin_x
+
+    def check_result(
+        self, input_shape, x_shape, y_shape, format, dtype='float64'
+    ):
         if len(x_shape) == 3:
             mask = paddle.randint(0, 2, [x_shape[-2], x_shape[-1]])
         else:
             mask = paddle.randint(0, 2, x_shape)
-
-        origin_input = paddle.rand(input_shape)
-        origin_x = paddle.rand(x_shape) * mask
-        origin_y = paddle.rand(y_shape)
+        if dtype == 'complex64':
+            origin_input = self.generate_complex(input_shape, dtype=dtype)
+            origin_x = self.generate_complex(x_shape, dtype=dtype) * mask
+            origin_y = self.generate_complex(y_shape, dtype=dtype)
+        else:
+            origin_input = paddle.rand(input_shape, dtype=dtype)
+            origin_x = paddle.rand(x_shape, dtype=dtype) * mask
+            origin_y = paddle.rand(y_shape, dtype=dtype)
 
         dense_input = origin_input.detach()
         dense_input.stop_gradient = False
