@@ -23,8 +23,25 @@ from paddle.base import core
 np.random.seed(42)
 paddle.enable_static()
 
+is_sm8x = (
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] == 8
+    and paddle.device.cuda.get_device_capability()[1] >= 0
+)
+
+is_sm90 = (
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] == 9
+    and paddle.device.cuda.get_device_capability()[1] == 0
+)
+
+is_sm_supported = is_sm8x or is_sm90
 
 # FlashAttn
+@unitest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11040 or not is_sm_supported,
+    "flash_attn only support NVIDIA A100 or NVIDIA H100",
+)
 class TestFlashAttnPatternQscaleCast(PassTest):
     r"""
         Q          K           V
@@ -143,6 +160,10 @@ class TestFlashAttnPatternQscaleCast(PassTest):
 
 
 # FlashAttn
+@unitest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11040 or not is_sm_supported,
+    "flash_attn only support NVIDIA A100 or NVIDIA H100",
+)
 class TestFlashAttnPatternQscaleNoCast(PassTest):
     r"""
         Q          K           V
@@ -255,6 +276,10 @@ class TestFlashAttnPatternQscaleNoCast(PassTest):
 
 
 # FlashAttn
+@unitest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11040 or not is_sm_supported,
+    "flash_attn only support NVIDIA A100 or NVIDIA H100",
+)
 class TestFlashAttnPatternOutscaleCast(PassTest):
     r"""
         Q          K           V
@@ -376,6 +401,10 @@ class TestFlashAttnPatternOutscaleCast(PassTest):
 
 
 # FlashAttn
+@unitest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11040 or not is_sm_supported,
+    "flash_attn only support NVIDIA A100 or NVIDIA H100",
+)
 class TestFlashAttnPatternOutscaleNoCast(PassTest):
     r"""
         Q          K           V
