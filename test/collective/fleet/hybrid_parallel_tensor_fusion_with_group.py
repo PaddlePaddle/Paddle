@@ -63,6 +63,9 @@ class TestDistSharding(unittest.TestCase):
             "mp_degree": 1,
             "pp_degree": 1,
         }
+        sharding_config = self.strategy.hybrid_configs["sharding_configs"]
+        # sharding_config.split_param = g_shard_split_param
+        sharding_config.comm_overlap = True
         fleet.init(is_collective=True, strategy=self.strategy)
 
     def test_fusion(self):

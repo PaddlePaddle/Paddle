@@ -105,7 +105,7 @@ def start_local_trainers(
     allocator_strategy="auto_growth",
     log_dir=None,
     need_envs={},
-    accelerator_type="gpu",
+    accelerator_type="npu",
 ):
     current_env = copy.copy(os.environ.copy())
     # paddle broadcast ncclUniqueId use socket, and
@@ -141,7 +141,7 @@ def start_local_trainers(
         else:
             cmd = "python -u " + training_script
 
-        print(f"start trainer proc:{cmd} env:{proc_env}")
+        print(f"start trainer proc:{cmd} env:{proc_env}", flush=True)
 
         fn = None
 
@@ -185,11 +185,13 @@ class TestMultipleAccelerators(unittest.TestCase):
             ):
                 return
 
-        selected_devices = get_devices('0,1')
+        selected_devices = get_devices('4,5')
         cluster = None
         pod = None
 
         cluster, pod = get_cluster_from_args(selected_devices)
+        print("selceted devices: %s" % selected_devices, flush=True)
+        print(cluster, flush=True)
 
         procs = start_local_trainers(
             cluster,
