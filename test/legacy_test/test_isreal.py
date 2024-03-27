@@ -90,7 +90,7 @@ class TestIsRealError(unittest.TestCase):
             paddle.isreal(np.array([1, 2]))
 
 
-class TestIsRealDygraph(unittest.TestCase):
+class TestIsReal(unittest.TestCase):
     def test_for_real_tensor_without_gpu(self):
         test(TEST_REAL_DATA, REAL_TYPE)
 

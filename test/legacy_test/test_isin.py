@@ -21,14 +21,14 @@ from paddle import base, static
 from paddle.pir_utils import test_with_pir_api
 
 DATA_CASES = [
-    {'element_data': np.array(1.0), 'test_element_data': np.array(-1.0)},
+    {'elements_data': np.array(1.0), 'test_elements_data': np.array(-1.0)},
     {
-        'element_data': np.random.randint(-10, 10, (4, 8)),
-        'test_element_data': np.random.randint(0, 20, (2, 3)),
+        'elements_data': np.random.randint(-10, 10, (4, 8)),
+        'test_elements_data': np.random.randint(0, 20, (2, 3)),
     },
     {
-        'element_data': np.random.randint(-50, 50, (8, 64)),
-        'test_element_data': np.random.randint(-20, 0, (4, 256)),
+        'elements_data': np.random.randint(-50, 50, (8, 64)),
+        'test_elements_data': np.random.randint(-20, 0, (4, 256)),
     },
 ]
 DATA_TYPE = ['float32', 'float64', 'int32', 'int64']
@@ -100,13 +100,13 @@ def test(data_cases, type_cases, invert=False, use_gpu=False):
             test_static_or_pir_mode()
 
 
-class TestIsRealError(unittest.TestCase):
+class TestIsInError(unittest.TestCase):
     def test_for_exception(self):
         with self.assertRaises(TypeError):
             paddle.isin(np.array([1, 2]), np.array([1, 2]))
 
 
-class TestIsRealDygraph(unittest.TestCase):
+class TestIsIn(unittest.TestCase):
     def test_without_gpu(self):
         test(DATA_CASES, DATA_TYPE)
 

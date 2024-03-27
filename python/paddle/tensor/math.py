@@ -7799,7 +7799,7 @@ def isreal(x, name=None):
             Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, True, True])
     """
-    if not isinstance(x, (paddle.Tensor, Variable)):
+    if not isinstance(x, (paddle.Tensor, Variable, paddle.pir.Value)):
         raise TypeError(f"x must be tensor type, but got {type(x)}")
     dtype = x.dtype
     is_real_dtype = not (
@@ -7847,9 +7847,11 @@ def isin(elements, test_elements, invert=False, name=None):
             [True, False, False, True, False])
 
     """
-    if not isinstance(elements, (paddle.Tensor, Variable)):
+    if not isinstance(elements, (paddle.Tensor, Variable, paddle.pir.Value)):
         raise TypeError(f"x must be tensor type, but got {type(elements)}")
-    if not isinstance(test_elements, (paddle.Tensor, Variable)):
+    if not isinstance(
+        test_elements, (paddle.Tensor, Variable, paddle.pir.Value)
+    ):
         raise TypeError(f"x must be tensor type, but got {type(test_elements)}")
 
     if test_elements.numel() < 10.0 * math.pow(elements.numel(), 0.145):
