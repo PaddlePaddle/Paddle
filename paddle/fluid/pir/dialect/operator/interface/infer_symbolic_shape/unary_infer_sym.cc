@@ -601,6 +601,9 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
     const bool &all_sections_sym_not_minus_one =
         All(sections_sym, IsNotMinusOne);
     if (all_sections_sym_not_minus_one) {
+      if (x_dims_sym[axis].isa<int64_t>()) {
+        CHECK(sum_exclude_minus_one == x_dims_sym[axis]);
+      }
       shape_analysis->AddEqCstr(x_dims_sym[axis], sum_exclude_minus_one);
     }
 
