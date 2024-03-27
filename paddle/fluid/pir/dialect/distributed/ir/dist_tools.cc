@@ -61,7 +61,7 @@ void CvtAllInputsToDist(const std::vector<pir::Value>& inputs,
         define_op->set_attribute(
             kAttrOpDistAttr,
             OperationDistAttribute::get(
-                ctx, mesh_attr, {dist_type.tensor_dist_attr()}, {}));
+                ctx, mesh_attr, {}, {dist_type.tensor_dist_attr()}));
       }
     }
   }
