@@ -58,13 +58,22 @@ inline static std::vector<ValueDim> GetReduceAxesValueDims(
 bool RelativeJudgePolicy::IsBroadcastEdge(
     const std::vector<ValueDim>& upstream_out_dims,
     const std::vector<ValueDim>& downstream_reduce_dims) {
+  VLOG(4) << "IsBroadcastEdge: upstream_out_dims.size()"
+          << upstream_out_dims.size();
+  VLOG(4) << "IsBroadcastEdge: downstream_reduce_dims.size()"
+          << downstream_reduce_dims.size();
+
   for (const auto& downstream_reduce_dim : downstream_reduce_dims) {
     for (const auto& upstream_out_dim : upstream_out_dims) {
+      VLOG(4) << "upstream_out_dim: " << upstream_out_dim.DebugStr()
+              << " downstream_reduce_dim: " << downstream_reduce_dim.DebugStr();
       if (IsRelated(upstream_out_dim, downstream_reduce_dim)) {
         return false;
       }
     }
   }
+
+  VLOG(4) << "IsBroadcastEdge";
   return true;
 }
 
