@@ -419,6 +419,8 @@ class Parallelizer:
         gradient_sync_after_accumulate = (
             self._strategy.dp_optimization.gradient_sync_after_accumulate
         )
+        if gradient_sync_after_accumulate:
+            global_params_grads = params_grads
 
         if self._strategy.sharding.enable:
             config = copy.deepcopy(self._strategy.sharding.to_dict())
@@ -493,10 +495,12 @@ class Parallelizer:
             config = copy.deepcopy(self._strategy.gradient_merge.to_dict())
             config["dist_context"] = self._dist_context
             if gradient_sync_after_accumulate:
+                config["params_grads"] = global_params_grads
                 config[
                     "gradient_sync_after_accumulate"
                 ] = gradient_sync_after_accumulate
-            config["params_grads"] = params_grads
+            else:
+                config["params_grads"] = params_grads
             auto_parallel_gradient_merge_pass = new_pass(
                 "auto_parallel_gradient_merge_pass", config
             )
