@@ -107,6 +107,7 @@ class ElementwiseDivDoubleGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetType("elementwise_div_grad_grad");
     op->SetInput("Y", this->Input("Y"));
     op->SetInput("Out", this->Input("Out"));
+    op->SetInput("Out@GRAD", this->Input(framework::GradVarName("Out")));
     op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
     op->SetInput("DDY", this->OutputGrad(framework::GradVarName("Y")));
     op->SetInput("DX", this->Output(framework::GradVarName("X")));
