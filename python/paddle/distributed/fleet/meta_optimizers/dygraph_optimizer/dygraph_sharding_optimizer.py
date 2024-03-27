@@ -116,6 +116,9 @@ class DygraphShardingOptimizer:
         self._rank2params = self._partition_parameters()
         self._param2rank = self._map_param_to_rank()
 
+        self._broadcast_overlap = False
+        self._forward_pre_hook_remove_helper = []
+
         if not self.tensor_fusion and not self.comm_overlap:
             local_params = self._rank2params[self._sharding_rank]
             self._set_inner_opt_attr('_parameter_list', local_params)
@@ -318,6 +321,13 @@ class DygraphShardingOptimizer:
                         sync_op=True,
                     )
 
+    def _forward_pre_hook_function(self, tasks):
+        def __impl__(x, y):
+            for task in tasks:
+                task.wait()
+
+        return __impl__
+
     def _sharding_sync_parameters(self):
         """
         Synchronize parameter across sharding group efficiently.
@@ -334,27 +344,64 @@ class DygraphShardingOptimizer:
             sharding_group_ranks = self._hcg.get_sharding_parallel_group().ranks
 
             broadcast_tasks = []
-            for rank, params in valid_rank_to_params.items():
-                # Compute the global source rank only once per each rank's set of parameters
-                src_rank = sharding_group_ranks[rank]
+            self._broadcast_overlap = True
+            if self._broadcast_overlap:
+                param2task = {}
+                for rank, params in valid_rank_to_params.items():
+                    # Compute the global source rank only once per each rank's set of parameters
+                    src_rank = sharding_group_ranks[rank]
+                    for param in params:
+                        # NOTE: We should check if the parameter is trainable, because some parameters
+                        # (e.g., freeze the parameters for training) are not trainable and should
+                        # not be broadcasted.
+                        g_var = self._get_param_grad(param)
+                        if g_var is not None:
+                            task = paddle.distributed.broadcast(
+                                param,
+                                src=src_rank,
+                                group=self._hcg.get_sharding_parallel_group(),
+                                sync_op=False,
+                            )
+                            # broadcast_tasks.append(task)
+                            assert param.name not in param2task
+                            param2task[param.name] = task
 
-                for param in params:
-                    # NOTE: We should check if the parameter is trainable, because some parameters
-                    # (e.g., freeze the parameters for training) are not trainable and should
-                    # not be broadcasted.
-                    g_var = self._get_param_grad(param)
-                    if g_var is not None:
-                        task = paddle.distributed.broadcast(
-                            param,
-                            src=src_rank,
-                            group=self._hcg.get_sharding_parallel_group(),
-                            sync_op=False,
+                for layer in self._layers.sublayers():
+                    if len(layer.sublayers()) == 0:
+                        # Register forward pre hood for leaf layers. This will get the best performance.
+                        tasks = []
+                        for param in layer.parameters():
+                            if param.trainable:
+                                if param.name in param2task:
+                                    tasks.append(param2task[param.name])
+                        self._forward_pre_hook_remove_helper.append(
+                            layer.register_forward_pre_hook(
+                                self._forward_pre_hook_function(tasks)
+                            )
                         )
-                        broadcast_tasks.append(task)
 
-            # Wait for all async broadcast tasks to complete
-            for task in broadcast_tasks:
-                task.wait()
+            else:
+                for rank, params in valid_rank_to_params.items():
+                    # Compute the global source rank only once per each rank's set of parameters
+                    src_rank = sharding_group_ranks[rank]
+
+                    for param in params:
+                        # NOTE: We should check if the parameter is trainable, because some parameters
+                        # (e.g., freeze the parameters for training) are not trainable and should
+                        # not be broadcasted.
+                        g_var = self._get_param_grad(param)
+                        if g_var is not None:
+                            task = paddle.distributed.broadcast(
+                                param,
+                                src=src_rank,
+                                group=self._hcg.get_sharding_parallel_group(),
+                                sync_op=False,
+                            )
+                            broadcast_tasks.append(task)
+
+                # Wait for all async broadcast tasks to complete
+                for task in broadcast_tasks:
+                    task.wait()
 
     def _update_trainable(self):
         """
@@ -384,10 +431,20 @@ class DygraphShardingOptimizer:
 
         return result
 
+    def _set_broadcast_overlap(self, broadcast_overlap, layers=None):
+        self._broadcast_overlap = broadcast_overlap
+        if self._broadcast_overlap:
+            self._layers = layers
+
     @imperative_base.no_grad
     @framework.dygraph_only
     def step(self):
         # TODO Check whether the model trainable param changed and update state accordingly
+        if self._broadcast_overlap:
+            # Clear the pre forward hook in the optimizer step.
+            for hook_remove in self._forward_pre_hook_remove_helper:
+                hook_remove.remove()
+            self._forward_pre_hook_remove_helper = []
 
         target_param_list = (
             self._origin_parameter_list
