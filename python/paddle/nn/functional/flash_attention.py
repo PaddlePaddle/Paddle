@@ -621,6 +621,7 @@ def flash_attention_with_sparse_mask(
                     The dtype can be float16 or bfloat16.
     Examples:
         .. code-block:: python
+        
             >>> # doctest: +SKIP('bfloat need V100 compile')
             >>> import paddle
             >>> import numpy as np
