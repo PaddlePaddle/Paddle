@@ -246,7 +246,7 @@ void ComputeDDoutWithBroadcast(const CPUContext& dev_ctx UNUSED,
   }
 }
 
-#if defined(__NVCC__)
+#if defined(__NVCC__) || defined(__HIPCC__)
 
 template <typename T, typename DDout_OP, typename OutType = T>
 __global__ void ComputeDDoutWithoutBroadcastGPUKernel(const T* ddx_data,
@@ -337,25 +337,46 @@ void ComputeDDoutWithBroadcast(const GPUContext& dev_ctx UNUSED,
   DenseTensor x_dims_array_gpu;
   x_dims_array_gpu.Resize({max_dim});
   int* x_dims_array_gpu_data = dev_ctx.template Alloc<int>(&x_dims_array_gpu);
+#if defined(__NVCC__)
   cudaMemcpy(x_dims_array_gpu_data,
              x_dims_array,
              sizeof(int) * max_dim,
              cudaMemcpyHostToDevice);
+#else
+  hipMemcpy(x_dims_array_gpu_data,
+            x_dims_array,
+            sizeof(int) * max_dim,
+            hipMemcpyHostToDevice);
+#endif
   DenseTensor y_dims_array_gpu;
   y_dims_array_gpu.Resize({max_dim});
   int* y_dims_array_gpu_data = dev_ctx.template Alloc<int>(&y_dims_array_gpu);
+#if defined(__NVCC__)
   cudaMemcpy(y_dims_array_gpu_data,
              y_dims_array,
              sizeof(int) * max_dim,
              cudaMemcpyHostToDevice);
+#else
+  hipMemcpy(y_dims_array_gpu_data,
+            y_dims_array,
+            sizeof(int) * max_dim,
+            hipMemcpyHostToDevice);
+#endif
   DenseTensor out_dims_array_gpu;
   out_dims_array_gpu.Resize({max_dim});
   int* out_dims_array_gpu_data =
       dev_ctx.template Alloc<int>(&out_dims_array_gpu);
+#if defined(__NVCC__)
   cudaMemcpy(out_dims_array_gpu_data,
              out_dims_array,
              sizeof(int) * max_dim,
              cudaMemcpyHostToDevice);
+#else
+  hipMemcpy(out_dims_array_gpu_data,
+            out_dims_array,
+            sizeof(int) * max_dim,
+            hipMemcpyHostToDevice);
+#endif
   int block = 512;
   int64_t grid = (out_numel + block - 1) / block;
   auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
@@ -543,17 +564,50 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
                                         funcs::InverseDivideFunctor<T>>(
           dev_ctx, *ddx_tensor, y, ddout, axis);
     } else if (!ddx_tensor && ddy_tensor) {
-      // ddOut = - Out * ddY / Y
+// ddOut = - Out * ddY / Y
+#if defined(__xpu__)
+      funcs::DefaultElementwiseOperator<Context,
+                                        T,
+                                        funcs::MultiplyFunctor<T>,
+                                        funcs::InverseMultiplyFunctor<T>>(
+          dev_ctx, out, *ddy_tensor, &tmp, axis);
+      funcs::DefaultElementwiseOperator<Context,
+                                        T,
+                                        funcs::DivideFunctor<T>,
+                                        funcs::InverseDivideFunctor<T>>(
+          dev_ctx, tmp, y, ddout, axis);
+      auto& place = *dev_ctx.eigen_device();
+      auto ddout_result = phi::EigenVector<T>::Flatten(*ddout);
+      ddout_result.device(place) = static_cast<T>(-1) * ddout_result;
+#else
       DivDoubleDDoutCompute<Context, T, DivDoubleDDOut_Only_DDY<T>, T>(
           dev_ctx,
-          *ddx_tensor,
+          *dx_tensor,
           *ddy_tensor,
           y,
           out,
           axis,
           ddout,
           DivDoubleDDOut_Only_DDY<T>());
+#endif
     } else {
+#if defined(__xpu__)
+      funcs::DefaultElementwiseOperator<Context,
+                                        T,
+                                        funcs::MultiplyFunctor<T>,
+                                        funcs::InverseMultiplyFunctor<T>>(
+          dev_ctx, out, *ddy_tensor, &tmp, axis);
+      funcs::DefaultElementwiseOperator<Context,
+                                        T,
+                                        funcs::SubtractFunctor<T>,
+                                        funcs::InverseSubtractFunctor<T>>(
+          dev_ctx, *ddx_tensor, tmp, &tmp, axis);
+      funcs::DefaultElementwiseOperator<Context,
+                                        T,
+                                        funcs::DivideFunctor<T>,
+                                        funcs::InverseDivideFunctor<T>>(
+          dev_ctx, tmp, y, ddout, axis);
+#else
       DivDoubleDDoutCompute<Context, T, DivDoubleDDOut<T>, T>(
           dev_ctx,
           *ddx_tensor,
@@ -563,6 +617,7 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
           axis,
           ddout,
           DivDoubleDDOut<T>());
+#endif
     }
   }
 
