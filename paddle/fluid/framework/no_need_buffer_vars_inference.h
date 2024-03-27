@@ -36,7 +36,7 @@ class InferNoNeedBufferVarsContext {
 
   virtual bool HasOutput(const std::string &slot) const = 0;
 
-  const Attribute &GetAttr(const std::string &attr) const;
+  TEST_API const Attribute &GetAttr(const std::string &attr) const;
 
  private:
   const framework::AttributeMap &attrs_;
@@ -45,11 +45,12 @@ class InferNoNeedBufferVarsContext {
 class StaticGraphInferNoNeedBufferVarsContext final
     : public InferNoNeedBufferVarsContext {
  public:
-  StaticGraphInferNoNeedBufferVarsContext(const VariableNameMap &inputs,
-                                          const VariableNameMap &outputs,
-                                          const AttributeMap &attrs);
+  TEST_API StaticGraphInferNoNeedBufferVarsContext(
+      const VariableNameMap &inputs,
+      const VariableNameMap &outputs,
+      const AttributeMap &attrs);
 
-  bool HasOutput(const std::string &slot) const final;
+  TEST_API bool HasOutput(const std::string &slot) const final;
 
  private:
   const VariableNameMap &inputs_;
@@ -59,12 +60,12 @@ class StaticGraphInferNoNeedBufferVarsContext final
 class DyGraphInferNoNeedBufferVarsContext final
     : public InferNoNeedBufferVarsContext {
  public:
-  DyGraphInferNoNeedBufferVarsContext(
+  TEST_API DyGraphInferNoNeedBufferVarsContext(
       const imperative::NameVarMap<imperative::VariableWrapper> &inputs,
       const imperative::NameVarMap<imperative::VariableWrapper> &outputs,
       const AttributeMap &attrs);
 
-  bool HasOutput(const std::string &slot) const final;
+  TEST_API bool HasOutput(const std::string &slot) const final;
 
  private:
   const imperative::NameVarMap<imperative::VariableWrapper> &inputs_;

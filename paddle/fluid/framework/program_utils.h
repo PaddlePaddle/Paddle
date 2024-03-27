@@ -24,13 +24,13 @@ void MergePrograms(ProgramDesc *dst,
 
 class ProgramProcessor {
  public:
-  ProgramProcessor();
+  TEST_API ProgramProcessor();
 
-  void GetInputsOutputsInBlock(const BlockDesc &current_block,
-                               std::set<std::string> *inner_inputs,
-                               std::set<std::string> *inner_outputs);
+  TEST_API void GetInputsOutputsInBlock(const BlockDesc &current_block,
+                                        std::set<std::string> *inner_inputs,
+                                        std::set<std::string> *inner_outputs);
 
-  void AddDepToBlockOp(const BlockDesc &block);
+  TEST_API void AddDepToBlockOp(const BlockDesc &block);
 };
 void WriteToFile(const std::string &file_path, const std::string &msg);
 void DumpProgramDescFile(const std::string &name, const ProgramDesc &program);

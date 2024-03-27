@@ -24,7 +24,7 @@ namespace framework {
 class CipherUtils {
  public:
   CipherUtils() = default;
-  static std::string GenKey(int length);
+  TEST_API static std::string GenKey(int length);
   static std::string GenKeyToFile(int length, const std::string& filename);
   static std::string ReadKeyFromFile(const std::string& filename);
 

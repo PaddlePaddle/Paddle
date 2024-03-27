@@ -176,12 +176,6 @@ REGISTER_OPERATOR(infer_shape_utils_test,
                   paddle::framework::InferShapeUtilsTestOpMaker,
                   InferShapeUtilsTestInferShapeFunctor);
 
-PD_REGISTER_KERNEL(infer_shape_utils_test,
-                   CPU,
-                   ALL_LAYOUT,
-                   paddle::framework::InferShapeUtilsTestKernel,
-                   int) {}
-
 DECLARE_INFER_SHAPE_FUNCTOR(
     infer_shape_utils_test_output,
     InferShapeUtilsTestOutputInferShapeFunctor,
@@ -190,12 +184,6 @@ REGISTER_OPERATOR(infer_shape_utils_test_output,
                   paddle::framework::InferShapeUtilsTestOutputOp,
                   paddle::framework::InferShapeUtilsTestOutputOpMaker,
                   InferShapeUtilsTestOutputInferShapeFunctor);
-
-PD_REGISTER_KERNEL(test_sparse_coo_tensor_output,
-                   CPU,
-                   ALL_LAYOUT,
-                   paddle::framework::InferShapeUtilsTestOutputKernel,
-                   int) {}
 
 TEST(InferShapeUtilsTest, ALL) {
   paddle::framework::ProgramDesc prog;

@@ -355,7 +355,7 @@ TEST_API paddle::experimental::Scalar MakeScalarFromAttribute(
     const Attribute& v);
 TEST_API std::vector<paddle::experimental::Scalar> MakeScalarsFromAttribute(
     const Attribute& v);
-void CanonicalizeScalarAttrs(const proto::OpProto& op_proto,
-                             AttributeMap* attrs);
+TEST_API void CanonicalizeScalarAttrs(const proto::OpProto& op_proto,
+                                      AttributeMap* attrs);
 }  // namespace framework
 }  // namespace paddle

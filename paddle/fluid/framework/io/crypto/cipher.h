@@ -44,7 +44,8 @@ class Cipher {
 class CipherFactory {
  public:
   CipherFactory() = default;
-  static std::shared_ptr<Cipher> CreateCipher(const std::string& config_file);
+  TEST_API static std::shared_ptr<Cipher> CreateCipher(
+      const std::string& config_file);
 };
 }  // namespace framework
 }  // namespace paddle

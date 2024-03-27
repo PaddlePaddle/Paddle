@@ -56,9 +56,9 @@ constexpr uint32_t kCurTensorVersion = 0;
 constexpr uint32_t kSupportedTensorVersion[] = {0};
 
 // WARNING: DO NOT use this interface, it may be discarded.
-bool IsProgramVersionSupported(int64_t version);
+TEST_API bool IsProgramVersionSupported(int64_t version);
 // WARNING: DO NOT use this interface, it may be discarded.
-bool IsTensorVersionSupported(uint32_t version);
+TEST_API bool IsTensorVersionSupported(uint32_t version);
 
 std::string DumpVersion(const int64_t version);
 
