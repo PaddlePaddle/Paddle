@@ -176,6 +176,16 @@ struct DivDoubleDY_Only_DDY {
   }
 };
 
+template <typename T>
+struct DivDoubleDY_Only_DDX {
+  HOSTDEVICE T operator()(const T& x,
+                          const T& y,
+                          const T& out,
+                          const T& dout) const {
+    return -x * dout;
+  }
+};
+
 // ddOut = ddX / Y - Out * ddY / Y = (ddX - Out * ddY) / Y
 template <typename T>
 struct DivDoubleDDOut {
