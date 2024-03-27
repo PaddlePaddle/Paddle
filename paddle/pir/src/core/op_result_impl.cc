@@ -90,6 +90,15 @@ void OpResultImpl::set_attribute(const std::string &key, Attribute value) {
   owner->set_attribute(key, ArrayAttribute::get(owner->ir_context(), vec));
 }
 
+void *OpResultImpl::property(const std::string &key) const {
+  return owner()->value_property(key, index());
+}
+
+void OpResultImpl::set_property(const std::string &key, const Property &value) {
+  auto owner = this->owner();
+  owner->set_value_property(key, value, index());
+}
+
 OpInlineResultImpl::OpInlineResultImpl(Type type, uint32_t result_index)
     : OpResultImpl(type, result_index) {
   PADDLE_ENFORCE_LE(

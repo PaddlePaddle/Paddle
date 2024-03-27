@@ -596,4 +596,30 @@ IpuPassStrategy::IpuPassStrategy() : PassStrategy({}) {
   passes_.assign({"inference_process_pass"});
 }
 
+const std::vector<std::string> kPirGpuPasses{
+    // Functional pass
+    "map_op_to_another_pass",
+    "identity_op_clean_pass",
+    // Operator fusion pass
+    "silu_fuse_pass",
+    "conv2d_bn_fuse_pass",
+    "conv2d_add_act_fuse_pass",
+    "conv2d_add_fuse_pass",
+    "embedding_eltwise_layernorm_fuse_pass",
+    "multihead_matmul_fuse_pass",
+    "fc_fuse_pass",
+    "fc_elementwise_layernorm_fuse_pass",
+    "matmul_scale_fuse_pass",
+    "matmul_transpose_fuse_pass",
+    "transpose_flatten_concat_fuse_pass"};
+
+const std::vector<std::string> kPirMkldnnPasses{
+    "conv2d_bias_fuse_pass",
+    "conv2d_transpose_bias_fuse_pass",
+    "conv3d_bias_fuse_pass",
+    "batch_norm_act_fuse_pass",
+    "conv_elementwise_add_mkldnn_fuse_pass"};
+
+const std::vector<std::string> kPirCpuPasses{};
+
 }  // namespace paddle

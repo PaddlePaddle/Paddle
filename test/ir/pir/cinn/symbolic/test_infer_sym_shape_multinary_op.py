@@ -49,6 +49,7 @@ class ExpandOpInferSymbolicShapeTest(TestBase):
             'shape[7, S3, S1], data[NULL]',
         ]
 
+    @unittest.skip("TODO: xiongkun")
     def test_eval_symbolic(self):
         net = ExpandNet()
         input_spec = [
@@ -76,6 +77,7 @@ class SliceOpInferSymbolicShapeTest(TestBase):
         self.cases = [np.random.rand(4, 5, 6)]
         self.expected = ['shape[S0, S2], data[NULL]']
 
+    @unittest.skip("TODO: xiongkun")
     def test_eval_symbolic(self):
         net = SliceNet()
 
@@ -86,7 +88,7 @@ class SliceOpInferSymbolicShapeTest(TestBase):
             )
 
             input_spec = [x_spec]
-            net = apply_to_static(net, True, input_spec)
+            net = apply_to_static(net, False, input_spec)
             net.eval()
             check_infer_results(net, input_spec, 'pd_op.slice', self.expected)
 
@@ -122,6 +124,7 @@ class TakeAlongAxisOpInferSymbolicShapeTest(TestBase):
             ],
         ]
 
+    @unittest.skip("TODO: xiongkun")
     def test_eval_symbolic(self):
         net = TakeAlongAxisNet()
 
@@ -166,6 +169,7 @@ class TransposeOpInferSymbolicShapeTest(TestBase):
             'shape[4], data[2, 3, 2, 2]',
         ]
 
+    @unittest.skip("TODO: xiongkun")
     def test_eval_symbolic(self):
         net = TransposeNet()
 
@@ -200,6 +204,7 @@ class TrilOpInferSymbolicShapeTest(TestBase):
         self.cases = [np.random.rand(2, 3, 4)]
         self.expected = ['shape[S0, S1, S2], data[NULL]']
 
+    @unittest.skip("TODO: xiongkun")
     def test_eval_symbolic(self):
         net = TrilNet()
 

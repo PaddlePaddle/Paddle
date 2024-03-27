@@ -64,6 +64,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     CSoftmaxWithCrossEntropyOp::name(),
     CSoftmaxWithCrossEntropyGradOp::name(),
     CSplitOp::name(),
+    PushDenseOp::name(),
     SeedOp::name(),
     ShareDataOp::name(),
     SparseMomentumOp::name(),
@@ -495,7 +496,7 @@ std::vector<int64_t> ParseValueShape(const pir::Value& shape,
   return vec_shape;
 }
 
-const std::unordered_map<std::string, std::string>& AttrTypeMap() {
+const std::unordered_map<std::string, std::string>& CppTypeToAttrTypeMap() {
   static const std::unordered_map<std::string, std::string> attr_type_map = {
       {"bool", "pir::BoolAttribute"},
       {"int", "pir::Int32Attribute"},
@@ -507,6 +508,56 @@ const std::unordered_map<std::string, std::string>& AttrTypeMap() {
       {"std::vector<int64_t>", "pir::ArrayAttribute<pir::Int64Attribute>"},
       {"std::vector<std::string>", "pir::ArrayAttribute<pir::StrAttribute>"}};
   return attr_type_map;
+}
+
+const std::unordered_map<std::string, phi::DataType>& StringToDataTypeMap() {
+  static std::unordered_map<std::string, phi::DataType> data_type_map{
+      {"bool", phi::DataType::BOOL},
+      {"uint8", phi::DataType::UINT8},
+      {"int8", phi::DataType::INT8},
+      {"uint16", phi::DataType::UINT16},
+      {"int16", phi::DataType::INT16},
+      {"uint32", phi::DataType::UINT32},
+      {"int32", phi::DataType::INT32},
+      {"uint64", phi::DataType::UINT64},
+      {"int64", phi::DataType::INT64},
+      {"float32", phi::DataType::FLOAT32},
+      {"complex64", phi::DataType::COMPLEX64},
+      {"complex128", phi::DataType::COMPLEX128},
+      {"Undefined", phi::DataType::UNDEFINED},
+      {"psting", phi::DataType::PSTRING},
+      {"float16", phi::DataType::FLOAT16},
+      {"bfloat16", phi::DataType::BFLOAT16},
+      {"float64", phi::DataType::FLOAT64}};
+  return data_type_map;
+}
+
+const std::unordered_map<std::string, phi::Place>& StringToPlaceMap() {
+  static std::unordered_map<std::string, phi::Place> place_map{
+      {"cpu", phi::CPUPlace{}},
+      {"gpu", phi::GPUPlace{}},
+      {"gpu_pinned", phi::GPUPinnedPlace{}},
+      {"xpu", phi::XPUPlace{}},
+      {"ipu", phi::IPUPlace{}},
+      {":", phi::CustomPlace{}},
+      {"undefined", phi::Place{}}};
+  return place_map;
+}
+
+const std::unordered_map<std::string, phi::DataLayout>&
+StringToDataLayoutMap() {
+  static std::unordered_map<std::string, phi::DataLayout> data_layout_map{
+      {"NHWC", phi::DataLayout::kNHWC},
+      {"NCHW", phi::DataLayout::kNCHW},
+      {"Undefined", phi::DataLayout::kAnyLayout},
+      {"ONEDNN", phi::DataLayout::ONEDNN},
+      {"SPARSE_COO", phi::DataLayout::SPARSE_COO},
+      {"SPARSE_CSR", phi::DataLayout::SPARSE_CSR},
+      {"NDHWC", phi::DataLayout::kNDHWC},
+      {"NCDHW", phi::DataLayout::kNCDHW},
+      {"PSTRING_UNION", phi::DataLayout::PSTRING_UNION},
+      {"STRIDED", phi::DataLayout::STRIDED}};
+  return data_layout_map;
 }
 
 }  // namespace dialect

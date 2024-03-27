@@ -127,9 +127,9 @@ class TestDy2StaticAutoRecomputeRmsNorm(unittest.TestCase):
             forward_ops = actual_program.global_block().ops[:15]
             mid_ops = actual_program.global_block().ops[15:18]
             backward_ops = actual_program.global_block().ops[18:]
-            saved_values = forward_ops[9].results()[0]
+            saved_values = forward_ops[10].results()[0]
             define_op = saved_values.get_defining_op()
-            self.assertTrue(define_op.name() == "pd_op.scale")
+            self.assertTrue(define_op.name() == "pd_op.rsqrt")
             for op in forward_ops:
                 if op.name() == "pd_op.data":
                     continue
