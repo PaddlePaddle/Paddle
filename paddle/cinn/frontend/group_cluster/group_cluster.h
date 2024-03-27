@@ -24,6 +24,17 @@ namespace cinn::frontend {
 inline std::unordered_set<group_cluster::PatternNodePtr> ClusterOps(
     const std::vector<pir::Operation*>& ops) {
 
+  const auto& ops = [&] {
+    std::vector<const pir::Operation*> ops;
+    for (const auto& op : group_op.GetOperators()) {
+      if (op->name() == "cf.yield") {  // just skip cf.yield.
+        continue;
+      }
+      ops.emplace_back(op);
+    }
+    return ops;
+  }();
+
   CHECK(ops.size() > 0);
   VLOG(4) << "Start Cluster Ops!";
   VLOG(4) << "Input Group with size " << ops.size() << " :\n"
@@ -37,6 +48,7 @@ inline std::unordered_set<group_cluster::PatternNodePtr> ClusterOps(
   // const auto& shardable_axes_policy =
   // std::make_shared<group_cluster::policy::RelativeJudgePolicy>(
   // ops, shape_analysis);
+  VLOG(4) << "Start Create Policies and PolicyManager!";
   const auto& shardable_axes_policy =
       std::make_shared<group_cluster::policy::RelativeJudgePolicy>(
           ops, shape_analysis);
@@ -46,7 +58,9 @@ inline std::unordered_set<group_cluster::PatternNodePtr> ClusterOps(
   auto policy_manager = group_cluster::policy::PolicyManager(
       {shardable_axes_policy, general_topo_policy});
 
+  VLOG(4) << "Start Create PatternGraph";
   group_cluster::PatternGraph graph(ops, policy_manager);
+  VLOG(4) << "Start Cluster Ops";
   return graph.ClusterOps();
 }
 

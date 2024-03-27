@@ -37,7 +37,7 @@ struct ValueDimHash {
     auto h2 = std::hash<pir::Value>{}(p.v_);
     // Mainly for demonstration purposes, i.e. works but is overly simple
     // In the real world, use sth. like boost.hash_combine
-    return h1 ^ h2;
+    return h1 ^ (h2 << 1);
   }
 };
 
@@ -106,8 +106,7 @@ static std::vector<size_t> GetNonBroadCastDims(pir::Operation* op) {
       }
     }
   } else {
-    // TODO: not implemented.
-    CINN_CHECK(false);
+    CHECK(false) << "Not Implement other broadcast op.";
   }
   return res;
 }
@@ -134,14 +133,29 @@ static ValueDimRelation CreateOpRelativenessForDefault(
   return res;
 }
 
+<<<<<<< HEAD
 static ValueDimRelation GetSingleOpRelation(pir::Operation* op) {
   auto special_result = CreateOpRelativenessForSpecialOps(op);
+=======
+static std::optional<ValueDimRelation> CreateOpRelativenessForSpecialOps(
+    const pir::Operation* op) {
+  if (op->name() == "cinn_op.reshape") {
+    // Special Elementwise.
+    return CreateOpRelativenessForDefault(op);
+  }
+  return {};
+}
+
+static ValueDimRelation GetSingleOpRelation(const pir::Operation* op) {
+  VLOG(4) << "GetSingleOpRelation for " << op->name();
+  const auto& special_result = CreateOpRelativenessForSpecialOps(op);
+>>>>>>> 7b4aa079e5c62d202e7b3afbda16ddd2e4b2c27c
   if (special_result != std::nullopt) {
     return special_result.value();
   }
 
   CHECK(op->num_results() == 1)
-      << "Now we do not support op with multi outputs";
+      << "Now we do not support op with multi outputs: " << op->name();
   const hlir::framework::OpPatternKind kind = GetOpPatternKind(op);
   ValueDimRelation result;
   if (kind == hlir::framework::kElementWise) {
@@ -151,8 +165,7 @@ static ValueDimRelation GetSingleOpRelation(pir::Operation* op) {
   } else {
     result = CreateOpRelativenessForDefault(op);
   }
-  // VLOG(4) << "[relative_judge_policy] Create OpDimRelativeness : \n"
-  //<< op->name() << " : " << result.DebugStr();
+  return result;
 }
 
 static std::vector<std::pair<ValueDim, ValueDim>> FlattenRelation(
@@ -169,8 +182,14 @@ static std::vector<std::pair<ValueDim, ValueDim>> FlattenRelation(
 static ValueDimRelation AnalysisIndexExprRelation(
     const std::vector<pir::Operation*>& ops) {
   ValueDimRelation res;
+<<<<<<< HEAD
   for (size_t i = ops.size() - 1; i >= 0; --i) {
     pir::Operation* op = ops[i];
+=======
+  for (size_t i = ops.size(); i >= 1; --i) {
+    const pir::Operation* op = ops[i - 1];
+    if (op->name() == "cf.yield") continue;
+>>>>>>> 7b4aa079e5c62d202e7b3afbda16ddd2e4b2c27c
     const auto& value_dim_relation = GetSingleOpRelation(op);
     for (const auto& in_out_pair : FlattenRelation(value_dim_relation)) {
       for (const auto& out_relation : res[in_out_pair.second]) {
@@ -187,7 +206,9 @@ class RelativeJudgePolicy final : public Policy {
   RelativeJudgePolicy(const std::vector<pir::Operation*>& ops,
                       const pir::ShapeConstraintIRAnalysis* shape_analysis)
       : axes_info_(ops, shape_analysis) {
+    VLOG(4) << "[relative_judge_policy] Start AnalysisIndexExprRelation.";
     index_expr_map_ = AnalysisIndexExprRelation(ops);
+    VLOG(4) << "[relative_judge_policy] End AnalysisIndexExprRelation.";
   }
   bool CanFuse(const PatternNodePtr& upstream,
                const PatternNodePtr& downstream) override;
