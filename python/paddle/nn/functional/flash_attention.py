@@ -584,8 +584,10 @@ def flash_attention_with_sparse_mask(
     where : ``Q``, ``K``, and ``V`` represent the three input parameters of the attention module.
     The dimensions of the three parameters are the same.
     ``d`` represents the size of the last dimension of the three parameters.
+    
     Warning:
         This API only supports inputs with dtype float16 and bfloat16.
+        
     Args:
         query(Tensor): The query tensor in the Attention module.
                         4-D tensor with shape:
