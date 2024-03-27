@@ -34,6 +34,18 @@ using IntArray = paddle::experimental::IntArrayBase<paddle::Tensor>;
 //  differentiation
 
 template <typename T>
+void abs_double_grad(const Tensor& x,
+                     const Tensor& grad_x_grad,
+                     Tensor* grad_out_grad) {
+  // abs grad grad : ddout = ddx * sign(x)
+
+  if (grad_out_grad) {
+    auto sign_tmp = sign<T>(x);
+    set_output<T>(grad_x_grad * sign_tmp, grad_out_grad);
+  }
+}
+
+template <typename T>
 void tanh_double_grad(const Tensor& out,
                       const Tensor& grad_out,
                       const Tensor& grad_x_grad,

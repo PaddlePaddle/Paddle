@@ -13,6 +13,7 @@
   kernel :
     func : abs_double_grad
     data_type : grad_x_grad
+  composite : abs_double_grad(x, grad_x_grad, grad_out_grad)
 
 - backward_op : abs_grad
   forward : abs (Tensor x) -> Tensor(out)
