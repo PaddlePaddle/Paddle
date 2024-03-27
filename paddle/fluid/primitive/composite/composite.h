@@ -857,7 +857,7 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     x_cast = cast<T>(x, DataType::FLOAT32);
   }
   if (rank == 3) {
-    x_cast.unsqueeze<T>(x_cast, {-1});
+    x_cast = unsqueeze<T>(x_cast, {-1});
   }
   Tensor out, mean_, var_;
   if (has_dynamic_shape(x_cast.shape())) {
