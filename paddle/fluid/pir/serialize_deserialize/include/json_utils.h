@@ -20,6 +20,8 @@
 
 #include "glog/logging.h"
 #include "nlohmann/json.hpp"
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_type.h"
 
@@ -64,6 +66,86 @@ Json serializeAttrToJson<pir::Complex128Attribute>(
   Json j;
   j["id"] = attr.name();
   j["data"] = {attr.data().real, attr.data().imag};
+  return j;
+}
+
+template <>
+Json serializeAttrToJson<paddle::dialect::IntArrayAttribute>(
+    const paddle::dialect::IntArrayAttribute attr) {
+  Json j;
+  j["id"] = attr.name();
+  j["data"] = attr.data().GetData();
+  return j;
+}
+
+template <>
+Json serializeAttrToJson<paddle::dialect::ScalarAttribute>(
+    const paddle::dialect::ScalarAttribute attr) {
+  Json j;
+  j["id"] = attr.name();
+
+  Json content = Json::array();
+  auto scalar = attr.data();
+  auto dtype_ = scalar.dtype();
+  content.push_back(DataTypeToString(dtype_));
+
+  if (dtype_ == phi::DataType::FLOAT32) {
+    content.push_back(scalar.to<float>());
+  } else if (dtype_ == phi::DataType::INT32) {
+    content.push_back(scalar.to<int32_t>());
+  } else if (dtype_ == phi::DataType::FLOAT64) {
+    content.push_back(scalar.to<double>());
+  } else if (dtype_ == phi::DataType::INT8) {
+    content.push_back(scalar.to<int8_t>());
+  } else if (dtype_ == phi::DataType::FLOAT16 ||
+             dtype_ == phi::DataType::UINT16 ||
+             dtype_ == phi::DataType::BFLOAT16) {
+    content.push_back(scalar.to<uint16_t>());
+  } else if (dtype_ == phi::DataType::INT16) {
+    content.push_back(scalar.to<int16_t>());
+  } else if (dtype_ == phi::DataType::INT64) {
+    content.push_back(scalar.to<int64_t>());
+  } else if (dtype_ == phi::DataType::UINT8) {
+    content.push_back(scalar.to<uint8_t>());
+  } else if (dtype_ == phi::DataType::UINT32) {
+    content.push_back(scalar.to<uint32_t>());
+  } else if (dtype_ == phi::DataType::UINT64) {
+    content.push_back(scalar.to<uint64_t>());
+  } else if (dtype_ == phi::DataType::BOOL) {
+    content.push_back(scalar.to<bool>());
+  } else if (dtype_ == phi::DataType::COMPLEX64) {
+    content.push_back(scalar.to<phi::dtype::complex<float>>().real);
+    content.push_back(scalar.to<phi::dtype::complex<float>>().imag);
+  } else if (dtype_ == phi::DataType::COMPLEX128) {
+    content.push_back(scalar.to<phi::dtype::complex<double>>().real);
+    content.push_back(scalar.to<phi::dtype::complex<double>>().imag);
+  } else {
+    PD_THROW("Invalid tensor data type `", dtype_, "`.");
+  }
+  j["data"] = content;
+  return j;
+}
+
+template <>
+Json serializeAttrToJson<paddle::dialect::DataTypeAttribute>(
+    const paddle::dialect::DataTypeAttribute attr) {
+  Json j;
+  j["id"] = attr.name();
+  j["data"] = phi::DataTypeToString(attr.data());
+  return j;
+}
+
+template <>
+Json serializeAttrToJson<paddle::dialect::PlaceAttribute>(
+    const paddle::dialect::PlaceAttribute attr) {
+  Json j;
+  j["id"] = attr.name();
+  Json content = Json::array();
+  auto place = attr.data();
+  content.push_back(static_cast<int8_t>(place.GetType()));
+  content.push_back(place.GetDeviceId());    // int8_t
+  content.push_back(place.GetDeviceType());  // string
+  j["data"] = content;
   return j;
 }
 
@@ -222,8 +304,23 @@ Json writeAttr(const pir::Attribute& attr) {
     VLOG(8) << "write StrAttribute .";
     return pir::serializeAttrToJson<pir::StrAttribute>(
         attr.dyn_cast<pir::StrAttribute>());
+  } else if (attr.isa<paddle::dialect::IntArrayAttribute>()) {
+    VLOG(8) << "write IntArrayAttribute .";
+    return pir::serializeAttrToJson<paddle::dialect::IntArrayAttribute>(
+        attr.dyn_cast<paddle::dialect::IntArrayAttribute>());
+  } else if (attr.isa<paddle::dialect::ScalarAttribute>()) {
+    VLOG(8) << "write ScalarAttribute .";
+    return pir::serializeAttrToJson<paddle::dialect::ScalarAttribute>(
+        attr.dyn_cast<paddle::dialect::ScalarAttribute>());
+  } else if (attr.isa<paddle::dialect::DataTypeAttribute>()) {
+    VLOG(8) << "write DataTypeAttribute .";
+    return pir::serializeAttrToJson<paddle::dialect::DataTypeAttribute>(
+        attr.dyn_cast<paddle::dialect::DataTypeAttribute>());
+  } else if (attr.isa<paddle::dialect::PlaceAttribute>()) {
+    VLOG(8) << "write PlaceAttribute .";
+    return pir::serializeAttrToJson<paddle::dialect::PlaceAttribute>(
+        attr.dyn_cast<paddle::dialect::PlaceAttribute>());
   }
-
   VLOG(8) << "Finish write Attr ... ";
 
   return attr_json;

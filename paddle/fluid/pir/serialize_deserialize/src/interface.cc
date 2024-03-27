@@ -24,7 +24,7 @@ void WriteModule(const pir::Program& program,
                  const std::string& file_path,
                  const uint64_t& pir_version,
                  bool overwrite,
-                 bool readable) {
+                 bool readable = false) {
   PADDLE_ENFORCE_EQ(
       FileExists(file_path) && !overwrite,
       false,
