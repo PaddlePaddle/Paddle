@@ -24,11 +24,17 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/utils.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/refresh_combine_pattern.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
+#include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
+#include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
 namespace {
 using OpLoweringGroup = cinn::hlir::framework::pir::OpLoweringGroup;
 using OpLoweringGroupPtr = std::shared_ptr<OpLoweringGroup>;
+using cinn::dialect::ir::details::FusionOpAnalysis;
+using cinn::dialect::ir::details::GetBlockOutsideInput;
+using cinn::dialect::ir::details::GetJitKernelAttr;
+using cinn::dialect::ir::details::PreAnalysisInfo;
 
 pir::Operation* ProcessDyShapeGroup(
     const OpLoweringGroupPtr& group,

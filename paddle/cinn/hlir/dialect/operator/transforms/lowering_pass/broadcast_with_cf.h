@@ -15,8 +15,9 @@
 #pragma once
 #include "paddle/cinn/common/broadcast_tree.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/utils.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 
-namespace cinn::hlir::dialect::details {
+namespace cinn::dialect::ir::details {
 using SharedGroupHasher = OpLoweringGroup::SharedGroupHasher;
 using SharedGroupComparator = OpLoweringGroup::SharedGroupComparator;
 class BroadcastTreeInfo;
@@ -54,4 +55,4 @@ pir::Operation* CompileBroadcastTreeToConditionBlock(
     const std::vector<pir::Type>& output_types,
     pir::PatternRewriter& rewriter  // NOLINT
 );
-}  // namespace cinn::hlir::dialect::details
+}  // namespace cinn::dialect::ir::details

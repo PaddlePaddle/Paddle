@@ -16,6 +16,7 @@
 
 #include "paddle/cinn/adt/generate_map_expr.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/collect_sym_expr.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
@@ -25,7 +26,7 @@
 
 PD_DECLARE_bool(cinn_enable_map_expr);
 
-namespace cinn::hlir::dialect::details {
+namespace cinn::dialect::ir::details {
 
 using cinn::hlir::framework::CompilationCache;
 using cinn::hlir::framework::PirCompiler;
@@ -139,4 +140,4 @@ OpLoweringGroupPtr RebuildGroup(pir::Operation* fusion_op_ptr,
   return group;
 }
 
-}  // namespace cinn::hlir::dialect::details
+}  // namespace cinn::dialect::ir::details

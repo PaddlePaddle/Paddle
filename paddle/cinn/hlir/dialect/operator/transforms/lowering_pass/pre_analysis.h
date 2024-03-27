@@ -14,9 +14,10 @@
 
 #pragma once
 #include <unordered_map>
+#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/broadcast_with_cf.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
 
-namespace cinn::hlir::dialect::details {
+namespace cinn::dialect::ir::details {
 using OpLoweringGroup = cinn::hlir::framework::pir::OpLoweringGroup;
 using OpLoweringGroupPtr = std::shared_ptr<OpLoweringGroup>;
 using GroupInfoMap = std::unordered_map<::pir::Operation*, OpLoweringGroupPtr>;
@@ -44,4 +45,4 @@ class FusionOpAnalysis final {
   PreAnalysisInfo* pre_analysis_info_;  // not_owned
   bool is_dy_shape_;
 };
-}  // namespace cinn::hlir::dialect::details
+}  // namespace cinn::dialect::ir::details

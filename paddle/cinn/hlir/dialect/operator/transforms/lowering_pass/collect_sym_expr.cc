@@ -13,9 +13,13 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/collect_sym_expr.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/utils.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 namespace {
+using cinn::dialect::ir::details::GetBlockOutsideInput;
+using cinn::dialect::ir::details::OpLoweringGroup;
+using cinn::dialect::ir::details::OpLoweringGroupPtr;
 
 bool IsComplicatedDimExpr(const symbol::DimExpr& dim_expr) {
   auto lambdas = symbol::Overloaded{
@@ -187,7 +191,7 @@ symbol::ShapeOrDataDimExprs TrySubstitute(
 
 }  // namespace
 
-namespace cinn::hlir::dialect::details {
+namespace cinn::dialect::ir::details {
 
 std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
 CreateGroupShapeOrDataExprs(
@@ -225,4 +229,4 @@ CreateGroupShapeOrDataExprs(
   return value2shape;
 }
 
-}  // namespace cinn::hlir::dialect::details
+}  // namespace cinn::dialect::ir::details

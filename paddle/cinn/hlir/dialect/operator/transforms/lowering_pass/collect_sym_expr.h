@@ -16,7 +16,7 @@
 #include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 
-namespace cinn::hlir::dialect::details {
+namespace cinn::dialect::ir::details {
 using OpLoweringGroup = cinn::hlir::framework::pir::OpLoweringGroup;
 using OpLoweringGroupPtr = std::shared_ptr<OpLoweringGroup>;
 
@@ -26,4 +26,4 @@ CreateGroupShapeOrDataExprs(
     pir::ShapeConstraintIRAnalysis& shape_analysis  // NOLINT
 );
 
-}  // namespace cinn::hlir::dialect::details
+}  // namespace cinn::dialect::ir::details

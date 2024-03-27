@@ -15,7 +15,7 @@
 #pragma once
 #include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
 
-namespace cinn::hlir::dialect::details {
+namespace cinn::dialect::ir::details {
 using OpLoweringGroup = cinn::hlir::framework::pir::OpLoweringGroup;
 using OpLoweringGroupPtr = std::shared_ptr<OpLoweringGroup>;
 
@@ -32,4 +32,4 @@ std::unordered_map<std::string, ::pir::Attribute> GetJitKernelAttr(
 OpLoweringGroupPtr RebuildGroup(pir::Operation* fusion_op_ptr,
                                 bool is_dy_shape);
 
-}  // namespace cinn::hlir::dialect::details
+}  // namespace cinn::dialect::ir::details

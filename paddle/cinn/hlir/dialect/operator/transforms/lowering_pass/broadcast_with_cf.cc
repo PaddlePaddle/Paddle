@@ -13,10 +13,18 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/broadcast_with_cf.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
+#include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
+
+using OpLoweringGroup = cinn::hlir::framework::pir::OpLoweringGroup;
+using OpLoweringGroupPtr = std::shared_ptr<OpLoweringGroup>;
+using cinn::dialect::ir::details::CompileGroupAsOpAttribute;
+using cinn::dialect::ir::details::GetBlockOutsideInput;
 
 namespace {
 std::vector<pir::Value> GetOpOuputValues(const pir::Operation* op) {
@@ -412,7 +420,7 @@ void SimplyConditionBlock(
 }
 }  // namespace
 
-namespace cinn::hlir::dialect::details {
+namespace cinn::dialect::ir::details {
 
 const std::shared_ptr<cinn::common::BroadcastTree>&
 BroadcastTreeInfo::GetBroadcastTree() const {
@@ -500,4 +508,4 @@ pir::Operation* CompileBroadcastTreeToConditionBlock(
 
   return cond_op;
 }
-}  // namespace cinn::hlir::dialect::details
+}  // namespace cinn::dialect::ir::details

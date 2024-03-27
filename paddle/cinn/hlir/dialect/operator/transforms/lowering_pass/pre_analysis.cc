@@ -13,9 +13,13 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/pre_analysis.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/utils.h"
+#include "paddle/cinn/hlir/framework/pir_compiler.h"
 
-namespace cinn::hlir::dialect::details {
+namespace cinn::dialect::ir::details {
+using cinn::hlir::framework::PirCompiler;
+
 void FusionOpAnalysis::GatherGroup(pir::Operation* fusion_op) {
   OpLoweringGroupPtr group_ptr = RebuildGroup(fusion_op, is_dy_shape_);
   VLOG(6) << "Gather Group " << group_ptr->FuncName()
@@ -64,4 +68,4 @@ void FusionOpAnalysis::PreCompileGroup() {
   PirCompiler pir_compiler(cinn::common::DefaultNVGPUTarget());
   pir_compiler.Build(groups);
 }
-}  // namespace cinn::hlir::dialect::details
+}  // namespace cinn::dialect::ir::details
