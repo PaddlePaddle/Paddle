@@ -308,9 +308,7 @@ bool TriuIndicesOpInferSymbolicShape(
 }
 bool UniformOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
+  return GaussianOpInferSymbolicShape(op, shape_analysis);
 }
 
 }  // namespace paddle::dialect
