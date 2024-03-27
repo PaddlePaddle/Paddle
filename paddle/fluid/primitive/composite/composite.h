@@ -371,25 +371,6 @@ Tensor relu6_decomp(const Tensor& x) {
 }
 
 template <typename T>
-Tensor rsqrt_decomp(const Tensor& x) {
-  auto org_dtype = x.dtype();
-  Tensor x_cast = x;
-
-  bool need_cast = is_half_dtype(org_dtype);
-  if (need_cast) {
-    x_cast = cast<T>(x, DataType::FLOAT32);
-  }
-
-  auto ans =
-      elementwise_pow<T>(x_cast, full<T>(empty_shape, -0.5, x_cast.dtype()));
-  if (need_cast) {
-    return cast<T>(ans, org_dtype);
-  } else {
-    return ans;
-  }
-}
-
-template <typename T>
 std::tuple<Tensor, Tensor> squeeze_decomp(const Tensor& x,
                                           const IntArray& axis) {
   auto axis_ = process_dims(x, axis.GetData());
@@ -445,8 +426,7 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
     auto var_tmp1 = difference * difference;
     auto variance = mean_decomp<T>(var_tmp1, axis, true);
     auto var_tmp3 = variance + full<T>(empty_shape, epsilon, variance.dtype());
-    auto rsqrt_var = elementwise_pow<T>(
-        var_tmp3, full<T>(empty_shape, -0.5, var_tmp3.dtype()));
+    auto rsqrt_var = rsqrt<T>(var_tmp3);
     auto out = difference * rsqrt_var;
 
     Tensor slice_shape_l = get_slice_vec<T>(shape<T>(x), 0, begin_norm_axis);
@@ -454,7 +434,7 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
         get_slice_vec<T>(shape<T>(x), begin_norm_axis, x_dim.size());
     Tensor scale_cast;
     if (scale) {
-      scale_cast = reshape<T>(scale.get(), slice_shape_r);
+      scale_cast = backend::reshape_with_tensor<T>(scale.get(), slice_shape_r);
       if (need_cast) {
         scale_cast = cast<T>(scale_cast, DataType::FLOAT32);
       }
@@ -501,12 +481,8 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   auto var_tmp1 = difference * difference;
   auto variance = mean_decomp<T>(var_tmp1, axis, true);
   auto var_tmp3 = variance + epsilon;
-  auto rsqrt_var = elementwise_pow<T>(
-      var_tmp3, full<T>(empty_shape, -0.5, var_tmp3.dtype()));
+  auto rsqrt_var = rsqrt<T>(var_tmp3);
   auto out = difference * rsqrt_var;
-
-  auto scale_ptr = scale.get_ptr();
-  auto bias_ptr = bias.get_ptr();
 
   std::vector<int64_t> slice_shape_l;
   std::vector<int64_t> slice_shape_r;
@@ -518,24 +494,16 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
     }
   }
   Tensor scale_cast;
-  if (scale_ptr) {
-    if (slice_shape_r != scale_ptr->shape()) {
-      scale_cast = reshape<T>(*scale_ptr, slice_shape_r);
-    } else {
-      scale_cast = *scale_ptr;
-    }
+  if (scale) {
+    scale_cast = reshape<T>(scale.get(), slice_shape_r);
     if (need_cast) {
       scale_cast = cast<T>(scale_cast, DataType::FLOAT32);
     }
     out = out * scale_cast;
   }
   Tensor bias_cast;
-  if (bias_ptr) {
-    if (slice_shape_r != bias_ptr->shape()) {
-      bias_cast = reshape<T>(*bias_ptr, slice_shape_r);
-    } else {
-      bias_cast = *bias_ptr;
-    }
+  if (bias) {
+    bias_cast = reshape<T>(bias.get(), slice_shape_r);
     if (need_cast) {
       bias_cast = cast<T>(bias_cast, DataType::FLOAT32);
     }
@@ -634,8 +602,7 @@ Tensor sqrt_decomp(const Tensor& x) {
     x_cast = cast<T>(x, DataType::FLOAT32);
   }
 
-  auto ans =
-      elementwise_pow<T>(x_cast, full<T>(empty_shape, 0.5, x_cast.dtype()));
+  auto ans = 1.0 / rsqrt<T>(x_cast);
   if (need_cast) {
     return cast<T>(ans, org_dtype);
   } else {
@@ -742,34 +709,23 @@ std::tuple<Tensor, Tensor, Tensor> instance_norm_decomp(
   auto var_tmp1 = difference * difference;
   auto variance = mean_decomp<T>(var_tmp1, axis, true);
   auto var_tmp3 = variance + epsilon;
-  auto rsqrt_var =
-      elementwise_pow<T>(var_tmp3, full<T>(empty_shape, 0.5, var_tmp3.dtype()));
-  auto out = difference / rsqrt_var;
+  auto rsqrt_var = rsqrt<T>(var_tmp3);
+  auto out = difference * rsqrt_var;
 
-  auto scale_ptr = scale.get_ptr();
-  auto bias_ptr = bias.get_ptr();
   std::vector<int64_t> slice_shape(x_dim.size(), 1);
   slice_shape[1] = x_dim[1];
 
   Tensor scale_cast;
-  if (scale_ptr) {
-    if (slice_shape != scale_ptr->shape()) {
-      scale_cast = reshape<T>(*scale_ptr, slice_shape);
-    } else {
-      scale_cast = *scale_ptr;
-    }
+  if (scale) {
+    scale_cast = reshape<T>(scale.get(), slice_shape);
     if (need_cast) {
       scale_cast = cast<T>(scale_cast, DataType::FLOAT32);
     }
     out = out * scale_cast;
   }
   Tensor bias_cast;
-  if (bias_ptr) {
-    if (slice_shape != bias_ptr->shape()) {
-      bias_cast = reshape<T>(*bias_ptr, slice_shape);
-    } else {
-      bias_cast = *bias_ptr;
-    }
+  if (bias) {
+    bias_cast = reshape<T>(bias.get(), slice_shape);
     if (need_cast) {
       bias_cast = cast<T>(bias_cast, DataType::FLOAT32);
     }
@@ -778,7 +734,7 @@ std::tuple<Tensor, Tensor, Tensor> instance_norm_decomp(
 
   std::vector<int64_t> res_shape(1, -1);
   auto mean_out = reshape<T>(mean_, res_shape);
-  auto variance_out = reshape<T>(1 / rsqrt_var, res_shape);
+  auto variance_out = reshape<T>(rsqrt_var, res_shape);
 
   Tensor res;
   if (need_cast) {
@@ -909,7 +865,8 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     var_ = maximum<T>(
         var_tmp_,
         backend::full_with_tensor<T>(shape<T>(var_tmp_), 0, var_tmp_.dtype()));
-    Tensor var_inv = 1 / sqrt_decomp<T>(var_ + epsilon);
+    Tensor var_inv =
+        rsqrt<T>(var_ + full<T>(empty_shape, epsilon, var_.dtype()));
     Tensor res = (x_cast - mean_) * var_inv;
     out = backend::reshape<T>(res, x_dim);
   } else {
@@ -922,33 +879,23 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     auto var_tmp_ = mean_decomp<T>(x_cast * x_cast, IntArray(one_axis), true) -
                     mean_ * mean_;
     var_ = maximum<T>(var_tmp_, full<T>(var_tmp_.shape(), 0, var_tmp_.dtype()));
-    auto var_inv = 1 / sqrt_decomp<T>(var_ + epsilon);
+    auto var_inv = rsqrt<T>(var_ + full<T>(empty_shape, epsilon, var_.dtype()));
     auto res = (x_cast - mean_) * var_inv;
     out = reshape<T>(res, x_dim);
   }
-  auto scale_ptr = scale.get_ptr();
-  auto bias_ptr = bias.get_ptr();
 
   std::vector<int64_t> slice_bias_shape{-1, 1, 1};
   Tensor scale_cast;
-  if (scale_ptr) {
-    if (slice_bias_shape != scale_ptr->shape()) {
-      scale_cast = reshape<T>(*scale_ptr, slice_bias_shape);
-    } else {
-      scale_cast = *scale_ptr;
-    }
+  if (scale) {
+    scale_cast = reshape<T>(scale.get(), slice_bias_shape);
     if (need_cast) {
       scale_cast = cast<T>(scale_cast, DataType::FLOAT32);
     }
     out = out * scale_cast;
   }
   Tensor bias_cast;
-  if (bias_ptr) {
-    if (slice_bias_shape != bias_ptr->shape()) {
-      bias_cast = reshape<T>(*bias_ptr, slice_bias_shape);
-    } else {
-      bias_cast = *bias_ptr;
-    }
+  if (bias) {
+    bias_cast = reshape<T>(bias.get(), slice_bias_shape);
     if (need_cast) {
       bias_cast = cast<T>(bias_cast, DataType::FLOAT32);
     }

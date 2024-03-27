@@ -70,7 +70,7 @@ void FusedConv2dAddActKernel(const Context& ctx,
                                    strides.size()));
   PADDLE_ENFORCE_EQ(
       dilations.size(),
-      4UL,
+      2UL,
       phi::errors::InvalidArgument(
           "The size of dilations must be 2, but got %d.", dilations.size()));
 

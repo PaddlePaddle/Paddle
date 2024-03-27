@@ -167,7 +167,7 @@ BuildStaticSpatialConfig(
         /* warp_num = */ 8,
         /* tree_reduce_num = */ 256,
         /* spatial_inner_num = */ 1,
-        /* reduce_method = */ WarpReduceMethod()};
+        /* reduce_method = */ BlockReduceMethod()};
     return {{bucket_info, tile_config}};
   } else {
     BucketInfo bucket_info_1_256{/* sp_lower_bound = */ 1,
@@ -317,15 +317,19 @@ BuildScheduleConfig(
   std::shared_ptr<ScheduleConfig::BaseInfo> base_info =
       InitBasicInfo(group_info);
   if (!base_info->has_dynamic_reduce && !base_info->has_dynamic_spatial) {
+    VLOG(6) << "Building static sptial and static reduce config.";
     return CombineBaseInfoAndConfig(
         BuildPureStaticShapeConfig(base_info, target), base_info);
   } else if (base_info->has_dynamic_reduce && !base_info->has_dynamic_spatial) {
+    VLOG(6) << "Building static sptial and dynamic reduce config.";
     return CombineBaseInfoAndConfig(BuildStaticSpatialConfig(base_info, target),
                                     base_info);
   } else if (!base_info->has_dynamic_reduce && base_info->has_dynamic_spatial) {
+    VLOG(6) << "Building dynamic sptial and static reduce config.";
     return CombineBaseInfoAndConfig(BuildStaticReduceConfig(base_info, target),
                                     base_info);
   } else {  // (base_info->has_dynamic_reduce && base_info->has_dynamic_spatial)
+    VLOG(6) << "Building dynamic sptial and dynamic reduce config.";
     return CombineBaseInfoAndConfig(BuildDynamicShapeConfig(base_info, target),
                                     base_info);
   }

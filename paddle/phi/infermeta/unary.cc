@@ -3377,6 +3377,17 @@ void PoolInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void PushDenseInferMeta(const std::vector<const MetaTensor*>& ids,
+                        int table_id,
+                        float scale_data_norm,
+                        const std::vector<std::string>& input_names) {
+  auto ids_num = ids.size();
+  PADDLE_ENFORCE_GE(ids_num,
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Input(Ids) of PushDenseOp can not be null."));
+}
+
 void RealAndImagInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(dtype::ToReal(x.dtype()));
