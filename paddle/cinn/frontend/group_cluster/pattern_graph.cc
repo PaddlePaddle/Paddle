@@ -143,7 +143,10 @@ void PatternGraph::ReduceLiftReduceTree() {
   const auto FindCanLiftReducePattern =
       [](PatternNodePtrSet all_nodes) -> PatternNodePtr {
     for (PatternNodePtr node : all_nodes) {
-      if (node->IsReduce() && !(node->downstream_.size() < 2)) return node;
+      if (node->IsReduce() && (node->downstream_.size() < 2)) {
+        VLOG(4) << "Find Can Lift Reduce Op." << node;
+        return node;
+      }
     }
     return nullptr;
   };
@@ -156,25 +159,31 @@ void PatternGraph::ReduceLiftReduceTree() {
 
 void PatternGraph::ReduceTreeGrown() {
   const auto FindReduceTree =
-      [](PatternNodePtrSet all_nodes) -> PatternNodePtr {
+      [](PatternNodePtrSet all_nodes,
+         const policy::PolicyManager p) -> PatternNodePtr {
     for (PatternNodePtr node : all_nodes) {
       if (node->IsReduceTree() && !node->downstream_.empty() &&
-          node->downstream_.at(0)->IsReduceTree())
+          node->downstream_.at(0)->IsReduceTree() &&
+          p.CanFuse(node, node->downstream_.at(0))) {
         return node;
+      }
     }
     return nullptr;
   };
   PatternNodePtr upstream;
-  while ((upstream = FindReduceTree(all_pattern_nodes_)) != nullptr) {
+  VLOG(4) << "Start Tree Grown, Graph is:";
+  PrintGraph();
+  while ((upstream = FindReduceTree(all_pattern_nodes_, policy_manager_)) !=
+         nullptr) {
     CHECK_EQ(upstream->downstream_.size(), 1);
     auto downstream = upstream->downstream_.at(0);
-    if (policy_manager_.CanFuse(upstream, downstream)) {
-      PatternNodePtr new_node =
-          std::make_shared<PatternNode>(upstream, downstream);
-      AppendNode(new_node);
-      RemoveNode(downstream);
-      RemoveNode(upstream);
-    }
+    PrintGraph();
+    VLOG(4) << "Start Merge.";
+    MergeNode(upstream, downstream);
+    RemoveNode(downstream);
+    RemoveNode(upstream);
+    VLOG(4) << "End Graph is: ";
+    PrintGraph();
   }
 }
 
@@ -279,7 +288,7 @@ void PatternGraph::AppendNode(const PatternNodePtr& node) {
 
 void PatternGraph::PrintGraph() {
   for (const auto& v : all_pattern_nodes_) {
-    VLOG(4) << "Node: " << v;
+    VLOG(4) << "Node: " << v << GetPatternName(v->stmt_pattern_);
     for (const auto& u : v->upstream_) {
       VLOG(4) << " -u>  " << u;
     }

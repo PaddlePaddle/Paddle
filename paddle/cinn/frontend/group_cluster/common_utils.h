@@ -89,6 +89,7 @@ std::vector<const pir::Operation*> GetOpsInPattern(const StmtPattern& pattern);
 std::string StmtPatternDebugStr(const StmtPattern& pattern);
 StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second);
 ReducePattern ToReducePattern(const StmtPattern& second);
+std::string GetPatternName(const StmtPattern& s);
 
 StmtPattern ConvertToStmtPattern(const pir::Operation* op);
 std::unordered_set<pir::Value> GetPatternInputValues(const StmtPattern& A);

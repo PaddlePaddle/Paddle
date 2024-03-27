@@ -24,6 +24,7 @@ struct TrivialPattern {
   explicit TrivialPattern(const std::vector<const pir::Operation*>& ops)
       : ops_(ops) {}
   std::vector<const pir::Operation*> ops_;
+  std::string name() const { return "Trivial"; }
   std::vector<const pir::Operation*> ops() const { return ops_; }
 };
 
@@ -33,6 +34,7 @@ struct ReducePattern {
   std::vector<const pir::Operation*> ops_;
   std::vector<const pir::Operation*> ops() const { return ops_; }
   const pir::Operation* GetReduceOp() const { return ops_.back(); }
+  std::string name() const { return "Reduce"; }
 };
 
 struct ReduceTreePattern {
@@ -50,6 +52,7 @@ struct ReduceTreePattern {
     }
     return ops;
   }
+  std::string name() const { return "ReduceTree"; }
 
  private:
   ReducePattern root_;
@@ -62,6 +65,7 @@ struct ReduceTreePlusTrivialPattern {
   ReduceTreePattern tree;
   TrivialPattern sink_trivial;
   std::vector<const pir::Operation*> ops() const { return {}; }
+  std::string name() const { return "ReduceTree+Trivial"; }
 };
 
 struct UnsupportPattern {
@@ -69,6 +73,7 @@ struct UnsupportPattern {
       : ops_(ops) {}
   std::vector<const pir::Operation*> ops_;
   std::vector<const pir::Operation*> ops() const { return ops_; }
+  std::string name() const { return "Unsupport"; }
 };
 
 // UnsupportedPattern can't fuse with any pattern

@@ -49,6 +49,10 @@ bool GetReduceOpKeepDims(const pir::Operation* reduce_op) {
   return attr_val.dyn_cast<::pir::BoolAttribute>().data();
 }
 
+std::string GetPatternName(const StmtPattern& s) {
+  return std::visit([](const auto& impl) { return impl.name(); }, s);
+}
+
 std::string OpsDebugStr(std::vector<const pir::Operation*> ops) {
   std::stringstream ss;
   pir::IrPrinter printer(ss);
@@ -151,11 +155,13 @@ StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second) {
                      std::get<ReduceTreePattern>(second).reduce_patterns_);
     return ReduceTreePattern(
         merged, std::get<ReduceTreePattern>(second).GetRootPattern());
+  } else if (IsTrivialPattern(first) && IsReducePattern(second)) {
+    return ReducePattern(ops);
   } else if (IsTrivialPattern(first) && IsTrivialPattern(second)) {
     return TrivialPattern(ops);
   } else {
     // Not Implementation.
-    CHECK(false) << "Not support!";
+    CHECK(false) << "Found not support merge!";
   }
 }
 
