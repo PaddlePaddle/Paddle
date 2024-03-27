@@ -1095,6 +1095,16 @@ void range_block_do(const Block *block, std::vector<int> range, F fn) {
   }
 }
 
+template <typename K, typename V>
+bool ExistsInMapValues(const std::map<K, V> &m, V value) {
+  for (const auto &[k, v] : m) {
+    if (v == value) {
+      return true;
+    }
+  }
+  return false;
+}
+
 std::map<int, int> GetOpInplaceInfo(const pir::Operation *op) {
   std::map<int, int> inplace_info;
   if (!op->HasTrait<paddle::dialect::InplaceTrait>()) {
@@ -1202,7 +1212,7 @@ std::map<pir::Value, pir::Value> ReplaceValueWithInplaceSource(
                     inplace_source.value()) != source_values.end()) {
         VLOG(0) << "Replace " << Value2String(target_value) << " with "
                 << Value2String(inplace_source.value());
-        replacements.insert({inplace_source.value(), target_value});
+        replacements.insert({target_value, inplace_source.value()});
         target_value = inplace_source.value();
       }
     }
@@ -1456,13 +1466,14 @@ SplitedResult SplitForwardBackward(
   auto display_value_map =
       [](const std::unordered_map<pir::Value, pir::Value> &map,
          const std::string &name) {
+        VLOG(0) << "\n";
         VLOG(0) << "Start display Mapping: " << name << " size is "
                 << map.size();
         for (auto &[k, v] : map) {
           VLOG(0) << "Mapping: " << Value2String(k) << " -> "
                   << Value2String(v);
         }
-        VLOG(0) << "End display Mapping: " << name;
+        VLOG(0) << "End display Mapping: " << name << "\n";
       };
   auto create_kwarg_fn = [&backward_block,
                           &backward_inputs,
@@ -1471,8 +1482,9 @@ SplitedResult SplitForwardBackward(
                           &replacement_for_forward_outputs,
                           &counter](const pir::Value &v) {
     if (v && !backward_value_map.count(v) &&
-        (backward_inputs.count(v) || replacement_for_forward_middles.count(v) ||
-         replacement_for_forward_outputs.count(v))) {
+        (backward_inputs.count(v) ||
+         ExistsInMapValues(replacement_for_forward_middles, v) ||
+         ExistsInMapValues(replacement_for_forward_outputs, v))) {
       VLOG(0) << "Creating kwarg input_" + std::to_string(counter);
       backward_value_map[v] = backward_block.AddKwarg(
           "input_" + std::to_string(counter++), v.type());
@@ -1549,7 +1561,7 @@ SplitedResult SplitForwardBackward(
   };
 
   display_value_map(backward_value_map,
-                    "forward_value_map before create inputs");
+                    "backward_value_map before create inputs");
 
   if (has_backward) {
     VLOG(4) << "start create backward inputs, creating keyword argument.";
@@ -1584,16 +1596,23 @@ SplitedResult SplitForwardBackward(
     VLOG(4) << "Create keyword argument for backward program end. input_"
             << counter;
 
-    // display_value_map(backward_value_map,
-    //                   "forward_value_map after create inputs");
+    display_value_map(backward_value_map,
+                      "backward_value_map after create inputs");
 
     // Update the value map with inplace source value.
-    for (auto &[source, target] : replacement_for_forward_middles) {
+    VLOG(0) << "start update inplace names";
+    VLOG(0) << "replacement_for_forward_middles size is: "
+            << replacement_for_forward_middles.size();
+    for (auto &[target, source] : replacement_for_forward_middles) {
       backward_value_map[target] = backward_value_map.at(source);
     }
-    for (auto &[source, target] : replacement_for_forward_outputs) {
+    VLOG(0) << "replacement_for_forward_outputs size is: "
+            << replacement_for_forward_outputs.size();
+    for (auto &[target, source] : replacement_for_forward_outputs) {
       backward_value_map[target] = backward_value_map.at(source);
     }
+    display_value_map(backward_value_map,
+                      "backward_value_map after update inplace names");
   }
 
   VLOG(4) << "start create forward outputs, inserting set_parameter ops.";
