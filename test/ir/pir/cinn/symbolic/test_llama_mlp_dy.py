@@ -17,6 +17,7 @@ import unittest
 from os.path import dirname
 
 import numpy as np
+import utils
 
 import paddle
 import paddle.nn.functional as F
@@ -24,8 +25,6 @@ from paddle import nn
 from paddle.static import InputSpec
 
 sys.path.append(dirname(dirname(__file__)))
-
-import utils
 
 
 class LlamaMLP(nn.Layer):

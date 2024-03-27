@@ -16,14 +16,13 @@ import unittest
 from os.path import dirname
 
 import numpy as np
+import utils
 
 import paddle
 from paddle import nn
 from paddle.static import InputSpec
 
 sys.path.append(dirname(dirname(__file__)))
-
-import utils
 
 
 def apply_to_static(net, use_cinn, input_spec=None):
@@ -131,5 +130,5 @@ class TestRotaryPosEmb(unittest.TestCase):
             )
 
 
-# if __name__ == '__main__':
-#     unittest.main()
+if __name__ == '__main__':
+    unittest.main()
