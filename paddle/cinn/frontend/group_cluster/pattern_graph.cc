@@ -67,9 +67,11 @@ std::vector<PatternNodePtr> PatternGraph::SortByTopoOrder() {
 
 void PatternGraph::SinkTrivialPattern() {
   const auto FindTrivialUpstreamForFuse =
-      [&](PatternNodePtrSet all_nodes) -> PatternNodePtr {
+      [&](PatternNodePtrSet all_nodes,
+          PatternNodePtrSet visited_nodes) -> PatternNodePtr {
     for (PatternNodePtr node : all_nodes) {
-      if (node->IsTrivial() && !node->downstream_.empty()) {
+      if ((visited_nodes.find(node) == visited_nodes.end()) &&
+          node->IsTrivial() && !node->downstream_.empty()) {
         VLOG(4) << "FindTrivialNode: " << node;
         return node;
       }
@@ -80,8 +82,9 @@ void PatternGraph::SinkTrivialPattern() {
   VLOG(4) << "Begin Graph is: ";
   PrintGraph();
   PatternNodePtr upstream;
-  while ((upstream = FindTrivialUpstreamForFuse(all_pattern_nodes_)) !=
-         nullptr) {
+  PatternNodePtrSet visited_nodes;
+  while ((upstream = FindTrivialUpstreamForFuse(all_pattern_nodes_,
+                                                visited_nodes)) != nullptr) {
     VLOG(4) << "Start Finding Can Merge Trivial Node.";
     VLOG(4) << "Remain pattern node is: " << all_pattern_nodes_.size();
     PrintGraph();
@@ -99,6 +102,8 @@ void PatternGraph::SinkTrivialPattern() {
 
     if (upstream->downstream_.empty()) {
       RemoveNode(upstream);
+    } else {
+      visited_nodes.insert(upstream);
     }
   }
   VLOG(4) << "End Graph is: ";
