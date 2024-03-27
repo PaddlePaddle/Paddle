@@ -47,27 +47,58 @@ void Conv3dImplicitGemmGPUKernel(const GPUContext& dev_ctx,
                     1,
                     phi::errors::InvalidArgument(
                         "The group must be 1, but received %d.", groups));
-  PADDLE_ENFORCE_EQ((strides.size() == 3 && strides[0] == 1 &&
-                     strides[1] == 1 && strides[2] == 1),
-                    true,
-                    phi::errors::InvalidArgument(
-                        "The strides must be 1, but received %d, %d, %d.",
-                        strides[0],
-                        strides[1],
-                        strides[2]));
-  PADDLE_ENFORCE_EQ((dilations.size() == 3 && dilations[0] == 1 &&
-                     dilations[1] == 1 && dilations[2] == 1),
-                    true,
-                    phi::errors::InvalidArgument(
-                        "The dilations must be 1, but received %d, %d, %d.",
-                        dilations[0],
-                        dilations[1],
-                        dilations[2]));
 
   const auto& x_dims = x.dims();
   const auto& kernel_dims = kernel.dims();
   const bool is2D = x_dims.size() == 4 ? true : false;
-  assert(is2D == false);  // lookup_coords only support 3D
+
+  if (is2D) {
+    PADDLE_ENFORCE_EQ(
+        (kernel_dims.size() == 4),
+        true,
+        phi::errors::InvalidArgument(
+            "For 2D case, the size of kernel_dims must be 4, but received %d.",
+            kernel_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        (strides.size() == 2 && strides[0] == 1 && strides[1] == 1),
+        true,
+        phi::errors::InvalidArgument(
+            "The strides must be 1, but received %d, %d.",
+            strides[0],
+            strides[1]));
+    PADDLE_ENFORCE_EQ(
+        (dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1),
+        true,
+        phi::errors::InvalidArgument(
+            "The dilations must be 1, but received %d, %d.",
+            dilations[0],
+            dilations[1]));
+
+  } else {
+    PADDLE_ENFORCE_EQ(
+        (kernel_dims.size() == 5),
+        true,
+        phi::errors::InvalidArgument(
+            "For 3D case, the size of kernel_dims must be 5, but received %d.",
+            kernel_dims.size()));
+    PADDLE_ENFORCE_EQ((strides.size() == 3 && strides[0] == 1 &&
+                       strides[1] == 1 && strides[2] == 1),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The strides must be 1, but received %d, %d, %d.",
+                          strides[0],
+                          strides[1],
+                          strides[2]));
+    PADDLE_ENFORCE_EQ((dilations.size() == 3 && dilations[0] == 1 &&
+                       dilations[1] == 1 && dilations[2] == 1),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The dilations must be 1, but received %d, %d, %d.",
+                          dilations[0],
+                          dilations[1],
+                          dilations[2]));
+  }
+
   int kernel_volume = is2D ? kernel_dims[0] * kernel_dims[1]
                            : kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
   int in_channels = is2D ? kernel_dims[2] : kernel_dims[3];
@@ -107,17 +138,17 @@ void Conv3dImplicitGemmGPUKernel(const GPUContext& dev_ctx,
   }
 
   build_sparse_conv_kmap<IntT>(
-      dev_ctx, x, key, kernel_sizes, strides, kernel_volume, out);
+      dev_ctx, x, key, kernel_sizes, strides, kernel_volume, is2D, out);
 
   auto* out_kmap_cache_ptr = out->GetKmapCache(key);
 
   DenseTensor kernel_transpose = phi::EmptyLike<T, GPUContext>(dev_ctx, kernel);
+  std::vector<int> perm;
   if (is2D) {
-    // not support 2D
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "The 2D convolution is not supported in sparse convolution."));
+    perm = {1, 0, 2, 3};
+  } else {
+    perm = {0, 2, 1, 3, 4};
   }
-  std::vector<int> perm = {0, 2, 1, 3, 4};
   phi::funcs::TransposeGPUKernelDriver<T>(
       dev_ctx, kernel, perm, &kernel_transpose);
 

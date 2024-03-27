@@ -8,6 +8,8 @@
 #include <utility>
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/kernels/funcs/transpose_function.cu.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/kernels/funcs/math_function_impl.h"
 
@@ -37,9 +39,9 @@ __inline__ __device__ int64_t atomicCAS(int64_t* address, int64_t compare, int64
 }
 
 template <typename dtype=int>
-__device__ uint64_t hash_func_64b(dtype* data){
+__device__ uint64_t hash_func_64b(dtype* data, int n=4){
   uint64_t hash = 14695981039346656037UL;
-  for (int j = 0; j < 4; j++) {
+  for (int j = 0; j < n; j++) {
     hash ^= (unsigned int)data[j];
     hash *= 1099511628211UL;
   }
@@ -54,11 +56,12 @@ __device__ int hash(key_type key, int _capacity){
 
 template <typename key_type, typename val_type>
 class GPUHashTable {
- //private:
- public:
+ private:
+ //public:
   bool free_pointers;
   const int _capacity;
   const int _divisor;
+  const int _width;
   key_type* table_keys;
   val_type* table_vals;
   void insert_many_coords(const phi::GPUContext& dev_ctx, const int *coords, const int n);
@@ -66,9 +69,9 @@ class GPUHashTable {
     const int* kernel_sizes, const int* tensor_strides,
     const int n, const int kernel_volume);
  public:
-  GPUHashTable(phi::DenseTensor* table_keys, phi::DenseTensor* table_vals, const int divisor)
+  GPUHashTable(phi::DenseTensor* table_keys, phi::DenseTensor* table_vals, const int divisor, const int width)
       : _capacity(table_keys->dims()[0]), free_pointers(false), table_keys(table_keys->data<key_type>()),
-      table_vals(table_vals->data<val_type>()), _divisor(divisor){};
+      table_vals(table_vals->data<val_type>()), _divisor(divisor), _width(width){};
   ~GPUHashTable() {
     if(free_pointers){
       cudaFree(table_keys);
@@ -85,12 +88,12 @@ using hashtable = GPUHashTable<int64_t, int>;
 using hashtable32 = GPUHashTable<int, int>;
 
 template <typename key_type=int64_t, typename val_type=int>
-__global__ void insert_coords_kernel(key_type* table_keys, val_type* table_vals, const int* coords, int n, int _capacity)
+__global__ void insert_coords_kernel(key_type* table_keys, val_type* table_vals, const int* coords, int n, int _capacity, int _width)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < n)
     {
-        key_type key = (key_type)(hash_func_64b(coords + idx*4));
+        key_type key = (key_type)(hash_func_64b(coords + idx*_width, _width));
         int value = idx + 1;
         int slot = hash(key, _capacity);
         while (true)
@@ -111,40 +114,42 @@ template <typename key_type=int64_t, typename val_type=int, bool odd>
 __global__ void lookup_coords_kernel(
   key_type* table_keys, val_type* table_vals, const int* coords, val_type* vals, 
   const int* kernel_sizes, const int* strides, 
-  int n, int _capacity, int kernel_volume)
+  int n, int _capacity, int kernel_volume, int _width)
 {
     int tidx = blockIdx.x * blockDim.x + threadIdx.x;
     int idx = tidx / kernel_volume;
     int _kernel_idx = tidx % kernel_volume;
     int kernel_idx = _kernel_idx;
-    const int* in_coords = coords + 4 * idx;
+    const int* in_coords = coords + _width * idx;
     int coords_out[4];
-    coords_out[3] = in_coords[3];
+    //coords_out[2] = in_coords[2];
+    //coords_out[3] = in_coords[3];
+    coords_out[0] = in_coords[0];
     
     if constexpr (odd) 
     {
       #pragma unroll
-      for(int i = 0; i <= 2; i++){
+      for(int i = 0; i <= _width-2; i++){
         int cur_offset = _kernel_idx % kernel_sizes[i];
         cur_offset -= (kernel_sizes[i] - 1) / 2;
-        coords_out[i] = in_coords[i] * strides[i] + cur_offset;
+        coords_out[i+1] = in_coords[i+1] * strides[i] + cur_offset;
         _kernel_idx /= kernel_sizes[i];
       }
     }
     else
     {
       #pragma unroll
-      for(int i = 2; i >= 0; i--){
+      for(int i = _width-2; i >= 0; i--){
         int cur_offset = _kernel_idx % kernel_sizes[i];
         cur_offset -= (kernel_sizes[i] - 1) / 2;
-        coords_out[i] = in_coords[i] * strides[i] + cur_offset;
+        coords_out[i+1] = in_coords[i+1] * strides[i] + cur_offset;
         _kernel_idx /= kernel_sizes[i];
       }
     }
     
     if (idx < n)
     {
-        key_type key = (key_type)(hash_func_64b(coords_out));
+        key_type key = (key_type)(hash_func_64b(coords_out, _width));
         int slot = hash(key, _capacity);
 
         while (true)
@@ -165,7 +170,7 @@ __global__ void lookup_coords_kernel(
 
 template <typename key_type, typename val_type>
 void GPUHashTable<key_type, val_type>::insert_many_coords(const phi::GPUContext& dev_ctx, const int *coords, const int n){
-  insert_coords_kernel<key_type, val_type><<<(n + BLOCK_SIZE - 1) / BLOCK_SIZE, BLOCK_SIZE, 0, dev_ctx.stream()>>>(table_keys, table_vals, coords, n, _capacity);
+  insert_coords_kernel<key_type, val_type><<<(n + BLOCK_SIZE - 1) / BLOCK_SIZE, BLOCK_SIZE, 0, dev_ctx.stream()>>>(table_keys, table_vals, coords, n, _capacity, _width);
 }
 
 template <typename key_type, typename val_type>
@@ -182,11 +187,11 @@ void GPUHashTable<key_type, val_type>::lookup_many_coords(
   if (kernel_volume % 2)
     lookup_coords_kernel<key_type, val_type, true><<<(n * kernel_volume + BLOCK_SIZE - 1) / BLOCK_SIZE, BLOCK_SIZE, 0, dev_ctx.stream()>>>(
       table_keys, table_vals, coords, results, kernel_sizes, strides,
-      n, _capacity, kernel_volume);
+      n, _capacity, kernel_volume, _width);
   else
     lookup_coords_kernel<key_type, val_type, false><<<(n * kernel_volume + BLOCK_SIZE - 1) / BLOCK_SIZE, BLOCK_SIZE, 0, dev_ctx.stream()>>>(
       table_keys, table_vals, coords, results, kernel_sizes, strides,
-      n, _capacity, kernel_volume);
+      n, _capacity, kernel_volume, _width);
 }
 
 template <typename key_type, typename val_type>
@@ -195,7 +200,7 @@ void GPUHashTable<key_type, val_type>::lookup_coords(
     const phi::DenseTensor& coords,
     const int* kernel_sizes,
     const int* strides,
-    int kernel_volume,
+    const int kernel_volume,
     phi::DenseTensor* results){
   int32_t* results_data = results->data<int32_t>();
   lookup_many_coords(dev_ctx, coords.data<int>(), results_data, kernel_sizes, strides, coords.dims()[0], kernel_volume);
@@ -209,6 +214,7 @@ void build_sparse_conv_kmap(
   const std::vector<int>& kernel_sizes,
   const std::vector<int>& strides,
   const int kernel_volume,
+  const bool is2D,
   phi::SparseCooTensor* out)
 {
   int nnz = x.nnz();
@@ -241,12 +247,15 @@ void build_sparse_conv_kmap(
       phi::DenseTensor* tmp_indices = new phi::DenseTensor();
       tmp_indices->Resize({x.indices().dims()[1], x.indices().dims()[0]});
       dev_ctx.template Alloc<int32_t>(tmp_indices);
-      rearange_indices(dev_ctx, x.indices(), tmp_indices);
+      // transpose indices
+      std::vector<int> perm = {1, 0};
+      phi::funcs::TransposeGPUKernelDriver<int32_t>(dev_ctx, x.indices(), perm, tmp_indices);
       out_kmap_cache_ptr->coords = tmp_indices;
     }
 
     const int divisor = 128;
-    auto hashmap = GPUHashTable<IntT, int32_t>(out_kmap_cache_ptr->hashmap_keys, out_kmap_cache_ptr->hashmap_values, divisor);
+    const int width = is2D ? 3 : 4;
+    auto hashmap = GPUHashTable<IntT, int32_t>(out_kmap_cache_ptr->hashmap_keys, out_kmap_cache_ptr->hashmap_values, divisor, width);
     if (to_insert) {
       hashmap.insert_coords(dev_ctx, *(out_kmap_cache_ptr->coords));
     }
