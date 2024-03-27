@@ -56,7 +56,7 @@ class TestCinnSubGrapTril(unittest.TestCase):
         self.prepare_data()
 
     def prepare_data(self):
-        self.x_shape = [64, 128]
+        self.x_shape = [32, 32]
         self.x = paddle.randn(self.x_shape, dtype="float32")
         self.x.stop_gradient = False
 
@@ -67,7 +67,7 @@ class TestCinnSubGrapTril(unittest.TestCase):
         paddle.seed(2022)
         net = CINNSubGraphNet(tril)
         input_spec = [
-            InputSpec(shape=[None, 128], dtype='float32'),
+            InputSpec(shape=[None, 32], dtype='float32'),
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
@@ -92,7 +92,7 @@ class TestCinnSubGrapTrilDiagNeg(unittest.TestCase):
         self.prepare_data()
 
     def prepare_data(self):
-        self.x_shape = [64, 128]
+        self.x_shape = [32, 32]
         self.x = paddle.randn(self.x_shape, dtype="float32")
         self.x.stop_gradient = False
 
@@ -103,7 +103,7 @@ class TestCinnSubGrapTrilDiagNeg(unittest.TestCase):
         paddle.seed(2022)
         net = CINNSubGraphNet(tril_diag_neg)
         input_spec = [
-            InputSpec(shape=[None, 128], dtype='float32'),
+            InputSpec(shape=[None, 32], dtype='float32'),
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
