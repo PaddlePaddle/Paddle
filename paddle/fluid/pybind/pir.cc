@@ -118,6 +118,7 @@ using pir::Block;
 using pir::BlockArgument;
 using pir::BoolAttribute;
 using pir::CloneOptions;
+using pir::IrContext;
 using pir::IrMapping;
 using pir::IrParser;
 using pir::Operation;
@@ -221,6 +222,20 @@ std::string GetValueInfo(Value v) {
     ss << ", stop_gradient=True";
   }
   return ss.str();
+}
+
+Value GetOutputValueByName(const Program &program, const std::string &name) {
+  auto &block = *program.block();
+  pir::StrAttribute name_attr =
+      pir::StrAttribute::get(IrContext::Instance(), name);
+  for (auto &op : block) {
+    if (op.isa<pir::ShadowOutputOp>()) {
+      if (op.attribute("output_name") == name_attr) {
+        return op.operand_source(0);
+      }
+    }
+  }
+  return nullptr;
 }
 
 void BindProgram(py::module *m) {
@@ -334,6 +349,10 @@ void BindProgram(py::module *m) {
           [](std::shared_ptr<Program> self, int64_t random_seed) {
             SetProgramInt64Attr(self, "random_seed", random_seed);
           })
+      .def("get_output_value_by_name",
+           [](Program &self, const std::string &name) {
+             return GetOutputValueByName(self, name);
+           })
       .def("num_ops", [](Program &self) { return self.num_ops(); });
 }
 
@@ -804,6 +823,40 @@ pir::Value apply(Value self, py::object func) {
   return out;
 }
 
+#define DEF_VALUE_BOOL_PROPERTY(name)                                         \
+  def_property(                                                               \
+      name,                                                                   \
+      [](Value self) {                                                        \
+        auto bool_data = self.attribute<BoolAttribute>(name);                 \
+        return !bool_data || bool_data.data();                                \
+      },                                                                      \
+      [](Value self, bool bool_data) {                                        \
+        self.set_attribute(                                                   \
+            name, BoolAttribute::get(pir::IrContext::Instance(), bool_data)); \
+      })
+
+#define DEF_VALUE_POINTER_PROPERTY(name)                                     \
+  def_property(                                                              \
+      name,                                                                  \
+      [](Value self) -> py::object {                                         \
+        auto prop_ptr = self.property(name);                                 \
+        if (!prop_ptr) {                                                     \
+          return py::cast<py::none>(Py_None);                                \
+        }                                                                    \
+        auto py_data = reinterpret_cast<PyObject *>(prop_ptr);               \
+        py::object obj = py::object(py::handle(py_data), true);              \
+        return obj;                                                          \
+      },                                                                     \
+      [](Value self, py::object obj) {                                       \
+        pir::PropertiesDeleter deleter = [](void *python_obj) {              \
+          Py_DECREF(python_obj);                                             \
+        };                                                                   \
+        PyObject *pointer_data = obj.release().ptr();                        \
+        pir::Property value_property(reinterpret_cast<void *>(pointer_data), \
+                                     deleter);                               \
+        self.set_property(name, value_property);                             \
+      })
+
 void BindValue(py::module *m) {
   py::class_<Value> value(*m,
                           "Value",
@@ -815,8 +868,7 @@ void BindValue(py::module *m) {
         The constructor of Value should not be invoked directly. Value can be automatically constructed
         when build network.
 
-  )DOC",
-                          pybind11::dynamic_attr());
+  )DOC");
   g_ir_value_pytype = reinterpret_cast<PyTypeObject *>(value.ptr());
   value.def(py::init<>())
       .def_property_readonly(
@@ -897,30 +949,15 @@ void BindValue(py::module *m) {
                return true;
              }
            })
-      .def_property(
-          "stop_gradient",
-          [](Value self) {
-            auto stop_gradient =
-                self.attribute<BoolAttribute>(kAttrStopGradients);
-            return !stop_gradient || stop_gradient.data();
-          },
-          [](Value self, bool stop_gradient) {
-            self.set_attribute(
-                kAttrStopGradients,
-                BoolAttribute::get(pir::IrContext::Instance(), stop_gradient));
-          })
-      .def_property(
-          "persistable",
-          [](Value self) {
-            auto persistable =
-                self.attribute<BoolAttribute>(kAttrIsPersistable);
-            return !persistable || persistable.data();
-          },
-          [](Value self, bool persistable) {
-            self.set_attribute(
-                kAttrIsPersistable,
-                BoolAttribute::get(pir::IrContext::Instance(), persistable));
-          })
+      .DEF_VALUE_BOOL_PROPERTY("stop_gradient")
+      .DEF_VALUE_BOOL_PROPERTY("trainable")
+      .DEF_VALUE_BOOL_PROPERTY("persistable")
+      .DEF_VALUE_BOOL_PROPERTY("need_clip")
+      .DEF_VALUE_BOOL_PROPERTY("is_distributed")
+      .DEF_VALUE_BOOL_PROPERTY("is_parameter")
+      .DEF_VALUE_POINTER_PROPERTY("optimize_attr")
+      .DEF_VALUE_POINTER_PROPERTY("regularizer")
+      .DEF_VALUE_POINTER_PROPERTY("do_model_average")
       .def("all_used_ops",
            [](Value &self) -> py::list {
              py::list op_list;

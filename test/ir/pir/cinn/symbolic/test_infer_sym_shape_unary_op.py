@@ -481,5 +481,44 @@ class SplitOpInferSymbolicShapeTest(TestBase):
         return True
 
 
+class SplitWithNumNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        data = paddle.empty(shape=[4, 6, 5])
+        out0, out1, out2 = paddle.split(data, num_or_sections=3, axis=1)
+        out0, out1, out2 = paddle.split(x, num_or_sections=3, axis=1)
+        return out0, out1, out2
+
+
+class SplitWithNumOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.cases = [np.random.rand(4, 6, 5)]
+        self.expected = [
+            "shape[4, 2, 5], data[NULL], shape[4, 2, 5], data[NULL], shape[4, 2, 5], data[NULL]",
+            "shape[S0, Mul(S1, 1 / (3)), S2], data[NULL], shape[S0, Mul(S1, 1 / (3)), S2], data[NULL], shape[S0, Mul(S1, 1 / (3)), S2], data[NULL]",
+        ]
+
+    def test_eval_symbolic(self):
+        net = SplitWithNumNet()
+
+        for i in range(len(self.cases)):
+            x = self.cases[i]
+            x_spec = InputSpec(
+                shape=[None for index in range(len(x.shape))], dtype='float32'
+            )
+            input_spec = [x_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+
+            # check the infer result
+            check_infer_results(
+                net, input_spec, 'pd_op.split_with_num', self.expected
+            )
+
+        return True
+
+
 if __name__ == '__main__':
     unittest.main()
