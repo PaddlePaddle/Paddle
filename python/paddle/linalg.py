@@ -40,6 +40,7 @@ from .tensor.linalg import (
     slogdet,
     solve,
     svd,
+    svd_lowrank,
     triangular_solve,
     vector_norm,
 )
@@ -61,6 +62,7 @@ __all__ = [
     'qr',
     'householder_product',
     'pca_lowrank',
+    'svd_lowrank',
     'lu',
     'lu_unpack',
     'matrix_exp',
