@@ -375,6 +375,15 @@
     func : generate_sequence_xpu
     data_type : dtype
 
+- op : group_norm_silu_xpu
+  args : (Tensor x, Tensor scale, Tensor bias, int groups, float epsilon)
+  output : Tensor(out)
+  infer_meta :
+    func : GroupNormalizeSiluXPUInferMeta
+  kernel :
+    func : group_norm_silu_xpu
+    data_type : x
+
 - op : layer_norm_act_xpu
   args : (Tensor x, Tensor scale, Tensor bias, int begin_norm_axis, float epsilon, int act_type, float act_param)
   output : Tensor(out)
