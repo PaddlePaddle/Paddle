@@ -107,6 +107,14 @@
   inplace : (output -> out)
   backward : assign_out__grad
 
+- op : assign_pos
+  args : (Tensor x, Tensor cum_count, Tensor eff_num_len)
+  output : Tensor(out)
+  infer_meta :
+    func : AssignPosInferMeta
+  kernel :
+    func : assign_pos
+
 - op : assign_value
   args : (int[] shape, DataType dtype, Scalar[] values, Place place = {})
   output : Tensor(out)

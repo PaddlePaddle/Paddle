@@ -16,6 +16,7 @@ test_arg_min_max_op_static_build
 test_arg_min_max_v2_op
 test_argsort_op
 test_assign_op
+test_assign_pos_op
 test_assign_value_op
 test_atan2_op
 test_auc_op
