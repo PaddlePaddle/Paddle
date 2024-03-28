@@ -37,7 +37,6 @@ USE_PIR_PASS(conv2d_add_fuse_pass);
 USE_PIR_PASS(conv2d_add_act_fuse_pass);
 USE_PIR_PASS(embedding_eltwise_layernorm_fuse_pass);
 USE_PIR_PASS(fused_dot_product_attention_pass);
-USE_PIR_PASS(fused_flash_attn_pass);
 USE_PIR_PASS(fused_scale_dot_product_attention_pass);
 
 #ifdef PADDLE_WITH_DNNL
