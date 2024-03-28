@@ -154,13 +154,6 @@ class OpTest(unittest.TestCase):
     ):
         self.build_paddle_program(self.target)
         self.build_cinn_program(self.target)
-        print(
-            "paddle output first 5: %s"
-            % self.paddle_outputs[0].numpy().reshape(-1)[:5]
-        )
-        print(
-            "cinn   output first 5: %s" % self.cinn_outputs[0].reshape(-1)[:5]
-        )
         logger.debug("============ Check Outputs ============")
         self.check_results(
             self.paddle_outputs,

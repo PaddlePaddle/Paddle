@@ -88,8 +88,7 @@ void SYCLBackendAPI::set_device(int device_id) {
         try {
           std::rethrow_exception(e);
         } catch (const sycl::exception& e) {
-          std::cout << "Caught asynchronous SYCL exception:\n"
-                    << e.what() << std::endl;
+          LOG(INFO) << "Caught asynchronous SYCL exception:\n" << e.what();
         }
       }
     };

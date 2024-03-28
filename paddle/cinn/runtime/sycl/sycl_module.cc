@@ -33,7 +33,7 @@ SYCLModule::SYCLModule(const std::string& source_code,
 }
 
 SYCLModule::~SYCLModule() {
-  std::cout << "destructor for SYCLModule" << std::endl;
+  LOG(INFO) << "destructor for SYCLModule";
   if (so_handler_ != nullptr) {
     // dlclose(so_handler_);
   }
@@ -103,8 +103,7 @@ void cinn_call_sycl_kernel(void* kernel_fn,
     sycl::range<3> Grid(grid_z, grid_y, grid_x);
     sycl::range<3> Block(block_z, block_y, block_x);
     // need malloc_shared
-    // std::cout << "kernel args :" << (float* )(*(void **)(kernel_args[0]))[0]
-    // << std::endl;
+    // LOG(INFO) << "kernel args :" << (float* )(*(void **)(kernel_args[0]))[0]
     kernel_func(*Queue, Grid, Block, kernel_args.data());
   }
 }

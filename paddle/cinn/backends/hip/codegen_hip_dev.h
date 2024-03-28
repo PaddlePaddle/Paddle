@@ -19,6 +19,7 @@
 
 #include "paddle/cinn/backends/codegen_c.h"
 #include "paddle/cinn/common/common.h"
+#include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/lowered_func.h"
@@ -56,15 +57,31 @@ class CodeGenHIP_Dev : public CodeGenC {
 
   void Compile(const ir::LoweredFunc& func);
 
+  /**
+   * \brief Print a function argument in CUDA syntax. Currently, just some
+   * decoration of __restrict__.
+   * @param arg the argument.
+   * @return the representation in CUDA syntax.
+   *
+   * We make it a static to make the test easier.
+   */
   void PrintFuncArg(const ir::Argument& arg);
 
   std::string Compile(const ir::Module& module, OutputKind output_kind);
 
   static const std::string& GetSourceHeader();
 
+  ir::Expr GetDynSharedMemOffset() const {
+    if (MathEqual(dyn_shared_mem_offset_, Expr(-1))) {
+      return Expr(0);
+    }
+    return dyn_shared_mem_offset_;
+  }
+
  protected:
   void Visit(const ir::_Var_* op) override;
   void Visit(const ir::_LoweredFunc_* op) override;
+  void Visit(const ir::Free* op) override;
   void Visit(const ir::Min* op) override;
   void Visit(const ir::Max* op) override;
   void Visit(const ir::Alloc* op) override;
@@ -105,6 +122,9 @@ class CodeGenHIP_Dev : public CodeGenC {
   // prefix
   std::unordered_set<std::string> vectorized_tensor_names_;
   static const std::string source_header_;
+
+  ir::Expr dyn_shared_mem_offset_{-1};
+  std::vector<ir::Buffer> dynamic_alloc_buffers_;
 };
 
 }  // namespace backends

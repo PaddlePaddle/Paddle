@@ -2202,7 +2202,7 @@ CreateCudaParams() {
                             {-1, 1, 4, 1},
                             {-1, 1, 1, 1}});
 #ifndef CINN_WITH_GPU
-  // WinogradConv lower报错
+  // Error in lowering WinogradConv. skip WinogradConv.
   InputWinogradConvCudaParam(
       model_data,
       "CudaWinogradConvSchedule 1 512 9 9 512 512 3 3 1 512 7 7",

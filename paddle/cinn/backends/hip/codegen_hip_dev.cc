@@ -21,6 +21,8 @@
 #include <set>
 #include <unordered_set>
 
+#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_verify.h"
 #include "paddle/cinn/optim/ir_simplify.h"
@@ -75,6 +77,7 @@ void CodeGenHIP_Dev::Compile(const ir::Module &module, const Outputs &outputs) {
 }
 
 void CodeGenHIP_Dev::Compile(const ir::LoweredFunc &func) {
+  dyn_shared_mem_offset_ = Expr(-1);
   IrPrinter::Visit(Expr(func));
 }
 
@@ -108,6 +111,32 @@ std::vector<Expr> CodeGenHIP_Dev::GenerateBufferAliasExprs(
   return buffer_alias;
 }
 
+std::vector<Expr> FilterDeallocTempBuffers(const std::vector<Expr> &frees) {
+  std::vector<Expr> filtered;
+  for (const Expr &free : frees) {
+    const ir::Free *op = free.As<ir::Free>();
+    CHECK_NOTNULL(op);
+    bool has_symbolic_constant = false;
+    const ir::_Buffer_ *buffer = op->destination.As<ir::_Buffer_>();
+    for (Expr shape : buffer->shape) {
+      shape = common::AutoSimplify(shape);
+      ir::ir_utils::CollectIRNodes(shape, [&](const Expr *x) {
+        if (x->as_var()) {
+          CHECK(x->as_var()->is_symbolic_constant)
+              << "var in buffer shape must be symbolic constant.";
+          has_symbolic_constant = true;
+        }
+        return false;
+      });
+    }
+    if (has_symbolic_constant &&
+        buffer->memory_type == ir::MemoryType::GPULocal) {
+      filtered.emplace_back(free);
+    }
+  }
+  return filtered;
+}
+
 void CodeGenHIP_Dev::Visit(const ir::_LoweredFunc_ *op) {
   // clear names valid within scope when enter a new function
   vectorized_tensor_names_.clear();
@@ -123,6 +152,8 @@ void CodeGenHIP_Dev::Visit(const ir::_LoweredFunc_ *op) {
   auto alloca_temp_buffers = op->PrepareAllocTempBufferExprs();
   auto temp_buffer_alias = GenerateBufferAliasExprs(op, op->temp_bufs);
   auto alis_var_exprs = op->CudaAliasVarExprs();
+  auto dealloc_temp_buffers =
+      FilterDeallocTempBuffers(op->PrepareDeallocTempBufferExprs());
 
 #define APPEND_TO_NEW_BODY(field__) \
   new_body.insert(std::end(new_body), std::begin(field__), std::end(field__));
@@ -131,6 +162,7 @@ void CodeGenHIP_Dev::Visit(const ir::_LoweredFunc_ *op) {
   APPEND_TO_NEW_BODY(alis_var_exprs)
 
   new_body.push_back(op->body);
+  APPEND_TO_NEW_BODY(dealloc_temp_buffers);
 
   Expr func_body = ir::Block::Make(new_body);
 
@@ -142,9 +174,15 @@ void CodeGenHIP_Dev::Visit(const ir::_LoweredFunc_ *op) {
   IrPrinter::Visit(func_body);
 }
 
+void CodeGenHIP_Dev::Visit(const ir::Free *op) {
+  str_ += "delete [] ";
+  str_ += op->destination.As<ir::_Buffer_>()->name;
+  str_ += ";\n";
+}
+
 void CodeGenHIP_Dev::Visit(const ir::_Var_ *op) {
-  if (utils::Startswith(op->name, "threadIdx") ||
-      utils::Startswith(op->name, "blockIdx")) {
+  if (utils::StartsWith(op->name, "threadIdx") ||
+      utils::StartsWith(op->name, "blockIdx")) {
     str_ += "(int)";
     str_ += op->name;
   } else {
@@ -179,13 +217,22 @@ void CodeGenHIP_Dev::Visit(const ir::Max *op) {
 void CodeGenHIP_Dev::PrintFunctionDeclaration(const ir::_LoweredFunc_ *op) {
   str_ += "void ";
   if (op->cuda_axis_info.valid()) {
+    bool has_symbol_in_thread_num = false;
     int thread_num = 1;
     for (int i = 0; i < 3; i++) {
-      thread_num *= op->cuda_axis_info.block_dim(i);
+      ir::Expr block_dim = op->cuda_axis_info.block_dim(i);
+      if (block_dim.is_constant()) {
+        thread_num *= block_dim.get_constant();
+      } else {
+        has_symbol_in_thread_num = true;
+        break;
+      }
     }
-    str_ += "__launch_bounds__(";
-    str_ += std::to_string(thread_num);
-    str_ += ") ";
+    if (!has_symbol_in_thread_num) {
+      str_ += "__launch_bounds__(";
+      str_ += std::to_string(thread_num);
+      str_ += ") ";
+    }
   }
 
   str_ += op->name;
@@ -203,6 +250,8 @@ void CodeGenHIP_Dev::PrintFunctionDeclaration(const ir::_LoweredFunc_ *op) {
 
 void CodeGenHIP_Dev::PrintFuncArg(const ir::Argument &arg) {
   if (arg.is_buffer()) {
+    // In HIP kernel, only primitive type is supported, so we replace the
+    // buffer with T*j
     if (arg.is_input()) str_ += "const ";
     str_ += GetTypeRepr(arg.buffer_arg()->dtype);
     str_ += "* ";
@@ -252,40 +301,78 @@ std::string CodeGenHIP_Dev::Compile(const ir::Module &module,
 void CodeGenHIP_Dev::PrintIncludes() { str_ += GetSourceHeader(); }
 
 void CodeGenHIP_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
-  PADDLE_ENFORCE_NE(buffer->type(),
-                    Void(),
-                    ::common::errors::PreconditionNotMet(
-                        "BUffer type can not be Void in CodeGenHIP_Dev"));
-  auto print_gpu_memory = [&](const std::string &mark) {
-    str_ += mark;
-    str_ += GetTypeRepr(buffer->dtype);
-    str_ += " ";
-    str_ += buffer->name;
-    str_ += " ";
-
-    str_ += "[ ";
-    Expr buffer_size(1);
-    for (int i = 0; i < buffer->shape.size(); i++) {
-      buffer_size = buffer_size * buffer->shape[i];
+  CHECK_NE(buffer->type(), Void());
+  // Calculate buffer size and determine if it contains a symbolic constant
+  Expr buffer_size(1);
+  for (int i = 0; i < buffer->shape.size(); i++) {
+    buffer_size = buffer_size * buffer->shape[i];
+  }
+  optim::Simplify(&buffer_size);
+  bool has_symbolic_constant = false;
+  ir::ir_utils::CollectIRNodes(buffer_size, [&](const Expr *x) {
+    if (x->as_var()) {
+      CHECK(x->as_var()->is_symbolic_constant)
+          << "var in buffer size must be symbolic constant.";
+      has_symbolic_constant = true;
     }
-    optim::Simplify(&buffer_size);
-    IrPrinter::Visit(buffer_size);
+    return false;
+  });
+
+  if (buffer->memory_type == ir::MemoryType::GPUShared) {
+    if (MathEqual(dyn_shared_mem_offset_, Expr(-1))) {
+      // The first shared memory buffer, uint8_t as a byte
+      str_ += "extern __shared__ uint8_t dyn_shared_buffer[];\n  ";
+      dyn_shared_mem_offset_ = Expr(0);
+    }
+    std::string type_name = GetTypeRepr(buffer->dtype);
+    str_ += type_name;
+    str_ += " *";
+    str_ += buffer->name;
+    str_ += " = (";
+    str_ += type_name;
+    str_ += "*)&dyn_shared_buffer[ ";
+    IrPrinter::Visit(dyn_shared_mem_offset_);
     str_ += " ]";
-  };
-  switch (buffer->memory_type) {
-    case ir::MemoryType::GPUShared:
-      print_gpu_memory("__shared__ ");
-      break;
 
-    case ir::MemoryType::GPULocal:
+    int type_bytes = buffer->dtype.bytes();
+    dyn_shared_mem_offset_ =
+        dyn_shared_mem_offset_ + buffer_size * Expr(type_bytes);
+    optim::Simplify(&dyn_shared_mem_offset_);
+    VLOG(6) << "dyn_shared_mem_offset_ = " << dyn_shared_mem_offset_;
+  } else if (buffer->memory_type == ir::MemoryType::GPULocal) {
+    // print func of static allocation
+    auto print_gpu_memory = [&](const std::string &mark) {
+      str_ += mark;
+      str_ += GetTypeRepr(buffer->dtype);
+      str_ += " ";
+      str_ += buffer->name;
+      str_ += " ";
+
+      str_ += "[ ";
+      IrPrinter::Visit(buffer_size);
+      str_ += " ]";
+    };
+    // print func of dynamic allocation
+    auto print_gpu_local_memory_dynamic_allocation = [&]() {
+      str_ += GetTypeRepr(buffer->dtype);
+      str_ += " *";
+      str_ += buffer->name;
+      str_ += " = new ";
+      str_ += GetTypeRepr(buffer->dtype);
+      str_ += "[ ";
+      IrPrinter::Visit(buffer_size);
+      str_ += " ]";
+    };
+    if (has_symbolic_constant) {
+      print_gpu_local_memory_dynamic_allocation();
+    } else {
       print_gpu_memory("");
-      break;
-
-    default:
-      PADDLE_THROW(::common::errors::Fatal(
-          "HIP device codegen not support memory %s, %s",
-          buffer->name,
-          buffer->memory_type));
+    }
+  } else {
+    std::stringstream ss;
+    ss << "CUDA device codegen not support memory " << buffer->name << ", type "
+       << buffer->memory_type;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 }
 
@@ -334,15 +421,16 @@ void CodeGenHIP_Dev::Visit(const ir::Call *op) {
 }
 
 void CodeGenHIP_Dev::Visit(const ir::Let *op) {
-  PADDLE_ENFORCE_TRUE(
+  PADDLE_ENFORCE_EQ(
       op->type().valid(),
       true,
-      ::common::errors::PreconditionNetMet("Let op type must be valid."));
+      ::common::errors::PreconditionNotMet("Let op type must be valid."));
   // identify vectorized tensors by checking their dtypes are customized_type
   // with customized_type::kcuda_builtin_vector_t prefix, and save their names
   if (op->type().is_customized() &&
-      utils::Startswith(op->type().customized_type(),
-                        common::customized_type::kcuda_builtin_vector_t)) {
+      utils::StartsWith(
+          op->type().customized_type(),
+          cinn::common::customized_type::kcuda_builtin_vector_t)) {
     str_ += GetTypeRepr(op->type());
     if (op->type().is_cpp_handle()) {
       str_ += " ";
@@ -351,7 +439,7 @@ void CodeGenHIP_Dev::Visit(const ir::Let *op) {
     str_ += " ";
     IrPrinter::Visit(op->symbol);
     vectorized_tensor_names_.insert(utils::GetStreamCnt(op->symbol));
-    // skip "=0" in "half8 temp = 0;" sincethe operator= of half8 may not
+    // skip "=0" in "half8 temp = 0;" since the operator= of half8 may not
     // overloaded.
     if (op->body.As<ir::IntImm>() && op->body.As<ir::IntImm>()->value == 0) {
       return;
