@@ -39,12 +39,14 @@ using PatternNodePtrSet = std::
 class PatternGraph {
  public:
   PatternGraph(const std::vector<pir::Operation*>& ops,
-               const policy::PolicyManager policy_manager);
+               const policy::PolicyManager policy_manager,
+               const policy::PolicyManager topo_manager);
 
-  std::vector<PatternNodePtr> ClusterOps();
+  std::vector<PatternNodePtr> ClusterOps(bool with_horizontal_fusion = false);
 
  private:
   void SinkTrivialPattern();
+  void HoriticalFusion();
   void FuseReducePattern();
   void ReduceLiftReduceTree();
   void ReduceTreeGrown();
@@ -62,12 +64,15 @@ class PatternGraph {
   friend class CanFuseReduceTreeMatcher;
   friend class MergeReduceTreeOperation;
   friend class FuseReduceTreeAndTrivial;
+  friend class HorizontalFusionOperation;
+  friend class LiftToHorizontalFusionPattern;
 
  public:
   PatternNodePtrSet all_pattern_nodes_;
   PatternNodePtrSet entrance_nodes_;
   PatternNodePtrSet exit_nodes_;
-  const policy::PolicyManager policy_manager_;
+  policy::PolicyManager policy_manager_;
+  policy::PolicyManager topo_manager_;
 };
 
 // PatternGraphFusionOperation := (GraphMatcher, GraphOperation)
@@ -76,19 +81,27 @@ class PatternGraph {
 
 struct NodePattern {};
 struct EdgePattern {};
-struct GraphPattern {};  // not implemented.
-using PatternKind = std::variant<NodePattern, EdgePattern, GraphPattern>;
+struct GraphPattern {};     // not implemented.
+struct NodePairPattern {};  // not implemented.
+
+template <typename Kind, typename GraphMatcher, typename GraphOperation>
+struct SearchAlorithm {};
 
 template <typename GraphMatcher, typename GraphOperation>
-struct SearchAlorithm {
+struct SearchAlorithm<NodePattern, GraphMatcher, GraphOperation> {
   PatternGraph* graph_;
   PatternNodePtrSet visited_nodes;
-  SearchAlorithm(PatternGraph* graph) { graph_ = graph; }
+
+  explicit SearchAlorithm(PatternGraph* graph) {
+    VLOG(4) << "Create NodePattern algorithm.";
+    graph_ = graph;
+  }
 
   PatternNodePtr FindMatchedNode() {
     for (PatternNodePtr iter_node : graph_->all_pattern_nodes_) {
       if (GraphMatcher()(*graph_, iter_node) &&
           !visited_nodes.count(iter_node)) {
+        visited_nodes.insert(iter_node);
         VLOG(4) << "Find Matched Node: " << iter_node;
         return iter_node;
       }
@@ -97,24 +110,52 @@ struct SearchAlorithm {
     return nullptr;
   }
 
-  void operator()(const NodePattern& p) {
+  void operator()() {
     while (true) {
       PatternNodePtr node = FindMatchedNode();
       if (node == nullptr) {
         break;
       }
-      visited_nodes.insert(node);
       GraphOperation()(graph_, node);
     }
   }
+};
 
-  void operator()(const EdgePattern& p) { CHECK(false) << "Not implemented."; }
-
-  void operator()(const GraphPattern& p) { CHECK(false) << "Not implemented."; }
+template <typename GraphMatcher, typename GraphOperation>
+struct SearchAlorithm<NodePairPattern, GraphMatcher, GraphOperation> {
+  PatternGraph* graph_;
+  std::set<std::pair<PatternNodePtr, PatternNodePtr>> visited_node_pair;
+  explicit SearchAlorithm(PatternGraph* graph) {
+    VLOG(4) << "Create NodePairPattern algorithm.";
+    graph_ = graph;
+  }
+  std::optional<std::pair<PatternNodePtr, PatternNodePtr>> FindMatchedPair() {
+    for (PatternNodePtr i : graph_->all_pattern_nodes_) {
+      for (PatternNodePtr j : graph_->all_pattern_nodes_) {
+        if (i == j) continue;
+        const auto& pair = std::make_pair(i, j);
+        if (GraphMatcher()(*graph_, i, j) && !visited_node_pair.count(pair)) {
+          visited_node_pair.insert(pair);
+          VLOG(4) << "Find Matched Node Pair: (" << i << ", " << j << ")";
+          return pair;
+        }
+      }
+    }
+    VLOG(4) << "Can't find matched node any more.";
+    return {};
+  }
+  void operator()() {
+    while (true) {
+      const auto& node = FindMatchedPair();
+      if (!node.has_value()) break;
+      const auto& [i, j] = node.value();
+      GraphOperation()(graph_, i, j);
+    }
+  }
 };
 
 // Operation
-//
+
 struct MergeReduceTreeOperation {
   void operator()(PatternGraph* graph, PatternNodePtr node) {
     CHECK_EQ(node->downstream_.size(), 1);
@@ -170,16 +211,33 @@ struct TrivialPatternMerge {
   }
 };
 
+struct LiftToHorizontalFusionPattern {
+  void operator()(PatternGraph* graph, PatternNodePtr i) {
+    graph->PrintGraph();
+    VLOG(4) << "GetPatternName : " << GetPatternName(i->stmt_pattern_);
+    VLOG(4) << "GetOpsInPattern: " << GetOpsInPattern(i->stmt_pattern_).size();
+    i->stmt_pattern_ =
+        HorizontalFusionPattern(GetOpsInPattern(i->stmt_pattern_));
+  }
+};
+
+// Matcher
+
+template <typename StmtPattern>
+struct AlwaysTrue {
+  bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
+    return true;
+  }
+};
+
 template <typename StmtPattern>
 struct StmtPatternGraphMatcher {
-  PatternKind type() { return NodePattern(); }
   bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     return GetPatternName(node->stmt_pattern_) == StmtPattern::name();
   }
 };
 
 struct CanFuseRxTMatcher {
-  PatternKind type() { return NodePattern(); }
   bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     return (node->IsReduceTree() && !node->downstream_.empty() &&
             node->downstream_.at(0)->IsTrivial());
@@ -187,7 +245,6 @@ struct CanFuseRxTMatcher {
 };
 
 struct CanFuseReduceTreeMatcher {
-  PatternKind type() { return NodePattern(); }
   bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     return StmtPatternGraphMatcher<ReduceTreePattern>()(graph, node) &&
            !node->downstream_.empty() &&
@@ -196,8 +253,39 @@ struct CanFuseReduceTreeMatcher {
   }
 };
 
+struct HorizontalFusionConstrain {
+  bool operator()(const PatternGraph& graph,
+                  const PatternNodePtr& i,
+                  const PatternNodePtr& j) {
+    if (!StmtPatternGraphMatcher<HorizontalFusionPattern>()(graph, i)) {
+      return false;
+    }
+    if (!StmtPatternGraphMatcher<HorizontalFusionPattern>()(graph, j)) {
+      return false;
+    }
+    const auto& i_dim =
+        i->sink_op_->result(0).type().dyn_cast<pir::DenseTensorType>().dims();
+    const auto& j_dim =
+        j->sink_op_->result(0).type().dyn_cast<pir::DenseTensorType>().dims();
+    return graph.topo_manager_.CanFuse(i, j) && i_dim == j_dim;
+  }
+};
+
+struct HorizontalFusionOperation {
+  void operator()(PatternGraph* graph,
+                  const PatternNodePtr& i,
+                  const PatternNodePtr& j) {
+    VLOG(4) << "Start HorizontalFusionOperation";
+    CHECK(GetPatternName(i->stmt_pattern_) == HorizontalFusionPattern::name());
+    CHECK(GetPatternName(j->stmt_pattern_) == HorizontalFusionPattern::name());
+    graph->MergeNode(i, j);
+    graph->RemoveNode(i);
+    graph->RemoveNode(j);
+    VLOG(4) << "End HorizontalFusionOperation";
+  }
+};
+
 struct NonSinkNodeMatcher {
-  PatternKind type() { return NodePattern(); }
   bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     return !node->downstream_.empty();
   }
@@ -205,7 +293,6 @@ struct NonSinkNodeMatcher {
 
 template <int N>
 struct DownstreamSmallerThan {
-  PatternKind type() { return NodePattern(); }
   bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     return node->downstream_.size() < N;
   }
@@ -213,7 +300,6 @@ struct DownstreamSmallerThan {
 
 template <typename A, typename B>
 struct And {
-  PatternKind type() { return A().type(); }
   bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     return A()(graph, node) && B()(graph, node);
   }
@@ -221,7 +307,6 @@ struct And {
 
 template <typename A, typename B>
 struct Or {
-  PatternKind type() { return A().type(); }
   bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     return A()(graph, node) || B()(graph, node);
   }
@@ -229,16 +314,16 @@ struct Or {
 
 template <typename A>
 struct Not {
-  PatternKind type() { return A().type(); }
   bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     return !A()(graph, node);
   }
 };
 
-template <typename GraphMatcher, typename GraphOperation>
+template <typename Kind, typename GraphMatcher, typename GraphOperation>
 void GraphTransformer(PatternGraph* graph) {
-  const auto& pattern_type = GraphMatcher().type();
-  std::visit(SearchAlorithm<GraphMatcher, GraphOperation>(graph), pattern_type);
+  VLOG(4) << "Start GraphTransformer...";
+  auto alog = SearchAlorithm<Kind, GraphMatcher, GraphOperation>(graph);
+  alog();
 }
 
 }  // namespace cinn::frontend::group_cluster

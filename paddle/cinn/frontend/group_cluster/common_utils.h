@@ -53,6 +53,7 @@ std::optional<std::pair<pir::Value, pir::Value>> GetBroadcastOpInputOuputValue(
 namespace cinn::frontend::group_cluster {
 
 bool IsTrivialPattern(const StmtPattern& pattern);
+bool IsHorizontalFusionPattern(const StmtPattern& pattern);
 bool IsReducePattern(const StmtPattern& pattern);
 bool IsReduceTreePattern(const StmtPattern& pattern);
 bool IsUnsupportPattern(const StmtPattern& pattern);

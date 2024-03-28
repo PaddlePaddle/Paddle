@@ -836,7 +836,7 @@ std::vector<GroupClusterNode> NodeMergeWithNode(
 
 std::vector<GroupClusterNode> NewOpMergeWithOp(
     cinn::dialect::GroupOp group_op) {
-  auto cluster_result = frontend::ClusterOps(group_op.GetOperators());
+  auto cluster_result = frontend::ClusterOps(group_op.GetOperators(), true);
   std::vector<std::vector<pir::Operation*>> result;
   std::transform(cluster_result.begin(),
                  cluster_result.end(),

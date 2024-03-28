@@ -22,7 +22,8 @@
 namespace cinn::frontend {
 
 inline std::vector<group_cluster::PatternNodePtr> ClusterOps(
-    const std::vector<pir::Operation*>& origin_ops) {
+    const std::vector<pir::Operation*>& origin_ops,
+    bool with_horizontal_fusion = false) {
   CHECK_GT(origin_ops.size(), 0);
   VLOG(4) << "Start Cluster Ops!";
   VLOG(4) << "Input Group with size " << origin_ops.size() << " :\n"
@@ -58,10 +59,14 @@ inline std::vector<group_cluster::PatternNodePtr> ClusterOps(
   auto policy_manager = group_cluster::policy::PolicyManager(
       {relative_judge_policy, general_topo_policy});
 
+  auto topo_manager = group_cluster::policy::PolicyManager(
+      {relative_judge_policy, general_topo_policy});
+
   VLOG(4) << "Start Create PatternGraph";
-  group_cluster::PatternGraph graph(ops, policy_manager);
-  VLOG(4) << "Start Cluster Ops";
-  return graph.ClusterOps();
+  group_cluster::PatternGraph graph(ops, policy_manager, topo_manager);
+  VLOG(4) << "Start Cluster Ops, with_horizontal_fusion: "
+          << with_horizontal_fusion << "!";
+  return graph.ClusterOps(with_horizontal_fusion);
 }
 
 }  // namespace cinn::frontend
