@@ -114,6 +114,61 @@ class Nope(DAGGenInstruction):
         return True
 
 @dataclass
+class AddSourceTensor(DAGGenInstruction):
+
+    def __hash__(self):
+        return self.GetHashValue()
+
+    def GetHashValue(self):
+        return int(id(AddSourceTensor))
+
+    @classmethod
+    def GetDeltaNumSinkTensors(cls):
+        return 0
+
+    def IsValidSourceTensorIndex(
+        self,
+        ctx: DAGGenContext
+    ) -> bool:
+        return True
+    
+    @classmethod
+    def GetDeltaNumSourceTensors(cls):
+        return 0
+
+    @classmethod
+    def RandomGenerate(
+        cls,
+        requirement: DAGGenRequirement,
+        ctx: DAGGenContext
+    ):
+        return AddSourceTensor(
+        )
+
+    @classmethod
+    def GetWeight(
+        cls,
+        pick_probability: DAGGenTypePickProbability
+    ) -> float:
+        raise NotImplementedError("Dead code")
+
+    @classmethod
+    def IsValidNumSourceTensors(
+        cls,
+        ctx: DAGGenContext,
+        requirement: DAGGenRequirement
+    ) -> bool:
+        raise NotImplementedError("Dead code")
+
+    @classmethod
+    def IsValidNumSinkTensors(
+        cls,
+        ctx: DAGGenContext,
+        requirement: DAGGenRequirement
+    ) -> bool:
+        raise NotImplementedError("Dead code")
+
+@dataclass
 class AddSinkTensor(DAGGenInstruction):
 
     def __hash__(self):
@@ -167,6 +222,7 @@ class AddSinkTensor(DAGGenInstruction):
         requirement: DAGGenRequirement
     ) -> bool:
         return ctx.num_sink_tensors <= requirement.max_num_sinks
+
 
 @dataclass
 class ConvertType:
@@ -359,6 +415,8 @@ class AddBinaryClone(DAGGenInstruction):
             0,
             ctx.num_source_tensors - 1
         )
+        if lhs_random_int > rhs_random_int:
+            lhs_random_int, rhs_random_int = (rhs_random_int, lhs_random_int)
         return AddBinaryClone(
             lhs_source_tensor_index=lhs_random_int,
             rhs_source_tensor_index=rhs_random_int,
@@ -452,8 +510,9 @@ class AddSourceOp(DAGGenInstruction):
         return ctx.num_sink_tensors >= requirement.min_num_sinks
 
 
-kDAGGenInstructionClasses = [
+kDAGRandomReversedGenInstructionClasses = [
     Nope,
+    # AddSourceTensor is not rolled in random reversed generating
     AddSinkTensor,
     AddUnaryOp,
     AddBinaryOp,
@@ -496,7 +555,10 @@ class DAGGenClassGenerator:
             )
         rolling_ranges = type(self)._MakeRollingRange(
             self.pick_probability,
-            [x for x in kDAGGenInstructionClasses if IsValidDAGGenClass(x)]
+            [
+                x for x in kDAGRandomReversedGenInstructionClasses
+                if IsValidDAGGenClass(x)
+            ]
         )
         def Roll():
             random_int = random.randint(0, type(self)._RollingLimit())
@@ -591,6 +653,11 @@ class BodyAndHeaderDAGGenerator:
         while CurrentNumSources() > self.requirement.max_num_sources:
             self._GenerateOneInstruction(DecreaseCurrentNumSourcesByAddBinaryClone)
             CheckDeadLoop()
+        def PrependInstructionAddSourceTensor(ctx):
+            return AddSourceTensor.RandomGenerate(self.requirement, ctx)
+        for i in range(CurrentNumSources()):
+            self._GenerateOneInstruction(PrependInstructionAddSourceTensor)
+
 
     def _GenerateOneInstruction(self, NewInstruction):
         ctx = DAGGenContext(

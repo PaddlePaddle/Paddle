@@ -44,6 +44,16 @@ class Nope(ShapeSignature):
         return Nope()
 
 @dataclass
+class AddSourceTensor(ShapeSignature):
+
+    @classmethod
+    def InferShape(
+        cls,
+        infer_ctx: ShapeInferContext
+    ):
+        return AddSourceTensor()
+
+@dataclass
 class AddSinkTensor(ShapeSignature):
     sink_tensor_shape: List[int]
 
@@ -153,6 +163,7 @@ class AddSourceOp(ShapeSignature):
 
 kDAGGenClassToDerivedClass = {
     dag_generator.Nope: Nope,
+    dag_generator.AddSourceTensor: AddSourceTensor,
     dag_generator.AddSinkTensor: AddSinkTensor,
     dag_generator.AddUnaryOp: AddUnaryOp,
     dag_generator.AddBinaryOp: AddBinaryOp,

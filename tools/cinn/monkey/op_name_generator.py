@@ -52,6 +52,21 @@ class Nope(OpNameGenInstruction):
 
 
 @dataclass
+class AddSourceTensor(OpNameGenInstruction):
+
+    def __hash__(self):
+        return hash(id(AddSourceTensor))
+
+    @classmethod
+    def MakeRandomInstance(
+        cls,
+        requirement: OpNameGenRequirement,
+        dag_gen_instruction: "DAGGenInstruction",
+    ) -> "OpNameGenInstruction":
+        return AddSourceTensor()
+
+
+@dataclass
 class AddSinkTensor(OpNameGenInstruction):
 
     def __hash__(self):
@@ -173,6 +188,7 @@ class AddSourceOp(OpNameGenInstruction):
 
 kDAGGenClassToDerivedClass = {
     dag_generator.Nope: Nope,
+    dag_generator.AddSourceTensor: AddSourceTensor,
     dag_generator.AddSinkTensor: AddSinkTensor,
     dag_generator.AddUnaryOp: AddUnaryOp,
     dag_generator.AddBinaryOp: AddBinaryOp,

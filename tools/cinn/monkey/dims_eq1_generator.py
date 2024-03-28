@@ -27,6 +27,14 @@ class Nope(DimsEq1GenInstruction):
     def Merge(cls, dim_eq1_gen_instructions: List["DimEq1GenInstruction"]):
         return Nope()
 
+@dataclass
+class AddSourceTensor(DimsEq1GenInstruction):
+
+    def __hash__(self):
+        return hash(id(AddSourceTensor))
+    @classmethod
+    def Merge(cls, dim_eq1_gen_instructions: List["DimEq1GenInstruction"]):
+        return AddSourceTensor()
 
 @dataclass
 class AddSinkTensor(DimsEq1GenInstruction):
@@ -119,6 +127,7 @@ class AddSourceOp(DimsEq1GenInstruction):
 
 kDAGGenClassToDerivedClass = {
     dag_generator.Nope: Nope,
+    dag_generator.AddSourceTensor: AddSourceTensor,
     dag_generator.AddSinkTensor: AddSinkTensor,
     dag_generator.AddUnaryOp: AddUnaryOp,
     dag_generator.AddBinaryOp: AddBinaryOp,

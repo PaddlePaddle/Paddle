@@ -18,6 +18,12 @@ class Nope:
         return ""
 
 
+class AddSourceTensor:
+    @classmethod
+    def CodeGen(cls, ctx: CodeGenContext) -> str:
+        return ""
+
+
 class AddSinkTensor:
     @classmethod
     def CodeGen(cls, ctx: CodeGenContext) -> str:
@@ -40,9 +46,17 @@ class AddBinaryOp:
 class AddBinaryClone:
     @classmethod
     def CodeGen(cls, ctx: CodeGenContext) -> str:
-        rhs_output_tensor_name = ctx.code_gen_spec.rhs_output_tensor_name
+        input_tensor_name = ctx.code_gen_spec.input_tensor_name
         lhs_output_tensor_name = ctx.code_gen_spec.lhs_output_tensor_name
-        return f"{rhs_output_tensor_name} = {lhs_output_tensor_name}"
+        rhs_output_tensor_name = ctx.code_gen_spec.rhs_output_tensor_name
+        def AllSame():
+            return (
+                input_tensor_name == lhs_output_tensor_name
+                and input_tensor_name == rhs_output_tensor_name
+            )
+        if AllSame():
+            return ""
+        return f"{lhs_output_tensor_name}, {rhs_output_tensor_name} = ({input_tensor_name}, {input_tensor_name})"
 
 
 class AddSourceOp:
@@ -54,6 +68,7 @@ class AddSourceOp:
 
 kDAGGenClassToCodeGenClass = {
     dag_generator.Nope: Nope,
+    dag_generator.AddSourceTensor: AddSourceTensor,
     dag_generator.AddSinkTensor: AddSinkTensor,
     dag_generator.AddUnaryOp: AddUnaryOp,
     dag_generator.AddBinaryOp: AddBinaryOp,

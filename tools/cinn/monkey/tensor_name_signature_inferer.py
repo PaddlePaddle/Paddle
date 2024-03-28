@@ -5,7 +5,7 @@ from pick_weight import PickWeight
 from typing import List, Set
 import random
 from signature_constructor import NaiveSignatureConstructor
-from signature_inferer import SignatureInferer, InputIdx, OutputIdx
+from signature_inferer import TopDownSignatureInferer, InputIdx, OutputIdx
 
 @dataclass
 class InferContext:
@@ -32,18 +32,29 @@ class Nope(TensorNameSignature):
 
 
 @dataclass
-class AddSinkTensor(TensorNameSignature):
-    sink_tensor_name: str = InputIdx(0)
+class AddSourceTensor(TensorNameSignature):
+    source_tensor_name: str = OutputIdx(0)
 
     @classmethod
     def Make(
         cls,
         ctx: InferContext
     ):
-        sink_tensor_name = ctx.tensor_name_gen_instruction.sink_tensor_name
-        return AddSinkTensor(
-            sink_tensor_name=sink_tensor_name
+        return AddSourceTensor(
+            source_tensor_name=ctx.tensor_name_gen_instruction.source_tensor_name
         )
+
+@dataclass
+class AddSinkTensor(TensorNameSignature):
+
+    @classmethod
+    def Make(
+        cls,
+        ctx: InferContext,
+        input_tensor_name
+    ):
+        return AddSinkTensor()
+
 
 @dataclass
 class AddUnaryOp(TensorNameSignature):
@@ -54,9 +65,9 @@ class AddUnaryOp(TensorNameSignature):
     def Make(
         cls,
         ctx: InferContext,
-        output_tensor_name: str
+        input_tensor_name: str
     ):
-        input_tensor_name = ctx.tensor_name_gen_instruction.input_tensor_name
+        output_tensor_name = ctx.tensor_name_gen_instruction.output_tensor_name
         return AddUnaryOp(
             input_tensor_name=input_tensor_name,
             output_tensor_name=output_tensor_name
@@ -73,10 +84,10 @@ class AddBinaryOp(TensorNameSignature):
     def Make(
         cls,
         ctx: InferContext,
-        output_tensor_name: str
+        lhs_input_tensor_name: str,
+        rhs_input_tensor_name: str
     ):
-        lhs_input_tensor_name = ctx.tensor_name_gen_instruction.lhs_input_tensor_name
-        rhs_input_tensor_name = ctx.tensor_name_gen_instruction.rhs_input_tensor_name
+        output_tensor_name = ctx.tensor_name_gen_instruction.output_tensor_name
         return AddBinaryOp(
             lhs_input_tensor_name=lhs_input_tensor_name,
             rhs_input_tensor_name=rhs_input_tensor_name,
@@ -86,19 +97,20 @@ class AddBinaryOp(TensorNameSignature):
 
 @dataclass
 class AddBinaryClone(TensorNameSignature):
-    lhs_output_tensor_name: int = OutputIdx(0)
-    rhs_output_tensor_name: int = OutputIdx(1)
+    input_tensor_name: str = InputIdx(0)
+    lhs_output_tensor_name: str = OutputIdx(0)
+    rhs_output_tensor_name: str = OutputIdx(1)
 
     @classmethod
     def Make(
         cls,
         ctx: InferContext,
-        lhs_output_tensor_name: str,
-        rhs_output_tensor_name: str
+        input_tensor_name: str,
     ):
         return AddBinaryClone(
-            lhs_output_tensor_name=lhs_output_tensor_name,
-            rhs_output_tensor_name=rhs_output_tensor_name
+            input_tensor_name=input_tensor_name,
+            lhs_output_tensor_name=input_tensor_name,
+            rhs_output_tensor_name=input_tensor_name
         )
 
 
@@ -109,15 +121,15 @@ class AddSourceOp(TensorNameSignature):
     @classmethod
     def Make(
         cls,
-        ctx: InferContext,
-        output_tensor_name: str
+        ctx: InferContext
     ):
         return AddSourceOp(
-            output_tensor_name=output_tensor_name
+            output_tensor_name=ctx.tensor_name_gen_instruction.output_tensor_name
         )
 
 kDAGGenClassToDerivedClass = {
     dag_generator.Nope: Nope,
+    dag_generator.AddSourceTensor: AddSourceTensor,
     dag_generator.AddSinkTensor: AddSinkTensor,
     dag_generator.AddUnaryOp: AddUnaryOp,
     dag_generator.AddBinaryOp: AddBinaryOp,
@@ -135,7 +147,7 @@ class TensorNameSignatureInferer:
         dag_gen_instructions: List["DAGGenInstruction"],
         tensor_name_gen_instructions: List["TensorNameGenInstruction"]
     ) -> DList["DAGGenInstruction", "TensorNameSignature"]:
-        signature_inferer = SignatureInferer()
+        signature_inferer = TopDownSignatureInferer()
         def CreateTensorNameSignature(pair):
             dag_gen_instruction, tensor_name_gen_instruction = pair
             ctx = InferContext(
@@ -149,10 +161,12 @@ class TensorNameSignatureInferer:
                     constructor=lambda *args: cls.Make(ctx, *args),
                 )
             )
-        return DList(dag_gen_instructions, [
+        pairs = list(zip(
+            dag_gen_instructions,
+            tensor_name_gen_instructions
+        ))
+        tensor_name_signatures = list(reversed([
             CreateTensorNameSignature(x)
-            for x in zip(
-                dag_gen_instructions,
-                tensor_name_gen_instructions
-            )
-        ])
+            for x in reversed(pairs)
+        ]))
+        return DList(dag_gen_instructions, tensor_name_signatures)

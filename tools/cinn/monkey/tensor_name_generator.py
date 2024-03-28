@@ -2,21 +2,23 @@ from dataclasses import dataclass, field
 import dag_generator as dag_generator
 from defensive_list import DList
 from pick_weight import PickWeight
-from typing import List, Set
+from typing import List, Set, Dict, Optional
 from hash_combine import HashCombine
 import random
 
 @dataclass
 class TensorNameGenRequirement:
-    tensor_name_prefix: str = "t"
+    tensor_name_prefix: str = "tensor"
 
-@dataclass
 class TensorSeqCounter:
-    counter: int = 0
+    def __init__(self):
+        self.prefix2counter: Dict[str, int] = {}
 
-    def AutoIncrementalCounter(self):
-        self.counter += 1
-        return self.counter
+    def AutoIncrementalCounter(self, prefix: str):
+        if prefix not in self.prefix2counter:
+            self.prefix2counter[prefix] = 0
+        self.prefix2counter[prefix] += 1
+        return self.prefix2counter[prefix]
 
 @dataclass
 class SourceTensorNames:
@@ -30,9 +32,11 @@ class TensorNameGenContext:
     dag_gen_instruction: "DAGGenInstruction"
     tensor_seq_counter: TensorSeqCounter
 
-    def NewTensorName(self):
-        prefix = self.requirement.tensor_name_prefix
-        seq_no = self.tensor_seq_counter.AutoIncrementalCounter()
+    def NewTensorName(self, prefix = None):
+        prefix = (
+            prefix if prefix is not None else self.requirement.tensor_name_prefix
+        )
+        seq_no = self.tensor_seq_counter.AutoIncrementalCounter(prefix)
         return "%s%d" % (prefix, seq_no)
 
 
@@ -56,10 +60,25 @@ class Nope(TensorNameGenInstruction):
     ) -> TensorNameGenInstruction:
         return Nope()
 
+@dataclass
+class AddSourceTensor(TensorNameGenInstruction):
+    source_tensor_name: str
+
+    def __hash__(self):
+        return hash(id(self.source_tensor_name))
+
+    @classmethod
+    def GenerateTensorNames(
+        cls,
+        ctx: TensorNameGenContext
+    ) -> TensorNameGenInstruction:
+        return AddSourceTensor(
+            source_tensor_name=ctx.NewTensorName()
+        )
+
 
 @dataclass
 class AddSinkTensor(TensorNameGenInstruction):
-    sink_tensor_name: str
 
     def __hash__(self):
         return hash(id(AddSinkTensor))
@@ -69,38 +88,54 @@ class AddSinkTensor(TensorNameGenInstruction):
         cls,
         ctx: TensorNameGenContext
     ) -> TensorNameGenInstruction:
-        return AddSinkTensor(
-            sink_tensor_name=ctx.NewTensorName()
-        )
+        return AddSinkTensor()
 
 
 @dataclass
 class AddUnaryOp(TensorNameGenInstruction):
-    input_tensor_name: str
+    output_tensor_name: str
 
     def __hash__(self):
-        return hash(self.input_tensor_name)
+        return hash(self.output_tensor_name)
 
     @classmethod
     def GenerateTensorNames(
         cls,
         ctx: TensorNameGenContext
     ) -> TensorNameGenInstruction:
+        name_prefix = cls.GetNamePrefix(ctx.dag_gen_instruction.convert_type)
         return AddUnaryOp(
-            input_tensor_name=ctx.NewTensorName()
+            output_tensor_name=ctx.NewTensorName(name_prefix)
         )
+
+    @classmethod
+    def GetNamePrefix(cls, convert_type) -> Optional[str]:
+        method_name = "GetNamePrefix_%s" % (type(convert_type).__name__)
+        return getattr(cls, method_name)()
+
+    @classmethod
+    def GetNamePrefix_NoConvertType(cls):
+        return None
+
+    @classmethod
+    def GetNamePrefix_ReduceConvertType(cls):
+        return "reduced"
+
+    @classmethod
+    def GetNamePrefix_BroadcastConvertType(cls):
+        return "expanded"
+
+    @classmethod
+    def GetNamePrefix_UnclassifiedConvertType(cls):
+        return None
 
 
 @dataclass
 class AddBinaryOp(TensorNameGenInstruction):
-    lhs_input_tensor_name: str
-    rhs_input_tensor_name: str
+    output_tensor_name: str
 
     def __hash__(self):
-        hash_value = 0
-        hash_value = HashCombine(hash_value, hash(self.lhs_input_tensor_name))
-        hash_value = HashCombine(hash_value, hash(self.rhs_input_tensor_name))
-        return hash_value
+        return hash(self.output_tensor_name)
 
     @classmethod
     def GenerateTensorNames(
@@ -108,8 +143,7 @@ class AddBinaryOp(TensorNameGenInstruction):
         ctx: TensorNameGenContext
     ) -> TensorNameGenInstruction:
         return AddBinaryOp(
-            lhs_input_tensor_name=ctx.NewTensorName(),
-            rhs_input_tensor_name=ctx.NewTensorName()
+            output_tensor_name=ctx.NewTensorName(),
         )
 
 
@@ -124,25 +158,30 @@ class AddBinaryClone(TensorNameGenInstruction):
         cls,
         ctx: TensorNameGenContext
     ) -> TensorNameGenInstruction:
-        return AddBinaryClone()
+        return AddBinaryClone(
+        )
 
 
 @dataclass
 class AddSourceOp(TensorNameGenInstruction):
+    output_tensor_name: str
 
     def __hash__(self):
-        return hash(id(AddSourceOp))
+        return hash(self.output_tensor_name)
 
     @classmethod
     def GenerateTensorNames(
         cls,
         ctx: TensorNameGenContext
     ) -> TensorNameGenInstruction:
-        return AddSourceOp()
+        return AddSourceOp(
+            output_tensor_name=ctx.NewTensorName()
+        )
 
 
 kDAGGenClassToDerivedClass = {
     dag_generator.Nope: Nope,
+    dag_generator.AddSourceTensor: AddSourceTensor,
     dag_generator.AddSinkTensor: AddSinkTensor,
     dag_generator.AddUnaryOp: AddUnaryOp,
     dag_generator.AddBinaryOp: AddBinaryOp,
@@ -168,9 +207,9 @@ class TensorNameGenerator:
                     tensor_seq_counter=_global_tensor_seq_counter
                 )
             )
-        return reversed([
+        return list(reversed([
             CreateTensorNameGenInstruction(x)
             for x in reversed(dag_gen_instructions)
-        ])
+        ]))
 
 _global_tensor_seq_counter = TensorSeqCounter()

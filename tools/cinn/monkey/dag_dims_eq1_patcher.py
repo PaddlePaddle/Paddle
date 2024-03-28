@@ -32,6 +32,21 @@ class Nope:
     ) -> Iterator[DAGDimsEq1Instruction]:
         yield from []
 
+@dataclass
+class AddSourceTensor:
+
+    @classmethod
+    def Patch(
+        cls,
+        ctx: PatchContext
+    ) -> Iterator[DAGDimsEq1Instruction]:
+        yield DAGDimsEq1Instruction(
+            dag_gen_instruction=ctx.dag_gen_instruction,
+            instruction_id=ctx.instruction_id,
+            dims_eq1_instruction=dims_eq1_generator.AddSourceTensor()
+        )
+
+
 
 @dataclass
 class AddSinkTensor:
@@ -212,6 +227,7 @@ class AddSourceOp:
 
 kDAGGenClassToDerivedClass = {
     dag_generator.Nope: Nope,
+    dag_generator.AddSourceTensor: AddSourceTensor,
     dag_generator.AddSinkTensor: AddSinkTensor,
     dag_generator.AddUnaryOp: AddUnaryOp,
     dag_generator.AddBinaryOp: AddBinaryOp,

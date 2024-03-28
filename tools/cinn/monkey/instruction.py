@@ -57,6 +57,7 @@ def MergeClass(dag_gen_class, component_classes):
     return dataclass(type(class_name, base_classes, methods))
 
 Nope = MergeClass(dag_generator.Nope, kComponentClasses)
+AddSourceTensor = MergeClass(dag_generator.AddSourceTensor, kComponentClasses)
 AddSinkTensor = MergeClass(dag_generator.AddSinkTensor, kComponentClasses)
 AddUnaryOp = MergeClass(dag_generator.AddUnaryOp, kComponentClasses)
 AddBinaryOp = MergeClass(dag_generator.AddBinaryOp, kComponentClasses)
@@ -66,6 +67,7 @@ AddSourceOp = MergeClass(dag_generator.AddSourceOp, kComponentClasses)
 
 kDAGGenClassToDerivedClass = {
     dag_generator.Nope: Nope,
+    dag_generator.AddSourceTensor: AddSourceTensor,
     dag_generator.AddSinkTensor: AddSinkTensor,
     dag_generator.AddUnaryOp: AddUnaryOp,
     dag_generator.AddBinaryOp: AddBinaryOp,

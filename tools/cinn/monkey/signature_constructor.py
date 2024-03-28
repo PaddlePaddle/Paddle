@@ -5,20 +5,23 @@ class SignatureConstructor:
     def Nope(self):
         return self.Make()
 
-    def AddSinkTensor(self):
-        return self.Make()
+    def AddSourceTensor(self, *args):
+        return self.Make(*args)
 
-    def AddUnaryOp(self, output):
-        return self.Make(output)
+    def AddSinkTensor(self, *args):
+        return self.Make(*args)
 
-    def AddBinaryOp(self, output):
-        return self.Make(output)
+    def AddUnaryOp(self, *args):
+        return self.Make(*args)
 
-    def AddBinaryClone(self, lhs_output, rhs_output):
-        return self.Make(lhs_output, rhs_output)
+    def AddBinaryOp(self, *args):
+        return self.Make(*args)
 
-    def AddSourceOp(self, output):
-        return self.Make(output)
+    def AddBinaryClone(self, *args):
+        return self.Make(*args)
+
+    def AddSourceOp(self, *args):
+        return self.Make(*args)
 
     def Make(self, *args):
         raise NotImplementedError("no overrided self.Make() method")
@@ -66,6 +69,9 @@ class NoneSignatureConstructor:
         self.dag_gen_instruction = dag_gen_instruction
 
     def Nope(self):
+        return NoInputNoneSignature()
+
+    def AddSourceTensor(self):
         return NoInputNoneSignature()
 
     def AddSinkTensor(self):

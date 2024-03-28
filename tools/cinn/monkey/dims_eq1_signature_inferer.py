@@ -31,6 +31,17 @@ class Nope(DimsEq1Signature):
 
 
 @dataclass
+class AddSourceTensor(DimsEq1Signature):
+
+    @classmethod
+    def Make(
+        cls,
+        dag_dims_eq1_gen_instruction: DAGDimsEq1GenInstruction
+    ):
+        return AddSourceTensor()
+
+
+@dataclass
 class AddSinkTensor(DimsEq1Signature):
     sink_tensor_dims_eq1: List[bool] = InputIdx(0)
 
@@ -123,6 +134,7 @@ class AddSourceOp(DimsEq1Signature):
 
 kDAGGenClassToDerivedClass = {
     dag_generator.Nope: Nope,
+    dag_generator.AddSourceTensor: AddSourceTensor,
     dag_generator.AddSinkTensor: AddSinkTensor,
     dag_generator.AddUnaryOp: AddUnaryOp,
     dag_generator.AddBinaryOp: AddBinaryOp,

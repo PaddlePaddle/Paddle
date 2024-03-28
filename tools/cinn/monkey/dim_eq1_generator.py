@@ -29,6 +29,14 @@ class Nope(DimEq1GenInstruction):
 
 
 @dataclass
+class AddSourceTensor(DimEq1GenInstruction):
+
+    @classmethod
+    def MakeRandomInstance(cls, requirement: DimEq1GenRequirement):
+        return AddSourceTensor()
+
+
+@dataclass
 class AddSinkTensor(DimEq1GenInstruction):
     sink_tensor_dim_eq1: bool
 
@@ -80,6 +88,7 @@ class AddSourceOp(DimEq1GenInstruction):
 
 kDAGGenClassToDerivedClass = {
     dag_generator.Nope: Nope,
+    dag_generator.AddSourceTensor: AddSourceTensor,
     dag_generator.AddSinkTensor: AddSinkTensor,
     dag_generator.AddUnaryOp: AddUnaryOp,
     dag_generator.AddBinaryOp: AddBinaryOp,

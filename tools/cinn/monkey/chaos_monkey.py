@@ -9,6 +9,7 @@ import dim_eq1_generator as dim_eq1_generator
 import dims_eq1_generator as dims_eq1_generator
 import op_name_generator as op_name_generator
 import tensor_name_generator as tensor_name_generator
+from tensor_name_generator import TensorNameGenRequirement
 import shape_signature_inferer as shape_signature_inferer
 from shape_signature_inferer import StaticDim
 import instruction_util as instruction_util
@@ -60,7 +61,7 @@ if __name__ == '__main__':
             dims_eq1_probability=[0.1, 0.2, 0.2]
         ),
         op_name_gen_requirement=op_name_generator.OpNameGenRequirement(),
-        tensor_name_gen_requirement=tensor_name_generator.TensorNameGenRequirement(),
+        tensor_name_gen_requirement=TensorNameGenRequirement(),
         dim_size_requirement=shape_signature_inferer.DimSizeRequirement(
             dim_size=[StaticDim(128), StaticDim(64), StaticDim(32)]
         ),
