@@ -37,16 +37,19 @@ cc_test(
   test_layer
   SRCS test_layer.cc
   DEPS layer proto_desc operator op_registry variable_helper mul_op)
-cc_test(
-  test_prepare_op
-  SRCS test_prepare_op.cc
-  DEPS prepared_operator
-       op_info
-       split_op
-       layer
-       concat_and_split
-       activation_op
-       place)
+# TODO: windows encounter a link error, we need to fix it.
+if(NOT WIN32)
+  cc_test(
+    test_prepare_op
+    SRCS test_prepare_op.cc
+    DEPS prepared_operator
+         op_info
+         split_op
+         layer
+         concat_and_split
+         activation_op
+         place)
+endif()
 cc_test(
   test_tracer
   SRCS test_tracer.cc

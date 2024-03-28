@@ -21,11 +21,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/fused/cudnn_bn_stats_finalize.cu.h"
-#include "paddle/fluid/operators/fused/cudnn_scale_bias_add_relu.cu.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/operators/fused/cudnn_bn_stats_finalize.cu.h"
+#include "paddle/phi/operators/fused/cudnn_scale_bias_add_relu.cu.h"
 
 COMMON_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 

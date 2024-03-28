@@ -20,10 +20,10 @@
 #undef copysign
 #endif
 
-#include "paddle/fluid/operators/utils.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/operators/utils.h"
 
 namespace paddle {
 namespace pybind {

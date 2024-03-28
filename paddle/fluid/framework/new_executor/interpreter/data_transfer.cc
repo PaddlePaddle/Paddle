@@ -22,8 +22,8 @@
 #include "paddle/phi/core/kernel_factory.h"
 
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"
+#include "paddle/phi/operators/ops_extra_info.h"
 #endif
 
 namespace paddle {

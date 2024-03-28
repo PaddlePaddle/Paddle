@@ -19,8 +19,8 @@
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/parallel_context.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
+#include "paddle/phi/operators/math/concat_and_split.h"
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #endif

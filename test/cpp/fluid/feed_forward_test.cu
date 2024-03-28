@@ -19,10 +19,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/fused/attn_feed_forward.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/operators/fused/attn_feed_forward.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;

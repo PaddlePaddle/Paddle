@@ -15,9 +15,9 @@ limitations under the License. */
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/operators/math/concat_and_split.h"
 
 /**
  * case 1:

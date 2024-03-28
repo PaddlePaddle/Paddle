@@ -20,7 +20,7 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/lite/engine.h"
 #include "paddle/fluid/inference/utils/singleton.h"
-#include "paddle/fluid/operators/lite/ut_helper.h"
+#include "paddle/phi/operators/lite/ut_helper.h"
 
 namespace paddle {
 namespace inference {

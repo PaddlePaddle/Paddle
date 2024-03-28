@@ -26,9 +26,9 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/distributed/communicator.h"
-#include "paddle/fluid/operators/distributed/large_scale_kv.h"
-#include "paddle/fluid/operators/distributed/ps/service/communicator/communicator_common.h"
+#include "paddle/phi/operators/distributed/communicator.h"
+#include "paddle/phi/operators/distributed/large_scale_kv.h"
+#include "paddle/phi/operators/distributed/ps/service/communicator/communicator_common.h"
 #include "pybind11/pybind11.h"
 
 namespace py = pybind11;

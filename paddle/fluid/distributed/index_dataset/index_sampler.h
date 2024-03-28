@@ -18,8 +18,8 @@
 #include "paddle/fluid/distributed/index_dataset/index_wrapper.h"
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/operators/math/sampler.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/operators/math/sampler.h"
 
 namespace paddle {
 namespace distributed {

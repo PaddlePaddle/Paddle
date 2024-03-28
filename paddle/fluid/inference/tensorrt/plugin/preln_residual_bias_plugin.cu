@@ -22,12 +22,12 @@
 
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/preln_residual_bias_plugin.h"
-#include "paddle/fluid/operators/fused/fused_dropout_common.h"
-#include "paddle/fluid/operators/fused/fused_layernorm_residual_dropout_bias.h"
-#include "paddle/fluid/operators/math/bert_encoder_functor.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
+#include "paddle/phi/operators/fused/fused_dropout_common.h"
+#include "paddle/phi/operators/fused/fused_layernorm_residual_dropout_bias.h"
+#include "paddle/phi/operators/math/bert_encoder_functor.h"
 
 namespace paddle {
 namespace inference {
