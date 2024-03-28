@@ -119,7 +119,7 @@ class TaskNode:
     def set_program(self, program):
         assert (
             self.lazy_initialize
-        ), "Inside program is unchangable for immediate initialized task node. Set the lazy_initialize to be true if the inside program need to be update. Remember to do all your change before eval node.task_node()."
+        ), "Inside program is unchangeable for immediate initialized task node. Set the lazy_initialize to be true if the inside program need to be update. Remember to do all your change before eval node.task_node()."
         self.program = program
 
     def get_program(self):
@@ -423,7 +423,7 @@ def run1f1b(
 ):
     """
     Split the program to support 1f1b pipeline scheduler.
-    This funct will split the program based on the op_role.
+    This function will split the program based on the op_role.
     The program will be split into four parts: lr_sched, fwd, bwd, opt.
     And will create task nodes based on the four parts of the program.
     :param program: The origin program.
