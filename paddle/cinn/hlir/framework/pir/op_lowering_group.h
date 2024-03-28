@@ -19,6 +19,7 @@
 #include <vector>
 #include "glog/logging.h"
 
+#include "paddle/cinn/common/context.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/pir/include/core/builtin_type_interfaces.h"
@@ -46,6 +47,20 @@ class OpLoweringGroup {
 
   explicit OpLoweringGroup(std::initializer_list<::pir::Operation*> group_ops)
       : ops_(group_ops) {}
+
+  struct SharedGroupHasher {
+    size_t operator()(
+        const std::shared_ptr<OpLoweringGroup>& group) const noexcept {
+      return std::hash<std::string>()(group->group_id());
+    }
+  };
+  struct SharedGroupComparator {
+    bool operator()(
+        const std::shared_ptr<OpLoweringGroup>& first,
+        const std::shared_ptr<OpLoweringGroup>& second) const noexcept {
+      return first->group_id() == second->group_id();
+    }
+  };
 
   std::vector<::pir::Value> GetGroupOutputValues() const {
     std::unordered_set<::pir::Operation*> group_ops_set(this->ops_.begin(),
@@ -265,7 +280,7 @@ class OpLoweringGroup {
 
  private:
   // group id, consisted of op's id.
-  std::string group_id_{""};
+  std::string group_id_{common::UniqName("group_")};
   // op in this group
   std::vector<::pir::Operation*> ops_;
   // output ops of the group.

@@ -108,16 +108,24 @@ class CumSumProdNet(paddle.nn.Layer):
 
     def forward(self, x):
         cumsum_out = paddle.cumsum(x)
+        cumsum_out = paddle.cumsum(x, axis=1)
+        logcumsumexp_out = paddle.logcumsumexp(x)
+        logcumsumexp_out = paddle.logcumsumexp(x, axis=1)
         cumprod_out = paddle.cumprod(x, dim=1)
-        return cumsum_out, cumprod_out
+        return cumsum_out, logcumsumexp_out, cumprod_out
 
 
 class CumSumProdOpInferSymbolicShapeTest(TestBase):
     def prepare_data(self):
         self.cases = [np.random.rand(4, 5, 6)]
         self.expected = [
-            ['shape[Mul(S0, S1, S2)], data[NULL]'],
-            ['shape[S0, S1, S2], data[NULL]'],
+            [
+                'shape[Mul(S0, S1, S2)], data[NULL]',
+                'shape[S0, S1, S2], data[NULL]',
+            ],
+            [
+                'shape[S0, S1, S2], data[NULL]',
+            ],
         ]
 
     def test_eval_symbolic(self):
@@ -136,7 +144,88 @@ class CumSumProdOpInferSymbolicShapeTest(TestBase):
                 net, input_spec, 'pd_op.cumsum', self.expected[0]
             )
             check_infer_results(
+                net, input_spec, 'pd_op.logcumsumexp', self.expected[0]
+            )
+            check_infer_results(
                 net, input_spec, 'pd_op.cumprod', self.expected[1]
+            )
+
+        return True
+
+
+class SumNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        out_sum = paddle.sum(x)
+        out_sum = paddle.sum(x, 0)
+        out_sum = paddle.sum(x, 1)
+        out_sum = paddle.sum(x, -1)
+        out_sum = paddle.sum(x, -2)
+        # keepdim=True
+        out_sum = paddle.sum(x, keepdim=True)
+        out_sum = paddle.sum(x, 0, keepdim=True)
+        out_sum = paddle.sum(x, 1, keepdim=True)
+        out_sum = paddle.sum(x, -1, keepdim=True)
+        out_sum = paddle.sum(x, -2, keepdim=True)
+
+        out_sum = paddle.sum(x, [1, 2])
+        out_sum = paddle.sum(x, [1, 2], keepdim=True)
+
+        out_logsumexp = paddle.logsumexp(x)
+        out_logsumexp = paddle.logsumexp(x, 0)
+        out_logsumexp = paddle.logsumexp(x, 1)
+        out_logsumexp = paddle.logsumexp(x, -1)
+        out_logsumexp = paddle.logsumexp(x, -2)
+        # keepdim=True
+        out_logsumexp = paddle.logsumexp(x, keepdim=True)
+        out_logsumexp = paddle.logsumexp(x, 0, keepdim=True)
+        out_logsumexp = paddle.logsumexp(x, 1, keepdim=True)
+        out_logsumexp = paddle.logsumexp(x, -1, keepdim=True)
+        out_logsumexp = paddle.logsumexp(x, -2, keepdim=True)
+
+        out_logsumexp = paddle.logsumexp(x, [1, 2])
+        out_logsumexp = paddle.logsumexp(x, [1, 2], keepdim=True)
+        return out_sum, out_logsumexp
+
+
+class SumOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.cases = [np.random.rand(4, 5, 6)]
+        self.expected = [
+            'shape[], data[NULL]',
+            'shape[S1, S2], data[NULL]',
+            'shape[S0, S2], data[NULL]',
+            'shape[S0, S1], data[NULL]',
+            'shape[S0, S2], data[NULL]',
+            # keepdim=True
+            'shape[1, 1, 1], data[NULL]',
+            'shape[1, S1, S2], data[NULL]',
+            'shape[S0, 1, S2], data[NULL]',
+            'shape[S0, S1, 1], data[NULL]',
+            'shape[S0, 1, S2], data[NULL]',
+            'shape[S0], data[NULL]',
+            'shape[S0, 1, 1], data[NULL]',
+        ]
+
+    def test_eval_symbolic(self):
+        net = SumNet()
+
+        for i in range(len(self.cases)):
+            x = self.cases[i]
+            x_spec = InputSpec(
+                shape=[None for index in range(len(x.shape))], dtype='float32'
+            )
+
+            input_spec = [x_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+
+            # check the infer result
+            check_infer_results(net, input_spec, 'pd_op.sum', self.expected)
+            check_infer_results(
+                net, input_spec, 'pd_op.logsumexp', self.expected
             )
 
         return True
@@ -275,46 +364,65 @@ class KthvalueOpInferSymbolicShapeTest(TestBase):
         return True
 
 
-class MaxNet(paddle.nn.Layer):
+class MaxMinNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
     def forward(self, x):
-        out = paddle.max(x)
-        out = paddle.max(x, 0)
-        out = paddle.max(x, 1)
-        out = paddle.max(x, -1)
-        out = paddle.max(x, -2)
+        out_max = paddle.max(x)
+        out_max = paddle.max(x, 0)
+        out_max = paddle.max(x, 1)
+        out_max = paddle.max(x, -1)
+        out_max = paddle.max(x, -2)
         # keepdim=True
-        out = paddle.max(x, keepdim=True)
-        out = paddle.max(x, 0, keepdim=True)
-        out = paddle.max(x, 1, keepdim=True)
-        out = paddle.max(x, -1, keepdim=True)
-        out = paddle.max(x, -2, keepdim=True)
+        out_max = paddle.max(x, keepdim=True)
+        out_max = paddle.max(x, 0, keepdim=True)
+        out_max = paddle.max(x, 1, keepdim=True)
+        out_max = paddle.max(x, -1, keepdim=True)
+        out_max = paddle.max(x, -2, keepdim=True)
 
-        return out
+        out_max = paddle.max(x, [1, 2])
+        out_max = paddle.max(x, [1, 2], keepdim=True)
+
+        out_min = paddle.min(x)
+        out_min = paddle.min(x, 0)
+        out_min = paddle.min(x, 1)
+        out_min = paddle.min(x, -1)
+        out_min = paddle.min(x, -2)
+        # keepdim=True
+        out_min = paddle.min(x, keepdim=True)
+        out_min = paddle.min(x, 0, keepdim=True)
+        out_min = paddle.min(x, 1, keepdim=True)
+        out_min = paddle.min(x, -1, keepdim=True)
+        out_min = paddle.min(x, -2, keepdim=True)
+
+        out_min = paddle.min(x, [1, 2])
+        out_min = paddle.min(x, [1, 2], keepdim=True)
+        return out_max, out_min
 
 
-class MaxOpInferSymbolicShapeTest(TestBase):
+class MaxMinOpInferSymbolicShapeTest(TestBase):
     def prepare_data(self):
-        self.cases = [np.random.rand(2, 4)]
+        self.cases = [np.random.rand(2, 4, 3)]
 
         self.expected = [
             'shape[], data[NULL]',
-            'shape[S1], data[NULL]',
-            'shape[S0], data[NULL]',
-            'shape[S0], data[NULL]',
-            'shape[S1], data[NULL]',
+            'shape[S1, S2], data[NULL]',
+            'shape[S0, S2], data[NULL]',
+            'shape[S0, S1], data[NULL]',
+            'shape[S0, S2], data[NULL]',
             # keepdim=True
-            'shape[1, 1], data[NULL]',
-            'shape[1, S1], data[NULL]',
-            'shape[S0, 1], data[NULL]',
-            'shape[S0, 1], data[NULL]',
-            'shape[1, S1], data[NULL]',
+            'shape[1, 1, 1], data[NULL]',
+            'shape[1, S1, S2], data[NULL]',
+            'shape[S0, 1, S2], data[NULL]',
+            'shape[S0, S1, 1], data[NULL]',
+            'shape[S0, 1, S2], data[NULL]',
+            'shape[S0], data[NULL]',
+            'shape[S0, 1, 1], data[NULL]',
         ]
 
     def test_eval_symbolic(self):
-        net = MaxNet()
+        net = MaxMinNet()
 
         for i in range(len(self.cases)):
             x = self.cases[i]
@@ -325,6 +433,7 @@ class MaxOpInferSymbolicShapeTest(TestBase):
             net = apply_to_static(net, False, input_spec)
             net.eval()
             check_infer_results(net, input_spec, 'pd_op.max', self.expected)
+            check_infer_results(net, input_spec, 'pd_op.min', self.expected)
 
         return True
 
@@ -381,6 +490,39 @@ class PutAlongAxisOpInferSymbolicShapeTest(TestBase):
                 net, input_spec, 'pd_op.put_along_axis', self.expected[i]
             )
 
+        return True
+
+
+class RepeatInterleaveNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        out = paddle.repeat_interleave(x, 2, axis=0)
+        out = paddle.repeat_interleave(x, 2, axis=1)
+        out = paddle.repeat_interleave(x, 2, axis=-1)
+        out = paddle.repeat_interleave(x, 2, axis=-2)
+        return out
+
+
+class RepeatInterleaveOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.expected = [
+            'shape[Mul(S0, 2), S1, S2], data[NULL]',
+            'shape[S0, Mul(S1, 2), S2], data[NULL]',
+            'shape[S0, S1, Mul(S2, 2)], data[NULL]',
+            'shape[S0, Mul(S1, 2), S2], data[NULL]',
+        ]
+
+    def test_eval_symbolic(self):
+        net = RepeatInterleaveNet()
+        x_spec = InputSpec(shape=[None, None, None], dtype='float32')
+        input_spec = [x_spec]
+        net = apply_to_static(net, False, input_spec)
+        net.eval()
+        check_infer_results(
+            net, input_spec, 'pd_op.repeat_interleave', self.expected
+        )
         return True
 
 
@@ -479,6 +621,40 @@ class SplitOpInferSymbolicShapeTest(TestBase):
         #                Not added because attribute `sym_shape_str` does not support multi-output op now.
         #                See also: paddle/fluid/pir/transforms/shape_optimization_pass.cc:144.
         return True
+
+
+class TopkNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        out = paddle.topk(x, 2)
+        out = paddle.topk(x, 2, axis=1)
+        out = paddle.topk(x, 2, axis=-1)
+        out = paddle.topk(x, 2, axis=-2)
+        return out
+
+
+class TopkOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.cases = [np.random.rand(4, 5, 6)]
+        self.expected = [
+            'shape[S0, S1, 2], data[NULL]',
+            'shape[S0, 2, S2], data[NULL]',
+            'shape[S0, S1, 2], data[NULL]',
+            'shape[S0, 2, S2], data[NULL]',
+        ]
+
+    def test_eval_symbolic(self):
+        net = TopkNet()
+
+        for i in range(len(self.cases)):
+            x = self.cases[i]
+            x_spec = InputSpec(shape=[None, None, None], dtype='float32')
+            input_spec = [x_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+            check_infer_results(net, input_spec, 'pd_op.topk', self.expected)
 
 
 class SplitWithNumNet(paddle.nn.Layer):
