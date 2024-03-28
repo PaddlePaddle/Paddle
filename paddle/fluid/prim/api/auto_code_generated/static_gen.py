@@ -21,9 +21,9 @@ import jinja2
 import yaml
 
 # fmt: off
-# import from paddle/fluid/operators/generator
+# import from paddle/phi/operators/generator
 sys.path.append(
-    str(pathlib.Path(__file__).parents[3].joinpath('operators/generator'))
+    str(pathlib.Path(__file__).parents[3].joinpath('../phi/operators/generator'))
 )
 import filters as op_gen_filters
 import generate_op as op_gen_utils

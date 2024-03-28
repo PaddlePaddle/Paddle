@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/imperative/infer_shape_context.h"
 #include "paddle/fluid/imperative/layer.h"
-#include "paddle/fluid/operators/common_infer_shape_functions.h"
+#include "paddle/phi/operators/common_infer_shape_functions.h"
 
 USE_OP_ITSELF(relu);
 USE_OP_ITSELF(elementwise_add);

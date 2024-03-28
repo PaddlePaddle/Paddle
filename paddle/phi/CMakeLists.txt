@@ -32,6 +32,8 @@ if(WITH_CUSTOM_DEVICE)
   add_subdirectory(capi)
 endif()
 
+add_subdirectory(operators)
+
 set(PHI_DEPS
     phi_profiler_proto
     auto_parallel_proto

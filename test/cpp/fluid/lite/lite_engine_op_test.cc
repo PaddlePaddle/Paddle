@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License. */
 
-#include "paddle/fluid/operators/lite/lite_engine_op.h"
+#include "paddle/phi/operators/lite/lite_engine_op.h"
 
 #include <gtest/gtest.h>
 
@@ -21,7 +21,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/utils/singleton.h"
-#include "paddle/fluid/operators/lite/ut_helper.h"
+#include "paddle/phi/operators/lite/ut_helper.h"
 
 USE_NO_KERNEL_OP(lite_engine)
 

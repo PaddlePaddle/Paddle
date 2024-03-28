@@ -27,13 +27,13 @@
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 #ifdef PADDLE_WITH_TENSORRT
-#include "paddle/fluid/operators/tensorrt/tensorrt_engine_op.h"
+#include "paddle/phi/operators/tensorrt/tensorrt_engine_op.h"
 #endif
 #ifdef PADDLE_WITH_NVTX
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
 #ifdef PADDLE_WITH_LITE
-#include "paddle/fluid/operators/lite/lite_engine_op.h"
+#include "paddle/phi/operators/lite/lite_engine_op.h"
 #endif
 
 namespace paddle {

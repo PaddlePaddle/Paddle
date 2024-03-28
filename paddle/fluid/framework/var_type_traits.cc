@@ -17,24 +17,24 @@
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/phi/operators/reader/lod_tensor_blocking_queue.h"
 #ifdef PADDLE_WITH_CUDA
 #if defined(PADDLE_WITH_NCCL)
-#include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/operators/nccl/nccl_gpu_common.h"
 #endif
 #include <cudnn.h>
 
-#include "paddle/fluid/operators/cudnn_rnn_cache.h"
 #include "paddle/phi/kernels/gpudnn/conv_gpudnn_info.h"
+#include "paddle/phi/operators/cudnn_rnn_cache.h"
 #endif
 #ifdef PADDLE_WITH_HIP
 #if defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/operators/nccl/nccl_gpu_common.h"   // NOLINT
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"  // NOLINT
+#include "paddle/phi/operators/nccl/nccl_gpu_common.h"     // NOLINT
 #endif
-#include "paddle/fluid/operators/miopen_rnn_cache.h"
+#include "paddle/phi/operators/miopen_rnn_cache.h"
 #endif
 
 #if defined(PADDLE_WITH_XPU_BKCL)
@@ -42,7 +42,7 @@
 #endif
 
 #include "paddle/fluid/framework/raw_tensor.h"
-#include "paddle/fluid/operators/cuda_graph_with_in_out.h"
+#include "paddle/phi/operators/cuda_graph_with_in_out.h"
 
 namespace paddle {
 namespace framework {

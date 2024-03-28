@@ -21,7 +21,7 @@ PREFIX_META_TENSOR_NAME = 'meta_'
 
 
 def parse_plain_list(s: str, sep=",") -> List[str]:
-    """Copy from `paddle/fluid/operators/generator/parse_utils.py`"""
+    """Copy from `paddle/phi/operators/generator/parse_utils.py`"""
     if sep == ",":
         patten = re.compile(r',(?![^{]*\})')  # support "int[] a={1,2}"
         items = re.split(patten, s.strip())

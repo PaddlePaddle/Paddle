@@ -19,7 +19,7 @@
 
 # Usage: 
 #   - bash grep_invalid_enforce.sh [target directory or file] (run in tools directory)
-#       - The default check path is paddle/fluid/operators
+#       - The default check path is paddle/phi/operators
 
 # Result Examples:
 # 1. grep invalid PADDLE checks in directory
@@ -64,7 +64,7 @@
 
 . ./count_enforce_by_file.sh --source-only
 
-ROOT_DIR=../paddle/fluid/operators
+ROOT_DIR=../paddle/phi/operators
 
 if [ "$1" != "" ]; then
     ROOT_DIR=$1

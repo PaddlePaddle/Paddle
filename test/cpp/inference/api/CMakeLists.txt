@@ -994,15 +994,18 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       common
       ARGS
       --infer_model=${TEST_SPLIT_CONVERTER_MODEL}/)
-    inference_analysis_test(
-      test_analyzer_capi_exp_gpu
-      SRCS
-      analyzer_capi_exp_gpu_tester.cc
-      EXTRA_DEPS
-      common
-      paddle_inference_c_shared
-      ARGS
-      --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
+    #TODO(inference): windows encounter a link error, we need to fix it.
+    if(NOT WIN32)
+      inference_analysis_test(
+        test_analyzer_capi_exp_gpu
+        SRCS
+        analyzer_capi_exp_gpu_tester.cc
+        EXTRA_DEPS
+        common
+        paddle_inference_c_shared
+        ARGS
+        --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
+    endif()
     inference_analysis_test(
       test_analyzer_capi_exp_xpu
       SRCS

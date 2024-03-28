@@ -43,7 +43,7 @@ API_FILES=("CMakeLists.txt"
            "python/paddle/base/parallel_executor.py"
            "python/paddle/base/framework.py"
            "python/paddle/base/backward.py"
-           "paddle/fluid/operators/distributed/send_recv.proto.in"
+           "paddle/phi/operators/distributed/send_recv.proto.in"
            "paddle/fluid/framework/unused_var_check.cc"
            "python/paddle/base/tests/unittests/white_list/check_shape_white_list.py"
            "python/paddle/base/tests/unittests/white_list/op_accuracy_white_list.py"
@@ -147,8 +147,8 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "python/requirements.txt" ];then
           echo_line="You must have one RD (phlrain) and one TPM (dingjiaweiww) and one QA (kolinwei) approval for python/requirements.txt, which manages the third-party python package.\n"
           check_approval 3 phlrain dingjiaweiww kolinwei
-      elif [ "${API_FILE}" == "paddle/fluid/operators/distributed/send_recv.proto.in" ];then
-          echo_line="You must have one RD (gongweibao or seiriosPlus) approval for the paddle/fluid/operators/distributed/send_recv.proto.in, which manages the environment variables.\n"
+      elif [ "${API_FILE}" == "paddle/phi/operators/distributed/send_recv.proto.in" ];then
+          echo_line="You must have one RD (gongweibao or seiriosPlus) approval for the paddle/phi/operators/distributed/send_recv.proto.in, which manages the environment variables.\n"
           check_approval 1 gongweibao seiriosPlus
       elif [ "${API_FILE}" == "paddle/fluid/framework/unused_var_check.cc" ];then
           echo_line="You must have one RD (zhiqiu (Recommend) or chenwhql) approval for the changes of paddle/fluid/framework/unused_var_check.cc, which manages the allow list of operators that have unused input variables. Before change the allow list, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/OP-Should-Not-Have-Unused-Input] and try to refine code first. \n"
@@ -257,7 +257,7 @@ fi
 FILTER=`git diff --name-only upstream/develop | grep -v "tools/"`
 HAS_LEGACY_KERNEL_REGISTRATION=`git diff -U0 upstream/$BRANCH $FILTER | grep '^\+' | grep -oE -m 1 "REGISTER_OP[A-Z_]{1,9}KERNEL[_FUNCTOR|_WITH_CUSTOM_TYPE|_EX]*" || true`
 if [ ${HAS_LEGACY_KERNEL_REGISTRATION} ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="In principle, adding an OpKernel needs to be in the phi/kernels directory. If you must add an OpKernel in the fluid/operators directory, please request one of the RD (chenwhql, zyfncg, YuanRisheng, phlrain) review and approve.\n"
+    echo_line="In principle, adding an OpKernel needs to be in the phi/kernels directory. If you must add an OpKernel in the phi/operators directory, please request one of the RD (chenwhql, zyfncg, YuanRisheng, phlrain) review and approve.\n"
     check_approval 1 chenwhql zyfncg YuanRisheng phlrain
 fi
 
@@ -366,9 +366,9 @@ if [ "${HAS_MODIFIED_EAGER_GENE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 JiabinYang chenwhql zyfncg phlrain heavyrain-lzy
 fi
 
-HAS_MODIFIED_OPERATOR_GENE=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/operators/generator" || true`
+HAS_MODIFIED_OPERATOR_GENE=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/operators/generator" || true`
 if [ "${HAS_MODIFIED_OPERATOR_GENE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (zyfncg, chenwhql, iclementine, phlrain, heavyrain-lzy) approval for file changes in paddle/fluid/operators/generator, which manages the generated code for OpMaker in paddle/fluid/operators/(generated_op.cc | sparse_generated_op.cc)\n"
+    echo_line="You must have one RD (zyfncg, chenwhql, iclementine, phlrain, heavyrain-lzy) approval for file changes in paddle/phi/operators/generator, which manages the generated code for OpMaker in paddle/phi/operators/(generated_op.cc | sparse_generated_op.cc)\n"
     check_approval 1 zyfncg chenwhql iclementine phlrain heavyrain-lzy
 fi
 

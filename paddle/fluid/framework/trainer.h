@@ -33,8 +33,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/trainer_desc.pb.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/operators/reader/blocking_queue.h"
 #include "paddle/phi/common/port.h"
+#include "paddle/phi/operators/reader/blocking_queue.h"
 
 namespace paddle {
 namespace framework {

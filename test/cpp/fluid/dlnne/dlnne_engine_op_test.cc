@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/dlnne/dlnne_engine_op.h"
+#include "paddle/phi/operators/dlnne/dlnne_engine_op.h"
 
 #include <gtest/gtest.h>
 
@@ -25,7 +25,7 @@
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/convert/ut_helper.h"
-#include "paddle/fluid/operators/tensorrt/tensorrt_engine_op.h"
+#include "paddle/phi/operators/tensorrt/tensorrt_engine_op.h"
 
 USE_NO_KERNEL_OP(dlnne_engine);
 namespace paddle {

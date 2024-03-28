@@ -17,8 +17,8 @@ limitations under the License. */
 #include <random>
 #include <vector>
 
-#include "paddle/fluid/operators/fused/fused_residual_dropout_bias.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/operators/fused/fused_residual_dropout_bias.h"
 #include "test/cpp/fluid/fused/fused_dropout_test.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

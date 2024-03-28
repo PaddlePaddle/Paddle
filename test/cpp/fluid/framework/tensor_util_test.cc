@@ -17,7 +17,7 @@
 #include <cmath>
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/isfinite_op.h"
+#include "paddle/phi/operators/isfinite_op.h"
 namespace paddle {
 namespace framework {
 

@@ -18,8 +18,8 @@
 #include <random>
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/operators/activation_op.h"
 
 namespace paddle {
 namespace operators {

@@ -34,9 +34,9 @@
 #include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/operators/cinn/cinn_launch_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/operators/cinn/cinn_launch_op.h"
 
 COMMON_DECLARE_string(allow_cinn_ops);
 COMMON_DECLARE_string(deny_cinn_ops);
