@@ -250,10 +250,22 @@ PatternNodePtr PatternGraph::MergeNode(const PatternNodePtr& upstream,
 
   for (const auto& upstream_node : merged_node->upstream_) {
     upstream_node->downstream_.push_back(merged_node);
+    RemoveFromVector(&upstream_node->downstream_, upstream);
+    RemoveFromVector(&upstream_node->downstream_, downstream);
   }
   for (const auto& downstream_node : merged_node->downstream_) {
     downstream_node->upstream_.push_back(merged_node);
+    RemoveFromVector(&downstream_node->downstream_, upstream);
+    RemoveFromVector(&downstream_node->downstream_, downstream);
   }
+
+  const auto vec_unique = [](const std::vector<PatternNodePtr>& vec) {
+    auto set = std::unordered_set(vec.begin(), vec.end());
+    return set.size() == vec.size();
+  };
+
+  CHECK(vec_unique(merged_node->upstream_));
+  CHECK(vec_unique(merged_node->downstream_));
 
   // deal with the graph storage.
   AppendNode(merged_node);

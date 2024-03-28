@@ -29,15 +29,17 @@ ShardableAxes ShardableAxesInfoManager::ReplaceShardableAxesWithRootName(
 
 ShardableAxesSignature ShardableAxesInfoManager::GetSignature(
     pir::Operation* op) {
-  auto result = ShardableAxesSignature();
-  auto origin_sig = op_signature_map_[op];
-  for (const auto& axes : origin_sig.inputs) {
-    result.inputs.emplace_back(ReplaceShardableAxesWithRootName(axes));
-  }
-  for (const auto& axes : origin_sig.outputs) {
-    result.outputs.emplace_back(ReplaceShardableAxesWithRootName(axes));
-  }
-  return result;
+  return op_signature_map_[op];
+  // TODO(baizhou) fix broadcast signature and enable here
+  // auto result = ShardableAxesSignature();
+  // auto origin_sig = op_signature_map_[op];
+  // for (const auto& axes : origin_sig.inputs) {
+  //   result.inputs.emplace_back(ReplaceShardableAxesWithRootName(axes));
+  // }
+  // for (const auto& axes : origin_sig.outputs) {
+  //   result.outputs.emplace_back(ReplaceShardableAxesWithRootName(axes));
+  // }
+  // return result;
 }
 
 ShardableAxes ShardableAxesInfoManager::GetAxes(pir::Value value) {
@@ -240,7 +242,7 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
   }
 }
 
-std::string ShardableAxes::DebugStr() {
+std::string ShardableAxes::DebugStr() const {
   std::stringstream ss;
   for (const auto& name : axis_names) {
     ss << name << ", ";
@@ -248,7 +250,7 @@ std::string ShardableAxes::DebugStr() {
   return ss.str();
 }
 
-std::string ShardableAxesSignature::DebugStr() {
+std::string ShardableAxesSignature::DebugStr() const {
   std::stringstream ss;
   ss << "ShardableAxes Signature:\n";
   for (int i = 0; i < inputs.size(); i++) {

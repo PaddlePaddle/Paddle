@@ -154,12 +154,15 @@ StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second) {
       MergeVector(GetOpsInPattern(first), GetOpsInPattern(second));
   if (IsUnsupportPattern(first) || IsUnsupportPattern(second)) {
     return UnsupportPattern(ops);
-  } else if (IsReduceTreePattern(first) || IsReduceTreePattern(second)) {
+  } else if (IsReduceTreePattern(first) && IsReduceTreePattern(second)) {
     const auto& merged =
         ConcatVector(std::get<ReduceTreePattern>(first).reduce_patterns_,
                      std::get<ReduceTreePattern>(second).reduce_patterns_);
     return ReduceTreePattern(
         merged, std::get<ReduceTreePattern>(second).GetRootPattern());
+  } else if (IsReduceTreePattern(first) && IsTrivialPattern(second)) {
+    return ReduceTreePlusTrivialPattern(std::get<ReduceTreePattern>(first),
+                                        std::get<TrivialPattern>(second));
   } else if (IsTrivialPattern(first) && IsReducePattern(second)) {
     return ReducePattern(ops);
   } else if (IsTrivialPattern(first) && IsTrivialPattern(second)) {

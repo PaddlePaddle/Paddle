@@ -40,8 +40,7 @@ std::optional<ReducePattern> RelativeJudgePolicy::GetDownstreamFromCandidate(
 }
 
 SplitedDims SplitReduceInputDimsIfRelatedWithNonReduceAxis(
-    const ShardableAxesSignature& signature, const pir::Operation* op) {
-  // TODO(wuzhanfei) fix here，use result?
+    const ShardableAxesSignature& signature, pir::Operation* op) {
   const auto& v = op->operand_source(0);
   const auto& input_names = signature.inputs[0].axis_names;
   const auto& output_names = signature.outputs[0].axis_names;
@@ -62,7 +61,6 @@ SplitedDims SplitReduceInputDimsIfRelatedWithNonReduceAxis(
 
 SplitedDims SplitReduceOutputDimsIfRelatedWithNonReduceAxis(
     const ShardableAxesSignature& signature, const pir::Operation* op) {
-  // TODO(wuzhanfei) fix here，use result?
   const auto& v = op->result(0);
   const auto& input_names = signature.inputs[0].axis_names;
   const auto& output_names = signature.outputs[0].axis_names;
@@ -141,6 +139,7 @@ bool RelativeJudgePolicy::ReduceTreeGrownCanMerge(
 SplitedDims RelativeJudgePolicy::SplitDimsWithRelationship(
     const std::vector<ValueDim>& targets,
     const std::vector<ValueDim>& related_with) {
+  VLOG(4) << "SplitDimsWithRelationship";
   auto result = SplitedDims();
   bool is_related = false;
   for (auto& target_dim : targets) {
@@ -160,6 +159,7 @@ SplitedDims RelativeJudgePolicy::SplitDimsWithRelationship(
 
 bool DimsEquel(const std::vector<ValueDim>& first,
                const std::vector<ValueDim>& second) {
+  VLOG(4) << "DimsEquel";
   const auto GetDimInfo =
       [](const std::vector<ValueDim>& dims) -> std::unordered_map<size_t, int> {
     std::unordered_map<size_t, int> result;
@@ -191,7 +191,6 @@ bool DimsEquel(const std::vector<ValueDim>& first,
 bool RelativeJudgePolicy::ReducePlusTrivialCanMerge(
     const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
   VLOG(4) << "RT can fuse";
-  VLOG(4) << "SplitReduceInputDimsIfRelatedWithNonReduceAxis";
   const auto& split_reduce_dims_result =
       SplitReduceInputDimsIfRelatedWithNonReduceAxis(
           axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
@@ -201,14 +200,12 @@ bool RelativeJudgePolicy::ReducePlusTrivialCanMerge(
   const auto& upstream_reduce_dims = split_reduce_dims_result.non_related;
   const auto& upstream_non_reduce_dims = split_reduce_dims_result.related;
 
-  VLOG(4) << "SplitDimsWithRelationship";
   const auto& split_trivial_dims_result = SplitDimsWithRelationship(
       GetAllValueDimFromValue(downstream->sink_op_->result(0)),
       upstream_non_reduce_dims);
 
   VLOG(4) << split_trivial_dims_result.DebugStr();
 
-  VLOG(4) << "DimsEquel";
   auto res =
       DimsEquel(split_trivial_dims_result.non_related, upstream_reduce_dims);
   VLOG(4) << "ReducePlusTrivialCanMerge: " << res;

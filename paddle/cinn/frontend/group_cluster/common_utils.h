@@ -60,26 +60,6 @@ bool IsUnsupportPattern(const StmtPattern& pattern);
 bool IsReduceTrivialPattern(const StmtPattern& pattern);
 
 template <typename T>
-void ExtendVector(std::vector<T>* first, const std::vector<T>& second) {
-  std::unordered_set<T> visited =
-      std::unordered_set<T>(first->begin(), first->end());
-  for (auto iter = second.begin(); iter != second.end(); iter++) {
-    if (visited.find(*iter) == visited.end()) {
-      visited.emplace(*iter);
-      first->emplace_back(*iter);
-    }
-  }
-}
-
-template <typename T>
-std::vector<T> MergeVector(const std::vector<T>& first,
-                           const std::vector<T>& second) {
-  std::vector<T> result = std::vector<T>(first);
-  ExtendVector(&result, second);
-  return result;
-}
-
-template <typename T>
 void RemoveFromVector(std::vector<T>* vec, T item) {
   auto iter = std::find(vec->begin(), vec->end(), item);
   if (iter != vec->end()) {
