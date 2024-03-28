@@ -287,6 +287,5 @@ PD_REGISTER_KERNEL(fused_rotary_position_embedding,
                    ALL_LAYOUT,
                    phi::fusion::FusedRopeKernel,
                    float,
-                   double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16){};
