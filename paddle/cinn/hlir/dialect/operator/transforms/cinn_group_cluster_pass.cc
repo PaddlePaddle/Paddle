@@ -28,7 +28,6 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 
-#include "paddle/cinn/frontend/group_cluster/group_cluster.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/attribute_storage.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
@@ -49,7 +48,8 @@
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
-PD_DECLARE_bool(cinn_new_cluster_op_method);
+// #include "paddle/cinn/frontend/group_cluster/group_cluster.h"
+// PD_DECLARE_bool(cinn_new_cluster_op_method);
 
 namespace cinn {
 namespace dialect {
@@ -835,28 +835,30 @@ std::vector<GroupClusterNode> NodeMergeWithNode(
   return second_stage_output;
 }
 
-std::vector<GroupClusterNode> NewOpMergeWithOp(
-    cinn::dialect::GroupOp group_op) {
-  const auto cluster_result = frontend::ClusterOps(group_op);
+// std::vector<GroupClusterNode> NewOpMergeWithOp(
+//     cinn::dialect::GroupOp group_op) {
+//   const auto cluster_result = frontend::ClusterOps(group_op);
 
-  // Each stmts corresponds to each fusion op(cluster node).
-  // Concat all the ops of patterns in the stmts, and make them the op list of
-  // cluster node.
-  VLOG(4) << "Start Creating Cluster Nodes!";
-  std::vector<GroupClusterNode> output_cluster_nodes;
-  for (const auto& op_set : cluster_result) {
-    GroupClusterNode cluster_node;
-    for (const auto* op : op_set) {
-      cluster_node.ops.push_back(const_cast<pir::Operation*>(op));
-      auto op_kind = cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op);
-      cluster_node.group_kind =
-          cluster_node.group_kind > op_kind ? cluster_node.group_kind : op_kind;
-    }
-    output_cluster_nodes.push_back(cluster_node);
-  }
-  VLOG(4) << "Finished Creating Cluster Nodes!";
-  return output_cluster_nodes;
-}
+//   // Each stmts corresponds to each fusion op(cluster node).
+//   // Concat all the ops of patterns in the stmts, and make them the op list
+//   of
+//   // cluster node.
+//   VLOG(4) << "Start Creating Cluster Nodes!";
+//   std::vector<GroupClusterNode> output_cluster_nodes;
+//   for (const auto& op_set : cluster_result) {
+//     GroupClusterNode cluster_node;
+//     for (const auto* op : op_set) {
+//       cluster_node.ops.push_back(const_cast<pir::Operation*>(op));
+//       auto op_kind = cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op);
+//       cluster_node.group_kind =
+//           cluster_node.group_kind > op_kind ? cluster_node.group_kind :
+//           op_kind;
+//     }
+//     output_cluster_nodes.push_back(cluster_node);
+//   }
+//   VLOG(4) << "Finished Creating Cluster Nodes!";
+//   return output_cluster_nodes;
+// }
 
 std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op) {
   // op merge with op
@@ -924,9 +926,9 @@ std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op) {
 
 std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
   // stage 1
-  if (FLAGS_cinn_new_cluster_op_method) {
-    return NewOpMergeWithOp(group_op);
-  }
+  // if (FLAGS_cinn_new_cluster_op_method) {
+  //   return NewOpMergeWithOp(group_op);
+  // }
 
   auto first_stage_output = OpMergeWithOp(group_op);
 
