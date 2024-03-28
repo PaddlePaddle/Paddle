@@ -271,6 +271,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "simplify_with_basic_ops_pass",                                 //
         "delete_quant_dequant_linear_op_pass",                          //
         "delete_weight_dequant_linear_op_pass",                         //
+        "sparse_conv_optim_pass",                                       //
         "constant_folding_pass",                                        //
         "silu_fuse_pass",                                               //
         "conv_bn_fuse_pass",                                            //
