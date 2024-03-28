@@ -214,10 +214,6 @@ int64_t GetOpCount(const ::pir::Operation* op) {
   return count;
 }
 
-int64_t GetFusionOpCount(const ::pir::Program& program) {
-  return GetOpCount<cinn::dialect::FusionOp>(program.module_op());
-}
-
 void ApplyCinnPass(::pir::Program* program,
                    const std::function<std::shared_ptr<pir::PassManager>()>&
                        CreatePassManager) {
