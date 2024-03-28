@@ -162,7 +162,6 @@ void MemoryMapAllocation::close() {
   if (!closed_fd_) {
     closed_fd_ = true;
     if (flags_ & MAPPED_KEEPFD) {
-      VLOG(6) << "one close fd: " << fd_;
       PADDLE_ENFORCE_NE(::close(fd_),
                         -1,
                         platform::errors::Unavailable(
