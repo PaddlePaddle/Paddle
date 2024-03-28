@@ -28,6 +28,7 @@ class TestSetValue(unittest.TestCase):
         restored_prog_as_is = framework_pb2.ProgramDesc.FromString(
             program_bytes
         )
+        print("new_restored_prog_as_is=", restored_prog_as_is)
         for block in restored_prog_as_is.blocks:
             for op in block.ops:
                 if op.type in ("set_value", "set_value_grad"):
@@ -44,6 +45,7 @@ class TestSetValue(unittest.TestCase):
         restored_prog_as_is = framework_pb2.ProgramDesc.FromString(
             program_bytes
         )
+        print("restored_prog_as_is=", restored_prog_as_is)
         for block in restored_prog_as_is.blocks:
             for op in block.ops:
                 if op.type in ("set_value", "set_value_grad"):
@@ -87,12 +89,13 @@ class TestSetValue(unittest.TestCase):
         x_input = np.ones([3, 4], dtype=np.int32)
         x_output = x_input.copy()
         x_output[:1, :2] = patch
-
+        print(mp)
         normal_program_bytes = mp._get_desc().serialize_to_string()
         legacy_program_bytes = mp._get_desc().serialize_to_string(
             legacy_format=True
         )
 
+        print("legacy_program_bytes", legacy_program_bytes)
         self.assertNotEqual(normal_program_bytes, legacy_program_bytes)
         self._test_for_new_program_format(normal_program_bytes)
         self._test_for_legacy_program_format(legacy_program_bytes)

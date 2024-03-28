@@ -42,7 +42,8 @@ class FillConstantPrimOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddOutput("Y", "(Tensor), The output tensor of fill_constant_p op.");
-    AddAttr<float>("value", "(float) The value of output tensor.");
+    AddAttr<paddle::experimental::Scalar>(
+        "value", "(Scalar) The value of output tensor.");
     AddAttr<std::vector<int64_t>>(
         "shape", "(std::vector<int64_t>) The shape of output tensor.");
     AddAttr<int>("dtype", "(int) The dtype of output tensor.");

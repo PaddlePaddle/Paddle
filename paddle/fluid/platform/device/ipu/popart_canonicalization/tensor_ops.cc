@@ -32,7 +32,8 @@ Node *fill_constant_handler(Graph *graph, Node *node) {
   auto dtype_ = PADDLE_GET_CONST(int, op->GetAttr("dtype"));
   auto dtype = VarType2OnnxDType(static_cast<VarType::Type>(dtype_));
   auto dims = PADDLE_GET_CONST(std::vector<int64_t>, op->GetAttr("shape"));
-  auto value_ = PADDLE_GET_CONST(float, op->GetAttr("value"));
+  auto value =
+      PADDLE_GET_CONST(paddle::experimental::Scalar, op->GetAttr("value"));
   int size = 1;
   for (auto &dim : dims) {
     size *= dim;

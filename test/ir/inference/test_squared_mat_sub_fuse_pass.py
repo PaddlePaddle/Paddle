@@ -20,6 +20,8 @@ import numpy as np
 from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
+import paddle
+
 
 class TestSquaredMatSubFusePass(PassAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
@@ -104,10 +106,10 @@ class TestSquaredMatSubFusePass(PassAutoScanTest):
                 inputs={},
                 outputs={"Out": ["constant_out"]},
                 attrs={
-                    "dtype": 5,
+                    "dtype": 16,
                     "place_type": place_type,
                     "str_value": str_value,
-                    "value": value,
+                    "value": paddle.base.core.Scalar(value),
                     "shape": shape,
                 },
             )
@@ -117,9 +119,9 @@ class TestSquaredMatSubFusePass(PassAutoScanTest):
                 inputs={},
                 outputs={"Out": ["constant_out"]},
                 attrs={
-                    "dtype": 5,
+                    "dtype": 16,
                     "place_type": place_type,
-                    "value": value,
+                    "value": paddle.base.core.Scalar(value),
                     "shape": shape,
                 },
             )
@@ -155,7 +157,7 @@ class TestSquaredMatSubFusePass(PassAutoScanTest):
             },
             outputs=["mul_out"],
         )
-
+        print("zyt===program_config=", program_config)
         return program_config
 
     def sample_predictor_configs(self, program_config):

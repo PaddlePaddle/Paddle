@@ -1093,6 +1093,10 @@ void OpDesc::CheckAttrs() {
     return;
   }
   VLOG(10) << "begin to check attribute of " << Type();
+  for (auto &pair : attrs_) {
+    VLOG(10) << "name:" << pair.first << " "
+             << paddle::platform::demangle(pair.second.type().name());
+  }
   checker->Check(&attrs_);
   const auto &extra_attr_checkers =
       operators::ExtraInfoUtils::Instance().GetExtraAttrsChecker(Type());
@@ -1107,6 +1111,13 @@ void OpDesc::InferShape(const BlockDesc &block) {
   try {
     VLOG(3) << "CompileTime infer shape on " << Type();
     auto &op_info = OpInfoMap::Instance().Get(this->Type());
+    if (this->Type() == "fill_constant") {
+      auto attr_type = this->GetAttrType("value", false);
+      auto attr_type_1 = this->GetAttrType("value", true);
+      VLOG(6) << "zyt=op_type=" << this->Type() << ",attr_type=" << attr_type
+              << " " << attr_type_1;
+    }
+
     this->CheckAttrs();
     auto &infer_shape = op_info.infer_shape_;
     PADDLE_ENFORCE_EQ(

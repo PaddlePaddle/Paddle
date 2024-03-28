@@ -67,7 +67,7 @@ void FillConstantOpMapper(const paddle::cpp::OpDesc& op_desc,
 
   auto shape = utils::ToShapeType(
       utils::GetAttrOrDefault<std::vector<int64_t>>(op_desc, "shape"));
-  auto value = utils::GetAttrOrDefault<float>(op_desc, "value", 0.0f);
+  // auto value = utils::GetAttrOrDefault<float>(op_desc, "value", 0.0f);
   auto str_value =
       utils::GetAttrOrDefault<std::string>(op_desc, "str_value", "");
   auto force_cpu = utils::GetAttrOrDefault<bool>(op_desc, "force_cpu", false);
@@ -104,11 +104,11 @@ void FillConstantOpMapper(const paddle::cpp::OpDesc& op_desc,
       out = ctx.Builder()->FillConstant(
           shape, str_value, cinn_name, dtype, force_cpu);
     } else {
-      VLOG(4) << "fill constant (" << value << ") with shape ("
-              << cinn::utils::Join(shape, ",") << ") and dtype [" << dtype
-              << "]";
-      out = ctx.Builder()->FillConstant(
-          shape, value, cinn_name, dtype, force_cpu);
+      // VLOG(4) << "fill constant (" << value << ") with shape ("
+      //         << cinn::utils::Join(shape, ",") << ") and dtype [" << dtype
+      //         << "]";
+      // out = ctx.Builder()->FillConstant(
+      //     shape, value, cinn_name, dtype, force_cpu);
     }
   }
 
