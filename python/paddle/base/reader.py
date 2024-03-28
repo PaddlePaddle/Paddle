@@ -14,7 +14,6 @@
 
 import logging
 import multiprocessing
-import os
 import queue
 import sys
 import threading
@@ -410,7 +409,6 @@ class DataLoader:
                 ...
                 >>> # doctest: -SKIP
         """
-        os.environ["FLAGS_use_file_descripor"] = "0"
         if in_dygraph_mode():
             return DygraphGeneratorLoader(
                 feed_list,
@@ -601,6 +599,10 @@ class DygraphGeneratorLoader(DataLoaderBase):
         if self._use_multiprocess:
             # clear old _data_queue and remove it from multiprocess_queue_set
             self._clear_and_remove_data_queue()
+            # set dataloader_use_file_descriptor to false to avoid use descriptor.
+            paddle.base.core.globals()[
+                "FLAGS_dataloader_use_file_descriptor"
+            ] = False
             # set data_queue and process
             self._data_queue = multiprocessing.Queue(self._capacity)
             # add _data_queue into global queue set

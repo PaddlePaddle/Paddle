@@ -859,7 +859,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
         )DOC")
 #endif
       .def("_share_filename",
-           [](phi::DenseTensor &self, bool use_file_descripor) {
+           [](phi::DenseTensor &self, bool use_file_descriptor) {
              if (!self.IsInitialized() || self.numel() == 0)
                throw std::runtime_error(
                    "Tensor not initialized or numel is 0. could not pass to "
@@ -886,7 +886,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
                int flags = memory::allocation::MAPPED_SHAREDMEM |
                            memory::allocation::MAPPED_EXCLUSIVE;
-               if (use_file_descripor) {
+               if (use_file_descriptor) {
                    flags = flags | memory::allocation::MAPPED_KEEPFD |
                            memory::allocation::MAPPED_UNLINK;
                }
@@ -922,7 +922,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                                    mmap_allocation->shared_fd(),
                                    mmap_allocation->size(), type_idx,
                                    common::vectorize(self.dims()), self.lod(),
-                                   use_file_descripor);
+                                   use_file_descriptor);
            },
            R"DOC(
            Serialize CPU lod tensor in shared memory to tuple.
@@ -950,12 +950,12 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              // 2. Rebuild Allocation
              const std::string &ipc_name = t[0].cast<std::string>();
              const int shared_fd = t[1].cast<int>();
-             const bool use_file_descripor = t[6].cast<bool>();
+             const bool use_file_descriptor = t[6].cast<bool>();
 
              size_t size = t[2].cast<size_t>();
              int flags = memory::allocation::MAPPED_SHAREDMEM |
                          memory::allocation::MAPPED_NOCREATE;
-             if (use_file_descripor) {
+             if (use_file_descriptor) {
                  flags = flags | memory::allocation::MAPPED_KEEPFD |
                          memory::allocation::MAPPED_UNLINK;
              }
