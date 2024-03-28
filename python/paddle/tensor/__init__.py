@@ -78,6 +78,7 @@ from .linalg import (  # noqa: F401
     eigvals,
     eigvalsh,
     histogram,
+    histogram_bin_edges,
     histogramdd,
     householder_product,
     lstsq,

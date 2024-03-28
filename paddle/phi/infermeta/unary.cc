@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/parse_qr_mode.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
@@ -1916,8 +1917,13 @@ void GumbelSoftmaxInferMeta(const MetaTensor& x,
   UnchangedInferMetaCheckAxis(x, axis, out);
 }
 
-void HistogramInferMeta(
-    const MetaTensor& input, int64_t bins, int min, int max, MetaTensor* out) {
+void HistogramInferMeta(const MetaTensor& input,
+                        const MetaTensor& weight,
+                        bool density,
+                        int64_t bins,
+                        int min,
+                        int max,
+                        MetaTensor* out) {
   PADDLE_ENFORCE_GE(bins,
                     1,
                     phi::errors::InvalidArgument(
@@ -1932,9 +1938,25 @@ void HistogramInferMeta(
                                    max,
                                    min));
 
+  if (weight) {
+    auto weight_dims = weight.dims();
+    PADDLE_ENFORCE_EQ(
+        weight_dims,
+        input.dims(),
+        phi::errors::InvalidArgument(
+            "The shape of weight should be equal to the shape of input."
+            "But received weight shape is [%s], input shape is [%s]",
+            weight_dims,
+            input.dims()));
+  }
+
   out->set_dims({bins});
   out->share_lod(input);
-  out->set_dtype(DataType::INT64);
+  if (density || weight) {
+    out->set_dtype(DataType::FLOAT32);
+  } else {
+    out->set_dtype(DataType::INT64);
+  }
 }
 
 void IdentityLossInferMeta(const MetaTensor& x,
