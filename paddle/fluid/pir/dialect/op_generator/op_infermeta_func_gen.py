@@ -656,11 +656,35 @@ def GenDistBranch(args, op_info):
                         infer_spmd_args_list[-1] = name + ".GetData()"
     TEMPLATE = """
     auto spmd_info = InferSpmd({args});
+    PADDLE_ENFORCE_EQ(spmd_info.first.size(), {input_size}u, common::errors::Unavailable(
+        "Size of spmd_info.first for op[{op_name}]is unexpected."));
     for(auto& arg_dist : spmd_info.first) {{
         operand_dist_attrs.push_back(CvtToPirDistAttr(arg_dist));
     }}
 """
-    dist_branch_str += TEMPLATE.format(args=', '.join(infer_spmd_args_list))
+    dist_branch_str += TEMPLATE.format(
+        args=', '.join(infer_spmd_args_list),
+        input_size=len(op_info.input_name_list),
+        op_name=op_info.class_name,
+    )
+
+    if len(op_info.mutable_attribute_name_list) > 0:
+        TEMPLATE = """
+    for(int i = {input_size}; i < {all_input_size}; ++i) {{
+        if(auto dist_type = input_values[i].type().dyn_cast<DistTypeInterface>()) {{
+            operand_dist_attrs.push_back(dist_type.tensor_dist_attr());
+        }}
+        else {{
+            operand_dist_attrs.push_back(nullptr);
+        }}
+    }}
+"""
+        dist_branch_str += TEMPLATE.format(
+            input_size=len(op_info.input_name_list),
+            all_input_size=len(op_info.input_name_list)
+            + len(op_info.mutable_attribute_name_list),
+        )
+
     for idx, output_name in enumerate(op_info.output_name_list):
         # is a vector<Tensor>
         if 'pir::VectorType' in op_info.output_type_list[idx]:
