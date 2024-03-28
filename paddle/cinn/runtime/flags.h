@@ -28,6 +28,7 @@ void SetCinnCudnnDeterministic(bool state);
 bool GetCinnCudnnDeterministic();
 
 bool CanUseNvccCompiler();
+bool CanUseHipccCompiler();
 
 class RandomSeed {
  public:
@@ -44,6 +45,15 @@ class RandomSeed {
 
 bool IsCompiledWithCUDA();
 bool IsCompiledWithCUDNN();
+bool IsCompiledWithSYCL();
+bool IsCompiledWithHIP();
+bool IsCompiledWithBangC();
+/**
+ * \brief check whether corresponding backend is enabled.
+ * LOG(FATAL) when the corresponding backend is disabled.
+ * \param backend_language
+ */
+void CheckCompileWith(common::Target::Language backend_language);
 
 class CurrentTarget {
  public:

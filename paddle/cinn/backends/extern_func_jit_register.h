@@ -93,11 +93,15 @@ namespace cinn {
 namespace backends {
 
 static const char* TargetToBackendRepr(Target target) {
-  switch (target.arch) {
-    case Target::Arch::X86:
+  switch (target.language) {
+    case Target::Language::llvm:
       return backend_llvm_host;
-    case Target::Arch::NVGPU:
-      return backend_nvgpu;
+    case Target::Language::cuda:
+      return backend_cuda;
+    case Target::Language::sycl:
+      return backend_sycl;
+    case Target::Language::hip:
+      return backend_hip;
     default:
       CINN_NOT_IMPLEMENTED
   }

@@ -34,7 +34,9 @@ gather_srcs(
   if_fusion.cc
   eliminate_common_global_memory_read.cc)
 
-if(WITH_CUDA)
+if(WITH_CUDA
+   OR CINN_WITH_SYCL
+   OR CINN_WITH_ROCM)
   gather_srcs(cinnapi_src SRCS transform_gpu_forloop.cc)
 endif()
 

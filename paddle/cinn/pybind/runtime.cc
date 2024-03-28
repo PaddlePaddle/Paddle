@@ -32,6 +32,7 @@
 
 #include "paddle/cinn/backends/cuda_util.h"
 #endif
+#include "paddle/cinn/runtime/backend_api.h"
 
 namespace py = pybind11;
 namespace cinn::pybind {
@@ -80,21 +81,21 @@ cinn_buffer_t *CreateBufferFromNumpy(
     int align = 0) {
   if (target == cinn::common::DefaultHostTarget()) {
     return CreateBufferFromNumpy(data, cinn_x86_device);
-  } else if (target.arch == Target::Arch::NVGPU) {
-#ifdef CINN_WITH_CUDA
+  } else if (target.arch_is_gpu()) {
+    using cinn::runtime::BackendAPI;
     std::vector<int> shape;
     std::copy_n(data.shape(), data.ndim(), std::back_inserter(shape));
     auto *buffer = new cinn_buffer_t();
     buffer->device = cinn_nvgpu_device;
     buffer->memory_size = data.nbytes();
-    CUDA_CALL(cudaMalloc(&buffer->memory, data.nbytes()));
-    CUDA_CALL(cudaMemcpy(
-        buffer->memory, data.data(), data.nbytes(), cudaMemcpyHostToDevice));
+    buffer->memory = static_cast<uint8_t *>(
+        BackendAPI::get_backend(target)->malloc(data.nbytes()));
+    BackendAPI::get_backend(target)->memcpy(
+        buffer->memory,
+        data.data(),
+        data.nbytes(),
+        BackendAPI::MemcpyType::HostToDevice);
     return buffer;
-#else
-    PADDLE_THROW(phi::errors::Fatal(
-        "To use CUDA backends, you need to set WITH_CUDA ON!"));
-#endif
   } else {
     CINN_NOT_IMPLEMENTED
   }

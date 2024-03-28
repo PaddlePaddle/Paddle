@@ -446,7 +446,17 @@ const std::unordered_map<cinn::common::Target::Arch, MultiLevelTiling::Config>
              /*write_cache_memory_type*/ std::string("local"),
              /*write_cache_levels*/ std::vector<int>{3},
          }},
-        {cinn::common::Target::Arch::X86,
+        {common::Target::Arch::AMDGPU,
+         MultiLevelTiling::Config{
+             /*bind_axis*/ std::vector<std::string>{"blockIdx.x",
+                                                    "threadIdx.x"},
+             /*tile_struct*/ std::string("SSSRRSRS"),
+             /*read_cache_memory_type*/ std::string("shared"),
+             /*read_cache_levels*/ std::vector<int>{4},
+             /*write_cache_memory_type*/ std::string("local"),
+             /*write_cache_levels*/ std::vector<int>{3},
+         }},
+        {common::Target::Arch::X86,
          MultiLevelTiling::Config{
              /*bind_axis*/ std::vector<std::string>{},
              /*tile_struct*/ std::string("SSRSRS"),

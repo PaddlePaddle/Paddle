@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from .core_api.common import (  # noqa: F401
     BFloat16,
     Bool,
@@ -19,6 +20,7 @@ from .core_api.common import (  # noqa: F401
     CINNValuePack,
     DefaultHostTarget,
     DefaultNVGPUTarget,
+    DefaultROCMTarget,
     DefaultTarget,
     Float,
     Float16,
@@ -26,14 +28,18 @@ from .core_api.common import (  # noqa: F401
     RefCount,
     Shared_CINNValuePack_,
     String,
+    SYCLTarget,
     Target,
     Type,
     UInt,
     Void,
     _CINNValuePack_,
     get_target,
+    is_compiled_with_bangc,
     is_compiled_with_cuda,
     is_compiled_with_cudnn,
+    is_compiled_with_hip,
+    is_compiled_with_sycl,
     make_const,
     reset_name_id,
     set_target,

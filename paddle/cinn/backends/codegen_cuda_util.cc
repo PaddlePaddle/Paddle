@@ -22,13 +22,15 @@ PD_DECLARE_bool(cinn_bucket_compile);
 namespace cinn {
 namespace backends {
 
-std::tuple<ir::Module, ir::Module> SplitCudaAndHostModule(ir::Module module) {
+std::tuple<ir::Module, ir::Module> SplitDeviceAndHostModule(ir::Module module,
+                                                            Target target) {
   if (FLAGS_cinn_bucket_compile) {
-    detail::CollectBucketStrategyHostFunctionVisitor visitor(module->name);
+    detail::CollectBucketStrategyHostFunctionVisitor visitor(module->name,
+                                                             target);
     Expr expr(module);
     return visitor(&expr);
   }
-  detail::CollectHostFunctionVisitor visitor(module->name);
+  detail::CollectHostFunctionVisitor visitor(module->name, target);
   Expr expr(module);
   return visitor(&expr);
 }
@@ -94,9 +96,18 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
   // shared_mem_bytes Can be calculated after codegen_cuda_dev buffer creation
   // however, this make CodeGenCUDA_Dev before spliting the host and device
   // module Maybe we could reorder the process.
+  Expr shared_mem_bytes;
+#ifdef CINN_WITH_CUDA
   CodeGenCUDA_Dev codegen_dev(cinn::common::DefaultNVGPUTarget());
   codegen_dev.Compile(ir::LoweredFunc(func.as_lowered_func_ref()));
-  Expr shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
+  shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
+#elif defined(CINN_WITH_ROCM)
+  CodeGenHIP_Dev codegen_dev(target_);
+  codegen_dev.Compile(ir::LoweredFunc(func.as_lowered_func_ref()));
+  shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
+#elif defined(CINN_WITH_SYCL)
+  CINN_NOT_IMPLEMENTED
+#endif
 
   VLOG(6) << "Add a call node for func_node->name " << func_node->name << "\n"
           << "grid_dim: (" << func_node->cuda_axis_info.grid_dim(0) << ", "
@@ -106,9 +117,18 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
           << func_node->cuda_axis_info.block_dim(1) << ", "
           << func_node->cuda_axis_info.block_dim(2) << "), "
           << "shared_mem: " << shared_mem_bytes;
+
+  const char *call_kernel;
+  if (target_ == common::DefaultNVGPUTarget()) {
+    call_kernel = runtime::intrinsic::call_cuda_kernel;
+  } else if (target_.language == common::Target::Language::sycl) {
+    call_kernel = runtime::intrinsic::call_sycl_kernel;
+  } else if (target_.language == common::Target::Language::hip) {
+    call_kernel = runtime::intrinsic::call_hip_kernel;
+  }
   ir::Expr call_extern_api =
       ir::Call::Make(Void(),
-                     runtime::intrinsic::call_cuda_kernel,
+                     call_kernel,
                      {kernel_ptr,
                       kernel_args_,
                       kernel_args_num_,

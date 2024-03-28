@@ -91,7 +91,7 @@ struct CompilationContext {
   void* stream = nullptr;
 
   // Set attached source code, if code is not empty, these codes will replace
-  // the device_module code after SplitCudaAndHostModule.
+  // the device_module code after SplitDeviceAndHostModule.
   void ApplySourceCode(const std::string& code);
   // Apply results of auto-tune to compile.
   // Compilation will start from CompilationStage::CODEGEN_AND_JIT when tuning
