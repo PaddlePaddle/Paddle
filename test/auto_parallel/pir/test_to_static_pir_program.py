@@ -97,6 +97,8 @@ class TestToStaticPirProgramEval(unittest.TestCase):
         main_program = dist_model._engine._pir_main_progs["eval"]
 
         for op in main_program.global_block().ops:
+            if op.num_results() == 0:
+                continue
             tensor = op.result(0)
             if op.name() == 'pd_op.data':
                 self.assertTrue(tensor.is_dist_dense_tensor_type())
@@ -128,9 +130,35 @@ class TestToStaticPirProgramTrain(unittest.TestCase):
 
         relu_idx = 0
         matmul_idx = 0
+        data_idx = 0
+        matmul_grad_idx = 0
+        sgd_idx = 0
+        ops = main_program.global_block().ops
 
-        for op in main_program.global_block().ops:
+        backward_op_list = [
+            "pd_op.sgd_",
+            "pd_op.sgd_",
+            "pd_op.matmul_grad",
+            "pd_op.relu_grad",
+            "pd_op.matmul_grad",
+            "pd_op.relu_grad",
+            "pd_op.subtract_grad",
+            "pd_op.square_grad",
+            "pd_op.mean_grad",
+        ]
+        index = -1
+        for op_name in backward_op_list:
+            self.assertEqual(ops[index].name(), op_name)
+            index = index - 1
+
+        for op in ops:
+            # skip shadow_output
+            if op.num_results() == 0:
+                continue
             tensor = op.result(0)
+            # while tensor's stop_gradient is true, the corresponding grad tensor is initialized.
+            if not tensor.initialized():
+                continue
             self.assertTrue(tensor.is_dist_dense_tensor_type())
             self.assertEqual(tensor.dist_attr().process_mesh.shape, [2])
             self.assertEqual(
@@ -138,13 +166,13 @@ class TestToStaticPirProgramTrain(unittest.TestCase):
             )
 
             if op.name() == 'pd_op.data':
-                self.assertEqual(tensor.dist_attr().dims_mapping, [-1, -1])
-                self.assertEqual(tensor.dist_attr().partial_dims, set())
+                if data_idx != 0:
+                    self.assertEqual(tensor.dist_attr().dims_mapping, [-1, -1])
+                    self.assertEqual(tensor.dist_attr().partial_dims, set())
+                data_idx += 1
             elif op.name() == 'builtin.parameter':
                 self.assertTrue(tensor.is_dense_tensor_type())
                 self.assertTrue(tensor.is_dist_dense_tensor_type())
-                self.assertTrue(tensor.has_one_use())
-
                 self.assertTrue(tensor.is_dist_dense_tensor_type())
                 self.assertEqual(tensor.dist_attr().process_mesh.shape, [2])
                 self.assertEqual(
@@ -189,6 +217,34 @@ class TestToStaticPirProgramTrain(unittest.TestCase):
                         tensor._local_shape, [BATCH_SIZE, CLASS_NUM]
                     )
                 matmul_idx += 1
+            if op.name() == 'pd_op.matmul_grad':
+                if matmul_grad_idx == 0:
+                    self.assertEqual(tensor.dist_attr().dims_mapping, [-1, 0])
+                    self.assertEqual(tensor.dist_attr().partial_dims, set())
+                    self.assertEqual(
+                        tensor._local_shape, [BATCH_SIZE, CLASS_NUM]
+                    )
+                elif matmul_grad_idx == 1:
+                    self.assertEqual(tensor.dist_attr().dims_mapping, [-1, 0])
+                    self.assertEqual(tensor.dist_attr().partial_dims, set())
+                    self.assertEqual(
+                        tensor._local_shape, [BATCH_SIZE, IMAGE_SIZE // 2]
+                    )
+                matmul_grad_idx += 1
+            if op.name() == 'pd_op.sgd_':
+                if sgd_idx == 0:
+                    self.assertEqual(tensor.dist_attr().dims_mapping, [0, -1])
+                    self.assertEqual(tensor.dist_attr().partial_dims, set())
+                    self.assertEqual(
+                        tensor._local_shape, [IMAGE_SIZE // 2, CLASS_NUM]
+                    )
+                elif sgd_idx == 1:
+                    self.assertEqual(tensor.dist_attr().dims_mapping, [-1, 0])
+                    self.assertEqual(tensor.dist_attr().partial_dims, set())
+                    self.assertEqual(
+                        tensor._local_shape, [IMAGE_SIZE, IMAGE_SIZE // 2]
+                    )
+                sgd_idx += 1
 
         # dist_model.train()
         # for batch_id, (image, label) in enumerate(dist_loader()):

@@ -91,9 +91,10 @@ class IR_API Pass {
   // Get a reference to the attributed previously set.
   template <typename AttrType>
   AttrType& Get(const std::string& attr_name) const {
-    IR_ENFORCE(attrs_.find(attr_name) != attrs_.end(),
-               "Attribute %s not registered for pass.",
-               attr_name);
+    PADDLE_ENFORCE_EQ(attrs_.find(attr_name) != attrs_.end(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Attribute %s not registered for pass.", attr_name));
     try {
       return *std::any_cast<AttrType*>(attrs_.at(attr_name));
     } catch (std::bad_any_cast&) {
@@ -148,8 +149,10 @@ class IR_API Pass {
   // should delete the attribute.
   template <typename AttrType>
   void SetNotOwned(const std::string& attr_name, AttrType* attr) {
-    IR_ENFORCE(
-        !Has(attr_name), "Attribute %s already set in the pass.", attr_name);
+    PADDLE_ENFORCE_EQ(!Has(attr_name),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Attribute %s already set in the pass.", attr_name));
     attrs_[attr_name] = attr;
   }
 

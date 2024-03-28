@@ -45,6 +45,7 @@ const std::set<std::string>& GetPrimitiveOpNames() {
       "pd_op.assign",
       "pd_op.concat",
       "pd_op.elementwise_pow",
+      "pd_op.rsqrt",
       "pd_op.floor",
       "pd_op.gather",
       "pd_op.gather_nd",

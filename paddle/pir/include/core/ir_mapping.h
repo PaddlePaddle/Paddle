@@ -84,8 +84,10 @@ class IrMapping {
   template <typename T>
   IrType<T> Lookup(T from) const {
     if (!from) return static_cast<IrType<T>>(nullptr);
-    IR_ENFORCE(GetMap<IrType<T>>().count(from) > 0,
-               "Not found key in IRMapping.");
+    PADDLE_ENFORCE_GT(
+        GetMap<IrType<T>>().count(from),
+        0UL,
+        phi::errors::InvalidArgument("Not found key in IRMapping."));
     return GetMap<IrType<T>>().at(from);
   }
 

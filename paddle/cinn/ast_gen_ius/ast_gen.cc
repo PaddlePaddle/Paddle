@@ -100,13 +100,6 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     const std::vector<ir::Var>& reduce_axis = tensor->reduce_axis;
     VLOG(4) << "ast gen: tensor init_body is " << init_body;
     for (int i = 0; i < shape.size(); ++i) {
-      bool is_keep_dim = axis[i]->is_keepdim;
-      if (FLAGS_group_schedule_tiling_first && is_keep_dim) {
-        // if tiling first, we need to replace the reduce axis with 0, but don't
-        // deal with the non-reduce axis
-        optim::ReplaceVarWithExpr(&init_body, axis[i], Expr(0));
-        continue;
-      }
       if (!FLAGS_group_schedule_tiling_first &&
           FLAGS_cinn_new_group_scheduler && shape[i] == Expr(1)) {
         optim::ReplaceVarWithExpr(&init_body, axis[i], Expr(0));
@@ -144,13 +137,6 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     // for same axis so we re-create objects
     std::vector<Var> reduce_axis_vars = cinn::common::GenDefaultAxis(axis_len);
     for (int i = 0; i < shape.size(); ++i) {
-      bool is_keep_dim = axis[i]->is_keepdim;
-      if (FLAGS_group_schedule_tiling_first && is_keep_dim) {
-        // if tiling first, we need to replace the reduce axis with 0, but don't
-        // deal with the non-reduce axis
-        optim::ReplaceVarWithExpr(&reduce_body, axis[i], Expr(0));
-        continue;
-      }
       if (!FLAGS_group_schedule_tiling_first &&
           FLAGS_cinn_new_group_scheduler && shape[i] == Expr(1)) {
         optim::ReplaceVarWithExpr(&reduce_body, axis[i], Expr(0));
@@ -185,10 +171,7 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
       std::vector<ir::Var> non_reduce_axis_vars = [&]() {
         std::vector<ir::Var> res;
         for (int i = 0; i < shape.size(); ++i) {
-          bool is_keep_dim = axis[i]->is_keepdim;
-          if (!is_keep_dim) {
-            res.push_back(axis[i]);
-          }
+          res.push_back(axis[i]);
         }
         return res;
       }();
@@ -240,10 +223,6 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     // Put the two parts together
     ir::Expr body = ir::Block::Make({init_body, reduce_body});
     for (int i = static_cast<int>(axis_len) - 1; i >= 0; --i) {
-      bool is_keep_dim = axis[i]->is_keepdim;
-      if (FLAGS_group_schedule_tiling_first && is_keep_dim) {
-        continue;
-      }
       if ((!FLAGS_group_schedule_tiling_first || !FLAGS_cinn_bucket_compile) &&
           shape[i] == Expr(1)) {
         continue;
