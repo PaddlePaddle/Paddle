@@ -22,7 +22,10 @@ namespace tests {
 // default
 std::vector<ir::Tensor> MatmulTester::CreateSpecificStrategy(
     const std::vector<ir::Tensor> &inputs, poly::StageMap *stages) {
-  CHECK_EQ(inputs.size(), 2U) << "matmul's input tensor should be 2.\n";
+  PADDLE_ENFORCE_EQ(
+      inputs.size(),
+      2UL,
+      phi::errors::InvalidArgument("matmul's input tensor should be 2."));
   std::vector<ir::Tensor> outs = hlir::pe::Matmul(inputs[0], inputs[1]);
   for (auto &out : outs) {
     (*stages)->InsertLazily(out);
@@ -33,7 +36,10 @@ std::vector<ir::Tensor> MatmulTester::CreateSpecificStrategy(
 // tile
 std::vector<ir::Tensor> MatmulTileTester::CreateSpecificStrategy(
     const std::vector<ir::Tensor> &inputs, poly::StageMap *stages) {
-  CHECK_EQ(inputs.size(), 2U) << "matmul's input tensor should be 2.\n";
+  PADDLE_ENFORCE_EQ(
+      inputs.size(),
+      2UL,
+      phi::errors::InvalidArgument("matmul's input tensor should be 2."));
   std::vector<ir::Tensor> outs = hlir::pe::Matmul(inputs[0], inputs[1]);
   CHECK(!outs.empty());
   for (auto &out : outs) {
@@ -47,7 +53,10 @@ std::vector<ir::Tensor> MatmulTileTester::CreateSpecificStrategy(
 // split
 std::vector<ir::Tensor> MatmulSplitTester::CreateSpecificStrategy(
     const std::vector<ir::Tensor> &inputs, poly::StageMap *stages) {
-  CHECK_EQ(inputs.size(), 2U) << "matmul's input tensor should be 2.\n";
+  PADDLE_ENFORCE_EQ(
+      inputs.size(),
+      2UL,
+      phi::errors::InvalidArgument("matmul's input tensor should be 2."));
   std::vector<ir::Tensor> outs = hlir::pe::Matmul(inputs[0], inputs[1]);
   CHECK(!outs.empty());
   for (auto &out : outs) {
@@ -68,16 +77,28 @@ std::vector<ir::Tensor> MatmulSplitTester::CreateSpecificStrategy(
 // block
 std::vector<ir::Tensor> MatmulBlockTester::CreateSpecificStrategy(
     const std::vector<ir::Tensor> &inputs, poly::StageMap *stages) {
-  CHECK_EQ(inputs.size(), 2U) << "matmul's input tensor should be 2.\n";
+  PADDLE_ENFORCE_EQ(
+      inputs.size(),
+      2UL,
+      phi::errors::InvalidArgument("matmul's input tensor should be 2."));
   std::vector<ir::Tensor> outs;
   auto k1 = Var(input_shapes_[0][1], "k1");
-  CHECK_EQ(input_shapes_.size(), 2U) << "matmul's input shape should be 2.\n";
-  CHECK_EQ(input_shapes_[0].size(), 2U)
-      << "matmul's input tensor's shape should be 2.\n";
-  CHECK_EQ(input_shapes_[1].size(), 2U)
-      << "matmul's input tensor's shape should be 2.\n";
-  CHECK_EQ(input_shapes_[0][1], input_shapes_[1][0])
-      << "matmul's reduce axis shape should be same\n";
+  PADDLE_ENFORCE_EQ(
+      inputs.size(),
+      2UL,
+      phi::errors::InvalidArgument("matmul's input tensor should be 2."));
+  PADDLE_ENFORCE_EQ(input_shapes_[0].size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "matmul's input tensor's shape should be 2."));
+  PADDLE_ENFORCE_EQ(input_shapes_[1].size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "matmul's input tensor's shape should be 2."));
+  PADDLE_ENFORCE_EQ(input_shapes_[0][1] == input_shapes_[1][0],
+                    true,
+                    phi::errors::InvalidArgument(
+                        "matmul's reduce axis shape should be same"));
   auto C = Compute(
       {Expr(input_shapes_[0][0]), Expr(input_shapes_[1][1])},
       [&](Var i, Var j) {
@@ -104,16 +125,28 @@ std::vector<ir::Tensor> MatmulBlockTester::CreateSpecificStrategy(
 // vectorize
 std::vector<ir::Tensor> MatmulVectorizeTester::CreateSpecificStrategy(
     const std::vector<ir::Tensor> &inputs, poly::StageMap *stages) {
-  CHECK_EQ(inputs.size(), 2U) << "matmul's input tensor should be 2.\n";
+  PADDLE_ENFORCE_EQ(inputs.size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "matmul's input tensor's shape should be 2."));
   std::vector<ir::Tensor> outs;
   auto k1 = Var(input_shapes_[0][1], "k1");
-  CHECK_EQ(input_shapes_.size(), 2U) << "matmul's input shape should be 2.\n";
-  CHECK_EQ(input_shapes_[0].size(), 2U)
-      << "matmul's input tensor's shape should be 2.\n";
-  CHECK_EQ(input_shapes_[1].size(), 2U)
-      << "matmul's input tensor's shape should be 2.\n";
-  CHECK_EQ(input_shapes_[0][1], input_shapes_[1][0])
-      << "matmul's reduce axis shape should be same\n";
+  PADDLE_ENFORCE_EQ(
+      input_shapes_.size(),
+      2UL,
+      phi::errors::InvalidArgument("matmul's input shape should be 2."));
+  PADDLE_ENFORCE_EQ(input_shapes_[0].size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "matmul's input tensor's shape should be 2."));
+  PADDLE_ENFORCE_EQ(input_shapes_[1].size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "matmul's input tensor's shape should be 2."));
+  PADDLE_ENFORCE_EQ(input_shapes_[0][1] == input_shapes_[1][0],
+                    true,
+                    phi::errors::InvalidArgument(
+                        "matmul's reduce axis shape should be same"));
   auto C = Compute(
       {Expr(input_shapes_[0][0]), Expr(input_shapes_[1][1])},
       [&](Var i, Var j) {
@@ -141,16 +174,28 @@ std::vector<ir::Tensor> MatmulVectorizeTester::CreateSpecificStrategy(
 // loop permutation
 std::vector<ir::Tensor> MatmulLoopPermutationTester::CreateSpecificStrategy(
     const std::vector<ir::Tensor> &inputs, poly::StageMap *stages) {
-  CHECK_EQ(inputs.size(), 2U) << "matmul's input tensor should be 2.\n";
+  PADDLE_ENFORCE_EQ(
+      inputs.size(),
+      2UL,
+      phi::errors::InvalidArgument("matmul's input tensor should be 2."));
   std::vector<ir::Tensor> outs;
   auto k1 = Var(input_shapes_[0][1], "k1");
-  CHECK_EQ(input_shapes_.size(), 2U) << "matmul's input shape should be 2.\n";
-  CHECK_EQ(input_shapes_[0].size(), 2U)
-      << "matmul's input tensor's shape should be 2.\n";
-  CHECK_EQ(input_shapes_[1].size(), 2U)
-      << "matmul's input tensor's shape should be 2.\n";
-  CHECK_EQ(input_shapes_[0][1], input_shapes_[1][0])
-      << "matmul's reduce axis shape should be same\n";
+  PADDLE_ENFORCE_EQ(
+      input_shapes_.size(),
+      2UL,
+      phi::errors::InvalidArgument("matmul's input shape should be 2."));
+  PADDLE_ENFORCE_EQ(input_shapes_[0].size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "matmul's input tensor's shape should be 2."));
+  PADDLE_ENFORCE_EQ(input_shapes_[1].size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "matmul's input tensor's shape should be 2."));
+  PADDLE_ENFORCE_EQ(input_shapes_[0][1] == input_shapes_[1][0],
+                    true,
+                    phi::errors::InvalidArgument(
+                        "matmul's reduce axis shape should be same"));
   auto C = Compute(
       {Expr(input_shapes_[0][0]), Expr(input_shapes_[1][1])},
       [&](Var i, Var j) {
@@ -179,15 +224,27 @@ std::vector<ir::Tensor> MatmulLoopPermutationTester::CreateSpecificStrategy(
 // array packing
 std::vector<ir::Tensor> MatmulArrayPackingTester::CreateSpecificStrategy(
     const std::vector<ir::Tensor> &inputs, poly::StageMap *stages) {
-  CHECK_EQ(inputs.size(), 2U) << "matmul's input tensor should be 2.\n";
+  PADDLE_ENFORCE_EQ(
+      inputs.size(),
+      2UL,
+      phi::errors::InvalidArgument("matmul's input tensor should be 2."));
   std::vector<ir::Tensor> outs;
-  CHECK_EQ(input_shapes_.size(), 2U) << "matmul's input shape should be 2.\n";
-  CHECK_EQ(input_shapes_[0].size(), 2U)
-      << "matmul's input tensor's shape should be 2.\n";
-  CHECK_EQ(input_shapes_[1].size(), 2U)
-      << "matmul's input tensor's shape should be 2.\n";
-  CHECK_EQ(input_shapes_[0][1], input_shapes_[1][0])
-      << "matmul's reduce axis shape should be same\n";
+  PADDLE_ENFORCE_EQ(
+      input_shapes_.size(),
+      2UL,
+      phi::errors::InvalidArgument("matmul's input shape should be 2."));
+  PADDLE_ENFORCE_EQ(input_shapes_[0].size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "matmul's input tensor's shape should be 2."));
+  PADDLE_ENFORCE_EQ(input_shapes_[1].size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "matmul's input tensor's shape should be 2."));
+  PADDLE_ENFORCE_EQ(input_shapes_[0][1] == input_shapes_[1][0],
+                    true,
+                    phi::errors::InvalidArgument(
+                        "matmul's reduce axis shape should be same"));
 
   Var k(input_shapes_[0][1], "k0");
 

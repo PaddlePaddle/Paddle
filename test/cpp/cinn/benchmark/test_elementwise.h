@@ -44,7 +44,10 @@ class ElementwiseAddTester : public OpBenchmarkTester {
     }
 
     int out_dims = GetOutDims();
-    CHECK_EQ(all_datas.size(), 3U) << "elementwise_add should have 3 args.\n";
+    PADDLE_ENFORCE_EQ(
+        all_datas.size() == 3UL,
+        true,
+        phi::errors::InvalidArgument("elementwise_add should have 3 args."));
     for (int i = 0; i < out_dims; ++i) {
       EXPECT_EQ(all_datas[0][i] + all_datas[1][i], all_datas[2][i]);
     }

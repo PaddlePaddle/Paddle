@@ -27,7 +27,11 @@ class BiasBnReLUBuilder : public ProgramBuilder {
   BiasBnReLUBuilder() : ProgramBuilder("bias_bn_relu_builder") {}
   frontend::Program Build(const std::vector<VariableInfo>& inputs_varinfo,
                           const utils::AttributeMap& attrs = {}) {
-    CHECK_EQ(inputs_varinfo.size(), 4);
+    PADDLE_ENFORCE_EQ(inputs_varinfo.size(),
+                      4UL,
+                      phi::errors::InvalidArgument(
+                          "inputs_varinfo's size should be 4, but got %d",
+                          inputs_varinfo.size()));
     auto conv_output = builder_.CreateInput(
         inputs_varinfo[0].type, inputs_varinfo[0].shape, inputs_varinfo[0].id);
     auto bias = builder_.CreateInput(
@@ -55,7 +59,11 @@ class ExpTwoConsumersOpBuilder : public ProgramBuilder {
   ExpTwoConsumersOpBuilder() : ProgramBuilder("exp_two_consumers_builder") {}
   frontend::Program Build(const std::vector<VariableInfo>& inputs_varinfo,
                           const utils::AttributeMap& attrs = {}) {
-    CHECK_EQ(inputs_varinfo.size(), 1);
+    PADDLE_ENFORCE_EQ(inputs_varinfo.size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "inputs_varinfo's size should be 1, but got %d",
+                          inputs_varinfo.size()));
     auto x = builder_.CreateInput(
         inputs_varinfo[0].type, inputs_varinfo[0].shape, inputs_varinfo[0].id);
     auto exp_x = builder_.Exp(x);
@@ -76,7 +84,11 @@ class GatherAddSubBuilder : public ProgramBuilder {
   GatherAddSubBuilder() : ProgramBuilder("gather_add_sub_builder") {}
   frontend::Program Build(const std::vector<VariableInfo>& inputs_varinfo,
                           const utils::AttributeMap& attrs = {}) {
-    CHECK_EQ(inputs_varinfo.size(), 2);
+    PADDLE_ENFORCE_EQ(inputs_varinfo.size(),
+                      2UL,
+                      phi::errors::InvalidArgument(
+                          "inputs_varinfo's size should be 2, but got %d",
+                          inputs_varinfo.size()));
     auto x = builder_.CreateInput(
         inputs_varinfo[0].type, inputs_varinfo[0].shape, inputs_varinfo[0].id);
     auto y = builder_.CreateInput(
@@ -102,7 +114,11 @@ class FillConstantAddBuilder : public ProgramBuilder {
   FillConstantAddBuilder() : ProgramBuilder("fill_constant_add_builder") {}
   frontend::Program Build(const std::vector<VariableInfo>& inputs_varinfo,
                           const utils::AttributeMap& attrs = {}) {
-    CHECK_EQ(inputs_varinfo.size(), 1);
+    PADDLE_ENFORCE_EQ(inputs_varinfo.size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "inputs_varinfo's size should be 1, but got %d",
+                          inputs_varinfo.size()));
     auto x = builder_.CreateInput(
         inputs_varinfo[0].type, inputs_varinfo[0].shape, inputs_varinfo[0].id);
     auto fill_constant =
@@ -117,8 +133,16 @@ class ReduceBuilder : public ProgramBuilder {
   ReduceBuilder() : ProgramBuilder("reduce_builder") {}
   frontend::Program Build(const std::vector<VariableInfo>& inputs_varinfo,
                           const utils::AttributeMap& attrs) {
-    CHECK_EQ(inputs_varinfo.size(), 1);
-    CHECK_EQ(attrs.count("reduce_dim"), 1);
+    PADDLE_ENFORCE_EQ(inputs_varinfo.size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "inputs_varinfo's size should be 1, but got %d",
+                          inputs_varinfo.size()));
+    PADDLE_ENFORCE_EQ(
+        attrs.count("reduce_dim"),
+        1UL,
+        phi::errors::InvalidArgument(
+            "attrs should contain reduce_dim, but got %d", attrs.size()));
     std::vector<int> reduce_dim =
         absl::get<std::vector<int>>(attrs.at("reduce_dim"));
     auto X = builder_.CreateInput(
