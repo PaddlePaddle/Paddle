@@ -639,13 +639,20 @@ class Engine:
             mix_fw_program
         )
         # Step 1.2: pir backward
-        if mode != "predict" and self._loss:
+        if mode == "train" and self._loss and self._optimizer:
             loss = dist_program.get_output_value_by_name(self._loss_names[0])
-            paddle.autograd.ir_backward.append_backward(loss)
-        # TODO(winter-wang) Step 1.3:  adapot opt.minimize() for pir-auto-parallel
-        # with program_guard(dist_program):
-        #     ptimizer_ops = self._optimizer.apply_gradients(params_grads)
-
+            if loss.initialized():
+                with static.program_guard(dist_program):
+                    params_grads = paddle.autograd.ir_backward.append_backward(
+                        loss
+                    )
+                    self._optimizer._apply_optimize(
+                        loss, startup_program=None, params_grads=params_grads
+                    )
+            else:
+                self._logger.info(
+                    "loss value is not found, skip append backward."
+                )
         # Part 2: Parallelism search
         # NOTE make all parallelis search logic work as Pass,
         # and all the Pass in this Part should be optional to allow consistence in dynamic and static mode.

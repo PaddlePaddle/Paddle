@@ -78,6 +78,7 @@ detail::CollectBucketStrategyHostFunctionVisitor::GenDeviceKernelName(
 
 void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
     ir::Expr func, ir::Expr predicate) {
+  VLOG(4) << "Process Lowered Func" << func;
   ir::_LoweredFunc_ *func_node = func.as_lowered_func();
   CHECK(func_node);
   if (!func_node->cuda_axis_info.valid()) {

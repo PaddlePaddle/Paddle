@@ -68,6 +68,7 @@ class DistDenseTensorType
   static DistDenseTensorType get(pir::IrContext* ctx,
                                  pir::DenseTensorType dense_tensor_type,
                                  TensorDistAttribute tensor_dist_attr) {
+    if (!dense_tensor_type) return nullptr;
     auto local_ddim =
         InferLocalDDim(dense_tensor_type.dims(), tensor_dist_attr);
     return get(ctx, dense_tensor_type, tensor_dist_attr, local_ddim);
