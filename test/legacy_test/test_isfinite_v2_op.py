@@ -111,6 +111,37 @@ TEST_META_DATA = [
     },
 ]
 
+TEST_META_DATA2 = [
+    {
+        'low': 0.1,
+        'high': 1,
+        'np_shape': [11, 17],
+        'type': 'float32',
+        'sv_list': [-np.inf, np.inf],
+    },
+    {
+        'low': 0.1,
+        'high': 1,
+        'np_shape': [2, 3, 4, 5],
+        'type': 'float64',
+        'sv_list': [np.inf, -np.inf],
+    },
+    {
+        'low': 0,
+        'high': 100,
+        'np_shape': [11, 17, 10],
+        'type': 'int32',
+        'sv_list': [-np.inf, -np.inf],
+    },
+    {
+        'low': 0,
+        'high': 999,
+        'np_shape': [132],
+        'type': 'int64',
+        'sv_list': [np.inf, np.inf],
+    },
+]
+
 
 def test(test_case, op_str, use_gpu=False):
     for meta_data in TEST_META_DATA:
@@ -134,6 +165,19 @@ def test(test_case, op_str, use_gpu=False):
         test_static_or_pir_mode()
 
 
+def test_nonstatic(test_case, op_str, use_gpu=False):
+    for meta_data in TEST_META_DATA2:
+        meta_data = dict(meta_data)
+        meta_data['op_str'] = op_str
+        x_np, result_np = np_data_generator(**meta_data)
+
+        dygraph_result = run_dygraph(x_np, op_str, use_gpu).numpy()
+        eager_result = run_eager(x_np, op_str, use_gpu).numpy()
+
+        test_case.assertTrue((dygraph_result == result_np).all())
+        test_case.assertTrue((eager_result == result_np).all())
+
+
 class TestCPUNormal(unittest.TestCase):
     def test_inf(self):
         test(self, 'isinf')
@@ -143,6 +187,12 @@ class TestCPUNormal(unittest.TestCase):
 
     def test_finite(self):
         test(self, 'isfinite')
+
+    def test_posinf(self):
+        test_nonstatic(self, 'isposinf')
+
+    def test_neginf(self):
+        test_nonstatic(self, 'isneginf')
 
 
 class TestCUDANormal(unittest.TestCase):
@@ -154,6 +204,12 @@ class TestCUDANormal(unittest.TestCase):
 
     def test_finite(self):
         test(self, 'isfinite', True)
+
+    def test_posinf(self):
+        test_nonstatic(self, 'isposinf', True)
+
+    def test_neginf(self):
+        test_nonstatic(self, 'isneginf', True)
 
 
 class TestError(unittest.TestCase):
@@ -179,6 +235,18 @@ class TestError(unittest.TestCase):
                 result = paddle.isfinite(x)
 
             self.assertRaises(TypeError, test_isfinite_bad_x)
+
+            def test_isposinf_bad_x():
+                x = [1, 2, 3]
+                result = paddle.isposinf(x)
+
+            self.assertRaises(TypeError, test_isposinf_bad_x)
+
+            def test_isneginf_bad_x():
+                x = [1, 2, 3]
+                result = paddle.isneginf(x)
+
+            self.assertRaises(TypeError, test_isneginf_bad_x)
 
 
 if __name__ == '__main__':
