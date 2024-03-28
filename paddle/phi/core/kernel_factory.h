@@ -281,6 +281,9 @@ class Kernel {
     return kernel_registered_type_;
   }
 
+  bool IsSupportStride() const { return support_stride_; }
+  void SetSupportStride(bool support) { support_stride_ = support; }
+
   GetKernelTypeForVarFn get_kerneltype_forvar_fn_{nullptr};
   std::function<bool(const KernelContext* ctx)> check_if_onednn_kernel_support_{
       nullptr};
@@ -290,6 +293,7 @@ class Kernel {
   void* variadic_fn_ = nullptr;
   KernelArgsDef args_def_;
   KernelRegisteredType kernel_registered_type_ = KernelRegisteredType::FUNCTION;
+  bool support_stride_ = false;
 };
 
 using KernelKeyMap = paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>;

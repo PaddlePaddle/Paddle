@@ -113,6 +113,7 @@ strided_op_list = {
     "unsqueeze",
     "view_shape",
     "view_dtype",
+    "flash_attn",
 }
 
 
