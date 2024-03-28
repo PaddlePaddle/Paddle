@@ -448,7 +448,7 @@
     data_type : x
 
 - op : self_dp_attention
-  args : (Tensor x, float alpha = 1.0f, int head_number = 1)
+  args : (Tensor x, float alpha = 1.0f, int head_number = 1, bool causal = false)
   output : Tensor(out)
   infer_meta :
     func : SelfDPAttenInferMeta

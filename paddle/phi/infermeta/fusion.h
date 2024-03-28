@@ -834,6 +834,7 @@ void SkipLayerNormInferMeta(const MetaTensor& x,
 void SelfDPAttenInferMeta(const MetaTensor& x,
                           const float alpha,
                           const int head_number,
+                          bool causal,
                           MetaTensor* out);
 
 void FCInferMeta(const MetaTensor& input,
