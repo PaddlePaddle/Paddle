@@ -24,7 +24,8 @@ using GroupInfoMap = std::unordered_map<::pir::Operation*, OpLoweringGroupPtr>;
 
 class FusionOpAnalysis final {
  public:
-  FusionOpAnalysis(GroupInfoMap* group_infos) : group_infos_(group_infos) {}
+  FusionOpAnalysis(GroupInfoMap* group_infos, bool is_dy_shape)
+      : group_infos_(group_infos), is_dy_shape_(is_dy_shape) {}
   void Run(pir::Operation* module_op) {
     RunImpl(module_op);
     PreCompileGroup();
@@ -37,5 +38,6 @@ class FusionOpAnalysis final {
 
  private:
   GroupInfoMap* group_infos_;  // not_owned
+  bool is_dy_shape_;
 };
 }  // namespace cinn::dialect::ir::details

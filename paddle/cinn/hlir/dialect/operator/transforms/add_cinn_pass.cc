@@ -177,9 +177,9 @@ void ApplyCinnLowerPass(
   if (has_dynamic_shape && !force_static_shape) {
     pass_manager->AddPass(
         cinn::dialect::ir::CreateLowerCinnDyShapeFusionOpPass());
+  } else {
+    pass_manager->AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
   }
-
-  pass_manager->AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
   pass_manager->AddPass(
       cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
 

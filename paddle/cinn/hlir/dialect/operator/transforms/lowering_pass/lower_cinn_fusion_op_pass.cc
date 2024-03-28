@@ -39,17 +39,17 @@ pir::Operation* ProcessDyShapeGroup(
   const auto& leaves = group_dim_expr_info.all_value_dim_exprs;
   // has multiple branch
   if (NeedBroadcastWithCF(leaves)) {
-    // 1. construct broadcast tree
-    BroadcastTreeInfo broadcast_tree_info(leaves);
     const auto& value_to_dim_expr_idx =
         group_dim_expr_info.value_to_dim_expr_idx;
+    const std::shared_ptr<BroadcastTree> broadcast_tree =
+        ConstructBroadcastTree(leaves);
     std::vector<pir::Type> output_types;
     auto group_output_values = group->GetGroupOutputValues();
     for (size_t i = 0; i < group_output_values.size(); ++i) {
       output_types.push_back(group_output_values[i].type());
     }
     return CompileBroadcastTreeToConditionBlock(group,
-                                                broadcast_tree_info,
+                                                *broadcast_tree,
                                                 shape_analysis,
                                                 value_to_dim_expr_idx,
                                                 group_inputs,
@@ -161,7 +161,7 @@ class LowerCinnFusionOpPass : public pir::PatternRewritePass {
     if (op->isa<pir::ModuleOp>()) {
       VLOG(5) << "start to pre-analysis all fusion ops in ModuleOp with static "
                  "shape mode.";
-      FusionOpAnalysis(&group_infos_).Run(op);
+      FusionOpAnalysis(&group_infos_, /*is_dy_shape=*/false).Run(op);
     }
     return op->num_regions() > 0;
   }
@@ -203,7 +203,7 @@ class LowerCinnDyShapeFusionOpPass : public pir::PatternRewritePass {
     if (op->isa<pir::ModuleOp>()) {
       VLOG(5) << "start to pre-analysis all fusion ops in ModuleOp with "
                  "dynamic shape mode.";
-      FusionOpAnalysis(&group_infos_).Run(op);
+      FusionOpAnalysis(&group_infos_, /*is_dy_shape=*/true).Run(op);
     }
     return op->num_regions() > 0;
   }

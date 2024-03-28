@@ -422,19 +422,15 @@ void SimplyConditionBlock(
 
 namespace cinn::dialect::ir::details {
 
-const std::shared_ptr<cinn::common::BroadcastTree>&
-BroadcastTreeInfo::GetBroadcastTree() const {
-  return broadcast_tree_;
-}
-
-void BroadcastTreeInfo::ConstructBroadcastTree(
-    const adt::List<std::vector<symbol::DimExpr>>& leaves) {
+std::shared_ptr<BroadcastTree> ConstructBroadcastTree(
+    const cinn::common::BroadcastLeaf& leaves) {
   VLOG(6) << "before constructed. broadcast-leaf: \n"
           << ToTxtString(cinn::common::BroadcastTree(leaves));
-  broadcast_tree_ = std::make_shared<cinn::common::BroadcastTree>(
+  auto broadcast_tree = std::make_shared<cinn::common::BroadcastTree>(
       cinn::common::ConstructBroadcastTree(
           cinn::common::BroadcastLeaf(leaves)));
-  VLOG(4) << "broadcast-tree: \n" << ToTxtString(*broadcast_tree_);
+  VLOG(4) << "broadcast-tree: \n" << ToTxtString(*broadcast_tree);
+  return broadcast_tree;
 }
 
 GroupDimExprInfo GetGroupDimExprInfo(const OpLoweringGroupPtr& group) {
@@ -470,8 +466,7 @@ bool NeedBroadcastWithCF(const OpLoweringGroupPtr& group) {
   return NeedBroadcastWithCF(leaves);
 }
 
-bool NeedBroadcastWithCF(
-    const adt::List<std::vector<symbol::DimExpr>>& leaves) {
+bool NeedBroadcastWithCF(const cinn::common::BroadcastLeaf& leaves) {
   std::optional<symbol::Broadcastable<symbol::DimExpr>>
       broadcastable_condition = cinn::common::GetFirstCstrBroadcastable(leaves);
   return broadcastable_condition.has_value();
@@ -479,7 +474,7 @@ bool NeedBroadcastWithCF(
 
 pir::Operation* CompileBroadcastTreeToConditionBlock(
     const OpLoweringGroupPtr& group,
-    const BroadcastTreeInfo& broadcast_tree_info,
+    const BroadcastTree& broadcast_tree,
     pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
     const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx,
     const std::vector<pir::Value>& group_inputs,
@@ -487,9 +482,8 @@ pir::Operation* CompileBroadcastTreeToConditionBlock(
     pir::PatternRewriter& rewriter) {  // NOLINT
   // 1. broadcast tree to condition op
   VLOG(4) << "broadcast tree to condition op";
-  const auto& broadcast_tree = broadcast_tree_info.GetBroadcastTree();
   std::unordered_map<pir::Block*, OpLoweringGroupPtr> group_map;
-  pir::Operation* cond_op = CreateConditionBlock(*broadcast_tree,
+  pir::Operation* cond_op = CreateConditionBlock(broadcast_tree,
                                                  group,
                                                  shape_analysis,
                                                  value_to_dim_expr_idx,

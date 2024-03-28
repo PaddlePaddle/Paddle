@@ -21,7 +21,7 @@ namespace cinn::dialect::ir::details {
 using cinn::hlir::framework::PirCompiler;
 
 void FusionOpAnalysis::GatherGroup(pir::Operation* fusion_op) {
-  OpLoweringGroupPtr group_ptr = RebuildGroup(fusion_op);
+  OpLoweringGroupPtr group_ptr = BuildOpLoweringGroup(fusion_op);
   VLOG(6) << "Gather Group " << group_ptr->FuncName()
           << " for fusion_op : " << fusion_op->id();
   group_infos_->insert({fusion_op, group_ptr});
@@ -44,7 +44,7 @@ void FusionOpAnalysis::RunImpl(pir::Operation* op) {
 void FusionOpAnalysis::PreCompileGroup() {
   std::vector<OpLoweringGroupPtr> groups;
   for (auto& group_info : *group_infos_) {
-    if (NeedBroadcastWithCF(group_info.second)) continue;
+    if (is_dy_shape_ && NeedBroadcastWithCF(group_info.second)) continue;
     groups.push_back(group_info.second);
   }
   // Build and trigger compilaion cache.

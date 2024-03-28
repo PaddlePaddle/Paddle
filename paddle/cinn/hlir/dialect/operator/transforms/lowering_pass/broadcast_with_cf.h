@@ -18,43 +18,25 @@
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 
 namespace cinn::dialect::ir::details {
-using SharedGroupHasher = OpLoweringGroup::SharedGroupHasher;
-using SharedGroupComparator = OpLoweringGroup::SharedGroupComparator;
+using cinn::common::BroadcastTree;
+
 class BroadcastTreeInfo;
 
-using BroadcastTreeInfoMap =
-    std::unordered_map<OpLoweringGroupPtr,
-                       std::shared_ptr<BroadcastTreeInfo>,
-                       SharedGroupHasher,
-                       SharedGroupComparator>;
-
 struct GroupDimExprInfo {
-  adt::List<std::vector<symbol::DimExpr>> all_value_dim_exprs;
+  common::BroadcastLeaf all_value_dim_exprs;
   std::unordered_map<pir::Value, size_t> value_to_dim_expr_idx;
 };
 
-class BroadcastTreeInfo final {
- public:
-  explicit BroadcastTreeInfo(
-      const adt::List<std::vector<symbol::DimExpr>>& leaves) {
-    ConstructBroadcastTree(leaves);
-  }
-  const std::shared_ptr<cinn::common::BroadcastTree>& GetBroadcastTree() const;
-
- private:
-  void ConstructBroadcastTree(
-      const adt::List<std::vector<symbol::DimExpr>>& leaves);
-
-  std::shared_ptr<cinn::common::BroadcastTree> broadcast_tree_;
-};
+std::shared_ptr<BroadcastTree> ConstructBroadcastTree(
+    const common::BroadcastLeaf& leaves);
 
 bool NeedBroadcastWithCF(const OpLoweringGroupPtr& group);
-bool NeedBroadcastWithCF(const adt::List<std::vector<symbol::DimExpr>>& leaves);
+bool NeedBroadcastWithCF(const common::BroadcastLeaf& leaves);
 GroupDimExprInfo GetGroupDimExprInfo(const OpLoweringGroupPtr& group);
 
 pir::Operation* CompileBroadcastTreeToConditionBlock(
     const OpLoweringGroupPtr& group,
-    const BroadcastTreeInfo& broadcast_tree_info,
+    const BroadcastTree& broadcast_tree,
     pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
     const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx,
     const std::vector<pir::Value>& group_inputs,
