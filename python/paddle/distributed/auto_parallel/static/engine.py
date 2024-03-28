@@ -530,6 +530,10 @@ class Engine:
         fetch_names = []
         fetch_indices = []
 
+        # TODO(2024-Q2)
+        if self._in_pir_mode:
+            return fetch_names, fetch_indices
+
         def _process_fetch_group(group_name, var_list):
             group_indices = []
             for var in var_list:
@@ -829,6 +833,8 @@ class Engine:
             #     )
             # else:
 
+            # concrete_program: <class 'paddle.jit.dy2static.program_translator.ConcreteProgram'>
+            # serial_main_prog:  <class 'paddle.base.libpaddle.pir.Program'>
             self._fwd_main_progs[mode] = serial_main_prog
             return
 
@@ -1011,17 +1017,26 @@ class Engine:
                     process_group.instantiate()
 
     def _initialize(self, mode, init_parameters=True):
-        if self._in_pir_mode:
-            # TODO(xxxxx) Share the parameter tensor data from dygraph tensor to pir value.
-            # _pir_initialize()
-            pass
-            return
-
         self._place = _get_device()
         if isinstance(self._place, paddle.framework.CUDAPlace):
             self._place = paddle.framework.CUDAPlace(
                 paddle.distributed.ParallelEnv().dev_id
             )
+
+        if self._in_pir_mode:
+            # TODO(2024-Q2)
+            # 1. unify random control
+            # 2. initilization of non-parameter buffer
+            # 3. run startup program for pir
+            # 4. lazy init adaption
+            # 5. amp init adaption
+            # 6. vpp init adaption
+
+            self.program_helper.init_pir(
+                self._pir_main_progs[mode], self._place
+            )
+
+            return
 
         if self._strategy.seed:
             paddle.seed(self._strategy.seed + self._dp_ranks[0])
@@ -1734,6 +1749,8 @@ class Engine:
             self._switch_mode(self._mode)
 
     def run(self, data=None, feed=None, fetch_list=None, mode=None):
+        print("in engine run: ")
+        print("data: ", type(data), data)
         if mode is not None:
             self.to_mode(mode)
         feed_dict = self._prepare_feed(data, feed, self._mode)
@@ -1748,11 +1765,18 @@ class Engine:
             self.enable_job_schedule_profiler
         )
 
+        print("feed_dict: ", type(feed_dict), feed_dict)
+        print("fetch_names: ", type(fetch_names), fetch_names)
+        # TODO(2024-Q2)
+        use_cache = self._strategy.use_cache
+        if self._in_pir_mode:
+            print("use_cache false")
+            use_cache = False
         outs = self._executor.run(
             self.main_program,
             feed=feed_dict,
             fetch_list=fetch_names,
-            use_program_cache=self._strategy.use_cache,
+            use_program_cache=use_cache,
             return_numpy=self._strategy.return_numpy,
         )
         logs = self._prepare_logger(
@@ -2255,6 +2279,8 @@ class Engine:
 
     @property
     def main_program(self):
+        if self._in_pir_mode:
+            return self._pir_main_progs[self._mode]
         dist_context = self._dist_contexts[self._mode]
         return dist_context.dist_main_programs[self._cur_rank]
 

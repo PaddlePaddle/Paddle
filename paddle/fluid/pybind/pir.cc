@@ -699,14 +699,19 @@ void BindOperation(py::module *m) {
                 pir::ArrayAttribute::get(pir::IrContext::Instance(),
                                          op_callstack_infos));
           })
-      .def("dist_attr", [](Operation &self) {
-        if (self.HasAttribute(kAttrOpDistAttr)) {
-          return self.attribute<OperationDistAttribute>(kAttrOpDistAttr);
-        } else {
-          PADDLE_THROW(
-              phi::errors::InvalidArgument("dist_attr is only for dist op."));
-        }
-      });
+      .def_property(
+          "dist_attr",
+          [](Operation &self) {
+            if (self.HasAttribute(kAttrOpDistAttr)) {
+              return self.attribute<OperationDistAttribute>(kAttrOpDistAttr);
+            } else {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "dist_attr is only for dist op."));
+            }
+          },
+          [](Operation &self, OperationDistAttribute op_dist_attr) {
+            self.set_attribute(kAttrOpDistAttr, op_dist_attr);
+          });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
     The Operation_BlockContainer only use to walk all blocks in the operation.

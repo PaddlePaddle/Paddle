@@ -113,6 +113,7 @@ class IR_API alignas(8) Operation final
   void set_attribute(const std::string &key, Attribute value) {
     attributes_[key] = value;
   }
+  void erase_attribute(const std::string &key) { attributes_.erase(key); }
   bool HasAttribute(const std::string &key) const {
     return attributes_.find(key) != attributes_.end();
   }
