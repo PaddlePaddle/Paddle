@@ -202,8 +202,8 @@ void PatternGraph::PrintGraph() {
   }
 }
 
-void PatternGraph::MergeNode(const PatternNodePtr& upstream,
-                             const PatternNodePtr& downstream) {
+PatternNodePtr PatternGraph::MergeNode(const PatternNodePtr& upstream,
+                                       const PatternNodePtr& downstream) {
   PatternNodePtr merged_node =
       std::make_shared<PatternNode>(upstream, downstream);
 
@@ -225,6 +225,7 @@ void PatternGraph::MergeNode(const PatternNodePtr& upstream,
 
   // deal with the graph storage.
   AppendNode(merged_node);
+  return merged_node;
 }
 
 }  // namespace cinn::frontend::group_cluster

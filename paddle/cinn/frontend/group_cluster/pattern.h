@@ -32,7 +32,7 @@ struct ReducePattern {
   explicit ReducePattern(const std::vector<pir::Operation*>& ops) : ops_(ops) {}
   std::vector<pir::Operation*> ops_;
   std::vector<pir::Operation*> ops() const { return ops_; }
-  const pir::Operation* GetReduceOp() const { return ops_.back(); }
+  pir::Operation* GetReduceOp() const { return ops_.back(); }
   static std::string name() { return "Reduce"; }
 };
 
