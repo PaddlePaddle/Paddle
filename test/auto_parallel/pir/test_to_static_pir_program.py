@@ -83,34 +83,34 @@ def create_data_loader():
     return loader
 
 
-# class TestToStaticPirProgramEval(unittest.TestCase):
-#     def test_to_static_program(self):
-#         paddle.base.set_flags({'FLAGS_enable_pir_api': 1})
-#         mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
-#         layer = DemoNet(mesh)
-#         opt = None  # forward only
-#         loss_fn = nn.MSELoss()
-#         loader = create_data_loader()
-#         dist_loader = dist.shard_dataloader(loader, meshes=[mesh])
-#         dist_model = dist.to_static(layer, dist_loader, loss_fn, opt)
+class TestToStaticPirProgramEval(unittest.TestCase):
+    def test_to_static_program(self):
+        paddle.base.set_flags({'FLAGS_enable_pir_api': 1})
+        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        layer = DemoNet(mesh)
+        opt = None  # forward only
+        loss_fn = nn.MSELoss()
+        loader = create_data_loader()
+        dist_loader = dist.shard_dataloader(loader, meshes=[mesh])
+        dist_model = dist.to_static(layer, dist_loader, loss_fn, opt)
 
-#         dist_model.eval()
-#         main_program = dist_model._engine._pir_main_progs["eval"]
+        dist_model.eval()
+        main_program = dist_model._engine._pir_main_progs["eval"]
 
-#         for op in main_program.global_block().ops:
-#             if op.num_results() == 0:
-#                 continue
-#             tensor = op.result(0)
-#             if op.name() == 'pd_op.data':
-#                 self.assertTrue(tensor.is_dist_dense_tensor_type())
-#                 self.assertEqual(tensor.dist_attr().process_mesh.shape, [2])
-#                 self.assertEqual(
-#                     tensor.dist_attr().process_mesh.process_ids, [0, 1]
-#                 )
-#                 self.assertEqual(tensor.dist_attr().dims_mapping, [-1, -1])
-#                 self.assertEqual(tensor.dist_attr().partial_dims, set())
-#             elif op.name() == "builtin.parameter":
-#                 pass  # TODO check
+        for op in main_program.global_block().ops:
+            if op.num_results() == 0:
+                continue
+            tensor = op.result(0)
+            if op.name() == 'pd_op.data':
+                self.assertTrue(tensor.is_dist_dense_tensor_type())
+                self.assertEqual(tensor.dist_attr().process_mesh.shape, [2])
+                self.assertEqual(
+                    tensor.dist_attr().process_mesh.process_ids, [0, 1]
+                )
+                self.assertEqual(tensor.dist_attr().dims_mapping, [-1, -1])
+                self.assertEqual(tensor.dist_attr().partial_dims, set())
+            elif op.name() == "builtin.parameter":
+                pass  # TODO check
 
 
 class TestToStaticPirProgramTrain(unittest.TestCase):
@@ -139,6 +139,8 @@ class TestToStaticPirProgramTrain(unittest.TestCase):
         backward_op_list = [
             "pd_op.sgd_",
             "pd_op.sgd_",
+            "pd_op.relu_grad",
+            "dist_op.reshard",
             "pd_op.matmul_grad",
             "pd_op.relu_grad",
             "pd_op.matmul_grad",
@@ -226,10 +228,10 @@ class TestToStaticPirProgramTrain(unittest.TestCase):
                         tensor._local_shape, [BATCH_SIZE, CLASS_NUM]
                     )
                 elif matmul_grad_idx == 1:
-                    self.assertEqual(tensor.dist_attr().dims_mapping, [-1, 0])
-                    self.assertEqual(tensor.dist_attr().partial_dims, set())
+                    self.assertEqual(tensor.dist_attr().dims_mapping, [-1, -1])
+                    self.assertEqual(tensor.dist_attr().partial_dims, {0})
                     self.assertEqual(
-                        tensor._local_shape, [BATCH_SIZE, IMAGE_SIZE // 2]
+                        tensor._local_shape, [BATCH_SIZE, IMAGE_SIZE]
                     )
                 matmul_grad_idx += 1
             if op.name() == 'pd_op.sgd_':

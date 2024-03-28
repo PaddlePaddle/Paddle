@@ -17,35 +17,22 @@ import paddle
 
 def apply_partition_pass(program):
     new_program = program.clone()
-    print('new_program', new_program, flush=1)
-
     with paddle.static.program_guard(new_program):
         for op in new_program.global_block().ops:
             # assert len(op.operands()) == len(op.dist_attr().operand_dist_attrs()), f'The number of operand and operand_dist_attrs are not equal in op: {op}'
             for var, operand_dist_attr in zip(
                 op.operands(), op.dist_attr().operand_dist_attrs()
             ):
-                print(
-                    'check equal ',
-                    var.source().dist_attr(),
-                    operand_dist_attr,
-                    flush=1,
-                )
-                if not (var.source().dist_attr() == operand_dist_attr):
+                if (
+                    var.source().is_dist_dense_tensor_type()
+                    and var.source().dist_attr() != operand_dist_attr
+                ):
                     paddle.pir.set_insertion_point(op)
-                    print(
-                        'not equal',
-                        var.source().dist_attr(),
-                        operand_dist_attr,
-                        flush=1,
-                    )
-
                     # insert reshard
                     reshard_var = paddle._pir_ops.reshard_v2(
                         var.source(), operand_dist_attr
                     )
                     var.set_source(reshard_var)
-
     return new_program
 
 
