@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
-
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -48,7 +47,6 @@ void EmptyLikeCsrKernel(const Context& dev_ctx,
   out->set_meta(x.meta());
   dev_ctx.template Alloc<T>(out_values);
 }
-
 }  // namespace sparse
 }  // namespace phi
 
@@ -63,7 +61,9 @@ PD_REGISTER_KERNEL(empty_like_coo,
                    int16_t,
                    int,
                    int64_t,
-                   bool) {
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
@@ -78,7 +78,9 @@ PD_REGISTER_KERNEL(empty_like_csr,
                    int16_t,
                    int,
                    int64_t,
-                   bool) {
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
@@ -95,7 +97,9 @@ PD_REGISTER_KERNEL(empty_like_coo,
                    int16_t,
                    int,
                    int64_t,
-                   bool) {
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
@@ -111,7 +115,10 @@ PD_REGISTER_KERNEL(empty_like_csr,
                    int16_t,
                    int,
                    int64_t,
-                   bool) {
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
+
 #endif
