@@ -33,6 +33,7 @@
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_dialect.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/distributed/transforms/mix_to_dist_pass.h"
+#include "paddle/fluid/pir/dialect/distributed/transforms/reshard_pass.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
@@ -1712,6 +1713,7 @@ void BindUtils(pybind11::module *m) {
 #endif
          }),
       m->def("apply_mix2dist_pass", paddle::dialect::MixToDistPass);
+      m->def("apply_reshard_pass", paddle::dialect::ReshardPass);
 }
 
 namespace {

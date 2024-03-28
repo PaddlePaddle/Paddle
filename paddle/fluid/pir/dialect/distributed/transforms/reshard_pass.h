@@ -11,26 +11,16 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #pragma once
 
-#include <vector>
-
-#include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
-#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/core/program.h"
 
 namespace paddle {
 namespace dialect {
 
-pir::Value shard_tensor(const pir::Value& x,
-                        const phi::distributed::ProcessMesh& process_mesh,
-                        const std::vector<int64_t>& dims_mapping,
-                        const std::vector<int64_t>& partial_dims={});
+// pir::Type ConvertOpTypeToKernelType(pir::Type op_type);
 
-pir::Value reshard(const pir::Value& x,
-                   const phi::distributed::ProcessMesh& process_mesh,
-                   const std::vector<int64_t>& dims_mapping);
+TEST_API std::shared_ptr<pir::Program> ReshardPass(pir::Program* prog);
+
 }  // namespace dialect
 }  // namespace paddle

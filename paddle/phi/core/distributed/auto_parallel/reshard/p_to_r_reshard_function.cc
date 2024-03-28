@@ -30,16 +30,23 @@ namespace distributed {
 
 bool PToRReshardFunction::IsSuitable(const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr) {
+  VLOG(0) << "PToRReshardFunction::IsSuitable in dist_attr" << in.dist_attr().to_string();
+  VLOG(0) << "PToRReshardFunction::IsSuitable out dist_attr" << out_dist_attr.to_string();
+  VLOG(0) << "in is partial " << in.dist_attr().is_partial();
+  VLOG(0) << "out is replicated " << out_dist_attr.is_replicated();
   RESHARD_SHORTCUT_IF_FALSE(in.dist_attr().is_partial());
   RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_replicated());
 
   const auto& in_process_mesh = in.dist_attr().process_mesh();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
 
+  VLOG(0) << "in mesh " << in_process_mesh.to_string();
+  VLOG(0) << "out mesh " << out_process_mesh.to_string();
   RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.ndim() == 1);
   RESHARD_SHORTCUT_IF_FALSE(out_process_mesh.ndim() == 1);
   RESHARD_SHORTCUT_IF_FALSE(in_process_mesh == out_process_mesh);
 
+  VLOG(0) << "is suitable return true";
   return true;
 }
 
@@ -60,34 +67,43 @@ void PToRReshardFunction::Eval(DeviceContext* dev_ctx,
     in_reduce_type = ReduceType::kRedSum;
     reduce_mean = true;
   }
-  int64_t reduce_type = static_cast<int64_t>(in_reduce_type);
+  int reduce_type = static_cast<int>(in_reduce_type);
   VLOG(3) << "Transfer from partial to replicated status with reduce type "
           << reduce_type;
 
-  RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
+  if (dev_ctx) {
+    RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
                             AllReduce,
                             dtype,
                             in_process_ids,
                             in.value(),
                             reduce_type,
                             GetMutableTensor(out));
+  } else {
+    reshard_func_descs_.emplace_back(std::make_unique<AllReduceOpDesc>(dtype, in_process_ids, reduce_type));
+  }
 
   if (reduce_mean) {
     VLOG(3) << "Do reduce mean after all reduce sum";
     DenseTensor tensor_of_num_process;
     IntArray shape({1});
-    RESHARD_FUNCTOR(dev_ctx,
+    if (dev_ctx) {
+      RESHARD_FUNCTOR(dev_ctx,
                     Full,
                     in.dtype(),
                     shape,
                     static_cast<int64_t>(in_process_ids.size()),
                     &tensor_of_num_process);
-    RESHARD_FUNCTOR(dev_ctx,
+      RESHARD_FUNCTOR(dev_ctx,
                     Divide,
                     dtype,
                     out->value(),
                     tensor_of_num_process,
                     GetMutableTensor(out));
+    } else {
+      //reshard_func_descs_.emplace_back(std::make_unique<FullOpDesc>(dtype, shape, static_cast<int64_t>(in_process_ids.size())));
+      //reshard_func_descs_.emplace_back(std::make_unique<DivideOpDesc>(dtype));
+    }
   }
 
   SetDistProps(out, in.dims(), out_dist_attr);

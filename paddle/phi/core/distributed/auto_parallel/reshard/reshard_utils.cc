@@ -26,7 +26,6 @@
 namespace phi {
 namespace distributed {
 
-namespace {
 std::string GenUniqueCommKey(const std::vector<int64_t>& process_ids) {
   std::string unique_comm_key = "ReshardGroup";
   for (const auto& id : process_ids) {
@@ -34,7 +33,6 @@ std::string GenUniqueCommKey(const std::vector<int64_t>& process_ids) {
   }
   return unique_comm_key;
 }
-}  // namespace
 
 std::vector<int64_t> GetUnionProcessIds(std::vector<int64_t> in_process_ids,
                                         std::vector<int64_t> out_process_ids) {
@@ -90,8 +88,7 @@ std::vector<int64_t> GetCurRankCoordInMesh(const ProcessMesh& process_mesh) {
   return coord;
 }
 
-CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
-                                    const std::vector<int64_t>& process_ids) {
+CommContext* CreateOrGetCommContext(const std::vector<int64_t>& process_ids) {
   std::string unique_comm_key = GenUniqueCommKey(process_ids);
 
   if (!CommContextManager::GetInstance().Has(unique_comm_key)) {
@@ -100,35 +97,21 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
     VLOG(3) << "local world size: " << world_size << " local rank: " << rank;
 
     auto store = CreateOrGetGlobalTCPStore();
-    if (phi::CPUContext::classof(&dev_ctx)) {
 #if defined(PADDLE_WITH_GLOO)
-      CommContextManager::CreateGlooCommContext(store,
-                                                unique_comm_key,
-                                                static_cast<int>(rank),
-                                                static_cast<int>(world_size));
-#else
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "Cannot use gloo on CPU, please turn PADDLE_WITH_GLOO flag on."));
+    CommContextManager::CreateGlooCommContext(store,
+            unique_comm_key,
+            static_cast<int>(rank),
+            static_cast<int>(world_size));
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+    CommContextManager::CreateXCCLCommContext(
+            store, unique_comm_key, dev_ctx.GetPlace(), rank, world_size);
+#elif defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    CommContextManager::SetDeviceId(rank);
+    CommContextManager::CreateNCCLCommContext(store,
+            unique_comm_key,
+            static_cast<int>(rank),
+            static_cast<int>(world_size));
 #endif
-    } else if (phi::CustomContext::classof(&dev_ctx)) {
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-      CommContextManager::CreateXCCLCommContext(
-          store, unique_comm_key, dev_ctx.GetPlace(), rank, world_size);
-#endif
-    } else {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-      if (phi::GPUContext::classof(&dev_ctx)) {
-        CommContextManager::CreateNCCLCommContext(store,
-                                                  unique_comm_key,
-                                                  static_cast<int>(rank),
-                                                  static_cast<int>(world_size));
-      }
-#else
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "CommContext is only supported on CPU and GPU for now, other devices "
-          "will be supported later."));
-#endif
-    }
   }
 
   auto* comm_context = CommContextManager::GetInstance().Get(unique_comm_key);
