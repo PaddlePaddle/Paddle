@@ -1364,7 +1364,7 @@
 
 - op : pull_sparse_v2
   args : (Tensor[] ids, Tensor[] w, int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, str[] inputnames = {}, bool is_distributed = true)
-  output : Tensor[] out{w.size()}
+  output : Tensor[](out){w.size()}
   infer_meta :
     func : PullSparseV2InferMeta
   kernel :
