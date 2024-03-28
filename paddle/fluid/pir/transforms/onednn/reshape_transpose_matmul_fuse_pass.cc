@@ -315,7 +315,7 @@ class ReshapeTransposeMatmulFusePass : public pir::PatternRewritePass {
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
     std::vector<bool> bool_set = {false, true};
-    int benefit_idx = 1;
+    int benefit_idx = 5;
     for (auto as_x : bool_set) {
       ps.Add(paddle::drr::Create<ReshapeTransposeMatmulFusePattern>(
           context,
@@ -323,7 +323,7 @@ class ReshapeTransposeMatmulFusePass : public pir::PatternRewritePass {
           paddle::onednn::dialect::FusedMatmulOp::name(),
           benefit_idx,
           as_x));
-      benefit_idx++;
+      benefit_idx--;
     }
 
     for (auto as_x : bool_set) {
@@ -333,7 +333,7 @@ class ReshapeTransposeMatmulFusePass : public pir::PatternRewritePass {
           paddle::onednn::dialect::FusedMatmulOp::name(),
           benefit_idx,
           as_x));
-      benefit_idx++;
+      benefit_id--;
     }
     return ps;
   }
