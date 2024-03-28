@@ -74,7 +74,7 @@ class Quantization(metaclass=abc.ABCMeta):
             if isinstance(child, ConvertibleQuantedLayer):
                 if child.converted:
                     continue
-                if (
+                if hasattr(child, 'weight_quanter') and (
                     child.weight_quanter is None
                     or child.weight_quanter.scales() is None
                 ):
