@@ -554,7 +554,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "conv2d_bias_fuse_pass",
       "redundant_unsqueeze_squeeze_elimination_pass",
       "reduce_ops_fuse_pass",
-      // "delete_cast_op_pass",
+      "delete_cast_op_pass",
       "xpu_delete_cast_op_pass",
       "conv2d_trans_filter_dilations_nxn_to_1x1_pass",
       "stack_fuse_pass",
