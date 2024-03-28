@@ -263,6 +263,7 @@ void SyncBatchNormCooKernel(const Context& dev_ctx,
                                        saved_variance,
                                        reserve_space);
   y->SetIndicesDict(x.GetIndicesDict());
+  y->SetKmaps(x.GetKmaps());
 }
 
 template <typename T, typename Context>
