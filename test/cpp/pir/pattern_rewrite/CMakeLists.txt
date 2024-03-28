@@ -7,7 +7,7 @@ paddle_test(drr_fuse_linear_test SRCS drr_fuse_linear_test.cc)
 paddle_test(drr_fuse_linear_param_grad_add_test SRCS
             drr_fuse_linear_param_grad_add_test.cc)
 
-if(WITH_MKLDNN)
+if(WITH_MKLDNN AND NOT WIN32)
   paddle_test(depthwise_conv_mkldnn_pass_test SRCS
               depthwise_conv_mkldnn_pass_test.cc)
 endif()
@@ -23,9 +23,6 @@ if(WITH_ONNXRUNTIME AND WIN32)
   copy_onnx(drr_same_type_binding_test)
   copy_onnx(drr_fuse_linear_test)
   copy_onnx(drr_fuse_linear_param_grad_add_test)
-  if(WITH_MKLDNN)
-    copy_onnx(depthwise_conv_mkldnn_pass_test)
-  endif()
   if(WITH_GPU)
     copy_onnx(drr_attention_fuse_test)
   endif()

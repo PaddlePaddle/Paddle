@@ -50,6 +50,7 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
   builder.Build<paddle::dialect::FetchOp>(add_op1.out(), "out", 0);
 }
 
+#ifdef PADDLE_WITH_DNNL
 TEST(DrrTest, DepthwiseConv) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -59,11 +60,10 @@ TEST(DrrTest, DepthwiseConv) {
   BuildProgram(builder);
 
   pir::PassManager pm(ctx);
-#ifdef PADDLE_WITH_DNNL
   pm.AddPass(pir::CreateDepthwiseConvMKLDNNPass());
-#endif
   pm.EnablePassTiming();
   pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
 }
+#endif
