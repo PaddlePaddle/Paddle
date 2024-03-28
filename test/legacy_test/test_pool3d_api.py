@@ -356,6 +356,22 @@ class TestPool3D_API(unittest.TestCase):
             )
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
+    def check_max_pool_return_mask_ceil(self, place):
+        with base.dygraph.guard(place):
+            input_np = np.random.random([1, 2, 6, 33, 33]).astype("float32")
+            input = paddle.to_tensor(input_np)
+            result, _ = max_pool3d(
+                input, kernel_size=5, ceil_mode=True, return_mask=True
+            )
+            result_np = pool3D_forward_naive(
+                input_np,
+                ksize=[5, 5, 5],
+                strides=[5, 5, 5],
+                paddings=[0, 0, 0],
+                ceil_mode=True,
+            )
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
     def test_pool3d(self):
         paddle.enable_static()
         for place in self.places:
@@ -368,6 +384,7 @@ class TestPool3D_API(unittest.TestCase):
             self.check_avg_divisor(place)
             self.check_max_dygraph_ndhwc_results(place)
             self.check_max_dygraph_ceilmode_results(place)
+            self.check_max_pool_return_mask_ceil(place)
 
     @test_with_pir_api
     def test_static_fp16_gpu(self):
