@@ -812,6 +812,7 @@ void FusedBiasDropoutResidualLnGradInferMeta(
 void FusedDotProductAttentionInferMeta(const MetaTensor& q,
                                        const MetaTensor& k,
                                        const MetaTensor& v,
+                                       const MetaTensor& bias,
                                        MetaTensor* out,
                                        MetaTensor* softmax_out,
                                        MetaTensor* rng_state);
@@ -819,9 +820,11 @@ void FusedDotProductAttentionInferMeta(const MetaTensor& q,
 void FusedDotProductAttentionGradInferMeta(const MetaTensor& q,
                                            const MetaTensor& k,
                                            const MetaTensor& v,
+                                           const MetaTensor& bias,
                                            MetaTensor* q_grad,
                                            MetaTensor* k_grad,
-                                           MetaTensor* v_grad);
+                                           MetaTensor* v_grad,
+                                           MetaTensor* bias_grad);
 
 void SkipLayerNormInferMeta(const MetaTensor& x,
                             const MetaTensor& y,

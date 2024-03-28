@@ -36,6 +36,7 @@ PD_DECLARE_bool(enable_cudnn_frontend);
   __macro(cudnnCreateFilterDescriptor);    \
   __macro(cudnnDestroyFilterDescriptor);   \
   __macro(cudnnGetStream);                 \
+  __macro(cudnnGetErrorString);            \
   __macro(cudnnGetVersion);                \
   __macro(cudnnReorderFilterAndBias);      \
   __macro(cudnnSetFilterNdDescriptor);
