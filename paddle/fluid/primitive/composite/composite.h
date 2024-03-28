@@ -859,12 +859,13 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
   if (rank == 3) {
     x_cast = unsqueeze<T>(x_cast, {-1});
   }
+  Tensor x_dim_t;
   Tensor out, mean_, var_;
   if (has_dynamic_shape(x_cast.shape())) {
-    Tensor x_dim = shape<T>(x_cast);
+    Tensor x_dim_t = shape<T>(x_cast);
     std::vector<int64_t> one_axis(1, 1);
-    Tensor x_shape = get_slice<T>(x_dim, 0) * groups;
-    Tensor dim_1 = full<T>({1}, -1, x_dim.type());
+    Tensor x_shape = get_slice<T>(x_dim_t, 0) * groups;
+    Tensor dim_1 = full<T>({1}, -1, x_dim_t.type());
     x_shape = concat<T>({x_shape, dim_1});
     x_cast = backend::reshape<T>(x_cast, x_shape);
     mean_ = mean_decomp<T>(x_cast, IntArray(one_axis), true);
@@ -877,7 +878,7 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     Tensor var_inv =
         rsqrt<T>(var_ + full<T>(empty_shape, epsilon, var_.dtype()));
     Tensor res = (x_cast - mean_) * var_inv;
-    out = backend::reshape<T>(res, x_dim);
+    out = backend::reshape<T>(res, x_dim_t);
   } else {
     auto x_dim = x_cast.shape();
     std::vector<int64_t> one_axis(1, 1);
@@ -912,8 +913,7 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
   }
   Tensor mean_out, var_out;
   if (has_dynamic_shape(x_cast.shape())) {
-    Tensor x_dim = shape<T>(x_cast);
-    Tensor x_shape = get_slice<T>(x_dim, 0);
+    Tensor x_shape = get_slice<T>(x_dim_t, 0);
     Tensor dim_1 = full<T>({1}, groups, x_shape.type());
     x_shape = concat<T>({x_shape, dim_1});
     mean_out = backend::reshape<T>(mean_, x_shape);
