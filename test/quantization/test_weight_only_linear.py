@@ -658,11 +658,11 @@ class WeightOnlyLinearTestCaseStatic(WeightOnlyLinearTestCase):
         return out
 
     def test_weight_quantize_and_dequantize_pir(self):
-        np_weight = np.random.rand(4096, 12288) / math.sqrt(4096)
-        np_weight = np_weight.astype(np.float16)
         with IrGuard():
-            weight = paddle.static.data(
-                'weight', np_weight.shape, np_weight.dtype
+            weight = (
+                paddle.rand(shape=(4096, 12288), dtype='float16')
+                * 1
+                / math.sqrt(4096)
             )
 
             quant_weight, quant_scale = Q.weight_quantize(
@@ -670,10 +670,8 @@ class WeightOnlyLinearTestCaseStatic(WeightOnlyLinearTestCase):
             )
             dequant_weight = Q.weight_dequantize(quant_weight, quant_scale)
             exe = paddle.static.Executor(paddle.CUDAPlace(0))
-            res = exe.run(
-                feed={"weight": np_weight}, fetch_list=[dequant_weight]
-            )
-            np.testing.assert_allclose(res[0], np_weight, rtol=1e-2, atol=1e-2)
+            res = exe.run(feed={}, fetch_list=[weight, dequant_weight])
+            np.testing.assert_allclose(res[0], res[1], rtol=1e-2, atol=1e-2)
 
     def test_weight_only_linear(self):
         out_expect = self.get_linear_out()
