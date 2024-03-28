@@ -279,11 +279,14 @@ void BincountInferMeta(const MetaTensor& x,
   }
   out->set_dims(common::make_ddim({-1}));
   if (weights) {
-    out->set_dtype(weights.dtype());
+    if (weights.dtype() == DataType::FLOAT32) {
+      out->set_dtype(DataType::FLOAT32);
+    } else {
+      out->set_dtype(DataType::FLOAT64);
+    }
   } else {
-    out->set_dtype(x.dtype());
+    out->set_dtype(DataType::INT64);
   }
-
   out->share_lod(x);
 }
 
