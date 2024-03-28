@@ -274,7 +274,7 @@ class TestNumpyMixTensorDataset(TestTensorDataset):
                 assert isinstance(label, base.core.eager.Tensor)
 
 
-class ComplextDataset(Dataset):
+class ComplexDataset(Dataset):
     def __init__(self, sample_num):
         self.sample_num = sample_num
 
@@ -294,12 +294,12 @@ class ComplextDataset(Dataset):
         )
 
 
-class TestComplextDataset(unittest.TestCase):
+class TestComplexDataset(unittest.TestCase):
     def run_main(self, num_workers):
         paddle.seed(1)
         place = paddle.CPUPlace()
         with base.dygraph.guard(place):
-            dataset = ComplextDataset(16)
+            dataset = ComplexDataset(16)
             assert len(dataset) == 16
             dataloader = DataLoader(
                 dataset,

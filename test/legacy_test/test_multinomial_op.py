@@ -393,7 +393,7 @@ class TestRandomValue(unittest.TestCase):
         if not paddle.is_compiled_with_cuda():
             return
 
-        # Different GPU generatte different random value. Only test V100 here.
+        # Different GPU generate different random value. Only test V100 here.
         if "V100" not in paddle.device.cuda.get_device_name():
             return
 
