@@ -16,10 +16,10 @@ include(ExternalProject)
 
 add_definitions(-DPADDLE_WITH_FLASHATTN)
 
-set(FLASHATTN_PREFIX_DIR ${THIRD_PARTY_PATH}/flashattn)
+set(FLASHATTN_PREFIX_DIR ${THIRD_PARTY_PATH}/flashattn/FlashAttention2)
 set(FLASHATTN_SOURCE_SUBDIR csrc)
-set(FLASHATTN_INSTALL_DIR ${THIRD_PARTY_PATH}/install/flashattn)
-set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/flashattn)
+set(FLASHATTN_INSTALL_DIR ${THIRD_PARTY_PATH}/install/flashattn/FlashAttention2)
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/flashattn/FlashAttention2)
 set(FLASHATTN_TAG a96f8024714455fb86a326e20c3b7f700ec50772)
 
 set(FLASHATTN_INCLUDE_DIR
@@ -101,6 +101,7 @@ ExternalProject_Add(
              -DCMAKE_INSTALL_PREFIX=${FLASHATTN_INSTALL_DIR}
              -DWITH_GPU=${WITH_GPU}
              -DCMAKE_CUDA_COMPILER=${CMAKE_CUDA_COMPILER}
+            #  -DCMAKE_MODULE_PATH=$ENV{MACA_PATH}/tools/cu-bridge/cmake_module/maca
              -DWITH_ROCM=${WITH_ROCM}
              -DWITH_OMP=${USE_OMP}
              -DBUILD_SHARED=ON

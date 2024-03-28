@@ -26,6 +26,7 @@
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/backends/gpu/forwards.h"
+#include <nccl.h>
 #endif
 
 namespace phi {

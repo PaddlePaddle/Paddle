@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "paddle/phi/backends/gpu/forwards.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 
 #if defined(PADDLE_WITH_RCCL)
 using gpuStream_t = hipStream_t;

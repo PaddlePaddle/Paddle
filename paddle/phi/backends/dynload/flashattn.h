@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <mutex>  // NOLINT
 
-#include "flashattn/include/flash_attn.h"
+#include "flashattn/FlashAttention2/include/flash_attn.h"
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/backends/dynload/port.h"
 

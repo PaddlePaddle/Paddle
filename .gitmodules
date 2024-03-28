@@ -91,6 +91,8 @@
 [submodule "third_party/cutlass"]
 	path = third_party/cutlass
 	url = http://pdegit.metax-internal.com/pde-ai/cutlass.git
+	ignore = dirty
 [submodule "third_party/flashattn"]
 	path = third_party/flashattn
 	url = http://pdegit.metax-internal.com/pde-ai/flashattn-for-paddle.git
+	ignore = dirty

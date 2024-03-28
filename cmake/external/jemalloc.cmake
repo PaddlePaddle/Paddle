@@ -5,7 +5,7 @@ set(JEMALLOC_DOWNLOAD_DIR
 set(JEMALLOC_PROJECT "extern_jemalloc")
 set(JEMALLOC_BUILD ${THIRD_PARTY_PATH}/jemalloc/src/extern_jemalloc)
 set(JEMALLOC_PREFIX_DIR ${THIRD_PARTY_PATH}/jemalloc)
-set(JEMALLOC_URL https://paddle-ci.gz.bcebos.com/jemalloc-5.1.0.tar.bz2)
+set(JEMALLOC_URL http://pdegit.metax-internal.com/pde-ai/static-dependency-for-paddle/uploads/c2fb62f91010f24317d9cc3b87cb64fb/jemalloc-5.1.0.tar.bz2)
 set(JEMALLOC_INSTALL ${THIRD_PARTY_PATH}/install/jemalloc)
 set(JEMALLOC_INCLUDE_DIR ${JEMALLOC_INSTALL}/include)
 
