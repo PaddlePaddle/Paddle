@@ -42,6 +42,9 @@ class TensorNameGenContext:
 
 @dataclass
 class TensorNameGenInstruction:
+    def AblateToTrivial(self):
+        return self
+
     @classmethod
     def GetDerivedClassByDAGGenClass(cls, dag_gen_class):
         return kDAGGenClassToDerivedClass[dag_gen_class]

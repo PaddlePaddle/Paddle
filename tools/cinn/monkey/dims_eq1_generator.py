@@ -12,6 +12,10 @@ class DimsEq1GenRequirement:
 
 @dataclass
 class DimsEq1GenInstruction:
+
+    def AblateToTrivial(self):
+        raise NotImplementedError()
+
     @classmethod
     def GetDerivedClassByDAGGenClass(cls, dag_gen_class):
         return kDAGGenClassToDerivedClass[dag_gen_class]
@@ -23,12 +27,18 @@ class Nope(DimsEq1GenInstruction):
     def __hash__(self):
         return hash(id(Nope))
 
+    def AblateToTrivial(self):
+        return self
+
     @classmethod
     def Merge(cls, dim_eq1_gen_instructions: List["DimEq1GenInstruction"]):
         return Nope()
 
 @dataclass
 class AddSourceTensor(DimsEq1GenInstruction):
+
+    def AblateToTrivial(self):
+        return self
 
     def __hash__(self):
         return hash(id(AddSourceTensor))
@@ -45,6 +55,11 @@ class AddSinkTensor(DimsEq1GenInstruction):
         for dim_eq1 in self.sink_tensor_dims_eq1:
             hash_value = HashCombine(hash_value, hash(dim_eq1))
         return hash_value
+
+    def AblateToTrivial(self):
+        return AddSinkTensor(
+            sink_tensor_dims_eq1=tuple(False for _ in self.sink_tensor_dims_eq1)
+        )
 
     @classmethod
     def Merge(cls, dim_eq1_gen_instructions: List["DimEq1GenInstruction"]):
@@ -65,6 +80,11 @@ class AddUnaryOp(DimsEq1GenInstruction):
         for dim_eq1 in self.source_tensor_dims_eq1:
             hash_value = HashCombine(hash_value, hash(dim_eq1))
         return hash_value
+
+    def AblateToTrivial(self):
+        return AddUnaryOp(
+            source_tensor_dims_eq1=tuple(False for _ in self.source_tensor_dims_eq1)
+        )
 
     @classmethod
     def Merge(cls, dim_eq1_gen_instructions: List["DimEq1GenInstruction"]):
@@ -89,6 +109,13 @@ class AddBinaryOp(DimsEq1GenInstruction):
             hash_value = HashCombine(hash_value, hash(dim_eq1))
         return hash_value
 
+    def AblateToTrivial(self):
+        false_tuple = tuple(False for _ in self.source_tensor_dims_eq1)
+        return AddBinaryOp(
+            lhs_source_tensor_dims_eq1=false_tuple,
+            rhs_source_tensor_dims_eq1=false_tuple,
+        )
+
     @classmethod
     def Merge(cls, dim_eq1_gen_instructions: List["DimEq1GenInstruction"]):
         return AddBinaryOp(
@@ -109,6 +136,9 @@ class AddBinaryClone(DimsEq1GenInstruction):
     def __hash__(self):
         return hash(id(AddBinaryClone))
 
+    def AblateToTrivial(self):
+        return AddBinaryClone()
+
     @classmethod
     def Merge(cls, dim_eq1_gen_instructions: List["DimEq1GenInstruction"]):
         return AddBinaryClone()
@@ -119,6 +149,9 @@ class AddSourceOp(DimsEq1GenInstruction):
 
     def __hash__(self):
         return hash(id(AddSourceOp))
+
+    def AblateToTrivial(self):
+        return AddSourceOp()
 
     @classmethod
     def Merge(cls, dim_eq1_gen_instructions: List["DimEq1GenInstruction"]):

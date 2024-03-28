@@ -55,6 +55,10 @@ class DAGGenContext:
 
 @dataclass
 class DAGGenInstruction:
+
+    def AblateToTrivial(self):
+        return self
+
     @classmethod
     def GetDerivedClassByDAGGenClass(cls, dag_gen_class):
         return dag_gen_class

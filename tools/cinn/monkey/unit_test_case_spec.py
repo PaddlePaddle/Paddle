@@ -28,7 +28,6 @@ class UnitTestCaseSpec:
     instructions: List["Instruction"]
     pached_instruction_code_gen_spec: DList["Instruction", "CodeGenSpec"]
 
-
 def GenerateRandomUnitTestCaseSpec(
     requirement: UnitTestCaseRequirement
 ) -> UnitTestCaseSpec:
@@ -38,6 +37,25 @@ def GenerateRandomUnitTestCaseSpec(
         op_name_gen_requirement=requirement.op_name_gen_requirement,
         tensor_name_gen_requirement=requirement.tensor_name_gen_requirement,
     )
+    return CompleteToUnitTestCaseSpec(instructions, requirement)
+
+def AblateUnitTestCaseSpec(
+    instructions: List["Instruction"],
+    bottom_up_ablation_size: int,
+    component_ablation_size: int,
+    requirement: UnitTestCaseRequirement
+) -> UnitTestCaseSpec:
+    ablated_instructions = instruction_util.AblateInstructions(
+        instructions=instructions,
+        bottom_up_ablation_size=bottom_up_ablation_size,
+        component_ablation_size=component_ablation_size
+    )
+    return CompleteToUnitTestCaseSpec(ablated_instructions, requirement)
+
+def CompleteToUnitTestCaseSpec(
+    instructions: List["Instruction"],
+    requirement: UnitTestCaseRequirement
+) -> UnitTestCaseSpec:
     patch_tensor_name_gen_requirement = (
       requirement.patch_tensor_name_gen_requirement
       if requirement.patch_tensor_name_gen_requirement is not None

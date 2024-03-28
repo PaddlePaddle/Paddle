@@ -7,6 +7,9 @@ class InstructionId:
     def __hash__(self):
         return hash(self.instruction_id)
 
+    def AblateToTrivial(self):
+        return self
+
     @classmethod
     def GetDerivedClassByDAGGenClass(cls, dag_gen_class):
         return InstructionId

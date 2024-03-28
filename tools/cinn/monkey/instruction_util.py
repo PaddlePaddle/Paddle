@@ -7,7 +7,7 @@ import tensor_name_generator as tensor_name_generator
 import code_gen_spec_inferer as code_gen_spec_inferer
 import dims_eq1_signature_inferer as dims_eq1_signature_inferer
 from defensive_list import DList
-from instruction import IrGenerator
+from instruction import IrGenerator, Instruction, InstructionComponents
 from instruction_id import MakeUniqueInstructionId,InstructionId
 from dag_dims_eq1_patcher import DAGDimsEq1Patcher
 from op_name_patcher import OpNamePatcher
@@ -153,3 +153,46 @@ def InferCodeGenSpecs(
         tensor_name_signatures=tensor_name_signatures
     )
     return DList(instructions, code_gen_specs)
+
+def AblateInstructions(
+    instructions: List["Instruction"],
+    bottom_up_ablation_size: int,
+    component_ablation_size: int
+) -> List["Instruction"]:
+    ComponentClasses = Instruction.GetComponentBaseClasses()
+    def IsValidBottomUpAblationSize(size):
+        return size >= 0 and size <= len(instructions)
+    def IsValidComponentAblationSize(size):
+        return size >= 0 and size <= len(ComponentClasses)
+    def NeedAblation(instruction_idx, component_id):
+        if instruction_idx + 1 + bottom_up_ablation_size > len(instructions):
+            return True
+        if instruction_idx + 1 + bottom_up_ablation_size < len(instructions):
+            return False
+        return component_id + 1 + component_ablation_size > len(ComponentClasses)
+    def GetComponentList(base_cls):
+        return [instruction.GetComponent(base_cls) for instruction in instructions]
+
+    if not IsValidBottomUpAblationSize(bottom_up_ablation_size):
+        bottom_up_ablation_size = len(instructions)
+    if not IsValidComponentAblationSize(component_ablation_size):
+        component_ablation_size = len(ComponentClasses)
+    instructions_compoments = tuple(
+        GetComponentList(base_cls)
+        for base_cls in ComponentClasses
+    )
+    ablated_instructions_compoments = tuple(
+        [
+            (
+                instruction.AblateToTrivial()
+                if NeedAblation(instruction_idx, component_id)
+                else instruction
+            )
+            for instruction_idx, instruction in enumerate(component)
+        ]
+        for component_id, component in enumerate(instructions_compoments)
+    )
+    GenerateInstructions = IrGenerator().Generate
+    return GenerateInstructions(
+        **InstructionComponents(*ablated_instructions_compoments)._asdict()
+    )
