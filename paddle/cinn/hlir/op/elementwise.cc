@@ -1432,7 +1432,8 @@ std::shared_ptr<OpStrategy> StrategyForTril(
                           "args of tril compute should be equal to 2"));
     PADDLE_ENFORCE_EQ(pack_args[1].is_string(),
                       true,
-                      "The second argument of tril should be string");
+                      phi::errors::InvalidArgument(
+                          "The second argument of tril should be string"));
     std::string tensor_name = pack_args[1].operator std::string();
 
     ir::Tensor out =
