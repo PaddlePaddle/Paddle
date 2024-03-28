@@ -5,6 +5,11 @@ from signature_constructor import SignatureConstructor
 def InputIdx(idx):
     return field(metadata=dict(input_idx=idx))
 
+
+def OutputIdx(idx):
+    return field(metadata=dict(output_idx=idx))
+
+
 class SignatureInferer:
     def __init__(self):
         self.current_sources = []

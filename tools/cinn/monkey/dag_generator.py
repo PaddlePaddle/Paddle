@@ -36,7 +36,6 @@ class DAGGenRequirement:
     min_width: int = 1
     max_width: int = 10
     max_body_instructions: int = 10
-    dag_tag: str = ""
     pick_probability: DAGGenTypePickProbability = field(
         default_factory=lambda: DAGGenTypePickProbability()
     )
@@ -116,7 +115,6 @@ class Nope(DAGGenInstruction):
 
 @dataclass
 class AddSinkTensor(DAGGenInstruction):
-    dag_tag: str
 
     def __hash__(self):
         return self.GetHashValue()
@@ -145,7 +143,6 @@ class AddSinkTensor(DAGGenInstruction):
         ctx: DAGGenContext
     ):
         return AddSinkTensor(
-            dag_tag=requirement.dag_tag
         )
 
     @classmethod
@@ -195,7 +192,6 @@ class UnclassifiedConvertType(ConvertType):
 @dataclass
 class AddUnaryOp(DAGGenInstruction):
     source_tensor_index: int
-    dag_tag: str
     convert_type: ConvertType
 
     def __hash__(self):
@@ -204,7 +200,6 @@ class AddUnaryOp(DAGGenInstruction):
     def GetHashValue(self):
         hash_value = int(id(AddUnaryOp))
         hash_value = HashCombine(hash_value, hash(self.source_tensor_index))
-        hash_value = HashCombine(hash_value, hash(self.dag_tag))
         return hash_value
 
     def IsValidSourceTensorIndex(
@@ -230,7 +225,6 @@ class AddUnaryOp(DAGGenInstruction):
         source_tensor_index = random.randint(0, ctx.num_source_tensors - 1)
         return AddUnaryOp(
             source_tensor_index=source_tensor_index,
-            dag_tag=requirement.dag_tag,
             convert_type=NoConvertType()
         )
 
@@ -261,7 +255,6 @@ class AddUnaryOp(DAGGenInstruction):
 @dataclass
 class AddBinaryOp(DAGGenInstruction):
     source_tensor_index: int
-    dag_tag: str
 
     def __hash__(self):
         return self.GetHashValue()
@@ -269,7 +262,6 @@ class AddBinaryOp(DAGGenInstruction):
     def GetHashValue(self):
         hash_value = int(id(AddBinaryOp))
         hash_value = HashCombine(hash_value, hash(self.source_tensor_index))
-        hash_value = HashCombine(hash_value, hash(self.dag_tag))
         return hash_value
 
     def IsValidSourceTensorIndex(
@@ -295,7 +287,6 @@ class AddBinaryOp(DAGGenInstruction):
         source_tensor_index = random.randint(0, ctx.num_source_tensors - 1)
         return AddBinaryOp(
             source_tensor_index=source_tensor_index,
-            dag_tag=requirement.dag_tag
         )
 
     @classmethod
@@ -326,7 +317,6 @@ class AddBinaryOp(DAGGenInstruction):
 class AddBinaryClone(DAGGenInstruction):
     lhs_source_tensor_index: int
     rhs_source_tensor_index: int
-    dag_tag: str
 
     def __hash__(self):
         return self.GetHashValue()
@@ -372,7 +362,6 @@ class AddBinaryClone(DAGGenInstruction):
         return AddBinaryClone(
             lhs_source_tensor_index=lhs_random_int,
             rhs_source_tensor_index=rhs_random_int,
-            dag_tag=requirement.dag_tag
         )
 
     @classmethod
@@ -402,7 +391,6 @@ class AddBinaryClone(DAGGenInstruction):
 @dataclass
 class AddSourceOp(DAGGenInstruction):
     source_tensor_index: int
-    dag_tag: str
 
     def __hash__(self):
         return self.GetHashValue()
@@ -438,7 +426,6 @@ class AddSourceOp(DAGGenInstruction):
         )
         return AddSourceOp(
             source_tensor_index=source_tensor_index,
-            dag_tag=requirement.dag_tag
         )
 
     @classmethod

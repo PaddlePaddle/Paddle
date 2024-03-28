@@ -65,7 +65,6 @@ class AddUnaryOp:
             yield DAGDimsEq1Instruction(
                 dag_gen_instruction=dag_generator.AddUnaryOp(
                     source_tensor_index=ctx.dag_gen_instruction.source_tensor_index,
-                    dag_tag=ctx.dag_gen_instruction.dag_tag,
                     convert_type=dag_generator.NoConvertType()
                 ),
                 instruction_id=ctx.instruction_id,
@@ -79,7 +78,6 @@ class AddUnaryOp:
             yield DAGDimsEq1Instruction(
                 dag_gen_instruction=dag_generator.AddUnaryOp(
                     source_tensor_index=ctx.dag_gen_instruction.source_tensor_index,
-                    dag_tag=ctx.dag_gen_instruction.dag_tag,
                     convert_type=dag_generator.BroadcastConvertType()
                 ),
                 instruction_id=ctx.instruction_id,
@@ -93,7 +91,6 @@ class AddUnaryOp:
             yield DAGDimsEq1Instruction(
                 dag_gen_instruction=dag_generator.AddUnaryOp(
                     source_tensor_index=ctx.dag_gen_instruction.source_tensor_index,
-                    dag_tag=ctx.dag_gen_instruction.dag_tag,
                     convert_type=dag_generator.ReduceConvertType()
                 ),
                 instruction_id=ctx.instruction_id,
@@ -112,7 +109,6 @@ class AddUnaryOp:
         yield DAGDimsEq1Instruction(
             dag_gen_instruction=dag_generator.AddUnaryOp(
                 source_tensor_index=ctx.dag_gen_instruction.source_tensor_index,
-                dag_tag=ctx.dag_gen_instruction.dag_tag,
                 convert_type=dag_generator.BroadcastConvertType()
             ),
             instruction_id=MakeUniqueInstructionId(),
@@ -124,7 +120,6 @@ class AddUnaryOp:
         yield DAGDimsEq1Instruction(
             dag_gen_instruction=dag_generator.AddUnaryOp(
                 source_tensor_index=ctx.dag_gen_instruction.source_tensor_index,
-                dag_tag=ctx.dag_gen_instruction.dag_tag,
                 convert_type=dag_generator.ReduceConvertType()
             ),
             instruction_id=ctx.instruction_id,
@@ -154,7 +149,6 @@ class AddBinaryOp:
             yield DAGDimsEq1Instruction(
                 dag_gen_instruction=dag_generator.AddUnaryOp(
                     source_tensor_index=output_idx,
-                    dag_tag=ctx.dag_gen_instruction.dag_tag,
                     convert_type=dag_generator.UnclassifiedConvertType()
                 ),
                 instruction_id=MakeUniqueInstructionId(),
@@ -187,7 +181,6 @@ class AddBinaryClone:
             yield DAGDimsEq1Instruction(
                 dag_gen_instruction=dag_generator.AddUnaryOp(
                     source_tensor_index=rhs_output_dix,
-                    dag_tag=ctx.dag_gen_instruction.dag_tag,
                     convert_type=dag_generator.UnclassifiedConvertType()
                 ),
                 instruction_id=MakeUniqueInstructionId(),

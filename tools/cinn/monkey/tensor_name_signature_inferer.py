@@ -5,7 +5,7 @@ from pick_weight import PickWeight
 from typing import List, Set
 import random
 from signature_constructor import NaiveSignatureConstructor
-from signature_inferer import SignatureInferer, InputIdx
+from signature_inferer import SignatureInferer, InputIdx, OutputIdx
 
 @dataclass
 class InferContext:
@@ -48,7 +48,7 @@ class AddSinkTensor(TensorNameSignature):
 @dataclass
 class AddUnaryOp(TensorNameSignature):
     input_tensor_name: str = InputIdx(0)
-    output_tensor_name: str
+    output_tensor_name: str = OutputIdx(0)
 
     @classmethod
     def Make(
@@ -67,7 +67,7 @@ class AddUnaryOp(TensorNameSignature):
 class AddBinaryOp(TensorNameSignature):
     lhs_input_tensor_name: str = InputIdx(0)
     rhs_input_tensor_name: str = InputIdx(1)
-    output_tensor_name: str
+    output_tensor_name: str = OutputIdx(0)
 
     @classmethod
     def Make(
@@ -86,8 +86,8 @@ class AddBinaryOp(TensorNameSignature):
 
 @dataclass
 class AddBinaryClone(TensorNameSignature):
-    lhs_output_tensor_name: int
-    rhs_output_tensor_name: int
+    lhs_output_tensor_name: int = OutputIdx(0)
+    rhs_output_tensor_name: int = OutputIdx(1)
 
     @classmethod
     def Make(
@@ -104,7 +104,7 @@ class AddBinaryClone(TensorNameSignature):
 
 @dataclass
 class AddSourceOp(TensorNameSignature):
-    output_tensor_name: str
+    output_tensor_name: str = OutputIdx(0)
 
     @classmethod
     def Make(

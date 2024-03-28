@@ -7,7 +7,7 @@ from pick_weight import PickWeight
 from guarded_box import GuardedBox
 from defensive_list import DList
 from signature_constructor import NaiveSignatureConstructor
-from signature_inferer import SignatureInferer, InputIdx
+from signature_inferer import SignatureInferer, InputIdx, OutputIdx
 
 DAGDimsEq1GenInstruction = namedtuple("DAGDimsEq1GenInstruction", ["dag", "dims_eq1"])
 
@@ -50,7 +50,7 @@ class AddSinkTensor(DimsEq1Signature):
 @dataclass
 class AddUnaryOp(DimsEq1Signature):
     input_dims_eq1: List[bool] = InputIdx(0)
-    output_dims_eq1: List[bool]
+    output_dims_eq1: List[bool] = OutputIdx(0)
 
     @classmethod
     def Make(
@@ -69,7 +69,7 @@ class AddUnaryOp(DimsEq1Signature):
 class AddBinaryOp(DimsEq1Signature):
     lhs_input_dims_eq1: List[bool] = InputIdx(0)
     rhs_input_dims_eq1: List[bool] = InputIdx(1)
-    output_dims_eq1: List[bool]
+    output_dims_eq1: List[bool] = OutputIdx(0)
 
     @classmethod
     def Make(
@@ -92,8 +92,8 @@ class AddBinaryOp(DimsEq1Signature):
 
 @dataclass
 class AddBinaryClone(DimsEq1Signature):
-    lhs_output_dims_eq1: List[bool]
-    rhs_output_dims_eq1: List[bool]
+    lhs_output_dims_eq1: List[bool] = OutputIdx(0)
+    rhs_output_dims_eq1: List[bool] = OutputIdx(1)
 
     @classmethod
     def Make(
@@ -110,7 +110,7 @@ class AddBinaryClone(DimsEq1Signature):
 
 @dataclass
 class AddSourceOp(DimsEq1Signature):
-    output_dims_eq1: List[bool]
+    output_dims_eq1: List[bool] = OutputIdx(0)
 
     @classmethod
     def Make(
