@@ -2119,8 +2119,22 @@ def empty(shape, dtype=None, name=None):
         if in_dynamic_mode():
             shape = paddle.utils.convert_shape_to_list(shape)
         else:
-            if isinstance(dtype, core.VarDesc.VarType):
-                dtype = paddle.pir.core.vartype_to_datatype[dtype]
+            check_dtype(
+                dtype,
+                'dtype',
+                [
+                    'bool',
+                    'float16',
+                    'float32',
+                    'float64',
+                    'int32',
+                    'int64',
+                    'complex64',
+                    'complex128',
+                ],
+                'empty',
+            )
+
             paddle.utils.check_shape(shape)
             if isinstance(shape, (list, tuple)):
                 if paddle.utils._contain_var(shape):
