@@ -98,18 +98,20 @@ static ValueDimRelation CreateOpRelativenessForElementWise(pir::Operation* op) {
   return res;
 }
 
-static std::vector<size_t> GetNonBroadCastDims(pir::Operation* op) {
+static std::vector<std::pair<size_t, size_t>> GetNonBroadCastDims(
+    pir::Operation* op) {
   // TODO(xk): only static shape here!
-  std::vector<size_t> res;
+  std::vector<std::pair<size_t, size_t>> res;
   if (op->name() == "cinn_op.broadcast") {
     const auto& in_dim =
         op->operand(0).type().dyn_cast<pir::DenseTensorType>().dims();
     const auto& out_dim =
         op->result(0).type().dyn_cast<pir::DenseTensorType>().dims();
-    CINN_CHECK_EQ(in_dim.size(), out_dim.size());
-    for (int i = 0; i < in_dim.size(); ++i) {
-      if (in_dim[i] == out_dim[i]) {
-        res.push_back(i);
+    // CINN_CHECK_EQ(in_dim.size(), out_dim.size());
+    for (int i = 1; i <= in_dim.size(); ++i) {
+      if (in_dim.size() - i < 0 || out_dim.size() - i < 0) break;
+      if (in_dim[in_dim.size() - i] == out_dim[out_dim.size() - i]) {
+        res.emplace_back(in_dim.size() - i, out_dim.size() - i);
       }
     }
   } else {
@@ -122,8 +124,8 @@ static ValueDimRelation CreateOpRelativenessForBroadcast(pir::Operation* op) {
   ValueDimRelation res;
   const auto& in_value = op->operand(0).source();
   const auto& out_value = op->result(0);
-  for (size_t t : GetNonBroadCastDims(op)) {
-    res[ValueDim(in_value, t)][ValueDim(out_value, t)] = true;
+  for (const auto& t : GetNonBroadCastDims(op)) {
+    res[ValueDim(in_value, t.first)][ValueDim(out_value, t.second)] = true;
   }
   return res;
 }
@@ -133,6 +135,25 @@ static ValueDimRelation CreateOpRelativenessForDefault(pir::Operation* op) {
   for (const auto& out_dim : GetAllOutputValueDim(op)) {
     for (const auto& in_dim : GetAllInputValueDim(op)) {
       res[in_dim][out_dim] = true;
+    }
+  }
+  return res;
+}
+
+static ValueDimRelation CreateOpRelativenessForReduce(pir::Operation* op) {
+  const auto& reduce_axis_idx = GetReduceAxisIdx(op);
+  ValueDimRelation res;
+  const size_t input_rank = GetRank(op->operand_source(0));
+  int out_idx = 0;
+  bool keep_dim = GetReduceOpKeepDims(op);
+  for (int i = 0; i < input_rank; i++) {
+    if (std::find(reduce_axis_idx.begin(), reduce_axis_idx.end(), i) !=
+        reduce_axis_idx.end()) {
+      res[ValueDim(op->operand_source(0), i)]
+         [ValueDim(op->result(0), out_idx)] = true;
+      out_idx += 1;
+    } else {
+      out_idx += keep_dim;
     }
   }
   return res;
@@ -158,7 +179,9 @@ static ValueDimRelation GetSingleOpRelation(pir::Operation* op) {
       << "Now we do not support op with multi outputs: " << op->name();
   const hlir::framework::OpPatternKind kind = GetOpPatternKind(op);
   ValueDimRelation result;
-  if (kind == hlir::framework::kElementWise) {
+  if (kind == hlir::framework::kReduction) {
+    result = CreateOpRelativenessForReduce(op);
+  } else if (kind == hlir::framework::kElementWise) {
     result = CreateOpRelativenessForElementWise(op);
   } else if (kind == hlir::framework::kBroadcast) {
     result = CreateOpRelativenessForBroadcast(op);

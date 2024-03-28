@@ -21,7 +21,7 @@
 
 namespace cinn::frontend {
 
-inline group_cluster::PatternNodePtrSet ClusterOps(
+inline std::vector<group_cluster::PatternNodePtr> ClusterOps(
     const std::vector<pir::Operation*>& origin_ops) {
   CHECK_GT(origin_ops.size(), 0);
   VLOG(4) << "Start Cluster Ops!";

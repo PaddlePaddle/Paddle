@@ -16,7 +16,7 @@
 
 namespace cinn::frontend::group_cluster {
 
-PatternNodePtrSet PatternGraph::ClusterOps() {
+std::vector<PatternNodePtr> PatternGraph::ClusterOps() {
   SinkTrivialPattern();
   // ReducePattern -> ReduceTreePattern
   VLOG(4) << "ReduceLiftReduceTree";
@@ -29,7 +29,7 @@ PatternNodePtrSet PatternGraph::ClusterOps() {
   VLOG(4) << "ReduceTree_Trivial_Fusion";
   ReduceTree_Trivial_Fusion();
 
-  return all_pattern_nodes_;
+  return SortByTopoOrder();
 }
 
 std::vector<PatternNodePtr> PatternGraph::SortByTopoOrder() {
@@ -77,14 +77,15 @@ void PatternGraph::ReduceTree_Trivial_Fusion() {
       [&](PatternNodePtrSet all_nodes) -> PatternNodePtr {
     for (PatternNodePtr node : all_nodes) {
       if (node->IsReduceTree() && !node->downstream_.empty() &&
-          node->downstream_.at(0)->IsTrivial() && 
-          visited.find(node) == visited.end()){
-            visited.emplace(node);
-            return node;
-          }
+          node->downstream_.at(0)->IsTrivial() &&
+          visited.find(node) == visited.end()) {
+        visited.emplace(node);
+        return node;
+      }
     }
     return nullptr;
   };
+  PrintGraph();
   PatternNodePtr upstream;
   while ((upstream = FindReduceTree(all_pattern_nodes_)) != nullptr) {
     VLOG(4) << "Found A RT";

@@ -40,8 +40,7 @@ std::optional<ReducePattern> RelativeJudgePolicy::GetDownstreamFromCandidate(
 }
 
 SplitedDims SplitReduceInputDimsIfRelatedWithNonReduceAxis(
-                            const ShardableAxesSignature& signature,
-                            const pir::Operation* op) {
+    const ShardableAxesSignature& signature, const pir::Operation* op) {
   // TODO(wuzhanfei) fix here，use result?
   const auto& v = op->operand_source(0);
   const auto& input_names = signature.inputs[0].axis_names;
@@ -62,14 +61,12 @@ SplitedDims SplitReduceInputDimsIfRelatedWithNonReduceAxis(
 }
 
 SplitedDims SplitReduceOutputDimsIfRelatedWithNonReduceAxis(
-                            const ShardableAxesSignature& signature,
-                            const pir::Operation* op) {
+    const ShardableAxesSignature& signature, const pir::Operation* op) {
   // TODO(wuzhanfei) fix here，use result?
   const auto& v = op->result(0);
   const auto& input_names = signature.inputs[0].axis_names;
   const auto& output_names = signature.outputs[0].axis_names;
-  std::set<std::string> input_names_set(input_names.begin(),
-                                         input_names.end());
+  std::set<std::string> input_names_set(input_names.begin(), input_names.end());
   auto result = SplitedDims();
   int idx = 0;
   for (const auto& name : output_names) {
@@ -107,9 +104,6 @@ bool RelativeJudgePolicy::IsBroadcastEdge(
 
 bool RelativeJudgePolicy::ReduceTreeGrownCanMerge(
     const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
-  if (!upstream->IsReduceTree() || !downstream->IsReduceTree()) {
-    return false;
-  }
   const auto& upstream_tree =
       std::get<ReduceTreePattern>(upstream->stmt_pattern_);
   VLOG(4) << "upstream->stmt_pattern_:"
@@ -134,23 +128,25 @@ bool RelativeJudgePolicy::ReduceTreeGrownCanMerge(
       upstream_tree.GetRootPattern().GetReduceOp()->result(0);
   pir::Operation* downstream_reduce_op =
       maybe_downstream_op.value().GetReduceOp();
-  const auto& split_reduce_dim_result = SplitReduceOutputDimsIfRelatedWithNonReduceAxis(
-      axes_info_.GetSignature(downstream_reduce_op), downstream_reduce_op);
+  const auto& split_reduce_dim_result =
+      SplitReduceOutputDimsIfRelatedWithNonReduceAxis(
+          axes_info_.GetSignature(downstream_reduce_op), downstream_reduce_op);
   const auto& upstream_output_dims = GetAllValueDimFromValue(reduce_out_value);
-  return IsBroadcastEdge(upstream_output_dims,
-                         split_reduce_dim_result.non_related);
+  auto res = IsBroadcastEdge(upstream_output_dims,
+                             split_reduce_dim_result.non_related);
+  VLOG(4) << "ReduceTreeGrownCanMerge: " << res;
+  return res;
 }
 
 SplitedDims RelativeJudgePolicy::SplitDimsWithRelationship(
     const std::vector<ValueDim>& targets,
     const std::vector<ValueDim>& related_with) {
   auto result = SplitedDims();
-  bool is_related;
-
+  bool is_related = false;
   for (auto& target_dim : targets) {
     is_related = false;
     for (auto& related_dim : related_with) {
-      if (IsRelated(target_dim, related_dim)) is_related = true;
+      if (IsRelated(related_dim, target_dim)) is_related = true;
     }
     if (is_related) {
       result.related.push_back(target_dim);
@@ -195,13 +191,10 @@ bool DimsEquel(const std::vector<ValueDim>& first,
 bool RelativeJudgePolicy::ReducePlusTrivialCanMerge(
     const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
   VLOG(4) << "RT can fuse";
-  if (!upstream->IsReduceTree() || !downstream->IsTrivial()) {
-    return false;
-  }
-
   VLOG(4) << "SplitReduceInputDimsIfRelatedWithNonReduceAxis";
-  const auto& split_reduce_dims_result = SplitReduceInputDimsIfRelatedWithNonReduceAxis(
-      axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
+  const auto& split_reduce_dims_result =
+      SplitReduceInputDimsIfRelatedWithNonReduceAxis(
+          axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
 
   VLOG(4) << split_reduce_dims_result.DebugStr();
 
@@ -216,15 +209,21 @@ bool RelativeJudgePolicy::ReducePlusTrivialCanMerge(
   VLOG(4) << split_trivial_dims_result.DebugStr();
 
   VLOG(4) << "DimsEquel";
-  return DimsEquel(split_trivial_dims_result.non_related, upstream_reduce_dims);
+  auto res =
+      DimsEquel(split_trivial_dims_result.non_related, upstream_reduce_dims);
+  VLOG(4) << "ReducePlusTrivialCanMerge: " << res;
+  return res;
 }
 
 bool RelativeJudgePolicy::CanFuse(const PatternNodePtr& upstream,
                                   const PatternNodePtr& downstream) {
-  bool result = ReduceTreeGrownCanMerge(upstream, downstream) ||
-         ReducePlusTrivialCanMerge(upstream, downstream);
-  VLOG(4) << "RelativeJudgePolicy: CanFuse result " << result;
-  return result;
+  if (upstream->IsReduceTree() || downstream->IsTrivial()) {
+    return ReducePlusTrivialCanMerge(upstream, downstream);
+  }
+  if (upstream->IsReduceTree() || downstream->IsReduceTree()) {
+    return ReduceTreeGrownCanMerge(upstream, downstream);
+  }
+  return true;  // other case.
 }
 
 std::vector<size_t> RelativeJudgePolicy::GetFakeReduceIterIdx(
@@ -235,8 +234,7 @@ std::vector<size_t> RelativeJudgePolicy::GetFakeReduceIterIdx(
 
   const auto& split_reduce_dims_result =
       SplitReduceInputDimsIfRelatedWithNonReduceAxis(
-        axes_info_.GetSignature(upstream->sink_op_),
-        upstream->sink_op_);
+          axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
 
   const auto& upstream_reduce_dims = split_reduce_dims_result.non_related;
   const auto& upstream_non_reduce_dims = split_reduce_dims_result.related;
