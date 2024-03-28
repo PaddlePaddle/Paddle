@@ -175,12 +175,16 @@ void PatternGraph::ReduceTreeGrown() {
 }
 
 void PatternGraph::ReduceTree_Trivial_Fusion() {
+  PatternNodePtrSet visited;
   const auto FindReduceTree =
-      [](PatternNodePtrSet all_nodes) -> PatternNodePtr {
+      [&](PatternNodePtrSet all_nodes) -> PatternNodePtr {
     for (PatternNodePtr node : all_nodes) {
       if (node->IsReduceTree() && !node->downstream_.empty() &&
-          node->downstream_.at(0)->IsTrivial())
-        return node;
+          node->downstream_.at(0)->IsTrivial() && 
+          visited.find(node) == visited.end()){
+            visited.emplace(node);
+            return node;
+          }
     }
     return nullptr;
   };

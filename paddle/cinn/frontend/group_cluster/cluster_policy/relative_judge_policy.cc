@@ -221,8 +221,10 @@ bool RelativeJudgePolicy::ReducePlusTrivialCanMerge(
 
 bool RelativeJudgePolicy::CanFuse(const PatternNodePtr& upstream,
                                   const PatternNodePtr& downstream) {
-  return ReduceTreeGrownCanMerge(upstream, downstream) ||
+  bool result = ReduceTreeGrownCanMerge(upstream, downstream) ||
          ReducePlusTrivialCanMerge(upstream, downstream);
+  VLOG(4) << "RelativeJudgePolicy: CanFuse result " << result;
+  return result;
 }
 
 std::vector<size_t> RelativeJudgePolicy::GetFakeReduceIterIdx(
