@@ -182,6 +182,17 @@ static inline void* GetDsoHandleFromSpecificPath(const std::string& spec_path,
   return dso_handle;
 }
 
+static inline std::string FindFiles(const std::filesystem::path& directory,
+                                    const std::string& filename) {
+  for (const auto& entry :
+       std::filesystem::recursive_directory_iterator(directory)) {
+    if (entry.is_regular_file() && entry.path().filename() == filename) {
+      return entry.path();
+    }
+  }
+  return "";
+}
+
 static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
                                                 int dynload_flags) {
   // default search from LD_LIBRARY_PATH/DYLD_LIBRARY_PATH
@@ -195,10 +206,17 @@ static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
 // bring System Integrity Projection (SIP), if dso_handle
 // is null, search from default package path in Mac OS.
 #if defined(__APPLE__) || defined(__OSX__)
+#if defined(__arm__) || defined(__aarch64__)
   if (nullptr == dso_handle) {
-    dso_handle =
-        dlopen(join("/usr/local/cuda/lib/", dso_path).c_str(), dynload_flags);
+    dso_handle = dlopen(FindFiles("/opt/homebrew/Cellar/", dso_path).c_str(),
+                        dynload_flags);
   }
+#else
+  if (nullptr == dso_handle) {
+    dso_handle = dlopen(FindFiles("/usr/local/cuda/lib/", dso_path).c_str(),
+                        dynload_flags);
+  }
+#endif
 #endif
 
   return dso_handle;
@@ -618,7 +636,11 @@ void* GetMKLMLDsoHandle() {
 
 void* GetLAPACKDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
+#if defined(__arm__) || defined(__aarch64__)
+  return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapack.dylib");
+#else
   return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapack.3.dylib");
+#endif
 #elif defined(_WIN32)
   return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapack.dll");
 #else
