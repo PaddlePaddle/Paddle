@@ -18,9 +18,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/pir/transforms/onednn/depthwise_conv_mkldnn_pass.h"
-#endif
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
@@ -59,9 +57,8 @@ TEST(DrrTest, DepthwiseConv) {
   BuildProgram(builder);
 
   pir::PassManager pm(ctx);
-#ifdef PADDLE_WITH_DNNL
+
   pm.AddPass(pir::CreateDepthwiseConvMKLDNNPass());
-#endif
   pm.EnablePassTiming();
   pm.EnableIRPrinting();
 
