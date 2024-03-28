@@ -180,7 +180,7 @@ void SparseConvOptimPass::ApplyImpl(ir::Graph* graph) const {
 
     if (sp_conv3d_to_2d()) {
       VLOG(4) << "SparseConv3D(output:" << output_name
-              << ") to has been converted to 2D implementation!";
+              << ") has been converted to 2D implementation!";
     }
 
     bool is_subm = PADDLE_GET_CONST(bool, sp_conv3d_op->Op()->GetAttr("subm"));
