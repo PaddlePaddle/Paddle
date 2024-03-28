@@ -72,12 +72,12 @@ class IrGuard:
 
             paddle.base.Program = paddle.pir.Program
             paddle.base.program_guard = paddle.pir.core.program_guard
-            # paddle.base.default_main_program = (
-            #     paddle.pir.core.default_main_program
-            # )
-            # paddle.base.default_startup_program = (
-            #     paddle.pir.core.default_startup_program
-            # )
+            paddle.base.default_main_program = (
+                paddle.pir.core.default_main_program
+            )
+            paddle.base.default_startup_program = (
+                paddle.pir.core.default_startup_program
+            )
             paddle.static.Program = paddle.pir.Program
             paddle.static.program_guard = paddle.pir.core.program_guard
             paddle.static.default_main_program = (
