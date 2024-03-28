@@ -20,9 +20,9 @@ namespace dialect {
 
 TEST_API std::shared_ptr<pir::Program> DistToDensePass(pir::Program* prog);
 
-void ProcessBlock(pir::Block* block);
+void ProcessDistBlock(pir::Block* block);
 
-void VerifyBlock(pir::Block* block);
+void VerifyDenseBlock(pir::Block* block);
 
 }  // namespace dialect
 }  // namespace paddle

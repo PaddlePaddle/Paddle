@@ -44,11 +44,9 @@ inline pir::Type CastToLocalType(pir::Type dist_type) {
   return dist_type.dyn_cast<DistTypeInterface>().local_type();
 }
 
-inline bool IsDistType(pir::Type type) {
-  return type.dyn_cast<DistTypeInterface>() != nullptr;
-}
+inline bool IsDistType(pir::Type type) { return type.isa<DistTypeInterface>(); }
 
-void ProcessBlock(pir::Block* block) {
+void ProcessDistBlock(pir::Block* block) {
   for (auto iter = block->begin(); iter != block->end(); ++iter) {
     pir::Operation* op_item = &(*iter);
     VLOG(6) << "dist_to_dense main loop over op [" << op_item->name() << "].";
@@ -57,7 +55,7 @@ void ProcessBlock(pir::Block* block) {
       auto result = op_item->result(i);
       auto origin_type = result.type();
 
-      if IsDistType (origin_type) {
+      if (IsDistType(origin_type)) {
         auto local_type = CastToLocalType(origin_type);
         result.set_type(local_type);
       } else {
@@ -70,14 +68,14 @@ void ProcessBlock(pir::Block* block) {
     }
 
     // TODO(2024-Q2) not all op are dist type
-    auto& attributes = op_item->attributes();
-    PADDLE_ENFORCE_EQ((attributes.HasAttribute(kAttrOpDistAttrs) &&
-                       attributes.at(kAttrOpDistAttrs)
-                           .isa<paddle::dialect::OperationDistAttribute>()),
-                      true,
-                      common::errors::PreconditionNotMet(
-                          "The op [] has not op_dist_attr.", op_item->name()));
-    attributes.erase(kAttrOpDistAttrs);
+    PADDLE_ENFORCE_EQ(
+        (op_item->HasAttribute(kAttrOpDistAttr) &&
+         op_item->attribute(kAttrOpDistAttr)
+             .isa<paddle::dialect::OperationDistAttribute>()),
+        true,
+        common::errors::PreconditionNotMet("The op [%s] has not op_dist_attr.",
+                                           op_item->name()));
+    op_item->erase_attribute(kAttrOpDistAttr);
 
     // TODO(2024-Q2) Handle other special dist op in future.
   }
@@ -88,7 +86,7 @@ void ProcessBlock(pir::Block* block) {
     2. all Values (Results) are DenseTensorType.
     3. no shard_tensor / reshard in block.
 */
-void VerifyBlock(pir::Block* block) {
+void VerifyDenseBlock(pir::Block* block) {
   for (auto iter = block->begin(); iter != block->end(); ++iter) {
     pir::Operation* op_item = &(*iter);
 
@@ -97,21 +95,22 @@ void VerifyBlock(pir::Block* block) {
 
       PADDLE_ENFORCE_EQ(
           IsDistType(result.type()),
-          true,
-          phi::errors::PreconditionNotMet("Block still contain dist type."));
+          false,
+          phi::errors::PreconditionNotMet(
+              "Block op [%s] still contain dist type.", op_item->name()));
     }
-    auto& attributes = op_item->attributes();
+
     PADDLE_ENFORCE_EQ(
-        attributes.HasAttribute(kAttrOpDistAttrs),
+        op_item->HasAttribute(kAttrOpDistAttr),
         false,
-        common::errors::PreconditionNotMet("The op [] still has op_dist_attr.",
-                                           op_item->name()));
+        common::errors::PreconditionNotMet(
+            "The op [%s] still has op_dist_attr.", op_item->name()));
   }
 }
 
 std::shared_ptr<pir::Program> DistToDensePass(pir::Program* prog) {
   if (FLAGS_print_ir) {
-    std::cout << "IR before DistToDense Pass = " << *prog << std::endl;
+    VLOG(0) << "IR before DistToDense Pass = " << *prog;
   }
 
   pir::IrMapping mapper;
@@ -121,11 +120,12 @@ std::shared_ptr<pir::Program> DistToDensePass(pir::Program* prog) {
   ctx->GetOrRegisterDialect<OperatorDialect>();
   ctx->GetOrRegisterDialect<DistDialect>();
 
-  ProcessBlock(new_prog->block());
-  VerifyBlock(new_prog->block());
+  ProcessDistBlock(new_prog->block());
+  VLOG(0) << "IR before VerifyDenseBlock Pass = " << *new_prog;
+  VerifyDenseBlock(new_prog->block());
 
   if (FLAGS_print_ir) {
-    std::cout << "IR after DistToDense Pass = " << *new_prog << std::endl;
+    VLOG(0) << "IR after DistToDense Pass = " << *new_prog;
   }
 
   return new_prog;
