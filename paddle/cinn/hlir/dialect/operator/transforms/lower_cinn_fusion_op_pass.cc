@@ -267,11 +267,16 @@ OpLoweringGroupPtr RebuildGroup(pir::Operation* fusion_op, bool is_dy_shape);
 
 void FusionOpAnalysis::GatherGroup(pir::Operation* fusion_op) {
   OpLoweringGroupPtr group_ptr = RebuildGroup(fusion_op, is_dy_shape_);
-  VLOG(6) << "Gather Group " << group_ptr->FuncName()
+  VLOG(0) << "Gather Group " << group_ptr->FuncName()
+          << "  id: " << group_ptr->group_id()
           << " for fusion_op : " << fusion_op->id();
   pre_analysis_info_->group_infos.insert({fusion_op, group_ptr});
   if (is_dy_shape_) {
     auto broadcast_tree_info = std::make_shared<BroadcastTreeInfo>(group_ptr);
+    VLOG(0) << "###### Gather Group BroadcastTreeInfo " << *group_ptr;
+    VLOG(0) << "  ##### broadcast_tree: "
+            << cinn::common::ToTxtString(
+                   *broadcast_tree_info->GetBroadcastTree());
     pre_analysis_info_->broadcast_tree_infos.insert(
         {group_ptr, broadcast_tree_info});
   }
@@ -383,6 +388,11 @@ pir::Operation* ProcessDyShapeGroup(
   const auto& broadcast_tree_info =
       pre_analysis_info.broadcast_tree_infos.at(group);
   auto group_inputs = GetBlockOutsideInput(group->ops());
+  VLOG(0) << "#### ProcessDyShapeGroup : " << *group;
+  VLOG(0) << "###### broadcast_tree_info: "
+          << cinn::common::ToTxtString(
+                 *broadcast_tree_info->GetBroadcastTree());
+
   // has multiple branch
   if (broadcast_tree_info->HasMultiBranch()) {
     std::vector<pir::Type> output_types;
@@ -678,10 +688,14 @@ void UpdateGroupShapeExprs(
     const cinn::common::BroadcastLeaf& value_dim_exprs_list,
     const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx) {
   for (const auto& [origin_val, new_val] : ir_mapping.GetMap<pir::Value>()) {
+    VLOG(0) << "##### origin_val@" << origin_val.impl() << "idx: ";
+    VLOG(0) << value_to_dim_expr_idx.at(origin_val);
     const auto& shape_dim_expr =
         value_dim_exprs_list->at(value_to_dim_expr_idx.at(origin_val));
+    VLOG(0) << "##### shape_dim_expr: " << shape_dim_expr;
     const auto& origin_shape_or_data =
         origin_group->GetShapeOrDataExprs(origin_val);
+    VLOG(0) << "##### origin_shape_or_data: " << origin_shape_or_data;
     if (origin_shape_or_data.data()) {
       new_group->SetShapeOrDataExprs(
           new_val,
@@ -709,14 +723,23 @@ void SetLeafBlockByGroupView(
   for (auto input : origin_group_inputs) {
     ir_mapping.Add(input, input);
   }
+  VLOG(0) << "###### CloneGroup " << origin_group->group_id();
 
   auto new_group = CloneGroup(origin_group, block, &ir_mapping);
+  VLOG(0) << "###### ir_mapping: " << ir_mapping.GetMap<pir::Value>().size();
+  for (const auto& [origin_val, new_val] : ir_mapping.GetMap<pir::Value>()) {
+    VLOG(0) << "  origin_val: @" << origin_val.impl() << " op: "
+            << (origin_val.defining_op() ? origin_val.defining_op()->name()
+                                         : "null");
+  }
   CHECK_EQ(origin_group->ops().size(), new_group->ops().size());
   UpdateGroupShapeExprs(new_group,
                         origin_group,
                         ir_mapping,
                         value_dim_exprs_list,
                         value_to_dim_expr_idx);
+
+  VLOG(0) << "###### set output ";
 
   // Insert YieldOp for outputs
   std::vector<pir::Value> outputs;
@@ -758,6 +781,8 @@ pir::Operation* CreateConditionBlock(
     pir::Block* block,
     std::unordered_map<pir::Block*, OpLoweringGroupPtr>* group_map) {
   if (broadcast_tree.Has<cinn::common::BroadcastLeaf>()) {
+    VLOG(0) << "###### broadcast leaf : "
+            << cinn::common::ToTxtString(broadcast_tree);
     const auto& broadcast_leaf =
         broadcast_tree.Get<cinn::common::BroadcastLeaf>();
     SetLeafBlockByGroupView(origin_group,
@@ -768,6 +793,7 @@ pir::Operation* CreateConditionBlock(
                             group_map);
     return nullptr;
   } else {
+    VLOG(0) << "####### BroadcastBranch ";
     const auto& branch =
         broadcast_tree
             .Get<cinn::common::BroadcastBranch<cinn::common::BroadcastTree>>();
@@ -931,9 +957,14 @@ pir::Operation* CompileBroadcastTreeToConditionBlock(
     const std::vector<pir::Type>& output_types,
     pir::PatternRewriter& rewriter) {  // NOLINT
   // 1. broadcast tree to condition op
-  VLOG(4) << "broadcast tree to condition op";
+  VLOG(1) << "broadcast tree to condition op";
   const auto& value_to_dim_expr_idx =
       broadcast_tree_info.GetValueToDimExprIdx();
+
+  VLOG(1) << "##### value_to_dim_expr_idx: " << value_to_dim_expr_idx.size();
+  for (const auto& [value, idx] : value_to_dim_expr_idx) {
+    VLOG(1) << "##### value: @" << value.impl() << " -> idx: " << idx;
+  }
   const auto& broadcast_tree = broadcast_tree_info.GetBroadcastTree();
   std::unordered_map<pir::Block*, OpLoweringGroupPtr> group_map;
   pir::Operation* cond_op = CreateConditionBlock(*broadcast_tree,
@@ -947,7 +978,7 @@ pir::Operation* CompileBroadcastTreeToConditionBlock(
                                                  &group_map);
   // 2. simply every condition block
   auto* program = group->ops().front()->GetParentProgram();
-  VLOG(6) << "Before simply condition block: " << *program;
+  VLOG(1) << "Before simply condition block: " << *program;
 
   SimplyConditionBlock(rewriter, &group_map);
   VLOG(0) << "After simply condition block: " << *program;
