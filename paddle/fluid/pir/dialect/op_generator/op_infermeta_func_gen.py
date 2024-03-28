@@ -628,8 +628,8 @@ def GenDistBranch(args, op_info):
           OperationDistAttribute::get(
             ctx,
             op_mesh,
-            {{dist_type.tensor_dist_attr() }},
-            {{}}
+            {{}},
+            {{dist_type.tensor_dist_attr()}}
           )
       );
     }}
