@@ -104,6 +104,7 @@ const std::set<std::string>& GetPrimitiveOpNames() {
       "builtin.shadow_output",
       /* skip some special ops */
       "pd_op.conv2d",
+      "pd_op.pad3d",
       "pd_op.nearest_interp",
       "pd_op.squeeze",
       "pd_op.unsqueeze",
