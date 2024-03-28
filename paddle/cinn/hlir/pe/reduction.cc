@@ -27,6 +27,7 @@
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
@@ -841,21 +842,23 @@ std::vector<ir::Tensor> TwoStepBlockReduceInternal(
   // If the number of current device SM is smaller than the number of SM
   // required by Warp Reduce, the performance of Warp Reduce is better.
   // Otherwise, use Block Reduce.
-  auto max_num_threads = cinn::common::DefaultNVGPUTarget().max_num_threads();
+  auto max_num_threads =
+      runtime::CurrentTarget::GetCurrentTarget().max_num_threads();
   int need_reduce_last_count = 1;
   for (int i = 0; i < A->shape.size(); i++) {
     if (find(axes.begin(), axes.end(), i) == axes.end()) {
       need_reduce_last_count *= A->shape[i].as_int32();
     }
   }
-  int warp_reduce_need_sm_count =
-      ceil((need_reduce_last_count * 32) /
-           static_cast<float>(
-               cinn::common::DefaultNVGPUTarget().get_max_threads_per_sm()));
+  int warp_reduce_need_sm_count = ceil(
+      (need_reduce_last_count * 32) /
+      static_cast<float>(
+          runtime::CurrentTarget::GetCurrentTarget().get_max_threads_per_sm()));
   // Set Num_max_threads to 32 is Warp Reduce
-  if (cinn::common::DefaultNVGPUTarget().get_multi_processor_count() <
+  if (runtime::CurrentTarget::GetCurrentTarget().get_multi_processor_count() <
       warp_reduce_need_sm_count) {
-    max_num_threads = 32;
+    max_num_threads =
+        runtime::CurrentTarget::GetCurrentTarget().get_warp_size();
   }
 
   int lane = A->shape[axes.back()].as_int32();

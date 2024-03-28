@@ -20,6 +20,7 @@
 #ifdef CINN_WITH_CUDA
 #include <cuda_runtime.h>
 #endif
+#include "paddle/cinn/runtime/backend_api.h"
 
 PD_DECLARE_int64(cinn_self_check_accuracy_num);
 
@@ -272,13 +273,11 @@ std::string AccuracyChecker::CheckBuffer(const cinn_buffer_t* buffer,
 
 template <typename T>
 void AccuracyChecker::MemcpyDeviceToHost(const T* src, size_t numel, T* dst) {
-#ifdef CINN_WITH_CUDA
-  if (target_ == cinn::common::DefaultNVGPUTarget()) {
-    cudaMemcpy(dst, src, numel * sizeof(T), cudaMemcpyDeviceToHost);
-    return;
-  }
-#endif
-  if (target_ == cinn::common::DefaultHostTarget()) {
+  if (target_.arch_is_gpu()) {
+    using cinn::runtime::BackendAPI;
+    BackendAPI::get_backend(target_)->memcpy(
+        dst, src, numel * sizeof(T), BackendAPI::MemcpyType::DeviceToHost);
+  } else if (target_ == common::DefaultHostTarget()) {
     for (size_t i = 0; i < numel; ++i) {
       dst[i] = src[i];
     }

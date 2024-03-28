@@ -64,6 +64,7 @@ option(WITH_CUSPARSELT "Compile PaddlePaddle with CUSPARSELT" OFF)
 option(WITH_SETUP_INSTALL "Compile PaddlePaddle with setup.py" OFF)
 option(WITH_SHARED_PHI "Compile PaddlePaddle with SHARED LIB of PHI" ON)
 option(CINN_WITH_CUDNN "Compile CINN with CUDNN support" ON)
+option(CINN_WITH_SYCL "Compile CINN with SYCL support" OFF)
 option(WITH_PIP_CUDA_LIBRARIES
        "Paddle uses the CUDA library provided by NVIDIA" OFF)
 option(WITH_NIGHTLY_BUILD

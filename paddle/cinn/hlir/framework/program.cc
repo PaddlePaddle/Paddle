@@ -176,12 +176,10 @@ void Program::Execute(
   for (auto& ins : instrs_) {
     ins->Run(name2podargs, false, stream, use_cache);
   }
-#ifdef CINN_WITH_CUDA
-  VLOG(4) << "-- The value of the used stream: " << stream;
-  if (instrs_[0]->target_.arch == Target::Arch::NVGPU && stream == nullptr) {
-    CUDA_CALL(cudaDeviceSynchronize());
+  if (instrs_[0]->target_.arch_is_gpu()) {
+    using cinn::runtime::BackendAPI;
+    BackendAPI::get_backend(instrs_[0]->target_)->device_sync();
   }
-#endif
 }
 
 void Program::ExecuteTest(int repeat_) {
@@ -197,11 +195,10 @@ void Program::ExecuteTest(int repeat_) {
       ins->Run();
     }
   }
-#ifdef CINN_WITH_CUDA
-  if (instrs_[0]->target_.arch == Target::Arch::NVGPU) {
-    CUDA_CALL(cudaDeviceSynchronize());
+  if (instrs_[0]->target_.arch_is_gpu()) {
+    using cinn::runtime::BackendAPI;
+    BackendAPI::get_backend(instrs_[0]->target_)->device_sync();
   }
-#endif
   double test_op_time = timer1.Stop() / repeat_;
   VLOG(3) << "Repeat times: [" << repeat_ << "], average op time: ["
           << test_op_time << "] ms";

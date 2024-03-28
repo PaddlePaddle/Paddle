@@ -15,6 +15,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -31,15 +32,21 @@ struct OptimizeOptions {
   std::vector<std::string> graph_passes;
 };
 
-OptimizeOptions DefaultTrainingOptimizeOptions();
+OptimizeOptions DefaultTrainingOptimizeOptions(
+    common::Target target = common::DefaultNVGPUTarget());
 
 std::vector<std::string> DefaultOpFusionPasses();
 
 std::shared_ptr<hlir::framework::Graph> Optimize(
     frontend::Program* program,
     const std::unordered_set<std::string>& fetch_ids,
+    cinn::common::Target target);
+
+std::shared_ptr<hlir::framework::Graph> Optimize(
+    frontend::Program* program,
+    const std::unordered_set<std::string>& fetch_ids,
     cinn::common::Target target,
-    const OptimizeOptions& options = DefaultTrainingOptimizeOptions());
+    const OptimizeOptions& options);
 
 std::shared_ptr<hlir::framework::Graph> Optimize(
     frontend::Program* program,

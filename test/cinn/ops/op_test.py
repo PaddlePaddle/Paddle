@@ -23,12 +23,21 @@ from cinn.common import (
     Bool,
     DefaultHostTarget,
     DefaultNVGPUTarget,
+    DefaultROCMTarget,
     Float,
     Float16,
     Int,
+    SYCLTarget,
     UInt,
     is_compiled_with_cuda,
+    is_compiled_with_hip,
+    is_compiled_with_sycl,
 )
+
+is_compile_with_device = (
+    is_compiled_with_cuda() or is_compiled_with_sycl() or is_compiled_with_hip()
+)
+
 from cinn.runtime import seed as cinn_seed
 
 import paddle
@@ -82,9 +91,14 @@ class OpTest(unittest.TestCase):
         self.cinn_grads = []
 
     def _init_target(self):
-        self.target = DefaultHostTarget()
         if is_compiled_with_cuda():
             self.target = DefaultNVGPUTarget()
+        elif is_compiled_with_hip():
+            self.target = DefaultROCMTarget()
+        elif is_compiled_with_sycl():
+            self.target = SYCLTarget()
+        else:
+            self.target = DefaultHostTarget()
 
     def _get_device(self):
         return "NVGPU" if is_compiled_with_cuda() else "CPU"
@@ -140,7 +154,13 @@ class OpTest(unittest.TestCase):
     ):
         self.build_paddle_program(self.target)
         self.build_cinn_program(self.target)
-
+        print(
+            "paddle output first 5: %s"
+            % self.paddle_outputs[0].numpy().reshape(-1)[:5]
+        )
+        print(
+            "cinn   output first 5: %s" % self.cinn_outputs[0].reshape(-1)[:5]
+        )
         logger.debug("============ Check Outputs ============")
         self.check_results(
             self.paddle_outputs,
