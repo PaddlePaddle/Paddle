@@ -173,6 +173,10 @@ class InstructionBase {
   virtual std::string DebugStringEx(const paddle::framework::Scope* scope,
                                     ValueExecutionInfo* value_exe_info) const;
 
+  virtual std::vector<DDim> GetOutputDims(
+      const paddle::framework::Scope* scope,
+      ValueExecutionInfo* value_exe_info) const;
+
  protected:
   size_t id_;
 

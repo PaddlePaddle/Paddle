@@ -328,6 +328,37 @@ void InstructionBase::InitInputsOutputsIds(
   VLOG(8) << "finish process outputs_index";
 }
 
+std::vector<DDim> InstructionBase::GetOutputDims(
+    const paddle::framework::Scope* scope,
+    ValueExecutionInfo* value_exe_info) const {
+  std::vector<DDim> out_ddims;
+
+  std::map<std::string, DDim> sorted_output_dims;
+
+  for (auto it = Outputs().begin(); it != Outputs().end();) {
+    auto& output = *it;
+    auto var_name = value_exe_info->GetVarName(output.first);
+    if (scope) {
+      if (!VarInited(*scope, var_name)) {
+        sorted_output_dims[var_name] = DDim({-1});
+      } else {
+        sorted_output_dims[var_name] = GetDimsDebug(*scope, var_name, true);
+      }
+    }
+    ++it;
+  }
+
+  for (auto&& kv : sorted_output_dims) {
+    out_ddims.emplace_back(kv.second);
+  }
+
+  if (out_ddims.empty()) {
+    out_ddims.emplace_back(DDim({-1}));
+  }
+
+  return out_ddims;
+}
+
 std::string InstructionBase::DebugStringEx(
     const paddle::framework::Scope* scope,
     ValueExecutionInfo* value_exe_info) const {

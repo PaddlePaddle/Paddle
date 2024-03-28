@@ -27,6 +27,46 @@
 
 namespace pir::shape {
 
+inline std::vector<symbol::DimExpr> GetExprVecFromData(
+    const symbol::ShapeOrDataDimExprs &shapeordata) {
+  if (shapeordata.isa<symbol::TensorListShapeOrDataDimExprs>()) {
+    std::vector<symbol::DimExpr> result;
+    symbol::TensorListShapeOrDataDimExprs list =
+        shapeordata.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+    for (size_t i = 0; i < list.size(); i++) {
+      if (list[i].data().has_value()) {
+        for (auto expr : list[i].data().value()) {
+          result.emplace_back(expr);
+        }
+      }
+    }
+    return result;
+  } else {
+    return shapeordata.data().has_value() ? shapeordata.data().value()
+                                          : std::vector<symbol::DimExpr>{};
+  }
+}
+
+inline std::vector<symbol::DimExpr> GetExprVecFromShape(
+    const symbol::ShapeOrDataDimExprs &shapeordata) {
+  const auto GetShapeExprsFromList = [&]() {
+    std::vector<symbol::DimExpr> result;
+    symbol::TensorListShapeOrDataDimExprs list =
+        shapeordata.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+    for (size_t i = 0; i < list.size(); i++) {
+      for (auto expr : list[i].shape()) {
+        result.emplace_back(expr);
+      }
+    }
+    return result;
+  };
+  if (shapeordata.isa<symbol::TensorListShapeOrDataDimExprs>()) {
+    return GetShapeExprsFromList();
+  } else {
+    return shapeordata.shape();
+  }
+}
+
 ///
 /// \brief Define Parametric AttributeStorage for SymbolAttribute.
 ///
@@ -40,25 +80,25 @@ struct SymbolAttributeStorage : public AttributeStorage {
   }
 
   static std::size_t HashValue(const ParamKey &key) {
+    auto all_shapes = GetExprVecFromShape(key);
     std::size_t hash_value = 0;
-    for (size_t i = 0; i < key.shape().size(); ++i) {
+    for (size_t i = 0; i < all_shapes.size(); ++i) {
       hash_value = detail::hash_combine(
           hash_value,
-          std::hash<std::string>()(symbol::ToString(key.shape()[i])));
+          std::hash<std::string>()(symbol::ToString(all_shapes[i])));
     }
-    if (key.data().has_value()) {
-      for (size_t i = 0; i < key.data().value().size(); ++i) {
-        hash_value = detail::hash_combine(
-            hash_value,
-            std::hash<std::string>()(symbol::ToString(key.data().value()[i])));
-      }
+    auto all_datas = GetExprVecFromData(key);
+    for (size_t i = 0; i < all_datas.size(); ++i) {
+      hash_value = detail::hash_combine(
+          hash_value, std::hash<std::string>()(symbol::ToString(all_datas[i])));
     }
 
     return hash_value;
   }
 
   bool operator==(const ParamKey &key) const {
-    return data_.shape() == key.shape() && data_.data() == key.data();
+    return GetExprVecFromShape(data_) == GetExprVecFromShape(key) &&
+           GetExprVecFromData(data_) == GetExprVecFromData(key);
   }
 
   ParamKey data() const { return data_; }
