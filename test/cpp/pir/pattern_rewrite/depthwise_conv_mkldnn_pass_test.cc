@@ -59,6 +59,7 @@ TEST(DrrTest, DepthwiseConv) {
   BuildProgram(builder);
 
   pir::PassManager pm(ctx);
+  pm.AddPass(pir::CreateConv2dBiasFusePass());
   pm.AddPass(pir::CreateDepthwiseConvMKLDNNPass());
   pm.EnablePassTiming();
   pm.EnableIRPrinting();
