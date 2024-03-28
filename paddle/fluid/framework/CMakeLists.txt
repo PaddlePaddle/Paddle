@@ -873,14 +873,21 @@ target_link_libraries(
 
 cc_library(
   parallel_executor
-  SRCS parallel_executor.cc
+  SRCS executor_cache.cc
   DEPS ssa_graph_executor graph build_strategy collective_helper
        variable_helper)
 
 cc_library(
   executor_cache
   SRCS executor_cache.cc
-  DEPS parallel_executor pir_transforms pir)
+  DEPS ssa_graph_executor
+       graph
+       build_strategy
+       collective_helper
+       variable_helper
+       pir_transforms
+       pir)
+
 cc_library(
   prune
   SRCS prune.cc

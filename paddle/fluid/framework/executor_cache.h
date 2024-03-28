@@ -68,17 +68,12 @@ std::set<std::string> ParseSafeEagerDeletionSkipVarsSet(
 class ExecutorInfo {
  public:
   struct CacheValue {
-    std::shared_ptr<ParallelExecutor> executor_{nullptr};
     std::shared_ptr<ir::Graph> graph_{nullptr};
 
     std::vector<std::string> skip_eager_delete_vars_;
   };
 
-  bool IsAvailable(bool is_grad) {
-    const auto& executor =
-        is_grad ? backward_info_.executor_ : forward_info_.executor_;
-    return executor != nullptr;
-  }
+  bool IsAvailable(bool is_grad) { return false; }
 
   CacheValue& GetMutable(bool is_grad) {
     return is_grad ? backward_info_ : forward_info_;
@@ -144,26 +139,6 @@ class ExecutorInfoCache {
   std::unordered_map<int64_t, ExecutorInfo> info_map_;
   std::unordered_map<int64_t, BuildStrategy> strategy_map_;
 };
-
-using CacheInfo =
-    std::pair<std::shared_ptr<ParallelExecutor>, bool /*is_new_created*/>;
-
-using PEAndGraphPair =
-    std::pair<std::shared_ptr<ParallelExecutor>, std::shared_ptr<ir::Graph>>;
-
-CacheInfo GetExecutorInfoFromCache(const ProgramDesc& program_desc,
-                                   const platform::Place& place,
-                                   int64_t start_op_index,
-                                   int64_t end_op_index,
-                                   bool is_grad,
-                                   int64_t program_id,
-                                   framework::Scope* scope);
-
-PEAndGraphPair CreateFixOrderExecutorInfo(const ProgramDesc& program_desc,
-                                          const platform::Place& place,
-                                          int64_t start_op_index,
-                                          int64_t end_op_index,
-                                          framework::Scope* scope);
 
 int64_t hash_with_seed(int64_t value, int64_t seed);
 

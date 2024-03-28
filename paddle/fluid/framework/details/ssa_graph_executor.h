@@ -24,22 +24,6 @@
 
 namespace paddle {
 namespace framework {
-namespace details {
-class SSAGraphExecutor {
-  DISABLE_COPY_AND_ASSIGN(SSAGraphExecutor);
-
- public:
-  SSAGraphExecutor() {}
-
-  virtual ~SSAGraphExecutor();
-
-  virtual const ir::Graph& Graph() const = 0;
-
-  virtual FetchResultType Run(const std::vector<std::string>& fetch_tensors,
-                              bool return_merged = true) = 0;
-};
-
-void ClearFetchOp(ir::Graph* graph, std::vector<OpHandleBase*>* fetch_ops);
-}  // namespace details
+namespace details {}  // namespace details
 }  // namespace framework
 }  // namespace paddle

@@ -1,8 +1,7 @@
 proto_library(paddle_jit_property_proto SRCS property.proto)
 
 file(GLOB_RECURSE fluid_jit_srcs "*.cc")
-set(fluid_jit_deps paddle_jit_property_proto proto_desc executor
-                   parallel_executor)
+set(fluid_jit_deps paddle_jit_property_proto proto_desc executor)
 
 cc_library(
   fluid_jit

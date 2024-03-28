@@ -470,9 +470,6 @@ void ComputeOverhead(const std::vector<EventItem> &main_event_items,
   }
 
   for (auto it = sub_child_map.begin(); it != sub_child_map.end(); it++) {
-    if (it->first == "ParallelExecutor::Run") {
-      overhead->accumulated_time += it->second.total_time;
-    }
     if (it->second.name.find("compute") != std::string::npos &&
         it->second.name.find("compute/") == std::string::npos) {
       overhead->compute_time += it->second.total_time;

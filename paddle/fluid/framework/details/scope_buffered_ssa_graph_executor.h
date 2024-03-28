@@ -40,52 +40,6 @@ struct VariableInfo {
   bool persistable_;
 };
 
-class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
- public:
-  ScopeBufferedSSAGraphExecutor(
-      ExecutionStrategy strategy,
-      std::vector<Scope*> local_scopes,
-      std::vector<Scope*> local_exec_scopes,
-      std::vector<VariableInfo> var_infos,
-      std::vector<platform::Place> places,
-      std::unique_ptr<SSAGraphExecutor>&& underlying_executor);
-
-  const ir::Graph& Graph() const override {
-    return underlying_executor_->Graph();
-  }
-
-  FetchResultType Run(const std::vector<std::string>& fetch_tensors,
-                      bool return_merged) override;
-
-  void DropLocalExeScopes(bool need_wait = true);
-
-  bool NeedCreateLocalExeScope();
-
-  void PrepareLocalExeScopes();
-
- private:
-  void InitVariables();
-
-  bool DropScopeOrNot() const;
-
-  bool is_initialized_{false};
-  size_t drop_scope_counter_{0};
-  ExecutionStrategy strategy_;
-  std::unique_ptr<SSAGraphExecutor> underlying_executor_;
-  std::vector<Scope*> local_scopes_;
-
-  std::vector<Scope*> local_exec_scopes_;
-  std::vector<std::unordered_set<Variable*>> preserve_vars_;
-  std::vector<std::vector<std::pair<Variable*, proto::VarType::Type>>>
-      tmp_var_infos_;
-
-  std::vector<Variable*> tensor_array_vars_;
-
-  std::vector<VariableInfo> var_infos_;
-  std::vector<platform::Place> places_;
-
-  ScopeBufferedMonitor scope_monitor_;
-};
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
