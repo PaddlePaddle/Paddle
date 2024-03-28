@@ -173,8 +173,10 @@ void ${op_name}(ConvAllParams params) {
 def convert_c_data_type(dtype):
     if dtype == "fp16":
         return "Conv2dDataType::fp16"
-    if dtype == "bf16":
+    elif dtype == "bf16":
         return "Conv2dDataType::bf16"
+    elif dtype == "fp32":
+        return "Conv2dDataType::fp32"
 
 
 CommonDispatchTemp = '''
