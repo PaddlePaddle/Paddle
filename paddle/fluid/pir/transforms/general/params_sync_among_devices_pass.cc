@@ -42,18 +42,18 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
         true,
         phi::errors::InvalidArgument(
             "Pass initialize failed."
-            "When using ConstantFoldingPass, place attribute is required!"
+            "When using ParamsSyncAmongDevicesPass, place attribute is required!"
             "Use Set method to set the place attribute."));
     PADDLE_ENFORCE_EQ(
         Has(pir::Pass::kParamScopeAttr),
         true,
         phi::errors::InvalidArgument(
             "Pass initialize failed."
-            "When using ConstantFoldingPass, scope attribute is required!"
+            "When using ParamsSyncAmongDevicesPass, scope attribute is required!"
             "Use Set method to set the scope attribute."));
 
-    place_ = Get<phi::Place>(pir::Pass::kPlaceAttr);
-    scope_ = &Get<paddle::framework::Scope>(pir::Pass::kParamScopeAttr);
+    place_ = Get<phi::Place>(pir::kPlaceAttr);
+    scope_ = &Get<paddle::framework::Scope>(pir::kParamScopeAttr);
     return true;
   }
 
@@ -100,11 +100,22 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
   bool CanApplyOn(pir::Operation* op) const override {
     PADDLE_ENFORCE_NOT_NULL(
         scope_, phi::errors::InvalidArgument("scope can not be nullptr"));
-    PADDLE_ENFORCE(paddle::platform::is_gpu_place(place_) ||
-                       paddle::platform::is_cpu_place(place_),
-                   phi::errors::PreconditionNotMet(
-                       "The Place attr in params_sync_among_devices_pass "
-                       "should be cpu or gpu."));
+
+#ifdef PADDLE_WITH_XPU
+    PADDLE_ENFORCE(
+        paddle::platform::is_xpu_place(place_) ||
+            paddle::platform::is_cpu_place(place_),
+        phi::errors::PreconditionNotMet(
+            "params_sync_among_devices_pass should run on cpu or xpu."));
+#endif
+#ifdef PADDLE_WITH_CUDA
+    PADDLE_ENFORCE(
+        paddle::platform::is_gpu_place(place_) ||
+            paddle::platform::is_cpu_place(place_),
+        phi::errors::PreconditionNotMet(
+            "params_sync_among_devices_pass should run on cpu or gpu."));
+#endif
+
     if (paddle::platform::is_cpu_place(place_)) {
       return false;
     }

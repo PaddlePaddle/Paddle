@@ -120,6 +120,7 @@
 #include "paddle/fluid/pir/transforms/passes.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
+#include "paddle/fluid/pir/transforms/xpu/add_layernorm_fuse_pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
@@ -946,6 +947,19 @@ bool AnalysisPredictor::PrepareExecutor() {
                 std::move(pir::PassRegistry::Instance().Get(gpu_pass)));
           }
         }
+
+#ifdef PADDLE_WITH_XPU
+      } else if (config_.use_xpu()) {
+        // xpu
+        if (!config_.custom_pass_only_) {
+          for (const auto &xpu_pass : kPirXpuPasses) {
+            pass_pm.AddPass(
+                std::move(pir::PassRegistry::Instance().Get(xpu_pass)));
+          }
+        }
+
+#endif
+
 #ifdef PADDLE_WITH_DNNL
       } else if (config_.mkldnn_enabled()) {
         // mkldnn
