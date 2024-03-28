@@ -101,7 +101,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
           framework::NFD(it->first, &tmp);
           if (tmp.empty()) {
             VLOG(0) << "The string " << it->first
-                    << " was converted to unicode failedly! "
+                    << " was converted to unicode unsuccessfully! "
                     << "Then dropped to load it.";
             continue;
           }

@@ -34,7 +34,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-struct ScaleLossGradOpHandle : public OpHandleBase {
+struct ScaleLossGradOpHandle final : public OpHandleBase {
   ScaleLossGradOpHandle(ir::Node *node,
                         size_t num_dev,
                         Scope *scope,

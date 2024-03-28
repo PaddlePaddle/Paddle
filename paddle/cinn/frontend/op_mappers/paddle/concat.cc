@@ -63,8 +63,9 @@ void StackOpMapper(const paddle::cpp::OpDesc& op_desc,
     CHECK_EQ(op_desc.Output("Y").size(), 1UL);
     out_name = op_desc.Output("Y").front();
   } else {
-    LOG(FATAL) << "The output argument name of [stack] should be 'Out' or 'Y', "
-                  "but here cannot found! Please check.";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The output argument name of [stack] should be 'Out' or 'Y', "
+        "but here cannot found! Please check."));
   }
 
   cinn::utils::ShapeType input_shape(ctx.GetVar(x_names.front())->shape);

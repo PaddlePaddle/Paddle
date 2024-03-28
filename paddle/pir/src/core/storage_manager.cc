@@ -14,6 +14,7 @@
 
 #include "paddle/pir/include/core/storage_manager.h"
 
+#include <glog/logging.h>
 #include <memory>
 #include <unordered_map>
 

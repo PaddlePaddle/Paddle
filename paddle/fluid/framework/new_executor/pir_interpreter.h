@@ -18,7 +18,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
 #include "paddle/pir/include/core/value.h"
 
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
 #endif
 
@@ -274,7 +274,7 @@ class PirInterpreter : public InterpreterBaseImpl {
   // belongs to a parameter and cannot GC.
   std::unordered_set<std::string> parameter_var_names_;
 
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::unique_ptr<phi::CalculateStreamTimer> calculate_stream_timer_;
 #endif
   size_t last_calculate_instr_id_;

@@ -309,7 +309,7 @@ void ProgramTranslator::TranslateIfOperation(
     TranslationContext* translation_ctx,
     pir::Block* dst_block,
     bool for_bwd) {
-  VLOG(8) << "=============>Start to translate if op:" << op;
+  LOG_FIRST_N(INFO, 1) << "Translate ConditionalBlockOp";
   auto& type_translator = TypeTranslator::instance();
 
   auto cond_op_cond = op->Input("Cond")[0];
@@ -347,7 +347,9 @@ void ProgramTranslator::TranslateIfOperation(
   pir::AttributeMap attribute_map;
   std::vector<pir::Type> if_op_output_types;
   for (auto var_desc : cond_op_output_vars) {
-    IR_ENFORCE(var_desc != nullptr, "[control flow] Output should not be null");
+    PADDLE_ENFORCE_NOT_NULL(var_desc,
+                            phi::errors::PreconditionNotMet(
+                                "[control flow] Output should not be null"));
     pir::Type translated_var_type =
         type_translator[var_desc->GetType()](ctx_, *var_desc);
     if_op_output_types.emplace_back(translated_var_type);
@@ -479,7 +481,7 @@ void ProgramTranslator::TranslateWhileOperation(
     const OpDesc* op,
     TranslationContext* translation_ctx,
     pir::Block* dst_block) {
-  VLOG(8) << "=============>Start to translate while op:" << op;
+  LOG_FIRST_N(INFO, 1) << "Translate WhileOp";
   auto& sub_block = legacy_program_->Block(op->GetBlockAttrId("sub_block"));
   auto& inputs = op->Output("Out");
   auto& cond_var = op->Input("Condition")[0];
@@ -684,10 +686,12 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
           pir::Block::Iterator insert_pos = std::find(
               block->begin(), block->end(), *defining_op_result.owner());
 
-          IR_ENFORCE(
-              insert_pos != block->end(),
-              "Parameter %s must have corresponding its defining operation",
-              var_name);
+          PADDLE_ENFORCE_NE(insert_pos,
+                            block->end(),
+                            phi::errors::InvalidArgument(
+                                "Parameter %s must have corresponding its "
+                                "defining operation",
+                                var_name));
           insert_pos++;
 
           block->insert(insert_pos, op);

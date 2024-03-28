@@ -359,8 +359,9 @@ void IslAstNodeToCinnExpr(const isl::ast_node& node, ir::Expr* expr) {
       // EatMark(node, expr);
     } break;
     default:
-      LOG(FATAL) << "Unexpected ISL node type "
-                 << isl_ast_node_get_type(node.get());
+      std::stringstream ss;
+      ss << "Unexpected ISL node type " << isl_ast_node_get_type(node.get());
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
       break;
   }
 }
@@ -566,7 +567,9 @@ void IslAstExprToCinnExpr(const isl::ast_expr& node, ir::Expr* expr) {
           *expr = ir::Select::Make(ops[0], ops[1], ops[2]);
           break;
         default:
-          LOG(FATAL) << "unsupported op " << op_type;
+          std::stringstream ss;
+          ss << "unsupported op " << op_type;
+          PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
       }
     } break;
     default:

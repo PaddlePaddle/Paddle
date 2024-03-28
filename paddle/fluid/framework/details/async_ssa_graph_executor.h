@@ -32,7 +32,7 @@ struct VarInfo {
   bool persistable_;
 };
 
-class AsyncSSAGraphExecutor : public SSAGraphExecutor {
+class AsyncSSAGraphExecutor final : public SSAGraphExecutor {
  public:
   AsyncSSAGraphExecutor(const ExecutionStrategy &strategy,
                         const std::vector<Scope *> &local_scopes,

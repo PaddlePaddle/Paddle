@@ -72,7 +72,7 @@ class CompositeGradOpMakerBase {
   virtual ~CompositeGradOpMakerBase() = default;
 
   virtual std::vector<std::unique_ptr<framework::OpDesc>> operator()() {
-    VLOG(3) << "Runing Composite Grad func for " << fwd_op_.Type() << "_grad ";
+    VLOG(3) << "Running Composite Grad func for " << fwd_op_.Type() << "_grad ";
     this->Apply();
     std::vector<std::unique_ptr<framework::OpDesc>> ops;
     // TODO(jiabin): Support multiple blocks later

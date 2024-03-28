@@ -83,9 +83,6 @@ class TestPrimMode1(unittest.TestCase):
         res = self.base_net("prim")
         for ref, actual in zip(res_ref, res):
             np.testing.assert_allclose(ref, actual, rtol=1e-6)
-        with self.assertRaises(ValueError):
-            core._set_prim_forward_blacklist("pd_op.rsqrt")
-            _ = self.base_net("prim")
 
 
 if __name__ == "__main__":

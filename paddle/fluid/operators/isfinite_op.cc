@@ -86,7 +86,7 @@ If any X contains Inf or Nan, the Out will generate a indicator.
 Out = Inf if any X contains Inf,
 Out = Nan if any X contains Nan,
 Out = 0 if no Inf/Nan detected.
-If X contains both Inf/Nan, it will return the first indicator it meeted.
+If X contains both Inf/Nan, it will return the first indicator it met.
 
 %s
 )DOC",

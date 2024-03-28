@@ -366,7 +366,7 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
         }
         reshape_before_fc_layer->setReshapeDimensions(reshape_before_fc_dim);
         reshape_before_fc_layer->setName(
-            ("shuffle_before_sparse_multihead_mamul(Output: " + output_name +
+            ("shuffle_before_sparse_multihead_matmul(Output: " + output_name +
              ")")
                 .c_str());
 
@@ -403,7 +403,8 @@ class SparseMultiheadMatMulOpConverter : public OpConverter {
           engine_->SetTensorDynamicRange(fc_layer->getOutput(0), out_scale);
         }
         fc_layer->setName(
-            ("sparse_multihead_mamul_fc(Output: " + output_name + ")").c_str());
+            ("sparse_multihead_matmul_fc(Output: " + output_name + ")")
+                .c_str());
 
         // no need to add shuffle after fc, just change it in
         // QkvToContextPluginDynamic

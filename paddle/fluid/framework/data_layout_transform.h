@@ -47,11 +47,11 @@ struct CastDataLayout {
 
 std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to);
 
-void TransDataLayout(const phi::KernelKey& kernel_type_for_var,
-                     const phi::KernelKey& expected_kernel_type,
-                     const phi::DenseTensor& in,
-                     phi::DenseTensor* out,
-                     const phi::Place& place);
+TEST_API void TransDataLayout(const phi::KernelKey& kernel_type_for_var,
+                              const phi::KernelKey& expected_kernel_type,
+                              const phi::DenseTensor& in,
+                              phi::DenseTensor* out,
+                              const phi::Place& place);
 
 void TransDataLayout(phi::DataLayout from_layout,
                      phi::DataLayout to_layout,

@@ -37,7 +37,7 @@ void SqueezeGradKernel(const Context& dev_ctx,
       dout.mem_desc(), funcs::to_void_cast(dout.data<T>()));
   auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
       dx,
-      funcs::GetPlainOneDNNFormat(dout_vec_dims.size()),
+      funcs::GetPlainOneDNNFormat(static_cast<int>(dout_vec_dims.size())),
       dev_ctx.GetPlace());
   auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
                                                   reorder_src_memory_p);

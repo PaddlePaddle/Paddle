@@ -120,7 +120,7 @@ void profile(bool memory_load = false) {
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     // the first inference result
-    const int chinese_ner_result_data[] = {
+    const std::array<int, 11> chinese_ner_result_data = {
         30, 45, 41, 48, 17, 26, 48, 39, 38, 16, 25};
     PADDLE_ENFORCE_GT(outputs.size(),
                       0,

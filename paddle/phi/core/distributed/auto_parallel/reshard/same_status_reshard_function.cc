@@ -91,7 +91,7 @@ void SameStatusReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     if (src == cur_global_rank) {
       VLOG(3) << "Send from src " << src << " to dst " << dst;
       int64_t dst_local_rank = GetLocalRankInParticipate(all_process_ids, dst);
-      // Sice send kernel only has input, so we don't need to infermeta
+      // Since send kernel only has input, so we don't need to infermeta
       // actually. According to this reason, just use the kernel directly.
       RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
                                 PSendKernel,

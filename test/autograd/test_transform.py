@@ -21,6 +21,8 @@ paddle.enable_static()
 
 
 class TestAutoGradTransformForAdd(unittest.TestCase):
+    # This UT is deprecated for 'prim2org' mechanism has been already deprecated
+    # so this UT will be skipped as method 'test_run' was renamed to '_test_run'
     def setUp(self):
         self.main_program = paddle.static.Program()
         self.startup_program = paddle.static.Program()
@@ -138,7 +140,7 @@ class TestAutoGradTransformForAdd(unittest.TestCase):
             'elementwise_mul',
         ]
 
-    def test_run(self):
+    def _test_run(self):
         # Must using with program_guard(), otherwise prim ops will append other block
         with paddle.static.program_guard(
             self.main_program, self.startup_program

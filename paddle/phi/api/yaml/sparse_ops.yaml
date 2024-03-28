@@ -102,8 +102,7 @@
   args : (Tensor x, DataType index_dtype=DataType::UNDEFINED, DataType value_dtype=DataType::UNDEFINED)
   output : Tensor(out)
   infer_meta :
-    func : CastInferMeta
-    param: [x, value_dtype]
+    func : sparse::CastInferMeta
   kernel :
     func : cast_coo{sparse_coo -> sparse_coo},
            cast_csr{sparse_csr -> sparse_csr}

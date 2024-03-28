@@ -68,10 +68,15 @@ class TestSplitSectionsOneDNNOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output(check_dygraph=False, check_pir_onednn=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_dygraph=False)
+        self.check_grad(
+            ['X'],
+            ['out0', 'out1', 'out2'],
+            check_dygraph=False,
+            check_pir_onednn=True,
+        )
 
 
 # test with attr(num)
@@ -87,7 +92,10 @@ class TestSplitNumOneDNNOp(TestSplitSectionsOneDNNOp):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], ['out0', 'out1', 'out2', 'out3'], check_dygraph=False
+            ['X'],
+            ['out0', 'out1', 'out2', 'out3'],
+            check_dygraph=False,
+            check_pir_onednn=True,
         )
 
 

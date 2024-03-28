@@ -215,8 +215,8 @@ uint64_t StreamSafeCustomDeviceAllocator::ReleaseImpl(
 }
 
 void StreamSafeCustomDeviceAllocator::ProcessUnfreedAllocations() {
-  // NOTE(Ruibiao): This condition is to reduce lock competion. It does not need
-  // to be thread-safe since here occasional misjudgments are permissible.
+  // NOTE(Ruibiao): This condition is to reduce lock completion. It does not
+  // need to be thread-safe since here occasional misjudgments are permissible.
   if (unfreed_allocations_.empty()) {
     return;
   }

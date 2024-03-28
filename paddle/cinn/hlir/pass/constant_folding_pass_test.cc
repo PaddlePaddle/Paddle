@@ -369,7 +369,7 @@ TEST(Constant_Folding, fold_expand_dims_to_fill_constant_2) {
 
 TEST(Constant_Folding, fold_expand_dims_to_fill_constant_3) {
   NetBuilder net_builder("fold_expand_dims_to_fill_constant_3");
-  // create model, ExpandDims axes have nagetive value
+  // create model, ExpandDims axes have negative value
   int h = 32, w = 32;
   auto A = net_builder.FillConstant<float>({h, w}, 1.0f, "A");
   auto B = net_builder.ExpandDims(A, {1, -1});

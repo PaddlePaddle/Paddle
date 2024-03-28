@@ -65,8 +65,11 @@ void SplitWithNumStridedKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    split_strided, STRIDED, phi::SplitStridedKernel) {}
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    split_with_num_strided, STRIDED, phi::SplitWithNumStridedKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(split_strided,
+                                         STRIDED,
+                                         phi::SplitStridedKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(split_with_num_strided,
+                                         STRIDED,
+                                         phi::SplitWithNumStridedKernel) {}

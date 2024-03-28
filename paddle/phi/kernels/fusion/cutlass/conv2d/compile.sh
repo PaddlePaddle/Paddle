@@ -25,7 +25,7 @@ fi
 
 python_exe_path="python"
 cuda_root_path="/usr/local/cuda"
-gpu_cc="75"
+gpu_cc="80"
 
 cd $build_directory
 cmake .. -DPYTHON_EXECUTABLE=$python_exe_path -DCUDA_TOOLKIT_ROOT_DIR=$cuda_root_path -DCOMPUTE_CAPABILITY=$gpu_cc

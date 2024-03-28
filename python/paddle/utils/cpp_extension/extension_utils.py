@@ -418,13 +418,13 @@ def prepare_win_cudaflags(cflags):
     return cflags
 
 
-def add_std_without_repeat(cflags, compiler_type, use_std14=False):
+def add_std_without_repeat(cflags, compiler_type, use_std17=False):
     """
-    Append -std=c++11/14 in cflags if without specific it before.
+    Append -std=c++14/17 in cflags if without specific it before.
     """
     cpp_flag_prefix = '/std:' if compiler_type == 'msvc' else '-std='
     if not any(cpp_flag_prefix in flag for flag in cflags):
-        suffix = 'c++14' if use_std14 else 'c++11'
+        suffix = 'c++17' if use_std17 else 'c++14'
         cpp_flag = cpp_flag_prefix + suffix
         cflags.append(cpp_flag)
 

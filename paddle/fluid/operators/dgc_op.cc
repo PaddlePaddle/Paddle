@@ -87,7 +87,7 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(true);
 
     AddAttr<std::vector<float>>("sparsity",
-                                "(vecotr, float)"
+                                "(vector, float)"
                                 "The period sparsity of k_select.");
 
     AddAttr<float>("rampup_begin_step",

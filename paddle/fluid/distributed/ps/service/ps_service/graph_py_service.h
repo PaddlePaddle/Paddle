@@ -39,8 +39,8 @@
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/printf.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/utils/string/printf.h"
 
 namespace paddle {
 namespace distributed {

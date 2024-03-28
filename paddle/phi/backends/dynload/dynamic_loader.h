@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <string>
-
+#include "paddle/utils/test_macros.h"
 namespace phi {
 namespace dynload {
 
@@ -26,7 +26,7 @@ namespace dynload {
 
 void* GetCublasDsoHandle();
 void* GetCublasLtDsoHandle();
-void* GetCUDNNDsoHandle();
+TEST_API void* GetCUDNNDsoHandle();
 void* GetCUPTIDsoHandle();
 void* GetCurandDsoHandle();
 void* GetNvjpegDsoHandle();

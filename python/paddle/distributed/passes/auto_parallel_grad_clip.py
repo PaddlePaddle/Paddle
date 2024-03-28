@@ -38,6 +38,7 @@ from ..auto_parallel.static.utils import (
     insert_dependencies_for_vars,
     is_gradient_clip_op,
     is_optimize_op,
+    is_reshard_op,
 )
 from .auto_parallel_sharding import ShardingPass
 from .pass_base import PassBase, register_pass
@@ -431,7 +432,7 @@ class ClipGradByGlobalNormPass(PassBase):
                     op.desc.set_input("X", reserved_vars)
 
         for idx, op in reversed(list(enumerate(block.ops))):
-            if not is_optimize_op(op):
+            if not (is_optimize_op(op) or is_reshard_op(op)):
                 break
             if not is_gradient_clip_op(op):
                 continue
@@ -439,7 +440,7 @@ class ClipGradByGlobalNormPass(PassBase):
                 block._remove_op(idx, sync=False)
 
         for idx, op in reversed(list(enumerate(block.ops))):
-            if not is_optimize_op(op):
+            if not (is_optimize_op(op) or is_reshard_op(op)):
                 break
             if not is_gradient_clip_op(op):
                 continue

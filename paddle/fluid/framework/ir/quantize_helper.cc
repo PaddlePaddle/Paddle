@@ -27,8 +27,8 @@ void SaveQuantInfoInTheGraph(
   if (!graph->Has(flag)) {
     graph->Set(flag, new bool(true));
   }
-  for (auto iter = info_map.begin(); iter != info_map.end(); ++iter) {
-    graph->Set(iter->first + suffix, new std::vector<float>(iter->second));
+  for (const auto& iter : info_map) {
+    graph->Set(iter.first + suffix, new std::vector<float>(iter.second));
   }
 }
 

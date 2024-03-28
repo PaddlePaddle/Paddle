@@ -60,13 +60,13 @@ StringTensor StringUpper(const ContextT& dev_ctx,
   return string_out;
 }
 
-template <typename AsciiCoverter, typename UTF8Converter, typename ContextT>
+template <typename AsciiConverter, typename UTF8Converter, typename ContextT>
 struct StringCaseConvertKernel {
   void operator()(const ContextT& dev_ctx,
                   const StringTensor& x,
                   bool use_utf8_encoding,
                   StringTensor* out) {
-    AsciiCoverter ascii_converter;
+    AsciiConverter ascii_converter;
     UTF8Converter utf8_converter;
     const pstring* in_ptr = x.data();
     pstring* out_ptr = dev_ctx.template Alloc<pstring>(out);
@@ -101,7 +101,7 @@ struct UTF8CaseConverter {
                   pstring* out,
                   size_t num) const {
     auto unicode_flag_map = GetUniFlagMap();
-    auto cases_map = GetCharcasesMap();
+    auto cases_map = GetCharCasesMap();
     for (size_t i = 0; i < num; ++i) {
       uint32_t unicode_len = GetUnicodeStrLen(in[i].data(), in[i].size());
       std::vector<uint32_t> unicode_in(unicode_len, 0);

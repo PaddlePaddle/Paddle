@@ -30,10 +30,10 @@
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/utils/string/string_helper.h"
 
 COMMON_DECLARE_bool(use_mkldnn);
 COMMON_DECLARE_string(tracer_mkldnn_ops_on);
@@ -43,8 +43,6 @@ COMMON_DECLARE_bool(use_stride_kernel);
 namespace paddle {
 namespace imperative {
 thread_local std::string Tracer::python_stack_ = "";
-
-thread_local bool Tracer::enable_program_desc_tracing_ = false;
 
 thread_local bool Tracer::has_grad_ = true;
 
@@ -367,11 +365,6 @@ void Tracer::TraceOpImpl(const std::string& type,
         "Operator %s raises an unknown exception.", type));
   }
 
-  if (enable_program_desc_tracing_) {
-    VLOG(5) << "Trace op " << type << " into ProgramDesc";
-    program_desc_tracer_->InsertOp(type, new_ins, outs, attrs);
-  }
-
   {
     platform::RecordEvent node_creation_record_event(
         "grad_node_creation", platform::TracerEventType::OperatorInner, 1);
@@ -594,14 +587,6 @@ bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,
   return false;
 }
 
-void Tracer::SetEnableProgramDescTracing(bool enabled) {
-  enable_program_desc_tracing_ = enabled;
-}
-
-bool Tracer::IsProgramDescTracingEnabled() const {
-  return enable_program_desc_tracing_;
-}
-
 void Tracer::SetAmpDtype(std::string amp_dtype) {
   VLOG(4) << "set amp_dtype to " << amp_dtype;
   g_current_amp_attrs->SetAmpDtype(amp_dtype);
@@ -660,8 +645,8 @@ phi::KernelSignature Tracer::GetExpectedKernelSignature(
   if (phi::KernelFactory::Instance().HasStructuredKernel(type)) {
     return phi::KernelSignature(op->Type().c_str());
   } else {
-    return phi::KernelSignature(std::move(
-        opbase_with_kernel->GetExpectedPhiKernelArgs(dygraph_exe_ctx)));
+    return phi::KernelSignature(
+        opbase_with_kernel->GetExpectedPhiKernelArgs(dygraph_exe_ctx));
   }
 }
 

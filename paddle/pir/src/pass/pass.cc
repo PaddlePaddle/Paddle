@@ -21,7 +21,6 @@
 #include "paddle/pir/include/pass/pass_instrumentation.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
-#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 #include "paddle/pir/src/pass/pass_adaptor.h"
 
 #include "paddle/common/enforce.h"
@@ -56,11 +55,16 @@ bool PatternRewritePass::Initialize(IrContext* context) {
   return true;
 }
 
+GreedyRewriteConfig PatternRewritePass::InitializeConfig() {
+  GreedyRewriteConfig config;
+  config.use_top_down_traversal = true;
+  config.max_iterations = 10;
+  return config;
+}
+
 void PatternRewritePass::Run(Operation* op) {
-  GreedyRewriteConfig cfg;
-  cfg.use_top_down_traversal = true;
-  cfg.max_iterations = 10;
-  auto [_, num_rewrites] = ApplyPatternsGreedily(op, patterns_, cfg);
+  auto [_, num_rewrites] =
+      ApplyPatternsGreedily(op, patterns_, InitializeConfig());
   AddStatistics(num_rewrites);
 }
 

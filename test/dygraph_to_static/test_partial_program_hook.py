@@ -53,7 +53,9 @@ class TestPirPartiaProgramLayerHook(Dy2StTestBase):
 
     @test_ast_only
     def test_after_append_backward(self):
-        self.assertIsNone(self._hook.after_append_backward(None, None, 0))
+        self.assertIsNone(
+            self._hook.after_append_backward(None, None, None, None, 0, 0)
+        )
 
     @test_ast_only
     def test_after_infer(self):
@@ -144,7 +146,7 @@ class TestPirPrimHook(Dy2StTestBase):
                 forward_end_idx,
                 targets,
             ) = self._hook.after_append_backward(
-                train_program, program_.out_values, 0
+                train_program, None, program_.out_values, None, 0, 0
             )
             self.assertNotIn(
                 'pd_op.dropout_grad',

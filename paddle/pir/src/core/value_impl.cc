@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <glog/logging.h>
+
+#include "paddle/common/enforce.h"
 #include "paddle/pir/src/core/value_impl.h"
 
 namespace {
@@ -48,10 +51,12 @@ std::string ValueImpl::PrintUdChain() {
   return result.str();
 }
 ValueImpl::ValueImpl(Type type, uint32_t kind) : id_(GenerateId()) {
-  if (kind > BLOCK_ARG_IDX) {
-    LOG(FATAL) << "The kind of value_impl(" << kind
-               << "), is bigger than BLOCK_ARG_IDX(7)";
-  }
+  PADDLE_ENFORCE_LE(
+      kind,
+      BLOCK_ARG_IDX,
+      common::errors::PreconditionNotMet(
+          "The kind of value_impl[%u] must not bigger than BLOCK_ARG_IDX(7)",
+          kind));
   type_ = type;
   first_use_offseted_by_kind_ = reinterpret_cast<OpOperandImpl *>(
       reinterpret_cast<uintptr_t>(nullptr) + kind);

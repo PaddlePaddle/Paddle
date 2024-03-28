@@ -258,8 +258,8 @@ class MultiDeviceFeedReader {
     kException = 2  // Exception raises when reading
   };
 
-  Status WaitFutures(std::exception_ptr *excep) {
-    *excep = nullptr;
+  Status WaitFutures(std::exception_ptr *e) {
+    *e = nullptr;
     size_t success_num = 0;
     for (size_t i = 0; i < futures_.size(); ++i) {
       auto each_status = futures_[i].get();
@@ -270,7 +270,7 @@ class MultiDeviceFeedReader {
               platform::errors::NotFound("exceptions_[%d] is NULL, but the "
                                          "result status is Status::kException",
                                          i));
-          *excep = exceptions_[i];
+          *e = exceptions_[i];
           exceptions_[i] = nullptr;
         }
       } else {
@@ -278,7 +278,7 @@ class MultiDeviceFeedReader {
       }
     }
 
-    if (UNLIKELY(*excep)) {
+    if (UNLIKELY(*e)) {
       return Status::kException;
     }
 
@@ -308,16 +308,16 @@ class MultiDeviceFeedReader {
   }
 
   void CheckNextStatus() {
-    std::exception_ptr excep;
-    Status status = WaitFutures(&excep);
+    std::exception_ptr e;
+    Status status = WaitFutures(&e);
 
-    if (UNLIKELY(excep)) {
+    if (UNLIKELY(e)) {
       PADDLE_ENFORCE_EQ(status,
                         Status::kException,
                         platform::errors::NotFound(
                             "The exception raised is not NULL, but "
                             "the result status is not Status::kException"));
-      std::rethrow_exception(excep);
+      std::rethrow_exception(e);
     }
 
     if (UNLIKELY(status == Status::kEOF)) {

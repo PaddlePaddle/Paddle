@@ -52,10 +52,6 @@ def _conv3d(
 
     channel_last = data_format == "NDHWC"
     channel_dim = -1 if channel_last else 1
-    if len(x.shape) != 5:
-        raise ValueError(
-            f"Input x should be 5D tensor, but received x with the shape of {x.shape}"
-        )
     num_channels = x.shape[channel_dim]
     if num_channels < 0:
         raise ValueError(

@@ -23,7 +23,7 @@ from paddle import core
 class TestProcessGroup(TestMultipleXpus):
     @unittest.skipIf(
         not core.is_compiled_with_xpu() or paddle.device.xpu.device_count() < 2,
-        "run test when having at leaset 2 XPUs.",
+        "run test when having at least 2 XPUs.",
     )
     def test_process_group_bkcl(self):
         self.run_mnist_2xpu('process_group_bkcl.py')

@@ -575,7 +575,7 @@ std::vector<pir::Value> GetMinimalInputs(
       [&](pir::Value input_tensor,
           const std::vector<symbol::DimExpr>& dim_exprs) {
         for (const auto& dim_expr : dim_exprs) {
-          if (dim_expr.isa<int64_t>()) continue;
+          if (!dim_expr.isa<std::string>()) continue;
           if (handled_dim_exprs.insert(dim_expr).second) {
             first_occurred_input_tensors.insert(input_tensor);
           }

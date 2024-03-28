@@ -1,4 +1,4 @@
-#   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ class PassTest(unittest.TestCase):
             self.pass_list = [self.pass_list]
 
         pm = pir.PassManager(opt_level=4)
+        pm.enable_ir_printing()
         for pass_name in self.pass_list:
             pm.add_pass(pass_name)
         pm.run(program)

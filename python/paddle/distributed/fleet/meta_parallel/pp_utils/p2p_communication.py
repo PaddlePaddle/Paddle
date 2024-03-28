@@ -53,6 +53,9 @@ class SendRecvMeta:
     """Mainly used to help p2p communication context information"""
 
     def __init__(self):
+        self.init_or_erase_meta()
+
+    def init_or_erase_meta(self):
         self.send_shape_message = None
         self.send_dtype_message = None
 
@@ -156,21 +159,43 @@ class SendRecvMeta:
                 )
                 self._send_dims_shape_dtype(d, group=group)
 
-    def set_send_message(self, tensor):
+    def _obtain_send_message(self, tensor):
         if isinstance(tensor, (paddle.Tensor, framework.core.eager.Tensor)):
-            self.send_shape_message = tensor.shape
-            self.send_dtype_message = paddle_2_number(tensor.dtype)
-        elif isinstance(tensor, tuple):
-            self.send_shape_message = tuple(
-                [d.shape for d in tensor if not d.stop_gradient]
-            )
-            self.send_dtype_message = tuple(
-                [
-                    paddle_2_number(d.dtype)
-                    for d in tensor
-                    if not d.stop_gradient
-                ]
-            )
+            return tensor.shape, paddle_2_number(tensor.dtype)
+        else:
+            shapes = []
+            dtypes = []
+            for d in tensor:
+                assert isinstance(
+                    d, (paddle.Tensor, framework.core.eager.Tensor)
+                )
+                if d.stop_gradient:
+                    continue
+                shape, dtype = self._obtain_send_message(d)
+                shapes.append(shape)
+                dtypes.append(dtype)
+            return tuple(shapes), tuple(dtypes)
+
+    def set_send_message(self, tensor):
+        (
+            self.send_shape_message,
+            self.send_dtype_message,
+        ) = self._obtain_send_message(tensor)
+
+    def check_send_message(self, tensor):
+        if self.send_shape_message is None or self.send_dtype_message is None:
+            return
+        actual_shape, actual_dtype = self._obtain_send_message(tensor)
+        assert (
+            self.send_shape_message == actual_shape
+        ), "send_shape_message: {}, actual_shape: {}".format(
+            self.send_shape_message, actual_shape
+        )
+        assert (
+            self.send_dtype_message == actual_dtype
+        ), "send_dtype_message: {}, actual_dtype: {}".format(
+            self.send_dtype_message, actual_dtype
+        )
 
     def __repr__(self):
         return "send_shape_message: {}, send_dtype_message: {}, recv_shape_message: {}, recv_dtype_message: {}, recv_stop_gradient: {}".format(
@@ -624,18 +649,23 @@ class P2pHelper:
         self._send_recv_meta = SendRecvMeta()
         self._use_cache = use_cache
 
-    def _send_meta(self, output_tensor):
+    def _send_meta(self, output_tensor, skip_check_meta=False):
         if not self._send_recv_meta.has_send_meta:
             self._send_recv_meta.set_send_message(output_tensor)
             self._send_recv_meta.send_meta(
                 output_tensor, _hcg.get_pipe_parallel_group()
             )
             self._send_recv_meta.has_send_meta = self._use_cache
+        elif not skip_check_meta:
+            self._send_recv_meta.check_send_message(output_tensor)
 
     def _recv_meta(self):
         if not self._send_recv_meta.has_recv_meta:
             self._send_recv_meta.recv_meta(_hcg.get_pipe_parallel_group())
             self._send_recv_meta.has_recv_meta = self._use_cache
+
+    def clear_meta_cache(self):
+        self._send_recv_meta.init_or_erase_meta()
 
     def recv_forward(self, pp_first_stage, sync_recv=True, batch_p2p_comm=True):
         global _timers
@@ -679,12 +709,18 @@ class P2pHelper:
             _timers("recv_backward").stop()
         return output_tensor_grad
 
-    def send_forward(self, output_tensor, pp_last_stage, batch_p2p_comm=True):
+    def send_forward(
+        self,
+        output_tensor,
+        pp_last_stage,
+        batch_p2p_comm=True,
+        skip_check_meta=False,
+    ):
         global _timers
         if _timers is not None:
             _timers("send_forward").start()
         if not pp_last_stage:
-            self._send_meta(output_tensor)
+            self._send_meta(output_tensor, skip_check_meta=skip_check_meta)
 
             _p2p_helper(
                 tensor_send_next=output_tensor,

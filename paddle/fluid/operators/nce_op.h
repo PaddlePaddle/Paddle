@@ -146,7 +146,7 @@ class NCEKernel : public framework::OpKernel<T> {
       default: {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Unsupported SamplerType. SamplerType should be 0: Uniform, "
-            "1: LogUniform or 2: CostumDist. Received SamplerType: %d",
+            "1: LogUniform or 2: CustomDist. Received SamplerType: %d",
             sampler_type));
       }
     }
@@ -332,7 +332,7 @@ class NCEGradKernel : public framework::OpKernel<T> {
       default: {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Unsupported SamplerType. SamplerType should be 0: Uniform, "
-            "1: LogUniform or 2: CostumDist. Received SamplerType: %d",
+            "1: LogUniform or 2: CustomDist. Received SamplerType: %d",
             sampler_type));
       }
     }

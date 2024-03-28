@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -65,26 +66,63 @@ void AddDoubleGradImpl(const Context& dev_ctx,
                        DenseTensor* ddout) {
   // ddOut = ddx + ddy
   if (ddout) {
-    DenseTensor ddx_safe, ddy_safe;
-    funcs::GetDoubleGradSafeTensor<Context, T>(
-        dev_ctx, dout, ddx.get_ptr(), &ddx_safe);
-    funcs::GetDoubleGradSafeTensor<Context, T>(
-        dev_ctx, y, ddy.get_ptr(), &ddy_safe);
-
+    auto* ddx_tensor = ddx.get_ptr();
+    auto* ddy_tensor = ddy.get_ptr();
+    auto out_shape = dout.dims();
     dev_ctx.template Alloc<T>(ddout);
-    auto ddx_dims = ddx_safe.dims();
-    auto ddy_dims = ddy_safe.dims();
-    if (ddx_dims.size() >= ddy_dims.size()) {
-      funcs::ElementwiseCompute<funcs::AddFunctor<T>, T>(
-          dev_ctx, ddx_safe, ddy_safe, funcs::AddFunctor<T>(), ddout, axis);
+    if (ddx_tensor == nullptr && ddy_tensor == nullptr) {
+      VLOG(4) << "Special case when ddx and ddy are not needed \n";
+      ddout = nullptr;
+    } else if (ddx_tensor == nullptr && ddy_tensor != nullptr) {
+      if (ddy_tensor->dims() != out_shape) {
+        VLOG(4) << "Special case when ddx is not needed and ddy needs to "
+                   "broadcast\n";
+        std::vector<const DenseTensor*> ins = {ddy_tensor};
+        std::vector<DenseTensor*> outs = {ddout};
+        ExpandKernel<T, Context>(dev_ctx,
+                                 *ddy_tensor,
+                                 IntArray{phi::vectorize<int64_t>(out_shape)},
+                                 ddout);
+      } else {
+        VLOG(4) << "Special case when ddx is not needed and ddy doesn't need "
+                   "to broadcast\n";
+        phi::Copy(dev_ctx, *ddy_tensor, dev_ctx.GetPlace(), false, ddout);
+      }
+    } else if (ddx_tensor != nullptr && ddy_tensor == nullptr) {
+      if (ddx_tensor->dims() != out_shape) {
+        VLOG(4) << "Special case when ddy is not needed and ddx need to "
+                   "broadcast\n";
+        std::vector<const DenseTensor*> ins = {ddx_tensor};
+        std::vector<DenseTensor*> outs = {ddout};
+        ExpandKernel<T, Context>(dev_ctx,
+                                 *ddx_tensor,
+                                 IntArray{phi::vectorize<int64_t>(out_shape)},
+                                 ddout);
+      } else {
+        VLOG(4) << "Special case when ddx is not needed and ddy doesn't need "
+                   "to broadcast\n";
+        phi::Copy(dev_ctx, *ddx_tensor, dev_ctx.GetPlace(), false, ddout);
+      }
     } else {
-      funcs::ElementwiseCompute<funcs::InverseAddFunctor<T>, T>(
-          dev_ctx,
-          ddx_safe,
-          ddy_safe,
-          funcs::InverseAddFunctor<T>(),
-          ddout,
-          axis);
+      auto ddx_dims = ddx_tensor->dims();
+      auto ddy_dims = ddy_tensor->dims();
+      if (ddx_dims.size() >= ddy_dims.size()) {
+        funcs::ElementwiseCompute<funcs::AddFunctor<T>, T>(
+            dev_ctx,
+            *ddx_tensor,
+            *ddy_tensor,
+            funcs::AddFunctor<T>(),
+            ddout,
+            axis);
+      } else {
+        funcs::ElementwiseCompute<funcs::InverseAddFunctor<T>, T>(
+            dev_ctx,
+            *ddx_tensor,
+            *ddy_tensor,
+            funcs::InverseAddFunctor<T>(),
+            ddout,
+            axis);
+      }
     }
   }
 }

@@ -14,8 +14,7 @@
 #include "paddle/phi/kernels/tensor_unfold_grad_kernel.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/fill_kernel.h"
-#include "paddle/phi/kernels/strided_copy_kernel.h"
+#include "paddle/phi/kernels/funcs/strided_utils.h"
 #include "paddle/phi/kernels/tensor_unfold_kernel.h"
 
 namespace phi {
@@ -35,8 +34,8 @@ void TensorUnfoldGradKernel(const Context& dev_ctx,
   input_grad->set_strides(DenseTensorMeta::calc_strides(input_grad->dims()));
   if (out_grad.numel() < input.numel()) {
     PD_VISIT_ALL_TYPES(input_grad->dtype(), "TensorUnfoldGradKernel", ([&] {
-                         phi::FillKernel<data_t, Context>(
-                             dev_ctx, *input_grad, 0, input_grad);
+                         phi::StridedTensorFill<data_t>(
+                             *input_grad, 0, input_grad);
                        }));
   }
   DenseTensor tmp;
@@ -47,8 +46,7 @@ void TensorUnfoldGradKernel(const Context& dev_ctx,
 
   TensorUnfoldKernel<Context>(dev_ctx, *input_grad, axis, size, step, &tmp);
   PD_VISIT_ALL_TYPES(out_grad.dtype(), "TensorUnfoldGradKernel", ([&] {
-                       phi::StridedCopyKernel<data_t, Context>(
-                           dev_ctx,
+                       phi::StridedTensorCopy<data_t>(
                            out_grad,
                            common::vectorize<int64_t>(tmp.dims()),
                            common::vectorize<int64_t>(tmp.strides()),
@@ -58,5 +56,7 @@ void TensorUnfoldGradKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    tensor_unfold_grad, STRIDED, phi::TensorUnfoldGradKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(tensor_unfold_grad,
+                                         STRIDED,
+                                         phi::TensorUnfoldGradKernel) {}

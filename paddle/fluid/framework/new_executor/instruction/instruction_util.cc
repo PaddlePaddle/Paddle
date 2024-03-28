@@ -281,7 +281,9 @@ std::unordered_set<pir::Value> GetInternalInputs(pir::Block* block) {
     }
     if (op.isa<pir::TuplePopOp>()) {
       auto tuple_pop_op = op.dyn_cast<pir::TuplePopOp>();
-      inner_inputs.insert(tuple_pop_op.container());
+      if (tuple_pop_op.has_container()) {
+        inner_inputs.insert(tuple_pop_op.container());
+      }
     }
     for (size_t i = 0; i < op.num_operands(); ++i) {
       inner_inputs.insert(op.operand_source(i));

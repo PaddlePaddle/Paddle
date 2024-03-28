@@ -567,12 +567,12 @@ PyObject* eager_api_run_custom_op(PyObject* self,
       VLOG(7) << "Custom operator add input " << input
               << " to CustomOpKernelContext. Add un-initialized tensor "
                  "because the optional input is None";
-      ctx.EmplaceBackInput(std::move(paddle::Tensor()));
+      ctx.EmplaceBackInput(paddle::Tensor());
       continue;
     }
     if (paddle::framework::detail::IsDuplicableVar(input)) {
       std::vector<paddle::Tensor> tensors =
-          std::move(CastPyArg2VectorOfTensor(obj, i + 1));  // NOLINT
+          CastPyArg2VectorOfTensor(obj, i + 1);
       ctx.EmplaceBackInputs(std::move(tensors));
       VLOG(7) << "Custom operator add input " << input
               << " to CustomOpKernelContext. Add vector<Tensor> size = "
@@ -600,12 +600,12 @@ PyObject* eager_api_run_custom_op(PyObject* self,
         VLOG(7) << "Custom operator add input " << input
                 << " to CustomOpKernelContext. Add un-initialized tensor "
                    "because the optional input is None";
-        ctx.EmplaceBackInput(std::move(paddle::Tensor()));
+        ctx.EmplaceBackInput(paddle::Tensor());
         continue;
       }
       if (paddle::framework::detail::IsDuplicableVar(input)) {
         std::vector<paddle::Tensor> tensors =
-            std::move(CastPyArg2VectorOfTensor(obj, i + 1, mesh));  // NOLINT
+            CastPyArg2VectorOfTensor(obj, i + 1, mesh);
         ctx.EmplaceBackInputs(std::move(tensors));
         VLOG(7) << "Custom operator add input " << input
                 << " to CustomOpKernelContext. Add vector<Tensor> size = "
@@ -644,7 +644,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
     } else if (attr_type_str == "std::string") {
       ctx.EmplaceBackAttr(
           CastPyArg2AttrString(obj, attr_start_idx + i));  // NOLINT
-    } else if (attr_type_str == "std::vector<int>") {
+    } else if (attr_type_str == "std::vector<int>") {      // NOLINT
       ctx.EmplaceBackAttr(CastPyArg2VectorOfInt(obj, attr_start_idx + i));
     } else if (attr_type_str == "std::vector<float>") {
       ctx.EmplaceBackAttr(CastPyArg2VectorOfFloat(obj, attr_start_idx + i));
@@ -684,7 +684,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
           VLOG(7) << "Custom operator add output " << output
                   << " to CustomOpKernelContext. Add un-initialized tensor "
                      "because the inplace optional input is None";
-          ctx.EmplaceBackOutput(std::move(paddle::Tensor()));
+          ctx.EmplaceBackOutput(paddle::Tensor());
           continue;
         }
         /// inplace vector<Tensor>, initialized tensor.
@@ -706,7 +706,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
               << " to CustomOpKernelContext. Add initialized Tensor because "
                  "using general or inplace mechanism";
       // general Tensor or inplace Tensor, initialized tensor.
-      ctx.EmplaceBackOutput(std::move(InitializedEmptyTensor()));
+      ctx.EmplaceBackOutput(InitializedEmptyTensor());
     }
 
     VLOG(7) << "Run Kernel of Custom Op: " << op_type;

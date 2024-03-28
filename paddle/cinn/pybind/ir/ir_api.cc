@@ -383,6 +383,7 @@ void BindIrIr(py::module *m) {
                                     ir::Expr,
                                     const std::string &,
                                     bool,
+                                    bool,
                                     bool>(&ir::_Var_::Make))
       .def("copy", &ir::_Var_::Copy);
 
@@ -747,8 +748,9 @@ auto PackedFuncCall(lang::PackedFunc &self, py::args args) {  // NOLINT
     } else if (py::isinstance<ir::Expr>(handle)) {
       cinn_args.Append(CINNValue(py::cast<ir::Expr>(handle)));
     } else {
-      LOG(FATAL) << "unsupported type: "
-                 << std::string(py::str(handle.get_type()));
+      std::stringstream ss;
+      ss << "unsupported type: " << std::string(py::str(handle.get_type()));
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
   }
   lang::RetValue ret_value;

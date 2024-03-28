@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
 
 namespace butil {
 class IOBuf;

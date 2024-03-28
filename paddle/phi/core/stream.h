@@ -26,7 +26,7 @@ class Stream final {
   StreamId id() const { return id_; }
 
  private:
-  StreamId id_{0};  // not onwed the stream
+  StreamId id_{0};  // not owned the stream
 };
 
 }  // namespace phi

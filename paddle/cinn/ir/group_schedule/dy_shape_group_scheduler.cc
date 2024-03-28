@@ -18,10 +18,14 @@
 #include "paddle/cinn/ir/group_schedule/tactic/arrange_storage_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/bind_cuda_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/compute_inline_tactic.h"
+#include "paddle/cinn/ir/group_schedule/tactic/loop_reorder_alignment_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/optimize_reduction_tactic.h"
+#include "paddle/cinn/ir/group_schedule/tactic/tile_first_general_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/tile_tactic.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
+
+PD_DECLARE_bool(cinn_bucket_compile);
 
 namespace cinn {
 namespace ir {
@@ -32,12 +36,10 @@ void DynamicShapeGroupScheduler::Init() {
   VLOG(4) << "original group func body: \n"
           << ir_sch_->GetModule().GetExprs()[0];
   InitBuckets();
-  tactics_.emplace_back(new AlignIterSpaceTactic());
-  tactics_.emplace_back(new ComputeInlineTactic());
-  tactics_.emplace_back(new TileTactic());
-  tactics_.emplace_back(new OptimizeReductionTactic());
-  tactics_.emplace_back(new BindCudaTactic());
-  tactics_.emplace_back(new ArrangeStorageTactic());
+  tactics_.emplace_back(CreateLoopReorderAlignmentTactic());
+  VLOG(4) << "CreateLoopReorderAlignmentTactic End";
+  tactics_.emplace_back(CreateTileFirstGeneralTactic());
+  VLOG(4) << "CreateTileFirstGeneralTactic End";
 }
 
 void DynamicShapeGroupScheduler::InitBuckets() {
@@ -47,13 +49,16 @@ void DynamicShapeGroupScheduler::InitBuckets() {
       [](ir::Expr extent, int lower_bound, int upper_bound) -> bool {
     if (!extent.is_constant()) return false;
     int extent_value = static_cast<int>(extent.get_constant());
-    if (extent_value < lower_bound || extent_value >= upper_bound) {
+    VLOG(5) << "extent_value: " << extent_value
+            << ",lower_bound: " << lower_bound
+            << ",upper_bound: " << upper_bound;
+    if (extent_value < lower_bound || extent_value > upper_bound) {
       return true;
     }
     return false;
   };
 
-  auto InitBucket = [&](BucketInfo&& bucket_info) {
+  auto InitBucket = [&](BucketInfo&& bucket_info, ScheduleConfig&& config) {
     std::unique_ptr<ir::IRSchedule> ir_sch =
         std::make_unique<ir::IRSchedule>(*ir_sch_);
     std::unique_ptr<ir::ScheduleBlockGraph> schedule_block_graph =
@@ -61,21 +66,30 @@ void DynamicShapeGroupScheduler::InitBuckets() {
     ir::ScheduleBlockNode* global_master =
         FindGlobalMasterNode(schedule_block_graph);
     IterativeSpaceInfo iter_space_info = ConstructIterSpaceInfo(global_master);
+    VLOG(4) << "iter_space_info.total_sp_extent: "
+            << iter_space_info.total_sp_extent;
+    VLOG(4) << "iter_space_info.total_rb_extent: "
+            << iter_space_info.total_rb_extent;
+    VLOG(4) << "bucket_info.sp_lower_bound: " << bucket_info.sp_lower_bound;
+    VLOG(4) << "bucket_info.sp_upper_bound: " << bucket_info.sp_upper_bound;
+    VLOG(4) << "bucket_info.rb_lower_bound: " << bucket_info.rb_lower_bound;
+    VLOG(4) << "bucket_info.rb_upper_bound: " << bucket_info.rb_upper_bound;
     if (OutOfRange(iter_space_info.total_sp_extent,
                    bucket_info.sp_lower_bound,
                    bucket_info.sp_upper_bound) ||
         OutOfRange(iter_space_info.total_rb_extent,
                    bucket_info.rb_lower_bound,
                    bucket_info.rb_upper_bound)) {
+      VLOG(4) << "Out of range";
       return;
     }
     SymbolicPredicate sp_lower_bound_predicate = ir::GE::Make(
         iter_space_info.total_sp_extent, ir::Expr(bucket_info.sp_lower_bound));
-    SymbolicPredicate sp_upper_bound_predicate = ir::LT::Make(
+    SymbolicPredicate sp_upper_bound_predicate = ir::LE::Make(
         iter_space_info.total_sp_extent, ir::Expr(bucket_info.sp_upper_bound));
     SymbolicPredicate rb_lower_bound_predicate = ir::GE::Make(
         iter_space_info.total_rb_extent, ir::Expr(bucket_info.rb_lower_bound));
-    SymbolicPredicate rb_upper_bound_predicate = ir::LT::Make(
+    SymbolicPredicate rb_upper_bound_predicate = ir::LE::Make(
         iter_space_info.total_rb_extent, ir::Expr(bucket_info.rb_upper_bound));
     SymbolicPredicate sp_predicate =
         ir::And::Make(sp_lower_bound_predicate, sp_upper_bound_predicate);
@@ -85,7 +99,8 @@ void DynamicShapeGroupScheduler::InitBuckets() {
     ScheduleContext schedule_context{output_names,
                                      target_,
                                      std::move(iter_space_info),
-                                     std::move(bucket_info)};
+                                     std::move(bucket_info),
+                                     std::move(config)};
     BucketContext bucket_context{std::move(predicate),
                                  std::move(ir_sch),
                                  std::move(schedule_block_graph),
@@ -93,30 +108,15 @@ void DynamicShapeGroupScheduler::InitBuckets() {
     bucket_contexts_.emplace_back(std::move(bucket_context));
   };
 
-  // naive buckets
-  // 1. {sp_extent[1 - 1024], rb_extent[1 - 256]}
-  InitBucket({/* sp_lower_bound = */ 1,
-              /* sp_upper_bound = */ 1024,
-              /* rb_lower_bound = */ 1,
-              /* rb_upper_bound = */ 256});
-  // 2. {sp_extent[1024 - +oo], rb_extent[1 - 256]}
-  InitBucket({/* sp_lower_bound = */ 1024,
-              /* sp_upper_bound = */ INT_MAX,
-              /* rb_lower_bound = */ 1,
-              /* rb_upper_bound = */ 256});
-  // 3. {sp_extent[1 - 1024], rb_extent[256 - +oo]}
-  InitBucket({/* sp_lower_bound = */ 1,
-              /* sp_upper_bound = */ 1024,
-              /* rb_lower_bound = */ 256,
-              /* rb_upper_bound = */ INT_MAX});
-  // 4. {sp_extent[1024 - +oo], rb_extent[256 - +oo]}
-  InitBucket({/* sp_lower_bound = */ 1024,
-              /* sp_upper_bound = */ INT_MAX,
-              /* rb_lower_bound = */ 256,
-              /* rb_upper_bound = */ INT_MAX});
+  std::unordered_map<BucketInfo, ScheduleConfig, BucketInfoHash> configs =
+      BuildScheduleConfig(group_info_, target_);
+  for (std::pair<BucketInfo, ScheduleConfig>&& config : configs) {
+    InitBucket(std::move(config.first), std::move(config.second));
+  }
 }
 
 void DynamicShapeGroupScheduler::Schedule() {
+  VLOG(4) << "bucket_context_.size() = " << bucket_contexts_.size();
   for (BucketContext& bucket_context : bucket_contexts_) {
     VLOG(4) << "===========================Apply tactics on Bucket ["
             << bucket_context.predicate << "]==========================";

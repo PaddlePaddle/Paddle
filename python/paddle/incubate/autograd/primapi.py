@@ -74,13 +74,13 @@ def forward_grad(outputs, inputs, grad_inputs=None):
 
     if not isinstance(outputs, (framework.Variable, typing.Sequence)):
         raise TypeError(
-            f'Expected outputs is Tensor|Sequence[Tesnor], '
+            f'Expected outputs is Tensor|Sequence[Tensor], '
             f'but got {type(outputs)}.'
         )
 
     if not isinstance(inputs, (framework.Variable, typing.Sequence)):
         raise TypeError(
-            f'Expected inputs is Tensor|Sequence[Tesnor], '
+            f'Expected inputs is Tensor|Sequence[Tensor], '
             f'but got {type(inputs)}.'
         )
 
@@ -165,13 +165,13 @@ def grad(outputs, inputs, grad_outputs=None):
 
     if not isinstance(outputs, (framework.Variable, typing.Sequence)):
         raise TypeError(
-            f'Expected outputs is Tensor|Sequence[Tesnor], '
+            f'Expected outputs is Tensor|Sequence[Tensor], '
             f'but got {type(outputs)}.'
         )
 
     if not isinstance(inputs, (framework.Variable, typing.Sequence)):
         raise TypeError(
-            f'Expected inputs is Tensor|Sequence[Tesnor], '
+            f'Expected inputs is Tensor|Sequence[Tensor], '
             f'but got {type(inputs)}.'
         )
 

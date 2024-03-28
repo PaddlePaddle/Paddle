@@ -62,9 +62,9 @@ class CrossEntropyOpKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class XeSoftlabelGradFunctor {
+class XeSoftLabelGradFunctor {
  public:
-  XeSoftlabelGradFunctor(T* dx,
+  XeSoftLabelGradFunctor(T* dx,
                          const T* dy,     // NOLINT
                          const T* x,      // NOLINT
                          const T* label,  // NOLINT
@@ -137,7 +137,7 @@ class CrossEntropyGradientOpKernel : public framework::OpKernel<T> {
     int64_t class_num = x->dims()[rank - 1];
     int64_t ignore_index = ctx.Attr<int>("ignore_index");
     if (ctx.Attr<bool>("soft_label")) {
-      XeSoftlabelGradFunctor<T> functor(dx_data,
+      XeSoftLabelGradFunctor<T> functor(dx_data,
                                         dy->data<T>(),
                                         x->data<T>(),
                                         label->data<T>(),

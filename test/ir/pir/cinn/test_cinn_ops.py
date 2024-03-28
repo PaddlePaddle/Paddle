@@ -69,7 +69,7 @@ class TestAddOp(TestOpsBase):
 
 class TestIsCloseOp(TestOpsBase):
     def prepare_info(self):
-        self.fn = paddle.isclose
+        self.fn = paddle.sin
         self.expected_jit_kernel_number = 1
         self.expected_jit_kernel_structure = {utils.JIT_KERNEL_NAME: 1}
 

@@ -26,11 +26,12 @@ namespace {  // NOLINT
 enum class PyLayerBlockIndex { kFORWARD = 0, kBACKWARD = 1, kNONE = 2 };
 }  // namespace
 
-const char PyLayerOp::kInputs[] = "Input";
-const char PyLayerOp::kOutputs[] = "Out";
-const char PyLayerOp::kScope[] = "Scope";
-const char PyLayerOp::kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
-const char PyLayerOp::kBlocks[] = "blocks";
+const char PyLayerOp::kInputs[] = "Input";  // NOLINT
+const char PyLayerOp::kOutputs[] = "Out";   // NOLINT
+const char PyLayerOp::kScope[] = "Scope";   // NOLINT
+const char PyLayerOp::kSkipEagerDeletionVars[] =
+    "skip_eager_deletion_vars";              // NOLINT
+const char PyLayerOp::kBlocks[] = "blocks";  // NOLINT
 
 void PyLayerOp::CreateInterpreter(
     const platform::Place &dev_place,

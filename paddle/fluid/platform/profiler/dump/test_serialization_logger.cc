@@ -152,21 +152,21 @@ TEST(SerializationLoggerTest, dump_case0) {
   EXPECT_EQ(nodes[11].size(), 2u);
   std::vector<HostTraceEventNode*> thread1_nodes = nodes[10];
   std::vector<HostTraceEventNode*> thread2_nodes = nodes[11];
-  for (auto it = thread1_nodes.begin(); it != thread1_nodes.end(); it++) {
-    if ((*it)->Name() == "root node") {
-      EXPECT_EQ((*it)->GetChildren().size(), 3u);
+  for (auto& thread1_node : thread1_nodes) {
+    if (thread1_node->Name() == "root node") {
+      EXPECT_EQ(thread1_node->GetChildren().size(), 3u);
     }
-    if ((*it)->Name() == "op1") {
-      EXPECT_EQ((*it)->GetChildren().size(), 0u);
-      EXPECT_EQ((*it)->GetRuntimeTraceEventNodes().size(), 2u);
-      EXPECT_EQ((*it)->GetMemTraceEventNodes().size(), 2u);
-      EXPECT_NE((*it)->GetOperatorSupplementEventNode(), nullptr);
+    if (thread1_node->Name() == "op1") {
+      EXPECT_EQ(thread1_node->GetChildren().size(), 0u);
+      EXPECT_EQ(thread1_node->GetRuntimeTraceEventNodes().size(), 2u);
+      EXPECT_EQ(thread1_node->GetMemTraceEventNodes().size(), 2u);
+      EXPECT_NE(thread1_node->GetOperatorSupplementEventNode(), nullptr);
     }
   }
-  for (auto it = thread2_nodes.begin(); it != thread2_nodes.end(); it++) {
-    if ((*it)->Name() == "op3") {
-      EXPECT_EQ((*it)->GetChildren().size(), 0u);
-      EXPECT_EQ((*it)->GetRuntimeTraceEventNodes().size(), 2u);
+  for (auto& thread2_node : thread2_nodes) {
+    if (thread2_node->Name() == "op3") {
+      EXPECT_EQ(thread2_node->GetChildren().size(), 0u);
+      EXPECT_EQ(thread2_node->GetRuntimeTraceEventNodes().size(), 2u);
     }
   }
   tree.LogMe(&logger);
@@ -247,15 +247,15 @@ TEST(SerializationLoggerTest, dump_case1) {
   EXPECT_EQ(nodes[11].size(), 1u);
   std::vector<HostTraceEventNode*> thread1_nodes = nodes[10];
   std::vector<HostTraceEventNode*> thread2_nodes = nodes[11];
-  for (auto it = thread1_nodes.begin(); it != thread1_nodes.end(); it++) {
-    if ((*it)->Name() == "root node") {
-      EXPECT_EQ((*it)->GetRuntimeTraceEventNodes().size(), 3u);
+  for (auto& thread1_node : thread1_nodes) {
+    if (thread1_node->Name() == "root node") {
+      EXPECT_EQ(thread1_node->GetRuntimeTraceEventNodes().size(), 3u);
     }
   }
-  for (auto it = thread2_nodes.begin(); it != thread2_nodes.end(); it++) {
-    if ((*it)->Name() == "root node") {
-      EXPECT_EQ((*it)->GetChildren().size(), 0u);
-      EXPECT_EQ((*it)->GetRuntimeTraceEventNodes().size(), 2u);
+  for (auto& thread2_node : thread2_nodes) {
+    if (thread2_node->Name() == "root node") {
+      EXPECT_EQ(thread2_node->GetChildren().size(), 0u);
+      EXPECT_EQ(thread2_node->GetRuntimeTraceEventNodes().size(), 2u);
     }
   }
   tree.LogMe(&logger);
@@ -272,21 +272,21 @@ TEST(DeserializationReaderTest, restore_case0) {
   EXPECT_EQ(nodes[11].size(), 2u);
   std::vector<HostTraceEventNode*> thread1_nodes = nodes[10];
   std::vector<HostTraceEventNode*> thread2_nodes = nodes[11];
-  for (auto it = thread1_nodes.begin(); it != thread1_nodes.end(); it++) {
-    if ((*it)->Name() == "root node") {
-      EXPECT_EQ((*it)->GetChildren().size(), 3u);
+  for (auto& thread1_node : thread1_nodes) {
+    if (thread1_node->Name() == "root node") {
+      EXPECT_EQ(thread1_node->GetChildren().size(), 3u);
     }
-    if ((*it)->Name() == "op1") {
-      EXPECT_EQ((*it)->GetChildren().size(), 0u);
-      EXPECT_EQ((*it)->GetRuntimeTraceEventNodes().size(), 2u);
-      EXPECT_EQ((*it)->GetMemTraceEventNodes().size(), 2u);
-      EXPECT_NE((*it)->GetOperatorSupplementEventNode(), nullptr);
+    if (thread1_node->Name() == "op1") {
+      EXPECT_EQ(thread1_node->GetChildren().size(), 0u);
+      EXPECT_EQ(thread1_node->GetRuntimeTraceEventNodes().size(), 2u);
+      EXPECT_EQ(thread1_node->GetMemTraceEventNodes().size(), 2u);
+      EXPECT_NE(thread1_node->GetOperatorSupplementEventNode(), nullptr);
     }
   }
-  for (auto it = thread2_nodes.begin(); it != thread2_nodes.end(); it++) {
-    if ((*it)->Name() == "op3") {
-      EXPECT_EQ((*it)->GetChildren().size(), 0u);
-      EXPECT_EQ((*it)->GetRuntimeTraceEventNodes().size(), 2u);
+  for (auto& thread2_node : thread2_nodes) {
+    if (thread2_node->Name() == "op3") {
+      EXPECT_EQ(thread2_node->GetChildren().size(), 0u);
+      EXPECT_EQ(thread2_node->GetRuntimeTraceEventNodes().size(), 2u);
     }
   }
 }
@@ -301,15 +301,15 @@ TEST(DeserializationReaderTest, restore_case1) {
   EXPECT_EQ(nodes[11].size(), 1u);
   std::vector<HostTraceEventNode*> thread1_nodes = nodes[10];
   std::vector<HostTraceEventNode*> thread2_nodes = nodes[11];
-  for (auto it = thread1_nodes.begin(); it != thread1_nodes.end(); it++) {
-    if ((*it)->Name() == "root node") {
-      EXPECT_EQ((*it)->GetRuntimeTraceEventNodes().size(), 3u);
+  for (auto& thread1_node : thread1_nodes) {
+    if (thread1_node->Name() == "root node") {
+      EXPECT_EQ(thread1_node->GetRuntimeTraceEventNodes().size(), 3u);
     }
   }
-  for (auto it = thread2_nodes.begin(); it != thread2_nodes.end(); it++) {
-    if ((*it)->Name() == "root node") {
-      EXPECT_EQ((*it)->GetChildren().size(), 0u);
-      EXPECT_EQ((*it)->GetRuntimeTraceEventNodes().size(), 2u);
+  for (auto& thread2_node : thread2_nodes) {
+    if (thread2_node->Name() == "root node") {
+      EXPECT_EQ(thread2_node->GetChildren().size(), 0u);
+      EXPECT_EQ(thread2_node->GetRuntimeTraceEventNodes().size(), 2u);
     }
   }
 }

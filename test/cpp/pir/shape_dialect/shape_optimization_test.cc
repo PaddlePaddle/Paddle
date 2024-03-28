@@ -122,10 +122,10 @@ TEST(shape_optimization, shape_optimization_pass) {
             "Mul(Mul(Mul(Mul(1, S1), 128), 32), 1 / (128))");
   EXPECT_EQ(cast_res.shape()[3], 2);
 
-  EXPECT_EQ(symbol::ToString(relu_res.shape()[0]), "Add(Add(S2, -2), -2)");
-  EXPECT_EQ(symbol::ToString(relu_res.shape()[1]), "Add(Add(S3, -2), -2)");
-  EXPECT_EQ(symbol::ToString(relu_res.shape()[2]), "Add(Add(S4, -2), -2)");
-  EXPECT_EQ(symbol::ToString(relu_res.shape()[3]), "Add(Add(S5, -2), -2)");
+  EXPECT_EQ(symbol::ToString(relu_res.shape()[0]), "Add(-2, -Add(2, -S2))");
+  EXPECT_EQ(symbol::ToString(relu_res.shape()[1]), "Add(-2, -Add(2, -S3))");
+  EXPECT_EQ(symbol::ToString(relu_res.shape()[2]), "Add(-2, -Add(2, -S4))");
+  EXPECT_EQ(symbol::ToString(relu_res.shape()[3]), "Add(-2, -Add(2, -S5))");
 
   EXPECT_EQ(subtract_res.shape()[0], 1);
   EXPECT_EQ(subtract_res.shape()[1], 64);

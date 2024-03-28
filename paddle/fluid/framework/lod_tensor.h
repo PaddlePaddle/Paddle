@@ -27,17 +27,19 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/mixed_vector.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace framework {
 
 // Split phi::DenseTensor and copy to each place specified in places.
-std::vector<phi::DenseTensor> SplitLoDTensor(
+TEST_API std::vector<phi::DenseTensor> SplitLoDTensor(
     const phi::DenseTensor& src, const std::vector<platform::Place> places);
 
-void MergeLoDTensor(phi::DenseTensor* target,
-                    const std::vector<const phi::DenseTensor*>& lod_tensors,
-                    platform::Place dst_place);
+TEST_API void MergeLoDTensor(
+    phi::DenseTensor* target,
+    const std::vector<const phi::DenseTensor*>& lod_tensors,
+    platform::Place dst_place);
 
 /*
  * LoD is short for Level of Details.
@@ -65,7 +67,7 @@ LoD SliceInLevel(const LoD& in,
 /*
  * Transform an LoD from relative offsets to absolute offsets.
  */
-LoD ToAbsOffset(const LoD& in);
+TEST_API LoD ToAbsOffset(const LoD& in);
 
 TEST_API bool operator==(const LoD& a, const LoD& b);
 
@@ -85,7 +87,7 @@ TEST_API bool operator==(const LoD& a, const LoD& b);
  * tensor_height>0.
  */
 
-bool CheckLoD(const LoD& in, int tensor_height = -1);
+TEST_API bool CheckLoD(const LoD& in, int tensor_height = -1);
 /*
  * Check whether this absolute lod's format is valid.
  *
@@ -99,7 +101,7 @@ bool CheckLoD(const LoD& in, int tensor_height = -1);
  *     same(the height of underlying tensor) or `tensor_height` if
  *     tensor_height>0.
  */
-bool CheckAbsLoD(const LoD& in, int tensor_height = -1);
+TEST_API bool CheckAbsLoD(const LoD& in, int tensor_height = -1);
 
 /*
  * Expand the `source` to fit the LoD of `lod`. For example, a `source`
@@ -162,12 +164,12 @@ phi::DenseTensor LodExpand(const phi::DenseTensor& source,
 // Returns:
 //  LoD = [[1, 4], [2, 4, 2, 3, 2]]
 //  pair<size_t, size_t> = {11, 24}
-std::pair<LoD, std::pair<size_t, size_t>> GetSubLoDAndAbsoluteOffset(
+TEST_API std::pair<LoD, std::pair<size_t, size_t>> GetSubLoDAndAbsoluteOffset(
     const LoD& lod, size_t start_idx, size_t end_idx, size_t start_level);
 
 /*
- * Serialize/Desiralize phi::DenseTensor to std::ostream
- * You can pass ofstream or ostringstream to serilize to file
+ * Serialize/Deserialize phi::DenseTensor to std::ostream
+ * You can pass ofstream or ostringstream to serialize to file
  * or to a in memory string. GPU tensor will be copied to CPU.
  */
 void SerializeToStream(std::ostream& os,
@@ -182,7 +184,7 @@ void DeserializeFromStream(std::istream& is,
                            const size_t& seek,
                            const std::vector<int64_t>& shape);
 
-LoD ConvertToOffsetBasedLoD(const LoD& length_lod);
+TEST_API LoD ConvertToOffsetBasedLoD(const LoD& length_lod);
 
 void SerializeToStream(std::ostream& os, const phi::DenseTensor& tensor);
 

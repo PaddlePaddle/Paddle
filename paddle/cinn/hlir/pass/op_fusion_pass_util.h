@@ -124,7 +124,7 @@ CONDITION_FUNC(reduce_fuse_reduce) {
 }
 
 CONDITION_FUNC(is_horizontal_relation) {
-  auto check_depency = [&](const Node* node) {
+  auto check_dependency = [&](const Node* node) {
     std::queue<const Node*> candidates;
     std::unordered_set<const Node*> visited_set;
     candidates.push(node);
@@ -157,7 +157,7 @@ CONDITION_FUNC(is_horizontal_relation) {
     if (helper->GetOpKind(node) != consumer->op_pattern_kind) {
       continue;
     }
-    if (check_depency(node)) {
+    if (check_dependency(node)) {
       return false;
     }
   }
@@ -207,17 +207,17 @@ CONDITION_FUNC(horizontal_or_vertical_reduce_relation) {
     return false;
   }
 
-  int succesive_reduce_dimension = reduce_shape.at(reduce_axes.back());
+  int successive_reduce_dimension = reduce_shape.at(reduce_axes.back());
   for (int idx = reduce_axes.size() - 2; idx >= 0; --idx) {
     if (reduce_axes[idx] == reduce_axes[idx + 1] - 1) {
-      succesive_reduce_dimension *= reduce_shape[reduce_axes[idx]];
+      successive_reduce_dimension *= reduce_shape[reduce_axes[idx]];
       continue;
     }
     break;
   }
 
   return helper->target_ == cinn::common::DefaultNVGPUTarget()
-             ? (succesive_reduce_dimension <= helper->target_.max_num_threads()
+             ? (successive_reduce_dimension <= helper->target_.max_num_threads()
                     ? true
                     : false)
              : true;

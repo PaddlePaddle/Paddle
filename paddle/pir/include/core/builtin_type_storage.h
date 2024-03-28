@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <cstring>
+
 #include "paddle/common/ddim.h"
 #include "paddle/common/dim.h"
 #include "paddle/common/hash_funcs.h"

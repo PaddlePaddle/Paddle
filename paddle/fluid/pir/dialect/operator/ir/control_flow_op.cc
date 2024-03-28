@@ -575,14 +575,6 @@ void WhileOp::VerifySig() {
         phi::errors::PreconditionNotMet(
             "Type validation failed for the 0th input, it should be a "
             "bool DenseTensorType."));
-  } else if (auto cond_type =
-                 operand_type(0).dyn_cast<AllocatedDenseTensorType>()) {
-    PADDLE_ENFORCE_EQ(
-        cond_type.dtype().isa<pir::BoolType>(),
-        true,
-        phi::errors::PreconditionNotMet(
-            "Type validation failed for the 0th input, it should be a "
-            "bool DenseTensorType."));
   } else {
     PADDLE_THROW(phi::errors::PreconditionNotMet(
         "Currently,  the while op cond input only support bool dense_tensor "
@@ -746,6 +738,46 @@ bool WhileOp::InferSymbolicShape(
 
   pir::InferSymExprForBlock(body(), shape_analysis);
 
+  // add constraints for args
+  const auto &body_args = block_args();
+  for (size_t i = 0; i < body_args.size(); ++i) {
+    const auto &input_arg_shape =
+        shape_analysis->GetShapeOrDataForValue(body_args[i]).shape();
+    const auto &yield_value_shape =
+        shape_analysis
+            ->GetShapeOrDataForValue(body().back().operand_source(i + 1))
+            .shape();
+    PADDLE_ENFORCE_EQ(input_arg_shape.size(),
+                      yield_value_shape.size(),
+                      phi::errors::InvalidArgument(
+                          "while op's input[%d] rank should equal to "
+                          "output[%d]'s rank, Now the rank of input is %d,"
+                          "the rank of output is %d.",
+                          i,
+                          i + 1,
+                          input_arg_shape.size(),
+                          yield_value_shape.size()));
+    const auto &original_input_shape =
+        shape_analysis->GetShapeOrDataForValue(operand_source(i + 1)).shape();
+    for (size_t j = 0; j < input_arg_shape.size(); ++j) {
+      if (input_arg_shape[j].isa<int64_t>()) {
+        continue;
+      }
+      if (input_arg_shape[j] ==
+          yield_value_shape[j]) {  // Dim isn't changed in while
+        shape_analysis->DimExprBuilder().CstrEq(original_input_shape[j],
+                                                input_arg_shape[j]);
+        continue;
+      }
+      if (original_input_shape.size() == yield_value_shape.size() &&
+          original_input_shape[j] == yield_value_shape[j]) {
+        shape_analysis->DimExprBuilder().CstrEq(original_input_shape[j],
+                                                input_arg_shape[j]);
+        continue;
+      }
+    }
+  }
+
   const auto &last_op = body().back();
   for (size_t i = 1; i < last_op.operands_source().size(); ++i) {
     shape_analysis->SetShapeOrDataForValue(
@@ -765,11 +797,11 @@ std::vector<std::vector<pir::Value>> TuplePushOpVjpInterfaceModel::Vjp(
   PADDLE_ENFORCE_EQ(
       inputs.size() >= 1u,
       true,
-      phi::errors::InvalidArgument(
-          "tupe_push op's inputs' size should be greater_equal than 1, and the "
-          "inputs[i] should be non-empty. "
-          "Now the inputs's size is %d.",
-          inputs.size()));
+      phi::errors::InvalidArgument("tuple_push op's inputs' size should be "
+                                   "greater_equal than 1, and the "
+                                   "inputs[i] should be non-empty. "
+                                   "Now the inputs's size is %d.",
+                                   inputs.size()));
   auto pop_op = ApiBuilder::Instance().GetBuilder()->Build<TuplePopOp>(
       TuplePushOp::dyn_cast(op).outlet());
   std::vector<std::vector<pir::Value>> res{inputs.size()};
@@ -803,8 +835,7 @@ void HasElementsOp::VerifySig() {
 
   // Verify outputs:
   IR_ENFORCE(num_results() == 1u, "The size of outputs must be equal to 1.");
-  IR_ENFORCE((*this)->result_type(0).isa<DenseTensorType>() ||
-                 (*this)->result_type(0).isa<AllocatedDenseTensorType>(),
+  IR_ENFORCE((*this)->result_type(0).isa<DenseTensorType>(),
              "The type of cf.has_elements' output is not correct.");
 }
 
@@ -874,8 +905,7 @@ void AssertOp::VerifySig() {
             (*this)->operand(1).type().dyn_cast<pir::VectorType>()) {
       for (size_t i = 0; i < vec_type.size(); ++i) {
         IR_ENFORCE(vec_type[i].isa<paddle::dialect::DenseTensorType>() ||
-                       vec_type[i].isa<paddle::dialect::SelectedRowsType>() ||
-                       vec_type[i].isa<AllocatedDenseTensorType>(),
+                       vec_type[i].isa<paddle::dialect::SelectedRowsType>(),
                    "Type validation failed for the 1th input.");
       }
     } else {
@@ -885,7 +915,6 @@ void AssertOp::VerifySig() {
                   ->operand(1)
                   .type()
                   .isa<paddle::dialect::SelectedRowsType>(),
-          (*this)->operand(1).type().isa<AllocatedDenseTensorType>(),
           "Type validation failed for the 1th input.");
     }
   }
@@ -999,19 +1028,20 @@ bool SelectInputOp::InferSymbolicShape(
   const auto &input1_dims = GetSymExprForValue(operand_source(0));
   const auto &input2_dims = GetSymExprForValue(operand_source(1));
 
+  // for compatibility, we just return second_shape.
+  if (input1_dims.size() != input2_dims.size()) {
+    shape_analysis->SetShapeOrDataForValue(
+        result(0),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(input2_dims)});
+    return true;
+  }
+
   std::vector<symbol::DimExpr> out_dims = input1_dims;
   // merge shape for input1 and input2, since we don't know which will be
   // selected in compile time, the strategy is same with IfOp, see IfOp's
   // comments for details and examples
   if (input2_dims.size() != 0) {
-    // now only support input1 and input2 have same rank.
-    PADDLE_ENFORCE_EQ(input1_dims.size(),
-                      input2_dims.size(),
-                      phi::errors::PreconditionNotMet(
-                          "The true and false block should have same rank, "
-                          "but got true_rank(%d) and false_rank(%d)",
-                          input1_dims.size(),
-                          input2_dims.size()));
     for (size_t i = 0; i < input1_dims.size(); i++) {
       if (input1_dims[i] != input2_dims[i]) {
         out_dims[i] = symbol::DimExpr{shape_analysis->GetNextSymName()};

@@ -21,7 +21,7 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-TEST(ArgMappingContexTest, BasicFunction) {
+TEST(ArgMappingContextTest, BasicFunction) {
   paddle::framework::proto::OpDesc op;
   op.set_type("imaged_op");
   auto *input_var = op.add_inputs();
@@ -86,8 +86,8 @@ TEST(ArgMappingContexTest, BasicFunction) {
   int int_attr = any_cast<int>(context.Attr("int_attr"));
   EXPECT_EQ(int_attr, 1);
 
-  float flaot_attr = any_cast<float>(context.Attr("float_attr"));
-  EXPECT_EQ(flaot_attr, 1);
+  float float_attr = any_cast<float>(context.Attr("float_attr"));
+  EXPECT_EQ(float_attr, 1);
 
   std::string string_attr = any_cast<std::string>(context.Attr("string_attr"));
   EXPECT_EQ(string_attr, "1");

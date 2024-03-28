@@ -139,7 +139,7 @@ class SkipGroupnormActPluginDynamic : public DynamicPluginTensorRT {
                        const nvinfer1::DynamicPluginTensorDesc* out,
                        int nbOutputs) TRT_NOEXCEPT override {
     // sizeof(float2) * maxBatchSize * maxNumberOfGroup. float2
-    // contians two buffers for sum and squared sum;
+    // contains two buffers for sum and squared sum;
     ws_ = sizeof(float) * 2 * in[0].max.d[0] * groups_;
   }
 

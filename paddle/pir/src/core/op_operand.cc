@@ -22,8 +22,8 @@
              "impl_ pointer is null when call func:" #func_name \
              " , in class: " #class_name ".")
 
-#define CHECK_OPOPEREND_NULL_IMPL(func_name) \
-  CHECK_NULL_IMPL(OpOpernad, func_name)
+#define CHECK_OP_OPERAND_NULL_IMPL(func_name) \
+  CHECK_NULL_IMPL(OpOperand, func_name)
 
 namespace pir {
 OpOperand &OpOperand::operator=(const OpOperand &rhs) {  // NOLINT
@@ -37,34 +37,34 @@ OpOperand &OpOperand::operator=(const OpOperand &rhs) {  // NOLINT
 OpOperand::operator bool() const { return impl_ && impl_->source(); }
 
 OpOperand OpOperand::next_use() const {
-  CHECK_OPOPEREND_NULL_IMPL(next_use);
+  CHECK_OP_OPERAND_NULL_IMPL(next_use);
   return impl_->next_use();
 }
 
 Value OpOperand::source() const {
-  CHECK_OPOPEREND_NULL_IMPL(source);
+  CHECK_OP_OPERAND_NULL_IMPL(source);
   return impl_->source();
 }
 
 Type OpOperand::type() const { return source().type(); }
 
 void OpOperand::set_source(Value value) {
-  CHECK_OPOPEREND_NULL_IMPL(set_source);
+  CHECK_OP_OPERAND_NULL_IMPL(set_source);
   impl_->set_source(value);
 }
 
 Operation *OpOperand::owner() const {
-  CHECK_OPOPEREND_NULL_IMPL(owner);
+  CHECK_OP_OPERAND_NULL_IMPL(owner);
   return impl_->owner();
 }
 
 uint32_t OpOperand::index() const {
-  CHECK_OPOPEREND_NULL_IMPL(index);
+  CHECK_OP_OPERAND_NULL_IMPL(index);
   return impl_->index();
 }
 
 void OpOperand::RemoveFromUdChain() {
-  CHECK_OPOPEREND_NULL_IMPL(RemoveFromUdChain);
+  CHECK_OP_OPERAND_NULL_IMPL(RemoveFromUdChain);
   return impl_->RemoveFromUdChain();
 }
 

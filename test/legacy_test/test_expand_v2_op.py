@@ -18,10 +18,12 @@ import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
 from op_test import OpTest, convert_float_to_uint16
+from utils import static_guard
 
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.framework import in_pir_mode
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -296,19 +298,23 @@ class TestExpandV2BF16Op(OpTest):
 
 
 class TestExpandV2Error(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
-            x1 = base.create_lod_tensor(
-                np.array([[-1]]), [[1]], base.CPUPlace()
-            )
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             shape = [2, 2]
-            self.assertRaises(TypeError, paddle.tensor.expand, x1, shape)
-            x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="uint8")
-            self.assertRaises(TypeError, paddle.tensor.expand, x2, shape)
-            x3 = paddle.static.data(name='x3', shape=[-1, 4], dtype="bool")
-            x3.stop_gradient = False
-            self.assertRaises(ValueError, paddle.tensor.expand, x3, shape)
+            if not in_pir_mode():
+                x1 = base.create_lod_tensor(
+                    np.array([[-1]]), [[1]], base.CPUPlace()
+                )
+                self.assertRaises(TypeError, paddle.tensor.expand, x1, shape)
+            x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="bool")
+            x2.stop_gradient = False
+            self.assertRaises(ValueError, paddle.tensor.expand, x2, shape)
+            x2.stop_gradient = True
+            self.assertRaises(TypeError, paddle.tensor.expand, x2, 1)
         paddle.disable_static()
 
 
@@ -542,12 +548,23 @@ class TestExpandV2CompOpInt64_t(OpTest):
 
 
 class TestExpandPirValueListShape(unittest.TestCase):
-    def test_value_list_shape(self):
-        with paddle.pir_utils.IrGuard():
-            x = paddle.static.data('x', [1, 3])
-            shape = [2, paddle.full([], 4)]
-            out = paddle.expand(x, shape)
-            np.testing.assert_array_equal(tuple(out.shape), (-1, -1))
+    @test_with_pir_api
+    def test_value_list_shape1(self):
+        with static_guard():
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data('x', [1, 3])
+                shape = [2, paddle.full([], 4)]
+                out = paddle.expand(x, shape)
+                np.testing.assert_array_equal(tuple(out.shape), (2, -1))
+
+    @test_with_pir_api
+    def test_value_list_shape2(self):
+        with static_guard():
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data('x', [1, 1, -1, -1], 'float32')
+                shape1 = paddle.static.data('shape1', [], 'int32')
+                x = paddle.expand(x, shape=[shape1, 1, -1, -1])
+                np.testing.assert_equal(tuple(x.shape), (-1, 1, -1, -1))
 
 
 if __name__ == "__main__":

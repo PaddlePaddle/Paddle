@@ -195,6 +195,12 @@ class IRSchedule {
    * @param memory_type String that indicates the buffer's storage scope.
    * @return The buffer's cache.
    */
+
+  void Broadcast(const std::string& block_name, const BroadcastInfo& info);
+
+  void BroadcastToElementwise(const std::string& block_name,
+                              const std::vector<int64_t>& axes);
+
   Expr CacheRead(const Expr& block,
                  int read_buffer_index,
                  const std::string& memory_type);
@@ -402,7 +408,9 @@ class IRSchedule {
    *        B[i] = B[i] + rf_B[j, i]
    * \endcode
    */
-  Expr FactorizeReduction(const Expr& rf_loop, int rf_axis);
+  Expr FactorizeReduction(const Expr& rf_loop,
+                          int rf_axis,
+                          bool with_write_back_block_init = true);
 
   /*!
    * \brief Annotate a block with a key-value pair to set as its attribute

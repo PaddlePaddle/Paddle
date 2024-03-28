@@ -50,7 +50,7 @@ struct MemoryBlock {
   MemoryBlock* GetRightBuddy(MetadataCache* cache);
 
   // Split the allocation into left/right blocks.
-  void Split(MetadataCache* cache, size_t size);
+  void Split(MetadataCache* cache, size_t size, size_t extra_padding_size = 0);
 
   // Merge left and right blocks together.
   void Merge(MetadataCache* cache, MemoryBlock* right_buddy);

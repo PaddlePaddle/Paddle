@@ -142,14 +142,16 @@ class PADDLE_API Tensor final {
   explicit Tensor(const std::string& name) : name_(name) {}
 
   /**
-   * @brief Construct a new Tensor object by a TensorBase pointer and
-   * autograd_meta
+   * @brief Construct a new Tensor object by a TensorBase pointer, autograd meta
+   * and name
    *
    * @param tensor_impl
    * @param autograd_meta
+   * @param name
    */
   Tensor(std::shared_ptr<phi::TensorBase> tensor_impl,
-         std::shared_ptr<AbstractAutogradMeta> autograd_meta);
+         std::shared_ptr<AbstractAutogradMeta> autograd_meta,
+         const std::string& name);
 
   /* Part 2: Dimension, DataType and DataLayout methods */
 
@@ -713,7 +715,7 @@ class PADDLE_API Tensor final {
   Tensor maximum(const Tensor& y) const;
   Tensor minimum(const Tensor& y) const;
   Tensor scale(const Scalar& scale = 1.0,
-               float bias = 0.0,
+               const Scalar& bias = 0.0,
                bool bias_after_scale = true) const;
   Tensor sum(const IntArray& axis = {},
              DataType dtype = DataType::UNDEFINED,

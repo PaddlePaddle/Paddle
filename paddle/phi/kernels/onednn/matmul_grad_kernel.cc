@@ -51,8 +51,10 @@ void CalculateMatrixDims(const std::vector<int64_t> &x_dims,
   for (size_t i = 0; i < x_bd_dims->size() - 2; ++i) {
     (*out_bd_dims)[i] = std::max((*x_bd_dims)[i], (*y_bd_dims)[i]);
   }
-  int h_idx = trans_x ? x_bd_dims->size() - 1 : x_bd_dims->size() - 2;
-  int w_idx = trans_y ? y_bd_dims->size() - 2 : y_bd_dims->size() - 1;
+  int h_idx =
+      trans_x ? x_bd_dims->size() - 1 : x_bd_dims->size() - 2;  // NOLINT
+  int w_idx =
+      trans_y ? y_bd_dims->size() - 2 : y_bd_dims->size() - 1;  // NOLINT
 
   (*out_bd_dims)[x_bd_dims->size() - 2] = (*x_bd_dims)[h_idx];
   (*out_bd_dims)[y_bd_dims->size() - 1] = (*y_bd_dims)[w_idx];

@@ -104,7 +104,7 @@ def monkey_patch_tensor():
         """
 
         # Note: getattr(self, attr, None) will call x.grad=x.gradient(), but gradient() only available in dygraph.
-        # It will fail. So, for propery that different between dynamic and static graph, should not getattr(self, attr, None).
+        # It will fail. So, for property that different between dynamic and static graph, should not getattr(self, attr, None).
         attr_not_need_keys = [
             'grad',
             'T',
@@ -188,13 +188,12 @@ def monkey_patch_tensor():
                 ...     linear.weight.set_value(custom_weight)  # change existing weight
                 ...     out = linear(t)  # call with different weight
         """
-        base_tensor = core.eager.Tensor
         assert isinstance(
-            value, (np.ndarray, base_tensor, dict, str)
+            value, (np.ndarray, paddle.Tensor, dict, str)
         ), "Variable set_value function, arguments type only support Variable, numpy, Tensor, dict, string."
         if self.is_dist():
             assert isinstance(
-                value, (np.ndarray, base_tensor)
+                value, (np.ndarray, paddle.Tensor)
             ), "For set_value function of dist tensor, arguments type only support numpy or Tensor."
 
         if isinstance(value, (dict, str)):
@@ -214,8 +213,10 @@ def monkey_patch_tensor():
                 self.name, self.shape, value.shape
             )
 
-            if isinstance(value, base_tensor):
+            if isinstance(value, paddle.Tensor):
                 dtype = value.dtype
+            elif paddle.framework.use_pir_api():
+                dtype = paddle.pir.core.convert_np_dtype_to_dtype_(value.dtype)
             else:
                 dtype = convert_np_dtype_to_dtype_(value.dtype)
 
@@ -227,7 +228,7 @@ def monkey_patch_tensor():
 
             # NOTE(wuweilong): self could be Tensor, the subsequent behavior are defined in different files
             # if self is Tensor, method value() return self that defined in this file, get_tensor() defined in eager_method.cc
-            # this Interface behavior will be unifed in the future.
+            # this Interface behavior will be unified in the future.
             if self.is_dist():
                 if isinstance(value, paddle.Tensor) and value.is_dist():
                     from paddle.distributed.auto_parallel.placement_type import (
@@ -592,12 +593,10 @@ def monkey_patch_tensor():
                 device = t.place
             if dtype is None:
                 dtype = t.dtype
-            if type(dtype) is str:
-                dtype = framework.convert_np_dtype_to_dtype_(dtype)
-
             # 1. gpu place need to determine whether the memory is sufficient for allocation.
             if t.place.is_gpu_place():
-                size_dtype = core.size_of_dtype(dtype)
+                proto_dtype = framework.convert_to_proto_type(dtype)
+                size_dtype = core.size_of_dtype(proto_dtype)
                 # Note(weilong wu): Paddle GPU minimum memory allocation unit is 256 bytes,
                 # waiting_alloc_memory will compute the memory space occupied by 't'.
                 # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.
@@ -702,7 +701,7 @@ def monkey_patch_tensor():
 
         if size_args + size_kwargs > 3 or size_args + size_kwargs == 0:
             raise TypeError(
-                "to() received too mant arguments - expected one of:\n  \
+                "to() received too many arguments - expected one of:\n  \
                 * (Union[str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace(), paddle.XPUPlace(), paddle.CustomPlace()] \
                 device, Union[str, paddle.dtype, numpy.dtype] dtype, bool blocking)\n \
                 * (Union[str, paddle.dtype, numpy.dtype] dtype, bool blocking)\n \
@@ -976,7 +975,7 @@ def monkey_patch_tensor():
         return array
 
     def pre_deal_index(self, item):
-        # since in pybind there is no effiency way to transfer Py_Tuple/Py_List/Py_Range to Tensor
+        # since in pybind there is no efficiency way to transfer Py_Tuple/Py_List/Py_Range to Tensor
         # we call this function in python level.
         item = list(item) if isinstance(item, tuple) else [item]
         for i, slice_item in enumerate(item):

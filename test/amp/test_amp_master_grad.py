@@ -113,6 +113,89 @@ class TestMasterGrad(unittest.TestCase):
         for grad in fp32_grads:
             self.assertEqual(grad.dtype, paddle.float32)
 
+    def run_pir(self, total_steps, accumulate_batches_num, model, optimizer):
+        model, opt = paddle.amp.decorate(
+            model, optimizers=optimizer, level='O2', master_grad=True
+        )
+        scaler = paddle.amp.GradScaler()
+        x = paddle.static.data('x', (2, 2), 'float32')
+        label = paddle.static.data('label', (2, 4), 'float32')
+        with paddle.amp.auto_cast(level='O2'):
+            out = model(paddle.to_tensor(x))
+            loss = paddle.nn.functional.l1_loss(out, paddle.to_tensor(label))
+        scaled = scaler.scale(loss)
+        scaler.minimize(opt, scaled)
+
+        fp32_grads = list(opt._optimizer._master_grads.values())
+        place = paddle.CUDAPlace(0)
+        exe = paddle.static.Executor(place)
+        exe.run(paddle.static.default_startup_program())
+        paddle.amp.debugging.enable_operator_stats_collection()
+        for i in range(total_steps):
+            exe.run(
+                paddle.static.default_main_program(),
+                feed={
+                    'x': np.random.random((2, 2)).astype('float32'),
+                    'label': np.random.random((2, 4)).astype('float32'),
+                },
+                fetch_list=[loss],
+            )
+        paddle.amp.debugging.disable_operator_stats_collection()
+        op_list = paddle.base.core.get_low_precision_op_list()
+        return fp32_grads, op_list
+
+    def check_pir_results(
+        self, fp32_grads, op_list, total_steps, accumulate_batches_num
+    ):
+        for grad in fp32_grads:
+            self.assertEqual(grad.dtype, core.DataType.FLOAT32)
+        # fp16 calls
+        self.assertEqual(
+            int(op_list['pd_op.matmul'].split(',')[0]), total_steps
+        )
+        self.assertEqual(
+            int(op_list['pd_op.adam_'].split(',')[0]),
+            2 * total_steps,
+        )
+        self.assertEqual(
+            int(op_list['pd_op.cast'].split(',')[0]),
+            total_steps * 3,
+        )
+
+    def test_pir_adam_master_grad(self):
+        with paddle.pir_utils.IrGuard():
+            startup = paddle.static.Program()
+            main = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                total_steps = 4
+                accumulate_batches_num = 2
+                model = SimpleNet(2, 4)
+                opt = paddle.optimizer.Adam(parameters=model.parameters())
+                fp32_grads, op_list = self.run_pir(
+                    total_steps, accumulate_batches_num, model, opt
+                )
+                self.check_pir_results(
+                    fp32_grads, op_list, total_steps, accumulate_batches_num
+                )
+
+    def test_pir_momentum_master_grad(self):
+        with paddle.pir_utils.IrGuard():
+            startup = paddle.static.Program()
+            main = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                total_steps = 4
+                accumulate_batches_num = 1
+                model = SimpleNet(2, 4)
+                L1Decay = paddle.regularizer.L1Decay(0.0001)
+                opt = paddle.optimizer.Momentum(
+                    parameters=model.parameters(), weight_decay=L1Decay
+                )
+                fp32_grads, op_list = self.run_pir(
+                    total_steps, accumulate_batches_num, model, opt
+                )
+                for grad in fp32_grads:
+                    self.assertEqual(grad.dtype, core.DataType.FLOAT32)
+
 
 if __name__ == '__main__':
     unittest.main()

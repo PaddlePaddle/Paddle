@@ -370,7 +370,8 @@ std::tuple<ScheduleMesh, List<LoopType>> CreateOptimizedScheduleMesh(
       return policy->Optimize(loop_sizes);
     }
   }
-  LOG(FATAL) << "Dead code, no valid schedule mesh policy found";
+  PADDLE_THROW(
+      phi::errors::Fatal("Dead code, no valid schedule mesh policy found"));
 }
 
 ScheduleMesh MeshReshape(const ScheduleMesh& sched_mesh,

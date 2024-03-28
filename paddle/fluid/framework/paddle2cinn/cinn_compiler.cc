@@ -49,9 +49,9 @@
 #include "paddle/fluid/inference/analysis/dot.h"
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
+#include "paddle/utils/string/string_helper.h"
 
 COMMON_DECLARE_bool(enable_pe_launch_cinn);
 COMMON_DECLARE_bool(enable_cinn_auto_tune);

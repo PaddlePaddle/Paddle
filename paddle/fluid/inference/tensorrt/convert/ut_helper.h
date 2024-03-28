@@ -247,7 +247,7 @@ class TRTConvertValidation {
   std::unique_ptr<framework::OpDesc> op_desc_;
   const std::unordered_set<std::string>& parameters_;
   framework::Scope& scope_;
-  // The ITensor of trt does not cotain the batch size,
+  // The ITensor of trt does not contain the batch size,
   // bug, in most cases, we need to set batch size for
   // fluid's tensor shape. This variable indicates
   // whether to add batch size to tensor shape of fluid.

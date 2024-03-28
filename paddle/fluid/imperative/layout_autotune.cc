@@ -145,7 +145,7 @@ LayoutAutotuneGuard::LayoutAutotuneGuard(std::shared_ptr<Tracer> tracer,
 }
 
 LayoutAutotuneGuard::~LayoutAutotuneGuard() {
-  if (pre_layout_autotune_) {
+  if (pre_layout_autotune_) {  // NOLINT
     tracer_->EnableLayoutAutoTune();
   } else {
     tracer_->DisableLayoutAutoTune();

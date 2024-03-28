@@ -249,9 +249,6 @@ void NCCLCommTask::AbortComm() {
 }
 
 std::string NCCLCommTask::GetTraceMsg() {
-  auto current_timepoint = std::chrono::steady_clock::now();
-  auto time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-      current_timepoint - start_time_);
   auto global_ranks =
       phi::distributed::CommContextManager::GetInstance().GetGroupRanks(
           group_key_);

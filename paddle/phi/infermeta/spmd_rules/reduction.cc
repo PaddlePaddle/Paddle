@@ -71,7 +71,7 @@ SpmdInfo ReductionInferSpmdBase(const DistMetaTensor& x,
                                 int reduce_type) {
   // Step0: Verify input args based on reduction logic
   auto x_shape = common::vectorize(x.dims());
-  int x_ndim = x_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
   auto x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
@@ -175,8 +175,8 @@ SpmdInfo ReductionInferSpmdReverse(const DistMetaTensor& x,
   // Step0: Verify input args based on reduction logic
   auto x_shape = common::vectorize(x.dims());
   auto out_shape = common::vectorize(out.dims());
-  int x_ndim = x_shape.size();
-  int out_ndim = out_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
+  int out_ndim = static_cast<int>(out_shape.size());
   auto out_dist_attr_src = out.dist_attr();
   std::vector<int64_t> out_dims_mapping = out_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
@@ -238,9 +238,9 @@ SpmdInfo ReductionGradInferSpmd(const DistMetaTensor& x,
     auto dims_mapping = x_dist_attr.dims_mapping();
     auto axis_value = axis.GetData();
 
-    for (size_t i = 0; i < axis_value.size(); ++i) {
-      if (axis_value[i] < 0) {
-        axis_value[i] += x_dim.size();
+    for (auto& i : axis_value) {
+      if (i < 0) {
+        i += x_dim.size();
       }
     }
     std::sort(axis_value.begin(), axis_value.end());

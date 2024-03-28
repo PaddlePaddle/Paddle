@@ -155,14 +155,19 @@ void FusedTokenPrune::operator()() {
 void ElementWise::operator()() {
   // Create nodes for elementwise.
   auto* elementwise_input = pattern->NewNode(elementwise_input_repr())
-                                ->assert_is_op_input("elementwise_add", "X");
+                                ->assert_is_op_input("elementwise_add", "X")
+                                ->assert_var_not_persistable();
+  auto* elementwise_weight = pattern->NewNode(elementwise_weight_repr())
+                                 ->assert_is_op_input("elementwise_add", "Y")
+                                 ->assert_is_persistable_var();
   auto* elementwise_op =
       pattern->NewNode(elementwise_op_repr())->assert_is_op("elementwise_add");
   auto* elementwise_out = pattern->NewNode(elementwise_out_repr())
                               ->assert_is_op_output("elementwise_add");
 
   // Add links for elementwise op.
-  elementwise_op->LinksFrom({elementwise_input}).LinksTo({elementwise_out});
+  elementwise_op->LinksFrom({elementwise_input, elementwise_weight})
+      .LinksTo({elementwise_out});
 }
 }  // namespace patterns
 

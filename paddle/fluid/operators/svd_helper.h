@@ -271,7 +271,7 @@ struct DiagAndFillFunctor {
 
 template <typename DeviceContext, typename T, typename ValueType = T>
 struct DeviceIndependenceTensorOperations {
-  // 1. Device indenpendence, for kernel reuse.
+  // 1. Device independence, for kernel reuse.
   // 2. Input and output is always tensor type.
   // 3. output phi::DenseTensor is alway allocated
   // 4. Basic phi::DenseTensor operator is supported
@@ -315,7 +315,7 @@ struct DeviceIndependenceTensorOperations {
   }
 
   phi::DenseTensor Transpose(const phi::DenseTensor& x) {
-    // transpose the last two dimision
+    // transpose the last two dimension
     phi::DenseTensor ret;
     auto x_dim = x.dims();
     auto x_vec = common::vectorize<int>(x_dim);
@@ -745,7 +745,7 @@ struct DeviceIndependenceTensorOperations {
       const framework::AttributeMap& attrs,
       std::vector<int> out_shape,
       NameOutTensor out_str = {"Out"}) {
-    // varialble set dims must be phi::DenseTensor / SelectedRowTensor
+    // variable set dims must be phi::DenseTensor / SelectedRowTensor
     framework::Scope& local_scope = context.scope().NewScope();
     framework::VariableNameMap op_outputs;
     for (auto out_name : out_str) {
@@ -753,7 +753,7 @@ struct DeviceIndependenceTensorOperations {
       op_outputs[out_name].emplace_back("tmp_" + out_name);
     }
     auto out_var = local_scope.Var("tmp_Out");  // return the Out
-    // create Out phi::DenseTensor and allocat memory
+    // create Out phi::DenseTensor and allocate memory
     out_var->GetMutable<phi::DenseTensor>()->mutable_data<T>(
         common::make_ddim(out_shape), context.GetPlace());
     // common::make_ddim(out_shape)

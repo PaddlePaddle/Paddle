@@ -149,19 +149,19 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddInput(
         "CustomDistProbs",
-        "(Tensor) It is used in 'CostumDist' sampler. "
+        "(Tensor) It is used in 'CustomDist' sampler. "
         "It is a tensor with shape [num_total_classes]."
         "The i-th element is the probability of the i-th class being sampled.")
         .AsDispensable();
     AddInput(
         "CustomDistAlias",
-        "(Tensor) It is used in 'CostumDist' sampler. "
+        "(Tensor) It is used in 'CustomDist' sampler. "
         "It is a tensor with shape [num_total_classes]."
         "The i-th element is the probability of the i-th class being sampled.")
         .AsDispensable();
     AddInput(
         "CustomDistAliasProbs",
-        "(Tensor) It is used in 'CostumDist' sampler. "
+        "(Tensor) It is used in 'CustomDist' sampler. "
         "It is a tensor with shape [num_total_classes]."
         "The i-th element is the probability of the i-th class being sampled.")
         .AsDispensable();
@@ -194,7 +194,7 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(10);
     AddAttr<int>("sampler",
                  "(int) Which sampler to be used to sample negative class."
-                 "0: Uniform; 1: LogUniform; 2: CostumDist.")
+                 "0: Uniform; 1: LogUniform; 2: CustomDist.")
         .SetDefault(0);
     AddAttr<int>("seed",
                  "(int) The seed used in sampler. If it is 0, "

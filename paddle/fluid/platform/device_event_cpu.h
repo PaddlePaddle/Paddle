@@ -30,7 +30,7 @@ struct CPUDeviceEventWrapper {
         platform::is_cpu_place(place),
         true,
         platform::errors::PreconditionNotMet(
-            "Required device shall be CPUAPlace, but received %d. ", place));
+            "Required device shall be CPUPlace, but received %d. ", place));
   }
   std::mutex mutex_;
   std::condition_variable cv_completed_;

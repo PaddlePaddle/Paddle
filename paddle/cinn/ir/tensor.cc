@@ -32,6 +32,8 @@
 #include "paddle/cinn/poly/isl_utils.h"
 #include "paddle/cinn/poly/stage.h"
 
+PD_DECLARE_bool(cinn_bucket_compile);
+
 namespace cinn {
 namespace ir {
 
@@ -359,7 +361,7 @@ ir::Tensor _Tensor_::InitReduction(poly::StageMap stages,
   std::vector<std::string> reduce_axis_input =
       stages[this]->origin_reduce_axis_names();
   auto origin_domain = stages[this]->domain();
-  auto reduce_axis_output = poly::GetRelatedOutputAxies(
+  auto reduce_axis_output = poly::GetRelatedOutputAxes(
       temp_transform, origin_domain, reduce_axis_input);
   std::set<std::string> reduce_axis_output_set;
   for (auto &i : reduce_axis_output) {
@@ -374,7 +376,7 @@ ir::Tensor _Tensor_::InitReduction(poly::StageMap stages,
     }
   }
 
-  temp_transform = poly::RemoveAxiesByOutputNames(
+  temp_transform = poly::RemoveAxesByOutputNames(
       temp_transform, origin_domain, reduce_axis_output);
 
   //! When the first axis is not reduce axis, do ComputeAt.
@@ -386,7 +388,7 @@ ir::Tensor _Tensor_::InitReduction(poly::StageMap stages,
     init_tensor->shape = shape;
     return init_tensor;
   }
-  //! When reduce axies are reordered to front, ComputeAt is illegal.
+  //! When reduce axes are reordered to front, ComputeAt is illegal.
   //! So we just copy transform and forloopInfo.
   isl_map_set_tuple_name(
       temp_transform.get(), isl_dim_in, init_reduce_tensor_name.c_str());
@@ -506,7 +508,9 @@ void _Tensor_::WithBuffer(const std::string &memory_type,
     } else if (memory_type == "global") {
       this->buffer->memory_type = MemoryType::Heap;
     } else {
-      LOG(FATAL) << "Not supported memory type " << memory_type;
+      std::stringstream ss;
+      ss << "Not supported memory type " << memory_type;
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
   } else {
     lang::Buffer buf(buf_type, buffer_name);
@@ -520,7 +524,9 @@ void _Tensor_::WithBuffer(const std::string &memory_type,
     } else if (memory_type == "global") {
       buf->memory_type = MemoryType::Heap;
     } else {
-      LOG(FATAL) << "Not supported memory type " << memory_type;
+      std::stringstream ss;
+      ss << "Not supported memory type " << memory_type;
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
   }
 }
@@ -689,7 +695,18 @@ ir::Tensor _Tensor_::ReshapeCopied(const std::vector<Expr> &shape,
 }
 
 Shared<poly::Stage> CreateStage(Tensor tensor) {
-  auto isl_domain = tensor->GenerateIslDomain();
+  isl::set isl_domain;
+  // We will remove isl, and the subsequent compilation process will no longer
+  // use it. But it has not been completely removed in the process. it cannot be
+  // supported here under dynamic shape. Therefore, we temporarily use fake
+  // domain.
+  if (FLAGS_cinn_bucket_compile) {
+    poly::Domain fake_domain(Context::isl_ctx(), "fake_domain", {});
+    isl_domain = fake_domain.to_isl();
+  } else {
+    isl_domain = tensor->GenerateIslDomain();
+  }
+
   return poly::Stage::New(isl_domain, tensor->body(), tensor.self());
 }
 

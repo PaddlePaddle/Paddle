@@ -167,6 +167,8 @@ class TestDistEmbeddingTraining(unittest.TestCase):
             "accumulate_steps": batch_size // micro_batch_size,
             "micro_batch_size": micro_batch_size,
         }
+        strategy.hybrid_configs["pp_configs"].clear_every_step_cache = True
+
         fleet.init(is_collective=True, strategy=strategy)
 
     def test_pp_model(self):

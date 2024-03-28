@@ -24,7 +24,7 @@
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/ir_passes/dlnne_subgraph_pass.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace inference {

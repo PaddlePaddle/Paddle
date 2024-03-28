@@ -14,6 +14,7 @@
 
 #include "paddle/pir/include/core/ir_context.h"
 
+#include <glog/logging.h>
 #include <unordered_map>
 
 #include "paddle/pir/include/core/attribute_base.h"

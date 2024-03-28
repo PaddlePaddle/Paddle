@@ -37,7 +37,7 @@ class OperationFactory {
 
   void RegisterOperationCreator(const std::string& op_name,
                                 const operation_create_fn& create_fn) {
-    op_creator_map.emplace(op_name, create_fn);
+    op_creator_map[op_name] = create_fn;
   }
 
   pir::Operation* CreateOperation(

@@ -110,4 +110,22 @@ void Value::set_attribute(const std::string &key, Attribute value) {
   return dyn_cast<BlockArgument>().set_attribute(key, value);
 }
 
+void Value::set_property(const std::string &key, const Property &value) {
+  auto op_result = dyn_cast<OpResult>();
+  PADDLE_ENFORCE_NE(op_result,
+                    nullptr,
+                    common::errors::PreconditionNotMet(
+                        "The Value is not an OpResult, we can set property "
+                        "only for OpResult currently"));
+  return op_result.set_property(key, value);
+}
+
+void *Value::property(const std::string &key) const {
+  auto op_result = dyn_cast<OpResult>();
+  if (op_result) {
+    return op_result.property(key);
+  } else {
+    return nullptr;
+  }
+}
 }  // namespace pir

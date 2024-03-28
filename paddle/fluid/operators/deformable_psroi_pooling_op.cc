@@ -101,7 +101,7 @@ class DeformablePSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
               "The format is NCHW, where N is the number of ROIs, "
               "C is the number of output channels, "
               "H is the height of output, and "
-              "W is thewidth of output. ");
+              "W is the width of output. ");
     AddComment(R"DOC(
 **DeformablePSROIPooling Operator**
 DeformablePSROIPooling is a new method based Region of interest pooling

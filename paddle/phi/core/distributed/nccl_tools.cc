@@ -29,17 +29,20 @@ namespace distributed {
 
 ncclRedOp_t ToNCCLRedType(ReduceOp reduction) {
   static const std::unordered_map<ReduceOp, ncclRedOp_t> red_type = {
-      {ReduceOp::MIN, ncclMin},
-      {ReduceOp::MAX, ncclMax},
-      {ReduceOp::SUM, ncclSum},
-      {ReduceOp::PRODUCT, ncclProd},
+    {ReduceOp::MIN, ncclMin},
+    {ReduceOp::MAX, ncclMax},
+    {ReduceOp::SUM, ncclSum},
+    {ReduceOp::PRODUCT, ncclProd},
+#if NCCL_VERSION_CODE >= 21000
+    {ReduceOp::AVG, ncclAvg},
+#endif
   };
   auto it = red_type.find(reduction);
   PADDLE_ENFORCE_EQ(it != red_type.end(),
                     true,
                     phi::errors::InvalidArgument(
                         "Invalid nccl reduction. Must be ncclMin | ncclMax | "
-                        "ncclProd | ncclSum"));
+                        "ncclProd | ncclSum | ncclAvg."));
   return it->second;
 }
 

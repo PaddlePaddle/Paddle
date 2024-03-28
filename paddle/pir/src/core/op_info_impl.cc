@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/src/core/op_info_impl.h"
+#include <glog/logging.h>
+
 #include "paddle/pir/include/core/dialect.h"
 #include "paddle/pir/include/core/interface_support.h"
+#include "paddle/pir/src/core/op_info_impl.h"
 
 namespace pir {
 

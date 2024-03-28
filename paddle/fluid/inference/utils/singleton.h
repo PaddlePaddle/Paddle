@@ -35,7 +35,7 @@ struct Singleton {
 };
 
 /*
- * An registor for any type.
+ * An Registry for any type.
  * NOTE not thread-safe.
  */
 template <typename ItemParent>

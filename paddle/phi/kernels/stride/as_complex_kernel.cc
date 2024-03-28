@@ -66,3 +66,10 @@ PD_REGISTER_KERNEL(
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 #endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+PD_REGISTER_KERNEL(
+    as_complex, Custom, STRIDED, phi::AsComplexStridedKernel, float, double) {
+  kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}
+#endif

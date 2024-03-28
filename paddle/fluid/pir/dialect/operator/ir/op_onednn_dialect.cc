@@ -68,15 +68,7 @@ void OneDNNOperatorDialect::initialize() {
 void OneDNNOperatorDialect::PrintType(pir::Type type, std::ostream &os) const {
   os << type.dialect().name();
   os << '.';
-  if (auto tensor_type = type.dyn_cast<DenseTensorType>()) {
-    os << "tensor<";
-    for (auto d : common::vectorize(tensor_type.dims())) {
-      os << d;
-      os << "x";
-    }
-    tensor_type.dtype().Print(os);
-    os << ">";
-  } else if (auto selected_rows_type = type.dyn_cast<SelectedRowsType>()) {
+  if (auto selected_rows_type = type.dyn_cast<SelectedRowsType>()) {
     os << "selectedrows<";
     for (auto d : common::vectorize(selected_rows_type.dims())) {
       os << d;
@@ -115,35 +107,6 @@ void OneDNNOperatorDialect::PrintAttribute(pir::Attribute attr,
   } else {
     os << "<#AttrNotImplemented>";
   }
-}
-
-pir::Type OneDNNOperatorDialect::ParseType(pir::IrParser &parser) {  // NOLINT
-  parser.ConsumeAToken("pd_op.tensor");
-  parser.ConsumeAToken("<");
-  std::vector<int> dim{};
-  Token dim_token = parser.PeekToken();
-  while (dim_token.token_type_ == DIGIT) {
-    dim_token = parser.ConsumeToken();
-    dim.push_back(atoi(dim_token.val_.c_str()));
-    std::string peek_token_val = parser.PeekToken().val_;
-    if (peek_token_val[0] != 'x') {
-      break;
-    }
-    parser.ConsumeToken();
-    parser.lexer->Unget(static_cast<int>(peek_token_val.size() - 1));
-    if (parser.PeekToken().token_type_ != DIGIT) {
-      break;
-    }
-  }
-  phi::DDim ddim = common::make_ddim(dim);
-  pir::Type dtype = parser.ParseType();
-  std::vector<std::vector<size_t>> lod;
-  std::vector<size_t> lodv;
-  lodv.push_back(0);
-  lod.push_back(lodv);
-  parser.ConsumeAToken(">");
-  return DenseTensorType::get(
-      parser.ctx, dtype, ddim, phi::DataLayout::UNDEFINED, lod, 0);
 }
 
 pir::Attribute OneDNNOperatorDialect::ParseAttribute(

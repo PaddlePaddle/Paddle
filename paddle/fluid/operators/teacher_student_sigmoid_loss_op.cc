@@ -173,7 +173,7 @@ class TeacherStudentSigmoidLossGradientOp
           platform::errors::InvalidArgument(
               "When Attr(soft_label) == false, the 2nd dimension of "
               "Input(Label) should be 1. But received Input(Label)'s 2nd "
-              "dimemsion "
+              "dimension "
               "is [%d]",
               label_dims[1]));
     }

@@ -169,6 +169,8 @@ class DeviceInterface {  // Driver / Runtime
   virtual size_t GetExtraPaddingSize(size_t dev_id);
 
   // CCL
+  virtual void CCLCommName(ccl::CCLComm ccl_comm, char* comm_name);
+
   virtual void CCLDestroyComm(ccl::CCLComm ccl_comm);
 
   virtual void CCLCommInitRank(size_t num_ranks,
@@ -180,7 +182,7 @@ class DeviceInterface {  // Driver / Runtime
 
   virtual void CCLBroadcast(void* data,
                             size_t num,
-                            ccl::CCLDataType data_type,
+                            phi::DataType data_type,
                             size_t root,
                             const ccl::CCLComm& ccl_comm,
                             const stream::Stream& stream);
@@ -188,14 +190,14 @@ class DeviceInterface {  // Driver / Runtime
   virtual void CCLAllReduce(void* in_data,
                             void* out_data,
                             size_t num,
-                            ccl::CCLDataType data_type,
+                            phi::DataType data_type,
                             ccl::CCLReduceOp reduce_op,
                             const ccl::CCLComm& ccl_comm,
                             const stream::Stream& stream);
   virtual void CCLReduce(void* in_data,
                          void* out_data,
                          size_t num,
-                         ccl::CCLDataType data_type,
+                         phi::DataType data_type,
                          ccl::CCLReduceOp reduce_op,
                          size_t root_id,
                          const ccl::CCLComm& ccl_comm,
@@ -203,13 +205,13 @@ class DeviceInterface {  // Driver / Runtime
   virtual void CCLAllGather(void* in_data,
                             void* out_data,
                             size_t num,
-                            ccl::CCLDataType data_type,
+                            phi::DataType data_type,
                             const ccl::CCLComm& ccl_comm,
                             const stream::Stream& stream);
   virtual void CCLReduceScatter(void* in_data,
                                 void* out_data,
                                 size_t num,
-                                ccl::CCLDataType data_type,
+                                phi::DataType data_type,
                                 ccl::CCLReduceOp op,
                                 const ccl::CCLComm& ccl_comm,
                                 const stream::Stream& stream);
@@ -217,23 +219,23 @@ class DeviceInterface {  // Driver / Runtime
   virtual void CCLGroupEnd();
   virtual void CCLSend(void* sendbuf,
                        size_t num,
-                       ccl::CCLDataType data_type,
+                       phi::DataType data_type,
                        size_t dst_rank,
                        const ccl::CCLComm& ccl_comm,
                        const stream::Stream& stream);
   virtual void CCLRecv(void* recvbuf,
                        size_t num,
-                       ccl::CCLDataType data_type,
+                       phi::DataType data_type,
                        size_t src_rank,
                        const ccl::CCLComm& ccl_comm,
                        const stream::Stream& stream);
 
   virtual void CCLAllToAll(const void** send_buf,
                            const size_t* send_count,
-                           const ccl::CCLDataType* send_dtype,
+                           const phi::DataType* send_dtype,
                            void** recv_buf,
                            const size_t* recv_count,
-                           const ccl::CCLDataType* recv_dtype,
+                           const phi::DataType* recv_dtype,
                            size_t rank,
                            size_t nranks,
                            const ccl::CCLComm& comm,

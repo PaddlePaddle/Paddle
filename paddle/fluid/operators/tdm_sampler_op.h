@@ -214,9 +214,9 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
         label_vec[i * sample_res_length + offset] = 0;
         mask_vec[i * sample_res_length + offset] = 1;
         VLOG(3) << "TDM: node id: " << travel_data[start_offset + layer_idx]
-                << " Res append negitive "
+                << " Res append negative "
                 << output_vec[i * sample_res_length + offset]
-                << " Label append negitive "
+                << " Label append negative "
                 << label_vec[i * sample_res_length + offset]
                 << " Mask append value "
                 << mask_vec[i * sample_res_length + offset];

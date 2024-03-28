@@ -45,7 +45,7 @@ class PopJumpCond(Enum):
     NOT_NONE = "NOT_NONE"
 
 
-def get_pyopcode_cache_size() -> dict[str, int]:
+def _get_pyopcode_cache_size() -> dict[str, int]:
     if sys.version_info >= (3, 11) and sys.version_info < (3, 12):
         # Cache for some opcodes, it's for Python 3.11+
         # https://github.com/python/cpython/blob/3.11/Include/internal/pycore_opcode.h#L41-L53
@@ -87,4 +87,4 @@ def get_pyopcode_cache_size() -> dict[str, int]:
         return {}
 
 
-PYOPCODE_CACHE_SIZE = get_pyopcode_cache_size()
+PYOPCODE_CACHE_SIZE = _get_pyopcode_cache_size()

@@ -488,7 +488,7 @@ class BuildExtension(build_ext):
                         cflags.append('-DPADDLE_WITH_CUDA')
 
                 add_std_without_repeat(
-                    cflags, self.compiler.compiler_type, use_std14=True
+                    cflags, self.compiler.compiler_type, use_std17=True
                 )
                 original_compile(obj, src, ext, cc_args, cflags, pp_opts)
             finally:
@@ -589,7 +589,7 @@ class BuildExtension(build_ext):
             finally:
                 self.compiler.spawn = original_spawn
 
-        def object_filenames_with_cuda(origina_func, build_directory):
+        def object_filenames_with_cuda(original_func, build_directory):
             """
             Decorated the function to add customized naming mechanism.
             Originally, both .cc/.cu will have .o object output that will
@@ -598,7 +598,7 @@ class BuildExtension(build_ext):
 
             def wrapper(source_filenames, strip_dir=0, output_dir=''):
                 try:
-                    objects = origina_func(
+                    objects = original_func(
                         source_filenames, strip_dir, output_dir
                     )
                     for i, source in enumerate(source_filenames):
@@ -618,7 +618,7 @@ class BuildExtension(build_ext):
                     # ensure to use abspath
                     objects = [os.path.abspath(obj) for obj in objects]
                 finally:
-                    self.compiler.object_filenames = origina_func
+                    self.compiler.object_filenames = original_func
 
                 return objects
 

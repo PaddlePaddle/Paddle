@@ -34,9 +34,9 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-paddle::any GetAttrValue(const Attribute& attr);
+TEST_API paddle::any GetAttrValue(const Attribute& attr);
 
-Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc);
+TEST_API Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc);
 
 Attribute GetAttrValue(const proto::VarDesc::Attr& attr_desc);
 
@@ -350,9 +350,10 @@ class AttrReader {
 };
 
 paddle::experimental::Scalar MakeScalarFromProto(const proto::Scalar& v);
-proto::Scalar MakeScalarProto(const paddle::experimental::Scalar& v);
-paddle::experimental::Scalar MakeScalarFromAttribute(const Attribute& v);
-std::vector<paddle::experimental::Scalar> MakeScalarsFromAttribute(
+TEST_API proto::Scalar MakeScalarProto(const paddle::experimental::Scalar& v);
+TEST_API paddle::experimental::Scalar MakeScalarFromAttribute(
+    const Attribute& v);
+TEST_API std::vector<paddle::experimental::Scalar> MakeScalarsFromAttribute(
     const Attribute& v);
 void CanonicalizeScalarAttrs(const proto::OpProto& op_proto,
                              AttributeMap* attrs);

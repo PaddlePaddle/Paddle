@@ -15,7 +15,7 @@ limitations under the License. */
 #include <unordered_map>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/node.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
 
 namespace paddle {
 namespace framework {

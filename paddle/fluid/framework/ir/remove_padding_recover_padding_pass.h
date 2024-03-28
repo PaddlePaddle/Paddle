@@ -126,6 +126,7 @@ struct ElementWise : public PatternBase {
   void operator()();
 
   PATTERN_DECL_NODE(elementwise_input);
+  PATTERN_DECL_NODE(elementwise_weight);
   PATTERN_DECL_NODE(elementwise_op);
   PATTERN_DECL_NODE(elementwise_out);
 };

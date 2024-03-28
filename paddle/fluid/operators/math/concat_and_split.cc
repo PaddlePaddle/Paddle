@@ -191,6 +191,7 @@ FOR_ALL_TYPES(DEFINE_FUNCTOR);
 
 DEFINE_XPU_FUNCTOR(float)
 DEFINE_XPU_FUNCTOR(platform::float16)
+DEFINE_XPU_FUNCTOR(platform::bfloat16)
 #endif
 }  // namespace math
 }  // namespace operators

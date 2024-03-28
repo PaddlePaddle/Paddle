@@ -20,6 +20,7 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base.backward import _append_grad_suffix_
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -181,7 +182,7 @@ class TestOptimizer(unittest.TestCase):
         self.cond_i = [0.1, 3]
         self.y_no_grad = [True, False]
 
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_optimizer(self):
         self._check_grads()
 

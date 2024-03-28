@@ -173,12 +173,10 @@ std::string CodeGenerator::Generate(
     std::string func_name,
     const std::vector<OperationExpression>& expressions) {
   // TODO(liuyiqun): Check whether all expressions are elementwise operations.
-  std::set<int> input_ids = std::move(DistilInputIds(expressions));
-  std::set<int> output_ids = std::move(DistilOutputIds(expressions));
-  std::set<int> intermediate_output_ids =
-      std::move(DistilIntermediateIds(expressions));
-  std::unordered_map<int, std::string> dtypes =
-      std::move(DistilDtypes(expressions));
+  std::set<int> input_ids = DistilInputIds(expressions);
+  std::set<int> output_ids = DistilOutputIds(expressions);
+  std::set<int> intermediate_output_ids = DistilIntermediateIds(expressions);
+  std::unordered_map<int, std::string> dtypes = DistilDtypes(expressions);
   TemplateVariable template_var;
   template_var.Add("func_name", func_name);
   template_var.Add(

@@ -28,7 +28,8 @@ class LayerCase(paddle.nn.Layer):
 
     def forward(
         self,
-        var_0,  # (shape: [22, 1024, 1, 1], dtype: paddle.float32, stop_gradient: True)
+        # (shape: [22, 1024, 1, 1], dtype: paddle.float32, stop_gradient: True)
+        var_0,
     ):
         var_1 = paddle.tensor.manipulation.reshape(
             x=var_0, shape=[22, 1, 2, 512]

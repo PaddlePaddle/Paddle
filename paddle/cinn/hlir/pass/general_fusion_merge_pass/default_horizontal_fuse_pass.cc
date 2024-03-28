@@ -62,7 +62,7 @@ class DefaultHorizontalFusePass final : public HorizontalFusePass {
       bool fusionable = false;
       for (auto& groups : fusionable_consumers) {
         auto& last = groups.back();
-        if (!HorizontalFuseUtil<LightwareFusePassCtx>::DetectFusabilityByKind(
+        if (!HorizontalFuseUtil<LightwareFusePassCtx>::DetectFusibilityByKind(
                 ctx, candidate, last)) {
           continue;
         }

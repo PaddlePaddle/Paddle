@@ -118,7 +118,7 @@ void CompareStaticAndDynamicValueShape(
   std::vector<std::vector<std::int64_t>> dynamic_value_shape =
       GetDynamicValueShape(value, shape_analysis);
   if (static_value_shape != dynamic_value_shape) {
-    VLOG(4) << "CheckInferSymbolic failed, in the fellowing program, the "
+    VLOG(4) << "CheckInferSymbolic failed, in the following program, the "
             << op_index
             << "th op : the shape is not equal\nthe static shape is: "
             << SprintShape(static_value_shape) << ", and the dynamic shape is: "

@@ -29,6 +29,10 @@ _use_four_directions = os.environ.get(
     'PADDLE_USE_FOUR_DIRECTIONS_P2P', paddle.base.core.is_compiled_with_xpu()
 )
 
+g_pipeline_nccl_comm_init_option = int(
+    os.environ.get("FLAGS_pipeline_nccl_comm_init_option", 0)
+)
+
 
 class ParallelMode:
     """
@@ -347,8 +351,16 @@ class HybridCommunicateGroup:
         parallel_comm_group = None
         parallel_groups = self._topo.get_comm_list(parallel_method)
 
+        group_nccl_comm_init_option = (
+            g_pipeline_nccl_comm_init_option
+            if (parallel_method == "pipe")
+            else 0
+        )
         for group in parallel_groups:
-            comm_group = paddle.distributed.new_group(ranks=group)
+            comm_group = paddle.distributed.new_group(
+                ranks=group,
+                nccl_comm_init_option=group_nccl_comm_init_option,
+            )
             if self.global_rank in group:
                 parallel_group = group
                 parallel_comm_group = comm_group

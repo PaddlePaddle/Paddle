@@ -36,25 +36,16 @@ class LlamaMLP(nn.Layer):
         self.gate_proj = nn.Linear(
             self.hidden_size,
             self.intermediate_size,
-            weight_attr=paddle.ParamAttr(
-                initializer=nn.initializer.Constant(value=0.5)
-            ),
             bias_attr=False,
         )
         self.up_proj = nn.Linear(
             self.hidden_size,
             self.intermediate_size,
-            weight_attr=paddle.ParamAttr(
-                initializer=nn.initializer.Constant(value=0.5)
-            ),
             bias_attr=False,
         )
         self.down_proj = nn.Linear(
             self.intermediate_size,
             self.hidden_size,
-            weight_attr=paddle.ParamAttr(
-                initializer=nn.initializer.Constant(value=0.5)
-            ),
             bias_attr=False,
         )
 

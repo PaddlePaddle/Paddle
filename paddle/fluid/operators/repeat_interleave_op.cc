@@ -77,7 +77,7 @@ class RepeatInterleaveOp : public framework::OperatorWithKernel {
     } else if (repeats > 0) {
       output_dim[dim] = input_dim[dim] * repeats;
     }
-    VLOG(3) << "infershap out " << output_dim[dim];
+    VLOG(3) << "infershape out " << output_dim[dim];
     ctx->SetOutputDim("Out", common::make_ddim(output_dim));
     auto type = ctx->GetInputsVarType("X")[0];
     if (type == framework::proto::VarType::LOD_TENSOR) {
@@ -124,7 +124,7 @@ class RepeatInterleaveOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(Tensor) the input tensor.");
     AddInput("RepeatsTensor",
-             "the 1-D tensor containing the repeats alongsize the axis.")
+             "the 1-D tensor containing the repeats alongside the axis.")
         .AsDispensable();
     AddOutput("Out", "the output tensor.");
     AddAttr<int>("Repeats", "the number of repetitions for each element.")

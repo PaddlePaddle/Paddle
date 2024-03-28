@@ -147,6 +147,15 @@ class XPUTestStrideSliceOp(XPUOpTestWrapper):
             self.strides = [1, 1, 1, 2, 2]
             self.infer_flags = [1, 1, 1, 1, 1]
 
+    class XPUTestStrideSliceOp4(XPUTestStrideSliceOp):
+        def initTestCase(self):
+            self.inshape = (3, 4, 10)
+            self.axes = [0, 1, 2]
+            self.starts = [0, -1, 0]
+            self.ends = [2, -3, 5]
+            self.strides = [1, -1, 1]
+            self.infer_flags = [1, 1, 1]
+
     class XPUTestStrideSliceOp5(XPUTestStrideSliceOp):
         def initTestCase(self):
             self.inshape = (5, 5, 5)
@@ -154,6 +163,15 @@ class XPUTestStrideSliceOp(XPUOpTestWrapper):
             self.starts = [1, 0, 0]
             self.ends = [2, 1, 3]
             self.strides = [1, 1, 1]
+            self.infer_flags = [1, 1, 1]
+
+    class XPUTestStrideSliceOp6(XPUTestStrideSliceOp):
+        def initTestCase(self):
+            self.inshape = (5, 5, 5)
+            self.axes = [0, 1, 2]
+            self.starts = [1, -1, 0]
+            self.ends = [2, -3, 3]
+            self.strides = [1, -1, 1]
             self.infer_flags = [1, 1, 1]
 
     class XPUTestStrideSliceOp7(XPUTestStrideSliceOp):

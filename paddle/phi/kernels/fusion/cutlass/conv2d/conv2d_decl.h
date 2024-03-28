@@ -20,12 +20,18 @@ namespace phi {
 namespace fusion {
 namespace cutlass_internal {
 
+typedef enum {
+  fp32,
+  fp16,
+  bf16,
+} Conv2dDataType;
+
 typedef struct {
-  const half *input;
-  const half *weight;
-  const half *bias;
-  const half *residual;
-  half *output;
+  const void *input;
+  const void *weight;
+  const void *bias;
+  const void *residual;
+  void *output;
   int batch;
   int ic;
   int ih;
@@ -48,6 +54,7 @@ typedef struct {
   cudaStream_t stream;
   float alpha;  // for leaky_relu use
   int sm_version = 75;
+  Conv2dDataType data_type;
   void *workspace = nullptr;
 } ConvAllParams;
 

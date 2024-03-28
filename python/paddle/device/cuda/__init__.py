@@ -222,7 +222,7 @@ def max_memory_allocated(device=None):
 
     Note:
         The size of GPU memory allocated to tensor is 256-byte aligned in Paddle, which may larger than the memory size that tensor actually need.
-        For instance, a float32 tensor with shape [1] in GPU will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes.
+        For instance, a float32 0-D Tensor with shape [] in GPU will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes.
 
     Args:
         device(paddle.CUDAPlace or int or str, optional): The device, the id of the device or
@@ -290,7 +290,7 @@ def memory_allocated(device=None):
 
     Note:
         The size of GPU memory allocated to tensor is 256-byte aligned in Paddle, which may be larger than the memory size that tensor actually need.
-        For instance, a float32 tensor with shape [1] in GPU will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes.
+        For instance, a float32 0-D Tensor with shape [] in GPU will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes.
 
     Args:
         device(paddle.CUDAPlace or int or str, optional): The device, the id of the device or

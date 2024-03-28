@@ -138,10 +138,11 @@ struct ArrayAttributeStorage : public AttributeStorage {
   bool empty() const { return size_ == 0u; }
 
   Attribute at(size_t index) const {
-    IR_ENFORCE(index < size_,
-               "The index (%d) must be less than size (%d).",
-               index,
-               size_);
+    PADDLE_ENFORCE_LT(
+        index,
+        size_,
+        phi::errors::InvalidArgument(
+            "The index (%d) must be less than size (%d).", index, size_));
     return data_[index];
   }
   Attribute operator[](size_t index) const { return data_[index]; }

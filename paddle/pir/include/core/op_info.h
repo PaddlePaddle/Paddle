@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+
 #include <functional>
 #include <unordered_map>
 
@@ -31,7 +32,7 @@ typedef void (*VerifyPtr)(Operation *op);
 
 class IR_API OpInfo {
  public:
-  OpInfo() = default;
+  OpInfo(std::nullptr_t ptr = nullptr){};  // NOLINT
 
   OpInfo(const OpInfo &other) = default;
 

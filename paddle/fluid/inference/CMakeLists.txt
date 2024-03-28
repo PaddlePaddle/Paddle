@@ -93,7 +93,7 @@ set(SHARED_INFERENCE_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/utils/io_utils.cc)
 
-# NOTE(Aurelius84): For inference library, some DEPS is usless
+# NOTE(Aurelius84): For inference library, some DEPS is useless
 # such as non-infer operator related targets et.al.
 list(REMOVE_ITEM fluid_modules cinn_op_dialect)
 # NOTE(Aurelisu84): Remove pir dialect related target DEPS for inference

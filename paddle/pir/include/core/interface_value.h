@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #pragma once
+
 #include <set>
 #include <type_traits>
+
 #include "paddle/pir/include/core/type_id.h"
 #include "paddle/pir/include/core/utils.h"
 

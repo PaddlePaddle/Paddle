@@ -3617,7 +3617,7 @@ def unbind(input, axis=0):
 
     Args:
         input (Tensor): The input variable which is an N-D Tensor, data type being bool, float16, float32, float64, int32, int64, complex64 or complex128.
-        axis (int32|int64, optional): A scalar with type ``int32|int64`` shape [1]. The dimension along which to unbind.
+        axis (int32|int64, optional): A 0-D Tensor with shape [] and type is ``int32|int64``. The dimension along which to unbind.
             If :math:`axis < 0`, the dimension to unbind along is :math:`rank(input) + axis`. Default is 0.
     Returns:
         list(Tensor), The list of segmented Tensor variables.
@@ -4180,7 +4180,7 @@ def broadcast_to(x, shape, name=None):
 
 
     Args:
-        x (Tensor): The input tensor, its data type is bool, float16, float32, float64, int32 or int64.
+        x (Tensor): The input tensor, its data type is bool, float16, float32, float64, int32, int64, uint8 or uint16.
         shape (list|tuple|Tensor): The result shape after broadcasting. The data type is int32. If shape is a list or tuple, all its elements
             should be integers or 0-D or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
             The value -1 in shape means keeping the corresponding dimension unchanged.
@@ -4211,7 +4211,7 @@ def expand(x, shape, name=None):
     Both the number of dimensions of ``x`` and the number of elements in ``shape`` should be less than or equal to 6. And the number of dimensions of ``x`` should be less than the number of elements in ``shape``. The dimension to expand must have a value 0.
 
     Args:
-        x (Tensor): The input Tensor, its data type is bool, float32, float64, int32 or int64.
+        x (Tensor): The input Tensor, its data type is bool, float16, float32, float64, int32, int64, uint8 or uint16.
         shape (list|tuple|Tensor): The result shape after expanding. The data type is int32. If shape is a list or tuple, all its elements
             should be integers or 0-D or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
             The value -1 in shape means keeping the corresponding dimension unchanged.
@@ -4248,7 +4248,7 @@ def expand(x, shape, name=None):
             if paddle.utils._contain_var(shape):
                 shape = paddle.utils.get_int_tensor_list(shape)
         else:
-            TypeError("Shape only supports OpResult, or list, or tuple.")
+            raise TypeError("Shape only supports Value, or list, or tuple.")
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
@@ -4275,6 +4275,7 @@ def expand(x, shape, name=None):
                 'float64',
                 'int32',
                 'int64',
+                'uint8',
                 'uint16',
             ],
             'expand',

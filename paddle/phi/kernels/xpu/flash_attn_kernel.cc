@@ -24,6 +24,161 @@
 namespace phi {
 
 template <typename T, typename Context>
+void FlashAttnUnpaddedKernel(
+    const Context& ctx,
+    const DenseTensor& q,
+    const DenseTensor& k,
+    const DenseTensor& v,
+    const DenseTensor& cu_seqlens_q,
+    const DenseTensor& cu_seqlens_k,
+    const paddle::optional<DenseTensor>& fixed_seed_offset,
+    const paddle::optional<DenseTensor>& attn_mask,
+    int64_t max_seqlen_q,
+    int64_t max_seqlen_k,
+    float scale,
+    float dropout,
+    bool causal,
+    bool return_softmax,
+    bool is_test,
+    const std::string& rng_name,
+    DenseTensor* out,
+    DenseTensor* softmax,
+    DenseTensor* softmax_lse,
+    DenseTensor* seed_offset) {
+#ifdef PADDLE_WITH_XPU_XHPC
+  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  // q, k, v [batch_size * seq_len, num_heads, head_dim]
+  std::vector<int64_t> dims = common::vectorize(q.dims());
+
+  const int batch_size = cu_seqlens_q.numel() - 1;
+  const int num_heads = dims[1];
+  const int head_size = dims[2];
+  const int num_heads_k = k.dims()[1];
+
+  // lod info, only support qlod == klod
+  std::vector<int> qlod_vec(batch_size + 1, 0);
+  int r = xpu_wait(ctx.x_context()->xpu_stream);
+  PADDLE_ENFORCE_EQ(r, 0, "xpu_wait failed.");
+  r = xpu_memcpy(qlod_vec.data(),
+                 cu_seqlens_q.data<int>(),
+                 sizeof(int32_t) * (batch_size + 1),
+                 XPUMemcpyKind::XPU_DEVICE_TO_HOST);
+  PADDLE_ENFORCE_EQ(r, 0, "xpu_memcpy failed.");
+  std::vector<int> klod_vec(batch_size + 1, 0);
+  r = xpu_wait(ctx.x_context()->xpu_stream);
+  PADDLE_ENFORCE_EQ(r, 0, "xpu_wait failed.");
+  r = xpu_memcpy(klod_vec.data(),
+                 cu_seqlens_k.data<int>(),
+                 sizeof(int32_t) * (batch_size + 1),
+                 XPUMemcpyKind::XPU_DEVICE_TO_HOST);
+  PADDLE_ENFORCE_EQ(r, 0, "xpu_memcpy failed.");
+  // output: softmax_lse, 训练参数，给反向用于反向重计算的L
+  bool is_cross_attn = false;
+  for (int i = 0; i < batch_size + 1; ++i) {
+    if (qlod_vec[i] != klod_vec[i]) {
+      is_cross_attn = true;
+      break;
+    }
+  }
+
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
+  const XPUType* q_data = reinterpret_cast<const XPUType*>(q.data<T>());
+  const XPUType* k_data = reinterpret_cast<const XPUType*>(k.data<T>());
+  const XPUType* v_data = reinterpret_cast<const XPUType*>(v.data<T>());
+  if (!is_cross_attn) {
+    xpu::VectorParam<int32_t> lods{
+        qlod_vec.data(), (int32_t)(qlod_vec.size()), nullptr};
+    xpu::QKVAttnParam qkv_attn_param(
+        lods,                     // only support qlods == kvlods
+        num_heads,                // head_nums
+        head_size,                // head_dim
+        xpu::Activation_t::RELU,  // Activation_t
+        -1,                       // last_slice_seq(unused param)
+        false,                    // do_fc_qkv_fusion(unused param)
+        -1,                       // pad_seqlen(unused param)
+        -1,                       // hidden_dim(unused param)
+        false,                    // is_pre_norm(unused param)
+        false,                    // is_perchannel(unused param)
+        0,                        // qkv_shape
+        {},                       // z_shape
+        AttnMacMaxPtrType_t::ATTN_WHOLE_BATCH,  // max_ptr_type
+        -1,                                     // ldz(unused param)
+        {},                                     // sqlod(unused param)
+        scale);                                 // alpha
+    qkv_attn_param.triangle_mask_autogen = causal;
+    qkv_attn_param.key_value_head_num = num_heads_k;
+    r = xpu::qkv_attention<XPUType,
+                           XPUType,
+                           XPUType,
+                           XPUType,
+                           int16_t,
+                           float,
+                           int,
+                           float,
+                           float>(ctx.x_context(),
+                                  q_data,    // q
+                                  k_data,    // k
+                                  v_data,    // v
+                                  out_data,  // out
+                                  nullptr,   // max_q
+                                  nullptr,   // max_k
+                                  nullptr,   // max_v
+                                  nullptr,   // max_ctx
+                                  qkv_attn_param,
+                                  nullptr,
+                                  nullptr,
+                                  nullptr);
+    PADDLE_ENFORCE_EQ(r, 0, "xpu::qkv_attention failed.");
+  } else {
+    std::vector<int> lod;
+    lod.reserve(2 * batch_size + 2);
+    int real_max_len = 0;
+    for (int i = 0; i < batch_size + 1; i++) {
+      lod.push_back(qlod_vec[i]);
+      if (i)
+        real_max_len = std::max(qlod_vec[i] - qlod_vec[i - 1], real_max_len);
+    }
+    for (int i = 0; i < batch_size + 1; i++) {
+      lod.push_back(klod_vec[i]);
+      if (i)
+        real_max_len = std::max(klod_vec[i] - klod_vec[i - 1], real_max_len);
+    }
+    xpu::DifSeqAttnParam dis_api_attn_param(
+        {lod.data(), 2 * batch_size + 2, nullptr}, num_heads, head_size);
+    XPUType* qk_buf = RAII_GUARD.alloc_l3_or_gm<XPUType>(
+        batch_size * num_heads * real_max_len * real_max_len);
+    float* qk_max_buf = RAII_GUARD.alloc_l3_or_gm<float>(6);
+    r = xpu::qk_attention<XPUType, XPUType, XPUType, int16_t, float>(
+        ctx.x_context(),
+        q_data,
+        k_data,
+        qk_buf,
+        nullptr,
+        nullptr,
+        qk_max_buf,
+        dis_api_attn_param,
+        nullptr);
+    PADDLE_ENFORCE_EQ(r, 0, "xpu::qk_attention failed.");
+    r = xpu::qk_v_attention<XPUType, XPUType, XPUType, int16_t, float>(
+        ctx.x_context(),
+        qk_buf,
+        v_data,
+        out_data,
+        qk_max_buf,
+        nullptr,
+        nullptr,
+        dis_api_attn_param,
+        nullptr);
+    PADDLE_ENFORCE_EQ(r, 0, "xpu::qk_v_attention failed.");
+  }
+#else
+  PADDLE_THROW(phi::errors::PreconditionNotMet(
+      "re-compile using -DWITH_XPU_XHPC=ON to use FlashAttnKernel"));
+#endif
+}
+
+template <typename T, typename Context>
 void FlashAttnKernel(const Context& ctx,
                      const DenseTensor& q,
                      const DenseTensor& k,
@@ -126,6 +281,16 @@ void FlashAttnKernel(const Context& ctx,
 }
 
 }  // namespace phi
+
+PD_REGISTER_KERNEL(flash_attn_unpadded,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::FlashAttnUnpaddedKernel,
+                   float,
+                   phi::dtype::float16) {
+  kernel->InputAt(5).SetBackend(
+      phi::Backend::ALL_BACKEND);  // fixed_seed_offset
+}
 
 PD_REGISTER_KERNEL(flash_attn,
                    XPU,

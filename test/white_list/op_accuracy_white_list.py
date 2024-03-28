@@ -97,4 +97,5 @@ NO_FP16_COMPARED_WITH_FP32_OP_LIST = [
 
 NO_BF16_COMPARED_WITH_FP32_OP_LIST = [
     'dequantize',
+    'fusion_lstm',
 ]

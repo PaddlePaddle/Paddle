@@ -35,8 +35,8 @@ std::vector<int64_t> GetReplicatedDimsMapping(const int ndim) {
 SpmdInfo ReplicatedInferSpmd(const std::vector<const DistMetaTensor*>& ins,
                              const std::vector<const DistMetaTensor*>& outs) {
   // step1: Build Einsum Notation for input tensor's batch axis
-  int64_t ninputs = ins.size();
-  int64_t noutputs = outs.size();
+  int64_t ninputs = static_cast<int64_t>(ins.size());
+  int64_t noutputs = static_cast<int64_t>(outs.size());
 
   // Step2: Unshard Output's Dims Mapping.
   std::vector<TensorDistAttr> output_dist_attrs;
@@ -94,8 +94,8 @@ SpmdInfo ReplicatedInferSpmdReverse(
     const std::vector<const DistMetaTensor*>& ins,
     const std::vector<const DistMetaTensor*>& outs) {
   // step1: Build Einsum Notation for input tensor's batch axis
-  int64_t ninputs = ins.size();
-  int64_t noutputs = outs.size();
+  int64_t ninputs = static_cast<int64_t>(ins.size());
+  int64_t noutputs = static_cast<int64_t>(outs.size());
 
   // Step2: Unshard Output's Dims Mapping.
   std::vector<TensorDistAttr> output_dist_attrs;
@@ -145,7 +145,7 @@ SpmdInfo ReplicatedInferDynamic(
                                       const std::vector<DistMetaTensor>*>>&
         inputs) {
   std::vector<const DistMetaTensor*> nonnull_inputs;
-  int64_t ninputs = inputs.size();
+  int64_t ninputs = static_cast<int64_t>(inputs.size());
   SpmdInfo spmd_info;
 
   auto build_tensor_dist_attr =

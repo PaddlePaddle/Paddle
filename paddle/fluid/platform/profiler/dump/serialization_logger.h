@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-// Dump a NodeTrees into a profobuf file.
+// Dump a NodeTrees into a protobuf file.
 // A SerializationLogger object can only dump a NodeTrees object,
 // creates a file in the constructor and closes the file in the destructor.
 // Should only call LogNodeTrees and LogMetaInfo.

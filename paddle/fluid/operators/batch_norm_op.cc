@@ -308,11 +308,11 @@ void BatchNormOpMaker::Make() {
                 "to true or is_test true. the behavior is equivalent. "
                 "In train mode, when setting use_global_stats True, the "
                 "global mean and variance are also used during train time, "
-                "the BN acts as scaling and shiffting.")
+                "the BN acts as scaling and shifting.")
       .SetDefault(false);
   AddAttr<bool>("trainable_statistics",
                 "(bool, default false) Whether to calculate mean and variance "
-                "in test mode. If setting true in test mode, mean and variace "
+                "in test mode. If setting true in test mode, mean and variance "
                 "will be calculated by current batch statistics.")
       .SetDefault(false);
   AddComment(R"DOC(
@@ -586,7 +586,7 @@ class BatchNormCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     auto use_global_stats = this->Attr<bool>("use_global_stats");
     auto trainable_statistics = this->Attr<bool>("trainable_statistics");
 
-    VLOG(3) << "Runing batch_norm composite func";
+    VLOG(3) << "Running batch_norm composite func";
     prim::batch_norm_grad<prim::DescTensor>(x,
                                             scale,
                                             bias,

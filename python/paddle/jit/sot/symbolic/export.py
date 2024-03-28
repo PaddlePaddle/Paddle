@@ -31,8 +31,8 @@ class PyStatement:
 
     def get_lines(self, prefix=""):
         lines = [prefix + line for line in self.lines]
-        for statment in self.sub_statement:
-            lines.extend(statment.get_lines(self.tab + prefix))
+        for statement in self.sub_statement:
+            lines.extend(statement.get_lines(self.tab + prefix))
         return lines
 
     def add_sub(self, *lines):
@@ -302,7 +302,7 @@ class PyFileGen:
         )
 
     def init_sub_layer(self, layer, layer_name):
-        # TODO @wuzhanfei need more effecient way to create a sub layer
+        # TODO @wuzhanfei need more efficient way to create a sub layer
         # now, we just close call_Layer behavior
         raise ExportError("Not support create sub layer now.")
 
@@ -385,4 +385,6 @@ def export(SIR, path):
 
     with open(os.path.join(path, f"{SIR.name}.py"), "w") as f:
         f.write(string)
-        print(f"[SOT] Export {SIR.name} Sucess with size {len(SIR.statements)}")
+        print(
+            f"[SOT] Export {SIR.name} Success with size {len(SIR.statements)}"
+        )

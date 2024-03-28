@@ -73,7 +73,7 @@ class LayerNormShiftPartitionOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(bias_weight.get().count,
                       scale_weight.get().count,
                       platform::errors::InvalidArgument(
-                          "The num between bias_weight and cale_weight should "
+                          "The num between bias_weight and scale_weight should "
                           "be equal. (%d vs %d)",
                           bias_weight.get().count,
                           scale_weight.get().count));

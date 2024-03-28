@@ -94,8 +94,8 @@ void CPUQuantizePass::QuantizeInput(Graph* g,
                         "Var(%s) isn't the input of the %s operator.",
                         input_name,
                         op->Op()->Type()));
-  unsigned max = is_input_unsigned ? U8_MAX : S8_MAX;
-  float scale = scale_to_one * max;
+  unsigned max = is_input_unsigned ? U8_MAX : S8_MAX;  // NOLINT
+  float scale = static_cast<float>(scale_to_one) * max;
 
   // Create quantize output variable
   VarDesc quantize_out_desc(patterns::PDNodeName("quantize", "out"));
@@ -175,12 +175,13 @@ void CPUQuantizePass::QuantizeInputs(Graph* g,
 
   double scale_out = GetScaleValueForNode(output);
   unsigned max = are_inputs_unsigned ? U8_MAX : S8_MAX;
-  float scale = scale_out * max;
+  float scale = static_cast<float>(scale_out) * max;
 
   for (size_t var_id = 0; var_id < unique_var_names.size(); var_id++) {
     auto index = -1;
     for (size_t it = 0; it < inputs.size(); it++) {
-      if (inputs[it]->Name() == unique_var_names[var_id]) index = it;
+      if (inputs[it]->Name() == unique_var_names[var_id])
+        index = static_cast<int>(it);
     }
 
     if (index == -1) {
@@ -249,7 +250,7 @@ void CPUQuantizePass::DequantizeOutput(Graph* g,
                         output_name,
                         op->Op()->Type()));
   unsigned max = is_unsigned ? U8_MAX : S8_MAX;
-  float scale = scale_to_one * max;
+  float scale = static_cast<float>(scale_to_one) * max;
 
   // Create dequantize input variable
   VarDesc dequantize_in_desc(patterns::PDNodeName("dequantize", "in"));
@@ -298,12 +299,13 @@ void CPUQuantizePass::DequantizeOutputs(Graph* g,
   std::vector<Node*> dequantize_in_nodes(outputs.size());
 
   unsigned max = is_unsigned ? U8_MAX : S8_MAX;
-  float scale = scale_to_one * max;
+  float scale = static_cast<float>(scale_to_one) * max;
 
   for (size_t var_id = 0; var_id < var_names.size(); var_id++) {
     auto index = -1;
     for (size_t it = 0; it < outputs.size(); it++) {
-      if (outputs[it]->Name() == var_names[var_id]) index = it;
+      if (outputs[it]->Name() == var_names[var_id])
+        index = static_cast<int>(it);
     }
 
     if (index == -1) {

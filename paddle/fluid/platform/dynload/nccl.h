@@ -31,6 +31,7 @@ namespace dynload {
   __macro(ncclCommInitAll);             \
   __macro(ncclGetUniqueId);             \
   __macro(ncclCommInitRank);            \
+  __macro(ncclCommInitRank2);           \
   __macro(ncclCommAbort);               \
   __macro(ncclCommDestroy);             \
   __macro(ncclCommCount);               \

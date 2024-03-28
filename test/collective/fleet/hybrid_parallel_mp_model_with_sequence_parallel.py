@@ -21,6 +21,10 @@ import paddle
 import paddle.distributed as dist
 from paddle.distributed import fleet
 from paddle.distributed.fleet.utils import sequence_parallel_utils as spu
+from paddle.distributed.fleet.utils.mix_precision_utils import (
+    MixPrecisionLayer,
+    MixPrecisionOptimizer,
+)
 
 
 def set_random_seed(seed, dp_id, rank_id):
@@ -473,6 +477,371 @@ class TestDistSPTraining(unittest.TestCase):
             np.testing.assert_allclose(
                 loss_a.numpy(), loss_b.numpy(), rtol=1e-5, atol=1e-5
             )
+
+
+class TestDistSPTraining2(TestDistSPTraining):
+    def setUp(self):
+        strategy = fleet.DistributedStrategy()
+        self.model_parallel_size = 2
+        self.data_parallel_size = 1
+        strategy.hybrid_configs = {
+            "dp_degree": self.data_parallel_size,
+            "mp_degree": self.model_parallel_size,
+            "pp_degree": 1,
+            "mp_configs": {
+                "mp_async_allreduce": True,
+                "mp_fused_linear_param_grad_add": True,
+            },
+        }
+        fleet.init(is_collective=True, strategy=strategy)
+
+    def build_model_optimizer(self):
+        hcg = fleet.get_hybrid_communicate_group()
+        word_size = hcg.get_model_parallel_world_size()
+        mp_id = hcg.get_model_parallel_rank()
+        dp_id = hcg.get_data_parallel_rank()
+        rank_id = dist.get_rank()
+        set_random_seed(1024, dp_id, rank_id)
+
+        np_fc1 = np.random.random_sample((hidden_size, inner_size))
+        np_fc2 = np.random.random_sample((inner_size, hidden_size))
+
+        model_a = SimpleSPNet(
+            vocab_size,
+            hidden_size,
+            inner_size,
+            output_size,
+            np_fc1,
+            np_fc2,
+            mp_id,
+        )
+        model_a = MixPrecisionLayer(model_a)
+        optimizer_a = self.build_optimizer(model_a)
+        optimizer_a = MixPrecisionOptimizer(optimizer_a)
+
+        model_a = fleet.distributed_model(model_a)
+        optimizer_a = fleet.distributed_optimizer(optimizer_a)
+
+        model_b = SimpleDPNet(
+            vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
+        )
+        optimizer_b = self.build_optimizer(model_b)
+
+        return model_a, optimizer_a, model_b, optimizer_b
+
+
+class TestDistSPTraining3(TestDistSPTraining):
+    def setUp(self):
+        strategy = fleet.DistributedStrategy()
+        self.model_parallel_size = 2
+        self.data_parallel_size = 1
+        strategy.hybrid_configs = {
+            "dp_degree": self.data_parallel_size,
+            "mp_degree": self.model_parallel_size,
+            "pp_degree": 1,
+            "mp_configs": {
+                "mp_async_allreduce": True,
+                "mp_fused_linear_param_grad_add": True,
+            },
+        }
+        fleet.init(is_collective=True, strategy=strategy)
+
+    def build_model_optimizer(self):
+        hcg = fleet.get_hybrid_communicate_group()
+        word_size = hcg.get_model_parallel_world_size()
+        mp_id = hcg.get_model_parallel_rank()
+        dp_id = hcg.get_data_parallel_rank()
+        rank_id = dist.get_rank()
+        set_random_seed(1024, dp_id, rank_id)
+
+        np_fc1 = np.random.random_sample((hidden_size, inner_size))
+        np_fc2 = np.random.random_sample((inner_size, hidden_size))
+
+        model_a = SimpleSPNet(
+            vocab_size,
+            hidden_size,
+            inner_size,
+            output_size,
+            np_fc1,
+            np_fc2,
+            mp_id,
+        )
+        optimizer_a = self.build_optimizer(model_a)
+
+        model_a = fleet.distributed_model(model_a)
+        optimizer_a = fleet.distributed_optimizer(optimizer_a)
+
+        model_b = SimpleDPNet(
+            vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
+        )
+        optimizer_b = self.build_optimizer(model_b)
+
+        return model_a, optimizer_a, model_b, optimizer_b
+
+
+class SimpleSPNetWithoutBias(paddle.nn.Layer):
+    def __init__(
+        self,
+        vocab_size,
+        hidden_size,
+        inner_size,
+        output_size,
+        np_fc1,
+        np_fc2,
+        mp_id,
+    ):
+        super().__init__()
+
+        if mp_id == 0:
+            init_fc1_data = np_fc1[:, : (inner_size // 2)]
+            init_fc2_data = np_fc2[: (inner_size // 2), :]
+        else:
+            init_fc1_data = np_fc1[:, (inner_size // 2) :]
+            init_fc2_data = np_fc2[(inner_size // 2) :, :]
+
+        self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
+            vocab_size,
+            hidden_size,
+            weight_attr=paddle.nn.initializer.Constant(value=0.5),
+        )
+
+        self.linear1 = spu.ColumnSequenceParallelLinear(
+            hidden_size,
+            inner_size,
+            weight_attr=paddle.framework.ParamAttr(
+                initializer=paddle.nn.initializer.Assign(init_fc1_data)
+            ),
+            gather_output=False,
+            has_bias=False,
+        )
+
+        self.linear2 = spu.RowSequenceParallelLinear(
+            inner_size,
+            hidden_size,
+            weight_attr=paddle.framework.ParamAttr(
+                initializer=paddle.nn.initializer.Assign(init_fc2_data)
+            ),
+            input_is_parallel=True,
+            has_bias=False,
+        )
+
+        self.linear3 = paddle.nn.Linear(
+            hidden_size,
+            output_size,
+            weight_attr=paddle.framework.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(0.0)
+            ),
+        )
+
+        self.norm = paddle.nn.LayerNorm(hidden_size, epsilon=1e-5)
+        # if sequence parallel is true,
+        # register hook to all_reduce gradient of weight, bias
+        spu.mark_as_sequence_parallel_parameter(self.norm.weight)
+        spu.mark_as_sequence_parallel_parameter(self.norm.bias)
+
+        spu.register_sequence_parallel_allreduce_hooks(self, 1, False)
+
+    def forward(self, x):
+        x = self.embedding(x)
+
+        x = paddle.transpose(x, perm=[1, 0, 2])
+        x = spu.ScatterOp.apply(x)
+
+        x = self.linear1(x)
+        x = self.linear2(x)
+        x = self.norm(x)
+        x = self.linear3(x)
+
+        x = paddle.transpose(x, perm=[1, 0, 2])
+
+        x = parallel_matmul(x, self.embedding.weight, False)
+        return x
+
+
+class SimpleDPNetWithoutBias(paddle.nn.Layer):
+    def __init__(
+        self, vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
+    ):
+        super().__init__()
+        self.linear1 = paddle.nn.Linear(
+            hidden_size,
+            inner_size,
+            weight_attr=paddle.framework.ParamAttr(
+                initializer=paddle.nn.initializer.Assign(np_fc1)
+            ),
+        )
+
+        self.linear2 = paddle.nn.Linear(
+            inner_size,
+            hidden_size,
+            weight_attr=paddle.framework.ParamAttr(
+                initializer=paddle.nn.initializer.Assign(np_fc2)
+            ),
+        )
+
+        self.linear3 = paddle.nn.Linear(
+            hidden_size,
+            output_size,
+            weight_attr=paddle.framework.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(0.0)
+            ),
+        )
+
+        self.norm = paddle.nn.LayerNorm(hidden_size, epsilon=1e-5)
+
+        self.embedding = paddle.nn.Embedding(
+            vocab_size,
+            hidden_size,
+            weight_attr=paddle.nn.initializer.Constant(value=0.5),
+        )
+
+    def forward(self, x):
+        x = self.embedding(x)
+        x = self.linear1(x)
+        x = self.linear2(x)
+        x = self.norm(x)
+        x = self.linear3(x)
+        x = paddle.matmul(x, self.embedding.weight, transpose_y=True)
+        return x
+
+
+class TestDistSPTrainingWithoutBias(unittest.TestCase):
+    def setUp(self):
+        strategy = fleet.DistributedStrategy()
+        self.model_parallel_size = 2
+        self.data_parallel_size = 1
+        strategy.hybrid_configs = {
+            "dp_degree": self.data_parallel_size,
+            "mp_degree": self.model_parallel_size,
+            "pp_degree": 1,
+            "mp_configs": {
+                "mp_async_allreduce": False,
+                "mp_fused_linear_param_grad_add": False,
+            },
+        }
+        fleet.init(is_collective=True, strategy=strategy)
+
+    def train_batch(self, batch, model, optimizer, is_mp):
+        output = model(batch)
+        loss = output.mean()
+        loss.backward()  # do backward
+        optimizer.step()  # update parameters
+        optimizer.clear_grad()
+        return loss
+
+    def build_optimizer(self, model):
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=0.001, parameters=model.parameters()
+        )
+        return optimizer
+
+    def build_model_optimizer(self):
+        hcg = fleet.get_hybrid_communicate_group()
+        word_size = hcg.get_model_parallel_world_size()
+        mp_id = hcg.get_model_parallel_rank()
+        dp_id = hcg.get_data_parallel_rank()
+        rank_id = dist.get_rank()
+        set_random_seed(1024, dp_id, rank_id)
+
+        np_fc1 = np.random.random_sample((hidden_size, inner_size))
+        np_fc2 = np.random.random_sample((inner_size, hidden_size))
+
+        model_a = SimpleSPNetWithoutBias(
+            vocab_size,
+            hidden_size,
+            inner_size,
+            output_size,
+            np_fc1,
+            np_fc2,
+            mp_id,
+        )
+        optimizer_a = self.build_optimizer(model_a)
+        model_a = fleet.distributed_model(model_a)
+        optimizer_a = fleet.distributed_optimizer(optimizer_a)
+
+        model_b = SimpleDPNetWithoutBias(
+            vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
+        )
+        optimizer_b = self.build_optimizer(model_b)
+
+        return model_a, optimizer_a, model_b, optimizer_b
+
+    def test_mp_model(self):
+        (
+            model_a,
+            optimizer_a,
+            model_b,
+            optimizer_b,
+        ) = self.build_model_optimizer()
+
+        for _ in range(5):
+            np_data = np.random.randint(
+                0,
+                vocab_size,
+                (
+                    batch_size,
+                    seq_length,
+                ),
+            )
+            batch = paddle.to_tensor(np_data)
+            loss_a = self.train_batch(batch, model_a, optimizer_a, True)
+            loss_b = self.train_batch(batch, model_b, optimizer_b, False)
+
+            np.testing.assert_allclose(
+                loss_a.numpy(), loss_b.numpy(), rtol=1e-5, atol=1e-5
+            )
+
+
+class TestDistSPTrainingWithoutBias2(TestDistSPTrainingWithoutBias):
+    def setUp(self):
+        strategy = fleet.DistributedStrategy()
+        self.model_parallel_size = 2
+        self.data_parallel_size = 1
+        strategy.hybrid_configs = {
+            "dp_degree": self.data_parallel_size,
+            "mp_degree": self.model_parallel_size,
+            "pp_degree": 1,
+            "mp_configs": {
+                "mp_async_allreduce": True,
+                "mp_fused_linear_param_grad_add": True,
+            },
+        }
+        fleet.init(is_collective=True, strategy=strategy)
+
+
+class TestDistSPTrainingWithoutBias3(TestDistSPTrainingWithoutBias2):
+    def build_model_optimizer(self):
+        hcg = fleet.get_hybrid_communicate_group()
+        word_size = hcg.get_model_parallel_world_size()
+        mp_id = hcg.get_model_parallel_rank()
+        dp_id = hcg.get_data_parallel_rank()
+        rank_id = dist.get_rank()
+        set_random_seed(1024, dp_id, rank_id)
+
+        np_fc1 = np.random.random_sample((hidden_size, inner_size))
+        np_fc2 = np.random.random_sample((inner_size, hidden_size))
+
+        model_a = SimpleSPNetWithoutBias(
+            vocab_size,
+            hidden_size,
+            inner_size,
+            output_size,
+            np_fc1,
+            np_fc2,
+            mp_id,
+        )
+        model_a = MixPrecisionLayer(model_a)
+        optimizer_a = self.build_optimizer(model_a)
+        optimizer_a = MixPrecisionOptimizer(optimizer_a)
+        model_a = fleet.distributed_model(model_a)
+        optimizer_a = fleet.distributed_optimizer(optimizer_a)
+
+        model_b = SimpleDPNetWithoutBias(
+            vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
+        )
+        optimizer_b = self.build_optimizer(model_b)
+
+        return model_a, optimizer_a, model_b, optimizer_b
 
 
 if __name__ == "__main__":

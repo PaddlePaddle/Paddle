@@ -27,10 +27,10 @@ void AllRawKernel(const Context& dev_ctx,
                   DenseTensor* out);
 
 template <typename T, typename Context>
-void AllKernel(const Context& dev_ctx,
-               const DenseTensor& x,
-               const std::vector<int64_t>& dims,
-               bool keep_dim,
-               DenseTensor* out);
+TEST_API void AllKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const std::vector<int64_t>& dims,
+                        bool keep_dim,
+                        DenseTensor* out);
 
 }  // namespace phi

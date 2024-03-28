@@ -53,7 +53,7 @@ class TransLayerNormOpConverter : public OpConverter {
     nvinfer1::ILayer* layernorm_layer = nullptr;
     if (engine_->with_dynamic_shape()) {
       // For dynamic shape,
-      // the shape of mean and variance will be determine in configuPlugin.
+      // the shape of mean and variance will be determine in configurePlugin.
       std::vector<int64_t> mean_shape{1};
       std::vector<int64_t> variance_shape{1};
       bool with_fp16 =

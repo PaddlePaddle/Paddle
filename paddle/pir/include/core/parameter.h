@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <cstring>
+
 #include "paddle/pir/include/core/type.h"
 
 namespace pir {

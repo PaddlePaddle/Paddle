@@ -58,7 +58,7 @@ class SoftMaxOpConverter : public OpConverter {
     uint32_t axes = std::max(0, input_dims - 3);
     // TODO(cryoco): Poor workaround. Fix padded dims problem when TRT layers
     // support Nd.
-    // Tips: Dynammic shape alreay fixes.
+    // Tips: Dynamic shape already fixes.
     int padded_dims = 0;
     int explicit_batch = 0;
     if (engine_->with_dynamic_shape()) explicit_batch = 1;

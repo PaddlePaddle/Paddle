@@ -15,9 +15,9 @@
 #pragma once
 
 #include <optional>
-
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/tags.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn::adt {
 
@@ -144,7 +144,7 @@ List<typename TreeMergerT::tree_type> MergeTwoInnerTreeImpl(
                                                List<TreeT>{new_lhs, new_rhs});
     return List<TreeT>{ret};
   } else {
-    LOG(FATAL) << "Dead code";
+    PADDLE_THROW(phi::errors::Fatal("Dead code"));
   }
 }
 

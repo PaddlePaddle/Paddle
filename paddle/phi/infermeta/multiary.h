@@ -658,7 +658,13 @@ void RmsNormInferMeta(const MetaTensor& x,
                       const float quant_max_bound,
                       const float quant_min_bound,
                       MetaTensor* out,
-                      MetaTensor* residual_out);
+                      MetaTensor* residual_out,
+                      MetaTensor* inv_var);
+
+void RmsNormGradInferMeta(const MetaTensor& x,
+                          const MetaTensor& norm_weight,
+                          MetaTensor* x_grad,
+                          MetaTensor* norm_weight_grad);
 
 void RmspropInferMeta(const MetaTensor& param,
                       const MetaTensor& mean_square,
@@ -901,6 +907,15 @@ void FusedRopeInferMeta(const MetaTensor& q,
                         MetaTensor* out_q,
                         MetaTensor* out_k,
                         MetaTensor* out_v);
+
+void FusedTokenPruneInferMeta(const MetaTensor& attn,
+                              const MetaTensor& x,
+                              const MetaTensor& mask,
+                              const MetaTensor& new_mask,
+                              bool keep_first_token,
+                              bool keep_order,
+                              MetaTensor* slimmed_x,
+                              MetaTensor* cls_inds);
 
 void MultiheadMatmulInferMeta(const MetaTensor& input,
                               const MetaTensor& w,

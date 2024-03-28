@@ -57,8 +57,17 @@ class TestCinnSubGraphBase(unittest.TestCase):
         self.y.stop_gradient = False
 
     def check_jit_kernel_info(self, static_fn):
-        utils.check_jit_kernel_number(static_fn, 1)
-        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
+        utils.check_jit_kernel_number(static_fn, 3)
+        utils.check_jit_kernel_structure(
+            static_fn,
+            {
+                'if_0': {utils.JIT_KERNEL_NAME: 1},
+                'else_0': {
+                    'if_0_0': {utils.JIT_KERNEL_NAME: 1},
+                    'else_0_0': {utils.JIT_KERNEL_NAME: 1},
+                },
+            },
+        )
 
     def eval_symbolic(self, use_cinn):
         paddle.seed(2022)

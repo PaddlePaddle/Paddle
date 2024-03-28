@@ -23,6 +23,18 @@
 namespace cinn {
 namespace ir {
 
+class AlignIterSpaceTactic final : public ScheduleTactic {
+ public:
+  void Init(ScheduleContext* context) override;
+
+  void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
+
+  std::string TacticName() const override { return "AlignIterSpaceTactic"; }
+
+ private:
+  ScheduleContext* context_;
+};
+
 void AlignIterSpaceTactic::Init(ScheduleContext* context) {
   context_ = context;
 }
@@ -82,6 +94,10 @@ void AlignIterSpaceTactic::Apply(ir::IRSchedule* sch,
   } else {
     sch->Fuse(loops);
   }
+}
+
+std::unique_ptr<ScheduleTactic> CreateAlignIterSpaceTactic() {
+  return std::make_unique<AlignIterSpaceTactic>();
 }
 
 }  // namespace ir

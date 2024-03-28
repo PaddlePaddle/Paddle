@@ -124,7 +124,7 @@ def dyfunc_with_if_else_early_return1():
         b = paddle.zeros([3, 3])
         return a, b
     a = paddle.zeros([2, 2]) + 1
-    return a, None
+    return a, paddle.zeros([3, 3]) + 1
 
 
 def dyfunc_with_if_else_early_return2():
@@ -138,7 +138,7 @@ def dyfunc_with_if_else_early_return2():
         d = paddle.zeros([3, 3]) + 1
         return c, d
     e = paddle.zeros([2, 2]) + 3
-    return e, None
+    return e, paddle.zeros([3, 3]) + 3
 
 
 def dyfunc_with_if_else_with_list_generator(x):

@@ -24,18 +24,18 @@ void TransposeStridedKernel(const Context& ctx,
                             const std::vector<int>& axis,
                             DenseTensor* out) {
   size_t x_rank = x.dims().size();
-  std::vector<int> formated_axis = axis;
+  std::vector<int> formatted_axis = axis;
   for (size_t i = 0; i < axis.size(); i++) {
     if (axis[i] < 0) {
-      formated_axis[i] = static_cast<int>(axis[i] + x_rank);
+      formatted_axis[i] = static_cast<int>(axis[i] + x_rank);
     }
   }
 
   auto meta = out->meta();
   auto in_stride = x.strides();
   meta.strides = in_stride;
-  for (int i = 0; i < static_cast<int>(formated_axis.size()); i++) {
-    meta.strides[i] = in_stride[formated_axis[i]];
+  for (int i = 0; i < static_cast<int>(formatted_axis.size()); i++) {
+    meta.strides[i] = in_stride[formatted_axis[i]];
   }
   meta.offset = x.offset();
 
@@ -46,5 +46,6 @@ void TransposeStridedKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    transpose, STRIDED, phi::TransposeStridedKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(transpose,
+                                         STRIDED,
+                                         phi::TransposeStridedKernel) {}

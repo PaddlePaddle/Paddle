@@ -93,7 +93,7 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
     if ((input_width <= 1024 || k >= 128 || k == input_width)) {
       if (phi::funcs::SortTopk<T>(
               dev_ctx, input, input_width, input_height, k, output, indices)) {
-        // Successed, return.
+        // Succeed, return.
         return;
       } else {
         LOG(INFO) << "TopKOP: Some errors happened when use cub sorting, use "

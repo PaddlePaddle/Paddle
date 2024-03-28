@@ -18,25 +18,31 @@ import numpy as np
 
 import paddle
 from paddle import base
+from paddle.framework import in_pir_mode
 from paddle.pir_utils import test_with_pir_api
-from paddle.static import Program, program_guard
 
 paddle.enable_static()
 
 
 class TestBroadcastToError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
-        with program_guard(Program(), Program()):
-            x1 = base.create_lod_tensor(
-                np.array([[-1]]), [[1]], base.CPUPlace()
-            )
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             shape = [2, 2]
-            self.assertRaises(TypeError, paddle.tensor.broadcast_to, x1, shape)
-            x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="uint8")
-            self.assertRaises(TypeError, paddle.tensor.broadcast_to, x2, shape)
-            x3 = paddle.static.data(name='x3', shape=[-1, 4], dtype="bool")
-            x3.stop_gradient = False
-            self.assertRaises(ValueError, paddle.tensor.broadcast_to, x3, shape)
+            if not in_pir_mode():
+                x1 = base.create_lod_tensor(
+                    np.array([[-1]]), [[1]], base.CPUPlace()
+                )
+                self.assertRaises(
+                    TypeError, paddle.tensor.broadcast_to, x1, shape
+                )
+            x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="bool")
+            x2.stop_gradient = False
+            self.assertRaises(ValueError, paddle.tensor.broadcast_to, x2, shape)
+            x2.stop_gradient = True
+            self.assertRaises(TypeError, paddle.tensor.broadcast_to, x2, 1)
 
 
 # Test python API

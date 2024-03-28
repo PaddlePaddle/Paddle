@@ -34,7 +34,7 @@ class OpResult;
 
 namespace detail {
 class OpResultImpl;
-class OpOperendImpl;
+class OpOperandImpl;
 }  // namespace detail
 
 class CloneOptions {
@@ -117,6 +117,12 @@ class IR_API alignas(8) Operation final
     return attributes_.find(key) != attributes_.end();
   }
 
+  void set_value_property(const std::string &key,
+                          const Property &value,
+                          size_t index);
+
+  void *value_property(const std::string &key, size_t index) const;
+
   ///
   /// \brief op ouput related public interfaces
   ///
@@ -133,7 +139,7 @@ class IR_API alignas(8) Operation final
   ///
   uint32_t num_operands() const { return num_operands_; }
   OpOperand operand(uint32_t index) const { return op_operand_impl(index); }
-  std::vector<OpOperand> operands();
+  std::vector<OpOperand> operands() const;
   Value operand_source(uint32_t index) const;
   std::vector<Value> operands_source() const;
   Type operand_type(uint32_t index) const { return operand(index).type(); }
@@ -229,7 +235,7 @@ class IR_API alignas(8) Operation final
 
   void Verify();
 
-  uint64_t id() { return id_; }
+  uint64_t id() const { return id_; }
 
  private:
   DISABLE_COPY_AND_ASSIGN(Operation);
@@ -265,6 +271,9 @@ class IR_API alignas(8) Operation final
   };
 
   AttributeMap attributes_;
+
+  // store data that user create by Python
+  std::vector<PropertyMap> value_properties_;
 
   OpInfo info_;
 

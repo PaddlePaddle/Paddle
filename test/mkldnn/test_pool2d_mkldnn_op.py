@@ -30,6 +30,7 @@ def create_test_mkldnn_use_ceil_class(parent):
     class TestMKLDNNPool2DUseCeilCase(parent):
         def init_kernel_type(self):
             self.use_mkldnn = True
+            self.check_pir_onednn = True
 
         def init_ceil_mode(self):
             self.ceil_mode = True
@@ -51,6 +52,7 @@ def create_test_mkldnn_class(parent):
     class TestMKLDNNCase(parent):
         def init_kernel_type(self):
             self.use_mkldnn = True
+            self.check_pir_onednn = True
 
         def init_data_type(self):
             self.dtype = np.float32
@@ -78,6 +80,7 @@ class TestAvgPoolAdaptive(TestPool2D_Op):
 
     def init_kernel_type(self):
         self.use_mkldnn = True
+        self.check_pir_onednn = True
 
     def init_test_case(self):
         self.ksize = [1, 1]
@@ -128,6 +131,7 @@ class TestAsymPad(TestPool2D_Op):
 
     def init_kernel_type(self):
         self.use_mkldnn = True
+        self.check_pir_onednn = True
 
     def init_data_type(self):
         self.dtype = np.float32

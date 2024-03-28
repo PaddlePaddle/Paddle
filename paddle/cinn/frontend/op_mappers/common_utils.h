@@ -62,10 +62,11 @@ inline T GetAttrOrDefault(const paddle::cpp::OpDesc& op_desc,
                          << " here we will return a empty vector.";          \
             return {};                                                       \
           } else {                                                           \
-            LOG(FATAL) << "Op \"" << op_desc.Type() << "\"'s attribute \""   \
-                       << name << "\" should be " << #ATTR_TYPE              \
-                       << "S. But here " << static_cast<int>(attr_type)      \
-                       << " Please Check!";                                  \
+            std::stringstream ss;                                            \
+            ss << "Op \"" << op_desc.Type() << "\"'s attribute \"" << name   \
+               << "\" should be " << #ATTR_TYPE << "S. But here "            \
+               << static_cast<int>(attr_type) << " Please Check!";           \
+            PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));            \
           }                                                                  \
       }                                                                      \
     }                                                                        \
@@ -94,8 +95,10 @@ inline bool GetAttrOrDefault(const paddle::cpp::OpDesc& op_desc,
       case AttrType::LONG:
         return static_cast<bool>(op_desc.GetAttr<int64_t>(name));
       default:
-        LOG(FATAL) << "Op " << op_desc.Type() << "'s attribute " << name
-                   << " should be BOOLEAN. Please Check!";
+        std::stringstream ss;
+        ss << "Op " << op_desc.Type() << "'s attribute " << name
+           << " should be BOOLEAN. Please Check!";
+        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
   }
   return default_value;
@@ -114,8 +117,10 @@ inline int64_t GetAttrOrDefault(const paddle::cpp::OpDesc& op_desc,
       case AttrType::INT:
         return static_cast<int64_t>(op_desc.GetAttr<int>(name));
       default:
-        LOG(FATAL) << "Op " << op_desc.Type() << "'s attribute " << name
-                   << " should be LONG. Please Check!";
+        std::stringstream ss;
+        ss << "Op " << op_desc.Type() << "'s attribute " << name
+           << " should be LONG. Please Check!";
+        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
   }
   return default_value;
@@ -150,8 +155,10 @@ inline std::vector<int64_t> GetAttrOrDefault(
         return {};
       }
       default:
-        LOG(FATAL) << "Op " << op_desc.Type() << "'s attribute " << name
-                   << " should be LONGS. Please Check!";
+        std::stringstream ss;
+        ss << "Op " << op_desc.Type() << "'s attribute " << name
+           << " should be LONGS. Please Check!";
+        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
   }
   return default_value;

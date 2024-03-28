@@ -65,7 +65,7 @@ std::string AESCipher::EncryptInternal(const std::string& plaintext,
   std::string ciphertext;
   m_filter->Attach(new CryptoPP::StringSink(ciphertext));
   CryptoPP::Redirector* filter_redirector = new CryptoPP::Redirector(*m_filter);
-  CryptoPP::StringSource(plaintext, true, filter_redirector);
+  CryptoPP::StringSource ss(plaintext, true, filter_redirector);
   if (need_iv) {
     return iv_ + ciphertext;
   }
@@ -96,7 +96,7 @@ std::string AESCipher::DecryptInternal(const std::string& ciphertext,
   std::string plaintext;
   m_filter->Attach(new CryptoPP::StringSink(plaintext));
   CryptoPP::Redirector* filter_redirector = new CryptoPP::Redirector(*m_filter);
-  CryptoPP::StringSource(
+  CryptoPP::StringSource ss(
       ciphertext.substr(ciphertext_beg), true, filter_redirector);
 
   return plaintext;
@@ -124,7 +124,7 @@ std::string AESCipher::AuthenticatedEncryptInternal(
   std::string ciphertext;
   m_filter->Attach(new CryptoPP::StringSink(ciphertext));
   CryptoPP::Redirector* filter_redirector = new CryptoPP::Redirector(*m_filter);
-  CryptoPP::StringSource(plaintext, true, filter_redirector);
+  CryptoPP::StringSource ss(plaintext, true, filter_redirector);
   if (need_iv) {
     ciphertext = iv_.append(ciphertext);
   }
@@ -155,7 +155,7 @@ std::string AESCipher::AuthenticatedDecryptInternal(
   std::string plaintext;
   m_filter->Attach(new CryptoPP::StringSink(plaintext));
   CryptoPP::Redirector* filter_redirector = new CryptoPP::Redirector(*m_filter);
-  CryptoPP::StringSource(
+  CryptoPP::StringSource ss(
       ciphertext.substr(ciphertext_beg), true, filter_redirector);
   PADDLE_ENFORCE_EQ(
       m_filter->GetLastResult(),

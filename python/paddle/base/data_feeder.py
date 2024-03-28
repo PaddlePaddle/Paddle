@@ -229,18 +229,22 @@ def check_dtype(
 def check_shape(
     shape,
     op_name,
-    expected_shape_type=(list, tuple, Variable),
-    expected_element_type=(int, Variable),
+    expected_shape_type=(list, tuple, Variable, Value),
+    expected_element_type=(int, Variable, Value),
     expected_tensor_dtype=('int32', 'int64'),
 ):
     # See NOTE [ Why skip dynamic graph check ]
     if in_dygraph_mode():
         return
     check_type(shape, 'shape', expected_shape_type, op_name)
-    if expected_element_type is not None and not isinstance(shape, Variable):
+    if expected_element_type is not None and not isinstance(
+        shape, (Variable, Value)
+    ):
         for item in shape:
             check_type(item, 'element of shape', expected_element_type, op_name)
-            if expected_tensor_dtype is not None and isinstance(item, Variable):
+            if expected_tensor_dtype is not None and isinstance(
+                item, (Variable, Value)
+            ):
                 check_dtype(
                     item.dtype,
                     'element of shape',
@@ -250,7 +254,9 @@ def check_shape(
                         ', '.join(expected_tensor_dtype)
                     ),
                 )
-    if expected_tensor_dtype is not None and isinstance(shape, Variable):
+    if expected_tensor_dtype is not None and isinstance(
+        shape, (Variable, Value)
+    ):
         check_dtype(shape.dtype, 'shape', expected_tensor_dtype, op_name)
 
 
@@ -434,7 +440,7 @@ class DataFeeder:
                     raise TypeError("Feed list should contain a list of Value")
                 self.feed_dtypes.append(each_var.dtype)
                 self.feed_names.append(each_var.name)
-                self.feed_lod_level.append(each_var.lod_level)
+                self.feed_lod_level.append(0)
                 self.feed_shapes.append(each_var.shape)
         else:
             if program is None:

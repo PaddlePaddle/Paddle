@@ -1813,7 +1813,7 @@ int PaddleBoxDataFeed::Next() {
     this->batch_size_ = index;
     VLOG(3) << "pv_batch_size_=" << this->batch_size_
             << ", thread_id=" << thread_id_;
-    if (this->batch_size_ != 0) {
+    if (this->batch_size_ != 0) {  // NOLINT
       PutToFeedVec(pv_vec);
     } else {
       VLOG(3) << "finish reading, output_pv_channel_ size="
@@ -2113,7 +2113,7 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   finish_init_ = true;
   input_type_ = data_feed_desc.input_type();
   size_t pos = pipe_command_.find(".so");
-  if (pos != std::string::npos) {
+  if (pos != std::string::npos) {  // NOLINT
     pos = pipe_command_.rfind('|');
     if (pos == std::string::npos) {
       so_parser_name_ = pipe_command_;
@@ -2129,7 +2129,7 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   gpu_graph_data_generator_.SetConfig(data_feed_desc);
 #endif
-  if (gpu_graph_mode_) {
+  if (gpu_graph_mode_) {  // NOLINT
     train_mode_ = true;
   } else {
     train_mode_ = data_feed_desc.graph_config().gpu_graph_training();
@@ -2780,7 +2780,7 @@ int SlotRecordInMemoryDataFeed::Next() {
     this->batch_size_ = batch.second;
     VLOG(3) << "batch_size_=" << this->batch_size_
             << ", thread_id=" << thread_id_;
-    if (this->batch_size_ != 0) {
+    if (this->batch_size_ != 0) {  // NOLINT
       PutToFeedVec(&records_[batch.first], this->batch_size_);
     } else {
       VLOG(3) << "finish reading for heterps, batch size zero, thread_id="

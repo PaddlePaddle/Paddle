@@ -139,6 +139,9 @@ ir::Tensor Cast(const ir::Tensor& A,
                 const Type& dtype,
                 const std::string& name = UniqName("T_Elementwise_Cast_out"));
 
+ir::Tensor Store(const ir::Tensor& A,
+                 const std::string& name = UniqName("T_Elementwise_Store_out"));
+
 ir::Tensor Arange(
     const float start,
     const float stop,

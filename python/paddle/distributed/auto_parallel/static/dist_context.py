@@ -127,6 +127,9 @@ class DistributedContext:
         # flag whether scale gradient with dp size
         self._gradient_scale = True
 
+        # whether use allreduce_avg to scale gradient, i.e., allreduce_sum + scale -> allreduce_avg
+        self._gradient_scale_using_allreduce_avg = False
+
         # A flag indicates whether the used parallelism is data parallel
         self._data_parallel = False
 
@@ -219,6 +222,18 @@ class DistributedContext:
     @gradient_scale.setter
     def gradient_scale(self, gs):
         self._gradient_scale = gs
+
+    @property
+    def gradient_scale_using_allreduce_avg(self):
+        return self._gradient_scale_using_allreduce_avg
+
+    @gradient_scale_using_allreduce_avg.setter
+    def gradient_scale_using_allreduce_avg(
+        self, gradient_scale_using_allreduce_avg
+    ):
+        self._gradient_scale_using_allreduce_avg = (
+            gradient_scale_using_allreduce_avg
+        )
 
     @property
     def data_parallel(self):

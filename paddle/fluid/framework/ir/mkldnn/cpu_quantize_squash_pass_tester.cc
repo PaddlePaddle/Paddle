@@ -41,7 +41,7 @@ void SetOp(ProgramDesc* prog,
   if (type != "dropout" && type != "quantize" && type != "dequantize") {
     op->SetAttr("mkldnn_data_type", mkldnn_data_type);
   }
-  if (type == "pool2d") {
+  if (type == "pool2d") {  // NOLINT
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
     if (!scale.empty()) op->SetAttr("Scale_in", scale[0]);

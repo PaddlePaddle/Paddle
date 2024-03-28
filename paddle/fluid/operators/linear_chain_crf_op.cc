@@ -55,7 +55,7 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
         "probabilities of all possible unfinished sequences of tags that end "
         "at position $k$ with tag $v$. For each $k$, "
         "$\alpha[k, v]$ is a vector of length $D$ with a component for "
-        "each tag value $v$. This vector is called a forward vecotr and "
+        "each tag value $v$. This vector is called a forward vector and "
         "will also be used in backward computations.")
         .AsIntermediate();
     AddOutput(
@@ -105,7 +105,7 @@ Equation:
 weights, denoted as $a$ here.
 3. The next D values of Input(Transition) of this operator are for ending
 weights, denoted as $b$ here.
-4. The remaning values of Input(Transition) are for transition weights,
+4. The remaining values of Input(Transition) are for transition weights,
 denoted as $w$ here.
 5. Denote Input(Label) as $s$ here.
 

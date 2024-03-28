@@ -57,6 +57,14 @@ void OpResult::set_attribute(const std::string &key, Attribute value) {
   return IMPL_->set_attribute(key, value);
 }
 
+void *OpResult::property(const std::string &key) const {
+  return impl_ ? IMPL_->property(key) : nullptr;
+}
+void OpResult::set_property(const std::string &key, const Property &value) {
+  CHECK_OPRESULT_NULL_IMPL(set_property);
+  return IMPL_->set_property(key, value);
+}
+
 OpResult::OpResult(detail::OpResultImpl *impl) : Value(impl) {}
 
 }  // namespace pir

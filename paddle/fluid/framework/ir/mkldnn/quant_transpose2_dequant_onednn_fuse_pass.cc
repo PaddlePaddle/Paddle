@@ -15,7 +15,7 @@
 #include "paddle/fluid/framework/ir/mkldnn/quant_transpose2_dequant_onednn_fuse_pass.h"
 #include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -137,7 +137,7 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseTranspose2Dequantize(
         dequant_op->Op()->HasAttr("Scale")
             ? PADDLE_GET_CONST(float, dequant_op->Op()->GetAttr("Scale"))
             : 1;
-    float reorder_scale = 1.0 / scale;
+    float reorder_scale = static_cast<float>(1.0) / scale;
     float shift =
         dequant_op->Op()->HasAttr("Shift")
             ? PADDLE_GET_CONST(float, dequant_op->Op()->GetAttr("Shift"))

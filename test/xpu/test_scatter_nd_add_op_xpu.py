@@ -34,11 +34,11 @@ def numpy_scatter_nd(ref, index, updates, fun):
     end_size = index_shape[-1]
 
     # as type int32, flat_index or flat_updates can't reshape to int64
-    remain_numl = np.prod(index_shape[:-1]).astype("int32")
+    remain_numel = np.prod(index_shape[:-1]).astype("int32")
     slice_size = np.prod(ref_shape[end_size : len(ref_shape)]).astype("int32")
 
-    flat_index = index.reshape([remain_numl] + list(index_shape[-1:]))
-    flat_updates = updates.reshape((remain_numl, slice_size))
+    flat_index = index.reshape([remain_numel] + list(index_shape[-1:]))
+    flat_updates = updates.reshape((remain_numel, slice_size))
     flat_output = ref.reshape(list(ref_shape[:end_size]) + [slice_size])
 
     for i_up, i_out in enumerate(flat_index):

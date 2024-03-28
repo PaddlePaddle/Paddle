@@ -139,7 +139,6 @@ def data(name, shape, dtype=None, lod_level=0):
         prev_insertion_point = get_current_insertion_point()
         _reset_data_op_insertion_point()
         out = paddle._pir_ops.data(name, shape, ir_dtype, core.Place())
-        out.lod_level = lod_level
         set_insertion_point(prev_insertion_point)
         return out
 

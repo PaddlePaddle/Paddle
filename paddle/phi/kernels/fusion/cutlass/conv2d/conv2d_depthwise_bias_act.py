@@ -208,6 +208,7 @@ def generate_conv2d_depthwise():
                         )
         # generate op code
         op_dict["all_kernel_func_name"] = all_kernel_names
+        op_dict["kernel_func_declare"] = ";"
         all_code += SubstituteTemplate(CommonConvFunction, op_dict)
     return all_code
 

@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/transfer_scope_cache.h"
+#include "paddle/fluid/platform/errors.h"
+#include "paddle/phi/core/enforce.h"
 #include "test/cpp/inference/api/tester_helper.h"
 
 namespace paddle {
@@ -159,7 +161,7 @@ void profile(bool use_mkldnn, bool use_bfloat16) {
 std::vector<std::vector<paddle::PaddleTensor>> LoadInputData() {
   if (FLAGS_infer_data.empty()) {
     LOG(ERROR) << "please set input data path";
-    throw "missing input data path";
+    PADDLE_THROW(platform::errors::NotFound("Missing input data path"));
   }
 
   std::ifstream fin(FLAGS_infer_data);
@@ -190,7 +192,8 @@ std::vector<paddle::PaddleTensor> ParseInputStreamToVector(
     const std::string &line) {
   const auto fields = Split<std::string>(line, ';');
 
-  if (fields.size() < 5) throw "invalid input line";
+  if (fields.size() < 5)
+    PADDLE_THROW(platform::errors::Fatal("Invalid input line"));
 
   std::vector<paddle::PaddleTensor> tensors;
 
@@ -228,7 +231,8 @@ AnalysisConfig SetConfig(bool use_mkldnn, bool use_bfloat16) {
 template <typename T>
 paddle::PaddleTensor ParseTensor(const std::string &field) {
   const auto data = Split<std::string>(field, ':');
-  if (data.size() < 2) throw "invalid data field";
+  if (data.size() < 2)
+    PADDLE_THROW(platform::errors::Fatal("Invalid data field"));
 
   std::string shape_str = data[0];
   const auto shape = Split<int>(shape_str, ' ');

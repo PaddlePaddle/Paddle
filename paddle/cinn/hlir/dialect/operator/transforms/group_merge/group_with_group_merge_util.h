@@ -146,7 +146,7 @@ inline bool horizontal_elementwise_fuse_reduce(
   auto ele_node_shape =
       GetValueShape((*ele_group->master_ops.begin())->result(0));
   int32_t size_ele = ::common::product(ele_node_shape);
-  // TODO(phlrain): seems extrame danger herem, why compare multi Master Node?
+  // TODO(phlrain): seems extreme danger here, why compare multi Master Node?
   for (auto* master : reduce_group->master_ops) {
     auto master_node_shape = GetValueShape(master->result(0));
     int32_t size_master = ::common::product(master_node_shape);
@@ -349,7 +349,7 @@ inline bool horizontal_relation(const std::shared_ptr<ir::Group>& first,
   };
   auto selected_nodes = select_node_set(second_set, op_pattern_kind);
 
-  auto check_depency = [&](::pir::Operation* node) {
+  auto check_dependency = [&](::pir::Operation* node) {
     std::queue<::pir::Operation*> candidates;
     std::unordered_set<::pir::Operation*> visited_set;
     candidates.push(node);
@@ -381,7 +381,7 @@ inline bool horizontal_relation(const std::shared_ptr<ir::Group>& first,
   };
 
   for (auto node : selected_nodes) {
-    if (check_depency(node)) {
+    if (check_dependency(node)) {
       return false;
     }
   }

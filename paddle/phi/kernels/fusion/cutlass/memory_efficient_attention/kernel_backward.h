@@ -492,8 +492,6 @@ struct AttentionBackwardKernel {
           scalar_t,  // ElementC
           accum_t    // ElementAccumulator
           >;
-  static constexpr auto kOptimalAlignement =
-      std::max(DefaultConfig::kAlignmentA, DefaultConfig::kAlignmentB);
   static constexpr auto kMinimumAlignment = GemmType::kMinimumAlignment;
 
   struct MatmulQK {

@@ -70,7 +70,7 @@ FindUselessOpPattern::FindUselessOpPattern(PDPattern* pattern,
               auto in_dtype = x->Op()->GetAttrIfExists<int>("in_dtype");
               auto out_dtype = x->Op()->GetAttrIfExists<int>("out_dtype");
               return in_dtype == out_dtype;
-            } else if (op_type == "c_identity") {
+            } else if (op_type == "c_identity") {  // NOLINT
               return true;
             } else if (op_type == "assign") {
               const auto& in_name = x->Op()->Input("X")[0];

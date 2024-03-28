@@ -220,8 +220,9 @@ inline std::string CreateKey(const OneDNNContext& dev_ctx UNUSED,
                              ArgTypes&&... args) {
   std::string key;
   key.reserve(64);
-  using expand_type = int[];
-  expand_type{0, (AppendKey(&key, std::forward<ArgTypes>(args)), 0)...};
+  // using expand_type = int[];
+  // expand_type{0, (AppendKey(&key, std::forward<ArgTypes>(args)), 0)...};
+  ((void)AppendKey(&key, std::forward<ArgTypes>(args)), ...);
   key += OneDNNContext::tls().get_key_suffix();
   return key;
 }

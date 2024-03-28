@@ -233,13 +233,13 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     scale_ops.reserve(beta_name.size());
     for (size_t i = 0; i < adam_ops.size(); ++i) {
       auto &beta_1_pow_name = beta_name[i];
-      auto beta_pow_iter = std::find_if(
-          adam_ops[i]->inputs.begin(),
-          adam_ops[i]->inputs.end(),
-          [&beta_name, &beta_1_pow_name](ir::Node *var_node) -> bool {
-            return var_node->Var() &&
-                   var_node->Var()->Name() == beta_1_pow_name;
-          });
+      auto beta_pow_iter =
+          std::find_if(adam_ops[i]->inputs.begin(),
+                       adam_ops[i]->inputs.end(),
+                       [&beta_1_pow_name](ir::Node *var_node) -> bool {
+                         return var_node->Var() &&
+                                var_node->Var()->Name() == beta_1_pow_name;
+                       });
       PADDLE_ENFORCE_NE(beta_pow_iter,
                         adam_ops[i]->inputs.end(),
                         platform::errors::NotFound(

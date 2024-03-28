@@ -51,7 +51,7 @@ void Conv2dTransposeKernel(const Context& ctx,
                            const std::vector<int>& dilations,
                            const std::string& data_format,
                            DenseTensor* out) {
-  using XPUT = typename XPUTypeTrait<T>::Type;
+  using XPUType = typename XPUTypeTrait<T>::Type;
 
   ctx.template Alloc<T>(out);
 
@@ -76,8 +76,8 @@ void Conv2dTransposeKernel(const Context& ctx,
   const int img_xh = static_cast<int>(out->dims()[2]);
   const int img_xw = static_cast<int>(out->dims()[3]);
 
-  int fccal_type = FCCalcType<XPUT>();
-  if (fccal_type == XPUFCCalcType::FC_INT32) {
+  int fc_calc_type = FCCalcType<XPUType>();
+  if (fc_calc_type == XPUFCCalcType::FC_INT32) {
     int r = xpu::conv2d_transpose_v2<float, float, float, int32_t>(
         ctx.x_context(),
         x.data<float>(),
@@ -98,7 +98,7 @@ void Conv2dTransposeKernel(const Context& ctx,
         nullptr,
         true);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_v2");
-  } else if (fccal_type == XPUFCCalcType::FC_FLOAT) {
+  } else if (fc_calc_type == XPUFCCalcType::FC_FLOAT) {
     int r = xpu::conv2d_transpose_v2<float, float, float, float>(
         ctx.x_context(),
         x.data<float>(),
@@ -119,7 +119,7 @@ void Conv2dTransposeKernel(const Context& ctx,
         nullptr,
         true);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_v2");
-  } else if (fccal_type == XPUFCCalcType::FC_INT32_WITH_LL) {
+  } else if (fc_calc_type == XPUFCCalcType::FC_INT32_WITH_LL) {
     if (output_size.size()) {
       VLOG(4) << "int_with_ll quantization is not supported when output_size "
                  "is specified, "
@@ -171,11 +171,11 @@ void Conv2dTransposeKernel(const Context& ctx,
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose");
     }
   } else {
-    int r = xpu::conv2d_transpose_v2<XPUT, XPUT, XPUT, int16_t>(
+    int r = xpu::conv2d_transpose_v2<XPUType, XPUType, XPUType, int16_t>(
         ctx.x_context(),
-        reinterpret_cast<const XPUT*>(x.data<T>()),
-        reinterpret_cast<const XPUT*>(filter.data<T>()),
-        reinterpret_cast<XPUT*>(out->data<T>()),
+        reinterpret_cast<const XPUType*>(x.data<T>()),
+        reinterpret_cast<const XPUType*>(filter.data<T>()),
+        reinterpret_cast<XPUType*>(out->data<T>()),
         batch_size,
         img_yc,
         img_xh,

@@ -218,11 +218,13 @@ Expr _Var_::Make(Expr lower_bound,
                  Expr upper_bound,
                  const std::string &name,
                  bool is_reduce_axis,
-                 bool is_symbolic_constant) {
+                 bool is_symbolic_constant,
+                 bool is_keepdim) {
   auto *n = make_shared<_Var_>();
   n->lower_bound = lower_bound;
   n->upper_bound = upper_bound;
   n->is_reduce_axis = is_reduce_axis;
+  n->is_keepdim = is_keepdim;
   n->is_symbolic_constant = is_symbolic_constant;
   n->name = name;
   n->set_type(lower_bound.type());
@@ -233,6 +235,7 @@ Expr _Var_::Copy() const {
   auto *n = make_shared<_Var_>();
   n->name = name;
   n->is_reduce_axis = is_reduce_axis;
+  n->is_keepdim = is_keepdim;
   n->lower_bound = lower_bound;
   n->upper_bound = upper_bound;
   n->set_type(type());

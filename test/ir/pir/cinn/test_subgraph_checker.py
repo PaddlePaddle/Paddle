@@ -32,7 +32,7 @@ class TestChecker(unittest.TestCase):
 
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
-            x = paddle.static.data(shape=[4, 4], name='pt_input_0')
+            x = paddle.static.data(shape=[16, 4], name='pt_input_0')
             out = paddle.nn.functional.softmax(x)
             fetch_out = paddle._pir_ops.fetch(out, out_name, 0)
             fetch_out.persistable = True

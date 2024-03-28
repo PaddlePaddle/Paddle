@@ -18,6 +18,7 @@
 
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/common/cas.h"
+#include "paddle/common/enforce.h"
 
 namespace {
 
@@ -117,8 +118,11 @@ void cinn_call_cholesky_host(
   memcpy(out->memory, x->memory, x->memory_size);
 
   uint8_t bits = x->type.bits;
-  CHECK(bits == 32 || bits == 64)
-      << "Unsupported bits = " << bits << " float data type for cholesky";
+  PADDLE_ENFORCE_EQ(
+      bits == 32 || bits == 64,
+      true,
+      phi::errors::InvalidArgument(
+          "Unsupported bits = %d float data type for cholesky.", bits));
   char uplo = upper ? 'U' : 'L';
   for (int i = 0; i < batch_size; i++) {
     if (bits == 32) {
@@ -141,8 +145,12 @@ CINN_REGISTER_HELPER(cinn_cpu_mkl) {
 
   FunctionProto::shape_inference_t inference_shape_gemm =
       [](const std::vector<Expr>& args, int offset) {
-        CHECK_EQ(offset, 0UL) << "Only one output";
-        CHECK_EQ(args.size(), 12UL) << "Wrong number of arguments passed in";
+        PADDLE_ENFORCE_EQ(
+            offset, 0UL, phi::errors::InvalidArgument("Only one output."));
+        PADDLE_ENFORCE_EQ(args.size(),
+                          12UL,
+                          phi::errors::InvalidArgument(
+                              "Wrong number of arguments passed in."));
         auto M = cinn::common::AutoSimplify(args[1]);
         auto N = cinn::common::AutoSimplify(args[2]);
         std::vector<Expr> shape;
@@ -153,11 +161,16 @@ CINN_REGISTER_HELPER(cinn_cpu_mkl) {
 
   FunctionProto::shape_inference_t inference_shape_gemm_batch =
       [](const std::vector<Expr>& args, int offset) {
-        CHECK_EQ(offset, 0UL) << "Only one output";
-        CHECK_EQ(args.size(), 16UL) << "Wrong number of arguments passed in";
+        PADDLE_ENFORCE_EQ(
+            offset, 0UL, phi::errors::InvalidArgument("Only one output."));
+        PADDLE_ENFORCE_EQ(args.size(),
+                          16UL,
+                          phi::errors::InvalidArgument(
+                              "Wrong number of arguments passed in."));
         auto& A = args[14];
         auto A_tensor = A.as_tensor();
-        CHECK(A_tensor);
+        PADDLE_ENFORCE_NOT_NULL(
+            A_tensor, phi::errors::InvalidArgument("expected type is tensor."));
 
         auto batch_size = cinn::common::AutoSimplify(args[1]);
         int32_t batch_size_val = batch_size.as_int32();
@@ -169,7 +182,10 @@ CINN_REGISTER_HELPER(cinn_cpu_mkl) {
         int total = 1;
         for (auto& v : A_tensor->shape) {
           auto val = cinn::common::AutoSimplify(v);
-          CHECK(val.is_constant());
+          PADDLE_ENFORCE_EQ(
+              val.is_constant(),
+              true,
+              phi::errors::InvalidArgument("expected type is constant."));
           shape.push_back(val);
           total *= val.as_int32();
           if (total >= batch_size_val) break;

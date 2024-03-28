@@ -21,6 +21,7 @@
 #include <set>
 #include <unordered_set>
 
+#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_verify.h"
@@ -124,6 +125,7 @@ std::vector<Expr> FilterDeallocTempBuffers(const std::vector<Expr> &frees) {
     bool has_symbolic_constant = false;
     const ir::_Buffer_ *buffer = op->destination.As<ir::_Buffer_>();
     for (Expr shape : buffer->shape) {
+      shape = common::AutoSimplify(shape);
       ir::ir_utils::CollectIRNodes(shape, [&](const Expr *x) {
         if (x->as_var()) {
           CHECK(x->as_var()->is_symbolic_constant)
@@ -290,7 +292,7 @@ std::string CodeGenCUDA_Dev::Compile(const ir::Module &module,
       Compile(func);
     }
   } else {
-    LOG(FATAL) << "Not supported OutputKind";
+    PADDLE_THROW(phi::errors::InvalidArgument("Not supported OutputKind"));
   }
 
   if (for_nvrtc_) {
@@ -370,8 +372,10 @@ void CodeGenCUDA_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
       print_gpu_memory("");
     }
   } else {
-    LOG(FATAL) << "CUDA device codegen not support memory " << buffer->name
-               << ", type " << buffer->memory_type;
+    std::stringstream ss;
+    ss << "CUDA device codegen not support memory " << buffer->name << ", type "
+       << buffer->memory_type;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 }
 

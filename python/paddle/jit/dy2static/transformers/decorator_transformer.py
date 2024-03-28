@@ -56,13 +56,13 @@ class DecoratorTransformer(BaseTransformer):
 
         # every decorator will append a node
         decofun_nodes = []
-        # func to be decoed next time
+        # func to be decoded next time
         deco_target = '_orig_' + node.name
-        # last decoed func
-        decoed_func = ''
+        # last decoded func
+        decoded_func = ''
 
         for deco in reversed(deco_list):
-            # skip INGNORE_NAMES
+            # skip IGNORE_NAMES
             deco_full_name = ast_to_source_code(deco).strip()
             if isinstance(deco, gast.Call):
                 # match case like :
@@ -90,7 +90,7 @@ class DecoratorTransformer(BaseTransformer):
                     "Dy2Static : A context manager decorator is used, this may not work correctly after transform."
                 )
 
-            decoed_func = '_decoedby_' + deco_name
+            decoded_func = '_decoedby_' + deco_name
 
             # get function after decoration
             if isinstance(deco, gast.Call):
@@ -104,7 +104,7 @@ class DecoratorTransformer(BaseTransformer):
                     re_args = rematch.group(2)
                     re_args_with_func = deco_target + ', ' + re_args
                     decofun_str = 'try:\n\t{0} = _jst.Call({1})({2})\nexcept:\n\t{0} = _jst.Call({1})({3})({4})'.format(
-                        decoed_func,
+                        decoded_func,
                         re_name,
                         re_args_with_func,
                         re_args,
@@ -117,7 +117,7 @@ class DecoratorTransformer(BaseTransformer):
                     re_args = rematch.group(2)
                     re_args_with_func = deco_target + ', ' + re_args
                     decofun_str = 'try:\n\t{0} = {1}({2})\nexcept:\n\t{0} = {1}({3})({4})'.format(
-                        decoed_func,
+                        decoded_func,
                         re_name,
                         re_args_with_func,
                         re_args,
@@ -126,11 +126,11 @@ class DecoratorTransformer(BaseTransformer):
 
             else:
                 decofun_str = '{} = _jst.Call({})({})'.format(
-                    decoed_func, deco_full_name, deco_target
+                    decoded_func, deco_full_name, deco_target
                 )
 
             decofun_nodes.extend(gast.parse(decofun_str).body)
-            deco_target = decoed_func
+            deco_target = decoded_func
 
         if not decofun_nodes:
             return node
@@ -146,7 +146,7 @@ class DecoratorTransformer(BaseTransformer):
 
         args = [arg.id for arg in node.args.args]
         arg_str = ','.join(args)
-        callfun_str = f'return {decoed_func}({arg_str})'
+        callfun_str = f'return {decoded_func}({arg_str})'
         callfun_node = gast.parse(callfun_str).body[0]
 
         node.body = [orig_func_node] + decofun_nodes + [callfun_node]

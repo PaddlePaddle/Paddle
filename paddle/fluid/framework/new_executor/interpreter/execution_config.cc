@@ -127,7 +127,7 @@ void ExecutionConfig::Log(int log_level) {
           << "used_for_cinn = " << used_for_cinn << "\n"
           << "used_for_control_flow_op = " << used_for_control_flow_op << "\n"
           << "used_for_jit = " << used_for_jit << "\n"
-          << "deivce_num_threads = " << device_num_threads << "\n"
+          << "device_num_threads = " << device_num_threads << "\n"
           << "host_num_threads = " << host_num_threads << "\n";
 
   log_str << "force_root_scope_vars = [";

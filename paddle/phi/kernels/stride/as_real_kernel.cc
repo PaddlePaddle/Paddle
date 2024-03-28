@@ -62,3 +62,14 @@ PD_REGISTER_KERNEL(as_real,
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 #endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+PD_REGISTER_KERNEL(as_real,
+                   Custom,
+                   STRIDED,
+                   phi::AsRealStridedKernel,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
+#endif

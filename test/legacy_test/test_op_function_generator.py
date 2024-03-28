@@ -21,14 +21,6 @@ import paddle.nn.functional as F
 from paddle import _legacy_C_ops, base
 
 
-class TestTracedLayer(paddle.nn.Layer):
-    def __init__(self, name_scope):
-        super().__init__(name_scope)
-
-    def forward(self, input):
-        return _legacy_C_ops.relu(input)
-
-
 class TestVariable(unittest.TestCase):
     def setUp(self):
         self.shape = [512, 768]

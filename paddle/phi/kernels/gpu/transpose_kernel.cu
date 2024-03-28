@@ -31,10 +31,10 @@ void TransposeKernel(const Context& ctx,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
   size_t x_rank = x.dims().size();
-  std::vector<int> formated_axis = axis;
+  std::vector<int> formatted_axis = axis;
   for (size_t i = 0; i < axis.size(); i++) {
     if (axis[i] < 0) {
-      formated_axis[i] = axis[i] + x_rank;
+      formatted_axis[i] = axis[i] + x_rank;
     }
   }
 
@@ -42,11 +42,11 @@ void TransposeKernel(const Context& ctx,
   if (out->numel() == 0) {
     return;
   }
-  if (formated_axis.size() == 0) {
+  if (formatted_axis.size() == 0) {
     phi::Copy<Context>(ctx, x, ctx.GetPlace(), false, out);
     return;
   }
-  phi::funcs::TransposeGPUKernelDriver<T>(ctx, x, formated_axis, out);
+  phi::funcs::TransposeGPUKernelDriver<T>(ctx, x, formatted_axis, out);
 }
 
 }  // namespace phi

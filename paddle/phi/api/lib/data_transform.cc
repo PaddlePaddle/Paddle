@@ -256,6 +256,27 @@ phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor) {
     auto* dev_ctx = static_cast<phi::XPUContext*>(pool.Get(tensor.place()));
     return TensorContiguous<phi::XPUContext>(*dev_ctx, tensor);
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  } else if (tensor.place().GetType() == phi::AllocationType::CUSTOM) {
+    auto* dev_ctx = static_cast<phi::CustomContext*>(pool.Get(tensor.place()));
+    phi::DenseTensor dense_out;
+    phi::MetaTensor meta_input(tensor);
+    phi::MetaTensor meta_out(&dense_out);
+    UnchangedInferMeta(meta_input, &meta_out);
+    const phi::KernelKey& kernel_key = {phi::TransToPhiBackend(tensor.place()),
+                                        phi::DataLayout::ALL_LAYOUT,
+                                        tensor.dtype()};
+    using kernel_signature = void (*)(
+        const phi::DeviceContext&, const phi::DenseTensor&, phi::DenseTensor*);
+    PD_VISIT_KERNEL("contiguous",
+                    kernel_key,
+                    kernel_signature,
+                    false,
+                    *dev_ctx,
+                    tensor,
+                    &dense_out);
+    return dense_out;
+#endif
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Place type is not supported when casting data type."));
@@ -283,7 +304,7 @@ std::vector<phi::DenseTensor> CheckAndTrans2NewContiguousTensor(
     const std::vector<phi::DenseTensor>& tensor) {
   std::vector<phi::DenseTensor> out;
   for (auto& t : tensor) {
-    out.emplace_back(std::move(CheckAndTrans2NewContiguousTensor(t)));
+    out.emplace_back(CheckAndTrans2NewContiguousTensor(t));
   }
   return out;
 }
@@ -578,8 +599,7 @@ std::shared_ptr<phi::DenseTensor> PrepareDataForDenseTensorInSparse(
       return std::static_pointer_cast<phi::DenseTensor>(tensor_in);
     }
 
-    return std::make_shared<phi::DenseTensor>(
-        std::move(Trans2Contiguous(dense_tensor)));
+    return std::make_shared<phi::DenseTensor>(Trans2Contiguous(dense_tensor));
   }
   PADDLE_THROW(phi::errors::InvalidArgument(
       "The impl() of input tensor is nullptr, it doesn't support for "

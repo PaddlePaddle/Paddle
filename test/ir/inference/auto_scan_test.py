@@ -352,13 +352,13 @@ class PirMkldnnAutoScanTest(MkldnnAutoScanTest):
         """
         Test a single case.
         """
-        paddle.set_flags({'FLAGS_enable_pir_in_executor': True})
+        pred_config.enable_new_ir(True)
         pred_config.switch_ir_optim(False)
         pred_config.enable_new_executor()
         result = super().run_test_config(
             model, params, prog_config, pred_config, feed_data
         )
-        paddle.set_flags({'FLAGS_enable_pir_in_executor': False})
+        pred_config.enable_new_ir(False)
         return result
 
 

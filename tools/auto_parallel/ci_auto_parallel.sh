@@ -69,10 +69,10 @@ for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{pri
         for ((i=0; i<${#target_lists_for_semi_auto_ci[@]}; i++)); do
             if [[ $i != ${test_auto_num} ]] && [[ ${file_item} == *${target_lists_for_semi_auto_ci[i]}* ]];then
                 case_list[${#case_list[*]}]=gpt-3_auto
-                case_list[${#case_list[*]}]="test_semi_auto_parallel_llama_model test_semi_auto_parallel_llama_model_amp"
+                case_list[${#case_list[*]}]="llama_auto_unit_test"
                 break
             elif [[ $i == ${test_auto_num} ]] && [[ ${file_item} == *${target_lists_for_semi_auto_ci[i]}* ]];then
-                case_list[${#case_list[*]}]="test_semi_auto_parallel_llama_model test_semi_auto_parallel_llama_model_amp"
+                case_list[${#case_list[*]}]="llama_auto_unit_test"
                 break
             else
                 continue
@@ -166,12 +166,8 @@ if [[ ${#case_list[*]} -ne 0 ]];then
             bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh dygraph_unit_test
             print_info $? `ls -lt ${log_path} | grep "test" | head -n 1 | awk '{print $9}'` ${case}
             let case_num++
-        elif [[ ${case} == "test_semi_auto_parallel_llama_model" ]];then
-            bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh test_semi_auto_parallel_llama_model
-            print_info $? `ls -lt ${log_path} | grep "test" | head -n 1 | awk '{print $9}'` ${case}
-            let case_num++
-        elif [[ ${case} == "test_semi_auto_parallel_llama_model_amp" ]];then
-            bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh test_semi_auto_parallel_llama_model_amp
+        elif [[ ${case} == "llama_auto_unit_test" ]];then
+            bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh llama_auto_unit_test
             print_info $? `ls -lt ${log_path} | grep "test" | head -n 1 | awk '{print $9}'` ${case}
             let case_num++
         else

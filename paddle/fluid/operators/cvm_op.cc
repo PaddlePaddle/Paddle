@@ -127,7 +127,7 @@ class CVMOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "(LodTensor, default LodTensor<float>), a 2-D tensor with shape "
              "[N x D],"
-             " where N is the batch size and D is the emebdding dim. ");
+             " where N is the batch size and D is the embedding dim. ");
     AddInput("CVM",
              "(Tensor),  a 2-D Tensor with shape [N x 2], where N is the batch "
              "size, 2 is show and click.");

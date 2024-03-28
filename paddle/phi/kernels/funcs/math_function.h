@@ -153,7 +153,6 @@ struct TensorSetConstantXPU<float> {
                                      numel,
                                      static_cast<XPUType>(value_));
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
-      dev_ctx->Wait();
     } else {
       std::unique_ptr<T[]> data_cpu(new T[numel]);
       std::fill(data_cpu.get(), data_cpu.get() + numel, static_cast<T>(value_));

@@ -16,6 +16,7 @@
 
 #include <initializer_list>
 #include <memory>
+
 #include "paddle/pir/include/core/attribute.h"
 #include "paddle/pir/include/core/dll_decl.h"
 #include "paddle/pir/include/core/op_info.h"
@@ -27,6 +28,7 @@
 namespace pir {
 class Block;
 using AttributeMap = std::unordered_map<std::string, Attribute>;
+using PropertyMap = std::unordered_map<std::string, Property>;
 
 //===----------------------------------------------------------------------===//
 // OperationArgument

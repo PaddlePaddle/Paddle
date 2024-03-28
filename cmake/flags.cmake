@@ -4,7 +4,7 @@ include(CheckCCompilerFlag)
 include(CheckCXXSymbolExists)
 include(CheckTypeSize)
 
-function(CheckCompilerCXX14Flag)
+function(check_compiler_cxx14_flag)
   if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     if(${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 5.4)
       message(FATAL_ERROR "Unsupported GCC version. GCC >= 5.4 required.")
@@ -14,8 +14,7 @@ function(CheckCompilerCXX14Flag)
           "Found GCC ${CMAKE_CXX_COMPILER_VERSION} which is too high, recommended to use GCC 8.2"
       )
     endif()
-  elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_CXX_COMPILER_ID
-                                                        STREQUAL "Clang")
+  elseif(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang")
     # cmake >= 3.0 compiler id "AppleClang" on Mac OS X, otherwise "Clang"
     # Apple Clang is a different compiler than upstream Clang which has different version numbers.
     # https://gist.github.com/yamaya/2924292
@@ -33,7 +32,8 @@ function(CheckCompilerCXX14Flag)
   endif()
 endfunction()
 
-checkcompilercxx14flag()
+check_compiler_cxx14_flag()
+
 if(NOT WIN32)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 else()
@@ -157,6 +157,26 @@ if(NOT WIN32)
       -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
       -Wimplicit-fallthrough=0 # Warning in tinyformat.h
       ${fsanitize})
+
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 9.0)
+      set(COMMON_FLAGS ${COMMON_FLAGS} -Wno-error=deprecated-copy)
+    endif()
+  endif()
+
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set(COMMON_FLAGS
+        ${COMMON_FLAGS}
+        -Wno-error=unused-private-field
+        -Wno-error=unused-const-variable
+        -Wno-error=deprecated-copy-with-user-provided-copy # For three/five/zeros rule, clang
+        -Wno-error=deprecated-copy # Same above
+        -Wno-error=inconsistent-missing-override # For lots of warnings when not using override for virtual functions, clang
+        -Wno-error=bitwise-instead-of-logical # Warning in "unsupported/Eigen/CXX11/Tensor"
+        -Wno-error=overloaded-virtual # For some inconsistent virtual function signature, clang
+        -Wno-error=defaulted-function-deleted # header file from GLOO, clang
+    )
+  endif()
 
   if(WITH_IPU)
     set(COMMON_FLAGS ${COMMON_FLAGS} -Wno-sign-compare # Warnings in Popart

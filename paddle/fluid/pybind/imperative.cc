@@ -651,10 +651,6 @@ void BindImperative(py::module *m_ptr) {
         *(imperative::AmpOperators::Instance().GetMutableAllowOps()),
         *(imperative::AmpOperators::Instance().GetMutableBlockOps()));
   });
-  py::class_<imperative::jit::ProgramDescTracer>(m, "ProgramDescTracer", "")
-      .def("create_program_desc",
-           &imperative::jit::ProgramDescTracer::CreateProgramDesc)
-      .def("reset", &imperative::jit::ProgramDescTracer::Reset);
 
   py::enum_<paddle::imperative::AmpLevel>(m, "AmpLevel", py::arithmetic())
       .value("O0", paddle::imperative::AmpLevel::O0)
@@ -679,9 +675,6 @@ void BindImperative(py::module *m_ptr) {
   py::class_<imperative::Tracer, std::shared_ptr<imperative::Tracer>>(
       m, "Tracer", R"DOC()DOC")
       .def(py::init([]() { return std::make_unique<imperative::Tracer>(); }))
-      .def_property("_enable_program_desc_tracing",
-                    &imperative::Tracer::IsProgramDescTracingEnabled,
-                    &imperative::Tracer::SetEnableProgramDescTracing)
       .def_property("_use_promote",
                     &imperative::Tracer::GetUsePromote,
                     &imperative::Tracer::SetUsePromote)
@@ -745,9 +738,6 @@ void BindImperative(py::module *m_ptr) {
                   "but got Unknown Type!"));
             }
           })
-      .def("_get_program_desc_tracer",
-           &imperative::Tracer::GetProgramDescTracer,
-           py::return_value_policy::reference)
       .def("_generate_unique_name",
            &imperative::Tracer::GenerateUniqueName,
            py::arg("key") = "dygraph_tmp")
@@ -1357,8 +1347,9 @@ void BindImperative(py::module *m_ptr) {
           auto *index_data = index_tensor.data<int64_t>();
           auto *buffer_data =
               buffer_tensor->mutable_data<float>(buffer_tensor->place());
-          const int &slice_size = src_tensor.numel() / src_tensor.dims()[0];
-          const int &copy_bytes = slice_size * sizeof(float);
+          const int &slice_size =
+              static_cast<int>(src_tensor.numel()) / src_tensor.dims()[0];
+          const int &copy_bytes = static_cast<int>(slice_size) * sizeof(float);
           int64_t c = 0;
           for (int64_t i = 0; i < index_tensor.numel(); i++) {
             std::memcpy(buffer_data + c * slice_size,

@@ -29,8 +29,8 @@ SpmdInfo FusedRopeInferSpmd(const DistMetaTensor& q,
                             const DistMetaTensor& sin,
                             const DistMetaTensor& cos,
                             const DistMetaTensor& position_ids,
-                            bool use_neox_rotary_style,
-                            bool time_major);
+                            bool use_neox_rotary_style = true,
+                            bool time_major = false);
 
 SpmdInfo FusedRopeInferSpmdReverse(const DistMetaTensor& q,
                                    const DistMetaTensor& k,
@@ -41,8 +41,8 @@ SpmdInfo FusedRopeInferSpmdReverse(const DistMetaTensor& q,
                                    const DistMetaTensor& out_q,
                                    const DistMetaTensor& out_k,
                                    const DistMetaTensor& out_v,
-                                   bool use_neox_rotary_style,
-                                   bool time_major);
+                                   bool use_neox_rotary_style = true,
+                                   bool time_major = false);
 
 SpmdInfo FusedRopeGradInferSpmd(const DistMetaTensor& sin,
                                 const DistMetaTensor& cos,
@@ -50,8 +50,8 @@ SpmdInfo FusedRopeGradInferSpmd(const DistMetaTensor& sin,
                                 const DistMetaTensor& out_q_grad,
                                 const DistMetaTensor& out_k_grad,
                                 const DistMetaTensor& out_v_grad,
-                                bool use_neox_rotary_style,
-                                bool time_major);
+                                bool use_neox_rotary_style = true,
+                                bool time_major = false);
 
 }  // namespace distributed
 }  // namespace phi

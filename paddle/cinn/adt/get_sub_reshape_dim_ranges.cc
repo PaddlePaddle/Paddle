@@ -82,7 +82,7 @@ GetSubReshapeDimRanges(const List<DimExpr>& lhs_dims,
     } else if (LhsAcc() > RhsAcc()) {
       rhs_end++;
     } else {
-      LOG(FATAL) << "Dead code";
+      PADDLE_THROW(phi::errors::Fatal("Dead code"));
     }
   }
   CHECK(lhs_end == lhs_dims->size() && rhs_end == rhs_dims->size());

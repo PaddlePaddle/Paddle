@@ -37,7 +37,7 @@ TEST(test_op_compatible_info, test_op_compatible) {
             std::string());
 
   auto comp_1 = comp_map.IsRequireMiniVersion("sequence_pad", "1.5.0");
-  ASSERT_EQ(comp_1, OpCompatibleType::DEFIN_NOT);
+  ASSERT_EQ(comp_1, OpCompatibleType::definite_not);
   auto comp_2 = comp_map.IsRequireMiniVersion("sequence_pad", "1.6.0");
   ASSERT_EQ(comp_2, OpCompatibleType::compatible);
   auto comp_3 = comp_map.IsRequireMiniVersion("sequence_pad", "1.6.1");
@@ -45,14 +45,14 @@ TEST(test_op_compatible_info, test_op_compatible) {
   auto comp_6 = comp_map.IsRequireMiniVersion("sequence_pad", "1.7.0");
   ASSERT_EQ(comp_6, OpCompatibleType::compatible);
   auto comp_7 = comp_map.IsRequireMiniVersion("sequence_pad", "0.7.0");
-  ASSERT_EQ(comp_7, OpCompatibleType::DEFIN_NOT);
+  ASSERT_EQ(comp_7, OpCompatibleType::definite_not);
   auto comp_8 = comp_map.IsRequireMiniVersion("sequence_pad", "2.0.0");
   ASSERT_EQ(comp_8, OpCompatibleType::compatible);
 
   ASSERT_EQ(comp_map.IsRequireMiniVersion("unkop", "2.0.0"),
             OpCompatibleType::compatible);
   ASSERT_EQ(comp_map.IsRequireMiniVersion("unkop", "0.7.0"),
-            OpCompatibleType::DEFIN_NOT);
+            OpCompatibleType::definite_not);
 
   ASSERT_EQ(comp_map.IsRequireMiniVersion("slice", "0.7.0"),
             OpCompatibleType::possible);

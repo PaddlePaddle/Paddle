@@ -44,7 +44,7 @@ class DummyOp : public OperatorBase {
 
 class SumOpMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "").AsDuplicable();
     AddOutput("Out", "");
     AddComment("");
@@ -53,7 +53,7 @@ class SumOpMaker : public OpProtoAndCheckerMaker {
 
 class AssignOpMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "").AsDuplicable();
     AddOutput("Out", "");
     AddComment("");
@@ -62,7 +62,7 @@ class AssignOpMaker : public OpProtoAndCheckerMaker {
 
 class SplitOpMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "");
     AddOutput("Out", "").AsDuplicable();
     AddComment("");

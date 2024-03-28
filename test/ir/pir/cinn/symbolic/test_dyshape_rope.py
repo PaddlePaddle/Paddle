@@ -92,14 +92,14 @@ class TestRotaryPosEmb(unittest.TestCase):
                     },
                 },
                 'else_0': {
-                    'if_0_0': {
+                    'if_0_0': {utils.JIT_KERNEL_NAME: 1},
+                    'else_0_0': {
                         'if_0_0_0': {utils.JIT_KERNEL_NAME: 1},
                         'else_0_0_0': {
                             'if_0_0_0_0': {utils.JIT_KERNEL_NAME: 1},
                             'else_0_0_0_0': {utils.JIT_KERNEL_NAME: 1},
                         },
                     },
-                    'else_0_0': {utils.JIT_KERNEL_NAME: 1},
                 },
             },
         )
@@ -131,5 +131,5 @@ class TestRotaryPosEmb(unittest.TestCase):
             )
 
 
-if __name__ == '__main__':
-    unittest.main()
+# if __name__ == '__main__':
+#     unittest.main()

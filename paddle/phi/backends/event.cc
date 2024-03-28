@@ -84,7 +84,7 @@ void Event::Destroy() {
 
 void Event::Record(const stream::Stream* stream) {
   if (device_) {
-    is_recorded_ = true;  // synchronize the event during detroy
+    is_recorded_ = true;  // synchronize the event during destroy
     stream->RecordEvent(this);
   }
 }

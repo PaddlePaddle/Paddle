@@ -1317,8 +1317,8 @@ def fused_bn_add_act(
         y (Tensor): The rank of input tensor can be 2, 3, 4, 5. The data type
             is float16.
         momentum (float|Tensor, optional): The value used for the moving_mean and
-            moving_var computation. This should be a float number or a tensor with
-            shape [1] and data type as float32. The updated formula is:
+            moving_var computation. This should be a float number or a 0-D Tensor with
+            shape [] and data type as float32. The updated formula is:
             :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
             :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
             Default is 0.9.
