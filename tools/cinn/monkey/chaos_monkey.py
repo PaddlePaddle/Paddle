@@ -15,16 +15,12 @@ from shape_signature_inferer import StaticDim
 import instruction_util as instruction_util
 import op_call_code_gen
 from paddle_eager_generator import PaddleEagerGenerator 
+from numpy_generator import NumpyGenerator 
 from unit_test_case_spec import (
     UnitTestCaseRequirement,
     UnitTestCaseSpec,
     GenerateRandomUnitTestCaseSpec
 )
-
-@dataclass
-class ChaosMonkeySpec:
-    unit_test_case_requirement: UnitTestCaseRequirement
-
 
 def GenerateUnitTestCaseSpec(
     unit_test_case_requirement: UnitTestCaseRequirement
@@ -39,16 +35,6 @@ def CodeGen(
 ) -> Script:
     generator = PaddleEagerGenerator(op_call_code_gen_requirement)
     return generator.Generate(unit_test_case_spec)
-
-def Generate(
-    chaos_monkey_spec: ChaosMonkeySpec
-) -> Script:
-    requirement = chaos_monkey_spec.unit_test_case_requirement
-    unit_test_case_spec = GenerateUnitTestCaseSpec(requirement)
-    return CodeGen(
-        unit_test_case_spec=unit_test_case_spec,
-        op_call_code_gen_requirement=requirement.op_call_code_gen_requirement
-    )
 
 if __name__ == '__main__':
     unit_test_case_requirement=UnitTestCaseRequirement(
@@ -66,13 +52,17 @@ if __name__ == '__main__':
             dim_size=[StaticDim(128), StaticDim(64), StaticDim(32)]
         ),
         op_call_code_gen_requirement=op_call_code_gen.OpCallCodeGenRequirement(
-            module_name="paddle"
+            module_name="numpy"
         )
     )
-    script = Generate(
-        ChaosMonkeySpec(
-            unit_test_case_requirement=unit_test_case_requirement
-        )
+    unit_test_case_spec = GenerateUnitTestCaseSpec(
+        unit_test_case_requirement=unit_test_case_requirement
     )
-    print("import paddle")
+    generator = NumpyGenerator(
+        unit_test_case_requirement.op_call_code_gen_requirement
+    )
+
+    script = generator.Generate(unit_test_case_spec)
+
+    print("import numpy")
     print(script.file_content)
