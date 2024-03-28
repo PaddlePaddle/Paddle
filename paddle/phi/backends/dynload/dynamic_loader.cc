@@ -260,7 +260,7 @@ static inline void* GetDsoHandleFromSearchPath(
         "  2. Configure third-party dynamic library environment variables as "
         "follows:\n"
         "  - Linux: set LD_LIBRARY_PATH by `export LD_LIBRARY_PATH=...`\n"
-        "  - Windows: set PATH by `set PATH=XXX;%PATH%`\n"
+        "  - Windows: set PATH by `set PATH=XXX;%%PATH%%`\n"
         "  - Mac: set  DYLD_LIBRARY_PATH by `export DYLD_LIBRARY_PATH=...` "
         "[Note: After Mac OS 10.11, using the DYLD_LIBRARY_PATH is "
         "impossible unless System Integrity Protection (SIP) is disabled.]";
