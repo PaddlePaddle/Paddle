@@ -593,7 +593,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_new_executor_);
   CP_MEMBER(use_pir_);
   CP_MEMBER(custom_passes_);
-  CP_MEMBER(custom_pass_only_);
   CP_MEMBER(pm_opt_level_);
 
   if (use_gpu_) {

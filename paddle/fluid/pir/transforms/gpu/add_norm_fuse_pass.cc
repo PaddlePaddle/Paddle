@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/gpu/rms_norm_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/add_norm_fuse_pass.h"
 
 #include <string>
 
@@ -192,14 +192,25 @@ class AddLayerNormFusePattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class RmsNormFusePass : public pir::PatternRewritePass {
+class AddNormFusePass : public pir::PatternRewritePass {
  public:
-  RmsNormFusePass() : pir::PatternRewritePass("rms_norm_fuse_pass", 2) {}
+  AddNormFusePass() : pir::PatternRewritePass("add_norm_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
+    // x-pow-mean-scale->rsqrt-
+    //                          mul--
+    // x-----------------------
+    //                                mul --->rms_norm
+    // w-----------------------------
     ps.Add(paddle::drr::Create<RmsNormFusePattern>(context));
+    // x--------
+    //           add-rms_norm --- rms_norm
+    // residual-
     ps.Add(paddle::drr::Create<AddRmsNormFusePattern>(context));
+    // x--------
+    //           add-layer_norm ---- fused_bias_residual_layernorm
+    // residual-
     ps.Add(paddle::drr::Create<AddLayerNormFusePattern>(context));
     return ps;
   }
@@ -207,9 +218,9 @@ class RmsNormFusePass : public pir::PatternRewritePass {
 }  // namespace
 
 namespace pir {
-std::unique_ptr<Pass> CreateRmsNormFusePass() {
-  return std::make_unique<RmsNormFusePass>();
+std::unique_ptr<Pass> CreateAddNormFusePass() {
+  return std::make_unique<AddNormFusePass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(rms_norm_fuse_pass, RmsNormFusePass);
+REGISTER_IR_PASS(add_norm_fuse_pass, AddNormFusePass);

@@ -70,7 +70,7 @@ class TestRmsNormFusePattern(PassTest):
                                 x = paddle.rsqrt(variance + 1e-6) * x
                                 out = x * w
                                 out = paddle.assign(out)
-                                self.pass_list = ['rms_norm_fuse_pass']
+                                self.pass_list = ['add_norm_fuse_pass']
                                 self.feeds = {
                                     "x": np.random.random(x_shape).astype(
                                         "float32"
@@ -99,7 +99,7 @@ class TestRmsNormFusePattern(PassTest):
 
 class TestAddRmsNormFusePattern(PassTest):
     r"""
-        x         residual
+        x         residual       w
         |           |
              add
      |                   |       |
@@ -153,7 +153,7 @@ class TestAddRmsNormFusePattern(PassTest):
                                 )
                                 out = add_out * w
                                 out = paddle.assign(out)
-                                self.pass_list = ['rms_norm_fuse_pass']
+                                self.pass_list = ['add_norm_fuse_pass']
                                 self.feeds = {
                                     "x": np.random.random(x_shape).astype(
                                         "float32"
@@ -230,7 +230,7 @@ class TestAddLayerNormFusePattern(PassTest):
                                 )
                                 out = layer_norm(add_out)
                                 out = paddle.assign(out)
-                                self.pass_list = ['rms_norm_fuse_pass']
+                                self.pass_list = ['add_norm_fuse_pass']
                                 self.feeds = {
                                     "x": np.random.random(x_shape).astype(
                                         "float32"
