@@ -2730,6 +2730,44 @@ void PReluInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void PullSparseV2InferMeta(const std::vector<MetaTensor>& ids,
+                           const std::vector<MetaTensor>& w,
+                           int embeddingdim,
+                           int tableid,
+                           const std::string& accessorclass,
+                           const std::string& ctrlabelname,
+                           int paddingid,
+                           bool scalesparsegrad,
+                           const std::string& inputnames,
+                           bool is_distributed,
+                           std::vector<MetaTensor*> out) {
+  PADDLE_ENFORCE_GE(ids.size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Input(Ids) of PullSparseV2Op can not be null"));
+  PADDLE_ENFORCE_GE(out.size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Output(Out) of PullSparseV2Op can not be null"));
+
+  auto hidden_size = embeddingdim;
+  // auto all_ids_dim = ctx->GetInputsDim("Ids");
+  const size_t n_ids = ids.size();
+  std::vector<phi::DDim> outs_dims;
+  outs_dims.resize(n_ids);
+  for (size_t i = 0; i < n_ids; ++i) {
+    const auto ids_dims = ids[i].dims();
+    auto out_dim = common::vectorize(ids_dims);
+    out_dim.push_back(hidden_size);
+    outs_dims[i] = common::make_ddim(out_dim);
+  }
+  // ctx->SetOutputsDim("Out", outs_dims);
+  for (size_t i = 0; i < n_ids; ++i) {
+    out[i]->set_dims(outs_dims[i]);
+    out[i]->share_lod(ids[i], i);
+  }
+}
+
 void ApplyPerChannelScaleInferMeta(const MetaTensor& x,
                                    const MetaTensor& scales,
                                    MetaTensor* out) {
