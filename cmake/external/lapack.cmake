@@ -54,7 +54,7 @@ else() # MacOS
         "lapack_mac_arm64_v0.3.26.tar.gz"
         CACHE STRING "" FORCE)
     set(LAPACK_URL
-        "https://github.com/PaddlePaddle/Paddle/files/14790239/${LAPACK_FILE}"
+        "https://github.com/PaddlePaddle/Paddle/files/14791051/${LAPACK_FILE}"
         CACHE STRING "" FORCE)
     set(LAPACK_URL_MD5 3f6412105ae2b7465e5ee90c8673e6d4)
     set(GNU_RT_LIB_1 "${LAPACK_LIB_DIR}/libquadmath.0.dylib")
