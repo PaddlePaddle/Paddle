@@ -7679,3 +7679,51 @@ def signbit(x, name=None):
     x = paddle.sign(neg_zero_x)
     out = paddle.cast(x < 0, dtype='bool')
     return out
+
+
+def cartesian_prod(*tensors, name=None):
+    """
+
+    Perform Cartesian product on a given tensor sequence. This behavior is similar to the itertools.product in Python.
+    Equivalent to converting all input tensors into lists, performing itertools.product on these lists,
+    and finally converting the resulting list into tensors.
+
+    Args:
+        tensors (Tensor|list(Tensor)): Any number of 1-D input Tensor, the data type is float32, float64, int32 or int64.
+        name (str, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor). Cartesian product of input tensor, same dtype with tensors.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> a = paddle.to_tensor([1, 2, 3], dtype='int32')
+            >>> b = paddle.to_tensor([5, 6], dtype='int32')
+            >>> res = paddle.cartesian_prod(a, b)
+            >>> print(res)
+            Tensor(shape=[6, 2], dtype=int32, place=Place(gpu:0), stop_gradient=True,
+                [[1, 5],
+                 [1, 6],
+                 [2, 5],
+                 [2, 6],
+                 [3, 5],
+                 [3, 6]])
+
+    """
+    for tensor in tensors:
+        if len(tensor.shape) != 1:
+            raise ValueError(
+                f"Expect a 1D vector, but got shape {tensor.shape}"
+            )
+
+    if len(tensors) == 1:
+        return tensors[0]
+
+    grids = paddle.meshgrid(*tensors)
+    for i, grid in enumerate(grids):
+        if 0 in grid.shape:
+            return paddle.empty([0])
+        grids[i] = paddle.flatten(grid)
+    return paddle.stack(grids, axis=1)
