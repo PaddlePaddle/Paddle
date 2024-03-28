@@ -30,10 +30,10 @@ REAL_TYPE = [
     'float32',
     'float64',
     'bool',
-    'int8',
     'int16',
     'int32',
     'int64',
+    'uint16',
 ]
 TEST_COMPLEX_DATA = [
     np.array(1.0 + 2j),

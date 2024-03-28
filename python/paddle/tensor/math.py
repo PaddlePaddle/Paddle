@@ -7854,8 +7854,9 @@ def isin(elements, test_elements, invert=False, name=None):
     ):
         raise TypeError(f"x must be tensor type, but got {type(test_elements)}")
 
-    if test_elements.numel() < 10.0 * math.pow(elements.numel(), 0.145):
-        if elements.numel() == 0:
+    size_elements = paddle.cast(elements.numel(), 'float32')
+    if test_elements.numel() < 10.0 * paddle.pow(size_elements, 0.145):
+        if size_elements == 0:
             return paddle.empty_like(elements, dtype='bool')
 
         x = elements.reshape(elements.shape + ([1] * test_elements.ndim))
