@@ -31,7 +31,31 @@ namespace common {
     constexpr auto kRank = (rank);             \
     return (callback);                         \
   }
-
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#define PADDLE_VISIT_DDIM(rank, callback)                                    \
+  switch (rank) {                                                            \
+    PADDLE_VISIT_DDIM_BASE(0, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(1, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(2, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(3, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(4, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(5, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(6, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(7, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(8, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(9, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(10, callback);                                    \
+    PADDLE_VISIT_DDIM_BASE(11, callback);                                    \
+    PADDLE_VISIT_DDIM_BASE(12, callback);                                    \
+    default:                                                                 \
+      PD_THROW(                                                              \
+          "Unimplemented error. Invalid dimension to be accessed. Now only " \
+          "supports access to "                                              \
+          "dimension 0 to 12, but received dimension is ",                   \
+          rank,                                                              \
+          ".");                                                              \
+  }
+#else
 #define PADDLE_VISIT_DDIM(rank, callback)                                    \
   switch (rank) {                                                            \
     PADDLE_VISIT_DDIM_BASE(0, callback);                                     \
@@ -52,7 +76,7 @@ namespace common {
           rank,                                                              \
           ".");                                                              \
   }
-
+#endif
 template <typename T1, typename T2>
 inline void dynamic_dim_assign(const T1* in, T2* out, int n) {
   if (n == -1) {
@@ -68,8 +92,11 @@ inline void dynamic_dim_assign(const T1* in, T2* out, int n) {
  */
 class TEST_API DDim {
  public:
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  constexpr static int kMaxRank = 12;
+#else
   constexpr static int kMaxRank = 9;
-
+#endif
   DDim();
 
   DDim(const DDim& ddim);
