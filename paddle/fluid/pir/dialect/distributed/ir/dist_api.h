@@ -16,6 +16,7 @@
 
 #include <vector>
 
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
@@ -31,5 +32,9 @@ pir::Value shard_tensor(const pir::Value& x,
 pir::Value reshard(const pir::Value& x,
                    const phi::distributed::ProcessMesh& process_mesh,
                    const std::vector<int64_t>& dims_mapping);
+
+pir::Value reshard(const pir::Value& x,
+                   const TensorDistAttribute& tensor_dist_attr);
+
 }  // namespace dialect
 }  // namespace paddle

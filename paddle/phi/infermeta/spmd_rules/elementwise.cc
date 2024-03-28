@@ -365,14 +365,17 @@ SpmdInfo ElementwiseBinaryInferSpmdReverse(const DistMetaTensor& x,
 
 SpmdInfo ElementwiseUnaryGradInferSpmd(const DistMetaTensor& x,
                                        const DistMetaTensor& out_grad) {
-  return {{out_grad.dist_attr(), out_grad.dist_attr()}, {out_grad.dist_attr()}};
+  auto dist_attr = CopyTensorDistAttrForOutput(out_grad.dist_attr());
+  dist_attr.set_dims_mapping(out_grad.dist_attr().dims_mapping());
+  return {{dist_attr, dist_attr}, {dist_attr}};
 }
 
 SpmdInfo ElementwiseUnaryGradInferSpmd(const DistMetaTensor& x,
                                        const DistMetaTensor& out,
                                        const DistMetaTensor& out_grad) {
-  return {{out_grad.dist_attr(), out_grad.dist_attr(), out_grad.dist_attr()},
-          {out_grad.dist_attr()}};
+  auto dist_attr = CopyTensorDistAttrForOutput(out_grad.dist_attr());
+  dist_attr.set_dims_mapping(out_grad.dist_attr().dims_mapping());
+  return {{dist_attr, dist_attr, dist_attr}, {dist_attr}};
 }
 
 bool DimsNotEqualOrHasBroadcastDim(const DistMetaTensor& x,
