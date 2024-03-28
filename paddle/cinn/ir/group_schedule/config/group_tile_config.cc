@@ -96,7 +96,7 @@ BuildPureStaticShapeConfig(
     ScheduleConfig::TileConfig tile_config{
         /* warp_num = */ warp_num,
         /* tree_reduce_num = */ 1,
-        /* spatial_inner_num = */ 1,
+        /* spatial_inner_num = */ 4,
         /* reduce_method = */ NoneReduceMethod()};
     return {{bucket_info, tile_config}};
   } else if (base_info->reduce_numel <= 256) {
