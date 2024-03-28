@@ -382,8 +382,6 @@ class ProgramHelper:
                 ].name
 
         for param in dy_params:
-            print("in dy_params: ")
-            print(param)
             # create var in scope and share parameters to scope
             if param is None:
                 continue
@@ -420,9 +418,6 @@ class ProgramHelper:
                 pir_scope_param._share_data_with(
                     param.get_tensor().get_tensor()
                 )
-
-            print("global_scope() :")
-            print(global_scope())
 
     def init(self, main_program, place, dist_context):
         if self.lazy_init:

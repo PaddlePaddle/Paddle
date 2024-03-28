@@ -1756,8 +1756,6 @@ class Engine:
             self._switch_mode(self._mode)
 
     def run(self, data=None, feed=None, fetch_list=None, mode=None):
-        print("in engine run: ")
-        print("data: ", type(data), data)
         if mode is not None:
             self.to_mode(mode)
         feed_dict = self._prepare_feed(data, feed, self._mode)
@@ -1772,12 +1770,14 @@ class Engine:
             self.enable_job_schedule_profiler
         )
 
-        print("feed_dict: ", type(feed_dict), feed_dict)
-        print("fetch_names: ", type(fetch_names), fetch_names)
         # TODO(2024-Q2)
         use_cache = self._strategy.use_cache
         if self._in_pir_mode:
             use_cache = False
+            fetch_names = [
+                self.main_program.get_output_value_by_name(self._loss_names[0])
+            ]
+
         outs = self._executor.run(
             self.main_program,
             feed=feed_dict,
@@ -1785,10 +1785,14 @@ class Engine:
             use_program_cache=use_cache,
             return_numpy=self._strategy.return_numpy,
         )
-        logs = {}
-        # logs = self._prepare_logger(
-        #     outs, None, None, None, fetch_names, fetch_indices, self._mode
-        # )
+
+        if self._in_pir_mode:
+            logs = {"outputs": outs[0], "loss": outs[0]}
+            return logs
+
+        logs = self._prepare_logger(
+            outs, None, None, None, fetch_names, fetch_indices, self._mode
+        )
         return logs
 
     def get_feed_list(self):
