@@ -108,6 +108,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     CScatterOp::name(),
     PushSparseV2Op::name(),
     PartialSendOp::name(),
+    SendAndRecvOp::name(),
     PartialRecvOp::name()};
 
 enum class AttrType {

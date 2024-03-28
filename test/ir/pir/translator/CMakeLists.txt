@@ -18,7 +18,6 @@ list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST
      test_distributed_lookup_table_translate)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST
      test_distributed_push_sparse_translator)
-list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_distributed_fused_lamb_init)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_nop_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_partial_allgather_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_partial_send_translator)
@@ -29,6 +28,7 @@ list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_random_routing_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_limit_by_capacity_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_global_scatter_translator)
+list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_send_and_recv_translator)
 
 if(NOT WITH_DISTRIBUTE)
   list(REMOVE_ITEM TEST_INTERP_CASES ${DISTRIBUTED_OP_TRANSLATOR_TEST})
