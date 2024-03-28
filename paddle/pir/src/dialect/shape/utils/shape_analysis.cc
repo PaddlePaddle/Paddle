@@ -18,6 +18,39 @@
 
 namespace pir {
 
+const symbol::DimExpr& UnionFindSet::Find(const symbol::DimExpr& x) {
+  if (parent_.find(x) == parent_.end()) {
+    return x;
+  }
+  if (parent_[x] != x) {
+    parent_[x] = Find(parent_[x]);
+  }
+  return parent_[x];
+}
+
+void UnionFindSet::Union(const symbol::DimExpr& p, const symbol::DimExpr& q) {
+  if (parent_.find(p) == parent_.end()) {
+    parent_[p] = p;
+  }
+  if (parent_.find(q) == parent_.end()) {
+    parent_[q] = q;
+  }
+  parent_[Find(q)] = Find(p);
+}
+
+std::vector<std::vector<symbol::DimExpr>> UnionFindSet::Clusters() {
+  std::unordered_map<symbol::DimExpr, std::vector<symbol::DimExpr>>
+      clusters_map;
+  for (auto it = parent_.begin(); it != parent_.end(); it++) {
+    clusters_map[Find(it->first)].emplace_back(it->first);
+  }
+  std::vector<std::vector<symbol::DimExpr>> clusters;
+  for (auto it = clusters_map.begin(); it != clusters_map.end(); it++) {
+    clusters.emplace_back(it->second);
+  }
+  return clusters;
+}
+
 static std::string GetValueId(Value val) {
   auto op_id = val.defining_op()->id();
   auto val_idx = val.dyn_cast<OpResult>().index();
@@ -206,6 +239,132 @@ bool ShapeConstraintIRAnalysis::IsSameNumel(Value lhs, Value rhs) const {
                         static_cast<int>(rhs_type.GetRank()));
 }
 
+symbol::TensorShapeOrDataDimExprs SubstituteTensorShapeOrData(
+    const symbol::TensorShapeOrDataDimExprs& shape_or_data,
+    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
+        substitution_pattern) {
+  auto SubstituteOneDimExpr =
+      [](const std::vector<symbol::DimExpr>& original_dim_expr,
+         const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
+             substitution_pattern) -> std::vector<symbol::DimExpr> {
+    std::vector<symbol::DimExpr> substituted_dim_expr{};
+    for (const symbol::DimExpr& dim_expr : original_dim_expr) {
+      const auto& tmp_dim_expr =
+          symbol::SubstituteDimExpr(dim_expr, substitution_pattern);
+      substituted_dim_expr.push_back(symbol::SimplifyDimExpr(tmp_dim_expr));
+    }
+    return substituted_dim_expr;
+  };
+
+  std::vector<symbol::DimExpr> substituted_shape =
+      SubstituteOneDimExpr(shape_or_data.shape(), substitution_pattern);
+  if (!shape_or_data.data().has_value()) {
+    return symbol::ShapeOrData<symbol::DimExpr>(substituted_shape);
+  } else {
+    std::vector<symbol::DimExpr> substituted_data = SubstituteOneDimExpr(
+        shape_or_data.data().value(), substitution_pattern);
+    return symbol::ShapeOrData<symbol::DimExpr>(substituted_shape,
+                                                substituted_data);
+  }
+}
+
+symbol::ShapeOrDataDimExprs SubstituteShapeOrData(
+    const symbol::ShapeOrDataDimExprs& shape_or_data,
+    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
+        substitution_pattern) {
+  auto lambdas = symbol::Overloaded{
+      [&](const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data) {
+        return symbol::ShapeOrDataDimExprs(SubstituteTensorShapeOrData(
+            tensor_shape_or_data, substitution_pattern));
+      },
+      [&](const symbol::TensorListShapeOrDataDimExprs& tensor_list) {
+        symbol::TensorListShapeOrDataDimExprs substituted_tensor_list;
+        for (symbol::TensorShapeOrDataDimExprs tensor_shape_or_data :
+             tensor_list) {
+          substituted_tensor_list.push_back(SubstituteTensorShapeOrData(
+              tensor_shape_or_data, substitution_pattern));
+        }
+        return symbol::ShapeOrDataDimExprs(substituted_tensor_list);
+      }};
+  return std::visit(lambdas, shape_or_data.variant());
+}
+
+int GetDimExprPriority(const symbol::DimExpr& dim_expr) {
+  return std::visit(
+      symbol::Overloaded{
+          [&](std::int64_t) { return 0; },
+          [&](const std::string&) { return 1; },
+          [&](const symbol::Negative<symbol::DimExpr>&) { return 2; },
+          [&](const symbol::Reciprocal<symbol::DimExpr>&) { return 2; },
+          [&](const symbol::Add<symbol::DimExpr>&) { return 2; },
+          [&](const symbol::Mul<symbol::DimExpr>&) { return 2; },
+          [&](const symbol::Max<symbol::DimExpr>&) { return 2; },
+          [&](const symbol::Min<symbol::DimExpr>&) { return 2; },
+          [&](const symbol::Broadcast<symbol::DimExpr>&) { return 2; },
+      },
+      dim_expr.variant());
+}
+
+bool CanDimExprSubstitute(const symbol::DimExpr& lhs,
+                          const symbol::DimExpr& rhs) {
+  int priority_lhs = GetDimExprPriority(lhs);
+  int priority_rhs = GetDimExprPriority(rhs);
+  if (priority_lhs >= 2 && priority_rhs >= 2) return false;
+  return true;
+}
+
+/**
+ * @brief Compare the two dim exprs
+ *
+ * @param lhs The left-hand side dim expr
+ * @param rhs The right-hand side dim expr
+ *
+ * @return -1 if lhs is less than rhs, 1 if lhs is greater than rhs, and 0 if
+ * they are equal
+ */
+int CompareDimExpr(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
+  int lhs_priority = GetDimExprPriority(lhs);
+  int rhs_priority = GetDimExprPriority(rhs);
+  if (lhs_priority != rhs_priority) {
+    return lhs_priority < rhs_priority ? -1 : 1;
+  }
+
+  // if the priority is same, we compare the string value to find the smallest
+  // one
+  if (lhs.isa<std::string>()) {
+    const auto& lhs_str = lhs.dyn_cast<std::string>();
+    const auto& rhs_str = rhs.dyn_cast<std::string>();
+    if (lhs_str.size() != rhs_str.size()) {
+      return lhs_str.size() < rhs_str.size() ? -1 : 1;
+    }
+    return lhs_str.compare(rhs_str);
+  }
+  return 0;
+}
+
+void ShapeConstraintIRAnalysis::AddEqCstr(const symbol::DimExpr& lhs,
+                                          const symbol::DimExpr& rhs) {
+  if (lhs == rhs) return;
+  eq_cstr_set.Union(lhs, rhs);
+  VLOG(8) << "AddEqCstr the constraint: " << lhs << " == " << rhs;
+
+  if (CanDimExprSubstitute(lhs, rhs)) {
+    std::unordered_map<symbol::DimExpr, symbol::DimExpr> substitution_pattern;
+    if (CompareDimExpr(lhs, rhs) < 0) {
+      substitution_pattern[rhs] = lhs;
+    } else {
+      substitution_pattern[lhs] = rhs;
+    }
+
+    for (auto it = value_to_shape_or_data_.begin();
+         it != value_to_shape_or_data_.end();
+         it++) {
+      const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
+          SubstituteShapeOrData(it->second, substitution_pattern);
+      SetShapeOrDataForValue(it->first, substituted_shape_or_data);
+    }
+  }
+}
 symbol::DimExpr ShapeConstraintIRAnalysis::GetProductDimExpr(
     Value value, const std::vector<int>& dim_idxs) const {
   // For static shape

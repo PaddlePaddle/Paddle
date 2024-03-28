@@ -25,6 +25,22 @@
 
 namespace pir {
 
+class IR_API ShapeConstraintIRAnalysis;
+
+class UnionFindSet {
+ public:
+  friend class ShapeConstraintIRAnalysis;
+
+ private:
+  const symbol::DimExpr& Find(const symbol::DimExpr& x);
+
+  void Union(const symbol::DimExpr& p, const symbol::DimExpr& q);
+
+  std::vector<std::vector<symbol::DimExpr>> Clusters();
+
+  std::unordered_map<symbol::DimExpr, symbol::DimExpr> parent_;
+};
+
 // The implementation is based on shape constraint ir.
 class IR_API ShapeConstraintIRAnalysis {
  public:
@@ -71,6 +87,8 @@ class IR_API ShapeConstraintIRAnalysis {
   // Returns true if the two value have the same number elements.
   bool IsSameNumel(Value lhs, Value rhs) const;
 
+  void AddEqCstr(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs);
+
   pir::PrintHooks PrintHook() const;
 
   symbol::DimExpr GetProductDimExpr(Value lhs,
@@ -83,6 +101,8 @@ class IR_API ShapeConstraintIRAnalysis {
 
   std::unordered_map<Value, symbol::ShapeOrDataDimExprs>
       value_to_shape_or_data_;
+
+  UnionFindSet eq_cstr_set;
 
   std::vector<symbol::DimExprConstraint> constraints_;
 };
