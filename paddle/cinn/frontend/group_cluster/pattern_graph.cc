@@ -66,145 +66,23 @@ std::vector<PatternNodePtr> PatternGraph::SortByTopoOrder() {
 }
 
 void PatternGraph::SinkTrivialPattern() {
-  const auto FindTrivialUpstreamForFuse =
-      [&](PatternNodePtrSet all_nodes,
-          PatternNodePtrSet visited_nodes) -> PatternNodePtr {
-    for (PatternNodePtr node : all_nodes) {
-      if ((visited_nodes.find(node) == visited_nodes.end()) &&
-          node->IsTrivial() && !node->downstream_.empty()) {
-        VLOG(4) << "FindTrivialNode: " << node;
-        return node;
-      }
-    }
-    return nullptr;
-  };
-
-  VLOG(4) << "Begin Graph is: ";
-  PrintGraph();
-  PatternNodePtr upstream;
-  PatternNodePtrSet visited_nodes;
-  while ((upstream = FindTrivialUpstreamForFuse(all_pattern_nodes_,
-                                                visited_nodes)) != nullptr) {
-    VLOG(4) << "Start Finding Can Merge Trivial Node.";
-    VLOG(4) << "Remain pattern node is: " << all_pattern_nodes_.size();
-    PrintGraph();
-    std::vector<PatternNodePtr> fusion_candidate = upstream->downstream_;
-    upstream->downstream_.clear();
-
-    for (const auto& downstream : fusion_candidate) {
-      if (downstream->IsReduce() || downstream->IsTrivial()) {
-        MergeNode(upstream, downstream);
-        RemoveNode(downstream);
-      } else {
-        upstream->downstream_.push_back(downstream);
-      }
-    }
-
-    if (upstream->downstream_.empty()) {
-      RemoveNode(upstream);
-    } else {
-      visited_nodes.insert(upstream);
-    }
-  }
-  VLOG(4) << "End Graph is: ";
-  PrintGraph();
-}
-
-void PatternGraph::MergeNode(const PatternNodePtr& upstream,
-                             const PatternNodePtr& downstream) {
-  PatternNodePtr merged_node =
-      std::make_shared<PatternNode>(upstream, downstream);
-
-  // deal with the reference.
-  ExtendVector(&merged_node->upstream_, upstream->upstream_);
-  ExtendVector(&merged_node->upstream_, downstream->upstream_);
-  RemoveFromVector(&merged_node->upstream_, upstream);
-
-  ExtendVector(&merged_node->downstream_, upstream->downstream_);
-  ExtendVector(&merged_node->downstream_, downstream->downstream_);
-  RemoveFromVector(&merged_node->downstream_, downstream);
-
-  for (const auto& upstream_node : merged_node->upstream_) {
-    upstream_node->downstream_.push_back(merged_node);
-  }
-  for (const auto& downstream_node : merged_node->downstream_) {
-    downstream_node->upstream_.push_back(merged_node);
-  }
-
-  // deal with the graph storage.
-  AppendNode(merged_node);
+  GraphTransformer<
+      And<NonSinkNodeMatcher, StmtPatternGraphMatcher<TrivialPattern>>,
+      TrivialPatternMerge>(this);
 }
 
 void PatternGraph::ReduceLiftReduceTree() {
-  const auto FindCanLiftReducePattern =
-      [](PatternNodePtrSet all_nodes) -> PatternNodePtr {
-    for (PatternNodePtr node : all_nodes) {
-      if (node->IsReduce() && (node->downstream_.size() < 2)) {
-        VLOG(4) << "Find Can Lift Reduce Op." << node;
-        return node;
-      }
-    }
-    return nullptr;
-  };
-  PatternNodePtr op;
-  while ((op = FindCanLiftReducePattern(all_pattern_nodes_)) != nullptr) {
-    const auto& reduce_pattern = ToReducePattern(op->stmt_pattern_);
-    op->stmt_pattern_ = ReduceTreePattern({reduce_pattern}, reduce_pattern);
-  }
+  GraphTransformer<
+      And<DownstreamSmallerThan<2>, StmtPatternGraphMatcher<ReducePattern>>,
+      LiftReduceToReduceTree>(this);
 }
 
 void PatternGraph::ReduceTreeGrown() {
-  const auto FindReduceTree =
-      [](PatternNodePtrSet all_nodes,
-         const policy::PolicyManager p) -> PatternNodePtr {
-    for (PatternNodePtr node : all_nodes) {
-      if (node->IsReduceTree() && !node->downstream_.empty() &&
-          node->downstream_.at(0)->IsReduceTree() &&
-          p.CanFuse(node, node->downstream_.at(0))) {
-        return node;
-      }
-    }
-    return nullptr;
-  };
-  PatternNodePtr upstream;
-  VLOG(4) << "Start Tree Grown, Graph is:";
-  PrintGraph();
-  while ((upstream = FindReduceTree(all_pattern_nodes_, policy_manager_)) !=
-         nullptr) {
-    CHECK_EQ(upstream->downstream_.size(), 1);
-    auto downstream = upstream->downstream_.at(0);
-    PrintGraph();
-    VLOG(4) << "Start Merge.";
-    MergeNode(upstream, downstream);
-    RemoveNode(downstream);
-    RemoveNode(upstream);
-    VLOG(4) << "End Graph is: ";
-    PrintGraph();
-  }
+  GraphTransformer<CanFuseReduceTreeMatcher, MergeReduceTreeOperation>(this);
 }
 
 void PatternGraph::ReduceTree_Trivial_Fusion() {
-  const auto FindReduceTree =
-      [](PatternNodePtrSet all_nodes) -> PatternNodePtr {
-    for (PatternNodePtr node : all_nodes) {
-      if (node->IsReduceTree() && !node->downstream_.empty() &&
-          node->downstream_.at(0)->IsTrivial())
-        return node;
-    }
-    return nullptr;
-  };
-  PatternNodePtr upstream;
-  while ((upstream = FindReduceTree(all_pattern_nodes_)) != nullptr) {
-    CHECK_EQ(upstream->downstream_.size(), 1);
-    auto downstream = upstream->downstream_.at(0);
-    if (policy_manager_.CanFuse(upstream, downstream)) {
-      PatternNodePtr new_node =
-          std::make_shared<PatternNode>(upstream, downstream);
-      AppendNode(new_node);
-      RemoveNode(downstream);
-      RemoveNode(upstream);
-    }
-  }
+  GraphTransformer<CanFuseRxTMatcher, FuseReduceTreeAndTrivial>(this);
 }
 
 PatternGraph::PatternGraph(const std::vector<const pir::Operation*>& ops,
@@ -300,6 +178,31 @@ void PatternGraph::PrintGraph() {
       VLOG(4) << " <d- " << d;
     }
   }
+}
+
+void PatternGraph::MergeNode(const PatternNodePtr& upstream,
+                             const PatternNodePtr& downstream) {
+  PatternNodePtr merged_node =
+      std::make_shared<PatternNode>(upstream, downstream);
+
+  // deal with the reference.
+  ExtendVector(&merged_node->upstream_, upstream->upstream_);
+  ExtendVector(&merged_node->upstream_, downstream->upstream_);
+  RemoveFromVector(&merged_node->upstream_, upstream);
+
+  ExtendVector(&merged_node->downstream_, upstream->downstream_);
+  ExtendVector(&merged_node->downstream_, downstream->downstream_);
+  RemoveFromVector(&merged_node->downstream_, downstream);
+
+  for (const auto& upstream_node : merged_node->upstream_) {
+    upstream_node->downstream_.push_back(merged_node);
+  }
+  for (const auto& downstream_node : merged_node->downstream_) {
+    downstream_node->upstream_.push_back(merged_node);
+  }
+
+  // deal with the graph storage.
+  AppendNode(merged_node);
 }
 
 }  // namespace cinn::frontend::group_cluster

@@ -48,6 +48,7 @@ inline std::vector<std::vector<const pir::Operation*>> ClusterOps(
   const auto& shardable_axes_policy =
       std::make_shared<group_cluster::policy::RelativeJudgePolicy>(
           ops, shape_analysis);
+
   const auto& general_topo_policy =
       std::make_shared<group_cluster::policy::GeneralTopoPolicy>();
 
