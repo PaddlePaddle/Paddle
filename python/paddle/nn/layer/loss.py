@@ -1034,7 +1034,13 @@ class KLDivLoss(Layer):
 
     KL divergence loss is calculated as follows:
 
+    If `log_target` is False:
+
     $$l(x, y) = y * (\log(y) - x)$$
+
+    If `log_target` is True:
+
+    $$l(x, y) = \exp(y) * (y - x)$$
 
     Here :math:`x` is input and :math:`y` is label.
 
@@ -1054,6 +1060,7 @@ class KLDivLoss(Layer):
             if `reduction` is ``'sum'``, the reduced sum loss is returned;
             if `reduction` is ``'none'``, no reduction will be applied.
             Default is ``'mean'``.
+        log_target (bool, optional): Indicate whether `label` is passed in log space. Default is False.
 
     Shape:
 
@@ -1099,12 +1106,13 @@ class KLDivLoss(Layer):
 
     """
 
-    def __init__(self, reduction='mean'):
+    def __init__(self, reduction='mean', log_target=False):
         super().__init__()
         self.reduction = reduction
+        self.log_target = log_target
 
     def forward(self, input, label):
-        out = F.kl_div(input, label, self.reduction)
+        out = F.kl_div(input, label, self.reduction, self.log_target)
         return out
 
 
