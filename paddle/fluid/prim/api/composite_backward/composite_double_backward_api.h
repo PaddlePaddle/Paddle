@@ -561,17 +561,16 @@ void silu_double_grad(const Tensor& x,
                       const Tensor& grad_x_grad,
                       Tensor* grad_x,
                       Tensor* grad_out_grad) {
-  auto sigmoid = 1 / (scale<T>(exp<T>(scale<T>(x, -1.0)), 1.0, 1.0));
-  auto tmp1 = scale<T>(sigmoid, -1.0, 1.0);
-  auto tmp2 = scale<T>(tmp1 * x, 1.0, 1.0);
+  auto sigmoid = 1 / (1 + exp<T>(-x));
+  auto tmp1 = 1 - sigmoid;
+  auto tmp2 = 1 + tmp1 * x;
   auto grad_x_grad_mul_sigmoid = grad_x_grad * sigmoid;
   if (grad_out_grad) {
     auto ddout = grad_x_grad_mul_sigmoid * tmp2;
     set_output<T>(ddout, grad_out_grad);
   }
   if (grad_x) {
-    auto dx = grad_x_grad_mul_sigmoid * out_grad *
-              (scale<T>(tmp2 - out, 1.0, 1.0)) * tmp1;
+    auto dx = grad_x_grad_mul_sigmoid * out_grad * (1 + (tmp2 - out)) * tmp1;
     set_output<T>(dx, grad_x);
   }
 }
