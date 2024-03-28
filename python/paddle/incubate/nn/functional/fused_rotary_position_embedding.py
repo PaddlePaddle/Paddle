@@ -27,6 +27,7 @@ def fused_rotary_position_embedding(
     position_ids=None,
     use_neox_rotary_style=True,
     time_major=False,
+    rotary_emb_base=10000.0,
 ):
     r"""
     Fused rotary position embedding.
@@ -40,6 +41,7 @@ def fused_rotary_position_embedding(
         position_ids (Tensor, optional): The input tensor. The data type is int64. The shape of position_ids must be [batch_size, seq_len].
         use_neox_rotary_style(optional|bool): When the use_neox_rotary_style is True, every two adjacent numbers are calculated. When the use_neox_rotary_style is False, the numbers corresponding to the positions of the front half and back half segments are calculated. Default True.
         time_major(optional|bool): Whether the first dimension of the q, k, v input means the time steps. If time_major is True, the shape of Tensor is [seq_len, batch_size, num_heads, head_dim], otherwise [batch_size, seq_len, num_heads, head_dime]. Defaults to False. `time_steps` means the length of input sequence.
+        rotary_emb_base(optional|float): the base of the rotary embedding. Default 10000.
 
     Returns:
         out_q/out_k/out_v Tensor representing the fused rotary position embedding, has same shape and data type as `q` .
@@ -91,7 +93,15 @@ def fused_rotary_position_embedding(
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.fused_rotary_position_embedding(
-            q, k, v, sin, cos, position_ids, use_neox_rotary_style, time_major
+            q,
+            k,
+            v,
+            sin,
+            cos,
+            position_ids,
+            use_neox_rotary_style,
+            time_major,
+            rotary_emb_base,
         )
 
     helper = LayerHelper('fused_rotary_position_embedding', **locals())
@@ -123,6 +133,7 @@ def fused_rotary_position_embedding(
         attrs={
             'use_neox_rotary_style': use_neox_rotary_style,
             'time_major': time_major,
+            'rotary_emb_base': rotary_emb_base,
         },
     )
 

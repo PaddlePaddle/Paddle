@@ -33,6 +33,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                          const paddle::optional<DenseTensor>& dout_v,
                          bool use_neox_rotary_style,
                          bool time_major,
+                         float rotary_emb_base,
                          DenseTensor* dq,
                          DenseTensor* dk,
                          DenseTensor* dv) {
@@ -134,7 +135,8 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                                             seq_stride,
                                             outs_data,
                                             num_inputs,
-                                            div_c);
+                                            div_c,
+                                            rotary_emb_base);
 
   } else {
     // rotary position embedding Q
@@ -155,7 +157,8 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                                             seq_stride_q,
                                             outs_data,
                                             1,
-                                            div_c);
+                                            div_c,
+                                            rotary_emb_base);
 
     // rotary position embedding K,V
     int64_t batch_stride_kv = time_major
@@ -180,7 +183,8 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                                             seq_stride_kv,
                                             out_kv,
                                             num_inputs - 1,
-                                            div_c);
+                                            div_c,
+                                            rotary_emb_base);
   }
 }
 
@@ -192,6 +196,5 @@ PD_REGISTER_KERNEL(fused_rotary_position_embedding_grad,
                    ALL_LAYOUT,
                    phi::fusion::FusedRopeGradKernel,
                    float,
-                   double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16){};
