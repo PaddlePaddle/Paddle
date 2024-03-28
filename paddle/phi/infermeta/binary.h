@@ -524,6 +524,8 @@ void ShuffleBatchInferMeta(const MetaTensor& x,
 
 );
 
+void SumAsInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
                               const MetaTensor& mask,
                               MetaTensor* out);

@@ -3047,6 +3047,18 @@ void SequenceMaskInferMeta(const MetaTensor& x,
   y->set_dtype(out_dtype);
 }
 
+void SumAsInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
+  DataType out_dtype;
+  if (x.dtype() == DataType::BOOL || x.dtype() == DataType::INT32) {
+    out_dtype = DataType::INT64;
+  } else {
+    out_dtype = x.dtype();
+  }
+  out->set_dtype(out_dtype);
+  out->set_dims(y.dims());
+  out->set_layout(x.layout());
+}
+
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
                               const MetaTensor& mask,
                               MetaTensor* out) {
