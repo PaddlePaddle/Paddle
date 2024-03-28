@@ -196,6 +196,8 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'push_dense',
     'limit_by_capacity',
     'global_scatter',
+    'pull_box_sparse',
+    'pull_box_sparse_',
 ]
 
 
