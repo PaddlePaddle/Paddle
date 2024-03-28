@@ -80,7 +80,6 @@ class TestSimplifyWithBasicOpsPassUpscale(PassAutoScanTest):
             min_subgraph_size=0,
             precision_mode=paddle_infer.PrecisionType.Float32,
             use_static=False,
-            use_calib_mode=False,
         )
         yield config, ['relu'], (1e-5, 1e-5)
 
@@ -149,7 +148,6 @@ class TestSimplifyWithBasicOpsPassDowngrade(PassAutoScanTest):
             min_subgraph_size=0,
             precision_mode=paddle_infer.PrecisionType.Float32,
             use_static=False,
-            use_calib_mode=False,
         )
         yield config, ['scale', 'relu'], (1e-5, 1e-5)
 

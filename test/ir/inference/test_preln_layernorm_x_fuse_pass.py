@@ -43,7 +43,6 @@ class TestLayernormShiftPartitionPass(PassAutoScanTest):
             min_subgraph_size=0,
             precision_mode=paddle_infer.PrecisionType.Float32,
             use_static=False,
-            use_calib_mode=False,
         )
         config.set_trt_dynamic_shape_info(
             {
@@ -69,7 +68,6 @@ class TestLayernormShiftPartitionPass(PassAutoScanTest):
             min_subgraph_size=0,
             precision_mode=paddle_infer.PrecisionType.Half,
             use_static=False,
-            use_calib_mode=False,
         )
         config.set_trt_dynamic_shape_info(
             {

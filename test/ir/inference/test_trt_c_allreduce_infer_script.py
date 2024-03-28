@@ -95,7 +95,6 @@ def run(op_type, precision):
             if precision == "fp16"
             else PrecisionType.Int8,
             use_static=False,
-            use_calib_mode=False,
         )
         config.set_trt_dynamic_shape_info(
             {"data": [3, 4]}, {"data": [3, 4]}, {"data": [3, 4]}

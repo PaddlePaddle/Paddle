@@ -102,7 +102,6 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             min_subgraph_size=0,
             precision_mode=paddle.inference.PrecisionType.Float32,
             use_static=True,
-            use_calib_mode=False,
         )
         config.set_trt_dynamic_shape_info(
             {"x": [32, 3, 7, 7]},

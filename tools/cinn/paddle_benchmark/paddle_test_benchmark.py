@@ -75,7 +75,6 @@ def set_config(args):
         min_subgraph_size=3,
         precision_mode=paddle_infer.PrecisionType.Float32,
         use_static=False,
-        use_calib_mode=False,
     )
     config.enable_memory_optim()
     config.gpu_device_id()

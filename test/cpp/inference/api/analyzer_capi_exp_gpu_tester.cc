@@ -59,7 +59,7 @@ TEST(PD_Config, gpu_interface) {
   EXPECT_TRUE(cudnn);
 
   PD_ConfigEnableTensorRtEngine(
-      config, 1 << 20, 1, 3, PD_PRECISION_INT8, FALSE, TRUE);
+      config, 1 << 20, 1, 3, PD_PRECISION_INT8, FALSE, FALSE);
   bool trt_enable = PD_ConfigTensorRtEngineEnabled(config);
   EXPECT_TRUE(trt_enable);
 
@@ -160,7 +160,7 @@ TEST(PD_Config, trt_int8) {
   PD_Config* config = PD_ConfigCreate();
   PD_ConfigEnableUseGpu(config, 100, 0, 0);
   PD_ConfigEnableTensorRtEngine(
-      config, 1 << 20, 1, 3, PD_PRECISION_INT8, FALSE, TRUE);
+      config, 1 << 20, 1, 3, PD_PRECISION_INT8, FALSE, FALSE);
   bool trt_enable = PD_ConfigTensorRtEngineEnabled(config);
   EXPECT_TRUE(trt_enable);
   PD_ConfigDestroy(config);

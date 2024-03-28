@@ -45,7 +45,7 @@ void TestDynamic(bool with_dynamic = true,
 
   // Set the input's min, max, opt shape
   config.EnableTensorRtEngine(
-      1 << 30, 1, 1, AnalysisConfig::Precision::kFloat32, true, true);
+      1 << 30, 1, 1, AnalysisConfig::Precision::kFloat32, true, false);
   if (delete_conv_bn) {
     config.pass_builder()->DeletePass("conv_bn_fuse_pass");
   }
@@ -99,8 +99,12 @@ void TestDynamic2() {
       {"image", {1, 3, 10, 10}}, {"in1", {1, 2, 1, 1}}, {"in2", {1, 2, 1, 1}}};
   std::map<std::string, std::vector<int>> opt_input_shape = {
       {"image", {1, 3, 5, 5}}, {"in1", {1, 2, 1, 1}}, {"in2", {1, 2, 1, 1}}};
-  config.EnableTensorRtEngine(
-      1 << 30, batch_size, 0, AnalysisConfig::Precision::kFloat32, false, true);
+  config.EnableTensorRtEngine(1 << 30,
+                              batch_size,
+                              0,
+                              AnalysisConfig::Precision::kFloat32,
+                              false,
+                              false);
 
   config.SetTRTDynamicShapeInfo(
       min_input_shape, max_input_shape, opt_input_shape);

@@ -131,8 +131,7 @@ class BackendPaddle:
                     precision_mode=precision_mode,
                     max_batch_size=max_batch_size,
                     min_subgraph_size=self.args.subgraph_size,
-                    use_static=False,
-                    use_calib_mode=False
+                    use_static=False
                     if self.args.precision == 'int8'
                     else False,
                 )
