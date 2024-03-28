@@ -28,7 +28,7 @@ class DepthwiseConvPattern : public paddle::drr::DrrPatternBase {
   std::string depthwise_conv_name_;
 
  public:
-  DepthwiseConvPattern(const std::string &conv_name)
+  explicit DepthwiseConvPattern(const std::string &conv_name)
       : depthwise_conv_name_(conv_name) {}
 
   std::string name() const override { return "DepthwiseConvPattern"; }
