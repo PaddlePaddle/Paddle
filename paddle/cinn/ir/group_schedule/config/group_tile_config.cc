@@ -236,7 +236,7 @@ BuildStaticReduceConfig(
     ScheduleConfig::TileConfig tile_config__1M_INF{
         /* warp_num = */ 32,
         /* tree_reduce_num = */ 1,
-        /* spatial_inner_num = */ 16,
+        /* spatial_inner_num = */ 4,
         /* reduce_method = */ NoneReduceMethod()};
     return {{bucket_info__1_1023, tile_config__1_1023},
             {bucket_info__1024_1M, tile_config__1024_1M},
