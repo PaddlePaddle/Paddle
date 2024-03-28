@@ -217,9 +217,11 @@ class TEST_API Tensor {
 
   void set_producer(OpCall* producer) { producer_ = producer; }
 
-  const std::vector<const OpCall*>& consumers() const { return consumers_; }
+  const std::unordered_set<const OpCall*>& consumers() const {
+    return consumers_;
+  }
 
-  void AddConsumer(const OpCall* consumer) { consumers_.push_back(consumer); }
+  void AddConsumer(const OpCall* consumer) { consumers_.insert(consumer); }
 
  private:
   Tensor(const std::string& name, PatternGraph* pattern_graph)
@@ -230,7 +232,7 @@ class TEST_API Tensor {
 
   std::string name_;
   OpCall* producer_{nullptr};
-  std::vector<const OpCall*> consumers_;
+  std::unordered_set<const OpCall*> consumers_;
   PatternGraph* pattern_graph_{nullptr};
 };
 
