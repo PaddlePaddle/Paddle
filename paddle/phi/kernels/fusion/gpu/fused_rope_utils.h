@@ -83,8 +83,7 @@ __device__ void VectorizedGetSinCos(phi::Array<const T*, 2> sin_cos_data,
 
       MPType idx = static_cast<MPType>(((index + nx) % head_dim) / 2 * 2.0);
       MPType indicses =
-          static_cast<MPType>(1) / pow(static_cast<MPType>(rotary_emb_base),
-                                       idx * static_cast<MPType>(div_c));
+          static_cast<MPType>(1) / __powf(rotary_emb_base, idx * div_c);
       MPType value = pos_seq * indicses;
       sin_value[nx] = sin(value);
       cos_value[nx] = cos(value);
