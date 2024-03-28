@@ -18,6 +18,7 @@
 
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/common/cas.h"
+#include "paddle/common/enforce.h"
 
 using dnnl::algorithm;
 using dnnl::memory;
@@ -163,7 +164,10 @@ CINN_REGISTER_HELPER(cinn_cpu_mkldnn) {
 
   FunctionProto::shape_inference_t inference_shape_conv2d_nchw =
       [](const std::vector<Expr>& args, int offset) {
-        CHECK_EQ(args.size(), 16UL) << "Wrong number of arguments passed in";
+        PADDLE_ENFORCE_EQ(args.size(),
+                          16UL,
+                          phi::errors::InvalidArgument(
+                              "Wrong number of arguments passed in."));
         auto N = cinn::common::AutoSimplify(args[0]);
         int input_h = cinn::common::AutoSimplify(args[2]).as_int32();
         int input_w = cinn::common::AutoSimplify(args[3]).as_int32();

@@ -657,6 +657,16 @@
     func : prod_grad
   composite: prod_grad(x, out, out_grad, dims, keep_dim, reduce_all, x_grad)
 
+- backward_op : rank_attention_grad
+  forward : rank_attention (Tensor x, Tensor rank_offset, Tensor rank_param, int max_rank = 3, int max_size = 0) -> Tensor(input_help), Tensor(out), Tensor(ins_rank)
+  args : (Tensor x, Tensor rank_offset, Tensor rank_param, Tensor input_help, Tensor ins_rank, Tensor out_grad, int max_rank = 3, int max_size = 0)
+  output : Tensor(rank_param_grad)
+  infer_meta :
+    func : RankAttentionGradInferMeta
+  kernel :
+    func : rank_attention_grad
+    data_type : out_grad
+
 - backward_op : repeat_interleave_grad
   forward : repeat_interleave(Tensor x, int repeats, int axis) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int repeats, int axis)

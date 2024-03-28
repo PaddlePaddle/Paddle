@@ -18,6 +18,7 @@ sys.path.append('../../../../legacy_test/')
 import unittest
 
 import numpy as np
+import parameterized as param
 from op_test import OpTest, convert_float_to_uint16
 
 import paddle
@@ -78,6 +79,52 @@ class TestPowOp(OpTest):
 
     def if_enable_cinn(self):
         pass
+
+
+@param.parameterized_class(
+    ('primal', 'cotangent', 'dtype'),
+    [
+        (np.random.rand(10, 10), np.random.rand(10, 10), np.float32),
+    ],
+)
+class TestPowDoubleGradComp(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.primal = cls.primal.astype(cls.dtype)
+        if cls.cotangent is not None:
+            cls.cotangent = cls.cotangent.astype(cls.dtype)
+
+    def test_cos_double_grad_comp_dygraph(self):
+        def actual(primal):
+            paddle.disable_static()
+            core.set_prim_eager_enabled(True)
+            core._set_prim_backward_blacklist("pow_grad")
+            x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
+            x.stop_gradient = False
+            y = paddle.pow(x, 2.7)
+            dx = paddle.grad(y, x, create_graph=True, retain_graph=True)
+
+            ddx = paddle.grad(dx, x, create_graph=True, retain_graph=True)
+            return ddx[0]
+
+        def desired(primal):
+            paddle.disable_static()
+            core.set_prim_eager_enabled(False)
+            x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
+            x.stop_gradient = False
+            y = paddle.pow(x, 2.7)
+            dx = paddle.grad(y, x, create_graph=True, retain_graph=True)
+
+            ddx = paddle.grad(dx, x, create_graph=True, retain_graph=True)
+            return ddx[0]
+
+        np.testing.assert_allclose(
+            actual=actual(self.primal),
+            desired=desired(self.primal),
+            rtol=1e-6,
+            atol=0,
+        )
+        core.set_prim_eager_enabled(False)
 
 
 if __name__ == '__main__':
