@@ -26,6 +26,7 @@ from .parallel_layers import (  # noqa: F401
 )
 from .pipeline_parallel import (  # noqa: F401
     PipelineParallel,
+    PipelineParallelMicroStepLocations,
     PipelineParallelWithInterleave,
     PipelineParallelWithInterleaveFthenB,
 )
