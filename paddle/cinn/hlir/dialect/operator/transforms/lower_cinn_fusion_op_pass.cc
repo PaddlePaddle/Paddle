@@ -825,7 +825,7 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
         fusion_op->GetParentProgram());
     VLOG(4) << "Program before lowering: \n"
             << pir::CustomPrintHelper(*program, shape_analysis.PrintHook());
-    auto target = cinn::common::DefaultNVGPUTarget();
+    auto target = cinn::runtime::CurrentTarget::GetCurrentTarget();
     auto ir_compiler =
         cinn::hlir::framework::PirCompilerManager::Create(target);
     auto group = RebuildGroup(fusion_op);

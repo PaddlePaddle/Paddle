@@ -38,7 +38,7 @@ const ::cinn::common::Target& PlaceToCinnTarget(const platform::Place& place) {
   if (platform::is_cpu_place(place)) {
     return ::cinn::common::DefaultHostTarget();
   } else if (platform::is_gpu_place(place)) {
-    return ::cinn::common::DefaultNVGPUTarget();
+    return ::cinn::runtime::CurrentTarget::GetCurrentTarget();
   }
 
   PADDLE_THROW(platform::errors::InvalidArgument(

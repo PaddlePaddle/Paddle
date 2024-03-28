@@ -161,6 +161,7 @@ void Target::SetActiveDevices(std::vector<int> deviceIds) {
                     Target::Language::sycl,
                     ::common::errors::PreconditionNotMet(
                         "Set device only supported for sycl backend!"));
+  CINN_RUNTIME_NOT_IMPLEMENTED
   // BackendAPI::get_backend(language)->SetActiveDevices(deviceIds);
   // SYCLWorkspace::Global()->SetActiveDevices(deviceIds);
 }
@@ -182,11 +183,7 @@ std::ostream &operator<<(std::ostream &os, const Target &target) {
   os << ",";
   os << target.arch;
   os << ",";
-  // if(target.language==Target::Language::sycl){
-  //   os <<"cuda";
-  // }else{
   os << target.language;
-  //}
   os << ",";
 
   switch (target.bits) {
@@ -343,6 +340,8 @@ int GetMaxBlocks() {
 const Target &DefaultTarget() {
 #ifdef CINN_WITH_CUDA
   return DefaultNVGPUTarget();
+#elif defined(CINN_WITH_ROCM)
+  return DefaultROCMTarget();
 #else
   return DefaultHostTarget();
 #endif
