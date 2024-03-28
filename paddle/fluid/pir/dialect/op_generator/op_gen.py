@@ -820,6 +820,8 @@ class OpInfoParser:
             input_types_map = {
                 'dense': 'paddle::dialect::DenseTensorType',
                 'selected_rows': 'paddle::dialect::SelectedRowsType',
+                'sparse_coo': 'paddle::dialect::SparseCooTensorType',
+                'sparse_csr': 'paddle::dialect::SparseCsrTensorType',
             }
 
             for kernel_func_name in self.kernel_map['func']:
@@ -901,6 +903,8 @@ class OpInfoParser:
             output_type_map = {
                 'dense': 'paddle::dialect::DenseTensorType',
                 'selected_rows': 'paddle::dialect::SelectedRowsType',
+                'sparse_coo': 'paddle::dialect::SparseCooTensorType',
+                'sparse_csr': 'paddle::dialect::SparseCsrTensorType',
             }
 
             for kernel_func_name in self.kernel_map['func']:
@@ -1100,6 +1104,13 @@ def get_input_grad_semantic(op_info, op_info_items):
 
         bwd_fwd_input_list = bwd_op_info.forward_input_name_list
         if bwd_fwd_input_list is not None:
+            print(
+                op_info.op_phi_name,
+                bwd_fwd_input_list,
+                len(bwd_fwd_input_list),
+                num_inputs,
+                op_info.input_name_list,
+            )
             assert (
                 len(bwd_fwd_input_list) == num_inputs
             ), "Configuration of forward op and backward op is not match."

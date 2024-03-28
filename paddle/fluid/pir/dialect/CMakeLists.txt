@@ -27,18 +27,14 @@ set(pir_op_fwd_src_yaml
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/ops.yaml)
 set(pir_op_bwd_src_yaml
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/ops_backward.yaml)
-
 set(pir_update_op_fwd_src_yaml
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/update_ops.yaml)
+
 set(parsed_op_dir
     ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/generated)
 set(pir_op_fwd_yaml ${parsed_op_dir}/ops.parsed.yaml)
 set(pir_op_bwd_yaml ${parsed_op_dir}/ops_backward.parsed.yaml)
 set(pir_update_op_fwd_yaml ${parsed_op_dir}/update_ops.parsed.yaml)
-
-set(op_yaml_files
-    ${op_fwd_yaml},${op_bwd_yaml},${fused_op_fwd_yaml},${fused_op_bwd_yaml},${pir_op_fwd_yaml},${pir_op_bwd_yaml},${pir_update_op_fwd_yaml}
-)
 
 # SRC files for defining operators
 set(op_namespace paddle,dialect)
@@ -73,8 +69,28 @@ set(pir_bwd_op_source_file_tmp ${pir_bwd_op_source_file}.tmp)
 set(pir_update_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_pir_op_update.cc)
 set(pir_update_op_source_file_tmp ${pir_update_op_source_file}.tmp)
 
+# YAML files for defining sparse operators
+set(pir_op_fwd_sparse_src_yaml
+    ${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_ops.yaml)
+set(pir_op_bwd_sparse_src_yaml
+    ${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_backward.yaml)
+
+set(pir_op_fwd_sparse_yaml ${parsed_op_dir}/sparse_ops.parsed.yaml)
+set(pir_op_bfd_sparse_yaml ${parsed_op_dir}/sparse_backward.parsed.yaml)
+
+# SRC files for defining sparse operators
+set(sparse_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_op_sparse.cc)
+set(bwd_sparse_op_source_file ${PD_DIALECT_SOURCE_DIR}/pd_op_sparse_bwd.cc)
+
+set(sparse_op_source_file_tmp ${sparse_op_source_file}.tmp)
+set(bwd_sparse_op_source_file_tmp ${bwd_sparse_op_source_file}.tmp)
+
+set(op_yaml_files
+    ${op_fwd_yaml},${op_bwd_yaml},${fused_op_fwd_yaml},${fused_op_bwd_yaml},${pir_op_fwd_yaml},${pir_op_bwd_yaml},${pir_update_op_fwd_yaml},${pir_op_fwd_sparse_yaml},${pir_op_bfd_sparse_yaml}
+)
+
 set(op_src_files_tmp
-    ${op_source_file_tmp},${bwd_op_source_file_tmp},${fused_op_source_file_tmp},${bwd_fused_op_source_file_tmp},${pir_op_source_file_tmp},${pir_bwd_op_source_file_tmp},${pir_update_op_source_file_tmp}
+    ${op_source_file_tmp},${bwd_op_source_file_tmp},${fused_op_source_file_tmp},${bwd_fused_op_source_file_tmp},${pir_op_source_file_tmp},${pir_bwd_op_source_file_tmp},${pir_update_op_source_file_tmp},${sparse_op_source_file_tmp},${bwd_sparse_op_source_file_tmp}
 )
 
 set(op_vjp_src_file_tmp ${op_vjp_source_file_tmp})
@@ -87,7 +103,13 @@ execute_process(
   COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
           ${pir_update_op_fwd_src_yaml} --output_path ${pir_update_op_fwd_yaml}
   COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
-          ${pir_op_bwd_src_yaml} --output_path ${pir_op_bwd_yaml} --backward)
+          ${pir_op_bwd_src_yaml} --output_path ${pir_op_bwd_yaml} --backward
+  COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
+          ${pir_op_fwd_sparse_src_yaml} --output_path ${pir_op_fwd_sparse_yaml}
+  COMMAND
+    ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
+    ${pir_op_bwd_sparse_src_yaml} --output_path ${pir_op_bfd_sparse_yaml}
+    --backward)
 
 execute_process(
   COMMAND
@@ -108,7 +130,9 @@ set(generated_files_pd_op
     "${bwd_fused_op_source_file}"
     "${pir_op_source_file}"
     "${pir_bwd_op_source_file}"
-    "${pir_update_op_source_file}")
+    "${pir_update_op_source_file}"
+    "${sparse_op_source_file_tmp}"
+    "${bwd_sparse_op_source_file_tmp}")
 
 if(WITH_MKLDNN)
   set(pir_op_onednn_yaml ${parsed_op_dir}/onednn.parsed.yaml)
@@ -143,7 +167,6 @@ if(WITH_MKLDNN)
       ${op_onednn_info_file_tmp} --op_def_cc_file ${onednn_op_source_file_tmp}
       --onednn_yaml_file ${pir_op_onednn_yaml} --ops_onednn_extra_yaml_file
       ${pd_ops_onednn_extra_yaml_file} --with_distributed ${WITH_DISTRIBUTE})
-
   set(generated_files_onednn_pd_op
       "${onednn_op_header_file}" "${onednn_op_source_file}"
       "${op_onednn_info_file}")
