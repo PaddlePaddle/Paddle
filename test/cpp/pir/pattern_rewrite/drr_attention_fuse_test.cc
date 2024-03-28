@@ -153,8 +153,9 @@ TEST(DrrTest, AttentionFuse) {
   pm.AddPass(pir::CreateMultiHeadMatmulFusePass());
   std::unique_ptr<pir::Pass> constant_folding_pass =
       pir::CreateConstantFoldingPass();
-  constant_folding_pass->Set(pir::kPlaceAttr, new phi::Place{phi::GPUPlace{}});
-  constant_folding_pass->Set(pir::kParamScopeAttr,
+  constant_folding_pass->Set(pir::Pass::kPlaceAttr,
+                             new phi::Place{phi::GPUPlace{}});
+  constant_folding_pass->Set(pir::Pass::kParamScopeAttr,
                              new paddle::framework::Scope{});
   pm.AddPass(std::move(constant_folding_pass));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());

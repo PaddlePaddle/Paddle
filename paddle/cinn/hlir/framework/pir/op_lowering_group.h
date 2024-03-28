@@ -279,6 +279,8 @@ class OpLoweringGroup {
                                          ::pir::IrMapping* ir_mapping) const;
 
  private:
+  friend std::ostream& operator<<(std::ostream&, const OpLoweringGroup&);
+
   // group id, consisted of op's id.
   std::string group_id_{common::UniqName("group_")};
   // op in this group

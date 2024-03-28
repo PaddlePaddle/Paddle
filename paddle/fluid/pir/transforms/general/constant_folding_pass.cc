@@ -461,30 +461,27 @@ class ConstantFoldingPatternForTrain : public ConstantFoldingPattern {
 
 class ConstantFoldingPass : public pir::Pass {
  public:
-  ConstantFoldingPass()
-      : pir::Pass("constant_folding_pass", 1),
-        place_(phi::CPUPlace{}),
-        scope_(nullptr) {}
+  ConstantFoldingPass() : pir::Pass("constant_folding_pass", 1) {}
 
  private:
   bool Initialize(pir::IrContext* context) override {
     PADDLE_ENFORCE_EQ(
-        Has(pir::kPlaceAttr),
+        Has(pir::Pass::kPlaceAttr),
         true,
         phi::errors::InvalidArgument(
             "Pass initialize failed."
             "When using ConstantFoldingPass, place attribute is required!"
             "Use Set method to set the place attribute."));
     PADDLE_ENFORCE_EQ(
-        Has(pir::kParamScopeAttr),
+        Has(pir::Pass::kParamScopeAttr),
         true,
         phi::errors::InvalidArgument(
             "Pass initialize failed."
             "When using ConstantFoldingPass, scope attribute is required!"
             "Use Set method to set the scope attribute."));
 
-    place_ = Get<phi::Place>(pir::kPlaceAttr);
-    scope_ = &Get<paddle::framework::Scope>(pir::kParamScopeAttr);
+    place_ = Get<phi::Place>(pir::Pass::kPlaceAttr);
+    scope_ = &Get<paddle::framework::Scope>(pir::Pass::kParamScopeAttr);
 
     PADDLE_ENFORCE_NOT_NULL(
         scope_, phi::errors::InvalidArgument("scope can not be nullptr"));
@@ -529,7 +526,7 @@ class ConstantFoldingPass : public pir::Pass {
 
  private:
   size_t suffix_{0};
-  phi::Place place_;
+  phi::Place place_{phi::CPUPlace{}};
   paddle::framework::Scope* scope_{nullptr};
   paddle::framework::interpreter::ExecutionConfig exe_config_{};
   std::vector<std::string> deleted_vars_;
