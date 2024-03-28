@@ -45,7 +45,7 @@ class TestCsrMv(unittest.TestCase):
         paddle.set_default_dtype('float64')
         origin_x = paddle.rand([64, 32])
         mask = paddle.randint(0, 2, [64, 32])
-        origin_x = origin_x * mask
+        origin_x = origin_x * mask.astype('float64')
         origin_vec = paddle.rand([32])
 
         dense_x = origin_x.detach()
@@ -67,7 +67,7 @@ class TestCsrMv(unittest.TestCase):
         )
         np.testing.assert_allclose(
             sp_x.grad.to_dense().numpy(),
-            (dense_x.grad * mask).numpy(),
+            (dense_x.grad * mask.astype('float64')).numpy(),
             rtol=1e-05,
         )
         np.testing.assert_allclose(
@@ -85,7 +85,7 @@ class TestCooMv(unittest.TestCase):
         paddle.set_default_dtype('float64')
         origin_x = paddle.rand([64, 32])
         mask = paddle.randint(0, 2, [64, 32])
-        origin_x = origin_x * mask
+        origin_x = origin_x * mask.astype('float64')
         origin_vec = paddle.rand([32])
 
         dense_x = origin_x.detach()
@@ -107,7 +107,7 @@ class TestCooMv(unittest.TestCase):
         )
         np.testing.assert_allclose(
             sp_x.grad.to_dense().numpy(),
-            (dense_x.grad * mask).numpy(),
+            (dense_x.grad * mask.astype('float64')).numpy(),
             rtol=1e-05,
         )
         np.testing.assert_allclose(

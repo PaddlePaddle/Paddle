@@ -34,7 +34,9 @@ def update_scores_for_generation(
 ):
     # update scores
 
-    unfinished_scores = (scores * length + next_scores) / (length + 1)
+    unfinished_scores = (scores * length.astype(scores.dtype) + next_scores) / (
+        length + 1
+    ).astype(scores.dtype)
     return unfinished_scores
 
 

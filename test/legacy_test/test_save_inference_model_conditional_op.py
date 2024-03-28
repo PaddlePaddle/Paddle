@@ -69,7 +69,7 @@ class IfElseNet(paddle.nn.Layer):
         super().__init__()
 
     def forward(self, x):
-        y = paddle.to_tensor([5])
+        y = paddle.to_tensor([5], dtype='int32')
         if x > y:
             x = x + 1
         else:

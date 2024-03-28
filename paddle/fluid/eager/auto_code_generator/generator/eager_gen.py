@@ -82,8 +82,29 @@ prim_white_list = [
 type_promote_white_list = {
     "add": ["x", "y"],
     "subtract": ["x", "y"],
+    "divide": ["x", "y"],
+    "floor_divide": ["x", "y"],
+    "elementwise_pow": ["x", "y"],
     "where": ["x", "y"],
+    "equal": ["x", "y"],
+    "not_equal": ["x", "y"],
+    "less_than": ["x", "y"],
+    "less_equal": ["x", "y"],
+    "greater_than": ["x", "y"],
+    "greater_equal": ["x", "y"],
+    "logical_and": ["x", "y"],
+    "logical_or": ["x", "y"],
+    "logical_xor": ["x", "y"],
+    "fmax": ["x", "y"],
+    "fmin": ["x", "y"],
+    "maximum": ["x", "y"],
+    "minimum": ["x", "y"],
+    "remainder": ["x", "y"],
+    "huber_loss": ["input", "label"],
+    "nextafter": ["x", "y"],
+    "atan2": ["x", "y"],
 }
+
 
 # dict of special api that forward api's output will affect bacward api's output
 # bacward api's output usually affected by backward api's input
@@ -1598,6 +1619,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         for name, atype, default_val, pos in forward_attrs_list:
             inputs_call_list[pos] = name
             amp_inputs_call_list[pos] = name
+            type_promote_inputs_call_list[pos] = name
             if default_val is not None:
                 inputs_args_declaration_list[
                     pos
