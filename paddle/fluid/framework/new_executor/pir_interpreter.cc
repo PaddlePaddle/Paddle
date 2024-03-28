@@ -1794,13 +1794,104 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
         if (source_op_id_attr) {
           auto out_ddims =
               instr_node->GetOutputDims(scope_, value_exe_info_.get());
+          if (!instr_node->Operation()->attribute("sym_shapedata")) {
+            platform::errors::PreconditionNotMet(
+                instr_node->Name() + "must have attribute 'sym_shapedata'");
+          }
+
           auto shapeordata = instr_node->Operation()
                                  ->attribute("sym_shapedata")
                                  .dyn_cast<pir::shape::SymbolAttribute>()
                                  .data();
           auto source_op_id = source_op_id_attr.data();
+          if (instr_node->Name() == "if_instruction") {
+            std::map<std::string, paddle::framework::Variable*>
+                sorted_input_vars;
+            for (auto it = instr_node->Inputs().begin();
+                 it != instr_node->Inputs().end();) {
+              auto& input = *it;
+              auto var_name = value_exe_info_->GetVarName(input.first);
+              paddle::framework::Variable* var = scope_->FindVar(var_name);
+              sorted_input_vars[var_name] = var;
+              ++it;
+            }
+
+            PADDLE_ENFORCE_EQ(sorted_input_vars.size(),
+                              2,
+                              platform::errors::PreconditionNotMet(
+                                  "if_instruction's inputs size must == 2"));
+            std::vector<paddle::framework::Variable*> input_vars;
+            for (auto&& kv : sorted_input_vars) {
+              input_vars.emplace_back(kv.second);
+            }
+
+            bool cond_rst = false;
+            if (input_vars[1]->IsType<phi::DenseTensor>()) {
+              const phi::DenseTensor& tensor =
+                  input_vars[1]->Get<phi::DenseTensor>();
+              std::string type_str = DataTypeToString(
+                  paddle::framework::TransToProtoVarType(tensor.dtype()));
+              PADDLE_ENFORCE_EQ(
+                  type_str,
+                  "bool",
+                  platform::errors::PreconditionNotMet(
+                      "if_instruction's inputs[1] must be bool and numel == 1, "
+                      "but got type %s and numel == %d",
+                      type_str,
+                      tensor.numel()));
+
+              phi::DenseTensor cpu_tensor;
+              paddle::platform::CPUPlace place;
+              paddle::framework::TensorCopy(tensor, place, &cpu_tensor);
+              cond_rst = *(cpu_tensor.data<bool>());
+            } else {
+              phi::errors::Unimplemented(
+                  "checking symbol shape for if_instruction only support "
+                  "DenseTensor now");
+            }
+
+            ShapeOrData runtime_shapeordata = shapeordata;
+            if (cond_rst) {
+              runtime_shapeordata = instr_node->Operation()
+                                        ->attribute("true_shapedata")
+                                        .dyn_cast<pir::shape::SymbolAttribute>()
+                                        .data();
+            } else {
+              runtime_shapeordata = instr_node->Operation()
+                                        ->attribute("false_shapedata")
+                                        .dyn_cast<pir::shape::SymbolAttribute>()
+                                        .data();
+            }
+            VLOG(vlog_level) << "################ " << instr_node->Name()
+                             << ": runtime_shapedata = {" << runtime_shapeordata
+                             << "}, shapedata = {" << shapeordata << "}";
+
+            ExprVec runtime_exprs =
+                paddle::dialect::details::GetExprVecFromShape(
+                    runtime_shapeordata);
+            ExprVec compiletime_exprs =
+                paddle::dialect::details::GetExprVecFromShape(shapeordata);
+            PADDLE_ENFORCE_EQ(runtime_exprs.size(),
+                              compiletime_exprs.size(),
+                              platform::errors::PreconditionNotMet(
+                                  "if_instruction's runtime_exprs.size() MUST "
+                                  "== compiletime_exprs.size()"));
+            std::ostringstream os;
+            for (size_t i = 0; i < runtime_exprs.size(); i++) {
+              os << compiletime_exprs[i] << "=" << runtime_exprs[i];
+              if (i < runtime_exprs.size() - 1) os << sym_sep;
+              map_sym2sym[compiletime_exprs[i]] = runtime_exprs[i];
+            }
+          }
           paddle::dialect::details::CheckSymShapeByValue(
-              source_op_id, instr_node->Name(), out_ddims[0], shapeordata);
+              source_op_id,
+              instr_node->Name() + " " +
+                  instr_node->DebugStringEx(scope_, value_exe_info_.get()),
+              out_ddims[0],
+              shapeordata);
+        } else {
+          VLOG(vlog_level) << "################ " << instr_node->Name()
+                           << " has no source_op_id_attr";
         }
       }
 

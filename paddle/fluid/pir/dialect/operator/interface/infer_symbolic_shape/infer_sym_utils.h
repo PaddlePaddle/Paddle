@@ -19,9 +19,18 @@
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
+// To make codes shorter
+using DimExpr = symbol::DimExpr;
+using ExprVec = std::vector<symbol::DimExpr>;
+using ShapeOrData = symbol::ShapeOrDataDimExprs;
+using TensorExprs = symbol::TensorShapeOrDataDimExprs;
+using TensorListExprs = symbol::TensorListShapeOrDataDimExprs;
+
 COMMON_DECLARE_string(pir_dyshape_sym2value);
 
 constexpr int vlog_level = 3;
+const char sym_sep[] = ":";
+static std::unordered_map<DimExpr, DimExpr> map_sym2value, map_sym2sym;
 
 inline bool GetBoolAttr(const pir::Operation *op, const std::string &str) {
   const auto &attr_map = op->attributes();
@@ -31,13 +40,6 @@ inline bool GetBoolAttr(const pir::Operation *op, const std::string &str) {
           "attr [%s] MUST in attribute map for [%s] op", str, op->name()));
   return attr_map.at(str).dyn_cast<pir::BoolAttribute>().data();
 }
-
-// To make codes shorter
-using DimExpr = symbol::DimExpr;
-using ExprVec = std::vector<symbol::DimExpr>;
-using ShapeOrData = symbol::ShapeOrDataDimExprs;
-using TensorExprs = symbol::TensorShapeOrDataDimExprs;
-using TensorListExprs = symbol::TensorListShapeOrDataDimExprs;
 
 namespace paddle::dialect::details {
 template <typename T>
@@ -85,16 +87,18 @@ std::vector<T> GetVectorAttr(const ::pir::Operation *op,
 inline ExprVec GetExprVecFromData(const ShapeOrData &shapeordata) {
   if (shapeordata.isa<TensorListExprs>()) {
     ExprVec result;
-    TensorListExprs list =
-        shapeordata.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+    TensorListExprs list = shapeordata.dyn_cast<TensorListExprs>();
     for (size_t i = 0; i < list.size(); i++) {
-      for (auto expr : list[i].data().value()) {
-        result.emplace_back(expr);
+      if (list[i].data().has_value()) {
+        for (auto expr : list[i].data().value()) {
+          result.emplace_back(expr);
+        }
       }
     }
     return result;
   } else {
-    return shapeordata.data().value();
+    return shapeordata.data().has_value() ? shapeordata.data().value()
+                                          : ExprVec{};
   }
 }
 
@@ -104,7 +108,7 @@ inline ExprVec GetExprVecFromShape(const ShapeOrData &shapeordata) {
     TensorListExprs list =
         shapeordata.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
     for (size_t i = 0; i < list.size(); i++) {
-      for (auto expr : list[i].data().value()) {
+      for (auto expr : list[i].shape()) {
         result.emplace_back(expr);
       }
     }
@@ -158,20 +162,34 @@ inline std::vector<std::string> Split(const std::string &str,
   return results;
 }
 
-inline std::unordered_map<DimExpr, DimExpr> GetSymValueFromFlag() {
-  std::unordered_map<DimExpr, DimExpr> map_sym2value;
+template <typename T1, typename T2>
+inline std::string PrintMap(const std::unordered_map<T1, T2> &map_val) {
+  std::ostringstream os;
+  os << "{";
+  for (auto &&kv : map_val) {
+    os << kv.first << "->" << kv.second << ", ";
+  }
+  os << "}";
+  return os.str();
+}
+
+inline void GetSymValueFromFlag() {
   std::string &flag_str = FLAGS_pir_dyshape_sym2value;
-  for (auto str : Split(flag_str, ",")) {
+  for (auto str : Split(flag_str, sym_sep)) {
     std::vector<std::string> sym_value = Split(str, "=");
     PADDLE_ENFORCE_EQ(sym_value.size(),
                       2,
                       phi::errors::OutOfRange(
                           "FLAGS_pir_dyshape_sym2value's format should be like "
-                          "'S0=1,S1=128', but receive too many '='s."));
-    map_sym2value[sym_value[0]] = std::stoi(sym_value[1]);
+                          "'S0=1:S1=128', but receive too many '='s. "
+                          "FLAGS_pir_dyshape_sym2value = %s",
+                          FLAGS_pir_dyshape_sym2value));
+    if (std::all_of(sym_value[1].begin(), sym_value[1].end(), ::isdigit)) {
+      map_sym2value[sym_value[0]] = std::stoi(sym_value[1]);
+    } else {
+      map_sym2sym[sym_value[0]] = sym_value[1];
+    }
   }
-
-  return map_sym2value;
 }
 
 inline void CheckSymShapeByValue(
@@ -181,7 +199,7 @@ inline void CheckSymShapeByValue(
     const ShapeOrData &shapeordata,
     const std::unordered_map<DimExpr, DimExpr> &additional_cstrs = {}) {
   std::string op_info = "op_" + std::to_string(op_id) + "(" + op_name + ")";
-  auto sym_value_map = GetSymValueFromFlag();
+  GetSymValueFromFlag();
   if (shapeordata.isa<TensorListExprs>()) {
     VLOG(vlog_level) << "********** " << op_info
                      << " 's shapeordata.isa<TensorListExprs>()";
@@ -189,8 +207,11 @@ inline void CheckSymShapeByValue(
     auto sym_shape = shapeordata.shape();
     std::vector<std::int64_t> sym_value_shape;
     for (auto dim_expr : sym_shape) {
-      DimExpr subs_expr = symbol::SubstituteDimExpr(dim_expr, sym_value_map);
-      DimExpr ret = symbol::SimplifyDimExpr(subs_expr);
+      DimExpr ret = dim_expr;
+      DimExpr subs_expr = symbol::SubstituteDimExpr(ret, map_sym2sym);
+      ret = symbol::SimplifyDimExpr(subs_expr);
+      subs_expr = symbol::SubstituteDimExpr(ret, map_sym2value);
+      ret = symbol::SimplifyDimExpr(subs_expr);
       PADDLE_ENFORCE_EQ(ret.Has<std::int64_t>(),
                         true,
                         platform::errors::PreconditionNotMet(
@@ -210,7 +231,7 @@ inline void CheckSymShapeByValue(
       VLOG(vlog_level) << "!!!!! [ShapeCheckFailed] " << op_info << ": "
                        << real_shape_str << " != " << sym_shape_str;
     } else {
-      VLOG(vlog_level) << "===== [ShapeCheckPassed] op_" << op_info << ": "
+      VLOG(vlog_level) << "===== [ShapeCheckPassed] " << op_info << ": "
                        << real_shape_str << " == " << sym_shape_str;
     }
   }

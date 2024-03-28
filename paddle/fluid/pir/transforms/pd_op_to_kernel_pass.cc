@@ -49,6 +49,7 @@
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/framework/framework.pb.h"
@@ -60,6 +61,7 @@ COMMON_DECLARE_bool(use_mkldnn);
 
 COMMON_DECLARE_bool(print_ir);
 // COMMON_DECLARE_string(pir_onednn_kernel_blacklist);
+COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
 
 namespace paddle {
 namespace dialect {
@@ -1192,6 +1194,43 @@ void HandleForIfOp(
         ConvertOpTypeToKernelType(ctx, old_ifop.result(i).type(), place));
   }
   auto new_ifop = builder.Build<IfOp>(new_cond, std::move(new_ifop_outputs));
+
+  if (FLAGS_pir_apply_shape_optimization_pass) {
+    new_ifop->set_attribute("source_op_id",
+                            pir::IndexAttribute::get(ctx, old_ifop->id()));
+    const auto attr_shapedata = old_ifop->attribute("sym_shapedata");
+    if (!attr_shapedata) {
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "%s must have attribute 'sym_shapedata'", op_item->name()));
+    }
+    new_ifop->set_attribute(
+        "sym_shapedata",
+        pir::shape::SymbolAttribute::get(
+            ctx,
+            attr_shapedata.dyn_cast<pir::shape::SymbolAttribute>().data()));
+
+    const auto true_shapedata = old_ifop->attribute("true_shapedata");
+    if (!true_shapedata) {
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "%s must have attribute 'true_shapedata'", op_item->name()));
+    }
+    new_ifop->set_attribute(
+        "true_shapedata",
+        pir::shape::SymbolAttribute::get(
+            ctx,
+            true_shapedata.dyn_cast<pir::shape::SymbolAttribute>().data()));
+
+    const auto false_shapedata = old_ifop->attribute("false_shapedata");
+    if (!false_shapedata) {
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "%s must have attribute 'false_shapedata'", op_item->name()));
+    }
+    new_ifop->set_attribute(
+        "false_shapedata",
+        pir::shape::SymbolAttribute::get(
+            ctx,
+            false_shapedata.dyn_cast<pir::shape::SymbolAttribute>().data()));
+  }
 
   // process true block
   auto& true_block = new_ifop.true_block();

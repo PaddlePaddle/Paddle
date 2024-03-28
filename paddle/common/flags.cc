@@ -1543,7 +1543,7 @@ PHI_DEFINE_EXPORTED_bool(pir_apply_shape_optimization_pass,
  * Since Version: 3.0.0
  * Value Range: string, default=""
  * Example:
- * export FLAGS_pir_dyshape_sym2value=S0=1,S1=128
+ * export FLAGS_pir_dyshape_sym2value=S0=1:S1=128
  */
 PHI_DEFINE_EXPORTED_string(pir_dyshape_sym2value,
                            "",
