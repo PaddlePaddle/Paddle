@@ -1,17 +1,39 @@
-project (FC)
 cmake_minimum_required(VERSION 3.23)
 
-set(fileList)
-list(APPEND fileList "main.cu" "fc_util.cu" "fc_util.h" "fc_decl.h" "fc_bias_relu_sm80_fp16_35.cu")
+if(NOT DEFINED PYTHON_EXECUTABLE)
+  message(
+    FATAL_ERROR
+      "please set PYTHON_EXECUTABLE with -DPYTHON_EXECUTABLE=python executable path"
+  )
+endif()
 
-find_package(CUDA)
+if(NOT DEFINED COMPUTE_CAPABILITY)
+  message(
+    FATAL_ERROR
+      "please set COMPUTE_CAPABILITY with -DCOMPUTE_CAPABILITY=your gpu compute capability"
+  )
+endif()
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../conv2d/cutlass/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../conv2d/cutlass/tools/util/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../")
 
-set(CUDA_NVCC_FLAGS -gencode arch=compute_80,code=sm_80 -std=c++17 --ptxas-options --verbose;)
-CUDA_ADD_EXECUTABLE(FC ${fileList})
+execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory
+                        "${CMAKE_CURRENT_BINARY_DIR}/generated_tmp")
 
-target_link_libraries(FC cublas)
-target_link_libraries(FC cudnn)
+execute_process(
+  COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/fc_bias_act.py
+          --cuda_arch ${COMPUTE_CAPABILITY}
+  WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
+
+find_package(CUDA)
+# you can append -std=c++17 in CUDA_NVCC_FLAGS for compiling cutlass 3.0
+set(CUDA_NVCC_FLAGS
+    -gencode arch=compute_${COMPUTE_CAPABILITY},code=sm_${COMPUTE_CAPABILITY};)
+#set(CMAKE_CXX_FLAGS -fvisibility=hidden)
+set(CMAKE_BUILD_TYPE "Release")
+file(GLOB all_cutlass_fc_cu
+     "${CMAKE_CURRENT_BINARY_DIR}/generated_tmp/*.cu")
+list(APPEND all_cutlass_fc_cu "${CMAKE_CURRENT_SOURCE_DIR}/fc_util.cu")
+
+cuda_add_library(CutlassFc SHARED ${all_cutlass_fc_cu})

@@ -31,50 +31,59 @@ namespace cutlass_internal {
 typedef void (*func)(phi::fusion::cutlass_internal::FcAllParams);
 
 template <typename T, typename Context>
-void FusedFcAddActKernel(const Context& ctx,
-                             const DenseTensor& input,
-                             const DenseTensor& weight,
-                             const paddle::optional<DenseTensor>& bias,
-                             const int in_num_col_dims,
-                             const std::string& activation,
-                             const bool padding_weights,
-                             DenseTensor* output
-                             ) {
+void FCKernel(const Context& dev_ctx,
+              const DenseTensor& input,
+              const DenseTensor& w,
+              const paddle::optional<DenseTensor>& bias,
+              const int in_num_col_dims,
+              const std::string& activation_type,
+              const bool padding_weights,
+              DenseTensor* out) {
+  // std::cout << "kai-----------FusedFcAddActKernel.begin: " << std::endl;
+
   // 暂时把下两个参数从参数列表移到这里, 以对齐FCKernel
   // const std::string& data_format,
   // float leaky_alpha,
   const std::string data_format("RRR");
   float leaky_alpha = 0.01;
 
-  auto input_dims = input.dims();
-  auto weight_dims = weight.dims();
-  ///
-  std::vector<int64_t> output_dims;
-  phi::funcs::FCOutputSize(
-      input_dims, weight_dims, output_dims, in_num_col_dims, padding_weights);
-  output->Resize(common::make_ddim(output_dims));
-  output->set_lod(input.lod());
-  ///
-
-  ctx.template Alloc<T>(output);
-
   if(!bias){
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "bias is needed!!!"));
+    PADDLE_THROW(phi::errors::InvalidArgument("bias is needed!!!"));
     return;
   }
+  PADDLE_ENFORCE_EQ(padding_weights, false,
+                    phi::errors::PermissionDenied("Weight padding in fc can not be used in GPU scope."));
+
+  auto weight_dims = w.dims();
+  /// fc_out should be reshape when run since can not get lod in infershap
+  std::vector<int64_t> output_dims;
+  phi::funcs::FCOutputSize(
+      input.dims(), weight_dims, output_dims, in_num_col_dims, padding_weights);
+  out->Resize(common::make_ddim(output_dims));
+  out->set_lod(input.lod());
+  ///
+
+  dev_ctx.template Alloc<T>(out);
   auto bias_dims = bias->dims();
-  auto out_dims = output->dims();
+  auto out_dims = out->dims();
 
-  CHECK_EQ(input_dims.size() == 2UL, true);
   CHECK_EQ(weight_dims.size() == 2UL, true);
-  CHECK_EQ(bias_dims.size() == 1UL, true);
-  CHECK_EQ(out_dims.size() == 2UL, true);
-
   CHECK_EQ(data_format == "RRR", true);
-  const int M = input_dims[0];
-  const int K = input_dims[1];
+
+  /// 这里参考blas的实现
+  int M = common::product(out_dims) / weight_dims[1];
+  const int K = weight_dims[0];
   const int N = weight_dims[1];
+  
+  bool vecBias = true;
+  if(bias_dims.size()>2){
+    vecBias = false;
+  }
+  else if(bias_dims.size()==2 && bias_dims[0] != 1){
+    vecBias = false;
+  }
+  
+  // std::cout << "MNK: [" << M  << ", " << N << ", " << K << "]" << std::endl;
   // 在RRR的情况下
   const int lda = K;
   const int ldb = N;
@@ -98,7 +107,7 @@ void FusedFcAddActKernel(const Context& ctx,
     return;
   }
 
-  int64_t device_id = ctx.GetPlace().GetDeviceId();
+  int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
   int sm_version = backends::gpu::GetGPUComputeCapability(device_id);
 
   auto get_fc_dtype = [&](decltype(input.dtype()) input_type)
@@ -130,17 +139,18 @@ void FusedFcAddActKernel(const Context& ctx,
 
   FcAllParams params = {
       reinterpret_cast<const void*>(input.data<T>()),
-      reinterpret_cast<const void*>(weight.data<T>()),
+      reinterpret_cast<const void*>(w.data<T>()),
       reinterpret_cast<const void*>(bias->data<T>()),
-      reinterpret_cast<void*>(output->data<T>()),
+      reinterpret_cast<void*>(out->data<T>()),
       M,
       N,
       K,
       lda, 
       ldb,
       ldd,
-      ctx.stream(),
+      dev_ctx.stream(),
       get_fc_dtype(input.dtype()),
+      vecBias,
       cutlass_dispatch_sm_version(sm_version),
       leaky_alpha,       // for leaky_relu
   };
@@ -148,20 +158,22 @@ void FusedFcAddActKernel(const Context& ctx,
   void* dlhandler = phi::dynload::GetCutlassFcHandle();
   func fc_func = NULL;
   CHECK_EQ(dlhandler == NULL, false);
-
-  if (activation == "relu") {
+  // std::cout << "kai-----------FusedFcAddActKernel.activation_type: " << activation_type << std::endl;
+  if (activation_type == "relu") {
     fc_func = (func)(dlsym(dlhandler, "FcBiasRelu"));
-  } else if (activation == "swish") {
+  } else if (activation_type == "swish") {
     fc_func = (func)(dlsym(dlhandler, "FcBiasSilu"));
-  } else if (activation == "identity") {
+  } else if (activation_type == "identity" || activation_type == "") {
     fc_func = (func)(dlsym(dlhandler, "FcBias"));
-  } else if (activation == "leaky_relu") {
+  } else if (activation_type == "leaky_relu") {
     fc_func = (func)(dlsym(dlhandler, "FcBiasLeakyRelu"));
-  } else if (activation == "sigmoid") {
+  } else if (activation_type == "sigmoid") {
     fc_func = (func)(dlsym(dlhandler, "FcBiasSigmoid"));
+  } else if (activation_type == "gelu"){
+    fc_func = (func)(dlsym(dlhandler, "FcBiasGelu"));
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
-        "Cutlass does not support this activation: %s.", activation.c_str()));
+        "Cutlass does not support this activation_type: %s.", activation_type.c_str()));
   }
   fc_func(params);
 }
@@ -169,10 +181,10 @@ void FusedFcAddActKernel(const Context& ctx,
 }  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(fc,
+PD_REGISTER_KERNEL(gemm_epilogue,
                    GPU,
                    ALL_LAYOUT,
-                   phi::fusion::cutlass_internal::FusedFcAddActKernel,
+                   phi::fusion::cutlass_internal::FCKernel,
                    float,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}

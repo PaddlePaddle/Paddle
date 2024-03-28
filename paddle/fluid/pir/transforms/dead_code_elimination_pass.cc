@@ -56,6 +56,7 @@ class DeadCodeEliminationPass : public pir::Pass {
     }
 
     for (auto* op : deleted_ops) {
+      printf("kai======== void EraseOp(const pir::Block& block, int64_t* num_erasers)\n");
       op->Erase();
       (*num_erasers)++;
     }
@@ -85,4 +86,4 @@ std::unique_ptr<Pass> CreateDeadCodeEliminationPass() {
 
 }  // namespace pir
 
-REGISTER_IR_PASS(dead_code_elimination_pass, DeadCodeEliminationPass);
+// REGISTER_IR_PASS(dead_code_elimination_pass, DeadCodeEliminationPass);

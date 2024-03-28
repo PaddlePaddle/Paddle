@@ -40,6 +40,7 @@ typedef struct {
   int ldd;
   cudaStream_t stream;
   FcDataType data_type;
+  bool vecBias = true;
   int sm_version = 75;
   float leaky_alpha = 1.0;
 } FcAllParams;
@@ -50,6 +51,7 @@ extern "C" void FcBiasLeakyRelu(FcAllParams params);
 extern "C" void FcBiasSilu(FcAllParams params);
 extern "C" void FcBias(FcAllParams params);
 extern "C" void FcBiasSigmoid(FcAllParams params);
+extern "C" void FcBiasGelu(FcAllParams params);
 
 }  // namespace cutlass_internal
 }  // namespace fusion

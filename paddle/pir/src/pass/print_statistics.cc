@@ -51,13 +51,15 @@ class PrintStatistics : public PassInstrumentation {
                  match_count,
                  all_count);
       if (match_count > 0) {
-        LOG(INFO) << "--- detected [" << match_count << "/" << all_count
+        LOG(INFO) << pass->pass_info().name
+                  << "--- detected [" << match_count << "/" << all_count
                   << "] subgraphs!";
       }
     } else if (pass->Has("__match_count__") && !pass->Has("__all_count__")) {
       auto match_count = pass->Get<int64_t>("__match_count__");
       if (match_count > 0) {
-        LOG(INFO) << "--- detected [" << match_count << "] subgraphs!";
+        LOG(INFO) << pass->pass_info().name 
+                  << "--- detected [" << match_count << "] subgraphs!";
       }
     } else if (pass->Has("__custom_log__")) {
       auto custom_log = pass->Get<std::string>("__custom_log__");

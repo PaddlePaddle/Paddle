@@ -983,7 +983,7 @@ bool AnalysisPredictor::PrepareExecutor() {
         constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, sub_scope_);
         gpu_pm.AddPass(std::move(constant_folding_pass));
 
-        gpu_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
+        // gpu_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
         gpu_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
         //----------------------------------------------------------------------------------------------//
         if (!config_.glog_info_disabled()) {

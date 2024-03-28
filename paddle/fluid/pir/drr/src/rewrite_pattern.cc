@@ -574,6 +574,7 @@ void DrrRewritePattern::DeleteSourcePatternOp(
       [&](pir::Operation* op,
           std::queue<pir::Operation*>* delete_ops_que) -> void {
     const std::vector<pir::Value> inputs = op->operands_source();
+    printf("kai======== DrrRewritePattern::DeleteSourcePatternOp\n");
     rewriter.EraseOp(op);
     for (const auto& input : inputs) {
       const bool use_empty =
@@ -585,7 +586,7 @@ void DrrRewritePattern::DeleteSourcePatternOp(
       }
     }
   };
-
+  printf("kai==================================== DeleteSourcePatternOp begin\n");
   while (!delete_ops_que.empty()) {
     pir::Operation* op = delete_ops_que.front();
     delete_ops_que.pop();
@@ -593,6 +594,7 @@ void DrrRewritePattern::DeleteSourcePatternOp(
             << ") in source_pattern_graph.";
     DeleteOpAndUpdateQueue(op, &delete_ops_que);
   }
+  printf("kai==================================== DeleteSourcePatternOp end\n");
 }
 
 std::unique_ptr<DrrRewritePattern> DrrPatternBase::Build(

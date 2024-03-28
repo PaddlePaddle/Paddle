@@ -51,6 +51,7 @@ class FbaAct(enum.Enum):
     Silu = 3
     LeakyRelu = 4
     Sigmoid = 5
+    Gelu = 6
 
 SupportedAct = [
     FbaAct.Identity,
@@ -58,6 +59,7 @@ SupportedAct = [
     FbaAct.Silu,
     FbaAct.LeakyRelu,
     FbaAct.Sigmoid,
+    FbaAct.Gelu,
 ]
 
 ActTag = {
@@ -66,6 +68,7 @@ ActTag = {
     SupportedAct[2]: 'cutlass::epilogue::thread::LinearCombinationSilu',
     SupportedAct[3]: 'cutlass::epilogue::thread::LinearCombinationLeakyRelu',
     SupportedAct[4]: 'cutlass::epilogue::thread::LinearCombinationSigmoid',
+    SupportedAct[5]: 'cutlass::epilogue::thread::LinearCombinationGELU',
 }
 
 UnderScoreName = {
@@ -74,6 +77,7 @@ UnderScoreName = {
     SupportedAct[2]: "fc_bias_silu",
     SupportedAct[3]: "fc_bias_leaky_relu",
     SupportedAct[4]: "fc_bias_sigmoid",
+    SupportedAct[5]: "fc_bias_gelu",
 }
 
 CamelName = {
@@ -82,6 +86,7 @@ CamelName = {
     SupportedAct[2]: "FcBiasSilu",
     SupportedAct[3]: "FcBiasLeakyRelu",
     SupportedAct[4]: "FcBiasSigmoid",
+    SupportedAct[5]: "FcBiasGelu",
 }
 
 # layouts = [
@@ -99,6 +104,9 @@ swizzling_functors = [
     'GemmIdentityThreadblockSwizzle<1>',
     'ThreadblockSwizzleStreamK'
 ]
+
+# (mode == GemmUniversalMode::kGemm) the tile-splitting factor (1 defaults to StreamK, >1 emulates Split-K)
+split_k_factors = ["1","2","4","8","16"]
 
 # 暂时没有考虑fp32 所以只用128bit对齐 128/sizeof(half)
 alignments = [8]
@@ -195,6 +203,68 @@ def generate_sm75_1688():
     return sm75_code     
     
     
+def sm80_16816_forStreamK(op_dict, kernel_dict, suffix, epi_func):
+    all_kernel_names = ""
+    all_kernel_declares = ""
+    kernel_dict["swizzling_functor"] = 'ThreadblockSwizzleStreamK'
+    kernel_dict["split_k_factor"] = "1"
+    kernel_dict["kernel_func_name"] = op_dict["func_name"] + "_" + str(suffix)
+    suffix += 1
+    
+    fba_kernel_ = fba_kernel
+    if epi_func in [FbaAct.LeakyRelu]:
+        fba_kernel_ = fba_kernel_leaky_alpha
+    kernel_str = (
+        fba_header + SubstituteTemplate(fba_kernel_, kernel_dict) + CommonTail
+    )
+    file_name = (
+        build_dir + "generated_tmp/" + kernel_dict["kernel_func_name"] + ".cu"
+    )
+    write_kernel_to_file(kernel_str, file_name)
+
+    all_kernel_names += (
+        kernel_dict["kernel_func_name"] + ", \n"
+    )
+    all_kernel_declares += (
+        "cutlass::Status "
+        + kernel_dict["kernel_func_name"]
+        + "(const FcAllParams& params);"
+        + "\n"
+    )
+    return all_kernel_names, all_kernel_declares, suffix
+
+
+def sm80_16816_forUniversal(op_dict, kernel_dict, suffix, epi_func):
+    all_kernel_names = ""
+    all_kernel_declares = ""
+    kernel_dict["swizzling_functor"] = 'GemmIdentityThreadblockSwizzle<1>'
+    for split_k_fac in split_k_factors:
+        kernel_dict["split_k_factor"] = split_k_fac
+        kernel_dict["kernel_func_name"] = op_dict["func_name"] + "_" + str(suffix)
+        suffix += 1
+        
+        fba_kernel_ = fba_kernel
+        if epi_func in [FbaAct.LeakyRelu]:
+            fba_kernel_ = fba_kernel_leaky_alpha
+        kernel_str = (
+            fba_header + SubstituteTemplate(fba_kernel_, kernel_dict) + CommonTail
+        )
+        file_name = (
+            build_dir + "generated_tmp/" + kernel_dict["kernel_func_name"] + ".cu"
+        )
+        write_kernel_to_file(kernel_str, file_name)
+
+        all_kernel_names += (
+            kernel_dict["kernel_func_name"] + ", \n"
+        )
+        all_kernel_declares += (
+            "cutlass::Status "
+            + kernel_dict["kernel_func_name"]
+            + "(const FcAllParams& params);"
+            + "\n"
+        )
+    return all_kernel_names, all_kernel_declares, suffix
+
 
 def generate_sm80_16816(cutlass_dtype="cutlass::half_t"):
     kernel_dict = {
@@ -216,9 +286,6 @@ def generate_sm80_16816(cutlass_dtype="cutlass::half_t"):
     math_instructions = [
         ("16,8,16", cutlass_dtype, cutlass_dtype, "float")
     ]
-    
-    # (mode == GemmUniversalMode::kGemm) the tile-splitting factor (1 defaults to StreamK, >1 emulates Split-K)
-    kernel_dict["split_k_factor"] = "1"
 
     sm80_code = ""
     for epi_func in SupportedAct:
@@ -234,68 +301,49 @@ def generate_sm80_16816(cutlass_dtype="cutlass::half_t"):
         kernel_dict["epi_func"] = ActTag[epi_func]
         suffix = 0
         for alignment in alignments:
-            for swizzling_func in swizzling_functors:
-                kernel_dict["swizzling_functor"] = swizzling_func
-                if swizzling_func == 'ThreadblockSwizzleStreamK':
-                    kernel_dict["split_k_factor"] = "1"
-                for layout in layouts:
-                    kernel_dict["layout_a"] = layout[0]
-                    kernel_dict["layout_b"] = layout[1]
-                    kernel_dict["layout_c"] = layout[2]
-                    for math_inst in math_instructions:
-                        tiles = [
-                            TileDesc("256, 128, 32", 3, "64, 64, 32", math_inst),
-                            TileDesc("128, 256, 32", 3, "64, 64, 32", math_inst),
-                            TileDesc("256, 64, 32", 3, "64, 64, 32", math_inst),
-                            TileDesc("256, 64, 32", 4, "64, 64, 32", math_inst),
-                            TileDesc("64, 256, 32", 4, "64, 64, 32", math_inst),
-                            TileDesc("128, 128, 32", 3, "64, 64, 32", math_inst),
-                            TileDesc("128, 128, 32", 4, "64, 64, 32", math_inst),
-                            TileDesc("128, 128, 32", 5, "64, 64, 32", math_inst),
-                            TileDesc("128, 64, 32", 6, "64, 32, 32", math_inst),
-                            TileDesc("64, 128, 32", 6, "32, 64, 32", math_inst),
-                            TileDesc("64, 64, 32", 10, "32, 32, 32", math_inst),
-                            TileDesc("256, 128, 64", 3, "64, 64, 64", math_inst),
-                            TileDesc("128, 256, 64", 3, "64, 64, 64", math_inst),
-                            TileDesc("256, 64, 64", 4, "64, 64, 64", math_inst),
-                            TileDesc("64, 256, 64", 4, "64, 64, 64", math_inst),
-                            TileDesc("128, 128, 64", 4, "64, 64, 64", math_inst),
-                            TileDesc("256, 64, 64", 3, "64, 64, 64", math_inst),
-                            TileDesc("64, 256, 64", 3, "64, 64, 64", math_inst),
-                            TileDesc("128, 128, 64", 3, "64, 64, 64", math_inst),
-                            TileDesc("128, 64, 64", 3, "64, 32, 64", math_inst),
-                            TileDesc("64, 128, 64", 3, "32, 64, 64", math_inst),
-                            TileDesc("64, 64, 64", 5, "32, 32, 64", math_inst)]
-                        for tile in tiles:
-                            kernel_dict["Tshape"] = tile.Tshape
-                            kernel_dict["Wshape"] = tile.Wshape
-                            kernel_dict["Ishape"] = tile.math_inst[0]
-                            kernel_dict["stages"] = str(tile.stages)
-                            kernel_dict["element_accum"] = tile.math_inst[3]
-                            kernel_dict["kernel_func_name"] = op_dict["func_name"] + "_" + str(suffix)
-                            suffix += 1
-                            
-                            fba_kernel_ = fba_kernel
-                            if epi_func in [FbaAct.LeakyRelu]:
-                                fba_kernel_ = fba_kernel_leaky_alpha
-                            kernel_str = (
-                                fba_header + SubstituteTemplate(fba_kernel_, kernel_dict) + CommonTail
-                            )
-                            file_name = (
-                                build_dir + "generated_tmp/" + kernel_dict["kernel_func_name"] + ".cu"
-                            )
-                            write_kernel_to_file(kernel_str, file_name)
-
-                            all_kernel_names += (
-                                kernel_dict["kernel_func_name"] + ", \n"
-                            )
-                            all_kernel_declares += (
-                                "cutlass::Status "
-                                + kernel_dict["kernel_func_name"]
-                                + "(const FcAllParams& params);"
-                                + "\n"
-                            )
-
+            for layout in layouts:
+                kernel_dict["layout_a"] = layout[0]
+                kernel_dict["layout_b"] = layout[1]
+                kernel_dict["layout_c"] = layout[2]
+                for math_inst in math_instructions:
+                    tiles = [
+                        # TileDesc("256, 128, 32", 3, "64, 64, 32", math_inst),
+                        # TileDesc("128, 256, 32", 3, "64, 64, 32", math_inst),
+                        # TileDesc("256, 64, 32", 3, "64, 64, 32", math_inst),
+                        # TileDesc("256, 64, 32", 4, "64, 64, 32", math_inst),
+                        # TileDesc("64, 256, 32", 4, "64, 64, 32", math_inst),
+                        # TileDesc("128, 128, 32", 3, "64, 64, 32", math_inst),
+                        # TileDesc("128, 128, 32", 4, "64, 64, 32", math_inst),
+                        # TileDesc("128, 128, 32", 5, "64, 64, 32", math_inst),
+                        # TileDesc("128, 64, 32", 6, "64, 32, 32", math_inst),
+                        # TileDesc("64, 128, 32", 6, "32, 64, 32", math_inst),
+                        # TileDesc("64, 64, 32", 10, "32, 32, 32", math_inst),
+                        # TileDesc("256, 128, 64", 3, "64, 64, 64", math_inst),
+                        # TileDesc("128, 256, 64", 3, "64, 64, 64", math_inst),
+                        # TileDesc("256, 64, 64", 4, "64, 64, 64", math_inst),
+                        # TileDesc("64, 256, 64", 4, "64, 64, 64", math_inst),
+                        # TileDesc("128, 128, 64", 4, "64, 64, 64", math_inst),
+                        # TileDesc("256, 64, 64", 3, "64, 64, 64", math_inst),
+                        # TileDesc("64, 256, 64", 3, "64, 64, 64", math_inst),
+                        # TileDesc("128, 128, 64", 3, "64, 64, 64", math_inst),
+                        # TileDesc("128, 64, 64", 3, "64, 32, 64", math_inst),
+                        # TileDesc("64, 128, 64", 3, "32, 64, 64", math_inst),
+                        # TileDesc("64, 64, 64", 5, "32, 32, 64", math_inst),
+                        # kai mod
+                        TileDesc("16, 64, 64", 5, "16, 32, 64", math_inst),
+                    ]
+                    for tile in tiles:
+                        kernel_dict["Tshape"] = tile.Tshape
+                        kernel_dict["Wshape"] = tile.Wshape
+                        kernel_dict["Ishape"] = tile.math_inst[0]
+                        kernel_dict["stages"] = str(tile.stages)
+                        kernel_dict["element_accum"] = tile.math_inst[3]
+                        all_kernel_names_universal, all_kernel_declares_universal, suffix = sm80_16816_forUniversal(op_dict, kernel_dict, suffix, epi_func)
+                        all_kernel_names_streamk, all_kernel_declares_streamk, suffix = sm80_16816_forStreamK(op_dict, kernel_dict, suffix, epi_func)
+                        all_kernel_declares += all_kernel_declares_universal
+                        all_kernel_declares += all_kernel_declares_streamk
+                        all_kernel_names += all_kernel_names_universal  
+                        all_kernel_names += all_kernel_names_streamk     
         # Generate op code
         op_dict["kernel_func_declare"] = all_kernel_declares
         op_dict["all_kernel_func_name"] = all_kernel_names

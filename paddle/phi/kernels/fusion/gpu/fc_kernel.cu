@@ -16,7 +16,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/fc_kernel_impl.h"
 
-PD_REGISTER_KERNEL(fc_gnn,
+PD_REGISTER_KERNEL(fc,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FCKernel,

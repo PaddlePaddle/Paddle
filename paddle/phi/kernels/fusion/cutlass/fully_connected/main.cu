@@ -7,10 +7,10 @@
 // namespace fusion{
 // namespace cutlass_internal{
 
-// using DataType_ = __nv_bfloat16;
-using DataType_ = half;
+using DataType_ = __nv_bfloat16;
+// using DataType_ = half;
 
-cutlass::Status fc_bias_relu_sm80_fp16_35(const FcAllParams& params);
+cutlass::Status fc_bias_sm80_bf16(const FcAllParams& params);
 
 typedef void (*func)(FcAllParams);
 
@@ -23,7 +23,7 @@ inline void* GetDsoHandle() {
     return dso_handle;
 }
 
-void EnumParamList_MNK_Act(int M_, int N_, int K_, OpType op_type, std::string activation, float leaky_alpha_=1.0){
+void EnumParamList_MNK_Act(int M_, int N_, int K_, OpType op_type, std::string activation, float leaky_alpha_=0.01){
     int M = M_;
     int N = N_;
     int K = K_;
@@ -50,11 +50,11 @@ void EnumParamList_MNK_Act(int M_, int N_, int K_, OpType op_type, std::string a
     CUDA_CHECK(cudaMalloc((void**)&input, sizeof(DataType_) * M * K));
     CUDA_CHECK(cudaMalloc((void**)&weight, sizeof(DataType_) * K * N));
     // 行主序的bias应该是N
-    CUDA_CHECK(cudaMalloc((void**)&bias, sizeof(DataType_) * N));
+    CUDA_CHECK(cudaMalloc((void**)&bias, sizeof(DataType_) *M* N));
     CUDA_CHECK(cudaMalloc((void**)&output, sizeof(DataType_) * M * N));
     InitMatrix(input, M, K);
     InitMatrix(weight, K, N);
-    InitMatrix(bias, 1, N);
+    InitMatrix(bias, M, N);
     InitMatrix(output, M, N);
     CUDA_CHECK(cudaDeviceSynchronize());
 
@@ -62,8 +62,9 @@ void EnumParamList_MNK_Act(int M_, int N_, int K_, OpType op_type, std::string a
     CUDA_CHECK(cudaStreamCreate(&stream));
    
     // cutlass
+    bool vecBias = false;
     FcAllParams params{
-        input, weight, bias, output, M, N, K, lda, ldb, ldd, stream, date_type, sm_version, leaky_alpha
+        input, weight, bias, output, M, N, K, lda, ldb, ldd, stream, date_type, vecBias, sm_version, leaky_alpha
     };
     // void* dlhandler = GetDsoHandle();
     // func fc_func = NULL;
@@ -86,7 +87,7 @@ void EnumParamList_MNK_Act(int M_, int N_, int K_, OpType op_type, std::string a
     // }
     // fc_func(params);
 
-    cutlass::Status status = fc_bias_relu_sm80_fp16_35(params);
+    cutlass::Status status = fc_bias_sm80_bf16(params);
     
     CUTLASS_CHECK(status);
     CUDA_CHECK(cudaDeviceSynchronize());
@@ -136,7 +137,7 @@ int main(){
     int M = 64;
     int N = 64;
     int K = 64;
-    OpType op_type = OpType::FC_BIAS_RELU;
+    OpType op_type = OpType::FC_BIAS;
     std::string activation = OpType2String(op_type);
     EnumParamList_MNK_Act(M, N, K, op_type, activation, 1.f);
     

@@ -1,5 +1,6 @@
 #include "paddle/phi/kernels/fusion/cutlass/fully_connected/fc_util.h"
-
+#include <iostream>
+#include <cmath>
 
 namespace phi {
 namespace fusion {
@@ -11,11 +12,19 @@ float diff(const T *C_cutlass, const T *C_naive, int n) {
   for (int i = 0; i < n; i++) {
     float cutlass_value = static_cast<float>(C_cutlass[i]);
     float naive_value = static_cast<float>(C_naive[i]);
+    // std::cout << "cutlass-naive: " << cutlass_value << "-" << naive_value << "    ";
     if (std::abs(naive_value - cutlass_value) > max_diff) {
       max_diff = std::abs(naive_value - cutlass_value);
     }
   }
   return max_diff;
+}
+
+__device__ inline float tanh_kai(float x){
+  if(x > 0)
+      return (1-exp(-2*x))/(1+exp(-2*x));
+  else
+      return (exp(2*x)-1)/(1+exp(2*x));
 }
 
 // 暂时假设输入都是行主序的。
@@ -28,6 +37,7 @@ __global__ void naive_fc_kernel(
     int M, int N, int K,
     int lda, int ldb, int ldd,
     float leaky_alpha,
+    bool vecBias,
     OpType op_type
 ){
   int j = threadIdx.x + blockIdx.x * blockDim.x;
@@ -40,7 +50,12 @@ __global__ void naive_fc_kernel(
       float weight_ele = static_cast<float>(weight[k * ldb + j]);
       accumulator += input_ele * weight_ele;
     }
-    accumulator += static_cast<float>(bias[j]);
+    if(vecBias){
+      accumulator += static_cast<float>(bias[j]);
+    }
+    else{
+      accumulator += static_cast<float>(bias[i * ldd + j]);
+    }
 
     switch (op_type) {
         case FC_BIAS:
@@ -56,6 +71,9 @@ __global__ void naive_fc_kernel(
           break;
         case FC_BIAS_SIGMOID:
           accumulator = 1.f / (1.f + std::exp(-accumulator));
+          break;
+        case FC_BIAS_GELU:
+          accumulator = 0.5*accumulator*(1+tanh_kai(std::sqrt(2/M_PI)*(accumulator+0.044715*std::pow(accumulator,3))));
           break;
         default:
             break;
@@ -73,6 +91,7 @@ float fc_diff_gpu(const FcAllParams& params, OpType op_type){
     int M = params.m, N = params.n, K = params.k;
     int lda = params.lda, ldb = params.ldb, ldd= params.ldd;
     float leaky_alpha = params.leaky_alpha;
+    bool vecBias = params.vecBias;
     
     size_t outSize = sizeof(T) * M * N;
     T *output_naive_D;
@@ -80,7 +99,7 @@ float fc_diff_gpu(const FcAllParams& params, OpType op_type){
     dim3 block(16, 16);
     dim3 grid((N + block.x - 1) / block.x, (M + block.y - 1) / block.y);
     naive_fc_kernel<T><<<grid, block>>>(input, weight, bias, output_naive_D,
-                                        M, N, K,lda, ldb, ldd, leaky_alpha, op_type);
+                                        M, N, K,lda, ldb, ldd, leaky_alpha, vecBias, op_type);
     cudaGetLastError();
     CUDA_CHECK(cudaDeviceSynchronize());
 
@@ -113,6 +132,8 @@ std::string OpType2String(OpType op_type) {
       break;
     case FC_BIAS_LEAKY_RELU:
       return "fc_bias_leaky_relu";
+    case FC_BIAS_GELU:
+      return "fc_bias_gelu";
     default:
       break;
   }

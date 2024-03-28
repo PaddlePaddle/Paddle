@@ -116,6 +116,7 @@ void RewriterBase::ReplaceOpWithIf(
 
 void RewriterBase::ReplaceOp(Operation* op,
                              const std::vector<Value>& new_values) {
+  printf("kai======== RewriterBase::ReplaceOp\n");
   // Notify that the rewriter subclass we're about to replace this root.
   NotifyRootReplaced(op, new_values);
 
@@ -128,6 +129,7 @@ void RewriterBase::ReplaceOp(Operation* op,
 }
 
 void RewriterBase::EraseOp(Operation* op) {
+  printf("kai======== RewriterBase::EraseOp, %s\n", op->name().c_str());
   IR_ENFORCE(
       op->use_empty(),
       "Erase op failed. op(%s) is used, the expectation is that it is not used",

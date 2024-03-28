@@ -128,7 +128,7 @@ using pir::Type;
 using pir::Value;
 using pybind11::return_value_policy;
 
-USE_PIR_PASS(dead_code_elimination_pass);
+// USE_PIR_PASS(dead_code_elimination_pass);
 USE_PIR_PASS(multihead_matmul_fuse_pass);
 USE_PIR_PASS(transpose_flatten_concat_fuse_pass);
 USE_PIR_PASS(fused_gemm_epilogue_pass);

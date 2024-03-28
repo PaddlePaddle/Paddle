@@ -26,21 +26,24 @@ cutlass::Status ${kernel_func_name}(const FcAllParams& params) {
         ${align_b},         // AlignB
         ${math_operator}    // Operation performed by GEMM
     >;
+    // printf("swizzling_functor: ${swizzling_functor}, Tshape: ${Tshape}, Wshape: ${Wshape}\\n");
 
 '''
 
 CommonCutlassFcKernelArguments = '''
     /// Arguments
     cutlass::gemm::GemmCoord problem_size{params.m, params.n, params.k};
-    ${element_a} *input = (${element_a} *)(params.input);
-    ${element_b} *weight = (${element_b} *)(params.weight);
-    ${element_c} *bias = (${element_c} *)(params.bias);
-    ${element_c} *output = (${element_c} *)(params.output);
-    // 这些都是layout的Demo写法 实际上是如何安排这些layout组合的计算的 我还不清楚
+    cutlass::bfloat16_t *input = (cutlass::bfloat16_t *)(params.input);
+    cutlass::bfloat16_t *weight = (cutlass::bfloat16_t *)(params.weight);
+    cutlass::bfloat16_t *bias = (cutlass::bfloat16_t *)(params.bias);
+    cutlass::bfloat16_t *output = (cutlass::bfloat16_t *)(params.output);
+    /// 仅适用于RRR格式
     int64_t batch_stride_C = problem_size.n();
+    if(!params.vecBias)     { batch_stride_C = problem_size.mn().product(); }
     long lda = (long)params.lda;   
     long ldb = (long)params.ldb;
     long ldc_bias = 0;
+    if(!params.vecBias)     { ldc_bias = (long)params.ldd; } 
     long ldd = (long)params.ldd;
 
     typename DeviceKernalName::Arguments arguments{
@@ -113,6 +116,7 @@ void ${func_name}(FcAllParams params) {
 
   map_problem_${func_name}[problem_size] = best_config_index;
   ${func_name}_all_func[best_config_index](params);
+  printf("${func_name}_%d\\n", best_config_index);
 }
 '''
 

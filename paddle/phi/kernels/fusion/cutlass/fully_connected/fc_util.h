@@ -50,6 +50,7 @@ typedef enum {
   FC_BIAS_SILU,
   FC_BIAS_LEAKY_RELU,
   FC_BIAS_SIGMOID,
+  FC_BIAS_GELU,
 } OpType;
 
 // fc_diff_gpu calculate diff of cutlass output and baseline output, you can

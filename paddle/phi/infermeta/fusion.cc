@@ -3544,15 +3544,15 @@ void FCInferMeta(const MetaTensor& input,
     auto bias_dims = bias.dims();
     auto w_dims1 = padding_weights ? w_dims[1] - 4 : w_dims[1];
 
-    PADDLE_ENFORCE_LE(
-        bias_dims.size(),
-        2,
-        phi::errors::InvalidArgument(
-            "The input Bias of fc is expected to be a 1-D or 2-D tensor. But "
-            "received the number of Bias's dimensions is %d, "
-            "Bias's shape is %s.",
-            bias_dims.size(),
-            bias_dims));
+    // PADDLE_ENFORCE_LE(
+    //     bias_dims.size(),
+    //     2,
+    //     phi::errors::InvalidArgument(
+    //         "The input Bias of fc is expected to be a 1-D or 2-D tensor. But "
+    //         "received the number of Bias's dimensions is %d, "
+    //         "Bias's shape is %s.",
+    //         bias_dims.size(),
+    //         bias_dims));
 
     PADDLE_ENFORCE_EQ(
         bias_dims[bias_dims.size() - 1],
@@ -3567,16 +3567,16 @@ void FCInferMeta(const MetaTensor& input,
             w_dims1,
             w_dims));
 
-    if (bias_dims.size() == 2) {
-      PADDLE_ENFORCE_EQ(
-          bias_dims[0],
-          1,
-          phi::errors::InvalidArgument(
-              "The first dimension of input Bias is expected to be 1, "
-              "but received %d, Bias's shape is %s.",
-              bias_dims[0],
-              bias_dims));
-    }
+    // if (bias_dims.size() == 2) {
+    //   PADDLE_ENFORCE_EQ(
+    //       bias_dims[0],
+    //       1,
+    //       phi::errors::InvalidArgument(
+    //           "The first dimension of input Bias is expected to be 1, "
+    //           "but received %d, Bias's shape is %s.",
+    //           bias_dims[0],
+    //           bias_dims));
+    // }
   }
 
   auto in_dims = input.dims();
@@ -3592,14 +3592,21 @@ void FCInferMeta(const MetaTensor& input,
           in_dims.size(),
           in_dims));
 
-  if (!activation_type.empty()) {
-    PADDLE_ENFORCE_EQ(activation_type,
-                      "relu",
-                      phi::errors::InvalidArgument(
-                          "The attribute activation_type of fc is expected "
-                          "to be \"relu\", but received %s.",
-                          activation_type.c_str()));
-  }
+  // if (!activation_type.empty()) {
+  //   PADDLE_ENFORCE_EQ(activation_type,
+  //                     "relu",
+  //                     phi::errors::InvalidArgument(
+  //                         "The attribute activation_type of fc is expected "
+  //                         "to be \"relu\", but received %s.",
+  //                         activation_type.c_str()));
+  // }
+  std::unordered_set<std::string> support_acts = {"", "relu", "gelu", "sigmoid", "silu"};   // leaky_relu
+  PADDLE_ENFORCE_EQ(support_acts.count(activation_type),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The attribute activation_type of fc is expected "
+                        "to be one of [\"\", \"relu\", \"gelu\", \"sigmoid\", \"silu\"], but received %s.",
+                        activation_type.c_str()));
 
   std::vector<int64_t> output_dims;
   phi::funcs::FCOutputSize(
