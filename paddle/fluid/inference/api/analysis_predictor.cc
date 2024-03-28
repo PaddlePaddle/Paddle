@@ -885,6 +885,16 @@ bool AnalysisPredictor::PrepareExecutor() {
       pir_program_ =
           paddle::TranslateLegacyProgramToProgram(*inference_program_);
 
+      auto ir_printing_conditions = [this](::pir::Pass *pass,
+                                           ::pir::Operation *op) {
+        if (this->config_.ir_debug_passes_.empty()) {
+          return true;
+        }
+        return std::find(this->config_.ir_debug_passes_.begin(),
+                         this->config_.ir_debug_passes_.end(),
+                         pass->name()) != this->config_.ir_debug_passes_.end();
+      };
+
 #ifdef PADDLE_WITH_CINN
       if (paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
         VLOG(4) << "[Prim] Decomp program in predictor begin.";
@@ -910,7 +920,9 @@ bool AnalysisPredictor::PrepareExecutor() {
             pass_manager->EnablePrintStatistics();
           }
           if (config_.ir_debug_) {
-            pass_manager->EnableIRPrinting();
+            pass_manager->EnableIRPrinting(
+                std::make_unique<pir::PassManager::IRPrinterOption>(
+                    ir_printing_conditions, ir_printing_conditions));
           }
           return pass_manager;
         });
@@ -958,7 +970,9 @@ bool AnalysisPredictor::PrepareExecutor() {
         pass_pm.EnablePrintStatistics();
       }
       if (config_.ir_debug_) {
-        pass_pm.EnableIRPrinting();
+        pass_pm.EnableIRPrinting(
+            std::make_unique<pir::PassManager::IRPrinterOption>(
+                ir_printing_conditions, ir_printing_conditions));
       }
       pass_pm.Run(pir_program_.get());
 
@@ -984,7 +998,9 @@ bool AnalysisPredictor::PrepareExecutor() {
         basic_pass_pm.EnablePrintStatistics();
       }
       if (config_.ir_debug_) {
-        basic_pass_pm.EnableIRPrinting();
+        basic_pass_pm.EnableIRPrinting(
+            std::make_unique<pir::PassManager::IRPrinterOption>(
+                ir_printing_conditions, ir_printing_conditions));
       }
       basic_pass_pm.Run(pir_program_.get());
       //----------------------------------------------------------------------------------------------//
@@ -1000,7 +1016,9 @@ bool AnalysisPredictor::PrepareExecutor() {
         lowered_pm.EnablePrintStatistics();
       }
       if (config_.ir_debug_) {
-        lowered_pm.EnableIRPrinting();
+        lowered_pm.EnableIRPrinting(
+            std::make_unique<pir::PassManager::IRPrinterOption>(
+                ir_printing_conditions, ir_printing_conditions));
       }
       lowered_pm.Run(pir_program_.get());
 
