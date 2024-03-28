@@ -142,7 +142,7 @@ PD_DEFINE_bool(cinn_use_dense_merge_pass,
 
 PD_DEFINE_bool(
     nvrtc_compile_to_cubin,
-    BoolFromEnv("FLAGS_nvrtc_compile_to_cubin", false),
+    BoolFromEnv("FLAGS_nvrtc_compile_to_cubin", true),
     "Whether nvrtc compile cuda source into cubin instead of ptx (only "
     "works after cuda-11.1).");
 

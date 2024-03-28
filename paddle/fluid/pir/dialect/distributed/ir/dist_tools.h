@@ -21,8 +21,12 @@
 namespace paddle {
 namespace dialect {
 
-bool HasDistInput(const std::vector<pir::Value>& inputs);
-bool AllInputAreDist(const std::vector<pir::Value>& inputs);
+bool HasDistInput(const std::vector<pir::Value>& inputs,
+                  ProcessMeshAttribute* p_mesh_attr = nullptr);
+
+void CvtAllInputsToDist(const std::vector<pir::Value>& inputs,
+                        ProcessMeshAttribute mesh_attr);
+
 phi::distributed::DistMetaTensor CvtToDistMetaTensor(DistDenseTensorType type);
 TensorDistAttribute CvtToPirDistAttr(
     const phi::distributed::ArgDistAttr& dist_attr);

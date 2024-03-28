@@ -17,6 +17,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/refresh_combine_pattern.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
@@ -811,6 +812,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<IsCloseOpPattern>(context);
   ps.Add<ElementwisePowOpPattern>(context);
   ps.Add<FullWithTensorOpPattern>(context);
+  ps.Add<RefreshCombineOpPattern>(context);
 
   return ps;
 }

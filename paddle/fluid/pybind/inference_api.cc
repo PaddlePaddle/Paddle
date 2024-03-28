@@ -981,7 +981,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("lite_engine_enabled", &AnalysisConfig::lite_engine_enabled)
       .def("switch_ir_debug",
            &AnalysisConfig::SwitchIrDebug,
-           py::arg("x") = true)
+           py::arg("x") = true,
+           py::arg("passes") = std::vector<std::string>())
       .def("enable_mkldnn", &AnalysisConfig::EnableMKLDNN)
       .def("disable_mkldnn", &AnalysisConfig::DisableMKLDNN)
       .def("mkldnn_enabled", &AnalysisConfig::mkldnn_enabled)

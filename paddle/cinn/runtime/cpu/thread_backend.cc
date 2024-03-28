@@ -25,6 +25,7 @@
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/runtime/intrinsic.h"
+#include "paddle/common/enforce.h"
 
 int max_concurrency() {
   int max_concurrency = 1;

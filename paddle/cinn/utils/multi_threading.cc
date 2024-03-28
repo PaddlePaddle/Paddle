@@ -28,8 +28,12 @@ namespace utils {
 
 SequenceDispatcher::SequenceDispatcher(int begin, int end, int step)
     : end_(end), step_(step), index_(begin) {
-  CHECK_LE(begin, end) << StringFormat("begin[%d] > end[%d]", begin, end);
-  CHECK_GT(step, 0) << "step is less than 0";
+  PADDLE_ENFORCE_LE(
+      begin,
+      end,
+      phi::errors::InvalidArgument("begin[%d] > end[%d]", begin, end));
+  PADDLE_ENFORCE_GT(
+      step, 0, phi::errors::InvalidArgument("step is less than 0."));
 }
 
 int SequenceDispatcher::Next() const {
@@ -47,7 +51,10 @@ void parallel_run(const WorkerFuncType& fn,
   if (num_threads == -1 || num_threads > std::thread::hardware_concurrency()) {
     num_threads = std::thread::hardware_concurrency();
   }
-  CHECK_GT(num_threads, 0) << "num_threads should be greater than 0";
+  PADDLE_ENFORCE_GT(
+      num_threads,
+      0,
+      phi::errors::PreconditionNotMet("num_threads should be greater than 0"));
 
   // worker function of a thread
   auto worker = [&fn, &dispatcher](int tid) -> int {

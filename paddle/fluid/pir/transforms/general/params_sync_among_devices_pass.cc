@@ -38,30 +38,22 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
 
   bool Initialize(pir::IrContext* context) override {
     PADDLE_ENFORCE_EQ(
-        Has(pir::kPlaceAttr),
+        Has(pir::Pass::kPlaceAttr),
         true,
         phi::errors::InvalidArgument(
             "Pass initialize failed."
             "When using ConstantFoldingPass, place attribute is required!"
             "Use Set method to set the place attribute."));
     PADDLE_ENFORCE_EQ(
-        Has(pir::kParamScopeAttr),
+        Has(pir::Pass::kParamScopeAttr),
         true,
         phi::errors::InvalidArgument(
             "Pass initialize failed."
             "When using ConstantFoldingPass, scope attribute is required!"
             "Use Set method to set the scope attribute."));
 
-    place_ = Get<phi::Place>(pir::kPlaceAttr);
-    scope_ = &Get<paddle::framework::Scope>(pir::kParamScopeAttr);
-
-    PADDLE_ENFORCE_NOT_NULL(
-        scope_, phi::errors::InvalidArgument("scope can not be nullptr"));
-    PADDLE_ENFORCE(
-        paddle::platform::is_gpu_place(place_) ||
-            paddle::platform::is_cpu_place(place_),
-        phi::errors::PreconditionNotMet(
-            "params_sync_among_devices_pass should run on cpu or gpu."));
+    place_ = Get<phi::Place>(pir::Pass::kPlaceAttr);
+    scope_ = &Get<paddle::framework::Scope>(pir::Pass::kParamScopeAttr);
     return true;
   }
 
@@ -106,11 +98,21 @@ class ParamsSyncAmongDevicesPass : public pir::Pass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
+    PADDLE_ENFORCE_NOT_NULL(
+        scope_, phi::errors::InvalidArgument("scope can not be nullptr"));
+    PADDLE_ENFORCE(paddle::platform::is_gpu_place(place_) ||
+                       paddle::platform::is_cpu_place(place_),
+                   phi::errors::PreconditionNotMet(
+                       "The Place attr in params_sync_among_devices_pass "
+                       "should be cpu or gpu."));
+    if (paddle::platform::is_cpu_place(place_)) {
+      return false;
+    }
     return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
   }
 
  private:
-  phi::Place place_;
+  phi::Place place_{phi::CPUPlace{}};
   paddle::framework::Scope* scope_{nullptr};
 };
 

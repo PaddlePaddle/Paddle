@@ -609,40 +609,12 @@ def GenDistBranch(args, op_info):
         return ""
     TEMPLATE = """
   // Auto Parallel condition
-  if(HasDistInput(input_values)) {{
-    ProcessMeshAttribute op_mesh;
+  ProcessMeshAttribute op_mesh;
+  if(HasDistInput(input_values, &op_mesh)) {{
+    CvtAllInputsToDist(input_values, op_mesh);
     auto ctx = pir::IrContext::Instance();
-    for(auto value : input_values) {{
-      if (auto dist_interface = value.type().dyn_cast<DistTypeInterface>()) {{
-        op_mesh = dist_interface.process_mesh_attr();
-        break;
-      }}
-    }}"""
-    dist_branch_str = TEMPLATE.format()
-    TEMPLATE = """
-    if(!{name}.FromTensor()) {{
-      auto dist_type = DistDenseTensorType::get(ctx, {name}_.type().dyn_cast<DenseTensorType>(), op_mesh);
-      {name}_.set_type(dist_type);
-      {name}_.defining_op()->set_attribute(
-        kAttrOpDistAttr,
-          OperationDistAttribute::get(
-            ctx,
-            op_mesh,
-            {{dist_type.tensor_dist_attr() }},
-            {{}}
-          )
-      );
-    }}
-    """
-    for mutable_attr_name in op_info.mutable_attribute_name_list:
-        dist_branch_str += TEMPLATE.format(name=mutable_attr_name)
-    TEMPLATE = """
-    if(!AllInputAreDist(input_values)) {{
-        PADDLE_THROW(common::errors::Unimplemented(
-            "Mixed inputs with DenseTensor and DistDenseTensor are not supported yet."));
-    }}
     std::vector<TensorDistAttribute> operand_dist_attrs, result_dist_attrs;"""
-    dist_branch_str += TEMPLATE.format()
+    dist_branch_str = TEMPLATE.format()
     infer_spmd_args_list = []
     # Prepare inputs_meta_tensor & attributes for infer spmd
     for name in op_info.spmd_params:
@@ -684,11 +656,35 @@ def GenDistBranch(args, op_info):
                         infer_spmd_args_list[-1] = name + ".GetData()"
     TEMPLATE = """
     auto spmd_info = InferSpmd({args});
+    PADDLE_ENFORCE_EQ(spmd_info.first.size(), {input_size}u, common::errors::Unavailable(
+        "Size of spmd_info.first for op[{op_name}]is unexpected."));
     for(auto& arg_dist : spmd_info.first) {{
         operand_dist_attrs.push_back(CvtToPirDistAttr(arg_dist));
     }}
 """
-    dist_branch_str += TEMPLATE.format(args=', '.join(infer_spmd_args_list))
+    dist_branch_str += TEMPLATE.format(
+        args=', '.join(infer_spmd_args_list),
+        input_size=len(op_info.input_name_list),
+        op_name=op_info.class_name,
+    )
+
+    if len(op_info.mutable_attribute_name_list) > 0:
+        TEMPLATE = """
+    for(int i = {input_size}; i < {all_input_size}; ++i) {{
+        if(auto dist_type = input_values[i].type().dyn_cast<DistTypeInterface>()) {{
+            operand_dist_attrs.push_back(dist_type.tensor_dist_attr());
+        }}
+        else {{
+            operand_dist_attrs.push_back(nullptr);
+        }}
+    }}
+"""
+        dist_branch_str += TEMPLATE.format(
+            input_size=len(op_info.input_name_list),
+            all_input_size=len(op_info.input_name_list)
+            + len(op_info.mutable_attribute_name_list),
+        )
+
     for idx, output_name in enumerate(op_info.output_name_list):
         # is a vector<Tensor>
         if 'pir::VectorType' in op_info.output_type_list[idx]:
