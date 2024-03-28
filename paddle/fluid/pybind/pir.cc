@@ -699,6 +699,18 @@ py::str Value2String(Value self) {
   std::ostringstream print_stream;
   print_stream << "Value(";
   print_stream << GetValueInfo(self);
+  // TODO(SigureMo): Remove this before merge
+  if (self.impl() != nullptr) {
+    if (self.defining_op() &&
+        self.defining_op()->name() == "builtin.parameter") {
+      print_stream << ", param_name="
+                   << self.defining_op()
+                          ->attributes()
+                          .at("parameter_name")
+                          .dyn_cast<pir::StrAttribute>()
+                          .AsString();
+    }
+  }
   print_stream << ")";
   return print_stream.str();
 }
@@ -1072,6 +1084,131 @@ void range_block_do(const Block *block, std::vector<int> range, F fn) {
   }
 }
 
+template <typename K, typename V>
+bool ExistsInMapValues(const std::map<K, V> &m, V value) {
+  for (const auto &[k, v] : m) {
+    if (v == value) {
+      return true;
+    }
+  }
+  return false;
+}
+
+std::map<int, int> GetOpInplaceInfo(const pir::Operation *op) {
+  std::map<int, int> inplace_info;
+  if (!op->HasTrait<paddle::dialect::InplaceTrait>()) {
+    return inplace_info;
+  }
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  std::string op_name = op->name();
+  if (op->attributes().count("op_name")) {
+    op_name =
+        op->attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+  }
+
+  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
+  paddle::dialect::OpYamlInfoParser yaml_parser(
+      op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
+          ->get_op_info_(op_name),
+      paddle::dialect::IsLegacyOp(op_name));
+
+  for (size_t i = 0; i < op->num_results(); ++i) {
+    std::string value_name = yaml_parser.OutputNames()[i];
+    if (yaml_parser.HasInplace(value_name)) {
+      const std::string &inplace_name = yaml_parser.InplaceName(value_name);
+      inplace_info[i] = yaml_parser.InputName2Id().at(inplace_name);
+    }
+    if (yaml_parser.HasView(value_name)) {
+      const std::string &view_name = yaml_parser.ViewName(value_name);
+      inplace_info[i] = yaml_parser.InputName2Id().at(view_name);
+    }
+  }
+
+  return inplace_info;
+}
+
+std::vector<std::vector<pir::Value>> GetOpInplaceChains(const Block *block) {
+  std::vector<std::vector<pir::Value>> inplace_chains;
+  std::map<pir::Value, int> value_to_inplace_chain_index;
+
+  for (auto &op : *block) {
+    pir::Walk(&op, [&](Operation *inner_op) {
+      auto op_inplace_info = GetOpInplaceInfo(inner_op);
+      for (auto &[out_idx, in_idx] : op_inplace_info) {
+        auto target_value = inner_op->results()[out_idx];
+        auto source_value = inner_op->operands()[in_idx].source();
+        VLOG(8) << "Inplace Mapping: " << Value2String(source_value) << " -> "
+                << Value2String(target_value);
+
+        if (value_to_inplace_chain_index.count(source_value) == 0 &&
+            value_to_inplace_chain_index.count(target_value) == 0) {
+          size_t chain_insertion_idx = inplace_chains.size();
+          inplace_chains.push_back({source_value, target_value});
+          value_to_inplace_chain_index.insert(
+              {source_value, chain_insertion_idx});
+          value_to_inplace_chain_index.insert(
+              {target_value, chain_insertion_idx});
+        } else {
+          PADDLE_ENFORCE_NE(
+              value_to_inplace_chain_index.count(source_value),
+              0,
+              phi::errors::Unavailable("source value should be in the chain"));
+          PADDLE_ENFORCE_EQ(value_to_inplace_chain_index.count(target_value),
+                            0,
+                            phi::errors::Unavailable(
+                                "target value should not be in the chain"));
+          size_t chain_insertion_idx =
+              value_to_inplace_chain_index[source_value];
+          inplace_chains[chain_insertion_idx].push_back(target_value);
+          value_to_inplace_chain_index.insert(
+              {target_value, chain_insertion_idx});
+        }
+      }
+    });
+  }
+  return inplace_chains;
+}
+
+std::optional<pir::Value> FindInplaceSource(
+    const std::vector<std::vector<pir::Value>> inplace_chains,
+    pir::Value value) {
+  if (value.impl() == nullptr) {
+    return std::nullopt;
+  }
+  for (auto &chain : inplace_chains) {
+    for (auto &v : chain) {
+      if (v == value) {
+        return chain[0];
+      }
+    }
+  }
+  return std::nullopt;
+}
+
+std::map<pir::Value, pir::Value> ReplaceValueWithInplaceSource(
+    const std::vector<std::vector<pir::Value>> &source_domain,
+    std::vector<pir::Value> *target_values,
+    const std::vector<std::vector<pir::Value>> inplace_chains) {
+  std::map<pir::Value, pir::Value> replacements;
+  for (auto &target_value : *target_values) {
+    auto inplace_source = FindInplaceSource(inplace_chains, target_value);
+    if (!inplace_source.has_value()) {
+      continue;
+    }
+    for (auto &source_values : source_domain) {
+      if (std::find(source_values.begin(),
+                    source_values.end(),
+                    inplace_source.value()) != source_values.end()) {
+        VLOG(0) << "Replace " << Value2String(target_value) << " with "
+                << Value2String(inplace_source.value());
+        replacements.insert({target_value, inplace_source.value()});
+        target_value = inplace_source.value();
+      }
+    }
+  }
+  return replacements;
+}
+
 std::pair<std::vector<pir::Value>, std::unordered_set<pir::Value>>
 AnalysisMiddleVariable(const Program &program,
                        const std::vector<pir::Value> &forward_inputs,
@@ -1255,10 +1392,43 @@ SplitedResult SplitForwardBackward(
   pir::IrContext *ctx = pir::IrContext::Instance();
   auto forward_program = std::make_shared<Program>(ctx);
   auto backward_program = std::make_shared<Program>(ctx);
+  std::vector<pir::Value> forward_outputs_mutable = forward_outputs;
+  std::vector<pir::Value> forward_inputs_grads_mutable = forward_inputs_grads;
+  std::vector<pir::Value> forward_params_grads_mutable = forward_params_grads;
   std::vector<pir::Value> middle_values;
   std::unordered_set<pir::Value> backward_inputs;
+  const auto &inplace_chains = GetOpInplaceChains(program.block());
+  // const std::vector<std::vector<pir::Value>> inplace_chains;
   std::tie(middle_values, backward_inputs) = AnalysisMiddleVariable(
       program, forward_in_out_values, forward_range, backward_range);
+
+  VLOG(0) << "start display backward_inputs:";
+  for (auto &v : backward_inputs) {
+    VLOG(0) << "backward_inputs: " << Value2String(v);
+  }
+  VLOG(0) << "end display backward_inputs";
+
+  // Replace inplace value with source value.
+  auto replacement_for_forward_middles = ReplaceValueWithInplaceSource(
+      {forward_inputs, forward_params}, &middle_values, inplace_chains);
+  auto replacement_for_forward_outputs =
+      ReplaceValueWithInplaceSource({forward_inputs, forward_params},
+                                    &forward_outputs_mutable,
+                                    inplace_chains);
+  ReplaceValueWithInplaceSource({forward_inputs,
+                                 forward_params,
+                                 forward_outputs_mutable,
+                                 middle_values,
+                                 forward_outputs_grads},
+                                &forward_inputs_grads_mutable,
+                                inplace_chains);
+  ReplaceValueWithInplaceSource({forward_inputs,
+                                 forward_params,
+                                 forward_outputs_mutable,
+                                 middle_values,
+                                 forward_outputs_grads},
+                                &forward_params_grads_mutable,
+                                inplace_chains);
   pir::Block &backward_block = *backward_program->block();
   bool has_backward = (backward_range[1] > backward_range[0]);
 
@@ -1266,6 +1436,7 @@ SplitedResult SplitForwardBackward(
   VLOG(4) << "start create forward program.";
   pir::IrMapping forward_mapper;
   auto clone_options = pir::CloneOptions::All();
+  VLOG(0) << "start clone forward program";
   range_block_do(
       program.block(),
       forward_range,
@@ -1273,6 +1444,7 @@ SplitedResult SplitForwardBackward(
         auto *cloned_op = op->Clone(forward_mapper, clone_options);
         forward_program->block()->push_back(cloned_op);
       });
+  VLOG(0) << "end clone forward program";
   auto &forward_value_map = forward_mapper.GetMutableMap<pir::Value>();
 
   // backward program construct.
@@ -1280,11 +1452,29 @@ SplitedResult SplitForwardBackward(
   pir::IrMapping backward_mapper;
   auto &backward_value_map = backward_mapper.GetMutableMap<pir::Value>();
   int counter = 0;
+  auto display_value_map =
+      [](const std::unordered_map<pir::Value, pir::Value> &map,
+         const std::string &name) {
+        VLOG(0) << "\n";
+        VLOG(0) << "Start display Mapping: " << name << " size is "
+                << map.size();
+        for (auto &[k, v] : map) {
+          VLOG(0) << "Mapping: " << Value2String(k) << " -> "
+                  << Value2String(v);
+        }
+        VLOG(0) << "End display Mapping: " << name << "\n";
+      };
   auto create_kwarg_fn = [&backward_block,
                           &backward_inputs,
                           &backward_value_map,
+                          &replacement_for_forward_middles,
+                          &replacement_for_forward_outputs,
                           &counter](const pir::Value &v) {
-    if (v && backward_inputs.count(v)) {
+    if (v && !backward_value_map.count(v) &&
+        (backward_inputs.count(v) ||
+         ExistsInMapValues(replacement_for_forward_middles, v) ||
+         ExistsInMapValues(replacement_for_forward_outputs, v))) {
+      VLOG(0) << "Creating kwarg input_" + std::to_string(counter);
       backward_value_map[v] = backward_block.AddKwarg(
           "input_" + std::to_string(counter++), v.type());
     }
@@ -1293,8 +1483,17 @@ SplitedResult SplitForwardBackward(
   auto create_output_fn_forward = [&ctx,
                                    &forward_value_map,
                                    &counter,
-                                   &forward_program](const pir::Value &v) {
+                                   &forward_program,
+                                   &forward_inputs,
+                                   &forward_params](const pir::Value &v) {
     if (v.impl() == nullptr) {
+      return;
+    }
+    // Skip the value that already in forward_inputs or forward_params.
+    if (std::find(forward_inputs.begin(), forward_inputs.end(), v) !=
+            forward_inputs.end() ||
+        std::find(forward_params.begin(), forward_params.end(), v) !=
+            forward_params.end()) {
       return;
     }
     // NOTE(Aurelius84): we should skip insert ShadowOutputOp repeatedly by
@@ -1350,14 +1549,17 @@ SplitedResult SplitForwardBackward(
     counter += 1;
   };
 
-  // counter = 0;
+  display_value_map(backward_value_map,
+                    "backward_value_map before create inputs");
+
   if (has_backward) {
     VLOG(4) << "start create backward inputs, creating keyword argument.";
     VLOG(4)
         << "Create keyword argument for backward program: fo, start with input_"
         << counter;
-    std::for_each(
-        forward_outputs.begin(), forward_outputs.end(), create_kwarg_fn);
+    std::for_each(forward_outputs_mutable.begin(),
+                  forward_outputs_mutable.end(),
+                  create_kwarg_fn);
     VLOG(4)
         << "Create keyword argument for backward program: fx, start with input_"
         << counter;
@@ -1368,6 +1570,8 @@ SplitedResult SplitForwardBackward(
         << counter;
     std::for_each(
         forward_params.begin(), forward_params.end(), create_kwarg_fn);
+    // display_value_map(backward_value_map,
+    //                   "forward_value_map after create params");
     VLOG(4)
         << "Create keyword argument for backward program: fm, start with input_"
         << counter;
@@ -1380,17 +1584,36 @@ SplitedResult SplitForwardBackward(
                   create_kwarg_fn);
     VLOG(4) << "Create keyword argument for backward program end. input_"
             << counter;
+
+    display_value_map(backward_value_map,
+                      "backward_value_map after create inputs");
+
+    // Update the value map with inplace source value.
+    VLOG(0) << "start update inplace names";
+    VLOG(0) << "replacement_for_forward_middles size is: "
+            << replacement_for_forward_middles.size();
+    for (auto &[target, source] : replacement_for_forward_middles) {
+      backward_value_map[target] = backward_value_map.at(source);
+    }
+    VLOG(0) << "replacement_for_forward_outputs size is: "
+            << replacement_for_forward_outputs.size();
+    for (auto &[target, source] : replacement_for_forward_outputs) {
+      backward_value_map[target] = backward_value_map.at(source);
+    }
+    display_value_map(backward_value_map,
+                      "backward_value_map after update inplace names");
   }
 
-  // counter = 0;
   VLOG(4) << "start create forward outputs, inserting set_parameter ops.";
   std::for_each(
       middle_values.begin(), middle_values.end(), create_output_fn_forward);
-  std::for_each(
-      forward_outputs.begin(), forward_outputs.end(), create_output_fn_forward);
+  std::for_each(forward_outputs_mutable.begin(),
+                forward_outputs_mutable.end(),
+                create_output_fn_forward);
 
   // Step2. copy backward ops .
   VLOG(4) << "start copy backward ops";
+  VLOG(0) << "start clone backward program";
   range_block_do(
       program.block(),
       backward_range,
@@ -1398,14 +1621,14 @@ SplitedResult SplitForwardBackward(
         auto *cloned_op = op->Clone(backward_mapper, clone_options);
         backward_program->block()->push_back(cloned_op);
       });
-  // counter = 0;
+  VLOG(0) << "end clone backward program";
   VLOG(4) << "start create backward outputs, inserting set_parameter ops.";
   if (has_backward) {
-    std::for_each(forward_inputs_grads.begin(),
-                  forward_inputs_grads.end(),
+    std::for_each(forward_inputs_grads_mutable.begin(),
+                  forward_inputs_grads_mutable.end(),
                   create_output_fn_backward);
-    std::for_each(forward_params_grads.begin(),
-                  forward_params_grads.end(),
+    std::for_each(forward_params_grads_mutable.begin(),
+                  forward_params_grads_mutable.end(),
                   create_output_fn_backward);
   }
 
@@ -1423,20 +1646,20 @@ SplitedResult SplitForwardBackward(
 
   // construct all attributes we needed.
 
-  mapping_value(middle_values, forward_value_map, fm);    // write 'fm'
-  mapping_value(middle_values, backward_value_map, bm);   // write 'bm'
-  mapping_value(forward_inputs, forward_value_map, fx);   // write 'fx'
-  mapping_value(forward_inputs, backward_value_map, bx);  // write 'bx'
-  mapping_value(forward_params, forward_value_map, fp);   // write 'fp'
-  mapping_value(forward_params, backward_value_map, bp);  // write 'bp'
-  mapping_value(forward_outputs, forward_value_map, fo);  // write 'fo'
+  mapping_value(middle_values, forward_value_map, fm);            // write 'fm'
+  mapping_value(middle_values, backward_value_map, bm);           // write 'bm'
+  mapping_value(forward_inputs, forward_value_map, fx);           // write 'fx'
+  mapping_value(forward_inputs, backward_value_map, bx);          // write 'bx'
+  mapping_value(forward_params, forward_value_map, fp);           // write 'fp'
+  mapping_value(forward_params, backward_value_map, bp);          // write 'bp'
+  mapping_value(forward_outputs_mutable, forward_value_map, fo);  // write 'fo'
   mapping_value(
-      forward_inputs_grads, backward_value_map, bx_g);  // write 'bx_g'
+      forward_inputs_grads_mutable, backward_value_map, bx_g);  // write 'bx_g'
   mapping_value(
-      forward_params_grads, backward_value_map, bp_g);  // write 'bp_g'
+      forward_params_grads_mutable, backward_value_map, bp_g);  // write 'bp_g'
   mapping_value(
-      forward_outputs_grads, backward_value_map, bo_g);    // write 'bo_g'
-  mapping_value(forward_outputs, backward_value_map, bo);  // write 'bo'
+      forward_outputs_grads, backward_value_map, bo_g);  // write 'bo_g'
+  mapping_value(forward_outputs_mutable, backward_value_map, bo);  // write 'bo'
   mapping_value(GetNoNeedBufferValue(program.block(), backward_range),
                 forward_value_map,
                 no_need_buffer_values);  // write 'no_need_buffers'
@@ -1500,39 +1723,6 @@ void ResetShadowOutputName(pir::Operation *op, const std::string &name) {
   if (op->isa<pir::ShadowOutputOp>()) {
     op->set_attribute("output_name", pir::StrAttribute::get(ctx, name));
   }
-}
-
-std::map<int, int> GetOpInplaceInfo(const pir::Operation *op) {
-  std::map<int, int> inplace_info;
-  if (!op->HasTrait<paddle::dialect::InplaceTrait>()) {
-    return inplace_info;
-  }
-  pir::IrContext *ctx = pir::IrContext::Instance();
-  std::string op_name = op->name();
-  if (op->attributes().count("op_name")) {
-    op_name =
-        op->attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
-  }
-
-  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
-  paddle::dialect::OpYamlInfoParser yaml_parser(
-      op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
-          ->get_op_info_(op_name),
-      paddle::dialect::IsLegacyOp(op_name));
-
-  for (size_t i = 0; i < op->num_results(); ++i) {
-    std::string value_name = yaml_parser.OutputNames()[i];
-    if (yaml_parser.HasInplace(value_name)) {
-      const std::string &inplace_name = yaml_parser.InplaceName(value_name);
-      inplace_info[i] = yaml_parser.InputName2Id().at(inplace_name);
-    }
-    if (yaml_parser.HasView(value_name)) {
-      const std::string &view_name = yaml_parser.ViewName(value_name);
-      inplace_info[i] = yaml_parser.InputName2Id().at(view_name);
-    }
-  }
-
-  return inplace_info;
 }
 
 void BindUtils(pybind11::module *m) {
