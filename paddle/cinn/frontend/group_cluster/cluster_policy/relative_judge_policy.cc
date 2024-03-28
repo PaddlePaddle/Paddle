@@ -39,10 +39,11 @@ std::optional<ReducePattern> RelativeJudgePolicy::GetDownstreamFromCandidate(
   return {};
 }
 
-SplitedDims SplitReduceDims(const ShardableAxesSignature& signature,
+SplitedDims SplitReduceInputDimsIfRelatedWithNonReduceAxis(
+                            const ShardableAxesSignature& signature,
                             const pir::Operation* op) {
   // TODO(wuzhanfei) fix here，use result?
-  const auto& v = op->result(0);
+  const auto& v = op->operand_source(0);
   const auto& input_names = signature.inputs[0].axis_names;
   const auto& output_names = signature.outputs[0].axis_names;
   std::set<std::string> output_names_set(output_names.begin(),
@@ -51,6 +52,28 @@ SplitedDims SplitReduceDims(const ShardableAxesSignature& signature,
   int idx = 0;
   for (const auto& in : input_names) {
     if (output_names_set.count(in) == 0) {
+      result.non_related.emplace_back(v, idx);
+    } else {
+      result.related.emplace_back(v, idx);
+    }
+    idx += 1;
+  }
+  return result;
+}
+
+SplitedDims SplitReduceOutputDimsIfRelatedWithNonReduceAxis(
+                            const ShardableAxesSignature& signature,
+                            const pir::Operation* op) {
+  // TODO(wuzhanfei) fix here，use result?
+  const auto& v = op->result(0);
+  const auto& input_names = signature.inputs[0].axis_names;
+  const auto& output_names = signature.outputs[0].axis_names;
+  std::set<std::string> input_names_set(input_names.begin(),
+                                         input_names.end());
+  auto result = SplitedDims();
+  int idx = 0;
+  for (const auto& name : output_names) {
+    if (input_names_set.count(name) == 0) {
       result.non_related.emplace_back(v, idx);
     } else {
       result.related.emplace_back(v, idx);
@@ -111,7 +134,7 @@ bool RelativeJudgePolicy::ReduceTreeGrownCanMerge(
       upstream_tree.GetRootPattern().GetReduceOp()->result(0);
   pir::Operation* downstream_reduce_op =
       maybe_downstream_op.value().GetReduceOp();
-  const auto& split_reduce_dim_result = SplitReduceDims(
+  const auto& split_reduce_dim_result = SplitReduceOutputDimsIfRelatedWithNonReduceAxis(
       axes_info_.GetSignature(downstream_reduce_op), downstream_reduce_op);
   const auto& upstream_output_dims = GetAllValueDimFromValue(reduce_out_value);
   return IsBroadcastEdge(upstream_output_dims,
@@ -176,8 +199,8 @@ bool RelativeJudgePolicy::ReducePlusTrivialCanMerge(
     return false;
   }
 
-  VLOG(4) << "SplitReduceDims";
-  const auto& split_reduce_dims_result = SplitReduceDims(
+  VLOG(4) << "SplitReduceInputDimsIfRelatedWithNonReduceAxis";
+  const auto& split_reduce_dims_result = SplitReduceInputDimsIfRelatedWithNonReduceAxis(
       axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
 
   VLOG(4) << split_reduce_dims_result.DebugStr();
@@ -209,8 +232,9 @@ std::vector<size_t> RelativeJudgePolicy::GetFakeReduceIterIdx(
   }
 
   const auto& split_reduce_dims_result =
-      SplitReduceDims(axes_info_.GetSignature(upstream->sink_op_),
-                      upstream->sink_op_->result(0));
+      SplitReduceInputDimsIfRelatedWithNonReduceAxis(
+        axes_info_.GetSignature(upstream->sink_op_),
+        upstream->sink_op_);
 
   const auto& upstream_reduce_dims = split_reduce_dims_result.non_related;
   const auto& upstream_non_reduce_dims = split_reduce_dims_result.related;
