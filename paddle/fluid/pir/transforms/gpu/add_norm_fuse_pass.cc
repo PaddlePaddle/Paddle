@@ -28,7 +28,11 @@
 namespace {
 
 class RmsNormFusePattern : public paddle::drr::DrrPatternBase {
+ private:
+  const bool fp16_weight_;
+
  public:
+  explicit RmsNormFusePattern(bool fp16_weight) : fp16_weight_(fp16_weight) {}
   std::string name() const override { return "RmsNormFusePattern"; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
@@ -42,15 +46,29 @@ class RmsNormFusePattern : public paddle::drr::DrrPatternBase {
     const auto &rsqrt = pat.Op(paddle::dialect::RsqrtOp::name());
     const auto &multiply1 = pat.Op(paddle::dialect::MultiplyOp::name());
     const auto &multiply2 = pat.Op(paddle::dialect::MultiplyOp::name());
-
-    pat.Tensor("pow_out") = pow(pat.Tensor("x"));
-    pat.Tensor("mean_out") = mean(pat.Tensor("pow_out"));
-    pat.Tensor("scale_out") = scale(pat.Tensor("mean_out"), full());
-    pat.Tensor("rsqrt_out") = rsqrt(pat.Tensor("scale_out"));
-    pat.Tensor("multiply_out1") =
-        multiply1(pat.Tensor("rsqrt_out"), pat.Tensor("x"));
-    pat.Tensor("multiply_out2") =
-        multiply2(pat.Tensor("multiply_out1"), pat.Tensor("w"));
+    if (fp16_weight_) {
+      const auto &cast1 = pat.Op(paddle::dialect::CastOp::name());
+      pat.Tensor("cast_1_out") = cast1(pat.Tensor("x"));
+      pat.Tensor("pow_out") = pow(pat.Tensor("cast_1_out"));
+      pat.Tensor("mean_out") = mean(pat.Tensor("pow_out"));
+      pat.Tensor("scale_out") = scale(pat.Tensor("mean_out"), full());
+      pat.Tensor("rsqrt_out") = rsqrt(pat.Tensor("scale_out"));
+      pat.Tensor("multiply_out1") =
+          multiply1(pat.Tensor("rsqrt_out"), pat.Tensor("cast_1_out"));
+      const auto &cast2 = pat.Op(paddle::dialect::CastOp::name());
+      pat.Tensor("cast_2_out") = cast2(pat.Tensor("multiply_out1"));
+      pat.Tensor("multiply_out2") =
+          multiply2(pat.Tensor("cast_2_out"), pat.Tensor("w"));
+    } else {
+      pat.Tensor("pow_out") = pow(pat.Tensor("x"));
+      pat.Tensor("mean_out") = mean(pat.Tensor("pow_out"));
+      pat.Tensor("scale_out") = scale(pat.Tensor("mean_out"), full());
+      pat.Tensor("rsqrt_out") = rsqrt(pat.Tensor("scale_out"));
+      pat.Tensor("multiply_out1") =
+          multiply1(pat.Tensor("rsqrt_out"), pat.Tensor("x"));
+      pat.Tensor("multiply_out2") =
+          multiply2(pat.Tensor("multiply_out1"), pat.Tensor("w"));
+    }
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       auto axis = match_ctx.Attr<std::vector<int64_t>>("axis");
@@ -203,7 +221,9 @@ class AddNormFusePass : public pir::PatternRewritePass {
     // x-----------------------
     //                                mul --->rms_norm
     // w-----------------------------
-    ps.Add(paddle::drr::Create<RmsNormFusePattern>(context));
+    bool fp16_weight = true;
+    ps.Add(paddle::drr::Create<RmsNormFusePattern>(context, !fp16_weight));
+    ps.Add(paddle::drr::Create<RmsNormFusePattern>(context, fp16_weight));
     // x--------
     //           add-rms_norm --- rms_norm
     // residual-
