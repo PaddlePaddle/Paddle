@@ -20,6 +20,26 @@
 
 namespace cinn::frontend::group_cluster {
 
+template <typename T>
+void ExtendVector(std::vector<T>* first, const std::vector<T>& second) {
+  std::unordered_set<T> visited =
+      std::unordered_set<T>(first->begin(), first->end());
+  for (auto iter = second.begin(); iter != second.end(); iter++) {
+    if (visited.find(*iter) == visited.end()) {
+      visited.emplace(*iter);
+      first->emplace_back(*iter);
+    }
+  }
+}
+
+template <typename T>
+std::vector<T> MergeVector(const std::vector<T>& first,
+                           const std::vector<T>& second) {
+  std::vector<T> result = std::vector<T>(first);
+  ExtendVector(&result, second);
+  return result;
+}
+
 struct TrivialPattern {
   explicit TrivialPattern(const std::vector<pir::Operation*>& ops)
       : ops_(ops) {}
@@ -43,13 +63,11 @@ struct ReduceTreePattern {
   std::vector<ReducePattern> reduce_patterns_;
   const ReducePattern& GetRootPattern() const { return root_; }
   std::vector<pir::Operation*> ops() const {
-    std::vector<pir::Operation*> ops;
+    std::vector<pir::Operation*> result;
     for (const auto& reduce_pattern : reduce_patterns_) {
-      for (const auto& op : reduce_pattern.ops()) {
-        ops.push_back(op);
-      }
+      result = MergeVector(result, reduce_pattern.ops());
     }
-    return ops;
+    return result;
   }
   static std::string name() { return "ReduceTree"; }
 
@@ -63,7 +81,9 @@ struct ReduceTreePlusTrivialPattern {
       : tree(tree), sink_trivial(sink_trivial) {}
   ReduceTreePattern tree;
   TrivialPattern sink_trivial;
-  std::vector<pir::Operation*> ops() const { return {}; }
+  std::vector<pir::Operation*> ops() const {
+    return MergeVector(tree.ops(), sink_trivial.ops());
+  }
   static std::string name() { return "ReduceTree+Trivial"; }
   std::vector<size_t> fake_reduce_iter_idx;
 };

@@ -23,13 +23,13 @@ struct ShardableAxes {
   explicit ShardableAxes(const std::vector<std::string>& names)
       : axis_names(names) {}
   std::vector<std::string> axis_names;
-  std::string DebugStr();
+  std::string DebugStr() const;
 };
 
 struct ShardableAxesSignature {
   std::vector<ShardableAxes> inputs;
   std::vector<ShardableAxes> outputs;
-  std::string DebugStr();
+  std::string DebugStr() const;
 };
 
 struct ShardableAxesInfoManager {
@@ -46,8 +46,7 @@ struct ShardableAxesInfoManager {
   const std::vector<pir::Operation*>& ops_;
   const pir::ShapeConstraintIRAnalysis* shape_analysis_;
 
-  std::unordered_map<pir::Operation*, ShardableAxesSignature>
-      op_signature_map_;
+  std::unordered_map<pir::Operation*, ShardableAxesSignature> op_signature_map_;
   std::unordered_map<pir::Value, ShardableAxes> value_axes_map_;
   std::unordered_map<std::string, std::string> name_union_;
 };

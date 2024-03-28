@@ -178,6 +178,19 @@ struct FusionGraph {
                                                   FusibleOp* downstream);
   FusibleOp SinkTrivialLoopAlign(TrivialOp trivial_op, ReduceOp reduce_op);
 
+  template <typename T>
+  std::vector<T> FilterWithFakeReduceIter(const std::vector<T>& input) {
+    std::vector<T> result;
+    for (size_t i = 0; i < input.size(); i++) {
+      if (std::find(fake_reduce_iter_idx_.begin(),
+                    fake_reduce_iter_idx_.end(),
+                    i) == fake_reduce_iter_idx_.end()) {
+        result.emplace_back(input.at(i));
+      }
+    }
+    return result;
+  }
+
  private:
   std::unordered_set<FusionNode*> all_fusion_nodes_;
   std::vector<FusibleOp> fusion_results_;

@@ -61,7 +61,14 @@ inline std::vector<group_cluster::PatternNodePtr> ClusterOps(
   VLOG(4) << "Start Create PatternGraph";
   group_cluster::PatternGraph graph(ops, policy_manager);
   VLOG(4) << "Start Cluster Ops";
-  return graph.ClusterOps();
+  auto result = graph.ClusterOps();
+
+  VLOG(4) << "End Cluster Ops! result size:" << result.size();
+  for (const auto& node : result) {
+    VLOG(4) << node->DebugStr();
+  }
+
+  return result;
 }
 
 }  // namespace cinn::frontend
