@@ -333,6 +333,21 @@ ir::Tensor Arange(const float start,
   return res;
 }
 
+ir::Tensor Tril(const ir::Tensor& A,
+                const int diagonal,
+                const std::vector<ir::Dim>& out_shape,
+                const std::string& name) {
+  ir::Tensor res = Compute(
+      ToCinnExprs(out_shape),
+      [=](const std::vector<Expr>& indice) {
+        return ir::Select::Make(indice[0] >= indice[1] - diagonal,
+                                A(indice),
+                                ir::Expr(static_cast<float>(0.)));
+      },
+      name);
+  return res;
+}
+
 }  // namespace pe
 }  // namespace hlir
 }  // namespace cinn
