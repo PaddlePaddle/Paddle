@@ -29,12 +29,17 @@ struct ValueDim {
   bool operator==(const ValueDim& v) const {
     return (idx_ == v.idx_) && (v_ == v.v_);
   }
+
+  size_t GetNumbericValue() const {
+    return v_.type().dyn_cast<pir::DenseTensorType>().dims().at(idx_);
+  }
+
   std::string DebugStr() const {
     std::ostringstream oss;
-    oss << "ValueDim Print: ";
-    oss << "Defining Op";
-    v_.defining_op()->Print(oss);
+    oss << "ValueDim: ";
     oss << "Index: " << idx_;
+    oss << ", ";
+    v_.defining_op()->Print(oss);
     return oss.str();
   }
 };
@@ -64,7 +69,7 @@ static std::vector<ValueDim> GetAllValueDimFromValue(const pir::Value& v) {
   return value_dims;
 }
 
-static std::vector<ValueDim> GetAllInputValueDim(const pir::Operation* op) {
+static std::vector<ValueDim> GetAllInputValueDim(pir::Operation* op) {
   std::vector<ValueDim> value_dims;
   for (const auto& v : op->operands()) {
     value_dims = ConcatVector(value_dims, GetAllValueDimFromValue(v.source()));
@@ -72,7 +77,7 @@ static std::vector<ValueDim> GetAllInputValueDim(const pir::Operation* op) {
   return value_dims;
 }
 
-static std::vector<ValueDim> GetAllOutputValueDim(const pir::Operation* op) {
+static std::vector<ValueDim> GetAllOutputValueDim(pir::Operation* op) {
   std::vector<ValueDim> value_dims;
   for (const auto& v : op->results()) {
     value_dims = ConcatVector(value_dims, GetAllValueDimFromValue(v));
@@ -80,8 +85,7 @@ static std::vector<ValueDim> GetAllOutputValueDim(const pir::Operation* op) {
   return value_dims;
 }
 
-static ValueDimRelation CreateOpRelativenessForElementWise(
-    const pir::Operation* op) {
+static ValueDimRelation CreateOpRelativenessForElementWise(pir::Operation* op) {
   ValueDimRelation res;
   for (const auto& v : op->operands()) {
     const auto& value_dims = GetAllValueDimFromValue(v.source());
@@ -94,8 +98,8 @@ static ValueDimRelation CreateOpRelativenessForElementWise(
   return res;
 }
 
-static std::vector<size_t> GetNonBroadCastDims(const pir::Operation* op) {
-  // TODO: only static shape here!
+static std::vector<size_t> GetNonBroadCastDims(pir::Operation* op) {
+  // TODO(xk): only static shape here!
   std::vector<size_t> res;
   if (op->name() == "cinn_op.broadcast") {
     const auto& in_dim =
@@ -114,8 +118,7 @@ static std::vector<size_t> GetNonBroadCastDims(const pir::Operation* op) {
   return res;
 }
 
-static ValueDimRelation CreateOpRelativenessForBroadcast(
-    const pir::Operation* op) {
+static ValueDimRelation CreateOpRelativenessForBroadcast(pir::Operation* op) {
   ValueDimRelation res;
   const auto& in_value = op->operand(0).source();
   const auto& out_value = op->result(0);
@@ -125,8 +128,7 @@ static ValueDimRelation CreateOpRelativenessForBroadcast(
   return res;
 }
 
-static ValueDimRelation CreateOpRelativenessForDefault(
-    const pir::Operation* op) {
+static ValueDimRelation CreateOpRelativenessForDefault(pir::Operation* op) {
   ValueDimRelation res;
   for (const auto& out_dim : GetAllOutputValueDim(op)) {
     for (const auto& in_dim : GetAllInputValueDim(op)) {
@@ -137,7 +139,7 @@ static ValueDimRelation CreateOpRelativenessForDefault(
 }
 
 static std::optional<ValueDimRelation> CreateOpRelativenessForSpecialOps(
-    const pir::Operation* op) {
+    pir::Operation* op) {
   if (op->name() == "cinn_op.reshape") {
     // Special Elementwise.
     return CreateOpRelativenessForDefault(op);
@@ -145,7 +147,7 @@ static std::optional<ValueDimRelation> CreateOpRelativenessForSpecialOps(
   return {};
 }
 
-static ValueDimRelation GetSingleOpRelation(const pir::Operation* op) {
+static ValueDimRelation GetSingleOpRelation(pir::Operation* op) {
   VLOG(4) << "GetSingleOpRelation for " << op->name();
   const auto& special_result = CreateOpRelativenessForSpecialOps(op);
   if (special_result != std::nullopt) {
@@ -178,11 +180,13 @@ static std::vector<std::pair<ValueDim, ValueDim>> FlattenRelation(
 }
 
 static ValueDimRelation AnalysisIndexExprRelation(
-    const std::vector<const pir::Operation*>& ops) {
+    const std::vector<pir::Operation*>& ops) {
   ValueDimRelation res;
+
   for (size_t i = ops.size(); i >= 1; --i) {
-    const pir::Operation* op = ops[i - 1];
+    pir::Operation* op = ops[i - 1];
     if (op->name() == "cf.yield") continue;
+
     const auto& value_dim_relation = GetSingleOpRelation(op);
     for (const auto& in_out_pair : FlattenRelation(value_dim_relation)) {
       for (const auto& out_relation : res[in_out_pair.second]) {
@@ -194,9 +198,27 @@ static ValueDimRelation AnalysisIndexExprRelation(
   return res;
 }
 
+struct SplitedDims {
+  std::vector<ValueDim> related;
+  std::vector<ValueDim> non_related;
+
+  std::string DebugStr() const {
+    std::stringstream ss;
+    ss << "SplitedDims:\nrelated:\n";
+    for (const auto& dim : related) {
+      ss << dim.DebugStr() << "\n";
+    }
+    ss << "non_related:\n";
+    for (const auto& dim : non_related) {
+      ss << dim.DebugStr() << "\n";
+    }
+    return ss.str();
+  }
+};
+
 class RelativeJudgePolicy final : public Policy {
  public:
-  RelativeJudgePolicy(const std::vector<const pir::Operation*>& ops,
+  RelativeJudgePolicy(const std::vector<pir::Operation*>& ops,
                       const pir::ShapeConstraintIRAnalysis* shape_analysis)
       : axes_info_(ops, shape_analysis) {
     VLOG(4) << "[relative_judge_policy] Start AnalysisIndexExprRelation.";
@@ -205,6 +227,13 @@ class RelativeJudgePolicy final : public Policy {
   }
   bool CanFuse(const PatternNodePtr& upstream,
                const PatternNodePtr& downstream) override;
+
+  std::string Name() { return "RelativeJudgePolicy"; }
+
+  std::vector<size_t> GetFakeReduceIterIdx(
+      const PatternNodePtr& upstream,
+      const PatternNodePtr& downstream) override;
+
   bool IsRelated(ValueDim in, ValueDim out) {
     return index_expr_map_[in].count(out) == 1;
   }
@@ -213,10 +242,14 @@ class RelativeJudgePolicy final : public Policy {
   ValueDimRelation index_expr_map_;
   ShardableAxesInfoManager axes_info_;
   bool ReduceTreeGrownCanMerge(const PatternNodePtr&, const PatternNodePtr&);
+  bool ReducePlusTrivialCanMerge(const PatternNodePtr&, const PatternNodePtr&);
+  SplitedDims SplitDimsWithRelationship(
+      const std::vector<ValueDim>& targets,
+      const std::vector<ValueDim>& related_with);
   std::optional<ReducePattern> GetDownstreamFromCandidate(
       const ReducePattern& upstream,
       const std::vector<ReducePattern>& candidates);
-  bool IsDownstreamStmtDependReduceOp(const pir::Operation* reduce,
+  bool IsDownstreamStmtDependReduceOp(pir::Operation* reduce,
                                       const StmtPattern& downstream);
   bool IsBroadcastEdge(const std::vector<ValueDim>& upstream_out_dims,
                        const std::vector<ValueDim>&);

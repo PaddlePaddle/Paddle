@@ -43,11 +43,11 @@ using OpPatternKind = cinn::hlir::framework::OpPatternKind;
 
 OpPatternKind GetOpPatternKind(const ::pir::Operation* op);
 size_t GetRank(pir::Value value);
-std::vector<int64_t> GetReduceAxisIdx(const pir::Operation* reduce_op);
-bool GetReduceOpKeepDims(const pir::Operation* reduce_op);
-std::string OpsDebugStr(std::vector<const pir::Operation*> ops);
+std::vector<int64_t> GetReduceAxisIdx(pir::Operation* reduce_op);
+bool GetReduceOpKeepDims(pir::Operation* reduce_op);
+std::string OpsDebugStr(std::vector<pir::Operation*> ops);
 std::optional<std::pair<pir::Value, pir::Value>> GetBroadcastOpInputOuputValue(
-    const pir::Operation* op);
+    pir::Operation* op);
 }  // namespace cinn::frontend::group_cluster
 
 namespace cinn::frontend::group_cluster {
@@ -56,6 +56,7 @@ bool IsTrivialPattern(const StmtPattern& pattern);
 bool IsReducePattern(const StmtPattern& pattern);
 bool IsReduceTreePattern(const StmtPattern& pattern);
 bool IsUnsupportPattern(const StmtPattern& pattern);
+bool IsReduceTrivialPattern(const StmtPattern& pattern);
 
 template <typename T>
 void ExtendVector(std::vector<T>* first, const std::vector<T>& second) {
@@ -93,12 +94,12 @@ std::vector<T> ConcatVector(const std::vector<T>& first,
   return result;
 }
 
-std::vector<const pir::Operation*> GetOpsInPattern(const StmtPattern& pattern);
+std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern& pattern);
 std::string StmtPatternDebugStr(const StmtPattern& pattern);
 StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second);
 ReducePattern ToReducePattern(const StmtPattern& second);
 std::string GetPatternName(const StmtPattern& s);
 
-StmtPattern ConvertToStmtPattern(const pir::Operation* op);
+StmtPattern ConvertToStmtPattern(pir::Operation* op);
 std::unordered_set<pir::Value> GetPatternInputValues(const StmtPattern& A);
 }  // namespace cinn::frontend::group_cluster

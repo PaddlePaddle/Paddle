@@ -21,7 +21,7 @@ namespace cinn::frontend::group_cluster {
 struct PatternNode {
   using PatternNodePtr = std::shared_ptr<PatternNode>;
 
-  explicit PatternNode(const pir::Operation* op);
+  explicit PatternNode(pir::Operation* op);
   explicit PatternNode(PatternNodePtr fused_up_node,
                        PatternNodePtr fused_down_node);
 
@@ -29,10 +29,12 @@ struct PatternNode {
   bool IsReduce() const;
   bool IsReduceTree() const;
   bool IsUnsupport() const;
-  std::vector<const pir::Operation*> GetOps() const;
+  bool IsReduceTrivial() const;
+
+  std::vector<pir::Operation*> GetOps() const;
 
   StmtPattern stmt_pattern_;
-  const pir::Operation* sink_op_;
+  pir::Operation* sink_op_;
 
   std::vector<PatternNodePtr> upstream_;
   std::vector<PatternNodePtr> downstream_;

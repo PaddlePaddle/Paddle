@@ -20,8 +20,13 @@ namespace cinn::frontend::group_cluster::policy {
 
 class Policy {
  public:
+  virtual std::string Name() = 0;
   virtual bool CanFuse(const PatternNodePtr& upstream,
                        const PatternNodePtr& downstream) = 0;
+  virtual std::vector<size_t> GetFakeReduceIterIdx(
+      const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
+    return {};
+  }
 };
 
 using PolicyPtr = std::shared_ptr<Policy>;
@@ -32,6 +37,8 @@ class PolicyManager {
       : policies_(policies) {}
   bool CanFuse(const PatternNodePtr& upstream,
                const PatternNodePtr& downstream) const;
+  std::vector<size_t> GetFakeReduceIterIdx(
+      const PatternNodePtr& upstream, const PatternNodePtr& downstream) const;
 
  private:
   std::vector<PolicyPtr> policies_;

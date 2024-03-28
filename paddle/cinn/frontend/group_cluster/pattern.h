@@ -21,18 +21,17 @@
 namespace cinn::frontend::group_cluster {
 
 struct TrivialPattern {
-  explicit TrivialPattern(const std::vector<const pir::Operation*>& ops)
+  explicit TrivialPattern(const std::vector<pir::Operation*>& ops)
       : ops_(ops) {}
-  std::vector<const pir::Operation*> ops_;
+  std::vector<pir::Operation*> ops_;
   static std::string name() { return "Trivial"; }
-  std::vector<const pir::Operation*> ops() const { return ops_; }
+  std::vector<pir::Operation*> ops() const { return ops_; }
 };
 
 struct ReducePattern {
-  explicit ReducePattern(const std::vector<const pir::Operation*>& ops)
-      : ops_(ops) {}
-  std::vector<const pir::Operation*> ops_;
-  std::vector<const pir::Operation*> ops() const { return ops_; }
+  explicit ReducePattern(const std::vector<pir::Operation*>& ops) : ops_(ops) {}
+  std::vector<pir::Operation*> ops_;
+  std::vector<pir::Operation*> ops() const { return ops_; }
   const pir::Operation* GetReduceOp() const { return ops_.back(); }
   static std::string name() { return "Reduce"; }
 };
@@ -43,8 +42,8 @@ struct ReduceTreePattern {
       : reduce_patterns_(v), root_(root) {}
   std::vector<ReducePattern> reduce_patterns_;
   const ReducePattern& GetRootPattern() const { return root_; }
-  std::vector<const pir::Operation*> ops() const {
-    std::vector<const pir::Operation*> ops;
+  std::vector<pir::Operation*> ops() const {
+    std::vector<pir::Operation*> ops;
     for (const auto& reduce_pattern : reduce_patterns_) {
       for (const auto& op : reduce_pattern.ops()) {
         ops.push_back(op);
@@ -64,15 +63,16 @@ struct ReduceTreePlusTrivialPattern {
       : tree(tree), sink_trivial(sink_trivial) {}
   ReduceTreePattern tree;
   TrivialPattern sink_trivial;
-  std::vector<const pir::Operation*> ops() const { return {}; }
+  std::vector<pir::Operation*> ops() const { return {}; }
   static std::string name() { return "ReduceTree+Trivial"; }
+  std::vector<size_t> fake_reduce_iter_idx;
 };
 
 struct UnsupportPattern {
-  explicit UnsupportPattern(const std::vector<const pir::Operation*>& ops)
+  explicit UnsupportPattern(const std::vector<pir::Operation*>& ops)
       : ops_(ops) {}
-  std::vector<const pir::Operation*> ops_;
-  std::vector<const pir::Operation*> ops() const { return ops_; }
+  std::vector<pir::Operation*> ops_;
+  std::vector<pir::Operation*> ops() const { return ops_; }
   static std::string name() { return "Unsupport"; }
 };
 

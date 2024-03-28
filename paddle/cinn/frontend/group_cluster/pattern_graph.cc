@@ -16,8 +16,7 @@
 
 namespace cinn::frontend::group_cluster {
 
-std::vector<std::vector<const pir::Operation*>> PatternGraph::ClusterOps() {
-  VLOG(4) << "SinkTrivialPattern";
+PatternNodePtrSet PatternGraph::ClusterOps() {
   SinkTrivialPattern();
   // ReducePattern -> ReduceTreePattern
   VLOG(4) << "ReduceLiftReduceTree";
@@ -30,16 +29,7 @@ std::vector<std::vector<const pir::Operation*>> PatternGraph::ClusterOps() {
   VLOG(4) << "ReduceTree_Trivial_Fusion";
   ReduceTree_Trivial_Fusion();
 
-  VLOG(4) << "Start Pattern Flatten.";
-  // TODO(wuzhanfei) need sort here, or do not return from all_pattern_nodes_
-  std::vector<std::vector<const pir::Operation*>> result;
-  const auto& sorted_topo_nodes = SortByTopoOrder();
-  std::transform(sorted_topo_nodes.begin(),
-                 sorted_topo_nodes.end(),
-                 std::back_inserter(result),
-                 [](const PatternNodePtr node) { return node->GetOps(); });
-  VLOG(4) << "ClusterOps returns " << result.size() << " Groups";
-  return result;
+  return all_pattern_nodes_;
 }
 
 std::vector<PatternNodePtr> PatternGraph::SortByTopoOrder() {
@@ -82,13 +72,45 @@ void PatternGraph::ReduceTreeGrown() {
 }
 
 void PatternGraph::ReduceTree_Trivial_Fusion() {
-  GraphTransformer<CanFuseRxTMatcher, FuseReduceTreeAndTrivial>(this);
+  // GraphTransformer<CanFuseRxTMatcher, FuseReduceTreeAndTrivial>(this);
+  const auto FindReduceTree =
+      [](PatternNodePtrSet all_nodes) -> PatternNodePtr {
+    for (PatternNodePtr node : all_nodes) {
+      if (node->IsReduceTree() && !node->downstream_.empty() &&
+          node->downstream_.at(0)->IsTrivial())
+        return node;
+    }
+    return nullptr;
+  };
+  PatternNodePtr upstream;
+  while ((upstream = FindReduceTree(all_pattern_nodes_)) != nullptr) {
+    VLOG(4) << "Found A RT";
+    CHECK_EQ(upstream->downstream_.size(), 1);
+    auto downstream = upstream->downstream_.at(0);
+    if (policy_manager_.CanFuse(upstream, downstream)) {
+      VLOG(4) << "Start fuse";
+      auto fake_reduce_iter_idx =
+          policy_manager_.GetFakeReduceIterIdx(upstream, downstream);
+      VLOG(4) << "fake_reduce_iter_idx ++: "
+              << cinn::utils::Join(fake_reduce_iter_idx, ", ");
+      PatternNodePtr merged_node = MergeNode(upstream, downstream);
+      std::get<ReduceTreePlusTrivialPattern>(merged_node->stmt_pattern_)
+          .fake_reduce_iter_idx = fake_reduce_iter_idx;
+      VLOG(4) << "fake_reduce_iter_idx --: "
+              << cinn::utils::Join(std::get<ReduceTreePlusTrivialPattern>(
+                                       merged_node->stmt_pattern_)
+                                       .fake_reduce_iter_idx,
+                                   ", ");
+      RemoveNode(downstream);
+      RemoveNode(upstream);
+    }
+  }
 }
 
-PatternGraph::PatternGraph(const std::vector<const pir::Operation*>& ops,
+PatternGraph::PatternGraph(const std::vector<pir::Operation*>& ops,
                            const policy::PolicyManager policy_manager)
     : policy_manager_(policy_manager) {
-  std::unordered_map<const pir::Operation*, PatternNodePtr> op_to_node_map;
+  std::unordered_map<pir::Operation*, PatternNodePtr> op_to_node_map;
 
   for (const auto& op : ops) {
     PatternNodePtr node = std::make_shared<PatternNode>(op);
@@ -97,7 +119,7 @@ PatternGraph::PatternGraph(const std::vector<const pir::Operation*>& ops,
     node->sink_op_ = op;
   }
 
-  for (const pir::Operation* op : ops) {
+  for (pir::Operation* op : ops) {
     PatternNodePtr cur_node = op_to_node_map[op];
 
     // add upstream nodes

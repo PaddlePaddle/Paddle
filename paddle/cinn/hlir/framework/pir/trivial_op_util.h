@@ -46,6 +46,18 @@ std::vector<T> ConcatVector(const std::vector<T>& first,
   return result;
 }
 
+template <typename T, typename U>
+std::unordered_map<T, U> MakeMap(const std::vector<T>& keys,
+                                 const std::vector<U>& values) {
+  std::unordered_map<T, U> result = std::unordered_map<T, U>();
+
+  CHECK(keys.size() == values.size());
+  for (int i = 0; i < keys.size(); i++) {
+    result[keys[i]] = values[i];
+  }
+  return result;
+}
+
 std::vector<ir::Var> ExprVec2VarVec(const std::vector<ir::Expr>& in);
 std::vector<ir::Expr> VarVec2ExprVec(const std::vector<ir::Var>& in);
 

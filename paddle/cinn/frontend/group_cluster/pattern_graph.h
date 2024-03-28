@@ -14,6 +14,7 @@
 #pragma once
 
 #include "paddle/cinn/frontend/group_cluster/cluster_policy/policy_manager.h"
+#include "paddle/cinn/frontend/group_cluster/cluster_policy/relative_judge_policy.h"
 #include "paddle/cinn/frontend/group_cluster/common_utils.h"
 #include "paddle/cinn/frontend/group_cluster/pattern_node.h"
 
@@ -37,10 +38,10 @@ using PatternNodePtrSet = std::
 
 class PatternGraph {
  public:
-  PatternGraph(const std::vector<const pir::Operation*>& ops,
+  PatternGraph(const std::vector<pir::Operation*>& ops,
                const policy::PolicyManager policy_manager);
 
-  std::vector<std::vector<const pir::Operation*>> ClusterOps();
+  PatternNodePtrSet ClusterOps();
 
  private:
   void SinkTrivialPattern();
@@ -52,8 +53,8 @@ class PatternGraph {
   void RemoveNode(const PatternNodePtr& node);
   void AppendNode(const PatternNodePtr& node);
   void PrintGraph();
-  void MergeNode(const PatternNodePtr& upstream,
-                 const PatternNodePtr& downstream);
+  PatternNodePtr MergeNode(const PatternNodePtr& upstream,
+                           const PatternNodePtr& downstream);
   std::vector<PatternNodePtr> SortByTopoOrder();
 
   friend class TrivialPatternMerge;
