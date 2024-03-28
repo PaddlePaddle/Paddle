@@ -19,7 +19,8 @@ from numpy_generator import NumpyGenerator
 from unit_test_case_spec import (
     UnitTestCaseRequirement,
     UnitTestCaseSpec,
-    GenerateRandomUnitTestCaseSpec
+    GenerateRandomUnitTestCaseSpec,
+    GetAblatedUnitTestCaseSpec
 )
 
 def GenerateUnitTestCaseSpec(
@@ -44,7 +45,7 @@ if __name__ == '__main__':
             pick_probability=dag_generator.DAGGenTypePickProbability()
         ),
         dims_eq1_gen_requirement=dims_eq1_generator.DimsEq1GenRequirement(
-            dims_eq1_probability=[0.1, 0.2, 0.2]
+            dims_eq1_probability=[0.1, 0.2, 0.5]
         ),
         op_name_gen_requirement=op_name_generator.OpNameGenRequirement(),
         tensor_name_gen_requirement=TensorNameGenRequirement(),
@@ -58,11 +59,37 @@ if __name__ == '__main__':
     unit_test_case_spec = GenerateUnitTestCaseSpec(
         unit_test_case_requirement=unit_test_case_requirement
     )
-    generator = NumpyGenerator(
+    numpy_gen = NumpyGenerator(
         unit_test_case_requirement.op_call_code_gen_requirement
     )
 
-    script = generator.Generate(unit_test_case_spec)
+    script = numpy_gen.Generate(unit_test_case_spec)
+    print("import numpy")
+    print(script.file_content)
 
+    ablated_unit_test_case_spec = GetAblatedUnitTestCaseSpec(
+        instructions=unit_test_case_spec.instructions,
+        requirement=unit_test_case_requirement,
+        bottom_up_ablation_size=-1,
+        component_ablation_size=-1,
+    )
+    print("#", "*"*80)
+    print("# full ablated")
+    print("#", "*"*80)
+    script = numpy_gen.Generate(ablated_unit_test_case_spec)
+    print("import numpy")
+    print(script.file_content)
+
+
+    ablated_unit_test_case_spec = GetAblatedUnitTestCaseSpec(
+        instructions=unit_test_case_spec.instructions,
+        requirement=unit_test_case_requirement,
+        bottom_up_ablation_size=len(unit_test_case_spec.instructions)/2,
+        component_ablation_size=-1,
+    )
+    print("#", "*"*80)
+    print("# half ablated")
+    print("#", "*"*80)
+    script = numpy_gen.Generate(ablated_unit_test_case_spec)
     print("import numpy")
     print(script.file_content)

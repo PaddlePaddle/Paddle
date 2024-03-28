@@ -110,7 +110,7 @@ class AddBinaryOp(DimsEq1GenInstruction):
         return hash_value
 
     def AblateToTrivial(self):
-        false_tuple = tuple(False for _ in self.source_tensor_dims_eq1)
+        false_tuple = tuple(False for _ in self.rhs_source_tensor_dims_eq1)
         return AddBinaryOp(
             lhs_source_tensor_dims_eq1=false_tuple,
             rhs_source_tensor_dims_eq1=false_tuple,

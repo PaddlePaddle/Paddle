@@ -39,11 +39,11 @@ def GenerateRandomUnitTestCaseSpec(
     )
     return CompleteToUnitTestCaseSpec(instructions, requirement)
 
-def AblateUnitTestCaseSpec(
+def GetAblatedUnitTestCaseSpec(
     instructions: List["Instruction"],
+    requirement: UnitTestCaseRequirement,
     bottom_up_ablation_size: int,
     component_ablation_size: int,
-    requirement: UnitTestCaseRequirement
 ) -> UnitTestCaseSpec:
     ablated_instructions = instruction_util.AblateInstructions(
         instructions=instructions,
