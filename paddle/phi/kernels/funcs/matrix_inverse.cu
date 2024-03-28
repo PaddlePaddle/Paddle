@@ -125,12 +125,14 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
                           info[i]));
   }
 #else
-  ComputeInverseEigen<Context, T>(dev_ctx, a, a_inv);
+  MatrixInverseTrait<Context, T>::ComputeInverseEigen(dev_ctx, a, a_inv);
 #endif
 }
 
 template class MatrixInverseFunctor<GPUContext, float>;
 template class MatrixInverseFunctor<GPUContext, double>;
+template class MatrixInverseFunctor<GPUContext, phi::dtype::complex<float>>;
+template class MatrixInverseFunctor<GPUContext, phi::dtype::complex<double>>;
 
 }  // namespace funcs
 }  // namespace phi

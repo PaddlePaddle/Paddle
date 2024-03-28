@@ -79,6 +79,52 @@ class TestDeterminantOpCase2FP16(TestDeterminantOp):
         )
 
 
+class TestDeterminantOpCaseComplex64(TestDeterminantOp):
+    def init_data(self):
+        np.random.seed(0)
+        self.case = (
+            np.random.uniform(-1, 1, (10, 10))
+            + 1j * np.random.uniform(-1, 1, (10, 10))
+        ).astype("complex64")
+        self.inputs = {'Input': self.case}
+        self.target = np.linalg.det(self.case)
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_prim=False)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['Input'],
+            ['Out'],
+            check_pir=True,
+            check_prim=False,
+            max_relative_error=2,
+        )
+
+
+class TestDeterminantOpCaseComplex128(TestDeterminantOp):
+    def init_data(self):
+        np.random.seed(0)
+        self.case = (
+            np.random.uniform(-1, 1, (10, 10))
+            + 1j * np.random.uniform(-1, 1, (10, 10))
+        ).astype("complex128")
+        self.inputs = {'Input': self.case}
+        self.target = np.linalg.det(self.case)
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_prim=False)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['Input'],
+            ['Out'],
+            check_pir=True,
+            check_prim=False,
+            max_relative_error=2,
+        )
+
+
 class TestDeterminantAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(0)

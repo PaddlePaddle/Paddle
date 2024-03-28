@@ -2385,7 +2385,12 @@ def det(x, name=None):
     if in_dynamic_or_pir_mode():
         return _C_ops.det(x)
     else:
-        check_dtype(x.dtype, 'Input', ['float16', 'float32', 'float64'], 'det')
+        check_dtype(
+            x.dtype,
+            'Input',
+            ['float16', 'float32', 'float64', 'complex64', 'complex128'],
+            'det',
+        )
 
         input_shape = list(x.shape)
         assert len(input_shape) >= 2, (
