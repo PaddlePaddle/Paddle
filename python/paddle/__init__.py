@@ -507,8 +507,11 @@ from .tensor.math import (  # noqa: F401
 )
 from .tensor.random import (
     bernoulli,
+    bernoulli_,
     binomial,
     check_shape,
+    log_normal,
+    log_normal_,
     multinomial,
     normal,
     normal_,
@@ -1003,8 +1006,11 @@ __all__ = [
     'hypot',
     'hypot_',
     'index_fill',
-    "index_fill_",
+    'index_fill_',
     'diagonal_scatter',
     'combinations',
     'signbit',
+    'bernoulli_',
+    'log_normal',
+    'log_normal_',
 ]

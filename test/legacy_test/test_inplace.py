@@ -1909,5 +1909,38 @@ class TestDygraphTensorApplyInplace(unittest.TestCase):
         )
 
 
+class TestDygraphInplaceBernoulli(TestDygraphInplace):
+    def init_data(self):
+        self.shape = (20, 40)
+        self.input_var_numpy = np.random.random(self.shape)
+        self.dtype = "float32"
+        self.mean = 0
+        self.std = 1
+        self.seed = 100
+        self.p = 0.5
+
+    def inplace_api_processing(self, var):
+        return paddle.bernoulli_(var, p=self.p)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.bernoulli(paddle.zeros(self.shape) + self.p)
+
+
+class TestDygraphInplaceLogNormal(TestDygraphInplace):
+    def init_data(self):
+        self.shape = (20, 40)
+        self.input_var_numpy = np.random.random(self.shape)
+        self.dtype = "float32"
+        self.mean = 0
+        self.std = 1
+        self.seed = 100
+
+    def inplace_api_processing(self, var):
+        return paddle.log_normal_(var, self.shape, self.mean, self.std)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.log_normal(var, self.shape, self.mean, self.std)
+
+
 if __name__ == '__main__':
     unittest.main()

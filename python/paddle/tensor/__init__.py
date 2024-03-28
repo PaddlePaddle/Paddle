@@ -394,8 +394,11 @@ from .math import (  # noqa: F401
     vander,
 )
 from .random import (  # noqa: F401
+    bernoulli_,
     binomial,
     exponential_,
+    log_normal,
+    log_normal_,
     multinomial,
     normal,
     normal_,
@@ -812,6 +815,9 @@ tensor_method_func = [
     'masked_scatter_',
     "combinations",
     'signbit',
+    'bernoulli_',
+    'log_normal',
+    'log_normal_',
 ]
 
 # this list used in math_op_patch.py for magic_method bind
