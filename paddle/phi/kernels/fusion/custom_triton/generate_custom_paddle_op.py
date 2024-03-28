@@ -95,31 +95,32 @@ if __name__ == "__main__":
 
     para = ""
     for i in range(op_inputs_len):
-      para += ("const paddle::Tensor& para" + str(i) + ",\n")
+      para += "const paddle::Tensor& para{id},".format(id=i)
     for i in range(len(attrs_type)):
-      para += (attrs_type[i] + " attr" + str(i) + ",\n")
-    para = para[:-2]
+      para += attrs_type[i] + " attr{id},".format(id=i)
+    para = para[:-1]
 
     template_dict["para"] = para    
     
     invoke_para = "para0.stream(),"
     for i in range(op_inputs_len):
-      invoke_para += ("get_tensor_ptr(para" + str(i) + "),\n")
+      invoke_para += "get_tensor_ptr(para{id}),".format(id=i)
     for i in range(len(attrs_type)):
-      invoke_para += ("attr" + str(i) + ",\n")
+      invoke_para += "attr{id},".format(id=i)
     invoke_para += "0"
     template_dict["invoke_para"] = invoke_para
 
     op_inputs = ""
     for i in range(op_inputs_len):
-      op_inputs += ("\"para" + str(i) + "\", " )
+      op_inputs += "\"para{id}\", ".format(id=i)
     op_inputs = op_inputs[:-2]
     template_dict["op_inputs"] = op_inputs
     
     op_attrs = ""
     for i in range(len(attrs_type)):
-      op_attrs += ("\"attr" + str(i) + " : " +  attrs_type[i] + "\", ")
-    op_attrs = op_attrs[:-2]
+      op_attrs += ("\"attr{id} : {type}\", ").format(id=i, type=attrs_type[i])
+    # remove the last ","
+    op_attrs = op_attrs[:-1]
 
     template_dict["op_attrs"] = op_attrs
 
@@ -127,13 +128,13 @@ if __name__ == "__main__":
     output_ids = output_ids.split(",")
     op_outputs = ""
     for id in output_ids:
-      op_outputs += ("\"out" + id + "\",")
+      op_outputs += "\"out{id}\",".format(id=id)
     op_outputs = op_outputs[:-1]
     template_dict["op_outputs"] = op_outputs
 
     inplace_map = ""
     for id in output_ids:
-      inplace_map += ("{\"para" + id + "\",\"out" + id + "\"},")
+      inplace_map += "{{\"para{id}\",\"out{id}\"}},".format(id=id)
     inplace_map = inplace_map[:-1]
     
     template_dict["inplace_map"] = inplace_map
