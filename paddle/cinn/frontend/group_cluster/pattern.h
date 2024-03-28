@@ -24,7 +24,7 @@ struct TrivialPattern {
   explicit TrivialPattern(const std::vector<pir::Operation*>& ops)
       : ops_(ops) {}
   std::vector<pir::Operation*> ops_;
-  std::string name() const { return "Trivial"; }
+  static std::string name() { return "Trivial"; }
   std::vector<pir::Operation*> ops() const { return ops_; }
 };
 
@@ -33,7 +33,7 @@ struct ReducePattern {
   std::vector<pir::Operation*> ops_;
   std::vector<pir::Operation*> ops() const { return ops_; }
   pir::Operation* GetReduceOp() const { return ops_.back(); }
-  std::string name() const { return "Reduce"; }
+  static std::string name() { return "Reduce"; }
 };
 
 struct ReduceTreePattern {
@@ -51,7 +51,7 @@ struct ReduceTreePattern {
     }
     return ops;
   }
-  std::string name() const { return "ReduceTree"; }
+  static std::string name() { return "ReduceTree"; }
 
  private:
   ReducePattern root_;
@@ -64,7 +64,7 @@ struct ReduceTreePlusTrivialPattern {
   ReduceTreePattern tree;
   TrivialPattern sink_trivial;
   std::vector<pir::Operation*> ops() const { return {}; }
-  std::string name() const { return "ReduceTree+Trivial"; }
+  static std::string name() { return "ReduceTree+Trivial"; }
   std::vector<size_t> fake_reduce_iter_idx;
 };
 
@@ -73,7 +73,7 @@ struct UnsupportPattern {
       : ops_(ops) {}
   std::vector<pir::Operation*> ops_;
   std::vector<pir::Operation*> ops() const { return ops_; }
-  std::string name() const { return "Unsupport"; }
+  static std::string name() { return "Unsupport"; }
 };
 
 // UnsupportedPattern can't fuse with any pattern
