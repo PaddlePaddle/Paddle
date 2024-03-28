@@ -169,6 +169,12 @@ void ExpandKernel(const Context& ctx,
     case 6:
       Expand<Context, T, 6>(ctx, x, shape, out);
       break;
+    case 7:
+      Expand<Context, T, 7>(ctx, x, shape, out);
+      break;
+    case 8:
+      Expand<Context, T, 8>(ctx, x, shape, out);
+      break;
   }
 }
 

@@ -44,10 +44,11 @@ class ExpandOp : public framework::OperatorWithKernel {
             static_cast<size_t>(x_dims.size())));
     PADDLE_ENFORCE_LE(
         x_dims.size(),
-        6,
+        MAX_RANK_SUPPORTED,
         platform::errors::InvalidArgument(
             "The number of dimensions of the input for Op(expand) "
-            "must not be greater than 6, but the value received is %d.",
+            "must not be greater than %d, but the value received is %d.",
+            MAX_RANK_SUPPORTED,
             x_dims.size()));
 
     std::vector<int64_t> out_shape(x_dims.size());
