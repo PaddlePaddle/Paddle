@@ -1770,7 +1770,6 @@ class Engine:
         # TODO(2024-Q2)
         use_cache = self._strategy.use_cache
         if self._in_pir_mode:
-            print("use_cache false")
             use_cache = False
         outs = self._executor.run(
             self.main_program,
@@ -1779,9 +1778,10 @@ class Engine:
             use_program_cache=use_cache,
             return_numpy=self._strategy.return_numpy,
         )
-        logs = self._prepare_logger(
-            outs, None, None, None, fetch_names, fetch_indices, self._mode
-        )
+        logs = {}
+        # logs = self._prepare_logger(
+        #     outs, None, None, None, fetch_names, fetch_indices, self._mode
+        # )
         return logs
 
     def get_feed_list(self):
