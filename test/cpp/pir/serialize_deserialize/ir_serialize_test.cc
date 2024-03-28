@@ -46,7 +46,7 @@ TEST(op_test, base) {
   paddle::dialect::MatmulOp matmul_op1 =
       builder.Build<paddle::dialect::MatmulOp>(full_input_op1.out(),
                                                full_weight_op1.out());
-  paddle::dialect::AddOp add_op1 = builder.Build<paddle::dialect::AddOp>(
+  builder.Build<paddle::dialect::AddOp>(
       matmul_op1.out(), full_bias_op1.out());
   std::string file_path = "./test_serialize_2.json";
   uint64_t version = 1;
@@ -75,7 +75,7 @@ TEST(op_test, time_test) {
     paddle::dialect::MatmulOp matmul_op =
         builder.Build<paddle::dialect::MatmulOp>(full_input_op1.out(),
                                                  full_weight_op.out());
-    paddle::dialect::AddOp add_op = builder.Build<paddle::dialect::AddOp>(
+    builder.Build<paddle::dialect::AddOp>(
         matmul_op.out(), full_bias_op.out());
   }
 
