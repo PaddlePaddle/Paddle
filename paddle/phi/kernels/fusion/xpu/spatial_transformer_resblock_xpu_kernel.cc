@@ -44,6 +44,7 @@ template <typename T, typename Context>
 void SpatialTransformerResblockXPUKernel(
     const Context& ctx,
     const DenseTensor& x,
+    const std::vector<const DenseTensor*>& x_max,
     const std::vector<const DenseTensor*>& conv_bias,
     const std::vector<const DenseTensor*>& conv_filter,
     const std::vector<const DenseTensor*>& conv_filter_max,
@@ -55,6 +56,9 @@ void SpatialTransformerResblockXPUKernel(
     const std::vector<float>& gn_eps,
     const std::vector<int>& gn_groups,
     const std::vector<int>& groups,
+    bool conv_fix,
+    bool has_silu_fc_input,
+    bool include_silu, 
     DenseTensor* out,
     DenseTensor* out_max) {
 #ifdef PADDLE_WITH_XPU_XFT
@@ -68,6 +72,13 @@ void SpatialTransformerResblockXPUKernel(
     int nh = static_cast<int>(x.dims()[2]);
     int nw = static_cast<int>(x.dims()[3]);
     int input2_dim = -1;
+
+    if(has_silu_fc_input){
+       PADDLE_ENFORCE_XDNN_SUCCESS(-1, "has_silu_fc_input unsupported yet!!!"); 
+    }
+    if(include_silu){
+       PADDLE_ENFORCE_XDNN_SUCCESS(-1, "include_silu unsupported yet!!!"); 
+    }
 
     std::vector<xft::xftVec<float>> xft_gn_weight_;
     std::vector<xft::xftVec<float>> xft_gn_bias_;
@@ -89,10 +100,19 @@ void SpatialTransformerResblockXPUKernel(
                                 xft::xftVec<float>::dim_t{gn_bias->dims()[0]});
     }
 
+    // prepare input_max
+    for (auto* input_max : x_max) {
+        input_max_.emplace_back(const_cast<float*>(input_max->data<float>()));
+    }
+    if (x_max.size() == 0) {
+        input_max_.emplace_back(nullptr);
+    }
+
     std::vector<std::vector<int>> kernel_dims_2d;
     // prepare conv params
     for (size_t i = 0; i < conv_filter.size(); i++) {
         int xn = conv_filter[i]->dims()[0];
+        int nc = conv_filter[i]->dims()[1];
         int nh = conv_filter[i]->dims()[2];
         int nw = conv_filter[i]->dims()[3];
         xft_conv_weights_.emplace_back(
@@ -100,7 +120,7 @@ void SpatialTransformerResblockXPUKernel(
                 reinterpret_cast<const int16_t*>(conv_filter[i]->data<int16_t>())),
             const_cast<float*>(conv_filter_max[i]->data<float>()),
             xft::xftTensor<int16_t, 4>::dim_t{channel, xn, nh, nw});
-        kernel_dims_2d.emplace_back(std::vector<int>{channel, xn, nh, nw});
+        kernel_dims_2d.emplace_back(std::vector<int>{xn, nc, nh, nw});
     }
 
     // prepare bias
@@ -114,13 +134,12 @@ void SpatialTransformerResblockXPUKernel(
 
     std::vector<std::vector<int>> strides_2d{IntVec1DTo2D(strides, 2)};
     std::vector<std::vector<int>> paddings_2d{IntVec1DTo2D(paddings, 4)};
-    ;
     std::vector<std::vector<int>> dilations_2d{IntVec1DTo2D(dilations, 2)};
 
     // achieve params from model
-    resblock_param_.conv_fix = false;
-    resblock_param_.has_silu_fc_input = false;
-    resblock_param_.include_silu = false;
+    resblock_param_.conv_fix = conv_fix;
+    resblock_param_.has_silu_fc_input = has_silu_fc_input;
+    resblock_param_.include_silu = include_silu;
     resblock_param_.conv_groups = groups;
     resblock_param_.kernel_dims = kernel_dims_2d;
     resblock_param_.dilations = dilations_2d;

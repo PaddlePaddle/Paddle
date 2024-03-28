@@ -571,7 +571,6 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "fc_xpu_fuse_pass",
       "conv2d_xpu_fuse_pass",
       "conv2d_transpose_xpu_fuse_pass",
-      "spatial_transformer_resblock_xpu_fuse_pass",
       "squeeze_excitation_fuse_pass",
       "add_activation_xpu_fuse_pass",
       "add_layernorm_xpu_fuse_pass",
@@ -587,6 +586,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "xpu_quantize_op_pass",
       "xpu_quantize_squash_pass",
       "link_xpu_op_max_pass",
+      "spatial_transformer_resblock_xpu_fuse_pass",
       "delete_isolated_node_pass",
       "inplace_op_var_pass",
   });

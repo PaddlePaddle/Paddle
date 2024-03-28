@@ -482,6 +482,7 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
 }
 
 void SpatialTransformerResblockXPUInferMeta(const MetaTensor& x,
+                        const std::vector<const MetaTensor*>& x_max,    
                         const std::vector<const MetaTensor*>& conv_bias,
                         const std::vector<const MetaTensor*>& conv_filter,
                         const std::vector<const MetaTensor*>& conv_filter_max,
@@ -493,6 +494,9 @@ void SpatialTransformerResblockXPUInferMeta(const MetaTensor& x,
                         const std::vector<float>& gn_eps, 
                         const std::vector<int>& gn_groups, 
                         const std::vector<int>& groups,
+                        bool conv_fix,
+                        bool has_silu_fc_input,
+                        bool include_silu, 
                         MetaTensor* out,
                         MetaTensor* out_max) {
     auto input_shape = x.dims();
@@ -500,9 +504,6 @@ void SpatialTransformerResblockXPUInferMeta(const MetaTensor& x,
     auto channel_out = conv_filter[0]->dims()[0];
     auto h = input_shape[2];
     auto w = input_shape[3];
-    std::cout << "===> lkk batch_size:" << batch_size << " channel_out:" << channel_out 
-      << " h:" << h << " w:" << w << std::endl;
-
     out->set_dims(common::make_ddim({batch_size, channel_out, h, w}));
     out->set_dtype(x.dtype());
     out->set_layout(x.layout());

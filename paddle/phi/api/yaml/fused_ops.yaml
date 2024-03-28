@@ -93,7 +93,7 @@
   optional : bias, branch, branch_max ,x_max, scale_max, out_max_in
 
 - op : spatial_transformer_resblock_xpu
-  args : (Tensor x, Tensor[] conv_bias, Tensor[] conv_filter, Tensor[] conv_filter_max, Tensor[] gn_bias, Tensor[] gn_scale, int[] dilations, int[] paddings, int[] strides, float[] gn_eps, int[] gn_groups, int[] groups)
+  args : (Tensor x, Tensor[] x_max, Tensor[] conv_bias, Tensor[] conv_filter, Tensor[] conv_filter_max, Tensor[] gn_bias, Tensor[] gn_scale, int[] dilations, int[] paddings, int[] strides, float[] gn_eps, int[] gn_groups, int[] groups, bool conv_fix, bool has_silu_fc_input, bool include_silu)
   output : Tensor(out), Tensor(out_max)
   infer_meta :
     func : SpatialTransformerResblockXPUInferMeta
