@@ -112,23 +112,23 @@ class TestExpandV2OpRank4(TestExpandV2OpRank1):
 
 class TestExpandV2OpRank5(TestExpandV2OpRank1):
     def init_data(self):
-        self.ori_shape = [1, 2, 1, 4, 5]
-        self.shape = [1, 2, 3, 4, 5]
+        self.ori_shape = [5, 2, 1, 4, 5]
+        self.shape = [5, 2, 3, 4, 5]
         self.expand_times = [1, 1, 3, 1, 1]
 
 
 class TestExpandV2OpRank5_Corner(TestExpandV2OpRank1):
     def init_data(self):
-        self.ori_shape = [1, 2, 3, 4, 5]
-        self.shape = [1, 2, 3, 4, 5]
+        self.ori_shape = [5, 2, 3, 4, 5]
+        self.shape = [5, 2, 3, 4, 5]
         self.expand_times = [1, 1, 1, 1, 1]
 
 
 class TestExpandV2OpRank5_ZeroDim(TestExpandV2OpRank1):
     def init_data(self):
         self.ori_shape = []
-        self.shape = [1, 2, 3, 4, 5]
-        self.expand_times = [1, 2, 3, 4, 5]
+        self.shape = [5, 2, 3, 4, 5]
+        self.expand_times = [5, 2, 3, 4, 5]
 
 
 class TestExpandV2OpRank6(TestExpandV2OpRank1):
@@ -154,15 +154,15 @@ class TestExpandV2OpRank6_ZeroDim(TestExpandV2OpRank1):
 
 class TestExpandV2OpRank7(TestExpandV2OpRank1):
     def init_data(self):
-        self.ori_shape = [1, 2, 1, 4, 5, 6, 7]
-        self.shape = [1, 2, 3, 4, 5, 6, 7]
+        self.ori_shape = [5, 2, 1, 4, 5, 6, 7]
+        self.shape = [5, 2, 3, 4, 5, 6, 7]
         self.expand_times = [1, 1, 3, 1, 1, 1, 1]
 
 
 class TestExpandV2OpRank7_Corner(TestExpandV2OpRank1):
     def init_data(self):
-        self.ori_shape = [1, 2, 3, 4, 5, 6, 7]
-        self.shape = [1, 2, 3, 4, 5, 6, 7]
+        self.ori_shape = [1, 2, 3, 4, 5, 2, 2]
+        self.shape = [1, 2, 3, 4, 5, 2, 2]
         self.expand_times = [1, 1, 1, 1, 1, 1, 1]
 
 
@@ -182,8 +182,8 @@ class TestExpandV2OpRank8(TestExpandV2OpRank1):
 
 class TestExpandV2OpRank8_Corner(TestExpandV2OpRank1):
     def init_data(self):
-        self.ori_shape = [1, 2, 3, 4, 5, 6, 7, 8]
-        self.shape = [1, 2, 3, 4, 5, 6, 7, 8]
+        self.ori_shape = [1, 2, 3, 4, 5, 2, 2, 2]
+        self.shape = [1, 2, 3, 4, 5, 2, 2, 2]
         self.expand_times = [1, 1, 1, 1, 1, 1, 1, 1]
 
     def test_check_grad(self):
