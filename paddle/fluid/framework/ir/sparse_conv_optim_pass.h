@@ -28,7 +28,6 @@ class SparseConvOptimPass : public FusePassBase {
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
-  bool SpConv3dto2d(const Node* node) const;
 };
 
 }  // namespace ir
