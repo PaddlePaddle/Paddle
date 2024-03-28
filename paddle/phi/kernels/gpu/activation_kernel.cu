@@ -315,7 +315,9 @@ PD_REGISTER_KERNEL(log,
                    int,
                    int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 PD_REGISTER_KERNEL(log2,
                    GPU,
                    ALL_LAYOUT,
@@ -325,7 +327,9 @@ PD_REGISTER_KERNEL(log2,
                    int,
                    int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 PD_REGISTER_KERNEL(log10,
                    GPU,
                    ALL_LAYOUT,
@@ -335,7 +339,9 @@ PD_REGISTER_KERNEL(log10,
                    int,
                    int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 PD_REGISTER_KERNEL(log1p,
                    GPU,
                    ALL_LAYOUT,
@@ -345,7 +351,9 @@ PD_REGISTER_KERNEL(log1p,
                    int,
                    int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 PD_REGISTER_KERNEL(pow,
                    GPU,
                    ALL_LAYOUT,
