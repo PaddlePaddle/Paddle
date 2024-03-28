@@ -44,10 +44,19 @@ void FusedRopeKernel(const Context& dev_ctx,
 
   // q.shape: [seq_len, batch_size, num_heads, head_dim] if time_major else
   // [batch_size, seq_len, num_heads, head_dim]
-  auto batch_size = time_major ? q.dims()[1] : q.dims()[0];
-  auto seq_len = time_major ? q.dims()[0] : q.dims()[1];
+
+  const int kBatchDimIndex = time_major ? 1 : 0;
+  const int kSeqlenDimIndex = time_major ? 0 : 1;
+
+  auto batch_size = q.dims()[kBatchDimIndex];
+  auto seq_len = q.dims()[kSeqlenDimIndex];
   inputs_num_heads[0] = q.dims()[2];
   auto head_dim = q.dims()[3];
+
+  int64_t batch_stride_q = q.strides()[kBatchDimIndex];
+  int64_t seq_stride_q = q.strides()[kSeqlenDimIndex];
+  int64_t batch_stride_kv = batch_stride_q;
+  int64_t seq_stride_kv = seq_stride_q;
 
   PADDLE_ENFORCE_EQ(head_dim % 2,
                     0,
@@ -56,11 +65,6 @@ void FusedRopeKernel(const Context& dev_ctx,
 
   constexpr const int vec_size = 2;
 
-  auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
-
-  int64_t grid = config.block_per_grid.x;
-  int64_t block = config.thread_per_block.x;
   auto stream = dev_ctx.stream();
 
   phi::Array<T*, 3> outs_data;
@@ -77,6 +81,10 @@ void FusedRopeKernel(const Context& dev_ctx,
     ins_data[num_inputs] = k->data<T>();
     outs_data[num_inputs] = out_k->data<T>();
     inputs_num_heads[num_inputs] = k->dims()[2];
+
+    batch_stride_kv = k->strides()[kBatchDimIndex];
+    seq_stride_kv = k->strides()[kSeqlenDimIndex];
+
     num_inputs++;
   }
 
@@ -85,6 +93,10 @@ void FusedRopeKernel(const Context& dev_ctx,
     ins_data[num_inputs] = v->data<T>();
     outs_data[num_inputs] = out_v->data<T>();
     inputs_num_heads[num_inputs] = v->dims()[2];
+
+    batch_stride_kv = v->strides()[kBatchDimIndex];
+    seq_stride_kv = v->strides()[kSeqlenDimIndex];
+
     num_inputs++;
   }
 
@@ -92,7 +104,6 @@ void FusedRopeKernel(const Context& dev_ctx,
   MPType div_c = static_cast<MPType>(1.0f / head_dim);
 
   bool flag_sin_cos = false;
-
   if (sin.get_ptr() && cos.get_ptr()) {
     PADDLE_ENFORCE_EQ(sin.get_ptr()->dims(),
                       cos.get_ptr()->dims(),
@@ -172,108 +183,35 @@ void FusedRopeKernel(const Context& dev_ctx,
     flag_sin_cos = true;
   }
 
-  bool is_same_num_heads = true;
-  auto prev_num_heads = inputs_num_heads[0];
-  for (int i = 1; i < num_inputs; ++i) {
-    if (prev_num_heads != inputs_num_heads[i]) {
-      is_same_num_heads = false;
-      break;
-    }
-    prev_num_heads = inputs_num_heads[i];
-  }
+  int64_t num_heads_kv = GetNumHeadsOfKV(k, v, inputs_num_heads, num_inputs);
+
+  const uint32_t kThreadsPerBlock = 256;
+  const uint32_t kWarpSize = 32;
+  const uint32_t kWarpsPerBlock = kThreadsPerBlock / kWarpSize;
+  dim3 grid((uint32_t)batch_size, (uint32_t)seq_len);
+  dim3 block(kWarpSize, kWarpsPerBlock);
 
   int sign = 1;
-  VectorizedFusedRopeCudaKernelFunc<T, MPType, vec_size> kernel_func =
-      use_neox_rotary_style
-          ? VectorizedFusedRopeWithRotateEveryTwoKernel<T, MPType, vec_size>
-          : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, vec_size>;
 
-  if (is_same_num_heads) {
-    int64_t batch_stride = time_major ? q.strides()[1] : q.strides()[0];
-    int64_t seq_stride = time_major ? q.strides()[0] : q.strides()[1];
-    kernel_func<<<grid, block, 0, stream>>>(ins_data,
-                                            sin_cos_data,
-                                            position_ids_data,
-                                            flag_sin_cos,
-                                            sign,
-                                            batch_size,
-                                            seq_len,
-                                            inputs_num_heads[0],
-                                            head_dim,
-                                            batch_stride,
-                                            seq_stride,
-                                            outs_data,
-                                            num_inputs,
-                                            div_c);
-  } else {
-    // Multi Query Attention (MQA) or Group Query Attention (GQA)
-    PADDLE_ENFORCE_EQ(
-        (inputs_num_heads[0] != inputs_num_heads[num_inputs - 1]) &&
-            (inputs_num_heads[0] % inputs_num_heads[num_inputs - 1] == 0),
-        true,
-        phi::errors::InvalidArgument(
-            "The MQA or GQA mode is entered, when the number of heads of qkv "
-            "is not exactly the same two by two. This mode requires "
-            "num_heads of q to be divisible by k,v."
-            "But recieved num_heads of q is %d, num_heads of k,v is %d",
-            inputs_num_heads[0],
-            inputs_num_heads[num_inputs - 1]));
-
-    if (k.get_ptr() && v.get_ptr()) {
-      PADDLE_ENFORCE_EQ(
-          inputs_num_heads[1] == inputs_num_heads[2],
-          true,
-          phi::errors::InvalidArgument(
-              "The num_heads of k must be equal to the num_heads of v when v "
-              "is not none."
-              "But recieved num_heads of k is %d, num_heads of v is %d",
-              inputs_num_heads[1],
-              inputs_num_heads[2]));
-    }
-    // rotary position embedding Q
-    int64_t batch_stride_q = time_major ? q.strides()[1] : q.strides()[0];
-    int64_t seq_stride_q = time_major ? q.strides()[0] : q.strides()[1];
-
-    kernel_func<<<grid, block, 0, stream>>>(ins_data,
-                                            sin_cos_data,
-                                            position_ids_data,
-                                            flag_sin_cos,
-                                            sign,
-                                            batch_size,
-                                            seq_len,
-                                            inputs_num_heads[0],
-                                            head_dim,
-                                            batch_stride_q,
-                                            seq_stride_q,
-                                            outs_data,
-                                            1,
-                                            div_c);
-
-    // rotary position embedding K,V
-    phi::Array<const T*, 3> input_kv{ins_data[1], ins_data[2], nullptr};
-    phi::Array<T*, 3> out_kv{outs_data[1], outs_data[2], nullptr};
-    int64_t batch_stride_kv = time_major
-                                  ? inputs_num_heads[1] * head_dim
-                                  : seq_len * inputs_num_heads[1] * head_dim;
-    int64_t seq_stride_kv = time_major
-                                ? batch_size * inputs_num_heads[1] * head_dim
-                                : inputs_num_heads[1] * head_dim;
-
-    kernel_func<<<grid, block, 0, stream>>>(input_kv,
-                                            sin_cos_data,
-                                            position_ids_data,
-                                            flag_sin_cos,
-                                            sign,
-                                            batch_size,
-                                            seq_len,
-                                            inputs_num_heads[1],
-                                            head_dim,
-                                            batch_stride_kv,
-                                            seq_stride_kv,
-                                            out_kv,
-                                            num_inputs - 1,
-                                            div_c);
-  }
+  VectorizedFusedRopeKernel<T, MPType, vec_size>
+      <<<grid, block, 0, dev_ctx.stream()>>>(ins_data,
+                                             sin_cos_data,
+                                             position_ids_data,
+                                             batch_size,
+                                             seq_len,
+                                             inputs_num_heads[0],
+                                             num_heads_kv,
+                                             head_dim,
+                                             batch_stride_q,
+                                             seq_stride_q,
+                                             batch_stride_kv,
+                                             seq_stride_kv,
+                                             outs_data,
+                                             div_c,
+                                             use_neox_rotary_style,
+                                             flag_sin_cos,
+                                             sign,
+                                             num_inputs);
 }
 }  // namespace fusion
 }  // namespace phi
