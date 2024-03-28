@@ -227,7 +227,7 @@ BuildStaticReduceConfig(
     ScheduleConfig::TileConfig tile_config__1024_1M{
         /* warp_num = */ 32,
         /* tree_reduce_num = */ 1,
-        /* spatial_inner_num = */ 1,
+        /* spatial_inner_num = */ 4,
         /* reduce_method = */ NoneReduceMethod()};
     BucketInfo bucket_info__1M_INF{/* sp_lower_bound = */ 1024 * 1024,
                                    /* sp_upper_bound = */ kMaxNumel,
