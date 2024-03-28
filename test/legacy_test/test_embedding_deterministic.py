@@ -112,7 +112,12 @@ def get_all_dtypes():
     if not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm():
         return []
 
-    dtypes = [paddle.float32, paddle.float16]
+    dtypes = [
+        paddle.float32,
+        paddle.float16,
+        paddle.complex64,
+        paddle.complex128,
+    ]
     if 'A100' in paddle.device.cuda.get_device_properties().name:
         dtypes.append(paddle.bfloat16)
     return dtypes

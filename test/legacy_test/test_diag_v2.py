@@ -343,6 +343,24 @@ class TestDiagV2BF16OP(OpTest):
         self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
 
+class TestDiagV2Complex64OP(TestDiagV2Op):
+    def init_config(self):
+        self.x = (
+            np.random.randint(-10, 10, size=(10, 10))
+            + 1j * np.random.randint(-10, 10, size=(10, 10))
+        ).astype("complex64")
+        self.out = np.diag(self.x, self.offset)
+
+
+class TestDiagV2Complex128OP(TestDiagV2Op):
+    def init_config(self):
+        self.x = (
+            np.random.randint(-10, 10, size=(10, 10))
+            + 1j * np.random.randint(-10, 10, size=(10, 10))
+        ).astype("complex128")
+        self.out = np.diag(self.x, self.offset)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

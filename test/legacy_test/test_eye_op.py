@@ -200,6 +200,20 @@ class TestEyeFP16OP(TestEyeOp):
         self.dtype = np.float16
 
 
+class TestEyeComplex64OP(TestEyeOp):
+    '''Test eye op with specified dtype'''
+
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestEyeComplex128OP(TestEyeOp):
+    '''Test eye op with specified dtype'''
+
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),

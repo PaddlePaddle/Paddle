@@ -148,7 +148,9 @@ PD_REGISTER_KERNEL(c_embedding_grad,
                    float,
                    double,
                    phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 #else
 PD_REGISTER_KERNEL(c_embedding_grad,
                    GPU,
@@ -156,5 +158,7 @@ PD_REGISTER_KERNEL(c_embedding_grad,
                    phi::CEmbeddingGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 #endif
