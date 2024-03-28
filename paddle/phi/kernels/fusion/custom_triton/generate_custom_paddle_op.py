@@ -20,19 +20,25 @@ code_template = """
 #include "${triton_kernel_header_file}"
 
 
-CUdeviceptr get_tensor_ptr(const paddle::Tensor& input)
-{
+
+
+void ${custom_op_name}_func(${para}) {
+
+
+auto get_tensor_ptr = [](const paddle::Tensor& input) -> CUdeviceptr {
   if (input.type() == paddle::DataType::FLOAT16) {
     return (CUdeviceptr)(input.data<phi::dtype::float16>());
   } else if (input.type() == paddle::DataType::INT32) {
     return (CUdeviceptr)(input.data<int>());
+  } else if (input.type() == paddle::DataType::FLOAT32) {
+    return (CUdeviceptr)(input.data<float>());
   } else {
     assert(false);
     return (CUdeviceptr)(nullptr);
   }
-}
+};
 
-void ${custom_op_name}_func(${para}) {
+
 
   auto status = ${triton_kernel}(${invoke_para});
   assert(status == CUDA_SUCCESS);

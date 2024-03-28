@@ -55,6 +55,38 @@ python3.8  ${link_file}  ${moe_dir}/*.h -o ${moe_dir}/moe
 
 python3.8 ${gen_paddle_file}  -on "triton_moe" -kn "moe_kernel" -header "moe.h" -oi 2 -cof "generated/moe/triton_moe.cu" -s  "*fp16:16, *fp16:16, *fp16:16, *fp16:16, *i32:16, *i32:16, *i32:16, i32:16,i32:16, i32, i32, i32:16,i32:1, i32:16,i32:16,i32:1,i32:16,i32:1, i32:1, i32, 16, 64, 128, 11111, 2, 0, 2, 11111"
 
+
+
+
+moe_dir=generated/moe2/
+mkdir -p ${moe_dir}
+
+
+python3.8  ${compile_file}  /zhoukangkang/2023-06-06minigpt/PaddleNLP/paddlenlp/transformers/mixtral/modeling_a.py    -n fused_moe_kernel_splitk \
+ -o ${moe_dir}/moe2     --out-name moe_kernel2      \
+ -w 4   -ns 2 \
+ -s  "*fp16:16, *fp16:16, *fp16:16, \
+      *fp16:16, *i32:16, *i32:16, *i32:16, \
+      i32:16,i32:16,\
+      i32, \
+      i32,  \
+      i32:16,i32:1,  \
+      i32:16,i32:16,i32:1, \
+      i32:16,i32:1, \
+      i32:1, \
+      i32,   \
+      16, 64, 128, 11111, 2, 1, 1, 11111" \
+      -g   "((EM+16-1)/16) * ((N+64-1)/64), 2, 1" 
+
+python3.8  ${link_file}  ${moe_dir}/*.h -o ${moe_dir}/moe2
+
+python3.8 ${gen_paddle_file}  -on "triton_moe2" -kn "moe_kernel2" -header "moe2.h" -oi 2 -cof "generated/moe2/triton_moe2.cu" -s  "*fp16:16, *fp16:16, *fp16:16, *fp16:16, *i32:16, *i32:16, *i32:16, i32:16,i32:16, i32, i32, i32:16,i32:1, i32:16,i32:16,i32:1,i32:16,i32:1, i32:1, i32, 16, 64, 128, 11111, 2, 0, 2, 11111"
+
+
+
+
+
+
 # mv the .c file to .cu file
 for file in `find ./generated/ -name "*.c"`
 do
@@ -65,6 +97,4 @@ done
 # 安装triton算子和运行单元测试
 
 python3.8 setup_cuda.py install
-CUDA_VISIBLE_DEVICES=2 python3.8 test_moe.py 
-
 
