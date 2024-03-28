@@ -11,6 +11,11 @@ if(NOT WITH_MKLDNN)
   list(REMOVE_ITEM transforms_srcs ${onednn_srcs})
 endif()
 
+if(NOT WITH_XPU)
+  file(GLOB_RECURSE xpu_srcs "xpu/*.cc")
+  list(REMOVE_ITEM transforms_srcs ${xpu_srcs})
+endif()
+
 set(transforms_deps
     drr
     op_dialect
