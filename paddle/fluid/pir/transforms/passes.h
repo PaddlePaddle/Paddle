@@ -46,3 +46,7 @@ USE_PIR_PASS(conv3d_bias_fuse_pass);
 USE_PIR_PASS(matmul_elementwise_add_fuse_pass);
 USE_PIR_PASS(conv_elementwise_add_mkldnn_fuse_pass);
 #endif
+
+#ifdef PADDLE_WITH_XPU
+USE_PIR_PASS(add_layernorm_xpu_fuse_pass);
+#endif
