@@ -94,11 +94,6 @@ def get_infermeta_inputs_str(
         # add mutable attributes as inputs
         if len(op_mutable_attribute_name_list) > 0:
             for i in range(len(op_mutable_attribute_name_list)):
-                if (
-                    op_mutable_attribute_name_list[i]
-                    not in inuse_infer_meta_args
-                ):
-                    continue
                 infermeta_inputs_str += CREATE_INPUT_VALUE_TEMPLATE.format(
                     input_name=op_mutable_attribute_name_list[i],
                     index=str(i + len(op_input_name_list)),
@@ -297,8 +292,6 @@ def GenBuildOutputsPart2(
     # Prepare mutable attributes
     if mutable_attr_is_input:
         for idx in range(len(op_mutable_attribute_name_list)):
-            if op_mutable_attribute_name_list[idx] not in inuse_infer_meta_args:
-                continue
             attr_dtype = op_mutable_attribute_type_list[idx]
             # int_array
             if attr_dtype[0] == "paddle::dialect::IntArrayAttribute":
@@ -617,13 +610,39 @@ def GenDistBranch(args, op_info):
     TEMPLATE = """
   // Auto Parallel condition
   if(HasDistInput(input_values)) {{
+    ProcessMeshAttribute op_mesh;
+    auto ctx = pir::IrContext::Instance();
+    for(auto value : input_values) {{
+      if (auto dist_interface = value.type().dyn_cast<DistTypeInterface>()) {{
+        op_mesh = dist_interface.process_mesh_attr();
+        break;
+      }}
+    }}"""
+    dist_branch_str = TEMPLATE.format()
+    TEMPLATE = """
+    if(!{name}.FromTensor()) {{
+      auto dist_type = DistDenseTensorType::get(ctx, {name}_.type().dyn_cast<DenseTensorType>(), op_mesh);
+      {name}_.set_type(dist_type);
+      {name}_.defining_op()->set_attribute(
+        kAttrOpDistAttr,
+          OperationDistAttribute::get(
+            ctx,
+            op_mesh,
+            {{dist_type.tensor_dist_attr() }},
+            {{}}
+          )
+      );
+    }}
+    """
+    for mutable_attr_name in op_info.mutable_attribute_name_list:
+        dist_branch_str += TEMPLATE.format(name=mutable_attr_name)
+    TEMPLATE = """
     if(!AllInputAreDist(input_values)) {{
         PADDLE_THROW(common::errors::Unimplemented(
             "Mixed inputs with DenseTensor and DistDenseTensor are not supported yet."));
     }}
-    ProcessMeshAttribute op_mesh = input_values[0].type().dyn_cast<DistDenseTensorType>().process_mesh_attr();
     std::vector<TensorDistAttribute> operand_dist_attrs, result_dist_attrs;"""
-    dist_branch_str = TEMPLATE.format()
+    dist_branch_str += TEMPLATE.format()
     infer_spmd_args_list = []
     # Prepare inputs_meta_tensor & attributes for infer spmd
     for name in op_info.spmd_params:
@@ -680,12 +699,12 @@ def GenDistBranch(args, op_info):
             TEMPLATE = """
     auto dist_attr_{name} = CvtToPirDistAttr(spmd_info.second[{idx}]);
     result_dist_attrs.push_back(dist_attr_{name});
-    argument_outputs.push_back(DistDenseTensorType::get(pir::IrContext::Instance(), {name}_type.dyn_cast<pir::DenseTensorType>(), dist_attr_{name}));
+    argument_outputs.push_back(DistDenseTensorType::get(ctx, {name}_type.dyn_cast<pir::DenseTensorType>(), dist_attr_{name}));
 """
             dist_branch_str += TEMPLATE.format(idx=idx, name=output_name)
     TEMPLATE = """
     attributes[kAttrOpDistAttr] = OperationDistAttribute::get(
-        pir::IrContext::Instance(),
+        ctx,
         op_mesh,
         operand_dist_attrs,
         result_dist_attrs
