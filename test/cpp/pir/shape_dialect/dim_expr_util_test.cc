@@ -53,7 +53,7 @@ TEST(DimExprUtil, Substitute) {
   ASSERT_EQ(ret_expr, dim_expr);
 }
 
-TEST(DimExprUtil, Calculate) {
+TEST(DimExprUtil, CalculateArithmetic) {
   // (S0 - S1) * 2 / S0
   DimExpr dim_expr = CreateExampleDimExpr();
   // (4 - 2) * 2 / 4 => 1
@@ -61,6 +61,17 @@ TEST(DimExprUtil, Calculate) {
   DimExpr ret = SimplifyDimExpr(substitute_expr);
   ASSERT_TRUE(ret.Has<std::int64_t>());
   ASSERT_EQ(ret.Get<std::int64_t>(), 1);
+}
+
+TEST(DimExprUtil, CalculateMinMax) {
+  DimExpr dim_expr = [&]() -> DimExpr {
+    DimExprBuilder builder(nullptr);
+    return builder.Max(DimExpr("S0"), builder.Min(DimExpr("S1"), 2));
+  }();
+  DimExpr substitute_expr = SubstituteDimExpr(dim_expr, {{"S0", 4}, {"S1", 3}});
+  DimExpr ret = SimplifyDimExpr(substitute_expr);
+  ASSERT_TRUE(ret.Has<std::int64_t>());
+  ASSERT_EQ(ret.Get<std::int64_t>(), 4);
 }
 
 TEST(DimExpr, CollectDimExprSymbol) {

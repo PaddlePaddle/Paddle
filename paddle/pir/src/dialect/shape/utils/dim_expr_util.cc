@@ -14,6 +14,7 @@
 
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
+#include <limits>
 #include <numeric>
 
 namespace symbol {
@@ -695,6 +696,86 @@ struct FoldOperandTrait<Broadcast> {
   }
 };
 
+template <>
+struct FoldOperandTrait<Max> {
+  using const_value_type = std::int64_t;
+
+  static bool IsConstPattern(const DimExpr& dim_expr) {
+    if (dim_expr.Has<std::int64_t>()) {
+      return true;
+    }
+    if (dim_expr.Has<Negative<DimExpr>>()) {
+      const auto& operand = dim_expr.Get<Negative<DimExpr>>()->data;
+      return operand.Has<std::int64_t>();
+    }
+    return false;
+  }
+
+  static const_value_type MakeUnit() {
+    return std::numeric_limits<const_value_type>::min();
+  }
+  static void Accumulate(const_value_type* value, const DimExpr& expr) {
+    *value = std::max(*value, GetInteger(expr));
+  }
+  static bool IsUnit(const const_value_type& value) {
+    return value == MakeUnit();
+  }
+  static bool IsUnitDimExpr(const DimExpr& dim_expr) {
+    if (!dim_expr.Has<std::int64_t>()) {
+      return false;
+    }
+    return dim_expr.Get<std::int64_t>() == MakeUnit();
+  }
+  static void MakeAndAppendDimExpr(const const_value_type& value,
+                                   List<DimExpr>* ret) {
+    (*ret)->emplace_back(value);
+  }
+
+  static bool IsInversedPair(const DimExpr& lhs, const DimExpr& rhs) {
+    return false;
+  }
+};
+
+template <>
+struct FoldOperandTrait<Min> {
+  using const_value_type = std::int64_t;
+
+  static bool IsConstPattern(const DimExpr& dim_expr) {
+    if (dim_expr.Has<std::int64_t>()) {
+      return true;
+    }
+    if (dim_expr.Has<Negative<DimExpr>>()) {
+      const auto& operand = dim_expr.Get<Negative<DimExpr>>()->data;
+      return operand.Has<std::int64_t>();
+    }
+    return false;
+  }
+
+  static const_value_type MakeUnit() {
+    return std::numeric_limits<const_value_type>::max();
+  }
+  static void Accumulate(const_value_type* value, const DimExpr& expr) {
+    *value = std::min(*value, GetInteger(expr));
+  }
+  static bool IsUnit(const const_value_type& value) {
+    return value == MakeUnit();
+  }
+  static bool IsUnitDimExpr(const DimExpr& dim_expr) {
+    if (!dim_expr.Has<std::int64_t>()) {
+      return false;
+    }
+    return dim_expr.Get<std::int64_t>() == MakeUnit();
+  }
+  static void MakeAndAppendDimExpr(const const_value_type& value,
+                                   List<DimExpr>* ret) {
+    (*ret)->emplace_back(value);
+  }
+
+  static bool IsInversedPair(const DimExpr& lhs, const DimExpr& rhs) {
+    return false;
+  }
+};
+
 /*
  * Simplify Example:
  * Mul(2, Reciprocal(2)) => 1
@@ -891,6 +972,8 @@ DimExpr Simplify(const DimExpr& expr) {
     DoPass<SimplifyDoubleNeg>(&keep_rewrite, &ret);
     DoPass<SimplifyOperands<Add>>(&keep_rewrite, &ret);
     DoPass<SimplifyOperands<Mul>>(&keep_rewrite, &ret);
+    DoPass<SimplifyOperands<Max>>(&keep_rewrite, &ret);
+    DoPass<SimplifyOperands<Min>>(&keep_rewrite, &ret);
     DoPass<SimplifyOperands<Broadcast>>(&keep_rewrite, &ret);
     DoPass<SortOperands<Add>>(&keep_rewrite, &ret);
     DoPass<SortOperands<Mul>>(&keep_rewrite, &ret);
@@ -903,6 +986,8 @@ DimExpr Simplify(const DimExpr& expr) {
     DoPass<FoldUnitConstant<Broadcast>>(&keep_rewrite, &ret);
     DoPass<FoldConstants<Add>>(&keep_rewrite, &ret);
     DoPass<FoldConstants<Mul>>(&keep_rewrite, &ret);
+    DoPass<FoldConstants<Max>>(&keep_rewrite, &ret);
+    DoPass<FoldConstants<Min>>(&keep_rewrite, &ret);
     DoPass<FoldConstants<Broadcast>>(&keep_rewrite, &ret);
     DoPass<FoldInversedPairToUnit<Add>>(&keep_rewrite, &ret);
     DoPass<FoldInversedPairToUnit<Mul>>(&keep_rewrite, &ret);

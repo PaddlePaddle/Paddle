@@ -99,6 +99,8 @@ TEST(DimExpr, TensorListShapeOrDataDimExprs) {
 }
 
 TEST(Simplify, NumberArithmetic) {
+  DimExprBuilder builder{nullptr};
+  // Simplify number arithmetic
   DimExpr number = DimExpr(5);
   DimExpr add_minus = number + number - number;
   ASSERT_TRUE((add_minus.Has<std::int64_t>()));
@@ -106,6 +108,13 @@ TEST(Simplify, NumberArithmetic) {
   DimExpr mul_div = number * DimExpr(1) / number;
   ASSERT_TRUE((mul_div.Has<std::int64_t>()));
   ASSERT_EQ((mul_div.Get<std::int64_t>()), 1);
+  // Simplify min/max DimExpr
+  DimExpr min_expr = builder.Min(DimExpr(3), DimExpr(4));
+  ASSERT_TRUE((min_expr.Has<std::int64_t>()));
+  ASSERT_EQ((min_expr.Get<std::int64_t>()), 3);
+  DimExpr max_expr = builder.Max(DimExpr(3), DimExpr(4));
+  ASSERT_TRUE((max_expr.Has<std::int64_t>()));
+  ASSERT_EQ((max_expr.Get<std::int64_t>()), 4);
 }
 
 TEST(DimExpr, Equal) {
