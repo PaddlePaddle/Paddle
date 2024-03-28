@@ -25,16 +25,11 @@ template <typename T, typename Context>
 void SumAsKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const DenseTensor& y,
-                 DataType out_dtype,
-                 bool keep_dim,
                  DenseTensor* out) {
   auto reduce_dim = phi::funcs::GetReduceDims(x, y);
   bool reduce_all = recompute_reduce_all(x, reduce_dim);
-  if (out_dtype == DataType::UNDEFINED && out->dtype() != x.dtype()) {
-    out_dtype = out->dtype();
-  }
   phi::Reduce<CPUContext, T, phi::funcs::SumFunctor>(
-      dev_ctx, x, reduce_all, reduce_dim, keep_dim, out_dtype, out);
+      dev_ctx, x, reduce_all, reduce_dim, false, out->type(), out);
 }
 
 }  // namespace phi
@@ -52,6 +47,4 @@ PD_REGISTER_KERNEL(sum_as,
                    int,
                    int64_t,
                    uint8_t,
-                   int8_t) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
-}
+                   int8_t) {}

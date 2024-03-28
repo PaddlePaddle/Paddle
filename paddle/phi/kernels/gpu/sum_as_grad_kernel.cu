@@ -27,7 +27,6 @@ void SumAsGradKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
                      const DenseTensor& out_grad,
-                     bool keep_dim,
                      DenseTensor* x_grad) {
   auto reduce_dim = phi::funcs::GetReduceDims(x, y);
   bool reduce_all = recompute_reduce_all(x, reduce_dim);
@@ -46,7 +45,7 @@ void SumAsGradKernel(const Context& dev_ctx,
       dev_ctx,
       &new_out_grad,
       x_grad,
-      x.dtype(),
+      out_grad.dtype(),
       phi::kps::IdentityFunctor<T, MPType>());
 }
 

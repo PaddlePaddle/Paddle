@@ -25,8 +25,6 @@ template <typename T, typename Context>
 void SumAsKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const DenseTensor& y,
-                 DataType out_dtype,
-                 bool keep_dim,
                  DenseTensor* out);
 
 }  // namespace phi

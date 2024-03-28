@@ -26,7 +26,6 @@ void SumAsGradKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
                      const DenseTensor& out_grad,
-                     bool keep_dim,
                      DenseTensor* x_grad);
 
 }  // namespace phi
