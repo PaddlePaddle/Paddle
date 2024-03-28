@@ -696,6 +696,7 @@ class ShardingPass(PassBase):
                             startup_block._remove_op(idx, sync=False)
                     else:  # We should remove the `c_broadcast` between `TensorParallel` mesh dim.
                         startup_block._remove_op(idx, sync=False)
+                    continue
 
                 if (
                     op.type != "c_broadcast"
