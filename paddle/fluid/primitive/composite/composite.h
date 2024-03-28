@@ -912,14 +912,14 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     out = out + bias_cast;
   }
   Tensor mean_out, var_out;
-  if (has_dynamic_shape(x_cast.shape())) {
+  if (has_dynamic_shape(x.shape())) {
     Tensor x_shape = get_slice<T>(x_dim_t, 0);
     Tensor dim_1 = full<T>({1}, groups, x_shape.type());
     x_shape = concat<T>({x_shape, dim_1});
     mean_out = backend::reshape<T>(mean_, x_shape);
     var_out = backend::reshape<T>(var_, x_shape);
   } else {
-    auto x_dim = x_cast.shape();
+    auto x_dim = x.shape();
     std::vector<int64_t> res_shape{x_dim[0], groups};
     mean_out = reshape<T>(mean_, res_shape);
     var_out = reshape<T>(var_, res_shape);
