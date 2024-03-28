@@ -66,16 +66,13 @@ class MergeParallelMatmulPattern
     auto transpose_y = GetTransposeAttr(matmul_op, "transpose_y");
 
     if (transpose_x == false && transpose_y == false) {
-      std::cerr << "==========\n";
       std::vector<::pir::Operation*> merge_ops;
       for (auto it = input_x.use_begin(); it != input_x.use_end(); ++it) {
-        std::cerr << "name " << it->owner()->name() << std::endl;
         if (CanMerge(it->owner())) {
-          std::cerr << "merge " << it->owner()->name() << std::endl;
           merge_ops.push_back(it->owner());
         }
       }
-      std::cerr << "merge ops size " << merge_ops.size() << std::endl;
+
       if (merge_ops.size() > 1) {
         {
           std::vector<pir::Value> combine_ins;
