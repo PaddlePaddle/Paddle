@@ -18,6 +18,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/transforms/gpu/fused_gemm_epilogue_pass.h"
 #include "paddle/fluid/pir/transforms/onednn/conv_bias_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/onednn/depthwise_conv_mkldnn_pass.h"
 
@@ -59,6 +60,7 @@ TEST(DrrTest, DepthwiseConv) {
   BuildProgram(builder);
 
   pir::PassManager pm(ctx);
+  pm.AddPass(pir::CreateFusedGemmEpiloguePass());
   pm.AddPass(pir::CreateConv2dBiasFusePass());
   pm.AddPass(pir::CreateDepthwiseConvMKLDNNPass());
   pm.EnablePassTiming();
