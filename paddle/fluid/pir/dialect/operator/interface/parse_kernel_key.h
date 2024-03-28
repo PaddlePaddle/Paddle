@@ -63,6 +63,8 @@ KernelKeyTuple NopOpParseKernelKey(pir::Operation *op);
 
 KernelKeyTuple Nop_OpParseKernelKey(pir::Operation *op);
 
+KernelKeyTuple PullGpupsSparseKernelKey(pir::Operation *op);
+
 }  // namespace dialect
 }  // namespace paddle
 
