@@ -108,17 +108,48 @@ bool FullWithTensorOpInferSymbolicShape(
   return true;
 }
 
+bool FlashAttnOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  pir::Value operand_source = op->operand_source(0);
+  const symbol::ShapeOrDataDimExprs &q =
+      shape_analysis->GetShapeOrDataForValue(operand_source);
+
+  const symbol::ShapeOrDataDimExprs &v =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(2));
+
+  std::vector<symbol::DimExpr> out_shape = q.shape();
+
+  out_shape.back() = v.shape().back();
+
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(out_shape));
+  return true;
+}
+
 bool LinspaceOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  const auto &num_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(2));
+  const auto step = [&] {
+    symbol::DimExpr expr;
+    if (num_shape_or_data.data().has_value()) {
+      expr = num_shape_or_data.data().value()[0];
+    } else {
+      expr = num_shape_or_data.shape()[0];
+    }
+    return expr;
+  }();
+  const symbol::ShapeOrDataDimExprs &shape_data = [&] {
+    std::vector<symbol::DimExpr> out_dims{step};
+    return symbol::ShapeOrDataDimExprs{
+        symbol::TensorShapeOrDataDimExprs(out_dims)};
+  }();
+  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
   return true;
 }
 bool LogspaceOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
+  return LinspaceOpInferSymbolicShape(op, shape_analysis);
 }
 
 bool StackOpInferSymbolicShape(pir::Operation *op,

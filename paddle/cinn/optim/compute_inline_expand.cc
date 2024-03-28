@@ -113,7 +113,14 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
           CHECK(tensor);
           // fix computeAt case
           auto shapes = tensor->shape;
-          CHECK_EQ(shapes.size(), node->indices.size());
+          PADDLE_ENFORCE_EQ(
+              shapes.size(),
+              node->indices.size(),
+              phi::errors::InvalidArgument(
+                  "The size of tensor shape and node indices is not equal,"
+                  "where tensor shape:%d but node indices:%d.",
+                  shapes.size(),
+                  node->indices.size()));
           for (int i = 0; i < shapes.size(); i++) {
             if (cinn::common::is_zero(shapes[i] - 1)) {
               node->indices[i] = Expr(0);

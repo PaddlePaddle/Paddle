@@ -36,6 +36,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/move_generate_shape_ops_to_prologue_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/simplify_dim_expr_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/single_op_fallback_to_phi.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/substitute_dim_expr_based_on_constraints_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/insert_broadcast_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lower_cinn_fusion_op_pass.h"
@@ -99,7 +100,6 @@ void ApplyCinnPreprocessPass(
         cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   }
-  pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
 
   pass_manager->Run(program);
 }
@@ -109,11 +109,14 @@ void ApplyBuildGroupOpPass(
     const std::function<std::shared_ptr<pir::PassManager>()>&
         CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
-  pass_manager->AddPass(pir::CreateBuildCinnPass());
-  if (HasDynamicShape(*program)) {
+  bool has_dynamic_shape = HasDynamicShape(*program);
+  if (has_dynamic_shape) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
-    pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
   }
+  pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
+
+  pass_manager->AddPass(pir::CreateBuildCinnPass());
+
   pass_manager->Run(program);
 }
 
@@ -123,17 +126,19 @@ void ApplyGroupOpPass(::pir::Program* program,
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   if (HasDynamicShape(*program)) {
     pass_manager->AddPass(::pir::CreateShapeOptimizationPass());
+    pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
+    pass_manager->AddPass(
+        cinn::dialect::ir::CreateSubstituteDimExprBasedOnConstraintsPass());
+    pass_manager->AddPass(cinn::dialect::ir::CreateSimplifyDimExprPass());
     pass_manager->AddPass(
         cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());
     pass_manager->AddPass(
         cinn::dialect::ir::CreateMoveGenerateShapeOpsToProloguePass());
-    pass_manager->AddPass(
-        cinn::dialect::ir::CreateSubstituteDimExprBasedOnConstraintsPass());
-    pass_manager->AddPass(cinn::dialect::ir::CreateSimplifyDimExprPass());
   }
 
   pass_manager->AddPass(cinn::dialect::ir::CreateDynamicReshapeOpPass());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
 
   pass_manager->Run(program);
 }
@@ -170,6 +175,7 @@ void ApplyCinnLowerPass(
     pass_manager->AddPass(std::move(pass.value()));
   }
 
+  pass_manager->AddPass(cinn::dialect::ir::CreateSingleOpFallbackToPhiPass());
   if (has_dynamic_shape && !force_static_shape) {
     pass_manager->AddPass(
         cinn::dialect::ir::CreateLowerCinnDyShapeFusionOpPass());

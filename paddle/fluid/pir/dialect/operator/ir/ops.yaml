@@ -132,12 +132,22 @@
     param : [shape, dtype, values]
     data_type : dtype
     backend : place > output
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : barrier
   args : (Tensor x, int ring_id=0)
   output : Tensor(out)
   kernel :
     func : barrier
+
+- op : batch_fc
+  args : (Tensor input, Tensor w, Tensor bias)
+  output : Tensor(out)
+  infer_meta:
+    func : BatchFCInferMeta
+  kernel :
+    func : batch_fc
+    data_type: input
 
 - op : batch_norm
   args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_format, bool use_global_stats, bool trainable_statistics)
@@ -728,6 +738,7 @@
   infer_meta :
     func : CreateLikeInferMeta
     param : [x, dtype]
+    spmd_rule : FullLikeInferSpmd
   kernel :
     func : full_like
     param : [x, value, dtype]
@@ -1213,6 +1224,16 @@
     func : partial_allgather
   inplace : (x -> out)
 
+- op : partial_concat
+  args : (Tensor[] x, int start_index = 0, int length = -1)
+  output : Tensor(out)
+  infer_meta :
+    func : PartialConcatInferMeta
+  kernel :
+    func : partial_concat
+    data_type : x
+  backward : partial_concat_grad
+
 - op : partial_recv
   args : (int ring_id = 0, int peer = 0, DataType dtype=DataType::FLOAT32, int[] out_shape= {}, bool use_calc_stream = false, int num = 1, int id = 0)
   output : Tensor(out)
@@ -1284,6 +1305,16 @@
     func : prune_gate_by_capacity
     data_type : gate_idx
 
+- op : push_dense
+  args : (Tensor[] ids, int table_id = -1, float scale_data_norm = -1.0f, str[] input_names = {})
+  output :
+  infer_meta :
+    func : PushDenseInferMeta
+    param : [ids, table_id, scale_data_norm, input_names]
+  kernel :
+    func : push_dense
+    data_type : DataType::FLOAT32
+
 - op : push_sparse_v2
   args : (Tensor[] ids, Tensor[] w, Tensor[] out_grad_in, int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, str[] inputnames = {}, bool is_distributed = true)
   output : Tensor[](out_grad_out){out_grad_in.size()}
@@ -1341,6 +1372,17 @@
     param : [n, dtype]
     data_type : dtype
     backend : place
+
+- op : rank_attention
+  args : (Tensor x, Tensor rank_offset, Tensor rank_param, int max_rank = 3, int max_size = 0)
+  output : Tensor(input_help), Tensor(out), Tensor(ins_rank)
+  infer_meta :
+    func : RankAttentionInferMeta
+  kernel :
+    func : rank_attention
+    data_type : x
+  backward : rank_attention_grad
+  optional : ins_rank, input_help
 
 - op : read_file
   args : (str filename = "", DataType dtype=DataType::UINT8, Place place=CPUPlace())

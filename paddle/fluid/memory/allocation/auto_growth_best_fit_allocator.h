@@ -48,7 +48,7 @@ class AutoGrowthBestFitAllocator : public Allocator {
     return FreeIdleChunks();
   }
 
- private:
+ protected:
   uint64_t FreeIdleChunks();
   void Trace() const;
 
