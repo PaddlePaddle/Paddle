@@ -322,7 +322,8 @@ bool CanDimExprSubstitute(const symbol::DimExpr& lhs,
  * @return -1 if lhs is less than rhs, 1 if lhs is greater than rhs, and 0 if
  * they are equal
  */
-int CompareDimExpr(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
+int CompareDimExprForString(const symbol::DimExpr& lhs,
+                            const symbol::DimExpr& rhs) {
   int lhs_priority = GetDimExprPriority(lhs);
   int rhs_priority = GetDimExprPriority(rhs);
   if (lhs_priority != rhs_priority) {
@@ -345,12 +346,12 @@ int CompareDimExpr(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
 void ShapeConstraintIRAnalysis::AddEqCstr(const symbol::DimExpr& lhs,
                                           const symbol::DimExpr& rhs) {
   if (lhs == rhs) return;
-  eq_cstr_set.Union(lhs, rhs);
+  equal_constraints_.Union(lhs, rhs);
   VLOG(8) << "AddEqCstr the constraint: " << lhs << " == " << rhs;
 
   if (CanDimExprSubstitute(lhs, rhs)) {
     std::unordered_map<symbol::DimExpr, symbol::DimExpr> substitution_pattern;
-    if (CompareDimExpr(lhs, rhs) < 0) {
+    if (CompareDimExprForString(lhs, rhs) < 0) {
       substitution_pattern[rhs] = lhs;
     } else {
       substitution_pattern[lhs] = rhs;

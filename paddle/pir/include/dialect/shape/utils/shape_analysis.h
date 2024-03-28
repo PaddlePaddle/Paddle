@@ -99,10 +99,17 @@ class IR_API ShapeConstraintIRAnalysis {
 
   int64_t next_sym_idx_ = 0;
 
+  using EqualConstraints = UnionFindSet;
+  using BroadcastableConstraints =
+      std::vector<symbol::Broadcastable<symbol::DimExpr>>;
+  using GTOneConstraints = std::unordered_set<symbol::DimExpr>;
+
+  EqualConstraints equal_constraints_;
+  BroadcastableConstraints broadcastable_constraints_;
+  GTOneConstraints gtone_constraints_;
+
   std::unordered_map<Value, symbol::ShapeOrDataDimExprs>
       value_to_shape_or_data_;
-
-  UnionFindSet eq_cstr_set;
 
   std::vector<symbol::DimExprConstraint> constraints_;
 };
