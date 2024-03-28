@@ -22,11 +22,22 @@
 namespace cinn::frontend {
 
 inline group_cluster::PatternNodePtrSet ClusterOps(
-    const std::vector<pir::Operation*>& ops) {
-  CHECK_GT(ops.size(), 0);
+    const std::vector<pir::Operation*>& origin_ops) {
+  CHECK_GT(origin_ops.size(), 0);
   VLOG(4) << "Start Cluster Ops!";
-  VLOG(4) << "Input Group with size " << ops.size() << " :\n"
-          << group_cluster::OpsDebugStr(ops);
+  VLOG(4) << "Input Group with size " << origin_ops.size() << " :\n"
+          << group_cluster::OpsDebugStr(origin_ops);
+
+  const auto& ops = [&] {
+    std::vector<pir::Operation*> ops;
+    for (const auto& op : origin_ops) {
+      if (op->name() == "cf.yield") {  // just skip cf.yield.
+        continue;
+      }
+      ops.emplace_back(op);
+    }
+    return ops;
+  }();
 
   pir::Program* program = ops.at(0)->GetParentProgram();
 
