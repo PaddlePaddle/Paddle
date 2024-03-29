@@ -16,7 +16,9 @@
 
 namespace cinn::frontend::group_cluster {
 
-std::vector<PatternNodePtr> PatternGraph::ClusterOps() {
+std::vector<PatternNodePtr> PatternGraph::ClusterOps(
+    bool with_horizontal_fusion) {
+  VLOG(4) << "SinkTrivialPattern";
   SinkTrivialPattern();
   // ReducePattern -> ReduceTreePattern
   VLOG(4) << "ReduceLiftReduceTree";
@@ -28,6 +30,12 @@ std::vector<PatternNodePtr> PatternGraph::ClusterOps() {
 
   VLOG(4) << "ReduceTree_Trivial_Fusion";
   ReduceTree_Trivial_Fusion();
+
+  // Horitical fusion.
+  if (with_horizontal_fusion) {
+    VLOG(4) << "Start Horitical Fusion.";
+    HoriticalFusion();
+  }
 
   return SortByTopoOrder();
 }
@@ -56,19 +64,38 @@ std::vector<PatternNodePtr> PatternGraph::SortByTopoOrder() {
 }
 
 void PatternGraph::SinkTrivialPattern() {
+  VLOG(4) << "SinkTrivialPattern";
   GraphTransformer<
+      NodePattern,
       And<NonSinkNodeMatcher, StmtPatternGraphMatcher<TrivialPattern>>,
       TrivialPatternMerge>(this);
 }
 
 void PatternGraph::ReduceLiftReduceTree() {
   GraphTransformer<
+      NodePattern,
       And<DownstreamSmallerThan<2>, StmtPatternGraphMatcher<ReducePattern>>,
       LiftReduceToReduceTree>(this);
 }
 
+void PatternGraph::HoriticalFusion() {
+  VLOG(4) << "LiftToHorizontalFusionPattern";
+  GraphTransformer<NodePattern,
+                   StmtPatternGraphMatcher<TrivialPattern>,
+                   LiftToHorizontalFusionPattern>(this);
+
+  VLOG(4) << "HorizontalFusionOperation";
+  GraphTransformer<NodePairPattern,
+                   HorizontalFusionConstrain,
+                   HorizontalFusionOperation>(this);
+
+  VLOG(4) << "XK";
+}
+
 void PatternGraph::ReduceTreeGrown() {
-  GraphTransformer<CanFuseReduceTreeMatcher, MergeReduceTreeOperation>(this);
+  GraphTransformer<NodePattern,
+                   CanFuseReduceTreeMatcher,
+                   MergeReduceTreeOperation>(this);
 }
 
 void PatternGraph::ReduceTree_Trivial_Fusion() {
@@ -112,8 +139,9 @@ void PatternGraph::ReduceTree_Trivial_Fusion() {
 }
 
 PatternGraph::PatternGraph(const std::vector<pir::Operation*>& ops,
-                           const policy::PolicyManager policy_manager)
-    : policy_manager_(policy_manager) {
+                           const policy::PolicyManager policy_manager,
+                           const policy::PolicyManager topo_manager)
+    : policy_manager_(policy_manager), topo_manager_(topo_manager) {
   std::unordered_map<pir::Operation*, PatternNodePtr> op_to_node_map;
 
   for (const auto& op : ops) {

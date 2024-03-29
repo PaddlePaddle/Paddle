@@ -167,10 +167,17 @@ StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second) {
     return ReducePattern(ops);
   } else if (IsTrivialPattern(first) && IsTrivialPattern(second)) {
     return TrivialPattern(ops);
+  } else if (IsHorizontalFusionPattern(first) &&
+             IsHorizontalFusionPattern(second)) {
+    return HorizontalFusionPattern(ops);
   } else {
     // Not Implementation.
     CHECK(false) << "Found not support merge!";
   }
+}
+
+bool IsHorizontalFusionPattern(const StmtPattern& pattern) {
+  return std::holds_alternative<HorizontalFusionPattern>(pattern);
 }
 
 StmtPattern ConvertToStmtPattern(pir::Operation* op) {

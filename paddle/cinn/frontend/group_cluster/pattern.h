@@ -14,11 +14,20 @@
 
 #pragma once
 
+#include <unordered_set>
 #include <variant>
 #include <vector>
+#include "glog/logging.h"
 #include "paddle/pir/include/core/operation.h"
 
 namespace cinn::frontend::group_cluster {
+
+class TrivialPattern;
+class ReducePattern;
+class ReduceTreePattern;
+class ReduceTreePlusTrivialPattern;
+class UnsupportPattern;
+class HorizontalFusionPattern;
 
 template <typename T>
 void ExtendVector(std::vector<T>* first, const std::vector<T>& second) {
@@ -96,19 +105,19 @@ struct UnsupportPattern {
   static std::string name() { return "Unsupport"; }
 };
 
-// UnsupportedPattern can't fuse with any pattern
-// Step 1: T x T|R => T|R                 TrivialPattern can always fuse with
-// downstream Step 2: R x T|R => R                   Use Shardable Axes Policy
-// to judge
+struct HorizontalFusionPattern {
+  explicit HorizontalFusionPattern(const std::vector<pir::Operation*>& ops)
+      : ops_(ops) {}
+  std::vector<pir::Operation*> ops_;
+  std::vector<pir::Operation*> ops() const { return ops_; }
+  static std::string name() { return "HorizontalFusionPattern"; }
+};
 
-// If we want add MatmulPattern =>
-// StmtPattern = std::variant<TrivialPattern, ReducePattern, MatmulPattern,
-// UnsupportPattern>; Fusion with different Pattern will have specialized logic
-// to Judge, Update policy logic for MatmulPattern
 using StmtPattern = std::variant<TrivialPattern,
                                  ReducePattern,
                                  ReduceTreePattern,
                                  ReduceTreePlusTrivialPattern,
+                                 HorizontalFusionPattern,
                                  UnsupportPattern>;
 
 }  // namespace cinn::frontend::group_cluster
