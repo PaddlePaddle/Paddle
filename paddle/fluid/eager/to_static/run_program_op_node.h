@@ -267,7 +267,7 @@ static void ShareTensorsFromScopeByValue(
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto name = names[i];
     auto &value = values[i];
-    VLOG(2) << "share " << name << " from scope";
+    VLOG(4) << "Share Tensor From Scope: " << name;
 
     if (value.impl() == nullptr) {
       // skip stop_gradient.

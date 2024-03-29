@@ -1419,27 +1419,61 @@ SplitedResult SplitForwardBackward(
   }
   VLOG(0) << "end display backward_inputs";
 
+  auto display_value_map =
+      [](const std::unordered_map<pir::Value, pir::Value> &map,
+         const std::string &name) {
+        VLOG(0) << "\n";
+        VLOG(0) << "Start display Mapping: " << name << ", size is "
+                << map.size();
+        for (auto &[k, v] : map) {
+          VLOG(0) << "Mapping: " << Value2String(k) << " -> "
+                  << Value2String(v);
+        }
+        VLOG(0) << "End display Mapping: " << name << "\n";
+      };
+
+  auto display_values = [](const std::vector<pir::Value> &values,
+                           const std::string &name) {
+    VLOG(0) << "\n";
+    VLOG(0) << "Start display Values: " << name << ", size is "
+            << values.size();
+    for (auto &v : values) {
+      VLOG(0) << "Value: " << Value2String(v);
+    }
+    VLOG(0) << "End display Values: " << name << "\n";
+  };
+
+  auto display_program = [](const Program &program, const std::string &name) {
+    VLOG(0) << "\n";
+    VLOG(0) << "Start program: " << name;
+    std::ostringstream print_stream;
+    program.Print(print_stream);
+    VLOG(0) << print_stream.str();
+    VLOG(0) << "End program: " << name << "\n";
+  };
+
+  (void)display_values;
+
+  display_values(forward_outputs_mutable,
+                 "forward_outputs_mutable before update");
+
+  display_program(program, "original program");
+
   // Replace inplace value with source value.
+  // NOTE(SigureMo): Why not process inplace value for forward_inputs in
+  // forward?
+  // Because all forward_inputs uses data op, after lower to kernel
+  // pass, the data op will following a non-inplace op shadow_feed, so we don't
+  // need to process inplace for forward_inputs in forward.
+  // Same reason for whole backward program, because all backward inputs are
+  // created by block kwargs, it also add a shadow_feed op after lower to kernel
+  // pass.
   auto replacement_for_forward_middles = ReplaceValueWithInplaceSource(
-      {forward_inputs, forward_params}, &middle_values, inplace_chains);
-  auto replacement_for_forward_outputs =
-      ReplaceValueWithInplaceSource({forward_inputs, forward_params},
-                                    &forward_outputs_mutable,
-                                    inplace_chains);
-  ReplaceValueWithInplaceSource({forward_inputs,
-                                 forward_params,
-                                 forward_outputs_mutable,
-                                 middle_values,
-                                 forward_outputs_grads},
-                                &forward_inputs_grads_mutable,
-                                inplace_chains);
-  ReplaceValueWithInplaceSource({forward_inputs,
-                                 forward_params,
-                                 forward_outputs_mutable,
-                                 middle_values,
-                                 forward_outputs_grads},
-                                &forward_params_grads_mutable,
-                                inplace_chains);
+      {forward_params}, &middle_values, inplace_chains);
+  auto replacement_for_forward_outputs = ReplaceValueWithInplaceSource(
+      {forward_params}, &forward_outputs_mutable, inplace_chains);
+  display_values(forward_outputs_mutable,
+                 "forward_outputs_mutable after update");
   pir::Block &backward_block = *backward_program->block();
   bool has_backward = (backward_range[1] > backward_range[0]);
 
@@ -1463,18 +1497,6 @@ SplitedResult SplitForwardBackward(
   pir::IrMapping backward_mapper;
   auto &backward_value_map = backward_mapper.GetMutableMap<pir::Value>();
   int counter = 0;
-  auto display_value_map =
-      [](const std::unordered_map<pir::Value, pir::Value> &map,
-         const std::string &name) {
-        VLOG(0) << "\n";
-        VLOG(0) << "Start display Mapping: " << name << " size is "
-                << map.size();
-        for (auto &[k, v] : map) {
-          VLOG(0) << "Mapping: " << Value2String(k) << " -> "
-                  << Value2String(v);
-        }
-        VLOG(0) << "End display Mapping: " << name << "\n";
-      };
   auto create_kwarg_fn = [&backward_block,
                           &backward_inputs,
                           &backward_value_map,
@@ -1538,6 +1560,7 @@ SplitedResult SplitForwardBackward(
     pir::Operation *operation = pir::Operation::Create(
         {forward_value_map[v]}, attribute_map, {}, op_info);
     forward_program->block()->push_back(operation);
+    VLOG(0) << "Creating forward output: " << shadow_output_name;
     counter += 1;
   };
 
@@ -1615,12 +1638,35 @@ SplitedResult SplitForwardBackward(
                       "backward_value_map after update inplace names");
   }
 
+  // VLOG(0) << "replacement_for_forward_outputs size is: "
+  //         << replacement_for_forward_outputs.size();
+  // for (auto &[target, source] : replacement_for_forward_outputs) {
+  //   auto forward_target = forward_value_map.at(target);
+  //   VLOG(0) << "forward_target is: " << Value2String(forward_target);
+  //   auto forward_block = forward_program->block();
+  //   for (auto it = forward_target.use_begin(); it !=
+  //   forward_target.use_end();
+  //        ++it) {
+  //     auto op = it->owner();
+  //     if (op->isa<pir::ShadowOutputOp>()) {
+  //       // auto shadow_output_op = op->dyn_cast<pir::ShadowOutputOp>();
+  //       auto op_iter =
+  //           std::find(forward_block->begin(), forward_block->end(), *op);
+  //       forward_block->erase(op_iter);
+  //     }
+  //   }
+  // }
+
+  display_program(*forward_program, "forward_program before create outputs");
+
   VLOG(4) << "start create forward outputs, inserting set_parameter ops.";
   std::for_each(
       middle_values.begin(), middle_values.end(), create_output_fn_forward);
   std::for_each(forward_outputs_mutable.begin(),
                 forward_outputs_mutable.end(),
                 create_output_fn_forward);
+
+  display_program(*forward_program, "forward_program after create outputs");
 
   // Step2. copy backward ops .
   VLOG(4) << "start copy backward ops";
