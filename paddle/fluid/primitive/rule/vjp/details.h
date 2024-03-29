@@ -40,7 +40,7 @@ void abs_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
 template <typename T>
 void assign_grad(const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    by_pass<T>(out_grad, x_grad);
+    set_output<T>(out_grad, x_grad);
   }
 }
 
