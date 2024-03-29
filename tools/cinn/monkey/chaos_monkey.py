@@ -51,45 +51,46 @@ if __name__ == '__main__':
         tensor_name_gen_requirement=TensorNameGenRequirement(),
         dim_size_requirement=shape_signature_inferer.DimSizeRequirement(
             dim_size=[StaticDim(128), StaticDim(64), StaticDim(32)]
-        ),
-        op_call_code_gen_requirement=op_call_code_gen.OpCallCodeGenRequirement(
-            module_name="numpy"
         )
     )
     unit_test_case_spec = GenerateUnitTestCaseSpec(
         unit_test_case_requirement=unit_test_case_requirement
     )
-    numpy_gen = NumpyGenerator(
-        unit_test_case_requirement.op_call_code_gen_requirement
+    op_call_code_gen_requirement=op_call_code_gen.OpCallCodeGenRequirement(
+        module_name="paddle"
     )
 
-    script = numpy_gen.Generate(unit_test_case_spec)
-    print("import numpy")
+    numpy_gen = NumpyGenerator(op_call_code_gen_requirement)
+
+    paddle_eager_gen = PaddleEagerGenerator(op_call_code_gen_requirement)
+
+    script = paddle_eager_gen.Generate(unit_test_case_spec)
+    print("import paddle")
     print(script.file_content)
 
-    ablated_unit_test_case_spec = GetAblatedUnitTestCaseSpec(
-        instructions=unit_test_case_spec.instructions,
-        requirement=unit_test_case_requirement,
-        bottom_up_ablation_size=-1,
-        component_ablation_size=-1,
-    )
-    print("#", "*"*80)
-    print("# full ablated")
-    print("#", "*"*80)
-    script = numpy_gen.Generate(ablated_unit_test_case_spec)
-    print("import numpy")
-    print(script.file_content)
-
-
-    ablated_unit_test_case_spec = GetAblatedUnitTestCaseSpec(
-        instructions=unit_test_case_spec.instructions,
-        requirement=unit_test_case_requirement,
-        bottom_up_ablation_size=len(unit_test_case_spec.instructions)/2,
-        component_ablation_size=-1,
-    )
-    print("#", "*"*80)
-    print("# half ablated")
-    print("#", "*"*80)
-    script = numpy_gen.Generate(ablated_unit_test_case_spec)
-    print("import numpy")
-    print(script.file_content)
+#    ablated_unit_test_case_spec = GetAblatedUnitTestCaseSpec(
+#        instructions=unit_test_case_spec.instructions,
+#        requirement=unit_test_case_requirement,
+#        bottom_up_ablation_size=-1,
+#        component_ablation_size=-1,
+#    )
+#    print("#", "*"*80)
+#    print("# full ablated")
+#    print("#", "*"*80)
+#    script = numpy_gen.Generate(ablated_unit_test_case_spec)
+#    print("import paddle")
+#    print(script.file_content)
+#
+#
+#    ablated_unit_test_case_spec = GetAblatedUnitTestCaseSpec(
+#        instructions=unit_test_case_spec.instructions,
+#        requirement=unit_test_case_requirement,
+#        bottom_up_ablation_size=len(unit_test_case_spec.instructions)/2,
+#        component_ablation_size=-1,
+#    )
+#    print("#", "*"*80)
+#    print("# half ablated")
+#    print("#", "*"*80)
+#    script = numpy_gen.Generate(ablated_unit_test_case_spec)
+#    print("import paddle")
+#    print(script.file_content)

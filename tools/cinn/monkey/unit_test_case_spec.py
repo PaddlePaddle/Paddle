@@ -18,7 +18,6 @@ class UnitTestCaseRequirement:
     dims_eq1_gen_requirement: dims_eq1_generator.DimsEq1GenRequirement
     op_name_gen_requirement: op_name_generator.OpNameGenRequirement
     dim_size_requirement: shape_signature_inferer.DimSizeRequirement
-    op_call_code_gen_requirement: op_call_code_gen.OpCallCodeGenRequirement
     tensor_name_gen_requirement: tensor_name_generator.TensorNameGenRequirement
     patch_tensor_name_gen_requirement: Optional[TensorNameGenRequirement] = None
 
