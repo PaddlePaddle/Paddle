@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 from test_imperative_base import new_program_scope
-from utils import DyGraphProgramDescTracerTestHelper
+from utils import DyGraphProgramDescTracerTestHelper, static_guard
 
 import paddle
 from paddle import base
@@ -307,90 +307,95 @@ class TestDygraphPtbRnn(unittest.TestCase):
             dy_last_cell_value = last_cell.numpy()
             dy_last_hidden_value = last_hidden.numpy()
 
-        with new_program_scope():
-            paddle.seed(seed)
-            paddle.framework.random._manual_program_seed(seed)
-            ptb_model = PtbModel(
-                hidden_size=hidden_size,
-                vocab_size=vocab_size,
-                num_layers=num_layers,
-                num_steps=num_steps,
-                init_scale=init_scale,
-                is_sparse=is_sparse,
-            )
-
-            exe = base.Executor(
-                base.CPUPlace()
-                if not core.is_compiled_with_cuda()
-                else base.CUDAPlace(0)
-            )
-            sgd = paddle.optimizer.SGD(learning_rate=1e-3)
-            x = paddle.static.data(
-                name="x", shape=[-1, num_steps], dtype='int64'
-            )
-            x.desc.set_need_check_feed(False)
-            y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
-            y.desc.set_need_check_feed(False)
-            init_hidden = paddle.static.data(
-                name="init_hidden", shape=[-1, 1], dtype='float32'
-            )
-            init_hidden.desc.set_need_check_feed(False)
-            init_cell = paddle.static.data(
-                name="init_cell", shape=[-1, 1], dtype='float32'
-            )
-            init_cell.desc.set_need_check_feed(False)
-
-            static_loss, static_last_hidden, static_last_cell = ptb_model(
-                x, y, init_hidden, init_cell
-            )
-            sgd.minimize(static_loss)
-            static_param_updated = {}
-            static_param_init = {}
-            static_param_name_list = []
-            for param in ptb_model.parameters():
-                static_param_name_list.append(param.name)
-
-            out = exe.run(
-                framework.default_startup_program(),
-                fetch_list=static_param_name_list,
-            )
-            for i in range(len(static_param_name_list)):
-                static_param_init[static_param_name_list[i]] = out[i]
-            static_loss_value = None
-            static_last_cell_value = None
-            static_last_hidden_value = None
-            for i in range(batch_num):
-                x_data = np.arange(12).reshape(4, 3).astype('int64')
-                y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
-                x_data = x_data.reshape((-1, num_steps, 1))
-                y_data = y_data.reshape((-1, 1))
-                init_hidden_data = np.zeros(
-                    (num_layers, batch_size, hidden_size), dtype='float32'
+        with static_guard():
+            with new_program_scope():
+                paddle.seed(seed)
+                paddle.framework.random._manual_program_seed(seed)
+                ptb_model = PtbModel(
+                    hidden_size=hidden_size,
+                    vocab_size=vocab_size,
+                    num_layers=num_layers,
+                    num_steps=num_steps,
+                    init_scale=init_scale,
+                    is_sparse=is_sparse,
                 )
-                init_cell_data = np.zeros(
-                    (num_layers, batch_size, hidden_size), dtype='float32'
+
+                exe = base.Executor(
+                    base.CPUPlace()
+                    if not core.is_compiled_with_cuda()
+                    else base.CUDAPlace(0)
                 )
-                fetch_list = [static_loss, static_last_hidden, static_last_cell]
-                fetch_list.extend(static_param_name_list)
+                sgd = paddle.optimizer.SGD(learning_rate=1e-3)
+                x = paddle.static.data(
+                    name="x", shape=[-1, num_steps], dtype='int64'
+                )
+                x.desc.set_need_check_feed(False)
+                y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
+                y.desc.set_need_check_feed(False)
+                init_hidden = paddle.static.data(
+                    name="init_hidden", shape=[-1, 1], dtype='float32'
+                )
+                init_hidden.desc.set_need_check_feed(False)
+                init_cell = paddle.static.data(
+                    name="init_cell", shape=[-1, 1], dtype='float32'
+                )
+                init_cell.desc.set_need_check_feed(False)
+
+                static_loss, static_last_hidden, static_last_cell = ptb_model(
+                    x, y, init_hidden, init_cell
+                )
+                sgd.minimize(static_loss)
+                static_param_updated = {}
+                static_param_init = {}
+                static_param_name_list = []
+                for param in ptb_model.parameters():
+                    static_param_name_list.append(param.name)
+
                 out = exe.run(
-                    base.default_main_program(),
-                    feed={
-                        "x": x_data,
-                        "y": y_data,
-                        "init_hidden": init_hidden_data,
-                        "init_cell": init_cell_data,
-                    },
-                    fetch_list=fetch_list,
+                    framework.default_startup_program(),
+                    fetch_list=static_param_name_list,
                 )
-                static_loss_value = out[0]
-                static_last_hidden_value = out[1]
-                static_last_cell_value = out[2]
+                for i in range(len(static_param_name_list)):
+                    static_param_init[static_param_name_list[i]] = out[i]
+                static_loss_value = None
+                static_last_cell_value = None
+                static_last_hidden_value = None
+                for i in range(batch_num):
+                    x_data = np.arange(12).reshape(4, 3).astype('int64')
+                    y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
+                    x_data = x_data.reshape((-1, num_steps, 1))
+                    y_data = y_data.reshape((-1, 1))
+                    init_hidden_data = np.zeros(
+                        (num_layers, batch_size, hidden_size), dtype='float32'
+                    )
+                    init_cell_data = np.zeros(
+                        (num_layers, batch_size, hidden_size), dtype='float32'
+                    )
+                    fetch_list = [
+                        static_loss,
+                        static_last_hidden,
+                        static_last_cell,
+                    ]
+                    fetch_list.extend(static_param_name_list)
+                    out = exe.run(
+                        base.default_main_program(),
+                        feed={
+                            "x": x_data,
+                            "y": y_data,
+                            "init_hidden": init_hidden_data,
+                            "init_cell": init_cell_data,
+                        },
+                        fetch_list=fetch_list,
+                    )
+                    static_loss_value = out[0]
+                    static_last_hidden_value = out[1]
+                    static_last_cell_value = out[2]
 
-                if i == batch_num - 1:
-                    for k in range(3, len(out)):
-                        static_param_updated[
-                            static_param_name_list[k - 3]
-                        ] = out[k]
+                    if i == batch_num - 1:
+                        for k in range(3, len(out)):
+                            static_param_updated[
+                                static_param_name_list[k - 3]
+                            ] = out[k]
 
         np.testing.assert_array_equal(static_loss_value, dy_loss_value)
         np.testing.assert_array_equal(
