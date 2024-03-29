@@ -301,7 +301,7 @@ TEST(TuneTask, SerializeToString) {
   }
 
 #ifdef CINN_WITH_CUDA
-  std::string single_add_str = R"ROC(Target<linux,nvgpu,64>
+  std::string single_add_str = R"ROC(Target<linux,NVGPU,cuda,64>
 
 Group {
   (var_1->float32[32,24]) = elementwise_add(A->float32[32,24], B->float32[32,24])
