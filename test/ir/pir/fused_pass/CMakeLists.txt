@@ -1,5 +1,9 @@
 add_subdirectory(onednn)
 
+if(WITH_XPU)
+  add_subdirectory(xpu)
+endif()
+
 file(
   GLOB TEST_INTERP_CASES
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
