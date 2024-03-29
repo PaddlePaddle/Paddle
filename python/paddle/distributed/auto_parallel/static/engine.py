@@ -1009,6 +1009,9 @@ class Engine:
             if self._in_pir_mode:
                 # TODO(hitywt) Initialize the communicator collected in Reshard Pass.
                 # pir_init_comms()
+                all_process_groups = get_all_process_groups()
+                for process_group in all_process_groups:
+                    process_group.instantiate()
                 pass
                 return
 

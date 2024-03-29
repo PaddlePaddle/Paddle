@@ -80,6 +80,15 @@ void ProcessMixBlock(pir::Block* block) {
 
       shard_operand_define_op->set_attribute(
           kAttrOpDistAttr, op_item->attribute(kAttrOpDistAttr));
+      // set stop gradient and persistable
+      if (op_item->HasAttribute(kAttrStopGradients)) {
+        shard_operand_define_op->set_attribute(
+            kAttrStopGradients, op_item->attribute(kAttrStopGradients));
+      }
+      if (op_item->HasAttribute(kAttrIsPersistable)) {
+        shard_operand_define_op->set_attribute(
+            kAttrIsPersistable, op_item->attribute(kAttrIsPersistable));
+      }
       deleted_ops.push_back(op_item);
     }
 

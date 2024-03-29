@@ -54,11 +54,10 @@ void ProcessDistBlock(pir::Block* block) {
     for (size_t i = 0; i < op_item->num_results(); ++i) {
       auto result = op_item->result(i);
       auto origin_type = result.type();
-
       if (IsDistType(origin_type)) {
         auto local_type = CastToLocalType(origin_type);
         result.set_type(local_type);
-      } else {
+      } else if (origin_type) {  // skip if <<NULL TYPE>>
         // TODO(2024-Q2) not all value are dist type
         PADDLE_THROW(platform::errors::PreconditionNotMet(
             "The op [%s]'s [%d]th result is not Dist type.",
@@ -66,16 +65,18 @@ void ProcessDistBlock(pir::Block* block) {
             i));
       }
     }
-
     // TODO(2024-Q2) not all op are dist type
-    PADDLE_ENFORCE_EQ(
-        (op_item->HasAttribute(kAttrOpDistAttr) &&
-         op_item->attribute(kAttrOpDistAttr)
-             .isa<paddle::dialect::OperationDistAttribute>()),
-        true,
-        common::errors::PreconditionNotMet("The op [%s] has not op_dist_attr.",
-                                           op_item->name()));
-    op_item->erase_attribute(kAttrOpDistAttr);
+    // PADDLE_ENFORCE_EQ(
+    //     (op_item->HasAttribute(kAttrOpDistAttr) &&
+    //      op_item->attribute(kAttrOpDistAttr)
+    //          .isa<paddle::dialect::OperationDistAttribute>()),
+    //     true,
+    //     common::errors::PreconditionNotMet("The op [%s] has not
+    //     op_dist_attr.",
+    //                                        op_item->name()));
+    if (op_item->HasAttribute(kAttrOpDistAttr)) {
+      op_item->erase_attribute(kAttrOpDistAttr);
+    }
 
     // TODO(2024-Q2) Handle other special dist op in future.
   }
