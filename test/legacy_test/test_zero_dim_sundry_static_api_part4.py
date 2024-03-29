@@ -289,7 +289,7 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (2, 2))
-        self.assertEqual(res[1].shape, (2, 2))
+        self.assertEqual(res[2].shape, (2, 2))
         np.testing.assert_array_equal(res[0], np.array(2).astype(np.float32))
 
     @test_with_pir_api
