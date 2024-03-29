@@ -152,5 +152,73 @@ class TestCEmbeddingOpFP32(TestCEmbeddingOpBase):
         self.ids_dtype = "int32"
 
 
+class TestCEmbeddingOpComplex64(TestCEmbeddingOpBase):
+    def setUp(self):
+        self.init_dtype()
+        self.initcase()
+
+    def initcase(self):
+        self.op_type = "c_embedding"
+        self.python_api = c_embedding_wrapper
+        table = (
+            np.random.random((17, 64)) + 1j * np.random.random((17, 64))
+        ).astype(self.dtype)
+        ids = np.random.randint(low=0, high=17 * 2, size=(2, 4)).astype(
+            self.ids_dtype
+        )
+        self.start_index = 10
+        ids[0][1] = 12
+        ids[0][2] = 12
+        ids[1][2] = 12
+        ids[1][3] = 12
+        self.end_index = self.start_index + 17
+
+        self.inputs = {'W': table, 'Ids': ids}
+        np_out = get_c_embedding(self.start_index, self.end_index, table, ids)
+        self.outputs = {'Out': np_out.reshape((2, 4, 64))}
+        self.attrs = {'start_index': self.start_index}
+
+        if core.is_compiled_with_cuda():
+            self.__class__.exist_fp64_check_grad = True
+
+    def init_dtype(self):
+        self.dtype = "complex64"
+        self.ids_dtype = "int32"
+
+
+class TestCEmbeddingOpComplex128(TestCEmbeddingOpBase):
+    def setUp(self):
+        self.init_dtype()
+        self.initcase()
+
+    def initcase(self):
+        self.op_type = "c_embedding"
+        self.python_api = c_embedding_wrapper
+        table = (
+            np.random.random((17, 64)) + 1j * np.random.random((17, 64))
+        ).astype(self.dtype)
+        ids = np.random.randint(low=0, high=17 * 2, size=(2, 4)).astype(
+            self.ids_dtype
+        )
+        self.start_index = 10
+        ids[0][1] = 12
+        ids[0][2] = 12
+        ids[1][2] = 12
+        ids[1][3] = 12
+        self.end_index = self.start_index + 17
+
+        self.inputs = {'W': table, 'Ids': ids}
+        np_out = get_c_embedding(self.start_index, self.end_index, table, ids)
+        self.outputs = {'Out': np_out.reshape((2, 4, 64))}
+        self.attrs = {'start_index': self.start_index}
+
+        if core.is_compiled_with_cuda():
+            self.__class__.exist_fp64_check_grad = True
+
+    def init_dtype(self):
+        self.dtype = "complex128"
+        self.ids_dtype = "int32"
+
+
 if __name__ == "__main__":
     unittest.main()
