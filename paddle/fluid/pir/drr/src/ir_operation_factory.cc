@@ -54,16 +54,90 @@ void OperationFactory::RegisterManualOpCreator() {
                               pir::PatternRewriter& rewriter) {
                              return rewriter.Build<pir::CombineOp>(inputs);
                            });
+  RegisterOperationCreator("builtin.slice",
+                           [](const std::vector<pir::Value>& inputs,
+                              const pir::AttributeMap& attrs,
+                              pir::PatternRewriter& rewriter) {
+                             return rewriter.Build<pir::SliceOp>(inputs, attrs);
+                           });
   RegisterOperationCreator(
       "pd_op.scale",
       [](const std::vector<pir::Value>& inputs,
          const pir::AttributeMap& attrs,
          pir::PatternRewriter& rewriter) {
-        return rewriter.Build<paddle::dialect::ScaleOp>(
-            inputs[0],
-            inputs[1],
-            attrs.at("bias").dyn_cast<pir::FloatAttribute>().data(),
-            attrs.at("bias_after_scale").dyn_cast<pir::BoolAttribute>().data());
+        if (inputs.size() == 2) {
+          return rewriter.Build<paddle::dialect::ScaleOp>(
+              inputs[0],
+              inputs[1],
+              attrs.at("bias").dyn_cast<pir::FloatAttribute>().data(),
+              attrs.at("bias_after_scale")
+                  .dyn_cast<pir::BoolAttribute>()
+                  .data());
+        }
+        return rewriter.Build<paddle::dialect::ScaleOp>(inputs[0], attrs);
+      });
+  RegisterOperationCreator(
+      "pd_op.slice",
+      [](const std::vector<pir::Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        if (inputs.size() == 3) {
+          PADDLE_ENFORCE_NE(attrs.find("axes"),
+                            attrs.end(),
+                            phi::errors::InvalidArgument(
+                                "'axes' Attribute is expected for SliceOp. "));
+          std::vector<int64_t> axes;
+          for (size_t i = 0;
+               i < attrs.at("axes").dyn_cast<pir::ArrayAttribute>().size();
+               i++) {
+            axes.push_back(attrs.at("axes")
+                               .dyn_cast<pir::ArrayAttribute>()
+                               .at(i)
+                               .dyn_cast<pir::Int64Attribute>()
+                               .data());
+          }
+
+          PADDLE_ENFORCE_NE(
+              attrs.find("infer_flags"),
+              attrs.end(),
+              phi::errors::InvalidArgument(
+                  "'infer_flags' Attribute is expected for SliceOp. "));
+          std::vector<int64_t> infer_flags;
+          for (size_t i = 0;
+               i <
+               attrs.at("infer_flags").dyn_cast<pir::ArrayAttribute>().size();
+               i++) {
+            infer_flags.push_back(attrs.at("infer_flags")
+                                      .dyn_cast<pir::ArrayAttribute>()
+                                      .at(i)
+                                      .dyn_cast<pir::Int64Attribute>()
+                                      .data());
+          }
+
+          PADDLE_ENFORCE_NE(
+              attrs.find("decrease_axis"),
+              attrs.end(),
+              phi::errors::InvalidArgument(
+                  "'decrease_axis' Attribute is expected for SliceOp. "));
+          std::vector<int64_t> decrease_axis;
+          for (size_t i = 0;
+               i <
+               attrs.at("decrease_axis").dyn_cast<pir::ArrayAttribute>().size();
+               i++) {
+            decrease_axis.push_back(attrs.at("decrease_axis")
+                                        .dyn_cast<pir::ArrayAttribute>()
+                                        .at(i)
+                                        .dyn_cast<pir::Int64Attribute>()
+                                        .data());
+          }
+          return rewriter.Build<paddle::dialect::SliceOp>(inputs[0],
+                                                          inputs[1],
+                                                          inputs[2],
+                                                          axes,
+                                                          infer_flags,
+                                                          decrease_axis);
+        }
+        return rewriter.Build<paddle::dialect::SliceOp>(inputs[0], attrs);
       });
 #ifdef PADDLE_WITH_DNNL
   RegisterOperationCreator(
