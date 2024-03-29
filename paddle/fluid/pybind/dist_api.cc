@@ -15,6 +15,7 @@
 #include <Python.h>
 #include "pybind11/stl.h"
 
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_api.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
 #include "paddle/fluid/pybind/dist_api.h"
 #include "paddle/fluid/pybind/dist_static_op_function.h"
@@ -60,6 +61,10 @@ void BindTensorDistAttribute(py::module *m) {
              print_stream << self;
              return print_stream.str();
            })
+      .def("__eq__",
+           [](TensorDistAttribute &self, const TensorDistAttribute &other) {
+             return self == other;
+           })
       .def_property_readonly("process_mesh",
                              [](TensorDistAttribute &self) {
                                return self.process_mesh_attr().process_mesh();
@@ -86,12 +91,20 @@ void BindDistOpsAPI(pybind11::module *module) {
   }
 }
 
+void BindOpsFunction(py::module *m) {
+  m->def("reshard_v2",
+         [](const pir::Value &x, const TensorDistAttribute &dist_attr) {
+           return reshard(x, dist_attr);
+         });
+}
+
 void BindDistApi(pybind11::module *module) {
   auto ir_module = module->def_submodule("pir");
   BindOperationDistAttribute(&ir_module);
   BindTensorDistAttribute(&ir_module);
   auto ops_modules = ir_module.def_submodule("ops");
   BindDistOpsAPI(&ops_modules);
+  BindOpsFunction(&ops_modules);
 }
 
 }  // namespace pybind
