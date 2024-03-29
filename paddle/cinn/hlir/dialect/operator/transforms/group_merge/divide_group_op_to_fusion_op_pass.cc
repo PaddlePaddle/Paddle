@@ -216,5 +216,3 @@ std::unique_ptr<::pir::Pass> CreateDivideGroupOpToFusionOpPass() {
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn
-
-// REGISTER_IR_PASS(cinn_group_lowering, DivideGroupOpToFusionOpPass);
