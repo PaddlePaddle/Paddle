@@ -54,7 +54,7 @@ from .dist_op import DistributedOperator
 from .dist_saver import DistributedSaver
 from .helper import ProgramHelper
 from .parallelizer_v2 import Parallelizer
-from .pir_pass import apply_partition_pass
+from .pir_pass import apply_partition_pass, apply_reshard_pass
 from .planner_v2 import Planner
 from .process_group import get_all_process_groups, new_process_group
 
@@ -681,7 +681,7 @@ class Engine:
         # TODO(hitywt) Step 3.2: Reshard Pass
         #   resolute the reshard op into special collective operation.
         #   collect the communicator created during resolution.
-        # dist_program = apply_reshard_pass(dist_program)
+        dist_program = apply_reshard_pass(dist_program)
 
         # Part 4: Optimization Pass
         # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
