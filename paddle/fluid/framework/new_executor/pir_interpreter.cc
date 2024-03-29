@@ -723,15 +723,15 @@ void PirInterpreter::BuildInstruction() {
       }
     } else if (op.dialect()->name() == "pd_op") {
       if (op.isa<paddle::dialect::IfOp>()) {  // NOLINT
-        std::unique_ptr<IfInstruction> ifInstrPtr =
+        std::unique_ptr<IfInstruction> if_instr_ptr =
             std::make_unique<IfInstruction>(op_idx++,
                                             place_,
                                             &op,
                                             value_exe_info_.get(),
                                             execution_config_);
-        ifInstrPtr->SetOutputHooks(pir_output_hookfuncs_);
-        ifInstrPtr->SetInputHooks(pir_input_hookfuncs_);
-        vec_instruction_base_.emplace_back(std::move(ifInstrPtr));
+        if_instr_ptr->SetOutputHooks(pir_output_hookfuncs_);
+        if_instr_ptr->SetInputHooks(pir_input_hookfuncs_);
+        vec_instruction_base_.emplace_back(std::move(if_instr_ptr));
 
         sub_blocks_.insert(
             {&op.dyn_cast<paddle::dialect::IfOp>().true_block(),
@@ -750,15 +750,15 @@ void PirInterpreter::BuildInstruction() {
                  vec_instruction_base_.back().get())
                  ->ForwardInterpreter()});
       } else if (op.isa<paddle::dialect::WhileOp>()) {
-        std::unique_ptr<WhileInstruction> whileInstrPtr =
+        std::unique_ptr<WhileInstruction> while_instr_ptr =
             std::make_unique<WhileInstruction>(op_idx++,
                                                place_,
                                                &op,
                                                value_exe_info_.get(),
                                                execution_config_);
-        whileInstrPtr->SetOutputHooks(pir_output_hookfuncs_);
-        whileInstrPtr->SetInputHooks(pir_input_hookfuncs_);
-        vec_instruction_base_.emplace_back(std::move(whileInstrPtr));
+        while_instr_ptr->SetOutputHooks(pir_output_hookfuncs_);
+        while_instr_ptr->SetInputHooks(pir_input_hookfuncs_);
+        vec_instruction_base_.emplace_back(std::move(while_instr_ptr));
 
         sub_blocks_.insert(
             {&op.dyn_cast<paddle::dialect::WhileOp>().body(),

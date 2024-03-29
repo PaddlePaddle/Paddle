@@ -29,9 +29,6 @@ class PirInterpreter;
 class ValueExecutionInfo;
 
 class IfInstruction : public InstructionBase {
-  using PirHookFunc =
-      std::function<void(InstructionBase*, ValueExecutionInfo*, Scope*)>;
-
  public:
   IfInstruction(size_t id,
                 const platform::Place& place,

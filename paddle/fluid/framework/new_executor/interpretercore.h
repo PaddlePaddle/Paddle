@@ -14,6 +14,7 @@
 #pragma once
 
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
+#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 
 PD_DECLARE_bool(new_executor_use_local_scope);
 
@@ -29,8 +30,6 @@ class InterpreterBaseImpl;
 class InterpreterCore {
   using ExecutionConfig = interpreter::ExecutionConfig;
   using HookFunc = std::function<void(OperatorBase*, Scope*)>;
-  using PirHookFunc =
-      std::function<void(InstructionBase*, ValueExecutionInfo*, Scope*)>;
 
  public:
   InterpreterCore(const platform::Place& place,

@@ -35,9 +35,6 @@ class ValueExecutionInfo;
 ///      'cond', 'output' = body_block('output');
 ///  }
 class WhileInstruction : public InstructionBase {
-  using PirHookFunc =
-      std::function<void(InstructionBase*, ValueExecutionInfo*, Scope*)>;
-
  public:
   WhileInstruction(size_t id,
                    const platform::Place& place,
