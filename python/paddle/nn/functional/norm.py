@@ -640,6 +640,7 @@ def local_response_norm(
     return res
 
 
+@paddle.utils.print_utils.print_args
 def group_norm(
     x,
     num_groups,

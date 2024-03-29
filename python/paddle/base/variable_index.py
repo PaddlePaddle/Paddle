@@ -439,7 +439,6 @@ def parse_index(x, indices):
     )
 
 
-@paddle.utils.print_utils.print_args
 def _setitem_static(x, indices, values):
     """
     In dynamic mode, this function will modify the value at input tensor, returning same Tensor as input.
