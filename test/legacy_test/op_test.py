@@ -1145,7 +1145,7 @@ class OpTest(unittest.TestCase):
             return result
 
         with base.dygraph.base.guard(place=place):
-            block = base.default_main_program().global_block()
+            block = base.framework.default_main_program().global_block()
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
             # prepare input variable
             dygraph_tensor_inputs = (
@@ -1212,7 +1212,7 @@ class OpTest(unittest.TestCase):
             self.op_type
         )  # for ci check, please not delete it for now
         with base.dygraph.base.guard(place=place):
-            block = base.default_main_program().global_block()
+            block = base.framework.default_main_program().global_block()
 
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
 
@@ -1250,7 +1250,7 @@ class OpTest(unittest.TestCase):
 
     def get_kernel_signature(self, place, egr_inps=None, egr_oups=None):
         with base.dygraph.base.guard(place=place):
-            block = base.default_main_program().global_block()
+            block = base.framework.default_main_program().global_block()
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
             # prepare input variable
             dygraph_tensor_inputs = (
@@ -3432,7 +3432,7 @@ class OpTest(unittest.TestCase):
             check_dygraph = False
 
         with base.dygraph.base.guard(place=place):
-            block = base.default_main_program().global_block()
+            block = base.framework.default_main_program().global_block()
 
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
 
