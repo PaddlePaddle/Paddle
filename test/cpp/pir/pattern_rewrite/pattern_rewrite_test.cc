@@ -406,8 +406,8 @@ TEST(pattern_rewrite, Patterns) {
   std::unique_ptr<pir::Pass> constant_folding_pass =
       pir::CreateConstantFoldingPass();
   phi::Place place = phi::CPUPlace();
-  constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place);
-  constant_folding_pass->Set(pir::kParamScopeAttr,
+  constant_folding_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place);
+  constant_folding_pass->Set(pir::Pass::kParamScopeAttr,
                              new paddle::framework::Scope());
   pm.AddPass(std::move(constant_folding_pass));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
@@ -484,8 +484,8 @@ TEST(constant_folding, ConstantFolding) {
   std::unique_ptr<pir::Pass> constant_folding_pass =
       pir::CreateConstantFoldingPass();
   phi::Place place = phi::CPUPlace();
-  constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place);
-  constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, &scope);
+  constant_folding_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place);
+  constant_folding_pass->SetNotOwned(pir::Pass::kParamScopeAttr, &scope);
   pm.AddPass(std::move(constant_folding_pass));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnableIRPrinting();
@@ -507,8 +507,8 @@ TEST(constant_folding, ConstantFolding_Train) {
   std::unique_ptr<pir::Pass> constant_folding_pass =
       pir::CreateConstantFoldingPass();
   phi::Place place = phi::CPUPlace();
-  constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place);
-  constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, &scope);
+  constant_folding_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place);
+  constant_folding_pass->SetNotOwned(pir::Pass::kParamScopeAttr, &scope);
   constant_folding_pass->Set("train_mode", new bool(true));
 
   pm.AddPass(std::move(constant_folding_pass));
@@ -576,8 +576,8 @@ TEST(constant_folding, ConstantFolding_Combine) {
   std::unique_ptr<pir::Pass> constant_folding_pass =
       pir::CreateConstantFoldingPass();
   phi::Place place = phi::CPUPlace();
-  constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place);
-  constant_folding_pass->Set(pir::kParamScopeAttr,
+  constant_folding_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place);
+  constant_folding_pass->Set(pir::Pass::kParamScopeAttr,
                              new paddle::framework::Scope());
   pm.AddPass(std::move(constant_folding_pass));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
@@ -617,8 +617,8 @@ TEST(constant_folding, ConstantFolding_MultiOutput) {
   std::unique_ptr<pir::Pass> constant_folding_pass =
       pir::CreateConstantFoldingPass();
   phi::Place place = phi::CPUPlace();
-  constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place);
-  constant_folding_pass->Set(pir::kParamScopeAttr,
+  constant_folding_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place);
+  constant_folding_pass->Set(pir::Pass::kParamScopeAttr,
                              new paddle::framework::Scope());
   pm.AddPass(std::move(constant_folding_pass));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());

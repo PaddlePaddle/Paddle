@@ -967,7 +967,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param x whether to debug IR graph analysis phase.
   ///
-  void SwitchIrDebug(int x = true);
+  void SwitchIrDebug(int x = true, const std::vector<std::string>& passes = {});
 
   ///
   /// \brief Turn on MKLDNN.
@@ -1485,6 +1485,7 @@ struct PD_INFER_DECL AnalysisConfig {
   std::vector<std::string> custom_passes_;
   bool custom_pass_only_{false};
   int pm_opt_level_{2};
+  std::vector<std::string> ir_debug_passes_;
 };
 
 }  // namespace paddle
