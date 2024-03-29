@@ -19,6 +19,8 @@ import numpy as np
 
 import paddle
 
+paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
+
 
 class TestInplace(unittest.TestCase):
     def test_forward_version(self):

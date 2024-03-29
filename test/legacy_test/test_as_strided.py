@@ -19,6 +19,8 @@ import numpy as np
 import paddle
 from paddle import base
 
+paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
+
 
 class TestAsStrided(unittest.TestCase):
     def setUp(self):

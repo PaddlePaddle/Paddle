@@ -22,6 +22,8 @@ from paddle.base import core
 from paddle.base.variable_index import _getitem_static
 from paddle.pir_utils import test_with_pir_api
 
+paddle.base.set_flags({"FLAGS_use_stride_kernel": True})
+
 
 class TestGetitemInDygraph(unittest.TestCase):
     def setUp(self):
