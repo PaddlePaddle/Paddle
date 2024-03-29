@@ -75,9 +75,9 @@ prim_white_list = [
     "tanh_triple_grad",
     "exp_grad",
     "log_grad",
-    "prod_grad",
     "stack_grad",
     "minimum_double_grad",
+    "maximum_double_grad",
 ]
 
 # white ops list whose kernel can automaically do type promotion.
