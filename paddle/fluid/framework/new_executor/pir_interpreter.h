@@ -104,6 +104,14 @@ class PirInterpreter : public InterpreterBaseImpl {
     input_hookfuncs_ = hookfuncs;
   }
 
+  void SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs) override {
+    pir_output_hookfuncs_ = hookfuncs;
+  }
+
+  void SetInputHooks(const std::vector<PirHookFunc>& hookfuncs) override {
+    pir_input_hookfuncs_ = hookfuncs;
+  }
+
   std::string GetNameByValue(::pir::Value value) const;
 
   // Only for debug
@@ -202,6 +210,9 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   std::vector<HookFunc> output_hookfuncs_;
   std::vector<HookFunc> input_hookfuncs_;
+
+  std::vector<PirHookFunc> pir_output_hookfuncs_;
+  std::vector<PirHookFunc> pir_input_hookfuncs_;
 
   /// ======================== ///
   ///        For new ir        ///

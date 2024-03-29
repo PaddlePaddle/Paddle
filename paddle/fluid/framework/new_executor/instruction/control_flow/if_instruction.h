@@ -29,6 +29,9 @@ class PirInterpreter;
 class ValueExecutionInfo;
 
 class IfInstruction : public InstructionBase {
+  using PirHookFunc =
+      std::function<void(InstructionBase*, ValueExecutionInfo*, Scope*)>;
+
  public:
   IfInstruction(size_t id,
                 const platform::Place& place,
@@ -47,6 +50,10 @@ class IfInstruction : public InstructionBase {
   PirInterpreter* TrueBranchInterpreter() const { return true_branch_inter_; }
 
   PirInterpreter* FalseBranchInterpreter() const { return false_branch_inter_; }
+
+  void SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs);
+
+  void SetInputHooks(const std::vector<PirHookFunc>& hookfuncs);
 
  private:
   ::pir::Operation* op_;

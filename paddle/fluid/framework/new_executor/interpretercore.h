@@ -29,6 +29,8 @@ class InterpreterBaseImpl;
 class InterpreterCore {
   using ExecutionConfig = interpreter::ExecutionConfig;
   using HookFunc = std::function<void(OperatorBase*, Scope*)>;
+  using PirHookFunc =
+      std::function<void(InstructionBase*, ValueExecutionInfo*, Scope*)>;
 
  public:
   InterpreterCore(const platform::Place& place,
@@ -87,6 +89,10 @@ class InterpreterCore {
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs);
 
   void SetInputHooks(const std::vector<HookFunc>& hookfuncs);
+
+  void SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs);
+
+  void SetInputHooks(const std::vector<PirHookFunc>& hookfuncs);
 
   void Build(const std::vector<std::string>& feed_names,
              std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
