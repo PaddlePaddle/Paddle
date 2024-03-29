@@ -643,9 +643,6 @@ def append_backward_ops(
                         len(output_grads) == 0
                         or all(zero_flag)
                         or all_output_grad_none(output_grads)
-                        or all_input_stop_gradient_true(
-                            input_grad_stopgradients
-                        )
                     ) and op.name() not in [
                         "pd_op.while",
                         "pd_op.if",
@@ -653,6 +650,14 @@ def append_backward_ops(
                     ]:
                         continue
 
+                    if all_input_stop_gradient_true(
+                        input_grad_stopgradients
+                    ) and op.name() not in [
+                        "pd_op.array_read",
+                        "pd_op.array_write_",
+                        "pd_op.increment_",
+                    ]:
+                        continue
                     if op.name() == "pd_op.if":
                         origin_inputs = get_real_op_inputs(op)
                         for sub_block in op.blocks():
