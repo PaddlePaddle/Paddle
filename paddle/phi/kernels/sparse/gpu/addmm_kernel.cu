@@ -91,7 +91,6 @@ void AddmmKernelImpl(const Context& dev_ctx,
           "opetation, x_dim[-1] must be equal to y_dim[-2]."));
 
   phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, out);
-  VLOG(8) << "rabit hole x" << x.dtype() << "y" << y.dtype();
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SPMM(
       false, false, static_cast<T>(alpha), x, y, static_cast<T>(beta), out);
@@ -143,8 +142,6 @@ PD_REGISTER_KERNEL(addmm_csr_dense,
                    ALL_LAYOUT,
                    phi::sparse::AddmmCsrDenseKernel,
                    float,
-                   double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }

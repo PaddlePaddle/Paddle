@@ -60,9 +60,12 @@ extern void *cublas_dso_handle;
   __macro(cublasSscal_v2);                \
   __macro(cublasDscal_v2);                \
   __macro(cublasCsscal_v2);               \
+  __macro(cublasCscal_v2);                \
+  __macro(cublasZscal_v2);                \
   __macro(cublasScopy_v2);                \
   __macro(cublasDcopy_v2);                \
   __macro(cublasCcopy_v2);                \
+  __macro(cublasZcopy_v2);                \
   __macro(cublasSgemv_v2);                \
   __macro(cublasDgemv_v2);                \
   __macro(cublasCgemv_v2);                \

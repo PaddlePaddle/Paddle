@@ -35,13 +35,11 @@ void AddmmCooDenseGradKernel(const Context& dev_ctx,
                              SparseCooTensor* dx,
                              DenseTensor* dy) {
   auto blas = funcs::GetBlas<Context, T>(dev_ctx);
-  if constexpr (std::is_same<T, phi::dtype::complex<float>>::value) {
+  if constexpr (std::is_same<T, phi::dtype::complex<float>>::value ||
+                std::is_same<T, phi::dtype::complex<double>>::value) {
     // 当 T 是 phi::dtype::complex<float> 时的特定实现
-    phi::dtype::complex<float> complex_alpha(
-        alpha, 0.0f);  // 实部为原来的 beta，虚部为 0.0
-    phi::dtype::complex<float> complex_beta(
-        beta, 0.0f);  // 实部为原来的 beta，虚部为 0.0
-
+    T complex_alpha(alpha, 0.0f);  // 实部为原来的 beta，虚部为 0.0
+    T complex_beta(beta, 0.0f);    // 实部为原来的 beta，虚部为 0.0
     if (dinput) {
       dinput->Resize(input.dims());
       dev_ctx.template Alloc<T>(dinput);

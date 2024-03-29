@@ -107,6 +107,7 @@ class TestAddmm(unittest.TestCase):
     )
     def test_addmm_2d(self):
         self.check_result([16, 10], [16, 12], [12, 10], 'coo')
+        self.check_result([16, 10], [16, 12], [12, 10], 'coo', 'complex64')
         self.check_result([16, 10], [16, 12], [12, 10], 'csr')
 
     @unittest.skipIf(

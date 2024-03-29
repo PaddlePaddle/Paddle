@@ -454,12 +454,18 @@ template <>
 struct CUBlas<phi::dtype::complex<float>> {
   static void SCAL(cublasHandle_t handle,
                    int n,
-                   const phi::dtype::complex<float> *complex_alpha,
+                   const phi::dtype::complex<float> *alpha,
                    phi::dtype::complex<float> *x,
                    int incx) {
-    float alpha = complex_alpha->real;
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasCsscal(
-        handle, n, &alpha, reinterpret_cast<cuFloatComplex *>(x), incx));
+    // float alpha = complex_alpha->real;
+    // PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasCsscal(
+    //     handle, n, &alpha, reinterpret_cast<cuFloatComplex *>(x), incx));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasCscal(
+        handle,
+        n,
+        reinterpret_cast<const cuFloatComplex *>(alpha),
+        reinterpret_cast<cuFloatComplex *>(x),
+        incx));
   }
 
   static void VCOPY(cublasHandle_t handle,
@@ -714,6 +720,33 @@ struct CUBlas<phi::dtype::complex<float>> {
 
 template <>
 struct CUBlas<phi::dtype::complex<double>> {
+  static void SCAL(cublasHandle_t handle,
+                   int n,
+                   const phi::dtype::complex<double> *alpha,
+                   phi::dtype::complex<double> *x,
+                   int incx) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasZscal(
+        handle,
+        n,
+        reinterpret_cast<const cuDoubleComplex *>(alpha),
+        reinterpret_cast<cuDoubleComplex *>(x),
+        incx));
+  }
+
+  static void VCOPY(cublasHandle_t handle,
+                    int n,
+                    const phi::dtype::complex<double> *x,
+                    int incx,
+                    phi::dtype::complex<double> *y,
+                    int incy) {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cublasZcopy(handle,
+                                  n,
+                                  reinterpret_cast<const cuDoubleComplex *>(x),
+                                  incx,
+                                  reinterpret_cast<cuDoubleComplex *>(y),
+                                  incy));
+  }
   static void GEMV(cublasHandle_t handle,
                    cublasOperation_t transa,
                    int m,
