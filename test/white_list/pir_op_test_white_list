@@ -91,6 +91,7 @@ test_elementwise_min_op
 test_elementwise_mod_op
 test_elementwise_mul_op
 test_elementwise_pow_op
+test_elementwise_sub_op
 test_empty_op
 test_erf_op
 test_erfinv_op
