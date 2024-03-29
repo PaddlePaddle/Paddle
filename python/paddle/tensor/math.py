@@ -1581,7 +1581,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         return out
 
 
-def sum_as(x, y, dtype=None, keepdim=False, name=None):
+def sum_as(x, y, name=None):
     """
     Computes the sum_as of tensor elements over the given dimension.
 
@@ -1609,19 +1609,9 @@ def sum_as(x, y, dtype=None, keepdim=False, name=None):
 
     """
 
-    dtype_flag = False
-    if dtype is not None:
-        dtype_flag = True
-        dtype = convert_np_dtype_to_dtype_(dtype)
-
     if in_dynamic_or_pir_mode():
-        return _C_ops.sum_as(x, y, dtype, keepdim)
+        return _C_ops.sum_as(x, y)
     else:
-        attrs = {'keep_dim': keepdim}
-
-        if dtype_flag:
-            attrs.update({'in_dtype': x.dtype, 'out_dtype': dtype})
-
         check_variable_and_dtype(
             x,
             'x',
@@ -1654,15 +1644,11 @@ def sum_as(x, y, dtype=None, keepdim=False, name=None):
         )
 
         helper = LayerHelper('sum_as', **locals())
-        if dtype_flag:
-            out = helper.create_variable_for_type_inference(dtype=dtype)
-        else:
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
-            type='sum_x',
-            inputs={'x': x, 'Y': y},
+            type='sum_as',
+            inputs={'x': x, 'y': y},
             outputs={'out': out},
-            attrs=attrs,
         )
         return out
 
