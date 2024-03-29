@@ -1374,6 +1374,7 @@ void CacheKernel(
 
 // overload for speculative decoding
 // Put the first cur_token_num tokens from kv_cache and unpadding_kv to unpadding_kv_after_cache.
+template <typename T>
 void WriteCacheToKVKernel(
     const phi::GPUContext &dev_ctx,
     const phi::DenseTensor &unpadding_k,  // [cur_token_num, num_head, dim_head]
