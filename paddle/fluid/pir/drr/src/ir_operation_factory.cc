@@ -58,7 +58,8 @@ void OperationFactory::RegisterManualOpCreator() {
                            [](const std::vector<pir::Value>& inputs,
                               const pir::AttributeMap& attrs,
                               pir::PatternRewriter& rewriter) {
-                             return rewriter.Build<pir::SliceOp>(inputs, attrs);
+                             return rewriter.Build<pir::SliceOp>(inputs[0],
+                                                                 attrs);
                            });
   RegisterOperationCreator(
       "pd_op.scale",
