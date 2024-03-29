@@ -120,7 +120,6 @@
 #include "paddle/fluid/pir/transforms/passes.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
-#include "paddle/fluid/pir/transforms/xpu/add_layernorm_fuse_pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
