@@ -1053,6 +1053,19 @@
   intermediate : softmax_lse, seed_offset
   backward : flash_attn_unpadded_grad
 
+- op : flash_attn_unpadded_qkvpacked
+  args : (Tensor q, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, Tensor fixed_seed_offset, Tensor attn_mask, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
+  output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
+  optional :  fixed_seed_offset , attn_mask
+  infer_meta :
+    func : FlashAttnQKVPackedInferMeta
+    param : [q]
+  kernel :
+    func : flash_attn_unpadded_qkvpacked
+    data_type : q
+  intermediate : softmax_lse, seed_offset
+  backward : flash_attn_unpadded_qkvpacked_grad
+
 - op : flatten
   args : (Tensor x, int start_axis = 1, int stop_axis = 1)
   output : Tensor(out), Tensor(xshape)

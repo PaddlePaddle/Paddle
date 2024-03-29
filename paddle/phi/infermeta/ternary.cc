@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/common/ddim.h"
 #include "paddle/common/layout.h"
+#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/impl/box_coder.h"
 
@@ -367,6 +368,22 @@ void FlashAttnInferMeta(const MetaTensor& q,
   out->set_layout(q.layout());
   softmax->set_dtype(q.dtype());
   softmax_lse->set_dtype(q.dtype());
+  if (seed_offset) {
+    seed_offset->set_dtype(phi::DataType::INT64);
+  }
+}
+void FlashAttnQKVPackedInferMeta(const MetaTensor& qkv,
+                                 MetaTensor* out,
+                                 MetaTensor* softmax,
+                                 MetaTensor* softmax_lse,
+                                 MetaTensor* seed_offset) {
+  const auto& qkvdims = qkv.dims();
+  auto out_dims = DDim({qkvdims[0], qkvdims[2], qkvdims[3]});
+  out->set_dims(out_dims);
+  out->set_dtype(qkv.dtype());
+  out->set_layout(qkv.layout());
+  softmax->set_dtype(qkv.dtype());
+  softmax_lse->set_dtype(qkv.dtype());
   if (seed_offset) {
     seed_offset->set_dtype(phi::DataType::INT64);
   }
