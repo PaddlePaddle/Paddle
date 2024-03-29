@@ -485,8 +485,20 @@ FusibleOp FusionGraph::SinkTrivialLoopAlign(TrivialOp trivial_op,
        ExprSetFinderUtils::IsForIterVar(all_out_iter_vars.back()))
           .GetSingle(new_trivial_body);
   ir::Expr new_for_body = trivial_last_for.As<ir::For>()->body;
-  new_for_body = ExprTransformerUtils::WrapForsTransformer(
-      fake_reduce_iter_vars)(new_for_body);
+
+  const auto ExpandIterVars = [&]() {
+    std::vector<ir::Var> result = fake_reduce_iter_vars;
+    auto upstream_reduce_iters = GetReduceIters(reduce_op);
+    if (result.size() != upstream_reduce_iters.size()) {
+      result.insert(result.end(),
+                    upstream_reduce_iters.begin(),
+                    upstream_reduce_iters.end());
+    }
+    return result;
+  };
+
+  new_for_body =
+      ExprTransformerUtils::WrapForsTransformer(ExpandIterVars())(new_for_body);
 
   VLOG(4) << "new_for_body\n" << new_for_body;
 
