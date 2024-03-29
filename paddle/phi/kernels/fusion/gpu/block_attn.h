@@ -1055,7 +1055,7 @@ __global__ void cache_kernel(
   }
 }
 
-// 将 key_cache 和 value_cache 里的前 token_num_in_cache slice 出来，然后将 unpadding_k 和 unpadding_v 拼接在后面
+// Put the first cur_token_num tokens from kv_cache and unpadding_kv to unpadding_kv_after_cache.
 template <typename T, int VecSize = 1>
 __global__ void write_cache_to_unpadding_kv_kernel(
     const T *__restrict__ unpadding_k,    // [cur_num_tokens, num_heads, dim_head]
