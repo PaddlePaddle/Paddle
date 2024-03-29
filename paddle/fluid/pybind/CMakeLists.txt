@@ -440,7 +440,7 @@ if(WITH_PYTHON)
   else()
     # If there are no *.so in /usr/lib or LD_LIBRARY_PATH,
     # copy these *.so to current directory and append current directory to
-    # LD_LIBRARY_PATH. This is different with Windows platformm, which search
+    # LD_LIBRARY_PATH. This is different with Windows platform, which search
     # *.dll in current directory automatically.
     if(WITH_ONNXRUNTIME)
       set(PADDLE2ONNX_PYBIND_OUT
