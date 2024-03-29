@@ -1030,6 +1030,12 @@ void prod_grad(const Tensor& x,
     std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
     int64_t axis_size = axis.size();
     int64_t x_dim_size = x_dim.size();
+    if (x_dim_size == 0) {
+      // if x is 0-D Tensor, just copy out_grad to x_grad
+      by_pass<T>(out_grad, x_grad);
+      return;
+    }
+
     reduce_all = false;
     if (reduce_all || axis_size == 0 || axis_size == x_dim_size) {
       reduce_all = true;
