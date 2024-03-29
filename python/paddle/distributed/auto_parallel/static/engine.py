@@ -707,8 +707,10 @@ class Engine:
 
         # TODO(JZ-LIANG) Step 4.4 Dist2Dense Pass
         # NOTE All optimization pass that need dist_attr info should be called before Dist2Dense Pass.
-        #   dense_program = apply_dist2dense_pass_optimization_pass(dist_program)
-        self._pir_main_progs[mode] = dist_program
+        dense_program = paddle.base.libpaddle.pir.apply_dist2dense_pass(
+            dist_program
+        )
+        self._pir_main_progs[mode] = dense_program
 
     def _prepare_program(self, mode, init_parameters=True):
         # Do the build process

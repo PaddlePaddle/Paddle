@@ -122,7 +122,7 @@ std::shared_ptr<pir::Program> DistToDensePass(pir::Program* prog) {
   ctx->GetOrRegisterDialect<DistDialect>();
 
   ProcessDistBlock(new_prog->block());
-  VLOG(0) << "IR before VerifyDenseBlock Pass = " << *new_prog;
+  VLOG(6) << "IR before VerifyDenseBlock Pass = " << *new_prog;
   VerifyDenseBlock(new_prog->block());
 
   if (FLAGS_print_ir) {
