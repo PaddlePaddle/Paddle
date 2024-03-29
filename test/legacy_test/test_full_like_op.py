@@ -20,7 +20,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.framework.dtype as dtypes
 from paddle.base import core
-from paddle.base.framework import convert_np_dtype_to_dtype_
+from paddle.base.framework import convert_np_dtype_to_proto_type
 from paddle.framework import in_pir_mode
 from paddle.pir_utils import test_with_pir_api
 
@@ -143,7 +143,7 @@ class TestFullLikeOp1(OpTest):
 
         self.attrs = {
             'value': self.fill_value,
-            'dtype': convert_np_dtype_to_dtype_(self.dtype),
+            'dtype': convert_np_dtype_to_proto_type(self.dtype),
         }
 
     def init_data(self):

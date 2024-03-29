@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
-from paddle.base.framework import convert_np_dtype_to_dtype_
+from paddle.base.framework import convert_np_dtype_to_proto_type
 
 
 class TestFillZerosLike2Op(OpTest):
@@ -27,7 +27,7 @@ class TestFillZerosLike2Op(OpTest):
         self.init_dtype()
         self.inputs = {'X': np.random.random((219, 232)).astype(self.dtype)}
         self.outputs = {'Out': np.zeros_like(self.inputs["X"])}
-        self.attrs = {'dtype': convert_np_dtype_to_dtype_(self.dtype)}
+        self.attrs = {'dtype': convert_np_dtype_to_proto_type(self.dtype)}
 
     def init_dtype(self):
         pass

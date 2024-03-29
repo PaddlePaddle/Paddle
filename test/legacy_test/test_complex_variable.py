@@ -20,7 +20,7 @@ import paddle
 import paddle.base.dygraph as dg
 from paddle.base import core
 from paddle.base.data_feeder import convert_dtype
-from paddle.base.framework import convert_np_dtype_to_dtype_
+from paddle.base.framework import convert_np_dtype_to_proto_type
 
 
 class TestComplexVariable(unittest.TestCase):
@@ -36,7 +36,7 @@ class TestComplexVariable(unittest.TestCase):
             out = paddle.add(x, y)
 
         np.testing.assert_allclose(out.numpy(), a + b, rtol=1e-05)
-        self.assertEqual(out.dtype, convert_np_dtype_to_dtype_(self._dtype))
+        self.assertEqual(out.dtype, convert_np_dtype_to_proto_type(self._dtype))
         self.assertEqual(out.shape, x.shape)
 
     def test_attrs(self):
@@ -47,11 +47,11 @@ class TestComplexVariable(unittest.TestCase):
 
     def test_convert_np_dtype_to_dtype(self):
         self.assertEqual(
-            convert_np_dtype_to_dtype_(np.complex64),
+            convert_np_dtype_to_proto_type(np.complex64),
             core.VarDesc.VarType.COMPLEX64,
         )
         self.assertEqual(
-            convert_np_dtype_to_dtype_(np.complex64),
+            convert_np_dtype_to_proto_type(np.complex64),
             core.VarDesc.VarType.COMPLEX64,
         )
 

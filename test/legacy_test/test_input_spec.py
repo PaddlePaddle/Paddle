@@ -20,7 +20,7 @@ import numpy as np
 
 import paddle
 from paddle.base import core
-from paddle.base.framework import convert_np_dtype_to_dtype_
+from paddle.base.framework import convert_np_dtype_to_proto_type
 from paddle.jit.dy2static.utils import _compatible_non_tensor_spec
 from paddle.static import InputSpec
 
@@ -29,7 +29,7 @@ class TestInputSpec(unittest.TestCase):
     def test_default(self):
         tensor_spec = InputSpec([3, 4])
         self.assertEqual(
-            tensor_spec.dtype, convert_np_dtype_to_dtype_('float32')
+            tensor_spec.dtype, convert_np_dtype_to_proto_type('float32')
         )
         self.assertIsNone(tensor_spec.name)
 
@@ -49,7 +49,7 @@ class TestInputSpec(unittest.TestCase):
         x_numpy = np.ones([10, 12])
         x_np_spec = InputSpec.from_numpy(x_numpy)
         self.assertEqual(
-            x_np_spec.dtype, convert_np_dtype_to_dtype_(x_numpy.dtype)
+            x_np_spec.dtype, convert_np_dtype_to_proto_type(x_numpy.dtype)
         )
         self.assertEqual(x_np_spec.shape, x_numpy.shape)
         self.assertIsNone(x_np_spec.name)
@@ -57,14 +57,16 @@ class TestInputSpec(unittest.TestCase):
         x_numpy2 = np.array([1, 2, 3, 4]).astype('int64')
         x_np_spec2 = InputSpec.from_numpy(x_numpy2, name='x_np_int64')
         self.assertEqual(
-            x_np_spec2.dtype, convert_np_dtype_to_dtype_(x_numpy2.dtype)
+            x_np_spec2.dtype, convert_np_dtype_to_proto_type(x_numpy2.dtype)
         )
         self.assertEqual(x_np_spec2.shape, x_numpy2.shape)
         self.assertEqual(x_np_spec2.name, 'x_np_int64')
 
     def test_shape_with_none(self):
         tensor_spec = InputSpec([None, 4, None], dtype='int8', name='x_spec')
-        self.assertEqual(tensor_spec.dtype, convert_np_dtype_to_dtype_('int8'))
+        self.assertEqual(
+            tensor_spec.dtype, convert_np_dtype_to_proto_type('int8')
+        )
         self.assertEqual(tensor_spec.name, 'x_spec')
         self.assertEqual(tensor_spec.shape, (-1, 4, -1))
 

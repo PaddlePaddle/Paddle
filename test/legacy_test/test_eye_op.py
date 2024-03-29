@@ -40,7 +40,7 @@ class TestEyeOp(OpTest):
         self.attrs = {
             'num_rows': self.num_columns,
             'num_columns': self.num_columns,
-            'dtype': framework.convert_np_dtype_to_dtype_(self.dtype),
+            'dtype': framework.convert_np_dtype_to_proto_type(self.dtype),
         }
         self.outputs = {
             'Out': np.eye(self.num_rows, self.num_columns, dtype=self.dtype)

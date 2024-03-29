@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 from paddle import _C_ops, base, zeros_like
 from paddle.base import Program, core, program_guard
-from paddle.base.framework import convert_np_dtype_to_dtype_
+from paddle.base.framework import convert_np_dtype_to_proto_type
 
 
 class TestZerosLikeAPIError(unittest.TestCase):
@@ -92,7 +92,9 @@ class TestZerosAPI(unittest.TestCase):
         paddle.disable_static(place)
 
         for dtype in [np.float32, np.float64, np.int32, np.int64]:
-            out = _C_ops.zeros(shape, convert_np_dtype_to_dtype_(dtype), place)
+            out = _C_ops.zeros(
+                shape, convert_np_dtype_to_proto_type(dtype), place
+            )
             self.assertEqual(
                 (out.numpy() == np.zeros(shape, dtype)).all(), True
             )

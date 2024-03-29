@@ -21,7 +21,7 @@ from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
-from paddle.framework import convert_np_dtype_to_dtype_
+from paddle.framework import convert_np_dtype_to_proto_type
 
 
 class TrtConvertCastTest(TrtLayerAutoScanTest):
@@ -70,8 +70,8 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
                 self.has_bool_dtype = in_dtype == np.bool_
                 dics = [
                     {
-                        "in_dtype": convert_np_dtype_to_dtype_(in_dtype),
-                        "out_dtype": convert_np_dtype_to_dtype_(np.float32),
+                        "in_dtype": convert_np_dtype_to_proto_type(in_dtype),
+                        "out_dtype": convert_np_dtype_to_proto_type(np.float32),
                     }
                 ]
 

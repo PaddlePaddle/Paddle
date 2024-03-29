@@ -25,7 +25,7 @@ from paddle.base import core, framework
 from paddle.base.backward import append_backward
 from paddle.base.framework import (
     Program,
-    convert_np_dtype_to_dtype_,
+    convert_np_dtype_to_proto_type,
     program_guard,
 )
 from paddle.io import Dataset
@@ -1035,7 +1035,7 @@ class TestOptimizerDtype(unittest.TestCase):
             adam = paddle.optimizer.Adam(parameters=model.parameters())
             loss.backward()
             adam.step()
-            self.assertEqual(adam._dtype, convert_np_dtype_to_dtype_(dtype))
+            self.assertEqual(adam._dtype, convert_np_dtype_to_proto_type(dtype))
 
     def test_float64(self):
         self.check_with_dtype('float64')

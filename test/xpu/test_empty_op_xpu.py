@@ -23,7 +23,7 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle.base.framework import convert_np_dtype_to_dtype_
+from paddle.base.framework import convert_np_dtype_to_proto_type
 
 paddle.enable_static()
 
@@ -88,7 +88,7 @@ class XPUTestEmptyOp(XPUOpTestWrapper):
             self.inputs = {}
 
         def init_config(self):
-            dtype_inner = convert_np_dtype_to_dtype_(self.dtype)
+            dtype_inner = convert_np_dtype_to_proto_type(self.dtype)
             self.attrs = {'shape': self.shape, 'dtype': dtype_inner}
             self.outputs = {'Out': np.zeros(self.shape).astype(self.dtype)}
 

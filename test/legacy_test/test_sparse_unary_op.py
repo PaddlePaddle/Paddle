@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.base.framework import convert_np_dtype_to_dtype_
+from paddle.base.framework import convert_np_dtype_to_proto_type
 
 
 class TestSparseUnary(unittest.TestCase):
@@ -55,7 +55,7 @@ class TestSparseUnary(unittest.TestCase):
             if dense_func == paddle.cast:
                 dense_out = dense_func(dense_x, args[1])
 
-                int_dtype = convert_np_dtype_to_dtype_(args[0])
+                int_dtype = convert_np_dtype_to_proto_type(args[0])
                 if sp_out.is_sparse_csr():
                     self.assertEqual(sp_out.crows().dtype, int_dtype)
                     self.assertEqual(sp_out.cols().dtype, int_dtype)

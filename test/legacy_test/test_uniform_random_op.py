@@ -23,7 +23,7 @@ from test_attribute_var import UnittestBase
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
-from paddle.base.framework import convert_np_dtype_to_dtype_
+from paddle.base.framework import convert_np_dtype_to_proto_type
 from paddle.pir_utils import test_with_pir_api
 from paddle.tensor import random
 
@@ -166,7 +166,7 @@ class TestUniformRandomOp(OpTest):
             "shape": [1000, 784],
             "min": -5.0,
             "max": 10.0,
-            "dtype": convert_np_dtype_to_dtype_(self.dtype),
+            "dtype": convert_np_dtype_to_proto_type(self.dtype),
         }
         self.output_hist = output_hist
 

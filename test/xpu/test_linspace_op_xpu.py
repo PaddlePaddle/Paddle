@@ -20,7 +20,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
-from op_test_xpu import XPUOpTest, convert_np_dtype_to_dtype_
+from op_test_xpu import XPUOpTest, convert_np_dtype_to_proto_type
 
 import paddle
 
@@ -46,7 +46,9 @@ class XPUTestLinspaceOp(XPUOpTestWrapper):
                 'Num': np.array([11]).astype('int32'),
             }
             self.outputs = {'Out': np.arange(0, 11).astype(self.dtype)}
-            self.attrs = {'dtype': int(convert_np_dtype_to_dtype_(self.dtype))}
+            self.attrs = {
+                'dtype': int(convert_np_dtype_to_proto_type(self.dtype))
+            }
 
         def set_attrs(self):
             pass
