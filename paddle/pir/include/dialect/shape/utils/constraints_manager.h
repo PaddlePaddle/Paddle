@@ -1,0 +1,52 @@
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#pragma once
+
+#include <unordered_set>
+
+#include "paddle/common/union_find_set.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
+
+namespace symbol {
+
+class IR_API ConstraintsManager {
+ public:
+  void SetValueToShapeOrData(
+      std::unordered_map<pir::Value, ShapeOrDataDimExprs>*
+          value_to_shape_or_data);
+
+  void AddEqCstr(const DimExpr& lhs, const DimExpr& rhs);
+
+  void AddBroadcastableCstr(const DimExpr& lhs, const DimExpr& rhs);
+
+  void AddGTOneCstr(const DimExpr& dim_expr);
+
+  bool IsDimExprEqual(const DimExpr& lhs, const DimExpr& rhs);
+
+  void PrintDimExprClusters();
+
+ private:
+  void SubstituteRhsToLhs(const DimExpr& lhs, const DimExpr& rhs);
+
+ private:
+  std::unordered_map<pir::Value, ShapeOrDataDimExprs>* value_to_shape_or_data_;
+  std::vector<Broadcastable<DimExpr>> broadcastables_;
+  std::unordered_set<DimExpr> gtones_;
+  common::UnionFindSet<DimExpr> equals_;
+};
+
+}  // namespace symbol

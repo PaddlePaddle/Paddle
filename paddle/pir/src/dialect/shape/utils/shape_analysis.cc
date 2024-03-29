@@ -29,6 +29,7 @@ static std::string GetValueId(Value val) {
 void ShapeConstraintIRAnalysis::Init() {
   value_to_shape_or_data_.clear();
   next_sym_idx_ = 0;
+  cstrs_manager_.SetValueToShapeOrData(&value_to_shape_or_data_);
 }
 
 const std::string ShapeConstraintIRAnalysis::GetNextSymName() {
@@ -64,7 +65,11 @@ void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
 }
 
 symbol::DimExprBuilder ShapeConstraintIRAnalysis::DimExprBuilder() {
-  return symbol::DimExprBuilder(&constraints_);
+  return symbol::DimExprBuilder();
+}
+
+symbol::ConstraintsManager& ShapeConstraintIRAnalysis::ConstraintsManager() {
+  return cstrs_manager_;
 }
 
 void ShapeConstraintIRAnalysis::PrintShapeOrDatas() const {

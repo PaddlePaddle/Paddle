@@ -60,7 +60,7 @@ bool InferSymbolicShapeElementWiseBinary(
 
   const std::vector<symbol::DimExpr> shapes = [&] {
     std::vector<symbol::DimExpr> shapes;
-    symbol::DimExprBuilder builder{nullptr};
+    symbol::DimExprBuilder builder;
     for (size_t i = 0; i < shape_0.size(); i++) {
       if (shape_0[i] == shape_1[i]) {
         shapes.emplace_back(shape_0[i]);
