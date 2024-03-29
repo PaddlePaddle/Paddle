@@ -45,10 +45,13 @@ def summary(net, input_size=None, dtypes=None, input=None):
 
     Examples:
         .. code-block:: python
+            :name: code-example-1
 
+            >>> # example 1: Single Input Demo
             >>> import paddle
             >>> import paddle.nn as nn
             >>> paddle.seed(2023)
+            >>> # Define Network
             >>> class LeNet(nn.Layer):
             ...     def __init__(self, num_classes=10):
             ...         super().__init__()
@@ -78,7 +81,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
             >>> lenet = LeNet()
 
             >>> params_info = paddle.summary(lenet, (1, 1, 28, 28))
-            >>> print(params_info)
+            >>> print(params_info) # The module suffix number indicates its sequence in modules of the same type, used for differentiation identification
             ---------------------------------------------------------------------------
             Layer (type)       Input Shape          Output Shape         Param #
             ===========================================================================
@@ -102,7 +105,11 @@ def summary(net, input_size=None, dtypes=None, input=None):
             Estimated Total Size (MB): 0.35
             ---------------------------------------------------------------------------
             {'total_params': 61610, 'trainable_params': 61610}
-            >>> # multi input demo
+
+        .. code-block:: python
+            :name: code-example-2
+
+            >>> # example 2: multi input demo
             >>> class LeNetMultiInput(LeNet):
             ...     def forward(self, inputs, y):
             ...         x = self.features(inputs)
@@ -141,6 +148,12 @@ def summary(net, input_size=None, dtypes=None, input=None):
             Estimated Total Size (MB): 0.35
             ---------------------------------------------------------------------------
             {'total_params': 61610, 'trainable_params': 61610}
+
+        .. code-block:: python
+            :name: code-example-3
+
+            >>> # example 3: List/Dict Input Demo
+
             >>> # list input demo
             >>> class LeNetListInput(LeNet):
             ...     def forward(self, inputs):
@@ -178,6 +191,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
             Estimated Total Size (MB): 0.35
             ---------------------------------------------------------------------------
             {'total_params': 61610, 'trainable_params': 61610}
+
             >>> # dict input demo
             >>> class LeNetDictInput(LeNet):
             ...     def forward(self, inputs):
