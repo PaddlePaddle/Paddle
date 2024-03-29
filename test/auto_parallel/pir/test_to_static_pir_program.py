@@ -81,6 +81,7 @@ class DemoNet(nn.Layer):
             )
 
     def forward(self, x):
+        x.stop_gradient = False
         out = self.relu_0(x)  # triggle backward partial allreduce
         out = self.linear_0(out)
         out = self.relu_1(out)
@@ -128,6 +129,8 @@ class TestToStaticPirProgramTrain(unittest.TestCase):
         backward_op_list = [
             "pd_op.sgd_",
             "pd_op.sgd_",
+            "pd_op.relu_grad",
+            "dist_op.reshard",
             "pd_op.matmul_grad",
             "pd_op.relu_grad",
             "pd_op.matmul_grad",
@@ -215,10 +218,10 @@ class TestToStaticPirProgramTrain(unittest.TestCase):
                         tensor._local_shape, [BATCH_SIZE, CLASS_NUM]
                     )
                 elif matmul_grad_idx == 1:
-                    self.assertEqual(tensor.dist_attr().dims_mapping, [-1, 0])
-                    self.assertEqual(tensor.dist_attr().partial_dims, set())
+                    self.assertEqual(tensor.dist_attr().dims_mapping, [-1, -1])
+                    self.assertEqual(tensor.dist_attr().partial_dims, {0})
                     self.assertEqual(
-                        tensor._local_shape, [BATCH_SIZE, IMAGE_SIZE // 2]
+                        tensor._local_shape, [BATCH_SIZE, IMAGE_SIZE]
                     )
                 matmul_grad_idx += 1
             if op.name() == 'pd_op.sgd_':

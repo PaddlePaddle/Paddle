@@ -15,6 +15,7 @@
 #include <Python.h>
 #include "pybind11/stl.h"
 
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_api.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
 #include "paddle/fluid/pir/dialect/distributed/transforms/dist_to_dense_pass.h"
 #include "paddle/fluid/pir/dialect/distributed/transforms/mix_to_dist_pass.h"
@@ -62,6 +63,10 @@ void BindTensorDistAttribute(py::module *m) {
              print_stream << self;
              return print_stream.str();
            })
+      .def("__eq__",
+           [](TensorDistAttribute &self, const TensorDistAttribute &other) {
+             return self == other;
+           })
       .def_property_readonly("process_mesh",
                              [](TensorDistAttribute &self) {
                                return self.process_mesh_attr().process_mesh();
@@ -93,6 +98,13 @@ void BindDistPassAPI(pybind11::module *module) {
   module->def("apply_dist2dense_pass", paddle::dialect::DistToDensePass);
 }
 
+void BindOpsFunction(py::module *m) {
+  m->def("reshard_v2",
+         [](const pir::Value &x, const TensorDistAttribute &dist_attr) {
+           return reshard(x, dist_attr);
+         });
+}
+
 void BindDistApi(pybind11::module *module) {
   auto ir_module = module->def_submodule("pir");
   BindOperationDistAttribute(&ir_module);
@@ -100,6 +112,7 @@ void BindDistApi(pybind11::module *module) {
   BindDistPassAPI(&ir_module);
   auto ops_modules = ir_module.def_submodule("ops");
   BindDistOpsAPI(&ops_modules);
+  BindOpsFunction(&ops_modules);
 }
 
 }  // namespace pybind

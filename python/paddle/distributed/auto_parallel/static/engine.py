@@ -54,6 +54,7 @@ from .dist_op import DistributedOperator
 from .dist_saver import DistributedSaver
 from .helper import ProgramHelper
 from .parallelizer_v2 import Parallelizer
+from .pir_pass import apply_partition_pass
 from .planner_v2 import Planner
 from .process_group import get_all_process_groups, new_process_group
 
@@ -679,7 +680,7 @@ class Engine:
         # TODO(JZ-LIANG) Step 3.1: Partition Pass
         #   insert reshard op if operand tensor's placements if different from what the cumsumer op need.
         #   Partition the computation graph into different pipeline stage if need.
-        # dist_program = apply_partition_pass(dist_program)
+        dist_program = apply_partition_pass(dist_program)
 
         # TODO(hitywt) Step 3.2: Reshard Pass
         #   resolute the reshard op into special collective operation.
