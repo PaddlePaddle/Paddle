@@ -14,6 +14,8 @@
 
 import paddle
 
+from .process_group import new_process_group
+
 
 def apply_partition_pass(program):
     new_program = program.clone()
@@ -37,4 +39,44 @@ def apply_partition_pass(program):
 
 
 def apply_reshard_pass(program):
-    pass
+    new_program = program.clone()
+    with paddle.static.program_guard(new_program):
+        for op in new_program.global_block().ops:
+            # TODO(ywt): add common reshard rules
+            # only support 1-D partial to replicated now
+            if op.name() == 'dist_op.reshard':
+                process_mesh = op.operand(0).source().dist_attr().process_mesh
+                assert (
+                    len(process_mesh.shape) == 1
+                ), f'only support 1-D mesh now, but the op is: {op}'
+                assert op.operand(0).source().dist_attr().partial_dims == {
+                    0
+                }, f'only support partial input on 1-D mesh now, but the op is: {op}'
+                assert (
+                    op.result(0).dist_attr().partial_dims == set()
+                ), f'only support un-partial output on 1-D mesh now, but the op is: {op}'
+                assert (
+                    op.result(0).dist_attr().dims_mapping
+                    == op.operand(0).source().dist_attr().dims_mapping
+                ), f'only support the same dims maping on 1-D mesh now, but the op is: {op}'
+                assert (
+                    op.dist_attr().operand_dist_attr(0).partial_status[0]
+                    == paddle.distributed.ReduceType.kRedSum
+                ), f'only support partial sum now, but the op is: {op}'
+                assert (
+                    op.operand(0).source().has_one_use()
+                ), f'only support use count of 1 for reshard input, but the op is: {op}'
+                assert op.result(
+                    0
+                ).has_one_use(), f'only support use count of 1 for reshard output, but the op is: {op}'
+
+                paddle.pir.set_insertion_point(op)
+                group = new_process_group(process_mesh.process_ids)
+                reduced_value = paddle._pir_ops.c_allreduce_sum_(
+                    op.operand(0).source(), group.id, False, False
+                )
+                reduced_value.set_type(op.result(0).type())
+                op.result(0).replace_all_uses_with(reduced_value)
+                new_program.global_block().remove_op(op)
+
+    return new_program
