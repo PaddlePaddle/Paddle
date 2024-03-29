@@ -397,12 +397,16 @@ std::vector<FusibleOp> FusionGraph::TransformReduceLoopRange(
   std::vector<FusibleOp> results;
   ir::Tensor downstream_output_tensor = GetOutputTensor(*downstream);
 
+  bool is_trivial_downstream = std::holds_alternative<TrivialOp>(*downstream);
+
   const auto create_new_tensor = [&](const ir::Tensor& downstream_load_tensor) {
     VLOG(4) << "Create New Tensor Start";
     ir::Tensor result = ir::Tensor(
         downstream_load_tensor->name + "_" + FusionNode::GetTensorCounter(),
         downstream_load_tensor->type(),
-        FilterWithFakeReduceIter(downstream_output_tensor->shape),
+        is_trivial_downstream
+            ? FilterWithFakeReduceIter(downstream_output_tensor->shape)
+            : downstream_output_tensor->shape,
         downstream_output_tensor->domain,
         GetOutputTensor(upstream)->operation,
         GetReduceIters(upstream));
@@ -415,7 +419,9 @@ std::vector<FusibleOp> FusionGraph::TransformReduceLoopRange(
     const auto& new_tensor =
         create_new_tensor(load_tensor.As<ir::Load>()->tensor.as_tensor_ref());
     ir::Expr new_reduce = CreateReduceExpr(
-        FilterWithFakeReduceIter(GetOutputIters(*downstream)),
+        is_trivial_downstream
+            ? FilterWithFakeReduceIter(GetOutputIters(*downstream))
+            : GetOutputIters(*downstream),
         GetReduceIters(upstream),
         GetInitExpr(upstream),
         ComposeUtils::CopyedReplaceExpr(GetComputeBody(upstream),
@@ -428,7 +434,9 @@ std::vector<FusibleOp> FusionGraph::TransformReduceLoopRange(
         &modified_downstream_compute_body,
         load_tensor,
         new_tensor(ComposeUtils::VarVec2ExprVec(
-            FilterWithFakeReduceIter(GetOutputIters(*downstream)))));
+            is_trivial_downstream
+                ? FilterWithFakeReduceIter(GetOutputIters(*downstream))
+                : GetOutputIters(*downstream))));
   }
   _SetFuncBody(*downstream,
                CreateExprWithNewComputeBody(*downstream,
