@@ -19,9 +19,6 @@ namespace cinn::dialect::ir::details {
 using OpLoweringGroup = cinn::hlir::framework::pir::OpLoweringGroup;
 using OpLoweringGroupPtr = std::shared_ptr<OpLoweringGroup>;
 
-std::vector<pir::Value> GetBlockOutsideInput(
-    const std::vector<pir::Operation*>& op_list);
-
 std::unordered_map<OpLoweringGroupPtr,
                    std::unordered_map<std::string, pir::Attribute>>
 CompileGroupAsOpAttribute(const std::vector<OpLoweringGroupPtr>& group_list);

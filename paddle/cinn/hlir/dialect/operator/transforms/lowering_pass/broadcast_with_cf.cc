@@ -24,7 +24,6 @@
 using OpLoweringGroup = cinn::hlir::framework::pir::OpLoweringGroup;
 using OpLoweringGroupPtr = std::shared_ptr<OpLoweringGroup>;
 using cinn::dialect::ir::details::CompileGroupAsOpAttribute;
-using cinn::dialect::ir::details::GetBlockOutsideInput;
 
 namespace {
 std::vector<pir::Value> GetOpOuputValues(const pir::Operation* op) {
@@ -274,7 +273,7 @@ void SetLeafBlockByGroupView(
     pir::Block* block,
     std::unordered_map<pir::Block*, OpLoweringGroupPtr>* group_map) {
   pir::IrMapping ir_mapping;
-  auto origin_group_inputs = GetBlockOutsideInput(origin_group->ops());
+  auto origin_group_inputs = origin_group->GetInputOpValues();
   for (auto input : origin_group_inputs) {
     ir_mapping.Add(input, input);
   }

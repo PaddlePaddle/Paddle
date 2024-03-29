@@ -34,7 +34,7 @@ pir::Operation* ProcessDyShapeGroup(
     const OpLoweringGroupPtr& group,
     pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
     pir::PatternRewriter& rewriter) {                // NOLINT
-  auto group_inputs = GetBlockOutsideInput(group->ops());
+  auto group_inputs = group->GetInputOpValues();
   GroupDimExprInfo group_dim_expr_info = GetGroupDimExprInfo(group);
   const auto& leaves = group_dim_expr_info.all_value_dim_exprs;
   // has multiple branch
@@ -127,7 +127,7 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
       const OpLoweringGroupPtr& group,
       pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
       pir::PatternRewriter& rewriter) const {          // NOLINT
-    auto group_inputs = GetBlockOutsideInput(group->ops());
+    auto group_inputs = group->GetInputOpValues();
     // compile group to jit_kernel_op
     std::vector<pir::Type> output_types;
     const auto& group_output_values = group->output_values();

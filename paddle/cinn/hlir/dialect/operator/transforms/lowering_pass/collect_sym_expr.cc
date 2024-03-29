@@ -17,7 +17,6 @@
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 namespace {
-using cinn::dialect::ir::details::GetBlockOutsideInput;
 using cinn::dialect::ir::details::OpLoweringGroup;
 using cinn::dialect::ir::details::OpLoweringGroupPtr;
 
@@ -38,7 +37,7 @@ bool IsComplicatedDimExpr(const symbol::DimExpr& dim_expr) {
 template <typename DoEachT>
 void VisitEachInputValue(const OpLoweringGroupPtr& group,
                          const DoEachT& DoEach) {
-  for (pir::Value value : GetBlockOutsideInput(group->ops())) {
+  for (pir::Value value : group->GetInputOpValues()) {
     DoEach(value);
   }
 }
