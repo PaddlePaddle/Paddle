@@ -18,13 +18,11 @@
 namespace paddle {
 namespace dialect {
 
-// pir::Type ConvertOpTypeToKernelType(pir::Type op_type);
+TEST_API std::shared_ptr<pir::Program> DistToDensePass(pir::Program* prog);
 
-TEST_API std::shared_ptr<pir::Program> MixToDistPass(pir::Program* prog);
+void ProcessDistBlock(pir::Block* block);
 
-void ProcessMixBlock(pir::Block* block);
-
-void VerifyDistBlock(pir::Block* block);
+void VerifyDenseBlock(pir::Block* block);
 
 }  // namespace dialect
 }  // namespace paddle
