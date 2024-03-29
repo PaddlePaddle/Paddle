@@ -28,8 +28,16 @@
 namespace {
 
 class RmsNormFusePattern : public paddle::drr::DrrPatternBase {
+ private:
+  const bool is_half_weight_;
+
  public:
+  explicit RmsNormFusePattern(bool is_half_weight)
+      : is_half_weight_(is_half_weight) {}
+
   std::string name() const override { return "RmsNormFusePattern"; }
+
+  uint32_t benefit() const override { return 2; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -42,20 +50,56 @@ class RmsNormFusePattern : public paddle::drr::DrrPatternBase {
     const auto &rsqrt = pat.Op(paddle::dialect::RsqrtOp::name());
     const auto &multiply1 = pat.Op(paddle::dialect::MultiplyOp::name());
     const auto &multiply2 = pat.Op(paddle::dialect::MultiplyOp::name());
-
-    pat.Tensor("pow_out") = pow(pat.Tensor("x"));
-    pat.Tensor("mean_out") = mean(pat.Tensor("pow_out"));
-    pat.Tensor("scale_out") = scale(pat.Tensor("mean_out"), full());
-    pat.Tensor("rsqrt_out") = rsqrt(pat.Tensor("scale_out"));
-    pat.Tensor("multiply_out1") =
-        multiply1(pat.Tensor("rsqrt_out"), pat.Tensor("x"));
-    pat.Tensor("multiply_out2") =
-        multiply2(pat.Tensor("multiply_out1"), pat.Tensor("w"));
-
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    if (is_half_weight_) {
+      const auto &cast1 = pat.Op(paddle::dialect::CastOp::name(),
+                                 {{"dtype", pat.Attr("cast_type_1")}});
+      pat.Tensor("cast_1_out") = cast1(pat.Tensor("x"));
+      pat.Tensor("pow_out") = pow(pat.Tensor("cast_1_out"));
+      pat.Tensor("mean_out") = mean(pat.Tensor("pow_out"));
+      pat.Tensor("scale_out") = scale(pat.Tensor("mean_out"), full());
+      pat.Tensor("rsqrt_out") = rsqrt(pat.Tensor("scale_out"));
+      pat.Tensor("multiply_out1") =
+          multiply1(pat.Tensor("rsqrt_out"), pat.Tensor("cast_1_out"));
+      const auto &cast2 = pat.Op(paddle::dialect::CastOp::name(),
+                                 {{"dtype", pat.Attr("cast_type_2")}});
+      pat.Tensor("cast_2_out") = cast2(pat.Tensor("multiply_out1"));
+      pat.Tensor("multiply_out2") =
+          multiply2(pat.Tensor("cast_2_out"), pat.Tensor("w"));
+    } else {
+      pat.Tensor("pow_out") = pow(pat.Tensor("x"));
+      pat.Tensor("mean_out") = mean(pat.Tensor("pow_out"));
+      pat.Tensor("scale_out") = scale(pat.Tensor("mean_out"), full());
+      pat.Tensor("rsqrt_out") = rsqrt(pat.Tensor("scale_out"));
+      pat.Tensor("multiply_out1") =
+          multiply1(pat.Tensor("rsqrt_out"), pat.Tensor("x"));
+      pat.Tensor("multiply_out2") =
+          multiply2(pat.Tensor("multiply_out1"), pat.Tensor("w"));
+    }
+    pat.RequireNativeCall([this](const paddle::drr::MatchContext &match_ctx) {
       auto axis = match_ctx.Attr<std::vector<int64_t>>("axis");
       if (axis.size() > 1) {
         return false;
+      }
+      if (this->is_half_weight_) {
+        auto w_type = pir::GetDataTypeFromValue(match_ctx.Tensor("w"));
+        if (!(w_type.isa<pir::Float16Type>() ||
+              w_type.isa<pir::BFloat16Type>())) {
+          return false;
+        }
+
+        auto cast_type_1 = match_ctx.Attr<phi::DataType>("cast_type_1");
+        auto cast_type_2 = match_ctx.Attr<phi::DataType>("cast_type_2");
+        if (cast_type_1 != phi::DataType::FLOAT32) {
+          return false;
+        }
+        if (w_type.isa<pir::Float16Type>() &&
+            cast_type_2 != phi::DataType::FLOAT16) {
+          return false;
+        }
+        if (w_type.isa<pir::BFloat16Type>() &&
+            cast_type_2 != phi::DataType::BFLOAT16) {
+          return false;
+        }
       }
       return true;
     });
@@ -203,13 +247,15 @@ class AddNormFusePass : public pir::PatternRewritePass {
     // x-----------------------
     //                                mul --->rms_norm
     // w-----------------------------
-    ps.Add(paddle::drr::Create<RmsNormFusePattern>(context));
+    bool is_half_weight = true;
+    ps.Add(paddle::drr::Create<RmsNormFusePattern>(context, !is_half_weight));
+    ps.Add(paddle::drr::Create<RmsNormFusePattern>(context, is_half_weight));
     // x--------
-    //           add-rms_norm --- rms_norm
+    //           add-rms_norm ---> rms_norm
     // residual-
     ps.Add(paddle::drr::Create<AddRmsNormFusePattern>(context));
     // x--------
-    //           add-layer_norm ---- fused_bias_residual_layernorm
+    //           add-layer_norm ----> fused_bias_residual_layernorm
     // residual-
     ps.Add(paddle::drr::Create<AddLayerNormFusePattern>(context));
     return ps;
