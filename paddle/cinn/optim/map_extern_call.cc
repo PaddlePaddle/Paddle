@@ -65,7 +65,13 @@ void MapExternCall(Expr *e, Target target) {
 
     void DealWithCpuIntrinsics(ir::Call *node, Expr *expr) {
       if (kExternFp32CallsCPU.count(node->name)) {
-        CHECK_GE(node->read_args.size(), 1UL);
+        PADDLE_ENFORCE_GE(
+            node->read_args.size(),
+            1UL,
+            phi::errors::InvalidArgument(
+                "The size of node's read args is incorrect."
+                "Expected size is greater than or equal to 1, but receive %d.",
+                node->read_args.size()));
         CHECK(node->read_args.front().type().is_float())
             << "CPU extern call intrinsics only support float now! Please "
                "check.";

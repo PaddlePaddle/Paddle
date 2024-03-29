@@ -38,10 +38,10 @@ void AssertTrueMsgTool::SetMsg(int key, const std::string& msg) {
 }
 
 const std::string& AssertTrueMsgTool::GetMsg(int key) {
-  PADDLE_ENFORCE_NE(global_msg_.find(key),
-                    global_msg_.end(),
-                    ::common::errors::InvalidArgument(
-                        "Cannot find assert_true message key %s", key));
+  PADDLE_ENFORCE_NE(
+      global_msg_.find(key),
+      global_msg_.end(),
+      phi::errors::NotFound("Cannot find assert_true message key (%d).", key));
   return global_msg_[key];
 }
 

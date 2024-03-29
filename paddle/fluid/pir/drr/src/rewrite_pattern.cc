@@ -473,7 +473,7 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
   GraphTopo graph_topo_visit(&result_pattern_graph);
   graph_topo_visit.WalkGraphNodesTopoOrder([&](const OpCall& op_call) {
     // set insert point
-    size_t max_input_op_index = 0;
+    size_t max_input_op_index = 0UL;
     pir::Operation* max_index_op = nullptr;
     for (const Tensor* input : op_call.inputs()) {
       if (input->is_none()) {
@@ -483,7 +483,7 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
       if (ir_val) {
         pir::Operation* ir_input_op = ir_val.defining_op();
         if (op_2_temp_program_index.count(ir_input_op) == 0) {
-          max_input_op_index = 0UL;
+          // do nothing
         } else if (max_input_op_index <
                    op_2_temp_program_index.at(ir_input_op)) {
           max_input_op_index = op_2_temp_program_index.at(ir_input_op);

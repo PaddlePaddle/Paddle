@@ -66,6 +66,7 @@ class DemoNet(nn.Layer):
         )
 
     def forward(self, x):
+        x.stop_gradient = False
         out = self.relu_0(x)  # triggle backward partial allreduce
         out = self.linear_0(out)
         out = self.relu_1(out)
@@ -130,15 +131,28 @@ class TestToStaticPirProgramTrain(unittest.TestCase):
 
         relu_idx = 0
         matmul_idx = 0
+        data_idx = 0
         matmul_grad_idx = 0
+        sgd_idx = 0
         ops = main_program.global_block().ops
-        self.assertEqual(ops[-1].name(), "pd_op.matmul_grad")
-        self.assertEqual(ops[-2].name(), "pd_op.relu_grad")
-        self.assertEqual(ops[-3].name(), "pd_op.matmul_grad")
-        self.assertEqual(ops[-4].name(), "pd_op.relu_grad")
-        self.assertEqual(ops[-5].name(), "pd_op.subtract_grad")
-        self.assertEqual(ops[-6].name(), "pd_op.square_grad")
-        self.assertEqual(ops[-7].name(), "pd_op.mean_grad")
+
+        backward_op_list = [
+            "pd_op.sgd_",
+            "pd_op.sgd_",
+            "pd_op.relu_grad",
+            "dist_op.reshard",
+            "pd_op.matmul_grad",
+            "pd_op.relu_grad",
+            "pd_op.matmul_grad",
+            "pd_op.relu_grad",
+            "pd_op.subtract_grad",
+            "pd_op.square_grad",
+            "pd_op.mean_grad",
+        ]
+        index = -1
+        for op_name in backward_op_list:
+            self.assertEqual(ops[index].name(), op_name)
+            index = index - 1
 
         for op in ops:
             # skip shadow_output
@@ -155,8 +169,10 @@ class TestToStaticPirProgramTrain(unittest.TestCase):
             )
 
             if op.name() == 'pd_op.data':
-                self.assertEqual(tensor.dist_attr().dims_mapping, [-1, -1])
-                self.assertEqual(tensor.dist_attr().partial_dims, set())
+                if data_idx != 0:
+                    self.assertEqual(tensor.dist_attr().dims_mapping, [-1, -1])
+                    self.assertEqual(tensor.dist_attr().partial_dims, set())
+                data_idx += 1
             elif op.name() == 'builtin.parameter':
                 self.assertTrue(tensor.is_dense_tensor_type())
                 self.assertTrue(tensor.is_dist_dense_tensor_type())
@@ -212,12 +228,26 @@ class TestToStaticPirProgramTrain(unittest.TestCase):
                         tensor._local_shape, [BATCH_SIZE, CLASS_NUM]
                     )
                 elif matmul_grad_idx == 1:
+                    self.assertEqual(tensor.dist_attr().dims_mapping, [-1, -1])
+                    self.assertEqual(tensor.dist_attr().partial_dims, {0})
+                    self.assertEqual(
+                        tensor._local_shape, [BATCH_SIZE, IMAGE_SIZE]
+                    )
+                matmul_grad_idx += 1
+            if op.name() == 'pd_op.sgd_':
+                if sgd_idx == 0:
+                    self.assertEqual(tensor.dist_attr().dims_mapping, [0, -1])
+                    self.assertEqual(tensor.dist_attr().partial_dims, set())
+                    self.assertEqual(
+                        tensor._local_shape, [IMAGE_SIZE // 2, CLASS_NUM]
+                    )
+                elif sgd_idx == 1:
                     self.assertEqual(tensor.dist_attr().dims_mapping, [-1, 0])
                     self.assertEqual(tensor.dist_attr().partial_dims, set())
                     self.assertEqual(
-                        tensor._local_shape, [BATCH_SIZE, IMAGE_SIZE // 2]
+                        tensor._local_shape, [IMAGE_SIZE, IMAGE_SIZE // 2]
                     )
-                matmul_grad_idx += 1
+                sgd_idx += 1
 
         # dist_model.train()
         # for batch_id, (image, label) in enumerate(dist_loader()):

@@ -54,6 +54,7 @@ from .dist_op import DistributedOperator
 from .dist_saver import DistributedSaver
 from .helper import ProgramHelper
 from .parallelizer_v2 import Parallelizer
+from .pir_pass import apply_partition_pass
 from .planner_v2 import Planner
 from .process_group import get_all_process_groups, new_process_group
 
@@ -639,18 +640,20 @@ class Engine:
             mix_fw_program
         )
         # Step 1.2: pir backward
-        if mode != "predict" and self._loss:
+        if mode == "train" and self._loss and self._optimizer:
             loss = dist_program.get_output_value_by_name(self._loss_names[0])
             if loss.initialized():
-                paddle.autograd.ir_backward.append_backward(loss)
+                with static.program_guard(dist_program):
+                    params_grads = paddle.autograd.ir_backward.append_backward(
+                        loss
+                    )
+                    self._optimizer._apply_optimize(
+                        loss, startup_program=None, params_grads=params_grads
+                    )
             else:
                 self._logger.info(
                     "loss value is not found, skip append backward."
                 )
-        # TODO(winter-wang) Step 1.3:  adapot opt.minimize() for pir-auto-parallel
-        # with program_guard(dist_program):
-        #     ptimizer_ops = self._optimizer.apply_gradients(params_grads)
-
         # Part 2: Parallelism search
         # NOTE make all parallelis search logic work as Pass,
         # and all the Pass in this Part should be optional to allow consistence in dynamic and static mode.
@@ -673,7 +676,7 @@ class Engine:
         # TODO(JZ-LIANG) Step 3.1: Partition Pass
         #   insert reshard op if operand tensor's placements if different from what the cumsumer op need.
         #   Partition the computation graph into different pipeline stage if need.
-        # dist_program = apply_partition_pass(dist_program)
+        dist_program = apply_partition_pass(dist_program)
 
         # TODO(hitywt) Step 3.2: Reshard Pass
         #   resolute the reshard op into special collective operation.
