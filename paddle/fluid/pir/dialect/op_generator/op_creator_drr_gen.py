@@ -145,7 +145,6 @@ class OpCreatorCodeGen:
             for yaml_file in op_yaml_files:
                 with open(yaml_file, "r") as f:
                     ops = yaml.safe_load(f)
-                    # op_yaml_items = op_yaml_items + ops
                     for op in ops:
                         op_compat_item = op_compat_parser.get_compat(op['name'])
                         if (

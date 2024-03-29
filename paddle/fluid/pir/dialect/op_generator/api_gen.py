@@ -224,12 +224,10 @@ class CodeGen:
         op_compat_parser = OpCompatParser(op_compat_yaml_file)
         op_info_items = []
         for yaml_file in op_yaml_files:
-            op_yaml_items = []
             with open(yaml_file, "r") as f:
                 ops = yaml.safe_load(f)
-                op_yaml_items = op_yaml_items + ops
 
-            for op in op_yaml_items:
+            for op in ops:
                 op_compat_item = op_compat_parser.get_compat(op['name'])
                 if (
                     op_compat_item is None
