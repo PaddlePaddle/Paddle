@@ -441,9 +441,11 @@ class OpCompatParser:
 # Parse Op Information From Yaml
 # =====================================
 class OpInfoParser:
-    def __init__(self, op_yaml_item, op_compat_item):
+    def __init__(self, op_yaml_item, op_compat_item, yaml_file):
         self.op_yaml_item = op_yaml_item
         self.op_compat_item = op_compat_item
+        self.yaml_file = yaml_file
+        self.is_sparse_op = self.parse_op_type()
         self.op_phi_name = self.parse_op_phi_name()
 
         self.kernel_map = self.parse_kernel_map()
@@ -773,6 +775,14 @@ class OpInfoParser:
             op_non_mutable_attribute_build_arg_type_list,
             op_non_mutable_attribute_default_value_list,
         )
+
+    def parse_op_type(self):
+        if self.yaml_file.endswith(
+            "sparse_ops.parsed.yaml"
+        ) or self.yaml_file.endswith("sparse_backward.parsed.yaml"):
+            return True
+        else:
+            return False
 
     def parse_input_name_list(self):
         name_list = []
@@ -1104,13 +1114,6 @@ def get_input_grad_semantic(op_info, op_info_items):
 
         bwd_fwd_input_list = bwd_op_info.forward_input_name_list
         if bwd_fwd_input_list is not None:
-            print(
-                op_info.op_phi_name,
-                bwd_fwd_input_list,
-                len(bwd_fwd_input_list),
-                num_inputs,
-                op_info.input_name_list,
-            )
             assert (
                 len(bwd_fwd_input_list) == num_inputs
             ), "Configuration of forward op and backward op is not match."
@@ -1305,6 +1308,7 @@ def AutoCodeGen(
         exclusive_interface_str = gen_exclusive_interface_str(
             op_info, op_info_items
         )
+        is_sparse_op = op_info.is_sparse_op
 
         if dialect_name == "pd_op" or dialect_name == "onednn_op":
             op_interfaces += ["paddle::dialect::GetKernelTypeForVarInterface"]
@@ -1378,20 +1382,56 @@ def AutoCodeGen(
                 # =================================== #
                 #      gen interface list str         #
                 # =================================== #
+                op_class_name_suffix = 'Sp' if op_info.is_sparse_op else ''
+                op_dialect_name_suffix = '_sp' if op_info.is_sparse_op else ''
+                op_dialect_name_inplace_suffix = (
+                    'sp_' if op_info.is_sparse_op else ''
+                )
                 if len(func_list) == 1:
-                    op_class_name = to_pascal_case(op_name) + "Op"
-                    op_dialect_name = dialect_name + "." + op_name
+                    op_class_name = (
+                        to_pascal_case(op_name) + op_class_name_suffix + "Op"
+                    )
+                    if op_name[-1] == "_":
+                        op_dialect_name = (
+                            dialect_name
+                            + "."
+                            + op_name
+                            + op_dialect_name_inplace_suffix
+                        )
+                    else:
+                        op_dialect_name = (
+                            dialect_name
+                            + "."
+                            + op_name
+                            + op_dialect_name_suffix
+                        )
                 else:
                     pascal_kernel_func_name = to_pascal_case(kernel_func_name)
                     if op_name[-1] == "_":
-                        op_class_name = pascal_kernel_func_name + "_Op"
+                        op_class_name = (
+                            pascal_kernel_func_name
+                            + op_class_name_suffix
+                            + "_Op"
+                        )
                         op_dialect_name = (
-                            dialect_name + "." + kernel_func_name + "_"
+                            dialect_name
+                            + "."
+                            + kernel_func_name
+                            + "_"
+                            + op_dialect_name_inplace_suffix
                         )
                     else:
-                        op_class_name = pascal_kernel_func_name + "Op"
-                        op_dialect_name = dialect_name + "." + kernel_func_name
-
+                        op_class_name = (
+                            pascal_kernel_func_name
+                            + op_class_name_suffix
+                            + "Op"
+                        )
+                        op_dialect_name = (
+                            dialect_name
+                            + "."
+                            + kernel_func_name
+                            + op_dialect_name_suffix
+                        )
                 if kernel_func_name is None:
                     op_input_type_list = op_info.input_type_dict['default']
                     op_output_type_list = op_info.output_type_dict['default']
@@ -1549,7 +1589,6 @@ def AutoCodeGen(
                         op_invoke_class_name,
                         op_invoke_map,
                     )
-
                 # gen op_declare_str/op_defined_str
                 TEST_API = ""
                 if op_class_name in need_export_symbol_op_list:
@@ -1676,7 +1715,7 @@ def AutoCodeGen(
                 if op_infer_meta_map is not None:
                     infer_meta_func_str = op_infer_meta_map['func']
                     infer_meta_param_str = '", "'.join(
-                        op_infer_meta_map['param']
+                        str(item) for item in op_infer_meta_map['param']
                     )
 
                 kernel_func_str = ""
@@ -1896,12 +1935,19 @@ def AutoCodeGen(
                         not in vjp_interface_black_list
                         and dialect_name != "onednn_op"
                     ):
+                        sparse_op_name_suffix = (
+                            '_sp' if op_info.is_sparse_op else ''
+                        )
                         op_vjp_str = gen_op_vjp_str(
                             op_class_name,
                             op_info.backward_name,
                             op_name,
-                            op_info_items[op_info.op_phi_name[0]],
-                            all_op_info_items[op_info.backward_name],
+                            op_info_items[
+                                op_info.op_phi_name[0] + sparse_op_name_suffix
+                            ],
+                            all_op_info_items[
+                                op_info.backward_name + sparse_op_name_suffix
+                            ],
                         )
 
                     ops_name_list.append(op_class_name)
@@ -2055,6 +2101,7 @@ def OpGenerator(
     all_op_info_items = {}
     first_file = True
     onednn_only_op_list = []
+    # op_yaml_files=['/paddle_cuda11.2/build_pr/paddle/fluid/pir/dialect/operator/ir/generated/sparse_ops.parsed.yaml', '/paddle_cuda11.2/build_pr/paddle/fluid/pir/dialect/operator/ir/generated/sparse_backward.parsed.yaml']
     for yaml_file in op_yaml_files:
         op_yaml_items = []
         with open(yaml_file, "r") as f:
@@ -2118,9 +2165,10 @@ def OpGenerator(
                         op["attrs"] = op["attrs"] + onednn_item["attrs"]
                 else:
                     continue
-            item = OpInfoParser(op, op_compat_item)
-            op_info_items[op['name']] = item
-            all_op_info_items[op['name']] = item
+            item = OpInfoParser(op, op_compat_item, yaml_file)
+            key_suffix = '_sp' if item.is_sparse_op else ''
+            op_info_items[op['name'] + key_suffix] = item
+            all_op_info_items[op['name'] + key_suffix] = item
         op_infos.append(op_info_items)
 
         if first_file:
@@ -2128,7 +2176,6 @@ def OpGenerator(
 
     if dialect_name == "onednn_op":
         op_infos = [all_op_info_items]
-
     # (3) auto code gen
     op_list_strs = []
     declare_type_id_strs = []

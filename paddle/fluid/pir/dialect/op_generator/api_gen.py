@@ -222,40 +222,45 @@ class CodeGen:
 
     def _parse_yaml(self, op_yaml_files, op_compat_yaml_file):
         op_compat_parser = OpCompatParser(op_compat_yaml_file)
-
-        op_yaml_items = []
+        op_info_items = []
+        op_yaml_files = [
+            '/paddle_cuda11.2/build_pr/paddle/fluid/pir/dialect/operator/ir/generated/sparse_ops.parsed.yaml',
+            '/paddle_cuda11.2/build_pr/paddle/fluid/pir/dialect/operator/ir/generated/sparse_backward.parsed.yaml',
+        ]
         for yaml_file in op_yaml_files:
+            op_yaml_items = []
             with open(yaml_file, "r") as f:
                 ops = yaml.safe_load(f)
                 op_yaml_items = op_yaml_items + ops
 
-        op_info_items = []
-        for op in op_yaml_items:
-            op_compat_item = op_compat_parser.get_compat(op['name'])
-            if (
-                op_compat_item is None
-                and op['name'].endswith(('_grad', '_grad_'))
-                and 'forward' in op
-            ):
-                op_compat_item = op_compat_parser.get_compat(
-                    op['forward']['name']
+            for op in op_yaml_items:
+                op_compat_item = op_compat_parser.get_compat(op['name'])
+                if (
+                    op_compat_item is None
+                    and op['name'].endswith(('_grad', '_grad_'))
+                    and 'forward' in op
+                ):
+                    op_compat_item = op_compat_parser.get_compat(
+                        op['forward']['name']
+                    )
+
+                if (
+                    op_compat_item is not None
+                    and op_compat_item['op'] == "pow"
+                    and 'scalar' in op_compat_item
+                ):
+                    op_compat_item = op_compat_item.pop('scalar')
+                if 'support_tensor' in op.keys() and op['support_tensor']:
+                    (
+                        scalar_item,
+                        int_array_item,
+                    ) = op_compat_parser.parse_support_tensor(op)
+                    op_compat_item['scalar'] = scalar_item
+                    op_compat_item['int_array'] = int_array_item
+
+                op_info_items.append(
+                    OpInfoParser(op, op_compat_item, yaml_file)
                 )
-
-            if (
-                op_compat_item is not None
-                and op_compat_item['op'] == "pow"
-                and 'scalar' in op_compat_item
-            ):
-                op_compat_item = op_compat_item.pop('scalar')
-            if 'support_tensor' in op.keys() and op['support_tensor']:
-                (
-                    scalar_item,
-                    int_array_item,
-                ) = op_compat_parser.parse_support_tensor(op)
-                op_compat_item['scalar'] = scalar_item
-                op_compat_item['int_array'] = int_array_item
-
-            op_info_items.append(OpInfoParser(op, op_compat_item))
         return op_info_items
 
     def _need_skip(self, op_info, op_name):
@@ -546,8 +551,16 @@ class CodeGen:
     def _gen_compute_op(
         self, op_info, op_name, in_combine_op_list, is_mutable_attr
     ):
-        op_class_name = to_pascal_case(op_name) + 'Op'
-        op_inst_name = op_name + '_op'
+        sparse_op_name_suffix = '_sp' if op_info.is_sparse_op else ''
+        sparse_op_inplace_name_suffix = 'sp_' if op_info.is_sparse_op else ''
+        sparse_op_class_name_suffix = 'Sp' if op_info.is_sparse_op else ''
+        op_class_name = (
+            to_pascal_case(op_name) + sparse_op_class_name_suffix + 'Op'
+        )
+        if op_name[-1] == '_':
+            op_inst_name = op_name + '_op' + sparse_op_inplace_name_suffix
+        else:
+            op_inst_name = op_name + '_op' + sparse_op_name_suffix
         return (
             COMPUTE_OP_TEMPLATE.format(
                 op_class_name=op_class_name,

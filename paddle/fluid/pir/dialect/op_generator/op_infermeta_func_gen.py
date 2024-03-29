@@ -378,7 +378,7 @@ def GenBuildOutputsPart2(
             infer_meta_args.append("meta_" + op_infer_meta_map['param'][idx])
         # is attribute
         else:
-            infer_meta_args.append(op_infer_meta_map['param'][idx])
+            infer_meta_args.append(str(op_infer_meta_map['param'][idx]))
 
     # Prepare outputs_meta_tensor for infer meta
     for idx in range(len(op_output_name_list)):
@@ -762,6 +762,8 @@ def gen_infermeta_func_str(args, op_info):
 
 
 def gen_infermeta_impl_str(args, op_info):
+    # if(op_info.class_name== "MaskedMatmulSpOp_sp"):
+    #     breakpoint()
     return (
         OP_INFERMETA_IMPL_TEMPLATE_1.format(
             op_name=op_info.class_name,
