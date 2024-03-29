@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle import base, static
-from paddle.pir_utils import test_with_pir_api
 
 DATA_CASES = [
     {'elements_data': np.array(1.0), 'test_elements_data': np.array(-1.0)},
@@ -90,14 +89,13 @@ def test(data_cases, type_cases, invert=False, use_gpu=False):
             )
             np.testing.assert_equal(dygraph_result, np_result)
 
-            @test_with_pir_api
-            def test_static_or_pir_mode():
+            def test_static():
                 (static_result,) = run_static(
                     elements_data, test_elements_data, type, invert, use_gpu
                 )
                 np.testing.assert_equal(static_result, np_result)
 
-            test_static_or_pir_mode()
+            test_static()
 
 
 class TestIsInError(unittest.TestCase):

@@ -7853,27 +7853,35 @@ def isin(elements, test_elements, invert=False, name=None):
         test_elements, (paddle.Tensor, Variable, paddle.pir.Value)
     ):
         raise TypeError(f"x must be tensor type, but got {type(test_elements)}")
+    elements_zero_dim = False
+    if len(elements.shape) == 0:
+        elements = elements.reshape([1])
+        elements_zero_dim = True
 
-    size_elements = paddle.cast(elements.numel(), 'float32')
+    size_elements = paddle.cast(paddle.numel(elements), 'float32')
     if test_elements.numel() < 10.0 * paddle.pow(size_elements, 0.145):
-        if size_elements == 0:
-            return paddle.empty_like(elements, dtype='bool')
+        if len(elements.shape) == 0:
+            return paddle.zeros([], dtype='bool')
 
-        x = elements.reshape(elements.shape + ([1] * test_elements.ndim))
-        if not invert:
-            cmp = x == test_elements
-        else:
-            cmp = x != test_elements
+        x = elements.reshape(
+            tuple(elements.shape) + ((1,) * test_elements.ndim)
+        )
+        cmp = x == test_elements
         dim = tuple(range(-1, -test_elements.ndim - 1, -1))
-        return cmp.any(axis=dim)
+        cmp = cmp.any(axis=dim)
+        if invert:
+            cmp = ~cmp
     else:
         elements_flat = elements.flatten()
         test_elements_flat = test_elements.flatten()
         sorted_test_elements = paddle.sort(test_elements_flat)
-        idx = paddle.searchsorted(
-            sorted_test_elements, elements_flat
-        )  # dtype support int32 int64 float32 float64
+        idx = paddle.searchsorted(sorted_test_elements, elements_flat)
         test_idx = paddle.where(idx < sorted_test_elements.numel(), idx, 0)
         cmp = sorted_test_elements[test_idx] == elements_flat
         cmp = cmp.logical_not() if invert else cmp
-        return cmp.reshape(elements.shape)
+        cmp = cmp.reshape(elements.shape)
+
+    if elements_zero_dim:
+        return cmp.reshape([])
+    else:
+        return cmp
