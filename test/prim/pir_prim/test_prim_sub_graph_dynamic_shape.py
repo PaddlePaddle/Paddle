@@ -424,8 +424,8 @@ class TestPrimGroupNorm3(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
-        self.x_shape = [50, 640, 10, 20]
-        self.init_x_shape = [None, 640, None, None]
+        self.x_shape = [50, 640, 10]
+        self.init_x_shape = [None, 640, None]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = group_norm_net3
         self.necessary_ops = "pd_op.group_norm"

@@ -1729,15 +1729,14 @@ void BindUtils(pybind11::module *m) {
                 {'matmul_v2_0.tmp_0': [Value(define_op_name=pd_op.matmul, index=0, dtype=builtin.tensor<4x4xf32>)], 'x': [Value(define_op_name=pd_op.data, index=0, dtype=builtin.tensor<4x4xf32>)], 'tanh_0.tmp_0': [Value(define_op_name=pd_op.tanh, index=0, dtype=builtin.tensor<4x4xf32>)], 'elementwise_add_0': [Value(define_op_name=pd_op.add, index=0, dtype=builtin.tensor<4x4xf32>)]}
     )DOC");
 
-  m->def(
-      "clear_pir_compiler_manager",
-      []() {
+  m->def("clear_cinn_compilation_cache",
+         []() {
 #ifdef PADDLE_WITH_CINN
-        pybind11::gil_scoped_release release;
-        VLOG(4) << "clear PirCompilerManager and free PirCompiler resources.";
-        cinn::hlir::framework::PirCompilerManager::Instance().clear();
+           pybind11::gil_scoped_release release;
+           VLOG(4) << "clear CINN CompilationCache and free BackendResource.";
+           cinn::hlir::framework::CompilationCache::Instance().Clear();
 #endif
-      }),
+         }),
       m->def("apply_mix2dist_pass", paddle::dialect::MixToDistPass);
 }
 

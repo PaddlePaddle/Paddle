@@ -59,5 +59,12 @@ pir::Value reshard(const pir::Value& x,
   return reshard_op.result(0);
 }
 
+pir::Value reshard(const pir::Value& x,
+                   const TensorDistAttribute& tensor_dist_attr) {
+  auto reshard_op = ApiBuilder::Instance().GetBuilder()->Build<ReShardOp>(
+      x, tensor_dist_attr);
+  return reshard_op.result(0);
+}
+
 }  // namespace dialect
 }  // namespace paddle

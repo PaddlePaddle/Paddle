@@ -929,50 +929,6 @@ bool AnalysisPredictor::PrepareExecutor() {
       }
 #endif
 
-// <<<<<<< HEAD
-//       if (config_.use_gpu()) {
-//         ::pir::PassManager gpu_pm(::pir::IrContext::Instance(), 2);
-//         //----------------------------------------------------------------------------------------------//
-//         // Functional pass
-//         gpu_pm.AddPass(::pir::CreateMapOpToAnotherPass());
-//         gpu_pm.AddPass(::pir::CreateIdentityOpCleanPass());
-//         //----------------------------------------------------------------------------------------------//
-
-//         //----------------------------------------------------------------------------------------------//
-//         // Operator fusion pass
-//         gpu_pm.AddPass(::pir::CreateSiluFusePass());
-//         gpu_pm.AddPass(::pir::CreateConv2dBnFusePass());
-//         gpu_pm.AddPass(::pir::CreateConv2dAddActFusePass());
-//         gpu_pm.AddPass(::pir::CreateConv2dAddFusePass());
-//         gpu_pm.AddPass(::pir::CreateFusedEmbeddingEltwiseLayerNormPass());
-//         gpu_pm.AddPass(::pir::CreateMultiHeadMatmulFusePass());
-//         gpu_pm.AddPass(::pir::CreateFcFusePass());
-//         gpu_pm.AddPass(::pir::CreateFcElementwiseLayerNormFusePass());
-//         gpu_pm.AddPass(::pir::CreateMatmulScaleFusePass());
-//         gpu_pm.AddPass(::pir::CreateMatmulTransposeFusePass());
-//         gpu_pm.AddPass(::pir::CreateTransposeFlattenConcatFusePass());
-//         //----------------------------------------------------------------------------------------------//
-
-//         //----------------------------------------------------------------------------------------------//
-//         // Basic pass required by the framework
-//         auto params_sync_among_devices_pass =
-//             ::pir::CreateParamsSyncAmongDevicesPass();
-//         params_sync_among_devices_pass->SetNotOwned(pir::kPlaceAttr, &place_);
-//         params_sync_among_devices_pass->SetNotOwned(pir::kParamScopeAttr,
-//                                                     sub_scope_);
-//         gpu_pm.AddPass(std::move(params_sync_among_devices_pass));
-
-//         auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
-//         constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place_);
-//         constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, sub_scope_);
-//         gpu_pm.AddPass(std::move(constant_folding_pass));
-
-//         // gpu_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
-//         gpu_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
-//         //----------------------------------------------------------------------------------------------//
-//         if (!config_.glog_info_disabled()) {
-//           gpu_pm.EnablePrintStatistics();
-// =======
       // Apply some optimization passes required by the inference
       ::pir::PassManager pass_pm(::pir::IrContext::Instance(),
                                  config_.pm_opt_level_);
@@ -980,7 +936,6 @@ bool AnalysisPredictor::PrepareExecutor() {
         for (const auto &custom_pass : config_.custom_passes_) {
           pass_pm.AddPass(
               std::move(pir::PassRegistry::Instance().Get(custom_pass)));
-// >>>>>>> bugFix
         }
       }
       if (config_.use_gpu()) {
