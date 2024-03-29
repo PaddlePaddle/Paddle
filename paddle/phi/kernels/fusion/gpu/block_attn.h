@@ -1373,9 +1373,8 @@ void CacheKernel(
 }
 
 // overload for speculative decoding
-// 把 key_cache 和 value_cache 中的前 cur_token_num 个 token 拼接到 unpadding_k 和 unpadding_v 前面最后给到 unpadding_k_after_cache 和 unpadding_v_after_cache
-template <typename T>
-void CacheKernel(
+// Put the first cur_token_num tokens from kv_cache and unpadding_kv to unpadding_kv_after_cache.
+void WriteCacheToKVKernel(
     const phi::GPUContext &dev_ctx,
     const phi::DenseTensor &unpadding_k,  // [cur_token_num, num_head, dim_head]
     const phi::DenseTensor &unpadding_v,  // [cur_token_num, num_head, head_dim]
@@ -1696,6 +1695,75 @@ __global__ void NeoxVariableLengthRotaryKernel(
   }
 }
 
+// Used in speculative decoding
+template <typename T, int VecSize = 1>
+__global__ void NeoxVariableLengthRotarySpecuKernel(
+    const T *qkv,
+    const float *cos_emb,  // [1, 1, seq_len, dim_head]
+    const float *sin_emb,
+    const int *padding_offsets,
+    const int *seq_lens,
+    T *qkv_out,
+    const int64_t elem_cnt,
+    const int num_head,
+    const int seq_len,
+    const int token_num_in_cahce,
+    const int last_dim) {
+  // [token_num, 2, num_head, dim_head / 2]
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadEmbT = phi::AlignedVector<float, VecSize>;
+  LoadT left_vec;
+  LoadT right_vec;
+  LoadEmbT cos_emb_vec;
+  LoadEmbT sin_emb_vec;
+  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  const int half_lastdim = last_dim / 2;
+  const int hidden_size = num_head * half_lastdim;
+  const int full_hidden_size = num_head * last_dim;
+  const int offset = 2 * hidden_size;
+  for (int64_t linear_index = global_thread_idx * VecSize,
+               step = gridDim.x * blockDim.x * VecSize;
+       linear_index < elem_cnt;
+       linear_index += step) {
+    const int token_idx = linear_index / offset;
+    const int ori_token_idx = token_idx;
+    const int ori_bi = ori_token_idx / seq_len;
+    if (seq_lens && seq_lens[ori_bi] == 0) continue;
+    const int bias = linear_index % offset;
+    const int qkv_id = bias / hidden_size;
+    const int qkv_bias = bias % hidden_size;
+    const int hi = qkv_bias / half_lastdim;
+    const int h_bias = qkv_bias % half_lastdim;
+
+    const int ori_seq_id = ori_token_idx % seq_len;
+
+    const int emb_idx = (ori_seq_id + token_num_in_cahce) * last_dim + h_bias;
+    const int base_idx_left = token_idx * 3 * full_hidden_size +
+                              qkv_id * full_hidden_size + hi * last_dim +
+                              h_bias;
+    const int base_idx_right = base_idx_left + half_lastdim;
+
+    phi::Load<T, VecSize>(&qkv[base_idx_left], &left_vec);
+    phi::Load<T, VecSize>(&qkv[base_idx_right], &right_vec);
+    phi::Load<float, VecSize>(&cos_emb[emb_idx], &cos_emb_vec);
+    phi::Load<float, VecSize>(&sin_emb[emb_idx], &sin_emb_vec);
+#pragma unroll
+    for (int i = 0; i < VecSize; i++) {
+      const float input_left = static_cast<float>(left_vec[i]);
+      const float input_right = static_cast<float>(right_vec[i]);
+      const float cos_tmp = cos_emb_vec[i];
+      const float sin_tmp = sin_emb_vec[i];
+      left_vec[i] =
+          static_cast<T>(input_left * cos_tmp - input_right * sin_tmp);
+      right_vec[i] =
+          static_cast<T>(input_right * cos_tmp + input_left * sin_tmp);
+    }
+    phi::Store<T, VecSize>(left_vec, &qkv_out[base_idx_left]);
+    phi::Store<T, VecSize>(right_vec, &qkv_out[base_idx_right]);
+  }
+}
+
+
 template <typename T, int VecSize = 1>
 __global__ void VariableLengthRotaryKernel(
     const T *qkv,
@@ -1735,6 +1803,67 @@ __global__ void VariableLengthRotaryKernel(
     const int ori_seq_id = ori_token_idx % seq_len;
 
     const int emb_idx = ori_seq_id * half_lastdim + h_bias / 2;
+    const int64_t base_idx = token_idx * 3 * hidden_size +
+                             qkv_id * hidden_size + hi * last_dim + h_bias;
+    phi::Load<T, VecSize>(&qkv[base_idx], &src_vec);
+    phi::Load<float, HalfVecSize>(&cos_emb[emb_idx], &cos_emb_vec);
+    phi::Load<float, HalfVecSize>(&sin_emb[emb_idx], &sin_emb_vec);
+#pragma unroll
+    for (int i = 0; i < HalfVecSize; i++) {
+      const float input_left = static_cast<float>(src_vec[2 * i]);
+      const float input_right = static_cast<float>(src_vec[2 * i + 1]);
+      const float cos_tmp = cos_emb_vec[i];
+      const float sin_tmp = sin_emb_vec[i];
+      src_vec[2 * i] =
+          static_cast<T>(input_left * cos_tmp - input_right * sin_tmp);
+      src_vec[2 * i + 1] =
+          static_cast<T>(input_right * cos_tmp + input_left * sin_tmp);
+    }
+    phi::Store<T, VecSize>(src_vec, &qkv_out[base_idx]);
+  }
+}
+
+// used in the decoder phase of speculative decoding
+template <typename T, int VecSize = 1>
+__global__ void VariableLengthRotarySpecuKernel(
+    const T *qkv,
+    const float *cos_emb,  // [1, 1, seq_len, dim_head / 2]
+    const float *sin_emb,
+    const int *padding_offsets,
+    const int *seq_lens,
+    T *qkv_out,
+    const int64_t elem_cnt,
+    const int num_head,
+    const int seq_len,
+    const int token_num_in_cahce,
+    const int last_dim) {
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  constexpr int HalfVecSize = VecSize / 2;
+  using LoadEmbT = phi::AlignedVector<float, HalfVecSize>;
+  LoadT src_vec;
+  LoadEmbT cos_emb_vec;
+  LoadEmbT sin_emb_vec;
+  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  const int half_lastdim = last_dim / 2;
+  const int hidden_size = num_head * last_dim;
+  const int offset = 2 * hidden_size;
+  for (int64_t linear_index = global_thread_idx * VecSize,
+               step = gridDim.x * blockDim.x * VecSize;
+       linear_index < elem_cnt;
+       linear_index += step) {
+    const int token_idx = linear_index / offset;
+    const int ori_token_idx = token_idx + padding_offsets[token_idx];
+    const int ori_bi = ori_token_idx / seq_len;
+    if (seq_lens && seq_lens[ori_bi] == 0) continue;
+    const int bias = linear_index % offset;
+    const int qkv_id = bias / hidden_size;
+    const int qkv_bias = bias % hidden_size;
+    const int hi = qkv_bias / last_dim;
+    const int h_bias = qkv_bias % last_dim;
+
+    const int ori_seq_id = ori_token_idx % seq_len;
+
+    const int emb_idx = (ori_seq_id + token_num_in_cahce) * half_lastdim + h_bias / 2;
     const int64_t base_idx = token_idx * 3 * hidden_size +
                              qkv_id * hidden_size + hi * last_dim + h_bias;
     phi::Load<T, VecSize>(&qkv[base_idx], &src_vec);
@@ -1805,6 +1934,66 @@ void rotary_qk_variable(
                                                         elem_nums,
                                                         head_num,
                                                         seq_len,
+                                                        dim_head);
+  }
+}
+
+
+// used in the decoder phase of speculative decoding
+// NOTE: when use this kernel, please set use_neox_style = true.
+template <typename T>
+void rotary_qk_variable_multi_token(
+    const phi::GPUContext &dev_ctx,
+    T *qkv,                   // [token_num, 3, num_head, dim_head]
+    const T *qkv_input,       // qkv
+    const float *rotary_emb,  // [2, 1, seq_len, 1, dim_head]
+    const int *padding_offsets,
+    const int *seq_lens,
+    const int token_num,
+    const int head_num,
+    const int seq_len,
+    const int token_num_in_cache,
+    const int input_output_len,
+    const int dim_head,
+    bool use_neox_style = false) {
+  int elem_nums = token_num * 2 * head_num * dim_head;  // just q and k
+  if (use_neox_style) {
+    elem_nums = token_num * head_num * dim_head;
+  }
+  constexpr int PackSize = 16 / sizeof(T);
+  const int pack_num = elem_nums / PackSize;
+  const int blocksize = 128;
+  int grid_size = 1;
+  GetNumBlocks(pack_num, &grid_size);
+  if (!use_neox_style) {
+    const float *cos_emb = rotary_emb;
+    const float *sin_emb = rotary_emb + input_output_len * dim_head / 2;
+    VariableLengthRotarySpecuKernel<T, PackSize>
+        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
+                                                        cos_emb,
+                                                        sin_emb,
+                                                        padding_offsets,
+                                                        seq_lens,
+                                                        qkv,
+                                                        elem_nums,
+                                                        head_num,
+                                                        seq_len,
+                                                        token_num_in_cache,
+                                                        dim_head);
+  } else {
+    const float *cos_emb = rotary_emb;
+    const float *sin_emb = rotary_emb + input_output_len * dim_head;
+    NeoxVariableLengthRotarySpecuKernel<T, PackSize>
+        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
+                                                        cos_emb,
+                                                        sin_emb,
+                                                        padding_offsets,
+                                                        seq_lens,
+                                                        qkv,
+                                                        elem_nums,
+                                                        head_num,
+                                                        seq_len,
+                                                        token_num_in_cache,
                                                         dim_head);
   }
 }

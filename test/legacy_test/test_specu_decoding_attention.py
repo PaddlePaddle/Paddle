@@ -18,8 +18,12 @@ import paddle
 from paddle.incubate.nn.functional import (
     speculative_decoding_multihead_attention,
 )
+from paddle.framework import core
 
-# paddle.disable_static()
+from test_block_multihead_attention import RopeEmbedding, get_cuda_version, is_sm_supported
+
+paddle.seed(2024)
+np.random.seed(2024)
 
 def naive_attention_impl(
     query,
@@ -31,10 +35,14 @@ def naive_attention_impl(
     pre_cache_v=None,
     mask=None,
     scale=1.0,
-    cache_k_dequant_scales=None,
-    cache_v_dequant_scales=None,
-    use_cachekv_int8="None",
 ):
+    """
+    query: [batch, heads, seq_len, head_dim]
+    key: [batch, heads, seq_len, head_dim]
+    value: [batch, heads, seq_len, head_dim]
+    cache_k: [batch, seq_len, heads, head_dim]
+    cache_v: [batch, seq_len, heads, head_dim]
+    """
     batch = query.shape[0]
     heads = query.shape[1]
     seq_len = query.shape[2]
@@ -45,21 +53,11 @@ def naive_attention_impl(
     key = paddle.tile(key, [1, 1, heads // kv_head, 1, 1])
     key = key.reshape([batch, heads, seq_len, head_dim])
 
-    if use_cachekv_int8 == "dynamic":
-        unsqueeze_shape = [2, 3]
-    elif use_cachekv_int8 == "static":
-        unsqueeze_shape = [0, 2, 3]
     if pre_cache_k is not None:
         key = paddle.concat([pre_cache_k, key], axis=2)
     if cache_k is not None:
-        if cache_k_dequant_scales is not None:
-            dequant_cache_k = (
-                (cache_k.astype('float32') - 128.0)
-                * cache_k_dequant_scales.unsqueeze(unsqueeze_shape)
-            ).astype(key.dtype)
-            key = paddle.concat([dequant_cache_k, key], axis=2)
-        else:
-            key = paddle.concat([cache_k, key], axis=2)
+        cache_k_transed = paddle.transpose(cache_k, [0, 2, 1, 3])
+        key = paddle.concat([cache_k_transed, key], axis=2)
 
     value = value.reshape([batch, kv_head, 1, seq_len, head_dim])
     value = paddle.tile(value, [1, 1, heads // kv_head, 1, 1])
@@ -67,14 +65,8 @@ def naive_attention_impl(
     if pre_cache_v is not None:
         value = paddle.concat([pre_cache_v, value], axis=2)
     if cache_v is not None:
-        if cache_v_dequant_scales is not None:
-            dequant_cache_v = (
-                (cache_v.astype('float32') - 128.0)
-                * cache_v_dequant_scales.unsqueeze(unsqueeze_shape)
-            ).astype(value.dtype)
-            value = paddle.concat([dequant_cache_v, value], axis=2)
-        else:
-            value = paddle.concat([cache_v, value], axis=2)
+        cache_v_transed = paddle.transpose(cache_v, [0, 2, 1, 3])
+        value = paddle.concat([cache_v_transed, value], axis=2)
 
     qk_res = paddle.matmul(query, key, transpose_y=True)
     attention = qk_res * scale
@@ -137,13 +129,13 @@ def create_attn_mask(
     return mask
 
 
-# @unittest.skipIf(
-#     not core.is_compiled_with_cuda()
-#     or get_cuda_version() < 11040
-#     or not is_sm_supported,
-#     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
-#     "and device's compute capability must be 8.x or 90",
-# )
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11040
+    or not is_sm_supported,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 8.x or 90",
+)
 class TestSpecuDecodingAttention(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
@@ -155,7 +147,6 @@ class TestSpecuDecodingAttention(unittest.TestCase):
         self.max_dec_len = 64
         self.dim_head = 64
         self.hid_dim = self.num_head * self.dim_head
-        self.blocksize = 64
         self.seq_lens_encoder = paddle.to_tensor(
             [
                 self.seq_len,
@@ -181,8 +172,8 @@ class TestSpecuDecodingAttention(unittest.TestCase):
 
         self.cache_shape = (  # (bsz, num_head, cache_seq_len, dim_head)
             self.batch_size,
-            self.num_head,
             self.seq_len,
+            self.num_head,
             self.dim_head,
         )
         self.dtype = 'float16'
@@ -193,11 +184,6 @@ class TestSpecuDecodingAttention(unittest.TestCase):
                 self.seq_len,
             ]
             * self.batch_size,
-        )
-
-        self.tgt_mask = paddle.randn(
-            [self.batch_size, self.num_head, 64, self.seq_len + 64],
-            dtype=self.dtype,
         )
 
         self.cache_k = paddle.zeros(shape=self.cache_shape, dtype=self.dtype)
@@ -249,6 +235,7 @@ class TestSpecuDecodingAttention(unittest.TestCase):
         out_ = remove_padding(
             self.seq_lens_this_time, self.cu_seqlens_q, out_, self.token_num
         )
+
         out, qkv_out, _, _ = speculative_decoding_multihead_attention(
             qkv,
             self.cache_k,
@@ -260,14 +247,21 @@ class TestSpecuDecodingAttention(unittest.TestCase):
             self.cum_offset,
             self.cu_seqlens_q,
             self.cu_seqlens_k,
-            None,  # pre_key_cache
-            None,  # pre_value_cache
+            None,  # rope
             None,  # attn_mask
             None,  # qkv_bias
             0, # num_tokens_in_cache
-            64,  # max_seq_len,
+            self.max_dec_len,  # max_seq_len,
             False,  # use_neox_rotary_style
         )
+
+        k_out = qkv_out[:, self.hid_dim:2 * self.hid_dim]
+        k_out = paddle.reshape(k_out, [self.batch_size, self.seq_len, self.num_head, self.dim_head])
+        self.cache_k[:, :self.seq_len, :, :] = k_out
+
+        v_out = qkv_out[:, 2 * self.hid_dim:]
+        v_out = paddle.reshape(v_out, [self.batch_size, self.seq_len, self.num_head, self.dim_head])
+        self.cache_v[:, :self.seq_len, :, :] = v_out
 
         np.testing.assert_allclose(
             out.numpy(),
@@ -281,12 +275,14 @@ class TestSpecuDecodingAttention(unittest.TestCase):
 
         self.seq_lens_decoder[:] = self.seq_lens_encoder
         self.seq_lens_encoder[:] = 0
-        self.seq_lens_this_time[:] = 64
+        self.token_num_decoder_phase = 5
+        self.seq_lens_this_time[:] = self.token_num_decoder_phase
+
         # 多 token
         self.shape = (
             self.batch_size,
             self.num_head,
-            self.seq_len,
+            self.token_num_decoder_phase,
             self.dim_head,
         )
         query = np.random.random(self.shape)
@@ -304,23 +300,24 @@ class TestSpecuDecodingAttention(unittest.TestCase):
         qkv = paddle.stack(
             [
                 q.transpose([0, 2, 1, 3]).reshape(
-                    [self.token_num, self.hid_dim]
+                    [self.token_num_decoder_phase, self.hid_dim]
                 ),
                 k.transpose([0, 2, 1, 3]).reshape(
-                    [self.token_num, self.hid_dim]
+                    [self.token_num_decoder_phase, self.hid_dim]
                 ),
                 v.transpose([0, 2, 1, 3]).reshape(
-                    [self.token_num, self.hid_dim]
+                    [self.token_num_decoder_phase, self.hid_dim]
                 ),
             ],
             axis=1,
-        ).reshape([self.token_num, -1])
+        ).reshape([self.token_num_decoder_phase, -1])
         (
             self.padding_offset,
             self.cum_offset,
             self.cu_seqlens_q,
             self.cu_seqlens_k,
-        ) = get_padding_offset(self.batch_size, 64, self.seq_lens_this_time)
+        ) = get_padding_offset(self.batch_size, self.token_num_decoder_phase, self.seq_lens_this_time)
+
         out_ = (
             naive_attention_impl(
                 q,
@@ -334,10 +331,189 @@ class TestSpecuDecodingAttention(unittest.TestCase):
                 self.scale,
             )
             .transpose([0, 2, 1, 3])
-            .reshape([self.token_num, -1])
+            .reshape([self.token_num_decoder_phase, -1])
         )
 
-        self.cu_seqlens_k = self.cu_seqlens_k + self.token_num
+        out, qkv_out, cache_k_out, cache_v_out = speculative_decoding_multihead_attention(
+            qkv,
+            self.cache_k,
+            self.cache_v,
+            self.seq_lens_encoder,
+            self.seq_lens_decoder,
+            self.seq_lens_this_time,
+            self.padding_offset,
+            self.cum_offset,
+            self.cu_seqlens_q,
+            self.cu_seqlens_k,
+            None,  # rope
+            None,  # attn_mask
+            None,  # qkv_bias
+            self.token_num,  # num_tokens_in_cache,
+            self.max_dec_len,  # max_seq_len,
+            False,  # use_neox_rotary_style
+        )
+
+        np.testing.assert_allclose(
+            out.numpy(),
+            out_.numpy(),
+            rtol=5e-2,
+            atol=1e-3,
+        )
+        np.testing.assert_allclose(
+            cache_k_out.numpy(),
+            self.cache_k.numpy(),
+            rtol=5e-03,
+            atol=1e-03,
+        )
+        np.testing.assert_allclose(
+            cache_v_out.numpy(),
+            self.cache_v.numpy(),
+            rtol=5e-03,
+            atol=1e-03,
+        )
+
+
+class TestSpecuDecodingAttnRoPE(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.name = "TestSpecuDecodingAttention"
+        self.place = paddle.CUDAPlace(0)
+        self.batch_size = 1
+        self.num_head = 8
+        self.seq_len = 64
+        self.max_dec_len = 64
+        self.dim_head = 64
+        self.hid_dim = self.num_head * self.dim_head
+        self.rope = RopeEmbedding()
+        self.seq_lens_encoder = paddle.to_tensor(
+            [
+                self.seq_len,
+            ]
+            * self.batch_size,
+            "int32",
+        )
+        self.seq_lens_decoder = paddle.to_tensor(
+            [
+                0,
+            ]
+            * self.batch_size,
+            "int32",
+        )
+        self.seq_lens_this_time = self.seq_lens_encoder
+        self.shape = (
+            self.batch_size,
+            self.num_head,
+            self.seq_len,
+            self.dim_head,
+        )
+        self.scale = 1.0 / np.sqrt(self.shape[-1])
+
+        self.cache_shape = (  # (bsz, num_head, cache_seq_len, dim_head)
+            self.batch_size,
+            self.seq_len,
+            self.num_head,
+            self.dim_head,
+        )
+        self.dtype = 'float16'
+        self.attention_mask = create_attn_mask(
+            self.dtype,
+            self.batch_size,
+            [
+                self.seq_len,
+            ]
+            * self.batch_size,
+        )
+
+        self.cache_k = paddle.zeros(shape=self.cache_shape, dtype=self.dtype)
+        self.cache_v = paddle.zeros(shape=self.cache_shape, dtype=self.dtype)
+        (
+            self.padding_offset,
+            self.cum_offset,
+            self.cu_seqlens_q,
+            self.cu_seqlens_k,
+        ) = get_padding_offset(
+            self.batch_size, self.seq_len, self.seq_lens_this_time
+        )
+
+        self.token_num = self.padding_offset.shape[0]
+    
+
+    def get_rotary_position_embedding(self, position_ids, head_dim):
+        bsz, max_seq_len = position_ids.shape[:2]
+        rot_emb = paddle.zeros(
+            (2, bsz, max_seq_len, 1, head_dim // 2), dtype="float32"
+        )
+        inv_freq = 10000 ** (
+            -paddle.arange(0, head_dim, 2, dtype="float32") / head_dim
+        )
+
+        # shape: [B, S, D/2]
+        freqs = paddle.einsum(
+            "ij,k->ijk", position_ids.cast("float32"), inv_freq
+        )
+        # shape: [B, S, D]
+        # emb = paddle.stack([freqs, freqs], axis=-1).reshape((bsz, max_seq_len, head_dim))
+        emb = paddle.stack([freqs], axis=-1).reshape(
+            (bsz, max_seq_len, head_dim // 2)
+        )
+        # shape: [B, S, 1, D]
+        emb = paddle.unsqueeze(emb, 2)
+
+        rot_emb[0] = paddle.cos(emb)
+        rot_emb[1] = paddle.sin(emb)
+        return rot_emb
+
+    def test_all(self):
+        paddle.disable_static()
+        tmp_position_ids = paddle.arange(
+            self.seq_len + self.max_dec_len
+        ).reshape((1, -1))
+
+        self.rope_emb = self.get_rotary_position_embedding(
+            tmp_position_ids, self.dim_head
+        )
+        # encoder
+        query = np.random.random(self.shape)
+        q = paddle.to_tensor(
+            query, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        key = np.random.random(self.shape)
+        k = paddle.to_tensor(
+            key, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        value = np.random.random(self.shape)
+        v = paddle.to_tensor(
+            value, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+
+        qkv = paddle.stack(
+            [
+                q.transpose([0, 2, 1, 3]).reshape(
+                    [self.token_num, self.hid_dim]
+                ),
+                k.transpose([0, 2, 1, 3]).reshape(
+                    [self.token_num, self.hid_dim]
+                ),
+                v.transpose([0, 2, 1, 3]).reshape(
+                    [self.token_num, self.hid_dim]
+                ),
+            ],
+            axis=1,
+        ).reshape([self.token_num, -1])
+        sinusoidal_pos = self.rope._rotary_position_embedding(
+            self.seq_len, self.dim_head, self.dtype
+        )
+        q, k = self.rope._apply_rope(sinusoidal_pos, q, k)
+
+
+        out_ = naive_attention_impl(
+            q, k, v, None, None, None, None, self.attention_mask, self.scale
+        )
+
+        out_ = remove_padding(
+            self.seq_lens_this_time, self.cu_seqlens_q, out_, self.token_num
+        )
+
         out, qkv_out, _, _ = speculative_decoding_multihead_attention(
             qkv,
             self.cache_k,
@@ -349,20 +525,133 @@ class TestSpecuDecodingAttention(unittest.TestCase):
             self.cum_offset,
             self.cu_seqlens_q,
             self.cu_seqlens_k,
-            None,  # pre_key_cache
-            None,  # pre_value_cache
+            self.rope_emb, # rope
             None,  # attn_mask
             None,  # qkv_bias
-            64,  # seq_len,
-            64,  # num_tokens_in_cache,
+            0, # num_tokens_in_cache
+            self.max_dec_len,  # max_seq_len,
             False,  # use_neox_rotary_style
         )
-        # NOTE: The diff of decoder is a little big
+
+        k_out = qkv_out[:, self.hid_dim:2 * self.hid_dim]
+        k_out = paddle.reshape(k_out, [self.batch_size, self.seq_len, self.num_head, self.dim_head])
+        self.cache_k[:, :self.seq_len, :, :] = k_out
+
+        v_out = qkv_out[:, 2 * self.hid_dim:]
+        v_out = paddle.reshape(v_out, [self.batch_size, self.seq_len, self.num_head, self.dim_head])
+        self.cache_v[:, :self.seq_len, :, :] = v_out
+
         np.testing.assert_allclose(
             out.numpy(),
             out_.numpy(),
-            rtol=0.45,
-            atol=0.5,
+            rtol=1e-04,
+            atol=5e-04,
+        )
+
+        # decoder
+        naive_cache_k, naive_cache_v = self.cache_k, self.cache_v
+        self.seq_lens_decoder[:] = self.seq_lens_encoder
+        self.seq_lens_encoder[:] = 0
+        self.token_num_decoder_phase = 5
+        self.seq_lens_this_time[:] = self.token_num_decoder_phase
+
+        # 多 token
+        self.shape = (
+            self.batch_size,
+            self.num_head,
+            self.token_num_decoder_phase,
+            self.dim_head,
+        )
+        query = np.random.random(self.shape)
+        q = paddle.to_tensor(
+            query, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        key = np.random.random(self.shape)
+        k = paddle.to_tensor(
+            key, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        value = np.random.random(self.shape)
+        v = paddle.to_tensor(
+            value, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        qkv = paddle.stack(
+            [
+                q.transpose([0, 2, 1, 3]).reshape(
+                    [self.token_num_decoder_phase, self.hid_dim]
+                ),
+                k.transpose([0, 2, 1, 3]).reshape(
+                    [self.token_num_decoder_phase, self.hid_dim]
+                ),
+                v.transpose([0, 2, 1, 3]).reshape(
+                    [self.token_num_decoder_phase, self.hid_dim]
+                ),
+            ],
+            axis=1,
+        ).reshape([self.token_num_decoder_phase, -1])
+        sinusoidal_pos = self.rope._rotary_position_embedding(
+            self.seq_len + self.token_num_decoder_phase, self.dim_head, self.dtype
+        )[:, :, -self.token_num_decoder_phase:, :] 
+        q, k = self.rope._apply_rope(sinusoidal_pos, q, k)
+
+        (
+            self.padding_offset,
+            self.cum_offset,
+            self.cu_seqlens_q,
+            self.cu_seqlens_k,
+        ) = get_padding_offset(self.batch_size, self.token_num_decoder_phase, self.seq_lens_this_time)
+
+        out_ = (
+            naive_attention_impl(
+                q,
+                k,
+                v,
+                naive_cache_k,
+                naive_cache_v,
+                None,
+                None,
+                None,
+                self.scale,
+            )
+            .transpose([0, 2, 1, 3])
+            .reshape([self.token_num_decoder_phase, -1])
+        )
+
+        out, qkv_out, cache_k_out, cache_v_out = speculative_decoding_multihead_attention(
+            qkv,
+            self.cache_k,
+            self.cache_v,
+            self.seq_lens_encoder,
+            self.seq_lens_decoder,
+            self.seq_lens_this_time,
+            self.padding_offset,
+            self.cum_offset,
+            self.cu_seqlens_q,
+            self.cu_seqlens_k,
+            self.rope_emb,  # rope
+            None,  # attn_mask
+            None,  # qkv_bias
+            self.token_num,  # num_tokens_in_cache,
+            self.max_dec_len,  # max_seq_len,
+            False,  # use_neox_rotary_style
+        )
+
+        np.testing.assert_allclose(
+            out.numpy(),
+            out_.numpy(),
+            rtol=5e-2,
+            atol=3e-2,
+        )
+        np.testing.assert_allclose(
+            cache_k_out.numpy(),
+            self.cache_k.numpy(),
+            rtol=5e-03,
+            atol=1e-03,
+        )
+        np.testing.assert_allclose(
+            cache_v_out.numpy(),
+            self.cache_v.numpy(),
+            rtol=5e-03,
+            atol=1e-03,
         )
 
 if __name__ == '__main__':

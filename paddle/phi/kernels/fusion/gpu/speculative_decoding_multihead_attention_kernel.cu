@@ -41,8 +41,7 @@ void SpeculativeDecodingMultiheadAttentionKernel(
     const DenseTensor& cum_offsets,
     const DenseTensor& cu_seqlens_q,
     const DenseTensor& cu_seqlens_k,
-    const paddle::optional<DenseTensor>& pre_key_cache,
-    const paddle::optional<DenseTensor>& pre_value_cache,
+    const paddle::optional<DenseTensor>& rope_emb,
     const paddle::optional<DenseTensor>& mask,
     const paddle::optional<DenseTensor>& qkv_bias,
     int token_num_in_cache,
@@ -64,9 +63,9 @@ void SpeculativeDecodingMultiheadAttentionKernel(
   const auto& input_dims = qkv.dims();
   const auto& key_cache_dims = key_cache.dims();
   const int token_num = input_dims[0];
-  const int num_head = key_cache_dims[1];
+  const int num_head = key_cache_dims[2];
   const int dim_head = key_cache_dims[3];
-  const int cache_token_num = key_cache_dims[0] * key_cache_dims[2];
+  const int cache_token_num = key_cache_dims[0] * key_cache_dims[1];
 
   const int bsz = cum_offsets.dims()[0];
   VLOG(3) << "bsz: " << bsz << " token_num: " << token_num
@@ -77,14 +76,7 @@ void SpeculativeDecodingMultiheadAttentionKernel(
     causual = false;
   }
 
-  bool use_pre_cache = false;
-  int pre_cache_length = 0;
-  if (pre_key_cache) {
-    use_pre_cache = true;
-    pre_cache_length = pre_key_cache.get().dims()[2];
-  }
-  VLOG(3) << "token_num: " << token_num
-          << " pre_cache_length: " << pre_cache_length;
+  VLOG(3) << "token_num: " << token_num;
 
   phi::DenseTensor max_dec_len_tensor;
   max_dec_len_tensor.Resize({{1}});
@@ -104,34 +96,19 @@ void SpeculativeDecodingMultiheadAttentionKernel(
   phi::DenseTensor softmax_out, softmax_lse, seed_offset;
   phi::DenseTensor q_trans, k_trans, v_trans, qktv_out;
 
-  if (!use_pre_cache) {
-    unpadding_q.Resize({{token_num, num_head, dim_head}});
-    unpadding_k.Resize({{token_num, num_head, dim_head}});
-    unpadding_v.Resize({{token_num, num_head, dim_head}});
+  unpadding_q.Resize({{token_num, num_head, dim_head}});
+  unpadding_k.Resize({{token_num, num_head, dim_head}});
+  unpadding_v.Resize({{token_num, num_head, dim_head}});
 
-    unpadding_k_after_cache.Resize({{token_num_in_cache + token_num, num_head, dim_head}});
-    unpadding_v_after_cache.Resize({{token_num_in_cache + token_num, num_head, dim_head}});
+  unpadding_k_after_cache.Resize({{token_num_in_cache + token_num, num_head, dim_head}});
+  unpadding_v_after_cache.Resize({{token_num_in_cache + token_num, num_head, dim_head}});
 
-    dev_ctx.template Alloc<T>(&unpadding_q, unpadding_q.numel() * sizeof(T));
-    dev_ctx.template Alloc<T>(&unpadding_k, unpadding_k.numel() * sizeof(T));
-    dev_ctx.template Alloc<T>(&unpadding_v, unpadding_v.numel() * sizeof(T));
-    
-    dev_ctx.template Alloc<T>(&unpadding_k_after_cache, unpadding_k_after_cache.numel() * sizeof(T));
-    dev_ctx.template Alloc<T>(&unpadding_v_after_cache, unpadding_v_after_cache.numel() * sizeof(T));
-
-  } else {
-    q_trans.Resize({{bsz, num_head, max_enc_len_this_time, dim_head}});
-    k_trans.Resize(
-        {{bsz, num_head, max_enc_len_this_time + pre_cache_length, dim_head}});
-    v_trans.Resize(
-        {{bsz, num_head, max_enc_len_this_time + pre_cache_length, dim_head}});
-    qktv_out.Resize({{bsz, num_head, max_enc_len_this_time, dim_head}});
-
-    dev_ctx.template Alloc<T>(&q_trans, q_trans.numel() * sizeof(T));
-    dev_ctx.template Alloc<T>(&k_trans, k_trans.numel() * sizeof(T));
-    dev_ctx.template Alloc<T>(&v_trans, v_trans.numel() * sizeof(T));
-    dev_ctx.template Alloc<T>(&qktv_out, qktv_out.numel() * sizeof(T));
-  }
+  dev_ctx.template Alloc<T>(&unpadding_q, unpadding_q.numel() * sizeof(T));
+  dev_ctx.template Alloc<T>(&unpadding_k, unpadding_k.numel() * sizeof(T));
+  dev_ctx.template Alloc<T>(&unpadding_v, unpadding_v.numel() * sizeof(T));
+  
+  dev_ctx.template Alloc<T>(&unpadding_k_after_cache, unpadding_k_after_cache.numel() * sizeof(T));
+  dev_ctx.template Alloc<T>(&unpadding_v_after_cache, unpadding_v_after_cache.numel() * sizeof(T));
 
   // qkv: [self.batch_size * self.seq_len, nd*hd]
   qkv_buf = qkv;
@@ -140,84 +117,92 @@ void SpeculativeDecodingMultiheadAttentionKernel(
 
   if (max_enc_len_this_time > 0) {
     const int* sequence_lengths_data = seq_lens_encoder.data<int>();
-    if (!pre_key_cache) {
-      qkv_transpose_split<T>(dev_ctx,
-                            unpadding_q.data<T>(),
-                            unpadding_k.data<T>(),
-                            unpadding_v.data<T>(),
-                            qkv_buf.data<T>(),
-                            padding_offsets.data<int>(),
-                            sequence_lengths_data,
-                            token_num,
-                            bsz,
-                            num_head,
-                            max_seq_len,
-                            dim_head);
-      phi::FlashAttnUnpaddedKernel<T>(dev_ctx,
-                                      unpadding_q,
-                                      unpadding_k,
-                                      unpadding_v,
-                                      cu_seqlens_q,
-                                      cu_seqlens_k,
-                                      paddle::none /*fixed_seed_offset*/,
-                                      causual ? paddle::none : mask,
-                                      max_enc_len_this_time,
-                                      max_enc_len_this_time,
-                                      1.0f / sqrt(static_cast<float>(dim_head)),
-                                      0.0,
-                                      causual,
-                                      false,
-                                      true /* is_test*/,
-                                      "" /*rng_name*/,
-                                      &fmha_buf,
-                                      &softmax_out,
-                                      &softmax_lse,
-                                      &seed_offset);
-      VLOG(3) << "-------fmha_buf dims: " << fmha_buf.dims();
-    } else {
-      qkv_transpose_split<T>(
-          dev_ctx,
-          q_trans.data<T>(),
-          k_trans.data<T>(),
-          v_trans.data<T>(),
-          qkv.data<T>(),
-          pre_key_cache ? pre_key_cache.get().data<T>() : nullptr,
-          pre_value_cache ? pre_value_cache.get().data<T>() : nullptr,
-          padding_offsets.data<int>(),
-          sequence_lengths_data,
-          token_num,
-          bsz,
-          num_head,
-          max_enc_len_this_time,
-          max_seq_len,
-          pre_cache_length,
-          dim_head);
-
-      phi::FlashAttnUnpaddedKernel<T>(dev_ctx,
-                                q_trans,
-                                k_trans,
-                                v_trans,
-                                cu_seqlens_q,
-                                cu_seqlens_k,
-                                paddle::none /*fixed_seed_offset*/,
-                                causual ? paddle::none : mask,
-                                max_enc_len_this_time,
-                                max_enc_len_this_time,
-                                1.0f / sqrt(static_cast<float>(dim_head)),
-                                0.0,
-                                causual,
-                                false,
-                                true /* is_test*/,
-                                "" /*rng_name*/,
-                                &fmha_buf,
-                                &softmax_out,
-                                &softmax_lse,
-                                &seed_offset);
+    if (rope_emb) {
+      rotary_qk_variable(dev_ctx,
+                         qkv_buf.data<T>(),
+                         qkv_buf.data<T>(),
+                         rope_emb.get().data<float>(),
+                         padding_offsets.data<int>(),
+                         sequence_lengths_data,
+                         token_num,
+                         num_head,
+                         max_seq_len,
+                         rope_emb.get().dims()[2],
+                         dim_head,
+                         use_neox_style);
+      VLOG(3) << "rope end";
+      VLOG(3) << "causual: " << causual;
     }
+    
+    qkv_transpose_split<T>(dev_ctx,
+                          unpadding_q.data<T>(),
+                          unpadding_k.data<T>(),
+                          unpadding_v.data<T>(),
+                          qkv_buf.data<T>(),
+                          padding_offsets.data<int>(),
+                          sequence_lengths_data,
+                          token_num,
+                          bsz,
+                          num_head,
+                          max_seq_len,
+                          dim_head);
+
+    // paddle::funcs::TensorFormatter formatter;
+    // formatter.Print(unpadding_q, "unpadding_q");
+    // formatter.Print(unpadding_k, "unpadding_k");
+
+    phi::FlashAttnUnpaddedKernel<T>(dev_ctx,
+                                    unpadding_q,
+                                    unpadding_k,
+                                    unpadding_v,
+                                    cu_seqlens_q,
+                                    cu_seqlens_k,
+                                    paddle::none /*fixed_seed_offset*/,
+                                    causual ? paddle::none : mask,
+                                    max_enc_len_this_time,
+                                    max_enc_len_this_time,
+                                    1.0f / sqrt(static_cast<float>(dim_head)),
+                                    0.0,
+                                    causual,
+                                    false,
+                                    true /* is_test*/,
+                                    "" /*rng_name*/,
+                                    &fmha_buf,
+                                    &softmax_out,
+                                    &softmax_lse,
+                                    &seed_offset);
+    VLOG(3) << "-------fmha_buf dims: " << fmha_buf.dims();
   }
 
   if (max_dec_len_this_time > 0) {
+    const int seq_len = token_num / bsz;
     const int* sequence_lengths_data = seq_lens_decoder.data<int>();
+    if (rope_emb) {
+      VLOG(3) << "qkv_buf's shape: " << qkv_buf.dims();
+      VLOG(3) << "rope_emb's shape: " << rope_emb.get().dims();
+      VLOG(3) << "padding_offsets's shape: " << padding_offsets.dims();
+      VLOG(3) << "token_num: " << token_num;
+      VLOG(3) << "num_head: " << num_head;
+      VLOG(3) << "max_seq_len: " << max_seq_len;
+      VLOG(3) << "dim_head: " << dim_head;
+      VLOG(3) << "token_num_in_cache: " << token_num_in_cache;
+      VLOG(3) << "use_neox_style: " << use_neox_style;
+
+      rotary_qk_variable_multi_token(dev_ctx,
+                         qkv_buf.data<T>(),
+                         qkv_buf.data<T>(),
+                         rope_emb.get().data<float>(),
+                         padding_offsets.data<int>(),
+                         sequence_lengths_data,
+                         token_num,
+                         num_head,
+                         max_seq_len,
+                         token_num_in_cache,
+                         rope_emb.get().dims()[2],
+                         dim_head,
+                         use_neox_style);
+      VLOG(3) << "rope end!";
+    }
 
     qkv_transpose_split<T>(dev_ctx,
                       unpadding_q.data<T>(),
@@ -232,17 +217,11 @@ void SpeculativeDecodingMultiheadAttentionKernel(
                       max_seq_len,
                       dim_head);
 
-    // 写一个 kernel，更新 cache_k, cache_v
-    // 更新 k，将 unpadding_k 拼接到 key_cache 后面
-    phi::DenseTensor key_cache_transed =
-        phi::Transpose<T, phi::GPUContext>(dev_ctx, key_cache, {0, 2, 1, 3});
-    phi::DenseTensor value_cache_transed =
-        phi::Transpose<T, phi::GPUContext>(dev_ctx, value_cache, {0, 2, 1, 3});
-    CacheKernel<T>(dev_ctx,
+    WriteCacheToKVKernel<T>(dev_ctx,
       unpadding_k,
       unpadding_v,
-      key_cache_transed,
-      value_cache_transed,
+      key_cache,
+      value_cache,
       unpadding_k_after_cache,
       unpadding_v_after_cache,
       token_num_in_cache,
@@ -250,43 +229,35 @@ void SpeculativeDecodingMultiheadAttentionKernel(
       token_num,
       num_head,
       dim_head);
-    VLOG(3) << "-------unpadding_q dims: " << unpadding_q.dims();
-    VLOG(3) << "-------unpadding_k dims: " << unpadding_k.dims();
-    VLOG(3) << "-------unpadding_v dims: " << unpadding_v.dims();
-    VLOG(3) << "-------unpadding_k_after_cache dims: " << unpadding_k_after_cache.dims();
-    VLOG(3) << "-------unpadding_v_after_cache dims: " << unpadding_v_after_cache.dims();
 
-    VLOG(3) << "-------cu_seqlens_q dims: " << cu_seqlens_q.dims();
-    VLOG(3) << "-------cu_seqlens_k dims: " << cu_seqlens_k.dims();
-    VLOG(3) << "-------max_dec_len_this_time: " << max_dec_len_this_time;
-    // paddle::funcs::TensorFormatter formatter;
-    // formatter.Print(unpadding_q, "unpadding_q");
-    // formatter.Print(unpadding_k_after_cache, "unpadding_k_after_cache");
-    // formatter.Print(unpadding_v_after_cache, "unpadding_v_after_cache");
-    // formatter.Print(key_cache, "key_cache");
-    // formatter.Print(value_cache, "value_cache");
+    auto unpadding_q_reshaped = phi::Reshape<T, phi::GPUContext>(
+      dev_ctx,
+      unpadding_q,
+      {bsz, seq_len, num_head, dim_head});
+    auto unpadding_k_after_cache_reshaped = phi::Reshape<T, phi::GPUContext>(
+      dev_ctx,
+      unpadding_k_after_cache,
+      {bsz, seq_len + token_num_in_cache, num_head, dim_head});
+    auto unpadding_v_after_cache_reshaped = phi::Reshape<T, phi::GPUContext>(
+      dev_ctx,
+      unpadding_v_after_cache,
+      {bsz, seq_len + token_num_in_cache, num_head, dim_head});
 
-    phi::FlashAttnUnpaddedKernel<T>(dev_ctx,
-                                    unpadding_q,
-                                    unpadding_k_after_cache,
-                                    unpadding_v_after_cache,
-                                    cu_seqlens_q,
-                                    cu_seqlens_k,
-                                    paddle::none /*fixed_seed_offset*/,
-                                    causual ? paddle::none : mask,
-                                    max_dec_len_this_time,
-                                    max_dec_len_this_time,
-                                    1.0f / sqrt(static_cast<float>(dim_head)),
-                                    0.0,
-                                    causual,
-                                    false,
-                                    true /* is_test*/,
-                                    "" /*rng_name*/,
-                                    &fmha_buf,
-                                    &softmax_out,
-                                    &softmax_lse,
-                                    &seed_offset);
-    // formatter.Print(fmha_buf, "fmha_buf");
+    phi::FlashAttnKernel<T>(dev_ctx,
+                            unpadding_q_reshaped,
+                            unpadding_k_after_cache_reshaped,
+                            unpadding_v_after_cache_reshaped,
+                            paddle::none /*fixed_seed_offset*/,
+                            causual ? paddle::none : mask,
+                            0.0f,
+                            causual,
+                            false,
+                            true /* is_test*/,
+                            "" /*rng_name*/,
+                            &fmha_buf,
+                            &softmax_out,
+                            &softmax_lse,
+                            &seed_offset);
     VLOG(3) << "-------fmha_buf dims: " << fmha_buf.dims();
   }
 }
