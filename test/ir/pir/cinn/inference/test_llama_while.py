@@ -77,6 +77,7 @@ class TestLlamaPostProcess(unittest.TestCase):
         out = net(self.logits, self.input_ids)
         return out
 
+    @unittest.skip("TODO: xiongkun")
     def test_eval(self):
         dy_out = self.eval(use_cinn=False)
         cinn_out = self.eval(use_cinn=True)

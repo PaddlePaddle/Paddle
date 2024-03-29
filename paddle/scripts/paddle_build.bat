@@ -383,6 +383,8 @@ set CUDA_TOOLKIT_ROOT_DIR=%CUDA_TOOLKIT_ROOT_DIR:\=/%
 
 rem install ninja if GENERATOR is Ninja
 if %GENERATOR% == "Ninja" (
+    rem Set the default generator for cmake to Ninja 
+    setx CMAKE_GENERATOR Ninja
     pip install ninja
     if %errorlevel% NEQ 0 (
         echo pip install ninja failed!
