@@ -960,13 +960,13 @@ def slice(x, axes, starts, ends, name=None):
     Args:
         x (Tensor): The input Tensor (``SparseCooTensor`` or ``SparseCsrTensor``), it's data type should be ``float16``, ``float32``, ``float64``, ``int32``, ``int64``.
         axes (list|tuple|Tensor): The data type is ``int32``.If ``axes`` is a list or tuple, the elements of
-                it should be integers or Tensors with shape [1]. If ``axes`` is a Tensor, it should be a 1-D Tensor.
+                it should be integers or a 0-D Tensor with shape []. If ``axes`` is a Tensor, it should be a 1-D Tensor.
                 Axes that `starts` and `ends` apply to.
         starts (list|tuple|Tensor): The data type is ``int32``. If ``starts`` is a list or tuple, the elements of
-                it should be integers or Tensors with shape [1]. If ``starts`` is a Tensor, it should be a 1-D Tensor.
+                it should be integers or a 0-D Tensor with shape []. If ``starts`` is a Tensor, it should be a 1-D Tensor.
                 It represents starting indices of corresponding axis in ``axes``.
         ends (list|tuple|Tensor): The data type is ``int32``. If ``ends`` is a list or tuple, the elements of
-                it should be integers or Tensors with shape [1]. If ``ends`` is a Tensor, it should be a 1-D Tensor.
+                it should be integers or a 0-D Tensor with shape []. If ``ends`` is a Tensor, it should be a 1-D Tensor.
                 It represents ending indices of corresponding axis in ``axes``.
 
     Returns:

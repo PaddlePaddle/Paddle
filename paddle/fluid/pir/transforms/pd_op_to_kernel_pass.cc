@@ -92,15 +92,15 @@ pir::Type ConvertOpTypeToKernelType(pir::IrContext* ctx,
 static const std::vector<pir::Type> InferMetaByValue(
     pir::Operation* op,
     const std::vector<pir::Value>& input_values,
-    pir::AttributeMap& attribute_map) {  // NOLINT
+    pir::AttributeMap* p_attribute_map) {  // NOLINT
   pir::OpInfo op_info =
       pir::IrContext::Instance()->GetRegisteredOpInfo(op->name());
   auto infer_meta_interface =
       op_info.GetInterfaceImpl<paddle::dialect::InferMetaInterface>();
   std::vector<pir::Type> output_types;
   if (infer_meta_interface) {
-    output_types =
-        infer_meta_interface->infer_meta_by_value_(input_values, attribute_map);
+    output_types = infer_meta_interface->infer_meta_by_value_(input_values,
+                                                              p_attribute_map);
   }
   return output_types;
 }
@@ -2095,7 +2095,7 @@ std::vector<pir::Type> BuildOutputs(
       input_values.emplace_back(op_item->operand(i).source());
     }
     std::vector<pir::Type> output_types =
-        InferMetaByValue(op_item, input_values, attribute_map);
+        InferMetaByValue(op_item, input_values, &attribute_map);
 
     if (output_types.size() != 0) {
       PADDLE_ENFORCE_EQ(
@@ -2129,7 +2129,7 @@ std::vector<pir::Type> BuildOutputs(
                           &op_output_types);
     }
   } else {
-    auto base_types = InferMetaByValue(op_item, new_vec_inputs, attribute_map);
+    auto base_types = InferMetaByValue(op_item, new_vec_inputs, &attribute_map);
     PADDLE_ENFORCE_EQ(base_types.size(),
                       op_item->num_results(),
                       phi::errors::PreconditionNotMet(

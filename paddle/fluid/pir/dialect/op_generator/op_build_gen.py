@@ -249,7 +249,8 @@ mutable_attribute_phi_type_maps = {
 
 
 def GenBuildInsertFullForMutableAttribute(
-    op_class_name,
+    args,
+    op_info,
     op_attribute_name_list,
     op_attribute_build_arg_type_list,
     op_mutable_attribute_name_list,
@@ -386,7 +387,7 @@ def GenBuildAttributes(
                 op_attribute_type=op_non_mutable_attribute_type_list[idx],
                 attr=op_non_mutable_attribute_name_list[idx],
             )
-        attr_str += """  argument.AddAttribute("{attr_name}", attr_{attr_name});\n  argument_attributes.insert({{"{attr_name}", attr_{attr_name}}});\n""".format(
+        attr_str += """  argument_attributes.insert({{"{attr_name}", attr_{attr_name}}});\n""".format(
             attr_name=op_non_mutable_attribute_name_list[idx]
         )
 
@@ -748,6 +749,7 @@ def GenBuildOutputs(
                     type=op_output_type_list[idx], name=output_name
                 )
 
+    build_output_str += "  argument.AddAttributes(argument_attributes);\n"
     build_output_str += "  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());\n"
     # NOTE(Aurelius84): PassStopGradients must be placed after argument.AddOutputs.
     build_output_str += "  ::pir::PassStopGradientsDefaultly(argument);\n"
@@ -756,10 +758,8 @@ def GenBuildOutputs(
 
 
 def gen_build_func_str(
-    op_class_name,
-    op_input_name_list,
-    op_input_type_list,
-    op_input_optional_list,
+    args,
+    op_info,
     op_attribute_name_list,
     op_attribute_type_list,
     op_attribute_build_arg_type_list,
@@ -770,18 +770,13 @@ def gen_build_func_str(
     op_non_mutable_attribute_type_list,
     op_non_mutable_attribute_build_arg_type_list,
     op_non_mutable_attribute_default_value_list,
-    op_output_name_list,
-    op_output_type_list,
-    op_output_size_list,
-    op_output_optional_list,
-    op_infer_meta_map,
-    op_inplace_map,
     muta_attr_is_input=False,
     attr_args_is_map=False,
 ):
+    op_input_name_list = op_info.input_name_list
     build_args_for_declare = ""
     build_func = ""
-    build_info_str = OP_INFO_TEMPLATE.format(op_name=op_class_name)
+    build_info_str = OP_INFO_TEMPLATE.format(op_name=op_info.class_name)
 
     build_args_for_declare = GenBuildInputArgsStr(
         op_input_name_list,
@@ -814,7 +809,8 @@ def gen_build_func_str(
     if not muta_attr_is_input:
         inset_full_for_mutable_attributes_str = (
             GenBuildInsertFullForMutableAttribute(
-                op_class_name,
+                args,
+                op_info,
                 op_attribute_name_list,
                 op_attribute_build_arg_type_list,
                 op_mutable_attribute_name_list,
@@ -831,10 +827,11 @@ def gen_build_func_str(
     )
 
     build_outputs_str = """
-  std::vector<pir::Type> argument_outputs = {op_name}::InferMeta(argument_inputs, argument_attributes);
+  std::vector<pir::Type> argument_outputs = {op_name}::InferMeta(argument_inputs, &argument_attributes);
+  argument.AddAttributes(argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
   ::pir::PassStopGradientsDefaultly(argument);""".format(
-        op_name=op_class_name
+        op_name=op_info.class_name
     )
 
     GET_ATTRIBUTES_FROM_MAP_TEMPLATE = """
@@ -910,7 +907,7 @@ def gen_build_func_str(
                     data_name = "AsString"
                 get_attributes_str += (
                     GET_ARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE.format(
-                        op_name=op_class_name,
+                        op_name=op_info.class_name,
                         attr_type=attr_type,
                         attribute_name=attr_names[idx],
                         inner_type=inner_type,
@@ -920,7 +917,7 @@ def gen_build_func_str(
             elif "paddle::dialect::IntArrayAttribute" in attr_types[idx]:
                 get_attributes_str += (
                     GET_INTARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE.format(
-                        op_name=op_class_name,
+                        op_name=op_info.class_name,
                         attr_type=attr_type,
                         attribute_name=attr_names[idx],
                     )
@@ -928,7 +925,7 @@ def gen_build_func_str(
             elif "paddle::dialect::ScalarAttribute" in attr_types[idx]:
                 get_attributes_str += (
                     GET_SCALAR_ATTRIBUTE_FROM_MAP_TEMPLATE.format(
-                        op_name=op_class_name,
+                        op_name=op_info.class_name,
                         attr_type=attr_type,
                         attribute_name=attr_names[idx],
                     )
@@ -936,7 +933,7 @@ def gen_build_func_str(
             elif "pir::StrAttribute" in attr_types[idx]:
                 get_attributes_str += (
                     GET_STR_ATTRIBUTES_FROM_MAP_TEMPLATE.format(
-                        op_name=op_class_name,
+                        op_name=op_info.class_name,
                         attr_type=attr_type,
                         attribute_name=attr_names[idx],
                         attr_ir_type=attr_types[idx],
@@ -944,14 +941,14 @@ def gen_build_func_str(
                 )
             else:
                 get_attributes_str += GET_ATTRIBUTES_FROM_MAP_TEMPLATE.format(
-                    op_name=op_class_name,
+                    op_name=op_info.class_name,
                     attr_type=attr_type,
                     attribute_name=attr_names[idx],
                     attr_ir_type=attr_types[idx],
                 )
 
     build_func = OP_BUILD_TEMPLATE.format(
-        op_name=op_class_name,
+        op_name=op_info.class_name,
         build_info=build_info_str,
         build_args=build_args_for_define,
         build_mutable_attributes=inset_full_for_mutable_attributes_str,
