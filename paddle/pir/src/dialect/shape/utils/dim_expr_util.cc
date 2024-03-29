@@ -709,13 +709,14 @@ struct FoldOperandTrait<Max> {
     *value = std::max(*value, GetInteger(expr));
   }
   static bool IsUnit(const const_value_type& value) {
-    return value == MakeUnit();
+    return value == std::numeric_limits<const_value_type>::min();
   }
   static bool IsUnitDimExpr(const DimExpr& dim_expr) {
     if (!dim_expr.Has<std::int64_t>()) {
       return false;
     }
-    return dim_expr.Get<std::int64_t>() == MakeUnit();
+    return dim_expr.Get<std::int64_t>() ==
+           std::numeric_limits<const_value_type>::min();
   }
   static void MakeAndAppendDimExpr(const const_value_type& value,
                                    List<DimExpr>* ret) {
@@ -749,13 +750,14 @@ struct FoldOperandTrait<Min> {
     *value = std::min(*value, GetInteger(expr));
   }
   static bool IsUnit(const const_value_type& value) {
-    return value == MakeUnit();
+    return value == std::numeric_limits<const_value_type>::max();
   }
   static bool IsUnitDimExpr(const DimExpr& dim_expr) {
     if (!dim_expr.Has<std::int64_t>()) {
       return false;
     }
-    return dim_expr.Get<std::int64_t>() == MakeUnit();
+    return dim_expr.Get<std::int64_t>() ==
+           std::numeric_limits<const_value_type>::max();
   }
   static void MakeAndAppendDimExpr(const const_value_type& value,
                                    List<DimExpr>* ret) {
