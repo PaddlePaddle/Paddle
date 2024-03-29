@@ -140,11 +140,11 @@ def append_fluid_kernels():
     op_white_list.append("tensorrt_engine")
     tool_dir = os.path.dirname(os.path.abspath(__file__))
     all_op = glob.glob(
-        os.path.join(tool_dir, '../paddle/fluid/operators/**/*.cc'),
+        os.path.join(tool_dir, '../paddle/phi/operators/**/*.cc'),
         recursive=True,
     )
     all_op += glob.glob(
-        os.path.join(tool_dir, '../paddle/fluid/operators/**/*.cu'),
+        os.path.join(tool_dir, '../paddle/phi/operators/**/*.cu'),
         recursive=True,
     )
 

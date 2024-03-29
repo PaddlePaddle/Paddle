@@ -60,7 +60,7 @@ def update_operator_cmake(cmake_file):
         cmake_file (str): cmake file path.
     """
     pat1 = 'add_subdirectory(optimizers)'
-    pat2 = r'register_operators\(EXCLUDES.*?py_func_op.*?\)'
+    pat2 = r'register_operators\(\s*EXCLUDES.*?py_func_op.*?\)'
 
     code1 = 'if(ON_INFER)\nadd_subdirectory(optimizers)\nendif()'
     code2 = 'if(ON_INFER)\nfile(GLOB LOSS_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*loss_op.cc")\nstring(REPLACE ".cc" "" LOSS_OPS "${LOSS_OPS}")\nendif()'
@@ -87,11 +87,11 @@ if __name__ == '__main__':
     tool_dir = os.path.dirname(os.path.abspath(__file__))
 
     all_op = glob.glob(
-        os.path.join(tool_dir, '../paddle/fluid/operators/**/*.cc'),
+        os.path.join(tool_dir, '../paddle/phi/operators/**/*.cc'),
         recursive=True,
     )
     all_op += glob.glob(
-        os.path.join(tool_dir, '../paddle/fluid/operators/**/*.cu'),
+        os.path.join(tool_dir, '../paddle/phi/operators/**/*.cu'),
         recursive=True,
     )
 
@@ -198,7 +198,7 @@ if __name__ == '__main__':
 
     # 2. update operators/CMakeLists.txt
     cmake_file = os.path.join(
-        tool_dir, '../paddle/fluid/operators/CMakeLists.txt'
+        tool_dir, '../paddle/phi/operators/CMakeLists.txt'
     )
     update_operator_cmake(cmake_file)
 

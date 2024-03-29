@@ -25,37 +25,37 @@
 
 # Result Example:
 
-#     paddle/fluid/operators/benchmark | 11 | 0 | 11
-#     paddle/fluid/operators/collective | 28 | 1 | 27
-#     paddle/fluid/operators/controlflow | 60 | 59 | 1
-#     paddle/fluid/operators/detail | 2 | 0 | 2
-#     paddle/fluid/operators/detection | 276 | 146 | 130
-#     paddle/fluid/operators/distributed/brpc | 17 | 0 | 17
-#     paddle/fluid/operators/distributed/grpc | 13 | 0 | 13
-#     paddle/fluid/operators/distributed | 63 | 10 | 53
-#     paddle/fluid/operators/distributed_ops | 88 | 6 | 82
-#     paddle/fluid/operators/elementwise/mkldnn | 5 | 5 | 0
-#     paddle/fluid/operators/elementwise | 29 | 20 | 9
-#     paddle/fluid/operators/fused | 227 | 182 | 45
-#     paddle/fluid/operators/jit/gen | 17 | 0 | 17
-#     paddle/fluid/operators/jit/more/intrinsic | 0 | 0 | 0
-#     paddle/fluid/operators/jit/more/mix | 1 | 0 | 1
-#     paddle/fluid/operators/jit/more/mkl | 9 | 0 | 9
-#     paddle/fluid/operators/jit/more | 0 | 0 | 0
-#     paddle/fluid/operators/jit/refer | 8 | 0 | 8
-#     paddle/fluid/operators/jit | 18 | 0 | 18
-#     paddle/fluid/operators/lite | 2 | 2 | 0
-#     paddle/fluid/operators/math/detail | 0 | 0 | 0
-#     paddle/fluid/operators/math | 200 | 7 | 193
-#     paddle/fluid/operators/metrics | 38 | 29 | 9
-#     paddle/fluid/operators/mkldnn | 107 | 14 | 93
-#     paddle/fluid/operators/nccl | 27 | 0 | 27
-#     paddle/fluid/operators/optimizers | 214 | 50 | 164
-#     paddle/fluid/operators/reader | 40 | 14 | 26
-#     paddle/fluid/operators/reduce_ops | 8 | 8 | 0
-#     paddle/fluid/operators/sequence_ops | 167 | 47 | 120
-#     paddle/fluid/operators/tensorrt | 7 | 4 | 3
-#     paddle/fluid/operators | 2144 | 999 | 1145
+#     paddle/phi/operators/benchmark | 11 | 0 | 11
+#     paddle/phi/operators/collective | 28 | 1 | 27
+#     paddle/phi/operators/controlflow | 60 | 59 | 1
+#     paddle/phi/operators/detail | 2 | 0 | 2
+#     paddle/phi/operators/detection | 276 | 146 | 130
+#     paddle/phi/operators/distributed/brpc | 17 | 0 | 17
+#     paddle/phi/operators/distributed/grpc | 13 | 0 | 13
+#     paddle/phi/operators/distributed | 63 | 10 | 53
+#     paddle/phi/operators/distributed_ops | 88 | 6 | 82
+#     paddle/phi/operators/elementwise/mkldnn | 5 | 5 | 0
+#     paddle/phi/operators/elementwise | 29 | 20 | 9
+#     paddle/phi/operators/fused | 227 | 182 | 45
+#     paddle/phi/operators/jit/gen | 17 | 0 | 17
+#     paddle/phi/operators/jit/more/intrinsic | 0 | 0 | 0
+#     paddle/phi/operators/jit/more/mix | 1 | 0 | 1
+#     paddle/phi/operators/jit/more/mkl | 9 | 0 | 9
+#     paddle/phi/operators/jit/more | 0 | 0 | 0
+#     paddle/phi/operators/jit/refer | 8 | 0 | 8
+#     paddle/phi/operators/jit | 18 | 0 | 18
+#     paddle/phi/operators/lite | 2 | 2 | 0
+#     paddle/phi/operators/math/detail | 0 | 0 | 0
+#     paddle/phi/operators/math | 200 | 7 | 193
+#     paddle/phi/operators/metrics | 38 | 29 | 9
+#     paddle/phi/operators/mkldnn | 107 | 14 | 93
+#     paddle/phi/operators/nccl | 27 | 0 | 27
+#     paddle/phi/operators/optimizers | 214 | 50 | 164
+#     paddle/phi/operators/reader | 40 | 14 | 26
+#     paddle/phi/operators/reduce_ops | 8 | 8 | 0
+#     paddle/phi/operators/sequence_ops | 167 | 47 | 120
+#     paddle/phi/operators/tensorrt | 7 | 4 | 3
+#     paddle/phi/operators | 2144 | 999 | 1145
 
 . ./count_all_enforce.sh --source-only
 

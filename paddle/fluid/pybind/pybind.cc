@@ -84,10 +84,6 @@ limitations under the License. */
 #endif
 #include "paddle/common/macros.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
-#include "paddle/fluid/operators/activation_op.h"
-#include "paddle/fluid/operators/common_infer_shape_functions.h"
-#include "paddle/fluid/operators/ops_extra_info.h"
-#include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -133,6 +129,10 @@ limitations under the License. */
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
+#include "paddle/phi/operators/activation_op.h"
+#include "paddle/phi/operators/common_infer_shape_functions.h"
+#include "paddle/phi/operators/ops_extra_info.h"
+#include "paddle/phi/operators/py_func_op.h"
 #include "paddle/utils/none.h"
 
 #ifdef PADDLE_WITH_DISTRIBUTE
@@ -153,7 +153,7 @@ limitations under the License. */
 #include "paddle/utils/string/to_string.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
+#include "paddle/phi/operators/nccl/nccl_gpu_common.h"
 #endif
 #ifndef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
@@ -167,11 +167,11 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-#include "paddle/fluid/operators/custom_device_common_op_registry.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/custom/custom_device_resource_pool.h"
 #include "paddle/fluid/platform/profiler/custom_device/custom_tracer.h"
 #include "paddle/phi/capi/capi.h"
+#include "paddle/phi/operators/custom_device_common_op_registry.h"
 #endif
 
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"

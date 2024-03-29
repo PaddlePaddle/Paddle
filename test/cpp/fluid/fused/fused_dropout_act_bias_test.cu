@@ -17,10 +17,10 @@ limitations under the License. */
 #include <random>
 #include <vector>
 
-#include "paddle/fluid/operators/fused/fused_dropout_act_bias.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/functors.h"
+#include "paddle/phi/operators/fused/fused_dropout_act_bias.h"
 #include "test/cpp/fluid/fused/fused_dropout_test.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

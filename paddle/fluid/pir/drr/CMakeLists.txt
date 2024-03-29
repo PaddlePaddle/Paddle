@@ -5,16 +5,16 @@ set(op_creator_gen_file
 )
 set(op_compat_yaml_file ${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml)
 set(op_forward_yaml_file
-    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/ops.parsed.yaml
+    ${PADDLE_BINARY_DIR}/paddle/phi/operators/generator/parsed_ops/ops.parsed.yaml
 )
 set(op_backward_yaml_file
-    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/backward_ops.parsed.yaml
+    ${PADDLE_BINARY_DIR}/paddle/phi/operators/generator/parsed_ops/backward_ops.parsed.yaml
 )
 set(fused_op_forward_yaml_file
-    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_ops.parsed.yaml
+    ${PADDLE_BINARY_DIR}/paddle/phi/operators/generator/parsed_ops/fused_ops.parsed.yaml
 )
 set(fused_op_backward_yaml_file
-    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_backward.parsed.yaml
+    ${PADDLE_BINARY_DIR}/paddle/phi/operators/generator/parsed_ops/fused_backward.parsed.yaml
 )
 
 set(parsed_op_dir

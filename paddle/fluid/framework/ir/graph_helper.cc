@@ -641,7 +641,7 @@ void UpdateControlOpSkipEagerDeletionVars(const Node &node,
   // sub_block: SkipEagerDeletionVars information will be writted into graph's
   // OriginProgram OpDesc. Please refer to
   // FindAllConditionalBlockAndConditionalBlockGradOp in
-  // "paddle/fluid/operators/controlflow/conditional_block_op_helper.cc"
+  // "paddle/phi/operators/controlflow/conditional_block_op_helper.cc"
   if (graph_idx != 0) {
     auto origin_program = graph.OriginProgram();
     auto &block = origin_program.Block(graph_idx);

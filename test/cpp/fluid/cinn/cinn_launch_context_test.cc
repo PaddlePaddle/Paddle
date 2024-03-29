@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/cinn/cinn_launch_context.h"
+#include "paddle/phi/operators/cinn/cinn_launch_context.h"
 
 #include <memory>
 #include <set>
@@ -35,7 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/operators/cinn/cinn_op_helper.h"
+#include "paddle/phi/operators/cinn/cinn_op_helper.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
 

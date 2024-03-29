@@ -45,8 +45,8 @@ function match_cu_file_directory {
   LOG "[INFO] run function match_cu_file_directory"
   local sub_dir cu_file_dir
   cu_file_dir=$(dirname ${1})
-  # the operators under paddle/fluid/operators directory
-  [ "${cu_file_dir}" == "paddle/fluid/operators" ] && return 0
+  # the operators under paddle/phi/operators directory
+  [ "${cu_file_dir}" == "paddle/phi/operators" ] && return 0
   # the operators under paddle/phi/kernels directory
   for sub_dir in "" "/gpu" "/gpudnn" "/sparse/gpu"
   do
@@ -72,7 +72,7 @@ function match_h_file_directory {
 function load_CHANGE_OP_FILES_by_header_file {
   LOG "[INFO] run function load_CHANGE_OP_FILES_by_header_file"
   local change_file
-  for change_file in $(grep -rl "${1}" paddle/fluid/operators paddle/phi/kernels/)
+  for change_file in $(grep -rl "${1}" paddle/phi/operators paddle/phi/kernels/)
   do
     if [[ "$change_file" =~ "_op.cu" || "$change_file" =~ "_kernel.cu" ||  "$change_file" =~ "_kernel_gpudnn.cu" ]]
     then
@@ -99,7 +99,7 @@ function load_CHANGE_OP_FILES {
   for change_file in $(git diff --name-only develop)
   do
     # match directory limit
-    [[ "$change_file" =~ "paddle/fluid/operators/" ]] || [[ "$change_file" =~ "paddle/phi/kernels/" ]]  || continue
+    [[ "$change_file" =~ "paddle/phi/operators/" ]] || [[ "$change_file" =~ "paddle/phi/kernels/" ]]  || continue
     # match file name limit
     if [[ "$change_file" =~ "_op.cu" || "$change_file" =~ "_kernel.cu" || "$change_file" =~ "_kernel_gpudnn.cu" ]]
     then
@@ -145,7 +145,7 @@ function load_CHANGE_OP_MAP {
   source benchmark/ci/scripts/op_benchmark.config
   for change_file in ${CHANGE_OP_FILES[@]}
   do
-    change_file_name=${change_file#*paddle/fluid/operators/}
+    change_file_name=${change_file#*paddle/phi/operators/}
     change_file_name=${change_file_name#*paddle/phi/kernels/gpu/}
     change_file_name=${change_file_name#*paddle/phi/kernels/gpudnn/}
     if [ -n "${PADDLE_FILENAME_OP_MAP[$change_file_name]}" ]

@@ -14,18 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This script is used to count PADDLE checks by files in the paddle/fluid/operators directory,
+# This script is used to count PADDLE checks by files in the paddle/phi/operators directory,
 #   contains the number of PADDLE checks under each file.
 #   
 #   The three columns of data are: total number, valid number, invalid number. 
 #   The output format is easy to display as a markdown table.
 
 # Usage: bash count_enforce_by_file.sh  [target directory or file] (run in tools directory)
-#   - The default check path is paddle/fluid/operators
+#   - The default check path is paddle/phi/operators
 
 # Result Example:
 
-#   **paddle/fluid/operators/math** | **200** | **7** | **193**
+#   **paddle/phi/operators/math** | **200** | **7** | **193**
 #   - beam_search.cc | 1 | 0 | 1
 #   - beam_search.cu | 1 | 0 | 1
 #   - blas.cc | 1 | 0 | 1
@@ -44,7 +44,7 @@
 
 . ./count_all_enforce.sh --source-only
 
-ROOT_DIR=../paddle/fluid/operators
+ROOT_DIR=../paddle/phi/operators
 
 if [ "$1" != "" ]; then
     ROOT_DIR=$1

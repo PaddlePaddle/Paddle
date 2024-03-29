@@ -22,13 +22,13 @@
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/fused_api.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/operators/math/concat_and_split.h"
 #include "paddle/utils/string/string_helper.h"
 
 namespace paddle {

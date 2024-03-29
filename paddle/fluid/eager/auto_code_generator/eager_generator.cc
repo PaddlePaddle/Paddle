@@ -23,9 +23,9 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/operators/custom_device_common_op_registry.h"
 #include "paddle/fluid/pybind/eager_generator.h"
 #include "paddle/fluid/pybind/pybind.h"
+#include "paddle/phi/operators/custom_device_common_op_registry.h"
 #include "paddle/utils/string/string_helper.h"
 
 // phi

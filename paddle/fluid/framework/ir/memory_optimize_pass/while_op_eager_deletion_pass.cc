@@ -15,8 +15,8 @@
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/operators/controlflow/op_variant.h"
-#include "paddle/fluid/operators/controlflow/while_op_helper.h"
+#include "paddle/phi/operators/controlflow/op_variant.h"
+#include "paddle/phi/operators/controlflow/while_op_helper.h"
 
 namespace paddle {
 namespace framework {

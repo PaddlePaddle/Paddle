@@ -94,8 +94,7 @@ cc_library(
   SRCS op_def_api.cc
   DEPS op_def_proto)
 
-file(GLOB OP_DEF_FILES
-     ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/compat/*.pbtxt)
+file(GLOB OP_DEF_FILES ${PADDLE_SOURCE_DIR}/paddle/phi/operators/compat/*.pbtxt)
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/op_def.pbtxt
      "namespace { \n"
      "const std::unordered_map<std::string, std::string> op_def_map =  { \n")

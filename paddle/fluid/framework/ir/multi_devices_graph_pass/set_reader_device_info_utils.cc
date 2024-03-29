@@ -15,7 +15,7 @@
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/set_reader_device_info_utils.h"
 
 #include "paddle/fluid/framework/details/computation_op_handle.h"
-#include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
+#include "paddle/phi/operators/reader/lod_tensor_blocking_queue.h"
 
 namespace paddle {
 namespace framework {

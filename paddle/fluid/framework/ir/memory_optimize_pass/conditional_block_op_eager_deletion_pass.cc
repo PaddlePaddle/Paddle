@@ -15,8 +15,8 @@
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
-#include "paddle/fluid/operators/controlflow/op_variant.h"
+#include "paddle/phi/operators/controlflow/conditional_block_op_helper.h"
+#include "paddle/phi/operators/controlflow/op_variant.h"
 namespace paddle {
 namespace framework {
 namespace ir {

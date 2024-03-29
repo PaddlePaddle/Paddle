@@ -23,11 +23,11 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_desc.h"
-#include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
-#include "paddle/fluid/operators/controlflow/pylayer_op_helper.h"
-#include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
-#include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/operators/controlflow/conditional_block_op_helper.h"
+#include "paddle/phi/operators/controlflow/pylayer_op_helper.h"
+#include "paddle/phi/operators/controlflow/recurrent_op_helper.h"
+#include "paddle/phi/operators/controlflow/while_op_helper.h"
 
 namespace paddle {
 namespace framework {

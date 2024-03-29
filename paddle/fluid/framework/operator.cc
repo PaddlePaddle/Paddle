@@ -29,9 +29,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/operators/isfinite_op.h"
-#include "paddle/fluid/operators/ops_extra_info.h"
-#include "paddle/fluid/operators/ops_signature/signatures.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -42,6 +39,9 @@ limitations under the License. */
 #include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/operators/isfinite_op.h"
+#include "paddle/phi/operators/ops_extra_info.h"
+#include "paddle/phi/operators/ops_signature/signatures.h"
 
 namespace phi {
 class DenseTensor;

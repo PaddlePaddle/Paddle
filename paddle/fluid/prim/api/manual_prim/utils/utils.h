@@ -17,12 +17,12 @@
 #include <vector>
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
-#include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/prim/api/generated_prim/prim_generated_api.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/operators/common_infer_shape_functions.h"
 
 namespace paddle {
 namespace prim {

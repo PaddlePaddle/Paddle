@@ -15,8 +15,8 @@ limitations under the License. */
 #if defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/fleet/metrics.h"
-#include "paddle/fluid/operators/isfinite_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
+#include "paddle/phi/operators/isfinite_op.h"
 
 namespace phi {
 class DenseTensor;

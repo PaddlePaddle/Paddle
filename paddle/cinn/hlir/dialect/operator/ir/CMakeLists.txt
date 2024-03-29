@@ -3,7 +3,7 @@ set(CINN_DIALECT_SOURCE_DIR
 
 # Generate cinn_op_dialect files defining op using op_gen_file
 set(cinn_op_gen_parsed_yaml_file
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parse_op.py)
+    ${PADDLE_SOURCE_DIR}/paddle/phi/operators/generator/parse_op.py)
 
 set(cinn_op_gen_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/op_generator/op_gen.py)

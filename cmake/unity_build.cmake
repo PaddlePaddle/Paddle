@@ -33,6 +33,9 @@ function(register_unity_group TYPE)
   # Get UNITY_TARGET from CMAKE_CURRENT_SOURCE_DIR.
   string(REPLACE "${PADDLE_SOURCE_DIR}/paddle/fluid/" "" UNITY_TARGET
                  ${CMAKE_CURRENT_SOURCE_DIR})
+  # For directory paddle/phi/operators
+  string(REPLACE "${PADDLE_SOURCE_DIR}/paddle/phi/operators" "operators"
+                 UNITY_TARGET ${UNITY_TARGET})
   string(REPLACE "/" "_" UNITY_TARGET ${UNITY_TARGET})
   set(UNITY_TARGET "paddle_${UNITY_TARGET}_unity")
 
@@ -154,6 +157,9 @@ function(finish_unity_target TYPE)
   # Get UNITY_TARGET from CMAKE_CURRENT_SOURCE_DIR.
   string(REPLACE "${PADDLE_SOURCE_DIR}/paddle/fluid/" "" UNITY_TARGET
                  ${CMAKE_CURRENT_SOURCE_DIR})
+  # For directory paddle/phi/operators
+  string(REPLACE "${PADDLE_SOURCE_DIR}/paddle/phi/operators" "operators"
+                 UNITY_TARGET ${UNITY_TARGET})
   string(REPLACE "/" "_" UNITY_TARGET ${UNITY_TARGET})
   set(UNITY_TARGET "paddle_${UNITY_TARGET}_unity")
 

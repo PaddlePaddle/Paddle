@@ -27,11 +27,6 @@
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/memory/stats.h"
-#include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
-#include "paddle/fluid/operators/controlflow/pylayer_op_helper.h"
-#include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
-#include "paddle/fluid/operators/controlflow/while_op_helper.h"
-#include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -40,6 +35,11 @@
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/operators/controlflow/conditional_block_op_helper.h"
+#include "paddle/phi/operators/controlflow/pylayer_op_helper.h"
+#include "paddle/phi/operators/controlflow/recurrent_op_helper.h"
+#include "paddle/phi/operators/controlflow/while_op_helper.h"
+#include "paddle/phi/operators/ops_extra_info.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"

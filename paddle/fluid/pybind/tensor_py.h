@@ -31,12 +31,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/pybind/complex.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
+#include "paddle/phi/operators/eigen/eigen_function.h"
+#include "paddle/phi/operators/math/concat_and_split.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif

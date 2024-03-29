@@ -20,8 +20,8 @@
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
 #include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
-#include "paddle/fluid/operators/cinn/cinn_launch_op.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/operators/cinn/cinn_launch_op.h"
 #include "paddle/utils/string/string_helper.h"
 
 namespace paddle::framework::ir {

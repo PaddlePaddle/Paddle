@@ -26,7 +26,7 @@
 #     paddle/fluid/imperative - total: 135, valid: 118, invalid: 17
 #     paddle/fluid/inference - total: 449, valid: 158, invalid: 291
 #     paddle/fluid/memory - total: 60, valid: 10, invalid: 50
-#     paddle/fluid/operators - total: 4225, valid: 1061, invalid: 3164
+#     paddle/phi/operators - total: 4225, valid: 1061, invalid: 3164
 #     paddle/fluid/platform - total: 240, valid: 39, invalid: 201
 #     paddle/fluid/pybind - total: 98, valid: 53, invalid: 45
 #     paddle/fluid/string - total: 0, valid: 0, invalid: 0

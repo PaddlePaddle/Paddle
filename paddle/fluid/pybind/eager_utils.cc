@@ -31,8 +31,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope_guard.h"
 #include "paddle/fluid/jit/function.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/operators/py_func_op.h"
-#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -47,6 +45,8 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/placement_types.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
+#include "paddle/phi/operators/py_func_op.h"
+#include "paddle/phi/operators/utils.h"
 #include "paddle/pir/include/core/attribute.h"
 
 COMMON_DECLARE_bool(check_nan_inf);

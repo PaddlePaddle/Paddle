@@ -3888,7 +3888,7 @@ void NumelInferMeta(const MetaTensor& input, MetaTensor* out) {
 }
 
 // This logic is copied from
-// `paddle/fluid/operators/slice_op.cc/SliceOp::InferShape`
+// `paddle/phi/operators/slice_op.cc/SliceOp::InferShape`
 void SliceArrayInferMeta(const MetaTensor& input,
                          const IntArray& starts,
                          const IntArray& ends,

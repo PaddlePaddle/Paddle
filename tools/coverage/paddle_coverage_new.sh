@@ -48,7 +48,7 @@ function gen_full_html_report() {
         '/paddle/paddle/fluid/imperative/*' \
         '/paddle/paddle/fluid/inference/*' \
         '/paddle/paddle/fluid/memory/*' \
-        '/paddle/paddle/fluid/operators/*' \
+        '/paddle/paddle/phi/operators/*' \
         '/paddle/paddle/fluid/recordio/*' \
         '/paddle/paddle/fluid/eager/*' \
         '/paddle/paddle/phi/*' \
@@ -74,7 +74,7 @@ function gen_full_html_report() {
 
 function gen_full_html_report_xpu() {
     lcov --extract coverage.info \
-        '/paddle/paddle/fluid/operators/*xpu*' \
+        '/paddle/paddle/phi/operators/*xpu*' \
         '/paddle/paddle/phi/kernels/xpu/*' \
         -o coverage-full.tmp \
         --rc lcov_branch_coverage=0
@@ -95,7 +95,7 @@ function gen_full_html_report_xpu() {
 
 function gen_full_html_report_npu() {
     lcov --extract coverage.info \
-        '/paddle/paddle/fluid/operators/*npu*' \
+        '/paddle/paddle/phi/operators/*npu*' \
         -o coverage-full.tmp \
         --rc lcov_branch_coverage=0
 
