@@ -727,7 +727,9 @@ class PipelineParallel(MetaParallelBase):
 
             output_tensor = self._forward_step(input_tensor, micro_dataset)
             self._p2p_helper.send_forward(
-                output_tensor, self.is_pipeline_last_stage()
+                output_tensor,
+                self.is_pipeline_last_stage(),
+                skip_check_meta=True,
             )
 
             input_buffers.append(input_tensor)
@@ -743,7 +745,9 @@ class PipelineParallel(MetaParallelBase):
 
             output_tensor = self._forward_step(input_tensor, micro_dataset)
             self._p2p_helper.send_forward(
-                output_tensor, self.is_pipeline_last_stage()
+                output_tensor,
+                self.is_pipeline_last_stage(),
+                skip_check_meta=True,
             )
 
             input_buffers.append(input_tensor)

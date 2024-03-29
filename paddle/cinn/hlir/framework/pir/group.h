@@ -63,33 +63,6 @@ struct Group {
                                ::pir::IrMapping& ir_mapping,
                                const Options& option = Options()) const;
 
-  bool HasShapeOrDataExprs(const ::pir::Value& value) const {
-    return value_to_shape_or_data_exprs_.count(value);
-  }
-
-  const symbol::ShapeOrDataDimExprs& GetShapeOrDataExprs(
-      const ::pir::Value& value) const {
-    CHECK(value_to_shape_or_data_exprs_.count(value))
-        << "value not found in value_to_shape_or_data_exprs_";
-    return value_to_shape_or_data_exprs_.at(value);
-  }
-
-  void SetShapeOrDataExprs(const ::pir::Value& value,
-                           const symbol::ShapeOrDataDimExprs& shape_or_data) {
-    auto iter = value_to_shape_or_data_exprs_.find(value);
-    if (iter == value_to_shape_or_data_exprs_.end()) {
-      value_to_shape_or_data_exprs_.emplace(value, shape_or_data);
-    } else {
-      iter->second = shape_or_data;
-    }
-  }
-
-  void set_value_to_shape_or_data_exprs(
-      const std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>&
-          value_to_shape_or_data_exprs) {
-    value_to_shape_or_data_exprs_ = value_to_shape_or_data_exprs;
-  }
-
   // distance to last group.
   int depth{0};
   int max_depth{0};
@@ -117,20 +90,6 @@ struct Group {
   std::vector<std::shared_ptr<Group>> fused_sub_groups;
   // if as sub-group, used for belong groups.
   std::unordered_set<std::shared_ptr<Group>> belong_groups;
-
-  // for op lowering.
-  std::vector<std::string> input_names;
-  std::vector<std::string> output_names;
-  std::vector<::pir::Value> output_values;
-  std::string fn_name{""};
-  std::map<int, CINNKernelInfo::ArgDimIdx> int_args_map;
-
-  std::unordered_map<::pir::Operation*,
-                     std::vector<cinn::hlir::framework::pir::ScheduleInfoNode>>
-      alignment_schedule_info;
-  std::vector<int64_t> reduce_axis;
-  std::vector<int64_t> loop_ranges;
-  std::vector<symbol::DimExpr> loop_ranges_expr;
 
   struct SharedGroupHasher {
     size_t operator()(const std::shared_ptr<Group>& group) const noexcept {
@@ -214,10 +173,6 @@ struct Group {
     return group_outputs;
   }
 
-  const std::vector<::pir::Value>& GetGroupOutputValues() const {
-    return this->output_values;
-  }
-
   std::string GetFuncName() { return "fn_" + group_id + unique_id; }
 
   std::vector<::pir::Value> GenerateGroupOutputValues() const {
@@ -242,19 +197,6 @@ struct Group {
       }
     }
     return output_values;
-  }
-
-  std::shared_ptr<adt::MapExprCtx> mut_map_expr_ctx() {
-    CHECK_NOTNULL(map_expr_ctx_);
-    return map_expr_ctx_;
-  }
-
-  const adt::MapExprCtx& map_expr_ctx() const {
-    return *CHECK_NOTNULL(map_expr_ctx_);
-  }
-
-  void set_map_expr_ctx(const std::shared_ptr<adt::MapExprCtx>& map_expr_ctx) {
-    map_expr_ctx_ = map_expr_ctx;
   }
 
  public:
@@ -288,29 +230,17 @@ struct Group {
 
   OpPatternKind kind() const { return op_pattern_kind; }
 
-  std::string FuncName() const {
-    if (fn_name == "") {
-      // TODO(Aurelius84): Polish this implementation.
-      const_cast<Group*>(this)->fn_name = CompatibleInfo::GroupOpsName(ops);
-    }
-    return this->fn_name;
-  }
-
  private:
   // input groups
   std::unordered_set<std::shared_ptr<Group>,
                      SharedGroupHasher,
                      SharedGroupComparator>
       producer_groups_;
-  // output grous
+  // output groups
   std::unordered_set<std::shared_ptr<Group>,
                      SharedGroupHasher,
                      SharedGroupComparator>
       consumer_groups_;
-  std::shared_ptr<adt::MapExprCtx> map_expr_ctx_;
-
-  std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
-      value_to_shape_or_data_exprs_;
 };
 
 std::ostream& operator<<(std::ostream& os, const Group& group);
