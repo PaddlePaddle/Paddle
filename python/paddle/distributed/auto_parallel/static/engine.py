@@ -1083,9 +1083,10 @@ class Engine:
                 uninitialized.append(var)
             # Make sure the number of communication operators is consistent
             commu_ops = []
-            for op in dist_startup_prog.global_block().ops:
-                if auto_utils.is_comm_op(op):
-                    commu_ops.append(op)
+            if self._nranks > 1:
+                for op in dist_startup_prog.global_block().ops:
+                    if auto_utils.is_comm_op(op):
+                        commu_ops.append(op)
             reserved_vars_and_ops = uninitialized + commu_ops
             if reserved_vars_and_ops:
                 prune_startup_prog = dist_startup_prog._prune(
