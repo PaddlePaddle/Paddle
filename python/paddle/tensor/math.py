@@ -7876,7 +7876,11 @@ def isin(elements, test_elements, invert=False, name=None):
         test_elements_flat = test_elements.flatten()
         sorted_test_elements = paddle.sort(test_elements_flat)
         idx = paddle.searchsorted(sorted_test_elements, elements_flat)
-        test_idx = paddle.where(idx < sorted_test_elements.numel(), idx, 0)
+        test_idx = paddle.where(
+            idx < sorted_test_elements.numel(),
+            idx,
+            paddle.zeros_like(idx, 'int64'),
+        )
         cmp = sorted_test_elements[test_idx] == elements_flat
         cmp = cmp.logical_not() if invert else cmp
         cmp = cmp.reshape(elements.shape)
