@@ -119,10 +119,8 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                            dropout,
                            scale,
                            causal,
-                           0,  // attn_mask_start_row
                            q.dtype(),
                            attn_mask,
-                           nullptr,  // attn_mask_start_row_indices
                            seed_offset.data<int64_t>());
 
   VLOG(10) << "FlashAttn bwd seed: " << params.seed
@@ -176,24 +174,22 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
   RaiseNotSupportedError();
 #endif
 }
+
 template <typename T, typename Context>
-void FlashAttnGradBaseKernel(
-    const Context& ctx,
-    const DenseTensor& q,
-    const DenseTensor& k,
-    const DenseTensor& v,
-    const DenseTensor& out,
-    const DenseTensor& softmax_lse,
-    const DenseTensor& seed_offset,
-    const paddle::optional<DenseTensor>& attn_mask,
-    const paddle::optional<DenseTensor>& attn_mask_start_row_indices,
-    const DenseTensor& dout,
-    float dropout,
-    bool causal,
-    int attn_mask_start_row,
-    DenseTensor* dq,
-    DenseTensor* dk,
-    DenseTensor* dv) {
+void FlashAttnGradKernel(const Context& ctx,
+                         const DenseTensor& q,
+                         const DenseTensor& k,
+                         const DenseTensor& v,
+                         const DenseTensor& out,
+                         const DenseTensor& softmax_lse,
+                         const DenseTensor& seed_offset,
+                         const paddle::optional<DenseTensor>& attn_mask,
+                         const DenseTensor& dout,
+                         float dropout,
+                         bool causal,
+                         DenseTensor* dq,
+                         DenseTensor* dk,
+                         DenseTensor* dv) {
 #ifdef PADDLE_WITH_FLASHATTN
   // q, k, v [batch_size, seq_len, num_heads, head_dim]
   const auto& dims = q.dims();
@@ -263,10 +259,8 @@ void FlashAttnGradBaseKernel(
                            dropout,
                            softmax_scale,
                            causal,
-                           attn_mask_start_row,
                            q.dtype(),
                            attn_mask,
-                           attn_mask_start_row_indices,
                            seed_offset.data<int64_t>());
 
   VLOG(10) << "[FlashAttn Forward] q.shape=[" << q.dims() << "], k.shape=["
@@ -314,14 +308,7 @@ void FlashAttnGradBaseKernel(
       params.seed,
       params.offset,
       params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
-      params.attn_mask_tensor ? params.mask_dims.data() : nullptr,
-      params.attn_mask_start_row_indices_tensor
-          ? params.attn_mask_start_row_indices_tensor->data()
-          : nullptr,
-      params.attn_mask_start_row_indices_tensor
-          ? params.attn_mask_start_row_indices_dims.data()
-          : nullptr,
-      params.attn_mask_start_row);
+      params.attn_mask_tensor ? params.mask_dims.data() : nullptr);
   CheckFlashAttnStatus(succ);
   if (!is_mha) {
     if (dk) {
@@ -336,73 +323,6 @@ void FlashAttnGradBaseKernel(
 #endif
 }
 
-template <typename T, typename Context>
-void FlashAttnGradKernel(const Context& ctx,
-                         const DenseTensor& q,
-                         const DenseTensor& k,
-                         const DenseTensor& v,
-                         const DenseTensor& out,
-                         const DenseTensor& softmax_lse,
-                         const DenseTensor& seed_offset,
-                         const paddle::optional<DenseTensor>& attn_mask,
-                         const DenseTensor& dout,
-                         float dropout,
-                         bool causal,
-                         DenseTensor* dq,
-                         DenseTensor* dk,
-                         DenseTensor* dv) {
-  FlashAttnGradBaseKernel<T, Context>(ctx,
-                                      q,
-                                      k,
-                                      v,
-                                      out,
-                                      softmax_lse,
-                                      seed_offset,
-                                      attn_mask,
-                                      paddle::none,
-                                      dout,
-                                      dropout,
-                                      causal,
-                                      0,
-                                      dq,
-                                      dk,
-                                      dv);
-}
-
-template <typename T, typename Context>
-void FlashAttnWithSparseGradKernel(
-    const Context& ctx,
-    const DenseTensor& q,
-    const DenseTensor& k,
-    const DenseTensor& v,
-    const DenseTensor& attn_mask_start_row_indices,
-    const DenseTensor& out,
-    const DenseTensor& softmax_lse,
-    const DenseTensor& seed_offset,
-    const DenseTensor& dout,
-    float dropout,
-    bool causal,
-    int attn_mask_start_row,
-    DenseTensor* dq,
-    DenseTensor* dk,
-    DenseTensor* dv) {
-  FlashAttnGradBaseKernel<T, Context>(ctx,
-                                      q,
-                                      k,
-                                      v,
-                                      out,
-                                      softmax_lse,
-                                      seed_offset,
-                                      paddle::none,
-                                      attn_mask_start_row_indices,
-                                      dout,
-                                      dropout,
-                                      causal,
-                                      attn_mask_start_row,
-                                      dq,
-                                      dk,
-                                      dv);
-}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(flash_attn_unpadded_grad,
@@ -421,13 +341,4 @@ PD_REGISTER_KERNEL(flash_attn_grad,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);  // seed_offset
-}
-
-PD_REGISTER_KERNEL(flash_attn_with_sparse_mask_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::FlashAttnWithSparseGradKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
-  kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);  // seed_offset
 }

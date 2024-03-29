@@ -86,7 +86,6 @@ from .extension import (
     temporal_shift,
 )
 from .flash_attention import (
-    flash_attention_with_sparse_mask,
     scaled_dot_product_attention,
     sdp_kernel,  # noqa: F401
 )
@@ -278,6 +277,5 @@ __all__ = [
     'soft_margin_loss',
     'gaussian_nll_loss',
     'scaled_dot_product_attention',
-    'flash_attention_with_sparse_mask',
     'group_norm',
 ]
