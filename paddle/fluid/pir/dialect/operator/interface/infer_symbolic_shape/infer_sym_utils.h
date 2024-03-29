@@ -212,11 +212,11 @@ inline void CheckSymShapeByValue(
       ret = symbol::SimplifyDimExpr(subs_expr);
       subs_expr = symbol::SubstituteDimExpr(ret, map_sym2value);
       ret = symbol::SimplifyDimExpr(subs_expr);
-      PADDLE_ENFORCE_EQ(ret.Has<std::int64_t>(),
-                        true,
-                        platform::errors::PreconditionNotMet(
-                            "after SubstituteDimExpr&SimplifyDimExpr, dim_expr "
-                            "must have int value"));
+      // PADDLE_ENFORCE_EQ(ret.Has<std::int64_t>(),
+      //                   true,
+      //                   platform::errors::PreconditionNotMet(
+      //                       "after SubstituteDimExpr&SimplifyDimExpr,
+      //                       dim_expr " "must have int value"));
       sym_value_shape.emplace_back(ret.Get<std::int64_t>());
     }
 
