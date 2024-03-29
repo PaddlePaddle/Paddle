@@ -14,6 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
+from log_util import logger
+
 import paddle
 from paddle import distributed as dist
 from paddle.autograd import PyLayer
@@ -234,6 +238,9 @@ def is_fused_linear_param_grad_add_supported():
         return False
 
 
+_raise_cuda_env_unset_warning_for_sp = True
+
+
 class SPInnerOverlapLinear(paddle.autograd.PyLayer):
     @staticmethod
     def forward(
@@ -290,6 +297,17 @@ class SPInnerOverlapLinear(paddle.autograd.PyLayer):
             group=group,
             sync_op=False,
         )
+        # Using small operation to preempt GPU SMs for all_reduce to achieve overlap.
+        if int(os.getenv("CUDA_DEVICE_MAX_CONNECTIONS", "0")) != 1:
+            global _raise_cuda_env_unset_warning_for_sp
+            if _raise_cuda_env_unset_warning_for_sp:
+                logger.warning(
+                    "You set mp_async_allreduce=True, but you forget to set environment "
+                    "variable CUDA_DEVICE_MAX_CONNECTIONS=1, which may leads to performance "
+                    "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
+                )
+            _raise_cuda_env_unset_warning_for_sp = False
+            tmp = paddle.ones([512])
 
         if ctx.mp_fused_linear_param_grad_add:
             if not is_fused_linear_param_grad_add_supported():
@@ -355,6 +373,7 @@ class SPInnerOverlapLinear(paddle.autograd.PyLayer):
                     task.wait()
                     return dx, None, None
                 else:
+                    # When main_grad is not enabled and gradient_accumulation is used, the grad is not initialized for the first acc step.
                     (
                         dw,
                         dbias,
