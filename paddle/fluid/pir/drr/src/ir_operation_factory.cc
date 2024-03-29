@@ -21,6 +21,7 @@
 #include "paddle/fluid/pir/drr/src/attr_type_uilts.h"
 #include "paddle/fluid/pir/drr/src/ir_operation_factory.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/value.h"
@@ -54,13 +55,15 @@ void OperationFactory::RegisterManualOpCreator() {
                               pir::PatternRewriter& rewriter) {
                              return rewriter.Build<pir::CombineOp>(inputs);
                            });
-  RegisterOperationCreator("builtin.slice",
-                           [](const std::vector<pir::Value>& inputs,
-                              const pir::AttributeMap& attrs,
-                              pir::PatternRewriter& rewriter) {
-                             return rewriter.Build<pir::SliceOp>(inputs[0],
-                                                                 attrs);
-                           });
+  RegisterOperationCreator(
+      "builtin.slice",
+      [](const std::vector<pir::Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        return rewriter.Build<pir::SliceOp>(
+            inputs[0],
+            attrs.at("index").dyn_cast<pir::Int32Attribute>().data());
+      });
   RegisterOperationCreator(
       "pd_op.scale",
       [](const std::vector<pir::Value>& inputs,
