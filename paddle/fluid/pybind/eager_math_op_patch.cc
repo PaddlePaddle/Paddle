@@ -244,6 +244,15 @@ static PyObject* tensor__add__method(TensorObject* self,
   paddle::Tensor other_tensor;
 
   if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
+    }
+
     auto self_tensor_ref = self->tensor;
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
@@ -283,10 +292,6 @@ static PyObject* tensor__add__method(TensorObject* self,
       }
     }
 
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
@@ -380,6 +385,15 @@ static PyObject* tensor__sub__method(TensorObject* self,
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
+    }
+
     auto self_tensor_ref = self->tensor;
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
@@ -417,10 +431,6 @@ static PyObject* tensor__sub__method(TensorObject* self,
       }
     }
 
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
@@ -512,6 +522,15 @@ static PyObject* tensor__rsub__method(TensorObject* self,
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
+    }
+
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     auto self_tensor_ref = self->tensor;
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
@@ -551,10 +570,6 @@ static PyObject* tensor__rsub__method(TensorObject* self,
       }
     }
 
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
@@ -649,8 +664,18 @@ static PyObject* tensor__mul__method(TensorObject* self,
   // if one of the input is numpy or scalar, no need to do inplace cast.
   paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
+    }
+
     auto self_tensor_ref = self->tensor;
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
+
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
     auto self_tensor_size = self_tensor_ref.shape().size();
@@ -659,6 +684,8 @@ static PyObject* tensor__mul__method(TensorObject* self,
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
       VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
               << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
+      auto self_tensor_ref_0d = self_tensor_ref;
+      auto other_tensor_ref_0d = other_tensor_ref;
       // different major types or both 0-d tensor follow with T+T rule.
       if (!is_common_dtype_for_scalar(self_tensor_ref.dtype(),
                                       other_tensor_ref.dtype()) ||
@@ -688,10 +715,6 @@ static PyObject* tensor__mul__method(TensorObject* self,
       }
     }
 
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
@@ -791,6 +814,15 @@ static PyObject* tensor__div__method(TensorObject* self,
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
+    }
+
     auto self_tensor_ref = self->tensor;
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
@@ -830,10 +862,6 @@ static PyObject* tensor__div__method(TensorObject* self,
       }
     }
 
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
@@ -947,6 +975,15 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
       ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
     }
   } else if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
+    }
+
     auto self_tensor_ref = self->tensor;
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
@@ -986,10 +1023,6 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
       }
     }
 
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
@@ -1097,6 +1130,15 @@ static PyObject* tensor__gt__method(TensorObject* self,
       ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
     }
   } else if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
+    }
+
     auto self_tensor_ref = self->tensor;
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
@@ -1136,10 +1178,6 @@ static PyObject* tensor__gt__method(TensorObject* self,
       }
     }
 
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
@@ -1240,6 +1278,15 @@ static PyObject* tensor__ge__method(TensorObject* self,
       ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
     }
   } else if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
+    }
+
     auto self_tensor_ref = self->tensor;
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
@@ -1279,10 +1326,6 @@ static PyObject* tensor__ge__method(TensorObject* self,
       }
     }
 
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
@@ -1388,6 +1431,15 @@ static PyObject* tensor__mod__method(TensorObject* self,
       ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
     }
   } else if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
+    }
+
     auto self_tensor_ref = self->tensor;
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
@@ -1427,10 +1479,6 @@ static PyObject* tensor__mod__method(TensorObject* self,
       }
     }
 
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
@@ -1656,6 +1704,15 @@ static PyObject* tensor__lt__method(TensorObject* self,
       ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
     }
   } else if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
+    }
+
     auto self_tensor_ref = self->tensor;
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
@@ -1695,10 +1752,6 @@ static PyObject* tensor__lt__method(TensorObject* self,
       }
     }
 
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
@@ -1799,6 +1852,15 @@ static PyObject* tensor__le__method(TensorObject* self,
       ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
     }
   } else if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
+    }
+
     auto self_tensor_ref = self->tensor;
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
@@ -1838,10 +1900,6 @@ static PyObject* tensor__le__method(TensorObject* self,
       }
     }
 
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
@@ -1947,6 +2005,15 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
       ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
     }
   } else if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
+    }
+
     auto self_tensor_ref = self->tensor;
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
@@ -1986,10 +2053,6 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
       }
     }
 
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
@@ -2084,6 +2147,15 @@ static PyObject* tensor__pow__method(TensorObject* self,
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
   if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
+    }
+
     auto self_tensor_ref = self->tensor;
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
@@ -2124,10 +2196,6 @@ static PyObject* tensor__pow__method(TensorObject* self,
       }
     }
 
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
@@ -2232,6 +2300,15 @@ static PyObject* tensor__rpow__method(TensorObject* self,
       ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
     }
   } else if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
+    }
+
     auto self_tensor_ref = self->tensor;
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
@@ -2272,10 +2349,6 @@ static PyObject* tensor__rpow__method(TensorObject* self,
       }
     }
 
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
@@ -2376,6 +2449,15 @@ static PyObject* tensor__ne__method(TensorObject* self,
       ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
     }
   } else if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
+    }
+
     auto self_tensor_ref = self->tensor;
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
@@ -2415,10 +2497,6 @@ static PyObject* tensor__ne__method(TensorObject* self,
       }
     }
 
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
@@ -2517,6 +2595,15 @@ static PyObject* tensor__eq__method(TensorObject* self,
       ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
     }
   } else if (PyCheckTensor(other_obj)) {
+    auto& self_tensor_ref_addr = self->tensor;
+    auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
+    const phi::distributed::ProcessMesh* mesh = nullptr;
+    if (InputsContainDistTensor(
+            &mesh, self_tensor_ref_addr, other_tensor_ref_addr)) {
+      ConvertAllInputsToDistTensor(
+          mesh, self_tensor_ref_addr, other_tensor_ref_addr);
+    }
+
     auto self_tensor_ref = self->tensor;
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
@@ -2556,10 +2643,6 @@ static PyObject* tensor__eq__method(TensorObject* self,
       }
     }
 
-    const phi::distributed::ProcessMesh* mesh = nullptr;
-    if (InputsContainDistTensor(&mesh, self_tensor_ref, other_tensor_ref)) {
-      ConvertAllInputsToDistTensor(mesh, self_tensor_ref, other_tensor_ref);
-    }
     self_tensor = self_tensor_ref;
     other_tensor = other_tensor_ref;
   } else {
