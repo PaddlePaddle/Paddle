@@ -1157,6 +1157,172 @@ CreateGroupShapeOrDataExprs(
           << " value_to_shape_or_data_exprs.size() : " << value2shape.size();
   return value2shape;
 }
+class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
+ public:
+  explicit FusionOpPattern(::pir::IrContext* context)
+      : pir::OpRewritePattern<cinn::dialect::FusionOp>(context) {}
+
+  bool MatchAndRewrite(cinn::dialect::FusionOp fusion_op,
+                       pir::PatternRewriter& rewriter) const override {
+    ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+    auto* program = fusion_op->GetParentProgram();
+    auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
+        fusion_op->GetParentProgram());
+    VLOG(4) << "Program before lowering: \n"
+            << pir::CustomPrintHelper(*program, shape_analysis.PrintHook());
+    auto target = cinn::runtime::CurrentTarget::GetCurrentTarget();
+    auto ir_compiler =
+        cinn::hlir::framework::PirCompilerManager::Create(target);
+    auto group = RebuildGroup(fusion_op);
+    // Because the group is rebuilt, the order of group.output_values generated
+    // by BuildCUDAJITInfo may not be same with the order bound in the yield op,
+    // so a mapping is required.
+
+    group->set_value_to_shape_or_data_exprs(
+        CreateGroupShapeOrDataExprs(group, shape_analysis));
+    if (FLAGS_cinn_enable_map_expr) {
+      cinn::adt::TryGenerateMapExprFromGroup(group);
+    }
+
+    // TODO(zhangyuqin1998): Replace pir::Group with a new structure
+    pir::Operation* compiled_op =
+        ProcessGroup(group, shape_analysis, ir_compiler, rewriter);
+
+    for (size_t i = 0; i < fusion_op.num_results(); ++i) {
+      rewriter.ReplaceAllUsesWith(fusion_op.result(i), compiled_op->result(i));
+      if (shape_analysis.HasShapeOrDataForValue(fusion_op.result(i))) {
+        shape_analysis.SetShapeOrDataForValue(
+            compiled_op->result(i),
+            shape_analysis.GetShapeOrDataForValue(fusion_op.result(i)));
+      } else {
+        LOG(WARNING) << "No shape_data for "
+                     << fusion_op.result(i).defining_op()->name() << "_result_"
+                     << i;
+      }
+    }
+
+    rewriter.EraseOp(fusion_op);
+    return true;
+  }
+
+ protected:
+  virtual pir::Operation* ProcessGroup(
+      const OpLoweringGroupPtr& group,
+      pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
+      const std::shared_ptr<cinn::hlir::framework::PirCompiler>& pir_compiler,
+      pir::PatternRewriter& rewriter) const {  // NOLINT
+    auto group_inputs = GetBlockOutsideInput(group->ops());
+    // compile group to jit_kernel_op
+    auto op_attr_map = CompileGroupAsOpAttribute(pir_compiler, {group});
+    std::vector<pir::Type> output_types;
+    const auto& group_output_values = group->output_values();
+    for (size_t i = 0; i < group_output_values.size(); ++i) {
+      output_types.push_back(group_output_values[i].type());
+    }
+    auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
+        group_inputs, op_attr_map.at(group), output_types);
+    return jit_kernel_op;
+  }
+
+ private:
+  std::shared_ptr<OpLoweringGroup> RebuildGroup(
+      cinn::dialect::FusionOp fusion_op) const {
+    auto group = std::make_shared<OpLoweringGroup>();
+    group->set_op_pattern_kind(
+        cinn::hlir::framework::OpPatternKind::kElementWise);
+    if (fusion_op.attributes().count("group_info")) {
+      auto attr = fusion_op.attribute("group_info")
+                      .dyn_cast<cinn::dialect::GroupInfoAttribute>()
+                      .data();
+
+      group->set_op_pattern_kind(attr.op_pattern_kind);
+      group->set_loop_ranges(attr.loop_ranges);
+      group->set_loop_ranges_expr(attr.loop_ranges_expr);
+      group->set_reduce_axis(attr.reduce_axis);
+      group->set_alignment_schedule_info(attr.alignment_schedule_info);
+    }
+
+    // Rebuild ops of the group
+    for (auto op : fusion_op.GetOperators()) {
+      if (!op->isa<::pir::YieldOp>()) {
+        group->mut_ops().push_back(op);
+        group->set_op_pattern_kind(
+            static_cast<int>(CompatibleInfo::OpKind(*op)) >
+                    static_cast<int>(group->op_pattern_kind())
+                ? CompatibleInfo::OpKind(*op)
+                : group->op_pattern_kind());
+      }
+    }
+
+    // Rebuild output_ops and input_ops of the group
+    auto yield_op = fusion_op.GetOperators().back();
+    for (size_t i = 0; i < yield_op->num_operands(); ++i) {
+      auto in = yield_op->operand_source(i);
+      group->mut_output_ops().insert(in.defining_op());
+      group->mut_output_values().push_back(in);
+    }
+
+    return group;
+  }
+};
+
+class DyShapeFusionOpPattern : public FusionOpPattern {
+ public:
+  using FusionOpPattern::FusionOpPattern;
+
+ protected:
+  virtual pir::Operation* ProcessGroup(
+      const OpLoweringGroupPtr& group,
+      pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
+      const std::shared_ptr<cinn::hlir::framework::PirCompiler>& pir_compiler,
+      pir::PatternRewriter& rewriter) const {  // NOLINT
+    return ProcessDyShapeGroup(group, shape_analysis, pir_compiler, rewriter);
+  }
+};
+
+class LowerCinnFusionOpPass : public pir::PatternRewritePass {
+ public:
+  LowerCinnFusionOpPass()
+      : pir::PatternRewritePass("lower_cinn_fusion_op", 1) {}
+
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
+    context->GetOrRegisterDialect<cinn::dialect::RuntimeDialect>();
+    context->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+    context->GetOrRegisterDialect<paddle::dialect::KernelDialect>();
+
+    pir::RewritePatternSet ps(context);
+    ps.Add<FusionOpPattern>(context);
+
+    return ps;
+  }
+
+  bool CanApplyOn(pir::Operation* op) const override {
+    return op->num_regions() > 0;
+  }
+};
+
+class LowerCinnDyShapeFusionOpPass : public pir::PatternRewritePass {
+ public:
+  LowerCinnDyShapeFusionOpPass()
+      : pir::PatternRewritePass("lower_cinn_dynamic_shape_fusion_op", 1) {}
+
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
+    context->GetOrRegisterDialect<cinn::dialect::RuntimeDialect>();
+    context->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+    context->GetOrRegisterDialect<paddle::dialect::KernelDialect>();
+
+    pir::RewritePatternSet ps(context);
+    ps.Add<DyShapeFusionOpPattern>(context);
+    ps.Add<RefreshCombineOpPattern>(context);
+
+    return ps;
+  }
+
+  bool CanApplyOn(pir::Operation* op) const override {
+    return op->num_regions() > 0;
+  }
+};
+
 }  // namespace
 
 namespace cinn::dialect::ir {

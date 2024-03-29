@@ -149,6 +149,13 @@ std::string Compiler::CompileWithHipcc(const std::string& hip_c) {
   }
 
   std::string dir = "./source";
+  // create the folder to store sycl temporary files
+  if (access(dir.c_str(), F_OK) == -1) {
+    PADDLE_ENFORCE_NE(
+        mkdir(dir.c_str(), 7),
+        -1,
+        ::common::errors::PreconditionNotMet("Fail to mkdir " + dir));
+  }
   prefix_name_ = dir + "/" + common::UniqName("hip_tmp");
 
   auto hip_c_file = prefix_name_ + ".cc";
@@ -163,6 +170,7 @@ std::string Compiler::CompileWithHipcc(const std::string& hip_c) {
   options += " -I " + include_dir_str;
   options += " -o " + prefix_name_ + ".hsaco";
   options += " " + prefix_name_ + ".cc";
+  VLOG(3) << options;
   system(options.c_str());
   return prefix_name_ + ".hsaco";
 }
