@@ -115,7 +115,6 @@
 #include "paddle/fluid/pir/transforms/general/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/general/inplace_pass.h"
-#include "paddle/fluid/pir/transforms/general/matmul_transpose_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/general/params_sync_among_devices_pass.h"
 #include "paddle/fluid/pir/transforms/general/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
@@ -886,6 +885,16 @@ bool AnalysisPredictor::PrepareExecutor() {
       pir_program_ =
           paddle::TranslateLegacyProgramToProgram(*inference_program_);
 
+      auto ir_printing_conditions = [this](::pir::Pass *pass,
+                                           ::pir::Operation *op) {
+        if (this->config_.ir_debug_passes_.empty()) {
+          return true;
+        }
+        return std::find(this->config_.ir_debug_passes_.begin(),
+                         this->config_.ir_debug_passes_.end(),
+                         pass->name()) != this->config_.ir_debug_passes_.end();
+      };
+
 #ifdef PADDLE_WITH_CINN
       if (paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
         VLOG(4) << "[Prim] Decomp program in predictor begin.";
@@ -911,13 +920,16 @@ bool AnalysisPredictor::PrepareExecutor() {
             pass_manager->EnablePrintStatistics();
           }
           if (config_.ir_debug_) {
-            pass_manager->EnableIRPrinting();
+            pass_manager->EnableIRPrinting(
+                std::make_unique<pir::PassManager::IRPrinterOption>(
+                    ir_printing_conditions, ir_printing_conditions));
           }
           return pass_manager;
         });
       }
 #endif
 
+      // Apply some optimization passes required by the inference
       ::pir::PassManager pass_pm(::pir::IrContext::Instance(),
                                  config_.pm_opt_level_);
       if (!config_.custom_passes_.empty()) {
@@ -934,14 +946,6 @@ bool AnalysisPredictor::PrepareExecutor() {
                 std::move(pir::PassRegistry::Instance().Get(gpu_pass)));
           }
         }
-        // Basic pass required by the framework
-        auto params_sync_among_devices_pass =
-            ::pir::CreateParamsSyncAmongDevicesPass();
-        params_sync_among_devices_pass->SetNotOwned(pir::kPlaceAttr, &place_);
-        params_sync_among_devices_pass->SetNotOwned(pir::kParamScopeAttr,
-                                                    sub_scope_);
-        pass_pm.AddPass(std::move(params_sync_among_devices_pass));
-
 #ifdef PADDLE_WITH_DNNL
       } else if (config_.mkldnn_enabled()) {
         // mkldnn
@@ -961,20 +965,45 @@ bool AnalysisPredictor::PrepareExecutor() {
           }
         }
       }
-      auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
-      constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place_);
-      constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, sub_scope_);
-      pass_pm.AddPass(std::move(constant_folding_pass));
-      pass_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
-      pass_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
-      //----------------------------------------------------------------------------------------------//
+
       if (!config_.glog_info_disabled()) {
         pass_pm.EnablePrintStatistics();
       }
       if (config_.ir_debug_) {
-        pass_pm.EnableIRPrinting();
+        pass_pm.EnableIRPrinting(
+            std::make_unique<pir::PassManager::IRPrinterOption>(
+                ir_printing_conditions, ir_printing_conditions));
       }
       pass_pm.Run(pir_program_.get());
+
+      // Apply some basic passes required by the framework
+      ::pir::PassManager basic_pass_pm(::pir::IrContext::Instance(),
+                                       config_.pm_opt_level_);
+
+      auto params_sync_among_devices_pass =
+          ::pir::CreateParamsSyncAmongDevicesPass();
+      params_sync_among_devices_pass->SetNotOwned(pir::Pass::kPlaceAttr,
+                                                  &place_);
+      params_sync_among_devices_pass->SetNotOwned(pir::Pass::kParamScopeAttr,
+                                                  sub_scope_);
+      basic_pass_pm.AddPass(std::move(params_sync_among_devices_pass));
+      auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
+      constant_folding_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
+      constant_folding_pass->SetNotOwned(pir::Pass::kParamScopeAttr,
+                                         sub_scope_);
+      basic_pass_pm.AddPass(std::move(constant_folding_pass));
+      basic_pass_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
+      basic_pass_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
+      if (!config_.glog_info_disabled()) {
+        basic_pass_pm.EnablePrintStatistics();
+      }
+      if (config_.ir_debug_) {
+        basic_pass_pm.EnableIRPrinting(
+            std::make_unique<pir::PassManager::IRPrinterOption>(
+                ir_printing_conditions, ir_printing_conditions));
+      }
+      basic_pass_pm.Run(pir_program_.get());
+      //----------------------------------------------------------------------------------------------//
 
       pir_program_ =
           paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_);
@@ -987,7 +1016,9 @@ bool AnalysisPredictor::PrepareExecutor() {
         lowered_pm.EnablePrintStatistics();
       }
       if (config_.ir_debug_) {
-        lowered_pm.EnableIRPrinting();
+        lowered_pm.EnableIRPrinting(
+            std::make_unique<pir::PassManager::IRPrinterOption>(
+                ir_printing_conditions, ir_printing_conditions));
       }
       lowered_pm.Run(pir_program_.get());
 
