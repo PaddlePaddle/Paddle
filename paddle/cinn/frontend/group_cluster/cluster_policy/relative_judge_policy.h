@@ -265,6 +265,8 @@ class RelativeJudgePolicy final : public Policy {
   ValueDimRelation index_expr_map_;
   ShardableAxesInfoManager axes_info_;
   bool ReduceTreeGrownCanMerge(const PatternNodePtr&, const PatternNodePtr&);
+  bool IsFlattenDimSmaller(const PatternNodePtr& upstream,
+                           const PatternNodePtr& downstream);
   bool ReducePlusTrivialCanMerge(const PatternNodePtr&, const PatternNodePtr&);
   SplitedDims SplitDimsWithRelationship(
       const std::vector<ValueDim>& targets,

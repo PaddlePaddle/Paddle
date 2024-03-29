@@ -208,7 +208,34 @@ bool RelativeJudgePolicy::ReducePlusTrivialCanMerge(
 
   auto res =
       DimsEquel(split_trivial_dims_result.non_related, upstream_reduce_dims);
+  res = res || IsFlattenDimSmaller(upstream, downstream);
   VLOG(4) << "ReducePlusTrivialCanMerge: " << res;
+  return res;
+}
+
+bool RelativeJudgePolicy::IsFlattenDimSmaller(
+    const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
+  const auto& split_reduce_dims_result =
+      SplitReduceInputDimsIfRelatedWithNonReduceAxis(
+          axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
+  const auto& upstream_reduce_dims = split_reduce_dims_result.non_related;
+  const auto& upstream_non_reduce_dims = split_reduce_dims_result.related;
+
+  const auto& split_trivial_dims_result = SplitDimsWithRelationship(
+      GetAllValueDimFromValue(downstream->sink_op_->result(0)),
+      upstream_non_reduce_dims);
+
+  VLOG(4) << "IsFlattenDimSmaller: "
+          << axes_info_.GetSignature(downstream->sink_op_).DebugStr();
+  int rank = axes_info_.GetSignature(downstream->sink_op_)
+                 .outputs[0]
+                 .axis_names.size();
+  VLOG(4) << "IsFlattenDimSmaller: " << rank << " "
+          << split_trivial_dims_result.related.size() << " "
+          << upstream_non_reduce_dims.size();
+  bool res = (rank - split_trivial_dims_result.related.size()) <=
+             upstream_non_reduce_dims.size();
+  VLOG(4) << "IsFlattenDimSmaller: " << res;
   return res;
 }
 
@@ -242,7 +269,8 @@ std::vector<size_t> RelativeJudgePolicy::GetFakeReduceIterIdx(
 
   const auto& trivial_reorder_dims = split_trivial_dims_result.non_related;
 
-  CHECK_EQ(upstream_reduce_dims.size(), trivial_reorder_dims.size());
+  // CHECK(upstream_reduce_dims.size() == trivial_reorder_dims.size() ||
+  // trivial_reorder_dims.size() == 0);
   std::unordered_set<ValueDim, ValueDimHash> visited_dims;
   std::vector<size_t> result;
   for (auto& reduce_dim : upstream_reduce_dims) {
@@ -255,7 +283,6 @@ std::vector<size_t> RelativeJudgePolicy::GetFakeReduceIterIdx(
       }
     }
   }
-  CHECK_EQ(result.size(), upstream_reduce_dims.size());
   VLOG(4) << "FakeReduceIterIdx: " << cinn::utils::Join(result, ", ");
   return result;
 }
