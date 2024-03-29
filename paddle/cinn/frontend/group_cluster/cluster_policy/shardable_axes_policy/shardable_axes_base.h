@@ -41,6 +41,7 @@ struct ShardableAxesInfoManager {
   ShardableAxesSignature CreateShardableSignature(pir::Operation* op);
   ShardableAxes ReplaceShardableAxesWithRootName(const ShardableAxes& axes);
   static std::string GetUniqueName();
+  std::string NameUnionDebugStr() const;
 
  private:
   const std::vector<pir::Operation*>& ops_;

@@ -187,6 +187,9 @@ static std::optional<ValueDimRelation> CreateOpRelativenessForSpecialOps(
     // Special Elementwise.
     return CreateOpRelativenessForDefault(op);
   }
+  if (op->name() == "cinn_op.generate_shape") {
+    return CreateOpRelativenessForDefault(op);
+  }
   return {};
 }
 
