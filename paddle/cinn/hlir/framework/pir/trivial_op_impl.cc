@@ -407,7 +407,9 @@ std::vector<FusibleOp> FusionGraph::TransformReduceLoopRange(
         is_trivial_downstream
             ? FilterWithFakeReduceIter(downstream_output_tensor->shape)
             : downstream_output_tensor->shape,
-        downstream_output_tensor->domain,
+        is_trivial_downstream
+            ? FilterWithFakeReduceIter(downstream_output_tensor->domain)
+            : downstream_output_tensor->domain,
         GetOutputTensor(upstream)->operation,
         GetReduceIters(upstream));
     result->WithBuffer();
