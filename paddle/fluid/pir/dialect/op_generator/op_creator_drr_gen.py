@@ -122,7 +122,6 @@ class OpCreatorCodeGen:
                 onednn_ops = []
                 for op in ops:
                     onednn_ops.append(op)
-                # op_yaml_items = op_yaml_items + onednn_ops
             for yaml_file in op_yaml_files:
                 with open(yaml_file, "r") as f:
                     ops = yaml.safe_load(f)
@@ -130,7 +129,6 @@ class OpCreatorCodeGen:
                     for op in ops:
                         if op['name'] in ops_onednn_extra_set:
                             onednn_ops.append(op)
-                    # op_yaml_items = op_yaml_items + onednn_ops
                     for op in ops:
                         op_compat_item = op_compat_parser.get_compat(op['name'])
                         if (

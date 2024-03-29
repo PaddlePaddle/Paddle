@@ -762,8 +762,6 @@ def gen_infermeta_func_str(args, op_info):
 
 
 def gen_infermeta_impl_str(args, op_info):
-    # if(op_info.class_name== "MaskedMatmulSpOp_sp"):
-    #     breakpoint()
     return (
         OP_INFERMETA_IMPL_TEMPLATE_1.format(
             op_name=op_info.class_name,

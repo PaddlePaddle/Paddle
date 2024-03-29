@@ -223,10 +223,6 @@ class CodeGen:
     def _parse_yaml(self, op_yaml_files, op_compat_yaml_file):
         op_compat_parser = OpCompatParser(op_compat_yaml_file)
         op_info_items = []
-        op_yaml_files = [
-            '/paddle_cuda11.2/build_pr/paddle/fluid/pir/dialect/operator/ir/generated/sparse_ops.parsed.yaml',
-            '/paddle_cuda11.2/build_pr/paddle/fluid/pir/dialect/operator/ir/generated/sparse_backward.parsed.yaml',
-        ]
         for yaml_file in op_yaml_files:
             op_yaml_items = []
             with open(yaml_file, "r") as f:

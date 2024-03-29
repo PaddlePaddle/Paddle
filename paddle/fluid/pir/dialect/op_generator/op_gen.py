@@ -2101,7 +2101,6 @@ def OpGenerator(
     all_op_info_items = {}
     first_file = True
     onednn_only_op_list = []
-    # op_yaml_files=['/paddle_cuda11.2/build_pr/paddle/fluid/pir/dialect/operator/ir/generated/sparse_ops.parsed.yaml', '/paddle_cuda11.2/build_pr/paddle/fluid/pir/dialect/operator/ir/generated/sparse_backward.parsed.yaml']
     for yaml_file in op_yaml_files:
         op_yaml_items = []
         with open(yaml_file, "r") as f:
