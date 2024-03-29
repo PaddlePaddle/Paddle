@@ -166,6 +166,8 @@ ShardableAxesSignature ShardableAxesInfoManager::CreateShardableSignature(
     pir::Operation* op) {
   auto special_result = CreateSignatureForSpecialOps(op);
   if (special_result != std::nullopt) {
+    VLOG(4) << "[ShardableAxesInfoManager] Create Shardable Axes Signature : \n"
+            << op->name() << " : " << special_result.value().DebugStr();
     return special_result.value();
   }
 
@@ -239,10 +241,7 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
     }
   }
 
-  VLOG(4) << "[ShardableAxesInfoManager] NameUnion : ";
-  for (const auto& [non_root, root] : name_union_) {
-    VLOG(4) << non_root << " => " << root;
-  }
+  VLOG(4) << NameUnionDebugStr();
 }
 
 std::string ShardableAxes::DebugStr() const {
@@ -262,6 +261,29 @@ std::string ShardableAxesSignature::DebugStr() const {
   for (int i = 0; i < outputs.size(); i++) {
     ss << "output " << i << ": " << outputs[i].DebugStr() << "\n";
   }
+  return ss.str();
+}
+
+std::string ShardableAxesInfoManager::NameUnionDebugStr() const {
+  std::stringstream ss;
+  ss << "[ShardableAxesInfoManager] NameUnion :\n";
+
+  std::unordered_map<std::string, std::vector<std::string>> root_to_sons;
+  for (const auto& [non_root, root] : name_union_) {
+    if (root_to_sons.find(root) == root_to_sons.end()) {
+      root_to_sons[root] = std::vector<std::string>{non_root};
+    } else {
+      root_to_sons[root].push_back(non_root);
+    }
+  }
+  for (const auto& [root, sons] : root_to_sons) {
+    ss << "Root " << root << ": ";
+    for (const auto& son : sons) {
+      ss << son << ", ";
+    }
+    ss << "\n";
+  }
+
   return ss.str();
 }
 
