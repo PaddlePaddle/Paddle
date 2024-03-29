@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/reshape_kernel.h"
 #include <algorithm>
+#include "glog/logging.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/strided_reshape_utils.h"
@@ -31,7 +32,6 @@ void ReshapeStridedKernel(const Context& dev_ctx,
   size_t x_offset = x.offset();
   if (xshape) {
     x_dims = DDim(xshape->dims().Get() + 1, xshape->dims().size() - 1);
-    x_stride = xshape->strides();
   }
   MetaTensor meta_out(out);
   InferMetaFromVecValue(x, shape.GetData(), &meta_out);
