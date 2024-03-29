@@ -1455,7 +1455,6 @@ class Strategy(auto_strategy.BaseConfig):
             category
         )
         for key in base_config.keys():
-            print(f"key: {key}")
             setattr(self, key, getattr(legacy_strategy, key))
         self._fused_passes.enable = legacy_strategy.fused_passes.enable
         if (
