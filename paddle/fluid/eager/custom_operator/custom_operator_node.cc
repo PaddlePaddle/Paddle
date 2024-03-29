@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/eager/custom_operator/custom_operator_node.h"
 
+#include "paddle/fluid/eager/custom_operator/custom_operator_utils.h"
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/custom_operator_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -172,8 +173,6 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
       paddle::OpMetaInfoHelper::GetInputs(vec_map[1]);
   const auto& grad_outputs_names =
       paddle::OpMetaInfoHelper::GetOutputs(vec_map[1]);
-  const auto& grad_inplace_map =
-      paddle::OpMetaInfoHelper::GetInplaceMap(vec_map[1]);
   const auto& map =
       egr::Controller::Instance().GetCustomEdgesSlotMap().at(op_type_);
 
@@ -210,8 +209,8 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
                ->meta()
                .is_contiguous()) {
         tensor.set_impl(std::make_shared<phi::DenseTensor>(
-            std::move(paddle::experimental::Trans2Contiguous(*(
-                std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()))))));
+            paddle::experimental::Trans2Contiguous(*(
+                std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())))));
       }
     }
 
@@ -251,11 +250,12 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
   }
   VLOG(7) << "Run Kernel of Grad Custom Op: " << op_type_ << "_grad";
 
-  // handle inplace map
-  ctx.UpdatePlainOutputs(
-      grad_inputs_name, grad_outputs_names, grad_inplace_map);
-  (*paddle::OpMetaInfoHelper::GetKernelFn(vec_map[1]))(&ctx);
-  ctx.AssignInplaceOutputs();
+  run_custom_op_impl(vec_map[1], false, false, ctx);
+
+  for (size_t i = 0; i < ctx.OutputRange().size(); ++i) {
+    auto output_pair = ctx.OutputRangeAt(i);
+    outs[i] = ctx.OutputsBetween(output_pair.first, output_pair.second);
+  }
 
   // handle optional None output when construct backward graph
   for (size_t i = 0; i < ctx.OutputRange().size(); i++) {
@@ -264,7 +264,9 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
           ctx.MutableOutputAt(ctx.OutputRangeAt(i).first);
       if (!out_tensor->initialized()) {
         PADDLE_ENFORCE(
-            paddle::framework::detail::IsOptionalVar(grad_outputs_names.at(i)),
+            paddle::framework::detail::IsOptionalVar(
+                grad_outputs_names.at(i)) ||
+                out_tensor->is_dist_tensor(),
             phi::errors::InvalidArgument(
                 "Custom grad operator's %d-th output is not initialized. "
                 "Please check your implementation again. If you are "
@@ -386,8 +388,6 @@ RunCustomOpDoubleGradNode::operator()(
       paddle::OpMetaInfoHelper::GetInputs(vec_map[2]);
   const auto& grad_outputs_names =
       paddle::OpMetaInfoHelper::GetOutputs(vec_map[2]);
-  const auto& grad_inplace_map =
-      paddle::OpMetaInfoHelper::GetInplaceMap(vec_map[2]);
   const auto& map =
       egr::Controller::Instance().GetCustomEdgesSlotMap().at(op_type_);
 
@@ -436,7 +436,7 @@ RunCustomOpDoubleGradNode::operator()(
               << " to tmp_outputs: " << grad_output_idx;
       for (size_t j = 0; j < OutputMeta()[grad_output_idx].size(); j++) {
         outs[grad_output_idx]
-            .emplace_back(/* init it incase of copy nullptr of shared_ptr */
+            .emplace_back(/* init it in case of copy nullptr of shared_ptr */
                           std::make_shared<phi::DenseTensor>(
                               phi::DataType::UNDEFINED),
                           egr::Controller::Instance().GenerateUniqueName(
@@ -451,11 +451,12 @@ RunCustomOpDoubleGradNode::operator()(
   }
   VLOG(7) << "Run Kernel of Grad Custom Op: " << op_type_ << "_grad_grad";
 
-  // handle inplace map
-  ctx.UpdatePlainOutputs(
-      grad_inputs_name, grad_outputs_names, grad_inplace_map);
-  (*paddle::OpMetaInfoHelper::GetKernelFn(vec_map[2]))(&ctx);
-  ctx.AssignInplaceOutputs();
+  run_custom_op_impl(vec_map[2], false, true, ctx);
+
+  for (size_t i = 0; i < ctx.OutputRange().size(); ++i) {
+    auto output_pair = ctx.OutputRangeAt(i);
+    outs[i] = ctx.OutputsBetween(output_pair.first, output_pair.second);
+  }
 
   return outs;
 }

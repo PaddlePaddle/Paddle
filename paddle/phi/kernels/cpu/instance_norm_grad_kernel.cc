@@ -18,8 +18,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
@@ -93,9 +93,9 @@ void InstanceNormGradKernel(const Context& dev_ctx,
   }
 
   auto scale_e =
-      scale_ptr
-          ? EigenVector<T>::Flatten(*scale_ptr)
-          : EigenVector<T>::Flatten(const_cast<const DenseTensor&>(scale_data));
+      scale_ptr ? EigenVector<T>::Flatten(*scale_ptr)
+                : EigenVector<T>::Flatten(
+                      const_cast<const DenseTensor&>(scale_data));  // NOLINT
   auto mean_e = EigenVector<T>::Flatten(saved_mean);
   auto inv_var_e = EigenVector<T>::Flatten(saved_variance);
   auto dy_e = EigenVector<T>::Flatten(d_y);

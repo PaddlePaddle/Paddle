@@ -16,6 +16,7 @@
 from functools import wraps
 
 import paddle
+from paddle.framework.dtype import bind_datatype, bind_vartype
 
 
 class IrGuard:
@@ -49,11 +50,13 @@ class IrGuard:
             paddle.enable_static()
         paddle.framework.set_flags({"FLAGS_enable_pir_api": True})
         paddle.base.framework.global_var._use_pir_api_ = True
+        bind_datatype()
         self._switch_to_pir()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         paddle.framework.set_flags({"FLAGS_enable_pir_api": False})
         paddle.base.framework.global_var._use_pir_api_ = False
+        bind_vartype()
         self._switch_to_old_ir()
         if self.in_dygraph_outside:
             paddle.disable_static()
@@ -62,10 +65,10 @@ class IrGuard:
         if paddle.base.framework.get_flags("FLAGS_enable_pir_api")[
             "FLAGS_enable_pir_api"
         ]:
-            paddle.framework.set_flags(
-                {"FLAGS_enable_new_ir_in_executor": True}
-            )
+            paddle.framework.set_flags({"FLAGS_enable_pir_in_executor": True})
             paddle.pir.register_paddle_dialect()
+            # TODO find a better place to init the registion of dist dialect.
+            paddle.pir.register_dist_dialect()
 
             paddle.base.Program = paddle.pir.Program
             paddle.base.program_guard = paddle.pir.core.program_guard
@@ -88,9 +91,7 @@ class IrGuard:
         if not paddle.base.framework.get_flags("FLAGS_enable_pir_api")[
             "FLAGS_enable_pir_api"
         ]:
-            paddle.framework.set_flags(
-                {"FLAGS_enable_new_ir_in_executor": False}
-            )
+            paddle.framework.set_flags({"FLAGS_enable_pir_in_executor": False})
 
             paddle.base.Program = self.old_Program
             paddle.base.program_guard = self.old_program_guard

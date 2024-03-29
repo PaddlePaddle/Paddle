@@ -142,6 +142,7 @@ class InferencePassTest(unittest.TestCase):
                 self.path + ".pdmodel", self.path + ".pdiparams"
             )
         config.disable_gpu()
+        config.disable_mkldnn()
         config.switch_specify_input_names(True)
         config.switch_ir_optim(True)
         config.switch_use_feed_fetch_ops(False)
@@ -225,9 +226,7 @@ class InferencePassTest(unittest.TestCase):
         # Check whether the results calculated on CPU and on GPU are the same.
         self.assertTrue(
             len(paddle_outs) == len(inference_outs),
-            "The number of outputs is different between inference and training forward at {}".format(
-                device
-            ),
+            f"The number of outputs is different between inference and training forward at {device}",
         )
 
         for out, inference_out in zip(paddle_outs, inference_outs):
@@ -241,9 +240,7 @@ class InferencePassTest(unittest.TestCase):
                 inference_out,
                 rtol=1e-05,
                 atol=atol,
-                err_msg='Output has diff between inference and training forward at {} '.format(
-                    device
-                ),
+                err_msg=f'Output has diff between inference and training forward at {device} ',
             )
 
         # Check whether the trt results and the GPU results are the same.

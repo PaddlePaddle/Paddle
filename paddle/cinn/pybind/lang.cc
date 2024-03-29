@@ -35,7 +35,7 @@
 namespace py = pybind11;
 
 namespace cinn::pybind {
-using common::Type;
+using cinn::common::Type;
 using lang::Placeholder;
 using py::arg;
 using utils::GetStreamCnt;
@@ -70,7 +70,7 @@ void BindLower(py::module *m) {
          arg("scalar_args") = std::vector<ir::Var>(),
          arg("temp_tensors") = std::vector<ir::Tensor>(),
          arg("b") = nullptr,
-         arg("target") = common::DefaultHostTarget(),
+         arg("target") = cinn::common::DefaultHostTarget(),
          arg("supprt_ir_schedule") = false);
 }
 
@@ -84,7 +84,7 @@ void BindLowerVec(py::module *m) {
          arg("scalar_args") = std::vector<ir::Var>(),
          arg("temp_tensors") = std::vector<ir::Tensor>(),
          arg("b") = nullptr,
-         arg("target") = common::DefaultHostTarget(),
+         arg("target") = cinn::common::DefaultHostTarget(),
          arg("supprt_ir_schedule") = false);
 }
 
@@ -144,13 +144,13 @@ void BindModule(py::module *m) {
       .def("submodules", &ir::Module::submodules)
       .def("compile", &ir::Module::Compile)
       .def("get_c_code", [](const ir::Module &self) -> std::string {
-        backends::CodeGenC codegen(common::DefaultHostTarget());
+        backends::CodeGenC codegen(cinn::common::DefaultHostTarget());
         codegen.SetInlineBuiltinCodes(false);
         return codegen.Compile(self, backends::CodeGenC::OutputKind::CImpl);
       });
 
   py::class_<ir::Module::Builder> builder(module, "Builder");
-  builder.def(py::init<const std::string &, const common::Target &>())
+  builder.def(py::init<const std::string &, const cinn::common::Target &>())
       .def("add_function",
            [](ir::Module::Builder &self, ir::LoweredFunc func) {
              if (self.GetTargetArch() == Target::Arch::NVGPU) {

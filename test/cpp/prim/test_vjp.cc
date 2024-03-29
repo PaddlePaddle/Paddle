@@ -14,6 +14,7 @@
 
 #include <gtest/gtest.h>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/new_executor/pir_interpreter.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
@@ -22,13 +23,12 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
-#include "paddle/fluid/platform/init_phi.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/utils.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/utils.h"
 
 DECLARE_FILE_SYMBOLS(kernel_dialect);
 
@@ -44,9 +44,9 @@ namespace framework {
 
 pir::Operation* GetOpFromProgram(const std::string& op_name,
                                  const pir::Program& program) {
-  for (auto op : *(program.block())) {
-    if (op->name() == op_name) {
-      return op;
+  for (auto& op : *(program.block())) {
+    if (op.name() == op_name) {
+      return &op;
     }
   }
   return nullptr;
@@ -56,10 +56,10 @@ TEST(VJP, TanhBackwardTest) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program((ctx));
-  paddle::dialect::APIBuilder::Instance().SetProgram(&program);
+  paddle::dialect::ApiBuilder::Instance().SetProgram(&program);
 
   std::shared_ptr<pir::Builder> builder =
-      paddle::dialect::APIBuilder::Instance().GetBuilder();
+      paddle::dialect::ApiBuilder::Instance().GetBuilder();
   paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
   paddle::dialect::TanhOp op2 =
@@ -70,7 +70,7 @@ TEST(VJP, TanhBackwardTest) {
 
   std::vector<std::vector<bool>> stop_gradients{{false}};
   std::vector<std::vector<pir::Value>> inputs{{op1.out()}};
-  std::vector<std::vector<pir::OpResult>> outputs{{op2.out()}};
+  std::vector<std::vector<pir::Value>> outputs{{op2.out()}};
   std::vector<std::vector<pir::Value>> out_grads{{op3.out()}};
 
   pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.tanh");
@@ -111,10 +111,10 @@ TEST(VJP, Tanh_BackwardTest) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program((ctx));
-  paddle::dialect::APIBuilder::Instance().SetProgram(&program);
+  paddle::dialect::ApiBuilder::Instance().SetProgram(&program);
 
   std::shared_ptr<pir::Builder> builder =
-      paddle::dialect::APIBuilder::Instance().GetBuilder();
+      paddle::dialect::ApiBuilder::Instance().GetBuilder();
   paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
   paddle::dialect::Tanh_Op op2 =
@@ -125,7 +125,7 @@ TEST(VJP, Tanh_BackwardTest) {
 
   std::vector<std::vector<bool>> stop_gradients{{false}};
   std::vector<std::vector<pir::Value>> inputs{{op1.out()}};
-  std::vector<std::vector<pir::OpResult>> outputs{{op2.out()}};
+  std::vector<std::vector<pir::Value>> outputs{{op2.out()}};
   std::vector<std::vector<pir::Value>> out_grads{{op3.out()}};
 
   pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.tanh_");
@@ -167,10 +167,10 @@ TEST(VJP, MeanBackwardTest) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program((ctx));
-  paddle::dialect::APIBuilder::Instance().SetProgram(&program);
+  paddle::dialect::ApiBuilder::Instance().SetProgram(&program);
 
   std::shared_ptr<pir::Builder> builder =
-      paddle::dialect::APIBuilder::Instance().GetBuilder();
+      paddle::dialect::ApiBuilder::Instance().GetBuilder();
   paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2, 2}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
   paddle::dialect::MeanOp op2 =
@@ -181,7 +181,7 @@ TEST(VJP, MeanBackwardTest) {
 
   std::vector<std::vector<bool>> stop_gradients{{false}};
   std::vector<std::vector<pir::Value>> inputs{{op1.out()}};
-  std::vector<std::vector<pir::OpResult>> outputs{{op2.out()}};
+  std::vector<std::vector<pir::Value>> outputs{{op2.out()}};
   std::vector<std::vector<pir::Value>> out_grads{{op3.out()}};
 
   pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.mean");
@@ -225,10 +225,10 @@ TEST(VJP, ConcatBackwardTest) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program((ctx));
-  paddle::dialect::APIBuilder::Instance().SetProgram(&program);
+  paddle::dialect::ApiBuilder::Instance().SetProgram(&program);
 
   std::shared_ptr<pir::Builder> builder =
-      paddle::dialect::APIBuilder::Instance().GetBuilder();
+      paddle::dialect::ApiBuilder::Instance().GetBuilder();
   paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1, 2}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
   std::vector<pir::Value> combine_input{{op1.out(), op1.out()}};
@@ -241,7 +241,7 @@ TEST(VJP, ConcatBackwardTest) {
   std::vector<std::vector<bool>> stop_gradients{{false, false}};
   std::vector<std::vector<pir::Value>> inputs{{op1.out(), op1.out()},
                                               {op3.axis()}};
-  std::vector<std::vector<pir::OpResult>> outputs{{op3.out()}};
+  std::vector<std::vector<pir::Value>> outputs{{op3.out()}};
   std::vector<std::vector<pir::Value>> out_grads{{op4.out()}};
   pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.concat");
   auto concat_vjp_interface_impl =
@@ -292,10 +292,10 @@ TEST(VJP, AddBackwardTest) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program((ctx));
-  paddle::dialect::APIBuilder::Instance().SetProgram(&program);
+  paddle::dialect::ApiBuilder::Instance().SetProgram(&program);
 
   std::shared_ptr<pir::Builder> builder =
-      paddle::dialect::APIBuilder::Instance().GetBuilder();
+      paddle::dialect::ApiBuilder::Instance().GetBuilder();
   paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
   paddle::dialect::FullOp op2 = builder->Build<paddle::dialect::FullOp>(
@@ -308,7 +308,7 @@ TEST(VJP, AddBackwardTest) {
 
   std::vector<std::vector<bool>> stop_gradients{{false}, {false}};
   std::vector<std::vector<pir::Value>> inputs{{op1.out()}, {op2.out()}};
-  std::vector<std::vector<pir::OpResult>> outputs{{op3.out()}};
+  std::vector<std::vector<pir::Value>> outputs{{op3.out()}};
   std::vector<std::vector<pir::Value>> out_grads{{op4.out()}};
 
   pir::OpInfo op3_info = ctx->GetRegisteredOpInfo("pd_op.add");
@@ -357,10 +357,10 @@ TEST(VJP, Add_BackwardTest) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program((ctx));
-  paddle::dialect::APIBuilder::Instance().SetProgram(&program);
+  paddle::dialect::ApiBuilder::Instance().SetProgram(&program);
 
   std::shared_ptr<pir::Builder> builder =
-      paddle::dialect::APIBuilder::Instance().GetBuilder();
+      paddle::dialect::ApiBuilder::Instance().GetBuilder();
   paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
   paddle::dialect::FullOp op2 = builder->Build<paddle::dialect::FullOp>(
@@ -373,7 +373,7 @@ TEST(VJP, Add_BackwardTest) {
 
   std::vector<std::vector<bool>> stop_gradients{{false}, {false}};
   std::vector<std::vector<pir::Value>> inputs{{op1.out()}, {op2.out()}};
-  std::vector<std::vector<pir::OpResult>> outputs{{op3.out()}};
+  std::vector<std::vector<pir::Value>> outputs{{op3.out()}};
   std::vector<std::vector<pir::Value>> out_grads{{op4.out()}};
 
   pir::OpInfo op3_info = ctx->GetRegisteredOpInfo("pd_op.add_");
@@ -423,10 +423,10 @@ TEST(VJP, SplitBackwardTest) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   pir::Program program((ctx));
-  paddle::dialect::APIBuilder::Instance().SetProgram(&program);
+  paddle::dialect::ApiBuilder::Instance().SetProgram(&program);
 
   std::shared_ptr<pir::Builder> builder =
-      paddle::dialect::APIBuilder::Instance().GetBuilder();
+      paddle::dialect::ApiBuilder::Instance().GetBuilder();
   paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2, 2}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
@@ -441,7 +441,12 @@ TEST(VJP, SplitBackwardTest) {
   std::vector<std::vector<bool>> stop_gradients{{false}};
   std::vector<std::vector<pir::Value>> inputs{
       {op2.x()}, {op2.sections()}, {op2.axis()}};
-  std::vector<std::vector<pir::OpResult>> outputs{{op3.outputs()}};
+  std::vector<std::vector<pir::Value>> outputs(1);
+  std::vector<pir::Value> res;
+  for (uint32_t i = 0; i < op3.outputs().size(); i++) {
+    res.push_back(op3.outputs()[i]);
+  }
+  outputs[0] = res;
   std::vector<std::vector<pir::Value>> out_grads{{op3.result(0), op4.out()}};
   pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.split");
 

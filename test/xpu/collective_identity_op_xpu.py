@@ -25,16 +25,17 @@ class TestCollectiveIdentity(TestCollectiveRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
 
-    def get_model(self, main_prog, startup_program):
+    def get_model(self, main_prog, startup_program, dtype=None):
+        dtype = "float32" if dtype is None else dtype
         ring_id = 0
         nranks = 2
         with base.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
-                name="tindata", shape=[10, 1000], dtype='float32'
+                name="tindata", shape=[10, 1000], dtype=dtype
             )
             toutdata = main_prog.current_block().create_var(
                 name="outofgather",
-                dtype='float32',
+                dtype=dtype,
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
                 stop_gradient=False,

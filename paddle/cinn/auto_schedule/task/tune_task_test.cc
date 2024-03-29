@@ -59,9 +59,9 @@ Program CreateAddProgram() {
 TEST(TuneTask, GraphToUnoptLoweredFunc_NoPass) {
   Context::Global().ResetNameId();
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   Program prog = CreateAddProgram();
   auto graph = std::make_shared<hlir::framework::Graph>(prog, target);
@@ -73,7 +73,7 @@ TEST(TuneTask, GraphToUnoptLoweredFunc_NoPass) {
   const auto& shape_dict = graph->GetAttrs<
       absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
   const auto& dtype_dict =
-      graph->GetAttrs<absl::flat_hash_map<std::string, common::Type>>(
+      graph->GetAttrs<absl::flat_hash_map<std::string, cinn::common::Type>>(
           "inferdtype");
   auto op_lowerer =
       hlir::framework::CreateOpLowerer(dtype_dict, shape_dict, target);
@@ -169,9 +169,9 @@ TEST(TuneTask, GraphToUnoptLoweredFunc_NoPass) {
 TEST(TuneTask, GraphToUnoptLoweredFunc_ApplyPass) {
   Context::Global().ResetNameId();
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   Program prog = CreateAddProgram();
   auto graph = std::make_shared<hlir::framework::Graph>(prog, target);
@@ -185,7 +185,7 @@ TEST(TuneTask, GraphToUnoptLoweredFunc_ApplyPass) {
   const auto& shape_dict = graph->GetAttrs<
       absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
   const auto& dtype_dict =
-      graph->GetAttrs<absl::flat_hash_map<std::string, common::Type>>(
+      graph->GetAttrs<absl::flat_hash_map<std::string, cinn::common::Type>>(
           "inferdtype");
 
   OpLowerer op_lowerer(
@@ -277,9 +277,9 @@ TEST(TuneTask, GraphToUnoptLoweredFunc_ApplyPass) {
 TEST(TuneTask, SerializeToString) {
   Context::Global().ResetNameId();
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   Program prog = CreateAddProgram();
   auto graph = std::make_shared<hlir::framework::Graph>(prog, target);
@@ -291,7 +291,7 @@ TEST(TuneTask, SerializeToString) {
   const auto& shape_dict = graph->GetAttrs<
       absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
   const auto& dtype_dict =
-      graph->GetAttrs<absl::flat_hash_map<std::string, common::Type>>(
+      graph->GetAttrs<absl::flat_hash_map<std::string, cinn::common::Type>>(
           "inferdtype");
   OpLowerer op_lowerer(
       new hlir::framework::OpLowererImpl(dtype_dict, shape_dict, target));

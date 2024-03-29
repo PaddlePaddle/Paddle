@@ -41,8 +41,7 @@ try:
         # Note: from python3.8, PATH will not take effect
         # https://github.com/python/cpython/pull/12302
         # Use add_dll_directory to specify dll resolution path
-        if sys.version_info[:2] >= (3, 8):
-            os.add_dll_directory(third_lib_path)
+        os.add_dll_directory(third_lib_path)
 
 except ImportError as e:
     if os.name == 'nt':
@@ -250,7 +249,7 @@ def less_than_ver(a, b):
 # NOTE(zhiqiu): An error may occurs when import paddle in linux platform with glibc < 2.22,
 # the error message of which is "dlopen: cannot load any more object with static TLS".
 # This happens when:
-# (1) the number of dynamic shared librarys (DSO) loaded > 14,
+# (1) the number of dynamic shared libraries (DSO) loaded > 14,
 # (2) after that, load a dynamic shared library (DSO) with static TLS.
 # For paddle, the problem is that 'libgomp' is a DSO with static TLS, and it is loaded after 14 DSOs.
 # So, here is a tricky way to solve the problem by pre load 'libgomp' before 'libpaddle.so'.
@@ -292,6 +291,8 @@ try:
         _device_synchronize,
         _dygraph_debug_level,
         _get_all_register_op_kernels,
+        _get_amp_attrs,
+        _get_amp_op_list,
         _get_current_stream,
         _get_eager_deletion_vars,
         _get_phi_kernel_name,
@@ -305,12 +306,14 @@ try:
         _promote_types_if_complex_exists,
         _RecordEvent,
         _Scope,
+        _set_amp_op_list,
         _set_cached_executor_build_strategy,
         _set_current_stream,
         _set_eager_deletion_mode,
         _set_fuse_parameter_group_size,
         _set_fuse_parameter_memory_size,
         _set_paddle_lib_path,
+        _set_warmup,
         _switch_tracer,
         _test_enforce_gpu_success,
         _xpu_device_synchronize,
@@ -318,7 +321,7 @@ try:
 
     # isort: off
 
-    # custom devivce
+    # custom device
     from .libpaddle import (  # noqa: F401
         CustomDeviceEvent,
         CustomDeviceStream,
@@ -341,6 +344,9 @@ try:
         _set_bwd_prim_blacklist,
         _set_prim_target_grad_name,
     )
+
+    # type promotion
+    from .libpaddle import need_type_promotion, get_promote_dtype  # noqa: F401
 
     # isort: on
     if sys.platform != 'win32':
@@ -478,7 +484,7 @@ def _test_use_sync(value):
     __sync_stat_with_flag(value)
 
 
-# ops in forward_blacklisk will not be replaced by composite ops.
+# ops in forward_blacklist will not be replaced by composite ops.
 prim_config = {"forward_blacklist": set(), "composite_ops_record": set()}
 
 
@@ -504,12 +510,50 @@ ops_contain_none = {
 }
 
 
+# some intermediate outputs like xshape will no longer used after decomp, but return none to keep output num the same as origin op
+# key is the name of op, and value is the index of output in op.outputs
+decomp_ops_contain_unused_output = {
+    "pd_op.squeeze": [1],
+    "pd_op.unsqueeze": [1],
+    "pd_op.batch_norm": [5],
+}
+
+
+# This api is used for development for dynamic shape in prim, and will be removed in future.
+def _enable_prim_skip_dynamic_shape():
+    flag = os.getenv("FLAGS_prim_skip_dynamic")
+    if flag and flag.lower() in ("1", "true"):
+        return True
+    else:
+        return False
+
+
+def _enable_prim_dynamic_shape():
+    flag = os.getenv("FLAGS_prim_enable_dynamic")
+    if flag and flag.lower() in ("1", "true"):
+        return True
+    else:
+        return False
+
+
+def _enable_auto_recompute():
+    flag = os.getenv("FLAGS_enable_auto_recompute")
+    if flag and flag.lower() in ("1", "true"):
+        return True
+    else:
+        return False
+
+
 def _set_prim_forward_blacklist(*args):
     for item in args:
         if not isinstance(item, str):
             raise TypeError("ops set in forward_blacklist must belong to str")
         else:
             prim_config["forward_blacklist"].add(item)
+
+
+def _reset_prim_forward_blacklist():
+    prim_config["forward_blacklist"] = set()
 
 
 def _set_prim_backward_blacklist(*args):

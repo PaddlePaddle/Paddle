@@ -26,6 +26,7 @@
 #include "paddle/cinn/hlir/framework/node.h"
 
 namespace cinn {
+
 namespace hlir {
 namespace framework {
 
@@ -59,6 +60,8 @@ class Graph : public cinn::common::Graph {
   std::vector<std::vector<Node*>> groups;
   struct Group {
     Group() = default;
+    Group(const Group&) = delete;
+    Group(Group&&) = delete;
 
     explicit Group(const Graph* graph) : graph_(graph) {}
 
@@ -109,7 +112,7 @@ class Graph : public cinn::common::Graph {
       }
     };
 
-    std::vector<Node*> CollectNodes() {
+    std::vector<Node*> CollectNodes() const {
       if (fused_sub_groups.size()) {
         std::vector<Node*> tmp_nodes;
         for (auto& group : fused_sub_groups) {
@@ -144,8 +147,8 @@ class Graph : public cinn::common::Graph {
       return node_set;
     }
 
-    std::unordered_set<NodeData*> GetInputNodeDatas();
-    std::unordered_set<NodeData*> GetOutputNodeDatas();
+    std::unordered_set<NodeData*> GetInputNodeDatas() const;
+    std::unordered_set<NodeData*> GetOutputNodeDatas() const;
 
     std::string GetFuncName() { return "fn_" + group_id + unique_id; }
 
@@ -186,7 +189,7 @@ class Graph : public cinn::common::Graph {
                        SharedGroupHasher,
                        SharedGroupComparator>
         producer_groups_;
-    // output grous
+    // output groups
     std::unordered_set<std::shared_ptr<Group>,
                        SharedGroupHasher,
                        SharedGroupComparator>
@@ -195,16 +198,20 @@ class Graph : public cinn::common::Graph {
   std::vector<std::shared_ptr<Group>> fusion_groups;
 
   void RegisterNode(size_t key, Node* node) {
-    this->common::Graph::RegisterNode(key, node->as<common::GraphNode>());
+    this->cinn::common::Graph::RegisterNode(
+        key, node->as<cinn::common::GraphNode>());
   }
   void RegisterNode(size_t key, NodeData* node) {
-    this->common::Graph::RegisterNode(key, node->as<common::GraphNode>());
+    this->cinn::common::Graph::RegisterNode(
+        key, node->as<cinn::common::GraphNode>());
   }
   void RegisterNode(const std::string& key, Node* node) {
-    this->common::Graph::RegisterNode(key, node->as<common::GraphNode>());
+    this->cinn::common::Graph::RegisterNode(
+        key, node->as<cinn::common::GraphNode>());
   }
   void RegisterNode(const std::string& key, NodeData* node) {
-    this->common::Graph::RegisterNode(key, node->as<common::GraphNode>());
+    this->cinn::common::Graph::RegisterNode(
+        key, node->as<cinn::common::GraphNode>());
   }
 
   /**
@@ -264,7 +271,7 @@ class Graph : public cinn::common::Graph {
       const std::unordered_set<std::string>& fetch_var_ids = {});
 
   /**
-   * \brief Genereate the python test code for group test
+   * \brief Generate the python test code for group test
    */
   std::string GenerateGroupPythonCode(
       const std::vector<Node*>& group,

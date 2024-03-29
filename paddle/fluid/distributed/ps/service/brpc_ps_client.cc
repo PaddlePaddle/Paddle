@@ -20,7 +20,7 @@
 
 #include "paddle/fluid/distributed/ps/service/coordinator_client.h"
 #include "paddle/fluid/framework/archive.h"
-#include "paddle/fluid/string/split.h"
+#include "paddle/utils/string/split.h"
 
 static const int max_port = 65535;
 
@@ -216,7 +216,7 @@ int32_t BrpcPsClient::InitializeFlWorker(const std::string &self_endpoint) {
     coordinator_ip_port.assign(coordinator_list[i].ip.c_str());
     coordinator_ip_port.append(":");
     coordinator_ip_port.append(std::to_string(coordinator_list[i].port));
-    VLOG(0) << "fl-ps > BrpcFlclient connetcting to coordinator: "
+    VLOG(0) << "fl-ps > BrpcFlclient connecting to coordinator: "
             << coordinator_ip_port;
     for (size_t j = 0; j < _coordinator_channels[i].size(); ++j) {
       _coordinator_channels[i][j].reset(new brpc::Channel());
@@ -383,7 +383,7 @@ int32_t BrpcPsClient::Initialize() {
 
 int DownpourBrpcClosure::check_response(size_t request_idx, int cmd_id) {
   if (_cntls[request_idx]->Failed()) {
-    LOG(ERROR) << "resquest cmd_id:" << cmd_id
+    LOG(ERROR) << "request cmd_id:" << cmd_id
                << " failed, "
                   "err:"
                << _cntls[request_idx]->ErrorText();
@@ -402,7 +402,7 @@ int DownpourBrpcClosure::check_response(size_t request_idx, int cmd_id) {
 int DownpourBrpcClosure::check_save_response(size_t request_idx, int cmd_id) {
   int32_t feasign_size = 0;
   if (_cntls[request_idx]->Failed()) {
-    LOG(ERROR) << "resquest cmd_id:" << cmd_id
+    LOG(ERROR) << "request cmd_id:" << cmd_id
                << " failed, "
                   "err:"
                << _cntls[request_idx]->ErrorText();
@@ -426,7 +426,7 @@ std::string DownpourBrpcClosure::get_response(size_t request_idx, int cmd_id) {
 
 int FlClientBrpcClosure::check_response(size_t request_idx, int cmd_id) {
   if (_cntls[request_idx]->Failed()) {
-    LOG(ERROR) << "resquest cmd_id:" << cmd_id
+    LOG(ERROR) << "request cmd_id:" << cmd_id
                << " failed, "
                   "err:"
                << _cntls[request_idx]->ErrorText();
@@ -1505,7 +1505,7 @@ int32_t BrpcPsClient::RecvAndSaveTable(const uint64_t table_id,
   phi::DenseTensor *var_tensor = var->GetMutable<phi::DenseTensor>();
 
   std::vector<int64_t> vec_dim = {var_num, var_shape};
-  var_tensor->Resize(phi::make_ddim(vec_dim));
+  var_tensor->Resize(common::make_ddim(vec_dim));
 
   // copy and save
   float *tensor_data = var_tensor->mutable_data<float>(place);
@@ -1622,7 +1622,7 @@ void BrpcPsClient::PushSparseTaskConsume() {
       auto sparse_task_data = _sparse_task_pool.get();
 
       task_list.clear();
-      int cur_meger_size = task_queue->Size();
+      int cur_merge_size = task_queue->Size();
 
       // task_list[0] 为一个空SparseAsyncTask, 分shard异步merge结果存入此结构。
       sparse_task_data->shared_data.resize(request_call_num);
@@ -1632,12 +1632,11 @@ void BrpcPsClient::PushSparseTaskConsume() {
       auto async_task =
           new SparseAsyncTask(sparse_task_data, table_id, push_timer);
 
-      task_list.reserve(cur_meger_size + 1);
+      task_list.reserve(cur_merge_size + 1);
 
-      task_list.push_back(
-          std::move(std::shared_ptr<SparseAsyncTask>(async_task)));
+      task_list.push_back(std::shared_ptr<SparseAsyncTask>(async_task));
 
-      while (!task_queue->Empty() && merge_count < cur_meger_size) {
+      while (!task_queue->Empty() && merge_count < cur_merge_size) {
         ++merge_count;
         SparseAsyncTask *task = nullptr;
         task_queue->Get(task);
@@ -1667,8 +1666,7 @@ void BrpcPsClient::PushSparseTaskConsume() {
 
         for_each(task_list.begin() + 1,
                  task_list.end(),
-                 [&request_kv_num, request_call_num, closure](
-                     std::shared_ptr<SparseAsyncTask> &task) {
+                 [closure](std::shared_ptr<SparseAsyncTask> &task) {
                    closure->add_timer(task->timer());
                    closure->add_promise(task->promise());
                  });
@@ -1712,7 +1710,7 @@ void BrpcPsClient::PushSparseTaskConsume() {
           merge_status[shard_idx].wait();
         }
 
-        // meger到task_list[0]
+        // merge到task_list[0]
         auto async_task = new SparseAsyncTask(*(task_list[0].get()));
 
         task_queue->Put(std::move(async_task));
@@ -1978,8 +1976,7 @@ void BrpcPsClient::PushDenseTaskConsume() {
           closure->add_timer(async_task->timer());
           closure->add_promise(async_task->promise());
           merge_status[merge_count] =
-              async_merge_dense_threads.enqueue([closure,
-                                                 accessor,
+              async_merge_dense_threads.enqueue([accessor,
                                                  &total_send_data,
                                                  total_send_data_size,
                                                  async_task]() -> int {

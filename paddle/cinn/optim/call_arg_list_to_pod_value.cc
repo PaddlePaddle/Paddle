@@ -48,7 +48,7 @@ struct CallArgListToPodValueMutator : ir::IRMutator<> {
       auto new_call = ir::Call::Make(
           Void(),
           op->name,
-          {pod_array_var, common::make_const(Int(32), args.size())},
+          {pod_array_var, cinn::common::make_const(Int(32), args.size())},
           {},
           ir::CallType::CINN,
           op->func,

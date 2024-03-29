@@ -78,7 +78,7 @@ typename std::enable_if<std::is_floating_point<T>::value>::type LapackEigvals(
 
   DenseTensor w;
   int64_t n_dim = input.dims()[1];
-  w.Resize(make_ddim({n_dim << 1}));
+  w.Resize(common::make_ddim({n_dim << 1}));
   T* w_data = ctx.template Alloc<T>(&w);
 
   int64_t work_mem = static_cast<int64_t>(work->memory_size());
@@ -190,9 +190,9 @@ void SpiltBatchSquareMatrix(const DenseTensor& input,
   DDim flattened_input_dims, flattened_output_dims;
   if (input_dims.size() > 2) {
     flattened_input_dims =
-        phi::flatten_to_3d(input_dims, last_dim - 1, last_dim);
+        common::flatten_to_3d(input_dims, last_dim - 1, last_dim);
   } else {
-    flattened_input_dims = phi::make_ddim({1, n_dim, n_dim});
+    flattened_input_dims = common::make_ddim({1, n_dim, n_dim});
   }
 
   DenseTensor flattened_input;
@@ -211,7 +211,7 @@ void EigvalsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   int64_t n_dim = x_matrices[0].dims()[1];
   int64_t n_batch = static_cast<int64_t>(x_matrices.size());
   DDim out_dims = out->dims();
-  out->Resize(make_ddim({n_batch, n_dim}));
+  out->Resize(common::make_ddim({n_batch, n_dim}));
   std::vector<DenseTensor> out_vectors = out->Split(1, 0);
 
   // query workspace size
@@ -235,11 +235,11 @@ void EigvalsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
 
   DenseTensor work, rwork;
 
-  work.Resize(make_ddim({lwork}));
+  work.Resize(common::make_ddim({lwork}));
   ctx.template Alloc<T>(&work);
 
   if (IsComplexType(x.dtype())) {
-    rwork.Resize(make_ddim({n_dim << 1}));
+    rwork.Resize(common::make_ddim({n_dim << 1}));
     ctx.template Alloc<dtype::Real<T>>(&rwork);
   }
 

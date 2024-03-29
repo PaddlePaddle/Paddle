@@ -46,7 +46,7 @@ void DropoutNdGradKernel(const Context& dev_ctx,
       dX.device(place) = dY * static_cast<T>(1.0f - prob);
     }
   } else {
-    std::vector<int64_t> out_dims = phi::vectorize(out_grad.dims());
+    std::vector<int64_t> out_dims = common::vectorize(out_grad.dims());
     auto M = EigenVector<uint8_t>::Flatten(mask);
     if (dropout_implementation == "upscale_in_train") {
       if (prob == 1.0f) {
@@ -89,6 +89,7 @@ PD_REGISTER_KERNEL(dropout_grad,
                    phi::DropoutGradRawKernel,
                    float,
                    double,
+                   phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(

@@ -83,7 +83,7 @@ std::vector<ir::Tensor> MatmulV2(
     bool trans_b = false,
     float alpha = 1,
     const std::string& name = UniqName("T_Transform_MatmulV2_out"),
-    const common::Target& target = common::DefaultHostTarget());
+    const cinn::common::Target& target = cinn::common::DefaultHostTarget());
 
 std::vector<ir::Tensor> MatmulMKL(
     const ir::Tensor& A,
@@ -92,9 +92,11 @@ std::vector<ir::Tensor> MatmulMKL(
     bool trans_b = false,
     float alpha = 1,
     const std::string& name = UniqName("T_Transform_MatmulMKL_out"),
-    const common::Target& target = common::DefaultHostTarget());
+    const cinn::common::Target& target = cinn::common::DefaultHostTarget());
 
-int GetMulFactor(int shape, const Type& type, const common::Target& target);
+int GetMulFactor(int shape,
+                 const Type& type,
+                 const cinn::common::Target& target);
 
 /**
  * @brief basic PE that calculates a matrix multiplication
@@ -112,7 +114,7 @@ std::vector<ir::Tensor> MulBase(
     const ir::Tensor& A,
     const ir::Tensor& B,
     const std::string& name = UniqName("T_Transform_MulBase_out"),
-    const common::Target& target = common::DefaultHostTarget());
+    const cinn::common::Target& target = cinn::common::DefaultHostTarget());
 
 std::vector<ir::Tensor> Mul(const ir::Tensor& A,
                             const ir::Tensor& B,
@@ -125,7 +127,7 @@ std::vector<ir::Tensor> MulMKL(
     const ir::Tensor& A,
     const ir::Tensor& B,
     const std::string& name = UniqName("T_Transform_MulMKL_out"),
-    const common::Target& target = common::DefaultHostTarget());
+    const cinn::common::Target& target = cinn::common::DefaultHostTarget());
 
 ir::Tensor LayoutTransform(
     const ir::Tensor& input,
@@ -152,7 +154,7 @@ ir::Tensor Reverse(const ir::Tensor& input,
 /**
  * @brief Perform meta op Transpose
  * @param input The input tensor
- * @param axis tranpsoe axis
+ * @param axis transpose axis
  * @param output_name the name of the output tensor
  */
 ir::Tensor Transpose(
@@ -182,13 +184,21 @@ ir::Tensor Slice(const ir::Tensor& A,
                  const std::vector<Expr>& output_shape,
                  const std::string& output_name);
 
+ir::Tensor SliceSymbolic(const ir::Tensor& A,
+                         const std::vector<int>& starts,
+                         const std::vector<int>& axes,
+                         const std::vector<int>& strides,
+                         const std::vector<int>& decrease_axis,
+                         const std::vector<Expr>& output_shape,
+                         const std::string& output_name);
+
 /**
  * @brief Perform meta op SliceAssign
  * @param input The input tensor
  * @param assign The assign tensor
  * @param axis select axis
- * @param starts select reigon starts
- * @param strides select reigon strides
+ * @param starts select region starts
+ * @param strides select region strides
  * @param output_name the name of the output tensor
  */
 ir::Tensor SliceAssign(
@@ -223,7 +233,7 @@ ir::Tensor ScatterAssign(
     const ir::Tensor& input,
     const ir::Tensor& updates,
     const ir::Tensor& index,
-    const common::Target& target,
+    const cinn::common::Target& target,
     const int axis = 0,
     const std::string& output_name = UniqName("T_Transform_ScatterAssign_out"));
 
@@ -237,7 +247,7 @@ ir::Tensor ScatterAssign(
 ir::Tensor ScatterAdd(const ir::Tensor& input,
                       const ir::Tensor& updates,
                       const ir::Tensor& index,
-                      const common::Target& target,
+                      const cinn::common::Target& target,
                       const int axis,
                       const std::string& output_name);
 

@@ -94,7 +94,7 @@ class FillConstantFoldingPass : public ProgramPass {
 
   void ApplyImpl(Program* program,
                  const std::unordered_set<std::string>& fetch_ids,
-                 const common::Target& target) const override {
+                 const cinn::common::Target& target) const override {
     auto in2instr = GetInputToOpMap(program);
 
     // `fill_constant_map` is used to represent the first fill_constant and its
@@ -126,7 +126,7 @@ class FillConstantFoldingPass : public ProgramPass {
       if (!fill_constant_map.count(key)) {
         VLOG(4) << "The fill_constant, whose output is Var ["
                 << instr->outputs[0]->id
-                << "], cannot remove because it is the first fill_costant ! ";
+                << "], cannot remove because it is the first fill_constant ! ";
         // retain the first fill constant op node
         fill_constant_map.emplace(key, &instr->outputs[0]);
         continue;

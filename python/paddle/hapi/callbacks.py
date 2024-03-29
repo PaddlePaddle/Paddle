@@ -1279,10 +1279,10 @@ class ReduceLROnPlateau(Callback):
             self.mode == 'auto' and 'acc' not in self.monitor
         ):
             self.monitor_op = lambda a, b: np.less(a, b - self.min_delta)
-            self.best = np.Inf
+            self.best = np.inf
         else:
             self.monitor_op = lambda a, b: np.greater(a, b + self.min_delta)
-            self.best = -np.Inf
+            self.best = -np.inf
         self.cooldown_counter = 0
         self.wait = 0
 
@@ -1305,9 +1305,7 @@ class ReduceLROnPlateau(Callback):
                     return
             except Exception as e:
                 warnings.warn(
-                    'There are something wrong when get learning_rate from optimizer: {}.'.format(
-                        e
-                    )
+                    f'There are something wrong when get learning_rate from optimizer: {e}.'
                 )
                 return
 

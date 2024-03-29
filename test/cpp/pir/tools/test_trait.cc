@@ -14,7 +14,7 @@
 #include "test/cpp/pir/tools/test_trait.h"
 #include "glog/logging.h"
 
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
 
 namespace test {
 void OneRegionTrait::Verify(pir::Operation *op) {

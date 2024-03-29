@@ -17,7 +17,7 @@ from paddle.base import core
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.utils import deprecated
 
-from .streams import Stream, Event
+from .streams import Event, Stream
 
 __all__ = [
     'Stream',
@@ -107,9 +107,6 @@ def synchronize(device=None):
             >>> paddle.device.cuda.synchronize(paddle.CUDAPlace(0))
 
     '''
-
-    device_id = -1
-
     if device is not None:
         if isinstance(device, int):
             device_id = device
@@ -117,7 +114,14 @@ def synchronize(device=None):
             device_id = device.get_device_id()
         else:
             raise ValueError("device type must be int or paddle.CUDAPlace")
-
+    else:
+        place = paddle.framework._current_expected_place()
+        if paddle.is_compiled_with_cuda() and isinstance(
+            place, paddle.CUDAPlace
+        ):
+            device_id = place.get_device_id()
+        else:
+            device_id = -1
     return core._device_synchronize(device_id)
 
 
@@ -218,7 +222,7 @@ def max_memory_allocated(device=None):
 
     Note:
         The size of GPU memory allocated to tensor is 256-byte aligned in Paddle, which may larger than the memory size that tensor actually need.
-        For instance, a float32 tensor with shape [1] in GPU will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes.
+        For instance, a float32 0-D Tensor with shape [] in GPU will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes.
 
     Args:
         device(paddle.CUDAPlace or int or str, optional): The device, the id of the device or
@@ -286,7 +290,7 @@ def memory_allocated(device=None):
 
     Note:
         The size of GPU memory allocated to tensor is 256-byte aligned in Paddle, which may be larger than the memory size that tensor actually need.
-        For instance, a float32 tensor with shape [1] in GPU will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes.
+        For instance, a float32 0-D Tensor with shape [] in GPU will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes.
 
     Args:
         device(paddle.CUDAPlace or int or str, optional): The device, the id of the device or
@@ -469,9 +473,9 @@ def get_device_properties(device=None):
                 device_id = int(device[4:])
             else:
                 raise ValueError(
-                    "The current string {} is not expected. Because paddle.device."
+                    f"The current string {device} is not expected. Because paddle.device."
                     "cuda.get_device_properties only support string which is like 'gpu:x'. "
-                    "Please input appropriate string again!".format(device)
+                    "Please input appropriate string again!"
                 )
         else:
             raise ValueError(

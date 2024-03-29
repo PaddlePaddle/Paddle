@@ -14,9 +14,9 @@
 
 #pragma once
 
+#include "paddle/common/ddim.h"
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/context_pool.h"
-#include "paddle/phi/common/layout.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
@@ -87,8 +87,8 @@ inline std::vector<int> get_new_shape(
   for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
     auto tensor = list_new_shape_tensor[i];
     phi::DeviceContext* dev_ctx = pool.Get(tensor->place());
-    PADDLE_ENFORCE_EQ(tensor->dims() == phi::make_ddim({1}) ||
-                          tensor->dims() == phi::make_ddim({}),
+    PADDLE_ENFORCE_EQ(tensor->dims() == common::make_ddim({1}) ||
+                          tensor->dims() == common::make_ddim({}),
                       true,
                       errors::InvalidArgument(
                           "The shape of dimension tensor should be [1] or [],"

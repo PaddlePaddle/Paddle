@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import tempfile
 import unittest
 
 import collective.test_communication_api_base as test_base
 
 
-class TestSemiAutoParallelSingleStrategy(test_base.CommunicationTestDistBase):
+class TestSemiAutoParallelInSingleStrategy(test_base.CommunicationTestDistBase):
     def setUp(self):
         super().setUp(
             num_of_devices=2,
@@ -40,10 +41,14 @@ class TestSemiAutoParallelSingleStrategy(test_base.CommunicationTestDistBase):
             )
 
     def test_simple_net_single_strategy_with_amp(self):
-        self._changeable_envs = {"backend": ["gpu"]}
-        envs_list = test_base.gen_product_envs_list(
-            self._default_envs, self._changeable_envs
-        )
+        changeable_envs = {
+            "backend": ["gpu"],
+            "use_master_grad": ["0", "1"],
+            "dtype": ["bfloat16", "float16"],
+            "seed": ["2023"],
+            "use_adam": ["0", "1"],
+        }
+        envs_list = test_base.gen_product_envs_list({}, changeable_envs)
         for envs in envs_list:
             self.run_test_case(
                 "semi_auto_parallel_simple_net_amp.py",
@@ -71,44 +76,36 @@ class TestSemiAutoParallelSingleStrategy(test_base.CommunicationTestDistBase):
                 user_defined_envs=envs,
             )
 
-    def test_simple_net_single_strategy_with_gradient_hook(self):
-        self._changeable_envs = {"backend": ["gpu"]}
+    def test_shard_optimizer(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
         )
         for envs in envs_list:
             self.run_test_case(
-                "semi_auto_parallel_simple_net_gradient_hook.py",
+                "semi_auto_parallel_shard_optimizer.py",
                 user_defined_envs=envs,
             )
 
-    def test_simple_net_clear_gradient(self):
+    def test_shard_optimizer_api(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
         )
         for envs in envs_list:
+            ckpt_path = tempfile.TemporaryDirectory()
+            envs["ckpt_path"] = ckpt_path.name
             self.run_test_case(
-                "semi_auto_parallel_simple_net_clear_gradient.py",
+                "semi_auto_parallel_shard_optimizer_api.py",
                 user_defined_envs=envs,
             )
+            ckpt_path.cleanup()
 
-    def test_simple_net_several_grad_api(self):
+    def test_set_value(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
         )
         for envs in envs_list:
             self.run_test_case(
-                "semi_auto_parallel_simple_net_grad_api.py",
-                user_defined_envs=envs,
-            )
-
-    def test_simple_net_zero_grads(self):
-        envs_list = test_base.gen_product_envs_list(
-            self._default_envs, self._changeable_envs
-        )
-        for envs in envs_list:
-            self.run_test_case(
-                "semi_auto_parallel_simple_net_zero_grads.py",
+                "semi_auto_parallel_set_value.py",
                 user_defined_envs=envs,
             )
 

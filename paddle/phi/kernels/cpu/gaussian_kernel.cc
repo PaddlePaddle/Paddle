@@ -32,7 +32,7 @@ void GaussianKernel(const Context& dev_ctx,
 
   std::normal_distribution<T> dist(mean, std);
 
-  tensor->Resize(phi::make_ddim(shape.GetData()));
+  tensor->Resize(common::make_ddim(shape.GetData()));
   int64_t size = tensor->numel();
   T* data = dev_ctx.template Alloc<T>(tensor);
   std::shared_ptr<std::mt19937_64> engine;

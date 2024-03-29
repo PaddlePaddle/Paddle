@@ -39,7 +39,7 @@ TEST(UnrollLoops, unrolled_tag) {
 
   auto stages = CreateStages({C});
 
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
   auto func = cinn::lang::LowerVec(
       "test_unrolled_tag", stages, {A, B, C}, {}, {}, nullptr, target, true);
   auto ast_expr = func[0]->body;
@@ -80,7 +80,7 @@ TEST(UnrollLoops, auto_unroll) {
       "B");
 
   auto stages = CreateStages({B});
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
   auto func = cinn::lang::LowerVec(
       "test_auto_unroll", stages, {A, B}, {}, {}, nullptr, target, true);
   auto ast_expr = func[0]->body;

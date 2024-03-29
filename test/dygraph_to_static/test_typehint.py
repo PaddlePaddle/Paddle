@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import unittest
+from typing import List
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase, compare_legacy_with_pir
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_legacy_and_pt_and_pir,
+)
 
 import paddle
-from paddle import base
-
-SEED = 2020
-np.random.seed(SEED)
 
 
 class A:
@@ -33,20 +33,31 @@ def function(x: A) -> A:
     return 2 * x
 
 
-class TestTypeHint(Dy2StTestBase):
+def fn_annotation_assign_with_value(x: paddle.Tensor):
+    if x:
+        y: List["paddle.Tensor"] = [x + 1]
+    else:
+        y: List["paddle.Tensor"] = [x - 1]
+    return y
+
+
+def fn_annotation_assign_without_value(x: paddle.Tensor):
+    if x:
+        y: List["paddle.Tensor"]
+        y = [x + 1]
+    else:
+        y = [x - 1]
+    return y
+
+
+class TestTypeHints(Dy2StTestBase):
     def setUp(self):
-        self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
         self.x = np.zeros(shape=(1), dtype=np.int32)
         self._init_dyfunc()
 
     def _init_dyfunc(self):
         self.dyfunc = function
 
-    @compare_legacy_with_pir
     def _run_static(self):
         return self._run(to_static=True)
 
@@ -54,23 +65,43 @@ class TestTypeHint(Dy2StTestBase):
         return self._run(to_static=False)
 
     def _run(self, to_static):
-        with base.dygraph.guard(self.place):
-            # Set the input of dyfunc to Tensor
-            tensor_x = base.dygraph.to_variable(self.x, zero_copy=False)
-            if to_static:
-                ret = paddle.jit.to_static(self.dyfunc)(tensor_x)
-            else:
-                ret = self.dyfunc(tensor_x)
-            if hasattr(ret, "numpy"):
-                return ret.numpy()
-            else:
-                return ret
+        # Set the input of dyfunc to Tensor
+        tensor_x = paddle.to_tensor(self.x)
+        if to_static:
+            ret = paddle.jit.to_static(self.dyfunc)(tensor_x)
+        else:
+            ret = self.dyfunc(tensor_x)
+        if hasattr(ret, "numpy"):
+            return ret.numpy()
+        else:
+            return ret
 
+    @test_legacy_and_pt_and_pir
     def test_ast_to_func(self):
         static_numpy = self._run_static()
         dygraph_numpy = self._run_dygraph()
-        print(static_numpy, dygraph_numpy)
         np.testing.assert_allclose(dygraph_numpy, static_numpy, rtol=1e-05)
+
+
+class TestAnnAssign(Dy2StTestBase):
+    def assert_fn_dygraph_and_static_unified(self, dygraph_fn, x):
+        static_fn = paddle.jit.to_static(dygraph_fn)
+        dygraph_fn = dygraph_fn
+        static_res = static_fn(x)
+        dygraph_res = dygraph_fn(x)
+        np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
+
+    @test_legacy_and_pt_and_pir
+    def test_ann_assign_with_value(self):
+        self.assert_fn_dygraph_and_static_unified(
+            fn_annotation_assign_with_value, paddle.to_tensor(1)
+        )
+
+    @test_legacy_and_pt_and_pir
+    def test_ann_assign_without_value(self):
+        self.assert_fn_dygraph_and_static_unified(
+            fn_annotation_assign_without_value, paddle.to_tensor(1)
+        )
 
 
 if __name__ == '__main__':

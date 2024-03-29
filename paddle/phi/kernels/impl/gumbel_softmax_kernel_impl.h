@@ -69,7 +69,7 @@ void GumbelSoftmaxKernelHelper(const Context& ctx,
 
   // For 0D Tensor
   if (rank == 0) {
-    phi::funcs::set_constant(ctx, out, 1.0);
+    phi::funcs::set_constant(ctx, out, static_cast<T>(1.0));
     return;
   }
 

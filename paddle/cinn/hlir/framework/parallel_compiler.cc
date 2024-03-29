@@ -50,13 +50,13 @@ namespace framework {
  */
 #define CINN_COMPILE_STEP_END(err_msg_level, idx)                              \
   }                                                                            \
-  catch (const CompileErrorHandler& err_hanlder) {                             \
-    std::string err_msg = err_hanlder.FormatErrorMessage(err_msg_level);       \
+  catch (const CompileErrorHandler& err_handler) {                             \
+    std::string err_msg = err_handler.FormatErrorMessage(err_msg_level);       \
     err_msg =                                                                  \
         "Group Idx: " + std::to_string(idx) + ",  Compile Error.\n" + err_msg; \
     LOG(WARNING) << "\n" << err_msg;                                           \
     result_.SetMessage(idx, err_msg);                                          \
-    result_.SetStatus(idx, err_hanlder.Status());                              \
+    result_.SetStatus(idx, err_handler.Status());                              \
     continue;                                                                  \
   }
 
@@ -229,13 +229,14 @@ void ParallelCompiler::Task::CodegenAndJit() {
   VLOG(2) << "Start Codegen and JIT on Group " << group_id
           << " at thread: " << std::this_thread::get_id();
   // build module
-  ir::Module::Builder builder(common::UniqName("module"), context->target);
+  ir::Module::Builder builder(cinn::common::UniqName("module"),
+                              context->target);
   for (auto& func : pcompiler->result_.LoweredFuncs(group_id)) {
     builder.AddFunction(func);
   }
 
   auto ir_module = builder.Build();
-  if (context->target == common::DefaultNVGPUTarget()) {
+  if (context->target == cinn::common::DefaultNVGPUTarget()) {
 #ifdef CINN_WITH_CUDA
     auto splited_module = backends::SplitCudaAndHostModule(ir_module);
     auto hmodule = std::get<0>(splited_module);

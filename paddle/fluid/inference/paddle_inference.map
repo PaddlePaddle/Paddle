@@ -15,7 +15,7 @@
 			*paddle_infer::contrib::Status*;
 			*paddle_infer::services::PredictorPool*;
 			*paddle_infer::LayoutConvert*;
-
+			*paddle::common*;
 			*paddle::experimental*;
 			*paddle::Tensor*;
 			*paddle::internal*;
@@ -82,6 +82,8 @@
 		*Pass*;
 		*profile*;
 		*phi*;
+		*pir*;
+		*drr*;
 		PD_*;
 		*cinn*;
 	local:

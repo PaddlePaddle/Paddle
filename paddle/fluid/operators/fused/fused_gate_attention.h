@@ -903,8 +903,8 @@ class FlashAttnWithGating {
     AllocWithDebugInfo<float>(dev_ctx_, "softmax_lse", softmax_lse);
 
     if (VLOG_IS_ON(6)) {
-      VLOG(6) << "temp_mask_dim={" << phi::make_ddim(temp_mask_dim) << "}";
-      VLOG(6) << "temp_bias_dim={" << phi::make_ddim(temp_bias_dim) << "}";
+      VLOG(6) << "temp_mask_dim={" << common::make_ddim(temp_mask_dim) << "}";
+      VLOG(6) << "temp_bias_dim={" << common::make_ddim(temp_bias_dim) << "}";
       VLOG(6) << TensorDebugString(&cu_seq_q, "cu_seq_q");
       VLOG(6) << TensorDebugString(&cu_seq_k, "cu_seq_k");
       VLOG(6) << TensorDebugString(nonbatched_bias, "nonbatched_bias");
@@ -998,12 +998,12 @@ class FlashAttnWithGating {
     const T* v_ptr = k_ptr + q_size;
 
     phi::DenseTensor qkv_transpose_out_grad;
-    qkv_transpose_out_grad.Resize(phi::make_ddim({3,
-                                                  config->batch_size,
-                                                  config->seq_len_m,
-                                                  config->seq_len_r,
-                                                  config->num_heads,
-                                                  config->head_dim}));
+    qkv_transpose_out_grad.Resize(common::make_ddim({3,
+                                                     config->batch_size,
+                                                     config->seq_len_m,
+                                                     config->seq_len_r,
+                                                     config->num_heads,
+                                                     config->head_dim}));
     AllocWithDebugInfo<T>(
         dev_ctx_, "qkv_transpose_out_grad", &qkv_transpose_out_grad);
 

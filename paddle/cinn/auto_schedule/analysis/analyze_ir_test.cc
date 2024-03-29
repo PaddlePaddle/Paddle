@@ -38,9 +38,9 @@ namespace auto_schedule {
 TEST(AnalyzeIr, AnalyzeScheduleBlockReadWriteBuffer_SimpleAssign) {
   Context::Global().ResetNameId();
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
 
   ir::Expr M(32);
@@ -102,9 +102,9 @@ TEST(AnalyzeIr, AnalyzeScheduleBlockReadWriteBuffer_SimpleAssign) {
 TEST(AnalyzeIr, AnalyzeScheduleBlockReadWriteBuffer_AddDiffShape) {
   Context::Global().ResetNameId();
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
 
   ir::Expr M(32);
@@ -158,9 +158,9 @@ TEST(AnalyzeIr, AnalyzeScheduleBlockReadWriteBuffer_AddDiffShape) {
 TEST(AnalyzeIr, ContainsNodeType) {
   Context::Global().ResetNameId();
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
 
   ir::Expr M(32);

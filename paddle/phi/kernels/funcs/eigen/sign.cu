@@ -29,6 +29,7 @@ struct EigenSign<Eigen::GpuDevice, T> {
   }
 };
 
+template struct EigenSign<Eigen::GpuDevice, uint8_t>;
 template struct EigenSign<Eigen::GpuDevice, int8_t>;
 template struct EigenSign<Eigen::GpuDevice, int16_t>;
 template struct EigenSign<Eigen::GpuDevice, int32_t>;

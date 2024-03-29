@@ -15,16 +15,16 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
+from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_ast_only,
-    test_legacy_and_pir,
+    test_legacy_and_pt_and_pir,
 )
 
 import paddle
 
 
 class TestCpuCuda(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_cpu_cuda(self):
         def func(x):
             x = paddle.to_tensor([1, 2, 3, 4])
@@ -34,11 +34,13 @@ class TestCpuCuda(Dy2StTestBase):
 
         x = paddle.to_tensor([3])
         # print(paddle.jit.to_static(func).code)
-        # print(paddle.jit.to_static(func)(x))
+        if paddle.is_compiled_with_cuda():
+            res = paddle.jit.to_static(func)(x)
+            self.assertTrue(res.place.is_cpu_place())
 
 
 class TestToTensor(Dy2StTestBase):
-    @test_legacy_and_pir
+    @test_legacy_and_pt_and_pir
     def test_to_tensor_with_variable_list(self):
         def func(x):
             ones = paddle.to_tensor(1)
@@ -56,8 +58,7 @@ class TestToTensor(Dy2StTestBase):
 
 
 class TestToTensor1(Dy2StTestBase):
-    @test_ast_only
-    @test_legacy_and_pir
+    @test_legacy_and_pt_and_pir
     def test_to_tensor_with_variable_list(self):
         def func(x):
             ones = paddle.to_tensor([1])
@@ -75,8 +76,7 @@ class TestToTensor1(Dy2StTestBase):
             rtol=1e-05,
         )
 
-    @test_ast_only
-    @test_legacy_and_pir
+    @test_legacy_and_pt_and_pir
     def test_to_tensor_with_variable_list_sot(self):
         def func(x):
             ones = paddle.to_tensor([1])
@@ -96,8 +96,7 @@ class TestToTensor1(Dy2StTestBase):
 
 
 class TestToTensor2(Dy2StTestBase):
-    @test_ast_only
-    @test_legacy_and_pir
+    @test_legacy_and_pt_and_pir
     def test_to_tensor_with_variable_list(self):
         def func(x):
             x = paddle.to_tensor([[1], [2], [3], [4]])
@@ -110,8 +109,7 @@ class TestToTensor2(Dy2StTestBase):
             rtol=1e-05,
         )
 
-    @test_ast_only
-    @test_legacy_and_pir
+    @test_legacy_and_pt_and_pir
     def test_to_tensor_with_variable_list_sot(self):
         def func(x):
             x = paddle.to_tensor([[1], [2], [3], [4]])

@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -35,28 +35,28 @@ void AddmmKernelImpl(const Context& dev_ctx,
                      float alpha,
                      DenseTensor* out) {
 #if CUDA_VERSION >= 11000
-  std::vector<int64_t> input_dim = phi::vectorize(input.dims());
-  std::vector<int64_t> x_dim = phi::vectorize(x.dims());
-  std::vector<int64_t> y_dim = phi::vectorize(y.dims());
+  std::vector<int64_t> input_dim = common::vectorize(input.dims());
+  std::vector<int64_t> x_dim = common::vectorize(x.dims());
+  std::vector<int64_t> y_dim = common::vectorize(y.dims());
   auto rank = input_dim.size();
 
   PADDLE_ENFORCE_GE(
       rank,
       2,
       phi::errors::InvalidArgument(
-          "the dims size of input must be greater than or eaqual to 2."));
+          "the dims size of input must be greater than or equal to 2."));
 
   PADDLE_ENFORCE_EQ(
       x_dim.size(),
       rank,
       phi::errors::PreconditionNotMet(
-          "The dims size of Input(input) and Input(x) must be eaqual."));
+          "The dims size of Input(input) and Input(x) must be equal."));
 
   PADDLE_ENFORCE_GE(
       y_dim.size(),
       rank,
       phi::errors::InvalidArgument(
-          "the dims size of Input(input) and Input(y) must be eaqual."));
+          "the dims size of Input(input) and Input(y) must be equal."));
 
   for (size_t i = 0; i < rank - 2; ++i) {
     PADDLE_ENFORCE_EQ(input_dim[i],
@@ -74,21 +74,21 @@ void AddmmKernelImpl(const Context& dev_ctx,
       x_dim[rank - 2],
       phi::errors::PreconditionNotMet(
           "The shape of Input(input) and Input(x) is not suitable for matmul "
-          "opetation, input_dim[-2] must be eaqual to x_dim[-2]."));
+          "opetation, input_dim[-2] must be equal to x_dim[-2]."));
 
   PADDLE_ENFORCE_GE(
       input_dim[rank - 1],
       y_dim[rank - 1],
       phi::errors::PreconditionNotMet(
           "The shape of Input(input) and Input(y) is not suitable for matmul "
-          "opetation, input_dim[-1] must be eaqual to y_dim[-1]."));
+          "opetation, input_dim[-1] must be equal to y_dim[-1]."));
 
   PADDLE_ENFORCE_GE(
       x_dim[rank - 1],
       y_dim[rank - 2],
       phi::errors::PreconditionNotMet(
           "The shape of Input(x) and Input(y) is not suitable for matmul "
-          "opetation, x_dim[-1] must be eaqual to y_dim[-2]."));
+          "opetation, x_dim[-1] must be equal to y_dim[-2]."));
 
   phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, out);
 
@@ -132,7 +132,8 @@ PD_REGISTER_KERNEL(addmm_coo_dense,
                    ALL_LAYOUT,
                    phi::sparse::AddmmCooDenseKernel,
                    float,
-                   double) {
+                   double,
+                   phi::dtype::float16) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
@@ -141,6 +142,7 @@ PD_REGISTER_KERNEL(addmm_csr_dense,
                    ALL_LAYOUT,
                    phi::sparse::AddmmCsrDenseKernel,
                    float,
-                   double) {
+                   double,
+                   phi::dtype::float16) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }

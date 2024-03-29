@@ -26,6 +26,8 @@ from paddle.base.framework import (
     Variable,
     default_main_program,
     in_dygraph_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
     name_scope,
     program_guard,
     static_only,
@@ -190,10 +192,17 @@ def fc(
         name=None,
     ):
         helper = LayerHelper("fc", **locals())
-        check_type(input, 'input', (list, tuple, Variable), 'fc')
+        check_type(
+            input, 'input', (list, tuple, Variable, paddle.pir.Value), 'fc'
+        )
         if isinstance(input, (list, tuple)):
             for i, input_x in enumerate(input):
-                check_type(input_x, 'input[' + str(i) + ']', Variable, 'fc')
+                check_type(
+                    input_x,
+                    'input[' + str(i) + ']',
+                    (Variable, paddle.pir.Value),
+                    'fc',
+                )
         dtype = helper.input_dtype()
         check_dtype(
             dtype, 'input', ['float16', 'uint16', 'float32', 'float64'], 'fc'
@@ -206,28 +215,41 @@ def fc(
             param_shape = [
                 reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
             ] + [size]
-
             w = helper.create_parameter(
                 attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False
             )
-            tmp = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(
-                type="mul",
-                inputs={"X": input_var, "Y": w},
-                outputs={"Out": tmp},
-                attrs={"x_num_col_dims": num_flatten_dims, "y_num_col_dims": 1},
-            )
+            if in_pir_mode():
+                if len(input_var.shape) > 2:
+                    new_shape = (
+                        input_var.shape[0],
+                        np.prod(input_var.shape[1:]),
+                    )
+                    input_var = paddle.reshape(input_var, new_shape)
+                tmp = paddle.matmul(input_var, w)
+            else:
+                tmp = helper.create_variable_for_type_inference(dtype)
+                helper.append_op(
+                    type="mul",
+                    inputs={"X": input_var, "Y": w},
+                    outputs={"Out": tmp},
+                    attrs={
+                        "x_num_col_dims": num_flatten_dims,
+                        "y_num_col_dims": 1,
+                    },
+                )
             mul_results.append(tmp)
 
         if len(mul_results) == 1:
             pre_bias = mul_results[0]
+        elif in_pir_mode():
+            pre_bias = paddle.add_n(mul_results)
         else:
             pre_bias = helper.create_variable_for_type_inference(dtype)
             helper.append_op(
                 type="sum",
                 inputs={"X": mul_results},
                 outputs={"Out": pre_bias},
-                attrs={"use_mkldnn": False},
+                attrs={},
             )
         # add bias
         pre_activation = helper.append_bias_op(
@@ -243,169 +265,6 @@ def fc(
         param_attr=weight_attr,
         bias_attr=bias_attr,
         act=activation,
-        name=name,
-    )
-
-
-@static_only
-def quant_linear(
-    x,
-    w,
-    size,
-    scale_in,
-    scale_weight,
-    num_flatten_dims=1,
-    bias_attr=None,
-    activation=None,
-    quant_round_type=1,
-    quant_max_bound=127.0,
-    quant_min_bound=-127.0,
-    name=None,
-):
-    r"""
-
-    Quant linear layer can take a tensor as its input and a tensor as the weight tensor.
-    The quant linear layer multiplies the input tensor with the weight to produce
-    an output tensor with shape :math:`[batch\_size, *, size]` , where :math:`*`
-    means any number of additional dimensions. If :attr:`bias_attr` is not False, a 1-D bias tensor will
-    be created and added to the output. If :attr:`activation` is not None,
-    it will be applied to the output as well. Besides, the input tensor will be quantize to
-    the tensor with int8 type, the parameter w must be a tensor with int8 type and the computation will also
-    be with the int8 type.
-
-    For a single input tensor :math:`X` , the equation is:
-
-    .. math::
-
-        Out = Act({XW + b})
-
-    where:
-
-    * :math:`X`: The input tensor.
-    * :math:`W`: The weight matrix.
-    * :math:`b`: The bias created by this layer (if needed).
-    * :math:`Act`: The activation function.
-    * :math:`Out`: The output tensor.
-
-    Args:
-        x (Tensor): A tensor. The number of dimensions
-            of the tensor is at least 2. The data type should be float16, bfloat16, float32 or float64.
-        w (Tensor): A tensor. The data type should be int8.
-        size (int): The number of the output unit in this layer, which also means the feature
-            size of output tensor.
-        scale_in (float): The quantization scale for input.
-        scale_weight (list[float]): The quantization scale for weights.
-        num_flatten_dims (int, optional): The quant linear layer can accept an input tensor with more than
-            two dimensions. If this happens, the multi-dimensional tensor will first be flattened
-            into a 2-D matrix. The parameter :attr:`num_flatten_dims` determines how the input
-            tensor is flattened: the first :math:`num\_flatten\_dims` (inclusive, index starts from 1)
-            dimensions will be flatten to form the first dimension of the final matrix (height of
-            the matrix), and the rest :math:`rank(x) - num\_flatten\_dims` dimensions are
-            flattened to form the second dimension of the final matrix (width of the matrix).
-            For example, assuming that :attr:`x` is a 5-dimensional tensor with a shape
-            :math:`[2, 3, 4, 5, 6]` , and :attr:`num_flatten_dims` = 3.
-            Then, the flattened matrix will have a shape :math:`[2 * 3 * 4, 5 * 6] = [24, 30]` .
-            Default: 1.
-        bias_attr (ParamAttr|bool, optional): The attribute of the learnable bias.
-            If it is set to False, no bias will be added to the output.
-            If it is set to None or one kind of ParamAttr, a bias parameter will
-            be created according to ParamAttr. For detailed information, please refer
-            to :attr:`paddle.ParamAttr`. The default value is None and the bias will be
-            initialized to zero.
-        activation (str, optional): Activation to be applied to the output of
-            this layer. Only "relu" is supported. For more information,
-            please refer to :ref:`api_guide_activations_en` . Default: None.
-        quant_round_type (int, optional): The round type of float to int. 0 means rounding to nearest ties to even and 1 means rounding to nearest ties away from zero. Default: 1.
-        quant_max_bound (float, optional): The max bound of float type to int type. Defualt: 127.0.
-        quant_min_bound (float, optional): The min bound of float type to int type. Defualt: -127.0.
-        name (str, optional): The default value is None. Normally there is no need for user to set
-            it. For more information, please refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Tensor, its shape is :math:`[batch\_size, *, size]` , and the data type is same with input.
-
-    """
-
-    def quant_linear_base(
-        input,
-        weight,
-        size,
-        scale_in,
-        scale_weight,
-        num_flatten_dims=1,
-        bias_attr=None,
-        act=None,
-        quant_round_type=1,
-        quant_max_bound=127.0,
-        quant_min_bound=-127.0,
-        name=None,
-    ):
-        helper = LayerHelper("quant_linear", **locals())
-        check_type(input, 'input', Variable, 'quant_linear')
-        dtype = helper.input_dtype()
-        check_dtype(
-            dtype,
-            'input',
-            ['float16', 'float32', 'float64'],
-            'quant_linear',
-        )
-
-        input_shape = input.shape
-        if num_flatten_dims == -1:
-            num_flatten_dims = len(input_shape) - 1
-
-        check_type(weight, "weight", Variable, 'quant_linear')
-        check_dtype(
-            weight.dtype,
-            'weight',
-            ['int8'],
-            'quant_linear',
-        )
-        check_type(scale_weight, "scale_weight", list, 'quant_linear')
-        if len(scale_weight) != size:
-            raise AttributeError(
-                "The length of scale_weight must be the same with the param size."
-            )
-
-        inputs_of_quant_linear = {"x": input, "w": weight}
-        if bias_attr is not False:
-            bias_shape = [size]
-            bias = helper.create_parameter(
-                attr=bias_attr, shape=bias_shape, dtype=dtype, is_bias=True
-            )
-            inputs_of_quant_linear["bias"] = bias
-
-        out = helper.create_variable_for_type_inference(dtype)
-        attrs_of_quant_linear = {
-            "in_num_col_dims": num_flatten_dims,
-            "activation_type": act,
-            "scale_in": scale_in,
-            "scale_weights": scale_weight,
-            "quant_round_type": quant_round_type,
-            "quant_max_bound": quant_max_bound,
-            "quant_min_bound": quant_min_bound,
-        }
-
-        helper.append_op(
-            type="quant_linear",
-            inputs=inputs_of_quant_linear,
-            outputs={"out": out},
-            attrs=attrs_of_quant_linear,
-        )
-        return out
-
-    return quant_linear_base(
-        input=x,
-        weight=w,
-        size=size,
-        scale_in=scale_in,
-        scale_weight=scale_weight,
-        num_flatten_dims=num_flatten_dims,
-        bias_attr=bias_attr,
-        act=activation,
-        quant_round_type=quant_round_type,
-        quant_max_bound=quant_max_bound,
-        quant_min_bound=quant_min_bound,
         name=name,
     )
 
@@ -490,8 +349,8 @@ def instance_norm(
     dtype = helper.input_dtype()
 
     # use fp32 for in parameter
-    if dtype == paddle.framework.core.VarDesc.VarType.FP16:
-        dtype = paddle.framework.core.VarDesc.VarType.FP32
+    if dtype == paddle.float16:
+        dtype = paddle.float32
 
     input_shape = input.shape
     if len(input.shape) < 2 or len(input.shape) > 5:
@@ -659,7 +518,7 @@ def data_norm(
             should do model average when model average is enabled. Default: True.
         slot_dim (int, optional): The embedding dimension of one slot. Slot is a set of one specific feature. In pslib mode,
             we distinguish feature ids by slot and pull their embeddings from parameter server (pslib). The first
-            place of the embedding is the historical show number (occurence time of this feature id with a label 0).
+            place of the embedding is the historical show number (occurrence time of this feature id with a label 0).
             If the input of this op is concated by slot-wise embeddings, and the show number is zero when this slot
             is new or empty, the normalization result may be impractical. To avoid this, we add slot_dim to locate
             the show number and judge if the show number is zero. If so, we choose to skip normalization on this
@@ -871,7 +730,7 @@ def group_norm(
         ['float16', 'uint16', 'float32', 'float64'],
         'group_norm',
     )
-    # create intput and parameters
+    # create input and parameters
     inputs = {'X': input}
     input_shape = input.shape
     if len(input_shape) < 2:
@@ -1023,7 +882,7 @@ def conv2d(
             of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with :math:`Normal(0.0, std)`,
-            and the :math:`std` is :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
+            and the :math:`std` is :math:`(\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
         bias_attr (ParamAttr|bool|None, optional): The parameter attribute for the bias of conv2d.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv2d
@@ -1083,7 +942,7 @@ def conv2d(
     num_channels = input.shape[3] if channel_last else input.shape[1]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimmention of the input({}) should be defined. "
+            "The channel dimension of the input({}) should be defined. "
             "Received: {}.".format(str(input.shape), str(num_channels))
         )
     assert param_attr is not False, "param_attr should not be False here."
@@ -1218,7 +1077,6 @@ def conv2d(
             'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
-            'use_mkldnn': False,
             'fuse_relu_before_depthwise_conv': False,
             "padding_algorithm": padding_algorithm,
             "data_format": data_format,
@@ -1254,7 +1112,7 @@ def conv3d(
     and strides, paddings, dilations, groups parameters. Input(Input) and
     Output(Output) are in NCDHW or NDHWC format. Where N is batch size C is the number of
     channels, D is the depth of the feature, H is the height of the feature,
-    and W is the width of the feature. Convlution3D is similar with Convlution2D
+    and W is the width of the feature. Convolution3D is similar with Convolution2D
     but adds one dimension(depth). If bias attribution and activation type are
     provided, bias is added to the output of the convolution, and the
     corresponding activation function is applied to the final result.
@@ -1400,7 +1258,7 @@ def conv3d(
     num_channels = input.shape[4] if channel_last else input.shape[1]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimmention of the input({}) should be defined. "
+            "The channel dimension of the input({}) should be defined. "
             "Received: {}.".format(str(input.shape), str(num_channels))
         )
 
@@ -1514,7 +1372,6 @@ def conv3d(
             'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
-            'use_mkldnn': False,
             "padding_algorithm": padding_algorithm,
             "data_format": data_format,
         },
@@ -1824,7 +1681,7 @@ def conv2d_transpose(
         )
 
     if filter_size is None:
-        if output_size is []:
+        if output_size == []:
             raise ValueError("output_size must be set when filter_size is None")
         if not in_dygraph_mode():
             if isinstance(output_size, Variable) or paddle.utils._contain_var(
@@ -2227,9 +2084,7 @@ def conv3d_transpose(
     groups = 1 if groups is None else groups
     if groups <= 0:
         raise ValueError(
-            "the groups of conv3d_transpose should be greater than 0. Received groups: {}".format(
-                groups
-            )
+            f"the groups of conv3d_transpose should be greater than 0. Received groups: {groups}"
         )
     if num_filters % groups != 0:
         raise ValueError(
@@ -2845,8 +2700,8 @@ def batch_norm(
         is_test (bool, Default False): A flag indicating whether it is in
             test phrase or not.
         momentum(float|Tensor, Default 0.9): The value used for the moving_mean and
-            moving_var computation. This should be a float number or a Tensor with
-            shape [1] and data type as float32. The updated formula is:
+            moving_var computation. This should be a float number or a 0-D Tensor with
+            shape [] and data type as float32. The updated formula is:
             :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
             :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
             Default is 0.9.
@@ -2916,8 +2771,8 @@ def batch_norm(
     dtype = helper.input_dtype()
 
     # use fp32 for bn parameter
-    if dtype == core.VarDesc.VarType.FP16 or dtype == core.VarDesc.VarType.BF16:
-        dtype = core.VarDesc.VarType.FP32
+    if dtype == paddle.float16 or dtype == paddle.bfloat16:
+        dtype = paddle.float32
 
     input_shape = input.shape
     if len(input.shape) < 2 or len(input.shape) > 5:
@@ -2978,11 +2833,11 @@ def batch_norm(
     variance_out = variance
 
     if in_dygraph_mode():
-        inputs_has_MomemtumTensor = False
+        inputs_has_MomentumTensor = False
         attrs_has_momentum = False
         tmp_tensor_type = core.eager.Tensor
         if isinstance(momentum, tmp_tensor_type):
-            inputs_has_MomemtumTensor = True
+            inputs_has_MomentumTensor = True
         else:
             attrs_has_momentum = True
 
@@ -2997,8 +2852,6 @@ def batch_norm(
                 is_test,
                 'data_layout',
                 data_layout,
-                'use_mkldnn',
-                False,
                 'fuse_with_relu',
                 False,
                 'use_global_stats',
@@ -3012,14 +2865,12 @@ def batch_norm(
                 is_test,
                 'data_layout',
                 data_layout,
-                'use_mkldnn',
-                False,
                 'fuse_with_relu',
                 False,
                 'use_global_stats',
                 use_global_stats,
             )
-        if inputs_has_MomemtumTensor:
+        if inputs_has_MomentumTensor:
             batch_norm_out, _, _, _, _, _ = paddle._legacy_C_ops.batch_norm(
                 input,
                 scale,
@@ -3045,7 +2896,7 @@ def batch_norm(
             )
 
         return paddle.base.dygraph_utils._append_activation_in_dygraph(
-            batch_norm_out, act=act, use_mkldnn=False
+            batch_norm_out, act=act
         )
 
     saved_mean = helper.create_variable_for_type_inference(
@@ -3077,7 +2928,6 @@ def batch_norm(
         "epsilon": epsilon,
         "is_test": is_test,
         "data_layout": data_layout,
-        "use_mkldnn": False,
         "fuse_with_relu": False,
         "use_global_stats": use_global_stats,
     }
@@ -3598,7 +3448,7 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
                   Input(Weight) is the weight of conv layer, default 0.
         power_iters(int): number of power iterations to calculate spectral norm, default 1.
         eps(float): epsilon for numerical stability in calculating norms, it will be added to
-                    the denominator to aviod divide zero. Default 1e-12.
+                    the denominator to avoid divide zero. Default 1e-12.
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
@@ -3627,7 +3477,7 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     check_type(eps, 'eps', float, 'spectral_norm')
     dtype = weight.dtype
 
-    # create intput and parameters
+    # create input and parameters
     input_shape = weight.shape
     assert weight.numel() > 0, "Any dimension of input cannot be equal to 0."
 
@@ -3654,7 +3504,7 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     )
     v.stop_gradient = True
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return paddle._C_ops.spectral_norm(weight, u, v, dim, power_iters, eps)
 
     inputs = {'Weight': weight}
@@ -3768,7 +3618,7 @@ def layer_norm(
     )
     dtype = helper.input_dtype()
 
-    # create intput and parameters
+    # create input and parameters
     inputs = {'X': input}
     input_shape = input.shape
     param_shape = [reduce(lambda x, y: x * y, input_shape[begin_norm_axis:], 1)]
@@ -4052,7 +3902,7 @@ def sparse_embedding(
             If :math:`padding\_idx < 0`, the :math:`padding\_idx` will automatically be converted
             to :math:`vocab\_size + padding\_idx` . It will output all-zero padding data whenever
             lookup encounters :math:`padding\_idx` in id. And the padding data will not be updated
-            while training. If set None, it makes no efe mfect to output. Default: None.
+            while training. If set None, it makes no effect to output. Default: None.
         is_test(bool, optional): Training or prediction mode. In prediction mode (is_test=False),
             the output is not initialized and created, and it is filled with 0 and returned. Default: False.
         entry(str, optional): Entry config with parameter server whose value is ProbabilityEntry,

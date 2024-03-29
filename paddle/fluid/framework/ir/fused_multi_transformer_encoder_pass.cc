@@ -1474,7 +1474,7 @@ inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
   auto* wk_data = wk_tensor->data<T>();
   auto* wv_data = wv_tensor->data<T>();
 
-  auto combined_w_dims = phi::make_ddim({3, num_head, dim_head, dim_embed});
+  auto combined_w_dims = common::make_ddim({3, num_head, dim_head, dim_embed});
 
   phi::DenseTensor tmp_combined_w_tensor;
   tmp_combined_w_tensor.Resize(combined_w_dims);
@@ -1516,7 +1516,7 @@ inline void QKVBiasProcess(phi::DenseTensor* bq_tensor,
   auto* bk_data = bk_tensor->data<T>();
   auto* bv_data = bv_tensor->data<T>();
 
-  auto combined_bias_dims = phi::make_ddim({3, num_head, dim_head});
+  auto combined_bias_dims = common::make_ddim({3, num_head, dim_head});
 
   phi::DenseTensor tmp_combined_bias_tensor;
   tmp_combined_bias_tensor.Resize(combined_bias_dims);
@@ -1590,7 +1590,7 @@ inline void QKVWeightsProcessFuseQKV(phi::DenseTensor* qkv_w_tensor,
   auto* dev_ctx = static_cast<phi::CPUContext*>(
       platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
   auto* qkv_w_data = qkv_w_tensor->data<T>();
-  auto transpose_w_dims = phi::make_ddim({3, num_head, dim_head, dim_embed});
+  auto transpose_w_dims = common::make_ddim({3, num_head, dim_head, dim_embed});
 
   phi::DenseTensor tmp_transpose_w_tensor;
   tmp_transpose_w_tensor.Resize(transpose_w_dims);
@@ -1628,7 +1628,7 @@ inline void QKVBiasProcessFuseQKV(phi::DenseTensor* qkv_b_tensor,
   auto* dev_ctx = static_cast<phi::CPUContext*>(
       platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
   auto* qkv_b_data = qkv_b_tensor->data<T>();
-  auto transpose_b_dims = phi::make_ddim({3, num_head, dim_head});
+  auto transpose_b_dims = common::make_ddim({3, num_head, dim_head});
 
   phi::DenseTensor tmp_transpose_b_tensor;
   tmp_transpose_b_tensor.Resize(transpose_b_dims);
@@ -1805,7 +1805,7 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
     auto* bv_tensor =
         scope->FindVar(eltadd2_b->Name())->GetMutable<phi::DenseTensor>();
 
-    // NOTE(minghaoBD): to make it compatible with strucutured pruning on
+    // NOTE(minghaoBD): to make it compatible with structured pruning on
     // num_head dimension:
     // 1. get dim_head from reshape.shape[3], dim_embed from
     // layer_norm_bias.shape[0]
@@ -1952,7 +1952,7 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
       auto ffn1_in_scale = PADDLE_GET_CONST(
           float, ffn_matmul_1_op->GetAttr("Input_scale_" + ffn1_input_name));
 
-      // Calc outscale and Set them
+      // Calc out scale and Set them
       auto qkv_weight_scale =
           PADDLE_GET_CONST(float, matmul0_op->GetAttr("weight_scale"));
       auto out_weight_scale =
@@ -2400,6 +2400,16 @@ void FusedMultiTransformerEncoderPass::ApplyImpl(Graph* graph) const {
       platform::errors::Fatal(
           "During the multi_transformer pass, The scope should not be null."));
 
+  VLOG(3) << "Running fused_multi_transformer_encoder_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3) << "The ID of block running fused_multi_transformer_encoder_pass "
+               "is: 0(main_graph)";
+  } else {
+    VLOG(3)
+        << "The ID of block running fused_multi_transformer_encoder_pass is: "
+        << graph->GetBlockId();
+  }
+
   int fusion_count = BuildFusion(graph, name_scope_, scope);
   if (fusion_count > 0) {
     graph->Set(kFusedMultiTransformerEncoderPass, new bool(true));
@@ -2437,13 +2447,13 @@ FusedMultiTransformerEncoderPass::FusedMultiTransformerEncoderPass() {
       .End();
 
   AddOpCompat(OpCompat("matmul_v2"))
-      .AddInput("X")  // the shape shoule be (B, S, N*H)
+      .AddInput("X")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
-      .AddInput("Y")  // the shape shoule be (N*H, N*H)
+      .AddInput("Y")  // the shape should be (N*H, N*H)
       .IsTensor()
       .End()
-      .AddOutput("Out")  // the shape shoule be (B, S, N*H)
+      .AddOutput("Out")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
       .AddAttr("trans_x")
@@ -2619,7 +2629,7 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     auto* qkv_b_tensor =
         scope->FindVar(eltadd0_b->Name())->GetMutable<phi::DenseTensor>();
 
-    // NOTE(minghaoBD): to make it compatible with strucutured pruning on
+    // NOTE(minghaoBD): to make it compatible with structured pruning on
     // num_head dimension:
     // 1. get dim_head from reshape.shape[3], dim_embed from
     // layer_norm_bias.shape[0]
@@ -2748,9 +2758,9 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
       auto ffn1_in_scale = PADDLE_GET_CONST(
           float, ffn_matmul_1_op->GetAttr("Input_scale_" + ffn1_input_name));
 
-      // Calc outscale and Set them
+      // Calc out scale and Set them
       // TODO(wufeisheng): Currently just match layer-wise weight scale, where
-      // channel-wise weight scale should also be surpported.
+      // channel-wise weight scale should also be supported.
       auto qkv_weight_scale =
           PADDLE_GET_CONST(float, matmul0_op->GetAttr("weight_scale"));
       auto out_weight_scale =
@@ -3211,6 +3221,17 @@ void FusedMultiTransformerEncoderFuseQKVPass::ApplyImpl(Graph* graph) const {
           "During the fused_multi_transformer_encoder pass, "
           "The scope should not be null."));
 
+  VLOG(3) << "Running fused_multi_transformer_encoder_fuse_qkv_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3)
+        << "The ID of block running "
+           "fused_multi_transformer_encoder_fuse_qkv_pass is: 0(main_graph)";
+  } else {
+    VLOG(3) << "The ID of block running "
+               "fused_multi_transformer_encoder_fuse_qkv_pass is: "
+            << graph->GetBlockId();
+  }
+
   int fusion_count = BuildFusion(graph, name_scope_, scope);
   if (fusion_count > 0) {
     graph->Set(kFusedMultiTransformerEncoderFuseQKVPass, new bool(true));
@@ -3266,13 +3287,13 @@ FusedMultiTransformerEncoderFuseQKVPass::
       .End();
 
   AddOpCompat(OpCompat("matmul_v2"))
-      .AddInput("X")  // the shape shoule be (B, S, N*H)
+      .AddInput("X")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
-      .AddInput("Y")  // the shape shoule be (N*H, N*H)
+      .AddInput("Y")  // the shape should be (N*H, N*H)
       .IsTensor()
       .End()
-      .AddOutput("Out")  // the shape shoule be (B, S, N*H)
+      .AddOutput("Out")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
       .AddAttr("trans_x")
@@ -4013,6 +4034,17 @@ void MultiDevicesFusedMultiTransformerEncoderPass::ApplyImpl(
       platform::errors::Fatal(
           "During the multi_transformer pass, The scope should not be null."));
 
+  VLOG(3) << "Running multi_devices_fused_multi_transformer_encoder_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3) << "The ID of block running "
+               "multi_devices_fused_multi_transformer_encoder_pass is: "
+               "0(main_graph)";
+  } else {
+    VLOG(3) << "The ID of block running "
+               "multi_devices_fused_multi_transformer_encoder_pass is: "
+            << graph->GetBlockId();
+  }
+
   int fusion_count = BuildFusion(graph, name_scope_, scope);
   if (fusion_count > 0) {
     graph->Set(kFusedMultiTransformerEncoderPass, new bool(true));
@@ -4051,13 +4083,13 @@ MultiDevicesFusedMultiTransformerEncoderPass::
       .End();
 
   AddOpCompat(OpCompat("matmul_v2"))
-      .AddInput("X")  // the shape shoule be (B, S, N*H)
+      .AddInput("X")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
-      .AddInput("Y")  // the shape shoule be (N*H, N*H)
+      .AddInput("Y")  // the shape should be (N*H, N*H)
       .IsTensor()
       .End()
-      .AddOutput("Out")  // the shape shoule be (B, S, N*H)
+      .AddOutput("Out")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
       .AddAttr("trans_x")
@@ -4235,7 +4267,7 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     auto* qkv_b_tensor =
         scope->FindVar(eltadd0_b->Name())->GetMutable<phi::DenseTensor>();
 
-    // NOTE(minghaoBD): to make it compatible with strucutured pruning on
+    // NOTE(minghaoBD): to make it compatible with structured pruning on
     // num_head dimension:
     // 1. get dim_head from reshape.shape[3], dim_embed from
     // layer_norm_bias.shape[0]
@@ -4375,7 +4407,7 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
       auto ffn1_in_scale = PADDLE_GET_CONST(
           float, ffn_matmul_1_op->GetAttr("Input_scale_" + ffn1_input_name));
 
-      // Calc outscale and Set them
+      // Calc out scale and Set them
       auto qkv_weight_scale =
           PADDLE_GET_CONST(float, matmul0_op->GetAttr("weight_scale"));
       auto out_weight_scale =
@@ -4872,6 +4904,19 @@ void MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::ApplyImpl(
           "During the fused_multi_transformer_encoder pass, "
           "The scope should not be null."));
 
+  VLOG(3)
+      << "Running multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3) << "The ID of block running "
+               "multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass "
+               "is: 0(main_graph)";
+  } else {
+    VLOG(3)
+        << "The ID of block running "
+           "multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass is: "
+        << graph->GetBlockId();
+  }
+
   int fusion_count = BuildFusion(graph, name_scope_, scope);
   if (fusion_count > 0) {
     graph->Set(kMultiDevicesFusedMultiTransformerEncoderFuseQKVPass,
@@ -4928,13 +4973,13 @@ MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::
       .End();
 
   AddOpCompat(OpCompat("matmul_v2"))
-      .AddInput("X")  // the shape shoule be (B, S, N*H)
+      .AddInput("X")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
-      .AddInput("Y")  // the shape shoule be (N*H, N*H)
+      .AddInput("Y")  // the shape should be (N*H, N*H)
       .IsTensor()
       .End()
-      .AddOutput("Out")  // the shape shoule be (B, S, N*H)
+      .AddOutput("Out")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
       .AddAttr("trans_x")

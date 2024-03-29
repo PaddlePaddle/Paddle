@@ -20,18 +20,17 @@ namespace phi {
 inline std::vector<int64_t> CalculateReducedDims(
     const DenseTensor* input,
     const DenseTensor* output,
-    const std::vector<int64_t>& reduce_dims,  // NOLINT
+    const std::vector<int64_t>& dims,  // NOLINT
     bool reduce_all,
     bool keep_dim) {
-  if (keep_dim) return vectorize(output->dims());
+  if (keep_dim) return common::vectorize(output->dims());
 
   if (reduce_all) return std::vector<int64_t>(input->dims().size(), 1);
 
-  std::vector<int64_t> output_dims(vectorize(input->dims()));
-  for (size_t i = 0; i < reduce_dims.size(); ++i) {
+  std::vector<int64_t> output_dims(common::vectorize(input->dims()));
+  for (size_t i = 0; i < dims.size(); ++i) {
     // handle negative dims, f.e. "-1" means rightmost dimension
-    int index = (reduce_dims[i] >= 0) ? reduce_dims[i]
-                                      : input->dims().size() + reduce_dims[i];
+    int index = (dims[i] >= 0) ? dims[i] : input->dims().size() + dims[i];
     output_dims[index] = 1;
   }
 
@@ -48,7 +47,7 @@ void ReduceKernel(const Context& dev_ctx,
                   dnnl::algorithm reduction_type) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   const auto& onednn_engine = dev_ctx.GetEngine();
-  auto x_tz = vectorize(x.dims());
+  auto x_tz = common::vectorize(x.dims());
   auto out_tz =
       CalculateReducedDims(&x, out, dims.GetData(), reduce_all, keep_dim);
 
@@ -78,7 +77,7 @@ void ReduceKernel(const Context& dev_ctx,
     astream.wait();
 
     const auto reshape_dims = out->dims().size() != 0
-                                  ? vectorize<int64_t>(out->dims())
+                                  ? common::vectorize<int64_t>(out->dims())
                                   : std::vector<int64_t>{1};
     out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(reshape_dims));
   } else {
@@ -103,7 +102,7 @@ void ReduceKernel(const Context& dev_ctx,
     astream.wait();
 
     const auto reshape_dims = out->dims().size() != 0
-                                  ? vectorize<int64_t>(out->dims())
+                                  ? common::vectorize<int64_t>(out->dims())
                                   : std::vector<int64_t>{1};
     out->set_mem_desc(dst_memory_p->get_desc().reshape(reshape_dims));
   }
@@ -125,7 +124,7 @@ void ReduceGradKernel(const Context& dev_ctx,
   const auto& onednn_engine = dev_ctx.GetEngine();
   auto out_grad_tz = CalculateReducedDims(
       x_grad, &out_grad, dims.GetData(), reduce_all, keep_dim);
-  auto x_grad_tz = vectorize(x_grad->dims());
+  auto x_grad_tz = common::vectorize(x_grad->dims());
 
   funcs::BroadcastDataOneDNNHandler<T> handler(binary_type,
                                                onednn_engine,

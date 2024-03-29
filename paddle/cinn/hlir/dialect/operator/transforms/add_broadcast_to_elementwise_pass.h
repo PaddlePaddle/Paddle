@@ -14,26 +14,16 @@
 
 #pragma once
 
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
+#include <memory>
+#include "paddle/pir/include/pass/pass.h"
 
 namespace cinn {
 namespace dialect {
 namespace ir {
 
-class AddBroadcastToElementwisePass : public pir::Pass {
- public:
-  AddBroadcastToElementwisePass();
+std::unique_ptr<pir::Pass> CreateAddBroadcastToElementwisePass();
 
-  bool Initialize(pir::IrContext *context) override;
-
-  void Run(pir::Operation *op) override;
-
-  bool CanApplyOn(pir::Operation *op) const override;
-
- private:
-  pir::FrozenRewritePatternSet patterns_;
-};
+std::unique_ptr<pir::Pass> CreateDeleteUselessBroadcastPass();
 
 }  // namespace ir
 }  // namespace dialect

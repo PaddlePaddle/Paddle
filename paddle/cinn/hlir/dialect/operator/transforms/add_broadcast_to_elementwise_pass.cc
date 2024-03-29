@@ -15,15 +15,18 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/common/ddim.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/api/match_context.h"
-#include "paddle/phi/core/ddim.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pattern_rewrite/pattern_applicator.h"
-#include "paddle/pir/pattern_rewrite/pattern_match.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_applicator.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_match.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace cinn {
 namespace dialect {
@@ -58,7 +61,7 @@ std::vector<int64_t> GetOutputShape(const phi::DDim& x, const phi::DDim& y) {
 
     vec_res.resize(max_rank);
     for (size_t i = 0; i < max_rank; ++i) {
-      vec_res[i] = GetDimByIndex(x, y, short_align_axis, max_rank);
+      vec_res[i] = GetDimByIndex(x, y, short_align_axis, i);
     }
   }
 
@@ -91,21 +94,67 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
                     .dyn_cast<paddle::dialect::DenseTensorType>()
                     .dims();
 
+  if (op->operand_source(0)
+          .type()
+          .dyn_cast<pir::ShapedTypeInterface>()
+          .IsDynamicShape() ||
+      op->operand_source(1)
+          .type()
+          .dyn_cast<pir::ShapedTypeInterface>()
+          .IsDynamicShape()) {
+    return false;
+  }
+
   if (x_dims != y_dims) {
     auto output_shape = GetOutputShape(x_dims, y_dims);
     if (!IsSameDim(x_dims, output_shape)) {
       // add broadcast to input 0
-      auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
-          op->operand_source(0), std::vector<int64_t>({}), output_shape);
+      if (auto full_op = op->operand_source(0)
+                             .defining_op()
+                             ->dyn_cast<paddle::dialect::FullOp>()) {
+        auto new_full = rewriter->Build<paddle::dialect::FullOp>(
+            output_shape,
+            full_op->attribute("value").dyn_cast<pir::FloatAttribute>().data(),
+            full_op->attribute("dtype")
+                .dyn_cast<paddle::dialect::DataTypeAttribute>()
+                .data(),
+            full_op->attribute("place")
+                .dyn_cast<paddle::dialect::PlaceAttribute>()
+                .data());
+        op->operand(0).set_source(new_full->result(0));
+      } else {
+        auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
+            op->operand_source(0),
+            cinn::hlir::framework::pir::GetBroadcastAxis(x_dims, output_shape),
+            output_shape);
 
-      op->operand(0).set_source(new_transpose_op->result(0));
+        op->operand(0).set_source(new_transpose_op->result(0));
+      }
     }
 
     if (!IsSameDim(y_dims, output_shape)) {
-      auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
-          op->operand_source(1), std::vector<int64_t>({}), output_shape);
+      if (auto full_op = op->operand_source(1)
+                             .defining_op()
+                             ->dyn_cast<paddle::dialect::FullOp>()) {
+        auto new_full = rewriter->Build<paddle::dialect::FullOp>(
+            output_shape,
+            full_op->attribute("value").dyn_cast<pir::FloatAttribute>().data(),
+            full_op->attribute("dtype")
+                .dyn_cast<paddle::dialect::DataTypeAttribute>()
+                .data(),
+            full_op->attribute("place")
+                .dyn_cast<paddle::dialect::PlaceAttribute>()
+                .data());
 
-      op->operand(1).set_source(new_transpose_op->result(0));
+        op->operand(1).set_source(new_full->result(0));
+      } else {
+        auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
+            op->operand_source(1),
+            cinn::hlir::framework::pir::GetBroadcastAxis(y_dims, output_shape),
+            output_shape);
+
+        op->operand(1).set_source(new_transpose_op->result(0));
+      }
     }
 
     return true;
@@ -115,7 +164,7 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
 }
 
 template <typename OPTYPE>
-class AddBrodcastToElementwisePattern : public pir::OpRewritePattern<OPTYPE> {
+class AddBroadcastToElementwisePattern : public pir::OpRewritePattern<OPTYPE> {
  public:
   using pir::OpRewritePattern<OPTYPE>::OpRewritePattern;
 
@@ -125,29 +174,98 @@ class AddBrodcastToElementwisePattern : public pir::OpRewritePattern<OPTYPE> {
   }
 };
 
-AddBroadcastToElementwisePass::AddBroadcastToElementwisePass()
-    : pir::Pass("add_broadcast_to_elementwise_pass", 1) {}
+class DeleteUselessBroadcastPattern
+    : public pir::OpRewritePattern<cinn::dialect::BroadcastOp> {
+ public:
+  using pir::OpRewritePattern<cinn::dialect::BroadcastOp>::OpRewritePattern;
 
-bool AddBroadcastToElementwisePass::Initialize(pir::IrContext* context) {
-  pir::RewritePatternSet ps(context);
-  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::AddOp>>(context);
-  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::SubtractOp>>(context);
-  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::MultiplyOp>>(context);
-  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::DivideOp>>(context);
+  bool MatchAndRewrite(cinn::dialect::BroadcastOp broadcast,
+                       pir::PatternRewriter& rewriter) const override {
+    if (!broadcast->GetParentOp()->isa<cinn::dialect::FusionOp>()) {
+      rewriter.ReplaceAllUsesWith(broadcast.result(0),
+                                  broadcast->operand_source(0));
+      rewriter.EraseOp(broadcast);
+      return true;
+    }
+    return false;
+  }
+};
 
-  patterns_ = ::pir::FrozenRewritePatternSet(std::move(ps));
-  return true;
+class AddBroadcastToElementwisePass : public pir::PatternRewritePass {
+ public:
+  AddBroadcastToElementwisePass()
+      : pir::PatternRewritePass("add_broadcast_to_elementwise_pass", 1) {}
+
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
+    pir::RewritePatternSet ps(context);
+    // elementwise ops
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::AddOp>>(context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::SubtractOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::MultiplyOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::DivideOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::ElementwisePowOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::RemainderOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::FloorDivideOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::MaximumOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::MinimumOp>>(
+        context);
+
+    // compare ops
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::LessThanOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::LessEqualOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::EqualOp>>(context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::NotEqualOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::GreaterThanOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::GreaterEqualOp>>(
+        context);
+
+    // bitwise ops
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseAndOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseOrOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseXorOp>>(
+        context);
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseNotOp>>(
+        context);
+
+    return ps;
+  }
+
+  bool CanApplyOn(pir::Operation* op) const override {
+    return op->num_regions() > 0;
+  }
+};
+
+class DeleteUselessBroadcastPass : public pir::PatternRewritePass {
+ public:
+  DeleteUselessBroadcastPass()
+      : pir::PatternRewritePass("delete_useless_broadcast_pass", 1) {}
+
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
+    pir::RewritePatternSet ps(context);
+    ps.Add<DeleteUselessBroadcastPattern>(context);
+    return ps;
+  }
+};
+
+std::unique_ptr<pir::Pass> CreateAddBroadcastToElementwisePass() {
+  return std::make_unique<AddBroadcastToElementwisePass>();
 }
 
-void AddBroadcastToElementwisePass::Run(pir::Operation* op) {
-  pir::GreedyRewriteConfig cfg;
-  cfg.use_top_down_traversal = true;
-  cfg.max_iterations = 10;
-  pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
-}
-
-bool AddBroadcastToElementwisePass::CanApplyOn(pir::Operation* op) const {
-  return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+std::unique_ptr<pir::Pass> CreateDeleteUselessBroadcastPass() {
+  return std::make_unique<DeleteUselessBroadcastPass>();
 }
 
 }  // namespace ir

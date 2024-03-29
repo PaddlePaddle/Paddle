@@ -68,7 +68,7 @@ static std::vector<int> getNewAxis(const int b_rank) {
 
 // for Resize
 static std::vector<int64_t> getNewDimsVec(const DDim& b_dims) {
-  std::vector<int64_t> b_dims_vec = phi::vectorize(b_dims);
+  std::vector<int64_t> b_dims_vec = common::vectorize(b_dims);
   int size = b_dims_vec.size();
   if (size >= 2) {
     // swap the last 2 elements in b_dims_vec
@@ -82,7 +82,7 @@ static std::vector<int64_t> getNewDimsVec(const DDim& b_dims) {
       true,
       phi::errors::PreconditionNotMet(
           "The size of tensor b must not be %d after getting new dims", 0));
-  // if b_dims_vec.size() == 1, just retun original vec
+  // if b_dims_vec.size() == 1, just return original vec
   return b_dims_vec;
 }
 

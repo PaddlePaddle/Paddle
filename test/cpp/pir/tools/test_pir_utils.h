@@ -14,8 +14,8 @@
 
 #pragma once
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/dialect/shape/utils/shape_utils.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace test {
 
@@ -47,13 +47,10 @@ pir::Operation *CreateDenseTensorOp(
       paddle::dialect::DenseTensorType::get(
           ctx, dtype, dims, data_layout, lod, offset)};
 
-  pir::Builder builder = pir::Builder(ctx);
-  pir::Operation *op =
-      builder.Build(op_inputs,
-                    CreateAttributeMap(attribute_names, attributes),
-                    op_output_types,
-                    pir::OpInfo());
-  return op;
+  return pir::Operation::Create(op_inputs,
+                                CreateAttributeMap(attribute_names, attributes),
+                                op_output_types,
+                                pir::OpInfo());
 }
 
 }  // namespace test

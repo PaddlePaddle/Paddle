@@ -14,29 +14,24 @@
 
 #pragma once
 
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
 
 namespace cinn {
 namespace dialect {
 namespace ir {
 
-class PdOpToCinnOpPass : public pir::Pass {
+class PdOpToCinnOpPass : public pir::PatternRewritePass {
  public:
   PdOpToCinnOpPass();
 
-  bool Initialize(pir::IrContext *context) override;
-
-  void Run(pir::Operation *op) override;
+  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override;
 
   bool CanApplyOn(pir::Operation *op) const override;
-
- private:
-  pir::FrozenRewritePatternSet patterns_;
 };
 
-void PdOp2CinnOpConverter(::pir::Program *program);
+IR_API std::unique_ptr<pir::Pass> CreatePdOpToCinnOpPass();
 
 }  // namespace ir
 }  // namespace dialect

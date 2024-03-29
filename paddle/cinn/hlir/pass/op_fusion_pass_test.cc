@@ -34,7 +34,7 @@ TEST(OpFusionPass, ElementWise_Fusion_0) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
   RunDecomposer(&program, target);
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
@@ -58,7 +58,7 @@ TEST(OpFusionPass, ElementWise_Fusion_1) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
   RunDecomposer(&program, target);
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
@@ -66,9 +66,9 @@ TEST(OpFusionPass, ElementWise_Fusion_1) {
   CHECK_EQ(graph->fusion_groups.size(), 1);
 }
 
-TEST(OpFusionPass, Brodcast_Test_0) {
+TEST(OpFusionPass, Broadcast_Test_0) {
   int h = 32, w = 32;
-  NetBuilder net_builder("Brodcast_Test_0");
+  NetBuilder net_builder("Broadcast_Test_0");
   // create model
   {
     auto A = net_builder.CreateInput(Float(32), {w}, "A");
@@ -81,7 +81,7 @@ TEST(OpFusionPass, Brodcast_Test_0) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
   RunDecomposer(&program, target);
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
@@ -89,9 +89,9 @@ TEST(OpFusionPass, Brodcast_Test_0) {
   CHECK_EQ(graph->fusion_groups.size(), 1);
 }
 
-TEST(OpFusionPass, Brodcast_Test_1) {
+TEST(OpFusionPass, Broadcast_Test_1) {
   int h = 32, w = 32;
-  NetBuilder net_builder("Brodcast_Test_1");
+  NetBuilder net_builder("Broadcast_Test_1");
   // create model
   {
     auto A = net_builder.CreateInput(Float(32), {w}, "A");
@@ -106,7 +106,7 @@ TEST(OpFusionPass, Brodcast_Test_1) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
   RunDecomposer(&program, target);
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
@@ -114,9 +114,9 @@ TEST(OpFusionPass, Brodcast_Test_1) {
   CHECK_EQ(graph->fusion_groups.size(), 1);
 }
 
-TEST(OpFusionPass, Brodcast_Test_2) {
+TEST(OpFusionPass, Broadcast_Test_2) {
   int n = 2, c = 16, h = 32, w = 32;
-  NetBuilder net_builder("Brodcast_Test_2");
+  NetBuilder net_builder("Broadcast_Test_2");
   // create model
   {
     auto A = net_builder.CreateInput(Float(32), {c}, "A");
@@ -126,7 +126,7 @@ TEST(OpFusionPass, Brodcast_Test_2) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
   RunDecomposer(&program, target);
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
@@ -150,7 +150,7 @@ TEST(OpFusionPass, Reduce_Test_0) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
   RunDecomposer(&program, target);
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
@@ -175,7 +175,7 @@ TEST(OpFusionPass, Reduce_Test_1) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
   RunDecomposer(&program, target);
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
@@ -200,7 +200,7 @@ TEST(OpFusionPass, Reduce_Test_2) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
   RunDecomposer(&program, target);
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
@@ -224,7 +224,7 @@ TEST(OpFusionPass, Injective_Test_0) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
   RunDecomposer(&program, target);
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
@@ -242,7 +242,7 @@ TEST(OP_LOWERING, Injective_Test_1) {
   auto F = net_builder.Add(D, E);
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
   RunDecomposer(&program, target);
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
@@ -264,7 +264,7 @@ TEST(OpFusionPass, Test_Insert_BroadcastTo) {
   }
 
   auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
+  auto target = cinn::common::DefaultTarget();
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");

@@ -21,7 +21,7 @@ class TestReshardSToR(test_base.CommunicationTestDistBase):
     def setUp(self):
         super().setUp(num_of_devices=2, timeout=120)
         self._default_envs = {
-            "shape": "(10, 20)",
+            "shape": "(11, 20)",
             "dtype": "float32",
             "seeds": str(self._seeds),
         }
@@ -39,6 +39,18 @@ class TestReshardSToR(test_base.CommunicationTestDistBase):
                 "reshard_s_to_r.py",
                 user_defined_envs=envs,
             )
+
+    def test_reshard_s_to_r_cross_mesh(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+
+        for envs in envs_list:
+            if envs["backend"] != "cpu":
+                self.run_test_case(
+                    "reshard_s_to_r_cross_mesh.py",
+                    user_defined_envs=envs,
+                )
 
 
 if __name__ == "__main__":

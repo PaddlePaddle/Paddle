@@ -5,8 +5,9 @@ if(WITH_TESTING)
       device_context
       gtest
       phi
+      common
       init
-      memory
+      allocator
       phi_utils
       proto_desc)
 
@@ -19,10 +20,26 @@ if(WITH_TESTING)
     SRCS paddle_gtest_main.cc
     DEPS ${paddle_gtest_main_deps})
 
-  cc_library(
-    paddle_gtest_main_new
-    SRCS paddle_gtest_main.cc
-    DEPS gtest xxhash framework_proto eigen3 dlpack)
+  if(LINUX)
+    cc_library(
+      paddle_gtest_main_new
+      SRCS paddle_gtest_main.cc
+      DEPS gtest
+           xxhash
+           framework_proto
+           eigen3
+           dlpack
+           common
+           init
+           allocator
+           phi_utils)
+  else()
+    cc_library(
+      paddle_gtest_main_new
+      SRCS paddle_gtest_main.cc
+      DEPS gtest xxhash framework_proto eigen3 dlpack)
+  endif()
+
   if(WITH_MKLDNN)
     add_dependencies(paddle_gtest_main_new mkldnn)
   endif()

@@ -96,13 +96,17 @@ EXTERN_CALL_IMP(Popc, popc);
 #undef EXTERN_CALL_IMP
 #undef EXTERN_CALL_IMP_NO_VEC
 
-#define EXTERN_BINARY_CALL_IMP(name__, target__)                       \
-  Expr name__(Expr a, Expr b) {                                        \
-    CHECK_EQ(a.type(), b.type())                                       \
-        << #name__ << "'s inputs type not equal, where a:" << a.type() \
-        << " but b:" << b.type();                                      \
-    return ir::Call::Make(                                             \
-        a->type(), #target__, {a, b}, {}, ir::CallType::Extern);       \
+#define EXTERN_BINARY_CALL_IMP(name__, target__)                         \
+  Expr name__(Expr a, Expr b) {                                          \
+    PADDLE_ENFORCE_EQ(                                                   \
+        a.type(),                                                        \
+        b.type(),                                                        \
+        phi::errors::InvalidArgument(#name__ "'s inputs type not equal," \
+                                             "where a:%s but b:%s.",     \
+                                     a.type(),                           \
+                                     b.type()));                         \
+    return ir::Call::Make(                                               \
+        a->type(), #target__, {a, b}, {}, ir::CallType::Extern);         \
   }
 
 EXTERN_BINARY_CALL_IMP(Remainder, mod)
@@ -117,9 +121,13 @@ Expr Zero(const Type& type) { return ir::Zero(type); }
 Expr One(const Type& type) { return ir::One(type); }
 
 Expr FloorDivide(Expr a, Expr b) {
-  CHECK_EQ(a.type(), b.type())
-      << "FloorDivide's inputs type not equal, where a:" << a.type()
-      << " but b:" << b.type();
+  PADDLE_ENFORCE_EQ(a.type(),
+                    b.type(),
+                    phi::errors::InvalidArgument(
+                        "FloorDivide's inputs type not equal, where a:%s "
+                        " but b:%s.",
+                        a.type(),
+                        b.type()));
   if (a.type().is_float()) {
     return Floor(a / b);
   } else if (a.type().is_uint()) {
@@ -127,16 +135,21 @@ Expr FloorDivide(Expr a, Expr b) {
   } else {
     auto div = a / b;
     auto mod = a % b;
-    auto ret =
-        ir::Select::Make(ir::EQ::Make(mod, common::make_const(a.type(), 0)),
-                         div,
-                         div - common::make_const(a.type(), 1));
+    auto ret = ir::Select::Make(
+        ir::EQ::Make(mod, cinn::common::make_const(a.type(), 0)),
+        div,
+        div - cinn::common::make_const(a.type(), 1));
     return ir::Select::Make((a > 0 && b > 0) || (a < 0 && b < 0), div, ret);
   }
 }
 
 Expr min_value(const Type& type) {
-  CHECK_EQ(type.lanes(), 1);
+  PADDLE_ENFORCE_EQ(
+      type.lanes(),
+      1,
+      phi::errors::InvalidArgument("The value of min type's lanes is incorrect"
+                                   "Expected value is 1, but receive %d. ",
+                                   type.lanes()));
 #define FOR_CASE(type__)                                                     \
   if (type == type_of<type__>()) {                                           \
     return Expr(static_cast<type__>(std::numeric_limits<type__>::lowest())); \
@@ -158,7 +171,12 @@ Expr min_value(const Type& type) {
 }
 
 Expr max_value(const Type& type) {
-  CHECK_EQ(type.lanes(), 1);
+  PADDLE_ENFORCE_EQ(
+      type.lanes(),
+      1,
+      phi::errors::InvalidArgument("The value of max type's lanes is incorrect"
+                                   "Expected value is 1, but receive %d. ",
+                                   type.lanes()));
 
 #define FOR_CASE(type__)                                                  \
   if (type == type_of<type__>()) {                                        \
@@ -183,7 +201,12 @@ Expr max_value(const Type& type) {
 }
 
 Expr Epsilon(const Type& type) {
-  CHECK_EQ(type.lanes(), 1);
+  PADDLE_ENFORCE_EQ(type.lanes(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The value of epsilon type's lanes is incorrect"
+                        "Expected value is 1, but receive %d. ",
+                        type.lanes()));
 
 #define FOR_CASE(type__)                                                      \
   if (type == type_of<type__>()) {                                            \
@@ -219,7 +242,9 @@ Expr Abs(Expr e) {
     }
     return ir::Select::Make(e > Zero(e->type()), e, -e);
   } else {
-    LOG(FATAL) << "Abs Not support data type " << type;
+    std::stringstream ss;
+    ss << "Abs Not support data type " << type;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return e;
 }
@@ -227,21 +252,28 @@ Expr Abs(Expr e) {
 Expr IsNan(Expr e) {
   Type type = e->type();
   if (type.is_int() || type.is_uint()) {
-    return common::make_bool(false, type.lanes());
+    return cinn::common::make_bool(false, type.lanes());
   } else if (type.is_float()) {
     auto* node = e.As<ir::FloatImm>();
     if (node) {
-      return common::make_bool(std::isnan(node->value), type.lanes());
+      return cinn::common::make_bool(std::isnan(node->value), type.lanes());
     }
     return CallExtern("isnan", {e}, {{"vectorizable", false}});
   } else {
-    LOG(FATAL) << type << "is not supported for isnan op.";
+    std::stringstream ss;
+    ss << type << "is not supported for isnan op.";
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     return e;
   }
 }
 
 Expr Infinity(const Type& type) {
-  CHECK_EQ(type.lanes(), 1U);
+  PADDLE_ENFORCE_EQ(type.lanes(),
+                    1U,
+                    phi::errors::InvalidArgument(
+                        "The value of infinity type's lanes is incorrect"
+                        "Expected value is 1, but receive %d. ",
+                        type.lanes()));
   if (type.is_float()) {
     if (type.bits() == 64) {
       return make_const(type, std::numeric_limits<double>::infinity());
@@ -251,22 +283,26 @@ Expr Infinity(const Type& type) {
       return make_const(type, std::numeric_limits<float16>::infinity());
     }
   }
-  LOG(FATAL) << "Cannot decide infinity for type " << type;
+  std::stringstream ss;
+  ss << "Cannot decide infinity for type " << type;
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   return Expr();
 }
 
 Expr IsInf(Expr e) {
   Type type = e->type();
   if (type.is_int() || type.is_uint()) {
-    return common::make_bool(false, type.lanes());
+    return cinn::common::make_bool(false, type.lanes());
   } else if (type.is_float()) {
     auto* node = e.As<ir::FloatImm>();
     if (node) {
-      return common::make_bool(std::isinf(node->value), type.lanes());
+      return cinn::common::make_bool(std::isinf(node->value), type.lanes());
     }
     return CallExtern("isinf", {e}, {{"vectorizable", false}});
   } else {
-    LOG(FATAL) << type << "is not supported for isinf op.";
+    std::stringstream ss;
+    ss << type << "is not supported for isinf op.";
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     return e;
   }
 }

@@ -164,10 +164,12 @@ void XPUQuantizeOpPass::QuantizeConv(ir::Graph* graph) const {
           out_var_node = output_node;
         }
       }
-      if (!AreScalesPresentForNodes(&var_quant_scales_,
-                                    {x_var_node, w_var_node})) {
+      if (!AreScalesPresentForNodes(&var_quant_scales_, {x_var_node})) {
+        VLOG(4) << "Skip quantize op: " << n->Name()
+                << "x_var_node_name:" << x_var_node->Name()
+                << " w_var_node_name:" << w_var_node->Name();
         MarkAndLogCannotQuantizeOp(n, "No scale available for the operator");
-        return;
+        continue;
       }
 
       QuantizeInput(graph, n, x_var_node, "x");
@@ -240,7 +242,7 @@ void XPUQuantizeOpPass::QuantizeFC(ir::Graph* graph) const {
       if (!AreScalesPresentForNodes(&var_quant_scales_,
                                     {x_var_node, w_var_node})) {
         MarkAndLogCannotQuantizeOp(n, "No scale available for the operator");
-        return;
+        continue;
       }
 
       QuantizeInput(graph, n, x_var_node, "x");

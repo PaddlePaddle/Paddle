@@ -20,9 +20,9 @@
 #include <mutex>  // NOLINT
 #include <utility>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/stream_callback_manager.h"
-#include "paddle/utils/flags.h"
 
 namespace paddle {
 namespace framework {
@@ -220,6 +220,9 @@ bool IsFastEagerDeletionModeEnabled();
 void SetEagerDeletionMode(double threshold, double fraction, bool fast_mode);
 
 double GetEagerDeletionMemoryFraction();
+// create
+extern std::unique_ptr<GarbageCollector> CreateGarbageCollector(
+    const platform::Place &place, const size_t max_memory_size);
 
 }  // namespace framework
 }  // namespace paddle

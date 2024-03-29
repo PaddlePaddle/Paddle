@@ -19,17 +19,36 @@
 
 namespace phi {
 
+bool CastCheckIfOneDNNSupport(const KernelContext* ctx) {
+  if ((ctx->InputAt<phi::DenseTensor>(0).dtype() != DataType::FLOAT32 &&
+       ctx->InputAt<phi::DenseTensor>(0).dtype() != DataType::BFLOAT16) ||
+      (ctx->AttrAt<DataType>(0) != DataType::FLOAT32 &&
+       ctx->AttrAt<DataType>(0) != DataType::BFLOAT16)) {
+    return false;
+  }
+  return true;
+}
+
 template <typename T, typename Context>
 void CastKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DataType out_dtype,
                 DenseTensor* out) {
+  if (x.dtype() == out_dtype) {
+    if (!out->IsSharedWith(x)) {
+      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+      out->set_lod(x.lod());
+      out->set_mem_desc(x.mem_desc());
+    }
+    return;
+  }
+
   DataType in_dtype = x.dtype();
 
   dnnl::memory::data_type in_dnnl_dtype = funcs::ToOneDNNDataType(in_dtype);
   dnnl::memory::data_type out_dnnl_dtype = funcs::ToOneDNNDataType(out_dtype);
 
-  auto x_tz = phi::vectorize(x.dims());
+  auto x_tz = common::vectorize(x.dims());
 
   funcs::ReorderOneDNNHandler reorder_handler(x_tz,
                                               in_dtype,
@@ -56,4 +75,6 @@ void CastKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    cast, OneDNN, ONEDNN, phi::CastKernel, float, phi::dtype::bfloat16) {}
+    cast, OneDNN, ONEDNN, phi::CastKernel, float, phi::dtype::bfloat16) {
+  kernel->check_if_onednn_kernel_support_ = phi::CastCheckIfOneDNNSupport;
+}

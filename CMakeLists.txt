@@ -54,16 +54,20 @@ option(WITH_XPU "Compile PaddlePaddle with BAIDU KUNLUN XPU" OFF)
 option(WITH_XPU_KP "Compile PaddlePaddle with BAIDU XPU compiler " OFF)
 option(WITH_XPU_XFT "Compile PaddlePaddle with BAIDU XPU-XFT" OFF)
 option(WITH_XPU_PLUGIN "Compile PaddlePaddle with BAIDU XPU plugin" OFF)
+option(WITH_XPU_XHPC "Compile PaddlePaddle with BAIDU XPU-HPC library"
+       ${WITH_XPU})
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode" OFF)
 option(WITH_ROCM "Compile PaddlePaddle with ROCM platform" OFF)
 option(WITH_IPU "Compile PaddlePaddle with Graphcore IPU" OFF)
 option(WITH_ONNXRUNTIME "Compile PaddlePaddle with ONNXRUNTIME" OFF)
 option(WITH_CUSPARSELT "Compile PaddlePaddle with CUSPARSELT" OFF)
 option(WITH_SETUP_INSTALL "Compile PaddlePaddle with setup.py" OFF)
-option(WITH_SHARED_PHI "Compile PaddlePaddle with SHARED LIB of PHI" OFF)
-option(CINN_ONLY "Compile CINN only in Paddle" OFF)
+option(WITH_SHARED_PHI "Compile PaddlePaddle with SHARED LIB of PHI" ON)
 option(CINN_WITH_CUDNN "Compile CINN with CUDNN support" ON)
-
+option(WITH_PIP_CUDA_LIBRARIES
+       "Paddle uses the CUDA library provided by NVIDIA" OFF)
+option(WITH_NIGHTLY_BUILD
+       "Compile nightly paddle whl package of the develop branch" OFF)
 find_package(Git REQUIRED)
 
 # config GIT_URL with github mirrors to speed up dependent repos clone
@@ -86,11 +90,26 @@ endif()
 if(WITH_GPU AND WITH_XPU_XFT)
   message(FATAL_ERROR "Error when compile GPU and XPU-XFT at the same time")
 endif()
+if(WITH_GPU AND WITH_XPU_XHPC)
+  message(FATAL_ERROR "Error when compile GPU and XPU-HPC at the same time")
+endif()
 if(WITH_GPU AND WITH_ROCM)
   message(FATAL_ERROR "Error when compile CUDA and ROCM at the same time")
 endif()
 
 if(WITH_GPU AND NOT APPLE)
+  #(Note risemeup1): The cudart dynamic library libcudart.so is used by set CUDA_USE_STATIC_CUDA_RUNTIME and CMAKE_CUDA_FLAGS
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR STREQUAL
+                                            "x86_64")
+    set(CUDA_USE_STATIC_CUDA_RUNTIME
+        OFF
+        CACHE BOOL "" FORCE)
+    set(CMAKE_CUDA_FLAGS "--cudart shared")
+    if(WITH_PIP_CUDA_LIBRARIES)
+      #(Note risemeup1): Flag 'WITH_PIP_CUDA_LIBRARIES' will be used in dynamic_loader.cc to search for CUDA-related .so files through the Python libraries provided by NVIDIA.
+      add_definitions(-DWITH_PIP_CUDA_LIBRARIES)
+    endif()
+  endif()
   enable_language(CUDA)
   message(STATUS "CUDA compiler: ${CMAKE_CUDA_COMPILER}, version: "
                  "${CMAKE_CUDA_COMPILER_ID} ${CMAKE_CUDA_COMPILER_VERSION}")
@@ -108,6 +127,7 @@ if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND CMAKE_CXX_COMPILER_VERSION
 endif()
 
 # MUSL build turn off warnings
+
 if(WITH_MUSL)
   set(CMAKE_CXX_FLAGS
       "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-deprecated-declarations -Wno-error=pessimizing-move -Wno-error=deprecated-copy"
@@ -122,8 +142,14 @@ endif()
 if(WIN32)
   option(MSVC_STATIC_CRT "use static C Runtime library by default" ON)
   message("Build static library of PHI")
-  set(CMAKE_SUPPRESS_REGENERATION ON)
+  # (Note xuxinyi04): If CMAKE_SUPPRESS_REGENERATION is OFF, which is default, then CMake adds a
+  # special target on which all other targets depend that checks the build system and optionally
+  # re-runs CMake to regenerate the build system when the target specification source changes.
+  set(CMAKE_SUPPRESS_REGENERATION OFF)
   set(CMAKE_STATIC_LIBRARY_PREFIX lib)
+  set(WITH_SHARED_PHI
+      OFF
+      CACHE BOOL "Disable WITH_SHARED_PHI when compiling PADDLE ON WIN32" FORCE)
 
   set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /bigobj")
   set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /bigobj")
@@ -217,6 +243,8 @@ if(WIN32)
         "${${flag_var}} /ignore:4049 /ignore:4217 /ignore:4006 /ignore:4221")
     if(MSVC_STATIC_CRT)
       set(${flag_var} "${${flag_var}} /NODEFAULTLIB:MSVCRT.LIB")
+    else()
+      set(${flag_var} "${${flag_var}} /NODEFAULTLIB:LIBCMT.LIB")
     endif()
   endforeach()
 
@@ -307,12 +335,11 @@ option(WITH_FLPS "FL PS mode" OFF)
 option(WITH_RPC "Compile with rpc support" ${WITH_DISTRIBUTE})
 option(WITH_CUDNN_FRONTEND
        "Compile with CUDNN Frontend API support (experimental)" OFF)
-option(WITH_CUDNN_DSO "Compile PaddlePaddle with cuDNN dynamic-link libraries"
-       OFF)
 option(WITH_SHARED_IR "Compile PaddlePaddle with SHARED LIB of IR" ON)
 option(WITH_NVCC_LAZY
        "Compile PaddlePaddle with nvcc lazy mode, used for CI-Inference only."
        ON)
+option(BUILD_WHL_PACKAGE "Build paddle whl package after compilation" ON)
 
 if(WITH_RECORD_BUILDTIME)
   set_property(
@@ -335,7 +362,9 @@ unset(WITH_RECORD_BUILDTIME CACHE)
 
 # PY_VERSION
 if(NOT PY_VERSION)
-  set(PY_VERSION 3.7)
+  set(PY_VERSION 3.8)
+elseif(${PY_VERSION} VERSION_LESS 3.8)
+  message(FATAL_ERROR "Paddle only support Python version>=3.8 now")
 endif()
 set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 
@@ -401,16 +430,6 @@ if(NOT WITH_GPU AND WITH_NCCL)
       CACHE STRING "Disable NCCL when compiling without GPU" FORCE)
 endif()
 
-if(NOT WITH_GPU AND WITH_CUDNN_DSO)
-  message(
-    WARNING
-      "Can't compile with cuDNN libraries when compiling without GPU. Force WITH_CUDNN_DSO=OFF."
-  )
-  set(WITH_CUDNN_DSO
-      OFF
-      CACHE STRING "Disable cuDNN libraries when compiling without GPU" FORCE)
-endif()
-
 # force WITH_XPU on when WITH_XPU_KP
 if(WITH_XPU_KP AND NOT WITH_XPU)
   message(
@@ -444,6 +463,14 @@ if(NOT WITH_XPU AND WITH_XPU_BKCL)
   set(WITH_XPU_BKCL
       OFF
       CACHE STRING "Disable BKCL when compiling without XPU" FORCE)
+endif()
+
+if(NOT WITH_XPU AND WITH_XPU_XHPC)
+  message(
+    WARNING "Disable XHPC when compiling without XPU. Force WITH_XPU_XHPC=OFF.")
+  set(WITH_XPU_XHPC
+      OFF
+      CACHE STRING "Disable XHPC when compiling without XPU" FORCE)
 endif()
 
 if(WITH_NCCL)
@@ -581,18 +608,14 @@ include(third_party
 )# download, build, install third_party, Contains about 20+ dependencies
 
 include(flags) # set paddle compile flags
-
+include(util) # set unittest and link libs
+include(version) # set PADDLE_VERSION
+include(coveralls) # set code coverage
+include(configure) # add paddle env configuration
 #------------- cinn cmake config start --------------
 
 if(WITH_CINN)
   message(STATUS "Compile Paddle with CINN.")
-  message(
-    WARNING
-      "Enable WITH_SHARED_PHI when compiling with CINN. Force WITH_SHARED_PHI=ON."
-  )
-  set(WITH_SHARED_PHI
-      ON
-      CACHE BOOL "Enable WITH_SHARED_PHI when compiling with CINN" FORCE)
   # TODO(6clc): Use CINN_WITH_CUDNN to completely replace WITH_CUDNN in CINN.
   #             Use WITH_GPU to completely replace WITH_CUDA in CINN.
   set(WITH_MKL_CBLAS ${WITH_MKL})
@@ -604,20 +627,9 @@ if(WITH_CINN)
       add_definitions(-DCINN_WITH_CUDNN)
     endif()
   endif()
+
   include(cmake/cinn.cmake)
   add_definitions(-DPADDLE_WITH_CINN)
-
-  if(CINN_ONLY)
-    add_definitions(-DCINN_WITH_ONLY)
-    if(WITH_PYTHON)
-      add_subdirectory(python)
-    endif()
-    add_subdirectory(test)
-    if(NOT WITH_GFLAGS)
-      add_subdirectory(paddle/utils)
-    endif()
-    return()
-  endif()
 endif()
 
 #------------- cinn cmake config end --------------
@@ -627,11 +639,6 @@ if(WITH_PROFILER)
   include_directories(${GPERFTOOLS_INCLUDE_DIR})
   add_definitions(-DWITH_GPERFTOOLS)
 endif()
-
-include(util) # set unittest and link libs
-include(version) # set PADDLE_VERSION
-include(coveralls) # set code coverage
-include(configure) # add paddle env configuration
 
 include_directories("${PADDLE_SOURCE_DIR}")
 

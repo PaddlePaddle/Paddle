@@ -112,7 +112,9 @@ class TrtConvertAnchorGeneratorTest(TrtLayerAutoScanTest):
             attrs, False
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
+        # NOTE(tizheng): This config will fall back to paddle native OP,
+        # which only supports FP32 input.
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-3

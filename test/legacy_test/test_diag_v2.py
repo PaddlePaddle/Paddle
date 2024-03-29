@@ -51,11 +51,11 @@ class TestDiagV2Op(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestDiagV2OpCase1(TestDiagV2Op):
@@ -313,7 +313,7 @@ class TestDiagV2FP16OP(TestDiagV2Op):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestDiagV2BF16OP(OpTest):
     def setUp(self):
@@ -335,12 +335,12 @@ class TestDiagV2BF16OP(OpTest):
     def test_check_output(self):
         paddle.enable_static()
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         paddle.enable_static()
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out')
+        self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
 
 if __name__ == "__main__":

@@ -29,11 +29,14 @@
 
 namespace phi {
 
+// Note(qili93): CUDA Runtime API supported by HIP
+// https://github.com/ROCm/HIPIFY/blob/master/doc/markdown/CUDA_Runtime_API_functions_supported_by_HIP.md
+
 #ifdef PADDLE_WITH_HIP
 #define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE) \
   using GPU_TYPE = ROCM_TYPE;
 
-#else  // PADDLE_WITH_CDUA
+#else  // PADDLE_WITH_CUDA
 
 #define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE) \
   using GPU_TYPE = CUDA_TYPE;
@@ -50,6 +53,20 @@ DECLARE_TYPE_FOR_GPU(dnnTensorFormat_t,
 DECLARE_TYPE_FOR_GPU(dnnActivationMode_t,
                      cudnnActivationMode_t,
                      miopenActivationMode_t);
+DECLARE_TYPE_FOR_GPU(gpuGraph_t, cudaGraph_t, hipGraph_t);
+DECLARE_TYPE_FOR_GPU(gpuFunction_t, cudaFunction_t, hipFunction_t);
+DECLARE_TYPE_FOR_GPU(gpuGraphExec_t, cudaGraphExec_t, hipGraphExec_t);
+DECLARE_TYPE_FOR_GPU(gpuGraphNode_t, cudaGraphNode_t, hipGraphNode_t);
+DECLARE_TYPE_FOR_GPU(gpuGraphNodeType, cudaGraphNodeType, hipGraphNodeType);
+DECLARE_TYPE_FOR_GPU(gpuKernelNodeParams,
+                     cudaKernelNodeParams,
+                     hipKernelNodeParams);
+DECLARE_TYPE_FOR_GPU(gpuStreamCaptureMode,
+                     cudaStreamCaptureMode,
+                     hipStreamCaptureMode);
+DECLARE_TYPE_FOR_GPU(gpuStreamCaptureStatus,
+                     cudaStreamCaptureStatus,
+                     hipStreamCaptureStatus);
 
 #undef DECLARE_TYPE_FOR_GPU
 
@@ -76,8 +93,75 @@ DECLARE_CONSTANT_FOR_GPU(gpuMemcpyDeviceToHost,
 DECLARE_CONSTANT_FOR_GPU(gpuMemcpyDeviceToDevice,
                          cudaMemcpyKind::cudaMemcpyDeviceToDevice,
                          hipMemcpyKind::hipMemcpyDeviceToDevice);
+DECLARE_CONSTANT_FOR_GPU(gpuEventDisableTiming,
+                         cudaEventDisableTiming,
+                         hipEventDisableTiming);
+DECLARE_CONSTANT_FOR_GPU(gpuStreamNonBlocking,
+                         cudaStreamNonBlocking,
+                         hipStreamNonBlocking);
+DECLARE_CONSTANT_FOR_GPU(gpuStreamCaptureModeThreadLocal,
+                         cudaStreamCaptureModeThreadLocal,
+                         hipStreamCaptureModeThreadLocal);
+DECLARE_CONSTANT_FOR_GPU(gpuStreamCaptureModeRelaxed,
+                         cudaStreamCaptureModeRelaxed,
+                         hipStreamCaptureModeRelaxed);
+DECLARE_CONSTANT_FOR_GPU(gpuStreamCaptureStatusActive,
+                         cudaStreamCaptureStatusActive,
+                         hipStreamCaptureStatusActive);
+DECLARE_CONSTANT_FOR_GPU(gpuGraphNodeTypeKernel,
+                         cudaGraphNodeTypeKernel,
+                         hipGraphNodeTypeKernel);
 
 #undef DECLARE_CONSTANT_FOR_GPU
+
+#ifdef PADDLE_WITH_HIP
+#define DECLARE_FUNCTION_FOR_GPU(GPU_FUNC, CUDA_FUNC, ROCM_FUNC) \
+  const auto GPU_FUNC = ROCM_FUNC;
+#else  // PADDLE_WITH_CUDA
+#define DECLARE_FUNCTION_FOR_GPU(GPU_FUNC, CUDA_FUNC, ROCM_FUNC) \
+  const auto GPU_FUNC = CUDA_FUNC;
+#endif
+
+DECLARE_FUNCTION_FOR_GPU(gpuGraphGetNodes, cudaGraphGetNodes, hipGraphGetNodes);
+DECLARE_FUNCTION_FOR_GPU(gpuGraphGetEdges, cudaGraphGetEdges, hipGraphGetEdges);
+DECLARE_FUNCTION_FOR_GPU(gpuGraphLaunch, cudaGraphLaunch, hipGraphLaunch);
+DECLARE_FUNCTION_FOR_GPU(gpuGraphDestroy, cudaGraphDestroy, hipGraphDestroy);
+DECLARE_FUNCTION_FOR_GPU(gpuGraphExecDestroy,
+                         cudaGraphExecDestroy,
+                         hipGraphExecDestroy);
+DECLARE_FUNCTION_FOR_GPU(gpuGraphNodeGetType,
+                         cudaGraphNodeGetType,
+                         hipGraphNodeGetType);
+DECLARE_FUNCTION_FOR_GPU(gpuGraphExecKernelNodeSetParams,
+                         cudaGraphExecKernelNodeSetParams,
+                         hipGraphExecKernelNodeSetParams);
+DECLARE_FUNCTION_FOR_GPU(gpuGraphKernelNodeGetParams,
+                         cudaGraphKernelNodeGetParams,
+                         hipGraphKernelNodeGetParams);
+DECLARE_FUNCTION_FOR_GPU(gpuStreamCreateWithPriority,
+                         cudaStreamCreateWithPriority,
+                         hipStreamCreateWithPriority);
+DECLARE_FUNCTION_FOR_GPU(gpuStreamBeginCapture,
+                         cudaStreamBeginCapture,
+                         hipStreamBeginCapture);
+DECLARE_FUNCTION_FOR_GPU(gpuStreamEndCapture,
+                         cudaStreamEndCapture,
+                         hipStreamEndCapture);
+DECLARE_FUNCTION_FOR_GPU(gpuStreamGetCaptureInfo,
+                         cudaStreamGetCaptureInfo,
+                         hipStreamGetCaptureInfo);
+DECLARE_FUNCTION_FOR_GPU(gpuEventCreateWithFlags,
+                         cudaEventCreateWithFlags,
+                         hipEventCreateWithFlags);
+DECLARE_FUNCTION_FOR_GPU(gpuEventRecord, cudaEventRecord, hipEventRecord);
+DECLARE_FUNCTION_FOR_GPU(gpuEventDestroy, cudaEventDestroy, hipEventDestroy);
+DECLARE_FUNCTION_FOR_GPU(gpuEventQuery, cudaEventQuery, hipEventQuery);
+DECLARE_FUNCTION_FOR_GPU(gpuEventSynchronize,
+                         cudaEventSynchronize,
+                         hipEventSynchronize);
+
+#undef DECLARE_FUNCTION_FOR_GPU
+
 }  // namespace phi
 
 #endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

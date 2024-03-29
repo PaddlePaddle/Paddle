@@ -70,8 +70,8 @@ class AffineChannelOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto scale_dims = ctx->GetInputDim("Scale");
     auto b_dims = ctx->GetInputDim("Bias");
-    const phi::DataLayout data_layout =
-        phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
+    const phi::DataLayout data_layout = common::StringToDataLayout(
+        ctx->Attrs().Get<std::string>("data_layout"));
 
     const int64_t C =
         (data_layout == phi::DataLayout::kNCHW ? x_dims[1]
@@ -196,7 +196,7 @@ class AffineChannelKernel : public framework::OpKernel<T> {
     y->mutable_data<T>(ctx.GetPlace());
 
     const phi::DataLayout layout =
-        phi::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
+        common::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
 
     auto dims = x->dims();
     int N = static_cast<int>(dims[0]);
@@ -243,7 +243,7 @@ class AffineChannelGradKernel : public framework::OpKernel<T> {
     auto* dbias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
     const phi::DataLayout layout =
-        phi::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
+        common::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
 
     auto dims = x->dims();
     int N = static_cast<int>(dims[0]);

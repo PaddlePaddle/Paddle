@@ -56,7 +56,7 @@ class XPUQuantizeSquashPass : public FusePassBase {
   void OpDequantSquash(Graph* graph) const;
 
   /*
-   * Squash quantize if several quatize ops have the same scale
+   * Squash quantize if several quantize ops have the same scale
    */
   void MultipleQuantizeSquash(Graph* graph) const;
 
@@ -64,6 +64,11 @@ class XPUQuantizeSquashPass : public FusePassBase {
    * Squash quantize if is before conv2d_xpu/fc_xpuy
    */
   void QuantOpSquash(Graph* graph) const;
+
+  /*
+   * Squash quantize(branch) + dequantize(out) in conv2d_xpu
+   */
+  void QuantConv2dFusionDequantSquash(Graph* graph) const;
 
   const std::string name_scope_{"squash"};
 };

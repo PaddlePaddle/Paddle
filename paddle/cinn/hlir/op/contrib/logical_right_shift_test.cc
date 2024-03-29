@@ -33,9 +33,9 @@ namespace hlir {
 namespace op {
 
 TEST(GenerateCode_Cpu, LogicalRightShift) {
-  common::Context::Global().ResetNameId();
+  cinn::common::Context::Global().ResetNameId();
 
-  common::Target target = common::DefaultHostTarget();
+  cinn::common::Target target = cinn::common::DefaultHostTarget();
   lang::Placeholder<int> x("x", std::vector<int>{10});
   lang::Placeholder<int> y("y", std::vector<int>{10});
   ir::Tensor res = LogicalRightShift(x, y, target, "test_logical_right_shift");

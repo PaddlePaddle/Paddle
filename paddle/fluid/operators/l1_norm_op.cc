@@ -27,7 +27,7 @@ class L1NormOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "L1NormOp");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "L1NormOp");
 
-    ctx->SetOutputDim("Out", phi::make_ddim({}));
+    ctx->SetOutputDim("Out", common::make_ddim({}));
   }
 };
 

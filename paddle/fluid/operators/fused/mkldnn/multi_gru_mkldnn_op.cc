@@ -26,7 +26,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using phi::vectorize;
+using common::vectorize;
 using phi::funcs::OneDNNGetDataType;
 using phi::funcs::OneDNNMemDesc;
 using Direction = dnnl::rnn_direction;
@@ -681,7 +681,7 @@ class MultiGRUHandler {
   const phi::Vector<size_t>& x_lod_;
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class MultiGRUMKLDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -720,8 +720,6 @@ class MultiGRUMKLDNNKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(multi_gru,
-                   MKLDNN,
-                   phi::CPUPlace,
-                   ops::MultiGRUMKLDNNKernel<float>,
-                   ops::MultiGRUMKLDNNKernel<uint8_t>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    multi_gru, OneDNN, ONEDNN, ops::MultiGRUMKLDNNKernel, float, uint8_t) {}

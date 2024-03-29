@@ -39,14 +39,14 @@
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/utils.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/utils.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(full_int_array, CPU, ALL_LAYOUT);
@@ -136,17 +136,17 @@ TEST(kernel_dialect, cond_op_test) {
   auto if_op = builder.Build<paddle::dialect::IfOp>(
       full_op.out(), std::vector<pir::Type>{full_op.result(0).type()});
 
-  pir::Block* true_block = if_op.true_block();
+  auto& true_block = if_op.true_block();
 
-  builder.SetInsertionPointToStart(true_block);
+  builder.SetInsertionPointToStart(&true_block);
 
   auto full_op_1 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2}, true, phi::DataType::BOOL);
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_1.out()});
 
-  pir::Block* false_block = if_op.false_block();
+  auto& false_block = if_op.false_block();
 
-  builder.SetInsertionPointToStart(false_block);
+  builder.SetInsertionPointToStart(&false_block);
 
   auto full_op_2 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{3}, true, phi::DataType::BOOL);

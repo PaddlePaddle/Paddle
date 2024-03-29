@@ -42,7 +42,7 @@ class TestConvElementwiseAddActPass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         # for gpu
         config = self.create_inference_config(use_gpu=True)
-        yield config, ["conv2d_fusion"], (1e-4, 1e-5)
+        yield config, ["fused_conv2d_add_act"], (1e-4, 1e-5)
 
     def is_program_valid(self, prog_config):
         paddings = prog_config.ops[0].attrs["paddings"]

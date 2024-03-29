@@ -167,12 +167,10 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
         # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-2
@@ -180,7 +178,6 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-5
@@ -200,7 +197,7 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
             if key == "nms_output_index":
                 continue
             if key == "nms_output_boxes":
-                basline_arr = np.array(
+                baseline_arr = np.array(
                     sorted(
                         baseline[key].reshape((-1, 6)),
                         key=lambda i: [i[0], i[1]],
@@ -210,19 +207,19 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
                     sorted(arr.reshape((-1, 6)), key=lambda i: [i[0], i[1]])
                 )
             else:
-                basline_arr = np.array(baseline[key].reshape((-1, 1)))
+                baseline_arr = np.array(baseline[key].reshape((-1, 1)))
                 arr = np.array(arr.reshape((-1, 1)))
 
             self.assertTrue(
-                basline_arr.shape == arr.shape,
+                baseline_arr.shape == arr.shape,
                 "The output shapes are not equal, the baseline shape is "
-                + str(basline_arr.shape)
+                + str(baseline_arr.shape)
                 + ', but got '
                 + str(arr.shape),
             )
-            diff = abs(basline_arr - arr)
+            diff = abs(baseline_arr - arr)
             np.testing.assert_allclose(
-                basline_arr,
+                baseline_arr,
                 arr,
                 rtol=rtol,
                 atol=atol,

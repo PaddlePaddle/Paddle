@@ -14,7 +14,7 @@ if(WITH_GPU OR WITH_ROCM)
     list(APPEND BACKENDS_SRCS gpu/cuda/cuda_info.cc gpu/cuda/cuda_graph.cc)
   endif()
   if(WITH_ROCM)
-    list(APPEND BACKENDS_SRCS gpu/rocm/rocm_info.cc)
+    list(APPEND BACKENDS_SRCS gpu/rocm/rocm_info.cc gpu/rocm/hip_graph.cc)
   endif()
 endif()
 
@@ -59,10 +59,3 @@ if(WITH_CUSTOM_DEVICE)
 endif()
 
 collect_srcs(backends_srcs SRCS ${BACKENDS_SRCS})
-
-if(WITH_CUSTOM_DEVICE)
-  cc_test(
-    capi_test
-    SRCS custom/capi_test.cc
-    DEPS phi)
-endif()

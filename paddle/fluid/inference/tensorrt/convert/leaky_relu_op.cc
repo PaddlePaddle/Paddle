@@ -47,7 +47,7 @@ class LeakyReluOpConverter : public OpConverter {
 #else
     platform::CPUPlace place;
     std::unique_ptr<phi::DenseTensor> alpha_tensor(new phi::DenseTensor());
-    alpha_tensor->Resize(phi::make_ddim({2}));
+    alpha_tensor->Resize(common::make_ddim({2}));
     float* alpha_data = alpha_tensor->mutable_data<float>(place);
     alpha_data[0] = alpha;
     alpha_data[1] = 1.f - alpha;
@@ -116,7 +116,7 @@ class LeakyReluOpConverter : public OpConverter {
     engine_->SetWeights(alpha_name, std::move(alpha_tensor));
 #endif
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         output_layer, "leaky_relu", {output_name}, test_mode);
   }
 };

@@ -14,12 +14,12 @@
 
 #include "paddle/fluid/distributed/fleet_executor/compute_interceptor.h"
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/jit/serializer.h"
-#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace distributed {
@@ -52,7 +52,7 @@ void ComputeInterceptor::DecodeMsgVars(const InterceptorMessage& msg) {
                     microbatch_scopes_.size(),
                     platform::errors::InvalidArgument(
                         "Step out of range. There are %ld "
-                        "microbatch_scopes, but recevice scope index %ld",
+                        "microbatch_scopes, but receive scope index %ld",
                         microbatch_scopes_.size(),
                         scope_id));
   auto* scope = microbatch_scopes_[scope_id];
@@ -76,7 +76,7 @@ InterceptorMessage ComputeInterceptor::PrepareVarsMsg() {
                     microbatch_scopes_.size(),
                     platform::errors::InvalidArgument(
                         "Step out of range. There are %ld "
-                        "microbatch_scopes, but recevice scope index %ld",
+                        "microbatch_scopes, but receive scope index %ld",
                         microbatch_scopes_.size(),
                         cur_scope_id_));
   auto* scope = microbatch_scopes_[cur_scope_id_];
@@ -176,7 +176,7 @@ bool ComputeInterceptor::IsInputReady() {
       flag = flag && (ready_size_map.at(i) != 0);
     }
     if (flag) {
-      if (scope_id_to_finish_flag.empty()) {
+      if (scope_id_to_finish_flag.empty()) {  // NOLINT
         cur_scope_id_ = i;
         return true;
       } else if (scope_id_to_finish_flag.find(i) !=
@@ -303,7 +303,7 @@ void ComputeInterceptor::RunOps() {
                           cur_scope_id_));
   }
 
-  if (!cores_.empty()) {
+  if (!cores_.empty()) {  // NOLINT
     cores_[cur_scope_id_]->Run(/*feed_names=*/{}, /*need_fetch=*/false);
   } else {
     for (auto op : node_->ops()) {

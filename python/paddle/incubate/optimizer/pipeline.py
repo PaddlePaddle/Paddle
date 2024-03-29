@@ -746,7 +746,7 @@ class PipelineOptimizer:
                     is_backward = self._is_backward_op(op)
                     assert is_forward or is_backward, (
                         'send/recv in pipeline should only be inserted in forward or backward,'
-                        'please check the op_role of op={}'.format(op)
+                        f'please check the op_role of op={op}'
                     )
 
                     if is_forward:
@@ -1013,7 +1013,7 @@ class PipelineOptimizer:
             # append "MERGED" to the names of parameter gradients,
             # and mofify the op_role_var attribute (by rename_arg func).
             for name in in_out_names:
-                if not core.grad_var_suffix() in name:
+                if core.grad_var_suffix() not in name:
                     continue
                 param_name = name.strip(core.grad_var_suffix())
                 new_grad_name = name + "@MERGED"
@@ -1285,7 +1285,7 @@ class PipelineOptimizer:
                     # To meet the requirement, 128 fp16 or 64 float will be aligned
                     # Think the total shape of the input tensors if [64],
                     # if the dtype is float, then the shape of the fuse var is [64]
-                    # however if the dytpe if fp16, the shape of the fuse var is [128],
+                    # however if the dtype if fp16, the shape of the fuse var is [128],
                     # which will cause the fused vars' shape vary between each other.
                     # To make sure the shape of the fused vars are identical,
                     # we set the dtype of float and fp16 both to 2.

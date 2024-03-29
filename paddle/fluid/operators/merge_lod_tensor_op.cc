@@ -86,16 +86,16 @@ class MergeLoDTensorOp : public framework::OperatorBase {
     framework::DDim in_dims;
     if (in_true.IsInitialized()) {
       rank = in_true.dims().size();
-      in_dims = phi::slice_ddim(in_true.dims(), 1, rank);
+      in_dims = common::slice_ddim(in_true.dims(), 1, rank);
     } else {
       rank = in_false.dims().size();
-      in_dims = phi::slice_ddim(in_false.dims(), 1, rank);
+      in_dims = common::slice_ddim(in_false.dims(), 1, rank);
     }
 
-    auto in_dim_vec = phi::vectorize(in_dims);
+    auto in_dim_vec = common::vectorize(in_dims);
     in_dim_vec.insert(in_dim_vec.begin(), batch_size);
 
-    framework::DDim out_dims = phi::make_ddim(in_dim_vec);
+    framework::DDim out_dims = common::make_ddim(in_dim_vec);
     out->Resize(out_dims);
 
     out->mutable_data(place, data_type);

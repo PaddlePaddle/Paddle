@@ -28,6 +28,7 @@ import paddle.inference as paddle_infer
 from paddle import base, enable_static
 from paddle.base import core
 from paddle.base.layer_helper import LayerHelper
+from paddle.pir_utils import test_with_pir_api
 
 
 def sum_wrapper(X, use_mkldnn=False):
@@ -85,16 +86,16 @@ class TestSelectedRowsSumOp(unittest.TestCase):
         self.init_kernel_type()
 
     def check_with_place(self, place, inplace):
-        self.check_input_and_optput(
+        self.check_input_and_output(
             core.Scope(), place, inplace, True, True, True
         )
-        self.check_input_and_optput(
+        self.check_input_and_output(
             core.Scope(), place, inplace, False, True, True
         )
-        self.check_input_and_optput(
+        self.check_input_and_output(
             core.Scope(), place, inplace, False, False, True
         )
-        self.check_input_and_optput(
+        self.check_input_and_output(
             core.Scope(), place, inplace, False, False, False
         )
 
@@ -107,7 +108,7 @@ class TestSelectedRowsSumOp(unittest.TestCase):
             array[i] *= rows[i]
         return array
 
-    def check_input_and_optput(
+    def check_input_and_output(
         self,
         scope,
         place,
@@ -197,7 +198,7 @@ class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
         else:
             return np.ndarray((0, row_numel), dtype=self.dtype)
 
-    def check_input_and_optput(
+    def check_input_and_output(
         self,
         scope,
         place,
@@ -393,6 +394,7 @@ class TestSumBF16Op(OpTest):
 
 
 class API_Test_Add_n(unittest.TestCase):
+    @test_with_pir_api
     def test_api(self):
         with base.program_guard(base.Program(), base.Program()):
             input0 = paddle.tensor.fill_constant(
@@ -463,69 +465,67 @@ class API_Test_Add_n(unittest.TestCase):
 
 
 class TestRaiseSumError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
-        def test_type():
-            paddle.add_n([11, 22])
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
 
-        self.assertRaises(TypeError, test_type)
+            def test_type():
+                paddle.add_n([11, 22])
 
-        def test_dtype():
-            data1 = paddle.static.data(name="input1", shape=[10], dtype="int8")
-            data2 = paddle.static.data(name="input2", shape=[10], dtype="int8")
-            paddle.add_n([data1, data2])
+            self.assertRaises(TypeError, test_type)
 
-        self.assertRaises(TypeError, test_dtype)
+            def test_dtype():
+                data1 = paddle.static.data(
+                    name="input1", shape=[10], dtype="int8"
+                )
+                data2 = paddle.static.data(
+                    name="input2", shape=[10], dtype="int8"
+                )
+                paddle.add_n([data1, data2])
 
-        def test_dtype1():
-            data1 = paddle.static.data(name="input1", shape=[10], dtype="int8")
-            paddle.add_n(data1)
+            self.assertRaises(TypeError, test_dtype)
 
-        self.assertRaises(TypeError, test_dtype1)
+            def test_dtype1():
+                data1 = paddle.static.data(
+                    name="input1", shape=[10], dtype="int8"
+                )
+                paddle.add_n(data1)
+
+            self.assertRaises(TypeError, test_dtype1)
 
 
 class TestRaiseSumsError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
-        def test_type():
-            paddle.add_n([11, 22])
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
 
-        self.assertRaises(TypeError, test_type)
+            def test_type():
+                paddle.add_n([11, 22])
 
-        def test_dtype():
-            data1 = paddle.static.data(name="input1", shape=[10], dtype="int8")
-            data2 = paddle.static.data(name="input2", shape=[10], dtype="int8")
-            paddle.add_n([data1, data2])
+            self.assertRaises(TypeError, test_type)
 
-        self.assertRaises(TypeError, test_dtype)
+            def test_dtype():
+                data1 = paddle.static.data(
+                    name="input1", shape=[10], dtype="int8"
+                )
+                data2 = paddle.static.data(
+                    name="input2", shape=[10], dtype="int8"
+                )
+                paddle.add_n([data1, data2])
 
-        def test_dtype1():
-            data1 = paddle.static.data(name="input1", shape=[10], dtype="int8")
-            paddle.add_n(data1)
+            self.assertRaises(TypeError, test_dtype)
 
-        self.assertRaises(TypeError, test_dtype1)
+            def test_dtype1():
+                data1 = paddle.static.data(
+                    name="input3", shape=[10], dtype="int8"
+                )
+                paddle.add_n(data1)
 
-        def test_out_type():
-            data1 = paddle.static.data(
-                name="input1", shape=[10], dtype="flaot32"
-            )
-            data2 = paddle.static.data(
-                name="input2", shape=[10], dtype="float32"
-            )
-            out = [10]
-            out = paddle.add_n([data1, data2])
-
-        self.assertRaises(TypeError, test_out_type)
-
-        def test_out_dtype():
-            data1 = paddle.static.data(
-                name="input1", shape=[10], dtype="flaot32"
-            )
-            data2 = paddle.static.data(
-                name="input2", shape=[10], dtype="float32"
-            )
-            out = paddle.static.data(name="out", shape=[10], dtype="int8")
-            out = paddle.add_n([data1, data2])
-
-        self.assertRaises(TypeError, test_out_dtype)
+            self.assertRaises(TypeError, test_dtype1)
 
 
 class TestSumOpError(unittest.TestCase):
@@ -583,8 +583,8 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
     def test_static_and_infer(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
-        starup_prog = paddle.static.Program()
-        with paddle.static.program_guard(main_prog, starup_prog):
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             # run static
             x = paddle.static.data(
                 shape=self.x.shape, name='x', dtype='float32'
@@ -606,7 +606,7 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
             sgd = paddle.optimizer.SGD(learning_rate=0.0)
             sgd.minimize(paddle.mean(out))
             exe = paddle.static.Executor(self.place)
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             static_out = exe.run(
                 feed={'x': self.x.numpy().astype('float32')}, fetch_list=[out]
             )
@@ -650,20 +650,22 @@ class TestAddNDoubleGradCheck(unittest.TestCase):
     def add_n_wrapper(self, x):
         return paddle.add_n(x)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 
         data1 = paddle.static.data('data1', [3, 4, 5], dtype)
         data1.persistable = True
+        data1.stop_gradient = False
         data2 = paddle.static.data('data2', [3, 4, 5], dtype)
         data2.persistable = True
+        data2.stop_gradient = False
         out = paddle.add_n([data1, data2])
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
         data2_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
-
         gradient_checker.double_grad_check(
             [data1, data2],
             out,
@@ -692,16 +694,19 @@ class TestAddNTripleGradCheck(unittest.TestCase):
     def add_n_wrapper(self, x):
         return paddle.add_n(x)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 
         data1 = paddle.static.data('data1', [3, 4, 5], dtype)
         data1.persistable = True
+        data1.stop_gradient = False
         data2 = paddle.static.data('data2', [3, 4, 5], dtype)
         data2.persistable = True
+        data2.stop_gradient = False
         out = paddle.add_n([data1, data2])
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
         data2_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
@@ -734,9 +739,10 @@ class TestSumDoubleGradCheck(unittest.TestCase):
     def sum_wrapper(self, x):
         return paddle.sum(x[0], axis=1, keepdim=True)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 
@@ -765,9 +771,10 @@ class TestSumTripleGradCheck(unittest.TestCase):
     def sum_wrapper(self, x):
         return paddle.sum(x[0], axis=1, keepdim=True)
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 

@@ -67,7 +67,7 @@ void LinspaceKernel(const Context& ctx,
                                    "than 0, but received num is %d",
                                    num));
 
-  out->Resize(phi::make_ddim({num}));
+  out->Resize(common::make_ddim({num}));
   T* out_data = ctx.template Alloc<T>(out);
 
   int r = xpu::linspace(ctx.x_context(),

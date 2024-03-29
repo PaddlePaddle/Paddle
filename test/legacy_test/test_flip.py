@@ -22,6 +22,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestFlipOp_API(unittest.TestCase):
@@ -57,7 +58,7 @@ class TestFlipOp_API(unittest.TestCase):
     def test_dygraph(self):
         img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
         with base.dygraph.guard():
-            inputs = base.dygraph.to_variable(img)
+            inputs = paddle.to_tensor(img)
             ret = paddle.flip(inputs, [0])
             ret = ret.flip(0)
             ret = paddle.flip(ret, 1)
@@ -231,9 +232,10 @@ class TestFlipDoubleGradCheck(unittest.TestCase):
     def flip_wrapper(self, x):
         return paddle.flip(x[0], [0, 1])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 
@@ -262,9 +264,10 @@ class TestFlipTripleGradCheck(unittest.TestCase):
     def flip_wrapper(self, x):
         return paddle.flip(x[0], [0, 1])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 

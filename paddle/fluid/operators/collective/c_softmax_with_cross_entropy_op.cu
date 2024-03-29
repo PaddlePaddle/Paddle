@@ -19,18 +19,18 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/cross_entropy.h"
 #include "paddle/phi/kernels/funcs/math.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/softmax_impl.h"
+#include "paddle/utils/string/string_helper.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 namespace paddle {
@@ -170,12 +170,12 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
 
-      stream = comm_ctx->GetStream();
+      stream = dev_ctx.stream();
       VLOG(3) << "new comm_context_manager has ring_id " << rid;
     } else {  // old comm_context
       comm = platform::NCCLCommContext::Instance().Get(rid, place);
 
-      stream = comm->stream();
+      stream = dev_ctx.stream();
       VLOG(3) << "old NCCLCommContext has ring_id " << rid;
     }
 
@@ -295,10 +295,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     sum_exp_logits = ctx.AllocateTmpTensor<T, phi::GPUContext>({N, 1}, dev_ctx);
     sum_exp_logits.mutable_data<T>(place);
 
-    auto eigen_sum_exp_logits =
-        phi::funcs::EigenMatrix<T>::From(sum_exp_logits);
-    eigen_sum_exp_logits.device(*dev_ctx.eigen_device()) =
-        eigen_softmax.sum(along_axis);
+    phi::SumKernel<T, phi::GPUContext>(
+        dev_ctx, softmax_2d, {-1}, softmax_2d.dtype(), true, &sum_exp_logits);
 
     if (comm_ctx) {
       comm_ctx->AllReduce(&sum_exp_logits, sum_exp_logits, ncclSum, stream);
@@ -333,6 +331,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
                                                      N);
     }
 
+    auto eigen_sum_exp_logits =
+        phi::funcs::EigenMatrix<T>::From(sum_exp_logits);
     eigen_softmax.device(*dev_ctx.eigen_device()) =
         (eigen_softmax *
          eigen_sum_exp_logits.inverse().broadcast(one_by_class));

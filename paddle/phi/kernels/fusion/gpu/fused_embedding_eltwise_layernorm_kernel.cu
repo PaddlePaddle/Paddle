@@ -15,11 +15,11 @@
 #include <algorithm>
 #include <type_traits>
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/emb_eltwise_layer_norm_functor.h"

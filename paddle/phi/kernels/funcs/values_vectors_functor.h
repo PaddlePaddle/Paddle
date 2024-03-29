@@ -14,8 +14,8 @@
 
 #pragma once
 #ifdef PADDLE_WITH_CUDA
+#include "paddle/common/errors.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
-#include "paddle/phi/core/errors.h"
 #endif  // PADDLE_WITH_CUDA
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -229,7 +229,7 @@ struct MatrixEighFunctor<CPUContext, T> {
     ValueType *out_value = dev_ctx.template Alloc<ValueType>(eigen_values);
 
     DenseTensor input_trans;
-    // lapack is a column-major storge, transpose make the input to
+    // lapack is a column-major storage, transpose make the input to
     // have a continuous memory layout
     input_trans = phi::TransposeLast2Dim<T>(dev_ctx, input);
     T *input_vector = input_trans.data<T>();
@@ -281,16 +281,16 @@ struct MatrixEighFunctor<CPUContext, T> {
         input.type() == phi::DataType::COMPLEX128) {
       lrwork = std::max<int>(1, static_cast<int>(rwork_opt));
 
-      rwork_tensor.Resize(phi::make_ddim({lrwork}));
+      rwork_tensor.Resize(common::make_ddim({lrwork}));
       rwork_data = dev_ctx.template Alloc<ValueType>(&rwork_tensor);
     }
 
     DenseTensor iwork_tensor, work_tensor;
 
-    iwork_tensor.Resize(phi::make_ddim({liwork}));
+    iwork_tensor.Resize(common::make_ddim({liwork}));
     int *iwork_data = dev_ctx.template Alloc<int>(&iwork_tensor);
 
-    work_tensor.Resize(phi::make_ddim({lwork}));
+    work_tensor.Resize(common::make_ddim({lwork}));
     T *work_data = dev_ctx.template Alloc<T>(&work_tensor);
 
     for (auto i = 0; i < batch_size; i++) {

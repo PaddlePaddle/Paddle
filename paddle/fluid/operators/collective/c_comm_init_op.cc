@@ -31,10 +31,13 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
+#elif defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/phi/core/distributed/bkcl_comm_context.h"
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/store/store_utils.h"
 #include "paddle/phi/core/distributed/store/tcp_store.h"
@@ -128,6 +131,16 @@ class CCommInitOp : public framework::OperatorBase {
         phi::distributed::CommContextManager::SetDeviceId(device_id);
         std::string endpoints = Attr<std::string>("endpoints");
         phi::distributed::CommContextManager::CreateNCCLCommContext(
+            store, std::to_string(rid), rank_id, nranks, endpoints);
+        return;
+      }
+#elif defined(PADDLE_WITH_XPU_BKCL)
+      if (FLAGS_dynamic_static_unified_comm) {
+        VLOG(3) << "#### use new comm lab ####";
+        auto store = phi::distributed::CreateOrGetGlobalTCPStore();
+        phi::distributed::CommContextManager::SetDeviceId(device_id);
+        std::string endpoints = Attr<std::string>("endpoints");
+        phi::distributed::CommContextManager::CreateBKCLCommContext(
             store, std::to_string(rid), rank_id, nranks, endpoints);
         return;
       }

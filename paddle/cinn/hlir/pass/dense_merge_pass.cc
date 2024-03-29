@@ -20,13 +20,13 @@ namespace cinn {
 namespace hlir {
 namespace pass {
 
-using common::GraphNode;
+using cinn::common::GraphNode;
 using framework::Graph;
 using framework::Node;
 using framework::NodeAttr;
 
 // Dense Merge Pass: merge those gemm which has same var as input into a batched
-// cubals call op. A * B, A * C, A * D,... after A * [B, C, D,...] Using cublas
+// cublas call op. A * B, A * C, A * D,... after A * [B, C, D,...] Using cublas
 // batched gemm can avoid do concat and slice.
 
 class DenseMergePassHelper : public FusionHelperBase {
@@ -118,7 +118,7 @@ class DenseMergePassHelper : public FusionHelperBase {
       // create custom call node
       Node* node_tmp = new Node(Operator::Get("custom_call"),
                                 "custom_call",
-                                common::UniqName("custom_call"));
+                                cinn::common::UniqName("custom_call"));
       graph_->RegisterNode(node_tmp->id(), node_tmp);
       node_tmp->attrs.attr_store = dense_op.second[0]->attrs.attr_store;
       node_tmp->attrs.attr_store["side"] = side;

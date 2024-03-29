@@ -60,7 +60,7 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
     VLOG(3) << "The input matrix not invertible!";
     x_grad->Resize(x.dims());
     phi::Full<T>(dev_ctx,
-                 phi::vectorize(x.dims()),
+                 common::vectorize(x.dims()),
                  std::numeric_limits<T>::quiet_NaN(),
                  x_grad);
     return;
@@ -98,7 +98,7 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
   auto grad_vec = out_grad.Split(1, 0);
   auto det_grad = grad_vec[1];
 
-  // remmove useless first dimension
+  // remove useless first dimension
   int det_grad_size = det_grad.dims().size();
   std::vector<int> det_grad_vec;
   for (int i = 1; i < det_grad_size; ++i) {

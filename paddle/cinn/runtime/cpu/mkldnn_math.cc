@@ -18,6 +18,7 @@
 
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/common/cas.h"
+#include "paddle/common/enforce.h"
 
 using dnnl::algorithm;
 using dnnl::memory;
@@ -50,7 +51,9 @@ void cinn_cpu_mkldnn_softmax_fp32(int batch,
       format_tag = tag::abcd;
       break;
     default:
-      LOG(FATAL) << "wrong dim: " << size;
+      std::stringstream ss;
+      ss << "wrong dim: " << size;
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
       break;
   }
 
@@ -157,23 +160,26 @@ void cinn_cpu_mkldnn_conv2d_nchw_fp32(int batch_size,
 CINN_REGISTER_HELPER(cinn_cpu_mkldnn) {
   using namespace cinn;  // NOLINT
   using backends::FunctionProto;
-  auto host_target = common::DefaultHostTarget();
+  auto host_target = cinn::common::DefaultHostTarget();
 
   FunctionProto::shape_inference_t inference_shape_conv2d_nchw =
       [](const std::vector<Expr>& args, int offset) {
-        CHECK_EQ(args.size(), 16UL) << "Wrong number of arguments passed in";
-        auto N = common::AutoSimplify(args[0]);
-        int input_h = common::AutoSimplify(args[2]).as_int32();
-        int input_w = common::AutoSimplify(args[3]).as_int32();
-        auto c_out = common::AutoSimplify(args[4]);
-        int filter_h = common::AutoSimplify(args[6]).as_int32();
-        int filter_w = common::AutoSimplify(args[7]).as_int32();
-        int pad_h = common::AutoSimplify(args[8]).as_int32();
-        int pad_w = common::AutoSimplify(args[9]).as_int32();
-        int stride_h = common::AutoSimplify(args[10]).as_int32();
-        int stride_w = common::AutoSimplify(args[11]).as_int32();
-        int dilation_h = common::AutoSimplify(args[12]).as_int32();
-        int dilation_w = common::AutoSimplify(args[13]).as_int32();
+        PADDLE_ENFORCE_EQ(args.size(),
+                          16UL,
+                          phi::errors::InvalidArgument(
+                              "Wrong number of arguments passed in."));
+        auto N = cinn::common::AutoSimplify(args[0]);
+        int input_h = cinn::common::AutoSimplify(args[2]).as_int32();
+        int input_w = cinn::common::AutoSimplify(args[3]).as_int32();
+        auto c_out = cinn::common::AutoSimplify(args[4]);
+        int filter_h = cinn::common::AutoSimplify(args[6]).as_int32();
+        int filter_w = cinn::common::AutoSimplify(args[7]).as_int32();
+        int pad_h = cinn::common::AutoSimplify(args[8]).as_int32();
+        int pad_w = cinn::common::AutoSimplify(args[9]).as_int32();
+        int stride_h = cinn::common::AutoSimplify(args[10]).as_int32();
+        int stride_w = cinn::common::AutoSimplify(args[11]).as_int32();
+        int dilation_h = cinn::common::AutoSimplify(args[12]).as_int32();
+        int dilation_w = cinn::common::AutoSimplify(args[13]).as_int32();
         int out_h = (input_h - ((filter_h - 1) * dilation_h + 1) + 2 * pad_h) /
                         stride_h +
                     1;

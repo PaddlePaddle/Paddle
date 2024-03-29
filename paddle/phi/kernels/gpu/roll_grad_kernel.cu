@@ -37,7 +37,7 @@ void RollGradKernel(const Context& dev_ctx,
 
   int64_t numel = out_grad.numel();
   auto input_dim = out_grad.dims();
-  auto stride_dim = phi::stride(input_dim);
+  auto stride_dim = common::stride(input_dim);
 
   std::vector<int64_t> strides(rank), sizes(rank);
   if (axis.size() == 0) {

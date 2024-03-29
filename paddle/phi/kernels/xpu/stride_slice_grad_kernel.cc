@@ -51,11 +51,6 @@ void StridedSliceRawGradKernel(const Context& dev_ctx,
   int num = axes.size();
 
   for (int i = 0; i < num; ++i) {
-    PADDLE_ENFORCE_EQ(
-        strides_[i] > 0,
-        true,
-        errors::InvalidArgument("Currently, XPU strided slice kernel does not",
-                                "support reverse strided slice"));
     int cur_axe = axes[i];
     int st = starts_[i];
     if (st > xshape[cur_axe]) {
@@ -71,7 +66,12 @@ void StridedSliceRawGradKernel(const Context& dev_ctx,
       end = xshape[cur_axe];
     }
     if (end < 0) {
-      end += xshape[cur_axe];
+      if (!(end == -1 && strides_[i] < 0)) {
+        end = end + xshape[cur_axe];
+        if (end < 0) {
+          end = 0;
+        }
+      }
     }
 
     ends_in[cur_axe] = end;
@@ -163,4 +163,5 @@ PD_REGISTER_KERNEL(strided_slice_raw_grad,
                    int,
                    int16_t,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

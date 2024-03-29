@@ -41,7 +41,8 @@ paddle::Tensor hook_function(const paddle::Tensor& t) {
   auto ret_meta = phi::DenseTensorMeta(
       t_dense->dtype(), t_dense->dims(), t_dense->layout());
   auto place = t_dense->place();
-  size_t bytes_size = phi::product(t_dense->dims()) * SizeOf(t_dense->dtype());
+  size_t bytes_size =
+      common::product(t_dense->dims()) * SizeOf(t_dense->dtype());
   auto ret_dense = std::make_shared<phi::DenseTensor>(
       paddle::memory::Alloc(place, bytes_size), std::move(ret_meta));
 
@@ -64,7 +65,7 @@ void test_sigmoid(bool is_remove_gradient_hook) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   VLOG(6) << "Make Dim";
-  paddle::framework::DDim ddim = phi::make_ddim({2, 4, 4, 4});
+  paddle::framework::DDim ddim = common::make_ddim({2, 4, 4, 4});
 
   VLOG(6) << "Make paddle::Tensor";
   paddle::Tensor tensor =
@@ -94,7 +95,7 @@ void test_sigmoid(bool is_remove_gradient_hook) {
   VLOG(6) << "Register ReduceHook for Tensor";
   egr_utils_api::RegisterReduceHookForTensor(tensor, reduce_hook);
 
-  VLOG(6) << "Runing Forward";
+  VLOG(6) << "Running Forward";
   auto output_tensor = sigmoid_dygraph_function(tensor, {});
   VLOG(6) << "Finish Forward";
 
@@ -107,7 +108,7 @@ void test_sigmoid(bool is_remove_gradient_hook) {
     grad_node_tmp->RemoveGradientHook(hook_id);
   }
 
-  VLOG(6) << "Runing Backward";
+  VLOG(6) << "Running Backward";
   Backward(target_tensors, {});
   VLOG(6) << "Finish Backward";
 
@@ -131,7 +132,7 @@ void test_elementwiseAdd(bool is_remove_gradient_hook) {
   paddle::imperative::SetCurrentTracer(tracer);
 
   // 1. Prepare Input
-  paddle::framework::DDim ddimX = phi::make_ddim({4, 16});
+  paddle::framework::DDim ddimX = common::make_ddim({4, 16});
   paddle::Tensor X =
       eager_test::CreateTensorWithValue(ddimX,
                                         paddle::platform::CPUPlace(),
@@ -141,7 +142,7 @@ void test_elementwiseAdd(bool is_remove_gradient_hook) {
                                         true);
   egr_utils_api::RetainGradForTensor(X);
 
-  paddle::framework::DDim ddimY = phi::make_ddim({4, 16});
+  paddle::framework::DDim ddimY = common::make_ddim({4, 16});
   paddle::Tensor Y =
       eager_test::CreateTensorWithValue(ddimY,
                                         paddle::platform::CPUPlace(),
@@ -195,7 +196,7 @@ void test_matmul(bool is_remove_gradient_hook) {
   paddle::imperative::SetCurrentTracer(tracer);
 
   // 1. Prepare Input
-  paddle::framework::DDim ddimX = phi::make_ddim({4, 16});
+  paddle::framework::DDim ddimX = common::make_ddim({4, 16});
   paddle::Tensor X =
       eager_test::CreateTensorWithValue(ddimX,
                                         paddle::platform::CPUPlace(),
@@ -205,7 +206,7 @@ void test_matmul(bool is_remove_gradient_hook) {
                                         true);
   egr_utils_api::RetainGradForTensor(X);
 
-  paddle::framework::DDim ddimY = phi::make_ddim({16, 20});
+  paddle::framework::DDim ddimY = common::make_ddim({16, 20});
   paddle::Tensor Y =
       eager_test::CreateTensorWithValue(ddimY,
                                         paddle::platform::CPUPlace(),
@@ -258,7 +259,7 @@ void test_backward_final_hooks() {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   VLOG(6) << "Make paddle::Tensor";
-  paddle::framework::DDim ddimX = phi::make_ddim({4, 16});
+  paddle::framework::DDim ddimX = common::make_ddim({4, 16});
   paddle::Tensor X =
       eager_test::CreateTensorWithValue(ddimX,
                                         paddle::platform::CPUPlace(),
@@ -266,7 +267,7 @@ void test_backward_final_hooks() {
                                         phi::DataLayout::NCHW,
                                         3.0,
                                         true);
-  paddle::framework::DDim ddimY = phi::make_ddim({16, 20});
+  paddle::framework::DDim ddimY = common::make_ddim({16, 20});
   egr_utils_api::RetainGradForTensor(X);
 
   paddle::Tensor Y =
@@ -289,7 +290,7 @@ void test_backward_final_hooks() {
   VLOG(6) << "Register Backward Final Hook";
   egr_utils_api::RegisterBackwardFinalHook(backward_final_hook);
 
-  VLOG(6) << "Runing Forward";
+  VLOG(6) << "Running Forward";
   auto output_tensor = matmul_v2_dygraph_function(
       X, Y, {{"trans_x", false}, {"trans_y", false}});
   auto res = sigmoid_dygraph_function(output_tensor, {});
@@ -299,7 +300,7 @@ void test_backward_final_hooks() {
 
   std::vector<paddle::Tensor> target_tensors = {output_tensor};
 
-  VLOG(6) << "Runing Backward";
+  VLOG(6) << "Running Backward";
   Backward(target_tensors, {});
   VLOG(6) << "Finish Backward";
   eager_test::CompareTensorWithValue<float>(X, 100.0);
@@ -323,7 +324,3 @@ TEST(Hook_intermidiate, Matmul_v2) {
 
 TEST(Hook_intermidiate, BackwardFinal) { test_backward_final_hooks(); }
 }  // namespace egr
-
-USE_OP_ITSELF(sigmoid);
-USE_OP_ITSELF(elementwise_add);
-USE_OP_ITSELF(matmul_v2);

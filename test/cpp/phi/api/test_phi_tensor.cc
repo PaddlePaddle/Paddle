@@ -203,7 +203,7 @@ void GroupTestDtype() {
   CHECK(TestDtype<paddle::complex128>() == paddle::DataType::COMPLEX128);
 }
 
-void TestInitilized() {
+void TestInitialized() {
   auto test_tensor = paddle::experimental::empty({1, 1});
   CHECK(test_tensor.is_initialized() == true);
   float* tensor_data = test_tensor.data<float>();
@@ -227,7 +227,7 @@ void TestDataInterface() {
   std::vector<int64_t> rows = {0};
   std::shared_ptr<phi::SelectedRows> selected_rows =
       std::make_shared<phi::SelectedRows>(rows, 1);
-  selected_rows->mutable_value()->Resize(phi::make_ddim({1, 1}));
+  selected_rows->mutable_value()->Resize(common::make_ddim({1, 1}));
   selected_rows->mutable_value()->mutable_data<float>(phi::CPUPlace())[0] =
       static_cast<float>(10.0f);
   paddle::Tensor sr_tensor = paddle::Tensor(selected_rows);
@@ -256,8 +256,8 @@ TEST(PhiTensor, All) {
   TestAPISlice();
   VLOG(2) << "TestCast";
   GroupTestCast();
-  VLOG(2) << "TestInitilized";
-  TestInitilized();
+  VLOG(2) << "TestInitialized";
+  TestInitialized();
   VLOG(2) << "TestDataInterface";
   TestDataInterface();
   VLOG(2) << "TestJudgeTensorType";

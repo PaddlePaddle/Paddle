@@ -13,11 +13,11 @@
 // limitations under the License.
 #pragma once
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/distributed/comm_context.h"
 #include "paddle/phi/core/distributed/comm_task.h"
 #include "paddle/phi/core/distributed/utils.h"
-#include "paddle/phi/core/macros.h"
 
 #if defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/backends/dynload/rccl.h"
@@ -34,6 +34,7 @@ static int64_t DefaultTimeout = 30 * 60 * 1000;
 class NCCLCommTask : public CommTask {
  public:
   NCCLCommTask(const phi::Place& place = phi::Place(),
+               const std::string& group_key = "",
                int rank = -1,
                int size = 0,
                int gid = 0,
@@ -45,19 +46,22 @@ class NCCLCommTask : public CommTask {
                gpuStream_t = nullptr,
                CommType comm_type = CommType::UNKNOWN,
                int64_t timeout = DefaultTimeout);
-  ~NCCLCommTask() = default;
+  ~NCCLCommTask() override = default;
 
   // check whether the nccl kernel started
   bool IsStarted() override;
   bool IsTimeout() override;
   bool IsCompleted() override;
+  void SetUpdated(bool updated) override;
+  bool IsUpdated() override;
 
   std::string GetTraceMsg() override;
   std::string GetCommErrors() override;
   void AbortComm() override;
 
-  void StartRecord();
-  void EndRecord();
+  void StartRecord() override;
+  void EndRecord() override;
+  void ClearRecord() override;
 
   bool CudaEventQuery(gpuEvent_t event);
 

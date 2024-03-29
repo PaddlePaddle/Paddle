@@ -21,8 +21,12 @@ namespace cinn {
 namespace ir {
 namespace ir_utils {
 
-//! Replace the variable \p v to expression \p e in expression \p expr.
+//! Replace the variable \p from to expression \p to in expression \p expr.
+void IrReplaceVarBroadcast(ir::Expr* expr, ir::Expr from, ir::Expr to);
+
+//! Replace the Expr \p from to expression \p to in expression \p expr.
 void IrReplace(ir::Expr* expr, ir::Expr from, ir::Expr to);
+
 }  // namespace ir_utils
 }  // namespace ir
 }  // namespace cinn

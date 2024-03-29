@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
 #ifdef PADDLE_WITH_XPU
+#include <type_traits>
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
@@ -142,9 +143,9 @@ struct TensorSetConstantXPU<float> {
     auto* ctx = phi::DeviceContextPool::Instance().Get(place_);
     auto begin = ctx->Alloc<T>(tensor_);
     int numel = tensor_->numel();
-    if (((std::is_same<T, float>::value) ||
-         (std::is_same<T, phi::dtype::float16>::value)) &&
-        (place_ == phi::XPUPlace())) {
+    if ((std::is_same<T, float>::value) ||
+        (std::is_same<T, phi::dtype::bfloat16>::value) ||
+        (std::is_same<T, phi::dtype::float16>::value)) {
       using XPUType = typename XPUTypeTrait<T>::Type;
       auto* dev_ctx = static_cast<phi::XPUContext*>(ctx);
       int r = xpu::constant<XPUType>(dev_ctx->x_context(),
@@ -152,7 +153,6 @@ struct TensorSetConstantXPU<float> {
                                      numel,
                                      static_cast<XPUType>(value_));
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
-      dev_ctx->Wait();
     } else {
       std::unique_ptr<T[]> data_cpu(new T[numel]);
       std::fill(data_cpu.get(), data_cpu.get() + numel, static_cast<T>(value_));

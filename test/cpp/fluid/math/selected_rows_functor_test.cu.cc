@@ -15,10 +15,10 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 #include "gtest/gtest.h"
+#include "paddle/common/errors.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -36,7 +36,7 @@ TEST(selected_rows_functor, gpu_add) {
       new phi::SelectedRows(rows1, height)};
   auto* in1_value = selected_rows1->mutable_value();
   in1_value->mutable_data<float>(
-      phi::make_ddim({static_cast<int64_t>(rows1.size()), row_numel}),
+      common::make_ddim({static_cast<int64_t>(rows1.size()), row_numel}),
       gpu_place);
   functor(ctx, in1_value, 1.0);
 #ifdef PADDLE_WITH_HIP
@@ -56,7 +56,7 @@ TEST(selected_rows_functor, gpu_add) {
       new phi::SelectedRows(rows2, height)};
   auto* in2_value = selected_rows2->mutable_value();
   in2_value->mutable_data<float>(
-      phi::make_ddim({static_cast<int64_t>(rows2.size()), row_numel}),
+      common::make_ddim({static_cast<int64_t>(rows2.size()), row_numel}),
       gpu_place);
   functor(ctx, in2_value, 2.0);
 
@@ -64,7 +64,7 @@ TEST(selected_rows_functor, gpu_add) {
   auto* out_value = output->mutable_value();
 
   // simply concat two SelectedRows
-  out_value->mutable_data<float>(phi::make_ddim({7, 10}), gpu_place);
+  out_value->mutable_data<float>(common::make_ddim({7, 10}), gpu_place);
 
   phi::funcs::SelectedRowsAdd<phi::GPUContext, float> add_functor;
   add_functor(ctx, *selected_rows1, *selected_rows2, output.get());
@@ -101,11 +101,13 @@ TEST(selected_rows_functor, gpu_add) {
   EXPECT_EQ(out_cpu_data[6 * row_numel + 9], 2.0);
 
   std::unique_ptr<phi::DenseTensor> tensor1{new phi::DenseTensor()};
-  tensor1->mutable_data<float>(phi::make_ddim({height, row_numel}), gpu_place);
+  tensor1->mutable_data<float>(common::make_ddim({height, row_numel}),
+                               gpu_place);
   functor(ctx, tensor1.get(), 3.0);
 
   std::unique_ptr<phi::DenseTensor> tensor2{new phi::DenseTensor()};
-  tensor2->mutable_data<float>(phi::make_ddim({height, row_numel}), gpu_place);
+  tensor2->mutable_data<float>(common::make_ddim({height, row_numel}),
+                               gpu_place);
 
   phi::funcs::SelectedRowsAddTensor<phi::GPUContext, float> add_tensor_functor;
   add_tensor_functor(ctx, *output, *tensor1, tensor2.get());
@@ -144,7 +146,7 @@ TEST(selected_rows_functor, gpu_add_to) {
       new phi::SelectedRows(rows1, height)};
   auto* in1_value = selected_rows1->mutable_value();
   in1_value->mutable_data<float>(
-      phi::make_ddim({static_cast<int64_t>(rows1.size()), row_numel}),
+      common::make_ddim({static_cast<int64_t>(rows1.size()), row_numel}),
       gpu_place);
   functor(ctx, in1_value, 1.0);
 
@@ -153,7 +155,7 @@ TEST(selected_rows_functor, gpu_add_to) {
       new phi::SelectedRows(rows2, height)};
   auto* in2_value = selected_rows2->mutable_value();
   in2_value->mutable_data<float>(
-      phi::make_ddim({static_cast<int64_t>(rows2.size()), row_numel}),
+      common::make_ddim({static_cast<int64_t>(rows2.size()), row_numel}),
       gpu_place);
   functor(ctx, in2_value, 2.0);
 
@@ -162,7 +164,7 @@ TEST(selected_rows_functor, gpu_add_to) {
   auto* out_value = output->mutable_value();
 
   // simply concat two SelectedRows
-  out_value->mutable_data<float>(phi::make_ddim({7, 10}), gpu_place);
+  out_value->mutable_data<float>(common::make_ddim({7, 10}), gpu_place);
 
   phi::funcs::SelectedRowsAddTo<phi::GPUContext, float> add_to_functor;
   add_to_functor(ctx, *selected_rows1, 0, output.get());
@@ -200,7 +202,8 @@ TEST(selected_rows_functor, gpu_add_to) {
   EXPECT_EQ(out_cpu_data[6 * row_numel + 9], 2.0);
 
   std::unique_ptr<phi::DenseTensor> tensor1{new phi::DenseTensor()};
-  tensor1->mutable_data<float>(phi::make_ddim({height, row_numel}), gpu_place);
+  tensor1->mutable_data<float>(common::make_ddim({height, row_numel}),
+                               gpu_place);
   functor(ctx, tensor1.get(), 3.0);
 
   phi::funcs::SelectedRowsAddToTensor<phi::GPUContext, float>
@@ -242,7 +245,7 @@ TEST(selected_rows_functor, gpu_merge_add) {
       new phi::SelectedRows(rows1, height)};
   auto* in1_value = selected_rows1->mutable_value();
   in1_value->mutable_data<float>(
-      phi::make_ddim({static_cast<int64_t>(rows1.size()), row_numel}),
+      common::make_ddim({static_cast<int64_t>(rows1.size()), row_numel}),
       gpu_place);
   set_const(ctx, in1_value, 1.0);
 
@@ -251,7 +254,7 @@ TEST(selected_rows_functor, gpu_merge_add) {
       new phi::SelectedRows(rows2, height)};
   auto* in2_value = selected_rows2->mutable_value();
   in2_value->mutable_data<float>(
-      phi::make_ddim({static_cast<int64_t>(rows2.size()), row_numel}),
+      common::make_ddim({static_cast<int64_t>(rows2.size()), row_numel}),
       gpu_place);
   set_const(ctx, in2_value, 1.0);
 
@@ -268,7 +271,7 @@ TEST(selected_rows_functor, gpu_merge_add) {
   phi::Copy(ctx, output->value(), cpu_place, true, &output_cpu);
 
   EXPECT_EQ(output->height(), height);
-  EXPECT_EQ(output->value().dims(), phi::make_ddim({3, row_numel}));
+  EXPECT_EQ(output->value().dims(), common::make_ddim({3, row_numel}));
 
   std::vector<int64_t> ret_rows{2, 3, 5};
   EXPECT_EQ(output->rows(), ret_rows);

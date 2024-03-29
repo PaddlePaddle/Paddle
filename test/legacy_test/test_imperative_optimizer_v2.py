@@ -22,6 +22,7 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
+from paddle.pir_utils import test_with_pir_api
 
 # Note(wangzhongpu)
 # In dygraph, don't support ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.
@@ -51,13 +52,13 @@ class TestImperativeOptimizerBase(unittest.TestCase):
         raise NotImplementedError()
 
     def reader_decorator(self, reader):
-        def _reader_imple():
+        def _reader_simple():
             for item in reader():
                 image = np.array(item[0]).reshape(1, 784)
                 label = np.array(item[1]).astype('int64').reshape(1)
                 yield image, label
 
-        return _reader_imple
+        return _reader_simple
 
     def _check_exception(self, exception_message, place=None):
         seed = 90
@@ -532,7 +533,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
 
             linear = paddle.nn.Linear(10, 10)
 
-            a = base.dygraph.to_variable(a)
+            a = paddle.to_tensor(a)
 
             b = linear(a)
 
@@ -556,7 +557,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
 
             linear = paddle.nn.Linear(10, 10)
 
-            a = base.dygraph.to_variable(a)
+            a = paddle.to_tensor(a)
 
             b = linear(a)
 
@@ -584,7 +585,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
             a = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
 
             linear = paddle.nn.Linear(10, 10)
-            a = base.dygraph.to_variable(a)
+            a = paddle.to_tensor(a)
             b = linear(a)
 
             loss = paddle.mean(b)
@@ -610,7 +611,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
 
             linear = paddle.nn.Linear(10, 10)
 
-            a = base.dygraph.to_variable(a)
+            a = paddle.to_tensor(a)
 
             b = linear(a)
 
@@ -646,7 +647,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
 
             linear = paddle.nn.Linear(10, 10)
 
-            a = base.dygraph.to_variable(a)
+            a = paddle.to_tensor(a)
 
             b = linear(a)
 
@@ -790,6 +791,7 @@ class TestImperativeLambOptimizer(TestImperativeOptimizerBase):
         return optimizer
 
     # should fix: may fail in CI-windows
+    @test_with_pir_api
     def _test_lamb(self):
         self._check_mlp()
 
@@ -830,7 +832,7 @@ class TestImperativePipelineOptimizer(TestImperativeOptimizerBase):
         optimizer = paddle.incubate.optimizer.PipelineOptimizer(optimizer)
         return optimizer
 
-    def test_pipline(self):
+    def test_pipeline(self):
         exception_message = "In dygraph, don't support PipelineOptimizer."
         self._check_exception(exception_message)
 
@@ -877,7 +879,7 @@ class TestImperativeOptimizerList(unittest.TestCase):
             )
 
             in_np = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
-            in_data = base.dygraph.to_variable(in_np)
+            in_data = paddle.to_tensor(in_np)
 
             y = linear_1(in_data)
             y = linear_2(y)

@@ -18,12 +18,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 namespace paddle {
@@ -133,7 +133,7 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
     for (auto i = 0; i < global_count_len; ++i) {
       fwd_count += cpu_global_count_data[i];
     }
-    framework::DDim out_dims = phi::make_ddim({fwd_count, in_feat});
+    framework::DDim out_dims = common::make_ddim({fwd_count, in_feat});
     int64_t* expert_ptr = new int64_t[n_expert * nranks];
     expert_ptr[0] = 0;
     auto tot_experts = n_expert * nranks;
@@ -274,7 +274,7 @@ struct GlobalScatterProcessGroupFunctor<phi::GPUContext, T> {
     for (auto i = 0; i < global_count_len; ++i) {
       fwd_count += cpu_global_count_data[i];
     }
-    framework::DDim out_dims = phi::make_ddim({fwd_count, in_feat});
+    framework::DDim out_dims = common::make_ddim({fwd_count, in_feat});
     int64_t* expert_ptr = new int64_t[n_expert * nranks];
     expert_ptr[0] = 0;
     auto tot_experts = n_expert * nranks;

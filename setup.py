@@ -19,12 +19,12 @@ import multiprocessing
 import os
 import platform
 import re
+import shlex
 import shutil
 import subprocess
 import sys
 import time
 from contextlib import contextmanager
-from distutils.spawn import find_executable
 from subprocess import CalledProcessError
 
 from setuptools import Command, Extension, setup
@@ -34,31 +34,31 @@ from setuptools.command.install import install as InstallCommandBase
 from setuptools.command.install_lib import install_lib
 from setuptools.dist import Distribution
 
-if sys.version_info < (3, 7):
+# check python
+python_version = platform.python_version()
+version_detail = sys.version_info
+version = str(version_detail[0]) + '.' + str(version_detail[1])
+env_version = os.getenv("PY_VERSION", None)
+
+if version_detail < (3, 8):
     raise RuntimeError(
-        "Paddle only supports Python version>=3.7 now, you are using Python %s"
-        % platform.python_version()
+        f"Paddle only supports Python version >= 3.8 now,"
+        f"you are using Python {python_version}"
     )
-else:
-    if os.getenv("PY_VERSION") is None:
-        print("export PY_VERSION = %s" % platform.python_version())
-        python_version = platform.python_version()
-        os.environ["PY_VERSION"] = python_version
-    else:
-        if os.getenv("PY_VERSION") != str(sys.version_info.major) + '.' + str(
-            sys.version_info.minor
-        ):
-            raise RuntimeError(
-                "You set PY_VERSION={}, but your current python environment is {}, you should keep them consistent!".format(
-                    os.getenv("PY_VERSION"),
-                    str(sys.version_info.major)
-                    + '.'
-                    + str(sys.version_info.minor),
-                )
-            )
+elif env_version is None:
+    print(f"export PY_VERSION = { version }")
+    os.environ["PY_VERSION"] = python_version
+
+elif env_version != version:
+    raise ValueError(
+        f"You have set the PY_VERSION environment variable to {env_version}, but "
+        f"your current Python version is {version}, "
+        f"Please keep them consistent."
+    )
+
 
 # check cmake
-CMAKE = find_executable('cmake3') or find_executable('cmake')
+CMAKE = shutil.which('cmake3') or shutil.which('cmake')
 assert (
     CMAKE
 ), 'The "cmake" executable is not found. Please check if Cmake is installed.'
@@ -76,7 +76,7 @@ def filter_setup_args(input_args):
     filter_args_list = []
     for arg in input_args:
         if arg == 'rerun-cmake':
-            rerun_cmake = True  # delete Cmakecache.txt and rerun cmake
+            rerun_cmake = True  # delete CMakeCache.txt and rerun cmake
             continue
         if arg == 'only-cmake':
             only_cmake = True  # only cmake and do not make, leave a chance for users to adjust build options
@@ -108,8 +108,8 @@ def parse_input_command(input_parameters):
         dist.parse_command_line()
     except:
         print(
-            "An error occurred while parsing the parameters, '%s'"
-            % dist.script_args
+            f"An error occurred while parsing"
+            f"the parameters, {dist.script_args}"
         )
         sys.exit(1)
 
@@ -137,10 +137,8 @@ def get_header_install_dir(header):
         install_dir = re.sub(
             env_dict.get("PADDLE_SOURCE_DIR") + '/', '', header
         )
-        print('install_dir: ', install_dir)
         if 'fluid/jit' in install_dir:
             install_dir = re.sub('fluid/jit', 'jit', install_dir)
-            print('fluid/jit install_dir: ', install_dir)
     else:
         # third_party
         install_dir = re.sub(
@@ -206,12 +204,10 @@ class InstallCommand(InstallCommandBase):
     def finalize_options(self):
         ret = InstallCommandBase.finalize_options(self)
         self.install_lib = self.install_platlib
-        print("install_lib:", self.install_platlib)
 
         self.install_headers = os.path.join(
             self.install_platlib, 'paddle', 'include'
         )
-        print("install_headers:", self.install_headers)
         return ret
 
 
@@ -318,7 +314,7 @@ def git_commit():
 def _get_version_detail(idx):
     assert (
         idx < 3
-    ), "vesion info consists of %(major)d.%(minor)d.%(patch)d, \
+    ), "version info consists of %(major)d.%(minor)d.%(patch)d, \
         so detail index must less than 3"
     tag_version_regex = env_dict.get("TAG_VERSION_REGEX")
     paddle_version = env_dict.get("PADDLE_VERSION")
@@ -346,6 +342,12 @@ def get_minor():
 
 def get_patch():
     return str(_get_version_detail(2))
+
+
+def get_nccl_version():
+    if env_dict.get("WITH_NCCL") == 'ON':
+        return int(env_dict.get("NCCL_VERSION"))
+    return 0
 
 
 def get_cuda_version():
@@ -396,7 +398,15 @@ def get_xpu_xccl_version():
         return 'False'
 
 
-def is_taged():
+def get_xpu_xhpc_version():
+    with_xpu_xhpc = env_dict.get("WITH_XPU")
+    if with_xpu_xhpc == 'ON':
+        return env_dict.get("XPU_XHPC_BASE_DATE")
+    else:
+        return 'False'
+
+
+def is_tagged():
     try:
         cmd = [
             'git',
@@ -437,17 +447,20 @@ full_version     = '%(major)d.%(minor)d.%(patch)s'
 major            = '%(major)d'
 minor            = '%(minor)d'
 patch            = '%(patch)s'
+nccl_version     = '%(nccl)d'
 rc               = '%(rc)d'
 cuda_version     = '%(cuda)s'
 cudnn_version    = '%(cudnn)s'
 xpu_version      = '%(xpu)s'
 xpu_xccl_version = '%(xpu_xccl)s'
-istaged          = %(istaged)s
+xpu_xhpc_version = '%(xpu_xhpc)s'
+is_tagged          = %(is_tagged)s
 commit           = '%(commit)s'
 with_mkl         = '%(with_mkl)s'
 cinn_version      = '%(cinn)s'
+with_pip_cuda_libraries       = '%(with_pip_cuda_libraries)s'
 
-__all__ = ['cuda', 'cudnn', 'show', 'xpu', 'xpu_xccl']
+__all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xccl', 'xpu_xhpc']
 
 def show():
     """Get the version of paddle if `paddle` package if tagged. Otherwise, output the corresponding commit id.
@@ -474,6 +487,8 @@ def show():
 
         xpu_xccl: the xpu xccl version of package. It will return `False` if non-XPU version paddle package is installed
 
+        xpu_xhpc: the xpu xhpc version of package. It will return `False` if non-XPU version paddle package is installed
+
         cinn: the cinn version of package. It will return `False` if paddle package is not compiled with CINN
 
     Examples:
@@ -493,6 +508,7 @@ def show():
             cudnn: '7.6.5'
             xpu: '20230114'
             xpu_xccl: '1.0.7'
+            xpu_xhpc: '20231208'
             cinn: False
             >>> # doctest: -SKIP
 
@@ -504,10 +520,11 @@ def show():
             cudnn: '7.6.5'
             xpu: '20230114'
             xpu_xccl: '1.0.7'
+            xpu_xhpc: '20231208'
             cinn: False
             >>> # doctest: -SKIP
     """
-    if istaged:
+    if is_tagged:
         print('full_version:', full_version)
         print('major:', major)
         print('minor:', minor)
@@ -517,12 +534,32 @@ def show():
         print('commit:', commit)
     print('cuda:', cuda_version)
     print('cudnn:', cudnn_version)
+    print('nccl:', nccl_version)
     print('xpu:', xpu_version)
     print('xpu_xccl:', xpu_xccl_version)
+    print('xpu_xhpc:', xpu_xhpc_version)
     print('cinn:', cinn_version)
 
 def mkl():
     return with_mkl
+
+def nccl():
+    """Get nccl version of paddle package.
+
+    Returns:
+        string: Return the version information of cuda nccl. If paddle package is CPU version, it will return False.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> paddle.version.nccl()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            '2804'
+
+    """
+    return nccl_version
 
 def cuda():
     """Get cuda version of paddle package.
@@ -596,6 +633,24 @@ def xpu_xccl():
     """
     return xpu_xccl_version
 
+def xpu_xhpc():
+    """Get xpu xhpc version of paddle package.
+
+    Returns:
+        string: Return the version information of xpu xhpc. If paddle package is non-XPU version, it will return False.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> paddle.version.xpu_xhpc()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            '20231208'
+
+    """
+    return xpu_xhpc_version
+
 def cinn():
     """Get CINN version of paddle package.
 
@@ -631,16 +686,21 @@ def cinn():
                 'major': get_major(),
                 'minor': get_minor(),
                 'patch': get_patch(),
+                'nccl': get_nccl_version(),
                 'rc': RC,
                 'version': env_dict.get("PADDLE_VERSION"),
                 'cuda': get_cuda_version(),
                 'cudnn': get_cudnn_version(),
                 'xpu': get_xpu_version(),
                 'xpu_xccl': get_xpu_xccl_version(),
+                'xpu_xhpc': get_xpu_xhpc_version(),
                 'commit': commit,
-                'istaged': is_taged(),
+                'is_tagged': is_tagged(),
                 'with_mkl': env_dict.get("WITH_MKL"),
                 'cinn': get_cinn_version(),
+                'with_pip_cuda_libraries': env_dict.get(
+                    "with_pip_cuda_libraries"
+                ),
             }
         )
 
@@ -776,10 +836,8 @@ def cmake_run(build_path):
                 or option_key == 'PYTHON_LIBRARIES'
             ):
                 key = option_key + ":FILEPATH"
-                print(key)
             elif option_key == 'PYTHON_INCLUDE_DIR':
                 key = option_key + ':PATH'
-                print(key)
             elif option_key == 'GENERATOR':
                 key = 'CMAKE_' + option_key
             else:
@@ -788,25 +846,22 @@ def cmake_run(build_path):
                 paddle_build_options[key] = option_value
 
     options_process(args, paddle_build_options)
-    print("args:", args)
     with cd(build_path):
         cmake_args = []
         cmake_args.append(CMAKE)
         cmake_args += args
         cmake_args.append('-DWITH_SETUP_INSTALL=ON')
         cmake_args.append(TOP_DIR)
-        print("cmake_args:", cmake_args)
         subprocess.check_call(cmake_args)
 
 
-def build_run(args, build_path, envrion_var):
+def build_run(args, build_path, environ_var):
     with cd(build_path):
         build_args = []
         build_args.append(CMAKE)
         build_args += args
-        print(" ".join(build_args))
         try:
-            subprocess.check_call(build_args, cwd=build_path, env=envrion_var)
+            subprocess.check_call(build_args, cwd=build_path, env=environ_var)
         except (CalledProcessError, KeyboardInterrupt) as e:
             sys.exit(1)
 
@@ -846,7 +901,7 @@ def build_steps():
     print("build_dir:", build_dir)
     # run cmake to generate native build files
     cmake_cache_file_path = os.path.join(build_path, "CMakeCache.txt")
-    # if rerun_cmake is True,remove CMakeCache.txt and rerun camke
+    # if rerun_cmake is True,remove CMakeCache.txt and rerun cmake
     if os.path.isfile(cmake_cache_file_path) and rerun_cmake is True:
         os.remove(cmake_cache_file_path)
 
@@ -856,13 +911,13 @@ def build_steps():
     if os.path.exists(cmake_cache_file_path) and not (
         bool_ninja and not os.path.exists(build_ninja_file_path)
     ):
-        print("Do not need rerun camke, everything is ready, run build now")
+        print("Do not need rerun cmake, everything is ready, run build now")
     else:
         cmake_run(build_path)
     # make
     if only_cmake:
         print(
-            "You have finished running cmake, the program exited,run 'ccmake build' to adjust build options and 'python setup.py install to build'"
+            "You have finished running cmake, the program exited,run 'cmake build' to adjust build options and 'python setup.py install to build'"
         )
         sys.exit()
     run_cmake_build(build_path)
@@ -875,7 +930,7 @@ def get_setup_requires():
         setup_requires = (
             f.read().splitlines()
         )  # Specify the dependencies to install
-    if sys.version_info >= (3, 7):
+    if sys.version_info >= (3, 8):
         setup_requires_tmp = []
         for setup_requires_i in setup_requires:
             if (
@@ -884,15 +939,66 @@ def get_setup_requires():
                 or "<\"3.5\"" in setup_requires_i
                 or "<=\"3.5\"" in setup_requires_i
                 or "<\"3.7\"" in setup_requires_i
+                or "<=\"3.7\"" in setup_requires_i
+                or "<\"3.8\"" in setup_requires_i
             ):
                 continue
             setup_requires_tmp += [setup_requires_i]
         setup_requires = setup_requires_tmp
+
         return setup_requires
     else:
         raise RuntimeError(
-            "please check your python version,Paddle only support Python version>=3.7 now"
+            "please check your python version,Paddle only support Python version>=3.8 now"
         )
+
+
+def get_paddle_extra_install_requirements():
+    # (Note risemeup1): Paddle will install the pypi cuda package provided by Nvidia, which includes the cuda runtime, cudnn, and cublas, thereby making the operation of 'pip install paddle' no longer dependent on the installation of cuda and cudnn.
+    if env_dict.get("WITH_PIP_CUDA_LIBRARIES") == "ON":
+        PADDLE_CUDA_INSTALL_REQUIREMENTS = {
+            "V11": (
+                "nvidia-cuda-runtime-cu11==11.8.89; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cuda-cupti-cu11==11.8.87; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cudnn-cu11==8.7.0.84; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cublas-cu11==11.11.3.6; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cufft-cu11==10.9.0.58; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-curand-cu11==10.3.0.86; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cusolver-cu11==11.4.1.48; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cusparse-cu11==11.7.5.86; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-nccl-cu11==2.19.3; platform_system == 'Linux' and platform_machine == 'x86_64'"
+            ),
+            "V12": (
+                "nvidia-cuda-runtime-cu12==12.1.105; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cuda-cupti-cu12==12.1.105; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cudnn-cu12==8.9.2.26; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cublas-cu12==12.1.3.1; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cufft-cu12==11.0.2.54; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-curand-cu12==10.3.2.106; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cusolver-cu12==11.4.5.107; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cusparse-cu12==12.1.0.106; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-nccl-cu12==2.19.3; platform_system == 'Linux' and platform_machine == 'x86_64'"
+            ),
+        }
+        try:
+            output = subprocess.check_output(['nvcc', '--version']).decode(
+                'utf-8'
+            )
+            version_line = [
+                line for line in output.split('\n') if 'release' in line
+            ][0]
+            version = version_line.split(' ')[-1].split(',')[0]
+            cuda_major_version = version.split('.')[0]
+        except Exception as e:
+            raise ValueError("CUDA not found")
+
+        paddle_cuda_requires = PADDLE_CUDA_INSTALL_REQUIREMENTS[
+            cuda_major_version
+        ].split("|")
+
+        return paddle_cuda_requires
+    else:
+        return []
 
 
 def get_package_data_and_package_dir():
@@ -925,7 +1031,6 @@ def get_package_data_and_package_dir():
     # put all thirdparty libraries in paddle.libs
     libs_path = paddle_binary_dir + '/python/paddle/libs'
     package_data['paddle.libs'] = []
-
     if env_dict.get("WITH_SHARED_PHI") == "ON":
         package_data['paddle.libs'] += [
             ('libphi' if os.name != 'nt' else 'phi') + ext_suffix
@@ -942,6 +1047,10 @@ def get_package_data_and_package_dir():
         ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_suffix,
         ('libwarprnnt' if os.name != 'nt' else 'warprnnt') + ext_suffix,
     ]
+    package_data['paddle.libs'] += [
+        ('libcommon' if os.name != 'nt' else 'common') + ext_suffix,
+    ]
+    shutil.copy(env_dict.get("COMMON_LIB"), libs_path)
     shutil.copy(env_dict.get("WARPCTC_LIBRARIES"), libs_path)
     shutil.copy(env_dict.get("WARPRNNT_LIBRARIES"), libs_path)
     package_data['paddle.libs'] += [
@@ -954,28 +1063,7 @@ def get_package_data_and_package_dir():
     shutil.copy(env_dict.get("LAPACK_LIB"), libs_path)
     shutil.copy(env_dict.get("GFORTRAN_LIB"), libs_path)
     shutil.copy(env_dict.get("GNU_RT_LIB_1"), libs_path)
-    if env_dict.get("WITH_CUDNN_DSO") == 'ON' and os.path.exists(
-        env_dict.get("CUDNN_LIBRARY")
-    ):
-        package_data['paddle.libs'] += [
-            os.path.basename(env_dict.get("CUDNN_LIBRARY"))
-        ]
-        shutil.copy(env_dict.get("CUDNN_LIBRARY"), libs_path)
-        if (
-            sys.platform.startswith("linux")
-            and env_dict.get("CUDNN_MAJOR_VERSION") == '8'
-        ):
-            # libcudnn.so includes libcudnn_ops_infer.so, libcudnn_ops_train.so,
-            # libcudnn_cnn_infer.so, libcudnn_cnn_train.so, libcudnn_adv_infer.so,
-            # libcudnn_adv_train.so
-            cudnn_lib_files = glob.glob(
-                os.path.dirname(env_dict.get("CUDNN_LIBRARY"))
-                + '/libcudnn_*so.8'
-            )
-            for cudnn_lib in cudnn_lib_files:
-                if os.path.exists(cudnn_lib):
-                    package_data['paddle.libs'] += [os.path.basename(cudnn_lib)]
-                    shutil.copy(cudnn_lib, libs_path)
+
     if not sys.platform.startswith("linux"):
         package_data['paddle.libs'] += [
             os.path.basename(env_dict.get("GNU_RT_LIB_2"))
@@ -1004,11 +1092,12 @@ def get_package_data_and_package_dir():
                 shutil.copy(env_dict.get("OPENBLAS_LIB") + '.0', libs_path)
                 package_data['paddle.libs'] += ['libopenblas.so.0']
 
-    if len(env_dict.get("FLASHATTN_LIBRARIES", "")) > 1:
-        package_data['paddle.libs'] += [
-            os.path.basename(env_dict.get("FLASHATTN_LIBRARIES"))
-        ]
-        shutil.copy(env_dict.get("FLASHATTN_LIBRARIES"), libs_path)
+    if env_dict.get("WITH_GPU") == 'ON':
+        if len(env_dict.get("FLASHATTN_LIBRARIES", "")) > 1:
+            package_data['paddle.libs'] += [
+                os.path.basename(env_dict.get("FLASHATTN_LIBRARIES"))
+            ]
+            shutil.copy(env_dict.get("FLASHATTN_LIBRARIES"), libs_path)
     if env_dict.get("WITH_LITE") == 'ON':
         shutil.copy(env_dict.get("LITE_SHARED_LIB"), libs_path)
         package_data['paddle.libs'] += [
@@ -1114,23 +1203,6 @@ def get_package_data_and_package_dir():
             ]
 
     if env_dict.get("WITH_XPU") == 'ON':
-        # only change rpath in Release mode,
-        if env_dict.get("CMAKE_BUILD_TYPE") == 'Release':
-            if os.name != 'nt':
-                if env_dict.get("APPLE") == "1":
-                    command = (
-                        "install_name_tool -id \"@loader_path/\" "
-                        + env_dict.get("XPU_API_LIB")
-                    )
-                else:
-                    command = "patchelf --set-rpath '$ORIGIN/' " + env_dict.get(
-                        "XPU_API_LIB"
-                    )
-                if os.system(command) != 0:
-                    raise Exception(
-                        'patch ' + env_dict.get("XPU_API_LIB") + 'failed ,',
-                        "command: %s" % command,
-                    )
         shutil.copy(env_dict.get("XPU_API_LIB"), libs_path)
         package_data['paddle.libs'] += [env_dict.get("XPU_API_LIB_NAME")]
         xpu_rt_lib_list = glob.glob(env_dict.get("XPU_RT_LIB") + '*')
@@ -1149,6 +1221,12 @@ def get_package_data_and_package_dir():
     if env_dict.get("WITH_XPTI") == 'ON':
         shutil.copy(env_dict.get("XPU_XPTI_LIB"), libs_path)
         package_data['paddle.libs'] += [env_dict.get("XPU_XPTI_LIB_NAME")]
+
+    if env_dict.get("WITH_XPU_XHPC") == 'ON':
+        shutil.copy(env_dict.get("XPU_XBLAS_LIB"), libs_path)
+        package_data['paddle.libs'] += [env_dict.get("XPU_XBLAS_LIB_NAME")]
+        shutil.copy(env_dict.get("XPU_XFA_LIB"), libs_path)
+        package_data['paddle.libs'] += [env_dict.get("XPU_XFA_LIB_NAME")]
 
     # remove unused paddle/libs/__init__.py
     if os.path.isfile(libs_path + '/__init__.py'):
@@ -1177,6 +1255,12 @@ def get_package_data_and_package_dir():
                     + env_dict.get("FLUID_CORE_NAME")
                     + '.so'
                 )
+                commands.append(
+                    "install_name_tool -add_rpath '@loader_path/../libs/' "
+                    + env_dict.get("PADDLE_BINARY_DIR")
+                    + '/python/paddle/libs/'
+                    + env_dict.get("COMMON_NAME")
+                )
                 if env_dict.get("WITH_SHARED_PHI") == "ON":
                     commands.append(
                         "install_name_tool -add_rpath '@loader_path' "
@@ -1193,7 +1277,7 @@ def get_package_data_and_package_dir():
                     )
             else:
                 commands = [
-                    "patchelf --set-rpath '$ORIGIN/../libs/' "
+                    "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../libs/' "
                     + env_dict.get("PADDLE_BINARY_DIR")
                     + '/python/paddle/base/'
                     + env_dict.get("FLUID_CORE_NAME")
@@ -1201,19 +1285,19 @@ def get_package_data_and_package_dir():
                 ]
                 if env_dict.get("WITH_SHARED_PHI") == "ON":
                     commands.append(
-                        "patchelf --set-rpath '$ORIGIN' "
+                        "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' "
                         + env_dict.get("PADDLE_BINARY_DIR")
                         + '/python/paddle/libs/'
                         + env_dict.get("PHI_NAME")
                     )
                 if env_dict.get("WITH_SHARED_IR") == "ON":
                     commands.append(
-                        "patchelf --set-rpath '$ORIGIN' "
+                        "patchelf --set-rpath '$ORIGIN:$ORIGIN/../libs' "
                         + env_dict.get("PADDLE_BINARY_DIR")
                         + '/python/paddle/libs/'
                         + env_dict.get("IR_NAME")
                     )
-            # The sw_64 not suppot patchelf, so we just disable that.
+            # The sw_64 not support patchelf, so we just disable that.
             if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
                 for command in commands:
                     if os.system(command) != 0:
@@ -1250,6 +1334,9 @@ def get_headers():
         )
         + list(  # phi api
             find_files('*.h', paddle_source_dir + '/paddle/phi/common')
+        )
+        + list(  # common api
+            find_files('*.h', paddle_source_dir + '/paddle/common')
         )
         # phi level api headers (low level api, for training only)
         + list(  # phi extension header
@@ -1311,6 +1398,27 @@ def get_headers():
                 recursive=True,
             )
         )
+        + list(  # pir init headers
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/pir/include',
+                recursive=True,
+            )
+        )
+        + list(  # drr init headers
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/fluid/pir/drr/include',
+                recursive=True,
+            )
+        )
+        + list(  # pass utils init headers
+            find_files(
+                'general_functions.h',
+                paddle_source_dir + '/paddle/fluid/pir/utils',
+                recursive=True,
+            )
+        )
     )
 
     jit_layer_headers = [
@@ -1356,6 +1464,10 @@ def get_headers():
 def get_setup_parameters():
     # get setup_requires
     setup_requires = get_setup_requires()
+    if platform.system() == 'Linux' and platform.machine() == 'x86_64':
+        paddle_cuda_requires = get_paddle_extra_install_requirements()
+        setup_requires += paddle_cuda_requires
+
     packages = [
         'paddle',
         'paddle.libs',
@@ -1365,6 +1477,7 @@ def get_setup_parameters():
         'paddle.dataset',
         'paddle.reader',
         'paddle.distributed',
+        'paddle.distributed.checkpoint',
         'paddle.distributed.communication',
         'paddle.distributed.communication.stream',
         'paddle.distributed.metric',
@@ -1380,6 +1493,7 @@ def get_setup_parameters():
         'paddle.incubate.nn',
         'paddle.incubate.asp',
         'paddle.incubate.passes',
+        'paddle.incubate.framework',
         'paddle.distribution',
         'paddle.distributed.utils',
         'paddle.distributed.sharding',
@@ -1424,7 +1538,8 @@ def get_setup_parameters():
         'paddle.framework',
         'paddle.jit',
         'paddle.jit.dy2static',
-        'paddle.jit.newir_dy2static',
+        'paddle.jit.dy2static.transformers',
+        'paddle.jit.pir_dy2static',
         'paddle.jit.sot',
         'paddle.jit.sot.opcode_translator',
         'paddle.jit.sot.opcode_translator.executor',
@@ -1544,11 +1659,11 @@ Please run 'pip install -r python/requirements.txt' to make sure you have all th
             f.read().splitlines()
         )  # Specify the dependencies to install
 
-    python_dependcies_module = []
+    python_dependencies_module = []
     installed_packages = []
 
     for dependency in build_dependencies:
-        python_dependcies_module.append(
+        python_dependencies_module.append(
             re.sub("_|-", '', re.sub(r"==.*|>=.*|<=.*", '', dependency))
         )
     reqs = subprocess.check_output([sys.executable, '-m', 'pip', 'freeze'])
@@ -1558,7 +1673,7 @@ Please run 'pip install -r python/requirements.txt' to make sure you have all th
             re.sub("_|-", '', r.decode().split('==')[0]).lower()
         )
 
-    for dependency in python_dependcies_module:
+    for dependency in python_dependencies_module:
         if dependency.lower() not in installed_packages:
             raise RuntimeError(missing_modules.format(dependency=dependency))
 
@@ -1567,7 +1682,7 @@ def install_cpp_dist_and_build_test(install_dir, lib_test_dir, headers, libs):
     """install cpp distribution and build test target
 
     TODO(huangjiyi):
-    1. This function will be moved when seperating C++ distribution
+    1. This function will be moved when separating C++ distribution
     installation from python package installation.
     2. Reduce the header and library files to be installed.
     """
@@ -1639,7 +1754,7 @@ def check_submodules():
             end = time.time()
             print(f' --- Submodule initialization took {end - start:.2f} sec')
         except Exception:
-            print(' --- Submodule initalization failed')
+            print(' --- Submodule initialization failed')
             print('Please run:\n\tgit submodule update --init --recursive')
             sys.exit(1)
 
@@ -1708,7 +1823,7 @@ def main():
     if env_dict.get("WITH_STRIP") == 'ON':
         command = (
             'find '
-            + paddle_binary_dir
+            + shlex.quote(paddle_binary_dir)
             + '/python/paddle -name "*.so" | xargs -i strip {}'
         )
         if os.system(command) != 0:
@@ -1765,10 +1880,11 @@ def main():
             'Intended Audience :: Science/Research',
             'License :: OSI Approved :: Apache Software License',
             'Programming Language :: C++',
-            'Programming Language :: Python :: 3.7',
             'Programming Language :: Python :: 3.8',
             'Programming Language :: Python :: 3.9',
             'Programming Language :: Python :: 3.10',
+            'Programming Language :: Python :: 3.11',
+            'Programming Language :: Python :: 3.12',
         ],
     )
 

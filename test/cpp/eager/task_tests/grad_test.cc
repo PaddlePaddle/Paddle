@@ -37,7 +37,7 @@ TEST(Grad, SingleNodeEmptyGrad) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
-  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor (output)
   paddle::Tensor output_tensor =
@@ -65,7 +65,7 @@ TEST(Grad, SingleNodeEmptyGrad) {
     // Set grad in/out meta
     node0_ptr->SetDefaultGradInOutMeta();
 
-    // Output_tensor set GradNode、OutRank、StopGradient propertis
+    // Output_tensor set GradNode、OutRank、StopGradient properties
     AutogradMeta* auto_grad_meta = EagerUtils::autograd_meta(&output_tensor);
     auto_grad_meta->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(node0_ptr));
@@ -80,7 +80,7 @@ TEST(Grad, SingleNodeEmptyGrad) {
     auto acc_node_ptr =
         std::make_shared<egr::GradNodeAccumulation>(auto_grad_meta1);
 
-    // input tensor set GradNode、OutRank、StopGradient propertis
+    // input tensor set GradNode、OutRank、StopGradient properties
     auto_grad_meta1->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(acc_node_ptr));
     auto_grad_meta1->SetSingleOutRankWithSlot(0, 0);
@@ -104,7 +104,7 @@ TEST(Grad, SingleNodeCustomGrad) {
 
   // Prepare Inputs
   std::vector<paddle::Tensor> target_tensors;
-  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   paddle::Tensor tensor =
@@ -183,7 +183,7 @@ TEST(Grad, LinearNodes) {
 
   // Prepare Target Tensor
   std::vector<paddle::Tensor> target_tensors;
-  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   paddle::Tensor tensor =
@@ -264,7 +264,7 @@ TEST(Grad, WithAccumulation) {
   eager_test::InitEnv(paddle::platform::CPUPlace());
 
   // Prepare Inputs
-  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   std::vector<paddle::Tensor> target_tensors;

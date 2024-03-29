@@ -88,6 +88,36 @@ int64_t PD_MetaTensorGetDim(const PD_MetaTensor *tensor,
   return cc_tensor->dims()[index];
 }
 
+int64_t PD_MetaTensorGetNumStrides(const PD_MetaTensor *tensor,
+                                   PD_Status *status) {
+  if (status) {
+    if (!tensor) {
+      *status = C_FAILED;
+      return 0;
+    }
+    *status = C_SUCCESS;
+  }
+
+  auto cc_tensor = reinterpret_cast<const phi::MetaTensor *>(tensor);
+  return cc_tensor->strides().size();
+}
+
+int64_t PD_MetaTensorGetStride(const PD_MetaTensor *tensor,
+                               size_t index,
+                               PD_Status *status) {
+  auto cc_tensor = reinterpret_cast<const phi::MetaTensor *>(tensor);
+
+  if (status) {
+    if (!tensor || index >= static_cast<size_t>(cc_tensor->strides().size())) {
+      *status = C_FAILED;
+      return 0;
+    }
+    *status = C_SUCCESS;
+  }
+
+  return cc_tensor->strides()[index];
+}
+
 bool PD_MetaTensorIsValid(const PD_MetaTensor *tensor, PD_Status *status) {
   if (status) {
     if (!tensor) {
@@ -114,7 +144,23 @@ void PD_MetaTensorSetDims(PD_MetaTensor *tensor,
   }
   auto cc_tensor = reinterpret_cast<phi::MetaTensor *>(tensor);
   std::vector<int> shape(dims, dims + ndims);
-  cc_tensor->set_dims(phi::make_ddim(shape));
+  cc_tensor->set_dims(common::make_ddim(shape));
+}
+
+void PD_MetaTensorSetStrides(PD_MetaTensor *tensor,
+                             int64_t nstrides,
+                             const int64_t *strides,
+                             PD_Status *status) {
+  if (status) {
+    if (!tensor) {
+      *status = C_FAILED;
+      return;
+    }
+    *status = C_SUCCESS;
+  }
+  auto cc_tensor = reinterpret_cast<phi::MetaTensor *>(tensor);
+  std::vector<int> shape(strides, strides + nstrides);
+  cc_tensor->set_strides(common::make_ddim(shape));
 }
 
 void PD_MetaTensorSetDataType(PD_MetaTensor *tensor,

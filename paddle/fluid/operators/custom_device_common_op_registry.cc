@@ -120,7 +120,7 @@ class CConcatOpCustomDeviceKernel : public framework::OpKernel<T> {
           reinterpret_cast<void*>(const_cast<T*>(send_buff)),
           recv_buff,
           send_numel,
-          phi::ccl::ToCCLDataType(x->dtype()),
+          x->dtype(),
           comm->GetXcclComm(),
           stream);
     }
@@ -465,10 +465,10 @@ class CSoftmaxWithCrossEntropyGradCustomDeviceKernel
       framework::TensorCopy(
           *softmax, context.GetPlace(), context.device_context(), logit_grad);
     }
-    const auto sofrmax_dims = softmax->dims();
-    const int axis = sofrmax_dims.size() - 1;
-    const int N = phi::funcs::SizeToAxis(axis, sofrmax_dims);
-    const int D = phi::funcs::SizeFromAxis(axis, sofrmax_dims);
+    const auto softmax_dims = softmax->dims();
+    const int axis = softmax_dims.size() - 1;
+    const int N = phi::funcs::SizeToAxis(axis, softmax_dims);
+    const int D = phi::funcs::SizeFromAxis(axis, softmax_dims);
     const auto& label_type = labels->dtype();
 
     if (label_type == phi::DataType::INT32 ||
@@ -514,7 +514,7 @@ class CSoftmaxWithCrossEntropyGradCustomDeviceKernel
       logit_grad
           ->ShareDataWith(*reinterpret_cast<phi::DenseTensor*>(
               logits_grad_out_tensor2.impl().get()))
-          .Resize(sofrmax_dims);
+          .Resize(softmax_dims);
     } else {
       PADDLE_THROW(phi::errors::Unavailable(
           "CustomDevice c_softmax_with_cross_entropy_grad "
@@ -560,7 +560,7 @@ class CAllReduceOpCustomDeviceKernel : public framework::OpKernel<T> {
     int rid = ctx.Attr<int>("ring_id");
 
     auto place = ctx.GetPlace();
-    auto dtype = phi::ccl::ToCCLDataType(in->dtype());
+    auto dtype = in->dtype();
     int64_t numel = in->numel();
     const void* sendbuff = in->data<T>();
     out->Resize(in->dims());
@@ -651,7 +651,7 @@ class CBroadcastOpCustomDeviceKernel : public framework::OpKernel<T> {
     }
 
     int numel = x->numel();
-    auto dtype = phi::ccl::ToCCLDataType(x->dtype());
+    auto dtype = x->dtype();
     if (root == comm->GetRank()) {
       phi::DeviceManager::CCLBroadcast(place.GetDeviceType(),
                                        const_cast<void*>(x->data()),
@@ -678,7 +678,7 @@ class CBroadcastOpCustomDeviceKernel : public framework::OpKernel<T> {
                                        comm->GetXcclComm(),
                                        *stream);
       VLOG(3) << "rank " << comm->GetRank() << " invoke Bcast. received "
-              << phi::product(out->dims());
+              << common::product(out->dims());
     }
     out->set_lod(x->lod());
   }
@@ -712,7 +712,7 @@ class BarrierOpCustomDeviceKernel : public framework::OpKernel<T> {
                                      const_cast<void*>(sendbuff),
                                      recvbuff,
                                      numel,
-                                     phi::ccl::ToCCLDataType(in->dtype()),
+                                     in->dtype(),
                                      phi::ccl::CCLReduceOp::SUM,
                                      comm->GetXcclComm(),
                                      *stream);
@@ -853,7 +853,7 @@ class AssignPosCustomDeviceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     // assign pos decides which tokens should be fetched belong to specially
-    // counter orderingly.
+    // counter orderly.
     auto cum_count = context.Input<phi::DenseTensor>(
         "cum_count");  // (counter number) int32 | int64
     auto numbers = context.Input<phi::DenseTensor>(
@@ -956,7 +956,7 @@ class GlobalScatterOpCustomDeviceKernel : public framework::OpKernel<T> {
       for (auto i = 0; i < global_count_len; ++i) {
         fwd_count += cpu_global_count_data[i];
       }
-      framework::DDim out_dims = phi::make_ddim({fwd_count, in_feat});
+      framework::DDim out_dims = common::make_ddim({fwd_count, in_feat});
       int64_t* expert_ptr = new int64_t[n_expert * nranks];
       expert_ptr[0] = 0;
       auto tot_experts = n_expert * nranks;
@@ -1038,7 +1038,7 @@ class GlobalScatterOpCustomDeviceKernel : public framework::OpKernel<T> {
       for (auto i = 0; i < global_count_len; ++i) {
         fwd_count += cpu_global_count_data[i];
       }
-      framework::DDim out_dims = phi::make_ddim({fwd_count, in_feat});
+      framework::DDim out_dims = common::make_ddim({fwd_count, in_feat});
       int64_t* expert_ptr = new int64_t[n_expert * nranks];
       expert_ptr[0] = 0;
       auto tot_experts = n_expert * nranks;
@@ -1059,7 +1059,7 @@ class GlobalScatterOpCustomDeviceKernel : public framework::OpKernel<T> {
                 place.GetDeviceType(),
                 reinterpret_cast<void*>(recv_buf + recv_ptr * in_feat),
                 cpu_global_count_data[idx] * in_feat,
-                phi::ccl::ToCCLDataType(x->dtype()),
+                x->dtype(),
                 j,
                 comm->GetXcclComm(),
                 *stream);
@@ -1075,7 +1075,7 @@ class GlobalScatterOpCustomDeviceKernel : public framework::OpKernel<T> {
                   const_cast<void*>(reinterpret_cast<const void*>(
                       send_buf + expert_ptr[idx] * in_feat)),
                   cpu_local_count_data[idx] * in_feat,
-                  phi::ccl::ToCCLDataType(x->dtype()),
+                  x->dtype(),
                   j,
                   comm->GetXcclComm(),
                   *stream);
@@ -1098,7 +1098,7 @@ class GlobalScatterOpCustomDeviceKernel : public framework::OpKernel<T> {
                 place.GetDeviceType(),
                 reinterpret_cast<void*>(recv_buf + recv_ptr * in_feat),
                 cpu_global_count_data[idx] * in_feat,
-                phi::ccl::ToCCLDataType(x->dtype()),
+                x->dtype(),
                 j,
                 comm->GetXcclComm(),
                 *stream);
@@ -1170,7 +1170,7 @@ class GlobalGatherOpCustomDeviceKernel : public framework::OpKernel<T> {
       for (auto i = 0; i < local_count_len; ++i) {
         fwd_count += cpu_local_count_data[i];
       }
-      framework::DDim out_dims = phi::make_ddim({fwd_count, in_feat});
+      framework::DDim out_dims = common::make_ddim({fwd_count, in_feat});
       int64_t* expert_ptr = new int64_t[n_expert * nranks];
       expert_ptr[0] = 0;
       auto tot_experts = n_expert * nranks;
@@ -1250,7 +1250,7 @@ class GlobalGatherOpCustomDeviceKernel : public framework::OpKernel<T> {
       for (auto i = 0; i < local_count_len; ++i) {
         fwd_count += cpu_local_count_data[i];
       }
-      framework::DDim out_dims = phi::make_ddim({fwd_count, in_feat});
+      framework::DDim out_dims = common::make_ddim({fwd_count, in_feat});
       int64_t* expert_ptr = new int64_t[n_expert * nranks];
       expert_ptr[0] = 0;
       auto tot_experts = n_expert * nranks;
@@ -1269,7 +1269,7 @@ class GlobalGatherOpCustomDeviceKernel : public framework::OpKernel<T> {
             phi::DeviceManager::CCLRecv(place.GetDeviceType(),
                                         recv_buf + expert_ptr[idx] * in_feat,
                                         cpu_local_count_data[idx] * in_feat,
-                                        phi::ccl::ToCCLDataType(x->dtype()),
+                                        x->dtype(),
                                         j,
                                         comm->GetXcclComm(),
                                         *stream);
@@ -1284,7 +1284,7 @@ class GlobalGatherOpCustomDeviceKernel : public framework::OpKernel<T> {
                   const_cast<void*>(reinterpret_cast<const void*>(
                       send_buf + send_ptr * in_feat)),
                   cpu_global_count_data[idx] * in_feat,
-                  phi::ccl::ToCCLDataType(x->dtype()),
+                  x->dtype(),
                   j,
                   comm->GetXcclComm(),
                   *stream);
@@ -1305,7 +1305,7 @@ class GlobalGatherOpCustomDeviceKernel : public framework::OpKernel<T> {
             phi::DeviceManager::CCLRecv(place.GetDeviceType(),
                                         recv_buf + expert_ptr[idx] * in_feat,
                                         cpu_local_count_data[idx] * in_feat,
-                                        phi::ccl::ToCCLDataType(x->dtype()),
+                                        x->dtype(),
                                         j,
                                         comm->GetXcclComm(),
                                         *stream);

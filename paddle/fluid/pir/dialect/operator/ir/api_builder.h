@@ -14,28 +14,25 @@
 
 #pragma once
 #include <memory>
+#include <stack>
 
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/macros.h"
-#include "paddle/pir/core/parameter.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/common/macros.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/parameter.h"
+#include "paddle/pir/include/core/program.h"
 
 namespace paddle {
 namespace dialect {
 ///
-/// \brief APIBuilder is used in IR API for building op
+/// \brief ApiBuilder is used in IR API for building op
 ///
-class APIBuilder {
+class ApiBuilder {
  public:
-  static APIBuilder& Instance() {
-    static APIBuilder api_builder;
+  static ApiBuilder& Instance() {
+    static ApiBuilder api_builder;
     return api_builder;
   }
   void SetProgram(pir::Program* program);
-
-  /// Set the insertion point to the specified operation, which will cause
-  /// subsequent insertions to go right before it.
-  void SetInsertionPoint(pir::Operation* op);
 
   void ResetInsertionPointToStart();
 
@@ -46,15 +43,42 @@ class APIBuilder {
   void SetParameter(const std::string& name,
                     std::unique_ptr<pir::Parameter>&& parameter);
 
-  std::shared_ptr<pir::Builder> GetBuilder() { return builder_; }
+  const std::shared_ptr<pir::Builder>& GetBuilder() const { return builder_; }
+
+  const pir::InsertionPoint& GetCurrentInsertionPoint() const {
+    return builder_->insertion_point();
+  }
+
+  /// Set the insertion point to the specified insertion_point.
+  void SetInsertionPoint(const pir::InsertionPoint& insertion_point) {
+    builder_->set_insertion_point(insertion_point);
+  }
+
+  /// Set the insertion point to the specified operation, which will cause
+  /// subsequent insertions to go right before it.
+  void SetInsertionPoint(pir::Operation* op) {
+    builder_->set_insertion_point(op);
+  }
+  /// Set the insertion point to the end of specified block.
+  void SetInsertionPointToBlockEnd(pir::Block* block) {
+    builder_->SetInsertionPointToBlockEnd(block);
+  }
+
+  // push current insertion point to the stack.
+  void PushInsertionPoint() {
+    insertion_point_stack_.push(builder_->insertion_point());
+  }
+  // pop the insertion point and set it to the current insertion point.
+  void LoadInsertionPoint();
 
  private:
-  APIBuilder();
+  ApiBuilder();
 
-  DISABLE_COPY_AND_ASSIGN(APIBuilder);
+  DISABLE_COPY_AND_ASSIGN(ApiBuilder);
 
   pir::IrContext* ctx_;
   std::shared_ptr<pir::Builder> builder_;
+  std::stack<pir::InsertionPoint> insertion_point_stack_;
 };
 
 }  // namespace dialect

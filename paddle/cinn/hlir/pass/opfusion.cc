@@ -26,8 +26,8 @@ namespace cinn {
 namespace hlir {
 namespace pass {
 
-using common::GraphNode;
-using common::Type;
+using cinn::common::GraphNode;
+using cinn::common::Type;
 using framework::Graph;
 using framework::Node;
 using framework::NodeData;
@@ -83,7 +83,7 @@ class DomTree {
       const std::vector<GraphNode*>& nodes) {
     int size = nodes.size();
     dom_nodes_.resize(nodes.size());
-    // construct postdom tree, reverse topological_order
+    // construct post dom tree, reverse topological_order
     for (int i = size - 1; i >= 0; i--) {
       auto* dom_node = CreateDomNode(nodes[i]);
       CHECK(dom_node);
@@ -160,7 +160,7 @@ class DomTree {
           parent = dom_node;
           CHECK(parent);
         } else {
-          // if the out_var links to more than one opnode, then we need to find
+          // if the out_var links to more than one op_node, then we need to find
           // the LCA
           parent = LCA(parent, dom_node, pattern);
         }
@@ -170,7 +170,7 @@ class DomTree {
         VLOG(2) << sink->id() << "'s op pattern is " << op_pattern;
         if (op_node->attrs.attr_store.count("pre_run") &&
             absl::get<bool>(op_node->attrs.attr_store["pre_run"])) {
-          // not fuse pre_run opnode
+          // not fuse pre_run op_node
           op_pattern = framework::kNonFusible;
           VLOG(3) << op_node->op()->name << " do pre_run and not fuse";
         }
@@ -203,8 +203,8 @@ class DomTree {
 struct GroupNode {
   GroupNode* parent{nullptr};
   OpPatternKind pattern;
-  common::GraphNode* ref_node{nullptr};
-  common::GraphNode* master_node{nullptr};
+  cinn::common::GraphNode* ref_node{nullptr};
+  cinn::common::GraphNode* master_node{nullptr};
   int index{0};
   int nodes_count{1};
   int op_nodes_count{0};
@@ -264,7 +264,7 @@ class GraphPartition {
         auto pattern = op_pattern_dict[op_node->op()];
         if (op_node->attrs.attr_store.count("pre_run") &&
             absl::get<bool>(op_node->attrs.attr_store["pre_run"])) {
-          // not fuse pre_run opnode
+          // not fuse pre_run op_node
           pattern = framework::kNonFusible;
           VLOG(3) << op_node->op()->name << " do pre_run and not fuse";
         }
@@ -412,7 +412,8 @@ class GraphPartition {
       parent->master_node = child->master_node;
       if (child->pattern > framework::kBroadcast &&
           parent->pattern > framework::kBroadcast) {
-        LOG(FATAL) << "can't fuse 2 groups both with complex pattern";
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "can't fuse 2 groups both with complex pattern"));
       } else {
         parent->pattern =
             child->pattern > parent->pattern ? child->pattern : parent->pattern;
@@ -518,7 +519,7 @@ class GraphPartition {
       }
     }
   }
-  void SplitGroups(const std::vector<common::GraphNode*>& graph_nodes) {
+  void SplitGroups(const std::vector<cinn::common::GraphNode*>& graph_nodes) {
     // split groups sorted by topo order
     CHECK_EQ(graph_nodes.size(), group_nodes_.size());
     absl::flat_hash_map<int, std::vector<Node*>> group_maps;
@@ -549,7 +550,7 @@ class GraphPartition {
 void OpFusionPass(Graph* graph) {
   auto store_nodes = std::get<0>(graph->topological_order());
   int node_size = store_nodes.size();
-  // construct postdom tree, reverse topological_order
+  // construct post dom tree, reverse topological_order
   DomTree tree;
   auto& dom_nodes = tree.CreatePostDomTree(store_nodes);
   // graph partition

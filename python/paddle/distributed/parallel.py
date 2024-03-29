@@ -48,9 +48,12 @@ from paddle.distributed.fleet.base.private_helper_function import (
 from paddle.distributed.fleet.launch_utils import check_backend
 
 # (TODO: GhostScreaming) It will be removed later.
-from paddle.framework import _set_expected_place
-from paddle.framework import base as imperative_base
-from paddle.framework import core, in_dynamic_mode
+from paddle.framework import (
+    _set_expected_place,
+    base as imperative_base,
+    core,
+    in_dynamic_mode,
+)
 from paddle.nn.layer import layers
 from paddle.utils import deprecated
 
@@ -288,7 +291,7 @@ class DataParallel(layers.Layer):
         ``PyLayer`` is not supported in DataParallel. To solve problems of this kind,
         it's recommended to skip gradient synchronization among multiple cards by 'no_sync',
         and manually implement 'all_reduce' before model optimization. There is an example
-        showing specific implemetation processing.
+        showing specific implementation processing.
 
     Examples:
 
@@ -564,7 +567,7 @@ class DataParallel(layers.Layer):
             destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
             include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
 
-        Retruns:
+        Returns:
             dict: a dict contains all the parameters and persistable buffers.
 
         Examples:
@@ -857,13 +860,13 @@ class ParallelEnv:
         Its value is equal to the value of the environment variable ``PADDLE_PG_TIMEOUT`` . The default value is 30 minutes.
 
         Examples:
-          .. code-block:: python
+            .. code-block:: python
 
-            # execute this command in terminal: export PADDLE_PG_TIMEOUT=1800000
-            import paddle.distributed as dist
+                >>> # execute this command in terminal: export PADDLE_PG_TIMEOUT=1800000
+                >>> import paddle.distributed as dist
 
-            env = dist.ParallelEnv()
-            # the pg_timeout of process group 1800000
+                >>> env = dist.ParallelEnv()
+                >>> # the pg_timeout of process group 1800000
         """
         return self._pg_timeout
 
@@ -1008,7 +1011,7 @@ def init_parallel_env():
         )
         return
     # NOTE(xiongkun): support cpu gloo only, add this environment variable to
-    #                 enable cpu only gloo prarllel training)
+    #                 enable cpu only gloo parallel training)
     backend = os.environ.get('PADDLE_DISTRI_BACKEND', 'auto')
     is_cpu_only = _is_cpuonly(backend)
     # 1. gpu xpu check, must be gpu or xpu,
@@ -1116,15 +1119,22 @@ def init_parallel_env():
         # TODO(mine): support XPU and other backends.
         if backend in ["nccl", 'xccl', 'bkcl']:
             core.CommContextManager.set_device_id(parallel_env.device_id)
+
+        if int(os.getenv("FLAGS_eager_communication_connection", 0)) == 1:
+            paddle.distributed.all_reduce(
+                paddle.zeros([1], dtype=paddle.float32),
+                group=group,
+                sync_op=True,
+            )
         return group
 
     node_num = {i.split(":")[0] for i in parallel_env.trainer_endpoints}
-    # 3: init gloo context (step 1: httpsever start)
+    # 3: init gloo context (step 1: httpserver start)
     init_gloo = int(os.getenv("PADDLE_WITH_GLOO", "0"))
     if is_cpu_only or init_gloo or backend == "heter":
         ep_rank_0 = parallel_env.trainer_endpoints[0].split(":")
         manager = Manager()
-        # glboal dict to store status
+        # global dict to store status
         http_server_d = manager.dict()
         http_server_d["running"] = False
         if parallel_env.rank == 0:
@@ -1177,7 +1187,7 @@ def init_parallel_env():
     parallel_helper._init_parallel_ctx()
 
     # 5: init gloo context (step 2: gloo init)
-    # dividing init_gloo into two part beacause nccl and gloo
+    # dividing init_gloo into two part because nccl and gloo
     # are separately looking for free ports which sometimes
     # leads to port-conflict.
     if (is_cpu_only or backend == "heter") and parallel_env.rank == 0:

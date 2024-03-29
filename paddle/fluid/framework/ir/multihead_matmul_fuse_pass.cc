@@ -452,7 +452,7 @@ PDNode* MultiHeadMatmulPattern::operator()() {
 }
 
 PDNode* MultiHeadMatmulV3Pattern::operator()() {
-  // Add mul op to support huggingface onnx model convertsion by x2paddle
+  // Add mul op to support huggingface onnx model conversion by x2paddle
   std::unordered_set<std::string> matmul_ops{"mul", "matmul", "matmul_v2"};
   auto* input0 = pattern->NewNode(input0_repr());
   input0->assert_is_ops_input(matmul_ops);
@@ -653,8 +653,8 @@ inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
   auto* bv_data = bv_tensor->mutable_data<T>(platform::CPUPlace());
 
   auto combined_w_dims =
-      phi::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
-  auto combined_bias_dims = phi::make_ddim({3, bq_tensor->dims()[0]});
+      common::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
+  auto combined_bias_dims = common::make_ddim({3, bq_tensor->dims()[0]});
 
   phi::DenseTensor tmp_combined_w_tensor;
   tmp_combined_w_tensor.Resize(combined_w_dims);
@@ -709,13 +709,13 @@ void MultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
 
 MultiHeadMatmulV2FusePass::MultiHeadMatmulV2FusePass() {
   AddOpCompat(OpCompat("mul"))
-      .AddInput("X")  // the shape shoule be (B, S, N*H)
+      .AddInput("X")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
-      .AddInput("Y")  // the shape shoule be (N*H, N*H)
+      .AddInput("Y")  // the shape should be (N*H, N*H)
       .IsTensor()
       .End()
-      .AddOutput("Out")  // the shape shoule be (B, S, N*H)
+      .AddOutput("Out")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
       .AddAttr("x_num_col_dims")
@@ -1177,13 +1177,13 @@ void MultiHeadMatmulV2FusePass::ApplyImpl(Graph* graph) const {
 
 MultiHeadMatmulV3FusePass::MultiHeadMatmulV3FusePass() {
   AddOpCompat(OpCompat("mul"))
-      .AddInput("X")  // the shape shoule be (B, S, N*H)
+      .AddInput("X")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
-      .AddInput("Y")  // the shape shoule be (N*H, N*H)
+      .AddInput("Y")  // the shape should be (N*H, N*H)
       .IsTensor()
       .End()
-      .AddOutput("Out")  // the shape shoule be (B, S, N*H)
+      .AddOutput("Out")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
       .AddAttr("x_num_col_dims")
@@ -1362,8 +1362,8 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
     auto* bv_data = bv_tensor->mutable_data<float>(platform::CPUPlace());
 
     auto combined_w_dims =
-        phi::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
-    auto combined_bias_dims = phi::make_ddim({3, bq_tensor->dims()[0]});
+        common::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
+    auto combined_bias_dims = common::make_ddim({3, bq_tensor->dims()[0]});
 
     // reuse the mul0_w and eltadd_0_b nodes for the combined nodes.
     auto* combined_w_desc = mul0_w->Var();

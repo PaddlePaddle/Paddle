@@ -45,7 +45,7 @@ void LayerNormGradKernel(const Context &dev_ctx,
   auto *d_y = &out_grad;
 
   const auto &x_dims = x.dims();
-  auto matrix_dim = phi::flatten_to_2d(x_dims, begin_norm_axis);
+  auto matrix_dim = common::flatten_to_2d(x_dims, begin_norm_axis);
   int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);
   int64_t feature_size = static_cast<int64_t>(matrix_dim[1]);
 

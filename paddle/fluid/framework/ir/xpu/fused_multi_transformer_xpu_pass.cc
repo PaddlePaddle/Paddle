@@ -419,6 +419,7 @@ int FusedMultiTransformerXPUPass::FusedMultiTransformerXPUQuant(
         Node* w_node = FindNodeWithName(graph, w_name);
         Node* w_intx = nullptr;
         Node* w_max = nullptr;
+        Node* scale_max = nullptr;
         PADDLE_ENFORCE_NE(
             w_node,
             nullptr,
@@ -430,6 +431,7 @@ int FusedMultiTransformerXPUPass::FusedMultiTransformerXPUQuant(
                                        w_node,
                                        &w_intx,
                                        &w_max,
+                                       &scale_max,
                                        need_transpose,
                                        std::vector<float>({}));
         } else {
@@ -439,6 +441,7 @@ int FusedMultiTransformerXPUPass::FusedMultiTransformerXPUQuant(
                                         w_node,
                                         &w_intx,
                                         &w_max,
+                                        &scale_max,
                                         need_transpose,
                                         std::vector<float>({}));
         }
@@ -563,7 +566,7 @@ int FusedMultiTransformerXPUPass::FusedMultiTransformerXPUQuant(
       // Update dst var_desc in block
       VarDesc dst_desc(max_buffer_name);
       dst_desc.SetPersistable(true);
-      dst_desc.SetShape(vectorize(max_buffer_tensor.dims()));
+      dst_desc.SetShape(common::vectorize(max_buffer_tensor.dims()));
       dst_desc.SetDataType(
           framework::TransToProtoVarType(max_buffer_tensor.dtype()));
       max_buffer_node = graph->CreateVarNode(&dst_desc);

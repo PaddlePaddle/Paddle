@@ -22,17 +22,16 @@ from op_test import OpTest
 import paddle
 import paddle.nn.functional as F
 from paddle import tensor
-from paddle.base.framework import default_main_program
 from paddle.incubate.nn import FusedMultiTransformer
 from paddle.incubate.nn.functional import fused_multi_transformer
 from paddle.nn.layer.common import Dropout, Linear
 from paddle.nn.layer.norm import LayerNorm
 from paddle.nn.layer.transformer import _convert_attention_mask
+from paddle.pir_utils import test_with_pir_api
 
 seed = 42
 
 random.seed(seed)
-default_main_program().random_seed = seed
 np.random.seed(seed)
 paddle.seed(seed)
 
@@ -60,7 +59,7 @@ class TestFusedMultiTransformerOp(OpTest):
         self.__class__.no_need_check_grad = False
 
         bias_attr = paddle.base.ParamAttr(
-            initializer=paddle.paddle.nn.initializer.Constant(value=0.0005)
+            initializer=paddle.nn.initializer.Constant(value=0.0005)
         )
         self.q_proj = Linear(
             self.embed_dim,
@@ -1001,19 +1000,20 @@ class TestFusedMultiTransformerOp(OpTest):
         }
         if self.has_pre_cache:
             out = exe.run(
-                paddle.base.default_main_program(),
+                paddle.static.default_main_program(),
                 feed=feed_data,
-                fetch_list=[final_out[0].name],
+                fetch_list=[final_out[0]],
             )
         else:
             out = exe.run(
-                paddle.base.default_main_program(),
+                paddle.static.default_main_program(),
                 feed=feed_data,
-                fetch_list=[final_out.name],
+                fetch_list=[final_out],
             )
         paddle.disable_static()
         return out
 
+    @test_with_pir_api
     def test_fused_multi_transformer_op(self):
         if self.has_cache_kv and not self.gen_cache_kv and self.remove_padding:
             final_out_ref = self.GetVariableDecoderBaselineOut()
@@ -1383,18 +1383,19 @@ class TestFusedMultiTransformerOpPreCacheStatic1(TestFusedMultiTransformerOp):
         self.has_attn_mask = False
         self.x_type = np.float32
         self.weight_attr = paddle.ParamAttr(
-            initializer=paddle.paddle.nn.initializer.Constant(0.0)
+            initializer=paddle.nn.initializer.Constant(0.0)
         )
         self.bias_attr = paddle.ParamAttr(
-            initializer=paddle.paddle.nn.initializer.Constant(0.0005)
+            initializer=paddle.nn.initializer.Constant(0.0005)
         )
         self.ln_w_attr = paddle.ParamAttr(
-            initializer=paddle.paddle.nn.initializer.Constant(1.0)
+            initializer=paddle.nn.initializer.Constant(1.0)
         )
         self.ln_b_attr = paddle.ParamAttr(
-            initializer=paddle.paddle.nn.initializer.Constant(0.0)
+            initializer=paddle.nn.initializer.Constant(0.0)
         )
 
+    @test_with_pir_api
     def test_fused_multi_transformer_op(self):
         self.has_pre_cache = True
         self.remove_padding = False

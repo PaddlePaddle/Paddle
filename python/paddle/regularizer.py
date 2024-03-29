@@ -13,9 +13,9 @@
 # limitations under the License.
 
 
-from paddle import _C_ops
+from paddle import _C_ops, pir
 from paddle.base import framework
-from paddle.base.framework import in_dygraph_mode
+from paddle.base.framework import in_dynamic_or_pir_mode
 
 __all__ = ['L1Decay', 'L2Decay']
 
@@ -123,10 +123,12 @@ class L1Decay(WeightDecayRegularizer):
         Returns:
             new variable for weight decay
         """
-        assert isinstance(param, framework.Variable)
-        assert isinstance(block, framework.Block)
+        assert isinstance(
+            param, (framework.Variable, pir.Value, pir.core.ParameterMeta)
+        )
+        assert isinstance(block, (framework.Block, pir.Block))
 
-        if in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             sign = _C_ops.sign(param)
             return _C_ops.scale(sign, self._coeff, 0.0, True)
         else:
@@ -233,10 +235,12 @@ class L2Decay(WeightDecayRegularizer):
         Returns:
             new variable for weight decay
         """
-        assert isinstance(param, framework.Variable)
-        assert isinstance(block, framework.Block)
+        assert isinstance(
+            param, (framework.Variable, pir.Value, pir.core.ParameterMeta)
+        )
+        assert isinstance(block, (framework.Block, pir.Block))
 
-        if in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             return _C_ops.scale(param, self._coeff, 0.0, True)
         else:
             decay = block.create_var(

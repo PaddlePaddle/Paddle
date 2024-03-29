@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops
+from paddle import _C_ops, pir
 
 from ...base import core, framework, unique_name
 from ...base.data_feeder import check_variable_and_dtype
-from ...base.framework import _current_expected_place, in_dygraph_mode
+from ...base.framework import (
+    _current_expected_place,
+    in_dygraph_mode,
+    in_pir_mode,
+)
 from .initializer import Initializer
 
 __all__ = []
@@ -69,9 +73,12 @@ class UniformInitializer(Initializer):
         Returns:
             The initialization op
         """
+        assert not (
+            isinstance(var, framework.EagerParamBase) and var.is_dist()
+        ), "Currently, uniform initializer not support lazy init for dist param."
         block = self._check_block(block)
 
-        assert isinstance(block, framework.Block)
+        assert isinstance(block, (framework.Block, pir.Block))
         if not in_dygraph_mode():
             check_variable_and_dtype(
                 var,
@@ -114,6 +121,25 @@ class UniformInitializer(Initializer):
             else:
                 out_var._share_underline_tensor_to(var)
             return None
+        elif in_pir_mode():
+            if var.dtype == core.DataType.FLOAT16:
+                out_dtype = core.DataType.FLOAT32
+            else:
+                out_dtype = var.dtype
+            out_var = _C_ops.uniform(
+                var.shape,
+                out_dtype,
+                self._low,
+                self._high,
+                self._seed,
+                _current_expected_place(),
+            )
+            if (
+                var.dtype == core.DataType.FLOAT16
+                and out_var.dtype != core.DataType.FLOAT16
+            ):
+                return _C_ops.cast(out_var, var.dtype)
+            return out_var
         else:
             op = block.append_op(
                 type="uniform_random",

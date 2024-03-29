@@ -68,7 +68,7 @@ class FusedEmbeddingSeqPoolOp : public framework::OperatorWithKernel {
 
     // in compile time, the shape from Ids -> output
     // should be [-1, 1] -> [-1, embedding_size]
-    ctx->SetOutputDim("Out", phi::make_ddim({-1, last_dim}));
+    ctx->SetOutputDim("Out", common::make_ddim({-1, last_dim}));
   }
 
  protected:

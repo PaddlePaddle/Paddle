@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from functools import reduce
+from typing import List, Tuple
+
+import numpy as np
+
 import paddle
 from paddle.framework import core
 
@@ -114,7 +119,9 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
     return x
 
 
-def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
+def shard_op(
+    op, process_mesh=None, in_shard_specs=None, out_shard_specs=None, **kwargs
+):
     """
     Shard an operation on a process mesh according to its input and output shard specification.
 
@@ -194,7 +201,7 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
             else:
                 out_dims_mappings.append(None)
     op = DistributedOperatorHelper(
-        op, process_mesh, in_dims_mappings, out_dims_mappings
+        op, process_mesh, in_dims_mappings, out_dims_mappings, kwargs
     )
     return op
 
@@ -211,28 +218,17 @@ def recompute(op):
             self._op = op
 
         def __call__(self, *args, **kwargs):
-            default_prog = paddle.static.default_main_program()
-            cur_block = default_prog.current_block()
-            op_size = len(cur_block.ops)
-            output = self._op(*args, **kwargs)
-            new_op_size = len(cur_block.ops)
-
-            for idx in range(op_size, new_op_size):
-                op = cur_block.ops[idx]
-                if op.has_attr(
-                    "op_namescope"
-                ) and 'auto_parallel/exclude_rc' in op.attr("op_namescope"):
-                    op._set_attr(
-                        'op_namescope',
-                        "/auto_parallel/rc_"
-                        + str(_g_recompute_idx)
-                        + "_exclude_rc",
+            with paddle.static.name_scope(
+                f'/auto_parallel/rc_{_g_recompute_idx}'
+            ):
+                if paddle.base.dygraph.base.in_to_static_mode():
+                    output = (
+                        paddle.jit.dy2static.convert_call_func.convert_call(
+                            self._op
+                        )(*args, **kwargs)
                     )
                 else:
-                    op._set_attr(
-                        'op_namescope',
-                        '/auto_parallel/rc_' + str(_g_recompute_idx),
-                    )
+                    output = self._op(*args, **kwargs)
 
             return output
 
@@ -241,9 +237,9 @@ def recompute(op):
 
 def exclude_ops_in_recompute(run_function):
     """
-    Exclude some operators in recompute segements.
+    Exclude some operators in recompute segments.
         Args:
-        run_function (callabe): The callabe function to be excluded.
+        run_function (callable): The callable function to be excluded.
 
     Returns:
         ExcludeOperator: The callable object.
@@ -255,15 +251,15 @@ def exclude_ops_in_recompute(run_function):
             self._run_function = run_function
 
         def __call__(self, *args, **kwargs):
-            default_prog = paddle.static.default_main_program()
-            cur_block = default_prog.current_block()
-            op_size = len(cur_block.ops)
-            output = self._run_function(*args, **kwargs)
-            new_op_size = len(cur_block.ops)
-
-            for idx in range(op_size, new_op_size):
-                op = cur_block.ops[idx]
-                op._set_attr('op_namescope', "/auto_parallel/exclude_rc")
+            with paddle.static.name_scope('/exclude_rc'):
+                if paddle.base.dygraph.base.in_to_static_mode():
+                    output = (
+                        paddle.jit.dy2static.convert_call_func.convert_call(
+                            self._run_function
+                        )(*args, **kwargs)
+                    )
+                else:
+                    output = self._run_function(*args, **kwargs)
 
             return output
 
@@ -315,3 +311,33 @@ def fetch(tensor, name=None, logging=False):
     add_to_collection(CollectionNames.FETCHES, tensor, name)
     if logging:
         add_to_collection(CollectionNames.LOGGING, tensor, name)
+
+
+_g_mesh = None
+
+
+def get_mesh():
+    global _g_mesh
+    return _g_mesh
+
+
+def set_mesh(mesh):
+    global _g_mesh
+    _g_mesh = mesh
+
+
+def create_mesh(mesh_dims: List[Tuple[str, int]]):
+    """
+    Create a global process_mesh for auto parallel.
+
+    Args:
+        mesh_dims (list[tuple[str, int]]): A list of tuple, each element is (dim_name, dim_degree).
+    """
+    global _g_mesh
+    dim_names = [mesh_dim[0] for mesh_dim in mesh_dims]
+    mesh_shape = [mesh_dim[1] for mesh_dim in mesh_dims]
+    mesh_arr = np.arange(0, reduce(lambda x, y: x * y, mesh_shape, 1)).reshape(
+        mesh_shape
+    )
+    _g_mesh = ProcessMesh(mesh_arr, dim_names)
+    return _g_mesh

@@ -90,7 +90,7 @@ void recompute_bias_and_weights(const Scope* scope,
   auto* weights =
       scope->FindVar(conv_weight->Name())->GetMutable<phi::DenseTensor>();
   auto weights_shape = weights->dims();
-  auto weights_shape_2d = phi::flatten_to_2d(weights_shape, 1);
+  auto weights_shape_2d = common::flatten_to_2d(weights_shape, 1);
   auto* weights_data = weights->mutable_data<float>(phi::CPUPlace());
 
   EigenMatrixArrayMap weights_array_2d(
@@ -266,7 +266,7 @@ void ConvAffineChannelFusePass::FuseConvAffineChannel(
     VarDesc eltwise_y_in_desc(
         patterns::PDNodeName(name_scope_, "eltwise_y_in"));
     // Set shape && datatype manually
-    eltwise_y_in_desc.SetShape(phi::vectorize(ac_bias_tensor->dims()));
+    eltwise_y_in_desc.SetShape(common::vectorize(ac_bias_tensor->dims()));
     eltwise_y_in_desc.SetDataType(
         framework::TransToProtoVarType(ac_bias_tensor->dtype()));
     eltwise_y_in_desc.SetLoDLevel(ac_bias->Var()->GetLoDLevel());

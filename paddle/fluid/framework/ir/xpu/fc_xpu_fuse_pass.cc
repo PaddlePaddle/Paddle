@@ -55,7 +55,6 @@ struct FcXPUPattern : public PatternBase {
   PATTERN_DECL_NODE(act);
   // declare variable node's name
   PATTERN_DECL_NODE(mul_x);
-  PATTERN_DECL_NODE(mul_w);
   PATTERN_DECL_NODE(mul_out);
   PATTERN_DECL_NODE(bias);
   PATTERN_DECL_NODE(add_out);
@@ -91,12 +90,6 @@ FcXPUPattern::FcXPUPattern(PDPattern* pattern,
   auto* mul_x = pattern->NewNode(mul_x_repr())
                     ->assert_is_op_input(mul_type_, "X")
                     ->assert_var_not_persistable();
-  auto* mul_w = pattern->NewNode(mul_w_repr())
-                    ->assert_is_op_input(mul_type_, "Y")
-                    ->assert_is_persistable_var()
-                    ->assert_more([](Node* node) {
-                      return node->Var()->GetShape().size() == 2;
-                    });
   auto* mul =
       pattern->NewNode(mul_repr())
           ->assert_is_op(mul_type_)
@@ -114,7 +107,7 @@ FcXPUPattern::FcXPUPattern(PDPattern* pattern,
   auto* mul_out = pattern->NewNode(mul_out_repr())
                       ->assert_is_op_output(mul_type_, "Out")
                       ->assert_var_not_persistable();
-  mul->LinksFrom({mul_x, mul_w}).LinksTo({mul_out});
+  mul->LinksFrom({mul_x}).LinksTo({mul_out});
   PDNode* bias = nullptr;
   PDNode* add = nullptr;
   PDNode* add_out = nullptr;
@@ -283,8 +276,56 @@ class FcXPUFusePass : public FusePassBase {
       std::string pattern_node_name,
       std::string node_name) const;
 
+  void CreateTheReplicatedWeights(
+      ir::Graph* graph,
+      Scope* scope,
+      BlockDesc* block,
+      const std::map<std::string, std::map<std::string, Node*>>& nodes_map)
+      const;
+
   const std::string name_scope_{"fc_xpu_fuse_pass"};
 };
+
+void FcXPUFusePass::CreateTheReplicatedWeights(
+    ir::Graph* graph,
+    Scope* scope,
+    BlockDesc* block,
+    const std::map<std::string, std::map<std::string, Node*>>& nodes_map)
+    const {
+  // Get Node
+  auto* mul = GetNodeFromNodesMap(nodes_map, "mul", "mul");
+  PADDLE_ENFORCE_EQ(
+      mul != nullptr,
+      true,
+      platform::errors::InvalidArgument("mul node ptr can not be null"));
+  auto mul_w_name = mul->Op()->Input("Y")[0];
+  std::string replicated_w_name = mul_w_name + "_copy_" +
+                                  std::to_string(block->ID()) + "_" +
+                                  std::to_string(mul->id());
+  auto* replicated_w_var = scope->FindVar(replicated_w_name);
+  if (replicated_w_var == nullptr) {
+    auto* filter_tensor =
+        scope->FindVar(mul_w_name)->GetMutable<phi::DenseTensor>();
+    phi::DenseTensor replicated_filter_tensor;
+    Assign(*filter_tensor, &replicated_filter_tensor);
+
+    VarDesc replicated_filter_desc(replicated_w_name);
+    replicated_filter_desc.SetPersistable(true);
+    replicated_filter_desc.SetShape(
+        common::vectorize(replicated_filter_tensor.dims()));
+    replicated_filter_desc.SetDataType(
+        framework::TransToProtoVarType(replicated_filter_tensor.dtype()));
+    graph->CreateVarNode(&replicated_filter_desc);
+    auto* block_replicated_filter_desc = block->Var(replicated_w_name);
+    block_replicated_filter_desc->SetPersistable(
+        replicated_filter_desc.Persistable());
+    block_replicated_filter_desc->SetShape(replicated_filter_desc.GetShape());
+    block_replicated_filter_desc->SetDataType(
+        replicated_filter_desc.GetDataType());
+    Assign(replicated_filter_tensor,
+           scope->Var(replicated_w_name)->GetMutable<phi::DenseTensor>());
+  }
+}
 
 Node* FcXPUFusePass::GetNodeFromNodesMap(
     const std::map<std::string, std::map<std::string, Node*>>& nodes_map,
@@ -353,16 +394,16 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
       mul != nullptr,
       true,
       platform::errors::InvalidArgument("mul node ptr can not be null"));
-  auto* mul_w = GetNodeFromNodesMap(nodes_map, "mul", "mul_w");
-  PADDLE_ENFORCE_EQ(
-      mul_w != nullptr,
-      true,
-      platform::errors::InvalidArgument("mul_w node ptr can not be null"));
-
+  auto mul_w_name = mul->Op()->Input("Y")[0];
+  Node* mul_w = FindNodeWithName(graph, mul_w_name);
+  CreateTheReplicatedWeights(graph, scope, block, nodes_map);
+  std::string replicated_w_name = mul_w_name + "_copy_" +
+                                  std::to_string(block->ID()) + "_" +
+                                  std::to_string(mul->id());
+  auto* mul_w_replicated_node = FindNodeWithName(graph, replicated_w_name);
   // transfilter fp16 --> fp32
-  auto* filter_t =
-      scope->FindVar(mul_w->Name())->GetMutable<phi::DenseTensor>();
-  auto filter_len = filter_t->numel();
+  auto* filter_t = scope->FindVar(mul_w_replicated_node->Name())
+                       ->GetMutable<phi::DenseTensor>();
   auto filter_dtype = filter_t->dtype();
   if (filter_dtype == phi::DataType::FLOAT16) {
     CastToFp32(filter_t, nullptr);
@@ -430,9 +471,10 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
     float* bn_mean_ptr = bn_mean_t->data<float>();
     float* bn_var_ptr = bn_var_t->data<float>();
     auto mean_len = bn_mean_t->numel();
-    auto filter_stride = filter_len / mean_len;
+    auto filter_h = filter_t->dims()[0];
+    auto filter_w = filter_t->dims()[1];
     float epsilon = PADDLE_GET_CONST(float, bn->Op()->GetAttr("epsilon"));
-    if (!with_bias) {  // prev node is conv
+    if (!with_bias) {
       PrepareBias(graph, scope, block, bn_bias, &fusion_bias_node);
     }
 
@@ -447,8 +489,8 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
     if (op_weights_precision != "int8") {
       float* filter_ptr = filter_t->data<float>();
       for (int i = 0; i < mean_len; ++i) {
-        for (int j = 0; j < filter_stride; j++) {
-          filter_ptr[i * filter_stride + j] *= bn_scale_ptr[i];
+        for (int j = 0; j < filter_h; j++) {
+          filter_ptr[j * filter_w + i] *= bn_scale_ptr[i];
         }
       }
     } else {
@@ -457,14 +499,14 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
           weight_scale.size(),
           mean_len,
           platform::errors::InvalidArgument(
-              "Weight max_scale size must equal batch_norm sacle/mean size."));
+              "Weight max_scale size must equal batch_norm scale/mean size."));
       for (int i = 0; i < mean_len; i++) {
         weight_scale[i] *= fabs(bn_scale_ptr[i]);
       }
       for (int i = 0; i < mean_len; i++) {
         if (bn_scale_ptr[i] < 0) {
-          for (int j = 0; j < filter_stride; ++j) {
-            filter_ptr[i * filter_stride + j] *= -1;
+          for (int j = 0; j < filter_h; ++j) {
+            filter_ptr[j * filter_w + i] *= -1;
           }
         }
       }
@@ -488,64 +530,86 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
   Node* filter_intx = nullptr;
   Node* filter_max = nullptr;
   Node* scale_max = nullptr;
+
+  std::map<std::string, int> default_type;
+  default_type.insert(std::make_pair("fc", -1));
+  auto quant_post_type =
+      Has("quant_post_dynamic_weight_methods")
+          ? Get<std::map<std::string, int>>("quant_post_dynamic_weight_methods")
+          : default_type;
+
+  for (auto it = quant_post_type.begin(); it != quant_post_type.end(); ++it) {
+    VLOG(5) << "Key:" << it->first;
+    VLOG(5) << "Value:" << it->second;
+  }
+
   if (op_weights_precision != "int8") {
-    PrepareWeight<float, int16_t>(graph,
+    if (quant_post_type.find("fc") != quant_post_type.end() &&
+            quant_post_type.find("fc")->second == 2 ||
+        quant_post_type.find("fc") != quant_post_type.end() &&
+            quant_post_type.find("fc")->second == -1) {
+      VLOG(5) << "Use int16 per-tensor weight";
+      PrepareWeight<float, int16_t>(graph,
+                                    scope,
+                                    block,
+                                    mul_w_replicated_node,
+                                    &filter_intx,
+                                    &filter_max,
+                                    &scale_max,
+                                    !transpose_w,
+                                    weight_scale,
+                                    false);
+    } else if (quant_post_type.find("fc") != quant_post_type.end() &&
+               quant_post_type.find("fc")->second == 3) {
+      VLOG(5) << "Use int16 per-channel weight";
+      PrepareWeight<float, int16_t>(graph,
+                                    scope,
+                                    block,
+                                    mul_w_replicated_node,
+                                    &filter_intx,
+                                    &filter_max,
+                                    &scale_max,
+                                    !transpose_w,
+                                    weight_scale,
+                                    true);
+    } else if (quant_post_type.find("fc") != quant_post_type.end() &&
+               quant_post_type.find("fc")->second == 4) {
+      VLOG(5) << "Use int31 per-tensor weight";
+      PrepareWeight<float, float>(graph,
                                   scope,
                                   block,
-                                  mul_w,
+                                  mul_w_replicated_node,
                                   &filter_intx,
                                   &filter_max,
+                                  &scale_max,
                                   !transpose_w,
-                                  weight_scale);
+                                  weight_scale,
+                                  false);
+    } else if (quant_post_type.find("fc") != quant_post_type.end() &&
+                   quant_post_type.find("fc")->second == 0 ||
+               quant_post_type.find("fc") != quant_post_type.end() &&
+                   quant_post_type.find("fc")->second == 1) {
+      VLOG(5) << "Unsupported int8 post quant!";
+    } else {
+      VLOG(5) << "Unsupported type weight by non-int8!";
+    }
   } else {
+    VLOG(5) << "Use int8  quant weight";
     PrepareWeight<int8_t, int8_t>(graph,
                                   scope,
                                   block,
-                                  mul_w,
+                                  mul_w_replicated_node,
                                   &filter_intx,
                                   &filter_max,
+                                  &scale_max,
                                   !transpose_w,
-                                  weight_scale);
-  }
-
-  bool is_per_channel_need_create_scale_max_node =
-      !weight_scale.empty() && !IsPerTensorQuant(weight_scale);
-  if (is_per_channel_need_create_scale_max_node) {
-    phi::DenseTensor ones_weight_max_tensor;
-    auto* cpu_ctx = static_cast<phi::CPUContext*>(
-        platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
-    int max_ptr_size = weight_scale.empty()
-                           ? phi::backends::xpu::get_xpu_max_ptr_size(-1)
-                           : weight_scale.size();
-    ones_weight_max_tensor.set_type(phi::DataType::FLOAT32);
-    ones_weight_max_tensor.Resize({max_ptr_size});
-    std::vector<float> ones_weight(max_ptr_size, 1.0);
-    memcpy(cpu_ctx->Alloc<float>(&ones_weight_max_tensor),
-           ones_weight.data(),
-           max_ptr_size * sizeof(float));
-
-    std::string scale_max_name = mul_w->Name() + "_scale_max";
-    VarDesc scale_max_desc(scale_max_name);
-    scale_max_desc.SetPersistable(true);
-    scale_max_desc.SetShape(vectorize(ones_weight_max_tensor.dims()));
-    scale_max_desc.SetDataType(proto::VarType::Type::VarType_Type_FP32);
-    scale_max = graph->CreateVarNode(&scale_max_desc);
-    auto* block_scale_max_desc = block->Var(scale_max_name);
-    block_scale_max_desc->SetPersistable(scale_max_desc.Persistable());
-    block_scale_max_desc->SetShape(scale_max_desc.GetShape());
-    block_scale_max_desc->SetDataType(scale_max_desc.GetDataType());
-    Assign(ones_weight_max_tensor,
-           scope->Var(scale_max_name)->GetMutable<phi::DenseTensor>());
+                                  weight_scale,
+                                  false);
   }
 
   (*fusion_nodes_map)["w"] = filter_intx;
-  if (is_per_channel_need_create_scale_max_node) {
-    (*fusion_nodes_map)["w_max"] = scale_max;
-    (*fusion_nodes_map)["scale_max"] = filter_max;
-  } else {
-    (*fusion_nodes_map)["w_max"] = filter_max;
-    (*fusion_nodes_map)["scale_max"] = scale_max;
-  }
+  (*fusion_nodes_map)["w_max"] = filter_max;
+  (*fusion_nodes_map)["scale_max"] = scale_max;
 }
 
 void FcXPUFusePass::CreateFusionOutputs(
@@ -665,7 +729,7 @@ void FcXPUFusePass::CreateFusionInputs(
       true,
       platform::errors::InvalidArgument("mul_x node ptr can not be null"));
   // x max
-  std::string mul_x_max_name = mul_x->Name() + "_max";
+  std::string mul_x_max_name = mul_x->Name() + "_input_max";
   Node* mul_x_max = nullptr;
   if (op_weights_precision == "int8") {
     PADDLE_ENFORCE_EQ(AreScalesPresentForNodes(var_quant_scales, {mul_x}),
@@ -717,7 +781,6 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
                      Graph* graph) {
     VLOG(4) << "handle FcXPUFusePass fuse";
     GET_IR_NODE(mul_x);
-    GET_IR_NODE(mul_w);
     GET_IR_NODE(mul);
     GET_IR_NODE(mul_out);
     GET_IR_NODE(bias);
@@ -736,11 +799,8 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
     GET_IR_NODE(act);
     GET_IR_NODE(act_out);
     std::map<std::string, std::map<std::string, Node*>> nodes_map;
-    nodes_map.insert({"mul",
-                      {{"mul", mul},
-                       {"mul_x", mul_x},
-                       {"mul_w", mul_w},
-                       {"mul_out", mul_out}}});
+    nodes_map.insert(
+        {"mul", {{"mul", mul}, {"mul_x", mul_x}, {"mul_out", mul_out}}});
     nodes_map.insert({"ew_bias_add",
                       {{"ew_bias_add", add},
                        {"ew_bias_add_bias", bias},
@@ -767,8 +827,14 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
                                                   {"out_max_in", nullptr},
                                                   {"out", nullptr},
                                                   {"out_max", nullptr}};
-    auto filter_data_type =
-        scope->FindVar(mul_w->Name())->GetMutable<phi::DenseTensor>()->dtype();
+    auto mul_w_name = mul->Op()->Input("Y")[0];
+    Node* mul_w = FindNodeWithName(graph, mul_w_name);
+    if (!mul_w->Var()->Persistable() || mul_w->Var()->GetShape().size() != 2) {
+      return;
+    }
+    auto filter_data_type = scope->FindVar(mul->Op()->Input("Y")[0])
+                                ->GetMutable<phi::DenseTensor>()
+                                ->dtype();
     std::string op_weights_precision = "float32";
     if (filter_data_type == phi::DataType::INT8) {
       op_weights_precision = "int8";

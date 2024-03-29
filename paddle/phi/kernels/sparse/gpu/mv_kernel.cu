@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/sparse/sparse_blas.h"
 
@@ -30,26 +30,26 @@ void MvKernelImpl(const Context& dev_ctx,
                   const DenseTensor& vec,
                   DenseTensor* out) {
 #if CUDA_VERSION >= 11000
-  std::vector<int64_t> x_dim = phi::vectorize(x.dims());
-  std::vector<int64_t> vec_dim = phi::vectorize(vec.dims());
+  std::vector<int64_t> x_dim = common::vectorize(x.dims());
+  std::vector<int64_t> vec_dim = common::vectorize(vec.dims());
   auto x_ndims = x_dim.size();
   auto vec_ndims = vec_dim.size();
   PADDLE_ENFORCE_EQ(x_ndims,
                     2,
                     phi::errors::InvalidArgument(
-                        "the dims size of Input(x) must be eaqual to 2."));
+                        "the dims size of Input(x) must be equal to 2."));
   PADDLE_ENFORCE_EQ(vec_ndims,
                     1,
                     phi::errors::InvalidArgument(
-                        "the dims size of Input(vec) must be eaqual to 1."));
+                        "the dims size of Input(vec) must be equal to 1."));
   PADDLE_ENFORCE_EQ(x_dim[x_ndims - 1],
                     vec_dim[vec_ndims - 1],
                     phi::errors::PreconditionNotMet(
                         "The shape of Input(x) and Input(vec) is not "
                         "suitable for mv opetation, "
-                        "x_dim[-1] must be eaqual to vec_dim[-1]."));
+                        "x_dim[-1] must be equal to vec_dim[-1]."));
   std::vector<int64_t> out_dim = {x_dim[x_ndims - 2]};
-  out->Resize(phi::make_ddim(out_dim));
+  out->Resize(common::make_ddim(out_dim));
   dev_ctx.template Alloc<T>(out);
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SPMV(false, static_cast<T>(1), x, vec, static_cast<T>(0), out);

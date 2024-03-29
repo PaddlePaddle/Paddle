@@ -15,6 +15,7 @@
 
 from google.protobuf import text_format
 
+import paddle
 from paddle.base.proto import data_feed_pb2
 
 from ..utils import deprecated
@@ -271,11 +272,11 @@ class DatasetBase:
             if var.lod_level == 0:
                 slot_var.is_dense = True
                 slot_var.shape.extend(var.shape)
-            if var.dtype == core.VarDesc.VarType.FP32:
+            if var.dtype == paddle.float32:
                 slot_var.type = "float"
-            elif var.dtype == core.VarDesc.VarType.INT64:
+            elif var.dtype == paddle.int64:
                 slot_var.type = "uint64"
-            elif var.dtype == core.VarDesc.VarType.INT32:
+            elif var.dtype == paddle.int32:
                 slot_var.type = "uint32"
             else:
                 raise ValueError(
@@ -977,6 +978,9 @@ class InMemoryDataset(DatasetBase):
     def get_epoch_finish(self):
         return self.dataset.get_epoch_finish()
 
+    def clear_sample_state(self):
+        self.dataset.clear_sample_state()
+
     @deprecated(
         since="2.0.0",
         update_to="paddle.distributed.InMemoryDataset.get_memory_data_size",
@@ -1139,6 +1143,16 @@ class InMemoryDataset(DatasetBase):
         self.proto_desc.graph_config.get_degree = config.get(
             "get_degree", False
         )
+        self.proto_desc.graph_config.weighted_sample = config.get(
+            "weighted_sample", False
+        )
+        self.proto_desc.graph_config.return_weight = config.get(
+            "return_weight", False
+        )
+        self.proto_desc.graph_config.pair_label = config.get("pair_label", "")
+        self.proto_desc.graph_config.accumulate_num = config.get(
+            "accumulate_num", 1
+        )
         self.dataset.set_gpu_graph_mode(True)
 
     def set_pass_id(self, pass_id):
@@ -1180,6 +1194,12 @@ class InMemoryDataset(DatasetBase):
         dump_walk_path
         """
         self.dataset.dump_walk_path(path, dump_rate)
+
+    def dump_sample_neighbors(self, path):
+        """
+        dump_sample_neighbors
+        """
+        self.dataset.dump_sample_neighbors(path)
 
 
 class QueueDataset(DatasetBase):

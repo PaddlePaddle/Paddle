@@ -49,19 +49,20 @@ void BatchNormKernel(const Context &dev_ctx,
       dev_ctx.HasDnnAttr("fuse_with_relu")
           ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("fuse_with_relu"))
           : false;
+  const bool use_scale = scale ? true : false;
+  const bool use_bias = bias ? true : false;
 
-  auto Scale = scale.get_ptr();
-  auto Bias = bias.get_ptr();
   funcs::BatchNormOneDNNHandler<T> handler(dev_ctx.GetEngine(),
                                            dev_ctx.GetPlace(),
                                            &x,
                                            epsilon,
+                                           use_scale,
+                                           use_bias,
                                            fuse_with_relu,
                                            global_stats,
                                            test_mode);
 
   auto src_memory = handler.AcquireSrcMemory(&x);
-  auto scaleshift_mems = handler.AcquireScaleShiftMemory(Scale, Bias);
   auto dst_memory = handler.AcquireDstMemory(y);
   auto batch_norm_p = handler.AcquireForwardPrimitive();
 
@@ -79,18 +80,25 @@ void BatchNormKernel(const Context &dev_ctx,
 
   y->set_mem_desc(dst_memory->get_desc());
 
+  std::shared_ptr<dnnl::memory> scale_memory(nullptr);
+  std::shared_ptr<dnnl::memory> shift_memory(nullptr);
+  auto Scale = scale.get_ptr();
+  auto Bias = bias.get_ptr();
+  if (scale) scale_memory = handler.AcquireScaleMemory(Scale);
+  if (bias) shift_memory = handler.AcquireShiftMemory(Bias);
+
   auto &astream = OneDNNContext::tls().get_stream();
   batch_norm_p->execute(astream,
                         {{DNNL_ARG_SRC, *src_memory},
-                         {DNNL_ARG_SCALE, *(std::get<0>(scaleshift_mems))},
-                         {DNNL_ARG_SHIFT, *(std::get<1>(scaleshift_mems))},
+                         {DNNL_ARG_SCALE, *scale_memory},
+                         {DNNL_ARG_SHIFT, *shift_memory},
                          {DNNL_ARG_MEAN, *mean_memory},
                          {DNNL_ARG_VARIANCE, *variance_memory},
                          {DNNL_ARG_DST, *dst_memory}});
   astream.wait();
 
   if (!global_stats) {
-    const unsigned int C = phi::vectorize(Scale->dims())[0];
+    const unsigned int C = common::vectorize(mean.dims())[0];
 
     // mkldnn only compute stats for current batch
     // so we need compute momentum stats via Eigen lib

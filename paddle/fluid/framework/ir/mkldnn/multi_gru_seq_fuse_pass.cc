@@ -19,11 +19,11 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
@@ -62,11 +62,6 @@ void MultiGruSeqFusePass::ApplyImpl(ir::Graph* graph) const {
   int fused_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    if (!IsCompat(subgraph, g)) {
-      LOG(WARNING) << "Pass in op compat failed.";
-      return;
-    }
-
     GET_IR_NODE_FROM_SUBGRAPH(x, x, pattern);
     GET_IR_NODE_FROM_SUBGRAPH(gru1, gru1, pattern);
     GET_IR_NODE_FROM_SUBGRAPH(wx11, wx11, pattern);

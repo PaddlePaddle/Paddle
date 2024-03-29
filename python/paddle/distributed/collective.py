@@ -14,6 +14,7 @@
 
 import datetime
 import hashlib
+import os
 
 import paddle
 
@@ -146,6 +147,7 @@ def _new_process_group_impl(
     group_name,
     pg_options,
     group_id=0,
+    nccl_comm_init_option=0,
 ):
     pg = None
     genv = _get_global_env()
@@ -154,7 +156,12 @@ def _new_process_group_impl(
         pg = core.ProcessGroupGloo.create(store, rank, world_size, group_id)
     elif backend == "nccl":
         pg = core.ProcessGroupNCCL.create(
-            store, rank, world_size, group_id, genv.pg_timeout
+            store,
+            rank,
+            world_size,
+            group_id,
+            genv.pg_timeout,
+            nccl_comm_init_option,
         )
     elif backend == "xccl":
         pg = core.ProcessGroupCustom.create(
@@ -176,7 +183,12 @@ def _set_custom_gid(gid):
     _custom_gid = gid
 
 
-def new_group(ranks=None, backend=None, timeout=_default_timeout):
+def new_group(
+    ranks=None,
+    backend=None,
+    timeout=_default_timeout,
+    nccl_comm_init_option=0,
+):
     """
 
     Creates a new distributed communication group.
@@ -230,6 +242,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
                 group_name,
                 pg_options=None,
                 group_id=gid,
+                nccl_comm_init_option=nccl_comm_init_option,
             )
         else:
             rank = -1
@@ -241,6 +254,14 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
         # TODO: The method below is a new method for group management, will replace the previous
         # three in the future.
         _add_new_group(group)
+
+        if int(os.getenv("FLAGS_eager_communication_connection", 0)) == 1:
+            paddle.distributed.all_reduce(
+                paddle.zeros([1], dtype=paddle.float32),
+                group=group,
+                sync_op=True,
+            )
+
         return group
 
     if not backend:
@@ -344,4 +365,16 @@ def _init_parallel_env(backend):
         paddle.device.set_device(f"{dev_type}:{dev_id}")
         core.CommContextManager.create_xccl_comm_context(
             store, "0", rank, world_size, dev_type
+        )
+    elif backend == "bkcl":
+        endpoints_str = ""
+        for endpoint in global_env.trainer_endpoints:
+            endpoints_str += endpoint
+        endpoints_str += "ring_id:{}".format("0")
+        endpoints_str_hash = hashlib.md5(
+            endpoints_str.encode(encoding='UTF-8')
+        ).hexdigest()
+        core.CommContextManager.set_device_id(dev_id)
+        core.CommContextManager.create_bkcl_comm_context(
+            store, "0", rank, world_size, endpoints_str_hash
         )

@@ -73,7 +73,7 @@ void GroupConcatSplit(Place place, size_t size) {
 
     std::vector<T> value;
     for (size_t j = 0; j < len; ++j) {
-      value.push_back(static_cast<T>(1.0 * j));
+      value.push_back(static_cast<T>(1.0 * j));  // NOLINT
     }
 
     if (std::is_same<Place, platform::CUDAPlace>::value) {
@@ -89,7 +89,7 @@ void GroupConcatSplit(Place place, size_t size) {
     phi::DenseTensor tmp;
     tmp.ShareDataWith(*tensor).Resize({static_cast<int64_t>(len)});
     group.dense_tensors_.push_back(std::move(tmp));
-    group.all_length_ += len;
+    group.all_length_ += static_cast<int64_t>(len);
     group.dtype_ = framework::TransToProtoVarType(tensor->dtype());
   }
 
@@ -99,7 +99,7 @@ void GroupConcatSplit(Place place, size_t size) {
 
   {  // concat
     auto* tensor = group.dense_contents_.GetMutable<phi::DenseTensor>();
-    tensor->Resize(phi::make_ddim({group.all_length_}))
+    tensor->Resize(common::make_ddim({group.all_length_}))
         .mutable_data(place, framework::TransToPhiDataType(group.dtype_));
     group.ConcatTensors(*dev_ctx);
 

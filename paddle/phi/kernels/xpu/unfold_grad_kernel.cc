@@ -31,7 +31,7 @@ void UnfoldGradKernel(const Context& ctx,
                       DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   ctx.template Alloc<T>(x_grad);
-  const std::string data_format = phi::DataLayoutToString(x.layout());
+  const std::string data_format = common::DataLayoutToString(x.layout());
   bool is_nchw = data_format == "NCHW";
   PADDLE_ENFORCE_EQ(is_nchw,
                     true,

@@ -58,7 +58,7 @@ void BatchNormGradFunctor(const Context& ctx,
                           DenseTensor* bias_grad) {
   const auto* d_y = &y_grad;
 
-  DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  DataLayout data_layout = common::StringToDataLayout(data_layout_str);
 
   auto* d_x = x_grad;
   auto* d_scale = scale_grad;
@@ -180,8 +180,8 @@ void BatchNormGradFunctor(const Context& ctx,
     bias_arr.setZero();
   }
 
-  int scale_coefff = use_global_stats ? 1 : N * sample_size;
-  const auto scale_inv_var_nhw = scale_arr * inv_var_arr / scale_coefff;
+  int scale_coeff = use_global_stats ? 1 : N * sample_size;
+  const auto scale_inv_var_nhw = scale_arr * inv_var_arr / scale_coeff;
 
   DenseTensor dy_sum;
   dy_sum.Resize({C});
@@ -213,7 +213,7 @@ void BatchNormGradFunctor(const Context& ctx,
         ConstEigenArrayMap<T> y_data(x.data<T>(), sample_size, N * C);
         for (int nc = 0; nc < N * C; ++nc) {
           x_data.col(nc) = (y_data.col(nc) - bias_arr(nc % C)) /
-                               scale_inv_var_nhw(nc % C) / scale_coefff +
+                               scale_inv_var_nhw(nc % C) / scale_coeff +
                            mean_arr(nc % C);
         }
       }
@@ -261,7 +261,7 @@ void BatchNormGradFunctor(const Context& ctx,
         ConstEigenArrayMap<T> y_data(x.data<T>(), C, N * sample_size);
         for (int nhw = 0; nhw < N * sample_size; nhw++) {
           x_data.col(nhw) =
-              (y_data.col(nhw) - bias_arr) / scale_inv_var_nhw / scale_coefff +
+              (y_data.col(nhw) - bias_arr) / scale_inv_var_nhw / scale_coeff +
               mean_arr;
         }
       }
@@ -381,7 +381,7 @@ void BatchNormDoubleGradKernel(
                         "you want to use global status in pre_train model, "
                         "please set `use_global_stats = True`"));
 
-  const auto data_layout = phi::StringToDataLayout(data_layout_str);
+  const auto data_layout = common::StringToDataLayout(data_layout_str);
 
   const auto* ddX = x_grad_grad.get_ptr();
   const auto* ddScale = scale_grad_grad.get_ptr();
@@ -611,7 +611,7 @@ void BatchNormDoubleGradKernel(
     EigenArrayMap<T> ddy_arr(
         ctx.template Alloc<T>(&transformed_ddy), C, sample_size);
     ddy_arr.setZero();
-    if (use_global_stats) {
+    if (use_global_stats) {  // NOLINT
       // math: ddy = r * ddx * inv_var + ddbias +
       //           ddscale * (x - mean) * inv_var
       if (ddX) {

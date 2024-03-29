@@ -18,15 +18,14 @@
 #include <thrust/device_vector.h>
 #endif
 #include "glog/logging.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 #include "paddle/phi/backends/dynload/cublas.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-PHI_DECLARE_bool(enable_cublas_tensor_op_math);
-PHI_DECLARE_bool(gemm_use_half_precision_compute_type);
+COMMON_DECLARE_bool(enable_cublas_tensor_op_math);
+COMMON_DECLARE_bool(gemm_use_half_precision_compute_type);
 
 namespace phi {
 namespace funcs {

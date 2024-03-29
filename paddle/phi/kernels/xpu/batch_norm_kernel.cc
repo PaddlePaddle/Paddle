@@ -43,12 +43,12 @@ void BatchNormKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   bool test_mode = is_test && (!trainable_statistics);
   bool global_stats = test_mode || use_global_stats;
-  const auto data_layout = phi::StringToDataLayout(data_layout_str);
+  const auto data_layout = common::StringToDataLayout(data_layout_str);
   PADDLE_ENFORCE_EQ(data_layout_str == "NCHW" || data_layout_str == "NHWC",
                     true,
                     phi::errors::InvalidArgument(
                         "The 'data_layout' attribute must be NCHW or NHWC. "
-                        "But recevived 'data_layout' is [%s].",
+                        "But received 'data_layout' is [%s].",
                         data_layout_str));
 
   const auto& x_dims = x.dims();
@@ -104,7 +104,7 @@ void BatchNormKernel(const Context& dev_ctx,
       5,
       phi::errors::InvalidArgument(
           "The size of input X's dimensions should be less than 6."
-          "But received: the size of input X's dimensionss is [%d]",
+          "But received: the size of input X's dimensions is [%d]",
           x_dims.size()));
 
   bool is_nchw = data_layout_str == "NCHW";

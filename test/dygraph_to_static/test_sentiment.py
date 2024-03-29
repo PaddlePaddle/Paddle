@@ -15,13 +15,11 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
+from dygraph_to_static_utils import Dy2StTestBase, enable_to_static_guard
 from test_lac import DynamicGRU
 
 import paddle
 from paddle import base
-from paddle.base.dygraph import to_variable
-from paddle.jit.api import to_static
 from paddle.nn import Embedding, Linear
 
 SEED = 2020
@@ -88,7 +86,6 @@ class CNN(paddle.nn.Layer):
         self._fc1_act = paddle.nn.Softmax()
         self._fc_prediction = Linear(self.fc_hid_dim, self.class_dim)
 
-    @to_static
     def forward(self, inputs, label=None):
         emb = self.embedding(inputs)
         o_np_mask = (paddle.reshape(inputs, [-1, 1]) != self.dict_dim).astype(
@@ -132,7 +129,6 @@ class BOW(paddle.nn.Layer):
         self._fc2 = Linear(self.hid_dim, self.fc_hid_dim)
         self._fc_prediction = Linear(self.fc_hid_dim, self.class_dim)
 
-    @to_static
     def forward(self, inputs, label=None):
         emb = self.embedding(inputs)
         o_np_mask = (paddle.reshape(inputs, [-1, 1]) != self.dict_dim).astype(
@@ -171,17 +167,16 @@ class GRU(paddle.nn.Layer):
         self.embedding = Embedding(
             self.dict_dim + 1,
             self.emb_dim,
-            weight_attr=base.ParamAttr(learning_rate=30),
+            weight_attr=paddle.ParamAttr(learning_rate=30),
             sparse=False,
         )
         h_0 = np.zeros((self.batch_size, self.hid_dim), dtype="float32")
-        h_0 = to_variable(h_0)
+        h_0 = paddle.to_tensor(h_0)
         self._fc1 = Linear(self.hid_dim, self.hid_dim * 3)
         self._fc2 = Linear(self.hid_dim, self.fc_hid_dim)
         self._fc_prediction = Linear(self.fc_hid_dim, self.class_dim)
         self._gru = DynamicGRU(size=self.hid_dim, h_0=h_0)
 
-    @to_static
     def forward(self, inputs, label=None):
         emb = self.embedding(inputs)
         o_np_mask = (paddle.reshape(inputs, [-1, 1]) != self.dict_dim).astype(
@@ -219,11 +214,11 @@ class BiGRU(paddle.nn.Layer):
         self.embedding = Embedding(
             self.dict_dim + 1,
             self.emb_dim,
-            weight_attr=base.ParamAttr(learning_rate=30),
+            weight_attr=paddle.ParamAttr(learning_rate=30),
             sparse=False,
         )
         h_0 = np.zeros((self.batch_size, self.hid_dim), dtype="float32")
-        h_0 = to_variable(h_0)
+        h_0 = paddle.to_tensor(h_0)
         self._fc1 = Linear(self.hid_dim, self.hid_dim * 3)
         self._fc2 = Linear(self.hid_dim * 2, self.fc_hid_dim)
         self._fc_prediction = Linear(self.fc_hid_dim, self.class_dim)
@@ -234,7 +229,6 @@ class BiGRU(paddle.nn.Layer):
             size=self.hid_dim, h_0=h_0, is_reverse=True
         )
 
-    @to_static
     def forward(self, inputs, label=None):
         emb = self.embedding(inputs)
         o_np_mask = (paddle.reshape(inputs, [-1, 1]) != self.dict_dim).astype(
@@ -302,70 +296,72 @@ class Args:
     train_step = 10
 
 
-def train(args, to_static):
-    paddle.jit.enable_to_static(to_static)
-    place = (
-        base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
+def train(args):
+    np.random.seed(SEED)
+    paddle.seed(SEED)
+    paddle.framework.random._manual_program_seed(SEED)
+
+    train_reader = fake_data_reader(
+        args.class_num, args.vocab_size, args.batch_size, args.padding_size
+    )
+    train_loader = base.io.DataLoader.from_generator(capacity=24)
+    train_loader.set_sample_list_generator(train_reader)
+
+    if args.model_type == 'cnn_net':
+        model = paddle.jit.to_static(
+            CNN(args.vocab_size, args.batch_size, args.padding_size)
+        )
+    elif args.model_type == 'bow_net':
+        model = paddle.jit.to_static(
+            BOW(args.vocab_size, args.batch_size, args.padding_size)
+        )
+    elif args.model_type == 'gru_net':
+        model = paddle.jit.to_static(
+            GRU(args.vocab_size, args.batch_size, args.padding_size)
+        )
+    elif args.model_type == 'bigru_net':
+        model = paddle.jit.to_static(
+            BiGRU(args.vocab_size, args.batch_size, args.padding_size)
+        )
+    sgd_optimizer = paddle.optimizer.Adagrad(
+        learning_rate=args.lr, parameters=model.parameters()
     )
 
-    with base.dygraph.guard(place):
-        np.random.seed(SEED)
-        paddle.seed(SEED)
-        paddle.framework.random._manual_program_seed(SEED)
+    loss_data = []
+    for eop in range(args.epoch):
+        time_begin = time.time()
+        for batch_id, data in enumerate(train_loader()):
+            word_ids, labels, seq_lens = data
+            doc = paddle.to_tensor(word_ids.numpy().reshape(-1), dtype="int64")
+            label = labels.astype('int64')
 
-        train_reader = fake_data_reader(
-            args.class_num, args.vocab_size, args.batch_size, args.padding_size
-        )
-        train_loader = base.io.DataLoader.from_generator(capacity=24)
-        train_loader.set_sample_list_generator(train_reader)
+            model.train()
+            avg_cost, prediction, acc = model(doc, label)
+            loss_data.append(float(avg_cost))
 
-        if args.model_type == 'cnn_net':
-            model = CNN(args.vocab_size, args.batch_size, args.padding_size)
-        elif args.model_type == 'bow_net':
-            model = BOW(args.vocab_size, args.batch_size, args.padding_size)
-        elif args.model_type == 'gru_net':
-            model = GRU(args.vocab_size, args.batch_size, args.padding_size)
-        elif args.model_type == 'bigru_net':
-            model = BiGRU(args.vocab_size, args.batch_size, args.padding_size)
-        sgd_optimizer = paddle.optimizer.Adagrad(
-            learning_rate=args.lr, parameters=model.parameters()
-        )
+            avg_cost.backward()
+            sgd_optimizer.minimize(avg_cost)
+            model.clear_gradients()
 
-        loss_data = []
-        for eop in range(args.epoch):
-            time_begin = time.time()
-            for batch_id, data in enumerate(train_loader()):
-                word_ids, labels, seq_lens = data
-                doc = to_variable(word_ids.numpy().reshape(-1)).astype('int64')
-                label = labels.astype('int64')
-
-                model.train()
-                avg_cost, prediction, acc = model(doc, label)
-                loss_data.append(float(avg_cost))
-
-                avg_cost.backward()
-                sgd_optimizer.minimize(avg_cost)
-                model.clear_gradients()
-
-                if batch_id % args.log_step == 0:
-                    time_end = time.time()
-                    used_time = time_end - time_begin
-                    # used_time may be 0.0, cause zero division error
-                    if used_time < 1e-5:
-                        used_time = 1e-5
-                    print(
-                        "step: %d, ave loss: %f, speed: %f steps/s"
-                        % (
-                            batch_id,
-                            float(avg_cost),
-                            args.log_step / used_time,
-                        )
+            if batch_id % args.log_step == 0:
+                time_end = time.time()
+                used_time = time_end - time_begin
+                # used_time may be 0.0, cause zero division error
+                if used_time < 1e-5:
+                    used_time = 1e-5
+                print(
+                    "step: %d, ave loss: %f, speed: %f steps/s"
+                    % (
+                        batch_id,
+                        float(avg_cost),
+                        args.log_step / used_time,
                     )
-                    time_begin = time.time()
+                )
+                time_begin = time.time()
 
-                if batch_id == args.train_step:
-                    break
-                batch_id += 1
+            if batch_id == args.train_step:
+                break
+            batch_id += 1
     return loss_data
 
 
@@ -373,11 +369,11 @@ class TestSentiment(Dy2StTestBase):
     def setUp(self):
         self.args = Args()
 
-    @test_legacy_and_pir
     def train_model(self, model_type='cnn_net'):
         self.args.model_type = model_type
-        st_out = train(self.args, True)
-        dy_out = train(self.args, False)
+        st_out = train(self.args)
+        with enable_to_static_guard(False):
+            dy_out = train(self.args)
         np.testing.assert_allclose(
             dy_out,
             st_out,

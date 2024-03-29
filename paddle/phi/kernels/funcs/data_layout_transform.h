@@ -18,8 +18,8 @@
 #include "dnnl.hpp"  // NOLINT
 #endif
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
@@ -44,7 +44,7 @@ inline OneDNNMemoryFormat ToOneDNNFormat(const DataLayout& layout) {
     default:
       PADDLE_THROW(
           errors::InvalidArgument("Fail to convert layout %s to oneDNN format.",
-                                  ::phi::DataLayoutToString(layout)));
+                                  ::common::DataLayoutToString(layout)));
   }
 }
 
@@ -83,7 +83,8 @@ void TransDataLayoutFromOneDNN(DataLayout in_layout,
                                DenseTensor* out,
                                Place place,
                                bool always_copy = false);
-void* GetDataFromTensor(const DenseTensor& tensor, OneDNNDataType type);
+TEST_API void* GetDataFromTensor(const DenseTensor& tensor,
+                                 OneDNNDataType type);
 
 dnnl::memory::desc make_memory_desc(const phi::DenseTensor& ref_tensor,
                                     phi::DataLayout target_layout);

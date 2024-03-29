@@ -12,13 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/inference/tensorrt/plugin/custom_generic_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/generic_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin_arg_mapping_context.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace inference {
@@ -30,7 +31,7 @@ class CustomPluginCreater : public OpConverter {
                   const framework::Scope &scope,
                   bool test_mode) override {
     framework::OpDesc op_desc(op, nullptr);
-    VLOG(3) << "convert " << op_desc.Type() << " op to custom pluign layer";
+    VLOG(3) << "convert " << op_desc.Type() << " op to custom plugin layer";
 
     std::string plugin_name;
 
@@ -59,7 +60,7 @@ class CustomPluginCreater : public OpConverter {
     CHECK(creator);
 
     // set attrs
-    std::vector<nvinfer1::PluginField> plugindatas;
+    std::vector<nvinfer1::PluginField> plugin_datas;
     auto &op_attrs_names = OpMetaInfoHelper::GetAttrs(op_info);
     auto &attrs = op_desc.GetAttrMap();
 
@@ -73,7 +74,7 @@ class CustomPluginCreater : public OpConverter {
     for (auto &attr_name_and_type : op_attrs_names) {
       auto attr_name =
           attr_name_and_type.substr(0, attr_name_and_type.find_first_of(":"));
-      nvinfer1::PluginField plugindata;
+      nvinfer1::PluginField plugin_data;
 
       // NOTE: to avoid string rewrite by iterator, deep copy here
       std::vector<char> plugin_attr_name(attr_name.length() + 1, 0);
@@ -81,47 +82,47 @@ class CustomPluginCreater : public OpConverter {
                attr_name.length() + 1,
                "%s",
                attr_name.c_str());
-      plugindata.name = plugin_attr_name.data();
+      plugin_data.name = plugin_attr_name.data();
 
       if (op_desc.GetAttrType(attr_name) == framework::proto::AttrType::INT) {
         int_attrs.push_back(PADDLE_GET_CONST(int, attrs.at(attr_name)));
-        plugindata.data = &int_attrs.back();
-        plugindata.type = nvinfer1::PluginFieldType::kINT32;
-        plugindata.length = 1;
+        plugin_data.data = &int_attrs.back();
+        plugin_data.type = nvinfer1::PluginFieldType::kINT32;
+        plugin_data.length = 1;
       } else if (op_desc.GetAttrType(attr_name) ==
                  framework::proto::AttrType::FLOAT) {
         float_attrs.push_back(PADDLE_GET_CONST(float, attrs.at(attr_name)));
-        plugindata.data = &float_attrs.back();
-        plugindata.type = nvinfer1::PluginFieldType::kFLOAT32;
-        plugindata.length = 1;
+        plugin_data.data = &float_attrs.back();
+        plugin_data.type = nvinfer1::PluginFieldType::kFLOAT32;
+        plugin_data.length = 1;
       } else if (op_desc.GetAttrType(attr_name) ==
                  framework::proto::AttrType::BOOLEAN) {
         int_attrs.push_back(PADDLE_GET_CONST(bool, attrs.at(attr_name)));
-        plugindata.data = &int_attrs.back();
-        plugindata.type = nvinfer1::PluginFieldType::kINT32;
-        plugindata.length = 1;
+        plugin_data.data = &int_attrs.back();
+        plugin_data.type = nvinfer1::PluginFieldType::kINT32;
+        plugin_data.length = 1;
       } else if (op_desc.GetAttrType(attr_name) ==
                  framework::proto::AttrType::STRING) {
         string_attrs.push_back(
             PADDLE_GET_CONST(std::string, attrs.at(attr_name)));
-        plugindata.data = string_attrs.back().data();
-        plugindata.type = nvinfer1::PluginFieldType::kCHAR;
-        plugindata.length =
+        plugin_data.data = string_attrs.back().data();
+        plugin_data.type = nvinfer1::PluginFieldType::kCHAR;
+        plugin_data.length =
             string_attrs.back().size() + 1;  // string ends with ‘\0’
       } else if (op_desc.GetAttrType(attr_name) ==
                  framework::proto::AttrType::INTS) {
         ints_attrs.push_back(
             PADDLE_GET_CONST(std::vector<int>, attrs.at(attr_name)));
-        plugindata.data = ints_attrs.back().data();
-        plugindata.type = nvinfer1::PluginFieldType::kINT32;
-        plugindata.length = ints_attrs.back().size();
+        plugin_data.data = ints_attrs.back().data();
+        plugin_data.type = nvinfer1::PluginFieldType::kINT32;
+        plugin_data.length = ints_attrs.back().size();
       } else if (op_desc.GetAttrType(attr_name) ==
                  framework::proto::AttrType::FLOATS) {
         floats_attrs.push_back(
             PADDLE_GET_CONST(std::vector<float>, attrs.at(attr_name)));
-        plugindata.data = floats_attrs.back().data();
-        plugindata.type = nvinfer1::PluginFieldType::kFLOAT32;
-        plugindata.length = floats_attrs.back().size();
+        plugin_data.data = floats_attrs.back().data();
+        plugin_data.type = nvinfer1::PluginFieldType::kFLOAT32;
+        plugin_data.length = floats_attrs.back().size();
       } else if (op_desc.GetAttrType(attr_name) ==
                  framework::proto::AttrType::BOOLEANS) {
         auto bools_attr =
@@ -129,17 +130,17 @@ class CustomPluginCreater : public OpConverter {
         std::vector<int> convert_to_ints_attr;
         for (bool i : bools_attr) convert_to_ints_attr.push_back(i);
         ints_attrs.push_back(convert_to_ints_attr);
-        plugindata.data = ints_attrs.back().data();
-        plugindata.type = nvinfer1::PluginFieldType::kINT32;
-        plugindata.length = ints_attrs.back().size();
+        plugin_data.data = ints_attrs.back().data();
+        plugin_data.type = nvinfer1::PluginFieldType::kINT32;
+        plugin_data.length = ints_attrs.back().size();
       } else {
         CHECK(false) << "UNKNOWN PluginFieldType.";
       }
-      plugindatas.push_back(plugindata);
+      plugin_datas.push_back(plugin_data);
     }
 
-    nvinfer1::PluginFieldCollection plugin_fc{(int32_t)plugindatas.size(),
-                                              plugindatas.data()};
+    nvinfer1::PluginFieldCollection plugin_fc{(int32_t)plugin_datas.size(),
+                                              plugin_datas.data()};
 
     auto *plugin = creator->createPlugin(op_desc.Type().c_str(), &plugin_fc);
     CHECK(plugin);
@@ -164,7 +165,7 @@ class CustomPluginCreater : public OpConverter {
         output_names.push_back(arg_name);
     }
 
-    RreplenishLayerAndOutput(layer, op_desc.Type(), output_names, test_mode);
+    ReplenishLayerAndOutput(layer, op_desc.Type(), output_names, test_mode);
   }
 };
 
@@ -174,7 +175,7 @@ class GenericPluginCreater : public OpConverter {
                   const framework::Scope &scope,
                   bool test_mode) override {
     framework::OpDesc op_desc(op, nullptr);
-    VLOG(3) << "convert " << op_desc.Type() << " op to generic pluign layer";
+    VLOG(3) << "convert " << op_desc.Type() << " op to generic plugin layer";
 
     CHECK(block_);
     const framework::BlockDesc block_desc(
@@ -247,7 +248,93 @@ class GenericPluginCreater : public OpConverter {
         new plugin::GenericPlugin(op, in_out_info, with_fp16);
     layer = engine_->AddDynamicPlugin(inputs.data(), inputs.size(), plugin);
 
-    RreplenishLayerAndOutput(layer, op_desc.Type(), output_names, test_mode);
+    ReplenishLayerAndOutput(layer, op_desc.Type(), output_names, test_mode);
+  }
+};
+
+class CustomGenericPluginCreater : public OpConverter {
+ public:
+  void operator()(const framework::proto::OpDesc &op,
+                  const framework::Scope &scope,
+                  bool test_mode) override {
+    framework::OpDesc op_desc(op, nullptr);
+    VLOG(3) << "convert " << op_desc.Type()
+            << " op to custom generic plugin layer";
+
+    nvinfer1::ILayer *layer = nullptr;
+    std::vector<nvinfer1::ITensor *> inputs;
+
+    CHECK(block_);
+    const framework::BlockDesc block_desc(
+        nullptr, const_cast<framework::proto::BlockDesc *>(block_));
+
+    plugin::CustomGenericPlugin::InputOutPutVarInfo in_out_info;
+    using paddle::inference::tensorrt::plugin::
+        ProtoTypeToGenerateCustomGenericPluginDataType;
+
+    bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+
+    auto &op_meta_info_map = OpMetaInfoMap::Instance();
+    const auto &meta_info_map = op_meta_info_map.GetMap();
+    auto &op_info = meta_info_map.at(op_desc.Type()).front();
+
+    // set inputs
+    auto &op_input_names = OpMetaInfoHelper::GetInputs(op_info);
+    paddle::small_vector<const char *> input_names;
+    for (auto &input_name : op_input_names) {
+      input_names.emplace_back(input_name.c_str());
+    }
+    for (auto &param_name : input_names) {
+      for (auto &arg_name : op_desc.Input(param_name)) {
+        inputs.push_back(engine_->GetITensor(arg_name));
+        auto *var = block_desc.FindVar(arg_name);
+        PADDLE_ENFORCE_NOT_NULL(
+            var,
+            platform::errors::NotFound(
+                "There is no variable called %s in block.", arg_name.c_str()));
+        PADDLE_ENFORCE_EQ(
+            var->GetType(),
+            FluidDT::VarType_Type_LOD_TENSOR,
+            platform::errors::InvalidArgument("TensorRT engine only takes "
+                                              "LoDTensor as input"));
+        in_out_info.inputs_data_type.push_back(
+            ProtoTypeToGenerateCustomGenericPluginDataType(var->GetDataType()));
+      }
+    }
+
+    // set outputs
+    auto &op_output_names = OpMetaInfoHelper::GetOutputs(op_info);
+    paddle::small_vector<const char *> output_names;
+    for (auto &output_name : op_output_names) {
+      output_names.emplace_back(output_name.c_str());
+    }
+    std::vector<std::string> outputs;
+    for (auto &param_name : output_names) {
+      for (auto &arg_name : op_desc.Output(param_name)) {
+        outputs.push_back(arg_name);
+        auto *var = block_desc.FindVar(arg_name);
+        PADDLE_ENFORCE_NOT_NULL(
+            var,
+            platform::errors::NotFound(
+                "There is no variable called %s in block.", arg_name.c_str()));
+        PADDLE_ENFORCE_EQ(
+            var->GetType(),
+            FluidDT::VarType_Type_LOD_TENSOR,
+            platform::errors::InvalidArgument("TensorRT engine only takes "
+                                              "LoDTensor as input"));
+        in_out_info.outputs_data_type.push_back(
+            ProtoTypeToGenerateCustomGenericPluginDataType(var->GetDataType()));
+      }
+    }
+
+    auto *plugin = new plugin::CustomGenericPlugin(op, in_out_info, with_fp16);
+    CHECK(plugin);
+
+    layer = engine_->AddDynamicPlugin(
+        inputs.data(), inputs.size(), (plugin::DynamicPluginTensorRT *)plugin);
+    CHECK(layer);
+
+    ReplenishLayerAndOutput(layer, op_desc.Type(), outputs, test_mode);
   }
 };
 
@@ -257,3 +344,5 @@ class GenericPluginCreater : public OpConverter {
 
 REGISTER_TRT_OP_CONVERTER(custom_plugin_creater, CustomPluginCreater);
 REGISTER_TRT_OP_CONVERTER(generic_plugin_creater, GenericPluginCreater);
+REGISTER_TRT_OP_CONVERTER(custom_generic_plugin_creater,
+                          CustomGenericPluginCreater);

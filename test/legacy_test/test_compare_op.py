@@ -38,24 +38,35 @@ def create_test_class(op_type, typename, callback, check_pir=False):
         def test_output(self):
             self.check_output(check_cinn=True, check_pir=check_pir)
 
-        def test_errors(self):
+        def test_int16_support(self):
             paddle.enable_static()
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
-                x = paddle.static.data(name='x', shape=[-1, 2], dtype='int32')
-                y = paddle.static.data(name='y', shape=[-1, 2], dtype='int32')
                 a = paddle.static.data(name='a', shape=[-1, 2], dtype='int16')
+                b = paddle.static.data(name='b', shape=[-1, 2], dtype='int16')
                 op = eval("paddle.%s" % self.op_type)
-                self.assertRaises(TypeError, op, x=x, y=a)
-                self.assertRaises(TypeError, op, x=a, y=y)
+
+                try:
+                    result = op(x=a, y=b)
+                except TypeError:
+                    self.fail("TypeError should not be raised for int16 inputs")
 
     cls_name = f"{op_type}_{typename}"
     Cls.__name__ = cls_name
     globals()[cls_name] = Cls
 
 
-for _type_name in {'float32', 'float64', 'int32', 'int64', 'float16'}:
+for _type_name in {
+    'float32',
+    'float64',
+    'uint8',
+    'int8',
+    'int16',
+    'int32',
+    'int64',
+    'float16',
+}:
     if _type_name == 'float64' and core.is_compiled_with_rocm():
         _type_name = 'float32'
     if _type_name == 'float16' and (not core.is_compiled_with_cuda()):
@@ -513,7 +524,8 @@ create_bf16_case('not_equal', lambda _a, _b: _a != _b, True)
 
 
 class TestCompareOpError(unittest.TestCase):
-    def test_errors(self):
+    @test_with_pir_api
+    def test_int16_support(self):
         paddle.enable_static()
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/group_norm_kernel.h"
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/group_norm_utils.h"
@@ -801,7 +801,7 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
     AccT* mean,
     AccT* variance,
     const DataLayout data_layout) {
-  const auto input_ddim = phi::make_ddim(input_shape);
+  const auto input_ddim = common::make_ddim(input_shape);
   const int C =
       (data_layout == DataLayout::kNCHW ? input_ddim[1]
                                         : input_ddim[input_ddim.size() - 1]);
@@ -898,7 +898,7 @@ void GroupNormGeneralCaseKernel(const Context& dev_ctx,
                                 DenseTensor* mean,
                                 DenseTensor* var) {
   using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
   const auto x_dims = x.dims();

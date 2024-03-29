@@ -23,6 +23,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/data_device_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -39,7 +40,6 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
 #include "paddle/utils/string/string_helper.h"
@@ -288,18 +288,21 @@ class TensorRTEngineOp : public framework::OperatorBase {
             scope, name_real);
         VLOG(4) << "trt engine runtime input name(" << name << "), dims("
                 << t.dims() << ")";
-        auto t_shape = phi::vectorize<int32_t>(t.dims());
+        auto t_shape = common::vectorize<int32_t>(t.dims());
         runtime_input_shape.insert(std::make_pair(name, t_shape));
         // We need collect value range for shape tensor for Paddle-TRT's use.
-        // To be noticed, this method to identify all shape tensors is based on
-        // assumption that all shape tensors in the model have numbers <= 7.
-        // This is a simple method to identify all shape tensors with some
-        // mistakes, but it doesn't matter.
-        auto is_shape_tensor = t.numel() <= 7 && t.numel() >= 1;
+        // To be noticed, this method to identify all inputs/outputs is shape
+        // tensors; After, TRT Engine gets whether it is a real shape tensor.
+        auto is_shape_tensor = true;
         if (trt_engine->engine()) {
           auto *engine = trt_engine->engine();
           is_shape_tensor =
               engine->isShapeBinding(engine->getBindingIndex(name.c_str()));
+          if (!is_shape_tensor) {
+            runtime_shape_tensor.erase(name);
+            VLOG(4) << "trt engine runtime delete shape name(" << name
+                    << "), dims(" << t.dims() << ")";
+          }
         }
         if ((t.dtype() == phi::DataType::INT32 ||
              t.dtype() == phi::DataType::INT64) &&
@@ -446,7 +449,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         if (param_names_.count(x)) continue;
         auto &t = inference::analysis::GetFromScope<phi::DenseTensor>(scope, x);
         calib_buffers[x] = t.memory_size();
-        auto t_shape = phi::vectorize(t.dims());
+        auto t_shape = common::vectorize(t.dims());
         runtime_batch = t_shape[0];
       }
       calib_res->calib_ = std::make_unique<TRTInt8Calibrator>(
@@ -509,7 +512,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     int binding_offset = 0;
     nvinfer1::IExecutionContext *trt_context = nullptr;
     if (engine->with_dynamic_shape()) {
-      // Initilize context and get offset by profile index
+      // Initialize context and get offset by profile index
       trt_context = engine->context();
       binding_offset = engine->GetBindingsOffset();
     }
@@ -549,7 +552,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         framework::TensorCopy(t, dev_place, dev_ctx, &out);
         t.ShareDataWith(out);
       }
-      auto t_shape = phi::vectorize<int64_t>(t.dims());
+      auto t_shape = common::vectorize<int64_t>(t.dims());
 
       // This must be a zero dimension tensor.
       // At present, we convert it to a 1D tensor to feed them into Trt.
@@ -603,7 +606,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                     "by "
                     "setting min_subgraph_size using EnableTensorrtEngine "
                     "interface.\n"
-                    "\tThe min_subgraph_size shouble to be greater than the "
+                    "\tThe min_subgraph_size should to be greater than the "
                     "number "
                     "of "
                     "nodes in the inconsistent subgraph.\n"));
@@ -611,6 +614,41 @@ class TensorRTEngineOp : public framework::OperatorBase {
         }
       } else {
 #if IS_TRT_VERSION_GE(6000)
+#if IS_TRT_VERSION_GE(8500)
+        if (engine->engine()->isShapeBinding(bind_index) &&
+            engine->engine()->bindingIsInput(bind_index)) {
+          std::vector<int> shape_v(t.numel());
+          if (t.dtype() == phi::DataType::INT32) {
+            paddle::memory::Copy(platform::CPUPlace(),
+                                 shape_v.data(),
+                                 t.place(),
+                                 t.data<int32_t>(),
+                                 t.numel() * sizeof(int),
+                                 nullptr);
+          } else if (t.dtype() == phi::DataType::INT64) {
+            std::string x_t = x + "_cast_to_INT32";
+            if (scope.FindVar(x_t) == nullptr) {
+              const_cast<framework::Scope *>(&scope)->Var(x_t);
+            }
+            auto int32_tensor =
+                scope.FindVar(x_t)->GetMutable<phi::DenseTensor>();
+            *int32_tensor = phi::Cast<int64_t>(
+                reinterpret_cast<const phi::GPUContext &>(dev_ctx),
+                t,
+                phi::DataType::INT32);
+            paddle::memory::Copy(platform::CPUPlace(),
+                                 shape_v.data(),
+                                 int32_tensor->place(),
+                                 int32_tensor->data<int32_t>(),
+                                 int32_tensor->numel() * sizeof(int),
+                                 nullptr);
+          }
+          trt_context->setTensorAddress(x.c_str(), shape_v.data());
+        } else {
+          trt_context->setInputShape(
+              x.c_str(), inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
+        }
+#else
         trt_context->setBindingDimensions(
             bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
         // If this x is a shape tensor, we need call setInputShapeBinding
@@ -644,6 +682,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
           }
           trt_context->setInputShapeBinding(bind_index, shape_v.data());
         }
+#endif
 #endif
       }
       runtime_batch = t_shape[0];
@@ -718,7 +757,20 @@ class TensorRTEngineOp : public framework::OperatorBase {
           ddim.push_back(dims.d[i]);
         }
       } else {
-#if IS_TRT_VERSION_GE(6000)
+#if IS_TRT_VERSION_GE(8500)
+        auto x_name = engine->engine()->getBindingName(bind_index);
+        auto dims = trt_context->getTensorShape(x_name);
+        int nb_dims = dims.nbDims;
+        for (; nb_dims > 0; nb_dims--) {
+          // some 'x 1' of shape is normal, no need to remove it
+          if (dims.d[nb_dims - 1] != 1 ||
+              nb_dims == origin_output_rank[output_index])
+            break;
+        }
+        for (int i = 0; i < nb_dims; i++) {
+          ddim.push_back(dims.d[i]);
+        }
+#else
         auto dims = trt_context->getBindingDimensions(bind_index);
         int nb_dims = dims.nbDims;
         for (; nb_dims > 0; nb_dims--) {
@@ -727,7 +779,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
               nb_dims == origin_output_rank[output_index])
             break;
         }
-        for (int i = 0; i < nb_dims; i++) ddim.push_back(dims.d[i]);
+        for (int i = 0; i < nb_dims; i++) {
+          ddim.push_back(dims.d[i]);
+        }
 #endif
       }
       auto *fluid_v = scope.FindVar(y);
@@ -736,7 +790,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
           platform::errors::NotFound(
               "Output variable %s is not found in TensorRT subgraph.", y));
       auto *fluid_t = fluid_v->GetMutable<phi::DenseTensor>();
-      fluid_t->Resize(phi::make_ddim(ddim));
+      fluid_t->Resize(common::make_ddim(ddim));
 
       PADDLE_ENFORCE_LT(bind_index,
                         num_bindings,
@@ -774,7 +828,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
               "by "
               "setting min_subgraph_size using EnableTensorrtEngine "
               "interface.\n"
-              "\tThe min_subgraph_size shouble to be greater than the number "
+              "\tThe min_subgraph_size should to be greater than the number "
               "of "
               "nodes in the inconsistent subgraph.\n",
               runtime_batch,
@@ -835,14 +889,30 @@ class TensorRTEngineOp : public framework::OperatorBase {
       params.calibrator = calibrator_.get();
       params.device_id = dev_place.device;
       params.with_dynamic_shape = with_dynamic_shape_;
-      params.context_memory_sharing = Attr<bool>("context_memory_sharing");
-      params.use_dla = Attr<bool>("use_dla");
-      params.dla_core = Attr<int>("dla_core");
-      params.disable_trt_plugin_fp16 = Attr<bool>("disable_trt_plugin_fp16");
-      params.enable_low_precision_io = Attr<bool>("enable_low_precision_io");
-      params.use_inspector = Attr<bool>("use_inspector");
-      params.engine_info_path = Attr<std::string>("engine_info_path");
-
+      if (HasAttr("context_memory_sharing")) {
+        params.context_memory_sharing = Attr<bool>("context_memory_sharing");
+      }
+      if (HasAttr("use_dla")) {
+        params.use_dla = Attr<bool>("use_dla");
+      }
+      if (HasAttr("dla_core")) {
+        params.dla_core = Attr<int>("dla_core");
+      }
+      if (HasAttr("disable_trt_plugin_fp16")) {
+        params.disable_trt_plugin_fp16 = Attr<bool>("disable_trt_plugin_fp16");
+      }
+      if (HasAttr("enable_low_precision_io")) {
+        params.enable_low_precision_io = Attr<bool>("enable_low_precision_io");
+      }
+      if (HasAttr("use_inspector")) {
+        params.use_inspector = Attr<bool>("use_inspector");
+      }
+      if (HasAttr("engine_info_path")) {
+        params.engine_info_path = Attr<std::string>("engine_info_path");
+      }
+      if (HasAttr("optimization_level")) {
+        params.optimization_level = Attr<int>("optimization_level");
+      }
       if (!shape_range_info_path_.empty()) {
         inference::DeserializeShapeRangeInfo(shape_range_info_path_,
                                              &params.min_input_shape,

@@ -28,11 +28,11 @@ using utils::GetStreamCnt;
 
 namespace {
 
-struct IrReplaceMutator : ir::IRMutator<Expr*> {
+struct IrReplaceVarBroadcastMutator : ir::IRMutator<Expr*> {
   std::set<ir::IrNodeTy> valid_nodetys{
       {ir::IrNodeTy::Broadcast, ir::IrNodeTy::_Var_}};
 
-  IrReplaceMutator(ir::Expr from, Expr to)
+  IrReplaceVarBroadcastMutator(ir::Expr from, Expr to)
       : from_(from), to_(to), from_repr_(GetStreamCnt(from)) {
     CHECK(valid_nodetys.count(from->node_type()))
         << "Not valid node type got " << from->node_type();
@@ -50,7 +50,25 @@ struct IrReplaceMutator : ir::IRMutator<Expr*> {
   void Visit(const ir::Broadcast* op, Expr* expr) override {
     if (op->node_type() == from_->node_type() &&
         from_repr_ == GetStreamCnt(*expr)) {
-      *expr = ir::ir_utils::IRCopy(to_);
+      *expr = ir::ir_utils::IRCopy(to_, /* copy_buffer_node = */ false);
+    }
+  }
+
+  std::string from_repr_;
+  ir::Expr from_;
+  Expr to_;
+};
+
+struct IrReplaceMutator : ir::IRMutator<Expr*> {
+  IrReplaceMutator(ir::Expr from, Expr to)
+      : from_(from), to_(to), from_repr_(GetStreamCnt(from)) {}
+
+  void operator()(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+
+  void Visit(const Expr* op, Expr* expr) override {
+    ir::IRMutator<>::Visit(expr, expr);
+    if (from_repr_ == GetStreamCnt(*expr)) {
+      *expr = ir::ir_utils::IRCopy(to_, /* copy_buffer_node = */ false);
     }
   }
 
@@ -60,6 +78,11 @@ struct IrReplaceMutator : ir::IRMutator<Expr*> {
 };
 
 }  // namespace
+
+void IrReplaceVarBroadcast(ir::Expr* expr, ir::Expr from, ir::Expr to) {
+  CHECK(expr);
+  IrReplaceVarBroadcastMutator(from, to)(expr);
+}
 
 void IrReplace(ir::Expr* expr, ir::Expr from, ir::Expr to) {
   CHECK(expr);

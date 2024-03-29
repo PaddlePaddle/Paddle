@@ -49,7 +49,21 @@ struct NPUStorageProperties
   DDim storage_dims;
 };
 
-// Add OneDNNStorageProperties firstly for unittest covergae
+#ifdef PADDLE_WITH_XPU
+struct XPUStorageProperties
+    : public StorageProperties,
+      public TypeInfoTraits<StorageProperties, XPUStorageProperties> {
+  XPUStorageProperties() = default;
+  explicit XPUStorageProperties(float value) : xpu_scale_value(value) {}
+  virtual ~XPUStorageProperties() = default;
+  static const char* name() { return "XPUStorageProperties"; }
+  static constexpr float default_xpu_scale_value = -1.0f;
+
+  float xpu_scale_value{default_xpu_scale_value};
+};
+#endif
+
+// Add OneDNNStorageProperties firstly for unittest coverage
 #ifdef PADDLE_WITH_DNNL
 struct OneDNNStorageProperties
     : public StorageProperties,

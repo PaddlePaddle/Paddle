@@ -24,14 +24,16 @@ void FlattenGradStridedKernel(const Context& dev_ctx,
                               const DenseTensor& out_grad,
                               DenseTensor* x_grad) {
   auto xshape_dims = xshape.dims();
-  auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
+  auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
   ReshapeStridedKernel<Context>(dev_ctx,
                                 out_grad,
-                                IntArray(phi::vectorize<int64_t>(x_dims)),
+                                IntArray(common::vectorize<int64_t>(x_dims)),
                                 x_grad,
                                 nullptr);
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    flatten_grad, STRIDED, phi::FlattenGradStridedKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(flatten_grad,
+                                         STRIDED,
+                                         phi::FlattenGradStridedKernel) {}

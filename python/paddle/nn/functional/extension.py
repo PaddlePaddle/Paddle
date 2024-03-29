@@ -12,16 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the extention functions
+# TODO: define the extension functions
 
 
-from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode, tensor
+from paddle import _C_ops, tensor
 from paddle.utils import deprecated
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
-from ...framework import convert_np_dtype_to_dtype_, core
+from ...framework import (
+    convert_np_dtype_to_dtype_,
+    core,
+    in_dynamic_or_pir_mode,
+)
 
 __all__ = []
 
@@ -96,18 +100,14 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 
     """
 
-    if in_dynamic_mode():
-        if not isinstance(dtype, core.VarDesc.VarType):
+    if in_dynamic_or_pir_mode():
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
-        if maxlen is not None:
-            if isinstance(maxlen, core.eager.Tensor):
-                attrs = ('out_dtype', dtype)
-                out = _legacy_C_ops.sequence_mask(x, maxlen, *attrs)
-            else:
-                attrs = ('out_dtype', dtype, 'maxlen', maxlen)
-                out = _legacy_C_ops.sequence_mask(x, None, *attrs)
-            out.stop_gradient = True
-            return out
+        if maxlen is None:
+            maxlen = -1
+        out = _C_ops.sequence_mask(x, maxlen, dtype)
+        out.stop_gradient = True
+        return out
 
     helper = LayerHelper('sequence_mask', **locals())
     out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -206,7 +206,7 @@ def gather_tree(ids, parents):
     if ids.ndim != parents.ndim:
         raise ValueError("The ids's shape must be the same as parents' shape. ")
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.gather_tree(ids, parents)
     else:
         helper = LayerHelper('gather_tree', **locals())
@@ -292,7 +292,7 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
             "Attr(data_format) should be 'NCHW' or 'NHWC'. "
             f"Received Attr(data_format): {data_format}."
         )
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.temporal_shift(x, seg_num, shift_ratio, data_format)
     else:
         helper = LayerHelper("temporal_shift", **locals())

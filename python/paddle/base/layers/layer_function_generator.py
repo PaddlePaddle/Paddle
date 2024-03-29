@@ -86,14 +86,12 @@ def _generate_doc_string_(
         buf.write(" (Tensor): ")
         buf.write(escape_math(each_input.comment))
         if each_input.duplicable:
-            buf.write("  Duplicatable.")
+            buf.write("  Duplicable.")
         if each_input.dispensable:
             buf.write("  Optional.")
         buf.write('\n')
 
     skip_attrs = OpProtoHolder.generated_op_attr_names()
-    # attr use_mkldnn and is_test also should not be visible to users.
-    skip_attrs.add("use_mkldnn")
     skip_attrs.add("is_test")
     skip_attrs.add("use_cudnn")
 
@@ -329,7 +327,7 @@ def generate_inplace_fn(inplace_op_type):
                 and x.is_view_var
             ):
                 raise ValueError(
-                    'Sorry about what\'s happend. In to_static mode, {}\'s output variable {} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You mast find the location of the strided API be called, and call {} = {}.assign().'.format(
+                    'Sorry about what\'s happened. In to_static mode, {}\'s output variable {} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You must find the location of the strided API be called, and call {} = {}.assign().'.format(
                         inplace_op_type, x.name, x.name, x.nameb
                     )
                 )
@@ -338,7 +336,7 @@ def generate_inplace_fn(inplace_op_type):
     func.__name__ = inplace_op_type
     func.__doc__ = """
 Inplace version of ``{}`` API, the output Tensor will be inplaced with input ``x``.
-Please refer to :ref:`api_base_layers_{}`.
+Please refer to :ref:`api_paddle_base_layers_{}`.
 """.format(
         origin_op_type, origin_op_type
     )

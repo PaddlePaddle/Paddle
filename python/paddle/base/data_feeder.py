@@ -16,7 +16,9 @@ import struct
 
 import numpy as np
 
-from ..pir import OpResult
+from paddle import pir
+
+from ..pir import Value
 from ..pir.core import ParameterMeta
 from . import core
 from .framework import (
@@ -45,7 +47,22 @@ _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.COMPLEX128: 'complex128',
 }
 
-_PADDLE_NEW_IR_DTYPE_2_NUMPY_DTYPE = {
+_NUMPY_DTYPE_2_PADDLE_DTYPE = {
+    'bool': core.VarDesc.VarType.BOOL,
+    'float16': core.VarDesc.VarType.FP16,
+    'uint16': core.VarDesc.VarType.BF16,
+    'float32': core.VarDesc.VarType.FP32,
+    'float64': core.VarDesc.VarType.FP64,
+    'int8': core.VarDesc.VarType.INT8,
+    'int16': core.VarDesc.VarType.INT16,
+    'int32': core.VarDesc.VarType.INT32,
+    'int64': core.VarDesc.VarType.INT64,
+    'uint8': core.VarDesc.VarType.UINT8,
+    'complex64': core.VarDesc.VarType.COMPLEX64,
+    'complex128': core.VarDesc.VarType.COMPLEX128,
+}
+
+_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE = {
     core.DataType.BOOL: 'bool',
     core.DataType.FLOAT16: 'float16',
     core.DataType.BFLOAT16: 'uint16',
@@ -92,8 +109,8 @@ def convert_dtype(dtype):
         if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
             return _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
     if isinstance(dtype, core.DataType):
-        if dtype in _PADDLE_NEW_IR_DTYPE_2_NUMPY_DTYPE:
-            return _PADDLE_NEW_IR_DTYPE_2_NUMPY_DTYPE[dtype]
+        if dtype in _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE:
+            return _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[dtype]
     elif isinstance(dtype, type):
         # This branch is for NumPy scalar types
         if dtype in [
@@ -149,7 +166,7 @@ def check_variable_and_dtype(
 ):
     if in_pir_mode():
         check_type(
-            input, input_name, (OpResult, ParameterMeta), op_name, extra_message
+            input, input_name, (Value, ParameterMeta), op_name, extra_message
         )
     else:
         check_type(input, input_name, Variable, op_name, extra_message)
@@ -168,7 +185,7 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
         return
 
     # NOTE: `in_to_static_mode` is used to determined whether this op is called under
-    # @to_static in transformation from dygrah to static layer. We add Tensor in
+    # @to_static in transformation from dygraph to static layer. We add Tensor in
     # expected_type to skip checking because Tensor may be created and used in unusual way.
     from .dygraph.base import in_to_static_mode
 
@@ -180,9 +197,7 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
     elif isinstance(input, core.eager.Tensor):
         raise TypeError(
             "Please use `with base.dygraph.guard()` as context or `base.enable_dygraph()` to switch to imperative mode firstly. "
-            "Because received '{}' in {} is a imperative Variable.".format(
-                input_name, op_name
-            )
+            f"Because received '{input_name}' in {op_name} is a imperative Variable."
         )
     if not isinstance(input, expected_type):
         raise TypeError(
@@ -214,18 +229,22 @@ def check_dtype(
 def check_shape(
     shape,
     op_name,
-    expected_shape_type=(list, tuple, Variable),
-    expected_element_type=(int, Variable),
+    expected_shape_type=(list, tuple, Variable, Value),
+    expected_element_type=(int, Variable, Value),
     expected_tensor_dtype=('int32', 'int64'),
 ):
     # See NOTE [ Why skip dynamic graph check ]
     if in_dygraph_mode():
         return
     check_type(shape, 'shape', expected_shape_type, op_name)
-    if expected_element_type is not None and not isinstance(shape, Variable):
+    if expected_element_type is not None and not isinstance(
+        shape, (Variable, Value)
+    ):
         for item in shape:
             check_type(item, 'element of shape', expected_element_type, op_name)
-            if expected_tensor_dtype is not None and isinstance(item, Variable):
+            if expected_tensor_dtype is not None and isinstance(
+                item, (Variable, Value)
+            ):
                 check_dtype(
                     item.dtype,
                     'element of shape',
@@ -235,7 +254,9 @@ def check_shape(
                         ', '.join(expected_tensor_dtype)
                     ),
                 )
-    if expected_tensor_dtype is not None and isinstance(shape, Variable):
+    if expected_tensor_dtype is not None and isinstance(
+        shape, (Variable, Value)
+    ):
         check_dtype(shape.dtype, 'shape', expected_tensor_dtype, op_name)
 
 
@@ -244,11 +265,11 @@ class DataToLoDTensorConverter:
         self.place = place
         self.lod_level = lod_level
         self.shape = shape
-        negtive_count = 0
+        negative_count = 0
         for s in self.shape:
             if s < 0:
-                negtive_count += 1
-            if negtive_count > 1:
+                negative_count += 1
+            if negative_count > 1:
                 self.shape = None
                 break
         self.dtype = convert_dtype(dtype)
@@ -348,7 +369,7 @@ class DataFeeder:
     Parameters:
         feed_list (list): Variables or names of Variables that need
             to feed.
-        place (:ref:`api_base_CPUPlace` | :ref:`api_base_CUDAPlace` ):
+        place (:ref:`api_paddle_CPUPlace` | :ref:`api_paddle_CUDAPlace` ):
             place indicates the device (CPU | GPU) the data will be fed into, if
             you want to feed data into GPU, please using :code:`base.CUDAPlace(i)`
             (:code:`i` represents the GPU id), or if you want to feed data into CPU,
@@ -406,19 +427,35 @@ class DataFeeder:
         self.feed_names = []
         self.feed_shapes = []
         self.feed_lod_level = []
-        if program is None:
-            program = default_main_program()
-        for each_var in feed_list:
-            if isinstance(each_var, str):
-                each_var = program.block(0).var(each_var)
-            if not isinstance(each_var, Variable):
-                raise TypeError("Feed list should contain a list of variable")
-            self.feed_dtypes.append(each_var.dtype)
-            self.feed_names.append(each_var.name)
-            self.feed_lod_level.append(each_var.lod_level)
-            self.feed_shapes.append(each_var.shape)
-
         self.place = place
+        if in_pir_mode():
+            if program is None:
+                program = pir.core.default_main_program()
+            for each_var in feed_list:
+                if isinstance(each_var, str):
+                    raise ValueError(
+                        "In PIR Mode, Not supported string input yet"
+                    )
+                if not isinstance(each_var, Value):
+                    raise TypeError("Feed list should contain a list of Value")
+                self.feed_dtypes.append(each_var.dtype)
+                self.feed_names.append(each_var.name)
+                self.feed_lod_level.append(0)
+                self.feed_shapes.append(each_var.shape)
+        else:
+            if program is None:
+                program = default_main_program()
+            for each_var in feed_list:
+                if isinstance(each_var, str):
+                    each_var = program.block(0).var(each_var)
+                if not isinstance(each_var, Variable):
+                    raise TypeError(
+                        "Feed list should contain a list of variable"
+                    )
+                self.feed_dtypes.append(each_var.dtype)
+                self.feed_names.append(each_var.name)
+                self.feed_lod_level.append(each_var.lod_level)
+                self.feed_shapes.append(each_var.shape)
 
     def feed(self, iterable):
         """

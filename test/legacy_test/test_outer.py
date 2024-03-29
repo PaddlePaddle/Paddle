@@ -17,12 +17,14 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.static import Program, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestMultiplyApi(unittest.TestCase):
     def _run_static_graph_case(self, x_data, y_data):
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             paddle.enable_static()
             x = paddle.static.data(
                 name='x', shape=x_data.shape, dtype=x_data.dtype
@@ -53,7 +55,8 @@ class TestMultiplyApi(unittest.TestCase):
         res = paddle.outer(x, y)
         return res.numpy()
 
-    def test_multiply(self):
+    @test_with_pir_api
+    def test_multiply_static(self):
         np.random.seed(7)
 
         # test static computation graph: 3-d array
@@ -86,6 +89,7 @@ class TestMultiplyApi(unittest.TestCase):
         res = self._run_static_graph_case(x_data, y_data)
         np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
 
+    def test_multiply_dynamic(self):
         # test dynamic computation graph: 3-d array
         x_data = np.random.rand(5, 10, 10).astype(np.float64)
         y_data = np.random.rand(2, 10).astype(np.float64)
@@ -138,14 +142,18 @@ class TestMultiplyApi(unittest.TestCase):
 
 
 class TestMultiplyError(unittest.TestCase):
-    def test_errors(self):
+    @test_with_pir_api
+    def test_errors_static(self):
         # test static computation graph: dtype can not be int8
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x = paddle.static.data(name='x', shape=[100], dtype=np.int8)
             y = paddle.static.data(name='y', shape=[100], dtype=np.int8)
             self.assertRaises(TypeError, paddle.outer, x, y)
 
+    def test_errors_dynamic(self):
         np.random.seed(7)
 
         # test dynamic computation graph: dtype must be Tensor type

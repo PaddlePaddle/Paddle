@@ -21,7 +21,8 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestSignOp(OpTest):
@@ -91,49 +92,69 @@ class TestSignAPI(unittest.TestCase):
             z_expected = np.sign(np_x)
             self.assertEqual((np_z == z_expected).all(), True)
 
+    @test_with_pir_api
     def test_static(self):
-        np_input2 = np.random.uniform(-10, 10, (12, 10)).astype("int16")
-        np_input3 = np.random.uniform(-10, 10, (12, 10)).astype("int32")
-        np_input4 = np.random.uniform(-10, 10, (12, 10)).astype("int64")
+        np_input1 = np.random.uniform(-10, 10, (12, 10)).astype("int8")
+        np_input2 = np.random.uniform(-10, 10, (12, 10)).astype("uint8")
+        np_input3 = np.random.uniform(-10, 10, (12, 10)).astype("int16")
+        np_input4 = np.random.uniform(-10, 10, (12, 10)).astype("int32")
+        np_input5 = np.random.uniform(-10, 10, (12, 10)).astype("int64")
+        np_out1 = np.sign(np_input1)
         np_out2 = np.sign(np_input2)
         np_out3 = np.sign(np_input3)
         np_out4 = np.sign(np_input4)
+        np_out5 = np.sign(np_input5)
 
         def run(place):
-            with program_guard(Program(), Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 # The input type of sign_op must be Variable or numpy.ndarray.
                 input1 = 12
                 self.assertRaises(TypeError, paddle.tensor.math.sign, input1)
                 # The result of sign_op must correct.
+                input1 = paddle.static.data(
+                    name='input1', shape=[12, 10], dtype="int8"
+                )
                 input2 = paddle.static.data(
-                    name='input2', shape=[12, 10], dtype="int16"
+                    name='input2', shape=[12, 10], dtype="uint8"
                 )
                 input3 = paddle.static.data(
-                    name='input3', shape=[12, 10], dtype="int32"
+                    name='input3', shape=[12, 10], dtype="int16"
                 )
                 input4 = paddle.static.data(
-                    name='input4', shape=[12, 10], dtype="int64"
+                    name='input4', shape=[12, 10], dtype="int32"
                 )
+                input5 = paddle.static.data(
+                    name='input5', shape=[12, 10], dtype="int64"
+                )
+                out1 = paddle.sign(input1)
                 out2 = paddle.sign(input2)
                 out3 = paddle.sign(input3)
                 out4 = paddle.sign(input4)
+                out5 = paddle.sign(input5)
                 exe = paddle.static.Executor(place)
-                res2, res3, res4 = exe.run(
+                res1, res2, res3, res4, res5 = exe.run(
                     paddle.static.default_main_program(),
                     feed={
+                        "input1": np_input1,
                         "input2": np_input2,
                         "input3": np_input3,
                         "input4": np_input4,
+                        "input5": np_input5,
                     },
-                    fetch_list=[out2, out3, out4],
+                    fetch_list=[out1, out2, out3, out4, out5],
                 )
+                self.assertEqual((res1 == np_out1).all(), True)
                 self.assertEqual((res2 == np_out2).all(), True)
                 self.assertEqual((res3 == np_out3).all(), True)
                 self.assertEqual((res4 == np_out4).all(), True)
-                input5 = paddle.static.data(
-                    name='input5', shape=[-1, 4], dtype="float16"
-                )
-                paddle.sign(input5)
+                self.assertEqual((res5 == np_out5).all(), True)
+                if core.is_compiled_with_cuda():
+                    input6 = paddle.static.data(
+                        name='input6', shape=[-1, 4], dtype="float16"
+                    )
+                    paddle.sign(input6)
 
         for place in self.place:
             run(place)
@@ -143,6 +164,7 @@ class TestSignDoubleGradCheck(unittest.TestCase):
     def sign_wrapper(self, x):
         return paddle.sign(x[0])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -174,6 +196,7 @@ class TestSignTripleGradCheck(unittest.TestCase):
     def sign_wrapper(self, x):
         return paddle.sign(x[0])
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.

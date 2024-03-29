@@ -27,7 +27,7 @@ from paddle import base
 flag_name = os.path.splitext(__file__)[0]
 
 
-class TestParallelDygraphSparseEmdedding(TestDistBase):
+class TestParallelDygraphSparseEmbedding(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
@@ -45,7 +45,7 @@ class TestParallelDygraphSparseEmdedding(TestDistBase):
             )
 
 
-class TestParallelDygraphSparseEmdeddingFP64(TestDistBase):
+class TestParallelDygraphSparseEmbeddingFP64(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
@@ -63,7 +63,7 @@ class TestParallelDygraphSparseEmdeddingFP64(TestDistBase):
             )
 
 
-class TestParallelDygraphSparseEmdeddingSpawn(TestDistSpawnRunner):
+class TestParallelDygraphSparseEmbeddingSpawn(TestDistSpawnRunner):
     def test_sparse_embedding_with_spawn(self):
         if base.core.is_compiled_with_cuda():
             self.check_dist_result_with_spawn(

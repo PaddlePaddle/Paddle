@@ -184,7 +184,7 @@ void SchedulerBase::AddStage(const Stage &x) {
   std::string id = isl_map_get_tuple_name(x.transform().get(), isl_dim_in);
   schedule_graph_.RegisterNode(
       x.id(),
-      common::make_shared<ScheduleGraphNode>(
+      cinn::common::make_shared<ScheduleGraphNode>(
           id, isl_get_dim_names(x.transform(), isl_dim_out), &x));
 
   // record the longest dimensions.

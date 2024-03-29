@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/errors.h"
 
 namespace phi {
 namespace funcs {

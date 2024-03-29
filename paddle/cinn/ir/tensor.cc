@@ -18,7 +18,7 @@
 
 #include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/cinn.h"
-#include "paddle/cinn/common/arithmatic.h"
+#include "paddle/cinn/common/arithmetic.h"
 #include "paddle/cinn/common/axis.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/common.h"
@@ -31,6 +31,8 @@
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/poly/isl_utils.h"
 #include "paddle/cinn/poly/stage.h"
+
+PD_DECLARE_bool(cinn_bucket_compile);
 
 namespace cinn {
 namespace ir {
@@ -63,6 +65,54 @@ Tensor _Tensor_::Make(const std::string &name,
   n->name = name;
   n->shape = shape;
   n->domain = domain;
+  n->reduce_axis = reduce_axis;
+  n->operation = PlaceholderOp::Make(n->name, n->shape, Float(32));
+  n->set_type(dtype);
+  n->InitAxis();
+
+  return Tensor(n);
+}
+
+Tensor _Tensor_::Make(const std::string &name,
+                      Type dtype,
+                      const std::vector<Dim> &sym_shape,
+                      const std::vector<Dim> &sym_domain,
+                      FunctionRef fn,
+                      const std::vector<Var> &reduce_axis) {
+  CHECK(!name.empty()) << "Tensor name is set empty";
+  auto n = make_shared<_Tensor_>();
+  n->name = name;
+  n->sym_shape = sym_shape;
+  for (int i = 0; i < sym_shape.size(); i++) {
+    n->shape.emplace_back(sym_shape[i]->dim_expr);
+  }
+  n->sym_domain = sym_domain;
+  for (int i = 0; i < sym_domain.size(); i++) {
+    n->domain.emplace_back(sym_domain[i]->dim_expr);
+  }
+  n->reduce_axis = reduce_axis;
+  n->set_type(dtype);
+  n->operation = fn;
+  n->InitAxis();
+
+  return Tensor(n);
+}
+Tensor _Tensor_::Make(const std::string &name,
+                      Type dtype,
+                      const std::vector<Dim> &sym_shape,
+                      const std::vector<Dim> &sym_domain,
+                      const std::vector<Var> &reduce_axis) {
+  CHECK(!name.empty()) << "Cannot set empty Tensor name in Tensor::Make";
+  auto n = make_shared<_Tensor_>();
+  n->name = name;
+  n->sym_shape = sym_shape;
+  for (int i = 0; i < sym_shape.size(); i++) {
+    n->shape.emplace_back(sym_shape[i]->dim_expr);
+  }
+  n->sym_domain = sym_domain;
+  for (int i = 0; i < sym_domain.size(); i++) {
+    n->domain.emplace_back(sym_domain[i]->dim_expr);
+  }
   n->reduce_axis = reduce_axis;
   n->operation = PlaceholderOp::Make(n->name, n->shape, Float(32));
   n->set_type(dtype);
@@ -160,7 +210,7 @@ PlaceholderOp *_Tensor_::get_placeholder_op() const {
 
 void _Tensor_::InitAxis() const {
   // CHECK(!domain_without_reduce_axis().empty());
-  axis_ = common::GenDefaultAxis(domain_without_reduce_axis().size());
+  axis_ = cinn::common::GenDefaultAxis(domain_without_reduce_axis().size());
 }
 
 bool _Tensor_::has_expression() const {
@@ -179,12 +229,28 @@ isl::set _Tensor_::GenerateIslDomain() const {
     auto _axis_with_reduce = axis_with_reduce();
     for (int i = 0; i < domain.size(); i++) {
       auto dim = domain[i];
-      if (dim.is_constant()) {
-        dims.emplace_back(_axis_with_reduce[i]->name, 0, dim.as_int32() - 1);
+      if (dim.type() == type_of<int64_t>()) {
+        if (dim.is_constant()) {
+          dims.emplace_back(_axis_with_reduce[i]->name,
+                            static_cast<int64_t>(0),
+                            static_cast<int64_t>(dim.as_int64() - 1));
+        } else {
+          dims.emplace_back(
+              _axis_with_reduce[i]->name,
+              Expr(static_cast<int64_t>(0)),
+              Sub::Make(dim,
+                        cinn::common::make_const(static_cast<int64_t>(1))));
+        }
       } else {
-        dims.emplace_back(_axis_with_reduce[i]->name,
-                          Expr(0),
-                          Sub::Make(dim, common::make_const(1)));
+        if (dim.is_constant()) {
+          dims.emplace_back(_axis_with_reduce[i]->name,
+                            static_cast<uint32_t>(0),
+                            dim.as_int32() - 1);
+        } else {
+          dims.emplace_back(_axis_with_reduce[i]->name,
+                            Expr(0),
+                            Sub::Make(dim, cinn::common::make_const(1)));
+        }
       }
     }
   }
@@ -272,7 +338,7 @@ ir::Tensor _Tensor_::InitReduction(poly::StageMap stages,
                                    const Target &target) const {
   CHECK(contains_reduce_axis())
       << "InitReduction only works on a reduce tensor";
-  // return if already rexists.
+  // return if already exists.
   std::string init_reduce_tensor_name = GenReduceInitTensorNameOf(name);
   if (stages->Lookup(init_reduce_tensor_name))
     return stages[this]->LookupCtrlDepend(init_reduce_tensor_name);
@@ -295,7 +361,7 @@ ir::Tensor _Tensor_::InitReduction(poly::StageMap stages,
   std::vector<std::string> reduce_axis_input =
       stages[this]->origin_reduce_axis_names();
   auto origin_domain = stages[this]->domain();
-  auto reduce_axis_output = poly::GetRelatedOutputAxies(
+  auto reduce_axis_output = poly::GetRelatedOutputAxes(
       temp_transform, origin_domain, reduce_axis_input);
   std::set<std::string> reduce_axis_output_set;
   for (auto &i : reduce_axis_output) {
@@ -310,7 +376,7 @@ ir::Tensor _Tensor_::InitReduction(poly::StageMap stages,
     }
   }
 
-  temp_transform = poly::RemoveAxiesByOutputNames(
+  temp_transform = poly::RemoveAxesByOutputNames(
       temp_transform, origin_domain, reduce_axis_output);
 
   //! When the first axis is not reduce axis, do ComputeAt.
@@ -322,7 +388,7 @@ ir::Tensor _Tensor_::InitReduction(poly::StageMap stages,
     init_tensor->shape = shape;
     return init_tensor;
   }
-  //! When reduce axies are reordered to front, ComputeAt is illegal.
+  //! When reduce axes are reordered to front, ComputeAt is illegal.
   //! So we just copy transform and forloopInfo.
   isl_map_set_tuple_name(
       temp_transform.get(), isl_dim_in, init_reduce_tensor_name.c_str());
@@ -362,7 +428,7 @@ Expr _Tensor_::tensor_store_expanded_body() {
   Expr final_body = body();
   if (shape.empty()) return final_body;
 
-  std::vector<Expr> g_axis = common::GenDefaultAxisAsExpr(shape.size());
+  std::vector<Expr> g_axis = cinn::common::GenDefaultAxisAsExpr(shape.size());
   if (!new_indices.empty()) {
     g_axis = new_indices;
   }
@@ -407,7 +473,7 @@ void _Tensor_::Bind(lang::Buffer &buffer) {
     if (this->buffer == buffer.buffer()) return;
     this->buffer->Unbind(this);
   }
-  // Extract the tensors thouse has binded to this buffer.
+  // Extract the tensors those has binded to this buffer.
   buffer_depended_tensor_names_ = buffer.buffer()->binded_tensor_names();
 
   buffer.buffer()->BindTo(this);
@@ -424,7 +490,7 @@ void _Tensor_::Bind(const Buffer &buffer) {
 void _Tensor_::WithBuffer(const Type &type) {
   Type buf_type = type.is_void() ? type_ : type;
   lang::Buffer buf(buf_type);
-  buf->target = common::DefaultHostTarget();
+  buf->target = cinn::common::DefaultHostTarget();
   Bind(buf);
 }
 
@@ -442,11 +508,13 @@ void _Tensor_::WithBuffer(const std::string &memory_type,
     } else if (memory_type == "global") {
       this->buffer->memory_type = MemoryType::Heap;
     } else {
-      LOG(FATAL) << "Not supported memory type " << memory_type;
+      std::stringstream ss;
+      ss << "Not supported memory type " << memory_type;
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
   } else {
     lang::Buffer buf(buf_type, buffer_name);
-    buf->target = common::DefaultHostTarget();
+    buf->target = cinn::common::DefaultHostTarget();
     Bind(buf);
 
     if (memory_type == "shared") {
@@ -456,7 +524,9 @@ void _Tensor_::WithBuffer(const std::string &memory_type,
     } else if (memory_type == "global") {
       buf->memory_type = MemoryType::Heap;
     } else {
-      LOG(FATAL) << "Not supported memory type " << memory_type;
+      std::stringstream ss;
+      ss << "Not supported memory type " << memory_type;
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
   }
 }
@@ -465,8 +535,8 @@ bool _Tensor_::HasSameShapeWith(const Tensor &other) const {
   if (shape.size() != other->shape.size()) return false;
 
   for (int i = 0; i < shape.size(); i++) {
-    Expr dim0 = common::AutoSimplify(shape[i]);
-    Expr dim1 = common::AutoSimplify(other->shape[i]);
+    Expr dim0 = cinn::common::AutoSimplify(shape[i]);
+    Expr dim1 = cinn::common::AutoSimplify(other->shape[i]);
 
     if (dim0 != dim1) return false;
   }
@@ -493,7 +563,9 @@ std::vector<Expr> _Tensor_::domain_with_reduce_axis() const {
   if (reduce_axis.empty()) return domain;
   auto res = domain;
   for (const Var &axis : reduce_axis) {
-    CHECK(axis->upper_bound.type().is_int(32)) << axis->upper_bound;
+    CHECK(axis->upper_bound.type().is_int(32) ||
+          axis->upper_bound.type().is_int(64))
+        << axis->upper_bound;
     res.push_back(axis->upper_bound);
   }
   return res;
@@ -509,6 +581,16 @@ Tensor::Tensor(const std::string &name,
                const std::vector<Var> &reduce_axis)
     : IrNodeRef(
           _Tensor_::Make(name, dtype, shape, domain, fn, reduce_axis).self()) {}
+
+Tensor::Tensor(const std::string &name,
+               Type dtype,
+               const std::vector<Dim> &sym_shape,
+               const std::vector<Dim> &sym_domain,
+               FunctionRef fn,
+               const std::vector<Var> &reduce_axis)
+    : IrNodeRef(
+          _Tensor_::Make(name, dtype, sym_shape, sym_domain, fn, reduce_axis)
+              .self()) {}
 
 bool _Tensor_::is_tuple_get() const {
   return is_call_node() && operation.defined() &&
@@ -613,7 +695,18 @@ ir::Tensor _Tensor_::ReshapeCopied(const std::vector<Expr> &shape,
 }
 
 Shared<poly::Stage> CreateStage(Tensor tensor) {
-  auto isl_domain = tensor->GenerateIslDomain();
+  isl::set isl_domain;
+  // We will remove isl, and the subsequent compilation process will no longer
+  // use it. But it has not been completely removed in the process. it cannot be
+  // supported here under dynamic shape. Therefore, we temporarily use fake
+  // domain.
+  if (FLAGS_cinn_bucket_compile) {
+    poly::Domain fake_domain(Context::isl_ctx(), "fake_domain", {});
+    isl_domain = fake_domain.to_isl();
+  } else {
+    isl_domain = tensor->GenerateIslDomain();
+  }
+
   return poly::Stage::New(isl_domain, tensor->body(), tensor.self());
 }
 

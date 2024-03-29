@@ -25,14 +25,14 @@ namespace cinn::hlir::pass {
 using framework::Graph;
 using Group = framework::Graph::Group;
 
-using common::GraphEdge;
-using common::GraphNode;
+using cinn::common::GraphEdge;
+using cinn::common::GraphNode;
 
 using framework::Node;
 using framework::NodeData;
 
 using ShapeDict = absl::flat_hash_map<std::string, framework::shape_t>;
-using DtypeDict = absl::flat_hash_map<std::string, common::Type>;
+using DtypeDict = absl::flat_hash_map<std::string, cinn::common::Type>;
 
 namespace utils {
 template <typename T>
@@ -179,7 +179,7 @@ bool SingleGroupOptimizePass::CanReplaceToMemcpy(Node* node) const {
 }
 
 void SingleGroupOptimizePassImpl(Graph* graph) {
-  if (graph->target_ != common::DefaultNVGPUTarget()) {
+  if (graph->target_ != cinn::common::DefaultNVGPUTarget()) {
     return;
   }
   graph->fusion_groups = SingleGroupOptimizePass(graph).Apply();
@@ -201,7 +201,7 @@ void SingleGroupOptimizePass::InitNodeToGroups() {
 
 CINN_REGISTER_HELPER(SingleGroupOptimizePass) {
   CINN_REGISTER_PASS(SingleGroupOptimizePass)
-      .describe("Optimize singel group to improve performance.")
+      .describe("Optimize single group to improve performance.")
       .set_change_structure(true)
       .set_body(cinn::hlir::pass::SingleGroupOptimizePassImpl);
 

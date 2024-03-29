@@ -102,6 +102,26 @@ else
     wget -q http://paddle-inference-dist.bj.bcebos.com/word2vec.inference.model.tar.gz
     tar xzf *.tar.gz
 fi
+cd ..
+
+#download custom_op_demo data
+mkdir -p custom_op
+cd custom_op
+if [[ -e "custom_relu_infer_model.tgz" ]]; then
+  echo "custom_relu_infer_model.tgz has been downloaded."
+else
+    wget -q https://paddle-inference-dist.bj.bcebos.com/inference_demo/custom_operator/custom_relu_infer_model.tgz
+    tar xzf *.tgz
+fi
+cd ..
+
+#download custom_pass_demo data
+mkdir -p custom_pass
+cd custom_pass
+if [ ! -d resnet50 ]; then
+    wget https://paddle-inference-dist.bj.bcebos.com/Paddle-Inference-Demo/resnet50.tgz
+    tar xzf resnet50.tgz
+fi
 
 # compile and test the demo
 cd $current_dir
@@ -272,6 +292,52 @@ for WITH_STATIC_LIB in ON OFF; do
         --data=$DATA_DIR/MobileNetV2/MobileNetV2/data.txt
       if [ $? -ne 0 ]; then
         echo "onnxruntime_mobilenet_demo runs failed " >> ${current_dir}/test_summary.txt
+        EXIT_CODE=1
+      fi
+    fi
+
+    # --------custom op demo on linux/mac------
+    if [ $TEST_GPU_CPU == ON -a $WITH_STATIC_LIB == OFF ]; then
+      rm -rf *
+      CUSTOM_OPERATOR_FILES="custom_relu_op.cc;custom_relu_op.cu"
+      cmake .. -DPADDLE_LIB=${inference_install_dir} \
+        -DWITH_MKL=$TURN_ON_MKL \
+        -DDEMO_NAME=custom_op_demo \
+        -DWITH_GPU=$TEST_GPU_CPU \
+        -DWITH_STATIC_LIB=OFF \
+        -DUSE_TENSORRT=$USE_TENSORRT \
+        -DTENSORRT_ROOT=$TENSORRT_ROOT_DIR \
+        -DCUSTOM_OPERATOR_FILES=$CUSTOM_OPERATOR_FILES \
+        -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
+      make -j$(nproc)
+      ./custom_op_demo \
+        --modeldir=$DATA_DIR/custom_op/custom_relu_infer_model
+      if [ $? -ne 0 ]; then
+        echo "custom_op_demo runs failed " >> ${current_dir}/test_summary.txt
+        EXIT_CODE=1
+      fi
+    fi
+
+    # --------custom pass demo on linux/mac------
+    if [ $TEST_GPU_CPU == ON -a $WITH_STATIC_LIB == OFF ]; then
+      rm -rf *
+      CUSTOM_OPERATOR_FILES="custom_relu_op.cc;custom_relu_op.cu"
+      CUSTOM_PASS_FILES="custom_relu_pass.cc"
+      cmake .. -DPADDLE_LIB=${inference_install_dir} \
+        -DWITH_MKL=$TURN_ON_MKL \
+        -DDEMO_NAME=custom_pass_demo \
+        -DWITH_GPU=$TEST_GPU_CPU \
+        -DWITH_STATIC_LIB=OFF \
+        -DUSE_TENSORRT=$USE_TENSORRT \
+        -DTENSORRT_ROOT=$TENSORRT_ROOT_DIR \
+        -DCUSTOM_OPERATOR_FILES=$CUSTOM_OPERATOR_FILES \
+        -DCUSTOM_PASS_FILES=${CUSTOM_PASS_FILES} \
+        -DWITH_ONNXRUNTIME=$WITH_ONNXRUNTIME
+      make -j$(nproc)
+      ./custom_pass_demo \
+        --modeldir=$DATA_DIR/custom_pass/resnet50
+      if [ $? -ne 0 ]; then
+        echo "custom_pass_demo runs failed " >> ${current_dir}/test_summary.txt
         EXIT_CODE=1
       fi
     fi

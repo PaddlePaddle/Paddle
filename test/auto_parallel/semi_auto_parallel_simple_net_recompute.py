@@ -14,7 +14,6 @@
 
 import os
 
-import numpy as np
 from semi_auto_parallel_simple_net import (
     DemoNet,
     TestSimpleNetForSemiAutoParallel,
@@ -35,34 +34,31 @@ class TestSimpleNetWithRecomputeForSemiAutoParallel(
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
         paddle.set_device(self._backend)
-        self.init_input_data()
         self.init_single_card_net_result()
 
     def run_dynamic_recompute(self, layer, shard_input=False):
-        paddle.seed(self._seed)
-        np.random.seed(self._seed)
-
         # create loss
         loss_fn = nn.MSELoss()
+        opt = paddle.optimizer.SGD(
+            learning_rate=0.1, parameters=layer.parameters()
+        )
         # run forward and backward
-        image = paddle.to_tensor(self.image)
-        if shard_input:
-            image = dist.shard_tensor(
-                image,
-                dist_attr=dist.DistAttr(
-                    mesh=self._mesh, sharding_specs=['x', None]
-                ),
-            )
-        image.stop_gradient = False
-        out = layer(image)
+        for _ in range(1):
+            image, label = self.init_input_data()
+            if shard_input:
+                image = dist.shard_tensor(image, self._mesh, [dist.Shard(0)])
+            image.stop_gradient = False
+            out = layer(image)
+            loss = loss_fn(out, label)
 
-        label = paddle.to_tensor(self.label)
-        loss = loss_fn(out, label)
+            loss.backward()
+            opt.step()
+            opt.clear_grad()
 
-        loss.backward()
         return loss, layer.parameters()
 
     def init_single_card_net_result(self):
+        self.set_random_seed(self._seed)
         (
             self.base_loss,
             self.base_parameters,
@@ -71,6 +67,7 @@ class TestSimpleNetWithRecomputeForSemiAutoParallel(
         )
 
     def test_dp_demo_net(self):
+        self.set_random_seed(self._seed)
         (
             self.dp_loss,
             self.dp_parameters,
@@ -85,6 +82,7 @@ class TestSimpleNetWithRecomputeForSemiAutoParallel(
             self.check_tensor_eq(param.grad, param_base.grad)
 
     def test_mp_demo_net(self):
+        self.set_random_seed(self._seed)
         mp_layer = dist.shard_layer(
             DemoNet("recompute_mp_demo", is_recompute=True),
             self._mesh,

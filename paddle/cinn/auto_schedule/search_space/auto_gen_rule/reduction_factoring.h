@@ -26,7 +26,7 @@ namespace auto_schedule {
 
 class ReductionFactoring : public AutoGenRule {
  public:
-  explicit ReductionFactoring(const common::Target& target)
+  explicit ReductionFactoring(const cinn::common::Target& target)
       : AutoGenRule(target) {}
   ~ReductionFactoring() = default;
 
@@ -36,7 +36,8 @@ class ReductionFactoring : public AutoGenRule {
   }
   // In the future, we will no longer use this interface.
   void Apply(int index) override {
-    LOG(FATAL) << "This is a deprecated interface, please do not use it.";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "This is a deprecated interface, please do not use it."));
     return;
   }
 

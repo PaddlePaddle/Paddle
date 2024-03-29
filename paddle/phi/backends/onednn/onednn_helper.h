@@ -18,8 +18,8 @@
 #include "dnnl.hpp"  // NOLINT
 #include "glog/logging.h"
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
@@ -220,8 +220,9 @@ inline std::string CreateKey(const OneDNNContext& dev_ctx UNUSED,
                              ArgTypes&&... args) {
   std::string key;
   key.reserve(64);
-  using expand_type = int[];
-  expand_type{0, (AppendKey(&key, std::forward<ArgTypes>(args)), 0)...};
+  // using expand_type = int[];
+  // expand_type{0, (AppendKey(&key, std::forward<ArgTypes>(args)), 0)...};
+  ((void)AppendKey(&key, std::forward<ArgTypes>(args)), ...);
   key += OneDNNContext::tls().get_key_suffix();
   return key;
 }
@@ -263,16 +264,16 @@ inline void MatchShapeToLayout(DenseTensor* tensor_in,
   // be done. Similarly for dim==1 when you have just one possible combination.
   if (tensor_in->dims().size() < 3) {
     VLOG(3) << "Keeping ONEDNN/NHWC/NDHWC output_shape"
-            << print_dims(phi::vectorize<int>(tensor_in->dims()));
+            << print_dims(common::vectorize<int>(tensor_in->dims()));
     return;
   }
 
   switch (from) {
     case DataLayout::ONEDNN:
       if ((to == DataLayout::NHWC) || (to == DataLayout::NDHWC)) {
-        auto dims = phi::vectorize<int>(tensor_in->dims());
+        auto dims = common::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
-        tensor_in->Resize(phi::make_ddim(dims));
+        tensor_in->Resize(common::make_ddim(dims));
         VLOG(3) << "Rotating Shape from: ONEDNN to: NHWC/NDHWC output_shape"
                 << print_dims(dims);
       }
@@ -280,9 +281,9 @@ inline void MatchShapeToLayout(DenseTensor* tensor_in,
     case DataLayout::NHWC:
     case DataLayout::NDHWC:
       if (to == DataLayout::ONEDNN) {
-        auto dims = phi::vectorize<int>(tensor_in->dims());
+        auto dims = common::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.end() - 1, dims.end());
-        tensor_in->Resize(phi::make_ddim(dims));
+        tensor_in->Resize(common::make_ddim(dims));
         VLOG(3) << "Rotating Shape from: NHWC/NDHWC to: ONEDNN output_shape"
                 << print_dims(dims);
       }

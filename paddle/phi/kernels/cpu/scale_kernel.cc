@@ -29,7 +29,7 @@ template <typename T, typename Context>
 void ScaleKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const Scalar& scale,
-                 float bias,
+                 const Scalar& bias,
                  bool bias_after_scale,
                  DenseTensor* out) {
   // calc
@@ -44,12 +44,7 @@ void ScaleKernel(const Context& dev_ctx,
     return;
   }
   phi::funcs::EigenScale<std::decay_t<decltype(dev)>, T>::Eval(
-      dev,
-      eigen_out,
-      eigen_x,
-      scale.to<T>(),
-      static_cast<T>(bias),
-      bias_after_scale);
+      dev, eigen_out, eigen_x, scale.to<T>(), bias.to<T>(), bias_after_scale);
 }
 
 }  // namespace phi
@@ -58,6 +53,7 @@ PD_REGISTER_KERNEL(scale,
                    CPU,
                    ALL_LAYOUT,
                    phi::ScaleKernel,
+                   bool,
                    float,
                    double,
                    phi::dtype::bfloat16,

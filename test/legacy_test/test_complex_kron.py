@@ -39,8 +39,8 @@ class ComplexKronTestCase(unittest.TestCase):
 
     def test_kron_api(self, place):
         with dg.guard(place):
-            x_var = dg.to_variable(self.x)
-            y_var = dg.to_variable(self.y)
+            x_var = paddle.to_tensor(self.x)
+            y_var = paddle.to_tensor(self.y)
             out_var = paddle.kron(x_var, y_var)
             np.testing.assert_allclose(
                 out_var.numpy(), self.ref_result, rtol=1e-05

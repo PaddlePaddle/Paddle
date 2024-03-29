@@ -15,17 +15,17 @@
 #include "paddle/phi/core/distributed/nccl_comm_task.h"
 
 #include "gflags/gflags.h"
-#include "glog/logging.h"
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_tools.h"
-#include "paddle/phi/core/distributed/trace_utils.h"
 #include "paddle/phi/core/utils/data_type.h"
 
 namespace phi {
 namespace distributed {
 
 NCCLCommTask::NCCLCommTask(const phi::Place& place,
+                           const std::string& group_key,
                            int rank,
                            int size,
                            int gid,
@@ -39,6 +39,7 @@ NCCLCommTask::NCCLCommTask(const phi::Place& place,
                            int64_t timeout)
     : CommTask("NCCL",
                place,
+               group_key,
                rank,
                size,
                gid,
@@ -88,6 +89,34 @@ void NCCLCommTask::EndRecord() {
   HIP_CHECK(hipEventRecord(nccl_end_event_, nccl_stream_));
 #endif
 }
+
+#ifdef PADDLE_WITH_CUDA
+void NCCLCommTask::ClearRecord() {
+  if (start_event_created_) {
+    backends::gpu::GPUDeviceGuard guard(place_.device);
+    CUDA_CHECK(cudaEventDestroy(nccl_start_event_));
+    start_event_created_ = false;
+  }
+  if (end_event_created_) {
+    backends::gpu::GPUDeviceGuard guard(place_.device);
+    CUDA_CHECK(cudaEventDestroy(nccl_end_event_));
+    end_event_created_ = false;
+  }
+}
+#else  // PADDLE_WITH_HIP
+void NCCLCommTask::ClearRecord() {
+  if (start_event_created_) {
+    backends::gpu::GPUDeviceGuard guard(place_.device);
+    HIP_CHECK(hipEventDestroy(nccl_start_event_));
+    start_event_created_ = false;
+  }
+  if (end_event_created_) {
+    backends::gpu::GPUDeviceGuard guard(place_.device);
+    HIP_CHECK(hipEventDestroy(nccl_end_event_));
+    end_event_created_ = false;
+  }
+}
+#endif
 
 bool NCCLCommTask::CudaEventQuery(gpuEvent_t event) {
 #ifdef PADDLE_WITH_CUDA
@@ -175,9 +204,31 @@ std::string NCCLCommTask::GetCommErrors() {
   return comm_error_;
 }
 
-bool NCCLCommTask::IsStarted() { return CudaEventQuery(nccl_start_event_); }
+bool NCCLCommTask::IsStarted() {
+  if (started_) {
+    return true;
+  }
+  if (start_event_created_ && CudaEventQuery(nccl_start_event_)) {
+    started_ = true;
+    updated_ = true;
+  }
+  return started_;
+}
 
-bool NCCLCommTask::IsCompleted() { return CudaEventQuery(nccl_end_event_); }
+bool NCCLCommTask::IsCompleted() {
+  if (completed_) {
+    return true;
+  }
+  if (end_event_created_ && CudaEventQuery(nccl_end_event_)) {
+    completed_ = true;
+    updated_ = true;
+  }
+  return completed_;
+}
+
+void NCCLCommTask::SetUpdated(bool updated) { updated_ = updated; }
+
+bool NCCLCommTask::IsUpdated() { return updated_; }
 
 bool NCCLCommTask::IsTimeout() {
   auto current_timepoint = std::chrono::steady_clock::now();
@@ -198,21 +249,19 @@ void NCCLCommTask::AbortComm() {
 }
 
 std::string NCCLCommTask::GetTraceMsg() {
-  auto current_timepoint = std::chrono::steady_clock::now();
-  auto time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-      current_timepoint - start_time_);
-  return "op:" + CommTypeToString(comm_type_) + ",gid:" + std::to_string(gid_) +
-         ",seq:" + std::to_string(seq_) +
-         ",started:" + std::to_string(IsStarted()) +
-         ",completed:" + std::to_string(IsCompleted()) +
+  auto global_ranks =
+      phi::distributed::CommContextManager::GetInstance().GetGroupRanks(
+          group_key_);
+  return "group_key:" + group_key_ +
+         ",group_ranks:" + VectorToString(global_ranks) +
          ",global_rank:" + std::to_string(global_rank_) +
          ",local_rank:" + std::to_string(rank_) +
-         ",size:" + std::to_string(size_) + ",numel:" + std::to_string(numel_) +
-         ",sync_op:" + std::to_string(sync_op_) +
-         ",use_calc_stream:" + std::to_string(use_calc_stream_) +
-         ",timeout:" + std::to_string(timeout_.count()) +
-         ",is_timeout:" + std::to_string(IsTimeout()) +
-         ",time_elapsed:" + std::to_string(time_elapsed.count());
+         ",comm_count:" + std::to_string(seq_) +
+         ",op:" + CommTypeToString(comm_type_) +
+         ",started:" + std::to_string(started_) +
+         ",completed:" + std::to_string(completed_) +
+         ",numel:" + std::to_string(numel_) +
+         ",nranks:" + std::to_string(size_);
 }
 
 }  // namespace distributed

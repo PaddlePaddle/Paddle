@@ -25,6 +25,4 @@
 
 vjp_interface_black_list = [
     'silu_grad',
-    'fused_dropout_add',
-    'fused_rotary_position_embedding',
 ]

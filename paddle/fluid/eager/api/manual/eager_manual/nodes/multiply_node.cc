@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
@@ -29,9 +30,8 @@
 #include "paddle/phi/api/backward/sparse_bw_api.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/api/lib/api_custom_impl.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_nan_inf);
 
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
 MultiplyGradNode::operator()(
@@ -41,6 +41,19 @@ MultiplyGradNode::operator()(
     bool is_new_grad) {
   VLOG(3) << "Running AD API GRAD: "
           << "multiply_grad";
+  // This 'Local_XXXGradNode' record event is different with
+  // 'Global_XXXGradNode' event.
+  // * 'Local_XXXGradNode' will only cover execution time of this function.
+  // * 'Global_XXXGradNode' will not only cover execution time of this function,
+  // but also include gradient
+  //    accumulation when the output(s) of corresponding forward OP are shared
+  //    by other OP(s), which may have extra accumulation overhead than
+  //    'Local_XXXGradNode'.
+  paddle::platform::RecordEvent node_execution_inner(
+      "Local_MultiplyGradNode",
+      paddle::platform::TracerEventType::OperatorInner,
+      1);
+
   // Fill Zero For GradIn Tensors
   const auto& input_metas = this->InputMeta();
   egr::EagerUtils::FillZeroForEmptyGradInput(&grads[0][0], input_metas[0][0]);
@@ -110,7 +123,11 @@ MultiplyGradNode::operator()(
 
   // Call grad_api function
 
-  if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {
+  std::string grad_op_name = "multiply_grad";
+  auto need_skip =
+      paddle::prim::StaticCompositeContext::Instance().CheckSkipCompOps(
+          grad_op_name);
+  if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {
     bool original_global_grad = egr::Controller::Instance().HasGrad();
     if (!create_graph) {
       egr::Controller::Instance().SetHasGrad(create_graph);
@@ -156,7 +173,7 @@ MultiplyGradNode::operator()(
 
   // Create Grad Node
 
-  if (!paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {
+  if (!paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() || need_skip) {
     if (trace_backward) {
       paddle::platform::RecordEvent node_creation_record_event(
           "multiply_grad node_creation",
@@ -167,11 +184,11 @@ MultiplyGradNode::operator()(
       auto grad_node = std::shared_ptr<MultiplyDoubleGradNode>(  // NOLINT
           new MultiplyDoubleGradNode(2, 3));
       // SetAttributes if needed
-      grad_node->SetAttributeaxis(axis);
+      grad_node->SetAttribute_axis(axis);
       // Set TensorWrappers for Forward Inputs if needed
-      grad_node->SetTensorWrapperx(x);
-      grad_node->SetTensorWrappery(y);
-      grad_node->SetTensorWrappergrad_out(grad_out);
+      grad_node->SetTensorWrapper_x(x);
+      grad_node->SetTensorWrapper_y(y);
+      grad_node->SetTensorWrapper_grad_out(grad_out);
       // SetGradOutMeta & SetEdges
       grad_node->SetGradOutMeta(x, 0);
       grad_node->SetGradOutMeta(y, 1);
@@ -196,6 +213,7 @@ MultiplyGradNode::operator()(
   }
 
   VLOG(4) << "Finish AD API GRAD: multiply_grad";
+  VLOG(6) << "gradnode_ptr = " << this;
   // LOG IF DEBUG
 
   if (VLOG_IS_ON(4)) {
@@ -240,6 +258,19 @@ MultiplyDoubleGradNode::operator()(
     bool is_new_grad) {
   VLOG(3) << "Running AD API GRAD: "
           << "multiply_double_grad";
+  // This 'Local_XXXGradNode' record event is different with
+  // 'Global_XXXGradNode' event.
+  // * 'Local_XXXGradNode' will only cover execution time of this function.
+  // * 'Global_XXXGradNode' will not only cover execution time of this function,
+  // but also include gradient
+  //    accumulation when the output(s) of corresponding forward OP are shared
+  //    by other OP(s), which may have extra accumulation overhead than
+  //    'Local_XXXGradNode'.
+  paddle::platform::RecordEvent node_execution_inner(
+      "Local_MultiplyDoubleGradNode",
+      paddle::platform::TracerEventType::OperatorInner,
+      1);
+
   // Fill Zero For GradIn Tensors
   const auto& input_metas = this->InputMeta();
   egr::EagerUtils::FillZeroForEmptyOptionalGradInput(&grads[0][0],
@@ -356,22 +387,39 @@ MultiplyDoubleGradNode::operator()(
 
   // Call grad_api function
 
-  bool original_global_grad = egr::Controller::Instance().HasGrad();
-  if (!create_graph) {
-    egr::Controller::Instance().SetHasGrad(create_graph);
-  }
-  paddle::prim::multiply_double_grad<paddle::Tensor>(x,
-                                                     y,
-                                                     fwd_grad_out,
-                                                     fwd_grad_grad_x_optional,
-                                                     fwd_grad_grad_y_optional,
-                                                     axis,
-                                                     api_output_0,
-                                                     api_output_1,
-                                                     api_output_2);
-  VLOG(4) << "Composite api multiply_double_grad is called ";
-  if (!create_graph) {
-    egr::Controller::Instance().SetHasGrad(original_global_grad);
+  std::string grad_op_name = "multiply_double_grad";
+  auto need_skip =
+      paddle::prim::StaticCompositeContext::Instance().CheckSkipCompOps(
+          grad_op_name);
+  if (!need_skip) {
+    bool original_global_grad = egr::Controller::Instance().HasGrad();
+    if (!create_graph) {
+      egr::Controller::Instance().SetHasGrad(create_graph);
+    }
+    paddle::prim::multiply_double_grad<paddle::Tensor>(x,
+                                                       y,
+                                                       fwd_grad_out,
+                                                       fwd_grad_grad_x_optional,
+                                                       fwd_grad_grad_y_optional,
+                                                       axis,
+                                                       api_output_0,
+                                                       api_output_1,
+                                                       api_output_2);
+    VLOG(4) << "Composite api multiply_double_grad is called ";
+    if (!create_graph) {
+      egr::Controller::Instance().SetHasGrad(original_global_grad);
+    }
+  } else {
+    paddle::experimental::multiply_double_grad(x,
+                                               y,
+                                               fwd_grad_out,
+                                               fwd_grad_grad_x_optional,
+                                               fwd_grad_grad_y_optional,
+                                               axis,
+                                               api_output_0,
+                                               api_output_1,
+                                               api_output_2);
+    VLOG(4) << "Fused api multiply_double_grad is called";
   }
 
   // Check NaN and Inf id needed
@@ -411,7 +459,16 @@ MultiplyDoubleGradNode::operator()(
 
   // Create Grad Node
 
+  if (need_skip) {
+    if (trace_backward) {
+      PADDLE_THROW(phi::errors::Unavailable(
+          "The Op multiply_double_grad doesn't have any grad"
+          "op. If you don't intend calculating higher order"
+          "derivatives, please set `create_graph`to False."));
+    }
+  }
   VLOG(4) << "Finish AD API GRAD: multiply_double_grad";
+  VLOG(6) << "gradnode_ptr = " << this;
   // LOG IF DEBUG
 
   if (VLOG_IS_ON(4)) {
@@ -474,6 +531,19 @@ MultiplyGradNode::operator()(
     bool is_new_grad) {
   VLOG(3) << "Running AD API GRAD: "
           << "multiply_grad";
+  // This 'Local_XXXGradNode' record event is different with
+  // 'Global_XXXGradNode' event.
+  // * 'Local_XXXGradNode' will only cover execution time of this function.
+  // * 'Global_XXXGradNode' will not only cover execution time of this function,
+  // but also include gradient
+  //    accumulation when the output(s) of corresponding forward OP are shared
+  //    by other OP(s), which may have extra accumulation overhead than
+  //    'Local_XXXGradNode'.
+  paddle::platform::RecordEvent node_execution_inner(
+      "Local_MultiplyGradNode",
+      paddle::platform::TracerEventType::OperatorInner,
+      1);
+
   // Fill Zero For GradIn Tensors
   const auto& input_metas = this->InputMeta();
   egr::EagerUtils::FillZeroForEmptyGradInput(&grads[0][0], input_metas[0][0]);
@@ -573,6 +643,7 @@ MultiplyGradNode::operator()(
         "derivatives, please set `create_graph`to False."));
   }
   VLOG(4) << "Finish AD API GRAD: multiply_grad";
+  VLOG(6) << "gradnode_ptr = " << this;
   // LOG IF DEBUG
 
   if (VLOG_IS_ON(4)) {

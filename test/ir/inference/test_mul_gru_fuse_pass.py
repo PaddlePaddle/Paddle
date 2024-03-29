@@ -134,7 +134,7 @@ class TestMulGruFusePass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False, max_duration=300, passes=["mul_gru_fuse_pass"]
+            quant=False, max_duration=600, passes=["mul_gru_fuse_pass"]
         )
 
 

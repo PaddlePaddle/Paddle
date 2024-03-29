@@ -18,4 +18,8 @@ if(WITH_CUSTOM_DEVICE)
   list(APPEND DISTRIBUTED_COMMON_SRCS xccl_comm_context.cc)
 endif()
 
+if(WITH_XPU_BKCL)
+  list(APPEND DISTRIBUTED_COMMON_SRCS bkcl_comm_context.cc)
+endif()
+
 collect_srcs(core_srcs SRCS ${DISTRIBUTED_COMMON_SRCS})

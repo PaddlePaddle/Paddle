@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(10)
 
@@ -41,15 +42,22 @@ class TestVanderAPI(unittest.TestCase):
     def api_case(self, N=None, increasing=False):
         paddle.enable_static()
         out_ref = ref_vander(self.x, N, increasing)
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('X', self.shape)
-            out = paddle.vander(x, N, increasing)
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'X': self.x}, fetch_list=[out])
-        if N != 0:
-            np.testing.assert_allclose(res[0], out_ref, rtol=1e-05)
-        else:
-            np.testing.assert_allclose(res[0].size, out_ref.size, rtol=1e-05)
+
+        @test_with_pir_api
+        def test_static_or_pir_mode():
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data('X', self.shape)
+                out = paddle.vander(x, N, increasing)
+                exe = paddle.static.Executor(self.place)
+                res = exe.run(feed={'X': self.x}, fetch_list=[out])
+            if N != 0:
+                np.testing.assert_allclose(res[0], out_ref, rtol=1e-05)
+            else:
+                np.testing.assert_allclose(
+                    res[0].size, out_ref.size, rtol=1e-05
+                )
+
+        test_static_or_pir_mode()
 
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x)
@@ -86,6 +94,7 @@ class TestVanderAPI(unittest.TestCase):
         test_api_case(N, increasing=True)
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):

@@ -42,6 +42,7 @@ NOT_FOUND = "not_found"
 BASE = "base"
 set_field_default_config(BASE, "auto_mode", "semi")
 set_field_default_config(BASE, "gradient_scale", True)
+set_field_default_config(BASE, "gradient_scale_using_allreduce_avg", False)
 set_field_default_config(BASE, "use_cache", True)
 set_field_default_config(BASE, "return_numpy", True)
 set_field_default_config(BASE, "all_ranks", False)
@@ -56,6 +57,8 @@ RECOMPUTE = "recompute"
 set_field_default_config(RECOMPUTE, "enable", False)
 set_field_default_config(RECOMPUTE, "checkpoints", [])
 set_field_default_config(RECOMPUTE, "no_recompute_segments", [])
+set_field_default_config(RECOMPUTE, "sr", 0)
+set_field_default_config(RECOMPUTE, "refined_ops_patterns", [])  # List[Dict]
 set_field_default_config(RECOMPUTE, "enable_tuning", False)
 
 #########################################
@@ -76,6 +79,7 @@ set_field_default_config(AMP, "custom_black_list", [])
 set_field_default_config(AMP, "custom_black_varnames", [])
 set_field_default_config(AMP, "use_fp16_guard", False)
 set_field_default_config(AMP, "use_bf16_guard", False)
+set_field_default_config(AMP, "use_master_grad", False)
 
 #########################################
 # sharding configuration
@@ -108,10 +112,14 @@ set_field_default_config(GRADIENT_MERGE, "avg", True)
 PIPELINE = "pipeline"
 set_field_default_config(PIPELINE, "enable", False)
 set_field_default_config(PIPELINE, "schedule_mode", "1F1B")
+set_field_default_config(PIPELINE, "vpp_degree", 1)
+set_field_default_config(PIPELINE, "vpp_seg_method", "")
 set_field_default_config(PIPELINE, "micro_batch_size", 1)
 set_field_default_config(PIPELINE, "accumulate_steps", 1)
 set_field_default_config(PIPELINE, "generation_batch_size", 1)
 set_field_default_config(PIPELINE, "enable_send_recv_overlap", False)
+set_field_default_config(PIPELINE, "job_schedule_profiler_start", -1)
+set_field_default_config(PIPELINE, "job_schedule_profiler_stop", -1)
 
 #########################################
 # quantization configuration
@@ -142,6 +150,12 @@ DATASET = "dataset"
 set_field_default_config(DATASET, "enable", False)
 set_field_default_config(DATASET, "num_shards", 1)
 
+# #########################################
+# # offload configuration
+# #########################################
+FUSEDLINEARPROMOTION = "fused_linear_promotion"
+set_field_default_config(FUSEDLINEARPROMOTION, "enable", False)
+
 #########################################
 # fused passes configuration
 #########################################
@@ -157,6 +171,9 @@ set_field_default_config(DP_OPTIMIZATION, "enable", False)
 set_field_default_config(DP_OPTIMIZATION, "fuse_all_reduce_ops", True)
 set_field_default_config(DP_OPTIMIZATION, "fuse_grad_size_in_MB", 32)
 set_field_default_config(DP_OPTIMIZATION, "overlap_comm_cacl", True)
+set_field_default_config(
+    DP_OPTIMIZATION, "gradient_sync_after_accumulate", False
+)
 
 #########################################
 # model parallel configuration
@@ -165,3 +182,9 @@ MP_OPTIMIZATION = "mp_optimization"
 set_field_default_config(
     MP_OPTIMIZATION, "allreduce_matmul_grad_overlapping", False
 )
+
+#########################################
+# sequence parallel configuration
+#########################################
+SP_OPTIMIZATION = "sp_optimization"
+set_field_default_config(SP_OPTIMIZATION, "enable", False)

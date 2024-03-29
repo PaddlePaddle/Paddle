@@ -15,8 +15,8 @@ limitations under the License. */
 #include <algorithm>
 #include <string>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/sequence_pooling.h"

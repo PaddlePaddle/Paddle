@@ -29,7 +29,7 @@ limitations under the License. */
 // clang-format off
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #endif
 namespace paddle {
@@ -136,7 +136,7 @@ void Tensor::copy_(const Tensor &src,
   auto *dev_ctx = pool.GetMutable(
       place.GetType() == target_place.GetType() ? target_place : place);
 
-  if (kernel_type == KernelType::DENSE_TENSOR_KENREL) {
+  if (kernel_type == KernelType::DENSE_TENSOR_KERNEL) {
 #ifdef PADDLE_WITH_DISTRIBUTE
   bool run_auto_parallel = AllInputsAreDistTensor(src);
   bool rank_is_in_current_mesh = false;
@@ -147,19 +147,21 @@ void Tensor::copy_(const Tensor &src,
 
     auto meta_dist_input_x = MakeDistMetaTensor(*src.impl());
 
-    auto this_dist_attr =
-              std::static_pointer_cast<phi::distributed::DistTensor>(
-              this->impl())->dist_attr();
-    PADDLE_ENFORCE_EQ((meta_dist_input_x.dist_attr() == this_dist_attr
-                       || this_dist_attr.empty()),
-                      true,
-                      phi::errors::PreconditionNotMet(
-                          "DistAttr is different of dst "
-                          "tensor and args %s, which "
-                          "current tensor holds %s "
-                          "Copy cannot be performed!",
-                          meta_dist_input_x.dist_attr(),
-                          this_dist_attr));
+    if (this->initialized()) {
+      auto this_dist_attr =
+                std::static_pointer_cast<phi::distributed::DistTensor>(
+                this->impl())->dist_attr();
+      PADDLE_ENFORCE_EQ((meta_dist_input_x.dist_attr() == this_dist_attr
+                        || this_dist_attr.empty()),
+                        true,
+                        phi::errors::PreconditionNotMet(
+                            "DistAttr is different of dst "
+                            "tensor and args %s, which "
+                            "current tensor holds %s "
+                            "Copy cannot be performed!",
+                            meta_dist_input_x.dist_attr(),
+                            this_dist_attr));
+    }
 
     auto dist_out = SetKernelDistOutput(this, meta_dist_input_x.dist_attr());
     auto dense_out = dist_out->unsafe_mutable_value();
@@ -198,7 +200,7 @@ void Tensor::copy_(const Tensor &src,
               target_place,
               blocking,
               static_cast<phi::DenseTensor *>(impl_.get()));
-  } else if (kernel_type == KernelType::SELECTED_ROWS_KENREL) {
+  } else if (kernel_type == KernelType::SELECTED_ROWS_KERNEL) {
     SetSelectedRowsKernelOutput(this);
     phi::MetaTensor meta_out(impl_.get());
     phi::UnchangedInferMeta(

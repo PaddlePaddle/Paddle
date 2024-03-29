@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import csv
 import os
 from typing import Tuple
@@ -21,9 +22,12 @@ import pandas as pd
 
 class HistoryRecorder:
     # NOTE increase extenable ablitity
-    def __init__(self) -> None:
+    def __init__(self, tuner_cfg) -> None:
+        self.tuner_cfg = tuner_cfg
+        self.search_algo = self.tuner_cfg['search_algo']['name']
         self.history = []
         self.store_path = None
+        self.additional_metric_key = None
 
     def add_cfg(self, **kwargs):
         cur_configs = {}
@@ -47,40 +51,59 @@ class HistoryRecorder:
                 reverse=False,
             )
 
-    def get_best(self, metric, direction, mode=None) -> Tuple[dict, bool]:
+    def get_best(
+        self, metric, direction, buffer=None, max_mem_usage=None
+    ) -> Tuple[dict, bool]:
         self.sort_metric(direction=direction, metric_name=metric)
         if len(self.history) == 0:
-            return (self.history[0], True)
-        if mode == "SFT" or mode == "LoRA":
-            best_cfg = self.history[0]
-            if (
-                isinstance(best_cfg["max_mem_usage"], str)
-                or best_cfg["time"] == -1
-            ):
-                return (best_cfg, True)
-            first_few = 1
+            return (None, True)
+
+        best_cfg = self.history[0]
+        if isinstance(best_cfg["max_mem_usage"], str) or best_cfg["time"] == -1:
+            return (best_cfg, True)
+
+        if buffer is not None:
+            if buffer < 0:
+                raise ValueError("The buffer should be not less than 0.")
+            assert (
+                max_mem_usage is not None
+            ), "max_mem_usage cannot be None when buffer is greater than 0."
+            if max_mem_usage <= 0:
+                raise ValueError("max_mem_usage should be greater than 0.")
+
             for cfg in self.history:
                 if (
+                    not best_cfg["max_mem_usage"]
+                    and cfg["max_mem_usage"]
+                    and not isinstance(cfg["max_mem_usage"], str)
+                    and cfg["time"] != -1
+                ):
+                    best_cfg = cfg
+                    continue
+
+                if (
                     not isinstance(cfg["max_mem_usage"], str)
+                    and cfg["max_mem_usage"]
                     and cfg["max_mem_usage"] < best_cfg["max_mem_usage"]
                     and cfg["time"] != -1
                 ):
                     best_cfg = cfg
-                first_few += 1
-                if first_few >= 5:
+
+                if (
+                    not isinstance(cfg["max_mem_usage"], str)
+                    and cfg["max_mem_usage"]
+                    and cfg["max_mem_usage"] < max_mem_usage - buffer
+                    and cfg["time"] != -1
+                ):
                     break
             return (best_cfg, False)
-        if isinstance(self.history[0]["max_mem_usage"], str) or (
-            "time" in self.history[0] and self.history[0]["time"] == -1
-        ):
-            return (self.history[0], True)
+
         return (self.history[0], False)
 
-    def store_history(self, path="./history.csv"):
+    def _store_history_impl(self, data, path="./history.csv"):
         """Store history to csv file."""
-        self.store_path = path
         # convert to pd dataframe
-        df = pd.DataFrame(self.history)
+        df = pd.DataFrame(data)
         # move 'job_id' to the first column
         cols = df.columns.tolist()
         cols.insert(0, cols.pop(cols.index('job_id')))
@@ -88,8 +111,36 @@ class HistoryRecorder:
         # check if 'time' exists
         if 'time' in df.columns:
             df = df.drop(columns=['time'])
+        if 'has_error' in df.columns:
+            df = df.drop(columns=['has_error'])
         # write to csv
-        df.to_csv(self.store_path, index=False)
+        df.to_csv(path, index=False)
+
+    def store_history(self, path="./history.csv"):
+        # get enhanced report in dp-estimation mode
+        if self.search_algo == "dp_estimation":
+            metric_name = self.tuner_cfg['metric_cfg']['name']
+            if self.additional_metric_key:
+                _history = []
+                for cfg in self.history:
+                    if (
+                        "sharding_overlap" not in cfg.keys()
+                        or cfg["sharding_overlap"] is None
+                    ) and cfg["error_info"] is None:
+                        _history.append(copy.deepcopy(cfg))
+                _history.sort(
+                    key=lambda x: x[self.additional_metric_key]
+                    if x[self.additional_metric_key] is not None
+                    else float('-inf'),
+                    reverse=True,
+                )
+                self._store_history_impl(
+                    data=_history, path=path.split('.csv')[0] + '_enhanced.csv'
+                )
+
+        """Store history to csv file."""
+        self.store_path = path
+        self._store_history_impl(data=self.history, path=path)
 
     def load_history(self, path="./history.csv") -> Tuple[list, bool]:
         """Load history from csv file."""

@@ -26,7 +26,7 @@ namespace distributed {
 using phi::distributed::auto_parallel::str_join;
 
 ////////////////// Utils Functions //////////////////
-std::vector<int64_t> GetDefaultDataParallelDimsmapping(
+std::vector<int64_t> GetDefaultDataParallelDimsMapping(
     const int64_t batch_axis_dim, const int ndim) {
   std::vector<int64_t> dims_mapping(ndim, -1);
   dims_mapping[0] = batch_axis_dim;
@@ -39,8 +39,8 @@ SpmdInfo DefaultDataParallelInferSpmd(
     const std::vector<const DistMetaTensor*>& ins,
     const std::vector<const DistMetaTensor*>& outs) {
   // step1: Build Einsum Notation for input tensor's batch axis
-  int64_t ninputs = ins.size();
-  int64_t noutputs = outs.size();
+  int64_t ninputs = static_cast<int64_t>(ins.size());
+  int64_t noutputs = static_cast<int64_t>(outs.size());
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
   std::string batch_axis = "b";
 
@@ -61,7 +61,7 @@ SpmdInfo DefaultDataParallelInferSpmd(
     TensorDistAttr dist_attr_dst =
         CopyTensorDistAttrForOutput(ins[0]->dist_attr());
     std::vector<int64_t> dst_dims_maping =
-        GetDefaultDataParallelDimsmapping(batch_axis_dim, ndim);
+        GetDefaultDataParallelDimsMapping(batch_axis_dim, ndim);
     dist_attr_dst.set_dims_mapping(dst_dims_maping);
     output_dist_attrs.emplace_back(dist_attr_dst);
   }
@@ -73,7 +73,7 @@ SpmdInfo DefaultDataParallelInferSpmd(
     TensorDistAttr dist_attr_dst =
         CopyTensorDistAttrForOutput(ins[i]->dist_attr());
     std::vector<int64_t> dst_dims_maping =
-        GetDefaultDataParallelDimsmapping(batch_axis_dim, ndim);
+        GetDefaultDataParallelDimsMapping(batch_axis_dim, ndim);
     dist_attr_dst.set_dims_mapping(dst_dims_maping);
     dst_input_dist_attrs.emplace_back(dist_attr_dst);
   }
@@ -81,7 +81,7 @@ SpmdInfo DefaultDataParallelInferSpmd(
   VLOG(4) << "DefaultDataParallelSpmd InferForward:";
   for (int64_t i = 0; i < ninputs; i++) {
     VLOG(4) << "Input" << std::to_string(i) << " shape: ["
-            << str_join(phi::vectorize(ins[i]->dims())) << "] "
+            << str_join(common::vectorize(ins[i]->dims())) << "] "
             << "src_dims_mapping: ["
             << str_join(ins[i]->dist_attr().dims_mapping()) << "] "
             << "dst_dims_mapping: ["
@@ -90,19 +90,20 @@ SpmdInfo DefaultDataParallelInferSpmd(
 
   for (int64_t i = 0; i < noutputs; i++) {
     VLOG(4) << "Output" << std::to_string(i) << " shape: ["
-            << str_join(phi::vectorize(outs[i]->dims())) << "] "
+            << str_join(common::vectorize(outs[i]->dims())) << "] "
             << "dst_dims_mapping: ["
             << str_join(output_dist_attrs[i].dims_mapping()) << "]";
   }
 
-  return {dst_input_dist_attrs, output_dist_attrs};
+  return {ToArgDistAttr(dst_input_dist_attrs),
+          ToArgDistAttr(output_dist_attrs)};
 }
 SpmdInfo DefaultDataParallelInferSpmdReverse(
     const std::vector<const DistMetaTensor*>& ins,
     const std::vector<const DistMetaTensor*>& outs) {
   // step1: Build Einsum Notation for input tensor's batch axis
-  int64_t ninputs = ins.size();
-  int64_t noutputs = outs.size();
+  int64_t ninputs = static_cast<int64_t>(ins.size());
+  int64_t noutputs = static_cast<int64_t>(outs.size());
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
   std::string batch_axis = "b";
 
@@ -123,7 +124,7 @@ SpmdInfo DefaultDataParallelInferSpmdReverse(
     TensorDistAttr dist_attr_dst =
         CopyTensorDistAttrForOutput(outs[i]->dist_attr());
     std::vector<int64_t> dst_dims_maping =
-        GetDefaultDataParallelDimsmapping(batch_axis_dim, ndim);
+        GetDefaultDataParallelDimsMapping(batch_axis_dim, ndim);
     dist_attr_dst.set_dims_mapping(dst_dims_maping);
     output_dist_attrs.emplace_back(dist_attr_dst);
   }
@@ -135,7 +136,7 @@ SpmdInfo DefaultDataParallelInferSpmdReverse(
     TensorDistAttr dist_attr_dst =
         CopyTensorDistAttrForOutput(ins[i]->dist_attr());
     std::vector<int64_t> dst_dims_maping =
-        GetDefaultDataParallelDimsmapping(batch_axis_dim, ndim);
+        GetDefaultDataParallelDimsMapping(batch_axis_dim, ndim);
     dist_attr_dst.set_dims_mapping(dst_dims_maping);
     dst_input_dist_attrs.emplace_back(dist_attr_dst);
   }
@@ -143,7 +144,7 @@ SpmdInfo DefaultDataParallelInferSpmdReverse(
   VLOG(4) << "DefaultDataParallelSpmd InferBackward:";
   for (int64_t i = 0; i < noutputs; i++) {
     VLOG(4) << "Output" << std::to_string(i) << " shape: ["
-            << str_join(phi::vectorize(outs[i]->dims())) << "] "
+            << str_join(common::vectorize(outs[i]->dims())) << "] "
             << "src_dims_mapping: ["
             << str_join(outs[i]->dist_attr().dims_mapping()) << "] "
             << "dst_dims_mapping: ["
@@ -152,12 +153,13 @@ SpmdInfo DefaultDataParallelInferSpmdReverse(
 
   for (int64_t i = 0; i < ninputs; i++) {
     VLOG(4) << "Input" << std::to_string(i) << " shape: ["
-            << str_join(phi::vectorize(ins[i]->dims())) << "] "
+            << str_join(common::vectorize(ins[i]->dims())) << "] "
             << "dst_dims_mapping: ["
             << str_join(dst_input_dist_attrs[i].dims_mapping()) << "]";
   }
 
-  return {dst_input_dist_attrs, output_dist_attrs};
+  return {ToArgDistAttr(dst_input_dist_attrs),
+          ToArgDistAttr(output_dist_attrs)};
 }
 
 }  // namespace distributed

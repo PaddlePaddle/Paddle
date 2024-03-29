@@ -36,7 +36,7 @@ void SqueezeInferStridedKernel(const Context& dev_ctx,
   auto input_stride = input.strides();
 
   if (input.Holder() == out->Holder() && input.meta() == out->meta()) {
-    output_dims = phi::vectorize<int64_t>(out->dims());
+    output_dims = common::vectorize<int64_t>(out->dims());
     if (axes.empty()) {
       for (int i = input_stride.size() - 1; i > 0; --i) {
         if (input_stride[i] != input_stride[i - 1]) {
@@ -111,6 +111,7 @@ void SqueezeInferStridedKernel(const Context& dev_ctx,
   meta.offset = input.offset();
   out->set_meta(meta);
   out->ResetHolder(input.Holder());
+  out->ShareInplaceVersionCounterWith(input);
 }
 
 template <typename Context>
@@ -123,8 +124,11 @@ void SqueezeStridedKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    squeeze_infer, STRIDED, phi::SqueezeInferStridedKernel) {}
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    squeeze, STRIDED, phi::SqueezeStridedKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(squeeze_infer,
+                                         STRIDED,
+                                         phi::SqueezeInferStridedKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(squeeze,
+                                         STRIDED,
+                                         phi::SqueezeStridedKernel) {}

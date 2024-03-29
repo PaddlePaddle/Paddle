@@ -74,9 +74,9 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
         reinterpret_cast<XPUType *>(conv_out_x->mutable_data<T>(place))};
 
     std::vector<std::vector<int>> x_shape_list = {
-        phi::vectorize<int>(input_x->dims())};
+        common::vectorize<int>(input_x->dims())};
 
-    auto filter_x_shape = phi::vectorize<int>(filter_x->dims());
+    auto filter_x_shape = common::vectorize<int>(filter_x->dims());
     std::vector<int> ksize = {filter_x_shape[2], filter_x_shape[3]};
     if (!is_nchw) {
       ksize[0] = filter_x_shape[1];
@@ -122,9 +122,9 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
       conv_y_list.push_back(
           reinterpret_cast<XPUType *>(conv_out_z->mutable_data<T>(place)));
 
-      x_shape_list.push_back(phi::vectorize<int>(input_z->dims()));
+      x_shape_list.push_back(common::vectorize<int>(input_z->dims()));
 
-      auto filter_z_shape = phi::vectorize<int>(filter_z->dims());
+      auto filter_z_shape = common::vectorize<int>(filter_z->dims());
       std::vector<int> ksize_z = {filter_z_shape[2], filter_z_shape[3]};
       if (!is_nchw) {
         ksize_z[0] = filter_z_shape[1];
@@ -143,7 +143,7 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
     } else {
       if (fuse_add) {
         const phi::DenseTensor *input_z = ctx.Input<phi::DenseTensor>("Z");
-        auto input_z_shape = phi::vectorize<int>(input_z->dims());
+        auto input_z_shape = common::vectorize<int>(input_z->dims());
         x_list.push_back(reinterpret_cast<const XPUType *>(input_z->data<T>()));
         x_shape_list.push_back(input_z_shape);
         x_maxlist.push_back(nullptr);
@@ -239,9 +239,9 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
         reinterpret_cast<XPUType *>(filter_x_grad->mutable_data<T>(place))};
 
     std::vector<std::vector<int>> x_shape_list = {
-        phi::vectorize<int>(x->dims())};
+        common::vectorize<int>(x->dims())};
 
-    auto filter_x_shape = phi::vectorize<int>(filter_x->dims());
+    auto filter_x_shape = common::vectorize<int>(filter_x->dims());
     std::vector<int> x_ksize = {filter_x_shape[2], filter_x_shape[3]};
     if (!is_nchw) {
       x_ksize[0] = filter_x_shape[1];
@@ -298,9 +298,9 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
           reinterpret_cast<XPUType *>(z_grad->mutable_data<T>(place)));
       dw_list.push_back(
           reinterpret_cast<XPUType *>(filter_z_grad->mutable_data<T>(place)));
-      x_shape_list.push_back(phi::vectorize<int>(z->dims()));
+      x_shape_list.push_back(common::vectorize<int>(z->dims()));
 
-      auto filter_z_shape = phi::vectorize<int>(filter_z->dims());
+      auto filter_z_shape = common::vectorize<int>(filter_z->dims());
       std::vector<int> ksize_z = {filter_z_shape[2], filter_z_shape[3]};
       if (!is_nchw) {
         ksize_z[0] = filter_z_shape[1];

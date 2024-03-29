@@ -136,6 +136,21 @@ void XPUQuantizeSquashPass::OpDequantSquash(Graph* graph) const {
           FindOutputNameByVarName(any_op->Op(), dequant_in->Name());
 
       if (output_name.empty()) return;
+      if (any_op->Op()->Type() == "conv2d_xpu") {
+        bool has_branch = any_op->Op()->HasInput("branch");
+        if (has_branch) {
+          std::string branch_name = any_op->Op()->Input("branch")[0];
+          auto* branch_node = FindNodeWithName(graph, branch_name);
+          // If branch datatype is not equal to dequant_out datatype, can not
+          // squash. Because phase1: dequantize + quantize squash maybe squash
+          // branch quantize, if so, We judge the datatype to decide whether to
+          // squash. If squash, the result will be wrong.
+          if (branch_node->Var()->GetDataType() !=
+              dequant_out->Var()->GetDataType()) {
+            return;
+          }
+        }
+      }
       any_op->Op()->SetAttr("out_dtype", dequant_out->Var()->GetDataType());
       any_op->Op()->SetOutput(output_name,
                               std::vector<std::string>({dequant_out->Name()}));
@@ -177,6 +192,9 @@ void XPUQuantizeSquashPass::QuantOpSquash(Graph* graph) const {
             next_op->Op()->Type() == "fc_xpu")) {
         return;
       }
+      if (next_op->Op()->Type() == "conv2d_xpu" && input_name == "branch") {
+        return;
+      }
       next_op->Op()->SetInput(input_name,
                               std::vector<std::string>({quant_in->Name()}));
       IR_NODE_LINK_TO(quant_in, next_op);
@@ -187,6 +205,51 @@ void XPUQuantizeSquashPass::QuantOpSquash(Graph* graph) const {
   gpd(graph, handler);
   AddStatis(found_quant_op_squash_count);
   PrettyLogDetail("---    squashed %d quantize with ops",
+                  found_quant_op_squash_count);
+}
+
+// conv2d_xpu
+void XPUQuantizeSquashPass::QuantConv2dFusionDequantSquash(Graph* graph) const {
+  GraphPatternDetector gpd;
+  patterns::QuantConv2dFusionDequantXPU quant_conv2d_fusion_dequant_pattern{
+      gpd.mutable_pattern(), "quant_conv2d_fusion_dequant_xpu"};
+  quant_conv2d_fusion_dequant_pattern();
+
+  int found_quant_op_squash_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
+    VLOG(4) << "squash conv2d_xpu op [branch quantize - out dequantize pair]";
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        quant_in, quant_in, quant_conv2d_fusion_dequant_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        quant_op, quant_op, quant_conv2d_fusion_dequant_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        quant_out, quant_out, quant_conv2d_fusion_dequant_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        conv_op, conv_op, quant_conv2d_fusion_dequant_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        conv_out, conv_out, quant_conv2d_fusion_dequant_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        dequant_op, dequant_op, quant_conv2d_fusion_dequant_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        dequant_out, dequant_out, quant_conv2d_fusion_dequant_pattern);
+
+    if (quant_out->outputs.size() == 1 && dequant_out->outputs.size() == 1) {
+      conv_op->Op()->SetInput("branch",
+                              std::vector<std::string>({quant_in->Name()}));
+      conv_op->Op()->SetOutput("out",
+                               std::vector<std::string>({dequant_out->Name()}));
+      conv_op->Op()->SetAttr("out_dtype", dequant_out->Var()->GetDataType());
+      IR_NODE_LINK_TO(quant_in, conv_op);
+      IR_NODE_LINK_TO(conv_op, dequant_out);
+      GraphSafeRemoveNodes(graph, {quant_op, quant_out, conv_out, dequant_op});
+      found_quant_op_squash_count++;
+    }
+  };
+  gpd(graph, handler);
+  AddStatis(found_quant_op_squash_count);
+  PrettyLogDetail("---    squashed %d branch quantize - out dequantize pairs",
                   found_quant_op_squash_count);
 }
 
@@ -268,8 +331,8 @@ void XPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {
   FindNodesToKeep(graph, &nodes_keep_counter);
   DequantQuantSquash(graph, &nodes_keep_counter);
   OpDequantSquash(graph);
-  // QuantOpSquash(graph); // If the quant op is fused into conv2d_xpu, the
-  // performance will become worse.
+  QuantOpSquash(graph);
+  QuantConv2dFusionDequantSquash(graph);
   MultipleQuantizeSquash(graph);
 }
 

@@ -23,6 +23,7 @@ import paddle
 import paddle.inference as paddle_infer
 from paddle import base
 from paddle.base.framework import in_dygraph_mode
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -30,10 +31,11 @@ paddle.enable_static()
 class TestBincountOpAPI(unittest.TestCase):
     """Test bincount api."""
 
+    @test_with_pir_api
     def test_static_graph(self):
-        startup_program = base.Program()
-        train_program = base.Program()
-        with base.program_guard(train_program, startup_program):
+        startup_program = paddle.static.Program()
+        train_program = paddle.static.Program()
+        with paddle.static.program_guard(train_program, startup_program):
             inputs = paddle.static.data(name='input', dtype='int64', shape=[7])
             weights = paddle.static.data(
                 name='weights', dtype='int64', shape=[7]
@@ -61,7 +63,7 @@ class TestBincountOpAPI(unittest.TestCase):
     def test_dygraph(self):
         with base.dygraph.guard():
             inputs_np = np.array([0, 1, 1, 3, 2, 1, 7]).astype(np.int64)
-            inputs = base.dygraph.to_variable(inputs_np)
+            inputs = paddle.to_tensor(inputs_np)
             actual = paddle.bincount(inputs)
             expected = np.bincount(inputs)
             self.assertTrue(
@@ -152,7 +154,7 @@ class TestBincountOp(OpTest):
         self.Out = np.bincount(self.np_input, minlength=self.minlength)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestCase1(TestBincountOp):
@@ -257,8 +259,8 @@ class TestTensorMinlength(unittest.TestCase):
         paddle.enable_static()
         np_x = np.random.randn(100).astype('float32')
         main_prog = paddle.static.Program()
-        starup_prog = paddle.static.Program()
-        with paddle.static.program_guard(main_prog, starup_prog):
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             # run static
             x = paddle.static.data(shape=np_x.shape, name='x', dtype=np_x.dtype)
             linear = paddle.nn.Linear(np_x.shape[0], np_x.shape[0])
@@ -270,7 +272,7 @@ class TestTensorMinlength(unittest.TestCase):
             )
 
             exe = paddle.static.Executor(self.place)
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             static_out = exe.run(feed={'x': np_x}, fetch_list=[out])
 
             # run infer

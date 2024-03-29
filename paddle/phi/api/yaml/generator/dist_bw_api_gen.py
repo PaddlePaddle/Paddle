@@ -29,15 +29,17 @@ MAIN_DIST_BRANCH_TEMPLATE = """
     // 2. Create Temporary Output & Prepare Dist and Dense Output{}
     // 3. Infer DistTensor's Global Shape{}\n
     // 4. Set Output Dist Attr For Default Impl{}\n
-    if (rank_is_in_current_mesh){{
+    if (rank_is_in_current_mesh) {{
       // 5. Select Kernel{}
       // 6. Reshard Input{}\n
       // 7. PrepareData (DataTransform & Prepare Dense Input){}
-      // 8. Infer Local DenseTensor Meta{}
-      // 9. DenseTensor Kernel Call{}
-      // 10. Reshard Partial Output to Replicated (Temporary){}\n
+      // 8. RecordOpInfoSupplement{}
+      // 9. Infer Local DenseTensor Meta{}
+      // 10. DenseTensor Kernel Call{}
+      // 11. Fallback{}
     }}
-    // 11. Return
+    // 12. Reshard Kernel Output to API output{}\n
+    // 13. Return
     {}
   }}
 """
@@ -49,62 +51,134 @@ SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
 """
 SINGLE_OUT_CREATION_TEMPLATE_WITH_SPMD = """
     std::shared_ptr<phi::distributed::DistTensor> shared_dist_out =
-        CreateKernelDistOutput({}, spmd_info.second[0]);
+        CreateKernelDistOutput({}, !rank_is_in_current_mesh, spmd_info.second[0]);
     phi::distributed::DistTensor* dist_out = shared_dist_out.get();
     phi::DenseTensor* dense_out = dist_out->unsafe_mutable_value();
+    if (dense_out && !rank_is_in_current_mesh && !dist_out->defined()) {{
+      *dense_out = phi::DenseTensor(
+            std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
+            phi::DenseTensorMeta());
+    }}
 """
 SINGLE_OUT_CREATION_TEMPLATE = """
     std::shared_ptr<phi::distributed::DistTensor> shared_dist_out =
-        CreateKernelDistOutput({});
+        CreateKernelDistOutput({}, !rank_is_in_current_mesh);
     phi::distributed::DistTensor* dist_out = shared_dist_out.get();
     phi::DenseTensor* dense_out = dist_out->unsafe_mutable_value();
+    if (dense_out && !rank_is_in_current_mesh && !dist_out->defined()) {{
+      *dense_out = phi::DenseTensor(
+            std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
+            phi::DenseTensorMeta());
+    }}
 """
-VECTOR_OUT_CREATION_TEMPLATE = """
+VECTOR_OUT_CREATION_TEMPLATE_WITH_NO_SPMD = """
     auto dist_out = SetKernelDistOutput({name});
     std::vector<phi::DenseTensor*> dense_out(dist_out.size());
     for (size_t i=0; i<dist_out.size(); i++) {{
-        dense_out[i] = const_cast<phi::DenseTensor*>(&dist_out[i]->value());
+      dense_out[i] = dist_out[i]->unsafe_mutable_value();
+      if (dense_out[i] && !rank_is_in_current_mesh && !dist_out[i]->defined()) {{
+        *dense_out[i] = phi::DenseTensor(
+              std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
+              phi::DenseTensorMeta());
+      }}
     }}
 """
-VECTOR_OUT_CREATION_TEMPLATE = """
-    auto dist_out = SetKernelDistOutput({name});
+
+VECTOR_OUT_CREATION_TEMPLATE_WITH_SPMD = """
+    auto shared_dist_out = CreateKernelDistOutput({name}, !rank_is_in_current_mesh, spmd_info.second[0]);
+    std::vector<phi::distributed::DistTensor*> dist_out;
+    for(auto& e: shared_dist_out){{
+      dist_out.push_back(e.get());
+    }}
     std::vector<phi::DenseTensor*> dense_out(dist_out.size());
-    for (size_t i = 0; i < dist_out.size(); i++) {{
-        dense_out[i] = const_cast<phi::DenseTensor*>(&dist_out[i]->value());
+    for (size_t i=0; i<dist_out.size(); i++) {{
+      dense_out[i] = dist_out[i]->unsafe_mutable_value();
+      if (dense_out[i] && !rank_is_in_current_mesh && !dist_out[i]->defined()) {{
+        *dense_out[i] = phi::DenseTensor(
+              std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
+              phi::DenseTensorMeta());
+      }}
     }}
 """
+
+
+VECTOR_OUT_CREATION_TEMPLATE = """
+    auto shared_dist_out = CreateKernelDistOutput({name}, !rank_is_in_current_mesh);
+    std::vector<phi::distributed::DistTensor*> dist_out;
+    for(auto& e: shared_dist_out){{
+      dist_out.push_back(e.get());
+    }}
+    std::vector<phi::DenseTensor*> dense_out(dist_out.size());
+    for (size_t i=0; i<dist_out.size(); i++) {{
+      dense_out[i] = dist_out[i]->unsafe_mutable_value();
+      if (dense_out[i] && !rank_is_in_current_mesh && !dist_out[i]->defined()) {{
+        *dense_out[i] = phi::DenseTensor(
+              std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
+              phi::DenseTensorMeta());
+      }}
+    }}
+"""
+
+
 INPLACE_OUT_CREATION_TEMPLATE = """
     *{} = {};
 """
 MULTI_SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
     auto dist_out_{idx} = SetKernelDistOutput({name});
-    auto dense_out_{idx} = dist_out_{idx}->unsafe_mutable_value();
+    auto dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
+    if (dense_out_{idx} && !rank_is_in_current_mesh && !dist_out_{idx}->defined()) {{
+      *dense_out_{idx} = phi::DenseTensor(
+        std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
+        phi::DenseTensorMeta());
+    }}
 """
 MULTI_SINGLE_OUT_CREATION_TEMPLATE_WITH_SPMD = """
     std::shared_ptr<phi::distributed::DistTensor> shared_dist_out_{idx} =
-        CreateKernelDistOutput({name}, spmd_info.second[{idx}]);
+        CreateKernelDistOutput({name}, !rank_is_in_current_mesh, spmd_info.second[{idx}]);
     phi::distributed::DistTensor* dist_out_{idx} = shared_dist_out_{idx}.get();
     phi::DenseTensor* dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
+    if (dense_out_{idx} && !rank_is_in_current_mesh && !dist_out_{idx}->defined()) {{
+      *dense_out_{idx} = phi::DenseTensor(
+          std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
+          phi::DenseTensorMeta());
+    }}
 """
 MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
     std::shared_ptr<phi::distributed::DistTensor> shared_dist_out_{idx} =
-        CreateKernelDistOutput({name});
+        CreateKernelDistOutput({name}, !rank_is_in_current_mesh);
     phi::distributed::DistTensor* dist_out_{idx} = shared_dist_out_{idx}.get();
     phi::DenseTensor* dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
+    if (dense_out_{idx} && !rank_is_in_current_mesh && !dist_out_{idx}->defined()) {{
+      *dense_out_{idx} = phi::DenseTensor(
+          std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
+          phi::DenseTensorMeta());
+    }}
 """
 MULTI_VECTOR_OUT_CREATION_TEMPLATE = """
     auto dist_out_{i} = SetKernelDistOutput({name});
     std::vector<phi::DenseTensor*> dense_out_{i}(dist_out_{i}.size());
     for (size_t i = 0; i < dist_out_{i}.size(); i++) {{
-        dense_out_{i}[i] = const_cast<phi::DenseTensor*>(&dist_out_{i}[i]->value());
+      dense_out_{i}[i] = const_cast<phi::DenseTensor*>(&dist_out_{i}[i]->value());
+      if (dense_out_{i}[i] && !rank_is_in_current_mesh && !dist_out_{i}[i]->defined()) {{
+        *dense_out_{i}[i]= phi::DenseTensor(
+            std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
+            phi::DenseTensorMeta());
+      }}
     }}
 """
 
 # 9. Reshard Output
 RESHARD_SINGLE_OUTPUT_TEMPLATE = """
-      ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out, {});"""
+      ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out, {}, "{}");"""
+
 RESHARD_MULTI_SINGLE_OUTPUT_TEMPLATE = """
-      ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out_{}, {});"""
+      ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out_{}, {}, "{}");"""
+
+RESHARD_VECTOR_OUTPUT_TEMPLATE = """
+      ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out, {}, "{}");"""
+
+NONEED_TO_RESHARD_OUTPUT_TEMPLATE = """
+    // API `{}` does not need to reshard output."""
 
 
 class DistBackwardAPI(DistForwardAPI, BackwardAPI):
@@ -117,6 +191,7 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
         # backward api only need to generate kernel outputs
         output_num = len(self.outputs['types'])
         output_creation_code = ""
+        output_creation_code += "\n    phi::DeviceContext* dev_ctx = nullptr;"
         if output_num == 1:
             self.dist_output_args.append('dist_out')
             self.dense_output_args.append('dense_out')
@@ -138,9 +213,22 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
                         )
                     )
             elif self.outputs['types'][0] == 'std::vector<Tensor>':
-                output_creation_code += VECTOR_OUT_CREATION_TEMPLATE.format(
-                    name=self.outputs['names'][0]
-                )
+                if self.infer_meta['spmd_rule'] is not None:
+                    output_creation_code += (
+                        VECTOR_OUT_CREATION_TEMPLATE_WITH_SPMD.format(
+                            name=self.outputs['names'][0]
+                        )
+                    )
+                elif self.generate_general_infer_spmd is True:
+                    output_creation_code += VECTOR_OUT_CREATION_TEMPLATE.format(
+                        name=self.outputs['names'][0]
+                    )
+                else:
+                    output_creation_code += (
+                        VECTOR_OUT_CREATION_TEMPLATE_WITH_NO_SPMD.format(
+                            name=self.outputs['names'][0]
+                        )
+                    )
             else:
                 self.vector_output_size_assertion_check()
         elif output_num > 1:
@@ -233,7 +321,13 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
                 if self.outputs['types'][0] == 'Tensor':
                     reshard_output_code += (
                         RESHARD_SINGLE_OUTPUT_TEMPLATE.format(
-                            self.outputs['names'][0]
+                            self.outputs['names'][0], self.outputs['names'][0]
+                        )
+                    )
+                elif self.outputs['types'][0] == 'std::vector<Tensor>':
+                    reshard_output_code += (
+                        RESHARD_VECTOR_OUTPUT_TEMPLATE.format(
+                            self.outputs['names'][0], self.outputs['names'][0]
                         )
                     )
                 else:
@@ -243,7 +337,9 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
                     if out_type == 'Tensor':
                         reshard_output_code += (
                             RESHARD_MULTI_SINGLE_OUTPUT_TEMPLATE.format(
-                                i, self.outputs['names'][i]
+                                i,
+                                self.outputs['names'][i],
+                                self.outputs['names'][i],
                             )
                         )
                     else:
@@ -253,27 +349,53 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
                     f"{self.api} : Output error: the output should not be empty."
                 )
         else:
+            reshard_output_code += NONEED_TO_RESHARD_OUTPUT_TEMPLATE.format(
+                self.kernel['func'][0]
+            )
             # do nothing
             pass
 
         return reshard_output_code
 
-    def generate_auto_paralel_branch(self) -> str:
-        # if no tensor input, do not genetate auto parallel branch
+    def generate_auto_parallel_branch(self) -> str:
+        # if no tensor input, do not generate auto parallel branch
         if len(self.inputs['names']) == 0:
             return ""
+        infer_spmd_code = self.generate_infer_spmd_code()
+        output_creation_code = self.generate_output_creation_code()
+        infer_global_shape_code = self.generate_infer_global_shape_code()
+        output_dist_attr_setting = self.generate_output_dist_attr_setting()
+        kernel_selection_code = self.generate_kernel_selection_code()
+        reshard_input_code = self.generate_reshard_input_code()
+        (
+            prepare_data_code,
+            input_name_tensor_map,
+        ) = self.generate_prepare_data_code()
+        record_op_info_supplement_code = (
+            self.generate_record_op_info_supplement(
+                input_name_tensor_map, '    ', True
+            )
+        )
+        infer_meta_code = self.generate_infer_meta_code()
+        kernel_call_code = self.generate_kernel_call_code()
+        fallback_code = self.generate_fallback_code()
+        reshard_output_code = self.generate_reshard_output_code()
+        return_code = self.generate_return_code()
+
         return MAIN_DIST_BRANCH_TEMPLATE.format(
-            self.generate_infer_spmd_code(),
-            self.generate_output_creation_code(),
-            self.generate_infer_global_shape_code(),
-            self.generate_output_dist_attr_setting(),
-            self.generate_kernel_selection_code(),
-            self.generate_reshard_input_code(),
-            self.generate_prepare_data_code(),
-            self.generate_infer_meta_code(),
-            self.generate_kernel_call_code(),
-            self.generate_reshard_output_code(),
-            self.generate_return_code(),
+            infer_spmd_code,
+            output_creation_code,
+            infer_global_shape_code,
+            output_dist_attr_setting,
+            kernel_selection_code,
+            reshard_input_code,
+            prepare_data_code,
+            record_op_info_supplement_code,
+            infer_meta_code,
+            kernel_call_code,
+            fallback_code,
+            reshard_output_code,
+            return_code,
         )
 
 
@@ -294,7 +416,7 @@ def source_include(header_file_path, fw_header_file_path):
 #include <memory>
 
 #include "glog/logging.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 #include "paddle/phi/api/lib/api_custom_impl.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
@@ -305,17 +427,18 @@ def source_include(header_file_path, fw_header_file_path):
 #include "{fw_header_file_path}"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/infermeta/fusion.h"
 
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/api/profiler/supplement_tracing.h"
 
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #endif
 
 PD_DECLARE_bool(conv2d_disable_cudnn);
-PD_DECLARE_int32(low_precision_op_list);
+COMMON_DECLARE_int32(low_precision_op_list);
 """
 
 
@@ -370,7 +493,7 @@ def generate_backward_api(
         source_include(include_header_file, include_fw_header_file)
     )
     source_file.write(namespace[0])
-    # not all fused ops supoort dygraph
+    # not all fused ops support dygraph
     if is_fused_backward_yaml is True:
         new_bw_apis = [
             bw_api

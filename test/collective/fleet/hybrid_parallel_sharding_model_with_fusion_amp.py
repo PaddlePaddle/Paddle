@@ -85,12 +85,18 @@ class TestDistSharding(unittest.TestCase):
         )
         return optimizer
 
-    def build_model_optimizer(self):
+    def build_model_optimizer(self, diff_lr=False):
         model = SimpleDPNet(vocab_size, hidden_size, inner_size, output_size)
         optimizer = self.build_optimizer(model)
         model, optimizer = paddle.amp.decorate(
             model, optimizers=optimizer, level="O2", dtype="float16"
         )
+        if diff_lr:
+            for param in model.parameters():
+                if 'w' in param.name:
+                    param.optimize_attr = {"learning_rate": 1.0}
+                else:
+                    param.optimize_attr = {"learning_rate": 2.0}
         scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
         scaler = fleet.distributed_scaler(scaler)
         model = fleet.distributed_model(model)
@@ -109,8 +115,13 @@ class TestDistSharding(unittest.TestCase):
             scaler.update()
             optimizer.clear_grad()
 
+    def sharding_different_lr(self):
+        model, optimizer, scaler = self.build_model_optimizer(diff_lr=True)
+        assert optimizer._inner_opt.fuse_optimizer is False
+
     def test_sharding_adam(self):
         self.sharding_model()
+        self.sharding_different_lr()
 
 
 if __name__ == "__main__":

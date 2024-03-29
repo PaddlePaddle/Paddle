@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/triangular_solve_kernel.h"
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
@@ -47,7 +47,7 @@ void TriangularSolveKernel(const Context& dev_ctx,
   const T* x_bst_data = x_bst.data<T>();
   ExpandKernel<T, Context>(dev_ctx, x, x_bst_dims, &x_bst);
 
-  out->Resize(phi::make_ddim(y_bst_dims_vec));
+  out->Resize(common::make_ddim(y_bst_dims_vec));
   T* out_data = dev_ctx.template Alloc<T>(out);
   IntArray y_bst_dims(y_bst_dims_vec);
   ExpandKernel<T, Context>(dev_ctx, y, y_bst_dims, out);
@@ -123,9 +123,21 @@ void TriangularSolveKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+#ifdef PADDLE_WITH_CUDA
+PD_REGISTER_KERNEL(triangular_solve,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::TriangularSolveKernel,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+#else  // PADDLE_WITH_HIP
+// blas_impl.hip.h not support CUBlas<T>::TRSM for complex
 PD_REGISTER_KERNEL(triangular_solve,
                    GPU,
                    ALL_LAYOUT,
                    phi::TriangularSolveKernel,
                    float,
                    double) {}
+#endif

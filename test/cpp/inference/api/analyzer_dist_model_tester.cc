@@ -28,7 +28,6 @@ TEST(test_dist_model, dist_model) {
   AnalysisConfig config;
   config.SetModel(FLAGS_infer_model + "/__model__",
                   FLAGS_infer_model + "/__params__");
-  config.SwitchUseFeedFetchOps(false);
   config.EnableUseGpu(100, 0);
   DistConfig dist_config;
   dist_config.SetRanks(1, 0);

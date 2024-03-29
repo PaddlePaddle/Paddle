@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@
 #endif
 #include "paddle/fluid/platform/flags.h"
 
-PHI_DECLARE_bool(cache_inference_while_scope);
+COMMON_DECLARE_bool(cache_inference_while_scope);
 
 namespace paddle {
 namespace framework {
@@ -113,7 +113,7 @@ class WhileOp : public framework::OperatorBase {
         const framework::VariableNameMap &output_var_names = op->Outputs();
         for (auto &ipt : input_var_names) {
           for (const std::string &var_name : ipt.second) {
-            if (StrInVaraiableNameMap(var_name, output_var_names)) {
+            if (StrInVariableNameMap(var_name, output_var_names)) {
               no_copy_var_names.insert(var_name);
             }
           }
@@ -173,16 +173,24 @@ class WhileOp : public framework::OperatorBase {
       framework::Scope placeholder;  // Don't care if it's valid, just for
                                      // initialize InterpreterCore
       framework::interpreter::ExecutionConfig execution_config;
+      if (HasAttr("used_for_inference") && Attr<bool>("used_for_inference")) {
+        execution_config.used_for_inference = true;
+      }
       execution_config.create_local_scope = false;
       execution_config.used_for_control_flow_op = true;
       execution_config.skip_gc_vars =
           std::set<std::string>(skip_vars.begin(), skip_vars.end());
+// add for performance in gpugraph transformer mode
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
+      execution_config.used_for_inference = true;
+#endif
 
       core_.reset(new framework::InterpreterCore(
           dev_place, *block, &placeholder, execution_config));
     }
 
-    core_->SetOutputHooks(hookfuncs_);
+    core_->SetOutputHooks(output_hookfuncs_);
+    core_->SetInputHooks(input_hookfuncs_);
 
     if (!is_test) {
       while (cond_data) {
@@ -396,10 +404,10 @@ class WhileGradOp : public framework::OperatorBase {
             auto shape = var_desc->GetShape();
             VLOG(8) << "Found uninitialized tensor " << outside_og_name
                     << " in step 0, fill it with 0.0f. dims="
-                    << phi::make_ddim(shape);
+                    << common::make_ddim(shape);
             framework::AttributeMap attrs;
             attrs["dtype"] = var_desc->GetDataType();
-            attrs["shape"] = phi::vectorize<int>(phi::make_ddim(shape));
+            attrs["shape"] = common::vectorize<int>(common::make_ddim(shape));
             attrs["value"] = 0.0f;
 
             auto var_name = outside_og_name;
@@ -540,7 +548,7 @@ class WhileGradOp : public framework::OperatorBase {
             framework::AttributeMap attrs;
             attrs["dtype"] =
                 framework::TransToProtoVarType(inside_tensor.dtype());
-            attrs["shape"] = phi::vectorize<int>(inside_tensor.dims());
+            attrs["shape"] = common::vectorize<int>(inside_tensor.dims());
             attrs["value"] = 0.0f;
 
             auto var_name = pg_ig_names[param_id];

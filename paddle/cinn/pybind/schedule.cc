@@ -28,16 +28,23 @@ void BindSchedule(py::module *m) {
       .def(py::init<const ir::ModuleExpr &,
                     utils::LinearRandomEngine::StateType,
                     bool,
-                    utils::ErrorMessageLevel>(),
+                    utils::ErrorMessageLevel,
+                    bool>(),
            py::arg("modexpr"),
            py::arg("rand_seed") = -1,
            py::arg("debug_flag") = false,
-           py::arg("err_msg_level") = utils::ErrorMessageLevel::kGeneral)
+           py::arg("err_msg_level") = utils::ErrorMessageLevel::kGeneral,
+           py::arg("is_dynamic_shape") = false)
       .def_static(
           "make",
           [](ir::LoweredFunc &ir_func) {
             ir::ModuleExpr *module_expr = new ir::ModuleExpr({ir_func->body});
-            auto scheduler = std::make_unique<ir::IRSchedule>(*module_expr);
+            auto scheduler = std::make_unique<ir::IRSchedule>(
+                *module_expr,
+                /* rand_seed = */ -1,
+                /* debug_flag = */ false,
+                /* err_msg_level = */ utils::ErrorMessageLevel::kGeneral,
+                /* is_dynamic_shape = */ true);
             return scheduler;
           })
       .def("fuse",

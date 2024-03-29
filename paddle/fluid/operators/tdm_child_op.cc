@@ -89,10 +89,10 @@ class TDMChildOp : public framework::OperatorWithKernel {
             info_dims.size(),
             info_dims));
 
-    auto output_dims = phi::vectorize(input_dims);
+    auto output_dims = common::vectorize(input_dims);
     output_dims.push_back(child_nums);
-    ctx->SetOutputDim("Child", phi::make_ddim(output_dims));
-    ctx->SetOutputDim("LeafMask", phi::make_ddim(output_dims));
+    ctx->SetOutputDim("Child", common::make_ddim(output_dims));
+    ctx->SetOutputDim("LeafMask", common::make_ddim(output_dims));
 
     if (ctx->GetOutputsVarType("Child")[0] ==
         framework::proto::VarType::LOD_TENSOR) {

@@ -24,7 +24,15 @@ gather_srcs(
   cast_bool_to_int8.cc
   var_mod_simplify.cc
   remove_schedule_block.cc
-  replace_cross_thread_reduction.cc)
+  replace_cross_thread_reduction.cc
+  replace_mod_to_max.cc
+  resize_buffer.cc
+  update_buffer_axis_pass.cc
+  trans_buffer_with_dynamic_shape.cc
+  schedule_block_dce.cc
+  eliminate_common_factor_of_local_index.cc
+  if_fusion.cc
+  eliminate_common_global_memory_read.cc)
 
 if(WITH_CUDA)
   gather_srcs(cinnapi_src SRCS transform_gpu_forloop.cc)

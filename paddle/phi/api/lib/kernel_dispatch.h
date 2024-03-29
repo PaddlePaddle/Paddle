@@ -18,12 +18,12 @@ limitations under the License. */
 #include <limits>
 #include <string>
 #include <utility>
+#include "paddle/common/layout.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/api/lib/backend_set.h"
 #include "paddle/phi/api/lib/data_type_set.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
@@ -43,8 +43,8 @@ std::size_t CountLeadingZeros(uint32_t val);
 phi::DeviceContext* GetDeviceContextByBackend(phi::Backend backend);
 
 enum class KernelType {
-  DENSE_TENSOR_KENREL,   // kernel for DenseTensor
-  SELECTED_ROWS_KENREL,  // kernel for SelectedRows
+  DENSE_TENSOR_KERNEL,   // kernel for DenseTensor
+  SELECTED_ROWS_KERNEL,  // kernel for SelectedRows
   SPARSE_COO_KERNEL,     // kernel for SparseCooTensor
   SPARSE_CSR_KERNEL      // kernel for SparseCsrTensor
 };
@@ -52,10 +52,10 @@ enum class KernelType {
 // TODO(chenweihang): support DataLayout and DataType selected
 struct KernelKeySet {
   BackendSet backend_set{Backend::UNDEFINED};
-  DataLayout layout{DataLayout::UNDEFINED};
+  phi::DataLayout layout{phi::DataLayout::UNDEFINED};
   DataType dtype{DataType::UNDEFINED};
 
-  // TODO(chenweihang): iterate all kernelkey for kernel selection
+  // TODO(chenweihang): iterate all kernel key for kernel selection
   phi::KernelKey GetHighestPriorityKernelKey() {
     return phi::KernelKey(static_cast<Backend>(32 - detail::CountLeadingZeros(
                                                         backend_set.bitset())),
@@ -150,13 +150,13 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
 };
 
 struct KernelTypeParser : ArgsIterator<KernelTypeParser> {
-  KernelType kernel_type{KernelType::DENSE_TENSOR_KENREL};
+  KernelType kernel_type{KernelType::DENSE_TENSOR_KERNEL};
 
   // TODO(chenweihang): deal with multiple diff input Tensors
   // TODO(chenweihang): add global device guard method to set backend
   void operator()(const Tensor& x) {
     if (phi::SelectedRows::classof(x.impl().get())) {
-      kernel_type = KernelType::SELECTED_ROWS_KENREL;
+      kernel_type = KernelType::SELECTED_ROWS_KERNEL;
     } else if (phi::SparseCooTensor::classof(x.impl().get())) {
       kernel_type = KernelType::SPARSE_COO_KERNEL;
     } else if (phi::SparseCsrTensor::classof(x.impl().get())) {
@@ -239,9 +239,10 @@ Backend ParseBackend(T t, Args... args) {
 }
 Backend ParseBackendWithInputOrder(const Place& place, const Tensor& tensor);
 
-DataLayout ParseLayout(DataLayout layout);
-DataLayout ParseLayout(const Tensor& tensor);
-DataLayout ParseLayoutWithInputOrder(DataLayout layout, const Tensor& tensor);
+phi::DataLayout ParseLayout(phi::DataLayout layout);
+phi::DataLayout ParseLayout(const Tensor& tensor);
+phi::DataLayout ParseLayoutWithInputOrder(phi::DataLayout layout,
+                                          const Tensor& tensor);
 
 template <typename... Args>
 bool AllInputsAreDistTensor(const Args&... args) {

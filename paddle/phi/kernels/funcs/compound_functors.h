@@ -17,7 +17,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include "paddle/phi/core/macros.h"
+#include "paddle/common/macros.h"
 namespace phi {
 namespace funcs {
 
@@ -29,8 +29,8 @@ struct BinaryCompoundFunctor {
 
   inline HOSTDEVICE T GetOut(T x, T y) { return func1_(x, func2_(y)); }
 
-  inline HOSTDEVICE T GetOutUseIntermediateOut(T x, T intermediat_out) {
-    return func1_(x, intermediat_out);
+  inline HOSTDEVICE T GetOutUseIntermediateOut(T x, T intermediate_out) {
+    return func1_(x, intermediate_out);
   }
 
   inline HOSTDEVICE T GetIntermediateOut(T x UNUSED, T y) { return func2_(y); }
@@ -47,8 +47,8 @@ struct UnaryCompoundFunctor {
 
   inline HOSTDEVICE T GetOut(T x, T y) { return func1_(func2_(x, y)); }
 
-  inline HOSTDEVICE T GetOutUseIntermediateOut(T x UNUSED, T intermediat_out) {
-    return func1_(intermediat_out);
+  inline HOSTDEVICE T GetOutUseIntermediateOut(T x UNUSED, T intermediate_out) {
+    return func1_(intermediate_out);
   }
 
   inline HOSTDEVICE T GetIntermediateOut(T x, T y) { return func2_(x, y); }
@@ -209,8 +209,8 @@ struct UnaryCompoundGradDyFunctor {
 
 // Z = BinaryFunctor(X, UnaryFunctor(Y))
 template <typename T, typename DBinaryFun, typename UnaryFun>
-struct BinaryCompoundGradDIntermedaiteOutFunctor {
-  BinaryCompoundGradDIntermedaiteOutFunctor(const DBinaryFun &d_binary_fun,
+struct BinaryCompoundGradDIntermediateOutFunctor {
+  BinaryCompoundGradDIntermediateOutFunctor(const DBinaryFun &d_binary_fun,
                                             const UnaryFun &unary_fun)
       : d_binary_fun_(d_binary_fun), unary_fun_(unary_fun) {}
 

@@ -27,11 +27,11 @@ namespace cub = hipcub;
 #include <cuda_fp16.h>
 #endif
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -85,7 +85,7 @@ __global__ void InplaceAddReluAddLayerNormKernel(const T* y,
   for (int i = blockIdx.x; i < M; i += gridDim.x) {
     int index = i * N + threadIdx.x;
 
-    // The fisrt BlockDim elements will be saved to shared memory.
+    // The first BlockDim elements will be saved to shared memory.
     int save_index = threadIdx.x;
     T* save_ptr = shared_mem;
 
@@ -189,7 +189,7 @@ __global__ void InplaceAddReluAddLayerNormKernel(const float16* y_data,
   for (int i = blockIdx.x; i < M; i += gridDim.x) {
     int index = i * N + threadIdx.x;
 
-    // The fisrt BlockDim elements will be saved to shared memory.
+    // The first BlockDim elements will be saved to shared memory.
     int save_index = threadIdx.x;
 #if defined(PADDLE_WITH_CUDA)
     half* save_ptr = shared_mem;
@@ -420,7 +420,7 @@ void FusedFCElementwiseLayerNormKernel(
   auto w_dims = w.dims();
   int N = w_dims[1];
   int K = w_dims[0];
-  int M = phi::product(x.dims()) / K;
+  int M = common::product(x.dims()) / K;
 
   const T* x_data = x.data<T>();
   const T* w_data = w.data<T>();

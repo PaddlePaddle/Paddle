@@ -30,7 +30,7 @@ class CinnJitInstruction : public InstructionBase {
   CinnJitInstruction(size_t id,
                      const platform::Place& place,
                      ::pir::Operation* op,
-                     const ValueExecutionInfo& value_exec_info);
+                     const ValueExecutionInfo* value_exec_info);
 
   // TODO(Aurelius84): Only implement core interface and need implement GC and
   // Event logic.
@@ -49,8 +49,10 @@ class CinnJitInstruction : public InstructionBase {
 
   phi::DeviceContext* dev_ctx_;
 
-  phi::DenseTensor* out_tensor_;
+  int32_t input_tensor_size;
+  int32_t output_tensor_size;
 
+  bool need_update_shape{false};
   std::vector<phi::DenseTensor*> tensor_args_;
 
   ::pir::Operation* op_{nullptr};  // not owned

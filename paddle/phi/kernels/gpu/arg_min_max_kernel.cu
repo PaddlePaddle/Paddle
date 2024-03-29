@@ -28,7 +28,7 @@ namespace cub = hipcub;
 #endif
 #include <limits>
 
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 namespace phi {
@@ -171,7 +171,7 @@ struct VisitDataCudaArgMinMaxFunctor {
     phi::DDim x_dims;
     int new_axis = axis;
     if (flatten) {
-      x_dims = phi::make_ddim({x.numel()});
+      x_dims = common::make_ddim({x.numel()});
       // if flatten, the axis just as 0
       new_axis = 0;
     } else {
@@ -181,7 +181,7 @@ struct VisitDataCudaArgMinMaxFunctor {
     // For 0D Tensor
     if (x.dims().size() == 0) {
       dev_ctx.template Alloc<IndType>(out);
-      phi::funcs::set_constant(dev_ctx, out, 0);
+      phi::funcs::set_constant(dev_ctx, out, static_cast<IndType>(0));
       return;
     }
 
@@ -211,6 +211,11 @@ void ArgMinMaxOpCUDAKernel(const Context& dev_ctx,
                            bool flatten,
                            DataType dtype,
                            DenseTensor* out) {
+  PADDLE_ENFORCE_GT(
+      x.numel(),
+      0,
+      phi::errors::InvalidArgument(
+          "argmin/argmax input numel must > 0, bug got %d", x.numel()));
   if (dtype == DataType::UNDEFINED) {
     phi::VisitDataTypeTiny(
         phi::DataType::INT64,

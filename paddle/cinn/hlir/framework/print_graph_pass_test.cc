@@ -46,7 +46,7 @@ void PrintGraphPass(Graph* src) {
 
 CINN_REGISTER_PASS(PrintGraph)
     .describe(
-        "This pass just save the visulization Graph to "
+        "This pass just save the visualization Graph to "
         "g.attrs[\"print_graph\"].")
     .set_change_structure(false)
     .provide_graph_attr("print_graph")
@@ -63,7 +63,7 @@ TEST(Operator, GetAttrs) {
   auto d = prog.add(c, b);
   auto e = prog.add(c, d);
   ASSERT_EQ(prog.size(), 3);
-  Graph* g = new Graph(prog, common::DefaultHostTarget());
+  Graph* g = new Graph(prog, cinn::common::DefaultHostTarget());
   ApplyPass(g, "PrintGraph");
   auto s = g->GetAttrs<std::string>("print_graph");
   LOG(INFO) << s;

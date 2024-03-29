@@ -19,8 +19,10 @@ from op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
 from testsuite import create_op
 
 import paddle
+import paddle.distributed as dist
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
@@ -146,6 +148,33 @@ class TestMatMulOp3(TestMatMulV2Op):
         self.y_shape = (1, 1, 100, 2)
         self.trans_x = False
         self.trans_y = False
+        self.placements = {
+            'X': [dist.Shard(0)],
+            'Y': [dist.Replicate()],
+        }
+
+    def test_check_grad(self):
+        if core.is_compiled_with_rocm():
+            self.check_grad(
+                ['X', 'Y'],
+                'Out',
+                max_relative_error=1e-2,
+                check_cinn=self.check_cinn
+                if hasattr(self, 'check_cinn')
+                else True,
+                check_pir=True,
+                check_auto_parallel=True,
+            )
+        else:
+            self.check_grad(
+                ['X', 'Y'],
+                'Out',
+                check_cinn=self.check_cinn
+                if hasattr(self, 'check_cinn')
+                else True,
+                check_pir=True,
+                check_auto_parallel=True,
+            )
 
 
 class TestMatMulOp4(TestMatMulV2Op):
@@ -341,6 +370,50 @@ class TestMatMulOpBroadcast2(TestMatMulV2Op):
         self.trans_y = True
 
 
+class TestMatMulV2OpAutoParallel(OpTest):
+    def config(self):
+        self.x_shape = (32, 64)
+        self.y_shape = (48, 32)
+        self.trans_x = True
+        self.trans_y = True
+        self.placements = {
+            'X': [dist.Shard(1)],
+            'Y': [dist.Replicate()],
+        }
+
+    def init_kernel_type(self):
+        self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
+
+    def setUp(self):
+        self.init_kernel_type()
+        self.config()
+        self.op_type = "matmul_v2"
+        self.python_api = paddle.tensor.matmul
+        x = np.random.random(self.x_shape).astype(self.dtype)
+        y = np.random.random(self.y_shape).astype(self.dtype)
+        # -0.1 ~ 0.1
+        x = -0.1 + 0.2 * x
+        y = -0.1 + 0.2 * y
+        result = reference_matmul(x, y, self.trans_x, self.trans_y)
+        self.inputs = {
+            'X': x,
+            'Y': y,
+        }
+        self.attrs = {'trans_x': self.trans_x, 'trans_y': self.trans_y}
+        self.outputs = {'Out': result}
+
+    def test_check_grad(self):
+        if core.is_compiled_with_rocm():
+            self.check_grad(
+                ['X', 'Y'],
+                'Out',
+                max_relative_error=1e-2,
+                check_auto_parallel=True,
+            )
+        else:
+            self.check_grad(['X', 'Y'], 'Out', check_auto_parallel=True)
+
+
 # --------------------test matmul fp16--------------------
 
 
@@ -508,7 +581,9 @@ class TestMatMulV2API(unittest.TestCase):
 
     def check_static_result(self, place):
         paddle.enable_static()
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             input_x = paddle.static.data(
                 name="input_x", shape=[4, 3], dtype="float32"
             )
@@ -523,12 +598,13 @@ class TestMatMulV2API(unittest.TestCase):
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
+                paddle.static.default_main_program(),
                 feed={"input_x": x_np, "input_y": y_np},
                 fetch_list=[result],
             )
         paddle.disable_static()
 
+    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
@@ -643,7 +719,7 @@ class TestComplexMatMulOp(OpTest):
             check_cinn=False,
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad(
             ['Y'],
             'Out',
@@ -651,7 +727,7 @@ class TestComplexMatMulOp(OpTest):
             check_cinn=False,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.check_grad(
             ['X'],
             'Out',
@@ -696,7 +772,7 @@ class TestComplexMatMulOpBroadcast(OpTest):
             check_cinn=False,
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad(
             ['Y'],
             'Out',
@@ -704,7 +780,7 @@ class TestComplexMatMulOpBroadcast(OpTest):
             check_cinn=False,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.check_grad(
             ['X'],
             'Out',

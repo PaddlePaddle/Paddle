@@ -58,12 +58,12 @@ class DistributedDropout(DistributedOperatorImplContainer):
 
         # step2: infer spmd
         rule = get_phi_spmd_rule("dropout")
-        # tensor order following order in PHI defition
+        # tensor order following order in PHI definition
         fw_results = rule.infer_forward(x_spec)
         bw_results = rule.infer_backward(x_spec, output_spec)
 
         # step3: update dist_attr
-        # tensor order following order in PHI defition
+        # tensor order following order in PHI definition
         changed = update_op_dims_mapping(
             dist_op, [x_name], [out_name], fw_results, bw_results
         )
@@ -130,9 +130,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                 and src_op.attr("seed")
             ):
                 _logger.info(
-                    "Auto Parallel Random Control Skipped Since manul seed is set by user: {}".format(
-                        src_op
-                    )
+                    f"Auto Parallel Random Control Skipped Since manual seed is set by user: {src_op}"
                 )
             elif rank_id not in op_dist_attr.process_mesh.process_ids:
                 pass
@@ -163,9 +161,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                     pre_op._set_attr("force_cpu", True)
                 else:
                     _logger.info(
-                        "Auto Parallel Random Control Skipped Since manul seed is set by user: {}".format(
-                            src_op
-                        )
+                        f"Auto Parallel Random Control Skipped Since manual seed is set by user: {src_op}"
                     )
             else:
                 # determinate rng
@@ -192,7 +188,11 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                 # set new seed_var's dist_attr
                 seed_var_dims_mapping = [-1]
                 seed_var_dist_attr = set_var_dist_attr(
-                    ctx, seed_var, seed_var_dims_mapping, process_mesh
+                    ctx,
+                    seed_var,
+                    seed_var_dims_mapping,
+                    process_mesh,
+                    chunk_id=op_dist_attr.chunk_id,
                 )
 
                 # adopt for recompute
@@ -209,7 +209,11 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                 seed_op._set_attr('op_namescope', 'auto_tensor_parallel_seed')
                 # set new seed op's dist_attr
                 naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                    seed_op, process_mesh, seed_var_dims_mapping, ctx
+                    seed_op,
+                    process_mesh,
+                    seed_var_dims_mapping,
+                    ctx,
+                    chunk_id=op_dist_attr.chunk_id,
                 )
 
                 # modify dropout op

@@ -78,7 +78,7 @@ class TransposeCollapsingPass : public ProgramPass {
 
   void ApplyImpl(Program* program,
                  const std::unordered_set<std::string>& fetch_ids,
-                 const common::Target& target) const override {
+                 const cinn::common::Target& target) const override {
     // `out2instr` is used to represent the mapping of Output to Instruction.
     OutputToOpMap out2instr;
     // `in2instr` is used to represent the mapping of Input to Instruction.
@@ -202,7 +202,7 @@ class TransposeCollapsingPass : public ProgramPass {
       if (can_remove) {
         VLOG(4) << "The transpose op {input[" << input_name << "], output["
                 << output_name << "], axis[" << cinn::utils::Join(axis, ",")
-                << "]} is a output op of graph, connot fuse, remove.";
+                << "]} is a output op of graph, cannot fuse, remove.";
         // this transpose not used by any other op, remove
         remove_instrs->insert(transpose);
       } else {
@@ -210,11 +210,11 @@ class TransposeCollapsingPass : public ProgramPass {
           VLOG(4) << "The transpose op {input[" << input_name << "], output["
                   << output_name << "], axis[" << cinn::utils::Join(axis, ",")
                   << "]} is fetched but useless, replace with identity.";
-          // cannot remove, however, the transpsoe is useless, we can replace
-          // the transpose with indentiy for more fusion opportunity
+          // cannot remove, however, the transpose is useless, we can replace
+          // the transpose with identity for more fusion opportunity
           ReplaceWithIdentity(transpose);
         }
-        // else the transpsoe is fetched and helpful, ignore
+        // else the transpose is fetched and helpful, ignore
       }
       return;
     }
@@ -226,7 +226,7 @@ class TransposeCollapsingPass : public ProgramPass {
         VLOG(4) << "The transpose op {input[" << input_name << "], output["
                 << output_name << "], axis[" << cinn::utils::Join(axis, ",")
                 << "]} is useless but fetched, replace with identity.";
-        // cannot remove, but we can replace the transpose with indentiy for
+        // cannot remove, but we can replace the transpose with identity for
         // more fusion opportunity
         ReplaceWithIdentity(transpose);
       } else {
@@ -274,8 +274,8 @@ class TransposeCollapsingPass : public ProgramPass {
       // step |    axis   | after_transpose
       //  1   | [0, 2, 1] | [0, 2, 1]
       //  2   | [2, 1, 0] | [1, 2, 0]
-      // so we can fuse tranpose([0, 2, 1]) and tranpose([2, 1, 0]) into
-      // tranpose([1, 2, 0])
+      // so we can fuse transpose([0, 2, 1]) and transpose([2, 1, 0]) into
+      // transpose([1, 2, 0])
       const auto& fused_axis = FuseTransposeAxis(axis, next_axis);
 
       VLOG(4) << "Fuse transpose of {input[" << input_name << "], output["

@@ -182,13 +182,13 @@ void ArgsortKernel(const Context& dev_ctx,
 
   if (rank == 0) {
     phi::Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, output);
-    phi::funcs::set_constant(dev_ctx, indices, 0);
+    phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }
 
-  int len_before = phi::product(phi::slice_ddim(in_dims, 0, axis));
+  int len_before = common::product(common::slice_ddim(in_dims, 0, axis));
   int len_after =
-      phi::product(phi::slice_ddim(in_dims, axis + 1, in_dims.size()));
+      common::product(common::slice_ddim(in_dims, axis + 1, in_dims.size()));
   std::vector<int> permute_vec{0, 2, 1};
   std::vector<int> data_shape{len_before, n, len_after};
 

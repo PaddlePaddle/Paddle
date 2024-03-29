@@ -52,7 +52,7 @@ class TransposeFoldingBase : public ProgramPass {
 
   void ApplyImpl(Program* program,
                  const std::unordered_set<std::string>& fetch_ids,
-                 const common::Target& target) override {
+                 const cinn::common::Target& target) override {
     set_target_instrs();
     set_fold_instrs();
     set_skip_instrs();
@@ -180,7 +180,7 @@ class TransposeFoldingBase : public ProgramPass {
       return false;
     }
 
-    // `axis` of tranpose must be consecutive in the reverse order,
+    // `axis` of transpose must be consecutive in the reverse order,
     // excluding the first dim
     auto axis = transpose.GetAttrs<std::vector<int>>("axis");
     if (axis.size() <= 1) {

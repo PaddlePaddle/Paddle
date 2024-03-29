@@ -20,6 +20,7 @@
 
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/ir/dim.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/lang/packed_func.h"
 #include "paddle/cinn/utils/type_defs.h"
@@ -60,6 +61,8 @@ std::vector<Expr> ToCinnExprs(const std::vector<T> &args) {
   return exprs;
 }
 
+std::vector<Expr> ToCinnExprs(const std::vector<ir::Dim> &args);
+
 template <typename T>
 std::vector<T> ToPodVector(const std::vector<Expr> &args) {
   if (args.empty()) {
@@ -67,8 +70,9 @@ std::vector<T> ToPodVector(const std::vector<Expr> &args) {
   }
 
   const auto &type = args.front().type();
-  CHECK_EQ(type, common::type_of<T>()) << "Cannot get " << common::type_of<T>()
-                                       << " value from " << type << " vector!";
+  CHECK_EQ(type, cinn::common::type_of<T>())
+      << "Cannot get " << cinn::common::type_of<T>() << " value from " << type
+      << " vector!";
 
   std::vector<T> shape_v;
   if (type.is_bool()) {
@@ -124,7 +128,9 @@ std::vector<T> ToPodVector(const std::vector<Expr> &args) {
       shape_v.push_back(static_cast<T>(e.as_double()));
     }
   } else {
-    LOG(FATAL) << "Not support " << type;
+    std::stringstream ss;
+    ss << "Not support " << type;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return shape_v;
 }
@@ -141,8 +147,8 @@ CINNSchedule GetInjectiveScheduleFunc(
     const Target &target,
     bool vectorizable = true);
 
-std::string GetExternFuncName(const common::Target &target,
-                              const common::Type &type,
+std::string GetExternFuncName(const cinn::common::Target &target,
+                              const cinn::common::Type &type,
                               const std::string &func_name,
                               const bool need_cinn = true,
                               const bool need_target = true,

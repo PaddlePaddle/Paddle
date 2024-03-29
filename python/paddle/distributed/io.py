@@ -409,7 +409,7 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
 
         dirname(str, optional): The saving directory path.
                             When you need to save the parameter to the memory, set it to None.
-        main_program(Program, optional): The program whose persistbale variables will
+        main_program(Program, optional): The program whose persistable variables will
                                          be saved. You can refer to
                                          :ref:`api_guide_Program_en` for more details.
                                          If it is None, the default main program will
@@ -470,8 +470,7 @@ def load_inference_model_distributed(
 ):
     """
     Load the inference model from a given directory. By this API, you can get the model
-    structure(Inference Program) and model parameters. If you just want to load
-    parameters of the pre-trained model, please use the :ref:`api_base_io_load_params` API.
+    structure(Inference Program) and model parameters.
     You can refer to :ref:`api_guide_model_save_reader_en` for more details.
 
     Args:

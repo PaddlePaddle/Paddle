@@ -24,7 +24,7 @@ std::vector<int64_t> GetExtendedXDims(const std::vector<int64_t>& x_vec_dims,
   std::vector<int64_t> extended_x_dims(new_size, 1);
   std::copy(x_vec_dims.begin(),
             x_vec_dims.end(),
-            extended_x_dims.begin() + new_size - x_vec_dims.size());
+            extended_x_dims.begin() + new_size - x_vec_dims.size());  // NOLINT
 
   return extended_x_dims;
 }
@@ -36,7 +36,7 @@ void ExpandKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   const auto& onednn_engine = dev_ctx.GetEngine();
 
-  auto x_vec_dims = vectorize(x.dims());
+  auto x_vec_dims = common::vectorize(x.dims());
 
   auto out_new_dims = shape.GetData();
 
@@ -45,10 +45,10 @@ void ExpandKernel(const Context& dev_ctx,
   }
 
   if (x_vec_dims.size() != out_new_dims.size()) {
-    x_vec_dims = GetExtendedXDims(x_vec_dims, out_new_dims.size());
+    x_vec_dims = GetExtendedXDims(x_vec_dims, out_new_dims.size());  // NOLINT
   }
 
-  out->Resize(make_ddim(out_new_dims));
+  out->Resize(common::make_ddim(out_new_dims));
   funcs::BroadcastDataOneDNNHandler<T> handler(dnnl::algorithm::binary_add,
                                                onednn_engine,
                                                dev_ctx.GetPlace(),

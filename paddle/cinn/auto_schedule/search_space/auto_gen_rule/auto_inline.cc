@@ -28,6 +28,7 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 
@@ -35,7 +36,7 @@ namespace cinn {
 namespace auto_schedule {
 
 AutoInline::AutoInline(
-    const common::Target& target,
+    const cinn::common::Target& target,
     const std::unordered_set<std::string>& no_inline_output_names)
     : AutoGenRule(target), no_inline_output_names_(no_inline_output_names) {}
 
@@ -49,6 +50,11 @@ bool AutoInline::CanInlineIntoConsumer(const Expr& sche_block_realize_expr,
   ir::Expr root = ir_sch->GetRootBlock(sche_block_realize_expr);
 
   // Check the schedule block to be inlined is not a reduce tensor.
+  for (const ir::Var& iter_var : sche_block->iter_vars) {
+    if (iter_var->is_reduce_axis) {
+      return false;
+    }
+  }
   std::set<ir::Expr> find_store = ir::ir_utils::CollectIRNodesWithoutTensor(
       compute_body, [&](const Expr* x) { return x->As<ir::Store>(); });
   if (find_store.size() != 1UL) {
@@ -67,6 +73,29 @@ bool AutoInline::CanInlineIntoConsumer(const Expr& sche_block_realize_expr,
       no_inline_output_names_.find(tensor->buffer->name) !=
           no_inline_output_names_.end()) {
     return false;
+  }
+
+  // the xxx_reduce_init block cannot be inlined.
+  if (ir::IsReduceInitTensorName(tensor->name)) {
+    return false;
+  }
+
+  // Skip external calls
+  std::vector<ir::Expr> consumers =
+      ir::GetConsumers(sche_block_realize_expr, root);
+  for (const ir::Expr& consumer : consumers) {
+    std::set<ir::Expr> find_load = ir::ir_utils::CollectIRNodesWithoutTensor(
+        consumer.As<ir::ScheduleBlockRealize>()
+            ->schedule_block.As<ir::ScheduleBlock>()
+            ->body,
+        [&](const ir::Expr* x) {
+          return x->As<ir::Load>() &&
+                 x->As<ir::Load>()->tensor.as_tensor_ref()->name ==
+                     tensor->name;
+        });
+    if (find_load.empty()) {
+      return false;
+    }
   }
 
   // write_buffers.size() = 1 and read_buffers is empty, means const

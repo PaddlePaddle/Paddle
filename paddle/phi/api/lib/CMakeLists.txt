@@ -162,20 +162,39 @@ else()
       ${bw_api_source_file_tmp})
 endif()
 
-# generate fused_op api
-execute_process(
-  COMMAND
-    ${PYTHON_EXECUTABLE} ${api_gen_file} --api_yaml_path ${fused_api_yaml_file}
-    --is_fused_ops_yaml --api_header_path ${fused_api_header_file_tmp}
-    --api_source_path ${fused_api_source_file_tmp})
+if(WITH_DISTRIBUTE)
+  # generate fused_op api
+  execute_process(
+    COMMAND
+      ${PYTHON_EXECUTABLE} ${dist_api_gen_file} --api_yaml_path
+      ${fused_api_yaml_file} --is_fused_ops_yaml --api_header_path
+      ${fused_api_header_file_tmp} --api_source_path
+      ${fused_api_source_file_tmp})
 
-# generate fused_op backward api
-execute_process(
-  COMMAND
-    ${PYTHON_EXECUTABLE} ${fused_bw_api_gen_file} --backward_yaml_path
-    ${fused_bw_api_yaml_file} --is_fused_backward_yaml --backward_header_path
-    ${fused_bw_api_header_file_tmp} --backward_source_path
-    ${fused_bw_api_source_file_tmp})
+  # generate fused_op backward api
+  execute_process(
+    COMMAND
+      ${PYTHON_EXECUTABLE} ${dist_bw_api_gen_file} --backward_yaml_path
+      ${fused_bw_api_yaml_file} --is_fused_backward_yaml --backward_header_path
+      ${fused_bw_api_header_file_tmp} --backward_source_path
+      ${fused_bw_api_source_file_tmp})
+else()
+  # generate fused_op api
+  execute_process(
+    COMMAND
+      ${PYTHON_EXECUTABLE} ${api_gen_file} --api_yaml_path
+      ${fused_api_yaml_file} --is_fused_ops_yaml --api_header_path
+      ${fused_api_header_file_tmp} --api_source_path
+      ${fused_api_source_file_tmp})
+
+  # generate fused_op backward api
+  execute_process(
+    COMMAND
+      ${PYTHON_EXECUTABLE} ${bw_api_gen_file} --backward_yaml_path
+      ${fused_bw_api_yaml_file} --is_fused_backward_yaml --backward_header_path
+      ${fused_bw_api_header_file_tmp} --backward_source_path
+      ${fused_bw_api_source_file_tmp})
+endif()
 
 # generate sparse api
 execute_process(
@@ -200,15 +219,25 @@ execute_process(
     --api_source_path ${strings_api_source_file_tmp})
 
 # generate dygraph(intermediate) api
-execute_process(
-  COMMAND
-    ${PYTHON_EXECUTABLE} ${im_api_gen_file} --api_yaml_path ${api_yaml_file}
-    ${legacy_api_yaml_file} --sparse_api_yaml_path ${sparse_api_yaml_file}
-    --dygraph_api_header_path ${dygraph_api_header_file_tmp}
-    --dygraph_api_source_path ${dygraph_api_source_file_tmp})
+if(WITH_DISTRIBUTE)
+  execute_process(
+    COMMAND
+      ${PYTHON_EXECUTABLE} ${im_api_gen_file} --api_yaml_path ${api_yaml_file}
+      ${legacy_api_yaml_file} --sparse_api_yaml_path ${sparse_api_yaml_file}
+      --dygraph_api_header_path ${dygraph_api_header_file_tmp}
+      --dygraph_api_source_path ${dygraph_api_source_file_tmp}
+      --gen_dist_branch)
+else()
+  execute_process(
+    COMMAND
+      ${PYTHON_EXECUTABLE} ${im_api_gen_file} --api_yaml_path ${api_yaml_file}
+      ${legacy_api_yaml_file} --sparse_api_yaml_path ${sparse_api_yaml_file}
+      --dygraph_api_header_path ${dygraph_api_header_file_tmp}
+      --dygraph_api_source_path ${dygraph_api_source_file_tmp})
+endif()
 
 # generate tensor and tensor operants file
-message("create or copy auto-geneated tensor files")
+message("create or copy auto-generated tensor files")
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator
   COMMAND

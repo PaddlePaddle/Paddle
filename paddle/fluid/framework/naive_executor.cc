@@ -40,8 +40,7 @@ namespace paddle {
 namespace framework {
 void NaiveExecutor::Prepare(Scope *scope,
                             const ProgramDesc &program_desc,
-                            int block_id,
-                            bool with_feed_fetch_ops) {
+                            int block_id) {
   if (!scope) {
     scope_ = new framework::Scope;
   } else {
@@ -49,7 +48,7 @@ void NaiveExecutor::Prepare(Scope *scope,
   }
 
   VLOG(3) << "NaiveExecutor init with scope " << scope;
-  CreateOps(program_desc, block_id, with_feed_fetch_ops);
+  CreateOps(program_desc, block_id);
 }
 
 void NaiveExecutor::PrepareInterpreterCore(
@@ -60,13 +59,27 @@ void NaiveExecutor::PrepareInterpreterCore(
       place_, program_desc.Block(0), scope, execution_config);
 }
 
+void NaiveExecutor::PrepareInterpreterCore(
+    Scope *scope,
+    const ::pir::Program &pir_program,
+    const framework::interpreter::ExecutionConfig &execution_config) {
+  interpreter_core_ =
+      std::make_unique<framework::InterpreterCore>(place_,
+                                                   std::vector<std::string>{},
+                                                   pir_program.block(),
+                                                   scope,
+                                                   execution_config);
+}
+
 void NaiveExecutor::RunInterpreterCore(
-    const std::vector<std::string> &feed_names, bool need_fetch) {
+    const std::vector<std::string> &feed_names,
+    bool need_fetch,
+    bool switch_stream) {
   platform::ScopedFlushDenormal flush;
 #ifdef PADDLE_WITH_NVTX
   platform::CudaNvtxRangePush("model", platform::NvtxRangeColor::Yellow);
 #endif
-  interpreter_core_->Run(feed_names, need_fetch);
+  interpreter_core_->Run(feed_names, need_fetch, false, false, switch_stream);
 #ifdef PADDLE_WITH_NVTX
   platform::CudaNvtxRangePop();
 #endif
@@ -90,8 +103,9 @@ void NaiveExecutor::Run() {
       func(op.get(), scope_);
     }
 
-    if (op->Type() == "while") {
+    if (op->Type() == "while" || op->Type() == "conditional_block") {
       op->SetOutputHooks(output_hookfuncs_);
+      op->SetInputHooks(input_hookfuncs_);
     }
 
 #ifdef PADDLE_WITH_NVTX
@@ -183,12 +197,9 @@ void NaiveExecutor::CreateVariables(const ProgramDesc &desc,
   VLOG(4) << "naive executor create " << num_vars << " vars";
 }
 
-void NaiveExecutor::CreateOps(const ProgramDesc &desc,
-                              int block_id,
-                              bool with_feed_fetch_ops) {
+void NaiveExecutor::CreateOps(const ProgramDesc &desc, int block_id) {
   for (const auto &op_desc : desc.Block(block_id).AllOps()) {
-    if (!with_feed_fetch_ops &&
-        (op_desc->Type() == "feed" || op_desc->Type() == "fetch")) {
+    if (op_desc->Type() == "feed" || op_desc->Type() == "fetch") {
       LOG(INFO) << "---  skip [" << op_desc->Input("X")[0] << "], "
                 << op_desc->Type() << " -> " << op_desc->Output("Out")[0];
       continue;
@@ -218,6 +229,9 @@ void NaiveExecutor::RegisterOutputHook(const HookFunc &hookfunc) {
 
 void NaiveExecutor::RegisterInputHook(const HookFunc &hookfunc) {
   input_hookfuncs_.push_back(hookfunc);
+  if (interpreter_core_) {
+    interpreter_core_->SetInputHooks(input_hookfuncs_);
+  }
 }
 
 void NaiveExecutor::MakeReusePlan(
@@ -306,7 +320,7 @@ void NaiveExecutor::ResetTrtOps(int num) {
 #endif
 }
 
-void NaiveExecutor::CloneLiteEnigne(int num, void *stream) {
+void NaiveExecutor::CloneLiteEngine(int num, void *stream) {
 #ifdef PADDLE_WITH_LITE
   for (auto &op : ops_) {
     if (op->Type() == "lite_engine") {

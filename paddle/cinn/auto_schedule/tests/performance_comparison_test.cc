@@ -138,7 +138,7 @@ class PerformanceTester : public ::testing::Test {
   std::unique_ptr<hlir::framework::Program> BuildNoScheduleProgram(
       Graph* graph, GraphCompiler* graph_compiler) {
     const auto& dtype_dict =
-        graph->GetAttrs<absl::flat_hash_map<std::string, common::Type>>(
+        graph->GetAttrs<absl::flat_hash_map<std::string, cinn::common::Type>>(
             "inferdtype");
     const auto& shape_dict = graph->GetAttrs<
         absl::flat_hash_map<std::string, hlir::framework::shape_t>>(
@@ -211,9 +211,9 @@ class PerformanceTester : public ::testing::Test {
   }
 
 #ifdef CINN_WITH_CUDA
-  Target target_ = common::DefaultNVGPUTarget();
+  Target target_ = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target_ = common::DefaultHostTarget();
+  Target target_ = cinn::common::DefaultHostTarget();
 #endif
   Options options_;
 };
@@ -340,7 +340,7 @@ TEST_F(PerformanceTester, LookupTable) {
 
   Evaluate(tests::OpBuilder("lookup_table")
                .Build({{"table", {50001, 768}},
-                       {"ids", {10, 128, 1}, common::Int(64)}},
+                       {"ids", {10, 128, 1}, cinn::common::Int(64)}},
                       {{"padding_idx", padding_idx}}));
 }
 
@@ -349,7 +349,7 @@ TEST_F(PerformanceTester, Gather) {
 
   Evaluate(tests::OpBuilder("gather").Build(
       {{"operand", {10, 12, 128, 512}},
-       {"index", {1, 1, 1, 128}, common::Int(32)}},
+       {"index", {1, 1, 1, 128}, cinn::common::Int(32)}},
       {{"axis", axis}}));
 }
 
@@ -359,8 +359,9 @@ TEST_F(PerformanceTester, ResNet50) {
   FLAGS_cinn_infer_model_version = 1.0;
   std::unordered_map<std::string, std::vector<int64_t>> feeds = {
       {"inputs", {batch_size, 3, 224, 224}}};
-  Evaluate(cinn::frontend::PaddleModelConvertor(common::DefaultNVGPUTarget())
-               .LoadModel(FLAGS_resnet50_model_dir, true, feeds));
+  Evaluate(
+      cinn::frontend::PaddleModelConvertor(cinn::common::DefaultNVGPUTarget())
+          .LoadModel(FLAGS_resnet50_model_dir, true, feeds));
 }
 
 }  // namespace auto_schedule

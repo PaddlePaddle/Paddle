@@ -63,7 +63,7 @@ class RecvOpV2 : public framework::OperatorWithKernel {
                                 i,
                                 out_shape[i]));
         }
-        ctx->SetOutputDim("Out", phi::make_ddim(out_shape));
+        ctx->SetOutputDim("Out", common::make_ddim(out_shape));
       }
     }
   }

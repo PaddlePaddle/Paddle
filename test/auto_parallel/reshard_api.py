@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 from paddle import nn
+from paddle.distributed import Partial, Replicate, Shard
 
 
 class TestReshardAPI:
@@ -41,35 +42,19 @@ class TestReshardAPI:
         a = paddle.ones(self._shape)
         in_shard_specs = [None for i in range(len(self._shape))]
         out_shard_specs = [None for i in range(len(self._shape))]
-        dist_attr = dist.DistAttr(
-            mesh=self._mesh, sharding_specs=in_shard_specs
-        )
-        dist_attr._set_partial_dims([0])
-        out_dist_attr = dist.DistAttr(
-            mesh=self._mesh, sharding_specs=out_shard_specs
-        )
 
-        input_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
-        output_tensor = dist.reshard(input_tensor, dist_attr=out_dist_attr)
+        input_tensor = dist.shard_tensor(a, self._mesh, [Partial()])
+        output_tensor = dist.reshard(input_tensor, self._mesh, [Replicate()])
 
-        input_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
+        input_tensor = dist.shard_tensor(a, self._mesh, [Replicate()])
         assert np.equal(output_tensor.shape, input_tensor.shape).all()
         np.testing.assert_equal(output_tensor._local_value().numpy(), a.numpy())
 
     def test_case_r_to_s(self):
         a = paddle.ones(self._shape)
-        in_shard_specs = [None for i in range(len(self._shape))]
-        out_shard_specs = [None for i in range(len(self._shape))]
-        out_shard_specs[self._shard] = "x"
-        dist_attr = dist.DistAttr(
-            mesh=self._mesh, sharding_specs=in_shard_specs
-        )
-        out_dist_attr = dist.DistAttr(
-            mesh=self._mesh, sharding_specs=out_shard_specs
-        )
 
-        input_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
-        output_tensor = dist.reshard(input_tensor, dist_attr=out_dist_attr)
+        input_tensor = dist.shard_tensor(a, self._mesh, [Replicate()])
+        output_tensor = dist.reshard(input_tensor, self._mesh, [Shard(0)])
 
         out_shape = list(self._shape)
         if out_shape[self._shard] % 2 == 0:
@@ -93,23 +78,11 @@ class TestReshardAPI:
         input_numpy = np.random.random(self._shape).astype("float32")
         label_numpy = np.random.random(self._shape).astype('float32')
 
-        in_shard_specs = [None for i in range(len(self._shape))]
-        out_shard_specs = [None for i in range(len(self._shape))]
-        out_shard_specs[self._shard] = "x"
-
-        in_dist_attr = dist.DistAttr(
-            mesh=dist.ProcessMesh([0, 1], dim_names=["x"]),
-            sharding_specs=in_shard_specs,
-        )
-
-        out_dist_attr = dist.DistAttr(
-            mesh=dist.ProcessMesh([0, 1], dim_names=["x"]),
-            sharding_specs=out_shard_specs,
-        )
-
         local_input = paddle.to_tensor(input_numpy)
         dist_input = dist.shard_tensor(
-            paddle.to_tensor(input_numpy), dist_attr=in_dist_attr
+            paddle.to_tensor(input_numpy),
+            dist.ProcessMesh([0, 1], dim_names=["x"]),
+            [Replicate()],
         )
 
         local_input.stop_gradient = False
@@ -117,15 +90,21 @@ class TestReshardAPI:
 
         local_output = local_input + paddle.ones(self._shape)
         dist_output = dist_input + dist.shard_tensor(
-            paddle.ones(self._shape), dist_attr=in_dist_attr
+            paddle.ones(self._shape),
+            dist.ProcessMesh([0, 1], dim_names=["x"]),
+            [Replicate()],
         )
         dist_output.stop_gradient = False
 
-        dist_output = dist.reshard(dist_output, dist_attr=out_dist_attr)
+        dist_output = dist.reshard(
+            dist_output, dist.ProcessMesh([0, 1], dim_names=["x"]), [Shard(0)]
+        )
 
         local_label = paddle.to_tensor(label_numpy)
         dist_label = dist.shard_tensor(
-            paddle.to_tensor(label_numpy), dist_attr=out_dist_attr
+            paddle.to_tensor(label_numpy),
+            dist.ProcessMesh([0, 1], dim_names=["x"]),
+            [Shard(0)],
         )
 
         local_loss_fn = nn.MSELoss()

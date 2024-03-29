@@ -28,8 +28,8 @@
 namespace cinn {
 namespace frontend {
 
-using common::Context;
-using common::Type;
+using cinn::common::Context;
+using cinn::common::Type;
 using hlir::framework::Operator;
 using utils::AttributeMap;
 using utils::ShapeType;
@@ -275,7 +275,7 @@ Variable NetBuilder::FillConstant(const std::vector<int>& shape,
                                   const std::string& name,
                                   const std::string& dtype,
                                   bool force_cpu) {
-  const auto& type = common::Str2Type(dtype);
+  const auto& type = cinn::common::Str2Type(dtype);
 
   utils::Attribute value;
   if (type.is_float()) {
@@ -285,8 +285,9 @@ Variable NetBuilder::FillConstant(const std::vector<int>& shape,
   } else if (type.is_bool()) {
     value = !cinn::runtime::CheckStringFlagFalse(str_value);
   } else {
-    LOG(FATAL) << "FillConstant only support int/float/bool, but here "
-               << dtype;
+    std::stringstream ss;
+    ss << "FillConstant only support int/float/bool, but here " << dtype;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   auto out = CustomInstr("fill_constant",
                          {},
@@ -533,7 +534,7 @@ Variable NetBuilder::Cast(const Variable& operand, const std::string& dtype) {
 
 Variable NetBuilder::BitcastConvert(const Variable& operand,
                                     const std::string& dtype) {
-  std::string input_data_type = common::Type2Str(operand->type);
+  std::string input_data_type = cinn::common::Type2Str(operand->type);
   return CustomInstr("bitcast_convert",
                      {operand},
                      {{"dtype", dtype}, {"input_data_type", input_data_type}})
@@ -676,7 +677,9 @@ std::vector<int> UpdatePool2dKernelSize(const std::vector<int>& x_shape,
     height_axis = 1;
     width_axis = 2;
   } else {
-    LOG(FATAL) << "Unsupport data_format: " << data_format;
+    std::stringstream ss;
+    ss << "Unsupport data_format: " << data_format;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   if (global_pooling) {
     new_ksize[0] = x_shape[height_axis];
@@ -709,7 +712,9 @@ std::vector<int> UpdatePool2dPaddings(const std::vector<int>& paddings,
     height_axis = 1;
     width_axis = 2;
   } else {
-    LOG(FATAL) << "Unsupport data_format: " << data_format;
+    std::stringstream ss;
+    ss << "Unsupport data_format: " << data_format;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   // When padding_algorithm is VALID, set paddings to [0, 0, 0, 0].
   // When padding_algorithm is SAME, the calculation formula of padding is as
@@ -1125,7 +1130,8 @@ Variable NetBuilder::Cholesky(const Variable& x, bool upper) {
                     : LessEqual(index_row, index_col);
   auto mask_mat = Reshape(mask, {m, m});
   auto mask_full = BroadcastTo(mask_mat, x->shape);
-  auto zeros = FillConstant(x->shape, 0.0f, "zeros", common::Type2Str(x->type));
+  auto zeros =
+      FillConstant(x->shape, 0.0f, "zeros", cinn::common::Type2Str(x->type));
   auto out = Select(mask_full, cholesky_out, zeros);
   return out;
 }

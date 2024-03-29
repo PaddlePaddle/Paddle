@@ -24,7 +24,7 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "glog/logging.h"
-#include "paddle/phi/api/ext/exception.h"
+#include "paddle/common/exception.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -106,14 +106,14 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
   }
 
   void* scratchpad() const override {
-    if (scratch_ == NULL) {
+    if (scratch_ == nullptr) {
       scratch_ = allocate(Eigen::kGpuScratchSize + sizeof(unsigned int));
     }
     return scratch_;
   }
 
   unsigned int* semaphore() const override {
-    if (semaphore_ == NULL) {
+    if (semaphore_ == nullptr) {
       char* scratch = static_cast<char*>(scratchpad()) + Eigen::kGpuScratchSize;
       semaphore_ = reinterpret_cast<unsigned int*>(scratch);
 #ifdef PADDLE_WITH_HIP
@@ -245,8 +245,8 @@ struct GPUContext::Impl {
   ~Impl() {
     backends::gpu::GPUDeviceGuard guard(place_.device);
     if (owned_) {
-      DestoryInternalWorkspace();
-      DestoryInternalEigenDevice();
+      DestroyInternalWorkspace();
+      DestroyInternalEigenDevice();
       phi::DestroySparseHandle(sparse_handle_);
       phi::DestroySolverHandle(solver_handle_);
       phi::DestroyDnnHandle(dnn_handle_);
@@ -283,7 +283,7 @@ struct GPUContext::Impl {
     workspace_ = new DnnWorkspaceHandle(allocator_, stream());
   }
 
-  void DestoryInternalWorkspace() {
+  void DestroyInternalWorkspace() {
     if (owned_ && workspace_ != nullptr) {
       delete workspace_;
       workspace_ = nullptr;
@@ -338,7 +338,7 @@ struct GPUContext::Impl {
     eigen_device_ = new Eigen::GpuDevice(eigen_stream_.get());
   }
 
-  void DestoryInternalEigenDevice() {
+  void DestroyInternalEigenDevice() {
     if (owned_ && eigen_device_ != nullptr) {
       delete eigen_device_;
       eigen_device_ = nullptr;
@@ -479,7 +479,7 @@ struct GPUContext::Impl {
   }
 
   solverHandle_t GetSolverHandle() {
-    std::call_once(flag_slover_, [&]() {
+    std::call_once(flag_solver_, [&]() {
       if (!solver_handle_) {
         if (!solver_handle_creator_) {
           phi::InitSolverHandle(&solver_handle_, stream());
@@ -753,7 +753,7 @@ struct GPUContext::Impl {
   int multi_process_;
   int max_threads_per_mp_;
   int max_threads_per_block_;
-  std::array<int, 3> max_grid_dim_size_;
+  std::array<unsigned int, 3> max_grid_dim_size_;
 
   CUDAStream* stream_{nullptr};
   Eigen::GpuDevice* eigen_device_{nullptr};
@@ -778,7 +778,7 @@ struct GPUContext::Impl {
   std::once_flag flag_blas_;
   std::once_flag flag_blaslt_;
   std::once_flag flag_dnn_;
-  std::once_flag flag_slover_;
+  std::once_flag flag_solver_;
   std::once_flag flag_cublas_;
   std::once_flag flag_tensorcore_cublas_;
   std::once_flag flag_eigen_device_;
@@ -873,7 +873,7 @@ int GPUContext::GetMaxThreadsPerBlock() const {
   return impl_->max_threads_per_block_;
 }
 
-std::array<int, 3> GPUContext::GetCUDAMaxGridDimSize() const {
+std::array<unsigned int, 3> GPUContext::GetCUDAMaxGridDimSize() const {
   return impl_->max_grid_dim_size_;
 }
 
@@ -919,17 +919,17 @@ ncclComm_t GPUContext::nccl_comm() const { return impl_->GetNcclComm(); }
 void GPUContext::set_nccl_comm(ncclComm_t comm) { impl_->SetNcclComm(comm); }
 
 void GPUContext::Init() {
-  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());
+  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());  // NOLINT
   impl_->Init();
 }
 
 void GPUContext::SetStream(gpuStream_t stream) {
-  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());
+  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());  // NOLINT
   impl_->SetStream(stream);
 }
 
 void GPUContext::SetCUDAStream(CUDAStream* stream, bool clear) {
-  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());
+  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());  // NOLINT
   impl_->SetCUDAStream(stream, clear);
 }
 
@@ -1006,7 +1006,7 @@ void GPUContext::PartialInitWithoutAllocator(int stream_priority) {
 }
 
 void GPUContext::PartialInitWithAllocator() {
-  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());
+  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());  // NOLINT
   impl_->PartialInitWithAllocator();
 }
 
@@ -1024,7 +1024,7 @@ void GPUContext::SetMaxThreadsPerBlock(int val) {
   impl_->max_threads_per_block_ = val;
 }
 
-void GPUContext::SetMaxGridDimSize(const std::array<int, 3>& val) {
+void GPUContext::SetMaxGridDimSize(const std::array<unsigned int, 3>& val) {
   impl_->max_grid_dim_size_ = val;
 }
 

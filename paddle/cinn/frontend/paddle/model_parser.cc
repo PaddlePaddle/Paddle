@@ -42,14 +42,16 @@ int SizeOfType(framework_proto::VarType::Type type) {
     DO(INT64, int64_t);
 #undef DO
     default:
-      LOG(FATAL) << "unknown data type " << type;
+      std::stringstream ss;
+      ss << "unknown data type " << type;
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return -1;
 }
 
 void TensorFromStream(std::istream &is,
                       hlir::framework::_Tensor_ *tensor,
-                      const common::Target &target) {
+                      const cinn::common::Target &target) {
   using Type = framework_proto::VarType::Type;
   uint32_t version;
   is.read(reinterpret_cast<char *>(&version), sizeof(version));
@@ -74,7 +76,7 @@ void TensorFromStream(std::istream &is,
   tensor->Resize(dims);
   void *buf;
   size_t size = tensor->shape().numel() * SizeOfType(desc.data_type());
-  // alllocate memory
+  // allocate memory
   if (target.arch == Target::Arch::X86) {
     switch (static_cast<int>(desc.data_type())) {
 #define SET_TENSOR(desc, type, precision)     \
@@ -90,14 +92,17 @@ void TensorFromStream(std::istream &is,
       SET_TENSOR(INT64, int64_t, Int(64));
 #undef SET_TENSOR
       default:
-        LOG(FATAL) << "unknown type " << desc.data_type();
+        std::stringstream ss;
+        ss << "unknown type " << desc.data_type();
+        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
     // tensor->set_persistable(true);
     is.read(static_cast<char *>(buf), size);
   } else if (target.arch == Target::Arch::NVGPU) {
 #ifdef CINN_WITH_CUDA
     if (desc.data_type() != Type::VarType_Type_FP32)
-      LOG(FATAL) << "[CUDA] The type is not fp32!!";
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("[CUDA] The type is not fp32!!"));
     auto *data = tensor->mutable_data<float>(target);
     tensor->set_type(Float(32));
     std::vector<float> temp(tensor->shape().numel());
@@ -108,7 +113,8 @@ void TensorFromStream(std::istream &is,
                          tensor->shape().numel() * sizeof(float),
                          cudaMemcpyHostToDevice));
 #else
-    LOG(FATAL) << "To use CUDA backends, you need to set WITH_CUDA ON!";
+    PADDLE_THROW(phi::errors::Fatal(
+        "To use CUDA backends, you need to set WITH_CUDA ON!"));
 #endif
   } else {
     CINN_NOT_IMPLEMENTED
@@ -117,7 +123,7 @@ void TensorFromStream(std::istream &is,
 
 void LoadLoDTensor(std::istream &is,
                    hlir::framework::Variable *var,
-                   const common::Target &target) {
+                   const cinn::common::Target &target) {
   auto &tensor = absl::get<hlir::framework::Tensor>(*var);
   uint32_t version{};
   is.read(reinterpret_cast<char *>(&version), sizeof(version));
@@ -170,7 +176,7 @@ void LoadParams(const std::string &path) {}
 // Load directly to CPU, and latter transfer to other devices.
 void LoadParam(const std::string &path,
                hlir::framework::Variable *out,
-               const common::Target &target) {
+               const cinn::common::Target &target) {
   std::ifstream fin(path, std::ios::binary);
   CHECK(fin.is_open()) << "failed to open file " << path;
   LoadLoDTensor(fin, out, target);
@@ -190,7 +196,7 @@ void LoadCombinedParamsPb(const std::string &path,
                           hlir::framework::Scope *scope,
                           const cpp::ProgramDesc &cpp_prog,
                           bool params_from_memory,
-                          const common::Target &target) {
+                          const cinn::common::Target &target) {
   CHECK(scope);
   auto prog = cpp_prog;
   auto &main_block_desc = *prog.GetBlock<cpp::BlockDesc>(0);
@@ -236,7 +242,7 @@ void LoadModelPb(const std::string &model_dir,
                  cpp::ProgramDesc *cpp_prog,
                  bool combined,
                  bool model_from_memory,
-                 const common::Target &target) {
+                 const cinn::common::Target &target) {
   CHECK(cpp_prog);
   CHECK(scope);
   cpp_prog->ClearBlocks();
@@ -281,7 +287,7 @@ void LoadModelPb(const std::string &model_dir,
                         target);
           break;
         default:
-          LOG(FATAL) << "unknown weight type";
+          PADDLE_THROW(phi::errors::InvalidArgument("unknown weight type"));
       }
     }
   }

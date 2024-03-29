@@ -79,7 +79,7 @@ class SequenceUnpadOp : public framework::OperatorWithKernel {
         out_dims_vec.push_back(x_dims[i]);
       }
     }
-    ctx->SetOutputDim("Out", phi::make_ddim(out_dims_vec));
+    ctx->SetOutputDim("Out", common::make_ddim(out_dims_vec));
     if (!ctx->IsRuntime()) {
       ctx->SetLoDLevel("Out", 1);
     }
@@ -99,9 +99,10 @@ class SequenceUnpadOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "(LoDTensor, default LoDTensor<float>) Input tensor which "
              "contains the padded sequences with equal length.");
-    AddInput("Length",
-             "(LoDTensor) The input tensor which specifies the actual ength of "
-             "sequences after unpadding.");
+    AddInput(
+        "Length",
+        "(LoDTensor) The input tensor which specifies the actual length of "
+        "sequences after unpadding.");
     AddOutput(
         "Out",
         "(LoDTensor) The output tensor which contains unpadded sequences.");
@@ -109,7 +110,7 @@ class SequenceUnpadOpMaker : public framework::OpProtoAndCheckerMaker {
       Sequence Unpad Operator
 
       This operator removes the padding data in the input sequences and convert
-      them into sequences with actual length as output, identitied by lod
+      them into sequences with actual length as output, identified by lod
       information.
 
       Example:

@@ -78,7 +78,7 @@ def quanter(class_name):
     Annotation to declare a factory class for quanter.
 
     Args:
-        class_name (str) - The name of factory class to be declared.
+        class_name (str): The name of factory class to be declared.
 
     Examples:
         .. code-block:: python

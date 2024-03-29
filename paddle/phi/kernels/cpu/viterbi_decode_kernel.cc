@@ -202,9 +202,9 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
   DenseTensor alpha =
       float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
   DenseTensor zero = int_tensor_buffer.GetBufferBlock({batch_size, 1});
-  int_functor(dev_ctx, &zero, 0);
+  int_functor(dev_ctx, &zero, static_cast<int64_t>(0));
   DenseTensor one = int_tensor_buffer.GetBufferBlock({batch_size, 1});
-  int_functor(dev_ctx, &one, 1);
+  int_functor(dev_ctx, &one, static_cast<int64_t>(1));
   DenseTensor float_one = float_tensor_buffer.GetBufferBlock({batch_size, 1});
   float_functor(dev_ctx, &float_one, static_cast<T>(1.0));
   DenseTensor alpha_trn_sum =

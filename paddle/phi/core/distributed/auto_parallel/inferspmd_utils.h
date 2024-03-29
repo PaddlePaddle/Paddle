@@ -19,6 +19,7 @@ limitations under the License. */
 #include <typeinfo>
 #include <utility>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/attribute.h"
@@ -26,7 +27,6 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/type_defs.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/type_defs.h"
 #include "paddle/utils/any.h"
 #include "paddle/utils/flat_hash_map.h"
@@ -107,7 +107,7 @@ struct InferSpmdFnImpl<Return (*)(Args...), infer_spmd_fn> {
     }
   };
 
-  // for vecotr slot
+  // for vector slot
   template <typename... Tail>
   struct InferSpmdFnCallHelper<const std::vector<const DistMetaTensor*>&,
                                Tail...> {
@@ -119,6 +119,28 @@ struct InferSpmdFnImpl<Return (*)(Args...), infer_spmd_fn> {
       const std::pair<int, int> range = ctx.InputRangeAt(in_idx);
       std::vector<const DistMetaTensor*> arg =
           ctx.InputsBetween(range.first, range.second);
+      return InferSpmdFnCallHelper<Tail...>::template Call<in_idx + 1,
+                                                           attr_idx>(
+          ctx, pargs..., arg);
+    }
+  };
+
+  // direct vector
+  template <typename... Tail>
+  struct InferSpmdFnCallHelper<const std::vector<DistMetaTensor>&, Tail...> {
+    template <int in_idx, int attr_idx, typename... PreviousArgs>
+    static SpmdInfo Call(const InferSpmdContext& ctx, PreviousArgs&... pargs) {
+      static_assert(attr_idx == 0,
+                    "InferSpmd's Input should appear before Attributes.");
+      // TODO(liuzhenhai): parse input list as vector directly
+      const std::pair<int, int> range = ctx.InputRangeAt(in_idx);
+      std::vector<const DistMetaTensor*> tmp_arg =
+          ctx.InputsBetween(range.first, range.second);
+      std::vector<DistMetaTensor> arg;
+      std::transform(tmp_arg.begin(),
+                     tmp_arg.end(),
+                     std::back_inserter(arg),
+                     [](const DistMetaTensor* arg_ptr) { return *arg_ptr; });
       return InferSpmdFnCallHelper<Tail...>::template Call<in_idx + 1,
                                                            attr_idx>(
           ctx, pargs..., arg);

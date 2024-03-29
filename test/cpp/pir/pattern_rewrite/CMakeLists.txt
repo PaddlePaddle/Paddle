@@ -1,40 +1,24 @@
-set(PATTERN_REWRITE_TEST_DEPS
-    pd_constant_folding_pass transform_general_functions gtest pd_op_dialect
-    pir)
+paddle_test(pattern_rewrite_test SRCS pattern_rewrite_test.cc)
 
-if(WITH_DISTRIBUTE)
-  set(PATTERN_REWRITE_TEST_DEPS ${PATTERN_REWRITE_TEST_DEPS} fleet_executor
-                                parallel_executor)
+paddle_test(drr_same_type_binding_test SRCS drr_same_type_binding_test.cc)
+
+paddle_test(drr_fuse_linear_test SRCS drr_fuse_linear_test.cc)
+
+paddle_test(drr_fuse_linear_param_grad_add_test SRCS
+            drr_fuse_linear_param_grad_add_test.cc)
+
+if(WITH_GPU)
+  paddle_test(drr_attention_fuse_test SRCS drr_attention_fuse_test.cc)
 endif()
 
-cc_test_old(pattern_rewrite_test SRCS pattern_rewrite_test.cc DEPS
-            ${PATTERN_REWRITE_TEST_DEPS})
-
-cc_test(
-  drr_test
-  SRCS drr_test.cc
-  DEPS drr)
-
-cc_test(
-  drr_same_type_binding_test
-  SRCS drr_same_type_binding_test.cc
-  DEPS drr gtest pd_op_dialect pir)
-
-cc_test(
-  drr_fuse_linear_test
-  SRCS drr_fuse_linear_test.cc
-  DEPS fusion_passes drr gtest pd_op_dialect pir)
-
-cc_test(
-  drr_fuse_linear_param_grad_add_test
-  SRCS drr_fuse_linear_param_grad_add_test.cc
-  DEPS fusion_passes drr gtest pd_op_dialect pir)
-
-cc_test(
-  drr_attention_fuse_test
-  SRCS drr_attention_fuse_test.cc
-  DEPS fusion_passes drr gtest pd_op_dialect pir)
-
-set_tests_properties(
-  pattern_rewrite_test PROPERTIES ENVIRONMENT
-                                  "FLAGS_enable_new_ir_in_executor=true")
+if(WITH_ONNXRUNTIME AND WIN32)
+  # Copy onnxruntime for some c++ test in Windows, since the test will
+  # be build only in CI, so suppose the generator in Windows is Ninja.
+  copy_onnx(pattern_rewrite_test)
+  copy_onnx(drr_same_type_binding_test)
+  copy_onnx(drr_fuse_linear_test)
+  copy_onnx(drr_fuse_linear_param_grad_add_test)
+  if(WITH_GPU)
+    copy_onnx(drr_attention_fuse_test)
+  endif()
+endif()

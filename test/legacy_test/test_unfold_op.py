@@ -139,10 +139,10 @@ class TestUnfoldOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y')
+        self.check_grad(['X'], 'Y', check_pir=True)
 
     def test_support_tuple(self):
         paddle.disable_static()
@@ -199,10 +199,10 @@ class TestUnfoldBF16Op(TestUnfoldOp):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        self.check_output_with_place(self.place, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad_with_place(self.place, ['X'], 'Y')
+        self.check_grad_with_place(self.place, ['X'], 'Y', check_pir=True)
 
 
 class TestUnfoldAPI(TestUnfoldOp):
@@ -221,7 +221,7 @@ class TestUnfoldAPI(TestUnfoldOp):
     def test_dygraph(self):
         for place in self.places:
             with base.dygraph.guard(place):
-                input = base.dygraph.to_variable(self.inputs['X'])
+                input = paddle.to_tensor(self.inputs['X'])
                 m = paddle.nn.Unfold(**self.attrs)
                 m.eval()
                 result = m(input)

@@ -16,7 +16,10 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/phi/api/lib/api_registry.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
+#include "paddle/phi/core/enforce.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef PADDLE_WITH_CUDA
@@ -81,7 +84,7 @@ PADDLE_API Tensor from_blob(void* data,
                         place,
                         phi::errors::InvalidArgument(
                             "Specified place does not match place of data. ",
-                            "Specified: %s, Exptected: %s.",
+                            "Specified: %s, Expected: %s.",
                             data_place.DebugString(),
                             place.DebugString()));
     }
@@ -90,7 +93,7 @@ PADDLE_API Tensor from_blob(void* data,
   }
 
   auto meta =
-      phi::DenseTensorMeta(dtype, phi::make_ddim(shape.GetData()), layout);
+      phi::DenseTensorMeta(dtype, common::make_ddim(shape.GetData()), layout);
 
   size_t size = SizeOf(dtype) * (meta.is_scalar ? 1 : product(meta.dims));
 
@@ -120,15 +123,39 @@ PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
                         "However it's %s",
                         typeid(input.impl().get()).name()));
   auto dev_ctx = phi::distributed::GetDistTensorDeviceContext(
-      std::static_pointer_cast<phi::distributed::DistTensor>(input.impl()));
+      static_cast<phi::distributed::DistTensor*>(input.impl().get()));
   auto input_tensor_impl = input.impl();
   std::shared_ptr<phi::distributed::DistTensor> dist_out_ptr = nullptr;
   if (input_tensor_impl) {
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(input_tensor_impl.get());
+
+    if (!IsCurRankInMesh(dist_attr.process_mesh()) &&
+        !IsCurRankInMesh(dist_tensor->dist_attr().process_mesh())) {
+      PADDLE_ENFORCE_EQ(
+          dist_tensor->initialized(),
+          false,
+          phi::errors::InvalidArgument(
+              "Only "
+              "uninitialized ``phi::distributed::DistTensor`` is allowed. "));
+      VLOG(4) << "reshard tensor which is not in current mesh, just set its "
+                 "dist_attr "
+              << "from " << dist_tensor->dist_attr() << " to " << dist_attr;
+
+      phi::distributed::DistTensor* dist_tensor =
+          static_cast<phi::distributed::DistTensor*>(input_tensor_impl.get());
+      dist_out_ptr = std::make_shared<phi::distributed::DistTensor>(
+          dist_tensor->dims(), dist_attr);
+      phi::DenseTensor* dense_out = dist_out_ptr->unsafe_mutable_value();
+      *dense_out = dist_tensor->value();
+      return dist_out_ptr;
+    }
+
     if (dist_tensor->dist_attr() != dist_attr) {
-      VLOG(6) << "reshard func, reshard tensor from "
-              << dist_tensor->dist_attr() << " to " << dist_attr;
+      auto tensor_name = (input.name() == "" ? "None" : input.name());
+      VLOG(4) << "Reshard func: tensor(" << tensor_name << ") "
+              << paddle::experimental::ReshardDebugInfo(*dist_tensor,
+                                                        dist_attr);
       auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,
                                                                  dist_attr);
       dist_out_ptr = func->Eval(dev_ctx, *dist_tensor, dist_attr);

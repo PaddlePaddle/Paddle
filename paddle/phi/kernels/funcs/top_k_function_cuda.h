@@ -1043,7 +1043,7 @@ bool SortTopk(const phi::GPUContext& ctx,
 
   Tensor input_indices;
   const std::vector<int64_t> dims = {num_rows, num_cols};
-  auto dim = phi::make_ddim(dims);
+  auto dim = common::make_ddim(dims);
   input_indices.Resize(dim);
   ctx.template Alloc<int64_t>(&input_indices);
   size_t temp_storage_bytes = -1;
@@ -1255,7 +1255,7 @@ bool SortTopk(const phi::GPUContext& ctx,
         static_cast<const Tensor>(temp_indices));
 
     std::vector<int> odims = {static_cast<int>(num_rows), static_cast<int>(k)};
-    auto dim = phi::make_ddim(odims);
+    auto dim = common::make_ddim(odims);
     auto e_values = phi::EigenMatrix<T>::From(*out_tensor, dim);
     auto e_tmp_values =
         phi::EigenMatrix<T>::From(static_cast<const Tensor>(temp_values));

@@ -69,11 +69,11 @@ void TransferLayoutGeneral(const Context& dev_ctx,
     dst_dim[i] = src_dim[axis[i]];
   }
 
-  out->Resize(phi::make_ddim(dst_dim));
+  out->Resize(common::make_ddim(dst_dim));
   dev_ctx.Alloc(out, x.dtype());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // In GPU fp16 model, we will insert many transfer_layout ops in
-  // conv2d_fusion_layout_transfer_pass, so we optimize this kernel on GPU
+  // transfer_layout_pass, so we optimize this kernel on GPU
   if (std::is_same<Context, phi::GPUContext>::value) {
     std::vector<int> axis_nchw_nhwc = {0, 2, 3, 1};
     std::vector<int> axis_nhwc_nchw = {0, 3, 1, 2};
@@ -166,7 +166,7 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
     out->set_mem_desc(out_mem_desc);
   } else if (src_layout == DataLayout::ONEDNN &&
              dst_layout != DataLayout::ONEDNN) {
-    // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
+    // Case2 - transform from MKLDNN OPKernel to Non-MKLDNN OPKernel
     // Do transform via MKLDNN lib
     funcs::TransDataLayoutFromOneDNN(
         src_layout, dst_layout, x, out, dev_ctx.GetPlace());

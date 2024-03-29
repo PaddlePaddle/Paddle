@@ -110,8 +110,10 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
       label_tmp.Resize({batch_size, 1});
       alpha_tmp.Resize({batch_size, tag_num});
       emission_exps_tmp.Resize({batch_size, tag_num});
-      phi::funcs::set_constant(ctx.device_context(), emission_exps, 0.0);
-      phi::funcs::set_constant(ctx.device_context(), alpha, 0.0);
+      phi::funcs::set_constant(
+          ctx.device_context(), emission_exps, static_cast<T>(0.0));
+      phi::funcs::set_constant(
+          ctx.device_context(), alpha, static_cast<T>(0.0));
     } else {
       in_lod = ctx.Input<phi::DenseTensor>("Label")->lod();
       PADDLE_ENFORCE_NE(in_lod.size(),
@@ -129,7 +131,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     // Now, all the inputs and outputs should be on the CPU memory.
     phi::DenseTensor emission_row_max;
     emission_row_max.mutable_data<T>(
-        phi::make_ddim({static_cast<int64_t>(batch_size), 1}),
+        common::make_ddim({static_cast<int64_t>(batch_size), 1}),
         platform::CPUPlace());
     auto& place =
         *ctx.template device_context<phi::CPUContext>().eigen_device();
@@ -232,7 +234,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
         static_cast<size_t>(*std::max_element(lbl, lbl + seq_length)),
         tag_num,
         platform::errors::InvalidArgument(
-            "An invalid tag label that execesses the largest tag number."));
+            "An invalid tag label that excesses the largest tag number."));
 
     // Calculate the nominator part, which depends on the label sequence.
     ll += w[lbl[0]] /*start transition*/ + x[lbl[0]] +
@@ -300,12 +302,13 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     // data reader operator, it can have no gradients.
     if (transition_grad) {
       transition_grad->mutable_data<T>(platform::CPUPlace());
-      phi::funcs::set_constant(ctx.device_context(), transition_grad, 0.);
+      phi::funcs::set_constant(
+          ctx.device_context(), transition_grad, static_cast<T>(0.));
     }
     // Now, all the inputs and outputs should be on the CPU memory.
     auto emission_dims = emission_exps->dims();
     // Beta is the memo table used in dynamic programming to calculate the
-    // backwark vectors. For a backward vector i (the i-th row of beta), it
+    // backward vectors. For a backward vector i (the i-th row of beta), it
     // captures the unnormalized probabilities of partial sequences starting
     // at position i.
     phi::DenseTensor beta;
@@ -369,7 +372,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     const size_t state_trans_base_idx = 2;
 
     // Calculate the backward vectors: beta.
-    // First, calculate the initialition state.
+    // First, calculate the initial state.
     for (size_t i = 0; i < tag_num; ++i) {
       beta_value[(seq_length - 1) * tag_num + i] = w_exps[tag_num + i];
     }
@@ -408,7 +411,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
       T* trans_grad = transition_grad->data<T>();
       for (size_t k = 0; k < tag_num; ++k) {
         // Do not multiply by the output gradient here, because x_grad_mat has
-        // alrealy done this.
+        // already done this.
         trans_grad[k] += x_grad_mat(/*from start state*/ 0, k);
         trans_grad[tag_num + k] +=
             x_grad_mat(/*to end state*/ seq_length - 1, k);

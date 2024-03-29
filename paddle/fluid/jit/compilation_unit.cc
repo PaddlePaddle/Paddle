@@ -27,7 +27,7 @@ std::shared_ptr<BaseEngine> CompilationUnit::GetEngine(
       engine_map_.count(name),
       1,
       phi::errors::InvalidArgument(
-          "Funciton named %s is not existed in engine_map_.", name));
+          "Function named %s is not existed in engine_map_.", name));
   return engine_map_.at(name);
 }
 
@@ -41,7 +41,7 @@ const jit::EngineMap &CompilationUnit::EngineMap() const { return engine_map_; }
 std::shared_ptr<CompilationUnit> CompilationUnit::Clone(void *stream) {
   auto x = std::make_shared<CompilationUnit>();
   for (auto &it : engine_map_) {
-    x->SetEngine(it.first, std::move(it.second->Clone(stream)));
+    x->SetEngine(it.first, it.second->Clone(stream));
   }
   return x;
 }

@@ -16,18 +16,18 @@ Dataset package.
 """
 
 from . import (  # noqa: F401
-    mnist,
-    imikolov,
-    imdb,
     cifar,
-    movielens,
     conll05,
+    flowers,
+    image,
+    imdb,
+    imikolov,
+    mnist,
+    movielens,
     uci_housing,
+    voc2012,
     wmt14,
     wmt16,
-    flowers,
-    voc2012,
-    image,
 )
 
 # set __all__ as empty for not showing APIs under paddle.dataset

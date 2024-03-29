@@ -21,7 +21,7 @@
 #include "paddle/fluid/primitive/rule/vjp/details.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/fluid/primitive/utils/utils.h"
-#include "paddle/pir/core/operation.h"
+#include "paddle/pir/include/core/operation.h"
 
 namespace paddle {
 namespace primitive {
@@ -55,7 +55,7 @@ std::vector<std::vector<paddle::Tensor>> reshape_vjp(
   if (paddle::prim::StaticCompositeContext::Instance().IsBwdPrimEnabled() &&
       !need_skip) {
     FLAGS_tensor_operants_mode = "static";
-    VLOG(4) << "Call PIR Decomposed backward op reshape_grad";
+    VLOG(4) << "Call Pir Decomposed backward op reshape_grad";
     paddle::Tensor* x_grad = !stop_gradients[0][0] ? &vjp_res[0][0] : nullptr;
 
     details::reshape_grad<LazyTensor>(xshape, out_grad, x_grad);

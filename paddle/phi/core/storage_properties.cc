@@ -34,6 +34,13 @@ std::unique_ptr<StorageProperties> CopyStorageProperties(
           static_cast<OneDNNStorageProperties*>(sp.get())->mem_desc;
       return result;
 #endif
+#ifdef PADDLE_WITH_XPU
+    } else if (XPUStorageProperties::classof(sp.get())) {
+      auto result = std::make_unique<XPUStorageProperties>();
+      result->xpu_scale_value =
+          static_cast<XPUStorageProperties*>(sp.get())->xpu_scale_value;
+      return result;
+#endif
     } else {
       return nullptr;
     }

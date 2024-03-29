@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 import paddle
 from paddle.utils import to_sequence
 
-from ..utils import InnerError, map_if, map_if_extend
+from ..utils import InnerError, log_do, map_if, map_if_extend
 from .statement_ir import SIRRuntimeCache, Symbol
 
 if TYPE_CHECKING:
@@ -51,28 +51,31 @@ def replace_symbol(
 
 
 def _append_opstack_between(start, end, stack):
-    # NOTE(xiongkun): we don't sync for speed. careful!!
-    # [start, end)
+    # The range is [start, end)
     from paddle.framework import core
 
     op_maker = core.op_proto_and_checker_maker
     callstack_attr_name = op_maker.kOpCreationCallstackAttrName()
     for op in for_each_ops_between(start, end):
-        op._set_attr(callstack_attr_name, stack)
+        if paddle.framework.use_pir_api():
+            op.callstack = stack
+        else:
+            # NOTE(xiongkun): we don't sync for speed. careful!!
+            op._set_attr(callstack_attr_name, stack)
 
 
 def for_each_ops_between(start, end):
     # NOTE(xiongkun): we don't sync for speed. careful!!
     # [start, end)
     program = paddle.static.default_main_program()
-    ops = program.current_block().ops[start:end]
+    ops = program.global_block().ops[start:end]
     yield from ops
 
 
 def opnum_in_program():
     # NOTE(xiongkun): we don't sync for speed. careful!!
     program = paddle.static.default_main_program()
-    return len(program.current_block().ops)
+    return len(program.global_block().ops)
 
 
 class Interpreter:
@@ -119,8 +122,11 @@ class Interpreter:
             if len(to_sequence(outs)) != len(to_sequence(stmt.outputs)):
                 raise InnerError("Number output mismatch, some error happen.")
 
-            _append_opstack_between(
-                before_stmt_opnum, opnum_in_program() + 1, stmt.stmt_stack
+            log_do(
+                3,
+                lambda: _append_opstack_between(
+                    before_stmt_opnum, opnum_in_program() + 1, stmt.stmt_stack
+                ),
             )
 
             map_if(
@@ -153,6 +159,10 @@ class Interpreter:
         assert layer is not None, "SIR bound layer is None."
         return layer(*args, **kwargs)
 
+    def AST(self, stmt, inputs):
+        args, kwargs = inputs
+        return stmt.converted_func(*args, **kwargs)
+
 
 def compile_sir(context: SymbolicTraceContext, name: str):
     """
@@ -181,8 +191,8 @@ def compile_sir(context: SymbolicTraceContext, name: str):
 def prepare_state(SIR, inputs):
     state = {}
 
-    # update free vars if exsits
-    if SIRRuntimeCache().has_key(SIR.name):  # noqa: W601
+    # update free vars if exists
+    if SIRRuntimeCache().has_key(SIR.name):
         free_var_seeker = SIRRuntimeCache().get_free_vars(SIR.name)
         if free_var_seeker:
             state = free_var_seeker()

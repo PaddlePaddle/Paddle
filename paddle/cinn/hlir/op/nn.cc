@@ -16,6 +16,7 @@
 
 #include <functional>
 
+#include "paddle/cinn/adt/op_equation_context.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
@@ -31,9 +32,9 @@
 namespace cinn {
 namespace hlir {
 namespace op {
-using common::_CINNValuePack_;
-using common::CINNValue;
-using common::CINNValuePack;
+using cinn::common::_CINNValuePack_;
+using cinn::common::CINNValue;
+using cinn::common::CINNValuePack;
 using framework::OpStrategy;
 using framework::shape_t;
 using framework::StrategyFunction;
@@ -70,12 +71,47 @@ std::shared_ptr<OpStrategy> StrategyForRelu(
   return strategy;
 }
 
+std::shared_ptr<OpStrategy> StrategyForReluSymbolic(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<ir::Dim>> &output_shapes,
+    const Target &target) {
+  framework::CINNCompute relu_compute(
+      [=](lang::Args args, lang::RetValue *ret) {
+        CHECK(!args.empty())
+            << "The input argument of relu compute is empty! Please check.\n";
+        CINNValuePack pack_args = args[0];
+        CHECK(!pack_args.empty())
+            << "at least one input tensor for relu compute\n";
+        Expr A = pack_args[0];
+        CHECK(A.as_tensor());
+        CHECK_EQ(pack_args.size(), 2);
+        CHECK(pack_args[1].is_string());
+        std::string tensor_name = pack_args[1].operator std::string();
+        auto out = pe::Relu(A.as_tensor_ref(), 0.0, tensor_name);
+        auto stages = CreateStages({out});
+        *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
+      });
+
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  CHECK(!out_type.empty()) << "Out_type of relu op is empty! Please check.";
+  strategy->AddImpl(relu_compute, lang::PackedFunc(), "strategy.relu.x86", 1);
+  return strategy;
+}
+
 std::vector<framework::shape_t> InferShapeForRelu(
     const std::vector<framework::shape_t> &inputs_shape,
     const framework::AttrMapType &attrs) {
   CHECK(!inputs_shape.empty()) << "The inputs is empty! Please check again.";
   std::vector<framework::shape_t> res{inputs_shape[0]};
   return res;
+}
+
+void GenerateEquationsForRelu(cinn::adt::config::OpEquationContext *ctx) {
+  CHECK(ctx->GetInTensorsRanks().size() != 0)
+      << "The inputs is empty! Please check again.";
+  ctx->Equal(ctx->GetInIteratorTuple(0), ctx->GetOutIteratorTuple(0));
 }
 
 std::vector<Type> InferDtypeForRelu(const std::vector<Type> &inputs_type,
@@ -269,7 +305,8 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
                                 dilation[1],
                                 tensor_name);
         } else {
-          LOG(FATAL) << "Only support NCHW and NHWC data layout\n";
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "Only support NCHW and NHWC data layout\n"));
         }
         auto stages = CreateStages({A.as_tensor_ref(), B.as_tensor_ref()});
 
@@ -332,7 +369,9 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
     } else if (target.arch == Target::Arch::X86) {
       CINN_NOT_IMPLEMENTED
     }
-    LOG(FATAL) << "This target [" << target << "] is not supported yet.";
+    std::stringstream ss;
+    ss << "This target [" << target << "] is not supported yet.";
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -474,7 +513,7 @@ std::vector<shape_t> InferShapeForConv2d(
                          -1,
                          -1,
                          Float(32),
-                         common::DefaultHostTarget(),
+                         cinn::common::DefaultHostTarget(),
                          key);
     int ic_bn = conv2d_factors["ic_bn"];
     int oc_bn = conv2d_factors["oc_bn"];
@@ -626,7 +665,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2dNCHWc(
         std::vector<Expr> kernel_shape = inputs[1]->shape;
         // kernel_h == 1 && kernel_w == 1
         CHECK_EQ(kernel_shape.size(), 6U)
-            << "kernel_dialtion shape size should be 6";
+            << "kernel_dilation shape size should be 6";
         bool is_1x1 =
             (is_zero(kernel_shape[2] - 1)) && (is_zero(kernel_shape[3] - 1));
         ir::Tensor res;
@@ -677,8 +716,8 @@ std::shared_ptr<OpStrategy> StrategyForConv2dNCHWc(
     strategy->AddImpl(
         conv2d_compute, conv2d_schedule, "strategy.conv2d_NCHWc.x86", 1);
   } else {
-    LOG(FATAL)
-        << "conv2d_NCHWc op with dtype != float32 is not implemented yet!";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "conv2d_NCHWc op with dtype != float32 is not implemented yet!"));
   }
   return strategy;
 }
@@ -858,7 +897,8 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
                                       stride[1],
                                       tensor_name);
     } else {
-      LOG(FATAL) << "Only support NCHW and NHWC data layout\n";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Only support NCHW and NHWC data layout\n"));
     }
 
     auto stages = CreateStages({A.as_tensor_ref(), B.as_tensor_ref()});
@@ -878,7 +918,7 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
       [=](lang::Args args, lang::RetValue *ret) {
         CHECK(!args.empty()) << "The input argument of InjectiveSchedule is "
                                 "empty! Please check.\n";
-        common::CINNValuePack arg_pack = args[0];
+        cinn::common::CINNValuePack arg_pack = args[0];
         std::vector<Expr> vec_ast;
         std::vector<Expr> vec_tensor;
         for (int i = 0; i < arg_pack.size(); i++) {
@@ -899,9 +939,9 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
         } else {
           CINN_NOT_IMPLEMENTED
         }
-        std::vector<common::CINNValue> res{
-            common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-        *ret = common::CINNValuePack{res};
+        std::vector<cinn::common::CINNValue> res{
+            cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+        *ret = cinn::common::CINNValuePack{res};
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -972,7 +1012,8 @@ std::vector<shape_t> InferShapeForDepthwiseConv2d(
             out_shape_w,
             inputs_shape[1][1] * inputs_shape[0][3]}};
   } else {
-    LOG(FATAL) << "Only support NCHW and NHWC data layout\n";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Only support NCHW and NHWC data layout\n"));
   }
   return res;
 }
@@ -1057,7 +1098,8 @@ std::shared_ptr<OpStrategy> StrategyForBatchNorm(
                       "strategy.batchnorm.x86",
                       1);
   } else {
-    LOG(FATAL) << "BatchNorm op with dtype != float32 is not implemented yet!";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "BatchNorm op with dtype != float32 is not implemented yet!"));
   }
   return strategy;
 }
@@ -1267,7 +1309,9 @@ std::vector<std::vector<int>> InferShapeForPool1d(
   } else if (data_format == "NWC") {
     width_axis = 1;
   } else {
-    LOG(FATAL) << "unsupported data_format: " << data_format << std::endl;
+    std::stringstream ss;
+    ss << "unsupported data_format: " << data_format << std::endl;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 
   if (ceil_mode) {
@@ -1370,8 +1414,8 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
       width_index = 3;
       data_format = "NCHW";
     } else {
-      LOG(FATAL)
-          << "Only support 'NCHW' or 'NHWC' or 'AnyLayout' data_format.\n";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Only support 'NCHW' or 'NHWC' or 'AnyLayout' data_format.\n"));
     }
     kernel_size = {A_tensor->shape[height_index].as_int32(),
                    A_tensor->shape[width_index].as_int32()};
@@ -2170,7 +2214,8 @@ std::vector<framework::shape_t> InferShapeForBatchNormTrain(
   if (attrs.find("data_layout") != attrs.end()) {
     data_layout = absl::get<std::string>(attrs.at("data_layout"));
   } else {
-    LOG(FATAL) << "data_layout is not found, please check!";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "data_layout is not found, please check!"));
   }
 
   CHECK_EQ(inputs_shape[0].size(), 4) << "x dimension size is not required!";
@@ -2188,20 +2233,22 @@ std::vector<framework::shape_t> InferShapeForBatchNormTrain(
     CHECK_EQ(inputs_shape[0][1], inputs_shape[2][0])
         << "x and bias dimension size is not equal!";
     CHECK_EQ(inputs_shape[0][1], inputs_shape[3][0])
-        << "x and moveing_mean dimension size is not equal!";
+        << "x and moving_mean dimension size is not equal!";
     CHECK_EQ(inputs_shape[0][1], inputs_shape[4][0])
-        << "x and moveing_variance dimension size is not equal!";
+        << "x and moving_variance dimension size is not equal!";
   } else if (data_layout == "NHWC") {
     CHECK_EQ(inputs_shape[0][3], inputs_shape[1][0])
         << "x and scale dimension is not equal!";
     CHECK_EQ(inputs_shape[0][3], inputs_shape[2][0])
         << "x and bias dimension size is not equal!";
     CHECK_EQ(inputs_shape[0][3], inputs_shape[3][0])
-        << "x and moveing_mean dimension size is not equal!";
+        << "x and moving_mean dimension size is not equal!";
     CHECK_EQ(inputs_shape[0][3], inputs_shape[4][0])
-        << "x and moveing_variance dimension size is not equal!";
+        << "x and moving_variance dimension size is not equal!";
   } else {
-    LOG(FATAL) << "data_layout " << data_layout << " is not support!";
+    std::stringstream ss;
+    ss << "data_layout " << data_layout << " is not support!";
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 
   return {inputs_shape[0],
@@ -2235,8 +2282,9 @@ std::shared_ptr<OpStrategy> StrategyForGradOp(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<int>> &output_shapes,
     const Target &target) {
-  LOG(FATAL) << "Gradient operator will be decomposed into several primitive "
-                "operators. Please Use Decomposer Program Pass.";
+  PADDLE_THROW(phi::errors::Fatal(
+      "Gradient operator will be decomposed into several primitive "
+      "operators. Please Use Decomposer Program Pass."));
 }
 
 // batch norm grad
@@ -2249,7 +2297,8 @@ std::vector<framework::shape_t> InferShapeForBatchNormGrad(
   if (attrs.find("data_layout") != attrs.end()) {
     data_layout = absl::get<std::string>(attrs.at("data_layout"));
   } else {
-    LOG(FATAL) << "data_layout is not found, please check!";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "data_layout is not found, please check!"));
   }
 
   CHECK_EQ(inputs_shape[0].size(), 4) << "dy dimension size is not required!";
@@ -2266,18 +2315,20 @@ std::vector<framework::shape_t> InferShapeForBatchNormGrad(
     CHECK_EQ(inputs_shape[0][1], inputs_shape[2][0])
         << "dy and bias dimension size is not equal!";
     CHECK_EQ(inputs_shape[0][1], inputs_shape[3][0])
-        << "dy and moveing_mean dimension size is not equal!";
+        << "dy and moving_mean dimension size is not equal!";
     CHECK_EQ(inputs_shape[0][1], inputs_shape[4][0])
-        << "dy and moveing_variance dimension size is not equal!";
+        << "dy and moving_variance dimension size is not equal!";
   } else if (data_layout == "NHWC") {
     CHECK_EQ(inputs_shape[0][3], inputs_shape[2][0])
         << "dy and bias dimension size is not equal!";
     CHECK_EQ(inputs_shape[0][3], inputs_shape[3][0])
-        << "dy and moveing_mean dimension size is not equal!";
+        << "dy and moving_mean dimension size is not equal!";
     CHECK_EQ(inputs_shape[0][3], inputs_shape[4][0])
-        << "dy and moveing_variance dimension size is not equal!";
+        << "dy and moving_variance dimension size is not equal!";
   } else {
-    LOG(FATAL) << "data_layout " << data_layout << " is not support!";
+    std::stringstream ss;
+    ss << "data_layout " << data_layout << " is not support!";
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 
   return {inputs_shape[0], inputs_shape[2], inputs_shape[2]};
@@ -2326,8 +2377,12 @@ CINN_REGISTER_HELPER(nn_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForRelu)
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
+          "CINNStrategySymbolic", cinn::hlir::op::StrategyForReluSymbolic)
       .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForRelu))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForRelu))
+      .set_attr("generate_equations",
+                MakeOpFunction(cinn::hlir::op::GenerateEquationsForRelu))
 #ifndef CINN_WITH_CUDA
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForUnary))

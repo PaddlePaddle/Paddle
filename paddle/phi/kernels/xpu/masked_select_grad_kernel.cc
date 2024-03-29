@@ -31,8 +31,8 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
   auto* out_data =
       reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(x_grad));
 
-  auto mask_shape = phi::vectorize<int>(mask.dims());
-  auto xshape = phi::vectorize<int>(x_grad->dims());
+  auto mask_shape = common::vectorize<int>(mask.dims());
+  auto xshape = common::vectorize<int>(x_grad->dims());
   if (mask.dims().size() == 0) {
     mask_shape = std::vector<int>({1});
   }

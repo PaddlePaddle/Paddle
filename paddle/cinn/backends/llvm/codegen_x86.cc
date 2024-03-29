@@ -128,8 +128,8 @@ void CodeGenX86::CreateParallelLaunch(Expr body, int num_task) {
   symbol_table_->PushScope();
   UnpackVars(vars, data);
   ParallelEnv par_env;
-  auto task_id_name = common::UniqName("task_id");
-  auto num_task_name = common::UniqName("num_task");
+  auto task_id_name = cinn::common::UniqName("task_id");
+  auto num_task_name = cinn::common::UniqName("num_task");
   par_env.task_id = ir::Var(task_id_name, Int(32));
   par_env.num_task = ir::Var(num_task_name, Int(32));
   SetVar(task_id_name, task_id);

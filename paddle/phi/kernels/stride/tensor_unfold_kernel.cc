@@ -61,12 +61,17 @@ void TensorUnfoldKernel(const Context& dev_ctx,
     }
   }
 
-  out->Resize(DDim(shape.data(), static_cast<int>(shape.size())));
-  out->set_strides(DDim(stride.data(), static_cast<int>(stride.size())));
-  out->set_offset(input.offset());
+  auto meta = out->meta();
+  meta.dims = DDim(shape.data(), static_cast<int>(shape.size()));
+  meta.strides = DDim(stride.data(), static_cast<int>(stride.size()));
+  meta.offset = input.offset();
+  out->set_meta(meta);
   out->ResetHolder(input.Holder());
+  out->ShareInplaceVersionCounterWith(input);
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    tensor_unfold, STRIDED, phi::TensorUnfoldKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(tensor_unfold,
+                                         STRIDED,
+                                         phi::TensorUnfoldKernel) {}

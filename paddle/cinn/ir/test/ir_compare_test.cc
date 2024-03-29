@@ -25,7 +25,7 @@ namespace cinn {
 namespace ir {
 namespace ir_utils {
 TEST(TestIrCompare, SingleFunction) {
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   ir::Expr M(32);
   ir::Expr N(32);
@@ -132,7 +132,7 @@ TEST(TestIrCompare, SingleFunction) {
   ASSERT_TRUE(IRCompare(funcs_1.front(), funcs_2.front()));
   // compare with itself
   ASSERT_TRUE(IRCompare(funcs_1.front(), funcs_1.front()));
-  // they are euqal if allowing suffix of name different
+  // they are equal if allowing suffix of name different
   ASSERT_TRUE(IRCompare(funcs_1.front(), funcs_2.front(), true));
 
   ASSERT_FALSE(IRCompare(funcs_1.front(), funcs_3.front()));

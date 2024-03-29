@@ -165,6 +165,8 @@ void FcXPUKernel(const Context& ctx,
             DataTypeToString(w.dtype()),
             DataTypeToString(out_dtype)));
       }
+    } else if (w.dtype() == DataType::FLOAT32) {
+      FC_XPU_KERNEL_IMPL(float, float, float, int32_t);
     } else {
       PADDLE_THROW(phi::errors::Unimplemented(
           "Not support x_dtype is %s, w_dtype is %s and out_dtype is %s.",

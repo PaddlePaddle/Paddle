@@ -42,10 +42,11 @@ from ...framework import (
     _global_flags,
     get_default_dtype,
     in_dynamic_or_pir_mode,
+    in_pir_mode,
     no_grad,
 )
 from .. import functional as F
-from ..functional import batch_norm, instance_norm, layer_norm
+from ..functional import batch_norm, group_norm, instance_norm, layer_norm
 from ..initializer import Constant, Normal
 from .layers import Layer
 
@@ -56,7 +57,7 @@ class _InstanceNormBase(Layer):
     """
     This class is based class for InstanceNorm1D, 2d, 3d.
 
-    See InstaceNorm1D, InstanceNorm2D or InstanceNorm3D for more details.
+    See InstanceNorm1D, InstanceNorm2D or InstanceNorm3D for more details.
     """
 
     def __init__(
@@ -532,50 +533,14 @@ class GroupNorm(Layer):
             )
 
     def forward(self, input):
-        if in_dynamic_mode():
-            return _C_ops.group_norm(
-                input,
-                self.weight,
-                self.bias,
-                self._epsilon,
-                self._num_groups,
-                self._data_format,
-            )
-
-        mean_out = self._helper.create_variable_for_type_inference(
-            dtype=input.dtype, stop_gradient=True
+        return group_norm(
+            input,
+            self._num_groups,
+            self._epsilon,
+            self.weight,
+            self.bias,
+            self._data_format,
         )
-        variance_out = self._helper.create_variable_for_type_inference(
-            dtype=input.dtype, stop_gradient=True
-        )
-
-        inputs = {'X': input}
-        if self.bias is not None:
-            inputs['Bias'] = self.bias
-        if self.weight is not None:
-            inputs['Scale'] = self.weight
-
-        # create output
-        group_norm_out = self._helper.create_variable_for_type_inference(
-            dtype=input.dtype
-        )
-
-        self._helper.append_op(
-            type="group_norm",
-            inputs=inputs,
-            outputs={
-                "Y": group_norm_out,
-                "Mean": mean_out,
-                "Variance": variance_out,
-            },
-            attrs={
-                "epsilon": self._epsilon,
-                "groups": self._num_groups,
-                "data_layout": self._data_format,
-            },
-        )
-
-        return self._helper.append_activation(group_norm_out, None)
 
     def extra_repr(self):
         return 'num_groups={}, num_channels={}, epsilon={}'.format(
@@ -608,7 +573,7 @@ class LayerNorm(Layer):
 
     Parameters:
         normalized_shape(int|list|tuple): Input shape from an expected input of
-            size :math:`[*, normalized_shape[0], normalized_shape[1], ..., normalized_shape[-1]]`.
+            size ``[*, normalized_shape[0], normalized_shape[1], ..., normalized_shape[-1]]`` .
             If it is a single integer, this module will normalize over the last dimension
             which is expected to be of that specific size.
         epsilon(float, optional): The small value added to the variance to prevent
@@ -626,7 +591,7 @@ class LayerNorm(Layer):
         - output: same shape as input x.
 
     Returns:
-        None
+        ``Tensor`` , the dimension is the same as :attr:`x`, but the internal values have been normalized by ``LayerNorm`` .
 
     Examples:
 
@@ -778,7 +743,7 @@ class _BatchNormBase(Layer):
         )
         self._variance.stop_gradient = True
 
-        # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
+        # TODO(qili93): temporary for ascend npu performance to be removed along with npu_identity op
         if (
             _global_flags()['FLAGS_npu_storage_format']
             and 'npu' in get_all_custom_device_type()
@@ -934,17 +899,13 @@ class BatchNorm(Layer):
     Examples:
         .. code-block:: python
 
-            >>> import paddle.base as base
             >>> import paddle.nn as nn
-            >>> from paddle.base.dygraph.base import to_variable
+            >>> import paddle
             >>> import numpy as np
 
-
-            >>> x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
-            >>> with base.dygraph.guard():
-            ...     x = to_variable(x)
-            ...     batch_norm = nn.layer.norm.BatchNorm(10)
-            ...     hidden1 = batch_norm(x)
+            >>> x = paddle.rand(shape=(3, 10, 3, 7), dtype="float32")
+            >>> batch_norm = nn.BatchNorm(10)
+            >>> hidden1 = batch_norm(x)
     """
 
     def __init__(
@@ -969,7 +930,6 @@ class BatchNorm(Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
-        self._use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
 
         if dtype == "float16":
             self._dtype = "float32"
@@ -1022,7 +982,7 @@ class BatchNorm(Layer):
         )
         self._variance.stop_gradient = True
 
-        # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
+        # TODO(qili93): temporary for ascend npu performance to be removed along with npu_identity op
         if (
             _global_flags()['FLAGS_npu_storage_format']
             and 'npu' in get_all_custom_device_type()
@@ -1054,9 +1014,10 @@ class BatchNorm(Layer):
         self._fuse_with_relu = False
         self._use_global_stats = use_global_stats
         self._trainable_statistics = trainable_statistics
+        self.training = not self._is_test
 
     def forward(self, input):
-        if in_dynamic_or_pir_mode():
+        if in_dynamic_mode():
             batch_norm_out, t1, t2, t3, t4, _ = _C_ops.batch_norm(
                 input,
                 self._mean,
@@ -1072,13 +1033,28 @@ class BatchNorm(Layer):
             )
             if self._act is None:
                 return batch_norm_out
-            if in_dynamic_mode():
-                return dygraph_utils._append_activation_in_dygraph(
-                    batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn
-                )
-            else:
-                act_op = getattr(_C_ops, self._act)
-                return act_op(input)
+            return dygraph_utils._append_activation_in_dygraph(
+                batch_norm_out, act=self._act
+            )
+        elif in_pir_mode():
+            batch_norm_out, t1, t2, t3, t4, _ = _C_ops.batch_norm_(
+                input,
+                self._mean,
+                self._variance,
+                self.weight,
+                self.bias,
+                not self.training,
+                self._momentum,
+                self._epsilon,
+                self._data_layout,
+                self._use_global_stats,
+                self._trainable_statistics,
+            )
+            if self._act is None:
+                return batch_norm_out
+
+            act_op = getattr(_C_ops, self._act)
+            return act_op(batch_norm_out)
         else:
             # create output
             # mean and mean_out share the same memory
@@ -1094,7 +1070,6 @@ class BatchNorm(Layer):
                 "epsilon": self._epsilon,
                 "is_test": self._is_test,
                 "data_layout": self._data_layout,
-                "use_mkldnn": False,
                 "fuse_with_relu": self._fuse_with_relu,
                 "use_global_stats": self._use_global_stats,
                 "trainable_statistics": self._trainable_statistics,
@@ -1146,7 +1121,7 @@ class BatchNorm(Layer):
 
 class BatchNorm1D(_BatchNormBase):
     r"""
-    Applies Batch Normalization over a 2D or 3D input (a mini-batch of 1D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
+    Applies Batch Normalization over a 2D or 3D input (a mini-batch of 1D inputs with additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
     When use_global_stats = False, the :math:`\mu_{\beta}`
     and :math:`\sigma_{\beta}^{2}` are the statistics of one mini-batch.
@@ -1263,7 +1238,7 @@ class BatchNorm1D(_BatchNormBase):
 
 class BatchNorm2D(_BatchNormBase):
     r"""
-    Applies Batch Normalization over a 4D input (a mini-batch of 2D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
+    Applies Batch Normalization over a 4D input (a mini-batch of 2D inputs with additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
     When use_global_stats = False, the :math:`\mu_{\beta}`
     and :math:`\sigma_{\beta}^{2}` are the statistics of one mini-batch.
@@ -1354,7 +1329,7 @@ class BatchNorm2D(_BatchNormBase):
 
 class BatchNorm3D(_BatchNormBase):
     r"""
-    Applies Batch Normalization over a 5D input (a mini-batch of 3D inputswith additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
+    Applies Batch Normalization over a 5D input (a mini-batch of 3D inputs with additional channel dimension) as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
     When use_global_stats = False, the :math:`\mu_{\beta}`
     and :math:`\sigma_{\beta}^{2}` are the statistics of one mini-batch.
@@ -1528,7 +1503,7 @@ class SyncBatchNorm(_BatchNormBase):
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
-             of this layer. If it is set to None or one attribute of ParamAttr, this layerr
+             of this layer. If it is set to None or one attribute of ParamAttr, this layer
              will create ParamAttr as param_attr. If the Initializer of the param_attr
              is not set, the parameter is initialized with ones. If it is set to False,
              this layer will not have trainable scale parameter. Default: None.
@@ -1623,7 +1598,7 @@ class SyncBatchNorm(_BatchNormBase):
 
         # train mode: use mini-batch stats, eval mode: use global stats
         # use_global_stats only support False in sync_batch_norm
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             sync_batch_norm_out, _, _, _, _, _ = _C_ops.sync_batch_norm_(
                 x,
                 self._mean,
@@ -1651,7 +1626,6 @@ class SyncBatchNorm(_BatchNormBase):
             "epsilon": self._epsilon,
             "is_test": not self.training,
             "data_layout": self._data_format,
-            "use_mkldnn": False,
             "fuse_with_relu": False,
             "use_global_stats": False,
             "trainable_statistics": False,
@@ -1937,7 +1911,7 @@ class SpectralNorm(Layer):
 
     def forward(self, x):
         weight = x
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             return _C_ops.spectral_norm(
                 weight,
                 self.weight_u,

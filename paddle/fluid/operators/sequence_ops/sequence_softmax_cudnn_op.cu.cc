@@ -57,8 +57,8 @@ class SequenceSoftmaxCUDNNKernel : public framework::OpKernel<T> {
 
       // Reshape from (end_pos - start_pos) x 1UL to 1UL x (end_pos - start_pos)
       framework::DDim dims_i =
-          // phi::make_ddim({1UL, end_pos - start_pos, 1UL, 1UL});
-          phi::make_ddim({1UL, end_pos - start_pos});
+          // common::make_ddim({1UL, end_pos - start_pos, 1UL, 1UL});
+          common::make_ddim({1UL, end_pos - start_pos});
       x_i.Resize(dims_i);
       out_i.Resize(dims_i);
       phi::funcs::SoftmaxCUDNNFunctor<T, phi::GPUContext>()(
@@ -91,7 +91,7 @@ class SequenceSoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
       Tensor x_grad_i = x_grad->Slice(start_pos, end_pos);
 
       // Reshape from (end_pos - start_pos) x 1UL to 1UL x (end_pos - start_pos)
-      framework::DDim dims_i = phi::make_ddim({1UL, end_pos - start_pos});
+      framework::DDim dims_i = common::make_ddim({1UL, end_pos - start_pos});
       out_i.Resize(dims_i);
       out_grad_i.Resize(dims_i);
       x_grad_i.Resize(dims_i);

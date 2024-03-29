@@ -22,6 +22,7 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def calculate_momentum_by_numpy(
@@ -120,7 +121,7 @@ class TestMomentumOp1(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestMomentumOpFp16(TestMomentumOp1):
@@ -128,7 +129,7 @@ class TestMomentumOpFp16(TestMomentumOp1):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output(atol=1e-3, check_pir=True)
 
 
 class TestMomentumOp2(OpTest):
@@ -166,7 +167,7 @@ class TestMomentumOp2(OpTest):
         self.outputs = {'ParamOut': param_out, 'VelocityOut': velocity_out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 @unittest.skipIf(
@@ -553,14 +554,17 @@ class TestMomentumV2(unittest.TestCase):
         adam.step()
         adam.clear_gradients()
 
+    @test_with_pir_api
     def test_momentum(self):
         paddle.enable_static()
         place = base.CPUPlace()
-        main = base.Program()
-        with base.program_guard(main):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
             x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
             y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
-            y_predict = paddle.static.nn.fc(x, size=1, activation=None)
+            linear = paddle.nn.Linear(13, 1)
+            y_predict = linear(x)
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )
@@ -575,11 +579,17 @@ class TestMomentumV2(unittest.TestCase):
             train_reader = paddle.batch(
                 paddle.dataset.uci_housing.train(), batch_size=1
             )
-            feeder = base.DataFeeder(place=place, feed_list=[x, y])
             exe = base.Executor(place)
-            exe.run(base.default_startup_program())
+            exe.run(startup)
             for data in train_reader():
-                exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
+                exe.run(
+                    main,
+                    feed={
+                        'x': data[0][0].astype('float32'),
+                        'y': data[0][1].astype('float32'),
+                    },
+                    fetch_list=fetch_list,
+                )
 
     def test_raise_error(self):
         self.assertRaises(
@@ -639,7 +649,7 @@ class TestMomentumOpWithDecay(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestMomentumOpWithDecayFP16(TestMomentumOpWithDecay):
@@ -648,7 +658,7 @@ class TestMomentumOpWithDecayFP16(TestMomentumOpWithDecay):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output(atol=1e-3)
+        self.check_output(atol=1e-3, check_pir=True)
 
 
 class TestMomentumOpWithDecay2(TestMomentumOpWithDecay):
@@ -690,14 +700,17 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
             regularization=paddle.regularizer.L2Decay(coeff=0.1)
         )
 
+    @test_with_pir_api
     def test_momentum_static(self):
         paddle.enable_static()
         place = base.CPUPlace()
-        main = base.Program()
-        with base.program_guard(main):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
             x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
             y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
-            y_predict = paddle.static.nn.fc(x, size=1, activation=None)
+            linear = paddle.nn.Linear(13, 1)
+            y_predict = linear(x)
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )
@@ -712,11 +725,17 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
             train_reader = paddle.batch(
                 paddle.dataset.uci_housing.train(), batch_size=1
             )
-            feeder = base.DataFeeder(place=place, feed_list=[x, y])
             exe = base.Executor(place)
-            exe.run(base.default_startup_program())
+            exe.run(startup)
             for data in train_reader():
-                exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
+                exe.run(
+                    main,
+                    feed={
+                        'x': data[0][0].astype('float32'),
+                        'y': data[0][1].astype('float32'),
+                    },
+                    fetch_list=fetch_list,
+                )
 
 
 class TestFusedMomentumWithDecayAPI(unittest.TestCase):

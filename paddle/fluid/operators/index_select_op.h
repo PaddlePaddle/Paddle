@@ -79,8 +79,8 @@ void IndexSelectInner(const framework::ExecutionContext& context,
   VLOG(3) << "Index_Select_Debug; outer_nums: " << outer_nums
           << "; slice_size: " << slice_size << "; index_size: " << index_size;
 
-  input->Resize(phi::make_ddim({outer_nums, input_dim[dim], slice_size}));
-  output->Resize(phi::make_ddim({outer_nums, index_size, slice_size}));
+  input->Resize(common::make_ddim({outer_nums, input_dim[dim], slice_size}));
+  output->Resize(common::make_ddim({outer_nums, index_size, slice_size}));
 
   auto input_tensor = phi::EigenTensor<T, 3>::From(*input);
   auto output_tensor = phi::EigenTensor<T, 3>::From(*output);

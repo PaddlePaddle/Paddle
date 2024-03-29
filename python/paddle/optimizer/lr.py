@@ -46,6 +46,7 @@ __all__ = [
     'OneCycleLR',
     'CyclicLR',
     'LinearLR',
+    'CosineAnnealingWarmRestarts',
 ]
 
 
@@ -53,6 +54,26 @@ class LRScheduler:
     """
 
     LRScheduler Base class. Define the common interface of a learning rate scheduler.
+
+    There are currently 17 strategies implemented in paddle based on this base class, which are:
+
+    - ``NoamDecay``: Related algorithms are derived from `*Attention Is All You Need* <http://blog.inkypy.com>`_ . Please refer to :ref:`api_paddle_optimizer_lr_NoamDecay`.
+    - ``ExponentialDecay``: The next learning rate is obtained by multiplying the current learning rate by a given decay rate. Please refer to :ref:`api_paddle_optimizer_lr_ExponentialDecay`.
+    - ``NaturalExpDecay``: Each time the current learning rate is multiplied by the natural index of the given decay rate to obtain the next learning rate. Please refer to :ref:`api_paddle_optimizer_lr_NaturalExpDecay`.
+    - ``InverseTimeDecay``: The resulting learning rate is inversely proportional to the current number of decays. Please refer to :ref:`api_paddle_optimizer_lr_InverseTimeDecay`.
+    - ``PolynomialDecay``: The resulting learning rate is the interpolation of the score points between the initial learning rate and the given final learning determined by polynomial computation weights. Please refer to :ref:`api_paddle_optimizer_lr_PolynomialDecay`.
+    - ``PiecewiseDecay``: Segments decay in a step-like fashion by a given number of steps, and each segment has the same learning rate. Please refer to :ref:`api_paddle_optimizer_lr_PiecewiseDecay`.
+    - ``CosineAnnealingDecay``: The learning rate varies periodically with the number of steps as a cosine function. Please refer to :ref:`api_paddle_optimizer_lr_CosineAnnealingDecay`.
+    - ``LinearWarmup``: The learning rate increases linearly with the number of steps to the specified learning rate. Please refer to :ref:`api_paddle_optimizer_lr_LinearWarmup`.
+    - ``StepDecay``: The learning rate decays every fixed interval number of steps, and the number of step intervals needs to be specified. Please refer to :ref:`api_paddle_optimizer_lr_StepDecay`.
+    - ``MultiStepDecay``: The learning rate decays at a specific number of steps, and the node location at which the decay occurs needs to be specified. Please refer to :ref:`api_paddle_optimizer_lr_MultiStepDecay`.
+    - ``LambdaDecay``: The learning rate decays according to a custom lambda function. Please refer to :ref:`api_paddle_optimizer_lr_LambdaDecay`.
+    - ``ReduceOnPlateau``: The learning rate is adaptively adjusted according to the current metric (typically loss), and the learning rate is attenuated when the loss becomes stable. Please refer to :ref:`api_paddle_optimizer_lr_ReduceOnPlateau`.
+    - ``MultiplicativeDecay``: The resulting learning rate is obtained by multiplying the current learning rate each time by a lambda function. Please refer to :ref:`api_paddle_optimizer_lr_MultiplicativeDecay`.
+    - ``OneCycleLR``: The learning rate goes up to the maximum and then down to the minimum. Please refer to :ref:`api_paddle_optimizer_lr_OneCycleLR`.
+    - ``CyclicLR``: Think of the process of learning rate change as a cycle, with the learning rate changing between the minimum and maximum learning rates according to a fixed frequency. Please refer to :ref:`api_paddle_optimizer_lr_CyclicLR`.
+    - ``LinearLR``: The learning rate increases linearly with the number of steps to the specified learning rate. Please refer to :ref:`api_paddle_optimizer_lr_LinearLR`.
+    - ``CosineAnnealingWarmRestarts``: The learning rate varies periodically with the number of steps as a cosine function. Please refer to :ref:`api_paddle_optimizer_lr_CosineAnnealingWarmRestarts`.
 
     User can import it by ``from paddle.optimizer.lr import LRScheduler`` ,
 
@@ -225,9 +246,7 @@ class LRScheduler:
                 self.__dict__[key] = state_dict[key]
             else:
                 raise RuntimeError(
-                    "Please check whether state_dict is correct for optimizer. Can't find [ {} ] in state_dict".format(
-                        key
-                    )
+                    f"Please check whether state_dict is correct for optimizer. Can't find [ {key} ] in state_dict"
                 )
         if len(state_dict) > len(self.keys):
             warnings.warn(
@@ -1346,7 +1365,7 @@ class ReduceOnPlateau(LRScheduler):
             rate will reduce when ``loss`` stops ascending. Default: ``'min'`` .
         factor (float, optional): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * factor`` .
             It should be less than 1.0. Default: 0.1.
-        patience (int, optional): When ``loss`` doesn't improve for this number of epochs, learing rate will be reduced.
+        patience (int, optional): When ``loss`` doesn't improve for this number of epochs, learning rate will be reduced.
             Default: 10.
         threshold (float, optional): ``threshold`` and ``threshold_mode`` will determine the minimum change of ``loss`` .
             This make tiny changes of ``loss`` will be ignored. Default: 1e-4.
@@ -2349,6 +2368,168 @@ class LinearLR(LRScheduler):
             return self.last_lr * factor
 
 
+class CosineAnnealingWarmRestarts(LRScheduler):
+    r"""
+    Set the learning rate of each parameter group using a cosine annealing
+    schedule, where :math:`\eta_{max}` is set to the initial lr, :math:`T_{cur}`
+    is the number of epochs since the last restart and :math:`T_{i}` is the number
+    of epochs between two warm restarts in SGDR:
+
+    .. math::
+        \eta_t = \eta_{min} + \frac{1}{2}(\eta_{max} - \eta_{min})\left(1 +
+        \cos\left(\frac{T_{cur}}{T_{i}}\pi\right)\right)
+
+    When :math:`T_{cur}=T_{i}`, set :math:`\eta_t = \eta_{min}`.
+    When :math:`T_{cur}=0` after restart, set :math:`\eta_t=\eta_{max}`.
+
+    It has been proposed in `SGDR: Stochastic Gradient Descent with Warm Restarts <https://arxiv.org/abs/1608.03983>`_.
+
+    Args:
+        learning_rate (float): Initial learning rate.
+        T_0 (int): Number of iterations for the first restart.
+        T_mult (int, optional): A factor increases :math:`T_{i}` after a restart. Default: 1.
+        eta_min (float, optional): Minimum learning rate. Default: 0.
+        last_epoch (int, optional): The index of last epoch. Default: -1, means initial learning rate.
+        verbose (bool, optional): If ``True``, prints a message to stdout for
+            each update. Default: ``False``.
+
+    Returns:
+        ``CosineAnnealingWarmRestarts`` instance to schedule learning rate.
+
+    Examples:
+        .. code-block:: python
+            :name: code-example1
+
+            >>> import paddle
+            >>> import numpy as np
+            >>> # train on default dynamic graph mode
+            >>> linear = paddle.nn.Linear(10, 10)
+            >>> scheduler = paddle.optimizer.lr.CosineAnnealingWarmRestarts(learning_rate=0.5, T_0=1, T_mult=2, verbose=True)
+            >>> adam = paddle.optimizer.Adam(learning_rate=scheduler, parameters=linear.parameters())
+            >>> for epoch in range(10):
+            ...    for batch_id in range(10):
+            ...        x = paddle.uniform([10, 10])
+            ...        out = linear(x)
+            ...        loss = paddle.mean(out)
+            ...        loss.backward()
+            ...        adam.step()
+            ...        adam.clear_grad()
+            ...    scheduler.step(epoch)        # You should update learning rate each step
+
+        .. code-block:: python
+            :name: code-example2
+
+            >>> import paddle
+            >>> import numpy as np
+            >>> paddle.enable_static()
+            >>> main_prog = paddle.static.Program()
+            >>> start_prog = paddle.static.Program()
+            >>> with paddle.static.program_guard(main_prog, start_prog):
+            ...    x = paddle.static.data(name='x', shape=[None, 4, 5])
+            ...    y = paddle.static.data(name='y', shape=[None, 4, 5])
+            ...    z = paddle.static.nn.fc(x, 100)
+            ...    loss = paddle.mean(z)
+            ...    scheduler = paddle.optimizer.lr.CosineAnnealingWarmRestarts(learning_rate=0.5, T_0=1, T_mult=2,verbose=True)
+            ...    sgd = paddle.optimizer.SGD(learning_rate=scheduler)
+            ...    sgd.minimize(loss)
+            >>> exe = paddle.static.Executor()
+            >>> exe.run(start_prog)
+            >>> for epoch in range(10):
+            ...    for batch_id in range(10):
+            ...        out = exe.run(
+            ...            main_prog,
+            ...            feed={
+            ...                'x': np.random.randn(3, 4, 5).astype('float32'),
+            ...                'y': np.random.randn(3, 4, 5).astype('float32')
+            ...            },
+            ...            fetch_list=loss.name)
+            ...    scheduler.step(epoch)    # You should update learning rate each step
+    """
+
+    def __init__(
+        self,
+        learning_rate,
+        T_0,
+        T_mult=1,
+        eta_min=0,
+        last_epoch=-1,
+        verbose=False,
+    ):
+        if T_0 <= 0 or not isinstance(T_0, int):
+            raise ValueError(f"Expected positive integer T_0, but got {T_0}")
+        if T_mult < 1 or not isinstance(T_mult, int):
+            raise ValueError(f"Expected integer T_mult >= 1, but got {T_mult}")
+        self.T_0 = T_0
+        self.T_i = T_0
+        self.T_mult = T_mult
+        self.eta_min = eta_min
+        self.T_cur = last_epoch
+        super().__init__(learning_rate, last_epoch, verbose)
+
+    def get_lr(self):
+        return (
+            self.eta_min
+            + (self.base_lr - self.eta_min)
+            * (1 + math.cos(math.pi * self.T_cur / self.T_i))
+            / 2
+        )
+
+    def step(self, epoch=None):
+        """
+        step should be called after `optimizer.step()` . It will update the learning rate in optimizer.
+        The new learning rate will take effect on next epoch.
+
+        Args:
+            epoch (int, None): specify current epoch. Default: None. Auto-increment from last_epoch=-1.
+
+        Returns:
+            None
+
+        Examples:
+            Please refer to the example of current LRScheduler.
+        """
+
+        if epoch is None and self.last_epoch < 0:
+            epoch = 0
+
+        if epoch is None:
+            epoch = self.last_epoch + 1
+            self.T_cur = self.T_cur + 1
+            if self.T_cur >= self.T_i:
+                self.T_cur = self.T_cur - self.T_i
+                self.T_i = self.T_i * self.T_mult
+        else:
+            if epoch < 0:
+                raise ValueError(
+                    f"Expected non-negative epoch, but got {epoch}"
+                )
+            if epoch >= self.T_0:
+                if self.T_mult == 1:
+                    self.T_cur = epoch % self.T_0
+                else:
+                    n = int(
+                        math.log(
+                            (epoch / self.T_0 * (self.T_mult - 1) + 1),
+                            self.T_mult,
+                        )
+                    )
+                    self.T_cur = epoch - self.T_0 * (self.T_mult**n - 1) / (
+                        self.T_mult - 1
+                    )
+                    self.T_i = self.T_0 * self.T_mult ** (n)
+            else:
+                self.T_i = self.T_0
+                self.T_cur = epoch
+        self.last_epoch = math.floor(epoch)
+        self.last_lr = self.get_lr()
+        if self.verbose:
+            print(
+                'Epoch {}: {} set learning rate to {}.'.format(
+                    self.last_epoch, self.__class__.__name__, self.last_lr
+                )
+            )
+
+
 def autoincreased_step_counter(counter_name=None, begin=1, step=1):
     """
     :api_attr: Static Graph
@@ -2434,7 +2615,7 @@ def noam_decay(d_model, warmup_steps, learning_rate=1.0):
         d_model(Variable): The dimensionality of input and output of model.
         warmup_steps(Variable): A super parameter.
         learning_rate(Variable|float|int): The initial learning rate. If the type
-            is Variable, it's a tensor with shape [1], the data type can be
+            is Variable, it's a 0-D Tensor with shape [], the data type can be
             float32 or float64. It also can be set to python int number. Default 1.0
 
     Returns:

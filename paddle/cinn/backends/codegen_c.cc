@@ -76,7 +76,7 @@ std::string CodeGenC::Compile(const ir::Module &module,
       Compile(func);
     }
   } else {
-    LOG(FATAL) << "Not supported OutputKind";
+    PADDLE_THROW(phi::errors::Unimplemented("Not supported OutputKind"));
   }
   return str_;
 }
@@ -120,10 +120,11 @@ std::string CodeGenC::GetTypeName(Type type) {
     auto customized_name = type.customized_type();
     // get name of a cuda built-in vector type, it is started with a
     // 'CudaVectorType::' prefix
-    if (utils::Startswith(customized_name,
-                          common::customized_type::kcuda_builtin_vector_t)) {
+    if (utils::StartsWith(
+            customized_name,
+            cinn::common::customized_type::kcuda_builtin_vector_t)) {
       customized_name.erase(
-          0, strlen(common::customized_type::kcuda_builtin_vector_t));
+          0, strlen(cinn::common::customized_type::kcuda_builtin_vector_t));
     }
     return customized_name;
   }
@@ -299,12 +300,13 @@ void CodeGenC::Visit(const ir::Block *op) {
 
   IncIndent();
 
-  for (int i = 0; i < op->stmts.size() - 1; i++) {
-    DoIndent();
-    IrPrinter::Visit(op->stmts[i]);
-    str_ += ";\n";
-  }
+  // Note: size_t (0 - 1) = 18446744073709551615
   if (op->stmts.size() >= 1) {
+    for (int i = 0; i < op->stmts.size() - 1; i++) {
+      DoIndent();
+      IrPrinter::Visit(op->stmts[i]);
+      str_ += ";\n";
+    }
     DoIndent();
     IrPrinter::Visit(op->stmts.back());
     str_ += ";";
@@ -524,8 +526,9 @@ void CodeGenC::Visit(const ir::Let *op) {
 }
 
 void CodeGenC::Visit(const ir::Reduce *op) {
-  LOG(FATAL) << "Reduce IR is just for internal representation, should not be "
-                "used for CodeGen.";
+  PADDLE_THROW(phi::errors::InvalidArgument(
+      "Reduce IR is just for internal representation, should not be "
+      "used for CodeGen."));
 }
 
 void CodeGenC::Visit(const ir::Ramp *op) {
@@ -599,7 +602,7 @@ void CodeGenC::Visit(const ir::_LoweredFunc_ *op) {
 
   CHECK_EQ(op->alloc_output_buffer_exprs.size(),
            op->dealloc_output_buffer_exprs.size())
-      << "the count of allocation and deallocaton expressions is not match";
+      << "the count of allocation and deallocation expressions is not match";
 
   std::vector<Expr> new_body;
 
@@ -653,7 +656,7 @@ void CodeGenC::PrintBufferCreation(const std::vector<ir::Buffer> &buffers) {
     DoIndent();
     auto buffer_ptr_type =
         Type()
-            .set_customized_type(common::customized_type::kbuffer_t)
+            .set_customized_type(cinn::common::customized_type::kbuffer_t)
             .set_cpp_handle();
     Var variable = ir::_Var_::Make(buffer->name, buffer_ptr_type);
     auto expr = ir::intrinsics::BufferCreate::Make(buffer);
@@ -729,7 +732,8 @@ void CodeGenC::PrintRuntimeType(const cinn_type_t &type) {
   } else if (type == cinn_float64_t()) {
     str_ += "cinn_float64_t()";
   } else {
-    LOG(FATAL) << "Unknown type is not supported to print";
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("Unknown type is not supported to print"));
   }
 }
 
@@ -747,6 +751,7 @@ void CodeGenC::Visit(const ir::ScheduleBlock *op) { CINN_NOT_IMPLEMENTED }
 void CodeGenC::Visit(const ir::ScheduleBlockRealize *op) {
   CINN_NOT_IMPLEMENTED
 }
+void CodeGenC::Visit(const ir::_Dim_ *op) { CINN_NOT_IMPLEMENTED }
 
 void CodeGenC::Visit(const ir::IntrinsicOp *op) {
   switch (op->getKind()) {
@@ -803,7 +808,9 @@ void CodeGenC::Visit(const ir::intrinsics::PodValueToX *op) {
   } else if (to_type == type_of<cinn_buffer_t *>()) {
     str_ += runtime::intrinsic::pod_value_to_buffer_p;
   } else {
-    LOG(FATAL) << "Not supported type: " << to_type;
+    std::stringstream ss;
+    ss << "Not supported type: " << to_type;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 
   str_ += "(";

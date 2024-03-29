@@ -186,35 +186,63 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
     auto dst_functor =
         NoMaskFwFunctor<T, float>(1.0f - dropout_rate, upscale_in_train);
 
+#ifdef PADDLE_WITH_HIP
+    VectorizedDropoutForward<T, NoMaskFwFunctor<T, float>>
+        <<<grid_size, block_size, 0, stream>>>(0,
+                                               numel,
+                                               seed_data,  // need save
+                                               x_data,
+                                               y_data,
+                                               out_data,
+                                               increment,  // need save
+                                               main_offset,
+                                               dst_functor);
+#else
     // we assume seed/offset is same across iterations
     // seed_offset_data should preserved by cudaGraph pool
     const phi::GPUContext* dev_ctx_p = &dev_ctx;
-    void* functionPtr = reinterpret_cast<void*>(
-        &(VectorizedDropoutForward<T, NoMaskFwFunctor<T, float>>));
-    cudaFunction_t cudaFunc;
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaGetFuncBySymbol(&cudaFunc, functionPtr));
-    auto parameterSetter =
-        [numel, dev_ctx_p, seed, offset, seed_offset_data, seed_tensor_ptr](
-            phi::backends::gpu::CUDAKernelParams& params) {
-          uint64_t seed_data, increment;
-          // we get the seed_data/increment from seed/offset
-          phi::funcs::GetSeedDataAndIncrement(*dev_ctx_p,
-                                              seed_tensor_ptr,
-                                              false,  // fix_seed
-                                              seed,
-                                              offset,
-                                              &seed_data,
-                                              &increment);
-          params.As<uint64_t>(2) = seed_data;
-          params.As<uint64_t>(6) = increment;
-          VLOG(10) << "CUDA_GRAPH seed_data = " << seed_data
-                   << ", increment = " << increment;
 
-          seed_offset_data[0] = static_cast<int64_t>(seed_data);
-          seed_offset_data[1] = static_cast<int64_t>(increment);
+    // seed_offset_data should preserved by cudaGraph pool
+    auto gen_cuda = dev_ctx.GetGenerator();
+    auto state_index = gen_cuda->GetStateIndex();
+    auto parameterSetter =
+        [dev_ctx_p,
+         offset,
+         seed_offset_data,
+         state_index,
+         seed_tensor_ptr,
+         fix_seed](phi::backends::gpu::gpuKernelParams& params) {
+          if (!fix_seed) {
+            auto gen_cuda = dev_ctx_p->GetGenerator();
+            // ensure the generator use correct state index
+            gen_cuda->SetStateIndex(state_index);
+
+            // we assume seed is null pointer
+            // seed copy to cpu is meaningless here
+            assert(seed_tensor_ptr == nullptr);
+
+            uint64_t seed, increment;
+            std::tie(seed, increment) = gen_cuda->IncrementOffset(offset);
+            VLOG(10) << "CUDA_GRAPH seed = " << seed
+                     << ", increment = " << increment;
+
+            params.As<uint64_t>(2) = seed;
+            params.As<uint64_t>(6) = increment;
+
+            seed_offset_data[0] = static_cast<int64_t>(seed);
+            seed_offset_data[1] = static_cast<int64_t>(increment);
+          }
         };
-    phi::backends::gpu::CUDAGraphNodeLauncher::cudaKernelCallback_t
+    phi::backends::gpu::CUDAGraphNodeLauncher::gpuKernelCallback_t
         cudaKernelCallback = [=](unsigned int id) {
+          void* functionPtr = reinterpret_cast<void*>(
+              &(VectorizedDropoutForward<T, NoMaskFwFunctor<T, float>>));
+          cudaFunction_t cudaFunc;
+          PADDLE_ENFORCE_GPU_SUCCESS(
+              cudaGetFuncBySymbol(&cudaFunc, functionPtr));
+          VLOG(10) << "[cudaKernelCallback] cudaFunc = " << cudaFunc
+                   << " functionPtr = " << functionPtr;
+
           VectorizedDropoutForward<T, NoMaskFwFunctor<T, float>>
               <<<grid_size, block_size, 0, stream>>>(id,
                                                      numel,
@@ -225,12 +253,14 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
                                                      increment,  // need save
                                                      main_offset,
                                                      dst_functor);
+          return cudaFunc;
         };
     phi::backends::gpu::CUDAGraphNodeLauncher::Instance().KernelNodeLaunch(
-        cudaFunc, parameterSetter, cudaKernelCallback);
+        parameterSetter, cudaKernelCallback);
 
-    VLOG(10) << "NON_CUDA_GRAPH seed_data = " << seed_data
+    VLOG(10) << "NON_CUDA_GRAPH seed = " << seed_data
              << ", increment = " << increment;
+#endif
   } else {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     MT factor = static_cast<MT>(1.0f - dropout_rate);

@@ -16,13 +16,13 @@ import random
 import unittest
 
 import numpy as np
-from auto_parallel_pass_test_base import AutoPallelPassTestBase
+from auto_parallel_pass_test_base import AutoParallelPassTestBase
 
 import paddle
 from paddle.distributed import fleet
 
 
-class TestRecomputePass(AutoPallelPassTestBase):
+class TestRecomputePass(AutoParallelPassTestBase):
     def init(self):
         if paddle.is_compiled_with_cuda():
             paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
@@ -37,7 +37,17 @@ class TestRecomputePass(AutoPallelPassTestBase):
     def apply_passes(self):
         dist_strategy = fleet.DistributedStrategy()
         dist_strategy.recompute = True
-        dist_strategy.recompute_configs = {"checkpoints": ["tmp_3", "tmp_6"]}
+        dist_strategy.recompute_configs = {
+            "checkpoints": ["tmp_3", "tmp_6"],
+            "refined_ops_patterns": [
+                {
+                    "main_ops": ["matmul_v2", "elementwise_add"],
+                    "num": -1,
+                    "pre_ops": [],
+                    "suf_ops": [],
+                }
+            ],
+        }
         dist_strategy.semi_auto = True
         fleet.init(is_collective=True, strategy=dist_strategy)
 

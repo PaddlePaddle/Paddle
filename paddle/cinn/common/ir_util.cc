@@ -69,8 +69,8 @@ Expr RampRelatedAdd(ir::Ramp *ramp, ir::Ramp *other) {
   CHECK(ramp);
   CHECK(other);
   if (ramp->lanes == other->lanes) {
-    Expr base_add = common::AutoSimplify(ramp->base + other->base);
-    Expr stride_add = common::AutoSimplify(ramp->stride + other->stride);
+    Expr base_add = cinn::common::AutoSimplify(ramp->base + other->base);
+    Expr stride_add = cinn::common::AutoSimplify(ramp->stride + other->stride);
     VLOG(2) << base_add;
     VLOG(2) << stride_add;
     return ir::Ramp::Make(base_add, stride_add, ramp->lanes);
@@ -143,8 +143,12 @@ Expr IndiceToAbsOffset(const std::vector<Expr> &shape,
   VLOG(3) << "indices is : " << utils::Join(indices, ",");
   CHECK_LE(shape.size(), indices.size());
   Expr res;
+  ir::TryElevateInt32ToInt64(shape);
   for (int i = 0; i < shape.size(); i++) {
-    CHECK_EQ(shape[i].type(), Int(32));
+    CHECK(shape[i].type() == Int(64) || shape[i].type() == Int(32))
+        << "The shape data type currently supports only int32 or int64, but "
+           "the current data type of shape["
+        << i << "] is " << shape[i].type();
     Expr indice_prod = indices[i];
     optim::SimplifyCast(&indice_prod);
     for (int j = i + 1; j < shape.size(); j++) {
@@ -156,7 +160,7 @@ Expr IndiceToAbsOffset(const std::vector<Expr> &shape,
       res = indice_prod;
     }
   }
-  return common::AutoSimplify(res);
+  return cinn::common::AutoSimplify(res);
 }
 
 Expr IndiceToAbsOffset(const std::vector<int> &shape,

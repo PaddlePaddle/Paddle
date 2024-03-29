@@ -430,9 +430,7 @@ def check_not_expected_ops(prog):
     for op in prog.global_block().ops:
         if op.type in not_expected_op_types and op.type not in op_types_set:
             logger.warning(
-                "find op type '{}' in program, please check if your program is pruned correctly !".format(
-                    op.type
-                )
+                f"find op type '{op.type}' in program, please check if your program is pruned correctly !"
             )
             op_types_set.add(op.type)
 

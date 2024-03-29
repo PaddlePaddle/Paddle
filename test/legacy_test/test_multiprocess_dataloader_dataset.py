@@ -21,6 +21,7 @@ from paddle import base
 from paddle.io import (
     ChainDataset,
     ComposeDataset,
+    ConcatDataset,
     DataLoader,
     Dataset,
     IterableDataset,
@@ -58,8 +59,7 @@ class RandomIterableDataset(IterableDataset):
 
 class TestTensorDataset(unittest.TestCase):
     def run_main(self, num_workers, places):
-        paddle.static.default_startup_program().random_seed = 1
-        paddle.static.default_main_program().random_seed = 1
+        paddle.seed(1)
         place = paddle.CPUPlace()
         with base.dygraph.guard(place):
             input_np = np.random.random([16, 3, 4]).astype('float32')
@@ -97,8 +97,7 @@ class TestTensorDataset(unittest.TestCase):
 
 class TestComposeDataset(unittest.TestCase):
     def test_main(self):
-        paddle.static.default_startup_program().random_seed = 1
-        paddle.static.default_main_program().random_seed = 1
+        paddle.seed(1)
 
         dataset1 = RandomDataset(10)
         dataset2 = RandomDataset(10)
@@ -117,8 +116,7 @@ class TestComposeDataset(unittest.TestCase):
 
 class TestRandomSplitApi(unittest.TestCase):
     def test_main(self):
-        paddle.static.default_startup_program().random_seed = 1
-        paddle.static.default_main_program().random_seed = 1
+        paddle.seed(1)
 
         dataset1, dataset2 = paddle.io.random_split(range(5), [1, 4])
 
@@ -138,8 +136,7 @@ class TestRandomSplitApi(unittest.TestCase):
 
 class TestRandomSplitError(unittest.TestCase):
     def test_errors(self):
-        paddle.static.default_startup_program().random_seed = 1
-        paddle.static.default_main_program().random_seed = 1
+        paddle.seed(1)
 
         self.assertRaises(ValueError, paddle.io.random_split, range(5), [3, 8])
         self.assertRaises(ValueError, paddle.io.random_split, range(5), [8])
@@ -148,8 +145,7 @@ class TestRandomSplitError(unittest.TestCase):
 
 class TestSubsetDataset(unittest.TestCase):
     def run_main(self, num_workers, places):
-        paddle.static.default_startup_program().random_seed = 1
-        paddle.static.default_main_program().random_seed = 1
+        paddle.seed(1)
 
         input_np = np.random.random([5, 3, 4]).astype('float32')
         input = paddle.to_tensor(input_np)
@@ -200,8 +196,7 @@ class TestSubsetDataset(unittest.TestCase):
         self.assertEqual(odd_list, elements_list)
 
     def test_main(self):
-        paddle.static.default_startup_program().random_seed = 1
-        paddle.static.default_main_program().random_seed = 1
+        paddle.seed(1)
 
         places = [paddle.CPUPlace()]
         if paddle.is_compiled_with_cuda():
@@ -212,8 +207,7 @@ class TestSubsetDataset(unittest.TestCase):
 
 class TestChainDataset(unittest.TestCase):
     def run_main(self, num_workers, places):
-        paddle.static.default_startup_program().random_seed = 1
-        paddle.static.default_main_program().random_seed = 1
+        paddle.seed(1)
 
         dataset1 = RandomIterableDataset(10)
         dataset2 = RandomIterableDataset(10)
@@ -258,8 +252,7 @@ class NumpyMixTensorDataset(Dataset):
 
 class TestNumpyMixTensorDataset(TestTensorDataset):
     def run_main(self, num_workers, places):
-        paddle.static.default_startup_program().random_seed = 1
-        paddle.static.default_main_program().random_seed = 1
+        paddle.seed(1)
         place = paddle.CPUPlace()
         with base.dygraph.guard(place):
             dataset = NumpyMixTensorDataset(16)
@@ -303,8 +296,7 @@ class ComplextDataset(Dataset):
 
 class TestComplextDataset(unittest.TestCase):
     def run_main(self, num_workers):
-        paddle.static.default_startup_program().random_seed = 1
-        paddle.static.default_main_program().random_seed = 1
+        paddle.seed(1)
         place = paddle.CPUPlace()
         with base.dygraph.guard(place):
             dataset = ComplextDataset(16)
@@ -359,8 +351,7 @@ class TestSingleFieldDataset(unittest.TestCase):
         self.dataset = SingleFieldDataset(self.sample_num)
 
     def run_main(self, num_workers):
-        paddle.static.default_startup_program().random_seed = 1
-        paddle.static.default_main_program().random_seed = 1
+        paddle.seed(1)
         place = paddle.CPUPlace()
         with base.dygraph.guard(place):
             self.init_dataset()
@@ -438,6 +429,55 @@ class TestDatasetWithDropLast(unittest.TestCase):
     def test_iterable_dataset(self):
         dataset = RandomIterableDataset(10)
         self.run_main(dataset, 10, 3)
+
+
+class TestConcatDataset(unittest.TestCase):
+    def run_main(self, num_workers, places):
+        result = ConcatDataset([[0], [1]])
+        self.assertEqual(2, len(result))
+        self.assertEqual(0, result[0])
+        self.assertEqual(1, result[1])
+
+        result = ConcatDataset([[0, 1, 2, 3, 4], [5, 6, 7, 8, 9]])
+        self.assertEqual(10, len(result))
+        self.assertEqual(0, result[0])
+        self.assertEqual(5, result[5])
+
+        result = ConcatDataset([[0, 1, 2, 3, 4], [], [5, 6, 7, 8, 9]])
+        self.assertEqual(10, len(result))
+        self.assertEqual(0, result[0])
+        self.assertEqual(5, result[5])
+
+        result = ConcatDataset([[0, 1, 2, 3, 4], [5, 6, 7, 8, 9]])
+        with self.assertRaises(IndexError):
+            result[11]
+
+    def test_main(self):
+        places = [paddle.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for p in places:
+            self.run_main(num_workers=0, places=p)
+
+    def test_iterable_dataset_err(self):
+        d1 = TensorDataset([paddle.rand((7, 3, 28, 28)), paddle.rand((7,))])
+        it1 = RandomIterableDataset(10)
+        it2 = RandomIterableDataset(10)
+
+        with self.assertRaisesRegex(
+            AssertionError, "does not support IterableDataset"
+        ):
+            ConcatDataset([d1, it2, it1])
+
+        with self.assertRaisesRegex(
+            AssertionError, "does not support IterableDataset"
+        ):
+            ConcatDataset([it2])
+
+        with self.assertRaisesRegex(
+            AssertionError, "does not support IterableDataset"
+        ):
+            ConcatDataset([it1, d1])
 
 
 if __name__ == '__main__':

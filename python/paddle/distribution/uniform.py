@@ -45,7 +45,7 @@ class Uniform(distribution.Distribution):
     * :math:`Z`: is the normalizing constant.
 
     The parameters `low` and `high` must be shaped in a way that supports
-    `Boardcasting` (e.g., `high - low` is a valid operation).
+    `Broadcasting` (e.g., `high - low` is a valid operation).
 
     Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
@@ -142,7 +142,6 @@ class Uniform(distribution.Distribution):
                 'float64',
             ]:
                 self.dtype = high.dtype
-            # pylint: disable=unbalanced-tuple-unpacking
             self.low, self.high = self._to_tensor(low, high)
             if self.dtype != convert_dtype(self.low.dtype):
                 self.low = paddle.cast(self.low, dtype=self.dtype)

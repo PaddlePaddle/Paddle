@@ -47,15 +47,15 @@ bool IsCompiledWithCUDNN();
 
 class CurrentTarget {
  public:
-  static common::Target &GetCurrentTarget();
-  static void SetCurrentTarget(const common::Target &target);
+  static cinn::common::Target &GetCurrentTarget();
+  static void SetCurrentTarget(const cinn::common::Target &target);
 
  private:
   CurrentTarget() = default;
   CurrentTarget(const CurrentTarget &) = delete;
   CurrentTarget &operator=(const CurrentTarget &) = delete;
 
-  static common::Target target_;
+  static cinn::common::Target target_;
 };
 
 }  // namespace runtime

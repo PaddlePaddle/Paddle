@@ -25,9 +25,12 @@ import paddle
 from .... import psdb
 from ....profiler import EventGuard
 from ....utils import (
+    ENV_SOT_EXPORT,
+    get_static_function,
     is_break_graph_api,
     is_break_graph_tensor_methods,
     is_builtin_fn,
+    is_not_supported_paddle_layer,
     is_paddle_api,
     magic_method_builtin_dispatch,
 )
@@ -176,6 +179,13 @@ class UserDefinedFunctionVariable(FunctionVariable):
             return result
 
         checkpoint = self.graph.save_memo()
+
+        static_function = get_static_function(self.value, "inline_call")
+        if static_function is not None:
+            output = self.graph.call_ast(static_function, *args, **kwargs)
+            if output is not None:
+                return output
+
         try:
             inline_executor = OpcodeInlineExecutor(self, *args, **kwargs)
             with EventGuard(
@@ -266,7 +276,7 @@ class TensorFunctionVariable(FunctionVariable):
 
     def call_function(self, /, *args, **kwargs):
         if is_break_graph_tensor_methods(self.method_name):
-            raise BreakGraphError()
+            raise BreakGraphError("call break_graph_tensor_method.")
         return self.graph.call_tensor_method(self.method_name, *args, **kwargs)
 
     def bind(self, instance: VariableBase, name: str):
@@ -522,7 +532,10 @@ class PaddleLayerVariable(LayerVariable):
 
     def call_function(self, /, *args, **kwargs):
         self.graph.add_global_guarded_variable(self)
-        return self.graph.call_layer(self, *args, **kwargs)
+        # when layer is created in forward function, we use strong ref because it can't have
+        # weights and buffers, see PaddleLayerClassVariable for details.
+        weak_ref = not isinstance(self.tracker, CreateLayerTracker)
+        return self.graph.call_layer(self, weak_ref, *args, **kwargs)
 
     def make_stringify_guard(self) -> list[StringifyExpression]:
         if isinstance(self.tracker, CreateLayerTracker):
@@ -541,6 +554,9 @@ class PaddleLayerVariable(LayerVariable):
 
     @VariableFactory.register_from_value(successor="UserDefinedLayerVariable")
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        # TODO: @wuzhanfei, if we support create sub layer when export, remove this branch
+        if ENV_SOT_EXPORT.get() != "":
+            return None
         # TODO(SigureMo): Add a more common way to check if a value is a paddle builtin layer.
         if isinstance(value, paddle.nn.Layer):
             # If there is a user-defined behavior, such as a container class layer
@@ -551,6 +567,7 @@ class PaddleLayerVariable(LayerVariable):
                 and value._forward_pre_hooks
                 or hasattr(value, "_forward_post_hooks")
                 and value._forward_post_hooks
+                or is_not_supported_paddle_layer(type(value))
             ):
                 return None
             if value.__module__.startswith("paddle.nn."):
@@ -629,6 +646,16 @@ class BuiltinVariable(FunctionVariable):
                 )
                 assert isinstance(fn_var, VariableBase)
                 return fn_var(*args)
+            # If __bool__ and __len__ method are absent, inline bool calls return True.
+            # See https://github.com/python/cpython/blob/3.11/Objects/typeobject.c#L7463
+            elif magic_method.name == "__bool__" and not hasattr(
+                arg_type, "__len__"
+            ):
+                return VariableFactory.from_value(
+                    True,
+                    self.graph,
+                    DummyTracker([self] + list(args) + list(kwargs.values())),
+                )
 
         # Break graph if neither of the above conditions is met
         arg_types = ", ".join([type(arg).__name__ for arg in args])
@@ -654,9 +681,9 @@ class BuiltinVariable(FunctionVariable):
         }
 
 
-class UserDefinedGeneratorVariable(FunctionVariable):
+class UserDefinedGeneratorFunctionVariable(FunctionVariable):
     """
-    UserDefinedGeneratorVariable is a subclass of FunctionVariable used to wrap a user-defined generator.
+    UserDefinedGeneratorFunctionVariable is a subclass of FunctionVariable used to wrap a user-defined generator.
     Args:
         fn (Callable[..., Any]): The user-defined generator to be wrapped.
         graph(FunctionGraph): The FunctionGraph object that this variable is associated with.
@@ -684,7 +711,7 @@ class UserDefinedGeneratorVariable(FunctionVariable):
     )
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if inspect.isgeneratorfunction(value):
-            return UserDefinedGeneratorVariable(value, graph, tracker)
+            return UserDefinedGeneratorFunctionVariable(value, graph, tracker)
         return None
 
 
@@ -740,11 +767,19 @@ class PaddleLayerClassVariable(ClassVariable):
     def __init__(self, class_: type, graph: FunctionGraph, tracker: Tracker):
         super().__init__(class_, graph, tracker)
 
+    def check_no_weight_and_buffers(self, paddle_layer):
+        has_parameters = len(paddle_layer.parameters()) > 0
+        has_buffers = len(paddle_layer.buffers()) > 0
+        return not has_parameters and not has_buffers
+
     def call_function(self, /, *args, **kwargs):
         input_py_args = [var.get_py_value() for var in args]
         input_py_kwargs = {k: v.get_py_value() for k, v in kwargs.items()}
         new_layer = self.value(*input_py_args, **input_py_kwargs)
-        return PaddleLayerVariable(
+        assert self.check_no_weight_and_buffers(
+            new_layer
+        ), "You have created a layer in to_static function which may have Potential bugs. please create it in __init__/main function."
+        return VariableFactory.from_value(
             new_layer, self.graph, CreateLayerTracker(self, args, kwargs)
         )
 

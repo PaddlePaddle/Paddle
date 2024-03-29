@@ -49,7 +49,7 @@ def rank(input):
             >>> print(rank.numpy())
             3
     """
-    check_type(input, 'input', (Variable), 'input')
+    check_type(input, 'input', (Variable, paddle.pir.Value), 'input')
     ndims = len(input.shape)
     out = assign(np.array(ndims, 'int32'))
 
@@ -163,12 +163,16 @@ def is_complex(x):
             >>> print(paddle.is_complex(x))
             False
     """
-    if not isinstance(x, (paddle.Tensor, paddle.static.Variable)):
+    if not isinstance(
+        x, (paddle.Tensor, paddle.static.Variable, paddle.pir.Value)
+    ):
         raise TypeError(f"Expected Tensor, but received type of x: {type(x)}")
     dtype = x.dtype
     is_complex_dtype = (
         dtype == core.VarDesc.VarType.COMPLEX64
         or dtype == core.VarDesc.VarType.COMPLEX128
+        or dtype == core.DataType.COMPLEX64
+        or dtype == core.DataType.COMPLEX128
     )
     return is_complex_dtype
 
@@ -195,7 +199,9 @@ def is_floating_point(x):
             >>> print(paddle.is_floating_point(y))
             False
     """
-    if not isinstance(x, (paddle.Tensor, paddle.static.Variable)):
+    if not isinstance(
+        x, (paddle.Tensor, paddle.static.Variable, paddle.pir.Value)
+    ):
         raise TypeError(f"Expected Tensor, but received type of x: {type(x)}")
     dtype = x.dtype
     is_fp_dtype = (
@@ -203,12 +209,16 @@ def is_floating_point(x):
         or dtype == core.VarDesc.VarType.FP64
         or dtype == core.VarDesc.VarType.FP16
         or dtype == core.VarDesc.VarType.BF16
+        or dtype == core.DataType.FLOAT32
+        or dtype == core.DataType.FLOAT64
+        or dtype == core.DataType.FLOAT16
+        or dtype == core.DataType.BFLOAT16
     )
     return is_fp_dtype
 
 
 def is_integer(x):
-    """Return whether x is a tensor of integeral data type.
+    """Return whether x is a tensor of integral data type.
 
     Args:
         x (Tensor): The input tensor.
@@ -234,7 +244,7 @@ def is_integer(x):
             True
     """
     if not isinstance(
-        x, (paddle.Tensor, paddle.static.Variable, paddle.pir.OpResult)
+        x, (paddle.Tensor, paddle.static.Variable, paddle.pir.Value)
     ):
         raise TypeError(f"Expected Tensor, but received type of x: {type(x)}")
     dtype = x.dtype

@@ -13,50 +13,47 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
-#include "paddle/pir/core/enforce.h"
-#include "paddle/pir/core/ir_context.h"
+#include "paddle/common/enforce.h"
+#include "paddle/pir/include/core/ir_context.h"
 
 namespace paddle {
 namespace dialect {
 
-APIBuilder::APIBuilder() : builder_(nullptr) {
-  ctx_ = pir::IrContext::Instance();
+ApiBuilder::ApiBuilder()
+    : ctx_(pir::IrContext::Instance()),
+      builder_(std::make_shared<pir::Builder>(ctx_)) {
+  IR_ENFORCE(builder_ != nullptr, "api builder construct error!");
 }
 
-void APIBuilder::SetProgram(pir::Program* program) {
-  builder_ = std::make_shared<pir::Builder>(ctx_, program->block());
+void ApiBuilder::SetProgram(pir::Program* program) {
+  IR_ENFORCE(program != nullptr, "argument of program is nullptr");
+  builder_->SetInsertionPointToBlockEnd(program->block());
 }
 
-void APIBuilder::SetInsertionPoint(pir::Operation* op) {
-  IR_ENFORCE(builder_ != nullptr,
-             "builder doesn't hold program, please call SetProgram for "
-             "initialization.");
-  builder_->SetInsertionPoint(op);
-}
-
-void APIBuilder::ResetInsertionPointToStart() {
-  IR_ENFORCE(builder_ != nullptr,
-             "builder doesn't hold program, please call SetProgram for "
-             "initialization.");
+void ApiBuilder::ResetInsertionPointToStart() {
   builder_->SetInsertionPointToStart(builder_->block());
 }
 
-void APIBuilder::ResetInsertionPointToEnd() {
-  IR_ENFORCE(builder_ != nullptr,
-             "builder doesn't hold program, please call SetProgram for "
-             "initialization.");
-  builder_->SetInsertionPointToEnd(builder_->block());
+void ApiBuilder::ResetInsertionPointToEnd() {
+  builder_->SetInsertionPointToBlockEnd(builder_->block());
 }
 
-pir::Parameter* APIBuilder::GetParameter(const std::string& name) const {
+pir::Parameter* ApiBuilder::GetParameter(const std::string& name) const {
   pir::Program* program = builder_->block()->GetParentOp()->GetParentProgram();
   return program->GetParameter(name);
 }
 
-void APIBuilder::SetParameter(const std::string& name,
+void ApiBuilder::SetParameter(const std::string& name,
                               std::unique_ptr<pir::Parameter>&& parameter) {
   pir::Program* program = builder_->block()->GetParentOp()->GetParentProgram();
   program->SetParameter(name, std::move(parameter));
+}
+
+void ApiBuilder::LoadInsertionPoint() {
+  IR_ENFORCE(!insertion_point_stack_.empty(),
+             "insertion_point_stack_ is empty.");
+  builder_->set_insertion_point(insertion_point_stack_.top());
+  insertion_point_stack_.pop();
 }
 
 }  // namespace dialect

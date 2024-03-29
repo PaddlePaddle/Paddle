@@ -58,23 +58,25 @@ class CutlassFpAIntBGemmRunner {
 
   void gemm(const T* A,
             const WeightType* B,
-            const float* weight_scales,
+            const T* weight_scales,
             T* C,
             int m,
             int n,
             int k,
+            int group_size,
             char* workspace_ptr,
             const size_t workspace_bytes,
             cudaStream_t stream);
 
   void gemm_bias_act(const T* A,
                      const WeightType* B,
-                     const float* weight_scales,
+                     const T* weight_scales,
                      const T* biases,
                      T* C,
                      int m,
                      int n,
                      int k,
+                     int group_size,
                      std::string activation_type,
                      char* workspace_ptr,
                      const size_t workspace_bytes,
@@ -84,30 +86,32 @@ class CutlassFpAIntBGemmRunner {
   int getWorkspaceSize(const int m, const int n, const int k);
 
  private:
-  template <typename EpilogueTag>
+  template <typename EpilogueTag, bool FineGrained>
   void dispatch_to_arch(const T* A,
                         const WeightType* B,
-                        const float* weight_scales,
+                        const T* weight_scales,
                         const T* biases,
                         T* C,
                         int m,
                         int n,
                         int k,
+                        int group_size,
                         CutlassGemmConfig gemm_config,
                         char* workspace_ptr,
                         const size_t workspace_bytes,
                         cudaStream_t stream,
                         int* occupancy = nullptr);
 
-  template <typename EpilogueTag>
+  template <typename EpilogueTag, bool FineGrained>
   void run_gemm(const T* A,
                 const WeightType* B,
-                const float* weight_scales,
+                const T* weight_scales,
                 const T* biases,
                 T* C,
                 int m,
                 int n,
                 int k,
+                int group_size,
                 char* workspace_ptr,
                 const size_t workspace_bytes,
                 cudaStream_t stream);
@@ -136,6 +140,7 @@ class CutlassFpAIntBGemmRunner<float, WeightType> {
             int m,
             int n,
             int k,
+            int group_size,
             char* workspace_ptr,
             const size_t workspace_bytes,
             cudaStream_t stream);
@@ -148,6 +153,7 @@ class CutlassFpAIntBGemmRunner<float, WeightType> {
                      int m,
                      int n,
                      int k,
+                     int group_size,
                      std::string activation_type,
                      char* workspace_ptr,
                      const size_t workspace_bytes,

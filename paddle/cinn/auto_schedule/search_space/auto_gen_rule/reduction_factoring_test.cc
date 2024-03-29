@@ -25,6 +25,8 @@
 #include "paddle/cinn/ir/ir_printer.h"
 #include "test/cpp/cinn/concrete_program_builder.h"
 
+PD_DECLARE_bool(cinn_new_group_scheduler);
+
 namespace cinn {
 namespace auto_schedule {
 
@@ -37,7 +39,9 @@ class TestReductionFactoring : public TestAutoGenRuleBase {
                          const std::vector<int>& reduce_dim,
                          const std::string& block_name,
                          const std::string& expected_ir) {
-    Initialize(common::DefaultHostTarget());
+    Initialize(cinn::common::DefaultNVGPUTarget());
+    // In order to forcibly use the most basic compute of reduction
+    FLAGS_cinn_new_group_scheduler = 1;
     auto test_program = tests::ReduceBuilder().Build(
         {{"X", shape}}, {{"reduce_dim", reduce_dim}});
     // construct input parameter
@@ -66,7 +70,8 @@ class TestReductionFactoring : public TestAutoGenRuleBase {
 };
 
 TEST_F(TestReductionFactoring, AnalyseApplyType) {
-  Initialize(common::DefaultHostTarget());
+  Context::Global().ResetNameId();
+  Initialize(cinn::common::DefaultNVGPUTarget());
   auto test_program =
       tests::OpBuilder("elementwise_add").Build({{"X", {4, 5}}, {"Y", {4, 5}}});
   ir::IRSchedule ir_schedule = MakeIRSchedule(test_program);
@@ -77,30 +82,14 @@ TEST_F(TestReductionFactoring, AnalyseApplyType) {
             RuleApplyType::kCannotApply);
 }
 
+#ifdef CINN_WITH_CUDA
+
 TEST_F(TestReductionFactoring, ApplyOnBlock1ReduceDim) {
+  Context::Global().ResetNameId();
   std::string expected_ir = R"({
   ScheduleBlock(root)
   {
     {
-      serial for (i, 0, 32)
-      {
-        serial for (reduce_k_0_0, 0, 8)
-        {
-          ScheduleBlock(var_0_rf__reduce_init)
-          {
-            vreduce_k_0_0, i0_0 = axis.bind(reduce_k_0_0, i)
-            var_0_rf__reduce_init[i0_0, vreduce_k_0_0] = 0.00000000f
-          }
-          serial for (reduce_k_0_1, 0, 8)
-          {
-            ScheduleBlock(var_0_rf)
-            {
-              vreduce_k_0_0, i0_0, vreduce_k_0_1 = axis.bind(reduce_k_0_0, i, reduce_k_0_1)
-              var_0_rf[i0_0, vreduce_k_0_0] = (var_0_rf[i0_0, vreduce_k_0_0] + X[i0_0, ((8 * vreduce_k_0_0) + vreduce_k_0_1)])
-            }
-          }
-        }
-      }
       serial for (i, 0, 32)
       {
         ScheduleBlock(var_0__reduce_init)
@@ -108,12 +97,29 @@ TEST_F(TestReductionFactoring, ApplyOnBlock1ReduceDim) {
           i0_0 = axis.bind(i)
           var_0__reduce_init[i0_0] = 0.00000000f
         }
-        serial for (reduce_k_0_0, 0, 8)
+        thread_bind[threadIdx.x] for (reduce_k_0_0, 0, 64)
         {
-          ScheduleBlock(var_0)
+          ScheduleBlock(var_0_rf__reduce_init)
           {
             vreduce_k_0_0, i0_0 = axis.bind(reduce_k_0_0, i)
-            var_0[i0_0] = (var_0[i0_0] + var_0_rf[i0_0, vreduce_k_0_0])
+            var_0_rf__reduce_init[i0_0, vreduce_k_0_0] = 0.00000000f
+          }
+          {
+            serial for (reduce_k_0_1, 0, 1)
+            {
+              ScheduleBlock(var_0_rf)
+              {
+                vreduce_k_0_0, i0_0, vreduce_k_0_1 = axis.bind(reduce_k_0_0, i, reduce_k_0_1)
+                var_0_rf[i0_0, vreduce_k_0_0] = (var_0_rf[i0_0, vreduce_k_0_0] + X[i0_0, (vreduce_k_0_0 + vreduce_k_0_1)])
+              }
+            }
+            {
+              ScheduleBlock(var_0)
+              {
+                vreduce_k_0_0, i0_0 = axis.bind(reduce_k_0_0, i)
+                var_0[i0_0] = (var_0[i0_0] + var_0_rf[i0_0, vreduce_k_0_0])
+              }
+            }
           }
         }
       }
@@ -124,29 +130,11 @@ TEST_F(TestReductionFactoring, ApplyOnBlock1ReduceDim) {
 }
 
 TEST_F(TestReductionFactoring, ApplyOnBlock2ReduceDim) {
+  Context::Global().ResetNameId();
   std::string expected_ir = R"({
   ScheduleBlock(root)
   {
     {
-      serial for (i, 0, 32)
-      {
-        serial for (reduce_k_0_reduce_k_1_fused, 0, 128)
-        {
-          ScheduleBlock(var_0_rf__reduce_init)
-          {
-            vreduce_k_0_reduce_k_1_fused, i0_0 = axis.bind(reduce_k_0_reduce_k_1_fused, i)
-            var_0_rf__reduce_init[i0_0, vreduce_k_0_reduce_k_1_fused] = 0.00000000f
-          }
-          serial for (reduce_k_0_reduce_k_1_fused_0, 0, 64)
-          {
-            ScheduleBlock(var_0_rf)
-            {
-              vreduce_k_0_reduce_k_1_fused, i0_0, vreduce_k_0_reduce_k_1_fused_0 = axis.bind(reduce_k_0_reduce_k_1_fused, i, reduce_k_0_reduce_k_1_fused_0)
-              var_0_rf[i0_0, vreduce_k_0_reduce_k_1_fused] = (var_0_rf[i0_0, vreduce_k_0_reduce_k_1_fused] + X[i0_0, (((64 * vreduce_k_0_reduce_k_1_fused) + vreduce_k_0_reduce_k_1_fused_0) / 128), (((64 * vreduce_k_0_reduce_k_1_fused) + vreduce_k_0_reduce_k_1_fused_0) % 128)])
-            }
-          }
-        }
-      }
       serial for (i, 0, 32)
       {
         ScheduleBlock(var_0__reduce_init)
@@ -154,12 +142,29 @@ TEST_F(TestReductionFactoring, ApplyOnBlock2ReduceDim) {
           i0_0 = axis.bind(i)
           var_0__reduce_init[i0_0] = 0.00000000f
         }
-        serial for (reduce_k_0_reduce_k_1_fused, 0, 128)
+        thread_bind[threadIdx.x] for (reduce_k_0_reduce_k_1_fused, 0, 1024)
         {
-          ScheduleBlock(var_0)
+          ScheduleBlock(var_0_rf__reduce_init)
           {
             vreduce_k_0_reduce_k_1_fused, i0_0 = axis.bind(reduce_k_0_reduce_k_1_fused, i)
-            var_0[i0_0] = (var_0[i0_0] + var_0_rf[i0_0, vreduce_k_0_reduce_k_1_fused])
+            var_0_rf__reduce_init[i0_0, vreduce_k_0_reduce_k_1_fused] = 0.00000000f
+          }
+          {
+            serial for (reduce_k_0_reduce_k_1_fused_0, 0, 8)
+            {
+              ScheduleBlock(var_0_rf)
+              {
+                vreduce_k_0_reduce_k_1_fused, i0_0, vreduce_k_0_reduce_k_1_fused_0 = axis.bind(reduce_k_0_reduce_k_1_fused, i, reduce_k_0_reduce_k_1_fused_0)
+                var_0_rf[i0_0, vreduce_k_0_reduce_k_1_fused] = (var_0_rf[i0_0, vreduce_k_0_reduce_k_1_fused] + X[i0_0, (((8 * vreduce_k_0_reduce_k_1_fused) + vreduce_k_0_reduce_k_1_fused_0) / 128), (((8 * vreduce_k_0_reduce_k_1_fused) + vreduce_k_0_reduce_k_1_fused_0) % 128)])
+              }
+            }
+            {
+              ScheduleBlock(var_0)
+              {
+                vreduce_k_0_reduce_k_1_fused, i0_0 = axis.bind(reduce_k_0_reduce_k_1_fused, i)
+                var_0[i0_0] = (var_0[i0_0] + var_0_rf[i0_0, vreduce_k_0_reduce_k_1_fused])
+              }
+            }
           }
         }
       }
@@ -170,29 +175,11 @@ TEST_F(TestReductionFactoring, ApplyOnBlock2ReduceDim) {
 }
 
 TEST_F(TestReductionFactoring, ApplyOnBlock3ReduceDim) {
+  Context::Global().ResetNameId();
   std::string expected_ir = R"({
   ScheduleBlock(root)
   {
     {
-      serial for (i, 0, 32)
-      {
-        serial for (reduce_k_0_reduce_k_1_reduce_k_2_fused, 0, 512)
-        {
-          ScheduleBlock(var_0_rf__reduce_init)
-          {
-            vreduce_k_0_reduce_k_1_reduce_k_2_fused, i0_0 = axis.bind(reduce_k_0_reduce_k_1_reduce_k_2_fused, i)
-            var_0_rf__reduce_init[i0_0, vreduce_k_0_reduce_k_1_reduce_k_2_fused] = 0.00000000f
-          }
-          serial for (reduce_k_0_reduce_k_1_reduce_k_2_fused_0, 0, 512)
-          {
-            ScheduleBlock(var_0_rf)
-            {
-              vreduce_k_0_reduce_k_1_reduce_k_2_fused, i0_0, vreduce_k_0_reduce_k_1_reduce_k_2_fused_0 = axis.bind(reduce_k_0_reduce_k_1_reduce_k_2_fused, i, reduce_k_0_reduce_k_1_reduce_k_2_fused_0)
-              var_0_rf[i0_0, vreduce_k_0_reduce_k_1_reduce_k_2_fused] = (var_0_rf[i0_0, vreduce_k_0_reduce_k_1_reduce_k_2_fused] + X[i0_0, ((((512 * vreduce_k_0_reduce_k_1_reduce_k_2_fused) + vreduce_k_0_reduce_k_1_reduce_k_2_fused_0) / 64) / 64), ((((512 * vreduce_k_0_reduce_k_1_reduce_k_2_fused) + vreduce_k_0_reduce_k_1_reduce_k_2_fused_0) / 64) % 64), (((512 * vreduce_k_0_reduce_k_1_reduce_k_2_fused) + vreduce_k_0_reduce_k_1_reduce_k_2_fused_0) % 64)])
-            }
-          }
-        }
-      }
       serial for (i, 0, 32)
       {
         ScheduleBlock(var_0__reduce_init)
@@ -200,12 +187,29 @@ TEST_F(TestReductionFactoring, ApplyOnBlock3ReduceDim) {
           i0_0 = axis.bind(i)
           var_0__reduce_init[i0_0] = 0.00000000f
         }
-        serial for (reduce_k_0_reduce_k_1_reduce_k_2_fused, 0, 512)
+        thread_bind[threadIdx.x] for (reduce_k_0_reduce_k_1_reduce_k_2_fused, 0, 1024)
         {
-          ScheduleBlock(var_0)
+          ScheduleBlock(var_0_rf__reduce_init)
           {
             vreduce_k_0_reduce_k_1_reduce_k_2_fused, i0_0 = axis.bind(reduce_k_0_reduce_k_1_reduce_k_2_fused, i)
-            var_0[i0_0] = (var_0[i0_0] + var_0_rf[i0_0, vreduce_k_0_reduce_k_1_reduce_k_2_fused])
+            var_0_rf__reduce_init[i0_0, vreduce_k_0_reduce_k_1_reduce_k_2_fused] = 0.00000000f
+          }
+          {
+            serial for (reduce_k_0_reduce_k_1_reduce_k_2_fused_0, 0, 256)
+            {
+              ScheduleBlock(var_0_rf)
+              {
+                vreduce_k_0_reduce_k_1_reduce_k_2_fused, i0_0, vreduce_k_0_reduce_k_1_reduce_k_2_fused_0 = axis.bind(reduce_k_0_reduce_k_1_reduce_k_2_fused, i, reduce_k_0_reduce_k_1_reduce_k_2_fused_0)
+                var_0_rf[i0_0, vreduce_k_0_reduce_k_1_reduce_k_2_fused] = (var_0_rf[i0_0, vreduce_k_0_reduce_k_1_reduce_k_2_fused] + X[i0_0, ((((256 * vreduce_k_0_reduce_k_1_reduce_k_2_fused) + vreduce_k_0_reduce_k_1_reduce_k_2_fused_0) / 64) / 64), ((((256 * vreduce_k_0_reduce_k_1_reduce_k_2_fused) + vreduce_k_0_reduce_k_1_reduce_k_2_fused_0) / 64) % 64), (((256 * vreduce_k_0_reduce_k_1_reduce_k_2_fused) + vreduce_k_0_reduce_k_1_reduce_k_2_fused_0) % 64)])
+              }
+            }
+            {
+              ScheduleBlock(var_0)
+              {
+                vreduce_k_0_reduce_k_1_reduce_k_2_fused, i0_0 = axis.bind(reduce_k_0_reduce_k_1_reduce_k_2_fused, i)
+                var_0[i0_0] = (var_0[i0_0] + var_0_rf[i0_0, vreduce_k_0_reduce_k_1_reduce_k_2_fused])
+              }
+            }
           }
         }
       }
@@ -214,6 +218,7 @@ TEST_F(TestReductionFactoring, ApplyOnBlock3ReduceDim) {
 })";
   TestApplyOnReduce({32, 64, 64, 64}, {1, 2, 3}, "var_0", expected_ir);
 }
+#endif
 
 }  // namespace auto_schedule
 }  // namespace cinn

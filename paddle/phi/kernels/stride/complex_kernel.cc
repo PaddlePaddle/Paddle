@@ -35,6 +35,7 @@ void RealStridedKernel(const Context& dev_ctx,
   out->set_offset(x.offset());
   out->set_strides(stride);
   out->ResetHolder(x.Holder());
+  out->ShareInplaceVersionCounterWith(x);
 }
 
 template <typename T, typename Context>
@@ -54,6 +55,7 @@ void ImagStridedKernel(const Context& dev_ctx,
   out->set_strides(stride);
   out->set_offset(x.offset() + phi::SizeOf(out->dtype()));
   out->ResetHolder(x.Holder());
+  out->ShareInplaceVersionCounterWith(x);
 }
 
 }  // namespace phi
@@ -88,6 +90,26 @@ PD_REGISTER_KERNEL(real,
 
 PD_REGISTER_KERNEL(imag,
                    GPU,
+                   STRIDED,
+                   phi::ImagStridedKernel,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+PD_REGISTER_KERNEL(real,
+                   Custom,
+                   STRIDED,
+                   phi::RealStridedKernel,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}
+
+PD_REGISTER_KERNEL(imag,
+                   Custom,
                    STRIDED,
                    phi::ImagStridedKernel,
                    phi::dtype::complex<float>,

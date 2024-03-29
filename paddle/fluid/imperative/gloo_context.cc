@@ -19,8 +19,8 @@
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/split.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/split.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -165,7 +165,7 @@ void GLOOParallelContext::AllReduce(const phi::SelectedRows &src,
   auto *dst_tensor = dst->mutable_value();
   auto dims = src_tensor.dims();
   dims[0] = rows_num;
-  auto feature_size = phi::product(dims) / dims[0];
+  auto feature_size = common::product(dims) / dims[0];
   dst_tensor->Resize(dims);
 
   std::vector<size_t> element_nums = rows_num_vector;

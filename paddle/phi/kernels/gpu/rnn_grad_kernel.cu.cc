@@ -152,7 +152,7 @@ void RnnGradKernel(const Context &dev_ctx,
 #endif
     weight_data = weight_whole.data<T>();
   } else {
-    weight_data = const_cast<T *>(weight_list[0]->data<T>());
+    weight_data = const_cast<T *>(weight_list[0]->data<T>());  // NOLINT
   }
 
   DenseTensor weight_grad = Full<T>(dev_ctx, {weight_numel}, 0);
@@ -250,11 +250,60 @@ void RnnGradKernel(const Context &dev_ctx,
                 SequenceLength,
                 &workspace_size,
                 &reserve_size,
-                const_cast<DenseTensor *>(&dropout_state));
+                const_cast<DenseTensor *>(&dropout_state));  // NOLINT
 
   DenseTensor workspace_data_ =
       Empty<uint8_t>(dev_ctx, {static_cast<int64_t>(workspace_size)});
   const uint8_t *reserve_data = reserve.data<uint8_t>();
+
+#if CUDNN_VERSION >= 90000
+  if (x_grad) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnRNNBackwardData_v8(
+        handle,
+        rnn.rnn_desc(),
+        nullptr,
+        rnn.y_seq_desc(),
+        out_data,
+        out_grad_data,
+        rnn.x_seq_desc(),
+        x_grad_data,
+        rnn.init_h_desc(),
+        init_h_data,
+        last_h_grad_data,
+        init_h_grad_data,
+        rnn.init_c_desc(),
+        init_c_data,
+        last_c_grad_data,
+        init_c_grad_data,
+        rnn.weights_size(),
+        weight_data,
+        workspace_size,
+        workspace_data_.data<uint8_t>(),
+        reserve_size,
+        const_cast<uint8_t *>(reserve_data)));
+  }
+
+  if (!weight_grad_list.empty()) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnRNNBackwardWeights_v8(
+        handle,
+        rnn.rnn_desc(),
+        CUDNN_WGRAD_MODE_ADD,
+        nullptr,
+        rnn.x_seq_desc(),
+        x.data<T>(),
+        rnn.init_h_desc(),
+        init_h_data,
+        rnn.y_seq_desc(),
+        out.data<T>(),
+        rnn.weights_size(),
+        weight_grad_data,
+        workspace_size,
+        workspace_data_.data<uint8_t>(),
+        reserve_size,
+        const_cast<uint8_t *>(reserve_data)));
+  }
+
+#else
 
   if (!has_seq_length) {
     if (x_grad) {
@@ -315,7 +364,7 @@ void RnnGradKernel(const Context &dev_ctx,
           init_c_grad_data,
           workspace_data_.data<uint8_t>(),
           workspace_size,
-          const_cast<uint8_t *>(reserve_data),
+          const_cast<uint8_t *>(reserve_data),  // NOLINT
           reserve_size));
 #endif
     }
@@ -335,7 +384,7 @@ void RnnGradKernel(const Context &dev_ctx,
           weight_grad_data,
           workspace_data_.data<uint8_t>(),
           workspace_size,
-          const_cast<uint8_t *>(reserve_data),
+          const_cast<uint8_t *>(reserve_data),  // NOLINT
           reserve_size));
       // permute weight grad list from weight grad tensor
       TensorToPermutedWeight<T>(
@@ -355,7 +404,7 @@ void RnnGradKernel(const Context &dev_ctx,
           workspace_size,
           rnn.weight_desc(),
           weight_grad_data,
-          const_cast<uint8_t *>(reserve_data),
+          const_cast<uint8_t *>(reserve_data),  // NOLINT
           reserve_size));
 #endif
     }
@@ -393,7 +442,7 @@ void RnnGradKernel(const Context &dev_ctx,
           nullptr,
           workspace_data_.data<uint8_t>(),
           workspace_size,
-          const_cast<uint8_t *>(reserve_data),
+          const_cast<uint8_t *>(reserve_data),  // NOLINT
           reserve_size));
     }
 
@@ -411,7 +460,7 @@ void RnnGradKernel(const Context &dev_ctx,
           workspace_size,
           rnn.weight_desc(),
           weight_grad_data,
-          const_cast<uint8_t *>(reserve_data),
+          const_cast<uint8_t *>(reserve_data),  // NOLINT
           reserve_size));
     }
 #else
@@ -421,6 +470,8 @@ void RnnGradKernel(const Context &dev_ctx,
         "of cudnn is larger than 7.2.1"));
 #endif
   }
+
+#endif  // end CUDNN_VERSION >= 90000
 }
 
 }  // namespace phi

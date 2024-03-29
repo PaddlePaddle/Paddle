@@ -269,14 +269,6 @@ void FusionLSTMOpMaker::Make() {
                        "`tanh` by default.")
       .SetDefault("tanh")
       .InEnum({"sigmoid", "tanh", "relu", "identity"});
-  AddAttr<bool>("use_mkldnn",
-                "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
-  AddAttr<std::string>(
-      "mkldnn_data_type",
-      "(string, default \"float32\"). Data type of mkldnn kernel")
-      .SetDefault("float32")
-      .InEnum({"float32", "int8", "bfloat16"});
   AddAttr<float>("Scale_data",
                  "Scale to be used for int8 input/output data."
                  "Only used with MKL-DNN INT8.")
@@ -300,7 +292,7 @@ This operator fuse the X into LSTM, more details can refer to LSTM op.
 }
 
 template <typename T, typename DeviceContext>
-class FuisonLSTMKernel : public framework::OpKernel<T> {
+class FusionLSTMKernel : public framework::OpKernel<T> {
  public:
 #define INIT_BASE_DEFINES                                    \
   auto* x = ctx.Input<phi::DenseTensor>("X");                \
@@ -582,4 +574,4 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(fusion_lstm, ops::FusionLSTMOp, ops::FusionLSTMOpMaker);
 
 PD_REGISTER_STRUCT_KERNEL(
-    fusion_lstm, CPU, ALL_LAYOUT, ops::FuisonLSTMKernel, float, double) {}
+    fusion_lstm, CPU, ALL_LAYOUT, ops::FusionLSTMKernel, float, double) {}

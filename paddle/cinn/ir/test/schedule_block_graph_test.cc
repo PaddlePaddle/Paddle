@@ -20,22 +20,23 @@
 #include "paddle/cinn/hlir/framework/op_lowering.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 
+PD_DECLARE_bool(cinn_new_group_scheduler);
+
 namespace cinn {
 namespace ir {
 
 IRSchedule MakeIRSchedule(frontend::Program* program) {
 #ifdef CINN_WITH_CUDA
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
 #else
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 #endif
   std::unordered_set<std::string> fetch_ids;
   auto graph = frontend::Optimize(program, fetch_ids, target);
   LOG_IF(WARNING, graph->fusion_groups.size() > 1)
       << "Test Graph has more than 1 group";
-  auto& dtype_dict =
-      graph->GetMutableAttrs<absl::flat_hash_map<std::string, common::Type>>(
-          "inferdtype");
+  auto& dtype_dict = graph->GetMutableAttrs<
+      absl::flat_hash_map<std::string, cinn::common::Type>>("inferdtype");
   auto& shape_dict = graph->GetMutableAttrs<
       absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
   auto op_lowerer =
@@ -95,6 +96,7 @@ frontend::Program CreateReduceProgram() {
 }
 
 TEST(ScheduleBlockGraph, elementwise) {
+  Context::Global().ResetNameId();
   frontend::Program program = CreateElementwiseProgram();
   IRSchedule ir_sch = MakeIRSchedule(&program);
   LOG(INFO) << GetIR(ir_sch);
@@ -136,23 +138,72 @@ TEST(ScheduleBlockGraph, elementwise) {
 
 #ifdef CINN_WITH_CUDA
 TEST(ScheduleBlockGraph, reduce) {
-  frontend::Program program = CreateReduceProgram();
+  if (FLAGS_cinn_new_group_scheduler) {
+    Context::Global().ResetNameId();
+    frontend::Program program = CreateReduceProgram();
+    IRSchedule ir_sch = MakeIRSchedule(&program);
+    ScheduleBlockGraph sbg(ir_sch);
+    LOG(INFO) << GetIR(ir_sch);
+    LOG(INFO) << sbg.Visualize();
+    CHECK_EQ(sbg.BlockIdsInOrder().size(), 5);
+    CHECK_EQ(sbg.nodes().size(), 5);
+
+    ScheduleBlockNode* v_reduce_init = sbg.RetrieveNode("var_2__reduce_init");
+    CHECK(v_reduce_init);
+    CHECK_EQ(v_reduce_init->UpstreamNodes().size(), 0);
+    CHECK_EQ(v_reduce_init->DownstreamNodes().size(), 3);
+
+    ScheduleBlockNode* v = sbg.RetrieveNode("var_2");
+    CHECK(v);
+    CHECK_EQ(v->UpstreamNodes().size(), 2);
+    CHECK_EQ(v->DownstreamNodes().size(), 2);
+
+    std::vector<std::string> reverse_dfs_topo_order_ids;
+    sbg.DFSTopoWalk(
+        [&reverse_dfs_topo_order_ids](const ScheduleBlockNode* node) {
+          reverse_dfs_topo_order_ids.push_back(node->id());
+        });
+    for (const std::string& id : reverse_dfs_topo_order_ids) {
+      LOG(INFO) << id;
+    }
+    CHECK_EQ(reverse_dfs_topo_order_ids.size(), 5);
+
+    std::vector<std::string> dfs_topo_order_ids;
+    sbg.DFSTopoWalk(
+        [&dfs_topo_order_ids](const ScheduleBlockNode* node) {
+          dfs_topo_order_ids.push_back(node->id());
+        },
+        false);
+    for (const std::string& id : dfs_topo_order_ids) {
+      LOG(INFO) << id;
+    }
+    CHECK_EQ(dfs_topo_order_ids.size(), 5);
+  }
+}
+
+TEST(ScheduleBlockGraph, arg_max) {
+  Context::Global().ResetNameId();
+  frontend::NetBuilder builder("net_builder");
+  auto x = builder.CreateInput(Float(32), {8, 16}, "X");
+  auto y = builder.Argmax(x, 0);
+  frontend::Program program = builder.Build();
+
   IRSchedule ir_sch = MakeIRSchedule(&program);
   LOG(INFO) << GetIR(ir_sch);
   ScheduleBlockGraph sbg(ir_sch);
   LOG(INFO) << sbg.Visualize();
-  CHECK_EQ(sbg.BlockIdsInOrder().size(), 8);
-  CHECK_EQ(sbg.nodes().size(), 8);
+  CHECK_EQ(sbg.BlockIdsInOrder().size(), 3);
+  CHECK_EQ(sbg.nodes().size(), 3);
 
-  ScheduleBlockNode* v_reduce_init = sbg.RetrieveNode("var_48__reduce_init");
-  CHECK(v_reduce_init);
-  CHECK_EQ(v_reduce_init->UpstreamNodes().size(), 0);
-  CHECK_EQ(v_reduce_init->DownstreamNodes().size(), 3);
+  ScheduleBlockNode* v0_idx = sbg.RetrieveNode("var_0_index");
+  CHECK(v0_idx);
+  CHECK_EQ(v0_idx->UpstreamNodes().size(), 1);
+  CHECK_EQ(v0_idx->DownstreamNodes().size(), 1);
 
-  ScheduleBlockNode* v = sbg.RetrieveNode("var_48");
-  CHECK(v);
-  CHECK_EQ(v->UpstreamNodes().size(), 5);
-  CHECK_EQ(v->DownstreamNodes().size(), 2);
+  ScheduleBlockNode* v0 = sbg.RetrieveNode("var_0");
+  CHECK(v0);
+  CHECK_EQ(v0->UpstreamNodes().size(), 2);
+  CHECK_EQ(v0->DownstreamNodes().size(), 0);
 
   std::vector<std::string> reverse_dfs_topo_order_ids;
   sbg.DFSTopoWalk([&reverse_dfs_topo_order_ids](const ScheduleBlockNode* node) {
@@ -161,7 +212,7 @@ TEST(ScheduleBlockGraph, reduce) {
   for (const std::string& id : reverse_dfs_topo_order_ids) {
     LOG(INFO) << id;
   }
-  CHECK_EQ(reverse_dfs_topo_order_ids.size(), 8);
+  CHECK_EQ(reverse_dfs_topo_order_ids.size(), 3);
 
   std::vector<std::string> dfs_topo_order_ids;
   sbg.DFSTopoWalk(
@@ -172,7 +223,7 @@ TEST(ScheduleBlockGraph, reduce) {
   for (const std::string& id : dfs_topo_order_ids) {
     LOG(INFO) << id;
   }
-  CHECK_EQ(dfs_topo_order_ids.size(), 8);
+  CHECK_EQ(dfs_topo_order_ids.size(), 3);
 }
 #endif
 

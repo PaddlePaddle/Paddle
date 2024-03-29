@@ -19,14 +19,34 @@
 namespace phi {
 namespace fusion {
 
+template <typename T, typename MPType, int VecSize>
+using VectorizedFusedRopeCudaKernelFunc =
+    void (*)(phi::Array<const T*, 3> ins_data,
+             phi::Array<const T*, 2> sin_cos_data,
+             const int64_t* position_ids_data,
+             bool flag_sin_cos,
+             int sign,
+             int64_t batch_size,
+             int64_t seq_len,
+             int64_t num_heads,
+             int64_t head_dim,
+             int64_t batch_stride,
+             int64_t seq_stride,
+             phi::Array<T*, 3> outs_data,
+             int num_inputs,
+             MPType div_c);
+
 template <typename T, typename MPType, int VecSize = 2>
 __device__ void VectorizedGetSinCos(phi::Array<const T*, 2> sin_cos_data,
                                     const int64_t* position_ids_data,
                                     bool flag_sin_cos,
                                     int64_t index,
+                                    int64_t batch_size,
                                     int64_t seq_len,
                                     int64_t num_heads,
                                     int64_t head_dim,
+                                    int64_t batch_stride,
+                                    int64_t seq_stride,
                                     MPType* out_sin,
                                     MPType* out_cos,
                                     MPType div_c) {
@@ -36,17 +56,16 @@ __device__ void VectorizedGetSinCos(phi::Array<const T*, 2> sin_cos_data,
   if (flag_sin_cos) {
 #pragma unroll
     for (int64_t nx = 0; nx < VecSize; ++nx) {
-      int64_t index_wc = (index + nx) % (seq_len * num_heads * head_dim);
-      int64_t pos_seq_ori = index_wc / (num_heads * head_dim);
+      int64_t pos_seq_ori = (index + nx) / seq_stride % seq_len;
       int64_t pos_seq;
       if (position_ids_data) {
-        int64_t pos_bs = (index + nx) / (seq_len * num_heads * head_dim);
+        int64_t pos_bs = (index + nx) / batch_stride % batch_size;
         int64_t index_ids = pos_bs * seq_len + pos_seq_ori;
         pos_seq = position_ids_data[index_ids];
       } else {
         pos_seq = pos_seq_ori;
       }
-      int64_t pos_head = index_wc % head_dim;
+      int64_t pos_head = (index + nx) % head_dim;
       int64_t index_sc = pos_seq * head_dim + pos_head;
       const T* sin_input = sin_cos_data[0] + index_sc;
       const T* cos_input = sin_cos_data[1] + index_sc;
@@ -58,9 +77,9 @@ __device__ void VectorizedGetSinCos(phi::Array<const T*, 2> sin_cos_data,
 #pragma unroll
     for (int nx = 0; nx < VecSize; ++nx) {
       // get sin_index and cos_index
-      int64_t index_wc = (index + nx) % (seq_len * num_heads * head_dim);
-      int64_t pos_seq = index_wc / (num_heads * head_dim);
-      MPType idx = static_cast<MPType>((index_wc % head_dim) / 2 * 2.0);
+      int64_t pos_seq = (index + nx) / seq_stride % seq_len;
+
+      MPType idx = static_cast<MPType>(((index + nx) % head_dim) / 2 * 2.0);
       MPType indicses =
           static_cast<MPType>(1) /
           pow(static_cast<MPType>(10000), idx * static_cast<MPType>(div_c));
@@ -82,6 +101,8 @@ __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
     int64_t seq_len,
     int64_t num_heads,
     int64_t head_dim,
+    int64_t batch_stride,
+    int64_t seq_stride,
     phi::Array<T*, 3> outs_data,
     int num_inputs,
     MPType div_c) {
@@ -104,16 +125,19 @@ __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
                         position_ids_data,
                         flag_sin_cos,
                         index,
+                        batch_size,
                         seq_len,
                         num_heads,
                         head_dim,
+                        batch_stride,
+                        seq_stride,
                         sin_value,
                         cos_value,
                         div_c);
 
 #pragma unroll
     for (int iter = 0; iter < 3; iter++) {
-      if (iter > num_inputs) break;
+      if (iter >= num_inputs) break;
       const T* input = ins_data[iter] + index;
       VecType* out = reinterpret_cast<VecType*>(outs_data[iter] + index);
 
@@ -125,10 +149,18 @@ __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
         MPType p0 = static_cast<MPType>(input[pr_index]);
         MPType p1 = static_cast<MPType>(input[ls_index]);
 
-        result[pr_index] =
-            cos_value[pr_index] * p0 - sign * sin_value[ls_index] * p1;
-        result[ls_index] =
-            cos_value[ls_index] * p1 + sign * sin_value[pr_index] * p0;
+        if (sign == 1) {
+          result[pr_index] = cos_value[pr_index] * p0;
+          result[pr_index] -= sin_value[pr_index] * p1;
+
+          result[ls_index] = sin_value[ls_index] * p0;
+          result[ls_index] += cos_value[ls_index] * p1;
+        } else if (sign == -1) {
+          result[pr_index] =
+              cos_value[pr_index] * p0 + sin_value[ls_index] * p1;
+          result[ls_index] =
+              cos_value[ls_index] * p1 - sin_value[pr_index] * p0;
+        }
 
         store[pr_index] = static_cast<T>(result[pr_index]);
         store[ls_index] = static_cast<T>(result[ls_index]);
@@ -149,6 +181,8 @@ __global__ void VectorizedFusedRopeWithRotateHalfKernel(
     int64_t seq_len,
     int64_t num_heads,
     int64_t head_dim,
+    int64_t batch_stride,
+    int64_t seq_stride,
     phi::Array<T*, 3> outs_data,
     int num_inputs,
     MPType div_c) {
@@ -171,9 +205,12 @@ __global__ void VectorizedFusedRopeWithRotateHalfKernel(
                         position_ids_data,
                         flag_sin_cos,
                         index,
+                        batch_size,
                         seq_len,
                         num_heads,
                         head_dim,
+                        batch_stride,
+                        seq_stride,
                         sin_value,
                         cos_value,
                         div_c);
@@ -182,7 +219,7 @@ __global__ void VectorizedFusedRopeWithRotateHalfKernel(
     int stride_r = head_dim / 2;
 #pragma unroll
     for (int iter = 0; iter < 3; iter++) {
-      if (iter > num_inputs) break;
+      if (iter >= num_inputs) break;
       // get value_index and rotate_half_index
       int index_v = index;
       int index_r = (index % head_dim) < stride_r ? (index + stride_r)

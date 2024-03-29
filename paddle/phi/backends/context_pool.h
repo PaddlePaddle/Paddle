@@ -20,10 +20,10 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 #include <set>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/utils/test_macros.h"
 
 namespace phi {

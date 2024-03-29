@@ -59,7 +59,7 @@ TEST(OpConverter, ConvertBlock) {
   std::vector<int> dim_vec = {3, 2, 3, 3};
   auto* x = scope.Var("conv2d-Y");
   auto* x_tensor = x->GetMutable<phi::DenseTensor>();
-  x_tensor->Resize(phi::make_ddim(dim_vec));
+  x_tensor->Resize(common::make_ddim(dim_vec));
   x_tensor->mutable_data<float>(platform::CUDAPlace(0));
 
   OpTeller::Global().SetOpConverterType(conv2d_op, OpConverterType::Default);

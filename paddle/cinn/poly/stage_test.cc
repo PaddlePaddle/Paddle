@@ -215,10 +215,10 @@ function fn (_A, _A1, _B)
 )ROC";
     ASSERT_EQ(utils::Trim(target), utils::GetStreamCnt(fn));
 
-    Module::Builder builder("module", common::DefaultHostTarget());
+    Module::Builder builder("module", cinn::common::DefaultHostTarget());
     builder.AddFunction(fn);
 
-    CodeGenC codegen(common::DefaultHostTarget());
+    CodeGenC codegen(cinn::common::DefaultHostTarget());
     codegen.SetInlineBuiltinCodes(false);
     LOG(INFO) << "source:\n"
               << codegen.Compile(builder.Build(),
@@ -320,7 +320,8 @@ void TestElementwiseAddJitPrecession(
   auto fn = Lower("fn", stages, {A, B, C});
   LOG(INFO) << "fn:\n" << fn;
 
-  Module::Builder module_builder("some_module", common::DefaultHostTarget());
+  Module::Builder module_builder("some_module",
+                                 cinn::common::DefaultHostTarget());
   module_builder.AddFunction(fn);
 
   auto jit = backends::SimpleJIT::Create();
@@ -329,17 +330,20 @@ void TestElementwiseAddJitPrecession(
   auto* fn_handler = reinterpret_cast<lower_func_ptr_t>(_fn_handler);
 
   // create buffer and args
-  auto A_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
-                   .set_random()
-                   .Build();
-  auto B_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
-                   .set_random()
-                   .Build();
-  auto C_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
-                   .set_zero()
-                   .Build();
+  auto A_buf =
+      cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+          .set_random()
+          .Build();
+  auto B_buf =
+      cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+          .set_random()
+          .Build();
+  auto C_buf =
+      cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+          .set_zero()
+          .Build();
   auto arg_pack =
-      common::ArgsBuilder().Add(A_buf).Add(B_buf).Add(C_buf).Build();
+      cinn::common::ArgsBuilder().Add(A_buf).Add(B_buf).Add(C_buf).Build();
 
   fn_handler(arg_pack.data(), arg_pack.size());
 
@@ -511,10 +515,10 @@ TEST(ShareBufferWith, basic) {
 
   LOG(INFO) << "fn:\n" << fn;
 
-  Module::Builder builder("some_module", common::DefaultHostTarget());
+  Module::Builder builder("some_module", cinn::common::DefaultHostTarget());
   builder.AddFunction(fn);
 
-  CodeGenC codegen(common::DefaultHostTarget());
+  CodeGenC codegen(cinn::common::DefaultHostTarget());
   codegen.SetInlineBuiltinCodes(false);
 
   LOG(INFO) << "\n"

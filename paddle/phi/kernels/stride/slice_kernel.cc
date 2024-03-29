@@ -20,8 +20,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
-PHI_DECLARE_bool(set_to_1d);
-
 namespace phi {
 
 template <typename Context>
@@ -47,8 +45,9 @@ void SliceStridedKernel(const Context& ctx,
   phi::funcs::CheckAndUpdateSliceAttrs<int64_t>(
       in_dims, new_axes, &starts, &ends, nullptr, nullptr);
 
-  std::vector<int64_t> output_dims = phi::vectorize<int64_t>(input.dims());
-  std::vector<int64_t> output_stride = phi::vectorize<int64_t>(input.strides());
+  std::vector<int64_t> output_dims = common::vectorize<int64_t>(input.dims());
+  std::vector<int64_t> output_stride =
+      common::vectorize<int64_t>(input.strides());
   int64_t output_offset = static_cast<int64_t>(input.offset());
 
   for (size_t i = 0; i < new_axes.size(); ++i) {
@@ -59,9 +58,8 @@ void SliceStridedKernel(const Context& ctx,
   }
 
   std::vector<uint8_t> decrease_flag(output_dims.size(), 0);
-  if (decrease_axis.size() > 0) {
-    for (int i = 0; i < static_cast<int>(decrease_axis.size()); ++i) {
-      int64_t axis = decrease_axis[i];
+  if (!decrease_axis.empty()) {
+    for (auto axis : decrease_axis) {
       decrease_flag[axis] = 1;
     }
 
@@ -72,12 +70,6 @@ void SliceStridedKernel(const Context& ctx,
         new_shape.push_back(output_dims[i]);
         new_stride.push_back(output_stride[i]);
       }
-    }
-    if (FLAGS_set_to_1d && new_shape.size() == 0) {
-      // NOTE(zoooo0820): Hack procssing to 1-D, when axes decrease to 0-D in
-      // slice. This will remove in release 2.6.
-      new_shape.push_back(1);
-      new_stride.push_back(0);
     }
     output_dims = new_shape;
     output_stride = new_stride;
@@ -99,8 +91,11 @@ void SliceStridedKernel(const Context& ctx,
       DDim(output_stride.data(), static_cast<int>(output_stride.size()));
   out->set_meta(meta);
   out->ResetHolder(input.Holder());
+  out->ShareInplaceVersionCounterWith(input);
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    slice, STRIDED, phi::SliceStridedKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(slice,
+                                         STRIDED,
+                                         phi::SliceStridedKernel) {}

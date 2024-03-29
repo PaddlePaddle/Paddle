@@ -33,7 +33,7 @@ TEST(CrossThreadReductionReplacer, basic) {
 #ifdef CINN_WITH_CUDA
   Context::Global().ResetNameId();
   Placeholder<float> A("A", {Expr(64), Expr(128)});
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
   Module::Builder builder("reduce_sum", target);
   Var reduce_j(128, "reduce_j");
   ir::Tensor B = Compute(
@@ -71,7 +71,7 @@ TEST(CrossThreadReductionReplacer, basic) {
         ScheduleBlock(B)
         {
           i0_0, i1 = axis.bind(i, reduce_j)
-          B[i0_0] = cinn_block_reduce_sum_fp32_internal(A[i0_0, i1])
+          B[i0_0] = cinn_block_reduce_sum_fp32_internal_shm(A[i0_0, i1], _Buffer_<cinn_buffer_t*: 32>(shm32__fp32_reduce), false)
         }
       }
     }

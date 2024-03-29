@@ -79,7 +79,7 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   }
 
   const DataLayout data_layout =
-      phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
+      common::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
   if (ctx->IsRuntime() && ctx->HasInput("MomentumTensor")) {
     auto mom = ctx->Inputs("MomentumTensor");
@@ -144,8 +144,9 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
 
   bool check = true;
   if (!ctx->HasInput("Scale") || !ctx->HasInput("Bias") ||
-      ((!ctx->IsRuntime()) && (phi::product(ctx->GetInputDim("Scale")) <= 0 ||
-                               phi::product(ctx->GetInputDim("Bias")) <= 0))) {
+      ((!ctx->IsRuntime()) &&
+       (common::product(ctx->GetInputDim("Scale")) <= 0 ||
+        common::product(ctx->GetInputDim("Bias")) <= 0))) {
     check = false;
   }
 
@@ -229,7 +230,7 @@ phi::KernelKey BatchNormOp::GetKernelTypeForVar(
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_layout = ar.Get<std::string>("data_layout");
-    auto dl = phi::StringToDataLayout(data_layout);
+    auto dl = common::StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
     if (dl != phi::DataLayout::kAnyLayout) {
@@ -307,11 +308,11 @@ void BatchNormOpMaker::Make() {
                 "to true or is_test true. the behavior is equivalent. "
                 "In train mode, when setting use_global_stats True, the "
                 "global mean and variance are also used during train time, "
-                "the BN acts as scaling and shiffting.")
+                "the BN acts as scaling and shifting.")
       .SetDefault(false);
   AddAttr<bool>("trainable_statistics",
                 "(bool, default false) Whether to calculate mean and variance "
-                "in test mode. If setting true in test mode, mean and variace "
+                "in test mode. If setting true in test mode, mean and variance "
                 "will be calculated by current batch statistics.")
       .SetDefault(false);
   AddComment(R"DOC(
@@ -368,7 +369,7 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
   OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "BatchNormGrad");
   const auto x_dims = ctx->GetInputDim("X");
   const DataLayout data_layout =
-      phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
+      common::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
   const int C = static_cast<int>(
       ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
@@ -418,7 +419,7 @@ phi::KernelKey BatchNormGradOp::GetKernelTypeForVar(
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_layout = ar.Get<std::string>("data_layout");
-    auto dl = phi::StringToDataLayout(data_layout);
+    auto dl = common::StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
     if (dl != phi::DataLayout::kAnyLayout) {
@@ -510,7 +511,7 @@ void BatchNormDoubleGradOp::InferShape(
 
   const auto x_dims = ctx->GetInputDim("X");
   const DataLayout data_layout =
-      phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
+      common::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
   const int C = static_cast<int>(
       ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
            ? x_dims[1]
@@ -585,7 +586,7 @@ class BatchNormCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     auto use_global_stats = this->Attr<bool>("use_global_stats");
     auto trainable_statistics = this->Attr<bool>("trainable_statistics");
 
-    VLOG(3) << "Runing batch_norm composite func";
+    VLOG(3) << "Running batch_norm composite func";
     prim::batch_norm_grad<prim::DescTensor>(x,
                                             scale,
                                             bias,

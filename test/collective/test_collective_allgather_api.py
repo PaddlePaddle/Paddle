@@ -149,6 +149,20 @@ class TestCollectiveAllgatherAPI(TestDistBase):
                 dtype=dtype,
             )
 
+    def test_allgather_nccl_dygraph_with_trace_hang(self):
+        dtypes_to_test = [
+            "float32",
+        ]
+        for dtype in dtypes_to_test:
+            self.check_with_place(
+                "collective_allgather_api_dygraph.py",
+                "allgather",
+                "nccl",
+                static_mode="0",
+                dtype=dtype,
+                need_envs={"FLAGS_enable_async_trace": "True"},
+            )
+
     def test_allgather_gloo_dygraph(self):
         dtypes_to_test = [
             "float16",

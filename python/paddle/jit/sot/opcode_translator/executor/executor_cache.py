@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import gc
 import traceback
 import types
 from typing import List, Tuple
@@ -32,7 +33,6 @@ from ...utils import (
 from ..custom_code import CustomCode
 from .guard import Guard
 from .opcode_executor import OpcodeExecutor, OpcodeExecutorBase
-from .pycode_generator import PyCodeGen
 
 GuardedFunction = Tuple[CustomCode, Guard]
 GuardedFunctions = List[GuardedFunction]
@@ -169,7 +169,7 @@ class OpcodeExecutorCache:
                     result = guard(frame)
                 except Exception as e:
                     print(
-                        f"[Cache]: skip checking {guard_str}\n         because error occured {e}"
+                        f"[Cache]: skip checking {guard_str}\n         because error occurred {e}"
                     )
                 if result is False:
                     print(f"[Cache]: missed at {guard_str}")
@@ -191,6 +191,7 @@ def start_translate(frame: types.FrameType, **kwargs) -> GuardedFunction:
     """
     simulator = OpcodeExecutor(frame, **kwargs)
     try:
+        simulator.check_code_simulatable()
         new_custom_code, guard_fn = simulator.transform()
         return new_custom_code, guard_fn
     # TODO(zrr1999): InnerError maybe place before (FallbackError, BreakGraphError)
@@ -204,7 +205,7 @@ def start_translate(frame: types.FrameType, **kwargs) -> GuardedFunction:
             raise InnerError(
                 f"{simulator._code.co_name} should not fallback, but got '{e}'"
             )
-        # if disable_eval_frame is True, it means we want fallback to speedup rather than error occured
+        # if disable_eval_frame is True, it means we want fallback to speedup rather than error occurred
         if is_strict_mode() and e.disable_eval_frame is False:
             raise
         log(
@@ -212,19 +213,17 @@ def start_translate(frame: types.FrameType, **kwargs) -> GuardedFunction:
             f"Unsupport Frame is {frame.f_code}, error message is: \n"
             + "".join(traceback.format_exception(type(e), e, e.__traceback__)),
         )
-
-        # NOTE: If resume fn need fallback, we should replace NullVariable using NULL otherwise will fail to run
-        py_codegen = PyCodeGen(frame)
-        new_code = py_codegen.replace_null_variable()
         # simulation not complete, not sure whether this code has sir, set disable_eval_frame = False
         guard_fn = (
             dummy_guard if e.disable_eval_frame is False else simulator.guard_fn
         )
         return (
-            CustomCode(new_code, e.disable_eval_frame),
+            CustomCode(None, e.disable_eval_frame),
             guard_fn,
         )
     except Exception as e:
         raise InnerError(OpcodeExecutorBase.error_message_summary(e)) from e
     finally:
         simulator.cleanup()
+        del simulator
+        gc.collect()

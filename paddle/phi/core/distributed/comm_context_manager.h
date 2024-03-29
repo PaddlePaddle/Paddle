@@ -18,10 +18,11 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/distributed/comm_context.h"
-#include "paddle/phi/core/macros.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/backends/gpu/forwards.h"
@@ -64,13 +65,20 @@ class CommContextManager {
 
   static void SetDeviceId(int dev_id);
 
+  void SetGroupSize(const std::string& pg_key, int size);
+
+  void AddGroupRanks(const std::string& pg_key, std::vector<int> global_ranks);
+
+  std::vector<int> GetGroupRanks(const std::string& pg_key) const;
+
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   static void CreateNCCLCommContext(const std::shared_ptr<Store>& store,
                                     const std::string& unique_comm_key,
                                     int rank,
                                     int size,
                                     const std::string& hash_key = "",
-                                    const P2POption* opt = nullptr);
+                                    const P2POption* opt = nullptr,
+                                    int nccl_comm_init_option = 0);
 #endif
 
 #if defined(PADDLE_WITH_GLOO)
@@ -89,6 +97,14 @@ class CommContextManager {
                                     const std::string& hash_key = "");
 #endif
 
+#if defined(PADDLE_WITH_XPU_BKCL)
+  static void CreateBKCLCommContext(const std::shared_ptr<Store>& store,
+                                    const std::string& unique_comm_key,
+                                    int rank,
+                                    int size,
+                                    const std::string& hash_key = "");
+#endif
+
  private:
   DISABLE_COPY_AND_ASSIGN(CommContextManager);
 
@@ -96,6 +112,11 @@ class CommContextManager {
       id_to_comm_context_;
   std::shared_ptr<Store> store_;
   static int device_id;
+
+  // process group key to global ranks map
+  std::unordered_map<std::string, std::vector<int>> pg_key_ranks_;
+  // process group key to group size map
+  std::unordered_map<std::string, int> pg_key_size_;
 };
 
 }  // namespace distributed

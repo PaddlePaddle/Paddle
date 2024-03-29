@@ -164,7 +164,7 @@ All possible KernelSignatures returned by {{op["name"] | to_pascal_case }}OpArgu
 
 KernelSignature {{op["op_name"] | to_pascal_case }}OpArgumentMapping(const ArgumentMappingContext& ctx) {
   {% set kernel_args = op["kernel"]["param"] %}
-  {% set optional_inputs_name = op["inputs"]| find_optinal_inputs_name %}
+  {% set optional_inputs_name = op["inputs"]| find_optional_inputs_name %}
   {{get_input_list(op["inputs"], kernel_args)}};
   paddle::small_vector<const char*> attrs;
   {% for attr in op["attrs"]%}
@@ -565,15 +565,45 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
     grad_op->SetType("{{name}}");
 
   {% for input in op["inputs"] %}
+    {% if input["optional"] %}
+    {{generate_optional_input_for_backward(input["fluid_name"],
+    forward_input_names,
+    forward_output_names,
+    forward_input_orig_names,
+    forward_output_orig_names)}} {
+      grad_op->SetInput({{input["fluid_name"] | to_opmaker_name}}, this->{{extract_input_from_forward(
+        input["fluid_name"],
+        forward_input_names,
+        forward_output_names,
+        forward_input_orig_names,
+        forward_output_orig_names)}});
+    }
+    {% else %}
     grad_op->SetInput({{input["fluid_name"] | to_opmaker_name}}, this->{{extract_input_from_forward(
       input["fluid_name"],
       forward_input_names,
       forward_output_names,
       forward_input_orig_names,
       forward_output_orig_names)}});
+    {% endif %}
   {% endfor %}
 
   {% for output in op["outputs"] %}
+    {% if output["optional"] %}
+    {{generate_optional_output_for_backward(output["fluid_name"],
+          forward_input_names,
+          forward_output_names,
+          forward_input_orig_names,
+          forward_output_orig_names)}} {
+      grad_op->SetOutput({{output["fluid_name"] | to_opmaker_name}}, this->{{extract_output_from_forward(
+        output["fluid_name"],
+        forward_input_names,
+        forward_output_names,
+        forward_input_orig_names,
+        forward_output_orig_names,
+        output['drop_empty_grad'])}});
+    }
+    {% else %}
     grad_op->SetOutput({{output["fluid_name"] | to_opmaker_name}}, this->{{extract_output_from_forward(
       output["fluid_name"],
       forward_input_names,
@@ -581,6 +611,7 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
       forward_input_orig_names,
       forward_output_orig_names,
       output['drop_empty_grad'])}});
+    {% endif %}
   {% endfor %}
 
     grad_op->SetAttrMap(this->Attrs());
@@ -861,6 +892,25 @@ class {{op_name | to_composite_grad_opmaker_name}} : public prim::CompositeGradO
   {% endfor %}
 {%- endmacro %}
 
+{% macro generate_optional_input_for_backward(name,
+  input_names, output_names,
+  input_orig_names, output_orig_names) %}{# inline #}
+  {% if name in input_names %}
+    {% set name_in_forward_orig = input_orig_names[input_names.index(name)]%}
+if (this->HasInput({{name_in_forward_orig | to_opmaker_name}}))
+  {%- elif name in output_names %}
+    {% set name_in_forward_orig = output_orig_names[output_names.index(name)]%}
+if (this->HasOutput({{name_in_forward_orig | to_opmaker_name}}))
+  {%- elif name.endswith("_grad") %}{# output grad#}
+    {% set name_in_forward = name[:-5] %}
+    {% if name_in_forward in output_names %}
+      {% set name_in_forward_orig = output_orig_names[output_names.index(name_in_forward)] %}
+if (this->HasOutput({{name_in_forward_orig | to_opmaker_name}}))
+    {%- endif %}
+  {%- endif %}
+{%- endmacro %}
+
+
 {% macro extract_input_from_forward(name,
   input_names, output_names,
   input_orig_names, output_orig_names) %}{# inline #}
@@ -876,6 +926,15 @@ Output({{name_in_forward_orig | to_opmaker_name}})
       {% set name_in_forward_orig = output_orig_names[output_names.index(name_in_forward)] %}
 OutputGrad({{name_in_forward_orig | to_opmaker_name}})
     {%- endif %}
+  {%- endif %}
+{%- endmacro %}
+
+{% macro generate_optional_output_for_backward(name, input_names, output_names,
+  input_orig_names, output_orig_names) %}{# inline #}
+  {% if name[:-5] in input_names %}
+    {% set name_in_forward = name[:-5] %}
+    {% set name_in_forward_orig = input_orig_names[input_names.index(name_in_forward)]%}
+if (this->HasInput({{name_in_forward_orig | to_opmaker_name}}))
   {%- endif %}
 {%- endmacro %}
 

@@ -20,6 +20,7 @@ from op_test import OpTest, skip_check_grad_ci
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestSvdOp(OpTest):
@@ -51,7 +52,7 @@ class TestSvdOp(OpTest):
         self._output_data = np.linalg.svd(self._input_data)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['U', 'VH'])
+        self.check_output(no_check_set=['U', 'VH'], check_pir=True)
 
     def test_svd_forward(self):
         """u matmul diag(s) matmul vt must become X"""
@@ -71,13 +72,13 @@ class TestSvdOp(OpTest):
         paddle.enable_static()
 
     def check_S_grad(self):
-        self.check_grad(['X'], ['S'], numeric_grad_delta=0.001)
+        self.check_grad(['X'], ['S'], numeric_grad_delta=0.001, check_pir=True)
 
     def check_U_grad(self):
-        self.check_grad(['X'], ['U'], numeric_grad_delta=0.001)
+        self.check_grad(['X'], ['U'], numeric_grad_delta=0.001, check_pir=True)
 
     def check_V_grad(self):
-        self.check_grad(['X'], ['VH'], numeric_grad_delta=0.001)
+        self.check_grad(['X'], ['VH'], numeric_grad_delta=0.001, check_pir=True)
 
     def test_check_grad(self):
         """
@@ -89,7 +90,7 @@ class TestSvdOp(OpTest):
 
 
 class TestSvdCheckGrad2(TestSvdOp):
-    # NOTE(xiongkun03): because we want to construct some full rank matrics,
+    # NOTE(xiongkun03): because we want to construct some full rank matrices,
     #                   so we can't specifize matrices which numel() > 100
 
     no_need_check_grad = True
@@ -293,22 +294,24 @@ class TestSvdAPI(unittest.TestCase):
         gt_u, gt_s, gt_vh = np.linalg.svd(a, full_matrices=False)
         np.testing.assert_allclose(s, gt_s, rtol=1e-05)
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for place in places:
-            with base.program_guard(base.Program(), base.Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 a = np.random.rand(5, 5)
                 x = paddle.static.data(
                     name="input", shape=[5, 5], dtype='float64'
                 )
                 u, s, vh = paddle.linalg.svd(x)
-                exe = base.Executor(place)
+                exe = paddle.static.Executor(place)
                 gt_u, gt_s, gt_vh = np.linalg.svd(a, full_matrices=False)
                 fetches = exe.run(
-                    base.default_main_program(),
                     feed={"input": a},
                     fetch_list=[s],
                 )

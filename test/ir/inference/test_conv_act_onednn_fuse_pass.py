@@ -21,8 +21,7 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 
 class TestConvActOneDNNFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
-        config = self.create_inference_config(use_gpu=False)
-        config.enable_mkldnn()
+        config = self.create_inference_config(use_gpu=False, use_mkldnn=True)
         yield config, ['fused_conv2d'], (1e-4, 1e-5)
 
     def is_program_valid(self, prog_config):

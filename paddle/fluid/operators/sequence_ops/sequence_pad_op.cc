@@ -52,11 +52,11 @@ class SequencePadOp : public framework::OperatorWithKernel {
                           "The rank of SequencePadOp Input(X) can't be less "
                           "than 2. But the rank we received is %d",
                           x_dims.size()));
-    auto time_step_dims = phi::slice_ddim(x_dims, 1, x_dims.size());
+    auto time_step_dims = common::slice_ddim(x_dims, 1, x_dims.size());
     auto pad_value_dims = ctx->GetInputDim("PadValue");
     PADDLE_ENFORCE_EQ(
-        pad_value_dims == phi::make_ddim({1}) ||
-            pad_value_dims == phi::make_ddim({}) ||
+        pad_value_dims == common::make_ddim({1}) ||
+            pad_value_dims == common::make_ddim({}) ||
             pad_value_dims == time_step_dims,
         true,
         platform::errors::InvalidArgument(
@@ -127,12 +127,12 @@ class SequencePadOp : public framework::OperatorWithKernel {
 
     std::vector<int> out_dims_vec{out_dim_0, padded_length};
     std::vector<int> len_dims_vec{out_dim_0};
-    auto time_step_dims_vec = phi::vectorize<int>(time_step_dims);
+    auto time_step_dims_vec = common::vectorize<int>(time_step_dims);
     out_dims_vec.insert(out_dims_vec.end(),
                         time_step_dims_vec.begin(),
                         time_step_dims_vec.end());
-    ctx->SetOutputDim("Out", phi::make_ddim(out_dims_vec));
-    ctx->SetOutputDim("Length", phi::make_ddim(len_dims_vec));
+    ctx->SetOutputDim("Out", common::make_ddim(out_dims_vec));
+    ctx->SetOutputDim("Length", common::make_ddim(len_dims_vec));
   }
 
  protected:
@@ -157,10 +157,10 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
              "to time steps in sequences. If it's a scalar, it will be "
              "automatically broadcasted to the shape of time step.");
     AddOutput("Out",
-              "(phi::DenseTensor) The output vairable, which contains padded "
+              "(phi::DenseTensor) The output variable, which contains padded "
               "sequences.");
     AddOutput("Length",
-              "(phi::DenseTensor) The output vairable, which contains the "
+              "(phi::DenseTensor) The output variable, which contains the "
               "actual length of "
               "sequences before padding.");
     AddAttr<int>(
@@ -188,7 +188,7 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
           X.data = [a, b, c, d, e]
       and Input(PadValue):
           PadValue.data = [0]
-      and attribite 'padded_length' = 4,
+      and attribute 'padded_length' = 4,
       then we get phi::DenseTensor:
           Out.data = [[a, b, 0, 0],
                       [c, d, e, 0]]
@@ -201,7 +201,7 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
           X.data = [[a1, a2], [b1, b2], [c1, c2], [d1, d2], [e1, e2]]
       and Input(PadValue):
           PadValue.data = [0]
-      and attribite 'padded_length' = -1, which mean using the length
+      and attribute 'padded_length' = -1, which mean using the length
       of longest input sequence(3 in this case),
       then we get phi::DenseTensor:
           Out.data = [[[a1, a2], [b1, b2], [0, 0]],
@@ -215,7 +215,7 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
           X.data = [[a1, a2], [b1, b2], [c1, c2], [d1, d2], [e1, e2]]
       and Input(PadValue):
           PadValue.data = [p1, p2]
-      and attribite 'padded_length' = -1, which mean using the length
+      and attribute 'padded_length' = -1, which mean using the length
       of longest input sequence(3 in this case),
       then we get phi::DenseTensor:
           Out.data = [[[a1, a2], [b1, b2], [p1, p2]],

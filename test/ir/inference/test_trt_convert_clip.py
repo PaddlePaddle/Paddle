@@ -151,7 +151,7 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
         program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
-        ), 1e-3
+        ), (1e-3, 1e-3)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
@@ -164,7 +164,7 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
         program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
-        ), 1e-3
+        ), (1e-3, 1e-3)
 
     def test(self):
         self.run_test()

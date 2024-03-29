@@ -58,11 +58,26 @@ class TrilTriuOpDefaultTest(OpTest):
         self.real_op_type = np.random.choice(['triu', 'tril'])
         self.diagonal = None
         self.X = np.arange(1, 101, dtype=self.dtype).reshape([10, -1])
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.X = (
+                np.random.uniform(-1, 1, [10, 10])
+                + 1j * np.random.uniform(-1, 1, [10, 10])
+            ).astype(self.dtype)
 
 
 class TrilTriuOpDefaultTestFP16(TrilTriuOpDefaultTest):
     def init_dtype(self):
         self.dtype = np.float16
+
+
+class TrilTriuOpDefaultTestComplex_64(TrilTriuOpDefaultTest):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TrilTriuOpDefaultTestComplex_128(TrilTriuOpDefaultTest):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 @unittest.skipIf(
@@ -101,7 +116,7 @@ class TrilTriuOpDefaultTestBF16(TrilTriuOpDefaultTest):
 def case_generator(op_type, Xshape, diagonal, expected, dtype):
     """
     Generate testcases with the params shape of X, diagonal and op_type.
-    If arg`expercted` is 'success', it will register an Optest case and expect to pass.
+    If arg `expected` is 'success', it will register an OpTest case and expect to pass.
     Otherwise, it will register an API case and check the expect failure.
     """
     cls_name = (
@@ -146,6 +161,24 @@ def case_generator(op_type, Xshape, diagonal, expected, dtype):
             self.diagonal = diagonal
             self.X = np.random.random(Xshape).astype("float32")
 
+    class SuccessCaseComplex64(TrilTriuOpDefaultTestComplex_64):
+        def initTestCase(self):
+            self.init_dtype()
+            self.real_op_type = op_type
+            self.diagonal = diagonal
+            self.X = (
+                np.random.random(Xshape) + 1j * np.random.random(Xshape)
+            ).astype("complex64")
+
+    class SuccessCaseComplex128(TrilTriuOpDefaultTestComplex_128):
+        def initTestCase(self):
+            self.init_dtype()
+            self.real_op_type = op_type
+            self.diagonal = diagonal
+            self.X = (
+                np.random.random(Xshape) + 1j * np.random.random(Xshape)
+            ).astype("complex128")
+
     if dtype == "float64":
         CLASS = locals()[
             'SuccessCase' if expected == "success" else 'FailureCase'
@@ -157,6 +190,14 @@ def case_generator(op_type, Xshape, diagonal, expected, dtype):
     elif dtype == "bfloat16":
         CLASS = locals()[
             'SuccessCaseBF16' if expected == "success" else 'FailureCase'
+        ]
+    elif dtype == "complex64":
+        CLASS = locals()[
+            'SuccessCaseComplex64' if expected == "success" else 'FailureCase'
+        ]
+    elif dtype == "complex128":
+        CLASS = locals()[
+            'SuccessCaseComplex128' if expected == "success" else 'FailureCase'
         ]
     else:
         raise ValueError(f"Not supported dtype {dtype}")
@@ -185,7 +226,7 @@ cases = {
         (2020,): [None],
     },
 }
-for dtype in ["float64", "float16", "bfloat16"]:
+for dtype in ["float64", "float16", "bfloat16", "complex64", "complex128"]:
     for _op_type in ['tril', 'triu']:
         for _expected, _params in cases.items():
             for _Xshape, _diaglist in _params.items():
@@ -204,7 +245,7 @@ class TestTrilTriuOpAPI(unittest.TestCase):
     def test_api(self):
         paddle.enable_static()
 
-        dtypes = ['float16', 'float32']
+        dtypes = ['float16', 'float32', 'complex64', 'complex128']
         for dtype in dtypes:
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
@@ -213,6 +254,11 @@ class TestTrilTriuOpAPI(unittest.TestCase):
                 x = paddle.static.data(
                     shape=[1, 9, -1, 4], dtype=dtype, name='x'
                 )
+                if dtype == 'complex64' or dtype == 'complex128':
+                    data = (
+                        np.random.uniform(-1, 1, [1, 9, 9, 4])
+                        + 1j * np.random.uniform(-1, 1, [1, 9, 9, 4])
+                    ).astype(dtype)
                 tril_out, triu_out = tensor.tril(x), tensor.triu(x)
 
                 place = (
@@ -232,11 +278,16 @@ class TestTrilTriuOpAPI(unittest.TestCase):
     def test_api_with_dygraph(self):
         paddle.disable_static()
 
-        dtypes = ['float16', 'float32']
+        dtypes = ['float16', 'float32', 'complex64', 'complex128']
         for dtype in dtypes:
             with base.dygraph.guard():
                 data = np.random.random([1, 9, 9, 4]).astype(dtype)
-                x = base.dygraph.to_variable(data)
+                if dtype == 'complex64' or dtype == 'complex128':
+                    data = (
+                        np.random.uniform(-1, 1, [1, 9, 9, 4])
+                        + 1j * np.random.uniform(-1, 1, [1, 9, 9, 4])
+                    ).astype(dtype)
+                x = paddle.to_tensor(data)
                 tril_out, triu_out = (
                     tensor.tril(x).numpy(),
                     tensor.triu(x).numpy(),
@@ -248,7 +299,7 @@ class TestTrilTriuOpAPI(unittest.TestCase):
     def test_base_api(self):
         paddle.enable_static()
 
-        dtypes = ['float16', 'float32']
+        dtypes = ['float16', 'float32', 'complex64', 'complex128']
         for dtype in dtypes:
             prog = paddle.static.Program()
             startup_prog = paddle.static.Program()
@@ -257,6 +308,11 @@ class TestTrilTriuOpAPI(unittest.TestCase):
                 x = paddle.static.data(
                     shape=[1, 9, -1, 4], dtype=dtype, name='x'
                 )
+                if dtype == 'complex64' or dtype == 'complex128':
+                    data = (
+                        np.random.uniform(-1, 1, [1, 9, 9, 4])
+                        + 1j * np.random.uniform(-1, 1, [1, 9, 9, 4])
+                    ).astype(dtype)
                 triu_out = paddle.triu(x)
 
                 place = (

@@ -66,6 +66,7 @@ class TestRealOp(OpTest):
             'Out',
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
+            check_pir=True,
         )
 
 
@@ -144,13 +145,15 @@ class TestRealAPI(unittest.TestCase):
             out = paddle_apis[self.api](x, name="real_res")
             self.assertTrue("real_res" in out.name)
 
-    def test_dtype_error(self):
+    @test_with_pir_api
+    def test_dtype_static_error(self):
         # in static graph mode
         with self.assertRaises(TypeError):
             with static.program_guard(static.Program()):
                 x = static.data(name="x", shape=self._shape, dtype="float32")
                 out = paddle_apis[self.api](x, name="real_res")
 
+    def test_dtype_dygraph_error(self):
         # in dynamic mode
         with self.assertRaises(RuntimeError):
             with base.dygraph.guard():

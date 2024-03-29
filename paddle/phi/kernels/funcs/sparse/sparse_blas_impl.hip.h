@@ -14,11 +14,11 @@
 
 #pragma once
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/dynload/rocsparse.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/memory_utils.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
@@ -64,13 +64,13 @@ template <typename T, typename IntT>
 inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
                                 const phi::GPUContext& dev_ctx,
                                 rocsparse_spmat_descr* descriptor) {
-  std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
+  std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
   auto x_ndims = xdim_vec.size();
   PADDLE_ENFORCE_GE(
       x_ndims,
       2,
       phi::errors::InvalidArgument("the dim size of SparseCsrTensor must be "
-                                   "greater than or eaqual to 2."));
+                                   "greater than or equal to 2."));
   int64_t M = xdim_vec[x_ndims - 2];
   int64_t N = xdim_vec[x_ndims - 1];
   int batch_size = 1;
@@ -115,13 +115,13 @@ template <typename T, typename IntT>
 inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
                                 const phi::GPUContext& dev_ctx,
                                 rocsparse_spmat_descr* descriptor) {
-  std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
+  std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
   auto x_ndims = xdim_vec.size();
   PADDLE_ENFORCE_GE(
       x_ndims,
       2,
       phi::errors::InvalidArgument("the dim size of SparseCooTensor must be "
-                                   "greater than or eaqual to 2."));
+                                   "greater than or equal to 2."));
 
   int64_t M = xdim_vec[x_ndims - 2];
   int64_t N = xdim_vec[x_ndims - 1];
@@ -203,13 +203,13 @@ class RocSparseDnMatDescriptor {
   explicit RocSparseDnMatDescriptor(const phi::DenseTensor& x,
                                     const phi::GPUContext& dev_ctx)
       : dev_ctx_(dev_ctx) {
-    std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
+    std::vector<int64_t> xdim_vec = common::vectorize(x.dims());
     auto x_ndims = xdim_vec.size();
     PADDLE_ENFORCE_GE(
         x_ndims,
         2,
         phi::errors::InvalidArgument("the dim size of DenseTensor must be "
-                                     "greater than or eaqual to 2."));
+                                     "greater than or equal to 2."));
 
     int64_t M = xdim_vec[x_ndims - 2];
     int64_t N = xdim_vec[x_ndims - 1];

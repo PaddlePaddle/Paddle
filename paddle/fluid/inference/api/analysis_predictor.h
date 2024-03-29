@@ -13,15 +13,13 @@
 // limitations under the License.
 
 #pragma once
+
 #include <algorithm>
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/phi/common/data_type.h"
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
-#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
-#endif
+
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_compatible_info.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
@@ -31,12 +29,20 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/resource_manager.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
-#include "paddle/fluid/string/printf.h"
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/utils/string/printf.h"
+
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
+#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
+#endif
+
 #ifdef PADDLE_WITH_TESTING
 #include <gtest/gtest.h>
 #include <gtest/gtest_prod.h>
 #endif
+
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/pir/include/core/program.h"
 
 namespace paddle_infer {
 namespace experimental {
@@ -98,25 +104,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \param[in] AnalysisConfig config
   ///
-  explicit AnalysisPredictor(const AnalysisConfig &config) : config_(config) {
-    if (config_.shape_range_info_collected()) {
-      config_.SwitchIrOptim(false);
-    }
-    int trt_identifier = config_.trt_engine_memory_sharing_identifier_;
-    if (trt_identifier > 0) {
-      // NOTE(liuyuanle): For convenience, we set the id of the predictor to
-      // negative sharing_identifier directly. In the future, this may affect
-      // the meaning of negative predictor id.
-      predictor_id_ = -trt_identifier;
-      LOG(WARNING)
-          << "Since the engine context memory of multiple predictors "
-             "is enabled in Paddle-TRT, we set the id of these predictors to "
-             "negative sharing_identifier you specified : "
-          << predictor_id_;
-    } else {
-      predictor_id_ = inference::GetUniqueId();
-    }
-  }
+  explicit AnalysisPredictor(const AnalysisConfig &config);
   ///
   /// \brief Destroy the Analysis Predictor object
   ///
@@ -183,7 +171,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \brief Get the Output Tensor object
   ///
-  /// \param[in] name otuput name
+  /// \param[in] name output name
   /// \return output tensor
   ///
   std::unique_ptr<ZeroCopyTensor> GetOutputTensor(
@@ -216,9 +204,10 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \brief Run the prediction engine
   ///
+  /// \param switch_stream Whether the stream is switched
   /// \return Whether the function executed successfully
   ///
-  bool ZeroCopyRun() override;
+  bool ZeroCopyRun(bool switch_stream = false) override;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // Note: Can only be used under thread_local semantics.
@@ -320,7 +309,7 @@ class AnalysisPredictor : public PaddlePredictor {
 
   ///
   /// \brief Register a output hook function to operate the intermediate tensor
-  /// of op output. when using this function, memory reuse should be tured off.
+  /// of op output. when using this function, memory reuse should be turned off.
   /// The hook function signature is void(const std::string&, const
   /// std::string&, const paddle::Tensor&>). Here, the first parameter is op's
   /// type, the second param is output var name of the op, and the third
@@ -390,7 +379,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \brief Prepare input data, only used in Run()
   ///
-  /// \param[in] input_datas inpute tensors
+  /// \param[in] input_datas input tensors
   /// \param[in] scope the scope used by predictor
   /// \return Whether the function executed successfully
   ///
@@ -400,7 +389,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \brief Prepare input data, only used in Run()
   ///
-  /// \param[in] inputs inpute tensors
+  /// \param[in] inputs input tensors
   /// \param[in] scope the scope used by predictor
   /// \return Whether the function executed successfully
   ///
@@ -505,6 +494,8 @@ class AnalysisPredictor : public PaddlePredictor {
   void InitPlace();
   void InitDeviceContexts();
   void InitResourceManager(void *stream);
+  std::string GetOptimizedModelPath();
+  void ClearExtraParams();
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   // fleet exe related
@@ -564,6 +555,7 @@ class AnalysisPredictor : public PaddlePredictor {
   std::shared_ptr<framework::Scope> scope_;
   framework::Scope *sub_scope_{nullptr};
   std::shared_ptr<framework::ProgramDesc> inference_program_;
+  std::shared_ptr<pir::Program> pir_program_;
   std::vector<framework::OpDesc *> feeds_;
   std::map<std::string, size_t> feed_names_;
   // Sorted according to the idx.

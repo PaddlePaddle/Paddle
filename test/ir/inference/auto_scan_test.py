@@ -237,8 +237,8 @@ class AutoScanTest(unittest.TestCase):
             config.switch_ir_optim(ir_optim)
         if use_gpu:
             config.enable_use_gpu(100, 0)
-        if use_mkldnn:
-            config.enable_mkldnn()
+        if not use_mkldnn:
+            config.disable_mkldnn()
         if use_xpu:
             config.enable_xpu()
         if passes is not None:
@@ -278,9 +278,9 @@ class MkldnnAutoScanTest(AutoScanTest):
                     model, params, prog_config, base_config, feed_data
                 )
             )
-            self.success_log(f"basline program_config: {prog_config}")
+            self.success_log(f"baseline program_config: {prog_config}")
             self.success_log(
-                f"basline predictor_config: {self.inference_config_str(base_config)}"
+                f"baseline predictor_config: {self.inference_config_str(base_config)}"
             )
 
             for pred_config, (atol, rtol) in self.sample_predictor_configs(
@@ -340,6 +340,26 @@ class MkldnnAutoScanTest(AutoScanTest):
         enable_gpu = config.use_gpu()
         dic["use_gpu"] = enable_gpu
         return str(dic)
+
+
+class PirMkldnnAutoScanTest(MkldnnAutoScanTest):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def run_test_config(
+        self, model, params, prog_config, pred_config, feed_data
+    ) -> Dict[str, np.ndarray]:
+        """
+        Test a single case.
+        """
+        pred_config.enable_new_ir(True)
+        pred_config.switch_ir_optim(False)
+        pred_config.enable_new_executor()
+        result = super().run_test_config(
+            model, params, prog_config, pred_config, feed_data
+        )
+        pred_config.enable_new_ir(False)
+        return result
 
 
 class PassAutoScanTest(AutoScanTest):
@@ -561,11 +581,11 @@ class PassAutoScanTest(AutoScanTest):
             dic["passes"] = self.passes
 
         enable_trt = config.tensorrt_engine_enabled()
-        trt_precison = config.tensorrt_precision_mode()
+        trt_precision = config.tensorrt_precision_mode()
         trt_dynamic_shape = config.tensorrt_dynamic_shape_enabled()
         if enable_trt:
             dic["use_trt"] = True
-            dic["trt_precision"] = trt_precison
+            dic["trt_precision"] = trt_precision
             dic["use_dynamic_shape"] = trt_dynamic_shape
         else:
             dic["use_trt"] = False
@@ -681,9 +701,15 @@ class TrtLayerAutoScanTest(AutoScanTest):
             np.testing.assert_allclose(arr, baseline[key], rtol=rtol, atol=atol)
 
     def assert_op_size(self, trt_engine_num, paddle_op_num):
+        fp32_last_pass = "transpose_flatten_concat_fuse_pass"
+        fp16_last_pass = "tensorrt_subgraph_pass"
         last_passed_program = os.path.join(
-            self.cache_dir, "transpose_flatten_concat_fuse_pass.pdmodel"
+            self.cache_dir, f"{fp32_last_pass}.pdmodel"
         )
+        if not os.path.exists(last_passed_program):
+            last_passed_program = os.path.join(
+                self.cache_dir, f"{fp16_last_pass}.pdmodel"
+            )
         model_bytes = paddle.static.load_from_file(last_passed_program)
         pg = paddle.static.deserialize_program(model_bytes)
         main_block = pg.desc.block(0)
@@ -707,11 +733,11 @@ class TrtLayerAutoScanTest(AutoScanTest):
     def inference_config_str(self, config: paddle_infer.Config) -> str:
         dic = {}
         enable_trt = config.tensorrt_engine_enabled()
-        trt_precison = config.tensorrt_precision_mode()
+        trt_precision = config.tensorrt_precision_mode()
         trt_dynamic_shape = config.tensorrt_dynamic_shape_enabled()
         if enable_trt:
             dic["use_trt"] = True
-            dic["trt_precision"] = trt_precison
+            dic["trt_precision"] = trt_precision
             dic["use_dynamic_shape"] = trt_dynamic_shape
         else:
             dic["use_trt"] = False
@@ -739,27 +765,17 @@ class TrtLayerAutoScanTest(AutoScanTest):
             if quant:
                 model, params = create_quant_model(model, params)
 
-            feed_data = {}
-            for name, tensor_config in prog_config.inputs.items():
-                feed_data[name] = {
-                    "data": tensor_config.data,
-                    "lod": tensor_config.lod,
-                }
-
             if not skip_baseline:
                 # baseline: gpu run, we only test float32
                 gpu_config = self.create_inference_config(use_trt=False)
-                prog_config = prog_config.set_input_type(
-                    np.float16
-                ).set_input_type(np.float32)
                 baseline_result = self.run_test_config(
                     model,
                     params,
                     prog_config,
                     gpu_config,
-                    feed_data,
+                    prog_config.get_feed_data(),
                 )
-                self.success_log(f"basline program_config: {prog_config}")
+                self.success_log(f"baseline program_config: {prog_config}")
 
             for (
                 pred_config,
@@ -813,6 +829,10 @@ class TrtLayerAutoScanTest(AutoScanTest):
                     continue
 
                 try:
+                    model, params = create_fake_model(prog_config)
+                    if quant:
+                        model, params = create_quant_model(model, params)
+                    feed_data = prog_config.get_feed_data()
                     pred_config_deserialize = paddle_infer.Config(pred_config)
                     trt_result = self.run_test_config(
                         model, params, prog_config, pred_config, feed_data

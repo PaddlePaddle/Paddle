@@ -41,7 +41,7 @@ TEST(tanh, basic) {
 
   auto jit = backends::SimpleJIT::Create();
 
-  ir::Module::Builder builder("module1", common::DefaultHostTarget());
+  ir::Module::Builder builder("module1", cinn::common::DefaultHostTarget());
 
   auto fn = Lower("fn", stages, {x, y});
   LOG(INFO) << "fn:\n" << fn;
@@ -54,13 +54,15 @@ TEST(tanh, basic) {
   auto fnp = reinterpret_cast<lower_func_ptr_t>(fn_ptr);
   ASSERT_TRUE(fnp);
 
-  auto* x_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
-                    .set_random()
-                    .Build();
-  auto* out_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
-                      .set_zero()
-                      .Build();
-  auto args = common::ArgsBuilder().Add(x_buf).Add(out_buf).Build();
+  auto* x_buf =
+      cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+          .set_random()
+          .Build();
+  auto* out_buf =
+      cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+          .set_zero()
+          .Build();
+  auto args = cinn::common::ArgsBuilder().Add(x_buf).Add(out_buf).Build();
   fnp(args.data(), args.size());
 
   auto* x_buf_data = reinterpret_cast<float*>(x_buf->memory);
@@ -87,7 +89,7 @@ TEST(find_value_nd, basic) {
 
   auto jit = backends::SimpleJIT::Create();
 
-  ir::Module::Builder builder("module1", common::DefaultHostTarget());
+  ir::Module::Builder builder("module1", cinn::common::DefaultHostTarget());
 
   auto fn = Lower("fn", stages, {x, y});
   LOG(INFO) << "fn:\n" << fn;
@@ -100,12 +102,13 @@ TEST(find_value_nd, basic) {
   auto fnp = reinterpret_cast<lower_func_ptr_t>(fn_ptr);
   ASSERT_TRUE(fnp);
 
-  auto* x_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
-                    .set_random()
-                    .Build();
+  auto* x_buf =
+      cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+          .set_random()
+          .Build();
   auto* out_buf =
-      common::BufferBuilder(Int(32), {N.as_int32()}).set_zero().Build();
-  auto args = common::ArgsBuilder().Add(x_buf).Add(out_buf).Build();
+      cinn::common::BufferBuilder(Int(32), {N.as_int32()}).set_zero().Build();
+  auto args = cinn::common::ArgsBuilder().Add(x_buf).Add(out_buf).Build();
   fnp(args.data(), args.size());
 
   auto* x_buf_data = reinterpret_cast<float*>(x_buf->memory);
@@ -135,7 +138,7 @@ TEST(cinn_host_lt_num_fp32, basic) {
 
   auto jit = backends::SimpleJIT::Create();
 
-  ir::Module::Builder builder("module1", common::DefaultHostTarget());
+  ir::Module::Builder builder("module1", cinn::common::DefaultHostTarget());
 
   auto fn = Lower("fn", stages, {x, y});
   LOG(INFO) << "fn:\n" << fn;
@@ -148,12 +151,13 @@ TEST(cinn_host_lt_num_fp32, basic) {
   auto fnp = reinterpret_cast<lower_func_ptr_t>(fn_ptr);
   ASSERT_TRUE(fnp);
 
-  auto* x_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
-                    .set_random()
-                    .Build();
+  auto* x_buf =
+      cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+          .set_random()
+          .Build();
   auto* out_buf =
-      common::BufferBuilder(Int(32), {N.as_int32()}).set_zero().Build();
-  auto args = common::ArgsBuilder().Add(x_buf).Add(out_buf).Build();
+      cinn::common::BufferBuilder(Int(32), {N.as_int32()}).set_zero().Build();
+  auto args = cinn::common::ArgsBuilder().Add(x_buf).Add(out_buf).Build();
   fnp(args.data(), args.size());
 
   auto* x_buf_data = reinterpret_cast<float*>(x_buf->memory);
@@ -186,7 +190,7 @@ TEST(cinn_host_gt_num_fp32, basic) {
 
   auto jit = backends::SimpleJIT::Create();
 
-  ir::Module::Builder builder("module1", common::DefaultHostTarget());
+  ir::Module::Builder builder("module1", cinn::common::DefaultHostTarget());
 
   auto fn = Lower("fn", stages, {x, y});
   LOG(INFO) << "fn:\n" << fn;
@@ -199,12 +203,13 @@ TEST(cinn_host_gt_num_fp32, basic) {
   auto fnp = reinterpret_cast<lower_func_ptr_t>(fn_ptr);
   ASSERT_TRUE(fnp);
 
-  auto* x_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
-                    .set_random()
-                    .Build();
+  auto* x_buf =
+      cinn::common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+          .set_random()
+          .Build();
   auto* out_buf =
-      common::BufferBuilder(Int(32), {N.as_int32()}).set_zero().Build();
-  auto args = common::ArgsBuilder().Add(x_buf).Add(out_buf).Build();
+      cinn::common::BufferBuilder(Int(32), {N.as_int32()}).set_zero().Build();
+  auto args = cinn::common::ArgsBuilder().Add(x_buf).Add(out_buf).Build();
   fnp(args.data(), args.size());
 
   auto* x_buf_data = reinterpret_cast<float*>(x_buf->memory);

@@ -27,6 +27,7 @@ limitations under the License. */
 #if CUDA_VERSION >= 11060
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/dynload/cublasLt.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_helper.h"
@@ -37,10 +38,9 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/scope_guard.h"
 #include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
-#include "paddle/utils/flags.h"
 #include "paddle/utils/optional.h"
 
-PD_DECLARE_int64(cublaslt_exhaustive_search_times);
+COMMON_DECLARE_int64(cublaslt_exhaustive_search_times);
 
 namespace phi {
 namespace funcs {
@@ -394,11 +394,11 @@ void ComputeFusedGemmEpilogueForward(const phi::GPUContext& dev_ctx,
     if (activation == "relu") {
       phi::DataType rs_type = phi::DataType::BOOL;
       size_t reserve_space_size =
-          phi::product(reserve_space->dims()) * SizeOf(rs_type);
+          common::product(reserve_space->dims()) * SizeOf(rs_type);
       dev_ctx.Alloc(reserve_space, rs_type, reserve_space_size);
     } else {
       size_t reserve_space_size =
-          phi::product(reserve_space->dims()) * sizeof(T);
+          common::product(reserve_space->dims()) * sizeof(T);
       dev_ctx.Alloc<T>(reserve_space, reserve_space_size);
     }
 
@@ -646,7 +646,6 @@ void ComputeFusedGemmEpilogueBackwardImplDev(
   // NOTE(zengjinle): I do not know whether the 4MB workspace size is
   // "enough". I just followed the settings from the NVIDIA MLPerf BERT code.
   size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
-  const cublasLtMatmulAlgo_t* algo = nullptr;
   cudaStream_t stream = dev_ctx.stream();
 
   MT alpha = static_cast<MT>(1.0);

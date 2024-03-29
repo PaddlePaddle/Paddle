@@ -321,7 +321,7 @@ class LSTMMKLDNNHandler
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -349,19 +349,17 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
     const auto* weight_h = ctx.Input<phi::DenseTensor>("WeightH");
     const auto* bias = ctx.Input<phi::DenseTensor>("Bias");
     auto* hidden = ctx.Output<phi::DenseTensor>("Hidden");
-    auto* cell = ctx.Output<phi::DenseTensor>("Cell");
-    cell = cell;
     auto x_dims = input->dims();
     auto x_mat_dims = (x_dims.size() == 3 && x_dims[1] == 1)
-                          ? phi::flatten_to_2d(x_dims, 1)
+                          ? common::flatten_to_2d(x_dims, 1)
                           : x_dims;
     // Get attributes
     const bool is_reverse = ctx.Attr<bool>("is_reverse");
     const bool use_peepholes = ctx.Attr<bool>("use_peepholes");
 
     // Get tensor dimensions
-    const auto x_mat_dims_vec = phi::vectorize(x_mat_dims);
-    const auto weight_h_dims = phi::vectorize(weight_h->dims());
+    const auto x_mat_dims_vec = common::vectorize(x_mat_dims);
+    const auto weight_h_dims = common::vectorize(weight_h->dims());
     const auto& input_lod = input->lod()[0];
 
     // Calculate RNN dimensions
@@ -473,9 +471,11 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL(fusion_lstm,
-                   MKLDNN,
-                   phi::CPUPlace,
-                   ops::FusionLSTMMKLDNNKernel<float>,
-                   ops::FusionLSTMMKLDNNKernel<paddle::platform::bfloat16>,
-                   ops::FusionLSTMMKLDNNKernel<uint8_t>);
+
+PD_REGISTER_STRUCT_KERNEL(fusion_lstm,
+                          OneDNN,
+                          ONEDNN,
+                          ops::FusionLSTMMKLDNNKernel,
+                          float,
+                          uint8_t,
+                          paddle::platform::bfloat16) {}

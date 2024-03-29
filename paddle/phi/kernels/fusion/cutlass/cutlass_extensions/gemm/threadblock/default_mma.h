@@ -79,7 +79,7 @@ struct DefaultMma<cutlass::half_t,
                   2,
                   Operator> {
  private:
-  static constexpr int kAlignmentScale = 128 / sizeof_bits<float>::value;
+  static constexpr int kAlignmentScale = 128 / sizeof_bits<half_t>::value;
 
   using Mma = DqMma<half_t,
                     LayoutA,
@@ -87,7 +87,7 @@ struct DefaultMma<cutlass::half_t,
                     uint8_t,
                     LayoutB,
                     kAlignmentB,
-                    float,
+                    half_t,
                     layout::RowMajor,
                     kAlignmentScale,
                     ElementAccumulator,
@@ -154,7 +154,7 @@ struct DefaultMma<cutlass::half_t,
                   2,
                   Operator> {
  private:
-  static constexpr int kAlignmentScale = 128 / sizeof_bits<float>::value;
+  static constexpr int kAlignmentScale = 128 / sizeof_bits<half_t>::value;
 
   using Mma = DqMma<half_t,
                     LayoutA,
@@ -162,7 +162,7 @@ struct DefaultMma<cutlass::half_t,
                     uint4b_t,
                     LayoutB,
                     kAlignmentB,
-                    float,
+                    half_t,
                     layout::RowMajor,
                     kAlignmentScale,
                     ElementAccumulator,
@@ -232,7 +232,7 @@ struct DefaultMma<cutlass::half_t,
                   false,
                   SharedMemoryClear> {
  private:
-  static constexpr int kAlignmentScale = 128 / sizeof_bits<float>::value;
+  static constexpr int kAlignmentScale = 128 / sizeof_bits<half_t>::value;
 
   using Mma = DqMma<half_t,
                     LayoutA,
@@ -240,7 +240,7 @@ struct DefaultMma<cutlass::half_t,
                     uint8_t,
                     LayoutB,
                     kAlignmentB,
-                    float,
+                    half_t,
                     layout::RowMajor,
                     kAlignmentScale,
                     ElementAccumulator,
@@ -314,7 +314,7 @@ struct DefaultMma<cutlass::half_t,
                   false,
                   SharedMemoryClear> {
  private:
-  static constexpr int kAlignmentScale = 128 / sizeof_bits<float>::value;
+  static constexpr int kAlignmentScale = 128 / sizeof_bits<half_t>::value;
 
   using Mma = DqMma<half_t,
                     LayoutA,
@@ -322,7 +322,7 @@ struct DefaultMma<cutlass::half_t,
                     uint4b_t,
                     LayoutB,
                     kAlignmentB,
-                    float,
+                    half_t,
                     layout::RowMajor,
                     kAlignmentScale,
                     ElementAccumulator,

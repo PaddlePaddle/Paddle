@@ -16,7 +16,6 @@ import hashlib
 import os
 import os.path as osp
 import shutil
-import subprocess
 import sys
 import tarfile
 import time
@@ -196,30 +195,7 @@ def _get_download(url, fullname):
         return False
 
 
-def _wget_download(url, fullname):
-    # using wget to download url
-    tmp_fullname = fullname + "_tmp"
-    # –user-agent
-    command = f'wget -O {tmp_fullname} -t {DOWNLOAD_RETRY_LIMIT} {url}'
-    subprc = subprocess.Popen(
-        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
-    _ = subprc.communicate()
-
-    if subprc.returncode != 0:
-        raise RuntimeError(
-            f'{command} failed. Please make sure `wget` is installed or {url} exists'
-        )
-
-    shutil.move(tmp_fullname, fullname)
-
-    return fullname
-
-
-_download_methods = {
-    'get': _get_download,
-    'wget': _wget_download,
-}
+_download_methods = {'get': _get_download}
 
 
 def _download(url, path, md5sum=None, method='get'):
@@ -301,7 +277,10 @@ def _decompress(fname):
 
 def _uncompress_file_zip(filepath):
     with zipfile.ZipFile(filepath, 'r') as files:
-        file_list = files.namelist()
+        file_list_tmp = files.namelist()
+        file_list = []
+        for file in file_list_tmp:
+            file_list.append(file.replace("../", ""))
 
         file_dir = os.path.dirname(filepath)
 
@@ -330,7 +309,13 @@ def _uncompress_file_zip(filepath):
 
 def _uncompress_file_tar(filepath, mode="r:*"):
     with tarfile.open(filepath, mode) as files:
-        file_list = files.getnames()
+        file_list_tmp = files.getnames()
+        file_list = []
+        for file in file_list_tmp:
+            assert (
+                file[0] != "/"
+            ), f"uncompress file path {file} should not start with /"
+            file_list.append(file.replace("../", ""))
 
         file_dir = os.path.dirname(filepath)
 

@@ -59,7 +59,7 @@ void GaussianKernel(const Context& dev_ctx,
                     int seed,
                     DataType dtype,
                     DenseTensor* out) {
-  out->Resize(phi::make_ddim(shape.GetData()));
+  out->Resize(common::make_ddim(shape.GetData()));
   dev_ctx.template Alloc<T>(out);
   if (seed == 0) {
     // use global Generator seed
@@ -77,7 +77,7 @@ void GaussianKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void GaussianInpalceKernel(const Context& dev_ctx,
+void GaussianInplaceKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            float mean,
                            float std,
@@ -110,10 +110,10 @@ PD_REGISTER_KERNEL(gaussian,
                    float,
                    double) {}
 
-PD_REGISTER_KERNEL(gaussian_inpalce,
+PD_REGISTER_KERNEL(gaussian_inplace,
                    GPU,
                    ALL_LAYOUT,
-                   phi::GaussianInpalceKernel,
+                   phi::GaussianInplaceKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    float,

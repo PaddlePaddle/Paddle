@@ -35,13 +35,10 @@ class TestReplicatedSPmdApiForSemiAutoParallel:
         np2 = b.numpy()
         np.testing.assert_allclose(np1, np2, rtol=1e-05, verbose=True)
 
-    def create_local_and_dist_tensor_pair(self, np_array, sharding_specs):
+    def create_local_and_dist_tensor_pair(self, np_array, placements):
         local_t = paddle.to_tensor(np_array, dtype=np_array.dtype)
 
-        dist_attr = dist.DistAttr(
-            mesh=self._mesh, sharding_specs=sharding_specs
-        )
-        dist_t = dist.shard_tensor(np_array, dist_attr=dist_attr)
+        dist_t = dist.shard_tensor(np_array, self._mesh, placements)
 
         local_t.stop_gradient = False
         dist_t.stop_gradient = False
@@ -53,7 +50,7 @@ class TestReplicatedSPmdApiForSemiAutoParallel:
     def test_unbind(self):
         x = np.random.random(size=[2, 8]).astype("float32")
         local_in, dist_in = self.create_local_and_dist_tensor_pair(
-            x, ['x', None]
+            x, [dist.Shard(0)]
         )
         local_out1, local_out2 = paddle.unbind(local_in, axis=0)
         dist_out1, dist_out2 = paddle.unbind(dist_in, axis=0)
@@ -73,10 +70,10 @@ class TestReplicatedSPmdApiForSemiAutoParallel:
         x1 = np.random.random(size=[2, 8]).astype("float32")
         x2 = np.random.random(size=[2, 2, 8]).astype("float32")
         local_in1, dist_in1 = self.create_local_and_dist_tensor_pair(
-            x1, ['x', None]
+            x1, [dist.Shard(0)]
         )
         local_in2, dist_in2 = self.create_local_and_dist_tensor_pair(
-            x2, [None, None, None]
+            x2, [dist.Replicate()]
         )
         local_out = paddle.expand_as(local_in1, local_in2)
         dist_out = paddle.expand_as(dist_in1, dist_in2)
@@ -106,26 +103,32 @@ class TestReplicatedSPmdApiForSemiAutoParallel:
         beta1_pow = np.array([beta1**10]).astype("float32")
 
         local_param, dist_param = self.create_local_and_dist_tensor_pair(
-            param, ['x', None]
+            param, [dist.Shard(0)]
         )
         local_grad, dist_grad = self.create_local_and_dist_tensor_pair(
-            grad, ['x', None]
+            grad, [dist.Shard(0)]
         )
-        local_lr, dist_lr = self.create_local_and_dist_tensor_pair(lr, [None])
+        local_lr, dist_lr = self.create_local_and_dist_tensor_pair(
+            lr, [dist.Replicate()]
+        )
         (
             local_beta1_pow,
             dist_beta1_pow,
-        ) = self.create_local_and_dist_tensor_pair(beta1_pow, [None])
+        ) = self.create_local_and_dist_tensor_pair(
+            beta1_pow, [dist.Replicate()]
+        )
         local_moment, dist_moment = self.create_local_and_dist_tensor_pair(
-            moment, ['x', None]
+            moment, [dist.Shard(0)]
         )
         local_inf_norm, dist_inf_norm = self.create_local_and_dist_tensor_pair(
-            inf_norm, ['x', None]
+            inf_norm, [dist.Shard(0)]
         )
         (
             local_master_param,
             dist_master_param,
-        ) = self.create_local_and_dist_tensor_pair(master_param, [None, None])
+        ) = self.create_local_and_dist_tensor_pair(
+            master_param, [dist.Replicate()]
+        )
 
         (
             local_param_out,
@@ -175,10 +178,10 @@ class TestReplicatedSPmdApiForSemiAutoParallel:
         x = np.random.random(size=[4, 4]).astype(self._dtype)
         y = np.random.random(size=[4]).astype(self._dtype)
         local_in, dist_in = self.create_local_and_dist_tensor_pair(
-            x, ['x', None]
+            x, [dist.Shard(0)]
         )
         local_label, dist_label = self.create_local_and_dist_tensor_pair(
-            y, [None]
+            y, [dist.Replicate()]
         )
 
         mse_loss = paddle.nn.loss.MSELoss()
@@ -191,7 +194,7 @@ class TestReplicatedSPmdApiForSemiAutoParallel:
         dist_out.backward()
         np.testing.assert_equal(dist_in.grad._local_shape, [2, 4], verbose=True)
         np.testing.assert_equal(
-            dist_in.grad.dist_attr.dims_mapping, [0, -1], verbose=True
+            dist_in.grad.placements, [dist.Shard(0)], verbose=True
         )
         self.check_tensor_eq(local_in.grad, dist_in.grad)
 

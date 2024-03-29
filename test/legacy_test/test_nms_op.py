@@ -90,7 +90,7 @@ class TestNMSOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 if __name__ == "__main__":

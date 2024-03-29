@@ -46,12 +46,13 @@ from ..utils import (
 from .common import (
     DistributedOperatorImpl,
     DistributedOperatorImplContainer,
+    ParallelMode,
     get_default_distributed_operator_impl,
     gradient_synchronization,
-    infer_shape,
     naive_copy_op_dist_attr_for_program,
     register_distributed_operator_impl,
     register_distributed_operator_impl_container,
+    set_comm_op_dist_attr_for_program,
     update_op_dims_mapping,
 )
 
@@ -80,14 +81,14 @@ class DistributedEmbedding(DistributedOperatorImplContainer):
 
         # step2: infer spmd
         rule = get_phi_spmd_rule("embedding")
-        # tensor order following order in PHI defition
+        # tensor order following order in PHI definition
         fw_results = rule.infer_forward(x_spec, w_spec, padding_idx, is_sparse)
         bw_results = rule.infer_backward(
             x_spec, w_spec, output_spec, padding_idx, is_sparse
         )
 
         # step3: update dist_attr
-        # tensor order following order in PHI defition
+        # tensor order following order in PHI definition
         changed = update_op_dims_mapping(
             dist_op, [x_name, w_name], [out_name], fw_results, bw_results
         )
@@ -180,13 +181,17 @@ def adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var):
         intermediate_var_0,
         Ids_var_dist_attr.dims_mapping,
         Ids_var_dist_attr.process_mesh,
+        chunk_id=Ids_var_dist_attr.chunk_id,
     )
     set_var_dist_attr(
         ctx,
         xshape_var,
         [-1] + list(Ids_var_dist_attr.dims_mapping),
         Ids_var_dist_attr.process_mesh,
+        chunk_id=Ids_var_dist_attr.chunk_id,
     )
+    # rename src_op's input
+    src_op._rename_input(Ids_var.name, intermediate_var_0.name)
     op_dist_attr.del_input_dist_attr(Ids_var.name)
     op_dist_attr.set_input_dist_attr(
         intermediate_var_0.name, intermediate_var_0_dist_attr
@@ -196,6 +201,7 @@ def adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var):
     new_op_dist_attr.process_mesh = Ids_var_dist_attr.process_mesh
     new_op_dist_attr.impl_type = "default"
     new_op_dist_attr.impl_idx = 0
+    new_op_dist_attr.chunk_id = Ids_var_dist_attr.chunk_id
     new_op_dist_attr.set_input_dims_mapping(
         Ids_var.name, Ids_var_dist_attr.dims_mapping
     )
@@ -467,7 +473,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                 ctx, op_dist_attr.process_mesh, rank_id
             )
 
-        # A generalized method to calculate embedding offset using cartisian product
+        # A generalized method to calculate embedding offset using cartesian product
         relative_idx = _get_idx_in_axis(
             process_mesh_group,
             process_mesh_shape,
@@ -495,48 +501,22 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         assert out_tensor_dist_attr is not None
         out_var_dist_attr = op_dist_attr.get_output_dist_attr(Out_var.name)
         assert out_var_dist_attr is not None
-        ref_shape = infer_shape(
-            main_block, Out_var, out_tensor_dist_attr, out_var_dist_attr
-        )
 
-        intermediate_var_0 = main_block.create_var(
-            name=unique_name.generate_with_ignorable_key(
-                ".".join(["c_embedding", 'tmp'])
-            ),
-            dtype=Weight_var.dtype,
-            shape=Out_var.shape,
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            persistable=False,
-            stop_gradient=Out_var.stop_gradient,
-        )
-        # set intermediate_var_0's dist_attr with Out_var's dist_attr
-        ctx.set_tensor_dist_attr_for_program(
-            intermediate_var_0, out_var_dist_attr
-        )
-
-        check_variable_and_dtype(
-            Out_var,
-            'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
-            'c_allreduce_sum',
-        )
-
-        c_embedding_op = main_block.append_op(
-            type='c_embedding',
-            inputs={'Ids': [Ids_var], 'W': [Weight_var]},
-            outputs={'Out': [intermediate_var_0]},
-            attrs={
-                "start_index": relative_idx,
-                OP_ROLE_KEY: src_op.attr('op_role'),
-            },
-        )
-        if intermediate_var_0.shape != ref_shape:
-            intermediate_var_0.desc.set_shape(ref_shape)
+        c_embedding_op_desc = main_block.append_op(type='nop').desc
+        c_embedding_op_desc.set_type("c_embedding")
+        c_embedding_op_desc.set_input('Ids', [Ids_var.name])
+        c_embedding_op_desc.set_input('W', [Weight_var.name])
+        c_embedding_op_desc.set_output('Out', [Out_var.name])
+        c_embedding_op_desc._set_attr('start_index', relative_idx)
+        c_embedding_op_desc._set_attr(OP_ROLE_KEY, src_op.attr('op_role'))
+        c_embedding_op = main_block.ops[-1]
+        assert c_embedding_op.type == "c_embedding"
+        naive_copy_op_dist_attr_for_program(c_embedding_op, src_op, ctx)
 
         # use_model_parallel
         c_allreduce_sum_op = main_block.append_op(
             type='c_allreduce_sum',
-            inputs={'X': [intermediate_var_0]},
+            inputs={'X': [Out_var]},
             outputs={'Out': [Out_var]},
             attrs={
                 'ring_id': group.id,
@@ -545,49 +525,16 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                 OP_ROLE_KEY: src_op.attr('op_role'),
             },
         )
-        if Out_var.shape != ref_shape:
-            Out_var.desc.set_shape(ref_shape)
-
-        # set dist op's dist_attr with serial op's dist_attr
-        # matmulv2
-        embedding_op_dist_attr = OperatorDistAttr()
-        embedding_op_dist_attr.process_mesh = op_dist_attr.process_mesh
-        embedding_op_dist_attr.impl_type = op_dist_attr.impl_type
-        embedding_op_dist_attr.impl_idx = op_dist_attr.impl_idx
-        for input_varname in c_embedding_op.desc.input_arg_names():
-            input_dist_attr = op_dist_attr.get_input_dist_attr(input_varname)
-            assert input_dist_attr is not None, f"dist_attr is {op_dist_attr}"
-            embedding_op_dist_attr.set_input_dist_attr(
-                input_varname, input_dist_attr
-            )
-        output_varname = c_embedding_op.desc.output_arg_names()[0]
-        output_dist_attr = op_dist_attr.get_output_dist_attr(Out_var.name)
-        assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
-        embedding_op_dist_attr.set_output_dist_attr(
-            output_varname, output_dist_attr
+        c_allreduce_sum_op._set_attr(
+            'op_namescope', '/' + ParallelMode.TensorParallel
         )
-        ctx.set_op_dist_attr_for_program(c_embedding_op, embedding_op_dist_attr)
-
         # allreduce
-        allreduce_op_dist_attr = OperatorDistAttr()
-        allreduce_op_dist_attr.process_mesh = op_dist_attr.process_mesh
-        allreduce_op_dist_attr.impl_type = op_dist_attr.impl_type
-        allreduce_op_dist_attr.impl_idx = op_dist_attr.impl_idx
-        for input_varname in c_allreduce_sum_op.desc.input_arg_names():
-            input_var = main_block._var_recursive(input_varname)
-            tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(input_var)
-            assert tensor_dist_attr is not None
-            allreduce_op_dist_attr.set_input_dist_attr(
-                input_varname, tensor_dist_attr
-            )
-        for output_varname in c_allreduce_sum_op.desc.output_arg_names():
-            output_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
-            assert output_dist_attr is not None, f"dist_attr is {op_dist_attr}"
-            allreduce_op_dist_attr.set_output_dist_attr(
-                output_varname, output_dist_attr
-            )
-        ctx.set_op_dist_attr_for_program(
-            c_allreduce_sum_op, allreduce_op_dist_attr
+        set_comm_op_dist_attr_for_program(
+            c_allreduce_sum_op,
+            op_dist_attr.process_mesh,
+            out_var_dist_attr,
+            ctx,
+            chunk_id=op_dist_attr.chunk_id,
         )
 
         # param initialization sync
@@ -685,7 +632,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         process_mesh_shape = dist_attr.process_mesh.shape
         process_mesh_group = dist_attr.process_mesh.process_ids
 
-        # A generalized method to calculate embedding offset using cartisian product
+        # A generalized method to calculate embedding offset using cartesian product
         relative_idx = _get_idx_in_axis(
             process_mesh_group,
             process_mesh_shape,
@@ -694,13 +641,6 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         )
         per_part_size = Weight_var.shape[0]
         relative_idx = relative_idx * per_part_size
-
-        check_variable_and_dtype(
-            Out_grad,
-            'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
-            '_c_identity',
-        )
 
         c_embedding_grad_op_desc = main_block.append_op(type='nop').desc
         c_embedding_grad_op_desc.set_type("c_embedding_grad")

@@ -43,7 +43,8 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
              int rank,
              CommType comm_type,
              bool sync_op,
-             bool use_calc_stream);
+             bool use_calc_stream,
+             int gid);
     virtual ~NCCLTask();
 
     bool IsCompleted() override;
@@ -60,10 +61,13 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
              CommType CommType,
              const std::vector<phi::DenseTensor>& inputs);
 
+    void RemoveHolderStreamInGroup();
+
    private:
     bool block_cpu_in_wait_{false};
     platform::DeviceEvent comm_event_;  // event on comm stream
     Place task_place_;
+    int gid_;
   };
 
  public:
@@ -72,13 +76,16 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
       int rank,
       int size,
       int gid,
-      int64_t timeout);
+      int64_t timeout,
+      int nccl_comm_init_option);
 
   ProcessGroupNCCL(const std::shared_ptr<phi::distributed::Store>& store,
                    int rank,
                    int size,
                    int gid,
-                   int64_t timeout = 30 * 60 * 1000);
+                   int64_t timeout = 30 * 60 * 1000,
+                   int nccl_comm_init_option = 0);
+  ~ProcessGroupNCCL();
 
   std::string GetBackendName() const override { return "NCCL"; }
 
@@ -172,12 +179,15 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
 
   ncclComm_t NCCLComm(const Place& place) const;
 
+  const bool GetNCCLCommInitOption() { return nccl_comm_init_option_; }
+
  private:
   std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(const Place& place,
                                                          int rank,
                                                          CommType op_type,
                                                          bool sync_op,
-                                                         bool use_calc_stream);
+                                                         bool use_calc_stream,
+                                                         int gid);
 
   void GetStoreKey(const std::string& place_key,
                    CommType comm_type,
@@ -210,6 +220,19 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   phi::distributed::NCCLCommContext* GetCommContext(
       const std::string* key = nullptr);
 
+  void EraseTensorHolders() {
+    for (const auto& allocation_stream : allocation_stream_pairs) {
+      auto holder_ptr = allocation_stream.first.lock();
+      if (holder_ptr) {
+        memory::EraseStream(holder_ptr, allocation_stream.second);
+      }
+    }
+    VLOG(5) << "After task wait/synchronize, totoal "
+            << allocation_stream_pairs.size()
+            << " tensor(s) allocation stream have been removed.";
+    allocation_stream_pairs.clear();
+  }
+
  private:
   std::shared_ptr<phi::distributed::Store> store_;
 
@@ -220,12 +243,19 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
       place_to_comm_ctx_;
 
   uint64_t comm_seq_{0};
+  std::unordered_map<std::string, uint64_t> p2p_comm_seq_;
+  std::unordered_map<std::string, std::string> place_to_group_key_;
 
   // TODO(sunyilun): attrs below will be removed later
   std::mutex mutex_;
   static uint64_t s_group_call_counter;
   // default 30 minutes
   int64_t pg_timeout_;
+  int nccl_comm_init_option_;
+
+  // optimize memory for process_group
+  std::vector<std::pair<std::weak_ptr<phi::Allocation>, gpuStream_t>>
+      allocation_stream_pairs;
 };
 
 }  //  namespace distributed

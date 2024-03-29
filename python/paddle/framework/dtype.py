@@ -12,29 +12,130 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..base.core import VarDesc
-from ..base.core import finfo as core_finfo
-from ..base.core import iinfo as core_iinfo
+import paddle
 
-dtype = VarDesc.VarType
-dtype.__qualname__ = "dtype"
-dtype.__module__ = "paddle"
+from ..base import framework
+from ..base.core import (
+    DataType,
+    VarDesc,
+    finfo as core_finfo,
+    iinfo as core_iinfo,
+)
+from ..base.data_feeder import _NUMPY_DTYPE_2_PADDLE_DTYPE
 
-uint8 = VarDesc.VarType.UINT8
-int8 = VarDesc.VarType.INT8
-int16 = VarDesc.VarType.INT16
-int32 = VarDesc.VarType.INT32
-int64 = VarDesc.VarType.INT64
 
-float32 = VarDesc.VarType.FP32
-float64 = VarDesc.VarType.FP64
-float16 = VarDesc.VarType.FP16
-bfloat16 = VarDesc.VarType.BF16
+def bind_vartype():
+    global dtype
+    global uint8
+    global int8
+    global int16
+    global int32
+    global int64
+    global float32
+    global float64
+    global float16
+    global bfloat16
+    global complex64
+    global complex128
+    global bool
 
-complex64 = VarDesc.VarType.COMPLEX64
-complex128 = VarDesc.VarType.COMPLEX128
+    dtype = VarDesc.VarType
+    dtype.__qualname__ = "dtype"
+    dtype.__module__ = "paddle"
 
-bool = VarDesc.VarType.BOOL
+    uint8 = VarDesc.VarType.UINT8
+    int8 = VarDesc.VarType.INT8
+    int16 = VarDesc.VarType.INT16
+    int32 = VarDesc.VarType.INT32
+    int64 = VarDesc.VarType.INT64
+
+    float32 = VarDesc.VarType.FP32
+    float64 = VarDesc.VarType.FP64
+    float16 = VarDesc.VarType.FP16
+    bfloat16 = VarDesc.VarType.BF16
+
+    complex64 = VarDesc.VarType.COMPLEX64
+    complex128 = VarDesc.VarType.COMPLEX128
+
+    bool = VarDesc.VarType.BOOL
+
+    paddle.dtype = dtype
+    paddle.uint8 = uint8
+    paddle.int8 = int8
+    paddle.int16 = int16
+    paddle.int32 = int32
+    paddle.int64 = int64
+
+    paddle.float32 = float32
+    paddle.float64 = float64
+    paddle.float16 = float16
+    paddle.bfloat16 = bfloat16
+
+    paddle.complex64 = complex64
+    paddle.complex128 = complex128
+    paddle.bool = bool
+
+
+def bind_datatype():
+    global dtype
+    global uint8
+    global int8
+    global int16
+    global int32
+    global int64
+    global float32
+    global float64
+    global float16
+    global bfloat16
+    global complex64
+    global complex128
+    global bool
+
+    dtype = DataType
+    dtype.__qualname__ = "dtype"
+    dtype.__module__ = "paddle"
+
+    uint8 = DataType.UINT8
+    int8 = DataType.INT8
+    int16 = DataType.INT16
+    int32 = DataType.INT32
+    int64 = DataType.INT64
+
+    float32 = DataType.FLOAT32
+    float64 = DataType.FLOAT64
+    float16 = DataType.FLOAT16
+    bfloat16 = DataType.BFLOAT16
+
+    complex64 = DataType.COMPLEX64
+    complex128 = DataType.COMPLEX128
+
+    bool = DataType.BOOL
+
+    paddle.dtype = dtype
+    paddle.uint8 = uint8
+    paddle.int8 = int8
+    paddle.int16 = int16
+    paddle.int32 = int32
+    paddle.int64 = int64
+
+    paddle.float32 = float32
+    paddle.float64 = float64
+    paddle.float16 = float16
+    paddle.bfloat16 = bfloat16
+
+    paddle.complex64 = complex64
+    paddle.complex128 = complex128
+    paddle.bool = bool
+
+
+enable_pir_api = framework.get_flags("FLAGS_enable_pir_api")[
+    "FLAGS_enable_pir_api"
+]
+
+if enable_pir_api:
+    bind_datatype()
+else:
+    bind_vartype()
 
 
 def iinfo(dtype):
@@ -45,7 +146,7 @@ def iinfo(dtype):
     This is similar to `numpy.iinfo <https://numpy.org/doc/stable/reference/generated/numpy.iinfo.html#numpy-iinfo>`_.
 
     Args:
-        dtype(paddle.dtype):  One of paddle.uint8, paddle.int8, paddle.int16, paddle.int32, and paddle.int64.
+        dtype(paddle.dtype|string):  One of paddle.uint8, paddle.int8, paddle.int16, paddle.int32, and paddle.int64.
 
     Returns:
         An iinfo object, which has the following 4 attributes:
@@ -73,6 +174,8 @@ def iinfo(dtype):
             uint8
 
     """
+    if dtype in _NUMPY_DTYPE_2_PADDLE_DTYPE:
+        dtype = _NUMPY_DTYPE_2_PADDLE_DTYPE[dtype]
     return core_iinfo(dtype)
 
 
@@ -84,7 +187,7 @@ def finfo(dtype):
     This is similar to `numpy.finfo <https://numpy.org/doc/stable/reference/generated/numpy.finfo.html#numpy-finfo>`_.
 
     Args:
-        dtype(paddle.dtype):  One of ``paddle.float16``, ``paddle.float32``, ``paddle.float64``, ``paddle.bfloat16``,
+        dtype(paddle.dtype|string):  One of ``paddle.float16``, ``paddle.float32``, ``paddle.float64``, ``paddle.bfloat16``,
             ``paddle.complex64``, and ``paddle.complex128``.
 
     Returns:
@@ -123,4 +226,10 @@ def finfo(dtype):
             float32
 
     """
+    import paddle
+
+    if isinstance(dtype, paddle.pir.core.DataType):
+        dtype = paddle.base.framework.paddle_type_to_proto_type[dtype]
+    elif dtype in _NUMPY_DTYPE_2_PADDLE_DTYPE:
+        dtype = _NUMPY_DTYPE_2_PADDLE_DTYPE[dtype]
     return core_finfo(dtype)

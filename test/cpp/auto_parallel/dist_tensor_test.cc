@@ -34,7 +34,7 @@ TEST(dist_tensor, constructor) {
   DDim dims({3, 4});
   DenseTensorMeta meta(dtype, dims);
 
-  auto dist_attr = TensorDistAttr(phi::vectorize(dims));
+  auto dist_attr = TensorDistAttr(common::vectorize(dims));
 
   std::vector<int64_t> mesh_shape = {1};
   std::vector<int64_t> process_ids = {0};
@@ -60,7 +60,7 @@ TEST(dist_tensor, constructor) {
   bool caught_exception = false;
   try {
     dist_x2.AllocateFrom(alloc, phi::DataType::FLOAT32, 12L, false);
-  } catch (phi::EnforceNotMet& error) {
+  } catch (common::enforce::EnforceNotMet& error) {
     caught_exception = true;
     EXPECT_NE(std::string(error.what()).find("Unavailable"), 0UL);
   }

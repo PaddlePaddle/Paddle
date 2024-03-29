@@ -331,7 +331,7 @@ def clean_object_if_change_cflags(so_path, extension):
     """
     If already compiling source before, we should check whether cflags
     have changed and delete the built object to re-compile the source
-    even though source file content keeps unchanaged.
+    even though source file content keeps unchanged.
     """
 
     def serialize(path, version_info):
@@ -418,13 +418,13 @@ def prepare_win_cudaflags(cflags):
     return cflags
 
 
-def add_std_without_repeat(cflags, compiler_type, use_std14=False):
+def add_std_without_repeat(cflags, compiler_type, use_std17=False):
     """
-    Append -std=c++11/14 in cflags if without specific it before.
+    Append -std=c++14/17 in cflags if without specific it before.
     """
     cpp_flag_prefix = '/std:' if compiler_type == 'msvc' else '-std='
     if not any(cpp_flag_prefix in flag for flag in cflags):
-        suffix = 'c++14' if use_std14 else 'c++11'
+        suffix = 'c++17' if use_std17 else 'c++14'
         cpp_flag = cpp_flag_prefix + suffix
         cflags.append(cpp_flag)
 
@@ -585,7 +585,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
             # See _reset_so_rpath for details.
             extra_link_args.append(f'-Wl,-rpath,{_get_base_path()}')
             # On MacOS, ld don't support `-l:xx`, so we create a
-            # liblibpaddle.dylib symbol link.
+            # libpaddle.dylib symbol link.
             lib_core_name = create_sym_link_if_not_exist()
             extra_link_args.append(f'-l{lib_core_name}')
         # -----------------------   -- END --    ----------------------- #
@@ -938,14 +938,12 @@ def get_build_directory(verbose=False):
 
 def parse_op_info(op_name):
     """
-    Parse input names and outpus detail information from registered custom op
+    Parse input names and outputs detail information from registered custom op
     from OpInfoMap.
     """
     if op_name not in OpProtoHolder.instance().op_proto_map:
         raise ValueError(
-            "Please load {} shared library file firstly by `paddle.utils.cpp_extension.load_op_meta_info_and_register_op(...)`".format(
-                op_name
-            )
+            f"Please load {op_name} shared library file firstly by `paddle.utils.cpp_extension.load_op_meta_info_and_register_op(...)`"
         )
     op_proto = OpProtoHolder.instance().get_op_proto(op_name)
 
@@ -1077,9 +1075,15 @@ def _gen_output_content(
 {indent}else:
 {indent}    res.append(None)
 {indent}    start_idx += 1"""
-            static_content += f"""
+            if IS_WINDOWS:
+                static_content += f"""
 {indent}if {lower_in_names} is not None:
 {indent}    outs['{out_name}'] = [helper.create_variable(dtype='float32') for _ in range(len({lower_in_names}))]"""
+            else:
+                static_content += f"""
+{indent}if {lower_in_names} is not None:
+{indent}    outs['{out_name}'] = {lower_in_names}"""
+
         elif (
             in_idx != -1 and "@VECTOR" in in_names[in_idx]
         ):  # inplace vector<Tensor> output case
@@ -1087,8 +1091,12 @@ def _gen_output_content(
             dynamic_content += f"""
 {indent}res.append(outs[start_idx: start_idx + len({lower_in_names})])
 {indent}start_idx += len({lower_in_names})"""
-            static_content += f"""
+            if IS_WINDOWS:
+                static_content += f"""
 {indent}outs['{out_name}'] = [helper.create_variable(dtype='float32') for _ in range(len({lower_in_names}))]"""
+            else:
+                static_content += f"""
+{indent}outs['{out_name}'] = {lower_in_names}"""
         elif (
             in_idx != -1 and "@OPTIONAL" in in_names[in_idx]
         ):  # inplace optional Tensor output case, handle inplace None input
@@ -1099,9 +1107,23 @@ def _gen_output_content(
 {indent}else:
 {indent}    res.append(None)
 {indent}start_idx += 1"""
-            static_content += f"""
+            if IS_WINDOWS:
+                static_content += f"""
 {indent}if {lower_in_names} is not None:
 {indent}    outs['{out_name}'] = helper.create_variable(dtype='float32')"""
+            else:
+                static_content += f"""
+{indent}if {lower_in_names} is not None:
+{indent}    outs['{out_name}'] = {lower_in_names}"""
+        elif (
+            in_idx != -1 and not IS_WINDOWS
+        ):  # inplace Tensor output case, handle inplace None input
+            lower_in_names = in_names[in_idx].lower()
+            dynamic_content += f"""
+{indent}res.append(outs[start_idx])
+{indent}start_idx += 1"""
+            static_content += f"""
+{indent}outs['{out_name}'] = {lower_in_names}"""
         else:  # general/inplace Tensor output case
             dynamic_content += f"""
 {indent}res.append(outs[start_idx])
@@ -1142,15 +1164,15 @@ def _custom_api_content(op_name):
     )
     API_TEMPLATE = textwrap.dedent(
         """
-        import paddle.base.core as core
-        from paddle.framework import in_dynamic_mode
+        from paddle import _C_ops
+        from paddle.framework import in_dynamic_or_pir_mode
         from paddle.base.layer_helper import LayerHelper
 
         def {op_name}({params_list}):
             # The output variable's dtype use default value 'float32',
             # and the actual dtype of output variable will be inferred in runtime.
-            if in_dynamic_mode():
-                outs = core.eager._run_custom_op("{op_name}", {params_list})
+            if in_dynamic_or_pir_mode():
+                outs = _C_ops._run_custom_op("{op_name}", {params_list})
                 {dynamic_content}
             else:
                 {static_content}
@@ -1304,6 +1326,7 @@ def _jit_compile(file_path, verbose=False):
     """
     Build shared library in subprocess
     """
+    assert os.path.exists(file_path)
     ext_dir = os.path.dirname(file_path)
     setup_file = os.path.basename(file_path)
 
@@ -1334,7 +1357,7 @@ def _jit_compile(file_path, verbose=False):
 
 def parse_op_name_from(sources):
     """
-    Parse registerring custom op name from sources.
+    Parse registering custom op name from sources.
     """
 
     def regex(content):

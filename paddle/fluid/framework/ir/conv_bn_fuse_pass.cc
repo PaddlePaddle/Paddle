@@ -167,7 +167,7 @@ void recompute_bias_and_weights(const Scope* scope,
       }
     }
   } else {
-    auto weights_shape_2d = phi::flatten_to_2d(weights_shape, 1);
+    auto weights_shape_2d = common::flatten_to_2d(weights_shape, 1);
 
     EigenMatrixArrayMap weights_array_2d(
         weights_data, weights_shape_2d[0], weights_shape_2d[1]);
@@ -312,6 +312,14 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
+  VLOG(3) << "Running conv_bn_fuse_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3) << "The ID of block running conv_bn_fuse_pass is: 0(main_graph)";
+  } else {
+    VLOG(3) << "The ID of block running conv_bn_fuse_pass is: "
+            << graph->GetBlockId();
+  }
+
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
@@ -376,7 +384,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
     if (!mkldnn_with_bias) {
       VarDesc eltwise_y_in_desc(
           patterns::PDNodeName("fuse_conv_bn", conv_type() + "_eltwise_y_in"));
-      eltwise_y_in_desc.SetShape(phi::vectorize(bn_bias_tensor->dims()));
+      eltwise_y_in_desc.SetShape(common::vectorize(bn_bias_tensor->dims()));
       eltwise_y_in_desc.SetDataType(
           framework::TransToProtoVarType(bn_bias_tensor->dtype()));
       eltwise_y_in_desc.SetLoDLevel(bn_bias->Var()->GetLoDLevel());
@@ -413,7 +421,8 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
     // without MKL-DNN fuse conv+bn into conv+elementwise_add
     if (is_mkldnn) {
       if (conv->Op()->Type() == "conv2d" ||
-          conv->Op()->Type() == "depthwise_conv2d") {
+          conv->Op()->Type() == "depthwise_conv2d" ||
+          conv->Op()->Type() == "conv2d_transpose") {
         ConvertToFusedOp(conv->Op());
       }
       if (mkldnn_with_bias) {
@@ -612,6 +621,15 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
+  VLOG(3) << "Running conv_eltwiseadd_bn_fuse_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3) << "The ID of block running conv_eltwiseadd_bn_fuse_pass is: "
+               "0(main_graph)";
+  } else {
+    VLOG(3) << "The ID of block running conv_eltwiseadd_bn_fuse_pass is: "
+            << graph->GetBlockId();
+  }
+
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
@@ -674,7 +692,8 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
       // Create eltwise_y (conv bias) variable
       VarDesc eltwise_y_in_desc(patterns::PDNodeName(
           name_scope_, "eltwise_y_in" + std::to_string(found_conv_bn_count)));
-      eltwise_y_in_desc.SetShape(phi::vectorize(eltwise_y_in_tensor->dims()));
+      eltwise_y_in_desc.SetShape(
+          common::vectorize(eltwise_y_in_tensor->dims()));
       eltwise_y_in_desc.SetDataType(
           framework::TransToProtoVarType(eltwise_y_in_tensor->dtype()));
       eltwise_y_in_desc.SetLoDLevel(eltwise_y_in->Var()->GetLoDLevel());
@@ -758,6 +777,48 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
 
 ConvTransposeBNFusePass::ConvTransposeBNFusePass() {  // NOLINT
   AddOpCompat(OpCompat("conv2d_transpose"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("output_padding")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("output_size")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("groups")
+      .IsNumEQ(1)
+      .End()
+      .AddAttr("dilations")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("strides")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("paddings")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW", "AnyLayout"})
+      .End();
+
+  AddOpCompat(OpCompat("conv2d_transpose_bias"))
       .AddInput("Input")
       .IsTensor()
       .End()

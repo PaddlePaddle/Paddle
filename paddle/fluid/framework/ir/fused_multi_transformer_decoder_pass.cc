@@ -1671,6 +1671,16 @@ void FusedMultiTransformerDecoderPass::ApplyImpl(Graph* graph) const {
       platform::errors::Fatal("During the multi_transformer pass, "
                               "The scope should not be null."));
 
+  VLOG(3) << "Running fused_multi_transformer_decoder_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3) << "The ID of block running fused_multi_transformer_decoder_pass "
+               "is: 0(main_graph)";
+  } else {
+    VLOG(3)
+        << "The ID of block running fused_multi_transformer_decoder_pass is: "
+        << graph->GetBlockId();
+  }
+
   int fusion_count = BuildFusion(graph, name_scope_, scope);
   if (fusion_count > 0) {
     graph->Set(kFusedMultiTransformerDecoderPass, new bool(true));
@@ -1708,13 +1718,13 @@ FusedMultiTransformerDecoderPass::FusedMultiTransformerDecoderPass() {
       .End();
 
   AddOpCompat(OpCompat("matmul_v2"))
-      .AddInput("X")  // the shape shoule be (B, S, N*H)
+      .AddInput("X")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
-      .AddInput("Y")  // the shape shoule be (N*H, N*H)
+      .AddInput("Y")  // the shape should be (N*H, N*H)
       .IsTensor()
       .End()
-      .AddOutput("Out")  // the shape shoule be (B, S, N*H)
+      .AddOutput("Out")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
       .AddAttr("trans_x")
@@ -2376,6 +2386,17 @@ void FusedMultiTransformerDecoderFuseQKVPass::ApplyImpl(Graph* graph) const {
       platform::errors::Fatal("During the fused_multi_transformer_decoder "
                               "pass, The scope should not be null."));
 
+  VLOG(3) << "Running fused_multi_transformer_decoder_fuse_qkv_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3)
+        << "The ID of block running "
+           "fused_multi_transformer_decoder_fuse_qkv_pass is: 0(main_graph)";
+  } else {
+    VLOG(3) << "The ID of block running "
+               "fused_multi_transformer_decoder_fuse_qkv_pass is: "
+            << graph->GetBlockId();
+  }
+
   int fusion_count = BuildFusion(graph, name_scope_, scope);
   if (fusion_count > 0) {
     graph->Set(kFusedMultiTransformerDecoderFuseQKVPass, new bool(true));
@@ -2431,13 +2452,13 @@ FusedMultiTransformerDecoderFuseQKVPass::
       .End();
 
   AddOpCompat(OpCompat("matmul_v2"))
-      .AddInput("X")  // the shape shoule be (B, S, N*H)
+      .AddInput("X")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
-      .AddInput("Y")  // the shape shoule be (N*H, N*H)
+      .AddInput("Y")  // the shape should be (N*H, N*H)
       .IsTensor()
       .End()
-      .AddOutput("Out")  // the shape shoule be (B, S, N*H)
+      .AddOutput("Out")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
       .AddAttr("trans_x")
@@ -3146,6 +3167,19 @@ void MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::ApplyImpl(
       platform::errors::Fatal("During the fused_multi_transformer_decoder "
                               "pass, The scope should not be null."));
 
+  VLOG(3)
+      << "Running multi_devices_fused_multi_transformer_decoder_fuse_qkv_pass.";
+  if (graph->IsMainGraph()) {
+    VLOG(3) << "The ID of block running "
+               "multi_devices_fused_multi_transformer_decoder_fuse_qkv_pass "
+               "is: 0(main_graph)";
+  } else {
+    VLOG(3)
+        << "The ID of block running "
+           "multi_devices_fused_multi_transformer_decoder_fuse_qkv_pass is: "
+        << graph->GetBlockId();
+  }
+
   int fusion_count = BuildFusion(graph, name_scope_, scope);
   if (fusion_count > 0) {
     graph->Set(kFusedMultiTransformerDecoderFuseQKVPass, new bool(true));
@@ -3201,13 +3235,13 @@ MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::
       .End();
 
   AddOpCompat(OpCompat("matmul_v2"))
-      .AddInput("X")  // the shape shoule be (B, S, N*H)
+      .AddInput("X")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
-      .AddInput("Y")  // the shape shoule be (N*H, N*H)
+      .AddInput("Y")  // the shape should be (N*H, N*H)
       .IsTensor()
       .End()
-      .AddOutput("Out")  // the shape shoule be (B, S, N*H)
+      .AddOutput("Out")  // the shape should be (B, S, N*H)
       .IsTensor()
       .End()
       .AddAttr("trans_x")

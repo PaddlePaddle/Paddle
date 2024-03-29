@@ -24,10 +24,11 @@ namespace cinn {
 namespace frontend {
 namespace utils {
 
-inline common::Type CppVarType2CommonType(paddle::cpp::VarDescAPI::Type type) {
+inline cinn::common::Type CppVarType2CommonType(
+    paddle::cpp::VarDescAPI::Type type) {
 #define SET_TYPE_CASE_ITEM(v_type, c_type)    \
   case paddle::cpp::VarDescAPI::Type::v_type: \
-    return common::c_type();                  \
+    return cinn::common::c_type();            \
     break;
 
   static std::vector<std::string> var_type_names_ = {"BOOL",              // 0
@@ -82,12 +83,13 @@ inline common::Type CppVarType2CommonType(paddle::cpp::VarDescAPI::Type type) {
     // so here need convert back to unkown type.
     SET_TYPE_CASE_ITEM(RAW, Type)
     default:
-      LOG(FATAL) << "Unknown VarDesc type: "
-                 << var_type_names_[static_cast<int>(type)] << "("
-                 << static_cast<int>(type) << ")";
+      std::stringstream ss;
+      ss << "Unknown VarDesc type: " << var_type_names_[static_cast<int>(type)]
+         << "(" << static_cast<int>(type) << ")";
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 #undef SET_DATA_TYPE_CASE_ITEM
-  return common::Type();
+  return cinn::common::Type();
 }
 
 inline OpMapperContext::FeedInfo GetFeedInfoFromDesc(

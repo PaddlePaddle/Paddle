@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_softmax_with_cross_entropy_op.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
@@ -25,6 +25,13 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/softmax_impl.h"
 #include "paddle/phi/kernels/xpu/elementwise.h"
 #include "paddle/phi/kernels/xpu/reduce.h"
+#include "paddle/utils/string/string_helper.h"
+
+#if defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/common/flags.h"
+#include "paddle/phi/core/distributed/bkcl_comm_context.h"
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
+#endif
 
 namespace paddle {
 namespace operators {
@@ -76,8 +83,8 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
     const auto& logits_dims = logits->dims();
 
     const int axis = logits_dims.size() - 1;
-    const int N = phi::funcs::SizeToAxis(axis, logits_dims);
-    const int D = phi::funcs::SizeFromAxis(axis, logits_dims);
+    const int64_t N = phi::funcs::SizeToAxis(axis, logits_dims);
+    const int64_t D = phi::funcs::SizeFromAxis(axis, logits_dims);
 
     phi::DenseTensor logits_2d, softmax_2d;
     framework::TensorCopy(
@@ -95,13 +102,17 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
       // reduce last dim
       int dims[1] = {1};
       auto f = [](xpu::Context* ctx,
-                  const XPUType* x,
-                  XPUType* y,
+                  const T* x,
+                  T* y,
                   const std::vector<int>& xdims,
                   const std::vector<int>& reduce_dims) {
-        return xpu::reduce_max<XPUType>(ctx, x, y, xdims, reduce_dims);
+        return xpu::reduce_max<XPUType>(ctx,
+                                        reinterpret_cast<const XPUType*>(x),
+                                        reinterpret_cast<XPUType*>(y),
+                                        xdims,
+                                        reduce_dims);
       };
-      ret = phi::XPUReduce<phi::XPUContext, XPUType>(
+      ret = phi::XPUReduce<phi::XPUContext, T>(
           dev_ctx,
           logits_2d,
           std::vector<int64_t>(dims, dims + 1),
@@ -140,8 +151,8 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
         N,
         0.0);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
-    const int start_index = rank * D;
-    const int end_index = start_index + D;
+    const int64_t start_index = rank * D;
+    const int64_t end_index = start_index + D;
     const auto& label_type = framework::TransToProtoVarType(labels->dtype());
     if (label_type == framework::proto::VarType::INT32) {
       ret = xpu::mask_label_by_index<XPUType, int32_t>(
@@ -187,13 +198,17 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
     {
       int dims[1] = {1};
       auto f = [](xpu::Context* ctx,
-                  const XPUType* x,
-                  XPUType* y,
+                  const T* x,
+                  T* y,
                   const std::vector<int>& xdims,
                   const std::vector<int>& reduce_dims) {
-        return xpu::reduce_sum<XPUType>(ctx, x, y, xdims, reduce_dims);
+        return xpu::reduce_sum<XPUType>(ctx,
+                                        reinterpret_cast<const XPUType*>(x),
+                                        reinterpret_cast<XPUType*>(y),
+                                        xdims,
+                                        reduce_dims);
       };
-      ret = phi::XPUReduce<phi::XPUContext, XPUType>(
+      ret = phi::XPUReduce<phi::XPUContext, T>(
           dev_ctx,
           softmax_2d,
           std::vector<int64_t>(dims, dims + 1),
@@ -209,7 +224,7 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
     opts.reduce_op = distributed::ReduceOp::SUM;
     pg->AllReduce(in_out, in_out, opts)->Synchronize();
 
-    int dims[4] = {N, D, N, 1};
+    int64_t dims[4] = {N, D, N, 1};
     ret = xpu::broadcast_div<XPUType>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(softmax_2d.data<T>()),
@@ -252,13 +267,44 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     const int rank = ctx.Attr<int>("rank");
 
     const auto& place = ctx.GetPlace();
-    const auto& comm = platform::BKCLCommContext::Instance().Get(rid, place);
     auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
 
-    // use global calculate stream
-    const auto stream = static_cast<phi::XPUContext*>(
-                            platform::DeviceContextPool::Instance().Get(place))
-                            ->stream();
+    XPUStream stream = nullptr;
+    platform::BKCLComm* comm = nullptr;
+    phi::distributed::BKCLCommContext* comm_ctx = nullptr;
+
+    const auto& comm_context_manager =
+        phi::distributed::CommContextManager::GetInstance();
+    if (FLAGS_dynamic_static_unified_comm) {
+      PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "You choose to use new communication library by "
+                            "setting environment "
+                            "variable FLAGS_dynamic_static_unified_comm True. "
+                            "But ring_id(%d) is "
+                            "not found in comm_context_manager.",
+                            std::to_string(rid)));
+      comm_ctx = static_cast<phi::distributed::BKCLCommContext*>(
+          comm_context_manager.Get(std::to_string(rid)));
+      PADDLE_ENFORCE_NE(comm_ctx,
+                        nullptr,
+                        platform::errors::Unavailable(
+                            "BKCLCommContext is nullptr, collective op should "
+                            "has ring_id attr."));
+
+      stream = comm_ctx->GetStream();
+      VLOG(3) << "new comm_context_manager has ring_id " << rid;
+    } else {
+      comm = platform::BKCLCommContext::Instance().Get(rid, place);
+
+      // NOTE(zhangxiaoci) use global calculate stream so that no sync is
+      // required stream = comm->stream();
+      stream = static_cast<phi::XPUContext*>(
+                   platform::DeviceContextPool::Instance().Get(place))
+                   ->stream();
+      VLOG(3) << "old BKCLCommContext has ring_id " << rid;
+    }
 
     // allocate memory on device.
     dev_ctx.template Alloc(softmax, logits->dtype());
@@ -267,8 +313,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     const auto& logits_dims = logits->dims();
 
     const int axis = logits_dims.size() - 1;
-    const int N = phi::funcs::SizeToAxis(axis, logits_dims);
-    const int D = phi::funcs::SizeFromAxis(axis, logits_dims);
+    const int64_t N = phi::funcs::SizeToAxis(axis, logits_dims);
+    const int64_t D = phi::funcs::SizeFromAxis(axis, logits_dims);
 
     phi::DenseTensor logits_2d, softmax_2d;
     framework::TensorCopy(
@@ -282,17 +328,20 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     // step 1, obtain logit_max
     phi::DenseTensor logits_max;
     logits_max = ctx.AllocateTmpTensor<T, phi::XPUContext>({N, 1}, dev_ctx);
-    void* logits_max_buff = logits_max.data<T>();
     {
       int dims[1] = {1};
       auto f = [](xpu::Context* ctx,
-                  const XPUType* x,
-                  XPUType* y,
+                  const T* x,
+                  T* y,
                   const std::vector<int>& xdims,
                   const std::vector<int>& reduce_dims) {
-        return xpu::reduce_max<XPUType>(ctx, x, y, xdims, reduce_dims);
+        return xpu::reduce_max<XPUType>(ctx,
+                                        reinterpret_cast<const XPUType*>(x),
+                                        reinterpret_cast<XPUType*>(y),
+                                        xdims,
+                                        reduce_dims);
       };
-      ret = phi::XPUReduce<phi::XPUContext, XPUType>(
+      ret = phi::XPUReduce<phi::XPUContext, T>(
           dev_ctx,
           logits_2d,
           std::vector<int64_t>(dims, dims + 1),
@@ -302,16 +351,20 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
           f);
       PADDLE_ENFORCE_XDNN_SUCCESS(ret, "reduce_max");
     }
-    PADDLE_ENFORCE_XPU_SUCCESS(
-        bkcl_all_reduce(comm->comm(),
-                        logits_max_buff,
-                        logits_max_buff,
-                        logits_max.numel(),
-                        platform::ToBKCLDataType(
-                            framework::TransToProtoVarType(logits_max.dtype())),
-                        BKCL_MAX,
-                        stream));
-    xpu_wait(stream);
+    if (comm_ctx) {
+      comm_ctx->AllReduce(&logits_max, logits_max, BKCL_ADD, stream);
+    } else {
+      void* logits_max_buff = logits_max.data<T>();
+      PADDLE_ENFORCE_XPU_SUCCESS(bkcl_all_reduce(
+          comm->comm(),
+          logits_max_buff,
+          logits_max_buff,
+          logits_max.numel(),
+          platform::ToBKCLDataType(
+              framework::TransToProtoVarType(logits_max.dtype())),
+          BKCL_MAX,
+          stream));
+    }
 
     // step 2, obtain logit - logit_max
     {
@@ -331,15 +384,14 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     phi::DenseTensor predicted_logits;
     predicted_logits =
         ctx.AllocateTmpTensor<T, phi::XPUContext>({N, 1}, dev_ctx);
-    void* predict_logits_buff = predicted_logits.data<T>();
     ret = xpu::constant<XPUType>(
         dev_ctx.x_context(),
         reinterpret_cast<XPUType*>(predicted_logits.data<T>()),
         N,
         0.0);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
-    const int start_index = rank * D;
-    const int end_index = start_index + D;
+    const int64_t start_index = rank * D;
+    const int64_t end_index = start_index + D;
     const auto& label_type = framework::TransToProtoVarType(labels->dtype());
     if (label_type == framework::proto::VarType::INT32) {
       ret = xpu::mask_label_by_index<XPUType, int32_t>(
@@ -366,16 +418,21 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     }
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "mask_label_by_index");
 
-    PADDLE_ENFORCE_XPU_SUCCESS(bkcl_all_reduce(
-        comm->comm(),
-        predict_logits_buff,
-        predict_logits_buff,
-        predicted_logits.numel(),
-        platform::ToBKCLDataType(
-            framework::TransToProtoVarType(predicted_logits.dtype())),
-        BKCL_ADD,
-        stream));
-    xpu_wait(stream);
+    if (comm_ctx) {
+      comm_ctx->AllReduce(
+          &predicted_logits, predicted_logits, BKCL_ADD, stream);
+    } else {
+      void* predict_logits_buff = predicted_logits.data<T>();
+      PADDLE_ENFORCE_XPU_SUCCESS(bkcl_all_reduce(
+          comm->comm(),
+          predict_logits_buff,
+          predict_logits_buff,
+          predicted_logits.numel(),
+          platform::ToBKCLDataType(
+              framework::TransToProtoVarType(predicted_logits.dtype())),
+          BKCL_ADD,
+          stream));
+    }
 
     // step 4, obtain exp(logit)
     ret = xpu::exp<XPUType>(
@@ -391,13 +448,17 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     {
       int dims[1] = {1};
       auto f = [](xpu::Context* ctx,
-                  const XPUType* x,
-                  XPUType* y,
+                  const T* x,
+                  T* y,
                   const std::vector<int>& xdims,
                   const std::vector<int>& reduce_dims) {
-        return xpu::reduce_sum<XPUType>(ctx, x, y, xdims, reduce_dims);
+        return xpu::reduce_sum<XPUType>(ctx,
+                                        reinterpret_cast<const XPUType*>(x),
+                                        reinterpret_cast<XPUType*>(y),
+                                        xdims,
+                                        reduce_dims);
       };
-      ret = phi::XPUReduce<phi::XPUContext, XPUType>(
+      ret = phi::XPUReduce<phi::XPUContext, T>(
           dev_ctx,
           softmax_2d,
           std::vector<int64_t>(dims, dims + 1),
@@ -408,20 +469,23 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
       PADDLE_ENFORCE_XDNN_SUCCESS(ret, "reduce_max");
     }
 
-    void* sum_exp_logits_buff = sum_exp_logits.data<T>();
-    PADDLE_ENFORCE_XPU_SUCCESS(bkcl_all_reduce(
-        comm->comm(),
-        sum_exp_logits_buff,
-        sum_exp_logits_buff,
-        sum_exp_logits.numel(),
-        platform::ToBKCLDataType(
-            framework::TransToProtoVarType(sum_exp_logits.dtype())),
-        BKCL_ADD,
-        stream));
-    xpu_wait(stream);
+    if (comm_ctx) {
+      comm_ctx->AllReduce(&sum_exp_logits, sum_exp_logits, BKCL_ADD, stream);
+    } else {
+      void* sum_exp_logits_buff = sum_exp_logits.data<T>();
+      PADDLE_ENFORCE_XPU_SUCCESS(bkcl_all_reduce(
+          comm->comm(),
+          sum_exp_logits_buff,
+          sum_exp_logits_buff,
+          sum_exp_logits.numel(),
+          platform::ToBKCLDataType(
+              framework::TransToProtoVarType(sum_exp_logits.dtype())),
+          BKCL_ADD,
+          stream));
+    }
 
     {
-      int dims[4] = {N, D, N, 1};
+      int64_t dims[4] = {N, D, N, 1};
       ret = xpu::broadcast_div<XPUType>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(softmax_2d.data<T>()),
@@ -476,11 +540,11 @@ class CSoftmaxWithCrossEntropyGrad : public framework::OpKernel<T> {
     }
     const auto softmax_dims = softmax->dims();
     const int axis = softmax_dims.size() - 1;
-    const int N = phi::funcs::SizeToAxis(axis, softmax_dims);
-    const int D = phi::funcs::SizeFromAxis(axis, softmax_dims);
+    const int64_t N = phi::funcs::SizeToAxis(axis, softmax_dims);
+    const int64_t D = phi::funcs::SizeFromAxis(axis, softmax_dims);
 
-    const int start_index = rank * D;
-    const int end_index = start_index + D;
+    const int64_t start_index = rank * D;
+    const int64_t end_index = start_index + D;
     const auto& label_type = framework::TransToProtoVarType(labels->dtype());
 
     int ret = 0;
@@ -519,9 +583,11 @@ PD_REGISTER_STRUCT_KERNEL(c_softmax_with_cross_entropy,
                           XPU,
                           ALL_LAYOUT,
                           ops::CSoftmaxWithCrossEntropyOp,
-                          float) {}
+                          float,
+                          phi::dtype::bfloat16) {}
 PD_REGISTER_STRUCT_KERNEL(c_softmax_with_cross_entropy_grad,
                           XPU,
                           ALL_LAYOUT,
                           ops::CSoftmaxWithCrossEntropyGrad,
-                          float) {}
+                          float,
+                          phi::dtype::bfloat16) {}

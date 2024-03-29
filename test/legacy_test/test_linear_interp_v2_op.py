@@ -20,8 +20,9 @@ from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
 import paddle
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import core
 from paddle.nn.functional import interpolate
+from paddle.pir_utils import test_with_pir_api
 
 
 def create_test_case0(self):
@@ -192,12 +193,12 @@ class TestLinearInterpOp(OpTest):
 
     def test_check_output(self):
         if platform.system() == "Linux":
-            self.check_output(atol=1e-7)
+            self.check_output(atol=1e-7, check_pir=True)
         else:
-            self.check_output(atol=1e-5)
+            self.check_output(atol=1e-5, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True)
+        self.check_grad(['X'], 'Out', in_place=True, check_pir=True)
 
     def init_test_case(self):
         create_test_case0(self)
@@ -314,6 +315,15 @@ class TestLinearInterpOpSizeTensor(TestLinearInterpOp):
             self.attrs['scale'] = self.scale
         self.outputs = {'Out': output_np}
 
+    def test_check_output(self):
+        if platform.system() == "Linux":
+            self.check_output(atol=1e-7, check_pir=False)
+        else:
+            self.check_output(atol=1e-5, check_pir=False)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', in_place=True, check_pir=True)
+
 
 class TestLinearInterpOpAPI2_0(unittest.TestCase):
     def test_case(self):
@@ -324,10 +334,9 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
             mode='linear',
             align_mode=1,
             align_corners=False,
-            data_format='NCW',
         )
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(x_data)
+            x = paddle.to_tensor(x_data)
             interp = us_1(x)
 
             expect = linear_interp_np(
@@ -337,16 +346,33 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
             np.testing.assert_allclose(interp.numpy(), expect, rtol=1e-05)
 
 
+class TestLinearInterpOpAPI2_0_case2(unittest.TestCase):
+    def test_case(self):
+        # dygraph
+        x_data = np.random.random((1, 3, 128)).astype("float32")
+        with base.dygraph.guard():
+            x = paddle.to_tensor(x_data)
+            interp = interpolate(
+                x,
+                size=[64],
+                mode='linear',
+                align_mode=1,
+                align_corners=False,
+            )
+            expect = linear_interp_np(
+                x_data, out_w=64, align_mode=1, align_corners=False
+            )
+
+            np.testing.assert_allclose(interp.numpy(), expect, rtol=1e-05)
+
+
 class TestLinearInterpOpFP16(TestLinearInterpOp):
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output(atol=1e-3, check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'],
-            'Out',
-            in_place=True,
-            max_relative_error=1e-2,
+            ['X'], 'Out', in_place=True, max_relative_error=1e-2, check_pir=True
         )
 
     def init_test_case(self):
@@ -416,12 +442,17 @@ class TestLinearInterpOpBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-2)
+        self.check_output_with_place(place, atol=1e-2, check_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', in_place=True, max_relative_error=1e-2
+            place,
+            ['X'],
+            'Out',
+            in_place=True,
+            max_relative_error=1e-2,
+            check_pir=True,
         )
 
     def init_test_case(self):
@@ -475,9 +506,13 @@ class TestResizeLinearOpUint8(OpTest):
 
     def test_check_output(self):
         if platform.system() == "Linux":
-            self.check_output_with_place(place=core.CPUPlace(), atol=1e-7)
+            self.check_output_with_place(
+                place=core.CPUPlace(), atol=1e-7, check_pir=True
+            )
         else:
-            self.check_output_with_place(place=core.CPUPlace(), atol=1e-5)
+            self.check_output_with_place(
+                place=core.CPUPlace(), atol=1e-5, check_pir=True
+            )
 
     def init_test_case(self):
         self.interp_method = 'linear'
@@ -494,9 +529,12 @@ class TestResizeLinearOpUint8(OpTest):
 
 
 class TestLinearInterpOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_error(self):
         with paddle_static_guard():
-            with program_guard(Program(), Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
 
                 def input_shape_error():
                     x1 = paddle.static.data(

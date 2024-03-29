@@ -28,11 +28,12 @@ void UnsqueezeInferStridedKernel(const Context& dev_ctx,
                                  const IntArray& axes_arr,
                                  DenseTensor* out) {
   std::vector<int64_t> axes = axes_arr.GetData();
-  std::vector<int64_t> input_dims = phi::vectorize<int64_t>(input.dims());
-  std::vector<int64_t> input_stride = phi::vectorize<int64_t>(input.strides());
+  std::vector<int64_t> input_dims = common::vectorize<int64_t>(input.dims());
+  std::vector<int64_t> input_stride =
+      common::vectorize<int64_t>(input.strides());
 
   if (input.Holder() == out->Holder() && input.meta() == out->meta()) {
-    input_dims = phi::vectorize<int64_t>(out->dims());
+    input_dims = common::vectorize<int64_t>(out->dims());
     for (int64_t i = static_cast<int64_t>(axes.size() - 1); i >= 0; --i) {
       axes[i] = static_cast<int64_t>(axes[i] < 0 ? axes[i] + input_dims.size()
                                                  : axes[i]);
@@ -71,6 +72,7 @@ void UnsqueezeInferStridedKernel(const Context& dev_ctx,
   meta.offset = input.offset();
   out->set_meta(meta);
   out->ResetHolder(input.Holder());
+  out->ShareInplaceVersionCounterWith(input);
 }
 
 template <typename Context>
@@ -83,8 +85,11 @@ void UnsqueezeStridedKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    unsqueeze_infer, STRIDED, phi::UnsqueezeInferStridedKernel) {}
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    unsqueeze, STRIDED, phi::UnsqueezeStridedKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(unsqueeze_infer,
+                                         STRIDED,
+                                         phi::UnsqueezeInferStridedKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(unsqueeze,
+                                         STRIDED,
+                                         phi::UnsqueezeStridedKernel) {}

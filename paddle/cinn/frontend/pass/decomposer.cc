@@ -30,7 +30,7 @@ class DecomposerPass : public ProgramPass {
 
   void ApplyImpl(Program* prog,
                  const std::unordered_set<std::string>& fetch_ids,
-                 const common::Target& target) const override {
+                 const cinn::common::Target& target) const override {
     // step 1: set the inputs of the origin program to the new program
     NetBuilder builder("decomposer_builder");
     for (auto& var : prog->GetInputs()) {

@@ -117,13 +117,12 @@ def _get_cache_or_reload(repo, force_reload, verbose=True, source='github'):
             hub_dir,
             check_exist=not force_reload,
             decompress=False,
-            method=('wget' if source == 'gitee' else 'get'),
         )
         shutil.move(fpath, cached_file)
 
         with zipfile.ZipFile(cached_file) as cached_zipfile:
-            extraced_repo_name = cached_zipfile.infolist()[0].filename
-            extracted_repo = os.path.join(hub_dir, extraced_repo_name)
+            extracted_repo_name = cached_zipfile.infolist()[0].filename
+            extracted_repo = os.path.join(hub_dir, extracted_repo_name)
             _remove_if_exists(extracted_repo)
             # Unzip the code and rename the base folder
             cached_zipfile.extractall(hub_dir)
@@ -227,7 +226,7 @@ def help(repo_dir, model, source='github', force_reload=False):
 
             - github path (str): A string with format "repo_owner/repo_name[:tag_name]" with an optional
               tag/branch. The default branch is `main` if not specified.
-            local path (str): Local repo path.
+            - local path (str): Local repo path.
 
         model (str): Model name.
         source (str): `github` | `gitee` | `local`. Default is `github`.

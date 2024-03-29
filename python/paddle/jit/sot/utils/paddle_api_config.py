@@ -34,10 +34,12 @@ def get_paddle_api():
     modules = [
         paddle,
         paddle.nn.functional,
+        paddle.incubate.nn.functional,
         paddle.linalg,
         paddle.signal,
         paddle.fft,
         paddle.vision.ops,
+        paddle.metric,
     ]
     special_paddle_apis = [paddle.tensor.fill_constant]
     non_operator_related_apis = [
@@ -80,7 +82,6 @@ paddle_api_list = get_paddle_api()
 # considered as paddle module？
 paddle_api_module_prefix = {
     "paddle.nn.functional",
-    "paddle.nn.layer.activation",
 }
 
 break_graph_set = set()
@@ -92,6 +93,12 @@ break_graph_tensor_method = {
     'clear_gradient',
     # TODO: Browse all possible functions and make prior judgments.
 }
+
+not_supported_paddle_layer = {paddle.nn.RNN}
+
+
+def is_not_supported_paddle_layer(layer_class):
+    return layer_class in not_supported_paddle_layer
 
 
 def is_break_graph_tensor_methods(method_name):

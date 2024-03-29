@@ -80,7 +80,7 @@ class SppOp : public framework::OperatorWithKernel {
     int outlen =
         ((std::pow(4, pyramid_height) - 1) / (4 - 1)) * in_x_dims[1];  // NOLINT
     std::vector<int64_t> output_shape({in_x_dims[0], outlen});
-    ctx->SetOutputDim("Out", phi::make_ddim(output_shape));
+    ctx->SetOutputDim("Out", common::make_ddim(output_shape));
   }
 };
 

@@ -36,7 +36,7 @@ class StackOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::concat> {
     }
 
     // in stack op all inputs must have same dims
-    auto input_dims = vectorize<int64_t>(inputs[0]->dims());
+    auto input_dims = common::vectorize<int64_t>(inputs[0]->dims());
 
     dnnl::memory::data_type dt = ToOneDNNDataType(inputs[0]->dtype());
     std::vector<memory::desc> srcs_md;
@@ -53,10 +53,10 @@ class StackOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::concat> {
         srcs_md.push_back(input->mem_desc());
       }
 
-      input_dims[stack_axis] *= inputs.size();
+      input_dims[stack_axis] *= inputs.size();  // NOLINT
       dst_md = dnnl::memory::desc(input_dims, dt, OneDNNMemoryFormat::any);
     } else {
-      auto extended_input_dims = vectorize<int64_t>(output->dims());
+      auto extended_input_dims = common::vectorize<int64_t>(output->dims());
       extended_input_dims[stack_axis] = 1;
 
       for (auto input : inputs) {
@@ -66,8 +66,9 @@ class StackOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::concat> {
       // concat primitive choses suboptimal format tag because it cannot
       // distinguish between f.e. abcd and abdc if last dim is equal to 1 so
       // enforcing is needed for better performance
-      dst_fmt = GetPlainOneDNNFormat(extended_input_dims.size());
-      dst_md = dnnl::memory::desc(vectorize(output->dims()), dt, dst_fmt);
+      dst_fmt = GetPlainOneDNNFormat(extended_input_dims.size());  // NOLINT
+      dst_md =
+          dnnl::memory::desc(common::vectorize(output->dims()), dt, dst_fmt);
     }
 
     this->AcquireForwardPrimitiveDescriptor(dst_md, stack_axis, srcs_md);
@@ -109,7 +110,8 @@ void StackKernel(const Context& dev_ctx,
   concat_p->execute(astream, args);
   astream.wait();
 
-  output->set_mem_desc(dst_mem->get_desc().reshape(vectorize(output->dims())));
+  output->set_mem_desc(
+      dst_mem->get_desc().reshape(common::vectorize(output->dims())));
 }
 
 }  // namespace phi

@@ -1,5 +1,4 @@
-set(DYNLOAD_COMMON_SRCS dynamic_loader.cc port.cc warpctc.cc warprnnt.cc
-                        lapack.cc)
+set(DYNLOAD_COMMON_SRCS dynamic_loader.cc warpctc.cc warprnnt.cc lapack.cc)
 if(WITH_ASCEND_CL)
   list(REMOVE_ITEM DYNLOAD_COMMON_SRCS warprnnt.cc)
 endif()
@@ -13,7 +12,8 @@ list(
   cusolver.cc
   cusparse.cc
   nvtx.cc
-  cufft.cc)
+  cufft.cc
+  cutlass_conv2d.cc)
 
 if(NOT WITH_NV_JETSON)
   list(APPEND CUDA_SRCS nvjpeg.cc)
@@ -77,7 +77,7 @@ if(WITH_XPU)
   cc_library(
     phi_dynload_xpti
     SRCS xpti.cc
-    DEPS phi)
+    DEPS phi common)
 endif()
 
 if(WITH_FLASHATTN)
@@ -101,5 +101,5 @@ if(WITH_CUDNN_FRONTEND)
   nv_test(
     cudnn_frontend_test
     SRCS cudnn_frontend_test.cc
-    DEPS phi cudnn-frontend)
+    DEPS phi common cudnn-frontend)
 endif()

@@ -47,7 +47,7 @@ struct TestScope {
   void CreateTensor(const std::string& var_name, const Data& data) {
     auto variable = scope.Var(var_name);
     auto tensor = variable->GetMutable<phi::DenseTensor>();
-    tensor->Resize(phi::make_ddim(data.getShape()));
+    tensor->Resize(common::make_ddim(data.getShape()));
     auto dptr = tensor->mutable_data<float>(place);
     std::copy(data.getData().begin(), data.getData().end(), dptr);
   }

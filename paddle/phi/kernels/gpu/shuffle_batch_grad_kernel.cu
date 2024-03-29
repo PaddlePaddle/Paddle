@@ -21,9 +21,9 @@
 #include <thrust/shuffle.h>
 #endif
 
+#include "paddle/common/errors.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/for_range.h"

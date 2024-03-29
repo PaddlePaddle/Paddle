@@ -79,7 +79,7 @@ void GradTensorHolder::CopyValueFromTensor(size_t slot_id,
     // Create new tensor->impl and fill it with 1.0
     if (t.defined()) {
       // Fill 1.0, use full to support complex, one_like don't support it.
-      if (t.is_dense_tensor()) {
+      if (t.is_dense_tensor()) {  // NOLINT
         buffer_[slot_id][rank] =
             paddle::experimental::full(t.shape(), 1, t.dtype(), t.place());
       } else if (t.is_sparse_csr_tensor() || t.is_sparse_coo_tensor()) {
@@ -92,8 +92,10 @@ void GradTensorHolder::CopyValueFromTensor(size_t slot_id,
             std::static_pointer_cast<phi::DenseTensor>(init_grad.impl());
         auto dist_t =
             static_cast<phi::distributed::DistTensor*>(t.impl().get());
+        auto dist_attr = dist_t->dist_attr();
+        dist_attr.clean_partial_status();
         init_grad.set_impl(std::make_shared<phi::distributed::DistTensor>(
-            global_dense_t, dist_t->dist_attr()));
+            global_dense_t, dist_attr));
         buffer_[slot_id][rank] = init_grad;
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(
@@ -111,8 +113,19 @@ void GradTensorHolder::add(size_t slot_id,
                            const paddle::Tensor& t,
                            bool create_graph) {
   if (!t.initialized()) {
-    VLOG(3) << "No need to do accumulate for uninitialized t.";
-    return;
+    if (t.defined() && t.is_dist_tensor() &&
+        phi::distributed::NeedComputationClipForPP(t.impl())) {
+      // Pipeline parallel still needs to construct GradNode graph
+      // to make DistTensor's global shape and DistAttr information flow.
+      // Skip grad accumulation will cause GradTensor disconnect to next
+      // GradNode.
+      VLOG(3) << "Do accumulate for uninitialized Tensor " << t.name()
+              << " as it's DistTensor and it needs computation clip for "
+                 "pipeline parallel.";
+    } else {
+      VLOG(3) << "No need to do accumulate for uninitialized t.";
+      return;
+    }
   }  // TODO(jiabin): Remove this when we fix all kernel.
 
   PADDLE_ENFORCE(slot_id < buffer_.size(),

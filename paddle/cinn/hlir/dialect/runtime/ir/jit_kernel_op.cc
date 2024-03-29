@@ -16,29 +16,46 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/enforce.h"
+#include "paddle/common/enforce.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
 
 namespace cinn {
 namespace dialect {
 
 const char* JitKernelOp::attributes_name[attributes_num] = {kAttrName};
 
+void JitKernelOp::Build(::pir::Builder& builder,
+                        pir::OperationArgument& argument,
+                        const std::vector<::pir::Value>& x,
+                        const ::pir::AttributeMap& attributes,
+                        const std::vector<::pir::Type>& out_types) {
+  VLOG(4) << "Start build JitKernelOp";
+
+  VLOG(4) << "Builder construction inputs";
+  argument.AddInputs(x);
+
+  VLOG(4) << "Builder construction attributes";
+  argument.AddAttributes(attributes);
+
+  VLOG(4) << "Builder construction outputs";
+  argument.AddOutputs(out_types.begin(), out_types.end());
+}
+
 void JitKernelOp::VerifySig() {
   VLOG(4) << "Verifying inputs, outputs and attributes for: JitKernelOp.";
 
   auto& attributes = this->attributes();
-
-  IR_ENFORCE(
-      attributes.count(kAttrName) > 0 &&
-          attributes.at(kAttrName).isa<cinn::dialect::CUDAJITInfoAttribute>(),
-      "Type of attribute: instruction is not right.");
+  PADDLE_ENFORCE_EQ(attributes.count(kAttrName) > 0 &&
+                        attributes.at(kAttrName)
+                            .isa<cinn::dialect::CINNKernelInfoAttribute>(),
+                    true,
+                    "Type of attribute: instruction is not right.");
 }
 
-const hlir::framework::pir::CUDAJITInfo& JitKernelOp::cuda_jit_info() {
+const hlir::framework::pir::CINNKernelInfo& JitKernelOp::cinn_kernel_info() {
   return attributes()
       .at(kAttrName)
-      .dyn_cast<cinn::dialect::CUDAJITInfoAttribute>()
+      .dyn_cast<cinn::dialect::CINNKernelInfoAttribute>()
       .data();
 }
 

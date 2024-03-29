@@ -18,6 +18,7 @@
 #include <queue>
 
 #include "paddle/cinn/hlir/framework/pir/group.h"
+#include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
 
@@ -26,6 +27,9 @@ namespace hlir {
 namespace framework {
 namespace pir {
 using GroupPtr = std::shared_ptr<Group>;
+using OpLoweringGroupPtr = std::shared_ptr<OpLoweringGroup>;
+
+class PrettyNamer;
 
 std::unordered_map<::pir::Operation*, ::pir::Operation*> BuildVirtualConsumer(
     const GroupPtr& group);
@@ -57,6 +61,7 @@ std::vector<::pir::Operation*> BFSTopologicalOrderWithPriority(
 
 bool CanbeInline(::pir::Operation* op,
                  ::pir::Operation* reducer,
+                 PrettyNamer* pretty_name,
                  const std::vector<::pir::Operation*> consumers,
                  const std::unordered_set<::pir::Operation*> masters,
                  const GroupPtr& group,
@@ -64,6 +69,7 @@ bool CanbeInline(::pir::Operation* op,
 
 ::pir::Operation* GetMasterToComputeAt(
     ::pir::Operation* op,
+    PrettyNamer* pretty_name,
     const std::vector<::pir::Operation*>& ops_in_order,
     const std::unordered_set<::pir::Operation*>& ops_inline,
     const std::unordered_set<::pir::Operation*>& ops_set,
@@ -72,6 +78,7 @@ bool CanbeInline(::pir::Operation* op,
 
 std::unordered_set<::pir::Operation*> GetMasters(
     ::pir::Operation* op,
+    PrettyNamer* pretty_name,
     const std::unordered_set<::pir::Operation*>& ops_inline,
     const std::unordered_set<::pir::Operation*>& ops_set);
 
@@ -79,6 +86,7 @@ void LoopAssignReduce(
     ir::IRSchedule& ir_sch,  // NOLINT
     ::pir::Operation* op,
     ::pir::Operation* reducer,
+    PrettyNamer* pretty_name,
     const Target& target,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
     const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info);
@@ -87,6 +95,7 @@ void LoopComputeAt(
     ir::IRSchedule& ir_sch,  // NOLINT
     ::pir::Operation* op,
     ::pir::Operation* master,
+    PrettyNamer* pretty_name,
     const GroupPtr& group,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
     const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info);
@@ -94,6 +103,7 @@ void LoopComputeAt(
 void SyncThreadWithShared(
     ir::IRSchedule& ir_sch,  // NOLINT
     const GroupPtr& group,
+    PrettyNamer* pretty_name,
     const std::unordered_set<::pir::Operation*>& ops_inline,
     const std::unordered_set<::pir::Operation*>& ops_set,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map);

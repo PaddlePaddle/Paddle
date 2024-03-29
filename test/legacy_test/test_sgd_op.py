@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from op import Operator
 from op_test import OpTest
+from utils import dygraph_guard
 
 import paddle
 from paddle import base
@@ -84,7 +85,7 @@ class TestSparseSGDOp(unittest.TestCase):
         param_array = np.full((height, self.row_numel), 5.0).astype("float32")
         param.set(param_array, place)
 
-        # create and initialize LeraningRate Variable
+        # create and initialize LearningRate Variable
         lr = scope.var('LearningRate').get_tensor()
         lr_array = np.full((1), 2.0).astype("float32")
         lr.set(lr_array, place)
@@ -169,7 +170,7 @@ class TestSGDOpOptimizeSelectedRows(unittest.TestCase):
 
         w_before_optimize = np.array(w_tensor)
 
-        # create and initialize LeraningRate Variable
+        # create and initialize LearningRate Variable
         lr_value = 0.1
         lr = scope.var('LearningRate').get_tensor()
         lr_array = np.full((1), lr_value).astype("float32")
@@ -428,43 +429,62 @@ class TestSGDMultiPrecision2_0(unittest.TestCase):
 
 
 class TestSGDSimple(unittest.TestCase):
+    def setUp(self) -> None:
+        self.data = np.random.random(size=(2, 2)).astype('float32')
+
     def run_static(self):
-        paddle.enable_static()
-        paddle.seed(10)
-        np.random.seed(10)
+        with paddle.pir_utils.IrGuard():
+            paddle.seed(10)
+            np.random.seed(10)
 
-        exe = paddle.static.Executor('gpu')
-        train_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        data = np.random.random(size=(2, 2)).astype('float32')
+            exe = paddle.static.Executor('gpu')
+            train_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
 
-        with paddle.static.program_guard(train_program, startup_program):
-            input = paddle.static.data(
-                shape=[2, 2], name='input', dtype='float32'
-            )
+            with paddle.static.program_guard(train_program, startup_program):
+                input = paddle.static.data(
+                    shape=[2, 2], name='input', dtype='float32'
+                )
+                model = paddle.nn.Linear(2, 2)
+                output = model(input)
+                loss = paddle.mean(output)
+
+                optimizer = paddle.optimizer.SGD()
+                optimizer.minimize(loss)
+
+            exe.run(startup_program)
+
+            out = []
+            for _ in range(5):
+                (loss_data,) = exe.run(
+                    train_program, feed={"input": self.data}, fetch_list=[loss]
+                )
+                out.append(loss_data)
+            return out
+
+    def run_dygraph(self):
+        with dygraph_guard():
+            paddle.seed(10)
+            np.random.seed(10)
+
+            out = []
             model = paddle.nn.Linear(2, 2)
-            output = model(input)
-            loss = paddle.mean(output)
+            optimizer = paddle.optimizer.SGD(parameters=model.parameters())
+            for _ in range(5):
+                output = model(paddle.to_tensor(self.data))
+                loss = paddle.mean(output)
+                out.append(loss.numpy())
+                loss.backward()
+                optimizer.step()
+                optimizer.clear_grad()
 
-            optimizer = paddle.optimizer.SGD()
-            optimizer.minimize(loss)
-
-        exe.run(startup_program)
-
-        out = []
-        for _ in range(5):
-            (loss_data,) = exe.run(
-                train_program, feed={"input": data}, fetch_list=[loss]
-            )
-            out.append(loss_data)
-        return out
+            return out
 
     def test_main(self):
         if not paddle.is_compiled_with_cuda():
             return
-        out1 = self.run_static()
-        with paddle.pir_utils.IrGuard():
-            out2 = self.run_static()
+        out1 = self.run_dygraph()
+        out2 = self.run_static()
         np.testing.assert_allclose(out1, out2)
 
 

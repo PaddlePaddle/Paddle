@@ -13,28 +13,55 @@
 // limitations under the License.
 
 #pragma once
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
+#include "glog/logging.h"
 
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
-#include "paddle/pir/core/operation.h"
+#include "paddle/pir/include/core/builtin_type_interfaces.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace cinn {
+
+namespace adt {
+class MapExprCtx;
+}  // namespace adt
+
 namespace hlir {
 namespace framework {
 namespace pir {
 using framework::OpPatternKind;
 
-// TODO(Aurelius84): Need to be replaced with CinnGroupOp
 struct Group {
+  // Control the clone strategy for Group.
+  class Options {
+   public:
+    Options() : only_clone_ops(true) {}
+    bool OnlyCloneOps() const { return only_clone_ops; }
+
+   private:
+    bool only_clone_ops = false;
+  };
+
  public:
   Group() = default;
+  Group(const Group&) = delete;
+  Group(Group&&) = delete;
+
   explicit Group(const std::vector<::pir::Operation*>& group_ops)
       : ops(group_ops) {}
 
   explicit Group(std::initializer_list<::pir::Operation*> group_ops)
       : ops(group_ops) {}
+
+  std::shared_ptr<Group> Clone(::pir::Block* target_block,
+                               ::pir::IrMapping& ir_mapping,
+                               const Options& option = Options()) const;
 
   // distance to last group.
   int depth{0};
@@ -52,7 +79,7 @@ struct Group {
   // output ops of the group.
   std::unordered_set<::pir::Operation*> output_ops;
   // op pattern kind.
-  OpPatternKind op_pattern_kind{kReduction};
+  OpPatternKind op_pattern_kind{kElementWise};
   // internal op, the output is used by multi-op.
   // internal op can't use compute inline, should use buffer.
   std::unordered_set<::pir::Operation*> internal_ops;
@@ -63,11 +90,6 @@ struct Group {
   std::vector<std::shared_ptr<Group>> fused_sub_groups;
   // if as sub-group, used for belong groups.
   std::unordered_set<std::shared_ptr<Group>> belong_groups;
-
-  // for op lowering.
-  std::vector<std::string> input_names;
-  std::vector<std::string> output_names;
-  std::string fn_name{""};
 
   struct SharedGroupHasher {
     size_t operator()(const std::shared_ptr<Group>& group) const noexcept {
@@ -81,7 +103,7 @@ struct Group {
     }
   };
 
-  std::vector<::pir::Operation*> CollectOps() {
+  std::vector<::pir::Operation*> CollectOps() const {
     if (fused_sub_groups.size()) {
       std::vector<::pir::Operation*> tmp_ops;
       for (auto& group : fused_sub_groups) {
@@ -107,7 +129,7 @@ struct Group {
     }
   }
 
-  std::unordered_set<::pir::Operation*> OpSet() {
+  std::unordered_set<::pir::Operation*> OpSet() const {
     std::unordered_set<::pir::Operation*> op_set;
     for (auto op : CollectOps()) {
       op_set.insert(op);
@@ -115,11 +137,67 @@ struct Group {
     return op_set;
   }
 
-  // TODO(phlrain) : impliment GetInputNodeDatas GetOutputNodeDatas func
-  // std::unordered_set<::pir::Value> GetInputNodeDatas() { return {}; }
-  // std::unordered_set<::pir::Value> GetOutputNodeDatas() { return {}; }
+  std::unordered_set<::pir::Value> GetInputOpValues() const {
+    std::unordered_set<::pir::Value> group_inputs;
+    auto ops_set = this->OpSet();
+    // count all op's input Value
+    for (auto op : this->CollectOps()) {
+      for (auto& value : op->operands_source()) {
+        if (!value || !value.type()) {
+          continue;
+        }
+
+        if (!ops_set.count(value.defining_op())) {
+          // if the input value owner op is not in OpSet, it's the group's input
+          group_inputs.insert(value);
+          continue;
+        }
+      }
+    }
+
+    return group_inputs;
+  }
+
+  std::unordered_set<::pir::Value> GetOutputOpValues() const {
+    std::unordered_set<::pir::Value> group_outputs;
+
+    for (auto op : this->output_ops) {
+      for (auto& result : op->results()) {
+        if (!result || result.type()) {
+          continue;
+        }
+
+        group_outputs.insert(result);
+      }
+    }
+    return group_outputs;
+  }
 
   std::string GetFuncName() { return "fn_" + group_id + unique_id; }
+
+  std::vector<::pir::Value> GenerateGroupOutputValues() const {
+    std::unordered_set<::pir::Operation*> group_ops_set(this->ops.begin(),
+                                                        this->ops.end());
+
+    std::vector<::pir::Value> output_values;
+    for (auto* op : this->ops) {
+      for (size_t i = 0; i < op->num_results(); ++i) {
+        auto result = op->result(i);
+        if (!result) {
+          continue;
+        }
+        for (auto use_iter = result.use_begin(); use_iter != result.use_end();
+             ++use_iter) {
+          auto* use_op = use_iter->owner();
+          if (group_ops_set.find(use_op) == group_ops_set.end()) {
+            output_values.push_back(result);
+            break;
+          }
+        }
+      }
+    }
+    return output_values;
+  }
 
  public:
   const std::unordered_set<std::shared_ptr<Group>,
@@ -152,26 +230,20 @@ struct Group {
 
   OpPatternKind kind() const { return op_pattern_kind; }
 
-  std::string FuncName() const {
-    if (fn_name == "") {
-      // TODO(Aurelius84): Polish this implementation.
-      const_cast<Group*>(this)->fn_name = CompatibleInfo::GroupOpsName(ops);
-    }
-    return this->fn_name;
-  }
-
  private:
   // input groups
   std::unordered_set<std::shared_ptr<Group>,
                      SharedGroupHasher,
                      SharedGroupComparator>
       producer_groups_;
-  // output grous
+  // output groups
   std::unordered_set<std::shared_ptr<Group>,
                      SharedGroupHasher,
                      SharedGroupComparator>
       consumer_groups_;
 };
+
+std::ostream& operator<<(std::ostream& os, const Group& group);
 
 }  // namespace pir
 }  // namespace framework

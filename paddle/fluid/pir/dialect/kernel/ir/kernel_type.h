@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/pir/dialect/kernel/ir/type_storage.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/pir/core/type.h"
+#include "paddle/pir/include/core/type.h"
 
 namespace paddle {
 namespace dialect {
@@ -24,7 +24,8 @@ namespace dialect {
 class AllocatedDenseTensorType
     : public pir::Type::TypeBase<AllocatedDenseTensorType,
                                  pir::Type,
-                                 AllocatedDenseTensorTypeStorage> {
+                                 AllocatedDenseTensorTypeStorage,
+                                 pir::WrapTypeInterface> {
  public:
   using Base::Base;
 
@@ -49,23 +50,26 @@ class AllocatedDenseTensorType
         ctx, place, dense_tensor_type);
   }
 
+  pir::Type prim_type();
+
   const phi::Place &place() const;
 
   pir::Type dtype() const;
 
   const phi::DDim &dims() const;
 
-  const phi::DataLayout &data_layout() const;
+  phi::DataLayout data_layout() const;
 
   const phi::LoD &lod() const;
 
-  const size_t &offset() const;
+  size_t offset() const;
 };
 
 class AllocatedSelectedRowsType
     : public pir::Type::TypeBase<AllocatedSelectedRowsType,
                                  pir::Type,
-                                 AllocatedSelectedRowsTypeStorage> {
+                                 AllocatedSelectedRowsTypeStorage,
+                                 pir::WrapTypeInterface> {
  public:
   using Base::Base;
 
@@ -90,17 +94,57 @@ class AllocatedSelectedRowsType
         ctx, place, type);
   }
 
+  pir::Type prim_type();
+
+  const phi::Place &place() const;
+
+  pir::Type dtype() const;
+
+  const phi::DDim &dims() const;
+
+  phi::DataLayout data_layout() const;
+
+  const phi::LoD &lod() const;
+
+  size_t offset() const;
+};
+
+class AllocatedDenseTensorArrayType
+    : public pir::Type::TypeBase<AllocatedDenseTensorArrayType,
+                                 pir::Type,
+                                 AllocatedDenseTensorArrayTypeStorage,
+                                 pir::WrapTypeInterface> {
+ public:
+  using Base::Base;
+
+  static AllocatedDenseTensorArrayType get(pir::IrContext *ctx,
+                                           const phi::Place &place,
+                                           dialect::DenseTensorArrayType type) {
+    return pir::TypeManager::template get<AllocatedDenseTensorArrayType>(
+        ctx, place, type);
+  }
+
+  static AllocatedDenseTensorArrayType get(pir::IrContext *ctx,
+                                           const phi::Place &place,
+                                           const pir::Type &dtype,
+                                           const phi::DDim &dims,
+                                           const phi::DataLayout &layout) {
+    dialect::DenseTensorArrayType type =
+        dialect::DenseTensorArrayType::get(ctx, dtype, dims, layout);
+
+    return pir::TypeManager::template get<AllocatedDenseTensorArrayType>(
+        ctx, place, type);
+  }
+
+  pir::Type prim_type();
+
   const phi::Place &place() const;
 
   const pir::Type &dtype() const;
 
-  const phi::DDim &dims() const;
+  const pir::DDim &dims() const;
 
   const phi::DataLayout &data_layout() const;
-
-  const phi::LoD &lod() const;
-
-  const size_t &offset() const;
 };
 
 }  // namespace dialect
@@ -108,3 +152,4 @@ class AllocatedSelectedRowsType
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AllocatedDenseTensorType)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AllocatedSelectedRowsType)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AllocatedDenseTensorArrayType)

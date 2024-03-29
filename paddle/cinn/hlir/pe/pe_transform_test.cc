@@ -52,7 +52,7 @@ TEST(MatmulPE, MatmulCase1) {
     tensor_args.push_back(C[i]);
     stages->InsertLazily(C[i]);
   }
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
   Module::Builder builder("module0", target);
   auto func = Lower("fn", stages, tensor_args);
   builder.AddFunction(func);
@@ -66,9 +66,9 @@ TEST(MatmulPE, MatmulCase1) {
   CHECK(fn);
   auto fn_ = reinterpret_cast<void (*)(void *, int32_t)>(fn);
   cinn_buffer_t *A_buf =
-      common::BufferBuilder(Float(32), {m, k}).set_random().Build();
+      cinn::common::BufferBuilder(Float(32), {m, k}).set_random().Build();
   cinn_buffer_t *B_buf =
-      common::BufferBuilder(Float(32), {k, n}).set_random().Build();
+      cinn::common::BufferBuilder(Float(32), {k, n}).set_random().Build();
   cinn_pod_value_t a_arg(A_buf), b_arg(B_buf);
   std::vector<cinn_pod_value_t> args = {a_arg, b_arg};
   std::vector<cinn_buffer_t *> C_buf;
@@ -77,7 +77,8 @@ TEST(MatmulPE, MatmulCase1) {
     for (auto &shape : C[i]->shape) {
       shapes.push_back(shape.as_int32());
     }
-    auto *buffer = common::BufferBuilder(Float(32), shapes).set_zero().Build();
+    auto *buffer =
+        cinn::common::BufferBuilder(Float(32), shapes).set_zero().Build();
     CHECK(buffer);
     C_buf.push_back(buffer);
     cinn_pod_value_t arg(buffer);
@@ -115,9 +116,9 @@ TEST(ScatterAssign, ScatterAssign) {
   int axis = 0;
 
 #ifdef CINN_WITH_CUDA
-  auto target = common::DefaultNVGPUTarget();
+  auto target = cinn::common::DefaultNVGPUTarget();
 #else
-  auto target = common::DefaultHostTarget();
+  auto target = cinn::common::DefaultHostTarget();
 #endif
 
   auto output = hlir::pe::ScatterAssign(
@@ -170,7 +171,7 @@ TEST(SliceAssign, SliceAssign) {
   LOG(INFO) << "func:\n" << func;
 
 #ifdef CINN_WITH_CUDA
-  auto target = common::DefaultNVGPUTarget();
+  auto target = cinn::common::DefaultNVGPUTarget();
   Module::Builder builder("SliceAssign_Builder", target);
   builder.AddFunction(func);
 
@@ -211,7 +212,7 @@ TEST(Concat, ConcatCase0) {
   LOG(INFO) << "func:\n" << func;
 
 #ifdef CINN_WITH_CUDA
-  auto target = common::DefaultNVGPUTarget();
+  auto target = cinn::common::DefaultNVGPUTarget();
   Module::Builder builder("Concat_Builder", target);
   builder.AddFunction(func);
 

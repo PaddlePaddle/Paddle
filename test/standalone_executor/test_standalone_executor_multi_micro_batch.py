@@ -28,7 +28,7 @@ from paddle.nn import TransformerEncoderLayer
 paddle.enable_static()
 
 
-class TestEncorderMulitMicroBatchRun(unittest.TestCase):
+class TestEncoderMultiMicroBatchRun(unittest.TestCase):
     def setUp(self):
         self.place_desc = (
             paddle.CUDAPlace(0)
@@ -185,14 +185,6 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
             for program_id in range(program_num):
                 job = Job(f"P{program_id}")
                 job.set_micro_batch_id(micro_batch_id)
-                # Set col_attr info for fetch_op to fetch the correct data after running multiple micro batch
-                if program_id == program_num - 1:
-                    fetch_op_id_to_col_attr = {}
-                    for i in range(fetch_op_num):
-                        job.set_col_attr_for_fetch_op(
-                            fetch_op_indics[i],
-                            i * micro_batch_num + micro_batch_id,
-                        )
                 job_list.append(job)
 
         job_types = []
@@ -221,7 +213,7 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
         return res
 
     def check_result(self, expected_result, actual_result):
-        # FIXME(Ruibiao): The output result of Encorder layers is unstable in some case.
+        # FIXME(Ruibiao): The output result of Encoder layers is unstable in some case.
         if self.place.is_cpu_place() or platform.system().lower() == "windows":
             np.testing.assert_allclose(
                 expected_result, actual_result, atol=1e-6, rtol=1e-6

@@ -28,8 +28,8 @@
 namespace cinn {
 namespace ir {
 
-using common::bfloat16;
-using common::float16;
+using cinn::common::bfloat16;
+using cinn::common::float16;
 
 void IrPrinter::Print(const Expr &e) {
   IRVisitorRequireReImpl::Visit(&e);
@@ -60,7 +60,9 @@ void IrPrinter::Visit(const IntImm *x) {
     str_ += "(int8_t)";
     str_ += std::to_string(x->value);
   } else {
-    LOG(FATAL) << "Not support int type: " << x->type();
+    std::stringstream ss;
+    ss << "Not support int type: " << x->type();
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 }
 void IrPrinter::Visit(const UIntImm *x) {
@@ -82,7 +84,9 @@ void IrPrinter::Visit(const UIntImm *x) {
       str_ += "false";
     }
   } else {
-    LOG(FATAL) << "Not support uint type: " << x->type();
+    std::stringstream ss;
+    ss << "Not support uint type: " << x->type();
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 }
 void IrPrinter::Visit(const FloatImm *x) {
@@ -119,7 +123,9 @@ void IrPrinter::Visit(const FloatImm *x) {
     ss << std::showpoint;
     ss << x->value;
   } else {
-    LOG(FATAL) << "Not support float type: " << x->type();
+    std::stringstream ss;
+    ss << "Not support float type: " << x->type();
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   str_ += ss.str();
 }
@@ -607,6 +613,14 @@ void IrPrinter::Visit(const ScheduleBlockRealize *x) {
   str_ += "}";
 }
 
+void IrPrinter::Visit(const _Dim_ *x) {
+  str_ += "Dim(name: ";
+  str_ += x->name;
+  str_ += ", symbol: ";
+  str_ += x->ToString();
+  str_ += ")";
+}
+
 void IrPrinter::Visit(const IntrinsicOp *x) {
   switch (x->getKind()) {
 #define __(op__)                                \
@@ -675,6 +689,15 @@ std::ostream &operator<<(std::ostream &os, Expr a) {
   return os;
 }
 
+std::ostream &operator<<(std::ostream &os, const ir::Module &m) {
+  os << "Module " << m->name << " {\n\n";
+  for (auto &fn : m->functions) {
+    os << fn << '\n';
+  }
+  os << "\n\n}";
+  return os;
+}
+
 std::ostream &operator<<(std::ostream &os, const std::vector<Expr> &a) {
   std::stringstream ss;
   IrPrinter printer(ss);
@@ -683,12 +706,11 @@ std::ostream &operator<<(std::ostream &os, const std::vector<Expr> &a) {
   return os;
 }
 
-std::ostream &operator<<(std::ostream &os, const ir::Module &m) {
-  os << "Module " << m->name << " {\n\n";
-  for (auto &fn : m->functions) {
-    os << fn << '\n';
-  }
-  os << "\n\n}";
+std::ostream &operator<<(std::ostream &os, const std::vector<Dim> &a) {
+  std::stringstream ss;
+  IrPrinter printer(ss);
+  printer.Print(std::vector<Expr>(a.begin(), a.end()));
+  os << ss.str();
   return os;
 }
 

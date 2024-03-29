@@ -47,8 +47,8 @@ namespace cinn {
 namespace hlir {
 namespace op {
 
-using common::CINNValue;
-using common::CINNValuePack;
+using cinn::common::CINNValue;
+using cinn::common::CINNValuePack;
 
 std::shared_ptr<framework::OpStrategy> StrategyForRandInt(
     const framework::NodeAttr &attrs,
@@ -86,7 +86,7 @@ std::vector<framework::shape_t> InferShapeForRandInt(
 std::vector<Type> InferDtypeForRandInt(const std::vector<Type> &inputs_type,
                                        const framework::AttrMapType &attrs) {
   std::string dtype = "int32";
-  std::vector<Type> res{common::Str2Type(dtype)};
+  std::vector<Type> res{cinn::common::Str2Type(dtype)};
   return res;
 }
 

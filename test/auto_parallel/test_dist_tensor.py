@@ -18,22 +18,23 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
+from paddle.distributed import Replicate
 
 
 class TestDistTensor(unittest.TestCase):
     def test_dist_tensor_creation(self):
         shape = [10, 5]
         mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
-        dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None, None])
+        placements = [Replicate(), Replicate()]
 
         # create dist tensor using numpy
         dist_tensor_with_numpy = dist.shard_tensor(
-            np.ones(shape, dtype=np.float32), dist_attr=dist_attr
+            np.ones(shape, dtype=np.float32), mesh, placements
         )
 
         # create dist tensor using tensor
         dist_tensor_with_tensor = dist.shard_tensor(
-            paddle.ones(shape), dist_attr=dist_attr
+            paddle.ones(shape), mesh, placements
         )
 
         # create normal tensor
@@ -48,66 +49,73 @@ class TestDistTensor(unittest.TestCase):
         self.assertEqual(
             str(dist_tensor_with_numpy), str(dist_tensor_with_tensor)
         )
-        self.assertEqual(dist_tensor_with_numpy.dist_attr, dist_attr)
-        self.assertEqual(dist_tensor_with_tensor.dist_attr, dist_attr)
+        self.assertEqual(dist_tensor_with_numpy.placements, placements)
+        self.assertEqual(dist_tensor_with_tensor.placements, placements)
+
+    def test_dist_parameter(self):
+        mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+        placements = [Replicate(), Replicate()]
+
+        dense_param = paddle.create_parameter(
+            [10, 5], name="linear_1.weight", dtype='float32'
+        )
+        dist_param = dist.shard_tensor(dense_param, mesh, placements)
+
+        self.assertEqual(dense_param.name + ".dist", dist_param.name)
 
 
 class TestDistTensorFromFn(unittest.TestCase):
     def run_dtensor_from_fn(self):
         # Create a dist_attr
         mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        placements = [Replicate()]
+
+        # for static graph here.
         dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None])
 
         # Call the function dtensor_from_fn with dist_attr parameter
-        result = dist.dtensor_from_fn(
-            paddle.ones, dist_attr=dist_attr, shape=[16]
-        )
+        result = dist.dtensor_from_fn(paddle.ones, mesh, placements, shape=[16])
         # Verify the result
         if paddle.in_dynamic_mode():
-            dist_attr.dynamic_dims = []
             self.assertIsInstance(result, paddle.Tensor)
             self.assertEqual(result.shape, [16])
-            self.assertEqual(result.dist_attr, dist_attr)
+            self.assertEqual(result.placements, placements)
         else:
             dist_attr.dynamic_dims = [0]
+            dist_attr.chunk_id = 0
             self.assertIsInstance(result, paddle.static.Variable)
             self.assertEqual(result.shape, (16,))
             self.assertEqual(result.dist_attr, dist_attr)
 
         result_zeros = dist.dtensor_from_fn(
-            paddle.zeros, dist_attr=dist_attr, shape=[16]
+            paddle.zeros, mesh, placements, shape=[16]
         )
         if paddle.in_dynamic_mode():
             dist_attr.dynamic_dims = []
             self.assertIsInstance(result, paddle.Tensor)
             self.assertEqual(result.shape, [16])
-            self.assertEqual(result.dist_attr, dist_attr)
+            self.assertEqual(result.placements, placements)
         else:
             dist_attr.dynamic_dims = [0]
+            dist_attr.chunk_id = 0
             self.assertIsInstance(result, paddle.static.Variable)
             self.assertEqual(result.shape, (16,))
             self.assertEqual(result.dist_attr, dist_attr)
 
         result_random = dist.dtensor_from_fn(
-            paddle.rand, dist_attr=dist_attr, shape=[16]
+            paddle.rand, mesh, placements, shape=[16]
         )
         if paddle.in_dynamic_mode():
             dist_attr.dynamic_dims = []
             self.assertIsInstance(result, paddle.Tensor)
             self.assertEqual(result.shape, [16])
-            self.assertEqual(result.dist_attr, dist_attr)
+            self.assertEqual(result.placements, placements)
         else:
             dist_attr.dynamic_dims = [0]
+            dist_attr.chunk_id = 0
             self.assertIsInstance(result, paddle.static.Variable)
             self.assertEqual(result.shape, (16,))
             self.assertEqual(result.dist_attr, dist_attr)
-
-        # Test with invalid sharding_specs length
-        with self.assertRaises(AssertionError):
-            invalid_dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x'])
-            dist.dtensor_from_fn(
-                paddle.ones, dist_attr=invalid_dist_attr, shape=[2, 3]
-            )
 
     def test_dynamic_mode(self):
         self.run_dtensor_from_fn()

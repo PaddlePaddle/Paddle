@@ -22,6 +22,7 @@
 #include <string>
 #include <utility>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/distributed/common/afs_warpper.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/depends/sparse_utils.h"
@@ -31,8 +32,7 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/string_helper.h"
-#include "paddle/phi/core/macros.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
 namespace distributed {
@@ -114,6 +114,13 @@ class Table {
   // 指定保存路径
   virtual int32_t Save(const std::string &path,
                        const std::string &converter) = 0;
+
+#ifdef PADDLE_WITH_GPU_GRAPH
+  // pglbox支持将非9008 slot的feature额外保存一份，实际支持用户可配置过滤slot
+  virtual int32_t Save_v2(const std::string &path,
+                          const std::string &converter) = 0;
+#endif
+
   // for cache
   virtual int32_t SaveCache(
       const std::string &path UNUSED,
@@ -144,8 +151,8 @@ class Table {
     return InitializeShard();
   }
 
-  inline std::shared_ptr<ValueAccessor> ValueAccesor() {
-    return _value_accesor;
+  inline std::shared_ptr<ValueAccessor> GetValueAccessor() {
+    return _value_accessor;
   }
 
   virtual void *GetShard(size_t shard_idx) = 0;
@@ -169,7 +176,7 @@ class Table {
   size_t _shard_num;  // table 分片总数
   TableParameter _config;
   float *_global_lr = nullptr;
-  std::shared_ptr<ValueAccessor> _value_accesor;
+  std::shared_ptr<ValueAccessor> _value_accessor;
   AfsClient _afs_client;
 };
 REGISTER_PSCORE_REGISTERER(Table);

@@ -18,10 +18,10 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/jit/property.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace jit {
@@ -99,7 +99,7 @@ std::unordered_map<std::string, std::shared_ptr<Variable>> Property::Values() {
         case ValueProto::STRING:
           *var->GetMutable<paddle::framework::String>() = GetString(n);
           break;
-        case ValueProto::FLOATS:
+        case ValueProto::FLOATS:  // NOLINT
           *var->GetMutable<std::vector<float>>() = GetFloats(n);
           break;
         case ValueProto::INTS:

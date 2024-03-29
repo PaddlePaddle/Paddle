@@ -40,7 +40,7 @@ static framework::DDim RowMatrixFromVector(const framework::DDim &x_dim) {
   if (x_dim.size() > 1) {
     return x_dim;
   }
-  return phi::make_ddim({1, x_dim[0]});
+  return common::make_ddim({1, x_dim[0]});
 }
 
 /**
@@ -51,7 +51,7 @@ static framework::DDim ColumnMatrixFromVector(const framework::DDim &y_dim) {
   if (y_dim.size() > 1) {
     return y_dim;
   }
-  return phi::make_ddim({y_dim[0], 1});
+  return common::make_ddim({y_dim[0], 1});
 }
 
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
@@ -676,11 +676,11 @@ class MatMulOp : public framework::OperatorWithKernel {
 
     std::vector<int64_t> dim_out;
     if (mat_dim_x.batch_size_ != 0) {
-      dim_out = phi::vectorize(dim_x);
+      dim_out = common::vectorize(dim_x);
       dim_out[dim_out.size() - 2] = mat_dim_x.height_;
       dim_out[dim_out.size() - 1] = dim_out_y;
     } else if (mat_dim_y.batch_size_ != 0) {
-      dim_out = phi::vectorize(dim_y);
+      dim_out = common::vectorize(dim_y);
       dim_out[dim_out.size() - 2] = mat_dim_x.height_;
       dim_out[dim_out.size() - 1] = dim_out_y;
     } else {
@@ -696,7 +696,7 @@ class MatMulOp : public framework::OperatorWithKernel {
       dim_out.resize(dim_out.size() - 1);
     }
 
-    phi::DDim ddim_out = phi::make_ddim(dim_out);
+    phi::DDim ddim_out = common::make_ddim(dim_out);
 
     context->SetOutputDim("Out", ddim_out);
     context->ShareLoD("X", "Out");

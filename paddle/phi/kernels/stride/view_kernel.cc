@@ -32,6 +32,7 @@ void ViewShapeKernel(const Context& dev_ctx,
     meta.offset = input.offset();
     out->set_meta(meta);
     out->ResetHolder(input.Holder());
+    out->ShareInplaceVersionCounterWith(input);
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "The Tensor can not be viewed, please call reshape."));
@@ -51,6 +52,7 @@ void ViewDtypeKernel(const Context& dev_ctx,
     meta.dtype = dtype;
     out->set_meta(meta);
     out->ResetHolder(input.Holder());
+    out->ShareInplaceVersionCounterWith(input);
   } else if (input_dtype_size == 0) {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "The Tensor's shape is [] can not be viewed."));
@@ -63,7 +65,7 @@ void ViewDtypeKernel(const Context& dev_ctx,
             input.dtype(),
             dtype,
             input.strides()[input.strides().size() - 1]));
-    size_t times = input_dtype_size / output_dtype_size;
+    size_t times = input_dtype_size / output_dtype_size;  // NOLINT
 
     DDim output_dims = input.dims();
     output_dims[output_dims.size() - 1] =
@@ -82,6 +84,7 @@ void ViewDtypeKernel(const Context& dev_ctx,
     meta.offset = input.offset() * times;
     out->set_meta(meta);
     out->ResetHolder(input.Holder());
+    out->ShareInplaceVersionCounterWith(input);
   } else {
     PADDLE_ENFORCE_EQ(
         input.strides()[input.strides().size() - 1],
@@ -140,15 +143,16 @@ void ViewDtypeKernel(const Context& dev_ctx,
     meta.offset = input.offset() / times;
     out->set_meta(meta);
     out->ResetHolder(input.Holder());
+    out->ShareInplaceVersionCounterWith(input);
   }
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(view_shape,
-                                                       STRIDED,
-                                                       phi::ViewShapeKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(view_shape,
+                                         STRIDED,
+                                         phi::ViewShapeKernel) {}
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(view_dtype,
-                                                       STRIDED,
-                                                       phi::ViewDtypeKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(view_dtype,
+                                         STRIDED,
+                                         phi::ViewDtypeKernel) {}

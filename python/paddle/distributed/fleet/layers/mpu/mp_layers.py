@@ -52,7 +52,7 @@ class VocabParallelEmbedding(paddle.nn.Layer):
         num_embeddings(int): One element which indicate the size of the dictionary of embeddings.
         embedding_dim(int): One element which indicate the size of each embedding vector respectively.
         weight_attr(ParamAttr|None): To specify the weight parameter property. Default: None, which means the
-            default weight parameter property is used. See usage for details in :ref:`api_ParamAttr` . In addition,
+            default weight parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr` . In addition,
             user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter.
             The local word vector needs to be transformed into numpy format, and the shape of local word
             vector should be consistent with :attr:`num_embeddings` . Then :ref:`api_paddle_nn_initializer_Assign`
@@ -134,6 +134,7 @@ class VocabParallelEmbedding(paddle.nn.Layer):
         self._size = [per_part_size, embedding_dim]
         self._weight_attr = weight_attr
         self._name = name
+        self.num_embeddings = num_embeddings
 
         if self.is_mp and paddle.in_dynamic_mode():
             with get_rng_state_tracker().rng_state():
@@ -161,6 +162,7 @@ class VocabParallelEmbedding(paddle.nn.Layer):
                 self.weight,
                 x,
                 start_index=self.vocab_start_index,
+                vocab_size=self.num_embeddings,
                 name=self._name,
             )
             output = mp_ops._mp_allreduce(
@@ -217,7 +219,12 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
     @staticmethod
     def backward(ctx, dy):
         x, weight, bias = ctx.saved_tensor()
-        dx = paddle.matmul(dy, weight, transpose_y=True)
+        if dy.dtype == weight.dtype:
+            dx = paddle.matmul(dy, weight, transpose_y=True)
+        else:
+            dx = paddle.matmul(
+                dy, paddle.cast(weight, dtype=dy.dtype), transpose_y=True
+            )
         op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
         task = ctx.model_parallel_group.process_group.all_reduce(
             dx, op_type, sync_op=False
@@ -333,7 +340,7 @@ class ColumnParallelLinear(paddle.nn.Layer):
         weight_attr(ParamAttr|None): The attribute for the learnable weight of this layer. The default value is None
             and the weight will be initialized to zero. For detailed information, please refer to paddle.ParamAttr.
         has_bias(bool): whether to add bias.
-        gather_output(bool): whether to do allgahter for the output of each rank.
+        gather_output(bool): whether to do allgather for the output of each rank.
         fuse_matmul_bias(bool): whether to fuse matmul and bias.
         mp_group(Group): The tensor parallel group.
         name(str, optional): Normally there is no need for user to set this parameter.
@@ -540,7 +547,7 @@ class RowParallelLinear(paddle.nn.Layer):
         weight_attr(ParamAttr|None): The attribute for the learnable weight of this layer. The default value is None
             and the weight will be initialized to zero. For detailed information, please refer to paddle.ParamAttr.
         has_bias(bool): whether to add bias.
-        input_is_parallel(bool): whether the input has alreadly been splitted across the mp group.
+        input_is_parallel(bool): whether the input has already been splitted across the mp group.
         fuse_matmul_bias(bool): whether to fuse matmul and bias.
         mp_group(Group): The tensor parallel group.
         name(str, optional): Normally there is no need for user to set this parameter.
@@ -749,7 +756,7 @@ class ParallelCrossEntropy(paddle.nn.Layer):
             >>> # doctest: +SKIP('No img to demonstrate')
             >>> from paddle.distributed.fleet.layers.mpu import ParallelCrossEntropy
             >>> loss_func = ParallelCrossEntropy
-            >>> loss = loss_func(img, lable)
+            >>> loss = loss_func(img, label)
 
     """
 

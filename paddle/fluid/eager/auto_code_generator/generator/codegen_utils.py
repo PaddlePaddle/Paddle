@@ -38,9 +38,7 @@ ops_to_fill_zero_for_empty_grads = {
     "tanh_grad",
     "tanh_double_grad",
     "tanh_triple_grad",
-    "sin_double_grad",
     "sin_triple_grad",
-    "cos_double_grad",
     "cos_triple_grad",
     "subtract_double_grad",
     "divide_double_grad",
@@ -118,7 +116,7 @@ def ReadFwdFile(filepath):
     # empty file loaded by yaml is None
     contents = yaml.load(f, Loader=yaml.FullLoader)
     f.close()
-    # not all fused ops supoort dygraph
+    # not all fused ops support dygraph
     if filepath.endswith("fused_ops.yaml") is True:
         new_apis = [
             api
@@ -134,7 +132,7 @@ def ReadBwdFile(filepath, bw_ops=None):
     f = open(filepath, 'r')
     if bw_ops is None:
         contents = yaml.load(f, Loader=yaml.FullLoader)
-        # not all fused ops supoort dygraph
+        # not all fused ops support dygraph
         if filepath.endswith("fused_backward.yaml") is True:
             new_apis = [
                 api

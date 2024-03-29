@@ -173,7 +173,7 @@ void ReduceSumEigen(const KPDevice& dev_ctx,
     (*reduce_dims)[i] += added_dims;
   }
   auto eigen_reduce_dim =
-      EigenDim<ReducedDimSize>::From(phi::make_ddim(*reduce_dims));
+      EigenDim<ReducedDimSize>::From(common::make_ddim(*reduce_dims));
   // Caculate
   eigen_out_tensor.device(*dev_ctx.eigen_device()) =
       eigen_x_tensor.sum(eigen_reduce_dim);

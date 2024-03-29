@@ -21,9 +21,8 @@ from ...base.data_feeder import check_dtype, check_variable_and_dtype
 from ...base.framework import convert_np_dtype_to_dtype_
 from ...base.layer_helper import LayerHelper
 from ...tensor.manipulation import chunk
-from ...tensor.math import tanh  # noqa: F401
-from ...tensor.math import tanh_  # noqa: F401
-from ...tensor.ops import sigmoid  # noqa: F401
+from ...tensor.math import tanh, tanh_  # noqa: F401
+from ...tensor.ops import sigmoid
 
 __all__ = []
 
@@ -32,7 +31,7 @@ def celu(x, alpha=1.0, name=None):
     r"""
     celu activation.
 
-    Apply the following operation to each element of the input Tensor accroding to the `Continuously Differentiable Exponential Linear Units <https://arxiv.org/abs/1704.07483>`_.
+    Apply the following operation to each element of the input Tensor according to the `Continuously Differentiable Exponential Linear Units <https://arxiv.org/abs/1704.07483>`_.
 
     .. math::
 
@@ -114,7 +113,7 @@ def elu(x, alpha=1.0, name=None):
              [ 1.        , 15.60000038]])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.elu(x, alpha)
 
     else:
@@ -243,7 +242,7 @@ def hardshrink(x, threshold=0.5, name=None):
 
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.hardshrink(x, threshold)
     else:
         check_variable_and_dtype(
@@ -297,7 +296,7 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
             [-1.       , 0.30000001,  1.       ])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.hardtanh(x, min, max)
     else:
         check_variable_and_dtype(
@@ -364,7 +363,7 @@ def hardsigmoid(x, slope=0.1666667, offset=0.5, name=None):
             [0.        , 1.        , 0.66666669])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.hardsigmoid(x, slope, offset)
     else:
         check_variable_and_dtype(
@@ -418,7 +417,7 @@ def hardswish(x, name=None):
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.       , 5.        , 0.66666669])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.hardswish(x)
     else:
         check_variable_and_dtype(
@@ -696,9 +695,7 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
 
     if lower < 0 or lower > 1:
         raise ValueError(
-            "The lower value must be no less than zero or greater than one. Received: {}.".format(
-                lower
-            )
+            f"The lower value must be no less than zero or greater than one. Received: {lower}."
         )
 
     if upper < lower:
@@ -715,7 +712,7 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
 
     is_test = not training
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.rrelu(x, lower, upper, is_test)
     else:
         check_variable_and_dtype(
@@ -889,7 +886,7 @@ def maxout(x, groups, axis=1, name=None):
                [0.42400089, 0.40641287, 0.97020894, 0.74437362],
                [0.51785129, 0.73292869, 0.97786582, 0.92382854]]]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.maxout(x, groups, axis)
     else:
         check_variable_and_dtype(
@@ -1010,7 +1007,7 @@ def selu(
             f"The alpha must be no less than zero. Received: {alpha}."
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.selu(x, scale, alpha)
     else:
         check_variable_and_dtype(
@@ -1298,7 +1295,7 @@ def softplus(x, beta=1, threshold=20, name=None):
             [0.51301527, 0.59813893, 0.74439669, 0.85435522])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.softplus(x, beta, threshold)
     else:
         check_variable_and_dtype(
@@ -1365,7 +1362,7 @@ def softshrink(x, threshold=0.5, name=None):
             f"The threshold must be no less than zero. Received: {threshold}."
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.softshrink(x, threshold)
     else:
         check_variable_and_dtype(
@@ -1391,7 +1388,7 @@ def softsign(x, name=None):
         softsign(x) = \frac{x}{1 + |x|}
 
     Parameters:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type float32, float64, complex64 or complex128.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1409,7 +1406,7 @@ def softsign(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.28571430, -0.16666666,  0.09090909,  0.23076925])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.softsign(x)
 
     check_variable_and_dtype(
@@ -1497,7 +1494,7 @@ def mish(x, name=None):
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.03357624,  0.        ,  4.99955177])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.mish(x, 20)
     else:
         check_variable_and_dtype(
@@ -1536,7 +1533,7 @@ def tanhshrink(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.02005100, -0.00262472,  0.00033201,  0.00868741])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.tanh_shrink(x)
     else:
         check_variable_and_dtype(
@@ -1586,7 +1583,7 @@ def thresholded_relu(x, threshold=1.0, name=None):
             [2., 0., 0.])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.thresholded_relu(x, threshold)
     else:
         check_variable_and_dtype(
@@ -1746,7 +1743,7 @@ def glu(x, axis=-1, name=None):
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        A Tensor with the same data type as x. The size of the given aixs is
+        A Tensor with the same data type as x. The size of the given axis is
         halved.
 
     Examples:

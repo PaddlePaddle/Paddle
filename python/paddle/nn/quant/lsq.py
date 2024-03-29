@@ -17,9 +17,10 @@ import math
 import paddle
 from paddle.autograd import PyLayer
 from paddle.framework import ParamAttr
-from paddle.nn import Layer
 from paddle.nn.initializer import Constant
 from paddle.utils import unique_name
+
+from ..layer.layers import Layer
 
 
 def round(x):
@@ -138,7 +139,7 @@ class FakeQuantActLSQPlus(Layer):
     def __init__(
         self,
         quant_bits,
-        all_postive=False,
+        all_positive=False,
         symmetric=False,
         batch_init=20,
         dtype='float32',
@@ -149,7 +150,7 @@ class FakeQuantActLSQPlus(Layer):
         '''
         Args:
             quant_bits(int): quantization bit number for weights.
-            all_postive(bool): whether unsigned or signed quantization, where True for unsigned quantization and False for signed quantization.
+            all_positive(bool): whether unsigned or signed quantization, where True for unsigned quantization and False for signed quantization.
             symmetric(bool): whether symmetric or asymmetric quantization.
             batch_init(int): number of batches that collect Gaussian approximation for the weight distribution in each layer.
             dtype(str): data type.
@@ -157,7 +158,7 @@ class FakeQuantActLSQPlus(Layer):
             reduce_type(str): the reduce type which is needed when parallel training.
         '''
         self.bits = quant_bits
-        self.all_positive = all_postive
+        self.all_positive = all_positive
         self.symmetric = symmetric
         self.batch_init = batch_init
         self.name = name
@@ -245,7 +246,7 @@ class FakeQuantWeightLSQPlus(Layer):
     def __init__(
         self,
         quant_bits,
-        all_postive=False,
+        all_positive=False,
         per_channel=False,
         batch_init=20,
         channel_num=None,
@@ -258,7 +259,7 @@ class FakeQuantWeightLSQPlus(Layer):
         '''
         Args:
             quant_bits(int): quantization bit number for weights.
-            all_postive(bool): whether unsigned or signed quantization, where True for unsigned quantization and False for signed quantization.
+            all_positive(bool): whether unsigned or signed quantization, where True for unsigned quantization and False for signed quantization.
             per_channel(bool): whether layer-wise or channel-wise quantization, where True for layer-wise quantization and False for channel-wise quantization.
             batch_init(int): number of batches that collect Gaussian approximation for the weight distribution in each layer.
             channel_num(int): the channel number of the weight which is needed when per_channel is True.
@@ -269,7 +270,7 @@ class FakeQuantWeightLSQPlus(Layer):
         '''
 
         self.bits = quant_bits
-        self.all_positive = all_postive
+        self.all_positive = all_positive
         self.per_channel = per_channel
         self.quant_linear = quant_linear
         self.batch_init = batch_init

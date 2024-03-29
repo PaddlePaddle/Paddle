@@ -203,9 +203,9 @@ def set_output_grad(scope, outputs, place, feed_dict=None):
         grad_tensor = scope.var(grad_var_name(name)).get_tensor()
         out_dtype = out_tensor.dtype()
         if data is None:
-            if out_dtype == core.VarDesc.VarType.FP64:
+            if out_dtype == paddle.float64:
                 data = np.ones(out_tensor.shape(), dtype=np.float64)
-            elif out_dtype == core.VarDesc.VarType.FP32:
+            elif out_dtype == paddle.float32:
                 data = np.ones(out_tensor.shape(), dtype=np.float32)
             else:
                 raise ValueError("Not supported data type " + str(out_dtype))
@@ -360,22 +360,9 @@ class TestBatchNormOpInference(unittest.TestCase):
             atol=atol,
         )
 
-    def test_check_output(self):
-        places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-
-        for place in places:
-            for data_format in ["NCHW", "NHWC"]:
-                self.check_with_place(
-                    place, data_format, self.dtype, [2, 3, 4, 5]
-                )
-                self.check_with_place(place, data_format, self.dtype, [2, 3])
-
-    def init_kernel_type(self):
-        pass
-
-    def check_without_scale_and_bias(self, place, data_layout, dtype, shape):
+    def check_with_place_without_scale_and_bias(
+        self, place, data_layout, dtype, shape
+    ):
         epsilon = 0.00001
         if len(shape) == 2:
             x_shape = shape
@@ -417,16 +404,37 @@ class TestBatchNormOpInference(unittest.TestCase):
         if dtype == np.uint16:
             x_val = convert_float_to_uint16(x_val)
 
-        y_tensor, _, _, _, _, _ = paddle.nn.functional.batch_norm(
-            paddle.to_tensor(x_val),
-            paddle.to_tensor(mean),
-            paddle.to_tensor(variance),
-            None,
-            None,
-            False,
-        )
+        exe = paddle.static.Executor(place)
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x_ = paddle.static.data(
+                name='x_val', shape=x_shape, dtype='float32'
+            )
+            mean_ = paddle.static.data(
+                name='mean', shape=scale_shape, dtype='float32'
+            )
+            variance_ = paddle.static.data(
+                name='variance', shape=scale_shape, dtype='float32'
+            )
+            y_tensor = paddle.nn.functional.batch_norm(
+                x_,
+                mean_,
+                variance_,
+                None,
+                None,
+                False,
+                data_format=data_layout,
+            )
+        y_tensor = exe.run(
+            main,
+            feed={'x_val': x_val, 'mean': mean, 'variance': variance},
+            fetch_list=[y_tensor],
+        )[0]
 
         # check inference result
+        # since op is called by Executor, there is
+        # no need to transform y_tensor when data layout is "NHWC"
         atol = 1e-3
         if dtype == np.uint16:
             y_tensor = convert_uint16_to_float(y_tensor)
@@ -446,6 +454,35 @@ class TestBatchNormOpInference(unittest.TestCase):
             atol=atol,
         )
 
+    def test_check_output(self):
+        places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+
+        for place in places:
+            for data_format in ["NCHW", "NHWC"]:
+                self.check_with_place(
+                    place,
+                    data_format,
+                    self.dtype,
+                    [2, 3, 4, 5],
+                )
+                self.check_with_place(
+                    place,
+                    data_format,
+                    self.dtype,
+                    [2, 3],
+                )
+                self.check_with_place_without_scale_and_bias(
+                    place, data_format, self.dtype, [2, 3, 4, 5]
+                )
+                self.check_with_place_without_scale_and_bias(
+                    place, data_format, self.dtype, [2, 3]
+                )
+
+    def init_kernel_type(self):
+        pass
+
 
 class TestFP16BatchNormOpInference(TestBatchNormOpInference):
     def setUp(self):
@@ -464,9 +501,17 @@ class TestFP16BatchNormOpInference(TestBatchNormOpInference):
             # for data_format in ["NCHW", "NHWC"]:
             for data_format in ["NCHW"]:
                 self.check_with_place(
-                    place, data_format, self.dtype, [2, 3, 4, 5]
+                    place,
+                    data_format,
+                    self.dtype,
+                    [2, 3, 4, 5],
                 )
-                self.check_with_place(place, data_format, self.dtype, [2, 3])
+                self.check_with_place(
+                    place,
+                    data_format,
+                    self.dtype,
+                    [2, 3],
+                )
 
 
 @unittest.skipIf(
@@ -487,9 +532,17 @@ class TestBF16BatchNormOpInference(TestBatchNormOpInference):
             # for data_format in ["NCHW", "NHWC"]:
             for data_format in ["NCHW"]:
                 self.check_with_place(
-                    place, data_format, self.dtype, [2, 3, 4, 5]
+                    place,
+                    data_format,
+                    self.dtype,
+                    [2, 3, 4, 5],
                 )
-                self.check_with_place(place, data_format, self.dtype, [2, 3])
+                self.check_with_place(
+                    place,
+                    data_format,
+                    self.dtype,
+                    [2, 3],
+                )
 
 
 class TestBatchNormOpTraining(unittest.TestCase):
@@ -889,8 +942,11 @@ class TestBatchNormOpError(unittest.TestCase):
 
 
 class TestDygraphBatchNormAPIError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             batch_norm = paddle.nn.BatchNorm(10)
             # the input of BatchNorm must be Variable.
             x1 = base.create_lod_tensor(
@@ -921,7 +977,7 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
                         is_test=is_test,
                         trainable_statistics=trainable_statistics,
                     )
-                    y = bn(base.dygraph.to_variable(x))
+                    y = bn(paddle.to_tensor(x))
                 return y.numpy()
 
             x = np.random.randn(*shape).astype("float32")

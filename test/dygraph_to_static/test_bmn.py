@@ -18,14 +18,17 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase, test_pir_only
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    static_guard,
+    test_legacy_and_pt_and_pir,
+)
 from predictor_utils import PredictorTools
 
 import paddle
-from paddle import base
 from paddle.base import ParamAttr
-from paddle.base.dygraph import to_variable
-from paddle.jit import to_static
+from paddle.base.framework import unique_name
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 SEED = 2000
@@ -34,8 +37,8 @@ DATATYPE = 'float32'
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
 #        some algorithm results are non-deterministic, like convolution algorithms.
-if base.is_compiled_with_cuda():
-    base.set_flags({'FLAGS_cudnn_deterministic': True})
+if paddle.is_compiled_with_cuda():
+    paddle.set_flags({'FLAGS_cudnn_deterministic': True})
 
 
 def get_interp1d_mask(
@@ -215,7 +218,7 @@ class BMN(paddle.nn.Layer):
             self.num_sample,
             self.num_sample_perbin,
         )
-        self.sample_mask = base.dygraph.base.to_variable(sample_mask)
+        self.sample_mask = paddle.to_tensor(sample_mask)
         self.sample_mask.stop_gradient = True
 
         self.p_conv3d1 = paddle.nn.Conv3D(
@@ -265,7 +268,6 @@ class BMN(paddle.nn.Layer):
             bias_attr=ParamAttr(name="PEM_2d4_b"),
         )
 
-    @to_static
     def forward(self, x):
         # Base Module
         x = paddle.nn.functional.relu(self.b_conv1(x))
@@ -600,10 +602,10 @@ def val_bmn(model, args):
         gt_start = np.array([item[2] for item in data]).astype(DATATYPE)
         gt_end = np.array([item[3] for item in data]).astype(DATATYPE)
 
-        x_data = to_variable(video_feat)
-        gt_iou_map = to_variable(gt_iou_map)
-        gt_start = to_variable(gt_start)
-        gt_end = to_variable(gt_end)
+        x_data = paddle.to_tensor(video_feat)
+        gt_iou_map = paddle.to_tensor(gt_iou_map)
+        gt_start = paddle.to_tensor(gt_start)
+        gt_end = paddle.to_tensor(gt_end)
         gt_iou_map.stop_gradient = True
         gt_start.stop_gradient = True
         gt_end.stop_gradient = True
@@ -622,16 +624,6 @@ def val_bmn(model, args):
             float(pem_cls_loss),
         ]
 
-        print(
-            f'[VALID] iter {batch_id} '
-            + '\tLoss = {}, \ttem_loss = {}, \tpem_reg_loss = {}, \tpem_cls_loss = {}'.format(
-                '%f' % float(avg_loss),
-                '%f' % float(tem_loss),
-                '%f' % float(pem_reg_loss),
-                '%f' % float(pem_cls_loss),
-            )
-        )
-
         if batch_id == args.valid_batch_num:
             break
     return loss_data
@@ -641,9 +633,9 @@ class TestTrain(Dy2StTestBase):
     def setUp(self):
         self.args = Args()
         self.place = (
-            base.CPUPlace()
-            if not base.is_compiled_with_cuda()
-            else base.CUDAPlace(0)
+            paddle.CPUPlace()
+            if not paddle.is_compiled_with_cuda()
+            else paddle.CUDAPlace(0)
         )
 
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -656,18 +648,16 @@ class TestTrain(Dy2StTestBase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def train_bmn(self, args, place, to_static):
-        paddle.jit.enable_to_static(to_static)
-        loss_data = []
+    def train_bmn(self, args, to_static):
+        with unique_name.guard():
+            loss_data = []
 
-        with base.dygraph.guard(place):
             paddle.seed(SEED)
             paddle.framework.random._manual_program_seed(SEED)
             global local_random
             local_random = np.random.RandomState(SEED)
 
-            bmn = BMN(args)
-            bmn = paddle.jit.to_static(bmn)
+            bmn = paddle.jit.to_static(BMN(args))
             adam = optimizer(args, parameter_list=bmn.parameters())
 
             train_reader = fake_data_reader(args, 'train')
@@ -687,10 +677,10 @@ class TestTrain(Dy2StTestBase):
                         DATATYPE
                     )
 
-                    x_data = to_variable(video_feat)
-                    gt_iou_map = to_variable(gt_iou_map)
-                    gt_start = to_variable(gt_start)
-                    gt_end = to_variable(gt_end)
+                    x_data = paddle.to_tensor(video_feat)
+                    gt_iou_map = paddle.to_tensor(gt_iou_map)
+                    gt_start = paddle.to_tensor(gt_start)
+                    gt_end = paddle.to_tensor(gt_end)
                     gt_iou_map.stop_gradient = True
                     gt_start.stop_gradient = True
                     gt_end.stop_gradient = True
@@ -719,19 +709,6 @@ class TestTrain(Dy2StTestBase):
                         float(pem_cls_loss),
                     ]
 
-                    if args.log_interval > 0 and (
-                        batch_id % args.log_interval == 0
-                    ):
-                        print(
-                            f'[TRAIN] Epoch {epoch}, iter {batch_id} '
-                            + '\tLoss = {}, \ttem_loss = {}, \tpem_reg_loss = {}, \tpem_cls_loss = {}'.format(
-                                '%f' % float(avg_loss),
-                                '%f' % float(tem_loss),
-                                '%f' % float(pem_reg_loss),
-                                '%f' % float(pem_cls_loss),
-                            )
-                        )
-
                     # validation
                     if batch_id % args.valid_interval == 0 and batch_id > 0:
                         bmn.eval()
@@ -740,7 +717,11 @@ class TestTrain(Dy2StTestBase):
                         loss_data += val_loss_data
 
                     if batch_id == args.train_batch_num:
-                        if to_static:
+                        # TODO(@xiongkun): open after save / load supported in pir.
+                        if (
+                            to_static
+                            and not paddle.base.framework.use_pir_api()
+                        ):
                             paddle.jit.save(bmn, self.model_save_prefix)
                         else:
                             paddle.save(
@@ -750,10 +731,12 @@ class TestTrain(Dy2StTestBase):
                         break
             return np.array(loss_data)
 
-    @test_pir_only
-    def test_train_new_ir(self):
-        static_res = self.train_bmn(self.args, self.place, to_static=True)
-        dygraph_res = self.train_bmn(self.args, self.place, to_static=False)
+    @test_legacy_and_pt_and_pir
+    def test_train_pir(self):
+        with enable_to_static_guard(True):
+            static_res = self.train_bmn(self.args, to_static=True)
+        with enable_to_static_guard(False):
+            dygraph_res = self.train_bmn(self.args, to_static=False)
         np.testing.assert_allclose(
             dygraph_res,
             static_res,
@@ -766,8 +749,10 @@ class TestTrain(Dy2StTestBase):
         )
 
     def test_train(self):
-        static_res = self.train_bmn(self.args, self.place, to_static=True)
-        dygraph_res = self.train_bmn(self.args, self.place, to_static=False)
+        with enable_to_static_guard(True):
+            static_res = self.train_bmn(self.args, to_static=True)
+        with enable_to_static_guard(False):
+            dygraph_res = self.train_bmn(self.args, to_static=False)
         np.testing.assert_allclose(
             dygraph_res,
             static_res,
@@ -832,52 +817,49 @@ class TestTrain(Dy2StTestBase):
             break
 
     def predict_dygraph(self, data):
-        paddle.jit.enable_to_static(False)
-        with base.dygraph.guard(self.place):
-            bmn = BMN(self.args)
+        with enable_to_static_guard(False):
+            bmn = paddle.jit.to_static(BMN(self.args))
             # load dygraph trained parameters
             model_dict = paddle.load(self.dy_param_path + ".pdparams")
             bmn.set_dict(model_dict)
             bmn.eval()
 
-            x = to_variable(data)
+            x = paddle.to_tensor(data)
             pred_res = bmn(x)
             pred_res = [var.numpy() for var in pred_res]
-
-            return pred_res
-
-    def predict_static(self, data):
-        paddle.enable_static()
-        exe = base.Executor(self.place)
-        # load inference model
-        [
-            inference_program,
-            feed_target_names,
-            fetch_targets,
-        ] = paddle.static.io.load_inference_model(
-            self.model_save_dir,
-            executor=exe,
-            model_filename=self.model_filename,
-            params_filename=self.params_filename,
-        )
-        pred_res = exe.run(
-            inference_program,
-            feed={feed_target_names[0]: data},
-            fetch_list=fetch_targets,
-        )
 
         return pred_res
 
+    def predict_static(self, data):
+        with static_guard():
+            exe = paddle.static.Executor(self.place)
+            # load inference model
+            [
+                inference_program,
+                feed_target_names,
+                fetch_targets,
+            ] = paddle.static.io.load_inference_model(
+                self.model_save_dir,
+                executor=exe,
+                model_filename=self.model_filename,
+                params_filename=self.params_filename,
+            )
+            pred_res = exe.run(
+                inference_program,
+                feed={feed_target_names[0]: data},
+                fetch_list=fetch_targets,
+            )
+        return pred_res
+
     def predict_dygraph_jit(self, data):
-        with base.dygraph.guard(self.place):
-            bmn = paddle.jit.load(self.model_save_prefix)
-            bmn.eval()
+        bmn = paddle.jit.load(self.model_save_prefix)
+        bmn.eval()
 
-            x = to_variable(data)
-            pred_res = bmn(x)
-            pred_res = [var.numpy() for var in pred_res]
+        x = paddle.to_tensor(data)
+        pred_res = bmn(x)
+        pred_res = [var.numpy() for var in pred_res]
 
-            return pred_res
+        return pred_res
 
     def predict_analysis_inference(self, data):
         output = PredictorTools(

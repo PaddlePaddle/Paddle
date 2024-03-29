@@ -213,6 +213,7 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
         # set allgather_out tensor dist_attr
         allgather_out_dist_attr = TensorDistAttr()
         allgather_out_dist_attr.process_mesh = op_dist_attr.process_mesh
+        allgather_out_dist_attr.chunk_id = op_dist_attr.chunk_id
         allgather_out_dist_attr.dims_mapping = [
             -1 for i in range(len(allgather_out.shape))
         ]
@@ -233,6 +234,7 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
         # set c_allgather op dist_attr
         allgather_op_dist_attr = OperatorDistAttr()
         allgather_op_dist_attr.process_mesh = op_dist_attr.process_mesh
+        allgather_op_dist_attr.chunk_id = op_dist_attr.chunk_id
         allgather_op_dist_attr.set_input_dims_mapping(
             X_var.name, in_dims_mapping
         )
@@ -366,6 +368,7 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
         )
         slice_op_dist_attr = OperatorDistAttr()
         slice_op_dist_attr.process_mesh = op_dist_attr.process_mesh
+        slice_op_dist_attr.chunk_id = op_dist_attr.chunk_id
         slice_op_dist_attr.set_input_dims_mapping(
             new_X_grad.name, new_X_var_dist_attr.dims_mapping
         )

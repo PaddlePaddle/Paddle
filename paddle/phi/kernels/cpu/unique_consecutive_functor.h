@@ -60,18 +60,18 @@ static void UniqueConsecutiveFlattenedTensor(const Context& context,
   }
   out_vec.resize(output_size);
 
-  out->Resize(phi::make_ddim({output_size}));
+  out->Resize(common::make_ddim({output_size}));
   auto* out_data = context.template Alloc<InT>(out);
   std::copy(out_vec.begin(), out_vec.end(), out_data);
 
   if (return_inverse) {
-    inverse->Resize(phi::make_ddim({in.numel()}));
+    inverse->Resize(common::make_ddim({in.numel()}));
     auto* inverse_data = context.template Alloc<IndexT>(inverse);
     std::copy(inverse_vec.begin(), inverse_vec.end(), inverse_data);
   }
 
   if (return_counts) {
-    count->Resize(phi::make_ddim({out->numel()}));
+    count->Resize(common::make_ddim({out->numel()}));
     auto* counts_data = context.template Alloc<IndexT>(count);
     std::copy(counts_vec.begin(), counts_vec.end(), counts_data);
   }
@@ -156,17 +156,17 @@ static void UniqueConsecutiveDim(const Context& context,
   std::iota(permute.begin(), permute.end(), 0);
   permute[axis] = 0;
   permute[0] = axis;
-  std::vector<int64_t> in_trans_dims_vec(phi::vectorize(in.dims()));
+  std::vector<int64_t> in_trans_dims_vec(common::vectorize(in.dims()));
   in_trans_dims_vec[axis] = in.dims()[0];
   in_trans_dims_vec[0] = in.dims()[axis];
   DenseTensor in_trans;
-  DDim in_trans_dims = phi::make_ddim(in_trans_dims_vec);
+  DDim in_trans_dims = common::make_ddim(in_trans_dims_vec);
   in_trans.Resize(in_trans_dims);
   context.template Alloc<InT>(&in_trans);
   phi::funcs::TransCompute<Context, InT>(
       in.dims().size(), context, in, &in_trans, permute);
   // reshape tensor: eg. [dim1, dim0, dim2] -> [dim1, dim0*dim2]
-  DDim in_trans_flat_dims = phi::flatten_to_2d(in_trans_dims, 1);
+  DDim in_trans_flat_dims = common::flatten_to_2d(in_trans_dims, 1);
   in_trans.Resize(in_trans_flat_dims);
 
   std::vector<IndexT> sorted_indices_vec(in_trans.dims()[0]);
@@ -202,10 +202,10 @@ static void UniqueConsecutiveDim(const Context& context,
   DenseTensor out_trans;
   std::vector<int64_t> out_trans_dims_vec = in_trans_dims_vec;
   out_trans_dims_vec[0] = input_unbind.size();
-  out_trans.Resize(phi::make_ddim(out_trans_dims_vec));
+  out_trans.Resize(common::make_ddim(out_trans_dims_vec));
   context.template Alloc<InT>(&out_trans);
   std::swap(out_trans_dims_vec[0], out_trans_dims_vec[axis]);
-  out->Resize(phi::make_ddim(out_trans_dims_vec));
+  out->Resize(common::make_ddim(out_trans_dims_vec));
   context.template Alloc<InT>(out);
   concat_functor(context, input_unbind, 0, &out_trans);
   phi::funcs::TransCompute<Context, InT>(

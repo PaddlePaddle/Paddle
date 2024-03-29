@@ -70,8 +70,29 @@ inline cublasStatus_t cublasGemm(cudaDataType_t dtype,
                        reinterpret_cast<double *>(C),
                        ldc);
   } else if (dtype == CUDA_R_16F) {
-    common::float16 alpha_fp16{alpha};
-    common::float16 beta_fp16{beta};
+#if CUDA_VERSION >= 11000
+    return cublasGemmEx(handle,
+                        transa,
+                        transb,
+                        m,
+                        n,
+                        k,
+                        &alpha,
+                        A,
+                        CUDA_R_16F,
+                        lda,
+                        B,
+                        CUDA_R_16F,
+                        ldb,
+                        &beta,
+                        C,
+                        CUDA_R_16F,
+                        ldc,
+                        CUBLAS_COMPUTE_32F,
+                        CUBLAS_GEMM_DEFAULT_TENSOR_OP);
+#else
+    cinn::common::float16 alpha_fp16{alpha};
+    cinn::common::float16 beta_fp16{beta};
     return cublasHgemm(handle,
                        transa,
                        transb,
@@ -86,6 +107,7 @@ inline cublasStatus_t cublasGemm(cudaDataType_t dtype,
                        reinterpret_cast<const __half *>(&beta_fp16),
                        reinterpret_cast<__half *>(C),
                        ldc);
+#endif
   } else if (dtype == CUDA_R_16BF) {
 #if CUDA_VERSION >= 11000
     return cublasGemmEx(handle,
@@ -108,10 +130,12 @@ inline cublasStatus_t cublasGemm(cudaDataType_t dtype,
                         CUBLAS_COMPUTE_32F,
                         CUBLAS_GEMM_DEFAULT_TENSOR_OP);
 #else
-    LOG(FATAL) << "cublasGemmEx with bfloat16 is not supported on cuda <= 11";
+    PADDLE_THROW(phi::errors::Fatal(
+        "cublasGemmEx with bfloat16 is not supported on cuda <= 11"));
 #endif
   }
-  LOG(FATAL) << "Unsupported cublasGemm precision.";
+  PADDLE_THROW(
+      phi::errors::InvalidArgument("Unsupported cublasGemm precision."));
 }
 
 inline cublasStatus_t cublasGemmStridedBatched(cudaDataType_t dtype,
@@ -174,8 +198,33 @@ inline cublasStatus_t cublasGemmStridedBatched(cudaDataType_t dtype,
                                      strideC,
                                      batchCount);
   } else if (dtype == CUDA_R_16F) {
-    common::float16 alpha_fp16{alpha};
-    common::float16 beta_fp16{beta};
+#if CUDA_VERSION >= 11000
+    return cublasGemmStridedBatchedEx(handle,
+                                      transa,
+                                      transb,
+                                      m,
+                                      n,
+                                      k,
+                                      &alpha,
+                                      A,
+                                      CUDA_R_16F,
+                                      lda,
+                                      strideA,
+                                      B,
+                                      CUDA_R_16F,
+                                      ldb,
+                                      strideB,
+                                      &beta,
+                                      C,
+                                      CUDA_R_16F,
+                                      ldc,
+                                      strideC,
+                                      batchCount,
+                                      CUBLAS_COMPUTE_32F,
+                                      CUBLAS_GEMM_DEFAULT_TENSOR_OP);
+#else
+    cinn::common::float16 alpha_fp16{alpha};
+    cinn::common::float16 beta_fp16{beta};
     return cublasHgemmStridedBatched(
         handle,
         transa,
@@ -195,6 +244,7 @@ inline cublasStatus_t cublasGemmStridedBatched(cudaDataType_t dtype,
         ldc,
         strideC,
         batchCount);
+#endif
   } else if (dtype == CUDA_R_16BF) {
 #if CUDA_VERSION >= 11000
     return cublasGemmStridedBatchedEx(handle,
@@ -221,11 +271,13 @@ inline cublasStatus_t cublasGemmStridedBatched(cudaDataType_t dtype,
                                       CUBLAS_COMPUTE_32F,
                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP);
 #else
-    LOG(FATAL) << "cublasGemmStridedBatched with bfloat16 is not supported on "
-                  "cuda <= 11";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "cublasGemmStridedBatched with bfloat16 is not supported on "
+        "cuda <= 11"));
 #endif
   }
-  LOG(FATAL) << "Unsupported cublasGemmStridedBatched precision.";
+  PADDLE_THROW(phi::errors::InvalidArgument(
+      "Unsupported cublasGemmStridedBatched precision."));
 }
 
 inline cublasStatus_t cublasGemmBatched(cudaDataType_t dtype,
@@ -279,6 +331,28 @@ inline cublasStatus_t cublasGemmBatched(cudaDataType_t dtype,
                               ldc,
                               batchCount);
   } else if (dtype == CUDA_R_16F) {
+#if CUDA_VERSION >= 11000
+    return cublasGemmBatchedEx(handle,
+                               transa,
+                               transb,
+                               m,
+                               n,
+                               k,
+                               &alpha,
+                               A,
+                               CUDA_R_16F,
+                               lda,
+                               B,
+                               CUDA_R_16F,
+                               ldb,
+                               &beta,
+                               C,
+                               CUDA_R_16F,
+                               ldc,
+                               batchCount,
+                               CUBLAS_COMPUTE_32F,
+                               CUBLAS_GEMM_DEFAULT_TENSOR_OP);
+#else
     __half alpha_fp16{alpha};
     __half beta_fp16{beta};
     return cublasHgemmBatched(handle,
@@ -296,6 +370,7 @@ inline cublasStatus_t cublasGemmBatched(cudaDataType_t dtype,
                               reinterpret_cast<__half **>(C),
                               ldc,
                               batchCount);
+#endif
   } else if (dtype == CUDA_R_16BF) {
 #if CUDA_VERSION >= 11000
     return cublasGemmBatchedEx(handle,
@@ -319,11 +394,12 @@ inline cublasStatus_t cublasGemmBatched(cudaDataType_t dtype,
                                CUBLAS_COMPUTE_32F,
                                CUBLAS_GEMM_DEFAULT_TENSOR_OP);
 #else
-    LOG(FATAL)
-        << "cublasGemmBatched with bfloat16 is not supported on cuda <= 11";
+    PADDLE_THROW(phi::errors::Fatal(
+        "cublasGemmBatched with bfloat16 is not supported on cuda <= 11"));
 #endif
   }
-  LOG(FATAL) << "Unsupported cublasGemmBatched precision.";
+  PADDLE_THROW(
+      phi::errors::InvalidArgument("Unsupported cublasGemmBatched precision."));
 }
 
 }  // namespace cuda

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle import _C_ops
-from paddle.framework import LayerHelper, in_dynamic_mode
+from paddle.framework import LayerHelper, in_dynamic_or_pir_mode
 
 
 def masked_multihead_attention(
@@ -39,7 +39,7 @@ def masked_multihead_attention(
 ):
     r"""
     Masked Multi-head attention for text summarization.
-    This is a fusion operator to compute masked multihead attention in transformer model architecture.
+    This is a fusion operator to compute masked multi-head attention in transformer model architecture.
     This operator only supports running on GPU.
 
     Args:
@@ -71,25 +71,26 @@ def masked_multihead_attention(
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            import paddle.incubate.nn.functional as F
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> import paddle.incubate.nn.functional as F
+            >>> paddle.device.set_device('gpu')
 
-            # input: [batch_size, 3 * num_head * dim_head]
-            x = paddle.rand(shape=(2, 3 * 32 * 128), dtype="float32")
+            >>> # input: [batch_size, 3 * num_head * dim_head]
+            >>> x = paddle.rand(shape=(2, 3 * 32 * 128), dtype="float32")
 
-            # src_mask: [batch_size, 1, 1, sequence_length]
-            src_mask = paddle.rand(shape=(2, 1, 1, 10), dtype="float32")
+            >>> # src_mask: [batch_size, 1, 1, sequence_length]
+            >>> src_mask = paddle.rand(shape=(2, 1, 1, 10), dtype="float32")
 
-            # cache_kv: [2, batch_size, num_head, max_seq_len, dim_head]
-            cache_kv = paddle.rand(shape=(2, 2, 32, 64, 128), dtype="float32")
+            >>> # cache_kv: [2, batch_size, num_head, max_seq_len, dim_head]
+            >>> cache_kv = paddle.rand(shape=(2, 2, 32, 64, 128), dtype="float32")
 
-            output = F.masked_multihead_attention(
-                x, src_mask=src_mask, cache_kv=cache_kv)
+            >>> output = F.masked_multihead_attention(
+            ...     x, src_mask=src_mask, cache_kv=cache_kv)
 
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.masked_multihead_attention_(
             x,
             cache_kv,

@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/arg_min_max_kernel.h"
 
+#include "paddle/common/ddim.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -30,6 +30,11 @@ void ArgMaxKernel(const Context& dev_ctx,
                   bool flatten,
                   DataType dtype,
                   DenseTensor* out) {
+  PADDLE_ENFORCE_GT(
+      x.numel(),
+      0,
+      phi::errors::InvalidArgument(
+          "argmin/argmax input numel must > 0, bug got %d", x.numel()));
   using XPUType = typename XPUTypeTrait<T>::Type;
   PADDLE_ENFORCE_EQ(
       (dtype == DataType::UNDEFINED || dtype == DataType::INT32 ||
@@ -46,14 +51,14 @@ void ArgMaxKernel(const Context& dev_ctx,
   DDim x_dims;
   int axis_val = axis.to<int>();
   if (flatten) {
-    x_dims = phi::make_ddim({x.numel()});
+    x_dims = common::make_ddim({x.numel()});
     // if flatten, the axis just as 0
     axis_val = 0;
   } else {
     x_dims = x.dims();
     if (axis_val < 0) axis_val += x_dims.size();
   }
-  auto xdims_vec = phi::vectorize<int>(x_dims);
+  auto xdims_vec = common::vectorize<int>(x_dims);
   int r = 0;
   if (dtype != DataType::INT32) {
     dev_ctx.template Alloc<int64_t>(out);

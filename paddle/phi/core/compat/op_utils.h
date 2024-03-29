@@ -18,21 +18,16 @@ limitations under the License. */
 #include <unordered_set>
 
 #include "glog/logging.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/infermeta_utils.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/type_defs.h"
 #include "paddle/utils/flat_hash_map.h"
 
 namespace phi {
 
 const static std::string deprecated_kernel_name = "deprecated";  // NOLINT
-
-const std::unordered_set<std::string> standard_kernel_suffixs({
-    "sr",  // SelectedRows kernel
-    "raw"  // fallback kernel of original fluid op
-});
 
 /**
  * Some fluid ops are no longer used under the corresponding official API

@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_printer.h"
@@ -72,7 +73,7 @@ Tensor GetReadTensor(const Expr& block, int index) {
 
 int GetLoopExtent(const Expr& loop) {
   CHECK(loop.As<ir::For>());
-  CHECK(common::is_zero(loop.As<ir::For>()->min));
+  CHECK(cinn::common::is_zero(loop.As<ir::For>()->min));
   CHECK(loop.As<ir::For>()->extent.is_constant());
   return static_cast<int>(loop.As<ir::For>()->extent.get_constant());
 }
@@ -85,39 +86,39 @@ void SetCudaAxisInfo(Expr* lowered_func) {
 
   auto func_body = lowered_func->as_lowered_func_ref()->body;
   CudaAxisInfo info;
-
-  auto block_nodes =
-      ir::ir_utils::CollectIRNodes(func_body, [&](const Expr* x) {
-        if (x->As<ir::For>() && x->As<ir::For>()->bind_info().valid()) {
-          auto bind_info = x->As<ir::For>()->bind_info();
-          info.set_valid(true);
-          if (bind_info.for_type == ForType::GPUThread) {
-            CHECK(common::is_zero(x->As<ir::For>()->min));
-            CHECK(x->As<ir::For>()->extent.is_constant());
-            int range = x->As<ir::For>()->extent.get_constant();
-            range = range > info.block_dim(bind_info.offset)
-                        ? range
-                        : info.block_dim(bind_info.offset);
-            VLOG(3) << "Set block dim[" << bind_info.offset << "] with range "
-                    << range;
-            info.set_block_dim(bind_info.offset, range);
-          } else if (bind_info.for_type == ForType::GPUBlock) {
-            CHECK(common::is_zero(x->As<ir::For>()->min));
-            CHECK(x->As<ir::For>()->extent.is_constant());
-            int range = x->As<ir::For>()->extent.get_constant();
-            range = range > info.grid_dim(bind_info.offset)
-                        ? range
-                        : info.grid_dim(bind_info.offset);
-            info.set_grid_dim(bind_info.offset, range);
-            VLOG(3) << "Set grid dim[" << bind_info.offset << "] with range "
-                    << range;
-          } else {
-            LOG(FATAL)
-                << "The for loop's bind info should be gpu block or thread!";
-          }
+  auto CannotProveLT = [](const ir::Expr& lhs, const ir::Expr& rhs) -> bool {
+    std::vector<ir::Expr> exprs{rhs, lhs};
+    common::cas_intervals_t var_intervals =
+        common::CollectVarIntervalsOfExprs(exprs);
+    common::SymbolicExprAnalyzer analyzer{var_intervals};
+    std::optional<bool> proved_lt = analyzer.ProveLT(lhs, rhs);
+    return !proved_lt.has_value() || !proved_lt.value();
+  };
+  ir::ir_utils::CollectIRNodes(func_body, [&](const Expr* x) {
+    if (x->As<ir::For>() && x->As<ir::For>()->bind_info().valid()) {
+      CHECK(cinn::common::is_zero(x->As<ir::For>()->min));
+      auto bind_info = x->As<ir::For>()->bind_info();
+      info.set_valid(true);
+      ir::Expr range = x->As<ir::For>()->extent;
+      if (bind_info.for_type == ForType::GPUThread) {
+        if (CannotProveLT(range, info.block_dim(bind_info.offset))) {
+          VLOG(3) << "Set block dim[" << bind_info.offset << "] with range "
+                  << range;
+          info.set_block_dim(bind_info.offset, range);
         }
-        return (x->As<ir::For>() && x->As<ir::For>()->bind_info().valid());
-      });
+      } else if (bind_info.for_type == ForType::GPUBlock) {
+        if (CannotProveLT(range, info.grid_dim(bind_info.offset))) {
+          VLOG(3) << "Set grid dim[" << bind_info.offset << "] with range "
+                  << range;
+          info.set_grid_dim(bind_info.offset, range);
+        }
+      } else {
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "The for loop's bind info should be gpu block or thread!"));
+      }
+    }
+    return (x->As<ir::For>() && x->As<ir::For>()->bind_info().valid());
+  });
   lowered_func->as_lowered_func_ref()->cuda_axis_info = info;
 }
 
@@ -137,7 +138,7 @@ Expr GetNextForLoop(const Expr& for_loop) {
       << "The input of GetNextForLoop should be ir::For!";
   Expr for_body = for_loop.As<ir::For>()->body;
   ir::Block* for_body_block = for_body.As<ir::Block>();
-  CHECK(for_body_block) << "The for_loop's body shoule be Block!";
+  CHECK(for_body_block) << "The for_loop's body should be Block!";
 
   // Only support for body block contains a sub for loop
   int next_idx = -1;
@@ -207,7 +208,7 @@ void ReplaceExpr(Expr* source,
                  const std::vector<Expr>& candidates) {
   CHECK_EQ(replaced.size(), candidates.size())
       << "In ReplaceExpr, the size of Vars to be replaced must be equal to the "
-         "size of cadidate Exprs! Please check.";
+         "size of candidate Exprs! Please check.";
   if (replaced.empty()) return;
   std::map<Var, Expr, CompVar> replacing_map;
   for (int i = 0; i < replaced.size(); ++i) {
@@ -264,20 +265,14 @@ std::vector<int> ValidateFactors(const std::vector<int>& factors,
   if (!has_minus_one) {
     if (product < total_extent) {
       std::ostringstream os;
-      os << "In Split, the factors' product should be not larger than or equal "
-            "to original loop's extent!"
-         << std::endl;
+      os << "In Split, the factors' product[" << product
+         << "] should be not larger than or equal "
+            "to original loop's extent["
+         << total_extent << "]!" << std::endl;
       throw IRScheduleErrorHandler(primitive, os.str(), module_expr);
     }
     return validated_factors;
   } else {
-    if (product > total_extent) {
-      std::ostringstream os;
-      os << "In Split, the factors' product should be not larger than or equal "
-            "to original loop's extent!"
-         << std::endl;
-      throw IRScheduleErrorHandler(primitive, os.str(), module_expr);
-    }
     int minus_one_candidate = static_cast<int>(
         ceil(static_cast<double>(total_extent) / static_cast<double>(product)));
     for (int i = 0; i < validated_factors.size(); ++i) {
@@ -336,10 +331,11 @@ std::vector<Expr> GetLoopsOfExpr(const Expr& expr, const Expr& root) {
       root,
       [&](const Expr* x) { return x->As<ir::For>() && Contains(*x, expr); });
   std::vector<Expr> result(loop_nodes.begin(), loop_nodes.end());
-  if (result.empty())
-    LOG(FATAL) << "Didn't find expr's : \n"
-               << expr << "\n loops in root : \n"
-               << root;
+  if (result.empty()) {
+    std::stringstream ss;
+    ss << "Didn't find expr's : \n" << expr << "\n loops in root : \n" << root;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+  }
   std::sort(result.begin(), result.end(), [&](Expr i, Expr j) {
     return (utils::GetStreamCnt(i).size() > utils::GetStreamCnt(j).size());
   });
@@ -362,24 +358,33 @@ IterRange GetAccessedRange(const Expr& index,
   ReplaceExpr(&indice_min, iter_vars, var_mins);
   ReplaceExpr(&indice_max, iter_vars, var_maxs);
   // simplify expression
-  indice_min = common::AutoSimplify(indice_min);
-  indice_max = common::AutoSimplify(indice_max);
+  indice_min = cinn::common::AutoSimplify(indice_min);
+  indice_max = cinn::common::AutoSimplify(indice_max);
 
   Expr indice_extent;
   Expr mod_extent(0);
-  if (indice_min.As<Mod>() && indice_min.As<Mod>()->b().is_constant())
+  if (indice_min.As<Mod>() && indice_min.As<Mod>()->b().is_constant()) {
+    Expr mod_right_min = indice_min.As<Mod>()->a();
+    Expr mod_right_max = indice_max.As<Mod>()->a();
+    Expr mod_right_extent =
+        cinn::common::AutoSimplify(mod_right_max - mod_right_min + 1);
     mod_extent = indice_min.As<Mod>()->b();
+    if (mod_right_extent.get_constant() < mod_extent.get_constant()) {
+      mod_extent = mod_right_extent;
+    }
+  }
 
   if (indice_min == indice_max) {
-    if (common::is_zero(mod_extent)) {
+    if (cinn::common::is_zero(mod_extent)) {
       // If a index keeps constant, its extent should be 1.
       indice_extent = Expr(1);
     } else {
       indice_extent = mod_extent;
     }
   } else {
-    indice_extent = common::AutoSimplify(common::AutoSimplify(indice_max) -
-                                         common::AutoSimplify(indice_min) + 1);
+    indice_extent =
+        cinn::common::AutoSimplify(cinn::common::AutoSimplify(indice_max) -
+                                   cinn::common::AutoSimplify(indice_min) + 1);
   }
 
   if (indice_extent.is_constant() && indice_extent.get_constant() < 0) {
@@ -492,10 +497,10 @@ Expr MakeCacheBlock(const std::vector<IterRange>& buffer_ranges,
   // Create loop vars and block vars' binding_value
   for (const auto& range : buffer_ranges) {
     Var loop_var(
-        common::UniqName("cache_ax" + std::to_string(loop_vars.size())));
+        cinn::common::UniqName("cache_ax" + std::to_string(loop_vars.size())));
     // Var loop_var("ax" + std::to_string(loop_vars.size()));
     loop_vars.push_back(loop_var);
-    iter_values.push_back(common::AutoSimplify(range.min + loop_var));
+    iter_values.push_back(cinn::common::AutoSimplify(range.min + loop_var));
   }
   // block variables
   std::vector<Var> block_vars;
@@ -508,7 +513,7 @@ Expr MakeCacheBlock(const std::vector<IterRange>& buffer_ranges,
   }
   auto body = new_tensor->tensor_store_expanded_body();
   std::vector<Var> axis_vars =
-      common::GenDefaultAxis(new_tensor->domain.size());
+      cinn::common::GenDefaultAxis(new_tensor->domain.size());
   axis_vars.insert(axis_vars.end(),
                    new_tensor->reduce_axis.begin(),
                    new_tensor->reduce_axis.end());
@@ -523,7 +528,7 @@ Expr MakeCacheBlock(const std::vector<IterRange>& buffer_ranges,
   for (int i = static_cast<int>(loop_vars.size()) - 1; i >= 0; i--) {
     new_body = For::Make(loop_vars[i],
                          Expr(0),
-                         common::AutoSimplify(buffer_ranges[i].extent),
+                         cinn::common::AutoSimplify(buffer_ranges[i].extent),
                          ir::ForType::Serial,
                          device_api,
                          ir::Block::Make({new_body}));
@@ -578,8 +583,8 @@ const std::set<Expr, CompExpr> CollectLoopsToSet(
     CHECK(i.As<ir::For>()) << "loops should be For node! Please check.";
     auto inserted = for_loops.insert(i);
     if (!inserted.second) {
-      LOG(FATAL)
-          << "There should be no duplicate elements in loops! Please check.";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "There should be no duplicate elements in loops! Please check."));
     }
   }
   return for_loops;
@@ -587,7 +592,7 @@ const std::set<Expr, CompExpr> CollectLoopsToSet(
 
 // This function is used in Reorder schedule primitive. Since input loop
 // Expr(s) of Reorder doesn't give original for loop order, we have to
-// find the top (most outter) loop and bottom (most inner) among loop Expr(s)
+// find the top (most outer) loop and bottom (most inner) among loop Expr(s)
 std::pair<Expr, Expr> GetBoundaryOfReorderRange(
     const std::set<Expr, CompExpr>& loop_set) {
   Expr top = *loop_set.begin();
@@ -605,8 +610,9 @@ std::pair<Expr, Expr> GetBoundaryOfReorderRange(
       // Then loop_i should be the new top
       if (visited.count(v_for)) {
         if (v_for != top) {
-          LOG(FATAL) << "Loops in GetBoundaryOfReorderRange is not a chain! "
-                        "Please check.";
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "Loops in GetBoundaryOfReorderRange is not a chain! "
+              "Please check."));
         }
         top = loop_i;
         break;
@@ -635,8 +641,8 @@ std::vector<Expr> GetLoopsInRange(const Expr& top, const Expr& bottom) {
   for (auto loop_iter = top; loop_iter != bottom;) {
     Expr tmp = GetNextForLoop(loop_iter);
     if (!tmp.defined())
-      LOG(FATAL)
-          << "Loops in GetLoopsInReorderRange is not a chain! Please check.";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Loops in GetLoopsInReorderRange is not a chain! Please check."));
     chain.push_back(loop_iter);
     loop_iter = tmp;
   }
@@ -755,7 +761,7 @@ Expr ConstructNewLoopChain(const std::vector<Expr>& chain,
   //   }                                             }
   // }                                             }
   //
-  // We go throuph origin loop and check other body stmts, adding it as another
+  // We go through origin loop and check other body stmts, adding it as another
   // chain, such as:
   //
   // for (i, 0, 32) {
@@ -875,7 +881,7 @@ std::vector<Expr> GetProducers(const Expr& block, const Expr& root) {
                                ->name;
   ir::ir_utils::CollectIRNodesWithoutTensor(
       compute_body, [&producer_tensor_names, &block_name](const Expr* x) {
-        auto* load = x->As<ir::Load>();
+        const ir::Load* load = x->As<ir::Load>();
         if (load) {
           producer_tensor_names.insert(load->tensor.as_tensor()->name);
           if (load->tensor.as_tensor()->name == block_name) {
@@ -883,6 +889,22 @@ std::vector<Expr> GetProducers(const Expr& block, const Expr& root) {
                 GenReduceInitTensorNameOf(load->tensor.as_tensor()->name));
           }
           return true;
+        }
+        const ir::Store* store = x->As<ir::Store>();
+        if (store) {
+          std::set<ir::Expr> call_nodes =
+              ir::ir_utils::CollectIRNodesWithoutTensor(
+                  store->value,
+                  [](const ir::Expr* x) { return x->As<ir::Call>(); });
+          for (ir::Expr call : call_nodes) {
+            const std::vector<ir::Expr>& read_args =
+                call.As<ir::Call>()->read_args;
+            for (const ir::Expr& arg : read_args) {
+              if (arg.as_tensor()) {
+                producer_tensor_names.insert(arg.as_tensor_ref()->name);
+              }
+            }
+          }
         }
         return false;
       });
@@ -936,13 +958,23 @@ std::vector<Expr> GetConsumers(const Expr& block, const Expr& root) {
     auto block_body = i.As<ir::ScheduleBlockRealize>()
                           ->schedule_block.As<ir::ScheduleBlock>()
                           ->body;
-    auto find_load = ir::ir_utils::CollectIRNodesWithoutTensor(
+    auto find_load_or_call = ir::ir_utils::CollectIRNodesWithoutTensor(
         block_body, [&](const Expr* x) {
+          if (x->As<ir::Call>()) {
+            const std::vector<ir::Expr>& read_args =
+                x->As<ir::Call>()->read_args;
+            for (const ir::Expr& arg : read_args) {
+              if (arg.as_tensor() &&
+                  arg.as_tensor_ref()->name == block_tensor) {
+                return true;
+              }
+            }
+          }
           return x->As<ir::Load>() &&
                  x->As<ir::Load>()->tensor.as_tensor_ref()->name ==
                      block_tensor;
         });
-    if (!find_load.empty()) consumers.emplace_back(i);
+    if (!find_load_or_call.empty()) consumers.emplace_back(i);
   }
   return consumers;
 }
@@ -987,7 +1019,7 @@ void InsertBlock(Expr& for_loop, const Expr& insertion, int index) {  // NOLINT
     auto dst_it = dst_block->stmts.begin() + index;
     if (dst_it->As<IfThenElse>()) {
       auto* inserted_block = dst_it->As<IfThenElse>()->true_case.As<Block>();
-      CHECK(inserted_block) << "the IfThenElse node to be inserted shuold "
+      CHECK(inserted_block) << "the IfThenElse node to be inserted should "
                                "contain a true_case block";
       inserted_block->stmts.insert(inserted_block->stmts.begin(), insertion);
     } else {
@@ -997,9 +1029,9 @@ void InsertBlock(Expr& for_loop, const Expr& insertion, int index) {  // NOLINT
 }
 
 IterRange RangeUnion(const IterRange& range1, const IterRange& range2) {
-  Expr new_min = common::AutoSimplify(Min::Make(range1.min, range2.min));
-  Expr new_extent = common::AutoSimplify(
-      common::AutoSimplify(
+  Expr new_min = cinn::common::AutoSimplify(Min::Make(range1.min, range2.min));
+  Expr new_extent = cinn::common::AutoSimplify(
+      cinn::common::AutoSimplify(
           Max::Make(range1.min + range1.extent, range2.min + range2.extent)) -
       new_min);
   return IterRange(new_min, new_extent);
@@ -1025,7 +1057,7 @@ std::vector<IterRange> CalculateRequiredRegions(
   }
 
   std::vector<IterRange> required_buffer_range;
-  // deduce accessed regions of the provided tensor in block by itering each
+  // deduce accessed regions of the provided tensor in block by iterating each
   // required block
   for (const Expr& pro_node : provided_nodes) {
     std::string provided_tensor_name =

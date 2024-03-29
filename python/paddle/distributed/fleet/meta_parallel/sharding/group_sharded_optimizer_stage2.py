@@ -75,7 +75,7 @@ class GroupShardedOptimizerStage2(Optimizer):
         group=None,
         offload=False,
         device="gpu",
-        pertrain_sync_models=True,
+        pretrain_sync_models=True,
         dp_group=None,
         **kw
     ):
@@ -178,7 +178,7 @@ class GroupShardedOptimizerStage2(Optimizer):
             ), "Not support! when using offload with sharding stage2, please use pure sharding stage2, exclude data parallel."
 
         # Synchronous all ranks models
-        if pertrain_sync_models:
+        if pretrain_sync_models:
             self._sync_params_and_buffers()
 
         self.param_storages = {}  # {dtype: {rank: InternalStorage}}
@@ -194,13 +194,26 @@ class GroupShardedOptimizerStage2(Optimizer):
                 and hcg.get_parallel_mode() is not ParallelMode.DATA_PARALLEL
                 and not offload
             ):
-                self._optim._grad_clip = HybridParallelClipGrad(
-                    self._optim._grad_clip, hcg
-                )
+                if self.use_main_grad:
+                    self._optim._inner_opt._grad_clip = HybridParallelClipGrad(
+                        self._optim._inner_opt._grad_clip, hcg
+                    )
+                else:
+                    self._optim._grad_clip = HybridParallelClipGrad(
+                        self._optim._grad_clip, hcg
+                    )
             else:
-                self._optim._grad_clip = GroupShardedClipGrad(
-                    self._optim._grad_clip, paddle.get_device(), self._group
-                )
+                if self.use_main_grad:
+                    self._optim._inner_opt._grad_clip = GroupShardedClipGrad(
+                        self._optim._inner_opt._grad_clip,
+                        paddle.get_device(),
+                        self._group,
+                    )
+                else:
+                    self._optim._grad_clip = GroupShardedClipGrad(
+                        self._optim._grad_clip, paddle.get_device(), self._group
+                    )
+
             if self._optim._parameter_list and isinstance(
                 self._optim._parameter_list[0], dict
             ):
@@ -329,7 +342,7 @@ class GroupShardedOptimizerStage2(Optimizer):
         # func 1
         self._integration_params()
 
-    # Segement helpers
+    # Segment helpers
 
     def _segment_params(self):
         """

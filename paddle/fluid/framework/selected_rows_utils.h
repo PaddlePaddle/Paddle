@@ -28,8 +28,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 /*
- * Serialize/Desiralize SelectedRows to std::ostream
- * You can pass ofstream or ostringstream to serilize to file
+ * Serialize/Deserialize SelectedRows to std::ostream
+ * You can pass ofstream or ostringstream to serialize to file
  * or to a in memory string. GPU tensor will be copied to CPU.
  */
 void SerializeToStream(std::ostream& os,

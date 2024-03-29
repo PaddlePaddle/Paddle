@@ -24,6 +24,7 @@ import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
 from paddle.base.framework import convert_np_dtype_to_dtype_
+from paddle.pir_utils import test_with_pir_api
 from paddle.tensor import random
 
 
@@ -202,6 +203,7 @@ class TestUniformRandomBF16Op(TestUniformRandomOp):
 
 
 class TestUniformRandomOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
         main_prog = Program()
@@ -223,8 +225,13 @@ class TestUniformRandomOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_Variable2)
 
             def test_out_dtype():
-                out = paddle.uniform(shape=[3, 4], dtype='float64')
-                self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP64)
+                out = paddle.tensor.random.uniform(
+                    shape=[3, 4], dtype='float64'
+                )
+                if paddle.framework.in_pir_mode():
+                    self.assertEqual(out.dtype, base.core.DataType.FLOAT64)
+                else:
+                    self.assertEqual(out.dtype, paddle.float64)
 
             test_out_dtype()
         paddle.disable_static()
@@ -301,36 +308,49 @@ class TestUniformRandomOpSelectedRowsWithDiagInit(
 
 
 class TestUniformRandomOpApi(unittest.TestCase):
+    @test_with_pir_api
     def test_api(self):
         paddle.enable_static()
         paddle.seed(10)
-        x = paddle.static.data(
-            'x', shape=[-1, 16], dtype='float32', lod_level=1
-        )
-        y = paddle.static.nn.fc(
-            x,
-            size=16,
-            weight_attr=paddle.nn.initializer.UniformInitializer(
-                low=-0.5,
-                high=0.5,
-                seed=10,
-                diag_num=16,
-                diag_step=16,
-                diag_val=1.0,
-            ),
-        )
 
-        place = base.CPUPlace()
-        x_tensor = base.create_lod_tensor(
-            np.random.rand(3, 16).astype("float32"), [[1, 2]], place
-        )
-        exe = base.Executor(place)
-        exe.run(base.default_startup_program())
-        ret = exe.run(feed={'x': x_tensor}, fetch_list=[y], return_numpy=False)
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.static.data(
+                'x', shape=[-1, 16], dtype='float32', lod_level=1
+            )
+
+            linear = paddle.nn.Linear(
+                in_features=x.shape[-1],
+                out_features=16,
+                weight_attr=paddle.nn.initializer.UniformInitializer(
+                    low=-0.5,
+                    high=0.5,
+                    seed=10,
+                    diag_num=16,
+                    diag_step=16,
+                    diag_val=1.0,
+                ),
+            )
+            y = linear(x)
+
+            place = base.CPUPlace()
+            x_tensor = base.create_lod_tensor(
+                np.random.rand(3, 16).astype("float32"), [[1, 2]], place
+            )
+            exe = base.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+            ret = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x': x_tensor},
+                fetch_list=[y],
+                return_numpy=False,
+            )
         paddle.disable_static()
 
 
 class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
+    @test_with_pir_api
     def test_attr_tensor_API(self):
         paddle.enable_static()
         startup_program = base.Program()
@@ -348,6 +368,7 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
             outs = exe.run(train_program, fetch_list=[ret])
         paddle.disable_static()
 
+    @test_with_pir_api
     def test_attr_tensorlist_int32_API(self):
         paddle.enable_static()
         startup_program = base.Program()
@@ -389,6 +410,7 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
 
 
 class TestUniformRandomOp_API_seed(unittest.TestCase):
+    @test_with_pir_api
     def test_attr_tensor_API(self):
         paddle.enable_static()
         _seed = 10
@@ -490,6 +512,7 @@ class TestUniformRandomDygraphMode(unittest.TestCase):
 
 
 class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
         main_prog = Program()
@@ -523,6 +546,7 @@ class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
 
 
 class TestUniformAlias(unittest.TestCase):
+    @test_with_pir_api
     def test_alias(self):
         paddle.uniform([2, 3], min=-5.0, max=5.0)
         paddle.tensor.uniform([2, 3], min=-5.0, max=5.0)
@@ -535,6 +559,7 @@ class TestUniformAlias(unittest.TestCase):
 
 
 class TestUniformOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
         main_prog = Program()
@@ -567,7 +592,10 @@ class TestUniformOpError(unittest.TestCase):
                 out = paddle.tensor.random.uniform(
                     shape=[3, 4], dtype='float64'
                 )
-                self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP64)
+                if paddle.framework.in_pir_mode():
+                    self.assertEqual(out.dtype, base.core.DataType.FLOAT64)
+                else:
+                    self.assertEqual(out.dtype, paddle.float64)
 
             test_out_dtype()
         paddle.disable_static()
@@ -591,17 +619,17 @@ class TestUniformDtype(unittest.TestCase):
         def test_default_fp16():
             paddle.framework.set_default_dtype('float16')
             out = paddle.tensor.random.uniform([2, 3])
-            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP16)
+            self.assertEqual(out.dtype, paddle.float16)
 
         def test_default_fp32():
             paddle.framework.set_default_dtype('float32')
             out = paddle.tensor.random.uniform([2, 3])
-            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP32)
+            self.assertEqual(out.dtype, paddle.float32)
 
         def test_default_fp64():
             paddle.framework.set_default_dtype('float64')
             out = paddle.tensor.random.uniform([2, 3])
-            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP64)
+            self.assertEqual(out.dtype, paddle.float64)
 
         def test_dygraph_fp16():
             if not paddle.is_compiled_with_cuda():
@@ -609,7 +637,7 @@ class TestUniformDtype(unittest.TestCase):
                 return
             paddle.set_device('gpu')
             out = paddle.uniform([2, 3], dtype=paddle.float16)
-            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP16)
+            self.assertEqual(out.dtype, paddle.float16)
 
         if paddle.is_compiled_with_cuda():
             paddle.set_device('gpu')
@@ -712,8 +740,8 @@ class TestUniformMinMaxTensor(UnittestBase):
 
     def test_static(self):
         main_prog = Program()
-        starup_prog = Program()
-        with program_guard(main_prog, starup_prog):
+        startup_prog = Program()
+        with program_guard(main_prog, startup_prog):
             fc = paddle.nn.Linear(4, 10)
             x = paddle.randn([2, 3, 4])
             x.stop_gradient = False
@@ -730,7 +758,7 @@ class TestUniformMinMaxTensor(UnittestBase):
             self.assertTrue(self.var_prefix() in str(main_prog))
 
             exe = paddle.static.Executor()
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             res = exe.run(fetch_list=[out])
             np.testing.assert_array_equal(res[0].shape, [2, 3, 10])
 

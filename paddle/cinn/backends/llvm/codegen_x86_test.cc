@@ -39,7 +39,7 @@ TEST(Vectorize, basic) {
 
   LOG(INFO) << "fn: " << fn;
 
-  Module::Builder builder("module", common::DefaultHostTarget());
+  Module::Builder builder("module", cinn::common::DefaultHostTarget());
   builder.AddFunction(fn);
 
   auto module = builder.Build();
@@ -53,18 +53,21 @@ TEST(Vectorize, basic) {
 
   auto* fn_ptr = reinterpret_cast<lower_func_ptr_t>(fn_);
 
-  auto* A_buf = common::BufferBuilder(Float(32), {1024})
+  auto* A_buf = cinn::common::BufferBuilder(Float(32), {1024})
                     .set_random()
                     .set_align(64)
                     .Build();
-  auto* B_buf = common::BufferBuilder(Float(32), {1024})
+  auto* B_buf = cinn::common::BufferBuilder(Float(32), {1024})
                     .set_random()
                     .set_align(64)
                     .Build();
-  auto* C_buf =
-      common::BufferBuilder(Float(32), {1024}).set_zero().set_align(64).Build();
+  auto* C_buf = cinn::common::BufferBuilder(Float(32), {1024})
+                    .set_zero()
+                    .set_align(64)
+                    .Build();
 
-  auto args = common::ArgsBuilder().Add(A_buf).Add(B_buf).Add(C_buf).Build();
+  auto args =
+      cinn::common::ArgsBuilder().Add(A_buf).Add(B_buf).Add(C_buf).Build();
 
   fn_ptr(reinterpret_cast<void**>(args.data()), args.size());
 

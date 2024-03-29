@@ -20,9 +20,6 @@
 
 namespace phi {
 
-using phi::funcs::gpc_free_polygon;
-using phi::funcs::gpc_polygon_clip;
-
 template <class T>
 class Point_ {
  public:
@@ -77,7 +74,7 @@ void Array2Poly(const T* box,
 template <class T>
 void PointVec2Poly(const std::vector<Point_<T>>& vec,
                    phi::funcs::gpc_polygon* poly) {
-  int pts_num = vec.size();
+  size_t pts_num = vec.size();
   (*poly).num_contours = 1;
   (*poly).hole = reinterpret_cast<int*>(malloc(sizeof(int)));  // NOLINT
   (*poly).hole[0] = 0;
@@ -494,7 +491,7 @@ void MultiClassNMSKernel(const Context& ctx,
                          DenseTensor* nms_rois_num) {
   bool return_index = index != nullptr;
   bool has_roisnum = rois_num.get_ptr() != nullptr;
-  auto score_dims = phi::vectorize<int>(scores.dims());
+  auto score_dims = common::vectorize<int>(scores.dims());
   auto score_size = score_dims.size();
 
   std::vector<std::map<int, std::vector<int>>> all_indices;

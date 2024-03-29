@@ -17,8 +17,8 @@ limitations under the License. */
 #include <memory>
 #include <mutex>     // NOLINT
 #include "dnnl.hpp"  // NOLINT
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/attribute.h"
 #include "paddle/utils/test_macros.h"
@@ -57,7 +57,7 @@ class OneDNNContextThreadLocals {
     size_t get_cur_mkldnn_session_id(void);
     void set_cur_input_shape_str(std::string input_shape_str);
     void set_cur_input_shape_cache_capacity(int input_shape_cache_capacity);
-    void set_cur_paddle_data_layout(DataLayout dl);
+    TEST_API void set_cur_paddle_data_layout(DataLayout dl);
     DataLayout get_cur_paddle_data_layout(void);
     void log_lib_version(void);
     const dnnl::engine& get_engine(void) { return cur_engine; }
@@ -77,7 +77,7 @@ class OneDNNContextThreadLocals {
   static constexpr size_t kMKLDNNSessionID_Default = 0;
   // mkldnn session id for cache clearing mode
   static constexpr size_t kMKLDNNSessionID_CacheClearing = -1;
-  static Body& fetch();
+  TEST_API static Body& fetch();
 };
 
 class OneDNNContext : public CPUContext {
@@ -114,7 +114,7 @@ class OneDNNContext : public CPUContext {
   const dnnl::engine& GetEngine() const { return tls().get_engine(); }
 
   // Remove all entries from the blob map
-  void ResetBlobMap(void* ptr);
+  TEST_API void ResetBlobMap(void* ptr);
 
   // Prevent next ResetBlobMap()
   void BlockNextCacheClearing();

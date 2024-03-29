@@ -37,7 +37,7 @@ TEST(GradTensorHolder, Constructor) {
 
   // Construct Eager Tensor
   phi::DenseTensorMeta meta =
-      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({2, 2}));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({2, 2}));
   std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
@@ -55,7 +55,7 @@ TEST(GradTensorHolder, Constructor) {
 TEST(GradTensorHolder, Interfaces) {
   // Construct Eager Tensor
   phi::DenseTensorMeta meta =
-      phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 1}));
+      phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 1}));
   std::shared_ptr<phi::DenseTensor> dt0 = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
@@ -117,7 +117,8 @@ TEST(GradTensorHolder, SelectedRowsMergeAdd) {
   auto sr2 = std::make_shared<phi::SelectedRows>(rows, table_size);
 
   // initialize a sparse table 1
-  sr1->mutable_value()->Resize(phi::make_ddim({table_size, embedding_width}));
+  sr1->mutable_value()->Resize(
+      common::make_ddim({table_size, embedding_width}));
   auto* data_sr1 = sr1->mutable_value()->mutable_data<float>(cpu);
   for (int64_t i = 0; i < table_size; ++i) {
     for (int64_t j = 0; j < embedding_width; ++j) {
@@ -126,7 +127,8 @@ TEST(GradTensorHolder, SelectedRowsMergeAdd) {
   }
 
   // initialize a sparse table 2
-  sr2->mutable_value()->Resize(phi::make_ddim({table_size, embedding_width}));
+  sr2->mutable_value()->Resize(
+      common::make_ddim({table_size, embedding_width}));
   auto* data_sr2 = sr2->mutable_value()->mutable_data<float>(cpu);
   for (int64_t i = 0; i < table_size; ++i) {
     for (int64_t j = 0; j < embedding_width; ++j) {

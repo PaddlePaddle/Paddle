@@ -75,7 +75,7 @@ void exec_fft(const phi::CPUContext& ctx,
   for (int i = 0; i < signal_ndim; i++) {
     collapsed_input_shape_.push_back(in_sizes[axes[i]]);
   }
-  phi::DDim collapsed_input_shape = phi::make_ddim(collapsed_input_shape_);
+  phi::DDim collapsed_input_shape = common::make_ddim(collapsed_input_shape_);
   transposed_input.Resize(collapsed_input_shape);
   DenseTensor& collapsed_input = transposed_input;
 
@@ -87,7 +87,7 @@ void exec_fft(const phi::CPUContext& ctx,
   for (int i = 0; i < signal_ndim; i++) {
     collapsed_output_shape_.push_back(out_sizes[axes[i]]);
   }
-  phi::DDim collapsed_output_shape = phi::make_ddim(collapsed_output_shape_);
+  phi::DDim collapsed_output_shape = common::make_ddim(collapsed_output_shape_);
   DenseTensor collapsed_output;
   collapsed_output.Resize(collapsed_output_shape);
   ctx.Alloc<To>(&collapsed_output);
@@ -99,8 +99,8 @@ void exec_fft(const phi::CPUContext& ctx,
     signal_sizes[1 + i] =
         std::max(collapsed_input_shape[1 + i], collapsed_output_shape[1 + i]);
   }
-  const phi::DDim input_stride = phi::stride(collapsed_input_shape);
-  const phi::DDim output_stride = phi::stride(collapsed_output_shape);
+  const phi::DDim input_stride = common::stride(collapsed_input_shape);
+  const phi::DDim output_stride = common::stride(collapsed_output_shape);
 
   DftiDescriptor desc = plan_mkl_fft(x.dtype(),
                                      out->dtype(),
@@ -220,9 +220,9 @@ struct FFTC2CFunctor<phi::CPUContext, Ti, To> {
     using C = std::complex<R>;
 
     const auto& input_dim = x.dims();
-    const std::vector<size_t> in_sizes = phi::vectorize<size_t>(input_dim);
+    const std::vector<size_t> in_sizes = common::vectorize<size_t>(input_dim);
     std::vector<std::ptrdiff_t> in_strides =
-        phi::vectorize<std::ptrdiff_t>(phi::stride(input_dim));
+        common::vectorize<std::ptrdiff_t>(common::stride(input_dim));
     const int64_t data_size = sizeof(C);
     std::transform(in_strides.begin(),
                    in_strides.end(),
@@ -234,7 +234,7 @@ struct FFTC2CFunctor<phi::CPUContext, Ti, To> {
     // pocketfft requires std::vector<size_t>
     std::vector<size_t> axes_(axes.size());
     std::copy(axes.begin(), axes.end(), axes_.begin());
-    // compuet factor
+    // compute factor
     size_t signal_numel = 1;
     for (const auto axis : axes) {
       signal_numel *= in_sizes[axis];
@@ -263,9 +263,9 @@ struct FFTR2CFunctor<phi::CPUContext, Ti, To> {
     using C = std::complex<R>;
 
     const auto& input_dim = x.dims();
-    const std::vector<size_t> in_sizes = phi::vectorize<size_t>(input_dim);
+    const std::vector<size_t> in_sizes = common::vectorize<size_t>(input_dim);
     std::vector<std::ptrdiff_t> in_strides =
-        phi::vectorize<std::ptrdiff_t>(phi::stride(input_dim));
+        common::vectorize<std::ptrdiff_t>(common::stride(input_dim));
     {
       const int64_t data_size = sizeof(R);
       std::transform(in_strides.begin(),
@@ -275,9 +275,9 @@ struct FFTR2CFunctor<phi::CPUContext, Ti, To> {
     }
 
     const auto& output_dim = out->dims();
-    const std::vector<size_t> out_sizes = phi::vectorize<size_t>(output_dim);
+    const std::vector<size_t> out_sizes = common::vectorize<size_t>(output_dim);
     std::vector<std::ptrdiff_t> out_strides =
-        phi::vectorize<std::ptrdiff_t>(phi::stride(output_dim));
+        common::vectorize<std::ptrdiff_t>(common::stride(output_dim));
     {
       const int64_t data_size = sizeof(C);
       std::transform(out_strides.begin(),
@@ -291,7 +291,7 @@ struct FFTR2CFunctor<phi::CPUContext, Ti, To> {
     // pocketfft requires std::vector<size_t>
     std::vector<size_t> axes_(axes.size());
     std::copy(axes.begin(), axes.end(), axes_.begin());
-    // compuet normalization factor
+    // compute normalization factor
     size_t signal_numel = 1;
     for (const auto axis : axes) {
       signal_numel *= in_sizes[axis];
@@ -320,9 +320,9 @@ struct FFTC2RFunctor<phi::CPUContext, Ti, To> {
     using C = std::complex<R>;
 
     const auto& input_dim = x.dims();
-    const std::vector<size_t> in_sizes = phi::vectorize<size_t>(input_dim);
+    const std::vector<size_t> in_sizes = common::vectorize<size_t>(input_dim);
     std::vector<std::ptrdiff_t> in_strides =
-        phi::vectorize<std::ptrdiff_t>(phi::stride(input_dim));
+        common::vectorize<std::ptrdiff_t>(common::stride(input_dim));
     {
       const int64_t data_size = sizeof(C);
       std::transform(in_strides.begin(),
@@ -332,9 +332,9 @@ struct FFTC2RFunctor<phi::CPUContext, Ti, To> {
     }
 
     const auto& output_dim = out->dims();
-    const std::vector<size_t> out_sizes = phi::vectorize<size_t>(output_dim);
+    const std::vector<size_t> out_sizes = common::vectorize<size_t>(output_dim);
     std::vector<std::ptrdiff_t> out_strides =
-        phi::vectorize<std::ptrdiff_t>(phi::stride(output_dim));
+        common::vectorize<std::ptrdiff_t>(common::stride(output_dim));
     {
       const int64_t data_size = sizeof(R);
       std::transform(out_strides.begin(),
@@ -348,7 +348,7 @@ struct FFTC2RFunctor<phi::CPUContext, Ti, To> {
     // pocketfft requires std::vector<size_t>
     std::vector<size_t> axes_(axes.size());
     std::copy(axes.begin(), axes.end(), axes_.begin());
-    // compuet normalization factor
+    // compute normalization factor
     size_t signal_numel = 1;
     for (const auto axis : axes) {
       signal_numel *= out_sizes[axis];

@@ -53,12 +53,12 @@ class PrintOptions {
   PrintOptions() {}
 };
 
-void TensorToStream(std::ostream& os,
-                    const phi::DenseTensor& tensor,
-                    const platform::DeviceContext& dev_ctx);
-void TensorFromStream(std::istream& is,
-                      phi::DenseTensor* tensor,
-                      const platform::DeviceContext& dev_ctx);
+TEST_API void TensorToStream(std::ostream& os,
+                             const phi::DenseTensor& tensor,
+                             const platform::DeviceContext& dev_ctx);
+TEST_API void TensorFromStream(std::istream& is,
+                               phi::DenseTensor* tensor,
+                               const platform::DeviceContext& dev_ctx);
 void TensorFromStream(std::istream& is,
                       phi::DenseTensor* tensor,
                       const platform::DeviceContext& dev_ctx,
@@ -71,10 +71,10 @@ void TensorFromStream(std::istream& is,
 // If ctx_place and src_place are the same, src_ctx.Wait() is added
 // after memory::Copy; if ctx_place and dst_place are the same,
 // src_ctx.Wait() is added before memory::Copy.
-void TensorCopy(const phi::DenseTensor& src,
-                const platform::Place& dst_place,
-                const platform::DeviceContext& ctx,
-                phi::DenseTensor* dst);
+TEST_API void TensorCopy(const phi::DenseTensor& src,
+                         const platform::Place& dst_place,
+                         const platform::DeviceContext& ctx,
+                         phi::DenseTensor* dst);
 
 // NOTE(zcd): If the src.place() and dst_place are two different GPU,
 // the copy operation is carried out on the dst_place's stream. This is
@@ -83,13 +83,13 @@ void TensorCopy(const phi::DenseTensor& src,
 // stream, if this copy operation is carried out on the src_place's stream,
 // when dst is used in dst_place's stream the copy operation may be
 // not completed.
-void TensorCopy(const phi::DenseTensor& src,
-                const platform::Place& dst_place,
-                phi::DenseTensor* dst);
+TEST_API void TensorCopy(const phi::DenseTensor& src,
+                         const platform::Place& dst_place,
+                         phi::DenseTensor* dst);
 
-void TensorCopySync(const phi::DenseTensor& src,
-                    const platform::Place& dst_place,
-                    phi::DenseTensor* dst);
+TEST_API void TensorCopySync(const phi::DenseTensor& src,
+                             const platform::Place& dst_place,
+                             phi::DenseTensor* dst);
 
 template <typename T>
 void TensorFromVector(const std::vector<T>& src,
@@ -103,11 +103,12 @@ void TensorToVector(const phi::DenseTensor& src,
                     const platform::DeviceContext& ctx,
                     std::vector<T>* dst);
 template <typename T>
-void TesnorToVector(const phi::DenseTensor& src, std::vector<T>* dst);
+void TensorToVector(const phi::DenseTensor& src, std::vector<T>* dst);
 
 // convert dlpack's DLTensor to tensor
 
-void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst);
+TEST_API void TensorFromDLPack(const ::DLTensor& dl_tensor,
+                               phi::DenseTensor* dst);
 void TensorFromDLPack(const DLManagedTensor* src, phi::DenseTensor* dst);
 
 //

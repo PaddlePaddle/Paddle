@@ -15,12 +15,19 @@
 
 import numpy as np
 
-from paddle.base.core import VarDesc
+from paddle.base.core import Place, VarDesc
 from paddle.base.libpaddle import DataType
-from paddle.base.libpaddle.pir import Program, set_global_program
+from paddle.base.libpaddle.pir import (
+    Program,
+    get_current_insertion_point,
+    reset_insertion_point_to_start,
+    set_insertion_point,
+    set_insertion_point_to_block_end,
+)
 
-from .._pir_ops import get_parameter, set_parameter
+from .._pir_ops import data, parameter, set_parameter, set_persistable_value
 from ..base import unique_name
+from ..base.core import set_static_op_arg_pre_cast_hook
 from ..base.wrapped_decorator import signature_safe_contextmanager
 
 vartype_to_datatype = {
@@ -51,6 +58,18 @@ np_type_to_paddle_type = {
     np.dtype("int8"): DataType.INT8,
     np.dtype("complex64"): DataType.COMPLEX64,
     np.dtype("complex128"): DataType.COMPLEX128,
+    np.float16: DataType.FLOAT16,
+    np.float32: DataType.FLOAT32,
+    np.float64: DataType.FLOAT64,
+    np.int32: DataType.INT32,
+    np.int16: DataType.INT16,
+    np.int64: DataType.INT64,
+    np.bool_: DataType.BOOL,
+    np.uint16: DataType.BFLOAT16,
+    np.uint8: DataType.UINT8,
+    np.int8: DataType.INT8,
+    np.complex64: DataType.COMPLEX64,
+    np.complex128: DataType.COMPLEX128,
 }
 
 
@@ -67,12 +86,14 @@ def convert_np_dtype_to_dtype_(np_dtype):
 
     """
     # Convert the data type string to numpy data type.
-    if isinstance(np_dtype, str) and np_dtype == "bfloat16":
+    if np_dtype == "bfloat16":
         # since there is still no support for bfloat16 in NumPy,
         # uint16 is used for casting bfloat16
         dtype = np.dtype("uint16")
-    else:
+    elif isinstance(np_dtype, str):
         dtype = np.dtype(np_dtype)
+    else:
+        dtype = np_dtype
 
     if dtype in np_type_to_paddle_type.keys():
         return np_type_to_paddle_type[dtype]
@@ -83,7 +104,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
 # program is a global instance.
 _main_program_ = Program()
 # set the global program for c++ and this program will be used to build ops in c++
-set_global_program(_main_program_)
+set_insertion_point_to_block_end(_main_program_.global_block())
 
 _startup_program_ = Program()
 
@@ -153,7 +174,7 @@ def default_main_program():
     return _main_program_
 
 
-def switch_main_program(program):
+def switch_main_program(program, insertion_point=None):
     """
     Switch the main program to a new program.
 
@@ -165,9 +186,13 @@ def switch_main_program(program):
     """
     global _main_program_
     prev_program = _main_program_
+    prev_insertion_point = get_current_insertion_point()
     _main_program_ = program
-    set_global_program(_main_program_)
-    return prev_program
+    if insertion_point is None:
+        set_insertion_point_to_block_end(_main_program_.global_block())
+    else:
+        set_insertion_point(insertion_point)
+    return prev_program, prev_insertion_point
 
 
 def switch_startup_program(program):
@@ -234,7 +259,7 @@ def program_guard(main_program, startup_program=None):
     check_type(
         main_program, 'main_program', Program, 'paddle.static.program_guard'
     )
-    main_program = switch_main_program(main_program)
+    main_program, prev_insertion_point = switch_main_program(main_program)
     if startup_program is not None:
         check_type(
             startup_program,
@@ -246,7 +271,7 @@ def program_guard(main_program, startup_program=None):
     try:
         yield
     finally:
-        switch_main_program(main_program)
+        switch_main_program(main_program, prev_insertion_point)
         if startup_program is not None:
             switch_startup_program(startup_program)
 
@@ -260,6 +285,7 @@ class ParameterMeta:
 def create_parameter(
     dtype,
     shape,
+    name=None,
     **kwargs,
 ):
     if 'initializer' not in kwargs:
@@ -269,7 +295,9 @@ def create_parameter(
     if dtype is not None:
         if not isinstance(dtype, DataType):
             dtype = convert_np_dtype_to_dtype_(dtype)
-    op_result_name = unique_name.generate('parameter')
+    value_name = name
+    if not value_name:
+        value_name = unique_name.generate('parameter')
     startup_program = default_startup_program()
     main_program = default_main_program()
     parameter_meta = ParameterMeta(shape, dtype)
@@ -279,44 +307,117 @@ def create_parameter(
         init_result = initializer(
             parameter_meta, startup_program.global_block()
         )
-        init_result.is_persistable = True
-        set_parameter(init_result, op_result_name)
+        init_result.persistable = True
+        set_parameter(init_result, value_name)
 
-    main_program.move_parameters_from(startup_program)
+    main_program.set_parameters_from(startup_program)
     with program_guard(default_main_program()):
-        param = get_parameter(op_result_name, dtype, shape)
-        trainable = kwargs.get('trainable', True)
-        param.stop_gradient = not trainable
-        param.is_persistable = True
+        reset_insertion_point_to_start()
+        param = parameter(value_name)
+        param.persistable = True
 
+    param.trainable = kwargs.get('trainable', True)
+    param.stop_gradient = not param.trainable
+    param.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
+    param.regularizer = kwargs.get('regularizer', None)
+    param.do_model_average = kwargs.get('do_model_average', None)
+    param.need_clip = kwargs.get('need_clip', True)
+    param.is_distributed = False
+    param.is_parameter = True
     return param
 
 
-def _convert_into_opresult(tensor):
+def create_persistable_value(dtype, shape, name=None, **kwargs):
     """
-    Convert Tensor into OpResult.
+    Create Value that is persistable in startup program and main program. The Value is initilized in startup program and
+    used in main program.
+
+    Returns:
+        Value: The created Value from main program
+    """
+    if 'initializer' not in kwargs:
+        raise ValueError(
+            "initializer is None, if you want to create parameter, please pass its initializer."
+        )
+    if dtype is not None:
+        if not isinstance(dtype, DataType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+    value_name = name
+    if not value_name:
+        value_name = unique_name.generate('persistable_value')
+    startup_program = default_startup_program()
+    main_program = default_main_program()
+
+    with program_guard(startup_program):
+        initializer = kwargs['initializer']
+        parameter_meta = ParameterMeta(shape, dtype)
+        init_result = initializer(
+            parameter_meta, startup_program.global_block()
+        )
+        init_result.persistable = True
+        set_persistable_value(init_result, value_name)
+
+    with program_guard(default_main_program()):
+        reset_insertion_point_to_start()
+        persist_value = data(value_name, shape, dtype, Place())
+        persist_value.persistable = True
+
+    return persist_value
+
+
+def _get_persistable_value(target_program, value_info):
+    """
+    Get a persistable value from a target program by using value that is in other program.
+    """
+    with program_guard(target_program):
+        target_value = data(
+            value_info.name, value_info.shape, value_info.dtype, Place()
+        )
+        target_value.persistable = True
+    return target_value
+
+
+def _get_parameter(target_program, param_info):
+    """
+    Get a parameter from a target program by using parameter that is in other program.
+    """
+    target_program.set_parameters_from(default_startup_program())
+    with program_guard(target_program):
+        target_param = parameter(param_info.name)
+        target_param.persistable = True
+        target_param.stop_gradient = param_info.stop_gradient
+
+    if hasattr(param_info, 'regularizer'):
+        target_param.regularizer = param_info.regularizer
+    if hasattr(param_info, 'need_clip'):
+        target_param.need_clip = param_info.need_clip
+    return target_param
+
+
+def _convert_into_value(tensor):
+    """
+    Convert Tensor into Value.
     """
     import paddle
-    from paddle.base import core, framework
-    from paddle.jit.newir_dy2static.parameter_recorder import (
+    from paddle.jit.pir_dy2static.parameter_recorder import (
         _global_parameter_recorder,
     )
 
-    if isinstance(tensor, core.eager.Tensor):
-        # Check whether has been created before.
-        new_var = tensor.block._find_var_recursive(tensor.name)
-        is_persistable = True
-        if new_var is not None:
-            assert isinstance(new_var, framework.Variable)
-        elif isinstance(tensor, framework.EagerParamBase):
-            # Convert EagerParamBase into Parameter with same attributes in dy2stat.
-            new_var = _global_parameter_recorder.get(
-                paddle.pir.core.default_main_program(), tensor
-            )
-        else:
-            # TODO(xiongkun): add this logic, we should call paddle.data() to create a non-parameter variable.
-            raise NotImplementedError("Not implemented, for buffers.")
-        # add param into parameter recorder to collect all the params used in this program.
-        return new_var
-    else:
-        return tensor
+    if isinstance(tensor, paddle.Tensor):
+        return _global_parameter_recorder.get(
+            paddle.pir.core.default_main_program(), tensor
+        )
+    return tensor
+
+
+@signature_safe_contextmanager
+def static_op_arg_cast_guard(hook):
+    """
+    Set a hook function to cast the arguments of static op.
+    """
+
+    original_callback = set_static_op_arg_pre_cast_hook(hook)
+    try:
+        yield
+    finally:
+        set_static_op_arg_pre_cast_hook(original_callback)

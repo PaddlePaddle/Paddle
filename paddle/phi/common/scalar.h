@@ -19,7 +19,7 @@ limitations under the License. */
 #include <sstream>
 #include <vector>
 
-#include "paddle/phi/api/ext/exception.h"
+#include "paddle/common/exception.h"
 #include "paddle/phi/common/data_type.h"
 
 namespace paddle {
@@ -226,6 +226,44 @@ class ScalarBase {
     return !operator==(other);
   }
 
+  ScalarBase operator-() const {
+    DataType data_type = this->dtype();
+    switch (data_type) {
+      case DataType::BOOL:
+        return ScalarBase(-(this->data_.b));
+      case DataType::INT8:
+        return ScalarBase(-(this->data_.i8));
+      case DataType::UINT8:
+        return ScalarBase(-(this->data_.ui8));
+      case DataType::INT16:
+        return ScalarBase(-(this->data_.i16));
+      case DataType::UINT16:
+        return ScalarBase(-(this->data_.ui16));
+      case DataType::INT32:
+        return ScalarBase(-(this->data_.i32));
+      case DataType::UINT32:
+        return ScalarBase(-(this->data_.ui32));
+      case DataType::INT64:
+        return ScalarBase(-(this->data_.i64));
+      case DataType::UINT64:
+        return ScalarBase(-(this->data_.ui64));
+      case DataType::FLOAT16:
+        return ScalarBase(-(this->data_.f16));
+      case DataType::BFLOAT16:
+        return ScalarBase(-(this->data_.bf16));
+      case DataType::FLOAT32:
+        return ScalarBase(-(this->data_.f32));
+      case DataType::FLOAT64:
+        return ScalarBase(-(this->data_.f64));
+      case DataType::COMPLEX64:
+        return ScalarBase(-(this->data_.c64));
+      case DataType::COMPLEX128:
+        return ScalarBase(-(this->data_.c128));
+      default:
+        PD_THROW("Invalid tensor data type `", dtype_, "`.");
+    }
+  }
+
   std::string ToRawString() const {
     std::stringstream ss;
     switch (dtype_) {
@@ -356,9 +394,9 @@ void CopyScalar(const ScalarBase<T1>& src, ScalarBase<T2>* dst) {
 }
 
 using Scalar = paddle::experimental::ScalarBase<Tensor>;
-bool operator==(const Scalar& lhs, const Scalar& rhs);
+TEST_API bool operator==(const Scalar& lhs, const Scalar& rhs);
 
-std::ostream& operator<<(std::ostream& os, const Scalar& s);
+TEST_API std::ostream& operator<<(std::ostream& os, const Scalar& s);
 
 template <typename T>
 std::vector<T> ExtractPlainVector(

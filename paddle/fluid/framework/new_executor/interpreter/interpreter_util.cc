@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/io/save_load_tensor.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
@@ -33,6 +34,7 @@
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
@@ -47,8 +49,10 @@
 #include "paddle/phi/backends/device_manager.h"
 #endif
 
-PHI_DECLARE_bool(use_mkldnn);
-PHI_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_string(static_runtime_data_save_path);
+COMMON_DECLARE_bool(save_static_runtime_data);
 
 namespace paddle {
 namespace framework {
@@ -149,6 +153,27 @@ bool IsCommunicationOp(const Instruction& instr) {
     return false;
   }
   return IsCommunicationOp(instr.OpBase());
+}
+
+bool IsCommunicationOp(const ::pir::Operation* op) {
+  std::string op_name = op->name();
+  if (op->attributes().count("op_name")) {
+    op_name =
+        op->attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+  }
+  const std::set<std::string> special_comm_op_set = {
+      paddle::dialect::SendV2Op::name(),
+      paddle::dialect::RecvV2Op::name(),
+  };
+  const std::string communication_op_prefix = "c_";
+  if (op_name.find(communication_op_prefix) != std::string::npos ||
+      special_comm_op_set.count(op_name)) {
+    return true;
+  }
+  if (op->attributes().count("ring_id") != 0) {
+    return true;
+  }
+  return false;
 }
 
 bool IsCpuOp(const Instruction& instr) {
@@ -453,7 +478,7 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
               op_device));
 #else
       VLOG(1) << string::Sprintf(
-          "Cannot use get_all_custom_device_type because you have installed"
+          "Cannot use get_all_custom_device_type because you have installed "
           "CPU/GPU version PaddlePaddle.\n"
           "If you want to use get_all_custom_device_type, please try to "
           "install CustomDevice version "
@@ -558,6 +583,8 @@ void BuildOpFuncList(const platform::Place& place,
                      std::vector<OpFuncNode>* vec_func_list,
                      VariableScope* var_scope,
                      const ExecutionConfig& execution_config,
+                     const std::vector<HookFunc>& input_hookfuncs,
+                     const std::vector<HookFunc>& output_hookfuncs,
                      bool use_local_scope,
                      bool static_build) {
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
@@ -597,10 +624,23 @@ void BuildOpFuncList(const platform::Place& place,
   bool flag_log_is_printed = false;
   for (size_t i = 0; i < ops.size(); ++i) {
     auto op = ops[i].get();
+    op->SetId(i);
+
     const std::string& op_type = op->Type();
     if (execution_config.used_for_inference) {
       if (op_type == "feed" || op_type == "fetch") {
         continue;
+      }
+      for (auto& hook : input_hookfuncs) {
+        hook(op, local_scope);
+      }
+
+      if (op->Type() == "while" || op->Type() == "conditional_block") {
+        op->SetInputHooks(input_hookfuncs);
+        op->SetOutputHooks(output_hookfuncs);
+        auto runtime_attrs = op->RuntimeAttrs();
+        runtime_attrs.insert(std::make_pair("used_for_inference", true));
+        op->SetRuntimeAttributeMap(runtime_attrs);
       }
     }
 
@@ -667,7 +707,7 @@ void BuildOpFuncList(const platform::Place& place,
       }
       op_func_node.stream_priority_ = dist_attr->stream_priority();
       op_func_node.scheduling_priority_ = dist_attr->scheduling_priority();
-      // set mannual event information
+      // set manual event information
       op_func_node.force_record_event_ = dist_attr->force_record_event();
       op_func_node.events_to_wait_ = dist_attr->events_to_wait();
       op_func_node.event_to_record_ = dist_attr->event_to_record();
@@ -951,6 +991,44 @@ void BuildOpFuncList(const platform::Place& place,
       std::rethrow_exception(std::current_exception());
     }
 
+    if (FLAGS_save_static_runtime_data) {
+      VLOG(6) << "start to save paddle variable";
+      auto root_path = FLAGS_static_runtime_data_save_path;
+      for (auto& vname : op->InputVars()) {
+        auto* var = local_scope->FindVar(vname);
+        if (var == nullptr) continue;
+        const phi::DenseTensor* tensor{nullptr};
+        if (var->IsType<phi::DenseTensor>()) {
+          tensor = &var->Get<phi::DenseTensor>();
+        } else {
+          VLOG(6) << vname << " is not DenseTensor";
+          continue;
+        }
+        if (!tensor->IsInitialized()) continue;
+        paddle::framework::SaveTensor(
+            *tensor,
+            root_path + "/saved_tensors/" + op_type + "-input-" + vname,
+            false);
+      }
+      for (auto& vname : op->OutputVars(true)) {
+        auto* var = local_scope->FindVar(vname);
+        if (var == nullptr) continue;
+        const phi::DenseTensor* tensor{nullptr};
+        if (var->IsType<phi::DenseTensor>()) {
+          tensor = &var->Get<phi::DenseTensor>();
+        } else {
+          VLOG(6) << vname << "  is not DenseTensor";
+          continue;
+        }
+        if (!tensor->IsInitialized()) continue;
+        paddle::framework::SaveTensor(
+            *tensor,
+            root_path + "/saved_tensors/" + op_type + "-output-" + vname,
+            false);
+      }
+      VLOG(6) << "end save paddle variable";
+    }
+
     if (FLAGS_check_nan_inf) {
       VLOG(4) << "Check nan/inf";
       try {
@@ -977,6 +1055,12 @@ void BuildOpFuncList(const platform::Place& place,
         }
         std::cout << sout.str() << std::endl;
         std::rethrow_exception(std::current_exception());
+      }
+    }
+
+    if (execution_config.used_for_inference) {
+      for (auto& hook : output_hookfuncs) {
+        hook(op, local_scope);
       }
     }
 
@@ -1179,7 +1263,8 @@ std::unordered_set<std::string> GetSpecialOpNames() {
       "builtin.slice",
       "pd_op.feed",
       "builtin.set_parameter",
-      "builtin.get_parameter",
+      "builtin.parameter",
+      "builtin.constant",
       "pd_op.data",
       "builtin.shadow_output",
   };
@@ -1204,30 +1289,31 @@ const paddle::framework::Variable* GetVariableByName(
       return kv.first;
     }
   }
+  VLOG(8) << "cannot find var: " << var_name;
   return nullptr;
 }
 
-std::vector<std::string> GetOriginInputNames(std::string op_name) {
+std::vector<std::string> GetOriginInputNames(const std::string& op_name) {
   std::vector<std::string> ret;
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
   if (op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()) {
     paddle::dialect::OpYamlInfoParser yaml_parser(
         op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
-            ->get_op_info_());
+            ->get_op_info_(op_name));
     ret = yaml_parser.InputNames();
   }
   return ret;
 }
 
-std::vector<std::string> GetOriginOutputNames(std::string op_name) {
+std::vector<std::string> GetOriginOutputNames(const std::string& op_name) {
   std::vector<std::string> ret;
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
   if (op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()) {
     paddle::dialect::OpYamlInfoParser yaml_parser(
         op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
-            ->get_op_info_());
+            ->get_op_info_(op_name));
     ret = yaml_parser.OutputNames();
   }
   return ret;
@@ -1238,15 +1324,15 @@ void PrintValuesAndVariables(
     const std::unordered_map<pir::Value, std::string>& value_2_var_name,
     const std::unordered_map<const paddle::framework::Variable*, std::string>&
         variable_2_var_name) {
-  for (const auto& op : block) {
+  for (auto& op : block) {
     std::stringstream ss;
     VLOG(6) << "-----------------------------";
-    op->Print(ss);
+    op.Print(ss);
     VLOG(6) << ss.str();
 
-    std::string op_name = op->name();
-    if (op->attributes().count("op_name")) {
-      op_name = op->attributes()
+    std::string op_name = op.name();
+    if (op.attributes().count("op_name")) {
+      op_name = op.attributes()
                     .at("op_name")
                     .dyn_cast<pir::StrAttribute>()
                     .AsString();
@@ -1256,11 +1342,12 @@ void PrintValuesAndVariables(
         GetOriginOutputNames(op_name);
 
     // 1. output string
+    VLOG(10) << "Generate output string ...";
     std::string ret_value_str = "Value   : (";
     std::string ret_variable_str = "Variable: (";
-    if (!op->results().empty()) {
-      for (size_t i = 0; i < op->num_results(); ++i) {
-        pir::Value out_value = op->result(i);
+    if (!op.results().empty()) {
+      for (size_t i = 0; i < op.num_results(); ++i) {
+        pir::Value out_value = op.result(i);
         if (value_2_var_name.count(out_value)) {
           // get Variable by Value
           auto& var_name = value_2_var_name.at(out_value);
@@ -1301,15 +1388,17 @@ void PrintValuesAndVariables(
     ret_variable_str += ") = ";
 
     // 2. op name
+    VLOG(10) << "Generate op name ...";
     ret_value_str += op_name;
     ret_variable_str += op_name;
 
     // 3. input string
+    VLOG(10) << "Generate input string ...";
     ret_value_str += "(";
     ret_variable_str += "(";
-    if (!op->operands().empty()) {
-      for (size_t i = 0; i < op->num_operands(); ++i) {
-        ::pir::Value in_value = op->operand(i).source();
+    if (!op.operands().empty()) {
+      for (size_t i = 0; i < op.num_operands(); ++i) {
+        ::pir::Value in_value = op.operand(i).source();
         if (value_2_var_name.count(in_value)) {
           // get Variable by Value
           auto& var_name = value_2_var_name.at(in_value);

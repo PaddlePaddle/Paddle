@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 from mkldnn_op_test import check_if_mkldnn_batchnorm_primitives_exist_in_bwd
-from op_test import _set_use_system_allocator
+from op_test import _set_use_system_allocator, pir_executor_guard
 from test_batch_norm_op import (
     TestBatchNormOpInference,
     TestBatchNormOpTraining,
@@ -71,6 +71,11 @@ class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):
             scale_grad,
             bias_grad,
         )
+
+    def test_forward_backward(self):
+        super().test_forward_backward()
+        with pir_executor_guard():
+            super().test_forward_backward()
 
 
 class TestMKLDNNBatchNormOpTraining_NHWC(TestMKLDNNBatchNormOpTraining):
@@ -136,6 +141,14 @@ class TestMKLDNNBatchNormOpInference(TestBatchNormOpInference):
         place = core.CPUPlace()
         data_format = "NCHW"
         self.check_with_place(place, data_format, self.dtype, [2, 3, 4, 5])
+        self.check_with_place_without_scale_and_bias(
+            place, data_format, self.dtype, [2, 3, 4, 5]
+        )
+        with pir_executor_guard():
+            self.check_with_place(place, data_format, self.dtype, [2, 3, 4, 5])
+            self.check_with_place_without_scale_and_bias(
+                place, data_format, self.dtype, [2, 3, 4, 5]
+            )
 
 
 class TestMKLDNNBatchNormOpInference_NHWC(TestMKLDNNBatchNormOpInference):
@@ -143,6 +156,9 @@ class TestMKLDNNBatchNormOpInference_NHWC(TestMKLDNNBatchNormOpInference):
         place = core.CPUPlace()
         data_format = "NHWC"
         self.check_with_place(place, data_format, self.dtype, [2, 4, 5, 3])
+        self.check_with_place_without_scale_and_bias(
+            place, data_format, self.dtype, [2, 4, 5, 3]
+        )
 
 
 class TestMKLDNNBatchNormOpWithReluInference(TestBatchNormOpInference):
@@ -154,6 +170,8 @@ class TestMKLDNNBatchNormOpWithReluInference(TestBatchNormOpInference):
         place = core.CPUPlace()
         data_format = "NCHW"
         self.check_with_place(place, data_format, self.dtype, [2, 3, 4, 5])
+        with pir_executor_guard():
+            self.check_with_place(place, data_format, self.dtype, [2, 3, 4, 5])
 
 
 if __name__ == '__main__':

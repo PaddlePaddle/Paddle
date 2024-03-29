@@ -915,7 +915,7 @@ phi::DenseTensor ReshapeToMatrix(const phi::DenseTensor& src,
   }
   phi::DenseTensor res;
   res.ShareDataWith(src);
-  res.Resize(phi::flatten_to_2d(src.dims(), num_col_dims));
+  res.Resize(common::flatten_to_2d(src.dims(), num_col_dims));
   return res;
 }
 

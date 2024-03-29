@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/tensor_meta.h"
 
@@ -29,7 +29,7 @@ namespace phi {
 const std::string& TransToPhiKernelName(const std::string& fluid_op_name);
 const std::string& TransToFluidOpName(const std::string& phi_kernel_name);
 
-Backend TransToPhiBackend(const phi::Place& place);
+TEST_API Backend TransToPhiBackend(const phi::Place& place);
 phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id = true);
 
 #ifdef PADDLE_WITH_DNNL

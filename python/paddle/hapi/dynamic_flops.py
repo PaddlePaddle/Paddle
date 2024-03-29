@@ -75,7 +75,7 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
             ...         return x
             ...
             >>> lenet = LeNet()
-            >>> # m is the instance of nn.Layer, x is the intput of layer, y is the output of layer.
+            >>> # m is the instance of nn.Layer, x is the input of layer, y is the output of layer.
             >>> def count_leaky_relu(m, x, y):
             ...     x = x[0]
             ...     nelements = x.numel()
@@ -240,9 +240,7 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
         else:
             if m_type not in types_collection:
                 print(
-                    "Cannot find suitable count function for {}. Treat it as zero FLOPs.".format(
-                        m_type
-                    )
+                    f"Cannot find suitable count function for {m_type}. Treat it as zero FLOPs."
                 )
 
         if flops_fn is not None:

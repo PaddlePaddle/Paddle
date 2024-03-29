@@ -26,7 +26,7 @@ namespace backends {
 using cinn::common::bfloat16;
 using cinn::common::float16;
 
-llvm::Type *CinnTypeToLLVMType(common::Type type,
+llvm::Type *CinnTypeToLLVMType(cinn::common::Type type,
                                llvm::Module *m,
                                bool is_vec) {
   llvm::Type *ir_type = nullptr;
@@ -118,10 +118,10 @@ llvm::Type *CinnTypeToLLVMType(common::Type type,
   return ir_type;
 }
 
-#define __(ty__)                                           \
-  template <>                                              \
-  llvm::Type *llvm_type_of<ty__>(llvm::Module * m) {       \
-    return CinnTypeToLLVMType(common::type_of<ty__>(), m); \
+#define __(ty__)                                                 \
+  template <>                                                    \
+  llvm::Type *llvm_type_of<ty__>(llvm::Module * m) {             \
+    return CinnTypeToLLVMType(cinn::common::type_of<ty__>(), m); \
   }
 
 __(int8_t)

@@ -83,7 +83,7 @@ void Instruction::UpdateArgsCache(
   args_cached_.resize(cache_size);
 
   for (int i = 0; i < cache_size; ++i) {
-    common::ArgsBuilder builder;
+    cinn::common::ArgsBuilder builder;
     std::vector<std::string> all_args = in_args_[i];
     all_args.insert(
         std::end(all_args), out_args_[i].begin(), out_args_[i].end());
@@ -168,14 +168,14 @@ void Instruction::Run(
                                         pod_args[2],
                                         static_cast<cudaStream_t>(stream));
   } else {
-    VLOG(3) << "Runing extern function " << function_name_;
+    VLOG(3) << "Running extern function " << function_name_;
     for (int idx = 0; idx < fn_ptrs_.size(); ++idx) {
-      VLOG(3) << "Runing func name: " << fn_names_[idx];
+      VLOG(3) << "Running func name: " << fn_names_[idx];
       auto& pod_args = args_cached_[idx];
       CHECK(fn_ptrs_[idx]) << "The LoweredFunc address should be set first by "
                               "calling SetLoweredFunc method";
       if (!dryrun) {
-        if (target_ == common::DefaultNVGPUTarget()) {
+        if (target_ == cinn::common::DefaultNVGPUTarget()) {
           ((lower_func_ptr_g)fn_ptrs_[idx])(
               static_cast<void*>(pod_args.data()), pod_args.size(), stream);
         } else {
@@ -184,7 +184,7 @@ void Instruction::Run(
         }
       }
     }
-    VLOG(3) << "Done Runing extern function " << function_name_;
+    VLOG(3) << "Done Running extern function " << function_name_;
   }
 #elif defined(CINN_WITH_CUDNN)
   auto& pod_args = args_cached_[0];
@@ -211,7 +211,7 @@ void Instruction::Run(
                                              pod_args[1],
                                              pod_args[2],
                                              static_cast<cudaStream_t>(stream),
-                                             common::Layout::kNHWC);
+                                             cinn::common::Layout::kNHWC);
 
       } else {
         absl::flat_hash_map<std::string, int> attrs_map = {
@@ -231,7 +231,7 @@ void Instruction::Run(
                                              pod_args[1],
                                              pod_args[2],
                                              static_cast<cudaStream_t>(stream),
-                                             common::Layout::kNCHW);
+                                             cinn::common::Layout::kNCHW);
       }
     } else if (str_attrs[0] == "backward_data") {
       // w, dy, dx
@@ -315,14 +315,14 @@ void Instruction::Run(
                                         pod_args[2],
                                         static_cast<cudaStream_t>(stream));
   } else {
-    VLOG(3) << "Runing extern function " << function_name_;
+    VLOG(3) << "Running extern function " << function_name_;
     for (int idx = 0; idx < fn_ptrs_.size(); ++idx) {
-      VLOG(3) << "Runing func name: " << fn_names_[idx];
+      VLOG(3) << "Running func name: " << fn_names_[idx];
       auto& pod_args = args_cached_[idx];
       CHECK(fn_ptrs_[idx]) << "The LoweredFunc address should be set first by "
                               "calling SetLoweredFunc method";
       if (!dryrun) {
-        if (target_ == common::DefaultNVGPUTarget()) {
+        if (target_ == cinn::common::DefaultNVGPUTarget()) {
           ((lower_func_ptr_g)fn_ptrs_[idx])(
               static_cast<void*>(pod_args.data()), pod_args.size(), stream);
         } else {
@@ -331,17 +331,17 @@ void Instruction::Run(
         }
       }
     }
-    VLOG(3) << "Done Runing extern function " << function_name_;
+    VLOG(3) << "Done Running extern function " << function_name_;
   }
 #else
-  VLOG(3) << "Runing extern function " << function_name_;
+  VLOG(3) << "Running extern function " << function_name_;
   for (int idx = 0; idx < fn_ptrs_.size(); ++idx) {
-    VLOG(3) << "Runing func name: " << fn_names_[idx];
+    VLOG(3) << "Running func name: " << fn_names_[idx];
     auto& pod_args = args_cached_[idx];
     CHECK(fn_ptrs_[idx]) << "The LoweredFunc address should be set first by "
                             "calling SetLoweredFunc method";
     if (!dryrun) {
-      if (target_ == common::DefaultNVGPUTarget()) {
+      if (target_ == cinn::common::DefaultNVGPUTarget()) {
         ((lower_func_ptr_g)fn_ptrs_[idx])(
             static_cast<void*>(pod_args.data()), pod_args.size(), stream);
       } else {
@@ -350,7 +350,7 @@ void Instruction::Run(
       }
     }
   }
-  VLOG(3) << "Done Runing extern function " << function_name_;
+  VLOG(3) << "Done Running extern function " << function_name_;
 #endif
 
   if (!cinn::runtime::CheckStringFlagFalse(FLAGS_cinn_self_check_accuracy)) {

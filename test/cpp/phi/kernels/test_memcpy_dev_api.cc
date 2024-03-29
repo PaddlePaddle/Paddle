@@ -27,7 +27,6 @@
 namespace phi {
 namespace tests {
 
-namespace framework = paddle::framework;
 using DDim = phi::DDim;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -37,14 +36,14 @@ TEST(DEV_API, memcpy_d2h) {
       std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   phi::DenseTensor x_cpu(cpu_alloc.get(),
                          phi::DenseTensorMeta(phi::DataType::FLOAT32,
-                                              phi::make_ddim({3, 2, 2, 3}),
+                                              common::make_ddim({3, 2, 2, 3}),
                                               phi::DataLayout::NCHW));
   auto& pool = phi::DeviceContextPool::Instance();
   auto* cpu_ctx = pool.GetByPlace(phi::CPUPlace());
   auto* x_cpu_data = cpu_ctx->template Alloc<float>(&x_cpu);
 
   for (int i = 0; i < x_cpu.numel(); i++) {
-    x_cpu_data[i] = i;
+    x_cpu_data[i] = static_cast<float>(i);
   }
 
   const auto alloc =

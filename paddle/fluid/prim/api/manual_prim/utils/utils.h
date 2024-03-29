@@ -15,13 +15,13 @@
 #pragma once
 #include <string>
 #include <vector>
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 #include "paddle/fluid/prim/api/generated_prim/prim_generated_api.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
@@ -29,7 +29,7 @@ namespace prim {
 // We put some api like utils here
 template <typename T>
 Tensor empty(const paddle::experimental::IntArray& shape,
-             phi::DataType dype,
+             phi::DataType dtype,
              const paddle::Place& place);
 
 template <typename T>
@@ -37,7 +37,7 @@ Tensor empty_like(const Tensor& x,
                   phi::DataType dtype,
                   const paddle::Place& place);
 
-// copy tensor for output ptr, in static need use assigh op
+// copy tensor for output ptr, in static need use assign op
 template <typename T>
 void by_pass(const Tensor& x, Tensor* out);
 
@@ -48,35 +48,49 @@ void set_output(const Tensor& x_tmp, Tensor* x);
 // These method don't need to be specified
 static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
                                           const phi::DDim& in_dims) {
-  std::vector<int64_t> result;
   int bat = dout_dims.size() - in_dims.size();
-  for (int i = 0; i < bat; ++i) {
-    result.push_back(i);
-  }
+  std::vector<int64_t> result(bat);
+  std::iota(result.begin(), result.end(), 0);
+
   for (int i = 0; i < in_dims.size(); ++i) {
     if (in_dims[i] == 1) {
-      result.push_back(i + bat);
+      if (dout_dims[i + bat] > 1) {
+        // no need to reduce when dout_dims[i + bat] == 1 though in_dims[i] == 1
+        result.push_back(i + bat);
+      }
     } else {
       PADDLE_ENFORCE_EQ(
           in_dims[i],
           dout_dims[i + bat],
           platform::errors::InvalidArgument(
               "ReduceDims dimension mismatch. Operands could "
-              "not be broadcast together with the shape of dout = [%s] and "
-              "the shape of in_dims = [%s]. Received [%d] in X is not equal to "
-              "[%d] in Y at i:%d.",
+              "not be broadcast together with the shape of X = [%s] and "
+              "the shape of Y = [%s]. X.shape[%d](%d) is not equal to "
+              "Y.shape[%d](%d).",
               dout_dims,
               in_dims,
+              i + bat,
               dout_dims[i + bat],
-              in_dims[i],
-              i));
+              i,
+              in_dims[i]));
     }
   }
-  return phi::make_ddim(result);
+  return common::make_ddim(result);
 }
 
 static phi::DDim get_reduce_dims(const phi::DDim& x_dims,
                                  const phi::DDim& y_dims) {
+  /*
+  @brief Computing reduction dim(s) from z=f(x, y) to x with right-alignment
+    broadcast rule.
+
+  * x_dims = [10, 1, 4, 1, 5]
+  * y_dims =     [2, 1, 6, 1]  <-- shaped are right-aligned for comparison
+  * <-- broadcast -->
+  * z_dims = [10, 2, 4, 6, 5]
+  * ==> reduce_dims_from_z_to_x = [0, 1, 3]
+  * ==> reduce_dims_from_z_to_y = [0, 2, 4]
+  */
   auto out_dims = paddle::operators::details::BroadcastTwoDims(x_dims, y_dims);
   return get_reduce_dims_from_out(out_dims, x_dims);
 }
@@ -91,7 +105,7 @@ static std::vector<int> get_reduce_dims(const Tensor& dx,
   if (dout_ndim < x_ndim) {
     return std::vector<int>({});
   }
-  const std::vector<std::int64_t> dx_dims = phi::vectorize(dx.dims());
+  const std::vector<std::int64_t> dx_dims = common::vectorize(dx.dims());
   std::vector<std::int64_t> broadcast_dims(dout_ndim);
   std::fill(
       broadcast_dims.data(), broadcast_dims.data() + dout_ndim - x_ndim, 1);
@@ -114,7 +128,7 @@ static std::vector<DST_T> unsafe_vector_cast(const std::vector<SRC_T>& src) {
   return dst;
 }
 
-// This fucction compute unsqueeze dims for reshape to replace unsqueeze.
+// This function compute unsqueeze dims for reshape to replace unsqueeze.
 static std::vector<int64_t> get_unsqueeze_dims(
     const Tensor& origin, const std::vector<int64_t>& axis) {
   auto origin_dims = origin.shape();

@@ -15,7 +15,7 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 #include "test/cpp/inference/api/trt_test_helper.h"
 
 namespace paddle {
@@ -43,7 +43,6 @@ void TestDynamic(bool with_dynamic = true,
                         buffer_param.size());
   config.SetOptimCacheDir(opt_cache_dir);
 
-  config.SwitchUseFeedFetchOps(false);
   // Set the input's min, max, opt shape
   config.EnableTensorRtEngine(
       1 << 30, 1, 1, AnalysisConfig::Precision::kFloat32, true, true);
@@ -92,7 +91,6 @@ void TestDynamic2() {
   AnalysisConfig config;
   config.EnableUseGpu(100, 0);
   config.SetModel(model_dir + "/model", model_dir + "/params");
-  config.SwitchUseFeedFetchOps(false);
   // Set the input's min, max, opt shape
   int batch_size = 1;
   std::map<std::string, std::vector<int>> min_input_shape = {
@@ -153,7 +151,6 @@ void TestTunedDynamic() {
   const std::string shape_range = "shape_range.pbtxt";
   config_tuned.EnableUseGpu(100, 0);
   config_tuned.SetModel(model_dir + "/model", model_dir + "/params");
-  config_tuned.SwitchUseFeedFetchOps(false);
   config_tuned.CollectShapeRangeInfo(shape_range);
 
   int batch_size = 1;
@@ -194,6 +191,7 @@ void TestTunedDynamic() {
     output_t->copy_to_cpu(out_data.data());
   };
   check_func(predictor_tuned.get());
+  predictor_tuned.reset(nullptr);
 
   // check tuned_dynamic_shape
   AnalysisConfig config;
@@ -202,7 +200,6 @@ void TestTunedDynamic() {
   config.SetOptimCacheDir(cache_dir);
   delete_cache_files(cache_dir);
   config.SetModel(model_dir + "/model", model_dir + "/params");
-  config.SwitchUseFeedFetchOps(false);
   config.EnableTunedTensorRtDynamicShape(shape_range, true);
   config.EnableTensorRtEngine(
       1 << 30, batch_size, 0, AnalysisConfig::Precision::kFloat32, true, false);
@@ -232,7 +229,6 @@ void TestDynamicClone(bool with_dynamic = true,
                         buffer_param.size());
   config.SetOptimCacheDir(opt_cache_dir);
 
-  config.SwitchUseFeedFetchOps(false);
   // Set the input's min, max, opt shape
   config.EnableTensorRtEngine(
       1 << 30, 1, 1, AnalysisConfig::Precision::kFloat32, false, false);

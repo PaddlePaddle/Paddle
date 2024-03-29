@@ -12,11 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from functools import cached_property
+
 import paddle
 from paddle.amp.auto_cast import amp_state
-from paddle.base.unique_name import UniqueNameGenerator
-from paddle.base.unique_name import guard as UniqueNameGuard
-from paddle.static import Program
+from paddle.base.data_feeder import convert_dtype
+from paddle.base.unique_name import (
+    UniqueNameGenerator,
+    guard as UniqueNameGuard,
+)
+from paddle.framework import use_pir_api
 from paddle.utils import flatten, is_sequence
 
 from .utils import Cache, Singleton, map_if_extend, meta_str
@@ -36,21 +41,35 @@ class MetaInfo:
 
     @staticmethod
     def from_tensor(tensor):
-        # We always use float32 in simulation if AMP is enabled.
+        if isinstance(tensor, paddle.pir.Value):
+            name = "Value@NoName"
+        else:  # For Tensor or Variable
+            name = tensor.name
+        persistable = tensor.persistable
         dtype = tensor.dtype
+        expected_dtype_class = (
+            paddle.core.DataType
+            if paddle.framework.use_pir_api()
+            else paddle.core.VarDesc.VarType
+        )
+        assert isinstance(dtype, expected_dtype_class)
+
+        # We always use float32 in simulation if AMP is enabled.
         current_amp_state = amp_state()
         if (
-            dtype == paddle.float16
+            not use_pir_api()
+            and dtype == paddle.float16
             and current_amp_state is not None
             and current_amp_state["dtype"] == "float16"
         ):
             dtype = paddle.float32
+        # TODO(@xiongkun) remove after pir become default state.
         return MetaInfo(
             list(tensor.shape),
             dtype,
             tensor.stop_gradient,
-            tensor.name,
-            tensor.persistable,
+            name,
+            persistable,
             tensor.type,
             tensor.place,
         )
@@ -92,9 +111,10 @@ class VariableCreator:
     """
 
     def __init__(self):
-        self.var_cache = {}
-        self.main_program = Program()
-        self.startup_program = Program()
+        # TODO(cleanup-legacy-ir): Remove the program and var_cache shims after PIR become default state.
+        # self.var_cache = {}
+        # self.main_program = paddle.static.Program()
+        # self.startup_program = paddle.static.Program()
         self.var_name_generator = UniqueNameGenerator("infer_meta_variable_")
 
     def gen_name(self, meta):
@@ -103,12 +123,62 @@ class VariableCreator:
             name += f"_{l}"
         return name
 
+    @property
+    def var_cache(self):
+        if paddle.framework.use_pir_api():
+            return self.pir_var_cache
+        else:
+            return self.legacy_var_cache
+
+    @cached_property
+    def legacy_var_cache(self):
+        return {}
+
+    @cached_property
+    def pir_var_cache(self):
+        return {}
+
+    @cached_property
+    def legacy_programs(self):
+        # Just for PIR and legacy IR compatibility.
+        # This can be removed after PIR become default state.
+        return (paddle.static.Program(), paddle.static.Program())
+
+    @cached_property
+    def pir_programs(self):
+        return (paddle.static.Program(), paddle.static.Program())
+
+    @property
+    def main_program(self):
+        if paddle.base.framework.use_pir_api():
+            return self.pir_programs[0]
+        else:
+            return self.legacy_programs[0]
+
+    @property
+    def startup_program(self):
+        if paddle.framework.use_pir_api():
+            return self.pir_programs[1]
+        else:
+            return self.legacy_programs[1]
+
     def create_var(self, meta):
-        var = self.main_program.global_block().create_var(
-            shape=meta.shape,
-            dtype=meta.dtype,
-            stop_gradient=meta.stop_gradient,
-        )
+        if paddle.framework.use_pir_api():
+            with paddle.static.program_guard(
+                self.main_program, self.startup_program
+            ):
+                var = paddle.static.input.data(
+                    name=self.gen_name(meta),
+                    shape=meta.shape,
+                    dtype=convert_dtype(meta.dtype),
+                )
+                var.stop_gradient = meta.stop_gradient
+        else:
+            var = self.main_program.global_block().create_var(
+                shape=meta.shape,
+                dtype=meta.dtype,
+                stop_gradient=meta.stop_gradient,
+            )
         assert not isinstance(
             var, paddle.Tensor
         ), "Expect a Variable, but got a Tensor."
@@ -163,9 +233,14 @@ def convert_meta_to_input_spec(args):
 
 
 def convert_variable_to_meta_info(args):
+    static_variable_type = (
+        paddle.static.Variable
+        if not paddle.base.framework.use_pir_api()
+        else paddle.pir.Value
+    )
     return map_if_extend(
         args,
-        pred=lambda x: isinstance(x, paddle.static.Variable),
+        pred=lambda x: isinstance(x, static_variable_type),
         true_fn=lambda x: MetaInfo.from_tensor(x),
         false_fn=lambda x: x,
     )
@@ -192,11 +267,36 @@ def infer_meta_for_layer(layer, *args, **kwargs):
     ) = layer.forward.get_concrete_program(*args_, **kwargs_)
 
     out = partial_program_layer._restore_out(
-        paddle.utils.flatten(
-            convert_variable_to_meta_info(concrete_program.outputs)
-        )
+        [
+            x
+            for x in paddle.utils.flatten(
+                convert_variable_to_meta_info(concrete_program.outputs)
+            )
+            if isinstance(x, MetaInfo)
+        ]
     )
     layer.forward.rollback()
+    return out
+
+
+def ast_infer_meta(static_function, *args, **kwargs):
+    args_, kwargs_ = convert_meta_to_input_spec((args, kwargs))
+
+    (
+        concrete_program,
+        partial_program_layer,
+    ) = static_function.get_concrete_program(*args_, **kwargs_)
+
+    out = partial_program_layer._restore_out(
+        [
+            x
+            for x in paddle.utils.flatten(
+                convert_variable_to_meta_info(concrete_program.outputs)
+            )
+            if isinstance(x, MetaInfo)
+        ]
+    )
+
     return out
 
 

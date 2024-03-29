@@ -107,7 +107,7 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
             "Expected input(H0)'s dimension is 2. But received %d.",
             h_dims.size()));
     if (ctx->IsRuntime() ||
-        (phi::product(c_dims) > 0 && phi::product(h_dims) > 0)) {
+        (common::product(c_dims) > 0 && common::product(h_dims) > 0)) {
       PADDLE_ENFORCE_EQ(h_dims,
                         c_dims,
                         platform::errors::InvalidArgument(
@@ -247,7 +247,7 @@ void AttentionLSTMOpMaker::Make() {
            " - Weight = {W_forget, W_input, W_output, W_cell}");
   AddInput("LSTMBias",
            "(phi::DenseTensor) the combined bias of LSTM, shape (1x4D)."
-           "Note: we should add the bias of hidden and context accorindg to "
+           "Note: we should add the bias of hidden and context according to "
            "the same gate: "
            "{B_forget, B_input, B_output, B_cell}");
   AddOutput(
@@ -488,7 +488,7 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
 
         // gate act: sigmoid
         act_gate(D3, lstm_out_data, lstm_out_data);
-        // candicate act: tanh
+        // candidate act: tanh
         act_cand(D, lstm_out_data + D3, lstm_out_data + D3);
 
         // a = forget * prev_cell

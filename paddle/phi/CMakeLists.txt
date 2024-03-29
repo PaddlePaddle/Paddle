@@ -14,7 +14,6 @@ set(infermeta_srcs CACHE INTERNAL "" FORCE)
 
 # paddle experimental common components
 add_subdirectory(common)
-
 # phi (low level) api headers: include
 # phi (high level) api
 add_subdirectory(api)
@@ -36,14 +35,14 @@ endif()
 set(PHI_DEPS
     phi_profiler_proto
     auto_parallel_proto
-    ${flags_dep}
     glog
     warpctc
     warprnnt
     eigen3
     xxhash
     cblas
-    utf8proc)
+    utf8proc
+    common)
 
 set(INFERENCE_DEPS phi_profiler_proto auto_parallel_proto)
 
@@ -115,6 +114,15 @@ else()
       CACHE INTERNAL "" FORCE)
 endif()
 
+if(WITH_AVX
+   AND AVX512F_FOUND
+   AND AVX512F_FLAG
+   AND WITH_MKL)
+  set_source_files_properties(
+    kernels/fusion/cpu/self_dp_attention_kernel.cc
+    PROPERTIES COMPILE_FLAGS "-Wno-maybe-uninitialized  -mfma ${AVX512F_FLAG}")
+endif()
+
 if(WITH_GPU)
   set_source_files_properties(
     backends/gpu/gpu_resources.cc
@@ -124,9 +132,13 @@ if(WITH_GPU)
     phi ${PHI_BUILD_TYPE}
     SRCS ${PHI_SRCS}
     DEPS ${PHI_DEPS})
+
 elseif(WITH_ROCM)
-  hip_add_library(phi ${PHI_BUILD_TYPE} ${PHI_SRCS})
-  target_link_libraries(phi ${PHI_DEPS})
+  hip_library(
+    phi ${PHI_BUILD_TYPE}
+    SRCS ${PHI_SRCS}
+    DEPS ${PHI_DEPS})
+
 elseif(WITH_XPU_KP)
   xpu_library(
     phi ${PHI_BUILD_TYPE}
@@ -138,6 +150,8 @@ else()
     SRCS ${PHI_SRCS}
     DEPS ${PHI_DEPS})
 endif()
+
+target_compile_definitions(phi PUBLIC PHI_INNER)
 
 if(WIN32)
   target_link_libraries(phi shlwapi.lib)

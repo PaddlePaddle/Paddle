@@ -121,7 +121,7 @@ class TensorDescriptor {
   T* desc() const { return desc_.get(); }
 
   void set(const phi::DenseTensor& tensor, const int groups = 1) {
-    auto dims = phi::vectorize<int>(tensor.dims());
+    auto dims = common::vectorize<int>(tensor.dims());
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
     for (int i = dims.size() - 2; i >= 0; i--) {
@@ -145,7 +145,7 @@ class TensorDescriptor {
         format,
         MIOPEN_TENSOR_NCHW,
         phi::errors::InvalidArgument("format should ONLY be NCHW in MIOPEN."));
-    auto dims = phi::vectorize<int>(tensor.dims());
+    auto dims = common::vectorize<int>(tensor.dims());
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
     for (int i = dims.size() - 2; i >= 0; i--) {
@@ -195,7 +195,7 @@ class FilterDescriptor {
         format,
         MIOPEN_TENSOR_NCHW,
         phi::errors::InvalidArgument("format should ONLY be NCHW in MIOPEN."));
-    auto dims = phi::vectorize<int>(tensor.dims());
+    auto dims = common::vectorize<int>(tensor.dims());
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
     for (int i = dims.size() - 2; i >= 0; i--) {

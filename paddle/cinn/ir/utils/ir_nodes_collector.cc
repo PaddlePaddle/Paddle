@@ -15,6 +15,8 @@
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 #include <glog/logging.h>
 
+#include "paddle/cinn/ir/intrinsic_ops.h"
+#include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
 
@@ -57,7 +59,7 @@ struct IrNodesCollector : public IRVisitorRequireReImpl<void> {
       NODETY_FORALL(__)
 
       default:
-        LOG(FATAL) << "not supported NodeTy";
+        PADDLE_THROW(phi::errors::InvalidArgument("not supported NodeTy"));
 #undef __
     }
   }
@@ -71,8 +73,71 @@ struct IrNodesCollector : public IRVisitorRequireReImpl<void> {
     }                                  \
   }
 
-  NODETY_FORALL(__m)
+  NODETY_FORALL_EXCEPT_INTRINSIC(__m)
 #undef __m
+
+  void Visit(const ir::IntrinsicOp* op) {
+    switch (op->getKind()) {
+#define __(x)                                     \
+  case ir::IntrinsicKind::k##x:                   \
+    Visit(llvm::dyn_cast<ir::intrinsics::x>(op)); \
+    break;
+
+      INTRINSIC_KIND_FOR_EACH(__)
+#undef __
+    }
+  }
+
+  void Visit(const ir::intrinsics::GetAddr* x) {
+    if (x->data.defined()) {
+      Visit(&(x->data));
+    }
+  }
+
+  void Visit(const ir::intrinsics::BufferGetDataHandle* x) {
+    if (x->buffer.defined()) {
+      Visit(&(x->buffer));
+    }
+  }
+
+  void Visit(const ir::intrinsics::BufferGetDataConstHandle* x) {
+    if (x->buffer.defined()) {
+      Visit(&(x->buffer));
+    }
+  }
+
+  void Visit(const ir::intrinsics::PodValueToX* x) {
+    if (x->pod_value_ptr.defined()) {
+      Visit(&(x->pod_value_ptr));
+    }
+  }
+
+  void Visit(const ir::intrinsics::BufferCreate* x) {
+    if (x->buffer.defined()) {
+      Visit(&(x->buffer));
+    }
+  }
+
+  void Visit(const ir::intrinsics::ArgsConstruct* x) {
+    if (x->var.defined()) {
+      Expr convert = Expr(x->var);
+      Visit(&convert);
+    }
+    for (int i = 0; i < x->args.size(); ++i) {
+      if (x->args[i].defined()) {
+        Visit(&(x->args[i]));
+      }
+    }
+  }
+
+  void Visit(const ir::intrinsics::BuiltinIntrin* x) {
+    for (int i = 0; i < x->args.size(); ++i) {
+      if (x->args[i].defined()) {
+        Visit(&(x->args[i]));
+      }
+    }
+  }
+
   std::set<void*> visited_;
 };
 

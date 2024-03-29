@@ -15,15 +15,15 @@
 #include "paddle/phi/kernels/index_select_grad_kernel.h"
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/utils/flags.h"
 
-PD_DECLARE_bool(cudnn_deterministic);
+COMMON_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 
@@ -60,7 +60,7 @@ void IndexSelectGradKernel(const Context& ctx,
   auto input_dim = x_grad->dims();
   auto output_dim = out_grad.dims();
   dim = dim >= 0 ? dim : dim + input_dim.size();
-  auto stride_dim = phi::stride(input_dim);
+  auto stride_dim = common::stride(input_dim);
   int64_t stride = stride_dim[dim];
   int64_t size = output_dim[dim];
   int64_t delta = input_dim[dim] - size;

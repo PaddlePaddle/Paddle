@@ -14,11 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 
-#include "paddle/phi/api/include/dll_decl.h"
-#include "paddle/phi/core/macros.h"
+#include "paddle/common/macros.h"
 #include "paddle/utils/test_macros.h"
 
 namespace paddle {
@@ -54,7 +54,7 @@ class TEST_API CustomRegisteredDeviceMap {
 const char* AllocationTypeStr(AllocationType type);
 
 /// \brief The place is used to specify where the data is stored.
-class PADDLE_API Place {
+class TEST_API Place {
  public:
   Place()
       : device(0), alloc_type_(AllocationType::UNDEFINED), device_type_id_(0) {}
@@ -136,7 +136,6 @@ class GPUPlace : public Place {
   GPUPlace() : Place(AllocationType::GPU, 0) {}
   explicit GPUPlace(int device_id) : Place(AllocationType::GPU, device_id) {}
 
-  GPUPlace(const GPUPlace&) = default;
   GPUPlace(const Place& place)  // NOLINT
       : Place(AllocationType::GPU, place.GetDeviceId()) {}
 };
@@ -187,7 +186,7 @@ class CustomPlace : public Place {
   }
 };
 
-std::ostream& operator<<(std::ostream&, const Place&);
+TEST_API std::ostream& operator<<(std::ostream&, const Place&);
 
 Place GetPinnedPlace(const Place& place);
 

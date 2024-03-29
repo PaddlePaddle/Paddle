@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/common/ddim.h"
+#include "paddle/common/layout.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/layout.h"
-#include "paddle/phi/core/ddim.h"
-#include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 
@@ -34,7 +34,7 @@ struct MetaConfig {
         is_run_mkldnn_kernel(is_run_mkldnn_kernel) {}  // NOLINT
 };
 
-class MetaTensor {
+class TEST_API MetaTensor {
  public:
   typedef void (*unspecified_bool_type)();
 
@@ -64,6 +64,8 @@ class MetaTensor {
 
   virtual int64_t numel() const;
   virtual DDim dims() const;
+  size_t size() const;  // Returns the number of tensors in TensorArray.
+  DDim dims(int64_t index) const;
   virtual DataType dtype() const;
   virtual DataLayout layout() const;
   virtual DDim strides() const;
@@ -73,6 +75,8 @@ class MetaTensor {
   virtual void set_strides(const DDim& strides);
 
   virtual void share_lod(const MetaTensor& meta_tensor);
+  void share_lod(const LoD& lod);
+  void share_lod(const MetaTensor& meta_tensor, int64_t index);
   virtual void share_meta(const MetaTensor& meta_tensor);
   virtual void share_dims(const MetaTensor& meta_tensor);
   virtual void share_strides(const MetaTensor& meta_tensor);
@@ -102,6 +106,7 @@ class MetaTensor {
   // Because the lod in compiletime and runtime is different,
   // so `LoD` cannot in public methods
   const LoD& lod() const;
+  const LoD& lod(int64_t index) const;
   TensorBase* tensor() const;
 
   TensorBase* tensor_ = nullptr;

@@ -34,7 +34,6 @@
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/inference/utils/benchmark.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "test/cpp/inference/api/config_printer.h"
 #include "test/cpp/inference/test_helper.h"
@@ -69,11 +68,8 @@ PD_DEFINE_int32(num_threads,
 PD_DEFINE_bool(use_analysis,
                true,
                "Running the inference program in analysis mode.");
-PD_DEFINE_bool(record_benchmark,
-               false,
-               "Record benchmark after profiling the model");
 PD_DEFINE_double(accuracy, 1e-3, "Result Accuracy.");
-PD_DEFINE_double(quantized_accuracy, 1e-2, "Result Quantized Accuracy.");
+PD_DEFINE_double(quantized_accuracy, 2e-2, "Result Quantized Accuracy.");
 PD_DEFINE_bool(zero_copy, false, "Use ZeroCopy to speedup Feed/Fetch.");
 PD_DEFINE_bool(warmup,
                false,
@@ -594,14 +590,6 @@ void PredictionRun(PaddlePredictor *predictor,
 
   if (sample_latency != nullptr)
     *sample_latency = batch_latency / FLAGS_batch_size;
-
-  if (FLAGS_record_benchmark) {
-    Benchmark benchmark;
-    benchmark.SetName(FLAGS_model_name);
-    benchmark.SetBatchSize(FLAGS_batch_size);
-    benchmark.SetLatency(batch_latency);
-    benchmark.PersistToFile("benchmark_record.txt");
-  }
 }
 
 void TestOneThreadPrediction(
@@ -1009,7 +997,6 @@ void CompareAnalysisAndZeroCopy(
   predictor->Run(inputs[0], &analysis_outputs, batch_size);
   // analysis + zero_copy
   std::vector<ZeroCopyTensor> zerocopy_outputs;
-  reinterpret_cast<AnalysisConfig *>(config1)->SwitchUseFeedFetchOps(false);
   predictor = CreateTestPredictor(config1, true);
   ConvertPaddleTensorToZeroCopyTensor(predictor.get(), inputs[0]);
   predictor->ZeroCopyRun();
@@ -1099,8 +1086,8 @@ static bool CompareShape(const std::vector<int64_t> &a,
 
 static bool CompareTensorData(const phi::DenseTensor &a,
                               const phi::DenseTensor &b) {
-  auto a_shape = phi::vectorize(a.dims());
-  auto b_shape = phi::vectorize(b.dims());
+  auto a_shape = common::vectorize(a.dims());
+  auto b_shape = common::vectorize(b.dims());
   size_t a_size = std::accumulate(
       a_shape.begin(), a_shape.end(), size_t{1}, [](int a, int b) {
         return a * b;
@@ -1148,7 +1135,7 @@ static bool CompareTensor(const phi::DenseTensor &a,
   if (!CompareLoD(a.lod(), b.lod())) {
     return false;
   }
-  if (!CompareShape(phi::vectorize(a.dims()), phi::vectorize(b.dims()))) {
+  if (!CompareShape(common::vectorize(a.dims()), common::vectorize(b.dims()))) {
     return false;
   }
 

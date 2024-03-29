@@ -23,7 +23,8 @@
   void operator=(const TypeName&) = delete
 
 #ifndef CINN_NOT_IMPLEMENTED
-#define CINN_NOT_IMPLEMENTED LOG(FATAL) << "Not Implemented";
+#define CINN_NOT_IMPLEMENTED \
+  PADDLE_THROW(phi::errors::Unimplemented("Not Implemented"));
 #endif
 
 #define CINN_RESULT_SHOULD_USE __attribute__((warn_unused_result))
@@ -67,10 +68,10 @@
                              __test_global_namespace_##uniq_name##__>::value, \
                 msg)
 
-#define USE_FUSION_PASS(pass_name)                               \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                                \
-      __use_fusion_pass_##pass_name,                             \
-      "USE_OP_ITSELF must be called in global namespace");       \
-  extern int TouchFusionPassRegistrar_##pass_name();             \
-  [[maybe_unused]] static int __use_fusion_pass_##pass_name##_ = \
-      TouchFusionPassRegistrar_##pass_name()
+#define USE_FUSION_PASS(pass_name)                                    \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                     \
+      __use_cinn_fusion_pass_##pass_name,                             \
+      "USE_FUSION_PASS must be called in global namespace");          \
+  extern int TouchCinnFusionPassRegistrar_##pass_name();              \
+  [[maybe_unused]] static int __use_cinn_fusion_pass_##pass_name##_ = \
+      TouchCinnFusionPassRegistrar_##pass_name()

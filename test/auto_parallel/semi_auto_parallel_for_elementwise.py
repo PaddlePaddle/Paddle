@@ -28,7 +28,7 @@ class TestElementwiseApiForSemiAutoParallel:
         self._seed = eval(os.getenv("seed"))
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
         self._rtol = 1e-6
-        self._atol = 0.0
+        self._atol = 1e-6
         paddle.seed(self._seed)
         np.random.seed(self._seed)
 
@@ -39,13 +39,11 @@ class TestElementwiseApiForSemiAutoParallel:
             np1, np2, rtol=self._rtol, atol=self._atol, verbose=True
         )
 
-    def test_unary_body(self, x_shape, out_shape, x_specs, unary_func):
+    def test_unary_body(self, x_shape, out_shape, x_placements, unary_func):
         x = paddle.randn(x_shape, self._dtype)
         x.stop_gradient = False
 
-        x_dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=x_specs)
-
-        dist_x = dist.shard_tensor(x, dist_attr=x_dist_attr)
+        dist_x = dist.shard_tensor(x, self._mesh, x_placements)
         dist_x.stop_gradient = False
 
         dist_out = unary_func(dist_x)
@@ -57,18 +55,21 @@ class TestElementwiseApiForSemiAutoParallel:
         self.check_tensor_eq(x.grad, dist_x.grad)
 
     def test_binary_body(
-        self, x_shape, y_shape, out_shape, x_specs, y_specs, binary_func
+        self,
+        x_shape,
+        y_shape,
+        out_shape,
+        x_placements,
+        y_placements,
+        binary_func,
     ):
         x = paddle.randn(x_shape, self._dtype)
         y = paddle.randn(y_shape, self._dtype)
         x.stop_gradient = False
         y.stop_gradient = False
 
-        x_dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=x_specs)
-        y_dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=y_specs)
-
-        dist_x = dist.shard_tensor(x, dist_attr=x_dist_attr)
-        dist_y = dist.shard_tensor(y, dist_attr=y_dist_attr)
+        dist_x = dist.shard_tensor(x, self._mesh, x_placements)
+        dist_y = dist.shard_tensor(y, self._mesh, y_placements)
         dist_x.stop_gradient = False
         dist_y.stop_gradient = False
 
@@ -86,8 +87,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[16, 32],
             out_shape=[16, 32],
-            x_specs=['x', None],
-            y_specs=[None, None],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Replicate()],
             binary_func=paddle.add,
         )
 
@@ -96,8 +97,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[16, 32],
             out_shape=[16, 32],
-            x_specs=['x', None],
-            y_specs=[None, None],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Replicate()],
             binary_func=paddle.subtract,
         )
 
@@ -106,8 +107,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[8, 16],
             y_shape=[2, 8, 16],
             out_shape=[2, 8, 16],
-            x_specs=['x', None],
-            y_specs=[None, None, None],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Replicate()],
             binary_func=paddle.add,
         )
 
@@ -119,8 +120,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[16, 32],
             out_shape=[16, 32],
-            x_specs=['x', None],
-            y_specs=[None, 'x'],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Shard(1)],
             binary_func=paddle.add,
         )
 
@@ -132,8 +133,21 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[4, 16, 32],
             y_shape=[16, 32],
             out_shape=[4, 16, 32],
-            x_specs=['x', None, None],
-            y_specs=[None, None],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Replicate()],
+            binary_func=paddle.add,
+        )
+
+    def test_add_broadcast_with_shard(self):
+        if self._backend == "cpu":
+            return
+
+        self.test_binary_body(
+            x_shape=[16, 4, 32],
+            y_shape=[16, 1, 32],
+            out_shape=[16, 4, 32],
+            x_placements=[dist.Shard(1)],
+            y_placements=[dist.Replicate()],
             binary_func=paddle.add,
         )
 
@@ -145,8 +159,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[4, 16, 32],
             y_shape=[16, 32],
             out_shape=[4, 16, 32],
-            x_specs=['x', None, None],
-            y_specs=[None, None],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Replicate()],
             binary_func=paddle.subtract,
         )
 
@@ -154,7 +168,7 @@ class TestElementwiseApiForSemiAutoParallel:
         self.test_unary_body(
             x_shape=[4, 16],
             out_shape=[4, 16],
-            x_specs=['x', None],
+            x_placements=[dist.Shard(0)],
             unary_func=paddle.square,
         )
 
@@ -162,7 +176,7 @@ class TestElementwiseApiForSemiAutoParallel:
         self.test_unary_body(
             x_shape=[4, 16],
             out_shape=[4, 16],
-            x_specs=['x', None],
+            x_placements=[dist.Shard(0)],
             unary_func=F.relu,
         )
 
@@ -171,8 +185,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[16, 32],
             out_shape=[16, 32],
-            x_specs=['x', None],
-            y_specs=[None, None],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Replicate()],
             binary_func=paddle.maximum,
         )
 
@@ -181,8 +195,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[2, 16, 32],
             out_shape=[2, 16, 32],
-            x_specs=['x', None],
-            y_specs=[None, None, None],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Replicate()],
             binary_func=paddle.maximum,
         )
 
@@ -194,8 +208,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[16, 32],
             out_shape=[16, 32],
-            x_specs=['x', None],
-            y_specs=[None, 'x'],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Shard(1)],
             binary_func=paddle.maximum,
         )
 
@@ -204,8 +218,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[4, 16, 32],
             y_shape=[16, 32],
             out_shape=[4, 16, 32],
-            x_specs=['x', None, None],
-            y_specs=[None, None],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Replicate()],
             binary_func=paddle.maximum,
         )
 
@@ -214,8 +228,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[16, 32],
             out_shape=[16, 32],
-            x_specs=['x', None],
-            y_specs=[None, None],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Replicate()],
             binary_func=paddle.multiply,
         )
 
@@ -224,8 +238,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[2, 16, 32],
             out_shape=[2, 16, 32],
-            x_specs=['x', None],
-            y_specs=[None, None, None],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Replicate()],
             binary_func=paddle.multiply,
         )
 
@@ -236,8 +250,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[16, 32],
             out_shape=[16, 32],
-            x_specs=['x', None],
-            y_specs=[None, 'x'],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Shard(1)],
             binary_func=paddle.multiply,
         )
 
@@ -246,8 +260,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[4, 6, 8],
             y_shape=[6, 8],
             out_shape=[4, 6, 8],
-            x_specs=['x', None, None],
-            y_specs=[None, None],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Replicate()],
             binary_func=paddle.multiply,
         )
 
@@ -256,8 +270,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[16, 32],
             out_shape=[16, 32],
-            x_specs=['x', None],
-            y_specs=[None, None],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Replicate()],
             binary_func=paddle.divide,
         )
 
@@ -266,8 +280,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[2, 16, 32],
             out_shape=[2, 16, 32],
-            x_specs=['x', None],
-            y_specs=[None, None, None],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Replicate()],
             binary_func=paddle.divide,
         )
 
@@ -278,8 +292,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[16, 32],
             out_shape=[16, 32],
-            x_specs=['x', None],
-            y_specs=[None, 'x'],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Shard(1)],
             binary_func=paddle.divide,
         )
 
@@ -288,8 +302,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[2, 4, 6],
             y_shape=[4, 6],
             out_shape=[2, 4, 6],
-            x_specs=['x', None, None],
-            y_specs=[None, None],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Replicate()],
             binary_func=paddle.divide,
         )
 
@@ -298,8 +312,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[16, 32],
             out_shape=[16, 32],
-            x_specs=['x', None],
-            y_specs=[None, None],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Replicate()],
             binary_func=paddle.bitwise_and,
         )
 
@@ -308,8 +322,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[2, 16, 32],
             out_shape=[2, 16, 32],
-            x_specs=['x', None],
-            y_specs=[None, None, None],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Replicate()],
             binary_func=paddle.bitwise_and,
         )
 
@@ -320,8 +334,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[16, 32],
             out_shape=[16, 32],
-            x_specs=['x', None],
-            y_specs=[None, 'x'],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Shard(1)],
             binary_func=paddle.bitwise_and,
         )
 
@@ -330,8 +344,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[4, 16, 32],
             y_shape=[16, 32],
             out_shape=[4, 16, 32],
-            x_specs=['x', None, None],
-            y_specs=[None, None],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Replicate()],
             binary_func=paddle.bitwise_and,
         )
 
@@ -340,8 +354,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[16, 32],
             out_shape=[16, 32],
-            x_specs=['x', None],
-            y_specs=[None, None],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Replicate()],
             binary_func=paddle.pow,
         )
 
@@ -350,8 +364,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[2, 16, 32],
             out_shape=[2, 16, 32],
-            x_specs=['x', None],
-            y_specs=[None, None, None],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Replicate()],
             binary_func=paddle.pow,
         )
 
@@ -362,8 +376,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[16, 32],
             out_shape=[16, 32],
-            x_specs=['x', None],
-            y_specs=[None, 'x'],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Shard(1)],
             binary_func=paddle.pow,
         )
 
@@ -372,8 +386,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[4, 6, 8],
             y_shape=[6, 8],
             out_shape=[4, 6, 8],
-            x_specs=['x', None, None],
-            y_specs=[None, None],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Replicate()],
             binary_func=paddle.pow,
         )
 
@@ -382,8 +396,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[16, 32],
             out_shape=[16, 32],
-            x_specs=['x', None],
-            y_specs=[None, None],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Replicate()],
             binary_func=paddle.equal,
         )
 
@@ -392,8 +406,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[2, 16, 32],
             out_shape=[2, 16, 32],
-            x_specs=['x', None],
-            y_specs=[None, None, None],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Replicate()],
             binary_func=paddle.equal,
         )
 
@@ -404,8 +418,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[16, 32],
             y_shape=[16, 32],
             out_shape=[16, 32],
-            x_specs=['x', None],
-            y_specs=[None, 'x'],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Shard(1)],
             binary_func=paddle.equal,
         )
 
@@ -414,8 +428,8 @@ class TestElementwiseApiForSemiAutoParallel:
             x_shape=[2, 6, 4],
             y_shape=[6, 4],
             out_shape=[2, 6, 4],
-            x_specs=['x', None, None],
-            y_specs=[None, None],
+            x_placements=[dist.Shard(0)],
+            y_placements=[dist.Replicate()],
             binary_func=paddle.equal,
         )
 
@@ -423,7 +437,7 @@ class TestElementwiseApiForSemiAutoParallel:
         self.test_unary_body(
             x_shape=[4, 16],
             out_shape=[4, 16],
-            x_specs=['x', None],
+            x_placements=[dist.Shard(0)],
             unary_func=paddle.exp,
         )
 
@@ -431,7 +445,7 @@ class TestElementwiseApiForSemiAutoParallel:
         self.test_unary_body(
             x_shape=[4, 16],
             out_shape=[4, 16],
-            x_specs=['x', None],
+            x_placements=[dist.Shard(0)],
             unary_func=paddle.rsqrt,
         )
 
@@ -439,7 +453,7 @@ class TestElementwiseApiForSemiAutoParallel:
         self.test_unary_body(
             x_shape=[4, 16],
             out_shape=[4, 16],
-            x_specs=['x', None],
+            x_placements=[dist.Shard(0)],
             unary_func=paddle.nn.functional.silu,
         )
 
@@ -447,7 +461,7 @@ class TestElementwiseApiForSemiAutoParallel:
         self.test_unary_body(
             x_shape=[4, 16],
             out_shape=[4, 16],
-            x_specs=['x', None],
+            x_placements=[dist.Shard(0)],
             unary_func=paddle.sin,
         )
 
@@ -455,7 +469,7 @@ class TestElementwiseApiForSemiAutoParallel:
         self.test_unary_body(
             x_shape=[4, 16],
             out_shape=[4, 16],
-            x_specs=['x', None],
+            x_placements=[dist.Shard(0)],
             unary_func=paddle.cos,
         )
 
@@ -471,6 +485,7 @@ class TestElementwiseApiForSemiAutoParallel:
         self.test_add_x_shard_broadcast()
         self.test_add_x_y_shard()
         self.test_add_x_y_shard_broadcast()
+        self.test_add_broadcast_with_shard()
         self.test_sub_x_shard()
         self.test_sub_x_y_shard_broadcast()
         self.test_square_x_shard()

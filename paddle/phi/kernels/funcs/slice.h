@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/core/ddim.h"
+#include "paddle/common/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -74,7 +74,7 @@ DenseTensor Slice(const Context& dev_ctx,
                   std::vector<int> ends) {
   DenseTensor ret;
   std::vector<int> new_axes = axes;
-  std::vector<int> out_shape = phi::vectorize<int>(x.dims());
+  std::vector<int> out_shape = common::vectorize<int>(x.dims());
   size_t rank = out_shape.size();
   PADDLE_ENFORCE_EQ(
       axes.size(),
@@ -105,7 +105,7 @@ DenseTensor Slice(const Context& dev_ctx,
     offset[new_axes[i]] = starts[i];
     extends[new_axes[i]] = ends[i] - starts[i];
   }
-  ret.Resize(phi::make_ddim(out_shape));
+  ret.Resize(common::make_ddim(out_shape));
   dev_ctx.template Alloc<T>(&ret);
   switch (rank) {
     SLICE_RANK_CASE(1);
@@ -140,14 +140,14 @@ static void Slice(const Context& ctx,
     extents[i] = in_dims[i];
   }
 
-  std::vector<int64_t> out_shape_vec = vectorize(in_dims);
+  std::vector<int64_t> out_shape_vec = common::vectorize(in_dims);
   for (size_t i = 0; i < axes_vec.size(); ++i) {
     offsets[axes_vec[i]] = begin_vec[i];
     extents[axes_vec[i]] = end_vec[i] - begin_vec[i];
     out_shape_vec[axes_vec[i]] = end_vec[i] - begin_vec[i];
   }
 
-  DDim out_dims(make_ddim(out_shape_vec));
+  DDim out_dims(common::make_ddim(out_shape_vec));
   out->Resize(out_dims);
   ctx.template Alloc<T>(out);
 

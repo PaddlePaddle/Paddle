@@ -98,7 +98,7 @@ class VarDescAPI {
 };
 
 /*
- * NOTE Some interfaces are weried, we remain them unchanged to keep compatible
+ * NOTE Some interfaces are wired, we remain them unchanged to keep compatible
  * with framework::OpDesc in Fluid framework.
  */
 class OpDescAPI {

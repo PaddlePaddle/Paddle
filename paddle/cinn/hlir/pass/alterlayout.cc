@@ -25,8 +25,8 @@ namespace cinn {
 namespace hlir {
 namespace pass {
 
-using common::GraphNode;
-using common::Type;
+using cinn::common::GraphNode;
+using cinn::common::Type;
 using framework::Graph;
 using framework::Node;
 using framework::NodeData;
@@ -92,7 +92,7 @@ std::vector<framework::shape_t> UpdateInferInfos(
     const std::vector<framework::shape_t>& input_shapes,
     const std::vector<Type>& input_types,
     const std::vector<std::string>& input_layouts,
-    const common::Target& target,
+    const cinn::common::Target& target,
     const OpValueType<InferShapeFunc>& op_infershape,
     const OpValueType<InferTypeFunc>& op_infertype,
     const OpValueType<InferLayoutFunc>& op_inferlayout,
@@ -139,7 +139,7 @@ std::vector<framework::shape_t> UpdateInferInfos(
 }
 
 void AlterLayoutPass(Graph* graph) {
-  // alterlayout only in X86 for it's specific layout requirements
+  // alter layout only in X86 for it's specific layout requirements
   if (graph->target_.arch == Target::Arch::X86) {
     auto store_nodes = std::get<0>(graph->topological_order());
     auto& shape_dict = graph->GetMutableAttrs<
@@ -219,13 +219,13 @@ void AlterLayoutPass(Graph* graph) {
           // alter conv2d op to conv2d_NCHWc
           Node* new_node = new Node(Operator::Get(new_op_type),
                                     new_op_type,
-                                    common::UniqName(new_op_type));
+                                    cinn::common::UniqName(new_op_type));
           new_node->attrs.attr_store = node->attrs.attr_store;
           std::string new_data_format = "NCHWc";
           new_node->attrs.attr_store["data_format"] = new_data_format;
 
           const auto& conv_inlinks = node->inlinks_in_order();
-          std::vector<common::GraphNode*> input_nodes;
+          std::vector<cinn::common::GraphNode*> input_nodes;
           for (auto& link : conv_inlinks) {
             auto* source = link->source();
             input_nodes.push_back(source);
@@ -261,9 +261,10 @@ void AlterLayoutPass(Graph* graph) {
           } else if (input_shape.size() == 5) {
             ic = input_shape[1] * input_shape[4];
           } else {
-            LOG(FATAL)
-                << "conv2d's input shape should be 4D/5D. Wrong input shape: "
-                << utils::Join(input_shape, ", ");
+            std::stringstream ss;
+            ss << "conv2d's input shape should be 4D/5D. Wrong input shape: "
+               << utils::Join(input_shape, ", ");
+            PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
           }
 
           if (weight_shape.size() == 4) {
@@ -273,9 +274,10 @@ void AlterLayoutPass(Graph* graph) {
             oc = weight_shape[0] * weight_shape[5];
             fc = weight_shape[1] * weight_shape[4];
           } else {
-            LOG(FATAL)
-                << "conv2d's weight shape should be 4D/6D. Wrong weight shape: "
-                << utils::Join(weight_shape, ", ");
+            std::stringstream ss;
+            ss << "conv2d's weight shape should be 4D/6D. Wrong weight shape: "
+               << utils::Join(weight_shape, ", ");
+            PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
           }
           VLOG(3) << "oc: " << oc;
           VLOG(3) << "ic: " << ic;
@@ -322,8 +324,8 @@ void AlterLayoutPass(Graph* graph) {
                     0,
                     src_input_layout,
                     dst_input_layout,
-                    common::UniqName(node->op()->name +
-                                     "_input_layout_tranform"));
+                    cinn::common::UniqName(node->op()->name +
+                                           "_input_layout_transform"));
             UpdateInferInfos(input_trans_node,
                              {input_shape},
                              {input_type},
@@ -370,8 +372,8 @@ void AlterLayoutPass(Graph* graph) {
                     1,
                     src_kernel_layout,
                     dst_kernel_layout,
-                    common::UniqName(node->op()->name +
-                                     "_weight_layout_tranform"));
+                    cinn::common::UniqName(node->op()->name +
+                                           "_weight_layout_transform"));
             UpdateInferInfos(weight_trans_node,
                              {weight_shape},
                              {weight_type},
@@ -427,13 +429,14 @@ void AlterLayoutPass(Graph* graph) {
             count++;
           }
           for (int i = 1; i < infershapes.size(); i++) {
-            auto* new_out = new NodeData(
-                node_ptr,
-                i,
-                0,
-                common::UniqName(new_node->id() + "_out_" + std::to_string(i)));
+            auto* new_out =
+                new NodeData(node_ptr,
+                             i,
+                             0,
+                             cinn::common::UniqName(new_node->id() + "_out_" +
+                                                    std::to_string(i)));
             graph->RegisterNode(new_out->id(), new_out);
-            new_node->as<common::GraphNode>()->LinkTo(new_out);
+            new_node->as<cinn::common::GraphNode>()->LinkTo(new_out);
           }
           graph->RegisterNode(new_node->id(), new_node);
           // update conv2d_NCHWc's infershape, infertype, inferlayout and set
@@ -511,12 +514,13 @@ void AlterLayoutPass(Graph* graph) {
                 layout_dict[source->id()] = src_layout;
                 auto input_data = source->safe_as<NodeData>();
                 CHECK(input_data);
-                VLOG(3) << source->id() << " do layout_tranform from C to NCHW";
+                VLOG(3) << source->id()
+                        << " do layout_transform from C to NCHW";
                 std::string op_type = "broadcast_to";
-                auto trans_node =
-                    new Node(Operator::Get(op_type),
-                             op_type,
-                             common::UniqName(source->id() + "_broadcastto"));
+                auto trans_node = new Node(
+                    Operator::Get(op_type),
+                    op_type,
+                    cinn::common::UniqName(source->id() + "_broadcastto"));
                 trans_node->attrs.attr_store["out_shape"] = new_shapes;
                 std::vector<int> broadcast_axes = {1};
                 trans_node->attrs.attr_store["broadcast_axes"] = broadcast_axes;
@@ -542,7 +546,7 @@ void AlterLayoutPass(Graph* graph) {
                 NodeData* new_output_data;
                 Node* new_trans_node;
                 VLOG(3) << new_input_data->id()
-                        << " do layout_tranform from NCHW to NCHWxc";
+                        << " do layout_transform from NCHW to NCHWxc";
                 std::tie(new_trans_node, new_output_data) =
                     InsertLayoutTransformNodeAfter(
                         graph,
@@ -551,8 +555,8 @@ void AlterLayoutPass(Graph* graph) {
                         i,
                         new_src_layout,
                         new_input_layouts[i],
-                        common::UniqName(new_input_data->id() +
-                                         "_layout_tranform"));
+                        cinn::common::UniqName(new_input_data->id() +
+                                               "_layout_transform"));
                 UpdateInferInfos(new_trans_node,
                                  {shape_dict[new_input_data->id()]},
                                  {input_types[i]},
@@ -576,7 +580,7 @@ void AlterLayoutPass(Graph* graph) {
                 NodeData* output_data;
                 Node* trans_node;
                 VLOG(3) << source->id()
-                        << " do layout_tranform from NCHW to NCHWxc";
+                        << " do layout_transform from NCHW to NCHWxc";
                 std::tie(trans_node, output_data) =
                     InsertLayoutTransformNodeAfter(
                         graph,
@@ -585,7 +589,8 @@ void AlterLayoutPass(Graph* graph) {
                         i,
                         src_layout,
                         new_input_layouts[i],
-                        common::UniqName(source->id() + "_layout_tranform"));
+                        cinn::common::UniqName(source->id() +
+                                               "_layout_transform"));
                 UpdateInferInfos(trans_node,
                                  {input_shapes[i]},
                                  {input_types[i]},
@@ -600,7 +605,7 @@ void AlterLayoutPass(Graph* graph) {
               } else if (input_shape_size == 5 &&
                          new_input_layouts[i].size() == 4) {
                 // NCHWxc -> NCHW
-                // insert layout tranfrom
+                // insert layout transform
                 auto source = inlinks[i]->source();
                 auto src_layout = input_layouts[i];
                 layout_dict[source->id()] = src_layout;
@@ -609,7 +614,7 @@ void AlterLayoutPass(Graph* graph) {
                 NodeData* output_data;
                 Node* trans_node;
                 VLOG(3) << source->id()
-                        << " do layout_tranform from NCHWxc to NCHW";
+                        << " do layout_transform from NCHWxc to NCHW";
                 std::tie(trans_node, output_data) =
                     InsertLayoutTransformNodeAfter(
                         graph,
@@ -618,7 +623,8 @@ void AlterLayoutPass(Graph* graph) {
                         i,
                         src_layout,
                         new_input_layouts[i],
-                        common::UniqName(source->id() + "_layout_tranform"));
+                        cinn::common::UniqName(source->id() +
+                                               "_layout_transform"));
                 UpdateInferInfos(trans_node,
                                  {input_shapes[i]},
                                  {input_types[i]},
@@ -705,7 +711,8 @@ void AlterLayoutPass(Graph* graph) {
                 0,
                 src_layout,
                 dst_layout,
-                common::UniqName(node->op()->name + "_final_layout_tranform"));
+                cinn::common::UniqName(node->op()->name +
+                                       "_final_layout_transform"));
             shape_dict[temp_out->id()] = shape;
             type_dict[temp_out->id()] = type;
             layout_dict[temp_out->id()] = src_layout;

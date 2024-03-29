@@ -54,7 +54,7 @@ def python_generate_proposals_v2(
         pixel_offset=pixel_offset,
         return_rois_num=return_rois_num,
     )
-    return rpn_rois, rpn_roi_probs
+    return rpn_rois, rpn_roi_probs, rpn_rois_num
 
 
 def generate_proposals_v2_in_python(
@@ -223,12 +223,11 @@ class TestGenerateProposalsV2Op(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def setUp(self):
         self.op_type = "generate_proposals_v2"
         self.python_api = python_generate_proposals_v2
-        self.python_out_sig = ['Out']
         self.set_data()
 
     def init_test_params(self):

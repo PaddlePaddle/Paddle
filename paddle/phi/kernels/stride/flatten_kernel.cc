@@ -25,7 +25,11 @@ void FlattenInferStridedKernel(const Context& dev_ctx,
                                int stop_axis UNUSED,
                                DenseTensor* out) {
   ReshapeStridedKernel<Context>(
-      dev_ctx, x, IntArray(phi::vectorize<int64_t>(out->dims())), out, nullptr);
+      dev_ctx,
+      x,
+      IntArray(common::vectorize<int64_t>(out->dims())),
+      out,
+      nullptr);
 }
 
 template <typename Context>
@@ -39,8 +43,11 @@ void FlattenStridedKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    flatten_infer, STRIDED, phi::FlattenInferStridedKernel) {}
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    flatten, STRIDED, phi::FlattenStridedKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(flatten_infer,
+                                         STRIDED,
+                                         phi::FlattenInferStridedKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(flatten,
+                                         STRIDED,
+                                         phi::FlattenStridedKernel) {}

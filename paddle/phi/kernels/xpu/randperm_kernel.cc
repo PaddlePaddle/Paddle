@@ -43,7 +43,7 @@ void RandpermKernel(const Context& dev_ctx,
   } else {
     dev_ctx.template Alloc<T>(out);
     phi::DenseTensor tmp_tensor;
-    tmp_tensor.Resize(phi::make_ddim({n}));
+    tmp_tensor.Resize(common::make_ddim({n}));
     T* tmp_data = dev_ctx.template HostAlloc<T>(&tmp_tensor);
     for (int i = 0; i < n; ++i) {
       tmp_data[i] = static_cast<T>(i);

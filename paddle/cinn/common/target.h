@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <array>
 #include <ostream>
 #include <string>
 #include <vector>
@@ -71,8 +72,7 @@ struct Target {
                   Arch a = Arch::Unk,
                   Bit b = Bit::Unk,
                   const std::vector<Feature>& features = {},
-                  const std::vector<Lib>& libs = {})
-      : os(o), arch(a), bits(b), features(features), libs(libs) {}
+                  const std::vector<Lib>& libs = {});
 
   bool defined() const {
     return os != OS::Unk && arch != Arch::Unk && bits != Bit::Unk;

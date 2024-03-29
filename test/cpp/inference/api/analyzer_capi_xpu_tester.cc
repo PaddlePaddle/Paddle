@@ -30,7 +30,6 @@ namespace analysis {
 TEST(PD_AnalysisConfig, use_xpu) {
   std::string model_dir = FLAGS_infer_model + "/mobilenet";
   PD_AnalysisConfig *config = PD_NewAnalysisConfig();
-  PD_SwitchUseFeedFetchOps(config, false);
   PD_SwitchSpecifyInputNames(config, true);
   PD_SwitchIrDebug(config, true);
   PD_SetModel(config, model_dir.c_str(), nullptr);

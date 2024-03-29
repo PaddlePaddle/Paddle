@@ -22,13 +22,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
+#include "paddle/phi/core/distributed/auto_parallel/proto_helper.h"
 
 namespace phi {
 namespace distributed {
 namespace auto_parallel {
 
-using paddle::framework::BlockDesc;
-using paddle::framework::OpDesc;
 using paddle::framework::ProgramDesc;
 using paddle::framework::VarDesc;
 
@@ -81,12 +80,14 @@ TEST(DistAttr, ctor) {
   x_dist_attr.set_process_mesh(process_mesh);
   x_dist_attr.set_dims_mapping(std::vector<int64_t>({0, -1}));
   x_dist_attr.set_batch_dim(0);
+  x_dist_attr.set_chunk_id(0);
   x_dist_attr.set_dynamic_dims(std::vector<bool>({true, false}));
   x_dist_attr.mark_annotated("process_mesh");
   x_dist_attr.mark_annotated("dims_mapping");
   EXPECT_EQ(x_dist_attr.process_mesh(), process_mesh);
   EXPECT_EQ(x_dist_attr.dims_mapping(), std::vector<int64_t>({0, -1}));
   EXPECT_EQ(x_dist_attr.batch_dim(), 0);
+  EXPECT_EQ(x_dist_attr.chunk_id(), 0);
   EXPECT_EQ(x_dist_attr.dynamic_dims(), std::vector<bool>({true, false}));
   EXPECT_EQ(x_dist_attr.is_annotated("process_mesh"), true);
   EXPECT_EQ(x_dist_attr.is_annotated("dims_mapping"), true);
@@ -97,7 +98,7 @@ TEST(DistAttr, ctor) {
   std::stringstream x_sstream;
   x_sstream << x_dist_attr;
   EXPECT_EQ(x_sstream.str(), x_dist_attr.to_string());
-  auto x_proto = x_dist_attr.to_proto();
+  auto x_proto = phi::distributed::to_proto(x_dist_attr);
   TensorDistAttr new_x_dist_attr = get_dist_attr(x);
   new_x_dist_attr.from_proto(x_proto);
   EXPECT_EQ(x_dist_attr, new_x_dist_attr);
@@ -105,12 +106,14 @@ TEST(DistAttr, ctor) {
   y_dist_attr.set_process_mesh(process_mesh);
   y_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, 0}));
   y_dist_attr.set_batch_dim(-1);
+  y_dist_attr.set_chunk_id(0);
   y_dist_attr.set_dynamic_dims(std::vector<bool>({false, true}));
   x_dist_attr.mark_annotated("batch_dim");
   x_dist_attr.mark_annotated("dynamic_dims");
   EXPECT_EQ(y_dist_attr.process_mesh(), process_mesh);
   EXPECT_EQ(y_dist_attr.dims_mapping(), std::vector<int64_t>({-1, 0}));
   EXPECT_EQ(y_dist_attr.batch_dim(), -1);
+  EXPECT_EQ(y_dist_attr.chunk_id(), 0);
   EXPECT_EQ(y_dist_attr.dynamic_dims(), std::vector<bool>({false, true}));
   EXPECT_EQ(x_dist_attr.is_annotated("batch_dim"), true);
   EXPECT_EQ(x_dist_attr.is_annotated("dynamic_dims"), true);
@@ -130,6 +133,7 @@ TEST(DistAttr, ctor) {
   EXPECT_EQ(mul_dist_attr.impl_type(),
             paddle::distributed::auto_parallel::kDefault);
   EXPECT_EQ(mul_dist_attr.impl_idx(), 0);
+  EXPECT_EQ(mul_dist_attr.chunk_id(), 0);
   EXPECT_EQ(mul_dist_attr.is_recompute(), false);
   EXPECT_EQ(mul_dist_attr.is_annotated("process_mesh"), false);
   EXPECT_EQ(mul_dist_attr.is_annotated("impl_type"), false);
@@ -140,6 +144,7 @@ TEST(DistAttr, ctor) {
   mul_dist_attr.set_process_mesh(process_mesh2);
   mul_dist_attr.set_impl_type("dist_mul");
   mul_dist_attr.set_impl_idx(0);
+  mul_dist_attr.set_chunk_id(1);
   mul_dist_attr.set_is_recompute(true);
   mul_dist_attr.mark_annotated("process_mesh");
   mul_dist_attr.mark_annotated("impl_type");
@@ -154,6 +159,7 @@ TEST(DistAttr, ctor) {
             process_mesh2);
   EXPECT_EQ(mul_dist_attr.impl_type(), "dist_mul");
   EXPECT_EQ(mul_dist_attr.impl_idx(), 0);
+  EXPECT_EQ(mul_dist_attr.chunk_id(), 1);
   EXPECT_EQ(mul_dist_attr.is_recompute(), true);
   EXPECT_EQ(mul_dist_attr.is_annotated("process_mesh"), true);
   EXPECT_EQ(mul_dist_attr.is_annotated("impl_type"), true);

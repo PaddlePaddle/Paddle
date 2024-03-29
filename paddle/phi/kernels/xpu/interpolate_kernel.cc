@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/interpolate_kernel.h"
 
+#include "paddle/common/layout.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
-#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/interpolate_function.h"
 
@@ -39,7 +39,7 @@ void InterpolateKernel(
     int align_mode,
     DenseTensor* output) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   phi::funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 

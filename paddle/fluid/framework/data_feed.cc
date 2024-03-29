@@ -30,7 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/timer.h"
 
 USE_INT_STAT(STAT_total_feasign_num_in_mem);
-PHI_DECLARE_bool(enable_ins_parser_file);
+COMMON_DECLARE_bool(enable_ins_parser_file);
 namespace paddle {
 namespace framework {
 
@@ -440,7 +440,7 @@ int InMemoryDataFeed<T>::Next() {
     }
     VLOG(3) << "enable heter next: " << offset_index_
             << " batch_offsets: " << batch_offsets_.size()
-            << " baych_size: " << this->batch_size_;
+            << " batch_size: " << this->batch_size_;
   }
   return this->batch_size_;
 #else
@@ -725,7 +725,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
     ++instance_cout;
     const char* str = line.c_str();
     char* endptr = const_cast<char*>(str);
-    int len = line.length();
+    int len = static_cast<int>(line.length());
     for (size_t i = 0; i < all_slots_.size(); ++i) {
       auto num = strtol(endptr, &endptr, 10);
       if (num < 0) {
@@ -1021,7 +1021,7 @@ void MultiSlotDataFeed::PutToFeedVec(
         use_slots_shape_[i][inductive_shape_index_[i]] =
             total_instance / total_dims_without_inductive_[i];
       }
-      feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
+      feed_vec_[i]->Resize(common::make_ddim(use_slots_shape_[i]));
     }
   }
 #endif
@@ -1141,33 +1141,33 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
     char* endptr = const_cast<char*>(str);
     int pos = 0;
     if (parse_ins_id_) {
-      int num = strtol(&str[pos], &endptr, 10);
+      int num = static_cast<int>(strtol(&str[pos], &endptr, 10));
       CHECK(num == 1);  // NOLINT
-      pos = endptr - str + 1;
+      pos = static_cast<int>(endptr - str + 1);
       size_t len = 0;
       while (str[pos + len] != ' ') {
         ++len;
       }
       instance->ins_id_ = std::string(str + pos, len);
-      pos += len + 1;
+      pos += static_cast<int>(len) + 1;
       VLOG(3) << "ins_id " << instance->ins_id_;
     }
     if (parse_content_) {
-      int num = strtol(&str[pos], &endptr, 10);
+      int num = static_cast<int>(strtol(&str[pos], &endptr, 10));
       CHECK(num == 1);  // NOLINT
-      pos = endptr - str + 1;
+      pos = static_cast<int>(endptr - str + 1);
       size_t len = 0;
       while (str[pos + len] != ' ') {
         ++len;
       }
       instance->content_ = std::string(str + pos, len);
-      pos += len + 1;
+      pos += static_cast<int>(len) + 1;
       VLOG(3) << "content " << instance->content_;
     }
     if (parse_logkey_) {
-      int num = strtol(&str[pos], &endptr, 10);
+      int num = static_cast<int>(strtol(&str[pos], &endptr, 10));
       CHECK(num == 1);  // NOLINT
-      pos = endptr - str + 1;
+      pos = static_cast<int>(endptr - str + 1);
       size_t len = 0;
       while (str[pos + len] != ' ') {
         ++len;
@@ -1183,7 +1183,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
       instance->search_id = search_id;
       instance->cmatch = cmatch;
       instance->rank = rank;
-      pos += len + 1;
+      pos += static_cast<int>(len) + 1;
     }
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
       int idx = use_slots_index_[i];
@@ -1423,7 +1423,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(const Record* ins_vec, int num) {
         use_slots_shape_[i][inductive_shape_index_[i]] =
             total_instance / total_dims_without_inductive_[i];
       }
-      feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
+      feed_vec_[i]->Resize(common::make_ddim(use_slots_shape_[i]));
     }
   }
 #endif
@@ -1523,7 +1523,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
         use_slots_shape_[i][inductive_shape_index_[i]] =
             total_instance / total_dims_without_inductive_[i];
       }
-      feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
+      feed_vec_[i]->Resize(common::make_ddim(use_slots_shape_[i]));
     }
   }
 #endif
@@ -1568,7 +1568,7 @@ void PrivateInstantDataFeed<T>::PutToFeedVec() {
               use_slots_[i].c_str(),
               total_dims,
               total_instance));
-      feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
+      feed_vec_[i]->Resize(common::make_ddim(use_slots_shape_[i]));
     }
   }
 }
@@ -1619,7 +1619,7 @@ void PrivateInstantDataFeed<T>::Init(const DataFeedDesc& data_feed_desc) {
   use_slots_.clear();
   use_slots_is_dense_.clear();
   for (size_t i = 0; i < all_slot_num; ++i) {
-    const auto& slot = multi_slot_desc.slots(i);
+    const auto& slot = multi_slot_desc.slots(i);  // NOLINT
     all_slots_[i] = slot.name();
     all_slots_type_[i] = slot.type();
     use_slots_index_[i] = slot.is_used() ? use_slots_.size() : -1;
@@ -1813,7 +1813,7 @@ int PaddleBoxDataFeed::Next() {
     this->batch_size_ = index;
     VLOG(3) << "pv_batch_size_=" << this->batch_size_
             << ", thread_id=" << thread_id_;
-    if (this->batch_size_ != 0) {
+    if (this->batch_size_ != 0) {  // NOLINT
       PutToFeedVec(pv_vec);
     } else {
       VLOG(3) << "finish reading, output_pv_channel_ size="
@@ -1998,7 +1998,7 @@ void PaddleBoxDataFeed::PutToFeedVec(const std::vector<Record*>& ins_vec) {
         use_slots_shape_[i][inductive_shape_index_[i]] =
             total_instance / total_dims_without_inductive_[i];
       }
-      feed_vec_[i]->Resize(phi::make_ddim(use_slots_shape_[i]));
+      feed_vec_[i]->Resize(common::make_ddim(use_slots_shape_[i]));
     }
   }
 #endif
@@ -2113,7 +2113,7 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   finish_init_ = true;
   input_type_ = data_feed_desc.input_type();
   size_t pos = pipe_command_.find(".so");
-  if (pos != std::string::npos) {
+  if (pos != std::string::npos) {  // NOLINT
     pos = pipe_command_.rfind('|');
     if (pos == std::string::npos) {
       so_parser_name_ = pipe_command_;
@@ -2129,7 +2129,7 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   gpu_graph_data_generator_.SetConfig(data_feed_desc);
 #endif
-  if (gpu_graph_mode_) {
+  if (gpu_graph_mode_) {  // NOLINT
     train_mode_ = true;
   } else {
     train_mode_ = data_feed_desc.graph_config().gpu_graph_training();
@@ -2514,10 +2514,10 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
 void SlotRecordInMemoryDataFeed::AssignFeedVar(const Scope& scope) {
   CheckInit();
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
-  if (scpoe_feed_vec_.count(&scope) > 0) {
+  if (scope_feed_vec_.count(&scope) > 0) {
     return;
   }
-  auto& feed_vec = scpoe_feed_vec_[&scope];
+  auto& feed_vec = scope_feed_vec_[&scope];
   feed_vec.resize(used_slots_info_.size());
   for (int i = 0; i < use_slot_size_; ++i) {
     feed_vec[i] =
@@ -2615,7 +2615,7 @@ void SlotRecordInMemoryDataFeed::PutToFeedVec(const SlotRecord* ins_vec,
         info.local_shape[info.inductive_shape_index] =
             total_instance / info.total_dims_without_inductive;
       }
-      feed->Resize(phi::make_ddim(info.local_shape));
+      feed->Resize(common::make_ddim(info.local_shape));
     } else {
       LoD data_lod{slot_offset};
       feed_vec_[j]->set_lod(data_lod);
@@ -2738,6 +2738,8 @@ bool SlotRecordInMemoryDataFeed::Start() {
 #endif
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   gpu_graph_data_generator_.SetFeedVec(feed_vec_);
+  // adapt for dense feature
+  gpu_graph_data_generator_.SetFeedInfo(&used_slots_info_);
 #endif
   return true;
 }
@@ -2778,7 +2780,7 @@ int SlotRecordInMemoryDataFeed::Next() {
     this->batch_size_ = batch.second;
     VLOG(3) << "batch_size_=" << this->batch_size_
             << ", thread_id=" << thread_id_;
-    if (this->batch_size_ != 0) {
+    if (this->batch_size_ != 0) {  // NOLINT
       PutToFeedVec(&records_[batch.first], this->batch_size_);
     } else {
       VLOG(3) << "finish reading for heterps, batch size zero, thread_id="
@@ -2811,6 +2813,15 @@ void SlotRecordInMemoryDataFeed::DumpWalkPath(std::string dump_path,
   std::string path =
       string::format_string("%s/part-%03d", dump_path.c_str(), thread_id_);
   gpu_graph_data_generator_.DumpWalkPath(path, dump_rate);
+#endif
+}
+
+void SlotRecordInMemoryDataFeed::DumpSampleNeighbors(std::string dump_path) {
+  VLOG(1) << "INTO SlotRecordInMemoryDataFeed::DumpSampleNeighbors";
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+  std::string path =
+      string::format_string("%s/part-%03d", dump_path.c_str(), thread_id_);
+  gpu_graph_data_generator_.DumpSampleNeighbors(path);
 #endif
 }
 
@@ -2858,8 +2869,8 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num,
   auto* dev_ctx = static_cast<phi::GPUContext*>(
       platform::DeviceContextPool::Instance().Get(this->place_));
   for (int j = 0; j < use_slot_size_; ++j) {
-    if (scpoe_feed_vec_.size() > 0) {
-      if (scpoe_feed_vec_.begin()->second[j] == nullptr) {
+    if (scope_feed_vec_.size() > 0) {
+      if (scope_feed_vec_.begin()->second[j] == nullptr) {
         h_tensor_ptrs[j] = nullptr;
         continue;
       }
@@ -2941,8 +2952,8 @@ void SlotRecordInMemoryDataFeed::PackToScope(MiniBatchGpuPack* pack,
 
   auto* feed_vec = &feed_vec_;
   if (scope) {
-    CHECK(scpoe_feed_vec_.count(scope) > 0) << "scope not found.";
-    feed_vec = &scpoe_feed_vec_[scope];
+    CHECK(scope_feed_vec_.count(scope) > 0) << "scope not found.";
+    feed_vec = &scope_feed_vec_[scope];
   }
 
   CHECK(feed_vec != nullptr) << "feed_vec nullptr.";
@@ -2987,7 +2998,7 @@ void SlotRecordInMemoryDataFeed::PackToScope(MiniBatchGpuPack* pack,
         info.local_shape[info.inductive_shape_index] =
             total_instance / info.total_dims_without_inductive;
       }
-      feed->Resize(phi::make_ddim(info.local_shape));
+      feed->Resize(common::make_ddim(info.local_shape));
     } else {
       LoD& lod = (*feed->mutable_lod());
       lod.resize(1);

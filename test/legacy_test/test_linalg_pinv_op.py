@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class LinalgPinvTestCase(unittest.TestCase):
@@ -61,13 +62,16 @@ class LinalgPinvTestCase(unittest.TestCase):
                 print("GOT     : \n", out)
                 raise RuntimeError("Check PINV dygraph Failed")
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for place in places:
-            with base.program_guard(base.Program(), base.Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x = paddle.static.data(
                     name="input",
                     shape=self._input_shape,
@@ -76,9 +80,8 @@ class LinalgPinvTestCase(unittest.TestCase):
                 out = paddle.linalg.pinv(
                     x, rcond=self.rcond, hermitian=self.hermitian
                 )
-                exe = base.Executor(place)
+                exe = paddle.static.Executor(place)
                 fetches = exe.run(
-                    base.default_main_program(),
                     feed={"input": self._input_data},
                     fetch_list=[out],
                 )
@@ -306,6 +309,7 @@ class TestDivByZero(unittest.TestCase):
         x = paddle.to_tensor(np.reshape(array, [0, 0]), dtype='float32')
         paddle.linalg.pinv(x)
 
+    @test_with_pir_api
     def test_div_by_zero(self):
         with self.assertRaises(ValueError):
             self.pinv_zero_input_dynamic()

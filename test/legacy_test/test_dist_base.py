@@ -726,8 +726,7 @@ class TestParallelDyGraphRunnerBase:
             assert "Only support CUDAPlace or XPUPlace or CPU(Gloo) for now."
 
         with base.dygraph.guard(place):
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
+            paddle.seed(seed)
             np.random.seed(seed)
             import random
 
@@ -795,8 +794,7 @@ class TestParallelDyGraphRunnerBase:
 
         # 2. init seed
         seed = 90
-        paddle.static.default_startup_program().random_seed = seed
-        paddle.static.default_main_program().random_seed = seed
+        paddle.seed(seed)
         np.random.seed(seed)
         random.seed(seed)
         # get trainer id
@@ -836,8 +834,7 @@ class TestParallelDyGraphRunnerBase:
 
         # 2. init seed
         seed = 90
-        paddle.static.default_startup_program().random_seed = seed
-        paddle.static.default_main_program().random_seed = seed
+        paddle.seed(seed)
         np.random.seed(seed)
         random.seed(seed)
         # get trainer id
@@ -1095,21 +1092,17 @@ class TestDistBase(unittest.TestCase):
             ps0_cmd += " --sync_mode"
             ps1_cmd += " --sync_mode"
 
-        print(ps0_cmd)
-        print(ps1_cmd)
         path0 = os.path.join(self.temp_dir.name, log_name + "_ps0_err.log")
         path1 = os.path.join(self.temp_dir.name, log_name + "_ps1_err.log")
         ps0_pipe = open(path0, "wb")
         ps1_pipe = open(path1, "wb")
 
-        print_to_err(type(self).__name__, "going to start pserver process 0")
         ps0_proc = subprocess.Popen(
             ps0_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
             stderr=ps0_pipe,
             env=modify_envs(required_envs),
         )
-        print_to_err(type(self).__name__, "going to start pserver process 1")
         ps1_proc = subprocess.Popen(
             ps1_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
@@ -1174,7 +1167,7 @@ class TestDistBase(unittest.TestCase):
             cmd += " --find_unused_parameters"
 
         env_local.update(envs)
-        print(f"local_cmd: {cmd}, env: {env_local}")
+        # print(f"local_cmd: {cmd}, env: {env_local}")
 
         if check_error_log:
             path = os.path.join(self.temp_dir.name, log_name + "_local.log")
@@ -1198,7 +1191,7 @@ class TestDistBase(unittest.TestCase):
         if check_error_log:
             err_log.close()
 
-        sys.stderr.write('local_stderr: %s\n' % local_err)
+        # sys.stderr.write('local_stderr: %s\n' % local_err)
 
         return load_and_remove_dump_file()
 
@@ -1214,9 +1207,7 @@ class TestDistBase(unittest.TestCase):
     ):
         saved_endpoints = self._ps_endpoints
         self._ps_endpoints = self._ps_endpoints.split(',')[0]
-        result = self._run_cluster_gloo(
-            model, envs, 'gloo', check_error_log, log_name
-        )
+        result = self._run_cluster_gloo(model, envs, 'gloo', False, log_name)
         self._ps_endpoints = saved_endpoints
         return result
 
@@ -1279,8 +1270,8 @@ class TestDistBase(unittest.TestCase):
         env0.update(envs)
         env1.update(envs)
 
-        print(f"tr0_cmd: {tr0_cmd}, env: {env0}")
-        print(f"tr1_cmd: {tr1_cmd}, env: {env1}")
+        # print(f"tr0_cmd: {tr0_cmd}, env: {env0}")
+        # print(f"tr1_cmd: {tr1_cmd}, env: {env1}")
 
         path0 = os.path.join(self.temp_dir.name, log_name + "_tr0_err.log")
         path1 = os.path.join(self.temp_dir.name, log_name + "_tr1_err.log")
@@ -1520,9 +1511,9 @@ class TestDistBase(unittest.TestCase):
             tr_env.update(envs)
             tr_env["GLOG_vmodule"] = 'gloo_context=4'
             tr_env["GLOG_v"] = '3'
-            print(
-                f"use_hallreduce:{self._use_hallreduce} tr_cmd:{tr_cmd}, env: {tr_env}"
-            )
+            # print(
+            # f"use_hallreduce:{self._use_hallreduce} tr_cmd:{tr_cmd}, env: {tr_env}"
+            # )
 
             path = os.path.join(
                 self.temp_dir.name, log_name + f"_tr{i}_err.log"

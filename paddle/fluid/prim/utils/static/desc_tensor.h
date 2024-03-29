@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/var_desc.h"
-#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/extended_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/utils/any.h"
@@ -27,7 +27,7 @@ class DescTensor : public phi::ExtendedTensor,
                    public phi::TypeInfoTraits<phi::TensorBase, DescTensor> {
  public:
   explicit DescTensor(framework::VarDesc* desc)
-      : desc_ptr_(desc), dims_(phi::make_ddim(desc->GetShape())) {}
+      : desc_ptr_(desc), dims_(common::make_ddim(desc->GetShape())) {}
   static const char* name() { return "DescTensor"; }
 
   std::string Name() const { return desc_ptr_->Name(); }
@@ -35,7 +35,7 @@ class DescTensor : public phi::ExtendedTensor,
   std::vector<int64_t> shape() const { return desc_ptr_->GetShape(); }
 
   const phi::DDim& dims() const override {
-    dims_ = phi::make_ddim(desc_ptr_->GetShape());
+    dims_ = common::make_ddim(desc_ptr_->GetShape());
     return dims_;
   }
 
@@ -54,11 +54,11 @@ class DescTensor : public phi::ExtendedTensor,
   // TODO(jiabin): override more operators here.
 
  private:
-  // VarDesc's lifetime is holded by block and it's program, so we just conceal
+  // VarDesc's lifetime is held by block and it's program, so we just conceal
   // its funcs instead of its life.
   framework::VarDesc* desc_ptr_;
   // TODO(jiabin): This is really ugly, but we have to hold a dims here so that
-  // we can inherient from ExtendedTensor Rmove this when we make VarDesc's as
+  // we can inherit from ExtendedTensor Remove this when we make VarDesc's as
   // same as Tensor, or make Tensor's dims more lightly.
   mutable phi::DDim dims_;
   phi::Place place_;

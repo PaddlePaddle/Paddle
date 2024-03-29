@@ -35,12 +35,12 @@ namespace cub = hipcub;
 #include "paddle/phi/core/tensor_utils.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -604,7 +604,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
                      true,
                      &num_classes_per_device);
   T actual_num_samples = num_classes_per_device.data<T>()[rank + 1];
-  sampled_local_class_center->Resize(phi::make_ddim({actual_num_samples}));
+  sampled_local_class_center->Resize(common::make_ddim({actual_num_samples}));
 
   T* sampled_local_class_center_ptr =
       dev_ctx.template Alloc<T>(sampled_local_class_center);

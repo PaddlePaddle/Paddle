@@ -51,7 +51,7 @@ void SyncBatchNormKernel(const Context& ctx,
 
   double epsilon = epsilon_f;
   const bool trainable_stats = trainable_statistics;
-  const DataLayout layout = phi::StringToDataLayout(data_layout_str);
+  const DataLayout layout = common::StringToDataLayout(data_layout_str);
   bool test_mode = is_test && (!trainable_statistics);
   const auto& x_dims = x.dims();
   PADDLE_ENFORCE_GE(x_dims.size(),
@@ -94,7 +94,7 @@ void SyncBatchNormKernel(const Context& ctx,
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
 
     auto* stats = reinterpret_cast<BatchNormParamType<T>*>(alloc_ptr->ptr());
-    const int threads = 256;
+    const int threads = 512;
     int grid = std::min(C, (max_threads + threads - 1) / threads);
     if (layout == phi::DataLayout::kNCHW) {
       KeLocalStats<T, threads, phi::DataLayout::kNCHW>
@@ -132,6 +132,13 @@ void SyncBatchNormKernel(const Context& ctx,
     auto* sv_mean_data = ctx.template Alloc<BatchNormParamType<T>>(saved_mean);
     auto* sv_inv_var_data =
         ctx.template Alloc<BatchNormParamType<T>>(saved_variance);
+
+    int64_t reserve_space_size = 0;
+    if (reserve_space == nullptr) {
+      reserve_space = new DenseTensor();
+    }
+    reserve_space->Resize({reserve_space_size});
+    ctx.template Alloc<T>(reserve_space);
 
     // Note, Input('Mean')/Input('Variance') share variable with
     // Output('MeanOut')/Output('VarianceOut')

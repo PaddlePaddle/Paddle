@@ -20,8 +20,10 @@ import numpy as np
 
 import paddle
 from paddle import base
+from paddle.autograd.backward_utils import ValueDict
 from paddle.base import core
 from paddle.base.backward import _append_grad_suffix_, _as_list
+from paddle.base.framework import in_pir_mode
 
 
 def _product(t):
@@ -29,11 +31,11 @@ def _product(t):
 
 
 def dtype_to_np_dtype(dtype):
-    if dtype == core.VarDesc.VarType.FP32:
+    if dtype == paddle.float32 or dtype == core.DataType.FLOAT32:
         return np.float32
-    elif dtype == core.VarDesc.VarType.FP64:
+    elif dtype == paddle.float64 or dtype == core.DataType.FLOAT64:
         return np.float64
-    elif dtype == core.VarDesc.VarType.FP16:
+    elif dtype == paddle.float16 or dtype == core.DataType.FLOAT16:
         return np.float16
     else:
         raise ValueError("Not supported data type " + str(dtype))
@@ -81,7 +83,7 @@ def var_to_np_array_in_scope(scope, place, name):
 
 
 def make_jacobian(x, y_size, np_dtype):
-    if isinstance(x, base.framework.Variable):
+    if isinstance(x, (base.framework.Variable, paddle.pir.Value)):
         return np.zeros((_product(x.shape), y_size), dtype=np_dtype)
     elif isinstance(x, Sequence):
         jacobians = list(
@@ -218,10 +220,141 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
     return jacobian
 
 
+def _compute_numerical_jacobian_pir(
+    program, x, y, fetch_list, feeds, place, delta
+):
+    """Computes the numeric Jacobian for dy/dx.
+
+    Computes the numeric Jacobian by slightly perturbing the inputs and
+    measuring the differences on the output.
+
+    Args:
+        program (Program): the network program.
+        x (Variable): the input variables.
+        y (list[Variable]): the output variables.
+        fetch_list (list[Variable]): the variables to fetch.
+        feeds (dict): the feed dict.
+        place (base.CPUPlace or base.CUDAPlace): the device.
+        delta: the amount of perturbation we give to the input
+
+    Returns:
+        A list of 2-D numpy array, the list length is len(y).
+        Each 2-D numpy array represents the Jacobian for dy_i/dx.
+        It has "x_size" rows and "y_size" columns
+        where "x_size" is the number of elements in x and
+        "y_size" is the number of elements in each y_i.
+    """
+    if not isinstance(x, paddle.pir.Value):
+        raise TypeError('x is not Value')
+
+    # To compute the jacobian, treat x and y as one-dimensional vectors.
+    y = _as_list(y)
+    filted_ddx = [dxi for dxi in fetch_list if dxi is not None]
+    exe = paddle.static.Executor(place)
+
+    def run():
+        res = exe.run(program, feeds, fetch_list=[filted_ddx, y])
+        y_res = res[len(filted_ddx) :]
+        return [yi.flatten() for yi in y_res]
+
+    x_name = x.get_defining_op().attrs()['name']
+    x_shape = x.shape
+    x_size = _product(x_shape)
+    np_type = dtype_to_np_dtype(x.dtype)
+    np_t = np.array(feeds[x_name]).astype(np_type)
+    np_t = np_t.flatten()
+    jacobian = [make_jacobian(x, _product(yi.shape), np_type) for yi in y]
+
+    for i in range(x_size):
+        orig = np_t[i]
+        x_pos = orig + delta
+        np_t[i] = x_pos
+        np_f = np_t.reshape(x_shape)
+        feeds[x_name] = np_f
+        y_pos = run()
+
+        x_neg = orig - delta
+        np_t[i] = x_neg
+        np_f = np_t.reshape(x_shape)
+        feeds[x_name] = np_f
+        y_neg = run()
+
+        np_t[i] = orig
+
+        for j in range(len(y)):
+            jacobian[j][i, :] = (y_pos[j] - y_neg[j]) / delta / 2.0
+
+    return jacobian
+
+
+def _compute_analytical_jacobian_pir(
+    program, x, i, y, fetch_list, feeds, place
+):
+    """Computes the analytical Jacobian for dy/dx.
+
+    Args:
+        program (Program): a Program with forward pass.
+        x (Variable|list[Variable]): a variable or list of variable
+        i (int): the index of y.
+        y (Variable): the target variable.
+        fetch_list (list[Variable]): the variables to fetch.
+        feeds (dict): the feed dict.
+        place (base.CPUPlace or base.CUDAPlace): the device.
+
+    Returns:
+        A list of 2-D numpy array. The list length is len(x).
+        Each 2-D numpy array represents the Jacobian for dy/dx_i.
+        It has "xi_size" rows and "dy_size" columns
+        where "x_size" is the number of elements in x_i and
+        "dy_size" is the number of elements in y.
+    """
+    if not isinstance(x, (list, paddle.pir.Value)):
+        raise TypeError('x is not Value or list of Value')
+
+    np_type = dtype_to_np_dtype(y[i].dtype)
+    exe = paddle.static.Executor(place)
+    y_size = _product(y[i].shape)
+    x = _as_list(x)
+    jacobian = make_jacobian(x, y_size, np_type)
+
+    # filter None in dx for DX/DY may be None in kernel
+    # only fetch not None dx in exe.run
+
+    filted = [(i, dxi) for i, dxi in enumerate(fetch_list) if dxi is not None]
+    filted_idx, filted_dx = zip(*filted)
+
+    # get the name in feeds of dyi
+    name = 'dys_%s' % i
+    np_t = np.array(feeds[name]).astype(np_type)
+    shape = np_t.shape
+    np_t = np_t.flatten()
+    for i in range(y_size):
+        np_t[i] = 1
+        np_f = np_t.reshape(shape)
+        feeds[name] = np_f
+        res = exe.run(program, feed=feeds, fetch_list=[filted_dx, y])
+        dx_res = res[: len(filted_dx)]
+        for j in range(len(filted_dx)):
+            dx_idx = filted_idx[j]
+            if dx_res[j] is not None:
+                jacobian[dx_idx][:, i] = dx_res[j].flatten()
+            else:
+                jacobian[dx_idx][:, i] = np.zeros(
+                    fetch_list[dx_idx].shape, dtype=np_type
+                ).flatten()
+
+        np_t[i] = 0
+        np_f = np_t.reshape(shape)
+        feeds[name] = np_f
+
+    return jacobian
+
+
 def grad_check(
     x,
     y,
-    x_init=None,
+    fetch_list=None,
+    feeds=None,
     place=None,
     program=None,
     eps=1e-6,
@@ -254,66 +387,58 @@ def grad_check(
             raise RuntimeError(msg)
         return False
 
-    # check input arguments
-    x = _as_list(x)
-    y = _as_list(y)
-
-    for v in x:
-        v.stop_gradient = False
-        v.persistable = True
-    for u in y:
-        u.stop_gradient = False
-        u.persistable = True
-    if place is None:
-        place = base.CPUPlace()
-    if program is None:
-        program = base.default_main_program()
-
-    # init variable in startup program
     scope = base.executor.global_scope()
-    exe = base.Executor(place)
-    exe.run(base.default_startup_program())
 
-    x_init = _as_list(x_init)
-    # init inputs if x_init is not None
-    if x_init:
-        if len(x_init) != len(x):
-            raise ValueError(
-                'len(x_init) (=%d) is not the same'
-                ' as len(x) (= %d)' % (len(x_init), len(x))
+    if in_pir_mode():
+        analytical = []
+        for i in range(len(y)):
+            name = 'dys_%s' % i
+            feeds.update(
+                {
+                    name: np.zeros(
+                        y[i].shape, dtype=dtype_to_np_dtype(y[i].dtype)
+                    )
+                }
             )
-        # init variable in main program
-        for var, arr in zip(x, x_init):
-            assert var.shape == arr.shape
-        feeds = {k.name: v for k, v in zip(x, x_init)}
-        exe.run(program, feed=feeds, scope=scope)
+        for i in range(len(y)):
+            analytical.append(
+                _compute_analytical_jacobian_pir(
+                    program, x, i, y, fetch_list, feeds, place
+                )
+            )
+        numerical = [
+            _compute_numerical_jacobian_pir(
+                program, xi, y, fetch_list, feeds, place, eps
+            )
+            for xi in x
+        ]
+    else:
+        # [x_idx, y_idx]
+        numerical = [
+            _compute_numerical_jacobian(program, xi, y, place, scope, eps)
+            for xi in x
+        ]
+        # [y_idx, x_idx]
+        analytical = []
+        for yi in y:
+            prog = program.clone()
 
-    # [x_idx, y_idx]
-    numerical = [
-        _compute_numerical_jacobian(program, xi, y, place, scope, eps)
-        for xi in x
-    ]
-
-    # [y_idx, x_idx]
-    analytical = []
-    for yi in y:
-        prog = program.clone()
-
-        clone_x = []
-        clone_y = None
-        for b in prog.blocks:
-            if b.has_var(yi.name):
-                clone_y = b.var(yi.name)
-                break
-        for xi in x:
+            clone_x = []
+            clone_y = None
             for b in prog.blocks:
-                if b.has_var(xi.name):
-                    clone_x.append(b.var(xi.name))
+                if b.has_var(yi.name):
+                    clone_y = b.var(yi.name)
                     break
-        analytical.append(
-            _compute_analytical_jacobian(prog, clone_x, clone_y, place, scope)
-        )
-
+            for xi in x:
+                for b in prog.blocks:
+                    if b.has_var(xi.name):
+                        clone_x.append(b.var(xi.name))
+                        break
+            analytical.append(
+                _compute_analytical_jacobian(
+                    prog, clone_x, clone_y, place, scope
+                )
+            )
     for i, (x_idx, y_idx) in enumerate(
         product(*[range(len(x)), range(len(y))])
     ):
@@ -321,8 +446,8 @@ def grad_check(
         n = numerical[x_idx][y_idx]
         if not np.allclose(a, n, rtol, atol):
             msg = (
-                f'Jacobian mismatch for output {y[y_idx].name} '
-                f'with respect to input {x[x_idx].name} on {str(place)},\n'
+                f'Jacobian mismatch for output {y_idx} in y'
+                f'with respect to input {x_idx} in x on {str(place)},\n'
                 f'numerical:{n}\nanalytical:{a}\n'
             )
             return fail_test(msg)
@@ -371,40 +496,48 @@ def double_grad_check(
         u.stop_gradient = False
         u.persistable = True
 
-    if program is None:
-        program = base.default_main_program()
-
-    if y_grads is None:
-        scope = base.executor.global_scope()
-        y_grads = []
-        y_grads_init = []
-        for yi in y:
-            dyi_name = _append_grad_suffix_(yi.name)
-            np_type = dtype_to_np_dtype(yi.dtype)
-            dy = program.global_block().create_var(
-                name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True
-            )
-            dy.stop_gradient = False
-            v = np.random.random(size=yi.shape).astype(np_type)
-            set_var_in_scope(scope, place, dyi_name, v)
-            y_grads.append(dy)
-            y_grads_init.append(v)
-    else:
-        y_grads = _as_list(y_grads)
-        y_grads_init = [
-            var_to_np_array_in_scope(scope, place, v.name) for v in y_grads
-        ]
-
-    # append first order grads
-    target_grads = base.gradients(y, x, y_grads)
-
-    # y_grads are the input of first-order backward,
-    # so, they are also the input of second-order backward.
-    x += y_grads
     x_init = _as_list(x_init)
-    x_init += y_grads_init
 
-    grad_check(x, target_grads, x_init, place, program, eps, atol, rtol)
+    if in_pir_mode():
+        program, (keys, values) = paddle.base.libpaddle.pir.clone_program(
+            paddle.static.default_main_program()
+        )
+        op_map = ValueDict()
+        for key, value in zip(keys, values):
+            op_map[key] = value
+        clone_x = []
+        for xi in x:
+            clone_x.append(op_map[xi])
+        clone_y = []
+        for yi in y:
+            clone_y.append(op_map[yi])
+        with paddle.static.program_guard(program):
+            (
+                grad_res,
+                x,
+                target_grads,
+                fetch_list,
+                feeds,
+                ir_program,
+            ) = get_pir_static_double_grad(
+                clone_x, clone_y, x_init, y_grads, place
+            )
+        grad_check(
+            x,
+            target_grads,
+            fetch_list,
+            feeds,
+            place,
+            ir_program,
+            eps,
+            atol,
+            rtol,
+        )
+    else:
+        grad_res, x, target_grads, program = get_static_double_grad(
+            x, y, x_init, y_grads, place
+        )
+        grad_check(x, target_grads, None, None, place, program, eps, atol, rtol)
 
 
 # TODO(jiabin): We currently support only triple grad check here, extend this to support
@@ -456,81 +589,49 @@ def triple_grad_check(
         u.stop_gradient = False
         u.persistable = True
 
-    if program is None:
-        program = base.default_main_program()
-
-    if y_grads is None:
-        scope = base.executor.global_scope()
-        y_grads = []
-        y_grads_init = []
-        for yi in y:
-            dyi_name = _append_grad_suffix_(yi.name)
-            np_type = dtype_to_np_dtype(yi.dtype)
-            dy = program.global_block().create_var(
-                name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True
-            )
-            dy.stop_gradient = False
-            v = np.random.random(size=yi.shape).astype(np_type)
-            set_var_in_scope(scope, place, dyi_name, v)
-            y_grads.append(dy)
-            y_grads_init.append(v)
-    else:
-        y_grads = _as_list(y_grads)
-        y_grads_init = [
-            var_to_np_array_in_scope(scope, place, v.name) for v in y_grads
-        ]
-
-    # append first order grads
-    target_grads = base.gradients(y, x, y_grads)
-
-    if x_grads_grads is None:
-        scope = base.executor.global_scope()
-        x_grads_grads = []
-        x_grads_grads_init = []
-        for dxi in target_grads:
-            ddxi_name = _append_grad_suffix_(dxi.name)
-            np_type = dtype_to_np_dtype(dxi.dtype)
-            ddx = program.global_block().create_var(
-                name=ddxi_name, shape=dxi.shape, dtype=np_type, persistable=True
-            )
-            ddx.stop_gradient = False
-            v = np.random.random(size=dxi.shape).astype(np_type)
-            set_var_in_scope(scope, place, ddxi_name, v)
-            x_grads_grads.append(ddx)
-            x_grads_grads_init.append(v)
-    else:
-        x_grads_grads = _as_list(x_grads_grads)
-        x_grads_grads_init = [
-            var_to_np_array_in_scope(scope, place, v.name)
-            for v in x_grads_grads
-        ]
-    x += y_grads
     x_init = _as_list(x_init)
-    x_init += y_grads_init
-
-    # append second order grads
-    target_grads_grads = base.gradients(target_grads, x, x_grads_grads)
-
-    # filter None in target_grads_grads for Dy/Dx may be None in kernel
-    filted = [
-        (i, dyi) for i, dyi in enumerate(target_grads_grads) if dyi is not None
-    ]
-    filted_idx, filted_target_grads_grads = zip(*filted)
-
-    x += x_grads_grads
-    x_init += x_grads_grads_init
 
     # x <=> [x, dout, ddx]
-    grad_check(
-        x=x,
-        y=filted_target_grads_grads,
-        x_init=x_init,
-        place=place,
-        program=program,
-        eps=eps,
-        atol=atol,
-        rtol=rtol,
-    )
+    if in_pir_mode():
+        program, (keys, values) = paddle.base.libpaddle.pir.clone_program(
+            paddle.static.default_main_program()
+        )
+        op_map = ValueDict()
+        for key, value in zip(keys, values):
+            op_map[key] = value
+        clone_x = []
+        for xi in x:
+            clone_x.append(op_map[xi])
+        clone_y = []
+        for yi in y:
+            clone_y.append(op_map[yi])
+        with paddle.static.program_guard(program):
+            (
+                grad_res,
+                x,
+                target_grads,
+                fetch_list,
+                feeds,
+                ir_program,
+            ) = get_pir_static_triple_grad(
+                clone_x, clone_y, x_init, y_grads, place, program
+            )
+        grad_check(
+            x,
+            target_grads,
+            fetch_list,
+            feeds,
+            place,
+            ir_program,
+            eps,
+            atol,
+            rtol,
+        )
+    else:
+        grad_res, x, target_grads, program = get_static_triple_grad(
+            x, y, x_init, y_grads, place
+        )
+        grad_check(x, target_grads, None, None, place, program, eps, atol, rtol)
 
 
 def get_static_double_grad(
@@ -552,19 +653,35 @@ def get_static_double_grad(
     """
 
     if program is None:
-        program = base.default_main_program()
+        program = paddle.static.default_main_program()
     scope = base.executor.global_scope()
-    y_grads = []
-    for i in range(len(y)):
-        yi = y[i]
-        dyi_name = _append_grad_suffix_(yi.name)
-        np_type = dtype_to_np_dtype(yi.dtype)
-        dy = program.global_block().create_var(
-            name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True
-        )
-        dy.stop_gradient = False
-        set_var_in_scope(scope, place, dyi_name, dy_init[i])
-        y_grads.append(dy)
+    if dy_init is None:
+        y_grads = []
+        y_grads_init = []
+        for yi in y:
+            dyi_name = _append_grad_suffix_(yi.name)
+            np_type = dtype_to_np_dtype(yi.dtype)
+            dy = program.global_block().create_var(
+                name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True
+            )
+            dy.stop_gradient = False
+            v = np.random.random(size=yi.shape).astype(np_type)
+            set_var_in_scope(scope, place, dyi_name, v)
+            y_grads.append(dy)
+            y_grads_init.append(v)
+    else:
+        y_grads = []
+        y_grads_init = dy_init
+        for i in range(len(y)):
+            yi = y[i]
+            dyi_name = _append_grad_suffix_(yi.name)
+            np_type = dtype_to_np_dtype(yi.dtype)
+            dy = program.global_block().create_var(
+                name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True
+            )
+            dy.stop_gradient = False
+            set_var_in_scope(scope, place, dyi_name, dy_init[i])
+            y_grads.append(dy)
 
     # append first order grads
     dx = base.gradients(y, x, y_grads)
@@ -572,7 +689,7 @@ def get_static_double_grad(
     # y_grads are the input of first-order backward,
     # so, they are also the input of second-order backward.
     x += y_grads
-    x_init += dy_init
+    x_init += y_grads_init
 
     # filter None in dx for DX/DY may be None in kernel
     filted_dx = [dxi for dxi in dx if dxi is not None]
@@ -590,13 +707,10 @@ def get_static_double_grad(
         u.persistable = True
     if place is None:
         place = base.CPUPlace()
-    if program is None:
-        program = base.default_main_program()
 
     # init variable in startup program
-    scope = base.executor.global_scope()
-    exe = base.Executor(place)
-    exe.run(base.default_startup_program())
+    exe = paddle.static.Executor(place)
+    exe.run(paddle.static.default_startup_program())
 
     x_init = _as_list(x_init)
     # init inputs if x_init is not None
@@ -610,7 +724,6 @@ def get_static_double_grad(
         for var, arr in zip(x, x_init):
             assert var.shape == arr.shape
         feeds = {k.name: v for k, v in zip(x, x_init)}
-        exe.run(program, feed=feeds, scope=scope)
 
     dys = []
     for yi in y:
@@ -627,15 +740,138 @@ def get_static_double_grad(
 
     # append second order backward
     ddx = base.gradients(y, x, dys)
-    exe = base.Executor(place)
+    exe = paddle.static.Executor(place)
 
     # filter None in dx for DX/DY may be None in kernel
     # only fetch not None dx in exe.run
     filted = [(i, dxi) for i, dxi in enumerate(ddx) if dxi is not None]
     filted_idx, filted_ddx = zip(*filted)
-    ddx_res = exe.run(program, scope=scope, fetch_list=filted_ddx)
+    ddx_res = exe.run(program, feed=feeds, scope=scope, fetch_list=filted_ddx)
 
-    return ddx_res
+    return ddx_res, x, filted_dx, program
+
+
+def get_pir_static_double_grad(
+    x, y, x_init=None, dy_init=None, place=None, program=None
+):
+    """
+    Get Double Grad result of static graph.
+
+    Args:
+        x (Variable|list[Variable]): input variables to the program.
+        y (Variable|list[Variable]): output variables to the program.
+        x_init (numpy.array|list[numpy.array]|None): the init value for input x.
+        dy_init (numpy.array|list[numpy.array]|None): the init value for output y.
+        place (base.CPUPlace or base.CUDAPlace): the device.
+        program (Program|None): a Program with forward pass.
+            If None, use base.default_main_program().
+    Returns:
+        A list of numpy array that stores second derivative result calculated by static graph.
+    """
+    if program is None:
+        program = paddle.static.default_main_program()
+    exe = paddle.static.Executor(place)
+    exe.run(paddle.static.default_startup_program())
+    if dy_init is None:
+        y_grads = []
+        y_grads_init = []
+        for i in range(len(y)):
+            yi = y[i]
+            yi.persistable = True
+            np_type = dtype_to_np_dtype(yi.dtype)
+            dy = paddle.static.data(
+                name='Dgrad_%s' % i,
+                shape=yi.shape,
+                dtype=np_type,
+            )
+            dy.stop_gradient = False
+            dy.persistable = True
+            v = np.random.random(size=yi.shape).astype(np_type)
+            y_grads.append(dy)
+            y_grads_init.append(v)
+    else:
+        y_grads = []
+        y_grads_init = dy_init
+        for i in range(len(y)):
+            yi = y[i]
+            yi.persistable = True
+            np_type = dtype_to_np_dtype(yi.dtype)
+            dy = paddle.static.data(
+                name='Dgrad_%s' % i,
+                shape=yi.shape,
+                dtype=np_type,
+            )
+            dy.stop_gradient = False
+            dy.persistable = True
+            y_grads.append(dy)
+
+    # append first order grads
+    dx = base.gradients(y, x, y_grads)
+    # y_grads are the input of first-order backward,
+    # so, they are also the input of second-order backward.
+    x += y_grads
+    x_init += y_grads_init
+
+    # filter None in dx for DX/DY may be None in kernel
+    filted_dx = [dxi for dxi in dx if dxi is not None]
+    y = filted_dx
+
+    # check input arguments
+    x = _as_list(x)
+    y = _as_list(y)
+
+    for v in x:
+        v.stop_gradient = False
+        v.persistable = True
+    for u in y:
+        u.stop_gradient = False
+        u.persistable = True
+
+    if place is None:
+        place = base.CPUPlace()
+
+    feeds = {}
+    x_init = _as_list(x_init)
+    # init inputs if x_init is not None
+    if x_init:
+        if len(x_init) != len(x):
+            raise ValueError(
+                'len(x_init) (=%d) is not the same'
+                ' as len(x) (= %d)' % (len(x_init), len(x))
+            )
+        # init variable in main program
+        for var, arr in zip(x, x_init):
+            assert tuple(var.shape) == tuple(arr.shape)
+
+        for i in range(len(x)):
+            feeds.update({x[i].get_defining_op().attrs()['name']: x_init[i]})
+
+    dys = []
+    for i in range(len(y)):
+        yi = y[i]
+        np_type = dtype_to_np_dtype(yi.dtype)
+        dy = paddle.static.data(
+            name='dys_%s' % i,
+            shape=yi.shape,
+            dtype=np_type,
+        )
+        value = np.ones(yi.shape, dtype=np_type)
+        feeds.update({'dys_%s' % i: value})
+        dys.append(dy)
+
+    # append second order backward
+    ddx = base.gradients(y, x, dys)
+
+    # filter None in dx for DX/DY may be None in kernel
+    # only fetch not None dx in exe.run
+    filted = [(i, dxi) for i, dxi in enumerate(ddx) if dxi is not None]
+    filted_idx, filted_ddx = zip(*filted)
+    ddx_res = exe.run(
+        program=program, feed=feeds, fetch_list=[filted_ddx, filted_dx]
+    )
+    res = ddx_res[: len(filted_ddx)]
+
+    return res, x, y, ddx, feeds, program
 
 
 def get_eager_double_grad(
@@ -720,6 +956,7 @@ def double_grad_check_for_dygraph(
     y,
     x_init=None,
     place=None,
+    program=None,
     atol=1e-5,
     rtol=1e-3,
     raise_exception=True,
@@ -747,7 +984,6 @@ def double_grad_check_for_dygraph(
         return False
 
     # check input arguments
-    x = _as_list(x)
     for v in x:
         v.stop_gradient = False
         v.persistable = True
@@ -767,9 +1003,17 @@ def double_grad_check_for_dygraph(
     eager_double_grad = get_eager_double_grad(func, x_init, y_grads_init, place)
     paddle.enable_static()
 
-    static_double_grad = get_static_double_grad(
-        x, y, x_init, y_grads_init, place
-    )
+    if in_pir_mode():
+        static_double_grad, _, _, _, _, _ = get_pir_static_double_grad(
+            x, y, x_init, y_grads_init, place
+        )
+    else:
+        (
+            static_double_grad,
+            _,
+            _,
+            _,
+        ) = get_static_double_grad(x, y, x_init, y_grads_init, place)
 
     if len(static_double_grad) != len(eager_double_grad):
         msg = (
@@ -809,19 +1053,35 @@ def get_static_triple_grad(
         A list of numpy array that stores third derivative result calculated by static graph.
     """
     if program is None:
-        program = base.default_main_program()
+        program = paddle.static.default_main_program()
     scope = base.executor.global_scope()
-    y_grads = []
-    for i in range(len(y)):
-        yi = y[i]
-        dyi_name = _append_grad_suffix_(yi.name)
-        np_type = dtype_to_np_dtype(yi.dtype)
-        dy = program.global_block().create_var(
-            name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True
-        )
-        dy.stop_gradient = False
-        set_var_in_scope(scope, place, dyi_name, dy_init[i])
-        y_grads.append(dy)
+    if dy_init is None:
+        y_grads = []
+        y_grads_init = []
+        for yi in y:
+            dyi_name = _append_grad_suffix_(yi.name)
+            np_type = dtype_to_np_dtype(yi.dtype)
+            dy = program.global_block().create_var(
+                name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True
+            )
+            dy.stop_gradient = False
+            v = np.random.random(size=yi.shape).astype(np_type)
+            set_var_in_scope(scope, place, dyi_name, v)
+            y_grads.append(dy)
+            y_grads_init.append(v)
+    else:
+        y_grads = []
+        y_grads_init = dy_init
+        for i in range(len(y)):
+            yi = y[i]
+            dyi_name = _append_grad_suffix_(yi.name)
+            np_type = dtype_to_np_dtype(yi.dtype)
+            dy = program.global_block().create_var(
+                name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True
+            )
+            dy.stop_gradient = False
+            set_var_in_scope(scope, place, dyi_name, dy_init[i])
+            y_grads.append(dy)
 
     # append first order grads
     dx = base.gradients(y, x, y_grads)
@@ -829,7 +1089,7 @@ def get_static_triple_grad(
     # y_grads are the input of first-order backward,
     # so, they are also the input of second-order backward.
     x += y_grads
-    x_init += dy_init
+    x_init += y_grads_init
     y = dx
 
     x_grads_grads_init = []
@@ -840,6 +1100,83 @@ def get_static_triple_grad(
 
     return get_static_double_grad(
         x, y, x_init, dy_init=x_grads_grads_init, place=place, program=program
+    )
+
+
+def get_pir_static_triple_grad(
+    x, y, x_init=None, dy_init=None, place=None, program=None
+):
+    """
+    Get Triple Grad result of static graph.
+
+    Args:
+        x (Variable|list[Variable]): input variables to the program.
+        y (Variable|list[Variable]): output variables to the program.
+        x_init (numpy.array|list[numpy.array]|None): the init value for input x.
+        dy_init (numpy.array|list[numpy.array]|None): the init value for output y.
+        place (base.CPUPlace or base.CUDAPlace): the device.
+        program (Program|None): a Program with forward pass.
+            If None, use base.default_main_program().
+    Returns:
+        A list of numpy array that stores third derivative result calculated by static graph.
+    """
+    if program is None:
+        program = paddle.static.default_main_program()
+    if dy_init is None:
+        y_grads = []
+        y_grads_init = []
+        for i in range(len(y)):
+            yi = y[i]
+            yi.persistable = True
+            np_type = dtype_to_np_dtype(yi.dtype)
+            dy = paddle.static.data(
+                name='Tgrad_%s' % i,
+                shape=yi.shape,
+                dtype=np_type,
+            )
+            dy.stop_gradient = False
+            dy.persistable = True
+            v = np.random.random(size=yi.shape).astype(np_type)
+            y_grads.append(dy)
+            y_grads_init.append(v)
+    else:
+        y_grads = []
+        y_grads_init = dy_init
+        for i in range(len(y)):
+            yi = y[i]
+            yi.persistable = True
+            np_type = dtype_to_np_dtype(yi.dtype)
+            dy = paddle.static.data(
+                name='Tgrad_%s' % i,
+                shape=yi.shape,
+                dtype=np_type,
+            )
+            dy.stop_gradient = False
+            dy.persistable = True
+            y_grads.append(dy)
+
+    # append first order grads
+    dx = base.gradients(y, x, y_grads)
+
+    # y_grads are the input of first-order backward,
+    # so, they are also the input of second-order backward.
+    x += y_grads
+    x_init += y_grads_init
+    y = dx
+
+    x_grads_grads_init = []
+    for dxi in dx:
+        np_type = dtype_to_np_dtype(dxi.dtype)
+        value = np.ones(dxi.shape, dtype=np_type)
+        x_grads_grads_init.append(value)
+
+    return get_pir_static_double_grad(
+        x,
+        y,
+        x_init,
+        dy_init=x_grads_grads_init,
+        place=place,
+        program=program,
     )
 
 
@@ -883,6 +1220,7 @@ def triple_grad_check_for_dygraph(
     y,
     x_init=None,
     place=None,
+    program=None,
     atol=1e-5,
     rtol=1e-3,
     raise_exception=True,
@@ -930,9 +1268,17 @@ def triple_grad_check_for_dygraph(
     eager_triple_grad = get_eager_triple_grad(func, x_init, y_grads_init, place)
     paddle.enable_static()
 
-    static_triple_grad = get_static_triple_grad(
-        x, y, x_init, y_grads_init, place
-    )
+    if in_pir_mode():
+        static_triple_grad, _, _, _, _, _ = get_pir_static_triple_grad(
+            x, y, x_init, y_grads_init, place
+        )
+    else:
+        (
+            static_triple_grad,
+            _,
+            _,
+            _,
+        ) = get_static_triple_grad(x, y, x_init, y_grads_init, place)
 
     if len(static_triple_grad) != len(eager_triple_grad):
         msg = (

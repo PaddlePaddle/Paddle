@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Temporary disable isort to avoid circular import
-# This can be removed after the circular import is resolved
 from __future__ import annotations
 
 import inspect
@@ -32,28 +30,20 @@ import paddle
 from paddle.base import core, dygraph
 from paddle.base.compiler import (
     BuildStrategy,
-    CompiledProgram,
-    ExecutionStrategy,
 )
-from paddle.base.data_feeder import check_type
 from paddle.base.dygraph.base import (
-    program_desc_tracing_guard,
     switch_to_static_graph,
 )
 from paddle.base.executor import Executor, scope_guard
 from paddle.base.framework import (
-    Block,
     EagerParamBase,
     Parameter,
-    Program,
     Variable,
     _current_expected_place,
-    _dygraph_guard,
-    _dygraph_tracer,
     dygraph_only,
 )
 from paddle.base.wrapped_decorator import wrap_decorator
-from paddle.framework import in_dynamic_mode
+from paddle.framework import use_pir_api
 from paddle.nn import Layer
 from paddle.static.io import save_inference_model
 from paddle.utils.environments import (
@@ -68,7 +58,6 @@ from .dy2static.program_translator import (
     ProgramTranslator,
     StaticFunction,
     SymbolicStaticFunction,
-    convert_to_static,
     unwrap_decorators,
 )
 from .translated_layer import (
@@ -86,102 +75,6 @@ ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
 def sot_mode_guard(value: bool):
     with EnvironmentVariableGuard(ENV_ENABLE_SOT, value):
         yield
-
-
-def create_program_from_desc(program_desc):
-    program = Program()
-    program.desc = program_desc
-    program.blocks = [Block(program, 0)]
-    program._sync_with_cpp()
-    return program
-
-
-def _extract_vars(inputs, result_list, err_tag='inputs'):
-    if isinstance(inputs, Variable):
-        result_list.append(inputs)
-    elif isinstance(inputs, (list, tuple)):
-        for var in inputs:
-            _extract_vars(var, result_list, err_tag)
-    else:
-        raise TypeError(
-            "The type of 'each element of {}' in paddle.jit.api.TracedLayer.trace must be base.Variable, but received {}.".format(
-                err_tag, type(inputs)
-            )
-        )
-
-
-def extract_vars(inputs, err_tag='inputs'):
-    result_list = []
-    _extract_vars(inputs, result_list, err_tag)
-    return result_list
-
-
-def _dygraph_to_static_func_(dygraph_func):
-    """
-    Converts imperative dygraph APIs into declarative function APIs. Decorator
-    @dygraph_to_static_func only converts imperative dygraph APIs into
-    declarative net-building APIs, which means it doesn't return immediate
-    digital result as imperative mode. Users should handle Program and Executor
-    by themselves.
-
-    Note:
-    This decorator is NOT our recommended way to transform imperative function
-    to declarative function. We will remove this decorator after we finalize
-    cleaning up code.
-
-    Args:
-        dygraph_func (callable): callable imperative function.
-
-    Returns:
-        Callable: converting imperative dygraph APIs into declarative
-        net-building APIs.
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +SKIP('`paddle.jit.dygraph_to_static_func` can not run in xdoctest')
-            >>> import paddle
-            >>> from paddle.jit.api import dygraph_to_static_func
-
-            >>> @dygraph_to_static_func
-            ... def func(x):
-            ...     if paddle.mean(x) < 0:
-            ...         x_v = x - 1
-            ...     else:
-            ...         x_v = x + 1
-            ...
-            ...     return x_v
-            ...
-            >>> paddle.enable_static()
-            >>> x = paddle.full(shape=[3, 3], fill_value=0, dtype='float64')
-
-            >>> x_v = func(x)
-            >>> exe = paddle.static.Executor(paddle.CPUPlace())
-            >>> out = exe.run(fetch_list=[x_v])
-            >>> print(out[0])
-            [[1. 1. 1.]
-             [1. 1. 1.]
-             [1. 1. 1.]]
-
-    """
-
-    # TODO: remove this decorator after we finalize training API
-    def __impl__(*args, **kwargs):
-        program_translator = ProgramTranslator()
-        if in_dynamic_mode() or not program_translator.enable_to_static:
-            logging_utils.warn(
-                "The decorator 'dygraph_to_static_func' doesn't work in "
-                "dygraph mode or set 'paddle.jit.enable_to_static' to False. "
-                "We will just return dygraph output."
-            )
-            return dygraph_func(*args, **kwargs)
-        static_func = convert_to_static(dygraph_func)
-        return static_func(*args, **kwargs)
-
-    return __impl__
-
-
-dygraph_to_static_func = wrap_decorator(_dygraph_to_static_func_)
 
 
 def copy_decorator_attrs(original_func, decorated_obj):
@@ -233,9 +126,7 @@ def ignore_module(modules: list[Any]):
 def _check_and_set_backend(backend, build_strategy):
     if backend not in ['CINN', None]:
         raise ValueError(
-            "The backend of to_static should be 'CINN' or None, but received {}.".format(
-                backend
-            )
+            f"The backend of to_static should be 'CINN' or None, but received {backend}."
         )
     if backend == 'CINN':
         build_strategy.build_cinn_pass = True
@@ -310,9 +201,9 @@ def to_static(
             flag = ENV_ENABLE_SOT.get()
             full_graph = not flag
 
-        if sys.version_info >= (3, 12) and not full_graph:
+        if sys.version_info >= (3, 13) and not full_graph:
             warnings.warn(
-                "full_graph=False is not supported in Python 3.12+. Set full_graph=True automatically"
+                "full_graph=False is not supported in Python 3.13+. Set full_graph=True automatically"
             )
             full_graph = True
 
@@ -368,7 +259,7 @@ def to_static(
 
 def not_to_static(func=None):
     """
-    A Decorator to suppresses the convertion of a function.
+    A Decorator to suppresses the convention of a function.
 
     Args:
         func(callable): The function to decorate.
@@ -436,7 +327,7 @@ class _SaveLoadConfig:
         # when need to save a prune model, use input_names_after_prune to specify the inputs left after pruning
         self.input_names_after_prune = None
 
-        # in the scene of llm-inference, prunning program can cause unexpectable result, an option to skip prune is necessary
+        # in the scene of llm-inference, pruning program can cause unexpectable result, an option to skip prune is necessary
         self.skip_prune_program = False
 
     @property
@@ -566,7 +457,7 @@ def _parse_load_config(configs):
 def _get_input_var_names(inputs, input_spec, input_names_after_prune):
     name_none_error = (
         "The %s's name is None. "
-        "When using jit.save, please set InputSepc's name in "
+        "When using jit.save, please set InputSpec's name in "
         "to_static(input_spec=[]) and jit.save(input_spec=[]) "
         "and make sure they are consistent."
     )
@@ -594,7 +485,7 @@ def _get_input_var_names(inputs, input_spec, input_names_after_prune):
         # no prune
         return input_var_names
     else:
-        # fileter out non-tensor type spec infos.
+        # filter out non-tensor type spec infos.
         input_spec = [
             spec
             for spec in input_spec
@@ -987,6 +878,11 @@ def save(layer, path, input_spec=None, **configs):
             >>> save_function()
     """
 
+    if use_pir_api():
+        raise NotImplementedError(
+            "Currently, `paddle.jit.save` is not supported in PIR mode."
+        )
+
     # 1. input build & check
     prog_translator = ProgramTranslator()
     is_prim_infer = core._is_fwd_prim_enabled() and core._is_bwd_prim_enabled()
@@ -1074,7 +970,8 @@ def save(layer, path, input_spec=None, **configs):
     scope = core.Scope()
     extra_var_info = {}
     if isinstance(layer, Layer):
-        functions = dir(inner_layer)
+        functions = list(set(dir(inner_layer)))
+        functions = sorted(functions)
         if inner_layer._forward_pre_hooks or inner_layer._forward_post_hooks:
             with_hook = True
     else:
@@ -1169,9 +1066,7 @@ def save(layer, path, input_spec=None, **configs):
 
                 if static_function._class_instance is None:
                     warnings.warn(
-                        '`jit.save` will only save the `Program`, not the parameters. If you have to save the parameters, please make sure that {} is a member function of `paddle.nn.Layer` and the saved parameters are in `state_dict`'.format(
-                            layer
-                        )
+                        f'`jit.save` will only save the `Program`, not the parameters. If you have to save the parameters, please make sure that {layer} is a member function of `paddle.nn.Layer` and the saved parameters are in `state_dict`'
                     )
 
         # when save multi `StaticFunction`, all `StaticFunction` share params.
@@ -1228,7 +1123,7 @@ def save(layer, path, input_spec=None, **configs):
                         extra_info_dict['trainable'] = param_or_buffer.trainable
                     extra_var_info[param_or_buffer.name] = extra_info_dict
 
-        # 4. build input & output of save_infernece_model
+        # 4. build input & output of save_inference_model
         # NOTE(chenweihang): [ Get input variables name ]
         # There are two cases, whether to prune the inputs or not
         # - not prune inputs (recommend):
@@ -1359,7 +1254,7 @@ def load(path, **configs):
     .. note::
         If you load model saved by ``paddle.static.save_inference_model`` ,
         there will be the following limitations when using it in fine-tuning:
-        1. Imperative mode do not support LoDTensor. All original model's feed targets or parametars that depend on LoD are temporarily unavailable.
+        1. Imperative mode do not support LoDTensor. All original model's feed targets or parameters that depend on LoD are temporarily unavailable.
         2. All saved model's feed targets need to be passed into TranslatedLayer's forward function.
         3. The variable's ``stop_gradient`` information is lost and can not be recovered.
         4. The parameter's ``trainable`` information is lost and can not be recovered.
@@ -1582,6 +1477,10 @@ def load(path, **configs):
                 ...         print("Epoch {} batch {}: loss = {}".format(
                 ...             epoch_id, batch_id, np.mean(loss.numpy())))
     """
+    if use_pir_api():
+        raise NotImplementedError(
+            "Currently, `paddle.jit.load` is not supported in PIR mode."
+        )
     # 1. construct correct config
     config = _parse_load_config(configs)
     model_path, config = _build_load_path_and_config(path, config)
@@ -1589,378 +1488,19 @@ def load(path, **configs):
     return TranslatedLayer._construct(model_path, config)
 
 
-@dygraph_only
-def _trace(
-    layer, inputs, feed_prefix='feed_', fetch_prefix='fetch_', tmp_prefix='t_'
-):
-    assert isinstance(layer, Layer)
-
-    if not isinstance(inputs, (list, tuple)):
-        inputs = [inputs]
-
-    tracer = _dygraph_tracer()._get_program_desc_tracer()
-
-    var_list = extract_vars(inputs)
-
-    with program_desc_tracing_guard(True):
-        original_outputs = layer(*inputs)
-        if not isinstance(original_outputs, (list, tuple)):
-            outputs = [original_outputs]
+def set_dynamic_shape(variable, shape_list):
+    if paddle.base.dygraph.base.in_to_static_mode():
+        if isinstance(variable, paddle.base.framework.Variable):
+            variable.desc.set_shape(shape_list)
+        elif isinstance(variable, paddle.pir.Value):
+            variable.set_shape(shape_list)
         else:
-            outputs = original_outputs
-        out_vars = extract_vars(outputs, err_tag='outputs')
-
-        (
-            program_desc,
-            feed_names,
-            fetch_names,
-            parameters,
-        ) = tracer.create_program_desc(
-            var_list, feed_prefix, out_vars, fetch_prefix, tmp_prefix
-        )
-        tracer.reset()
-
-    with _dygraph_guard(None):
-        program = create_program_from_desc(program_desc)
-
-    return original_outputs, program, feed_names, fetch_names, parameters
-
-
-class TracedLayer:
-    """
-    :api_attr: imperative
-
-    TracedLayer is used to convert a forward dygraph model to a static
-    graph model. This is mainly used to save the dygraph model for online
-    inference using C++. Besides, users can also do inference in Python
-    using the converted static graph model, which usually has better
-    performance than the original dygraph model.
-
-    TracedLayer would run the static graph model using :code:`Executor`
-    and :code:`CompiledProgram` . The static graph model would share
-    parameters with the dygraph model.
-
-    All TracedLayer objects should not be created by constructor and should
-    be created by static method :code:`TracedLayer.trace(layer, inputs)` .
-
-    The TracedLayer can only be used to convert the data-independent dygraph
-    model into the static graph model, which means the dygraph model should
-    be independent with the tensor data and shape.
-    """
-
-    def __init__(self, program, parameters, feed_names, fetch_names):
-        self._program = program
-        self._feed_names = feed_names
-        self._fetch_names = fetch_names
-        self._params = parameters
-
-        self._place = _current_expected_place()
-
-        self._scope = core.Scope()
-        for p in parameters:
-            src_tensor = p.value().get_tensor()
-            dst_tensor = self._scope.var(p.name).get_tensor()
-            dst_tensor._share_data_with(src_tensor)
-
-        self._exe = Executor(self._place)
-        self._compiled_program = None
-        self._build_strategy = None
-        self._exec_strategy = None
-
-    @property
-    def program(self):
-        return self._program
-
-    def _switch(self, is_test=True):
-        for block_id in range(self._program.num_blocks):
-            block = self._program.block(block_id)
-            for op in block.ops:
-                if op.has_attr("is_test"):
-                    op._set_attr("is_test", is_test)
-
-    @staticmethod
-    @dygraph_only
-    def trace(layer, inputs):
-        """
-        This method is the only allowed method to create TracedLayer object.
-        It would call the :code:`layer(*inputs)` method to run the dygraph
-        model and convert it into a static graph model.
-
-        Args:
-            layer (paddle.nn.Layer): the layer object to be traced.
-            inputs (list(Tensor)|tuple(Tensor)|Tensor): the input tensors of
-                the layer object.
-
-        Returns:
-            tuple: A tuple of 2 items, whose the first item is the output of
-                :code:`layer(*inputs)` , and the second item is the created
-                TracedLayer object.
-
-        Examples:
-            .. code-block:: python
-
-                >>> import paddle
-
-                >>> class ExampleLayer(paddle.nn.Layer):
-                ...     def __init__(self):
-                ...         super().__init__()
-                ...         self._fc = paddle.nn.Linear(3, 10)
-                ...
-                ...     def forward(self, input):
-                ...         return self._fc(input)
-
-
-                >>> layer = ExampleLayer()
-                >>> in_var = paddle.uniform(shape=[2, 3], dtype='float32')
-                >>> out_dygraph, static_layer = paddle.jit.api.TracedLayer.trace(layer, inputs=[in_var])
-
-                >>> # run the static graph model using Executor inside
-                >>> out_static_graph = static_layer([in_var])
-
-                >>> print(len(out_static_graph)) # 1
-                >>> print(out_static_graph[0].shape) # (2, 10)
-
-                >>> # save the static graph model for inference
-                >>> static_layer.save_inference_model('./saved_infer_model')
-
-        """
-        assert isinstance(
-            layer, Layer
-        ), "The type of 'layer' in paddle.jit.api.TracedLayer.trace must be paddle.nn.Layer, but received {}.".format(
-            type(layer)
-        )
-        outs, prog, feed, fetch, parameters = _trace(layer, inputs)
-        traced = TracedLayer(prog, parameters, feed, fetch)
-        return outs, traced
-
-    def set_strategy(self, build_strategy=None, exec_strategy=None):
-        """
-        Set the strategies when running static graph model.
-
-        Args:
-            build_strategy (BuildStrategy, optional): build strategy of
-                :code:`CompiledProgram` inside TracedLayer. Default None.
-            exec_strategy (ExecutionStrategy, optional): execution strategy of
-                :code:`CompiledProgram` inside TracedLayer. Default None.
-
-        Returns:
-            None
-
-        Examples:
-            .. code-block:: python
-
-                >>> import paddle
-
-                >>> class ExampleLayer(paddle.nn.Layer):
-                ...     def __init__(self):
-                ...         super().__init__()
-                ...         self._fc = paddle.nn.Linear(3, 10)
-                ...
-                ...     def forward(self, input):
-                ...         return self._fc(input)
-
-                >>> layer = ExampleLayer()
-                >>> in_var = paddle.uniform(shape=[2, 3], dtype='float32')
-
-                >>> out_dygraph, static_layer = paddle.jit.api.TracedLayer.trace(layer, inputs=[in_var])
-
-                >>> build_strategy = paddle.static.BuildStrategy()
-                >>> build_strategy.enable_inplace = True
-
-                >>> exec_strategy = paddle.static.ExecutionStrategy()
-                >>> exec_strategy.num_threads = 2
-
-                >>> static_layer.set_strategy(build_strategy=build_strategy, exec_strategy=exec_strategy)
-                >>> out_static_graph = static_layer([in_var])
-
-        """
-        assert self._compiled_program is None, "Cannot set strategy after run"
-        assert isinstance(
-            build_strategy, (type(None), BuildStrategy)
-        ), "The type of 'build_strategy' in paddle.jit.api.TracedLayer.set_strategy must be base.BuildStrategy, but received {}.".format(
-            type(build_strategy)
-        )
-        assert isinstance(
-            exec_strategy, (type(None), ExecutionStrategy)
-        ), "The type of 'exec_strategy' in paddle.jit.api.TracedLayer.set_strategy must be base.ExecutionStrategy, but received {}.".format(
-            type(exec_strategy)
-        )
-        self._build_strategy = build_strategy
-        self._exec_strategy = exec_strategy
-
-    @switch_to_static_graph
-    def _compile(self):
-        self._compiled_program = CompiledProgram(
-            self._program,
-            build_strategy=self._build_strategy,
-        )
-
-    def _build_feed(self, inputs):
-        assert isinstance(
-            inputs, (list, tuple)
-        ), "Inputs should be a list or tuple of variables"
-        assert len(inputs) == len(self._feed_names)
-        feed_dict = {}
-        if in_dynamic_mode():
-            for x, name in zip(inputs, self._feed_names):
-                feed_dict[name] = x.value().get_tensor()
-        else:
-            for x, name in zip(inputs, self._feed_names):
-                feed_dict[name] = x
-
-        return feed_dict
-
-    @switch_to_static_graph
-    def _run(self, feed):
-        return self._exe.run(
-            self._compiled_program, feed=feed, fetch_list=self._fetch_names
-        )
-
-    def __call__(self, inputs):
-        with scope_guard(self._scope):
-            if self._compiled_program is None:
-                self._compile()
-
-            return self._run(self._build_feed(inputs))
-
-    @switch_to_static_graph
-    def save_inference_model(self, path, feed=None, fetch=None, **kwargs):
-        """
-        Save the TracedLayer to a model for inference. The saved
-        inference model can be loaded by C++ inference APIs.
-
-        ``path`` is the prefix of saved objects, and the saved translated program file
-        suffix is ``.pdmodel`` , the saved persistable variables file suffix is ``.pdiparams`` .
-
-        Args:
-            path(str): The path prefix to save model. The format is ``dirname/file_prefix`` or ``file_prefix``.
-            feed (list[int], optional): the input variable indices of the saved
-                inference model. If None, all input variables of the
-                TracedLayer object would be the inputs of the saved inference
-                model. Default None.
-            fetch (list[int], optional): the output variable indices of the
-                saved inference model. If None, all output variables of the
-                TracedLayer object would be the outputs of the saved inference
-                model. Default None.
-            kwargs: Supported keys including
-                - clip_extra(bool): whether to clip extra information for every operator. Defaults to True.
-                - legacy_format(bool): whether to save program in legacy format. Default to False.
-
-        Returns:
-            None
-
-        Examples:
-            .. code-block:: python
-
-                >>> import numpy as np
-                >>> import paddle
-
-                >>> class ExampleLayer(paddle.nn.Layer):
-                ...     def __init__(self):
-                ...         super().__init__()
-                ...         self._fc = paddle.nn.Linear(3, 10)
-                ...
-                ...     def forward(self, input):
-                ...         return self._fc(input)
-
-                >>> save_dirname = './saved_infer_model'
-                >>> in_np = np.random.random([2, 3]).astype('float32')
-                >>> in_var = paddle.to_tensor(in_np)
-                >>> layer = ExampleLayer()
-
-                >>> out_dygraph, static_layer = paddle.jit.api.TracedLayer.trace(layer, inputs=[in_var])
-                >>> static_layer.save_inference_model(save_dirname, feed=[0], fetch=[0])
-
-                >>> paddle.enable_static()
-                >>> place = paddle.CPUPlace()
-                >>> exe = paddle.static.Executor(place)
-                >>> program, feed_vars, fetch_vars = paddle.static.load_inference_model(
-                ...     save_dirname,
-                ...     exe
-                ... )
-
-                >>> fetch, = exe.run(program, feed={feed_vars[0]: in_np}, fetch_list=fetch_vars)
-                >>> print(fetch.shape)
-                [2, 10]
-        """
-        check_type(
-            path,
-            "path",
-            str,
-            "paddle.jit.api.TracedLayer.save_inference_model",
-        )
-        check_type(
-            feed,
-            "feed",
-            (type(None), list),
-            "paddle.jit.api.TracedLayer.save_inference_model",
-        )
-        if isinstance(feed, list):
-            for f in feed:
-                check_type(
-                    f,
-                    "each element of feed",
-                    int,
-                    "paddle.jit.api.TracedLayer.save_inference_model",
-                )
-        check_type(
-            fetch,
-            "fetch",
-            (type(None), list),
-            "paddle.jit.api.TracedLayer.save_inference_model",
-        )
-        if isinstance(fetch, list):
-            for f in fetch:
-                check_type(
-                    f,
-                    "each element of fetch",
-                    int,
-                    "paddle.jit.api.TracedLayer.save_inference_model",
-                )
-        clip_extra = kwargs.get('clip_extra', True)
-        # path check
-        file_prefix = os.path.basename(path)
-        if file_prefix == "":
-            raise ValueError(
-                "The input path MUST be format of dirname/file_prefix "
-                "[dirname\\file_prefix in Windows system], but received "
-                "file_prefix is empty string."
+            raise TypeError(
+                "In to_static mode, variable must be a Variable or Value"
             )
-
-        dirname = os.path.dirname(path)
-        if dirname and not os.path.exists(dirname):
-            os.makedirs(dirname)
-
-        def get_feed_fetch(all_vars, partial_vars):
-            if partial_vars is None:
-                return all_vars
-
-            return [all_vars[idx] for idx in partial_vars]
-
-        with scope_guard(self._scope):
-            feeded_var_names = get_feed_fetch(self._feed_names, feed)
-            target_var_names = get_feed_fetch(self._fetch_names, fetch)
-            feed_vars = []
-            for name in feeded_var_names:
-                feed_var = self._program.global_block().vars.get(name, None)
-                assert feed_var is not None, f"{name} cannot be found"
-                feed_vars.append(feed_var)
-            target_vars = []
-            for name in target_var_names:
-                target_var = self._program.global_block().vars.get(name, None)
-                assert target_var is not None, f"{name} cannot be found"
-                target_vars.append(target_var)
-            legacy_format = kwargs.get('legacy_format', False)
-            file_prefix = os.path.join(dirname, file_prefix)
-            save_inference_model(
-                path_prefix=file_prefix,
-                feed_vars=feed_vars,
-                fetch_vars=target_vars,
-                executor=self._exe,
-                program=self._program.clone(),
-                clip_extra=clip_extra,
-                legacy_format=legacy_format,
-            )
+    else:
+        # in dygraph mode, dynamic shape is not needed, just do nothing.
+        return
 
 
 def get_ast_static_function(function):

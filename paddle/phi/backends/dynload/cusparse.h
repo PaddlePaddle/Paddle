@@ -19,7 +19,7 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
 
 namespace phi {
 namespace dynload {
@@ -42,26 +42,33 @@ extern void *cusparse_dso_handle;
 
 #if defined(PADDLE_WITH_CUDA)
 #if CUDA_VERSION >= 11000
-#define CUSPARSE_ROUTINE_EACH(__macro) \
-  __macro(cusparseCreate);             \
-  __macro(cusparseSetStream);          \
-  __macro(cusparseCreateMatDescr);     \
-  __macro(cusparseDestroy);            \
-  __macro(cusparseSnnz);               \
-  __macro(cusparseDnnz);               \
-  __macro(cusparseSetMatType);         \
-  __macro(cusparseSetMatIndexBase);    \
-  __macro(cusparseCreateCsr);          \
-  __macro(cusparseCreateCoo);          \
-  __macro(cusparseCreateDnMat);        \
-  __macro(cusparseCreateDnVec);        \
-  __macro(cusparseSpMM_bufferSize);    \
-  __macro(cusparseSpMM);               \
-  __macro(cusparseDestroySpMat);       \
-  __macro(cusparseDestroyDnMat);       \
-  __macro(cusparseDestroyDnVec);       \
-  __macro(cusparseSpMV_bufferSize);    \
-  __macro(cusparseSpMV);
+#define CUSPARSE_ROUTINE_EACH(__macro)    \
+  __macro(cusparseCreate);                \
+  __macro(cusparseSetStream);             \
+  __macro(cusparseCreateMatDescr);        \
+  __macro(cusparseDestroy);               \
+  __macro(cusparseSnnz);                  \
+  __macro(cusparseDnnz);                  \
+  __macro(cusparseSetMatType);            \
+  __macro(cusparseSetMatIndexBase);       \
+  __macro(cusparseCreateCsr);             \
+  __macro(cusparseCreateCoo);             \
+  __macro(cusparseCreateDnMat);           \
+  __macro(cusparseCreateDnVec);           \
+  __macro(cusparseSpMM_bufferSize);       \
+  __macro(cusparseSpMM);                  \
+  __macro(cusparseDestroySpMat);          \
+  __macro(cusparseDestroyDnMat);          \
+  __macro(cusparseDestroyDnVec);          \
+  __macro(cusparseSpMV_bufferSize);       \
+  __macro(cusparseSpMV);                  \
+  __macro(cusparseSpMatGetSize);          \
+  __macro(cusparseCsrSetPointers);        \
+  __macro(cusparseSpGEMM_createDescr);    \
+  __macro(cusparseSpGEMM_compute);        \
+  __macro(cusparseSpGEMM_workEstimation); \
+  __macro(cusparseSpGEMM_copy);           \
+  __macro(cusparseSpGEMM_destroyDescr);
 
 CUSPARSE_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP)
 #endif

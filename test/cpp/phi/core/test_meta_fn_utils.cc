@@ -24,7 +24,7 @@ namespace tests {
 
 TEST(MetaFnFactory, InferMetaFnExists) {
   phi::DenseTensor dense_x;
-  dense_x.Resize(phi::make_ddim({3, 4}));
+  dense_x.Resize(common::make_ddim({3, 4}));
 
   phi::MetaTensor meta_x(&dense_x);
   phi::DenseTensor dense_out1;

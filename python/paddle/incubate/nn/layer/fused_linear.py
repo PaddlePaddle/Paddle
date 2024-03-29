@@ -50,8 +50,8 @@ class FusedLinear(Layer):
         **bias** (Parameter): the learnable bias of this layer.
 
     Shape:
-        - input: Multi-dimentional tensor with shape :math:`[batch\_size, *, in\_features]` .
-        - output: Multi-dimentional tensor with shape :math:`[batch\_size, *, out\_features]` .
+        - input: Multi-dimensional tensor with shape :math:`[batch\_size, *, in\_features]` .
+        - output: Multi-dimensional tensor with shape :math:`[batch\_size, *, out\_features]` .
 
     Examples:
         .. code-block:: python

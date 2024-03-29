@@ -39,8 +39,8 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
 
   auto reduce_dims = dims_arr.GetData();
 
-  std::vector<int> xdims = vectorize<int>(x.dims());
-  std::vector<int> ydims = vectorize<int>(out_grad.dims());
+  std::vector<int> xdims = common::vectorize<int>(x.dims());
+  std::vector<int> ydims = common::vectorize<int>(out_grad.dims());
 
   int reduce_numel = 1;
   if (reduce_all) {
@@ -84,5 +84,9 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    mean_grad, XPU, ALL_LAYOUT, phi::ReduceMeanGradKernel, float) {}
+PD_REGISTER_KERNEL(mean_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::ReduceMeanGradKernel,
+                   float,
+                   phi::dtype::float16) {}

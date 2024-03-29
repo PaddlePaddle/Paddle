@@ -18,12 +18,21 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/fluid/platform/event.h"
+#include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/utils/rw_lock.h"
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
+#endif
 
 #define SCOPE_VARS_READER_LOCK AutoRDLock auto_lock(&vars_lock_);
 #define SCOPE_VARS_WRITER_LOCK AutoWRLock auto_lock(&vars_lock_);
@@ -32,6 +41,8 @@ namespace paddle {
 namespace framework {
 
 using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
+
+using HookFunc = std::function<void(OperatorBase*, Scope*)>;
 
 using SchedulingPriority = int64_t;
 
@@ -52,7 +63,7 @@ struct OpKernelFunc {
 struct VariableMetaInfo {
   int var_ref_count_{0};
   framework::VarDesc* var_desc_{nullptr};
-  bool sikp_inplace_{false};
+  bool skip_inplace_{false};
 
   VariableMetaInfo() {}
   VariableMetaInfo(int var_ref_count, framework::VarDesc* var_desc)
@@ -71,7 +82,7 @@ class VariableScope {
 
   void SetLocalScope(Scope* local_scope);
 
-  ~VariableScope();
+  ~VariableScope() = default;
 
   // Get variable id by name, return -1 if not found
   int GetIdByName(const std::string& name) const;
@@ -116,9 +127,9 @@ class VariableScope {
 
   std::vector<Variable*>& MutableVarList() { return var_list_; }
 
-  void SetVarSikpInplace(const std::string& name, bool skip);
+  void SetVarSkipInplace(const std::string& name, bool skip);
 
-  bool GetVarSikpInplace(int id) const;
+  bool GetVarSkipInplace(int id) const;
 
  private:
   // not owned, better remove it since all vars should be
@@ -262,15 +273,19 @@ class Instruction {
   const std::vector<size_t>& GCCheckVars() const;
 
   void ResetContext(const VariableValueMap& in_vars,
-                    const VariableValueMap& out_vars);
+                    const VariableValueMap& out_vars,
+                    const std::string& op_name);
 
   void ResetContextWithScope(const VariableValueMap& in_vars,
                              const VariableValueMap& out_vars,
-                             const framework::Scope& scope);
+                             const framework::Scope& scope,
+                             const std::string& op_name);
 
   std::shared_ptr<RuntimeContext> InnerRuntimeContext() const;
 
   std::shared_ptr<RuntimeInferShapeContext> InnerInferShapeContext() const;
+
+  const phi::InferMetaContext* InnerCompatInferMetaContext() const;
 
   std::shared_ptr<ExecutionContext> InnerExecutionContext() const;
 
@@ -290,6 +305,15 @@ class Instruction {
 
   const OpFuncNode* OpFunc() const { return &op_func_node_; }
 
+  // record stream for gc
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  bool need_record_stream_for_gc_ = false;
+  gpuStream_t stream_{nullptr};
+  void UpdateRecordStreamForGcInfo();
+#endif
+
+  bool can_use_infermeta_ctx_ = false;
+
  private:
   bool is_artificial_;  // Instruction is artificial means that it is only used
                         // to assist scheduling and no need to be executed.
@@ -307,6 +331,7 @@ class Instruction {
 
   std::shared_ptr<RuntimeContext> runtime_ctx_;
   std::shared_ptr<RuntimeInferShapeContext> infershape_ctx_;
+  paddle::framework::CompatInferMetaContext compat_infermeta_ctx_;
   std::shared_ptr<ExecutionContext> execution_ctx_;
 
   std::vector<size_t> gc_check_vars_;
@@ -323,7 +348,7 @@ static constexpr char kFetchVarName[] = "fetch";
 
 // static_ref_ is the numer of last live ops calculated to statically after
 // `build` the Instructions. dynamic_ref_  is the runtime version ref which will
-// be decreased by one dynamiclly after the execution of an op (in last ops
+// be decreased by one dynamically after the execution of an op (in last ops
 // list). var_ is the related variable
 
 // The dynamic_ref_ is initialized to static_ref_ first, and is decreased to 1
@@ -354,7 +379,7 @@ class VarRefInfo {
 
 // static_dep_ is the numer of dependencies (ops that must run before it) of
 // each op which is calculated to statically. static_dep_  is the runtime
-// version dep which will be decreased by one dynamiclly after the execution of
+// version dep which will be decreased by one dynamically after the execution of
 // one dependency op.
 
 // The dynamic_dep_ is initialized to static_dep_ first, and is decreased to 1

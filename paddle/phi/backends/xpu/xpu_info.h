@@ -71,17 +71,22 @@ void MemcpySyncD2D(void *dst,
 
 class XPUDeviceGuard {
  public:
-  explicit inline XPUDeviceGuard(int dev_id) {
-    int prev_id = GetXPUCurrentDeviceId();
-    if (prev_id != dev_id) {
-      prev_id_ = prev_id;
-      SetXPUDeviceId(dev_id);
-    }
-  }
+  explicit XPUDeviceGuard(int dev_id) { SetDeviceIndex(dev_id); }
+
+  explicit XPUDeviceGuard(const XPUPlace &place)
+      : XPUDeviceGuard(place.device) {}
 
   inline ~XPUDeviceGuard() {
     if (prev_id_ != -1) {
       SetXPUDeviceId(prev_id_);
+    }
+  }
+
+  inline void SetDeviceIndex(const int dev_id) {
+    int prev_id = GetXPUCurrentDeviceId();
+    if (prev_id != dev_id) {
+      prev_id_ = prev_id;
+      SetXPUDeviceId(dev_id);
     }
   }
 

@@ -25,8 +25,8 @@ using framework::NodeData;
 using framework::OpPatternKind;
 using framework::shape_t;
 
-using common::GraphEdge;
-using common::GraphNode;
+using cinn::common::GraphEdge;
+using cinn::common::GraphNode;
 
 using GroupPtr = std::shared_ptr<Graph::Group>;
 using GroupList = std::vector<GroupPtr>;
@@ -361,7 +361,7 @@ class OpFusionPassHelper : public FusionHelperBase {
   struct FusionRelation {
     // producer -> consumer
     std::unordered_set<framework::OpPatternKind> op_kind = {};
-    // producer -> fusion sonsumer
+    // producer -> fusion consumer
     std::unordered_map<framework::OpPatternKind, ConditionFunction>
         fusion_op_kind = {};
   };

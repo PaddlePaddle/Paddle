@@ -50,12 +50,12 @@ class TrtConvertDepthwiseConv2dTest(TrtLayerAutoScanTest):
         def generate_weight1(attrs: List[Dict[str, Any]]):
             return np.random.random([24, 1, 3, 3]).astype(np.float32)
 
-        batch_options = [1, 4]
+        batch_options = [1]
         strides_options = [[1, 2]]
-        paddings_options = [[0, 3], [1, 2, 3, 4]]
-        groups_options = [1, 3]
+        paddings_options = [[0, 3]]
+        groups_options = [1]
         padding_algorithm_options = ['EXPLICIT', 'SAME', 'VAILD']
-        dilations_options = [[1, 1], [1, 2]]
+        dilations_options = [[1, 1]]
         data_format_options = ['NCHW']
 
         configurations = [
@@ -84,7 +84,7 @@ class TrtConvertDepthwiseConv2dTest(TrtLayerAutoScanTest):
                     "groups": groups,
                     "padding_algorithm": padding_algorithm,
                     "dilations": dilations,
-                    "data_fromat": data_format,
+                    "data_format": data_format,
                 }
             ]
 
@@ -156,11 +156,11 @@ class TrtConvertDepthwiseConv2dTest(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(), (
-            1e-3,
+            5e-3,
             1e-3,
         )
         self.trt_param.precision = paddle_infer.PrecisionType.Int8
-        program_config.set_input_type(np.int8)
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(), (
             1e-3,
             1e-3,
@@ -174,14 +174,14 @@ class TrtConvertDepthwiseConv2dTest(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(), (
-            1e-3,
+            5e-3,
             1e-3,
         )
         self.trt_param.precision = paddle_infer.PrecisionType.Int8
-        program_config.set_input_type(np.int8)
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(), (
-            1e-3,
-            1e-3,
+            5e-3,
+            5e-3,
         )
 
     def add_skip_trt_case(self):

@@ -56,28 +56,11 @@ repos:
     hooks:
     -   id: black
         files: (.*\.(py|pyi|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
--   repo: https://github.com/pycqa/isort
-    rev: 5.11.5
-    hooks:
-    -   id: isort
--   repo: https://github.com/PyCQA/flake8
-    rev: 5.0.4
-    hooks:
-    -   id: flake8
-        args: ["--config=.flake8"]
 -   repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.0.289
+    rev: v0.3.0
     hooks:
     -   id: ruff
         args: [--fix, --exit-non-zero-on-fix, --no-cache]
--   repo: local
-    hooks:
-    -   id: pylint-doc-string
-        name: pylint
-        description: Check python docstring style using docstring_checker.
-        entry: bash ./tools/codestyle/pylint_pre_commit.hook
-        language: system
-        files: \.(py)$
 # For C++ files
 -   repo: local
     hooks:
@@ -155,8 +138,18 @@ repos:
             (?x)^(
                 paddle/fluid/operators/CMakeLists.txt
             )$
--   repo: https://github.com/cmake-lint/cmake-lint
-    rev: 1.4.2
+-   repo: https://github.com/PFCCLab/cmake-lint-paddle
+    rev: v1.5.1
     hooks:
     -   id: cmakelint
         args: [--config=./tools/codestyle/.cmakelintrc]
+# Others
+-   repo: local
+    hooks:
+    -   id: sort-txt-file
+        name: sort-txt-file
+        description: Sorts each line string in a text file
+        entry: python ./tools/codestyle/sort_txt_file.py
+        language: python
+        files: test/white_list/pir_op_test_white_list
+        args: []

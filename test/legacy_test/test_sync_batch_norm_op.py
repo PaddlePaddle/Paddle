@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-test for sync bachnorm op.
+test for sync batchnorm op.
 for both FP64 and FP16 input.
 """
 
@@ -30,8 +30,9 @@ from op_test import OpTest, _set_use_system_allocator, convert_float_to_uint16
 
 import paddle
 from paddle import base, nn
-from paddle.base import Program, core, program_guard
+from paddle.base import core
 from paddle.base.framework import in_dygraph_mode
+from paddle.pir_utils import test_with_pir_api
 
 _set_use_system_allocator(True)
 
@@ -364,7 +365,9 @@ class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
             return
 
         cleanup = enable_static()
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             my_sync_batch_norm = paddle.nn.SyncBatchNorm(10)
             x1 = base.create_lod_tensor(
                 np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], base.CUDAPlace(0)
@@ -382,11 +385,14 @@ class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
 
 
 class TestConvertSyncBatchNorm(unittest.TestCase):
+    @test_with_pir_api
     def test_convert(self):
         if not core.is_compiled_with_cuda():
             return
 
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             compare_model = paddle.nn.Sequential(
                 paddle.nn.Conv2D(3, 5, 3),
                 paddle.nn.BatchNorm2D(5),
@@ -410,6 +416,7 @@ class TestConvertSyncBatchNorm(unittest.TestCase):
 
 
 class TestConvertSyncBatchNormCast1(unittest.TestCase):
+    @test_with_pir_api
     def test_convert(self):
         if not core.is_compiled_with_cuda():
             return

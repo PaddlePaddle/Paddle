@@ -150,8 +150,10 @@ PD_REGISTER_KERNEL(equal_all,
                      ALL_LAYOUT,                          \
                      phi::func##Kernel,                   \
                      bool,                                \
-                     int16_t,                             \
                      int,                                 \
+                     uint8_t,                             \
+                     int8_t,                              \
+                     int16_t,                             \
                      int64_t,                             \
                      float,                               \
                      double,                              \

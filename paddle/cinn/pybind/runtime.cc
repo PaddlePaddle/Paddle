@@ -76,9 +76,9 @@ cinn_buffer_t *CreateBufferFromNumpy(py::array data,
 
 cinn_buffer_t *CreateBufferFromNumpy(
     py::array data,
-    common::Target target = common::DefaultHostTarget(),
+    cinn::common::Target target = cinn::common::DefaultHostTarget(),
     int align = 0) {
-  if (target == common::DefaultHostTarget()) {
+  if (target == cinn::common::DefaultHostTarget()) {
     return CreateBufferFromNumpy(data, cinn_x86_device);
   } else if (target.arch == Target::Arch::NVGPU) {
 #ifdef CINN_WITH_CUDA
@@ -92,7 +92,8 @@ cinn_buffer_t *CreateBufferFromNumpy(
         buffer->memory, data.data(), data.nbytes(), cudaMemcpyHostToDevice));
     return buffer;
 #else
-    LOG(FATAL) << "To use CUDA backends, you need to set WITH_CUDA ON!";
+    PADDLE_THROW(phi::errors::Fatal(
+        "To use CUDA backends, you need to set WITH_CUDA ON!"));
 #endif
   } else {
     CINN_NOT_IMPLEMENTED
@@ -108,7 +109,8 @@ void BufferCopyTo(const cinn_buffer_t &buffer, py::array array) {
     CUDA_CALL(cudaMemcpy(
         array_data, buffer.memory, array.nbytes(), cudaMemcpyDeviceToHost));
 #else
-    LOG(FATAL) << "To use CUDA backends, you need to set WITH_CUDA ON!";
+    PADDLE_THROW(phi::errors::Fatal(
+        "To use CUDA backends, you need to set WITH_CUDA ON!"));
 #endif
 
   } else {
@@ -135,7 +137,7 @@ py::array BufferHostMemoryToNumpy(cinn_buffer_t &buffer) {  // NOLINT
   } else if (buffer.type == cinn_bool_t()) {
     dt = py::dtype::of<bool>();
   } else {
-    LOG(FATAL) << "Not supported type found";
+    PADDLE_THROW(phi::errors::InvalidArgument("Not supported type found"));
   }
 
   py::array::ShapeContainer shape(buffer.dims, buffer.dims + buffer.dimensions);
@@ -276,7 +278,7 @@ void BindCinnRuntime(py::module *m) {
            arg("data"),
            arg("device"),
            arg("align") = 0)
-      .def(py::init(py::overload_cast<py::array, common::Target, int>(
+      .def(py::init(py::overload_cast<py::array, cinn::common::Target, int>(
                &CreateBufferFromNumpy)),
            arg("data"),
            arg("target"),

@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
-#include "paddle/phi/core/macros.h"
 namespace phi {
 namespace funcs {
 

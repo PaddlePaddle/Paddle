@@ -13,20 +13,16 @@
 # limitations under the License.
 
 import inspect
-import sys
 import unittest
 
-from dygraph_to_static_utils_new import Dy2StTestBase
-
-from paddle.jit.api import to_static
+import paddle
 from paddle.jit.dy2static import DygraphToStaticAst
 from paddle.jit.dy2static.origin_info import (
-    ORIGI_INFO,
+    ORIGIN_INFO,
     Location,
     OriginInfo,
     attach_origin_info,
     create_and_update_origin_info_map,
-    unwrap,
 )
 from paddle.jit.dy2static.utils import ast_to_func
 from paddle.utils import gast
@@ -45,21 +41,21 @@ def nested_func(x):
     return result
 
 
-@to_static
+@paddle.jit.to_static
 def decorated_func(x):
     return x
 
 
-@to_static
-@to_static
+@paddle.jit.to_static
+@paddle.jit.to_static
 def decorated_func2(x):
     return x
 
 
-class TestOriginInfo(Dy2StTestBase):
+class TestOriginInfo(unittest.TestCase):
     def setUp(self):
         self.set_test_func()
-        self.dygraph_func = unwrap(self.func)
+        self.dygraph_func = inspect.unwrap(self.func)
         self.dygraph_filepath = inspect.getfile(self.dygraph_func)
         self.source_code = inspect.getsource(self.dygraph_func)
         lines, self.start_lineno = inspect.getsourcelines(self.dygraph_func)
@@ -68,14 +64,13 @@ class TestOriginInfo(Dy2StTestBase):
             line for line in lines if line != ""
         ]  # Delete empty lines
 
-        self.set_static_lineno()
         self.set_dygraph_info()
 
     def set_test_func(self):
         self.func = simple_func
 
     def set_static_lineno(self):
-        self.static_abs_lineno_list = [9, 11, 12]
+        self.static_abs_lineno_list = [9, 12, 13]
 
     def set_dygraph_info(self):
         self.line_num = 3
@@ -144,7 +139,7 @@ class TestOriginInfo(Dy2StTestBase):
 
         for i in range(self.line_num):
             node = self.transformed_node_list[i]
-            origin_info = getattr(node, ORIGI_INFO)
+            origin_info = getattr(node, ORIGIN_INFO)
             dy_rel_lineno = self.dy_rel_lineno_list[i]
             dy_abs_lineno = start_lineno + dy_rel_lineno
             dy_col_offset = self.dy_abs_col_offset[i]
@@ -163,7 +158,7 @@ class TestOriginInfoWithNestedFunc(TestOriginInfo):
         self.func = nested_func
 
     def set_static_lineno(self):
-        self.static_abs_lineno_list = [9, 12, 14, 16, 17]
+        self.static_abs_lineno_list = [9, 13, 16, 18, 19]
 
     def set_dygraph_info(self):
         self.line_num = 5
@@ -192,24 +187,12 @@ class TestOriginInfoWithDecoratedFunc(TestOriginInfo):
         self.func = decorated_func
 
     def set_static_lineno(self):
-        self.static_abs_lineno_list = [9, 11]
+        self.static_abs_lineno_list = [9, 12]
 
     def set_dygraph_info(self):
         self.line_num = 2
-
-        # NOTE(liym27):
-        #   There are differences in ast_node.lineno between PY3.8+ and PY3.8-.
-        #   If the first gast.FunctionDef has decorator, the lineno of gast.FunctionDef is differs.
-        #       1. < PY3.8
-        #           its lineno equals to the lineno of the first decorator node, which is not right.
-        #       2. >= PY3.8
-        #           its lineno is the actual lineno, which is right.
-        if sys.version_info >= (3, 8):
-            self.line_index_list = [1, 2]
-            self.dy_rel_lineno_list = [1, 2]
-        else:
-            self.line_index_list = [0, 2]
-            self.dy_rel_lineno_list = [0, 2]
+        self.line_index_list = [1, 2]
+        self.dy_rel_lineno_list = [1, 2]
         self.dy_abs_col_offset = [0, 4]
         self.dy_func_name = [self.dygraph_func.__name__] * self.line_num
 
@@ -226,17 +209,12 @@ class TestOriginInfoWithDecoratedFunc2(TestOriginInfo):
         self.func = decorated_func2
 
     def set_static_lineno(self):
-        self.static_abs_lineno_list = [9, 11]
+        self.static_abs_lineno_list = [9, 12]
 
     def set_dygraph_info(self):
         self.line_num = 2
-
-        if sys.version_info >= (3, 8):
-            self.line_index_list = [2, 3]
-            self.dy_rel_lineno_list = [2, 3]
-        else:
-            self.line_index_list = [0, 3]
-            self.dy_rel_lineno_list = [0, 3]
+        self.line_index_list = [2, 3]
+        self.dy_rel_lineno_list = [2, 3]
         self.dy_abs_col_offset = [0, 4]
         self.dy_func_name = [self.dygraph_func.__name__] * self.line_num
 

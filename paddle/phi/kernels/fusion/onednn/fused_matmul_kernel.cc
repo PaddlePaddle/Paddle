@@ -52,9 +52,9 @@ class FusedMatmulOneDNNHandler
     std::vector<int64_t> x_dims(x_org_dims);
     std::vector<int64_t> y_dims(y_org_dims);
 
-    const int MB_idx = x_dims.size() - 3;
-    const int H_idx = x_dims.size() - 2;
-    const int W_idx = x_dims.size() - 1;
+    const int MB_idx = static_cast<int>(x_dims.size()) - 3;
+    const int H_idx = static_cast<int>(x_dims.size()) - 2;
+    const int W_idx = static_cast<int>(x_dims.size()) - 1;
 
     if (trans_x) std::swap(x_dims[H_idx], x_dims[W_idx]);
     if (trans_y) std::swap(y_dims[H_idx], y_dims[W_idx]);
@@ -96,7 +96,7 @@ class FusedMatmulOneDNNHandler
     out_ddims.insert(out_ddims.end(),
                      {std::max(x_dims[MB_idx], y_dims[MB_idx]), M, N});
 
-    for (int i = x_dims.size() - 4; i >= 0; --i) {
+    for (int i = static_cast<int>(x_dims.size()) - 4; i >= 0; --i) {
       out_ddims[i] = std::max(x_dims[i], y_dims[i]);
       if (x_strides_override.empty()) {
         x_strides[i] = x_dims[i + 1] * x_strides[i + 1];
@@ -129,23 +129,26 @@ class FusedMatmulOneDNNHandler
                                                 scale_y,
                                                 scale_in_eltwise,
                                                 scale_out,
-                                                force_fp32_output);
+                                                force_fp32_output,
+                                                out_ddims);
 
     this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
   }
 
-  dnnl::primitive_attr CreateMatmulAttrs(const OneDNNContext &dev_ctx,
-                                         const DenseTensor *residual_data,
-                                         const float matmul_alpha,
-                                         const std::string &fuse_activation,
-                                         const float fuse_alpha,
-                                         const float fuse_beta,
-                                         const float fused_output_scale,
-                                         const float scale_x,
-                                         const float scale_y,
-                                         const float scale_in_eltwise,
-                                         const float scale_out,
-                                         const bool force_fp32_output) {
+  dnnl::primitive_attr CreateMatmulAttrs(
+      const OneDNNContext &dev_ctx,
+      const DenseTensor *residual_data,
+      const float matmul_alpha,
+      const std::string &fuse_activation,
+      const float fuse_alpha,
+      const float fuse_beta,
+      const float fused_output_scale,
+      const float scale_x,
+      const float scale_y,
+      const float scale_in_eltwise,
+      const float scale_out,
+      const bool force_fp32_output,
+      const std::vector<int64_t> &out_ddims) {
     dnnl::primitive_attr matmul_attrs;
     dnnl::post_ops post_operations;
 
@@ -163,10 +166,31 @@ class FusedMatmulOneDNNHandler
     }
 
     if (residual_data) {
+      // fill 1 in the front of adesc, to make residual ndims to be same as dst
+      // dims
+      int dst_size = out_ddims.size();
+      int origin_size = residual_data->mem_desc().get_ndims();
+      auto reshaped_md = residual_data->mem_desc();
+      dnnl::memory::dims expanded_dims = residual_data->mem_desc().get_dims();
+      if (origin_size < dst_size) {
+        expanded_dims.insert(expanded_dims.begin(), dst_size - origin_size, 1);
+        reshaped_md = residual_data->mem_desc().reshape(expanded_dims);
+      }
+
       auto residual_data_tz = vectorize(residual_data->dims());
-      auto residual_data_md = memory::desc(residual_data_tz,
-                                           funcs::OneDNNGetDataType<OT>(),
-                                           dnnl::memory::format_tag::any);
+      auto chosen_memory_format = funcs::OneDNNMemoryFormat::any;
+      dnnl::memory::desc residual_data_md;
+      if (out_ddims.size() > 0 && out_ddims[0] > 1 &&
+          residual_data_tz.size() == 4 && residual_data_tz[0] == 1 &&
+          residual_data_tz[1] > 1 && residual_data_tz[2] > 1 &&
+          residual_data_tz[3] > 1) {
+        chosen_memory_format = funcs::OneDNNMemoryFormat::nchw;
+        residual_data_md = memory::desc(
+            out_ddims, funcs::OneDNNGetDataType<OT>(), chosen_memory_format);
+      } else {
+        residual_data_md = reshaped_md;
+      }
+
       post_operations.append_binary(dnnl::algorithm::binary_add,
                                     residual_data_md);
       if (scale_in_eltwise != 0.0f) {
@@ -191,6 +215,38 @@ class FusedMatmulOneDNNHandler
     const YT *input_data = input->data<YT>();
     return this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->weights_desc(), funcs::to_void_cast<YT>(input_data));
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireSrcMemoryResidual(
+      const DenseTensor *input) {
+    const XT *input_data = input->data<XT>();
+    auto residual_memory_p = this->AcquireMemoryFromPrimitive(
+        input->mem_desc(), phi::funcs::to_void_cast<XT>(input_data));
+    return residual_memory_p;
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireSrcMemoryStride(
+      const DenseTensor *input) {
+    const XT *input_data = input->data<XT>();
+    std::shared_ptr<dnnl::memory> src_mem =
+        this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc());
+    auto residual_vec = vectorize(input->dims());
+    int IC = residual_vec[1];
+    int IH = residual_vec[2];
+    int IW = residual_vec[3];
+    size_t size = this->fwd_pd_->dst_desc().get_size() / sizeof(XT);
+    XT *dst = static_cast<XT *>(src_mem->get_data_handle());
+
+#if defined(_OPENMP)
+#pragma omp parallel for
+#endif
+    for (size_t i = 0; i < size; ++i) {
+      auto mod_i =
+          static_cast<int>(i - floor(i / (IC * IH * IW)) * (IC * IH * IW));
+      // Make 1*C*H*W to N*C*H*W to avoid broadcast overhead
+      dst[i] = input_data[mod_i];
+    }
+    return src_mem;
   }
 
   std::shared_ptr<dnnl::memory> AcquireDstMemory(const OneDNNContext &dev_ctx,
@@ -263,7 +319,16 @@ void ExecuteFusedMatmul(const OneDNNContext &dev_ctx,
       {DNNL_ARG_DST, *dst_memory_p}};
 
   if (residual_data) {
-    const auto residual_data_memory_p = handler.AcquireSrcMemory(residual_data);
+    auto residual_data_vec = vectorize(residual_data->dims());
+    std::shared_ptr<dnnl::memory> residual_data_memory_p;
+    if (std::max((x_dims)[0], (y_dims)[0]) > 1 &&
+        residual_data_vec.size() == 4 && residual_data_vec[0] == 1 &&
+        residual_data_vec[1] > 1 && residual_data_vec[2] > 1 &&
+        residual_data_vec[3] > 1) {
+      residual_data_memory_p = handler.AcquireSrcMemoryStride(residual_data);
+    } else {
+      residual_data_memory_p = handler.AcquireSrcMemoryResidual(residual_data);
+    }
     matmul_args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1,
                         *residual_data_memory_p});
   }
@@ -306,10 +371,11 @@ void ExecuteFusedMatmul(const OneDNNContext &dev_ctx,
   if (is_output_fused && !funcs::is_int8<T_out>()) {
     auto permuted_md =
         dst_memory_p->get_desc().permute_axes(fused_transpose_Out);
-    out->set_mem_desc(permuted_md.reshape(vectorize<int64_t>(out->dims())));
-  } else {
     out->set_mem_desc(
-        dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims())));
+        permuted_md.reshape(common::vectorize<int64_t>(out->dims())));
+  } else {
+    out->set_mem_desc(dst_memory_p->get_desc().reshape(
+        common::vectorize<int64_t>(out->dims())));
   }
 }
 
@@ -317,9 +383,9 @@ std::vector<int64_t> GetInputShape(DDim input_dims,
                                    std::vector<int> shape,
                                    std::vector<int> axis) {
   if (!shape.empty() && !axis.empty()) {
-    return vectorize(input_dims.reshape(shape).transpose(axis));
+    return common::vectorize(input_dims.reshape(shape).transpose(axis));
   }
-  return vectorize(input_dims);
+  return common::vectorize(input_dims);
 }
 
 void CalculateMatrixDims(const std::vector<int64_t> &x_dims,
@@ -350,7 +416,7 @@ void CalculateMatrixDims(const std::vector<int64_t> &x_dims,
   }
 
   if (!is_output_fused && x_dims.size() > 2 && y_dims.size() > 2) {
-    auto out_dims = vectorize(out->dims());
+    auto out_dims = common::vectorize(out->dims());
     for (size_t i = 0; i < (*x_bd_dims).size() - 2; ++i) {
       PADDLE_ENFORCE_EQ(
           (*x_bd_dims)[i] == (*y_bd_dims)[i] || (*x_bd_dims)[i] == 1 ||
@@ -366,7 +432,7 @@ void CalculateMatrixDims(const std::vector<int64_t> &x_dims,
               (*y_bd_dims)[i]));
       (out_dims)[i] = std::max((*x_bd_dims)[i], (*y_bd_dims)[i]);
     }
-    out->Resize(make_ddim((out_dims)));
+    out->Resize(common::make_ddim((out_dims)));
   }
 }
 
@@ -425,7 +491,7 @@ void FusedMatmulKernel(const Context &dev_ctx,
   auto y_strides_override = funcs::GetInputStrides(
       "Y", y.dims(), transpose_y, fused_reshape_Y, fused_transpose_Y);
 
-  int ndims = std::max(x_dims.size(), y_dims.size());
+  int ndims = static_cast<int>(std::max(x_dims.size(), y_dims.size()));
   ndims = std::max(ndims, 3);
 
   std::vector<int64_t> x_bd_dims(ndims, 1);

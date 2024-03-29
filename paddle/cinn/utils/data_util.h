@@ -38,18 +38,18 @@ namespace cinn {
  * [low, high).
  */
 void SetRandInt(hlir::framework::Tensor tensor,
-                const common::Target& target,
+                const cinn::common::Target& target,
                 int seed = -1,
                 int low = 0,
                 int high = 11);
 
 template <typename T>
 void SetRandData(hlir::framework::Tensor tensor,
-                 const common::Target& target,
+                 const cinn::common::Target& target,
                  int seed = -1);
 
 template <typename T>
 std::vector<T> GetTensorData(const hlir::framework::Tensor& tensor,
-                             const common::Target& target);
+                             const cinn::common::Target& target);
 
 }  // namespace cinn

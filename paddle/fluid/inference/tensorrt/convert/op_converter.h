@@ -70,7 +70,7 @@ class OpConverter {
                             1UL,
                             platform::errors::InvalidArgument(
                                 "The input op's Input(\"Y\")."
-                                "size() should equal to 1, but reveceid "
+                                "size() should equal to 1, but received "
                                 "Input(\"Y\").size() = %u.",
                                 op_desc.Input("Y").size()));
           int op_type_len = op_desc.Type().size();
@@ -157,6 +157,13 @@ class OpConverter {
         it = Registry<OpConverter>::Global().Lookup("custom_plugin_creater");
         break;
 
+      case OpConverterType::CustomGenericPluginCreater:
+        LOG(INFO) << "There is no OpConverter for type " << op_desc.Type()
+                  << ", now use custom_generic_plugin_creater!";
+        it = Registry<OpConverter>::Global().Lookup(
+            "custom_generic_plugin_creater");
+        break;
+
       default:
         CHECK(false) << "no OpConverter for optype " << op_desc.Type();
     }
@@ -166,13 +173,33 @@ class OpConverter {
         platform::errors::Unimplemented("no OpConverter for optype [%s]",
                                         op_desc.Type()));
 
+    std::string all_outpus_name = "(Outputs:";
+    std::string all_inpus_name = "(Inputs:";
+    for (auto it1 : op_desc.OutputNames()) {
+      for (auto it2 : op_desc.Output(it1)) {
+        all_outpus_name += it2;
+        all_outpus_name += ",";
+      }
+    }
+    all_outpus_name += ")";
+    for (auto it1 : op_desc.InputNames()) {
+      for (auto it2 : op_desc.Input(it1)) {
+        all_inpus_name += it2;
+        all_inpus_name += ",";
+      }
+    }
+
+    all_inpus_name += ")";
+    VLOG(1) << op_desc.Type() << all_inpus_name << all_outpus_name
+            << "are to be converted to TensorRT layer";
+
     it->SetEngine(engine);
     engine->SetScope(&scope);
     it->SetBlockDesc(block);
     (*it)(op, scope, test_mode);
 
     size_t output_num = op_desc.OutputNames().size();
-    // only one out settensordynamicRange
+    // only one out SetTensorDynamicRange
     if (op_desc.HasAttr("out_threshold")) {
       float out_scale =
           PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
@@ -190,12 +217,13 @@ class OpConverter {
                                        "\"Out\" or \"Y\".",
                                        op_desc.Type()));
       }
+
       auto* output_itensor = engine->GetITensor(output_name);
       engine->SetTensorDynamicRange(output_itensor, out_scale);
       VLOG(1) << "Set out scale = " << out_scale << " for tensor "
               << output_name << ".";
     }
-    // outs settensordynamicRange
+    // outs SetTensorDynamicRange
     for (size_t i = 0; i < output_num; ++i) {
       if (op_desc.HasAttr("out_" + std::to_string(i) + "_threshold")) {
         float out_scale = PADDLE_GET_CONST(
@@ -238,12 +266,14 @@ class OpConverter {
     }
   }
 
-  // Convert a fluid block to tensorrt network, NOTE it just convert operators,
-  // the INetwork's inputs and outputs should specified in some other modules.
+  // Convert a fluid block to tensorrt network, NOTE it just convert
+  // operators, the INetwork's inputs and outputs should specified in some
+  // other modules.
   void ConvertBlock(const framework::proto::BlockDesc& block,
                     const std::unordered_set<std::string>& parameters,
                     const framework::Scope& scope,
                     TensorRTEngine* engine) {
+    VLOG(1) << "Convert a fluid block to tensorrt network";
     std::unique_lock<std::mutex> lk(mut_);
     for (int i = 0; i < block.ops_size(); i++) {
       const auto& op = block.ops(i);
@@ -644,6 +674,23 @@ class OpConverter {
             ->getOutput(0);
     return tensor;
   }
+
+  // Create an constant layer with shape_tensor and value
+  template <typename T>
+  nvinfer1::ITensor* FillConstantLayer(nvinfer1::ITensor* shape_tensor,
+                                       int tensor_rank,
+                                       T value) {
+    auto fill_layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Fill, nvinfer1::Dims{}, nvinfer1::FillOperation::kLINSPACE);
+    fill_layer->setInput(0, *shape_tensor);
+    std::vector<T> beta_vec(tensor_rank);
+    std::vector<T> value_vec(1, value);
+    fill_layer->setInput(1, *Add1DConstantLayer(value_vec, "value_vec", true));
+    fill_layer->setInput(2, *Add1DConstantLayer(beta_vec, "beta_vec", false));
+    auto tensor = fill_layer->getOutput(0);
+    return tensor;
+  }
+
   template <typename T>
   // Create and add Multi-D constant float/int32 layer
   nvinfer1::ITensor* AddConstantLayer(const T* data,
@@ -736,7 +783,7 @@ class OpConverter {
     return Add1DConstantLayer(input_data, weight_name, scalar);
   }
 
-  void RreplenishLayerAndOutput(
+  void ReplenishLayerAndOutput(
       nvinfer1::ILayer* layer,
       const std::string& layer_type,
       const std::vector<std::string>& output_tensor_names,
@@ -763,6 +810,9 @@ class OpConverter {
 
       VLOG(3) << output_tensor_names[i] << "'s dimension :["
               << string::join_strings(tmp_vec, ',') << "]";
+      VLOG(1) << "Paddle-TRT inferred " << output_tensor_names[i]
+              << "'s dimension is :[" << string::join_strings(tmp_vec, ',')
+              << "]";
       // The following check may cause errors in CI, but is necessary in the
       // latest version.
       // PADDLE_ENFORCE_GE(

@@ -35,21 +35,21 @@ namespace ir {
 namespace fusion_group {
 
 // relu
-inline float relu(float x) { return x > 0 ? x : 0.; }
+inline float relu(float x) { return x > 0 ? x : 0.; }  // NOLINT
 
 inline float relu_grad_dx(float x, float out, float dout) {
   return out > 0 ? dout : 0;
 }
 
 // sigmoid
-inline float sigmoid(float x) { return 1.0 / (1.0 + std::exp(-x)); }
+inline float sigmoid(float x) { return (1.0f) / (1.0 + std::exp(-x)); }
 
 inline float sigmoid_grad_dx(float x, float out, float dout) {
   return dout * out * (1 - out);
 }
 
 // tanh
-inline float tanh(float x) { return 2.0 / (1.0 + std::exp(-2 * x)) - 1.0; }
+inline float tanh(float x) { return (2.0f) / (1.0 + std::exp(-2 * x)) - 1.0; }
 
 inline float tanh_grad_dx(float x, float out, float dout) {
   return dout * (1.0 - out * out);
@@ -271,8 +271,8 @@ void TestElementwiseMain(
 
   // Prepare CPU tensors which always hold float.
   std::vector<phi::DenseTensor> cpu_tensors(ids.size());
-  auto dims =
-      phi::make_ddim({static_cast<int64_t>(256), static_cast<int64_t>(1024)});
+  auto dims = common::make_ddim(
+      {static_cast<int64_t>(256), static_cast<int64_t>(1024)});
   for (auto& cpu_tensor : cpu_tensors) {
     cpu_tensor.mutable_data<float>(dims, paddle::platform::CPUPlace());
   }

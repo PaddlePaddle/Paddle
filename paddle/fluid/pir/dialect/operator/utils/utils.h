@@ -18,9 +18,10 @@
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/attribute.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace paddle {
 namespace dialect {
@@ -119,6 +120,12 @@ static inline pir::Attribute TransToIrAttribute(phi::Scalar scalar,
       return pir::Int64Attribute::get(ctx, scalar.to<int64_t>());
     case phi::DataType::BOOL:
       return pir::BoolAttribute::get(ctx, scalar.to<bool>());
+    case phi::DataType::COMPLEX64:
+      return pir::Complex64Attribute::get(
+          ctx, scalar.to<phi::dtype::complex<float>>());
+    case phi::DataType::COMPLEX128:
+      return pir::Complex128Attribute::get(
+          ctx, scalar.to<phi::dtype::complex<double>>());
     default:
       PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported phi data type `%s` when casting it into "
@@ -129,11 +136,44 @@ static inline pir::Attribute TransToIrAttribute(phi::Scalar scalar,
 
 VariantType GetAttributeData(const pir::Attribute& attr);
 
+paddle::any TransAttrToAny(const pir::Attribute& attr);
+
 bool IsLegacyOp(const std::string& name);
 
 bool IsEmptyValue(const pir::Value& value);
 
 std::vector<int64_t> GetInt64Vector(const pir::Attribute& attr);
+
+void CheckValueDataType(const pir::Value& value,
+                        const std::string& input_name,
+                        const std::string& op_name);
+
+void CheckVectorOfValueDataType(const std::vector<pir::Value>& vector_value,
+                                const std::string& input_name,
+                                const std::string& op_name);
+
+void CheckDataType(const phi::DataType& dtype,
+                   const std::string& dtype_name,
+                   const std::string& op_name);
+
+void CheckDataTypeOrValue(const phi::DataType& dtype,
+                          const std::string& dtype_name,
+                          const pir::Value& value,
+                          const std::string& value_name,
+                          const std::string& op_name);
+
+phi::DataType GetValueDataType(const pir::Value& value);
+
+std::vector<int64_t> ParseValueShape(const pir::Value& shape_,
+                                     bool* is_from_tensor);
+
+const std::unordered_map<std::string, std::string>& CppTypeToAttrTypeMap();
+
+const std::unordered_map<std::string, phi::DataType>& StringToDataTypeMap();
+
+const std::unordered_map<std::string, phi::Place>& StringToPlaceMap();
+
+const std::unordered_map<std::string, phi::DataLayout>& StringToDataLayoutMap();
 
 }  // namespace dialect
 }  // namespace paddle

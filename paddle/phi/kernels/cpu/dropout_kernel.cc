@@ -65,7 +65,7 @@ void DropoutRawKernel(const Context& dev_ctx,
   bool upscale_in_train = (dropout_implementation == "upscale_in_train");
   if (!is_test && mask) {
     auto* mask_data = dev_ctx.template Alloc<uint8_t>(mask);
-    size_t size = phi::product(mask->dims());
+    size_t size = common::product(mask->dims());
 
     // Special case when dropout_prob is 1.0
     if (dropout_prob == 1.0f) {
@@ -135,7 +135,7 @@ void DropoutNdKernel(const Context& dev_ctx,
     t_mask.Resize(mask->dims());
     T* t_mask_data = dev_ctx.template Alloc<T>(&t_mask);
     auto* mask_data = dev_ctx.template Alloc<uint8_t>(mask);
-    size_t size = phi::product(mask->dims());
+    size_t size = common::product(mask->dims());
 
     // Special case when dropout_prob is 1.0
     if (dropout_prob == 1.0f) {
@@ -209,6 +209,7 @@ PD_REGISTER_KERNEL(dropout,
                    phi::DropoutRawKernel,
                    float,
                    double,
+                   phi::dtype::float16,
                    phi::dtype::bfloat16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
 }

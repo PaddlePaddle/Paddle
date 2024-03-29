@@ -13,6 +13,25 @@ if(WITH_TESTING)
     set_tests_properties(test_context_pool PROPERTIES TIMEOUT 180)
   endif()
 
+  if(NOT WIN32)
+    # TODO(YuanRisheng) : Currently, we run this unittest by translating old ir to new ir, and it has bug that can't judge whether op_desc is a inplace op in windows.
+    # We will fix it when abandoning translation in final state.
+    if(WITH_GPU)
+      py_test(test_inference_inplace SRCS test_inference_inplace.py)
+      set_tests_properties(test_inference_inplace PROPERTIES TIMEOUT 180)
+    endif()
+  endif()
+
+  # custom OP support TensorRT inference
+  if(WITH_GPU
+     AND WITH_TENSORRT
+     AND (NOT WITH_COVERAGE))
+    py_test(test_inference_gap_setup SRCS test_inference_gap_setup.py)
+
+    # Compiling shared library will cost some time, but running process is very fast.
+    set_tests_properties(test_inference_gap_setup PROPERTIES TIMEOUT 180)
+  endif()
+
   if(WITH_GPU AND WITH_DISTRIBUTE)
     py_test(test_custom_op_relu_model_static_multidevice
             SRCS test_custom_op_relu_model_static_multidevice.py)

@@ -450,7 +450,7 @@ class DownpourSGD(DeviceWorker):
             if (
                 opt_info["use_cvm"]
                 or "no_cvm" in opt_info
-                and opt_info["no_cvm"] == True
+                and opt_info["no_cvm"] is True
             ):
                 sparse_table.emb_dim = self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
                     i
@@ -560,7 +560,7 @@ class DownpourSGDOPT(DeviceWorker):
             if (
                 opt_info["use_cvm"]
                 or "no_cvm" in opt_info
-                and opt_info["no_cvm"] == True
+                and opt_info["no_cvm"] is True
             ):
                 sparse_table.emb_dim = self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
                     i
@@ -629,7 +629,7 @@ class Section(DeviceWorker):
         schedule_mode_str = pipeline_opt["schedule_mode"]
         # F-then-B scheduler which runs Forward phase for all microbatches,
         # then runs Backward phase for all microbatches.
-        # 1F1B scheduler, which runs forward phase and backward phase altertively
+        # 1F1B scheduler, which runs forward phase and backward phase alternatively
         # after startup phase.
         assert schedule_mode_str in ["F-then-B", "1F1B"], (
             "The schedule mode " "for pipeline must be one of F-then-B or 1F1B"

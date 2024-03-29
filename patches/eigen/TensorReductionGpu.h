@@ -14,7 +14,7 @@ namespace Eigen {
 namespace internal {
 
 #if defined(EIGEN_USE_GPU) && defined(EIGEN_GPUCC)
-// Full reducers for GPU, don't vectorize for now
+// Full reducers for GPU, don't common::vectorize for now
 
 // Reducer function that enables multiple gpu thread to safely accumulate at the same
 // output address. It basically reads the current value of the output variable, and

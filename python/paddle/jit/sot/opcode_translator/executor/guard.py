@@ -87,7 +87,7 @@ def make_guard(stringify_guards: list[StringifyExpression]) -> Guard:
             guard.expr = "lambda frame: True"
             return guard
 
-        def analyse_expresions(stringify_exprs, tmp_names):
+        def analyse_expressions(stringify_exprs, tmp_names):
             func_string = "def built_guard_fn(frame):\n"
             lambda_string = "lambda frame: "
             free_vars = {}
@@ -109,7 +109,7 @@ def make_guard(stringify_guards: list[StringifyExpression]) -> Guard:
             func_string,
             free_vars,
             lambda_string,
-        ) = analyse_expresions(
+        ) = analyse_expressions(
             stringify_guards, current_tmp_name_records().tmp_names_record
         )
 

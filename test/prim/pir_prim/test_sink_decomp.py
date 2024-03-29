@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+import paddle.nn.functional as F
 from paddle.autograd.ir_backward import grad
 from paddle.base import core
 from paddle.decomposition import decompose
@@ -107,6 +108,160 @@ class TestPrimMode(unittest.TestCase):
                 self.assertEqual(core.has_decomp(op), False)
             if op.name() == "pd_op.mean":
                 self.assertEqual(core.has_decomp(op), True)
+
+
+class TestReluSink(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [8, 16, 32, 64]
+        self.x = np.random.random(self.shape_x).astype("float32")
+        self.prog = None
+
+    def base_net(self, flag=None):
+        if flag == "forward":
+            core._set_prim_forward_enabled(True)
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
+            x = paddle.static.data('x', self.shape_x, dtype='float32')
+            x.stop_gradient = False
+            sum_out = F.relu(x)
+            [new_out] = decompose(main_program, [sum_out])
+            gradients = grad(new_out, x)
+
+            exe = paddle.static.Executor()
+            [fwd, dx] = exe.run(
+                feed={'x': self.x}, fetch_list=[new_out, gradients]
+            )
+
+        whole_ops = [op.name() for op in main_program.global_block().ops]
+        self.prog = main_program
+        if flag == "forward":
+            core._set_prim_forward_enabled(False)
+            assert 'pd_op.relu' not in whole_ops
+        else:
+            assert 'pd_op.relu' in whole_ops
+        return fwd, dx
+
+    def test_relu_forward(self):
+        res_ref = self.base_net()
+        res = self.base_net("forward")
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_equal(ref, actual)
+
+
+class TestGeluSink(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [8, 16, 32, 64]
+        self.x = np.random.random(self.shape_x).astype("float32")
+        self.prog = None
+
+    def base_net(self, approximate=True, flag=None):
+        if flag == "forward":
+            core._set_prim_forward_enabled(True)
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
+            x = paddle.static.data('x', self.shape_x, dtype='float32')
+            x.stop_gradient = False
+            sum_out = F.gelu(x, approximate=approximate)
+            [new_out] = decompose(main_program, [sum_out])
+            gradients = grad(new_out, x)
+
+            exe = paddle.static.Executor()
+            [fwd, dx] = exe.run(
+                feed={'x': self.x}, fetch_list=[new_out, gradients]
+            )
+
+        whole_ops = [op.name() for op in main_program.global_block().ops]
+        self.prog = main_program
+        if flag == "forward":
+            core._set_prim_forward_enabled(False)
+            assert 'pd_op.gelu' not in whole_ops
+        else:
+            assert 'pd_op.gelu' in whole_ops
+        return fwd, dx
+
+    def test_gelu_forward_true(self):
+        res_ref = self.base_net(approximate=True)
+        res = self.base_net(approximate=True, flag="forward")
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_allclose(ref, actual, rtol=1e-6)
+
+    def test_gelu_approximate_false(self):
+        res_ref = self.base_net(approximate=False)
+        res = self.base_net(approximate=False, flag="forward")
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_allclose(ref, actual, rtol=1e-6)
+
+
+class TestHardSwishSink(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [8, 16, 32, 64]
+        self.x = np.random.random(self.shape_x).astype("float32")
+        self.prog = None
+
+    def base_net(self, flag=None):
+        if flag == "forward":
+            core._set_prim_forward_enabled(True)
+        elif flag == "backward":
+            core._set_prim_backward_enabled(True)
+        elif flag == "all":
+            core._set_prim_all_enabled(True)
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
+            x = paddle.static.data('x', self.shape_x, dtype='float32')
+            x.stop_gradient = False
+            sum_out = F.hardswish(x)
+            [new_out] = decompose(main_program, [sum_out])
+            gradients = grad(new_out, x)
+
+            exe = paddle.static.Executor()
+            [fwd, dx] = exe.run(
+                feed={'x': self.x}, fetch_list=[new_out, gradients]
+            )
+
+        whole_ops = [op.name() for op in main_program.global_block().ops]
+        self.prog = main_program
+        if flag == "forward":
+            core._set_prim_forward_enabled(False)
+            assert 'pd_op.hardswish' not in whole_ops
+        elif flag == "backward":
+            core._set_prim_backward_enabled(False)
+            assert (
+                'pd_op.hardswish' in whole_ops
+                and 'pd_op.hardswish_grad' not in whole_ops
+            )
+        elif flag == "all":
+            core._set_prim_all_enabled(False)
+            assert (
+                'pd_op.hardswish' not in whole_ops
+                and 'pd_op.hardswish_grad' not in whole_ops
+            )
+        else:
+            assert (
+                'pd_op.hardswish' in whole_ops
+                and 'pd_op.hardswish_grad' in whole_ops
+            )
+        return fwd, dx
+
+    def test_prim_forward(self):
+        res_ref = self.base_net()
+        res = self.base_net("forward")
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_allclose(ref, actual, rtol=1e-3, atol=1e-3)
+
+    def test_prim_backward(self):
+        res_ref = self.base_net()
+        res = self.base_net("backward")
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_allclose(ref, actual, rtol=1e-3, atol=1e-3)
+
+    def test_prim_all(self):
+        res_ref = self.base_net()
+        res = self.base_net("all")
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_allclose(ref, actual, rtol=1e-3, atol=1e-3)
 
 
 if __name__ == "__main__":

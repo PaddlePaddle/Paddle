@@ -38,7 +38,7 @@ void ModeKernel(const Context& dev_ctx,
                       errors::InvalidArgument(
                           "The dims of Input(X) should be greater than 0."));
   }
-  // calcluate the real axis
+  // calculate the real axis
   if (axis < 0) axis += in_dims.size();
 
   auto out_dims = out->dims();
@@ -50,13 +50,13 @@ void ModeKernel(const Context& dev_ctx,
   // For 0D Tensor
   if (in_dims.size() == 0) {
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-    phi::funcs::set_constant(dev_ctx, indices, 0);
+    phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }
 
   if (axis == in_dims.size() - 1) {
     const int64_t& input_height =
-        phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
+        common::product(common::slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t& input_width = in_dims[in_dims.size() - 1];
     funcs::GetModebySort<T>(
         dev_ctx, &x, input_width, input_height, output_data, indices_data);
@@ -80,7 +80,7 @@ void ModeKernel(const Context& dev_ctx,
       for (int i = axis + 1; i < in_dims.size(); i++) {
         tmp_out_shape.emplace_back(in_dims[i]);
       }
-      DDim tmp_out_dim = phi::make_ddim(tmp_out_shape);
+      DDim tmp_out_dim = common::make_ddim(tmp_out_shape);
       out->Resize(tmp_out_dim);
       indices->Resize(tmp_out_dim);
     }
@@ -93,7 +93,7 @@ void ModeKernel(const Context& dev_ctx,
     }
     trans_out_shape[in_dims.size() - 1] = 1;
 
-    // second step, tranpose the input
+    // second step, transpose the input
     DenseTensor trans_input;
     trans_input.Resize(trans_shape);
     dev_ctx.template Alloc<T>(&trans_input);
@@ -109,8 +109,8 @@ void ModeKernel(const Context& dev_ctx,
     trans_out.Resize(trans_out_shape);
     T* trans_out_data = dev_ctx.template Alloc<T>(&trans_out);
 
-    const int64_t input_height =
-        phi::product(phi::slice_ddim(trans_shape, 0, trans_shape.size() - 1));
+    const int64_t input_height = common::product(
+        common::slice_ddim(trans_shape, 0, trans_shape.size() - 1));
     const int64_t input_width = trans_shape[trans_shape.size() - 1];
     funcs::GetModebySort<T>(dev_ctx,
                             &trans_input,
@@ -118,7 +118,7 @@ void ModeKernel(const Context& dev_ctx,
                             input_height,
                             trans_out_data,
                             trans_ind_data);
-    // last step, tranpose back the indices and output
+    // last step, transpose back the indices and output
     funcs::TransCompute<Context, int64_t>(
         ndims, dev_ctx, trans_ind, indices, trans_axis);
     funcs::TransCompute<Context, T>(ndims, dev_ctx, trans_out, out, trans_axis);

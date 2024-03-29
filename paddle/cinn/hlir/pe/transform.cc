@@ -391,7 +391,7 @@ std::vector<ir::Tensor> Split(
         out_shape[i],
         [=](const std::vector<Expr>& indice) {
           auto temp = indice;
-          temp[axis] = common::AutoSimplify(temp[axis] + Expr(start[i]));
+          temp[axis] = cinn::common::AutoSimplify(temp[axis] + Expr(start[i]));
           return A(temp);
         },
         names[i]);
@@ -410,7 +410,7 @@ ir::Tensor Concat(const ir::Tensor& A,
   std::vector<Expr> output_shape = A->shape;
   Expr pivot = A->shape[axis];
   output_shape[axis] =
-      common::AutoSimplify(output_shape[axis] + B->shape[axis]);
+      cinn::common::AutoSimplify(output_shape[axis] + B->shape[axis]);
   auto res = Compute(
       output_shape,
       [=](const std::vector<Expr>& indice) {
@@ -438,8 +438,8 @@ ir::Tensor Concat(const std::vector<ir::Tensor>& input_tensors,
     CHECK_EQ(input_tensors[i]->shape.size(), input_dim)
         << "Dimensions of inputs tensors in Concat should be equal! Please "
            "check.";
-    output_shape[axis] = common::AutoSimplify(output_shape[axis] +
-                                              input_tensors[i]->shape[axis]);
+    output_shape[axis] = cinn::common::AutoSimplify(
+        output_shape[axis] + input_tensors[i]->shape[axis]);
   }
 
   auto res = Compute(
@@ -448,7 +448,7 @@ ir::Tensor Concat(const std::vector<ir::Tensor>& input_tensors,
         auto ret = input_tensors[0](indice);
         Expr accumulate_shape = Expr(0);
         for (int i = 0; i < input_size - 1; i++) {
-          accumulate_shape = common::AutoSimplify(
+          accumulate_shape = cinn::common::AutoSimplify(
               accumulate_shape + input_tensors[i]->shape[axis]);
           std::vector<Expr> new_indice = indice;
           new_indice[axis] = indice[axis] - accumulate_shape;
@@ -468,7 +468,7 @@ std::vector<Tensor> MatmulV2(const Tensor& A,
                              bool trans_b,
                              float alpha,
                              const std::string& name,
-                             const common::Target& target) {
+                             const cinn::common::Target& target) {
   std::vector<Expr> shape_A = A->shape;
   std::vector<Expr> shape_B = B->shape;
   int a_dim = shape_A.size();
@@ -564,7 +564,7 @@ std::vector<Tensor> MatmulMKL(const Tensor& A,
                               bool trans_b,
                               float alpha,
                               const std::string& name,
-                              const common::Target& target) {
+                              const cinn::common::Target& target) {
   CHECK(target.arch == Target::Arch::X86)
       << "mkl should be used in the cpu environment";
   std::vector<Expr> shape_A = A->shape;
@@ -597,18 +597,18 @@ std::vector<Tensor> MatmulMKL(const Tensor& A,
         [=]() -> Expr {
           return lang::CallExtern("cinn_cpu_mkl_gemm_fp32",
                                   {
-                                      Expr(alpha),                 // alpha
-                                      M,                           // M
-                                      N,                           // N
-                                      x_width,                     // K
-                                      common::make_bool(trans_a),  // ta
-                                      common::make_bool(trans_b),  // tb
-                                      shape_A.back(),              // lda
-                                      shape_B.back(),              // ldb
-                                      N,                           // ldc
-                                      common::make_zero<float>(),  // beta
-                                      A,                           // A
-                                      B,                           // B
+                                      Expr(alpha),  // alpha
+                                      M,            // M
+                                      N,            // N
+                                      x_width,      // K
+                                      cinn::common::make_bool(trans_a),  // ta
+                                      cinn::common::make_bool(trans_b),  // tb
+                                      shape_A.back(),                    // lda
+                                      shape_B.back(),                    // ldb
+                                      N,                                 // ldc
+                                      cinn::common::make_zero<float>(),  // beta
+                                      A,                                 // A
+                                      B,                                 // B
                                   });
         },
         UniqName("matmul_mkl_out"));
@@ -619,22 +619,22 @@ std::vector<Tensor> MatmulMKL(const Tensor& A,
         [=]() -> Expr {
           return lang::CallExtern("cinn_cpu_mkl_gemm_batch_fp32",
                                   {
-                                      Expr(alpha),                 // alpha
-                                      shape_A.front(),             // batch
-                                      M,                           // M
-                                      N,                           // N
-                                      x_width,                     // K
-                                      common::make_bool(trans_a),  // ta
-                                      common::make_bool(trans_b),  // tb
-                                      shape_A.back(),              // lda
-                                      shape_B.back(),              // ldb
-                                      N,                           // ldc
-                                      M * x_width,                 // a_stride
-                                      N * x_width,                 // b_stride
-                                      M * N,                       // c_stride
-                                      common::make_zero<float>(),  // beta
-                                      A,                           // A
-                                      B,                           // B
+                                      Expr(alpha),      // alpha
+                                      shape_A.front(),  // batch
+                                      M,                // M
+                                      N,                // N
+                                      x_width,          // K
+                                      cinn::common::make_bool(trans_a),  // ta
+                                      cinn::common::make_bool(trans_b),  // tb
+                                      shape_A.back(),                    // lda
+                                      shape_B.back(),                    // ldb
+                                      N,                                 // ldc
+                                      M * x_width,  // a_stride
+                                      N * x_width,  // b_stride
+                                      M * N,        // c_stride
+                                      cinn::common::make_zero<float>(),  // beta
+                                      A,                                 // A
+                                      B,                                 // B
                                   });
         },
         UniqName("batch_matmul_mkl_out"));
@@ -644,7 +644,9 @@ std::vector<Tensor> MatmulMKL(const Tensor& A,
   return {out, call};
 }
 
-int GetMulFactor(int shape, const Type& type, const common::Target& target) {
+int GetMulFactor(int shape,
+                 const Type& type,
+                 const cinn::common::Target& target) {
   int split_base = GetBasicFactor(type, target);
   int split_factor = 1;
   for (size_t i = split_base; i >= 1; --i) {
@@ -659,7 +661,7 @@ int GetMulFactor(int shape, const Type& type, const common::Target& target) {
 std::vector<Tensor> MulBase(const Tensor& A,
                             const Tensor& B,
                             const std::string& name,
-                            const common::Target& target) {
+                            const cinn::common::Target& target) {
   std::vector<Expr> output_shape;
   CHECK_EQ(A->shape.size(), 2U)
       << "tensor_A's shape size should be two while current shape size is "
@@ -748,7 +750,7 @@ std::vector<Tensor> Mul(const Tensor& A,
 std::vector<Tensor> MulMKL(const Tensor& A,
                            const Tensor& B,
                            const std::string& name,
-                           const common::Target& target) {
+                           const cinn::common::Target& target) {
   CHECK(target.arch == Target::Arch::X86)
       << "mkl should be used in the cpu environment";
   std::vector<Expr> shape_A = A->shape;
@@ -776,18 +778,18 @@ std::vector<Tensor> MulMKL(const Tensor& A,
       [=]() -> Expr {
         return lang::CallExtern("cinn_cpu_mkl_gemm_fp32",
                                 {
-                                    Expr(1.0f),                  // alpha
-                                    M,                           // M
-                                    N,                           // N
-                                    x_width,                     // K
-                                    common::make_bool(false),    // ta
-                                    common::make_bool(true),     // tb
-                                    shape_A.back(),              // lda
-                                    shape_B.back(),              // ldb
-                                    N,                           // ldc
-                                    common::make_zero<float>(),  // beta
-                                    A,                           // A
-                                    B,                           // B
+                                    Expr(1.0f),                        // alpha
+                                    M,                                 // M
+                                    N,                                 // N
+                                    x_width,                           // K
+                                    cinn::common::make_bool(false),    // ta
+                                    cinn::common::make_bool(true),     // tb
+                                    shape_A.back(),                    // lda
+                                    shape_B.back(),                    // ldb
+                                    N,                                 // ldc
+                                    cinn::common::make_zero<float>(),  // beta
+                                    A,                                 // A
+                                    B,                                 // B
                                 });
       },
       UniqName("mul_mkl_out"));
@@ -847,7 +849,7 @@ std::vector<Expr> InferShapeLayoutTransform(
         int dst_prim_index = (*split_index_map)[i][0];
         int dst_sub_index = (*split_index_map)[i][1];
         int factor = (*split_index_map)[i][2];
-        Expr chunk_shape = common::AutoSimplify(input_shapes[i] / factor);
+        Expr chunk_shape = cinn::common::AutoSimplify(input_shapes[i] / factor);
         Expr block_shape = Expr(factor);
         output_shape[dst_prim_index] = chunk_shape;
         output_shape[dst_sub_index] = block_shape;
@@ -867,7 +869,7 @@ std::vector<Expr> InferShapeLayoutTransform(
         CHECK_GE(input_shapes.size(), src_sub_index);
         CHECK_EQ(input_shapes[src_sub_index].as_int32(), factor);
         output_shape[i] =
-            common::AutoSimplify(input_shapes[src_prim_index] * factor);
+            cinn::common::AutoSimplify(input_shapes[src_prim_index] * factor);
       } else if ((*split_index_map)[i].size() == 1) {
         int src_prim_index = (*split_index_map)[i][0];
         output_shape[i] = input_shapes[src_prim_index];
@@ -915,11 +917,13 @@ ir::Tensor LayoutTransform(const Tensor& input,
             int sub_index = split_infos[1];
             int factor = split_infos[2];
             if (dst_dim > src_dim) {
-              new_indice[i] = common::AutoSimplify(indice[prim_index] * factor +
-                                                   indice[sub_index]);
+              new_indice[i] = cinn::common::AutoSimplify(
+                  indice[prim_index] * factor + indice[sub_index]);
             } else {
-              new_indice[prim_index] = common::AutoSimplify(indice[i] / factor);
-              new_indice[sub_index] = common::AutoSimplify(indice[i] % factor);
+              new_indice[prim_index] =
+                  cinn::common::AutoSimplify(indice[i] / factor);
+              new_indice[sub_index] =
+                  cinn::common::AutoSimplify(indice[i] % factor);
             }
 
           } else if (split_infos.size() == 1) {
@@ -978,7 +982,7 @@ ir::Tensor Transpose(const ir::Tensor& input,
     output_shape.push_back(shape[axis[idx]]);
   }
 
-  // tranpose axis to map output to input
+  // transpose axis to map output to input
   // new_axis = axis(T)
   std::vector<int> new_axis;
   for (int idx = 0; idx < axis.size(); ++idx) {
@@ -1020,6 +1024,71 @@ ir::Tensor Slice(const ir::Tensor& A,
       new_starts[i] = input_shape[axes[i]] + new_starts[i];
     } else if (new_starts[i] > input_shape[axes[i]]) {
       new_starts[i] = input_shape[axes[i]] - 1;
+    }
+  }
+
+  // output = input[starts:ends:strides]
+  // Note that when strides < 0, the output reverse:
+  // data=[[1,2,3,4],[5,6,7,8],]
+  // axes=[0,1]
+  // starts=[1,3]
+  // ends=[2,0]
+  // strides=[1,-1]
+  // ==> result=[[8,7,6],]
+  return Compute(
+      output_shape,
+      [=](const std::vector<Expr>& indice) {
+        std::vector<Expr> temp;
+        int indice_i = 0;
+        for (int i = 0; i < input_shape.size(); ++i) {
+          if (std::find(decrease_axis.cbegin(), decrease_axis.cend(), i) !=
+              decrease_axis.cend()) {
+            temp.emplace_back(0);
+          } else {
+            temp.emplace_back(indice[indice_i]);
+            indice_i++;
+          }
+        }
+        for (int i = 0; i < axes.size(); i++) {
+          temp[axes[i]] =
+              temp[axes[i]] * Expr(strides[i]) + Expr(new_starts[i]);
+        }
+        return A(temp);
+      },
+      output_name);
+}
+
+ir::Tensor SliceSymbolic(const ir::Tensor& A,
+                         const std::vector<int>& starts,
+                         const std::vector<int>& axes,
+                         const std::vector<int>& strides,
+                         const std::vector<int>& decrease_axis,
+                         const std::vector<Expr>& output_shape,
+                         const std::string& output_name) {
+  std::vector<Expr> input_shape;
+  for (const auto& shape : A->shape) {
+    input_shape.emplace_back(shape);
+  }
+
+  std::vector<Expr> new_starts;
+  std::transform(starts.begin(),
+                 starts.end(),
+                 std::back_inserter(new_starts),
+                 [](const int start) { return ir::Expr(start); });
+
+  for (int i = 0; i < axes.size(); i++) {
+    if (input_shape[axes[i]].is_constant()) {
+      if (new_starts[i].as_int64() < -input_shape[axes[i]].as_int64()) {
+        new_starts[i] = ir::Expr(0);
+      } else if (new_starts[i].as_int64() < 0) {
+        new_starts[i] = input_shape[axes[i]].as_int64() + new_starts[i];
+      } else if (new_starts[i].as_int64() > input_shape[axes[i]].as_int64()) {
+        new_starts[i] = input_shape[axes[i]].as_int64() - ir::Expr(1);
+      }
+    } else {
+      if (new_starts[i].as_int64() < 0) {
+        new_starts[i] = ir::Add::Make(input_shape[axes[i]], new_starts[i]);
+      }
     }
   }
 
@@ -1112,7 +1181,7 @@ ir::Tensor SliceAssign(const ir::Tensor& input,
       new_strides[i] = -new_strides[i];
     } else {
       CHECK_LT(new_starts[i], new_ends[i])
-          << "[ends] shoould greater than [starts] when [strides] > 0";
+          << "[ends] should greater than [starts] when [strides] > 0";
     }
   }
 
@@ -1186,7 +1255,7 @@ ir::Tensor Gather(const ir::Tensor& x,
         // to int32 in CINN. See the below link for more details:
         // https://github.com/PaddlePaddle/CINN/blob/85ab4981a38926dc5c1dbf672762cec335d2b857/cinn/ir/ir.cc#L477
         transformed_indice[axis] =
-            ir::Cast::Make(common::Int(32), index(indice));
+            ir::Cast::Make(cinn::common::Int(32), index(indice));
         return x(transformed_indice);
       },
       name);
@@ -1196,18 +1265,19 @@ ir::Tensor Gather(const ir::Tensor& x,
 ir::Tensor ScatterAssign(const ir::Tensor& input,
                          const ir::Tensor& updates,
                          const ir::Tensor& index,
-                         const common::Target& target,
+                         const cinn::common::Target& target,
                          const int axis,
                          const std::string& output_name) {
-  CHECK_EQ(index->type(), common::Int(32))
+  CHECK_EQ(index->type(), cinn::common::Int(32))
       << "Param [Index] of ScatterAssign only support int32 ! Please Check.\n";
   std::string extern_fun_name;
-  if (target.arch == common::Target::Arch::NVGPU) {
+  if (target.arch == cinn::common::Target::Arch::NVGPU) {
     extern_fun_name.assign("cinn_cuda_find_int");
-  } else if (target.arch == common::Target::Arch::X86) {
+  } else if (target.arch == cinn::common::Target::Arch::X86) {
     extern_fun_name.assign("cinn_host_find_int");
   } else {
-    LOG(FATAL) << "ScatterAssign only support X86 and NVGPU ! Please Check.\n";
+    PADDLE_THROW(phi::errors::Fatal(
+        "ScatterAssign only support X86 and NVGPU ! Please Check.\n"));
   }
 
   auto pos_axis = axis;
@@ -1225,7 +1295,7 @@ ir::Tensor ScatterAssign(const ir::Tensor& input,
         std::vector<Expr> indice_updates = indice;
         indice_updates[pos_axis] = id;
 
-        // check wheter Index[id] == cur_index and return by check result
+        // check whether Index[id] == cur_index and return by check result
         return ir::Select::Make(
             ir::EQ::Make(id, Expr(-1)), input(indice), updates(indice_updates));
       },
@@ -1236,13 +1306,13 @@ ir::Tensor ScatterAssign(const ir::Tensor& input,
 ir::Tensor ScatterAdd(const ir::Tensor& input,
                       const ir::Tensor& updates,
                       const ir::Tensor& index,
-                      const common::Target& target,
+                      const cinn::common::Target& target,
                       const int axis,
                       const std::string& output_name) {
-  CHECK_EQ(target.arch, common::Target::Arch::NVGPU)
+  CHECK_EQ(target.arch, cinn::common::Target::Arch::NVGPU)
       << "Op IndexAdd only support NVGPU now ! Please Check.\n";
 
-  CHECK_EQ(index->type(), common::Int(32))
+  CHECK_EQ(index->type(), cinn::common::Int(32))
       << "Param [index] of IndexAdd only support int32 ! Please Check.\n";
   CHECK_EQ(index->shape.size(), 1) << "The dimension of param [index] of "
                                       "IndexAdd should be 1 ! Please Check.\n";

@@ -20,7 +20,6 @@ from .functional import (
     mel_to_hz,
     power_to_db,
 )
-
 from .window import get_window
 
 __all__ = [

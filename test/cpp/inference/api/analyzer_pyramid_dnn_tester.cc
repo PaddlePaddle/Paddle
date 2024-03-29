@@ -111,9 +111,6 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->SwitchSpecifyInputNames();
   cfg->SwitchIrOptim();
   cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
-  if (FLAGS_zero_copy) {
-    cfg->SwitchUseFeedFetchOps(false);
-  }
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {

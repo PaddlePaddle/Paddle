@@ -54,7 +54,7 @@ struct EliminateBroadcastInForloop : public ir::IRMutator<Expr*> {
       std::tie(let_expr, tmp) = CreateTmpLet(broadcast);
       let_exprs.push_back(let_expr);
 
-      cinn::ir::ir_utils::IrReplace(expr, broadcast, tmp);
+      cinn::ir::ir_utils::IrReplaceVarBroadcast(expr, broadcast, tmp);
     }
 
     // insert the let expressions to the outer forloop.

@@ -41,9 +41,9 @@ using ::cinn::hlir::framework::Scope;
 using ::cinn::hlir::framework::Shape;
 using ::cinn::hlir::framework::Tensor;
 
-void TestAutoGenRuleBase::Initialize(const common::Target& target) {
+void TestAutoGenRuleBase::Initialize(const cinn::common::Target& target) {
   target_ = target;
-  backend_compier_ = backends::Compiler::Create(target);
+  backend_compiler_ = backends::Compiler::Create(target);
 }
 
 ir::IRSchedule TestAutoGenRuleBase::MakeIRSchedule(
@@ -56,9 +56,8 @@ ir::IRSchedule TestAutoGenRuleBase::MakeIRSchedule(
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
   LOG_IF(WARNING, graph->fusion_groups.size() > 1)
       << "Test Graph has more than 1 group";
-  auto& dtype_dict =
-      graph->GetMutableAttrs<absl::flat_hash_map<std::string, common::Type>>(
-          "inferdtype");
+  auto& dtype_dict = graph->GetMutableAttrs<
+      absl::flat_hash_map<std::string, cinn::common::Type>>("inferdtype");
   auto& shape_dict = graph->GetMutableAttrs<
       absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
   auto op_lowerer =
@@ -93,7 +92,7 @@ ir::Module TestAutoGenRuleBase::BuildIRModule(const ir::IRSchedule& schedule) {
   CHECK_EQ(lowered_funcs_.size(), updated_bodys.size())
       << "associated exprs size not equal";
 
-  ir::Module::Builder builder("test_bulder", this->target_);
+  ir::Module::Builder builder("test_builder", this->target_);
   for (int i = 0; i < lowered_funcs_.size(); ++i) {
     ir::Expr func_body = updated_bodys.at(i);
     const ir::LoweredFunc& ori_func = lowered_funcs_.at(i);
@@ -107,7 +106,7 @@ ir::Module TestAutoGenRuleBase::BuildIRModule(const ir::IRSchedule& schedule) {
 std::string TestAutoGenRuleBase::GenSourceCode(const ir::Module& ir_module) {
   std::unique_ptr<backends::CodeGenC> codegen;
 #ifdef CINN_WITH_CUDA
-  if (target_ == common::DefaultNVGPUTarget()) {
+  if (target_ == cinn::common::DefaultNVGPUTarget()) {
     codegen = std::make_unique<backends::CodeGenCUDA_Dev>(this->target_);
   } else {
     codegen = std::make_unique<backends::CodeGenCX86>(
@@ -125,9 +124,9 @@ raw_func_type TestAutoGenRuleBase::GenExecutableKernel(
     const ir::Module& ir_module) {
   auto&& func_name = lowered_funcs_.front()->name;
   // Compile to machine code
-  backend_compier_->Build(ir_module);
+  backend_compiler_->Build(ir_module);
   auto test_func_ptr = reinterpret_cast<void (*)(void**, int32_t)>(
-      backend_compier_->Lookup(func_name));
+      backend_compiler_->Lookup(func_name));
   return test_func_ptr;
 }
 
@@ -146,12 +145,12 @@ void MemoryCopy(const float* src, float* dst, int numel, std::string type) {
       dst[i] = src[i];
     }
   } else {
-    LOG(FATAL) << "Unknown memory copy type";
+    PADDLE_THROW(phi::errors::InvalidArgument("Unknown memory copy type"));
   }
 }
 
 void AddDataToScope(Scope* scope,
-                    const common::Target& target,
+                    const cinn::common::Target& target,
                     float* data_ptr,
                     std::string name,
                     const std::vector<int>& shape) {
@@ -161,8 +160,9 @@ void AddDataToScope(Scope* scope,
   Shape cinn_shape(shape);
   tensor->Resize(cinn_shape);
   auto* tgt_data_ptr = tensor->mutable_data<float>(target);
-  std::string mem_cpy_type =
-      target == common::DefaultNVGPUTarget() ? "DeviceToHost" : "HostToHost";
+  std::string mem_cpy_type = target == cinn::common::DefaultNVGPUTarget()
+                                 ? "DeviceToHost"
+                                 : "HostToHost";
   MemoryCopy(data_ptr, tgt_data_ptr, cinn_shape.numel(), mem_cpy_type);
 }
 
@@ -172,7 +172,7 @@ void CheckResult(raw_func_type test_func,
                  const std::vector<std::string>& output_names,
                  const std::vector<std::vector<int>>& input_shapes,
                  const std::vector<std::vector<int>>& output_shapes,
-                 const common::Target& target) {
+                 const cinn::common::Target& target) {
   CHECK(input_names.size()) << "The number of inputs must be greater than 0.";
   CHECK(output_names.size()) << "The number of outputs must be greater than 0.";
   CHECK_EQ(input_names.size(), input_shapes.size())
@@ -239,7 +239,7 @@ void CheckResult(raw_func_type test_func,
     // data
     for (int i = 0; i < output_names.size(); ++i) {
       const float* result_ptr = scope.GetTensor(output_names[i])->data<float>();
-      std::string mem_cpy_type = target == common::DefaultNVGPUTarget()
+      std::string mem_cpy_type = target == cinn::common::DefaultNVGPUTarget()
                                      ? "DeviceToHost"
                                      : "HostToHost";
       MemoryCopy(

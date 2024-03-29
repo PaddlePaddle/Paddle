@@ -24,8 +24,8 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/program.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
@@ -48,18 +48,18 @@ std::unique_ptr<::pir::Program> BuildProgram() {
 
   const float value = 0.5;
   auto full_op_x =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{2, 2},
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{8, 8},
                                              value,
                                              phi::DataType::FLOAT32,
                                              phi::GPUPlace());
 
   auto full_op_y =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{2, 2},
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{8, 8},
                                              value,
                                              phi::DataType::FLOAT32,
                                              phi::GPUPlace());
   auto full_op_z =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{2, 2},
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{8, 8},
                                              value,
                                              phi::DataType::FLOAT32,
                                              phi::GPUPlace());
@@ -82,10 +82,6 @@ TEST(CinnJitInstruction, Run) {
 
   // Step 2: Compiler New pir::Program into Runtime Program
   auto target = cinn::common::DefaultNVGPUTarget();
-  auto scope = cinn::hlir::framework::BuildScope(target, *program);
-
-  std::vector<cinn::hlir::framework::PIRCompiler*> compiler_list;
-
   std::set<std::string> checking_cinn_ops = {"pd_op.sin", "pd_op.cos"};
 
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
@@ -99,48 +95,48 @@ TEST(CinnJitInstruction, Run) {
   std::unordered_map<pir::Value, pir::Value> value_map;
   for (auto it = program->block()->begin(); it != program->block()->end();
        ++it) {
-    if (checking_cinn_ops.count((*it)->name())) {
+    if (checking_cinn_ops.count(it->name())) {
       auto ir_compiler =
-          new cinn::hlir::framework::PIRCompiler(*program, target, scope);
+          std::make_shared<cinn::hlir::framework::PirCompiler>(target);
 
-      std::vector<::pir::Operation*> ops = {*it};
-      auto group = std::make_shared<cinn::hlir::framework::pir::Group>(ops);
-      auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
-      compiler_list.push_back(ir_compiler);
+      std::vector<::pir::Operation*> ops = {it};
+      auto group =
+          std::make_shared<cinn::hlir::framework::pir::OpLoweringGroup>(ops);
+      auto loop_ranges = std::vector<int64_t>{8, 8};
+      group->set_loop_ranges(loop_ranges);
+      group->mut_output_values().push_back(it->result(0));
+      auto fn_ptr_res = ir_compiler->Build({group});
       std::unordered_map<std::string, ::pir::Attribute> op_attrs{
           {cinn::dialect::JitKernelOp::kAttrName,
-           cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
+           cinn::dialect::CINNKernelInfoAttribute::get(ctx, fn_ptr_res[0])},
       };
 
-      auto out_type = (*it)->result(0).type();
-
+      auto out_type = it->result(0).type();
       std::vector<pir::Value> vec_ins;
-
-      for (size_t i = 0; i < (*it)->num_operands(); ++i) {
-        vec_ins.push_back(value_map.at((*it)->operand_source(i)));
+      for (size_t i = 0; i < it->num_operands(); ++i) {
+        vec_ins.push_back(value_map.at(it->operand_source(i)));
       }
 
       ::pir::Operation* cinn_op =
           ::pir::Operation::Create(vec_ins, op_attrs, {out_type}, op_info);
 
-      value_map[(*it)->result(0)] = cinn_op->result(0);
-
+      value_map[it->result(0)] = cinn_op->result(0);
       ir_program->block()->push_back(cinn_op);
     } else {
       std::vector<pir::Value> vec_ins;
 
-      for (size_t i = 0; i < (*it)->num_operands(); ++i) {
-        vec_ins.push_back(value_map.at((*it)->operand_source(i)));
+      for (size_t i = 0; i < it->num_operands(); ++i) {
+        vec_ins.push_back(value_map.at(it->operand_source(i)));
       }
 
-      auto type1 = (*it)->result(0).type();
-      ::pir::OpInfo info1 = ctx->GetRegisteredOpInfo((*it)->name());
-      ::pir::Operation* op = ::pir::Operation::Create(
-          vec_ins, (*it)->attributes(), {type1}, info1);
+      auto type1 = it->result(0).type();
+      ::pir::OpInfo info1 = ctx->GetRegisteredOpInfo(it->name());
+      ::pir::Operation* op =
+          ::pir::Operation::Create(vec_ins, it->attributes(), {type1}, info1);
 
       ir_program->block()->push_back(op);
 
-      value_map[(*it)->result(0)] = op->result(0);
+      value_map[it->result(0)] = op->result(0);
     }
   }
 

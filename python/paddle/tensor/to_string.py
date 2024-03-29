@@ -14,6 +14,7 @@
 
 import numpy as np
 
+import paddle
 from paddle.base.data_feeder import check_type, convert_dtype
 
 from ..framework import core
@@ -135,7 +136,7 @@ def _format_item(np_var, max_width=0, signed=False):
         item_str = f'{np_var}'
 
     if max_width > len(item_str):
-        if signed:  # handle sign character for tenosr with negative item
+        if signed:  # handle sign character for tensor with negative item
             if np_var < 0:
                 return item_str.ljust(max_width)
             else:
@@ -238,7 +239,7 @@ def to_string(var, prefix='Tensor'):
     indent = len(prefix) + 1
 
     dtype = convert_dtype(var.dtype)
-    if var.dtype == core.VarDesc.VarType.BF16:
+    if var.dtype == paddle.bfloat16:
         dtype = 'bfloat16'
 
     _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"
@@ -247,7 +248,7 @@ def to_string(var, prefix='Tensor'):
     if not tensor._is_initialized():
         return "Tensor(Not initialized)"
 
-    if var.dtype == core.VarDesc.VarType.BF16:
+    if var.dtype == paddle.bfloat16:
         var = var.astype('float32')
     np_var = var.numpy(False)
 
@@ -280,7 +281,7 @@ def to_string(var, prefix='Tensor'):
 
 
 def _format_dense_tensor(tensor, indent):
-    if tensor.dtype == core.VarDesc.VarType.BF16:
+    if tensor.dtype == paddle.bfloat16:
         tensor = tensor.astype('float32')
 
     # TODO(zhouwei): will remove 0-D Tensor.numpy() hack
@@ -293,14 +294,14 @@ def _format_dense_tensor(tensor, indent):
         for dim in tensor.shape:
             size *= dim
 
-    sumary = False
+    summary = False
     if size > DEFAULT_PRINT_OPTIONS.threshold:
-        sumary = True
+        summary = True
 
     max_width, signed = _get_max_width(_to_summary(np_tensor))
 
     data = _format_tensor(
-        np_tensor, sumary, indent=indent, max_width=max_width, signed=signed
+        np_tensor, summary, indent=indent, max_width=max_width, signed=signed
     )
     return data
 
@@ -360,27 +361,42 @@ def dist_tensor_to_string(tensor, prefix='Tensor'):
     # is ready.
     indent = len(prefix) + 1
     dtype = convert_dtype(tensor.dtype)
-    if tensor.dtype == core.VarDesc.VarType.BF16:
+    if tensor.dtype == paddle.bfloat16:
         dtype = 'bfloat16'
 
-    _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, dist_attr={dist_attr},\n{indent}{data})"
-    return _template.format(
-        prefix=prefix,
-        shape=tensor.shape,
-        dtype=dtype,
-        place=tensor._place_str,
-        stop_gradient=tensor.stop_gradient,
-        dist_attr=tensor.dist_attr,
-        indent=' ' * indent,
-        data=None,
-    )
+    if not tensor._is_dense_tensor_hold_allocation():
+        _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, process_mesh={process_mesh}, placements={placements}, GlobalDenseTensor Not initialized)"
+        return _template.format(
+            prefix=prefix,
+            shape=tensor.shape,
+            dtype=dtype,
+            place=tensor._place_str,
+            stop_gradient=tensor.stop_gradient,
+            process_mesh=tensor.process_mesh,
+            placements=tensor._placements_str,
+        )
+    else:
+        indent = len(prefix) + 1
+        data = _format_dense_tensor(tensor, indent)
+        _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, process_mesh={process_mesh}, placements={placements}, GlobalDenseTensor=\n{indent}{data})"
+        return _template.format(
+            prefix=prefix,
+            shape=tensor.shape,
+            dtype=dtype,
+            place=tensor._place_str,
+            stop_gradient=tensor.stop_gradient,
+            process_mesh=tensor.process_mesh,
+            placements=tensor._placements_str,
+            indent=' ' * indent,
+            data=data,
+        )
 
 
 def tensor_to_string(tensor, prefix='Tensor'):
     indent = len(prefix) + 1
 
     dtype = convert_dtype(tensor.dtype)
-    if tensor.dtype == core.VarDesc.VarType.BF16:
+    if tensor.dtype == paddle.bfloat16:
         dtype = 'bfloat16'
 
     _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient},\n{indent}{data})"

@@ -146,7 +146,7 @@ class NCEKernel : public framework::OpKernel<T> {
       default: {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Unsupported SamplerType. SamplerType should be 0: Uniform, "
-            "1: LogUniform or 2: CostumDist. Received SamplerType: %d",
+            "1: LogUniform or 2: CustomDist. Received SamplerType: %d",
             sampler_type));
       }
     }
@@ -165,10 +165,10 @@ class NCEKernel : public framework::OpKernel<T> {
           (num_true_classes == -1) ? -1 : (num_neg_samples + num_true_classes));
 
       sample_labels = &sample_labels_tmp;
-      sample_labels->Resize(phi::make_ddim(sample_out_dims));
+      sample_labels->Resize(common::make_ddim(sample_out_dims));
 
       sample_out = &sample_out_tmp;
-      sample_out->Resize(phi::make_ddim(sample_out_dims));
+      sample_out->Resize(common::make_ddim(sample_out_dims));
     } else {
       sample_labels = context.Output<phi::DenseTensor>("SampleLabels");
       sample_out = context.Output<phi::DenseTensor>("SampleLogits");
@@ -332,7 +332,7 @@ class NCEGradKernel : public framework::OpKernel<T> {
       default: {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Unsupported SamplerType. SamplerType should be 0: Uniform, "
-            "1: LogUniform or 2: CostumDist. Received SamplerType: %d",
+            "1: LogUniform or 2: CustomDist. Received SamplerType: %d",
             sampler_type));
       }
     }

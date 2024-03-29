@@ -25,11 +25,13 @@ void SqueezeGradStridedKernel(const Context& dev_ctx,
                               const IntArray& axes UNUSED,
                               DenseTensor* dx) {
   auto xshape_dims = xshape.dims();
-  auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
+  auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
   ReshapeStridedKernel<Context>(
-      dev_ctx, dout, IntArray(phi::vectorize<int64_t>(x_dims)), dx, nullptr);
+      dev_ctx, dout, IntArray(common::vectorize<int64_t>(x_dims)), dx, nullptr);
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    squeeze_grad, STRIDED, phi::SqueezeGradStridedKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(squeeze_grad,
+                                         STRIDED,
+                                         phi::SqueezeGradStridedKernel) {}

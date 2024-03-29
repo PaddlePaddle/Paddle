@@ -27,7 +27,7 @@ void UniformKernel(const Context &dev_ctx,
                    const Scalar &max,
                    int seed,
                    DenseTensor *out) {
-  out->Resize(phi::make_ddim(shape.GetData()));
+  out->Resize(common::make_ddim(shape.GetData()));
   T *data = dev_ctx.template Alloc<T>(out);
   auto size = out->numel();
   std::shared_ptr<std::mt19937_64> engine;
@@ -49,4 +49,5 @@ PD_REGISTER_KERNEL(uniform,
                    phi::UniformKernel,
                    float,
                    double,
+                   phi::dtype::float16,
                    phi::dtype::bfloat16) {}

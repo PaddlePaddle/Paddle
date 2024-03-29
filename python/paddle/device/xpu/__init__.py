@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 from paddle.base import core
 from paddle.utils import deprecated
 
@@ -58,3 +57,28 @@ def synchronize(device=None):
             raise ValueError("device type must be int or paddle.XPUPlace")
 
     return core._xpu_device_synchronize(device_id)
+
+
+def device_count():
+    '''
+    Return the number of XPUs available.
+
+    Returns:
+        int: the number of XPUs available.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> paddle.device.xpu.device_count()
+
+    '''
+
+    num_xpus = (
+        core.get_xpu_device_count()
+        if hasattr(core, 'get_xpu_device_count')
+        else 0
+    )
+
+    return num_xpus

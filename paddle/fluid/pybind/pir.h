@@ -15,9 +15,15 @@
 #pragma once
 
 #include <pybind11/pybind11.h>
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/ddim.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace paddle {
 namespace pybind {
-void BindPIR(pybind11::module *m);
+using pir::Value;
+void BindPir(pybind11::module *m);
+const phi::DDim &GetValueDims(Value value);
+bool GetValueBoolAttr(Value value, const std::string &attr_name);
 }  // namespace pybind
 }  // namespace paddle

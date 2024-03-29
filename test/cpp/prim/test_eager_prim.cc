@@ -16,18 +16,18 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
 #include "paddle/fluid/eager/backward.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "test/cpp/eager/test_utils.h"
 #include "test/cpp/prim/init_env_utils.h"
 
-PHI_DECLARE_string(tensor_operants_mode);
+COMMON_DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
 namespace prim {
@@ -38,7 +38,7 @@ TEST(EagerPrim, TanhBackwardTest) {
   FLAGS_tensor_operants_mode = "eager";
   paddle::prim::InitTensorOperants();
   // 2. pre
-  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor0 =
       eager_test::CreateTensorWithValue(ddim,
                                         paddle::platform::CPUPlace(),
@@ -95,7 +95,7 @@ TEST(EagerPrim, LogicalOperantsTest) {
   FLAGS_tensor_operants_mode = "eager";
   paddle::prim::InitTensorOperants();
   // 2. pre
-  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor0 =
       eager_test::CreateTensorWithValue(ddim,
                                         paddle::platform::CPUPlace(),
@@ -133,7 +133,7 @@ TEST(EagerPrim, CompareOperantsTest) {
   FLAGS_tensor_operants_mode = "eager";
   paddle::prim::InitTensorOperants();
   // 2. pre
-  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
+  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor0 =
       eager_test::CreateTensorWithValue(ddim,
                                         paddle::platform::CPUPlace(),

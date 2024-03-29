@@ -50,7 +50,7 @@ using ::cinn::hlir::framework::OpLowerer;
 TEST(AutoInline, SingleLoopInline) {
   srand(0);
   Context::Global().ResetNameId();
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   Expr M(32);
 
@@ -140,7 +140,7 @@ TEST(AutoInline, SingleLoopInline) {
 TEST(AutoInline, AddReluInline) {
   srand(0);
   Context::Global().ResetNameId();
-  Target target = common::DefaultHostTarget();
+  Target target = cinn::common::DefaultHostTarget();
 
   frontend::NetBuilder builder("test");
 
@@ -155,7 +155,7 @@ TEST(AutoInline, AddReluInline) {
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
 
   const auto& dtype_dict =
-      graph->GetAttrs<absl::flat_hash_map<std::string, common::Type>>(
+      graph->GetAttrs<absl::flat_hash_map<std::string, cinn::common::Type>>(
           "inferdtype");
   const auto& shape_dict = graph->GetAttrs<
       absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
@@ -268,7 +268,7 @@ class TestAutoInline : public TestAutoGenRuleBase {};
  *     Add(Multiply(Add(Relu())))
  */
 TEST_F(TestAutoInline, SingleChain) {
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
   Initialize(target);
   std::vector<std::string> input_names = {
       "bias", "conv_output", "bn_scale", "bn_offset"};
@@ -343,7 +343,7 @@ TEST_F(TestAutoInline, SingleChain) {
  *     z = Multiply(Exp())
  */
 TEST_F(TestAutoInline, InlineToMultiConsumers) {
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
   Initialize(target);
   std::vector<std::string> input_names = {"x"};
   std::vector<std::string> output_names = {"var_2", "var_1", "var_0"};
@@ -404,7 +404,7 @@ TEST_F(TestAutoInline, InlineToMultiConsumers) {
  *     z1 = Subtract(Gather(), Add(Gather()))
  */
 TEST_F(TestAutoInline, OnlySpatialOp) {
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
   Initialize(target);
   std::vector<std::string> input_names = {"x", "y"};
   std::vector<std::string> output_names = {"var_6",
@@ -472,7 +472,7 @@ TEST_F(TestAutoInline, OnlySpatialOp) {
  *     y = Add(fill_constant())
  */
 TEST_F(TestAutoInline, NoReadBufferOp) {
-  Target target = common::DefaultNVGPUTarget();
+  Target target = cinn::common::DefaultNVGPUTarget();
   Initialize(target);
   std::vector<std::string> input_names = {"x"};
   std::vector<std::string> output_names = {"var_0", "fill_constant"};

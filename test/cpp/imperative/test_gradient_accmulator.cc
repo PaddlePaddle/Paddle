@@ -23,9 +23,6 @@
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace imperative = paddle::imperative;
-namespace platform = paddle::platform;
-namespace framework = paddle::framework;
 namespace paddle {
 namespace imperative {
 
@@ -40,7 +37,8 @@ TEST(Test__SelectedRowsMerge_Test, SelectedRowsMerge) {
   auto sr2 = std::make_shared<phi::SelectedRows>(rows, table_size);
 
   // initialize a sparse table 1
-  sr1->mutable_value()->Resize(phi::make_ddim({table_size, embedding_width}));
+  sr1->mutable_value()->Resize(
+      common::make_ddim({table_size, embedding_width}));
   auto* data_sr1 = sr1->mutable_value()->mutable_data<float>(cpu);
   for (int64_t i = 0; i < table_size; ++i) {
     for (int64_t j = 0; j < embedding_width; ++j) {
@@ -49,7 +47,8 @@ TEST(Test__SelectedRowsMerge_Test, SelectedRowsMerge) {
   }
 
   // initialize a sparse table 2
-  sr2->mutable_value()->Resize(phi::make_ddim({table_size, embedding_width}));
+  sr2->mutable_value()->Resize(
+      common::make_ddim({table_size, embedding_width}));
   auto* data_sr2 = sr2->mutable_value()->mutable_data<float>(cpu);
   for (int64_t i = 0; i < table_size; ++i) {
     for (int64_t j = 0; j < embedding_width; ++j) {
@@ -92,8 +91,8 @@ int TensorddTest(Place1 place1, Place2 place2, T t1, T t2) {
   std::vector<int64_t> dims = {2, 5};
   auto* src = var1.GetMutable<phi::DenseTensor>();
   auto* dst = var2.GetMutable<phi::DenseTensor>();
-  src->Resize(phi::make_ddim(dims));
-  dst->Resize(phi::make_ddim(dims));
+  src->Resize(common::make_ddim(dims));
+  dst->Resize(common::make_ddim(dims));
   auto* src_mutable = src->mutable_data<T>(place1);
   auto* dst_mutable = dst->mutable_data<T>(place2);
 
@@ -377,7 +376,7 @@ static framework::Variable RandomSelectedRows(framework::DDim dims,
 
 static std::unique_ptr<GradientAccumulator> CreateAccumulator(
     const std::shared_ptr<VariableWrapper>& var, bool sort_gradient) {
-  if (sort_gradient) {
+  if (sort_gradient) {  // NOLINT
     return std::unique_ptr<GradientAccumulator>(
         new SortedGradientAccumulator(var.get()));
   } else {
@@ -401,7 +400,7 @@ static void TestGradientAccumulatorTestUnchangeInput(
   std::mt19937 engine(seed);
 
   auto create_var = [&](bool use_tensor) {
-    if (use_tensor) {
+    if (use_tensor) {  // NOLINT
       return RandomTensor<float>(dim, place);
     } else {
       return RandomSelectedRows<float>(dim, place, dist(engine));
@@ -416,13 +415,13 @@ static void TestGradientAccumulatorTestUnchangeInput(
        *    test accumulate on this graph
        */
       auto g_var1 = std::make_shared<VariableWrapper>("g_var1");
-      g_var1->SetOverridedStopGradient(false);
+      g_var1->SetOverriddenStopGradient(false);
       auto g_accum1 = CreateAccumulator(g_var1, sort_gradient);
       g_accum1->IncreaseRefCnt();
       g_accum1->IncreaseRefCnt();
 
       auto g_var2 = std::make_shared<VariableWrapper>("g_var2");
-      g_var2->SetOverridedStopGradient(false);
+      g_var2->SetOverriddenStopGradient(false);
       auto g_accum2 = CreateAccumulator(g_var2, sort_gradient);
       g_accum2->IncreaseRefCnt();
       g_accum2->IncreaseRefCnt();
@@ -471,8 +470,8 @@ static void TestGradientAccumulatorTestUnchangeInput(
       auto var3 = create_var(use_tensor1);
       auto var_wrapper3_3 = std::make_shared<VariableWrapper>("tmp1_3");
       auto var_wrapper4_3 = std::make_shared<VariableWrapper>("tmp2_3");
-      var_wrapper3_3->SetOverridedStopGradient(false);
-      var_wrapper4_3->SetOverridedStopGradient(false);
+      var_wrapper3_3->SetOverriddenStopGradient(false);
+      var_wrapper4_3->SetOverriddenStopGradient(false);
       CopyVar(var3, var_wrapper3_3->MutableVar());
       CopyVar(var3, var_wrapper4_3->MutableVar());
 

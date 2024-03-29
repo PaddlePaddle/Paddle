@@ -81,7 +81,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
                         int sampling_ratio,
                         bool aligned,
                         DenseTensor* dx) {
-  const auto& in_dims = phi::vectorize<int>(x.dims());
+  const auto& in_dims = common::vectorize<int>(x.dims());
   int channels = in_dims[1];
   int height = in_dims[2];
   int width = in_dims[3];
@@ -129,9 +129,9 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   const T* out_grad_data = out_grad.data<T>();
   T* dx_data = dev_ctx.template Alloc<T>(dx);
 
-  auto in_stride = phi::stride(x.dims());
-  auto roi_stride = phi::stride(boxes.dims());
-  auto out_stride = phi::stride(out_grad.dims());
+  auto in_stride = common::stride(x.dims());
+  auto roi_stride = common::stride(boxes.dims());
+  auto out_stride = common::stride(out_grad.dims());
 
   T roi_offset = aligned ? T(0.5) : 0;
   for (int n = 0; n < rois_num; ++n) {

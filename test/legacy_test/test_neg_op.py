@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestNegOp(unittest.TestCase):
@@ -35,26 +36,28 @@ class TestNegOp(unittest.TestCase):
             dy_result.numpy(), expected_result, rtol=1e-05
         )
 
+    @test_with_pir_api
     def run_static(self, use_gpu=False):
-        input = paddle.static.data(
-            name='input', shape=[32, 8], dtype=self.dtype
-        )
-        result = paddle.neg(input)
+        with paddle.static.program_guard(paddle.static.Program()):
+            input = paddle.static.data(
+                name='input', shape=[32, 8], dtype=self.dtype
+            )
+            result = paddle.neg(input)
 
-        place = paddle.CUDAPlace(0) if use_gpu else paddle.CPUPlace()
-        exe = paddle.static.Executor(place)
-        exe.run(paddle.static.default_startup_program())
-        st_result = exe.run(feed={"input": self.input}, fetch_list=[result])
-        expected_result = np.negative(self.input)
-        np.testing.assert_allclose(st_result[0], expected_result, rtol=1e-05)
+            place = paddle.CUDAPlace(0) if use_gpu else paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+            st_result = exe.run(feed={"input": self.input}, fetch_list=[result])
+            expected_result = np.negative(self.input)
+            np.testing.assert_allclose(
+                st_result[0], expected_result, rtol=1e-05
+            )
 
     def test_cpu(self):
         paddle.disable_static(place=paddle.CPUPlace())
         self.run_imperative()
         paddle.enable_static()
-
-        with paddle.static.program_guard(paddle.static.Program()):
-            self.run_static()
+        self.run_static()
 
     def test_gpu(self):
         if not paddle.base.core.is_compiled_with_cuda():
@@ -63,9 +66,7 @@ class TestNegOp(unittest.TestCase):
         paddle.disable_static(place=paddle.CUDAPlace(0))
         self.run_imperative()
         paddle.enable_static()
-
-        with paddle.static.program_guard(paddle.static.Program()):
-            self.run_static(use_gpu=True)
+        self.run_static(use_gpu=True)
 
 
 class TestNegOpFp32(TestNegOp):

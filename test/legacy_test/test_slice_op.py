@@ -22,6 +22,7 @@ from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
 paddle.enable_static()
@@ -733,6 +734,73 @@ class TestSliceAPI(unittest.TestCase):
             np.testing.assert_array_equal(res_6, input[-3:3, 0:100, :, 2:-1])
             # np.testing.assert_array_equal(res_7, input[-1, 0:100, :, 2:-1])
 
+    # Test negative axis
+    def test_negative_axis_dygraph(self):
+        with paddle.base.dygraph.guard():
+            input = np.random.random([3, 4, 5, 6]).astype("float64")
+
+            res = paddle.slice(
+                paddle.to_tensor(input), axes=[-2], starts=[2], ends=[3]
+            )
+            np.testing.assert_array_equal(res, input[:, :, 2:3, :])
+
+    def test_negative_axis_static(self):
+        with paddle_static_guard(), paddle.static.program_guard(
+            paddle.static.Program()
+        ):
+            input = np.random.random([3, 4, 5, 6]).astype("float64")
+            x = paddle.static.data(
+                name="x",
+                shape=[3, 4, 5, 6],
+                dtype="float64",
+            )
+
+            out = paddle.slice(
+                x,
+                axes=[-2],
+                starts=[2],
+                ends=[3],
+            )
+
+            exe = base.Executor(place=base.CPUPlace())
+            res = exe.run(
+                feed={
+                    "x": input,
+                },
+                fetch_list=[out],
+            )[0]
+
+            np.testing.assert_array_equal(res, input[:, :, 2:3, :])
+
+    def test_negative_axis_pir(self):
+        with paddle.pir_utils.IrGuard(), paddle.static.program_guard(
+            paddle.static.Program()
+        ):
+            input = np.random.random([3, 4, 5, 6]).astype("float64")
+            x = paddle.static.data(
+                name="x",
+                shape=[3, 4, 5, 6],
+                dtype="float64",
+            )
+
+            out = paddle.slice(
+                x,
+                axes=[-2],
+                starts=[2],
+                ends=[3],
+            )
+
+            exe = base.Executor(place=base.CPUPlace())
+            res = exe.run(
+                paddle.static.default_main_program(),
+                feed={
+                    "x": input,
+                },
+                fetch_list=[out],
+            )[0]
+
+            np.testing.assert_array_equal(res, input[:, :, 2:3, :])
+
 
 class TestSliceApiWithTensor(unittest.TestCase):
     def test_starts_ends_is_tensor(self):
@@ -917,7 +985,7 @@ class TestImperativeVarBaseGetItem(unittest.TestCase):
     def test_getitem_with_long(self):
         with base.dygraph.guard():
             data = np.random.random((2, 80, 16128)).astype('float32')
-            var = base.dygraph.to_variable(data)
+            var = paddle.to_tensor(data)
             sliced = var[:, 10:, : var.shape[1]]  # var.shape[1] is 80L here
             self.assertEqual(sliced.shape, [2, 70, 80])
 
@@ -928,7 +996,7 @@ class TestImperativeVarBaseGetItem(unittest.TestCase):
         def test_float_in_slice_item():
             with base.dygraph.guard():
                 data = np.random.random((2, 80, 16128)).astype('float32')
-                var = base.dygraph.to_variable(data)
+                var = paddle.to_tensor(data)
                 sliced = var[:, 1.1:, : var.shape[1]]
 
         self.assertRaises(Exception, test_float_in_slice_item)
@@ -936,7 +1004,7 @@ class TestImperativeVarBaseGetItem(unittest.TestCase):
         def test_float_in_index():
             with base.dygraph.guard():
                 data = np.random.random((2, 80, 16128)).astype('float32')
-                var = base.dygraph.to_variable(data)
+                var = paddle.to_tensor(data)
                 sliced = var[1.1]
 
         self.assertRaises(Exception, test_float_in_index)
@@ -1048,9 +1116,10 @@ class TestSliceDoubleGradCheck(unittest.TestCase):
             x[0], axes=[0, 1, 2], starts=[-3, 0, 2], ends=[3, 2, 4]
         )
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 
@@ -1083,9 +1152,10 @@ class TestSliceTripleGradCheck(unittest.TestCase):
             x[0], axes=[0, 1, 2], starts=[-3, 0, 2], ends=[3, 2, 4]
         )
 
+    @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 
@@ -1110,6 +1180,37 @@ class TestSliceTripleGradCheck(unittest.TestCase):
                 places.append(base.CUDAPlace(0))
             for p in places:
                 self.func(p)
+
+
+class TestSliceTensorArray(unittest.TestCase):
+    def test_slice_range(self):
+        with paddle.pir_utils.IrGuard():
+            arr = paddle.tensor.create_array("int32")
+            x = paddle.static.data("x", shape=[2, 2], dtype="int32")
+            y = paddle.static.data("y", shape=[1, 2], dtype="int32")
+
+            zero = paddle.tensor.creation.fill_constant([], 'int64', 0)
+            paddle.tensor.array_write(x, zero, array=arr)
+            paddle.tensor.array_write(y, zero + 1, array=arr)
+
+            sliced_array = paddle._pir_ops.slice_array(arr, [0], [1])
+            self.assertTrue(sliced_array.is_dense_tensor_array_type())
+            self.assertEqual(sliced_array.dtype, paddle.pir.core.DataType.INT32)
+
+    def test_slice_item(self):
+        with paddle.pir_utils.IrGuard():
+            arr = paddle.tensor.create_array("int32")
+            x = paddle.static.data("x", shape=[2, 2], dtype="int32")
+            y = paddle.static.data("y", shape=[1, 2], dtype="int32")
+
+            zero = paddle.tensor.creation.fill_constant([], 'int64', 0)
+            paddle.tensor.array_write(x, zero, array=arr)
+            paddle.tensor.array_write(y, zero + 1, array=arr)
+
+            sliced_item = paddle._pir_ops.slice_array_dense(arr, [0])
+            self.assertTrue(sliced_item.is_dense_tensor_type())
+            self.assertEqual(sliced_item.dtype, paddle.pir.core.DataType.INT32)
+            # TODO(dev): sliced item shape should be [-1, 2]
 
 
 if __name__ == '__main__':

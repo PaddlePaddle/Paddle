@@ -3,6 +3,7 @@ set(PYTHON_TESTS_DIR
     CACHE INTERNAL "python tests directory")
 
 add_subdirectory(utils)
+add_subdirectory(common)
 add_subdirectory(pir)
 add_subdirectory(scripts)
 add_subdirectory(testing)
@@ -21,7 +22,7 @@ add_subdirectory(fluid)
 # (2) calling `cc_test()` in each `CMakeLists.txt` will not `exactly` add test, but
 # record all tests and its source files, the action of add tests is defered to HERE.
 # Why doing so? since the target of `libpaddle.so` is mostly the last target, and
-# the tests should be added after that accroding to dependency.
+# the tests should be added after that according to dependency.
 # (3) the tests links dynamic libraries, `libpaddle.so`
 # (4) the tests are generated to the same directory, i.e., `CC_TESTS_DIR` defined above.
 

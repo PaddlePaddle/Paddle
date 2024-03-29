@@ -80,11 +80,11 @@ struct ReplaceVarWithDivMutator : public ir::IRMutator<> {
 }  // namespace
 
 void VarModSimplify(Expr* e) {
-  *e = common::AutoSimplify(*e);
+  *e = cinn::common::AutoSimplify(*e);
   ReplaceModWithDivMutator()(e);
   ReplaceDivWithVarMutator mutator;
   mutator(e);
-  *e = common::AutoSimplify(*e);
+  *e = cinn::common::AutoSimplify(*e);
   auto div_var_map = mutator.div_var_map_;
   ReplaceVarWithDivMutator()(e, mutator.div_var_map_);
 }

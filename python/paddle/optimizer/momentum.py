@@ -16,7 +16,7 @@ import warnings
 
 import paddle
 from paddle import _C_ops
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_or_pir_mode
 from paddle.regularizer import L2Decay
 
 from ..base import core, framework
@@ -204,18 +204,18 @@ class Momentum(Optimizer):
         if framework.in_dynamic_mode():
             return
         '''
-        assert isinstance(block, framework.Block)
+        assert isinstance(block, (framework.Block, paddle.pir.Block))
 
         if isinstance(parameters, dict):
             parameters = self._update_param_group(parameters)
 
         for p in parameters:
-            if p.name in self._already_create_accumulater:
+            if p.name in self._already_create_accumulator:
                 continue
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_accumulator(self._velocity_acc_str, master_p)
-                self._already_create_accumulater.add(p.name)
+                self._already_create_accumulator.add(p.name)
                 continue
             if (
                 self._is_dtype_fp16_or_bf16(p.dtype)
@@ -226,7 +226,7 @@ class Momentum(Optimizer):
                     "Consider using multi_precision=True option of the Momentum optimizer."
                 )
             self._add_accumulator(self._velocity_acc_str, p)
-            self._already_create_accumulater.add(p.name)
+            self._already_create_accumulator.add(p.name)
 
     def _create_regularization_of_grad(self, param, grad, regularization=None):
         """Create and add backward regularization Operators
@@ -276,7 +276,7 @@ class Momentum(Optimizer):
             else None
         )
 
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if isinstance(param_and_grad, dict):
                 self._update_regularization(param_and_grad['weight_decay'])
             return _C_ops.momentum_(
@@ -472,13 +472,17 @@ class Momentum(Optimizer):
                     else None
                 )
 
-                if in_dynamic_mode():
+                if in_dynamic_or_pir_mode():
                     found_inf = self._get_auxiliary_var('found_inf')
                     if found_inf:
-                        if isinstance(found_inf, core.eager.Tensor):
+                        if isinstance(
+                            found_inf, (core.eager.Tensor, paddle.pir.Value)
+                        ):
                             self._set_auxiliary_var('found_inf', True)
                     else:
-                        if isinstance(found_inf, core.eager.Tensor):
+                        if isinstance(
+                            found_inf, (core.eager.Tensor, paddle.pir.Value)
+                        ):
                             self._set_auxiliary_var('found_inf', False)
                         _, _, _ = _C_ops.merged_momentum_(
                             self._param_dict[key][param_group_idx],

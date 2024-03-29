@@ -22,11 +22,10 @@ import numpy as np
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
-from dygraph_to_static_utils_new import Dy2StTestBase
+from dygraph_to_static_utils import Dy2StTestBase, enable_to_static_guard
 
 import paddle
 from paddle import _legacy_C_ops, base
-from paddle.base.dygraph import to_variable
 from paddle.framework import in_dynamic_mode
 from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
@@ -66,9 +65,9 @@ class DynamicGRU(paddle.nn.Layer):
         self.is_reverse = is_reverse
 
     def forward(self, inputs):
-        # Use `to_variable` to create a copy of global h_0 created not in `DynamicGRU`,
+        # Use `paddle.assign` to create a copy of global h_0 created not in `DynamicGRU`,
         # to avoid modify it because `h_0` is both used in other `DynamicGRU`.
-        hidden = to_variable(self.h_0)
+        hidden = paddle.assign(self.h_0)
         hidden.stop_gradient = True
 
         res = []
@@ -375,7 +374,7 @@ class LexNet(paddle.nn.Layer):
         )
 
         h_0 = np.zeros((args.batch_size, self.grnn_hidden_dim), dtype="float32")
-        h_0 = to_variable(h_0)
+        h_0 = paddle.to_tensor(h_0)
 
         self.bigru_units = []
         for i in range(self.bigru_num):
@@ -531,7 +530,6 @@ class TestLACModel(Dy2StTestBase):
         self.dy_param_path = os.path.join(self.temp_dir.name, 'lac_dy_param')
 
     def train(self, args, to_static):
-        paddle.jit.enable_to_static(to_static)
         place = (
             base.CUDAPlace(0)
             if base.is_compiled_with_cuda()
@@ -580,7 +578,9 @@ class TestLACModel(Dy2StTestBase):
                             num_label_chunks,
                             num_correct_chunks,
                         ) = chunk_eval(
-                            input=crf_decode, label=targets, seq_length=length
+                            input=crf_decode,
+                            label=targets,
+                            seq_length=length,
                         )
                         outputs = [avg_cost, precision, recall, f1_score]
                         avg_cost, precision, recall, f1_score = (
@@ -619,9 +619,13 @@ class TestLACModel(Dy2StTestBase):
 
             return np.array(loss_data)
 
+    def _train(self, to_static: bool):
+        with enable_to_static_guard(to_static):
+            self.train(self.args, to_static)
+
     def test_train(self):
-        st_out = self.train(self.args, to_static=True)
-        dy_out = self.train(self.args, to_static=False)
+        st_out = self._train(to_static=True)
+        dy_out = self._train(to_static=False)
         np.testing.assert_allclose(
             dy_out,
             st_out,
@@ -645,19 +649,21 @@ class TestLACModel(Dy2StTestBase):
 
     def predict_dygraph(self, batch):
         words, targets, length = batch
-        paddle.jit.enable_to_static(False)
-        with base.dygraph.guard(self.place):
-            model = LexNet(self.args)
-            # load dygraph trained parameters
-            model_dict = paddle.load(self.dy_param_path + ".pdparams")
-            model.set_dict(model_dict)
-            model.eval()
+        with enable_to_static_guard(False):
+            with base.dygraph.guard(self.place):
+                model = LexNet(self.args)
+                # load dygraph trained parameters
+                model_dict = paddle.load(self.dy_param_path + ".pdparams")
+                model.set_dict(model_dict)
+                model.eval()
 
-            _, pred_res = model(
-                to_variable(words), to_variable(targets), to_variable(length)
-            )
+                _, pred_res = model(
+                    paddle.to_tensor(words),
+                    paddle.to_tensor(targets),
+                    paddle.to_tensor(length),
+                )
 
-            return pred_res.numpy()
+                return pred_res.numpy()
 
     def predict_static(self, batch):
         """
@@ -692,7 +698,7 @@ class TestLACModel(Dy2StTestBase):
             model = paddle.jit.load(self.model_save_prefix)
             model.eval()
 
-            pred_res = model(to_variable(words), to_variable(length))
+            pred_res = model(paddle.to_tensor(words), paddle.to_tensor(length))
 
             return pred_res.numpy()
 

@@ -22,6 +22,7 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def bow_net(
@@ -102,8 +103,8 @@ class TestRegularizer(unittest.TestCase):
     def check_l2decay_regularizer(self, place, model):
         paddle.seed(1)
         paddle.framework.random._manual_program_seed(1)
-        main_prog = base.framework.Program()
-        startup_prog = base.framework.Program()
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
         with self.scope_prog_guard(
             main_prog=main_prog, startup_prog=startup_prog
         ):
@@ -175,6 +176,7 @@ class TestRegularizer(unittest.TestCase):
                     rtol=5e-5,
                 )
 
+    @test_with_pir_api
     def test_repeated_regularization(self):
         paddle.enable_static()
         l1 = paddle.regularizer.L1Decay(0.1)
@@ -182,16 +184,17 @@ class TestRegularizer(unittest.TestCase):
         fc_param_attr = paddle.ParamAttr(
             regularizer=paddle.regularizer.L1Decay()
         )
-        with base.program_guard(base.Program(), base.Program()):
+        with base.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x = paddle.uniform([2, 2, 3])
-            out = paddle.static.nn.fc(x, 5, weight_attr=fc_param_attr)
+            linear = paddle.nn.Linear(3, 5, weight_attr=fc_param_attr)
+            out = linear(x)
             loss = paddle.sum(out)
             sgd = paddle.optimizer.SGD(learning_rate=0.1, weight_decay=l2)
             sgd.minimize(loss)
         with base.dygraph.guard():
-            input = base.dygraph.to_variable(
-                np.random.randn(3, 2).astype('float32')
-            )
+            input = paddle.to_tensor(np.random.randn(3, 2).astype('float32'))
             paddle.seed(1)
             paddle.framework.random._manual_program_seed(1)
 

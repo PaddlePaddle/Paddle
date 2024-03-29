@@ -17,21 +17,21 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
+#include "paddle/common/errors.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/dynload/miopen.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
-#include "paddle/phi/core/macros.h"
 
 // MIOPEN do not have epslion definition
 #define CUDNN_BN_MIN_EPSILON 1e-05
 
-PD_DECLARE_bool(cudnn_deterministic);
+COMMON_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 namespace backends {
