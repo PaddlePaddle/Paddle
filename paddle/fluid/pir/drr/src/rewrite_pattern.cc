@@ -347,6 +347,9 @@ bool DrrRewritePattern::MatchFromOutputToInput(
     const auto& drr_input_tensors = drr_node->inputs();
     auto ir_input_values = ir_node->operands_source();
     for (size_t i = 0; i < drr_input_tensors.size(); ++i) {
+      if (drr_input_tensors[i]->is_none()) {
+        continue;
+      }
       if (HasVisitedOperands(drr_input_tensors[i], ir_input_values[i])) {
         matched = false;
         VLOG(8) << " tensor_map key[" << drr_input_tensors[i]->name()
@@ -470,7 +473,7 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
   GraphTopo graph_topo_visit(&result_pattern_graph);
   graph_topo_visit.WalkGraphNodesTopoOrder([&](const OpCall& op_call) {
     // set insert point
-    size_t max_input_op_index = 0;
+    size_t max_input_op_index = 0UL;
     pir::Operation* max_index_op = nullptr;
     for (const Tensor* input : op_call.inputs()) {
       if (input->is_none()) {
@@ -480,7 +483,7 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
       if (ir_val) {
         pir::Operation* ir_input_op = ir_val.defining_op();
         if (op_2_temp_program_index.count(ir_input_op) == 0) {
-          max_input_op_index = 0UL;
+          // do nothing
         } else if (max_input_op_index <
                    op_2_temp_program_index.at(ir_input_op)) {
           max_input_op_index = op_2_temp_program_index.at(ir_input_op);
@@ -505,10 +508,10 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
     }
     if (max_input_op_index == 0UL) {
       VLOG(6) << "Not found producer op for (" << op_call.name() << ")";
-      pir::Operation* source_patter_first_op = src_match_ctx.IrOperation(
+      pir::Operation* source_pattern_first_op = src_match_ctx.IrOperation(
           source_pattern_graph.owned_op_call()[0].get());
-      max_input_op_index = op_2_temp_program_index[source_patter_first_op];
-      rewriter.set_insertion_point(source_patter_first_op);
+      max_input_op_index = op_2_temp_program_index[source_pattern_first_op];
+      rewriter.set_insertion_point(source_pattern_first_op);
     } else {
       rewriter.SetInsertionPointAfter(max_index_op);
     }

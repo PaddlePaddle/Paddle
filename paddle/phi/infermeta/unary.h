@@ -508,6 +508,11 @@ void PSendInferMeta(const MetaTensor& x, int peer);
 
 void PSendArrayInferMeta(const MetaTensor& x, int peer);
 
+void PushDenseInferMeta(const std::vector<const MetaTensor*>& ids,
+                        int table_id,
+                        float scale_data_norm,
+                        const std::vector<std::string>& input_names);
+
 void SendV2InferMeta(const int peer, const int ring_id);
 
 void QrInferMeta(const MetaTensor& x,
@@ -704,6 +709,18 @@ void SumRawInferMeta(const MetaTensor& x,
                      DataType dtype,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
+
+void PartialConcatInferMeta(const std::vector<const MetaTensor*>& xs,
+                            int start_index,
+                            int length,
+                            MetaTensor* out,
+                            MetaConfig config = MetaConfig());
+
+void PartialSumInferMeta(const std::vector<const MetaTensor*>& xs,
+                         int start_index,
+                         int length,
+                         MetaTensor* out,
+                         MetaConfig config = MetaConfig());
 
 void SvdInferMeta(const MetaTensor& x,
                   bool full_matrices,

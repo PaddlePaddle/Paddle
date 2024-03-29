@@ -23,7 +23,7 @@ template <typename T, typename Context>
 void ScaleKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const Scalar& scale,
-                 float bias,
+                 const Scalar& bias,
                  bool bias_after_scale,
                  DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
@@ -45,7 +45,7 @@ void ScaleKernel(const Context& dev_ctx,
                      x.numel(),
                      bias_after_scale,
                      scale.to<float>(),
-                     bias);
+                     bias.to<float>());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
 }
 

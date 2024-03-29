@@ -20,6 +20,8 @@
 #include <memory>
 #include <vector>
 
+#include "paddle/common/enforce.h"
+
 namespace cinn {
 namespace utils {
 
@@ -35,7 +37,8 @@ TEST(JobDispatcher, SequenceDispatcher) {
 TEST(parallel_run, Basic) {
   std::vector<int> results(100, -1);
   auto worker_fn = [&results](int index) {
-    CHECK_LT(index, results.size()) << "index invalid";
+    PADDLE_ENFORCE_LT(
+        index, results.size(), phi::errors::InvalidArgument("invalid index!"));
     results[index] = index;
   };
   // check process every index in the extent of [0, 100) with step 1

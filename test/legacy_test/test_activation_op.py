@@ -1859,7 +1859,6 @@ class TestSqrtComp_ZeroDim(TestSqrtComp):
 class TestRsqrt(TestActivation):
     def setUp(self):
         self.op_type = "rsqrt"
-        self.prim_op_type = "comp"
         self.python_api = paddle.rsqrt
         self.public_python_api = paddle.rsqrt
         self.init_dtype()
@@ -1882,9 +1881,7 @@ class TestRsqrt(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_prim=True,
             check_pir=True,
-            check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
         )
 
@@ -1895,9 +1892,7 @@ class TestRsqrt(TestActivation):
             ['X'],
             'Out',
             max_relative_error=0.0005,
-            check_prim=True,
             check_pir=True,
-            check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
         )
 

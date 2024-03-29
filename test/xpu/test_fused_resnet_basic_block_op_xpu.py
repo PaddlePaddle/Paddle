@@ -18,16 +18,16 @@ import unittest
 import numpy as np
 from get_test_cover_info import (
     XPUOpTestWrapper,
+    create_test_class,
     get_xpu_op_support_types,
 )
 from op_test import OpTest
 
 import paddle
 from paddle import base, nn
+from paddle.base import core
 from paddle.base.framework import default_main_program
 from paddle.incubate.xpu.resnet_block import ResNetBasicBlock
-
-paddle.enable_static()
 
 
 class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
@@ -37,7 +37,6 @@ class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
 
     class TestResNetBasicBlockOp(OpTest):
         def setUp(self):
-            paddle.disable_static()
             self.dtype = self.in_type
             self.place = paddle.XPUPlace(0)
             self.__class__.op_type = "resnet_basic_block"
@@ -65,8 +64,6 @@ class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
             self.has_shortcut = False
 
         def Base(self):
-            paddle.disable_static()
-
             conv1_weight = base.ParamAttr(
                 initializer=paddle.nn.initializer.XavierNormal(),
                 learning_rate=0.001,
@@ -165,8 +162,6 @@ class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
             return result, tensor_src.grad
 
         def FusedResNetBasicBlock(self):
-            paddle.disable_static()
-
             fused_conv1_weight = base.ParamAttr(
                 initializer=paddle.nn.initializer.XavierNormal(),
                 learning_rate=0.001,
@@ -300,13 +295,13 @@ class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
 
 
 support_types = get_xpu_op_support_types('resnet_basic_block')
-# for stype in support_types:
-#    create_test_class(
-#        globals(),
-#        XPUTestResNetBasicBlockOp,
-#        stype,
-#        ignore_device_version=[core.XPUVersion.XPU1],
-#    )
+for stype in support_types:
+    create_test_class(
+        globals(),
+        XPUTestResNetBasicBlockOp,
+        stype,
+        ignore_device_version=[core.XPUVersion.XPU1],
+    )
 
 if __name__ == '__main__':
     unittest.main()

@@ -149,10 +149,10 @@ void ViewDtypeKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(view_shape,
-                                                       STRIDED,
-                                                       phi::ViewShapeKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(view_shape,
+                                         STRIDED,
+                                         phi::ViewShapeKernel) {}
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(view_dtype,
-                                                       STRIDED,
-                                                       phi::ViewDtypeKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(view_dtype,
+                                         STRIDED,
+                                         phi::ViewDtypeKernel) {}
