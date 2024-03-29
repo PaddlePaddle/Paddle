@@ -114,6 +114,28 @@ static std::vector<std::pair<size_t, size_t>> GetNonBroadCastDims(
         res.emplace_back(in_dim.size() - i, out_dim.size() - i);
       }
     }
+  } else if (op->name() == "pd_op.expand") {
+    auto* mut_op = const_cast<pir::Operation*>(op);
+    auto expand_op = mut_op->dyn_cast<paddle::dialect::ExpandOp>();
+
+    const auto& input_value = expand_op.x();
+    const auto& output_value = expand_op.out();
+
+    const int input_rank = GetRank(input_value);
+    const int output_rank = GetRank(output_value);
+    // CHECK_GE(output_rank, input_rank);
+
+    // TODO(Baizhou): How to fetch shape_analysis in a more elegant way
+    const auto* shape_analysis =
+        &pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+
+    for (int i = 1; i <= input_rank; ++i) {
+      if (input_rank - i < 0 || output_rank - i < 0) break;
+      if (shape_analysis->IsProductEqual(
+              input_value, {input_rank - i}, output_value, {output_rank - i})) {
+        res.emplace_back(input_rank - i, output_rank - i);
+      }
+    }
   } else {
     CHECK(false) << "Not Implement other broadcast op.";
   }

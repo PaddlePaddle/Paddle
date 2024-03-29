@@ -77,6 +77,9 @@ std::optional<ShardableAxesSignature> CreateSignatureForSpecialOps(
   if (op->isa<cinn::dialect::ReshapeOp>()) {
     return CreateDefaultSignature(op);
   }
+  if (op->name() == "cinn_op.generate_shape") {
+    return CreateDefaultSignature(op);
+  }
   return std::nullopt;
 }
 
