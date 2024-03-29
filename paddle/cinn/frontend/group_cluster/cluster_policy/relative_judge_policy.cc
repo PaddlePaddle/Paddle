@@ -191,14 +191,30 @@ bool DimsEquel(const std::vector<ValueDim>& first,
 bool RelativeJudgePolicy::ReducePlusTrivialCanMerge(
     const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
   VLOG(4) << "RT can fuse";
-  const auto& split_reduce_dims_result =
+
+  // const auto& split_reduce_dims_result =
+  //     SplitReduceInputDimsIfRelatedWithNonReduceAxis(
+  //         axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
+
+  // VLOG(4) << split_reduce_dims_result.DebugStr();
+
+  // const auto& upstream_reduce_dims = split_reduce_dims_result.non_related;
+  // const auto& upstream_non_reduce_dims = split_reduce_dims_result.related;
+
+  // TODO(wuzhanfei) fix bug in relation that if has multi path in graph
+  // test_rms_norm can test
+  const auto& split_reduce_input_dims_result =
       SplitReduceInputDimsIfRelatedWithNonReduceAxis(
           axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
+  VLOG(4) << split_reduce_input_dims_result.DebugStr();
+  const auto& upstream_reduce_dims = split_reduce_input_dims_result.non_related;
 
-  VLOG(4) << split_reduce_dims_result.DebugStr();
-
-  const auto& upstream_reduce_dims = split_reduce_dims_result.non_related;
-  const auto& upstream_non_reduce_dims = split_reduce_dims_result.related;
+  const auto& split_reduce_output_dims_result =
+      SplitReduceOutputDimsIfRelatedWithNonReduceAxis(
+          axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
+  VLOG(4) << split_reduce_input_dims_result.DebugStr();
+  const auto& upstream_non_reduce_dims = split_reduce_output_dims_result.related;
+  // replace codes upside with original design
 
   const auto& split_trivial_dims_result = SplitDimsWithRelationship(
       GetAllValueDimFromValue(downstream->sink_op_->result(0)),
