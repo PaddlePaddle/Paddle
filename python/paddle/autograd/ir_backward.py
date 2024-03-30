@@ -837,7 +837,7 @@ def append_backward_ops(
             # raise ValueError("xxx")
             try:
                 append_backward_for_op(op)
-                raise ValueError("xxx")
+                # raise ValueError("xxx")
             except Exception as e:
                 if not op.callstack:
                     raise e
