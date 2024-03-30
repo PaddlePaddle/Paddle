@@ -74,6 +74,7 @@ prim_white_list = [
     "silu_double_grad",
     "tanh_triple_grad",
     "minimum_double_grad",
+    "maximum_double_grad",
 ]
 
 # white ops list whose kernel can automaically do type promotion.

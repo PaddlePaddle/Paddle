@@ -22,6 +22,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
 #include "paddle/cinn/hlir/framework/pir/group.h"
+#include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_impl.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/common/ddim.h"
@@ -38,8 +39,8 @@
 
 PD_DECLARE_bool(cinn_bucket_compile);
 
-using cinn::hlir::framework::pir::Group;
-using cinn::hlir::framework::pir::GroupPtr;
+using cinn::hlir::framework::pir::OpLoweringGroup;
+using cinn::hlir::framework::pir::OpLoweringGroupPtr;
 
 bool simple_cmp(float a, float b) { return std::abs((a - b) / a) < 1e-5; }
 
@@ -54,7 +55,7 @@ std::vector<::pir::Type> CreateDenseTensorTypes(const phi::DDim& dims) {
   return op_output_types;
 }
 
-std::tuple<std::shared_ptr<::pir::Program>, std::vector<GroupPtr>>
+std::tuple<std::shared_ptr<::pir::Program>, std::vector<OpLoweringGroupPtr>>
 BuildGroupProgramForLowering() {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -86,10 +87,11 @@ BuildGroupProgramForLowering() {
   builder.SetInsertionPointToBlockEnd(program->block());
   builder.Build<paddle::dialect::FetchOp>(group_op->result(0), "out", 0);
 
-  std::vector<GroupPtr> groups;
-  groups.emplace_back(std::make_shared<Group>(std::vector<::pir::Operation*>(
-      {exp.operation(), reshape.operation(), sub.operation()})));
-  groups[0]->output_ops.insert(groups[0]->ops.back());
+  std::vector<OpLoweringGroupPtr> groups;
+  groups.emplace_back(
+      std::make_shared<OpLoweringGroup>(std::vector<::pir::Operation*>(
+          {exp.operation(), reshape.operation(), sub.operation()})));
+  groups[0]->mut_output_ops().insert(groups[0]->ops().back());
   std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
       value_to_shape_data;
   symbol::DimExpr x_dim_0("S0");
@@ -124,7 +126,7 @@ TEST(ReshapeOpGroup, CINNLowering) {
   program->Print(ss);
   LOG(INFO) << ss.str();
 
-  for (const auto* op : groups[0]->ops) {
+  for (const auto* op : groups[0]->ops()) {
     LOG(INFO) << op->name() << ":";
     for (uint32_t i = 0; i < op->num_results(); ++i) {
       const auto& sym_shape = groups[0]->GetShapeOrDataExprs(op->result(i));
@@ -140,7 +142,7 @@ TEST(ReshapeOpGroup, CINNLowering) {
   ASSERT_TRUE(fn_ptr_res[0].fn_ptr != nullptr);
 }
 
-std::tuple<std::shared_ptr<::pir::Program>, std::vector<GroupPtr>>
+std::tuple<std::shared_ptr<::pir::Program>, std::vector<OpLoweringGroupPtr>>
 BuildBroadcastGroupProgramForLowering() {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -173,10 +175,11 @@ BuildBroadcastGroupProgramForLowering() {
   builder.SetInsertionPointToBlockEnd(program->block());
   builder.Build<paddle::dialect::FetchOp>(group_op->result(0), "out", 0);
 
-  std::vector<GroupPtr> groups;
-  groups.emplace_back(std::make_shared<Group>(std::vector<::pir::Operation*>(
-      {x_broadcast.operation(), sub.operation()})));
-  groups[0]->output_ops.insert(groups[0]->ops.back());
+  std::vector<OpLoweringGroupPtr> groups;
+  groups.emplace_back(
+      std::make_shared<OpLoweringGroup>(std::vector<::pir::Operation*>(
+          {x_broadcast.operation(), sub.operation()})));
+  groups[0]->mut_output_ops().insert(groups[0]->ops().back());
 
   std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
       value_to_shape_data;
@@ -218,7 +221,7 @@ TEST(BroadcastOpGroup, CINNLowering) {
   program->Print(ss);
   LOG(INFO) << ss.str();
 
-  for (const auto* op : groups[0]->ops) {
+  for (const auto* op : groups[0]->ops()) {
     LOG(INFO) << op->name() << ":";
     for (uint32_t i = 0; i < op->num_results(); ++i) {
       const auto& sym_shape = groups[0]->GetShapeOrDataExprs(op->result(i));
