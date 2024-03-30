@@ -29,10 +29,14 @@ inline std::vector<group_cluster::PatternNodePtr> ClusterOps(
   VLOG(4) << "Input Group with size " << origin_ops.size() << " :\n"
           << group_cluster::OpsDebugStr(origin_ops);
 
+  std::vector<pir::Value> outputs;
   const auto& ops = [&] {
     std::vector<pir::Operation*> ops;
     for (const auto& op : origin_ops) {
       if (op->name() == "cf.yield") {  // just skip cf.yield.
+        for (auto& operand : op->operands()) {
+          outputs.push_back(operand.source());
+        }
         continue;
       }
       ops.emplace_back(op);
@@ -63,7 +67,7 @@ inline std::vector<group_cluster::PatternNodePtr> ClusterOps(
       {relative_judge_policy, general_topo_policy});
 
   VLOG(4) << "Start Create PatternGraph";
-  group_cluster::PatternGraph graph(ops, policy_manager, topo_manager);
+  group_cluster::PatternGraph graph(ops, outputs, policy_manager, topo_manager);
   VLOG(4) << "Start Cluster Ops";
   auto result = graph.ClusterOps(with_horizontal_fusion);
 

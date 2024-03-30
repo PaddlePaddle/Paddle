@@ -35,6 +35,7 @@ bool IsIndirectDownstreamNode(const PatternNodePtr start,
 
 bool GeneralTopoPolicy::CanFuse(const PatternNodePtr& first,
                                 const PatternNodePtr& second) {
+  VLOG(4) << "Start GeneralTopoPolicy";
   return !(IsIndirectDownstreamNode(first, second) ||
            IsIndirectDownstreamNode(second, first));
 }

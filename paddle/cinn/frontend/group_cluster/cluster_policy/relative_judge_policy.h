@@ -190,6 +190,9 @@ static std::optional<ValueDimRelation> CreateOpRelativenessForSpecialOps(
   if (op->name() == "cinn_op.generate_shape") {
     return CreateOpRelativenessForDefault(op);
   }
+  if (op->name() == "cinn_op.yield_store") {
+    return CreateOpRelativenessForDefault(op);
+  }
   return {};
 }
 

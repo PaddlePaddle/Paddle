@@ -75,6 +75,41 @@ std::vector<T> ConcatVector(const std::vector<T>& first,
   return result;
 }
 
+template <typename T, typename F>
+std::vector<T> FilterVector(const std::vector<T>& first, const F& func) {
+  std::vector<T> result;
+  for (const auto& i : first) {
+    if (func(i)) {
+      result.push_back(i);
+    }
+  }
+  return result;
+}
+
+template <typename T>
+std::set<T> ToSet(const std::vector<T>& input) {
+  std::set<T> result(input.begin(), input.end());
+  return result;
+}
+
+template <typename T>
+bool IsAnyFirstInSecond(const std::vector<T>& first,
+                        const std::vector<T>& second) {
+  const auto& second_set = ToSet(second);
+  for (const auto& ele : first) {
+    if (second_set.count(ele)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+template <typename T>
+std::vector<T> UniqueVectorBySet(const std::vector<T>& v) {
+  std::set<T> unique(v.begin(), v.end());
+  return std::vector<T>(unique.begin(), unique.end());
+}
+
 std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern& pattern);
 std::string StmtPatternDebugStr(const StmtPattern& pattern);
 StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second);

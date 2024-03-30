@@ -39,6 +39,7 @@ using PatternNodePtrSet = std::
 class PatternGraph {
  public:
   PatternGraph(const std::vector<pir::Operation*>& ops,
+               const std::vector<pir::Value>& outputs,
                const policy::PolicyManager policy_manager,
                const policy::PolicyManager topo_manager);
 
@@ -66,11 +67,13 @@ class PatternGraph {
   friend class FuseReduceTreeAndTrivial;
   friend class HorizontalFusionOperation;
   friend class LiftToHorizontalFusionPattern;
+  friend class IsNodeOutput;
 
  public:
   PatternNodePtrSet all_pattern_nodes_;
-  PatternNodePtrSet entrance_nodes_;
-  PatternNodePtrSet exit_nodes_;
+  PatternNodePtrSet entrance_nodes_;  // bugs here. dont' use this.
+  PatternNodePtrSet exit_nodes_;      // bugs here. dont' use this.
+  std::vector<pir::Value> outputs_;
   policy::PolicyManager policy_manager_;
   policy::PolicyManager topo_manager_;
 };
@@ -267,6 +270,8 @@ struct HorizontalFusionConstrain {
         i->sink_op_->result(0).type().dyn_cast<pir::DenseTensorType>().dims();
     const auto& j_dim =
         j->sink_op_->result(0).type().dyn_cast<pir::DenseTensorType>().dims();
+    VLOG(4) << "graph.topo_manager_.CanFuse(i, j) = "
+            << graph.topo_manager_.CanFuse(i, j);
     return graph.topo_manager_.CanFuse(i, j) && i_dim == j_dim;
   }
 };
@@ -288,6 +293,20 @@ struct HorizontalFusionOperation {
 struct NonSinkNodeMatcher {
   bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     return !node->downstream_.empty();
+  }
+};
+
+struct IsOutputNode {
+  bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
+    bool res = IsAnyFirstInSecond(node->sink_op_->results(), graph.outputs_);
+    return res;
+  }
+};
+
+struct IsNotOutputNode {
+  bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
+    bool res = !IsOutputNode()(graph, node);
+    return res;
   }
 };
 

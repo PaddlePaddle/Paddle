@@ -18,23 +18,34 @@ namespace cinn::frontend::group_cluster {
 
 std::vector<PatternNodePtr> PatternGraph::ClusterOps(
     bool with_horizontal_fusion) {
-  VLOG(4) << "SinkTrivialPattern";
+  VLOG(4) << "SinkTrivialPattern Start";
   SinkTrivialPattern();
-  // ReducePattern -> ReduceTreePattern
-  VLOG(4) << "ReduceLiftReduceTree";
-  ReduceLiftReduceTree();
+  VLOG(4) << "SinkTrivialPattern End";
+  PrintGraph();
 
-  VLOG(4) << "ReduceTreeGrown";
+  // ReducePattern -> ReduceTreePattern
+  VLOG(4) << "ReduceLiftReduceTree Start";
+  ReduceLiftReduceTree();
+  VLOG(4) << "ReduceLiftReduceTree End";
+  PrintGraph();
+
+  VLOG(4) << "ReduceTreeGrown Start";
   ReduceTreeGrown();
+  VLOG(4) << "ReduceTreeGrown End";
+  PrintGraph();
   // ReduceTreePattern + TrivialPattern fusion.
 
-  VLOG(4) << "ReduceTree_Trivial_Fusion";
+  VLOG(4) << "ReduceTree_Trivial_Fusion Start";
   ReduceTree_Trivial_Fusion();
+  VLOG(4) << "ReduceTree_Trivial_Fusion End";
+  PrintGraph();
 
   // Horitical fusion.
   if (with_horizontal_fusion) {
-    VLOG(4) << "Start Horitical Fusion.";
+    VLOG(4) << "Horitical_Fusion Start";
     HoriticalFusion();
+    VLOG(4) << "Horitical_Fusion End";
+    PrintGraph();
   }
 
   return SortByTopoOrder();
@@ -43,11 +54,13 @@ std::vector<PatternNodePtr> PatternGraph::ClusterOps(
 std::vector<PatternNodePtr> PatternGraph::SortByTopoOrder() {
   // sort all_pattern_nodes_ by topo order.
   std::vector<PatternNodePtr> res;
-  std::list<PatternNodePtr> topo_queue(entrance_nodes_.begin(),
-                                       entrance_nodes_.end());
+  std::list<PatternNodePtr> topo_queue;
   std::map<PatternNodePtr, int> degree;
   for (const auto& node : all_pattern_nodes_) {
     degree[node] = node->upstream_.size();
+    if (degree[node] == 0) {
+      topo_queue.push_back(node);
+    }
   }
   while (!topo_queue.empty()) {
     PatternNodePtr node = topo_queue.front();
@@ -67,7 +80,8 @@ void PatternGraph::SinkTrivialPattern() {
   VLOG(4) << "SinkTrivialPattern";
   GraphTransformer<
       NodePattern,
-      And<NonSinkNodeMatcher, StmtPatternGraphMatcher<TrivialPattern>>,
+      And<And<NonSinkNodeMatcher, StmtPatternGraphMatcher<TrivialPattern>>,
+          IsNotOutputNode>,
       TrivialPatternMerge>(this);
 }
 
@@ -88,13 +102,11 @@ void PatternGraph::HoriticalFusion() {
   GraphTransformer<NodePairPattern,
                    HorizontalFusionConstrain,
                    HorizontalFusionOperation>(this);
-
-  VLOG(4) << "XK";
 }
 
 void PatternGraph::ReduceTreeGrown() {
   GraphTransformer<NodePattern,
-                   CanFuseReduceTreeMatcher,
+                   And<CanFuseReduceTreeMatcher, IsNotOutputNode>,
                    MergeReduceTreeOperation>(this);
 }
 
@@ -104,6 +116,7 @@ void PatternGraph::ReduceTree_Trivial_Fusion() {
       [&](PatternNodePtrSet all_nodes) -> PatternNodePtr {
     for (PatternNodePtr node : all_nodes) {
       if (node->IsReduceTree() && !node->downstream_.empty() &&
+          IsNotOutputNode()(*this, node) &&
           node->downstream_.at(0)->IsTrivial() &&
           visited.find(node) == visited.end()) {
         visited.emplace(node);
@@ -139,10 +152,18 @@ void PatternGraph::ReduceTree_Trivial_Fusion() {
 }
 
 PatternGraph::PatternGraph(const std::vector<pir::Operation*>& ops,
+                           const std::vector<pir::Value>& outputs,
                            const policy::PolicyManager policy_manager,
                            const policy::PolicyManager topo_manager)
-    : policy_manager_(policy_manager), topo_manager_(topo_manager) {
+    : policy_manager_(policy_manager),
+      topo_manager_(topo_manager),
+      outputs_(outputs) {
   std::unordered_map<pir::Operation*, PatternNodePtr> op_to_node_map;
+
+  VLOG(4) << "len(outputs) = " << outputs_.size();
+  for (const auto& v : outputs) {
+    VLOG(4) << "output is" << OpsDebugStr({v.defining_op()});
+  }
 
   for (const auto& op : ops) {
     PatternNodePtr node = std::make_shared<PatternNode>(op);
@@ -223,8 +244,11 @@ void PatternGraph::AppendNode(const PatternNodePtr& node) {
 }
 
 void PatternGraph::PrintGraph() {
+  VLOG(4) << "========= PrintGraph ===========";
   for (const auto& v : all_pattern_nodes_) {
-    VLOG(4) << "Node: " << v << GetPatternName(v->stmt_pattern_);
+    VLOG(4) << "Node: " << v;
+    VLOG(4) << "Pattern " << GetPatternName(v->stmt_pattern_);
+    VLOG(4) << "IsOutput " << IsOutputNode()(*this, v);
     for (const auto& u : v->upstream_) {
       VLOG(4) << " -u>  " << u;
     }
@@ -232,6 +256,7 @@ void PatternGraph::PrintGraph() {
       VLOG(4) << " <d- " << d;
     }
   }
+  VLOG(4) << "========= EndPrintGraph ===========";
 }
 
 PatternNodePtr PatternGraph::MergeNode(const PatternNodePtr& upstream,

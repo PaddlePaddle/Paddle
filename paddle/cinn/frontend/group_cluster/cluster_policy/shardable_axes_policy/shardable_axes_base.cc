@@ -80,6 +80,12 @@ std::optional<ShardableAxesSignature> CreateSignatureForSpecialOps(
   if (op->name() == "cinn_op.generate_shape") {
     return CreateDefaultSignature(op);
   }
+  if (op->name() == "cinn_op.yield_store") {
+    return CreateDefaultSignature(op);
+  }
+  if (op->name() == "cinn_op.reshape") {
+    return CreateDefaultSignature(op);
+  }
   return std::nullopt;
 }
 
