@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include "glog/logging.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -53,7 +52,6 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
           "Axis should be less than or equal to %d, but received axis is %d.",
           max_dim,
           axis));
-  VLOG(4) << "start get shape\n";
   if (x_dims.size() > y_dims.size()) {
     std::fill(y_dims_array, y_dims_array + axis, 1);
     if (axis + y_dims.size() < max_dim) {
@@ -69,7 +67,6 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
     std::copy(x_dims.Get(), x_dims.Get() + x_dims.size(), x_dims_array + axis);
     std::copy(y_dims.Get(), y_dims.Get() + y_dims.size(), y_dims_array);
   }
-  VLOG(4) << "start for\n";
   for (int i = 0; i < max_dim; ++i) {
     PADDLE_ENFORCE_EQ(
         x_dims_array[i] == y_dims_array[i] || x_dims_array[i] <= 1 ||
@@ -92,7 +89,6 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
       out_dims_array[i] = -1;
     }
   }
-  VLOG(4) << "end\n";
 }
 
 inline void GetPrePostNumel(
