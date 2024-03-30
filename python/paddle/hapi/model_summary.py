@@ -110,6 +110,8 @@ def summary(net, input_size=None, dtypes=None, input=None):
             :name: code-example-2
 
             >>> # example 2: multi input demo
+            >>> import paddle
+            >>> import paddle.nn as nn
             >>> class LeNetMultiInput(nn.Layer):
             ...     def __init__(self, num_classes=10):
             ...         super().__init__()
@@ -171,6 +173,8 @@ def summary(net, input_size=None, dtypes=None, input=None):
             :name: code-example-3
 
             >>> # example 3: List/Dict Input Demo
+            >>> import paddle
+            >>> import paddle.nn as nn
 
             >>> # list input demo
             >>> class LeNetListInput(nn.Layer):
