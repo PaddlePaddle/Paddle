@@ -1583,30 +1583,33 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 
 def sum_as(x, y, name=None):
     """
-    Computes the sum_as of tensor elements over the given dimension.
+    Computes the sum of tensor elements make the shape of its result equal to the shape of y.
 
     Args:
         x (Tensor): An N-D Tensor, the data type is bool, float16, float32, float64, int32 or int64.
-        axis (int|list|tuple, optional): The dimensions along which the sum is performed. If
-            :attr:`None`, sum all elements of :attr:`x` and return a
-            Tensor with a single element, otherwise must be in the
-            range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
-            the dimension to reduce is :math:`rank + axis[i]`.
-        dtype (str, optional): The dtype of output Tensor. The default value is None, the dtype
-            of output is the same as input Tensor `x`.
-        keepdim (bool, optional): Whether to reserve the reduced dimension in the
-            output Tensor. The result Tensor will have one fewer dimension
-            than the :attr:`x` unless :attr:`keepdim` is true, default
-            value is False.
+        y (Tensor): An N-D Tensor, the length of x shape must greater than or equal to the length of
+            y shape. The data type is bool, float16, float32, float64, int32 or int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: Results of summation operation on the specified axis of input Tensor `x`,
+        Tensor: The result of a calculation along some axis of the input tensor x, whose shape is the same as the shape of the input tensor y,
         if `x.dtype='bool'`, `x.dtype='int32'`, it's data type is `'int64'`,
         otherwise it's data type is the same as `x`.
 
     Examples:
-
+        .. code-block:: python
+            >>> x = paddle.to_tensor([[1, 2, 3, 4], [5, 6, 7, 8]])
+            >>> x
+            Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                [[1, 2, 3, 4],
+                 [5, 6, 7, 8]])
+            >>> y = paddle.to_tensor([1, 2, 3, 4])
+            >>> y
+            Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                [1, 2, 3, 4])
+            >>> paddle.sum_as(x, y)
+            Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                [6 , 8 , 10, 12])
     """
 
     if in_dynamic_or_pir_mode():
