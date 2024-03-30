@@ -16,9 +16,15 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
+#include "paddle/phi/kernels/p_norm_kernel.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
+#include "paddle/phi/kernels/where_kernel.h"
 
 namespace phi {
 
@@ -113,7 +119,50 @@ void EmbeddingKernel(const Context& ctx,
   }
 }
 
+template <typename T, typename Context>
+void EmbeddingRenormKernel(const Context& ctx,
+                           const DenseTensor& x,
+                           const DenseTensor& weight,
+                           float max_norm,
+                           float norm_type,
+                           DenseTensor* out) {
+  auto* out_data = ctx.template Alloc<T>(out);
+
+  auto indices = CopyIdsToVector<int64_t, int64_t>(x);
+  auto sorted_indices = indices;
+  std::sort(sorted_indices.begin(), sorted_indices.end());
+  auto num_indices = x.numel();
+  for (int64_t i = 0; i < num_indices; ++i) {
+    if (i > 0 && sorted_indices[i] == sorted_indices[i - 1]) {
+      continue;
+    }
+    PADDLE_ENFORCE_GE(x.data<int64_t>()[i],
+                      0,
+                      phi::errors::InvalidArgument(
+                          "Variable value (input) of OP(embedding_renorm) "
+                          "expected >= 0, but got %ld. Please check input "
+                          "value.",
+                          x.data<int64_t>()[i]));
+    // auto row = weight.Slice(sorted_indices[i], sorted_indices[i] + 1);
+    DenseTensor row_norm;
+    // PNormKernel<T, Context>(ctx, row, norm_type,1,0.0,false,false,
+    // &row_norm);
+    auto row_norm_data = row_norm.data<T>();
+    if (static_cast<float>(*row_norm_data) > max_norm) {
+      auto scale = max_norm / (static_cast<float>(*row_norm_data) + 1e-7);
+      row_norm_data[0] *= scale;
+      out_data[sorted_indices[i]] = row_norm_data[0];
+    }
+  }
+}
 }  // namespace phi
+
+PD_REGISTER_KERNEL(embedding_renorm,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::EmbeddingRenormKernel,
+                   float,
+                   double) {}
 
 PD_REGISTER_KERNEL(embedding,
                    CPU,

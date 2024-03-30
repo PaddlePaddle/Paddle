@@ -89,7 +89,7 @@ from .flash_attention import (
     scaled_dot_product_attention,
     sdp_kernel,  # noqa: F401
 )
-from .input import embedding, one_hot
+from .input import embedding, embedding_renorm_, one_hot
 from .loss import (
     binary_cross_entropy,
     binary_cross_entropy_with_logits,
@@ -258,6 +258,7 @@ __all__ = [
     'pixel_shuffle',
     'pixel_unshuffle',
     'channel_shuffle',
+    'embedding_renorm_',
     'embedding',
     'gather_tree',
     'one_hot',
