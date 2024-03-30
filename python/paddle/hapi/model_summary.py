@@ -50,7 +50,6 @@ def summary(net, input_size=None, dtypes=None, input=None):
             >>> # example 1: Single Input Demo
             >>> import paddle
             >>> import paddle.nn as nn
-            >>> paddle.seed(2023)
             >>> # Define Network
             >>> class LeNet(nn.Layer):
             ...     def __init__(self, num_classes=10):
@@ -79,21 +78,20 @@ def summary(net, input_size=None, dtypes=None, input=None):
             ...         return x
             ...
             >>> lenet = LeNet()
-
+            >>> # The module suffix number indicates its sequence in modules of the same type, used for differentiation identification
             >>> params_info = paddle.summary(lenet, (1, 1, 28, 28))
-            >>> print(params_info) # The module suffix number indicates its sequence in modules of the same type, used for differentiation identification
             ---------------------------------------------------------------------------
-            Layer (type)       Input Shape          Output Shape         Param #
+             Layer (type)       Input Shape          Output Shape         Param #
             ===========================================================================
-              Conv2D-1       [[1, 1, 28, 28]]      [1, 6, 28, 28]          60
+               Conv2D-1       [[1, 1, 28, 28]]      [1, 6, 28, 28]          60
                 ReLU-1        [[1, 6, 28, 28]]      [1, 6, 28, 28]           0
               MaxPool2D-1     [[1, 6, 28, 28]]      [1, 6, 14, 14]           0
-              Conv2D-2       [[1, 6, 14, 14]]     [1, 16, 10, 10]         2,416
+               Conv2D-2       [[1, 6, 14, 14]]     [1, 16, 10, 10]         2,416
                 ReLU-2       [[1, 16, 10, 10]]     [1, 16, 10, 10]           0
               MaxPool2D-2    [[1, 16, 10, 10]]      [1, 16, 5, 5]            0
-              Linear-1          [[1, 400]]            [1, 120]           48,120
-              Linear-2          [[1, 120]]            [1, 84]            10,164
-              Linear-3          [[1, 84]]             [1, 10]              850
+               Linear-1          [[1, 400]]            [1, 120]           48,120
+               Linear-2          [[1, 120]]            [1, 84]            10,164
+               Linear-3          [[1, 84]]             [1, 10]              850
             ===========================================================================
             Total params: 61,610
             Trainable params: 61,610
@@ -104,6 +102,8 @@ def summary(net, input_size=None, dtypes=None, input=None):
             Params size (MB): 0.24
             Estimated Total Size (MB): 0.35
             ---------------------------------------------------------------------------
+            <BLANKLINE>
+            >>> print(params_info)
             {'total_params': 61610, 'trainable_params': 61610}
 
         .. code-block:: python
@@ -124,19 +124,18 @@ def summary(net, input_size=None, dtypes=None, input=None):
             >>> params_info = paddle.summary(lenet_multi_input,
             ...                              [(1, 1, 28, 28), (1, 400)],
             ...                              dtypes=['float32', 'float32'])
-            >>> print(params_info)
             ---------------------------------------------------------------------------
-            Layer (type)       Input Shape          Output Shape         Param #
+             Layer (type)       Input Shape          Output Shape         Param #
             ===========================================================================
-              Conv2D-3       [[1, 1, 28, 28]]      [1, 6, 28, 28]          60
+               Conv2D-3       [[1, 1, 28, 28]]      [1, 6, 28, 28]          60
                 ReLU-3        [[1, 6, 28, 28]]      [1, 6, 28, 28]           0
               MaxPool2D-3     [[1, 6, 28, 28]]      [1, 6, 14, 14]           0
-              Conv2D-4       [[1, 6, 14, 14]]     [1, 16, 10, 10]         2,416
+               Conv2D-4       [[1, 6, 14, 14]]     [1, 16, 10, 10]         2,416
                 ReLU-4       [[1, 16, 10, 10]]     [1, 16, 10, 10]           0
               MaxPool2D-4    [[1, 16, 10, 10]]      [1, 16, 5, 5]            0
-              Linear-4          [[1, 400]]            [1, 120]           48,120
-              Linear-5          [[1, 120]]            [1, 84]            10,164
-              Linear-6          [[1, 84]]             [1, 10]              850
+               Linear-4          [[1, 400]]            [1, 120]           48,120
+               Linear-5          [[1, 120]]            [1, 84]            10,164
+               Linear-6          [[1, 84]]             [1, 10]              850
             ===========================================================================
             Total params: 61,610
             Trainable params: 61,610
@@ -147,6 +146,8 @@ def summary(net, input_size=None, dtypes=None, input=None):
             Params size (MB): 0.24
             Estimated Total Size (MB): 0.35
             ---------------------------------------------------------------------------
+            <BLANKLINE>
+            >>> print(params_info)
             {'total_params': 61610, 'trainable_params': 61610}
 
         .. code-block:: python
@@ -167,19 +168,18 @@ def summary(net, input_size=None, dtypes=None, input=None):
             >>> lenet_list_input = LeNetListInput()
             >>> input_data = [paddle.rand([1, 1, 28, 28]), paddle.rand([1, 400])]
             >>> params_info = paddle.summary(lenet_list_input, input=input_data)
-            >>> print(params_info)
             ---------------------------------------------------------------------------
-            Layer (type)       Input Shape          Output Shape         Param #
+             Layer (type)       Input Shape          Output Shape         Param #
             ===========================================================================
-              Conv2D-5       [[1, 1, 28, 28]]      [1, 6, 28, 28]          60
+               Conv2D-5       [[1, 1, 28, 28]]      [1, 6, 28, 28]          60
                 ReLU-5        [[1, 6, 28, 28]]      [1, 6, 28, 28]           0
               MaxPool2D-5     [[1, 6, 28, 28]]      [1, 6, 14, 14]           0
-              Conv2D-6       [[1, 6, 14, 14]]     [1, 16, 10, 10]         2,416
+               Conv2D-6       [[1, 6, 14, 14]]     [1, 16, 10, 10]         2,416
                 ReLU-6       [[1, 16, 10, 10]]     [1, 16, 10, 10]           0
               MaxPool2D-6    [[1, 16, 10, 10]]      [1, 16, 5, 5]            0
-              Linear-7          [[1, 400]]            [1, 120]           48,120
-              Linear-8          [[1, 120]]            [1, 84]            10,164
-              Linear-9          [[1, 84]]             [1, 10]              850
+               Linear-7          [[1, 400]]            [1, 120]           48,120
+               Linear-8          [[1, 120]]            [1, 84]            10,164
+               Linear-9          [[1, 84]]             [1, 10]              850
             ===========================================================================
             Total params: 61,610
             Trainable params: 61,610
@@ -190,6 +190,8 @@ def summary(net, input_size=None, dtypes=None, input=None):
             Params size (MB): 0.24
             Estimated Total Size (MB): 0.35
             ---------------------------------------------------------------------------
+            <BLANKLINE>
+            >>> print(params_info)
             {'total_params': 61610, 'trainable_params': 61610}
 
             >>> # dict input demo
@@ -206,19 +208,18 @@ def summary(net, input_size=None, dtypes=None, input=None):
             >>> input_data = {'x1': paddle.rand([1, 1, 28, 28]),
             ...               'x2': paddle.rand([1, 400])}
             >>> params_info = paddle.summary(lenet_dict_input, input=input_data)
-            >>> print(params_info)
             ---------------------------------------------------------------------------
-            Layer (type)       Input Shape          Output Shape         Param #
+             Layer (type)       Input Shape          Output Shape         Param #
             ===========================================================================
-              Conv2D-7       [[1, 1, 28, 28]]      [1, 6, 28, 28]          60
+               Conv2D-7       [[1, 1, 28, 28]]      [1, 6, 28, 28]          60
                 ReLU-7        [[1, 6, 28, 28]]      [1, 6, 28, 28]           0
               MaxPool2D-7     [[1, 6, 28, 28]]      [1, 6, 14, 14]           0
-              Conv2D-8       [[1, 6, 14, 14]]     [1, 16, 10, 10]         2,416
+               Conv2D-8       [[1, 6, 14, 14]]     [1, 16, 10, 10]         2,416
                 ReLU-8       [[1, 16, 10, 10]]     [1, 16, 10, 10]           0
               MaxPool2D-8    [[1, 16, 10, 10]]      [1, 16, 5, 5]            0
-              Linear-10         [[1, 400]]            [1, 120]           48,120
-              Linear-11         [[1, 120]]            [1, 84]            10,164
-              Linear-12         [[1, 84]]             [1, 10]              850
+               Linear-10         [[1, 400]]            [1, 120]           48,120
+               Linear-11         [[1, 120]]            [1, 84]            10,164
+               Linear-12         [[1, 84]]             [1, 10]              850
             ===========================================================================
             Total params: 61,610
             Trainable params: 61,610
@@ -229,6 +230,8 @@ def summary(net, input_size=None, dtypes=None, input=None):
             Params size (MB): 0.24
             Estimated Total Size (MB): 0.35
             ---------------------------------------------------------------------------
+            <BLANKLINE>
+            >>> print(params_info)
             {'total_params': 61610, 'trainable_params': 61610}
 
     """
