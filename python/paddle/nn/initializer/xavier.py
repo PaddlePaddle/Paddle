@@ -122,7 +122,7 @@ class XavierInitializer(Initializer):
                 limit = math.sqrt(6.0 / float(fan_in + fan_out))
                 print(
                     "{{function_name: uniform, inputs: {{ }} , params: [shape: {}, low: {}, high: {}, seed: {}, dtype: {} ] }}".format(
-                        str(out_var_shape),
+                        str(out_var.shape),
                         str(-limit),
                         str(limit),
                         str(self._seed),
