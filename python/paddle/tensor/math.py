@@ -1592,7 +1592,7 @@ def sum_as(x, y, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: The result of a calculation along some axis of the input tensor x, whose shape is the same as the shape of the input tensor y,
+        Tensor: The sum of the input tensor x along some axis has the same shape as the shape of the input tensor y,
         if `x.dtype='bool'`, `x.dtype='int32'`, it's data type is `'int64'`,
         otherwise it's data type is the same as `x`.
 
