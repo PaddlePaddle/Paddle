@@ -133,7 +133,6 @@ def embedding(
     padding_idx=None,
     max_norm=None,
     norm_type: float = 2.0,
-    scale_grad_by_freq: bool = False,
     sparse=False,
     name=None,
 ):
