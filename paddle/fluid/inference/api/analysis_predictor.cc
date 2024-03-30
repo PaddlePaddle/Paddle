@@ -1359,8 +1359,14 @@ void AnalysisPredictor::MkldnnPostReset() {
                                  (&platform::DeviceContextPool::Instance())
                                      ->Get(platform::CPUPlace()))
                                  ->GetShapeBlobSize();
-      CHECK_LE(shape_blob_size,
-               static_cast<size_t>(config_.mkldnn_cache_capacity_));
+      PADDLE_ENFORCE_LE(
+          shape_blob_size,
+          static_cast<size_t>(config_.mkldnn_cache_capacity_),
+          phi::errors::InvalidArgument(
+              "shape_blob_size(%zu) should be less than or equal to "
+              "mkldnn_cache_capacity(%zu).",
+              shape_blob_size,
+              static_cast<size_t>(config_.mkldnn_cache_capacity_)));
     }
     // We cannot reset to the default cache settings
     // as there maybe CopyToCPU method used and oneDNN

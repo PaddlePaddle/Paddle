@@ -76,11 +76,27 @@ void Main() {
       });
   LOG(INFO) << "output.size " << out_data.size()
             << "  max_index:" << out_index[0];
-  CHECK_EQ(out_data.size(), 1000);
+  PADDLE_ENFORCE_EQ(out_data.size(),
+                    1000,
+                    platform::errors::InvalidArgument(
+                        "The size of out_data vector is incorrect"
+                        "Expected value is 1000, but receive %zu. ",
+                        out_data.size()));
   int max_index = out_index[0];
-  CHECK_EQ(max_index, 13);
+  PADDLE_ENFORCE_EQ(max_index,
+                    13,
+                    platform::errors::InvalidArgument(
+                        "The value of max_index is incorrect"
+                        "Expected value is 13, but receive %d. ",
+                        max_index));
   float max_score = out_data[max_index];
-  CHECK_LE(fabs(max_score - 0.99981), 1e-4);
+  PADDLE_ENFORCE_LE(
+      fabs(max_score - 0.99981),
+      1e-4,
+      platform::errors::InvalidArgument(
+          "The absolute difference between max_score and 0.99981 should "
+          "be less than or equal to %f .",
+          1e-4));
 }
 
 }  // namespace demo

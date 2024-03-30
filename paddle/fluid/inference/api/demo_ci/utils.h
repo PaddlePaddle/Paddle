@@ -55,9 +55,12 @@ Record ProcessALine(const std::string& line) {
   VLOG(3) << "process a line";
   std::vector<std::string> columns;
   split(line, '\t', &columns);
-  CHECK_EQ(columns.size(), 2UL)
-      << "data format error, should be <data>\t<shape>";
-
+  PADDLE_ENFORCE_EQ(columns.size(),
+                    2UL,
+                    platform::errors::InvalidArgument(
+                        "The size of columns vector is incorrect"
+                        "Expected value is 2, but receive %zu. ",
+                        columns.size()));
   Record record;
   std::vector<std::string> data_strs;
   split(columns[0], ' ', &data_strs);
@@ -89,25 +92,49 @@ void CheckOutput(const std::string& referfile,
   size_t numel = output.data.length() / PaddleDtypeSize(output.dtype);
   VLOG(3) << "predictor output numel " << numel;
   VLOG(3) << "reference output numel " << refer.data.size();
-  CHECK_EQ(numel, refer.data.size());
+  PADDLE_ENFORCE_EQ(numel,
+                    refer.data.size(),
+                    platform::errors::InvalidArgument(
+                        "The value of numel is incorrect"
+                        "Expected value is %d, but received %d. ",
+                        refer.data.size(),
+                        numel));
   switch (output.dtype) {
     case PaddleDType::INT64: {
       for (size_t i = 0; i < numel; ++i) {
-        CHECK_EQ(static_cast<int64_t*>(output.data.data())[i], refer.data[i]);
+        PADDLE_ENFORCE_EQ(
+            static_cast<int64_t*>(output.data.data())[i],
+            refer.data[i],
+            platform::errors::InvalidArgument(
+                "The value at index %d of output.data.data() is incorrect.",
+                "Expected value is %lld, but received %lld.",
+                i,
+                refer.data[i],
+                static_cast<int64_t*>(output.data.data())[i]));
       }
       break;
     }
     case PaddleDType::FLOAT32: {
       for (size_t i = 0; i < numel; ++i) {
-        CHECK_LT(
+        PADDLE_ENFORCE_LT(
             fabs(static_cast<float*>(output.data.data())[i] - refer.data[i]),
-            threshold);
+            threshold,
+            platform::errors::InvalidArgument(
+                "The absolute difference should be less than %f .", threshold));
       }
       break;
     }
     case PaddleDType::INT32: {
       for (size_t i = 0; i < numel; ++i) {
-        CHECK_EQ(static_cast<int32_t*>(output.data.data())[i], refer.data[i]);
+        PADDLE_ENFORCE_EQ(
+            static_cast<int32_t*>(output.data.data())[i],
+            refer.data[i],
+            platform::errors::InvalidArgument(
+                "The value at index %d of output.data.data() is incorrect.",
+                "Expected value is %d, but received %d.",
+                i,
+                refer.data[i],
+                static_cast<int64_t*>(output.data.data())[i]));
       }
       break;
     }

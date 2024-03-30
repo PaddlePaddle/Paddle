@@ -743,8 +743,20 @@ int GroupNormPluginDynamic::enqueue(
       params_.hwc = params_.hw * params_.c;
       params_.invHWC = 1.F / static_cast<float>(params_.hw * params_.cPerGroup);
       params_.groupsPerBlock = cPerBlock / params_.cPerGroup;
-      CHECK_EQ(cPerBlock % params_.cPerGroup, 0);
-      CHECK_EQ(params_.cPerGroup % 2, 0);
+      PADDLE_ENFORCE_EQ(
+          cPerBlock % params_.cPerGroup,
+          0,
+          platform::errors::InvalidArgument(
+              "The Parameter cPerBlock should be a multiple of parameter "
+              "cPerGroup, but received cPerBlock is %d, cPerGroup is %d.",
+              cPerBlock,
+              params_.cPerGroup));
+      PADDLE_ENFORCE_EQ(
+          params_.cPerGroup % 2,
+          0,
+          platform::errors::InvalidArgument(
+              "The paramenter named cPerGroup must be even, but received %d.",
+              params_.cPerGroup));
       params_.eps = eps_;
       params_.dqScaleIn = input_desc[0].scale;
       params_.inv_qScale = 1.f / output_desc[0].scale;

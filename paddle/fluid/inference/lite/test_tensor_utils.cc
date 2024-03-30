@@ -162,7 +162,11 @@ void test_lite_tensor_data_ptr(PrecisionType precision_type) {
   paddle::lite_api::PaddlePredictor* engine_0 =
       inference::Singleton<inference::lite::EngineManager>::Global().Get(
           unique_key);
-  CHECK_NOTNULL(engine_0);
+  PADDLE_ENFORCE_NOT_NULL(
+      engine_0,
+      platform::errors::InvalidArgument(
+          "There is no 'PaddlePredictor' named %s in EngineManager.",
+          unique_key));
   auto lite_api_tensor = engine_0->GetInput(0);
   lite_api_tensor->Resize(
       std::vector<int64_t>({static_cast<int>(lite_tensor_data.size())}));
@@ -170,7 +174,14 @@ void test_lite_tensor_data_ptr(PrecisionType precision_type) {
   T* data = static_cast<T*>(GetLiteTensorDataPtr(
       lite_api_tensor.get(), precision_type, TargetType::kHost));
   for (size_t i = 0; i < 8; ++i) {
-    CHECK_EQ(data[i], static_cast<T>(i)) << "the i-th num is not correct.";
+    PADDLE_ENFORCE_EQ(data[i],
+                      static_cast<T>(i),
+                      platform::errors::InvalidArgument(
+                          "The value at index %d of data is incorrect."
+                          "Expected value is %d, but received %d.",
+                          i,
+                          data[i],
+                          static_cast<T>(i)));
   }
 }
 
@@ -209,7 +220,11 @@ void test_tensor_copy(const platform::DeviceContext& ctx) {
   paddle::lite_api::PaddlePredictor* engine_0 =
       inference::Singleton<inference::lite::EngineManager>::Global().Get(
           unique_key);
-  CHECK_NOTNULL(engine_0);
+  PADDLE_ENFORCE_NOT_NULL(
+      engine_0,
+      platform::errors::InvalidArgument(
+          "There is no PaddlePredictor named %s in EngineManager.",
+          unique_key));
   auto lite_api_tensor = engine_0->GetInput(0);
   lite_api_tensor->Resize(
       std::vector<int64_t>({static_cast<int>(vector.size())}));
@@ -251,7 +266,10 @@ void test_tensor_share(const platform::DeviceContext& ctx) {
   paddle::lite_api::PaddlePredictor* engine_0 =
       inference::Singleton<inference::lite::EngineManager>::Global().Get(
           unique_key);
-  CHECK_NOTNULL(engine_0);
+  PADDLE_ENFORCE_NOT_NULL(
+      engine_0,
+      platform::errors::PreconditionNotMet(
+          "EngineManager should has engine %s, but not found.", unique_key));
   auto lite_api_tensor = engine_0->GetInput(0);
   lite_api_tensor->Resize(
       std::vector<int64_t>({static_cast<int>(vector.size())}));

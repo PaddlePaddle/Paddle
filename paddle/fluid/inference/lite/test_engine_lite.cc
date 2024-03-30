@@ -117,7 +117,10 @@ TEST(EngineManager, engine) {
   paddle::lite_api::PaddlePredictor* engine_0 =
       inference::Singleton<inference::lite::EngineManager>::Global().Get(
           unique_key);
-  CHECK_NOTNULL(engine_0);
+  PADDLE_ENFORCE_NOT_NULL(
+      engine_0,
+      platform::errors::PreconditionNotMet(
+          "EngineManager should has engine %s, but not found.", unique_key));
   inference::Singleton<inference::lite::EngineManager>::Global().DeleteAll();
   CHECK(inference::Singleton<inference::lite::EngineManager>::Global().Get(
             unique_key) == nullptr)

@@ -139,33 +139,78 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
   nvinfer1::IPluginV2* createPlugin(
       const char* name,
       const nvinfer1::PluginFieldCollection* fc) noexcept override {
-    CHECK_EQ(fc->nbFields, 7);
+    PADDLE_ENFORCE_EQ(fc->nbFields,
+                      7,
+                      platform::errors::InvalidArgument(
+                          "The value of 'fc->nbFields' is incorrect."
+                          "Expected value is %d, but received %d.",
+                          7,
+                          fc->nbFields));
     // float_attr
     auto attr_field = (fc->fields)[0];
     CHECK(attr_field.type == nvinfer1::PluginFieldType::kFLOAT32);
-    CHECK_EQ(attr_field.length, 1);
+    PADDLE_ENFORCE_EQ(attr_field.length,
+                      1,
+                      platform::errors::InvalidArgument(
+                          "The length of attr_field is incorrect."
+                          "Expected value is %d, but received %d.",
+                          1,
+                          attr_field.length));
     float float_value = (reinterpret_cast<const float*>(attr_field.data))[0];
-    CHECK_EQ(float_value, 1.0);
-
+    PADDLE_ENFORCE_EQ(float_value,
+                      1.0,
+                      platform::errors::InvalidArgument(
+                          "The value of float_value is incorrect."
+                          "Expected value is %f, but received %f.",
+                          1.0,
+                          float_value));
     // int_attr
     attr_field = (fc->fields)[1];
     CHECK(attr_field.type == nvinfer1::PluginFieldType::kINT32);
-    CHECK_EQ(attr_field.length, 1);
+    PADDLE_ENFORCE_EQ(attr_field.length,
+                      1,
+                      platform::errors::InvalidArgument(
+                          "The length of attr_field is incorrect."
+                          "Expected value is %d, but received %d.",
+                          1,
+                          attr_field.length));
     int int_value = (reinterpret_cast<const int*>(attr_field.data))[0];
-    CHECK_EQ(int_value, 1);
-
+    PADDLE_ENFORCE_EQ(int_value,
+                      1,
+                      platform::errors::InvalidArgument(
+                          "The value of int_value is incorrect."
+                          "Expected value is %d, but received %d.",
+                          1,
+                          int_value));
     // bool_attr
     attr_field = (fc->fields)[2];
     CHECK(attr_field.type == nvinfer1::PluginFieldType::kINT32);
-    CHECK_EQ(attr_field.length, 1);
+    PADDLE_ENFORCE_EQ(attr_field.length,
+                      1,
+                      platform::errors::InvalidArgument(
+                          "The length of attr_field is incorrect."
+                          "Expected value is %d, but received %d.",
+                          1,
+                          attr_field.length));
     int bool_value = (reinterpret_cast<const int*>(attr_field.data))[0];
-    CHECK_EQ(bool_value, 1);
-
+    PADDLE_ENFORCE_EQ(bool_value,
+                      1,
+                      platform::errors::InvalidArgument(
+                          "The value of int_value is incorrect."
+                          "Expected value is %d, but received %d.",
+                          1,
+                          bool_value));
     // string_attr
     attr_field = (fc->fields)[3];
     CHECK(attr_field.type == nvinfer1::PluginFieldType::kCHAR);
     std::string expect_string_attr = "test_string_attr";
-    CHECK_EQ((size_t)attr_field.length, expect_string_attr.size() + 1);
+    PADDLE_ENFORCE_EQ(attr_field.length,
+                      expect_string_attr.size() + 1,
+                      platform::errors::InvalidArgument(
+                          "The length of attr_field is incorrect."
+                          "Expected value is %d, but received %d.",
+                          expect_string_attr.size() + 1,
+                          attr_field.length));
     const char* receive_string_attr =
         reinterpret_cast<const char*>(attr_field.data);
     CHECK(expect_string_attr == std::string(receive_string_attr));
@@ -173,29 +218,101 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
     // ints_attr
     attr_field = (fc->fields)[4];
     CHECK(attr_field.type == nvinfer1::PluginFieldType::kINT32);
-    CHECK_EQ(attr_field.length, 3);
+    PADDLE_ENFORCE_EQ(attr_field.length,
+                      3,
+                      platform::errors::InvalidArgument(
+                          "The length of attr_field is incorrect."
+                          "Expected value is %d, but received %d.",
+                          3,
+                          attr_field.length));
     const int* ints_value = reinterpret_cast<const int*>(attr_field.data);
-    CHECK_EQ(ints_value[0], 1);
-    CHECK_EQ(ints_value[1], 2);
-    CHECK_EQ(ints_value[2], 3);
+
+    PADDLE_ENFORCE_EQ(ints_value[0],
+                      1,
+                      platform::errors::InvalidArgument(
+                          "The first element of ints_value is incorrect."
+                          "Expected value is %d, but received %d.",
+                          1,
+                          ints_value[0]));
+    PADDLE_ENFORCE_EQ(ints_value[1],
+                      2,
+                      platform::errors::InvalidArgument(
+                          "The first element of ints_value is incorrect."
+                          "Expected value is %d, but received %d.",
+                          2,
+                          ints_value[1]));
+    PADDLE_ENFORCE_EQ(ints_value[2],
+                      3,
+                      platform::errors::InvalidArgument(
+                          "The first element of ints_value is incorrect."
+                          "Expected value is %d, but received %d.",
+                          3,
+                          ints_value[2]));
 
     // floats_attr
     attr_field = (fc->fields)[5];
     CHECK(attr_field.type == nvinfer1::PluginFieldType::kFLOAT32);
-    CHECK_EQ(attr_field.length, 3);
+    PADDLE_ENFORCE_EQ(attr_field.length,
+                      3,
+                      platform::errors::InvalidArgument(
+                          "The length of attr_field is incorrect."
+                          "Expected value is %d, but received %d.",
+                          3,
+                          attr_field.length));
     const float* floats_value = reinterpret_cast<const float*>(attr_field.data);
-    CHECK_EQ(floats_value[0], 1.0);
-    CHECK_EQ(floats_value[1], 2.0);
-    CHECK_EQ(floats_value[2], 3.0);
-
+    PADDLE_ENFORCE_EQ(floats_value[0],
+                      1.0,
+                      platform::errors::InvalidArgument(
+                          "The first element of floats_value is incorrect."
+                          "Expected value is %f, but received %f.",
+                          1.0,
+                          floats_value[0]));
+    PADDLE_ENFORCE_EQ(floats_value[1],
+                      2.0,
+                      platform::errors::InvalidArgument(
+                          "The first element of floats_value is incorrect."
+                          "Expected value is %f, but received %f.",
+                          2.0,
+                          floats_value[1]));
+    PADDLE_ENFORCE_EQ(floats_value[2],
+                      3.0,
+                      platform::errors::InvalidArgument(
+                          "The first element of floats_value is incorrect."
+                          "Expected value is %f, but received %f.",
+                          3.0,
+                          floats_value[2]));
     // bools_attr
     attr_field = (fc->fields)[6];
     CHECK(attr_field.type == nvinfer1::PluginFieldType::kINT32);
-    CHECK_EQ(attr_field.length, 3);
+    PADDLE_ENFORCE_EQ(attr_field.length,
+                      3,
+                      platform::errors::InvalidArgument(
+                          "The length of attr_field is incorrect."
+                          "Expected value is %d, but received %d.",
+                          3,
+                          attr_field.length));
     ints_value = reinterpret_cast<const int*>(attr_field.data);
-    CHECK_EQ(ints_value[0], true);
-    CHECK_EQ(ints_value[1], false);
-    CHECK_EQ(ints_value[2], true);
+    PADDLE_ENFORCE_EQ(ints_value[0],
+                      true,
+                      platform::errors::InvalidArgument(
+                          "The value at index 0 of ints_value is incorrect."
+                          "Expected value is %d, but received %d.",
+                          true,
+                          ints_value[0]));
+    PADDLE_ENFORCE_EQ(ints_value[1],
+                      false,
+                      platform::errors::InvalidArgument(
+                          "The value at index 1 of ints_value is incorrect."
+                          "Expected value is %d, but received %d.",
+                          false,
+                          ints_value[1]));
+    PADDLE_ENFORCE_EQ(ints_value[2],
+                      true,
+                      platform::errors::InvalidArgument(
+                          "The value at index 2 of ints_value is incorrect."
+                          "Expected value is %d, but received %d.",
+                          true,
+                          ints_value[2]));
 
     return new custom_op_plugin(float_value);
   }

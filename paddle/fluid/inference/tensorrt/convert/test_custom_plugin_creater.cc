@@ -113,8 +113,10 @@ TEST(CustomPluginCreater, StaticShapePlugin) {
   auto &custom_plugin_tell = OpTeller::Global().GetCustomPluginTeller();
 
   framework::OpDesc custom_op(*op_desc, nullptr);
-  CHECK_EQ((*custom_plugin_tell)(custom_op, false, false), true);
-
+  PADDLE_ENFORCE_EQ((*custom_plugin_tell)(custom_op, false, false),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "Failed to create CustomPluginTeller."));
   OpTeller::Global().SetOpConverterType(&custom_op,
                                         OpConverterType::CustomPluginCreater);
 
@@ -195,8 +197,10 @@ TEST(CustomPluginCreater, DynamicShapePlugin) {
   auto &custom_plugin_tell = OpTeller::Global().GetCustomPluginTeller();
 
   framework::OpDesc custom_op(*op_desc, nullptr);
-  CHECK_EQ((*custom_plugin_tell)(custom_op, false, true), true);
-
+  PADDLE_ENFORCE_EQ((*custom_plugin_tell)(custom_op, false, true),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "Failed to create CustomPluginTeller."));
   OpTeller::Global().SetOpConverterType(&custom_op,
                                         OpConverterType::CustomPluginCreater);
 

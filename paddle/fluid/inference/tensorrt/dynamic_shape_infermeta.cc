@@ -548,7 +548,11 @@ inline const void UpdatePaddingAndDilation(
       paddings_wrap->insert(paddings_wrap->begin() + 2 * i + 1, copy_pad);
     }
   } else {
-    CHECK_EQ(hw_dims.size() == paddings_wrap->size(), true);
+    PADDLE_ENFORCE_EQ(
+        hw_dims.size(),
+        paddings_wrap->size(),
+        platform::errors::InvalidArgument(
+            "The hw_dims.size() should be equal to paddings_wrap->size()."));
   }
 
   // when padding_algorithm is "VALID" or "SAME"
@@ -759,28 +763,78 @@ nvinfer1::DimsExprs Conv2dTransposeInferMeta(
         PADDLE_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
   }
 
-  CHECK_EQ(padding_algorithm == "EXPLICIT", true);
-  CHECK_EQ(data_format == "NCHW", true);
-  CHECK_EQ(output_size.empty(), true);
-  CHECK_EQ(paddings.size() == 2, true);
-  CHECK_EQ(x_dims.nbDims == 4, true);
-  CHECK_EQ(x_dims.nbDims == filter_dims.nbDims, true);
-  CHECK_EQ(output_padding.empty(), true);
+  PADDLE_ENFORCE_EQ(
+      padding_algorithm == "EXPLICIT",
+      true,
+      platform::errors::InvalidArgument(
+          "The padding_algorithm should be 'EXPLICIT'. But received %s.",
+          padding_algorithm));
+  PADDLE_ENFORCE_EQ(
+      data_format == "NCHW",
+      true,
+      platform::errors::InvalidArgument(
+          "The data_format should be 'NCHW'. But received %s.", data_format));
+  PADDLE_ENFORCE_EQ(output_size.empty(),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The output_size vector should be empty."));
+  PADDLE_ENFORCE_EQ(paddings.size(),
+                    2,
+                    platform::errors::InvalidArgument(
+                        "The size of 'paddings' vector is incorrect."
+                        "Expected value is %d, but received %d.",
+                        2,
+                        paddings.size()));
+  PADDLE_ENFORCE_EQ(x_dims.nbDims,
+                    4,
+                    platform::errors::InvalidArgument(
+                        "The x_dims's nbDims is incorrect."
+                        "Expected value is 4, but received %d. ",
+                        x_dims.nbDims));
+  PADDLE_ENFORCE_EQ(
+      x_dims.nbDims,
+      filter_dims.nbDims,
+      platform::errors::InvalidArgument(
+          "The x_dims's nbDims should be equal to filter_dims's nbDims. "));
+  PADDLE_ENFORCE_EQ(output_padding.empty(),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The output_padding vector should be empty."));
 
   int stride_size = strides.size();
   for (int i = 0; i < stride_size; ++i) {
-    CHECK_EQ(strides[i] > 0, true);
+    PADDLE_ENFORCE_EQ(strides[i] > 0,
+                      true,
+                      platform::errors::InvalidArgument(
+                          "The value at index %d of strides should be greater "
+                          "than 0. But received %d.",
+                          i,
+                          strides[i]));
   }
 
   int in_sub_stride_size = x_dims.nbDims - stride_size;
-  CHECK_EQ(in_sub_stride_size == 2, true);
+  PADDLE_ENFORCE_EQ(in_sub_stride_size,
+                    2,
+                    platform::errors::InvalidArgument(
+                        "The value of in_sub_stride_size is incorrect."
+                        "Expected value is %d, but received %d.",
+                        2,
+                        in_sub_stride_size));
 
   if (!output_size.empty()) {
-    CHECK_EQ(output_size.size() == strides.size(), true);
+    PADDLE_ENFORCE_EQ(
+        output_size.size(),
+        strides.size(),
+        platform::errors::InvalidArgument(
+            "The output_size.size() should be equal to strides.size()."));
   }
 
   if (!output_padding.empty()) {
-    CHECK_EQ(strides.size() == output_padding.size(), true);
+    PADDLE_ENFORCE_EQ(
+        strides.size(),
+        output_padding.size(),
+        platform::errors::InvalidArgument(
+            "The strides.size() should be equal to output_padding.size()."));
   }
 
   std::vector<ExprWrapper> output_dims_wrap(x_dims.nbDims);

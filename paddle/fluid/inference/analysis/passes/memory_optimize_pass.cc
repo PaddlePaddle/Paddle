@@ -92,7 +92,13 @@ void MemoryOptimizePass::CollectLifeCycle(
 
           auto in_shape = node->Var()->GetShape();
           for (auto i : in_shape) {
-            CHECK_GE(i, 0);
+            PADDLE_ENFORCE_GE(
+                i,
+                0,
+                platform::errors::InvalidArgument(
+                    "The dimension of shape should be greater than or "
+                    "equal to 0. But received %lld. ",
+                    i));
           }
           auto var_bytes = std::accumulate(in_shape.begin(),
                                            in_shape.end(),

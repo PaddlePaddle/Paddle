@@ -61,18 +61,36 @@ void Main(bool use_gpu) {
     CHECK(predictor->Run(slots, &outputs));
 
     //# 4. Get output.
-    CHECK_EQ(outputs.size(), 1UL);
+    PADDLE_ENFORCE_EQ(outputs.size(),
+                      1UL,
+                      platform::errors::InvalidArgument(
+                          "The size of outputs vector is incorrect"
+                          "Expected value is 1, but receive %zu. ",
+                          outputs.size()));
     // Check the output buffer size and result of each tid.
-    CHECK_EQ(outputs.front().data.length(), 33168UL);
+    PADDLE_ENFORCE_EQ(outputs.front().data.length(),
+                      33168UL,
+                      platform::errors::InvalidArgument(
+                          "The length of the data within the first element of "
+                          "the outputs vector is incorrect. "
+                          "The expected value is 33168, but the actual length "
+                          "received is %zu. ",
+                          outputs.front().data.length()));
     float result[5] = {
         0.00129761, 0.00151112, 0.000423564, 0.00108815, 0.000932706};
     const size_t num_elements = outputs.front().data.length() / sizeof(float);
     // The outputs' buffers are in CPU memory.
     for (size_t i = 0; i < std::min(static_cast<size_t>(5), num_elements);
          i++) {
-      CHECK_NEAR(static_cast<float*>(outputs.front().data.data())[i],
-                 result[i],
-                 0.001);
+      PADDLE_ENFORCE_LE(
+          fabs(static_cast<float*>(outputs.front().data.data())[i] - result[i]),
+          0.001,
+          platform::errors::InvalidArgument(
+              "The absolute difference between the index at %zu of the data in "
+              "the first element of the outputs vector and the result vector "
+              "should be less than or equal to %f.",
+              i,
+              0.001));
     }
   }
 }
@@ -107,9 +125,21 @@ void MainThreads(int num_threads, bool use_gpu) {
         CHECK(predictor->Run(inputs, &outputs));
 
         // 4. Get output.
-        CHECK_EQ(outputs.size(), 1UL);
+        PADDLE_ENFORCE_EQ(outputs.size(),
+                          1UL,
+                          platform::errors::InvalidArgument(
+                              "The size of outputs vector is incorrect"
+                              "Expected value is 1, but receive %zu. ",
+                              outputs.size()));
         // Check the output buffer size and result of each tid.
-        CHECK_EQ(outputs.front().data.length(), 33168UL);
+        PADDLE_ENFORCE_EQ(outputs.front().data.length(),
+                          33168UL,
+                          platform::errors::InvalidArgument(
+                              "The length of the data within the first element "
+                              "of the outputs vector is incorrect. "
+                              "The expected value is 33168, but the actual "
+                              "length received is %zu. ",
+                              outputs.front().data.length()));
         float result[5] = {
             0.00129761, 0.00151112, 0.000423564, 0.00108815, 0.000932706};
         const size_t num_elements =
@@ -117,9 +147,16 @@ void MainThreads(int num_threads, bool use_gpu) {
         // The outputs' buffers are in CPU memory.
         for (size_t i = 0; i < std::min(static_cast<size_t>(5), num_elements);
              i++) {
-          CHECK_NEAR(static_cast<float*>(outputs.front().data.data())[i],
-                     result[i],
-                     0.001);
+          PADDLE_ENFORCE_LE(
+              fabs(static_cast<float*>(outputs.front().data.data())[i] -
+                   result[i]),
+              0.001,
+              platform::errors::InvalidArgument(
+                  "The absolute difference between the index at %zu of the "
+                  "data in the first element of the outputs vector and the "
+                  "result vector should be less than or equal to %f.",
+                  i,
+                  0.001));
         }
       }
     });
