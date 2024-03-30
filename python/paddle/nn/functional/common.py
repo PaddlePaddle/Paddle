@@ -1445,7 +1445,7 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
     else:  # test
         return x
 
-
+@paddle.utils.print_utils.print_args
 def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
     """
     Pad tensor according to ``'pad'`` and ``'mode'``.
@@ -1802,6 +1802,7 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
     return cos_sim
 
 
+@paddle.utils.print_utils.print_args
 def linear(x, weight, bias=None, name=None):
     r"""
 

@@ -161,6 +161,31 @@ class AdamW(Optimizer):
         multi_precision=False,
         name=None,
     ):
+        inputs_type = None
+        inputs_shape = None
+        if parameters:
+            inputs_type = "List(" + str(type(parameters[0])) + ")"
+            inputs_shape = []
+            for parameter in parameters:
+                inputs_shape.append(parameter.shape)
+
+        print(
+            "{{function_name: AdamW, inputs: {{ {{parameters, type: {inputs_type}, shape:{inputs_shape} }} }} , params: [learning_rate: {learning_rate}, beta1: {beta1}, beta2: {beta2}, epsilon: {epsilon}, weight_decay: {weight_decay}, lr_ratio: {lr_ratio}, apply_decay_param_fun: {apply_decay_param_fun}, grad_clip: {grad_clip}, lazy_mode: {lazy_mode}, multi_precision: {multi_precision} ] }}".format(
+                inputs_type=str(inputs_type),
+                inputs_shape=str(inputs_shape),
+                learning_rate=str(learning_rate),
+                beta1=str(beta1),
+                beta2=str(beta2),
+                epsilon=str(epsilon),
+                weight_decay=str(weight_decay),
+                lr_ratio=str(lr_ratio),
+                apply_decay_param_fun=str(apply_decay_param_fun),
+                grad_clip=str(grad_clip),
+                lazy_mode=str(lazy_mode),
+                multi_precision=str(multi_precision),
+            ),
+            flush=True,
+        )
         assert learning_rate is not None
         assert beta1 is not None
         assert beta2 is not None

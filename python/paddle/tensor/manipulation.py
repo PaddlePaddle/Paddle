@@ -153,7 +153,7 @@ def tensor_array_to_tensor(input, axis=1, use_stack=False, name=None):
         )
         return out, out_index
 
-
+@paddle.utils.print_utils.print_args
 def cast(x, dtype):
     """
 
@@ -229,7 +229,7 @@ def cast(x, dtype):
         )
         return out
 
-
+@paddle.utils.print_utils.print_args
 def slice(input, axes, starts, ends):
     """
     This operator produces a slice of ``input`` along multiple axes. Similar to numpy:
@@ -415,6 +415,7 @@ def slice(input, axes, starts, ends):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def transpose(x, perm, name=None):
     """
     Permute the data dimensions of `input` according to `perm`.
@@ -846,7 +847,7 @@ def crop(x, shape=None, offsets=None, name=None):
     )
     return out
 
-
+@paddle.utils.print_utils.print_args
 @dygraph_only
 def fill_(x, value):
     """
@@ -881,6 +882,7 @@ def fill_(x, value):
     return _C_ops.fill_(x, value)
 
 
+@paddle.utils.print_utils.print_args
 @dygraph_only
 def zero_(x):
     """
@@ -1068,7 +1070,7 @@ def tolist(x):
     # TODO(zhouwei): will remove 0D Tensor.numpy() hack
     return x.numpy(False).tolist()
 
-
+@paddle.utils.print_utils.print_args
 def concat(x, axis=0, name=None):
     """
 
@@ -1468,7 +1470,7 @@ def rot90(x, k=1, axes=[0, 1], name=None):
         # k == 3
         return flip(transpose(x, axes_list), axes[1])
 
-
+@paddle.utils.print_utils.print_args
 def flatten(x, start_axis=0, stop_axis=-1, name=None):
     r"""
     Flattens a contiguous range of axes in a tensor according to start_axis and stop_axis.
@@ -1742,7 +1744,7 @@ def roll(x, shifts, axis=None, name=None):
             )
         return out
 
-
+@paddle.utils.print_utils.print_args
 def stack(x, axis=0, name=None):
     """
     Stacks all the input tensors ``x`` along ``axis`` dimemsion.
@@ -1894,7 +1896,7 @@ def stack(x, axis=0, name=None):
 
         return out
 
-
+@paddle.utils.print_utils.print_args
 def split(x, num_or_sections, axis=0, name=None):
     """
     Split the input tensor into multiple sub-Tensors.
@@ -2109,7 +2111,7 @@ def vsplit(x, num_or_sections, name=None):
         )
     return split(x, num_or_sections, axis=0, name=name)
 
-
+@paddle.utils.print_utils.print_args
 def squeeze(x, axis=None, name=None):
     """
     Squeeze the dimension(s) of size 1 of input tensor x's shape.
@@ -2236,7 +2238,7 @@ def squeeze(x, axis=None, name=None):
 
         return out
 
-
+@paddle.utils.print_utils.print_args
 @inplace_apis_in_dygraph_only
 def squeeze_(x, axis=None, name=None):
     """
@@ -2531,7 +2533,7 @@ def unique(
 
         return tuple(outs)
 
-
+@paddle.utils.print_utils.print_args
 def unsqueeze(x, axis, name=None):
     """
     Insert single-dimensional entries to the shape of input Tensor ``x``. Takes one
@@ -2639,7 +2641,7 @@ def unsqueeze(x, axis, name=None):
 
         return out
 
-
+@paddle.utils.print_utils.print_args
 @inplace_apis_in_dygraph_only
 def unsqueeze_(x, axis, name=None):
     """
@@ -3093,7 +3095,7 @@ def chunk(x, chunks, axis=0, name=None):
     check_type(chunks, 'chunks', (int), 'chunk')
     return split(x, num_or_sections=chunks, axis=axis, name=name)
 
-
+@paddle.utils.print_utils.print_args
 def tile(x, repeat_times, name=None):
     """
 
@@ -3373,7 +3375,7 @@ def broadcast_to(x, shape, name=None):
         )
         return out
 
-
+@paddle.utils.print_utils.print_args
 def expand(x, shape, name=None):
     """
 
@@ -3475,7 +3477,7 @@ def expand(x, shape, name=None):
         )
         return out
 
-
+@paddle.utils.print_utils.print_args
 def reshape(x, shape, name=None):
     """
     Changes the shape of ``x`` without changing its data.
@@ -3666,7 +3668,7 @@ def reshape_(x, shape, name=None):
 
         return out
 
-
+@paddle.utils.print_utils.print_args
 def gather_nd(x, index, name=None):
     """
 

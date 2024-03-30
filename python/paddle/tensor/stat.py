@@ -27,6 +27,7 @@ from .search import where
 __all__ = []
 
 
+@paddle.utils.print_utils.print_args
 def mean(x, axis=None, keepdim=False, name=None):
     """
     Computes the mean of the input tensor's elements along ``axis``.

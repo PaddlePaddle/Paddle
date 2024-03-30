@@ -100,6 +100,16 @@ class UniformInitializer(Initializer):
             out_var = var
 
         if in_dygraph_mode():
+            print(
+                "{{function_name: uniform, inputs: {{ }} , params: [shape: {}, low: {}, high: {}, seed: {}, dtype: {} ] }}".format(
+                    str(var.shape),
+                    str(self._low),
+                    str(self._high),
+                    str(self._seed),
+                    str(out_dtype),
+                ),
+                flush=True,
+            )
             out_var = _C_ops.uniform(
                 var.shape,
                 out_dtype,

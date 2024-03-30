@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
+
 from paddle import _C_ops
 
 from ...common_ops_import import Variable
@@ -110,6 +112,7 @@ def one_hot(x, num_classes, name=None):
         return one_hot_out
 
 
+@paddle.utils.print_utils.print_args
 def embedding(x, weight, padding_idx=None, sparse=False, name=None):
     r"""
     Used to lookup embeddings vector of ids provided by :attr:`x` .

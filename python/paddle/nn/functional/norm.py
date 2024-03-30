@@ -272,6 +272,7 @@ def batch_norm(
         return helper.append_activation(batch_norm_out)
 
 
+@paddle.utils.print_utils.print_args
 def layer_norm(
     x, normalized_shape, weight=None, bias=None, epsilon=1e-05, name=None
 ):
