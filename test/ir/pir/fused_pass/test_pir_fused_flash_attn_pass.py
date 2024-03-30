@@ -540,6 +540,115 @@ class TestFlashAttnPatternOutscaleNoCast(PassTest):
     def test_check_output(self):
         self.check_pass_correct(atol=1e-3, rtol=1e-3)
 
+# Flash Attention
+class TestTransposeSliceFlashAttnPattern(PassTest):
+    r"""
+               transpose
+                   |
+        ---------slice----------
+        |          |           |
+        |          |           |
+        Q          K           V
+        |          |           |
+    transpose  transpose   transpose
+        |          |           |
+      scale    transpose       |
+        |          |           |
+        -- matmul--            |
+             |                 |
+           mask                |
+             |                 |
+           cast                |
+             |                 |
+          softmax              |
+             |                 |
+            cast               |
+             |                 |
+             ------matmul------
+                     |
+                 transpose
+                     |
+                    out
+
+        transpose
+            |
+        --slice--
+        |   |   |
+        Q   K   V          mask
+        |   |   |            |
+        ------flash_attn------
+                  |
+                 out
+    """
+
+    def is_program_valid(self, program=None):
+        return True
+
+    def build_ir_program(self):
+        for bs in [1]:
+            for seq_len in [128]:
+                for head_dim in [64]:
+                    for num_heads in [8]:
+                        with paddle.pir_utils.IrGuard():
+                            main_prog = paddle.static.Program()
+                            start_prog = paddle.static.Program()
+                            with paddle.pir.core.program_guard(
+                                main_prog, start_prog
+                            ):
+                                x = paddle.static.data(
+                                    name='x',
+                                    shape=[bs, seq_len, 3, num_heads, head_dim],
+                                    dtype='float16'
+                                )
+                                mask_shape = (bs, num_heads, seq_len, seq_len)
+                                mask = paddle.static.data(
+                                    name='mask',
+                                    shape=mask_shape,
+                                    dtype='float16',
+                                )
+                                xt = paddle.transpose(x, [2, 0, 3, 1, 4])
+                                q = xt[0, :, :, :, :]
+                                k = xt[1, :, :, :, :]
+                                v = xt[2, :, :, :, :]
+                                kt = paddle.transpose(k, [0, 1, 3, 2])
+
+                                score = paddle.matmul(q, kt)
+                                score_scale = paddle.scale(
+                                    score, scale=0.125, bias=0.0
+                                )
+                                score_add = paddle.add(score_scale, mask)
+                                softmax_out = paddle.nn.functional.softmax(
+                                    score_add
+                                )
+                                attention_out = paddle.matmul(softmax_out, v)
+                                attention_out = paddle.transpose(
+                                    attention_out, [0, 2, 1, 3]
+                                )
+                                out = paddle.assign(attention_out)
+                                self.pass_list = ['fused_transpose_slice_flash_attn_pass']
+                                self.feeds = {
+                                    "x": np.random.random(
+                                        (bs, seq_len, 3, num_heads, head_dim)
+                                    ).astype("float16"),
+                                    "mask": np.random.random(
+                                        (bs, num_heads, seq_len, seq_len)
+                                    ).astype("float16"),
+                                }
+                                self.fetch_list = [out]
+                                self.valid_op_map = {
+                                    "pd_op.flash_attn": 1,
+                                }
+                                return [main_prog, start_prog]
+
+    def sample_program(self):
+        yield self.build_ir_program(), False
+
+    def setUp(self):
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def test_check_output(self):
+        self.check_pass_correct(atol=1e-3, rtol=1e-3)
 
 if __name__ == "__main__":
     unittest.main()
