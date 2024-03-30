@@ -110,7 +110,24 @@ def summary(net, input_size=None, dtypes=None, input=None):
             :name: code-example-2
 
             >>> # example 2: multi input demo
-            >>> class LeNetMultiInput(LeNet):
+            >>> class LeNetMultiInput(nn.Layer):
+            ...     def __init__(self, num_classes=10):
+            ...         super().__init__()
+            ...         self.num_classes = num_classes
+            ...         self.features = nn.Sequential(
+            ...             nn.Conv2D(1, 6, 3, stride=1, padding=1),
+            ...             nn.ReLU(),
+            ...             nn.MaxPool2D(2, 2),
+            ...             nn.Conv2D(6, 16, 5, stride=1, padding=0),
+            ...             nn.ReLU(),
+            ...             nn.MaxPool2D(2, 2))
+            ...
+            ...         if num_classes > 0:
+            ...             self.fc = nn.Sequential(
+            ...                 nn.Linear(400, 120),
+            ...                 nn.Linear(120, 84),
+            ...                 nn.Linear(84, 10))
+            ...
             ...     def forward(self, inputs, y):
             ...         x = self.features(inputs)
             ...
@@ -156,7 +173,24 @@ def summary(net, input_size=None, dtypes=None, input=None):
             >>> # example 3: List/Dict Input Demo
 
             >>> # list input demo
-            >>> class LeNetListInput(LeNet):
+            >>> class LeNetListInput(nn.Layer):
+            ...     def __init__(self, num_classes=10):
+            ...         super().__init__()
+            ...         self.num_classes = num_classes
+            ...         self.features = nn.Sequential(
+            ...             nn.Conv2D(1, 6, 3, stride=1, padding=1),
+            ...             nn.ReLU(),
+            ...             nn.MaxPool2D(2, 2),
+            ...             nn.Conv2D(6, 16, 5, stride=1, padding=0),
+            ...             nn.ReLU(),
+            ...             nn.MaxPool2D(2, 2))
+            ...
+            ...         if num_classes > 0:
+            ...             self.fc = nn.Sequential(
+            ...                 nn.Linear(400, 120),
+            ...                 nn.Linear(120, 84),
+            ...                 nn.Linear(84, 10))
+            ...
             ...     def forward(self, inputs):
             ...         x = self.features(inputs[0])
             ...
@@ -195,7 +229,24 @@ def summary(net, input_size=None, dtypes=None, input=None):
             {'total_params': 61610, 'trainable_params': 61610}
 
             >>> # dict input demo
-            >>> class LeNetDictInput(LeNet):
+            >>> class LeNetDictInput(nn.Layer):
+            ...     def __init__(self, num_classes=10):
+            ...         super().__init__()
+            ...         self.num_classes = num_classes
+            ...         self.features = nn.Sequential(
+            ...             nn.Conv2D(1, 6, 3, stride=1, padding=1),
+            ...             nn.ReLU(),
+            ...             nn.MaxPool2D(2, 2),
+            ...             nn.Conv2D(6, 16, 5, stride=1, padding=0),
+            ...             nn.ReLU(),
+            ...             nn.MaxPool2D(2, 2))
+            ...
+            ...         if num_classes > 0:
+            ...             self.fc = nn.Sequential(
+            ...                 nn.Linear(400, 120),
+            ...                 nn.Linear(120, 84),
+            ...                 nn.Linear(84, 10))
+            ...
             ...     def forward(self, inputs):
             ...         x = self.features(inputs['x1'])
             ...
