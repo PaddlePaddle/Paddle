@@ -22,8 +22,7 @@ np.random.seed(100)
 paddle.seed(100)
 
 
-def sum_as_net(x, y):
-    out_dtype = x.dtype
+def get_reduce_dims(x, y):
     diff = len(x.shape) - len(y.shape)
     axis = []
     for i in range(diff):
@@ -31,104 +30,201 @@ def sum_as_net(x, y):
     for i in range(len(y.shape)):
         if y.shape[i] != x.shape[i + diff]:
             axis.append(i + diff)
-    return np.sum(x, axis=tuple(axis), dtype=out_dtype)
+    return axis
 
 
-# class TestSumAsOp(OpTest):
-#     def setUp(self):
-#         self.op_type = "sum_as"
-#         self.python_api = paddle.sum_as
-#         self.init_config()
-#         self.inputs = {'x': self.x, 'y': self.y}
-#         self.target = sum_as_net(self.inputs['x'], self.inputs['y'])
-#         self.outputs = {'out': self.target}
+class TestSumAsOp(unittest.TestCase):
+    def init_type(self):
+        self.dtype = 'float64'
 
-#     def test_check_output(self):
-#         self.check_output()
+    def init_shape(self):
+        self.shape_x = [300, 200, 600]
+        self.shape_y = [200, 600]
 
-#     def test_check_grad(self):
-#         self.check_grad(['x'], ['out'])
+    def init_data(self):
+        self.x = np.random.random(self.shape_x).astype(self.dtype)
+        self.y = np.random.random(self.shape_y).astype(self.dtype)
 
-#     def init_config(self):
-#         self.x = np.random.randn(300, 200, 600).astype('float64')
-#         self.y = np.random.randn(200, 600).astype('float64')
-
-
-class TestSumAsOp2(unittest.TestCase):
-    def test_sum_as(self):
+    def init(self):
         np.random.seed(2023)
-        data = np.random.randn(300, 200, 600).astype('float64')
-        x = paddle.to_tensor(data, stop_gradient=False)
-        y = paddle.to_tensor(np.random.randn(200, 600).astype('float64'))
+        self.init_type()
+        self.init_shape()
+        self.init_data()
 
-        # forward
-        p = paddle.to_tensor(data, stop_gradient=False)
-        reduce_dims = [0]
+    def test_sum_as_dynamic(self):
+        self.init()
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x, stop_gradient=False)
+        y = paddle.to_tensor(self.y)
+        p = paddle.to_tensor(self.x, stop_gradient=False)
+
         out = paddle.sum_as(x, y)
-        ans = paddle.sum(p, axis=reduce_dims)
-        np.testing.assert_allclose(out.numpy(), ans.numpy(), rtol=1e-5)
-
-        # backward
         out.backward()
         x_grad = x.grad.numpy()
-        p.backward()
+
+        reduce_dims = get_reduce_dims(self.x, self.y)
+        ans = paddle.sum(p, axis=reduce_dims)
+        ans.backward()
         p_grad = p.grad.numpy()
-        np.testing.assert_allclose(x_grad, p_grad, rtol=1e-5)
 
+        # check forward
+        np.testing.assert_allclose(out.numpy(), ans.numpy(), rtol=1e-6)
+        # check backward
+        np.testing.assert_allclose(x_grad, p_grad, rtol=1e-6)
 
-class TestSumAsOp3(unittest.TestCase):
     def test_sum_as_static(self):
-        np.random.seed(2023)
-        paddle.disable_static()
+        self.init()
 
-        def forward(x, y):
+        def base_net(flag=None):
+            if flag == 'static':
+                # static graph
+                paddle.enable_static()
+                main_program = paddle.static.Program()
+                with paddle.static.program_guard(main_program):
+                    x = paddle.static.data('x', self.shape_x, dtype=self.dtype)
+                    y = paddle.static.data('y', self.shape_y, dtype=self.dtype)
+                    x.stop_gradient = False
+                    out = paddle.sum_as(x, y)
+                    gradients = paddle.static.gradients(out, [x])
+                    exe = paddle.static.Executor()
+
+                    [fwd, dx] = exe.run(
+                        feed={'x': self.x, 'y': self.y},
+                        fetch_list=[out, gradients],
+                    )
+            else:
+                # dynamic graph
+                paddle.disable_static()
+                x = paddle.to_tensor(self.x, stop_gradient=False)
+                y = paddle.to_tensor(self.y)
+                # axis = get_reduce_dims(x,y)
+                # fwd = paddle.sum(x, axis=axis)
+                fwd = paddle.sum_as(x, y)
+                fwd.backward()
+                dx = x.grad.numpy()
+                fwd = fwd.numpy()
+            return fwd, dx
+
+        res_ref = base_net()
+        res = base_net('static')
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_allclose(ref, actual, rtol=1e-6)
+
+    def test_sum_as_dynamic_to_static(self):
+        self.init()
+        paddle.core._set_prim_all_enabled(True)
+
+        def func(x, y):
             return paddle.sum_as(x, y)
 
-        paddle.disable_static()
-        data = np.random.randn(300, 200, 600).astype('float64')
-        x = paddle.to_tensor(data, stop_gradient=False)
-        y = paddle.to_tensor(np.random.randn(200, 600).astype('float64'))
+        static_func = paddle.jit.to_static(func, full_graph=True)
 
-        out_dynamic = forward(x, y)
-        out_dynamic_result = out_dynamic.numpy()
-        out_dynamic.backward()
-        x_dynamic_grad = x.grad.numpy()
-        x.stop_gradient = False
+        # ==== dygraph computation ====
+        x = paddle.to_tensor(self.x, stop_gradient=False)
+        y = paddle.to_tensor(self.y)
+        ref_out = func(x, y)
+        ref_out.backward()
+        ref_grad = x.grad.numpy()
+        x.clear_gradient()
 
-        paddle.enable_static()
+        # ==== to static compuatation ====
+        actual_out = static_func(x, y)
+        actual_out.backward()
+        actual_grad = x.grad.numpy()
 
-        with paddle.static.program_guard(paddle.static.Program()):
-            x_static = paddle.static.data(
-                name='x', shape=[300, 200, 600], dtype='float64'
-            )
-            y_static = paddle.static.data(
-                name='y', shape=[200, 600], dtype='float64'
-            )
-            out_static = forward(x_static, y_static)
-            loss = paddle.mean(out_static)
-
-        exe = paddle.static.Executor()
-        x_np = data
-        y_np = y.numpy()
-        res = exe.run(
-            paddle.static.default_main_program(),
-            fetch_list=[loss, out_static],
-            feed={'x': x_np, 'y': y_np},
-        )
-        loss_val, out_static_result = res
+        paddle.core._set_prim_all_enabled(False)
 
         np.testing.assert_allclose(
-            out_static_result, out_dynamic_result, rtol=1e-5
+            ref_out.numpy(), actual_out.numpy(), atol=1e-6, rtol=1e-6
         )
 
-        exe.run(
-            paddle.static.default_main_program(),
-            fetch_list=[x_static.grad],
-            feed={'x': x_np, 'y': y_np},
-        )
-        x_static_grad = x_static.grad.numpy()
-        np.testing.assert_allclose(x_static_grad, x_dynamic_grad, rtol=1e-5)
+        np.testing.assert_allclose(ref_grad, actual_grad, atol=1e-6, rtol=1e-6)
 
+
+class TestSumAsOp2(TestSumAsOp):
+    def init_shape(self):
+        self.shape_x = [300, 200, 600]
+        self.shape_y = [600]
+
+
+class TestSumAsOp3(TestSumAsOp):
+    def init_type(self):
+        self.dtype = 'float32'
+
+
+# class TestSumAsOp4(TestSumAsOp):
+#     def init_type(self):
+#         self.dtype = 'bool'
+
+
+class TestSumAsOp5(TestSumAsOp):
+    def init_type(self):
+        self.dtype = 'float16'
+
+
+class TestSumAsOp6(TestSumAsOp):
+    def init_type(self):
+        self.dtype = 'uint16'
+
+
+class TestSumAsOp7(TestSumAsOp):
+    def init_type(self):
+        self.dtype = 'int16'
+
+
+# class TestSumAsOp8(TestSumAsOp):
+#     def init_type(self):
+#         self.dtype = 'int32'
+
+
+class TestSumAsOp9(TestSumAsOp):
+    def init_type(self):
+        self.dtype = 'int64'
+
+
+'''
+# op_test
+class TestSumAsOp4(OpTest):
+
+    def setUp(self):
+        self.init_dtype()
+        self.init_input()
+        self.init_attrs()
+        self.calc_output()
+
+        self.python_api = paddle.sum_as
+        self.public_python_api = paddle.sum_as
+        self.op_type = "sum_as"
+        self.prim_op_type = "prim"
+        self.inputs = {'x': self.x, 'y': self.y}
+        self.outputs = {'out': self.out}
+        self.if_enable_cinn()
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def init_input(self):
+        self.x = np.random.randn(300, 200, 600).astype(self.dtype)
+        self.y = np.random.randn(200, 600).astype(self.dtype)
+
+    def init_attrs(self):
+        self.attrs = {'dim': [0]}
+
+    def if_enable_cinn(self):
+        pass
+
+    def calc_output(self):
+        self.out = self.x.sum(axis=tuple(self.attrs['dim']))
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['x','y'],
+            'out',
+        )
+'''
 
 if __name__ == "__main__":
     paddle.enable_static()
