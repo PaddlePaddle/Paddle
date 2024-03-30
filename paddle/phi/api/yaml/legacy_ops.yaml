@@ -389,7 +389,7 @@
   backward : elementwise_pow_grad
 
 - op : embedding
-  args : (Tensor x, Tensor weight, int64_t padding_idx=-1, bool sparse=false)
+  args : (Tensor x, Tensor weight, int64_t padding_idx=-1, bool scale_grad_by_freq=false, bool sparse=false)
   output : Tensor
   infer_meta :
     func : EmbeddingInferMeta
@@ -403,7 +403,7 @@
   backward : embedding_grad
 
 - op : embedding_grad_dense
-  args : (Tensor x, Tensor weight, Tensor out_grad, int64_t padding_idx=-1, bool sparse=false)
+  args : (Tensor x, Tensor weight, Tensor out_grad, int64_t padding_idx=-1, bool scale_grad_by_freq=false, bool sparse=false)
   output : Tensor(weight_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -411,6 +411,17 @@
   kernel :
     func : embedding_grad
     data_type : weight
+
+- op : embedding_renorm
+  args : (Tensor x, Tensor weight, float max_norm, float norm_type=2.0)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [weight]
+  kernel :
+    func : embedding_renorm
+    data_type : weight
+  inplace : (weight -> out)
 
 - op : empty
   args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())

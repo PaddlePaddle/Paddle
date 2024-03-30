@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops
+from paddle import _C_ops, in_dynamic_mode
+from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ...base.data_feeder import check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -117,7 +118,25 @@ def one_hot(x, num_classes, name=None):
         return one_hot_out
 
 
-def embedding(x, weight, padding_idx=None, sparse=False, name=None):
+@inplace_apis_in_dygraph_only
+def embedding_renorm_(x, weight, max_norm, norm_type=2.0):
+    r"""
+    This operator is used to update the embedding weight by renorm.
+    """
+    if in_dynamic_mode():
+        return _C_ops.embedding_renorm_(x, weight, max_norm, norm_type)
+
+
+def embedding(
+    x,
+    weight,
+    padding_idx=None,
+    max_norm=None,
+    norm_type: float = 2.0,
+    scale_grad_by_freq: bool = False,
+    sparse=False,
+    name=None,
+):
     r"""
     Used to lookup embeddings vector of ids provided by :attr:`x` .
 
@@ -215,15 +234,18 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
     padding_idx = (
         -1
         if padding_idx is None
-        else padding_idx
-        if padding_idx >= 0
-        else (weight.shape[0] + padding_idx)
+        else (
+            padding_idx if padding_idx >= 0 else (weight.shape[0] + padding_idx)
+        )
     )
 
     if padding_idx >= weight.shape[0] or padding_idx < -weight.shape[0]:
         raise ValueError(
             f"padding_idx must be within [-{weight.shape[0]}, {weight.shape[0]})"
         )
+
+    if max_norm:
+        embedding_renorm_(x, weight, max_norm=max_norm, norm_type=norm_type)
 
     if in_dynamic_or_pir_mode():
         return _C_ops.embedding(x, weight, padding_idx, sparse)
