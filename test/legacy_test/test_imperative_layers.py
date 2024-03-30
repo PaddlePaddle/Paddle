@@ -85,7 +85,9 @@ class TestLayerPrint(unittest.TestCase):
         self.assertEqual(str(module), 'Tanhshrink()')
 
         module = nn.ThresholdedReLU()
-        self.assertEqual(str(module), 'ThresholdedReLU(threshold=1.0)')
+        self.assertEqual(
+            str(module), 'ThresholdedReLU(threshold=1.0, value=0.0)'
+        )
 
         module = nn.LogSigmoid()
         self.assertEqual(str(module), 'LogSigmoid()')

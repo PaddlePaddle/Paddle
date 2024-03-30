@@ -2183,7 +2183,7 @@ def bmm(x, y, name=None):
 
 
 def histogram(
-    input, weight=None, density: bool = False, bins=100, min=0, max=0, name=None
+    input, density: bool = False, bins=100, min=0, max=0, weight=None, name=None
 ):
     """
     Computes the histogram of a tensor. The elements are sorted into equal width bins between min and max.
