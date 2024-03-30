@@ -39,14 +39,22 @@ class LayerCase(paddle.nn.Layer):
 
     def forward(
         self,
-        var_0,  # (shape: [22, 64, 56, 56], dtype: paddle.float32, stop_gradient: False)
-        var_1,  # (shape: [22, 64, 56, 56], dtype: paddle.float32, stop_gradient: False)
-        var_2,  # (shape: [22, 128, 28, 28], dtype: paddle.float32, stop_gradient: False)
-        var_3,  # (shape: [22, 128, 28, 28], dtype: paddle.float32, stop_gradient: False)
-        var_4,  # (shape: [22, 256, 14, 14], dtype: paddle.float32, stop_gradient: False)
-        var_5,  # (shape: [22, 256, 14, 14], dtype: paddle.float32, stop_gradient: False)
-        var_6,  # (shape: [22, 512, 7, 7], dtype: paddle.float32, stop_gradient: False)
-        var_7,  # (shape: [22, 512, 7, 7], dtype: paddle.float32, stop_gradient: False)
+        # (shape: [22, 64, 56, 56], dtype: paddle.float32, stop_gradient: False)
+        var_0,
+        # (shape: [22, 64, 56, 56], dtype: paddle.float32, stop_gradient: False)
+        var_1,
+        # (shape: [22, 128, 28, 28], dtype: paddle.float32, stop_gradient: False)
+        var_2,
+        # (shape: [22, 128, 28, 28], dtype: paddle.float32, stop_gradient: False)
+        var_3,
+        # (shape: [22, 256, 14, 14], dtype: paddle.float32, stop_gradient: False)
+        var_4,
+        # (shape: [22, 256, 14, 14], dtype: paddle.float32, stop_gradient: False)
+        var_5,
+        # (shape: [22, 512, 7, 7], dtype: paddle.float32, stop_gradient: False)
+        var_6,
+        # (shape: [22, 512, 7, 7], dtype: paddle.float32, stop_gradient: False)
+        var_7,
     ):
         var_40 = paddle.tensor.manipulation.stack(
             [
@@ -108,5 +116,5 @@ class TestLayer(unittest.TestCase):
             np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-6)
 
 
-# if __name__ == '__main__':
-#     unittest.main()
+if __name__ == '__main__':
+    unittest.main()

@@ -1134,6 +1134,45 @@ void RandomRoutingInferMeta(const MetaTensor& prob,
   out->share_lod(topk_idx);
 }
 
+void RankAttentionInferMeta(const MetaTensor& x,
+                            const MetaTensor& rank_offset,
+                            const MetaTensor& rank_param,
+                            int max_rank,
+                            int max_size,
+                            MetaTensor* input_help,
+                            MetaTensor* out,
+                            MetaTensor* ins_rank) {
+  auto x_dims = x.dims();
+  auto ins_num = x_dims[0];
+  auto param_dims = rank_param.dims();
+  auto para_col = param_dims[1];
+  auto rank_offset_dims = rank_offset.dims();
+  auto x_fea_dim = x_dims[1];
+  auto block_matrix_row = max_rank * x_fea_dim;
+
+  PADDLE_ENFORCE_EQ(
+      (rank_offset_dims[1] - 1) / 2,
+      max_rank,
+      phi::errors::InvalidArgument("Input(RankOffset) has wrong columns, "
+                                   "except columns to be %d, but got %d",
+                                   max_rank,
+                                   (rank_offset_dims[1] - 1) / 2));
+
+  std::vector<int64_t> out_dims({ins_num, para_col});
+  out->set_dims(common::make_ddim(out_dims));
+  out->set_dtype(x.dtype());
+
+  std::vector<int64_t> input_help_dims({ins_num, block_matrix_row});
+  input_help->set_dims(common::make_ddim(input_help_dims));
+  input_help->set_dtype(x.dtype());
+
+  std::vector<int64_t> ins_rank_dims({ins_num, 1});
+  ins_rank->set_dims(common::make_ddim(ins_rank_dims));
+  ins_rank->set_dtype(x.dtype());
+
+  out->share_lod(x);
+}
+
 void RoiAlignInferMeta(const MetaTensor& x,
                        const MetaTensor& boxes,
                        const MetaTensor& boxes_num,

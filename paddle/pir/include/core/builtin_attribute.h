@@ -26,6 +26,7 @@ class IR_API BoolAttribute : public Attribute {
 
   DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(BoolAttribute, BoolAttributeStorage);
 
+  static std::string name() { return "a_bool"; }
   bool data() const;
 };
 
@@ -36,6 +37,7 @@ class IR_API Complex64Attribute : public Attribute {
   DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(Complex64Attribute,
                                     Complex64AttributeStorage);
 
+  static std::string name() { return "a_c64"; }
   phi::dtype::complex<float> data() const;
 };
 
@@ -46,6 +48,7 @@ class IR_API Complex128Attribute : public Attribute {
   DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(Complex128Attribute,
                                     Complex128AttributeStorage);
 
+  static std::string name() { return "a_c128"; }
   phi::dtype::complex<double> data() const;
 };
 
@@ -55,6 +58,7 @@ class IR_API FloatAttribute : public Attribute {
 
   DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(FloatAttribute, FloatAttributeStorage);
 
+  static std::string name() { return "a_f32"; }
   float data() const;
 };
 
@@ -64,6 +68,7 @@ class IR_API DoubleAttribute : public Attribute {
 
   DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(DoubleAttribute, DoubleAttributeStorage);
 
+  static std::string name() { return "a_f64"; }
   double data() const;
 };
 
@@ -73,6 +78,7 @@ class IR_API Int32Attribute : public Attribute {
 
   DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(Int32Attribute, Int32AttributeStorage);
 
+  static std::string name() { return "a_i32"; }
   int32_t data() const;
 };
 
@@ -82,6 +88,7 @@ class IR_API IndexAttribute : public Attribute {
 
   DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(IndexAttribute, IndexAttributeStorage);
 
+  static std::string name() { return "a_index"; }
   int64_t data() const;
 };
 
@@ -91,6 +98,7 @@ class IR_API Int64Attribute : public Attribute {
 
   DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(Int64Attribute, Int64AttributeStorage);
 
+  static std::string name() { return "a_i64"; }
   int64_t data() const;
 };
 
@@ -100,6 +108,7 @@ class IR_API PointerAttribute : public Attribute {
 
   DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(PointerAttribute, PointerAttributeStorage);
 
+  static std::string name() { return "a_pointer"; }
   void* data() const;
 };
 
@@ -109,6 +118,7 @@ class IR_API TypeAttribute : public Attribute {
 
   DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(TypeAttribute, TypeAttributeStorage);
 
+  static std::string name() { return "a_type"; }
   Type data() const;
 };
 
@@ -122,6 +132,7 @@ class IR_API StrAttribute : public Attribute {
 
   std::string AsString() const;
 
+  static std::string name() { return "a_str"; }
   size_t size() const;
 
   static StrAttribute get(IrContext* ctx, const std::string& value);
@@ -134,6 +145,7 @@ class IR_API ArrayAttribute : public Attribute {
   DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(ArrayAttribute, ArrayAttributeStorage);
 
   std::vector<Attribute> AsVector() const;
+  static std::string name() { return "a_array"; }
 
   size_t size() const;
 
@@ -156,7 +168,7 @@ class IR_API TensorNameAttribute : public Attribute {
   DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(TensorNameAttribute, StrAttributeStorage);
 
   bool operator<(const TensorNameAttribute& right) const;
-
+  static std::string name() { return "a_tensorname"; }
   std::string data() const;
 
   size_t size() const;

@@ -3539,7 +3539,7 @@ def gather(x, index, axis=None, name=None):
 
     Args:
         x (Tensor): The source input tensor with rank>=1. Supported data type is
-            int32, int64, float32, float64 and uint8 (only for CPU),
+            int32, int64, float32, float64, complex64, complex128 and uint8 (only for CPU),
             float16 (only for GPU).
         index (Tensor): The index input tensor with rank=0 or rank=1. Data type is int32 or int64.
         axis (Tensor|int, optional): The axis of input to be gathered, it's can be int or a Tensor with data type is int32 or int64. The default value is None, if None, the ``axis`` is 0.
@@ -3581,6 +3581,8 @@ def gather(x, index, axis=None, name=None):
                 'int64',
                 'uint8',
                 'uint16',
+                'complex64',
+                'complex128',
             ],
             'gather',
         )
@@ -3617,7 +3619,7 @@ def unbind(input, axis=0):
 
     Args:
         input (Tensor): The input variable which is an N-D Tensor, data type being bool, float16, float32, float64, int32, int64, complex64 or complex128.
-        axis (int32|int64, optional): A scalar with type ``int32|int64`` shape [1]. The dimension along which to unbind.
+        axis (int32|int64, optional): A 0-D Tensor with shape [] and type is ``int32|int64``. The dimension along which to unbind.
             If :math:`axis < 0`, the dimension to unbind along is :math:`rank(input) + axis`. Default is 0.
     Returns:
         list(Tensor), The list of segmented Tensor variables.
