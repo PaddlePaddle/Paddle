@@ -53,4 +53,4 @@ from .layers_utils import _is_symmetric_padding  # noqa: F401
 from .layers_utils import _contain_var  # noqa: F401
 from .layers_utils import _convert_to_tensor_list  # noqa: F401
 
-__all__ = ['deprecated', 'run_check', 'require_version', 'try_import']  # noqa
+__all__ = ['deprecated', 'run_check', 'require_version', 'try_import', 'print_utils']  # noqa
