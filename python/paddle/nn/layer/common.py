@@ -1472,6 +1472,8 @@ class Embedding(Layer):
         num_embeddings,
         embedding_dim,
         padding_idx=None,
+        max_norm=None,
+        norm_type=2.0,
         sparse=False,
         weight_attr=None,
         name=None,
@@ -1481,6 +1483,8 @@ class Embedding(Layer):
         self._embedding_dim = embedding_dim
         self._sparse = sparse
         self._is_distributed = False
+        self._max_norm = max_norm
+        self._norm_type = norm_type
         self._padding_idx = padding_idx
 
         if self._num_embeddings <= 0:
@@ -1492,9 +1496,11 @@ class Embedding(Layer):
         padding_idx = (
             -1
             if padding_idx is None
-            else padding_idx
-            if padding_idx >= 0
-            else (num_embeddings + padding_idx)
+            else (
+                padding_idx
+                if padding_idx >= 0
+                else (num_embeddings + padding_idx)
+            )
         )
 
         if padding_idx >= num_embeddings or padding_idx < -num_embeddings:
@@ -1524,6 +1530,8 @@ class Embedding(Layer):
             x,
             weight=self.weight,
             padding_idx=self._padding_idx,
+            max_norm=self._max_norm,
+            norm_type=self._norm_type,
             sparse=self._sparse,
             name=self._name,
         )
