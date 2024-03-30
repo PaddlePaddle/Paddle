@@ -142,7 +142,10 @@ endif()
 if(WIN32)
   option(MSVC_STATIC_CRT "use static C Runtime library by default" ON)
   message("Build static library of PHI")
-  set(CMAKE_SUPPRESS_REGENERATION ON)
+  # (Note xuxinyi04): If CMAKE_SUPPRESS_REGENERATION is OFF, which is default, then CMake adds a
+  # special target on which all other targets depend that checks the build system and optionally
+  # re-runs CMake to regenerate the build system when the target specification source changes.
+  set(CMAKE_SUPPRESS_REGENERATION OFF)
   set(CMAKE_STATIC_LIBRARY_PREFIX lib)
   set(WITH_SHARED_PHI
       OFF

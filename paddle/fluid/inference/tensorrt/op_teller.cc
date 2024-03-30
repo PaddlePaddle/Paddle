@@ -68,7 +68,7 @@ bool IsDynamicShapeOp(const framework::OpDesc& desc) {
       }
     }
   }
-  return true;
+  return false;
 }
 
 // Just tell by the op_types.
@@ -2281,6 +2281,11 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVarRecursive(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
+
+      auto dtype = x_var_desc->GetDataType();
+      if (dtype != framework::proto::VarType::FP32) {
+        return false;
+      }
       if (!with_dynamic_shape && (x_shape.size() == 1 || x_shape.empty())) {
         VLOG(3) << op_type
                 << " op does not support input's dim is 1 or 0 in tensorrt "

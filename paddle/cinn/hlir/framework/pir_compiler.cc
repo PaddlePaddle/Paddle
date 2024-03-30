@@ -17,26 +17,22 @@
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/utils/multi_threading.h"
 
-namespace cinn {
-namespace hlir {
-namespace framework {
+namespace cinn::hlir::framework {
 
-PirCompiler::CompileResult PirCompiler::Build(
+std::vector<pir::CINNKernelInfo> PirCompiler::Build(
     const std::vector<pir::OpLoweringGroupPtr>& groups) {
-  std::vector<pir::CINNKernelInfo> cinn_kernel_info_vecs(groups.size());
+  std::vector<pir::CINNKernelInfo> kernel_infos(groups.size());
   for (int i = 0; i < groups.size(); ++i) {
     group_compilation_contexts_.emplace_back(target_, groups[i]);
   }
   auto worker_fn = [&](int index) {
     CompilationTask task(&group_compilation_contexts_[index]);
     task();
-    cinn_kernel_info_vecs[index] = task.BuildPirCINNKernelInfo();
+    kernel_infos[index] = task.GetCINNKernelInfo();
   };
   utils::parallel_run(
       worker_fn, utils::SequenceDispatcher(0, groups.size()), -1);
-  return cinn_kernel_info_vecs;
+  return kernel_infos;
 }
 
-}  // namespace framework
-}  // namespace hlir
-}  // namespace cinn
+}  // namespace cinn::hlir::framework

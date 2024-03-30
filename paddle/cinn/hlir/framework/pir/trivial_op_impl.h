@@ -131,7 +131,6 @@ struct FusionGraph {
   explicit FusionGraph(
       const cinn::frontend::group_cluster::PatternNodePtr& pattern_node,
       const std::unordered_map<::pir::Operation*, ir::Expr>& op_expr_map);
-
   ~FusionGraph();
 
   std::vector<ir::Expr> DoFusion();

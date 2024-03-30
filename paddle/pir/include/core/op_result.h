@@ -38,6 +38,9 @@ class IR_API OpResult : public Value {
   Attribute attribute(const std::string &key) const;
   void set_attribute(const std::string &key, Attribute value);
 
+  void *property(const std::string &key) const;
+  void set_property(const std::string &key, const Property &value);
+
  private:
   friend Operation;
   OpResult(detail::OpResultImpl *impl);  // NOLINT

@@ -296,5 +296,4 @@ PatternNodePtr PatternGraph::MergeNode(const PatternNodePtr& upstream,
   AppendNode(merged_node);
   return merged_node;
 }
-
 }  // namespace cinn::frontend::group_cluster

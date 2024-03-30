@@ -1167,7 +1167,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None):
         ops = loss.get_defining_op().get_parent_block().ops
         parameter_list = []
         for op in ops:
-            if not op.has_attr("is_persistable"):
+            if not op.has_attr("persistable"):
                 continue
             persist_value = [
                 result for result in op.results() if result.persistable
