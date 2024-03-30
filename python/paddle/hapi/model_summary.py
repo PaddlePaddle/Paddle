@@ -261,19 +261,20 @@ def summary(net, input_size=None, dtypes=None, input=None):
             >>> lenet_dict_input = LeNetDictInput()
             >>> input_data = {'x1': paddle.rand([1, 1, 28, 28]),
             ...               'x2': paddle.rand([1, 400])}
+            >>> # The module suffix number indicates its sequence in modules of the same type, used for differentiation identification
             >>> params_info = paddle.summary(lenet_dict_input, input=input_data) # doctest: +NORMALIZE_WHITESPACE
             ---------------------------------------------------------------------------
              Layer (type)       Input Shape          Output Shape         Param #
             ===========================================================================
-               Conv2D-1       [[1, 1, 28, 28]]      [1, 6, 28, 28]          60
-                ReLU-1        [[1, 6, 28, 28]]      [1, 6, 28, 28]           0
-              MaxPool2D-1     [[1, 6, 28, 28]]      [1, 6, 14, 14]           0
-               Conv2D-2       [[1, 6, 14, 14]]     [1, 16, 10, 10]         2,416
-                ReLU-2       [[1, 16, 10, 10]]     [1, 16, 10, 10]           0
-              MaxPool2D-2    [[1, 16, 10, 10]]      [1, 16, 5, 5]            0
-               Linear-1          [[1, 400]]            [1, 120]           48,120
-               Linear-2          [[1, 120]]            [1, 84]            10,164
-               Linear-3          [[1, 84]]             [1, 10]              850
+               Conv2D-3       [[1, 1, 28, 28]]      [1, 6, 28, 28]          60
+                ReLU-3        [[1, 6, 28, 28]]      [1, 6, 28, 28]           0
+              MaxPool2D-3     [[1, 6, 28, 28]]      [1, 6, 14, 14]           0
+               Conv2D-4       [[1, 6, 14, 14]]     [1, 16, 10, 10]         2,416
+                ReLU-4       [[1, 16, 10, 10]]     [1, 16, 10, 10]           0
+              MaxPool2D-4    [[1, 16, 10, 10]]      [1, 16, 5, 5]            0
+               Linear-4          [[1, 400]]            [1, 120]           48,120
+               Linear-5          [[1, 120]]            [1, 84]            10,164
+               Linear-6          [[1, 84]]             [1, 10]              850
             ===========================================================================
             Total params: 61,610
             Trainable params: 61,610
