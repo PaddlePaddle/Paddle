@@ -839,12 +839,8 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     const float epsilon,
     const int groups,
     const std::string& data_format) {
-  std::vector<int64_t> c_axis;
-  if (data_format == "NCHW") {
-    c_axis = {1};
-  } else if (data_format == "NHWC") {
-    c_axis = {-1};
-  } else {
+  std::vector<int64_t> c_axis{1};
+  if (data_format != "NCHW" && data_format != "NHWC") {
     PADDLE_THROW(
         phi::errors::Unimplemented("Only support NCHW and NHWC format."));
   }
@@ -861,6 +857,17 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
   if (need_cast) {
     x_cast = cast<T>(x, DataType::FLOAT32);
   }
+  if (data_format == "NHWC") {
+    if (rank == 3) {
+      x_cast = transpose<T>(x_cast, {0, 2, 1});
+
+    } else if (rank == 4) {
+      x_cast = transpose<T>(x_cast, {0, 3, 1, 2});
+    } else if (rank == 5) {
+      x_cast = transpose<T>(x_cast, {0, 4, 1, 2, 3});
+    }
+  }
+
   Tensor x_dim_t;
   Tensor out, mean_, var_;
   if (has_dynamic_shape(x_cast.shape())) {
@@ -894,19 +901,13 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
   }
 
   std::vector<int64_t> slice_bias_shape;
-  if (data_format == "NCHW") {
-    slice_bias_shape = {-1};
-    for (size_t i = 0; i < rank - 2; i++) {
-      slice_bias_shape.push_back(1);
-    }
+  slice_bias_shape = {-1};
+  for (size_t i = 0; i < rank - 2; i++) {
+    slice_bias_shape.push_back(1);
   }
   Tensor scale_cast;
   if (scale) {
-    if (data_format == "NCHW") {
-      scale_cast = reshape<T>(scale.get(), slice_bias_shape);
-    } else {
-      scale_cast = scale.get();
-    }
+    scale_cast = reshape<T>(scale.get(), slice_bias_shape);
     if (need_cast) {
       scale_cast = cast<T>(scale_cast, DataType::FLOAT32);
     }
@@ -914,11 +915,8 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
   }
   Tensor bias_cast;
   if (bias) {
-    if (data_format == "NCHW") {
-      bias_cast = reshape<T>(bias.get(), slice_bias_shape);
-    } else {
-      bias_cast = bias.get();
-    }
+    bias_cast = reshape<T>(bias.get(), slice_bias_shape);
+
     if (need_cast) {
       bias_cast = cast<T>(bias_cast, DataType::FLOAT32);
     }
@@ -938,6 +936,16 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
   }
   if (need_cast) {
     out = cast<T>(out, org_dtype);
+  }
+
+  if (data_format == "NHWC") {
+    if (rank == 3) {
+      out = transpose<T>(out, {0, 2, 1});
+    } else if (rank == 4) {
+      out = transpose<T>(out, {0, 2, 3, 1});
+    } else if (rank == 5) {
+      out = transpose<T>(out, {0, 2, 3, 4, 1});
+    }
   }
 
   return std::make_tuple(out, mean_out, var_out);
