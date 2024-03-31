@@ -61,7 +61,7 @@ TEST(WorkQueue, TestSingleThreadedWorkQueue) {
   // AddTask
   EXPECT_EQ(finished.load(), false);
   EXPECT_EQ(counter.load(), 0u);
-  work_queue->AddTask([&counter, &finished]() {
+  work_queue->AddTask([=, &counter, &finished]() {
     for (unsigned i = 0; i < kLoopNum; ++i) {
       ++counter;
     }
@@ -111,7 +111,7 @@ TEST(WorkQueue, TestMultiThreadedWorkQueue) {
   EXPECT_EQ(finished.load(), false);
   EXPECT_EQ(counter.load(), 0u);
   for (unsigned i = 0; i < kExternalLoopNum; ++i) {
-    work_queue->AddTask([&counter, &finished]() {
+    work_queue->AddTask([=, &counter, &finished]() {
       for (unsigned i = 0; i < kLoopNum; ++i) {
         ++counter;
       }
@@ -174,13 +174,13 @@ TEST(WorkQueue, TestWorkQueueGroup) {
   // AddTask
   EXPECT_EQ(counter.load(), 0u);
   for (unsigned i = 0; i < kExternalLoopNum; ++i) {
-    queue_group->AddTask(1, [&counter]() {
+    queue_group->AddTask(1, [=, &counter]() {
       for (unsigned i = 0; i < kLoopNum; ++i) {
         ++counter;
       }
     });
   }
-  queue_group->AddTask(0, [&counter]() {
+  queue_group->AddTask(0, [=, &counter]() {
     for (unsigned i = 0; i < kLoopNum; ++i) {
       ++counter;
     }
