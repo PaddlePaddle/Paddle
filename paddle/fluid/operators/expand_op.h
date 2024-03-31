@@ -128,6 +128,12 @@ class ExpandKernel : public framework::OpKernel<T> {
       case 6:
         Expand<6>(context);
         break;
+      case 7:
+        Expand<7>(context);
+        break;
+      case 8:
+        Expand<8>(context);
+        break;
     }
   }
 
@@ -249,10 +255,17 @@ class ExpandGradKernel : public framework::OpKernel<T> {
         case 6:
           ExpandBackward<6>(context, reshape_dims_vec, reduce_dims_vec);
           break;
+        case 7:
+          ExpandBackward<7>(context, reshape_dims_vec, reduce_dims_vec);
+          break;
+        case 8:
+          ExpandBackward<8>(context, reshape_dims_vec, reduce_dims_vec);
+          break;
         default:
           PADDLE_THROW(platform::errors::InvalidArgument(
-              "Only support tensor with rank being between 1 and 6. But "
+              "Only support tensor with rank being between 1 and %d. But "
               "received tensor's rank = %d.",
+              MAX_RANK_SUPPORTED,
               dims));
       }
     }
