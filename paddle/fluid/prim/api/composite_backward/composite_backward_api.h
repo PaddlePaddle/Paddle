@@ -537,7 +537,13 @@ void multiply_grad(const Tensor& x,
                    Tensor* x_grad,
                    Tensor* y_grad) {
   if (x_grad) {
-    auto x_grad_unreduce = out_grad * y;
+    Tensor x_grad_unreduce;
+    if (y.dtype() == phi::DataType::COMPLEX64 ||
+        y.dtype() == phi::DataType::COMPLEX128) {
+      x_grad_unreduce = out_grad * conj<T>(y);
+    } else {
+      x_grad_unreduce = out_grad * y;
+    }
     if (x_grad_unreduce.dims() != x.dims()) {
       auto axes = get_reduce_dims_from_out(x_grad_unreduce.dims(), x.dims());
       if (!axes.size()) {
@@ -555,7 +561,13 @@ void multiply_grad(const Tensor& x,
     }
   }
   if (y_grad) {
-    auto y_grad_unreduce = out_grad * x;
+    Tensor y_grad_unreduce;
+    if (x.dtype() == phi::DataType::COMPLEX64 ||
+        x.dtype() == phi::DataType::COMPLEX128) {
+      y_grad_unreduce = out_grad * conj<T>(x);
+    } else {
+      y_grad_unreduce = out_grad * x;
+    }
     if (y_grad_unreduce.dims() != y.dims()) {
       auto axes = get_reduce_dims_from_out(y_grad_unreduce.dims(), y.dims());
       if (!axes.size()) {
