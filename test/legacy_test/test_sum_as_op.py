@@ -43,7 +43,7 @@ class TestSumAsOp(OpTest):
         self.dtype = np.float64
 
     def init_shape(self):
-        self.shape_x = [30, 10, 6]
+        self.shape_x = [10, 10, 6]
         self.shape_y = [10, 6]
 
     def init_input(self):
@@ -106,7 +106,7 @@ class TestSumAsOp8(TestSumAsOp):
 
 class TestSumAsOp9(TestSumAsOp):
     def init_shape(self):
-        self.shape_x = [30, 10, 6]
+        self.shape_x = [10, 10, 6]
         self.shape_y = [6]
 
     def init_attrs(self):
