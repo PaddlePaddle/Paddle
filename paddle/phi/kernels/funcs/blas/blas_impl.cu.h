@@ -457,9 +457,6 @@ struct CUBlas<phi::dtype::complex<float>> {
                    const phi::dtype::complex<float> *alpha,
                    phi::dtype::complex<float> *x,
                    int incx) {
-    // float alpha = complex_alpha->real;
-    // PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasCsscal(
-    //     handle, n, &alpha, reinterpret_cast<cuFloatComplex *>(x), incx));
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasCscal(
         handle,
         n,

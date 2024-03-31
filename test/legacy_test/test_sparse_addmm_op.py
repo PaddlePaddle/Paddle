@@ -51,15 +51,22 @@ class TestAddmm(unittest.TestCase):
     def check_result(
         self, input_shape, x_shape, y_shape, format, dtype='float64'
     ):
-        if len(x_shape) == 3:
-            mask = paddle.randint(0, 2, [x_shape[-2], x_shape[-1]])
-        else:
-            mask = paddle.randint(0, 2, x_shape)
-        if dtype == 'complex64':
+        if dtype == 'complex64' or dtype == 'complex64':
+            real_type = "float32" if (dtype == 'complex64') else "float64"
+            if len(x_shape) == 3:
+                mask = paddle.randint(0, 2, [x_shape[-2], x_shape[-1]]).astype(
+                    real_type
+                )
+            else:
+                mask = paddle.randint(0, 2, x_shape).astype(real_type)
             origin_input = self.generate_complex(input_shape, dtype=dtype)
             origin_x = self.generate_complex(x_shape, dtype=dtype) * mask
             origin_y = self.generate_complex(y_shape, dtype=dtype)
         else:
+            if len(x_shape) == 3:
+                mask = paddle.randint(0, 2, [x_shape[-2], x_shape[-1]])
+            else:
+                mask = paddle.randint(0, 2, x_shape)
             origin_input = paddle.rand(input_shape, dtype=dtype)
             origin_x = paddle.rand(x_shape, dtype=dtype) * mask
             origin_y = paddle.rand(y_shape, dtype=dtype)
@@ -108,6 +115,7 @@ class TestAddmm(unittest.TestCase):
     def test_addmm_2d(self):
         self.check_result([16, 10], [16, 12], [12, 10], 'coo')
         self.check_result([16, 10], [16, 12], [12, 10], 'coo', 'complex64')
+        self.check_result([16, 10], [16, 12], [12, 10], 'coo', 'complex128')
         self.check_result([16, 10], [16, 12], [12, 10], 'csr')
 
     @unittest.skipIf(
@@ -116,6 +124,12 @@ class TestAddmm(unittest.TestCase):
     )
     def test_addmm_3d(self):
         self.check_result([8, 16, 10], [8, 16, 12], [8, 12, 10], 'coo')
+        self.check_result(
+            [8, 16, 10], [8, 16, 12], [8, 12, 10], 'coo', 'complex64'
+        )
+        self.check_result(
+            [8, 16, 10], [8, 16, 12], [8, 12, 10], 'coo', 'complex128'
+        )
         self.check_result([8, 16, 10], [8, 16, 12], [8, 12, 10], 'csr')
 
 
