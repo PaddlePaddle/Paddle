@@ -92,17 +92,17 @@ void FFTC2RGradKernel(const Context& ctx,
 
   const int64_t double_length =
       out_grad.dims()[axes.back()] - x_grad->dims()[axes.back()];
-  const phi::DDim strides = common::stride(x_grad->dims());
-
-#if defined(__NVCC__) || defined(__HIPCC__)
-  const thrust::device_vector<int64_t> strides_g(common::vectorize(strides));
-  const int64_t* pstrides = thrust::raw_pointer_cast(strides_g.data());
-#else
-  const int64_t* pstrides = strides.Get();
-#endif
-
-  funcs::FFTFillConjGradFunctor<C> func(
-      x_grad->data<C>(), axes.back(), pstrides, double_length);
+  int64_t strides_axis = 1;
+  auto ddim = x_grad->dims();
+  for (int i = ddim.size() - 2; i >= axes.back(); --i) {
+    strides_axis *= ddim[i + 1];
+  }
+  int64_t strides_axis_minus_1 = strides_axis * ddim[axes.back()];
+  funcs::FFTFillConjGradFunctor<C> func(x_grad->data<C>(),
+                                        axes.back(),
+                                        strides_axis_minus_1,
+                                        strides_axis,
+                                        double_length);
   size_t limit = x_grad->numel();
   funcs::ForRange<Context> for_range(ctx, limit);
   for_range(func);
