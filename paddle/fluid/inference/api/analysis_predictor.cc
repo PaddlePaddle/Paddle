@@ -934,16 +934,14 @@ bool AnalysisPredictor::PrepareExecutor() {
                                  config_.pm_opt_level_);
       if (!config_.custom_passes_.empty()) {
         for (const auto &custom_pass : config_.custom_passes_) {
-          pass_pm.AddPass(
-              std::move(pir::PassRegistry::Instance().Get(custom_pass)));
+          pass_pm.AddPass(pir::PassRegistry::Instance().Get(custom_pass));
         }
       }
       if (config_.use_gpu()) {
         // gpu
         if (!config_.custom_pass_only_) {
           for (const auto &gpu_pass : kPirGpuPasses) {
-            pass_pm.AddPass(
-                std::move(pir::PassRegistry::Instance().Get(gpu_pass)));
+            pass_pm.AddPass(pir::PassRegistry::Instance().Get(gpu_pass));
           }
         }
 
@@ -963,8 +961,7 @@ bool AnalysisPredictor::PrepareExecutor() {
         // mkldnn
         if (!config_.custom_pass_only_) {
           for (const auto &mkldnn_pass : kPirMkldnnPasses) {
-            pass_pm.AddPass(
-                std::move(pir::PassRegistry::Instance().Get(mkldnn_pass)));
+            pass_pm.AddPass(pir::PassRegistry::Instance().Get(mkldnn_pass));
           }
         }
 #endif
@@ -972,8 +969,7 @@ bool AnalysisPredictor::PrepareExecutor() {
         // cpu
         if (!config_.custom_pass_only_) {
           for (const auto &cpu_pass : kPirCpuPasses) {
-            pass_pm.AddPass(
-                std::move(pir::PassRegistry::Instance().Get(cpu_pass)));
+            pass_pm.AddPass(pir::PassRegistry::Instance().Get(cpu_pass));
           }
         }
       }
