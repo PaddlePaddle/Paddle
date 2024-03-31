@@ -728,18 +728,6 @@ py::str Value2String(Value self) {
   std::ostringstream print_stream;
   print_stream << "Value(";
   print_stream << GetValueInfo(self);
-  // TODO(SigureMo): Remove this before merge
-  if (self.impl() != nullptr) {
-    if (self.defining_op() &&
-        self.defining_op()->name() == "builtin.parameter") {
-      print_stream << ", param_name="
-                   << self.defining_op()
-                          ->attributes()
-                          .at("parameter_name")
-                          .dyn_cast<pir::StrAttribute>()
-                          .AsString();
-    }
-  }
   print_stream << ")";
   return print_stream.str();
 }
@@ -1210,7 +1198,7 @@ std::map<pir::Value, pir::Value> ReplaceValueWithInplaceSource(
       if (std::find(source_values.begin(),
                     source_values.end(),
                     inplace_source.value()) != source_values.end()) {
-        VLOG(0) << "Replace " << Value2String(target_value) << " with "
+        VLOG(4) << "Replace " << Value2String(target_value) << " with "
                 << Value2String(inplace_source.value());
         replacements.insert({target_value, inplace_source.value()});
         target_value = inplace_source.value();
@@ -1404,60 +1392,11 @@ SplitedResult SplitForwardBackward(
   auto forward_program = std::make_shared<Program>(ctx);
   auto backward_program = std::make_shared<Program>(ctx);
   std::vector<pir::Value> forward_outputs_mutable = forward_outputs;
-  std::vector<pir::Value> forward_inputs_grads_mutable = forward_inputs_grads;
-  std::vector<pir::Value> forward_params_grads_mutable = forward_params_grads;
   std::vector<pir::Value> middle_values;
   std::unordered_set<pir::Value> backward_inputs;
   const auto &inplace_chains = GetOpInplaceChains(program.block());
-  // const std::vector<std::vector<pir::Value>> inplace_chains;
   std::tie(middle_values, backward_inputs) = AnalysisMiddleVariable(
       program, forward_in_out_values, forward_range, backward_range);
-
-  VLOG(0) << "start display backward_inputs:";
-  for (auto &v : backward_inputs) {
-    VLOG(0) << "backward_inputs: " << Value2String(v);
-  }
-  VLOG(0) << "end display backward_inputs";
-
-  auto display_value_map =
-      [](const std::unordered_map<pir::Value, pir::Value> &map,
-         const std::string &name) {
-        VLOG(0) << "\n";
-        VLOG(0) << "Start display Mapping: " << name << ", size is "
-                << map.size();
-        for (auto &[k, v] : map) {
-          VLOG(0) << "Mapping: " << Value2String(k) << " -> "
-                  << Value2String(v);
-        }
-        VLOG(0) << "End display Mapping: " << name << "\n";
-      };
-
-  auto display_values = [](const std::vector<pir::Value> &values,
-                           const std::string &name) {
-    VLOG(0) << "\n";
-    VLOG(0) << "Start display Values: " << name << ", size is "
-            << values.size();
-    for (auto &v : values) {
-      VLOG(0) << "Value: " << Value2String(v);
-    }
-    VLOG(0) << "End display Values: " << name << "\n";
-  };
-
-  auto display_program = [](const Program &program, const std::string &name) {
-    VLOG(0) << "\n";
-    VLOG(0) << "Start program: " << name;
-    std::ostringstream print_stream;
-    program.Print(print_stream);
-    VLOG(0) << print_stream.str();
-    VLOG(0) << "End program: " << name << "\n";
-  };
-
-  (void)display_values;
-
-  display_values(forward_outputs_mutable,
-                 "forward_outputs_mutable before update");
-
-  display_program(program, "original program");
 
   // Replace inplace value with source value.
   // NOTE(SigureMo): Why not process inplace value for forward_inputs in
@@ -1472,8 +1411,6 @@ SplitedResult SplitForwardBackward(
       {forward_params}, &middle_values, inplace_chains);
   auto replacement_for_forward_outputs = ReplaceValueWithInplaceSource(
       {forward_params}, &forward_outputs_mutable, inplace_chains);
-  display_values(forward_outputs_mutable,
-                 "forward_outputs_mutable after update");
   pir::Block &backward_block = *backward_program->block();
   bool has_backward = (backward_range[1] > backward_range[0]);
 
@@ -1481,7 +1418,6 @@ SplitedResult SplitForwardBackward(
   VLOG(4) << "start create forward program.";
   pir::IrMapping forward_mapper;
   auto clone_options = pir::CloneOptions::All();
-  VLOG(0) << "start clone forward program";
   range_block_do(
       program.block(),
       forward_range,
@@ -1489,7 +1425,6 @@ SplitedResult SplitForwardBackward(
         auto *cloned_op = op->Clone(forward_mapper, clone_options);
         forward_program->block()->push_back(cloned_op);
       });
-  VLOG(0) << "end clone forward program";
   auto &forward_value_map = forward_mapper.GetMutableMap<pir::Value>();
 
   // backward program construct.
@@ -1507,7 +1442,6 @@ SplitedResult SplitForwardBackward(
         (backward_inputs.count(v) ||
          ExistsInMapValues(replacement_for_forward_middles, v) ||
          ExistsInMapValues(replacement_for_forward_outputs, v))) {
-      VLOG(0) << "Creating kwarg input_" + std::to_string(counter);
       backward_value_map[v] = backward_block.AddKwarg(
           "input_" + std::to_string(counter++), v.type());
     }
@@ -1560,7 +1494,6 @@ SplitedResult SplitForwardBackward(
     pir::Operation *operation = pir::Operation::Create(
         {forward_value_map[v]}, attribute_map, {}, op_info);
     forward_program->block()->push_back(operation);
-    VLOG(0) << "Creating forward output: " << shadow_output_name;
     counter += 1;
   };
 
@@ -1583,9 +1516,6 @@ SplitedResult SplitForwardBackward(
     counter += 1;
   };
 
-  display_value_map(backward_value_map,
-                    "backward_value_map before create inputs");
-
   if (has_backward) {
     VLOG(4) << "start create backward inputs, creating keyword argument.";
     VLOG(4)
@@ -1604,8 +1534,6 @@ SplitedResult SplitForwardBackward(
         << counter;
     std::for_each(
         forward_params.begin(), forward_params.end(), create_kwarg_fn);
-    // display_value_map(backward_value_map,
-    //                   "forward_value_map after create params");
     VLOG(4)
         << "Create keyword argument for backward program: fm, start with input_"
         << counter;
@@ -1619,45 +1547,19 @@ SplitedResult SplitForwardBackward(
     VLOG(4) << "Create keyword argument for backward program end. input_"
             << counter;
 
-    display_value_map(backward_value_map,
-                      "backward_value_map after create inputs");
-
     // Update the value map with inplace source value.
-    VLOG(0) << "start update inplace names";
-    VLOG(0) << "replacement_for_forward_middles size is: "
+    VLOG(4) << "start update inplace names";
+    VLOG(4) << "replacement_for_forward_middles size is: "
             << replacement_for_forward_middles.size();
     for (auto &[target, source] : replacement_for_forward_middles) {
       backward_value_map[target] = backward_value_map.at(source);
     }
-    VLOG(0) << "replacement_for_forward_outputs size is: "
+    VLOG(4) << "replacement_for_forward_outputs size is: "
             << replacement_for_forward_outputs.size();
     for (auto &[target, source] : replacement_for_forward_outputs) {
       backward_value_map[target] = backward_value_map.at(source);
     }
-    display_value_map(backward_value_map,
-                      "backward_value_map after update inplace names");
   }
-
-  // VLOG(0) << "replacement_for_forward_outputs size is: "
-  //         << replacement_for_forward_outputs.size();
-  // for (auto &[target, source] : replacement_for_forward_outputs) {
-  //   auto forward_target = forward_value_map.at(target);
-  //   VLOG(0) << "forward_target is: " << Value2String(forward_target);
-  //   auto forward_block = forward_program->block();
-  //   for (auto it = forward_target.use_begin(); it !=
-  //   forward_target.use_end();
-  //        ++it) {
-  //     auto op = it->owner();
-  //     if (op->isa<pir::ShadowOutputOp>()) {
-  //       // auto shadow_output_op = op->dyn_cast<pir::ShadowOutputOp>();
-  //       auto op_iter =
-  //           std::find(forward_block->begin(), forward_block->end(), *op);
-  //       forward_block->erase(op_iter);
-  //     }
-  //   }
-  // }
-
-  display_program(*forward_program, "forward_program before create outputs");
 
   VLOG(4) << "start create forward outputs, inserting set_parameter ops.";
   std::for_each(
@@ -1666,11 +1568,8 @@ SplitedResult SplitForwardBackward(
                 forward_outputs_mutable.end(),
                 create_output_fn_forward);
 
-  display_program(*forward_program, "forward_program after create outputs");
-
   // Step2. copy backward ops .
   VLOG(4) << "start copy backward ops";
-  VLOG(0) << "start clone backward program";
   range_block_do(
       program.block(),
       backward_range,
@@ -1678,14 +1577,13 @@ SplitedResult SplitForwardBackward(
         auto *cloned_op = op->Clone(backward_mapper, clone_options);
         backward_program->block()->push_back(cloned_op);
       });
-  VLOG(0) << "end clone backward program";
   VLOG(4) << "start create backward outputs, inserting set_parameter ops.";
   if (has_backward) {
-    std::for_each(forward_inputs_grads_mutable.begin(),
-                  forward_inputs_grads_mutable.end(),
+    std::for_each(forward_inputs_grads.begin(),
+                  forward_inputs_grads.end(),
                   create_output_fn_backward);
-    std::for_each(forward_params_grads_mutable.begin(),
-                  forward_params_grads_mutable.end(),
+    std::for_each(forward_params_grads.begin(),
+                  forward_params_grads.end(),
                   create_output_fn_backward);
   }
 
@@ -1711,9 +1609,9 @@ SplitedResult SplitForwardBackward(
   mapping_value(forward_params, backward_value_map, bp);          // write 'bp'
   mapping_value(forward_outputs_mutable, forward_value_map, fo);  // write 'fo'
   mapping_value(
-      forward_inputs_grads_mutable, backward_value_map, bx_g);  // write 'bx_g'
+      forward_inputs_grads, backward_value_map, bx_g);  // write 'bx_g'
   mapping_value(
-      forward_params_grads_mutable, backward_value_map, bp_g);  // write 'bp_g'
+      forward_params_grads, backward_value_map, bp_g);  // write 'bp_g'
   mapping_value(
       forward_outputs_grads, backward_value_map, bo_g);  // write 'bo_g'
   mapping_value(forward_outputs_mutable, backward_value_map, bo);  // write 'bo'
