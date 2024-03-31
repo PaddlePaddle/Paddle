@@ -381,7 +381,7 @@ class PipelineLayer(nn.Layer):
 
         self.device_id = dist.ParallelEnv().device_id
         self.layers = layers
-        self._loss_fn = loss_fn
+        self._loss_fn = loss_fn if isinstance(loss_fn, list) else [loss_fn]
         self._topo = topology
         self._recompute_interval = recompute_interval
         self.recompute_ctx = recompute_ctx
@@ -654,11 +654,18 @@ class PipelineLayer(nn.Layer):
                     stage_to_virtual_stage_info += f" {i},"
                 logger.info(stage_to_virtual_stage_info)
 
-        if self._loss_fn:
-            try:
-                logger.info(f"loss: {self._loss_fn.__name__}")
-            except AttributeError:
-                logger.info(f"loss: {self._loss_fn.__class__.__name__}")
+        if self._loss_fn[0]:
+            if len(self._loss_fn) == 1:
+                try:
+                    logger.info(f"loss: {self._loss_fn[0].__name__}")
+                except AttributeError:
+                    logger.info(f"loss: {self._loss_fn[0].__class__.__name__}")
+            else:
+                for idx, loss_fn in enumerate(self._loss_fn):
+                    try:
+                        logger.info(f"loss {idx}: {loss_fn.__name__}")
+                    except AttributeError:
+                        logger.info(f"loss {idx}: {loss_fn.__class__.__name__}")
 
     def _build_layer_with_interleave(self):
         from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
