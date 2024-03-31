@@ -551,8 +551,8 @@ class Sequential(Layer):
         layers(Layer|list|tuple): Layer or list/tuple of iterable name Layer pair.
 
     Returns:
-        None
-    
+        None.
+
     Examples:
         .. code-block:: python
 
