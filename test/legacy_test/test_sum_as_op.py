@@ -23,17 +23,6 @@ np.random.seed(100)
 paddle.seed(100)
 
 
-def get_reduce_dims(x, y):
-    diff = len(x.shape) - len(y.shape)
-    axis = []
-    for i in range(diff):
-        axis.append(i)
-    for i in range(len(y.shape)):
-        if y.shape[i] != x.shape[i + diff]:
-            axis.append(i + diff)
-    return axis
-
-
 class TestSumAsOp(OpTest):
     def setUp(self):
         self.init_dtype()
