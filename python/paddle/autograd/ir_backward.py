@@ -22,6 +22,7 @@ from paddle.autograd.backward_utils import (
     ValueDict,
     ValueSet,
     _as_list,
+    all_input_stop_gradient_true,
     all_output_grad_none,
     all_stop_gradient_true,
     argument_to_value,
@@ -649,6 +650,14 @@ def append_backward_ops(
                     ]:
                         continue
 
+                    if all_input_stop_gradient_true(
+                        input_grad_stopgradients
+                    ) and op.name() not in [
+                        "pd_op.array_read",
+                        "pd_op.array_write_",
+                        "pd_op.increment_",
+                    ]:
+                        continue
                     if op.name() == "pd_op.if":
                         origin_inputs = get_real_op_inputs(op)
                         for sub_block in op.blocks():
@@ -1167,7 +1176,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None):
         ops = loss.get_defining_op().get_parent_block().ops
         parameter_list = []
         for op in ops:
-            if not op.has_attr("is_persistable"):
+            if not op.has_attr("persistable"):
                 continue
             persist_value = [
                 result for result in op.results() if result.persistable

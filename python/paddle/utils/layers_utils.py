@@ -308,9 +308,7 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
         if type_nest1 != type_nest2:
             raise TypeError(
                 "The two structures don't have the same sequence type. First "
-                "structure has type {}, while second structure has type {}.".format(
-                    type_nest1, type_nest2
-                )
+                f"structure has type {type_nest1}, while second structure has type {type_nest2}."
             )
         if isinstance(nest1, dict):
             keys1 = set(nest1.keys())
@@ -318,9 +316,7 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
             if keys1 != keys2:
                 raise ValueError(
                     "The two dictionaries don't have the same set of keys. First "
-                    "structure has keys {}, while second structure has keys {}.".format(
-                        keys1, keys2
-                    )
+                    f"structure has keys {keys1}, while second structure has keys {keys2}."
                 )
     nest1_as_sequence = list(_yield_value(nest1))
     nest2_as_sequence = list(_yield_value(nest2))

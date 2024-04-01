@@ -303,9 +303,7 @@ class TestQuantAwareCase(StaticCase):
                 iter += 1
                 if iter % 100 == 0:
                     logging.info(
-                        'train iter={}, avg loss {}, acc_top1 {}, acc_top5 {}'.format(
-                            iter, cost, top1, top5
-                        )
+                        f'train iter={iter}, avg loss {cost}, acc_top1 {top1}, acc_top5 {top5}'
                     )
                 if stop_iter is not None and iter == stop_iter:
                     break
@@ -323,9 +321,7 @@ class TestQuantAwareCase(StaticCase):
                 iter += 1
                 if iter % 100 == 0:
                     logging.info(
-                        'eval iter={}, avg loss {}, acc_top1 {}, acc_top5 {}'.format(
-                            iter, cost, top1, top5
-                        )
+                        f'eval iter={iter}, avg loss {cost}, acc_top1 {top1}, acc_top5 {top5}'
                     )
                 result[0].append(cost)
                 result[1].append(top1)
@@ -333,9 +329,7 @@ class TestQuantAwareCase(StaticCase):
                 if stop_iter is not None and iter == stop_iter:
                     break
             logging.info(
-                ' avg loss {}, acc_top1 {}, acc_top5 {}'.format(
-                    np.mean(result[0]), np.mean(result[1]), np.mean(result[2])
-                )
+                f' avg loss {np.mean(result[0])}, acc_top1 {np.mean(result[1])}, acc_top5 {np.mean(result[2])}'
             )
             return np.mean(result[1]), np.mean(result[2])
 
