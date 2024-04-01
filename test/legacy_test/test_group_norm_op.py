@@ -118,6 +118,8 @@ class TestGroupNormOp(OpTest):
         self.attrs['data_layout'] = self.data_format
 
     def test_check_output(self):
+        self.fw_comp_atol = 1e-13
+        self.fw_comp_rtol = 1e-13
         atol = 0
         inplace_atol = 0
         place = core.CPUPlace()
@@ -128,8 +130,6 @@ class TestGroupNormOp(OpTest):
         )
 
         if core.is_compiled_with_cuda():
-            self.fw_comp_atol = 1e-13
-            self.fw_comp_rtol = 1e-13
             place = core.CUDAPlace(0)
             # group_norm uses AtomicAdd on CUDAPlace, which do not ensure
             # computation order when multiple threads write the same address. So the
