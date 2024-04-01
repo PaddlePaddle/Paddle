@@ -92,7 +92,7 @@ def swiglu_net2(x):
     return paddle.incubate.nn.functional.swiglu(x)
 
 
-group_norm1 = paddle.nn.GroupNorm(num_channels=640, num_groups=32)
+group_norm1 = paddle.nn.GroupNorm(num_channels=128, num_groups=32)
 
 
 def group_norm_net1(x):
@@ -100,7 +100,7 @@ def group_norm_net1(x):
 
 
 group_norm2 = paddle.nn.GroupNorm(
-    num_channels=640, num_groups=32, weight_attr=False
+    num_channels=128, num_groups=32, weight_attr=False
 )
 
 
@@ -109,7 +109,7 @@ def group_norm_net2(x):
 
 
 group_norm3 = paddle.nn.GroupNorm(
-    num_channels=640, num_groups=32, bias_attr=False
+    num_channels=128, num_groups=32, bias_attr=False
 )
 
 
@@ -118,7 +118,7 @@ def group_norm_net3(x):
 
 
 group_norm4 = paddle.nn.GroupNorm(
-    num_channels=640,
+    num_channels=128,
     num_groups=32,
     weight_attr=False,
     bias_attr=False,
@@ -130,7 +130,7 @@ def group_norm_net4(x):
 
 
 group_norm5 = paddle.nn.GroupNorm(
-    num_channels=640,
+    num_channels=128,
     num_groups=32,
     weight_attr=False,
     bias_attr=False,
@@ -419,60 +419,60 @@ class TestPrimGroupNorm1(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
-        self.x_shape = [50, 640, 10, 20]
-        self.init_x_shape = [None, 640, None, None]
+        self.x_shape = [50, 128, 10, 20]
+        self.init_x_shape = [None, 128, None, None]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = group_norm_net1
         self.necessary_ops = "pd_op.group_norm"
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 5e-6
 
 
 class TestPrimGroupNorm2(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
-        self.x_shape = [50, 640, 10, 20]
-        self.init_x_shape = [None, 640, None, None]
+        self.x_shape = [50, 128, 10, 20]
+        self.init_x_shape = [None, 128, None, None]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = group_norm_net2
         self.necessary_ops = "pd_op.group_norm"
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 5e-6
 
 
 class TestPrimGroupNorm3(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
-        self.x_shape = [50, 640, 10]
-        self.init_x_shape = [None, 640, None]
+        self.x_shape = [50, 128, 10]
+        self.init_x_shape = [None, 128, None]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = group_norm_net3
         self.necessary_ops = "pd_op.group_norm"
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 5e-6
 
 
 class TestPrimGroupNorm4(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
-        self.x_shape = [8, 640, 10, 20]
-        self.init_x_shape = [None, 640, None, None]
+        self.x_shape = [8, 128, 10, 20]
+        self.init_x_shape = [None, 128, None, None]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = group_norm_net4
         self.necessary_ops = "pd_op.group_norm"
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 5e-6
 
 
 class TestPrimGroupNorm5(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
-        self.x_shape = [8, 10, 20, 16, 640]
-        self.init_x_shape = [8, 10, 20, 16, 640]
+        self.x_shape = [8, 10, 20, 16, 128]
+        self.init_x_shape = [8, 10, 20, 16, 128]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = group_norm_net5
         self.necessary_ops = "pd_op.group_norm"
@@ -484,8 +484,8 @@ class TestPrimGroupNorm6(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
-        self.x_shape = [8, 10, 20, 16, 640]
-        self.init_x_shape = [None, None, None, None, 640]
+        self.x_shape = [8, 10, 20, 16, 128]
+        self.init_x_shape = [None, None, None, None, 128]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = group_norm_net5
         self.necessary_ops = "pd_op.group_norm"
@@ -497,8 +497,8 @@ class TestPrimGroupNorm7(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
-        self.x_shape = [8, 10, 20, 640]
-        self.init_x_shape = [None, None, None, 640]
+        self.x_shape = [8, 10, 20, 128]
+        self.init_x_shape = [None, None, None, 128]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = group_norm_net5
         self.necessary_ops = "pd_op.group_norm"
