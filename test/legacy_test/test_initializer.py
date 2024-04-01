@@ -555,7 +555,7 @@ class TestXavierInitializer(unittest.TestCase):
         init_op = block.ops[0]
         if uniform:
             self.assertEqual(init_op.type, 'uniform_random')
-            limit = np.sqrt(6.0 / (12 + 23))
+            limit = 0.2 * np.sqrt(6.0 / (12 + 23))
             self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
             self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
         else:
@@ -760,7 +760,7 @@ class TestXavierInitializerPir(unittest.TestCase):
                 self.assertEqual(len(checked_ops), 1)
                 init_op = checked_ops[0]
                 if uniform:
-                    limit = np.sqrt(6.0 / (12 + 23))
+                    limit = 0.2 * np.sqrt(6.0 / (12 + 23))
                     min = self.get_operand_definition_op_attrs(
                         init_op, "min", "value"
                     )
