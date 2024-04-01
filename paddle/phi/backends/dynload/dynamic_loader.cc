@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
+#include <dirent.h>
 
 #include <cstdlib>
 #include <string>
@@ -182,6 +183,34 @@ static inline void* GetDsoHandleFromSpecificPath(const std::string& spec_path,
   return dso_handle;
 }
 
+static inline std::string FindLibAbsolutePath(const std::string& directory,
+                                              const std::string& filename) {
+  DIR* dir;
+  struct dirent* ent;
+
+  if ((dir = opendir(directory.c_str())) != nullptr) {
+    while ((ent = readdir(dir)) != nullptr) {
+      if (ent->d_type == DT_REG || ent->d_type == DT_LNK) {
+        if (filename == std::string(ent->d_name)) {
+          closedir(dir);
+          return join(directory, ent->d_name);
+        }
+      } else if (ent->d_type == DT_DIR) {
+        if (strcmp(ent->d_name, ".") != 0 && strcmp(ent->d_name, "..") != 0) {
+          std::string res =
+              FindLibAbsolutePath(join(directory, ent->d_name) + "/", filename);
+          if (!res.empty()) {
+            closedir(dir);
+            return res;
+          }
+        }
+      }
+    }
+    closedir(dir);
+  }
+  return "";
+}
+
 static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
                                                 int dynload_flags) {
   // default search from LD_LIBRARY_PATH/DYLD_LIBRARY_PATH
@@ -195,10 +224,19 @@ static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
 // bring System Integrity Projection (SIP), if dso_handle
 // is null, search from default package path in Mac OS.
 #if defined(__APPLE__) || defined(__OSX__)
+#if defined(__arm__) || defined(__aarch64__)
   if (nullptr == dso_handle) {
     dso_handle =
-        dlopen(join("/usr/local/cuda/lib/", dso_path).c_str(), dynload_flags);
+        dlopen(FindLibAbsolutePath("/opt/homebrew/Cellar/", dso_path).c_str(),
+               dynload_flags);
   }
+#else
+  if (nullptr == dso_handle) {
+    dso_handle =
+        dlopen(FindLibAbsolutePath("/usr/local/cuda/lib/", dso_path).c_str(),
+               dynload_flags);
+  }
+#endif
 #endif
 
   return dso_handle;
@@ -618,7 +656,11 @@ void* GetMKLMLDsoHandle() {
 
 void* GetLAPACKDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
+#if defined(__arm__) || defined(__aarch64__)
+  return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapack.dylib");
+#else
   return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapack.3.dylib");
+#endif
 #elif defined(_WIN32)
   return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapack.dll");
 #else

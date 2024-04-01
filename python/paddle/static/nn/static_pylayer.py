@@ -321,9 +321,7 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
         for input_var in inputs:
             if input_var.stop_gradient is False:
                 raise ValueError(
-                    "``stop_gradient`` attr of all inputs to ``forward_fn`` are expected to be True, when ``backward_fn == None``, but {}.stop_gradient got {}".format(
-                        input_var.name, input_var.stop_gradient
-                    )
+                    f"``stop_gradient`` attr of all inputs to ``forward_fn`` are expected to be True, when ``backward_fn == None``, but {input_var.name}.stop_gradient got {input_var.stop_gradient}"
                 )
 
     if in_pir_mode():
@@ -392,9 +390,7 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
             bwd_var_name = _append_grad_suffix_(fwd_var_name)
             if not current_block.desc.has_var_recursive(fwd_var_name.encode()):
                 raise ValueError(
-                    "Grad var {} , we can't find its related forward var {}".format(
-                        bwd_var_name, fwd_var_name
-                    )
+                    f"Grad var {bwd_var_name} , we can't find its related forward var {fwd_var_name}"
                 )
 
             var = current_block.create_var(

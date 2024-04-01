@@ -256,9 +256,7 @@ def _append_gradient_merge_backward_op(
 
     assert (
         len(grad_to_params_grads) == 0
-    ), "grad_to_param_names must be empty right now, but it has {} items".format(
-        len(grad_to_params_grads)
-    )
+    ), f"grad_to_param_names must be empty right now, but it has {len(grad_to_params_grads)} items"
     main_block._sync_with_cpp()
 
     return new_params_grads, grad_to_gradient_merge

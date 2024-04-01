@@ -288,7 +288,6 @@ ir::Tensor Reshape(const ir::Tensor& A,
           auto temp = inner_offset % A_expr_shape[i];
           indice_a.insert(indice_a.begin(), temp);
         }
-        LOG(INFO) << "indice_a = " << indice_a[0];
         return A(indice_a);
       },
       name);
@@ -330,6 +329,20 @@ ir::Tensor Arange(const float start,
                 Expr(step) * ir::Cast::Make(cinn::common::F32(), indices[0]));
       },
       output_name);
+  return res;
+}
+
+ir::Tensor Tril(const ir::Tensor& A,
+                const int diagonal,
+                const std::vector<ir::Dim>& out_shape,
+                const std::string& name) {
+  ir::Tensor res = Compute(
+      ToCinnExprs(out_shape),
+      [=](const std::vector<Expr>& indice) {
+        return ir::Select::Make(
+            indice[0] >= indice[1] - diagonal, A(indice), ir::Zero(A->type()));
+      },
+      name);
   return res;
 }
 

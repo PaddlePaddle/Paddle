@@ -378,10 +378,8 @@ def linspace(start, stop, num, dtype=None, name=None):
             and out_dtype == "int32"
         ):
             raise ValueError(
-                "The dtype of start/stop is {}/{} but the attr(dtype) of linspace is {}, "
-                "which may cause data type overflows. Please reset attr(dtype) of linspace.".format(
-                    start_dtype, stop_dtype, dtype
-                )
+                f"The dtype of start/stop is {start_dtype}/{stop_dtype} but the attr(dtype) of linspace is {dtype}, "
+                "which may cause data type overflows. Please reset attr(dtype) of linspace."
             )
 
         out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -532,10 +530,8 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
             and out_dtype == "int32"
         ):
             raise ValueError(
-                "The dtype of start/stop/base is {}/{}/{} but the attr(dtype) of logspace is {}, "
-                "which may cause data type overflows. Please reset attr(dtype) of logspace.".format(
-                    start_dtype, stop_dtype, base_dtype, dtype
-                )
+                f"The dtype of start/stop/base is {start_dtype}/{stop_dtype}/{base_dtype} but the attr(dtype) of logspace is {dtype}, "
+                "which may cause data type overflows. Please reset attr(dtype) of logspace."
             )
 
         out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -612,9 +608,7 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
             return data
         else:
             raise TypeError(
-                "Can't constructs a 'paddle.Tensor' with data type {}, data type must be scalar|list|tuple|np.ndarray|paddle.Tensor".format(
-                    type(data)
-                )
+                f"Can't constructs a 'paddle.Tensor' with data type {type(data)}, data type must be scalar|list|tuple|np.ndarray|paddle.Tensor"
             )
         if not dtype:
             if data.dtype in [
@@ -1169,7 +1163,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
         num_columns(int, optional): the number of columns in each batch Tensor.
             If None, default: num_rows.
         dtype(np.dtype|str, optional): The data type of the returned Tensor.
-            It should be int32, int64, float16, float32, float64. Default: if None, the data type
+            It should be int32, int64, float16, float32, float64, complex64, complex128. Default: if None, the data type
             is float32.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
@@ -1218,7 +1212,15 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
         check_dtype(
             dtype,
             'dtype',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'comple128',
+            ],
             'eye',
         )
         out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -1967,7 +1969,7 @@ def diag(x, offset=0, padding_value=0, name=None):
     If ``offset`` < 0, it is subdiagonal.
 
     Args:
-        x (Tensor): The input tensor. Its shape is either 1-D or 2-D. Its data type should be float16, float32, float64, int32, int64.
+        x (Tensor): The input tensor. Its shape is either 1-D or 2-D. Its data type should be float16, float32, float64, int32, int64, complex64, complex128.
         offset (int, optional): The diagonal offset. A positive value represents superdiagonal, 0 represents the main diagonal, and a negative value represents subdiagonal.
         padding_value (int|float, optional): Use this value to fill the area outside the specified diagonal band. Only takes effect when the input is a 1-D Tensor. The default value is 0.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -2034,16 +2036,23 @@ def diag(x, offset=0, padding_value=0, name=None):
         check_dtype(
             x.dtype,
             'x',
-            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
             'diag_v2',
         )
         check_type(offset, 'offset', (int), 'diag_v2')
         check_type(padding_value, 'padding_value', (int, float), 'diag_v2')
         if len(x.shape) != 1 and len(x.shape) != 2:
             raise ValueError(
-                "The dimension of input x must be either 1 or 2, but received {}".format(
-                    len(x.shape)
-                )
+                f"The dimension of input x must be either 1 or 2, but received {len(x.shape)}"
             )
 
         helper = LayerHelper("diag_v2", **locals())

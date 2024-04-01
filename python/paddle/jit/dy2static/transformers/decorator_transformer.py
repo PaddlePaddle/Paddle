@@ -69,9 +69,7 @@ class DecoratorTransformer(BaseTransformer):
                 # 1: @_jst.Call(a.b.c.d.deco)()
                 # 2: @q.w.e.r.deco()
                 re_tmp = re.match(
-                    r'({module})*({name}\(){{0,1}}({module})*({name})(\)){{0,1}}\(.*$'.format(
-                        name=RE_PYNAME, module=RE_PYMODULE
-                    ),
+                    rf'({RE_PYMODULE})*({RE_PYNAME}\(){{0,1}}({RE_PYMODULE})*({RE_PYNAME})(\)){{0,1}}\(.*$',
                     deco_full_name,
                 )
                 deco_name = re_tmp.group(4)
@@ -103,31 +101,17 @@ class DecoratorTransformer(BaseTransformer):
                     re_name = rematch.group(1)
                     re_args = rematch.group(2)
                     re_args_with_func = deco_target + ', ' + re_args
-                    decofun_str = 'try:\n\t{0} = _jst.Call({1})({2})\nexcept:\n\t{0} = _jst.Call({1})({3})({4})'.format(
-                        decoded_func,
-                        re_name,
-                        re_args_with_func,
-                        re_args,
-                        deco_target,
-                    )
+                    decofun_str = f'try:\n\t{decoded_func} = _jst.Call({re_name})({re_args_with_func})\nexcept:\n\t{decoded_func} = _jst.Call({re_name})({re_args})({deco_target})'
                 else:
                     # paddle api will not be transformed to '_jst.Call'
                     rematch = re.match(r'(.+?)\((.*)\)', deco_full_name)
                     re_name = rematch.group(1)
                     re_args = rematch.group(2)
                     re_args_with_func = deco_target + ', ' + re_args
-                    decofun_str = 'try:\n\t{0} = {1}({2})\nexcept:\n\t{0} = {1}({3})({4})'.format(
-                        decoded_func,
-                        re_name,
-                        re_args_with_func,
-                        re_args,
-                        deco_target,
-                    )
+                    decofun_str = f'try:\n\t{decoded_func} = {re_name}({re_args_with_func})\nexcept:\n\t{decoded_func} = {re_name}({re_args})({deco_target})'
 
             else:
-                decofun_str = '{} = _jst.Call({})({})'.format(
-                    decoded_func, deco_full_name, deco_target
-                )
+                decofun_str = f'{decoded_func} = _jst.Call({deco_full_name})({deco_target})'
 
             decofun_nodes.extend(gast.parse(decofun_str).body)
             deco_target = decoded_func

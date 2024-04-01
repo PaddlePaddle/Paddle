@@ -195,17 +195,18 @@ void ApplyCinnLowerPass(
   pass_manager->Run(program);
 }
 
-int64_t GetFusionOpNum(const ::pir::Operation* op) {
+template <typename OP_TYPE>
+int64_t GetOpCount(const ::pir::Operation* op) {
   int64_t count = 0;
   for (auto& region : *op) {
     for (auto& block : region) {
       for (auto& sub_op : block) {
-        if (sub_op.isa<cinn::dialect::FusionOp>()) {
+        if (sub_op.isa<OP_TYPE>()) {
           count++;
           continue;
         }
         if (sub_op.num_regions() > 0) {
-          count += GetFusionOpNum(&sub_op);
+          count += GetOpCount<OP_TYPE>(&sub_op);
         }
       }
     }
@@ -213,16 +214,12 @@ int64_t GetFusionOpNum(const ::pir::Operation* op) {
   return count;
 }
 
-int64_t GetFusionOpNum(const ::pir::Program& program) {
-  return GetFusionOpNum(program.module_op());
-}
-
 void ApplyCinnPass(::pir::Program* program,
                    const std::function<std::shared_ptr<pir::PassManager>()>&
                        CreatePassManager) {
   auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(program);
-
   std::cout << "Program before ApplyPdToCinnPass: \n" << *program << std::endl;
+
   ApplyPdToCinnPass(program, CreatePassManager);
   ApplyCinnPreprocessPass(program, CreatePassManager);
   // std::cout << "Program before ApplyBuildGroupOpPass: \n"
@@ -240,8 +237,9 @@ void ApplyCinnPass(::pir::Program* program,
   std::cout << "Program before lowering: \n"
             << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())
             << std::endl;
-  VLOG(0) << " Fusion Op Count: *****[ " << GetFusionOpNum(*program)
-          << " ]*****";
+  LOG(INFO) << "FusionOp count before lowering : *****[ "
+            << GetOpCount<cinn::dialect::FusionOp>(program->module_op())
+            << " ]*****";
   ApplyCinnLowerPass(program, CreatePassManager);
   VLOG(0) << "####### ApplyCinnPass Finish #######";
 }
