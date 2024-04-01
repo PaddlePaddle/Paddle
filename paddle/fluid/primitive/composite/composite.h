@@ -899,7 +899,7 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     if (data_format == "NCHW") {
       x_cast = reshape<T>(x_cast, {x_dim[0] * groups, -1});
     } else {
-      int c_div_g = x_dim[-1] / groups;
+      int c_div_g = x_dim[rank - 1] / groups;
       x_cast = reshape<T>(x_cast, {x_dim[0], -1, groups, c_div_g});
     }
     mean_ = mean_decomp<T>(x_cast, c_axis, true);
@@ -935,7 +935,6 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     } else {
       bias_cast = bias.get();
     }
-
     if (need_cast) {
       bias_cast = cast<T>(bias_cast, DataType::FLOAT32);
     }

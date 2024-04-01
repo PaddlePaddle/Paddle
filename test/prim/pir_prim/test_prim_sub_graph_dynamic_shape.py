@@ -471,8 +471,8 @@ class TestPrimGroupNorm5(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
-        self.x_shape = [8, 10, 20, 16, 128]
-        self.init_x_shape = [8, 10, 20, 16, 128]
+        self.x_shape = [8, 12, 20, 16, 128]
+        self.init_x_shape = [8, 12, 20, 16, 128]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = group_norm_net5
         self.necessary_ops = "pd_op.group_norm"
