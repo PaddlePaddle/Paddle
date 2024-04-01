@@ -40,11 +40,11 @@ int getSMVersion() {
 class FusedWeightOnlyLinearWithBiasPattern
     : public paddle::drr::DrrPatternBase {
  private:
-  bool reverse_;
+  bool reverse_add_;
 
  public:
-  explicit FusedWeightOnlyLinearWithBiasPattern(bool reverse)
-      : reverse_(reverse) {}
+  explicit FusedWeightOnlyLinearWithBiasPattern(bool reverse_add)
+      : reverse_add_(reverse_add) {}
 
   std::string name() const override {
     return "FusedWeightOnlyLinearWithBiasPattern";
@@ -65,8 +65,8 @@ class FusedWeightOnlyLinearWithBiasPattern
     const auto &add = src.Op(paddle::dialect::AddOp::name());
 
     src.Tensor("add_out") =
-        reverse_ ? add(src.Tensor("matmul_out"), src.Tensor("bias"))
-                 : add(src.Tensor("bias"), src.Tensor("matmul_out"));
+        reverse_add_ ? add(src.Tensor("matmul_out"), src.Tensor("bias"))
+                     : add(src.Tensor("bias"), src.Tensor("matmul_out"));
 
     //
     // Constraints.
