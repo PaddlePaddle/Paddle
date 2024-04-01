@@ -12,4 +12,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_pir_mse_spmd MODULES test_pir_mse_spmd ENVS
                   FLAGS_enable_pir_api=1)
   py_test_modules(test_mlp MODULES test_mlp ENVS FLAGS_enable_pir_api=1)
+  set_tests_properties(test_mlp PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT
+                                           60)
 endif()

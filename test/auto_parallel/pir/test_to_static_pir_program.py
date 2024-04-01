@@ -27,6 +27,7 @@ BATCH_NUM = 40
 IMAGE_SIZE = 16
 CLASS_NUM = 8
 np.random.seed(2024)
+paddle.seed(2024)
 
 
 class RandomDataset(paddle.io.Dataset):
@@ -115,8 +116,6 @@ class TestToStaticPirProgramTrain(unittest.TestCase):
         mode = "train"
         dist_model.train()
         main_program = dist_model._engine._pir_dist_main_progs["train"]
-
-        print(main_program, flush=1)
 
         relu_idx = 0
         matmul_idx = 0
