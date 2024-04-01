@@ -40,11 +40,11 @@ std::vector<PatternNodePtr> PatternGraph::ClusterOps(
   VLOG(4) << "ReduceTree_Trivial_Fusion End";
   PrintGraph();
 
-  // Horitical fusion.
+  // Horizontal fusion.
   if (with_horizontal_fusion) {
-    VLOG(4) << "Horitical_Fusion Start";
-    HoriticalFusion();
-    VLOG(4) << "Horitical_Fusion End";
+    VLOG(4) << "Horizontal_Fusion Start";
+    HorizontalFusion();
+    VLOG(4) << "Horizontal_Fusion End";
     PrintGraph();
   }
 
@@ -92,7 +92,7 @@ void PatternGraph::ReduceLiftReduceTree() {
       LiftReduceToReduceTree>(this);
 }
 
-void PatternGraph::HoriticalFusion() {
+void PatternGraph::HorizontalFusion() {
   VLOG(4) << "LiftToHorizontalFusionPattern";
   GraphTransformer<NodePattern,
                    StmtPatternGraphMatcher<TrivialPattern>,

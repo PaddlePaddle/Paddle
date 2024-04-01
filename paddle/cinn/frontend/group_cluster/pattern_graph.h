@@ -47,7 +47,7 @@ class PatternGraph {
 
  private:
   void SinkTrivialPattern();
-  void HoriticalFusion();
+  void HorizontalFusion();
   void FuseReducePattern();
   void ReduceLiftReduceTree();
   void ReduceTreeGrown();
@@ -79,7 +79,7 @@ class PatternGraph {
 };
 
 // PatternGraphFusionOperation := (GraphMatcher, GraphOperation)
-// SearchAlorithm := NodePattern | EdgePattern | GraphMatcher
+// SearchAlgorithm := NodePattern | EdgePattern | GraphMatcher
 // GraphOperation := Merge2Node | SplitNode | SplitAllAndMergeDownstream
 
 struct NodePattern {};
@@ -88,14 +88,14 @@ struct GraphPattern {};     // not implemented.
 struct NodePairPattern {};  // not implemented.
 
 template <typename Kind, typename GraphMatcher, typename GraphOperation>
-struct SearchAlorithm {};
+struct SearchAlgorithm {};
 
 template <typename GraphMatcher, typename GraphOperation>
-struct SearchAlorithm<NodePattern, GraphMatcher, GraphOperation> {
+struct SearchAlgorithm<NodePattern, GraphMatcher, GraphOperation> {
   PatternGraph* graph_;
   PatternNodePtrSet visited_nodes;
 
-  explicit SearchAlorithm(PatternGraph* graph) {
+  explicit SearchAlgorithm(PatternGraph* graph) {
     VLOG(4) << "Create NodePattern algorithm.";
     graph_ = graph;
   }
@@ -125,10 +125,10 @@ struct SearchAlorithm<NodePattern, GraphMatcher, GraphOperation> {
 };
 
 template <typename GraphMatcher, typename GraphOperation>
-struct SearchAlorithm<NodePairPattern, GraphMatcher, GraphOperation> {
+struct SearchAlgorithm<NodePairPattern, GraphMatcher, GraphOperation> {
   PatternGraph* graph_;
   std::set<std::pair<PatternNodePtr, PatternNodePtr>> visited_node_pair;
-  explicit SearchAlorithm(PatternGraph* graph) {
+  explicit SearchAlgorithm(PatternGraph* graph) {
     VLOG(4) << "Create NodePairPattern algorithm.";
     graph_ = graph;
   }
@@ -341,7 +341,7 @@ struct Not {
 template <typename Kind, typename GraphMatcher, typename GraphOperation>
 void GraphTransformer(PatternGraph* graph) {
   VLOG(4) << "Start GraphTransformer...";
-  auto alog = SearchAlorithm<Kind, GraphMatcher, GraphOperation>(graph);
+  auto alog = SearchAlgorithm<Kind, GraphMatcher, GraphOperation>(graph);
   alog();
 }
 

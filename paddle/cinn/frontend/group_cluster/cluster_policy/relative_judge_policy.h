@@ -30,7 +30,7 @@ struct ValueDim {
     return (idx_ == v.idx_) && (v_ == v.v_);
   }
 
-  size_t GetNumbericValue() const {
+  size_t GetNumericValue() const {
     return v_.type().dyn_cast<pir::DenseTensorType>().dims().at(idx_);
   }
 
@@ -249,13 +249,13 @@ static ValueDimRelation AnalysisIndexExprRelation(
   return res;
 }
 
-struct SplitedDims {
+struct SplitDims {
   std::vector<ValueDim> related;
   std::vector<ValueDim> non_related;
 
   std::string DebugStr() const {
     std::stringstream ss;
-    ss << "SplitedDims:\nrelated:\n";
+    ss << "SplitDims:\nrelated:\n";
     for (const auto& dim : related) {
       ss << dim.DebugStr() << "\n";
     }
@@ -296,7 +296,7 @@ class RelativeJudgePolicy final : public Policy {
   bool IsFlattenDimSmaller(const PatternNodePtr& upstream,
                            const PatternNodePtr& downstream);
   bool ReducePlusTrivialCanMerge(const PatternNodePtr&, const PatternNodePtr&);
-  SplitedDims SplitDimsWithRelationship(
+  SplitDims SplitDimsWithRelationship(
       const std::vector<ValueDim>& targets,
       const std::vector<ValueDim>& related_with);
   std::optional<ReducePattern> GetDownstreamFromCandidate(

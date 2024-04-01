@@ -39,14 +39,14 @@ std::optional<ReducePattern> RelativeJudgePolicy::GetDownstreamFromCandidate(
   return {};
 }
 
-SplitedDims SplitReduceInputDimsIfRelatedWithNonReduceAxis(
+SplitDims SplitReduceInputDimsIfRelatedWithNonReduceAxis(
     const ShardableAxesSignature& signature, pir::Operation* op) {
   const auto& v = op->operand_source(0);
   const auto& input_names = signature.inputs[0].axis_names;
   const auto& output_names = signature.outputs[0].axis_names;
   std::set<std::string> output_names_set(output_names.begin(),
                                          output_names.end());
-  auto result = SplitedDims();
+  auto result = SplitDims();
   int idx = 0;
   for (const auto& in : input_names) {
     if (output_names_set.count(in) == 0) {
@@ -59,13 +59,13 @@ SplitedDims SplitReduceInputDimsIfRelatedWithNonReduceAxis(
   return result;
 }
 
-SplitedDims SplitReduceOutputDimsIfRelatedWithNonReduceAxis(
+SplitDims SplitReduceOutputDimsIfRelatedWithNonReduceAxis(
     const ShardableAxesSignature& signature, const pir::Operation* op) {
   const auto& v = op->result(0);
   const auto& input_names = signature.inputs[0].axis_names;
   const auto& output_names = signature.outputs[0].axis_names;
   std::set<std::string> input_names_set(input_names.begin(), input_names.end());
-  auto result = SplitedDims();
+  auto result = SplitDims();
   int idx = 0;
   for (const auto& name : output_names) {
     if (input_names_set.count(name) == 0) {
@@ -136,11 +136,11 @@ bool RelativeJudgePolicy::ReduceTreeGrownCanMerge(
   return res;
 }
 
-SplitedDims RelativeJudgePolicy::SplitDimsWithRelationship(
+SplitDims RelativeJudgePolicy::SplitDimsWithRelationship(
     const std::vector<ValueDim>& targets,
     const std::vector<ValueDim>& related_with) {
   VLOG(4) << "SplitDimsWithRelationship";
-  auto result = SplitedDims();
+  auto result = SplitDims();
   bool is_related = false;
   for (auto& target_dim : targets) {
     is_related = false;
@@ -157,15 +157,15 @@ SplitedDims RelativeJudgePolicy::SplitDimsWithRelationship(
   return result;
 }
 
-bool DimsEquel(const std::vector<ValueDim>& first,
+bool DimsEqual(const std::vector<ValueDim>& first,
                const std::vector<ValueDim>& second) {
-  VLOG(4) << "DimsEquel";
+  VLOG(4) << "DimsEqual";
   const auto GetDimInfo =
       [](const std::vector<ValueDim>& dims) -> std::unordered_map<size_t, int> {
     std::unordered_map<size_t, int> result;
     for (const auto& dim : dims) {
       VLOG(4) << "dim: " << dim.DebugStr();
-      size_t value = dim.GetNumbericValue();
+      size_t value = dim.GetNumericValue();
       VLOG(4) << "value: " << value;
       if (result.find(value) == result.end()) {
         result[value] = 1;
@@ -213,7 +213,8 @@ bool RelativeJudgePolicy::ReducePlusTrivialCanMerge(
       SplitReduceOutputDimsIfRelatedWithNonReduceAxis(
           axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
   VLOG(4) << split_reduce_input_dims_result.DebugStr();
-  const auto& upstream_non_reduce_dims = split_reduce_output_dims_result.related;
+  const auto& upstream_non_reduce_dims =
+      split_reduce_output_dims_result.related;
   // replace codes upside with original design
 
   const auto& split_trivial_dims_result = SplitDimsWithRelationship(
@@ -223,7 +224,7 @@ bool RelativeJudgePolicy::ReducePlusTrivialCanMerge(
   VLOG(4) << split_trivial_dims_result.DebugStr();
 
   auto res =
-      DimsEquel(split_trivial_dims_result.non_related, upstream_reduce_dims);
+      DimsEqual(split_trivial_dims_result.non_related, upstream_reduce_dims);
   res = res || IsFlattenDimSmaller(upstream, downstream);
   VLOG(4) << "ReducePlusTrivialCanMerge: " << res;
   return res;
@@ -292,7 +293,7 @@ std::vector<size_t> RelativeJudgePolicy::GetFakeReduceIterIdx(
   for (auto& reduce_dim : upstream_reduce_dims) {
     for (auto& trivial_dim : trivial_reorder_dims) {
       if (visited_dims.find(trivial_dim) == visited_dims.end() &&
-          trivial_dim.GetNumbericValue() == reduce_dim.GetNumbericValue()) {
+          trivial_dim.GetNumericValue() == reduce_dim.GetNumericValue()) {
         visited_dims.emplace(trivial_dim);
         result.emplace_back(trivial_dim.idx_);
         break;
