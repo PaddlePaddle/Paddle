@@ -140,12 +140,12 @@ class RmsNormFusePattern : public paddle::drr::DrrPatternBase {
 
 class AddRmsNormFusePattern : public paddle::drr::DrrPatternBase {
  private:
-  const bool extart_add_;
+  const bool extra_add_;
 
  public:
-  explicit AddRmsNormFusePattern(bool extart_add) : extart_add_(extart_add) {}
+  explicit AddRmsNormFusePattern(bool extra_add) : extra_add_(extra_add) {}
 
-  uint32_t benefit() const override { return extart_add_ ? 2 : 1; }
+  uint32_t benefit() const override { return extra_add_ ? 2 : 1; }
 
   std::string name() const override { return "AddRmsNormFusePattern"; }
 
@@ -173,7 +173,7 @@ class AddRmsNormFusePattern : public paddle::drr::DrrPatternBase {
                   &pat.Tensor("inv_var_0")});
     // TODO(bukejiyu) :DRR support matching placeholder op,
     // the following needs to be deleted
-    if (extart_add_) {
+    if (extra_add_) {
       const auto &add1 = pat.Op(paddle::dialect::AddOp::name());
       pat.Tensor("add_out1") =
           add1(pat.Tensor("add_out"), pat.Tensor("any_tensor"));
@@ -206,12 +206,12 @@ class AddRmsNormFusePattern : public paddle::drr::DrrPatternBase {
 
 class AddLayerNormFusePattern : public paddle::drr::DrrPatternBase {
  private:
-  const bool extart_add_;
+  const bool extra_add_;
 
  public:
-  explicit AddLayerNormFusePattern(bool extart_add) : extart_add_(extart_add) {}
+  explicit AddLayerNormFusePattern(bool extra_add) : extra_add_(extra_add) {}
 
-  uint32_t benefit() const override { return extart_add_ ? 2 : 1; }
+  uint32_t benefit() const override { return extra_add_ ? 2 : 1; }
   std::string name() const override { return "AddLayerNormFusePattern"; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
@@ -228,7 +228,7 @@ class AddLayerNormFusePattern : public paddle::drr::DrrPatternBase {
                 &pat.Tensor("variance_out_0")});
     // TODO(bukejiyu) :DRR support matching placeholder op,
     // the following needs to be deleted
-    if (extart_add_) {
+    if (extra_add_) {
       const auto &add1 = pat.Op(paddle::dialect::AddOp::name());
       pat.Tensor("add_out1") =
           add1(pat.Tensor("add_out"), pat.Tensor("any_tensor"));
@@ -272,19 +272,19 @@ class AddNormFusePass : public pir::PatternRewritePass {
     //                                mul --->rms_norm
     // w-----------------------------
     bool is_half_weight = true;
-    bool extart_add = true;
+    bool extra_add = true;
     ps.Add(paddle::drr::Create<RmsNormFusePattern>(context, !is_half_weight));
     ps.Add(paddle::drr::Create<RmsNormFusePattern>(context, is_half_weight));
     // x--------
     //           add-rms_norm ---> rms_norm
     // residual-
-    ps.Add(paddle::drr::Create<AddRmsNormFusePattern>(context, !extart_add));
-    ps.Add(paddle::drr::Create<AddRmsNormFusePattern>(context, extart_add));
+    ps.Add(paddle::drr::Create<AddRmsNormFusePattern>(context, !extra_add));
+    ps.Add(paddle::drr::Create<AddRmsNormFusePattern>(context, extra_add));
     // x--------
     //           add-layer_norm ----> fused_bias_residual_layernorm
     // residual-
-    ps.Add(paddle::drr::Create<AddLayerNormFusePattern>(context, !extart_add));
-    ps.Add(paddle::drr::Create<AddLayerNormFusePattern>(context, extart_add));
+    ps.Add(paddle::drr::Create<AddLayerNormFusePattern>(context, !extra_add));
+    ps.Add(paddle::drr::Create<AddLayerNormFusePattern>(context, extra_add));
     return ps;
   }
 };
