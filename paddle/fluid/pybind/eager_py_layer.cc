@@ -478,9 +478,11 @@ PyObject* pylayer_method_apply(PyObject* cls,
 
     for (size_t i = 0; i < inputs_autograd_meta.size(); i++) {
       if (ctx->forward_input_tensor_is_duplicable[i]) {
+        std::vector<const paddle::Tensor*> tmp;
         for (auto t : inputs_tensor[i]) {
-          grad_node->SetGradOutMeta(*t, i);
+          tmp.push_back(t);
         }
+        grad_node->SetGradOutMeta(tmp, i);
       } else {
         grad_node->SetGradOutMeta(*inputs_tensor[i][0], i);
       }
