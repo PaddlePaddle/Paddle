@@ -66,7 +66,7 @@ class TestSumAsOp(OpTest):
         self.check_grad(
             ['x'],
             'out',
-        )
+        check_pir=True,)
 
 
 class TestSumAsOp2(TestSumAsOp):
