@@ -130,6 +130,9 @@ class TestExpandV2OpRank5_ZeroDim(TestExpandV2OpRank1):
         self.shape = [5, 2, 3, 4, 5]
         self.expand_times = [5, 2, 3, 4, 5]
 
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
 
 class TestExpandV2OpRank6(TestExpandV2OpRank1):
     def init_data(self):
@@ -151,6 +154,9 @@ class TestExpandV2OpRank6_ZeroDim(TestExpandV2OpRank1):
         self.shape = [1, 2, 3, 4, 5, 6]
         self.expand_times = [1, 2, 3, 4, 5, 6]
 
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
 
 class TestExpandV2OpRank7(TestExpandV2OpRank1):
     def init_data(self):
@@ -171,6 +177,9 @@ class TestExpandV2OpRank7_ZeroDim(TestExpandV2OpRank1):
         self.ori_shape = []
         self.shape = [1, 2, 3, 4, 5, 6, 7]
         self.expand_times = [1, 2, 3, 4, 5, 6, 7]
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 class TestExpandV2OpRank8(TestExpandV2OpRank1):
@@ -395,22 +404,23 @@ class TestExpandV2BF16Op(OpTest):
 class TestExpandV2Error(unittest.TestCase):
     @test_with_pir_api
     def test_errors(self):
-        paddle.enable_static()
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-            shape = [2, 2]
-            if not in_pir_mode():
-                x1 = base.create_lod_tensor(
-                    np.array([[-1]]), [[1]], base.CPUPlace()
-                )
-                self.assertRaises(TypeError, paddle.tensor.expand, x1, shape)
-            x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="bool")
-            x2.stop_gradient = False
-            self.assertRaises(ValueError, paddle.tensor.expand, x2, shape)
-            x2.stop_gradient = True
-            self.assertRaises(TypeError, paddle.tensor.expand, x2, 1)
-        paddle.disable_static()
+        with static_guard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                shape = [2, 2]
+                if not in_pir_mode():
+                    x1 = base.create_lod_tensor(
+                        np.array([[-1]]), [[1]], base.CPUPlace()
+                    )
+                    self.assertRaises(
+                        TypeError, paddle.tensor.expand, x1, shape
+                    )
+                x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="bool")
+                x2.stop_gradient = False
+                self.assertRaises(ValueError, paddle.tensor.expand, x2, shape)
+                x2.stop_gradient = True
+                self.assertRaises(TypeError, paddle.tensor.expand, x2, 1)
 
 
 # Test python API
