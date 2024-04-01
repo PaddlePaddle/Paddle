@@ -1264,9 +1264,9 @@ std::shared_ptr<OpStrategy> StrategyForGather(
         Expr index = input_args[1];
         CHECK(index.as_tensor());
 
-        CHECK_EQ(input_args.size(), 3U);
-        CHECK(input_args[2].is_string());
-        std::string tensor_name = input_args[2].operator std::string();
+        CHECK_EQ(input_args.size(), 4U);
+        CHECK(input_args[3].is_string());
+        std::string tensor_name = input_args[3].operator std::string();
 
         auto out = pe::Gather(x.as_tensor_ref(),
                               index.as_tensor_ref(),
@@ -1284,6 +1284,71 @@ std::shared_ptr<OpStrategy> StrategyForGather(
                     GetInjectiveScheduleFunc(output_shapes, target),
                     "strategy.gather.x86",
                     1);
+  return strategy;
+}
+
+std::shared_ptr<OpStrategy> StrategyForGatherSymbolic(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<ir::Dim>> &output_shapes,
+    const Target &target) {
+  CHECK(!output_shapes.empty() && !output_shapes[0].empty())
+      << "The shape of output is empty! Please check again.";
+  VLOG(0) << "The output passed in StrategyForGatherSymbolic: "
+          << utils::Join(output_shapes[0], ", ");
+  CHECK(!out_type.empty())
+      << "The output type of Gather is empty! Please check again.\n";
+
+  int axis = 0;
+  if (attrs.attr_store.contains("axis")) {
+    axis = absl::get<int>(attrs.attr_store.at("axis"));
+  }
+  axis = axis < 0 ? axis + static_cast<int>(inputs[0]->shape.size()) : axis;
+
+  std::vector<Expr> output_shape;
+  output_shape.reserve(output_shapes[0].size());
+  for (auto i : output_shapes[0]) {
+    output_shape.emplace_back(i);
+  }
+
+  framework::CINNCompute gather_compute{
+      [axis, output_shape = std::move(output_shape)](lang::Args args,
+                                                     lang::RetValue *ret) {
+        VLOG(0) << "The axis value used in gather_compute: " << axis;
+        CHECK(!args.empty()) << "The input args are empty! Please check again.";
+        CINNValuePack input_args = args[0];
+        int input_size = input_args.size();
+        CHECK_GE(input_size, 2U)
+            << "Require 2 input tensors for Gather compute.";
+        Expr x = input_args[0];
+        CHECK(x.as_tensor());
+        Expr index = input_args[1];
+        CHECK(index.as_tensor());
+
+        for (auto i = 0; i < input_args.size(); i++) {
+          VLOG(0) << "input type code[" << i
+                  << "]: " << input_args[i].type_code();
+        }
+
+        CHECK_EQ(input_args.size(), 4U);
+        CHECK(input_args[3].is_string());
+        std::string tensor_name = input_args[3].operator std::string();
+
+        auto out = pe::Gather(x.as_tensor_ref(),
+                              index.as_tensor_ref(),
+                              output_shape,
+                              axis,
+                              tensor_name);
+        auto stages = CreateStages({x.as_tensor_ref(), index.as_tensor_ref()});
+        stages->InsertLazily(out);
+        std::vector<CINNValue> res{CINNValue(out), CINNValue(stages)};
+        *ret = CINNValuePack{res};
+      }};
+
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  strategy->AddImpl(
+      gather_compute, lang::PackedFunc(), "strategy.gather.x86", 1);
   return strategy;
 }
 
@@ -2224,6 +2289,8 @@ CINN_REGISTER_HELPER(transform_ops) {
           "the entries in `index`.")
       .set_num_inputs(2)
       .set_num_outputs(1)
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
+          "CINNStrategySymbolic", cinn::hlir::op::StrategyForGatherSymbolic)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForGather)
       .set_attr("infershape",
