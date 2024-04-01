@@ -29,6 +29,8 @@ from paddle.base import Program, core, program_guard
 from paddle.base.layer_helper import LayerHelper
 from paddle.pir_utils import test_with_pir_api
 
+devices = ['cpu', 'gpu']
+
 
 @contextmanager
 def dynamic_guard():
@@ -3745,6 +3747,11 @@ class TestLog(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(0.1, 1, self.shape)
+                + 1j * np.random.uniform(0.1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.log(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -3770,6 +3777,56 @@ class TestLog(TestActivation):
             check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
         )
+
+
+class TestLog_Complex64(TestLog):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
+        )
+
+    def test_check_output(self):
+        self.check_output(
+            check_pir=True, check_pir_onednn=self.check_pir_onednn
+        )
+
+    def test_api_complex(self):
+        paddle.disable_static()
+        for device in devices:
+            if device == 'cpu' or (
+                device == 'gpu' and paddle.is_compiled_with_cuda()
+            ):
+                np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=self.dtype)
+                x = paddle.to_tensor(np_x, dtype=self.dtype, place=device)
+                y = paddle.log(x)
+                x_expect = np.log(np_x)
+                np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
+        paddle.enable_static()
+
+    def test_grad_grad(self):
+        paddle.disable_static()
+        x_numpy = (
+            np.random.uniform(0.1, 1, self.shape)
+            + 1j * np.random.uniform(0.1, 1, self.shape)
+        ).astype(self.dtype)
+
+        expected_ddx = np.conj(-1 / np.power(x_numpy, 2))
+
+        x = paddle.to_tensor(x_numpy, stop_gradient=False)
+        y = paddle.log(x)
+        dx = paddle.grad(
+            outputs=[y], inputs=[x], create_graph=True, retain_graph=True
+        )[0]
+        ddx = paddle.grad(outputs=[dx], inputs=[x], retain_graph=True)[0]
+        np.testing.assert_allclose(ddx.numpy(), expected_ddx, rtol=1e-3)
+
+
+class TestLog_Complex128(TestLog_Complex64):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class Test_Log_Op_Fp16(unittest.TestCase):
@@ -3825,6 +3882,11 @@ class TestLog2(TestActivation):
         self.init_shape()
 
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(0.1, 1, self.shape)
+                + 1j * np.random.uniform(0.1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.log2(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -3870,6 +3932,34 @@ class TestLog2(TestActivation):
         np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
 
 
+class TestLog2_Complex64(TestLog2):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+    def test_check_output(self):
+        self.check_output(
+            check_pir=True, check_pir_onednn=self.check_pir_onednn
+        )
+
+    def test_api_complex(self):
+        paddle.disable_static()
+        for device in devices:
+            if device == 'cpu' or (
+                device == 'gpu' and paddle.is_compiled_with_cuda()
+            ):
+                np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=self.dtype)
+                x = paddle.to_tensor(np_x, dtype=self.dtype, place=device)
+                y = paddle.log2(x)
+                x_expect = np.log2(np_x)
+                np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
+        paddle.enable_static()
+
+
+class TestLog2_Complex128(TestLog2_Complex64):
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+
 class TestLog2_ZeroDim(TestLog2):
     def init_shape(self):
         self.shape = []
@@ -3909,6 +3999,11 @@ class TestLog10(TestActivation):
         self.init_shape()
 
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(0.1, 1, self.shape)
+                + 1j * np.random.uniform(0.1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.log10(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -3926,6 +4021,29 @@ class TestLog10(TestActivation):
         self.check_grad(
             ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
         )
+
+
+class TestLog10_Complex64(TestLog10):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+    def test_api_complex(self):
+        paddle.disable_static()
+        for device in devices:
+            if device == 'cpu' or (
+                device == 'gpu' and paddle.is_compiled_with_cuda()
+            ):
+                np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=self.dtype)
+                x = paddle.to_tensor(np_x, dtype=self.dtype, place=device)
+                y = paddle.log10(x)
+                x_expect = np.log10(np_x)
+                np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
+        paddle.enable_static()
+
+
+class TestLog10_Complex128(TestLog10_Complex64):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestLog10_ZeroDim(TestLog10):
@@ -4001,6 +4119,11 @@ class TestLog1p(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(0.1, 1, self.shape)
+                + 1j * np.random.uniform(0.1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.log1p(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -4018,6 +4141,29 @@ class TestLog1p(TestActivation):
         self.check_grad(
             ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
         )
+
+
+class TestLog1p_Complex64(TestLog1p):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+    def test_api_complex(self):
+        paddle.disable_static()
+        for device in devices:
+            if device == 'cpu' or (
+                device == 'gpu' and paddle.is_compiled_with_cuda()
+            ):
+                np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=self.dtype)
+                x = paddle.to_tensor(np_x, dtype=self.dtype, place=device)
+                y = paddle.log1p(x)
+                x_expect = np.log1p(np_x)
+                np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
+        paddle.enable_static()
+
+
+class TestLog1p_Complex128(TestLog1p_Complex64):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class Test_Log1p_Op_Fp16(unittest.TestCase):
