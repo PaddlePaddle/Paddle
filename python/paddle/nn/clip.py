@@ -689,6 +689,8 @@ class ClipGradByGlobalNorm(ClipGradBase):
         else:
             src_mesh = None
 
+        print("====== param_grads ======")
+        print(params_grads)
         for p, g in params_grads:
             if g is None:
                 continue
@@ -709,9 +711,12 @@ class ClipGradByGlobalNorm(ClipGradBase):
             # if the gradient mesh is not equal to src mesh
             # do reshard to get the result of squared_l2 from other pp stage mesh
             if src_mesh is not None and g.process_mesh != src_mesh:
+                print("===== reshard in clip =====")
+                print(sum_square)
                 sum_square = dist.reshard(
                     sum_square, src_mesh, sum_square.placements
                 )
+                print(sum_square)
 
             if (
                 sum_square.dtype == paddle.float16
@@ -723,6 +728,8 @@ class ClipGradByGlobalNorm(ClipGradBase):
             else:
                 sum_square_list.append(sum_square)
 
+        print("===== sum_square_list =====")
+        print(sum_square_list_fp32)
         # all parameters have been filterd out
         if (
             len(sum_square_list)
@@ -782,9 +789,14 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     else clip_var
                 )
                 if clip_input.process_mesh != g.process_mesh:
-                    clip_input = paddle.distributed.reshard(
-                        clip_input, g.process_mesh, clip_input.placements
-                    )
+                    if set(g.process_mesh.process_ids) < set(
+                        clip_input.process_mesh.process_ids
+                    ):
+                        clip_input = clip_input._local_value()
+                    else:
+                        clip_input = paddle.distributed.reshard(
+                            clip_input, g.process_mesh, clip_input.placements
+                        )
                 new_grad = paddle.multiply(g, clip_input)
                 params_and_grads.append((p, new_grad))
             else:

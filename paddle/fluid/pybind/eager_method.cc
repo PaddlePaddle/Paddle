@@ -3020,7 +3020,9 @@ static PyObject* tensor__grad_ivar(TensorObject* self,
   EAGER_TRY
   VLOG(6) << "Get grad for tensor: " << self->tensor.name();
   auto meta = egr::EagerUtils::nullable_autograd_meta(self->tensor);
-  VLOG(6) << meta << " initialized: " << meta->Grad().initialized();
+  VLOG(6) << meta << " initialized: " << meta->Grad().initialized()
+          << "impl: " << meta->Grad().impl()
+          << "is_dist: " << meta->Grad().is_dist_tensor();
   if (meta && meta->Grad().initialized()) {
     return ToPyObject(meta->Grad());
   } else {

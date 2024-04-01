@@ -202,6 +202,8 @@ def _can_apply_infer_spmd_rule(dist_op):
         "swiglu",
         "tile",
         "fused_rms_norm",
+        "scatter",
+        "gather",
     ]
     parallel_ce = os.getenv("PARALLEL_CROSS_ENTROPY")
     if parallel_ce == "true":
@@ -1046,7 +1048,6 @@ class Completer:
         )
         if not is_naive_data_parallel(self._dist_context):
             self._dist_context.initialize(with_graph=True)
-            log_program(self._dist_context, "before_update")
             self._prepare()
             self._update_process_mesh()
             self._update_dims_mapping()
@@ -1059,7 +1060,6 @@ class Completer:
             self._update_dist_attr_for_dp()
 
         self._complete_with_global_mesh(serial_main_program, tensor_names, ops)
-        log_program(self._dist_context, "final")
         # NOTE:[HighOrderGrad] update vars and ops distributed attribute in high order gradient
         self._complete_high_order_grad_annotation(serial_main_program)
         self._complete_chunk_id(serial_main_program)

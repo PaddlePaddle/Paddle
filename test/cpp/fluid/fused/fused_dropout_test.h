@@ -27,7 +27,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/layer_norm_kernel.h"
-#include "paddle/utils/string/printf.h"
+// #include "paddle/utils/string/printf.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;

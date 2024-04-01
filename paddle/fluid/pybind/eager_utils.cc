@@ -117,14 +117,14 @@ void ConvertToDistTensor(Tensor* x, const phi::distributed::ProcessMesh* mesh) {
     return;
   }
   if (x->is_dist_tensor()) {
-    PADDLE_ENFORCE_EQ(
-        std::dynamic_pointer_cast<phi::distributed::DistTensor>(x->impl())
-            ->process_mesh(),
-        *mesh,
-        platform::errors::InvalidArgument(
-            "Input %s has different mesh. However all inputs should "
-            "have the same mesh.",
-            x->name()));
+    // PADDLE_ENFORCE_EQ(
+    //     std::dynamic_pointer_cast<phi::distributed::DistTensor>(x->impl())
+    //         ->process_mesh(),
+    //     *mesh,
+    //     platform::errors::InvalidArgument(
+    //         "Input %s has different mesh. However all inputs should "
+    //         "have the same mesh.",
+    //         x->name()));
     return;
   } else {
     PADDLE_ENFORCE_EQ(

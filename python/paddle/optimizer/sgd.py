@@ -129,10 +129,14 @@ class SGD(Optimizer):
         )
 
         lr = self._create_param_lr(param_and_grad)
+        if lr.is_dist():
+            lr_local = lr._local_value()
+        else:
+            lr_local = lr
         if in_dynamic_or_pir_mode():
             _C_ops.sgd_(
                 param_and_grad[0],
-                lr,
+                lr_local,
                 param_and_grad[1],
                 master_weight,
                 find_master,
