@@ -14,8 +14,8 @@ import shape_signature_inferer as shape_signature_inferer
 from shape_signature_inferer import StaticDim
 import instruction_util as instruction_util
 import op_call_code_gen
-from paddle_eager_generator import PaddleEagerGenerator 
-from numpy_generator import NumpyGenerator 
+from paddle_eager_generator import PaddleEagerGenerator
+from numpy_generator import NumpyGenerator
 from unit_test_case_spec import (
     UnitTestCaseRequirement,
     UnitTestCaseSpec,
@@ -30,13 +30,6 @@ def GenerateUnitTestCaseSpec(
         requirement=unit_test_case_requirement
     )
 
-def CodeGen(
-    unit_test_case_spec: UnitTestCaseSpec,
-    op_call_code_gen_requirement: op_call_code_gen.OpCallCodeGenRequirement
-) -> Script:
-    generator = PaddleEagerGenerator(op_call_code_gen_requirement)
-    return generator.Generate(unit_test_case_spec)
-
 if __name__ == '__main__':
     unit_test_case_requirement=UnitTestCaseRequirement(
         dag_gen_requirement=dag_generator.DAGGenRequirement(
@@ -45,7 +38,7 @@ if __name__ == '__main__':
             pick_probability=dag_generator.DAGGenTypePickProbability()
         ),
         dims_eq1_gen_requirement=dims_eq1_generator.DimsEq1GenRequirement(
-            dims_eq1_probability=[0.1, 0.2, 0.5]
+            dims_eq1_probability=[0.1, 0.15, 0.2]
         ),
         op_name_gen_requirement=op_name_generator.OpNameGenRequirement(),
         tensor_name_gen_requirement=TensorNameGenRequirement(),
@@ -56,16 +49,12 @@ if __name__ == '__main__':
     unit_test_case_spec = GenerateUnitTestCaseSpec(
         unit_test_case_requirement=unit_test_case_requirement
     )
-    op_call_code_gen_requirement=op_call_code_gen.OpCallCodeGenRequirement(
-        module_name="paddle"
-    )
 
-    numpy_gen = NumpyGenerator(op_call_code_gen_requirement)
+    numpy_gen = NumpyGenerator()
 
-    paddle_eager_gen = PaddleEagerGenerator(op_call_code_gen_requirement)
-
-    script = paddle_eager_gen.Generate(unit_test_case_spec)
-    print("import paddle")
+    paddle_eager_gen = PaddleEagerGenerator()
+    script = numpy_gen.Generate(unit_test_case_spec.patched_instruction_code_gen_spec)
+    print("import numpy")
     print(script.file_content)
 
 #    ablated_unit_test_case_spec = GetAblatedUnitTestCaseSpec(
@@ -77,7 +66,7 @@ if __name__ == '__main__':
 #    print("#", "*"*80)
 #    print("# full ablated")
 #    print("#", "*"*80)
-#    script = numpy_gen.Generate(ablated_unit_test_case_spec)
+#    script = numpy_gen.Generate(ablated_unit_test_case_spec.patched_instruction_code_gen_spec)
 #    print("import paddle")
 #    print(script.file_content)
 #
@@ -91,6 +80,6 @@ if __name__ == '__main__':
 #    print("#", "*"*80)
 #    print("# half ablated")
 #    print("#", "*"*80)
-#    script = numpy_gen.Generate(ablated_unit_test_case_spec)
+#    script = numpy_gen.Generate(ablated_unit_test_case_spec.patched_instruction_code_gen_spec)
 #    print("import paddle")
 #    print(script.file_content)

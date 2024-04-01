@@ -64,6 +64,51 @@ class AddSinkTensor:
             )
         )
 
+def AddUnaryOps(
+    input_dims_eq1,
+    output_dims_eq1,
+    source_tensor_index,
+    instruction_id
+):
+    middle_dims_eq1 = tuple(
+        x or y
+        for x, y in zip(input_dims_eq1, output_dims_eq1)
+    )
+    if IsLhsGreaterThanRhs(middle_dims_eq1, output_dims_eq1):
+        # broadcast
+        yield DAGDimsEq1Instruction(
+            dag_gen_instruction=dag_generator.AddUnaryOp(
+                source_tensor_index=source_tensor_index,
+                convert_type=dag_generator.BroadcastConvertType()
+            ),
+            instruction_id=MakeUniqueInstructionId(),
+            dims_eq1_instruction=dims_eq1_generator.AddUnaryOp(
+                source_tensor_dims_eq1=middle_dims_eq1
+            )
+        )
+    if IsLhsGreaterThanRhs(middle_dims_eq1, input_dims_eq1):
+        # reduce
+        yield DAGDimsEq1Instruction(
+            dag_gen_instruction=dag_generator.AddUnaryOp(
+                source_tensor_index=source_tensor_index,
+                convert_type=dag_generator.ReduceConvertType()
+            ),
+            instruction_id=MakeUniqueInstructionId(),
+            dims_eq1_instruction=dims_eq1_generator.AddUnaryOp(
+                source_tensor_dims_eq1=input_dims_eq1
+            )
+        )
+    yield DAGDimsEq1Instruction(
+        dag_gen_instruction=dag_generator.AddUnaryOp(
+            source_tensor_index=source_tensor_index,
+            convert_type=dag_generator.NoConvertType()
+        ),
+        instruction_id=instruction_id,
+        dims_eq1_instruction=dims_eq1_generator.AddUnaryOp(
+            source_tensor_dims_eq1=input_dims_eq1
+        )
+    )
+
 
 @dataclass
 class AddUnaryOp:
@@ -75,72 +120,11 @@ class AddUnaryOp:
     ) -> Iterator[DAGDimsEq1Instruction]:
         input_dims_eq1 = ctx.dims_eq1_signature.input_dims_eq1
         output_dims_eq1 = ctx.dims_eq1_signature.output_dims_eq1
-        if input_dims_eq1 == output_dims_eq1:
-            # elementwise
-            yield DAGDimsEq1Instruction(
-                dag_gen_instruction=dag_generator.AddUnaryOp(
-                    source_tensor_index=ctx.dag_gen_instruction.source_tensor_index,
-                    convert_type=dag_generator.NoConvertType()
-                ),
-                instruction_id=ctx.instruction_id,
-                dims_eq1_instruction=dims_eq1_generator.AddUnaryOp(
-                    source_tensor_dims_eq1=input_dims_eq1
-                )
-            )
-            return
-        if IsLhsGreaterThanRhs(input_dims_eq1, output_dims_eq1):
-            # broadcast
-            yield DAGDimsEq1Instruction(
-                dag_gen_instruction=dag_generator.AddUnaryOp(
-                    source_tensor_index=ctx.dag_gen_instruction.source_tensor_index,
-                    convert_type=dag_generator.BroadcastConvertType()
-                ),
-                instruction_id=ctx.instruction_id,
-                dims_eq1_instruction=dims_eq1_generator.AddUnaryOp(
-                    source_tensor_dims_eq1=input_dims_eq1
-                )
-            )
-            return
-        if IsLhsGreaterThanRhs(output_dims_eq1, input_dims_eq1):
-            # reduce
-            yield DAGDimsEq1Instruction(
-                dag_gen_instruction=dag_generator.AddUnaryOp(
-                    source_tensor_index=ctx.dag_gen_instruction.source_tensor_index,
-                    convert_type=dag_generator.ReduceConvertType()
-                ),
-                instruction_id=ctx.instruction_id,
-                dims_eq1_instruction=dims_eq1_generator.AddUnaryOp(
-                    source_tensor_dims_eq1=input_dims_eq1
-                )
-            )
-            return
-        middle_dims_eq1 = tuple(
-            x or y
-            for x, y in zip(input_dims_eq1, output_dims_eq1)
-        )
-        assert IsLhsGreaterThanRhs(middle_dims_eq1, output_dims_eq1), (
-            input_dims_eq1, middle_dims_eq1, output_dims_eq1
-        )
-        yield DAGDimsEq1Instruction(
-            dag_gen_instruction=dag_generator.AddUnaryOp(
-                source_tensor_index=ctx.dag_gen_instruction.source_tensor_index,
-                convert_type=dag_generator.BroadcastConvertType()
-            ),
-            instruction_id=MakeUniqueInstructionId(),
-            dims_eq1_instruction=dims_eq1_generator.AddUnaryOp(
-                source_tensor_dims_eq1=middle_dims_eq1
-            )
-        )
-        assert IsLhsGreaterThanRhs(middle_dims_eq1, input_dims_eq1)
-        yield DAGDimsEq1Instruction(
-            dag_gen_instruction=dag_generator.AddUnaryOp(
-                source_tensor_index=ctx.dag_gen_instruction.source_tensor_index,
-                convert_type=dag_generator.ReduceConvertType()
-            ),
-            instruction_id=ctx.instruction_id,
-            dims_eq1_instruction=dims_eq1_generator.AddUnaryOp(
-                source_tensor_dims_eq1=input_dims_eq1
-            )
+        yield from AddUnaryOps(
+            input_dims_eq1=input_dims_eq1,
+            output_dims_eq1=output_dims_eq1,
+            source_tensor_index=ctx.dag_gen_instruction.source_tensor_index,
+            instruction_id=ctx.instruction_id
         )
 
 
@@ -161,15 +145,11 @@ class AddBinaryOp:
             for x, y in zip(lhs_input_dims_eq1, rhs_input_dims_eq1)
         )
         if broadcast_dims_eq1 != output_dims_eq1:
-            yield DAGDimsEq1Instruction(
-                dag_gen_instruction=dag_generator.AddUnaryOp(
-                    source_tensor_index=output_idx,
-                    convert_type=dag_generator.UnclassifiedConvertType()
-                ),
-                instruction_id=MakeUniqueInstructionId(),
-                dims_eq1_instruction=dims_eq1_generator.AddUnaryOp(
-                    source_tensor_dims_eq1=broadcast_dims_eq1
-                )
+            yield from AddUnaryOps(
+                input_dims_eq1=broadcast_dims_eq1,
+                output_dims_eq1=output_dims_eq1,
+                source_tensor_index=ctx.dag_gen_instruction.source_tensor_index,
+                instruction_id=MakeUniqueInstructionId()
             )
         yield DAGDimsEq1Instruction(
             dag_gen_instruction=ctx.dag_gen_instruction,
@@ -193,15 +173,11 @@ class AddBinaryClone:
         rhs_output_dix = ctx.dag_gen_instruction.rhs_source_tensor_index
         rhs_output_dims_eq1 = ctx.dims_eq1_signature.rhs_output_dims_eq1
         if lhs_output_dims_eq1 != rhs_output_dims_eq1:
-            yield DAGDimsEq1Instruction(
-                dag_gen_instruction=dag_generator.AddUnaryOp(
-                    source_tensor_index=rhs_output_dix,
-                    convert_type=dag_generator.UnclassifiedConvertType()
-                ),
-                instruction_id=MakeUniqueInstructionId(),
-                dims_eq1_instruction=dims_eq1_generator.AddUnaryOp(
-                    source_tensor_dims_eq1=lhs_output_dims_eq1
-                )
+            yield from AddUnaryOps(
+                input_dims_eq1=lhs_output_dims_eq1,
+                output_dims_eq1=rhs_output_dims_eq1,
+                source_tensor_index=ctx.dag_gen_instruction.rhs_source_tensor_index,
+                instruction_id=MakeUniqueInstructionId()
             )
         yield DAGDimsEq1Instruction(
             dag_gen_instruction=ctx.dag_gen_instruction,
@@ -252,26 +228,11 @@ class DAGDimsEq1Patcher:
         ]:
         # inferer
         Infer = DimsEq1SignatureInferer().Infer
-        # first patching
-        dag_gen_instrs = dag_gen_instructions
-        dims_eq1_instrs = dims_eq1_gen_instructions
-        guarded_dims_eq1_sigs = Infer(dag_gen_instrs, dims_eq1_instrs)
-        dag_gen_instrs, instruction_ids, dims_eq1_instrs = self.PatchOnce(
+        # patch
+        guarded_dims_eq1_sigs = Infer(dag_gen_instructions, dims_eq1_gen_instructions)
+        (dag_gen_instrs, instruction_ids, dims_eq1_instrs) = self.PatchOnce(
             instruction_ids, guarded_dims_eq1_sigs
         )
-        # second patching
-        guarded_dims_eq1_sigs = Infer(dag_gen_instrs, dims_eq1_instrs)
-        dag_gen_instrs, instruction_ids, dims_eq1_instrs = self.PatchOnce(
-            instruction_ids, guarded_dims_eq1_sigs
-        )
-        # third patching
-        guarded_dims_eq1_sigs = Infer(dag_gen_instrs, dims_eq1_instrs)
-        third_time_patched_triple = self.PatchOnce(
-            instruction_ids, guarded_dims_eq1_sigs
-        )
-        assert third_time_patched_triple[0] == dag_gen_instrs 
-        assert third_time_patched_triple[1] == instruction_ids
-        assert third_time_patched_triple[2] == dims_eq1_instrs
         return dag_gen_instrs, instruction_ids, dims_eq1_instrs
 
     def PatchOnce(

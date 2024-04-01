@@ -99,6 +99,6 @@ class StmtGenerator:
 
         instruction_code_strs = [
             list(GenerateInstructionCodeStr(*pair))
-            for pair in guarded_instruction_code_gen_spec.Unguard()
+            for pair in reversed(list(guarded_instruction_code_gen_spec.Unguard()))
         ]
         return instruction_code_strs

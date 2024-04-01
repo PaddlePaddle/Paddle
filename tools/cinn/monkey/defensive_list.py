@@ -1,11 +1,13 @@
 from typing import TypeVar, Generic, List, Callable, Iterator, Tuple
 from guarded_box import GuardedBox
 from hash_combine import HashCombine
+from dataclasses import dataclass
 
 K = TypeVar('K')
 V = TypeVar('V')
 
 # Defensive list
+@dataclass
 class DList(Generic[K, V]):
     defensive_list: List[Tuple[K, GuardedBox[V]]]
 

@@ -25,7 +25,7 @@ class UnitTestCaseRequirement:
 @dataclass
 class UnitTestCaseSpec:
     instructions: List["Instruction"]
-    pached_instruction_code_gen_spec: DList["Instruction", "CodeGenSpec"]
+    patched_instruction_code_gen_spec: DList["Instruction", "CodeGenSpec"]
 
 def GenerateRandomUnitTestCaseSpec(
     requirement: UnitTestCaseRequirement
@@ -65,11 +65,11 @@ def CompleteToUnitTestCaseSpec(
         op_name_gen_requirement=requirement.op_name_gen_requirement,
         tensor_name_gen_requirement=patch_tensor_name_gen_requirement
     )
-    pached_instruction_code_gen_spec = instruction_util.InferCodeGenSpecs(
+    patched_instruction_code_gen_spec = instruction_util.InferCodeGenSpecs(
         instructions=patched_instructions,
         dim_size_requirement=requirement.dim_size_requirement
     )
     return UnitTestCaseSpec(
         instructions=instructions,
-        pached_instruction_code_gen_spec=pached_instruction_code_gen_spec
+        patched_instruction_code_gen_spec=patched_instruction_code_gen_spec
     )
