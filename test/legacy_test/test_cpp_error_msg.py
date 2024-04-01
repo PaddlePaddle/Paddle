@@ -18,11 +18,13 @@ import paddle
 
 
 class TestCppErrorMsg(unittest.TestCase):
+    def setUp(self) -> None:
+        paddle.base.set_flags({'FLAGS_call_stack_level': 1})
+
     def test_invalid_argument(self):
         with self.assertRaises(ValueError) as em:
             input_value = paddle.to_tensor([1, 2, 3, 4, 5])
             paddle.bincount(input_value, minlength=-1)
-        print(em.exception)
         # InvalidArgumentError: xxx -> (InvalidArgument) xxx
         self.assertEqual(
             str(em.exception).startswith("(InvalidArgument)"), True
