@@ -333,7 +333,7 @@ class ReshapeTransposeMatmulFusePass : public pir::PatternRewritePass {
           paddle::onednn::dialect::FusedMatmulOp::name(),
           benefit_idx,
           as_x));
-      benefit_id--;
+      benefit_idx--;
     }
     return ps;
   }
