@@ -68,6 +68,8 @@ class PatternGraph {
   friend class HorizontalFusionOperation;
   friend class LiftToHorizontalFusionPattern;
   friend class IsNodeOutput;
+  friend class CanFuseReduceTreeAndTrivialMatcher;
+  friend class MergeReduceTreeAndTrivialOperation;
 
  public:
   PatternNodePtrSet all_pattern_nodes_;
@@ -173,6 +175,24 @@ struct MergeReduceTreeOperation {
   }
 };
 
+struct MergeReduceTreeAndTrivialOperation {
+  void operator()(PatternGraph* graph, PatternNodePtr node) {
+    CHECK_EQ(node->downstream_.size(), 1);
+    auto downstream = node->downstream_.at(0);
+    graph->PrintGraph();
+    VLOG(4) << "Start Merge.";
+    auto fake_reduce_iter_idx =
+        graph->policy_manager_.GetFakeReduceIterIdx(node, downstream);
+    PatternNodePtr merged_node = graph->MergeNode(node, downstream);
+    std::get<ReduceTreePlusTrivialPattern>(merged_node->stmt_pattern_)
+        .fake_reduce_iter_idx = fake_reduce_iter_idx;
+    graph->RemoveNode(downstream);
+    graph->RemoveNode(node);
+    VLOG(4) << "End Graph is: ";
+    graph->PrintGraph();
+  }
+};
+
 struct FuseReduceTreeAndTrivial {
   void operator()(PatternGraph* graph, PatternNodePtr node) {
     CHECK_EQ(node->downstream_.size(), 1);
@@ -252,6 +272,14 @@ struct CanFuseReduceTreeMatcher {
     return StmtPatternGraphMatcher<ReduceTreePattern>()(graph, node) &&
            !node->downstream_.empty() &&
            node->downstream_.at(0)->IsReduceTree() &&
+           graph.policy_manager_.CanFuse(node, node->downstream_.at(0));
+  }
+};
+
+struct CanFuseReduceTreeAndTrivialMatcher {
+  bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
+    return StmtPatternGraphMatcher<ReduceTreePattern>()(graph, node) &&
+           !node->downstream_.empty() && node->downstream_.at(0)->IsTrivial() &&
            graph.policy_manager_.CanFuse(node, node->downstream_.at(0));
   }
 };
