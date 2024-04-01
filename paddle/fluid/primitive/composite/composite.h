@@ -28,10 +28,6 @@ static std::vector<int64_t> empty_shape;
 
 template <typename T>
 static Tensor get_slice(const Tensor& x, int64_t idx) {
-  if (idx < 0) {
-    VLOG(0) << "idx <0 **************** ";
-    idx = idx + x.shape().size() - 1;
-  }
   return slice<T>(x, {0}, {idx}, {idx + 1}, {1}, {});
 }
 
