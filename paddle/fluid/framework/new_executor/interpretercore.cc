@@ -139,6 +139,15 @@ void InterpreterCore::SetOutputHooks(const std::vector<HookFunc>& hookfuncs) {
   impl_->SetOutputHooks(hookfuncs);
 }
 
+void InterpreterCore::SetInputHooks(const std::vector<PirHookFunc>& hookfuncs) {
+  impl_->SetInputHooks(hookfuncs);
+}
+
+void InterpreterCore::SetOutputHooks(
+    const std::vector<PirHookFunc>& hookfuncs) {
+  impl_->SetOutputHooks(hookfuncs);
+}
+
 void InterpreterCore::Build(
     const std::vector<std::string>& feed_names,
     std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {

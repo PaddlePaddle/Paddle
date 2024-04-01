@@ -292,6 +292,31 @@ class TestBackward_4(unittest.TestCase):
             self.assertEqual((grad_x == res).all(), True)
 
 
+class TestBackward_5(unittest.TestCase):
+    def tearDown(self) -> None:
+        paddle.framework.set_flags({"FLAGS_enable_pir_api": False})
+
+    def test_skip_vjp(self):
+        if not paddle.framework.in_pir_mode():
+            return
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            x = paddle.static.data('x', [4, 4], 'float32')
+            x.stop_gradient = True
+            y = paddle.nn.functional.relu(x)
+            y.stop_gradient = False
+            z = paddle.nn.functional.relu(y)
+            loss = paddle.mean(z)
+
+        paddle.autograd.ir_backward.append_backward(loss)
+        relu_grad_number = 0
+        for op in program.global_block().ops:
+            if op.name() == "pd_op.relu_grad":
+                relu_grad_number += 1
+
+        self.assertEqual(relu_grad_number, 1)
+
+
 class TestValueSet(unittest.TestCase):
     def setUp(self) -> None:
         with paddle.pir_utils.IrGuard():
