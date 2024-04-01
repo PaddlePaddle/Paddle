@@ -43,9 +43,7 @@ def scatter(input):
     seq_len = input.shape[0]
     assert (
         seq_len % parallelism == 0
-    ), "Input sequence length {} can't be divided exactly by sequence parallelism {}".format(
-        seq_len, parallelism
-    )
+    ), f"Input sequence length {seq_len} can't be divided exactly by sequence parallelism {parallelism}"
     interval = seq_len // parallelism
     input = paddle.slice(
         input, axes=[0], starts=[interval * rank], ends=[interval * (rank + 1)]
@@ -71,9 +69,7 @@ def reduce_scatter(input):
     output_shape = input.shape
     assert (
         input.shape[0] % parallelism == 0
-    ), "Input sequence length {} can't be divided exactly by sequence parallelism {}".format(
-        input.shape[0], parallelism
-    )
+    ), f"Input sequence length {input.shape[0]} can't be divided exactly by sequence parallelism {parallelism}"
     output_shape[0] = output_shape[0] // parallelism
     output = paddle.empty(shape=output_shape, dtype=input.dtype)
     dist.stream.reduce_scatter(
@@ -274,9 +270,7 @@ class SPInnerOverlapLinear(paddle.autograd.PyLayer):
 
         assert (
             dinput_parallel.shape[0] % parallelism == 0
-        ), "Input sequence length {} can't be divided exactly by sequence parallelism {}".format(
-            dinput_parallel.shape[0], parallelism
-        )
+        ), f"Input sequence length {dinput_parallel.shape[0]} can't be divided exactly by sequence parallelism {parallelism}"
 
         dx_shape = dinput_parallel.shape
         dx_shape[0] = dx_shape[0] // parallelism

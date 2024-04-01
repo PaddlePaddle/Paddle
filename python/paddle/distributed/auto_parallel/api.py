@@ -389,9 +389,7 @@ def reshard(dist_tensor, mesh, placements):
     else:
         assert isinstance(
             dist_tensor, Variable
-        ), "in dy2static mode, reshard's input should be Variable, but got [{}]".format(
-            dist_tensor
-        )
+        ), f"in dy2static mode, reshard's input should be Variable, but got [{dist_tensor}]"
         sharding_specs = get_shard_spec(mesh, placements, dist_tensor.ndim)
         main_program = default_main_program()
         default_dist_ctx = get_default_distributed_context()
@@ -657,7 +655,9 @@ class _ShardOptimizer:
                 self._shard_fn._shard_parameter(param)
 
     def _set_and_check_sharding_prop_from_param(self):
-        if len(self._shard_fn._mesh._shape) == 1:
+        if (self._shard_fn._mesh is not None) and (
+            len(self._shard_fn._mesh._shape) == 1
+        ):
             self._sharding_degree = self._shard_fn._mesh.get_dim_size(0)
             self._sharding_mesh_axis = 0
         else:
@@ -684,16 +684,12 @@ class _ShardOptimizer:
                     assert isinstance(
                         placements[self._sharding_mesh_axis], dist.Replicate
                     ), "The placement on sharding_mesh_axis should be Replicate"
+
                     # check the sharding degree since it has already been set
-                    if any(
-                        isinstance(placement, dist.Shard)
-                        for placement in placements
-                    ):
-                        for idx, placement in enumerate(placements):
-                            if isinstance(placement, dist.Replicate):
-                                assert (
-                                    mesh.dim_size(idx) == self._sharding_degree
-                                ), "The sharding degree of all parameters must be equal currently."
+                    assert (
+                        mesh.dim_size(self._sharding_mesh_axis)
+                        == self._sharding_degree
+                    ), "The sharding degree of all parameters must be equal currently."
 
         assert (
             self._sharding_degree is not None
@@ -889,7 +885,7 @@ class ShardingStage1(_ShardingStageBase):
     A builtin shard_fn for shard_optimizer interface, users can pass it to shard_optimizer to implement sharding optimization with stage 1.
 
     Args:
-        mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
+        mesh(None|paddle.distributed.ProcessMesh): If mesh is not None, the `ProcessMesh` object describes the Cartesian topology of the used processes for dense type parameters. Note: Currently, only one mesh configuration is supported for all dense parameters. If there is a need for multiple mesh configurations, please configure them yourself in the upper layer networking code.
 
     Examples:
         .. code-block:: python
@@ -922,7 +918,7 @@ class ShardingStage1(_ShardingStageBase):
             >>> # python -m paddle.distributed.launch --gpus=0,1 {test_case}.py
     """
 
-    def __init__(self, mesh):
+    def __init__(self, mesh=None):
         super().__init__(mesh)
 
     def __call__(self, key, param, accumulator):
@@ -950,7 +946,7 @@ class ShardingStage2(_ShardingStageBase):
     A builtin shard_fn for shard_optimizer interface, users can pass it to shard_optimizer to implement sharding optimization with stage 2.
 
     Args:
-        mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
+        mesh(None|paddle.distributed.ProcessMesh): If mesh is not None, the `ProcessMesh` object describes the Cartesian topology of the used processes for dense type parameters. Note: Currently, only one mesh configuration is supported for all dense parameters. If there is a need for multiple mesh configurations, please configure them yourself in the upper layer networking code.
 
     Examples:
         .. code-block:: python
@@ -983,7 +979,7 @@ class ShardingStage2(_ShardingStageBase):
             >>> # python -m paddle.distributed.launch --gpus=0,1 {test_case}.py
     """
 
-    def __init__(self, mesh):
+    def __init__(self, mesh=None):
         super().__init__(mesh)
 
     def __call__(self, key, param, accumulator):
@@ -1022,13 +1018,13 @@ class ShardingStage2(_ShardingStageBase):
         return grad
 
     def _register_hook_for_param_grad(self, param):
-        if param.is_dense():
+        if param.is_dense() and self._mesh is not None:
             placements = []
             for _ in range(len(self._mesh.shape)):
                 placements.append(dist.Replicate())
             param._to_dist_(placements, self._mesh)
-
-        param.register_hook(ShardingStage2._grad_hook)
+        if param.is_dist():
+            param.register_hook(ShardingStage2._grad_hook)
 
 
 class ShardingStage3(_ShardingStageBase):
@@ -1036,7 +1032,7 @@ class ShardingStage3(_ShardingStageBase):
     A builtin shard_fn for shard_optimizer interface, users can pass it to shard_optimizer to implement sharding optimization with stage 3.
 
     Args:
-        mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
+        mesh(None|paddle.distributed.ProcessMesh): If mesh is not None, the `ProcessMesh` object describes the Cartesian topology of the used processes for dense type parameters. Note: Currently, only one mesh configuration is supported for all dense parameters. If there is a need for multiple mesh configurations, please configure them yourself in the upper layer networking code.
 
     Examples:
         .. code-block:: python
@@ -1069,30 +1065,33 @@ class ShardingStage3(_ShardingStageBase):
             >>> # python -m paddle.distributed.launch --gpus=0,1 {test_case}.py
     """
 
-    def __init__(self, mesh):
+    def __init__(self, mesh=None):
         super().__init__(mesh)
 
     def _shard_parameter(self, param):
-        if param.is_dense():
+        if param.is_dense() and self._mesh is not None:
             placements = []
             for _ in range(len(self._mesh.shape)):
                 placements.append(dist.Replicate())
             param._to_dist_(placements, self._mesh)
-
-        new_placements = get_placement_with_sharding(
-            param, self._sharding_mesh_axis
-        )
-        shard_param = dist.reshard(param, param.process_mesh, new_placements)
-        # change the holder of param to new shard_param
-        param.get_tensor()._share_data_with(shard_param.get_tensor())
+        if param.is_dist():
+            new_placements = get_placement_with_sharding(
+                param, self._sharding_mesh_axis
+            )
+            shard_param = dist.reshard(
+                param, param.process_mesh, new_placements
+            )
+            # change the holder of param to new shard_param
+            param.get_tensor()._share_data_with(shard_param.get_tensor())
 
     def _unshard_parameter(self, param):
-        new_placements = param.placements
-        if isinstance(new_placements[self._sharding_mesh_axis], dist.Shard):
-            new_placements[self._sharding_mesh_axis] = dist.Replicate()
+        if param.is_dist():
+            new_placements = param.placements
+            if isinstance(new_placements[self._sharding_mesh_axis], dist.Shard):
+                new_placements[self._sharding_mesh_axis] = dist.Replicate()
 
-        new_param = dist.reshard(param, param.process_mesh, new_placements)
-        param.get_tensor()._share_data_with(new_param.get_tensor())
+            new_param = dist.reshard(param, param.process_mesh, new_placements)
+            param.get_tensor()._share_data_with(new_param.get_tensor())
 
     def __call__(self, key, param, accumulator):
         if param.is_dist():
@@ -2272,9 +2271,7 @@ def unshard_dtensor(dist_tensor):
     else:
         assert isinstance(
             dist_tensor, Variable
-        ), "the input type of 'unshard_dtensor' should be Variable, but got [{}]".format(
-            dist_tensor
-        )
+        ), f"the input type of 'unshard_dtensor' should be Variable, but got [{dist_tensor}]"
         # in static mode, 'distributed tensor' and 'dense tensor' are all
         # Variable type, the distributed attribute is a property of the Variable.
         # So, it's no need to convert the distributed tensor to a dense tensor.
@@ -2337,9 +2334,7 @@ class ShardDataloader:
         process_id = dist.get_rank()
         if self._process_id_in_multi_meshes(process_id):
             raise ValueError(
-                "process_id {} is in more than one mesh, the meshes are {}".format(
-                    process_id, self._meshes
-                )
+                f"process_id {process_id} is in more than one mesh, the meshes are {self._meshes}"
             )
         if input_keys is not None:
             assert len(input_keys) == 2, "input_keys lengths must be 2"
@@ -2409,9 +2404,7 @@ class ShardDataloader:
         else:
             if len(shard_dims) != len(self._meshes):
                 raise ValueError(
-                    "shard_dims must be the same length as meshes, but got {} != {}".format(
-                        len(shard_dims), len(self._meshes)
-                    )
+                    f"shard_dims must be the same length as meshes, but got {len(shard_dims)} != {len(self._meshes)}"
                 )
             return shard_dims
 

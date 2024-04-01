@@ -45,15 +45,11 @@ class DistributedReduceSum(DistributedOperatorImplContainer):
         op_desc = dist_op.serial_op.desc
         assert (
             len(op_desc.input_arg_names()) == 1
-        ), "reduce_sum op [{}] has [{}] inputs".format(
-            op_desc.type, len(op_desc.input_arg_names())
-        )
+        ), f"reduce_sum op [{op_desc.type}] has [{len(op_desc.input_arg_names())}] inputs"
         input_arg_name = op_desc.input_arg_names()[0]
         assert (
             len(op_desc.output_arg_names()) == 1
-        ), "reduce_sum op [{}] has [{}] outputs".format(
-            op_desc.type, len(op_desc.output_arg_names())
-        )
+        ), f"reduce_sum op [{op_desc.type}] has [{len(op_desc.output_arg_names())}] outputs"
         output_arg_name = op_desc.output_arg_names()[0]
         keep_dim = op_desc.attr('keep_dim')
         dims = op_desc.attr('dim')
@@ -235,9 +231,7 @@ class DistributedReduceSumPrimtiveImpl0(DistributedOperatorImpl):
     @staticmethod
     def backward(ctx, *args, **kwargs):
         raise RuntimeError(
-            "primitive operator does NOT have backward function, op type: {}".format(
-                str(op.type)  # noqa: F821
-            )
+            f"primitive operator does NOT have backward function, op type: {str(op.type)}"  # noqa: F821
         )
 
 

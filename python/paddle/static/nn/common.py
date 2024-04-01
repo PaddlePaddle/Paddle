@@ -355,9 +355,7 @@ def instance_norm(
     input_shape = input.shape
     if len(input.shape) < 2 or len(input.shape) > 5:
         raise ValueError(
-            'expected 2D or 3D or 4D or 5D input (got {}D input, input shape is: {})'.format(
-                len(input.shape), input_shape
-            )
+            f'expected 2D or 3D or 4D or 5D input (got {len(input.shape)}D input, input shape is: {input_shape})'
         )
     channel_num = input_shape[1]
 
@@ -547,9 +545,7 @@ def data_norm(
     input_shape = input.shape
     if len(input_shape) < 2:
         raise ValueError(
-            "The shape pf Input < 2 (got {}D input, input shape is: {})".format(
-                len(input_shape), input_shape
-            )
+            f"The shape pf Input < 2 (got {len(input_shape)}D input, input shape is: {input_shape})"
         )
     if data_layout == 'NCHW':
         channel_num = input_shape[1]
@@ -942,8 +938,8 @@ def conv2d(
     num_channels = input.shape[3] if channel_last else input.shape[1]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimension of the input({}) should be defined. "
-            "Received: {}.".format(str(input.shape), str(num_channels))
+            f"The channel dimension of the input({str(input.shape)}) should be defined. "
+            f"Received: {str(num_channels)}."
         )
     assert param_attr is not False, "param_attr should not be False here."
 
@@ -958,8 +954,8 @@ def conv2d(
         if num_channels % groups != 0:
             raise ValueError(
                 "the channel of input must be divisible by groups,"
-                "received: the channel of input is {}, the shape of input is {}"
-                ", the groups is {}".format(num_channels, input.shape, groups)
+                f"received: the channel of input is {num_channels}, the shape of input is {input.shape}"
+                f", the groups is {groups}"
             )
         num_filter_channels = num_channels // groups
 
@@ -1251,15 +1247,13 @@ def conv3d(
     channel_last = data_format == "NDHWC"
     if len(input.shape) != 5:
         raise ValueError(
-            "Input should be 5D tensor, but received input with the shape of {}".format(
-                input.shape
-            )
+            f"Input should be 5D tensor, but received input with the shape of {input.shape}"
         )
     num_channels = input.shape[4] if channel_last else input.shape[1]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimension of the input({}) should be defined. "
-            "Received: {}.".format(str(input.shape), str(num_channels))
+            f"The channel dimension of the input({str(input.shape)}) should be defined. "
+            f"Received: {str(num_channels)}."
         )
 
     if groups is None:
@@ -1272,9 +1266,7 @@ def conv3d(
         if num_channels % groups != 0:
             raise ValueError(
                 "The number of input channels must be divisible by Attr(groups). "
-                "Received: number of channels({}), groups({}).".format(
-                    str(num_channels), str(groups)
-                )
+                f"Received: number of channels({str(num_channels)}), groups({str(groups)})."
             )
         num_filter_channels = num_channels // groups
 
@@ -1962,9 +1954,7 @@ def conv3d_transpose(
         raise TypeError("Input of conv3d_transpose must be Tensor")
     if len(input.shape) != 5:
         raise ValueError(
-            "Input should be 5D tensor, but received input with the shape of {}".format(
-                input.shape
-            )
+            f"Input should be 5D tensor, but received input with the shape of {input.shape}"
         )
     input_channel = (
         input.shape[1] if data_format == 'NCDHW' else input.shape[-1]
@@ -2601,9 +2591,7 @@ def bilinear_tensor_product(
     dtype = helper.input_dtype('x')
     if len(x.shape) != 2 or len(y.shape) != 2:
         raise ValueError(
-            "Input x and y should be 2D tensor, but received x with the shape of {}, y with the shape of {}".format(
-                x.shape, y.shape
-            )
+            f"Input x and y should be 2D tensor, but received x with the shape of {x.shape}, y with the shape of {y.shape}"
         )
     param_shape = [size, x.shape[1], y.shape[1]]
 
@@ -2777,9 +2765,7 @@ def batch_norm(
     input_shape = input.shape
     if len(input.shape) < 2 or len(input.shape) > 5:
         raise ValueError(
-            'expected 2D or 3D or 4D or 5D input (got {}D input, input shape is: {})'.format(
-                len(input.shape), input_shape
-            )
+            f'expected 2D or 3D or 4D or 5D input (got {len(input.shape)}D input, input shape is: {input_shape})'
         )
     if data_layout == 'NCHW':
         channel_num = input_shape[1]

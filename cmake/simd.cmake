@@ -1,5 +1,5 @@
 # This file is use to check all support level of AVX on your machine
-# so that PaddlePaddle can unleash the vectorization power of muticore.
+# so that PaddlePaddle can unleash the vectorization power of multicore.
 
 include(CheckCXXSourceRuns)
 include(CheckCXXSourceCompiles)

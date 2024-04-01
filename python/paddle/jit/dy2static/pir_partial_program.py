@@ -1050,9 +1050,7 @@ class PartialProgramLayer:
             # self._params contains parameters and buffers with persistable=True.
             if not isinstance(var, core.eager.Tensor):
                 raise TypeError(
-                    'Type of self._params[{}] in PartialProgramLayer should be Parameter or Variable, but received {}.'.format(
-                        i, type(var)
-                    )
+                    f'Type of self._params[{i}] in PartialProgramLayer should be Parameter or Variable, but received {type(var)}.'
                 )
             param_and_buffer_names_set.add(var.name)
 

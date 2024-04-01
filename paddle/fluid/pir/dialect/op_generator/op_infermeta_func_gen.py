@@ -111,9 +111,7 @@ def get_infermeta_inputs_str(
         # is a vector<Tensor>
         if 'pir::VectorType' in op_input_type_list[idx]:
             if op_input_optional_list[idx] == 'false':
-                infermeta_inputs_str += "  pir::VectorType {name} = {name}_.type().dyn_cast<pir::VectorType>(); (void){name};\n".format(
-                    name=op_input_name_list[idx]
-                )
+                infermeta_inputs_str += f"  pir::VectorType {op_input_name_list[idx]} = {op_input_name_list[idx]}_.type().dyn_cast<pir::VectorType>(); (void){op_input_name_list[idx]};\n"
         # is a Tensor
         else:
             if op_input_optional_list[idx] == 'false':
@@ -656,11 +654,35 @@ def GenDistBranch(args, op_info):
                         infer_spmd_args_list[-1] = name + ".GetData()"
     TEMPLATE = """
     auto spmd_info = InferSpmd({args});
+    PADDLE_ENFORCE_EQ(spmd_info.first.size(), {input_size}u, common::errors::Unavailable(
+        "Size of spmd_info.first for op[{op_name}]is unexpected."));
     for(auto& arg_dist : spmd_info.first) {{
         operand_dist_attrs.push_back(CvtToPirDistAttr(arg_dist));
     }}
 """
-    dist_branch_str += TEMPLATE.format(args=', '.join(infer_spmd_args_list))
+    dist_branch_str += TEMPLATE.format(
+        args=', '.join(infer_spmd_args_list),
+        input_size=len(op_info.input_name_list),
+        op_name=op_info.class_name,
+    )
+
+    if len(op_info.mutable_attribute_name_list) > 0:
+        TEMPLATE = """
+    for(int i = {input_size}; i < {all_input_size}; ++i) {{
+        if(auto dist_type = input_values[i].type().dyn_cast<DistTypeInterface>()) {{
+            operand_dist_attrs.push_back(dist_type.tensor_dist_attr());
+        }}
+        else {{
+            operand_dist_attrs.push_back(nullptr);
+        }}
+    }}
+"""
+        dist_branch_str += TEMPLATE.format(
+            input_size=len(op_info.input_name_list),
+            all_input_size=len(op_info.input_name_list)
+            + len(op_info.mutable_attribute_name_list),
+        )
+
     for idx, output_name in enumerate(op_info.output_name_list):
         # is a vector<Tensor>
         if 'pir::VectorType' in op_info.output_type_list[idx]:
