@@ -1787,7 +1787,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
               << " runs on " << platform::GetCurrentThreadName() << "\n"
               << "After: " << cur_place << " "
               << instr_node->DebugStringEx(scope_, value_exe_info_.get());
-      if (FLAGS_pir_apply_shape_optimization_pass) {
+      if (FLAGS_pir_apply_shape_optimization_pass && has_dynamic_shape) {
         auto source_op_id_attr = instr_node->Operation()
                                      ->attribute("source_op_id")
                                      .dyn_cast<pir::IndexAttribute>();

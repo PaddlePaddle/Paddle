@@ -298,6 +298,7 @@ void InferSymExprForBlock(const Block& block,
 }
 
 std::unique_ptr<Pass> CreateShapeOptimizationPass() {
+  has_dynamic_shape = true;
   return std::make_unique<ShapeOptimizationPass>();
 }
 
@@ -331,6 +332,7 @@ void AddShapeOptimizationPass(
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
   if (HasDynamicShape(program) && FLAGS_pir_apply_shape_optimization_pass) {
+    has_dynamic_shape = true;
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
 }
