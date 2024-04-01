@@ -1044,6 +1044,19 @@ void PsroiPoolGradInferMeta(const MetaTensor& x,
   dx->share_meta(x);
 }
 
+void RankAttentionGradInferMeta(const MetaTensor& x,
+                                const MetaTensor& rank_offset,
+                                const MetaTensor& rank_param,
+                                const MetaTensor& input_help,
+                                const MetaTensor& ins_rank,
+                                const MetaTensor& out_grad,
+                                int max_rank,
+                                int max_size,
+                                MetaTensor* rank_param_grad) {
+  rank_param_grad->set_dims(rank_param.dims());
+  rank_param_grad->set_dtype(rank_param.dtype());
+}
+
 void RealAndImagGradInferMeta(const MetaTensor& out_grad, MetaTensor* dx) {
   dx->set_dims(out_grad.dims());
   dx->set_dtype(dtype::ToComplex(out_grad.dtype()));

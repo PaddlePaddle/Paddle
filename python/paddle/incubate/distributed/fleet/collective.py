@@ -355,10 +355,8 @@ class CollectiveOptimizer(DistributedOptimizer):
 
         if self.print_config:
             print(
-                "worker_endpoints:{} trainers_num:{} current_endpoint:{} \
-                  trainer_id:{}".format(
-                    worker_endpoints, trainers_num, current_endpoint, trainer_id
-                )
+                f"worker_endpoints:{worker_endpoints} trainers_num:{trainers_num} current_endpoint:{current_endpoint} \
+                  trainer_id:{trainer_id}"
             )
 
         # call transpiler

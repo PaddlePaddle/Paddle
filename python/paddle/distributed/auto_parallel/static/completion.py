@@ -196,9 +196,7 @@ def _update_op_dims_mapping_and_distoperatorimpl(
 ):
     dist_op_container = find_distributed_operator_impl_container(dist_op)
     _logger.debug(
-        "Update Op [{}] using DistOpContainer [{}].".format(
-            dist_op.serial_op.type, dist_op_container.type
-        )
+        f"Update Op [{dist_op.serial_op.type}] using DistOpContainer [{dist_op_container.type}]."
     )
 
     updated = dist_op_container.update_dims_mapping(dist_op)
@@ -208,11 +206,7 @@ def _update_op_dims_mapping_and_distoperatorimpl(
         dist_op, original_op_dist_attr
     )
     _logger.debug(
-        "Op [{}] use dist op impl [{}] idx [{}].".format(
-            dist_op.serial_op.type,
-            dist_op.dist_attr.impl_type,
-            dist_op.dist_attr.impl_idx,
-        )
+        f"Op [{dist_op.serial_op.type}] use dist op impl [{dist_op.dist_attr.impl_type}] idx [{dist_op.dist_attr.impl_idx}]."
     )
     return changed and not (reverted)
 
@@ -395,18 +389,14 @@ class Completer:
         # step 2: Infer & Update dims mapping of op node using SPMD Rule.
         if _can_apply_infer_spmd_rule(dist_op):
             _logger.debug(
-                "Op [{}] update dims mapping using New InferSPMD Rule.".format(
-                    dist_op.serial_op.type
-                )
+                f"Op [{dist_op.serial_op.type}] update dims mapping using New InferSPMD Rule."
             )
             return _update_op_dims_mapping_and_distoperatorimpl(
                 dist_op, original_op_dist_attr, changed
             )
         else:
             _logger.debug(
-                "Op [{}] update dims mapping using Original DistOp Rule.".format(
-                    dist_op.serial_op.type
-                )
+                f"Op [{dist_op.serial_op.type}] update dims mapping using Original DistOp Rule."
             )
             # update_op_dims_mapping_v1()
             op_dist_impls = find_compatible_distributed_operator_impls(
@@ -1266,9 +1256,7 @@ class Completer:
         num_chunks = pp_degree * vpp_degree
         assert (
             len(seg_op_deps) % num_chunks == 0
-        ), "The number of layers[{}] ({}) should be divided by part number ({}).".format(
-            seg_method, len(seg_op_deps), num_chunks
-        )
+        ), f"The number of layers[{seg_method}] ({len(seg_op_deps)}) should be divided by part number ({num_chunks})."
 
         # Step2: analysis whether the pp_stage is non-decreasing among segments
         # 1. if non_decreasing is True, the ops' process_mesh will be changed by vpp strategy
@@ -1321,25 +1309,13 @@ class Completer:
                 seg_op_idx.extend(seg_op_deps[name])
 
             _logger.info(
-                "stage=[{}], chunk_id=[{}], layer_name=[{}]".format(
-                    pp_stage,
-                    chunk_id,
-                    struct_names,
-                )
+                f"stage=[{pp_stage}], chunk_id=[{chunk_id}], layer_name=[{struct_names}]"
             )
             _logger.info(
-                "start op: [{}]: [{}] [{}]".format(
-                    ops[start_idx].type,
-                    ops[start_idx].input_arg_names,
-                    ops[start_idx].output_arg_names,
-                )
+                f"start op: [{ops[start_idx].type}]: [{ops[start_idx].input_arg_names}] [{ops[start_idx].output_arg_names}]"
             )
             _logger.info(
-                "end op: [{}]: [{}] [{}]".format(
-                    ops[end_idx - 1].type,
-                    ops[end_idx - 1].input_arg_names,
-                    ops[end_idx - 1].output_arg_names,
-                )
+                f"end op: [{ops[end_idx - 1].type}]: [{ops[end_idx - 1].input_arg_names}] [{ops[end_idx - 1].output_arg_names}]"
             )
 
             for idx in range(start_idx, end_idx):
@@ -1993,14 +1969,10 @@ class Completer:
                 assert grad_op.type == "fill_constant"
                 assert (
                     len(grad_op.input_arg_names) == 0
-                ), "first backward op should has only ONE output, but got [{}]".format(
-                    len(grad_op.input_arg_names)
-                )
+                ), f"first backward op should has only ONE output, but got [{len(grad_op.input_arg_names)}]"
                 assert (
                     len(grad_op.output_arg_names) == 1
-                ), "first backward op should has only ONE output, but got [{}]".format(
-                    len(grad_op.output_arg_names)
-                )
+                ), f"first backward op should has only ONE output, but got [{len(grad_op.output_arg_names)}]"
 
                 loss_var = vars[loss_op.output_arg_names[0]]
                 loss_grad_var = vars[grad_op.output_arg_names[0]]

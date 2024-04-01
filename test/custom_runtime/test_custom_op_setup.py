@@ -223,9 +223,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             np.testing.assert_array_equal(
                 dx_grad,
                 pd_dx_grad,
-                err_msg="custom op dx grad: {},\n paddle api dx grad: {}".format(
-                    dx_grad, pd_dx_grad
-                ),
+                err_msg=f"custom op dx grad: {dx_grad},\n paddle api dx grad: {pd_dx_grad}",
             )
 
     def _test_with_dataloader(self):
