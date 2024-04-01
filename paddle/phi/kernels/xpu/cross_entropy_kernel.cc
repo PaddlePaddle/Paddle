@@ -112,7 +112,7 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
     } else {
       errors::Unimplemented(
           "Unsupported dtype for labels in hard cross entropy, only int32 and "
-          "int64 are supported.")
+          "int64 are supported.");
     }
     if (use_softmax) {
       // 3. softmax+hard_cross_entropy
