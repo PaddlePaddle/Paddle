@@ -142,10 +142,17 @@ Tensor p_norm_decomp(const Tensor& x,
     x_tmp = cast<T>(x, DataType::FLOAT32);
   }
 
-  // Only adapt for porder=2.0
-  auto one = full<T>(empty_shape, 1, x_tmp.dtype());
-  auto res =
-      one / rsqrt<T>(sum<T>(x_tmp * x_tmp, {axis}, x_tmp.dtype(), keepdim));
+  Tensor res;
+  if (porder == 2.0) {
+    auto one = full<T>(empty_shape, 1, x_tmp.dtype());
+    res = one / rsqrt<T>(sum<T>(x_tmp * x_tmp, {axis}, x_tmp.dtype(), keepdim));
+  } else {
+    auto porder_tensor = full<T>(empty_shape, porder, x_tmp.dtype());
+    auto inv_porder_tensor = full<T>(empty_shape, 1 / porder, x_tmp.dtype());
+    res = elementwise_pow<T>(x_tmp, porder_tensor);
+    res = sum<T>(res, {axis}, x_tmp.dtype(), keepdim);
+    res = elementwise_pow<T>(res, inv_porder_tensor);
+  }
 
   if (need_cast) {
     return cast<T>(res, org_dtype);
