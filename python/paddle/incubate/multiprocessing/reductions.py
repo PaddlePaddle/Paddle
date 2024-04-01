@@ -128,7 +128,6 @@ def _rebuild_lodtensor_filename(
     lod,
     dataloader_use_file_descriptor,
 ):
-    dataloader_use_file_descriptor = False
     lodtensor = cls._new_shared_filename(
         (
             ipc_name,
@@ -154,7 +153,6 @@ def _rebuild_lodtensor_filedescriptor(
     lod,
     dataloader_use_file_descriptor,
 ):
-    dataloader_use_file_descriptor = True
     shared_fd = shared_fd.detach()
     lodtensor = cls._new_shared_filename(
         (
