@@ -64,7 +64,8 @@ int GetCallStackLevel() { return FLAGS_call_stack_level; }
 std::string SimplifyErrorTypeFormat(const std::string& str) {
   std::ostringstream sout;
   size_t type_end_pos = str.find(':', 0);
-  if (str.substr(type_end_pos - 5, 6) == "Error:") {
+  if (type_end_pos != str.npos && type_end_pos >= 5 &&
+      str.substr(type_end_pos - 5, 6) == "Error:") {
     // Remove "Error:", add "()"
     // Examples:
     //    InvalidArgumentError: xxx -> (InvalidArgument) xxx
