@@ -42,7 +42,16 @@ class IR_API ShapeConstraintIRAnalysis {
 
   symbol::DimExprBuilder DimExprBuilder();
 
-  symbol::ConstraintsManager& ConstraintsManager();
+  void AddEqCstr(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs);
+
+  void AddBroadcastableCstr(const symbol::DimExpr& lhs,
+                            const symbol::DimExpr& rhs);
+
+  void AddGTOneCstr(const symbol::DimExpr& dim_expr);
+
+  bool IsDimExprEqual(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs);
+
+  void PrintDimExprClusters();
 
   // Used to debug
   void PrintShapeOrDatas() const;
@@ -78,6 +87,10 @@ class IR_API ShapeConstraintIRAnalysis {
 
   symbol::DimExpr GetProductDimExpr(Value lhs,
                                     const std::vector<int>& lhs_dim_idxs) const;
+
+ private:
+  void SubstituteDimExpr(const symbol::DimExpr& lhs,
+                         const symbol::DimExpr& rhs);
 
  private:
   ModuleOp m_;

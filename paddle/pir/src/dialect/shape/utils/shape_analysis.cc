@@ -29,7 +29,6 @@ static std::string GetValueId(Value val) {
 void ShapeConstraintIRAnalysis::Init() {
   value_to_shape_or_data_.clear();
   next_sym_idx_ = 0;
-  cstrs_manager_.SetValueToShapeOrData(&value_to_shape_or_data_);
 }
 
 const std::string ShapeConstraintIRAnalysis::GetNextSymName() {
@@ -68,8 +67,147 @@ symbol::DimExprBuilder ShapeConstraintIRAnalysis::DimExprBuilder() {
   return symbol::DimExprBuilder();
 }
 
-symbol::ConstraintsManager& ShapeConstraintIRAnalysis::ConstraintsManager() {
-  return cstrs_manager_;
+namespace {
+
+symbol::TensorShapeOrDataDimExprs SubstituteTensorShapeOrData(
+    const symbol::TensorShapeOrDataDimExprs& shape_or_data,
+    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
+        substitution_pattern) {
+  auto SubstituteOneDimExpr =
+      [](const std::vector<symbol::DimExpr>& original_dim_expr,
+         const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
+             substitution_pattern) -> std::vector<symbol::DimExpr> {
+    std::vector<symbol::DimExpr> substituted_dim_expr{};
+    for (const symbol::DimExpr& dim_expr : original_dim_expr) {
+      const auto& tmp_dim_expr =
+          symbol::SubstituteDimExpr(dim_expr, substitution_pattern);
+      substituted_dim_expr.push_back(symbol::SimplifyDimExpr(tmp_dim_expr));
+    }
+    return substituted_dim_expr;
+  };
+
+  std::vector<symbol::DimExpr> substituted_shape =
+      SubstituteOneDimExpr(shape_or_data.shape(), substitution_pattern);
+  if (!shape_or_data.data().has_value()) {
+    return symbol::ShapeOrData<symbol::DimExpr>(substituted_shape);
+  } else {
+    std::vector<symbol::DimExpr> substituted_data = SubstituteOneDimExpr(
+        shape_or_data.data().value(), substitution_pattern);
+    return symbol::ShapeOrData<symbol::DimExpr>(substituted_shape,
+                                                substituted_data);
+  }
+}
+
+symbol::ShapeOrDataDimExprs SubstituteShapeOrData(
+    const symbol::ShapeOrDataDimExprs& shape_or_data,
+    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
+        substitution_pattern) {
+  auto lambdas = symbol::Overloaded{
+      [&](const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data) {
+        return symbol::ShapeOrDataDimExprs(SubstituteTensorShapeOrData(
+            tensor_shape_or_data, substitution_pattern));
+      },
+      [&](const symbol::TensorListShapeOrDataDimExprs& tensor_list) {
+        symbol::TensorListShapeOrDataDimExprs substituted_tensor_list;
+        for (symbol::TensorShapeOrDataDimExprs tensor_shape_or_data :
+             tensor_list) {
+          substituted_tensor_list.push_back(SubstituteTensorShapeOrData(
+              tensor_shape_or_data, substitution_pattern));
+        }
+        return symbol::ShapeOrDataDimExprs(substituted_tensor_list);
+      }};
+  return std::visit(lambdas, shape_or_data.variant());
+}
+
+int GetDimExprPriority(const symbol::DimExpr& dim_expr) {
+  return std::visit(
+      symbol::Overloaded{
+          [&](std::int64_t) { return 0; },
+          [&](const std::string&) { return 1; },
+          [&](const symbol::Negative<symbol::DimExpr>&) { return 2; },
+          [&](const symbol::Reciprocal<symbol::DimExpr>&) { return 2; },
+          [&](const symbol::Add<symbol::DimExpr>&) { return 2; },
+          [&](const symbol::Mul<symbol::DimExpr>&) { return 2; },
+          [&](const symbol::Max<symbol::DimExpr>&) { return 2; },
+          [&](const symbol::Min<symbol::DimExpr>&) { return 2; },
+          [&](const symbol::Broadcast<symbol::DimExpr>&) { return 2; },
+      },
+      dim_expr.variant());
+}
+
+/**
+ * @brief Compare the two dim exprs
+ *
+ * @param lhs The left-hand side dim expr
+ * @param rhs The right-hand side dim expr
+ *
+ * @return -1 if lhs is less than rhs, 1 if lhs is greater than rhs, and 0 if
+ * they are equal
+ */
+int CompareDimExpr(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
+  int lhs_priority = GetDimExprPriority(lhs);
+  int rhs_priority = GetDimExprPriority(rhs);
+  if (lhs_priority != rhs_priority) {
+    return lhs_priority < rhs_priority ? -1 : 1;
+  }
+
+  // if the priority is same, we compare the string value to find the smallest
+  // one
+  if (lhs.isa<std::string>()) {
+    const auto& lhs_str = lhs.dyn_cast<std::string>();
+    const auto& rhs_str = rhs.dyn_cast<std::string>();
+    if (lhs_str.size() != rhs_str.size()) {
+      return lhs_str.size() < rhs_str.size() ? -1 : 1;
+    }
+    return lhs_str.compare(rhs_str);
+  }
+  return 0;
+}
+
+}  // namespace
+
+void ShapeConstraintIRAnalysis::SubstituteDimExpr(const symbol::DimExpr& lhs,
+                                                  const symbol::DimExpr& rhs) {
+  std::unordered_map<symbol::DimExpr, symbol::DimExpr> substitution_pattern;
+  int compare_lhs_to_rhs = CompareDimExpr(lhs, rhs);
+  if (compare_lhs_to_rhs == 0) {
+    return;
+  } else if (compare_lhs_to_rhs < 0) {
+    substitution_pattern[rhs] = lhs;
+  } else {
+    substitution_pattern[lhs] = rhs;
+  }
+  for (auto it = value_to_shape_or_data_.begin();
+       it != value_to_shape_or_data_.end();
+       it++) {
+    const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
+        SubstituteShapeOrData(it->second, substitution_pattern);
+    SetShapeOrDataForValue(it->first, substituted_shape_or_data);
+  }
+}
+
+void ShapeConstraintIRAnalysis::AddEqCstr(const symbol::DimExpr& lhs,
+                                          const symbol::DimExpr& rhs) {
+  cstrs_manager_.AddEqCstr(lhs, rhs);
+  SubstituteDimExpr(lhs, rhs);
+}
+
+void ShapeConstraintIRAnalysis::AddBroadcastableCstr(
+    const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
+  cstrs_manager_.AddBroadcastableCstr(lhs, rhs);
+}
+
+void ShapeConstraintIRAnalysis::AddGTOneCstr(const symbol::DimExpr& dim_expr) {
+  cstrs_manager_.AddGTOneCstr(dim_expr);
+}
+
+bool ShapeConstraintIRAnalysis::IsDimExprEqual(const symbol::DimExpr& lhs,
+                                               const symbol::DimExpr& rhs) {
+  return cstrs_manager_.IsDimExprEqual(lhs, rhs);
+}
+
+void ShapeConstraintIRAnalysis::PrintDimExprClusters() {
+  return cstrs_manager_.PrintDimExprClusters();
 }
 
 void ShapeConstraintIRAnalysis::PrintShapeOrDatas() const {

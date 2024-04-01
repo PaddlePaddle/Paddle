@@ -17,18 +17,12 @@
 #include <unordered_set>
 
 #include "paddle/common/union_find_set.h"
-#include "paddle/pir/include/core/value.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
-#include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 
 namespace symbol {
 
 class IR_API ConstraintsManager {
  public:
-  void SetValueToShapeOrData(
-      std::unordered_map<pir::Value, ShapeOrDataDimExprs>*
-          value_to_shape_or_data);
-
   void AddEqCstr(const DimExpr& lhs, const DimExpr& rhs);
 
   void AddBroadcastableCstr(const DimExpr& lhs, const DimExpr& rhs);
@@ -40,10 +34,6 @@ class IR_API ConstraintsManager {
   void PrintDimExprClusters();
 
  private:
-  void SubstituteRhsToLhs(const DimExpr& lhs, const DimExpr& rhs);
-
- private:
-  std::unordered_map<pir::Value, ShapeOrDataDimExprs>* value_to_shape_or_data_;
   std::vector<Broadcastable<DimExpr>> broadcastables_;
   std::unordered_set<DimExpr> gtones_;
   common::UnionFindSet<DimExpr> equals_;
