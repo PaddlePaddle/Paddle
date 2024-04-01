@@ -159,7 +159,11 @@ struct Instruction : public cinn::common::Shared<_Instruction_> {
   void SetInputs(const std::vector<Variable>& vars) { get()->inputs = vars; }
   const std::vector<Variable>& GetOutputs() const { return get()->outputs; }
   const Variable& GetOutput(size_t offset) const {
-    CHECK_LT(offset, get()->outputs.size());
+    PADDLE_ENFORCE_LT(
+        offset,
+        get()->outputs.size(),
+        phi::errors::InvalidArgument(
+            "The offset should be less than the size of outputs."));
     return GetOutputs()[offset];
   }
 

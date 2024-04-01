@@ -199,7 +199,11 @@ void CinnComputation::SetTensorData(hlir::framework::Tensor &t,
                                     void *data,
                                     size_t size) {
   void *tdata = t->mutable_data(context_->target, t->type());
-  CHECK_EQ(size, t->shape().numel() * t->type().bytes());
+  PADDLE_ENFORCE_EQ(
+      size == t->shape().numel() * t->type().bytes(),
+      true,
+      phi::errors::InvalidArgument("The size of the input data is not equal to "
+                                   "the size of the tensor."));
   if (context_->target.arch == Target::Arch::NVGPU) {
 #ifdef CINN_WITH_CUDA
     CUDA_CALL(cudaMemcpy(tdata, data, size, cudaMemcpyHostToDevice));
@@ -216,7 +220,11 @@ void CinnComputation::GetTensorData(hlir::framework::Tensor &t,
                                     void *data,
                                     size_t size) {
   void *tdata = t->mutable_data(context_->target, t->type());
-  CHECK_EQ(size, t->shape().numel() * t->type().bytes());
+  PADDLE_ENFORCE_EQ(
+      size == t->shape().numel() * t->type().bytes(),
+      true,
+      phi::errors::InvalidArgument("The size of the input data is not equal to "
+                                   "the size of the tensor."));
   if (context_->target.arch == Target::Arch::NVGPU) {
 #ifdef CINN_WITH_CUDA
     CUDA_CALL(cudaMemcpy(data, tdata, size, cudaMemcpyDeviceToHost));

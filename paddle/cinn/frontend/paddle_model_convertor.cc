@@ -144,8 +144,10 @@ Program PaddleModelConvertor::LoadModel(
                         false,
                         target_);
   }
-  CHECK_EQ(program_desc.BlocksSize(), 1)
-      << "CINN can only support the model with a single block";
+  PADDLE_ENFORCE_EQ(program_desc.BlocksSize(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "CINN can only support the model with a single block"));
   auto* block_desc = program_desc.GetBlock<paddle::cpp::BlockDesc>(0);
 
   // Set feeds shape

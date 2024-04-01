@@ -63,8 +63,10 @@ inline cinn::common::Type CppVarType2CommonType(
                                                      "PSTRING",      // 29
                                                      "SPARSE_COO",   // 30
                                                      "SPARSE_CSR"};  // 31
-  CHECK_LT(static_cast<int>(type), var_type_names_.size())
-      << "Unknown VarDesc type: " << static_cast<int>(type);
+  PADDLE_ENFORCE_LT(static_cast<int>(type),
+                    var_type_names_.size(),
+                    phi::errors::InvalidArgument("Unknown VarDesc type: %d",
+                                                 static_cast<int>(type)));
 
   switch (type) {
     SET_TYPE_CASE_ITEM(BOOL, Bool)
