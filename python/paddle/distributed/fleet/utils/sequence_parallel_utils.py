@@ -16,8 +16,6 @@
 
 import os
 
-from log_util import logger
-
 import paddle
 from paddle import distributed as dist
 from paddle.autograd import PyLayer
@@ -31,6 +29,8 @@ from paddle.nn import (
     Layer,
     functional as F,
 )
+
+from .log_util import logger
 
 ####################################################
 #                                                  #
