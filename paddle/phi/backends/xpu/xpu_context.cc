@@ -20,6 +20,7 @@
 
 #include "paddle/common/exception.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/os_info.h"
 #include "xpu/runtime.h"
@@ -29,6 +30,31 @@
 namespace xpu = baidu::xpu::api;
 
 namespace phi {
+
+class XHPCBufferManager {
+ public:
+  void* Alloc(const Place& place, size_t size, XPUStream xpu_stream) {
+    // std::cout << "Buffer Alloc Called!!!!!!\n";
+    phi::Stream stream(reinterpret_cast<StreamId>(xpu_stream));
+    auto allocation = memory_utils::Alloc(place, size, stream);
+    void* ret = allocation.get()->ptr();
+    allocations_to_free_.back().push_back(std::move(allocation));
+    return ret;
+  }
+  void Save() {
+    // std::cout << "Buffer Save Called!!!!!!\n";
+    allocations_to_free_.emplace_back();
+  }
+  void Free() {
+    // std::cout << "Buffer Free Called!!!!!!!\n";
+    if (allocations_to_free_.size() > 0) {
+      allocations_to_free_.pop_back();
+    }
+  }
+
+ private:
+  std::vector<std::vector<Allocator::AllocationPtr>> allocations_to_free_;
+};
 
 struct XPUContext::Impl {
   void SetL3Cache(int64_t l3_size = 1024) {
@@ -137,17 +163,36 @@ struct XPUContext::Impl {
         << "Please NOTE: xpu device: " << static_cast<int>(place_.device);
 
     context_ = xpu::create_context();
-    context_->set_option("XPUAPI_DEFAULT_SIZE",
-                         std::to_string(gm_default_size).c_str());
-    VLOG(3) << "xpu place " << static_cast<int>(place_.GetDeviceId())
-            << "context " << context_ << " set xpuapi_default_size "
-            << gm_default_size;
+    if (std::getenv("XPU_PADDLE_USE_OVERLOAD") != nullptr) {
+      context_->set_option("XPUAPI_DEFAULT_SIZE", "0");
+      VLOG(3) << "xpu place " << static_cast<int>(place_.GetDeviceId())
+              << "context " << context_ << " set xpuapi_default_size " << 0;
+    } else {
+      context_->set_option("XPUAPI_DEFAULT_SIZE",
+                           std::to_string(gm_default_size).c_str());
+      VLOG(3) << "xpu place " << static_cast<int>(place_.GetDeviceId())
+              << "context " << context_ << " set xpuapi_default_size "
+              << gm_default_size;
+    }
 
     if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr) {
       XPUStream s;
       xpu_stream_create(&s);
       context_->set_stream(s);
     }
+    // overload ctx alloc/free to avoid xpu_malloc/xpu_wait
+    auto overload_alloc_fn = std::bind(&XHPCBufferManager::Alloc,
+                                       &xhpc_buf_mgr_,
+                                       place_,
+                                       std::placeholders::_1,
+                                       context_->get_stream());
+    auto overload_free_fn = std::bind(&XHPCBufferManager::Free, &xhpc_buf_mgr_);
+    auto overload_save_fn = std::bind(&XHPCBufferManager::Save, &xhpc_buf_mgr_);
+    if (std::getenv("XPU_PADDLE_USE_OVERLOAD") != nullptr) {
+      context_->set_overload_alloc(
+          overload_alloc_fn, overload_free_fn, overload_save_fn);
+    }
+
     xpu_version_ = backends::xpu::get_xpu_version(place_.device);
     SetL3Cache(l3_default_size);
   }
@@ -190,7 +235,7 @@ struct XPUContext::Impl {
       xpu::Context* ctx_t = xpu::create_context();
       // DataLoader does not require a pre-allocated GM buffer
       // to avoid xpu_wait calls
-      ctx_t->set_option("XPUAPI_DEFAULT_SIZE", "1");
+      ctx_t->set_option("XPUAPI_DEFAULT_SIZE", "0");
       context_map_[tname] = ctx_t;
     }
   }
@@ -220,6 +265,7 @@ struct XPUContext::Impl {
   // NOTE: Distributed communicator, distributed framework manages its
   // resources, XPUContext only holds references.
   xpu::BKCLContext_t bkcl_context_{nullptr};
+  XHPCBufferManager xhpc_buf_mgr_;
 };
 
 static int64_t get_gm_size(int i) {
