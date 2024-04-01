@@ -60,7 +60,7 @@ class TestSumAsOp(OpTest):
         self.out = self.x.sum(axis=tuple(self.attrs['dim']))
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
