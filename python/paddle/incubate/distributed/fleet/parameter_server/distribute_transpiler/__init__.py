@@ -510,9 +510,7 @@ class FleetTranspiler(Fleet):
 
         if op not in supported_opts:
             raise ValueError(
-                "fleet can not support optimizer: {}, only this can be supported: {}".format(
-                    op, supported_opts
-                )
+                f"fleet can not support optimizer: {op}, only this can be supported: {supported_opts}"
             )
 
         reshaped_names = [

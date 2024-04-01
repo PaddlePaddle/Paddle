@@ -286,9 +286,7 @@ class TestDistributedFusedLamb(unittest.TestCase):
         gm_steps = int(os.getenv('GRADIENT_MERGE_STEPS', 1))
         use_master_acc_grad = bool(int(os.getenv('USE_MASTER_ACC_GRAD', '1')))
         print(
-            'clip_after_allreduce = {}, max_global_norm = {}'.format(
-                clip_after_allreduce, max_global_norm
-            )
+            f'clip_after_allreduce = {clip_after_allreduce}, max_global_norm = {max_global_norm}'
         )
         return {
             'clip_after_allreduce': clip_after_allreduce,
@@ -329,9 +327,7 @@ class TestDistributedFusedLamb(unittest.TestCase):
             atol = 1.5e-7
         for ret1, ret2 in zip(result1, result2):
             max_diff = np.max(np.abs(ret1 - ret2))
-            msg = 'max_diff = {} atol = {} when use_fp16 = {} , use_master_param_norm = {}'.format(
-                max_diff, atol, use_fp16, use_master_param_norm
-            )
+            msg = f'max_diff = {max_diff} atol = {atol} when use_fp16 = {use_fp16} , use_master_param_norm = {use_master_param_norm}'
             self.assertTrue(max_diff < atol, msg)
             print(msg)
 
