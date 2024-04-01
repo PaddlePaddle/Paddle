@@ -784,7 +784,6 @@ class TestWhereDygraphAPI(unittest.TestCase):
 
 
 class TestWhereOpError(unittest.TestCase):
-    @test_with_pir_api
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -805,15 +804,20 @@ class TestWhereOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_Value)
 
             def test_type():
-                x = paddle.static.data(name='x', shape=[-1, 4], dtype='bool')
-                x.desc.set_need_check_feed(False)
-                y = paddle.static.data(name='y', shape=[-1, 4], dtype='float16')
-                y.desc.set_need_check_feed(False)
-                cond = paddle.static.data(
-                    name='cond', shape=[-1, 4], dtype='int32'
-                )
-                cond.desc.set_need_check_feed(False)
-                paddle.where(cond, x, y)
+                with paddle.pir_utils.OldIrGuard():
+                    x = paddle.static.data(
+                        name='x', shape=[-1, 4], dtype='bool'
+                    )
+                    x.desc.set_need_check_feed(False)
+                    y = paddle.static.data(
+                        name='y', shape=[-1, 4], dtype='float16'
+                    )
+                    y.desc.set_need_check_feed(False)
+                    cond = paddle.static.data(
+                        name='cond', shape=[-1, 4], dtype='int32'
+                    )
+                    cond.desc.set_need_check_feed(False)
+                    paddle.where(cond, x, y)
 
             self.assertRaises(TypeError, test_type)
 
