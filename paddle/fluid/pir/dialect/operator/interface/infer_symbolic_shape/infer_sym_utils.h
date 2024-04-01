@@ -31,7 +31,6 @@ COMMON_DECLARE_string(pir_dyshape_sym2value);
 constexpr int vlog_level = 3;
 const char sym_sep[] = ":";
 static std::unordered_map<DimExpr, DimExpr> map_sym2value, map_sym2sym;
-static bool is_check_dynamic_shape = false;
 
 inline bool GetBoolAttr(const pir::Operation *op, const std::string &str) {
   const auto &attr_map = op->attributes();

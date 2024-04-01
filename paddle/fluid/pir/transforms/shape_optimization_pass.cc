@@ -316,11 +316,8 @@ bool HasDynamicShape(const pir::Program& program) {
         auto shape_type =
             op.result(i).type().dyn_cast<pir::ShapedTypeInterface>();
         if (shape_type && shape_type.IsDynamicShape()) {
-          is_check_dynamic_shape = true;
           FLAGS_check_dyshape = true;
-          VLOG(vlog_level) << "###### HasDynamicShape == true, "
-                           << "is_check_dynamic_shape = "
-                           << is_check_dynamic_shape;
+          VLOG(vlog_level) << "###### HasDynamicShape == true, ";
           return true;
         }
       }
