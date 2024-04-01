@@ -1077,7 +1077,12 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            [](DistTensor &self, const DistTensor &src) {
              self.unsafe_set_dims(src.dims());
              self.unsafe_set_dist_attr(src.dist_attr());
-             self.unsafe_mutable_value()->ShareDataWith(src.value());
+             if (!IsCurRankInMesh(self.process_mesh()) &&
+                 !IsCurRankInMesh(src.dist_attr().process_mesh())) {
+               self.unsafe_mutable_value()->ShareDataNoCheckWith(src.value());
+             } else {
+               self.unsafe_mutable_value()->ShareDataWith(src.value());
+             }
              return self;
            })
       .def("_clear", &DistTensor::clear);

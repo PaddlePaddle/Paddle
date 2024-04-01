@@ -946,6 +946,18 @@ bool AnalysisPredictor::PrepareExecutor() {
                 std::move(pir::PassRegistry::Instance().Get(gpu_pass)));
           }
         }
+
+#ifdef PADDLE_WITH_XPU
+      } else if (config_.use_xpu()) {
+        // xpu
+        if (!config_.custom_pass_only_) {
+          for (const auto &xpu_pass : kPirXpuPasses) {
+            pass_pm.AddPass(
+                std::move(pir::PassRegistry::Instance().Get(xpu_pass)));
+          }
+        }
+#endif
+
 #ifdef PADDLE_WITH_DNNL
       } else if (config_.mkldnn_enabled()) {
         // mkldnn
