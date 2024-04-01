@@ -231,6 +231,8 @@ class AddBroadcastToElementwisePass : public pir::PatternRewritePass {
         context);
 
     // bitwise ops
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseAndOp>>(
+        context);
     ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseOrOp>>(
         context);
     ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseXorOp>>(
@@ -242,7 +244,7 @@ class AddBroadcastToElementwisePass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->num_regions() > 0;
+    return op->num_regions() > 0 && op->isa<cinn::dialect::GroupOp>();
   }
 };
 
