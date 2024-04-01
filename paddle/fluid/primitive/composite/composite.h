@@ -143,7 +143,9 @@ Tensor p_norm_decomp(const Tensor& x,
   }
 
   // Only adapt for porder=2.0
-  auto res = sqrt<T>(sum<T>(x_tmp * x_tmp, {axis}, x_tmp.dtype(), keepdim));
+  auto one = full<T>(empty_shape, 1, x_tmp.dtype());
+  auto res =
+      one / rsqrt<T>(sum<T>(x_tmp * x_tmp, {axis}, x_tmp.dtype(), keepdim));
 
   if (need_cast) {
     return cast<T>(res, org_dtype);
