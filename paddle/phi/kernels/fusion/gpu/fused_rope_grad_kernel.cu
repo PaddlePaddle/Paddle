@@ -195,6 +195,7 @@ PD_REGISTER_KERNEL(fused_rotary_position_embedding_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedRopeGradKernel,
+                   double,
                    float,
                    phi::dtype::float16,
                    phi::dtype::bfloat16){};

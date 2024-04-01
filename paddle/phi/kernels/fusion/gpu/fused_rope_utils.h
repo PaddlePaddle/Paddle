@@ -18,7 +18,7 @@
 
 namespace phi {
 namespace fusion {
-
+constexpr int kDefaultRotaryBase = 10000;
 template <typename T, typename MPType, int VecSize>
 using VectorizedFusedRopeCudaKernelFunc =
     void (*)(phi::Array<const T*, 3> ins_data,
@@ -38,58 +38,131 @@ using VectorizedFusedRopeCudaKernelFunc =
              float rotary_emb_base);
 
 template <typename T, typename MPType, int VecSize = 2>
-__device__ void VectorizedGetSinCos(phi::Array<const T*, 2> sin_cos_data,
-                                    const int64_t* position_ids_data,
-                                    bool flag_sin_cos,
-                                    int64_t index,
-                                    int64_t batch_size,
-                                    int64_t seq_len,
-                                    int64_t num_heads,
-                                    int64_t head_dim,
-                                    int64_t batch_stride,
-                                    int64_t seq_stride,
-                                    MPType* out_sin,
-                                    MPType* out_cos,
-                                    MPType div_c,
-                                    float rotary_emb_base) {
-  MPType* sin_value = out_sin;
-  MPType* cos_value = out_cos;
-
-  if (flag_sin_cos) {
+__device__ __forceinline__ void get_sin_cos_by_passed_values(
+    phi::Array<const T*, 2> sin_cos_data,
+    const int64_t* position_ids_data,
+    int64_t index,
+    int64_t batch_size,
+    int64_t seq_len,
+    int64_t head_dim,
+    int64_t batch_stride,
+    int64_t seq_stride,
+    MPType* out_sin,
+    MPType* out_cos) {
 #pragma unroll
-    for (int64_t nx = 0; nx < VecSize; ++nx) {
-      int64_t pos_seq_ori = (index + nx) / seq_stride % seq_len;
-      int64_t pos_seq;
-      if (position_ids_data) {
-        int64_t pos_bs = (index + nx) / batch_stride % batch_size;
-        int64_t index_ids = pos_bs * seq_len + pos_seq_ori;
-        pos_seq = position_ids_data[index_ids];
-      } else {
-        pos_seq = pos_seq_ori;
-      }
-      int64_t pos_head = (index + nx) % head_dim;
-      int64_t index_sc = pos_seq * head_dim + pos_head;
-      const T* sin_input = sin_cos_data[0] + index_sc;
-      const T* cos_input = sin_cos_data[1] + index_sc;
-
-      sin_value[nx] = static_cast<MPType>(sin_input[0]);
-      cos_value[nx] = static_cast<MPType>(cos_input[0]);
+  for (int64_t nx = 0; nx < VecSize; ++nx) {
+    int64_t pos_seq_ori = (index + nx) / seq_stride % seq_len;
+    int64_t pos_seq;
+    if (position_ids_data) {
+      int64_t pos_bs = (index + nx) / batch_stride % batch_size;
+      int64_t index_ids = pos_bs * seq_len + pos_seq_ori;
+      pos_seq = position_ids_data[index_ids];
+    } else {
+      pos_seq = pos_seq_ori;
     }
-  } else {
-#pragma unroll
-    for (int nx = 0; nx < VecSize; ++nx) {
-      // get sin_index and cos_index
-      int64_t pos_seq = (index + nx) / seq_stride % seq_len;
+    int64_t pos_head = (index + nx) % head_dim;
+    int64_t index_sc = pos_seq * head_dim + pos_head;
+    const T* sin_input = sin_cos_data[0] + index_sc;
+    const T* cos_input = sin_cos_data[1] + index_sc;
 
-      MPType idx = static_cast<MPType>(((index + nx) % head_dim) / 2 * 2.0);
-      MPType indicses =
-          static_cast<MPType>(1) / __powf(rotary_emb_base, idx * div_c);
-      MPType value = pos_seq * indicses;
-      sin_value[nx] = sin(value);
-      cos_value[nx] = cos(value);
-    }
+    out_sin[nx] = static_cast<MPType>(sin_input[0]);
+    out_cos[nx] = static_cast<MPType>(cos_input[0]);
   }
 }
+
+template <typename T, typename MPType, int VecSize = 2, int ROTARY_BASE = -1>
+struct VectorizedGetSinCos {
+  __device__ void operator()(phi::Array<const T*, 2> sin_cos_data,
+                             const int64_t* position_ids_data,
+                             bool flag_sin_cos,
+                             int64_t index,
+                             int64_t batch_size,
+                             int64_t seq_len,
+                             int64_t num_heads,
+                             int64_t head_dim,
+                             int64_t batch_stride,
+                             int64_t seq_stride,
+                             MPType* out_sin,
+                             MPType* out_cos,
+                             MPType div_c,
+                             float rotary_emb_base) {
+    if (flag_sin_cos) {
+      get_sin_cos_by_passed_values(sin_cos_data,
+                                   position_ids_data,
+                                   index,
+                                   batch_size,
+                                   seq_len,
+                                   head_dim,
+                                   batch_stride,
+                                   seq_stride,
+                                   out_sin,
+                                   out_cos);
+    } else {
+#pragma unroll
+      for (int nx = 0; nx < VecSize; ++nx) {
+        // get sin_index and cos_index
+        int64_t pos_seq = (index + nx) / seq_stride % seq_len;
+
+        MPType idx = static_cast<MPType>(((index + nx) % head_dim) / 2 * 2.0);
+        MPType indicses =
+            static_cast<MPType>(1) /
+            pow(static_cast<MPType>(rotary_emb_base), idx * div_c);
+        MPType value = pos_seq * indicses;
+        out_sin[nx] = sin(value);
+        out_cos[nx] = cos(value);
+      }
+    }
+  }
+};
+
+template <typename T, typename MPType, int VecSize>
+struct VectorizedGetSinCos<T, MPType, VecSize, kDefaultRotaryBase> {
+  __device__ void operator()(phi::Array<const T*, 2> sin_cos_data,
+                             const int64_t* position_ids_data,
+                             bool flag_sin_cos,
+                             int64_t index,
+                             int64_t batch_size,
+                             int64_t seq_len,
+                             int64_t num_heads,
+                             int64_t head_dim,
+                             int64_t batch_stride,
+                             int64_t seq_stride,
+                             MPType* out_sin,
+                             MPType* out_cos,
+                             MPType div_c,
+                             float rotary_emb_base) {
+    MPType* sin_value = out_sin;
+    MPType* cos_value = out_cos;
+
+    if (flag_sin_cos) {
+      get_sin_cos_by_passed_values(sin_cos_data,
+                                   position_ids_data,
+                                   index,
+                                   batch_size,
+                                   seq_len,
+                                   head_dim,
+                                   batch_stride,
+                                   seq_stride,
+                                   out_sin,
+                                   out_cos);
+    } else {
+#pragma unroll
+      for (int nx = 0; nx < VecSize; ++nx) {
+        // get sin_index and cos_index
+        int64_t pos_seq = (index + nx) / seq_stride % seq_len;
+
+        MPType idx = static_cast<MPType>(((index + nx) % head_dim) / 2 * 2.0);
+        MPType indicses =
+            static_cast<MPType>(1) /
+            pow(static_cast<MPType>(kDefaultRotaryBase), idx * div_c);
+
+        MPType value = pos_seq * indicses;
+        sin_value[nx] = sin(value);
+        cos_value[nx] = cos(value);
+      }
+    }
+  }
+};
 
 template <typename T, typename MPType, int VecSize = 2>
 __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
@@ -121,56 +194,58 @@ __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
   T store[VecSize];
   using VecType = phi::AlignedVector<T, VecSize>;
   constexpr int kVectorsPerThread = VecSize / 2;
-
-  for (; index < size; index += stride) {
-    VectorizedGetSinCos(sin_cos_data,
-                        position_ids_data,
-                        flag_sin_cos,
-                        index,
-                        batch_size,
-                        seq_len,
-                        num_heads,
-                        head_dim,
-                        batch_stride,
-                        seq_stride,
-                        sin_value,
-                        cos_value,
-                        div_c,
-                        rotary_emb_base);
-
-#pragma unroll
-    for (int iter = 0; iter < 3; iter++) {
-      if (iter >= num_inputs) break;
-      const T* input = ins_data[iter] + index;
-      VecType* out = reinterpret_cast<VecType*>(outs_data[iter] + index);
+  // if (static_cast<int>(rotary_emb_base) == kDefaultRotaryBase) {
+    VectorizedGetSinCos<T, MPType, VecSize, kDefaultRotaryBase> get_sin_cos;
+    for (; index < size; index += stride) {
+      get_sin_cos(sin_cos_data,
+                  position_ids_data,
+                  flag_sin_cos,
+                  index,
+                  batch_size,
+                  seq_len,
+                  num_heads,
+                  head_dim,
+                  batch_stride,
+                  seq_stride,
+                  sin_value,
+                  cos_value,
+                  div_c,
+                  rotary_emb_base);
 
 #pragma unroll
-      for (int nx = 0; nx < kVectorsPerThread; ++nx) {
-        int pr_index = nx * 2;
-        int ls_index = pr_index + 1;
+      for (int iter = 0; iter < 3; iter++) {
+        if (iter >= num_inputs) break;
+        const T* input = ins_data[iter] + index;
+        VecType* out = reinterpret_cast<VecType*>(outs_data[iter] + index);
 
-        MPType p0 = static_cast<MPType>(input[pr_index]);
-        MPType p1 = static_cast<MPType>(input[ls_index]);
+#pragma unroll
+        for (int nx = 0; nx < kVectorsPerThread; ++nx) {
+          int pr_index = nx * 2;
+          int ls_index = pr_index + 1;
 
-        if (sign == 1) {
-          result[pr_index] = cos_value[pr_index] * p0;
-          result[pr_index] -= sin_value[pr_index] * p1;
+          MPType p0 = static_cast<MPType>(input[pr_index]);
+          MPType p1 = static_cast<MPType>(input[ls_index]);
 
-          result[ls_index] = sin_value[ls_index] * p0;
-          result[ls_index] += cos_value[ls_index] * p1;
-        } else if (sign == -1) {
-          result[pr_index] =
-              cos_value[pr_index] * p0 + sin_value[ls_index] * p1;
-          result[ls_index] =
-              cos_value[ls_index] * p1 - sin_value[pr_index] * p0;
+          if (sign == 1) {
+            result[pr_index] = cos_value[pr_index] * p0;
+            result[pr_index] -= sin_value[pr_index] * p1;
+
+            result[ls_index] = sin_value[ls_index] * p0;
+            result[ls_index] += cos_value[ls_index] * p1;
+          } else if (sign == -1) {
+            result[pr_index] =
+                cos_value[pr_index] * p0 + sin_value[ls_index] * p1;
+            result[ls_index] =
+                cos_value[ls_index] * p1 - sin_value[pr_index] * p0;
+          }
+
+          store[pr_index] = static_cast<T>(result[pr_index]);
+          store[ls_index] = static_cast<T>(result[ls_index]);
         }
-
-        store[pr_index] = static_cast<T>(result[pr_index]);
-        store[ls_index] = static_cast<T>(result[ls_index]);
+        out[0] = *(reinterpret_cast<VecType*>(store));
       }
-      out[0] = *(reinterpret_cast<VecType*>(store));
     }
-  }
+  // }
 }
 
 template <typename T, typename MPType, int VecSize = 2>
@@ -205,7 +280,7 @@ __global__ void VectorizedFusedRopeWithRotateHalfKernel(
   constexpr int kVectorsPerThread = VecSize / 2;
 
   for (; index < size; index += stride) {
-    VectorizedGetSinCos(sin_cos_data,
+    VectorizedGetSinCos<T, MPType, VecSize>()(sin_cos_data,
                         position_ids_data,
                         flag_sin_cos,
                         index,
