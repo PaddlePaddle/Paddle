@@ -31,6 +31,7 @@
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
+#include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
@@ -934,16 +935,14 @@ bool AnalysisPredictor::PrepareExecutor() {
                                  config_.pm_opt_level_);
       if (!config_.custom_passes_.empty()) {
         for (const auto &custom_pass : config_.custom_passes_) {
-          pass_pm.AddPass(
-              std::move(pir::PassRegistry::Instance().Get(custom_pass)));
+          pass_pm.AddPass(pir::PassRegistry::Instance().Get(custom_pass));
         }
       }
       if (config_.use_gpu()) {
         // gpu
         if (!config_.custom_pass_only_) {
           for (const auto &gpu_pass : kPirGpuPasses) {
-            pass_pm.AddPass(
-                std::move(pir::PassRegistry::Instance().Get(gpu_pass)));
+            pass_pm.AddPass(pir::PassRegistry::Instance().Get(gpu_pass));
           }
         }
 
@@ -963,8 +962,7 @@ bool AnalysisPredictor::PrepareExecutor() {
         // mkldnn
         if (!config_.custom_pass_only_) {
           for (const auto &mkldnn_pass : kPirMkldnnPasses) {
-            pass_pm.AddPass(
-                std::move(pir::PassRegistry::Instance().Get(mkldnn_pass)));
+            pass_pm.AddPass(pir::PassRegistry::Instance().Get(mkldnn_pass));
           }
         }
 #endif
@@ -972,8 +970,7 @@ bool AnalysisPredictor::PrepareExecutor() {
         // cpu
         if (!config_.custom_pass_only_) {
           for (const auto &cpu_pass : kPirCpuPasses) {
-            pass_pm.AddPass(
-                std::move(pir::PassRegistry::Instance().Get(cpu_pass)));
+            pass_pm.AddPass(pir::PassRegistry::Instance().Get(cpu_pass));
           }
         }
       }
@@ -3108,35 +3105,16 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
   exe.Run(save_program, scope(), 0, true, true);
 }
 
-void AnalysisPredictor::RegisterInputHook(const InputTensorHookFunc &hookfunc) {
-  std::call_once(register_input_hook_flag_, [this] {
-    executor_->RegisterInputHook(
-        [this](framework::OperatorBase *op, framework::Scope *scope) {
-          for (auto &input : op->Inputs()) {
-            for (auto &var_name : input.second) {
-              auto *var = scope->FindVar(var_name);
-              if (!var || !var->IsType<phi::DenseTensor>()) continue;
-              auto dense_tensor = var->Get<phi::DenseTensor>();
-              if (!dense_tensor.initialized()) continue;
-              auto tensor = paddle::Tensor(
-                  std::make_shared<phi::DenseTensor>(dense_tensor), var_name);
-              for (auto &hookfunc : this->input_hookfuncs_) {
-                hookfunc(op->Type(), var_name, tensor);
-              }
-            }
-          }
-        });
-  });
-  input_hookfuncs_.push_back(hookfunc);
-}
-
 void AnalysisPredictor::RegisterOutputHook(
     const OutputTensorHookFunc &hookfunc) {
-  std::call_once(register_output_hook_flag_, [this] {
-    executor_->RegisterOutputHook(
-        [this](framework::OperatorBase *op, framework::Scope *scope) {
-          for (auto &output : op->Outputs()) {
-            for (auto &var_name : output.second) {
+  if (config_.new_ir_enabled()) {
+    std::call_once(register_output_hook_flag_, [this] {
+      executor_->RegisterOutputHook(
+          [this](framework::InstructionBase *instr,
+                 framework::ValueExecutionInfo *value_exe_info,
+                 framework::Scope *scope) {
+            for (auto &output : instr->Outputs()) {
+              auto var_name = value_exe_info->GetVarName(output.first);
               auto *var = scope->FindVar(var_name);
               if (!var || !var->IsType<phi::DenseTensor>()) continue;
               auto dense_tensor = var->Get<phi::DenseTensor>();
@@ -3144,13 +3122,82 @@ void AnalysisPredictor::RegisterOutputHook(
               auto tensor = paddle::Tensor(
                   std::make_shared<phi::DenseTensor>(dense_tensor), var_name);
               for (auto &hookfunc : this->output_hookfuncs_) {
-                hookfunc(op->Type(), var_name, tensor);
+                hookfunc(instr->Name() + ":" + std::to_string(instr->Id()),
+                         var_name,
+                         tensor);
               }
             }
-          }
-        });
-  });
-  output_hookfuncs_.push_back(hookfunc);
+          });
+    });
+    output_hookfuncs_.push_back(hookfunc);
+  } else {
+    std::call_once(register_output_hook_flag_, [this] {
+      executor_->RegisterOutputHook(
+          [this](framework::OperatorBase *op, framework::Scope *scope) {
+            for (auto &output : op->Outputs()) {
+              for (auto &var_name : output.second) {
+                auto *var = scope->FindVar(var_name);
+                if (!var || !var->IsType<phi::DenseTensor>()) continue;
+                auto dense_tensor = var->Get<phi::DenseTensor>();
+                if (!dense_tensor.initialized()) continue;
+                auto tensor = paddle::Tensor(
+                    std::make_shared<phi::DenseTensor>(dense_tensor), var_name);
+                for (auto &hookfunc : this->output_hookfuncs_) {
+                  hookfunc(op->Type(), var_name, tensor);
+                }
+              }
+            }
+          });
+    });
+    output_hookfuncs_.push_back(hookfunc);
+  }
+}
+
+void AnalysisPredictor::RegisterInputHook(const InputTensorHookFunc &hookfunc) {
+  if (config_.new_ir_enabled()) {
+    std::call_once(register_input_hook_flag_, [this] {
+      executor_->RegisterInputHook(
+          [this](framework::InstructionBase *instr,
+                 framework::ValueExecutionInfo *value_exe_info,
+                 framework::Scope *scope) {
+            for (auto &input : instr->Inputs()) {
+              auto var_name = value_exe_info->GetVarName(input.first);
+              auto *var = scope->FindVar(var_name);
+              if (!var || !var->IsType<phi::DenseTensor>()) continue;
+              auto dense_tensor = var->Get<phi::DenseTensor>();
+              if (!dense_tensor.initialized()) continue;
+              auto tensor = paddle::Tensor(
+                  std::make_shared<phi::DenseTensor>(dense_tensor), var_name);
+              for (auto &hookfunc : this->input_hookfuncs_) {
+                hookfunc(instr->Name() + ":" + std::to_string(instr->Id()),
+                         var_name,
+                         tensor);
+              }
+            }
+          });
+    });
+    input_hookfuncs_.push_back(hookfunc);
+  } else {
+    std::call_once(register_input_hook_flag_, [this] {
+      executor_->RegisterInputHook(
+          [this](framework::OperatorBase *op, framework::Scope *scope) {
+            for (auto &input : op->Inputs()) {
+              for (auto &var_name : input.second) {
+                auto *var = scope->FindVar(var_name);
+                if (!var || !var->IsType<phi::DenseTensor>()) continue;
+                auto dense_tensor = var->Get<phi::DenseTensor>();
+                if (!dense_tensor.initialized()) continue;
+                auto tensor = paddle::Tensor(
+                    std::make_shared<phi::DenseTensor>(dense_tensor), var_name);
+                for (auto &hookfunc : this->input_hookfuncs_) {
+                  hookfunc(op->Type(), var_name, tensor);
+                }
+              }
+            }
+          });
+    });
+    input_hookfuncs_.push_back(hookfunc);
+  }
 }
 
 template <>
@@ -3451,7 +3498,7 @@ uint64_t Predictor::TryShrinkMemory() { return predictor_->TryShrinkMemory(); }
 void Predictor::RegisterOutputHook(const OutputTensorHookFunc &hookfunc) {
   predictor_->RegisterOutputHook(hookfunc);
 }
-void Predictor::RegisterInputHook(const OutputTensorHookFunc &hookfunc) {
+void Predictor::RegisterInputHook(const InputTensorHookFunc &hookfunc) {
   predictor_->RegisterInputHook(hookfunc);
 }
 

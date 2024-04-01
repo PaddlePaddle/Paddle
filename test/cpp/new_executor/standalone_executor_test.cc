@@ -126,17 +126,18 @@ ProgramDesc GetLmMainProgram() {
   auto& global_block = main_prog.Block(0);
   int64_t batch_size = 20;
 
-  auto& op1 = global_block.AllOps()[1];
+  const auto allOps = global_block.AllOps();
+  auto& op1 = allOps[1];
   auto shape1 = PADDLE_GET_CONST(std::vector<int64_t>, op1->GetAttr("shape"));
   shape1[0] = batch_size * 20;
   op1->SetAttr("shape", shape1);
 
-  auto& op2 = global_block.AllOps()[2];
+  auto& op2 = allOps[2];
   auto shape2 = PADDLE_GET_CONST(std::vector<int64_t>, op2->GetAttr("shape"));
   shape2[0] = batch_size;
   op2->SetAttr("shape", shape2);
 
-  auto& op3 = global_block.AllOps()[3];
+  auto& op3 = allOps[3];
   auto shape3 = PADDLE_GET_CONST(std::vector<int64_t>, op3->GetAttr("shape"));
   shape3[0] = batch_size;
   op3->SetAttr("shape", shape3);

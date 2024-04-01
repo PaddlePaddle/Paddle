@@ -253,9 +253,7 @@ def _barrier_never_timeout(global_rank, global_world_size):
             elapse_time = time.time() - start_time
             if datetime.timedelta(seconds=elapse_time) > timeout:
                 raise RuntimeError(
-                    "Keys {} are not ready sinck rank {} is waiting them.".format(
-                        wait_keys, global_rank
-                    )
+                    f"Keys {wait_keys} are not ready sinck rank {global_rank} is waiting them."
                 )
             wait_keys = list(
                 filter(lambda key: int(_barrier_store.get(key)) != 1, wait_keys)

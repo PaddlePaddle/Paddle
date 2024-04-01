@@ -380,9 +380,7 @@ def func_to_source_code(function, dedent=True):
         function = function.func
     if not (inspect.isfunction(function) or inspect.ismethod(function)):
         raise TypeError(
-            "The type of 'function' should be a function or method, but received {}.".format(
-                type(function).__name__
-            )
+            f"The type of 'function' should be a function or method, but received {type(function).__name__}."
         )
 
     source_code_list, _ = inspect.getsourcelines(function)

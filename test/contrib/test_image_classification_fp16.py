@@ -181,12 +181,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
                     fetch_list=[scaled_loss, avg_cost],
                 )
                 print(
-                    'PassID {:1}, BatchID {:04}, train loss {:2.4}, scaled train loss {:2.4}'.format(
-                        pass_id,
-                        batch_id + 1,
-                        float(loss),
-                        float(np_scaled_loss),
-                    )
+                    f'PassID {pass_id:1}, BatchID {batch_id + 1:04}, train loss {float(loss):2.4}, scaled train loss {float(np_scaled_loss):2.4}'
                 )
                 if (batch_id % 10) == 0:
                     acc_list = []
@@ -207,12 +202,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
                     avg_loss_value = numpy.array(avg_loss_list).mean()
 
                     print(
-                        'PassID {:1}, BatchID {:04}, test loss {:2.2}, acc {:2.2}'.format(
-                            pass_id,
-                            batch_id + 1,
-                            float(avg_loss_value),
-                            float(acc_value),
-                        )
+                        f'PassID {pass_id:1}, BatchID {batch_id + 1:04}, test loss {float(avg_loss_value):2.2}, acc {float(acc_value):2.2}'
                     )
 
                     if acc_value > 0.08:  # Low threshold for speeding up CI
