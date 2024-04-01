@@ -565,11 +565,7 @@ class DeleteOptimizesPass(PassBase):
             set(remote_optimize_op_role_vars)
         )  # param + grad
         print(
-            "remote_optimize_vars: {}, remote_optimize_op_role_vars: {}, local_optimize_vars: {}".format(
-                remote_optimize_vars,
-                remote_optimize_op_role_vars,
-                local_optimize_vars,
-            )
+            f"remote_optimize_vars: {remote_optimize_vars}, remote_optimize_op_role_vars: {remote_optimize_op_role_vars}, local_optimize_vars: {local_optimize_vars}"
         )
         for var in remote_optimize_vars:
             if var in local_optimize_vars:

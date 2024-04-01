@@ -184,9 +184,7 @@ class Distribution:
                 (float, list, tuple, np.ndarray, Variable, paddle.pir.Value),
             ):
                 raise TypeError(
-                    "Type of input args must be float, list, tuple, numpy.ndarray or Tensor, but received type {}".format(
-                        type(arg)
-                    )
+                    f"Type of input args must be float, list, tuple, numpy.ndarray or Tensor, but received type {type(arg)}"
                 )
             if isinstance(arg, paddle.pir.Value):
                 # pir.Value does not need to be converted to numpy.ndarray, so we skip here

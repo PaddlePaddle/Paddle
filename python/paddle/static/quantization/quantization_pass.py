@@ -2945,9 +2945,7 @@ class AddQuantDequantPassV2:
                             paddle.float16,
                         ]:
                             _logger.warning(
-                                "Since the {} contains an input of type INT, the quantization of this layer is skipped.".format(
-                                    op_node.name()
-                                )
+                                f"Since the {op_node.name()} contains an input of type INT, the quantization of this layer is skipped."
                             )
                             break
 
@@ -3430,9 +3428,7 @@ class AddQuantDequantForInferencePass:
                 )
             else:
                 _logger.warning(
-                    "Cannot find the target node {} in scope, so skip adding quant node.".format(
-                        var_name
-                    )
+                    f"Cannot find the target node {var_name} in scope, so skip adding quant node."
                 )
                 return None
         try:
