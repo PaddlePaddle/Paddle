@@ -205,8 +205,9 @@ bool ConcatOpInferSymbolicShape(
 
   if (shape_data_list[0].data().has_value()) {
     if (rank == 1) {
-      ExprVec data = details::GetExprVecFromData(
-          shape_analysis->GetShapeOrDataForValue(operand_source));
+      const auto &s_or_d =
+          shape_analysis->GetShapeOrDataForValue(operand_source);
+      ExprVec data = details::GetExprVecFromData(s_or_d);
 
       const std::vector<symbol::DimExpr> shape{std::int64_t(data.size())};
       symbol::ShapeOrDataDimExprs shape_data{

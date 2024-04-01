@@ -87,8 +87,10 @@ inline ExprVec GetExprVecFromData(const ShapeOrData &shapeordata) {
     TensorListExprs list =
         shapeordata.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
     for (size_t i = 0; i < list.size(); i++) {
-      for (auto expr : list[i].data().value()) {
-        result.emplace_back(expr);
+      if (list[i].data().has_value()) {
+        for (auto expr : list[i].data().value()) {
+          result.emplace_back(expr);
+        }
       }
     }
     return result;
