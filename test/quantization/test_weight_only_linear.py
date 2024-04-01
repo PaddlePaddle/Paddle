@@ -602,7 +602,9 @@ class WeightOnlyLinearTestCase29(WeightOnlyLinearTestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11020
+    or paddle.device.cuda.get_device_capability()[0] < 8,
     "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearTestCaseStatic(WeightOnlyLinearTestCase):
