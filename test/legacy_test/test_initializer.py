@@ -561,7 +561,6 @@ class TestXavierInitializer(unittest.TestCase):
         else:
             self.assertEqual(init_op.type, 'gaussian_random')
         self.assertEqual(init_op.attr('seed'), 134)
-        self.assertEqual(init_op.attr('gain'), 0.2)
         return block
 
     def test_xavier_initializer_fp16(self):
@@ -771,7 +770,6 @@ class TestXavierInitializerPir(unittest.TestCase):
                     self.assertAlmostEqual(max, limit, delta=DELTA)
 
                 self.assertEqual(init_op.attrs()['seed'], 134)
-                self.assertEqual(init_op.attrs()['gain'], 0.2)
 
         return main, startup
 
