@@ -149,11 +149,7 @@ def train():
         total_sample += 1
 
         print(
-            "Iter {:d}, loss {:.6f}, time {:.5f}".format(
-                iter_id,
-                smoothed_loss.get_mean_value(),
-                start_time - prev_start_time,
-            )
+            f"Iter {iter_id:d}, loss {smoothed_loss.get_mean_value():.6f}, time {start_time - prev_start_time:.5f}"
         )
         ret.append(smoothed_loss.get_mean_value())
 

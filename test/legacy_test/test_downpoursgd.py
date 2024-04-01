@@ -48,9 +48,7 @@ class TestListenAndServOp(unittest.TestCase):
             if not os.path.exists(
                 '{}/{}'.format(cache_path, 'fleet_desc.prototxt')
             ):
-                cmd = "wget --no-check-certificate https://pslib.bj.bcebos.com/fleet_desc.prototxt -P {}/".format(
-                    cache_path
-                )
+                cmd = f"wget --no-check-certificate https://pslib.bj.bcebos.com/fleet_desc.prototxt -P {cache_path}/"
                 os.system(cmd)
             x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64')
             x_emb = paddle.static.nn.embedding(
@@ -112,9 +110,7 @@ class TestListenAndServOp(unittest.TestCase):
             if not os.path.exists(
                 '{}/{}'.format(cache_path, 'fleet_desc.prototxt')
             ):
-                cmd = "wget --no-check-certificate https://pslib.bj.bcebos.com/fleet_desc.prototxt -P {}/".format(
-                    cache_path
-                )
+                cmd = f"wget --no-check-certificate https://pslib.bj.bcebos.com/fleet_desc.prototxt -P {cache_path}/"
                 os.system(cmd)
             x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64')
             x_emb = paddle.static.nn.embedding(
@@ -174,9 +170,7 @@ class TestListenAndServOp(unittest.TestCase):
             if not os.path.exists(
                 '{}/{}'.format(cache_path, 'fleet_desc.prototxt')
             ):
-                cmd = "wget --no-check-certificate https://pslib.bj.bcebos.com/fleet_desc.prototxt -P {}/".format(
-                    cache_path
-                )
+                cmd = f"wget --no-check-certificate https://pslib.bj.bcebos.com/fleet_desc.prototxt -P {cache_path}/"
                 os.system(cmd)
             x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64')
             x_emb = paddle.static.nn.embedding(

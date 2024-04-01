@@ -567,9 +567,7 @@ class TestSeResnet(Dy2StTestBase):
                 flat_predictor_pre[i],
                 flat_st_pre[i],
                 delta=1e-6,
-                msg="predictor_pre:\n {}\n, st_pre: \n{}.".format(
-                    flat_predictor_pre[i], flat_st_pre[i]
-                ),
+                msg=f"predictor_pre:\n {flat_predictor_pre[i]}\n, st_pre: \n{flat_st_pre[i]}.",
             )
 
     @test_default_and_pir

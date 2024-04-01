@@ -776,9 +776,7 @@ class TestStridedSliceTensorArray(unittest.TestCase):
         np.testing.assert_array_equal(
             s1,
             s2,
-            err_msg='dygraph graph result:\n{} \nstatic dygraph result:\n{}'.format(
-                l1.numpy(), l2.numpy()
-            ),
+            err_msg=f'dygraph graph result:\n{l1.numpy()} \nstatic dygraph result:\n{l2.numpy()}',
         )
 
     def test_strided_slice_tensor_array_cuda_pinned_place(self):

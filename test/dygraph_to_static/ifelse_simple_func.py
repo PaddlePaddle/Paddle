@@ -281,9 +281,7 @@ class NetWithControlFlowIf(paddle.nn.Layer):
         hidden_dim = input.shape[-1]
         if hidden_dim != self.hidden_dim:
             raise ValueError(
-                "hidden_dim {} of input is not equal to FC.weight[0]: {}".format(
-                    hidden_dim, self.hidden_dim
-                )
+                f"hidden_dim {hidden_dim} of input is not equal to FC.weight[0]: {self.hidden_dim}"
             )
 
         self.constant_vars['bias'] = paddle.tensor.fill_constant(

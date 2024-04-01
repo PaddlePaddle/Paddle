@@ -131,9 +131,7 @@ class SegmentLayers:
                 return seg_method
             else:
                 raise ValueError(
-                    "We set seg_method as {}, this length is {}, but the number of stages is {}".format(
-                        seg_method, len(seg_method), self.num_parts
-                    )
+                    f"We set seg_method as {seg_method}, this length is {len(seg_method)}, but the number of stages is {self.num_parts}"
                 )
 
         elif self.method == "uniform":
@@ -155,9 +153,7 @@ class SegmentLayers:
 
             assert (
                 sum(weights) % actual_num_parts == 0
-            ), "number of layers ({}) should be divided by part number({})".format(
-                sum(weights), actual_num_parts
-            )
+            ), f"number of layers ({sum(weights)}) should be divided by part number({actual_num_parts})"
             part_size = sum(weights) // actual_num_parts
             result = [0 for _ in range(actual_num_parts + 1)]
 
@@ -398,9 +394,7 @@ class PipelineLayer(nn.Layer):
             offload = recompute_ctx.get('offload', False)
             partition = recompute_ctx.get('partition', False)
             logger.info(
-                "Start Recompute for PipeLineParallel. recompute_offload: {}, recompute_partition: {}".format(
-                    offload, partition
-                )
+                f"Start Recompute for PipeLineParallel. recompute_offload: {offload}, recompute_partition: {partition}"
             )
 
         world_size = dist.get_world_size()
@@ -633,9 +627,7 @@ class PipelineLayer(nn.Layer):
             start = self.segment_parts[stage]
             end = self.segment_parts[stage + 1]
             logger.info(
-                "stage={}, global_rank={} ,layer_number={}".format(
-                    stage, self.global_rank, end - start
-                )
+                f"stage={stage}, global_rank={self.global_rank} ,layer_number={end - start}"
             )
 
             for index, layer in enumerate(self._layers_desc[start:end]):

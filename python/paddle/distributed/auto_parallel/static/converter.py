@@ -54,9 +54,7 @@ class Converter:
             )
         if not isinstance(tensors_dict, dict):
             raise TypeError(
-                "The type of 'tensors_dict' should be 'dict', but got '{}'.".format(
-                    str(type(tensors_dict))
-                )
+                f"The type of 'tensors_dict' should be 'dict', but got '{str(type(tensors_dict))}'."
             )
         return tensors_dict
 
@@ -178,22 +176,16 @@ class Converter:
         tensor_not_in_cur = set(tensor_not_in_cur) - set(tensor_match_with_cur)
         if tensor_not_in_pre:
             warnings.warn(
-                "tensors [{}] are not found in last training strategy.".format(
-                    str(tensor_not_in_pre)
-                )
+                f"tensors [{str(tensor_not_in_pre)}] are not found in last training strategy."
             )
         if tensor_not_in_cur:
             warnings.warn(
-                "tensors [{}] are not found in current training strategy.".format(
-                    str(tensor_not_in_cur)
-                )
+                f"tensors [{str(tensor_not_in_cur)}] are not found in current training strategy."
             )
         if tensor_not_in_ckpt:
             warnings.warn(
-                "tensors [{}] are found in pre_strategy, but are not found"
-                "in checkpoint files, please check your checkpoint files.".format(
-                    str(tensor_not_in_ckpt)
-                )
+                f"tensors [{str(tensor_not_in_ckpt)}] are found in pre_strategy, but are not found"
+                "in checkpoint files, please check your checkpoint files."
             )
 
         return tensors_dict
@@ -223,9 +215,7 @@ class Converter:
                             )
                         except ValueError as err:
                             raise ValueError(
-                                "Fail to convert tensor '{}' by '{}'. ".format(
-                                    str(cur_name), str(pre_name)
-                                )
+                                f"Fail to convert tensor '{str(cur_name)}' by '{str(pre_name)}'. "
                                 + str(err)
                             )
                         self._logger.info(
