@@ -109,6 +109,10 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
                                   labels.numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
       labels_data = labels_tmp;
+    } else {
+      errors::Unimplemented(
+          "Unsupported dtype for labels in hard cross entropy, only int32 and "
+          "int64 are supported.")
     }
     if (use_softmax) {
       // 3. softmax+hard_cross_entropy
