@@ -128,6 +128,31 @@ static bool valid_type(const DataType& dtype) {
 }
 
 template <typename T>
+Tensor p_norm_decomp(const Tensor& x,
+                     const float& porder = 2.0,
+                     const int& axis = -1,
+                     const float epsilon = 1.0e-12f,
+                     const bool& keepdim = false,
+                     const bool& asvector = false) {
+  auto org_dtype = x.dtype();
+  auto x_tmp = x;
+
+  bool need_cast = is_half_dtype(org_dtype);
+  if (need_cast) {
+    x_tmp = cast<T>(x, DataType::FLOAT32);
+  }
+
+  // Only adapt for porder=2.0
+  auto res = sqrt<T>(sum<T>(x_tmp * x_tmp, {axis}, x_tmp.dtype(), keepdim));
+
+  if (need_cast) {
+    return cast<T>(res, org_dtype);
+  } else {
+    return res;
+  }
+}
+
+template <typename T>
 Tensor pow_decomp(const Tensor& x, const paddle::Scalar& y) {
   auto org_dtype = x.dtype();
   auto x_cast = x;
