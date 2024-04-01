@@ -116,7 +116,6 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
-
 void GroupNormalizeSiluXPUInferMeta(const MetaTensor& x,
                                     const MetaTensor& scale,
                                     const MetaTensor& bias,
