@@ -344,7 +344,9 @@ class DygraphShardingOptimizer:
             sharding_group_ranks = self._hcg.get_sharding_parallel_group().ranks
 
             broadcast_tasks = []
-            self._broadcast_overlap = True
+            # self._broadcast_overlap = True
+
+            # print("self._broadcast_overlap:", self._broadcast_overlap)
             if self._broadcast_overlap:
                 param2task = {}
                 for rank, params in valid_rank_to_params.items():
