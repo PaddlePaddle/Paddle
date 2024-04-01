@@ -60,6 +60,7 @@ class XPUTestSoftmaxWithCrossEntropyOp(XPUOpTestWrapper):
             [3, 5, 7, 1],
             [1023, 38512],
             [1, 511],
+            [32, 512],
         ]
         for soft_label in [True, False]:
             for numeric_stable_mode in [True, False]:
