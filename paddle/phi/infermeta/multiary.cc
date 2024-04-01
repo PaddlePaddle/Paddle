@@ -4245,6 +4245,7 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
 
   auto x_dims = x.dims();
   auto w_dims = weight.dims();
+  auto bias_dims = bias.dims();
   auto n = group_size == -1 ? weight_scale_dims[0] : weight_scale_dims[1];
   PADDLE_ENFORCE(
       weight_dtype == "int8" || weight_dtype == "int4",
@@ -4273,6 +4274,14 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
           "But received Input(X) dim[-1](%s) != Input(Weight) dim[1](%s)",
           x_dims[x_dims.size() - 1],
           w_dims[1]));
+  PADDLE_ENFORCE_EQ(
+      bias_dims.size() == 1 && bias_dims[0] == w_dims[0],
+      true,
+      errors::InvalidArgument(
+          "Input(Bias) dim[0] and Input(Weight) dim[1] should be equal."
+          "But received Input(Bias) dim[0](%s) != Input(Weight) dim[0](%s)",
+          bias_dims[0],
+          w_dims[0]));
 
   // per-channel dequantization
   if (group_size == -1) {
