@@ -117,14 +117,14 @@ class TestMatmulTransposeReshapeAddFusePattern(PassTest):
                 y = paddle.static.data(
                     name='y', shape=[5, 5, 5, 5], dtype='float32'
                 )
-                bias = paddle.static.create_parameter(
-                    name="bias", shape=[1], dtype='float32'
+                residual = paddle.static.create_parameter(
+                    name="residual", shape=[1], dtype='float32'
                 )
 
                 matmul_out = paddle.matmul(x, y)
                 transpose_out = paddle.transpose(matmul_out, perm=[0, 2, 1, 3])
                 reshape_out = paddle.reshape(transpose_out, [0, 0, 25])
-                out = paddle.add(reshape_out, bias)
+                out = paddle.add(reshape_out, residual)
                 out = paddle.assign(out)
                 self.pass_list = [
                     'matmul_transpose_reshape_fuse_pass',
@@ -133,7 +133,7 @@ class TestMatmulTransposeReshapeAddFusePattern(PassTest):
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
-                    "bias": np.random.random(1).astype("float32"),
+                    "residual": np.random.random(1).astype("float32"),
                 }
                 self.fetch_list = [out]
                 self.valid_op_map = {
