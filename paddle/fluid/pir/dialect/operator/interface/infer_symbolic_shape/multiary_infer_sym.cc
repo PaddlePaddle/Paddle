@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/multiary_infer_sym.h"
 #include "paddle/common/ddim.h"
+#include "paddle/common/layout.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_slice_utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
@@ -22,6 +23,166 @@ namespace paddle::dialect {
 
 bool BicubicInterpOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  const symbol::ShapeOrDataDimExprs &x =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+
+  const auto &attributes = op->attributes();
+
+  bool align_corners = GetBoolAttr(op, "align_corners");
+  const std::string data_format =
+      attributes.at("data_format").dyn_cast<pir::StrAttribute>().AsString();
+  const std::string interp_method =
+      attributes.at("interp_method").dyn_cast<pir::StrAttribute>().AsString();
+  int align_mode =
+      attributes.at("align_mode").dyn_cast<pir::Int32Attribute>().data();
+  int out_d = attributes.at("out_d").dyn_cast<pir::Int32Attribute>().data();
+  int out_h = attributes.at("out_h").dyn_cast<pir::Int32Attribute>().data();
+  int out_w = attributes.at("out_w").dyn_cast<pir::Int32Attribute>().data();
+  const std::vector<float> &scale =
+      paddle::dialect::details::GetVectorAttr<float>(op, "scale");
+
+  std::vector<int> size_tensor;
+  if (out_d != -1) size_tensor.push_back(out_d);
+  if (out_h != -1) size_tensor.push_back(out_h);
+  if (out_w != -1) size_tensor.push_back(out_w);
+
+  const DataLayout data_layout = common::StringToDataLayout(data_format);
+
+  if (x.shape().size() == 3) {
+    // shape check for 1D interpolate for input tensor shape NCHW
+    if (!size_tensor.empty()) {
+      // top priority size
+      std::vector<symbol::DimExpr> dim_out;
+      if (data_layout == DataLayout::kNCHW) {
+        dim_out = {x.shape()[0], x.shape()[1], symbol::DimExpr{out_w}};
+      } else {
+        dim_out = {x.shape()[0], symbol::DimExpr{out_w}, x.shape()[2]};
+      }
+
+      symbol::ShapeOrDataDimExprs shape_data{
+          symbol::TensorShapeOrDataDimExprs(dim_out)};
+
+      pir::Value res = op->result(0);
+      shape_analysis->SetShapeOrDataForValue(res, shape_data);
+      return true;
+    }
+
+    symbol::DimExpr out_w_tmp{0};
+    const auto &next_sym = shape_analysis->GetNextSymName();
+    out_w_tmp = symbol::DimExpr(next_sym);
+
+    std::vector<symbol::DimExpr> dim_out;
+    if (data_layout == DataLayout::kNCHW) {
+      dim_out = {x.shape()[0], x.shape()[1], out_w_tmp};
+    } else {
+      dim_out = {x.shape()[0], out_w_tmp, x.shape()[2]};
+    }
+
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(dim_out)};
+
+    pir::Value res = op->result(0);
+    shape_analysis->SetShapeOrDataForValue(res, shape_data);
+    return true;
+  } else if (x.shape().size() == 4) {
+    // shape check for 2D interpolate for input tensor shape NCHW
+    if (!size_tensor.empty()) {
+      // top priority size
+      std::vector<symbol::DimExpr> dim_out;
+      if (data_layout == DataLayout::kNCHW) {
+        dim_out = {x.shape()[0],
+                   x.shape()[1],
+                   symbol::DimExpr{out_h},
+                   symbol::DimExpr{out_w}};
+      } else {
+        dim_out = {x.shape()[0],
+                   symbol::DimExpr{out_h},
+                   symbol::DimExpr{out_w},
+                   x.shape()[3]};
+      }
+
+      symbol::ShapeOrDataDimExprs shape_data{
+          symbol::TensorShapeOrDataDimExprs(dim_out)};
+      pir::Value res = op->result(0);
+      shape_analysis->SetShapeOrDataForValue(res, shape_data);
+      return true;
+    }
+
+    symbol::DimExpr out_h_tmp{0};
+    symbol::DimExpr out_w_tmp{0};
+    const auto &next_sym = shape_analysis->GetNextSymName();
+    out_h_tmp = symbol::DimExpr(next_sym);
+    out_w_tmp = symbol::DimExpr(next_sym);
+
+    std::vector<symbol::DimExpr> dim_out;
+    if (data_layout == DataLayout::kNCHW) {
+      dim_out = {x.shape()[0], x.shape()[1], out_h_tmp, out_w_tmp};
+    } else {
+      dim_out = {x.shape()[0], out_h_tmp, out_w_tmp, x.shape()[3]};
+    }
+
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(dim_out)};
+
+    pir::Value res = op->result(0);
+    shape_analysis->SetShapeOrDataForValue(res, shape_data);
+    return true;
+  } else if (x.shape().size() == 5) {
+    // shape check for 3D interpolate for input tensor shape NCDHW
+    if (!size_tensor.empty()) {
+      // top priority size
+      std::vector<symbol::DimExpr> dim_out;
+      if (data_layout == DataLayout::kNCHW) {
+        dim_out = {x.shape()[0],
+                   x.shape()[1],
+                   symbol::DimExpr{out_d},
+                   symbol::DimExpr{out_h},
+                   symbol::DimExpr{out_w}};
+      } else {
+        dim_out = {x.shape()[0],
+                   symbol::DimExpr{out_d},
+                   symbol::DimExpr{out_h},
+                   symbol::DimExpr{out_w},
+                   x.shape()[4]};
+      }
+
+      symbol::ShapeOrDataDimExprs shape_data{
+          symbol::TensorShapeOrDataDimExprs(dim_out)};
+
+      pir::Value res = op->result(0);
+      shape_analysis->SetShapeOrDataForValue(res, shape_data);
+      return true;
+    }
+
+    symbol::DimExpr out_d_tmp{0};
+    symbol::DimExpr out_h_tmp{0};
+    symbol::DimExpr out_w_tmp{0};
+    const auto &next_sym = shape_analysis->GetNextSymName();
+    out_d_tmp = symbol::DimExpr(next_sym);
+    out_h_tmp = symbol::DimExpr(next_sym);
+    out_w_tmp = symbol::DimExpr(next_sym);
+
+    std::vector<symbol::DimExpr> dim_out;
+
+    if (data_layout == DataLayout::kNCHW) {
+      dim_out = {x.shape()[0], x.shape()[1], out_d_tmp, out_h_tmp, out_w_tmp};
+    } else {
+      dim_out = {x.shape()[0], out_d_tmp, out_h_tmp, out_w_tmp, x.shape()[4]};
+    }
+
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(dim_out)};
+
+    pir::Value res = op->result(0);
+    shape_analysis->SetShapeOrDataForValue(res, shape_data);
+    return true;
+
+  } else {
+    PADDLE_THROW(
+        ("Input(X) dimension must be 3, 4 or 5, but got dimension = %d .",
+         x.shape().size()));
+  }
+
   return true;
 }
 
@@ -53,6 +214,7 @@ bool ConcatOpInferSymbolicShape(
     if (rank == 1) {
       ExprVec data = details::GetExprVecFromData(
           shape_analysis->GetShapeOrDataForValue(operand_source));
+
       const std::vector<symbol::DimExpr> shape{std::int64_t(data.size())};
       symbol::ShapeOrDataDimExprs shape_data{
           symbol::TensorShapeOrDataDimExprs(shape, data)};
