@@ -147,7 +147,7 @@ void Conv3dImplicitGemmGPUKernel(const GPUContext& dev_ctx,
   if (is2D) {
     perm = {1, 0, 2, 3};
   } else {
-    perm = {0, 2, 1, 3, 4};
+    perm = {2, 1, 0, 3, 4};
   }
   phi::funcs::TransposeGPUKernelDriver<T>(
       dev_ctx, kernel, perm, &kernel_transpose);
