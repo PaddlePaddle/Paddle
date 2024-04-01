@@ -32,17 +32,11 @@ class PrintStatistics : public PassInstrumentation {
   ~PrintStatistics() override = default;
 
   void RunBeforePass(Pass *pass, Operation *op) override {
-    if (pass->name() == "replace_fetch_with_shadow_output_pass") {
-      return;
-    }
     paddle::string::PrettyLogH1("--- Running PIR pass [%s]",
                                 pass->pass_info().name);
   }
 
   void RunAfterPass(Pass *pass, Operation *op) override {
-    if (pass->name() == "replace_fetch_with_shadow_output_pass") {
-      return;
-    }
     if (pass->Has("__match_count__") && pass->Has("__all_count__")) {
       auto match_count = pass->Get<int64_t>("__match_count__");
       auto all_count = pass->Get<int64_t>("__all_count__");
