@@ -173,9 +173,7 @@ bool BicubicInterpOpInferSymbolicShape(
     return true;
 
   } else {
-    PADDLE_THROW(phi::errors::Fatal(
-        ("Input(X) dimension must be 3, 4 or 5, but got dimension = %d .",
-         x.shape().size())));
+    PADDLE_THROW(phi::errors::Fatal("Input(X) dimension must be 3, 4 or 5!"));
   }
 
   return true;
