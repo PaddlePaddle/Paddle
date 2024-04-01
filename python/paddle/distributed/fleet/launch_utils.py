@@ -65,12 +65,7 @@ class Cluster:
         self.job_stage_flag = None
 
     def __str__(self):
-        return "job_server:{} pods:{} job_stage_flag:{} hdfs:{}".format(
-            self.job_server,
-            [str(pod) for pod in self.pods],
-            self.job_stage_flag,
-            self.hdfs,
-        )
+        return f"job_server:{self.job_server} pods:{[str(pod) for pod in self.pods]} job_stage_flag:{self.job_stage_flag} hdfs:{self.hdfs}"
 
     def __eq__(self, cluster):
         if len(self.pods) != len(cluster.pods):
@@ -152,9 +147,7 @@ class Trainer:
         self.stage = None
 
     def __str__(self):
-        return "accelerator:{} endpoint:{} rank:{}".format(
-            self.accelerators, self.endpoint, self.rank
-        )
+        return f"accelerator:{self.accelerators} endpoint:{self.endpoint} rank:{self.rank}"
 
     def __eq__(self, t):
         if len(self.accelerators) != len(t.accelerators):
@@ -191,19 +184,8 @@ class Pod:
         self.device_mode = None
 
     def __str__(self):
-        return "rank:{} id:{} addr:{} port:{} visible_accelerator:{} trainers:{} servers:{} \
-            workers:{} heter_workers:{} coordinators:{}".format(
-            self.rank,
-            self.id,
-            self.addr,
-            self.port,
-            self.accelerators,
-            [str(t) for t in self.trainers],
-            [str(s) for s in self.servers],
-            [str(w) for w in self.workers],
-            [str(h) for h in self.heter_workers],
-            [str(c) for c in self.coordinators],
-        )
+        return f"rank:{self.rank} id:{self.id} addr:{self.addr} port:{self.port} visible_accelerator:{self.accelerators} trainers:{[str(t) for t in self.trainers]} servers:{[str(s) for s in self.servers]} \
+            workers:{[str(w) for w in self.workers]} heter_workers:{[str(h) for h in self.heter_workers]} coordinators:{[str(c) for c in self.coordinators]}"
 
     def __eq__(self, pod):
         if (
@@ -664,17 +646,13 @@ def watch_local_trainers(procs, nranks):
         return
     except SystemExit:
         logger.error(
-            "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log.".format(
-                nranks, error_rank
-            )
+            f"ABORT!!! Out of all {nranks} trainers, the trainer process with rank={error_rank} was aborted. Please check its log."
         )
         terminate_local_procs(procs)
         raise
     except:
         logger.error(
-            "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log.".format(
-                nranks, error_rank
-            )
+            f"ABORT!!! Out of all {nranks} trainers, the trainer process with rank={error_rank} was aborted. Please check its log."
         )
         terminate_local_procs(procs)
         return
@@ -785,9 +763,7 @@ def get_device_proc_info(args):
         if args.nproc_per_node is not None:
             assert (
                 len(gpus) % int(args.nproc_per_node)
-            ) == 0, "gpus' number:{} mod args.nproc_per_node:{} must == 0".format(
-                len(gpus), args.nproc_per_node
-            )
+            ) == 0, f"gpus' number:{len(gpus)} mod args.nproc_per_node:{args.nproc_per_node} must == 0"
 
             n = int(len(gpus) / int(args.nproc_per_node))
             devices_per_proc = [gpus[i : i + n] for i in range(0, len(gpus), n)]
@@ -798,9 +774,7 @@ def get_device_proc_info(args):
         if args.nproc_per_node is not None:
             assert (
                 len(xpus) % int(args.nproc_per_node)
-            ) == 0, "xpus' number:{} mod args.nproc_per_node:{} must == 0".format(
-                len(xpus), args.nproc_per_node
-            )
+            ) == 0, f"xpus' number:{len(xpus)} mod args.nproc_per_node:{args.nproc_per_node} must == 0"
 
             n = int(len(xpus) / int(args.nproc_per_node))
             devices_per_proc = [xpus[i : i + n] for i in range(0, len(xpus), n)]
@@ -1002,9 +976,7 @@ def get_mapped_cluster_with_rank_mapping(
             cuda_visible_devices_list = cuda_visible_devices.split(',')
             relative_id = cuda_visible_devices_list.index(str(gpu_id))
             logger.info(
-                "Change gpu id from {} to {} based on CUDA_VISIBLE_DEVICES {}".format(
-                    gpu_id, relative_id, cuda_visible_devices_list
-                )
+                f"Change gpu id from {gpu_id} to {relative_id} based on CUDA_VISIBLE_DEVICES {cuda_visible_devices_list}"
             )
             return relative_id
 
@@ -1477,9 +1449,7 @@ class ParameterServerLauncher:
         if self.current_node_ip in self.node_ips:
             self.node_rank = self.node_ips.index(self.current_node_ip)
             logger.debug(
-                "parsed from args: node_ips:{} current_node_ip:{} node_rank:{}".format(
-                    self.node_ips, self.current_node_ip, self.node_rank
-                )
+                f"parsed from args: node_ips:{self.node_ips} current_node_ip:{self.current_node_ip} node_rank:{self.node_rank}"
             )
 
     def start_ps(self):
@@ -1523,9 +1493,8 @@ class ParameterServerLauncher:
             for k in range(len(self.heter_worker_endpoints_ips)):
                 if ip == self.heter_worker_endpoints_ips[k]:
                     heter_worker = Trainer()
-                    heter_worker.endpoint = "{}:{}".format(
-                        ip,
-                        self.heter_worker_endpoints_port[k],
+                    heter_worker.endpoint = (
+                        f"{ip}:{self.heter_worker_endpoints_port[k]}"
                     )
                     heter_worker.rank = heter_worker_rank
                     heter_worker.stage = self.stage_list[k]
@@ -1565,12 +1534,7 @@ class ParameterServerLauncher:
             self.start_pod_heter_worker(self.args, pod)
 
         logger.info(
-            "Please check servers, workers, coordinator and heter_worker logs in {}/workerlog.*, {}/serverlog.* , {}/coordinatorlog.*, and {}/heterlog.*".format(
-                self.args.log_dir,
-                self.args.log_dir,
-                self.args.log_dir,
-                self.args.log_dir,
-            )
+            f"Please check servers, workers, coordinator and heter_worker logs in {self.args.log_dir}/workerlog.*, {self.args.log_dir}/serverlog.* , {self.args.log_dir}/coordinatorlog.*, and {self.args.log_dir}/heterlog.*"
         )
 
         # 4. wait for finish training

@@ -51,9 +51,7 @@ def check_output(out, pd_out, name):
             np.testing.assert_array_equal(
                 out[idx],
                 pd_out[idx],
-                err_msg='custom op {}: {},\n paddle api {}: {}'.format(
-                    name, out[idx], name, pd_out[idx]
-                ),
+                err_msg=f'custom op {name}: {out[idx]},\n paddle api {name}: {pd_out[idx]}',
             )
     else:
         np.testing.assert_array_equal(

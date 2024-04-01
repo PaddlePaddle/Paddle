@@ -1723,10 +1723,8 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
             )
         if fweights.shape[0] != observation_num:
             raise ValueError(
-                "The number of Input(fweights) should equal to x's dim[1]: {}, but received "
-                "size of Input(fweights) is {}.".format(
-                    observation_num, fweights.shape[0]
-                )
+                f"The number of Input(fweights) should equal to x's dim[1]: {observation_num}, but received "
+                f"size of Input(fweights) is {fweights.shape[0]}."
             )
         if fweights.min() < 0:
             raise ValueError(
@@ -1748,10 +1746,8 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
         )
         if aweights.shape[0] != observation_num:
             raise ValueError(
-                "The number of Input(aweights) should equal to x's dim[1]: {}, but received "
-                "size of Input(aweights) is {}.".format(
-                    observation_num, aweights.shape[0]
-                )
+                f"The number of Input(aweights) should equal to x's dim[1]: {observation_num}, but received "
+                f"size of Input(aweights) is {aweights.shape[0]}."
             )
         if aweights.min() < 0:
             raise ValueError(
@@ -2158,21 +2154,15 @@ def bmm(x, y, name=None):
         y_shape = y.shape
         if not len(x_shape) == len(y_shape) == 3:
             raise ValueError(
-                "x and y should be 3-dimensional. But received x's dimension: {}, y's dimension: {}".format(
-                    x_shape, y_shape
-                )
+                f"x and y should be 3-dimensional. But received x's dimension: {x_shape}, y's dimension: {y_shape}"
             )
         if x_shape[2] != -1 and y_shape[1] != -1 and x_shape[2] != y_shape[1]:
             raise ValueError(
-                "x's width must be equal with y's height. But received x's shape: {}, y's shape: {}".format(
-                    x_shape, y_shape
-                )
+                f"x's width must be equal with y's height. But received x's shape: {x_shape}, y's shape: {y_shape}"
             )
         if x_shape[0] != -1 and y_shape[0] != -1 and x_shape[0] != y_shape[0]:
             raise ValueError(
-                "x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {}, y's shape: {}".format(
-                    x_shape, y_shape
-                )
+                f"x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {x_shape}, y's shape: {y_shape}"
             )
         helper = LayerHelper('bmm', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -2339,9 +2329,7 @@ def mv(x, vec, name=None):
                 )
             if len(vec_shape) != 1:
                 raise ValueError(
-                    "vec should be 1-dimensional. But received vec's dimension: {}".format(
-                        vec_shape
-                    )
+                    f"vec should be 1-dimensional. But received vec's dimension: {vec_shape}"
                 )
 
         __check_input(x, vec)
@@ -2393,11 +2381,9 @@ def det(x, name=None):
             "but received Input x's dimensional: %s.\n" % len(input_shape)
         )
 
-        assert (
-            input_shape[-1] == input_shape[-2]
-        ), "Expect squared input," "but received {} by {} matrix.\n".format(
-            input_shape[-2],
-            input_shape[-1],
+        assert input_shape[-1] == input_shape[-2], (
+            "Expect squared input,"
+            f"but received {input_shape[-2]} by {input_shape[-1]} matrix.\n"
         )
         helper = LayerHelper('determinant', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -2452,11 +2438,9 @@ def slogdet(x, name=None):
             "but received Input x's dimensional: %s.\n" % len(input_shape)
         )
 
-        assert (
-            input_shape[-1] == input_shape[-2]
-        ), "Expect squared input," "but received {} by {} matrix.\n".format(
-            input_shape[-2],
-            input_shape[-1],
+        assert input_shape[-1] == input_shape[-2], (
+            "Expect squared input,"
+            f"but received {input_shape[-2]} by {input_shape[-1]} matrix.\n"
         )
         helper = LayerHelper('slogdeterminant', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -3153,9 +3137,7 @@ def eigvals(x, name=None):
     x_shape = list(x.shape)
     if len(x_shape) < 2:
         raise ValueError(
-            "The dimension of Input(x) should be at least 2, but received x's dimension = {}, x's shape = {}".format(
-                len(x_shape), x_shape
-            )
+            f"The dimension of Input(x) should be at least 2, but received x's dimension = {len(x_shape)}, x's shape = {x_shape}"
         )
 
     if x_shape[-1] != x_shape[-2]:

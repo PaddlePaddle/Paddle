@@ -183,14 +183,7 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
 
     def extra_repr(self):
         name_str = f', name={self.name}' if self.name else ''
-        return 'embed_dim={}, seq_len={}, dropout_rate={}, epsilon={}, dtype={}{}'.format(
-            self.embed_dim,
-            self.seq_len,
-            self.dropout_rate,
-            self._epsilon,
-            self._dtype,
-            name_str,
-        )
+        return f'embed_dim={self.embed_dim}, seq_len={self.seq_len}, dropout_rate={self.dropout_rate}, epsilon={self._epsilon}, dtype={self._dtype}{name_str}'
 
 
 class FusedMultiHeadAttention(Layer):
@@ -465,19 +458,7 @@ class FusedMultiHeadAttention(Layer):
 
     def extra_repr(self):
         name_str = f', name={self.name}' if self.name else ''
-        return 'embed_dim={}, num_heads={}, dropout_rate={}, attn_dropout_rate={}, epsilon={}, kdim={}, vdim={}, normalize_before={}, need_weights={}, dtype={}{}'.format(
-            self.embed_dim,
-            self.num_heads,
-            self.dropout_rate,
-            self.attn_dropout_rate,
-            self._epsilon,
-            self.kdim,
-            self.vdim,
-            self.normalize_before,
-            self.need_weights,
-            self._dtype,
-            name_str,
-        )
+        return f'embed_dim={self.embed_dim}, num_heads={self.num_heads}, dropout_rate={self.dropout_rate}, attn_dropout_rate={self.attn_dropout_rate}, epsilon={self._epsilon}, kdim={self.kdim}, vdim={self.vdim}, normalize_before={self.normalize_before}, need_weights={self.need_weights}, dtype={self._dtype}{name_str}'
 
     def _amp_decorate(self, dtype):
         # tmp fix for amp.decorator(O2)
@@ -588,9 +569,7 @@ class FusedFeedForward(Layer):
         ), f"Expected d_model to be greater than 0, but received {d_model}"
         assert (
             dim_feedforward > 0
-        ), "Expected dim_feedforward to be greater than 0, but received {}".format(
-            dim_feedforward
-        )
+        ), f"Expected dim_feedforward to be greater than 0, but received {dim_feedforward}"
 
         self._dtype = self._helper.get_default_dtype()
         self._d_model = d_model
@@ -693,17 +672,7 @@ class FusedFeedForward(Layer):
 
     def extra_repr(self):
         name_str = f', name={self.name}' if self.name else ''
-        return 'd_model={}, dim_feedforward={}, dropout_rate={}, epsilon={}, activation={}, act_dropout_rate={}, normalize_before={}, dtype={}{}'.format(
-            self._d_model,
-            self._dim_feedforward,
-            self._dropout_rate,
-            self._epsilon,
-            self._act_method,
-            self._act_dropout_rate,
-            self._normalize_before,
-            self._dtype,
-            name_str,
-        )
+        return f'd_model={self._d_model}, dim_feedforward={self._dim_feedforward}, dropout_rate={self._dropout_rate}, epsilon={self._epsilon}, activation={self._act_method}, act_dropout_rate={self._act_dropout_rate}, normalize_before={self._normalize_before}, dtype={self._dtype}{name_str}'
 
     def _amp_decorate(self, dtype):
         # tmp fix for amp.decorator(O2)
@@ -1224,9 +1193,7 @@ class FusedMultiTransformer(Layer):
         )
         assert (
             dim_feedforward > 0
-        ), "Expected dim_feedforward to be greater than 0, but received {}".format(
-            dim_feedforward
-        )
+        ), f"Expected dim_feedforward to be greater than 0, but received {dim_feedforward}"
 
         self.normalize_before = normalize_before
         self._dtype = self._helper.get_default_dtype()

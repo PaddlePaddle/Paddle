@@ -191,9 +191,7 @@ def generate_layer_fn(op_type):
                     dtype = each.dtype
                 elif dtype != each.dtype:
                     raise ValueError(
-                        "operator {} must input same dtype. {} vs {}".format(
-                            op_type, dtype, each.dtype
-                        )
+                        f"operator {op_type} must input same dtype. {dtype} vs {each.dtype}"
                     )
 
         if dtype is None:
@@ -315,9 +313,7 @@ def generate_inplace_fn(inplace_op_type):
             return op(x)
         else:
             warnings.warn(
-                "In static mode, {}() is the same as {}() and does not perform inplace operation.".format(
-                    inplace_op_type, origin_op_type
-                )
+                f"In static mode, {inplace_op_type}() is the same as {origin_op_type}() and does not perform inplace operation."
             )
             from ..dygraph.base import in_to_static_mode
 
@@ -327,19 +323,15 @@ def generate_inplace_fn(inplace_op_type):
                 and x.is_view_var
             ):
                 raise ValueError(
-                    'Sorry about what\'s happened. In to_static mode, {}\'s output variable {} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You must find the location of the strided API be called, and call {} = {}.assign().'.format(
-                        inplace_op_type, x.name, x.name, x.nameb
-                    )
+                    f'Sorry about what\'s happened. In to_static mode, {inplace_op_type}\'s output variable {x.name} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You must find the location of the strided API be called, and call {x.name} = {x.nameb}.assign().'
                 )
             return generate_activation_fn(origin_op_type)(x, name)
 
     func.__name__ = inplace_op_type
-    func.__doc__ = """
-Inplace version of ``{}`` API, the output Tensor will be inplaced with input ``x``.
-Please refer to :ref:`api_paddle_base_layers_{}`.
-""".format(
-        origin_op_type, origin_op_type
-    )
+    func.__doc__ = f"""
+Inplace version of ``{origin_op_type}`` API, the output Tensor will be inplaced with input ``x``.
+Please refer to :ref:`api_paddle_base_layers_{origin_op_type}`.
+"""
 
     return func
 

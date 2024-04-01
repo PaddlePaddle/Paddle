@@ -93,9 +93,7 @@ class PRChecker:
             if code == 0:
                 return True
             print(
-                'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'.format(
-                    url, ix, ix * 10, proxy
-                )
+                f'PREC download {url} error, retry {ix} time(s) after {ix * 10} secs.[proxy_option={proxy}]'
             )
             time.sleep(ix * 10)
             ix += 1
@@ -119,9 +117,7 @@ class PRChecker:
             except Exception as e:
                 print(e)
                 print(
-                    'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'.format(
-                        url, ix, ix * 10, cur_proxy
-                    )
+                    f'PREC download {url} error, retry {ix} time(s) after {ix * 10} secs.[proxy_option={cur_proxy}]'
                 )
                 continue
             else:

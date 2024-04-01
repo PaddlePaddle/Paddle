@@ -216,9 +216,7 @@ class OpTest(unittest.TestCase):
             self.assertEqual(
                 len(expect_flatten),
                 len(actual_flatten),
-                "[{}] The {}-th output size different, which expect shape is {} but actual is {}.".format(
-                    self._get_device(), output_id, expect.shape, actual.shape
-                ),
+                f"[{self._get_device()}] The {output_id}-th output size different, which expect shape is {expect.shape} but actual is {actual.shape}.",
             )
             num_diffs = 0
             offset = -1
@@ -227,14 +225,7 @@ class OpTest(unittest.TestCase):
                     num_diffs = num_diffs + 1
                     offset = i if offset == -1 else offset
 
-            error_message = "[{}] The {}-th output: total {} different results, the first different result's offset={}, where expect value is {} but actual is {}.".format(
-                self._get_device(),
-                output_id,
-                num_diffs,
-                offset,
-                expect_flatten[offset],
-                actual_flatten[offset],
-            )
+            error_message = f"[{self._get_device()}] The {output_id}-th output: total {num_diffs} different results, the first different result's offset={offset}, where expect value is {expect_flatten[offset]} but actual is {actual_flatten[offset]}."
             return error_message
 
         self.assertEqual(len(expect_res), len(actual_res))
@@ -257,9 +248,7 @@ class OpTest(unittest.TestCase):
             self.assertEqual(
                 expect.dtype,
                 actual.dtype,
-                msg="[{}] The {}-th output dtype different, which expect shape is {} but actual is {}.".format(
-                    self._get_device(), i, expect.dtype, actual.dtype
-                ),
+                msg=f"[{self._get_device()}] The {i}-th output dtype different, which expect shape is {expect.dtype} but actual is {actual.dtype}.",
             )
             # NOTE: Paddle's 0D Tensor will be changed to 1D when calling tensor.numpy(),
             # only check non-0D Tensor's shape here. 0D-Tensor's shape will be verified by `test_zero_dim_tensor.py`
@@ -267,9 +256,7 @@ class OpTest(unittest.TestCase):
                 self.assertEqual(
                     expect.shape,
                     actual.shape,
-                    msg="[{}] The {}-th output shape different, which expect shape is {} but actual is {}.".format(
-                        self._get_device(), i, expect.shape, actual.shape
-                    ),
+                    msg=f"[{self._get_device()}] The {i}-th output shape different, which expect shape is {expect.shape} but actual is {actual.shape}.",
                 )
 
             should_all_equal = all_equal or (
@@ -294,9 +281,7 @@ class OpTest(unittest.TestCase):
                 )
                 # _compute_error_message checks which values have absolute or relative error
                 error_message = (
-                    "np.allclose(expect, actual, atol={}, rtol={}) checks succeed!".format(
-                        max_absolute_error, max_relative_error
-                    )
+                    f"np.allclose(expect, actual, atol={max_absolute_error}, rtol={max_relative_error}) checks succeed!"
                     if is_allclose
                     else _compute_error_message(i, expect, actual)
                 )
