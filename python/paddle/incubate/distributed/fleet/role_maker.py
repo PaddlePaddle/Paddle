@@ -263,9 +263,9 @@ class MPIRoleMaker(RoleMakerBase):
         raise NotImplementedError("Please implement this method in child class")
 
 
-class MPISymetricRoleMaker(MPIRoleMaker):
+class MPISymmetricRoleMaker(MPIRoleMaker):
     """
-    MPISymetricRoleMaker is designed for worker and server assignment
+    MPISymmetricRoleMaker is designed for worker and server assignment
     under MPI. Typically, a worker and a server node will be appointed
     on each physical node. This role maker can be only used under MPI.
     """
