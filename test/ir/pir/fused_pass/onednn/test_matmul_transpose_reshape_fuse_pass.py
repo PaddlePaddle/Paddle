@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import numpy as np
-
-sys.path.append("../")
 from pass_test import PassTest
 
 import paddle
@@ -29,7 +26,19 @@ paddle.enable_static()
     not paddle.base.core.is_compiled_with_mkldnn(),
     "Test case only for OneDNN pass.",
 )
-class TestReshapeTranspoeMatmulFusePatternCase1(PassTest):
+class TestMatmulTransposeReshapeFusePattern(PassTest):
+    r'''
+    x       y
+     \     /
+      matmul
+        |
+    transpose
+        |
+     reshape
+        |
+       out
+    '''
+
     def is_program_valid(self, program=None):
         return True
 
@@ -80,6 +89,20 @@ class TestReshapeTranspoeMatmulFusePatternCase1(PassTest):
     "Test case only for OneDNN pass.",
 )
 class TestMatmulTransposeReshapeAddFusePattern(PassTest):
+    r'''
+    x       y
+     \     /
+      matmul
+        |
+    transpose
+        |
+     reshape  residual
+         \   /
+          add
+           |
+          out
+    '''
+
     def is_program_valid(self, program=None):
         return True
 
