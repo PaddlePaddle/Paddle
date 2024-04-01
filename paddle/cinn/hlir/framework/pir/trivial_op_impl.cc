@@ -582,26 +582,20 @@ FusionGraph::FusionGraph(
             .fake_reduce_iter_idx;
   }
 
-  const auto& filtered_ops = FilterVector(ops, [](const ::pir::Operation* op) {
-    if (op->name() == "cinn_op.generate_shape") {
-      return false;
-    }
-    return true;
-  });
-  const auto& op_patterns = GetOpPatternKindVector(filtered_ops);
+  const auto& op_patterns = GetOpPatternKindVector(ops);
   CheckFusionInputValid(op_compute_bodies, op_patterns);
 
   std::unordered_map<::pir::Operation*, FusionNode*> op_to_node_map;
 
-  for (int i = 0; i < filtered_ops.size(); ++i) {
+  for (int i = 0; i < ops.size(); ++i) {
     FusionNode* node =
         new FusionNode(CreateFusibleOp(op_compute_bodies[i], op_patterns[i]));
-    op_to_node_map[filtered_ops[i]] = node;
+    op_to_node_map[ops[i]] = node;
     all_fusion_nodes_.emplace(node);
-    node->expr_related_op = filtered_ops[i];
+    node->expr_related_op = ops[i];
   }
 
-  for (::pir::Operation* op : filtered_ops) {
+  for (::pir::Operation* op : ops) {
     FusionNode* cur_node = op_to_node_map[op];
 
     // add upstream nodes
@@ -835,8 +829,16 @@ FusionNode* FusionGraph::FindReduceUpstream(FusionNode* node) {
 }  // namespace trivial_fusion_detail
 
 std::vector<ir::Expr> OperationFusion(
-    const std::vector<::pir::Operation*>& ops,
+    const std::vector<::pir::Operation*>& original_ops,
     const std::vector<ir::Expr>& op_compute_bodies) {
+  const auto& ops = trivial_fusion_detail::FilterVector(
+      original_ops, [](const ::pir::Operation* op) {
+        if (op->name() == "cinn_op.generate_shape") {
+          return false;
+        }
+        return true;
+      });
+
   auto output = std::vector<ir::Expr>();
   auto op_expr_map =
       trivial_fusion_detail::ComposeUtils::MakeMap(ops, op_compute_bodies);

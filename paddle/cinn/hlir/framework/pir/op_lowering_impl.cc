@@ -200,17 +200,9 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
     bool apply_pass) {
   VLOG(4) << "BucketLower Group : \n" << *group;
   // 1.Do compute, lower and schedule for each op.
-  const auto& group_ops = group->ops();
-  if (group_ops.size() == 1 && group_ops[0]->name() == "custom_call") {
+  const auto& ops = group->ops();
+  if (ops.size() == 1 && ops[0]->name() == "custom_call") {
     return {{{ir::Expr(1), LowerCustomCall(group)[0]}}, ir::LoweredFunc()};
-  }
-
-  // for dynamic shapes, filtering out generate_shape ops
-  std::vector<::pir::Operation*> ops;
-  for (auto op : group_ops) {
-    if (op->name() != "cinn_op.generate_shape") {
-      ops.push_back(op);
-    }
   }
 
   std::vector<ir::Tensor> group_func_arg_tensors;
