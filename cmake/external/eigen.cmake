@@ -25,7 +25,7 @@ if(WIN32)
 elseif(LINUX)
   if(WITH_ROCM)
     # For HIPCC Eigen::internal::device::numeric_limits is not EIGEN_DEVICE_FUNC
-    # which will cause compiler error of using __host__ funciont
+    # which will cause compiler error of using __host__ function
     # in __host__ __device__
     file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Meta.h native_src)
     file(TO_NATIVE_PATH ${SOURCE_DIR}/Eigen/src/Core/util/Meta.h native_dst)

@@ -135,9 +135,7 @@ class TestImperativeQat(unittest.TestCase):
                     lenet.clear_gradients()
                     if batch_id % 100 == 0:
                         _logger.info(
-                            "Train | At epoch {} step {}: loss = {:}, acc= {:}".format(
-                                epoch, batch_id, avg_loss.numpy(), acc.numpy()
-                            )
+                            f"Train | At epoch {epoch} step {batch_id}: loss = {avg_loss.numpy()}, acc= {acc.numpy()}"
                         )
                     if batch_id == 500:  # For shortening CI time
                         break
@@ -168,12 +166,7 @@ class TestImperativeQat(unittest.TestCase):
                     if batch_id % 100 == 0:
                         eval_acc_top1_list.append(float(acc_top1.numpy()))
                         _logger.info(
-                            "Test | At epoch {} step {}: acc1 = {:}, acc5 = {:}".format(
-                                epoch,
-                                batch_id,
-                                acc_top1.numpy(),
-                                acc_top5.numpy(),
-                            )
+                            f"Test | At epoch {epoch} step {batch_id}: acc1 = {acc_top1.numpy()}, acc5 = {acc_top5.numpy()}"
                         )
 
                 # check eval acc

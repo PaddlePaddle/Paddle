@@ -229,7 +229,7 @@ class FusedConvBiasElementwiseAddPattern : public paddle::drr::DrrPatternBase {
     conv({&pat.Tensor("input"),
           &pat.Tensor("filter"),
           &pat.Tensor("bias"),
-          &pat.Tensor("__@input_none_tensor@__")},
+          &pat.InputNoneTensor()},
          {&pat.Tensor("conv2d_out")});
 
     pat.Tensor("add_out") =
@@ -328,7 +328,7 @@ class FusedConvBiasElementwiseAddAsYPattern
     conv({&pat.Tensor("input"),
           &pat.Tensor("filter"),
           &pat.Tensor("bias"),
-          &pat.Tensor("__@input_none_tensor@__")},
+          &pat.InputNoneTensor()},
          {&pat.Tensor("conv2d_out")});
 
     pat.Tensor("add_out") =

@@ -31,6 +31,7 @@ namespace common {
     constexpr auto kRank = (rank);             \
     return (callback);                         \
   }
+
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #define PADDLE_VISIT_DDIM(rank, callback)                                    \
   switch (rank) {                                                            \
@@ -77,6 +78,7 @@ namespace common {
           ".");                                                              \
   }
 #endif
+
 template <typename T1, typename T2>
 inline void dynamic_dim_assign(const T1* in, T2* out, int n) {
   if (n == -1) {
@@ -97,6 +99,7 @@ class TEST_API DDim {
 #else
   constexpr static int kMaxRank = 9;
 #endif
+
   DDim();
 
   DDim(const DDim& ddim);

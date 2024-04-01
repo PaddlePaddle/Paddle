@@ -88,9 +88,7 @@ def determinate_rng(
     # instead of using offsets to coordinate seed across devices.
     if len(process_mesh.shape) > 4:
         raise NotImplementedError(
-            "Auto Parallel Random Control for Mesh's rank > 4 is NOT supported! Got {}".format(
-                str(process_mesh)
-            )
+            f"Auto Parallel Random Control for Mesh's rank > 4 is NOT supported! Got {str(process_mesh)}"
         )
     global _basic_seed
     seed_ = _basic_seed
@@ -131,9 +129,7 @@ def determinate_rng(
     else:
         assert (
             seed_ not in _rng_name_to_seed.values()
-        ), "Seed Conflict! current seed: {}, current sharding expr: {}, generated seed: {}".format(
-            seed_, sharding_expr, _rng_name_to_seed
-        )
+        ), f"Seed Conflict! current seed: {seed_}, current sharding expr: {sharding_expr}, generated seed: {_rng_name_to_seed}"
         _rng_name_to_seed[sharding_expr] = seed_
         if paddle.in_dynamic_mode():
             # for dygraph, just init the seed when meeting a new seed

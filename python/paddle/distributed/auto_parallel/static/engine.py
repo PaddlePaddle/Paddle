@@ -54,6 +54,7 @@ from .dist_op import DistributedOperator
 from .dist_saver import DistributedSaver
 from .helper import ProgramHelper
 from .parallelizer_v2 import Parallelizer
+from .pir_pass import apply_partition_pass, apply_reshard_pass
 from .planner_v2 import Planner
 from .process_group import get_all_process_groups, new_process_group
 
@@ -277,17 +278,13 @@ class Engine:
             data = tuple(data.values())
             if len(data) != 2:
                 raise ValueError(
-                    "Data should be a dict with two keys, but received {}.".format(
-                        len(data)
-                    )
+                    f"Data should be a dict with two keys, but received {len(data)}."
                 )
             inputs, labels = data
         elif isinstance(data, (list, tuple)):
             if len(data) != 2:
                 raise ValueError(
-                    "Data should be a list or tuple with two elements, but received {}.".format(
-                        len(data)
-                    )
+                    f"Data should be a list or tuple with two elements, but received {len(data)}."
                 )
             inputs, labels = data
         else:
@@ -336,9 +333,7 @@ class Engine:
                 labels = sample[split:]
         else:
             raise TypeError(
-                "Data should be a Dataset or IterableDataset, but received {}.".format(
-                    type(data).__name__
-                )
+                f"Data should be a Dataset or IterableDataset, but received {type(data).__name__}."
             )
         inputs = auto_utils.to_list(inputs)
         labels = auto_utils.to_list(labels)
@@ -368,9 +363,7 @@ class Engine:
                 specs.append(InputSpec([batch_size], type(item), name))
             else:
                 raise TypeError(
-                    "The sample's dtype returned of dataset should be number, np.ndarray or Tensor, but got {}".format(
-                        type(item).__name__
-                    )
+                    f"The sample's dtype returned of dataset should be number, np.ndarray or Tensor, but got {type(item).__name__}"
                 )
 
         if inputs is not None:
@@ -639,13 +632,20 @@ class Engine:
             mix_fw_program
         )
         # Step 1.2: pir backward
-        if mode != "predict" and self._loss:
+        if mode == "train" and self._loss and self._optimizer:
             loss = dist_program.get_output_value_by_name(self._loss_names[0])
-            paddle.autograd.ir_backward.append_backward(loss)
-        # TODO(winter-wang) Step 1.3:  adapot opt.minimize() for pir-auto-parallel
-        # with program_guard(dist_program):
-        #     ptimizer_ops = self._optimizer.apply_gradients(params_grads)
-
+            if loss.initialized():
+                with static.program_guard(dist_program):
+                    params_grads = paddle.autograd.ir_backward.append_backward(
+                        loss
+                    )
+                    self._optimizer._apply_optimize(
+                        loss, startup_program=None, params_grads=params_grads
+                    )
+            else:
+                self._logger.info(
+                    "loss value is not found, skip append backward."
+                )
         # Part 2: Parallelism search
         # NOTE make all parallelis search logic work as Pass,
         # and all the Pass in this Part should be optional to allow consistence in dynamic and static mode.
@@ -668,12 +668,12 @@ class Engine:
         # TODO(JZ-LIANG) Step 3.1: Partition Pass
         #   insert reshard op if operand tensor's placements if different from what the cumsumer op need.
         #   Partition the computation graph into different pipeline stage if need.
-        # dist_program = apply_partition_pass(dist_program)
+        dist_program = apply_partition_pass(dist_program)
 
         # TODO(hitywt) Step 3.2: Reshard Pass
         #   resolute the reshard op into special collective operation.
         #   collect the communicator created during resolution.
-        # dist_program = apply_reshard_pass(dist_program)
+        dist_program = apply_reshard_pass(dist_program)
 
         # Part 4: Optimization Pass
         # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
@@ -982,9 +982,7 @@ class Engine:
                 ref_op = ref_blocks[ib].ops[iop]
                 assert (
                     op.type == ref_op.type
-                ), "'{}' mode op '{}' is different with '{}' op '{}'. ".format(
-                    mode, op.type, ref_mode, ref_op.type
-                )
+                ), f"'{mode}' mode op '{op.type}' is different with '{ref_mode}' op '{ref_op.type}'. "
                 ref_op_dist_attr = (
                     ref_dist_context.get_op_dist_attr_for_program(ref_op)
                 )
@@ -1919,21 +1917,15 @@ class Engine:
         if auto_utils.use_new_executor():
             assert (
                 len(set(self._dp_world_sizes)) == 1
-            ), "DistributedBatchSampler only support one data parallel group, but got [{}] different data parallel groups".format(
-                len(set(self._dp_world_sizes))
-            )
+            ), f"DistributedBatchSampler only support one data parallel group, but got [{len(set(self._dp_world_sizes))}] different data parallel groups"
             assert (
                 batch_size % self._dp_world_sizes[0] == 0
-            ), "batch_size [{}] is not divisible by dp_world_size [{}]".format(
-                str(batch_size), str(self._dp_world_sizes[0])
-            )
+            ), f"batch_size [{str(batch_size)}] is not divisible by dp_world_size [{str(self._dp_world_sizes[0])}]"
             return batch_size // self._dp_world_sizes[0]
         else:
             assert (
                 batch_size % self._acc_steps == 0
-            ), "Requires batch_size:[{}] to be divisible by acc_steps:[{}].".format(
-                batch_size, self._acc_steps
-            )
+            ), f"Requires batch_size:[{batch_size}] to be divisible by acc_steps:[{self._acc_steps}]."
             return batch_size // self._acc_steps
 
     def _validate_batch(self, batch):
@@ -1976,9 +1968,7 @@ class Engine:
                     shape = list(spec.shape)
                     assert (
                         shape[0] % self._acc_steps == 0
-                    ), "Requires batch_size[{}] to be divisible by k_steps[{}].".format(
-                        spec.shape[0], self._acc_steps
-                    )
+                    ), f"Requires batch_size[{spec.shape[0]}] to be divisible by k_steps[{self._acc_steps}]."
                     shape[0] //= self._acc_steps
                     spec.shape = shape
         return specs or []
@@ -2031,11 +2021,7 @@ class Engine:
                 continue
             if param_array.dtype != state_dict[name].dtype:
                 self._logger.info(
-                    "cast {}'s dtype from '{}' to '{}'".format(
-                        name,
-                        str(state_dict[name].dtype),
-                        str(param_array.dtype),
-                    )
+                    f"cast {name}'s dtype from '{str(state_dict[name].dtype)}' to '{str(param_array.dtype)}'"
                 )
                 state_dict[name] = state_dict[name].astype(param_array.dtype)
         program.set_state_dict(state_dict)
@@ -2207,9 +2193,7 @@ class Engine:
         assert mode is not None, "Please set mode."
         if mode not in self._has_prepared:
             raise ValueError(
-                "The mode {} is not in accepted modes {}".format(
-                    mode, list(self._has_prepared.keys())
-                )
+                f"The mode {mode} is not in accepted modes {list(self._has_prepared.keys())}"
             )
         self.to_mode(mode)
 

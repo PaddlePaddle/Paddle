@@ -123,9 +123,7 @@ def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
 
                 if out_dtype != expect_dtype:
                     raise ValueError(
-                        "Expected out.dtype is {}, but got {} from {}.".format(
-                            expect_dtype, out_dtype, api_fn.__name__
-                        )
+                        f"Expected out.dtype is {expect_dtype}, but got {out_dtype} from {api_fn.__name__}."
                     )
 
 
@@ -1088,9 +1086,7 @@ class OpTest(unittest.TestCase):
             np_dyg = np.array(dygraph_outs[name])
             assert (
                 np_api.shape == np_dyg.shape
-            ), "Operator ({}) : Output ({}) shape mismatch, expect shape is {}, but actual shape is {}".format(
-                self.op_type, name, np_dyg.shape, np_api.shape
-            )
+            ), f"Operator ({self.op_type}) : Output ({name}) shape mismatch, expect shape is {np_dyg.shape}, but actual shape is {np_api.shape}"
             np.testing.assert_allclose(
                 np_api,
                 np_dyg,
@@ -1635,9 +1631,7 @@ class OpTest(unittest.TestCase):
             actual_out = np.array(actual_outs[i])
             assert (
                 actual_out.shape == expect_out.shape
-            ), "Operator ({}) : Output ({}) shape mismatch, expect shape is {}, but actual shape is {}".format(
-                self.op_type, name, expect_out.shape, actual_out.shape
-            )
+            ), f"Operator ({self.op_type}) : Output ({name}) shape mismatch, expect shape is {expect_out.shape}, but actual shape is {actual_out.shape}"
             if inplace_atol is not None:
                 np.testing.assert_allclose(
                     expect_out,
@@ -2139,9 +2133,7 @@ class OpTest(unittest.TestCase):
                 expect_np = np.array(expect_np)
                 assert (
                     actual_np.shape == expect_np.shape
-                ), "Operator ({}) : Output ({}) shape mismatch, expect shape is {}, but actual shape is {}".format(
-                    self.op_type, name, expect_np.shape, actual_np.shape
-                )
+                ), f"Operator ({self.op_type}) : Output ({name}) shape mismatch, expect shape is {expect_np.shape}, but actual shape is {actual_np.shape}"
                 np.testing.assert_allclose(
                     actual_np,
                     expect_np,
@@ -2308,9 +2300,7 @@ class OpTest(unittest.TestCase):
                 expect_np = np.array(expect_np)
                 assert (
                     actual_np.shape == expect_np.shape
-                ), "Operator ({}) : Output ({}) shape mismatch, expect shape is {}, but actual shape is {}".format(
-                    self.op_type, name, expect_np.shape, actual_np.shape
-                )
+                ), f"Operator ({self.op_type}) : Output ({name}) shape mismatch, expect shape is {expect_np.shape}, but actual shape is {actual_np.shape}"
                 np.testing.assert_allclose(
                     actual_np,
                     expect_np,
@@ -2421,9 +2411,7 @@ class OpTest(unittest.TestCase):
                 expect_np = np.array(expect_np)
                 assert (
                     actual_np.shape == expect_np.shape
-                ), "Operator ({}) : Output ({}) shape mismatch, expect shape is {}, but actual shape is {}".format(
-                    self.op_type, name, expect_np.shape, actual_np.shape
-                )
+                ), f"Operator ({self.op_type}) : Output ({name}) shape mismatch, expect shape is {expect_np.shape}, but actual shape is {actual_np.shape}"
                 np.testing.assert_allclose(
                     actual_np,
                     expect_np,
@@ -2865,9 +2853,7 @@ class OpTest(unittest.TestCase):
         for a, b, name in zip(numeric_grads, analytic_grads, names):
             assert tuple(a.shape) == tuple(
                 b.shape
-            ), "Operator ({}) : Output ({}) gradient shape mismatch, expect shape is {}, but actual shape is {}".format(
-                self.op_type, name, a.shape, b.shape
-            )
+            ), f"Operator ({self.op_type}) : Output ({name}) gradient shape mismatch, expect shape is {a.shape}, but actual shape is {b.shape}"
             # Used by bfloat16 for now to solve precision problem
             if self.is_bfloat16_op():
                 if a.size == 0:
@@ -2879,13 +2865,7 @@ class OpTest(unittest.TestCase):
                     atol=atol,
                     equal_nan=False,
                     err_msg=(
-                        "Operator {} error, {} variable {} (shape: {}, dtype: {}) max gradient diff over limit"
-                    ).format(
-                        self.op_type,
-                        msg_prefix,
-                        name,
-                        str(a.shape),
-                        self.dtype,
+                        f"Operator {self.op_type} error, {msg_prefix} variable {name} (shape: {str(a.shape)}, dtype: {self.dtype}) max gradient diff over limit"
                     ),
                 )
             else:

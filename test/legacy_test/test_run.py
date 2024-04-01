@@ -193,9 +193,7 @@ class PS_Test(unittest.TestCase):
 
     def test_ps_4(self):
         log_dir = tempfile.TemporaryDirectory()
-        args = "--job_id ps4 --log_dir {} --servers 127.0.0.1:8900,127.0.0.1:8901 --trainers 127.0.0.1:8902,127.0.0.1:8903".format(
-            log_dir.name
-        )
+        args = f"--job_id ps4 --log_dir {log_dir.name} --servers 127.0.0.1:8900,127.0.0.1:8901 --trainers 127.0.0.1:8902,127.0.0.1:8903"
         p1 = self.pdrun(args)
         p1.wait()
         self.assertTrue(p1.poll() == 0)
