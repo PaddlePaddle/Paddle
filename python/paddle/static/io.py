@@ -64,15 +64,11 @@ def _check_args(caller, args, supported_args=None, deprecated_args=None):
     for arg in args:
         if arg in deprecated_args:
             raise ValueError(
-                "argument '{}' in function '{}' is deprecated, only {} are supported.".format(
-                    arg, caller, supported_args
-                )
+                f"argument '{arg}' in function '{caller}' is deprecated, only {supported_args} are supported."
             )
         elif arg not in supported_args:
             raise ValueError(
-                "function '{}' doesn't support argument '{}',\n only {} are supported.".format(
-                    caller, arg, supported_args
-                )
+                f"function '{caller}' doesn't support argument '{arg}',\n only {supported_args} are supported."
             )
 
 
@@ -142,6 +138,11 @@ def _clone_var_in_block(block, var):
         )
 
 
+def _safe_load_pickle(file, encoding="ASCII"):
+    load_dict = pickle.Unpickler(file, encoding=encoding).load()
+    return load_dict
+
+
 def prepend_feed_ops(
     inference_program, feed_target_names, feed_holder_name='feed'
 ):
@@ -158,11 +159,9 @@ def prepend_feed_ops(
     for i, name in enumerate(feed_target_names):
         if not global_block.has_var(name):
             raise ValueError(
-                "The feeded_var_names[{i}]: '{name}' doesn't exist in pruned inference program. "
-                "Please check whether '{name}' is a valid feed_var name, or remove it from feeded_var_names "
-                "if '{name}' is not involved in the target_vars calculation.".format(
-                    i=i, name=name
-                )
+                f"The feeded_var_names[{i}]: '{name}' doesn't exist in pruned inference program. "
+                f"Please check whether '{name}' is a valid feed_var name, or remove it from feeded_var_names "
+                f"if '{name}' is not involved in the target_vars calculation."
             )
         out = global_block.var(name)
         global_block._prepend_op(
@@ -777,10 +776,8 @@ def deserialize_persistables(program, data, executor):
         origin_shape = origin_shape_map.get(var.name)
         if new_shape != origin_shape:
             raise RuntimeError(
-                "Shape mismatch, program needs a parameter with shape ({}), "
-                "but the loaded parameter ('{}') has a shape of ({}).".format(
-                    origin_shape, var.name, new_shape
-                )
+                f"Shape mismatch, program needs a parameter with shape ({origin_shape}), "
+                f"but the loaded parameter ('{var.name}') has a shape of ({new_shape})."
             )
 
 
@@ -1409,10 +1406,8 @@ def load_vars(
             orig_shape = orig_para_shape.get(each_var.name)
             if new_shape != orig_shape:
                 raise RuntimeError(
-                    "Variable's shape does not match, the Program requires a parameter with the shape of ({}), "
-                    "while the loaded parameter (namely [ {} ]) has a shape of  ({}).".format(
-                        orig_shape, each_var.name, new_shape
-                    )
+                    f"Variable's shape does not match, the Program requires a parameter with the shape of ({orig_shape}), "
+                    f"while the loaded parameter (namely [ {each_var.name} ]) has a shape of  ({new_shape})."
                 )
 
 
@@ -1576,9 +1571,7 @@ def load(program, model_path, executor=None, var_list=None):
         # model file save by base.save not found, try to load model file saved with
         # [save_vars, save_params, save_persistables]
         _logger.debug(
-            "{} not found, try to load model file saved with [ save_params, save_persistables, save_vars ]".format(
-                parameter_file_name
-            )
+            f"{parameter_file_name} not found, try to load model file saved with [ save_params, save_persistables, save_vars ]"
         )
         if executor is None:
             raise ValueError(
@@ -1697,7 +1690,7 @@ def load(program, model_path, executor=None, var_list=None):
         if sys.platform == 'darwin' and sys.version_info.major == 3:
             load_dict = _pickle_loads_mac(parameter_file_name, f)
         else:
-            load_dict = pickle.load(f, encoding='latin1')
+            load_dict = _safe_load_pickle(f, encoding='latin1')
         load_dict = _pack_loaded_dict(load_dict)
     for v in parameter_list:
         assert (
@@ -1721,7 +1714,7 @@ def load(program, model_path, executor=None, var_list=None):
             )
 
         with open(opt_file_name, 'rb') as f:
-            load_dict = pickle.load(f, encoding='latin1')
+            load_dict = _safe_load_pickle(f, encoding='latin1')
         for v in optimizer_var_list:
             assert (
                 v.name in load_dict
@@ -1780,16 +1773,12 @@ def set_program_state(program, state_dict):
             orig_para_np = np.array(var_temp.get_tensor())
             new_para_np = state_dict[para.name]
             assert orig_para_np.shape == new_para_np.shape, (
-                "Parameter's shape does not match, the Program requires a parameter with the shape of ({}), "
-                "while the loaded parameter (namely [ {} ]) has a shape of  ({}).".format(
-                    orig_para_np.shape, para.name, new_para_np.shape
-                )
+                f"Parameter's shape does not match, the Program requires a parameter with the shape of ({orig_para_np.shape}), "
+                f"while the loaded parameter (namely [ {para.name} ]) has a shape of  ({new_para_np.shape})."
             )
             assert orig_para_np.dtype == new_para_np.dtype, (
-                "Parameter's data type does not match, the Program requires a parameter with a dtype of ({}), "
-                "while the loaded parameter (namely [ {} ]) has a dtype of  ({}).".format(
-                    orig_para_np.dtype, para.name, new_para_np.dtype
-                )
+                f"Parameter's data type does not match, the Program requires a parameter with a dtype of ({orig_para_np.dtype}), "
+                f"while the loaded parameter (namely [ {para.name} ]) has a dtype of  ({new_para_np.dtype})."
             )
 
             ten = var_temp.get_tensor()
@@ -1896,9 +1885,7 @@ def load_program_state(model_path, var_list=None):
         # model file saved with base.save is not found, try to load model file saved with
         # [save_vars, save_params, save_persistables]
         _logger.debug(
-            "{} not found, try to load model file saved with [ save_params, save_persistables, save_vars ]".format(
-                parameter_file_name
-            )
+            f"{parameter_file_name} not found, try to load model file saved with [ save_params, save_persistables, save_vars ]"
         )
 
         var_name_list = []
@@ -2015,13 +2002,13 @@ def load_program_state(model_path, var_list=None):
         if sys.platform == 'darwin' and sys.version_info.major == 3:
             para_dict = _pickle_loads_mac(parameter_file_name, f)
         else:
-            para_dict = pickle.load(f, encoding='latin1')
+            para_dict = _safe_load_pickle(f, encoding='latin1')
     para_dict = _pack_loaded_dict(para_dict)
 
     opt_file_name = model_prefix + ".pdopt"
     if os.path.exists(opt_file_name):
         with open(opt_file_name, 'rb') as f:
-            opti_dict = pickle.load(f, encoding='latin1')
+            opti_dict = _safe_load_pickle(f, encoding='latin1')
 
         para_dict.update(opti_dict)
 

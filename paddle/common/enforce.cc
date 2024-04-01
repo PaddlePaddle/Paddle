@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/common/enforce.h"
 #include <array>
+#include <atomic>
 #include <map>
 #include <string>
 #include <vector>
@@ -48,21 +49,30 @@ std::string SimplifyDemangleStr(std::string str) {
   }
   return str;
 }
+
+std::atomic_bool paddle_fatal_skip{false};
+
 }  // namespace
 
 namespace common {
 namespace enforce {
-TEST_API int GetCallStackLevel() { return FLAGS_call_stack_level; }
+void SkipPaddleFatal(bool skip) { paddle_fatal_skip.store(skip); }
+bool IsPaddleFatalSkip() { return paddle_fatal_skip.load(); }
 
-TEST_API std::string SimplifyErrorTypeFormat(const std::string& str) {
+int GetCallStackLevel() { return FLAGS_call_stack_level; }
+
+std::string SimplifyErrorTypeFormat(const std::string& str) {
   std::ostringstream sout;
   size_t type_end_pos = str.find(':', 0);
-  if (type_end_pos == std::string::npos) {
-    sout << str;
-  } else {
-    // Remove "Error:", add "()""
+  if (str.substr(type_end_pos - 5, type_end_pos) == "Error:") {
+    // Remove "Error:", add "()"
+    // Examples:
+    //    InvalidArgumentError: xxx -> (InvalidArgument): xxx
     sout << "(" << str.substr(0, type_end_pos - 5) << ")"
          << str.substr(type_end_pos + 1);
+  } else {
+    // type_end_pos == std::string::npos
+    sout << str;
   }
   return sout.str();
 }

@@ -125,7 +125,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/reader_py.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/fluid/string/to_string.h"
+#include "paddle/utils/string/to_string.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
@@ -966,7 +966,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            Deserialize CPU lod tensor from shared memory.
 
            Params:
-               tuple: contrains ipc file name, data size, data type,
+               tuple: contains ipc file name, data size, data type,
                       tensor dims and lod information.
 
            Examples:
@@ -1073,12 +1073,19 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              self.unsafe_mutable_value()->ShareDataNoCheckWith(src.value());
              return self;
            })
-      .def("_share_data_with", [](DistTensor &self, const DistTensor &src) {
-        self.unsafe_set_dims(src.dims());
-        self.unsafe_set_dist_attr(src.dist_attr());
-        self.unsafe_mutable_value()->ShareDataWith(src.value());
-        return self;
-      });
+      .def("_share_data_with",
+           [](DistTensor &self, const DistTensor &src) {
+             self.unsafe_set_dims(src.dims());
+             self.unsafe_set_dist_attr(src.dist_attr());
+             if (!IsCurRankInMesh(self.process_mesh()) &&
+                 !IsCurRankInMesh(src.dist_attr().process_mesh())) {
+               self.unsafe_mutable_value()->ShareDataNoCheckWith(src.value());
+             } else {
+               self.unsafe_mutable_value()->ShareDataWith(src.value());
+             }
+             return self;
+           })
+      .def("_clear", &DistTensor::clear);
 #endif
 
   py::class_<phi::SelectedRows>(m, "SelectedRows")

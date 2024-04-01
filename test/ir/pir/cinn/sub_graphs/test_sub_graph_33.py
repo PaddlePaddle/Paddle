@@ -36,8 +36,10 @@ class LayerCase(paddle.nn.Layer):
 
     def forward(
         self,
-        var_0,  # (shape: [10, 64, 14, 14], dtype: paddle.float32, stop_gradient: False)
-        var_1,  # (shape: [10, 256, 14, 14], dtype: paddle.float32, stop_gradient: False)
+        # (shape: [10, 64, 14, 14], dtype: paddle.float32, stop_gradient: False)
+        var_0,
+        # (shape: [10, 256, 14, 14], dtype: paddle.float32, stop_gradient: False)
+        var_1,
     ):
         var_2 = paddle.nn.functional.conv._conv_nd(
             var_0,

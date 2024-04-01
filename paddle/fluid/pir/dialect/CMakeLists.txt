@@ -95,7 +95,8 @@ execute_process(
     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
     --dialect_name ${dialect_name} --op_def_h_file ${op_header_file_tmp}
     --op_info_file ${op_info_file_tmp} --op_def_cc_file ${op_src_files_tmp}
-    --op_vjp_cc_file ${op_vjp_src_file_tmp})
+    --op_vjp_cc_file ${op_vjp_src_file_tmp} --with_distributed
+    ${WITH_DISTRIBUTE})
 
 set(generated_files_pd_op
     "${op_header_file}"
@@ -141,7 +142,7 @@ if(WITH_MKLDNN)
       --op_def_h_file ${onednn_op_header_file_tmp} --op_info_file
       ${op_onednn_info_file_tmp} --op_def_cc_file ${onednn_op_source_file_tmp}
       --onednn_yaml_file ${pir_op_onednn_yaml} --ops_onednn_extra_yaml_file
-      ${pd_ops_onednn_extra_yaml_file})
+      ${pd_ops_onednn_extra_yaml_file} --with_distributed ${WITH_DISTRIBUTE})
 
   set(generated_files_onednn_pd_op
       "${onednn_op_header_file}" "${onednn_op_source_file}"
@@ -255,7 +256,17 @@ if(WITH_MKLDNN)
       ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_onednn_op.cc)
 endif()
 
+file(GLOB_RECURSE dist_dialect_srcs
+     "${CMAKE_CURRENT_SOURCE_DIR}/distributed/ir/*.cc"
+     "${CMAKE_CURRENT_SOURCE_DIR}/distributed/transforms/*.cc")
+
+# if(WITH_DISTRIBUTE) FIXME in next PR
+set(op_dialect_srcs ${op_dialect_srcs} ${dist_dialect_srcs})
+# endif()
 set(op_dialect_deps phi common pir type_info string_helper)
+if(WITH_ROCM)
+  set(op_dialect_deps ${op_dialect_deps} global_utils)
+endif()
 
 cc_library(
   op_dialect

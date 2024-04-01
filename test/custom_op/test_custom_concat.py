@@ -20,6 +20,7 @@ from utils import extra_cc_args, extra_nvcc_args, paddle_includes
 
 import paddle
 from paddle import static
+from paddle.pir_utils import test_with_pir_api
 from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
@@ -94,10 +95,19 @@ def concat_static(func, dtype, np_inputs, axis_v, with_attr=False):
                     "x2": np_inputs[1].astype(dtype),
                     "axis": axis,
                 }
+            if paddle.framework.in_pir_mode():
+                ops = static.default_main_program().global_block().ops
+                fetch_list = [
+                    out,
+                    ops[-1].result(0),  # x1_grad
+                    ops[-1].result(1),
+                ]  # x2_grad
+            else:
+                fetch_list = [out.name, x1.name + "@GRAD", x2.name + "@GRAD"]
             out_v, x1_grad_v, x2_grad_v = exe.run(
                 static.default_main_program(),
                 feed=feed_dict,
-                fetch_list=[out.name, x1.name + "@GRAD", x2.name + "@GRAD"],
+                fetch_list=fetch_list,
             )
     paddle.disable_static()
     return out_v, x1_grad_v, x2_grad_v
@@ -133,6 +143,7 @@ class TestCustomConcatDynamicAxisJit(unittest.TestCase):
                 for x_grad, pd_x_grad in zip(grad_inputs, pd_grad_inputs):
                     self.check_output(x_grad, pd_x_grad, "x_grad")
 
+    @test_with_pir_api
     def test_static(self):
         for dtype in self.dtypes:
             for axis in self.axises:
@@ -165,6 +176,7 @@ class TestCustomConcatDynamicAxisJit(unittest.TestCase):
                 for x_grad, pd_x_grad in zip(grad_inputs, pd_grad_inputs):
                     self.check_output(x_grad, pd_x_grad, "x_grad")
 
+    @test_with_pir_api
     def test_static_with_attr(self):
         for dtype in self.dtypes:
             for axis in self.axises:

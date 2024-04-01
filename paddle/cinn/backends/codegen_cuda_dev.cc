@@ -21,10 +21,12 @@
 #include <set>
 #include <unordered_set>
 
+#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_verify.h"
 #include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/common/errors.h"
 
 namespace cinn {
 namespace backends {
@@ -124,6 +126,7 @@ std::vector<Expr> FilterDeallocTempBuffers(const std::vector<Expr> &frees) {
     bool has_symbolic_constant = false;
     const ir::_Buffer_ *buffer = op->destination.As<ir::_Buffer_>();
     for (Expr shape : buffer->shape) {
+      shape = common::AutoSimplify(shape);
       ir::ir_utils::CollectIRNodes(shape, [&](const Expr *x) {
         if (x->as_var()) {
           CHECK(x->as_var()->is_symbolic_constant)
@@ -290,7 +293,7 @@ std::string CodeGenCUDA_Dev::Compile(const ir::Module &module,
       Compile(func);
     }
   } else {
-    LOG(FATAL) << "Not supported OutputKind";
+    PADDLE_THROW(phi::errors::InvalidArgument("Not supported OutputKind"));
   }
 
   if (for_nvrtc_) {
@@ -370,8 +373,10 @@ void CodeGenCUDA_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
       print_gpu_memory("");
     }
   } else {
-    LOG(FATAL) << "CUDA device codegen not support memory " << buffer->name
-               << ", type " << buffer->memory_type;
+    std::stringstream ss;
+    ss << "CUDA device codegen not support memory " << buffer->name << ", type "
+       << buffer->memory_type;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 }
 
@@ -503,6 +508,37 @@ void CodeGenCUDA_Dev::Visit(const ir::Store *op) {
   } else {
     CodeGenC::Visit(op);
   }
+}
+
+ir::Expr CalculateSharedMemory(const ir::Buffer &buffer) {
+  Expr buffer_size(1);
+  for (int i = 0; i < buffer->shape.size(); i++) {
+    buffer_size = buffer_size * buffer->shape[i];
+  }
+  int type_bytes = buffer->dtype.bytes();
+  return buffer_size * Expr(type_bytes);
+}
+
+ir::Expr CalculateSharedMemory(const ir::Expr &func_expr) {
+  auto func = func_expr.as_lowered_func();
+  PADDLE_ENFORCE_NOT_NULL(
+      func, ::common::errors::InvalidType("expr is not a lowered_func"));
+  auto alloc_temp_buffers = func->PrepareAllocTempBufferExprs();
+  ir::Expr shm_size{0};
+  for (const auto &alloc : alloc_temp_buffers) {
+    PADDLE_ENFORCE_NOT_NULL(
+        alloc.As<ir::Alloc>(),
+        ::common::errors::InvalidType("expr is not a Alloc node"));
+    PADDLE_ENFORCE_NOT_NULL(
+        alloc.As<ir::Alloc>()->destination.as_buffer(),
+        ::common::errors::InvalidType("expr is not a Buffer node"));
+
+    auto buffer = alloc.As<ir::Alloc>()->destination.as_buffer_ref();
+    if (buffer->memory_type == ir::MemoryType::GPUShared) {
+      shm_size = shm_size + CalculateSharedMemory(buffer);
+    }
+  }
+  return common::AutoSimplify(shm_size);
 }
 
 }  // namespace backends

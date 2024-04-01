@@ -24,9 +24,10 @@ from paddle.distributed.fleet import auto
 paddle.enable_static()
 
 
-def apply_pass(use_sharding=False, stage=None):
+def apply_pass(use_sharding=False, stage=None, use_allreduce_avg=False):
     strategy = auto.Strategy()
     strategy.auto_mode = "semi"
+    strategy.gradient_scale_using_allreduce_avg = use_allreduce_avg
     # strategy.reinit = True
     if use_sharding:
         sharding = strategy.sharding
@@ -67,10 +68,12 @@ class TestShardingPass(unittest.TestCase):
         np.random.seed(2022)
         random.seed(2022)
 
-    def get_engine(self, use_sharding=False, stage=None):
+    def get_engine(
+        self, use_sharding=False, stage=None, use_allreduce_avg=False
+    ):
         reset_prog()
 
-        strategy = apply_pass(use_sharding, stage)
+        strategy = apply_pass(use_sharding, stage, use_allreduce_avg)
         clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
         # NOTE: setting opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip) will cause precision problem
         opt = paddle.optimizer.AdamW(learning_rate=0.00001)
@@ -84,9 +87,7 @@ class TestShardingPass(unittest.TestCase):
         np.testing.assert_equal(
             ref_losses,
             check_losses,
-            err_msg='pass {} has wrong results!, \nu={}\nv={}\ndiff={}'.format(
-                __class__, ref_losses, check_losses, ref_losses - check_losses
-            ),
+            err_msg=f'pass {__class__} has wrong results!, \nu={ref_losses}\nv={check_losses}\ndiff={ref_losses - check_losses}',
         )
 
     def test_sharding_pass(self):
@@ -149,6 +150,32 @@ class TestShardingPass(unittest.TestCase):
         )
         sharding3_losses = np.array(history.history["loss"])
         self.check_results(dp_losses, sharding3_losses)
+
+        # dp2 training using allreduce avg
+        dp_engine_using_allreduce_avg = self.get_engine(use_allreduce_avg=True)
+        dp_engine_using_allreduce_avg.prepare(
+            inputs_spec=input_spec, labels_spec=label_spec, mode='train'
+        )
+        dp_engine_using_allreduce_avg.save(
+            "./dp_engine_using_allreduce_avg", training=True
+        )
+        history = dp_engine_using_allreduce_avg.fit(
+            self.dataset, 3, batch_size=self.batch_size
+        )
+        dp_losses_using_allreduce_avg = np.array(history.history["loss"])
+
+        # sharding2 stage2 training using allreduce avg
+        sharding2_engine_using_allreduce_avg = self.get_engine(True, 2, True)
+        sharding2_engine_using_allreduce_avg.load(
+            "./dp_engine_using_allreduce_avg"
+        )
+        history = sharding2_engine_using_allreduce_avg.fit(
+            self.dataset, 3, batch_size=self.batch_size
+        )
+        sharding2_losses_using_allreduce_avg = np.array(history.history["loss"])
+        self.check_results(
+            dp_losses_using_allreduce_avg, sharding2_losses_using_allreduce_avg
+        )
 
 
 if __name__ == "__main__":

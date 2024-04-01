@@ -216,9 +216,7 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
                     adam.clear_grad()
                     if batch_id % 50 == 0:
                         _logger.info(
-                            "Train | At epoch {} step {}: loss = {:}, acc= {:}".format(
-                                epoch, batch_id, avg_loss.numpy(), acc.numpy()
-                            )
+                            f"Train | At epoch {epoch} step {batch_id}: loss = {avg_loss.numpy()}, acc= {acc.numpy()}"
                         )
                         break
 
@@ -245,9 +243,7 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
                 avg_acc[1].append(acc_top5.numpy())
                 if batch_id % 100 == 0:
                     _logger.info(
-                        "Test | step {}: acc1 = {:}, acc5 = {:}".format(
-                            batch_id, acc_top1.numpy(), acc_top5.numpy()
-                        )
+                        f"Test | step {batch_id}: acc1 = {acc_top1.numpy()}, acc5 = {acc_top5.numpy()}"
                     )
 
         train_reader = paddle.batch(

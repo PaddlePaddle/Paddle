@@ -710,8 +710,9 @@ void TensorFromStream(std::istream& is,
         PADDLE_THROW(platform::errors::Unimplemented(
             "XPUPlace is not supported when not compiled with XPU"));
       } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "CutomPlace is not supported when not compiled with CustomDevice"));
+        PADDLE_THROW(
+            platform::errors::Unimplemented("CustomPlace is not supported when "
+                                            "not compiled with CustomDevice"));
       }
 #endif
     } else {
@@ -887,7 +888,8 @@ std::ostream& print_tensor(std::ostream& os, const phi::DenseTensor& tensor) {
   auto element_num = tensor.numel();
 
   os << "  - data: [";
-  // Note: int8_t && uint8_t is typedf of char, ostream unable to print properly
+  // Note: int8_t && uint8_t is typedef of char, ostream unable to print
+  // properly
   if (typeid(int8_t) == typeid(T) || typeid(uint8_t) == typeid(T)) {
     if (element_num > 0) {
       os << signed(inspect[0]);

@@ -29,6 +29,8 @@ from paddle.base import Program, core, program_guard
 from paddle.base.layer_helper import LayerHelper
 from paddle.pir_utils import test_with_pir_api
 
+devices = ['cpu', 'gpu']
+
 
 @contextmanager
 def dynamic_guard():
@@ -40,9 +42,12 @@ def dynamic_guard():
 
 
 class TestSqrtOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
-            with program_guard(Program(), Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 # The input type of sqrt op must be Variable or numpy.ndarray.
                 in1 = 1
                 self.assertRaises(TypeError, paddle.sqrt, in1)
@@ -643,6 +648,7 @@ class TestSiluAPI(unittest.TestCase):
             np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -890,6 +896,7 @@ class TestTanhAPI(unittest.TestCase):
             for r in [out1, out2, out3]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -1854,7 +1861,6 @@ class TestSqrtComp_ZeroDim(TestSqrtComp):
 class TestRsqrt(TestActivation):
     def setUp(self):
         self.op_type = "rsqrt"
-        self.prim_op_type = "comp"
         self.python_api = paddle.rsqrt
         self.public_python_api = paddle.rsqrt
         self.init_dtype()
@@ -1877,9 +1883,7 @@ class TestRsqrt(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_prim=True,
             check_pir=True,
-            check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
         )
 
@@ -1890,9 +1894,7 @@ class TestRsqrt(TestActivation):
             ['X'],
             'Out',
             max_relative_error=0.0005,
-            check_prim=True,
             check_pir=True,
-            check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
         )
 
@@ -2702,22 +2704,24 @@ class TestReluAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
-            with static_guard():
-                with paddle.static.program_guard(paddle.static.Program()):
-                    # The input type must be Variable.
-                    self.assertRaises(TypeError, self.relu, 1)
-                    # The input dtype must be float16, float32, float64.
-                    x_int32 = paddle.static.data(
-                        name='x_int32', shape=[10, 12], dtype='int32'
-                    )
-                    self.assertRaises(TypeError, self.relu, x_int32)
-                    # support the input dtype is float16
-                    x_fp16 = paddle.static.data(
-                        name='x_fp16', shape=[10, 12], dtype='float16'
-                    )
-                    self.relu(x_fp16)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                # The input type must be Variable.
+                self.assertRaises(TypeError, self.relu, 1)
+                # The input dtype must be float16, float32, float64.
+                x_int32 = paddle.static.data(
+                    name='x_int32', shape=[10, 12], dtype='int32'
+                )
+                self.assertRaises(TypeError, self.relu, x_int32)
+                # support the input dtype is float16
+                x_fp16 = paddle.static.data(
+                    name='x_fp16', shape=[10, 12], dtype='float16'
+                )
+                self.relu(x_fp16)
 
 
 class TestReluInplaceAPI(TestReluAPI):
@@ -2846,6 +2850,7 @@ class TestLeakyReluAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -3029,6 +3034,7 @@ class TestGELUAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -3094,6 +3100,8 @@ class TestRelu6(TestActivation):
         self.init_dtype()
         self.init_shape()
         self.python_api = paddle.nn.functional.relu6
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.nn.functional.relu6
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 10, self.shape).astype(self.dtype)
@@ -3109,11 +3117,22 @@ class TestRelu6(TestActivation):
     def init_shape(self):
         self.shape = [10, 12]
 
+    def test_check_output(self):
+        self.check_output(
+            check_pir=True,
+            check_prim_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+        )
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         self.check_grad(
-            ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
+            ['X'],
+            'Out',
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_prim_pir=True,
         )
 
 
@@ -3421,6 +3440,8 @@ class TestELU(TestActivation):
         self.init_dtype()
         self.init_shape()
         self.python_api = paddle.nn.functional.elu
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.nn.functional.elu
 
         np.random.seed(1024)
         x = np.random.uniform(-3, 3, self.shape).astype(self.dtype)
@@ -3441,7 +3462,16 @@ class TestELU(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(
-            ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
+            ['X'],
+            'Out',
+            check_pir=True,
+            check_prim_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+        )
+
+    def test_check_output(self):
+        self.check_output(
+            check_prim_pir=True, check_pir_onednn=self.check_pir_onednn
         )
 
     def get_alpha(self):
@@ -3717,6 +3747,11 @@ class TestLog(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(0.1, 1, self.shape)
+                + 1j * np.random.uniform(0.1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.log(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -3742,6 +3777,56 @@ class TestLog(TestActivation):
             check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
         )
+
+
+class TestLog_Complex64(TestLog):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
+        )
+
+    def test_check_output(self):
+        self.check_output(
+            check_pir=True, check_pir_onednn=self.check_pir_onednn
+        )
+
+    def test_api_complex(self):
+        paddle.disable_static()
+        for device in devices:
+            if device == 'cpu' or (
+                device == 'gpu' and paddle.is_compiled_with_cuda()
+            ):
+                np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=self.dtype)
+                x = paddle.to_tensor(np_x, dtype=self.dtype, place=device)
+                y = paddle.log(x)
+                x_expect = np.log(np_x)
+                np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
+        paddle.enable_static()
+
+    def test_grad_grad(self):
+        paddle.disable_static()
+        x_numpy = (
+            np.random.uniform(0.1, 1, self.shape)
+            + 1j * np.random.uniform(0.1, 1, self.shape)
+        ).astype(self.dtype)
+
+        expected_ddx = np.conj(-1 / np.power(x_numpy, 2))
+
+        x = paddle.to_tensor(x_numpy, stop_gradient=False)
+        y = paddle.log(x)
+        dx = paddle.grad(
+            outputs=[y], inputs=[x], create_graph=True, retain_graph=True
+        )[0]
+        ddx = paddle.grad(outputs=[dx], inputs=[x], retain_graph=True)[0]
+        np.testing.assert_allclose(ddx.numpy(), expected_ddx, rtol=1e-3)
+
+
+class TestLog_Complex128(TestLog_Complex64):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class Test_Log_Op_Fp16(unittest.TestCase):
@@ -3797,6 +3882,11 @@ class TestLog2(TestActivation):
         self.init_shape()
 
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(0.1, 1, self.shape)
+                + 1j * np.random.uniform(0.1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.log2(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -3842,6 +3932,34 @@ class TestLog2(TestActivation):
         np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
 
 
+class TestLog2_Complex64(TestLog2):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+    def test_check_output(self):
+        self.check_output(
+            check_pir=True, check_pir_onednn=self.check_pir_onednn
+        )
+
+    def test_api_complex(self):
+        paddle.disable_static()
+        for device in devices:
+            if device == 'cpu' or (
+                device == 'gpu' and paddle.is_compiled_with_cuda()
+            ):
+                np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=self.dtype)
+                x = paddle.to_tensor(np_x, dtype=self.dtype, place=device)
+                y = paddle.log2(x)
+                x_expect = np.log2(np_x)
+                np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
+        paddle.enable_static()
+
+
+class TestLog2_Complex128(TestLog2_Complex64):
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+
 class TestLog2_ZeroDim(TestLog2):
     def init_shape(self):
         self.shape = []
@@ -3881,6 +3999,11 @@ class TestLog10(TestActivation):
         self.init_shape()
 
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(0.1, 1, self.shape)
+                + 1j * np.random.uniform(0.1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.log10(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -3898,6 +4021,29 @@ class TestLog10(TestActivation):
         self.check_grad(
             ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
         )
+
+
+class TestLog10_Complex64(TestLog10):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+    def test_api_complex(self):
+        paddle.disable_static()
+        for device in devices:
+            if device == 'cpu' or (
+                device == 'gpu' and paddle.is_compiled_with_cuda()
+            ):
+                np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=self.dtype)
+                x = paddle.to_tensor(np_x, dtype=self.dtype, place=device)
+                y = paddle.log10(x)
+                x_expect = np.log10(np_x)
+                np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
+        paddle.enable_static()
+
+
+class TestLog10_Complex128(TestLog10_Complex64):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestLog10_ZeroDim(TestLog10):
@@ -3973,6 +4119,11 @@ class TestLog1p(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(0.1, 1, self.shape)
+                + 1j * np.random.uniform(0.1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.log1p(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -3990,6 +4141,29 @@ class TestLog1p(TestActivation):
         self.check_grad(
             ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
         )
+
+
+class TestLog1p_Complex64(TestLog1p):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+    def test_api_complex(self):
+        paddle.disable_static()
+        for device in devices:
+            if device == 'cpu' or (
+                device == 'gpu' and paddle.is_compiled_with_cuda()
+            ):
+                np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=self.dtype)
+                x = paddle.to_tensor(np_x, dtype=self.dtype, place=device)
+                y = paddle.log1p(x)
+                x_expect = np.log1p(np_x)
+                np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
+        paddle.enable_static()
+
+
+class TestLog1p_Complex128(TestLog1p_Complex64):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class Test_Log1p_Op_Fp16(unittest.TestCase):
@@ -5298,7 +5472,7 @@ create_test_act_fp16_class(
 create_test_act_fp16_class(TestBRelu, check_pir=True)
 create_test_act_fp16_class(TestRelu6)
 create_test_act_fp16_class(TestSoftRelu, check_dygraph=False)
-create_test_act_fp16_class(TestELU, check_pir=True)
+create_test_act_fp16_class(TestELU, check_pir=True, check_prim_pir=True)
 create_test_act_fp16_class(TestCELU, check_pir=True)
 create_test_act_fp16_class(TestReciprocal, check_pir=True)
 create_test_act_fp16_class(TestLog, check_prim=True, check_pir=True)
@@ -5470,7 +5644,7 @@ create_test_act_bf16_class(
 create_test_act_bf16_class(TestBRelu, check_pir=True)
 create_test_act_bf16_class(TestRelu6)
 create_test_act_bf16_class(TestSoftRelu, check_dygraph=False)
-create_test_act_bf16_class(TestELU, check_pir=True)
+create_test_act_bf16_class(TestELU, check_pir=True, check_prim_pir=True)
 create_test_act_bf16_class(TestCELU, check_pir=True)
 create_test_act_bf16_class(TestReciprocal, check_pir=True)
 create_test_act_bf16_class(TestLog, check_prim=True, check_pir=True)

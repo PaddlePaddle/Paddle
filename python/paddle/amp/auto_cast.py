@@ -18,12 +18,15 @@ import warnings
 import paddle
 from paddle.base import core
 from paddle.base.framework import (
+    _current_expected_place,
     _dygraph_tracer,
     dygraph_only,
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
+from paddle.static.amp.decorator import OptimizerWithMixedPrecision
+from paddle.static.amp.fp16_lists import AutoMixedPrecisionLists
 
 from .amp_lists import black_list, white_list
 
@@ -53,7 +56,7 @@ class AMPGlobalState:
         self.model_parameters = []
         self.use_master_grad = False
         self.already_register_final_backward_hook = False
-        self.already_classify_params_meshs = False  # For dist
+        self.already_classify_params_meshes = False  # For dist
         self.mesh2params = {}  # For dist
         self.amp_dtype = 'float32'
 
@@ -141,6 +144,14 @@ def _is_gpu_bfloat16_supported():
     return prop[0] >= 8 and cuda_version_check
 
 
+def _is_custom_device_bfloat16_supported():
+    """
+    Judge whether current custom device support bfloat16 amp.
+    """
+    place = _current_expected_place()
+    return place.get_device_type() == 'npu'
+
+
 def need_keep_fp32(layer, dtype):
     need_keep_fp32 = False
     # Highest priority. Because all the layers except BN will use bfloat16 params in bfloat16 training,
@@ -212,7 +223,72 @@ def set_excluded_layers(models, excluded_layers):
                 layer._cast_to_low_precision = False
 
 
-@dygraph_only
+def _pir_apply(self, func, dtype, include_sublayers=True):
+    if include_sublayers:
+        for layer in self.children():
+            _pir_apply(layer, func, dtype, include_sublayers)
+
+    for key, param in self._parameters.items():
+        if param is not None:
+            param_applied = func(param, dtype)
+
+    for key, buf in self._buffers.items():
+        if buf is not None:
+            self._buffers[key] = func(buf, dtype)
+
+    self._dtype = dtype
+
+
+def _pir_transform(t, dtype):
+    main = paddle.static.default_main_program()
+    startup = paddle.static.default_startup_program()
+    with paddle.static.program_guard(startup):
+        block = startup.global_block()
+        for op in block.ops:
+            if (
+                op.name() == 'builtin.set_parameter'
+                and op.attrs()['parameter_name'] == t.name
+            ):
+                param = op.operand(0).source()
+                cast_param = paddle.cast(param, dtype)
+                cast_param.persistable = True
+                paddle._pir_ops.set_parameter(cast_param, t.name)
+                block.remove_op(op)
+                break
+    main.set_parameters_from(startup)
+    with paddle.static.program_guard(main):
+        paddle.pir.reset_insertion_point_to_start()
+        block = main.global_block()
+        cast_param = paddle._pir_ops.parameter(t.name)
+        cast_param.trainable = t.trainable
+        cast_param.stop_gradient = t.stop_gradient
+        cast_param.persistable = t.persistable
+        cast_param.optimize_attr = t.optimize_attr
+        cast_param.regularizer = t.regularizer
+        cast_param.do_model_average = t.do_model_average
+        cast_param.need_clip = t.need_clip
+        cast_param.is_distributed = t.is_distributed
+        cast_param.is_parameter = t.is_parameter
+        op = t.get_defining_op()
+        t.replace_all_uses_with(cast_param)
+        block.remove_op(op)
+        t.value_assign(cast_param)
+
+
+def _pir_to_impl(self, dtype, include_sublayers, floating_only):
+    def transform(t, dtype):
+        if floating_only and (not paddle.is_floating_point(t)):
+            return t
+        return _pir_transform(t, dtype)
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UserWarning)
+        _pir_apply(self, transform, dtype, include_sublayers)
+
+    self._dtype = dtype
+    return self
+
+
 def amp_initialize(models, dtype, excluded_layers):
     set_excluded_layers(models, excluded_layers)
     for idx in range(len(models)):
@@ -229,9 +305,17 @@ def amp_initialize(models, dtype, excluded_layers):
                 layer._amp_decorate(dtype=dtype)
                 continue
 
-            layer._to_impl(
-                dtype=dtype, include_sublayers=False, floating_only=True
-            )
+            if in_pir_mode():
+                _pir_to_impl(
+                    layer,
+                    dtype=dtype,
+                    include_sublayers=False,
+                    floating_only=True,
+                )
+            else:
+                layer._to_impl(
+                    dtype=dtype, include_sublayers=False, floating_only=True
+                )
     return models
 
 
@@ -239,9 +323,7 @@ def check_models(models):
     for model in models:
         if not isinstance(model, paddle.nn.Layer):
             raise RuntimeError(
-                "Current train mode is pure fp16, models should be paddle.nn.Layer, but receive {}.".format(
-                    type(model)
-                )
+                f"Current train mode is pure fp16, models should be paddle.nn.Layer, but receive {type(model)}."
             )
         if isinstance(model, paddle.DataParallel):
             raise RuntimeError(
@@ -269,9 +351,7 @@ def check_optimizers(optimizers):
     for optimizer in optimizers:
         if not _is_valid_optimizer(optimizer):
             raise RuntimeError(
-                "Current train mode is pure fp16, optimizers should be paddle.optimizer.Optimizer or DygraphShardingOptimizer, but receive {}.".format(
-                    type(optimizer)
-                )
+                f"Current train mode is pure fp16, optimizers should be paddle.optimizer.Optimizer or DygraphShardingOptimizer, but receive {type(optimizer)}."
             )
 
 
@@ -404,7 +484,7 @@ def amp_guard(
                 "current_tracer is None, maybe it is not in imperative mode."
             )
         # check device_type:
-        # NOTE: Now, amp only support gpu for float16 and bfloat16, xpu for float16, npu for float16.
+        # NOTE: Now, amp only support gpu for float16 and bfloat16, xpu for float16, npu for float16 and bfloat16.
         # Maybe we will support cpu for bfloat16.
         if enable and not (
             tracer._expected_place.is_gpu_place()
@@ -422,8 +502,10 @@ def amp_guard(
                 warnings.warn('XPUPlace only support float16 amp.')
                 enable = False
             # For custom device:
-            if tracer._expected_place.is_custom_place() and (
-                dtype == 'bfloat16'
+            if (
+                tracer._expected_place.is_custom_place()
+                and not _is_custom_device_bfloat16_supported()
+                and (dtype == 'bfloat16')
             ):
                 warnings.warn('CustomPlace only support float16 amp.')
                 enable = False
@@ -471,7 +553,7 @@ def amp_guard(
                 # NOTE(lizhiyu): To support semi-auto of dygraph mode, we must
                 # classify the params of model into different calsses according to their process_mesh.
                 # Otherwise, fault will occur.
-                if not amp_global_state().already_classify_params_meshs:
+                if not amp_global_state().already_classify_params_meshes:
                     for param in amp_global_state().model_parameters:
                         if param is not None and param.process_mesh is not None:
                             if (
@@ -485,7 +567,7 @@ def amp_guard(
                                 amp_global_state().mesh2params[
                                     param.process_mesh
                                 ].append(param)
-                    amp_global_state().already_classify_params_meshs = True
+                    amp_global_state().already_classify_params_meshes = True
 
                 if len(amp_global_state().mesh2params):
                     for _, params in amp_global_state().mesh2params.items():
@@ -686,7 +768,11 @@ def amp_decorate(
         else:
             return models, optimizers
     # For custom device:
-    if tracer._expected_place.is_custom_place() and (dtype == 'bfloat16'):
+    if (
+        tracer._expected_place.is_custom_place()
+        and not _is_custom_device_bfloat16_supported()
+        and (dtype == 'bfloat16')
+    ):
         if optimizers is None:
             return models
         else:
@@ -737,13 +823,11 @@ def amp_decorate(
         for opt in optimizers:
             _set_multi_precision(opt, use_multi_precision)
 
-        # support master_grad
-        if master_grad:
-            amp_global_state().use_master_grad = True
-            for idx in range(len(models)):
-                amp_global_state().model_parameters.extend(
-                    models[idx].parameters()
-                )
+    # support master_grad
+    if master_grad:
+        amp_global_state().use_master_grad = True
+        for idx in range(len(models)):
+            amp_global_state().model_parameters.extend(models[idx].parameters())
 
     if save_dtype is not None:
         if save_dtype not in ['float16', 'bfloat16', 'float32', 'float64']:
@@ -938,13 +1022,63 @@ def decorate(
             paddle.float16
 
     """
-    return amp_decorate(
-        models,
-        optimizers,
-        level,
-        dtype,
-        master_weight,
-        save_dtype,
-        master_grad,
-        excluded_layers,
-    )
+
+    if paddle.framework.in_pir_mode():
+        assert not isinstance(models, (list, tuple))
+        assert not isinstance(optimizers, (list, tuple))
+        if level in ['O0', 'OD', 'O1']:
+            if optimizers is None:
+                return models
+            else:
+                optimizers = OptimizerWithMixedPrecision(
+                    optimizer=optimizers,
+                    amp_lists=None,
+                    level=level,
+                    dtype=dtype,
+                    init_loss_scaling=2.0**16,
+                    incr_every_n_steps=2000,
+                    decr_every_n_nan_or_inf=1,
+                    incr_ratio=2.0,
+                    decr_ratio=0.5,
+                    use_dynamic_loss_scaling=False,
+                    use_amp_guard=None,
+                    use_master_grad=master_grad,
+                    use_promote=True,
+                )
+                return models, optimizers
+        elif level == 'O2':
+            amp_initialize(
+                models=[models], dtype=dtype, excluded_layers=excluded_layers
+            )
+            use_multi_precision = master_weight is not False
+            _set_multi_precision(optimizers, use_multi_precision)
+            if optimizers is None:
+                return models
+            else:
+                optimizers = OptimizerWithMixedPrecision(
+                    optimizer=optimizers,
+                    amp_lists=AutoMixedPrecisionLists(dtype=dtype),
+                    level=level,
+                    dtype=dtype,
+                    init_loss_scaling=2**15,
+                    use_dynamic_loss_scaling=False,
+                    incr_every_n_steps=1000,
+                    decr_every_n_nan_or_inf=2,
+                    incr_ratio=2.0,
+                    decr_ratio=0.8,
+                    use_master_grad=master_grad,
+                )
+                return models, optimizers
+        else:
+            raise ValueError("level should be O0, OD, O1 or O2.")
+    else:
+        return amp_decorate(
+            models,
+            optimizers,
+            level,
+            dtype,
+            master_weight,
+            save_dtype,
+            master_grad,
+            excluded_layers,
+        )

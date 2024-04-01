@@ -49,6 +49,7 @@ __op_has_shape_attr__ = [
     "fill_constant_batch_size_like",
     "fill_constant",
     "expand_v2",
+    "expand_as_v2",
 ]
 
 
@@ -121,9 +122,7 @@ class DistributedDefault(DistributedOperatorImplContainer):
         for i in range(num_inputs):
             assert not is_parameter_related(
                 input_arg_names[i], main_block
-            ), "input {} of op {} is parameter, op should not use default rule.".format(
-                input_arg_names[i], str(dist_op.serial_op)
-            )
+            ), f"input {input_arg_names[i]} of op {str(dist_op.serial_op)} is parameter, op should not use default rule."
             input_specs.append(
                 get_dist_tensor_spec(dist_op, input_arg_names[i])
             )
@@ -132,9 +131,7 @@ class DistributedDefault(DistributedOperatorImplContainer):
         for i in range(num_outputs):
             assert not is_parameter_related(
                 output_arg_names[i], main_block
-            ), "output {} of op {} is parameter, op should not use default rule.".format(
-                output_arg_names[i], str(dist_op.serial_op)
-            )
+            ), f"output {output_arg_names[i]} of op {str(dist_op.serial_op)} is parameter, op should not use default rule."
             output_specs.append(
                 get_dist_tensor_spec(dist_op, output_arg_names[i], False)
             )
@@ -534,12 +531,15 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         # replicate op in dist program
         dst_op = copy_op_without_infer_shape(src_op, main_block, ctx, kwargs)
 
-        if (
-            src_op.has_attr('shape')
-            and src_op.attr('shape')
-            and src_op.type in __op_has_shape_attr__
-        ):
-            shape_list = src_op.attr('shape')
+        def get_shape_attr_name():
+            for name in ["shape", "target_shape"]:
+                if src_op.has_attr(name) and src_op.attr(name):
+                    return name
+            return None
+
+        shape_attr_name = get_shape_attr_name()
+        if shape_attr_name and src_op.type in __op_has_shape_attr__:
+            shape_list = src_op.attr(shape_attr_name)
             Out_var = main_block._var_recursive(kwargs['Out'][0])
             op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
             dim_mapping = op_dist_attr.get_output_dims_mapping(Out_var.name)
@@ -552,7 +552,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                         shape_list[idx] = (
                             shape_list[idx] // process_mesh_shape[axis]
                         )
-            dst_op.desc._set_attr('shape', shape_list)
+            dst_op.desc._set_attr(shape_attr_name, shape_list)
 
         # data parallel synchronization for primitive operators
         from paddle.incubate.autograd import prim_enabled

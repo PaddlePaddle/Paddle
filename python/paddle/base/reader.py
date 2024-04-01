@@ -137,7 +137,7 @@ class DataLoaderBase:
         arr = np.asarray(item)
         if arr.dtype == np.object_:
             raise TypeError(
-                "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
+                "\n\tFailed to convert input data to a regular ndarray :\n\t* Usually "
                 "this means the input data contains nested lists with different lengths. "
                 "\n\t* Check the reader function passed to 'decorate_batch_generator'"
                 " to locate the data causes this issue.\n\t* Please consider using "
@@ -532,7 +532,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
         # NOTE: the C++ LoDTensorBlockingQueue instance
         self._blocking_queue = None
         # NOTE: 1. In multiprocess mode, this thread is used to get next batch data from
-        # self._data_queue, then push it into self._blocking_queue; 2. In singleprocess
+        # self._data_queue, then push it into self._blocking_queue; 2. In single process
         # mode, this thread is used to get next batch data from self._batch_reader, then
         # push it into self._blocking_queue
         self._thread = None
@@ -1611,9 +1611,7 @@ class DatasetLoader(DataLoaderBase):
 
         assert (
             len(dataset.filelist) >= thread_num
-        ), "Filelist number of dataset {} must be not less than place number {}".format(
-            len(dataset.filelist), thread_num
-        )
+        ), f"Filelist number of dataset {len(dataset.filelist)} must be not less than place number {thread_num}"
 
         if dataset.thread_num != 0 and dataset.thread_num != thread_num:
             logging.warn(

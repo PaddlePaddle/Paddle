@@ -15,6 +15,11 @@
 include(ExternalProject)
 # Create a target named "third_party", which can compile external dependencies on all platform(windows/linux/mac)
 
+# Avoid warning about DOWNLOAD_EXTRACT_TIMESTAMP in CMake 3.24
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
+  cmake_policy(SET CMP0135 NEW)
+endif()
+
 set(THIRD_PARTY_PATH
     "${CMAKE_BINARY_DIR}/third_party"
     CACHE STRING
@@ -313,22 +318,6 @@ if(WITH_CINN)
   include(cmake/cinn/external/ginac.cmake)
   include(cmake/cinn/external/openmp.cmake)
   include(cmake/cinn/external/jitify.cmake)
-endif()
-
-# cinn_only includes third-party libraries separately
-if(CINN_ONLY)
-  include(external/gtest)
-  include(external/protobuf)
-  if(WITH_PYTHON)
-    include(external/pybind11)
-  endif()
-  if(WITH_MKL)
-    include(external/mklml)
-  endif()
-  if(WITH_MKLDNN)
-    include(external/mkldnn)
-  endif()
-  return()
 endif()
 
 include(external/eigen) # download eigen3

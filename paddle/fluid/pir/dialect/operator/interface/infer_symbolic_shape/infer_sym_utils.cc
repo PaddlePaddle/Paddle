@@ -16,6 +16,27 @@
 
 namespace paddle::dialect::details {
 
+std::optional<std::vector<int64_t>> VecExpr2Int64(const ExprVec &expr_vec) {
+  std::vector<int64_t> int64vec;
+  for (auto item : expr_vec) {
+    if (!item.isa<int64_t>()) {
+      return std::nullopt;
+    }
+    int64vec.push_back(item.Get<int64_t>());
+  }
+  return int64vec;
+}
+
+ExprVec VecInt642Expr(const std::vector<int64_t> &int_vec) {
+  ExprVec expr_vec(int_vec.size(), 0);
+  std::transform(
+      int_vec.begin(),
+      int_vec.end(),
+      expr_vec.begin(),
+      [](int64_t val) -> symbol::DimExpr { return symbol::DimExpr(val); });
+  return expr_vec;
+}
+
 bool ReduceInferDim(pir::Operation *op,
                     pir::ShapeConstraintIRAnalysis *shape_analysis,
                     const std::vector<int64_t> &axis,
@@ -24,18 +45,18 @@ bool ReduceInferDim(pir::Operation *op,
   auto x = op->operand_source(0);
   int x_rank = x.type().dyn_cast<pir::DenseTensorType>().dims().size();
 
-  const std::vector<int64_t> formated_axis = [&] {
-    std::vector<int64_t> formated_axis = axis;
+  const std::vector<int64_t> formatted_axis = [&] {
+    std::vector<int64_t> formatted_axis = axis;
     for (size_t i = 0; i < axis.size(); ++i) {
       if (axis[i] < 0) {
-        formated_axis[i] = axis[i] + x_rank;
+        formatted_axis[i] = axis[i] + x_rank;
       }
     }
-    return formated_axis;
+    return formatted_axis;
   }();
 
   bool full_dim = true;
-  std::set<int64_t> dims_set(formated_axis.begin(), formated_axis.end());
+  std::set<int64_t> dims_set(formatted_axis.begin(), formatted_axis.end());
   for (int64_t i = 0; i < x_rank; ++i) {
     if (dims_set.find(i) == dims_set.end()) {
       full_dim = false;
@@ -83,8 +104,8 @@ void BuildCstrEqForTensorListAlongAxis(
     const symbol::TensorListShapeOrDataDimExprs &shape_data_list,
     int axis) {
   for (size_t i = 1; i < shape_data_list.size(); ++i) {
-    shape_analysis->CreateDimExprBuilder().CstrEq(
-        shape_data_list[0].shape()[axis], shape_data_list[i].shape()[axis]);
+    shape_analysis->DimExprBuilder().CstrEq(shape_data_list[0].shape()[axis],
+                                            shape_data_list[i].shape()[axis]);
   }
 }
 
@@ -93,7 +114,7 @@ void BuildCstrEqForTensorListAlongAxis(
     const std::vector<pir::Value> &values,
     int axis) {
   for (size_t i = 1; i < values.size(); ++i) {
-    shape_analysis->CreateDimExprBuilder().CstrEq(
+    shape_analysis->DimExprBuilder().CstrEq(
         shape_analysis->GetShapeOrDataForValue(values[0]).shape()[axis],
         shape_analysis->GetShapeOrDataForValue(values[i]).shape()[axis]);
   }

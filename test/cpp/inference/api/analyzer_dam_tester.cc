@@ -120,8 +120,8 @@ struct DataRecord {
 void PrepareInputs(std::vector<PaddleTensor> *input_slots,
                    DataRecord *data,
                    int batch_size) {
-  PaddleTensor turns_tensor[FLAGS_max_turn_num];
-  PaddleTensor turns_mask_tensor[FLAGS_max_turn_num];
+  PaddleTensor turns_tensor[FLAGS_max_turn_num];       // NOLINT
+  PaddleTensor turns_mask_tensor[FLAGS_max_turn_num];  // NOLINT
   PaddleTensor response_tensor;
   PaddleTensor response_mask_tensor;
   std::string turn_pre = "turn_";
@@ -193,7 +193,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
   DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
   std::vector<PaddleTensor> input_slots;
   int test_batch_num =
-      FLAGS_test_all_data ? data.num_samples / FLAGS_batch_size : 1;
+      FLAGS_test_all_data ? data.num_samples / FLAGS_batch_size : 1;  // NOLINT
   LOG(INFO) << "The number of samples to be test: "
             << test_batch_num * FLAGS_batch_size;
   for (int bid = 0; bid < test_batch_num; ++bid) {

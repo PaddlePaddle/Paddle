@@ -40,6 +40,31 @@ void LSTMInferece(const bool &has_seq_length,
                   T *last_c_data,
                   phi::DenseTensor *workspace_data,
                   const size_t &workspace_size) {
+#if CUDNN_VERSION >= 90000
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::cudnnRNNForward(handle,
+                                    rnn->rnn_desc(),
+                                    CUDNN_FWD_MODE_INFERENCE,
+                                    nullptr,
+                                    rnn->x_seq_desc(),
+                                    x_data,
+                                    rnn->y_seq_desc(),
+                                    out_data,
+                                    rnn->init_h_desc(),
+                                    init_h_data,
+                                    last_h_data,
+                                    rnn->init_c_desc(),
+                                    init_c_data,
+                                    last_c_data,
+                                    rnn->weights_size(),
+                                    w_data,
+                                    workspace_size,
+                                    workspace_data->data<uint8_t>(),
+                                    0,
+                                    nullptr));
+
+#else
+
   if (!has_seq_length) {
 // for inference
 // This interface is used when the input/output is unpadded.
@@ -125,6 +150,8 @@ void LSTMInferece(const bool &has_seq_length,
         "the version of cudnn is larger than 7.2.1"));
 #endif
   }
+
+#endif  // end CUDNN_VERSION >= 90000
 }
 
 template <typename T, typename Context>
@@ -265,6 +292,30 @@ void CudnnLSTMKernel(
                     &workspace_data_,
                     workspace_size);
   } else {
+#if CUDNN_VERSION >= 90000
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnRNNForward(handle,
+                                      rnn.rnn_desc(),
+                                      CUDNN_FWD_MODE_TRAINING,
+                                      nullptr,
+                                      rnn.x_seq_desc(),
+                                      x_data,
+                                      rnn.y_seq_desc(),
+                                      out_data,
+                                      rnn.init_h_desc(),
+                                      init_h_data,
+                                      last_h_data,
+                                      rnn.init_c_desc(),
+                                      init_c_data,
+                                      last_c_data,
+                                      rnn.weights_size(),
+                                      w_data,
+                                      workspace_size,
+                                      workspace_data_.data<uint8_t>(),
+                                      reserve_size,
+                                      reserve_data));
+#else
+
     if (!has_seq_length) {
 // for train
 // This interface is used when the input/output is unpadded.
@@ -355,6 +406,7 @@ void CudnnLSTMKernel(
           "the version of cudnn is larger than 7.2.1"));
 #endif
     }
+#endif  // end CUDNN_VERSION >= 90000
   }
 }
 

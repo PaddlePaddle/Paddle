@@ -251,9 +251,7 @@ class DevelopCommand(DevelopCommandBase):
             filename=f'{paddle_source_dir}/python/paddle/cuda_env.py'
         )
         write_parameter_server_version_py(
-            filename='{}/python/paddle/incubate/distributed/fleet/parameter_server/version.py'.format(
-                paddle_source_dir
-            )
+            filename=f'{paddle_source_dir}/python/paddle/incubate/distributed/fleet/parameter_server/version.py'
         )
         DevelopCommandBase.run(self)
 
@@ -342,6 +340,12 @@ def get_minor():
 
 def get_patch():
     return str(_get_version_detail(2))
+
+
+def get_nccl_version():
+    if env_dict.get("WITH_NCCL") == 'ON':
+        return int(env_dict.get("NCCL_VERSION"))
+    return 0
 
 
 def get_cuda_version():
@@ -441,6 +445,7 @@ full_version     = '%(major)d.%(minor)d.%(patch)s'
 major            = '%(major)d'
 minor            = '%(minor)d'
 patch            = '%(patch)s'
+nccl_version     = '%(nccl)d'
 rc               = '%(rc)d'
 cuda_version     = '%(cuda)s'
 cudnn_version    = '%(cudnn)s'
@@ -451,8 +456,9 @@ is_tagged          = %(is_tagged)s
 commit           = '%(commit)s'
 with_mkl         = '%(with_mkl)s'
 cinn_version      = '%(cinn)s'
+with_pip_cuda_libraries       = '%(with_pip_cuda_libraries)s'
 
-__all__ = ['cuda', 'cudnn', 'show', 'xpu', 'xpu_xccl', 'xpu_xhpc']
+__all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xccl', 'xpu_xhpc']
 
 def show():
     """Get the version of paddle if `paddle` package if tagged. Otherwise, output the corresponding commit id.
@@ -526,6 +532,7 @@ def show():
         print('commit:', commit)
     print('cuda:', cuda_version)
     print('cudnn:', cudnn_version)
+    print('nccl:', nccl_version)
     print('xpu:', xpu_version)
     print('xpu_xccl:', xpu_xccl_version)
     print('xpu_xhpc:', xpu_xhpc_version)
@@ -533,6 +540,24 @@ def show():
 
 def mkl():
     return with_mkl
+
+def nccl():
+    """Get nccl version of paddle package.
+
+    Returns:
+        string: Return the version information of cuda nccl. If paddle package is CPU version, it will return False.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> paddle.version.nccl()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            '2804'
+
+    """
+    return nccl_version
 
 def cuda():
     """Get cuda version of paddle package.
@@ -659,6 +684,7 @@ def cinn():
                 'major': get_major(),
                 'minor': get_minor(),
                 'patch': get_patch(),
+                'nccl': get_nccl_version(),
                 'rc': RC,
                 'version': env_dict.get("PADDLE_VERSION"),
                 'cuda': get_cuda_version(),
@@ -670,6 +696,9 @@ def cinn():
                 'is_tagged': is_tagged(),
                 'with_mkl': env_dict.get("WITH_MKL"),
                 'cinn': get_cinn_version(),
+                'with_pip_cuda_libraries': env_dict.get(
+                    "with_pip_cuda_libraries"
+                ),
             }
         )
 
@@ -924,10 +953,7 @@ def get_setup_requires():
 
 def get_paddle_extra_install_requirements():
     # (Note risemeup1): Paddle will install the pypi cuda package provided by Nvidia, which includes the cuda runtime, cudnn, and cublas, thereby making the operation of 'pip install paddle' no longer dependent on the installation of cuda and cudnn.
-    paddle_cuda_install_requirements = os.getenv(
-        "PADDLE_CUDA_INSTALL_REQUIREMENTS", None
-    )
-    if paddle_cuda_install_requirements == "ON":
+    if env_dict.get("WITH_PIP_CUDA_LIBRARIES") == "ON":
         PADDLE_CUDA_INSTALL_REQUIREMENTS = {
             "V11": (
                 "nvidia-cuda-runtime-cu11==11.8.89; platform_system == 'Linux' and platform_machine == 'x86_64' | "
@@ -1370,6 +1396,27 @@ def get_headers():
                 recursive=True,
             )
         )
+        + list(  # pir init headers
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/pir/include',
+                recursive=True,
+            )
+        )
+        + list(  # drr init headers
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/fluid/pir/drr/include',
+                recursive=True,
+            )
+        )
+        + list(  # pass utils init headers
+            find_files(
+                'general_functions.h',
+                paddle_source_dir + '/paddle/fluid/pir/utils',
+                recursive=True,
+            )
+        )
     )
 
     jit_layer_headers = [
@@ -1750,9 +1797,7 @@ def main():
         filename=f'{paddle_binary_dir}/python/paddle/cuda_env.py'
     )
     write_parameter_server_version_py(
-        filename='{}/python/paddle/incubate/distributed/fleet/parameter_server/version.py'.format(
-            paddle_binary_dir
-        )
+        filename=f'{paddle_binary_dir}/python/paddle/incubate/distributed/fleet/parameter_server/version.py'
     )
     (
         setup_requires,
