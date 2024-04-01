@@ -209,7 +209,8 @@ class Engine:
         # TODO: remove _fwd_main_progs and _orig_optimizer and _pir_main_progs
         self._fwd_dist_contexts = {}
         self._fwd_main_progs = {}
-        self._pir_main_progs = {}
+        self._pir_dist_main_progs = {}
+        self._pir_dense_main_progs = {}
         self._orig_optimizer = copy.deepcopy(self._optimizer)
 
         self._executor = None
@@ -702,7 +703,8 @@ class Engine:
         dense_program = paddle.base.libpaddle.pir.apply_dist2dense_pass(
             dist_program
         )
-        self._pir_main_progs[mode] = dense_program
+        self._pir_dense_main_progs[mode] = dense_program
+        self._pir_dist_main_progs[mode] = dist_program
 
     def _prepare_program(self, mode, init_parameters=True):
         # Do the build process
@@ -1036,7 +1038,7 @@ class Engine:
             # 6. vpp init adaption
 
             self.program_helper.init_pir(
-                self._pir_main_progs[mode], self._place
+                self._pir_dense_main_progs[mode], self._place
             )
 
             return
@@ -2273,7 +2275,7 @@ class Engine:
     @property
     def main_program(self):
         if self._in_pir_mode:
-            return self._pir_main_progs[self._mode]
+            return self._pir_dist_main_progs[self._mode]
         dist_context = self._dist_contexts[self._mode]
         return dist_context.dist_main_programs[self._cur_rank]
 

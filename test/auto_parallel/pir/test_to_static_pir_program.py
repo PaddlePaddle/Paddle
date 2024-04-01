@@ -113,11 +113,10 @@ class TestToStaticPirProgramTrain(unittest.TestCase):
 
         # dist_model.train()
         mode = "train"
-        dist_model._engine._build(mode)
-        mix_fw_program = dist_model._engine._fwd_main_progs[mode]
-        main_program = paddle.base.libpaddle.pir.apply_mix2dist_pass(
-            mix_fw_program
-        )
+        dist_model.train()
+        main_program = dist_model._engine._pir_dist_main_progs["train"]
+
+        print(main_program, flush=1)
 
         relu_idx = 0
         matmul_idx = 0
