@@ -193,10 +193,55 @@ std::vector<std::vector<pir::Value>> BatchNorm_Op::Decomp(pir::Operation* op) {
   return res;
 }
 
+std::vector<std::vector<pir::Value>> MeshgridOp::Decomp(pir::Operation* op) {
+  VLOG(4) << "Decomp call meshgrid's decomp interface begin";
+
+  MeshgridOp op_obj = op->dyn_cast<MeshgridOp>();
+
+  (void)op_obj;
+
+  FLAGS_tensor_operants_mode = "static";
+
+  VLOG(6) << "Decomp Prepare inputs of meshgrid";
+
+  pir::CombineOp combine_op_obj_inputs =
+      op_obj.inputs().defining_op()->dyn_cast<pir::CombineOp>();
+  std::vector<Tensor> inputs;
+  for (size_t idx = 0; idx < combine_op_obj_inputs.inputs().size(); idx++) {
+    inputs.emplace_back(std::make_shared<primitive::LazyTensor>(
+        combine_op_obj_inputs.inputs()[idx]));
+  }
+
+  VLOG(6) << "Decomp prepare attributes of meshgrid";
+
+  VLOG(6) << "Decomp call meshgrid's forward composite rule prepare";
+
+  auto org_res = op->results();
+  std::vector<std::vector<pir::Value>> res(org_res.size());
+
+  VLOG(6) << "Decomp call meshgrid's forward composite rule begin";
+  std::vector<Tensor> op_res =
+      paddle::primitive::details::meshgrid_decomp<primitive::LazyTensor>(
+          inputs);
+  VLOG(6) << "Decomp call meshgrid's forward composite rule end";
+
+  std::vector<pir::Value> res_tmp;
+  for (size_t idx = 0; idx < op_res.size(); idx++) {
+    res_tmp.push_back(
+        std::static_pointer_cast<primitive::LazyTensor>(op_res[idx].impl())
+            ->value());
+  }
+  res.push_back(res_tmp);
+
+  VLOG(4) << "Decomp call meshgrid's decomp interface end";
+  return res;
+}
+
 std::vector<std::vector<pir::Value>> AnyOp::Decomp(pir::Operation* op) {
   VLOG(4) << "Decomp call any's decomp interface begin";
 
   AnyOp op_obj = op->dyn_cast<AnyOp>();
+
   (void)op_obj;
 
   FLAGS_tensor_operants_mode = "static";

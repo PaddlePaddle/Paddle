@@ -38,6 +38,7 @@ decomp_interface_declare_gen_op_list = [
     "leaky_relu",
     "log_softmax",
     "mean",
+    "meshgrid",
     "pow",
     "relu",
     "relu6",

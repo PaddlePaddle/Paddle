@@ -832,6 +832,33 @@ Tensor index_select_decomp(const Tensor& x, const Tensor& index, int axis) {
 }
 
 template <typename T>
+std::vector<Tensor> meshgrid_decomp(const std::vector<Tensor>& input) {
+  int size = input.size();
+  std::vector<int64_t> shape(size, 1);
+
+  for (int i = 0; i < size; ++i) {
+    int dim = input[i].dims().size();
+    if (dim != 1 && dim != 2) {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "meshgrid op only support 1D or 2D input"));
+    }
+
+    if (dim == 1) {
+      shape[i] = input[i].dims()[0];
+    }
+  }
+
+  std::vector<Tensor> out_tensors;
+  for (int i = 0; i < size; ++i) {
+    std::vector<int64_t> view_shape(size, 1);
+    view_shape[i] = shape[i];
+    auto out = expand<T>(reshape<T>(input[i], view_shape), shape);
+    out_tensors.push_back(out);
+  }
+  return out_tensors;
+}
+
+template <typename T>
 std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     const Tensor& x,
     const paddle::optional<Tensor>& scale,
