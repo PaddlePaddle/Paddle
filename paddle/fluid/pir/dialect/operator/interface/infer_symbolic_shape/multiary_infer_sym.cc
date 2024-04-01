@@ -28,13 +28,8 @@ bool BicubicInterpOpInferSymbolicShape(
 
   const auto &attributes = op->attributes();
 
-  bool align_corners = GetBoolAttr(op, "align_corners");
   const std::string data_format =
       attributes.at("data_format").dyn_cast<pir::StrAttribute>().AsString();
-  const std::string interp_method =
-      attributes.at("interp_method").dyn_cast<pir::StrAttribute>().AsString();
-  int align_mode =
-      attributes.at("align_mode").dyn_cast<pir::Int32Attribute>().data();
   int out_d = attributes.at("out_d").dyn_cast<pir::Int32Attribute>().data();
   int out_h = attributes.at("out_h").dyn_cast<pir::Int32Attribute>().data();
   int out_w = attributes.at("out_w").dyn_cast<pir::Int32Attribute>().data();
@@ -178,9 +173,9 @@ bool BicubicInterpOpInferSymbolicShape(
     return true;
 
   } else {
-    PADDLE_THROW(
+    PADDLE_THROW(phi::errors::Fatal(
         ("Input(X) dimension must be 3, 4 or 5, but got dimension = %d .",
-         x.shape().size()));
+         x.shape().size())));
   }
 
   return true;
