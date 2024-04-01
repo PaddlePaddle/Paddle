@@ -23,6 +23,20 @@
 
 namespace py = pybind11;
 
+namespace pybind11 {
+namespace detail {
+template <typename Key,
+          typename Value,
+          typename Hash,
+          typename Equal,
+          typename Alloc>
+struct type_caster<paddle::flat_hash_map<Key, Value, Hash, Equal, Alloc>>
+    : map_caster<paddle::flat_hash_map<Key, Value, Hash, Equal, Alloc>,
+                 Key,
+                 Value> {};
+}  // namespace detail
+}  // namespace pybind11
+
 using paddle::dialect::OperationDistAttribute;
 using paddle::dialect::TensorDistAttribute;
 

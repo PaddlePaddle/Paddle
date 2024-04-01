@@ -456,16 +456,12 @@ def log(x, out=None):
 def select(cond, x, y, out=None):
     if len(cond.shape) != len(x.shape):
         raise ValueError(
-            "len(cond.shape) should be equal to len(x.shape), but len(cond.shape)={} and len(x.shape)={}.".format(
-                len(cond.shape), len(x.shape)
-            )
+            f"len(cond.shape) should be equal to len(x.shape), but len(cond.shape)={len(cond.shape)} and len(x.shape)={len(x.shape)}."
         )
 
     if len(x.shape) != len(y.shape):
         raise ValueError(
-            "len(x.shape) should be equal to len(y.shape), but len(x.shape)={} and len(y.shape)={}.".format(
-                len(x.shape), len(y.shape)
-            )
+            f"len(x.shape) should be equal to len(y.shape), but len(x.shape)={len(x.shape)} and len(y.shape)={len(y.shape)}."
         )
 
     helper = LayerHelper('select_p', **locals())

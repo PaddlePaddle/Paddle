@@ -199,9 +199,7 @@ def generate_layer_fn(op_type):
                     dtype = each.dtype
                 elif dtype != each.dtype:
                     raise ValueError(
-                        "operator {} must input same dtype. {} vs {}".format(
-                            op_type, dtype, each.dtype
-                        )
+                        f"operator {op_type} must input same dtype. {dtype} vs {each.dtype}"
                     )
 
         if dtype is None:
@@ -352,12 +350,10 @@ def generate_inplace_fn(inplace_op_type):
                 return op(x)
 
     func.__name__ = inplace_op_type
-    func.__doc__ = """
-Inplace version of ``{}`` API, the output Tensor will be inplaced with input ``x``.
-Please refer to :ref:`api_paddle_{}`.
-""".format(
-        origin_op_type, origin_op_type
-    )
+    func.__doc__ = f"""
+Inplace version of ``{origin_op_type}`` API, the output Tensor will be inplaced with input ``x``.
+Please refer to :ref:`api_paddle_{origin_op_type}`.
+"""
     return func
 
 

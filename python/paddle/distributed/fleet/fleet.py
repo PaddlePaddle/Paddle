@@ -245,9 +245,7 @@ class Fleet:
                 )
             else:
                 raise ValueError(
-                    "`is_collective` should be instance of `bool`, but got {}".format(
-                        type(is_collective)
-                    )
+                    f"`is_collective` should be instance of `bool`, but got {type(is_collective)}"
                 )
         else:
             if isinstance(role_maker, RoleMakerBase):
@@ -255,9 +253,7 @@ class Fleet:
                 self._is_collective = role_maker._is_collective
             else:
                 raise ValueError(
-                    "`role_maker` should be subclass of `RoleMakerBase`, but got {}".format(
-                        type(role_maker)
-                    )
+                    f"`role_maker` should be subclass of `RoleMakerBase`, but got {type(role_maker)}"
                 )
         self._role_maker._generate_role()
 

@@ -468,9 +468,7 @@ def replace_mid_values_with_forward_subgraph(
                 "pd_op.full_int_array",
             ]:
                 raise Exception(
-                    "Every path to recompute value {} must have saved value or starting point of the path is one of op in [pd_op.full, pd_op.full_int_array], but find {} op".format(
-                        recompute_value, define_op.name()
-                    )
+                    f"Every path to recompute value {recompute_value} must have saved value or starting point of the path is one of op in [pd_op.full, pd_op.full_int_array], but find {define_op.name()} op"
                 )
             for op_input in op_inputs:
                 if op_input in saved_values:

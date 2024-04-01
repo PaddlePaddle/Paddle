@@ -98,13 +98,9 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
   // module Maybe we could reorder the process.
   Expr shared_mem_bytes;
 #ifdef CINN_WITH_CUDA
-  CodeGenCUDA_Dev codegen_dev(cinn::common::DefaultNVGPUTarget());
-  codegen_dev.Compile(ir::LoweredFunc(func.as_lowered_func_ref()));
-  shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
+  shared_mem_bytes = CalculateSharedMemory(func);
 #elif defined(CINN_WITH_ROCM)
-  CodeGenHIP_Dev codegen_dev(target_);
-  codegen_dev.Compile(ir::LoweredFunc(func.as_lowered_func_ref()));
-  shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
+  CINN_NOT_IMPLEMENTED
 #elif defined(CINN_WITH_SYCL)
   CINN_NOT_IMPLEMENTED
 #endif

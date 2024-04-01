@@ -161,9 +161,7 @@ def logical_and_(x, y, name=None):
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
-            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                out_shape, x.shape
-            )
+            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
     if in_dynamic_mode():
         return _C_ops.logical_and_(x, y)
@@ -222,9 +220,7 @@ def logical_or_(x, y, name=None):
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
-            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                out_shape, x.shape
-            )
+            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
     if in_dynamic_mode():
         return _C_ops.logical_or_(x, y)
@@ -284,9 +280,7 @@ def logical_xor_(x, y, name=None):
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
-            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                out_shape, x.shape
-            )
+            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
     if in_dynamic_mode():
         return _C_ops.logical_xor_(x, y)
@@ -605,9 +599,7 @@ def equal_(x, y, name=None):
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
-            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                out_shape, x.shape
-            )
+            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
     if in_dynamic_or_pir_mode():
         return _C_ops.equal_(x, y)
@@ -699,9 +691,7 @@ def greater_equal_(x, y, name=None):
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
-            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                out_shape, x.shape
-            )
+            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
     if in_dynamic_mode():
         return _C_ops.greater_equal_(x, y)
@@ -793,9 +783,7 @@ def greater_than_(x, y, name=None):
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
-            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                out_shape, x.shape
-            )
+            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
     if in_dynamic_mode():
         return _C_ops.greater_than_(x, y)
@@ -888,9 +876,7 @@ def less_equal_(x, y, name=None):
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
-            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                out_shape, x.shape
-            )
+            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
     if in_dynamic_mode():
         return _C_ops.less_equal_(x, y)
@@ -983,9 +969,7 @@ def less_than_(x, y, name=None):
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
-            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                out_shape, x.shape
-            )
+            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
     if in_dynamic_mode():
         return _C_ops.less_than_(x, y)
@@ -1078,9 +1062,7 @@ def not_equal_(x, y, name=None):
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
-            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                out_shape, x.shape
-            )
+            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
     if in_dynamic_mode():
         return _C_ops.not_equal_(x, y)
@@ -1214,9 +1196,7 @@ def bitwise_and_(x, y, name=None):
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
-            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                out_shape, x.shape
-            )
+            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
     if in_dynamic_or_pir_mode():
         return _C_ops.bitwise_and_(x, y)
@@ -1273,9 +1253,7 @@ def bitwise_or_(x, y, name=None):
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
-            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                out_shape, x.shape
-            )
+            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
     if in_dynamic_mode():
         return _C_ops.bitwise_or_(x, y)
@@ -1331,9 +1309,7 @@ def bitwise_xor_(x, y, name=None):
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
-            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                out_shape, x.shape
-            )
+            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
     if in_dynamic_mode():
         return _C_ops.bitwise_xor_(x, y)

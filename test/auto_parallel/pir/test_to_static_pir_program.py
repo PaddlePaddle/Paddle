@@ -139,8 +139,6 @@ class TestToStaticPirProgramTrain(unittest.TestCase):
         backward_op_list = [
             "pd_op.sgd_",
             "pd_op.sgd_",
-            "pd_op.relu_grad",
-            "dist_op.reshard",
             "pd_op.matmul_grad",
             "pd_op.relu_grad",
             "pd_op.matmul_grad",
