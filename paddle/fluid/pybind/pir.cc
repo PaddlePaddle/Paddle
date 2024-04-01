@@ -1758,7 +1758,6 @@ void InferSymbolicShapePass(
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
   if (pir::shape::HasDynamicShape(program) &&
       FLAGS_pir_apply_shape_optimization_pass) {
-    has_dynamic_shape = true;
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
 }

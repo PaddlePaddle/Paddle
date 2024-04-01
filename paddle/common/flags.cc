@@ -1549,6 +1549,10 @@ PHI_DEFINE_EXPORTED_string(pir_dyshape_sym2value,
                            "",
                            "Set value to Symbol for dynamic shape validation");
 
+PHI_DEFINE_EXPORTED_bool(check_dyshape,
+                         false,
+                         "Whether to check shape at runtime");
+
 PHI_DEFINE_EXPORTED_string(
     cudnn_dir,  // NOLINT
     "",

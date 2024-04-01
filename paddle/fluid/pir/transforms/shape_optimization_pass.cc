@@ -24,6 +24,7 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 
 COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
+COMMON_DECLARE_bool(check_dyshape);
 
 // TODO(zhangbopd): Some op results infered by InferSymbolicShape is NOT consist
 // with the result infered by InferMeta and should be fixed.
@@ -298,7 +299,6 @@ void InferSymExprForBlock(const Block& block,
 }
 
 std::unique_ptr<Pass> CreateShapeOptimizationPass() {
-  has_dynamic_shape = true;
   return std::make_unique<ShapeOptimizationPass>();
 }
 
@@ -316,7 +316,11 @@ bool HasDynamicShape(const pir::Program& program) {
         auto shape_type =
             op.result(i).type().dyn_cast<pir::ShapedTypeInterface>();
         if (shape_type && shape_type.IsDynamicShape()) {
-          VLOG(vlog_level) << "###### HasDynamicShape == true";
+          is_check_dynamic_shape = true;
+          FLAGS_check_dyshape = true;
+          VLOG(vlog_level) << "###### HasDynamicShape == true, "
+                           << "is_check_dynamic_shape = "
+                           << is_check_dynamic_shape;
           return true;
         }
       }
@@ -332,7 +336,6 @@ void AddShapeOptimizationPass(
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
   if (HasDynamicShape(program) && FLAGS_pir_apply_shape_optimization_pass) {
-    has_dynamic_shape = true;
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
 }

@@ -84,6 +84,7 @@ COMMON_DECLARE_bool(enable_pir_in_executor);
 COMMON_DECLARE_bool(enable_pir_in_executor_trace_run);
 COMMON_DECLARE_int32(low_precision_op_list);
 COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
+COMMON_DECLARE_bool(check_dyshape);
 
 #define CREATE_INSTR(instr_name)                                   \
   vec_instruction_base_.emplace_back(std::make_unique<instr_name>( \
@@ -1787,7 +1788,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
               << " runs on " << platform::GetCurrentThreadName() << "\n"
               << "After: " << cur_place << " "
               << instr_node->DebugStringEx(scope_, value_exe_info_.get());
-      if (FLAGS_pir_apply_shape_optimization_pass && has_dynamic_shape) {
+      if (FLAGS_pir_apply_shape_optimization_pass && FLAGS_check_dyshape) {
         auto source_op_id_attr = instr_node->Operation()
                                      ->attribute("source_op_id")
                                      .dyn_cast<pir::IndexAttribute>();
