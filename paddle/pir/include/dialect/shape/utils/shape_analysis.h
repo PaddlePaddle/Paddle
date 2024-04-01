@@ -89,6 +89,15 @@ class IR_API ShapeConstraintIRAnalysis {
 
   void AddEqCstr(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs);
 
+  void AddBroadcastableCstr(const symbol::DimExpr& lhs,
+                            const symbol::DimExpr& rhs);
+
+  void AddGTOneCstr(const symbol::DimExpr& dim_expr);
+
+  bool IsDimExprEqual(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs);
+
+  void PrintDimExprClusters();
+
   pir::PrintHooks PrintHook() const;
 
   symbol::DimExpr GetProductDimExpr(Value lhs,

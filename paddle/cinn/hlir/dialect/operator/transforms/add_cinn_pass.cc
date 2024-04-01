@@ -186,11 +186,29 @@ void ApplyCinnLowerPass(
 void ApplyCinnPass(::pir::Program* program,
                    const std::function<std::shared_ptr<pir::PassManager>()>&
                        CreatePassManager) {
+  auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(program);
+  // std::cout << "Program before ApplyBuildGroupOpPass: \n"
+  //           << *program << std::endl;
   ApplyCinnPreprocessPass(program, CreatePassManager);
+  std::cout << "Program before ApplyBuildGroupOpPass: \n"
+            << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())
+            << std::endl;
   ApplyBuildGroupOpPass(program, CreatePassManager);
+  // std::cout << "Program before ApplyGroupOpPass: \n"
+  //           << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())
+  //           << std::endl;
   ApplyGroupOpPass(program, CreatePassManager);
+  // std::cout << "Program before ApplyDivideGroupOpToFusionOpPass: \n"
+  //           << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())
+  //           << std::endl;
   ApplyDivideGroupOpToFusionOpPass(program, CreatePassManager);
+  std::cout << "Program before lowering: \n"
+            << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())
+            << std::endl;
+  VLOG(0) << " Fusion Op Count: *****[ " << GetFusionOpNum(*program)
+          << " ]*****";
   ApplyCinnLowerPass(program, CreatePassManager);
+  VLOG(0) << "####### ApplyCinnPass Finish #######";
 }
 
 }  // namespace cinn::dialect::ir

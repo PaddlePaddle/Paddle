@@ -1125,6 +1125,7 @@ IR_API bool IsDimExprGreaterThanOne(const symbol::DimExpr& dim_expr) {
         if (std::get<std::int64_t>(sub_dim_expr) > 1) return true;
       }
     }
+    return false;
   } else {
     return false;
   }
