@@ -593,6 +593,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_new_executor_);
   CP_MEMBER(use_pir_);
   CP_MEMBER(custom_passes_);
+  CP_MEMBER(custom_pass_only_);
+  CP_MEMBER(pm_opt_level_);
+  CP_MEMBER(ir_debug_passes_);
 
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_,
@@ -1325,8 +1328,10 @@ NativeConfig AnalysisConfig::ToNativeConfig() const {
   return config;
 }
 
-void AnalysisConfig::SwitchIrDebug(int x) {
+void AnalysisConfig::SwitchIrDebug(int x,
+                                   const std::vector<std::string> &passes) {
   ir_debug_ = x;
+  ir_debug_passes_ = passes;
   Update();
 }
 
@@ -1664,9 +1669,13 @@ void AnalysisConfig::EnableCINN() {
 
 bool AnalysisConfig::cinn_enabled() const { return use_cinn_; }
 
-void AnalysisConfig::EnableCustomPasses(
-    const std::vector<std::string> &passes) {
+void AnalysisConfig::EnableCustomPasses(const std::vector<std::string> &passes,
+                                        bool custom_pass_only) {
   custom_passes_ = passes;
+  custom_pass_only_ = custom_pass_only;
 }
 
+void AnalysisConfig::SetOptimizationLevel(int opt_level) {
+  pm_opt_level_ = opt_level;
+}
 }  // namespace paddle

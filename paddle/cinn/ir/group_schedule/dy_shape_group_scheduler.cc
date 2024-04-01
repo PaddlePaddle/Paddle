@@ -37,7 +37,9 @@ void DynamicShapeGroupScheduler::Init() {
           << ir_sch_->GetModule().GetExprs()[0];
   InitBuckets();
   tactics_.emplace_back(CreateLoopReorderAlignmentTactic());
+  VLOG(4) << "CreateLoopReorderAlignmentTactic End";
   tactics_.emplace_back(CreateTileFirstGeneralTactic());
+  VLOG(4) << "CreateTileFirstGeneralTactic End";
 }
 
 void DynamicShapeGroupScheduler::InitBuckets() {
@@ -64,12 +66,21 @@ void DynamicShapeGroupScheduler::InitBuckets() {
     ir::ScheduleBlockNode* global_master =
         FindGlobalMasterNode(schedule_block_graph);
     IterativeSpaceInfo iter_space_info = ConstructIterSpaceInfo(global_master);
+    VLOG(4) << "iter_space_info.total_sp_extent: "
+            << iter_space_info.total_sp_extent;
+    VLOG(4) << "iter_space_info.total_rb_extent: "
+            << iter_space_info.total_rb_extent;
+    VLOG(4) << "bucket_info.sp_lower_bound: " << bucket_info.sp_lower_bound;
+    VLOG(4) << "bucket_info.sp_upper_bound: " << bucket_info.sp_upper_bound;
+    VLOG(4) << "bucket_info.rb_lower_bound: " << bucket_info.rb_lower_bound;
+    VLOG(4) << "bucket_info.rb_upper_bound: " << bucket_info.rb_upper_bound;
     if (OutOfRange(iter_space_info.total_sp_extent,
                    bucket_info.sp_lower_bound,
                    bucket_info.sp_upper_bound) ||
         OutOfRange(iter_space_info.total_rb_extent,
                    bucket_info.rb_lower_bound,
                    bucket_info.rb_upper_bound)) {
+      VLOG(4) << "Out of range";
       return;
     }
     SymbolicPredicate sp_lower_bound_predicate = ir::GE::Make(
@@ -105,6 +116,7 @@ void DynamicShapeGroupScheduler::InitBuckets() {
 }
 
 void DynamicShapeGroupScheduler::Schedule() {
+  VLOG(4) << "bucket_context_.size() = " << bucket_contexts_.size();
   for (BucketContext& bucket_context : bucket_contexts_) {
     VLOG(4) << "===========================Apply tactics on Bucket ["
             << bucket_context.predicate << "]==========================";

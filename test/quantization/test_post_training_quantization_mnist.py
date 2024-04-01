@@ -285,9 +285,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         origin_model_path = os.path.join(origin_model_path, model_name)
 
         print(
-            "Start FP32 inference for {} on {} images ...".format(
-                model_name, infer_iterations * batch_size
-            )
+            f"Start FP32 inference for {model_name} on {infer_iterations * batch_size} images ..."
         )
 
         (fp32_throughput, fp32_latency, fp32_acc1) = self.run_program(
@@ -299,9 +297,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         )
 
         print(
-            "Start INT8 post training quantization for {} on {} images ...".format(
-                model_name, quant_iterations * batch_size
-            )
+            f"Start INT8 post training quantization for {model_name} on {quant_iterations * batch_size} images ..."
         )
         self.generate_quantized_model(
             origin_model_path,
@@ -321,9 +317,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         )
 
         print(
-            "Start INT8 inference for {} on {} images ...".format(
-                model_name, infer_iterations * batch_size
-            )
+            f"Start INT8 inference for {model_name} on {infer_iterations * batch_size} images ..."
         )
         (int8_throughput, int8_latency, int8_acc1) = self.run_program(
             self.int8_model_path,
@@ -335,14 +329,10 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
         print(f"---Post training quantization of {algo} method---")
         print(
-            "FP32 {}: batch_size {}, throughput {} img/s, latency {} s, acc1 {}.".format(
-                model_name, batch_size, fp32_throughput, fp32_latency, fp32_acc1
-            )
+            f"FP32 {model_name}: batch_size {batch_size}, throughput {fp32_throughput} img/s, latency {fp32_latency} s, acc1 {fp32_acc1}."
         )
         print(
-            "INT8 {}: batch_size {}, throughput {} img/s, latency {} s, acc1 {}.\n".format(
-                model_name, batch_size, int8_throughput, int8_latency, int8_acc1
-            )
+            f"INT8 {model_name}: batch_size {batch_size}, throughput {int8_throughput} img/s, latency {int8_latency} s, acc1 {int8_acc1}.\n"
         )
         sys.stdout.flush()
 

@@ -123,12 +123,7 @@ def _dispatch(cls_p, cls_q):
 
     if _REGISTER_TABLE[left_p, left_q] is not _REGISTER_TABLE[right_p, right_q]:
         warnings.warn(
-            'Ambiguous kl_divergence({}, {}). Please register_kl({}, {})'.format(
-                cls_p.__name__,
-                cls_q.__name__,
-                left_p.__name__,
-                right_q.__name__,
-            ),
+            f'Ambiguous kl_divergence({cls_p.__name__}, {cls_q.__name__}). Please register_kl({left_p.__name__}, {right_q.__name__})',
             RuntimeWarning,
         )
 

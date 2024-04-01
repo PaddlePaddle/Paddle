@@ -347,14 +347,7 @@ def run_adaround(
                 return_numpy=True,
             )
             _logger.info(
-                "Iter {:d}, lr {:.5f}, loss {:.5f}, loss_round {:.5f}, loss_recon {:.5f}, time {:.5f}s".format(
-                    i,
-                    lr,
-                    np.mean(out[0]),
-                    np.mean(out[1]),
-                    np.mean(out[2]),
-                    start_time - prev_start_time,
-                )
+                f"Iter {i:d}, lr {lr:.5f}, loss {np.mean(out[0]):.5f}, loss_round {np.mean(out[1]):.5f}, loss_recon {np.mean(out[2]):.5f}, time {start_time - prev_start_time:.5f}s"
             )
             sys.stdout.flush()
             if i == num_iterations:

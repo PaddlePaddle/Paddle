@@ -1611,9 +1611,7 @@ class DatasetLoader(DataLoaderBase):
 
         assert (
             len(dataset.filelist) >= thread_num
-        ), "Filelist number of dataset {} must be not less than place number {}".format(
-            len(dataset.filelist), thread_num
-        )
+        ), f"Filelist number of dataset {len(dataset.filelist)} must be not less than place number {thread_num}"
 
         if dataset.thread_num != 0 and dataset.thread_num != thread_num:
             logging.warn(

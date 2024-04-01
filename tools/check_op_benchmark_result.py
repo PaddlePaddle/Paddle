@@ -86,9 +86,7 @@ def check_speed_result(case_name, develop_data, pr_data, pr_result):
         f"GPU time change: {gpu_time_diff_str} (develop: {develop_gpu_time:.7f} -> PR: {pr_gpu_time:.7f})"
     )
     logging.info(
-        "Total time change: {:.5f}% (develop: {:.7f} -> PR: {:.7f})".format(
-            total_time_diff * 100, develop_total_time, pr_total_time
-        )
+        f"Total time change: {total_time_diff * 100:.5f}% (develop: {develop_total_time:.7f} -> PR: {pr_total_time:.7f})"
     )
     logging.info("backward: %s" % pr_result.get("backward"))
     logging.info("parameters:")
