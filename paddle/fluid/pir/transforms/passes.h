@@ -45,6 +45,7 @@ USE_PIR_PASS(conv2d_bias_fuse_pass);
 USE_PIR_PASS(conv2d_transpose_bias_fuse_pass);
 USE_PIR_PASS(conv3d_bias_fuse_pass);
 USE_PIR_PASS(reshape_transpose_matmul_fuse_pass);
+USE_PIR_PASS(matmul_transpose_reshape_fuse_pass);
 USE_PIR_PASS(matmul_elementwise_add_fuse_pass);
 USE_PIR_PASS(matmul_activation_fuse_pass);
 USE_PIR_PASS(conv_elementwise_add_mkldnn_fuse_pass);
