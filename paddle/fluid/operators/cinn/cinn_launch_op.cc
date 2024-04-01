@@ -38,7 +38,8 @@ const ::cinn::common::Target& PlaceToCinnTarget(const platform::Place& place) {
   if (platform::is_cpu_place(place)) {
     return ::cinn::common::DefaultHostTarget();
   } else if (platform::is_gpu_place(place)) {
-    return ::cinn::runtime::CurrentTarget::GetCurrentTarget();
+    // todo: multi backends.
+    return ::cinn::common::DefaultNVGPUTarget();
   }
 
   PADDLE_THROW(platform::errors::InvalidArgument(
