@@ -1250,8 +1250,14 @@ struct PD_INFER_DECL AnalysisConfig {
                           bool custom_pass_only = false);
 
   ///
-  /// \brief Set passmanager opt level.Pass level lower than
+  /// \brief Set passmanager opt level. Pass level lower than
   /// opt level which will be added to passmanager
+  /// \param opt_level PassManager Level, Optional values is 0,1,2,3,4.
+  /// If 0, only contain the basic pass.
+  /// If 1, constant fold, cse, memory optimize, etc.
+  /// If 2, the fusion logical pass.
+  /// If 3, layout, etc.
+  /// If 4, add the radical optimization, maybe affect precision, etc.
   ///
   void SetOptimizationLevel(int opt_level);
 
