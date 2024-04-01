@@ -298,6 +298,9 @@ void* CustomAllocator::Alloc(size_t* index, size_t size) {
     VLOG(4) << "CustomAllocator::Alloc " << p << " size " << size;
     *index = 0;
     plug_alloc_size += size;
+    DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
+    platform::RecordMemEvent(
+        p, place, size, platform::TracerMemEventType::ReservedAllocate);
   } else {
     size_t avail, total;
 
@@ -332,6 +335,9 @@ void CustomAllocator::Free(void* p, size_t size, size_t index) {
   auto place = platform::CustomPlace(dev_type_, dev_id_);
   auto device = phi::DeviceManager::GetDeviceWithPlace(place);
   device->MemoryDeallocate(p, size);
+  DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
+  platform::RecordMemEvent(
+      p, place, size, platform::TracerMemEventType::ReservedFree);
 }
 
 bool CustomAllocator::UseGpu() const { return true; }
