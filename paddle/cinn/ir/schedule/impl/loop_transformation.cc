@@ -139,12 +139,18 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   Expr substitute_value(0);
   for (int i = 0; i < process_factors.size(); ++i) {
     Var temp_var(common::UniqName(for_node->loop_var->name));
+    // substitute_value = Expr(temp_var) +
     substitute_value = Expr(temp_var) + substitute_value * process_factors[i];
+
     new_loop_vars.push_back(temp_var);
   }
   substitute_value = cinn::common::AutoSimplify(substitute_value);
   Expr new_node = ir::ir_utils::IRCopy(for_node->body);
+  // VLOG(5) << "During Split, origin new_node is:\n" << new_node;
+  // VLOG(5) << "During Split, for_node->loop_var is:\n" << for_node->loop_var;
+  // VLOG(5) << "During Split, substitute_value is:\n" << substitute_value;
   ReplaceExpr(&new_node, {for_node->loop_var}, {substitute_value});
+  // VLOG(5) << "During Split, after new_node is:\n" << new_node;
   std::vector<Expr> splited_loops;
   splited_loops.resize(process_factors.size());
 
