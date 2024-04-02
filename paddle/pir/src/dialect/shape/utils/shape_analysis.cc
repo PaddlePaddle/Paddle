@@ -144,7 +144,8 @@ int GetDimExprPriority(const symbol::DimExpr& dim_expr) {
  * @return -1 if lhs is less than rhs, 1 if lhs is greater than rhs, and 0 if
  * they are equal
  */
-int CompareDimExpr(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
+int CompareDimExprPriority(const symbol::DimExpr& lhs,
+                           const symbol::DimExpr& rhs) {
   int lhs_priority = GetDimExprPriority(lhs);
   int rhs_priority = GetDimExprPriority(rhs);
   if (lhs_priority != rhs_priority) {
@@ -169,7 +170,7 @@ int CompareDimExpr(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
 void ShapeConstraintIRAnalysis::SubstituteDimExpr(const symbol::DimExpr& lhs,
                                                   const symbol::DimExpr& rhs) {
   std::unordered_map<symbol::DimExpr, symbol::DimExpr> substitution_pattern;
-  int compare_lhs_to_rhs = CompareDimExpr(lhs, rhs);
+  int compare_lhs_to_rhs = CompareDimExprPriority(lhs, rhs);
   if (compare_lhs_to_rhs == 0) {
     return;
   } else if (compare_lhs_to_rhs < 0) {
@@ -188,6 +189,9 @@ void ShapeConstraintIRAnalysis::SubstituteDimExpr(const symbol::DimExpr& lhs,
 
 void ShapeConstraintIRAnalysis::AddEqCstr(const symbol::DimExpr& lhs,
                                           const symbol::DimExpr& rhs) {
+  if (lhs == rhs) {
+    return;
+  }
   cstrs_manager_.AddEqCstr(lhs, rhs);
   SubstituteDimExpr(lhs, rhs);
 }
@@ -195,6 +199,10 @@ void ShapeConstraintIRAnalysis::AddEqCstr(const symbol::DimExpr& lhs,
 void ShapeConstraintIRAnalysis::AddBroadcastableCstr(
     const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
   cstrs_manager_.AddBroadcastableCstr(lhs, rhs);
+  if (symbol::IsDimExprGreaterThanOne(lhs) &&
+      symbol::IsDimExprGreaterThanOne(rhs)) {
+    AddEqCstr(lhs, rhs);
+  }
 }
 
 void ShapeConstraintIRAnalysis::AddGTOneCstr(const symbol::DimExpr& dim_expr) {
@@ -206,8 +214,8 @@ bool ShapeConstraintIRAnalysis::IsDimExprEqual(const symbol::DimExpr& lhs,
   return cstrs_manager_.IsDimExprEqual(lhs, rhs);
 }
 
-void ShapeConstraintIRAnalysis::PrintDimExprClusters() {
-  return cstrs_manager_.PrintDimExprClusters();
+void ShapeConstraintIRAnalysis::PrintDimExprClusters(std::stringstream& ss) {
+  return cstrs_manager_.PrintDimExprClusters(ss);
 }
 
 void ShapeConstraintIRAnalysis::PrintShapeOrDatas() const {

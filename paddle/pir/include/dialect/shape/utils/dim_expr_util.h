@@ -27,6 +27,8 @@ IR_API DimExpr SubstituteDimExpr(
     const DimExpr& dim_expr,
     const std::unordered_map<DimExpr, DimExpr>& pattern_to_replacement);
 
+IR_API bool IsDimExprGreaterThanOne(const symbol::DimExpr& dim_expr);
+
 IR_API std::unordered_set<std::string> CollectDimExprSymbols(
     const DimExpr& dim_expr);
 

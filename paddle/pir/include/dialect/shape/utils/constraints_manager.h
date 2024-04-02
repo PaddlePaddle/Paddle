@@ -29,9 +29,14 @@ class IR_API ConstraintsManager {
 
   void AddGTOneCstr(const DimExpr& dim_expr);
 
+  bool IsDimExprGTOne(const DimExpr& dim_expr);
+
   bool IsDimExprEqual(const DimExpr& lhs, const DimExpr& rhs);
 
-  void PrintDimExprClusters();
+  void PrintDimExprClusters(std::stringstream& ss);
+
+ private:
+  void SubstituteDimExprInConstraint(const DimExpr& lhs, const DimExpr& rhs);
 
  private:
   std::vector<Broadcastable<DimExpr>> broadcastables_;

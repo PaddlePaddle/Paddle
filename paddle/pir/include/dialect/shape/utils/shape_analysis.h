@@ -51,7 +51,7 @@ class IR_API ShapeConstraintIRAnalysis {
 
   bool IsDimExprEqual(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs);
 
-  void PrintDimExprClusters();
+  void PrintDimExprClusters(std::stringstream& ss);
 
   // Used to debug
   void PrintShapeOrDatas() const;

@@ -53,6 +53,10 @@ class UnionFindSet {
     return clusters;
   }
 
+  bool IsConnect(const T& p, const T& q) { return Find(p) == Find(q); }
+
+  std::unordered_map<T, T> GetMap() { return parent_; }
+
  private:
   std::unordered_map<T, T> parent_;
 };

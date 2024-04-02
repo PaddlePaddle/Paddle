@@ -419,6 +419,7 @@ bool MatmulOpInferSymbolicShape(
     symbol::DimExprBuilder builder;
     for (size_t i = 0; i < ndims_x - 2; ++i) {
       out_dims.emplace_back(builder.Broadcast(x_dims[i], y_dims[i]));
+      shape_analysis->AddBroadcastableCstr(x_dims[i], y_dims[i]);
     }
   }
 
