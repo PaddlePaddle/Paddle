@@ -106,7 +106,7 @@ def set_excluded_layers(param_names, main_program=None):
             ...     prob = my_layer(input_data)
             ...     loss = paddle.mean(paddle.nn.functional.square_error_cost(prob, label))
             ...
-            ...     # Setup exluded layers out from ASP workflow.
+            ...     # Setup excluded layers out from ASP workflow.
             ...     # Please note, excluded_layers must be set before calling optimizer.minimize().
             ...     paddle.incubate.asp.set_excluded_layers([my_layer.linear1.full_name()], main_program)
             ...
@@ -126,7 +126,7 @@ def set_excluded_layers(param_names, main_program=None):
 
 def reset_excluded_layers(main_program=None):
     r"""
-    Reset exculded layers setting corresponding to :attr:`main_program`. If :attr:`main_program`
+    Reset excluded layers setting corresponding to :attr:`main_program`. If :attr:`main_program`
     is None, then all configurations of excluded_layers would be cleaned.
 
     Args:
@@ -196,7 +196,7 @@ def reset_excluded_layers(main_program=None):
             ...     prob = my_layer(input_data)
             ...     loss = paddle.mean(paddle.nn.functional.square_error_cost(prob, label))
             ...
-            ...     # Setup exluded layers out from ASP workflow.
+            ...     # Setup excluded layers out from ASP workflow.
             ...     # Please note, excluded_layers must be set before calling optimizer.minimize().
             ...     paddle.incubate.asp.set_excluded_layers([my_layer.linear1.full_name()], main_program)
             ...     # Reset excluded_layers, all supported layers would be included into Automatic SParsity's workflow.
@@ -216,7 +216,7 @@ def reset_excluded_layers(main_program=None):
 def decorate(optimizer):
     r"""
     Wrap the given optimizer as a OptimizerWithSparsityGuarantee,
-    If runnig with dynamic graph mode. ASP would creates mask variables for supported parameters.
+    If running with dynamic graph mode. ASP would creates mask variables for supported parameters.
     Else if in static graph mode, ASP would creates mask variables and inserts necessary ops
     when calling minimize()
 
@@ -310,15 +310,15 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
     *Note*: (Static graph mode) If calling this function with :attr:`with_mask`, it should call `OptimizerWithSparsityGuarantee.minimize`
     and initialization (`exe.run(startup_program`)) before (For successfully obtain mask Variable).
     Typically set `with_mask` as true for training (have called `OptimizerWithSparsityGuarantee.minimize`) and false for
-    inference only. To obtain OptimizerWithSparsityGuarantee, please see `paddle.incubate.asp.decoreate()`.
+    inference only. To obtain OptimizerWithSparsityGuarantee, please see `paddle.incubate.asp.decorate()`.
 
     Args:
         model (Program|nn.Layer): Program with model definition and its parameters, or a object of `paddle.nn.Layer`.
         n (int, optional): n of `n:m` sparse pattern. Default is 2.
         m (int, optional): m of `n:m` sparse pattern. Default is 4.
-        mask_algo (string, optional): The function name to generate spase mask. Default is `mask_1d`.
-                                      The vaild inputs should be one of 'mask_1d', 'mask_2d_greedy' and 'mask_2d_best'.
-        with_mask (bool, optional): To prune mask Variables related to parameters or not. True is purning also, False is not. Default is True.
+        mask_algo (string, optional): The function name to generate sparse mask. Default is `mask_1d`.
+                                      The valid inputs should be one of 'mask_1d', 'mask_2d_greedy' and 'mask_2d_best'.
+        with_mask (bool, optional): To prune mask Variables related to parameters or not. True is pruning also, False is not. Default is True.
     Returns:
         dictionary: A dictionary with key: `parameter name` (string) and value: its corresponding mask Variable.
     Examples:
@@ -459,9 +459,7 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
             place = paddle.CUDAPlace(gpu_id)
     else:
         raise TypeError(
-            "model should be paddle.nn.Layer or paddle.static.Program, but got {}".format(
-                type(model)
-            )
+            f"model should be paddle.nn.Layer or paddle.static.Program, but got {type(model)}"
         )
 
     return prune_func(
@@ -476,9 +474,9 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
 
 class ProgramASPInfo:
     r"""
-    ProgramASPInfo is a container to keep ASP relevant information of Pragrom. It contains three inner-variables:
-    1. __mask_vars (Dictionary): Key is parameter's name and vaule is its corresponding sparse mask Variable object, which is created by `ASPHelper.create_mask_variables`.
-    2. __masks (Dictionary): Key is parameter's name and vaule is its corressponding sparse mask Numpy array, which is created by `ASPHelper.prune_model`.
+    ProgramASPInfo is a container to keep ASP relevant information of Program. It contains three inner-variables:
+    1. __mask_vars (Dictionary): Key is parameter's name and value is its corresponding sparse mask Variable object, which is created by `ASPHelper.create_mask_variables`.
+    2. __masks (Dictionary): Key is parameter's name and value is its corresponding sparse mask Numpy array, which is created by `ASPHelper.prune_model`.
     3. __excluded_layers (List): It stores name of layers which should not involve into ASP workflow.
     """
 
@@ -552,7 +550,7 @@ class ASPHelper:
         if paddle.in_dynamic_mode():
             # main_prog and startup_prog would be used with paddle.static.program_guard
             # to create ASP masks. Moreover, main_prog is a key to map paddle.static.Program
-            # to its own ASP informantion, like ASP mask variables. For dynamic graph, we use
+            # to its own ASP information, like ASP mask variables. For dynamic graph, we use
             # default_main_program as the key.
             main_prog = paddle.static.default_main_program()
             startup_prog = paddle.static.default_startup_program()
@@ -599,11 +597,9 @@ class ASPHelper:
                         ASPHelper._get_mask_name(param.name)
                     )
                     assert weight_mask_param is not None, (
-                        'Cannot find {} variable, please call optimizer.minimize ('
+                        f'Cannot find {ASPHelper._get_mask_name(param.name)} variable, please call optimizer.minimize ('
                         'paddle.incubate.asp.decorate(optimizer).minimize(loss)'
-                        ' and initialization (exe.run(startup_program)) first!'.format(
-                            ASPHelper._get_mask_name(param.name)
-                        )
+                        ' and initialization (exe.run(startup_program)) first!'
                     )
                     weight_mask_tensor = weight_mask_param.get_tensor()
                     weight_sparse_mask = weight_sparse_mask.astype(
@@ -650,10 +646,8 @@ class ASPHelper:
                             param.name, None
                         )
                         assert weight_mask_param is not None, (
-                            'Cannot find {} variable, please call asp.decorate() to'
-                            ' decorate your optimizer first!'.format(
-                                ASPHelper._get_mask_name(param.name)
-                            )
+                            f'Cannot find {ASPHelper._get_mask_name(param.name)} variable, please call asp.decorate() to'
+                            ' decorate your optimizer first!'
                         )
                         weight_mask_param.set_value(weight_sparse_mask)
 
@@ -809,7 +803,7 @@ class ASPHelper:
         3. Insert masking ops in the end of parameters update.
 
         *Note*: Please use `ASP.decorate` instead when applying distributed training with `Fleet`.
-        (Due to there is a invisiable graphs optimization in `Fleet.minimize()` which make training graph
+        (Due to there is a invisible graphs optimization in `Fleet.minimize()` which make training graph
         cannot be modified anymore.)
 
         Args:
@@ -849,7 +843,7 @@ class ASPHelper:
         2. Mask parameters with sparse masks.
 
         *Note*: Please use `ASP.decorate` instead when applying distributed training with `Fleet`.
-        (Due to there is a invisiable graphs optimization in `Fleet.minimize()` which make training graph
+        (Due to there is a invisible graphs optimization in `Fleet.minimize()` which make training graph
         cannot be modified anymore.)
 
         Args:
@@ -963,7 +957,7 @@ class OptimizerWithSparsityGuarantee:
         2. Mask parameters with sparse masks.
 
         *Note*: Please use `ASP.decorate` instead when applying distributed training with `Fleet`.
-        (Due to there is a invisiable graphs optimization in `Fleet.minimize()` which make training graph
+        (Due to there is a invisible graphs optimization in `Fleet.minimize()` which make training graph
         cannot be modified anymore.)
 
         Args:

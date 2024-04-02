@@ -84,7 +84,7 @@ void test_split_and_fuse1(void* _args, int32_t num_args)
   float* B = ((float*)(_B->memory));
   for (int32_t i_j_fused_i_j_fused_0_fused = 0; i_j_fused_i_j_fused_0_fused < 256; i_j_fused_i_j_fused_0_fused += 1) {
     for (int32_t i_j_fused_i_j_fused_0_fused_0 = 0; i_j_fused_i_j_fused_0_fused_0 < 4; i_j_fused_i_j_fused_0_fused_0 += 1) {
-      B[(((i_j_fused_i_j_fused_0_fused / 8) * 32) + (((4 * i_j_fused_i_j_fused_0_fused) + i_j_fused_i_j_fused_0_fused_0) & 31))] = A[(((i_j_fused_i_j_fused_0_fused / 8) * 32) + (((4 * i_j_fused_i_j_fused_0_fused) + i_j_fused_i_j_fused_0_fused_0) & 31))];
+      B[((((4 * i_j_fused_i_j_fused_0_fused) + i_j_fused_i_j_fused_0_fused_0) & 31) + ((i_j_fused_i_j_fused_0_fused / 8) * 32))] = A[((((4 * i_j_fused_i_j_fused_0_fused) + i_j_fused_i_j_fused_0_fused_0) & 31) + ((i_j_fused_i_j_fused_0_fused / 8) * 32))];
     };
   };
   cinn_buffer_free((void*)(0), _B);
@@ -196,7 +196,7 @@ void TestSplitThrow() {
   auto source_code = codegen.Compile(module, CodeGenC::OutputKind::CImpl);
 }
 TEST(IrSchedule, split_throw) {
-  ASSERT_THROW(TestSplitThrow(), utils::enforce::EnforceNotMet);
+  ASSERT_THROW(TestSplitThrow(), ::common::enforce::EnforceNotMet);
 }
 
 TEST(IrSchedule, reorder1) {
@@ -608,7 +608,7 @@ void test_vectorize(void* _args, int32_t num_args)
   float* B = ((float*)(_B->memory));
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 2; j += 1) {
-      B[StackVec<16,int32_t>::Ramp(((32 * i) + (16 * j)), 1, 16)] = StackedVec<float,16>::Load(A,((32 * i) + (16 * j)));
+      B[StackVec<16,int32_t>::Ramp(((16 * j) + (i * 32)), 1, 16)] = StackedVec<float,16>::Load(A,((16 * j) + (i * 32)));
     };
   };
   cinn_buffer_free((void*)(0), _B);
@@ -1094,7 +1094,7 @@ void test_compute_at3(void* _args, int32_t num_args)
       };
     };
     for (int32_t i_j_fused_0 = 0; i_j_fused_0 < 128; i_j_fused_0 += 1) {
-      C[((128 * i_j_fused) + i_j_fused_0)] = B[((128 * i_j_fused) + i_j_fused_0)];
+      C[(i_j_fused_0 + (128 * i_j_fused))] = B[(i_j_fused_0 + (128 * i_j_fused))];
     };
   };
   cinn_buffer_free((void*)(0), _B);
@@ -1286,8 +1286,8 @@ void test_compute_at6(const float* __restrict__ A, float* __restrict__ C)
   float* B = _B_temp_buffer;
   for (int32_t i_j_fused = 0; i_j_fused < 32; i_j_fused += 1) {
     for (int32_t i_j_fused_0 = 0; i_j_fused_0 < 128; i_j_fused_0 += 1) {
-      B[((128 * i_j_fused) + i_j_fused_0)] = A[((128 * i_j_fused) + i_j_fused_0)];
-      C[((128 * i_j_fused) + i_j_fused_0)] = B[((128 * i_j_fused) + i_j_fused_0)];
+      B[(i_j_fused_0 + (128 * i_j_fused))] = A[(i_j_fused_0 + (128 * i_j_fused))];
+      C[(i_j_fused_0 + (128 * i_j_fused))] = B[(i_j_fused_0 + (128 * i_j_fused))];
     };
   };
 }
@@ -1738,7 +1738,8 @@ TEST(IrSchedule, cache_write3) {
   std::string target_code = codegen.GetSourceHeader() + R"ROC(__global__
 void test_cache_write3(const float* __restrict__ A, float* __restrict__ C)
 {
-  __shared__ float _B_temp_buffer [ 2048 ];
+  extern __shared__ uint8_t dyn_shared_buffer[];
+  float *_B_temp_buffer = (float*)&dyn_shared_buffer[ 0 ];
   float* B = _B_temp_buffer;
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
@@ -1818,7 +1819,8 @@ TEST(IrSchedule, sync_threads) {
   std::string target_code = codegen.GetSourceHeader() + R"ROC(__global__
 void test_sync_threads(const float* __restrict__ A, float* __restrict__ C)
 {
-  __shared__ float _B_temp_buffer [ 2048 ];
+  extern __shared__ uint8_t dyn_shared_buffer[];
+  float *_B_temp_buffer = (float*)&dyn_shared_buffer[ 0 ];
   float* B = _B_temp_buffer;
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {

@@ -260,7 +260,7 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         weight_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
-             of this layer. If it is set to None or one attribute of ParamAttr, this layerr
+             of this layer. If it is set to None or one attribute of ParamAttr, this layer
              will create ParamAttr as param_attr. If the Initializer of the param_attr
              is not set, the parameter is initialized with Xavier. If it is set to False,
              this layer will not have trainable scale parameter. Default: None.

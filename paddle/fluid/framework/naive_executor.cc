@@ -72,12 +72,14 @@ void NaiveExecutor::PrepareInterpreterCore(
 }
 
 void NaiveExecutor::RunInterpreterCore(
-    const std::vector<std::string> &feed_names, bool need_fetch) {
+    const std::vector<std::string> &feed_names,
+    bool need_fetch,
+    bool switch_stream) {
   platform::ScopedFlushDenormal flush;
 #ifdef PADDLE_WITH_NVTX
   platform::CudaNvtxRangePush("model", platform::NvtxRangeColor::Yellow);
 #endif
-  interpreter_core_->Run(feed_names, need_fetch);
+  interpreter_core_->Run(feed_names, need_fetch, false, false, switch_stream);
 #ifdef PADDLE_WITH_NVTX
   platform::CudaNvtxRangePop();
 #endif
@@ -101,8 +103,9 @@ void NaiveExecutor::Run() {
       func(op.get(), scope_);
     }
 
-    if (op->Type() == "while") {
+    if (op->Type() == "while" || op->Type() == "conditional_block") {
       op->SetOutputHooks(output_hookfuncs_);
+      op->SetInputHooks(input_hookfuncs_);
     }
 
 #ifdef PADDLE_WITH_NVTX
@@ -231,6 +234,20 @@ void NaiveExecutor::RegisterInputHook(const HookFunc &hookfunc) {
   }
 }
 
+void NaiveExecutor::RegisterOutputHook(const PirHookFunc &hookfunc) {
+  pir_output_hookfuncs_.push_back(hookfunc);
+  if (interpreter_core_) {
+    interpreter_core_->SetOutputHooks(pir_output_hookfuncs_);
+  }
+}
+
+void NaiveExecutor::RegisterInputHook(const PirHookFunc &hookfunc) {
+  pir_input_hookfuncs_.push_back(hookfunc);
+  if (interpreter_core_) {
+    interpreter_core_->SetInputHooks(pir_input_hookfuncs_);
+  }
+}
+
 void NaiveExecutor::MakeReusePlan(
     const std::unordered_map<std::string, std::string> &reuse_table) {
   std::unordered_map<std::string, std::unordered_set<std::string>> clusters;
@@ -317,7 +334,7 @@ void NaiveExecutor::ResetTrtOps(int num) {
 #endif
 }
 
-void NaiveExecutor::CloneLiteEnigne(int num, void *stream) {
+void NaiveExecutor::CloneLiteEngine(int num, void *stream) {
 #ifdef PADDLE_WITH_LITE
   for (auto &op : ops_) {
     if (op->Type() == "lite_engine") {

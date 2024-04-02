@@ -116,7 +116,7 @@ Origin subgraph:
             |   cumsum
             |     |
             \     /
-         elemetwise_sub
+         elementwise_sub
 
 Fused subgraph:
       generate_sequence_xpu

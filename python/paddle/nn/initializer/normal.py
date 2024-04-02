@@ -56,6 +56,9 @@ class NormalInitializer(Initializer):
         Returns:
             The initialization op.
         """
+        assert not (
+            isinstance(var, framework.EagerParamBase) and var.is_dist()
+        ), "Currently, normal initializer not support lazy init for dist param."
         block = self._check_block(block)
 
         assert isinstance(block, (framework.Block, pir.Block))
@@ -197,7 +200,7 @@ class TruncatedNormalInitializer(Initializer):
         if self._seed == 0:
             self._seed = block.program.random_seed
 
-        # to be compatible of fp16 initalizers
+        # to be compatible of fp16 initializers
         if var.dtype in [core.VarDesc.VarType.FP16, core.VarDesc.VarType.BF16]:
             out_dtype = core.VarDesc.VarType.FP32
             out_var = block.create_var(

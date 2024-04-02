@@ -118,9 +118,7 @@ while True:
     # Link error can happen without complete clean up.
     cmd = (
         'rm -rf * && '
-        'cmake -DWITH_TESTING=ON {} >> {} && make -j{} >> {}'.format(
-            args.git_dir, args.log_file, args.build_parallel, args.log_file
-        )
+        f'cmake -DWITH_TESTING=ON {args.git_dir} >> {args.log_file} && make -j{args.build_parallel} >> {args.log_file}'
     )
     sys.stdout.write('cmd: %s\n' % cmd)
     try:
@@ -131,11 +129,7 @@ while True:
     # test the selected branch.
     passed = True
     try:
-        cmd = 'ctest --repeat-until-fail {} -R {} >> {}'.format(
-            args.test_times,
-            args.test_target,
-            args.log_file,
-        )
+        cmd = f'ctest --repeat-until-fail {args.test_times} -R {args.test_target} >> {args.log_file}'
         sys.stdout.write('cmd: %s\n' % cmd)
         subprocess.check_output([cmd], shell=True)
     except subprocess.CalledProcessError as e:

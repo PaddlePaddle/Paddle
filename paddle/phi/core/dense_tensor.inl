@@ -88,6 +88,9 @@ InplaceVersion& InplaceVersionCounter() { return *inplace_version_counter_; }
 /*! The internal of two tensors share the same memory block. */
 DenseTensor& ShareDataWith(const DenseTensor& src);
 
+/*! The internal of two tensors share the same memory block without checking the memory size for dist-tensor. */
+DenseTensor& ShareDataNoCheckWith(const DenseTensor& src);
+
 /*! The internal of two tensors share the same inplace version counter. */
 DenseTensor& ShareInplaceVersionCounterWith(const DenseTensor& src);
 
@@ -97,22 +100,12 @@ std::vector<DenseTensor> Split(int64_t split_size, int64_t axis) const;
 
 std::vector<DenseTensor> Chunk(int64_t chunks, int64_t axis) const;
 
-/* @jim19930609: This is a hack
-In general, it is badly designed to fuse MKLDNN-specific objects into a
-generic Tensor.
-We temporarily leave them here to unblock Tensor Unification progress.
-In the final state, we should come up with a MKLDNN_Tensor and move the
-following codes there.
-*/
 #ifdef PADDLE_WITH_DNNL
 
 public:
 const dnnl::memory::desc& mem_desc() const;
 
-inline void set_mem_desc(const dnnl::memory::desc& mem_desc) {
-  mem_desc_ = mem_desc;
-  meta_.layout = DataLayout::ONEDNN;
-}
+void set_mem_desc(const dnnl::memory::desc& mem_desc);
 
 #endif
 

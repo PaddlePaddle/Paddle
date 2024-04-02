@@ -31,7 +31,7 @@ def celu(x, alpha=1.0, name=None):
     r"""
     celu activation.
 
-    Apply the following operation to each element of the input Tensor accroding to the `Continuously Differentiable Exponential Linear Units <https://arxiv.org/abs/1704.07483>`_.
+    Apply the following operation to each element of the input Tensor according to the `Continuously Differentiable Exponential Linear Units <https://arxiv.org/abs/1704.07483>`_.
 
     .. math::
 
@@ -688,9 +688,7 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
     """
     if not isinstance(lower, float) or not isinstance(upper, float):
         raise TypeError(
-            "The lower and upper values must be float type. Received: lower {}, upper {}.".format(
-                lower, upper
-            )
+            f"The lower and upper values must be float type. Received: lower {lower}, upper {upper}."
         )
 
     if lower < 0 or lower > 1:
@@ -700,9 +698,7 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
 
     if upper < lower:
         raise ValueError(
-            "The upper value must be greater than lower value. Received: lower {}, upper {}.".format(
-                lower, upper
-            )
+            f"The upper value must be greater than lower value. Received: lower {lower}, upper {upper}."
         )
 
     if upper > 1:
@@ -1494,7 +1490,7 @@ def mish(x, name=None):
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.03357624,  0.        ,  4.99955177])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.mish(x, 20)
     else:
         check_variable_and_dtype(
@@ -1744,7 +1740,7 @@ def glu(x, axis=-1, name=None):
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        A Tensor with the same data type as x. The size of the given aixs is
+        A Tensor with the same data type as x. The size of the given axis is
         halved.
 
     Examples:
@@ -1768,9 +1764,7 @@ def glu(x, axis=-1, name=None):
     rank = len(x.shape)
     if not (-rank <= axis < rank):
         raise ValueError(
-            "Expected value range of `axis` is [{}, {}), but received axis: {}".format(
-                -rank, rank, axis
-            )
+            f"Expected value range of `axis` is [{-rank}, {rank}), but received axis: {axis}"
         )
     a, b = chunk(x, 2, axis=axis, name=name)
     gate = sigmoid(b, name=name)

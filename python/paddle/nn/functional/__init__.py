@@ -86,6 +86,7 @@ from .extension import (
     temporal_shift,
 )
 from .flash_attention import (
+    flash_attention_with_sparse_mask,
     scaled_dot_product_attention,
     sdp_kernel,  # noqa: F401
 )
@@ -122,6 +123,7 @@ from .loss import (
 )
 from .norm import (
     batch_norm,
+    group_norm,
     instance_norm,
     layer_norm,
     local_response_norm,
@@ -137,6 +139,8 @@ from .pooling import (
     avg_pool1d,
     avg_pool2d,
     avg_pool3d,
+    fractional_max_pool2d,
+    fractional_max_pool3d,
     max_pool1d,
     max_pool2d,
     max_pool3d,
@@ -225,6 +229,8 @@ __all__ = [
     'adaptive_max_pool1d',
     'adaptive_max_pool2d',
     'adaptive_max_pool3d',
+    'fractional_max_pool2d',
+    'fractional_max_pool3d',
     'binary_cross_entropy',
     'binary_cross_entropy_with_logits',
     'cross_entropy',
@@ -272,4 +278,6 @@ __all__ = [
     'soft_margin_loss',
     'gaussian_nll_loss',
     'scaled_dot_product_attention',
+    'flash_attention_with_sparse_mask',
+    'group_norm',
 ]

@@ -47,7 +47,7 @@ def check_amp_dtype(dtype):
 
 
 def get_low_precision_vartype(dtype):
-    if isinstance(dtype, core.VarDesc.VarType):
+    if isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         return dtype
     elif isinstance(dtype, str):
         dtype = dtype.lower()
@@ -62,19 +62,17 @@ def get_low_precision_vartype(dtype):
         return var_type
     else:
         raise TypeError(
-            "The type of dtype is expected to be string or core.VarDesc.VarType, but recieved {}.".format(
-                type(dtype)
-            )
+            f"The type of dtype is expected to be string or core.VarDesc.VarType, but received {type(dtype)}."
         )
 
 
 def get_low_precision_dtypestr(dtype):
     if isinstance(dtype, str):
         return check_amp_dtype(dtype)
-    elif isinstance(dtype, core.VarDesc.VarType):
-        if dtype == core.VarDesc.VarType.FP16:
+    elif isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
+        if dtype == paddle.float16:
             return "float16"
-        elif dtype == core.VarDesc.VarType.BF16:
+        elif dtype == paddle.bfloat16:
             return "bfloat16"
         else:
             raise ValueError(
@@ -82,9 +80,7 @@ def get_low_precision_dtypestr(dtype):
             )
     else:
         raise TypeError(
-            "The type of dtype is expected to be string or core.VarDesc.VarType, but recieved {}.".format(
-                type(dtype)
-            )
+            f"The type of dtype is expected to be string or core.VarDesc.VarType, but received {type(dtype)}."
         )
 
 
@@ -125,7 +121,7 @@ def _get_unsupported_list(dtype):
     return _sys_unsupported_list, _sys_all_list
 
 
-# The three sets listed below are changed dynamiclly. They don't contain all
+# The three sets listed below are changed dynamically. They don't contain all
 # paddle ops currently.
 
 # The set of ops that support fp16 calculation and are considered numerically-
@@ -157,7 +153,7 @@ class AutoMixedPrecisionLists:
     Args:
         custom_white_list (set): Users' custom white list.
         custom_black_list (set): Users' custom black list.
-        custom_black_varnames (set): Users' custom black varibles' names.
+        custom_black_varnames (set): Users' custom black variables' names.
         dtype (str): the low precision dtype, which can be set to 'float16' or 'bfloat16'.
     """
 

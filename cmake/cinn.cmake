@@ -167,10 +167,8 @@ cinn_cc_library(
   ${jitify_deps})
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
-if(NOT CINN_ONLY)
-  target_link_libraries(cinnapi op_dialect pir phi)
-  add_dependencies(cinnapi op_dialect pir phi)
-endif()
+target_link_libraries(cinnapi op_dialect pir phi)
+add_dependencies(cinnapi op_dialect pir phi)
 
 target_link_libraries(cinnapi ${PYTHON_LIBRARIES})
 
@@ -181,11 +179,6 @@ if(WITH_MKL)
     target_link_libraries(cinnapi ${MKLDNN_LIB})
     add_dependencies(cinnapi ${MKLDNN_PROJECT})
   endif()
-endif()
-
-if(CINN_ONLY)
-  target_link_libraries(cinnapi ${flags_dep})
-  add_dependencies(cinnapi ${flags_dep})
 endif()
 
 if(WITH_GPU)
@@ -230,10 +223,8 @@ function(gen_cinncore LINKTYPE)
     ginac)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
-  if(NOT CINN_ONLY)
-    target_link_libraries(${CINNCORE_TARGET} op_dialect pir phi)
-    add_dependencies(${CINNCORE_TARGET} op_dialect pir phi)
-  endif()
+  target_link_libraries(${CINNCORE_TARGET} op_dialect pir phi)
+  add_dependencies(${CINNCORE_TARGET} op_dialect pir phi)
 
   add_dependencies(${CINNCORE_TARGET} pybind)
   target_link_libraries(${CINNCORE_TARGET} ${PYTHON_LIBRARIES})
@@ -245,11 +236,6 @@ function(gen_cinncore LINKTYPE)
       target_link_libraries(${CINNCORE_TARGET} ${MKLDNN_LIB})
       add_dependencies(${CINNCORE_TARGET} ${MKLDNN_PROJECT})
     endif()
-  endif()
-
-  if(CINN_ONLY)
-    target_link_libraries(${CINNCORE_TARGET} ${flags_dep})
-    add_dependencies(${CINNCORE_TARGET} ${flags_dep})
   endif()
 
   if(WITH_GPU)
@@ -283,8 +269,7 @@ if(PUBLISH_LIBS)
   set(core_includes
       "${core_includes};paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh")
   set(core_includes
-      "${core_includes};paddle/utils/flags.h;paddle/utils/flags_native.h;paddle/utils/test_macros.h"
-  )
+      "${core_includes};paddle/common/flags.h;paddle/utils/test_macros.h")
   foreach(header ${core_includes})
     get_filename_component(prefix ${header} DIRECTORY)
     file(COPY ${header}

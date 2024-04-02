@@ -20,9 +20,9 @@
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/program.h"
 
 namespace paddle {
 namespace dialect {
@@ -43,6 +43,10 @@ bool HaveOpToMultiKernelsMap(std::string op_name);
 
 const std::vector<PdOpSig>& LegacyOpToPdOpsMapping(std::string op_name);
 
+#ifdef PADDLE_WITH_DNNL
+bool IsOneDNNOnlyOp(std::string op_name);
+#endif
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -59,7 +63,7 @@ pir::Operation* InsertSliceOperationForTarget(
 std::ostream& operator<<(std::ostream& os,
                          const std::vector<std::string>& vec_str);
 
-std::vector<std::string> CheckUnregisteredOperation(
+TEST_API std::vector<std::string> CheckUnregisteredOperation(
     pir::IrContext* ctx, const framework::ProgramDesc& legacy_program);
 
 inline DataType VarTypeToDataType(
@@ -99,8 +103,6 @@ inline DataType VarTypeToDataType(
           var_type));
   }
 }
-
-phi::DataType PirTypeToPhiDType(pir::Type type);
 
 }  // namespace translator
 }  // namespace paddle

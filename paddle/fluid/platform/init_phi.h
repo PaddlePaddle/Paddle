@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/api/include/dll_decl.h"
+#include "paddle/common/macros.h"
 
 namespace paddle {
 
@@ -22,12 +22,5 @@ class PADDLE_API InitPhi {
  public:
   InitPhi();
 };
-
-#define REGISTER_FILE_SYMBOLS(name) \
-  int RegisterSymbolsFor##name() { return 0; }
-
-#define DECLARE_FILE_SYMBOLS(name)       \
-  extern int RegisterSymbolsFor##name(); \
-  UNUSED static int use_file_##name = RegisterSymbolsFor##name()
 
 }  // namespace paddle

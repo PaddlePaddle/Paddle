@@ -102,9 +102,7 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
     if shard_spec is not None:
         assert verify_shard_spec(
             shard_spec, tensor_shape, process_mesh
-        ), "For tensor {}, shard_spec {} is invalid with tensor_shape {} and process_mesh {}.".format(
-            serial_tensor.name, shard_spec, tensor_shape, process_mesh
-        )
+        ), f"For tensor {serial_tensor.name}, shard_spec {shard_spec} is invalid with tensor_shape {tensor_shape} and process_mesh {process_mesh}."
         dist_tensor.dist_attr.dims_mapping = convert_to_dims_mapping(
             shard_spec, process_mesh
         )
@@ -221,7 +219,14 @@ def recompute(op):
             with paddle.static.name_scope(
                 f'/auto_parallel/rc_{_g_recompute_idx}'
             ):
-                output = self._op(*args, **kwargs)
+                if paddle.base.dygraph.base.in_to_static_mode():
+                    output = (
+                        paddle.jit.dy2static.convert_call_func.convert_call(
+                            self._op
+                        )(*args, **kwargs)
+                    )
+                else:
+                    output = self._op(*args, **kwargs)
 
             return output
 
@@ -230,9 +235,9 @@ def recompute(op):
 
 def exclude_ops_in_recompute(run_function):
     """
-    Exclude some operators in recompute segements.
+    Exclude some operators in recompute segments.
         Args:
-        run_function (callabe): The callabe function to be excluded.
+        run_function (callable): The callable function to be excluded.
 
     Returns:
         ExcludeOperator: The callable object.
@@ -245,7 +250,14 @@ def exclude_ops_in_recompute(run_function):
 
         def __call__(self, *args, **kwargs):
             with paddle.static.name_scope('/exclude_rc'):
-                output = self._run_function(*args, **kwargs)
+                if paddle.base.dygraph.base.in_to_static_mode():
+                    output = (
+                        paddle.jit.dy2static.convert_call_func.convert_call(
+                            self._run_function
+                        )(*args, **kwargs)
+                    )
+                else:
+                    output = self._run_function(*args, **kwargs)
 
             return output
 
@@ -290,9 +302,7 @@ def fetch(tensor, name=None, logging=False):
         tensor = tensor
     else:
         raise TypeError(
-            "Only support fetch `Variable` or `str`[`Variable`'s name], but got `{}`".format(
-                type(tensor)
-            )
+            f"Only support fetch `Variable` or `str`[`Variable`'s name], but got `{type(tensor)}`"
         )
     add_to_collection(CollectionNames.FETCHES, tensor, name)
     if logging:
@@ -305,6 +315,11 @@ _g_mesh = None
 def get_mesh():
     global _g_mesh
     return _g_mesh
+
+
+def set_mesh(mesh):
+    global _g_mesh
+    _g_mesh = mesh
 
 
 def create_mesh(mesh_dims: List[Tuple[str, int]]):

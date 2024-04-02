@@ -18,11 +18,11 @@
 
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/program.h"
 
 namespace paddle {
 
-std::unique_ptr<::pir::Program> TranslateLegacyProgramToProgram(
+TEST_API std::unique_ptr<::pir::Program> TranslateLegacyProgramToProgram(
     const ::paddle::framework::ProgramDesc& legacy_program);
 
 }  // namespace paddle

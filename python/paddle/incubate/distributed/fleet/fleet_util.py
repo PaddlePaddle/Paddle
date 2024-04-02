@@ -18,6 +18,7 @@ import json
 import logging
 import math
 import os
+import re
 import sys
 import time
 
@@ -1317,23 +1318,12 @@ class FleetUtil:
                 ...     is_data_hourly_placed=False)
 
         """
-        assert (
-            "|" not in days
-            and ";" not in days
-            and "\\" not in days
-            and "/" not in days
-            and "(" not in days
-            and ")" not in days
-        ), r"days should not contain [|,;,\,/,(,)]"
+        pattern = r'^\d+|{[0-9]+}|{[0-9]+\.\.[0-9]+}$'
+        if not re.fullmatch(pattern, str(days)):
+            raise Exception("days format is not right")
         days = os.popen("echo -n " + days).read().split(" ")
-        assert (
-            "|" not in hours
-            and ";" not in hours
-            and "\\" not in hours
-            and "/" not in hours
-            and "(" not in hours
-            and ")" not in days
-        ), r"hours should not contain [|,;,\,/,(,)]"
+        if not re.fullmatch(pattern, str(hours)):
+            raise Exception("hours format is not right")
         hours = os.popen("echo -n " + hours).read().split(" ")
         split_interval = int(split_interval)
         split_per_pass = int(split_per_pass)
@@ -1686,20 +1676,9 @@ class FleetUtil:
             total_ins_num_name,
         )
         self.rank0_print(
-            "{} global AUC={:.6f} BUCKET_ERROR={:.6f} MAE={:.6f} "
-            "RMSE={:.6f} Actural_CTR={:.6f} Predicted_CTR={:.6f} "
-            "COPC={:.6f} MEAN Q_VALUE={:.6f} Ins number={}".format(
-                print_prefix,
-                auc,
-                bucket_error,
-                mae,
-                rmse,
-                actual_ctr,
-                predicted_ctr,
-                copc,
-                mean_predict_qvalue,
-                total_ins_num,
-            )
+            f"{print_prefix} global AUC={auc:.6f} BUCKET_ERROR={bucket_error:.6f} MAE={mae:.6f} "
+            f"RMSE={rmse:.6f} Actural_CTR={actual_ctr:.6f} Predicted_CTR={predicted_ctr:.6f} "
+            f"COPC={copc:.6f} MEAN Q_VALUE={mean_predict_qvalue:.6f} Ins number={total_ins_num}"
         )
 
     def program_type_trans(self, prog_dir, prog_fn, is_text):

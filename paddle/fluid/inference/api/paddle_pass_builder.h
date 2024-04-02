@@ -113,13 +113,14 @@ class PD_INFER_DECL PaddlePassBuilder {
 
  protected:
   /// \cond Protected
-  std::vector<std::string> analysis_passes_{
-      {"ir_graph_build_pass",
-       "ir_analysis_pass",
-       "save_optimized_model_pass",
-       "ir_params_sync_among_devices_pass",
-       "adjust_cudnn_workspace_size_pass",
-       "inference_op_replace_pass"}};
+  std::vector<std::string> analysis_passes_{{
+      "ir_graph_build_pass",
+      "ir_analysis_pass",
+      "ir_params_sync_among_devices_pass",
+      "adjust_cudnn_workspace_size_pass",
+      "inference_op_replace_pass",
+      "save_optimized_model_pass",
+  }};
   std::vector<std::string> passes_;
   std::unordered_set<std::string> deleted_passes_;
   /// \endcond
@@ -205,6 +206,7 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
     use_mkldnn_bfloat16_ = other.use_mkldnn_bfloat16_;
     use_mkldnn_int8_ = other.use_mkldnn_int8_;
     disable_mkldnn_fc_passes_ = other.disable_mkldnn_fc_passes_;
+    deleted_passes_ = other.deleted_passes_;
   }
   /// \brief Default destructor.
   virtual ~CpuPassStrategy() = default;
@@ -256,6 +258,7 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
       : PassStrategy(other.AllPasses()) {
     use_gpu_ = true;
     use_cudnn_ = other.use_cudnn_;
+    deleted_passes_ = other.deleted_passes_;
   }
 
   /// \brief Enable the use of cuDNN kernel.
@@ -291,6 +294,11 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
 class PD_INFER_DECL XpuPassStrategy final : public PassStrategy {
  public:
   XpuPassStrategy();
+  explicit XpuPassStrategy(const XpuPassStrategy &other)
+      : PassStrategy(other.AllPasses()) {
+    use_xpu_ = true;
+    deleted_passes_ = other.deleted_passes_;
+  }
 };
 
 /// \class CustomDevicePassStrategy
@@ -306,6 +314,7 @@ class PD_INFER_DECL CustomDevicePassStrategy final : public PassStrategy {
   explicit CustomDevicePassStrategy(const CustomDevicePassStrategy &other)
       : PassStrategy(other.AllPasses()) {
     use_custom_device_ = true;
+    deleted_passes_ = other.deleted_passes_;
   }
 };
 
@@ -322,6 +331,7 @@ class PD_INFER_DECL IpuPassStrategy final : public PassStrategy {
   explicit IpuPassStrategy(const IpuPassStrategy &other)
       : PassStrategy(other.AllPasses()) {
     use_ipu_ = true;
+    deleted_passes_ = other.deleted_passes_;
   }
 };
 
@@ -342,5 +352,10 @@ PD_INFER_DECL extern const std::vector<std::string> kCINNCompilerPasses;
 /// running errors. After fusion operator supports low precision, delete this.
 PD_INFER_DECL extern const std::vector<std::string> kGpuLowerPrecisionPasses;
 PD_INFER_DECL extern const std::vector<std::string> kTrtLowerPrecisionPasses;
+
+PD_INFER_DECL extern const std::vector<std::string> kPirGpuPasses;
+PD_INFER_DECL extern const std::vector<std::string> kPirCpuPasses;
+PD_INFER_DECL extern const std::vector<std::string> kPirXpuPasses;
+PD_INFER_DECL extern const std::vector<std::string> kPirMkldnnPasses;
 
 }  // namespace paddle

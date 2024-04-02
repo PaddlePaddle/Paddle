@@ -59,15 +59,15 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
 
   void Visit(const ir::_Var_ *expr, Expr *op) override {
     if (inline_code && temp_buffer) {
-      if (utils::Startswith(expr->name, "blockIdx") ||
-          (utils::Startswith(expr->name, "threadIdx") && memory_local)) {
+      if (utils::StartsWith(expr->name, "blockIdx") ||
+          (utils::StartsWith(expr->name, "threadIdx") && memory_local)) {
         *op = ir::Expr(0);
       }
     }
   }
 
   void Visit(const ir::_Tensor_ *op, Expr *expr) override {
-    if (inline_code && utils::Endswith(op->name, "_write_cache") &&
+    if (inline_code && utils::EndsWith(op->name, "_write_cache") &&
         (*all_tensor_map_).at(op->name)->buffer->memory_type ==
             ir::MemoryType::Heap) {
       auto no_cache_name = op->name.substr(0, op->name.size() - 12);
@@ -101,7 +101,7 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
     } else if (inline_code && tensor->buffer.defined()) {
       bool is_heap = (*all_tensor_map_).at(tensor->name)->buffer->memory_type ==
                      ir::MemoryType::Heap;
-      if (utils::Endswith(tensor->buffer->name, "_write_cache") && is_heap) {
+      if (utils::EndsWith(tensor->buffer->name, "_write_cache") && is_heap) {
         // temp fix: cache_write will change the tensor to the cache tensor
         // wrongly
         auto no_cache_name =
@@ -113,16 +113,23 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
           CHECK(tensor);
           // fix computeAt case
           auto shapes = tensor->shape;
-          CHECK_EQ(shapes.size(), node->indices.size());
+          PADDLE_ENFORCE_EQ(
+              shapes.size(),
+              node->indices.size(),
+              phi::errors::InvalidArgument(
+                  "The size of tensor shape and node indices is not equal,"
+                  "where tensor shape:%d but node indices:%d.",
+                  shapes.size(),
+                  node->indices.size()));
           for (int i = 0; i < shapes.size(); i++) {
             if (cinn::common::is_zero(shapes[i] - 1)) {
               node->indices[i] = Expr(0);
             }
           }
         }
-      } else if (utils::Endswith(tensor->buffer->name, "_write_cache") ||
-                 utils::Endswith(tensor->buffer->name, "_read_cache") ||
-                 utils::Endswith(tensor->buffer->name, "_temp_buffer")) {
+      } else if (utils::EndsWith(tensor->buffer->name, "_write_cache") ||
+                 utils::EndsWith(tensor->buffer->name, "_read_cache") ||
+                 utils::EndsWith(tensor->buffer->name, "_temp_buffer")) {
 #ifdef CINN_WITH_CUDA
         auto axis_names = stages_[tensor]->axis_names();
         auto compute_ats = stages_[tensor]->GetComputeAts();
@@ -187,7 +194,7 @@ struct SSANode : public cinn::common::GraphNode {
   static constexpr char *__type_info__ = "optim::SSANode";
 };
 
-// TODO(Superjomn) the graph here is not a SSA now, it is flattern for the
+// TODO(Superjomn) the graph here is not a SSA now, it is flatten for the
 // ir::CollectIRNodes method collects all the tensors recursively, so it can not
 // reserve the level information, fix it.
 struct SSABuilder : public ir::IRMutator<> {

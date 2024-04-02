@@ -49,10 +49,10 @@
 #include "paddle/phi/backends/device_manager.h"
 #endif
 
-PHI_DECLARE_bool(use_mkldnn);
-PHI_DECLARE_bool(check_nan_inf);
-PHI_DECLARE_string(static_runtime_data_save_path);
-PHI_DECLARE_bool(save_static_runtime_data);
+COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_string(static_runtime_data_save_path);
+COMMON_DECLARE_bool(save_static_runtime_data);
 
 namespace paddle {
 namespace framework {
@@ -478,7 +478,7 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
               op_device));
 #else
       VLOG(1) << string::Sprintf(
-          "Cannot use get_all_custom_device_type because you have installed"
+          "Cannot use get_all_custom_device_type because you have installed "
           "CPU/GPU version PaddlePaddle.\n"
           "If you want to use get_all_custom_device_type, please try to "
           "install CustomDevice version "
@@ -635,7 +635,7 @@ void BuildOpFuncList(const platform::Place& place,
         hook(op, local_scope);
       }
 
-      if (op->Type() == "while") {
+      if (op->Type() == "while" || op->Type() == "conditional_block") {
         op->SetInputHooks(input_hookfuncs);
         op->SetOutputHooks(output_hookfuncs);
         auto runtime_attrs = op->RuntimeAttrs();
@@ -707,7 +707,7 @@ void BuildOpFuncList(const platform::Place& place,
       }
       op_func_node.stream_priority_ = dist_attr->stream_priority();
       op_func_node.scheduling_priority_ = dist_attr->scheduling_priority();
-      // set mannual event information
+      // set manual event information
       op_func_node.force_record_event_ = dist_attr->force_record_event();
       op_func_node.events_to_wait_ = dist_attr->events_to_wait();
       op_func_node.event_to_record_ = dist_attr->event_to_record();
@@ -1300,7 +1300,7 @@ std::vector<std::string> GetOriginInputNames(const std::string& op_name) {
   if (op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()) {
     paddle::dialect::OpYamlInfoParser yaml_parser(
         op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
-            ->get_op_info_());
+            ->get_op_info_(op_name));
     ret = yaml_parser.InputNames();
   }
   return ret;
@@ -1313,7 +1313,7 @@ std::vector<std::string> GetOriginOutputNames(const std::string& op_name) {
   if (op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()) {
     paddle::dialect::OpYamlInfoParser yaml_parser(
         op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
-            ->get_op_info_());
+            ->get_op_info_(op_name));
     ret = yaml_parser.OutputNames();
   }
   return ret;
@@ -1342,6 +1342,7 @@ void PrintValuesAndVariables(
         GetOriginOutputNames(op_name);
 
     // 1. output string
+    VLOG(10) << "Generate output string ...";
     std::string ret_value_str = "Value   : (";
     std::string ret_variable_str = "Variable: (";
     if (!op.results().empty()) {
@@ -1387,10 +1388,12 @@ void PrintValuesAndVariables(
     ret_variable_str += ") = ";
 
     // 2. op name
+    VLOG(10) << "Generate op name ...";
     ret_value_str += op_name;
     ret_variable_str += op_name;
 
     // 3. input string
+    VLOG(10) << "Generate input string ...";
     ret_value_str += "(";
     ret_variable_str += "(";
     if (!op.operands().empty()) {

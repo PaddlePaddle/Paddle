@@ -68,7 +68,7 @@ def async_save(obj, path, protocol=4, sync_other_task=False, **configs):
     Note:
         currently only support dygraph mode.
     Note:
-        any argument passed through configs will be overrided by default setting.
+        any argument passed through configs will be overridden by default setting.
     Args:
         obj(Object) : The object to be saved.
         path(str|BytesIO) : The path/buffer of the object to be saved.
@@ -76,7 +76,7 @@ def async_save(obj, path, protocol=4, sync_other_task=False, **configs):
         protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
                                  Default: 4
         sync_other_task(bool) : Determine whether to wait other async save task to be finished before this one be put in queue.
-        **configs(dict, optional): compatible argument to paddle.save, but will be overrided by default setting.
+        **configs(dict, optional): compatible argument to paddle.save, but will be overridden by default setting.
     Examples:
         .. code-block:: python
             :name: code-example-1
@@ -98,7 +98,7 @@ def async_save(obj, path, protocol=4, sync_other_task=False, **configs):
         )
     if len(configs) > 0:
         warnings.warn(
-            "configs are not supported in async mode, will be overided by default settings."
+            "configs are not supported in async mode, will be overridden by default settings."
         )
 
     # TODO: make this part async
@@ -566,9 +566,7 @@ def _parse_every_object(obj, condition_func, convert_func):
             (str, np.ndarray, core.eager.Tensor, core.LoDTensor),
         ):
             raise NotImplementedError(
-                "The iteratable objects supported are tuple, list, dict, OrderedDict, string. But received {}.".format(
-                    type(obj)
-                )
+                f"The iterable objects supported are tuple, list, dict, OrderedDict, string. But received {type(obj)}."
             )
         return obj
 
@@ -596,13 +594,13 @@ def _parse_load_result(obj, return_numpy):
     def ndarray_to_tensor(obj):
         return _ndarray_to_tensor(obj, return_numpy=return_numpy)
 
-    # tuple(name, ndarry) was converted from varbase of paddle2.1,
-    # and all tuple(name, ndarry) are converted to tensor.
+    # tuple(name, ndarray) was converted from varbase of paddle2.1,
+    # and all tuple(name, ndarray) are converted to tensor.
     if _contain_x(obj, _transformed_from_varbase):
         return _parse_every_object(
             obj, _transformed_from_varbase, tuple_to_tensor
         )
-    # If there is no tuple(name, ndary), it is considered to be saved by paddle2.0
+    # If there is no tuple(name, ndarray), it is considered to be saved by paddle2.0
     # or converted from LoDTensor, and all ndarrays are converted to tensor.
     else:
         return _parse_every_object(
@@ -628,9 +626,7 @@ def _save_lod_tensor(tensor, file_name):
 
     else:
         raise NotImplementedError(
-            'Only supports saving objects to file or BytesIO, but received {}'.format(
-                type(file_name)
-            )
+            f'Only supports saving objects to file or BytesIO, but received {type(file_name)}'
         )
     return _seek
 
@@ -649,9 +645,7 @@ def _load_lod_tensor(file_name):
 
     else:
         raise NotImplementedError(
-            'Only supports load objects from file or BytesIO, but received {}'.format(
-                type(file_name)
-            )
+            f'Only supports load objects from file or BytesIO, but received {type(file_name)}'
         )
 
     return temp_t, _seek
@@ -671,9 +665,7 @@ def _save_selected_rows(selected_rows, file_name):
             _seek = f.tell()
     else:
         raise NotImplementedError(
-            'Only supports saving objects to file or BytesIO, but received {}'.format(
-                type(file_name)
-            )
+            f'Only supports saving objects to file or BytesIO, but received {type(file_name)}'
         )
     return _seek
 
@@ -694,9 +686,7 @@ def _load_selected_rows(file_name):
 
     else:
         raise NotImplementedError(
-            'Only supports load objects from file or BytesIO, but received {}'.format(
-                type(file_name)
-            )
+            f'Only supports load objects from file or BytesIO, but received {type(file_name)}'
         )
 
     return temp_sr, _seek
@@ -712,9 +702,7 @@ def _save_binary_var(obj, path):
     else:
         # Since the concept of 'Tensor' is only exposed to users, the error message can only contain tensor instead of 'LoDTensor' or 'SelectedRows'
         raise NotImplementedError(
-            "When use_binary_format = True, `paddle.save`  expected Tensor, but received {}.".format(
-                type(obj)
-            )
+            f"When use_binary_format = True, `paddle.save`  expected Tensor, but received {type(obj)}."
         )
 
 
@@ -872,9 +860,7 @@ def save(obj, path, protocol=4, **configs):
 
     if not isinstance(config.use_binary_format, bool):
         raise TypeError(
-            "Type of `use_binary_format` should be bool, but received {}.".format(
-                type(config.use_binary_format)
-            )
+            f"Type of `use_binary_format` should be bool, but received {type(config.use_binary_format)}."
         )
 
     if config.use_binary_format:

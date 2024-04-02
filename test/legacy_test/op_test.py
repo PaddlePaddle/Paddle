@@ -45,7 +45,7 @@ test_dir = legacy_test_dir.parent  # test
 sys.path.append(str(legacy_test_dir.absolute()))
 sys.path.append(str(test_dir.absolute()))
 
-from utils import static_guard
+from utils import pir_executor_guard, static_guard
 from white_list import (
     check_shape_white_list,
     compile_vs_runtime_white_list,
@@ -123,9 +123,7 @@ def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
 
                 if out_dtype != expect_dtype:
                     raise ValueError(
-                        "Expected out.dtype is {}, but got {} from {}.".format(
-                            expect_dtype, out_dtype, api_fn.__name__
-                        )
+                        f"Expected out.dtype is {expect_dtype}, but got {out_dtype} from {api_fn.__name__}."
                     )
 
 
@@ -166,19 +164,19 @@ def get_numeric_gradient(
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
     tensor_to_check_dtype = tensor_to_check._dtype()
-    if tensor_to_check_dtype == core.VarDesc.VarType.FP32:
+    if tensor_to_check_dtype == paddle.float32:
         tensor_to_check_dtype = np.float32
-    elif tensor_to_check_dtype == core.VarDesc.VarType.FP64:
+    elif tensor_to_check_dtype == paddle.float64:
         tensor_to_check_dtype = np.float64
-    elif tensor_to_check_dtype == core.VarDesc.VarType.FP16:
+    elif tensor_to_check_dtype == paddle.float16:
         tensor_to_check_dtype = np.float16
         # set delta as np.float16, will automatic convert to float32, float64
         delta = np.array(delta).astype(np.float16)
-    elif tensor_to_check_dtype == core.VarDesc.VarType.BF16:
+    elif tensor_to_check_dtype == paddle.bfloat16:
         tensor_to_check_dtype = np.float32
-    elif tensor_to_check_dtype == core.VarDesc.VarType.COMPLEX64:
+    elif tensor_to_check_dtype == paddle.complex64:
         tensor_to_check_dtype = np.complex64
-    elif tensor_to_check_dtype == core.VarDesc.VarType.COMPLEX128:
+    elif tensor_to_check_dtype == paddle.complex128:
         tensor_to_check_dtype = np.complex128
     else:
         raise ValueError(
@@ -196,7 +194,7 @@ def get_numeric_gradient(
             # numpy.dtype does not have bfloat16, thus we use numpy.uint16 to
             # store bfloat16 data, and need to be converted to float to check
             # the floating precision.
-            if tensor_to_check._dtype() == core.VarDesc.VarType.BF16:
+            if tensor_to_check._dtype() == paddle.bfloat16:
                 output_numpy = convert_uint16_to_float(output_numpy)
             sum.append(output_numpy.astype(tensor_to_check_dtype).mean())
         return tensor_to_check_dtype(np.array(sum).sum() / len(output_names))
@@ -208,7 +206,7 @@ def get_numeric_gradient(
             numpy_tensor = np.array(tensor).astype(np.float16)
             numpy_tensor = numpy_tensor.flatten()
             return numpy_tensor[i]
-        elif tensor_to_check._dtype() == core.VarDesc.VarType.BF16:
+        elif tensor_to_check._dtype() == paddle.bfloat16:
             numpy_tensor = np.array(tensor).astype(np.uint16)
             numpy_tensor = numpy_tensor.flatten()
             return struct.unpack(
@@ -236,7 +234,7 @@ def get_numeric_gradient(
             numpy_tensor[i] = e
             numpy_tensor = numpy_tensor.reshape(shape)
             tensor.set(numpy_tensor, place)
-        elif tensor_to_check._dtype() == core.VarDesc.VarType.BF16:
+        elif tensor_to_check._dtype() == paddle.bfloat16:
             numpy_tensor = np.array(tensor).astype(np.uint16)
             shape = numpy_tensor.shape
             numpy_tensor = numpy_tensor.flatten()
@@ -431,6 +429,7 @@ class OpTest(unittest.TestCase):
         cls.check_prim = False
         cls.check_prim_pir = False
         cls._check_cinn = False
+        cls.check_pir_onednn = False
 
         np.random.seed(123)
         random.seed(124)
@@ -526,7 +525,7 @@ class OpTest(unittest.TestCase):
                 not in check_shape_white_list.NEED_TO_FIX_OP_LIST
             ):
                 raise AssertionError(
-                    "Input's shape should be large than or equal to 100 for "
+                    "Number of element(s) of input should be large than or equal to 100 for "
                     + cls.op_type
                     + " Op."
                 )
@@ -894,11 +893,11 @@ class OpTest(unittest.TestCase):
         if isinstance(value, tuple):
             data = value[0]
             lod = value[1]
-            v = base.dygraph.base.to_variable(value=data)
+            v = paddle.to_tensor(data)
             v.value().get_tensor().set_recursive_sequence_lengths(lod)
             return v
         else:
-            return base.dygraph.base.to_variable(value)
+            return paddle.to_tensor(value)
 
     def get_sequence_batch_size_1_input(self, lod=None, shape=None):
         """Get LoD input data whose batch size is 1.
@@ -1087,9 +1086,7 @@ class OpTest(unittest.TestCase):
             np_dyg = np.array(dygraph_outs[name])
             assert (
                 np_api.shape == np_dyg.shape
-            ), "Operator ({}) : Output ({}) shape mismatch, expect shape is {}, but actual shape is {}".format(
-                self.op_type, name, np_dyg.shape, np_api.shape
-            )
+            ), f"Operator ({self.op_type}) : Output ({name}) shape mismatch, expect shape is {np_dyg.shape}, but actual shape is {np_api.shape}"
             np.testing.assert_allclose(
                 np_api,
                 np_dyg,
@@ -1193,6 +1190,7 @@ class OpTest(unittest.TestCase):
                 dygraph_tensor_inputs,
                 attrs_outputs,
                 kernel_sig,
+                target_dtype=paddle.core.VarDesc.VarType,
             )
             """ we directly return the cal_python_api value because the value is already tensor.
             """
@@ -1377,6 +1375,7 @@ class OpTest(unittest.TestCase):
                     static_inputs,
                     attrs,
                     kernel_sig,
+                    target_dtype=paddle.pir.core.DataType,
                 )
                 inputs_sig, attrs_sig, outputs_sig = kernel_sig
                 if hasattr(self, "python_out_sig"):
@@ -1405,16 +1404,14 @@ class OpTest(unittest.TestCase):
                             else:
                                 ret_to_check.append(var)
                                 fetch_list.append(var)
-                    elif isinstance(
-                        ret_tuple, paddle.base.libpaddle.pir.OpResult
-                    ):
+                    elif isinstance(ret_tuple, paddle.base.libpaddle.pir.Value):
                         fetch_list.append(ret_tuple)
                         ret_to_check = ret_tuple
                     elif ret_tuple is None:
                         pass
                     else:
                         raise ValueError(
-                            "output of python api should be OpResult or list of OpResult or tuple of OpResult"
+                            "output of python api should be Value or list of Value or tuple of Value"
                         )
 
                 # executor run
@@ -1489,9 +1486,13 @@ class OpTest(unittest.TestCase):
 
             check_method = np.testing.assert_array_equal
             if os.getenv("FLAGS_PIR_OPTEST_RELAX_CHECK", None) == "True":
-                check_method = lambda x, y, z: np.testing.assert_allclose(
-                    x, y, err_msg=z, atol=1e-6, rtol=1e-6
-                )
+
+                def relaxed_check(x, y, err_msg=""):
+                    np.testing.assert_allclose(
+                        x, y, err_msg=err_msg, atol=1e-6, rtol=1e-6
+                    )
+
+                check_method = relaxed_check
             if os.getenv("FLAGS_PIR_NO_CHECK", None) == "True":
                 check_method = lambda x, y, err_msg: None
 
@@ -1630,9 +1631,7 @@ class OpTest(unittest.TestCase):
             actual_out = np.array(actual_outs[i])
             assert (
                 actual_out.shape == expect_out.shape
-            ), "Operator ({}) : Output ({}) shape mismatch, expect shape is {}, but actual shape is {}".format(
-                self.op_type, name, expect_out.shape, actual_out.shape
-            )
+            ), f"Operator ({self.op_type}) : Output ({name}) shape mismatch, expect shape is {expect_out.shape}, but actual shape is {actual_out.shape}"
             if inplace_atol is not None:
                 np.testing.assert_allclose(
                     expect_out,
@@ -2024,6 +2023,7 @@ class OpTest(unittest.TestCase):
         check_cinn=False,
         check_pir=False,
         check_auto_parallel=False,
+        check_pir_onednn=False,
     ):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
@@ -2133,9 +2133,7 @@ class OpTest(unittest.TestCase):
                 expect_np = np.array(expect_np)
                 assert (
                     actual_np.shape == expect_np.shape
-                ), "Operator ({}) : Output ({}) shape mismatch, expect shape is {}, but actual shape is {}".format(
-                    self.op_type, name, expect_np.shape, actual_np.shape
-                )
+                ), f"Operator ({self.op_type}) : Output ({name}) shape mismatch, expect shape is {expect_np.shape}, but actual shape is {actual_np.shape}"
                 np.testing.assert_allclose(
                     actual_np,
                     expect_np,
@@ -2302,9 +2300,7 @@ class OpTest(unittest.TestCase):
                 expect_np = np.array(expect_np)
                 assert (
                     actual_np.shape == expect_np.shape
-                ), "Operator ({}) : Output ({}) shape mismatch, expect shape is {}, but actual shape is {}".format(
-                    self.op_type, name, expect_np.shape, actual_np.shape
-                )
+                ), f"Operator ({self.op_type}) : Output ({name}) shape mismatch, expect shape is {expect_np.shape}, but actual shape is {actual_np.shape}"
                 np.testing.assert_allclose(
                     actual_np,
                     expect_np,
@@ -2415,9 +2411,7 @@ class OpTest(unittest.TestCase):
                 expect_np = np.array(expect_np)
                 assert (
                     actual_np.shape == expect_np.shape
-                ), "Operator ({}) : Output ({}) shape mismatch, expect shape is {}, but actual shape is {}".format(
-                    self.op_type, name, expect_np.shape, actual_np.shape
-                )
+                ), f"Operator ({self.op_type}) : Output ({name}) shape mismatch, expect shape is {expect_np.shape}, but actual shape is {actual_np.shape}"
                 np.testing.assert_allclose(
                     actual_np,
                     expect_np,
@@ -2636,6 +2630,14 @@ class OpTest(unittest.TestCase):
         static_checker = StaticChecker(self, self.outputs)
         static_checker.check()
         outs, fetch_list = static_checker.outputs, static_checker.fetch_list
+
+        if check_pir_onednn and isinstance(
+            place, paddle.base.libpaddle.CPUPlace
+        ):
+            with pir_executor_guard():
+                pir_onednn_static_checker = StaticChecker(self, self.outputs)
+                pir_onednn_static_checker.check()
+
         if check_dygraph:
             dygraph_checker = DygraphChecker(self, self.outputs)
             dygraph_checker.check()
@@ -2762,6 +2764,7 @@ class OpTest(unittest.TestCase):
         only_check_prim=False,
         check_pir=False,
         check_auto_parallel=False,
+        check_pir_onednn=False,
     ):
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
@@ -2789,6 +2792,7 @@ class OpTest(unittest.TestCase):
                 check_cinn=check_cinn,
                 check_pir=check_pir,
                 check_auto_parallel=check_auto_parallel,
+                check_pir_onednn=check_pir_onednn,
             )
             if not res and only_check_prim:
                 continue
@@ -2849,9 +2853,7 @@ class OpTest(unittest.TestCase):
         for a, b, name in zip(numeric_grads, analytic_grads, names):
             assert tuple(a.shape) == tuple(
                 b.shape
-            ), "Operator ({}) : Output ({}) gradient shape mismatch, expect shape is {}, but actual shape is {}".format(
-                self.op_type, name, a.shape, b.shape
-            )
+            ), f"Operator ({self.op_type}) : Output ({name}) gradient shape mismatch, expect shape is {a.shape}, but actual shape is {b.shape}"
             # Used by bfloat16 for now to solve precision problem
             if self.is_bfloat16_op():
                 if a.size == 0:
@@ -2863,13 +2865,7 @@ class OpTest(unittest.TestCase):
                     atol=atol,
                     equal_nan=False,
                     err_msg=(
-                        "Operator {} error, {} variable {} (shape: {}, dtype: {}) max gradient diff over limit"
-                    ).format(
-                        self.op_type,
-                        msg_prefix,
-                        name,
-                        str(a.shape),
-                        self.dtype,
+                        f"Operator {self.op_type} error, {msg_prefix} variable {name} (shape: {str(a.shape)}, dtype: {self.dtype}) max gradient diff over limit"
                     ),
                 )
             else:
@@ -2974,6 +2970,7 @@ class OpTest(unittest.TestCase):
         check_cinn=False,
         check_pir=False,
         check_auto_parallel=False,
+        check_pir_onednn=False,
     ):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -2999,7 +2996,94 @@ class OpTest(unittest.TestCase):
                 check_cinn=check_cinn,
                 check_pir=check_pir,
                 check_auto_parallel=check_auto_parallel,
+                check_pir_onednn=check_pir_onednn,
             )
+
+    def check_grad_with_place_for_static(
+        self,
+        user_defined_grads,
+        inputs_to_check,
+        place,
+        output_names,
+        no_grad_set,
+        user_defined_grad_outputs,
+        numeric_place,
+        numeric_grad_delta,
+        in_place,
+        check_cinn,
+        max_relative_error,
+        atol,
+    ):
+        if user_defined_grads is None and self.is_compared_with_fp32():
+            self.enable_cal_ref_output()
+            numeric_grads = self._get_gradient(
+                inputs_to_check,
+                place,
+                output_names,
+                no_grad_set,
+                user_defined_grad_outputs,
+            )
+            self.disable_cal_ref_output()
+        else:
+            numeric_grads = user_defined_grads or [
+                get_numeric_gradient(
+                    numeric_place,
+                    self.scope,
+                    self.op,
+                    self.inputs,
+                    input_to_check,
+                    output_names,
+                    delta=numeric_grad_delta,
+                    in_place=in_place,
+                )
+                for input_to_check in inputs_to_check
+            ]
+
+        analytic_grads = self._get_gradient(
+            inputs_to_check,
+            place,
+            output_names,
+            no_grad_set,
+            user_defined_grad_outputs,
+            check_cinn=check_cinn,
+        )
+        # comparison of bf16 results will happen as fp32
+        # loop over list of grads and convert bf16 to fp32
+
+        fp32_analytic_grads = []
+        for grad in analytic_grads:
+            if grad.dtype == np.uint16:
+                grad = convert_uint16_to_float(grad)
+                max_relative_error = (
+                    0.01 if max_relative_error < 0.01 else max_relative_error
+                )
+            fp32_analytic_grads.append(grad)
+        analytic_grads = fp32_analytic_grads
+
+        fp32_numeric_grads = []
+        for grad in numeric_grads:
+            if grad.dtype == np.uint16:
+                grad = convert_uint16_to_float(grad)
+                max_relative_error = (
+                    0.01 if max_relative_error < 0.01 else max_relative_error
+                )
+            fp32_numeric_grads.append(grad)
+        numeric_grads = fp32_numeric_grads
+
+        if self.is_float16_op():
+            max_relative_error = (
+                0.001 if max_relative_error < 0.001 else max_relative_error
+            )
+        self._assert_is_close(
+            numeric_grads,
+            analytic_grads,
+            inputs_to_check,
+            max_relative_error,
+            "Gradient Check On %s" % str(place),
+            atol=atol,
+        )
+
+        return numeric_grads
 
     def check_grad_with_place(
         self,
@@ -3021,6 +3105,7 @@ class OpTest(unittest.TestCase):
         check_cinn=False,
         check_pir=False,
         check_auto_parallel=False,
+        check_pir_onednn=False,
     ):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -3119,6 +3204,7 @@ class OpTest(unittest.TestCase):
                         else None,
                     )
                     run_subprocess(start_command, runtime_envs, timeout=120)
+
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else {}
         op_outputs = self.outputs if hasattr(self, "outputs") else {}
@@ -3194,74 +3280,39 @@ class OpTest(unittest.TestCase):
         if numeric_place is None:
             numeric_place = place
 
-        if user_defined_grads is None and self.is_compared_with_fp32():
-            self.enable_cal_ref_output()
-            numeric_grads = self._get_gradient(
-                inputs_to_check,
-                place,
-                output_names,
-                no_grad_set,
-                user_defined_grad_outputs,
-            )
-            self.disable_cal_ref_output()
-        else:
-            numeric_grads = user_defined_grads or [
-                get_numeric_gradient(
-                    numeric_place,
-                    self.scope,
-                    self.op,
-                    self.inputs,
-                    input_to_check,
-                    output_names,
-                    delta=numeric_grad_delta,
-                    in_place=in_place,
-                )
-                for input_to_check in inputs_to_check
-            ]
-
-        analytic_grads = self._get_gradient(
+        numeric_grads = self.check_grad_with_place_for_static(
+            user_defined_grads,
             inputs_to_check,
             place,
             output_names,
             no_grad_set,
             user_defined_grad_outputs,
-            check_cinn=check_cinn,
-        )
-        # comparison of bf16 results will happen as fp32
-        # loop over list of grads and convert bf16 to fp32
-
-        fp32_analytic_grads = []
-        for grad in analytic_grads:
-            if grad.dtype == np.uint16:
-                grad = convert_uint16_to_float(grad)
-                max_relative_error = (
-                    0.01 if max_relative_error < 0.01 else max_relative_error
-                )
-            fp32_analytic_grads.append(grad)
-        analytic_grads = fp32_analytic_grads
-
-        fp32_numeric_grads = []
-        for grad in numeric_grads:
-            if grad.dtype == np.uint16:
-                grad = convert_uint16_to_float(grad)
-                max_relative_error = (
-                    0.01 if max_relative_error < 0.01 else max_relative_error
-                )
-            fp32_numeric_grads.append(grad)
-        numeric_grads = fp32_numeric_grads
-
-        if self.is_float16_op():
-            max_relative_error = (
-                0.001 if max_relative_error < 0.001 else max_relative_error
-            )
-        self._assert_is_close(
-            numeric_grads,
-            analytic_grads,
-            inputs_to_check,
+            numeric_place,
+            numeric_grad_delta,
+            in_place,
+            check_cinn,
             max_relative_error,
-            "Gradient Check On %s" % str(place),
-            atol=atol,
+            atol,
         )
+
+        if check_pir_onednn and isinstance(
+            place, paddle.base.libpaddle.CPUPlace
+        ):
+            with pir_executor_guard():
+                self.check_grad_with_place_for_static(
+                    user_defined_grads,
+                    inputs_to_check,
+                    place,
+                    output_names,
+                    no_grad_set,
+                    user_defined_grad_outputs,
+                    numeric_place,
+                    numeric_grad_delta,
+                    in_place,
+                    check_cinn,
+                    max_relative_error,
+                    atol,
+                )
 
         if check_dygraph:
             with base.dygraph.base.guard(place):
@@ -3403,7 +3454,7 @@ class OpTest(unittest.TestCase):
                 for cast_input in cast_inputs:
                     if isinstance(cast_input, paddle.Tensor):
                         cast_outputs.append(
-                            paddle.cast(cast_input, core.VarDesc.VarType.FP32)
+                            paddle.cast(cast_input, paddle.float32)
                         )
                     else:
                         raise TypeError(
@@ -3537,12 +3588,25 @@ class OpTest(unittest.TestCase):
 
             check_method = np.testing.assert_array_equal
             if os.getenv("FLAGS_PIR_OPTEST_RELAX_CHECK", None) == "True":
-                check_method = lambda x, y, z: np.testing.assert_allclose(
-                    x, y, err_msg=z, atol=1e-6, rtol=1e-6
-                )
+
+                def relaxed_check_method(x, y, err_msg):
+                    atol = 1e-6
+                    rtol = 1e-6
+                    if x.dtype == np.float16:
+                        atol = 1e-5
+                        rtol = 1e-3
+                    np.testing.assert_allclose(
+                        x, y, err_msg=err_msg, atol=atol, rtol=rtol
+                    )
+
+                check_method = relaxed_check_method
 
             if os.getenv("FLAGS_PIR_NO_CHECK", None) == "True":
-                check_method = lambda x, y, err_msg: None
+
+                def no_check_method(x, y, err_msg):
+                    pass
+
+                check_method = no_check_method
 
             for i in range(len(new_gradients)):
                 check_method(
@@ -3744,6 +3808,7 @@ class OpTest(unittest.TestCase):
                     static_inputs,
                     attrs,
                     kernel_sig,
+                    target_dtype=paddle.pir.core.DataType,
                 )
                 inputs_sig, attrs_sig, outputs_sig = kernel_sig
                 args = OpTestUtils.assumption_assert_and_transform(
@@ -3793,7 +3858,7 @@ class OpTest(unittest.TestCase):
                     cast_outputs = []
                     for cast_input in cast_inputs:
                         if isinstance(
-                            cast_input, paddle.base.libpaddle.pir.OpResult
+                            cast_input, paddle.base.libpaddle.pir.Value
                         ):
                             cast_outputs.append(
                                 paddle.cast(

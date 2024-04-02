@@ -89,7 +89,7 @@ __global__ void vol2col(int num_kernels,
 }
 
 /*
- * im = [input_channels,intpu_depth, input_height, input_width] for
+ * im = [input_channels,input_depth, input_height, input_width] for
  * channels_first
  * im = [input_depth, input_height, input_width, input_channels] for
  * channels_last
@@ -112,7 +112,7 @@ void Vol2ColFunctor<DeviceContext, T>::operator()(
   PADDLE_ENFORCE_EQ(vol.dims().size(),
                     4,
                     phi::errors::InvalidArgument(
-                        "The dimension of  vol should be 4, but received %d.",
+                        "The dimension of vol should be 4, but received %d.",
                         vol.dims().size()));
   PADDLE_ENFORCE_EQ(col->dims().size(),
                     7,
@@ -318,12 +318,12 @@ void Col2VolFunctor<DeviceContext, T>::operator()(
   PADDLE_ENFORCE_EQ(vol->dims().size(),
                     4,
                     phi::errors::InvalidArgument(
-                        "The dimension of vol  should be 4, but received %d.",
+                        "The dimension of vol should be 4, but received %d.",
                         vol->dims().size()));
   PADDLE_ENFORCE_EQ(col.dims().size(),
                     7,
                     phi::errors::InvalidArgument(
-                        "The dimension of col  should be 7, but received %d.",
+                        "The dimension of col should be 7, but received %d.",
                         col.dims().size()));
 
   int input_channels =

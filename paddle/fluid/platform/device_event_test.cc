@@ -63,7 +63,7 @@ TEST(DeviceEvent, CUDA) {
   status = event.Query();
   ASSERT_EQ(status, false);  // async
 
-  event.Wait(kCPU, context);  // step 3. EventSynchornize
+  event.Wait(kCPU, context);  // step 3. EventSynchronize
   status = event.Query();
   ASSERT_EQ(status, true);  // sync
 
@@ -114,7 +114,7 @@ TEST(DeviceEvent, CUDA) {
   status = event.Query();
   ASSERT_EQ(status, false);  // async
 
-  event.Wait(kCPU, context);  // step 3. EventSynchornize
+  event.Wait(kCPU, context);  // step 3. EventSynchronize
   status = event.Query();
   ASSERT_EQ(status, true);  // sync
 
@@ -133,7 +133,7 @@ TEST(DeviceEvent, CPU) {
 
   // TODO(Aurelius84): All DeviceContext should has Record/Wait
   event.Record(context);
-  event.SetFininshed();
+  event.SetFinished();
   bool status = event.Query();
   ASSERT_EQ(status, true);
 

@@ -35,20 +35,16 @@ def _default_pruning(weight_nparray, m, n, func_name, param_name):
     shape = weight_nparray.shape
     weight_pruned_nparray = copy.deepcopy(weight_nparray)
     weight_sparse_mask = np.ones_like(weight_pruned_nparray)
-    exlude_cond_shape2 = len(shape) == 2 and shape[0] < m
-    exlude_cond_shape4 = len(shape) == 4 and shape[1] < m
-    if exlude_cond_shape2:
+    exclude_cond_shape2 = len(shape) == 2 and shape[0] < m
+    exclude_cond_shape4 = len(shape) == 4 and shape[1] < m
+    if exclude_cond_shape2:
         _logger.warning(
-            '{} is not pruned because the first dimension of {} is smaller than {}'.format(
-                param_name, shape, m
-            )
+            f'{param_name} is not pruned because the first dimension of {shape} is smaller than {m}'
         )
         return weight_pruned_nparray, weight_sparse_mask
-    if exlude_cond_shape4:
+    if exclude_cond_shape4:
         _logger.warning(
-            '{} is not pruned because the second dimension of {} is smaller than {}'.format(
-                param_name, shape, m
-            )
+            f'{param_name} is not pruned because the second dimension of {shape} is smaller than {m}'
         )
         return weight_pruned_nparray, weight_sparse_mask
 
@@ -58,12 +54,12 @@ def _default_pruning(weight_nparray, m, n, func_name, param_name):
     # SPMMA in cuSparseLt: D = (AxB) + C, where matrix A (mxk) is sparse matrix.
     # cuSparseLt would prune matrix A along k dimension.
     # In sparse training, layer weight matrices is viewed sparse matrix A, so
-    # the math fomula should be 'Act(WX + b)'. However, default fomula in PaddlePaddle
+    # the math formula should be 'Act(WX + b)'. However, default formula in PaddlePaddle
     #  is 'Act(XW + b)'. For enabling SPMMA, weights and inputs should be transposed
     # for computing, Act( (W^T X^T)^T + b). Therefore, we have to prune alog k dimension
-    # of W^T, which is m dimension of W. Moreove, all mask generating functions in
+    # of W^T, which is m dimension of W. Moreover, all mask generating functions in
     # asp/utils is row-major pruning. That is the reason we have to transpose weight
-    # matrices beforce invoking create_mask. Then we transpose the result mask to make
+    # matrices before invoking create_mask. Then we transpose the result mask to make
     # sure its shape to be the same as the input weight.
     weight_sparse_mask = asp.create_mask(
         weight_nparray.T, func_name=func_name, n=n, m=m

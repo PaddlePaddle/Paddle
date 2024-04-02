@@ -284,8 +284,7 @@ def train():
         base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
     )
     with base.dygraph.guard(place):
-        base.default_startup_program().random_seed = 1000
-        base.default_main_program().random_seed = 1000
+        paddle.seed(1000)
 
         skip_gram_model = paddle.jit.to_static(
             SkipGram("skip_gram_model", vocab_size, embedding_size)
@@ -300,9 +299,9 @@ def train():
         for center_words, target_words, label, eval_words in build_batch(
             dataset, batch_size, epoch_num
         ):
-            center_words_var = base.dygraph.to_variable(center_words)
-            target_words_var = base.dygraph.to_variable(target_words)
-            label_var = base.dygraph.to_variable(label)
+            center_words_var = paddle.to_tensor(center_words)
+            target_words_var = paddle.to_tensor(target_words)
+            label_var = paddle.to_tensor(label)
             pred, loss = skip_gram_model(
                 center_words_var, target_words_var, label_var
             )

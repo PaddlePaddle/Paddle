@@ -308,7 +308,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             self.data[0:, 1:2:2, :] = self.value
 
     # 1.2.3 step < 0
-    class XPUTestSetValueItemSliceNegetiveStep(XPUTestSetValueApi):
+    class XPUTestSetValueItemSliceNegativeStep(XPUTestSetValueApi):
         def set_dtype(self):
             if self.in_type == np.float16:
                 self.dtype = "float32"
@@ -333,8 +333,8 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _get_answer(self):
             self.data[5:2:-1] = self.value
 
-    class XPUTestSetValueItemSliceNegetiveStep2(
-        XPUTestSetValueItemSliceNegetiveStep
+    class XPUTestSetValueItemSliceNegativeStep2(
+        XPUTestSetValueItemSliceNegativeStep
     ):
         def set_shape(self):
             self.shape = [5]
@@ -353,8 +353,8 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _get_answer(self):
             self.data[1::-1] = self.value
 
-    class XPUTestSetValueItemSliceNegetiveStep3(
-        XPUTestSetValueItemSliceNegetiveStep
+    class XPUTestSetValueItemSliceNegativeStep3(
+        XPUTestSetValueItemSliceNegativeStep
     ):
         def set_shape(self):
             self.shape = [3]
@@ -372,7 +372,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _get_answer(self):
             self.data[::-1] = self.value
 
-    class XPUTestSetValueItemSliceNegetiveStep4(XPUTestSetValueApi):
+    class XPUTestSetValueItemSliceNegativeStep4(XPUTestSetValueApi):
         def set_dtype(self):
             if self.in_type == np.float16:
                 self.dtype = "float32"
@@ -400,7 +400,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
 
         # 1.2.3 step < 0 and stride < -1
 
-    class XPUTestSetValueItemSliceNegetiveStep5(XPUTestSetValueApi):
+    class XPUTestSetValueItemSliceNegativeStep5(XPUTestSetValueApi):
         def set_dtype(self):
             if self.in_type == np.float16:
                 self.dtype = "float32"
@@ -1230,16 +1230,12 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             np.testing.assert_array_equal(
                 inps.grad.numpy(),
                 input_grad,
-                err_msg='The gradient of value should be \n{},\n but reveived {}'.format(
-                    input_grad, inps.grad.numpy()
-                ),
+                err_msg=f'The gradient of value should be \n{input_grad},\n but received {inps.grad.numpy()}',
             )
             np.testing.assert_array_equal(
                 value.grad.numpy(),
                 value_grad,
-                err_msg='The gradient of input should be \n{},\n but reveived {}'.format(
-                    value_grad, value.grad.numpy()
-                ),
+                err_msg=f'The gradient of input should be \n{value_grad},\n but received {value.grad.numpy()}',
             )
 
             # case 2
@@ -1266,16 +1262,12 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             np.testing.assert_array_equal(
                 inps2.grad.numpy(),
                 input_grad2,
-                err_msg='The gradient of value should be \n{},\n but reveived {}'.format(
-                    input_grad, inps2.grad.numpy()
-                ),
+                err_msg=f'The gradient of value should be \n{input_grad},\n but received {inps2.grad.numpy()}',
             )
             np.testing.assert_array_equal(
                 value2.grad.numpy(),
                 value_grad2,
-                err_msg='The gradient of input should be \n{},\n but reveived {}'.format(
-                    value_grad, value2.grad.numpy()
-                ),
+                err_msg=f'The gradient of input should be \n{value_grad},\n but received {value2.grad.numpy()}',
             )
 
             # case 3
@@ -1324,16 +1316,12 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             np.testing.assert_array_equal(
                 inps.grad.numpy(),
                 input_grad,
-                err_msg='The gradient of value should be \n{},\n but reveived {}'.format(
-                    input_grad, inps.grad.numpy()
-                ),
+                err_msg=f'The gradient of value should be \n{input_grad},\n but received {inps.grad.numpy()}',
             )
             np.testing.assert_array_equal(
                 value.grad.numpy(),
                 value_grad,
-                err_msg='The gradient of input should be \n{},\n but reveived {}'.format(
-                    value_grad, value.grad.numpy()
-                ),
+                err_msg=f'The gradient of input should be \n{value_grad},\n but received {value.grad.numpy()}',
             )
 
             # case 4: step >0
@@ -1372,16 +1360,12 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             np.testing.assert_array_equal(
                 inps.grad.numpy(),
                 input_grad,
-                err_msg='The gradient of value should be \n{},\n but reveived {}'.format(
-                    input_grad, inps.grad.numpy()
-                ),
+                err_msg=f'The gradient of value should be \n{input_grad},\n but received {inps.grad.numpy()}',
             )
             np.testing.assert_array_equal(
                 value.grad.numpy(),
                 value_grad,
-                err_msg='The gradient of input should be \n{},\n but reveived {}'.format(
-                    value_grad, value.grad.numpy()
-                ),
+                err_msg=f'The gradient of input should be \n{value_grad},\n but received {value.grad.numpy()}',
             )
 
             # case 5:a[0].shape==value.shape
@@ -1426,16 +1410,12 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             np.testing.assert_array_equal(
                 inps.grad.numpy(),
                 input_grad,
-                err_msg='The gradient of value should be \n{},\n but reveived {}'.format(
-                    input_grad, inps.grad.numpy()
-                ),
+                err_msg=f'The gradient of value should be \n{input_grad},\n but received {inps.grad.numpy()}',
             )
             np.testing.assert_array_equal(
                 value.grad.numpy(),
                 value_grad,
-                err_msg='The gradient of input should be \n{},\n but reveived {}'.format(
-                    value_grad, value.grad.numpy()
-                ),
+                err_msg=f'The gradient of input should be \n{value_grad},\n but received {value.grad.numpy()}',
             )
 
             # case 6: pass stop_gradient from value to x

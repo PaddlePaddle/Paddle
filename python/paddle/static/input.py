@@ -26,6 +26,10 @@ from paddle.base.framework import (
 )
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.libpaddle import DataType
+from paddle.base.libpaddle.pir import (
+    get_current_insertion_point,
+    set_insertion_point,
+)
 
 from ..base.variable_index import _setitem_static
 
@@ -132,9 +136,10 @@ def data(name, shape, dtype=None, lod_level=0):
         ir_dtype = dtype
         if not isinstance(ir_dtype, DataType):
             ir_dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
+        prev_insertion_point = get_current_insertion_point()
         _reset_data_op_insertion_point()
         out = paddle._pir_ops.data(name, shape, ir_dtype, core.Place())
-        paddle.pir.reset_insertion_point_to_end()
+        set_insertion_point(prev_insertion_point)
         return out
 
     out = helper.create_global_variable(
@@ -206,7 +211,7 @@ class InputSpec:
     def __init__(self, shape, dtype='float32', name=None, stop_gradient=False):
         # replace `None` in shape  with -1
         self.shape = self._verify(shape)
-        # convert dtype into united represention
+        # convert dtype into united representation
         if dtype is not None:
             if isinstance(dtype, (np.dtype, str)):
                 dtype = convert_np_dtype_to_dtype_(dtype)
@@ -219,13 +224,7 @@ class InputSpec:
         return data(self.name, shape=self.shape, dtype=self.dtype)
 
     def __repr__(self):
-        return '{}(shape={}, dtype={}, name={}, stop_gradient={})'.format(
-            type(self).__name__,
-            self.shape,
-            self.dtype,
-            self.name,
-            self.stop_gradient,
-        )
+        return f'{type(self).__name__}(shape={self.shape}, dtype={self.dtype}, name={self.name}, stop_gradient={self.stop_gradient})'
 
     @classmethod
     def from_tensor(cls, tensor, name=None):
@@ -256,9 +255,7 @@ class InputSpec:
             return cls(tensor.shape, tensor.dtype, name or tensor.name)
         else:
             raise ValueError(
-                "Input `tensor` should be a Tensor, but received {}.".format(
-                    type(tensor).__name__
-                )
+                f"Input `tensor` should be a Tensor, but received {type(tensor).__name__}."
             )
 
     @classmethod
@@ -310,16 +307,12 @@ class InputSpec:
         if isinstance(batch_size, (list, tuple)):
             if len(batch_size) != 1:
                 raise ValueError(
-                    "Length of batch_size: {} shall be 1, but received {}.".format(
-                        batch_size, len(batch_size)
-                    )
+                    f"Length of batch_size: {batch_size} shall be 1, but received {len(batch_size)}."
                 )
             batch_size = batch_size[1]
         elif not isinstance(batch_size, int):
             raise TypeError(
-                "type(batch_size) shall be `int`, but received {}.".format(
-                    type(batch_size).__name__
-                )
+                f"type(batch_size) shall be `int`, but received {type(batch_size).__name__}."
             )
 
         new_shape = [batch_size] + list(self.shape)
@@ -359,18 +352,14 @@ class InputSpec:
         """
         if not isinstance(shape, (list, tuple)):
             raise TypeError(
-                "Type of `shape` in InputSpec should be one of (tuple, list), but received {}.".format(
-                    type(shape).__name__
-                )
+                f"Type of `shape` in InputSpec should be one of (tuple, list), but received {type(shape).__name__}."
             )
 
         for i, ele in enumerate(shape):
             if ele is not None:
                 if not isinstance(ele, int):
                     raise ValueError(
-                        "shape[{}] should be an `int`, but received `{}`:{}.".format(
-                            i, type(ele).__name__, ele
-                        )
+                        f"shape[{i}] should be an `int`, but received `{type(ele).__name__}`:{ele}."
                     )
             if ele is None or ele < -1:
                 shape[i] = -1

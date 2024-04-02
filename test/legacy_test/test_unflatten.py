@@ -37,15 +37,11 @@ def numpy_unflatten(x, axis, shape):
                 sizes = np.prod(shape)
                 if sizes != x.shape[axis]:
                     raise ValueError(
-                        "The product of the elements in shape{} is not equal to {}.".format(
-                            shape, x.shape[axis]
-                        )
+                        f"The product of the elements in shape{shape} is not equal to {x.shape[axis]}."
                     )
     else:
         raise TypeError(
-            "The data type of x should be one of ['List', 'Tuple', 'Tensor'], but got {}".format(
-                type(shape)
-            )
+            f"The data type of x should be one of ['List', 'Tuple', 'Tensor'], but got {type(shape)}"
         )
     length = len(x.shape)
     if axis < 0:

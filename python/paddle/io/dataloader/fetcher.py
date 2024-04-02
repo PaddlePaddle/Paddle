@@ -21,14 +21,14 @@ class _DatasetFetcher:
         self.drop_last = drop_last
 
     # NOTE: fetch function here perform the whole pipeline of dataset
-    #       reading and data trasforms of a batch in each calling, this
+    #       reading and data transforms of a batch in each calling, this
     #       may take a long time inside, if DataLoader is exit outside,
     #       fetch need to perceive exit situation, so we pass done_event
     #       here for fetch to check exit status
-    # NOTE: if DataLoadet exit by `break`, performing GPU tensor operations,
+    # NOTE: if DataLoader exit by `break`, performing GPU tensor operations,
     #       e.g. to_tensor may cause SIGSEGV in thread, so we pass the
     #       done_event argument to check DataLoader exit status between
-    #       ecah sample processing in the batch
+    #       each sample processing in the batch
     def fetch(self, batch_indices, done_event=None):
         raise NotImplementedError(
             f"'fetch' not implement for class {self.__class__.__name__}"

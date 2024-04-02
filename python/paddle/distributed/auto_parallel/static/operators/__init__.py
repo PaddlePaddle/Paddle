@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License
-import os  # noqa: F401
+import os
 
 from . import (  # noqa: F401
     dist_assign,
@@ -21,6 +21,7 @@ from . import (  # noqa: F401
     dist_dropout,
     dist_eltwise,
     dist_embedding,
+    dist_expand_as,
     dist_fill_constant_batch_size_like,
     dist_flash_attn,
     dist_fused_attention,

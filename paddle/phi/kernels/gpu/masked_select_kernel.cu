@@ -94,11 +94,17 @@ PD_REGISTER_KERNEL(masked_select,
                    GPU,
                    ALL_LAYOUT,
                    phi::MaskedSelectKernel,
+                   bool,
                    float,
                    double,
                    int,
+                   int8_t,
                    int64_t,
+                   int16_t,
+                   uint8_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(1).SetDataType(phi::DataType::BOOL);
 }

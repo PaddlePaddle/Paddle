@@ -26,11 +26,11 @@ limitations under the License. */
 #include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/infermeta/backward.h"
 
-PHI_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace operators {
@@ -94,7 +94,7 @@ class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
 //     paddle::Tensor dx = this->GetSingleInputGrad("X");
 //     auto* dx_ptr = this->GetOutputPtr(&dx);
 //     std::string dx_name = this->GetOutputName(dx);
-//     VLOG(6) << "Runing hardswish_grad composite func";
+//     VLOG(6) << "Running hardswish_grad composite func";
 //     prim::hardswish_grad<prim::DescTensor>(x, out_grad, dx_ptr);
 //     this->RecoverOutputName(dx, dx_name);
 //   }
@@ -394,19 +394,19 @@ REGISTER_ACTIVATION_OP(mish, Mish, MishFunctor, MishGradFunctor);
 /* ==========================  register checkpoint ===========================*/
 REGISTER_OP_VERSION(leaky_relu)
     .AddCheckpoint(
-        R"ROC(fix leaky_relu, bahavior changed when alpha < 0 or alpha > 1)ROC",
+        R"ROC(fix leaky_relu, behavior changed when alpha < 0 or alpha > 1)ROC",
         paddle::framework::compatible::OpVersionDesc()
             .BugfixWithBehaviorChanged(
-                "leaky_relu calculate formula before checkponit: out = max(x, "
+                "leaky_relu calculate formula before checkpoint: out = max(x, "
                 "alpha * x); after checkpoint: out = x if x > 0 else alpha * "
                 "x"));
 
 REGISTER_OP_VERSION(hard_shrink)
     .AddCheckpoint(
-        R"ROC(fix hard_shrink, bahavior changed when threshold<0)ROC",
+        R"ROC(fix hard_shrink, behavior changed when threshold<0)ROC",
         paddle::framework::compatible::OpVersionDesc()
             .BugfixWithBehaviorChanged(
-                "hard_shrink calculate formula before checkponit: out = x * "
+                "hard_shrink calculate formula before checkpoint: out = x * "
                 "((x < -threshold) + (x > threshold)); after checkpoint: out = "
                 "x * (((x < -threshold) + (x > threshold)) > 0)"));
 

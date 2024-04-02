@@ -18,7 +18,7 @@ from functools import wraps
 
 from paddle.framework import core
 
-_event_level = int(os.environ.get("EVENT_LEVEL", "-1"))
+_event_level = int(os.environ.get("EVENT_LEVEL", "0"))
 
 
 class SotProfiler:
@@ -37,7 +37,7 @@ class SotProfiler:
 
 
 @contextmanager
-def EventGuard(event_name, event_level=0):
+def EventGuard(event_name, event_level=1):
     try:
         global _event_level
         need_pop = False
@@ -50,20 +50,11 @@ def EventGuard(event_name, event_level=0):
             core.nvprof_nvtx_pop()
 
 
-if _event_level == -1:
-
-    @contextmanager
-    def _EmptyEventGuard(event_name, event_level=0):
-        yield
-
-    EventGuard = _EmptyEventGuard  # noqa: F811
-
-
-def event_register(event_name, event_level=0):
+def event_register(event_name, event_level=1):
     def event_wrapper(func):
         @wraps(func)
         def call_with_event(*args, **kwargs):
-            with EventGuard(event_name, event_level=0):
+            with EventGuard(event_name, event_level=event_level):
                 return func(*args, **kwargs)
 
         return call_with_event

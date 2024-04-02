@@ -22,7 +22,7 @@ namespace cinn {
 namespace ir {
 namespace ir_utils {
 
-// Determine whether two ir AST trees are euqal by comparing their struct and
+// Determine whether two ir AST trees are equal by comparing their struct and
 // fields of each node through dfs visitor
 class IrEqualVisitor : public IRVisitorRequireReImpl<bool, const Expr*> {
  public:
@@ -30,7 +30,7 @@ class IrEqualVisitor : public IRVisitorRequireReImpl<bool, const Expr*> {
                           bool only_compare_structure = false)
       : allow_name_suffix_diff_(allow_name_suffix_diff),
         only_compare_structure_(only_compare_structure) {}
-  // Return true if they are euqal, otherwise false;
+  // Return true if they are equal, otherwise false;
   bool Compare(const Expr& lhs, const Expr& rhs);
 
  private:

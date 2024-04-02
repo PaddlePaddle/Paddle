@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-from typing import List
 
 import paddle
 from paddle.distributed.communication.group import is_initialized
@@ -28,12 +27,12 @@ from .utils import (
 
 def check_state_dict(state_dict, process_group):
     local_keys = list(state_dict.keys())
-    gloabl_keys = []
-    paddle.distributed.all_gather_object(gloabl_keys, local_keys, process_group)
-    for keys in gloabl_keys[1:]:
+    global_keys = []
+    paddle.distributed.all_gather_object(global_keys, local_keys, process_group)
+    for keys in global_keys[1:]:
         assert (
-            keys == gloabl_keys[0]
-        ), f"keys:{keys} != first_keys: {gloabl_keys[0]}"
+            keys == global_keys[0]
+        ), f"keys:{keys} != first_keys: {global_keys[0]}"
 
 
 def check_file_name(file_name, process_group):
@@ -50,7 +49,7 @@ def check_file_name(file_name, process_group):
 
 def merge_state_dict_metadata(global_state_dict_metadata):
     assert isinstance(
-        global_state_dict_metadata, List
+        global_state_dict_metadata, list
     ), "The global_state_dict should be a list."
     out = {}
     for state_dict in global_state_dict_metadata:
@@ -64,7 +63,7 @@ def merge_state_dict_metadata(global_state_dict_metadata):
     return out
 
 
-def dedup_storage_metadata(global_storage_metadata):
+def dedup_key_in_dict(global_storage_metadata):
     out = {}
     for storage_metadata in global_storage_metadata:
         for key, val in storage_metadata.items():
@@ -72,6 +71,34 @@ def dedup_storage_metadata(global_storage_metadata):
                 continue
             out[key] = val
     return out
+
+
+def dedup_tensor(
+    local_state_dict, local_storage_metadata, global_storage_metadata
+):
+    """
+    Dedup the replicated tensor in local state_dict.
+
+    Args:
+        local_state_dict(Dict[str, paddle.Tensor]): The state_dict of current rank.
+        local_storage_metadata(Dict[LocalTensorIndex, str]): The storage metadata of current rank.
+        global_storage_metadata(Dict[LocalTensorIndex, str]): The final storage metadata of all ranks.
+
+    Examples:
+        In rank0, local_state_dict:{"w1": t1_0, "w2": t2}, local_storage_metadata:{LocalTensorIndex("w1", (0,0)): "0_0.distcp", LocalTensorIndex("w2", (0,0)): "0_0.distcp"},
+        in rank1, local_state_dict:{"w1": t1_1, "w2": t2}, local_storage_metadata:{LocalTensorIndex("w1", (1,0)): "1_0.distcp", LocalTensorIndex("w2", (0,0)): "1_0.distcp"},
+        global_storage_metadata:{LocalTensorIndex("w1", (0,0)): "0_0.distcp", LocalTensorIndex("w1", (1,0)): "1_0.distcp", LocalTensorIndex("w2", (0, 0)): "0_0.distcp"}.
+        w2 is replicated in rank0 and rank1. We save it in rank0 as default thus need to remove it in other ranks.
+        Finally, the local_state_dict:{"w1": t1_1, "w2": t2} in rank1 update to {"w1": t1_1}.
+    """
+
+    for tensor_index, file_name in global_storage_metadata.items():
+        rank = int(file_name.split(".")[0].split("_")[0])
+        if (
+            tensor_index in local_storage_metadata
+            and rank != paddle.distributed.get_rank()
+        ):
+            local_state_dict.pop(tensor_index.tensor_key)
 
 
 def save_state_dict(
@@ -107,12 +134,12 @@ def save_state_dict(
         assert isinstance(
             state_dict, dict
         ), "The state_dict should be a dictionary."
-        state_dict = flatten_state_dict(state_dict)
-        if len(state_dict) > 0:
-            for val in state_dict.values():
+        flat_state_dict, mapping = flatten_state_dict(state_dict)
+        if len(flat_state_dict) > 0:
+            for val in flat_state_dict.values():
                 assert isinstance(
                     val, paddle.Tensor
-                ), "Only support dygraph Tensor now, support static DistributedTensor later"
+                ), f"The value of state_dict should be a paddle.Tensor, but got: {val}."
 
         if not os.path.exists(path):
             os.makedirs(path, exist_ok=True)
@@ -134,12 +161,12 @@ def save_state_dict(
         if use_dist:
             check_file_name(file_name, process_group)
             # the parameter_name and order in state_dict should be the same
-            check_state_dict(state_dict, process_group)
+            check_state_dict(flat_state_dict, process_group)
         metadata = Metadata()
         local_state_dict = {}
         local_state_dict_metadata = {}
         local_storage_metadata = {}
-        for key, val in state_dict.items():
+        for key, val in flat_state_dict.items():
             if isinstance(val, paddle.Tensor):
                 # Case1: not initialized means this tensor is placed in another mesh which do not contain this rank
                 if not val._is_initialized():
@@ -161,6 +188,8 @@ def save_state_dict(
                     if local_shape is None or global_offset is None:
                         continue
                     local_tensor = val._local_value()
+                    # Note: The local_tensor must keep the same name with the original tensor. Otherwise, the StructuredToParameterName@@ mapping will be wrong.
+                    local_tensor.name = val.name
                 else:
                     local_shape = tuple(val.shape)
                     global_offset = (
@@ -176,8 +205,10 @@ def save_state_dict(
                 local_storage_metadata[
                     LocalTensorIndex(key, tuple(global_offset))
                 ] = file_name
+
         global_state_dict_metadata = []
         global_storage_metadata = []
+        global_flatten_mapping = []
         if use_dist:
             paddle.distributed.all_gather_object(
                 global_state_dict_metadata,
@@ -187,19 +218,24 @@ def save_state_dict(
             paddle.distributed.all_gather_object(
                 global_storage_metadata, local_storage_metadata, process_group
             )
+            paddle.distributed.all_gather_object(
+                global_flatten_mapping, mapping, process_group
+            )
         else:
             global_state_dict_metadata.append(local_state_dict_metadata)
             global_storage_metadata.append(local_storage_metadata)
+            global_flatten_mapping.append(mapping)
 
         metadata.state_dict_metadata = merge_state_dict_metadata(
             global_state_dict_metadata
         )
-        metadata.storage_metadata = dedup_storage_metadata(
-            global_storage_metadata
-        )
+        metadata.storage_metadata = dedup_key_in_dict(global_storage_metadata)
+        metadata.flat_mapping = dedup_key_in_dict(global_flatten_mapping)
         if coordinator_rank == paddle.distributed.get_rank():
             logger.debug(f"metadata:{metadata}")
             paddle.save(metadata, os.path.join(path, f"{unique_id}.metadata"))
         logger.debug(f"local_state_dict:{local_state_dict}")
-        # TODO(pangengzheng): del the replicated tensor in local_state_dict, now different might save the replicated tensor
+        dedup_tensor(
+            local_state_dict, local_storage_metadata, metadata.storage_metadata
+        )
         paddle.save(local_state_dict, os.path.join(path, file_name))

@@ -81,8 +81,7 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
         return np.equal(np.mod(x, 1), 0)
 
     def build_program(self, main, startup, is_test, seed):
-        main.random_seed = seed
-        startup.random_seed = seed
+        paddle.seed(seed)
         with paddle.utils.unique_name.guard():
             with paddle.static.program_guard(main, startup):
                 img = paddle.static.data(

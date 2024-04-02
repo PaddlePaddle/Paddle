@@ -14,14 +14,14 @@
 
 #include <gtest/gtest.h>
 
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/op_base.h"
-#include "paddle/pir/core/region.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/op_base.h"
+#include "paddle/pir/include/core/region.h"
 
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -37,6 +37,8 @@
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/nullary.h"
 
+#include "test/cpp/pir/tools/macros_utils.h"
+
 // Define op
 class OperationTest
     : public pir::Op<OperationTest, paddle::dialect::InferMetaInterface> {
@@ -50,8 +52,14 @@ class OperationTest
     auto fn = PD_INFER_META(phi::CreateInferMeta);
     fn(infer_meta);
   }
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values, pir::AttributeMap *) {
+    VLOG(4) << "Start infermeta OperationTest";
+    std::vector<pir::Type> argument_outputs;
+    return argument_outputs;
+  }
 };
-IR_DECLARE_EXPLICIT_TYPE_ID(OperationTest)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(OperationTest)
 IR_DEFINE_EXPLICIT_TYPE_ID(OperationTest)
 
 const char *OperationTest::attributes_name[attributes_num] = {  // NOLINT
@@ -70,7 +78,7 @@ class TestDialect : public pir::Dialect {
  private:
   void initialize() { RegisterOps<OperationTest>(); }
 };
-IR_DECLARE_EXPLICIT_TYPE_ID(TestDialect)
+IR_DECLARE_EXPLICIT_TEST_TYPE_ID(TestDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(TestDialect)
 
 TEST(infershape_test, infershape_test) {

@@ -16,8 +16,8 @@
 
 #include "paddle/fluid/framework/new_executor/pir_interpreter.h"
 #include "paddle/fluid/framework/new_executor/program_interpreter.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_serial_run,
@@ -67,19 +67,25 @@ FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors,
     bool need_fetch,
-    bool enable_job_schedule_profiler) {
-  return impl_->Run(
-      feed_names, feed_tensors, need_fetch, enable_job_schedule_profiler);
+    bool enable_job_schedule_profiler,
+    bool switch_stream) {
+  return impl_->Run(feed_names,
+                    feed_tensors,
+                    need_fetch,
+                    enable_job_schedule_profiler,
+                    switch_stream);
 }
 
 FetchList InterpreterCore::Run(const std::vector<std::string>& feed_names,
                                bool need_fetch,
                                bool enable_job_schedule_profiler,
-                               bool enable_op_profiling) {
+                               bool enable_op_profiling,
+                               bool switch_stream) {
   return impl_->Run(feed_names,
                     need_fetch,
                     enable_job_schedule_profiler,
-                    enable_op_profiling);
+                    enable_op_profiling,
+                    switch_stream);
 }
 
 void InterpreterCore::ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src) {
@@ -130,6 +136,15 @@ void InterpreterCore::SetInputHooks(const std::vector<HookFunc>& hookfuncs) {
 }
 
 void InterpreterCore::SetOutputHooks(const std::vector<HookFunc>& hookfuncs) {
+  impl_->SetOutputHooks(hookfuncs);
+}
+
+void InterpreterCore::SetInputHooks(const std::vector<PirHookFunc>& hookfuncs) {
+  impl_->SetInputHooks(hookfuncs);
+}
+
+void InterpreterCore::SetOutputHooks(
+    const std::vector<PirHookFunc>& hookfuncs) {
   impl_->SetOutputHooks(hookfuncs);
 }
 

@@ -20,9 +20,13 @@
 #include "paddle/fluid/ir_adaptor/translator/op_translator.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/utils.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/utils.h"
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_onednn_dialect.h"
+#endif
 
 namespace paddle {
 namespace dialect {
@@ -33,6 +37,13 @@ bool HaveOpToMultiKernelsMap(std::string op_name) {
 const std::vector<PdOpSig>& LegacyOpToPdOpsMapping(std::string op_name) {
   return op_to_multi_kernels_map[op_name];
 }
+
+#ifdef PADDLE_WITH_DNNL
+bool IsOneDNNOnlyOp(std::string op_name) {
+  return paddle::onednn::dialect::onednn_only_op_set.count(op_name);
+}
+#endif
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -58,14 +69,14 @@ pir::Operation* InsertSliceOperationForTarget(
                              {src_vec_type[defining_info.idx_in_vector]},
                              op_info);
   block->push_back(operation);
-  pir::OpResult target_op_result = operation->result(0);
+  pir::Value target_op_result = operation->result(0);
   param_map->PushValue(arg_name, VariableDefiningInfo(target_op_result));
   return operation;
 }
 
 std::ostream& operator<<(std::ostream& os,
                          const std::vector<std::string>& vec_str) {
-  pir::PrintInterleave(
+  pir::detail::PrintInterleave(
       vec_str.begin(),
       vec_str.end(),
       [&os](std::string s) { os << s; },
@@ -83,7 +94,7 @@ std::vector<std::string> CheckUnregisteredOperationInBlock(
     }
     OpTranscriber general_handler;
     try {
-      general_handler.LoopkUpOpInfo(ctx, *op);
+      general_handler.LookUpOpInfo(ctx, *op);
     } catch (pir::IrNotMetException& e) {
       unregistered_ops.push_back(op->Type());
     }
@@ -94,6 +105,9 @@ std::vector<std::string> CheckUnregisteredOperationInBlock(
 std::vector<std::string> CheckUnregisteredOperation(
     pir::IrContext* ctx, const framework::ProgramDesc& legacy_program) {
   ctx->GetOrRegisterDialect<dialect::OperatorDialect>();
+#ifdef PADDLE_WITH_DNNL
+  ctx->GetOrRegisterDialect<dialect::OneDNNOperatorDialect>();
+#endif
 
   std::vector<std::string> unregistered_ops;
   for (size_t block_idx = 0; block_idx < legacy_program.Size(); block_idx++) {
@@ -103,37 +117,6 @@ std::vector<std::string> CheckUnregisteredOperation(
   }
 
   return unregistered_ops;
-}
-
-phi::DataType PirTypeToPhiDType(pir::Type type) {
-  if (type.isa<pir::UInt8Type>()) {
-    return phi::DataType::UINT8;
-  } else if (type.isa<pir::Int8Type>()) {
-    return phi::DataType::INT8;
-  } else if (type.isa<pir::Int16Type>()) {
-    return phi::DataType::INT16;
-  } else if (type.isa<pir::Int32Type>()) {
-    return phi::DataType::INT32;
-  } else if (type.isa<pir::Int64Type>()) {
-    return phi::DataType::INT64;
-  } else if (type.isa<pir::Float32Type>()) {
-    return phi::DataType::FLOAT32;
-  } else if (type.isa<pir::Float64Type>()) {
-    return phi::DataType::FLOAT64;
-  } else if (type.isa<pir::BoolType>()) {
-    return phi::DataType::BOOL;
-  } else if (type.isa<pir::Float16Type>()) {
-    return phi::DataType::FLOAT16;
-  } else if (type.isa<pir::BFloat16Type>()) {
-    return phi::DataType::BFLOAT16;
-  } else if (type.isa<pir::Complex64Type>()) {
-    return phi::DataType::COMPLEX64;
-  } else if (type.isa<pir::Complex128Type>()) {
-    return phi::DataType::COMPLEX128;
-  } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "Unsupported pirType `%s` when casting it into phi::DataType.", type));
-  }
 }
 
 }  // namespace translator

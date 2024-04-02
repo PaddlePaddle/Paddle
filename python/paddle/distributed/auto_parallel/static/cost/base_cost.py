@@ -17,7 +17,6 @@ from collections import OrderedDict
 import numpy as np
 
 import paddle
-from paddle.base.core import VarDesc
 from paddle.utils.flops import flops
 
 from ..cluster import DeviceType, LinkType, get_default_cluster
@@ -785,7 +784,7 @@ class CommOpCost(OpCost):
             shape = None
             if self.op is not None:
                 vars = self.op.block.vars
-                # NOTE: The tensor communicated input_name is "X" in default. Otherwise, this function should be overrided
+                # NOTE: The tensor communicated input_name is "X" in default. Otherwise, this function should be overridden
                 try:
                     var_name = self.op.input("X")[0]
                 except:
@@ -874,9 +873,7 @@ class CompOpCost(OpCost):
         if cls.OP_TYPE != "COMP":
             if cls.OP_TYPE in NON_COMP_TYPE:
                 raise TypeError(
-                    "Please Check op type not in {}, but got {}.".format(
-                        NON_COMP_TYPE, cls.OP_TYPE
-                    )
+                    f"Please Check op type not in {NON_COMP_TYPE}, but got {cls.OP_TYPE}."
                 )
 
     def calc_flops(self):
@@ -968,11 +965,11 @@ def calc_time_by_cost_model(op, cluster=None):
         ), "Only GPU device is supported currently."
 
         gflops = 0.0
-        if dtype == VarDesc.VarType.FP64:
+        if dtype == paddle.float64:
             gflops = device.dp_gflops
-        elif dtype == VarDesc.VarType.FP32:
+        elif dtype == paddle.float32:
             gflops = device.sp_gflops
-        elif dtype == VarDesc.VarType.FP16 or dtype == VarDesc.VarType.BF16:
+        elif dtype == paddle.float16 or dtype == paddle.bfloat16:
             gflops = device.hp_gflops
         else:
             raise ValueError(

@@ -102,9 +102,9 @@ std::string ToTxtStringMeshImpl(
 
 }  // namespace
 
-std::string ToTxtString(const ScheduleMesh& schecule_mesh) {
+std::string ToTxtString(const ScheduleMesh& schedule_mesh) {
   return std::visit([&](const auto& impl) { return ToTxtStringMeshImpl(impl); },
-                    schecule_mesh.variant());
+                    schedule_mesh.variant());
 }
 
 }  // namespace cinn::adt

@@ -393,7 +393,7 @@ class TestRandomValue(unittest.TestCase):
         if not paddle.is_compiled_with_cuda():
             return
 
-        # Different GPU generatte different random value. Only test V100 here.
+        # Different GPU generate different random value. Only test V100 here.
         if "V100" not in paddle.device.cuda.get_device_name():
             return
 
@@ -457,8 +457,8 @@ class TestMultinomialTensorNumSamples(UnittestBase):
     def test_static(self):
         paddle.enable_static()
         main_prog = Program()
-        starup_prog = Program()
-        with program_guard(main_prog, starup_prog):
+        startup_prog = Program()
+        with program_guard(main_prog, startup_prog):
             fc = paddle.nn.Linear(4, 10)
             x = paddle.randn([3, 4])
             x.stop_gradient = False
@@ -469,7 +469,7 @@ class TestMultinomialTensorNumSamples(UnittestBase):
             self.assertTrue(self.var_prefix() in str(main_prog))
 
             exe = paddle.static.Executor()
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             res = exe.run(fetch_list=[feat, out])
             paddle.static.save_inference_model(
                 self.save_path, [x], [feat, out], exe

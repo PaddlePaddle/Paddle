@@ -84,13 +84,11 @@ class Test1F1BPass(unittest.TestCase):
             check_losses,
             rtol=self.rtol,
             atol=self.atol,
-            err_msg='pass {} has wrong results!, \nu={}\nv={}\ndiff={}'.format(
-                __class__, ref_losses, check_losses, ref_losses - check_losses
-            ),
+            err_msg=f'pass {__class__} has wrong results!, \nu={ref_losses}\nv={check_losses}\ndiff={ref_losses - check_losses}',
         )
 
     def test_1f1b_pass(self):
-        # navie_pp+gradient_merge training
+        # naive_pp+gradient_merge training
         engine_pp = self.get_engine()
         history_pp = engine_pp.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1

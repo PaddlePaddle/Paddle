@@ -71,7 +71,6 @@ template struct SetConstant<phi::XPUContext, int64_t>;
 template struct SetConstant<phi::XPUContext, bool>;
 template struct SetConstant<phi::XPUContext, phi::dtype::complex<float>>;
 template struct SetConstant<phi::XPUContext, phi::dtype::complex<double>>;
-
 #endif
 
 #define DEFINE_CPU_TRANS(RANK)                                            \
@@ -246,7 +245,12 @@ void set_constant(const phi::DeviceContext& context,
   // tensor->place().apply_visitor(func);
   phi::VisitPlace(tensor->place(), func);
 #elif defined(PADDLE_WITH_XPU)
-  func(phi::XPUPlace());
+  if (context.GetPlace().GetType() == phi::AllocationType::XPU) {
+    func(phi::XPUPlace());
+    return;
+  } else {
+    func(phi::CPUPlace());
+  }
 #else
   func(phi::CPUPlace());
 #endif

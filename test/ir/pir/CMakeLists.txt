@@ -28,6 +28,7 @@ foreach(target ${TEST_IR_SYSTEM_CASES})
 endforeach()
 
 set_tests_properties(test_pd_inplace_pass PROPERTIES TIMEOUT 60)
+set_tests_properties(test_map_op_another_pass PROPERTIES TIMEOUT 60)
 
 py_test_modules(
   test_subgraph_exporter
@@ -39,3 +40,5 @@ py_test_modules(
   FLAGS_pir_subgraph_saving_dir=${CMAKE_CURRENT_SOURCE_DIR})
 
 add_subdirectory(fused_pass)
+
+add_subdirectory(translator)

@@ -41,6 +41,7 @@ from .framework import (
     get_flags,
     in_pir_mode,
     paddle_type_to_proto_type,
+    process_type_promotion,
     set_flags,
 )
 from .incubate.checkpoint import auto_checkpoint as acp
@@ -267,9 +268,7 @@ def check_feed_shape_type(var, feed, num_places=1):
                 else feed._dtype()
             )
             raise ValueError(
-                'The data type of fed Variable {!r} must be {!r}, but received {!r}'.format(
-                    var.name, var_dtype_format, feed_dtype_format
-                )
+                f'The data type of fed Variable {var.name!r} must be {var_dtype_format!r}, but received {feed_dtype_format!r}'
             )
     return True
 
@@ -317,9 +316,7 @@ def pir_check_feed_shape_type(feed, name, target_shape, dtype, num_places=1):
             else feed._dtype()
         )
         raise ValueError(
-            'The data type of fed Variable {!r} must be {!r}, but received {!r}'.format(
-                name, var_dtype_format, feed_dtype_format
-            )
+            f'The data type of fed Variable {name!r} must be {var_dtype_format!r}, but received {feed_dtype_format!r}'
         )
     return True
 
@@ -683,7 +680,7 @@ def _get_strong_program_cache_key(program, feed, fetch_list):
     )
 
 
-def _get_program_cache_key(feed, fetch_list):
+def _get_feed_fetch_var_names(feed, fetch_list):
     feed_var_names = []
     if isinstance(feed, dict):
         feed_var_names = list(feed.keys())
@@ -691,7 +688,11 @@ def _get_program_cache_key(feed, fetch_list):
         for i, each in enumerate(feed):
             feed_var_names += list(each.keys())
     fetch_var_names = list(map(_to_name_str, fetch_list))
-    return str(feed_var_names + fetch_var_names)
+    return feed_var_names + fetch_var_names
+
+
+def _get_program_cache_key(feed, fetch_list):
+    return str(_get_feed_fetch_var_names(feed, fetch_list))
 
 
 def _as_lodtensor(data, place, dtype=None):
@@ -734,7 +735,7 @@ def _as_lodtensor(data, place, dtype=None):
             data = np.array(data)
             if data.dtype == np.object_:
                 raise TypeError(
-                    "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
+                    "\n\tFailed to convert input data to a regular ndarray :\n\t* Usually "
                     "this means the input data contains nested lists with different lengths. "
                     "Please consider using 'base.create_lod_tensor' to convert it to a LoD-Tensor."
                 )
@@ -1027,7 +1028,7 @@ class _ExecutorCache:
 
         if enable_inplace or enable_addto:
             # inplace should skip feed and fetch var
-            skip_var_names = eval(_get_program_cache_key(feed, fetch_list))
+            skip_var_names = _get_feed_fetch_var_names(feed, fetch_list)
             _apply_inplace_addto_pass(
                 program, enable_inplace, enable_addto, skip_var_names
             )
@@ -1054,7 +1055,7 @@ class _ExecutorCache:
                 # if enables distributed training with prim mechanism (prim is behind of distributed)
                 # step 1: translate program to pir program.
                 # step 2: decompose PHI ops in pir program into prim ops.
-                #         When decomposing backward ops, the grad_var_to_var in distributed context is needed to finding correpsonding forward op.
+                #         When decomposing backward ops, the grad_var_to_var in distributed context is needed to finding corresponding forward op.
                 if (
                     os.getenv("FLAGS_enable_prim_after_distribute")
                     in ['True', 'true', '1']
@@ -1144,7 +1145,12 @@ class _ExecutorCache:
                 feed_target_name = op.attrs()["name"]
                 var_type = paddle_type_to_proto_type[op.attrs()["dtype"]]
                 var_shape = op.attrs()["shape"]
-                tup = (feed_target_name, var_type, var_shape)
+                tup = (
+                    feed_target_name,
+                    var_type,
+                    var_shape,
+                    op.result(0).persistable,
+                )
                 data_op_infos.append(tup)
         return program, new_exe, data_op_infos
 
@@ -1371,7 +1377,11 @@ class Executor:
             feed_target_names.add(feed_target_name)
             var_type = data_op_info[1]
             var_shape = data_op_info[2]
-
+            is_persistable = data_op_info[3]
+            if feed_target_name not in feed.keys() and is_persistable:
+                # If the feed_target_name is not in feed list, but is persistable, maybe it is a optimizer param
+                # and don't need feed data.
+                continue
             cur_feed = feed[feed_target_name]
             if not isinstance(cur_feed, core.LoDTensor):
                 cur_feed = _as_lodtensor(cur_feed, self.place, var_type)
@@ -1400,7 +1410,7 @@ class Executor:
     @classmethod
     def _split_optimize_ops_in_fetch_list(cls, fetch_list):
         """
-        Split optimize_ops from fetch_list, which provided to specify program prunning.
+        Split optimize_ops from fetch_list, which provided to specify program pruning.
         Args:
             fetch_list(list): The original fetch_list.
             Possible types of fetch_list are:
@@ -1441,9 +1451,7 @@ class Executor:
             elif isinstance(item, tuple):
                 if not isinstance(item[0], (list, tuple)):
                     raise TypeError(
-                        "Requires fetch_list[{}][0] shall be one of (list, tuple) when type(fetch_list[{}]) is `tuple`, but received fetch_list[{}][0]'s type is `{}`.".format(
-                            index, index, index, type(item[0]).__name__
-                        )
+                        f"Requires fetch_list[{index}][0] shall be one of (list, tuple) when type(fetch_list[{index}]) is `tuple`, but received fetch_list[{index}][0]'s type is `{type(item[0]).__name__}`."
                     )
                 for i in item[0]:
                     _get_targets(_optimize_ops, _fetch_list, i)
@@ -1656,12 +1664,12 @@ class Executor:
                 and fetch_list Tensor) of this interface remains unchanged during running.
                 The default is False.
             use_prune(bool): This parameter indicates whether the input :code:`Program` will be pruned.
-                If the parameter is True, the program will be pruned accroding to the given feed and fetch_list,
+                If the parameter is True, the program will be pruned according to the given feed and fetch_list,
                 which means the operators and variables in program that generate :code:`feed` and are not
                 needed to generate :code:`fetch_list` will be pruned. The default is False, which means the
                 program will not pruned and all the operators and variables will be executed during running.
                 Note that if the tuple returned from :code:`Optimizer.minimize()` is passed to :code:`fetch_list`,
-                :code:`use_prune` will be overrided to True, and the program will be pruned.
+                :code:`use_prune` will be overridden to True, and the program will be pruned.
 
         Returns:
 
@@ -1770,6 +1778,8 @@ class Executor:
                 return_numpy=return_numpy,
             )
         else:
+            # do type promotion if necessary
+            program = process_type_promotion(program)
             res = self._run_impl(
                 program=program,
                 feed=feed,
@@ -1864,7 +1874,7 @@ class Executor:
         if scope is None:
             scope = global_scope()
 
-        # use_prune can be overrided by putting optimize_ops in fetch_list
+        # use_prune can be overridden by putting optimize_ops in fetch_list
         _origin_fetch_list = fetch_list
         _origin_program = program
         fetch_list, optimize_ops = self._split_optimize_ops_in_fetch_list(
@@ -2079,7 +2089,6 @@ class Executor:
             self.place,
             scope,
         )
-
         self._pir_feed_data(program, feed, scope, data_op_infos)
 
         if hasattr(program, 'lr_scheduler'):
@@ -2127,8 +2136,8 @@ class Executor:
 
         assert is_tuple_list(fetch_list), (
             "Currently , The fetch_list type only should be list or tuple, \n"
-            "but the input type is {}. For more information please refer to \n"
-            "the executor.run(...).".format(type(fetch_list))
+            f"but the input type is {type(fetch_list)}. For more information please refer to \n"
+            "the executor.run(...)."
         )
 
         res = []
@@ -2143,9 +2152,7 @@ class Executor:
                     res.append(var)
             else:
                 raise TypeError(
-                    "Require fetch_list[{}] 's type shall be one of (Value, str), but received {}.".format(
-                        i, type(var).__name__
-                    )
+                    f"Require fetch_list[{i}] 's type shall be one of (Value, str), but received {type(var).__name__}."
                 )
 
         return res
@@ -2509,7 +2516,7 @@ class Executor:
 
         reused_trainer = program._heter_pipeline_opt is not None or (
             program._fleet_opt is not None
-            and program._fleet_opt.get("use_ps_gpu", True)
+            and program._fleet_opt.get("use_ps_gpu", False)
         )
 
         if reused_trainer is False:

@@ -48,7 +48,9 @@ void CreateVecShapeInferMeta(const std::vector<int64_t>& shape,
 
 void CreateArrayInferMeta(DataType dtype, MetaTensor* out);
 
-void CreateInferMeta(const IntArray& shape, DataType dtype, MetaTensor* out);
+TEST_API void CreateInferMeta(const IntArray& shape,
+                              DataType dtype,
+                              MetaTensor* out);
 
 void CreateInferMetaBase(const std::vector<int64_t>& shape,
                          DataType dtype,
@@ -77,6 +79,15 @@ void RandpermInferMeta(int n, DataType dtype, MetaTensor* out);
 
 void RandintInferMeta(
     int low, int high, const IntArray& shape, DataType dtype, MetaTensor* out);
+
+void PartialRecvInferMeta(int ring_id,
+                          int peer,
+                          DataType dtype,
+                          const std::vector<int>& out_shape,
+                          bool use_calc_stream,
+                          int num,
+                          int id,
+                          MetaTensor* out);
 
 void PRecvInferMeta(int peer, DataType dtype, MetaTensor* out);
 

@@ -20,7 +20,7 @@
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/utils/registry.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 namespace cinn {
 

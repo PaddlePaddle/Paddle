@@ -149,7 +149,7 @@ class VarMap:
             self.tab[id(key_vars)] = id(value_vars)
         else:
             assert len(key_vars) == len(value_vars), (
-                f'len(key_vars) shoule be equal to len(value_vars), '
+                f'len(key_vars) should be equal to len(value_vars), '
                 f'but len(key_vars)={len(key_vars)} and len(value_vars)={len(value_vars)}.'
             )
             for key_var, value_var in zip(key_vars, value_vars):

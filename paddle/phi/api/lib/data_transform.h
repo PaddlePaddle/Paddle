@@ -178,6 +178,11 @@ inline bool NeedTransformPlace(const phi::Place& src_place,
              (target != Backend::ALL_BACKEND &&
               phi::TransToPhiBackend(src_place) !=
                   (target != Backend::GPUDNN ? target : Backend::GPU));
+#ifdef PADDLE_WITH_DNNL
+  if (target == Backend::ONEDNN) {
+    ret = src_place.GetType() != AllocationType::CPU;
+  }
+#endif
   return ret;
 }
 
@@ -186,23 +191,27 @@ inline bool NeedTransformPlace(const phi::Place& src_place,
 std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
     phi::DeviceContext* dev_ctx,
     const Tensor& tensor,
-    const phi::distributed::ArgDistAttr& dist_attr);
+    const phi::distributed::ArgDistAttr& dist_attr,
+    const std::string& arg_name = "");
 
 std::vector<std::shared_ptr<phi::distributed::DistTensor>>
 ReshardApiInputToKernelInput(phi::DeviceContext* dev_ctx,
                              const std::vector<Tensor>& tensor,
-                             const phi::distributed::ArgDistAttr& dist_attr);
+                             const phi::distributed::ArgDistAttr& dist_attr,
+                             const std::string& arg_name = "");
 
 paddle::optional<std::shared_ptr<phi::distributed::DistTensor>>
 ReshardApiInputToKernelInput(phi::DeviceContext* dev_ctx,
                              const paddle::optional<Tensor>& tensor,
-                             const phi::distributed::ArgDistAttr& dist_attr);
+                             const phi::distributed::ArgDistAttr& dist_attr,
+                             const std::string& arg_name = "");
 
 paddle::optional<std::vector<std::shared_ptr<phi::distributed::DistTensor>>>
 ReshardApiInputToKernelInput(
     phi::DeviceContext* dev_ctx,
     const paddle::optional<std::vector<Tensor>>& tensors,
-    const phi::distributed::ArgDistAttr& dist_attr);
+    const phi::distributed::ArgDistAttr& dist_attr,
+    const std::string& arg_name = "");
 
 void SetInplaceOutputCorrectDistAttr(
     phi::DeviceContext* dev_ctx,
@@ -234,13 +243,15 @@ void ReshardOutputPartialAxisToReplicated(
 void ReshardKernelOutputToApiOutput(
     phi::DeviceContext* dev_ctx,
     const std::shared_ptr<phi::distributed::DistTensor>& src_tensor,
-    Tensor* dst_tensor);
+    Tensor* dst_tensor,
+    const std::string& arg_name = "");
 
 void ReshardKernelOutputToApiOutput(
     phi::DeviceContext* dev_ctx,
     const std::vector<std::shared_ptr<phi::distributed::DistTensor>>&
         src_tensors,
-    const std::vector<Tensor*>& dst_tensors);
+    const std::vector<Tensor*>& dst_tensors,
+    const std::string& arg_name = "");
 
 std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
     std::shared_ptr<phi::distributed::DistTensor> input,
@@ -269,6 +280,9 @@ PrepareDataForDistTensor(
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag,
     bool is_stride_kernel);
+
+std::string ReshardDebugInfo(const phi::distributed::DistTensor& src_tensor,
+                             const phi::distributed::TensorDistAttr& dist_attr);
 
 }  // namespace experimental
 }  // namespace paddle

@@ -14,16 +14,21 @@
 
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function_registry.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/global_and_sub_mesh_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/nd_mesh_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/p_to_r_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/p_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/r_to_p_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/r_to_s_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/r_to_x_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_p_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_r_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/same_status_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/x_to_r_reshard_function.h"
 
 namespace phi {
 namespace distributed {
@@ -32,6 +37,7 @@ ReshardFunction* ChooseProperReshardFunction(
     const DistTensor& in, const TensorDistAttr& out_dist_attr) {
   for (const auto& func : GetReshardFunctionList()) {
     if (func->IsSuitable(in, out_dist_attr)) {
+      VLOG(4) << "Choose ReshardFunction: " << func->Name();
       return func.get();
     }
   }
@@ -65,9 +71,13 @@ REGISTER_RESHARD_FUNC(PToSReshardFunction);
 REGISTER_RESHARD_FUNC(PToSReshardFunctionCrossMesh);
 REGISTER_RESHARD_FUNC(SToSReshardFunction);
 REGISTER_RESHARD_FUNC(SToSReshardFunctionCrossMesh);
+REGISTER_RESHARD_FUNC(XToRShrinkReshardFunction);
+REGISTER_RESHARD_FUNC(RToXExpandReshardFunction);
 REGISTER_RESHARD_FUNC(SameStatusReshardFunction);
 REGISTER_RESHARD_FUNC(SameNdMeshReshardFunction);
 REGISTER_RESHARD_FUNC(CrossNdMeshReshardFunction);
+REGISTER_RESHARD_FUNC(GlobalToSubMeshReshardFunction);
+REGISTER_RESHARD_FUNC(SubMeshToGlobalReshardFunction);
 
 }  // namespace distributed
 }  // namespace phi

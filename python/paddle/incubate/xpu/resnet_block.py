@@ -151,7 +151,7 @@ def resnet_basic_block(
             var2,
             mean3,
             var3,
-            *attrs
+            *attrs,
         )
         return out
     helper = LayerHelper('resnet_basic_block', **locals())
@@ -327,7 +327,7 @@ def resnet_basic_block(
 class ResNetBasicBlock(Layer):
     r"""
 
-    ResNetBasicBlock is designed for optimize the performence of the basic unit of ssd resnet block.
+    ResNetBasicBlock is designed for optimize the performance of the basic unit of ssd resnet block.
     If has_shortcut = True, it can calculate 3 Conv2D, 3 BatchNorm and 2 ReLU in one time.
     If has_shortcut = False, it can calculate 2 Conv2D, 2 BatchNorm and 2 ReLU in one time. In this
     case the shape of output is same with input.
@@ -346,8 +346,8 @@ class ResNetBasicBlock(Layer):
         act (str, optional): Activation type, if it is set to None, activation is not appended.
             Default: None
         momentum (float, optional): The value used for the moving_mean and
-            moving_var computation. This should be a float number or a Tensor with
-            shape [1] and data type as float32. The updated formula is:
+            moving_var computation. This should be a float number or a 0-D Tensor with
+            shape [] and data type as float32. The updated formula is:
             :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
             :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
             Default is 0.9.
@@ -382,10 +382,10 @@ class ResNetBasicBlock(Layer):
         moving_var_name (str, optional): The name of the moving_variance which store the global Variance.
             If it is set to None, batch_norm will save global variance with a random name, otherwise, batch_norm
             will save global variance with the string. Default: None.
-        padding (int, optional): The padding size. It is only spupport padding_height = padding_width = padding.
+        padding (int, optional): The padding size. It is only support padding_height = padding_width = padding.
             Default: padding = 0.
         dilation (int, optional): The dilation size. It means the spacing between the kernel
-            points. It is only spupport dilation_height = dilation_width = dilation.
+            points. It is only support dilation_height = dilation_width = dilation.
             Default: dilation = 1.
         trainable_statistics (bool, optional): Whether to calculate mean and var in eval mode. In eval mode, when
             setting trainable_statistics True, mean and variance will be calculated by current batch statistics.
@@ -517,9 +517,7 @@ class ResNetBasicBlock(Layer):
         valid_format = {'NCHW'}
         if data_format not in valid_format:
             raise ValueError(
-                "conv_format must be one of {}, but got conv_format={}".format(
-                    valid_format, data_format
-                )
+                f"conv_format must be one of {valid_format}, but got conv_format={data_format}"
             )
 
         def _get_default_param_initializer(channels, kernel_size):

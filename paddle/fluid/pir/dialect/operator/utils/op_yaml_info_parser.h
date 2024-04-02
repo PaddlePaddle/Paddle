@@ -23,13 +23,13 @@ class OpYamlInfoParser {
  public:
   OpYamlInfoParser() = delete;
 
-  explicit OpYamlInfoParser(const OpInfoTuple& op_info_tuple,
-                            bool is_legacy_op = false);
+  TEST_API explicit OpYamlInfoParser(const OpInfoTuple& op_info_tuple,
+                                     bool is_legacy_op = false);
 
-  bool IsTensorAttribute(size_t index) const;
-  size_t InputTensorNumber() const;
+  TEST_API bool IsTensorAttribute(size_t index) const;
+  TEST_API size_t InputTensorNumber() const;
 
-  const std::string& AttrTypeName(const std::string& name) const;
+  TEST_API const std::string& AttrTypeName(const std::string& name) const;
   const std::string& TensorAttrTypeName(const std::string& name) const;
 
   const std::vector<std::string>& TensorParams(bool is_kernel = false) const;

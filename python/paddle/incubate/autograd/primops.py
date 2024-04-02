@@ -144,7 +144,7 @@ def batch_norm(
         momentum (float, optional): The value used for the running_mean and
             running_var computation. Can be set to None for cumulative moving
             average (i.e. simple average). Defaults to 0.9.
-        use_run_stat (bool, optional): Whether or not using runing statistics.
+        use_run_stat (bool, optional): Whether or not using running statistics.
             Defaults to False.
     """
     reduce_axes = tuple(i for i in range(len(x.shape)) if i != axis)
@@ -456,16 +456,12 @@ def log(x, out=None):
 def select(cond, x, y, out=None):
     if len(cond.shape) != len(x.shape):
         raise ValueError(
-            "len(cond.shape) should be equal to len(x.shape), but len(cond.shape)={} and len(x.shape)={}.".format(
-                len(cond.shape), len(x.shape)
-            )
+            f"len(cond.shape) should be equal to len(x.shape), but len(cond.shape)={len(cond.shape)} and len(x.shape)={len(x.shape)}."
         )
 
     if len(x.shape) != len(y.shape):
         raise ValueError(
-            "len(x.shape) should be equal to len(y.shape), but len(x.shape)={} and len(y.shape)={}.".format(
-                len(x.shape), len(y.shape)
-            )
+            f"len(x.shape) should be equal to len(y.shape), but len(x.shape)={len(x.shape)} and len(y.shape)={len(y.shape)}."
         )
 
     helper = LayerHelper('select_p', **locals())

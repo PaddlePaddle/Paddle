@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import copy
+import multiprocessing
 
 # TODO: check the hooks of tensor
 # TODO: check serializing named tensor
@@ -117,8 +118,53 @@ def _reduce_tensor(tensor):
         )
 
 
-def _rebuild_lodtensor_filename(cls, ipc_name, size, type_idx, dims, lod):
-    lodtensor = cls._new_shared_filename((ipc_name, size, type_idx, dims, lod))
+def _rebuild_lodtensor_filename(
+    cls,
+    ipc_name,
+    shared_fd,
+    size,
+    type_idx,
+    dims,
+    lod,
+    dataloader_use_file_descriptor,
+):
+    lodtensor = cls._new_shared_filename(
+        (
+            ipc_name,
+            shared_fd,
+            size,
+            type_idx,
+            dims,
+            lod,
+            dataloader_use_file_descriptor,
+        )
+    )
+    lodtensor._shared_decref()
+    return lodtensor
+
+
+def _rebuild_lodtensor_filedescriptor(
+    cls,
+    ipc_name,
+    shared_fd,
+    size,
+    type_idx,
+    dims,
+    lod,
+    dataloader_use_file_descriptor,
+):
+    shared_fd = shared_fd.detach()
+    lodtensor = cls._new_shared_filename(
+        (
+            ipc_name,
+            shared_fd,
+            size,
+            type_idx,
+            dims,
+            lod,
+            dataloader_use_file_descriptor,
+        )
+    )
     lodtensor._shared_decref()
     return lodtensor
 
@@ -133,9 +179,9 @@ def _rebuild_cuda_tensor(
         )
         # We only cache cuda shared tensor here.
         # The opening cost of cudaIpcMemoryHandle is very high.
-        # Since we cache the recived tensor directly,
+        # Since we cache the received tensor directly,
         # The sender may reallocate the tensor space,
-        # you should manualy maintian the lifecycle of ipc tensor
+        # you should manually maintain the lifecycle of ipc tensor
         shared_cache[(handle, offset_bytes)] = lodtensor
     else:
         lodtensor = paddle.base.core.LoDTensor()
@@ -159,17 +205,25 @@ def _reduce_lodtensor(lodtensor):
     ):
         for dim in lodtensor.shape():
             if dim == 0:
-                # Empty tensors have nothing be mmapped.
+                # Empty tensors have nothing be mapped.
                 return (_rebuild_lodtensor_empty, (type(lodtensor),))
+        dataloader_use_file_descriptor = paddle.base.core.globals()[
+            "FLAGS_dataloader_use_file_descriptor"
+        ]
+        # Default use share filename strategy
+        metadata = lodtensor._share_filename(
+            dataloader_use_file_descriptor
+        )  # ipc_name, fd, size, type_idx, dims, lod
 
-        # Default use share filename stratege
-        metadata = (
-            lodtensor._share_filename()
-        )  # ipc_name, size, type_idx, dims, lod
-        rebuild = _rebuild_lodtensor_filename
+        if dataloader_use_file_descriptor:
+            metalist = list(metadata)
+            metalist[1] = multiprocessing.reduction.DupFd(metalist[1])
+            metadata = tuple(metalist)
+            rebuild = _rebuild_lodtensor_filedescriptor
+        else:
+            rebuild = _rebuild_lodtensor_filename
         lodtensor._shared_incref()
         # TODO, maintain reference for lodtensor
-        # TODO: support file_discriptor stratege
     elif lodtensor._place().is_gpu_place():
         metadata = lodtensor._share_cuda()
         rebuild = _rebuild_cuda_tensor

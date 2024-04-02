@@ -14,12 +14,13 @@
 
 #pragma once
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/pir/core/dialect_interface.h"
-#include "paddle/pir/core/parameter.h"
+#include "paddle/pir/include/core/dialect_interface.h"
+#include "paddle/pir/include/core/parameter.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace dialect {
-class ParameterConvertInterface
+class TEST_API ParameterConvertInterface
     : public pir::DialectInterface::Base<ParameterConvertInterface> {
  public:
   explicit ParameterConvertInterface(pir::Dialect* dialect) : Base(dialect) {}

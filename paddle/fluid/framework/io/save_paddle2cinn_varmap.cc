@@ -13,7 +13,7 @@ limitations under the License. */
 #include <fstream>
 #include <unordered_map>
 #include "glog/logging.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
@@ -21,8 +21,11 @@ namespace framework {
 
 void save_paddle2cinn_varmap(
     std::unordered_map<std::string, std::string> paddle2cinn_var_map,
+    int64_t graph_compilation_key,
     std::string save_path) {
   std::stringstream ss;
+  ss << "graph_compilation_key:" << std::to_string(graph_compilation_key)
+     << "\n";
   for (const auto& kv : paddle2cinn_var_map) {
     ss << kv.first << ":" << kv.second << "\n";
   }

@@ -52,11 +52,11 @@ def to_placements(dim_map, mesh, partial_idx=[]):
 
 def check_placements_equal(this, that):
     assert isinstance(this, list) and isinstance(that, list)
-    small_placemets = this if len(this) < len(that) else that
+    small_placements = this if len(this) < len(that) else that
     large_placements = that if len(this) < len(that) else this
     for i in range(len(large_placements)):
-        if i < len(small_placemets):
-            if small_placemets[i] != large_placements[i]:
+        if i < len(small_placements):
+            if small_placements[i] != large_placements[i]:
                 return False
         else:
             if large_placements[i] != Replicate():

@@ -44,7 +44,7 @@ def multi_output(x: paddle.Tensor):
         return 2 * m
 
 
-class TestExecutor(TestCaseBase):
+class TestBreakgraph(TestCaseBase):
     def test_simple(self):
         x = paddle.to_tensor(2)
         self.assert_results(multi_output, x)
@@ -162,6 +162,42 @@ class TestBreakGraphResumePassNull(TestCaseBase):
         x = paddle.rand([50, 50], dtype=paddle.float32)
         y = paddle.rand([100, 50], dtype=paddle.float32)
         self.assert_results(break_graph_resume_pass_null, x, y)
+
+
+class MyLayer(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.head = paddle.nn.Linear(3, 10)
+
+    def forward_features(self, x):
+        paddle.jit.sot.psdb.breakgraph()
+        return x
+
+    def forward(self, x):
+        x = self.forward_features(x)
+        return self.head(x)
+
+
+class TestBreakGraphInLayer(TestCaseBase):
+    def test_break_graph_in_layer(self):
+        x = paddle.rand([2, 3], dtype=paddle.float32)
+        net = MyLayer()
+        self.assert_results(net.forward, x)
+
+
+def dummy(*args):
+    return None
+
+
+def break_graph_call_generator_function(x):
+    return dummy(y for y in x)
+
+
+class TestBreakGraphCallGeneratorFunction(TestCaseBase):
+    def test_break_graph_when_call_generator_function(self):
+        x = paddle.rand([1], dtype=paddle.float32)
+        y = paddle.rand([1], dtype=paddle.float32)
+        self.assert_results(break_graph_call_generator_function, [x, y])
 
 
 if __name__ == "__main__":

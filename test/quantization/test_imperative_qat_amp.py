@@ -59,8 +59,7 @@ class TestImperativeQatAmp(unittest.TestCase):
 
         seed = 1
         np.random.seed(seed)
-        paddle.static.default_main_program().random_seed = seed
-        paddle.static.default_startup_program().random_seed = seed
+        paddle.seed(seed)
 
     @classmethod
     def tearDownClass(cls):
@@ -141,9 +140,7 @@ class TestImperativeQatAmp(unittest.TestCase):
 
             if batch_id % 100 == 0:
                 _logger.info(
-                    "Train | step {}: loss = {:}, acc= {:}".format(
-                        batch_id, avg_loss.numpy(), acc.numpy()
-                    )
+                    f"Train | step {batch_id}: loss = {avg_loss.numpy()}, acc= {acc.numpy()}"
                 )
 
             if batch_num > 0 and batch_id + 1 >= batch_num:
@@ -176,9 +173,7 @@ class TestImperativeQatAmp(unittest.TestCase):
             acc_top1_list.append(float(acc_top1.numpy()))
             if batch_id % 100 == 0:
                 _logger.info(
-                    "Test | At step {}: acc1 = {:}, acc5 = {:}".format(
-                        batch_id, acc_top1.numpy(), acc_top5.numpy()
-                    )
+                    f"Test | At step {batch_id}: acc1 = {acc_top1.numpy()}, acc5 = {acc_top5.numpy()}"
                 )
 
             if batch_num > 0 and batch_id + 1 >= batch_num:

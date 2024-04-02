@@ -140,7 +140,9 @@ class TestSeqConcatFcFusePass(PassAutoScanTest):
         )
 
     def test(self):
-        self.run_and_statis(quant=False, passes=["seq_concat_fc_fuse_pass"])
+        self.run_and_statis(
+            quant=False, passes=["seq_concat_fc_fuse_pass"], max_duration=1000
+        )
 
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@ syntax = "proto2";
 package paddle.inference.proto;
 
 // To support trt dynamic shape, record the runtime shape
-// information of all tmp tensors in the Compution graph.
+// information of all tmp tensors in the Computation graph.
 message ShapeRangeInfos {
   message ShapeRangeInfo {
     required string name = 1;

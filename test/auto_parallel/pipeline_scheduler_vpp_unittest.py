@@ -21,6 +21,11 @@ import paddle
 import paddle.nn.functional as F
 from paddle import nn
 from paddle.distributed import ParallelEnv
+from paddle.distributed.auto_parallel.static.utils import (
+    is_backward_op,
+    is_forward_op,
+    is_optimize_op,
+)
 from paddle.distributed.fleet import auto
 
 paddle.enable_static()
@@ -29,19 +34,15 @@ PP_MESH_0 = auto.ProcessMesh([0])
 PP_MESH_1 = auto.ProcessMesh([1])
 
 
-class MLPLayer(nn.Layer):
+class MyLinear(nn.Layer):
     def __init__(
         self,
-        hidden_size=1024,
-        intermediate_size=4 * 1024,
+        hidden_size=784,
+        intermediate_size=4 * 784,
         dropout_ratio=0.1,
-        initializer_range=0.02,
+        weight_attr=None,
     ):
         super().__init__()
-
-        weight_attr = paddle.ParamAttr(
-            initializer=nn.initializer.Normal(mean=0.0, std=initializer_range)
-        )
 
         self.linear0 = nn.Linear(
             hidden_size, intermediate_size, weight_attr, bias_attr=None
@@ -49,65 +50,65 @@ class MLPLayer(nn.Layer):
         self.linear1 = nn.Linear(
             intermediate_size, hidden_size, weight_attr, bias_attr=None
         )
-        self.linear2 = nn.Linear(
-            hidden_size, intermediate_size, weight_attr, bias_attr=None
-        )
-        self.linear3 = nn.Linear(
-            intermediate_size, hidden_size, weight_attr, bias_attr=None
-        )
-        self.linear4 = nn.Linear(
-            hidden_size, intermediate_size, weight_attr, bias_attr=None
-        )
-        self.linear5 = nn.Linear(
-            intermediate_size, hidden_size, weight_attr, bias_attr=None
-        )
-        self.linear6 = nn.Linear(
-            hidden_size, intermediate_size, weight_attr, bias_attr=None
-        )
-        self.linear7 = nn.Linear(
-            intermediate_size, hidden_size, weight_attr, bias_attr=None
-        )
-
-        self.linear8 = nn.Linear(hidden_size, 1, weight_attr, bias_attr=None)
-        self.norm = nn.LayerNorm(hidden_size, epsilon=1e-5)
         self.dropout = nn.Dropout(dropout_ratio, mode="upscale_in_train")
 
     def forward(self, input):
-        out = auto.shard_op(self.norm, PP_MESH_0)(input)
+        out = self.linear0(input)
+        out = F.gelu(out, approximate=True)
+        out = self.linear1(out)
+        out = self.dropout(out)
 
-        out = auto.shard_op(self.linear0, PP_MESH_0, chunk_id=0)(out)
-        out = auto.shard_op(F.gelu, PP_MESH_0, chunk_id=0)(
-            out, approximate=True
-        )
-        out = auto.shard_op(self.linear1, PP_MESH_0, chunk_id=0)(out)
-        out = auto.shard_op(self.dropout, PP_MESH_0, chunk_id=0)(out)
-
-        out = auto.shard_op(self.linear2, PP_MESH_1, chunk_id=0)(out)
-        out = auto.shard_op(F.gelu, PP_MESH_1, chunk_id=0)(
-            out, approximate=True
-        )
-        out = auto.shard_op(self.linear3, PP_MESH_1, chunk_id=0)(out)
-        out = auto.shard_op(self.dropout, PP_MESH_1, chunk_id=0)(out)
-
-        out = auto.shard_op(self.linear4, PP_MESH_0, chunk_id=1)(out)
-        out = auto.shard_op(F.gelu, PP_MESH_0, chunk_id=1)(
-            out, approximate=True
-        )
-        out = auto.shard_op(self.linear5, PP_MESH_0, chunk_id=1)(out)
-        out = auto.shard_op(self.dropout, PP_MESH_0, chunk_id=1)(out)
-
-        out = auto.shard_op(self.linear6, PP_MESH_1, chunk_id=1)(out)
-        out = auto.shard_op(F.gelu, PP_MESH_1, chunk_id=1)(
-            out, approximate=True
-        )
-        out = auto.shard_op(self.linear7, PP_MESH_1, chunk_id=1)(out)
-        out = auto.shard_op(self.dropout, PP_MESH_1, chunk_id=1)(out)
-
-        out = auto.shard_op(self.linear8, PP_MESH_1, chunk_id=1)(out)
         return out
 
 
-def apply_pass(schedule_mode, acc_step):
+class MLPLayer(nn.Layer):
+    def __init__(
+        self,
+        hidden_size=784,
+        intermediate_size=4 * 784,
+        dropout_ratio=0.1,
+        initializer_range=0.02,
+        manual=True,
+    ):
+        super().__init__()
+
+        weight_attr = paddle.ParamAttr(
+            initializer=nn.initializer.Normal(mean=0.0, std=initializer_range)
+        )
+
+        self.layers = nn.LayerList(
+            [
+                MyLinear(
+                    hidden_size, intermediate_size, dropout_ratio, weight_attr
+                )
+                for _ in range(4)
+            ]
+        )
+
+        self.linear = nn.Linear(hidden_size, 1, weight_attr, bias_attr=None)
+        self.norm = nn.LayerNorm(hidden_size, epsilon=1e-5)
+        if manual:
+            self.layer_to_mesh = [PP_MESH_0, PP_MESH_1, PP_MESH_0, PP_MESH_1]
+        else:
+            self.layer_to_mesh = [PP_MESH_0, PP_MESH_0, PP_MESH_1, PP_MESH_1]
+
+    def forward(self, input):
+        out = self.norm(input)
+
+        for i, layer in enumerate(self.layers):
+            auto.shard_tensor(out, self.layer_to_mesh[i], [None, None])
+            out = layer(out)
+
+        out = self.linear(out)
+        return out
+
+
+def loss_fn(pred, label):
+    loss = F.l1_loss(pred, label)
+    return loss
+
+
+def apply_pass(schedule_mode, acc_step, enable_send_recv_overlap=False):
     strategy = auto.Strategy()
     strategy.auto_mode = "semi"
     strategy.reinit = True
@@ -116,6 +117,9 @@ def apply_pass(schedule_mode, acc_step):
     pipeline.enable = True
     pipeline.schedule_mode = schedule_mode
     pipeline.accumulate_steps = acc_step
+    pipeline.vpp_degree = 2
+    pipeline.vpp_seg_method = "MyLinear"
+    pipeline.enable_send_recv_overlap = enable_send_recv_overlap
 
     return strategy
 
@@ -123,6 +127,7 @@ def apply_pass(schedule_mode, acc_step):
 def reset_prog():
     paddle.base.framework.switch_main_program(paddle.static.Program())
     paddle.base.framework.switch_startup_program(paddle.static.Program())
+    paddle.utils.unique_name.switch()
 
 
 class MyDataset(paddle.io.Dataset):
@@ -131,8 +136,8 @@ class MyDataset(paddle.io.Dataset):
         self.num_samples = num_samples
 
     def __getitem__(self, index):
-        input = np.random.uniform(size=1024).astype("float32")
-        label = np.random.randint(0, 9, dtype="int64")
+        input = np.random.uniform(size=784).astype("float32")
+        label = np.random.uniform(size=1).astype("float32")
         return input, label
 
     def __len__(self):
@@ -141,8 +146,6 @@ class MyDataset(paddle.io.Dataset):
 
 class TestVPPPass(unittest.TestCase):
     def setUp(self):
-        self.rtol = 1e-5
-        self.atol = 1e-8
         self.batch_size = 4
         self.batch_num = 10
         self.clip_norm = 0.2
@@ -156,69 +159,155 @@ class TestVPPPass(unittest.TestCase):
         place = paddle.base.CUDAPlace(ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
 
-    def get_engine(self, schedule_mode, acc_step):
+    def get_engine(
+        self,
+        schedule_mode,
+        acc_step,
+        manual=True,
+        enable_send_recv_overlap=False,
+    ):
         reset_prog()
 
-        strategy = apply_pass(schedule_mode, acc_step)
+        strategy = apply_pass(schedule_mode, acc_step, enable_send_recv_overlap)
         clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
         opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
-        model = MLPLayer()
-        loss = auto.shard_op(
-            paddle.nn.CrossEntropyLoss(), PP_MESH_1, chunk_id=1
-        )
+        model = MLPLayer(manual=manual)
 
-        engine = auto.Engine(model, loss, opt, strategy=strategy)
+        engine = auto.Engine(model, loss_fn, opt, strategy=strategy)
         self.init(engine)
         return engine
 
-    def check_results(self, ref_losses, check_losses):
-        np.testing.assert_allclose(
-            ref_losses,
-            check_losses,
-            rtol=self.rtol,
-            atol=self.atol,
-            err_msg='pass {} has wrong results!, \nu={}\nv={}\ndiff={}'.format(
-                __class__, ref_losses, check_losses, ref_losses - check_losses
-            ),
-        )
-
     def test_pp_pass(self):
-        # pp2-fthenb
-        engine_fthenb = self.get_engine(schedule_mode="FThenB", acc_step=2)
-        history_fthenb = engine_fthenb.fit(
+        # pp2-vpp-manual
+        engine = self.get_engine(schedule_mode="VPP", acc_step=4, manual=True)
+        out_manual = engine.fit(
             self.dataset, batch_size=self.batch_size, log_freq=1
         )
-        assert engine_fthenb._strategy.pipeline.schedule_mode == "FThenB"
+        assert engine._strategy.pipeline.schedule_mode == "VPP"
 
-        # pp2-vpp
-        engine_vpp_acc2 = self.get_engine(schedule_mode="VPP", acc_step=2)
-        history_vpp_acc2 = engine_vpp_acc2.fit(
-            self.dataset, batch_size=self.batch_size, log_freq=1
-        )
-        assert engine_vpp_acc2._strategy.pipeline.schedule_mode == "VPP"
+        fw_chunk_ids = []
+        bw_chunk_ids = []
+        for op in engine.main_program.global_block().ops:
+            if is_optimize_op(op):
+                break
 
-        # pp2-1f1b
-        engine_1f1b = self.get_engine(schedule_mode="1F1B", acc_step=4)
-        history_1f1b = engine_1f1b.fit(
-            self.dataset, batch_size=self.batch_size, log_freq=1
-        )
-        assert engine_1f1b._strategy.pipeline.schedule_mode == "1F1B"
+            dist_op = engine.dist_context.get_dist_op_for_program(op)
+            if is_forward_op(op):
+                fw_chunk_ids.append(dist_op.dist_attr.chunk_id)
+            if is_backward_op(op):
+                bw_chunk_ids.append(dist_op.dist_attr.chunk_id)
 
-        # pp2-vpp
-        engine_vpp_acc4 = self.get_engine(schedule_mode="VPP", acc_step=4)
-        history_vpp_acc4 = engine_vpp_acc4.fit(
+        if paddle.distributed.get_rank() == 0:
+            self.assertEqual(sum(fw_chunk_ids), 8)
+            self.assertEqual(sum(bw_chunk_ids), 13)
+        else:
+            self.assertEqual(sum(fw_chunk_ids), 12)
+            self.assertEqual(sum(bw_chunk_ids), 19)
+
+        # pp2-vpp-auto
+        engine = self.get_engine(schedule_mode="VPP", acc_step=4, manual=False)
+        out_auto = engine.fit(
             self.dataset, batch_size=self.batch_size, log_freq=1
         )
-        assert engine_vpp_acc4._strategy.pipeline.schedule_mode == "VPP"
+        assert engine._strategy.pipeline.schedule_mode == "VPP"
+
+        fw_chunk_ids = []
+        bw_chunk_ids = []
+        for op in engine.main_program.global_block().ops:
+            if is_optimize_op(op):
+                break
+
+            dist_op = engine.dist_context.get_dist_op_for_program(op)
+            if is_forward_op(op):
+                fw_chunk_ids.append(dist_op.dist_attr.chunk_id)
+            if is_backward_op(op):
+                bw_chunk_ids.append(dist_op.dist_attr.chunk_id)
+
+        if paddle.distributed.get_rank() == 0:
+            self.assertEqual(sum(fw_chunk_ids), 9)
+            self.assertEqual(sum(bw_chunk_ids), 13)
+        else:
+            self.assertEqual(sum(fw_chunk_ids), 13)
+            self.assertEqual(sum(bw_chunk_ids), 19)
+
+        # pp2-vpp-manual-overlap
+        engine = self.get_engine(
+            schedule_mode="VPP",
+            acc_step=4,
+            manual=True,
+            enable_send_recv_overlap=True,
+        )
+        out_manual_overlap = engine.fit(
+            self.dataset, batch_size=self.batch_size, log_freq=1
+        )
+        assert engine._strategy.pipeline.schedule_mode == "VPP"
+        assert engine._strategy.pipeline.enable_send_recv_overlap is True
+
+        fw_chunk_ids = []
+        bw_chunk_ids = []
+        for op in engine.main_program.global_block().ops:
+            if is_optimize_op(op):
+                break
+
+            dist_op = engine.dist_context.get_dist_op_for_program(op)
+            if is_forward_op(op):
+                fw_chunk_ids.append(dist_op.dist_attr.chunk_id)
+            if is_backward_op(op):
+                bw_chunk_ids.append(dist_op.dist_attr.chunk_id)
+
+        if paddle.distributed.get_rank() == 0:
+            self.assertEqual(sum(fw_chunk_ids), 8)
+            self.assertEqual(sum(bw_chunk_ids), 13)
+        else:
+            self.assertEqual(sum(fw_chunk_ids), 12)
+            self.assertEqual(sum(bw_chunk_ids), 19)
+
+        # pp2-vpp-auto-overlap
+        engine = self.get_engine(
+            schedule_mode="VPP",
+            acc_step=4,
+            manual=False,
+            enable_send_recv_overlap=True,
+        )
+        out_auto_overlap = engine.fit(
+            self.dataset, batch_size=self.batch_size, log_freq=1
+        )
+        assert engine._strategy.pipeline.schedule_mode == "VPP"
+        assert engine._strategy.pipeline.enable_send_recv_overlap is True
+
+        fw_chunk_ids = []
+        bw_chunk_ids = []
+
+        for op in engine.main_program.global_block().ops:
+            if is_optimize_op(op):
+                break
+
+            dist_op = engine.dist_context.get_dist_op_for_program(op)
+            if is_forward_op(op):
+                fw_chunk_ids.append(dist_op.dist_attr.chunk_id)
+            if is_backward_op(op):
+                bw_chunk_ids.append(dist_op.dist_attr.chunk_id)
+
+        if paddle.distributed.get_rank() == 0:
+            self.assertEqual(sum(fw_chunk_ids), 9)
+            self.assertEqual(sum(bw_chunk_ids), 13)
+        else:
+            self.assertEqual(sum(fw_chunk_ids), 13)
+            self.assertEqual(sum(bw_chunk_ids), 19)
 
         if paddle.distributed.get_rank() == 1:
-            losses_fthenb = np.array(history_fthenb.history["loss"])
-            losses_vpp_acc2 = np.array(history_vpp_acc2.history["loss"])
-            self.check_results(losses_fthenb, losses_vpp_acc2)
-
-            losses_1f1b = np.array(history_1f1b.history["loss"])
-            losses_vpp_acc4 = np.array(history_vpp_acc4.history["loss"])
-            self.check_results(losses_1f1b, losses_vpp_acc4)
+            self.assertEqual(
+                np.mean(out_manual.history["loss"][0]),
+                np.mean(out_auto.history["loss"][0]),
+            )
+            self.assertEqual(
+                np.mean(out_manual.history["loss"][0]),
+                np.mean(out_manual_overlap.history["loss"][0]),
+            )
+            self.assertEqual(
+                np.mean(out_manual.history["loss"][0]),
+                np.mean(out_auto_overlap.history["loss"][0]),
+            )
 
 
 if __name__ == "__main__":

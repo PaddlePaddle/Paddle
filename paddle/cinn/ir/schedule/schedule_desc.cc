@@ -27,7 +27,7 @@
 namespace cinn {
 namespace ir {
 
-// ------ Following codes are about `Apply` functions registry of variaous types
+// ------ Following codes are about `Apply` functions registry of various types
 // of ScheduleDesc::Step
 class PackedStepContext;
 // uniformed function prototype of a scheduling operation in IRSchedule
@@ -117,9 +117,11 @@ class PackedStepContext {
     try {
       return absl::get<AttrType>(attrs_.at(idx));
     } catch (absl::bad_variant_access& ex) {
-      LOG(FATAL) << "Attribute cast error, idx:" << idx
-                 << ", get tpye:" << typeid(AttrType).name()
-                 << ", real index:" << attrs_.at(idx).index();
+      std::stringstream ss;
+      ss << "Attribute cast error, idx:" << idx
+         << ", get type:" << typeid(AttrType).name()
+         << ", real index:" << attrs_.at(idx).index();
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
       throw ex;
     }
   }
@@ -197,7 +199,7 @@ struct FreeFuncConverter<Return (IRSchedule::*)(Args...) const, impl_fn> {
   }
 };
 
-// used for formatting scheduling functions with variaous function signatures to
+// used for formatting scheduling functions with various function signatures to
 // be uniformed form
 template <typename F, F f>
 struct ApplyFuncImpl;
@@ -483,6 +485,7 @@ CINN_BUILD_STEP_KIND(Rfactor)
 CINN_BUILD_STEP_KIND(FactorizeReduction)
     .Inputs({"rf_loop"})
     .Attrs({"rf_axis"})
+    .Attrs({"with_write_back_block_init"})
     .SetApplyFn(APPLY_FUNC_UNIFORM(
         FREE_FUNCTION_CONVERTER(&IRSchedule::FactorizeReduction)));
 
@@ -600,7 +603,9 @@ void AttrVariantToProto(const utils::Attribute& attr,
     SET_DESC_REPEATED_ITEM(10, std::vector<int64_t>, LONGS, longs);
     SET_DESC_REPEATED_ITEM(11, std::vector<double>, DOUBLES, doubles);
     default:
-      LOG(FATAL) << "Invalid index:" << attr.index();
+      std::stringstream ss;
+      ss << "Invalid index:" << attr.index();
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 
 #undef SET_DESC_SINGLE_ITEM
@@ -634,7 +639,9 @@ utils::Attribute AttrProtoToVariant(const proto::ScheduleDesc_Attr& attr) {
     PARSE_DESC_REPEATED_ITEM(LONGS, longs, std::vector<int64_t>);
     PARSE_DESC_REPEATED_ITEM(DOUBLES, doubles, std::vector<double>);
     default:
-      LOG(FATAL) << "Invalid type:" << attr.DebugString();
+      std::stringstream ss;
+      ss << "Invalid type:" << attr.DebugString();
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 
 #undef PARSE_DESC_SINGLE_ITEM
@@ -689,8 +696,8 @@ proto::ScheduleDesc ScheduleDesc::ToProto() const {
       }
     }
 
-    // each output Expr is represented by a formatted name, to be refered by
-    // suceeding steps
+    // each output Expr is represented by a formatted name, to be referred by
+    // succeeding steps
     for (auto&& expr : step.outputs) {
       std::string local_name = "e" + std::to_string(expr2name.size());
       expr2name.emplace(expr, local_name);
@@ -722,7 +729,7 @@ std::vector<Expr> ScheduleDesc::ReplayWithProto(
   absl::flat_hash_map<std::string, Expr> name2expr;
   std::vector<Expr> last_outputs;
 
-  // resotre each scheduling step and apply to the new IRSchedule object
+  // restore each scheduling step and apply to the new IRSchedule object
   for (auto&& step_proto : desc_proto.steps()) {
     VLOG(4) << "Replay step:\n" << step_proto.DebugString();
     ScheduleDesc::Step step;

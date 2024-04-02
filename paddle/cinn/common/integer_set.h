@@ -20,6 +20,9 @@
 namespace cinn {
 namespace common {
 
+cas_intervals_t CollectVarIntervalsOfExprs(const std::vector<ir::Expr>& exprs,
+                                           bool is_lower_bound_zero = true);
+
 // A naive implementation of Symbolic Expression Analyzer
 class SymbolicExprAnalyzer {
  public:
@@ -41,6 +44,8 @@ class SymbolicExprAnalyzer {
   std::optional<bool> ProveLE(const ir::Expr& lhs, const ir::Expr& rhs) const;
   std::optional<bool> ProveGT(const ir::Expr& lhs, const ir::Expr& rhs) const;
   std::optional<bool> ProveLT(const ir::Expr& lhs, const ir::Expr& rhs) const;
+  std::optional<bool> ProveDivisible(const ir::Expr& lhs,
+                                     const ir::Expr& rhs) const;
 
   ir::Expr LowerBound(const ir::Expr& expr) const;
   ir::Expr UpperBound(const ir::Expr& expr) const;
@@ -58,9 +63,10 @@ struct SymbolicExprLimit {
 // The set consisting of all integers in the interval from min to max
 class SingleIntervalIntSet {
  public:
-  explicit SingleIntervalIntSet(const ir::Expr& min,
-                                const ir::Expr& max,
-                                cas_intervals_t var_intervals = {});
+  explicit SingleIntervalIntSet(
+      const ir::Expr& min = SymbolicExprLimit::positive_inf,
+      const ir::Expr& max = SymbolicExprLimit::negative_inf,
+      cas_intervals_t var_intervals = {});
   SingleIntervalIntSet(const SingleIntervalIntSet& set) = default;
   SingleIntervalIntSet(SingleIntervalIntSet&& set) = default;
   SingleIntervalIntSet& operator=(const SingleIntervalIntSet& set) = default;
@@ -91,6 +97,19 @@ class SingleIntervalIntSet {
   ir::Expr max_ = SymbolicExprLimit::negative_inf;
   cas_intervals_t var_intervals_;
 };
+
+std::optional<bool> ProveEQ(const SingleIntervalIntSet& lhs,
+                            const SingleIntervalIntSet& rhs);
+std::optional<SingleIntervalIntSet> ProvedUnion(const SingleIntervalIntSet& a,
+                                                const SingleIntervalIntSet& b);
+std::optional<SingleIntervalIntSet> ProvedIntersect(
+    const SingleIntervalIntSet& a, const SingleIntervalIntSet& b);
+cas_intervals_t MergeVarIntervals(const SingleIntervalIntSet& a,
+                                  const SingleIntervalIntSet& b);
+
+ir::Expr EnhancedSimplifyModExpr(
+    ir::Expr e,
+    const absl::flat_hash_map<std::string, CasInterval>& var_intervals);
 
 }  // namespace common
 }  // namespace cinn

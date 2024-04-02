@@ -15,7 +15,7 @@
 from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_or_pir_mode
 
 
 def identity_loss(x, reduction="none"):
@@ -59,7 +59,7 @@ def identity_loss(x, reduction="none"):
         if reduction is None:
             raise Exception("Unsupported reduction type.")
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.identity_loss(x, reduction)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], "identity_loss")

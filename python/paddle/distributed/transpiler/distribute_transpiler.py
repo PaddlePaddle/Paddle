@@ -658,7 +658,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             # check use_hierarchical_allreduce options
             if self.config.use_hierarchical_allreduce:
                 trainers_num = len(self.origin_program._trainers_endpoints)
-                # selected automaticly
+                # selected automatically
                 if self.config.hierarchical_allreduce_inter_nranks <= 1:
                     self.config.hierarchical_allreduce_inter_nranks = (
                         core.get_cuda_device_count()
@@ -667,19 +667,13 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 assert (
                     trainers_num
                     > self.config.hierarchical_allreduce_inter_nranks
-                ), "trainers_num:{} < hierarchical_allreduce_inter_nranks:{}".format(
-                    trainers_num,
-                    self.config.hierarchical_allreduce_inter_nranks,
-                )
+                ), f"trainers_num:{trainers_num} < hierarchical_allreduce_inter_nranks:{self.config.hierarchical_allreduce_inter_nranks}"
 
                 assert (
                     trainers_num
                     % self.config.hierarchical_allreduce_inter_nranks
                     == 0
-                ), "trainers_num:{} mod hierarchical_allreduce_inter_nranks:{} != 0".format(
-                    trainers_num,
-                    self.config.hierarchical_allreduce_inter_nranks,
-                )
+                ), f"trainers_num:{trainers_num} mod hierarchical_allreduce_inter_nranks:{self.config.hierarchical_allreduce_inter_nranks} != 0"
 
                 self.origin_program._hierarchical_allreduce_inter_nranks = int(
                     self.config.hierarchical_allreduce_inter_nranks
@@ -2265,7 +2259,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         NOTE: only grads need to be named for different trainers, use
               add_trainer_suffix to rename the grad vars.
         Args:
-            program (ProgramDesc): ProgramDesc which gradients blong.
+            program (ProgramDesc): ProgramDesc which gradients belong.
             block_list (list[(varname, block_id, block_size)]): List of gradient blocks.
             add_trainer_suffix (Bool): Add trainer suffix to new variable's name if set True.
         Returns:
@@ -2329,7 +2323,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                     dtype=orig_var.dtype,
                     type=orig_var.type,
                     shape=splited_shape,
-                )  # flattend split var
+                )  # flatten split var
                 var_mapping[varname].append(var)
             program.global_block()._sync_with_cpp()
         return var_mapping

@@ -515,19 +515,19 @@ def update_dims_mapping_matmul(dist_op):
         trans_x = False
         trans_y = False
 
-    # TODO (zhangyichen) replace dist tensor spece by dist tensor in future.
+    # TODO (zhangyichen) replace dist tensor spec by dist tensor in future.
     x_spec = get_dist_tensor_spec(dist_op, x_name)
     y_spec = get_dist_tensor_spec(dist_op, y_name)
     out_spec = get_dist_tensor_spec(dist_op, out_name, False)
 
     # step2: infer spmd
     rule = get_phi_spmd_rule("matmul")
-    # tensor order following order in PHI defition
+    # tensor order following order in PHI definition
     fw_results = rule.infer_forward(x_spec, y_spec, trans_x, trans_y)
     bw_results = rule.infer_backward(x_spec, y_spec, out_spec, trans_x, trans_y)
 
     # step3: update dist_attr
-    # tensor order following order in PHI defition
+    # tensor order following order in PHI definition
     input_arg_names = [x_name, y_name]
     output_arg_names = [out_name]
     changed = update_op_dims_mapping(
@@ -818,9 +818,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             )[-2]
         assert (
             matmul_col_dim_mapping >= 0
-        ), "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
-            matmul_col_dim_mapping
-        )
+        ), f"col_parallel_matmul's row should be divided by a specific mesh axis, but got [{matmul_col_dim_mapping}]"
         process_mesh_shape = op_dist_attr.process_mesh.shape
         process_mesh_group = op_dist_attr.process_mesh.process_ids
 
@@ -1075,9 +1073,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             )[-1]
         assert (
             matmul_row_dim_mapping >= 0
-        ), "row_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
-            matmul_row_dim_mapping
-        )
+        ), f"row_parallel_matmul's row should be divided by a specific mesh axis, but got [{matmul_row_dim_mapping}]"
         process_mesh_shape = op_dist_attr.process_mesh.shape
         process_mesh_group = op_dist_attr.process_mesh.process_ids
 
@@ -1515,9 +1511,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
             )[-2]
         assert (
             matmul_col_dim_mapping >= 0
-        ), "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
-            matmul_col_dim_mapping
-        )
+        ), f"col_parallel_matmul's row should be divided by a specific mesh axis, but got [{matmul_col_dim_mapping}]"
 
         # infer new var shape with op dist attr
         x_tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(X_var)
@@ -1766,9 +1760,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
             )[-1]
         assert (
             matmul_row_dim_mapping >= 0
-        ), "row_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
-            matmul_row_dim_mapping
-        )
+        ), f"row_parallel_matmul's row should be divided by a specific mesh axis, but got [{matmul_row_dim_mapping}]"
         process_mesh_shape = op_dist_attr.process_mesh.shape
         process_mesh_group = op_dist_attr.process_mesh.process_ids
 
@@ -2193,9 +2185,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
         )[-1]
         assert (
             matmul_col_dim_mapping >= 0
-        ), "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
-            matmul_col_dim_mapping
-        )
+        ), f"col_parallel_matmul's row should be divided by a specific mesh axis, but got [{matmul_col_dim_mapping}]"
         process_mesh_shape = op_dist_attr.process_mesh.shape
         process_mesh_group = op_dist_attr.process_mesh.process_ids
 
@@ -2438,9 +2428,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         )[-2]
         assert (
             matmul_row_dim_mapping >= 0
-        ), "row_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
-            matmul_row_dim_mapping
-        )
+        ), f"row_parallel_matmul's row should be divided by a specific mesh axis, but got [{matmul_row_dim_mapping}]"
         process_mesh_shape = op_dist_attr.process_mesh.shape
         process_mesh_group = op_dist_attr.process_mesh.process_ids
 

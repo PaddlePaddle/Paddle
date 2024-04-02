@@ -37,7 +37,7 @@ def source_include(header_file_path):
 #include <memory>
 
 #include "glog/logging.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 #include "paddle/phi/api/lib/api_custom_impl.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
@@ -62,7 +62,7 @@ def source_include(header_file_path):
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #endif
 
-PD_DECLARE_int32(low_precision_op_list);
+COMMON_DECLARE_int32(low_precision_op_list);
 """
 
 
@@ -121,10 +121,12 @@ def generate_intermediate_api(
                 apis.extend(api_list)
 
     for api in apis:
-        foward_api = DistForwardAPI(api) if gen_dist_branch else ForwardAPI(api)
-        if foward_api.is_dygraph_api:
-            dygraph_header_file.write(foward_api.gene_api_declaration())
-            dygraph_source_file.write(foward_api.gene_api_code())
+        forward_api = (
+            DistForwardAPI(api) if gen_dist_branch else ForwardAPI(api)
+        )
+        if forward_api.is_dygraph_api:
+            dygraph_header_file.write(forward_api.gene_api_declaration())
+            dygraph_source_file.write(forward_api.gene_api_code())
 
     dygraph_header_file.write(sparse_namespace_pair[0])
     dygraph_source_file.write(sparse_namespace_pair[0])

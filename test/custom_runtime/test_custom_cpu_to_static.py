@@ -36,13 +36,11 @@ def train_func_base(epoch_id, train_loader, model, cost, optimizer):
         optimizer.step()
         optimizer.clear_grad()
         print(
-            "Epoch [{}/{}], Step [{}/{}], Loss: {}".format(
-                epoch_id + 1, EPOCH_NUM, batch_id + 1, total_step, loss.numpy()
-            )
+            f"Epoch [{epoch_id + 1}/{EPOCH_NUM}], Step [{batch_id + 1}/{total_step}], Loss: {loss.numpy()}"
         )
     epoch_end = time.time()
     print(
-        f"Epoch ID: {epoch_id+1}, FP32 train epoch time: {(epoch_end - epoch_start) * 1000} ms"
+        f"Epoch ID: {epoch_id + 1}, FP32 train epoch time: {(epoch_end - epoch_start) * 1000} ms"
     )
 
 
@@ -69,13 +67,11 @@ def train_func_ampo1(epoch_id, train_loader, model, cost, optimizer, scaler):
         scaler.minimize(optimizer, scaled)
         optimizer.clear_grad()
         print(
-            "Epoch [{}/{}], Step [{}/{}], Loss: {}".format(
-                epoch_id + 1, EPOCH_NUM, batch_id + 1, total_step, loss.numpy()
-            )
+            f"Epoch [{epoch_id + 1}/{EPOCH_NUM}], Step [{batch_id + 1}/{total_step}], Loss: {loss.numpy()}"
         )
     epoch_end = time.time()
     print(
-        f"Epoch ID: {epoch_id+1}, AMPO1 train epoch time: {(epoch_end - epoch_start) * 1000} ms"
+        f"Epoch ID: {epoch_id + 1}, AMPO1 train epoch time: {(epoch_end - epoch_start) * 1000} ms"
     )
 
 
@@ -96,7 +92,7 @@ def test_func(epoch_id, test_loader, model, cost):
         avg_acc[1].append(acc_top5.numpy())
     model.train()
     print(
-        f"Epoch ID: {epoch_id+1}, Top1 accurary: {np.array(avg_acc[0]).mean()}, Top5 accurary: {np.array(avg_acc[1]).mean()}"
+        f"Epoch ID: {epoch_id + 1}, Top1 accurary: {np.array(avg_acc[0]).mean()}, Top5 accurary: {np.array(avg_acc[1]).mean()}"
     )
 
 

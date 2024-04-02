@@ -97,13 +97,13 @@ _quant_config_default = {
     'quantize_op_types': ['conv2d', 'depthwise_conv2d', 'mul'],
     # data type after quantization, such as 'uint8', 'int8', etc. default is 'int8'
     'dtype': 'int8',
-    # window size for 'range_abs_max' quantization. defaulf is 10000
+    # window size for 'range_abs_max' quantization. default is 10000
     'window_size': 10000,
     # The decay coefficient of moving average, default is 0.9
     'moving_rate': 0.9,
     # if True, 'quantize_op_types' will be TENSORRT_OP_TYPES
     'for_tensorrt': False,
-    # if True, 'quantoze_op_types' will be TRANSFORM_PASS_OP_TYPES + QUANT_DEQUANT_PASS_OP_TYPES
+    # if True, 'quantize_op_types' will be TRANSFORM_PASS_OP_TYPES + QUANT_DEQUANT_PASS_OP_TYPES
     'is_full_quantize': False,
     # if True, use onnx format to quant.
     'onnx_format': True,
@@ -197,10 +197,8 @@ def _parse_configs(user_config):
         for op_type in configs['quantize_op_types']:
             assert (op_type in QUANT_DEQUANT_PASS_OP_TYPES) or (
                 op_type in TRANSFORM_PASS_OP_TYPES
-            ), "{} is not support, \
-                        now support op types are {}".format(
-                op_type, TRANSFORM_PASS_OP_TYPES + QUANT_DEQUANT_PASS_OP_TYPES
-            )
+            ), f"{op_type} is not support, \
+                        now support op types are {TRANSFORM_PASS_OP_TYPES + QUANT_DEQUANT_PASS_OP_TYPES}"
 
     assert isinstance(configs['dtype'], str), "dtype must be a str."
 
@@ -276,7 +274,7 @@ def quant_aware(
                 is non-quantized activation and function returns processed activation to be quantized. If None, the activation will
                 be quantized directly.
                 Default is None.
-        optimizer_func(function): Fuction return a optimizer. When 'is_test' is False and user want to use self-defined
+        optimizer_func(function): Function return a optimizer. When 'is_test' is False and user want to use self-defined
             quantization function and preprocess function, this function must be set. Default is None.
         exe(paddle.static.Executor): If user want to use self-defined quantization function and preprocess function, exe must be set for
                 initialization. Default is None.

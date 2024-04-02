@@ -41,7 +41,7 @@ void SetOp(ProgramDesc* prog,
   if (type != "dropout" && type != "quantize" && type != "dequantize") {
     op->SetAttr("mkldnn_data_type", mkldnn_data_type);
   }
-  if (type == "pool2d") {
+  if (type == "pool2d") {  // NOLINT
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
     if (!scale.empty()) op->SetAttr("Scale_in", scale[0]);
@@ -120,8 +120,9 @@ ProgramDesc BuildConvRequantProgramDesc(bool use_mkldnn,
                                         float scale_out,
                                         float scale_in) {
   ProgramDesc prog;
-  for (auto& v : std::initializer_list<std::string>(
-           {"a", "w1", "b1", "d", "e", "f", "w2", "b2", "i"})) {
+  const std::vector<std::string> values = {
+      "a", "w1", "b1", "d", "e", "f", "w2", "b2", "i"};
+  for (auto& v : values) {
     auto* var = prog.MutableBlock(0)->Var(v);
     if (v.find("w") == 0 || v.find("b") == 0) {
       var->SetPersistable(true);
@@ -240,7 +241,7 @@ ProgramDesc BuildOpRequantProgramDesc(bool use_mkldnn,
         {"h"},
         use_mkldnn,
         {matmul_scale, requant_scale3});
-  SetOp(&prog, "concat", "Concat", {"c", "f", "h"}, {"g"}, {use_mkldnn});
+  SetOp(&prog, "concat", "Concat", {"c", "f", "h"}, {"g"}, use_mkldnn);
 
   return prog;
 }
@@ -683,7 +684,7 @@ ProgramDesc BuildRequantOpProgramDesc(bool use_mkldnn,
         {"h"},
         use_mkldnn,
         {op_scale_in, op_scale_out});
-  SetOp(&prog, "concat", "Concat", {"b", "e", "h"}, {"i"}, {use_mkldnn});
+  SetOp(&prog, "concat", "Concat", {"b", "e", "h"}, {"i"}, use_mkldnn);
 
   return prog;
 }
@@ -1018,10 +1019,10 @@ TEST(CpuQuantizeSquashPass, fc_dequant_more_than_one_op_after_dequant) {
 
 // a->Concat1->b
 // b->Concat2
-// b->Quatize1(Scale)->c
+// b->Quantize1(Scale)->c
 // c->Fc1
 // c->Fc2
-TEST(CpuQuantizeSquashPass, quatize_with_same_scale) {
+TEST(CpuQuantizeSquashPass, quantize_with_same_scale) {
   auto first_scale = 1.2345f;
   auto second_scale = 1.2345f;
   auto use_mkldnn = true;
@@ -1033,7 +1034,7 @@ TEST(CpuQuantizeSquashPass, quatize_with_same_scale) {
 }
 
 // if scales are not the same, do not fuse
-TEST(CpuQuantizeSquashPass, quatize_with_different_scale) {
+TEST(CpuQuantizeSquashPass, quantize_with_different_scale) {
   auto first_scale = 1.2345f;
   auto second_scale = 1.5432f;
   auto use_mkldnn = true;

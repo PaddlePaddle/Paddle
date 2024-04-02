@@ -28,7 +28,7 @@ static inline bool NeedCast(const paddle::Tensor& tensor,
       paddle::platform::is_cuda_pinned_place(place) ||
       paddle::platform::is_xpu_place(place) ||
       paddle::platform::is_custom_place(place)) {
-    // CudaPinndePlace is added for varbase created by dataloader
+    // CudaPinnedPlace is added for varbase created by dataloader
     if ((data_type == phi::DataType::FLOAT32 ||
          data_type == phi::DataType::FLOAT16 ||
          data_type == phi::DataType::BFLOAT16) &&
@@ -53,8 +53,7 @@ inline std::vector<paddle::Tensor> AmpAutoCasts(
       paddle::framework::AttributeMap cast_attrs = {
           {"in_dtype", paddle::framework::TransToProtoVarType(input.dtype())},
           {"out_dtype", paddle::framework::TransToProtoVarType(dst_dtype)}};
-      inputs_casted.emplace_back(
-          std::move(cast_dygraph_function(input, cast_attrs)));
+      inputs_casted.emplace_back(cast_dygraph_function(input, cast_attrs));
     } else {
       inputs_casted.emplace_back(input);
     }

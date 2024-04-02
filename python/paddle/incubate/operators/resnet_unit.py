@@ -151,7 +151,7 @@ def resnet_unit(
 class ResNetUnit(Layer):
     r"""
     ******Temporary version******.
-    ResNetUnit is designed for optimize the performence by using cudnnv8 API.
+    ResNetUnit is designed for optimize the performance by using cudnnv8 API.
     """
 
     def __init__(
@@ -203,9 +203,7 @@ class ResNetUnit(Layer):
         valid_format = {'NHWC', 'NCHW'}
         if data_format not in valid_format:
             raise ValueError(
-                "conv_format must be one of {}, but got conv_format='{}'".format(
-                    valid_format, data_format
-                )
+                f"conv_format must be one of {valid_format}, but got conv_format='{data_format}'"
             )
 
         def _get_default_param_initializer(channels):

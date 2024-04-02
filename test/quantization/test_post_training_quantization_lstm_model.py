@@ -76,9 +76,9 @@ class TestPostTrainingQuantization(unittest.TestCase):
                     if plen is None or len(plen) != 4:
                         break
 
-                    alllen = struct.unpack('i', plen)[0]
-                    label_len = alllen & 0xFFFF
-                    seq_len = (alllen >> 16) & 0xFFFF
+                    all_len = struct.unpack('i', plen)[0]
+                    label_len = all_len & 0xFFFF
+                    seq_len = (all_len >> 16) & 0xFFFF
 
                     label = in_file.read(4 * label_len)
                     label = np.frombuffer(label, dtype=np.int32).reshape(
@@ -106,9 +106,9 @@ class TestPostTrainingQuantization(unittest.TestCase):
                     if plen is None or len(plen) != 4:
                         break
 
-                    alllen = struct.unpack('i', plen)[0]
-                    label_len = alllen & 0xFFFF
-                    seq_len = (alllen >> 16) & 0xFFFF
+                    all_len = struct.unpack('i', plen)[0]
+                    label_len = all_len & 0xFFFF
+                    seq_len = (all_len >> 16) & 0xFFFF
 
                     label = in_file.read(4 * label_len)
                     label = np.frombuffer(label, dtype=np.int32).reshape(
@@ -260,9 +260,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         )
 
         print(
-            "Start post training quantization for {} on {} samples ...".format(
-                model_name, quant_iterations
-            )
+            f"Start post training quantization for {model_name} on {quant_iterations} samples ..."
         )
         self.generate_quantized_model(
             fp32_model_path,
@@ -293,14 +291,10 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
         print(f"---Post training quantization of {algo} method---")
         print(
-            "FP32 {}: batch_size {}, latency {} s, acc {}.".format(
-                model_name, 1, fp32_latency, fp32_acc
-            )
+            f"FP32 {model_name}: batch_size {1}, latency {fp32_latency} s, acc {fp32_acc}."
         )
         print(
-            "INT8 {}: batch_size {}, latency {} s, acc1 {}.\n".format(
-                model_name, 1, int8_latency, int8_acc
-            )
+            f"INT8 {model_name}: batch_size {1}, latency {int8_latency} s, acc1 {int8_acc}.\n"
         )
         sys.stdout.flush()
 

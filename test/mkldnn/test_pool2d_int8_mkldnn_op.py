@@ -24,6 +24,7 @@ from paddle.base import core
 class TestPool2DMKLDNNInt8_Op(TestPool2D_Op):
     def init_kernel_type(self):
         self.use_mkldnn = True
+        self.check_pir_onednn = True
 
     def init_data_type(self):
         self.dtype = np.int8
@@ -54,7 +55,10 @@ class TestPool2DMKLDNNInt8_Op(TestPool2D_Op):
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_output_with_place(
-            core.CPUPlace(), atol=1e-5, check_dygraph=False
+            core.CPUPlace(),
+            atol=1e-5,
+            check_dygraph=False,
+            check_pir_onednn=True,
         )
 
     def test_check_grad(self):

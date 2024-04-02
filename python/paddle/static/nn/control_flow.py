@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import warnings
-from functools import partial, reduce
+from functools import cached_property, partial, reduce
 
 import paddle
 from paddle import _C_ops
@@ -39,6 +41,7 @@ from paddle.common_ops_import import (
     convert_dtype,
     in_dygraph_mode,
 )
+from paddle.framework import use_pir_api
 from paddle.utils import (
     assert_same_structure,
     copy_mutable_vars,
@@ -153,19 +156,69 @@ class WhileGuard(BlockGuard):
     def __init__(self, while_op):
         if not isinstance(while_op, While):
             raise TypeError("WhileGuard takes a while op")
-        super().__init__(while_op.helper.main_program)
+        if not in_pir_mode():
+            super().__init__(while_op.helper.main_program)
         self.while_op = while_op
 
     def __enter__(self):
+        if in_pir_mode():
+            self.block = build_while_op(self.while_op.cond_var, []).body()
+            return self.block.__enter__()
         self.while_op.status = While.IN_WHILE_BLOCK
         return super().__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        if in_pir_mode():
+            cf_yield([self.while_op.cond_var])
+            return self.block.__exit__(exc_type, exc_val, exc_tb)
         if exc_type is not None:
             return False
         self.while_op.status = While.AFTER_WHILE_BLOCK
         self.while_op._complete()
         return super().__exit__(exc_type, exc_val, exc_tb)
+
+
+class If:
+    '''
+    **If**
+
+    If is an operator that bind two blocks (true_block and false_block) to a specific condition,
+    According to the condition, the corresponding block will be executed.
+
+    Args:
+        cond (Value): A value whose data type is bool controlling which block is executed.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> from paddle.static.nn.control_flow import ConditionalBlock
+
+            >>> label = paddle.rand([1])
+            >>> limit = paddle.ones([1]) * 0.5
+            >>> cond = paddle.less_than(x=label, y=limit)
+            >>> if_op = If(cond)
+            >>> with if_op.true_block():
+            ...     pass
+            >>> with if_op.false_block():
+            ...     pass
+    '''
+
+    def __init__(self, cond):
+        if not isinstance(cond, list):
+            check_variable_and_dtype(cond, 'cond', ['bool'], 'static.nn.If')
+            if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
+                raise TypeError(
+                    f"condition expected shape as [1], but given shape as {list(cond.shape)}."
+                )
+        self.if_op = build_if_op(cond)
+        self.cond_var = self.if_op.cond()
+
+    def true_block(self):
+        return self.if_op.true_block()
+
+    def false_block(self):
+        return self.if_op.false_block()
 
 
 class ConditionalBlock:
@@ -201,13 +254,23 @@ class ConditionalBlock:
     '''
 
     def __init__(self, inputs, is_scalar_condition=False, name=None):
-        for each_input in inputs:
-            check_type(each_input, "input", Variable, "ConditionalBlock")
         self.inputs = inputs
+        if in_pir_mode():
+            if is_scalar_condition and len(inputs) != 1:
+                raise TypeError(
+                    "For ConditionalBlock Api,  Only support one input while is_scalar_condition is True"
+                )
+            return
+        else:
+            for each_input in inputs:
+                check_type(each_input, "input", Variable, "ConditionalBlock")
+
         self.is_scalar_condition = is_scalar_condition
         self.helper = LayerHelper('conditional_block', name=name)
 
     def block(self):
+        if in_pir_mode():
+            return If(self.inputs).true_block()
         return ConditionalBlockGuard(self)
 
     def complete(self):
@@ -276,7 +339,7 @@ class ConditionalBlock:
         `conditional_block_grad` is appended manually.
 
         Args:
-            parent_block (Block): The block that `conditional_block_op` blongs to.
+            parent_block (Block): The block that `conditional_block_op` belongs to.
             inside_block (Block): The sub block of `conditional_block_op`.
             conditional_block_op (Operator): The forward op conditional_block.
         '''
@@ -390,7 +453,7 @@ def get_inputs_outputs_in_block(
 
     # Step1: update inner_inputs and inner_outputs
     # NOTE: Here assumes that all variables are input or output of Ops,
-    # but some variables are created without appendding a real op.
+    # but some variables are created without appending a real op.
     # For example, in `arr = create_array(dtype)`, `arr` is not a output of a op.
     for op in current_block.ops:
         assert isinstance(op, Operator)
@@ -509,16 +572,16 @@ class While:
     AFTER_WHILE_BLOCK = 2
 
     def __init__(self, cond, is_test=False, name=None):
-        self.helper = LayerHelper("while", name=name)
-        self.status = While.BEFORE_WHILE_BLOCK
+        self.cond_var = cond
         check_variable_and_dtype(cond, 'cond', ['bool'], 'static.nn.While')
         if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
             raise TypeError(
-                "condition expected shape as [1], but given shape as {}.".format(
-                    list(cond.shape)
-                )
+                f"condition expected shape as [1], but given shape as {list(cond.shape)}."
             )
-        self.cond_var = cond
+        if in_pir_mode():
+            return
+        self.status = While.BEFORE_WHILE_BLOCK
+        self.helper = LayerHelper("while", name=name)
         self.is_test = is_test
 
     def block(self):
@@ -605,9 +668,7 @@ def assign_skip_lod_tensor_array(input, output):
             and has_shape_diff(input, output)
         ):
             warnings.warn(
-                "In dy2static mode, we attemp to assign a variable with shape {} into a variable with shape{}, which is not always right.".format(
-                    input.shape, output.shape
-                )
+                f"In dy2static mode, we attempt to assign a variable with shape {input.shape} into a variable with shape{output.shape}, which is not always right."
             )
         # NOTE(dev): Avoid assign if input is output in Variable level which means
         # input is not generated in While sub block and modified by in-place and only
@@ -675,16 +736,6 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
 
     pre_cond = cond(*loop_vars)
 
-    if in_pir_mode():
-        while_op = build_while_op(pre_cond, flatten(loop_vars))
-        with while_op.body() as cur_block:
-            args = cur_block.args()
-            next_var = body(*args)
-            next_cond = cond(*next_var)
-            next_cond.stop_gradient = True
-            cf_yield([next_cond, *next_var])
-        return while_op.as_operation().results()
-
     check_variable_and_dtype(
         pre_cond, 'var of cond returned', ['bool'], 'static.nn.while_loop'
     )
@@ -692,6 +743,104 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         raise TypeError(
             "the shape of the variable returned by cond should be [1],"
             f"but given shape as {list(pre_cond.shape)}."
+        )
+
+    if in_pir_mode():
+        from paddle.jit.dy2static.utils import UndefinedVar
+
+        def create_fake_value_for_undefined_var():
+            # Create a fake value for create WhileOp, it's type will be reset after body is executed.
+            return paddle.full(shape=[], fill_value=0)
+
+        flattened_loop_vars = flatten(loop_vars)
+
+        undefined_var_mapping = {
+            idx: create_fake_value_for_undefined_var()
+            for idx, var in enumerate(flattened_loop_vars)
+            if isinstance(var, UndefinedVar)
+        }
+        unified_loop_vars = [
+            undefined_var_mapping[idx] if isinstance(var, UndefinedVar) else var
+            for idx, var in enumerate(flattened_loop_vars)
+        ]
+        while_op = build_while_op(pre_cond, unified_loop_vars)
+        with while_op.body() as cur_block:
+            args = pack_sequence_as(loop_vars, cur_block.args())
+            next_vars = body(*args)
+
+            try:
+                assert_same_structure(
+                    flatten(next_vars), unified_loop_vars, check_types=False
+                )
+            except ValueError as e:
+                raise ValueError(
+                    "body in while_loop should return the same arity "
+                    f"(length and structure) as loop_vars: {e}"
+                )
+            if not isinstance(next_vars, (list, tuple)):
+                next_vars = [next_vars]
+            next_cond = cond(*next_vars)
+            next_cond.stop_gradient = True
+
+            # Filter out the constants from next_vars, we only pass the variables (Value) into cf_yield.
+            # And pass the original fake value directly to constants position.
+            flattened_next_vars = flatten(next_vars)
+            (
+                variable_next_var_indices,
+                constant_next_var_indices,
+            ) = get_indices_by_discriminator(
+                flattened_next_vars,
+                lambda x: isinstance(x, paddle.pir.Value),
+            )
+            variable_next_vars, constant_next_vars = select_by_indices(
+                flattened_next_vars,
+                variable_next_var_indices,
+                constant_next_var_indices,
+            )
+            (fake_constant_next_vars,) = select_by_indices(
+                cur_block.args(), constant_next_var_indices
+            )
+            unified_next_vars = create_container_by_items_and_indices(
+                (variable_next_vars, variable_next_var_indices),
+                (fake_constant_next_vars, constant_next_var_indices),
+            )
+            cf_yield([next_cond, *unified_next_vars])
+
+            # Reset type and stop_gradient of UndefinedVar from next_vars
+            for idx, value in undefined_var_mapping.items():
+                if idx in constant_next_var_indices:
+                    continue
+                value_new_type = flatten(next_vars)[idx].type()
+                value.set_type(value_new_type)
+                cur_block.args()[idx].set_type(value_new_type)
+                while_op.as_operation().results()[idx].set_type(value_new_type)
+
+                value_new_stop_gradient = flatten(next_vars)[idx].stop_gradient
+                value.stop_gradient = value_new_stop_gradient
+                cur_block.args()[idx].stop_gradient = value_new_stop_gradient
+                while_op.as_operation().results()[
+                    idx
+                ].stop_gradient = value_new_stop_gradient
+
+        # Restore the outputs by variable and constants
+        optimized_results = while_op.optimize_update()
+        (optimized_variable_results,) = select_by_indices(
+            optimized_results, variable_next_var_indices
+        )
+        # Prune unused fake values
+        for fake_value in undefined_var_mapping.values():
+            if fake_value.use_empty():
+                fake_value_def_op = fake_value.get_defining_op()
+                fake_value_def_op.get_parent_block().remove_op(
+                    fake_value_def_op
+                )
+
+        return pack_sequence_as(
+            loop_vars,
+            create_container_by_items_and_indices(
+                (optimized_variable_results, variable_next_var_indices),
+                (constant_next_vars, constant_next_var_indices),
+            ),
         )
 
     if in_dygraph_mode():
@@ -848,7 +997,6 @@ def case(pred_fn_pairs, default=None, name=None):
             ...     print(res_1, res_2)
             [[1. 1.]] [3 3 3]
     '''
-    helper = LayerHelper('case', **locals())
 
     def _case_check_args(pred_fn_pairs, default):
         '''
@@ -879,21 +1027,13 @@ def case(pred_fn_pairs, default=None, name=None):
                 )
             pred, fn = pred_fn
 
-            if not isinstance(pred, Variable):
-                raise TypeError(
-                    _error_message(
-                        "The pred's type",
-                        "pred_fn_pairs",
-                        "case",
-                        "boolean Variable",
-                        type(pred),
-                    )
-                )
+            check_variable_and_dtype(
+                pred, 'pred', ['bool'], 'paddle.static.nn.case'
+            )
 
             if not callable(fn):
                 raise TypeError(
-                    f"The fn for {pred.name} of pred_fn_pairs in Op(case) must"
-                    " be callable."
+                    "The fn of pred_fn_pairs in Op(case) must" " be callable."
                 )
 
         if default is None:
@@ -1103,6 +1243,198 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
     return final_fn()
 
 
+def get_indices_by_discriminator(container, *discriminators):
+    buckets = [[] for _ in range(len(discriminators) + 1)]
+    for idx, item in enumerate(container):
+        for i, cond in enumerate(discriminators):
+            if cond(item):
+                buckets[i].append(idx)
+                break
+        else:
+            buckets[-1].append(idx)
+    return buckets
+
+
+def select_by_indices(container, *index_groups):
+    buckets = [[] for _ in range(len(index_groups))]
+    for idx, item in enumerate(container):
+        for i, indices in enumerate(index_groups):
+            if idx in indices:
+                buckets[i].append(item)
+                break
+    return buckets
+
+
+def create_container_by_items_and_indices(*items_indices_pairs):
+    total_length = reduce(
+        lambda acc, pair: acc + len(pair[0]), items_indices_pairs, 0
+    )
+    container = [None for _ in range(total_length)]
+    for partial_container, indices in items_indices_pairs:
+        assert len(partial_container) == len(indices)
+        for idx, item in zip(indices, partial_container):
+            container[idx] = item
+    return container
+
+
+class OutputSelector:
+    def __init__(
+        self, if_op, flattened_true_output, flattened_false_output, names
+    ):
+        self.if_op = if_op
+        self.true_output = flattened_true_output
+        self.false_output = flattened_false_output
+        self.names = names
+        self.num_output = len(flattened_true_output)
+        assert len(flattened_false_output) == self.num_output
+        assert len(names) == self.num_output
+
+    @cached_property
+    def unified_output(self):
+        unified_true_output = []
+        unified_false_output = []
+        for true_out, false_out, name in zip(
+            self.true_output, self.false_output, self.names
+        ):
+            (
+                true_out,
+                false_out,
+            ) = OutputSelector.constant_to_variable_promotion(
+                [
+                    (true_out, self.if_op.true_block),
+                    (false_out, self.if_op.false_block),
+                ],
+                name,
+            )
+            unified_true_output.append(true_out)
+            unified_false_output.append(false_out)
+        return unified_true_output, unified_false_output
+
+    @property
+    def unified_true_output(self):
+        return self.unified_output[0]
+
+    @property
+    def unified_false_output(self):
+        return self.unified_output[1]
+
+    @property
+    def variable_indices(self):
+        true_variable_indices, _ = get_indices_by_discriminator(
+            self.unified_true_output,
+            lambda x: isinstance(x, paddle.pir.Value),
+        )
+        false_variable_indices, _ = get_indices_by_discriminator(
+            self.unified_false_output,
+            lambda x: isinstance(x, paddle.pir.Value),
+        )
+        assert (
+            true_variable_indices == false_variable_indices
+        ), "true_variable_indices and false_variable_indices should be same"
+        return true_variable_indices
+
+    @property
+    def constant_indices(self):
+        return [
+            i
+            for i in range(len(self.true_output))
+            if i not in self.variable_indices
+        ]
+
+    def get_variable_outputs(self):
+        (variable_true_output,) = select_by_indices(
+            self.unified_true_output,
+            self.variable_indices,
+        )
+        (variable_false_output,) = select_by_indices(
+            self.unified_false_output,
+            self.variable_indices,
+        )
+        return variable_true_output, variable_false_output
+
+    def restore_outputs_by_variable_results(self, variable_results):
+        (constant_output,) = select_by_indices(
+            self.unified_true_output,
+            self.constant_indices,
+        )
+
+        restored_output = create_container_by_items_and_indices(
+            (variable_results, self.variable_indices),
+            (constant_output, self.constant_indices),
+        )
+        return restored_output
+
+    @staticmethod
+    def constant_to_variable_promotion(out_with_blocks, name):
+        from paddle.jit.dy2static.convert_operators import to_static_variable
+        from paddle.jit.dy2static.utils import UndefinedVar
+
+        promotion_builtin_types = (bool, int, float)
+        outs, _ = zip(*out_with_blocks)
+
+        def all_has_same_value(outs):
+            if len(outs) <= 1:
+                return True
+            return all(out == outs[0] for out in outs[1:])
+
+        def all_has_same_type(outs):
+            if len(outs) <= 1:
+                return True
+            return all(type(out) is type(outs[0]) for out in outs[1:])
+
+        def constant_to_variable_with_block(constant, block_context_manager):
+            with block_context_manager():
+                return to_static_variable(constant)
+
+        if all(isinstance(out, paddle.pir.Value) for out in outs):
+            return outs
+
+        if all(arg is None for arg in outs):
+            return outs
+
+        if all(
+            isinstance(out, promotion_builtin_types) for out in outs
+        ) and all_has_same_type(outs):
+            if all_has_same_value(outs):
+                return outs
+            else:
+                warnings.warn(
+                    f"Return results from different branches in cond has same type: {type(outs[0])}, "
+                    f"but has different value: true value is '{outs[0]}' and false value is '{outs[1]}', "
+                    "so we will promote the constant to variable."
+                )
+                return [
+                    constant_to_variable_with_block(out, block)
+                    for out, block in out_with_blocks
+                ]
+
+        if any(isinstance(out, paddle.pir.Value) for out in outs) and all(
+            isinstance(out, (paddle.pir.Value,) + promotion_builtin_types)
+            for out in outs
+        ):
+            warnings.warn(
+                "Return results from different branches in cond are not same type: "
+                + f"false_var returned by false_fn is '{type(outs[1])}' and true_var of true_fn is "
+                + f"'{type(outs[0])}'"
+            )
+            return [
+                constant_to_variable_with_block(out, block)
+                for out, block in out_with_blocks
+            ]
+
+        if any(isinstance(out, UndefinedVar) for out in outs):
+            warnings.warn(
+                f"Return results has maybe unbound local variable `{name}`, please ensure do not use `{name}`"
+                + "after cond."
+            )
+            return [UndefinedVar(name) for _ in out_with_blocks]
+
+        raise TypeError(
+            "Unsupported return type of true_fn and false_fn in cond: false_var "
+            f"returned `{name}` by false_fn is `{outs[0]}` and true_var of true_fn is `{outs[1]}`"
+        )
+
+
 def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
     """
     This API returns ``true_fn()`` if the predicate ``pred`` is true else
@@ -1111,7 +1443,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
     ``None`` in this case.
 
     ``true_fn`` and ``false_fn`` should return same nest structure of tensors
-    or both return ``None`` if user doens't like to return anything. A nest
+    or both return ``None`` if user doesn't like to return anything. A nest
     structure of tensors in PaddlePaddle is tensor(s), or tuple of tensors, or
     list of tensors.
 
@@ -1216,56 +1548,44 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             if true_fn is not None:
                 if not callable(true_fn):
                     raise TypeError(
-                        "The true_fn in cond must be callable, but received {}".format(
-                            type(true_fn).__name__
-                        )
+                        f"The true_fn in cond must be callable, but received {type(true_fn).__name__}"
                     )
                 return true_fn()
         else:
             if false_fn is not None:
                 if not callable(false_fn):
                     raise TypeError(
-                        "The false_fn in cond must be callable, but received {}".format(
-                            type(false_fn).__name__
-                        )
+                        f"The false_fn in cond must be callable, but received {type(false_fn).__name__}"
                     )
                 return false_fn()
         return None
     true_output = None
     false_output = None
+    check_variable_and_dtype(pred, "pred", ['bool'], "paddle.static.nn.cond")
+    check_type(name, "name", (str, type(None)), "paddle.static.nn.cond")
     if in_pir_mode():
-        check_variable_and_dtype(pred, "pred", ['bool'], "base.layers.cond")
-        check_type(name, "name", (str, type(None)), "base.layers.cond")
         if_op = build_if_op(pred)
         if true_fn is not None:
             if not callable(true_fn):
                 raise TypeError(
-                    "The true_fn in cond must be callable, but received {}".format(
-                        type(true_fn).__name__
-                    )
+                    f"The true_fn in cond must be callable, but received {type(true_fn).__name__}"
                 )
             with if_op.true_block():
                 true_output = true_fn()
         if false_fn is not None:
             if not callable(false_fn):
                 raise TypeError(
-                    "The false_fn in cond must be callable, but received {}".format(
-                        type(false_fn).__name__
-                    )
+                    f"The false_fn in cond must be callable, but received {type(false_fn).__name__}"
                 )
             with if_op.false_block():
                 false_output = false_fn()
     else:
-        check_variable_and_dtype(pred, "pred", ['bool'], "base.layers.cond")
-        check_type(name, "name", (str, type(None)), "base.layers.cond")
         helper = LayerHelper('cond', **locals())
         copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)
         if true_fn is not None:
             if not callable(true_fn):
                 raise TypeError(
-                    "The true_fn in cond must be callable, but received {}".format(
-                        type(true_fn).__name__
-                    )
+                    f"The true_fn in cond must be callable, but received {type(true_fn).__name__}"
                 )
             true_cond_block = ConditionalBlock([pred], is_scalar_condition=True)
             with true_cond_block.block():
@@ -1277,9 +1597,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         if false_fn is not None:
             if not callable(false_fn):
                 raise TypeError(
-                    "The false_fn in cond must be callable, but received {}".format(
-                        type(false_fn).__name__
-                    )
+                    f"The false_fn in cond must be callable, but received {type(false_fn).__name__}"
                 )
             false_cond_block = ConditionalBlock(
                 [paddle.logical_not(pred)], is_scalar_condition=True
@@ -1307,13 +1625,13 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
 
     # Merge true and false output if they are not None
     if return_names is None:
-        is_dy2staic = False
+        is_dy2static = False
         return_names = ["no name"] * len(_to_sequence_except_dict(true_output))
     else:
         """
         dy2static will set the return_names and expand the return values to UndefinedVar.
         """
-        is_dy2staic = True
+        is_dy2static = True
 
         # TODO:  expand_undefined_var will replace None to Undefinedvar(), to fix cases like:
         #       a = None
@@ -1328,10 +1646,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         _to_sequence_except_dict(false_output)
     ):
         raise ValueError(
-            "true fn returns {} vars, but false fn returns {} vars, which is not equals".format(
-                len(_to_sequence_except_dict(true_output)),
-                len(_to_sequence_except_dict(false_output)),
-            )
+            f"true fn returns {len(_to_sequence_except_dict(true_output))} vars, but false fn returns {len(_to_sequence_except_dict(false_output))} vars, which is not equals"
         )
     for true_out, false_out, return_name in zip(
         _to_sequence_except_dict(true_output),
@@ -1342,9 +1657,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             assert_same_structure(true_out, false_out, check_types=False)
         except ValueError as e:
             raise ValueError(
-                "Incompatible return values of `{}` in true_fn and false_fn in cond: {}".format(
-                    return_name, e
-                )
+                f"Incompatible return values of `{return_name}` in true_fn and false_fn in cond: {e}"
             )
 
     def check_ret_none(seq_true, seq_false, seq_names):
@@ -1359,15 +1672,9 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                     and f_true[idx] is not None
                 ):
                     warnings.warn(
-                        "In cond : Var '{}' or part of it is set differently in ifelse branchs, "
-                        "<{}, {}> in true branch and <{}, {}> in false branch. Set var to "
-                        "'None' in ifelse block might lead to error.".format(
-                            f_name,
-                            type(f_true[idx]),
-                            f_true[idx],
-                            type(f_false[idx]),
-                            f_false[idx],
-                        )
+                        f"In cond : Var '{f_name}' or part of it is set differently in ifelse branches, "
+                        f"<{type(f_true[idx])}, {f_true[idx]}> in true branch and <{type(f_false[idx])}, {f_false[idx]}> in false branch. Set var to "
+                        "'None' in ifelse block might lead to error."
                     )
 
     check_ret_none(
@@ -1376,18 +1683,46 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         _to_sequence_except_dict(return_names),
     )
 
-    if is_dy2staic:
+    if is_dy2static and not use_pir_api():
         true_output, false_output = change_none_to_undefinedvar(
             true_output, false_output
         )
 
     if in_pir_mode():
+        flattened_true_output, flattened_false_output = flatten(
+            true_output
+        ), flatten(false_output)
+        flattened_return_names = [
+            name
+            for seq_out, name in zip(
+                _to_sequence_except_dict(true_output),
+                _to_sequence_except_dict(return_names),
+            )
+            for _ in flatten(seq_out)
+        ]
+        output_selector = OutputSelector(
+            if_op,
+            flattened_true_output,
+            flattened_false_output,
+            names=flattened_return_names,
+        )
+        (
+            variable_true_output,
+            variable_false_output,
+        ) = output_selector.get_variable_outputs()
+
         with if_op.true_block():
-            cf_yield(flatten(true_output))
+            cf_yield(variable_true_output)
         with if_op.false_block():
-            cf_yield(flatten(false_output))
+            cf_yield(variable_false_output)
+
         if_op.update_output()
-        return pack_sequence_as(true_output, flatten(if_op.results()))
+        variable_results = flatten(if_op.results())
+
+        restored_output = output_selector.restore_outputs_by_variable_results(
+            variable_results
+        )
+        return pack_sequence_as(true_output, restored_output)
 
     mask = paddle.cast(pred, dtype='int32')
     merge_func = (
@@ -1520,8 +1855,8 @@ def select_input(inputs, mask):
 
 
 def select_input_with_buildin_type(inputs, mask, name):
+    from paddle.jit.dy2static.convert_operators import to_static_variable
     from paddle.jit.dy2static.utils import UndefinedVar
-    from paddle.jit.dy2static.variable_trans_func import to_static_variable
 
     false_var, true_var = inputs
 
@@ -1530,7 +1865,7 @@ def select_input_with_buildin_type(inputs, mask, name):
             return select_input(inputs, mask)
         except Exception as e:
             raise RuntimeError(
-                f"Exceptions throwed while doing select_input on {name}:\n{e}"
+                f"Exceptions thrown while doing select_input on {name}:\n{e}"
             )
 
     if isinstance(false_var, UndefinedVar) and isinstance(
@@ -1563,8 +1898,8 @@ def select_input_with_buildin_type(inputs, mask, name):
         inputs = [to_static_variable(false_var), to_static_variable(true_var)]
         warnings.warn(
             "Return results from different branches in cond are not same type: "
-            "false_var returned by false_fn is '{}' and true_var of true_fn is "
-            "'{}'".format(type(false_var), type(true_var))
+            f"false_var returned by false_fn is '{type(false_var)}' and true_var of true_fn is "
+            f"'{type(true_var)}'"
         )
     elif (
         isinstance(false_var, UndefinedVar)
@@ -1580,9 +1915,7 @@ def select_input_with_buildin_type(inputs, mask, name):
     else:
         raise TypeError(
             "Unsupported return type of true_fn and false_fn in cond: false_var "
-            "returned by false_fn is '{}' and true_var of true_fn is '{}'".format(
-                type(false_var), type(true_var)
-            )
+            f"returned by false_fn is '{type(false_var)}' and true_var of true_fn is '{type(true_var)}'"
         )
     return start_select_input
 
@@ -1611,7 +1944,9 @@ def expand_undefined_var(nest1, nest2, names):
     nest2: Var2, ([1,2,3,4], UndefinedVar)
     In this case, we should not expand recursively.
     """
-    from paddle.jit.dy2static.return_transformer import RETURN_VALUE_PREFIX
+    from paddle.jit.dy2static.transformers.return_transformer import (
+        RETURN_VALUE_PREFIX,
+    )
     from paddle.jit.dy2static.utils import UndefinedVar
 
     def pack_undefined_var_as(seq):
@@ -1626,19 +1961,15 @@ def expand_undefined_var(nest1, nest2, names):
             if n1 is None and n2 is not None:
                 if order == 0:
                     warnings.warn(
-                        "In cond : Var '{}' or part of it is set differently in ifelse branchs, "
-                        "<{}, {}> in true branch and <{}, {}> in false branch. Set var to "
-                        "'None' in ifelse block might lead to error.".format(
-                            name, type(n1), n1, type(n2), n2
-                        )
+                        f"In cond : Var '{name}' or part of it is set differently in ifelse branches, "
+                        f"<{type(n1)}, {n1}> in true branch and <{type(n2)}, {n2}> in false branch. Set var to "
+                        "'None' in ifelse block might lead to error."
                     )
                 else:
                     warnings.warn(
-                        "In cond : Var '{}' or part of it is set differently in ifelse branchs, "
-                        "<{}, {}> in true branch and <{}, {}> in false branch. Set var to "
-                        "'None' in ifelse block might lead to error.".format(
-                            name, type(n2), n2, type(n1), n1
-                        )
+                        f"In cond : Var '{name}' or part of it is set differently in ifelse branches, "
+                        f"<{type(n2)}, {n2}> in true branch and <{type(n1)}, {n1}> in false branch. Set var to "
+                        "'None' in ifelse block might lead to error."
                     )
             return pack_undefined_var_as(n2)
         return n1
@@ -1712,7 +2043,7 @@ def Print(
         summarize (int, optional): Number of elements in the tensor to be print. If
                 it's value is -1, then all elements in the tensor will be print.
         print_tensor_name (bool, optional): Print the tensor name. Default: True.
-        print_tensor_type (bool, optional): Print the tensor type. Defaultt: True.
+        print_tensor_type (bool, optional): Print the tensor type. Default: True.
         print_tensor_shape (bool, optional): Print the tensor shape. Default: True.
         print_tensor_layout (bool, optional): Print the tensor layout. Default: True.
         print_tensor_lod (bool, optional): Print the tensor lod. Default: True.
@@ -1857,5 +2188,4 @@ class Switch:
         self.inside_scope = False
         if exc_type is not None:
             return False  # re-raise exception
-
         return True

@@ -75,16 +75,19 @@ SpmdInfo TransposeInferSpmd(const DistMetaTensor& x,
   std::string out_axes;
   BuildEinsumNotation(x_ndim, perm, &x_axes, &out_axes);
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: Merge input shardings
   std::pair<std::string, std::vector<int64_t>> x_sharding_info(
       {x_axes, x_dims_mapping});
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors({x_sharding_info});
 
-  // Step2.2: Infer output dimsmapping from merged input dimsmapping
+  // Step2.2: Infer output dims mapping from merged input dims mapping
   std::vector<int64_t> out_dims_mapping =
       GetDimsMappingForAxes(out_axes, axis_to_dim_map);
+
+  auto x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
 
   // initialize output dist_attr's process_mesh, batch_dim and dynamic dims with
   // input dist_attr.
@@ -99,7 +102,7 @@ SpmdInfo TransposeInferSpmd(const DistMetaTensor& x,
   VLOG(4) << "Perm: [" << str_join(perm) << "]";
   VLOG(4) << "Output dims_mapping: [" + str_join(out_dims_mapping) + "]\n\n";
 
-  return {{x_dist_attr_src}, {out_dist_attr}};
+  return {{x_dist_attr_dst}, {out_dist_attr}};
 }
 
 SpmdInfo TransposeInferSpmdReverse(const DistMetaTensor& x,
@@ -108,8 +111,8 @@ SpmdInfo TransposeInferSpmdReverse(const DistMetaTensor& x,
   // Step0: Verify input args based on transpose logic
   const std::vector<int64_t> x_shape = common::vectorize(x.dims());
   const std::vector<int64_t> out_shape = common::vectorize(out.dims());
-  int x_ndim = x_shape.size();
-  int out_ndim = out_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
+  int out_ndim = static_cast<int>(out_shape.size());
   TensorDistAttr out_dist_attr_src = out.dist_attr();
   std::vector<int64_t> out_dims_mapping = out_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
@@ -140,7 +143,7 @@ SpmdInfo TransposeInferSpmdReverse(const DistMetaTensor& x,
   std::string out_axes;
   BuildEinsumNotation(x_ndim, perm, &x_axes, &out_axes);
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: merge input shardings
   std::pair<std::string, std::vector<int64_t>> out_sharding_info(
       {out_axes, out_dims_mapping});
@@ -156,6 +159,9 @@ SpmdInfo TransposeInferSpmdReverse(const DistMetaTensor& x,
   TensorDistAttr x_dist_attr = CopyTensorDistAttrForOutput(x.dist_attr());
   x_dist_attr.set_dims_mapping(x_dims_mapping);
 
+  auto out_dist_attr_dst = CopyTensorDistAttrForOutput(out_dist_attr_src);
+  out_dist_attr_dst.set_dims_mapping(out_dims_mapping);
+
   // Step3  Handle partial (TODO)
 
   VLOG(4) << "TransposeInferSpmdReverse:";
@@ -165,7 +171,7 @@ SpmdInfo TransposeInferSpmdReverse(const DistMetaTensor& x,
   VLOG(4) << "Input shape: [" << str_join(x_shape) << "] "
           << "dims_mapping: [" << str_join(x_dims_mapping) << "]\n\n";
 
-  return {{x_dist_attr}, {out_dist_attr_src}};
+  return {{x_dist_attr}, {out_dist_attr_dst}};
 }
 
 SpmdInfo TransposeGradInferSpmd(const DistMetaTensor& out_grad,
@@ -196,9 +202,12 @@ SpmdInfo TransposeGradInferSpmd(const DistMetaTensor& out_grad,
     int origin_index = perm[i] >= 0 ? perm[i] : out_grad_ndim + perm[i];
     x_dims_mapping[origin_index] = out_grad_dims_mapping[i];
   }
-  TensorDistAttr x_grad_dist_attr = out_grad.dist_attr();
+
+  auto out_grad_dist_attr = CopyTensorDistAttrForOutput(out_grad.dist_attr());
+  out_grad_dist_attr.set_dims_mapping(out_grad_dims_mapping);
+  auto x_grad_dist_attr = CopyTensorDistAttrForOutput(out_grad.dist_attr());
   x_grad_dist_attr.set_dims_mapping(x_dims_mapping);
-  return {{out_grad.dist_attr()}, {x_grad_dist_attr}};
+  return {{out_grad_dist_attr}, {x_grad_dist_attr}};
 }
 
 }  // namespace distributed

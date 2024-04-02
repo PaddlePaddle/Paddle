@@ -351,7 +351,7 @@ class TestDygraphInplaceWithContinuous(TestDygraphInplace):
 
     def test_continuous_inplace_backward(self):
         # The api that only relies on input to calculate the gradient will copy input before
-        # the inpalce calculation, so here supports continuous inpalce backward calculation.
+        # the inplace calculation, so here supports continuous inplace backward calculation.
         grad_var_a, grad_var_a_inplace = 0, 1
         with paddle.base.dygraph.guard():
             var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
@@ -378,6 +378,30 @@ class TestDygraphInplaceWithContinuous(TestDygraphInplace):
             grad_var_a = var_a.grad.numpy()
 
         self.assertTrue(self.np_compare(grad_var_a_inplace, grad_var_a))
+
+
+class TestDygraphInplaceCopysign(TestDygraphInplace):
+    def init_data(self):
+        self.input_var_numpy = np.random.randn(10, 20)
+        self.dtype = "float32"
+        self.y = -3.0
+
+    def inplace_api_processing(self, var):
+        return paddle.copysign_(var, self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.copysign(var, self.y)
+
+    def test_leaf_inplace_var_error(self):
+        with paddle.base.dygraph.guard():
+            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            var.stop_gradient = False
+            self.y = paddle.rand([2, 10, 20])
+
+            def leaf_inplace_error():
+                self.inplace_api_processing(var)
+
+            self.assertRaises(ValueError, leaf_inplace_error)
 
 
 class TestDygraphInplaceUnsqueeze(TestDygraphInplace):
@@ -869,12 +893,84 @@ class TestDygraphInplaceMutilgammaln(TestDygraphInplaceWithContinuous):
         pass
 
 
+class TestDygraphInplaceGammaln(TestDygraphInplaceWithContinuous):
+    def inplace_api_processing(self, var):
+        return paddle.gammaln_(var)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.gammaln(var)
+
+
 class TestDygraphInplaceNeg(TestDygraphInplaceWithContinuous):
     def inplace_api_processing(self, var):
         return paddle.neg_(var)
 
     def non_inplace_api_processing(self, var):
         return paddle.neg(var)
+
+
+class TestDygraphInplaceGammaincc(TestDygraphInplace):
+    def init_data(self):
+        self.shape = (3, 40)
+        self.dtype = "float32"
+        self.input_var_numpy = (
+            np.random.random(self.shape).astype(self.dtype) + 1
+        )
+        self.y = paddle.rand(shape=self.shape, dtype=self.dtype) + 1
+
+    def inplace_api_processing(self, var):
+        return paddle.gammaincc_(var, y=self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.gammaincc(var, y=self.y)
+
+    def test_backward_error(self):
+        pass
+
+    def test_backward_success_1(self):
+        pass
+
+    def test_backward_success_2(self):
+        pass
+
+
+class TestDygraphInplaceGammainc(TestDygraphInplace):
+    def init_data(self):
+        self.shape = (3, 40)
+        self.dtype = "float32"
+        self.input_var_numpy = (
+            np.random.random(self.shape).astype(self.dtype) + 1
+        )
+        self.y = paddle.rand(shape=self.shape, dtype=self.dtype) + 1
+
+    def inplace_api_processing(self, var):
+        return paddle.gammainc_(var, y=self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.gammainc(var, y=self.y)
+
+    def test_forward_version(self):
+        with paddle.base.dygraph.guard():
+            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            self.assertEqual(var.inplace_version, 0)
+
+            inplace_var = self.inplace_api_processing(var)
+            self.assertEqual(var.inplace_version, 3)
+
+            inplace_var[0] = 2
+            self.assertEqual(var.inplace_version, 4)
+
+            inplace_var = self.inplace_api_processing(inplace_var)
+            self.assertEqual(var.inplace_version, 7)
+
+    def test_backward_error(self):
+        pass
+
+    def test_backward_success_1(self):
+        pass
+
+    def test_backward_success_2(self):
+        pass
 
 
 class TestDygraphInplaceLgamma(TestDygraphInplaceWithContinuous):
@@ -1633,6 +1729,108 @@ class TestDygrapInplaceTranspose(TestDygraphInplaceWithContinuous):
             self.assertEqual(var.inplace_version, 3)
 
 
+class TestDygraphInplaceBitwiseLeftShift_arithmetic(TestDygraphInplaceLogicAnd):
+    def init_data(self):
+        self.input_var_numpy = np.random.randint(
+            low=-(2**31), high=2**31, size=[3, 4, 5], dtype="int32"
+        )
+        self.input_var_numpy = paddle.to_tensor(self.input_var_numpy)
+        self.dtype = "int32"
+        self.y = np.random.randint(
+            low=-(2**31), high=2**31, size=[3, 4, 5], dtype="int32"
+        )
+        self.y = paddle.to_tensor(self.y)
+        self.is_arithmetic = True
+
+    def inplace_api_processing(self, var):
+        return paddle.bitwise_left_shift_(var, self.y, self.is_arithmetic)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.bitwise_left_shift(var, self.y, self.is_arithmetic)
+
+    def test_broadcast_error(self):
+        broadcast_input = paddle.randn([4, 5])
+        with self.assertRaises(ValueError):
+            self.inplace_api_processing(broadcast_input)
+
+
+class TestDygraphInplaceBitwiseRightShift_arithmetic(
+    TestDygraphInplaceLogicAnd
+):
+    def init_data(self):
+        self.input_var_numpy = np.random.randint(
+            low=-(2**31), high=2**31, size=[3, 4, 5], dtype="int32"
+        )
+        self.input_var_numpy = paddle.to_tensor(self.input_var_numpy)
+        self.dtype = "int32"
+        self.y = np.random.randint(
+            low=-(2**31), high=2**31, size=[3, 4, 5], dtype="int32"
+        )
+        self.y = paddle.to_tensor(self.y)
+        self.is_arithmetic = True
+
+    def inplace_api_processing(self, var):
+        return paddle.bitwise_right_shift_(var, self.y, self.is_arithmetic)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.bitwise_right_shift_(var, self.y, self.is_arithmetic)
+
+    def test_broadcast_error(self):
+        broadcast_input = paddle.randn([4, 5])
+        with self.assertRaises(ValueError):
+            self.inplace_api_processing(broadcast_input)
+
+
+class TestDygraphInplaceBitwiseLeftShift_logic(TestDygraphInplaceLogicAnd):
+    def init_data(self):
+        self.input_var_numpy = np.random.randint(
+            low=-(2**31), high=2**31, size=[3, 4, 5], dtype="int32"
+        )
+        self.input_var_numpy = paddle.to_tensor(self.input_var_numpy)
+        self.dtype = "int32"
+        self.y = np.random.randint(
+            low=-(2**31), high=2**31, size=[3, 4, 5], dtype="int32"
+        )
+        self.y = paddle.to_tensor(self.y)
+        self.is_arithmetic = False
+
+    def inplace_api_processing(self, var):
+        return paddle.bitwise_left_shift_(var, self.y, self.is_arithmetic)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.bitwise_left_shift(var, self.y, self.is_arithmetic)
+
+    def test_broadcast_error(self):
+        broadcast_input = paddle.randn([4, 5])
+        with self.assertRaises(ValueError):
+            self.inplace_api_processing(broadcast_input)
+
+
+class TestDygraphInplaceBitwiseRightShift_logic(TestDygraphInplaceLogicAnd):
+    def init_data(self):
+        self.input_var_numpy = np.random.randint(
+            low=-(2**31), high=2**31, size=[3, 4, 5], dtype="int32"
+        )
+        self.input_var_numpy = paddle.to_tensor(self.input_var_numpy)
+        self.dtype = "int32"
+        self.y = np.random.randint(
+            low=-(2**31), high=2**31, size=[3, 4, 5], dtype="int32"
+        )
+        self.y = paddle.to_tensor(self.y)
+        self.is_arithmetic = False
+
+    def inplace_api_processing(self, var):
+        return paddle.bitwise_right_shift_(var, self.y, self.is_arithmetic)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.bitwise_right_shift_(var, self.y, self.is_arithmetic)
+
+    def test_broadcast_error(self):
+        broadcast_input = paddle.randn([4, 5])
+        with self.assertRaises(ValueError):
+            self.inplace_api_processing(broadcast_input)
+
+
 class TestDygraphInplaceIndexFill(TestDygraphInplace):
     def init_data(self):
         self.input_var_numpy = np.random.random((20, 40))
@@ -1678,6 +1876,37 @@ class TestDygraphInplaceIndexFill(TestDygraphInplace):
                 f"received tensor_version:{3} != wrapper_version_snapshot:{0}",
             ):
                 loss.backward()
+
+
+class TestDygraphTensorApplyInplace(unittest.TestCase):
+    def setUp(self):
+        self.init_data()
+        self.set_np_compare_func()
+
+    def init_data(self):
+        self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
+        self.dtype = "float32"
+
+    def set_np_compare_func(self):
+        self.np_compare = np.array_equal
+
+    def non_inplace_api_processing(self, var, f):
+        return var.apply(f)
+
+    def inplace_api_processing(self, var, f):
+        return var.apply_(f)
+
+    def test_inplace_api(self):
+        var = paddle.to_tensor(self.input_var_numpy, stop_gradient=True).astype(
+            self.dtype
+        )
+        f = lambda x: 3 * x + 2
+        non_inplace_var = self.non_inplace_api_processing(var, f)
+        inplace_var = self.inplace_api_processing(var, f)
+        self.assertTrue(id(var) == id(inplace_var))
+        np.testing.assert_array_equal(
+            non_inplace_var.numpy(), inplace_var.numpy()
+        )
 
 
 if __name__ == '__main__':

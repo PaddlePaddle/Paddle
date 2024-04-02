@@ -173,6 +173,7 @@ class TestTemporalShiftAPI(unittest.TestCase):
                     fetch_list=[y],
                 )
 
+    @test_with_pir_api
     def test_error(self):
         def attr_data_format():
             input = paddle.randn([6, 4, 2, 2])
@@ -191,7 +192,7 @@ class TestTemporalShiftFP16OP(TestTemporalShift):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestTemporalShiftBF16(OpTest):
     def initTestCase(self):

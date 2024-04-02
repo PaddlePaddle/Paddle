@@ -1,12 +1,10 @@
 # This file is use to check all support level of AVX on your machine
-# so that PaddlePaddle can unleash the vectorization power of muticore.
+# so that PaddlePaddle can unleash the vectorization power of multicore.
 
 include(CheckCXXSourceRuns)
 include(CheckCXXSourceCompiles)
 
-if(CMAKE_COMPILER_IS_GNUCC
-   OR CMAKE_COMPILER_IS_GNUCXX
-   OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   set(MMX_FLAG "-mmmx")
   set(SSE2_FLAG "-msse2")
   set(SSE3_FLAG "-msse3")

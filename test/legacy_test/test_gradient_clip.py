@@ -430,6 +430,156 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
         return ops
 
 
+class TestPirGradientClipByNorm(TestGradientClip):
+    def init(self):
+        self.clip_norm = 0.2
+
+    def check_clip_result(self, out, out_clip):
+        for u, v in zip(out, out_clip):
+            norm = np.sqrt(np.sum(np.power(u, 2)))
+            scale = self.clip_norm / np.maximum(self.clip_norm, norm)
+            u = u * scale
+            np.testing.assert_allclose(
+                u,
+                v,
+                rtol=1e-05,
+                atol=1e-08,
+                err_msg='gradient clip by norm has wrong results!',
+            )
+
+    def _run(self, place, dtype='float32'):
+        paddle.seed(2023)
+        prog = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(
+            main_program=prog, startup_program=startup_program
+        ):
+            image = paddle.static.data(
+                name="a", shape=[-1, 784], dtype='float32'
+            )
+            label = paddle.static.data(name="b", shape=[-1, 1], dtype='int64')
+            hidden_linear = paddle.nn.Linear(784, 32)
+            if dtype != 'float32':
+                image_cast = paddle.cast(image, dtype)
+                hidden = paddle.nn.functional.relu(hidden_linear(image_cast))
+            else:
+                hidden = paddle.nn.functional.relu(hidden_linear(image))
+
+            predict_linear = paddle.nn.Linear(32, 10)
+            predict = paddle.nn.functional.softmax(predict_linear(hidden))
+
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=label, reduction='none', use_softmax=False
+            )
+            avg_cost = paddle.mean(cost)
+
+            grad_list = paddle.autograd.ir_backward.grad(
+                avg_cost, prog.global_block().all_parameters()
+            )
+
+            train_reader = paddle.batch(
+                paddle.dataset.mnist.train(), batch_size=3
+            )
+            exe = base.Executor(place)
+            exe.run(startup_program)
+            data = next(train_reader())
+            a = np.array([i[0] for i in data]).astype('float32')
+            b = np.array([i[1] for i in data]).reshape(3, 1).astype('int64')
+            out = exe.run(prog, feed={'a': a, 'b': b}, fetch_list=grad_list)
+            return out
+
+    def _run_clip(self, place, dtype='float32'):
+        paddle.seed(2023)
+        prog = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(
+            main_program=prog, startup_program=startup_program
+        ):
+            image = paddle.static.data(
+                name="a", shape=[-1, 784], dtype='float32'
+            )
+            label = paddle.static.data(name="b", shape=[-1, 1], dtype='int64')
+            hidden_linear = paddle.nn.Linear(784, 32)
+            if dtype != 'float32':
+                image_cast = paddle.cast(image, dtype)
+                hidden = paddle.nn.functional.relu(hidden_linear(image_cast))
+            else:
+                hidden = paddle.nn.functional.relu(hidden_linear(image))
+
+            predict_linear = paddle.nn.Linear(32, 10)
+            predict = paddle.nn.functional.softmax(predict_linear(hidden))
+
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=label, reduction='none', use_softmax=False
+            )
+            avg_cost = paddle.mean(cost)
+
+            params = prog.global_block().all_parameters()
+            grad_list = paddle.autograd.ir_backward.grad(avg_cost, params)
+
+            p_g_clip = self.clip_gradient(list(zip(params, grad_list)))
+
+            grad_clip_list = [elem[1] for elem in p_g_clip]
+            train_reader = paddle.batch(
+                paddle.dataset.mnist.train(), batch_size=3
+            )
+            exe = base.Executor(place)
+            exe.run(startup_program)
+            data = next(train_reader())
+            a = np.array([i[0] for i in data]).astype('float32')
+            b = np.array([i[1] for i in data]).reshape(3, 1).astype('int64')
+            out_clip = exe.run(
+                prog, feed={'a': a, 'b': b}, fetch_list=grad_clip_list
+            )
+            return out_clip
+
+    def check_gradient_clip(self, place, dtype='float32'):
+        out = self._run(place, dtype)
+        out_clip = self._run_clip(place, dtype)
+        self.check_clip_result(out, out_clip)
+
+    def test_new_gradient_clip(self):
+        def func(params_grads):
+            clip = paddle.nn.ClipGradByNorm(clip_norm=self.clip_norm)
+            return clip(params_grads)
+
+        self.clip_gradient = func
+        with paddle.pir_utils.IrGuard():
+            self.check_gradient_clip(base.CPUPlace())
+
+    def test_none_grad(self):
+        clip = paddle.nn.ClipGradByNorm(self.clip_norm)
+        with paddle.pir_utils.IrGuard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                x = paddle.pir.core.create_parameter(
+                    dtype="float32",
+                    shape=[2, 3],
+                    name="x",
+                    initializer=paddle.nn.initializer.Constant(value=0.5),
+                    need_clip=False,
+                )
+                y = paddle.pir.core.create_parameter(
+                    dtype="float32",
+                    shape=[2, 3],
+                    name="y",
+                    initializer=paddle.nn.initializer.Constant(value=0.5),
+                    need_clip=False,
+                )
+            # (x, None) should not be returned
+            params_grads = [(x, None), (x, y)]
+            params_grads = clip(params_grads)
+            self.assertTrue(
+                len(clip(params_grads)) == 1,
+                "ClipGradByNorm: when grad is None, it shouldn't be returned by gradient clip!",
+            )
+            self.assertTrue(
+                params_grads[0][1].name == 'y',
+                "ClipGradByNorm: grad should not be clipped when filtered out!",
+            )
+
+
 class TestGradientClipByNorm(TestGradientClip):
     def init(self):
         self.clip_norm = 0.2
@@ -550,7 +700,7 @@ class TestDygraphGradientClip(unittest.TestCase):
         with base.dygraph.guard():
             linear = paddle.nn.Linear(5, 5)
             inputs = paddle.uniform([16, 5], min=-10, max=10).astype('float32')
-            out = linear(base.dygraph.to_variable(inputs))
+            out = linear(paddle.to_tensor(inputs))
             loss = paddle.mean(out)
             loss.backward()
             sgd_optimizer = paddle.optimizer.SGD(
@@ -572,12 +722,8 @@ class TestDygraphGradientClipByGlobalNorm(TestDygraphGradientClip):
 
     def check_clip_result(self, loss, optimizer):
         # if grad is None
-        x = base.dygraph.to_variable(
-            np.array([2, 3]).astype("float32"), name="x"
-        )
-        y = base.dygraph.to_variable(
-            np.array([3, 4]).astype("float32"), name="y"
-        )
+        x = paddle.to_tensor(np.array([2, 3]).astype("float32"))
+        y = paddle.to_tensor(np.array([3, 4]).astype("float32"))
         assert len(self.clip1([(x, x), (x, y), (x, None)])) == 2
         # get params and grads from network
         opt, params_grads = optimizer.minimize(loss)
@@ -612,10 +758,10 @@ class TestDygraphGradientClipByNorm(TestDygraphGradientClip):
 
     def check_clip_result(self, loss, optimizer):
         # if grad is None
-        x = base.dygraph.to_variable(np.array([2, 3]).astype("float32"))
+        x = paddle.to_tensor(np.array([2, 3]).astype("float32"))
         assert len(self.clip([(x, None)])) == 0
         # get params and grads from network
-        self.clip([(base.dygraph.to_variable(np.array([2, 3])), None)])
+        self.clip([(paddle.to_tensor(np.array([2, 3])), None)])
         opt, params_grads = optimizer.minimize(loss)
         _, grads = zip(*params_grads)
         params_grads = self.clip(params_grads)
@@ -641,7 +787,7 @@ class TestDygraphGradientClipByValue(TestDygraphGradientClip):
 
     def check_clip_result(self, loss, optimizer):
         # if grad is None
-        x = base.dygraph.to_variable(np.array([2, 3]).astype("float32"))
+        x = paddle.to_tensor(np.array([2, 3]).astype("float32"))
         assert len(self.clip([(x, None)])) == 0
         # get params and grads from network
         opt, params_grads = optimizer.minimize(loss)
@@ -689,7 +835,7 @@ class TestDygraphGradientClipFP16(unittest.TestCase):
                     'float32'
                 )
                 with paddle.amp.auto_cast(level='O2'):
-                    out = model(base.dygraph.to_variable(inputs))
+                    out = model(paddle.to_tensor(inputs))
                     loss = paddle.mean(out)
                 scaled = scaler.scale(loss)
                 scaled.backward()
@@ -734,7 +880,7 @@ class TestDygraphGradientClipFP64(unittest.TestCase):
         with base.dygraph.guard():
             inputs = paddle.uniform([16, 5], min=-10, max=10).astype('float32')
             linear = paddle.nn.Linear(5, 5)
-            out = linear(base.dygraph.to_variable(inputs))
+            out = linear(paddle.to_tensor(inputs))
             loss = paddle.mean(out)
             loss.backward()
             # before clip

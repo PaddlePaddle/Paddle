@@ -135,7 +135,7 @@ void EigenPaddingCompute(
         // first dimension is the padding dimension
         in_tore_shape[0] = in_dims[pad_dim];
         out_tore_shape[0] = out_dims[pad_dim];
-        // sencond dimension is the accumulate of succeeding dimension
+        // second dimension is the accumulate of succeeding dimension
         for (size_t i = pad_dim + 1; i < D; i++) {
           in_tore_shape[1] *= in_dims[i];
           out_tore_shape[1] *= out_dims[i];

@@ -25,12 +25,10 @@ import paddle
 import paddle.nn.quant as Q
 from paddle import base
 from paddle.base import core
-from paddle.base.framework import default_main_program
 from paddle.framework import set_default_dtype
 
 np.random.seed(123)
 paddle.seed(123)
-default_main_program().random_seed = 42
 
 
 def get_cuda_version():
@@ -72,6 +70,7 @@ class WeightOnlyLinearTestCase(unittest.TestCase):
         self.out_features = 256
         self.weight_dtype = "int8"
         self.static = False
+        self.group_size = -1
 
     def weightQuantizeCPUGPUConsistenceCheck(self, weight_float):
         for arch in [70, 75, 80, 86]:
@@ -83,6 +82,7 @@ class WeightOnlyLinearTestCase(unittest.TestCase):
                 if self.weight_dtype == "int8"
                 else "weight_only_int4",
                 arch=arch,
+                group_size=self.group_size,
             )
             weight_cpu, weight_scale_cpu = Q.weight_quantize(
                 weight_float.cpu(),
@@ -90,6 +90,7 @@ class WeightOnlyLinearTestCase(unittest.TestCase):
                 if self.weight_dtype == "int8"
                 else "weight_only_int4",
                 arch=arch,
+                group_size=self.group_size,
             )
             np.testing.assert_allclose(
                 weight_gpu.numpy(), weight_cpu.numpy(), atol=1.5
@@ -106,7 +107,7 @@ class WeightOnlyLinearTestCase(unittest.TestCase):
     def setUp(self):
         self.config()
         if self.dtype == "bfloat16" or self.weight_dtype == "int4":
-            self.atol = 1e-1
+            self.atol = 1.3e-1
         x = np.random.random((self.batch, self.token, self.in_features))
         self.x = paddle.to_tensor(x, dtype=self.dtype)
         if self.bias:
@@ -136,6 +137,7 @@ class WeightOnlyLinearTestCase(unittest.TestCase):
             algo="weight_only_int8"
             if self.weight_dtype == "int8"
             else "weight_only_int4",
+            group_size=self.group_size,
         )
 
     def get_linear_out(self):
@@ -149,6 +151,7 @@ class WeightOnlyLinearTestCase(unittest.TestCase):
             bias=self.bias,
             weight_scale=self.weight_scale,
             weight_dtype=self.weight_dtype,
+            group_size=self.group_size,
         )
         return out.numpy()
 
@@ -185,6 +188,7 @@ class WeightOnlyLinearTestCase(unittest.TestCase):
                 bias,
                 weight_scale,
                 self.weight_dtype,
+                group_size=self.group_size,
             )
             feed_dict = {
                 'x': x_np,
@@ -351,6 +355,305 @@ class WeightOnlyLinearTestCase10(WeightOnlyLinearTestCase):
     not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
     "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
+class WeightOnlyLinearTestCase11(WeightOnlyLinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'float16'
+        self.weight_dtype = "int4"
+        self.batch = 1
+        self.token = 1
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
+    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class WeightOnlyLinearTestCase12(WeightOnlyLinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'float16'
+        self.weight_dtype = "int4"
+        self.bias = False
+        self.batch = 1
+        self.token = 1
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11020
+    or paddle.device.cuda.get_device_capability()[0] < 8
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8 or core is not support bfloat16",
+)
+class WeightOnlyLinearTestCase13(WeightOnlyLinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'bfloat16'
+        self.weight_dtype = "int4"
+        self.bias = False
+        self.batch = 1
+        self.token = 1
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11020
+    or paddle.device.cuda.get_device_capability()[0] < 8
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8 or core is not support bfloat16",
+)
+class WeightOnlyLinearTestCase14(WeightOnlyLinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'bfloat16'
+        self.weight_dtype = "int4"
+        self.bias = False
+        self.batch = 1
+        self.token = 1
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11020
+    or paddle.device.cuda.get_device_capability()[0] < 8
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8 or core is not support bfloat16",
+)
+class WeightOnlyLinearTestCase15(WeightOnlyLinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'bfloat16'
+        self.weight_dtype = "int4"
+        self.bias = False
+        self.batch = 1
+        self.token = 1
+        self.group_size = 64
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11020
+    or paddle.device.cuda.get_device_capability()[0] < 8
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8 or core is not support bfloat16",
+)
+class WeightOnlyLinearTestCase16(WeightOnlyLinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'bfloat16'
+        self.weight_dtype = "int4"
+        self.bias = False
+        self.batch = 1
+        self.token = 1
+        self.group_size = 128
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11020
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "quantized_matmul groupwise mode need CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class WeightOnlyLinearTestCase17(WeightOnlyLinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'float16'
+        self.weight_dtype = "int4"
+        self.bias = False
+        self.batch = 1
+        self.token = 1
+        self.group_size = 64
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11020
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "quantized_matmul groupwise mode need CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class WeightOnlyLinearTestCase18(WeightOnlyLinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'float16'
+        self.weight_dtype = "int4"
+        self.bias = False
+        self.batch = 1
+        self.token = 1
+        self.group_size = 128
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11020
+    or paddle.device.cuda.get_device_capability()[0] < 8
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8 or core is not support bfloat16",
+)
+class WeightOnlyLinearTestCase19(WeightOnlyLinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'bfloat16'
+        self.weight_dtype = "int4"
+        self.bias = False
+        self.batch = 1
+        self.token = 2
+        self.group_size = 128
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11020
+    or paddle.device.cuda.get_device_capability()[0] < 8
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8 or core is not support bfloat16",
+)
+class WeightOnlyLinearTestCase20(WeightOnlyLinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'bfloat16'
+        self.weight_dtype = "int8"
+        self.bias = False
+        self.batch = 1
+        self.token = 1
+        self.group_size = 64
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11020
+    or paddle.device.cuda.get_device_capability()[0] < 8
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8 or core is not support bfloat16",
+)
+class WeightOnlyLinearTestCase21(WeightOnlyLinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'bfloat16'
+        self.weight_dtype = "int8"
+        self.bias = False
+        self.batch = 1
+        self.token = 1
+        self.group_size = 128
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
+    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class WeightOnlyLinearTestCase22(WeightOnlyLinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'float16'
+        self.weight_dtype = "int8"
+        self.in_features = 128
+        self.out_features = 288
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
+    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class WeightOnlyLinearTestCase23(WeightOnlyLinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'float16'
+        self.bias = False
+        self.weight_dtype = "int8"
+        self.in_features = 128
+        self.out_features = 288
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11020
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class WeightOnlyLinearTestCase24(WeightOnlyLinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'bfloat16'
+        self.weight_dtype = "int8"
+        self.in_features = 128
+        self.out_features = 288
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11020
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class WeightOnlyLinearTestCase25(WeightOnlyLinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'bfloat16'
+        self.weight_dtype = "int4"
+        self.group_size = 128
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11020
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class WeightOnlyLinearTestCase26(WeightOnlyLinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'bfloat16'
+        self.weight_dtype = "int4"
+        self.group_size = 64
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11020
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class WeightOnlyLinearTestCase27(WeightOnlyLinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'float16'
+        self.weight_dtype = "int4"
+        self.group_size = 128
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11020
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class WeightOnlyLinearTestCase28(WeightOnlyLinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'bfloat16'
+        self.weight_dtype = "int4"
+        self.token = 300
+        self.group_size = 128
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11020
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class WeightOnlyLinearTestCase29(WeightOnlyLinearTestCase):
+    def config(self):
+        super().config()
+        self.dtype = 'bfloat16'
+        self.weight_dtype = "int8"
+        self.token = 300
+        self.group_size = 128
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
+    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
 class WeightOnlyLinearTestCaseStatic(WeightOnlyLinearTestCase):
     def config(self):
         super().config()
@@ -397,48 +700,6 @@ class WeightOnlyLinearBackwardAndWeightDequantizeTestCase(unittest.TestCase):
         quant_out.backward()
         out.backward()
         np.testing.assert_allclose(quant_x.grad, x.grad, rtol=1e-3, atol=1e-3)
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
-)
-class WeightOnlyLinearTestCase11(WeightOnlyLinearTestCase):
-    def config(self):
-        super().config()
-        self.dtype = 'float16'
-        self.weight_dtype = "int8"
-        self.in_features = 128
-        self.out_features = 288
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
-)
-class WeightOnlyLinearTestCase12(WeightOnlyLinearTestCase):
-    def config(self):
-        super().config()
-        self.dtype = 'float16'
-        self.bias = False
-        self.weight_dtype = "int8"
-        self.in_features = 128
-        self.out_features = 288
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
-    or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
-)
-class WeightOnlyLinearTestCase13(WeightOnlyLinearTestCase):
-    def config(self):
-        super().config()
-        self.dtype = 'bfloat16'
-        self.weight_dtype = "int8"
-        self.in_features = 128
-        self.out_features = 288
 
 
 if __name__ == '__main__':

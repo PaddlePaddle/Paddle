@@ -232,10 +232,13 @@ void QkQkvAttentionXPUFusePass::ApplyQkQkvAttentionXPUFuse(
         "head_num", static_cast<int>(transpose2_1_out->Var()->GetShape()[2]));
     fused_op_desc.SetAttr(
         "head_dim", static_cast<int>(transpose2_1_out->Var()->GetShape()[4]));
+    // In this pattern, there is only one possible situation.
+    fused_op_desc.SetAttr("qkv_fc_fusion", true);
+
     // TODO(tianrui): support more out_dtype
     fused_op_desc.SetAttr("out_dtype", input->Var()->GetDataType());
 
-    // set input of fuse_op
+    // set output of fuse_op
     VarDesc fused_op_out_max_desc("qkv_max");
     Node* fused_op_out_max = graph->CreateVarNode(&fused_op_out_max_desc);
     fused_op_desc.SetOutput("qkv_max", {"qkv_max"});

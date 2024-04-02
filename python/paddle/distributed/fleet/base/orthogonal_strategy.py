@@ -23,10 +23,10 @@ from paddle.distributed.fleet.base.strategy_group import StrategyGroupBase
 class OrthogonalStrategy:
     """
     A hybrid of multiple distributed strategies. Strategies need to be orthogonal, means the ranks are organized like
-    a square if there are two strategies, a cube if there aree three strategies, etc.
+    a square if there are two strategies, a cube if there are three strategies, etc.
 
     Args:
-        list_of_strategy(list): Stategy in the list should be represented as tuple, format as (strategy_name, degree, strategy_class).
+        list_of_strategy(list): Strategy in the list should be represented as tuple, format as (strategy_name, degree, strategy_class).
         fused_strategy_dict(dict, optional): Exist strategies can be fused to new strategy. Use the name of new strategy as key, a list of
             strategy names you want to fuse as value.
 
@@ -143,9 +143,7 @@ class OrthogonalStrategy:
 
         assert num_of_ranks == len(
             self._strategy_rank_list
-        ), "There are total {} ranks, but need {} ranks in this strategy.".format(
-            len(self._strategy_rank_list), num_of_ranks
-        )
+        ), f"There are total {len(self._strategy_rank_list)} ranks, but need {num_of_ranks} ranks in this strategy."
 
         for fused_strategy in self._fused_strategy_dict.values():
             for strategy in fused_strategy:

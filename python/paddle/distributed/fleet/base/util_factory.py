@@ -70,7 +70,7 @@ class UtilBase:
         Args:
             input (list|tuple|numpy.array): The input variable to do all_reduce between specified collection.
             mode (str): "sum" or "min" or "max".
-            comm_world (str, optional): Collection used to execute all_reduce operation. Supported collections incude `worker` , `server` and `all` . The default is `worker` .
+            comm_world (str, optional): Collection used to execute all_reduce operation. Supported collections include `worker` , `server` and `all` . The default is `worker` .
 
         Returns:
             output(Numpy.array|None): A numpy array with the same shape as the `input` .
@@ -118,7 +118,7 @@ class UtilBase:
         Barrier between specified collection.
 
         Args:
-            comm_world (str, optional): Collection used to execute barrier operation. Supported collections incude `worker` , `server` and `all` . The default is `worker` .
+            comm_world (str, optional): Collection used to execute barrier operation. Supported collections include `worker` , `server` and `all` . The default is `worker` .
 
         Examples:
 
@@ -160,7 +160,7 @@ class UtilBase:
 
         Args:
             input (Int|Float): The input variable to do all_gather between specified collection.
-            comm_world (str, optional): Collection used to execute all_reduce operation. Supported collections incude `worker` , `server` and `all` . The default is `worker` .
+            comm_world (str, optional): Collection used to execute all_reduce operation. Supported collections include `worker` , `server` and `all` . The default is `worker` .
 
         Returns:
             output (List): A list of gathered values.
@@ -289,7 +289,7 @@ class UtilBase:
 
     def print_on_rank(self, message, rank_id):
         """
-        Woker of rank `rank_id` print some message.
+        Worker of rank `rank_id` print some message.
 
         Args:
             message(str): Log to be printed.
@@ -414,13 +414,7 @@ class UtilBase:
                 or var.dtype != train_prog_var.dtype
             ):
                 print(
-                    "variable: {} not match. in pruned program shape: {} dtype:{}, in train program shape: {} dtype: {}".format(
-                        var_name,
-                        var.shape,
-                        var.dtype,
-                        train_prog_var.shape,
-                        train_prog_var.dtype,
-                    )
+                    f"variable: {var_name} not match. in pruned program shape: {var.shape} dtype:{var.dtype}, in train program shape: {train_prog_var.shape} dtype: {train_prog_var.dtype}"
                 )
                 is_match = False
         return is_match
@@ -486,9 +480,7 @@ class UtilBase:
         not_expected_op_types = check_not_expected_ops(prog, ["lookup_table"])
         if len(not_expected_op_types) > 0:
             print(
-                "find op type '{}' in program, please check if your program is pruned correctly !".format(
-                    list(not_expected_op_types)
-                )
+                f"find op type '{list(not_expected_op_types)}' in program, please check if your program is pruned correctly !"
             )
             return False
 
@@ -524,10 +516,8 @@ class UtilBase:
                 orig_shape = orig_para_shape.get(each_var.name)
                 if new_shape != orig_shape:
                     raise RuntimeError(
-                        "Shape not matching: the Program requires a parameter with a shape of ({}), "
-                        "while the loaded parameter (namely [ {} ]) has a shape of  ({}).".format(
-                            orig_shape, each_var.name, new_shape
-                        )
+                        f"Shape not matching: the Program requires a parameter with a shape of ({orig_shape}), "
+                        f"while the loaded parameter (namely [ {each_var.name} ]) has a shape of  ({new_shape})."
                     )
 
             # check feed/fetch vars in program and config
@@ -545,9 +535,7 @@ class UtilBase:
                 and feed_target_names != feed_config.feeded_vars_names
             ):
                 print(
-                    "warning! feed vars in program and config are diff: feed in program: {}. feed in config {}.".format(
-                        feed_target_names, feed_config.feeded_vars_names
-                    )
+                    f"warning! feed vars in program and config are diff: feed in program: {feed_target_names}. feed in config {feed_config.feeded_vars_names}."
                 )
                 feed_name_list = feed_config.feeded_vars_names
                 # remove feed op in inference_program. new feed op will be added in exe.run
@@ -564,9 +552,7 @@ class UtilBase:
                 and fetch_targets_names != fetch_config.fetch_vars_names
             ):
                 print(
-                    "warning! fetch vars in program and config are diff: fetch in program: {}. fetch in config {}.".format(
-                        fetch_targets_names, fetch_config.fetch_vars_names
-                    )
+                    f"warning! fetch vars in program and config are diff: fetch in program: {fetch_targets_names}. fetch in config {fetch_config.fetch_vars_names}."
                 )
                 fetch_list = [
                     inference_program.global_block().var(i)
@@ -607,11 +593,7 @@ class UtilBase:
                 var_shape = var.shape[1:]
                 if tensor_shape != var_shape:
                     raise RuntimeError(
-                        "feed variable '{}' shape not match. infer program  shape: {}. feed tensor shape: {}".format(
-                            feed_config.feeded_vars_names[i],
-                            var_shape,
-                            tensor_shape,
-                        )
+                        f"feed variable '{feed_config.feeded_vars_names[i]}' shape not match. infer program  shape: {var_shape}. feed tensor shape: {tensor_shape}"
                     )
 
             if not feed_config.feeded_vars_filelist:

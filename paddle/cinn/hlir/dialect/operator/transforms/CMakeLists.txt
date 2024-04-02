@@ -1,22 +1,19 @@
-add_subdirectory(group_merge)
+file(GLOB_RECURSE cinn_transforms_srcs "*.cc")
 
-if(NOT CINN_ONLY)
-
-  cinn_cc_library(
-    pd_to_cinn_pass
-    SRCS
-    pd_to_cinn_pass.cc
-    DEPS
-    drr
-    cinn_op_dialect
-    op_dialect_vjp)
-
-  cinn_cc_library(
-    add_broadcast_to_elementwise_pass
-    SRCS
-    add_broadcast_to_elementwise_pass.cc
-    DEPS
+set(cinn_transforms_deps
     pir
+    drr
+    op_dialect
     cinn_op_dialect
-    op_dialect_vjp)
-endif()
+    op_dialect_vjp
+    cinn_runtime_dialect
+    # group_cluster
+    pir_compiler)
+
+cinn_cc_library(cinn_transforms SRCS ${cinn_transforms_srcs} DEPS
+                ${cinn_transforms_deps})
+
+cc_library(
+  add_cinn_pass
+  SRCS add_cinn_pass.cc
+  DEPS op_dialect pir cinn_op_dialect cinnapi pir_transforms cinn_transforms)

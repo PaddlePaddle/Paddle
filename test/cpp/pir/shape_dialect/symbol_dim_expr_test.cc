@@ -13,16 +13,16 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr_builder.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_builder.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/include/core/ir_context.h"
 
 namespace symbol::test {
 
 // Construct DimExpr by overloaded operator(+, - , *, /)
-TEST(DimExpr, dim_expr_naive) {
+TEST(DimExpr, DimExprNaive) {
   DimExpr sym0 = DimExpr("S0");
   DimExpr sym1 = DimExpr("S1");
   DimExpr constant1 = DimExpr(1);
@@ -30,7 +30,7 @@ TEST(DimExpr, dim_expr_naive) {
 }
 
 // Construct DimExpr by DimExprBuilder
-TEST(DimExpr, dim_expr_builder) {
+TEST(DimExpr, DimExprBuilder) {
   DimExprBuilder builder{nullptr};
   DimExpr sym0 = DimExpr("S0");
   DimExpr sym1 = DimExpr("S1");
@@ -40,13 +40,23 @@ TEST(DimExpr, dim_expr_builder) {
 }
 
 // Add constraints by DimExprBuilder
-TEST(DimExpr, constraint) {
+TEST(DimExpr, Constraint) {
   std::vector<DimExprConstraint> constraints{};
   DimExprBuilder builder(&constraints);
   DimExpr sym0 = DimExpr("S0");
   DimExpr sym1 = DimExpr("S1");
   builder.CstrEq(sym0, sym1);
   ASSERT_EQ(static_cast<int>(constraints.size()), 1);
+  std::vector<DimExpr> lhs = builder.ConstShape({1, 2, 3});
+  std::vector<DimExpr> rhs = builder.ConstShape({1, 2, 3});
+  std::pair<std::vector<DimExpr>, std::vector<DimExpr>> expr_pair =
+      builder.SplitAt(rhs, 1);
+  ASSERT_EQ(static_cast<int>(expr_pair.first.size()), 1);
+  ASSERT_EQ(static_cast<int>(expr_pair.second.size()), 2);
+  std::vector<DimExpr> merged =
+      builder.Concat(expr_pair.first, expr_pair.second);
+  builder.CstrEq(lhs, merged);
+  ASSERT_EQ(static_cast<int>(constraints.size()), 4);
 }
 
 /*
@@ -55,48 +65,37 @@ TEST(DimExpr, constraint) {
     extend_x = x.shape
     out = pd.reshape(y, extend_x)
 */
-TEST(DimExpr, data_shape_expr) {
-  // 1. Init pir::program and pir::builder
-  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-  ::pir::Program program(ctx);
-  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-  ::pir::Builder builder = ::pir::Builder(ctx, program.block());
-
-  // 2. Show fake network, assume calling x.shape correspond to ShapeOp
-  const std::vector<int64_t> x_shape = {-1, 2};
-  const std::vector<int64_t> y_shape = {1, -1, 2};
-  auto x = builder
-               .Build<paddle::dialect::DataOp>(
-                   "input_x", x_shape, phi::DataType::FLOAT32, phi::GPUPlace())
-               .result(0);
-  auto y = builder
-               .Build<paddle::dialect::DataOp>(
-                   "input_y", y_shape, phi::DataType::FLOAT32, phi::GPUPlace())
-               .result(0);
-
-  auto shape_op = builder.Build<paddle::dialect::ShapeOp>(x);
-  ::pir::Value extend_x = shape_op.out();
-  paddle::dialect::ReshapeOp reshape_op =
-      builder.Build<paddle::dialect::ReshapeOp>(y, extend_x);
-  ::pir::Value out = reshape_op.out();
-
-  // 3. Show ideal ShapeOrDataDimExprs of each pir::Value
-  std::unordered_map<pir::Value, ShapeOrDataDimExprs> value2shape{};
+TEST(DimExpr, DataShapeExpr) {
+  // Show ideal ShapeOrDataDimExprs of each pir::Value
   std::vector<DimExpr> x_shapes{DimExpr("S0"), DimExpr(2)};
   std::vector<DimExpr> y_shapes{DimExpr(1), DimExpr("S1"), DimExpr(2)};
   // x => {shape: [S0, 2], data: nullopt}
-  ShapeOrDataDimExprs x_value_shape{x_shapes};
-  value2shape.emplace(x, x_value_shape);
+  ShapeOrDataDimExprs x_data_shape{symbol::TensorShapeOrDataDimExprs(x_shapes)};
   // y => {shape: [1, S1, 2], data: nullopt}
-  ShapeOrDataDimExprs y_value_shape{y_shapes};
-  value2shape.emplace(y, y_value_shape);
-  // extend_x => {shape: [2], data: [S0, 2]}
-  ShapeOrDataDimExprs extend_x_value_shape =
-      ShapeOrDataDimExprs::MakeConsistentShapeOrData(x_shapes);
-  value2shape.emplace(extend_x, extend_x_value_shape);
+  ShapeOrDataDimExprs y_data_shape{symbol::TensorShapeOrDataDimExprs(y_shapes)};
   // out => {shape: [S0, 2], data: nullopt}
-  ShapeOrDataDimExprs out_value_shape{x_shapes};
-  value2shape.emplace(out, out_value_shape);
+  ShapeOrDataDimExprs out_value_shape{
+      symbol::TensorShapeOrDataDimExprs(x_shapes)};
+}
+
+/*
+  Simulate the ShapeOrDataDimExprs result of below codes:
+  def (x, y):
+    out = pd.combine(x, y)
+*/
+TEST(DimExpr, TensorListShapeOrDataDimExprs) {
+  std::vector<DimExpr> x_shapes{DimExpr("S0"), DimExpr("S1"), DimExpr(2)};
+  std::vector<DimExpr> y_shapes{DimExpr(1), DimExpr("S3"), DimExpr(2)};
+  // x => {shape: [S0, S1, 2], data: nullopt}
+  ShapeOrDataDimExprs x_data_shape{symbol::TensorShapeOrDataDimExprs(x_shapes)};
+  // y => {shape: [1, S3, 2], data: nullopt}
+  ShapeOrDataDimExprs y_data_shape{symbol::TensorShapeOrDataDimExprs(y_shapes)};
+
+  // out => {shape: [S0, S1, 2], data: nullopt, shape: [1, S3, 2], data:
+  // nullopt}
+  ShapeOrDataDimExprs out_data_shape_list(
+      {symbol::TensorShapeOrDataDimExprs(x_shapes),
+       symbol::TensorShapeOrDataDimExprs(y_shapes)});
 }
 
 TEST(Simplify, NumberArithmetic) {
@@ -109,19 +108,19 @@ TEST(Simplify, NumberArithmetic) {
   ASSERT_EQ((mul_div.Get<std::int64_t>()), 1);
 }
 
-TEST(DimExpr, equal) {
+TEST(DimExpr, Equal) {
   DimExprBuilder builder{nullptr};
   DimExpr sym0 = DimExpr("S0");
   DimExpr sym1 = DimExpr("S1");
   DimExpr constant1 = DimExpr(1);
   ASSERT_EQ(sym0 + sym1, sym0 + sym1);
-  ASSERT_NE(sym0 + sym1, sym1 + sym0);
+  ASSERT_EQ(sym0 + sym1, sym1 + sym0);
   ASSERT_EQ(sym0 + constant1, DimExpr("S0") + constant1);
   ASSERT_EQ(sym0 - sym1, sym0 - sym1);
   ASSERT_NE(sym0 - sym1, sym1 - sym0);
   ASSERT_EQ(sym0 - constant1, DimExpr("S0") - constant1);
   ASSERT_EQ(sym0 * sym1, sym0 * sym1);
-  ASSERT_NE(sym0 * sym1, sym1 * sym0);
+  ASSERT_EQ(sym0 * sym1, sym1 * sym0);
   ASSERT_EQ(sym0 * constant1, DimExpr("S0") * constant1);
   ASSERT_EQ(sym0 / sym1, sym0 / sym1);
   ASSERT_NE(sym0 / sym1, sym1 / sym0);
@@ -135,9 +134,44 @@ TEST(DimExpr, equal) {
   ASSERT_EQ(builder.Min(sym0, constant1),
             builder.Min(DimExpr("S0"), constant1));
   ASSERT_EQ(builder.Broadcast(sym0, sym1), builder.Broadcast(sym0, sym1));
-  ASSERT_NE(builder.Broadcast(sym0, sym1), builder.Broadcast(sym1, sym0));
+  ASSERT_EQ(builder.Broadcast(sym0, sym1), builder.Broadcast(sym1, sym0));
   ASSERT_EQ(builder.Broadcast(sym0, constant1),
             builder.Broadcast(DimExpr("S0"), constant1));
+}
+
+TEST(DimExpr, Print) {
+  DimExprBuilder builder{nullptr};
+  DimExpr sym0 = DimExpr("S0");
+  DimExpr sym1 = DimExpr("S1");
+  ASSERT_EQ((ToString(sym0 + sym1)), "Add(S0, S1)");
+  ASSERT_EQ((ToString(sym0 - sym1)), "Add(S0, -S1)");
+  ASSERT_EQ((ToString(sym0 * sym1)), "Mul(S0, S1)");
+  ASSERT_EQ((ToString(sym0 / sym1)), "Mul(S0, 1 / (S1))");
+  ASSERT_EQ((ToString(builder.Max(sym0, sym1))), "Max(S0, S1)");
+  ASSERT_EQ((ToString(builder.Min(sym0, sym1))), "Min(S0, S1)");
+  ASSERT_EQ((ToString(builder.Broadcast(sym0, sym1))), "Broadcast(S0, S1)");
+}
+
+TEST(DimExpr, Hash) {
+  DimExprBuilder builder{nullptr};
+  DimExpr sym0 = DimExpr("S0");
+  DimExpr sym1 = DimExpr("S1");
+  ASSERT_EQ((std::hash<DimExpr>()(sym0 + sym1)),
+            (std::hash<DimExpr>()(sym0 + sym1)));
+  ASSERT_EQ((std::hash<DimExpr>()(sym0 + sym1)),
+            (std::hash<DimExpr>()(sym1 + sym0)));
+  ASSERT_NE((std::hash<DimExpr>()(sym0 + sym1)),
+            (std::hash<DimExpr>()(sym0 - sym1)));
+  ASSERT_NE((std::hash<DimExpr>()(sym0 + sym1)),
+            (std::hash<DimExpr>()(sym0 * sym1)));
+  ASSERT_NE((std::hash<DimExpr>()(sym0 + sym1)),
+            (std::hash<DimExpr>()(sym0 / sym1)));
+  ASSERT_NE((std::hash<DimExpr>()(sym0 + sym1)),
+            (std::hash<DimExpr>()(builder.Max(sym0, sym1))));
+  ASSERT_NE((std::hash<DimExpr>()(sym0 + sym1)),
+            (std::hash<DimExpr>()(builder.Min(sym0, sym1))));
+  ASSERT_NE((std::hash<DimExpr>()(sym0 + sym1)),
+            (std::hash<DimExpr>()(builder.Broadcast(sym0, sym1))));
 }
 
 }  // namespace symbol::test

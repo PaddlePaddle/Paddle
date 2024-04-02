@@ -21,7 +21,7 @@ import paddle
 from . import _C_ops
 from .base.data_feeder import check_variable_and_dtype
 from .base.layer_helper import LayerHelper
-from .framework import in_dynamic_mode
+from .framework import in_dynamic_or_pir_mode
 from .tensor.attribute import is_floating_point, is_integer
 from .tensor.creation import _complex_to_real_dtype, _real_to_complex_dtype
 
@@ -61,7 +61,7 @@ def _check_normalization(norm):
 def _check_fft_n(n):
     if not isinstance(n, int):
         raise ValueError(
-            f"Invalid FFT argument n({n}), it shoule be an integer."
+            f"Invalid FFT argument n({n}), it should be an integer."
         )
     if n <= 0:
         raise ValueError(f"Invalid FFT argument n({n}), it should be positive.")
@@ -71,7 +71,7 @@ def _check_fft_shape(x, s):
     ndim = x.ndim
     if not isinstance(s, Sequence):
         raise ValueError(
-            "Invaid FFT argument s({}), it should be a sequence of integers."
+            "Invalid FFT argument s({}), it should be a sequence of integers."
         )
 
     if len(s) > ndim:
@@ -87,7 +87,7 @@ def _check_fft_shape(x, s):
 def _check_fft_axis(x, axis):
     ndim = x.ndim
     if not isinstance(axis, int):
-        raise ValueError(f"Invalid FFT axis ({axis}), it shoule be an integer.")
+        raise ValueError(f"Invalid FFT axis ({axis}), it should be an integer.")
     if axis < -ndim or axis >= ndim:
         raise ValueError(
             f"Invalid FFT axis ({axis}), it should be in range [-{ndim}, {ndim})"
@@ -108,9 +108,7 @@ def _check_fft_axes(x, axes):
     for axis in axes:
         if not isinstance(axis, int) or axis < -ndim or axis >= ndim:
             raise ValueError(
-                "FFT axes {} contains invalid value ({}), it should be in range [-{}, {})".format(
-                    axes, axis, ndim, ndim
-                )
+                f"FFT axes {axes} contains invalid value ({axis}), it should be in range [-{ndim}, {ndim})"
             )
 
 
@@ -177,7 +175,7 @@ def fft(x, n=None, axis=-1, norm="backward", name=None):
             pair and what normalization factor to use. The parameter value must be one
             of "forward" or "backward" or "ortho". Default is "backward", meaning no normalization on
             the forward transforms and scaling by ``1/n`` on the `ifft`. "forward" instead applies
-            the ``1/n`` factor on the forward tranform. For ``norm="ortho"``, both directions are
+            the ``1/n`` factor on the forward transform. For ``norm="ortho"``, both directions are
             scaled by ``1/sqrt(n)``.
         name (str, optional): The default value is None.  Normally there is no need for user to set
             this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -240,7 +238,7 @@ def ifft(x, n=None, axis=-1, norm="backward", name=None):
             pair and what normalization factor to use. The parameter value must be one
             of "forward" or "backward" or "ortho". Default is "backward", meaning no normalization on
             the forward transforms and scaling by ``1/n`` on the `ifft`. "forward" instead applies
-            the ``1/n`` factor on the forward tranform. For ``norm="ortho"``, both directions are
+            the ``1/n`` factor on the forward transform. For ``norm="ortho"``, both directions are
             scaled by ``1/sqrt(n)``.
         name (str, optional): The default value is None.  Normally there is no need for user to set
             this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -300,7 +298,7 @@ def rfft(x, n=None, axis=-1, norm="backward", name=None):
 
                 - "backward": The factor of forward direction and backward direction are ``1`` and ``1/n`` respectively;
                 - "forward": The factor of forward direction and backward direction are ``1/n`` and ``1`` respectively;
-                - "ortho": The factor of forward direction and backword direction are both ``1/sqrt(n)``.
+                - "ortho": The factor of forward direction and backward direction are both ``1/sqrt(n)``.
 
             Where ``n`` is the multiplication of each element in  ``s`` .
         name(str, optional): The default value is None.  Normally there is no
@@ -496,7 +494,7 @@ def fftn(x, s=None, axes=None, norm="backward", name=None):
             pair and what normalization factor to use. The parameter value must be one
             of "forward" or "backward" or "ortho". Default is "backward", meaning no normalization on
             the forward transforms and scaling by ``1/n`` on the `ifft`. "forward" instead applies
-            the ``1/n`` factor on the forward tranform. For ``norm="ortho"``, both directions are
+            the ``1/n`` factor on the forward transform. For ``norm="ortho"``, both directions are
             scaled by ``1/sqrt(n)``.
         name (str, optional): The default value is None.  Normally there is no need for user to set
             this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -573,7 +571,7 @@ def ifftn(x, s=None, axes=None, norm="backward", name=None):
             pair and what normalization factor to use. The parameter value must be one
             of "forward" or "backward" or "ortho". Default is "backward", meaning no normalization on
             the forward transforms and scaling by ``1/n`` on the `ifft`. "forward" instead applies
-            the ``1/n`` factor on the forward tranform. For ``norm="ortho"``, both directions are
+            the ``1/n`` factor on the forward transform. For ``norm="ortho"``, both directions are
             scaled by ``1/sqrt(n)``.
         name (str, optional): The default value is None.  Normally there is no need for user to set
             this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -649,7 +647,7 @@ def rfftn(x, s=None, axes=None, norm="backward", name=None):
                   and ``1/n`` respectively;
                 - "forward": The factor of forward direction and backward direction are ``1/n``
                   and ``1`` respectively;
-                - "ortho": The factor of forward direction and backword direction are both ``1/sqrt(n)``.
+                - "ortho": The factor of forward direction and backward direction are both ``1/sqrt(n)``.
 
             Where ``n`` is the multiplication of each element in  ``s`` .
         name(str, optional): The default value is None.  Normally there is no
@@ -724,7 +722,7 @@ def irfftn(x, s=None, axes=None, norm="backward", name=None):
 
                 - "backward": The factor of forward direction and backward direction are ``1`` and ``1/n`` respectively;
                 - "forward": The factor of forward direction and backward direction are ``1/n`` and ``1`` respectively;
-                - "ortho": The factor of forward direction and backword direction are both ``1/sqrt(n)``.
+                - "ortho": The factor of forward direction and backward direction are both ``1/sqrt(n)``.
 
             Where ``n`` is the multiplication of each element in  ``s`` .
         name (str, optional): The default value is None.  Normally there is no need for user to set
@@ -1003,7 +1001,7 @@ def rfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
 
                 - "backward": The factor of forward direction and backward direction are ``1`` and ``1/n`` respectively;
                 - "forward": The factor of forward direction and backward direction are ``1/n`` and ``1`` respectively;
-                - "ortho": The factor of forward direction and backword direction are both ``1/sqrt(n)``.
+                - "ortho": The factor of forward direction and backward direction are both ``1/sqrt(n)``.
 
             Where ``n`` is the multiplication of each element in  ``s`` .
         name(str, optional): The default value is None.  Normally there is no
@@ -1060,7 +1058,7 @@ def irfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
 
                 - "backward": The factor of forward direction and backward direction are ``1`` and ``1/n`` respectively;
                 - "forward": The factor of forward direction and backward direction are ``1/n`` and ``1`` respectively;
-                - "ortho": The factor of forward direction and backword direction are both ``1/sqrt(n)``.
+                - "ortho": The factor of forward direction and backward direction are both ``1/sqrt(n)``.
 
             Where ``n`` is the multiplication of each element in  ``s`` .
         name (str, optional): The default value is None.  Normally there is no need for user to set
@@ -1151,7 +1149,7 @@ def ihfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
     Args:
         x(Tensor): Input tensor.
         s(Sequence[int], optional): Shape of the real input to the inverse FFT.
-        axes(Sequance[int], optional): The axes over which to compute the
+        axes(Sequence[int], optional): The axes over which to compute the
             inverse fft. Default is the last two axes.
         norm(str, optional): {"backward", "ortho", "forward"}. Default is
             "backward".
@@ -1404,7 +1402,7 @@ def fft_c2c(x, n, axis, norm, forward, name):
         s = [n]
         x = _resize_fft_input(x, s, axes)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.fft_c2c(x, axes, norm, forward)
     else:
         op_type = 'fft_c2c'
@@ -1435,7 +1433,7 @@ def fft_r2c(x, n, axis, norm, forward, onesided, name):
         _check_fft_n(n)
         s = [n]
         x = _resize_fft_input(x, s, axes)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.fft_r2c(x, axes, norm, forward, onesided)
     else:
         op_type = 'fft_r2c'
@@ -1478,7 +1476,7 @@ def fft_c2r(x, n, axis, norm, forward, name):
         s = [n // 2 + 1]
         x = _resize_fft_input(x, s, axes)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if n is not None:
             out = _C_ops.fft_c2r(x, axes, norm, forward, n)
         else:
@@ -1528,16 +1526,14 @@ def fftn_c2c(x, s, axes, norm, forward, name):
         if s is not None:
             if len(s) != len(axes):
                 raise ValueError(
-                    "Length of s ({}) and length of axes ({}) does not match.".format(
-                        len(s), len(axes)
-                    )
+                    f"Length of s ({len(s)}) and length of axes ({len(axes)}) does not match."
                 )
             s = [s[i] for i in axes_argsoft]
 
     if s is not None:
         x = _resize_fft_input(x, s, axes)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.fft_c2c(x, axes, norm, forward)
     else:
         op_type = 'fft_c2c'
@@ -1578,16 +1574,14 @@ def fftn_r2c(x, s, axes, norm, forward, onesided, name):
         if s is not None:
             if len(s) != len(axes):
                 raise ValueError(
-                    "Length of s ({}) and length of axes ({}) does not match.".format(
-                        len(s), len(axes)
-                    )
+                    f"Length of s ({len(s)}) and length of axes ({len(axes)}) does not match."
                 )
             s = [s[i] for i in axes_argsoft] + [s[-1]]
 
     if s is not None:
         x = _resize_fft_input(x, s, axes)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.fft_r2c(x, axes, norm, forward, onesided)
     else:
         op_type = 'fft_r2c'
@@ -1640,9 +1634,7 @@ def fftn_c2r(x, s, axes, norm, forward, name):
         if s is not None:
             if len(s) != len(axes):
                 raise ValueError(
-                    "Length of s ({}) and length of axes ({}) does not match.".format(
-                        len(s), len(axes)
-                    )
+                    f"Length of s ({len(s)}) and length of axes ({len(axes)}) does not match."
                 )
             s = [s[i] for i in axes_argsoft] + [s[-1]]
 
@@ -1651,7 +1643,7 @@ def fftn_c2r(x, s, axes, norm, forward, name):
         fft_input_shape[-1] = fft_input_shape[-1] // 2 + 1
         x = _resize_fft_input(x, fft_input_shape, axes)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if s is not None:
             out = _C_ops.fft_c2r(x, axes, norm, forward, s[-1])
         else:

@@ -325,9 +325,9 @@ void UpdateShapeRangeInfo(
         info->clear_min_value();
         info->clear_max_value();
         info->clear_opt_value();
-        for (auto shape : min_shape.at(name)) info->add_min_value(shape);
-        for (auto shape : max_shape.at(name)) info->add_max_value(shape);
-        for (auto shape : opt_shape.at(name)) info->add_opt_value(shape);
+        for (auto shape : min_value.at(name)) info->add_min_value(shape);
+        for (auto shape : max_value.at(name)) info->add_max_value(shape);
+        for (auto shape : opt_value.at(name)) info->add_opt_value(shape);
         has_name = true;
         break;
       }
@@ -335,9 +335,9 @@ void UpdateShapeRangeInfo(
     if (!has_name) {
       auto *info = shape_range_infos.add_shape_range_info();
       info->set_name(name);
-      for (auto shape : min_shape.at(name)) info->add_min_value(shape);
-      for (auto shape : max_shape.at(name)) info->add_max_value(shape);
-      for (auto shape : opt_shape.at(name)) info->add_opt_value(shape);
+      for (auto shape : min_value.at(name)) info->add_min_value(shape);
+      for (auto shape : max_value.at(name)) info->add_max_value(shape);
+      for (auto shape : opt_value.at(name)) info->add_opt_value(shape);
     }
   }
 

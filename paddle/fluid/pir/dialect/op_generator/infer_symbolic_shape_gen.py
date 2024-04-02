@@ -13,11 +13,9 @@
 # limitations under the License.
 
 OP_GET_KERNEL_TYPE_FOR_VAR_TEMPLATE = """
-bool {op_name}::InferSymbolicShape(pir::Builder &builder,
-                                const std::vector<pir::OpOperand> &operands,
-                                std::vector<pir::Value> &reified_return_shapes) {{
+bool {op_name}::InferSymbolicShape(pir::ShapeConstraintIRAnalysis* shape_analysis) {{
   VLOG(4) << "Infer symbolic shape for op: {op_name}";
-  return {op_name}InferSymbolicShape(builder, operands, reified_return_shapes);
+  return {op_name}InferSymbolicShape(this->operation(), shape_analysis);
 }}
 """
 

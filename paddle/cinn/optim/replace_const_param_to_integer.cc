@@ -26,7 +26,7 @@ struct Mutator : public ir::IRMutator<> {
   using ir::IRMutator<>::Visit;
 
   void Visit(const ir::_Var_* op, Expr* expr) override {
-    if (utils::Startswith(op->name, poly::kIslParamConstPrefix)) {
+    if (utils::StartsWith(op->name, poly::kIslParamConstPrefix)) {
       std::string value = op->name.substr(strlen(poly::kIslParamConstPrefix));
       *expr = Expr(std::stoi(value));
     }

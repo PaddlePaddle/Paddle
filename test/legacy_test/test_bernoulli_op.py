@@ -117,7 +117,7 @@ class TestBernoulliFP16Op(TestBernoulliOp):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestBernoulliBF16Op(TestBernoulliOp):
     def init_dtype(self):
@@ -125,7 +125,9 @@ class TestBernoulliBF16Op(TestBernoulliOp):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place_customized(self.verify_output, place)
+        self.check_output_with_place_customized(
+            self.verify_output, place, check_pir=True
+        )
 
     def init_test_case(self):
         self.x = convert_float_to_uint16(

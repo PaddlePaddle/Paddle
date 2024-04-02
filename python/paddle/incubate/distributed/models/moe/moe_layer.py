@@ -263,7 +263,7 @@ def prepare_forward(gate, num_expert, world_size, moe_group):
 class MoELayer(nn.Layer):
     """MoE Layer
     Args:
-        d_model (int): Model dimention.
+        d_model (int): Model dimension.
         experts (nn.LayerList): Expert networks list.
         gate (dict|NaiveGate|SwitchGate|NaiveGate):
 
@@ -395,9 +395,7 @@ class MoELayer(nn.Layer):
                 )
             else:
                 raise AssertionError(
-                    "We only support naive gate,                                 gshard gate and switch gate,                                 but you choose {} gate.".format(
-                        str(gate)
-                    )
+                    f"We only support naive gate,                                 gshard gate and switch gate,                                 but you choose {str(gate)} gate."
                 )
         elif isinstance(gate, NaiveGate):
             self.top_k = gate.top_k

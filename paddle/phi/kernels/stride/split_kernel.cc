@@ -56,6 +56,7 @@ void SplitWithNumStridedKernel(const Context& dev_ctx,
   int axis_value = axis_scalar.to<int>();
   auto input_axis_dim = x.dims().at(axis_value);
   std::vector<int64_t> sections_vec;
+  sections_vec.reserve(num);
   for (int i = 0; i < num; ++i) {
     sections_vec.push_back(input_axis_dim / num);
   }
@@ -64,8 +65,11 @@ void SplitWithNumStridedKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    split_strided, STRIDED, phi::SplitStridedKernel) {}
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    split_with_num_strided, STRIDED, phi::SplitWithNumStridedKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(split_strided,
+                                         STRIDED,
+                                         phi::SplitStridedKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(split_with_num_strided,
+                                         STRIDED,
+                                         phi::SplitWithNumStridedKernel) {}

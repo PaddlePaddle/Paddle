@@ -26,6 +26,7 @@ from utils import (
 )
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
@@ -70,6 +71,7 @@ class TestJITLoad(unittest.TestCase):
         if paddle.is_compiled_with_cuda():
             self.devices.append('gpu')
 
+    @test_with_pir_api
     def test_static(self):
         for device in self.devices:
             for dtype in self.dtypes:
@@ -108,9 +110,7 @@ class TestJITLoad(unittest.TestCase):
                     np.testing.assert_array_equal(
                         x_grad,
                         pd_x_grad,
-                        err_msg='custom op x grad: {},\n paddle api x grad: {}'.format(
-                            x_grad, pd_x_grad
-                        ),
+                        err_msg=f'custom op x grad: {x_grad},\n paddle api x grad: {pd_x_grad}',
                     )
 
     def test_exception(self):

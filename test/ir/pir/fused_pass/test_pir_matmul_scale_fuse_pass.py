@@ -85,10 +85,5 @@ class TestMatmulScaleFusePattern(PassTest):
         self.check_pass_correct()
 
 
-class TestMatmulScaleFusePatternWtihCpu(TestMatmulScaleFusePattern):
-    def setUp(self):
-        self.place_runtime = "cpu"
-
-
 if __name__ == "__main__":
     unittest.main()

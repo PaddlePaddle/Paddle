@@ -1,55 +1,3 @@
-cc_library(
-  var_handle
-  SRCS var_handle.cc
-  DEPS place framework_proto node)
-cc_library(
-  op_handle_base
-  SRCS op_handle_base.cc
-  DEPS var_handle device_context lod_tensor)
-
-cc_library(
-  scale_loss_grad_op_handle
-  SRCS scale_loss_grad_op_handle.cc
-  DEPS op_handle_base scope lod_tensor phi common)
-cc_library(
-  fetch_op_handle
-  SRCS fetch_op_handle.cc
-  DEPS op_handle_base scope lod_tensor phi common)
-cc_library(
-  fetch_async_op_handle
-  SRCS fetch_async_op_handle.cc
-  DEPS op_handle_base scope lod_tensor phi common)
-
-cc_library(
-  share_tensor_buffer_functor
-  SRCS share_tensor_buffer_functor.cc
-  DEPS framework_proto scope place operator op_registry)
-cc_library(
-  computation_op_handle
-  SRCS computation_op_handle.cc
-  DEPS framework_proto scope place operator op_registry)
-cc_library(
-  share_tensor_buffer_op_handle
-  SRCS share_tensor_buffer_op_handle.cc
-  DEPS op_handle_base scope computation_op_handle share_tensor_buffer_functor)
-cc_library(
-  rpc_op_handle
-  SRCS rpc_op_handle.cc
-  DEPS framework_proto scope place operator op_registry)
-cc_library(
-  fetch_barrier_op_handle
-  SRCS fetch_barrier_op_handle.cc
-  DEPS framework_proto scope place operator op_registry)
-cc_library(
-  multi_devices_helper
-  SRCS multi_devices_helper.cc
-  DEPS graph graph_helper)
-
-cc_library(
-  variable_visitor
-  SRCS variable_visitor.cc
-  DEPS lod_tensor selected_rows_utils)
-
 if(WITH_PSCORE)
   set(DISTRIBUTE_COMPILE_FLAGS
       "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor"
@@ -67,260 +15,101 @@ if(WITH_PSCORE)
                                            ${DISTRIBUTE_COMPILE_FLAGS})
 endif()
 
-if(WITH_GPU)
-  nv_library(
-    nan_inf_utils
-    SRCS nan_inf_utils_detail.cc
-    DEPS framework_proto scope place phi common)
-  nv_library(
-    all_reduce_op_handle
-    SRCS all_reduce_op_handle.cc
-    DEPS variable_visitor
-         op_handle_base
-         scope
-         lod_tensor
-         phi
-         common
-         fluid_memory
-         dynload_cuda)
-  nv_library(
-    fused_all_reduce_op_handle
-    SRCS fused_all_reduce_op_handle.cc
-    DEPS all_reduce_op_handle
-         variable_visitor
-         op_handle_base
-         scope
-         lod_tensor
-         phi
-         common
-         dynload_cuda
-         place)
-  nv_library(
-    grad_merge_all_reduce_op_handle
-    SRCS grad_merge_all_reduce_op_handle.cc
-    DEPS fused_all_reduce_op_handle
-         op_handle_base
-         scope
-         lod_tensor
-         phi
-         common
-         dynload_cuda
-         variable_visitor
-         place
-         all_reduce_op_handle)
+set(op_handle_srcs
+    nan_inf_utils_detail.cc
+    all_reduce_op_handle.cc
+    fused_all_reduce_op_handle.cc
+    grad_merge_all_reduce_op_handle.cc
+    reduce_op_handle.cc
+    broadcast_op_handle.cc
+    fused_broadcast_op_handle.cc
+    var_handle.cc
+    op_handle_base.cc
+    scale_loss_grad_op_handle.cc
+    fetch_op_handle.cc
+    fetch_async_op_handle.cc
+    share_tensor_buffer_functor.cc
+    computation_op_handle.cc
+    share_tensor_buffer_op_handle.cc
+    rpc_op_handle.cc
+    fetch_barrier_op_handle.cc
+    multi_devices_helper.cc
+    variable_visitor.cc
+    gather_op_handle.cc
+    eager_deletion_op_handle.cc)
 
-  if(WITH_DGC)
-    nv_library(
-      sparse_all_reduce_op_handle
-      SRCS sparse_all_reduce_op_handle.cc
-      DEPS op_handle_base
-           scope
-           lod_tensor
-           phi
-           common
-           dynload_cuda
-           variable_visitor
-           dgc
-           all_reduce_op_handle)
-  endif()
-
-  if(WITH_DISTRIBUTE)
-    nv_library(
-      reduce_op_handle
-      SRCS reduce_op_handle.cc
-      DEPS op_handle_base variable_visitor scope phi common dynload_cuda)
-  else()
-    nv_library(
-      reduce_op_handle
-      SRCS reduce_op_handle.cc
-      DEPS op_handle_base variable_visitor scope phi common dynload_cuda)
-  endif()
-  nv_library(
-    broadcast_op_handle
-    SRCS broadcast_op_handle.cc
-    DEPS op_handle_base scope phi common variable_visitor dynload_cuda)
-  nv_library(
-    fused_broadcast_op_handle
-    SRCS fused_broadcast_op_handle.cc
-    DEPS broadcast_op_handle)
-elseif(WITH_ROCM)
-  hip_library(
-    nan_inf_utils
-    SRCS nan_inf_utils_detail.cc
-    DEPS framework_proto scope place phi common)
-  hip_library(
-    all_reduce_op_handle
-    SRCS all_reduce_op_handle.cc
-    DEPS op_handle_base
-         scope
-         lod_tensor
-         phi
-         common
-         dynload_cuda
-         variable_visitor)
-  hip_library(
-    fused_all_reduce_op_handle
-    SRCS fused_all_reduce_op_handle.cc
-    DEPS all_reduce_op_handle
-         op_handle_base
-         variable_visitor
-         scope
-         lod_tensor
-         phi
-         common
-         dynload_cuda
-         place)
-  hip_library(
-    grad_merge_all_reduce_op_handle
-    SRCS grad_merge_all_reduce_op_handle.cc
-    DEPS fused_all_reduce_op_handle
-         op_handle_base
-         scope
-         lod_tensor
-         phi
-         common
-         dynload_cuda
-         variable_visitor
-         place
-         all_reduce_op_handle)
-
-  if(WITH_DISTRIBUTE)
-    hip_library(
-      reduce_op_handle
-      SRCS reduce_op_handle.cc
-      DEPS op_handle_base variable_visitor scope phi common dynload_cuda)
-  else()
-    hip_library(
-      reduce_op_handle
-      SRCS reduce_op_handle.cc
-      DEPS op_handle_base variable_visitor scope phi common dynload_cuda)
-  endif()
-  hip_library(
-    broadcast_op_handle
-    SRCS broadcast_op_handle.cc
-    DEPS op_handle_base scope phi common variable_visitor dynload_cuda)
-  hip_library(
-    fused_broadcast_op_handle
-    SRCS fused_broadcast_op_handle.cc
-    DEPS broadcast_op_handle)
-else()
-  cc_library(
-    nan_inf_utils
-    SRCS nan_inf_utils_detail.cc
-    DEPS framework_proto scope place phi common)
-  cc_library(
-    all_reduce_op_handle
-    SRCS all_reduce_op_handle.cc
-    DEPS op_handle_base scope lod_tensor phi common variable_visitor)
-  cc_library(
-    fused_all_reduce_op_handle
-    SRCS fused_all_reduce_op_handle.cc
-    DEPS all_reduce_op_handle
-         op_handle_base
-         scope
-         lod_tensor
-         phi
-         common
-         variable_visitor
-         place)
-  cc_library(
-    grad_merge_all_reduce_op_handle
-    SRCS grad_merge_all_reduce_op_handle.cc
-    DEPS fused_all_reduce_op_handle
-         op_handle_base
-         scope
-         lod_tensor
-         phi
-         common
-         variable_visitor
-         place
-         all_reduce_op_handle)
-  if(WITH_DISTRIBUTE)
-    cc_library(
-      reduce_op_handle
-      SRCS reduce_op_handle.cc
-      DEPS op_handle_base variable_visitor scope phi common)
-  else()
-    cc_library(
-      reduce_op_handle
-      SRCS reduce_op_handle.cc
-      DEPS op_handle_base variable_visitor scope phi common)
-  endif()
-  cc_library(
-    broadcast_op_handle
-    SRCS broadcast_op_handle.cc
-    DEPS op_handle_base scope phi common variable_visitor)
-  cc_library(
-    fused_broadcast_op_handle
-    SRCS fused_broadcast_op_handle.cc
-    DEPS broadcast_op_handle)
+if(WITH_DGC)
+  set(op_handle_srcs ${op_handle_srcs} sparse_all_reduce_op_handle.cc)
 endif()
 
-cc_library(
-  gather_op_handle
-  SRCS gather_op_handle.cc
-  DEPS op_handle_base scope phi common variable_visitor)
+set(op_handle_deps
+    pass
+    operator
+    place
+    framework_proto
+    node
+    device_context
+    op_registry
+    lod_tensor
+    selected_rows_utils
+    reference_count_pass_helper)
 
-cc_library(
-  eager_deletion_op_handle
-  SRCS eager_deletion_op_handle.cc
-  DEPS lod_tensor selected_rows_utils reference_count_pass_helper)
+if(WITH_MKLDNN)
+  set(op_handle_deps ${op_handle_deps} mkldnn)
+endif()
 
+if(WITH_DGC)
+  set(op_handle_deps ${op_handle_deps} dgc)
+endif()
+
+if(WITH_GPU)
+  nv_library(
+    detail_op_handle
+    SRCS ${op_handle_srcs}
+    DEPS ${op_handle_deps})
+elseif(WITH_ROCM)
+  hip_library(
+    detail_op_handle
+    SRCS ${op_handle_srcs}
+    DEPS ${op_handle_deps})
+else()
+  cc_library(
+    detail_op_handle
+    SRCS ${op_handle_srcs}
+    DEPS ${op_handle_deps})
+endif()
+
+add_dependencies(detail_op_handle framework_proto auto_parallel_proto xxhash)
+
+set(ssa_graph_executor_srcs
+    ssa_graph_executor.cc
+    threaded_ssa_graph_executor.cc
+    parallel_ssa_graph_executor.cc
+    async_ssa_graph_executor.cc
+    bind_threaded_ssa_graph_executor.cc
+    fast_threaded_ssa_graph_executor.cc
+    scope_buffered_ssa_graph_executor.cc
+    scope_buffered_monitor.cc)
 set(SSA_GRAPH_EXECUTOR_DEPS
     graph
     framework_proto
-    multi_devices_helper
+    detail_op_handle
     reference_count_pass
     eager_deletion_pass
     buffer_shared_inplace_op_pass
     buffer_shared_cross_op_memory_reuse_pass
     inplace_addto_op_pass
-    set_reader_device_info_utils)
+    set_reader_device_info_utils
+    scope
+    simple_threadpool
+    device_context
+    profiler
+    selected_rows_utils)
+
 cc_library(
-  ssa_graph_executor NOT_FOR_INFER
-  SRCS ssa_graph_executor.cc
+  ssa_graph_executor
+  SRCS ${ssa_graph_executor_srcs}
   DEPS ${SSA_GRAPH_EXECUTOR_DEPS})
-
-cc_library(
-  threaded_ssa_graph_executor
-  SRCS threaded_ssa_graph_executor.cc
-  DEPS fetch_op_handle ssa_graph_executor scope simple_threadpool
-       device_context)
-
-cc_library(
-  parallel_ssa_graph_executor
-  SRCS parallel_ssa_graph_executor.cc
-  DEPS threaded_ssa_graph_executor)
-
-set(ASYNC_SSA_GRAPH_EXECUTOR_DEPS threaded_ssa_graph_executor)
-
-cc_library(
-  async_ssa_graph_executor
-  SRCS async_ssa_graph_executor.cc
-  DEPS ${ASYNC_SSA_GRAPH_EXECUTOR_DEPS})
-cc_library(
-  scope_buffered_monitor
-  SRCS scope_buffered_monitor.cc
-  DEPS scope profiler selected_rows_utils)
-cc_library(
-  scope_buffered_ssa_graph_executor
-  SRCS scope_buffered_ssa_graph_executor.cc
-  DEPS ssa_graph_executor scope_buffered_monitor)
-cc_library(
-  bind_threaded_ssa_graph_executor
-  SRCS bind_threaded_ssa_graph_executor.cc
-  DEPS fetch_op_handle
-       phi
-       common
-       ssa_graph_executor
-       scope
-       simple_threadpool
-       device_context)
-cc_library(
-  fast_threaded_ssa_graph_executor
-  SRCS fast_threaded_ssa_graph_executor.cc
-  DEPS fetch_async_op_handle ssa_graph_executor scope simple_threadpool
-       device_context)
 
 set(IR_PASS_DEPS
     graph_viz_pass

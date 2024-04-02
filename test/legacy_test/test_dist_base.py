@@ -726,8 +726,7 @@ class TestParallelDyGraphRunnerBase:
             assert "Only support CUDAPlace or XPUPlace or CPU(Gloo) for now."
 
         with base.dygraph.guard(place):
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
+            paddle.seed(seed)
             np.random.seed(seed)
             import random
 
@@ -795,8 +794,7 @@ class TestParallelDyGraphRunnerBase:
 
         # 2. init seed
         seed = 90
-        paddle.static.default_startup_program().random_seed = seed
-        paddle.static.default_main_program().random_seed = seed
+        paddle.seed(seed)
         np.random.seed(seed)
         random.seed(seed)
         # get trainer id
@@ -836,8 +834,7 @@ class TestParallelDyGraphRunnerBase:
 
         # 2. init seed
         seed = 90
-        paddle.static.default_startup_program().random_seed = seed
-        paddle.static.default_main_program().random_seed = seed
+        paddle.seed(seed)
         np.random.seed(seed)
         random.seed(seed)
         # get trainer id
@@ -1028,14 +1025,10 @@ class TestDistBase(unittest.TestCase):
             DIST_UT_PORT = int(os.getenv("PADDLE_DIST_UT_PORT"))
 
         if DIST_UT_PORT == 0:
-            self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
-                self._find_free_port(),
-                self._find_free_port(),
-            )
+            self._ps_endpoints = f"127.0.0.1:{self._find_free_port()},127.0.0.1:{self._find_free_port()}"
         else:
-            self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
-                DIST_UT_PORT,
-                DIST_UT_PORT + 1,
+            self._ps_endpoints = (
+                f"127.0.0.1:{DIST_UT_PORT},127.0.0.1:{DIST_UT_PORT + 1}"
             )
             DIST_UT_PORT += 2
             self._dist_port = DIST_UT_PORT

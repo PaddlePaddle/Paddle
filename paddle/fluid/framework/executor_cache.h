@@ -27,15 +27,15 @@
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/program.h"
 
-PHI_DECLARE_bool(enable_pir_in_executor);
-PHI_DECLARE_bool(enable_pir_with_pt_in_dy2st);
+COMMON_DECLARE_bool(enable_pir_in_executor);
+COMMON_DECLARE_bool(enable_pir_with_pt_in_dy2st);
 
 namespace paddle {
 namespace framework {
@@ -195,14 +195,13 @@ class InterpreterCoreInfoCache {
 
   bool Has(int64_t program_id,
            const framework::Scope* scope,
-           const std::vector<int64_t>& seeds,
-           bool is_grad) {
-    if (FLAGS_enable_pir_in_executor || FLAGS_enable_pir_with_pt_in_dy2st) {
+           const int64_t& place_hash_key,
+           bool is_grad,
+           bool in_pir_mode) {
+    if (in_pir_mode) {
       int64_t scope_i = reinterpret_cast<int64_t>(scope);
       program_id = hash_with_seed(program_id, scope_i);
-      for (int64_t seed : seeds) {
-        program_id = hash_with_seed(program_id, seed);
-      }
+      program_id = hash_with_seed(program_id, place_hash_key);
     }
     return info_map_.find(program_id) != info_map_.end() &&
            info_map_[program_id].IsAvailable(is_grad);
@@ -210,33 +209,35 @@ class InterpreterCoreInfoCache {
 
   InterpreterCoreInfo::CacheValue& GetMutable(int64_t program_id,
                                               const framework::Scope* scope,
-                                              const std::vector<int64_t>& seeds,
-                                              bool is_grad) {
-    if (FLAGS_enable_pir_in_executor || FLAGS_enable_pir_with_pt_in_dy2st) {
+                                              const int64_t& place_hash_key,
+                                              bool is_grad,
+                                              bool in_pir_mode) {
+    if (in_pir_mode) {
       int64_t scope_i = reinterpret_cast<int64_t>(scope);
       program_id = hash_with_seed(program_id, scope_i);
-      for (int64_t seed : seeds) {
-        program_id = hash_with_seed(program_id, seed);
-      }
+      program_id = hash_with_seed(program_id, place_hash_key);
     }
     return info_map_[program_id].GetMutable(is_grad);
   }
 
   void UpdateSkipEagerDeleteVars(int64_t program_id,
                                  const framework::Scope* scope,
-                                 const std::vector<int64_t>& seeds,
+                                 const int64_t& place_hash_key,
                                  bool is_grad,
+                                 bool in_pir_mode,
                                  const std::set<std::string>& skip_vars) {
-    auto& cached_value = GetMutable(program_id, scope, seeds, is_grad);
+    auto& cached_value =
+        GetMutable(program_id, scope, place_hash_key, is_grad, in_pir_mode);
     cached_value.skip_eager_delete_vars_ = std::move(skip_vars);
   }
 
-  std::set<std::string>& GetSkipEagerDeleteVars(
-      int64_t program_id,
-      const framework::Scope* scope,
-      const std::vector<int64_t>& seeds,
-      bool is_grad) {
-    auto& cached_value = GetMutable(program_id, scope, seeds, is_grad);
+  std::set<std::string>& GetSkipEagerDeleteVars(int64_t program_id,
+                                                const framework::Scope* scope,
+                                                const int64_t& place_hash_key,
+                                                bool in_pir_mode,
+                                                bool is_grad) {
+    auto& cached_value =
+        GetMutable(program_id, scope, place_hash_key, is_grad, in_pir_mode);
     return cached_value.skip_eager_delete_vars_;
   }
 
@@ -259,7 +260,7 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     bool is_grad,
     int64_t program_id,
     framework::Scope* scope,
-    const std::vector<int64_t>& seeds);
+    const int64_t& place_hash_key);
 
 std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
     std::unique_ptr<::pir::Program> ir_prog,
@@ -267,12 +268,12 @@ std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
     bool is_grad,
     int64_t program_id,
     framework::Scope* scope,
-    const std::vector<int64_t>& seeds);
+    const int64_t& place_hash_key);
 
 std::unique_ptr<::pir::Program> ApplyIrPass(::pir::Program* program,
                                             phi::Place place);
 
-std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
+std::unique_ptr<::pir::Program> ConstructForwardIrProgram(
     const paddle::framework::BlockDesc* forward_global_block,
     const paddle::framework::BlockDesc* backward_global_block,
     const std::vector<std::string>& output_names,

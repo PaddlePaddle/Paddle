@@ -180,8 +180,8 @@
   inplace : (out_grad -> input_grad)
 
 - backward_op : bicubic_interp_grad
-  forward : bicubic_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)
-  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
+  forward : bicubic_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_format, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -204,8 +204,8 @@
     func : bilinear_grad
 
 - backward_op : bilinear_interp_grad
-  forward : bilinear_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)
-  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
+  forward : bilinear_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_format, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -413,6 +413,17 @@
     func : conv3d_transpose_grad
     data_type : x
 
+- backward_op : copysign_grad
+  forward : copysign (Tensor x, Tensor y) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : copysign_grad
+  inplace : (out_grad -> x_grad)
+
 - backward_op : cos_double_grad
   forward : cos_grad (Tensor x, Tensor grad_out) -> Tensor(grad_x)
   args : (Tensor x, Tensor grad_out, Tensor grad_x_grad)
@@ -422,9 +433,9 @@
     param : [x, x]
   kernel :
     func : cos_double_grad
-  optional: grad_out
   backward : cos_triple_grad
   inplace : (grad_x_grad -> grad_out_grad)
+  composite : cos_double_grad(x, grad_out, grad_x_grad, x_grad, grad_out_grad)
 
 - backward_op : cos_grad
   forward : cos (Tensor x) -> Tensor(out)
@@ -479,6 +490,7 @@
   output : Tensor(input_grad)
   infer_meta :
     func : CrossEntropyWithSoftmaxGradInferMeta
+    spmd_rule : CrossEntropyWithSoftmaxGradInferSpmd
   kernel :
     func : cross_entropy_with_softmax_grad
     data_type : loss_grad
@@ -847,6 +859,17 @@
     func : flash_attn_unpadded_grad
     data_type: q
 
+- backward_op : flash_attn_with_sparse_mask_grad
+  forward : flash_attn_with_sparse_mask (Tensor q, Tensor k, Tensor v, Tensor attn_mask_start_row_indices, Tensor fixed_seed_offset, float dropout = 0.0, bool causal = false, int attn_mask_start_row = 0, bool return_softmax = false, bool is_test = false, str rng_name = "") -> Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
+  args : (Tensor q, Tensor k, Tensor v, Tensor attn_mask_start_row_indices, Tensor out, Tensor softmax_lse, Tensor seed_offset, Tensor out_grad, float dropout = 0.0, bool causal = false, int attn_mask_start_row = 0)
+  output : Tensor(q_grad), Tensor(k_grad), Tensor(v_grad)
+  infer_meta :
+    func : FlashAttnGradInferMeta
+    param : [q, k, v]
+  kernel :
+    func : flash_attn_with_sparse_mask_grad
+    data_type: q
+
 - backward_op : flatten_grad
   forward : flatten(Tensor x, int start_axis = 1, int stop_axis = 1) -> Tensor(out), Tensor(xshape)
   args : (Tensor xshape, Tensor out_grad)
@@ -911,6 +934,26 @@
     data_type : out_grad
   no_need_buffer : x
 
+- backward_op : fractional_max_pool2d_grad
+  forward : fractional_max_pool2d(Tensor x, int[] output_size, int[] kernel_size = {0, 0}, float random_u = 0.0, bool return_mask = true) -> Tensor(out), Tensor(mask)
+  args : (Tensor x, Tensor mask, Tensor out_grad, int[] output_size, int[] kernel_size, float random_u, bool return_mask)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : fractional_max_pool2d_grad
+
+- backward_op : fractional_max_pool3d_grad
+  forward : fractional_max_pool3d(Tensor x, int[] output_size, int[] kernel_size = {0, 0, 0}, float random_u = 0.0, bool return_mask = true) -> Tensor(out), Tensor(mask)
+  args : (Tensor x, Tensor mask, Tensor out_grad, int[] output_size, int[] kernel_size, float random_u, bool return_mask)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : fractional_max_pool3d_grad
+
 - backward_op : frame_grad
   forward : frame(Tensor x, int frame_length, int hop_length, int axis=-1) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int frame_length, int hop_length, int axis)
@@ -920,6 +963,26 @@
     param : [x]
   kernel :
     func : frame_grad
+
+- backward_op : gammaincc_grad
+  forward : gammaincc(Tensor x, Tensor y) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad)
+  output : Tensor(y_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [y]
+  kernel :
+    func : gammaincc_grad
+
+- backward_op : gammaln_grad
+  forward : gammaln(Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : gammaln_grad
 
 - backward_op : gather_grad
   forward : gather(Tensor x, Tensor index, Scalar axis=0) -> Tensor(out)
@@ -944,8 +1007,6 @@
     func : gather_nd_grad
   composite : gather_nd_grad(x, index, out_grad, x_grad)
   no_need_buffer : x
-  data_transform :
-    skip_transform : index
 
 - backward_op : gaussian_inplace_grad
   forward : gaussian_inplace(Tensor x, float mean=0, float std=1.0, int seed=0) -> Tensor(out)
@@ -981,8 +1042,8 @@
     data_type : x
 
 - backward_op : group_norm_grad
-  forward : group_norm (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int groups = -1, str data_layout = "NCHW") -> Tensor(y), Tensor(mean), Tensor(variance)
-  args : (Tensor x, Tensor scale, Tensor bias, Tensor y, Tensor mean, Tensor variance, Tensor y_grad, float epsilon, int groups, str data_layout)
+  forward : group_norm (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int groups = -1, str data_format = "NCHW") -> Tensor(y), Tensor(mean), Tensor(variance)
+  args : (Tensor x, Tensor scale, Tensor bias, Tensor y, Tensor mean, Tensor variance, Tensor y_grad, float epsilon, int groups, str data_format)
   output : Tensor(x_grad), Tensor(scale_grad), Tensor(bias_grad)
   infer_meta :
     func : GeneralTernaryGradInferMeta
@@ -990,7 +1051,7 @@
   kernel :
     func : group_norm_grad
     data_type : y_grad
-  composite : group_norm_grad(x, scale, bias, y, mean, variance, y_grad, epsilon, groups, data_layout, x_grad, scale_grad, bias_grad)
+  composite : group_norm_grad(x, scale, bias, y, mean, variance, y_grad, epsilon, groups, data_format, x_grad, scale_grad, bias_grad)
   optional: scale, bias
   inplace : (y_grad -> x_grad)
 
@@ -1317,8 +1378,8 @@
     func : lgamma_grad
 
 - backward_op : linear_interp_grad
-  forward : linear_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)
-  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
+  forward : linear_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_format, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -1597,8 +1658,8 @@
     func : mv_grad
 
 - backward_op : nanmedian_grad
-  forward : nanmedian (Tensor x, IntArray axis, bool keepdim) -> Tensor(out), Tensor(medians)
-  args : (Tensor x, Tensor medians, Tensor out_grad, IntArray axis, bool keepdim)
+  forward : nanmedian (Tensor x, IntArray axis, bool keepdim, str mode) -> Tensor(out), Tensor(medians)
+  args : (Tensor x, Tensor medians, Tensor out_grad, IntArray axis, bool keepdim, str mode)
   output : Tensor(x_grad)
   infer_meta :
     func : NanmedianGradInferMeta
@@ -1606,8 +1667,8 @@
     func : nanmedian_grad
 
 - backward_op : nearest_interp_grad
-  forward : nearest_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)
-  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
+  forward : nearest_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_format, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -1722,6 +1783,7 @@
     data_type : x
   backward : pow_triple_grad
   inplace : (grad_x_grad -> x_grad)
+  composite: pow_double_grad(x, grad_out, grad_x_grad, y, x_grad, grad_out_grad)
 
 - backward_op : pow_grad
   forward : pow(Tensor x, Scalar y=1.0f) -> Tensor(out)
@@ -1736,6 +1798,7 @@
     data_type : out_grad
   backward: pow_double_grad
   inplace : (out_grad -> x_grad)
+  composite: pow_grad(x, out_grad, y, x_grad)
 
 - backward_op : pow_triple_grad
   forward : pow_double_grad(Tensor x, Tensor grad_out, Tensor grad_grad_x, Scalar y) -> Tensor(grad_x), Tensor(grad_grad_out)
@@ -1865,6 +1928,18 @@
   output : Tensor(x_grad)
   invoke : reverse(out_grad, axis)
 
+- backward_op : rms_norm_grad
+  forward : rms_norm (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound) -> Tensor(out), Tensor(residual_out), Tensor(inv_var)
+  args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, Tensor inv_var, Tensor out_grad,float epsilon, int begin_norm_axis, float quant_scale)
+  output : Tensor(x_grad), Tensor(norm_weight_grad)
+  infer_meta :
+    func: RmsNormGradInferMeta
+    param: [x, norm_weight]
+  kernel :
+    func : rms_norm_grad
+    data_type : x
+  optional : bias, residual, norm_bias
+
 - backward_op : roi_align_grad
   forward : roi_align (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height=1, int pooled_width=1, float spatial_scale=1.0, int sampling_ratio=-1, bool aligned=false) -> Tensor(out)
   args : (Tensor x, Tensor boxes, Tensor boxes_num, Tensor out_grad, int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio, bool aligned)
@@ -1939,7 +2014,7 @@
   inplace : (out_grad -> x_grad)
 
 - backward_op : scale_grad
-  forward : scale (Tensor x, Scalar scale, float bias, bool bias_after_scale) -> Tensor(out)
+  forward : scale (Tensor x, Scalar scale, Scalar bias, bool bias_after_scale) -> Tensor(out)
   args : (Tensor out_grad, Scalar scale=1.0)
   output : Tensor(x_grad)
   invoke : scale(out_grad, scale, 0.0f, true)
@@ -2104,9 +2179,9 @@
     param : [x, x]
   kernel :
     func : sin_double_grad
-  optional: grad_out
   backward : sin_triple_grad
   inplace : (grad_x_grad -> grad_out_grad)
+  composite : sin_double_grad(x, grad_out, grad_x_grad, x_grad, grad_out_grad)
 
 - backward_op : sin_grad
   forward : sin (Tensor x) -> Tensor(out)
@@ -2300,6 +2375,12 @@
   inplace : (out_grad -> x_grad)
   backward: squeeze_double_grad
 
+- backward_op : stack_double_grad
+  forward : stack_grad (Tensor[] x, Tensor grad_out, int axis=0) -> Tensor[](grad_x)
+  args : (Tensor[] grad_x_grad, int axis = 0)
+  output : Tensor(grad_out_grad)
+  invoke : stack(grad_x_grad, axis)
+
 - backward_op : stack_grad
   forward : stack (Tensor[] x, int axis) -> Tensor(out)
   args : (Tensor[] x, Tensor out_grad, int axis)
@@ -2313,6 +2394,8 @@
     param : [out_grad, axis]
     data_type : out_grad
   no_need_buffer : x
+  composite : stack_grad(x, out_grad, axis, x_grad)
+  backward: stack_double_grad
 
 - backward_op : stanh_grad
   forward : stanh(Tensor x, float scale_a, float scale_b) -> Tensor(out)
@@ -2334,6 +2417,18 @@
   kernel :
     func : svd_grad
   optional: u_grad, vh_grad, s_grad
+
+- backward_op : swiglu_grad
+  forward : swiglu (Tensor x, Tensor y) -> Tensor(out)
+  args: (Tensor x, Tensor y, Tensor out_grad)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta:
+    func: SwiGLUGradInferMeta
+    param: [x, y]
+    spmd_rule: SwiGLUGradInferSpmd
+  kernel:
+    func: swiglu_grad
+  optional: y
 
 - backward_op : take_along_axis_grad
   forward : take_along_axis (Tensor arr, Tensor indices, int axis) -> Tensor(out)
@@ -2473,8 +2568,8 @@
     func : triangular_solve_grad
 
 - backward_op : trilinear_interp_grad
-  forward : trilinear_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)
-  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_layout, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
+  forward : trilinear_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)
+  args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, Tensor output_grad, str data_format, int out_d, int out_h, int out_w, float[] scale, str interp_method, bool align_corners, int align_mode)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -2602,8 +2697,8 @@
   no_need_buffer : input
 
 - backward_op : weight_only_linear_grad
-  forward : weight_only_linear(Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype, int arch) -> Tensor(out)
-  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, Tensor out_grad, str weight_dtype, int arch)
+  forward : weight_only_linear(Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype, int arch, int group_size) -> Tensor(out)
+  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, Tensor out_grad, str weight_dtype, int arch, int group_size)
   output : Tensor(x_grad)
   infer_meta :
     func : WeightOnlyLinearGradInferMeta

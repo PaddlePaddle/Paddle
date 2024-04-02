@@ -45,7 +45,7 @@
   support_dygraph_mode : true
 
 - op : bn_act_xpu
-  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, float momentum, float epsilon, str data_layout, int act_type)
+  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, float momentum, float epsilon, str data_format, int act_type)
   output : Tensor(out)
   infer_meta :
     func : BNActXPUInferMeta
@@ -122,7 +122,7 @@
     data_type : x
 
 - op : fc
-  args : (Tensor input, Tensor w, Tensor bias, int in_num_col_dims = 1, str activation_type = "", bool use_mkldnn = false, bool padding_weights = false, bool use_quantizer = false, str mkldnn_data_type = "float32", float scale_in = 1.0f, float[] scale_weights = {1.0f}, float scale_out = 1.0f, bool force_fp32_output = false)
+  args : (Tensor input, Tensor w, Tensor bias, int in_num_col_dims = 1, str activation_type = "", bool padding_weights = false)
   output : Tensor(out)
   infer_meta :
     func : FCInferMeta
@@ -163,6 +163,7 @@
     data_type : x
   backward : fused_bias_dropout_residual_layer_norm_grad
   intermediate : bias_dropout_residual_out, dropout_mask_out, ln_mean, ln_variance
+  support_dygraph_mode : true
 
 - op : fused_bias_residual_layernorm
   args : (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, float residual_alpha, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound)
@@ -272,7 +273,7 @@
   optional : cache_kv, pre_caches, rotary_pos_emb, time_step, seq_lengths, src_mask, gather_index
 
 - op : fused_rotary_position_embedding
-  args : (Tensor q, Tensor k, Tensor v, Tensor sin, Tensor cos, Tensor position_ids, bool use_neox_rotary_style = true)
+  args : (Tensor q, Tensor k, Tensor v, Tensor sin, Tensor cos, Tensor position_ids, bool use_neox_rotary_style = true, bool time_major = false)
   output : Tensor(out_q), Tensor(out_k), Tensor(out_v)
   infer_meta :
     func : FusedRopeInferMeta
@@ -305,7 +306,7 @@
     data_type : x
 
 - op : fusion_gru
-  args : (Tensor x, Tensor h0, Tensor weight_x, Tensor weight_h, Tensor bias, str activation = "tanh", str gate_activation = "sigmoid", bool is_reverse = false, bool use_seq = true, bool origin_mode = false, bool use_mkldnn = false, str mkldnn_data_type = "float32", float scale_data = 1.0f, float shift_data = 0.0f, float[] scale_weights = {1.0f}, bool force_fp32_output = false)
+  args : (Tensor x, Tensor h0, Tensor weight_x, Tensor weight_h, Tensor bias, str activation = "tanh", str gate_activation = "sigmoid", bool is_reverse = false, bool use_seq = true, bool origin_mode = false, bool force_fp32_output = false)
   output : Tensor(reordered_h0), Tensor(xx), Tensor(batched_input), Tensor(batched_out), Tensor(hidden)
   infer_meta :
     func : FusionGRUInferMeta
@@ -383,8 +384,23 @@
     func : layer_norm_act_xpu
     data_type : x
 
+# This op is implemented using CUDNN Frontend API, which serves as a supplement to
+# legacy max pooling implementation. It shows better performance with NHWC layout and
+# half precision.
+- op : max_pool2d_v2
+  args : (Tensor x, int[] kernel_size, int[] strides= {1, 1}, int[] paddings = {0, 0}, str data_format = "NCHW", bool global_pooling = false, bool adaptive = false)
+  output : Tensor(out), Tensor(saved_idx)
+  infer_meta :
+    func : MaxPoolV2InferMeta
+    param : [x, kernel_size, strides, paddings, data_format, global_pooling, adaptive]
+  kernel :
+    func : max_pool2d_v2
+    param : [x, kernel_size, strides, paddings, data_format, global_pooling, adaptive]
+  intermediate: saved_idx
+  backward : max_pool2d_v2_grad
+
 - op : multi_encoder_xpu
-  args : (Tensor x, Tensor[] fc_weight, Tensor[] fc_weight_max, Tensor[] fc_bias, Tensor[] ln_scale, Tensor[] ln_bias, Tensor mask, Tensor seq_lod, Tensor max_seq_len, int layer_num, bool norm_before, int hidden_dim, int head_num, int size_per_head, int ffn_hidden_dim_scale, int act_type, int relative_type, int slice_idx)
+  args : (Tensor x, Tensor[] fc_input_max, Tensor[] fc_weight, Tensor[] fc_weight_max, Tensor[] fc_bias, Tensor[] ln_scale, Tensor[] ln_bias, Tensor[] smooth_scale_weight, Tensor[] roformer_embedding, Tensor mask, Tensor seq_lod, Tensor max_seq_len, int layer_num, bool norm_before, int hidden_dim, int head_num, int size_per_head, int ffn_hidden_dim_scale, int act_type, int relative_type, int slice_idx, bool is_per_channel, int max_pos_len, float[] softmax_max_value, str[] quant_types)
   output : Tensor(out), Tensor(x_fp16), Tensor(out_fp16)
   infer_meta :
     func : MultiEncoderXPUInferMeta
@@ -404,7 +420,7 @@
   optional : bias_qk
 
 - op : qkv_attention_xpu
-  args : (Tensor q, Tensor k, Tensor v, Tensor q_max, Tensor k_max, Tensor v_max, float alpha, int head_num, int head_dim, DataType out_dtype)
+  args : (Tensor q, Tensor k, Tensor v, Tensor q_max, Tensor k_max, Tensor v_max, float alpha, int head_num, int head_dim, bool qkv_fc_fusion, DataType out_dtype)
   output : Tensor(qkv), Tensor(qkv_max)
   infer_meta :
     func : QKVAttentionXPUInferMeta
@@ -422,6 +438,15 @@
     func : quantize_xpu
     data_type : x
 
+- op : roformer_relative_embedding_xpu
+  args : (Tensor x, Tensor sin_emb, Tensor cos_emb, int max_pos_len)
+  output : Tensor(out)
+  infer_meta :
+    func : RoformerRelativePosXPUInferMeta
+  kernel :
+    func : roformer_relative_embedding_xpu
+    data_type : x
+
 - op : self_dp_attention
   args : (Tensor x, float alpha = 1.0f, int head_number = 1)
   output : Tensor(out)
@@ -429,6 +454,15 @@
     func : SelfDPAttenInferMeta
   kernel :
     func : self_dp_attention
+    data_type : x
+
+- op : sine_pos_xpu
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : SinePosXPUInferMeta
+  kernel :
+    func : sine_pos_xpu
     data_type : x
 
 - op : skip_layernorm

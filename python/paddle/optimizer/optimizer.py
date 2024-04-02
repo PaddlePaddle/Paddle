@@ -22,6 +22,7 @@ import paddle
 import paddle.autograd as imperative_base
 from paddle import _C_ops
 from paddle._pir_ops import parameter, set_parameter
+from paddle.autograd.backward_utils import ValueDict
 from paddle.base import core
 from paddle.base.framework import (
     Variable,
@@ -36,7 +37,11 @@ from paddle.base.framework import (
 from paddle.regularizer import L2Decay
 
 from ..base import framework, unique_name
-from ..base.backward import _get_no_grad_set_name, append_backward
+from ..base.backward import (
+    _get_no_grad_set_name,
+    _get_no_grad_set_value,
+    append_backward,
+)
 from ..base.framework import Parameter
 from ..base.layer_helper import LayerHelper
 from .lr import LRScheduler
@@ -186,9 +191,7 @@ class Optimizer:
             if isinstance(parameters, (paddle.Tensor, core.eager.Tensor)):
                 raise TypeError(
                     "`parameters` argument given to the optimizer should be "
-                    "an iterable of paddle Tensors, but got argument type is `{}`.".format(
-                        type(parameters)
-                    )
+                    f"an iterable of paddle Tensors, but got argument type is `{type(parameters)}`."
                 )
             if isinstance(parameters, dict):
                 raise TypeError(
@@ -280,7 +283,7 @@ class Optimizer:
 
         self._param_dict = self._create_multi_tensor_dict()
         self._auxiliary_vars = {}
-        self._already_create_accumulater = set()
+        self._already_create_accumulator = set()
 
         self._master_weights = {}
         # create master gradients' states
@@ -288,7 +291,10 @@ class Optimizer:
 
     def _create_master_grad_states(self):
         # master gradients states
-        self._master_grads = {}
+        if in_pir_mode():
+            self._master_grads = ValueDict()
+        else:
+            self._master_grads = {}
         self._master_grad = False
 
     def _set_auxiliary_var(self, key, val):
@@ -402,35 +408,7 @@ class Optimizer:
                     tensor.set_xpu_scale_value(
                         state_dict.get(var_tmp.name + ".SCALE_VALUE", -1.0)
                     )
-
-                model_np = np.array(tensor)
-
-                load_para = state_dict[var_tmp.name]
-
-                if isinstance(load_para, Variable):
-                    load_para_np = np.array(load_para)
-                elif isinstance(load_para, core.eager.Tensor):
-                    load_para_np = np.array(load_para)
-                elif isinstance(load_para, np.ndarray):
-                    load_para_np = load_para
-                else:
-                    raise RuntimeError(
-                        f"State dict type {str(type(load_para))} not supprt"
-                    )
-
-                assert (
-                    model_np.shape == load_para_np.shape
-                ), "Parameter shape not match, Dygraph Parameter [ {} ] need tensor with shape {} but load tensor with shape {}".format(
-                    model_np.name, model_np.shape, load_para_np.shape
-                )
-
-                assert (
-                    model_np.dtype == load_para_np.dtype
-                ), "Parameter dtype not match, Dygraph Parameter [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
-                    model_np.name, model_np.dtype, load_para_np.dtype
-                )
-
-                tensor.set(load_para_np, framework._current_expected_place())
+                var.set_value(state_dict[var_tmp.name])
 
     def get_opti_var_name_list(self):
         return self._opti_name_list
@@ -479,9 +457,9 @@ class Optimizer:
                         )
                         init_result.persistable = True
                         set_parameter(init_result, lr_name)
-                    main_program.move_parameters_from(startup_program)
+                    main_program.set_parameters_from(startup_program)
 
-                    if not isinstance(lr_var, paddle.pir.OpResult):
+                    if not isinstance(lr_var, paddle.pir.Value):
                         self._learning_rate._var_name = lr_name
                         with paddle.static.program_guard(main_program):
                             param = parameter(lr_name, _lr_dtype, [])
@@ -521,23 +499,29 @@ class Optimizer:
                 # only create global lr_var once
                 lr = self._global_learning_rate()
                 if in_pir_mode():
-                    if isinstance(lr, paddle.pir.OpResult):
+                    if isinstance(lr, paddle.pir.Value):
                         return
                     else:
                         place = _current_expected_place()
                         if not isinstance(_lr_dtype, paddle.base.core.DataType):
-                            lr_dtype = (
-                                paddle.pir.core.convert_np_dtype_to_dtype_(
+                            if isinstance(
+                                _lr_dtype, paddle.base.libpaddle.VarDesc.VarType
+                            ):
+                                _lr_dtype = paddle.pir.core.vartype_to_datatype[
                                     _lr_dtype
+                                ]
+                            else:
+                                _lr_dtype = (
+                                    paddle.pir.core.convert_np_dtype_to_dtype_(
+                                        _lr_dtype
+                                    )
                                 )
-                            )
                         self._learning_rate_map[
                             paddle.static.default_main_program()
-                        ] = paddle.pir.core.create_parameter(
+                        ] = paddle.pir.core.create_persistable_value(
                             dtype=_lr_dtype,
                             shape=[],
                             name=unique_name.generate("learning_rate"),
-                            trainable=False,
                             initializer=paddle.nn.initializer.ConstantInitializer(
                                 value=float(self._learning_rate)
                             ),
@@ -786,9 +770,9 @@ class Optimizer:
     def _create_param_lr(self, param_and_grad):
         # create learning rate tensor for every parameter
         param = param_and_grad[0]
-        if hasattr(param, 'optimize_attr'):
+        if hasattr(param, 'optimize_attr') and param.optimize_attr is not None:
             param_lr = param.optimize_attr['learning_rate']
-            if isinstance(param_lr, (Variable, paddle.pir.OpResult)):
+            if isinstance(param_lr, (Variable, paddle.pir.Value)):
                 return param_lr
             else:
                 if param_lr == 1.0:
@@ -809,7 +793,31 @@ class Optimizer:
         else:
             var_name = self._gen_master_weight_var_name(param)
             if in_pir_mode():
-                var = paddle.cast(param, 'float32')
+                startup_program = paddle.static.default_startup_program()
+                main_program = paddle.static.default_main_program()
+                with paddle.static.program_guard(startup_program):
+
+                    def get_param_from_startup(startup, name):
+                        for op in startup.global_block().ops:
+                            if (
+                                op.name() == 'builtin.set_parameter'
+                                and name == op.attrs()['parameter_name']
+                            ):
+                                return op.operand(0).source()
+                        return None
+
+                    startup_param = get_param_from_startup(
+                        startup_program, param.name
+                    )
+                    var = paddle.cast(startup_param, 'float32')
+                    var.persistable = True
+                    paddle._pir_ops.set_persistable_value(var, var_name)
+                with paddle.static.program_guard(main_program):
+                    paddle.pir.reset_insertion_point_to_start()
+                    var = paddle.static.data(
+                        var_name, var.shape, var.dtype, core.Place()
+                    )
+                    var.persistable = True
             elif framework.in_dygraph_mode():
                 var = paddle.cast(param, 'float32')
                 var.name = var_name
@@ -841,21 +849,28 @@ class Optimizer:
 
     def _create_master_grad(self, grad):
         assert self._is_dtype_fp16_or_bf16(grad.dtype)
-        if grad.name in self._master_grads:
-            var = self._master_grads[grad.name]
+        if in_pir_mode():
+            if grad in self._master_grads:
+                var = self._master_grads[grad]
+            else:
+                var = paddle.cast(grad, 'float32')
+                self._master_grads[grad] = var
         else:
-            var_name = grad.name + "_fp32_master"
-            var_name = unique_name.generate(var_name)
-            var = grad.block.create_var(
-                name=var_name,
-                shape=grad.shape,
-                value=0,
-                dtype='float32',
-                lod_level=grad.lod_level,
-                persistable=grad.persistable,
-                is_data=grad.is_data,
-            )
-            self._master_grads[grad.name] = var
+            if grad.name in self._master_grads:
+                var = self._master_grads[grad.name]
+            else:
+                var_name = grad.name + "_fp32_master"
+                var_name = unique_name.generate(var_name)
+                var = grad.block.create_var(
+                    name=var_name,
+                    shape=grad.shape,
+                    value=0,
+                    dtype='float32',
+                    lod_level=grad.lod_level,
+                    persistable=grad.persistable,
+                    is_data=grad.is_data,
+                )
+                self._master_grads[grad.name] = var
         return var
 
     def _create_accumulators(self, block, parameters):
@@ -921,7 +936,7 @@ class Optimizer:
             device = self._get_device_for_param(param.name)
 
         if in_pir_mode():
-            var = paddle.pir.core.create_parameter(
+            var = paddle.pir.core.create_persistable_value(
                 dtype or param.dtype,
                 shape,
                 var_name,
@@ -1193,7 +1208,13 @@ class Optimizer:
                         self._set_auxiliary_var('found_inf', False)
                     if isinstance(parameters_and_grads, list):
                         for param_and_grad in parameters_and_grads:
-                            if param_and_grad[1] is None:
+                            # Parameters can be uninitialized in pipeline parallel of semi-auto parallel.
+                            # Since gradient clip and parameters update mixed up in one interface, so we
+                            # need to filter again here.
+                            if (
+                                param_and_grad[1] is None
+                                or not param_and_grad[0]._is_initialized()
+                            ):
                                 continue
                             if param_and_grad[0].stop_gradient is False:
                                 self._append_optimize_op(
@@ -1201,7 +1222,10 @@ class Optimizer:
                                 )
                     else:
                         for param_and_grad in parameters_and_grads['params']:
-                            if param_and_grad[1] is None:
+                            if (
+                                param_and_grad[1] is None
+                                or not param_and_grad[0]._is_initialized()
+                            ):
                                 continue
                             if param_and_grad[0].stop_gradient is False:
                                 param_grad_dict = {}
@@ -1235,6 +1259,7 @@ class Optimizer:
         # Get custom finish ops for subclasses
         # FIXME: Need to fix this once we figure out how to handle dependencies
         self._finish_update(target_block, parameters_and_grads)
+        paddle.base.core._set_warmup(False)
 
         end = len(target_block.ops)
         return target_block._slice_ops(start, end)
@@ -1308,6 +1333,7 @@ class Optimizer:
         # Get custom finish ops for subclasses
         # FIXME: Need to fix this once we figure out how to handle dependencies
         self._finish_update(target_block, parameters_and_grads)
+        paddle.base.core._set_warmup(False)
 
         end = len(target_block.ops)
         return target_block._slice_ops(start, end)
@@ -1383,10 +1409,8 @@ class Optimizer:
                 assert isinstance(callbacks, list)
             program = loss.block.program
             assert np.prod(loss.shape) == 1, (
-                "The number of elements of loss should be 1, but the current loss.shape is {}, whose number of elements is not 1. "
-                "Maybe that you should call paddle.mean to process the current loss.".format(
-                    loss.shape
-                )
+                f"The number of elements of loss should be 1, but the current loss.shape is {loss.shape}, whose number of elements is not 1. "
+                "Maybe that you should call paddle.mean to process the current loss."
             )
             parameter_list = parameters if parameters else self._parameter_list
             with paddle.static.program_guard(program, startup_program):
@@ -1635,15 +1659,26 @@ class Optimizer:
         return params_and_grads
 
     def _get_no_grad_set(self, loss, no_grad_set=None):
-        no_grad_set = _get_no_grad_set_name(no_grad_set)
-        parameters = loss.block.program.global_block().all_parameters()
-        param_no_trainable = {
-            param.name for param in parameters if param.stop_gradient is True
-        }
-        # If the parameter is no trainable, it should not have a gradient.
-        no_grad_set.update(param_no_trainable)
-
-        return no_grad_set
+        if in_pir_mode():
+            no_grad_set = _get_no_grad_set_value(no_grad_set)
+            parameters = loss.block.program.global_block().all_parameters()
+            param_no_trainable = [
+                param for param in parameters if param.stop_gradient is True
+            ]
+            # If the parameter is no trainable, it should not have a gradient.
+            no_grad_set.update(param_no_trainable)
+            return no_grad_set
+        else:
+            no_grad_set = _get_no_grad_set_name(no_grad_set)
+            parameters = loss.block.program.global_block().all_parameters()
+            param_no_trainable = {
+                param.name
+                for param in parameters
+                if param.stop_gradient is True
+            }
+            # If the parameter is no trainable, it should not have a gradient.
+            no_grad_set.update(param_no_trainable)
+            return no_grad_set
 
     @framework.non_static_only
     def clear_grad(self, set_to_zero=True):
@@ -1739,7 +1774,7 @@ class Optimizer:
 
         """
         assert isinstance(
-            loss, (Variable, paddle.pir.OpResult)
+            loss, (Variable, paddle.pir.Value)
         ), "The loss should be an Tensor."
 
         parameter_list = parameters if parameters else self._parameter_list

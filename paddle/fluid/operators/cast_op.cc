@@ -76,7 +76,7 @@ class CastCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     paddle::Tensor *x_grad = this->GetOutputPtr(&x_grad_t);
     std::string x_grad_name = this->GetOutputName(x_grad_t);
 
-    VLOG(6) << "Runing cast_grad composite func";
+    VLOG(6) << "Running cast_grad composite func";
     prim::cast_grad<prim::DescTensor>(x, out_grad, x_grad);
 
     this->RecoverOutputName(x_grad_t, x_grad_name);

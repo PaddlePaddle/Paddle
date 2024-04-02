@@ -132,7 +132,7 @@ class DistributedLookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
 
     AddComment(R"DOC(
-Lookup Tablel Prefetch Operator.
+Lookup Table Prefetch Operator.
 This operator is used to perform lookup on parameter W,
 then concatenated into a sparse tensor.
 The type of Ids(Input) is SelectedRows, the rows of Ids contains

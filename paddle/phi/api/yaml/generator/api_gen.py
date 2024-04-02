@@ -340,9 +340,7 @@ class ForwardAPI(BaseAPI):
                         )
                     else:
                         raise ValueError(
-                            "{} : Output error: only support Tensor type when use view in yaml. But get {}".format(
-                                self.api, out_dtype_list[i]
-                            )
+                            f"{self.api} : Output error: only support Tensor type when use view in yaml. But get {out_dtype_list[i]}"
                         )
         else:
             raise ValueError(
@@ -399,7 +397,7 @@ def source_include(header_file_path):
 #include <memory>
 
 #include "glog/logging.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 #include "paddle/phi/api/lib/api_custom_impl.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
@@ -425,7 +423,7 @@ def source_include(header_file_path):
 #endif
 
 PD_DECLARE_bool(conv2d_disable_cudnn);
-PD_DECLARE_int32(low_precision_op_list);
+COMMON_DECLARE_int32(low_precision_op_list);
 """
 
 
@@ -494,12 +492,18 @@ def generate_api(
     source_file.write(namespace[0])
 
     for api in apis:
-        foward_api = ForwardAPI(api)
-        if foward_api.is_dygraph_api:
-            foward_api.is_dygraph_api = False
+        forward_api = ForwardAPI(api)
+        if forward_api.is_dygraph_api and not is_fused_ops_yaml:
+            forward_api.is_dygraph_api = False
 
-        header_file.write(foward_api.gene_api_declaration())
-        source_file.write(foward_api.gene_api_code())
+        if forward_api.is_dygraph_api and is_fused_ops_yaml:
+            forward_api.is_dygraph_api = False
+            header_file.write(forward_api.gene_api_declaration())
+            source_file.write(forward_api.gene_api_code())
+            forward_api.is_dygraph_api = True
+
+        header_file.write(forward_api.gene_api_declaration())
+        source_file.write(forward_api.gene_api_code())
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])

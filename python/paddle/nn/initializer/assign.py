@@ -56,6 +56,9 @@ class NumpyArrayInitializer(Initializer):
         Returns:
             The initialization op
         """
+        assert not (
+            isinstance(var, framework.EagerParamBase) and var.is_dist()
+        ), "Currently, assign initializer not support lazy init for dist param."
         block = self._check_block(block)
 
         assert isinstance(
@@ -63,7 +66,7 @@ class NumpyArrayInitializer(Initializer):
         )
         assert isinstance(block, (framework.Block, paddle.pir.Block))
 
-        # to be compatible of fp16 initalizers
+        # to be compatible of fp16 initializers
         if var.dtype in [core.VarDesc.VarType.FP16, core.VarDesc.VarType.BF16]:
             out_dtype = core.VarDesc.VarType.FP32
             np_value = self._value.astype("float32")
@@ -86,13 +89,13 @@ class NumpyArrayInitializer(Initializer):
             np_value = self._value
 
         if out_dtype in (core.VarDesc.VarType.FP32, core.DataType.FLOAT32):
-            value_name = "fp32_values"
+            value_name = "values"
             values = [float(v) for v in np_value.flat]
         elif out_dtype in (core.VarDesc.VarType.FP64, core.DataType.FLOAT64):
-            value_name = "fp64_values"
+            value_name = "values"
             values = [float(v) for v in np_value.flat]
         elif out_dtype in (core.VarDesc.VarType.INT32, core.DataType.INT32):
-            value_name = "int32_values"
+            value_name = "values"
             values = [int(v) for v in np_value.flat]
         elif out_dtype in (
             core.VarDesc.VarType.INT8,

@@ -204,6 +204,7 @@ class TestSearchSortedError(unittest.TestCase):
             RuntimeError, test_searchsorted_sortedsequence_size_error
         )
 
+    @test_with_pir_api
     def test_check_type_error(self):
         def test_sortedsequence_values_type_error():
             with paddle.static.program_guard(paddle.static.Program()):

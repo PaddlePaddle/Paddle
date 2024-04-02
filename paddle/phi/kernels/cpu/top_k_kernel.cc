@@ -89,14 +89,14 @@ static void FullTopK(Type input_height,
             });
         // the nth-element will get the unorder elements, sort the element
         if (sorted) {
-          std::sort(col_vec.begin(),
-                    col_vec.begin() + k - 1,
-                    [&largest](const std::pair<T, Type>& l,
-                               const std::pair<T, Type>& r) {
-                      return (std::isnan(static_cast<double>(l.first)) &&
-                              !std::isnan(static_cast<double>(r.first))) ||
-                             (l.first > r.first);
-                    });
+          std::sort(
+              col_vec.begin(),
+              col_vec.begin() + k - 1,
+              [](const std::pair<T, Type>& l, const std::pair<T, Type>& r) {
+                return (std::isnan(static_cast<double>(l.first)) &&
+                        !std::isnan(static_cast<double>(r.first))) ||
+                       (l.first > r.first);
+              });
         }
       } else {
         std::nth_element(
@@ -147,7 +147,7 @@ void TopkKernel(const Context& dev_ctx,
     phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
   }
-  // axis < 0, cacluate the real axis
+  // axis < 0, calculate the real axis
   if (axis < 0) {
     axis += in_dims.size();
   }
@@ -161,7 +161,7 @@ void TopkKernel(const Context& dev_ctx,
 
   if (k_scalar.FromTensor()) {
     auto out_dims = out->dims();
-    // accroding to axis to set K value in the dim
+    // according to axis to set K value in the dim
     out_dims[axis] = k;
     out->Resize(out_dims);
     indices->Resize(out_dims);
@@ -184,7 +184,7 @@ void TopkKernel(const Context& dev_ctx,
                          largest,
                          sorted);
   } else {
-    // if the topk dims is not last dim, will tranpose and do topk
+    // if the topk dims is not last dim, will transpose and do topk
     std::vector<int> trans;
     for (int i = 0; i < axis; i++) {
       trans.emplace_back(i);
