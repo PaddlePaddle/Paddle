@@ -86,6 +86,9 @@ std::optional<ShardableAxesSignature> CreateSignatureForSpecialOps(
   if (op->name() == "cinn_op.reshape") {
     return CreateDefaultSignature(op);
   }
+  if (op->name() == "pd_op.reshape") {
+    return CreateDefaultSignature(op);
+  }
   return std::nullopt;
 }
 

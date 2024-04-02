@@ -173,6 +173,10 @@ static std::optional<ValueDimRelation> CreateOpRelativenessForSpecialOps(
     // Special Elementwise.
     return CreateOpRelativenessForDefault(op);
   }
+  if (op->name() == "pd_op.reshape") {
+    // Special Elementwise.
+    return CreateOpRelativenessForDefault(op);
+  }
   if (op->name() == "cinn_op.generate_shape") {
     return CreateOpRelativenessForDefault(op);
   }
