@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/onednn/depthwise_conv_mkldnn_pass.h"
+#include "paddle/fluid/pir/transforms/onednn/depthwise_conv_onednn_pass.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -104,4 +104,4 @@ std::unique_ptr<Pass> CreateDepthwiseConvMKLDNNPass() {
 
 }  // namespace pir
 
-REGISTER_IR_PASS(depthwise_conv_mkldnn_pass, DepthwiseConvMKLDNNPass);
+REGISTER_IR_PASS(depthwise_conv_onednn_pass, DepthwiseConvMKLDNNPass);
