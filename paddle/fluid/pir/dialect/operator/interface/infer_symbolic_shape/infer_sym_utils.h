@@ -28,7 +28,7 @@ using TensorListExprs = symbol::TensorListShapeOrDataDimExprs;
 
 COMMON_DECLARE_string(pir_dyshape_sym2value);
 
-constexpr int vlog_level = 3;
+constexpr int vlog_level = 0;
 const char sym_sep[] = ":";
 static std::unordered_map<DimExpr, DimExpr> map_sym2value, map_sym2sym;
 
