@@ -561,19 +561,15 @@ def require_version(min_version, max_version=None):
     if version_cmp(version_installed, zero_version) == 0:
         if max_version is not None:
             warnings.warn(
-                "PaddlePaddle version in [{}, {}] required, but {} installed. "
+                f"PaddlePaddle version in [{min_version}, {max_version}] required, but {paddle_version.full_version} installed. "
                 "Maybe you are using a develop version, "
-                "please make sure the version is good with your code.".format(
-                    min_version, max_version, paddle_version.full_version
-                )
+                "please make sure the version is good with your code."
             )
         else:
             warnings.warn(
-                "PaddlePaddle version {} or higher is required, but {} installed, "
+                f"PaddlePaddle version {min_version} or higher is required, but {paddle_version.full_version} installed, "
                 "Maybe you are using a develop version, "
-                "please make sure the version is good with your code.".format(
-                    min_version, paddle_version.full_version
-                )
+                "please make sure the version is good with your code."
             )
         return
 
@@ -593,17 +589,13 @@ def require_version(min_version, max_version=None):
             or version_cmp(version_installed, min_version_to_check) < 0
         ):
             raise Exception(
-                "VersionError: PaddlePaddle version in [{}, {}] required, but {} installed.".format(
-                    min_version, max_version, paddle_version.full_version
-                )
+                f"VersionError: PaddlePaddle version in [{min_version}, {max_version}] required, but {paddle_version.full_version} installed."
             )
     else:
         if version_cmp(version_installed, min_version_to_check) < 0:
             raise Exception(
-                "VersionError: PaddlePaddle version {} or higher is required, but {} installed, "
-                "please upgrade your PaddlePaddle to {} or other higher version.".format(
-                    min_version, paddle_version.full_version, min_version
-                )
+                f"VersionError: PaddlePaddle version {min_version} or higher is required, but {paddle_version.full_version} installed, "
+                f"please upgrade your PaddlePaddle to {min_version} or other higher version."
             )
 
 
@@ -779,10 +771,8 @@ def _cpu_num():
                 "!!! The CPU_NUM is not specified, you should set CPU_NUM in the environment variable list.\n"
                 "CPU_NUM indicates that how many CPUPlace are used in the current task.\n"
                 "And if this parameter are set as N (equal to the number of physical CPU core) the program may be faster.\n\n"
-                "export CPU_NUM={} # for example, set CPU_NUM as number of physical CPU core which is {}.\n\n"
-                "!!! The default number of CPU_NUM=1.\n".format(
-                    multiprocessing.cpu_count(), multiprocessing.cpu_count()
-                )
+                f"export CPU_NUM={multiprocessing.cpu_count()} # for example, set CPU_NUM as number of physical CPU core which is {multiprocessing.cpu_count()}.\n\n"
+                "!!! The default number of CPU_NUM=1.\n"
             )
         os.environ["CPU_NUM"] = str(1)
     cpu_num = os.environ.get("CPU_NUM")
@@ -1971,13 +1961,7 @@ class Variable(metaclass=VariableMetaClass):
             or self.type == core.VarDesc.VarType.LOD_TENSOR
         ):
             dtype_str = str(self.dtype).split(".")[1]
-            var_str = "{name} : {type}.shape{shape}.dtype({dtype}).stop_gradient({stop_gradient})".format(
-                name=self.name,
-                type=type_str,
-                shape=self.shape,
-                dtype=dtype_str,
-                stop_gradient=self.stop_gradient,
-            )
+            var_str = f"{self.name} : {type_str}.shape{self.shape}.dtype({dtype_str}).stop_gradient({self.stop_gradient})"
         else:
             var_str = f"{self.name} : {type_str})"
 
@@ -2696,9 +2680,7 @@ class Variable(metaclass=VariableMetaClass):
 
         if scope is not None and not isinstance(scope, core._Scope):
             raise TypeError(
-                "`scope` should be None or `paddle.static.Scope` type, but received {}.".format(
-                    type(scope)
-                )
+                f"`scope` should be None or `paddle.static.Scope` type, but received {type(scope)}."
             )
 
         if scope is None:
@@ -2763,16 +2745,12 @@ class Variable(metaclass=VariableMetaClass):
 
         if not (isinstance(value, np.ndarray) or hasattr(value, "__array__")):
             raise TypeError(
-                "`value` should be `numpy.ndarray` or `LoDTensor`, but received {}.".format(
-                    type(value)
-                )
+                f"`value` should be `numpy.ndarray` or `LoDTensor`, but received {type(value)}."
             )
 
         if scope is not None and not isinstance(scope, core._Scope):
             raise TypeError(
-                "`scope` should be None or `paddle.static.Scope` type, but received {}.".format(
-                    type(scope)
-                )
+                f"`scope` should be None or `paddle.static.Scope` type, but received {type(scope)}."
             )
 
         if scope is None:
@@ -2793,9 +2771,7 @@ class Variable(metaclass=VariableMetaClass):
                 value_shape = value.shape
             if list(t.shape()) != list(value_shape):
                 raise ValueError(
-                    "{} expected a shape {}, but the received shape is {}.".format(
-                        self.name, list(t.shape()), list(value_shape)
-                    )
+                    f"{self.name} expected a shape {list(t.shape())}, but the received shape is {list(value_shape)}."
                 )
 
         p = t._place()
@@ -3330,12 +3306,7 @@ class Operator:
                                 and default_value != op_attrs[a_name]
                             ):
                                 warnings.warn(
-                                    "op {}'s attr {} = {} is not the default value: {}".format(
-                                        type,
-                                        a_name,
-                                        op_attrs[a_name],
-                                        default_value,
-                                    )
+                                    f"op {type}'s attr {a_name} = {op_attrs[a_name]} is not the default value: {default_value}"
                                 )
 
             # proto.attrs doesn't include ipu_index
@@ -3407,9 +3378,7 @@ class Operator:
         """
         assert isinstance(
             skip_op_callstack, bool
-        ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
-            type(skip_op_callstack)
-        )
+        ), f"skip_op_callstack parameter's type is error, expect bool, received {type(skip_op_callstack)}"
         outputs_str = "{"
         for i in range(0, len(self.output_names)):
             outputs_str += f"{self.output_names[i]}="
@@ -3932,9 +3901,7 @@ def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
                     and inplace_map.get("Input", None) == "Out"
                 ):
                     raise ValueError(
-                        "Sorry about what's happened. In to_static mode, {}'s output variable {} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block.".format(
-                            op_type, k
-                        )
+                        f"Sorry about what's happened. In to_static mode, {op_type}'s output variable {k} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block."
                     )
             elif isinstance(v, list):
                 for var in v:
@@ -3944,9 +3911,7 @@ def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
                             and inplace_map.get("Input", None) == "Out"
                         ):
                             raise ValueError(
-                                "Sorry about what's happend. In to_static mode, {}'s output variable {} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block.".format(
-                                    op_type, k
-                                )
+                                f"Sorry about what's happend. In to_static mode, {op_type}'s output variable {k} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block."
                             )
 
 
@@ -4208,9 +4173,7 @@ class Block:
         """
         assert isinstance(
             skip_op_callstack, bool
-        ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
-            type(skip_op_callstack)
-        )
+        ), f"skip_op_callstack parameter's type is error, expect bool, received {type(skip_op_callstack)}"
         block_str = f"{{ // block_idx:{self.idx}  parent_idx:{self.parent_idx}  forward_idx:{self.forward_block_idx}  backward_idx:{self.backward_block_idx}\n"
         for var in list(self.vars.values()):
             block_str += f"    {var._to_readable_code()}\n"
@@ -6240,9 +6203,7 @@ class Program:
         """
         assert isinstance(
             skip_op_callstack, bool
-        ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
-            type(skip_op_callstack)
-        )
+        ), f"skip_op_callstack parameter's type is error, expect bool, received {type(skip_op_callstack)}"
         program_str = ""
         for block in self.blocks:
             program_str += block._to_readable_code(skip_op_callstack)
@@ -6283,14 +6244,10 @@ class Program:
         """
         assert isinstance(
             throw_on_error, bool
-        ), "The type of throw_on_error parameter is wrong, expected bool, but received {}.".format(
-            type(throw_on_error)
-        )
+        ), f"The type of throw_on_error parameter is wrong, expected bool, but received {type(throw_on_error)}."
         assert isinstance(
             with_details, bool
-        ), "The type of with_details parameter is wrong, expected bool, but received {}.".format(
-            type(with_details)
-        )
+        ), f"The type of with_details parameter is wrong, expected bool, but received {type(with_details)}."
 
         if with_details:
             res_str = ""
@@ -7342,9 +7299,7 @@ class Program:
 
         if scope is not None and not isinstance(scope, core._Scope):
             raise TypeError(
-                "`scope` should be None or `paddle.static.Scope'` type, but received {}.".format(
-                    type(scope)
-                )
+                f"`scope` should be None or `paddle.static.Scope'` type, but received {type(scope)}."
             )
 
         if scope is None:
@@ -7391,9 +7346,7 @@ class Program:
             var_temp = scope.find_var(var.name)
             if var_temp is None:
                 raise ValueError(
-                    "Can not find Variable '{}' in the scope. Make sure it is initialized".format(
-                        var.name
-                    )
+                    f"Can not find Variable '{var.name}' in the scope. Make sure it is initialized"
                 )
             state_dict[var.name] = var_temp.get_tensor()
 
@@ -8154,8 +8107,8 @@ def _get_paddle_place(place):
     if place == "gpu_pinned" or place == "gpu" or available_gpu_place:
         if not core.is_compiled_with_cuda():
             raise ValueError(
-                "The device should not be {}, since PaddlePaddle is "
-                "not compiled with CUDA".format(available_gpu_place.group())
+                f"The device should not be {available_gpu_place.group()}, since PaddlePaddle is "
+                "not compiled with CUDA"
             )
         if place == "gpu_pinned":
             return core.CUDAPinnedPlace()
@@ -8172,8 +8125,8 @@ def _get_paddle_place(place):
     if available_xpu_place:
         if not core.is_compiled_with_xpu():
             raise ValueError(
-                "The device should not be {}, since PaddlePaddle is "
-                "not compiled with XPU".format(available_xpu_place.group())
+                f"The device should not be {available_xpu_place.group()}, since PaddlePaddle is "
+                "not compiled with XPU"
             )
         place_info_list = place.split(":", 1)
         device_id = place_info_list[1]
@@ -8185,8 +8138,8 @@ def _get_paddle_place(place):
     if available_ipu_place:
         if not core.is_compiled_with_ipu():
             raise ValueError(
-                "The device should not be {}, since PaddlePaddle is "
-                "not compiled with IPU".format(available_ipu_place.group())
+                f"The device should not be {available_ipu_place.group()}, since PaddlePaddle is "
+                "not compiled with IPU"
             )
         place_info_list = place.split(":", 1)
         device_id = place_info_list[1]

@@ -122,9 +122,7 @@ class DistributedDefault(DistributedOperatorImplContainer):
         for i in range(num_inputs):
             assert not is_parameter_related(
                 input_arg_names[i], main_block
-            ), "input {} of op {} is parameter, op should not use default rule.".format(
-                input_arg_names[i], str(dist_op.serial_op)
-            )
+            ), f"input {input_arg_names[i]} of op {str(dist_op.serial_op)} is parameter, op should not use default rule."
             input_specs.append(
                 get_dist_tensor_spec(dist_op, input_arg_names[i])
             )
@@ -133,9 +131,7 @@ class DistributedDefault(DistributedOperatorImplContainer):
         for i in range(num_outputs):
             assert not is_parameter_related(
                 output_arg_names[i], main_block
-            ), "output {} of op {} is parameter, op should not use default rule.".format(
-                output_arg_names[i], str(dist_op.serial_op)
-            )
+            ), f"output {output_arg_names[i]} of op {str(dist_op.serial_op)} is parameter, op should not use default rule."
             output_specs.append(
                 get_dist_tensor_spec(dist_op, output_arg_names[i], False)
             )

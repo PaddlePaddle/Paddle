@@ -1478,9 +1478,7 @@ def _get_lr_scheduler_program(lr_scheduler, lr_param_dict, lr_decay_steps):
             )
     else:
         raise ValueError(
-            "Not supported current LearningRate strategy, please use follow decay strategy: {}".format(
-                scheduler_decay
-            )
+            f"Not supported current LearningRate strategy, please use follow decay strategy: {scheduler_decay}"
         )
 
     return decay_main_program, decay_startup_program, lr_name

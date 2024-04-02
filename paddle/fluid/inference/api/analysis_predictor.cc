@@ -31,6 +31,7 @@
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
+#include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
@@ -115,7 +116,6 @@
 #include "paddle/fluid/pir/transforms/general/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/general/inplace_pass.h"
-#include "paddle/fluid/pir/transforms/general/matmul_transpose_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/general/params_sync_among_devices_pass.h"
 #include "paddle/fluid/pir/transforms/general/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
@@ -886,6 +886,16 @@ bool AnalysisPredictor::PrepareExecutor() {
       pir_program_ =
           paddle::TranslateLegacyProgramToProgram(*inference_program_);
 
+      auto ir_printing_conditions = [this](::pir::Pass *pass,
+                                           ::pir::Operation *op) {
+        if (this->config_.ir_debug_passes_.empty()) {
+          return true;
+        }
+        return std::find(this->config_.ir_debug_passes_.begin(),
+                         this->config_.ir_debug_passes_.end(),
+                         pass->name()) != this->config_.ir_debug_passes_.end();
+      };
+
 #ifdef PADDLE_WITH_CINN
       if (paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
         VLOG(4) << "[Prim] Decomp program in predictor begin.";
@@ -911,44 +921,48 @@ bool AnalysisPredictor::PrepareExecutor() {
             pass_manager->EnablePrintStatistics();
           }
           if (config_.ir_debug_) {
-            pass_manager->EnableIRPrinting();
+            pass_manager->EnableIRPrinting(
+                std::make_unique<pir::PassManager::IRPrinterOption>(
+                    ir_printing_conditions, ir_printing_conditions));
           }
           return pass_manager;
         });
       }
 #endif
 
+      // Apply some optimization passes required by the inference
       ::pir::PassManager pass_pm(::pir::IrContext::Instance(),
                                  config_.pm_opt_level_);
       if (!config_.custom_passes_.empty()) {
         for (const auto &custom_pass : config_.custom_passes_) {
-          pass_pm.AddPass(
-              std::move(pir::PassRegistry::Instance().Get(custom_pass)));
+          pass_pm.AddPass(pir::PassRegistry::Instance().Get(custom_pass));
         }
       }
       if (config_.use_gpu()) {
         // gpu
         if (!config_.custom_pass_only_) {
           for (const auto &gpu_pass : kPirGpuPasses) {
-            pass_pm.AddPass(
-                std::move(pir::PassRegistry::Instance().Get(gpu_pass)));
+            pass_pm.AddPass(pir::PassRegistry::Instance().Get(gpu_pass));
           }
         }
-        // Basic pass required by the framework
-        auto params_sync_among_devices_pass =
-            ::pir::CreateParamsSyncAmongDevicesPass();
-        params_sync_among_devices_pass->SetNotOwned(pir::kPlaceAttr, &place_);
-        params_sync_among_devices_pass->SetNotOwned(pir::kParamScopeAttr,
-                                                    sub_scope_);
-        pass_pm.AddPass(std::move(params_sync_among_devices_pass));
+
+#ifdef PADDLE_WITH_XPU
+      } else if (config_.use_xpu()) {
+        // xpu
+        if (!config_.custom_pass_only_) {
+          for (const auto &xpu_pass : kPirXpuPasses) {
+            pass_pm.AddPass(
+                std::move(pir::PassRegistry::Instance().Get(xpu_pass)));
+          }
+        }
+#endif
 
 #ifdef PADDLE_WITH_DNNL
       } else if (config_.mkldnn_enabled()) {
         // mkldnn
         if (!config_.custom_pass_only_) {
           for (const auto &mkldnn_pass : kPirMkldnnPasses) {
-            pass_pm.AddPass(
-                std::move(pir::PassRegistry::Instance().Get(mkldnn_pass)));
+            pass_pm.AddPass(pir::PassRegistry::Instance().Get(mkldnn_pass));
           }
         }
 #endif
@@ -956,25 +970,49 @@ bool AnalysisPredictor::PrepareExecutor() {
         // cpu
         if (!config_.custom_pass_only_) {
           for (const auto &cpu_pass : kPirCpuPasses) {
-            pass_pm.AddPass(
-                std::move(pir::PassRegistry::Instance().Get(cpu_pass)));
+            pass_pm.AddPass(pir::PassRegistry::Instance().Get(cpu_pass));
           }
         }
       }
-      auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
-      constant_folding_pass->SetNotOwned(pir::kPlaceAttr, &place_);
-      constant_folding_pass->SetNotOwned(pir::kParamScopeAttr, sub_scope_);
-      pass_pm.AddPass(std::move(constant_folding_pass));
-      pass_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
-      pass_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
-      //----------------------------------------------------------------------------------------------//
+
       if (!config_.glog_info_disabled()) {
         pass_pm.EnablePrintStatistics();
       }
       if (config_.ir_debug_) {
-        pass_pm.EnableIRPrinting();
+        pass_pm.EnableIRPrinting(
+            std::make_unique<pir::PassManager::IRPrinterOption>(
+                ir_printing_conditions, ir_printing_conditions));
       }
       pass_pm.Run(pir_program_.get());
+
+      // Apply some basic passes required by the framework
+      ::pir::PassManager basic_pass_pm(::pir::IrContext::Instance(),
+                                       config_.pm_opt_level_);
+
+      auto params_sync_among_devices_pass =
+          ::pir::CreateParamsSyncAmongDevicesPass();
+      params_sync_among_devices_pass->SetNotOwned(pir::Pass::kPlaceAttr,
+                                                  &place_);
+      params_sync_among_devices_pass->SetNotOwned(pir::Pass::kParamScopeAttr,
+                                                  sub_scope_);
+      basic_pass_pm.AddPass(std::move(params_sync_among_devices_pass));
+      auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
+      constant_folding_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
+      constant_folding_pass->SetNotOwned(pir::Pass::kParamScopeAttr,
+                                         sub_scope_);
+      basic_pass_pm.AddPass(std::move(constant_folding_pass));
+      basic_pass_pm.AddPass(::pir::CreateDeadCodeEliminationPass());
+      basic_pass_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
+      if (!config_.glog_info_disabled()) {
+        basic_pass_pm.EnablePrintStatistics();
+      }
+      if (config_.ir_debug_) {
+        basic_pass_pm.EnableIRPrinting(
+            std::make_unique<pir::PassManager::IRPrinterOption>(
+                ir_printing_conditions, ir_printing_conditions));
+      }
+      basic_pass_pm.Run(pir_program_.get());
+      //----------------------------------------------------------------------------------------------//
 
       pir_program_ =
           paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_);
@@ -987,7 +1025,9 @@ bool AnalysisPredictor::PrepareExecutor() {
         lowered_pm.EnablePrintStatistics();
       }
       if (config_.ir_debug_) {
-        lowered_pm.EnableIRPrinting();
+        lowered_pm.EnableIRPrinting(
+            std::make_unique<pir::PassManager::IRPrinterOption>(
+                ir_printing_conditions, ir_printing_conditions));
       }
       lowered_pm.Run(pir_program_.get());
 
@@ -3065,35 +3105,16 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
   exe.Run(save_program, scope(), 0, true, true);
 }
 
-void AnalysisPredictor::RegisterInputHook(const InputTensorHookFunc &hookfunc) {
-  std::call_once(register_input_hook_flag_, [this] {
-    executor_->RegisterInputHook(
-        [this](framework::OperatorBase *op, framework::Scope *scope) {
-          for (auto &input : op->Inputs()) {
-            for (auto &var_name : input.second) {
-              auto *var = scope->FindVar(var_name);
-              if (!var || !var->IsType<phi::DenseTensor>()) continue;
-              auto dense_tensor = var->Get<phi::DenseTensor>();
-              if (!dense_tensor.initialized()) continue;
-              auto tensor = paddle::Tensor(
-                  std::make_shared<phi::DenseTensor>(dense_tensor), var_name);
-              for (auto &hookfunc : this->input_hookfuncs_) {
-                hookfunc(op->Type(), var_name, tensor);
-              }
-            }
-          }
-        });
-  });
-  input_hookfuncs_.push_back(hookfunc);
-}
-
 void AnalysisPredictor::RegisterOutputHook(
     const OutputTensorHookFunc &hookfunc) {
-  std::call_once(register_output_hook_flag_, [this] {
-    executor_->RegisterOutputHook(
-        [this](framework::OperatorBase *op, framework::Scope *scope) {
-          for (auto &output : op->Outputs()) {
-            for (auto &var_name : output.second) {
+  if (config_.new_ir_enabled()) {
+    std::call_once(register_output_hook_flag_, [this] {
+      executor_->RegisterOutputHook(
+          [this](framework::InstructionBase *instr,
+                 framework::ValueExecutionInfo *value_exe_info,
+                 framework::Scope *scope) {
+            for (auto &output : instr->Outputs()) {
+              auto var_name = value_exe_info->GetVarName(output.first);
               auto *var = scope->FindVar(var_name);
               if (!var || !var->IsType<phi::DenseTensor>()) continue;
               auto dense_tensor = var->Get<phi::DenseTensor>();
@@ -3101,13 +3122,82 @@ void AnalysisPredictor::RegisterOutputHook(
               auto tensor = paddle::Tensor(
                   std::make_shared<phi::DenseTensor>(dense_tensor), var_name);
               for (auto &hookfunc : this->output_hookfuncs_) {
-                hookfunc(op->Type(), var_name, tensor);
+                hookfunc(instr->Name() + ":" + std::to_string(instr->Id()),
+                         var_name,
+                         tensor);
               }
             }
-          }
-        });
-  });
-  output_hookfuncs_.push_back(hookfunc);
+          });
+    });
+    output_hookfuncs_.push_back(hookfunc);
+  } else {
+    std::call_once(register_output_hook_flag_, [this] {
+      executor_->RegisterOutputHook(
+          [this](framework::OperatorBase *op, framework::Scope *scope) {
+            for (auto &output : op->Outputs()) {
+              for (auto &var_name : output.second) {
+                auto *var = scope->FindVar(var_name);
+                if (!var || !var->IsType<phi::DenseTensor>()) continue;
+                auto dense_tensor = var->Get<phi::DenseTensor>();
+                if (!dense_tensor.initialized()) continue;
+                auto tensor = paddle::Tensor(
+                    std::make_shared<phi::DenseTensor>(dense_tensor), var_name);
+                for (auto &hookfunc : this->output_hookfuncs_) {
+                  hookfunc(op->Type(), var_name, tensor);
+                }
+              }
+            }
+          });
+    });
+    output_hookfuncs_.push_back(hookfunc);
+  }
+}
+
+void AnalysisPredictor::RegisterInputHook(const InputTensorHookFunc &hookfunc) {
+  if (config_.new_ir_enabled()) {
+    std::call_once(register_input_hook_flag_, [this] {
+      executor_->RegisterInputHook(
+          [this](framework::InstructionBase *instr,
+                 framework::ValueExecutionInfo *value_exe_info,
+                 framework::Scope *scope) {
+            for (auto &input : instr->Inputs()) {
+              auto var_name = value_exe_info->GetVarName(input.first);
+              auto *var = scope->FindVar(var_name);
+              if (!var || !var->IsType<phi::DenseTensor>()) continue;
+              auto dense_tensor = var->Get<phi::DenseTensor>();
+              if (!dense_tensor.initialized()) continue;
+              auto tensor = paddle::Tensor(
+                  std::make_shared<phi::DenseTensor>(dense_tensor), var_name);
+              for (auto &hookfunc : this->input_hookfuncs_) {
+                hookfunc(instr->Name() + ":" + std::to_string(instr->Id()),
+                         var_name,
+                         tensor);
+              }
+            }
+          });
+    });
+    input_hookfuncs_.push_back(hookfunc);
+  } else {
+    std::call_once(register_input_hook_flag_, [this] {
+      executor_->RegisterInputHook(
+          [this](framework::OperatorBase *op, framework::Scope *scope) {
+            for (auto &input : op->Inputs()) {
+              for (auto &var_name : input.second) {
+                auto *var = scope->FindVar(var_name);
+                if (!var || !var->IsType<phi::DenseTensor>()) continue;
+                auto dense_tensor = var->Get<phi::DenseTensor>();
+                if (!dense_tensor.initialized()) continue;
+                auto tensor = paddle::Tensor(
+                    std::make_shared<phi::DenseTensor>(dense_tensor), var_name);
+                for (auto &hookfunc : this->input_hookfuncs_) {
+                  hookfunc(op->Type(), var_name, tensor);
+                }
+              }
+            }
+          });
+    });
+    input_hookfuncs_.push_back(hookfunc);
+  }
 }
 
 template <>
@@ -3408,7 +3498,7 @@ uint64_t Predictor::TryShrinkMemory() { return predictor_->TryShrinkMemory(); }
 void Predictor::RegisterOutputHook(const OutputTensorHookFunc &hookfunc) {
   predictor_->RegisterOutputHook(hookfunc);
 }
-void Predictor::RegisterInputHook(const OutputTensorHookFunc &hookfunc) {
+void Predictor::RegisterInputHook(const InputTensorHookFunc &hookfunc) {
   predictor_->RegisterInputHook(hookfunc);
 }
 

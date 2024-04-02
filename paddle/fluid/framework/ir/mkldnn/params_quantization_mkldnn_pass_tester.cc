@@ -39,8 +39,8 @@ struct Data {
   const std::vector<float>& getData() const { return data; }
 
  private:
-  const std::vector<int64_t> shape;
-  const std::vector<float> data;
+  const std::vector<int64_t> shape{};
+  const std::vector<float> data{};
 };
 
 struct TestScope {

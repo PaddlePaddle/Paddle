@@ -195,14 +195,7 @@ class HybridCommunicateGroup:
 
         assert (
             self._check_valid_topo()
-        ), "nranks: {}, mp_num: {}, sharding_num: {}, pp_num: {}, dp_num: {}, sep_num: {}".format(
-            self.nranks,
-            self._mp_degree,
-            self._sharding_degree,
-            self._pp_degree,
-            self._dp_degree,
-            self._sep_degree,
-        )
+        ), f"nranks: {self.nranks}, mp_num: {self._mp_degree}, sharding_num: {self._sharding_degree}, pp_num: {self._pp_degree}, dp_num: {self._dp_degree}, sep_num: {self._sep_degree}"
 
         # create comm group for pipe parallel
         self._pp_group, self._pp_comm_group = self._set_comm_group("pipe")
@@ -282,14 +275,7 @@ class HybridCommunicateGroup:
                 self._sep_degree,
             )
         )
-        debug_str += ", mp_group: {},  sharding_group: {}, pp_group: {}, dp_group: {}, sep:group: {}, check/clip group: {}".format(
-            self._mp_group,
-            self._sharding_group,
-            self._pp_group,
-            self._dp_group,
-            self._sep_group,
-            self._check_group,
-        )
+        debug_str += f", mp_group: {self._mp_group},  sharding_group: {self._sharding_group}, pp_group: {self._pp_group}, dp_group: {self._dp_group}, sep:group: {self._sep_group}, check/clip group: {self._check_group}"
         logger.info(debug_str)
 
         global _HYBRID_PARALLEL_GROUP
@@ -369,9 +355,7 @@ class HybridCommunicateGroup:
         assert parallel_comm_group is not None
 
         logger.info(
-            "Total {} {} comm group(s) create successfully!".format(
-                len(parallel_groups), parallel_method
-            )
+            f"Total {len(parallel_groups)} {parallel_method} comm group(s) create successfully!"
         )
         return parallel_group, parallel_comm_group
 
@@ -587,9 +571,7 @@ class HybridCommunicateGroup:
         assert len(parallel_comm_group) > 0
 
         logger.info(
-            "Total {} comm group(s) of fused {} create successfully!".format(
-                len(parallel_groups), fused_strategy_list
-            )
+            f"Total {len(parallel_groups)} comm group(s) of fused {fused_strategy_list} create successfully!"
         )
         if len(parallel_group) > 1:
             return parallel_group, parallel_comm_group

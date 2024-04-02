@@ -77,32 +77,52 @@ void FusedRopeKernel(const Context& dev_ctx,
     PADDLE_THROW(phi::errors::Unimplemented(
         "XPU do not support rotary_embedding with use_neox_rotary_style set."));
   } else {
-    auto* outq_data =
-        reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out_q));
-    XPUFusedRotaryHalf<XPUType, Context>(
-        dev_ctx,
-        reinterpret_cast<const XPUType*>(q.data<T>()),
-        sin_data,
-        cos_data,
-        outq_data,
-        batch_size,
-        seq_len,
-        num_heads,
-        head_dim);
-
-    if (k) {
+    if (head_dim * sizeof(T) <= 1024 && head_dim % 64 == 0 && k) {
+      auto* outq_data =
+          reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out_q));
       auto* outk_data =
           reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out_k));
-      XPUFusedRotaryHalf<XPUType, Context>(
-          dev_ctx,
+      int ret = xpu::rotary_no_freqs_qk_embedding_v2<XPUType>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(q.data<T>()),
           reinterpret_cast<const XPUType*>(k->data<T>()),
           sin_data,
           cos_data,
+          outq_data,
           outk_data,
+          {batch_size, seq_len, num_heads, head_dim},
+          {batch_size, seq_len, 1, head_dim},
+          {seq_len * num_heads * head_dim, num_heads * head_dim, head_dim, 1},
+          {seq_len * head_dim, head_dim, head_dim, 1});
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "rotary_no_freqs_qk_embedding_v2");
+    } else {
+      auto* outq_data =
+          reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out_q));
+      XPUFusedRotaryHalf<XPUType, Context>(
+          dev_ctx,
+          reinterpret_cast<const XPUType*>(q.data<T>()),
+          sin_data,
+          cos_data,
+          outq_data,
           batch_size,
           seq_len,
           num_heads,
           head_dim);
+
+      if (k) {
+        auto* outk_data =
+            reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out_k));
+        XPUFusedRotaryHalf<XPUType, Context>(
+            dev_ctx,
+            reinterpret_cast<const XPUType*>(k->data<T>()),
+            sin_data,
+            cos_data,
+            outk_data,
+            batch_size,
+            seq_len,
+            num_heads,
+            head_dim);
+      }
     }
 
     if (v) {

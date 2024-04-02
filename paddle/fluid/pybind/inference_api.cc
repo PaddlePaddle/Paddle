@@ -981,7 +981,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("lite_engine_enabled", &AnalysisConfig::lite_engine_enabled)
       .def("switch_ir_debug",
            &AnalysisConfig::SwitchIrDebug,
-           py::arg("x") = true)
+           py::arg("x") = true,
+           py::arg("passes") = std::vector<std::string>())
       .def("enable_mkldnn", &AnalysisConfig::EnableMKLDNN)
       .def("disable_mkldnn", &AnalysisConfig::DisableMKLDNN)
       .def("mkldnn_enabled", &AnalysisConfig::mkldnn_enabled)
@@ -1224,8 +1225,8 @@ void BindPaddleInferPredictor(py::module *m) {
       .def("try_shrink_memory", &paddle_infer::Predictor::TryShrinkMemory)
       .def("clear_intermediate_tensor",
            &paddle_infer::Predictor::ClearIntermediateTensor)
-      .def("register_output_hook",
-           &paddle_infer::Predictor::RegisterOutputHook);
+      .def("register_output_hook", &paddle_infer::Predictor::RegisterOutputHook)
+      .def("register_input_hook", &paddle_infer::Predictor::RegisterInputHook);
 }
 
 void BindZeroCopyTensor(py::module *m) {

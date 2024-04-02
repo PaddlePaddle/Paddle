@@ -110,6 +110,110 @@ class TestExpandV2OpRank4(TestExpandV2OpRank1):
         self.expand_times = (1, 1, 1, 1)
 
 
+class TestExpandV2OpRank5(TestExpandV2OpRank1):
+    def init_data(self):
+        self.ori_shape = [5, 2, 1, 4, 5]
+        self.shape = [5, 2, 3, 4, 5]
+        self.expand_times = [1, 1, 3, 1, 1]
+
+
+class TestExpandV2OpRank5_Corner(TestExpandV2OpRank1):
+    def init_data(self):
+        self.ori_shape = [5, 2, 3, 4, 5]
+        self.shape = [5, 2, 3, 4, 5]
+        self.expand_times = [1, 1, 1, 1, 1]
+
+
+class TestExpandV2OpRank5_ZeroDim(TestExpandV2OpRank1):
+    def init_data(self):
+        self.ori_shape = []
+        self.shape = [5, 2, 3, 4, 5]
+        self.expand_times = [5, 2, 3, 4, 5]
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
+
+class TestExpandV2OpRank6(TestExpandV2OpRank1):
+    def init_data(self):
+        self.ori_shape = [1, 2, 1, 4, 5, 6]
+        self.shape = [1, 2, 3, 4, 5, 6]
+        self.expand_times = [1, 1, 3, 1, 1, 1]
+
+
+class TestExpandV2OpRank6_Corner(TestExpandV2OpRank1):
+    def init_data(self):
+        self.ori_shape = [1, 2, 3, 4, 5, 6]
+        self.shape = [1, 2, 3, 4, 5, 6]
+        self.expand_times = [1, 1, 1, 1, 1, 1]
+
+
+class TestExpandV2OpRank6_ZeroDim(TestExpandV2OpRank1):
+    def init_data(self):
+        self.ori_shape = []
+        self.shape = [1, 2, 3, 4, 5, 6]
+        self.expand_times = [1, 2, 3, 4, 5, 6]
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
+
+class TestExpandV2OpRank7(TestExpandV2OpRank1):
+    def init_data(self):
+        self.ori_shape = [5, 2, 1, 4, 5, 6, 7]
+        self.shape = [5, 2, 3, 4, 5, 6, 7]
+        self.expand_times = [1, 1, 3, 1, 1, 1, 1]
+
+
+class TestExpandV2OpRank7_Corner(TestExpandV2OpRank1):
+    def init_data(self):
+        self.ori_shape = [1, 2, 3, 4, 5, 2, 2]
+        self.shape = [1, 2, 3, 4, 5, 2, 2]
+        self.expand_times = [1, 1, 1, 1, 1, 1, 1]
+
+
+class TestExpandV2OpRank7_ZeroDim(TestExpandV2OpRank1):
+    def init_data(self):
+        self.ori_shape = []
+        self.shape = [1, 2, 3, 4, 5, 6, 7]
+        self.expand_times = [1, 2, 3, 4, 5, 6, 7]
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
+
+class TestExpandV2OpRank8(TestExpandV2OpRank1):
+    def init_data(self):
+        self.ori_shape = [1, 2, 1, 4, 5, 6, 7, 8]
+        self.shape = [1, 2, 3, 4, 5, 6, 7, 8]
+        self.expand_times = [1, 1, 3, 1, 1, 1, 1, 1]
+
+
+class TestExpandV2OpRank8_Corner(TestExpandV2OpRank1):
+    def init_data(self):
+        self.ori_shape = [1, 2, 3, 4, 5, 2, 2, 2]
+        self.shape = [1, 2, 3, 4, 5, 2, 2, 2]
+        self.expand_times = [1, 1, 1, 1, 1, 1, 1, 1]
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+            numeric_grad_delta=1e-5,
+            max_relative_error=2e-7,  # need slightly larger than 1e-7.
+        )
+
+
+class TestExpandV2OpRank8_ZeroDim(TestExpandV2OpRank1):
+    def init_data(self):
+        self.ori_shape = []
+        self.shape = [1, 2, 3, 4, 5, 6, 7, 8]
+        self.expand_times = [1, 2, 3, 4, 5, 6, 7, 8]
+
+
 # Situation 2: shape is a list(with tensor)
 class TestExpandV2OpRank1_tensor_attr(OpTest):
     def setUp(self):
@@ -300,22 +404,23 @@ class TestExpandV2BF16Op(OpTest):
 class TestExpandV2Error(unittest.TestCase):
     @test_with_pir_api
     def test_errors(self):
-        paddle.enable_static()
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-            shape = [2, 2]
-            if not in_pir_mode():
-                x1 = base.create_lod_tensor(
-                    np.array([[-1]]), [[1]], base.CPUPlace()
-                )
-                self.assertRaises(TypeError, paddle.tensor.expand, x1, shape)
-            x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="bool")
-            x2.stop_gradient = False
-            self.assertRaises(ValueError, paddle.tensor.expand, x2, shape)
-            x2.stop_gradient = True
-            self.assertRaises(TypeError, paddle.tensor.expand, x2, 1)
-        paddle.disable_static()
+        with static_guard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                shape = [2, 2]
+                if not in_pir_mode():
+                    x1 = base.create_lod_tensor(
+                        np.array([[-1]]), [[1]], base.CPUPlace()
+                    )
+                    self.assertRaises(
+                        TypeError, paddle.tensor.expand, x1, shape
+                    )
+                x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="bool")
+                x2.stop_gradient = False
+                self.assertRaises(ValueError, paddle.tensor.expand, x2, shape)
+                x2.stop_gradient = True
+                self.assertRaises(TypeError, paddle.tensor.expand, x2, 1)
 
 
 # Test python API
@@ -552,7 +657,7 @@ class TestExpandPirValueListShape(unittest.TestCase):
     def test_value_list_shape1(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.static.data('x', [1, 3])
+                x = paddle.static.data('x', [1, 1])
                 shape = [2, paddle.full([], 4)]
                 out = paddle.expand(x, shape)
                 np.testing.assert_array_equal(tuple(out.shape), (2, -1))

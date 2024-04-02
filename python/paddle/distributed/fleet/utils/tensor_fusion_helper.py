@@ -566,9 +566,7 @@ class FusedCommBuffer:
     def comm_grads(self):
         assert self._all_params_checked_in, (
             "Not all params checked in."
-            "Parameter number: {}, Check-in number: {}".format(
-                len(self._params), self._params_checked_in
-            )
+            f"Parameter number: {len(self._params)}, Check-in number: {self._params_checked_in}"
         )
         self._comm_grads()
 

@@ -89,7 +89,6 @@ static PyMethodDef DistOpsAPI[] = {
      (PyCFunction)(void (*)(void))static_api_reshard,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for reshard."},
-
     {nullptr, nullptr, 0, nullptr}};
 
 }  // namespace pybind

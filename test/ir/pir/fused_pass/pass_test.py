@@ -38,6 +38,7 @@ class PassTest(unittest.TestCase):
 
         pm = pir.PassManager(opt_level=4)
         pm.enable_ir_printing()
+        pm.enable_print_statistics()
         for pass_name in self.pass_list:
             pm.add_pass(pass_name)
         pm.run(program)
@@ -53,10 +54,8 @@ class PassTest(unittest.TestCase):
             actual_valid_op_count = op_names.count(valid_op_name)
             self.assertTrue(
                 valid_op_count == actual_valid_op_count,
-                "Checking of the number of fused operator < {} > failed. "
-                "Expected: {}, Received: {}".format(
-                    valid_op_name, valid_op_count, actual_valid_op_count
-                ),
+                f"Checking of the number of fused operator < {valid_op_name} > failed. "
+                f"Expected: {valid_op_count}, Received: {actual_valid_op_count}",
             )
 
     @abc.abstractmethod

@@ -243,9 +243,9 @@ OperatorDialect::OperatorDialect(pir::IrContext* ctx)
                        ShadowOutputOpInferSymbolicShapeInterfaceModel>());
 
   info = ctx->GetRegisteredOpInfo(pir::SplitOp::name());
-  info.AttachInterface(std::move(
+  info.AttachInterface(
       pir::InterfaceValue::Get<InferSymbolicShapeInterface,
-                               SplitOpInferSymbolicShapeInterfaceModel>()));
+                               SplitOpInferSymbolicShapeInterfaceModel>());
 
   info = ctx->GetRegisteredOpInfo(pir::YieldOp::name());
   info.AttachInterface(
