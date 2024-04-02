@@ -190,6 +190,10 @@ class TestPnormOp(OpTest):
         self.prim_op_type = "comp"
         self.init_test_case()
         self.init_dtype()
+        self.fw_comp_atol = 1e-6
+        self.fw_comp_rtol = 1e-6
+        self.rev_comp_atol = 1e-6
+        self.rev_comp_rtol = 1e-6
         x = (np.random.random(self.shape) + 0.5).astype(self.dtype)
         norm = np_linalg_norm(x, self.axis, self.porder, self.keepdim)
         self.inputs = {'X': x}
