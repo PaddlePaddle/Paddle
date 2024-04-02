@@ -2275,7 +2275,7 @@ class Engine:
     @property
     def main_program(self):
         if self._in_pir_mode:
-            return self._pir_dist_main_progs[self._mode]
+            return self._pir_dense_main_progs[self._mode]
         dist_context = self._dist_contexts[self._mode]
         return dist_context.dist_main_programs[self._cur_rank]
 
