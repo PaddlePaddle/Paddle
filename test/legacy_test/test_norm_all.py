@@ -31,6 +31,17 @@ def p_norm_python_api(
         return _C_ops.p_norm(x, p, axis, epsilon, keepdim, as_vector)
 
 
+def norm_public_python_api(
+    x, p=2.0, axis=-1, epsilon=1e-12, keepdim=False, as_vector=False
+):
+    return paddle.linalg.norm(
+        x,
+        p,
+        axis,
+        keepdim,
+    )
+
+
 def np_linalg_vector_norm(x, axis, porder, keepdims=False):
     x_shape = list(x.shape)
 
@@ -175,6 +186,8 @@ class TestPnormOp(OpTest):
     def setUp(self):
         self.op_type = "p_norm"
         self.python_api = p_norm_python_api
+        self.public_python_api = norm_public_python_api
+        self.prim_op_type = "prim"
         self.init_test_case()
         self.init_dtype()
         x = (np.random.random(self.shape) + 0.5).astype(self.dtype)
@@ -194,7 +207,7 @@ class TestPnormOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
@@ -257,7 +270,7 @@ class TestPnormOp2(TestPnormOp):
         self.dtype = "float32"
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestPnormOp3(TestPnormOp):
@@ -321,7 +334,9 @@ class TestPnormOp6(TestPnormOp):
         self.dtype = "float32"
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
+        self.check_grad(
+            ['X'], 'Out', user_defined_grads=self.gradient, check_prim=True
+        )
 
 
 def create_test_fp16_class(parent, max_relative_error=2e-3):
@@ -367,7 +382,9 @@ create_test_fp16_class(TestPnormOp6)
 class TestPnormBF16Op(OpTest):
     def setUp(self):
         self.op_type = "p_norm"
+        self.prim_op_type = "prim"
         self.python_api = p_norm_python_api
+        self.public_python_api = norm_public_python_api
         self.init_test_case()
         self.x = (np.random.random(self.shape) + 0.5).astype(np.float32)
         self.norm = np_linalg_norm(self.x, self.axis, self.porder, self.keepdim)
@@ -393,6 +410,7 @@ class TestPnormBF16Op(OpTest):
             ['X'],
             'Out',
             user_defined_grads=self.gradient,
+            check_prim=True,
         )
 
     def init_test_case(self):
