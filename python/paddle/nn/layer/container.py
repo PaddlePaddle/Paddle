@@ -548,6 +548,9 @@ class Sequential(Layer):
     Parameters:
         layers(Layer|list|tuple): Layer or list/tuple of iterable name Layer pair.
 
+    Returns:
+        None.
+
     Examples:
         .. code-block:: python
 

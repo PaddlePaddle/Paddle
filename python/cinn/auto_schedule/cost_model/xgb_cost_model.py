@@ -94,7 +94,7 @@ class XgbCostModel:
             self.booster = xgb.Booster()
         self.booster.load_model(path)
         # Should we save/load config parameters? Not now because it is pre-set.
-        # But we should do that here if that's changable in the future.
+        # But we should do that here if that's changeable in the future.
 
     def update(self, samples, labels):
         # xgb doesn't support incremental training, we leave this method as TODO

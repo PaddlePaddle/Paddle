@@ -839,14 +839,19 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     const float epsilon,
     const int groups,
     const std::string& data_format) {
-  if (data_format != "NCHW") {
-    // TODO(chengyanfu): support NHWC data format
-    PADDLE_THROW(phi::errors::Unimplemented("Only support NCHW format."));
+  std::vector<int64_t> c_axis;
+  if (data_format == "NCHW") {
+    c_axis = {1};
+  } else if (data_format == "NHWC") {
+    c_axis = {1, 3};
+  } else {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("Only support NCHW and NHWC format."));
   }
   size_t rank = x.shape().size();
-  if (rank != 3 && rank != 4) {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("Only support NCHW format in rank 3 or 4."));
+  if (rank < 3 || rank > 5) {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Only support NCHW and NHWC format in rank {3, 4, 5}."));
   }
 
   auto org_dtype = x.dtype();
@@ -856,21 +861,28 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
   if (need_cast) {
     x_cast = cast<T>(x, DataType::FLOAT32);
   }
-  if (rank == 3) {
-    x_cast = unsqueeze<T>(x_cast, {-1});
-  }
+
   Tensor x_dim_t;
   Tensor out, mean_, var_;
   if (has_dynamic_shape(x_cast.shape())) {
     x_dim_t = shape<T>(x_cast);
-    std::vector<int64_t> one_axis(1, 1);
-    Tensor x_shape = get_slice<T>(x_dim_t, 0) * groups;
-    Tensor dim_1 = full<T>({1}, -1, x_dim_t.type());
-    x_shape = concat<T>({x_shape, dim_1});
-    x_cast = backend::reshape<T>(x_cast, x_shape);
-    mean_ = mean_decomp<T>(x_cast, one_axis, true);
+    Tensor tar_shape;
+    if (data_format == "NCHW") {
+      tar_shape = get_slice<T>(x_dim_t, 0) * groups;
+      Tensor dim_1 = full<T>({1}, -1, x_dim_t.type());
+      tar_shape = concat<T>({tar_shape, dim_1});
+    } else {
+      Tensor N_shape = get_slice<T>(x_dim_t, 0);
+      Tensor dim_1 = full<T>({1}, -1, x_dim_t.type());
+      Tensor C_shape = get_slice<T>(x_dim_t, rank - 1);
+      Tensor dim_g = full<T>({1}, groups, x_dim_t.type());
+      Tensor dim_c_div_g = cast<T>(C_shape / dim_g, x_dim_t.type());
+      tar_shape = concat<T>({N_shape, dim_1, dim_g, dim_c_div_g});
+    }
+    x_cast = backend::reshape<T>(x_cast, tar_shape);
+    mean_ = mean_decomp<T>(x_cast, c_axis, true);
     Tensor var_tmp_ =
-        mean_decomp<T>(x_cast * x_cast, one_axis, true) - mean_ * mean_;
+        mean_decomp<T>(x_cast * x_cast, c_axis, true) - mean_ * mean_;
     var_ = maximum<T>(
         var_tmp_,
         backend::full_with_tensor<T>(shape<T>(var_tmp_), 0, var_tmp_.dtype()));
@@ -880,23 +892,33 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     out = backend::reshape<T>(res, x_dim_t);
   } else {
     auto x_dim = x_cast.shape();
-    std::vector<int64_t> one_axis(1, 1);
-
-    std::vector<int64_t> x_shape{x_dim[0] * groups, -1};
-    x_cast = reshape<T>(x_cast, x_shape);
-    mean_ = mean_decomp<T>(x_cast, one_axis, true);
+    if (data_format == "NCHW") {
+      x_cast = reshape<T>(x_cast, {x_dim[0] * groups, -1});
+    } else {
+      int c_div_g = x_dim[rank - 1] / groups;
+      x_cast = reshape<T>(x_cast, {x_dim[0], -1, groups, c_div_g});
+    }
+    mean_ = mean_decomp<T>(x_cast, c_axis, true);
     auto var_tmp_ =
-        mean_decomp<T>(x_cast * x_cast, one_axis, true) - mean_ * mean_;
+        mean_decomp<T>(x_cast * x_cast, c_axis, true) - mean_ * mean_;
     var_ = maximum<T>(var_tmp_, full<T>(var_tmp_.shape(), 0, var_tmp_.dtype()));
     auto var_inv = rsqrt<T>(var_ + full<T>(empty_shape, epsilon, var_.dtype()));
     auto res = (x_cast - mean_) * var_inv;
     out = reshape<T>(res, x_dim);
   }
 
-  std::vector<int64_t> slice_bias_shape{-1, 1, 1};
+  std::vector<int64_t> slice_bias_shape;
+  slice_bias_shape = {-1};
+  for (size_t i = 0; i < rank - 2; i++) {
+    slice_bias_shape.push_back(1);
+  }
   Tensor scale_cast;
   if (scale) {
-    scale_cast = reshape<T>(scale.get(), slice_bias_shape);
+    if (data_format == "NCHW") {
+      scale_cast = reshape<T>(scale.get(), slice_bias_shape);
+    } else {
+      scale_cast = scale.get();
+    }
     if (need_cast) {
       scale_cast = cast<T>(scale_cast, DataType::FLOAT32);
     }
@@ -904,7 +926,11 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
   }
   Tensor bias_cast;
   if (bias) {
-    bias_cast = reshape<T>(bias.get(), slice_bias_shape);
+    if (data_format == "NCHW") {
+      bias_cast = reshape<T>(bias.get(), slice_bias_shape);
+    } else {
+      bias_cast = bias.get();
+    }
     if (need_cast) {
       bias_cast = cast<T>(bias_cast, DataType::FLOAT32);
     }
@@ -924,9 +950,6 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
   }
   if (need_cast) {
     out = cast<T>(out, org_dtype);
-  }
-  if (rank == 3) {
-    out = squeeze<T>(out, {-1});
   }
 
   return std::make_tuple(out, mean_out, var_out);

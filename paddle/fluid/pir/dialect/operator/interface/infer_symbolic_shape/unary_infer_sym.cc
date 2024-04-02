@@ -487,7 +487,7 @@ bool ReshapeOpInferSymbolicShape(
 
   shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
 
-  const auto &x_shape = [&] {
+  const auto UNUSED &x_shape = [&] {
     std::vector<symbol::DimExpr> x_shape{symbol::DimExpr(0)};
     const auto &original_shape =
         shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).shape();
@@ -840,7 +840,7 @@ bool TransposeOpInferSymbolicShape(
 
   int x_rank = x_dims.size();
 
-  const std::vector<int32_t> formatted_axis = [op, x_rank, &perm] {
+  const std::vector<int32_t> formatted_axis = [x_rank, &perm] {
     std::vector<int32_t> out(perm.size(), 0);
     std::transform(perm.begin(),
                    perm.end(),
