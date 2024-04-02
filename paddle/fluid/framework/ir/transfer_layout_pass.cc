@@ -107,14 +107,6 @@ void TransferLayoutPass::ApplyImpl(ir::Graph *graph) const {
   FusePassBase::Init("fused_conv2d_add_act_layout_transfer", graph);
   auto *scope = param_scope();
 
-  // only float16 compute precision need insert transfer_layout.
-  bool is_fp16_precision =
-      static_cast<phi::DataType>(Get<int>("model_precision")) ==
-          phi::DataType::FLOAT16 ||
-      Get<bool>("enable_gpu_mixed");
-
-  if (!is_fp16_precision) return;
-
   PADDLE_ENFORCE_EQ(graph->IsMainGraph(),
                     true,
                     platform::errors::InvalidArgument(

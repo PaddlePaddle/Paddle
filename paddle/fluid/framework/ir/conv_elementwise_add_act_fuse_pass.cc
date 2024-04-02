@@ -215,7 +215,7 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
     auto new_op_proto =
         PrepareOpDesc(base_op_desc, bias_name, act_op_type, act_op_out, alpha);
     framework::OpDesc new_op_desc(new_op_proto, nullptr);
-    if (cutlass_can_fuse && cutlass_enable && is_fp16_precision) {
+    if (cutlass_can_fuse && cutlass_enable) {
       new_op_desc.SetAttr("use_cudnn", false);
       new_op_desc.Flush();
     }
