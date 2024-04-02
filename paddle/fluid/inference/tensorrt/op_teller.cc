@@ -68,7 +68,7 @@ bool IsDynamicShapeOp(const framework::OpDesc& desc) {
       }
     }
   }
-  return true;
+  return false;
 }
 
 // Just tell by the op_types.
