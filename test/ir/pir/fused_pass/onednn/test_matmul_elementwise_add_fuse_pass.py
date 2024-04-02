@@ -22,10 +22,6 @@ import paddle
 paddle.enable_static()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
 class TestMatmulAddFusePattern(PassTest):
     r'''
     x     y
@@ -81,10 +77,6 @@ class TestMatmulAddFusePattern(PassTest):
         self.check_pass_correct()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
 class TestMatmulAddFusePatternCase2(PassTest):
     r'''
     x     y
@@ -140,10 +132,6 @@ class TestMatmulAddFusePatternCase2(PassTest):
         self.check_pass_correct()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
 class TestMatmulAddFusePatternCase3(PassTest):
     r'''
                        x     y
@@ -199,10 +187,6 @@ class TestMatmulAddFusePatternCase3(PassTest):
         self.check_pass_correct()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
 class TestMatmulAddFusePatternCase4(PassTest):
     r'''
                    x     y
