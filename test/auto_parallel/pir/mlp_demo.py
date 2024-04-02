@@ -51,7 +51,6 @@ class TestMLPTensorParallel(unittest.TestCase):
 
         for batch_id, (image, label) in enumerate(dist_loader()):
             loss = dist_model(image, label)
-            # print(f"step: {batch_id}, loss: {loss}")
 
 
 class TestMLPReplicated(unittest.TestCase):
@@ -85,7 +84,6 @@ class TestMLPReplicated(unittest.TestCase):
 
         for batch_id, (image, label) in enumerate(dist_loader()):
             loss = dist_model(image, label)
-            # print(f"step: {batch_id}, loss: {loss}")
 
 
 if __name__ == "__main__":
