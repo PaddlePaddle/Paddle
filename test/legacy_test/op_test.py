@@ -525,7 +525,7 @@ class OpTest(unittest.TestCase):
                 not in check_shape_white_list.NEED_TO_FIX_OP_LIST
             ):
                 raise AssertionError(
-                    "Input's shape should be large than or equal to 100 for "
+                    "Number of element(s) of input should be large than or equal to 100 for "
                     + cls.op_type
                     + " Op."
                 )
