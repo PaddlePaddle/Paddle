@@ -14,7 +14,7 @@ else()
   cc_library(
     serialize_deserialize
     SRCS ${SERIALIZE_DESERIALIZE_CPP_SOURCES}
-    DEPS op_dialect json)
+    DEPS pir json)
 
   get_property(save_targets GLOBAL PROPERTY SAVE_TARGETS)
   set(save_targets serialize_deserialize)

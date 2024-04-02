@@ -19,7 +19,11 @@
 #include "paddle/phi/common/port.h"
 
 namespace pir {
-
+#define PROGRAM "program"
+#define BASE_CODE "base_code"
+#define MAGIC "magic"
+#define PIRVERSION "version"
+#define PIR "pir"
 void WriteModule(const pir::Program& program,
                  const std::string& file_path,
                  const uint64_t& pir_version,
@@ -36,11 +40,11 @@ void WriteModule(const pir::Program& program,
   // write base code
   Json total;
 
-  total["base_code"] = {{"magic", "PIR"}, {"version", pir_version}};
+  total[BASE_CODE] = {{MAGIC, PIR}, {PIRVERSION, pir_version}};
 
   ProgramWriter writer(pir_version);
   // write program
-  total["program"] = writer.GetProgramJson(&program);
+  total[PROGRAM] = writer.GetProgramJson(&program);
 
   std::string total_str;
   if (readable) {
@@ -59,7 +63,9 @@ void WriteModule(const pir::Program& program,
   fout.close();
 }
 
-void ReadModule(const std::string& file_path, pir::Program* program) {
+void ReadModule(const std::string& file_path,
+                pir::Program* program,
+                const uint64_t& pir_version) {
   std::ifstream f(file_path);
   Json data = Json::parse(f);
 }

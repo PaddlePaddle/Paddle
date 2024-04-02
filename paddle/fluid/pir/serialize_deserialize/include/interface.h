@@ -22,7 +22,9 @@ void WriteModule(const pir::Program& program,
                  bool overwrite,
                  bool readable = false);
 
-void ReadModule(const std::string& file_path, pir::Program* program);
+void ReadModule(const std::string& file_path,
+                pir::Program* program,
+                const uint64_t& pir_version);
 
 }  // namespace pir
 #endif  // PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_INTERFACE_H_
