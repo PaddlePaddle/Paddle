@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/onednn/conv_activation_mkldnn_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/onednn/conv_activation_onednn_fuse_pass.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -1175,4 +1175,4 @@ std::unique_ptr<Pass> CreateConv2dActFusePass() {
 
 }  // namespace pir
 
-REGISTER_IR_PASS(conv_activation_mkldnn_fuse_pass, ConvActFusePass);
+REGISTER_IR_PASS(conv_activation_onednn_fuse_pass, ConvActFusePass);

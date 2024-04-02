@@ -21,10 +21,6 @@ import paddle
 paddle.enable_static()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
 class TestConv2dReluFusePass(PassTest):
     def is_program_valid(self, program=None):
         return True
@@ -73,10 +69,7 @@ class TestConv2dReluFusePass(PassTest):
         self.check_pass_correct()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
+
 class TestConv2dGELUFusePass(PassTest):
     def is_program_valid(self, program=None):
         return True
@@ -125,10 +118,7 @@ class TestConv2dGELUFusePass(PassTest):
         self.check_pass_correct()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
+
 class TestConv2dClipFusePass(PassTest):
     def is_program_valid(self, program=None):
         return True
@@ -176,10 +166,7 @@ class TestConv2dClipFusePass(PassTest):
         self.check_pass_correct()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
+
 class TestConv2dBiasReluFusePass(PassTest):
     def is_program_valid(self, program=None):
         return True
