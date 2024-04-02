@@ -111,10 +111,56 @@ DDim DenseTensorMeta::calc_strides(const DDim& dims) {
       p_strides[1] = p_strides[2] * p_dims[2];
       p_strides[0] = p_strides[1] * p_dims[1];
       return strides;
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    case 10:
+      p_strides[9] = 1;
+      p_strides[8] = p_dims[9];
+      p_strides[7] = p_strides[8] * p_dims[8];
+      p_strides[6] = p_strides[7] * p_dims[7];
+      p_strides[5] = p_strides[6] * p_dims[6];
+      p_strides[4] = p_strides[5] * p_dims[5];
+      p_strides[3] = p_strides[4] * p_dims[4];
+      p_strides[2] = p_strides[3] * p_dims[3];
+      p_strides[1] = p_strides[2] * p_dims[2];
+      p_strides[0] = p_strides[1] * p_dims[1];
+      return strides;
+    case 11:
+      p_strides[10] = 1;
+      p_strides[9] = p_dims[10];
+      p_strides[8] = p_strides[9] * p_dims[9];
+      p_strides[7] = p_strides[8] * p_dims[8];
+      p_strides[6] = p_strides[7] * p_dims[7];
+      p_strides[5] = p_strides[6] * p_dims[6];
+      p_strides[4] = p_strides[5] * p_dims[5];
+      p_strides[3] = p_strides[4] * p_dims[4];
+      p_strides[2] = p_strides[3] * p_dims[3];
+      p_strides[1] = p_strides[2] * p_dims[2];
+      p_strides[0] = p_strides[1] * p_dims[1];
+      return strides;
+    case 12:
+      p_strides[11] = 1;
+      p_strides[10] = p_dims[11];
+      p_strides[9] = p_strides[10] * p_dims[10];
+      p_strides[8] = p_strides[9] * p_dims[9];
+      p_strides[7] = p_strides[8] * p_dims[8];
+      p_strides[6] = p_strides[7] * p_dims[7];
+      p_strides[5] = p_strides[6] * p_dims[6];
+      p_strides[4] = p_strides[5] * p_dims[5];
+      p_strides[3] = p_strides[4] * p_dims[4];
+      p_strides[2] = p_strides[3] * p_dims[3];
+      p_strides[1] = p_strides[2] * p_dims[2];
+      p_strides[0] = p_strides[1] * p_dims[1];
+      return strides;
+    default:
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "The rank of input should be less than 12, but received %d.",
+          dims.size()));
+#else
     default:
       PADDLE_THROW(phi::errors::InvalidArgument(
           "The rank of input should be less than 9, but received %d.",
           dims.size()));
+#endif
   }
 }
 
