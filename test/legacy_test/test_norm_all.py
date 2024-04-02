@@ -208,7 +208,7 @@ class TestPnormOp(OpTest):
         self.gradient = self.calc_gradient()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim_pir=True)
@@ -290,7 +290,9 @@ class TestPnormOp3(TestPnormOp):
         self.dtype = "float32"
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
+        self.check_grad(
+            ['X'], 'Out', user_defined_grads=self.gradient, check_prim_pir=True
+        )
 
 
 class TestPnormOp4(TestPnormOp):
@@ -306,7 +308,9 @@ class TestPnormOp4(TestPnormOp):
         self.dtype = "float32"
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
+        self.check_grad(
+            ['X'], 'Out', user_defined_grads=self.gradient, check_prim_pir=True
+        )
 
 
 class TestPnormOp5(TestPnormOp):
@@ -322,7 +326,9 @@ class TestPnormOp5(TestPnormOp):
         self.dtype = "float32"
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
+        self.check_grad(
+            ['X'], 'Out', user_defined_grads=self.gradient, check_prim_pir=True
+        )
 
 
 class TestPnormOp6(TestPnormOp):
@@ -405,7 +411,7 @@ class TestPnormBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-3)
+        self.check_output_with_place(place, atol=1e-3, check_prim_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
