@@ -47,6 +47,7 @@ from paddle.base.framework import (
 )
 from paddle.base.layer_helper_base import LayerHelperBase
 from paddle.base.param_attr import ParamAttr
+from paddle.framework import use_pir_api
 from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
 
@@ -79,16 +80,25 @@ def set_op_customized_attrs_post_hook(layer, inputs, outputs):
     """
     if not in_dygraph_mode() and layer._op_recorder.is_valid:
         start = layer._op_recorder.start
-        end = len(default_main_program().current_block().ops)
+        if use_pir_api():
+            current_block = (
+                paddle.base.libpaddle.pir.get_current_insertion_point().block()
+            )
+        else:
+            current_block = default_main_program().current_block()
+        end = len(current_block.ops)
         assert start >= 0 and end >= start
-        ops = default_main_program().current_block().ops[start:end]
+        ops = current_block.ops[start:end]
 
         layer._op_recorder.end = end
         layer._op_recorder.ops = ops
 
         for op in ops:
             for attr_name, val in layer._customized_attrs.items():
-                op._set_attr(attr_name, val)
+                if use_pir_api():
+                    op.set_attr(attr_name, val)
+                else:
+                    op._set_attr(attr_name, val)
 
         # remove pre-hook and post-hook
         for hook_helper in layer._op_recorder.hooks:

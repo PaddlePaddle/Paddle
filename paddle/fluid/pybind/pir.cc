@@ -190,6 +190,29 @@ Value GetOutputValueByName(const Program &program, const std::string &name) {
   return value;
 }
 
+pir::Attribute PyObject2Attribute(const py::object &obj) {
+  if (py::isinstance<py::bool_>(obj)) {
+    return BoolAttribute::get(IrContext::Instance(), obj.cast<bool>());
+  } else if (py::isinstance<py::int_>(obj)) {
+    return pir::Int64Attribute::get(IrContext::Instance(), obj.cast<int64_t>());
+  } else if (py::isinstance<py::float_>(obj)) {
+    return pir::FloatAttribute::get(IrContext::Instance(), obj.cast<float>());
+  } else if (py::isinstance<py::str>(obj)) {
+    return pir::StrAttribute::get(IrContext::Instance(),
+                                  obj.cast<std::string>());
+  } else if (py::isinstance<py::list>(obj)) {
+    auto list = obj.cast<py::list>();
+    std::vector<Attribute> attrs;
+    for (auto &item : list) {
+      attrs.push_back(PyObject2Attribute(item.cast<py::object>()));
+    }
+    return pir::ArrayAttribute::get(IrContext::Instance(), attrs);
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The type of attr should be bool, int, float, str or list."));
+  }
+}
+
 void BindProgram(py::module *m) {
   py::class_<Program, std::shared_ptr<Program>> program(
       *m, "Program", py::dynamic_attr(), R"DOC(
@@ -521,6 +544,11 @@ void BindOperation(py::module *m) {
              }
              return attrs_dict;
            })
+      .def("set_attr",
+           [](Operation &self, const std::string &attr_name, py::object attr) {
+             auto attr_value = PyObject2Attribute(attr);
+             self.set_attribute(attr_name, attr_value);
+           })
       .def("set_scheduling_priority",
            [](Operation &self, int64_t priority) {
              self.set_attribute("scheduling_priority",
@@ -638,6 +666,10 @@ void BindOperation(py::module *m) {
           "callstack",
           [](Operation &self) -> py::list {
             py::list callstack_list;
+            if (!self.HasAttribute(paddle::framework::OpProtoAndCheckerMaker::
+                                       OpCreationCallstackAttrName())) {
+              return callstack_list;
+            }
             pir::Attribute op_callstack = self.attribute<pir::Attribute>(
                 paddle::framework::OpProtoAndCheckerMaker::
                     OpCreationCallstackAttrName());
@@ -663,17 +695,11 @@ void BindOperation(py::module *m) {
           },
           [](Operation &self,
              const std::vector<std::string> &callstack) -> void {
-            std::vector<pir::Attribute> op_callstack_infos;
-            for (auto str : callstack) {
-              op_callstack_infos.push_back(
-                  pir::StrAttribute::get(pir::IrContext::Instance(), str));
-            }
+            auto op_callstack_attr = PyObject2Attribute(py::cast(callstack));
 
-            self.set_attribute(
-                paddle::framework::OpProtoAndCheckerMaker::
-                    OpCreationCallstackAttrName(),
-                pir::ArrayAttribute::get(pir::IrContext::Instance(),
-                                         op_callstack_infos));
+            self.set_attribute(paddle::framework::OpProtoAndCheckerMaker::
+                                   OpCreationCallstackAttrName(),
+                               op_callstack_attr);
           })
       .def("dist_attr", [](Operation &self) {
         if (self.HasAttribute(kAttrOpDistAttr)) {
@@ -1054,6 +1080,10 @@ struct PyInsertionPoint {
 void BindInsertionPoint(pybind11::module *m) {
   py::class_<PyInsertionPoint> ir_insertion_point(*m, "InsertionPoint", R"DOC(
     InsertionPoint class represents the insertion point in the Builder.)DOC");
+  ir_insertion_point.def(
+      "block",
+      [](PyInsertionPoint &self) { return self.value.first; },
+      return_value_policy::reference);
 }
 
 std::list<Operation *>::const_iterator list_offset(const Block *block,
