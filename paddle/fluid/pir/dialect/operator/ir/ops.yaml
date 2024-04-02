@@ -1370,7 +1370,7 @@
   kernel :
     func : pull_sparse_v2
     data_type : DataType::FLOAT32
-  backward : push_sparse_v2
+  backward : pull_sparse_v2_grad
 
 - op : push_dense
   args : (Tensor[] ids, int table_id = -1, float scale_data_norm = -1.0f, str[] input_names = {})

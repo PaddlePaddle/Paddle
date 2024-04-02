@@ -1880,6 +1880,12 @@
     func : push_gpups_sparse
   inplace : (out_grad -> out_grad_grad)
 
+- backward_op : pull_sparse_v2_grad
+  forward : pull_sparse_v2 (Tensor[] ids, Tensor[] w, int embeddingdim = 11, int tableid = 0, str accessorclass = "", str ctrlabelname = "", int paddingid = 0, bool scalesparsegrad = true, str[] inputnames = {}, bool is_distributed = true) -> Tensor[](out)
+  args : (Tensor[] ids, Tensor[] w, int embeddingdim, int tableid, str accessorclass, str ctrlabelname, int paddingid, bool scalesparsegrad, str[] inputnames, bool is_distributed)
+  output : Tensor[](out)
+  invoke : push_sparse_v2(ids, w, out_grad_in, embeddingdim, tableid, accessorclass, ctrlabelname, paddingid, scalesparsegrad, inputnames, is_distributed)
+
 - backward_op : put_along_axis_grad
   forward : put_along_axis (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign", bool include_self = true) -> Tensor(out)
   args : (Tensor arr, Tensor indices, Tensor values, Tensor out, Tensor out_grad, int axis, str reduce, bool include_self)
