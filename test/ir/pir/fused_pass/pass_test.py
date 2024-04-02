@@ -37,8 +37,8 @@ class PassTest(unittest.TestCase):
             self.pass_list = [self.pass_list]
 
         pm = pir.PassManager(opt_level=4)
-        pm.enable_ir_printing()
         pm.enable_print_statistics()
+        pm.enable_ir_printing()
         for pass_name in self.pass_list:
             pm.add_pass(pass_name)
         pm.run(program)
