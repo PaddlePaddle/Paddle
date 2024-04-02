@@ -173,6 +173,26 @@ class OpConverter {
         platform::errors::Unimplemented("no OpConverter for optype [%s]",
                                         op_desc.Type()));
 
+    std::string all_outpus_name = "(Outputs:";
+    std::string all_inpus_name = "(Inputs:";
+    for (auto it1 : op_desc.OutputNames()) {
+      for (auto it2 : op_desc.Output(it1)) {
+        all_outpus_name += it2;
+        all_outpus_name += ",";
+      }
+    }
+    all_outpus_name += ")";
+    for (auto it1 : op_desc.InputNames()) {
+      for (auto it2 : op_desc.Input(it1)) {
+        all_inpus_name += it2;
+        all_inpus_name += ",";
+      }
+    }
+
+    all_inpus_name += ")";
+    VLOG(1) << op_desc.Type() << all_inpus_name << all_outpus_name
+            << "are to be converted to TensorRT layer";
+
     it->SetEngine(engine);
     engine->SetScope(&scope);
     it->SetBlockDesc(block);
