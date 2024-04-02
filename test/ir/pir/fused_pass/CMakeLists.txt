@@ -1,4 +1,3 @@
-add_subdirectory(onednn)
 if(WITH_MKLDNN)
   add_subdirectory(onednn)
 endif()
