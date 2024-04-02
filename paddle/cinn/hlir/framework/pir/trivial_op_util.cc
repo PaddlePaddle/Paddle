@@ -502,7 +502,7 @@ void CheckFusionInputValid(const std::vector<ir::Expr>& op_compute_bodies,
                            const std::vector<OpPatternKind>& op_patterns) {
   if (VLOG_IS_ON(4)) {
     for (const auto& func : op_compute_bodies) {
-      VLOG(4) << "TrivialOpFusion: {FuncBody is} :" << func;
+      VLOG(4) << "FuncBody is :" << func;
     }
     for (const auto& op_ptn : op_patterns) {
       VLOG(4) << "OpPattern is :" << op_ptn;

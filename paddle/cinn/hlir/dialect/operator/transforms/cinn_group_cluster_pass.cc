@@ -1065,10 +1065,6 @@ class CinnGroupClusterPattern
       }
     }
 
-    std::ostringstream oss;
-    group_op->GetParentProgram()->Print(oss);
-    VLOG(4) << oss.str();
-
     rewriter.EraseOp(group_op);
 
     return true;

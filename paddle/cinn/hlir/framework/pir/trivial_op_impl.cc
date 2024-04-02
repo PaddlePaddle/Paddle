@@ -487,28 +487,24 @@ FusibleOp FusionGraph::SinkTrivialLoopAlign(TrivialOp trivial_op,
   ir::Expr new_for_body = trivial_last_for.As<ir::For>()->body;
 
   const auto ExpandIterVars = [&]() {
-    std::vector<ir::Var> result = fake_reduce_iter_vars;
+    std::vector<ir::Var> result =
+        ComposeUtils::ConcatVector(non_reduce_iter_vars, fake_reduce_iter_vars);
     auto upstream_reduce_iters = GetReduceIters(reduce_op);
-    if (result.size() != upstream_reduce_iters.size()) {
+    if (fake_reduce_iter_vars.size() != upstream_reduce_iters.size()) {
       result.insert(result.end(),
                     upstream_reduce_iters.begin(),
                     upstream_reduce_iters.end());
     }
+    VLOG(4) << "ExpandIterVars: " << cinn::utils::Join(result, ", ");
     return result;
   };
 
-  new_for_body =
-      ExprTransformerUtils::WrapForsTransformer(ExpandIterVars())(new_for_body);
+  ir::Expr new_schedule_realizer =
+      (ExprTransformerUtils::WrapForsTransformer(ExpandIterVars()) *
+       ExprTransformerUtils::WrapScheduleRealizer({}, "root"))(new_for_body);
 
-  VLOG(4) << "new_for_body\n" << new_for_body;
-
-  ir::Expr last_non_reduce_for =
-      (ExprSetFinderUtils::ChildFors *
-       ExprSetFinderUtils::IsForIterVar(non_reduce_iter_vars.back()))
-          .GetSingle(new_trivial_body);
-  last_non_reduce_for.As<ir::For>()->body = new_for_body;
-  VLOG(4) << new_trivial_body;
-  return TrivialOp(new_trivial_body);
+  VLOG(4) << "new_schedule_realizer\n" << new_schedule_realizer;
+  return TrivialOp(new_schedule_realizer);
 }
 
 std::vector<FusibleOp> FusionGraph::ReduceTransformRecursive(
