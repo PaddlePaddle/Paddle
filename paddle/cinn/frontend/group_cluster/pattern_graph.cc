@@ -63,26 +63,26 @@ std::vector<PatternNodePtr> PatternGraph::SortByTopoOrder() {
 }
 
 void PatternGraph::SinkTrivialPattern() {
-  VLOG(4) << "Before SinkTrivialPattern: " << GraphInfo();
+  VLOG(4) << "\nBefore SinkTrivialPattern: " << GraphInfo();
   GraphTransformer<
       NodePattern,
       And<And<NonSinkNodeMatcher, StmtPatternGraphMatcher<TrivialPattern>>,
           IsNotOutputNodeMatcher>,
       MergeTrivialPatternOperation>(this);
-  VLOG(4) << "After SinkTrivialPattern: " << GraphInfo();
+  VLOG(4) << "\nAfter SinkTrivialPattern: " << GraphInfo();
 }
 
 void PatternGraph::ReduceLiftReduceTree() {
-  VLOG(4) << "Before ReduceLiftReduceTree: " << GraphInfo();
+  VLOG(4) << "\nBefore ReduceLiftReduceTree: " << GraphInfo();
   GraphTransformer<
       NodePattern,
       And<DownstreamSmallerThan<2>, StmtPatternGraphMatcher<ReducePattern>>,
       LiftReduceToReduceTreeOperation>(this);
-  VLOG(4) << "After ReduceLiftReduceTree: " << GraphInfo();
+  VLOG(4) << "\nAfter ReduceLiftReduceTree: " << GraphInfo();
 }
 
 void PatternGraph::HorizontalFusion() {
-  VLOG(4) << "Before HorizontalFusion: " << GraphInfo();
+  VLOG(4) << "\nBefore HorizontalFusion: " << GraphInfo();
   GraphTransformer<NodePattern,
                    StmtPatternGraphMatcher<TrivialPattern>,
                    LiftToHorizontalFusionPatternOperation>(this);
@@ -90,24 +90,24 @@ void PatternGraph::HorizontalFusion() {
   GraphTransformer<NodePairPattern,
                    HorizontalFusionConstrain,
                    HorizontalFusionOperation>(this);
-  VLOG(4) << "After HorizontalFusion: " << GraphInfo();
+  VLOG(4) << "\nAfter HorizontalFusion: " << GraphInfo();
 }
 
 void PatternGraph::ReduceTreeGrown() {
-  VLOG(4) << "Before ReduceTreeGrown: " << GraphInfo();
+  VLOG(4) << "\nBefore ReduceTreeGrown: " << GraphInfo();
   GraphTransformer<NodePattern,
                    And<CanFuseReduceTreeMatcher, IsNotOutputNodeMatcher>,
                    MergeReduceTreeOperation>(this);
-  VLOG(4) << "After ReduceTreeGrown: " << GraphInfo();
+  VLOG(4) << "\nAfter ReduceTreeGrown: " << GraphInfo();
 }
 
 void PatternGraph::ReduceTree_Trivial_Fusion() {
-  VLOG(4) << "Before ReduceTree_Trivial_Fusion: " << GraphInfo();
+  VLOG(4) << "\nBefore ReduceTree_Trivial_Fusion: " << GraphInfo();
   GraphTransformer<
       NodePattern,
       And<CanFuseReduceTreeAndTrivialMatcher, IsNotOutputNodeMatcher>,
       MergeReduceTreeAndTrivialOperation>(this);
-  VLOG(4) << "After ReduceTree_Trivial_Fusion: " << GraphInfo();
+  VLOG(4) << "\nAfter ReduceTree_Trivial_Fusion: " << GraphInfo();
 }
 
 PatternGraph::PatternGraph(const std::vector<pir::Operation*>& ops,
