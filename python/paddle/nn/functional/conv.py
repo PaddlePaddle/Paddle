@@ -412,14 +412,14 @@ def conv1d(
     if num_channels % groups != 0:
         raise ValueError(
             "the channel of input must be divisible by groups,"
-            "received: the channel of input is {}, the shape of input is {}"
-            ", the groups is {}".format(num_channels, x.shape, groups)
+            f"received: the channel of input is {num_channels}, the shape of input is {x.shape}"
+            f", the groups is {groups}"
         )
     if num_filters % groups != 0:
         raise ValueError(
             "the number of filters must be divisible by groups,"
-            "received: the number of filters is {}, the shape of weight is {}"
-            ", the groups is {}".format(num_filters, weight.shape, groups)
+            f"received: the number of filters is {num_filters}, the shape of weight is {weight.shape}"
+            f", the groups is {groups}"
         )
 
     # update attrs
@@ -655,14 +655,14 @@ def conv2d(
     if num_channels % groups != 0:
         raise ValueError(
             "the channel of input must be divisible by groups,"
-            "received: the channel of input is {}, the shape of input is {}"
-            ", the groups is {}".format(num_channels, x.shape, groups)
+            f"received: the channel of input is {num_channels}, the shape of input is {x.shape}"
+            f", the groups is {groups}"
         )
     if num_filters % groups != 0:
         raise ValueError(
             "the number of filters must be divisible by groups,"
-            "received: the number of filters is {}, the shape of weight is {}"
-            ", the groups is {}".format(num_filters, weight.shape, groups)
+            f"received: the number of filters is {num_filters}, the shape of weight is {weight.shape}"
+            f", the groups is {groups}"
         )
 
     cudnn_version = get_cudnn_version()
@@ -911,8 +911,8 @@ def conv1d_transpose(
     if num_channels % groups != 0:
         raise ValueError(
             "the channel of input must be divisible by groups,"
-            "received: the channel of input is {}, the shape of input is {}"
-            ", the groups is {}".format(num_channels, x.shape, groups)
+            f"received: the channel of input is {num_channels}, the shape of input is {x.shape}"
+            f", the groups is {groups}"
         )
 
     # update attrs
@@ -960,9 +960,7 @@ def conv1d_transpose(
 
     if len(weight.shape) != 3:
         raise ValueError(
-            'Input weight should be 3D tensor, but received weight with the shape of {}'.format(
-                weight.shape
-            )
+            f'Input weight should be 3D tensor, but received weight with the shape of {weight.shape}'
         )
 
     op_type = 'conv2d_transpose'
@@ -1176,9 +1174,7 @@ def conv2d_transpose(
         )
     if len(weight.shape) != 4:
         raise ValueError(
-            "Input weight should be 4D tensor, but received weight with the shape of {}".format(
-                weight.shape
-            )
+            f"Input weight should be 4D tensor, but received weight with the shape of {weight.shape}"
         )
     num_channels = x.shape[channel_dim]
     if num_channels < 0:
@@ -1193,8 +1189,8 @@ def conv2d_transpose(
     if num_channels % groups != 0:
         raise ValueError(
             "the channel of input must be divisible by groups,"
-            "received: the channel of input is {}, the shape of input is {}"
-            ", the groups is {}".format(num_channels, x.shape, groups)
+            f"received: the channel of input is {num_channels}, the shape of input is {x.shape}"
+            f", the groups is {groups}"
         )
 
     cudnn_version = get_cudnn_version()
@@ -1669,9 +1665,7 @@ def conv3d_transpose(
         )
     if len(weight.shape) != 5:
         raise ValueError(
-            "Input weight should be 5D tensor, but received weight with the shape of {}".format(
-                weight.shape
-            )
+            f"Input weight should be 5D tensor, but received weight with the shape of {weight.shape}"
         )
     num_channels = x.shape[channel_dim]
     num_filters = weight.shape[1]

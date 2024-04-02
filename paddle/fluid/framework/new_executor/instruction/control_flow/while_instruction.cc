@@ -240,6 +240,16 @@ void WhileInstruction::ShareDatasToOutputs() {
   }
 }
 
+void WhileInstruction::SetOutputHooks(
+    const std::vector<PirHookFunc>& hookfuncs) {
+  body_inter_->SetOutputHooks(hookfuncs);
+}
+
+void WhileInstruction::SetInputHooks(
+    const std::vector<PirHookFunc>& hookfuncs) {
+  body_inter_->SetInputHooks(hookfuncs);
+}
+
 void WhileInstruction::Run() {
 #ifdef PADDLE_WITH_DNNL
   // Executor on being destroyed clears oneDNN cache and resets

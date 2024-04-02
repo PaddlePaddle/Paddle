@@ -558,14 +558,7 @@ def parse_args():
     ], "segment_method should be 'uniform' or 'layer"
 
     print(
-        "adapt model dumped by task with pp degree:{}, vp degree:{}, mp degree:{} to task with pp degree:{}, vp degree:{}, mp degree:{}".format(
-            args.src_pp,
-            args.src_vp,
-            args.src_mp,
-            args.dst_pp,
-            args.dst_vp,
-            args.dst_mp,
-        )
+        f"adapt model dumped by task with pp degree:{args.src_pp}, vp degree:{args.src_vp}, mp degree:{args.src_mp} to task with pp degree:{args.dst_pp}, vp degree:{args.dst_vp}, mp degree:{args.dst_mp}"
     )
 
     return args
