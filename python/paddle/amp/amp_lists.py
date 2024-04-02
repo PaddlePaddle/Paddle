@@ -23,6 +23,7 @@ WHITE_LIST = {
     'mul',
     'fused_gemm_epilogue',
     "fused_rotary_position_embedding",
+    "fused_rotary_position_embedding_3d",
     "flash_attn",
 }
 
