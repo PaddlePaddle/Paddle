@@ -15,7 +15,12 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, enable_to_static_guard
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+    test_default_and_pir,
+    test_pir_only,
+)
 from test_lac import DynamicGRU
 
 import paddle
@@ -381,11 +386,21 @@ class TestSentiment(Dy2StTestBase):
             err_msg=f'dy_out:\n {dy_out}\n st_out:\n {st_out}',
         )
 
-    def test_train(self):
-        model_types = ['cnn_net', 'bow_net', 'gru_net', 'bigru_net']
-        for model_type in model_types:
-            print('training %s ....' % model_type)
-            self.train_model(model_type)
+    @test_default_and_pir
+    def test_train_cnn(self):
+        self.train_model('cnn_net')
+
+    @test_default_and_pir
+    def test_train_bow(self):
+        self.train_model('bow_net')
+
+    @test_default_and_pir
+    def test_train_gru(self):
+        self.train_model('gru_net')
+
+    @test_pir_only
+    def test_train_bigru(self):
+        self.train_model('bigru_net')
 
 
 if __name__ == '__main__':
