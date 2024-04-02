@@ -18,20 +18,27 @@ namespace cinn::frontend::group_cluster {
 
 std::vector<PatternNodePtr> PatternGraph::ClusterOps(
     bool with_horizontal_fusion) {
+  VLOG(4) << "[Group Cluster] Initial Condition: " << GraphInfo();
+
   SinkTrivialPattern();
+  VLOG(4) << "[Group Cluster] After SinkTrivialPattern: " << GraphInfo();
 
   // ReducePattern -> ReduceTreePattern
   ReduceLiftReduceTree();
+  VLOG(4) << "[Group Cluster] After ReduceLiftReduceTree: " << GraphInfo();
 
   // ReduceTreePattern + ReduceTreePattern fusion
   ReduceTreeGrown();
+  VLOG(4) << "[Group Cluster] After ReduceTreeGrown: " << GraphInfo();
 
   // ReduceTreePattern + TrivialPattern fusion.
   ReduceTree_Trivial_Fusion();
+  VLOG(4) << "[Group Cluster] After ReduceTree_Trivial_Fusion: " << GraphInfo();
 
   // Horizontal fusion.
   if (with_horizontal_fusion) {
     HorizontalFusion();
+    VLOG(4) << "[Group Cluster] After HorizontalFusion: " << GraphInfo();
   }
 
   return SortByTopoOrder();
@@ -63,26 +70,21 @@ std::vector<PatternNodePtr> PatternGraph::SortByTopoOrder() {
 }
 
 void PatternGraph::SinkTrivialPattern() {
-  VLOG(4) << "\n[Group Cluster] Before SinkTrivialPattern: " << GraphInfo();
   GraphTransformer<
       NodePattern,
       And<And<NonSinkNodeMatcher, StmtPatternGraphMatcher<TrivialPattern>>,
           IsNotOutputNodeMatcher>,
       MergeTrivialPatternOperation>(this);
-  VLOG(4) << "\n[Group Cluster] After SinkTrivialPattern: " << GraphInfo();
 }
 
 void PatternGraph::ReduceLiftReduceTree() {
-  VLOG(4) << "\n[Group Cluster] Before ReduceLiftReduceTree: " << GraphInfo();
   GraphTransformer<
       NodePattern,
       And<DownstreamSmallerThan<2>, StmtPatternGraphMatcher<ReducePattern>>,
       LiftReduceToReduceTreeOperation>(this);
-  VLOG(4) << "\n[Group Cluster] After ReduceLiftReduceTree: " << GraphInfo();
 }
 
 void PatternGraph::HorizontalFusion() {
-  VLOG(4) << "\n[Group Cluster] Before HorizontalFusion: " << GraphInfo();
   GraphTransformer<NodePattern,
                    StmtPatternGraphMatcher<TrivialPattern>,
                    LiftToHorizontalFusionPatternOperation>(this);
@@ -90,24 +92,19 @@ void PatternGraph::HorizontalFusion() {
   GraphTransformer<NodePairPattern,
                    HorizontalFusionConstrain,
                    HorizontalFusionOperation>(this);
-  VLOG(4) << "\n[Group Cluster] After HorizontalFusion: " << GraphInfo();
 }
 
 void PatternGraph::ReduceTreeGrown() {
-  VLOG(4) << "\n[Group Cluster] Before ReduceTreeGrown: " << GraphInfo();
   GraphTransformer<NodePattern,
                    And<CanFuseReduceTreeMatcher, IsNotOutputNodeMatcher>,
                    MergeReduceTreeOperation>(this);
-  VLOG(4) << "\n[Group Cluster] After ReduceTreeGrown: " << GraphInfo();
 }
 
 void PatternGraph::ReduceTree_Trivial_Fusion() {
-  VLOG(4) << "\n[Group Cluster] Before ReduceTree_Trivial_Fusion: " << GraphInfo();
   GraphTransformer<
       NodePattern,
       And<CanFuseReduceTreeAndTrivialMatcher, IsNotOutputNodeMatcher>,
       MergeReduceTreeAndTrivialOperation>(this);
-  VLOG(4) << "\n[Group Cluster] After ReduceTree_Trivial_Fusion: " << GraphInfo();
 }
 
 PatternGraph::PatternGraph(const std::vector<pir::Operation*>& ops,
