@@ -2731,35 +2731,34 @@ void PReluInferMeta(const MetaTensor& x,
 }
 
 void PullGpupsSparseInferMeta(const MetaTensor& w,
-                              const MetaTensor& ids,
+                              const std::vector<MetaTensor>& ids,
                               const std::vector<int>& size,
                               bool is_sparse,
                               bool is_distributed,
-                              MetaTensor* out) {
+                              std::vector<MetaTensor*> out) {
   PADDLE_ENFORCE_GE(
-      ids.dims().size(),
+      ids.size(),
       1UL,
       phi::errors::InvalidArgument(
           "Inputs(Ids) of PullGpuPSSparseOp should not be empty."));
   PADDLE_ENFORCE_GE(
-      out->dims().size(),
+      out.size(),
       1UL,
       phi::errors::InvalidArgument(
           "Outputs(Out) of PullGpuPSSparseOp should not be empty."));
   PADDLE_ENFORCE_EQ(
-      ids.dims().size(),
+      ids.size(),
       size.size(),
       phi::errors::InvalidArgument("The ids size: %lu must be equal to "
                                    "the length of embedding size: %lu.",
-                                   ids.dims().size(),
+                                   ids.size(),
                                    size.size()));
-  auto all_ids_dim = ids.dims();
-  const size_t n_ids = all_ids_dim.size();
+  const size_t n_ids = ids.size();
   std::vector<phi::DDim> outs_dims;
   outs_dims.resize(n_ids);
   for (size_t i = 0; i < n_ids; ++i) {
     int embedding_size = size[i];
-    const auto ids_dims = all_ids_dim[i];
+    const auto ids_dims = ids[i].dims();
     int ids_rank = ids_dims.size();
     PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1],
                       1,
@@ -2772,9 +2771,10 @@ void PullGpupsSparseInferMeta(const MetaTensor& w,
     out_dim.push_back(embedding_size);
     outs_dims[i] = common::make_ddim(out_dim);
   }
-  out->set_dims(outs_dims);
+
   for (size_t i = 0; i < n_ids; ++i) {
-    out->share_lod(ids, i);
+    out[i]->set_dims(outs_dims[i]);
+    out[i]->share_lod(ids[i], i);
   }
 }
 

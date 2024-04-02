@@ -470,11 +470,11 @@ void PReluInferMeta(const MetaTensor& x,
                     MetaConfig config = MetaConfig());
 
 void PullGpupsSparseInferMeta(const MetaTensor& w,
-                              const MetaTensor& ids,
+                              const std::vector<MetaTensor>& ids,
                               const std::vector<int>& size,
                               bool is_sparse,
                               bool is_distributed,
-                              MetaTensor* out);
+                              std::vector<MetaTensor*> out);
 
 void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
                                               const MetaTensor& repeats,

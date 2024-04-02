@@ -1325,7 +1325,7 @@
 
 - op : pull_gpups_sparse
   args : (Tensor w, Tensor[] ids, int[] size={}, bool is_sparse=false, bool is_distributed=false)
-  output : Tensor(out)
+  output : Tensor[](out){ids.size()}
   infer_meta :
     func : PullGpupsSparseInferMeta
   kernel :
