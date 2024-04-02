@@ -2171,9 +2171,7 @@ def bmm(x, y, name=None):
         return out
 
 
-def histogram(
-    input, weight=None, bins=100, min=0, max=0, density=False, name=None
-):
+def histogram(input, bins=100, min=0, max=0, density=False, weight=None, name=None):
     """
     Computes the histogram of a tensor. The elements are sorted into equal width bins between min and max.
     If min and max are both zero, the minimum and maximum values of the data are used.
@@ -2181,13 +2179,13 @@ def histogram(
     Args:
         input (Tensor): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor
             should be float32, float64, int32, int64.
-        weight (Tensor, optional): Weight for each value in the input tensor. Should have the same shape and data type as input.
-            Default is None.
         bins (int, optional): number of histogram bins.
         min (int, optional): lower end of the range (inclusive).
         max (int, optional): upper end of the range (inclusive).
         density (bool, optional): If False, the result will contain the count(or total weight) in each bin. If True, the result is the
             value of the probability density function at the bin, normalized such that the integral over the range is 1.
+        weight (Tensor, optional): Weight for each value in the input tensor. Should have the same shape and data type as input.
+            Default is None.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -2195,6 +2193,7 @@ def histogram(
 
     Examples:
         .. code-block:: python
+            :name: examp1
 
             >>> import paddle
 
@@ -2203,9 +2202,33 @@ def histogram(
             >>> print(result)
             Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
             [0, 2, 1, 0])
-    """
+
+         .. code-block:: python
+            :name: examp2
+
+            >>> import paddle
+
+            >>> inputs = paddle.to_tensor([1, 2, 1])
+            >>> weight = paddle.to_tensor([1, 2, 4])
+            >>> result = paddle.histogram(inputs, bins=4, min=0, max=3, weight=weight)
+            >>> print(result)
+            Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0, 5, 2, 0])
+ 
+         .. code-block:: python
+            :name: examp3
+
+            >>> import paddle
+
+            >>> inputs = paddle.to_tensor([1., 2., 1.])
+            >>> weight = paddle.to_tensor([1., 2., 4.])
+            >>> result = paddle.histogram(inputs, bins=4, min=0, max=3, density=True, weight=weight)
+            >>> print(result)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0., 0.9524, 0.3810, 0.])
+   """
     if in_dynamic_or_pir_mode():
-        return _C_ops.histogram(input, weight, bins, min, max, density)
+        return _C_ops.histogram(input, weight, bins, min, max, density) 
     else:
         helper = LayerHelper('histogram', **locals())
         check_variable_and_dtype(
@@ -2222,19 +2245,19 @@ def histogram(
                 raise ValueError(
                     "Only support input and weight have the same dtype."
                 )
-    check_type(bins, 'bins', int, 'histogram')
-    check_type(density, 'density', bool, 'histogram')
-    if density:
-        out = helper.create_variable_for_type_inference(dtype=paddle.float32)
-    else:
-        out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type='histogram',
-        inputs={'X': input, 'Weight': weight},
-        outputs={'Out': out},
-        attrs={'bins': bins, 'min': min, 'max': max, 'density': density},
-    )
-    return out
+        check_type(bins, 'bins', int, 'histogram')
+        check_type(density, 'density', bool, 'histogram')
+        if density:
+            out = helper.create_variable_for_type_inference(dtype=paddle.float32)
+        else:
+            out = helper.create_variable_for_type_inference(dtype=input.dtype)
+        helper.append_op(
+            type='histogram',
+            inputs={'X': input, 'Weight': weight},
+            outputs={'Out': out},
+            attrs={'bins': bins, 'min': min, 'max': max, 'density': density},
+        )
+        return out
 
 
 def bincount(x, weights=None, minlength=0, name=None):

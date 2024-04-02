@@ -36,7 +36,7 @@ class TestHistogramOpAPI(unittest.TestCase):
             weight = paddle.static.data(
                 name='weight', dtype='int64', shape=[2, 3]
             )
-            output = paddle.histogram(inputs, weight, bins=5, min=1, max=5)
+            output = paddle.histogram(inputs, bins=5, min=1, max=5, weight=weight)
             place = base.CPUPlace()
             if base.core.is_compiled_with_cuda():
                 place = base.CUDAPlace(0)
@@ -143,7 +143,7 @@ class TestHistogramOpError(unittest.TestCase):
             )
             # The weight type must be Variable.
             self.assertRaises(
-                TypeError, paddle.histogram, [1], weight=1, bins=5, min=1, max=5
+                TypeError, paddle.histogram, [1], bins=5, min=1, max=5, weight=1
             )
             # The weight type must be equal the input type.
             x_int32 = paddle.static.data(
@@ -156,10 +156,10 @@ class TestHistogramOpError(unittest.TestCase):
                 ValueError,
                 paddle.histogram,
                 x_int32,
-                weight=weight_float32,
                 bins=5,
                 min=1,
                 max=5,
+                weight=weight_float32,
             )
             # The weight shape must be equal the input shape.
             x_shape = paddle.static.data(
@@ -172,10 +172,10 @@ class TestHistogramOpError(unittest.TestCase):
                 ValueError,
                 paddle.histogram,
                 x_shape,
-                weight=w_shape,
                 bins=5,
                 min=1,
                 max=5,
+                weight=w_shape,
             )
             # The input type must be 'int32', 'int64', 'float32', 'float64'
             x_bool = paddle.static.data(
