@@ -250,11 +250,11 @@ class TestGroupNormFP16OP(TestGroupNormOp):
         self.dtype = np.float16
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA or not support the bfloat16",
-)
+# @unittest.skipIf(
+#     not core.is_compiled_with_cuda()
+#     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+#     "core is not compiled with CUDA or not support the bfloat16",
+# )
 class TestGroupNormBF16Op(OpTest):
     def setUp(self):
         self.op_type = "group_norm"
@@ -435,8 +435,11 @@ class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
     def setUp(self):
         self.op_type = "group_norm"
         self.python_api = group_norm_wrapper
+        self.public_python_api = group_norm_wrapper
         self.python_out_sig = ["Y"]
         self.data_format = "NHWC"
+        self.prim_op_type = "comp"
+
         self.dtype = np.uint16
         self.shape = (1, 3, 5, 100)
         self.attrs = {
