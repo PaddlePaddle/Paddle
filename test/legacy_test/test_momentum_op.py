@@ -184,7 +184,7 @@ class TestLarsMomentumOpWithMP(OpTest):
 
         params = []
         grads = []
-        velocitys = []
+        velocities = []
         learning_rates = []
         master_params = []
         param_outs = []
@@ -216,7 +216,7 @@ class TestLarsMomentumOpWithMP(OpTest):
 
             params.append(("SubParam_" + str(i), param))
             grads.append(("SubGrad_" + str(i), grad))
-            velocitys.append(("SubVelocity_" + str(i), velocity))
+            velocities.append(("SubVelocity_" + str(i), velocity))
             learning_rates.append(("SubLearning_rate_" + str(i), learning_rate))
             velocity_outs.append(("SubVelocity_out_" + str(i), velocity_out))
             param_outs.append(("SubParam_out_" + str(i), param_out))
@@ -228,7 +228,7 @@ class TestLarsMomentumOpWithMP(OpTest):
         self.inputs = {
             'Param': params,
             'Grad': grads,
-            'Velocity': velocitys,
+            'Velocity': velocities,
             'LearningRate': learning_rates,
             'MasterParam': master_params,
         }
@@ -268,7 +268,7 @@ class TestLarsMomentumOp(OpTest):
 
         params = []
         grads = []
-        velocitys = []
+        velocities = []
         param_outs = []
         velocity_outs = []
         learning_rates = []
@@ -292,7 +292,7 @@ class TestLarsMomentumOp(OpTest):
 
             params.append(("SubParam_" + str(i), param))
             grads.append(("SubGrad_" + str(i), grad))
-            velocitys.append(("SubVelocity_" + str(i), velocity))
+            velocities.append(("SubVelocity_" + str(i), velocity))
             learning_rates.append(("SubLearning_rate_" + str(i), learning_rate))
             velocity_outs.append(("SubVelocity_out_" + str(i), velocity_out))
             param_outs.append(("SubParam_out_" + str(i), param_out))
@@ -300,7 +300,7 @@ class TestLarsMomentumOp(OpTest):
         self.inputs = {
             'Param': params,
             'Grad': grads,
-            'Velocity': velocitys,
+            'Velocity': velocities,
             'LearningRate': learning_rates,
         }
 
