@@ -1443,33 +1443,39 @@ class Strategy(auto_strategy.BaseConfig):
         )
         self._sp_optimization = auto_strategy.SPOptimizationConfig(config_dict)
 
-    def _from_legacy_strategy(self, auto_stragety):
+    def _from_legacy_strategy(self, legacy_strategy):
         """
         NOTE(lizhiyu): This is a template function to get `dist.Strategy` from `fleet.auto.Strategy`.
         """
         import copy
 
-        self._fused_passes.enable = auto_stragety.fused_passes.enable
+        category = auto_strategy.constants.BASE
+        base_config = auto_strategy.constants.get_category_default_config(
+            category
+        )
+        for key in base_config.keys():
+            setattr(self, key, getattr(legacy_strategy, key))
+        self._fused_passes.enable = legacy_strategy.fused_passes.enable
         if (
             "fused_gemm_epilogue_pass"
-            in auto_stragety.fused_passes.fused_passes_list
+            in legacy_strategy.fused_passes.fused_passes_list
         ):
             self._fused_passes.gemm_epilogue = True
         if (
             "fused_dropout_add_pass"
-            in auto_stragety.fused_passes.fused_passes_list
+            in legacy_strategy.fused_passes.fused_passes_list
         ):
             self._fused_passes.dropout_add = True
 
-        self._amp = copy.deepcopy(auto_stragety.amp)
-        self._sharding = copy.deepcopy(auto_stragety.sharding)
-        self._gradient_merge = copy.deepcopy(auto_stragety.gradient_merge)
-        self._pipeline = copy.deepcopy(auto_stragety.pipeline)
+        self._amp = copy.deepcopy(legacy_strategy.amp)
+        self._sharding = copy.deepcopy(legacy_strategy.sharding)
+        self._gradient_merge = copy.deepcopy(legacy_strategy.gradient_merge)
+        self._pipeline = copy.deepcopy(legacy_strategy.pipeline)
         # The below are template interfaces
-        self._recompute = copy.deepcopy(auto_stragety.recompute)
-        self._mp_optimization = copy.deepcopy(auto_stragety.mp_optimization)
-        self._dp_optimization = copy.deepcopy(auto_stragety.dp_optimization)
-        self._sp_optimization = copy.deepcopy(auto_stragety.sp_optimization)
+        self._recompute = copy.deepcopy(legacy_strategy.recompute)
+        self._mp_optimization = copy.deepcopy(legacy_strategy.mp_optimization)
+        self._dp_optimization = copy.deepcopy(legacy_strategy.dp_optimization)
+        self._sp_optimization = copy.deepcopy(legacy_strategy.sp_optimization)
 
     @property
     def sharding(self):
@@ -1885,6 +1891,12 @@ class DistModel:
         if strategy is None:
             return None
         inner_strategy = auto_strategy.Strategy()
+        category = auto_strategy.constants.BASE
+        base_config = auto_strategy.constants.get_category_default_config(
+            category
+        )
+        for key in base_config.keys():
+            setattr(inner_strategy, key, getattr(strategy, key))
         inner_strategy.fused_passes.enable = strategy.fused_passes.enable
         if getattr(strategy.fused_passes, "gemm_epilogue", False):
             inner_strategy.fused_passes.fused_passes_list.append(
