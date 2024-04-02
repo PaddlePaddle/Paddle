@@ -19,7 +19,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/pir/transforms/onednn/depthwise_conv_mkldnn_pass.h"
+#include "paddle/fluid/pir/transforms/onednn/depthwise_conv_onednn_pass.h"
 #endif
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/pass/pass_manager.h"
