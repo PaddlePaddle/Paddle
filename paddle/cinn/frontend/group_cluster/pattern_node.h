@@ -39,7 +39,7 @@ struct PatternNode {
   std::vector<PatternNodePtr> upstream_;
   std::vector<PatternNodePtr> downstream_;
 
-  std::string DebugStr() const { return StmtPatternDebugStr(stmt_pattern_); }
+  std::string DebugStr() const;
 };
 
 using PatternNodePtr = PatternNode::PatternNodePtr;

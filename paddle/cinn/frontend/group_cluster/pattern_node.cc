@@ -40,5 +40,18 @@ bool PatternNode::IsUnsupport() const {
 bool PatternNode::IsReduceTrivial() const {
   return IsReduceTrivialPattern(stmt_pattern_);
 }
+std::string PatternNode::DebugStr() const {
+  std::stringstream ss;
+  ss << "Node: " << this << ", Pattern: " << GetPatternName(stmt_pattern_)
+     << "\n    -u>:  ";
+  for (const auto& u : upstream_) {
+    ss << u << ", ";
+  }
+  ss << "\n    <d-:  ";
+  for (const auto& d : downstream_) {
+    ss << d << ", ";
+  }
+  return ss.str();
+}
 
 }  // namespace cinn::frontend::group_cluster

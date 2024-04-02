@@ -18,34 +18,20 @@ namespace cinn::frontend::group_cluster {
 
 std::vector<PatternNodePtr> PatternGraph::ClusterOps(
     bool with_horizontal_fusion) {
-  VLOG(4) << "SinkTrivialPattern Start";
   SinkTrivialPattern();
-  VLOG(4) << "SinkTrivialPattern End";
-  PrintGraph();
 
   // ReducePattern -> ReduceTreePattern
-  VLOG(4) << "ReduceLiftReduceTree Start";
   ReduceLiftReduceTree();
-  VLOG(4) << "ReduceLiftReduceTree End";
-  PrintGraph();
 
-  VLOG(4) << "ReduceTreeGrown Start";
+  // ReduceTreePattern + ReduceTreePattern fusion
   ReduceTreeGrown();
-  VLOG(4) << "ReduceTreeGrown End";
-  PrintGraph();
-  // ReduceTreePattern + TrivialPattern fusion.
 
-  VLOG(4) << "ReduceTree_Trivial_Fusion Start";
+  // ReduceTreePattern + TrivialPattern fusion.
   ReduceTree_Trivial_Fusion();
-  VLOG(4) << "ReduceTree_Trivial_Fusion End";
-  PrintGraph();
 
   // Horizontal fusion.
   if (with_horizontal_fusion) {
-    VLOG(4) << "Horizontal_Fusion Start";
     HorizontalFusion();
-    VLOG(4) << "Horizontal_Fusion End";
-    PrintGraph();
   }
 
   return SortByTopoOrder();
@@ -77,43 +63,51 @@ std::vector<PatternNodePtr> PatternGraph::SortByTopoOrder() {
 }
 
 void PatternGraph::SinkTrivialPattern() {
-  VLOG(4) << "SinkTrivialPattern";
+  VLOG(4) << "Before SinkTrivialPattern: " << GraphInfo();
   GraphTransformer<
       NodePattern,
       And<And<NonSinkNodeMatcher, StmtPatternGraphMatcher<TrivialPattern>>,
-          IsNotOutputNode>,
-      TrivialPatternMerge>(this);
+          IsNotOutputNodeMatcher>,
+      MergeTrivialPatternOperation>(this);
+  VLOG(4) << "After SinkTrivialPattern: " << GraphInfo();
 }
 
 void PatternGraph::ReduceLiftReduceTree() {
+  VLOG(4) << "Before ReduceLiftReduceTree: " << GraphInfo();
   GraphTransformer<
       NodePattern,
       And<DownstreamSmallerThan<2>, StmtPatternGraphMatcher<ReducePattern>>,
-      LiftReduceToReduceTree>(this);
+      LiftReduceToReduceTreeOperation>(this);
+  VLOG(4) << "After ReduceLiftReduceTree: " << GraphInfo();
 }
 
 void PatternGraph::HorizontalFusion() {
-  VLOG(4) << "LiftToHorizontalFusionPattern";
+  VLOG(4) << "Before HorizontalFusion: " << GraphInfo();
   GraphTransformer<NodePattern,
                    StmtPatternGraphMatcher<TrivialPattern>,
-                   LiftToHorizontalFusionPattern>(this);
+                   LiftToHorizontalFusionPatternOperation>(this);
 
-  VLOG(4) << "HorizontalFusionOperation";
   GraphTransformer<NodePairPattern,
                    HorizontalFusionConstrain,
                    HorizontalFusionOperation>(this);
+  VLOG(4) << "After HorizontalFusion: " << GraphInfo();
 }
 
 void PatternGraph::ReduceTreeGrown() {
+  VLOG(4) << "Before ReduceTreeGrown: " << GraphInfo();
   GraphTransformer<NodePattern,
-                   And<CanFuseReduceTreeMatcher, IsNotOutputNode>,
+                   And<CanFuseReduceTreeMatcher, IsNotOutputNodeMatcher>,
                    MergeReduceTreeOperation>(this);
+  VLOG(4) << "After ReduceTreeGrown: " << GraphInfo();
 }
 
 void PatternGraph::ReduceTree_Trivial_Fusion() {
-  GraphTransformer<NodePattern,
-                   And<CanFuseReduceTreeAndTrivialMatcher, IsNotOutputNode>,
-                   MergeReduceTreeAndTrivialOperation>(this);
+  VLOG(4) << "Before ReduceTree_Trivial_Fusion: " << GraphInfo();
+  GraphTransformer<
+      NodePattern,
+      And<CanFuseReduceTreeAndTrivialMatcher, IsNotOutputNodeMatcher>,
+      MergeReduceTreeAndTrivialOperation>(this);
+  VLOG(4) << "After ReduceTree_Trivial_Fusion: " << GraphInfo();
 }
 
 PatternGraph::PatternGraph(const std::vector<pir::Operation*>& ops,
@@ -162,14 +156,6 @@ PatternGraph::PatternGraph(const std::vector<pir::Operation*>& ops,
         }
       }
     }
-
-    if (cur_node->upstream_.empty()) {
-      entrance_nodes_.emplace(cur_node);
-    }
-
-    if (cur_node->downstream_.empty()) {
-      exit_nodes_.emplace(cur_node);
-    }
   }
 
   VLOG(4) << "PatternGraph Created, pattern node size: "
@@ -181,12 +167,6 @@ void PatternGraph::RemoveNode(const PatternNodePtr& node) {
   if (all_pattern_nodes_.find(node) != all_pattern_nodes_.end()) {
     VLOG(4) << "Removed! ";
     all_pattern_nodes_.erase(node);
-  }
-  if (entrance_nodes_.find(node) != entrance_nodes_.end()) {
-    entrance_nodes_.erase(node);
-  }
-  if (exit_nodes_.find(node) != exit_nodes_.end()) {
-    exit_nodes_.erase(node);
   }
 
   for (PatternNodePtr& upstream : node->upstream_) {
@@ -200,28 +180,17 @@ void PatternGraph::RemoveNode(const PatternNodePtr& node) {
 
 void PatternGraph::AppendNode(const PatternNodePtr& node) {
   all_pattern_nodes_.emplace(node);
-  if (node->upstream_.empty()) {
-    entrance_nodes_.emplace(node);
-  }
-  if (node->downstream_.empty()) {
-    exit_nodes_.emplace(node);
-  }
 }
 
-void PatternGraph::PrintGraph() {
-  VLOG(4) << "========= PrintGraph ===========";
+std::string PatternGraph::GraphInfo() const {
+  std::stringstream ss;
+  ss << "\n========= GraphInfo ===========";
   for (const auto& v : all_pattern_nodes_) {
-    VLOG(4) << "Node: " << v;
-    VLOG(4) << "Pattern " << GetPatternName(v->stmt_pattern_);
-    VLOG(4) << "IsOutput " << IsOutputNode()(*this, v);
-    for (const auto& u : v->upstream_) {
-      VLOG(4) << " -u>  " << u;
-    }
-    for (const auto& d : v->downstream_) {
-      VLOG(4) << " <d- " << d;
-    }
+    ss << "\n" << v->DebugStr();
+    ss << "\n    IsOutput: " << IsOutputNodeMatcher()(*this, v);
   }
-  VLOG(4) << "========= EndPrintGraph ===========";
+  ss << "\n========= EndGraphInfo ===========";
+  return ss.str();
 }
 
 PatternNodePtr PatternGraph::MergeNode(const PatternNodePtr& upstream,
