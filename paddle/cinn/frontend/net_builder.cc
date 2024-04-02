@@ -24,6 +24,7 @@
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/functional.h"
 #include "paddle/cinn/utils/profiler.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace frontend {

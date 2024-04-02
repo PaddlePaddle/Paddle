@@ -24,6 +24,7 @@
 #include "paddle/cinn/hlir/op/use_ops.h"
 #include "paddle/cinn/hlir/pass/use_pass.h"
 #include "paddle/cinn/runtime/flags.h"
+#include "paddle/common/enforce.h"
 
 PD_DECLARE_bool(enable_auto_tuner);
 

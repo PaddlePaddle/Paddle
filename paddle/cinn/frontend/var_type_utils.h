@@ -19,6 +19,7 @@
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/paddle/cpp/desc_api.h"
 #include "paddle/cinn/frontend/paddle/cpp/var_desc.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace frontend {

@@ -26,6 +26,7 @@
 #include "paddle/cinn/frontend/paddle/model_parser.h"
 #include "paddle/cinn/frontend/var_type_utils.h"
 #include "paddle/cinn/hlir/op/use_ops.h"
+#include "paddle/common/enforce.h"
 
 PD_DECLARE_double(cinn_infer_model_version);
 

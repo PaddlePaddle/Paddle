@@ -34,6 +34,7 @@
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/scope.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace frontend {

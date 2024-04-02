@@ -20,6 +20,7 @@
 #include "paddle/cinn/frontend/paddle/model_parser.h"
 #include "paddle/cinn/frontend/paddle/pb/program_desc.h"
 #include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/common/enforce.h"
 
 PD_DECLARE_double(cinn_infer_model_version);
 

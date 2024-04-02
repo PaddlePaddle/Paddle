@@ -28,6 +28,7 @@
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace frontend {

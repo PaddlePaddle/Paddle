@@ -20,6 +20,7 @@
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/hlir/framework/scope.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace frontend {
