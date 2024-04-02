@@ -288,7 +288,6 @@ ir::Tensor Reshape(const ir::Tensor& A,
           auto temp = inner_offset % A_expr_shape[i];
           indice_a.insert(indice_a.begin(), temp);
         }
-        LOG(INFO) << "indice_a = " << indice_a[0];
         return A(indice_a);
       },
       name);

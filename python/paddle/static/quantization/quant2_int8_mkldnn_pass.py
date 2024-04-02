@@ -192,9 +192,7 @@ class Quant2Int8MkldnnPass:
                 bit_length = op.op().attr("bit_length")
                 assert (
                     bit_length == 8
-                ), 'Unsupported number quantization bits ({}). Only 8 is supported now.'.format(
-                    bit_length
-                )
+                ), f'Unsupported number quantization bits ({bit_length}). Only 8 is supported now.'
 
                 input_name = op.input("X")[0]
                 scale_name = op.input("InScale")[0]
@@ -399,9 +397,7 @@ class Quant2Int8MkldnnPass:
             w_fp32 = np.multiply(np.divide(weight, self._s8_max), scales)
         else:
             raise ValueError(
-                "The size of weight scales vector ({}) does not match the dimensions ({}) of the weights tensor {}.".format(
-                    scales.size, weight.shape, weight_var_name
-                )
+                f"The size of weight scales vector ({scales.size}) does not match the dimensions ({weight.shape}) of the weights tensor {weight_var_name}."
             )
         w_fp32 = w_fp32.reshape(weight.shape).astype(np.float32)
         self._restore_var(weight_var_name, w_fp32)
@@ -610,9 +606,7 @@ class Quant2Int8MkldnnPass:
                 if op.op().type() in self._gru_ops:
                     assert len(op.input(wx_name)) == len(
                         op.input(wh_name)
-                    ), 'Mismatch in number of weights inputs ({} for WeightX vs. {} for WeightH).'.format(
-                        len(op.input(wx_name)), len(op.input(wh_name))
-                    )
+                    ), f'Mismatch in number of weights inputs ({len(op.input(wx_name))} for WeightX vs. {len(op.input(wh_name))} for WeightH).'
                     for i, wx_var_name in enumerate(op.input(wx_name)):
                         wh_var_name = op.input(wh_name)[i]
                         use_unsigned_int = False
@@ -640,9 +634,7 @@ class Quant2Int8MkldnnPass:
                 if op.op().type() in self._lstm_ops:
                     assert len(op.input(wx_name)) == len(
                         op.input(wh_name)
-                    ), 'Mismatch in number of weights inputs ({} for WeightX vs. {} for WeightH).'.format(
-                        len(op.input(wx_name)), len(op.input(wh_name))
-                    )
+                    ), f'Mismatch in number of weights inputs ({len(op.input(wx_name))} for WeightX vs. {len(op.input(wh_name))} for WeightH).'
                     for i, wx_var_name in enumerate(op.input(wx_name)):
                         wh_var_name = op.input(wh_name)[i]
                         use_unsigned_int = False

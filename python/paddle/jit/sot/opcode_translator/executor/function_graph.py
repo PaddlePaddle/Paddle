@@ -642,11 +642,7 @@ class FunctionGraph:
         code_line = source_lines[line_idx]
         stack = []
         stack.append(
-            '  File "{}", line {}, in {}'.format(
-                filename,
-                current_line,
-                current_executor._code.co_name,
-            )
+            f'  File "{filename}", line {current_line}, in {current_executor._code.co_name}'
         )
         stack.append(f'    {code_line}')
         return stack

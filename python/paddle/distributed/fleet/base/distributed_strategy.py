@@ -413,9 +413,7 @@ class DistributedStrategy:
             self.a_sync_configs = {"k_steps": 0}
         else:
             raise ValueError(
-                "The type of `flag` is invalid, expected type is bool, but received {}".format(
-                    type(flag)
-                )
+                f"The type of `flag` is invalid, expected type is bool, but received {type(flag)}"
             )
 
     @property
@@ -529,9 +527,7 @@ class DistributedStrategy:
             self.strategy.adam_d2sum = flag
         else:
             raise ValueError(
-                "The type of `flag` is invalid, expected type is bool, but received {}".format(
-                    type(flag)
-                )
+                f"The type of `flag` is invalid, expected type is bool, but received {type(flag)}"
             )
 
     @trainer_desc_configs.setter

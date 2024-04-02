@@ -1281,11 +1281,7 @@ class RuleBasedTuner:
                             ] = shard_spec[pattern_node_id]
                             tensor_name = graph.attrs["id_to_var_name"][var_id]
                             self._logger.info(
-                                "{}'s shard_spec may be {} when under {} parallelism.".format(
-                                    tensor_name,
-                                    shard_spec[pattern_node_id],
-                                    parallelism,
-                                )
+                                f"{tensor_name}'s shard_spec may be {shard_spec[pattern_node_id]} when under {parallelism} parallelism."
                             )
         else:
             self._logger.info(
@@ -1413,9 +1409,7 @@ class RuleBasedTuner:
                 ] = dist_context
             else:
                 self._logger.info(
-                    "No pattern has be matched under {} parallelism whe sub program is {}.".format(
-                        parallelism, sub_fwd_program
-                    )
+                    f"No pattern has be matched under {parallelism} parallelism whe sub program is {sub_fwd_program}."
                 )
 
     def complete_sub_fwd_programs(self, process_mesh):
@@ -2326,13 +2320,7 @@ class RuleBasedTuner:
                         )
 
                         self._logger.info(
-                            "Cost Model: The max memory is {:.2f}GB and cost is {:.2f} when {} parallelism under process mesh shape {} on {} stages.".format(
-                                memory / (1024**3),
-                                cost,
-                                parallelism,
-                                process_mesh_shape,
-                                len(device_meshes),
-                            )
+                            f"Cost Model: The max memory is {memory / (1024**3):.2f}GB and cost is {cost:.2f} when {parallelism} parallelism under process mesh shape {process_mesh_shape} on {len(device_meshes)} stages."
                         )
                         # 10% buffer is reserved safely for memory cost
                         if memory > 0.9 * self.cluster.machines[0].devices[
@@ -2344,12 +2332,7 @@ class RuleBasedTuner:
                             best_cost = cost
                             best_dist_context = dist_context_of_device_meshes
                             self._logger.info(
-                                "O1 level: a better strategy has be found that parallelism is {} under process mesh shape {} on {} stages with max memory {:.2f}GB.".format(
-                                    parallelism,
-                                    process_mesh_shape,
-                                    len(device_meshes),
-                                    memory / (1024**3),
-                                )
+                                f"O1 level: a better strategy has be found that parallelism is {parallelism} under process mesh shape {process_mesh_shape} on {len(device_meshes)} stages with max memory {memory / (1024**3):.2f}GB."
                             )
 
         return best_dist_context

@@ -873,9 +873,7 @@ class CompOpCost(OpCost):
         if cls.OP_TYPE != "COMP":
             if cls.OP_TYPE in NON_COMP_TYPE:
                 raise TypeError(
-                    "Please Check op type not in {}, but got {}.".format(
-                        NON_COMP_TYPE, cls.OP_TYPE
-                    )
+                    f"Please Check op type not in {NON_COMP_TYPE}, but got {cls.OP_TYPE}."
                 )
 
     def calc_flops(self):
