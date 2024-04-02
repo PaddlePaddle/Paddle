@@ -83,10 +83,10 @@ class SqueezeTransposePattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class SqueezeTranspose2Pass : public pir::PatternRewritePass {
+class SqueezeTransposePass : public pir::PatternRewritePass {
  public:
-  SqueezeTranspose2Pass()
-      : pir::PatternRewritePass("squeeze_transpose_onednn_fuse_pass", 2) {}
+  SqueezeTransposePass()
+      : pir::PatternRewritePass("squeeze_transpose_onednn_fuse_pass", 3) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
@@ -101,9 +101,9 @@ namespace pir {
 
 std::unique_ptr<Pass> CreateSqueezeTransposeOneDNNPass() {
   // pd_op.squeeze + transpose2  -> onednn_op.fused_transpose
-  return std::make_unique<SqueezeTranspose2Pass>();
+  return std::make_unique<SqueezeTransposePass>();
 }
 
 }  // namespace pir
 
-REGISTER_IR_PASS(squeeze_transpose_onednn_fuse_pass, SqueezeTranspose2Pass);
+REGISTER_IR_PASS(squeeze_transpose_onednn_fuse_pass, SqueezeTransposePass);
