@@ -118,23 +118,11 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(
     const std::vector<int>& rhs_dim_idxs) const {
   if (lhs == rhs) return true;
 
-  if (!HasShapeOrDataForValue(lhs) || !HasShapeOrDataForValue(rhs)) {
-    return false;
-  }
-
   auto lhs_type = lhs.type().dyn_cast<ShapedTypeInterface>();
   auto rhs_type = rhs.type().dyn_cast<ShapedTypeInterface>();
 
   if (!lhs_type || !rhs_type || !lhs_type.HasRank() || !rhs_type.HasRank())
     return false;
-
-  auto lhs_shape_data = GetShapeOrDataForValue(lhs);
-  auto rhs_shape_data = GetShapeOrDataForValue(rhs);
-
-  IR_ENFORCE(lhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>() &&
-                 rhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>(),
-             "Currently, IsProductEqual only support TensorShapeOrDataDimExprs "
-             "but not TensorListShapeOrDataDimExprs.");
 
   // For static shape
   if (lhs_type.IsStaticShape() && rhs_type.IsStaticShape()) {
@@ -150,6 +138,18 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(
   }
 
   // For dynamic shape
+  if (!HasShapeOrDataForValue(lhs) || !HasShapeOrDataForValue(rhs)) {
+    return false;
+  }
+
+  auto lhs_shape_data = GetShapeOrDataForValue(lhs);
+  auto rhs_shape_data = GetShapeOrDataForValue(rhs);
+
+  IR_ENFORCE(lhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>() &&
+                 rhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>(),
+             "Currently, IsProductEqual only support TensorShapeOrDataDimExprs "
+             "but not TensorListShapeOrDataDimExprs.");
+
   symbol::DimExpr lhs_product(1);
   symbol::DimExpr rhs_product(1);
   for (int i : lhs_dim_idxs) {

@@ -100,45 +100,31 @@ static ValueDimRelation CreateOpRelativenessForElementWise(pir::Operation* op) {
 
 static std::vector<std::pair<size_t, size_t>> GetNonBroadCastDims(
     pir::Operation* op) {
-  // TODO(xk): only static shape here!
   std::vector<std::pair<size_t, size_t>> res;
-  if (op->name() == "cinn_op.broadcast") {
-    const auto& in_dim =
-        op->operand(0).type().dyn_cast<pir::DenseTensorType>().dims();
-    const auto& out_dim =
-        op->result(0).type().dyn_cast<pir::DenseTensorType>().dims();
-    // CINN_CHECK_EQ(in_dim.size(), out_dim.size());
-    for (int i = 1; i <= in_dim.size(); ++i) {
-      if (in_dim.size() - i < 0 || out_dim.size() - i < 0) break;
-      if (in_dim[in_dim.size() - i] == out_dim[out_dim.size() - i]) {
-        res.emplace_back(in_dim.size() - i, out_dim.size() - i);
-      }
+  const auto* shape_analysis =
+      &pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+
+  const auto& broad_cast_value = GetBroadcastOpInputOuputValue(op);
+  CHECK(broad_cast_value.has_value());
+
+  const auto& [input_value, output_value] = broad_cast_value.value();
+  const int input_rank = GetRank(input_value);
+  const int output_rank = GetRank(output_value);
+  CHECK_GE(output_rank, input_rank);
+
+  // Compare axis one by one, from back to front.
+  // The rule of broadcasting:
+  // https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/beginner/tensor_cn.html#id7
+  for (int i = 1; i <= input_rank; ++i) {
+    int input_axis = input_rank - i;
+    int output_axis = output_rank - i;
+    if (input_axis < 0 || output_axis < 0) break;
+    if (shape_analysis->IsProductEqual(
+            input_value, {input_axis}, output_value, {output_axis})) {
+      res.emplace_back(input_axis, output_axis);
     }
-  } else if (op->name() == "pd_op.expand") {
-    auto* mut_op = const_cast<pir::Operation*>(op);
-    auto expand_op = mut_op->dyn_cast<paddle::dialect::ExpandOp>();
-
-    const auto& input_value = expand_op.x();
-    const auto& output_value = expand_op.out();
-
-    const int input_rank = GetRank(input_value);
-    const int output_rank = GetRank(output_value);
-    // CHECK_GE(output_rank, input_rank);
-
-    // TODO(Baizhou): How to fetch shape_analysis in a more elegant way
-    const auto* shape_analysis =
-        &pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
-
-    for (int i = 1; i <= input_rank; ++i) {
-      if (input_rank - i < 0 || output_rank - i < 0) break;
-      if (shape_analysis->IsProductEqual(
-              input_value, {input_rank - i}, output_value, {output_rank - i})) {
-        res.emplace_back(input_rank - i, output_rank - i);
-      }
-    }
-  } else {
-    CHECK(false) << "Not Implement other broadcast op.";
   }
+
   return res;
 }
 
