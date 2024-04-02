@@ -256,16 +256,12 @@ class BiGRU(paddle.nn.Layer):
         fc_2 = paddle.tanh(fc_2)
         prediction = self._fc_prediction(fc_2)
         prediction = paddle.nn.functional.softmax(prediction)
-        # TODO(Aurelius84): Uncomment the following codes when we support return variable-length vars.
-        # if label is not None:
         cost = paddle.nn.functional.cross_entropy(
             input=prediction, label=label, reduction='none', use_softmax=False
         )
         avg_cost = paddle.mean(x=cost)
         acc = paddle.static.accuracy(input=prediction, label=label)
         return avg_cost, prediction, acc
-        # else:
-        #     return prediction
 
 
 def fake_data_reader(class_num, vocab_size, batch_size, padding_size):
@@ -377,7 +373,7 @@ class TestSentiment(Dy2StTestBase):
         np.testing.assert_allclose(
             dy_out,
             st_out,
-            rtol=1e-04,
+            rtol=1e-05,
             err_msg=f'dy_out:\n {dy_out}\n st_out:\n {st_out}',
         )
 
