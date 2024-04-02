@@ -222,7 +222,13 @@ class ReplaceIndexToBindExpr : public ir::IRMutator<> {
         schedule_block_realize->schedule_block.As<ir::ScheduleBlock>()
             ->iter_vars;
 
-    CHECK_EQ(iter_values.size(), iter_vars.size());
+    PADDLE_ENFORCE_EQ(iter_values.size(),
+                      iter_vars.size(),
+                      phi::errors::InvalidArgument(
+                          "The size of iter values and iter vars is not equal,"
+                          "where iter values:%d but iter vars:%d.",
+                          iter_values.size(),
+                          iter_vars.size()));
     for (int idx = 0; idx < iter_values.size(); ++idx) {
       ReplaceVarWithExpr(&body, iter_vars[idx], iter_values[idx]);
     }
@@ -261,7 +267,7 @@ class ReplaceLoopVarToGpu : public ir::IRMutator<> {
     ir::IRMutator<>::Visit(&for_ir->body, &for_ir->body);
   }
   void Visit(const ir::PolyFor *op, Expr *expr) override {
-    LOG(FATAL) << "Unkown PolyFor!";
+    PADDLE_THROW(phi::errors::InvalidArgument("Unkown PolyFor!"));
   }
 };
 

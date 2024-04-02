@@ -50,6 +50,9 @@ class OpResultImpl : public ValueImpl {
   Attribute attribute(const std::string &key) const;
   void set_attribute(const std::string &key, Attribute value);
 
+  void *property(const std::string &key) const;
+  void set_property(const std::string &key, const Property &value);
+
  private:
   int32_t ComputeOperationOffset() const;
 };

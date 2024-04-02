@@ -629,6 +629,10 @@ PHI_DEFINE_EXPORTED_uint64(
     "The real chunk size is max(request_size, "
     "FLAGS_auto_growth_chunk_size_in_mb).");
 
+PHI_DEFINE_EXPORTED_bool(custom_device_mem_record,
+                         false,
+                         "Enable mem record event on custom device");
+
 #endif
 
 /**
@@ -1469,6 +1473,14 @@ PHI_DEFINE_EXPORTED_bool(prim_check_ops,
                          false,
                          "Whether to check the decomposed program, to ensure "
                          "that only the primitive operator is present.");
+
+// PIR and prim related FLAG
+// Example: FLAGS_prim_forward_blacklist="pd_op.relu;pd_op.mean" would block
+// `relu` and `mean` two ops in decompsition.
+PHI_DEFINE_EXPORTED_string(
+    prim_forward_blacklist,
+    "",
+    "It controls the forward blacklist ops not to be decomposed.");
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)

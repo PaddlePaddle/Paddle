@@ -72,7 +72,7 @@ class ExprWrapper {
   }
 
   friend ExprWrapper operator+(int a_value, const ExprWrapper& b) {
-    return a_value + b;
+    return b + a_value;
   }
 
   friend ExprWrapper operator-(const ExprWrapper& a, const ExprWrapper& b) {

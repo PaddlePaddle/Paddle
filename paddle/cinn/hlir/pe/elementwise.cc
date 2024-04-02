@@ -237,7 +237,6 @@ ir::Tensor Reshape(const ir::Tensor& A,
           auto temp = inner_offset % A_expr_shape[i];
           indice_a.insert(indice_a.begin(), temp);
         }
-        LOG(INFO) << "indice_a = " << indice_a[0];
         return A(indice_a);
       },
       name);
@@ -289,7 +288,6 @@ ir::Tensor Reshape(const ir::Tensor& A,
           auto temp = inner_offset % A_expr_shape[i];
           indice_a.insert(indice_a.begin(), temp);
         }
-        LOG(INFO) << "indice_a = " << indice_a[0];
         return A(indice_a);
       },
       name);
@@ -331,6 +329,28 @@ ir::Tensor Arange(const float start,
                 Expr(step) * ir::Cast::Make(cinn::common::F32(), indices[0]));
       },
       output_name);
+  return res;
+}
+
+ir::Tensor Tril(const ir::Tensor& A,
+                const int diagonal,
+                const std::vector<ir::Dim>& out_shape,
+                const std::string& name) {
+  ir::Tensor res = Compute(
+      ToCinnExprs(out_shape),
+      [=](const std::vector<Expr>& indice) {
+        PADDLE_ENFORCE_GE(indice.size(),
+                          size_t(2),
+                          phi::errors::InvalidArgument(
+                              "The Tril op input tensor must have a rank "
+                              "greater than or equal to 2."));
+        std::vector<Expr> new_indice(indice.end() - 2, indice.end());
+        Expr col_indice = indice.back();
+        return ir::Select::Make(new_indice[0] >= new_indice[1] - diagonal,
+                                A(indice),
+                                ir::Zero(A->type()));
+      },
+      name);
   return res;
 }
 

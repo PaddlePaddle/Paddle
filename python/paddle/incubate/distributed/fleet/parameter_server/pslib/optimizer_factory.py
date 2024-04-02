@@ -403,13 +403,9 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 and strategy.get("use_cvm") is True
             ):
                 logger.warning(
-                    "sparse embedding dim for table name '{}' is: {}, while sparse_embedx_dim "
+                    f"sparse embedding dim for table name '{table_name}' is: {emb_to_size[table_name]}, while sparse_embedx_dim "
                     "with same sparse table name is not set in config_fleet.py. "
-                    "Hence automatically set sparse_embedx_dim = {} - 3.".format(
-                        table_name,
-                        emb_to_size[table_name],
-                        emb_to_size[table_name],
-                    )
+                    f"Hence automatically set sparse_embedx_dim = {emb_to_size[table_name]} - 3."
                 )
                 st["sparse_embedx_dim"] = emb_to_size[table_name] - 3
             if (
@@ -417,13 +413,9 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 and strategy.get("use_cvm") is False
             ):
                 logger.warning(
-                    "sparse embedding dim for table name '{}' is: {}, while sparse_embedx_dim "
+                    f"sparse embedding dim for table name '{table_name}' is: {emb_to_size[table_name]}, while sparse_embedx_dim "
                     "with same sparse table name is not set in config_fleet.py. "
-                    "Hence automatically set sparse_embedx_dim = {} - 1.".format(
-                        table_name,
-                        emb_to_size[table_name],
-                        emb_to_size[table_name],
-                    )
+                    f"Hence automatically set sparse_embedx_dim = {emb_to_size[table_name]} - 1."
                 )
                 st["sparse_embedx_dim"] = emb_to_size[table_name] - 1
         elif accessor == "DownpourSparseValueAccessor":
@@ -439,13 +431,9 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 )
             if st.get("sparse_embedx_dim") is None:
                 logger.warning(
-                    "sparse embedding dim for table name '{}' is: {}, while sparse_embedx_dim "
+                    f"sparse embedding dim for table name '{table_name}' is: {emb_to_size[table_name]}, while sparse_embedx_dim "
                     "with same sparse table name is not set in config_fleet.py. "
-                    "Hence automatically set sparse_embedx_dim = {}.".format(
-                        table_name,
-                        emb_to_size[table_name],
-                        emb_to_size[table_name],
-                    )
+                    f"Hence automatically set sparse_embedx_dim = {emb_to_size[table_name]}."
                 )
                 st["sparse_embedx_dim"] = emb_to_size[table_name]
 
@@ -623,10 +611,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
             emb_to_size = FLEET_GLOBAL_DICT["emb_to_size"]
             if len(sparse_table_to_index) != len(emb_to_table):
                 raise ValueError(
-                    "sparse tables from  program != sparse tables from op: {} "
-                    "vs {}".format(
-                        len(sparse_table_to_index), len(emb_to_table)
-                    )
+                    f"sparse tables from  program != sparse tables from op: {len(sparse_table_to_index)} "
+                    f"vs {len(emb_to_table)}"
                 )
             for key in sparse_table_to_index:
                 if (

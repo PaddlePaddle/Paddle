@@ -970,14 +970,12 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
 
   std::vector<ssize_t> py_dims(rank);
   std::vector<ssize_t> py_strides(rank);
-  size_t numel = 1;
 
   auto tensor_stride = tensor.strides();
 
   for (int i = tensor_dims.size() - 1; i >= 0; --i) {
     py_dims[i] = static_cast<size_t>(tensor_dims[i]);
     py_strides[i] = sizeof_dtype * tensor_stride[i];
-    numel *= py_dims[i];
   }
 
   const void *tensor_buf_ptr = tensor.data();

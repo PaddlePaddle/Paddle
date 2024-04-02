@@ -803,7 +803,7 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::EnableXpu,
            py::arg("l3_size") = 16 * 1024 * 1024,
            py::arg("l3_locked") = false,
-           py::arg("conv_autotune") = true,
+           py::arg("conv_autotune") = false,
            py::arg("conv_autotune_file") = "",
            py::arg("transformer_encoder_precision") = "int16",
            py::arg("transformer_encoder_adaptive_seqlen") = false,
@@ -981,7 +981,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("lite_engine_enabled", &AnalysisConfig::lite_engine_enabled)
       .def("switch_ir_debug",
            &AnalysisConfig::SwitchIrDebug,
-           py::arg("x") = true)
+           py::arg("x") = true,
+           py::arg("passes") = std::vector<std::string>())
       .def("enable_mkldnn", &AnalysisConfig::EnableMKLDNN)
       .def("disable_mkldnn", &AnalysisConfig::DisableMKLDNN)
       .def("mkldnn_enabled", &AnalysisConfig::mkldnn_enabled)
@@ -1036,7 +1037,13 @@ void BindAnalysisConfig(py::module *m) {
             return dynamic_cast<PaddlePassBuilder *>(self.pass_builder());
           },
           py::return_value_policy::reference)
-      .def("enable_custom_passes", &AnalysisConfig::EnableCustomPasses)
+      .def("enable_custom_passes",
+           &AnalysisConfig::EnableCustomPasses,
+           py::arg("passes") = std::vector<std::string>(),
+           py::arg("custom_pass_only") = false)
+      .def("set_optimization_level",
+           &AnalysisConfig::SetOptimizationLevel,
+           py::arg("opt_level") = 2)
       .def("nnadapter", &AnalysisConfig::NNAdapter)
       .def("set_dist_config", &AnalysisConfig::SetDistConfig)
       .def("dist_config", &AnalysisConfig::dist_config);
@@ -1218,8 +1225,8 @@ void BindPaddleInferPredictor(py::module *m) {
       .def("try_shrink_memory", &paddle_infer::Predictor::TryShrinkMemory)
       .def("clear_intermediate_tensor",
            &paddle_infer::Predictor::ClearIntermediateTensor)
-      .def("register_output_hook",
-           &paddle_infer::Predictor::RegisterOutputHook);
+      .def("register_output_hook", &paddle_infer::Predictor::RegisterOutputHook)
+      .def("register_input_hook", &paddle_infer::Predictor::RegisterInputHook);
 }
 
 void BindZeroCopyTensor(py::module *m) {

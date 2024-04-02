@@ -774,9 +774,7 @@ class SimpleRNNCell(RNNCellBase):
         super().__init__()
         if hidden_size <= 0:
             raise ValueError(
-                "hidden_size of {} must be greater than 0, but now equals to {}".format(
-                    self.__class__.__name__, hidden_size
-                )
+                f"hidden_size of {self.__class__.__name__} must be greater than 0, but now equals to {hidden_size}"
             )
         std = 1.0 / math.sqrt(hidden_size)
         if weight_ih_attr is not False:
@@ -969,9 +967,7 @@ class LSTMCell(RNNCellBase):
         super().__init__()
         if hidden_size <= 0:
             raise ValueError(
-                "hidden_size of {} must be greater than 0, but now equals to {}".format(
-                    self.__class__.__name__, hidden_size
-                )
+                f"hidden_size of {self.__class__.__name__} must be greater than 0, but now equals to {hidden_size}"
             )
         std = 1.0 / math.sqrt(hidden_size)
         if weight_ih_attr is not False:
@@ -1162,9 +1158,7 @@ class GRUCell(RNNCellBase):
         super().__init__()
         if hidden_size <= 0:
             raise ValueError(
-                "hidden_size of {} must be greater than 0, but now equals to {}".format(
-                    self.__class__.__name__, hidden_size
-                )
+                f"hidden_size of {self.__class__.__name__} must be greater than 0, but now equals to {hidden_size}"
             )
         std = 1.0 / math.sqrt(hidden_size)
         if weight_ih_attr is not False:
@@ -1555,6 +1549,11 @@ class RNNBase(LayerList):
             )
             if in_dynamic_mode():
                 with paddle.no_grad():
+                    dtype = params[0].dtype
+                    if isinstance(dtype, core.DataType):
+                        dtype = paddle.base.framework.paddle_type_to_proto_type[
+                            dtype
+                        ]
                     _legacy_C_ops.coalesce_tensor(
                         self._all_weights,
                         self._all_weights,
@@ -1564,7 +1563,7 @@ class RNNBase(LayerList):
                         "use_align",
                         False,
                         "dtype",
-                        params[0].dtype,
+                        dtype,
                     )
                     return
             # for static-graph, append coalesce_tensor into startup program

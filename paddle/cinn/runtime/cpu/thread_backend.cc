@@ -25,6 +25,7 @@
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/runtime/intrinsic.h"
+#include "paddle/common/enforce.h"
 
 int max_concurrency() {
   int max_concurrency = 1;
@@ -56,7 +57,8 @@ int cinn_backend_parallel_launch(FCINNParallelLambda flambda,
     (*flambda)(thread_num, num_task, datas);
   }
 #else
-  LOG(FATAL) << "CINN host parallel launch need OpenMP! Please check.";
+  PADDLE_THROW(phi::errors::Fatal(
+      "CINN host parallel launch need OpenMP! Please check."));
 #endif  // CINN_USE_OPENMP
   return 0;
 }

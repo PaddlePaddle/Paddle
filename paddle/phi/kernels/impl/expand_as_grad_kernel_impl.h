@@ -116,10 +116,19 @@ void ExpandAsGradKernel(const Context& context,
       ExpandAsBackward<Context, T, 6>(
           context, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
       break;
+    case 7:
+      ExpandAsBackward<Context, T, 7>(
+          context, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+      break;
+    case 8:
+      ExpandAsBackward<Context, T, 8>(
+          context, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
+      break;
     default:
       PADDLE_THROW(errors::InvalidArgument(
-          "Only support tensor with rank being between 1 and 6. But "
+          "Only support tensor with rank being between 1 and %d. But "
           "received tensor's rank = %d.",
+          MAX_RANK_SUPPORTED,
           dims));
   }
 }

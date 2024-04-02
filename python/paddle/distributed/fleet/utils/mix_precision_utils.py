@@ -54,9 +54,7 @@ class MixPrecisionLayer(nn.Layer):
         def param_hook(tmp_grad):
             assert (
                 param.grad is None
-            ), "In main_grad node, param.grad should be None, but find param[{}] has grad.".format(
-                param.name
-            )
+            ), f"In main_grad node, param.grad should be None, but find param[{param.name}] has grad."
             if tmp_grad is not None and tmp_grad._is_initialized():
                 # Some previous pylayer may return None, should check grad validation.
                 if param.main_grad is None:
@@ -110,6 +108,8 @@ class MixPrecisionOptimizer:
                 if param.stop_gradient:
                     continue
                 grad_var = param.main_grad
+                if grad_var is None:
+                    continue
                 if paddle.in_dynamic_mode():
                     if (
                         hasattr(grad_var, "is_selected_rows")
@@ -141,6 +141,8 @@ class MixPrecisionOptimizer:
                     if param.stop_gradient:
                         continue
                     grad_var = param.main_grad
+                    if grad_var is None:
+                        continue
                     if paddle.in_dynamic_mode():
                         if (
                             hasattr(grad_var, "is_selected_rows")

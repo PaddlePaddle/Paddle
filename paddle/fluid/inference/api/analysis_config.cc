@@ -15,6 +15,7 @@
 #include <sstream>
 #include <string>
 #include <tuple>
+#include <unordered_set>
 
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
@@ -181,6 +182,11 @@ void AnalysisConfig::EnableXpu(int l3_size,
                                bool transformer_encoder_adaptive_seqlen,
                                bool enable_multi_stream) {
 #if defined(PADDLE_WITH_XPU) || defined(LITE_SUBGRAPH_WITH_XPU)
+  LOG_FIRST_N(WARNING, 1)
+      << "Parameters in EnableXpu/enable_xpu is deprecated since version "
+         "2.6.1, and will be removed in version 3.0! Please use "
+         "EnableXpu/enable_xpu without parameters, and use "
+         "SetXpuConfig/set_xpu_config to set options.";
   use_xpu_ = true;
   xpu_config_.l3_size = l3_size;
   xpu_config_.conv_autotune_level = conv_autotune;
@@ -586,6 +592,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_new_executor_);
   CP_MEMBER(use_pir_);
   CP_MEMBER(custom_passes_);
+  CP_MEMBER(custom_pass_only_);
+  CP_MEMBER(pm_opt_level_);
+  CP_MEMBER(ir_debug_passes_);
 
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_,
@@ -919,6 +928,11 @@ void AnalysisConfig::Update() {
   auto &&info = SerializeInfoCache();
   if (info == serialized_info_cache_) return;
 
+  std::unordered_set<std::string> deleted_passes;
+  if (pass_builder_) {
+    deleted_passes = pass_builder_->GetAllDeletedPasses();
+  }
+
   // Transfer pass_builder and copy the existing compatible passes.
   if (!pass_builder_ || ((use_gpu() ^ pass_builder_->use_gpu())) ||
       ((use_xpu() ^ pass_builder_->use_xpu())) ||
@@ -1131,7 +1145,7 @@ void AnalysisConfig::Update() {
         "but did not have the option -DWITH_CUSTOM_DEVICE compiled."));
 #endif
   }
-  for (auto &delete_pass : pass_builder()->GetAllDeletedPasses()) {
+  for (const auto &delete_pass : deleted_passes) {
     pass_builder_->DeletePass(delete_pass);
   }
 }
@@ -1316,8 +1330,10 @@ NativeConfig AnalysisConfig::ToNativeConfig() const {
   return config;
 }
 
-void AnalysisConfig::SwitchIrDebug(int x) {
+void AnalysisConfig::SwitchIrDebug(int x,
+                                   const std::vector<std::string> &passes) {
   ir_debug_ = x;
+  ir_debug_passes_ = passes;
   Update();
 }
 
@@ -1653,9 +1669,13 @@ void AnalysisConfig::EnableCINN() {
 
 bool AnalysisConfig::cinn_enabled() const { return use_cinn_; }
 
-void AnalysisConfig::EnableCustomPasses(
-    const std::vector<std::string> &passes) {
+void AnalysisConfig::EnableCustomPasses(const std::vector<std::string> &passes,
+                                        bool custom_pass_only) {
   custom_passes_ = passes;
+  custom_pass_only_ = custom_pass_only;
 }
 
+void AnalysisConfig::SetOptimizationLevel(int opt_level) {
+  pm_opt_level_ = opt_level;
+}
 }  // namespace paddle

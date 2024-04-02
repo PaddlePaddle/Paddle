@@ -91,39 +91,45 @@ static bool IsVariableRefArray(const Tensor &tensor) {
 
 static auto GetNameFromValue(const ::pir::Block *block,
                              const std::vector<::pir::Value> &values,
-                             bool is_input) {
+                             bool allow_input,
+                             bool allow_output) {
+  PADDLE_ENFORCE_EQ(
+      allow_input || allow_output,
+      true,
+      paddle::platform::errors::InvalidArgument(
+          "GetNameFromValue should allow input or output at least one."));
   // we use name here, later value is used directly.
   std::unordered_map<::pir::Value, std::string> value2name;
-  if (is_input) {
+  if (allow_input) {
     for (auto &kwarg : block->kwargs()) {
       value2name[kwarg.second] = kwarg.first;
     }
   }
   for (auto &op : *block) {
     std::string name;
-    if (is_input && op.name() == "pd_op.data") {
+    if (allow_input && op.name() == "pd_op.data") {
       name =
           op.attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
       value2name[op.results()[0].Value::impl()] = name;
-    } else if (!is_input && op.name() == "builtin.set_parameter") {
+    } else if (allow_output && op.name() == "builtin.set_parameter") {
       name = op.attributes()
                  .at("parameter_name")
                  .dyn_cast<pir::StrAttribute>()
                  .AsString();
       value2name[op.operand(0).source()] = name;
-    } else if (!is_input && op.name() == "builtin.shadow_output") {
+    } else if (allow_output && op.name() == "builtin.shadow_output") {
       name = op.attributes()
                  .at("output_name")
                  .dyn_cast<pir::StrAttribute>()
                  .AsString();
       value2name[op.operand(0).source()] = name;
-    } else if (is_input && op.name() == "builtin.parameter") {
+    } else if (allow_input && op.name() == "builtin.parameter") {
       name = op.attributes()
                  .at("parameter_name")
                  .dyn_cast<pir::StrAttribute>()
                  .AsString();
       value2name[op.result(0).Value::impl()] = name;
-    } else if (is_input && op.name() == "builtin.constant") {
+    } else if (allow_input && op.name() == "builtin.constant") {
       if (op.isa<pir::ConstantTensorOp>()) {
         name = op.dyn_cast<pir::ConstantTensorOp>().tensor_name();
         value2name[op.result(0).Value::impl()] = name;
@@ -201,8 +207,8 @@ static void ShareTensorsIntoScopeWithName(
     const std::vector<std::string> &tensor_names,
     paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
-    VLOG(4) << "Share Tensor Into Scope: " << i;
     auto name = tensor_names[i];
+    VLOG(4) << "Share Tensor Into Scope: " << name;
     if (name == paddle::framework::kFakeVarName ||
         name == paddle::framework::kEmptyVarName) {
       continue;
@@ -248,12 +254,7 @@ static void ShareTensorsIntoScopeByValue(
     const std::vector<Tensor> &tensors,
     const std::vector<::pir::Value> &values,
     paddle::framework::Scope *scope) {
-  auto names = GetNameFromValue(block, values, true);
-  if (VLOG_IS_ON(4)) {
-    for (auto &s : names) {
-      VLOG(4) << "ShareTensorIntoScopeByValue name: " << s;
-    }
-  }
+  auto names = GetNameFromValue(block, values, true, false);
   ShareTensorsIntoScopeWithName(tensors, names, scope);
 }
 
@@ -262,11 +263,16 @@ static void ShareTensorsFromScopeByValue(
     const std::vector<Tensor *> &tensors,
     const std::vector<::pir::Value> &values,
     paddle::framework::Scope *scope) {
-  auto names = GetNameFromValue(block, values, false);
+  // NOTE(SigureMo): If the program has an inplace chain connecting
+  // an input value to an output value, the output value will be
+  // replaced with the input value, so we set the `allow_input` to
+  // `true` in `GetNameFromValue`
+  auto names = GetNameFromValue(block, values, true, true);
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &name = names[i];
     auto &value = values[i];
-    VLOG(2) << "share " << name << " from scope";
+    VLOG(4) << "Share Tensor From Scope: " << name;
+
     if (value.impl() == nullptr) {
       // skip stop_gradient.
       continue;
@@ -482,15 +488,14 @@ inline void PirRunProgramAPI(
 
   VLOG(10) << is_test << program_id;
 
-  auto &interpretercore_info_cache =
-      paddle::framework::InterpreterCoreInfoCache::Instance();
+  auto &cache = paddle::framework::InterpreterCoreInfoCache::Instance();
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
       nullptr;
-  if (!interpretercore_info_cache.Has(program_id,
-                                      global_inner_scope,
-                                      place_hash_key,
-                                      /*is_grad=*/false,
-                                      /*in_pir_mode=*/true)) {
+  if (!cache.Has(program_id,
+                 global_inner_scope,
+                 place_hash_key,
+                 /*is_grad=*/false,
+                 /*in_pir_mode=*/true)) {
     paddle::platform::RecordEvent record_event(
         "create_new_interpretercore",
         paddle::platform::TracerEventType::UserDefined,
@@ -525,20 +530,20 @@ inline void PirRunProgramAPI(
     // *backward_program);
 
     // update interpretercore skip_gc_var
-    auto skip_names =
-        details::GetNameFromValue(forward_global_block, middle_values, false);
+    auto skip_names = details::GetNameFromValue(
+        forward_global_block, middle_values, false, true);
     auto skip_names_set =
         std::set<std::string>(skip_names.begin(), skip_names.end());
     auto no_need_buffer_values = PADDLE_GET_CONST(std::vector<::pir::Value>,
                                                   attrs.at("no_need_buffers"));
     auto no_need_buffer_names = details::GetNameFromValue(
-        forward_global_block, no_need_buffer_values, false);
+        forward_global_block, no_need_buffer_values, false, true);
     for (auto &name : no_need_buffer_names) {
       VLOG(4) << "Find no need buffer vars with name:" << name;
       skip_names_set.erase(name);
     }
-    skip_names =
-        details::GetNameFromValue(forward_global_block, output_values, false);
+    skip_names = details::GetNameFromValue(
+        forward_global_block, output_values, false, true);
     skip_names_set.insert(skip_names.begin(), skip_names.end());
     details::print_collection(skip_names_set);
     interpreter_core->SetSkipGcVars(skip_names_set);
@@ -547,7 +552,7 @@ inline void PirRunProgramAPI(
     // input_vars.insert(input_names.begin(), input_names.end());
     // interpreter_core->SetJitInputVars(input_vars);
 
-    // interpretercore_info_cache.UpdateSkipEagerDeleteVars(
+    // cache.UpdateSkipEagerDeleteVars(
     // program_id, global_inner_scope, false, skip_eager_delete_vars);
   } else {
     paddle::platform::RecordEvent record_event(
@@ -556,12 +561,11 @@ inline void PirRunProgramAPI(
         1);
     VLOG(2) << "Get interpretercore cache by program:" << program_id;
     // Step 1. get cache interpretercore
-    auto &cached_value =
-        interpretercore_info_cache.GetMutable(program_id,
-                                              global_inner_scope,
-                                              place_hash_key,
-                                              /*is_grad=*/false,
-                                              /*in_pir_mode=*/true);
+    auto &cached_value = cache.GetMutable(program_id,
+                                          global_inner_scope,
+                                          place_hash_key,
+                                          /*is_grad=*/false,
+                                          /*in_pir_mode=*/true);
     interpreter_core = cached_value.core_;
     // Step 2. update scope for cache interpretercore
     details::ShareTensorsIntoScopeByValue(
@@ -695,15 +699,14 @@ inline void RunProgramAPI(
     backward_program = backward_global_block->Program();
   }
 
-  auto &interpretercore_info_cache =
-      paddle::framework::InterpreterCoreInfoCache::Instance();
+  auto &cache = paddle::framework::InterpreterCoreInfoCache::Instance();
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
       nullptr;
-  if (!interpretercore_info_cache.Has(program_id,
-                                      global_inner_scope,
-                                      place_hash_key,
-                                      /*is_grad=*/false,
-                                      /*in_pir_mode=*/in_pir_pt_mode)) {
+  if (!cache.Has(program_id,
+                 global_inner_scope,
+                 place_hash_key,
+                 /*is_grad=*/false,
+                 /*in_pir_mode=*/in_pir_pt_mode)) {
     paddle::platform::RecordEvent record_event(
         "create_new_interpretercore",
         paddle::platform::TracerEventType::UserDefined,
@@ -769,13 +772,12 @@ inline void RunProgramAPI(
       VLOG(6) << s.str();
     }
 
-    interpretercore_info_cache.UpdateSkipEagerDeleteVars(
-        program_id,
-        global_inner_scope,
-        place_hash_key,
-        false,
-        in_pir_pt_mode,
-        skip_eager_delete_vars);
+    cache.UpdateSkipEagerDeleteVars(program_id,
+                                    global_inner_scope,
+                                    place_hash_key,
+                                    false,
+                                    in_pir_pt_mode,
+                                    skip_eager_delete_vars);
     VLOG(2) << "Get skip GC vars size is: " << skip_eager_delete_vars.size();
   } else {
     paddle::platform::RecordEvent record_event(
@@ -784,12 +786,11 @@ inline void RunProgramAPI(
         1);
     VLOG(2) << "Get interpretercore cache by program:" << program_id;
     // Step 1. get cache interpretercore
-    auto &cached_value =
-        interpretercore_info_cache.GetMutable(program_id,
-                                              global_inner_scope,
-                                              place_hash_key,
-                                              /*is_grad=*/false,
-                                              /*in_pir_mode=*/in_pir_pt_mode);
+    auto &cached_value = cache.GetMutable(program_id,
+                                          global_inner_scope,
+                                          place_hash_key,
+                                          /*is_grad=*/false,
+                                          /*in_pir_mode=*/in_pir_pt_mode);
     interpreter_core = cached_value.core_;
     // Step 2. update scope for cache interpretercore
     details::ShareTensorsIntoScopeWithName(x, input_names, global_inner_scope);
@@ -874,15 +875,14 @@ inline void RunProgramGradAPI(
   details::Trans2ContiguousTensorsInplace(out_grad);
 
   auto out_grad_names = details::GetTensorsName(out_grad);
-  auto &interpretercore_info_cache =
-      paddle::framework::InterpreterCoreInfoCache::Instance();
+  auto &cache = paddle::framework::InterpreterCoreInfoCache::Instance();
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
       nullptr;
-  if (!interpretercore_info_cache.Has(program_id,
-                                      global_inner_scope,
-                                      place_hash_key,
-                                      /*is_grad=*/true,
-                                      /*in_pir_mode=*/in_pir_pt_mode)) {
+  if (!cache.Has(program_id,
+                 global_inner_scope,
+                 place_hash_key,
+                 /*is_grad=*/true,
+                 /*in_pir_mode=*/in_pir_pt_mode)) {
     paddle::platform::RecordEvent record_event(
         "create_new_interpretercore",
         paddle::platform::TracerEventType::UserDefined,
@@ -922,13 +922,13 @@ inline void RunProgramGradAPI(
     // share threadpool
     // NOTE(zhiqiu): this only works interpreter_core is executed strictly
     // after the related fwd_interpreter_core.
-    if (interpretercore_info_cache.Has(program_id,
-                                       global_inner_scope,
-                                       place_hash_key,
-                                       /*is_grad=*/false,
-                                       /*in_pir_mode=*/in_pir_pt_mode)) {
+    if (cache.Has(program_id,
+                  global_inner_scope,
+                  place_hash_key,
+                  /*is_grad=*/false,
+                  /*in_pir_mode=*/in_pir_pt_mode)) {
       auto fwd_interpreter_core =
-          interpretercore_info_cache
+          cache
               .GetMutable(program_id,
                           global_inner_scope,
                           place_hash_key,
@@ -956,13 +956,12 @@ inline void RunProgramGradAPI(
     paddle::framework::details::AppendSkipDeletionVars(param_grad_names,
                                                        &skip_eager_delete_vars);
     interpreter_core->SetSkipGcVars(skip_eager_delete_vars);
-    interpretercore_info_cache.UpdateSkipEagerDeleteVars(
-        program_id,
-        global_inner_scope,
-        place_hash_key,
-        /*is_grad=*/true,
-        in_pir_pt_mode,
-        skip_eager_delete_vars);
+    cache.UpdateSkipEagerDeleteVars(program_id,
+                                    global_inner_scope,
+                                    place_hash_key,
+                                    /*is_grad=*/true,
+                                    in_pir_pt_mode,
+                                    skip_eager_delete_vars);
     VLOG(2) << "Get skip GC vars size is: " << skip_eager_delete_vars.size();
   } else {
     paddle::platform::RecordEvent record_event(
@@ -970,12 +969,11 @@ inline void RunProgramGradAPI(
         paddle::platform::TracerEventType::UserDefined,
         1);
     VLOG(2) << "Get interpretercore cache by program:" << program_id;
-    auto &cached_value =
-        interpretercore_info_cache.GetMutable(program_id,
-                                              global_inner_scope,
-                                              place_hash_key,
-                                              /*is_grad=*/true,
-                                              /*in_pir_mode=*/in_pir_pt_mode);
+    auto &cached_value = cache.GetMutable(program_id,
+                                          global_inner_scope,
+                                          place_hash_key,
+                                          /*is_grad=*/true,
+                                          /*in_pir_mode=*/in_pir_pt_mode);
     interpreter_core = cached_value.core_;
 
     // update scope
@@ -1084,15 +1082,14 @@ inline void PirRunProgramGradAPI(
   out.clear();
   middles.clear();
 
-  auto &interpretercore_info_cache =
-      paddle::framework::InterpreterCoreInfoCache::Instance();
+  auto &cache = paddle::framework::InterpreterCoreInfoCache::Instance();
   std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
       nullptr;
-  if (!interpretercore_info_cache.Has(program_id,
-                                      global_inner_scope,
-                                      place_hash_key,
-                                      /*is_grad=*/true,
-                                      /*in_pir_mode=*/true)) {
+  if (!cache.Has(program_id,
+                 global_inner_scope,
+                 place_hash_key,
+                 /*is_grad=*/true,
+                 /*in_pir_mode=*/true)) {
     paddle::platform::RecordEvent record_event(
         "create_new_interpretercore",
         paddle::platform::TracerEventType::UserDefined,
@@ -1117,12 +1114,12 @@ inline void PirRunProgramGradAPI(
     // share threadpool
     // NOTE(zhiqiu): this only works interpreter_core is executed strictly
     // after the related fwd_interpreter_core.
-    if (interpretercore_info_cache.Has(program_id,
-                                       global_inner_scope,
-                                       place_hash_key,
-                                       /*is_grad=*/false,
-                                       /*in_pir_mode=*/true)) {
-      auto fwd_interpreter_core = interpretercore_info_cache
+    if (cache.Has(program_id,
+                  global_inner_scope,
+                  place_hash_key,
+                  /*is_grad=*/false,
+                  /*in_pir_mode=*/true)) {
+      auto fwd_interpreter_core = cache
                                       .GetMutable(program_id,
                                                   global_inner_scope,
                                                   place_hash_key,
@@ -1136,20 +1133,19 @@ inline void PirRunProgramGradAPI(
 
     // get all eager gc vars
     std::set<std::string> skip_eager_delete_vars;
-    auto skip_names =
-        details::GetNameFromValue(backward_global_block, x_grad_values, false);
+    auto skip_names = details::GetNameFromValue(
+        backward_global_block, x_grad_values, false, true);
     skip_eager_delete_vars.insert(skip_names.begin(), skip_names.end());
-    skip_names =
-        details::GetNameFromValue(backward_global_block, p_grad_values, false);
+    skip_names = details::GetNameFromValue(
+        backward_global_block, p_grad_values, false, true);
     skip_eager_delete_vars.insert(skip_names.begin(), skip_names.end());
     interpreter_core->SetSkipGcVars(skip_eager_delete_vars);
-    interpretercore_info_cache.UpdateSkipEagerDeleteVars(
-        program_id,
-        global_inner_scope,
-        place_hash_key,
-        /*is_grad=*/true,
-        /*in_pir_mode=*/true,
-        skip_eager_delete_vars);
+    cache.UpdateSkipEagerDeleteVars(program_id,
+                                    global_inner_scope,
+                                    place_hash_key,
+                                    /*is_grad=*/true,
+                                    /*in_pir_mode=*/true,
+                                    skip_eager_delete_vars);
     VLOG(2) << "Get skip GC vars size is: " << skip_eager_delete_vars.size();
     details::print_collection(skip_eager_delete_vars);
   } else {
@@ -1158,12 +1154,11 @@ inline void PirRunProgramGradAPI(
         paddle::platform::TracerEventType::UserDefined,
         1);
     VLOG(2) << "Get interpretercore cache by program:" << program_id;
-    auto &cached_value =
-        interpretercore_info_cache.GetMutable(program_id,
-                                              global_inner_scope,
-                                              place_hash_key,
-                                              /*is_grad=*/true,
-                                              /*in_pir_mode=*/true);
+    auto &cached_value = cache.GetMutable(program_id,
+                                          global_inner_scope,
+                                          place_hash_key,
+                                          /*is_grad=*/true,
+                                          /*in_pir_mode=*/true);
     interpreter_core = cached_value.core_;
 
     if (interpreter_core->GetVariableScope()->GetMutableScope() !=

@@ -93,7 +93,7 @@ function cmake_ {
     mkdir -p $build_dir
     cd $build_dir
     set -x
-    cmake ${workspace} -DCINN_ONLY=ON -DWITH_CINN=ON -DWITH_GPU=${cuda_config} \
+    cmake ${workspace} -DWITH_CINN=ON -DWITH_GPU=${cuda_config} \
       -DWITH_TESTING=ON  -DWITH_MKL=${mklcblas_config}  -DCINN_WITH_CUDNN=${cudnn_config} \
       -DPY_VERSION=${py_version}
     set +x
@@ -192,7 +192,7 @@ function CINNRT {
     mkdir -p $build_dir
     cd $build_dir
     set -x
-    cmake ${workspace} -DCINN_ONLY=ON -DWITH_CINN=ON -DWITH_GPU=${cuda_config} \
+    cmake ${workspace} -DWITH_CINN=ON -DWITH_GPU=${cuda_config} \
       -DWITH_TESTING=ON  -DWITH_MKL=${mklcblas_config} -DPUBLISH_LIBS=ON
     set +x
     make cinnopt -j $JOBS

@@ -92,15 +92,15 @@ pir::Type ConvertOpTypeToKernelType(pir::IrContext* ctx,
 static const std::vector<pir::Type> InferMetaByValue(
     pir::Operation* op,
     const std::vector<pir::Value>& input_values,
-    const pir::AttributeMap& attribute_map) {
+    pir::AttributeMap* p_attribute_map) {  // NOLINT
   pir::OpInfo op_info =
       pir::IrContext::Instance()->GetRegisteredOpInfo(op->name());
   auto infer_meta_interface =
       op_info.GetInterfaceImpl<paddle::dialect::InferMetaInterface>();
   std::vector<pir::Type> output_types;
   if (infer_meta_interface) {
-    output_types =
-        infer_meta_interface->infer_meta_by_value_(input_values, attribute_map);
+    output_types = infer_meta_interface->infer_meta_by_value_(input_values,
+                                                              p_attribute_map);
   }
   return output_types;
 }
@@ -376,18 +376,35 @@ static pir::Value AddPlaceTransferOp(pir::Value in,
   pir::IrContext* ctx = pir::IrContext::Instance();
 
   auto copy_kernel_key = kernel_key;
+  auto place2backend = [](phi::AllocationType new_place_type) {
+    auto new_backend = phi::Backend::GPU;
+    switch (new_place_type) {
+      case phi::AllocationType::GPU:
+        new_backend = phi::Backend::GPU;
+        break;
+      case phi::AllocationType::XPU:
+        new_backend = phi::Backend::XPU;
+        break;
+      default:
+        new_backend = phi::Backend::CPU;
+        break;
+    }
+    return new_backend;
+  };
   std::unordered_map<std::string, pir::Attribute> op_attribute;
   if ((src_place.GetType() == phi::AllocationType::CPU) &&
-      (dst_place.GetType() == phi::AllocationType::GPU)) {
-    copy_kernel_key.set_backend(phi::Backend::GPU);
+      (dst_place.GetType() == phi::AllocationType::GPU ||
+       dst_place.GetType() == phi::AllocationType::XPU)) {
+    copy_kernel_key.set_backend(place2backend(dst_place.GetType()));
     op_attribute = {
         {"op_name", pir::StrAttribute::get(ctx, "pd_op.memcpy_h2d")},
         {"kernel_name", pir::StrAttribute::get(ctx, "memcpy_h2d")},
         {"kernel_key", KernelAttribute::get(ctx, copy_kernel_key)},
         {"dst_place_type", pir::Int32Attribute::get(ctx, 1)}};
-  } else if ((src_place.GetType() == phi::AllocationType::GPU) &&
+  } else if ((src_place.GetType() == phi::AllocationType::GPU ||
+              src_place.GetType() == phi::AllocationType::XPU) &&
              (dst_place.GetType() == phi::AllocationType::CPU)) {
-    copy_kernel_key.set_backend(phi::Backend::GPU);
+    copy_kernel_key.set_backend(place2backend(dst_place.GetType()));
     std::string copy_kernel_name = "memcpy_d2h";
     if (in.type().isa<AllocatedDenseTensorArrayType>()) {
       copy_kernel_name = "memcpy_d2h_multi_io";
@@ -1817,17 +1834,38 @@ void HandleForSpecialOp(
   }
 
   if (op_item->name() == "cinn_runtime.jit_kernel") {
-    if (op_item->num_operands() > 0) {
-      for (size_t i = 0; i < op_item->num_operands(); ++i) {
-        auto cur_in = op_item->operand_source(i);
-        if (!cur_in) {
-          vec_inputs.emplace_back();
-          continue;
-        }
-        auto new_in = GetNewInput(
-            cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
-        vec_inputs.push_back(new_in);
+    for (size_t i = 0; i < op_item->num_operands(); ++i) {
+      auto cur_in = op_item->operand_source(i);
+      if (!cur_in) {
+        vec_inputs.emplace_back();
+        continue;
       }
+      auto new_in = GetNewInput(
+          cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+      // For data transform
+      if (new_in.type().isa<AllocatedDenseTensorType>()) {
+        auto in_place =
+            new_in.type().dyn_cast<AllocatedDenseTensorType>().place();
+        auto dst_backend = phi::TransToPhiBackend(place);
+        bool need_trans =
+            (in_place.GetType() != phi::AllocationType::UNDEFINED) &&
+            (paddle::experimental::NeedTransformPlace(
+                in_place, dst_backend, {}));
+        if (need_trans) {
+          VLOG(6) << "need trans from " << in_place << " to " << dst_backend;
+          auto value_type =
+              op_item->operand_source(i).type().dyn_cast<DenseTensorType>();
+          auto out_place = phi::TransToPhiPlace(dst_backend);
+          auto out_type =
+              AllocatedDenseTensorType::get(ctx, out_place, value_type);
+          phi::KernelKey kernel_key(phi::Backend::GPU,
+                                    phi::DataLayout::ANY,
+                                    TransToPhiDataType(value_type.dtype()));
+          new_in = AddPlaceTransferOp(
+              new_in, out_type, in_place, out_place, kernel_key, block);
+        }
+      }
+      vec_inputs.push_back(new_in);
     }
 
     for (size_t i = 0; i < op_item->num_results(); ++i) {
@@ -2074,7 +2112,7 @@ std::vector<pir::Type> BuildOutputs(
       input_values.emplace_back(op_item->operand(i).source());
     }
     std::vector<pir::Type> output_types =
-        InferMetaByValue(op_item, input_values, attribute_map);
+        InferMetaByValue(op_item, input_values, &attribute_map);
 
     if (output_types.size() != 0) {
       PADDLE_ENFORCE_EQ(
@@ -2108,7 +2146,7 @@ std::vector<pir::Type> BuildOutputs(
                           &op_output_types);
     }
   } else {
-    auto base_types = InferMetaByValue(op_item, new_vec_inputs, attribute_map);
+    auto base_types = InferMetaByValue(op_item, new_vec_inputs, &attribute_map);
     PADDLE_ENFORCE_EQ(base_types.size(),
                       op_item->num_results(),
                       phi::errors::PreconditionNotMet(

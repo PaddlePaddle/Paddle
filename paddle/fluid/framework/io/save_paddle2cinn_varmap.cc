@@ -13,7 +13,7 @@ limitations under the License. */
 #include <fstream>
 #include <unordered_map>
 #include "glog/logging.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {

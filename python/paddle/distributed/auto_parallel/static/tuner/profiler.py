@@ -171,11 +171,7 @@ def init_comm(profile_ctx):
     genv = _get_global_env()
     genv = dist_env
     print(
-        "current process rank: {}, device_id: {}, ip: {}.".format(
-            genv.rank,
-            genv.device_id,
-            genv.current_endpoint,
-        )
+        f"current process rank: {genv.rank}, device_id: {genv.device_id}, ip: {genv.current_endpoint}."
     )
 
     # init nccl comm

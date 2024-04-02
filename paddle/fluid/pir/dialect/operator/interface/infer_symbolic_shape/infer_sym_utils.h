@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
@@ -44,6 +45,11 @@ struct AttributeTrait<std::int64_t> {
 template <>
 struct AttributeTrait<int> {
   using value_type = ::pir::Int32Attribute;
+};
+
+template <>
+struct AttributeTrait<float> {
+  using value_type = ::pir::FloatAttribute;
 };
 
 template <typename T = int64_t>
@@ -81,8 +87,10 @@ inline ExprVec GetExprVecFromData(const ShapeOrData &shapeordata) {
     TensorListExprs list =
         shapeordata.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
     for (size_t i = 0; i < list.size(); i++) {
-      for (auto expr : list[i].data().value()) {
-        result.emplace_back(expr);
+      if (list[i].data().has_value()) {
+        for (auto expr : list[i].data().value()) {
+          result.emplace_back(expr);
+        }
       }
     }
     return result;

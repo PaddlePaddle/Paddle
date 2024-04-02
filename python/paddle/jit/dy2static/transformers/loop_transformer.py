@@ -92,17 +92,7 @@ def create_while_nodes(
         assign_loop_var_names.append(name)
 
     while_func_name = "_jst.While"
-    while_node_str = (
-        "{}({}, {}, {}, {}, return_name_ids={}, push_pop_names={})".format(
-            while_func_name,
-            condition_name,
-            body_name,
-            getter_name,
-            setter_name,
-            create_name_str(loop_var_names),
-            create_name_str(push_pop_names),
-        )
-    )
+    while_node_str = f"{while_func_name}({condition_name}, {body_name}, {getter_name}, {setter_name}, return_name_ids={create_name_str(loop_var_names)}, push_pop_names={create_name_str(push_pop_names)})"
     while_node = gast.parse(while_node_str).body[0]
 
     ret = [while_node]

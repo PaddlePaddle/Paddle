@@ -50,8 +50,11 @@ Expr Widen(Expr e, int lanes) {
     }
   }
 
-  CHECK_EQ(e.type().lanes(), 1)
-      << "Cannot broadcast lanes from " << e.type().lanes() << " to " << lanes;
+  PADDLE_ENFORCE_EQ(
+      e.type().lanes(),
+      1,
+      phi::errors::InvalidArgument(
+          "Cannot broadcast lanes from %d to %d.", e.type().lanes(), lanes));
   return ir::Broadcast::Make(e, lanes);
 }
 
@@ -742,7 +745,13 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
     if (forloop->is_vectorized()) {
       Context::info_rgt().Get<int>("vectorized_forloop_count")++;
 
-      CHECK_GT(forloop->vectorize_info().factor, 0);
+      PADDLE_ENFORCE_GT(
+          forloop->vectorize_info().factor,
+          0,
+          phi::errors::InvalidArgument(
+              "The value of factor in forloop's vectorize_info is incorrect."
+              "Expected value is larger than 0, but receive %d. ",
+              forloop->vectorize_info().factor));
 
       CHECK(is_zero(forloop->min));
       Expr for_extent = cinn::common::AutoSimplify(forloop->extent);
@@ -795,10 +804,14 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
       }
 
       int extent = extent_int->value;
-      CHECK_GT(extent, 0)
-          << "Loop over " << Expr(new_forloop->loop_var) << " has extent "
-          << new_forloop->extent
-          << ". Can only vectorize loops over a constant extent > 1";
+      PADDLE_ENFORCE_GT(
+          extent,
+          0,
+          phi::errors::InvalidArgument(
+              "Loop over %s has extent %d"
+              ". Can only vectorize loops over a constant extent > 1",
+              Expr(new_forloop->loop_var),
+              new_forloop->extent));
 
       VLOG(2) << "Vectorizing " << new_forloop->loop_var << " extent "
               << extent;
@@ -927,7 +940,12 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
   //! Split the forloop with size \p factor.
   //! @return The new forloop.
   Expr SplitForLoop(For *forloop, int factor) {
-    CHECK_GT(factor, 1);
+    PADDLE_ENFORCE_GT(factor,
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The value of factor in SplitForLoop is incorrect."
+                          "Expected value is larger than 1, but receive %d. ",
+                          factor));
     auto *for_min_i = forloop->min.As<IntImm>();
     CHECK(forloop);
     if (!for_min_i) return Expr();

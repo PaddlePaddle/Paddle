@@ -217,6 +217,7 @@ class OpConverter {
                                        "\"Out\" or \"Y\".",
                                        op_desc.Type()));
       }
+
       auto* output_itensor = engine->GetITensor(output_name);
       engine->SetTensorDynamicRange(output_itensor, out_scale);
       VLOG(1) << "Set out scale = " << out_scale << " for tensor "
@@ -265,12 +266,14 @@ class OpConverter {
     }
   }
 
-  // Convert a fluid block to tensorrt network, NOTE it just convert operators,
-  // the INetwork's inputs and outputs should specified in some other modules.
+  // Convert a fluid block to tensorrt network, NOTE it just convert
+  // operators, the INetwork's inputs and outputs should specified in some
+  // other modules.
   void ConvertBlock(const framework::proto::BlockDesc& block,
                     const std::unordered_set<std::string>& parameters,
                     const framework::Scope& scope,
                     TensorRTEngine* engine) {
+    VLOG(1) << "Convert a fluid block to tensorrt network";
     std::unique_lock<std::mutex> lk(mut_);
     for (int i = 0; i < block.ops_size(); i++) {
       const auto& op = block.ops(i);
@@ -807,6 +810,9 @@ class OpConverter {
 
       VLOG(3) << output_tensor_names[i] << "'s dimension :["
               << string::join_strings(tmp_vec, ',') << "]";
+      VLOG(1) << "Paddle-TRT inferred " << output_tensor_names[i]
+              << "'s dimension is :[" << string::join_strings(tmp_vec, ',')
+              << "]";
       // The following check may cause errors in CI, but is necessary in the
       // latest version.
       // PADDLE_ENFORCE_GE(
