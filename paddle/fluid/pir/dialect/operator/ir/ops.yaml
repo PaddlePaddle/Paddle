@@ -493,6 +493,7 @@
   output : Tensor(u_out), Tensor(v_out), Tensor(encode_grad), Tensor(grad_out), Tensor(k), Tensor(gather_buff)
   kernel :
     func : dgc
+    param : [u, v, grad, param, current_step, nranks, sparsity, m, use_nesterov, rampup_begin_step, rampup_step, regular_coeff, regular_type]
   optional: param
 
 - op : disable_check_model_nan_inf
