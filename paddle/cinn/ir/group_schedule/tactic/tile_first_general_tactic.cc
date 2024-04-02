@@ -152,13 +152,22 @@ void TileFirstGeneralTactic::MergeReduceAxis(ir::IRSchedule* sch,
 void TileFirstGeneralTactic::SplitSptialInner(ir::IRSchedule* sch,
                                               const std::string& block_id) {
   if (IsInnerThreadSpatialLoopGT(context_->config, 1)) {
-    auto loops = sch->GetLoops(block_id);
-    auto split_loops =
-        sch->Split(loops[0],
-                   std::vector<int>(
-                       {-1,
-                        static_cast<int>(
-                            context_->config.tile_config.spatial_inner_num)}));
+    if (FLAGS_support_reduce_stride_read) {
+      auto loops = sch->GetLoops(block_id);
+      std::vector<int> split_factors{
+          static_cast<int>(context_->config.tile_config.spatial_inner_num), -1};
+      sch->Split(loops[0], split_factors);
+      loops = sch->GetLoops(block_id);
+      sch->Reorder({loops[1], loops[0]});
+    } else {
+      auto loops = sch->GetLoops(block_id);
+      auto split_loops = sch->Split(
+          loops[0],
+          std::vector<int>(
+              {-1,
+               static_cast<int>(
+                   context_->config.tile_config.spatial_inner_num)}));
+    }
   }
 }
 
