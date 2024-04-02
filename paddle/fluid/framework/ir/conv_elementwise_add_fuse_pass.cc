@@ -117,15 +117,12 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
     new_op_desc.SetAttr("is_test", true);
     new_op_desc.SetAttr("use_cudnn", true);
 
-    bool is_fp16_precision =
-        static_cast<phi::DataType>(Get<int>("model_precision")) ==
-            phi::DataType::FLOAT16 ||
-        Get<bool>("enable_gpu_mixed");
     bool cutlass_enable = Get<bool>("use_cutlass");
     auto* scope = param_scope();
     bool cutlass_can_fuse = CutlassTeller::Instance()->CbaCanSupport(
         conv_op->Op(), scope, act_type, Get<int>("gpu_device_id"));
-    if (cutlass_can_fuse && cutlass_enable && is_fp16_precision) {
+    int sm = platform::GetGPUComputeCapability(platform::GetCurrentDeviceId());
+    if (cutlass_can_fuse && cutlass_enable && sm >= 80) {
       new_op_desc.SetAttr("use_cudnn", false);
     }
 
