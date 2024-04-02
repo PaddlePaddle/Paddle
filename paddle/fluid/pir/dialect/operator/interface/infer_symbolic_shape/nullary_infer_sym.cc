@@ -80,6 +80,27 @@ bool AssignValueOpInferSymbolicShape(
     sym_dims.emplace_back(symbol::DimExpr(static_cast<int64_t>(dim)));
   }
 
+  const auto &attributes = op->attributes();
+  std::vector<int64_t> values;
+  for (size_t i = 0;
+       i < attributes.at("values").dyn_cast<pir::ArrayAttribute>().size();
+       i++) {
+    values.push_back(attributes.at("values")
+                         .dyn_cast<pir::ArrayAttribute>()
+                         .at(i)
+                         .dyn_cast<paddle::dialect::ScalarAttribute>()
+                         .data()
+                         .to<int64_t>());
+  }
+  if (values.size() == 1) {
+    std::vector<symbol::DimExpr> data{values[0]};
+
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(sym_dims, data)};
+    shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+    return true;
+  }
+
   symbol::ShapeOrDataDimExprs shape_data{
       symbol::TensorShapeOrDataDimExprs(sym_dims)};
   shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
