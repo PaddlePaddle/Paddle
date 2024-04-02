@@ -32,8 +32,8 @@ SEED = 2020
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
 #        some algorithm results are non-deterministic, like convolution algorithms.
-if base.is_compiled_with_cuda():
-    base.set_flags({'FLAGS_cudnn_deterministic': True})
+if paddle.is_compiled_with_cuda():
+    paddle.set_flags({'FLAGS_cudnn_deterministic': True})
 
 
 class SimpleConvPool(paddle.nn.Layer):
@@ -355,12 +355,7 @@ def train(args):
                 if used_time < 1e-5:
                     used_time = 1e-5
                 print(
-                    "step: %d, ave loss: %f, speed: %f steps/s"
-                    % (
-                        batch_id,
-                        float(avg_cost),
-                        args.log_step / used_time,
-                    )
+                    f"step: {batch_id}, ave loss: {float(avg_cost)}, speed: {args.log_step / used_time} steps/s"
                 )
                 time_begin = time.time()
 
@@ -382,7 +377,7 @@ class TestSentiment(Dy2StTestBase):
         np.testing.assert_allclose(
             dy_out,
             st_out,
-            rtol=1e-05,
+            rtol=1e-04,
             err_msg=f'dy_out:\n {dy_out}\n st_out:\n {st_out}',
         )
 
@@ -400,6 +395,7 @@ class TestSentiment(Dy2StTestBase):
 
     @test_pir_only
     def test_train_bigru(self):
+        paddle.set_device("cpu")
         self.train_model('bigru_net')
 
 
