@@ -376,7 +376,7 @@ Variable NetBuilder::BroadcastTo(const Variable& operand,
                             "When we broadcast a 1-dimension shape,"
                             "the number should contained in the out_shape."
                             "We cannot broadcast from"
-                            "shape  %s to shape %s.",
+                            "shape %d to shape %d.",
                             operand->shape,
                             out_shape));
     }
