@@ -1280,7 +1280,18 @@ class PrimGradChecker(PrimForwardChecker):
                     f'when enable_fw_comp is {self.enable_fw_comp}, enable_rev_comp is {self.enable_rev_comp}, jit comp grad out tensor nums = {len(ret)}, eager grad out tensor nums = {len(self.eager_desire)}. \n'
                 )
                 raise RuntimeError(msg)
+
             for i in range(len(ret)):
+                # if i == 1:
+                #     continue
+                # elif i==2:
+                print(
+                    "==============index ",
+                    i,
+                    " ret[i].shape ",
+                    ret[i].shape,
+                    flush=True,
+                )
                 np.testing.assert_allclose(
                     ret[i],
                     self.eager_desire[i],

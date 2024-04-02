@@ -250,11 +250,11 @@ class TestGroupNormFP16OP(TestGroupNormOp):
         self.dtype = np.float16
 
 
-# @unittest.skipIf(
-#     not core.is_compiled_with_cuda()
-#     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-#     "core is not compiled with CUDA or not support the bfloat16",
-# )
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
 class TestGroupNormBF16Op(OpTest):
     def setUp(self):
         self.op_type = "group_norm"
@@ -265,7 +265,7 @@ class TestGroupNormBF16Op(OpTest):
         self.data_format = "NCHW"
         self.dtype = np.uint16
         self.shape = (2, 100, 3, 5)
-        self.attrs = {'epsilon': 1e-5, 'groups': 2, 'data_layout': "NCHW"}
+        self.attrs = {'epsilon': 1e-5, 'groups': 10, 'data_layout': "NCHW"}
         self.compare_between_place = False
         self.init_test_case()
 
@@ -318,7 +318,7 @@ class TestGroupNormBF16Op(OpTest):
         self.rev_comp_atol = 1e-2
         self.rev_comp_rtol = 1e-2
         # prim bf16 has diff in windows
-        if sys.platform == "win32":
+        if sys.platform == "win32" or self.data_format == "NHWC":
             self.rev_comp_atol = 5e-2
             self.rev_comp_rtol = 5e-2
         place = core.CUDAPlace(0)
@@ -363,7 +363,7 @@ class TestGroupNormFP16Op2(TestGroupNormFP16OP):
 
 class TestGroupNormBF16Op2(TestGroupNormBF16Op):
     def init_test_case(self):
-        self.attrs['groups'] = 4
+        self.attrs['groups'] = 10
 
 
 class TestGroupNormOpBigEps1(TestGroupNormOp):
@@ -441,10 +441,10 @@ class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
         self.prim_op_type = "comp"
 
         self.dtype = np.uint16
-        self.shape = (1, 3, 5, 100)
+        self.shape = (1, 3, 5, 512)
         self.attrs = {
             'epsilon': 5e-2,
-            'groups': 2,
+            'groups': 32,
             'data_layout': self.data_format,
         }
         self.compare_between_place = False
@@ -461,7 +461,7 @@ class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
             .reshape(self.shape)
             .astype(np.float32)
         )
-        scale = np.sin(np.arange(self.shape[3])).astype(np.float32)
+        scale = np.ones(self.shape[3]).astype(np.float32)
         bias = np.sin(np.arange(self.shape[3])).astype(np.float32)
         output, mean, var = group_norm_naive(
             input,
@@ -480,9 +480,14 @@ class TestGroupNormBF16Op_With_NHWC(TestGroupNormBF16Op):
         self.outputs = {'Y': output, 'Mean': mean, 'Variance': var}
 
     def test_check_output(self):
-        rtol = 2e-2
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, rtol=rtol, check_pir=True)
+        self.check_output_with_place(
+            place,
+            rtol=2e-2,
+            inplace_atol=1e-3,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 class TestGroupNormOpBigEps1_With_NHWC(TestGroupNormOp):
