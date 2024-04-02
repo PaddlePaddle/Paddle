@@ -187,7 +187,7 @@ class TestPnormOp(OpTest):
         self.op_type = "p_norm"
         self.python_api = p_norm_python_api
         self.public_python_api = norm_public_python_api
-        self.prim_op_type = "prim"
+        self.prim_op_type = "comp"
         self.init_test_case()
         self.init_dtype()
         x = (np.random.random(self.shape) + 0.5).astype(self.dtype)
@@ -207,7 +207,7 @@ class TestPnormOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim_pir=True)
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
@@ -270,7 +270,7 @@ class TestPnormOp2(TestPnormOp):
         self.dtype = "float32"
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim_pir=True)
 
 
 class TestPnormOp3(TestPnormOp):
@@ -335,7 +335,7 @@ class TestPnormOp6(TestPnormOp):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Out', user_defined_grads=self.gradient, check_prim=True
+            ['X'], 'Out', user_defined_grads=self.gradient, check_prim_pir=True
         )
 
 
@@ -382,7 +382,7 @@ create_test_fp16_class(TestPnormOp6)
 class TestPnormBF16Op(OpTest):
     def setUp(self):
         self.op_type = "p_norm"
-        self.prim_op_type = "prim"
+        self.prim_op_type = "comp"
         self.python_api = p_norm_python_api
         self.public_python_api = norm_public_python_api
         self.init_test_case()
@@ -410,7 +410,7 @@ class TestPnormBF16Op(OpTest):
             ['X'],
             'Out',
             user_defined_grads=self.gradient,
-            check_prim=True,
+            check_prim_pir=True,
         )
 
     def init_test_case(self):
