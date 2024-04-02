@@ -2232,12 +2232,12 @@ def histogram(input, bins=100, min=0, max=0, density=False, weight=None, name=No
     else:
         helper = LayerHelper('histogram', **locals())
         check_variable_and_dtype(
-            input, 'X', ['int32', 'int64', 'float32', 'float64'], 'histogram'
+            input, 'input', ['int32', 'int64', 'float32', 'float64'], 'histogram'
         )
         if weight is not None:
             check_variable_and_dtype(
                 weight,
-                'Weight',
+                'weight',
                 ['int32', 'int64', 'float32', 'float64'],
                 'histogram',
             )
@@ -2253,8 +2253,8 @@ def histogram(input, bins=100, min=0, max=0, density=False, weight=None, name=No
             out = helper.create_variable_for_type_inference(dtype=input.dtype)
         helper.append_op(
             type='histogram',
-            inputs={'X': input, 'Weight': weight},
-            outputs={'Out': out},
+            inputs={'input': input, 'weight': weight},
+            outputs={'out': out},
             attrs={'bins': bins, 'min': min, 'max': max, 'density': density},
         )
         return out

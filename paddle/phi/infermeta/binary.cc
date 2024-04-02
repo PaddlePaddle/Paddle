@@ -1943,20 +1943,20 @@ void HistogramInferMeta(const MetaTensor& input,
         weight_dim,
         input_dim,
         phi::errors::InvalidArgument(
-            "The 'shape' of Input(Weight) must be equal to the 'shape' of "
-            "Input(X)."
-            "But received: the 'shape' of Input(Weight) is [%s],"
-            "the 'shape' of Input(X) is [%s]",
+            "The shape of weight must be equal to the shape of "
+            "input."
+            "But received: the shape of weight is [%s],"
+            "the shape of input is [%s]",
             weight_dim,
             input_dim));
     PADDLE_ENFORCE_EQ(
         input.dtype() == weight.dtype(),
         true,
         phi::errors::InvalidArgument(
-            "The 'dtpye' of Input(Weight) must be equal to the 'dtype' of "
-            "Input(X)."
-            "But received: the 'dtype' of Input(Weight) is [%s],"
-            "the 'dtype' of Input(X) is [%s]",
+            "The dtpye of weight must be equal to the dtype of "
+            "input."
+            "But received: the dtype of weight is [%s],"
+            "the dtype of input is [%s]",
             weight.dtype(),
             input.dtype()));
   }

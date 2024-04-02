@@ -194,7 +194,7 @@ class TestHistogramOp(OpTest):
         np_input = np.random.randint(low=0, high=20, size=self.in_shape).astype(
             self.dtype
         )
-        self.inputs = {"X": np_input}
+        self.inputs = {"input": np_input}
         self.init_attrs()
         self.place = [paddle.CPUPlace()]
         Out, _ = np.histogram(
@@ -203,7 +203,7 @@ class TestHistogramOp(OpTest):
             range=(self.min, self.max),
             density=self.density,
         )
-        self.outputs = {"Out": Out}
+        self.outputs = {"out": Out}
 
     def init_test_case(self):
         self.in_shape = (10, 12)
@@ -237,7 +237,7 @@ class TestCase1(TestHistogramOp):
             low=0, high=20, size=self.in_shape
         ).astype(self.dtype)
         self.python_api = paddle.histogram
-        self.inputs = {"X": np_input, "Weight": self.np_weight}
+        self.inputs = {"input": np_input, "weight": self.np_weight}
         self.init_attrs()
         self.place = [paddle.CPUPlace()]
         Out, _ = np.histogram(
@@ -247,7 +247,7 @@ class TestCase1(TestHistogramOp):
             weights=self.np_weight,
             density=self.density,
         )
-        self.outputs = {"Out": Out}
+        self.outputs = {"out": Out}
 
     def init_test_case(self):
         self.in_shape = (10, 12)
@@ -270,7 +270,7 @@ class TestCase2(TestHistogramOp):
             low=0.0, high=20.0, size=self.in_shape
         ).astype(self.dtype)
         self.python_api = paddle.histogram
-        self.inputs = {"X": np_input, "Weight": self.np_weight}
+        self.inputs = {"input": np_input, "weight": self.np_weight}
         self.init_attrs()
         self.place = [paddle.CPUPlace()]
 
@@ -281,7 +281,7 @@ class TestCase2(TestHistogramOp):
             weights=self.np_weight,
             density=self.density,
         )
-        self.outputs = {"Out": Out}
+        self.outputs = {"out": Out}
 
     def init_test_case(self):
         self.in_shape = (10, 12)
@@ -304,7 +304,7 @@ class TestCase3(TestHistogramOp):
             low=0, high=20, size=self.in_shape
         ).astype(self.dtype)
         self.python_api = paddle.histogram
-        self.inputs = {"X": np_input, "Weight": self.np_weight}
+        self.inputs = {"input": np_input, "weight": self.np_weight}
         self.init_attrs()
         self.place = [paddle.CPUPlace()]
         Out, _ = np.histogram(
@@ -314,7 +314,7 @@ class TestCase3(TestHistogramOp):
             weights=self.np_weight,
             density=self.density,
         )
-        self.outputs = {"Out": Out}
+        self.outputs = {"out": Out}
 
     def init_test_case(self):
         self.in_shape = (10, 12)
@@ -333,13 +333,13 @@ class TestHistogramOp_ZeroDim(TestHistogramOp):
         np_input = np.random.randint(low=0, high=20, size=self.in_shape).astype(
             self.dtype
         )
-        self.inputs = {"X": np_input}
+        self.inputs = {"input": np_input}
         self.init_attrs()
         self.place = [paddle.CPUPlace()]
         Out, _ = np.histogram(
             np_input, bins=self.bins, range=(self.min, self.max)
         )
-        self.outputs = {"Out": Out}
+        self.outputs = {"out": Out}
 
     def init_test_case(self):
         self.in_shape = []
