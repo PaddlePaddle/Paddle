@@ -94,6 +94,18 @@ bool IsReduceTreePattern(const StmtPattern& pattern) {
   return std::holds_alternative<ReduceTreePattern>(pattern);
 }
 
+bool IsOpsDependents(const StmtPattern& pattern) {
+  return std::holds_alternative<ReduceTreePattern>(pattern);
+}
+
+bool IsUnsupportPattern(const StmtPattern& pattern) {
+  return std::holds_alternative<UnsupportPattern>(pattern);
+}
+
+bool IsReduceTrivialPattern(const StmtPattern& pattern) {
+  return std::holds_alternative<ReduceTreePlusTrivialPattern>(pattern);
+}
+
 std::unordered_set<pir::Value> GetPatternInputValuesIncludeInner(
     const StmtPattern& A) {
   std::unordered_set<pir::Value> result;
@@ -123,18 +135,6 @@ std::unordered_set<pir::Value> GetPatternInputValues(const StmtPattern& A) {
   }
   VLOG(4) << "GetPatternInputValues: " << all_input_values.size();
   return all_input_values;
-}
-
-bool IsOpsDependents(const StmtPattern& pattern) {
-  return std::holds_alternative<ReduceTreePattern>(pattern);
-}
-
-bool IsUnsupportPattern(const StmtPattern& pattern) {
-  return std::holds_alternative<UnsupportPattern>(pattern);
-}
-
-bool IsReduceTrivialPattern(const StmtPattern& pattern) {
-  return std::holds_alternative<ReduceTreePlusTrivialPattern>(pattern);
 }
 
 std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern& pattern) {

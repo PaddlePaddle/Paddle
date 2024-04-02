@@ -127,8 +127,9 @@ bool RelativeJudgePolicy::ReduceTreeGrownCanMerge(
   pir::Operation* downstream_reduce_op =
       maybe_downstream_op.value().GetReduceOp();
   const auto& split_reduce_dim_result =
-      SplitReduceOutputDimsIfRelatedWithNonReduceAxis(
+      SplitReduceInputDimsIfRelatedWithNonReduceAxis(
           axes_info_.GetSignature(downstream_reduce_op), downstream_reduce_op);
+  VLOG(4) << split_reduce_dim_result.DebugStr();
   const auto& upstream_output_dims = GetAllValueDimFromValue(reduce_out_value);
   auto res = IsBroadcastEdge(upstream_output_dims,
                              split_reduce_dim_result.non_related);
@@ -159,7 +160,6 @@ SplitDims RelativeJudgePolicy::SplitDimsWithRelationship(
 
 bool DimsEqual(const std::vector<ValueDim>& first,
                const std::vector<ValueDim>& second) {
-  VLOG(4) << "DimsEqual";
   const auto GetDimInfo =
       [](const std::vector<ValueDim>& dims) -> std::unordered_map<size_t, int> {
     std::unordered_map<size_t, int> result;
@@ -258,10 +258,10 @@ bool RelativeJudgePolicy::IsFlattenDimSmaller(
 
 bool RelativeJudgePolicy::CanFuse(const PatternNodePtr& upstream,
                                   const PatternNodePtr& downstream) {
-  if (upstream->IsReduceTree() || downstream->IsTrivial()) {
+  if (upstream->IsReduceTree() && downstream->IsTrivial()) {
     return ReducePlusTrivialCanMerge(upstream, downstream);
   }
-  if (upstream->IsReduceTree() || downstream->IsReduceTree()) {
+  if (upstream->IsReduceTree() && downstream->IsReduceTree()) {
     return ReduceTreeGrownCanMerge(upstream, downstream);
   }
   return true;  // other case.

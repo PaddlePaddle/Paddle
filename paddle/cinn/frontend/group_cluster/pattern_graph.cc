@@ -20,23 +20,28 @@ std::vector<PatternNodePtr> PatternGraph::ClusterOps(
     bool with_horizontal_fusion) {
   VLOG(4) << "[Group Cluster] Initial Condition: " << GraphInfo();
 
+  VLOG(4) << "[Group Cluster] Start SinkTrivialPattern";
   SinkTrivialPattern();
   VLOG(4) << "[Group Cluster] After SinkTrivialPattern: " << GraphInfo();
 
   // ReducePattern -> ReduceTreePattern
+  VLOG(4) << "[Group Cluster] Start ReduceLiftReduceTree";
   ReduceLiftReduceTree();
   VLOG(4) << "[Group Cluster] After ReduceLiftReduceTree: " << GraphInfo();
 
   // ReduceTreePattern + ReduceTreePattern fusion
+  VLOG(4) << "[Group Cluster] Start ReduceTreeGrown";
   ReduceTreeGrown();
   VLOG(4) << "[Group Cluster] After ReduceTreeGrown: " << GraphInfo();
 
   // ReduceTreePattern + TrivialPattern fusion.
+  VLOG(4) << "[Group Cluster] Start ReduceTree_Trivial_Fusion";
   ReduceTree_Trivial_Fusion();
   VLOG(4) << "[Group Cluster] After ReduceTree_Trivial_Fusion: " << GraphInfo();
 
   // Horizontal fusion.
   if (with_horizontal_fusion) {
+    VLOG(4) << "[Group Cluster] Start HorizontalFusion";
     HorizontalFusion();
     VLOG(4) << "[Group Cluster] After HorizontalFusion: " << GraphInfo();
   }
