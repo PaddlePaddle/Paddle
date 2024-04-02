@@ -1934,7 +1934,10 @@ def cross(x, y, axis=9, name=None):
              [0., 0., 0.],
              [0., 0., 0.]])
     """
-    if len(paddle.framework.core.get_all_custom_device_type()) > 0:
+    if (
+        len(paddle.framework.core.get_all_custom_device_type()) > 0
+        and axis == 9
+    ):
         axis = 12
     if in_dynamic_or_pir_mode():
         return _C_ops.cross(x, y, axis)
