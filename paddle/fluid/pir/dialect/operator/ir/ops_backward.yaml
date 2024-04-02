@@ -25,6 +25,17 @@
 #     func: straight_through_estimator_grad
 #     data_type: out
 
+# - backward_op: straight_through_estimator_grad
+#   forward: moving_average_abs_max_scale (Tensor x, Tensor in_accum, Tensor in_state, float moving_rate=0.9f, bool is_test=false) -> Tensor(out), Tensor(out_scale), Tensor(out_state), Tensor(out_accum)
+#   args: (Tensor out, int bit_length = 8, int round_type = 0, bool is_test=false)
+#   output: Tensor(out_grad)
+#   infer_meta:
+#     func: UnchangedInferMeta
+#     param : [out]
+#   kernel:
+#     func: straight_through_estimator_grad
+#     data_type: out_grad
+
 - backward_op : add_double_grad
   forward : add_grad (Tensor x, Tensor y, Tensor grad_out, int axis = -1) -> Tensor(grad_x), Tensor(grad_y)
   args : (Tensor y, Tensor grad_out, Tensor grad_x_grad, Tensor grad_y_grad, int axis = -1)
@@ -1031,17 +1042,6 @@
   kernel:
     func: match_matrix_tensor_grad
 
-- backward_op: moving_average_abs_max_scale_grad
-  forward: moving_average_abs_max_scale (Tensor x, Tensor in_accum, Tensor in_state, float moving_rate=0.9f, bool is_test=false) -> Tensor(out), Tensor(out_scale), Tensor(out_state), Tensor(out_accum)
-  args: (Tensor out, int bit_length = 8, int round_type = 0)
-  output: Tensor(out_grad)
-  infer_meta:
-    func: UnchangedInferMeta
-    param : [out]
-  kernel:
-    func: straight_through_estimator_grad
-    data_type: out_grad
-
 - backward_op: shuffle_batch_grad
   forward: shuffle_batch (Tensor x, Tensor seed, int startup_seed=0) -> Tensor(out), Tensor(shuffle_idx), Tensor(seed_out)
   args: (Tensor shuffle_idx, Tensor out_grad,int startup_seed=0)
@@ -1054,14 +1054,14 @@
 
 - backward_op: straight_through_estimator_grad
   forward: fake_quantize_dequantize_moving_average_abs_max (Tensor x, Tensor in_scale, Tensor in_accum, Tensor in_state, float moving_rate = 0.9, int bit_length = 8, int round_type = 0, bool is_test = false) -> Tensor(out), Tensor(out_scale), Tensor(out_state), Tensor(out_accum)
-  args: (Tensor out, int moving_rate = 0.9, int bit_length = 8, int round_type = 0, bool is_test = false)
-  output: Tensor(out_grad)
+  args: (Tensor x, Tensor out_grad, int moving_rate = 0.9, int bit_length = 8, int round_type = 0, bool is_test = false)
+  output: Tensor(x_grad)
   infer_meta:
     func: UnchangedInferMeta
-    param : [out]
+    param : [out_grad]
   kernel:
     func: straight_through_estimator_grad
-    data_type: out
+    data_type: x_grad
 
 - backward_op: unpool_grad
   forward: unpool (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding,  IntArray output_size, str data_format) -> Tensor(out)

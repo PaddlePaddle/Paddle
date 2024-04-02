@@ -98,6 +98,7 @@ test_expand_as_v2_op
 test_expand_v2_op
 test_exponential_op
 test_eye_op
+test_fake_quantize_op
 test_fill_any_like_op
 test_fill_any_op
 test_fill_constant_op
