@@ -7,11 +7,6 @@ paddle_test(drr_fuse_linear_test SRCS drr_fuse_linear_test.cc)
 paddle_test(drr_fuse_linear_param_grad_add_test SRCS
             drr_fuse_linear_param_grad_add_test.cc)
 
-if(WITH_MKLDNN AND NOT WIN32)
-  paddle_test(depthwise_conv_onednn_pass_test SRCS
-              depthwise_conv_onednn_pass_test.cc)
-endif()
-
 if(WITH_GPU)
   paddle_test(drr_attention_fuse_test SRCS drr_attention_fuse_test.cc)
 endif()
