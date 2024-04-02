@@ -405,7 +405,6 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
         x_shape = [2, 3, 4, 5]
-        pad = [1, 1, 1, 1]
         dtype = np.float64
 
         x1 = paddle.static.data('x', x_shape, dtype)
@@ -423,6 +422,45 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
         )
         gradient_checker.double_grad_check_for_dygraph(
             self.concat_wrapper,
+            [x1, x2],
+            out,
+            x_init=[x1_arr, x2_arr],
+            place=place,
+        )
+
+    def test_grad(self):
+        places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestStackDoubleGradCheck(unittest.TestCase):
+    def stack_wrapper(self, x):
+        return paddle.stack(x, axis=1)
+
+    @test_with_pir_api
+    @prog_scope()
+    def func(self, place):
+        x_shape = [2, 3, 4, 5]
+        dtype = np.float64
+
+        x1 = paddle.static.data('x', x_shape, dtype)
+        x2 = paddle.static.data('x', x_shape, dtype)
+        x1.persistable = True
+        x1.stop_gradient = False
+        x2.persistable = True
+        x2.stop_gradient = False
+        out = paddle.stack([x1, x2], axis=0)
+        x2_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
+        x1_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x1, x2], out, x_init=[x1_arr, x2_arr], place=place
+        )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.stack_wrapper,
             [x1, x2],
             out,
             x_init=[x1_arr, x2_arr],
