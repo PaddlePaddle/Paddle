@@ -53,7 +53,7 @@ class TestConv2dConcatReluFusePass(PassTest):
 
                 out = act_op(concat_out)
                 out = paddle.assign(out)
-                self.pass_list = ['conv_concat_activation_mkldnn_fuse_pass']
+                self.pass_list = ['conv_concat_activation_onednn_fuse_pass']
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                 }
@@ -140,7 +140,7 @@ class TestConv2dConcat3ReluFusePass(PassTest):
 
                 out = act_op(concat_out)
                 out = paddle.assign(out)
-                self.pass_list = ['conv_concat_activation_mkldnn_fuse_pass']
+                self.pass_list = ['conv_concat_activation_onednn_fuse_pass']
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "x1": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -228,7 +228,7 @@ class TestConv2dConcat3GELUFusePass(PassTest):
 
                 out = act_op(concat_out)
                 out = paddle.assign(out)
-                self.pass_list = ['conv_concat_activation_mkldnn_fuse_pass']
+                self.pass_list = ['conv_concat_activation_onednn_fuse_pass']
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "x1": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -316,7 +316,7 @@ class TestConv2dConcat3HardsigmoidFusePass(PassTest):
 
                 out = act_op(concat_out)
                 out = paddle.assign(out)
-                self.pass_list = ['conv_concat_activation_mkldnn_fuse_pass']
+                self.pass_list = ['conv_concat_activation_onednn_fuse_pass']
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "x1": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -387,7 +387,7 @@ class TestConv2dConcat3ClipFusePass(PassTest):
 
                 out = paddle.clip(concat_out, min=-15, max=15)
                 out = paddle.assign(out)
-                self.pass_list = ['conv_concat_activation_mkldnn_fuse_pass']
+                self.pass_list = ['conv_concat_activation_onednn_fuse_pass']
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "x1": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -523,7 +523,7 @@ class TestConv2dConcat6ReluFusePass(PassTest):
 
                 out = act_op(concat_out)
                 out = paddle.assign(out)
-                self.pass_list = ['conv_concat_activation_mkldnn_fuse_pass']
+                self.pass_list = ['conv_concat_activation_onednn_fuse_pass']
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "x1": np.random.random((5, 5, 5, 5)).astype("float32"),
