@@ -967,9 +967,7 @@ def find_heter_ops(program, default_device="cpu"):
         for _, heter_block in heter_block_dict.items():
             total_heter_ops += len(heter_block)
     print(
-        "There are {} OPs in your main_program, and contains {} heter-OPs which is made up of {} heter-blocks.".format(
-            len(block.ops), total_heter_ops, heter_blocks
-        )
+        f"There are {len(block.ops)} OPs in your main_program, and contains {total_heter_ops} heter-OPs which is made up of {heter_blocks} heter-blocks."
     )
 
     return origin_program, heter_ops, default_ops, program_block_ops

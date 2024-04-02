@@ -2293,10 +2293,8 @@ def margin_cross_entropy(
     assert reduction in ['mean', 'sum', 'none', None]
     if not (group is False or group is None or hasattr(group, 'is_member')):
         raise ValueError(
-            'Expected group is False, None or instance of paddle.distributed.collective.Group \
-             (got group: {})'.format(
-                group
-            )
+            f'Expected group is False, None or instance of paddle.distributed.collective.Group \
+             (got group: {group})'
         )
         return
 
@@ -3185,9 +3183,7 @@ def sigmoid_focal_loss(
         normalizer_dims = len(normalizer_shape)
         if normalizer_dims > 1:
             raise ValueError(
-                "Expected zero or one dimension of normalizer in sigmoid_focal_loss but got {}.".format(
-                    normalizer_dims
-                )
+                f"Expected zero or one dimension of normalizer in sigmoid_focal_loss but got {normalizer_dims}."
             )
 
     if in_dynamic_or_pir_mode():
@@ -3968,9 +3964,7 @@ def multi_margin_loss(
     if not (input.shape[0] == label.shape[0]):
         raise ValueError(
             "The label's shape[0] should be equal to input's shape[0], "
-            "but received input's shape[0] {} and label's shape[0]:{}. ".format(
-                input.shape[0], label.shape[0]
-            )
+            f"but received input's shape[0] {input.shape[0]} and label's shape[0]:{label.shape[0]}. "
         )
     label = label.reshape((-1, 1))
     index_sample = paddle.index_sample(input, label)
@@ -3982,9 +3976,7 @@ def multi_margin_loss(
         if not (input.shape[1] == weight.shape[0]):
             raise ValueError(
                 "The weight's shape[0] should be equal to input's shape[1]"
-                "but received weight's shape[0]: {} and input's shape[1]: {}".format(
-                    weight.shape[0], input.shape[1]
-                )
+                f"but received weight's shape[0]: {weight.shape[0]} and input's shape[1]: {input.shape[1]}"
             )
         weight = paddle.gather(weight, label, axis=0).reshape((-1, 1))
         loss = paddle.mean(

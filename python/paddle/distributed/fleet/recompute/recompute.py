@@ -303,9 +303,7 @@ def _recompute_without_reentrant(
             fw_cuda_rng_state = paddle.get_rng_state(cur_device)
         else:
             raise RuntimeError(
-                "Recompute with RNG preserve is not support current device: {}.".format(
-                    cur_device
-                )
+                f"Recompute with RNG preserve is not support current device: {cur_device}."
             )
         fwd_cuda_rng_state_tracker = (
             get_rng_state_tracker().get_states_tracker()

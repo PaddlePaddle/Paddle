@@ -705,37 +705,15 @@ bool AutoMixedPrecisionPass::InputVarsNotConvert(
     if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
       return true;
     }
-  }
-
-  if (backend_ == phi::Backend::XPU) {
-    if (GetOpOriginalType(op_desc->Type()) == "layer_norm") {
-      auto vecs = op_desc->Input("Bias");
-      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
-        return true;
-      }
-      vecs = op_desc->Input("Scale");
-      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
-        return true;
-      }
-    } else if (GetOpOriginalType(op_desc->Type()) == "instance_norm") {
-      auto vecs = op_desc->Input("Bias");
-      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
-        return true;
-      }
-      vecs = op_desc->Input("Scale");
-      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
-        return true;
-      }
-    } else if (GetOpOriginalType(op_desc->Type()) == "quantize_linear" ||
-               GetOpOriginalType(op_desc->Type()) == "dequantize_linear") {
-      auto vecs = op_desc->Input("Scale");
-      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
-        return true;
-      }
-      vecs = op_desc->Input("ZeroPoint");
-      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
-        return true;
-      }
+  } else if (GetOpOriginalType(op_desc->Type()) == "quantize_linear" ||
+             GetOpOriginalType(op_desc->Type()) == "dequantize_linear") {
+    auto vecs = op_desc->Input("Scale");
+    if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+      return true;
+    }
+    vecs = op_desc->Input("ZeroPoint");
+    if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+      return true;
     }
   }
 
@@ -784,18 +762,15 @@ bool AutoMixedPrecisionPass::OutputVarsNotConvert(
     if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
       return true;
     }
-  }
-
-  if (backend_ == phi::Backend::XPU) {
-    if (GetOpOriginalType(op_desc->Type()) == "layer_norm") {
-      auto vecs = op_desc->Output("Mean");
-      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
-        return true;
-      }
-      vecs = op_desc->Output("Variance");
-      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
-        return true;
-      }
+  } else if (GetOpOriginalType(op_desc->Type()) == "layer_norm" ||
+             GetOpOriginalType(op_desc->Type()) == "group_norm") {
+    auto vecs = op_desc->Output("Mean");
+    if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+      return true;
+    }
+    vecs = op_desc->Output("Variance");
+    if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+      return true;
     }
   }
 

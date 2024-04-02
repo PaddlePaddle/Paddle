@@ -38,6 +38,9 @@ class AddYieldStoreInFusionOpPattern
       if (auto reshape_op = op->operand_source(i)
                                 .defining_op()
                                 ->dyn_cast<cinn::dialect::ReshapeOp>()) {
+        if (reshape_op.operand_source(0).defining_op() == nullptr) {
+          continue;
+        }
         auto pre_name = reshape_op.operand_source(0).defining_op()->name();
 
         if (op->operand_source(i).use_count() > 1) {

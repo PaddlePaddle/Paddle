@@ -14,11 +14,175 @@
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/multiary_infer_sym.h"
 #include "paddle/common/ddim.h"
+#include "paddle/common/layout.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_slice_utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 
 namespace paddle::dialect {
+
+bool BicubicInterpOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  const symbol::ShapeOrDataDimExprs &x =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+
+  const auto &attributes = op->attributes();
+
+  const std::string data_format =
+      attributes.at("data_format").dyn_cast<pir::StrAttribute>().AsString();
+  int out_d = attributes.at("out_d").dyn_cast<pir::Int32Attribute>().data();
+  int out_h = attributes.at("out_h").dyn_cast<pir::Int32Attribute>().data();
+  int out_w = attributes.at("out_w").dyn_cast<pir::Int32Attribute>().data();
+  const std::vector<float> &scale =
+      paddle::dialect::details::GetVectorAttr<float>(op, "scale");
+
+  std::vector<int> size_tensor;
+  if (out_d != -1) size_tensor.push_back(out_d);
+  if (out_h != -1) size_tensor.push_back(out_h);
+  if (out_w != -1) size_tensor.push_back(out_w);
+
+  const DataLayout data_layout = common::StringToDataLayout(data_format);
+
+  if (x.shape().size() == 3) {
+    // shape check for 1D interpolate for input tensor shape NCHW
+    if (!size_tensor.empty()) {
+      // top priority size
+      std::vector<symbol::DimExpr> dim_out;
+      if (data_layout == DataLayout::kNCHW) {
+        dim_out = {x.shape()[0], x.shape()[1], symbol::DimExpr{out_w}};
+      } else {
+        dim_out = {x.shape()[0], symbol::DimExpr{out_w}, x.shape()[2]};
+      }
+
+      symbol::ShapeOrDataDimExprs shape_data{
+          symbol::TensorShapeOrDataDimExprs(dim_out)};
+
+      pir::Value res = op->result(0);
+      shape_analysis->SetShapeOrDataForValue(res, shape_data);
+      return true;
+    }
+
+    symbol::DimExpr out_w_tmp{0};
+    const auto &next_sym = shape_analysis->GetNextSymName();
+    out_w_tmp = symbol::DimExpr(next_sym);
+
+    std::vector<symbol::DimExpr> dim_out;
+    if (data_layout == DataLayout::kNCHW) {
+      dim_out = {x.shape()[0], x.shape()[1], out_w_tmp};
+    } else {
+      dim_out = {x.shape()[0], out_w_tmp, x.shape()[2]};
+    }
+
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(dim_out)};
+
+    pir::Value res = op->result(0);
+    shape_analysis->SetShapeOrDataForValue(res, shape_data);
+    return true;
+  } else if (x.shape().size() == 4) {
+    // shape check for 2D interpolate for input tensor shape NCHW
+    if (!size_tensor.empty()) {
+      // top priority size
+      std::vector<symbol::DimExpr> dim_out;
+      if (data_layout == DataLayout::kNCHW) {
+        dim_out = {x.shape()[0],
+                   x.shape()[1],
+                   symbol::DimExpr{out_h},
+                   symbol::DimExpr{out_w}};
+      } else {
+        dim_out = {x.shape()[0],
+                   symbol::DimExpr{out_h},
+                   symbol::DimExpr{out_w},
+                   x.shape()[3]};
+      }
+
+      symbol::ShapeOrDataDimExprs shape_data{
+          symbol::TensorShapeOrDataDimExprs(dim_out)};
+      pir::Value res = op->result(0);
+      shape_analysis->SetShapeOrDataForValue(res, shape_data);
+      return true;
+    }
+
+    symbol::DimExpr out_h_tmp{0};
+    symbol::DimExpr out_w_tmp{0};
+    const auto &next_sym = shape_analysis->GetNextSymName();
+    out_h_tmp = symbol::DimExpr(next_sym);
+    out_w_tmp = symbol::DimExpr(next_sym);
+
+    std::vector<symbol::DimExpr> dim_out;
+    if (data_layout == DataLayout::kNCHW) {
+      dim_out = {x.shape()[0], x.shape()[1], out_h_tmp, out_w_tmp};
+    } else {
+      dim_out = {x.shape()[0], out_h_tmp, out_w_tmp, x.shape()[3]};
+    }
+
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(dim_out)};
+
+    pir::Value res = op->result(0);
+    shape_analysis->SetShapeOrDataForValue(res, shape_data);
+    return true;
+  } else if (x.shape().size() == 5) {
+    // shape check for 3D interpolate for input tensor shape NCDHW
+    if (!size_tensor.empty()) {
+      // top priority size
+      std::vector<symbol::DimExpr> dim_out;
+      if (data_layout == DataLayout::kNCHW) {
+        dim_out = {x.shape()[0],
+                   x.shape()[1],
+                   symbol::DimExpr{out_d},
+                   symbol::DimExpr{out_h},
+                   symbol::DimExpr{out_w}};
+      } else {
+        dim_out = {x.shape()[0],
+                   symbol::DimExpr{out_d},
+                   symbol::DimExpr{out_h},
+                   symbol::DimExpr{out_w},
+                   x.shape()[4]};
+      }
+
+      symbol::ShapeOrDataDimExprs shape_data{
+          symbol::TensorShapeOrDataDimExprs(dim_out)};
+
+      pir::Value res = op->result(0);
+      shape_analysis->SetShapeOrDataForValue(res, shape_data);
+      return true;
+    }
+
+    symbol::DimExpr out_d_tmp{0};
+    symbol::DimExpr out_h_tmp{0};
+    symbol::DimExpr out_w_tmp{0};
+    const auto &next_sym = shape_analysis->GetNextSymName();
+    out_d_tmp = symbol::DimExpr(next_sym);
+    out_h_tmp = symbol::DimExpr(next_sym);
+    out_w_tmp = symbol::DimExpr(next_sym);
+
+    std::vector<symbol::DimExpr> dim_out;
+
+    if (data_layout == DataLayout::kNCHW) {
+      dim_out = {x.shape()[0], x.shape()[1], out_d_tmp, out_h_tmp, out_w_tmp};
+    } else {
+      dim_out = {x.shape()[0], out_d_tmp, out_h_tmp, out_w_tmp, x.shape()[4]};
+    }
+
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(dim_out)};
+
+    pir::Value res = op->result(0);
+    shape_analysis->SetShapeOrDataForValue(res, shape_data);
+    return true;
+
+  } else {
+    PADDLE_THROW(phi::errors::Fatal("Input(X) dimension must be 3, 4 or 5!"));
+  }
+
+  return true;
+}
+
+bool BilinearInterpOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return BicubicInterpOpInferSymbolicShape(op, shape_analysis);
+}
 
 bool ConcatOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
@@ -41,8 +205,10 @@ bool ConcatOpInferSymbolicShape(
 
   if (shape_data_list[0].data().has_value()) {
     if (rank == 1) {
-      ExprVec data = details::GetExprVecFromData(
-          shape_analysis->GetShapeOrDataForValue(operand_source));
+      const auto &s_or_d =
+          shape_analysis->GetShapeOrDataForValue(operand_source);
+      ExprVec data = details::GetExprVecFromData(s_or_d);
+
       const std::vector<symbol::DimExpr> shape{std::int64_t(data.size())};
       symbol::ShapeOrDataDimExprs shape_data{
           symbol::TensorShapeOrDataDimExprs(shape, data)};
@@ -128,15 +294,39 @@ bool FlashAttnOpInferSymbolicShape(
 
 bool LinspaceOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  const auto &num_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(2));
+  const auto step = [&] {
+    symbol::DimExpr expr;
+    if (num_shape_or_data.data().has_value()) {
+      expr = num_shape_or_data.data().value()[0];
+    } else {
+      expr = num_shape_or_data.shape()[0];
+    }
+    return expr;
+  }();
+  const symbol::ShapeOrDataDimExprs &shape_data = [&] {
+    std::vector<symbol::DimExpr> out_dims{step};
+    return symbol::ShapeOrDataDimExprs{
+        symbol::TensorShapeOrDataDimExprs(out_dims)};
+  }();
+  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
   return true;
 }
+
+bool LinearInterpOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return BicubicInterpOpInferSymbolicShape(op, shape_analysis);
+}
+
 bool LogspaceOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
-  return true;
+  return LinspaceOpInferSymbolicShape(op, shape_analysis);
+}
+
+bool NearestInterpOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return BicubicInterpOpInferSymbolicShape(op, shape_analysis);
 }
 
 bool StackOpInferSymbolicShape(pir::Operation *op,
@@ -181,6 +371,11 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
   pir::Value res = op->result(0);
   shape_analysis->SetShapeOrDataForValue(res, shape_data);
   return true;
+}
+
+bool TrilinearInterpOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return BicubicInterpOpInferSymbolicShape(op, shape_analysis);
 }
 
 bool WhereOpInferSymbolicShape(pir::Operation *op,

@@ -268,9 +268,7 @@ def check_feed_shape_type(var, feed, num_places=1):
                 else feed._dtype()
             )
             raise ValueError(
-                'The data type of fed Variable {!r} must be {!r}, but received {!r}'.format(
-                    var.name, var_dtype_format, feed_dtype_format
-                )
+                f'The data type of fed Variable {var.name!r} must be {var_dtype_format!r}, but received {feed_dtype_format!r}'
             )
     return True
 
@@ -318,9 +316,7 @@ def pir_check_feed_shape_type(feed, name, target_shape, dtype, num_places=1):
             else feed._dtype()
         )
         raise ValueError(
-            'The data type of fed Variable {!r} must be {!r}, but received {!r}'.format(
-                name, var_dtype_format, feed_dtype_format
-            )
+            f'The data type of fed Variable {name!r} must be {var_dtype_format!r}, but received {feed_dtype_format!r}'
         )
     return True
 
@@ -1455,9 +1451,7 @@ class Executor:
             elif isinstance(item, tuple):
                 if not isinstance(item[0], (list, tuple)):
                     raise TypeError(
-                        "Requires fetch_list[{}][0] shall be one of (list, tuple) when type(fetch_list[{}]) is `tuple`, but received fetch_list[{}][0]'s type is `{}`.".format(
-                            index, index, index, type(item[0]).__name__
-                        )
+                        f"Requires fetch_list[{index}][0] shall be one of (list, tuple) when type(fetch_list[{index}]) is `tuple`, but received fetch_list[{index}][0]'s type is `{type(item[0]).__name__}`."
                     )
                 for i in item[0]:
                     _get_targets(_optimize_ops, _fetch_list, i)
@@ -2142,8 +2136,8 @@ class Executor:
 
         assert is_tuple_list(fetch_list), (
             "Currently , The fetch_list type only should be list or tuple, \n"
-            "but the input type is {}. For more information please refer to \n"
-            "the executor.run(...).".format(type(fetch_list))
+            f"but the input type is {type(fetch_list)}. For more information please refer to \n"
+            "the executor.run(...)."
         )
 
         res = []
@@ -2158,9 +2152,7 @@ class Executor:
                     res.append(var)
             else:
                 raise TypeError(
-                    "Require fetch_list[{}] 's type shall be one of (Value, str), but received {}.".format(
-                        i, type(var).__name__
-                    )
+                    f"Require fetch_list[{i}] 's type shall be one of (Value, str), but received {type(var).__name__}."
                 )
 
         return res

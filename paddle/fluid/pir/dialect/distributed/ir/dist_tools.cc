@@ -14,26 +14,57 @@
 
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_tools.h"
 #include "paddle/common/enforce.h"
+#include "paddle/pir/include/core/operation.h"
 
 namespace paddle {
 namespace dialect {
 
-bool HasDistInput(const std::vector<pir::Value>& inputs) {
+bool HasDistInput(const std::vector<pir::Value>& inputs,
+                  ProcessMeshAttribute* p_mesh_attr) {
   for (auto value : inputs) {
-    if (value.type().isa<DistDenseTensorType>()) {
+    if (auto dist_type = value.type().dyn_cast<DistTypeInterface>()) {
+      if (p_mesh_attr) {
+        *p_mesh_attr = dist_type.process_mesh_attr();
+      }
       return true;
     }
   }
   return false;
 }
 
-bool AllInputAreDist(const std::vector<pir::Value>& inputs) {
+void CvtAllInputsToDist(const std::vector<pir::Value>& inputs,
+                        ProcessMeshAttribute mesh_attr) {
   for (auto value : inputs) {
-    if (!value.type().isa<DistDenseTensorType>()) {
-      return false;
+    if (auto type = value.type()) {
+      if (type.isa<DistTypeInterface>()) continue;
+      auto dense_type = type.dyn_cast<pir::DenseTensorType>();
+      if (!dense_type) {
+        PADDLE_THROW(common::errors::Unimplemented(
+            "Currently only support convert dense_tensor_type to dist type."));
+      }
+      auto ctx = pir::IrContext::Instance();
+      auto dist_type = DistDenseTensorType::get(ctx, dense_type, mesh_attr);
+      value.set_type(dist_type);
+      if (auto define_op = value.defining_op()) {
+        if (define_op->num_operands() != 0u) {
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "Currently only allowed add dist attribue for leaf nodes "
+              "operation. The current op is %s",
+              define_op->name()));
+        }
+        if (define_op->num_results() != 1u) {
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "Currently only allowed add dist attribue for operation with "
+              "single output. The current op is %s",
+              define_op->name()));
+        }
+        define_op->set_attribute(
+            kAttrOpDistAttr,
+            OperationDistAttribute::get(
+                ctx, mesh_attr, {}, {dist_type.tensor_dist_attr()}));
+      }
     }
   }
-  return true;
 }
 
 phi::distributed::DistMetaTensor CvtToDistMetaTensor(DistDenseTensorType type) {
@@ -48,6 +79,7 @@ phi::distributed::DistMetaTensor CvtToDistMetaTensor(DistDenseTensorType type) {
 TensorDistAttribute CvtToPirDistAttr(
     const phi::distributed::ArgDistAttr& dist_attr) {
   auto& attr = PADDLE_GET_CONST(phi::distributed::TensorDistAttr, dist_attr);
+  if (attr.process_mesh().empty()) return nullptr;
   return TensorDistAttribute::get(pir::IrContext::Instance(),
                                   attr.process_mesh(),
                                   attr.dims_mapping(),
