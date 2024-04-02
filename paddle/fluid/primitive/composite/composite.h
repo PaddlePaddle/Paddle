@@ -1171,6 +1171,23 @@ Tensor elu_decomp(const Tensor& x, const float alpha) {
   }
 }
 
+template <typename T>
+Tensor nearest_interp_decomp(
+    const Tensor& x,
+    const paddle::optional<Tensor>& out_size,
+    const paddle::optional<std::vector<Tensor>>& size_tensor,
+    const paddle::optional<Tensor>& scale_tensor,
+    const std::string& data_format,
+    const int& out_d,
+    const int& out_h,
+    const int& out_w,
+    const std::vector<float>& scale,
+    const std::string& interp_method,
+    const bool& align_corners,
+    const int& align_mode) {
+  return x;
+}
+
 }  // namespace details
 
 }  // namespace primitive
