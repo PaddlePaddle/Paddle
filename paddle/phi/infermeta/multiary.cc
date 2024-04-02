@@ -4276,13 +4276,11 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
   if (bias.initialized()) {
     auto bias_dims = bias.dims();
     PADDLE_ENFORCE_EQ(
-        bias_dims.size() == 1 && bias_dims[0] == w_dims[0],
-        true,
+        bias_dims.size(),
+        1UL,
         errors::InvalidArgument(
-            "Input(Bias) dim[0] and Input(Weight) dim[1] should be equal."
-            "But received Input(Bias) dim[0](%s) != Input(Weight) dim[0](%s)",
-            bias_dims[0],
-            w_dims[0]));
+            "The size of Input(Bias)'s dimension should equal to 1UL.",
+            bias_dims.size()));
   }
 
   // per-channel dequantization

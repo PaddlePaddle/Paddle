@@ -96,7 +96,6 @@ class FusedWeightOnlyLinearWithBiasPattern
 
           if (w_dims.at(0) % 64 != 0 || w_dims.at(1) % 16 != 0) return false;
           if (x_dims.at(x_dims.size() - 1) != w_dims.at(0)) return false;
-          if (bias_dims.at(0) != w_dims.at(1)) return false;
 
           return true;
         });
