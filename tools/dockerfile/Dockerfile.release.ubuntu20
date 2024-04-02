@@ -120,6 +120,6 @@ RUN wget -q https://paddle-ci.gz.bcebos.com/ccache-4.8.2.tar.gz && \
     cd ../../ && rm -rf ccache-4.8.2.tar.gz
 
 # clang+llvm 3.8.0
-RUN apt install clang-12
+RUN apt install -y clang-12
 
 EXPOSE 22
