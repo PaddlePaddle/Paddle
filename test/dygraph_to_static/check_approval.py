@@ -167,7 +167,6 @@ ALLOW_LIST: dict[type[Diagnostic], list[str]] = {
         "test_cache_program.py",
         "test_for_enumerate.py",
         "test_lac.py",
-        "test_sentiment.py",
         "test_save_load.py",
         "test_cinn.py",
         "test_declarative.py",
