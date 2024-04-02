@@ -217,7 +217,11 @@ inline void CheckSymShapeByValue(
       //                   platform::errors::PreconditionNotMet(
       //                       "after SubstituteDimExpr&SimplifyDimExpr,
       //                       dim_expr " "must have int value"));
-      sym_value_shape.emplace_back(ret.Get<std::int64_t>());
+      if (ret.Has<std::int64_t>()) {
+        sym_value_shape.emplace_back(ret.Get<std::int64_t>());
+      } else {
+        sym_value_shape.emplace_back(-1);
+      }
     }
 
     auto real_shape = ::common::vectorize(ddim);
