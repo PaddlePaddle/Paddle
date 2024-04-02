@@ -143,6 +143,7 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
       2,
       phi::errors::InvalidArgument("the dim size of SparseCsrTensor must be "
                                    "greater than or equal to 2."));
+
   int64_t M = xdim_vec[x_ndims - 2];
   int64_t N = xdim_vec[x_ndims - 1];
   int batch_size = 1;
@@ -150,6 +151,7 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
     batch_size *= xdim_vec[i];
   }
   int64_t nnz = x.nnz();
+
   const IntT* indices_data = x.non_zero_indices().data<IntT>();
   const T* values_data = x.non_zero_elements().data<T>();
   auto rows_data = indices_data + (x_ndims - 2) * nnz;
@@ -170,6 +172,7 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
                                     CUSPARSE_INDEX_BASE_ZERO,
                                     gpu_type);
   });
+
   if (batch_size > 1) {
 #if CUDA_VERSION >= 11080
     dev_ctx.CusparseCall([&](cusparseHandle_t handle) {
@@ -242,6 +245,7 @@ class CuSparseDnMatDescriptor {
     for (int i = 0; i < x_ndims - 2; i++) {
       batch_size *= xdim_vec[i];
     }
+
     const T* x_data = x.data<T>();
     cudaDataType_t gpu_type = GetGpuDataType<T>();
     dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
@@ -253,6 +257,7 @@ class CuSparseDnMatDescriptor {
                                         gpu_type,
                                         CUSPARSE_ORDER_ROW);
     });
+
     PADDLE_ENFORCE_EQ(x.numel(), batch_size * M * N);
     if (batch_size > 1) {
 #if CUDA_VERSION >= 11080
@@ -266,6 +271,7 @@ class CuSparseDnMatDescriptor {
           "supported from CUDA 11.8"));
 #endif
     }
+    VLOG(6) << "Create cusparseDnMatDescr_t " << &descriptor_;
   }
 
   ~CuSparseDnMatDescriptor() {
@@ -333,6 +339,7 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
   auto a_descriptor = CuSparseSpMatDescriptor<T>(mat_a, dev_ctx_);
   auto b_descriptor = CuSparseDnMatDescriptor<T>(mat_b, dev_ctx_);
   auto out_descriptor = CuSparseDnMatDescriptor<T>(*mat_out, dev_ctx_);
+
   cudaDataType_t gpu_type = GetGpuDataType<T>();
   size_t buffer_size = 0;
   dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
