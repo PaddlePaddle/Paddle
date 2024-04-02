@@ -180,7 +180,7 @@ class TestGroupNormOp(OpTest):
             self.do_compare_between_place()
             return
 
-        check_prim_grad = True if self.data_format == "NCHW" else False
+        check_prim_grad = True
 
         self.rev_comp_atol = 1e-12
         self.rev_comp_rtol = 1e-12
@@ -234,7 +234,7 @@ class TestGroupNormFP16OP(TestGroupNormOp):
         if self.compare_between_place:
             return
 
-        check_prim_grad = True if self.data_format == "NCHW" else False
+        check_prim_grad = True
         self.rev_comp_atol = 1e-2
         self.rev_comp_rtol = 1e-2
         place = core.CUDAPlace(0)
@@ -313,7 +313,7 @@ class TestGroupNormBF16Op(OpTest):
         if self.compare_between_place:
             return
 
-        check_prim_grad = True if self.data_format == "NCHW" else False
+        check_prim_grad = True
 
         self.rev_comp_atol = 1e-2
         self.rev_comp_rtol = 1e-2
@@ -398,7 +398,7 @@ class TestGroupNormOpLargeData(TestGroupNormOp):
 
 class TestGroupNormOp1_With_NHWC(TestGroupNormOp):
     def init_test_case(self):
-        self.attrs['groups'] = 1
+        self.attrs['groups'] = 2
         self.data_format = "NHWC"
 
 
@@ -411,7 +411,7 @@ class TestGroupNormOp2_With_NHWC(TestGroupNormOp):
 class TestGroupNormFP16Op_With_NHWC(TestGroupNormFP16OP):
     def init_test_case(self):
         self.no_need_check_inplace = True
-        self.attrs['groups'] = 1
+        self.attrs['groups'] = 10
         self.data_format = "NHWC"
         self.attrs['epsilon'] = 0.5
         self.shape = (1, 100, 4, 4)

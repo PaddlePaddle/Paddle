@@ -1512,6 +1512,7 @@ void group_norm_grad(const Tensor& x,
   //
   // cal d_bias:
   // d_bias = sum(dy, axes=(0,2,3))
+  VLOG(0) << "gn grad in ************** 0";
   DataLayout data_layout_ = common::StringToDataLayout(data_layout);
   std::vector<int64_t> x_dims = x.shape();
   int rank = x_dims.size();
@@ -1526,7 +1527,8 @@ void group_norm_grad(const Tensor& x,
     reduce_axis = {2, 3};
   } else if (data_layout_ == DataLayout::kNHWC) {
     C = x_dims[rank - 1];
-    hw = x_dims[1] * x_dims[2] reduce_axis = {1, 2};
+    hw = x_dims[1] * x_dims[2];
+    reduce_axis = {1, 2};
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument("Unsupported storage order: %s",
                                               data_layout));
@@ -1553,9 +1555,9 @@ void group_norm_grad(const Tensor& x,
 
   std::vector<int64_t> whole_group_shape;
   if (data_layout_ == DataLayout::kNCHW) {
-    whole_group_shape = std::vector<int64_t>({N, groups, g_num, -1})
+    whole_group_shape = std::vector<int64_t>({N, groups, g_num, -1});
   } else {
-    whole_group_shape = std::vector<int64_t>({N, -1, groups, g_num})
+    whole_group_shape = std::vector<int64_t>({N, -1, groups, g_num});
   }
 
   auto inv_std = rsqrt<T>(variance + epsilon);
@@ -1574,12 +1576,15 @@ void group_norm_grad(const Tensor& x,
   if (bias) {
     bias_data = bias.get();
   }
+  VLOG(0) << "gn grad in ************** 1";
 
   if (x_grad) {
     Tensor d1;
     Tensor d2;
     Tensor p1;
+    VLOG(0) << "gn grad in ************** 2";
     if (scale) {
+      VLOG(0) << "gn grad in ************** 3";
       if (scale_data.dtype() == phi::DataType::FLOAT16 ||
           scale_data.dtype() == phi::DataType::BFLOAT16) {
         scale_data = cast<T>(scale_data, phi::DataType::FLOAT32);
@@ -1591,31 +1596,51 @@ void group_norm_grad(const Tensor& x,
       p1 = reshape<T>(inv_std, std::vector<int64_t>({N, groups, 1})) *
            reshape<T>(scale_data, std::vector<int64_t>({1, groups, g_num}));
     } else {
+      VLOG(0) << "gn grad in ************** 4";
       d1 = (reshape<T>(sum_y_grad_mul_x, shape_group)).sum({2}, dtype, false);
       d2 = (reshape<T>(sum_y_grad, shape_group)).sum({2}, dtype, false);
       p1 = (reshape<T>(inv_std, {N, groups, 1})).expand(shape_group);
     }
+    VLOG(0) << "gn grad in ************** 5";
 
     auto p2 = (d2 * mean - d1) * (inv_std_mul_s * inv_std * inv_std);
     auto p3 = -p2 * mean - d2 * inv_std_mul_s;
-    auto first_shape = get_unsqueeze_dims(p1, {3});
-    auto second_shape = get_unsqueeze_dims(p2, {2, 3});
+    std::vector<int64_t> first_shape;
+    std::vector<int64_t> second_shape;
+    if (data_layout_ == DataLayout::kNCHW) {
+      first_shape = get_unsqueeze_dims(p1, {3});
+      second_shape = get_unsqueeze_dims(p2, {2, 3});
+    } else {
+      first_shape = get_unsqueeze_dims(p1, {1});
+      second_shape = get_unsqueeze_dims(p2, {1, 3});
+    }
+
     p1 = reshape<T>(p1, first_shape);
     p2 = reshape<T>(p2, second_shape);
     p3 = reshape<T>(p3, second_shape);
-    auto tmp_1 = reshape<T>(out_grad_data, whole_group_shape) * p1;
+    VLOG(0) << "gn grad in ************** 5.2 " << out_grad_data.dims() << " "
+            << common::make_ddim(whole_group_shape) << " " << p1.dims();
+    auto tmp_1 = reshape<T>(out_grad_data, whole_group_shape) *
+                 p1;  // ([2, 3, 5, 100], [2, -1, 2, 50]) * [2, 2, 50, 1]
+    VLOG(0) << "gn grad in ************** 5.3 ";
     auto tmp_2 = reshape<T>(x_data, whole_group_shape) * p2 + p3;
-    auto x_grad_data = tmp_1 + tmp_2;
+    VLOG(0) << "gn grad in ************** 5.4";  // x: [2, 3, 5, 100]
+    auto x_grad_data = tmp_1 + tmp_2;  // [2,15,100,100] + [2, 15, 1, 100]
+    VLOG(0) << "gn grad in ************** 5.5 " << tmp_1.dims() << " "
+            << tmp_2.dims() << " " << x.dims();
     x_grad_data = reshape<T>(x_grad_data, x.shape());
+    VLOG(0) << "gn grad in ************** 6";
     if (x.dtype() == phi::DataType::FLOAT16 ||
         x.dtype() == phi::DataType::BFLOAT16) {
       x_grad_data = cast<T>(x_grad_data, x.dtype());
     }
+    VLOG(0) << " x_grad_data.dims()============== " << x_grad_data.dims();
 
     set_output<T>(x_grad_data, x_grad);
   }
   if (scale_grad) {
     if (scale) {
+      VLOG(0) << "gn grad in ************** 7";
       auto third_shape = get_unsqueeze_dims(mean, {2});
       auto tmp1 = (reshape<T>(sum_y_grad_mul_x, shape_group) -
                    reshape<T>(sum_y_grad, shape_group) *
@@ -1623,13 +1648,16 @@ void group_norm_grad(const Tensor& x,
                   reshape<T>(inv_std, third_shape);
       auto scale_grad_tmp =
           reshape<T>(tmp1.sum({0}, scale_data.dtype(), false), {C});
+      VLOG(0) << "gn grad in ************** 8";
       set_output<T>(scale_grad_tmp, scale_grad);
     }
   }
 
   if (bias_grad) {
     if (bias) {
+      VLOG(0) << "gn grad in ************** 9";
       auto bias_grad_tmp = sum_y_grad.sum({0}, bias_data.dtype(), false);
+      VLOG(0) << "gn grad in ************** 10";
       set_output<T>(bias_grad_tmp, bias_grad);
     }
   }
