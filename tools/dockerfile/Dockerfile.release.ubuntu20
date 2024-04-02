@@ -119,7 +119,8 @@ RUN wget -q https://paddle-ci.gz.bcebos.com/ccache-4.8.2.tar.gz && \
     ln -s /usr/local/ccache-4.8.2/bin/ccache /usr/local/bin/ccache && \
     cd ../../ && rm -rf ccache-4.8.2.tar.gz
 
-# clang+llvm 3.8.0
-RUN apt install -y clang-12
+# clang12
+RUN apt-get update &&\
+    apt install -y clang-12
 
 EXPOSE 22
