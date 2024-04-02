@@ -75,7 +75,7 @@ PD_DEFINE_bool(group_schedule_tiling_first,
                "Whether to enable new group scheduler tiling first strategy.");
 
 PD_DEFINE_bool(cinn_new_cluster_op_method,
-               BoolFromEnv("FLAGS_cinn_new_cluster_op_method", false),
+               BoolFromEnv("FLAGS_cinn_new_cluster_op_method", true),
                "Whether to enable newly developed clustering method of group "
                "op for cinn.");
 
