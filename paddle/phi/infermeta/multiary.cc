@@ -4584,6 +4584,41 @@ void FusedRopeInferMeta(const MetaTensor& q,
   }
 }
 
+void FusedRopeInferMeta3D(const MetaTensor& q,
+                          const MetaTensor& k,
+                          const MetaTensor& v,
+                          const MetaTensor& sin,
+                          const MetaTensor& cos,
+                          MetaTensor* out_q,
+                          MetaTensor* out_k,
+                          MetaTensor* out_v) {
+  auto input_dims = q.dims();
+  PADDLE_ENFORCE_EQ(input_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, C, H, W] "
+                        "or [N, H, W, C], but got %u.",
+                        input_dims.size()));
+  out_q->set_dims(q.dims());
+  out_q->set_dtype(q.dtype());
+  if (k) {
+    out_k->set_dims(k.dims());
+    out_k->set_dtype(k.dtype());
+  } else {
+    if (out_k) {
+      out_k->set_dtype(q.dtype());
+    }
+  }
+  if (v) {
+    out_v->set_dims(v.dims());
+    out_v->set_dtype(v.dtype());
+  } else {
+    if (out_v) {
+      out_v->set_dtype(q.dtype());
+    }
+  }
+}
+
 void MoeInferMeta(const MetaTensor& x,
                   const MetaTensor& gate,
                   const MetaTensor& bmm0,

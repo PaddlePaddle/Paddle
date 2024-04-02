@@ -206,6 +206,15 @@ void FusedRopeGradInferMeta(const MetaTensor& sin,
                             MetaTensor* dk,
                             MetaTensor* dv);
 
+void FusedRopeGradInferMeta3D(const MetaTensor& sin,
+                              const MetaTensor& cos,
+                              const MetaTensor& dout_q,
+                              const MetaTensor& dout_k,
+                              const MetaTensor& dout_v,
+                              MetaTensor* dq,
+                              MetaTensor* dk,
+                              MetaTensor* dv);
+
 void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
                            const MetaTensor& out_grad,

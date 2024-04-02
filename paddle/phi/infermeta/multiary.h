@@ -908,6 +908,15 @@ void FusedRopeInferMeta(const MetaTensor& q,
                         MetaTensor* out_k,
                         MetaTensor* out_v);
 
+void FusedRopeInferMeta3D(const MetaTensor& q,
+                          const MetaTensor& k,
+                          const MetaTensor& v,
+                          const MetaTensor& sin,
+                          const MetaTensor& cos,
+                          MetaTensor* out_q,
+                          MetaTensor* out_k,
+                          MetaTensor* out_v);
+
 void MultiheadMatmulInferMeta(const MetaTensor& input,
                               const MetaTensor& w,
                               const MetaTensor& bias,

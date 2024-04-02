@@ -1381,6 +1381,36 @@ void FusedRopeGradInferMeta(const MetaTensor& sin,
   }
 }
 
+void FusedRopeGradInferMeta3D(const MetaTensor& sin,
+                              const MetaTensor& cos,
+                              const MetaTensor& dout_q,
+                              const MetaTensor& dout_k,
+                              const MetaTensor& dout_v,
+                              MetaTensor* dq,
+                              MetaTensor* dk,
+                              MetaTensor* dv) {
+  auto input_dims = dout_q.dims();
+  PADDLE_ENFORCE_EQ(
+      input_dims.size(),
+      4,
+      phi::errors::InvalidArgument("Input should be a 4-D tensor of format "
+                                   "[batch_size, seq_len, num_heads, head_dim],"
+                                   "but got %u.",
+                                   input_dims.size()));
+  if (dout_q && dq) {
+    dq->set_dims(dout_q.dims());
+    dq->set_dtype(dout_q.dtype());
+  }
+  if (dout_k && dk) {
+    dk->set_dims(dout_k.dims());
+    dk->set_dtype(dout_k.dtype());
+  }
+  if (dout_v && dv) {
+    dv->set_dims(dout_v.dims());
+    dv->set_dtype(dout_v.dtype());
+  }
+}
+
 void SetValueGradInferMeta(const MetaTensor& out_grad,
                            const MetaTensor& values,
                            MetaTensor* x_grad,

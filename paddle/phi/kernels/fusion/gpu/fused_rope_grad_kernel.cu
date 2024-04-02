@@ -184,6 +184,122 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void FusedRope3DGradKernel(const Context& dev_ctx,
+                           const paddle::optional<DenseTensor>& sin,
+                           const paddle::optional<DenseTensor>& cos,
+                           const DenseTensor& dout_q,
+                           const paddle::optional<DenseTensor>& dout_k,
+                           const paddle::optional<DenseTensor>& dout_v,
+                           DenseTensor* dq,
+                           DenseTensor* dk,
+                           DenseTensor* dv) {
+  dev_ctx.template Alloc<T>(dq);
+
+  phi::Array<int64_t, 3> inputs_num_heads;
+  // small size for broadcast
+  auto batch_size = dout_q.dims()[0];
+  auto seq_len = dout_q.dims()[1];
+  inputs_num_heads[0] = dout_q.dims()[2];
+  auto head_dim = dout_q.dims()[3];
+
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  constexpr const int vec_size = 2;
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+      dev_ctx, dout_q.numel(), vec_size);
+
+  int64_t grid = config.block_per_grid.x;
+  int64_t block = config.thread_per_block.x;
+  auto stream = dev_ctx.stream();
+
+  phi::Array<T*, 3> outs_data;
+  phi::Array<const T*, 3> ins_data;
+  phi::Array<const T*, 2> sin_cos_data;
+  const int64_t* position_ids_data = NULL;
+
+  ins_data[0] = dout_q.data<T>();
+  outs_data[0] = dq->data<T>();
+  int num_inputs = 1;
+
+  if (dout_k) {
+    dev_ctx.template Alloc<T>(dk);
+    outs_data[num_inputs] = dk->data<T>();
+    ins_data[num_inputs] = dout_k->data<T>();
+    inputs_num_heads[num_inputs] = dk->dims()[2];
+    num_inputs++;
+  }
+
+  if (dout_v) {
+    dev_ctx.template Alloc<T>(dv);
+    outs_data[num_inputs] = dv->data<T>();
+    ins_data[num_inputs] = dout_v->data<T>();
+    inputs_num_heads[num_inputs] = dv->dims()[2];
+    num_inputs++;
+  }
+
+  sin_cos_data[0] = sin->data<T>();
+  sin_cos_data[1] = cos->data<T>();
+  bool is_same_num_heads = true;
+  auto prev_num_heads = inputs_num_heads[0];
+  for (int i = 1; i < num_inputs; ++i) {
+    if (prev_num_heads != inputs_num_heads[i]) {
+      is_same_num_heads = false;
+      break;
+    }
+    prev_num_heads = inputs_num_heads[i];
+  }
+
+  int sign = -1;
+
+  if (is_same_num_heads) {
+    int64_t batch_stride = dout_q.strides()[0];
+    int64_t seq_stride = dout_q.strides()[1];
+    VectorizedFusedRope3DKernel<T, MPType, vec_size>
+        <<<grid, block, 0, stream>>>(ins_data,
+                                     sin_cos_data,
+                                     sign,
+                                     batch_size,
+                                     seq_len,
+                                     inputs_num_heads[0],
+                                     head_dim,
+                                     seq_stride,
+                                     outs_data,
+                                     num_inputs);
+
+  } else {
+    // rotary position embedding Q
+    int64_t seq_stride_q = dout_q.strides()[1];
+    VectorizedFusedRope3DKernel<T, MPType, vec_size>
+        <<<grid, block, 0, stream>>>(ins_data,
+                                     sin_cos_data,
+                                     sign,
+                                     batch_size,
+                                     seq_len,
+                                     inputs_num_heads[0],
+                                     head_dim,
+                                     seq_stride_q,
+                                     outs_data,
+                                     1);
+
+    // rotary position embedding K,V
+    int64_t seq_stride_kv = inputs_num_heads[1] * head_dim;
+
+    phi::Array<const T*, 3> input_kv{ins_data[1], ins_data[2], nullptr};
+    phi::Array<T*, 3> out_kv{outs_data[1], outs_data[2], nullptr};
+    VectorizedFusedRope3DKernel<T, MPType, vec_size>
+        <<<grid, block, 0, stream>>>(input_kv,
+                                     sin_cos_data,
+                                     sign,
+                                     batch_size,
+                                     seq_len,
+                                     inputs_num_heads[1],
+                                     head_dim,
+                                     seq_stride_kv,
+                                     out_kv,
+                                     num_inputs - 1);
+  }
+}
+
 }  // namespace fusion
 }  // namespace phi
 
@@ -191,6 +307,14 @@ PD_REGISTER_KERNEL(fused_rotary_position_embedding_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedRopeGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16){};
+PD_REGISTER_KERNEL(fused_rotary_position_embedding_3d_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::fusion::FusedRope3DGradKernel,
                    float,
                    double,
                    phi::dtype::float16,

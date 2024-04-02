@@ -127,3 +127,82 @@ def fused_rotary_position_embedding(
     )
 
     return out_q, out_k, out_v
+
+
+def fused_rotary_position_embedding_3d(q, k=None, v=None, sin=None, cos=None):
+    r"""
+    Fused rotary position embedding.
+    Args:
+        q (Tensor): Multi-dimensional tensor with shape: [batch_size, seq_len, num_heads, head_dim] and head_dim must be a multiple of 6. The data type is bfloat16, float16, float32 or float64.
+        k (Tensor, optional): Multi-dimensional tensor with shape: [batch_size, seq_len, num_heads, head_dim] and head_dim must be a multiple of 6. The data type is bfloat16, float16, float32 or float64.
+        v (Tensor, optional): Multi-dimensional tensor with shape: [batch_size, seq_len, num_heads, head_dim] and head_dim must be a multiple of 6. The data type is bfloat16, float16, float32 or float64.
+        sin (Tensor, optional): Multi-dimensional tensor with shape: [1, frame, height, width, 1, head_dim]. The data type is bfloat16, float16, float32 or float64.
+        cos (Tensor, optional): Multi-dimensional tensor with shape: [1, frame, height, width, 1, head_dim]. The data type is bfloat16, float16, float32 or float64.
+    Returns:
+        out_q/out_k/out_v Tensor representing the fused rotary position embedding, has same shape and data type as `q` .
+    Examples:
+        .. code-block:: python
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> from paddle.incubate.nn.functional import fused_rotary_position_embedding
+            >>> paddle.set_device('gpu')
+            >>> # batch_size = 2
+            >>> # seq_len = 2
+            >>> # num_heads = 2
+            >>> # head_dim = 2
+            >>> paddle.seed(1204)
+            >>> # q, k, v: [batch_size, seq_len, num_heads, head_dim]
+            >>> q = paddle.randn([2, 2, 2, 2], dtype='float16')
+            >>> k = paddle.randn([2, 2, 2, 2], dtype='float16')
+            >>> v = paddle.randn([2, 2, 2, 2], dtype='float16')
+            >>> # sin, cos: [1, seq_len, 1, head_dim]
+            >>> x = paddle.randn([1, 2, 1, 2], dtype='float16')
+            >>> y = paddle.randn([1, 2, 1, 2], dtype='float16')
+            >>> sin = paddle.sin(x)
+            >>> cos = paddle.cos(y)
+            >>> # position_ids: [batch_size, seq_len]
+            >>> position_ids = paddle.randint(high=2, shape=[2, 2], dtype='int64')
+            >>> # out_q, out_k, out_v: [batch_size, seq_len, num_heads, head_dim]
+            >>> out_q, out_k, out_v = fused_rotary_position_embedding(q, k, v, sin=sin, cos=cos, position_ids=position_ids, use_neox_rotary_style=False)
+            >>> print(out_q)
+            Tensor(shape=[2, 2, 2, 2], dtype=float16, place=Place(gpu:0), stop_gradient=True,
+            [[[[-0.54931641,  0.64990234],
+               [-1.08691406,  1.18261719]],
+              [[ 0.57812500,  0.11749268],
+               [-0.63281250,  0.15551758]]],
+             [[[-0.77050781,  0.07733154],
+               [-0.73730469, -0.16735840]],
+              [[ 0.07116699, -0.90966797],
+               [-0.03628540, -0.20202637]]]])
+    """
+    if in_dynamic_or_pir_mode():
+        return _C_ops.fused_rotary_position_embedding_3d(q, k, v, sin, cos)
+
+    helper = LayerHelper('fused_rotary_position_embedding_3d', **locals())
+    out_q = helper.create_variable_for_type_inference(dtype=q.dtype)
+    out_k = (
+        helper.create_variable_for_type_inference(dtype=k.dtype) if k else None
+    )
+    out_v = (
+        helper.create_variable_for_type_inference(dtype=v.dtype) if v else None
+    )
+
+    outputs = {'out_q': out_q}
+    if out_k:
+        outputs.update({'out_k': out_k})
+    if out_v:
+        outputs.update({'out_v': out_v})
+
+    helper.append_op(
+        type='fused_rotary_position_embedding_3d',
+        inputs={
+            'q': q,
+            'k': k,
+            'v': v,
+            'sin': sin,
+            'cos': cos,
+        },
+        outputs=outputs,
+    )
+
+    return out_q, out_k, out_v

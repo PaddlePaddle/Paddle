@@ -275,6 +275,203 @@ void FusedRopeKernel(const Context& dev_ctx,
                                             div_c);
   }
 }
+
+template <typename T, typename Context>
+void FusedRope3DKernel(const Context& dev_ctx,
+                       const DenseTensor& q,
+                       const paddle::optional<DenseTensor>& k,
+                       const paddle::optional<DenseTensor>& v,
+                       const paddle::optional<DenseTensor>& sin,
+                       const paddle::optional<DenseTensor>& cos,
+                       DenseTensor* out_q,
+                       DenseTensor* out_k,
+                       DenseTensor* out_v) {
+  dev_ctx.template Alloc<T>(out_q);
+
+  phi::Array<int64_t, 3> inputs_num_heads;
+
+  // q.shape: [batch_size, seq_len, num_heads, head_dim]
+  auto batch_size = q.dims()[0];
+  auto seq_len = q.dims()[1];
+  inputs_num_heads[0] = q.dims()[2];
+  auto head_dim = q.dims()[3];
+
+  PADDLE_ENFORCE_EQ(head_dim % 6,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The head_dim of input must be a multiple of 6."));
+
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  constexpr const int vec_size = 2;
+  auto config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, q.numel(), vec_size);
+
+  int64_t grid = config.block_per_grid.x;
+  int64_t block = config.thread_per_block.x;
+  auto stream = dev_ctx.stream();
+
+  phi::Array<T*, 3> outs_data;
+  phi::Array<const T*, 3> ins_data;
+  phi::Array<const T*, 2> sin_cos_data;
+
+  ins_data[0] = q.data<T>();
+  outs_data[0] = out_q->data<T>();
+  int num_inputs = 1;
+
+  if (k) {
+    dev_ctx.template Alloc<T>(out_k);
+    ins_data[num_inputs] = k->data<T>();
+    outs_data[num_inputs] = out_k->data<T>();
+    inputs_num_heads[num_inputs] = k->dims()[2];
+    num_inputs++;
+  }
+
+  if (v) {
+    dev_ctx.template Alloc<T>(out_v);
+    ins_data[num_inputs] = v->data<T>();
+    outs_data[num_inputs] = out_v->data<T>();
+    inputs_num_heads[num_inputs] = v->dims()[2];
+    num_inputs++;
+  }
+
+  PADDLE_ENFORCE_EQ(
+      sin.get_ptr() && cos.get_ptr(),
+      true,
+      phi::errors::InvalidArgument("The sin and cos should not be None."));
+
+  PADDLE_ENFORCE_EQ(sin.get_ptr()->dims(),
+                    cos.get_ptr()->dims(),
+                    phi::errors::InvalidArgument(
+                        "The dims of sin and cos must be the same. But "
+                        "received sin's dims is {%s}, cos's dims is {%s}.",
+                        sin.get_ptr()->dims(),
+                        cos.get_ptr()->dims()));
+  auto sin_dims = sin.get_ptr()->dims();
+  int dims_size = sin_dims.size();
+  PADDLE_ENFORCE_EQ(
+      (dims_size == 4 || dims_size == 6),
+      true,
+      phi::errors::InvalidArgument("The dims of sin and cos is expected to "
+                                   "be 4 or 6, but received %d.",
+                                   dims_size));
+  if (dims_size == 4) {
+    // sin.shape: [1, frame * height * width, 1, head_dim]
+    PADDLE_ENFORCE_EQ(
+        (sin_dims[0] == 1 && sin_dims[2] == 1),
+        true,
+        phi::errors::InvalidArgument(
+            "The batch_size and num_heads of sin and cos must be 1."));
+    PADDLE_ENFORCE_EQ((sin_dims[1] == seq_len),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The sin.shape[1] must be equal to seq_len."));
+  }
+  if (dims_size == 6) {
+    // sin.shape: [1, frame, height, width, 1, head_dim]
+    PADDLE_ENFORCE_EQ(
+        (sin_dims[0] == 1 && sin_dims[4] == 1),
+        true,
+        phi::errors::InvalidArgument(
+            "The batch_size and num_heads of sin and cos must be 1."));
+    PADDLE_ENFORCE_EQ((sin_dims[1] * sin_dims[2] * sin_dims[3] == seq_len),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The sin.shape[1] * sin.shape[2] * sin.shape[3] "
+                          "must be equal to seq_len."));
+  }
+  PADDLE_ENFORCE_EQ((sin_dims[dims_size - 1] == head_dim),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The head_dim of sin and cos "
+                        "must be the same as that of q. But received sin's "
+                        "shape is {%s}, q's shape is {%s}.",
+                        sin_dims,
+                        q.dims()));
+  sin_cos_data[0] = sin->data<T>();
+  sin_cos_data[1] = cos->data<T>();
+
+  bool is_same_num_heads = true;
+  auto prev_num_heads = inputs_num_heads[0];
+  for (int i = 1; i < num_inputs; ++i) {
+    if (prev_num_heads != inputs_num_heads[i]) {
+      is_same_num_heads = false;
+      break;
+    }
+    prev_num_heads = inputs_num_heads[i];
+  }
+
+  int sign = 1;
+  if (is_same_num_heads) {
+    int64_t seq_stride = q.strides()[1];
+    VectorizedFusedRope3DKernel<T, MPType, vec_size>
+        <<<grid, block, 0, stream>>>(ins_data,
+                                     sin_cos_data,
+                                     sign,
+                                     batch_size,
+                                     seq_len,
+                                     inputs_num_heads[0],
+                                     head_dim,
+                                     seq_stride,
+                                     outs_data,
+                                     num_inputs);
+  } else {
+    // Multi Query Attention (MQA) or Group Query Attention (GQA)
+    PADDLE_ENFORCE_EQ(
+        (inputs_num_heads[0] != inputs_num_heads[num_inputs - 1]) &&
+            (inputs_num_heads[0] % inputs_num_heads[num_inputs - 1] == 0),
+        true,
+        phi::errors::InvalidArgument(
+            "The MQA or GQA mode is entered, when the number of heads of qkv "
+            "is not exactly the same two by two. This mode requires "
+            "num_heads of q to be divisible by k,v."
+            "But recieved num_heads of q is %d, num_heads of k,v is %d",
+            inputs_num_heads[0],
+            inputs_num_heads[num_inputs - 1]));
+
+    if (k.get_ptr() && v.get_ptr()) {
+      PADDLE_ENFORCE_EQ(
+          inputs_num_heads[1] == inputs_num_heads[2],
+          true,
+          phi::errors::InvalidArgument(
+              "The num_heads of k must be equal to the num_heads of v when v "
+              "is not none."
+              "But recieved num_heads of k is %d, num_heads of v is %d",
+              inputs_num_heads[1],
+              inputs_num_heads[2]));
+    }
+    // rotary position embedding Q
+    int64_t seq_stride_q = q.strides()[1];
+    VectorizedFusedRope3DKernel<T, MPType, vec_size>
+        <<<grid, block, 0, stream>>>(ins_data,
+                                     sin_cos_data,
+                                     sign,
+                                     batch_size,
+                                     seq_len,
+                                     inputs_num_heads[0],
+                                     head_dim,
+                                     seq_stride_q,
+                                     outs_data,
+                                     1);
+
+    // rotary position embedding K,V
+    phi::Array<const T*, 3> input_kv{ins_data[1], ins_data[2], nullptr};
+    phi::Array<T*, 3> out_kv{outs_data[1], outs_data[2], nullptr};
+    int64_t seq_stride_kv = inputs_num_heads[1] * head_dim;
+
+    VectorizedFusedRope3DKernel<T, MPType, vec_size>
+        <<<grid, block, 0, stream>>>(input_kv,
+                                     sin_cos_data,
+                                     sign,
+                                     batch_size,
+                                     seq_len,
+                                     inputs_num_heads[1],
+                                     head_dim,
+                                     seq_stride_kv,
+                                     out_kv,
+                                     num_inputs - 1);
+  }
+}
+
 }  // namespace fusion
 }  // namespace phi
 
@@ -282,6 +479,14 @@ PD_REGISTER_KERNEL(fused_rotary_position_embedding,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedRopeKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16){};
+PD_REGISTER_KERNEL(fused_rotary_position_embedding_3d,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::fusion::FusedRope3DKernel,
                    float,
                    double,
                    phi::dtype::float16,

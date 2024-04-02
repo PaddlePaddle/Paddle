@@ -285,6 +285,18 @@
   backward: fused_rotary_position_embedding_grad
   support_dygraph_mode : true
 
+- op : fused_rotary_position_embedding_3d
+  args : (Tensor q, Tensor k, Tensor v, Tensor sin, Tensor cos)
+  output : Tensor(out_q), Tensor(out_k), Tensor(out_v)
+  infer_meta :
+    func : FusedRopeInferMeta3D
+  optional : k, v, sin, cos, out_k, out_v
+  kernel :
+    func : fused_rotary_position_embedding_3d
+    data_type : q
+  backward: fused_rotary_position_embedding_3d_grad
+  support_dygraph_mode : true
+
 - op : fused_scale_bias_add_relu
   args : (Tensor x1, Tensor scale1, Tensor bias1, Tensor x2, Tensor scale2, Tensor bias2, bool fuse_dual, bool exhaustive_search)
   optional : scale2, bias2
