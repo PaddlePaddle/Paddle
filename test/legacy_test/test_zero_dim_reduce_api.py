@@ -22,6 +22,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 reduce_api_list = [
     paddle.sum,
@@ -142,8 +143,7 @@ class TestReduceAPI(unittest.TestCase):
 
         paddle.enable_static()
 
-    # TODO(SigureMo): Temporarily disable this test case in due to hanging in mac CI.
-    # @test_with_pir_api
+    @test_with_pir_api
     def test_static_reduce(self):
         paddle.enable_static()
         for api in reduce_api_list:
