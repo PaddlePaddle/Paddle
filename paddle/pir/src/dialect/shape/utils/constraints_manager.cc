@@ -25,6 +25,40 @@ void ConstraintsManager::AddEqCstr(const DimExpr& lhs, const DimExpr& rhs) {
   VLOG(8) << "AddEqCstr the constraint: " << lhs << " == " << rhs;
 
   SubstituteDimExprInConstraint(lhs, rhs);
+
+  [&]() {
+    if ((lhs.isa<Add<DimExpr>>() && rhs.isa<Add<DimExpr>>()) ||
+        (lhs.isa<Mul<DimExpr>>() && rhs.isa<Mul<DimExpr>>())) {
+      List<DimExpr> lhs_list, rhs_list;
+      if (lhs.isa<Add<DimExpr>>()) {
+        lhs_list = lhs.Get<Add<DimExpr>>().operands;
+        rhs_list = lhs.Get<Add<DimExpr>>().operands;
+      } else {
+        lhs_list = lhs.Get<Mul<DimExpr>>().operands;
+        rhs_list = lhs.Get<Mul<DimExpr>>().operands;
+      }
+      if (lhs_list->size() != rhs_list->size()) {
+        return;
+      }
+      int diff_count = 0;
+      DimExpr lhs_diff, rhs_diff;
+      std::vector<DimExpr> common;
+      for (DimExpr lhs_dim_expr : *lhs_list) {
+        common.push_back(lhs_dim_expr);
+      }
+      for (DimExpr rhs_dim_expr : *rhs_list) {
+        auto it = std::find(common.begin(), common.end(), rhs_dim_expr);
+        if (it != common.end()) {
+          common.erase(it);
+        } else {
+          if (++diff_count > 1) return;
+          rhs_diff = rhs_dim_expr;
+        }
+      }
+      lhs_diff = common.front();
+      AddEqCstr(lhs_diff, rhs_diff);
+    }
+  }();
 }
 
 void ConstraintsManager::AddBroadcastableCstr(const DimExpr& lhs,
