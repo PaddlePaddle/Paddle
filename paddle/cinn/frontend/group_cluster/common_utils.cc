@@ -69,13 +69,12 @@ std::optional<std::pair<pir::Value, pir::Value>> GetBroadcastOpInputOuputValue(
   if (op->isa<paddle::dialect::ExpandOp>()) {
     auto expand_op = mut_op->dyn_cast<paddle::dialect::ExpandOp>();
     return std::make_pair(expand_op.x(), expand_op.out());
-  }
-  if (op->isa<cinn::dialect::BroadcastOp>()) {
+  } else if (op->isa<cinn::dialect::BroadcastOp>()) {
     auto broadcast_op = mut_op->dyn_cast<cinn::dialect::BroadcastOp>();
     return std::make_pair(broadcast_op.x(), broadcast_op.out());
+  } else {
+    CHECK(false) << "Unsupported broadcast op: " << op->name();
   }
-  VLOG(4) << "[ShardableAxesSignature] Unsupported Broadcast op: "
-          << op->name();
   return std::nullopt;
 }
 }  // namespace cinn::frontend::group_cluster

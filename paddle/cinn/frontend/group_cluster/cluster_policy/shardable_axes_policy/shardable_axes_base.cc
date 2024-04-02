@@ -136,34 +136,41 @@ ShardableAxesSignature CreateSignatureForElementWise(pir::Operation* op) {
 
 ShardableAxesSignature CreateSignatureForBroadcast(
     pir::Operation* op, const pir::ShapeConstraintIRAnalysis* shape_analysis) {
-  const auto& broad_cast_value = GetBroadcastOpInputOuputValue(op);
-  if (!broad_cast_value.has_value()) {
-    return CreateDefaultSignature(op);
-  }
-  const auto& [input, output] = broad_cast_value.value();
-  const int input_rank = GetRank(input);
-  const int output_rank = GetRank(output);
-  CHECK_GE(output_rank - input_rank, 0);
-
-  int same_dim_rank = input_rank;
-  for (int i = input_rank - 1; i >= 0; i--) {
-    if (!shape_analysis->IsProductEqual(input, {i}, output, {i})) break;
-    same_dim_rank--;
-  }
-
   ShardableAxesSignature result = ShardableAxesSignature();
+
+  const auto& broad_cast_value = GetBroadcastOpInputOuputValue(op);
+  CHECK(broad_cast_value.has_value());
+
+  const auto& [input_value, output_value] = broad_cast_value.value();
+  const int input_rank = GetRank(input_value);
+  const int output_rank = GetRank(output_value);
+  CHECK_GE(output_rank, input_rank);
+
+  // Create axes for operands. For expand op, the second operand is the shape of
+  // output.
   for (int i = 0; i < op->num_operands(); ++i) {
-    auto axes_name = CreateNewNamesWithRank(GetRank(op->operand_source(i)));
-    if (op->operand_source(i) == input) {
-      auto output_same_dim_part = std::vector<std::string>(
-          axes_name.begin(), axes_name.begin() + same_dim_rank);
-      auto output_different_part =
-          CreateNewNamesWithRank(output_rank - same_dim_rank);
-      result.outputs.emplace_back(
-          MergeVector(output_same_dim_part, output_different_part));
-    }
-    result.inputs.emplace_back(axes_name);
+    result.inputs.emplace_back(
+        CreateNewNamesWithRank(GetRank(op->operand_source(i))));
   }
+
+  // Create output axes. Compare axis one by one, from back to front.
+  // The rule of broadcasting:
+  // https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/beginner/tensor_cn.html#id7
+  const auto& input_axis_names = result.inputs[0].axis_names;
+  std::vector<std::string> output_axis_names;
+  for (int i = 1; i <= output_rank; ++i) {
+    int input_axis = input_rank - i;
+    int output_axis = output_rank - i;
+    if ((input_axis >= 0) &&
+        shape_analysis->IsProductEqual(
+            input_value, {input_axis}, output_value, {output_axis})) {
+      output_axis_names.emplace_back(input_axis_names[input_axis]);
+    } else {
+      output_axis_names.emplace_back(ShardableAxesInfoManager::GetUniqueName());
+    }
+  }
+  std::reverse(output_axis_names.begin(), output_axis_names.end());
+  result.outputs.emplace_back(ShardableAxes(output_axis_names));
 
   return result;
 }
