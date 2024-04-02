@@ -22,7 +22,7 @@ const std::unordered_set<std::string>& GetProhibitScheduleExternalFuncNames() {
   static const std::unordered_set<std::string>
       prohibit_schedule_external_func_names = {
 #define CINN_FUNC2STRING(str) #str
-#define CINN_NVGPU_FUNC_TYPE(FUNC, TYPE)     \
+#define CINN_NVGPU_FUNC_TYPE(FUNC, TYPE)    \
   CINN_FUNC2STRING(cinn_cuda_##FUNC##TYPE), \
       CINN_FUNC2STRING(cinn_host_##FUNC##TYPE)
 
