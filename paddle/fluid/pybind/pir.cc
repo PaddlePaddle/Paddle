@@ -32,7 +32,6 @@
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_dialect.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
-#include "paddle/fluid/pir/dialect/distributed/transforms/mix_to_dist_pass.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
@@ -675,14 +674,19 @@ void BindOperation(py::module *m) {
                 pir::ArrayAttribute::get(pir::IrContext::Instance(),
                                          op_callstack_infos));
           })
-      .def("dist_attr", [](Operation &self) {
-        if (self.HasAttribute(kAttrOpDistAttr)) {
-          return self.attribute<OperationDistAttribute>(kAttrOpDistAttr);
-        } else {
-          PADDLE_THROW(
-              phi::errors::InvalidArgument("dist_attr is only for dist op."));
-        }
-      });
+      .def_property(
+          "dist_attr",
+          [](Operation &self) {
+            if (self.HasAttribute(kAttrOpDistAttr)) {
+              return self.attribute<OperationDistAttribute>(kAttrOpDistAttr);
+            } else {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "dist_attr is only for dist op."));
+            }
+          },
+          [](Operation &self, OperationDistAttribute op_dist_attr) {
+            self.set_attribute(kAttrOpDistAttr, op_dist_attr);
+          });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
     The Operation_BlockContainer only use to walk all blocks in the operation.
@@ -1836,16 +1840,13 @@ void BindUtils(pybind11::module *m) {
                 >>> print(mappings)
                 {'matmul_v2_0.tmp_0': [Value(define_op_name=pd_op.matmul, index=0, dtype=builtin.tensor<4x4xf32>)], 'x': [Value(define_op_name=pd_op.data, index=0, dtype=builtin.tensor<4x4xf32>)], 'tanh_0.tmp_0': [Value(define_op_name=pd_op.tanh, index=0, dtype=builtin.tensor<4x4xf32>)], 'elementwise_add_0': [Value(define_op_name=pd_op.add, index=0, dtype=builtin.tensor<4x4xf32>)]}
     )DOC");
-
-  m->def("clear_cinn_compilation_cache",
-         []() {
+  m->def("clear_cinn_compilation_cache", []() {
 #ifdef PADDLE_WITH_CINN
-           pybind11::gil_scoped_release release;
-           VLOG(4) << "clear CINN CompilationCache and free BackendResource.";
-           cinn::hlir::framework::CompilationCache::Instance().Clear();
+    pybind11::gil_scoped_release release;
+    VLOG(4) << "clear CINN CompilationCache and free BackendResource.";
+    cinn::hlir::framework::CompilationCache::Instance().Clear();
 #endif
-         }),
-      m->def("apply_mix2dist_pass", paddle::dialect::MixToDistPass);
+  });
 }
 
 namespace {

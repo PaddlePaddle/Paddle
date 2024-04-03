@@ -23,7 +23,7 @@ def apply_partition_pass(program):
         for op in new_program.global_block().ops:
             # assert len(op.operands()) == len(op.dist_attr().operand_dist_attrs()), f'The number of operand and operand_dist_attrs are not equal in op: {op}'
             for var, operand_dist_attr in zip(
-                op.operands(), op.dist_attr().operand_dist_attrs()
+                op.operands(), op.dist_attr.operand_dist_attrs()
             ):
                 if (
                     var.source().is_dist_dense_tensor_type()
@@ -60,7 +60,7 @@ def apply_reshard_pass(program):
                     == op.operand(0).source().dist_attr().dims_mapping
                 ), f'only support the same dims maping on 1-D mesh now, but the op is: {op}'
                 assert (
-                    op.dist_attr().operand_dist_attr(0).partial_status[0]
+                    op.dist_attr.operand_dist_attr(0).partial_status[0]
                     == paddle.distributed.ReduceType.kRedSum
                 ), f'only support partial sum now, but the op is: {op}'
                 assert (
