@@ -18,7 +18,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
-    test_default_and_pir,
     test_pir_only,
 )
 
@@ -425,21 +424,20 @@ class TestSentiment(Dy2StTestBase):
             err_msg=f'dy_out:\n {dy_out}\n st_out:\n {st_out}',
         )
 
-    @test_default_and_pir
+    @test_pir_only
     def test_train_cnn(self):
         self.train_model('cnn_net')
 
-    @test_default_and_pir
+    @test_pir_only
     def test_train_bow(self):
         self.train_model('bow_net')
 
-    @test_default_and_pir
+    @test_pir_only
     def test_train_gru(self):
         self.train_model('gru_net')
 
     @test_pir_only
     def test_train_bigru(self):
-        paddle.set_device("cpu")
         self.train_model('bigru_net')
 
 
