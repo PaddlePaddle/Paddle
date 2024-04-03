@@ -32,6 +32,17 @@ class TestCrossOp(OpTest):
             'X': np.random.random(self.shape).astype(self.dtype),
             'Y': np.random.random(self.shape).astype(self.dtype),
         }
+        if self.dtype is np.complex64 or self.dtype is np.complex128:
+            self.inputs = {
+                'X': (
+                    np.random.random(self.shape)
+                    + 1j * np.random.random(self.shape)
+                ).astype(self.dtype),
+                'Y': (
+                    np.random.random(self.shape)
+                    + 1j * np.random.random(self.shape)
+                ).astype(self.dtype),
+            }
         self.init_output()
 
     def initTestCase(self):
@@ -73,6 +84,30 @@ class TestCrossFP16Op(TestCrossOp):
     def initTestCase(self):
         self.shape = (2048, 3)
         self.dtype = np.float16
+
+    def init_output(self):
+        z_list = []
+        for i in range(2048):
+            z_list.append(np.cross(self.inputs['X'][i], self.inputs['Y'][i]))
+        self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
+
+
+class TestCrossComplex64Op(TestCrossOp):
+    def initTestCase(self):
+        self.shape = (2048, 3)
+        self.dtype = np.complex64
+
+    def init_output(self):
+        z_list = []
+        for i in range(2048):
+            z_list.append(np.cross(self.inputs['X'][i], self.inputs['Y'][i]))
+        self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
+
+
+class TestCrossComplex128Op(TestCrossOp):
+    def initTestCase(self):
+        self.shape = (2048, 3)
+        self.dtype = np.complex128
 
     def init_output(self):
         z_list = []
