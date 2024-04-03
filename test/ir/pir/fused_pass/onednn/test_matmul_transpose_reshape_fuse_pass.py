@@ -22,10 +22,6 @@ import paddle
 paddle.enable_static()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
 class TestMatmulTransposeReshapeFusePattern(PassTest):
     r'''
     x       y
@@ -84,10 +80,6 @@ class TestMatmulTransposeReshapeFusePattern(PassTest):
         self.check_pass_correct()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
 class TestMatmulTransposeReshapeAddFusePattern(PassTest):
     r'''
     x       y
