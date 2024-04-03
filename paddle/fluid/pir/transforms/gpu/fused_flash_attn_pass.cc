@@ -98,6 +98,11 @@ class FlashAttnPatternQscale : public paddle::drr::DrrPatternBase {
     // Constraints
     src.RequireNativeCall(
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
+          auto q_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("q"));
+          if (!q_dtype.isa<pir::Float16Type>() &&
+              !q_dtype.isa<pir::BFloat16Type>()) {
+            return false;
+          }
           // softmax
           const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
           if (softmax_axis != -1 && softmax_axis != 3) return false;
@@ -237,6 +242,11 @@ class FlashAttnPatternOutscale : public paddle::drr::DrrPatternBase {
     // Constraints
     src.RequireNativeCall(
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
+          auto q_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("q"));
+          if (!q_dtype.isa<pir::Float16Type>() &&
+              !q_dtype.isa<pir::BFloat16Type>()) {
+            return false;
+          }
           // softmax
           const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
           if (softmax_axis != -1 && softmax_axis != 3) return false;
@@ -381,6 +391,11 @@ class TransposeSliceFlashAttnPattern : public paddle::drr::DrrPatternBase {
     // Constraints
     src.RequireNativeCall(
         [](const paddle::drr::MatchContext &match_ctx) -> bool {
+          auto q_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("q"));
+          if (!q_dtype.isa<pir::Float16Type>() &&
+              !q_dtype.isa<pir::BFloat16Type>()) {
+            return false;
+          }
           // softmax
           const auto &softmax_axis = match_ctx.Attr<int>("softmax_axis");
           if (softmax_axis != -1 && softmax_axis != 3) return false;
