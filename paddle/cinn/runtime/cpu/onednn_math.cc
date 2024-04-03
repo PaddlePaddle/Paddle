@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/runtime/cpu/mkldnn_math.h"
+#include "paddle/cinn/runtime/cpu/onednn_math.h"
 
 #include <vector>
 
@@ -25,7 +25,7 @@ using dnnl::memory;
 using tag = memory::format_tag;
 using dt = memory::data_type;
 
-void cinn_cpu_mkldnn_softmax_fp32(int batch,
+void cinn_cpu_onednn_softmax_fp32(int batch,
                                   int channel,
                                   int h,
                                   int w,
@@ -75,7 +75,7 @@ void cinn_cpu_mkldnn_softmax_fp32(int batch,
   engine_stream.wait();
 }
 
-void cinn_cpu_mkldnn_conv2d_nchw_fp32(int batch_size,
+void cinn_cpu_onednn_conv2d_nchw_fp32(int batch_size,
                                       int c_in,
                                       int input_h,
                                       int input_w,
@@ -157,7 +157,7 @@ void cinn_cpu_mkldnn_conv2d_nchw_fp32(int batch_size,
   cpu_stream.wait();
 }
 
-CINN_REGISTER_HELPER(cinn_cpu_mkldnn) {
+CINN_REGISTER_HELPER(cinn_cpu_onednn) {
   using namespace cinn;  // NOLINT
   using backends::FunctionProto;
   auto host_target = cinn::common::DefaultHostTarget();
@@ -195,7 +195,7 @@ CINN_REGISTER_HELPER(cinn_cpu_mkldnn) {
         return shape;
       };
 
-  REGISTER_EXTERN_FUNC_HELPER(cinn_cpu_mkldnn_conv2d_nchw_fp32, host_target)
+  REGISTER_EXTERN_FUNC_HELPER(cinn_cpu_onednn_conv2d_nchw_fp32, host_target)
       .SetRetType<void>()
       .AddInputType<int>()              // batch_size
       .AddInputType<int>()              // c_in
@@ -217,7 +217,7 @@ CINN_REGISTER_HELPER(cinn_cpu_mkldnn) {
       .SetShapeInference(inference_shape_conv2d_nchw)
       .End();
 
-  REGISTER_EXTERN_FUNC_HELPER(cinn_cpu_mkldnn_softmax_fp32, host_target)
+  REGISTER_EXTERN_FUNC_HELPER(cinn_cpu_onednn_softmax_fp32, host_target)
       .SetRetType<void>()
       .AddInputType<int>()              // batch_size
       .AddInputType<int>()              // c_in
