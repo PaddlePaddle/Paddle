@@ -89,8 +89,8 @@ class IR_API ShapeConstraintIRAnalysis {
                                     const std::vector<int>& lhs_dim_idxs) const;
 
  private:
-  void SubstituteDimExpr(const symbol::DimExpr& lhs,
-                         const symbol::DimExpr& rhs);
+  void SubstituteDimExpr(const symbol::DimExpr& origin,
+                         const symbol::DimExpr& substituted);
 
  private:
   ModuleOp m_;

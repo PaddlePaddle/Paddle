@@ -17,6 +17,25 @@
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 namespace symbol {
+
+namespace {
+bool CanSubstituteInConstraint(const DimExpr& lhs, const DimExpr& rhs) {
+  int lhs_priority = GetDimExprPriority(lhs);
+  int rhs_priority = GetDimExprPriority(rhs);
+  if (lhs_priority >= 2 || rhs_priority >= 2) {
+    return 0;
+  }
+}
+
+bool CanSubstituteInShapeAnalysis(const DimExpr& lhs, const DimExpr& rhs) {
+  int lhs_priority = GetDimExprPriority(lhs);
+  int rhs_priority = GetDimExprPriority(rhs);
+  if (lhs_priority >= 2 || rhs_priority >= 2) {
+    return 0;
+  }
+}
+}  // namespace
+
 void ConstraintsManager::AddEqCstr(const DimExpr& lhs, const DimExpr& rhs) {
   if (lhs == rhs) {
     return;
@@ -25,14 +44,19 @@ void ConstraintsManager::AddEqCstr(const DimExpr& lhs, const DimExpr& rhs) {
   VLOG(8) << "AddEqCstr the constraint: " << lhs << " == " << rhs;
 
   auto simplify_result = SimpliyEqualCstr(lhs, rhs);
-  if (!simplify_result.has_value()) {
-    return;
-  }
-  AddEqCstr(simplify_result->first, simplify_result->second);
-  SubstituteDimExprInConstraint(simplify_result->first,
-                                simplify_result->second);
-  if (equal_callback_func_) {
-    equal_callback_func_(simplify_result->first, simplify_result->second);
+  if (simplify_result.has_value()) {
+    AddEqCstr(simplify_result->first, simplify_result->second);
+  } else {
+    if (CanSubstituteInConstraint(simplify_result->first,
+                                  simplify_result->second)) {
+      SubstituteDimExprInConstraint(simplify_result->first,
+                                    simplify_result->second);
+    }
+    if (equal_callback_func_ &&
+        CanSubstituteInShapeAnalysis(simplify_result->first,
+                                     simplify_result->second)) {
+      equal_callback_func_(simplify_result->first, simplify_result->second);
+    }
   }
 }
 
@@ -75,6 +99,24 @@ void ConstraintsManager::AddGTOneCstr(const DimExpr& dim_expr) {
   }
 }
 
+namespace {
+
+bool IsDimExprGreaterThanOne(const DimExpr& dim_expr) {
+  if (std::holds_alternative<std::int64_t>(dim_expr)) {
+    if (std::get<std::int64_t>(dim_expr) > 1) return true;
+  } else if (std::holds_alternative<Add<DimExpr>>(dim_expr)) {
+    const auto& sub_dim_exprs = *std::get<Add<DimExpr>>(dim_expr).operands;
+    for (auto sub_dim_expr : sub_dim_exprs) {
+      if (std::holds_alternative<std::int64_t>(sub_dim_expr)) {
+        if (std::get<std::int64_t>(sub_dim_expr) > 1) return true;
+      }
+    }
+  }
+  return false;
+}
+
+}  // namespace
+
 bool ConstraintsManager::IsDimExprGTOne(const DimExpr& dim_expr) {
   return gtones_.count(dim_expr) || IsDimExprGreaterThanOne(dim_expr);
 }
@@ -106,31 +148,6 @@ void ConstraintsManager::SetEqualCallbackFunc(
 
 namespace {
 
-int GetDimExprPriority(const symbol::DimExpr& dim_expr) {
-  return std::visit(
-      symbol::Overloaded{
-          [&](std::int64_t) { return 0; },
-          [&](const std::string&) { return 1; },
-          [&](const symbol::Negative<symbol::DimExpr>&) { return 2; },
-          [&](const symbol::Reciprocal<symbol::DimExpr>&) { return 2; },
-          [&](const symbol::Add<symbol::DimExpr>&) { return 2; },
-          [&](const symbol::Mul<symbol::DimExpr>&) { return 2; },
-          [&](const symbol::Max<symbol::DimExpr>&) { return 2; },
-          [&](const symbol::Min<symbol::DimExpr>&) { return 2; },
-          [&](const symbol::Broadcast<symbol::DimExpr>&) { return 2; },
-      },
-      dim_expr.variant());
-}
-
-/**
- * @brief Compare the two dim exprs
- *
- * @param lhs The left-hand side dim expr
- * @param rhs The right-hand side dim expr
- *
- * @return -1 if lhs is less than rhs, 1 if lhs is greater than rhs, and 0 if
- * they are equal
- */
 int CompareDimExprPriority(const symbol::DimExpr& lhs,
                            const symbol::DimExpr& rhs) {
   int lhs_priority = GetDimExprPriority(lhs);
@@ -157,17 +174,11 @@ int CompareDimExprPriority(const symbol::DimExpr& lhs,
 
 }  // namespace
 
-void ConstraintsManager::SubstituteDimExprInConstraint(const DimExpr& lhs,
-                                                       const DimExpr& rhs) {
-  std::unordered_map<symbol::DimExpr, symbol::DimExpr> substitution_pattern;
-  int compare_lhs_to_rhs = CompareDimExprPriority(lhs, rhs);
-  if (compare_lhs_to_rhs == 0) {
-    return;
-  } else if (compare_lhs_to_rhs < 0) {
-    substitution_pattern[rhs] = lhs;
-  } else {
-    substitution_pattern[lhs] = rhs;
-  }
+void ConstraintsManager::SubstituteDimExprInConstraint(
+    const DimExpr& origin, const DimExpr& substituted) {
+  std::unordered_map<DimExpr, DimExpr> substitution_pattern;
+  substitution_pattern[origin] = substituted;
+
   auto equals_parents = equals_.GetMap();
   for (auto it = equals_parents.begin(); it != equals_parents.end();) {
     DimExpr key = SubstituteDimExpr(it->first, substitution_pattern);

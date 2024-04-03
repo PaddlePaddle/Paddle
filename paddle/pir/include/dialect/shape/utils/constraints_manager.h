@@ -35,8 +35,7 @@ class IR_API ConstraintsManager {
 
   void PrintDimExprClusters(std::stringstream& ss);
 
-  using EqualCallbackFunc =
-      std::function<void(const symbol::DimExpr&, const symbol::DimExpr&)>;
+  using EqualCallbackFunc = std::function<void(const DimExpr&, const DimExpr&)>;
   void SetEqualCallbackFunc(EqualCallbackFunc equal_callback_func);
 
  private:
