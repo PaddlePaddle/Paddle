@@ -40,11 +40,11 @@ int getSMVersion() {
 class FusedWeightOnlyLinearWithBiasPattern
     : public paddle::drr::DrrPatternBase {
  private:
-  bool reverse_;
+  bool reverse_add_;
 
  public:
-  explicit FusedWeightOnlyLinearWithBiasPattern(bool reverse)
-      : reverse_(reverse) {}
+  explicit FusedWeightOnlyLinearWithBiasPattern(bool reverse_add)
+      : reverse_add_(reverse_add) {}
 
   std::string name() const override {
     return "FusedWeightOnlyLinearWithBiasPattern";
@@ -65,8 +65,8 @@ class FusedWeightOnlyLinearWithBiasPattern
     const auto &add = src.Op(paddle::dialect::AddOp::name());
 
     src.Tensor("add_out") =
-        reverse_ ? add(src.Tensor("matmul_out"), src.Tensor("bias"))
-                 : add(src.Tensor("bias"), src.Tensor("matmul_out"));
+        reverse_add_ ? add(src.Tensor("matmul_out"), src.Tensor("bias"))
+                     : add(src.Tensor("bias"), src.Tensor("matmul_out"));
 
     //
     // Constraints.
@@ -80,21 +80,21 @@ class FusedWeightOnlyLinearWithBiasPattern
           bool matmul_trans_y = match_ctx.Attr<bool>("matmul_transpose_y");
           if (matmul_trans_x || matmul_trans_y) return false;
 
+          auto w_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w"));
+          if (!w_dtype.isa<pir::Float16Type>() &&
+              !w_dtype.isa<pir::BFloat16Type>()) {
+            return false;
+          }
+
           auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
           auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
           auto bias_dims = pir::GetShapeFromValue(match_ctx.Tensor("bias"));
           if (!(w_dims.size() == 2 && x_dims.size() >= 2 &&
-                bias_dims.size() == x_dims.size())) {
+                bias_dims.size() == 1)) {
             return false;
           }
 
           if (w_dims.at(0) % 64 != 0 || w_dims.at(1) % 16 != 0) return false;
-
-          auto w_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w"));
-          if (!w_dtype.isa<pir::Float16Type>() &&
-              !w_dtype.isa<pir::BFloat16Type>())
-            return false;
-
           if (x_dims.at(x_dims.size() - 1) != w_dims.at(0)) return false;
 
           return true;
