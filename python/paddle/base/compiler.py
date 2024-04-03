@@ -12,19 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import warnings
 
 from . import core, framework
 from .framework import cpu_places, cuda_places, xpu_places
 
 __all__ = []
 
-ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
-BuildStrategy = core.ParallelExecutor.BuildStrategy
+ExecutionStrategy = None
+BuildStrategy = None
 InferNativeConfig = core.NativeConfig
 InferAnalysisConfig = core.AnalysisConfig
-DeviceType = core.DeviceType
 
 
 def _place_obj(place):
@@ -186,137 +183,6 @@ class CompiledProgram:
             "Subclass of CompiledProgram should implement _with_distributed method."
         )
 
-    def _compile_data_parallel(self, places, use_device, scope=None):
-        if self._share_vars_from:
-            if scope:
-                sys.stderr.write("share_vars_from is set, scope is ignored.\n")
-            if self._share_vars_from._executor is None:
-                raise ValueError(
-                    "The shared Program is not compiled and executed, so there is no "
-                    "variables to share."
-                )
-            self._local_scopes = self._share_vars_from._executor.local_scopes()
-        else:
-            assert scope is not None, ""
-            self._local_scopes = []
-
-        assert isinstance(
-            places, (list, tuple)
-        ), "Currently, The places type can only be list or tuple, but the input type is {}.".format(
-            type(places)
-        )
-
-        if self._build_strategy is None:
-            self._build_strategy = BuildStrategy()
-        self._build_strategy.is_distribution = _is_pserver_mode(self._program)
-
-        if self._exec_strategy is None:
-            self._exec_strategy = ExecutionStrategy()
-        self._exec_strategy._use_device = use_device
-
-        if self._exec_strategy.num_threads == 0:
-            if self._exec_strategy._use_device == DeviceType.CUDA:
-                # Experiments on se-resnext shows that too many threads hurt
-                # performance. Worth tunning for other models in the future.
-                self._exec_strategy.num_threads = len(places) * 4
-            elif self._exec_strategy._use_device == DeviceType.XPU:
-                # Currently only single thread is supported in Kunlun XPU.
-                self._exec_strategy.num_threads = 1
-            else:
-                self._exec_strategy.num_threads = len(places) * 2
-
-        if (
-            "FLAGS_use_cinn" in core.globals()
-            and core.globals()["FLAGS_use_cinn"]
-            and self._exec_strategy.num_threads != 1
-        ):
-            warnings.warn(
-                "At present, when CINN is turned on, each process can "
-                "only contain one thread, so reset the number of threads to 1 here."
-            )
-            self._exec_strategy.num_threads = 1
-
-        # TODO(wuyi): trainer endpoints should be passed in through
-        # build_strategy, not program.xxx.
-        # TODO(gongwb): let user to set them once.
-        if (
-            self._program
-            and self._build_strategy.num_trainers > 1
-            and self._program._trainers_endpoints
-        ):
-            tps = self._program._trainers_endpoints
-
-            assert self._build_strategy.num_trainers == len(
-                tps
-            ), "The trainer numbers is not equal to endpoint numbers."
-            self._build_strategy.trainers_endpoints = tps
-
-        if self._program:
-            self._build_strategy.nccl_comm_num = self._program._nccl_comm_num
-            self._build_strategy.use_hierarchical_allreduce = (
-                self._program._use_hierarchical_allreduce
-            )
-            self._build_strategy.hierarchical_allreduce_inter_nranks = (
-                self._program._hierarchical_allreduce_inter_nranks
-            )
-
-        if self._build_strategy.sync_batch_norm:
-            self._build_strategy.enable_sequential_execution = True
-
-        if self._program is not None and self._program._enable_dgc:
-            assert (
-                self._exec_strategy._use_device == DeviceType.CUDA
-            ), "DGC only used under CUDA environment."
-            assert (
-                self._build_strategy.num_trainers * len(places) > 1
-            ), "DGC is not available for single card training."
-            assert (
-                self._build_strategy.reduce_strategy
-                == BuildStrategy.ReduceStrategy.AllReduce
-            ), "DGC \
-                only can be used for AllReduce BuildStrategy."
-
-            # DGC doesn't support fuse for now, close fuse.
-            self._build_strategy.fuse_all_reduce_ops = False
-
-        self._persistable_vars = []
-        for node in self._graph.nodes():
-            if (
-                node.is_var()
-                and node.var() is not None
-                and node.var().persistable()
-                and node.var().type() != core.VarDesc.VarType.RAW
-            ):
-                name = node.name()
-                if (
-                    self._program is not None
-                    and _should_broadcast_or_not_exists(self._program, name)
-                ):
-                    self._persistable_vars.append(node.name())
-
-        places = list(map(_place_obj, places))
-
-        # ParallelExecutor would broadcast all the parameters during initializing.
-        # The parameters of each process should be in the same ordered for the data-parallelism
-        # distributed training to keep the broadcast correct.
-        self._persistable_vars = list(set(self._persistable_vars))
-        self._persistable_vars.sort()
-
-        if core.is_cuda_graph_capturing():
-            raise RuntimeError(
-                "CUDA Graph is not allowed to capture when running the first batch."
-            )
-        return core.ParallelExecutor(
-            places,
-            self._persistable_vars,
-            '',
-            self._scope,
-            self._local_scopes,
-            self._exec_strategy,
-            self._build_strategy,
-            self._graph,
-        )
-
     def _compile_inference(self):
         return core.create_paddle_predictor(self._infer_config)
 
@@ -346,16 +212,6 @@ class CompiledProgram:
             self._executor = self._compile_inference()
         else:
             self._places = [self._place]
-
-            if isinstance(self._place, core.CUDAPlace):
-                use_device = DeviceType.CUDA
-            elif isinstance(self._place, core.XPUPlace):
-                use_device = DeviceType.XPU
-            else:
-                use_device = DeviceType.CPU
-            self._executor = self._compile_data_parallel(
-                use_device=use_device, scope=self._scope, places=self._places
-            )
         return self
 
     def _get_places(self, place, place_list):

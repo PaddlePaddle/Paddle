@@ -222,7 +222,7 @@ class DistributedStrategy(base.BuildStrategy):
         self.use_amp = False  # use mixed precision optimizer
         self.amp_loss_scaling = 2**15
 
-        self.exec_strategy = base.ExecutionStrategy()
+        self.exec_strategy = None
 
         # configurations below are used for unit test
         self._ut4grad_allreduce = False

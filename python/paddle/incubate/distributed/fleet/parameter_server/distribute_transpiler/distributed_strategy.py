@@ -16,7 +16,6 @@ __all__ = []
 
 import os
 
-from paddle import base
 from paddle.distributed.transpiler.distribute_transpiler import (
     DistributeTranspilerConfig,
     ServerRuntimeConfig,
@@ -171,14 +170,9 @@ class DistributedStrategy:
         self._server_runtime_config = ServerRuntimeConfig()
         num_threads = int(os.getenv("CPU_NUM", "1"))
 
-        self._execute_strategy = base.ExecutionStrategy()
-        self._build_strategy = base.BuildStrategy()
+        self._execute_strategy = None
+        self._build_strategy = None
 
-        self._execute_strategy.num_threads = num_threads
-        if num_threads > 1:
-            self._build_strategy.reduce_strategy = (
-                base.BuildStrategy.ReduceStrategy.Reduce
-            )
         self.debug_opt = None
         self.use_ps_gpu = False
 
@@ -285,9 +279,7 @@ class DistributedStrategy:
         return self._execute_strategy
 
     def set_execute_strategy(self, config):
-        if isinstance(config, base.ExecutionStrategy):
-            self._execute_strategy = config
-        elif isinstance(config, dict):
+        if isinstance(config, dict):
             for key in config:
                 if hasattr(self._execute_strategy, key):
                     setattr(self._execute_strategy, key, config[key])
@@ -310,9 +302,7 @@ class DistributedStrategy:
         return self._build_strategy
 
     def set_build_strategy(self, config):
-        if isinstance(config, base.BuildStrategy):
-            self._build_strategy = config
-        elif isinstance(config, dict):
+        if isinstance(config, dict):
             for key in config:
                 if hasattr(self._build_strategy, key):
                     setattr(self._build_strategy, key, config[key])

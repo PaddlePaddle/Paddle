@@ -18,7 +18,6 @@ import copy
 import google.protobuf
 import google.protobuf.text_format
 
-import paddle
 from paddle.base.framework import _global_flags
 from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.distributed.fleet.proto import distributed_strategy_pb2
@@ -280,14 +279,7 @@ class DistributedStrategy:
                 >>> strategy.execution_strategy = exe_strategy
 
         """
-        execution_strategy = paddle.static.ExecutionStrategy()
-        fields = self.strategy.execution_strategy.DESCRIPTOR.fields
-        for f in fields:
-            setattr(
-                execution_strategy,
-                f.name,
-                getattr(self.strategy.execution_strategy, f.name),
-            )
+        execution_strategy = None
         return execution_strategy
 
     @execution_strategy.setter
@@ -328,13 +320,7 @@ class DistributedStrategy:
 
         """
 
-        build_strategy = paddle.static.BuildStrategy()
-        fields = self.strategy.build_strategy.DESCRIPTOR.fields
-        for f in fields:
-            value = getattr(self.strategy.build_strategy, f.name)
-            if f.name == 'reduce_strategy':
-                value = paddle.static.BuildStrategy.ReduceStrategy(value)
-            setattr(build_strategy, f.name, value)
+        build_strategy = None
         return build_strategy
 
     @build_strategy.setter

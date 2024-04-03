@@ -20,7 +20,6 @@ import paddle
 from paddle import _legacy_C_ops
 from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.base import backward, core, framework, program_guard
-from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.base.framework import _apply_pass, get_flags
@@ -177,8 +176,7 @@ class PartialProgramLayer:
         self._outputs = NestSequence(outputs, need_check=True)
         self._params = parameters if parameters is not None else []
 
-        self._build_strategy = kwargs.get('build_strategy', BuildStrategy())
-        assert isinstance(self._build_strategy, BuildStrategy)
+        self._build_strategy = kwargs.get('build_strategy', None)
 
         self._origin_main_program = self._verify_program(main_program)
         with paddle.base.framework._dygraph_guard(paddle.base.dygraph.Tracer()):
@@ -444,9 +442,6 @@ class PartialProgramLayer:
     @LazyInitialized
     def _train_program_id(self):
         program_id = paddle.utils._hash_with_id(self._train_program, self)
-        core._set_cached_executor_build_strategy(
-            program_id, self._build_strategy
-        )
         return program_id
 
     @LazyInitialized
@@ -456,9 +451,6 @@ class PartialProgramLayer:
     @LazyInitialized
     def _train_amp_program_id(self):
         program_id = paddle.utils._hash_with_id(self._train_amp_program, self)
-        core._set_cached_executor_build_strategy(
-            program_id, self._build_strategy
-        )
         return program_id
 
     @LazyInitialized
@@ -469,9 +461,6 @@ class PartialProgramLayer:
     def _train_pure_fp16_program_id(self):
         program_id = paddle.utils._hash_with_id(
             self._train_pure_fp16_program, self
-        )
-        core._set_cached_executor_build_strategy(
-            program_id, self._build_strategy
         )
         return program_id
 

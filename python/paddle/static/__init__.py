@@ -16,9 +16,7 @@
 from ..base import Scope  # noqa: F401
 from ..base.backward import append_backward, gradients
 from ..base.compiler import (
-    BuildStrategy,
     CompiledProgram,
-    ExecutionStrategy,
     IpuCompiledProgram,
     IpuStrategy,
 )
@@ -75,14 +73,12 @@ __all__ = [
     'Executor',
     'global_scope',
     'scope_guard',
-    'BuildStrategy',
     'CompiledProgram',
     'ipu_shard_guard',
     'IpuCompiledProgram',
     'IpuStrategy',
     'Print',
     'py_func',
-    'ExecutionStrategy',
     'name_scope',
     'program_guard',
     'WeightNormParamAttr',

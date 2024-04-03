@@ -56,9 +56,7 @@ from .backward import (  # noqa: F401
     gradients,
 )
 from .compiler import (  # noqa: F401
-    BuildStrategy,
     CompiledProgram,
-    ExecutionStrategy,
     IpuCompiledProgram,
     IpuStrategy,
 )
