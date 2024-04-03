@@ -1350,6 +1350,19 @@ PHI_DEFINE_EXPORTED_bool(use_shm_cache,
                          "Use shm cache in mmap_allocator.");
 
 /**
+ * mmap_allocator related FLAG
+ * Name: dataloader_use_file_descriptor
+ * Since Version: 2.6.2
+ * Value Range: bool, default=true
+ * Example:
+ * Note: . If True, mmap_allocator will use file descripor to open shared memory
+ * operation.
+ */
+PHI_DEFINE_EXPORTED_bool(dataloader_use_file_descriptor,
+                         true,
+                         "Use file descriptor in mmap_allocator.");
+
+/**
  * Tensor operants related FLAG
  * Name: tensor_operants_mode
  * Since Version: 2.5.0
