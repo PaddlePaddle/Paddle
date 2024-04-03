@@ -570,7 +570,7 @@ class TestTransposeSliceFlashAttnPattern(PassTest):
 
            transpose
                |
-         ------+------     
+         ------+------
          |     |     |
        slice slice slice
          |     |     |
@@ -597,8 +597,7 @@ class TestTransposeSliceFlashAttnPattern(PassTest):
                             ):
                                 x = paddle.static.data(
                                     name='x',
-                                    shape=[bs, seq_len, 3,
-                                           num_heads, head_dim],
+                                    shape=[bs, seq_len, 3, num_heads, head_dim],
                                     dtype='float16',
                                 )
                                 mask_shape = (bs, num_heads, seq_len, seq_len)
