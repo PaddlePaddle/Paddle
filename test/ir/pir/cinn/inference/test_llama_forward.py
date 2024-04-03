@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import math
-import os
 import sys
 import unittest
 from os.path import dirname
@@ -21,22 +20,11 @@ from typing import Optional, Tuple
 
 import numpy as np
 
-os.environ['FLAGS_cinn_new_group_scheduler'] = '1'
-os.environ['FLAGS_group_schedule_tiling_first'] = '1'
-os.environ['FLAGS_prim_all'] = 'true'
-os.environ['FLAGS_prim_enable_dynamic'] = 'true'
-os.environ['FLAGS_print_ir'] = '1'
-os.environ['FLAGS_enable_pir_api'] = '1'
-os.environ['FLAGS_use_cinn'] = '1'
-os.environ['FLAGS_deny_cinn_ops'] = 'gather;'
-os.environ['FLAGS_cinn_bucket_compile'] = '1'
-os.environ['FLAGS_cinn_new_cluster_op_method'] = '1'
-
-
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
 from paddle.incubate.nn.functional import swiglu
+from paddle.static import InputSpec
 
 sys.path.append(dirname(dirname(__file__)))
 
@@ -676,17 +664,23 @@ class TestLlamaModel(unittest.TestCase):
     def eval(self, use_cinn):
         paddle.seed(2024)
         net = LlamaModel(self.config)
-        net = utils.apply_to_static(net, use_cinn, None)
+        input_spec = [
+            InputSpec(shape=[None, None], dtype='int64'),  # input_ids
+            InputSpec(shape=[None, None], dtype='int64'),  # position_ids
+            InputSpec(shape=[None, None], dtype='int64'),  # attention_mask
+        ]
+        net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
         out = net(self.input_ids, self.position_ids, self.attention_mask)
         return out
 
     def test_eval(self):
         dy_out = self.eval(use_cinn=False)
-        cinn_out = self.eval(use_cinn=True)
-        np.testing.assert_allclose(
-            cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
-        )
+        if utils.unittest_use_cinn():
+            cinn_out = self.eval(use_cinn=True)
+            np.testing.assert_allclose(
+                cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+            )
 
 
 if __name__ == '__main__':
