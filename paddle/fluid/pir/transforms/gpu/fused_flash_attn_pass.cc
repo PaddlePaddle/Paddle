@@ -368,7 +368,7 @@ class TransposeSliceFlashAttnPattern : public paddle::drr::DrrPatternBase {
     // softmax
     const auto &softmax =
         src.Op("pd_op.softmax", {{"axis", src.Attr("softmax_axis")}});
-    src.Tensor("softmax_out") = softmax(src.Tensor("softmax_cast1_out"));
+    src.Tensor("softmax_out") = softmax(src.Tensor("mask_add_out"));
     // o
     const auto &context_matmul =
         src.Op("pd_op.matmul",
