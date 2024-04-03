@@ -47,6 +47,15 @@ void ConstraintsManager::AddEqCstr(const DimExpr& lhs, const DimExpr& rhs) {
   if (simplify_result.has_value()) {
     AddEqCstr(simplify_result->first, simplify_result->second);
   } else {
+    DimExpr origin, subsutituted;
+    if (CompareDimExprPriority(simplify_result->first,
+                               simplify_result->second) > 0) {
+      origin = simplify_result->first;
+      subsutituted = simplify_result->second;
+    } else {
+      origin = simplify_result->second;
+      subsutituted = simplify_result->first;
+    }
     if (CanSubstituteInConstraint(simplify_result->first,
                                   simplify_result->second)) {
       SubstituteDimExprInConstraint(simplify_result->first,
@@ -145,34 +154,6 @@ void ConstraintsManager::SetEqualCallbackFunc(
     EqualCallbackFunc equal_callback_func) {
   equal_callback_func_ = equal_callback_func;
 }
-
-namespace {
-
-int CompareDimExprPriority(const symbol::DimExpr& lhs,
-                           const symbol::DimExpr& rhs) {
-  int lhs_priority = GetDimExprPriority(lhs);
-  int rhs_priority = GetDimExprPriority(rhs);
-  if (lhs_priority >= 2 || rhs_priority >= 2) {
-    return 0;
-  }
-  if (lhs_priority != rhs_priority) {
-    return lhs_priority < rhs_priority ? -1 : 1;
-  }
-
-  // if the priority is same, we compare the string value to find the smallest
-  // one
-  if (lhs.isa<std::string>()) {
-    const auto& lhs_str = lhs.dyn_cast<std::string>();
-    const auto& rhs_str = rhs.dyn_cast<std::string>();
-    if (lhs_str.size() != rhs_str.size()) {
-      return lhs_str.size() < rhs_str.size() ? -1 : 1;
-    }
-    return lhs_str.compare(rhs_str);
-  }
-  return 0;
-}
-
-}  // namespace
 
 void ConstraintsManager::SubstituteDimExprInConstraint(
     const DimExpr& origin, const DimExpr& substituted) {

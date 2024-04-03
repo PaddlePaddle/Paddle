@@ -45,9 +45,14 @@ class IR_API ConstraintsManager {
 
  private:
   EqualCallbackFunc equal_callback_func_ = nullptr;
-  std::vector<Broadcastable<DimExpr>> broadcastables_;
-  std::unordered_set<DimExpr> gtones_;
-  common::UnionFindSet<DimExpr> equals_;
+
+  using EqualConstraints = common::UnionFindSet<DimExpr>;
+  using BroadcastableConstraints = std::vector<Broadcastable<DimExpr>>;
+  using GTOneConstraints = std::unordered_set<DimExpr>;
+
+  EqualConstraints equals_;
+  BroadcastableConstraints broadcastables_;
+  GTOneConstraints gtones_;
 };
 
 }  // namespace symbol
