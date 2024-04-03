@@ -22,7 +22,6 @@
 #include "paddle/fluid/framework/tensor_ref_array.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
-#include "paddle/fluid/operators/run_program_op.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -33,9 +32,14 @@
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
 
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
 COMMON_DECLARE_bool(enable_pir_with_pt_in_dy2st);
 COMMON_DECLARE_bool(enable_pir_in_executor);
 COMMON_DECLARE_bool(print_ir);
+COMMON_DECLARE_bool(use_mkldnn);
 
 namespace details {
 using Tensor = paddle::Tensor;
