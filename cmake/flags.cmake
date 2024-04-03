@@ -167,6 +167,7 @@ if(NOT WIN32)
   if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(COMMON_FLAGS
         ${COMMON_FLAGS}
+        -Wno-error=unknown-warning-option # For some unknown warning options in lower version clang
         -Wno-error=unused-private-field
         -Wno-error=unused-const-variable
         -Wno-error=deprecated-copy-with-user-provided-copy # For three/five/zeros rule, clang

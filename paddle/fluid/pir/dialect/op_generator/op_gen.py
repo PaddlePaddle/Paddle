@@ -21,6 +21,7 @@ from distutils.util import strtobool
 
 import yaml
 from decomp_interface_gen_op_list import decomp_interface_declare_gen_op_list
+from gen_utils import to_pascal_case
 from infer_symbolic_shape_gen import gen_infer_symbolic_shape_str
 from op_all_func_gen import gen_op_all_func
 from op_build_gen import gen_build_func_str, gen_build_func_str_by_invoke
@@ -32,7 +33,6 @@ from op_kerneltype_gen import gen_kernel_type_for_var_str
 from op_verify_gen import gen_verify_func_str
 from ops_onednn_extra_parser import parse_data_format_tensors, parse_extra_args
 from parse_kernel_key_gen import gen_parse_kernel_key_str
-from utils import to_pascal_case
 from vjp_interface_black_list import vjp_interface_black_list
 
 # import from paddle/fluid/primitive/code_gen/gen.py
@@ -1451,10 +1451,8 @@ def AutoCodeGen(
                         build_args_with_muta_attr_not_input_for_declare,
                         build_func_with_muta_attr_not_input,
                     ) = gen_build_func_str(
-                        op_class_name,
-                        op_input_name_list,
-                        op_input_type_list,
-                        op_input_optional_list,
+                        args,
+                        op_info,
                         op_attribute_name_list,
                         op_attribute_type_list,
                         op_attribute_build_arg_type_list,
@@ -1465,12 +1463,6 @@ def AutoCodeGen(
                         op_non_mutable_attribute_type_list,
                         op_non_mutable_attribute_build_arg_type_list,
                         op_non_mutable_attribute_default_value_list,
-                        op_output_name_list,
-                        op_output_type_list,
-                        op_output_size_list,
-                        op_output_optional_list,
-                        op_infer_meta_map,
-                        op_inplace_map,
                         muta_attr_is_input=False,
                     )
                     if len(op_attribute_name_list) > 0:
@@ -1478,10 +1470,8 @@ def AutoCodeGen(
                             build_args_with_attr_is_map_for_declare,
                             build_func_with_attr_is_map,
                         ) = gen_build_func_str(
-                            op_class_name,
-                            op_input_name_list,
-                            op_input_type_list,
-                            op_input_optional_list,
+                            args,
+                            op_info,
                             op_attribute_name_list,
                             op_attribute_type_list,
                             op_attribute_build_arg_type_list,
@@ -1492,12 +1482,6 @@ def AutoCodeGen(
                             op_non_mutable_attribute_type_list,
                             op_non_mutable_attribute_build_arg_type_list,
                             op_non_mutable_attribute_default_value_list,
-                            op_output_name_list,
-                            op_output_type_list,
-                            op_output_size_list,
-                            op_output_optional_list,
-                            op_infer_meta_map,
-                            op_inplace_map,
                             muta_attr_is_input=False,
                             attr_args_is_map=True,
                         )
@@ -1508,10 +1492,8 @@ def AutoCodeGen(
                             build_args_with_muta_attr_is_input_for_declare,
                             build_func_with_muta_attr_is_input,
                         ) = gen_build_func_str(
-                            op_class_name,
-                            op_input_name_list,
-                            op_input_type_list,
-                            op_input_optional_list,
+                            args,
+                            op_info,
                             op_attribute_name_list,
                             op_attribute_type_list,
                             op_attribute_build_arg_type_list,
@@ -1522,18 +1504,10 @@ def AutoCodeGen(
                             op_non_mutable_attribute_type_list,
                             op_non_mutable_attribute_build_arg_type_list,
                             op_non_mutable_attribute_default_value_list,
-                            op_output_name_list,
-                            op_output_type_list,
-                            op_output_size_list,
-                            op_output_optional_list,
-                            op_infer_meta_map,
-                            op_inplace_map,
                             muta_attr_is_input=True,
                         )
 
-                        build_mutable_attr_is_input = "static void Build({build_args});".format(
-                            build_args=build_args_with_muta_attr_is_input_for_declare
-                        )
+                        build_mutable_attr_is_input = f"static void Build({build_args_with_muta_attr_is_input_for_declare});"
                 if (op_invoke_map is not None) and (
                     op_invoke_map['func'] in op_info_items
                 ):

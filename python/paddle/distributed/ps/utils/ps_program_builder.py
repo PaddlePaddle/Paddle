@@ -80,9 +80,7 @@ class PsProgramBuilder:
             self._build_trainer_programs()
             base.framework.switch_startup_program(self.cloned_startup)
             print(
-                "paddle.static.default_startup_program: {}".format(
-                    paddle.static.default_startup_program
-                )
+                f"paddle.static.default_startup_program: {paddle.static.default_startup_program}"
             )
             # print("ps_program_build before =", id(self.loss.block.program))
             self._build_trainer_desc()
@@ -459,9 +457,7 @@ class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
             base.framework.switch_startup_program(self.cloned_startup)
             paddle.framework.switch_main_program(self.cloned_main)
             print(
-                "paddle.static.default_startup_program: {}".format(
-                    paddle.static.default_startup_program()._heter_pipeline_opt
-                )
+                f"paddle.static.default_startup_program: {paddle.static.default_startup_program()._heter_pipeline_opt}"
             )
         else:
             self._build_pserver_programs()

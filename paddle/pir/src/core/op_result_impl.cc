@@ -32,7 +32,7 @@ uint32_t OpResultImpl::index() const {
 OpResultImpl::~OpResultImpl() {
   if (!use_empty()) {
     PADDLE_FATAL(
-        "Destroyed a op_result that is still in use. The owner op type is : %s",
+        "Destroyed a op_result that is still in use. The owner op type is: %s",
         owner()->name());
   }
 }
@@ -88,6 +88,15 @@ void OpResultImpl::set_attribute(const std::string &key, Attribute value) {
   vec.resize(owner->num_results());
   vec[index] = value;
   owner->set_attribute(key, ArrayAttribute::get(owner->ir_context(), vec));
+}
+
+void *OpResultImpl::property(const std::string &key) const {
+  return owner()->value_property(key, index());
+}
+
+void OpResultImpl::set_property(const std::string &key, const Property &value) {
+  auto owner = this->owner();
+  owner->set_value_property(key, value, index());
 }
 
 OpInlineResultImpl::OpInlineResultImpl(Type type, uint32_t result_index)

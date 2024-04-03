@@ -1532,7 +1532,7 @@ void ExpandAsInferMeta(const MetaTensor& x,
                        const MetaTensor& y,
                        const std::vector<int>& target_shape,
                        MetaTensor* out) {
-#define MAX_RANK_SUPPORTED 6
+#define MAX_RANK_SUPPORTED 8
   auto x_dims = x.dims();
   PADDLE_ENFORCE_GE(
       target_shape.size(),
@@ -2165,6 +2165,15 @@ void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   }
   out->set_dims(common::make_ddim(dim_out));
   out->set_dtype(x.dtype());
+}
+
+void LimitByCapacityInferMeta(const MetaTensor& expert_count,
+                              const MetaTensor& capacity,
+                              int n_worker,
+                              MetaTensor* out) {
+  out->share_dims(expert_count);
+  out->share_lod(expert_count);
+  out->set_dtype(expert_count.dtype());
 }
 
 void LogLossInferMeta(const MetaTensor& input,

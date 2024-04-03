@@ -78,8 +78,91 @@ DenseTensorArrayType DenseTensorArrayType::dyn_cast_impl(Type type) {
   return nullptr;
 }
 
+pir::Type SparseCooTensorType::dtype() const { return storage()->dtype_; }
+
+const common::DDim& SparseCooTensorType::dims() const {
+  return storage()->dims_;
+}
+
+const common::DDim& SparseCooTensorType::non_zero_dims() const {
+  return storage()->non_zero_dims_;
+}
+
+common::DataLayout SparseCooTensorType::data_layout() const {
+  return storage()->layout_;
+}
+
+pir::DenseTensorType SparseCooTensorType::non_zero_indices() const {
+  return storage()->non_zero_indices_;
+}
+
+pir::DenseTensorType SparseCooTensorType::non_zero_elements() const {
+  return storage()->non_zero_elements_;
+}
+
+bool SparseCooTensorType::coalesced() const { return storage()->coalesced_; }
+
+bool SparseCooTensorType::classof(Type type) {
+  if (type) {
+    if (type.type_id() == type_id()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+SparseCooTensorType SparseCooTensorType::dyn_cast_impl(Type type) {
+  if (type) {
+    if (type.type_id() == type_id()) {
+      return SparseCooTensorType(type.storage());
+    }
+  }
+  return nullptr;
+}
+
+pir::Type SparseCsrTensorType::dtype() const { return storage()->dtype_; }
+
+const common::DDim& SparseCsrTensorType::dims() const {
+  return storage()->dims_;
+}
+
+common::DataLayout SparseCsrTensorType::data_layout() const {
+  return storage()->layout_;
+}
+
+pir::DenseTensorType SparseCsrTensorType::non_zero_crows() const {
+  return storage()->non_zero_crows_;
+}
+
+pir::DenseTensorType SparseCsrTensorType::non_zero_cols() const {
+  return storage()->non_zero_cols_;
+}
+
+pir::DenseTensorType SparseCsrTensorType::non_zero_elements() const {
+  return storage()->non_zero_elements_;
+}
+
+bool SparseCsrTensorType::classof(Type type) {
+  if (type) {
+    if (type.type_id() == type_id()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+SparseCsrTensorType SparseCsrTensorType::dyn_cast_impl(Type type) {
+  if (type) {
+    if (type.type_id() == type_id()) {
+      return SparseCsrTensorType(type.storage());
+    }
+  }
+  return nullptr;
+}
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SelectedRowsType)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::DenseTensorArrayType)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SparseCooTensorType)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SparseCsrTensorType)

@@ -32,14 +32,7 @@ class Job:
         self.set_replicas(str(nnodes))
 
     def __str__(self):
-        return "Job: {}, mode {}, replicas {}[{}:{}], elastic {}".format(
-            self.id,
-            self.mode,
-            self._replicas,
-            self._replicas_min,
-            self._replicas_max,
-            self.elastic,
-        )
+        return f"Job: {self.id}, mode {self.mode}, replicas {self._replicas}[{self._replicas_min}:{self._replicas_max}], elastic {self.elastic}"
 
     @property
     def mode(self):

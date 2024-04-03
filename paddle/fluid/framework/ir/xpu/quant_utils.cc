@@ -248,7 +248,7 @@ static void QuantFP32ToIntX(const float* src_ptr,
                             T* dst_ptr,
                             float max_val,
                             int numel) {
-  LOG(FATAL) << "Not support.";
+  PADDLE_THROW(phi::errors::Unimplemented("Not support."));
 }
 
 template <>
@@ -290,8 +290,9 @@ void ConvertWithQuant(phi::DenseTensor* weight,
                       phi::DenseTensor* scale_max,
                       bool transpose,
                       bool per_channel_quant) {
-  LOG(FATAL) << "Not support for Tcpu is "
-             << phi::CppTypeToDataType<Tcpu>::Type();
+  std::stringstream ss;
+  ss << "Not support for Tcpu is " << phi::CppTypeToDataType<Tcpu>::Type();
+  PADDLE_THROW(phi::errors::Fatal(ss.str()));
 }
 
 template <
@@ -440,8 +441,8 @@ void ConvertWithoutQuant(phi::DenseTensor* weight,
     QuantFP32ToIntX<float>(
         weight_data, cpu_ctx->Alloc<float>(weight), max_val, size);
   } else {
-    LOG(FATAL)
-        << "Only support float<->int31, int8<->int8 and int16<->int16 convert.";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Only support float<->int31, int8<->int8 and int16<->int16 convert."));
   }
 }
 

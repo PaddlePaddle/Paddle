@@ -63,13 +63,13 @@ class Adam(Optimizer):
         learning_rate (float|LRScheduler, optional): The learning rate used to update ``Parameter``.
             It can be a float value or a LRScheduler. The default value is 0.001.
         beta1 (float|Tensor, optional): The exponential decay rate for the 1st moment estimates.
-            It should be a float number or a Tensor with shape [1] and data type as float32.
+            It should be a float number or a 0-D Tensor with shape [] and data type as float32.
             The default value is 0.9.
         beta2 (float|Tensor, optional): The exponential decay rate for the 2nd moment estimates.
-            It should be a float number or a Tensor with shape [1] and data type as float32.
+            It should be a float number or a 0-D Tensor with shape [] and data type as float32.
             The default value is 0.999.
         epsilon (float|Tensor, optional): A small float value for numerical stability.
-            It should be a float number or a Tensor with shape [1] and data type as float32.
+            It should be a float number or a 0-D Tensor with shape [] and data type as float32.
             The default value is 1e-08.
         parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
             This parameter is required in dygraph mode. And you can specify different options for
@@ -327,6 +327,9 @@ class Adam(Optimizer):
                 if not isinstance(self._beta2, Variable)
                 else self._beta2.item(0)
             )
+            found_inf = (
+                self._get_auxiliary_var('found_inf') if in_pir_mode() else None
+            )
 
             _, _, _, _, _, _ = _C_ops.adam_(
                 param_and_grad[0],
@@ -337,7 +340,7 @@ class Adam(Optimizer):
                 beta1_pow_acc,
                 beta2_pow_acc,
                 master_weight,
-                None,
+                found_inf,
                 _beta1,
                 _beta2,
                 self._epsilon,

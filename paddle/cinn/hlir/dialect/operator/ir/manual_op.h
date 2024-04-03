@@ -78,6 +78,7 @@ class IR_API FusionOp : public pir::Op<FusionOp> {
 
   pir::Block *block();
   std::vector<pir::Operation *> GetOperators();
+  std::vector<pir::Operation *> GetOperators() const;
 
   void VerifySig();
   void Print(pir::IrPrinter &printer);  // NOLINT
