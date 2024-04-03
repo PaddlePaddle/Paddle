@@ -1596,7 +1596,7 @@ void group_norm_grad(const Tensor& x,
       p1 = (reshape<T>(inv_std, {N, groups, 1})).expand(shape_group);
     }
 
-    auto p2 = (d2 * mean - d1) * (inv_std_mul_s * var_eps);
+    auto p2 = (d2 * mean - d1) * (inv_std_mul_s * inv_std * inv_std);
     auto p3 = -p2 * mean - d2 * inv_std_mul_s;
     std::vector<int64_t> first_shape;
     std::vector<int64_t> second_shape;
