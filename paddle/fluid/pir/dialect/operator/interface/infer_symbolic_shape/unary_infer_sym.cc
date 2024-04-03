@@ -416,21 +416,23 @@ symbol::ShapeOrDataDimExprs CreateShapeOrDataForXShape(
 
 bool ReshapeOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  pir::Value operand_source = op->operand_source(0);
-  if (shape_analysis->GetShapeOrDataForValue(operand_source)
-          .data()
-          .has_value()) {
-    const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
-        shape_analysis->GetShapeOrDataForValue(operand_source);
-    shape_analysis->SetShapeOrDataForValue(op->result(0),
-                                           operand_shape_or_data);
-    return true;
+  const symbol::ShapeOrDataDimExprs &x_dim_expr =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+  const symbol::ShapeOrDataDimExprs &shape_dim_expr =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+  if (x_dim_expr.data().has_value()) {
+    const auto &shape_data = details::GetExprVecFromData(shape_dim_expr);
+    auto IsOne = [](const symbol::DimExpr &expr) {
+      return expr.isa<int64_t>() && expr.dyn_cast<int64_t>() == 1;
+    };
+    if (shape_data.size() == 1 && IsOne(shape_data.at(0))) {
+      shape_analysis->SetShapeOrDataForValue(
+          op->result(0),
+          symbol::TensorShapeOrDataDimExprs(shape_data,
+                                            x_dim_expr.data().value()));
+      return true;
+    }
   }
-
-  pir::Value operand_source_shape = op->operand_source(1);
-
-  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(operand_source_shape);
 
   const auto &GetProduct = [&](const auto &dim_exprs, const auto &Filter) {
     symbol::DimExpr product{1};
@@ -463,7 +465,7 @@ bool ReshapeOpInferSymbolicShape(
     const auto &numel =
         GetProduct(original_shape, [](const auto &) { return true; });
 
-    ExprVec target_shape = details::GetExprVecFromData(operand_shape_or_data);
+    ExprVec target_shape = details::GetExprVecFromData(shape_dim_expr);
     const auto &product_exclude_minus_one =
         GetProduct(target_shape, IsNotMinusOne);
 
@@ -499,7 +501,7 @@ bool ReshapeOpInferSymbolicShape(
   shape_analysis->SetShapeOrDataForValue(
       op->result(1),
       CreateShapeOrDataForXShape(
-          shape_analysis->GetShapeOrDataForValue(operand_source)));
+          shape_analysis->GetShapeOrDataForValue(op->operand_source(0))));
   return true;
 }
 
