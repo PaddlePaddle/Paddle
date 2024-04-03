@@ -917,7 +917,7 @@ void CrossInferMeta(const MetaTensor& x,
                                    x_dim,
                                    y_dim));
 
-  if (dim != DDim::kMaxRank) {
+  if (dim < DDim::kMaxRank) {
     PADDLE_ENFORCE_EQ(
         dim < x_dim.size() && dim >= (0 - x_dim.size()),
         true,

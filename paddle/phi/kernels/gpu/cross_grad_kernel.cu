@@ -83,7 +83,7 @@ void CrossGradKernel(const Context& dev_ctx,
   int dim = axis;
 
   auto input_x_dims = input_x.dims();
-  if (dim != DDim::kMaxRank) {
+  if (dim < DDim::kMaxRank) {
     PADDLE_ENFORCE_EQ(
         dim < input_x_dims.size() && dim >= (0 - input_x_dims.size()),
         true,
@@ -112,7 +112,7 @@ void CrossGradKernel(const Context& dev_ctx,
       }
     }
     PADDLE_ENFORCE_EQ(
-        dim == DDim::kMaxRank,
+        dim >= DDim::kMaxRank,
         false,
         errors::InvalidArgument("There must be at least one dimension 'd' "
                                 "so that Input(X/Y).dims()[d] is equal to 3. "

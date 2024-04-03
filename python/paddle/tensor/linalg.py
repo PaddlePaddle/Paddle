@@ -40,10 +40,6 @@ from .math import _get_reduce_axis
 __all__ = []
 
 
-# Consistent with kDefaultDim from C++ Backend
-K_DEFAULT_DIM = 9
-
-
 def transpose(x, perm, name=None):
     """
     Permute the data dimensions of `input` according to `perm`.
@@ -1892,7 +1888,7 @@ def t_(input, name=None):
         return out
 
 
-def cross(x, y, axis=9, name=None):
+def cross(x, y, axis=12, name=None):
     """
     Computes the cross product between two tensors along an axis.
 
@@ -1934,11 +1930,6 @@ def cross(x, y, axis=9, name=None):
              [0., 0., 0.],
              [0., 0., 0.]])
     """
-    if (
-        len(paddle.framework.core.get_all_custom_device_type()) > 0
-        and axis == 9
-    ):
-        axis = 12
     if in_dynamic_or_pir_mode():
         return _C_ops.cross(x, y, axis)
     else:
