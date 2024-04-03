@@ -48,7 +48,7 @@
 #     paddle/fluid/operators/math/detail | 0 | 0 | 0
 #     paddle/fluid/operators/math | 200 | 7 | 193
 #     paddle/fluid/operators/metrics | 38 | 29 | 9
-#     paddle/fluid/operators/mkldnn | 107 | 14 | 93
+#     paddle/fluid/operators/onednn | 107 | 14 | 93
 #     paddle/fluid/operators/nccl | 27 | 0 | 27
 #     paddle/fluid/operators/optimizers | 214 | 50 | 164
 #     paddle/fluid/operators/reader | 40 | 14 | 26

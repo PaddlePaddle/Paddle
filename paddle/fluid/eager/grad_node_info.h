@@ -250,7 +250,8 @@ class GradNodeBase {
   void SetGradInMeta(const std::vector<paddle::Tensor>& fwd_out,
                      size_t slot_rank);
   void SetGradInMeta(const paddle::Tensor& fwd_out, size_t slot_rank);
-
+  void SetGradInMeta(const std::vector<paddle::Tensor*>& fwd_out,
+                     size_t slot_rank);
   void SetGradOutMeta(const std::vector<paddle::Tensor>& fwd_in,
                       size_t slot_rank);
   void SetGradOutMeta(const std::vector<const paddle::Tensor*>& fwd_in,

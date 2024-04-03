@@ -3225,7 +3225,7 @@
     outputs : [xshape]
 
 - op : stack
-  backward : stack_grad
+  backward : stack_grad, stack_double_grad
   inputs :
     x : X
   outputs :
