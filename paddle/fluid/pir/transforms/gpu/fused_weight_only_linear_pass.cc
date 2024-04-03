@@ -31,7 +31,7 @@ int getSMVersion() {
   sm_version = paddle::platform::GetGPUComputeCapability(
       paddle::platform::GetCurrentDeviceId());
 #else
-  PADDLE_THROW(paddle::platform::errors::Unavailable(
+  PADDLE_THROW(common::errors::Unavailable(
       "fused_weight_only_linear_pass needs paddle compiled with CUDA."));
 #endif
   return sm_version;
@@ -41,10 +41,14 @@ class FusedWeightOnlyLinearWithBiasPattern
     : public paddle::drr::DrrPatternBase {
  private:
   bool reverse_add_;
+  std::string algo_;
+  int sm_version_;
 
  public:
-  explicit FusedWeightOnlyLinearWithBiasPattern(bool reverse_add)
-      : reverse_add_(reverse_add) {}
+  FusedWeightOnlyLinearWithBiasPattern(bool reverse_add,
+                                       const std::string &algo,
+                                       int sm_version)
+      : reverse_add_(reverse_add), algo_(algo), sm_version_(sm_version) {}
 
   std::string name() const override {
     return "FusedWeightOnlyLinearWithBiasPattern";
@@ -106,8 +110,8 @@ class FusedWeightOnlyLinearWithBiasPattern
 
     const auto &weight_quantize =
         res.Op(paddle::dialect::WeightQuantizeOp::name(),
-               {{"algo", res.StrAttr("weight_only_int8")},
-                {"arch", res.Int32Attr(getSMVersion())},
+               {{"algo", res.StrAttr(algo_)},
+                {"arch", res.Int32Attr(sm_version_)},
                 {"group_size", res.Int32Attr(-1)}});
     weight_quantize({&res.Tensor("w")},
                     {&res.Tensor("quanted_weight_tensor"),
@@ -115,8 +119,9 @@ class FusedWeightOnlyLinearWithBiasPattern
 
     const auto &weight_only_linear =
         res.Op(paddle::dialect::WeightOnlyLinearOp::name(),
-               {{"weight_dtype", res.StrAttr("int8")},
-                {"arch", res.Int32Attr(getSMVersion())},
+               {{"weight_dtype",
+                 res.StrAttr(algo_ == "weight_only_int8" ? "int8" : "int4")},
+                {"arch", res.Int32Attr(sm_version_)},
                 {"group_size", res.Int32Attr(-1)}});
     weight_only_linear({&res.Tensor("x"),
                         &res.Tensor("quanted_weight_tensor"),
@@ -127,6 +132,14 @@ class FusedWeightOnlyLinearWithBiasPattern
 };
 
 class FusedWeightOnlyLinearNoBiasPattern : public paddle::drr::DrrPatternBase {
+ private:
+  std::string algo_;
+  int sm_version_;
+
+ public:
+  FusedWeightOnlyLinearNoBiasPattern(const std::string &algo, int sm_version)
+      : algo_(algo), sm_version_(sm_version) {}
+
  public:
   std::string name() const override {
     return "FusedWeightOnlyLinearNoBiasPattern";
@@ -181,8 +194,8 @@ class FusedWeightOnlyLinearNoBiasPattern : public paddle::drr::DrrPatternBase {
 
     const auto &weight_quantize =
         res.Op(paddle::dialect::WeightQuantizeOp::name(),
-               {{"algo", res.StrAttr("weight_only_int8")},
-                {"arch", res.Int32Attr(getSMVersion())},
+               {{"algo", res.StrAttr(algo_)},
+                {"arch", res.Int32Attr(sm_version_)},
                 {"group_size", res.Int32Attr(-1)}});
     weight_quantize({&res.Tensor("w")},
                     {&res.Tensor("quanted_weight_tensor"),
@@ -190,8 +203,9 @@ class FusedWeightOnlyLinearNoBiasPattern : public paddle::drr::DrrPatternBase {
 
     const auto &weight_only_linear =
         res.Op(paddle::dialect::WeightOnlyLinearOp::name(),
-               {{"weight_dtype", res.StrAttr("int8")},
-                {"arch", res.Int32Attr(getSMVersion())},
+               {{"weight_dtype",
+                 res.StrAttr(algo_ == "weight_only_int8" ? "int8" : "int4")},
+                {"arch", res.Int32Attr(sm_version_)},
                 {"group_size", res.Int32Attr(-1)}});
     weight_only_linear({&res.Tensor("x"),
                         &res.Tensor("quanted_weight_tensor"),
@@ -204,15 +218,28 @@ class FusedWeightOnlyLinearNoBiasPattern : public paddle::drr::DrrPatternBase {
 class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {
  public:
   FusedWeightOnlyLinearPass()
-      : pir::PatternRewritePass("fused_weight_only_linear_pass", 4) {}
+      : pir::PatternRewritePass("fused_weight_only_linear_pass", 4),
+        sm_version_(getSMVersion()) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
+    std::string algo = "weight_only_int8";
+    if (Has("weight_only_algo")) {
+      algo = Get<std::string>("weight_only_algo");
+    }
+    PADDLE_ENFORCE_EQ(algo == "weight_only_int8" || algo == "weight_only_int4",
+                      true,
+                      common::errors::InvalidArgument(
+                          "fused_weight_only_linear_pass only support "
+                          "weight_only_int8 or weight_only_int4, but get %s.",
+                          algo));
+
     pir::RewritePatternSet ps(context);
-    ps.Add(paddle::drr::Create<FusedWeightOnlyLinearWithBiasPattern>(context,
-                                                                     true));
-    ps.Add(paddle::drr::Create<FusedWeightOnlyLinearWithBiasPattern>(context,
-                                                                     false));
-    ps.Add(paddle::drr::Create<FusedWeightOnlyLinearNoBiasPattern>(context));
+    ps.Add(paddle::drr::Create<FusedWeightOnlyLinearWithBiasPattern>(
+        context, true, algo, sm_version_));
+    ps.Add(paddle::drr::Create<FusedWeightOnlyLinearWithBiasPattern>(
+        context, false, algo, sm_version_));
+    ps.Add(paddle::drr::Create<FusedWeightOnlyLinearNoBiasPattern>(
+        context, algo, sm_version_));
     return ps;
   }
 
@@ -228,15 +255,15 @@ class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation *op) const override {
-    int sm_version = getSMVersion();
-    if (sm_version != 70 && sm_version != 75 && sm_version != 80 &&
-        sm_version != 86) {
+    if (sm_version_ != 70 && sm_version_ != 75 && sm_version_ != 80 &&
+        sm_version_ != 86) {
       return false;
     }
     return op->num_regions() > 0;
   }
 
  private:
+  int sm_version_;
   pir::FrozenRewritePatternSet patterns_;
 };
 
