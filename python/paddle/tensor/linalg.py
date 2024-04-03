@@ -2607,7 +2607,7 @@ def svd_lowrank(x, q=None, niter=2, M=None, name=None):
             zero or more batch dimensions. N and M can be arbitrary positive number.
             The data type of ``x`` should be float32 or float64.
         q (int, optional): A slightly overestimated rank of :math:`X`.
-            Default value is :math:`q=min(6,N,M)`.
+            Default value is None, which means the overestimated rank is 6.
         niter (int, optional): The number of iterations to perform. Default: 2.
         M (Tensor, optional): The input tensor's mean. Its shape should be `[..., 1, M]`.
             Default value is None.
