@@ -25,7 +25,7 @@ void ConstraintsManager::AddEqCstr(const DimExpr& lhs, const DimExpr& rhs) {
   VLOG(8) << "AddEqCstr the constraint: " << lhs << " == " << rhs;
 
   auto simplify_result = SimpliyEqualCstr(lhs, rhs);
-  if (simplify_result.has_value()) {
+  if (!simplify_result.has_value()) {
     return;
   }
   AddEqCstr(simplify_result->first, simplify_result->second);
@@ -168,9 +168,7 @@ void ConstraintsManager::SubstituteDimExprInConstraint(const DimExpr& lhs,
   } else {
     substitution_pattern[lhs] = rhs;
   }
-  VLOG(0) << "to GetMap";
   auto equals_parents = equals_.GetMap();
-  VLOG(0) << "to sub union find set";
   for (auto it = equals_parents.begin(); it != equals_parents.end();) {
     DimExpr key = SubstituteDimExpr(it->first, substitution_pattern);
     DimExpr value = SubstituteDimExpr(it->first, substitution_pattern);
@@ -185,7 +183,6 @@ void ConstraintsManager::SubstituteDimExprInConstraint(const DimExpr& lhs,
     }
   }
 
-  VLOG(0) << "to sub  gtone";
   for (auto it = gtones_.begin(); it != gtones_.end();) {
     DimExpr substituted_dim_expr = SubstituteDimExpr(*it, substitution_pattern);
     if (substituted_dim_expr != *it) {
@@ -196,7 +193,6 @@ void ConstraintsManager::SubstituteDimExprInConstraint(const DimExpr& lhs,
     }
   }
 
-  VLOG(0) << "to sub broadcast";
   for (auto it = broadcastables_.begin(); it != broadcastables_.end(); it++) {
     DimExpr substituted_lhs =
         SubstituteDimExpr(it->data->lhs, substitution_pattern);
@@ -238,7 +234,6 @@ std::optional<std::pair<DimExpr, DimExpr>> ConstraintsManager::SimpliyEqualCstr(
     } else {
       lhs_hash[lhs_dim_expr] = 1;
     }
-    VLOG(0) << "lhs_hash" << lhs_dim_expr << " : " << lhs_hash[lhs_dim_expr];
   }
   for (DimExpr rhs_dim_expr : *rhs_list) {
     if (lhs_hash.count(rhs_dim_expr)) {
