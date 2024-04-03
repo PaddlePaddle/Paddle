@@ -41,8 +41,6 @@ endforeach()
 set_tests_properties(test_se_resnet PROPERTIES TIMEOUT 900)
 set_tests_properties(test_yolov3 PROPERTIES TIMEOUT 900 LABELS
                                             "RUN_TYPE=EXCLUSIVE")
-set_tests_properties(test_mobile_net PROPERTIES TIMEOUT 120)
-set_tests_properties(test_seq2seq PROPERTIES TIMEOUT 420)
 set_tests_properties(test_cycle_ganx PROPERTIES TIMEOUT 300)
 set_tests_properties(test_basic_api_transformation PROPERTIES TIMEOUT 240)
 set_tests_properties(test_reinforcement_learning PROPERTIES TIMEOUT 120)
