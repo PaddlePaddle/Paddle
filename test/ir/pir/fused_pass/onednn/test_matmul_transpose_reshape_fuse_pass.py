@@ -82,7 +82,11 @@ class TestMatmulTransposeReshapeFusePattern(PassTest):
 
 class TestMatmulTransposeReshapeAddFusePattern(PassTest):
     r'''
-    x       y
+           y
+           |
+        reshape
+           |
+    x  transpose
      \     /
       matmul
         |
@@ -113,12 +117,15 @@ class TestMatmulTransposeReshapeAddFusePattern(PassTest):
                     name="residual", shape=[1], dtype='float32'
                 )
 
-                matmul_out = paddle.matmul(x, y)
+                reshape_out = paddle.reshape(y, [0, 0, 0, 0])
+                transpose_out = paddle.transpose(reshape_out, perm=[0, 2, 3, 1])
+                matmul_out = paddle.matmul(x, transpose_out)
                 transpose_out = paddle.transpose(matmul_out, perm=[0, 2, 1, 3])
                 reshape_out = paddle.reshape(transpose_out, [0, 0, 25])
                 out = paddle.add(reshape_out, residual)
                 out = paddle.assign(out)
                 self.pass_list = [
+                    'reshape_transpose_matmul_fuse_pass',
                     'matmul_transpose_reshape_fuse_pass',
                     'matmul_elementwise_add_fuse_pass',
                 ]
