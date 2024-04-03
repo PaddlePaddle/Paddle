@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/gpu/fused_flash_attention_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/fused_flash_attn_pass.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
@@ -23,7 +23,6 @@
 
 namespace {
 
-// FlashAttn
 // 1. scale before matmul
 // 2. cast before and after softmax
 class FlashAttnPatternQscaleCast : public paddle::drr::DrrPatternBase {
@@ -150,7 +149,6 @@ class FlashAttnPatternQscaleCast : public paddle::drr::DrrPatternBase {
   }
 };
 
-// FlashAttn
 // 1. scale before matmul
 // 2. no cast before and after softmax
 class FlashAttnPatternQscaleNoCast : public paddle::drr::DrrPatternBase {
@@ -274,7 +272,6 @@ class FlashAttnPatternQscaleNoCast : public paddle::drr::DrrPatternBase {
   }
 };
 
-// FlashAttn
 // 1. scale after matmul
 // 2. cast before and after softmax
 class FlashAttnPatternOutscaleCast : public paddle::drr::DrrPatternBase {
@@ -400,7 +397,6 @@ class FlashAttnPatternOutscaleCast : public paddle::drr::DrrPatternBase {
   }
 };
 
-// FlashAttn
 // 1. scale after matmul
 // 2. no cast before and after softmax
 class FlashAttnPatternOutscaleNoCast : public paddle::drr::DrrPatternBase {
@@ -522,7 +518,7 @@ class FlashAttnPatternOutscaleNoCast : public paddle::drr::DrrPatternBase {
   }
 };
 
-// TransposeSliceFlashAttn
+// slice qkv
 class TransposeSliceFlashAttnPattern : public paddle::drr::DrrPatternBase {
  public:
   std::string name() const override { return "TransposeSliceFlashAttnPattern"; }
@@ -641,93 +637,38 @@ class TransposeSliceFlashAttnPattern : public paddle::drr::DrrPatternBase {
     // Result Pattern.
     //
     paddle::drr::ResultPattern res = src.ResultPattern();
-    // flash_attn impl
-    const auto &perm_res = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
-          auto perm = match_ctx.Attr<std::vector<int>>("perm");
-          return perm;
-        });
+
     // transpose
     const auto &transpose_qkv_res =
-        res.Op("pd_op.transpose", {{"perm", perm_res}});
+        res.Op("pd_op.transpose", {{"perm", src.Attr("perm")}});
     res.Tensor("qkv_transpose") = transpose_qkv_res(res.Tensor("qkv"));
     // slice q -> [b, head, s, head_dim]
-    const auto &axes_q_out = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
-          auto axes_q = match_ctx.Attr<std::vector<int64_t>>("axes_q");
-          return axes_q;
-        });
-    const auto &infer_flags_q_out = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
-          auto infer_flags_q =
-              match_ctx.Attr<std::vector<int64_t>>("infer_flags_q");
-          return infer_flags_q;
-        });
-    const auto &decrease_axis_q_out = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
-          auto decrease_axis_q =
-              match_ctx.Attr<std::vector<int64_t>>("decrease_axis_q");
-          return decrease_axis_q;
-        });
-    const auto &slice_q_res = res.Op(paddle::dialect::SliceOp::name(),
-                                     {{"axes", axes_q_out},
-                                      {"infer_flags", infer_flags_q_out},
-                                      {"decrease_axis", decrease_axis_q_out}});
+    const auto &slice_q_res =
+        res.Op(paddle::dialect::SliceOp::name(),
+               {{"axes", src.Attr("axes_q")},
+                {"infer_flags", src.Attr("infer_flags_q")},
+                {"decrease_axis", src.Attr("decrease_axis_q")}});
     res.Tensor("q") = slice_q_res(res.Tensor("qkv_transpose"),
                                   res.OutputNoneTensor(),
                                   res.OutputNoneTensor());
     // slice k -> [b, head, s, head_dim]
-    const auto &axes_k_out = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
-          auto axes_k = match_ctx.Attr<std::vector<int64_t>>("axes_k");
-          return axes_k;
-        });
-    const auto &infer_flags_k_out = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
-          auto infer_flags_k =
-              match_ctx.Attr<std::vector<int64_t>>("infer_flags_k");
-          return infer_flags_k;
-        });
-    const auto &decrease_axis_k_out = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
-          auto decrease_axis_k =
-              match_ctx.Attr<std::vector<int64_t>>("decrease_axis_k");
-          return decrease_axis_k;
-        });
-    printf("here");
-    const auto &slice_k_res = res.Op(paddle::dialect::SliceOp::name(),
-                                     {{"axes", axes_k_out},
-                                      {"infer_flags", infer_flags_k_out},
-                                      {"decrease_axis", decrease_axis_k_out}});
+    const auto &slice_k_res =
+        res.Op(paddle::dialect::SliceOp::name(),
+               {{"axes", src.Attr("axes_k")},
+                {"infer_flags", src.Attr("infer_flags_k")},
+                {"decrease_axis", src.Attr("decrease_axis_k")}});
     res.Tensor("k") = slice_k_res(res.Tensor("qkv_transpose"),
                                   res.OutputNoneTensor(),
                                   res.OutputNoneTensor());
     // slice v -> [b, head, s, head_dim]
-    const auto &axes_v_out = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
-          auto axes_v = match_ctx.Attr<std::vector<int64_t>>("axes_v");
-          return axes_v;
-        });
-    const auto &infer_flags_v_out = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
-          auto infer_flags_v =
-              match_ctx.Attr<std::vector<int64_t>>("infer_flags_v");
-          return infer_flags_v;
-        });
-    const auto &decrease_axis_v_out = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
-          auto decrease_axis_v =
-              match_ctx.Attr<std::vector<int64_t>>("decrease_axis_v");
-          return decrease_axis_v;
-        });
-    const auto &slice_v_res = res.Op(paddle::dialect::SliceOp::name(),
-                                     {{"axes", axes_v_out},
-                                      {"infer_flags", infer_flags_v_out},
-                                      {"decrease_axis", decrease_axis_v_out}});
+    const auto &slice_v_res =
+        res.Op(paddle::dialect::SliceOp::name(),
+               {{"axes", src.Attr("axes_v")},
+                {"infer_flags", src.Attr("infer_flags_v")},
+                {"decrease_axis", src.Attr("decrease_axis_v")}});
     res.Tensor("v") = slice_v_res(res.Tensor("qkv_transpose"),
                                   res.OutputNoneTensor(),
                                   res.OutputNoneTensor());
-    printf("here");
     const auto &flash_attn = res.Op("pd_op.flash_attn",
                                     {{{"dropout", res.Float32Attr(0.0)},
                                       {"causal", res.BoolAttr(false)},

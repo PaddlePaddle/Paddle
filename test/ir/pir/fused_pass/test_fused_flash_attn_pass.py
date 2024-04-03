@@ -71,7 +71,7 @@ class TestFlashAttnPatternQscaleCast(PassTest):
         |          |           |
         -- matmul--            |
              |                 |
-           mask                |
+   mask --- add                |
              |                 |
            cast                |
              |                 |
@@ -194,7 +194,7 @@ class TestFlashAttnPatternQscaleNoCast(PassTest):
         |          |           |
         -- matmul--            |
              |                 |
-           mask                |
+   mask --- add                |
              |                 |
              |                 |
           softmax              |
@@ -313,7 +313,7 @@ class TestFlashAttnPatternOutscaleCast(PassTest):
              |                 |
            scale               |
              |                 |
-           mask                |
+   mask --- add                |
              |                 |
            cast                |
              |                 |
@@ -439,7 +439,7 @@ class TestFlashAttnPatternOutscaleNoCast(PassTest):
              |                 |
            scale               |
              |                 |
-           mask                |
+   mask --- add                |
              |                 |
              |                 |
           softmax              |
@@ -540,23 +540,24 @@ class TestFlashAttnPatternOutscaleNoCast(PassTest):
     def test_check_output(self):
         self.check_pass_correct(atol=1e-3, rtol=1e-3)
 
-# Flash Attention
+
 class TestTransposeSliceFlashAttnPattern(PassTest):
     r"""
                transpose
                    |
-        ---------slice----------
+        ----------- ----------
         |          |           |
+      slice       slice      slice
         |          |           |
         Q          K           V
         |          |           |
-    transpose  transpose   transpose
-        |          |           |
-      scale    transpose       |
+        |       transpose      |
         |          |           |
         -- matmul--            |
              |                 |
-           mask                |
+           scale               |
+             |                 |
+   mask --- add                |
              |                 |
            cast                |
              |                 |
@@ -597,7 +598,8 @@ class TestTransposeSliceFlashAttnPattern(PassTest):
                             ):
                                 x = paddle.static.data(
                                     name='x',
-                                    shape=[bs, seq_len, 3, num_heads, head_dim],
+                                    shape=[bs, seq_len, 3,
+                                           num_heads, head_dim],
                                     dtype='float16'
                                 )
                                 mask_shape = (bs, num_heads, seq_len, seq_len)
@@ -625,7 +627,7 @@ class TestTransposeSliceFlashAttnPattern(PassTest):
                                     attention_out, [0, 2, 1, 3]
                                 )
                                 out = paddle.assign(attention_out)
-                                self.pass_list = ['fused_transpose_slice_flash_attn_pass']
+                                self.pass_list = ['fused_flash_attn_pass']
                                 self.feeds = {
                                     "x": np.random.random(
                                         (bs, seq_len, 3, num_heads, head_dim)
@@ -649,6 +651,7 @@ class TestTransposeSliceFlashAttnPattern(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct(atol=1e-3, rtol=1e-3)
+
 
 if __name__ == "__main__":
     unittest.main()
