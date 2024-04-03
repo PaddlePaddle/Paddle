@@ -1230,6 +1230,16 @@ void HandleForIfOp(
         pir::shape::SymbolAttribute::get(
             ctx,
             false_shapedata.dyn_cast<pir::shape::SymbolAttribute>().data()));
+
+    const auto out_shapedata = old_ifop->attribute("out_shapedata");
+    if (!out_shapedata) {
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "%s must have attribute 'out_shapedata'", op_item->name()));
+    }
+    new_ifop->set_attribute(
+        "out_shapedata",
+        pir::shape::SymbolAttribute::get(
+            ctx, out_shapedata.dyn_cast<pir::shape::SymbolAttribute>().data()));
   }
 
   // process true block

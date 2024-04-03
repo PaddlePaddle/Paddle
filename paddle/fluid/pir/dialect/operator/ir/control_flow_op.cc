@@ -330,7 +330,7 @@ bool IfOp::InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis) {
 
   // TODO(lanxianghit): for llama, `if` op's result num always > 0, but
   // result_num == 0 should be supported in future
-  symbol::TensorListShapeOrDataDimExprs true_results, false_results;
+  symbol::TensorListShapeOrDataDimExprs true_results, false_results, if_results;
   if (num_results() > 0) {
     for (uint32_t rst_idx = 0; rst_idx < num_results(); rst_idx++) {
       true_results.emplace_back(
@@ -380,7 +380,14 @@ bool IfOp::InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis) {
           result(rst_idx),
           symbol::ShapeOrDataDimExprs{
               symbol::TensorShapeOrDataDimExprs(out_dims)});
+      if_results.emplace_back(symbol::TensorShapeOrDataDimExprs(out_dims));
     }
+
+    symbol::ShapeOrDataDimExprs if_shape_data{if_results};
+    VLOG(0) << "IfOp::InferSymbolicShape: if_shape_data = " << if_shape_data;
+    (*this)->set_attribute("out_shapedata",
+                           pir::shape::SymbolAttribute::get(
+                               pir::IrContext::Instance(), if_shape_data));
 
     symbol::ShapeOrDataDimExprs true_shape_data{true_results};
     (*this)->set_attribute("true_shapedata",
