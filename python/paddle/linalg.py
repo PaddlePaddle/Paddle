@@ -34,6 +34,7 @@ from .tensor.linalg import (
     matrix_rank,
     multi_dot,
     norm,
+    ormqr,
     pca_lowrank,
     pinv,
     qr,
@@ -74,4 +75,5 @@ __all__ = [
     'cholesky_solve',
     'triangular_solve',
     'lstsq',
+    'ormqr',
 ]

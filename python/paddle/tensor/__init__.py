@@ -88,6 +88,7 @@ from .linalg import (  # noqa: F401
     multi_dot,
     mv,
     norm,
+    ormqr,
     pca_lowrank,
     pinv,
     qr,
@@ -443,6 +444,7 @@ from .to_string import set_printoptions  # noqa: F401
 tensor_method_func = [
     'create_parameter',
     'create_tensor',
+    'ormqr',
     'matmul',
     'dot',
     'cov',
