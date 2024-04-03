@@ -54,6 +54,8 @@ paddle_test(block_operand_test SRCS block_operand_test.cc DEPS test_dialect
 
 paddle_test(block_argument_test SRCS block_argument_test.cc DEPS test_dialect)
 
+paddle_test(ir_serialize_test SRCS ir_serialize_test.cc DEPS gtest
+            pir_save_load)
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
   # be build only in CI, so suppose the generator in Windows is Ninja.

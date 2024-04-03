@@ -1,22 +1,20 @@
-#add_subdirectory(nlohmann_json)
-
 add_definitions(-DIR_LIBRARY)
 set_property(GLOBAL PROPERTY SAVE_TARGETS "")
 
-file(GLOB_RECURSE SERIALIZE_DESERIALIZE_CPP_SOURCES "*.cc")
+file(GLOB_RECURSE pir_save_load_CPP_SOURCES "*.cc")
 
-include_directories(serialize_deserialize PRIVATE
+include_directories(pir_save_load PRIVATE
                     ${PADDLE_SOURCE_DIR}/third_party/nlohmann_json/include/)
 if(WITH_SHARED_IR)
-  add_library(serialize_deserialize SHARED ${SERIALIZE_DESERIALIZE_CPP_SOURCES})
-  target_link_libraries(serialize_deserialize op_dialect json)
+  add_library(pir_save_load SHARED ${pir_save_load_CPP_SOURCES})
+  target_link_libraries(pir_save_load op_dialect json)
 else()
   cc_library(
-    serialize_deserialize
-    SRCS ${SERIALIZE_DESERIALIZE_CPP_SOURCES}
-    DEPS pir json)
+    pir_save_load
+    SRCS ${pir_save_load_CPP_SOURCES}
+    DEPS op_dialect json)
 
   get_property(save_targets GLOBAL PROPERTY SAVE_TARGETS)
-  set(save_targets serialize_deserialize)
+  set(save_targets pir_save_load)
   set_property(GLOBAL PROPERTY SAVE_TARGETS "${save_targets}")
 endif()
