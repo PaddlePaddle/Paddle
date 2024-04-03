@@ -7643,8 +7643,8 @@ def signbit(x, name=None):
         ],
         "signbit",
     )
-    ones = paddle.to_tensor([1.0], x.dtype)
-    ones = paddle.broadcast_to(ones, x.shape)
+    ones = [1.0] * math.prod(x.shape)
+    ones = paddle.to_tensor(ones, x.dtype).reshape(x.shape)
     neg_zero_x = paddle.copysign(ones, x)
     x = paddle.sign(neg_zero_x)
     out = paddle.cast(x < 0, dtype='bool')
