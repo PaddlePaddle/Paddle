@@ -1806,30 +1806,30 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                                  .data();
           auto source_op_id = source_op_id_attr.data();
           if (instr_node->Name() == "if_instruction") {
-            std::map<std::string, paddle::framework::Variable*>
-                sorted_input_vars;
+            std::string cond_var_name = value_exe_info_->GetVarName(
+                instr_node->Operation()->operand_source(0));
+            VLOG(vlog_level)
+                << "################ " << instr_node->Name()
+                << ", operand_source(0) var_name = " << cond_var_name;
+            paddle::framework::Variable* cond_var = nullptr;
+
             for (auto it = instr_node->Inputs().begin();
                  it != instr_node->Inputs().end();) {
               auto& input = *it;
               auto var_name = value_exe_info_->GetVarName(input.first);
               paddle::framework::Variable* var = scope_->FindVar(var_name);
-              sorted_input_vars[var_name] = var;
+              if (var_name == cond_var_name) {
+                VLOG(vlog_level) << "################ " << instr_node->Name()
+                                 << ", maybe cond var_name = " << var_name;
+                cond_var = var;
+              }
               ++it;
             }
 
-            PADDLE_ENFORCE_EQ(sorted_input_vars.size(),
-                              2,
-                              platform::errors::PreconditionNotMet(
-                                  "if_instruction's inputs size must == 2"));
-            std::vector<paddle::framework::Variable*> input_vars;
-            for (auto&& kv : sorted_input_vars) {
-              input_vars.emplace_back(kv.second);
-            }
-
             bool cond_rst = false;
-            if (input_vars[1]->IsType<phi::DenseTensor>()) {
+            if (cond_var->IsType<phi::DenseTensor>()) {
               const phi::DenseTensor& tensor =
-                  input_vars[1]->Get<phi::DenseTensor>();
+                  cond_var->Get<phi::DenseTensor>();
               std::string type_str = DataTypeToString(
                   paddle::framework::TransToProtoVarType(tensor.dtype()));
               PADDLE_ENFORCE_EQ(
