@@ -311,11 +311,10 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         self.check_results(p_fw, f_fw_time_major)
         self.check_results(p_bw, f_bw_time_major)
 
-    def test_fused_rope_with_sin_cos(self):
+    def test_fused_rope_without_sin_cos(self):
         p_fw, p_bw = self.get_forward_backward(
             paddle_fused_rotary_position_embedding,
             seed=self.seed,
-            with_sin_cos=True,
         )
         f_fw, f_bw = self.get_forward_backward(
             fused_rotary_position_embedding,

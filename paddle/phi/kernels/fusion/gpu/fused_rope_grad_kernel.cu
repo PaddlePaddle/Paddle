@@ -42,10 +42,19 @@ void FusedRopeGradKernel(const Context& dev_ctx,
 
   phi::Array<int64_t, 3> inputs_num_heads;
   // small size for broadcast
-  auto batch_size = time_major ? dout_q.dims()[1] : dout_q.dims()[0];
-  auto seq_len = time_major ? dout_q.dims()[0] : dout_q.dims()[1];
+
+  const int kBatchDimIndex = time_major ? 1 : 0;
+  const int kSeqlenDimIndex = time_major ? 0 : 1;
+  auto batch_size = dout_q.dims()[kBatchDimIndex];
+  auto seq_len = dout_q.dims()[kSeqlenDimIndex];
   inputs_num_heads[0] = dout_q.dims()[2];
   auto head_dim = dout_q.dims()[3];
+
+  int64_t batch_stride_q = dout_q.strides()[kBatchDimIndex];
+  int64_t seq_stride_q = dout_q.strides()[kSeqlenDimIndex];
+  int64_t batch_stride_kv = batch_stride_q;
+  int64_t seq_stride_kv = seq_stride_q;
+
   PADDLE_ENFORCE_NE(head_dim % 2,
                     1,
                     phi::errors::InvalidArgument(
@@ -53,11 +62,6 @@ void FusedRopeGradKernel(const Context& dev_ctx,
 
   constexpr const int vec_size = 2;
 
-  auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
-
-  int64_t grid = config.block_per_grid.x;
-  int64_t block = config.thread_per_block.x;
   auto stream = dev_ctx.stream();
 
   phi::Array<T*, 3> outs_data;
@@ -74,6 +78,10 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     outs_data[num_inputs] = dk->data<T>();
     ins_data[num_inputs] = dout_k->data<T>();
     inputs_num_heads[num_inputs] = dk->dims()[2];
+
+    batch_stride_kv = dout_k->strides()[kBatchDimIndex];
+    seq_stride_kv = dout_k->strides()[kSeqlenDimIndex];
+
     num_inputs++;
   }
 
@@ -82,6 +90,10 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     outs_data[num_inputs] = dv->data<T>();
     ins_data[num_inputs] = dout_v->data<T>();
     inputs_num_heads[num_inputs] = dv->dims()[2];
+
+    batch_stride_kv = dout_v->strides()[kBatchDimIndex];
+    seq_stride_kv = dout_v->strides()[kSeqlenDimIndex];
+
     num_inputs++;
   }
 
@@ -100,88 +112,35 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     }
   }
 
-  bool is_same_num_heads = true;
-  auto prev_num_heads = inputs_num_heads[0];
-  for (int i = 1; i < num_inputs; ++i) {
-    if (prev_num_heads != inputs_num_heads[i]) {
-      is_same_num_heads = false;
-      break;
-    }
-    prev_num_heads = inputs_num_heads[i];
-  }
+  int64_t num_heads_kv =
+      GetNumHeadsOfKV(dout_k, dout_v, inputs_num_heads, num_inputs);
+
+  const uint32_t kThreadsPerBlock = 256;
+  const uint32_t kWarpSize = 32;
+  const uint32_t kWarpsPerBlock = kThreadsPerBlock / kWarpSize;
+  dim3 grid((uint32_t)batch_size, (uint32_t)seq_len);
+  dim3 block(kWarpSize, kWarpsPerBlock);
 
   int sign = -1;
-
-  VectorizedFusedRopeCudaKernelFunc<T, MPType, vec_size> kernel_func =
-      use_neox_rotary_style
-          ? VectorizedFusedRopeWithRotateEveryTwoKernel<T, MPType, vec_size>
-          : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, vec_size>;
-
-  if (is_same_num_heads) {
-    int64_t batch_stride =
-        time_major ? dout_q.strides()[1] : dout_q.strides()[0];
-    int64_t seq_stride = time_major ? dout_q.strides()[0] : dout_q.strides()[1];
-    kernel_func<<<grid, block, 0, stream>>>(ins_data,
-                                            sin_cos_data,
-                                            position_ids_data,
-                                            flag_sin_cos,
-                                            sign,
-                                            batch_size,
-                                            seq_len,
-                                            inputs_num_heads[0],
-                                            head_dim,
-                                            batch_stride,
-                                            seq_stride,
-                                            outs_data,
-                                            num_inputs,
-                                            div_c);
-
-  } else {
-    // rotary position embedding Q
-    int64_t batch_stride_q =
-        time_major ? dout_q.strides()[1] : dout_q.strides()[0];
-    int64_t seq_stride_q =
-        time_major ? dout_q.strides()[0] : dout_q.strides()[1];
-    kernel_func<<<grid, block, 0, stream>>>(ins_data,
-                                            sin_cos_data,
-                                            position_ids_data,
-                                            flag_sin_cos,
-                                            sign,
-                                            batch_size,
-                                            seq_len,
-                                            inputs_num_heads[0],
-                                            head_dim,
-                                            batch_stride_q,
-                                            seq_stride_q,
-                                            outs_data,
-                                            1,
-                                            div_c);
-
-    // rotary position embedding K,V
-    int64_t batch_stride_kv = time_major
-                                  ? inputs_num_heads[1] * head_dim
-                                  : seq_len * inputs_num_heads[1] * head_dim;
-    int64_t seq_stride_kv = time_major
-                                ? batch_size * inputs_num_heads[1] * head_dim
-                                : inputs_num_heads[1] * head_dim;
-
-    phi::Array<const T*, 3> input_kv{ins_data[1], ins_data[2], nullptr};
-    phi::Array<T*, 3> out_kv{outs_data[1], outs_data[2], nullptr};
-    kernel_func<<<grid, block, 0, stream>>>(input_kv,
-                                            sin_cos_data,
-                                            position_ids_data,
-                                            flag_sin_cos,
-                                            sign,
-                                            batch_size,
-                                            seq_len,
-                                            inputs_num_heads[1],
-                                            head_dim,
-                                            batch_stride_kv,
-                                            seq_stride_kv,
-                                            out_kv,
-                                            num_inputs - 1,
-                                            div_c);
-  }
+  VectorizedFusedRopeKernel<T, MPType, vec_size>
+      <<<grid, block, 0, stream>>>(ins_data,
+                                   sin_cos_data,
+                                   position_ids_data,
+                                   batch_size,
+                                   seq_len,
+                                   inputs_num_heads[0],
+                                   num_heads_kv,
+                                   head_dim,
+                                   batch_stride_q,
+                                   seq_stride_q,
+                                   batch_stride_kv,
+                                   seq_stride_kv,
+                                   outs_data,
+                                   div_c,
+                                   use_neox_rotary_style,
+                                   flag_sin_cos,
+                                   sign,
+                                   num_inputs);
 }
 
 }  // namespace fusion
