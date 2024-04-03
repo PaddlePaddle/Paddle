@@ -266,11 +266,16 @@ def infer_meta_for_layer(layer, *args, **kwargs):
         partial_program_layer,
     ) = layer.forward.get_concrete_program(*args_, **kwargs_)
 
+    if use_pir_api():
+        output_values = partial_program_layer._outputs.var_list
+    else:
+        output_values = concrete_program.outputs
+
     out = partial_program_layer._restore_out(
         [
             x
             for x in paddle.utils.flatten(
-                convert_variable_to_meta_info(concrete_program.outputs)
+                convert_variable_to_meta_info(output_values)
             )
             if isinstance(x, MetaInfo)
         ]

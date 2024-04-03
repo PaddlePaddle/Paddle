@@ -53,7 +53,6 @@ static bool SameInputOutputShape(
 }
 
 void CompileGroupToJitKernelOp(
-    const std::vector<pir::Value>& group_inputs,
     pir::PatternRewriter& rewriter,  // NOLINT
     std::unordered_map<pir::Block*, OpLoweringGroupPtr>* group_map) {
   // prepare attribute for jit_kernel_op
@@ -73,6 +72,7 @@ void CompileGroupToJitKernelOp(
     auto& yield_op = block->back();
     CHECK(yield_op.isa<pir::YieldOp>()) << "Last op of block should be yield";
     rewriter.set_insertion_point(&yield_op);
+    const auto& group_inputs = GetBlockOutsideInput(group->ops());
     auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
         group_inputs, op_attr_map.at(group), output_types);
     CHECK(jit_kernel_op.num_results() == group_output_values.size());
@@ -500,7 +500,7 @@ pir::Operation* CompileBroadcastTreeToConditionBlock(
   VLOG(6) << "After simply condition block: " << *program;
 
   // 3. compile condition block to jit_kernel_op
-  CompileGroupToJitKernelOp(group_inputs, rewriter, &group_map);
+  CompileGroupToJitKernelOp(rewriter, &group_map);
   VLOG(6) << "compile condition block to jit_kernel_op: " << *program;
 
   return cond_op;

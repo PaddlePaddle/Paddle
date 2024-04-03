@@ -2375,6 +2375,12 @@
   inplace : (out_grad -> x_grad)
   backward: squeeze_double_grad
 
+- backward_op : stack_double_grad
+  forward : stack_grad (Tensor[] x, Tensor grad_out, int axis=0) -> Tensor[](grad_x)
+  args : (Tensor[] grad_x_grad, int axis = 0)
+  output : Tensor(grad_out_grad)
+  invoke : stack(grad_x_grad, axis)
+
 - backward_op : stack_grad
   forward : stack (Tensor[] x, int axis) -> Tensor(out)
   args : (Tensor[] x, Tensor out_grad, int axis)
@@ -2389,6 +2395,7 @@
     data_type : out_grad
   no_need_buffer : x
   composite : stack_grad(x, out_grad, axis, x_grad)
+  backward: stack_double_grad
 
 - backward_op : stanh_grad
   forward : stanh(Tensor x, float scale_a, float scale_b) -> Tensor(out)

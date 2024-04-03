@@ -657,7 +657,7 @@ def matrix_norm(x, p='fro', axis=[-2, -1], keepdim=False, name=None):
         perm = _backshift_permutation(axis[0], axis[1], len(input.shape))
         inv_perm = _inverse_permutation(perm)
 
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             transposed = _C_ops.transpose(input, perm)
             u, s, vh = _C_ops.svd(transposed, False)
             result = _C_ops.sum(s, -1, None, keepdim)
@@ -750,7 +750,7 @@ def matrix_norm(x, p='fro', axis=[-2, -1], keepdim=False, name=None):
         perm = _backshift_permutation(axis[0], axis[1], len(input.shape))
         inv_perm = _inverse_permutation(perm)
 
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             abs_ord = abs(porder)
 
             max_min = _C_ops.max if porder > 0.0 else _C_ops.min
@@ -1898,7 +1898,7 @@ def cross(x, y, axis=12, name=None):
     Args:
         x (Tensor): The first input tensor, the data type is float16, float32, float64, int32, int64.
         y (Tensor): The second input tensor, the data type is float16, float32, float64, int32, int64.
-        axis (int, optional): The axis along which to compute the cross product. It defaults to be 9 which indicates using the first axis found with the length 3.
+        axis (int, optional): The axis along which to compute the cross product. It defaults to be 12 which indicates using the first axis found with the length 3.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:

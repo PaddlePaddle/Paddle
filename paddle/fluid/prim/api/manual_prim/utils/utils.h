@@ -88,7 +88,7 @@ static phi::DDim get_reduce_dims(const phi::DDim& x_dims,
   * y_dims =     [2, 1, 6, 1]  <-- shaped are right-aligned for comparison
   * <-- broadcast -->
   * z_dims = [10, 2, 4, 6, 5]
-  * ==> reduce_dims_from_z_to_x = [0, 1, 3]
+  * ==> reduce_dims_from_z_to_x = [1, 3]
   * ==> reduce_dims_from_z_to_y = [0, 2, 4]
   */
   auto out_dims = paddle::operators::details::BroadcastTwoDims(x_dims, y_dims);

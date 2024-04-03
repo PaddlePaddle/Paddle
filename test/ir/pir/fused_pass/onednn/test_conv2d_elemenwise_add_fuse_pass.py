@@ -22,10 +22,6 @@ import paddle
 paddle.enable_static()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
 class TestConv2dAddFusePass(PassTest):
     r"""
     x_var   filter
@@ -84,10 +80,6 @@ class TestConv2dAddFusePass(PassTest):
         self.check_pass_correct()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
 class TestConv2dAddFusePassAsY(PassTest):
     r"""
             x_var   filter
@@ -146,10 +138,6 @@ class TestConv2dAddFusePassAsY(PassTest):
         self.check_pass_correct()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
 class TestConv2dBiasAddFusePass(PassTest):
     r"""
     x_var   filter
