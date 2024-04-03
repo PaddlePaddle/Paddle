@@ -1,7 +1,7 @@
 // Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
+// you may not mse this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
@@ -46,11 +46,20 @@ TEST(op_test, base) {
   paddle::dialect::MatmulOp matmul_op1 =
       builder.Build<paddle::dialect::MatmulOp>(full_input_op1.out(),
                                                full_weight_op1.out());
-  paddle::dialect::AddOp add_op1 = builder.Build<paddle::dialect::AddOp>(
-      matmul_op1.out(), full_bias_op1.out());
+  builder.Build<paddle::dialect::AddOp>(matmul_op1.out(), full_bias_op1.out());
+
   std::string file_path = "./test_serialize_2.json";
   uint64_t version = 1;
   WriteModule(program, file_path, version, true, true);
+
+  pir::Program recover_program(ctx);
+  ReadModule(file_path, &recover_program, version);
+
+  CHECK_EQ(program.block()->size(), recover_program.block()->size());
+  CHECK_EQ(program.block()->front().name(),
+           recover_program.block()->front().name());
+  CHECK_EQ(program.block()->back().name(),
+           recover_program.block()->back().name());
 }
 
 TEST(op_test, time_test) {
@@ -75,8 +84,7 @@ TEST(op_test, time_test) {
     paddle::dialect::MatmulOp matmul_op =
         builder.Build<paddle::dialect::MatmulOp>(full_input_op1.out(),
                                                  full_weight_op.out());
-    paddle::dialect::AddOp add_op = builder.Build<paddle::dialect::AddOp>(
-        matmul_op.out(), full_bias_op.out());
+    builder.Build<paddle::dialect::AddOp>(matmul_op.out(), full_bias_op.out());
   }
 
   std::string file_path = "./test_serialize_10000_dump0.json";
@@ -86,8 +94,18 @@ TEST(op_test, time_test) {
   auto end = std::chrono::high_resolution_clock::now();
 
   auto duration =
-      std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  // 输出时间差
-  std::cout << "Elapsed time: " << duration.count() << " microseconds"
+      std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+  std::cout << "write time: " << duration.count() << " ms" << std::endl;
+
+  pir::Program recover_program(ctx);
+  auto start_ = std::chrono::high_resolution_clock::now();
+  ReadModule(file_path, &recover_program, version);
+  auto end_ = std::chrono::high_resolution_clock::now();
+  std::cout << "recover program ops " << recover_program.block()->size()
             << std::endl;
+  auto duration_ =
+      std::chrono::duration_cast<std::chrono::milliseconds>(end_ - start_);
+
+  std::cout << "Read time: " << duration_.count() << " ms" << std::endl;
 }

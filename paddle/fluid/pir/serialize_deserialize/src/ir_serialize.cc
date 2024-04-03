@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/serialize_deserialize/include/ir_serialize.h"
-#include "paddle/fluid/pir/serialize_deserialize/include/json_utils.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/serialize_utils.h"
 
 namespace pir {
 
@@ -25,14 +25,14 @@ Json ProgramWriter::GetProgramJson(const pir::Program* program) {
 
 Json ProgramWriter::WriteProgram(const pir::Program* program) {
   Json program_json;
-  program_json["regions"] = Json::array();
+  program_json[REGIONS] = Json::array();
   auto top_level_op = program->module_op();
 
   for (size_t i = 0; i < top_level_op->num_regions(); ++i) {
     std::string region_name = "region_" + std::to_string(region_id_++);
     auto& region = top_level_op->region(i);
     auto region_json = WriteRegion(&region, region_name);
-    program_json["regions"].emplace_back(region_json);
+    program_json[REGIONS].emplace_back(region_json);
   }
   VLOG(6) << "Finish write program.";
   return program_json;
@@ -41,12 +41,12 @@ Json ProgramWriter::WriteProgram(const pir::Program* program) {
 Json ProgramWriter::WriteRegion(const pir::Region* region,
                                 const std::string& region_name) {
   Json region_json;
-  region_json["id"] = region_name;
-  region_json["blocks"] = Json::array();
+  region_json[ID] = region_name;
+  region_json[BLOCKS] = Json::array();
   for (auto block : region->blocks()) {
     std::string block_name = "block_" + std::to_string(block_id_++);
     auto block_json = WriteBlock(block, block_name);
-    region_json["blocks"].emplace_back(block_json);
+    region_json[BLOCKS].emplace_back(block_json);
   }
   VLOG(6) << "Finish write " << region_name;
   return region_json;
@@ -55,21 +55,21 @@ Json ProgramWriter::WriteRegion(const pir::Region* region,
 Json ProgramWriter::WriteBlock(const pir::Block* block,
                                const std::string& block_name) {
   Json block_json;
-  block_json["id"] = block_name;
+  block_json[ID] = block_name;
 
   Json args_json = Json::array();
   for (auto arg : block->args()) {
     auto arg_json = WriteBlockArg(arg);
     args_json.emplace_back(arg_json);
   }
-  block_json["args"] = args_json;
+  block_json[BLOCKARGS] = args_json;
 
   Json ops_json = Json::array();
   for (auto op : block->ops()) {
     auto op_json = WriteOp(*op);
     ops_json.emplace_back(op_json);
   }
-  block_json["ops"] = ops_json;
+  block_json[BLOCKOPS] = ops_json;
 
   VLOG(6) << "Finish write " << block_name;
   return block_json;
@@ -77,11 +77,10 @@ Json ProgramWriter::WriteBlock(const pir::Block* block,
 
 Json ProgramWriter::WriteBlockArg(const pir::Value& value) {
   Json arg_json;
-  // Json arg = value;
-  Json var = Json::object();
+  Json var = WriteType(value.type());
   value_id_map[value] = blockarg_id_;
-  arg_json["id"] = blockarg_id_;
-  arg_json["contents"] = var;
+  arg_json[ID] = blockarg_id_;
+  arg_json[TYPE_TYPE] = var;
 
   VLOG(6) << "Finish write blockargument " << blockarg_id_;
   blockarg_id_--;
@@ -94,8 +93,8 @@ Json ProgramWriter::WriteValue(const pir::Value& value) {
   // Json var = value;
   Json var = WriteType(value.type());
   value_id_map[value] = value_id_;
-  var_json["id"] = value_id_;
-  var_json["type"] = var;
+  var_json[ID] = value_id_;
+  var_json[TYPE_TYPE] = var;
   VLOG(6) << "Finish write value " << value_id_;
 
   value_id_++;
@@ -104,26 +103,26 @@ Json ProgramWriter::WriteValue(const pir::Value& value) {
 
 Json ProgramWriter::WriteOp(const pir::Operation& op) {
   Json op_json = Json::object();
-  op_json["id"] = op.name();
+  op_json[ID] = op.name();
   // serialize opoperands
   Json operands_json = Json::array();
   for (auto operand : op.operands()) {
     auto operand_json = WriteOpOperand(operand);
     operands_json.emplace_back(operand_json);
   }
-  op_json["operands"] = operands_json;
+  op_json[OPOPERANDS] = operands_json;
 
   // serialize opresults
-  Json operesults_json = Json::array();
+  Json opresults_json = Json::array();
   for (auto& opresult : op.results()) {
     auto opresult_json = WriteValue(opresult);
-    operesults_json.emplace_back(opresult_json);
+    opresults_json.emplace_back(opresult_json);
   }
-  op_json["opresults"] = operesults_json;
+  op_json[OPRESULTS] = opresults_json;
 
   // serialize attributes
-  op_json["attrs"] = WriteAttributesMap_0(op.attributes());
-  op_json["opresult_attrs"] = WriteAttributesMap_1(op.attributes());
+  op_json[ATTRS] = WriteAttributesMap_0(op.attributes());
+  op_json[OPRESULTS_ATTRS] = WriteAttributesMap_1(op.attributes());
 
   VLOG(6) << "Finish write Operation " << op.name();
   return op_json;
@@ -132,7 +131,7 @@ Json ProgramWriter::WriteOp(const pir::Operation& op) {
 Json ProgramWriter::WriteOpOperand(const pir::OpOperand& op_operand) {
   Json operand_json = Json::object();
   int64_t id = value_id_map[op_operand.source()];
-  operand_json["id"] = id;
+  operand_json[ID] = id;
   VLOG(6) << "Finish write OpOperand " << id;
   return operand_json;
 }
@@ -163,8 +162,8 @@ Json ProgramWriter::WriteAttributesMap_0(const AttributeMap& attr_map) {
 Json ProgramWriter::WriteAttribute(const std::string& op_attr_name,
                                    const pir::Attribute& attr) {
   Json attr_json;
-  attr_json["name"] = op_attr_name;
-  attr_json["attr_type"] = pir::writeAttr(attr);
+  attr_json[NAME] = op_attr_name;
+  attr_json[ATTR_TYPE] = pir::writeAttr(attr);
 
   VLOG(6) << "Finish write Attribute. ";
   return attr_json;

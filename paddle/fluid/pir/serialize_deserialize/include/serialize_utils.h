@@ -11,8 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#ifndef PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_JSON_UTILS_H_
-#define PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_JSON_UTILS_H_
+#ifndef PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_SERIALIZE_UTILS_H_
+#define PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_SERIALIZE_UTILS_H_
 #include <fstream>
 #include <initializer_list>
 #include <string>
@@ -21,68 +21,68 @@
 #include "glog/logging.h"
 #include "nlohmann/json.hpp"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/utils.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_type.h"
-
 using Json = nlohmann::json;
 namespace pir {
 
 template <typename T>
-Json serializeTypeToJson(const T type) {
+Json serializeTypeToJson(const T& type) {
   Json j;
-  j["id"] = type.name();
+  j[ID] = type.name();
   return j;
 }
 
 template <typename T>
-Json serializeAttrToJson(const T attr) {
+Json serializeAttrToJson(const T& attr) {
   Json j;
-  j["id"] = attr.name();
-  j["data"] = attr.data();
+  j[ID] = attr.name();
+  j[DATA] = attr.data();
   return j;
 }
 
 template <>
-Json serializeAttrToJson<pir::StrAttribute>(const pir::StrAttribute attr) {
+Json serializeAttrToJson<pir::StrAttribute>(const pir::StrAttribute& attr) {
   Json j;
-  j["id"] = attr.name();
-  j["data"] = attr.AsString();
+  j[ID] = attr.name();
+  j[DATA] = attr.AsString();
   return j;
 }
 
 template <>
 Json serializeAttrToJson<pir::Complex64Attribute>(
-    const pir::Complex64Attribute attr) {
+    const pir::Complex64Attribute& attr) {
   Json j;
-  j["id"] = attr.name();
-  j["data"] = {attr.data().real, attr.data().imag};
+  j[ID] = attr.name();
+  j[DATA] = {attr.data().real, attr.data().imag};
   return j;
 }
 
 template <>
 Json serializeAttrToJson<pir::Complex128Attribute>(
-    const pir::Complex128Attribute attr) {
+    const pir::Complex128Attribute& attr) {
   Json j;
-  j["id"] = attr.name();
-  j["data"] = {attr.data().real, attr.data().imag};
+  j[ID] = attr.name();
+  j[DATA] = {attr.data().real, attr.data().imag};
   return j;
 }
 
 template <>
 Json serializeAttrToJson<paddle::dialect::IntArrayAttribute>(
-    const paddle::dialect::IntArrayAttribute attr) {
+    const paddle::dialect::IntArrayAttribute& attr) {
   Json j;
-  j["id"] = attr.name();
-  j["data"] = attr.data().GetData();
+  j[ID] = attr.name();
+  j[DATA] = attr.data().GetData();
   return j;
 }
 
 template <>
 Json serializeAttrToJson<paddle::dialect::ScalarAttribute>(
-    const paddle::dialect::ScalarAttribute attr) {
+    const paddle::dialect::ScalarAttribute& attr) {
   Json j;
-  j["id"] = attr.name();
+  j[ID] = attr.name();
 
   Json content = Json::array();
   auto scalar = attr.data();
@@ -120,32 +120,34 @@ Json serializeAttrToJson<paddle::dialect::ScalarAttribute>(
     content.push_back(scalar.to<phi::dtype::complex<double>>().real);
     content.push_back(scalar.to<phi::dtype::complex<double>>().imag);
   } else {
-    PD_THROW("Invalid tensor data type `", dtype_, "`.");
+    PADDLE_ENFORCE(false,
+                   phi::errors::InvalidArgument(
+                       "Invalid tensor data type `", dtype_, "`."));
   }
-  j["data"] = content;
+  j[DATA] = content;
   return j;
 }
 
 template <>
 Json serializeAttrToJson<paddle::dialect::DataTypeAttribute>(
-    const paddle::dialect::DataTypeAttribute attr) {
+    const paddle::dialect::DataTypeAttribute& attr) {
   Json j;
-  j["id"] = attr.name();
-  j["data"] = phi::DataTypeToString(attr.data());
+  j[ID] = attr.name();
+  j[DATA] = phi::DataTypeToString(attr.data());
   return j;
 }
 
 template <>
 Json serializeAttrToJson<paddle::dialect::PlaceAttribute>(
-    const paddle::dialect::PlaceAttribute attr) {
+    const paddle::dialect::PlaceAttribute& attr) {
   Json j;
-  j["id"] = attr.name();
+  j[ID] = attr.name();
   Json content = Json::array();
   auto place = attr.data();
   content.push_back(static_cast<int8_t>(place.GetType()));
   content.push_back(place.GetDeviceId());    // int8_t
   content.push_back(place.GetDeviceType());  // string
-  j["data"] = content;
+  j[DATA] = content;
   return j;
 }
 
@@ -203,21 +205,23 @@ Json writeType(const pir::Type& type) {
     VLOG(8) << "Write Complex128Type ... ";
     return pir::serializeTypeToJson<pir::Complex128Type>(
         type.dyn_cast<pir::Complex128Type>());
+    // NOTE(Ruting) those Types need call writeType which make build error
+    //  when use template func serializeTypeToJson
   } else if (type.isa<pir::VectorType>()) {
     VLOG(8) << "Write VectorType ... ";
     auto type_ = type.dyn_cast<pir::VectorType>();
-    type_json["id"] = type_.name();
+    type_json[ID] = type_.name();
     Json content = Json::array();
     for (auto type_x : type_.data()) {
       content.push_back(writeType(type_x));
     }
-    type_json["data"] = content;
+    type_json[DATA] = content;
     return type_json;
   } else if (type.isa<pir::DenseTensorType>()) {
     VLOG(8) << "Write DenseTensorType ... ";
     auto type_ = type.dyn_cast<pir::DenseTensorType>();
 
-    type_json["id"] = type_.name();
+    type_json[ID] = type_.name();
     Json content = Json::array();
     content.push_back(writeType(type_.dtype()));
 
@@ -232,8 +236,11 @@ Json writeType(const pir::Type& type) {
     content.push_back(type_.lod());
 
     content.push_back(type_.offset());
-    type_json["data"] = content;
+    type_json[DATA] = content;
     return type_json;
+  } else {
+    PADDLE_ENFORCE(
+        false, phi::errors::InvalidArgument("Unknown Type when write type"));
   }
   VLOG(8) << "Finish write Type ... ";
 
@@ -241,10 +248,10 @@ Json writeType(const pir::Type& type) {
 }
 
 template <>
-Json serializeAttrToJson<pir::TypeAttribute>(const pir::TypeAttribute attr) {
+Json serializeAttrToJson<pir::TypeAttribute>(const pir::TypeAttribute& attr) {
   Json j;
-  j["id"] = attr.name();
-  j["data"] = writeType(attr.data());
+  j[ID] = attr.name();
+  j[DATA] = writeType(attr.data());
   return j;
 }
 
@@ -281,8 +288,8 @@ Json writeAttr(const pir::Attribute& attr) {
     for (size_t i = 0; i < attr_.size(); i++) {
       val.push_back(writeAttr(attr_.at(i)));
     }
-    attr_json["id"] = attr_.name();
-    attr_json["data"] = val;
+    attr_json[ID] = attr_.name();
+    attr_json[DATA] = val;
     return attr_json;
   } else if (attr.isa<pir::TypeAttribute>()) {
     VLOG(8) << "write TypeAttribute .";
@@ -320,12 +327,15 @@ Json writeAttr(const pir::Attribute& attr) {
     VLOG(8) << "write PlaceAttribute .";
     return pir::serializeAttrToJson<paddle::dialect::PlaceAttribute>(
         attr.dyn_cast<paddle::dialect::PlaceAttribute>());
+  } else {
+    PADDLE_ENFORCE(
+        false, phi::errors::InvalidArgument("Unknown Attr %s when write attr"));
   }
-  VLOG(8) << "Finish write Attr ... ";
+  VLOG(8) << "Finish write& attr ... ";
 
   return attr_json;
 }
 
 }  // namespace pir
 
-#endif  // PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_JSON_UTILS_H_
+#endif  // PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_SERIALIZE_UTILS_H_

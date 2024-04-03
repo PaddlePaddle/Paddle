@@ -19,7 +19,11 @@
 #include "paddle/phi/common/port.h"
 
 namespace pir {
-
+#define PROGRAM "program"
+#define BASE_CODE "base_code"
+#define MAGIC "magic"
+#define PIRVERSION "version"
+#define PIR "pir"
 void WriteModule(const pir::Program& program,
                  const std::string& file_path,
                  const uint64_t& pir_version,
@@ -36,12 +40,12 @@ void WriteModule(const pir::Program& program,
   // write base code
   Json total;
 
-  total["base_code"] = {{"magic", "PIR"}, {"version", pir_version}};
+  total[BASE_CODE] = {{MAGIC, PIR}, {PIRVERSION, pir_version}};
 
   auto t1 = std::chrono::high_resolution_clock::now();
   ProgramWriter writer(pir_version);
   // write program
-  total["program"] = writer.GetProgramJson(&program);
+  total[PROGRAM] = writer.GetProgramJson(&program);
 
   auto t2 = std::chrono::high_resolution_clock::now();
   std::string total_str;
@@ -62,20 +66,35 @@ void WriteModule(const pir::Program& program,
   fout.close();
   auto t4 = std::chrono::high_resolution_clock::now();
 
-  auto time_1 = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
-  auto time_2 = std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2);
-  auto time_3 = std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3);
+  auto time_1 = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
+  auto time_2 = std::chrono::duration_cast<std::chrono::milliseconds>(t3 - t2);
+  auto time_3 = std::chrono::duration_cast<std::chrono::milliseconds>(t4 - t3);
   // 输出时间差
-  std::cout << "serialize time: " << time_1.count() << " microseconds"
-            << std::endl;
-  std::cout << "dump time: " << time_2.count() << " microseconds" << std::endl;
-  std::cout << "file write time: " << time_3.count() << " microseconds"
-            << std::endl;
+  std::cout << "serialize time: " << time_1.count() << " ms" << std::endl;
+  std::cout << "dump time: " << time_2.count() << " ms" << std::endl;
+  std::cout << "file write time: " << time_3.count() << " ms" << std::endl;
 }
 
-void ReadModule(const std::string& file_path, pir::Program* program) {
+void ReadModule(const std::string& file_path,
+                pir::Program* program,
+                const uint64_t& pir_version) {
+  auto t1 = std::chrono::high_resolution_clock::now();
   std::ifstream f(file_path);
+  auto t2 = std::chrono::high_resolution_clock::now();
   Json data = Json::parse(f);
+  auto t3 = std::chrono::high_resolution_clock::now();
+  ProgramReader reader(pir_version);
+
+  reader.RecoverProgram(&(data[PROGRAM]), program);
+  auto t4 = std::chrono::high_resolution_clock::now();
+
+  auto time_1 = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1);
+  auto time_2 = std::chrono::duration_cast<std::chrono::milliseconds>(t3 - t2);
+  auto time_3 = std::chrono::duration_cast<std::chrono::milliseconds>(t4 - t3);
+  // 输出时间差
+  std::cout << "file read time: " << time_1.count() << " us" << std::endl;
+  std::cout << "json parse time: " << time_2.count() << " ms" << std::endl;
+  std::cout << "deserilize time: " << time_3.count() << " ms" << std::endl;
 }
 
 }  // namespace pir

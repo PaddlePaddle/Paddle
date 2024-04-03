@@ -16,10 +16,41 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include "paddle/common/enforce.h"
+#include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/program.h"
 
 using Json = nlohmann::json;
 
-namespace pir {}
+namespace pir {
+
+class ProgramReader {
+ public:
+  explicit ProgramReader(const uint64_t version) : current_version(version) {}
+
+  ProgramReader(ProgramReader&&) = delete;
+  ProgramReader(const ProgramReader& ProgramReader) = delete;
+  ProgramReader& operator=(const ProgramReader&) = delete;
+  ProgramReader& operator=(ProgramReader&&);
+
+  // static void staticInit()
+
+  void RecoverProgram(Json* program_json, pir::Program* recover_program);
+  ~ProgramReader() = default;
+
+ private:
+  uint64_t current_version;
+  std::map<int64_t, pir::Value> id_value_map;
+
+  void ReadProgram(Json* program_json, pir::Program* program);
+  void ReadRegion(Json* region_json, pir::Region* region);
+  void ReadBlock(Json* block_json, pir::Block* block);
+  pir::Operation* ReadOp(Json* op_json);
+  pir::AttributeMap ReadAttributesMap(Json* attrs_json,
+                                      Json* operesult_attrs_json);
+  pir::Attribute ReadAttribute(Json* attr_json);
+  pir::Type ReadType(Json* type_json);
+};
+
+}  // namespace pir
 
 #endif  // PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_IR_DESERIALIZE_H_
