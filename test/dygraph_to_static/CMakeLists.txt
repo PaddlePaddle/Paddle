@@ -7,14 +7,6 @@ set(SOT_ENVS SOT_LOG_LEVEL=0 COST_MODEL=False MIN_GRAPH_SIZE=0
              STRICT_MODE=False)
 set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0)
 
-list(REMOVE_ITEM TEST_OPS test_lac)
-# NOTE(Aurelius84): In case of Windows CI, if open ON_INFER, RWLOCK of Scope
-# will be removed and will cause some random failed in multi-thread.
-if(WITH_PYTHON)
-  py_test_modules(test_lac MODULES test_lac)
-  set_tests_properties(test_lac PROPERTIES TIMEOUT 120)
-endif()
-
 if(WIN32 AND NOT WITH_GPU)
   # disable on Windows CPU CI for timeout
   list(REMOVE_ITEM TEST_OPS test_resnet_amp)

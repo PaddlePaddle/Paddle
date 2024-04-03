@@ -792,7 +792,6 @@ FOURTH_HIGH_PARALLEL_JOB_NEW = [
     'test_grid_generator',
     'test_randn_op',
     'test_activation_mkldnn_op',
-    'test_lac',
     'test_pad_op',
     'test_lstmp_op',
     'test_loop',

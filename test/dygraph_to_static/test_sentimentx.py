@@ -21,7 +21,6 @@ from dygraph_to_static_utils import (
     test_default_and_pir,
     test_pir_only,
 )
-from test_lac import DynamicGRU
 
 import paddle
 from paddle import base
@@ -34,6 +33,55 @@ SEED = 2020
 #        some algorithm results are non-deterministic, like convolution algorithms.
 if paddle.is_compiled_with_cuda():
     paddle.set_flags({'FLAGS_cudnn_deterministic': True})
+
+
+class DynamicGRU(paddle.nn.Layer):
+    def __init__(
+        self,
+        size,
+        h_0=None,
+        param_attr=None,
+        bias_attr=None,
+        is_reverse=False,
+        gate_activation='sigmoid',
+        candidate_activation='tanh',
+        origin_mode=False,
+        init_size=None,
+    ):
+        super().__init__()
+
+        self.gru_unit = paddle.nn.GRUCell(
+            size * 3,
+            size,
+        )
+
+        self.size = size
+        self.h_0 = h_0
+        self.is_reverse = is_reverse
+
+    def forward(self, inputs):
+        # Use `paddle.assign` to create a copy of global h_0 created not in `DynamicGRU`,
+        # to avoid modify it because `h_0` is both used in other `DynamicGRU`.
+        hidden = paddle.assign(self.h_0)
+        hidden.stop_gradient = True
+
+        res = []
+        for i in range(inputs.shape[1]):
+            if self.is_reverse:
+                j = inputs.shape[1] - 1 - i
+            else:
+                j = i
+
+            input_ = inputs[:, j : j + 1, :]
+            input_ = paddle.reshape(input_, [-1, input_.shape[2]])
+            hidden, reset = self.gru_unit(input_, hidden)
+            hidden_ = paddle.reshape(hidden, [-1, 1, hidden.shape[1]])
+            res.append(hidden_)
+
+        if self.is_reverse:
+            res = res[::-1]
+        res = paddle.concat(res, axis=1)
+        return res
 
 
 class SimpleConvPool(paddle.nn.Layer):
