@@ -111,9 +111,33 @@ TEST_META_DATA = [
     },
 ]
 
+TEST_META_DATA_ADDITIONAL = [
+    {
+        'low': 0.1,
+        'high': 1,
+        'np_shape': [2, 3, 4, 5],
+        'type': 'int8',
+        'sv_list': [np.inf, np.nan],
+    },
+    {
+        'low': 0,
+        'high': 100,
+        'np_shape': [11, 17, 10],
+        'type': 'int16',
+        'sv_list': [np.inf, np.nan],
+    },
+    {
+        'low': 0,
+        'high': 999,
+        'np_shape': [132],
+        'type': 'uint8',
+        'sv_list': [np.inf, np.nan],
+    },
+]
 
-def test(test_case, op_str, use_gpu=False):
-    for meta_data in TEST_META_DATA:
+
+def test(test_case, op_str, use_gpu=False, data_set=TEST_META_DATA):
+    for meta_data in data_set:
         meta_data = dict(meta_data)
         meta_data['op_str'] = op_str
         x_np, result_np = np_data_generator(**meta_data)
@@ -144,6 +168,9 @@ class TestCPUNormal(unittest.TestCase):
     def test_finite(self):
         test(self, 'isfinite')
 
+    def test_inf_additional(self):
+        test(self, 'isinf', data_set=TEST_META_DATA_ADDITIONAL)
+
 
 class TestCUDANormal(unittest.TestCase):
     def test_inf(self):
@@ -154,6 +181,9 @@ class TestCUDANormal(unittest.TestCase):
 
     def test_finite(self):
         test(self, 'isfinite', True)
+
+    def test_inf_additional(self):
+        test(self, 'isinf', True, data_set=TEST_META_DATA_ADDITIONAL)
 
 
 class TestError(unittest.TestCase):
