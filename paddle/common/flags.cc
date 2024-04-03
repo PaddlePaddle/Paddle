@@ -629,6 +629,10 @@ PHI_DEFINE_EXPORTED_uint64(
     "The real chunk size is max(request_size, "
     "FLAGS_auto_growth_chunk_size_in_mb).");
 
+PHI_DEFINE_EXPORTED_bool(custom_device_mem_record,
+                         false,
+                         "Enable mem record event on custom device");
+
 #endif
 
 /**
@@ -1344,6 +1348,19 @@ PHI_DEFINE_EXPORTED_bool(trt_ibuilder_cache,
 PHI_DEFINE_EXPORTED_bool(use_shm_cache,
                          false,
                          "Use shm cache in mmap_allocator.");
+
+/**
+ * mmap_allocator related FLAG
+ * Name: dataloader_use_file_descriptor
+ * Since Version: 2.6.2
+ * Value Range: bool, default=true
+ * Example:
+ * Note: . If True, mmap_allocator will use file descripor to open shared memory
+ * operation.
+ */
+PHI_DEFINE_EXPORTED_bool(dataloader_use_file_descriptor,
+                         true,
+                         "Use file descriptor in mmap_allocator.");
 
 /**
  * Tensor operants related FLAG

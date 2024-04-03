@@ -50,6 +50,10 @@ class WhileInstruction : public InstructionBase {
 
   PirInterpreter* BodyInterpreter() const { return body_inter_.get(); }
 
+  void SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs);
+
+  void SetInputHooks(const std::vector<PirHookFunc>& hookfuncs);
+
  private:
   // 'output' = 'input'
   void ShareInputsToOutputs();

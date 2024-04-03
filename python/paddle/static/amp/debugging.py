@@ -106,9 +106,7 @@ def _extract_compute_dtype(op, block):
                     var_dtype
                 ):
                     _logger.warning(
-                        "Operator < {} > has different input data types, input_names = {}, output_names = {}.".format(
-                            op.type, op.input_names, op.output_names
-                        )
+                        f"Operator < {op.type} > has different input data types, input_names = {op.input_names}, output_names = {op.output_names}."
                     )
                 elif _is_floating_point(var_dtype):
                     # When there are multiple inputs, such as embedding
@@ -132,9 +130,7 @@ def _extract_compute_dtype(op, block):
                     var_dtype
                 ):
                     _logger.warning(
-                        "Operator < {} > has different input / output data types, input_names = {}, output_names = {}.".format(
-                            op.type, op.input_names, op.output_names
-                        )
+                        f"Operator < {op.type} > has different input / output data types, input_names = {op.input_names}, output_names = {op.output_names}."
                     )
     return compute_dtype
 

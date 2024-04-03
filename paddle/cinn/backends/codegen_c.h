@@ -118,6 +118,8 @@ class CodeGenC : public ir::IrPrinter {
   Target target_;
   std::stringstream ss_;
   bool inline_builtin_codes_{true};
+  std::unordered_map<const ir::Store*, ir::Expr> store_to_offset_;
+  std::unordered_map<const ir::Load*, ir::Expr> load_to_offset_;
 };
 
 namespace detail {

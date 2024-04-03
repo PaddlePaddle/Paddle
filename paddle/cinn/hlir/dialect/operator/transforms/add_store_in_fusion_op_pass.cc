@@ -35,38 +35,6 @@ class AddYieldStoreInFusionOpPattern
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
     for (auto i = 0; i < op->num_operands(); ++i) {
-      if (auto reshape_op = op->operand_source(i)
-                                .defining_op()
-                                ->dyn_cast<cinn::dialect::ReshapeOp>()) {
-        if (reshape_op.operand_source(0).defining_op() == nullptr) {
-          continue;
-        }
-        auto pre_name = reshape_op.operand_source(0).defining_op()->name();
-
-        if (op->operand_source(i).use_count() > 1) {
-          continue;
-        }
-
-        if ((pre_name != "cinn_op.reduce_sum") &&
-            (pre_name != "cinn_op.reduce_max")) {
-          auto store_op = rewriter.Build<cinn::dialect::YieldStoreOp>(
-              op->operand_source(i).defining_op()->operand_source(0),
-              op->operand_source(i).type());
-
-          if (shape_analysis.HasShapeOrDataForValue(reshape_op->result(0))) {
-            shape_analysis.SetShapeOrDataForValue(
-                store_op.result(0),
-                shape_analysis.GetShapeOrDataForValue(reshape_op->result(0)));
-          }
-
-          op->operand(i).set_source(store_op.result(0));
-          if (reshape_op->result(0).use_count() == 0) {
-            rewriter.EraseOp(reshape_op);
-          }
-          continue;
-        }
-      }
-
       if (op->operand_source(i).use_count() == 1) {
         continue;
       }

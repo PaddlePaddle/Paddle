@@ -336,9 +336,7 @@ def find_distributed_operator_impl_container(dist_op):
             )
 
     _logger.debug(
-        "Op [{}] Complete DistAttr using {}".format(
-            op_type, type(dist_op_impl_container).__name__
-        )
+        f"Op [{op_type}] Complete DistAttr using {type(dist_op_impl_container).__name__}"
     )
     return dist_op_impl_container
 
@@ -555,9 +553,7 @@ def sync_and_scale_gradients(dist_ctx, op, groups, allreduce_var_names):
             dims_mapping = op_dist_attr.get_output_dims_mapping(grad_var.name)
             assert (
                 dims_mapping is not None
-            ), "Unexpected: dims_mapping of output [{}] of op [{}] is None".format(
-                grad_var.name, op_dist_attr.op_type
-            )
+            ), f"Unexpected: dims_mapping of output [{grad_var.name}] of op [{op_dist_attr.op_type}] is None"
             # NOTE auxiliary op's dist attr should follow dist_op not dist_tensor
             for new_op in added_ops:
                 new_op_attr = OperatorDistAttr()
@@ -592,9 +588,7 @@ def get_partial_groups(dist_ctx, op, out_grad_names, rank):
         else:
             assert (
                 partial_dims == var_dist_attr._partial_dims()
-            ), "Partial dims of outputs {} of op [{}] is not consistent".format(
-                out_grad_names, op.type
-            )
+            ), f"Partial dims of outputs {out_grad_names} of op [{op.type}] is not consistent"
 
     partial_dims = list(partial_dims)
     partial_dims.sort()
@@ -746,14 +740,10 @@ def update_op_dims_mapping(
     changed = False
     assert len(input_arg_names) == len(
         infered_input_dims_mappings
-    ), "dims mapping is NOT Match, infered [{}], original: [{}]; dist op: [{}]".format(
-        len(infered_input_dims_mappings), len(input_arg_names), str(dist_op)
-    )
+    ), f"dims mapping is NOT Match, infered [{len(infered_input_dims_mappings)}], original: [{len(input_arg_names)}]; dist op: [{str(dist_op)}]"
     assert len(output_arg_names) == len(
         infered_output_dims_mappings
-    ), "dims mapping is NOT Match, infered [{}], original: [{}]; dist op: [{}]".format(
-        len(infered_output_dims_mappings), len(output_arg_names), str(dist_op)
-    )
+    ), f"dims mapping is NOT Match, infered [{len(infered_output_dims_mappings)}], original: [{len(output_arg_names)}]; dist op: [{str(dist_op)}]"
 
     for i in range(len(input_arg_names)):
         original_dims_mapping = op_dist_attr.get_input_dims_mapping(
@@ -764,12 +754,7 @@ def update_op_dims_mapping(
             original_dims_mapping != infered_dims_mapping
         ):
             _logger.debug(
-                "Changed: Op [{}], name [{}], Original [{}], Infered [{}]".format(
-                    dist_op.serial_op.type,
-                    input_arg_names[i],
-                    original_dims_mapping,
-                    infered_dims_mapping,
-                )
+                f"Changed: Op [{dist_op.serial_op.type}], name [{input_arg_names[i]}], Original [{original_dims_mapping}], Infered [{infered_dims_mapping}]"
             )
             changed = True
             op_dist_attr.set_input_dims_mapping(
@@ -786,12 +771,7 @@ def update_op_dims_mapping(
             original_dims_mapping != infered_dims_mapping
         ):
             _logger.debug(
-                "Changed: Op [{}], name [{}], Original [{}], Infered [{}]".format(
-                    dist_op.serial_op.type,
-                    output_arg_names[i],
-                    original_dims_mapping,
-                    infered_dims_mapping,
-                )
+                f"Changed: Op [{dist_op.serial_op.type}], name [{output_arg_names[i]}], Original [{original_dims_mapping}], Infered [{infered_dims_mapping}]"
             )
             changed = True
             op_dist_attr.set_output_dims_mapping(

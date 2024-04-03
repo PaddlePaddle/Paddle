@@ -96,10 +96,17 @@ def _convert_places(places):
 
 
 # NOTE(chenweihang): _reader_process_loop must be top level method to be pickled
-def _reader_process_loop(batch_reader, data_queue):
+def _reader_process_loop(
+    batch_reader, data_queue, dataloader_use_file_descriptor=True
+):
     try:
         # set signal handler
         core._set_process_signal_handler()
+        if not dataloader_use_file_descriptor:
+            # set dataloader_use_file_descriptor to false to avoid use descriptor.
+            paddle.base.core.globals()[
+                "FLAGS_dataloader_use_file_descriptor"
+            ] = False
 
         # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
         # some shared memory objects may have been applied for but have not yet
@@ -606,7 +613,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
             multiprocess_queue_set.add(self._data_queue)
             self._process = multiprocessing.Process(
                 target=_reader_process_loop,
-                args=(self._batch_reader, self._data_queue),
+                args=(self._batch_reader, self._data_queue, False),
             )
             self._process.daemon = True
             self._process.start()
@@ -1611,9 +1618,7 @@ class DatasetLoader(DataLoaderBase):
 
         assert (
             len(dataset.filelist) >= thread_num
-        ), "Filelist number of dataset {} must be not less than place number {}".format(
-            len(dataset.filelist), thread_num
-        )
+        ), f"Filelist number of dataset {len(dataset.filelist)} must be not less than place number {thread_num}"
 
         if dataset.thread_num != 0 and dataset.thread_num != thread_num:
             logging.warn(
