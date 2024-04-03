@@ -23,7 +23,7 @@ from paddle.base import core
 
 class TestDLPack(unittest.TestCase):
     def test_dlpack_dygraph(self):
-        paddle.disable_static()
+        # paddle.disable_static()
         tensor = paddle.to_tensor(np.array([1, 2, 3, 4]).astype('int'))
         dlpack = paddle.utils.dlpack.to_dlpack(tensor)
         out_from_dlpack = paddle.utils.dlpack.from_dlpack(dlpack)
