@@ -371,14 +371,10 @@ Variable NetBuilder::BroadcastTo(const Variable& operand,
         }
       }
       PADDLE_ENFORCE_NE(axis,
-                        -1,
+                        -1UL,
                         phi::errors::InvalidArgument(
                             "When we broadcast a 1-dimension shape,"
-                            "the number should contained in the out_shape."
-                            "We cannot broadcast from"
-                            "shape %d to shape %d.",
-                            operand->shape,
-                            out_shape));
+                            "the number should contained in the out_shape."));
     }
     broadcast_axes[0] = axis;
   }
