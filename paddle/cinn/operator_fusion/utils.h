@@ -50,6 +50,10 @@ static std::vector<int64_t> GetReduceAxisIdx(pir::Operation* reduce_op) {
   CHECK(attr_val.isa<::pir::ArrayAttribute>());
   const auto& axis_attr = attr_val.dyn_cast<::pir::ArrayAttribute>();
   std::vector<int64_t> reduce_axis_idx;
+  if (input_rank == 0) {
+    VLOG(4) << "GetReduceAxisIdx: ";
+    return reduce_axis_idx;
+  }
   for (int i = 0; i < axis_attr.size(); ++i) {
     int64_t axis = axis_attr.at(i).dyn_cast<::pir::Int64Attribute>().data();
     if (axis < 0) {
