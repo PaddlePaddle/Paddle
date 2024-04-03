@@ -143,7 +143,6 @@ class FlashAttnPatternQscale : public paddle::drr::DrrPatternBase {
     // Result Pattern.
     //
     paddle::drr::ResultPattern res = src.ResultPattern();
-    // flash_attn impl
     const auto &flash_attn = res.Op("pd_op.flash_attn",
                                     {{{"dropout", res.Float32Attr(0.0)},
                                       {"causal", res.BoolAttr(false)},
@@ -283,7 +282,6 @@ class FlashAttnPatternOutscale : public paddle::drr::DrrPatternBase {
     // Result Pattern.
     //
     paddle::drr::ResultPattern res = src.ResultPattern();
-    // flash_attn impl
     const auto &flash_attn = res.Op("pd_op.flash_attn",
                                     {{{"dropout", res.Float32Attr(0.0)},
                                       {"causal", res.BoolAttr(false)},
@@ -421,38 +419,6 @@ class TransposeSliceFlashAttnPattern : public paddle::drr::DrrPatternBase {
     // Result Pattern.
     //
     paddle::drr::ResultPattern res = src.ResultPattern();
-
-    // transpose
-    const auto &transpose_qkv_res =
-        res.Op("pd_op.transpose", {{"perm", src.Attr("perm")}});
-    res.Tensor("qkv_transpose") = transpose_qkv_res(res.Tensor("qkv"));
-    // slice q -> [b, head, s, head_dim]
-    const auto &slice_q_res =
-        res.Op(paddle::dialect::SliceOp::name(),
-               {{"axes", src.Attr("axes_q")},
-                {"infer_flags", src.Attr("infer_flags_q")},
-                {"decrease_axis", src.Attr("decrease_axis_q")}});
-    res.Tensor("q") = slice_q_res(res.Tensor("qkv_transpose"),
-                                  res.OutputNoneTensor(),
-                                  res.OutputNoneTensor());
-    // slice k -> [b, head, s, head_dim]
-    const auto &slice_k_res =
-        res.Op(paddle::dialect::SliceOp::name(),
-               {{"axes", src.Attr("axes_k")},
-                {"infer_flags", src.Attr("infer_flags_k")},
-                {"decrease_axis", src.Attr("decrease_axis_k")}});
-    res.Tensor("k") = slice_k_res(res.Tensor("qkv_transpose"),
-                                  res.OutputNoneTensor(),
-                                  res.OutputNoneTensor());
-    // slice v -> [b, head, s, head_dim]
-    const auto &slice_v_res =
-        res.Op(paddle::dialect::SliceOp::name(),
-               {{"axes", src.Attr("axes_v")},
-                {"infer_flags", src.Attr("infer_flags_v")},
-                {"decrease_axis", src.Attr("decrease_axis_v")}});
-    res.Tensor("v") = slice_v_res(res.Tensor("qkv_transpose"),
-                                  res.OutputNoneTensor(),
-                                  res.OutputNoneTensor());
     const auto &flash_attn = res.Op("pd_op.flash_attn",
                                     {{{"dropout", res.Float32Attr(0.0)},
                                       {"causal", res.BoolAttr(false)},

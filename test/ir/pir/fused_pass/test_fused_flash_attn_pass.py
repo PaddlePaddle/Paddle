@@ -546,7 +546,7 @@ class TestTransposeSliceFlashAttnPattern(PassTest):
     r"""
                 transpose
                     |
-         ----------- ----------
+         -----------+----------
          |          |           |
        slice       slice      slice
          |          |           |
@@ -568,12 +568,14 @@ class TestTransposeSliceFlashAttnPattern(PassTest):
                       |
                      out
 
-         transpose
-             |
-         --slice--
-         |   |   |
-         Q   K   V          mask
-         |   |   |            |
+           transpose
+               |
+         ------+------     
+         |     |     |
+       slice slice slice
+         |     |     |
+         Q     K     V       mask
+         |     |     |        |
          ------flash_attn------
                    |
                   out
