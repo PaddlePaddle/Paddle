@@ -543,7 +543,7 @@ class TestXavierInitializer(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=paddle.nn.initializer.XavierInitializer(
-                    uniform=uniform, fan_in=12, fan_out=23, seed=134
+                    uniform=uniform, fan_in=12, fan_out=23, seed=134, gain=0.2
                 ),
             )
         num_ops = (
@@ -555,7 +555,7 @@ class TestXavierInitializer(unittest.TestCase):
         init_op = block.ops[0]
         if uniform:
             self.assertEqual(init_op.type, 'uniform_random')
-            limit = np.sqrt(6.0 / (12 + 23))
+            limit = 0.2 * np.sqrt(6.0 / (12 + 23))
             self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
             self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
         else:
@@ -741,7 +741,11 @@ class TestXavierInitializerPir(unittest.TestCase):
                     shape=[5, 10],
                     name="param",
                     initializer=paddle.nn.initializer.XavierInitializer(
-                        uniform=uniform, fan_in=12, fan_out=23, seed=134
+                        uniform=uniform,
+                        fan_in=12,
+                        fan_out=23,
+                        seed=134,
+                        gain=0.2,
                     ),
                 )
                 block = startup.global_block()
@@ -755,7 +759,7 @@ class TestXavierInitializerPir(unittest.TestCase):
                 self.assertEqual(len(checked_ops), 1)
                 init_op = checked_ops[0]
                 if uniform:
-                    limit = np.sqrt(6.0 / (12 + 23))
+                    limit = 0.2 * np.sqrt(6.0 / (12 + 23))
                     min = self.get_operand_definition_op_attrs(
                         init_op, "min", "value"
                     )
@@ -1547,6 +1551,31 @@ class TestXavierInitializerDygraph(unittest.TestCase):
 
         hist2, _ = output_hist(
             np.random.normal(0, np.sqrt(2.0 / (3 + 5)), [1024, 1024, 16])
+        )
+
+        np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.01)
+        paddle.enable_static()
+
+
+class TestXavierInitializerDygraph2(unittest.TestCase):
+    def test_xavier_initializer_with_gain(self, dtype="float32"):
+        """
+        In dygraph mode, we can use initializer directly to initialize a tensor.
+        """
+        paddle.disable_static()
+
+        tensor = paddle.zeros([1024, 1024, 16])
+        tensor.stop_gradient = False
+
+        xavier_ = paddle.nn.initializer.XavierNormal(
+            fan_in=3, fan_out=5, gain=2.5
+        )
+        xavier_(tensor)
+
+        hist, _ = output_hist(tensor.numpy())
+
+        hist2, _ = output_hist(
+            np.random.normal(0, 2.5 * np.sqrt(2.0 / (3 + 5)), [1024, 1024, 16])
         )
 
         np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.01)
