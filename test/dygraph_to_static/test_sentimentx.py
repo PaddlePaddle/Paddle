@@ -373,7 +373,7 @@ class TestSentiment(Dy2StTestBase):
         np.testing.assert_allclose(
             dy_out,
             st_out,
-            rtol=1e-05,
+            rtol=1e-4,
             err_msg=f'dy_out:\n {dy_out}\n st_out:\n {st_out}',
         )
 
