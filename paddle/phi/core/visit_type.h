@@ -355,7 +355,7 @@ namespace phi {
                  "`");                                                        \
     }                                                                         \
   }()
-#if defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_XPU)
 #define PD_VISIT_ALL_TYPES(TYPE, NAME, ...)                                    \
   [&] {                                                                        \
     const auto& __dtype__ = TYPE;                                              \

@@ -35,7 +35,11 @@ struct GeluFunctor {
 template <typename T>
 struct FastGeluFunctor {
   inline __device__ T operator()(const T x) const {
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE(0, "FastGelu not surpport for rocm");
+#else
     return phi::GeluFwd<T, true>(x);
+#endif
   }
 };
 
@@ -92,8 +96,8 @@ __global__ void FusedDropoutActBias(
   int row_id = blockIdx.y;
   int idx = row_id * cols + col_id;
 
-  curandStatePhilox4_32_10_t state;
-  curand_init(seed, idx, increment, &state);
+  GPURAND(StatePhilox4_32_10_t) state;
+  GPURAND(_init)(seed, idx, increment, &state);
 
   const T factor =
       phi::fusion::GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
