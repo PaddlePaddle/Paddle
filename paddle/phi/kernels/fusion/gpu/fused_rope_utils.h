@@ -19,6 +19,7 @@
 namespace phi {
 namespace fusion {
 constexpr int kDefaultRotaryBase = 10000;
+constexpr float Epsilon = 1e-7;
 template <typename T, typename MPType, int VecSize>
 using VectorizedFusedRopeCudaKernelFunc =
     void (*)(phi::Array<const T*, 3> ins_data,
@@ -258,7 +259,8 @@ __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
   MPType sin_value[VecSize];
   MPType cos_value[VecSize];
 
-  if (static_cast<int>(rotary_emb_base) == kDefaultRotaryBase) {
+  if (fabs(rotary_emb_base - static_cast<float>(kDefaultRotaryBase)) <
+      Epsilon) {
     for (; index < size; index += stride) {
       VectorizedGetSinCos<T, MPType, VecSize, kDefaultRotaryBase>::run(
           sin_cos_data,
@@ -367,7 +369,8 @@ __global__ void VectorizedFusedRopeWithRotateHalfKernel(
   MPType sin_value[VecSize];
   MPType cos_value[VecSize];
 
-  if (static_cast<int>(rotary_emb_base) == kDefaultRotaryBase) {
+  if (fabs(rotary_emb_base - static_cast<float>(kDefaultRotaryBase)) <
+      Epsilon) {
     for (; index < size; index += stride) {
       VectorizedGetSinCos<T, MPType, VecSize, kDefaultRotaryBase>::run(
           sin_cos_data,
