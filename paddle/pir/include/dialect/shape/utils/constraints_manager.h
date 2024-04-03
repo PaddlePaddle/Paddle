@@ -35,10 +35,17 @@ class IR_API ConstraintsManager {
 
   void PrintDimExprClusters(std::stringstream& ss);
 
- private:
-  void SubstituteDimExprInConstraint(const DimExpr& lhs, const DimExpr& rhs);
+  using EqualCallbackFunc =
+      std::function<void(const symbol::DimExpr&, const symbol::DimExpr&)>;
+  void SetEqualCallbackFunc(EqualCallbackFunc equal_callback_func);
 
  private:
+  void SubstituteDimExprInConstraint(const DimExpr& lhs, const DimExpr& rhs);
+  std::optional<std::pair<DimExpr, DimExpr>> SimpliyEqualCstr(
+      const DimExpr& lhs, const DimExpr& rhs);
+
+ private:
+  EqualCallbackFunc equal_callback_func_ = nullptr;
   std::vector<Broadcastable<DimExpr>> broadcastables_;
   std::unordered_set<DimExpr> gtones_;
   common::UnionFindSet<DimExpr> equals_;

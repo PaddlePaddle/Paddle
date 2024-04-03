@@ -29,6 +29,10 @@ static std::string GetValueId(Value val) {
 void ShapeConstraintIRAnalysis::Init() {
   value_to_shape_or_data_.clear();
   next_sym_idx_ = 0;
+  cstrs_manager_.SetEqualCallbackFunc(
+      [&](const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
+        return SubstituteDimExpr(lhs, rhs);
+      });
 }
 
 const std::string ShapeConstraintIRAnalysis::GetNextSymName() {
@@ -189,20 +193,12 @@ void ShapeConstraintIRAnalysis::SubstituteDimExpr(const symbol::DimExpr& lhs,
 
 void ShapeConstraintIRAnalysis::AddEqCstr(const symbol::DimExpr& lhs,
                                           const symbol::DimExpr& rhs) {
-  if (lhs == rhs) {
-    return;
-  }
   cstrs_manager_.AddEqCstr(lhs, rhs);
-  SubstituteDimExpr(lhs, rhs);
 }
 
 void ShapeConstraintIRAnalysis::AddBroadcastableCstr(
     const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
   cstrs_manager_.AddBroadcastableCstr(lhs, rhs);
-  if (symbol::IsDimExprGreaterThanOne(lhs) &&
-      symbol::IsDimExprGreaterThanOne(rhs)) {
-    AddEqCstr(lhs, rhs);
-  }
 }
 
 void ShapeConstraintIRAnalysis::AddGTOneCstr(const symbol::DimExpr& dim_expr) {
