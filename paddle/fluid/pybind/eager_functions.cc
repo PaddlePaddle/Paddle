@@ -679,8 +679,11 @@ PyObject* eager_api_run_custom_op(PyObject* self,
         const auto& input_range = ctx.InputRangeAt(in_idx);
         const auto& input_tensor = ctx.InputAt(input_range.first);
         // inplace optional [Tensor or vector<Tensor>], un-initialized tensor.
-        if (paddle::framework::detail::IsOptionalVar(output) &&
-            !input_tensor.initialized()) {
+        if ((paddle::framework::detail::IsOptionalVar(output) &&
+             !input_tensor.initialized()) ||
+            (paddle::framework::detail::IsOptionalVar(output) &&
+             input_tensor.is_dense_tensor() &&
+             !input_tensor.has_allocation())) {
           VLOG(7) << "Custom operator add output " << output
                   << " to CustomOpKernelContext. Add un-initialized tensor "
                      "because the inplace optional input is None";

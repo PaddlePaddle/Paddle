@@ -409,6 +409,16 @@ bool Tensor::is_initialized() const {
   return defined() && impl_->initialized();
 }
 
+bool Tensor::has_allocation() const {
+  if (is_dense_tensor()) {
+    auto tmp = static_cast<phi::DenseTensor *>(impl_.get())->has_allocation();
+    return defined() && tmp;
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Only support has_allocation operation on DenseTensor now."));
+  }
+}
+
 void Tensor::reset() {
   impl_.reset();
   autograd_meta_.reset();

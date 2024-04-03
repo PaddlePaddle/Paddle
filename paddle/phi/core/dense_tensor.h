@@ -128,6 +128,8 @@ class TEST_API DenseTensor : public TensorBase,
   /// return Whether the allocation is allocated.
   bool initialized() const override { return holder_ && holder_->ptr(); }
 
+  bool has_allocation() const { return holder_ != nullptr; }
+
   /// \brief Allocate memory with requested size from allocator.
   /// \return The mutable data pointer value of type T.
   void* AllocateFrom(Allocator* allocator,
