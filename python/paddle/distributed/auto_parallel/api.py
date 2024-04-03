@@ -389,9 +389,7 @@ def reshard(dist_tensor, mesh, placements):
     else:
         assert isinstance(
             dist_tensor, Variable
-        ), "in dy2static mode, reshard's input should be Variable, but got [{}]".format(
-            dist_tensor
-        )
+        ), f"in dy2static mode, reshard's input should be Variable, but got [{dist_tensor}]"
         sharding_specs = get_shard_spec(mesh, placements, dist_tensor.ndim)
         main_program = default_main_program()
         default_dist_ctx = get_default_distributed_context()
@@ -1445,33 +1443,39 @@ class Strategy(auto_strategy.BaseConfig):
         )
         self._sp_optimization = auto_strategy.SPOptimizationConfig(config_dict)
 
-    def _from_legacy_strategy(self, auto_stragety):
+    def _from_legacy_strategy(self, legacy_strategy):
         """
         NOTE(lizhiyu): This is a template function to get `dist.Strategy` from `fleet.auto.Strategy`.
         """
         import copy
 
-        self._fused_passes.enable = auto_stragety.fused_passes.enable
+        category = auto_strategy.constants.BASE
+        base_config = auto_strategy.constants.get_category_default_config(
+            category
+        )
+        for key in base_config.keys():
+            setattr(self, key, getattr(legacy_strategy, key))
+        self._fused_passes.enable = legacy_strategy.fused_passes.enable
         if (
             "fused_gemm_epilogue_pass"
-            in auto_stragety.fused_passes.fused_passes_list
+            in legacy_strategy.fused_passes.fused_passes_list
         ):
             self._fused_passes.gemm_epilogue = True
         if (
             "fused_dropout_add_pass"
-            in auto_stragety.fused_passes.fused_passes_list
+            in legacy_strategy.fused_passes.fused_passes_list
         ):
             self._fused_passes.dropout_add = True
 
-        self._amp = copy.deepcopy(auto_stragety.amp)
-        self._sharding = copy.deepcopy(auto_stragety.sharding)
-        self._gradient_merge = copy.deepcopy(auto_stragety.gradient_merge)
-        self._pipeline = copy.deepcopy(auto_stragety.pipeline)
+        self._amp = copy.deepcopy(legacy_strategy.amp)
+        self._sharding = copy.deepcopy(legacy_strategy.sharding)
+        self._gradient_merge = copy.deepcopy(legacy_strategy.gradient_merge)
+        self._pipeline = copy.deepcopy(legacy_strategy.pipeline)
         # The below are template interfaces
-        self._recompute = copy.deepcopy(auto_stragety.recompute)
-        self._mp_optimization = copy.deepcopy(auto_stragety.mp_optimization)
-        self._dp_optimization = copy.deepcopy(auto_stragety.dp_optimization)
-        self._sp_optimization = copy.deepcopy(auto_stragety.sp_optimization)
+        self._recompute = copy.deepcopy(legacy_strategy.recompute)
+        self._mp_optimization = copy.deepcopy(legacy_strategy.mp_optimization)
+        self._dp_optimization = copy.deepcopy(legacy_strategy.dp_optimization)
+        self._sp_optimization = copy.deepcopy(legacy_strategy.sp_optimization)
 
     @property
     def sharding(self):
@@ -1887,6 +1891,12 @@ class DistModel:
         if strategy is None:
             return None
         inner_strategy = auto_strategy.Strategy()
+        category = auto_strategy.constants.BASE
+        base_config = auto_strategy.constants.get_category_default_config(
+            category
+        )
+        for key in base_config.keys():
+            setattr(inner_strategy, key, getattr(strategy, key))
         inner_strategy.fused_passes.enable = strategy.fused_passes.enable
         if getattr(strategy.fused_passes, "gemm_epilogue", False):
             inner_strategy.fused_passes.fused_passes_list.append(
@@ -2273,9 +2283,7 @@ def unshard_dtensor(dist_tensor):
     else:
         assert isinstance(
             dist_tensor, Variable
-        ), "the input type of 'unshard_dtensor' should be Variable, but got [{}]".format(
-            dist_tensor
-        )
+        ), f"the input type of 'unshard_dtensor' should be Variable, but got [{dist_tensor}]"
         # in static mode, 'distributed tensor' and 'dense tensor' are all
         # Variable type, the distributed attribute is a property of the Variable.
         # So, it's no need to convert the distributed tensor to a dense tensor.
@@ -2338,9 +2346,7 @@ class ShardDataloader:
         process_id = dist.get_rank()
         if self._process_id_in_multi_meshes(process_id):
             raise ValueError(
-                "process_id {} is in more than one mesh, the meshes are {}".format(
-                    process_id, self._meshes
-                )
+                f"process_id {process_id} is in more than one mesh, the meshes are {self._meshes}"
             )
         if input_keys is not None:
             assert len(input_keys) == 2, "input_keys lengths must be 2"
@@ -2410,9 +2416,7 @@ class ShardDataloader:
         else:
             if len(shard_dims) != len(self._meshes):
                 raise ValueError(
-                    "shard_dims must be the same length as meshes, but got {} != {}".format(
-                        len(shard_dims), len(self._meshes)
-                    )
+                    f"shard_dims must be the same length as meshes, but got {len(shard_dims)} != {len(self._meshes)}"
                 )
             return shard_dims
 

@@ -41,9 +41,7 @@ def _set_multi_precision(optimizer, multi_precision):
         (paddle.optimizer.Optimizer),
     ):
         raise RuntimeError(
-            "Current AMP training level is O2, optimizer is expected to be paddle.optimizer.Optimizer, but receive {}.".format(
-                type(optimizer)
-            )
+            f"Current AMP training level is O2, optimizer is expected to be paddle.optimizer.Optimizer, but receive {type(optimizer)}."
         )
 
     if multi_precision and hasattr(optimizer, "_multi_precision"):

@@ -984,9 +984,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         assert (
             self.accumulate_steps >= 2 * self.num_stages
-        ), "accumulate_steps({}) should be greater than or equal to 2 * num_stages({}) for pipeline with interleave".format(
-            self.accumulate_steps, self.num_stages
-        )
+        ), f"accumulate_steps({self.accumulate_steps}) should be greater than or equal to 2 * num_stages({self.num_stages}) for pipeline with interleave"
 
     def _reset_counter(self):
         for i in range(self.num_model_chunks):
@@ -1818,9 +1816,7 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
         assert (
             self.accumulate_steps == self.num_stages
             or self.accumulate_steps % self.num_stages != 0
-        ), "accumulate_steps({}) and num_stages({}) should be a multiple or accumulate_steps % num_stages == 0".format(
-            self.accumulate_steps, self.num_stages
-        )
+        ), f"accumulate_steps({self.accumulate_steps}) and num_stages({self.num_stages}) should be a multiple or accumulate_steps % num_stages == 0"
 
         self._backward_step_count = 0
         skip_steps = self.accumulate_steps - self.num_stages

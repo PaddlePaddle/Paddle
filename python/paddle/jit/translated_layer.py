@@ -1110,9 +1110,7 @@ def _append_block(
     input_names = [inp.name for inp in input_variables]
     if len(name_inp_desc) != len(input_names):
         raise ValueError(
-            "The number of input is invalid, expected {}, but received {}.".format(
-                len(name_inp_desc), len(input_names)
-            )
+            f"The number of input is invalid, expected {len(name_inp_desc)}, but received {len(input_names)}."
         )
     for i, out_name in enumerate(name_inp_desc):
         if dict_rename_var_old_new:

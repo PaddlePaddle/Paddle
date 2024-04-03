@@ -566,9 +566,7 @@ def _parse_every_object(obj, condition_func, convert_func):
             (str, np.ndarray, core.eager.Tensor, core.LoDTensor),
         ):
             raise NotImplementedError(
-                "The iterable objects supported are tuple, list, dict, OrderedDict, string. But received {}.".format(
-                    type(obj)
-                )
+                f"The iterable objects supported are tuple, list, dict, OrderedDict, string. But received {type(obj)}."
             )
         return obj
 
@@ -628,9 +626,7 @@ def _save_lod_tensor(tensor, file_name):
 
     else:
         raise NotImplementedError(
-            'Only supports saving objects to file or BytesIO, but received {}'.format(
-                type(file_name)
-            )
+            f'Only supports saving objects to file or BytesIO, but received {type(file_name)}'
         )
     return _seek
 
@@ -649,9 +645,7 @@ def _load_lod_tensor(file_name):
 
     else:
         raise NotImplementedError(
-            'Only supports load objects from file or BytesIO, but received {}'.format(
-                type(file_name)
-            )
+            f'Only supports load objects from file or BytesIO, but received {type(file_name)}'
         )
 
     return temp_t, _seek
@@ -671,9 +665,7 @@ def _save_selected_rows(selected_rows, file_name):
             _seek = f.tell()
     else:
         raise NotImplementedError(
-            'Only supports saving objects to file or BytesIO, but received {}'.format(
-                type(file_name)
-            )
+            f'Only supports saving objects to file or BytesIO, but received {type(file_name)}'
         )
     return _seek
 
@@ -694,9 +686,7 @@ def _load_selected_rows(file_name):
 
     else:
         raise NotImplementedError(
-            'Only supports load objects from file or BytesIO, but received {}'.format(
-                type(file_name)
-            )
+            f'Only supports load objects from file or BytesIO, but received {type(file_name)}'
         )
 
     return temp_sr, _seek
@@ -712,9 +702,7 @@ def _save_binary_var(obj, path):
     else:
         # Since the concept of 'Tensor' is only exposed to users, the error message can only contain tensor instead of 'LoDTensor' or 'SelectedRows'
         raise NotImplementedError(
-            "When use_binary_format = True, `paddle.save`  expected Tensor, but received {}.".format(
-                type(obj)
-            )
+            f"When use_binary_format = True, `paddle.save`  expected Tensor, but received {type(obj)}."
         )
 
 
@@ -872,9 +860,7 @@ def save(obj, path, protocol=4, **configs):
 
     if not isinstance(config.use_binary_format, bool):
         raise TypeError(
-            "Type of `use_binary_format` should be bool, but received {}.".format(
-                type(config.use_binary_format)
-            )
+            f"Type of `use_binary_format` should be bool, but received {type(config.use_binary_format)}."
         )
 
     if config.use_binary_format:

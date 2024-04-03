@@ -103,9 +103,7 @@ class TestPaddleModel(OpMapperTest):
         self.params_filename = args.params_filename
 
         logger.info(
-            "Run Model From \"{}\", which model filename is \"{}\", and parameter filename is \"{}\"".format(
-                self.model_dir, self.model_filename, self.params_filename
-            )
+            f"Run Model From \"{self.model_dir}\", which model filename is \"{self.model_filename}\", and parameter filename is \"{self.params_filename}\""
         )
 
         self.load_paddle_program()
