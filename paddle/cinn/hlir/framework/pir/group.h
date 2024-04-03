@@ -19,12 +19,12 @@
 #include <vector>
 #include "glog/logging.h"
 
-#include "paddle/cinn/adt/graph_symbolic_dim_infer_ctx.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
-#include "paddle/pir/dialect/shape/utils/shape_utils.h"
+#include "paddle/pir/include/core/builtin_type_interfaces.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace cinn {
 
@@ -61,33 +61,7 @@ struct Group {
 
   std::shared_ptr<Group> Clone(::pir::Block* target_block,
                                ::pir::IrMapping& ir_mapping,
-                               const Options& option = Options()) const {
-    CHECK_EQ(option.OnlyCloneOps(), true)
-        << "Only Support Clone Group ops information.";
-    std::vector<::pir::Operation*> new_ops;
-    // Mapper from original to new ops.
-    std::unordered_map<::pir::Operation*, ::pir::Operation*> ops_mapper;
-    ::pir::CloneOptions clone_options(false, true);
-    for (auto* op : ops) {
-      VLOG(4) << "clone op :" << op->name();
-      auto* new_op = op->Clone(ir_mapping, clone_options);
-      // NOTE(dev): Must call block.insert to deal with ownership, otherwise it
-      // will lead memory-leak.
-      target_block->insert(target_block->end(), new_op);
-      new_ops.push_back(new_op);
-      ops_mapper[op] = new_op;
-    }
-    // Construct Base information for new Group
-    auto new_group = std::make_shared<Group>(new_ops);
-    for (auto& iter : this->input_ops) {
-      new_group->input_ops[ops_mapper.at(iter.first)] = iter.second;
-    }
-    for (auto* op : this->output_ops) {
-      new_group->output_ops.insert(ops_mapper.at(op));
-    }
-
-    return new_group;
-  }
+                               const Options& option = Options()) const;
 
   // distance to last group.
   int depth{0};
@@ -116,15 +90,6 @@ struct Group {
   std::vector<std::shared_ptr<Group>> fused_sub_groups;
   // if as sub-group, used for belong groups.
   std::unordered_set<std::shared_ptr<Group>> belong_groups;
-
-  std::shared_ptr<::pir::ShapeConstraintIRAnalysis> shape_analysis = nullptr;
-
-  // for op lowering.
-  std::vector<std::string> input_names;
-  std::vector<std::string> output_names;
-  std::vector<::pir::Value> output_values;
-  std::string fn_name{""};
-  std::map<int, CINNKernelInfo::ArgDimIdx> int_args_map;
 
   struct SharedGroupHasher {
     size_t operator()(const std::shared_ptr<Group>& group) const noexcept {
@@ -182,7 +147,7 @@ struct Group {
           continue;
         }
 
-        if (!ops_set.count(value.dyn_cast<::pir::OpResult>().owner())) {
+        if (!ops_set.count(value.defining_op())) {
           // if the input value owner op is not in OpSet, it's the group's input
           group_inputs.insert(value);
           continue;
@@ -210,33 +175,28 @@ struct Group {
 
   std::string GetFuncName() { return "fn_" + group_id + unique_id; }
 
-  std::shared_ptr<adt::MapExprCtx> mut_map_expr_ctx() {
-    CHECK_NOTNULL(map_expr_ctx_);
-    return map_expr_ctx_;
-  }
+  std::vector<::pir::Value> GenerateGroupOutputValues() const {
+    std::unordered_set<::pir::Operation*> group_ops_set(this->ops.begin(),
+                                                        this->ops.end());
 
-  const adt::MapExprCtx& map_expr_ctx() const {
-    return *CHECK_NOTNULL(map_expr_ctx_);
-  }
-
-  void set_map_expr_ctx(const std::shared_ptr<adt::MapExprCtx>& map_expr_ctx) {
-    map_expr_ctx_ = map_expr_ctx;
-  }
-
-  void set_graph_symbolic_dim_infer_ctx(
-      std::unique_ptr<adt::config::GraphSymbolicDimInferCtx>&&
-          graph_symbolic_dim_infer_ctx) {
-    CHECK_EQ(this, graph_symbolic_dim_infer_ctx->group());
-    graph_symbolic_dim_infer_ctx_ = std::move(graph_symbolic_dim_infer_ctx);
-  }
-
-  const adt::config::GraphSymbolicDimInferCtx* graph_symbolic_dim_infer_ctx()
-      const {
-    return graph_symbolic_dim_infer_ctx_.get();
-  }
-
-  adt::config::GraphSymbolicDimInferCtx* mut_graph_symbolic_dim_infer_ctx() {
-    return graph_symbolic_dim_infer_ctx_.get();
+    std::vector<::pir::Value> output_values;
+    for (auto* op : this->ops) {
+      for (size_t i = 0; i < op->num_results(); ++i) {
+        auto result = op->result(i);
+        if (!result) {
+          continue;
+        }
+        for (auto use_iter = result.use_begin(); use_iter != result.use_end();
+             ++use_iter) {
+          auto* use_op = use_iter->owner();
+          if (group_ops_set.find(use_op) == group_ops_set.end()) {
+            output_values.push_back(result);
+            break;
+          }
+        }
+      }
+    }
+    return output_values;
   }
 
  public:
@@ -270,29 +230,20 @@ struct Group {
 
   OpPatternKind kind() const { return op_pattern_kind; }
 
-  std::string FuncName() const {
-    if (fn_name == "") {
-      // TODO(Aurelius84): Polish this implementation.
-      const_cast<Group*>(this)->fn_name = CompatibleInfo::GroupOpsName(ops);
-    }
-    return this->fn_name;
-  }
-
  private:
   // input groups
   std::unordered_set<std::shared_ptr<Group>,
                      SharedGroupHasher,
                      SharedGroupComparator>
       producer_groups_;
-  // output grous
+  // output groups
   std::unordered_set<std::shared_ptr<Group>,
                      SharedGroupHasher,
                      SharedGroupComparator>
       consumer_groups_;
-  std::shared_ptr<adt::MapExprCtx> map_expr_ctx_;
-  std::unique_ptr<adt::config::GraphSymbolicDimInferCtx>
-      graph_symbolic_dim_infer_ctx_;
 };
+
+std::ostream& operator<<(std::ostream& os, const Group& group);
 
 }  // namespace pir
 }  // namespace framework

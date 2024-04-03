@@ -112,13 +112,13 @@ def yolo_loss(
     box coordinates (w, h), sigmoid cross entropy loss is used for box
     coordinates (x, y), objectness loss and classification loss.
 
-    Each groud truth box finds a best matching anchor box in all anchors.
+    Each ground truth box finds a best matching anchor box in all anchors.
     Prediction of this anchor box will incur all three parts of losses, and
     prediction of anchor boxes with no GT box matched will only incur objectness
     loss.
 
     In order to trade off box coordinate losses between big boxes and small
-    boxes, box coordinate losses will be mutiplied by scale weight, which is
+    boxes, box coordinate losses will be multiplied by scale weight, which is
     calculated as follows.
 
     $$
@@ -134,10 +134,10 @@ def yolo_loss(
     While :attr:`use_label_smooth` is set to be :attr:`True`, the classification
     target will be smoothed when calculating classification loss, target of
     positive samples will be smoothed to :math:`1.0 - 1.0 / class\_num` and target of
-    negetive samples will be smoothed to :math:`1.0 / class\_num`.
+    negative samples will be smoothed to :math:`1.0 / class\_num`.
 
     While :attr:`gt_score` is given, which means the mixup score of ground truth
-    boxes, all losses incured by a ground truth box will be multiplied by its
+    boxes, all losses incurred by a ground truth box will be multiplied by its
     mixup score.
 
     Args:
@@ -146,7 +146,7 @@ def yolo_loss(
                       and the second dimension(C) stores box locations, confidence
                       score and classification one-hot keys of each anchor box.
                       The data type is float32 or float64.
-        gt_box (Tensor): groud truth boxes, should be in shape of [N, B, 4],
+        gt_box (Tensor): ground truth boxes, should be in shape of [N, B, 4],
                           in the third dimension, x, y, w, h should be stored.
                           x,y is the center coordinate of boxes, w, h are the
                           width and height, x, y, w, h should be divided by
@@ -163,7 +163,7 @@ def yolo_loss(
         ignore_thresh (float): The ignore threshold to ignore confidence loss.
         downsample_ratio (int): The downsample ratio from network input to YOLOv3
                                 loss input, so 32, 16, 8 should be set for the
-                                first, second, and thrid YOLOv3 loss operators.
+                                first, second, and third YOLOv3 loss operators.
         gt_score (Tensor, optional): mixup score of ground truth boxes, should be in shape
                             of [N, B]. Default None.
         use_label_smooth (bool, optional): Whether to use label smooth. Default True.
@@ -313,7 +313,7 @@ def yolo_box(
     The logistic regression value of the 5th channel of each anchor prediction boxes
     represents the confidence score of each prediction box, and the logistic
     regression value of the last :attr:`class_num` channels of each anchor prediction
-    boxes represents the classifcation scores. Boxes with confidence scores less than
+    boxes represents the classification scores. Boxes with confidence scores less than
     :attr:`conf_thresh` should be ignored, and box final scores is the product of
     confidence scores and classification scores.
 
@@ -340,7 +340,7 @@ def yolo_box(
                              be ignored.
         downsample_ratio (int): The downsample ratio from network input to
                                 :attr:`yolo_box` operator input, so 32, 16, 8
-                                should be set for the first, second, and thrid
+                                should be set for the first, second, and third
                                 :attr:`yolo_box` layer.
         clip_bbox (bool, optional): Whether clip output bonding box in :attr:`img_size`
                           boundary. Default true.
@@ -826,7 +826,7 @@ def deform_conv2d(
             dilation_H = dilation_W = dilation. Default: 1.
         deformable_groups (int): The number of deformable group partitions.
             Default: 1.
-        groups (int, optonal): The groups number of the deformable conv layer. According to
+        groups (int, optional): The groups number of the deformable conv layer. According to
             grouped convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
@@ -1356,7 +1356,7 @@ def decode_jpeg(x, mode='unchanged', name=None):
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
     Returns:
-        Tensor: A decoded image tensor with shape (imge_channels, image_height, image_width)
+        Tensor: A decoded image tensor with shape (image_channels, image_height, image_width)
 
     Examples:
         .. code-block:: python
@@ -1437,7 +1437,7 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
     if pooled_height * pooled_width == 0:
         raise ValueError('output_size should not contain 0.')
     output_channels = int(x.shape[1] / (pooled_height * pooled_width))
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.psroi_pool(
             x,
             boxes,
@@ -1809,18 +1809,18 @@ class RoIAlign(Layer):
 
 class ConvNormActivation(Sequential):
     """
-    Configurable block used for Convolution-Normalzation-Activation blocks.
+    Configurable block used for Convolution-Normalization-Activation blocks.
     This code is based on the torchvision code with modifications.
     You can also see at https://github.com/pytorch/vision/blob/main/torchvision/ops/misc.py#L68
     Args:
         in_channels (int): Number of channels in the input image
-        out_channels (int): Number of channels produced by the Convolution-Normalzation-Activation block
+        out_channels (int): Number of channels produced by the Convolution-Normalization-Activation block
         kernel_size: (int|list|tuple, optional): Size of the convolving kernel. Default: 3
         stride (int|list|tuple, optional): Stride of the convolution. Default: 1
         padding (int|str|tuple|list, optional): Padding added to all four sides of the input. Default: None,
-            in wich case it will calculated as ``padding = (kernel_size - 1) // 2 * dilation``
+            in which case it will calculated as ``padding = (kernel_size - 1) // 2 * dilation``
         groups (int, optional): Number of blocked connections from input channels to output channels. Default: 1
-        norm_layer (Callable[..., paddle.nn.Layer], optional): Norm layer that will be stacked on top of the convolutiuon layer.
+        norm_layer (Callable[..., paddle.nn.Layer], optional): Norm layer that will be stacked on top of the convolution layer.
             If ``None`` this layer wont be used. Default: ``paddle.nn.BatchNorm2D``
         activation_layer (Callable[..., paddle.nn.Layer], optional): Activation function which will be stacked on top of the normalization
             layer (if not ``None``), otherwise on top of the conv layer. If ``None`` this layer wont be used. Default: ``paddle.nn.ReLU``
@@ -1887,7 +1887,7 @@ def nms(
 
     If category_idxs and categories are provided, NMS will be performed with a batched style,
     which means NMS will be applied to each category respectively and results of each category
-    will be concated and sorted by scores.
+    will be concatenated and sorted by scores.
 
     If K is provided, only the first k elements will be returned. Otherwise, all box indices sorted by scores will be returned.
 
@@ -2255,7 +2255,7 @@ def matrix_nms(
     than score_threshold (if provided), then the top k candidate is selected if
     nms_top_k is larger than -1. Score of the remaining candidate are then
     decayed according to the Matrix NMS scheme.
-    Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
+    After NMS step, at most keep_top_k number of total bboxes are to be kept
     per image if keep_top_k is larger than -1.
 
     Args:

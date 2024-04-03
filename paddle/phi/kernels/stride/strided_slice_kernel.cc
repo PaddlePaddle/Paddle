@@ -90,11 +90,11 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
   }
 
   // generate new shape
-  if (decrease_axis.size() > 0) {
+  if (!decrease_axis.empty()) {
     std::vector<int64_t> new_out_shape;
     std::vector<int64_t> new_out_stride;
-    for (size_t i = 0; i < decrease_axis.size(); ++i) {
-      output_dims[decrease_axis[i]] = 0;
+    for (auto de_axis : decrease_axis) {
+      output_dims[de_axis] = 0;
     }
 
     for (size_t i = 0; i < output_dims.size(); ++i) {
@@ -139,8 +139,11 @@ void StridedSliceStridedKernel(const Context& dev_ctx,
       dev_ctx, x, axes, starts, ends, strides, infer_flags, decrease_axis, out);
 }
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    strided_slice_raw, STRIDED, phi::StridedSliceRawStridedKernel) {}
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    strided_slice, STRIDED, phi::StridedSliceStridedKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(strided_slice_raw,
+                                         STRIDED,
+                                         phi::StridedSliceRawStridedKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(strided_slice,
+                                         STRIDED,
+                                         phi::StridedSliceStridedKernel) {}

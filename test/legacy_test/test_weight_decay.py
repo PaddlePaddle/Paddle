@@ -142,7 +142,7 @@ class TestWeightDecay(unittest.TestCase):
     ):
         main_prog = base.framework.Program()
         startup_prog = base.framework.Program()
-        startup_prog.random_seed = 1
+        paddle.seed(1)
         with prog_scope_guard(main_prog=main_prog, startup_prog=startup_prog):
             data = paddle.static.data(
                 name="words", shape=[-1, 1], dtype="int64", lod_level=1

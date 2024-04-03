@@ -17,7 +17,7 @@ import warnings
 from paddle import _C_ops
 
 from ..base import framework
-from ..base.framework import in_dygraph_mode
+from ..base.framework import in_dynamic_or_pir_mode
 from .optimizer import Optimizer
 
 __all__ = []
@@ -204,7 +204,7 @@ class RMSProp(Optimizer):
             parameters = parameters.get('params')
 
         for p in parameters:
-            if p.name in self._already_create_accumulater:
+            if p.name in self._already_create_accumulator:
                 continue
 
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
@@ -212,7 +212,7 @@ class RMSProp(Optimizer):
                 self._add_accumulator(self._momentum_acc_str, master_p)
                 self._add_accumulator(self._mean_square_acc_str, master_p)
                 self._add_accumulator(self._mean_grad_acc_str, master_p)
-                self._already_create_accumulater.add(p.name)
+                self._already_create_accumulator.add(p.name)
                 continue
             if (
                 self._is_dtype_fp16_or_bf16(p.dtype)
@@ -225,7 +225,7 @@ class RMSProp(Optimizer):
             self._add_accumulator(self._momentum_acc_str, p)
             self._add_accumulator(self._mean_square_acc_str, p)
             self._add_accumulator(self._mean_grad_acc_str, p)
-            self._already_create_accumulater.add(p.name)
+            self._already_create_accumulator.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
         if not isinstance(block, framework.Block):
@@ -252,7 +252,7 @@ class RMSProp(Optimizer):
             else None
         )
 
-        if in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             _C_ops.rmsprop_(
                 param_and_grad[0],
                 mean_square_acc,

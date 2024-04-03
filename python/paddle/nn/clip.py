@@ -392,7 +392,7 @@ class ClipGradByValue(ClipGradBase):
 
     Note:
         ``need_clip`` of ``ClipGradByValue`` HAS BEEN DEPRECATED since 2.0.
-        Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
+        Please use ``need_clip`` in ``ParamAttr`` to specify the clip scope.
 
     Args:
         max (float): The maximum value to clip by.
@@ -499,7 +499,7 @@ class ClipGradByNorm(ClipGradBase):
 
     Note:
         ``need_clip`` of ``ClipGradByNorm`` HAS BEEN DEPRECATED since 2.0.
-        Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
+        Please use ``need_clip`` in ``ParamAttr`` to specify the clip scope.
 
     Args:
         clip_norm(float): The maximum norm value.
@@ -630,7 +630,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
 
     Note:
         ``need_clip`` of ``ClipGradyGlobalNorm`` HAS BEEN DEPRECATED since 2.0.
-        Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
+        Please use ``need_clip`` in ``ParamAttr`` to specify the clip scope.
 
     Args:
         clip_norm (float): The maximum norm value.
@@ -678,7 +678,10 @@ class ClipGradByGlobalNorm(ClipGradBase):
         sum_square_list = []
         sum_square_list_fp16 = []
         sum_square_list_fp32 = []
-        src_mesh = params_grads[0][0].process_mesh
+        if len(params_grads) > 0 and len(params_grads[0]) > 0:
+            src_mesh = params_grads[0][0].process_mesh
+        else:
+            src_mesh = None
 
         for p, g in params_grads:
             if g is None:
@@ -705,11 +708,11 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 )
 
             if (
-                sum_square.dtype == core.VarDesc.VarType.FP16
-                or sum_square.dtype == core.VarDesc.VarType.BF16
+                sum_square.dtype == paddle.float16
+                or sum_square.dtype == paddle.bfloat16
             ):
                 sum_square_list_fp16.append(sum_square)
-            elif sum_square.dtype == core.VarDesc.VarType.FP32:
+            elif sum_square.dtype == paddle.float32:
                 sum_square_list_fp32.append(sum_square)
             else:
                 sum_square_list.append(sum_square)

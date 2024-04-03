@@ -20,6 +20,7 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base.backward import _append_grad_suffix_
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -129,14 +130,36 @@ class SimpleNetWithCond:
                 use_pure_bf16=True,
             )
 
-        self.optimizer.minimize(mean_out)
+        _, params_grads = self.optimizer.minimize(mean_out)
 
-        fetch_list = (
-            ["param_x", "param_z"]
-            if self.y_no_grad
-            else ["param_x", "param_y", "param_z"]
-        )
-        fetch_list += [_append_grad_suffix_(param) for param in fetch_list]
+        if paddle.framework.in_pir_mode():
+            for param, grad in params_grads:
+                if param.is_same(param_x):
+                    param_x_grad = grad
+                elif param.is_same(param_y):
+                    param_y_grad = grad
+                elif param.is_same(param_z):
+                    param_z_grad = grad
+            fetch_list = (
+                [param_x, param_z, param_x_grad, param_z_grad]
+                if self.y_no_grad
+                else [
+                    param_x,
+                    param_y,
+                    param_z,
+                    param_x_grad,
+                    param_y_grad,
+                    param_z_grad,
+                ]
+            )
+        else:
+            fetch_list = (
+                ["param_x", "param_z"]
+                if self.y_no_grad
+                else ["param_x", "param_y", "param_z"]
+            )
+            fetch_list += [_append_grad_suffix_(param) for param in fetch_list]
+
         return fetch_list, self.optimizer
 
 
@@ -159,6 +182,7 @@ class TestOptimizer(unittest.TestCase):
         self.cond_i = [0.1, 3]
         self.y_no_grad = [True, False]
 
+    @test_with_pir_api
     def test_optimizer(self):
         self._check_grads()
 

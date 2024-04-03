@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import warnings
 
 import numpy as np
 
@@ -83,12 +82,10 @@ def replace_none(item):
     return new_item, none_axes
 
 
-def is_integer_or_scalar_tensor(ele):
+def is_scalar_tensor(ele):
     from .framework import Variable
 
-    if type(ele) is int:
-        return True
-    elif isinstance(ele, Variable):
+    if isinstance(ele, Variable):
         if len(ele.shape) == 0 and ele.dtype != paddle.bool:
             return True
     elif isinstance(ele, paddle.pir.Value):
@@ -114,7 +111,6 @@ def deal_attrs(attrs, attr, attr_name, tensor_attr_name, inputs, infer_flags):
         attrs[attr_name] = attr
 
 
-# the item is a tensor of bool
 def get_value_for_bool_tensor(var, item):
     if len(item.shape) > len(var.shape):
         raise IndexError(
@@ -129,9 +125,7 @@ def get_value_for_bool_tensor(var, item):
         if dim_len != -1 and var.shape[i] != -1 and dim_len != var.shape[i]:
             raise IndexError(
                 "The dimension of bool index doesn't match indexed array along "
-                "dimension {}, the target dimension is {}, but received {}.".format(
-                    i, var.shape[i], dim_len
-                )
+                f"dimension {i}, the target dimension is {var.shape[i]}, but received {dim_len}."
             )
         i += 1
     if len(item.shape) == len(var.shape):
@@ -155,8 +149,8 @@ def _setitem_for_tensor_array(var, item, value):
     assert (
         not paddle.in_dynamic_mode()
     ), "setitem for tensor_array must be called in static graph mode."
-    if isinstance(item, (Variable, int)):
-        from paddle.jit.dy2static.variable_trans_func import to_static_variable
+    if isinstance(item, (Variable, paddle.pir.Value, int)):
+        from paddle.jit.dy2static.convert_operators import to_static_variable
         from paddle.tensor import array_write
 
         item = paddle.cast(to_static_variable(item), dtype='int64')
@@ -164,23 +158,23 @@ def _setitem_for_tensor_array(var, item, value):
         return array_write(x=value, i=item, array=var)
     else:
         raise NotImplementedError(
-            "Only support __setitem__ by Int/Variable in tensor_array, but gets {}".format(
-                type(item)
-            )
+            f"Only support __setitem__ by Int/Variable in tensor_array, but gets {type(item)}"
         )
 
 
-def deal_advanced_index(ori_tensor, indices, is_for_setitem, values):
+def deal_advanced_index(
+    ori_tensor, indices, is_for_setitem, values, out_is_view=True
+):
     """
     Transpose origin Tensor and advanced indices to the front.
 
     Returns:
-        transed_tensor (Tensor): transposed tensor, corresbonding with advanced indices
-        transed_index (List): advanced indices transed to the front
+        transed_tensor (Tensor): transposed tensor, corresponding with advanced indices
+        transed_index (List): advanced indices transposed to the front
         trans_back_dim (List): order of axes to transpose back to original order. Only used in __setitem__.
         pos_of_new_dim (int):  axis of new dim in the result. Only used in __getitem__.
         rank_of_new_dim (int): rank of new dim in the result. Only used in __getitem__.
-        transed_value_tensor (Tensor): value tensor transed to the front. Only used in __setitem__.
+        transed_value_tensor (Tensor): value tensor transposed to the front. Only used in __setitem__.
     """
     transed_dim = []
     transed_index = []
@@ -206,18 +200,24 @@ def deal_advanced_index(ori_tensor, indices, is_for_setitem, values):
     for i in range(ori_tensor.ndim):
         if indices[i] is None:
             transed_dim.append(i)
-    transed_tensor = ori_tensor.transpose(transed_dim)
 
     trans_back_dim = np.argsort(transed_dim).tolist() if is_for_setitem else []
-
     transed_value_tensor = None
-    if is_for_setitem:
-        if values.ndim > 1 and pos_of_new_dim != 0:
-            # If the value tensor is not a scalar / 1-D Tensor, and the src tensor was
-            # transposed at 1st dim, the value tensor should be transposed too.
-            transed_value_tensor = values.transpose(transed_dim)
-        else:
+
+    if transed_dim == list(range(ori_tensor.ndim)):
+        transed_tensor = ori_tensor
+        if is_for_setitem:
             transed_value_tensor = values
+    else:
+        out_is_view = True
+        transed_tensor = ori_tensor.transpose(transed_dim)
+        if is_for_setitem:
+            if values.ndim > 1 and pos_of_new_dim != 0:
+                # If the value tensor is not a scalar / 1-D Tensor, and the src tensor was
+                # transposed at 1st dim, the value tensor should be transposed too.
+                transed_value_tensor = values.transpose(transed_dim)
+            else:
+                transed_value_tensor = values
 
     return (
         transed_tensor,
@@ -226,6 +226,7 @@ def deal_advanced_index(ori_tensor, indices, is_for_setitem, values):
         pos_of_new_dim,
         rank_of_new_dim,
         transed_value_tensor,
+        out_is_view,
     )
 
 
@@ -234,31 +235,29 @@ def slice_is_same_to_original(start, end, step):
         return True
 
     # If there is Variable, we cannot determine whether it is the same to original.
-    if isinstance(
-        start, (paddle.base.Variable, paddle.pir.Value, paddle.pir.OpResult)
-    ):
+    if isinstance(start, (paddle.base.Variable, paddle.pir.Value)):
         return False
-    if isinstance(
-        end, (paddle.base.Variable, paddle.pir.Value, paddle.pir.OpResult)
-    ):
+    if isinstance(end, (paddle.base.Variable, paddle.pir.Value)):
         return False
-    if isinstance(
-        step, (paddle.base.Variable, paddle.pir.Value, paddle.pir.OpResult)
-    ):
+    if isinstance(step, (paddle.base.Variable, paddle.pir.Value)):
         return False
     return start == 0 and end == MAX_INTEGER and step == 1
 
 
-def parse_index(x, indices):
+def is_tensor_array_type(value):
     from .framework import in_pir_mode
 
     if in_pir_mode():
-        is_tensor_array = x.is_dense_tensor_array_type()
+        return value.is_dense_tensor_array_type()
     else:
-        is_tensor_array = (
-            hasattr(x, "desc")
-            and x.desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+        return (
+            hasattr(value, "desc")
+            and value.desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY
         )
+
+
+def parse_index(x, indices):
+    is_tensor_array = is_tensor_array_type(x)
 
     advanced_index = (
         [] if is_tensor_array else [None] * 2 * len(x.shape)
@@ -283,10 +282,9 @@ def parse_index(x, indices):
     dim = 0
     for i, slice_item in enumerate(indices):
         start, end, step = None, None, None
-        if is_integer_or_scalar_tensor(slice_item):
+        if type(slice_item) is int:
             if (
                 not is_tensor_array
-                and isinstance(slice_item, int)
                 and x.shape[dim] is not None
                 and x.shape[dim] >= 0
                 and slice_item >= x.shape[dim]
@@ -306,6 +304,13 @@ def parse_index(x, indices):
             start = slice_item
             step = 1
             end = slice_item + 1 if slice_item != -1 else MAX_INTEGER
+            dim += 1
+        elif is_scalar_tensor(slice_item):
+            # not calculate result to reduce call times for slice OP.
+            decrease_axes.append(dim)
+            start = slice_item
+            step = 1
+            end = slice_item + 1
             dim += 1
         elif isinstance(slice_item, bool):
             # single bool is advanced-indexing
@@ -353,9 +358,7 @@ def parse_index(x, indices):
                 and len(slice_item) != x.shape[dim]
             ):
                 raise IndexError(
-                    "The shape of boolean index {} did not match indexed tensor {} along axis {}".format(
-                        len(slice_item), x.shape[dim], dim
-                    )
+                    f"The shape of boolean index {len(slice_item)} did not match indexed tensor {x.shape[dim]} along axis {dim}"
                 )
 
             has_advanced_index = True
@@ -373,9 +376,7 @@ def parse_index(x, indices):
 
                 elif slice_item.shape[0] != x.shape[dim]:
                     raise IndexError(
-                        "The shape of boolean index {} did not match indexed tensor {} along axis {}".format(
-                            slice_item.shape[0], x.shape[dim], dim
-                        )
+                        f"The shape of boolean index {slice_item.shape[0]} did not match indexed tensor {x.shape[dim]} along axis {dim}"
                     )
             advanced_index[estimated_dim] = (estimated_dim, slice_item)
             has_advanced_index = True
@@ -390,9 +391,7 @@ def parse_index(x, indices):
 
                 elif slice_item.shape[0] != x.shape[dim]:
                     raise IndexError(
-                        "The shape of boolean index {} did not match indexed tensor {} along axis {}".format(
-                            slice_item.shape[0], x.shape[dim], dim
-                        )
+                        f"The shape of boolean index {slice_item.shape[0]} did not match indexed tensor {x.shape[dim]} along axis {dim}"
                     )
             advanced_index[estimated_dim] = (estimated_dim, slice_item)
             has_advanced_index = True
@@ -400,9 +399,7 @@ def parse_index(x, indices):
             dim += 1
         else:
             raise IndexError(
-                "Valid index accept int / bool / slice / ellipsis / list / Tuple / Ndarray / Tensor, but received {}.".format(
-                    slice_item
-                )
+                f"Valid index accept int / bool / slice / ellipsis / list / Tuple / Ndarray / Tensor, but received {slice_item}."
             )
         if not slice_is_same_to_original(start, end, step):
             starts.append(start)
@@ -443,7 +440,9 @@ def _setitem_static(x, indices, values):
     from . import in_dynamic_or_pir_mode
     from .framework import Variable, default_main_program, in_pir_mode
 
-    if x.type == paddle.base.core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+    is_tensor_array = is_tensor_array_type(x)
+
+    if is_tensor_array:
         return _setitem_for_tensor_array(x, indices, values)
 
     # step1: parsing the index and recording them
@@ -527,7 +526,7 @@ def _setitem_static(x, indices, values):
                         ends = paddle.utils.get_int_tensor_list(ends)
                 if isinstance(steps, (list, tuple)):
                     if paddle.utils._contain_var(steps):
-                        ends = paddle.utils.get_int_tensor_list(steps)
+                        steps = paddle.utils.get_int_tensor_list(steps)
 
             if value_tensor is None:
                 output = paddle._C_ops.set_value_(
@@ -594,12 +593,10 @@ def _setitem_static(x, indices, values):
         #   3. assign values to the sliced result by index_put OP;
         #   4. transpose back and assign the result to original tensor by set_value OP.
 
-        if not isinstance(
-            values, (Variable, paddle.pir.Value, paddle.pir.OpResult)
-        ):
+        if not isinstance(values, (Variable, paddle.pir.Value)):
             values = paddle.assign(values).astype(x.dtype)
 
-        sub_tensor = get_tensor_with_basic_indexing(
+        sub_tensor, is_view = get_tensor_with_basic_indexing(
             x,
             axes,
             starts,
@@ -616,16 +613,40 @@ def _setitem_static(x, indices, values):
             _,
             _,
             values,
-        ) = deal_advanced_index(sub_tensor, advanced_index, True, values)
+            is_view,
+        ) = deal_advanced_index(
+            sub_tensor, advanced_index, True, values, is_view
+        )
 
         if values.dtype != transed_sub_tensor.dtype:
             values = values.astype(transed_sub_tensor.dtype)
 
-        if in_dynamic_or_pir_mode():
-            # NOTE(zoooo0820): directly return result instead of another set_value, after backward bug fixed.
-            transed_sub_tensor = transed_sub_tensor.index_put_(
-                adjusted_advanced_index, values
-            )
+        if paddle.in_dynamic_mode():
+            if (
+                len(adjusted_advanced_index) == 1
+                and adjusted_advanced_index[0].dtype
+                in (paddle.bool, paddle.base.libpaddle.BOOL)
+                and len(
+                    adjusted_advanced_index[0].shape
+                    == len(transed_sub_tensor.shape)
+                )
+            ):
+                if values.shape != transed_sub_tensor.shape:
+                    values = values.expand(transed_sub_tensor.shape)
+                transed_sub_tensor = paddle._C_ops.where_(
+                    paddle.logical_not(adjusted_advanced_index[0]),
+                    transed_sub_tensor,
+                    values,
+                )
+                if not is_view:
+                    return x
+            else:
+                # NOTE(zoooo0820): directly return result instead of another set_value, after backward bug fixed.
+                transed_sub_tensor = transed_sub_tensor.index_put_(
+                    adjusted_advanced_index, values
+                )
+                if not is_view:
+                    return x
         else:
             transed_sub_tensor = transed_sub_tensor.index_put(
                 adjusted_advanced_index, values
@@ -694,12 +715,14 @@ def get_tensor_with_basic_indexing(
 ):
     from .dygraph.base import in_to_static_mode
 
+    out_is_view = False
     if in_to_static_mode() and hasattr(x, "is_view_var"):
         x.is_view_var = True
 
     if len(axes) == 0:
         out = x
     else:
+        out_is_view = True
         op_type = "strided_slice" if use_strided_slice else "slice"
         inputs = {'Input': [x]}
         attrs = {
@@ -736,6 +759,8 @@ def get_tensor_with_basic_indexing(
             else:
                 stride = attrs['strides']
             if use_strided_slice:
+                # TODO(zoooo0820): support strided_slice_array until PIR API is ready
+
                 out = paddle._C_ops.strided_slice(x, axes, st, end, stride)
                 if len(decrease_axes) > 0:
                     out = paddle._C_ops.squeeze(out, decrease_axes)
@@ -748,7 +773,16 @@ def get_tensor_with_basic_indexing(
                         if paddle.utils._contain_var(end):
                             end = paddle.utils.get_int_tensor_list(end)
                     if x.is_dense_tensor_array_type():
-                        return paddle._pir_ops.slice_array_dense(x, st)
+                        if len(decrease_axes) > 0:
+                            return (
+                                paddle._pir_ops.slice_array_dense(x, st),
+                                False,
+                            )
+                        else:
+                            return (
+                                paddle._pir_ops.slice_array(x, st, end),
+                                False,
+                            )
                 out = paddle._C_ops.slice(
                     x,
                     axes,
@@ -775,17 +809,9 @@ def get_tensor_with_basic_indexing(
                 attrs=attrs,
             )
             out = slice_out_var
-    # NOTE(zoooo0820): When all axes are decreased, the output will be 1-D
-    # with FLAGS_set_to_1d=True. In this case, one `None` should be pop out,
-    # otherwise the output shape will be not correct.
-    set_to_1d = paddle.get_flags('FLAGS_set_to_1d')['FLAGS_set_to_1d']
-    if set_to_1d and len(decrease_axes) == len(x.shape):
-        warnings.warn(
-            "Warning: In Tensor '__getitem__', if the number of scalar elements in the index is equal to the rank of the Tensor, the output should be 0-D. In order to be consistent with the behavior of previous versions, it will be processed to 1-D. But it is not correct and will be removed in release 2.6. If 1-D is still wanted, please modify the index element from scalar to slice (e.g. 'x[i]' => 'x[i:i+1]')."
-        )
-        none_axes = none_axes[1:]
 
     if len(none_axes) > 0:
+        out_is_view = True
         # Deal with cases that decrease_axes is not empty
         # For example:
         # # x.shape: (2,3,4)
@@ -799,7 +825,7 @@ def get_tensor_with_basic_indexing(
 
     if in_to_static_mode() and hasattr(out, "is_view_var"):
         out.is_view_var = True
-    return out
+    return out, out_is_view
 
 
 def _getitem_static(x, indices):
@@ -822,7 +848,7 @@ def _getitem_static(x, indices):
     ) = parse_index(x, indices)
 
     # step2: Dealing with basic indexing
-    out = get_tensor_with_basic_indexing(
+    out, _ = get_tensor_with_basic_indexing(
         x,
         axes,
         starts,
@@ -842,13 +868,13 @@ def _getitem_static(x, indices):
             pos_of_new_dim,
             rank_of_new_dim,
             _,
+            _,
         ) = deal_advanced_index(out, advanced_index, False, None)
 
-        # TODO(zooooo0820): Replacing gather_nd to another advanded OP for handling of mixed indexes more efficiently
-        if (
-            len(adjusted_advanced_index) == 1
-            and adjusted_advanced_index[0].dtype == paddle.bool
-        ):
+        # TODO(zooooo0820): Replacing gather_nd to another advanced OP for handling of mixed indexes more efficiently
+        if len(adjusted_advanced_index) == 1 and adjusted_advanced_index[
+            0
+        ].dtype in (paddle.bool, paddle.base.libpaddle.BOOL):
             # Note: now slice not support 0-size Tensor, so only one bool tensor can return empty 0-size.
             out = get_value_for_bool_tensor(
                 transed_tensor, adjusted_advanced_index[0]
@@ -870,8 +896,8 @@ def _getitem_static(x, indices):
 
         if pos_of_new_dim != 0:
             perm = (
-                list(range(pos_of_new_dim, pos_of_new_dim + rank_of_new_dim))
-                + list(range(0, pos_of_new_dim))
+                list(range(rank_of_new_dim, pos_of_new_dim + rank_of_new_dim))
+                + list(range(0, rank_of_new_dim))
                 + list(range(pos_of_new_dim + rank_of_new_dim, out.ndim))
             )
             out = out.transpose(perm)
@@ -881,7 +907,7 @@ def _getitem_static(x, indices):
 
 def parse_bool_and_broadcast_indices(indices):
     # deal with multiple Tensors and translating bool tensor to int tensor.
-    # In static mode, bool-tensor cannot be broadcasted since its corressponding int tensor's shape cannot be infered.
+    # In static mode, bool-tensor cannot be broadcasted since its corresponding int tensor's shape cannot be infered.
     for i, indice in enumerate(indices):
         if (
             indice.dtype == paddle.bool

@@ -755,6 +755,82 @@ class TestLRScheduler(unittest.TestCase):
                 scheduler.step()
                 num += 1
 
+    def _test_pir(self, python_func, paddle_api, kwarg, place):
+        def get_lr_var(program):
+            for param in program.global_block().all_parameters():
+                if param.name.startswith('learning_rate_'):
+                    return param
+
+        with paddle.pir_utils.IrGuard():
+            scheduler = paddle_api(**kwarg)
+            adam = paddle.optimizer.Adam(learning_rate=scheduler)
+
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.static.program_guard(main_prog, start_prog):
+                x = paddle.static.data(name='x', shape=[3, 4, 5])
+                loss = paddle.mean(x)
+                adam.minimize(loss)
+
+            test_prog, _ = paddle.base.libpaddle.pir.clone_program(main_prog)
+
+            num = 0
+            exe = paddle.static.Executor(place)
+            exe.run(start_prog)
+
+            for epoch in range(5):
+                for batch_id in range(2):
+                    out = exe.run(
+                        main_prog,
+                        feed={'x': np.random.randn(3, 4, 5).astype('float32')},
+                        fetch_list=get_lr_var(main_prog),
+                    )
+                self.assertEqual(out, np.array(python_func(num, **kwarg)))
+                scheduler.step()
+                num += 1
+
+            for epoch in range(5):
+                for batch_id in range(2):
+                    out = exe.run(
+                        test_prog,
+                        feed={'x': np.random.randn(3, 4, 5).astype('float32')},
+                        fetch_list=get_lr_var(test_prog),
+                    )
+                self.assertEqual(out, np.array(python_func(num, **kwarg)))
+                scheduler.step()
+                num += 1
+
+            if isinstance(place, paddle.CPUPlace):
+                compiled_train_prog = main_prog
+                for epoch in range(5):
+                    python_result = python_func(num, **kwarg)
+                    for batch_id in range(2):
+                        out = exe.run(
+                            compiled_train_prog,
+                            feed={
+                                'x': np.random.randn(3, 4, 5).astype('float32')
+                            },
+                            fetch_list=get_lr_var(compiled_train_prog),
+                        )
+                    self.assertEqual(out, np.array(python_result))
+                    scheduler.step()
+                    num += 1
+
+                compiled_test_prog = test_prog
+                for epoch in range(5):
+                    python_result = python_func(num, **kwarg)
+                    for batch_id in range(2):
+                        out = exe.run(
+                            compiled_test_prog,
+                            feed={
+                                'x': np.random.randn(3, 4, 5).astype('float32')
+                            },
+                            fetch_list=get_lr_var(compiled_test_prog),
+                        )
+                    self.assertEqual(out, np.array(python_result))
+                    scheduler.step()
+                    num += 1
+
     def _test_dygraph(self, python_func, paddle_api, kwarg, place):
         paddle.disable_static(place)
         x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
@@ -1212,6 +1288,7 @@ class TestLRScheduler(unittest.TestCase):
             for place in places:
                 paddle.enable_static()
                 self._test_static(python_func, paddle_api, kwarg, place)
+                self._test_pir(python_func, paddle_api, kwarg, place)
                 paddle.disable_static(place)
                 self._test_dygraph(python_func, paddle_api, kwarg, place)
                 paddle.enable_static()

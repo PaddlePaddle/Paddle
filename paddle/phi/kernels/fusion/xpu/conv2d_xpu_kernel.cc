@@ -51,7 +51,7 @@ void Conv2dXPUKernelImpl(const Context& ctx,
   using XPUTypeOut = typename XPUTypeTrait<T_OUT>::Type;
   auto input_dims = x.dims();
   auto filter_dims = filter.dims();
-  // update paddings and dilations accoring to padding_algorithm
+  // update paddings and dilations according to padding_algorithm
   std::vector<int> paddings_vec = paddings;
   std::vector<int> dilations_vec = dilations;
   DDim in_data_dims = common::slice_ddim(input_dims, 2, input_dims.size());

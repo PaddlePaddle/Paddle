@@ -31,7 +31,6 @@ from paddle.base.dygraph.base import (
     _convert_into_variable,
     in_declarative_mode,  # noqa: F401
     in_to_static_mode,
-    program_desc_tracing_guard,
 )
 from paddle.base.dygraph_utils import _append_activation_in_dygraph
 from paddle.base.executor import Executor, global_scope
@@ -44,6 +43,7 @@ from paddle.base.framework import (
     in_dygraph_mode,
     in_pir_mode,
     name_struct,
+    paddle_type_to_proto_type,
 )
 from paddle.base.layer_helper_base import LayerHelperBase
 from paddle.base.param_attr import ParamAttr
@@ -69,9 +69,7 @@ def record_program_ops_pre_hook(layer, inputs):
         else:
             layer._op_recorder.is_valid = False
             warnings.warn(
-                "{} has recorded the op information before. Please check whether you call this layer twice.".format(
-                    layer._full_name
-                )
+                f"{layer._full_name} has recorded the op information before. Please check whether you call this layer twice."
             )
 
 
@@ -302,7 +300,7 @@ class LayerObjectHelper(LayerHelperBase):
             )
 
 
-class LayerOpsRecoder:
+class LayerOpsRecorder:
     """
     Record generated operators information in nn.Layer.
     """
@@ -405,17 +403,17 @@ class Layer:
         self._loaddict_holder = collections.OrderedDict()
 
         # Record generated op_descs in this layer
-        self._op_recorder = LayerOpsRecoder(ops=[], hooks=[])
+        self._op_recorder = LayerOpsRecorder(ops=[], hooks=[])
         self._customized_attrs = {}
 
         self._forward_pre_hooks = collections.OrderedDict()
         self._forward_post_hooks = collections.OrderedDict()
 
         # only used in AMP Training
-        self._cast_to_low_precison = True
+        self._cast_to_low_precision = True
 
         self._state_dict_hooks = collections.OrderedDict()
-        # Records orignal functions after @to_static to support to rollback
+        # Records original functions after @to_static to support to rollback
         self._original_funcs = collections.OrderedDict()
 
     def train(self):
@@ -636,7 +634,7 @@ class Layer:
 
                 >>> # the forward_post_hook change the output of the layer: output = output * 2
                 >>> def forward_post_hook(layer, input, output):
-                ...     # user can use layer, input and output for information statistis tasks
+                ...     # user can use layer, input and output for information statistics tasks
                 ...
                 ...     # change the output
                 ...     return output * 2
@@ -690,7 +688,7 @@ class Layer:
 
                 >>> # the forward_pre_hook change the input of the layer: input = input * 2
                 >>> def forward_pre_hook(layer, input):
-                ...     # user can use layer and input for information statistis tasks
+                ...     # user can use layer and input for information statistics tasks
                 ...
                 ...     # change the input
                 ...     input_return = (input[0] * 2)
@@ -998,7 +996,7 @@ class Layer:
             return self
         else:
             raise ValueError(
-                "dtype value error, must be 'bfloat16', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8', 'complex64', 'complex128', 'bool', or paddle.dtype, numpy.dtype, but recieve "
+                "dtype value error, must be 'bfloat16', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8', 'complex64', 'complex128', 'bool', or paddle.dtype, numpy.dtype, but receive "
                 + str(dtype)
             )
 
@@ -1239,9 +1237,7 @@ class Layer:
             raise ValueError("super().__init__() should be called first")
         elif not isinstance(name, str):
             raise TypeError(
-                "The name of buffer should be a string, but received {}.".format(
-                    type(name).__name__
-                )
+                f"The name of buffer should be a string, but received {type(name).__name__}."
             )
         elif '.' in name:
             raise KeyError(
@@ -1255,9 +1251,7 @@ class Layer:
             raise KeyError(f"attribute '{name}' already exists.")
         elif tensor is not None and not (type(tensor) == core.eager.Tensor):
             raise TypeError(
-                "The registered buffer should be a Paddle.Tensor, but received {}.".format(
-                    type(tensor).__name__
-                )
+                f"The registered buffer should be a Paddle.Tensor, but received {type(tensor).__name__}."
             )
         else:
             self._buffers[name] = tensor
@@ -1395,8 +1389,7 @@ class Layer:
                 inputs = hook_result
 
         if not self._built:
-            with program_desc_tracing_guard(False):
-                self._build_once(*inputs, **kwargs)
+            self._build_once(*inputs, **kwargs)
 
             self._built = True
 
@@ -1533,9 +1526,7 @@ class Layer:
             raise RuntimeError("super().__init__() should be called firstly.")
         elif not isinstance(name, str):
             raise TypeError(
-                "The name of parameter should be a string, but received {}.".format(
-                    type(name).__name__
-                )
+                f"The name of parameter should be a string, but received {type(name).__name__}."
             )
         elif '.' in name:
             raise KeyError(
@@ -1551,9 +1542,7 @@ class Layer:
             parameter, framework.Parameter
         ):
             raise TypeError(
-                "The parameter to be added should be a Parameter, but received {}.".format(
-                    type(parameter).__name__
-                )
+                f"The parameter to be added should be a Parameter, but received {type(parameter).__name__}."
             )
         else:
             if parameter is None:
@@ -1562,9 +1551,7 @@ class Layer:
             if len(self._loaddict_holder) > 0:
                 assert (
                     parameter.name in self._loaddict_holder
-                ), "Parameter not found, Can't not find [ {} ] in state_dict".format(
-                    parameter.name
-                )
+                ), f"Parameter not found, Can't not find [ {parameter.name} ] in state_dict"
 
                 parameter.set_value(self._loaddict_holder[parameter.name])
 
@@ -1688,9 +1675,7 @@ class Layer:
         elif params is not None and name in params:
             if value is not None:
                 raise TypeError(
-                    "assignment to parameter '{}' should be of type Parameter or None, but got '{}'".format(
-                        name, type(value).__name__
-                    )
+                    f"assignment to parameter '{name}' should be of type Parameter or None, but got '{type(value).__name__}'"
                 )
             params[name] = None
         else:
@@ -1706,9 +1691,7 @@ class Layer:
             elif layers is not None and name in layers:
                 if value is not None:
                     raise TypeError(
-                        "assignment to sublayer '{}' should be of type Layer or None, but got '{}'".format(
-                            name, type(value).__name__
-                        )
+                        f"assignment to sublayer '{name}' should be of type Layer or None, but got '{type(value).__name__}'"
                     )
                 layers[name] = None
             else:
@@ -1755,9 +1738,7 @@ class Layer:
                             assign(value, getattr(self, name))
                     elif value is not None:
                         raise TypeError(
-                            "assignment to buffers '{}' should be of type core.Tensor or None, but got '{}'".format(
-                                name, type(value).__name__
-                            )
+                            f"assignment to buffers '{name}' should be of type core.Tensor or None, but got '{type(value).__name__}'"
                         )
                     else:
                         # Assigning None will remove the buffer, but if re-assign a new varBase to it,
@@ -1951,7 +1932,7 @@ class Layer:
             include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True.
             use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True.
 
-        Retruns:
+        Returns:
             dict, a dict contains all the parameters and persistable buffers.
 
         Examples:
@@ -1988,7 +1969,7 @@ class Layer:
             include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True.
             use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True.
 
-        Retruns:
+        Returns:
             dict: a dict contains all the parameters and persistable buffers.
 
         Examples:
@@ -2049,7 +2030,7 @@ class Layer:
                 if len(state) != len(param):
                     missing_keys.append(key)
                     raise ValueError(
-                        f"{key} receieves the length of {len(state)}, "
+                        f"{key} receives the length of {len(state)}, "
                         f"but the expected shape is {len(param)}"
                     )
                 else:
@@ -2065,9 +2046,7 @@ class Layer:
                 if list(state_shape) != list(param.shape):
                     missing_keys.append(key)
                     raise ValueError(
-                        "{} receives a shape {}, but the expected shape is {}.".format(
-                            key, list(state_shape), list(param.shape)
-                        )
+                        f"{key} receives a shape {list(state_shape)}, but the expected shape is {list(param.shape)}."
                     )
                 match_keys.add(key)
                 return param, state
@@ -2126,7 +2105,7 @@ class Layer:
                     _set_var(param, state)
             except ValueError as e:
                 raise ValueError(
-                    "This error might happens in dy2static, while calling 'set_state_dict' dynamicly in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'."
+                    "This error might happens in dy2static, while calling 'set_state_dict' dynamically in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'."
                 )
 
         return missing_keys, unexpected_keys
@@ -2223,14 +2202,19 @@ class Layer:
         if dtype is None:
             dtype = t.dtype
 
-        if type(dtype) is not VarDesc.VarType:
+        if not isinstance(dtype, (VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
         # 1. gpu place need to determine whether the memory is sufficient for allocation:
         if t.place.is_gpu_place():
             # for gpu, minimum memory allocation unit is 256 bytes.
-            size_dtype = core.size_of_dtype(dtype)
-            # Note(zhangbo): Paddle GPU minimum memory allocation unit is 256 bytes, waiting_alloc_memory will comput ‘t’ occupied memory space.
+            proto_dtype = (
+                paddle_type_to_proto_type[dtype]
+                if isinstance(dtype, core.DataType)
+                else dtype
+            )
+            size_dtype = core.size_of_dtype(proto_dtype)
+            # Note(zhangbo): Paddle GPU minimum memory allocation unit is 256 bytes, waiting_alloc_memory will compute ‘t’ occupied memory space.
             # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.
             waiting_alloc_memory = (
                 ((np.prod(t.shape) * size_dtype) / 256 + 1) * 256 * 1.2
@@ -2264,7 +2248,11 @@ class Layer:
         # 4. share Tensor to origin param / Tensor
         dst_tensor = t.value().get_tensor()
         src_tensor = new_t.value().get_tensor()
-        dst_tensor._share_data_with(src_tensor)
+        if t._is_initialized():
+            dst_tensor._share_data_with(src_tensor)
+        else:
+            # If the tensor is not initialized, we can't check the memory size.
+            dst_tensor._share_data_nocheck_with(src_tensor)
 
         return t
 
@@ -2341,7 +2329,7 @@ class Layer:
 
     def _startup_program(self):
         """
-        Return starup program containing initialization operations of all parameters.
+        Return startup program containing initialization operations of all parameters.
 
         NOTE(dev): This is a very low level API and only for inner developer.
         """

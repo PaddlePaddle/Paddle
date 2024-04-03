@@ -18,9 +18,9 @@ if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
 
+
 PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../" && pwd )"
 API_FILES=("CMakeLists.txt"
-           "third_party"
            "paddle/fluid/framework/operator.h"
            "paddle/fluid/framework/tensor.h"
            "paddle/fluid/framework/details/op_registry.h"
@@ -141,9 +141,6 @@ for API_FILE in ${API_FILES[*]}; do
       if [ "${API_FILE}" == "CMakeLists.txt" ];then
           echo_line="You must have one RD (wanghuancoder, luotao1, Aurelius84, XiaoguangHu01 or qili93) approval for CMakeLists.txt, which manages the compilation parameter.\n"
           check_approval 1 wanghuancoder luotao1 Aurelius84 XiaoguangHu01 qili93
-      elif [ "${API_FILE}" == "third_party" ];then
-          echo_line="You must have one RD (risemeup1 or tianshuo78520a) approval for ${API_FILE}.\n"
-          check_approval 1 risemeup1 tianshuo78520a
       elif [ "${API_FILE}" == "python/paddle/base/__init__.py" ];then
           echo_line="You must have one RD (lanxianghit (Recommend), phlrain, luotao1, Aurelius84 or qili93) approval for the python/paddle/base/init.py, which manages the environment variables.\n"
           check_approval 1 lanxianghit phlrain luotao1 Aurelius84 qili93
@@ -225,10 +222,10 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "python/paddle/autograd/ir_backward.py" ] || [ "${API_FILE}" == "python/paddle/autograd/backward_utils.py" ]; then
             echo_line="You must be approved by Aurelius84(zhangliujie) or cxxly(chenxiaoxu) or xiaoguoguo626807(wangruting) or changeyoung98(chenzhiyang) for python/paddle/autograd/ir_backward.py or python/paddle/autograd/backward_utils.py changes.\n"
             check_approval 1 Aurelius84 cxxly xiaoguoguo626807 changeyoung98
-      elif [ "${API_FILE}" == "paddle/scripts/paddle_build.sh" ]; then 
-	      echo_line="You must have one RD (tianshuo78520a or risemeup1 or zhangbo9674 or XieYunshen) for ${API_FILE} changes, which manages the Paddle CI on Linux.\n " 
-            check_approval 1 tianshuo78520a risemeup1 zhangbo9674 XieYunshen 
-      elif [ "${API_FILE}" == "paddle/phi/infermeta/spmd_rules" ]; then 
+      elif [ "${API_FILE}" == "paddle/scripts/paddle_build.sh" ]; then
+	      echo_line="You must have one RD (tianshuo78520a or risemeup1 or zhangbo9674 or XieYunshen) for ${API_FILE} changes, which manages the Paddle CI on Linux.\n "
+            check_approval 1 tianshuo78520a risemeup1 zhangbo9674 XieYunshen
+      elif [ "${API_FILE}" == "paddle/phi/infermeta/spmd_rules" ]; then
 	      echo_line="You must have one RD (liuzhenhai(liuzhenhai93) or liyurui(LiYuRio) or shenliang03(ForFishes) or zhangyichen03(pkuzyc) or chenqiuliang(zhiqiu)) approval for changing ${API_FILE} , which manages the code for spmd_rules.\n"
             check_approval 1 liuzhenhai93 LiYuRio ForFishes pkuzyc zhiqiu
       else
@@ -264,6 +261,18 @@ if [ ${HAS_LEGACY_KERNEL_REGISTRATION} ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 chenwhql zyfncg YuanRisheng phlrain
 fi
 
+PYTHON_FILE_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- 'python/*.py' |grep "^+")
+IF_USE_SUBPROCESS=`echo $PYTHON_FILE_ADDED_LINES | grep -B5 --no-group-separator "subprocess\." || true`
+if [[ ${IF_USE_SUBPROCESS} ]]; then
+    echo_line="You must have one RD (wanghuancoder(Recommend), Aurelius84, 2742195759, SigureMo) approval for using subprocess, which may cause security problem.\n"
+    check_approval 1 wanghuancoder Aurelius84 2742195759 SigureMo
+fi
+IF_USE_EVAL=`echo $PYTHON_FILE_ADDED_LINES | grep -B5 --no-group-separator "[^\w\d_]eval([^()]*[a-zA-Z0-9_])" || true`
+if [[ ${IF_USE_EVAL} ]]; then
+    echo_line="You must have one RD (wanghuancoder(Recommend), Aurelius84, 2742195759, SigureMo) approval for using eval, which may cause security problem.\n"
+    check_approval 1 wanghuancoder Aurelius84 2742195759 SigureMo
+fi
+
 HAS_DEFINE_FLAG=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "DEFINE_int32" |grep -o -m 1 "DEFINE_bool" | grep -o -m 1 "DEFINE_string" || true`
 if [ ${HAS_DEFINE_FLAG} ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD lanxianghit approval for the usage (either add or delete) of DEFINE_int32/DEFINE_bool/DEFINE_string flag.\n"
@@ -279,7 +288,7 @@ if [ "${HAS_UNITTEST_SKIP}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
 
 HAS_MODIFIED_DEMO_CMAKE=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/inference/api/demo_ci/CMakeLists.txt" || true`
 if [ "${HAS_MODIFIED_DEMO_CMAKE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (Superjomn (Recommend), Shixiaowei02, luotao1 or Aurelius84) approval for paddle/fluid/inference/api/demo_ci/CMakeLists.txt.\nwhich manages the compilation parameter of inference demo\n"
+    echo_line="You must have one RD (yuanlehome (Recommend), vivienfanghuagood or Aurelius84) approval for paddle/fluid/inference/api/demo_ci/CMakeLists.txt.\nwhich manages the compilation parameter of inference demo\n"
     check_approval 1 Superjomn Shixiaowei02 luotao1 Aurelius84
   fi
 
@@ -301,6 +310,12 @@ if [ "${HAS_USED_CCTEST}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 risemeup1 zhangbo9674 Galaxy1458
 fi
 
+HAS_CREATE_NEW_PASS=`git diff -U0 upstream/$BRANCH |grep "paddle/pir/include/pass/pass.h" || true`
+if [ "${HAS_CREATE_NEW_PASS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="\n If you implement a new Pass, you must be approved by yuanlehome or zyfncg. Thanks!\n"
+    check_approval 1 yuanlehome zyfncg
+fi
+
 HAS_MODIFIED_API_COMPAT_YAML=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/api/yaml/op_compat.yaml" || true`
 if [ "${HAS_MODIFIED_API_COMPAT_YAML}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must be approved by chenwhql or zyfncg or heavyrain-lzy for paddle/phi/api/yaml/op_compat.yaml changes, which manages the extra params of Op and name mapping between Yaml and OpMaker. In order to ensure compatibility of framework, this file isn't allowed to be modified at will!\n"
@@ -313,10 +328,30 @@ if [ "${HAS_MODIFIED_API_FW_BW_YAML}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 chenwhql zyfncg heavyrain-lzy
 fi
 
+HAS_MODIFIED_PRIMITIVE_YAML=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/primitive/primitive.yaml" || true`
+if [ "${HAS_MODIFIED_PRIMITIVE_YAML}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must be approved by jeff41404(gaoxiang) or cyber-pioneer(chenzhuo) for paddle/fluid/primitive/primitive.yaml changes.\n"
+    check_approval 1 jeff41404 cyber-pioneer
+fi
+
 HAS_MODIFIED_FRAMEWORK_EXECUTOR=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/framework/new_executor" || true`
 if [ "${HAS_MODIFIED_FRAMEWORK_EXECUTOR}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD (From00, zhangbo9674) approval for file changes in paddle/fluid/framework/new_executor.\n"
     check_approval 1 From00 zhangbo9674
+fi
+
+
+HAS_MODIFIED_DRR_INCLUDE_DIR=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/pir/drr/include" || true`
+if [ "${HAS_MODIFIED_DRR_INCLUDE_DIR}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD (yuanlehome, zyfncg) approval for file changes in paddle/fluid/pir/drr/include.\n"
+    check_approval 1 yuanlehome zyfncg
+fi
+
+
+HAS_MODIFIED_PIR_INCLUDE_DIR=`git diff --name-only upstream/$BRANCH | grep "paddle/pir/include" || true`
+if [ "${HAS_MODIFIED_PIR_INCLUDE_DIR}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD (yuanlehome, winter-wang, zhangbo9674) approval for file changes in paddle/pir/include.\n"
+    check_approval 1 yuanlehome winter-wang zhangbo9674
 fi
 
 HAS_MODIFIED_API_GENE=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/api/yaml/generator" || true`
@@ -354,6 +389,14 @@ if [ "${HAS_MODIFIED_STATIC_BUILD}" != "" ] && [ "${GIT_PR_ID}" != ""]; then
     echo_line="You must have one RD (From00 or zhiqiu) approval for file changes in new_executor/interpreter/static_build.cc.\n"
     check_approval 1 From00 zhiqiu
 fi
+
+
+HAS_MODIFIED_ENFORCE_SYNTAX=`git diff --diff-filter=A upstream/$BRANCH | grep -E "IR_ENFORCE|CHECK_EQ|CHECK_NE|CHECK_LT|CHECK_LE|CHECK_GE|CHECK_GT|LOG\(FATAL\)" || true`
+if [ "${HAS_MODIFIED_ENFORCE_SYNTAX}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD (rismeup1 or winter-wang) approval for using 'IR_ENFORCE, CHECK_EQ, CHECK_NE, CHECK_LT, CHECK_LE, CHECK_GE, CHECK_GT, LOG(FATAL)', it is recommended to use PADDLE_ENFORCE as a replacement,see [ https://github.com/PaddlePaddle/Paddle/wiki/PADDLE_ENFORCE-Rewriting-Specification ] for details.\n"
+    check_approval 1 risemeup1 winter-wang
+fi
+
 
 HAS_MODIFIED_TARGET_FOR_AUTO_PARALLEL_CI=`git diff --name-only upstream/$BRANCH | grep "tools/auto_parallel/target_path_lists.sh" || true`
 if [ "${HAS_MODIFIED_TARGET_FOR_AUTO_PARALLEL_CI}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
@@ -394,17 +437,31 @@ if [ "${INVALID_UNITTEST_ASSERT_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; the
     check_approval 1 qili93 luotao1 Aurelius84
 fi
 
-DEPRECATED_FLAKE8=`git diff --name-only upstream/$BRANCH | grep ".flake8" || true`
-if [ "${DEPRECATED_FLAKE8}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one SigureMo or gouzil approval for file changes in .flake8, we are planned to replace Flake8 with Ruff in the future.\n"
-    check_approval 1 SigureMo gouzil
-fi
-
 TEST_FILE_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- test |grep "^+")
 ENABLE_TO_STATIC_CHECK=`echo "$TEST_FILE_ADDED_LINES" | grep "enable_to_static(" || true`
 if [ "${ENABLE_TO_STATIC_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD (SigureMo, Aurelius84 or 2742195759) approval for using 'paddle.jit.enable_to_static', we recommend using 'enable_to_static_guard' in the related test files.\n"
     check_approval 1 SigureMo Aurelius84 2742195759
+fi
+
+HAS_MODIFIED_DY2ST_TEST_FILES=$(git diff --name-only upstream/$BRANCH | grep "test/dygraph_to_static/test_" || true)
+if [ "${HAS_MODIFIED_DY2ST_TEST_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    error_lines=`python ${PADDLE_ROOT}/test/dygraph_to_static/check_approval.py ${HAS_MODIFIED_DY2ST_TEST_FILES}`
+    if [ $? -ne 0 ]; then
+        echo_line="Your PR does not meet Dy2St unittest dev guide, please check https://github.com/PaddlePaddle/Paddle/issues/61464 for details.\n"
+        echo_line=${echo_line}"Errors are as follows:\n"
+        echo_line=${echo_line}${error_lines}"\n"
+        echo_line=${echo_line}"You can run following command to fix the errors:\n"
+        echo_line=${echo_line}"    python test/dygraph_to_static/check_approval.py "$(echo ${HAS_MODIFIED_DY2ST_TEST_FILES} | tr "\n" " ")"\n"
+        echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (SigureMo, Aurelius84, 2742195759 or gouzil) approval for the changes.\n"
+        check_approval 1 SigureMo Aurelius84 2742195759 gouzil
+    fi
+fi
+
+HAS_MODIFIED_DY2ST_TEST_TENSOR_ATTR_CONSISTENCY=$(git diff --name-only upstream/$BRANCH | grep "test/dygraph_to_static/test_tensor_attr_consistency.py" || true)
+if [ "${HAS_MODIFIED_DY2ST_TEST_TENSOR_ATTR_CONSISTENCY}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD (SigureMo, Aurelius84, 2742195759 or gouzil) approval for file changes in test/dygraph_to_static/test_tensor_attr_consistency.py.\n"
+    check_approval 1 SigureMo Aurelius84 2742195759 gouzil
 fi
 
 HAS_MODIFIED_PHI_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" || true`

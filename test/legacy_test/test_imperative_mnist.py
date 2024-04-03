@@ -103,13 +103,13 @@ class MNIST(paddle.nn.Layer):
 
 class TestImperativeMnist(unittest.TestCase):
     def reader_decorator(self, reader):
-        def _reader_imple():
+        def _reader_simple():
             for item in reader():
                 image = np.array(item[0]).reshape(1, 28, 28)
                 label = np.array(item[1]).astype('int64').reshape(1)
                 yield image, label
 
-        return _reader_imple
+        return _reader_simple
 
     def test_mnist_float32(self):
         seed = 90
@@ -120,8 +120,7 @@ class TestImperativeMnist(unittest.TestCase):
         traced_layer = None
 
         with base.dygraph.guard():
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
+            paddle.seed(seed)
 
             mnist = MNIST()
             sgd = paddle.optimizer.SGD(
@@ -177,8 +176,7 @@ class TestImperativeMnist(unittest.TestCase):
                         dy_param_value[param.name] = param.numpy()
 
         with new_program_scope():
-            base.default_startup_program().random_seed = seed
-            base.default_main_program().random_seed = seed
+            paddle.seed(seed)
 
             exe = base.Executor(
                 base.CPUPlace()

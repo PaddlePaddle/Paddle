@@ -30,6 +30,7 @@ from ..base.framework import (
     _current_expected_place,
     in_dygraph_mode,
 )
+from ..pir import Value
 
 
 def convert_to_list(value, n, name, dtype=int):
@@ -76,9 +77,7 @@ def convert_to_list(value, n, name, dtype=int):
                 + str(value)
             )
         for single_value in value_list:
-            assert not isinstance(
-                single_value, (Variable, paddle.pir.OpResult)
-            ), (
+            assert not isinstance(single_value, (Variable, paddle.pir.Value)), (
                 "Required numerical type with '%s', but received Tensor."
                 % dtype
             )
@@ -309,9 +308,7 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
         if type_nest1 != type_nest2:
             raise TypeError(
                 "The two structures don't have the same sequence type. First "
-                "structure has type {}, while second structure has type {}.".format(
-                    type_nest1, type_nest2
-                )
+                f"structure has type {type_nest1}, while second structure has type {type_nest2}."
             )
         if isinstance(nest1, dict):
             keys1 = set(nest1.keys())
@@ -319,9 +316,7 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
             if keys1 != keys2:
                 raise ValueError(
                     "The two dictionaries don't have the same set of keys. First "
-                    "structure has keys {}, while second structure has keys {}.".format(
-                        keys1, keys2
-                    )
+                    f"structure has keys {keys1}, while second structure has keys {keys2}."
                 )
     nest1_as_sequence = list(_yield_value(nest1))
     nest2_as_sequence = list(_yield_value(nest2))
@@ -380,10 +375,10 @@ def _is_symmetric_padding(padding, data_dim):
 
 def _contain_var(list_or_tuple):
     """
-    Check whether list or tuple contains variable / OpResult / Value.
+    Check whether list or tuple contains variable / Value.
     """
     for item in list_or_tuple:
-        if isinstance(item, (Variable, paddle.pir.OpResult, paddle.pir.Value)):
+        if isinstance(item, (Variable, paddle.pir.Value)):
             return True
     return False
 
@@ -394,7 +389,7 @@ def get_int_tensor_list(ele_list, place=None, default_dtype='int64'):
 
     int_tensor_list = []
     for ele in ele_list:
-        if isinstance(ele, (paddle.pir.OpResult, paddle.pir.Value)):
+        if isinstance(ele, paddle.pir.Value):
             ele.stop_gradient = True
             if convert_dtype(ele.dtype) != default_dtype:
                 ele = paddle.cast(x=ele, dtype=default_dtype)
@@ -466,13 +461,13 @@ def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
 
 def _convert_to_tensor_list(old_list, dtype="int32"):
     """
-    Converts all elements of a list to Variable / OpResult / Value.
+    Converts all elements of a list to Variable / Value.
     """
     from paddle.tensor import fill_constant
 
     new_list_tensor = []
     for ele in old_list:
-        if isinstance(ele, (Variable, paddle.pir.OpResult, paddle.pir.Value)):
+        if isinstance(ele, (Variable, paddle.pir.Value)):
             ele.stop_gradient = True
             new_list_tensor.append(ele)
         else:
@@ -498,11 +493,11 @@ def check_shape(shape):
     """
     Check shape type and shape elements type before passing it to fill_constant
     """
-    if isinstance(shape, Variable):
+    if isinstance(shape, (Variable, Value)):
         check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'fill_constant')
-    else:
+    elif isinstance(shape, (list, tuple)):
         for ele in shape:
-            if not isinstance(ele, Variable):
+            if not isinstance(ele, (Variable, Value)):
                 if ele < 0:
                     raise ValueError(
                         "All elements in ``shape`` must be positive when it's a list or tuple"
@@ -511,6 +506,13 @@ def check_shape(shape):
                     raise TypeError(
                         "All elements in ``shape`` must be integers when it's a list or tuple"
                     )
+            else:
+                check_dtype(
+                    ele.dtype,
+                    'element of shape',
+                    ['int32', 'int64'],
+                    'fill_constant',
+                )
 
 
 def try_set_static_shape_tensor(tensor, shape):

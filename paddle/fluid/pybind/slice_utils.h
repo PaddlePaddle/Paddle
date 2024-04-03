@@ -348,11 +348,13 @@ static paddle::Tensor getTensorWithBasicIndexing(
     std::vector<int64_t>* decrease_axis,
     std::vector<int64_t>* none_axes,
     std::vector<int64_t>* infer_flags,
-    bool* use_strided_slice) {
+    bool* use_strided_slice,
+    bool* out_is_view) {
   paddle::Tensor out;
   if (slice_axes->empty()) {
     out = tensor;
   } else {
+    *out_is_view = true;
     if (!(*use_strided_slice)) {
       eager_gil_scoped_release guard;
       out = slice_ad_func(tensor,
@@ -373,6 +375,7 @@ static paddle::Tensor getTensorWithBasicIndexing(
     }
   }
   if (!none_axes->empty()) {
+    *out_is_view = true;
     eager_gil_scoped_release guard;
     // Deal with cases that decrease_axes is not empty
     // For example:
@@ -401,7 +404,8 @@ static paddle::Tensor dealWithAdvancedIndex(
     std::vector<int>* trans_back_dim,
     int* pos_of_new_dim,
     int* rank_of_new_dim,
-    std::vector<int>* trans_dim) {
+    std::vector<int>* trans_dim,
+    bool* out_is_view) {
   int p = 0;
   for (size_t i = 0; i < advanced_index_dim->size(); ++i) {
     auto index_dim = (*advanced_index_dim)[i];
@@ -444,6 +448,7 @@ static paddle::Tensor dealWithAdvancedIndex(
   if (original_dim_order == *trans_dim) {
     transed_tensor = tensor;
   } else {
+    *out_is_view = true;
     transed_tensor = transpose_ad_func(tensor, *trans_dim);
   }
 

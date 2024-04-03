@@ -50,12 +50,16 @@ class WhileInstruction : public InstructionBase {
 
   PirInterpreter* BodyInterpreter() const { return body_inter_.get(); }
 
+  void SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs);
+
+  void SetInputHooks(const std::vector<PirHookFunc>& hookfuncs);
+
  private:
   // 'output' = 'input'
   void ShareInputsToOutputs();
 
   // Pass argument to body_block for execution.
-  void CopyOutputsToBlockArgs();
+  void ShareOutputsToBlockArgs();
 
   // Get return value from body_block after each execution.
   void ShareDatasToOutputs();
@@ -70,6 +74,7 @@ class WhileInstruction : public InstructionBase {
   std::unique_ptr<PirInterpreter> body_inter_;
   std::vector<std::string> body_outputs_;
   std::vector<std::string> body_skip_gc_names_;
+  std::set<std::string> external_input_names_;
 
   ::pir::Block* body_block_;
 

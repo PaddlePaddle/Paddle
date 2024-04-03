@@ -30,7 +30,7 @@
 
 namespace cinn::frontend {
 
-TEST(GemmRwriter, BatchedTransLeft) {
+TEST(GemmRewriter, BatchedTransLeft) {
   if (!cinn::runtime::IsCompiledWithCUDA()) {
     return;
   }
@@ -54,7 +54,7 @@ TEST(GemmRwriter, BatchedTransLeft) {
   CompareResult(&program, target, input_ids, {out->id}, 1, passes, 123, true);
 }
 
-TEST(GemmRwriter, BatchedTransRight) {
+TEST(GemmRewriter, BatchedTransRight) {
   if (!cinn::runtime::IsCompiledWithCUDA()) {
     return;
   }
@@ -78,7 +78,7 @@ TEST(GemmRwriter, BatchedTransRight) {
   CompareResult(&program, target, input_ids, {out->id}, 1, passes, 123, true);
 }
 
-TEST(GemmRwriter, BatchedTransTwo) {
+TEST(GemmRewriter, BatchedTransTwo) {
   if (!cinn::runtime::IsCompiledWithCUDA()) {
     return;
   }
@@ -103,7 +103,7 @@ TEST(GemmRwriter, BatchedTransTwo) {
   CompareResult(&program, target, input_ids, {out->id}, 2, passes, 123, true);
 }
 
-TEST(GemmRwriter, BatchedNoTrans) {
+TEST(GemmRewriter, BatchedNoTrans) {
   if (!cinn::runtime::IsCompiledWithCUDA()) {
     return;
   }
@@ -126,7 +126,7 @@ TEST(GemmRwriter, BatchedNoTrans) {
   CompareResult(&program, target, input_ids, {out->id}, 0, passes, 123, true);
 }
 
-TEST(GemmRwriter, TransLeft) {
+TEST(GemmRewriter, TransLeft) {
   if (!cinn::runtime::IsCompiledWithCUDA()) {
     return;
   }
@@ -150,7 +150,7 @@ TEST(GemmRwriter, TransLeft) {
   CompareResult(&program, target, input_ids, {out->id}, 1, passes, 123, true);
 }
 
-TEST(GemmRwriter, TransRight) {
+TEST(GemmRewriter, TransRight) {
   if (!cinn::runtime::IsCompiledWithCUDA()) {
     return;
   }
@@ -174,7 +174,7 @@ TEST(GemmRwriter, TransRight) {
   CompareResult(&program, target, input_ids, {out->id}, 1, passes, 123, true);
 }
 
-TEST(GemmRwriter, TransTwo) {
+TEST(GemmRewriter, TransTwo) {
   if (!cinn::runtime::IsCompiledWithCUDA()) {
     return;
   }
@@ -199,7 +199,7 @@ TEST(GemmRwriter, TransTwo) {
   CompareResult(&program, target, input_ids, {out->id}, 2, passes, 123, true);
 }
 
-TEST(GemmRwriter, NoTrans) {
+TEST(GemmRewriter, NoTrans) {
   if (!cinn::runtime::IsCompiledWithCUDA()) {
     return;
   }
@@ -222,7 +222,7 @@ TEST(GemmRwriter, NoTrans) {
   CompareResult(&program, target, input_ids, {out->id}, 0, passes, 123, true);
 }
 
-TEST(GemmRwriter, BatchedComplex) {
+TEST(GemmRewriter, BatchedComplex) {
   if (!cinn::runtime::IsCompiledWithCUDA()) {
     return;
   }
@@ -256,7 +256,7 @@ TEST(GemmRwriter, BatchedComplex) {
   CompareResult(&program, target, input_ids, {out->id}, 4, passes, 123, false);
 }
 
-TEST(GemmRwriter, Complex) {
+TEST(GemmRewriter, Complex) {
   if (!cinn::runtime::IsCompiledWithCUDA()) {
     return;
   }

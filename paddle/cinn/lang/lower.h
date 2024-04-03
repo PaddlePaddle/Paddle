@@ -103,5 +103,8 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<Tensor> &tensor_args,
 std::vector<ir::Buffer> GetTempBuffers(const std::vector<ir::Argument> &args,
                                        Expr body);
 
+std::vector<ir::Buffer> GetTempBuffers(
+    const std::vector<cinn::ir::Tensor> &tensor_args, Expr body);
+
 }  // namespace lang
 }  // namespace cinn

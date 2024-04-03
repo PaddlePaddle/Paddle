@@ -48,6 +48,7 @@ class TestConv2DInt8Op(TestConv2DOp):
         self.init_fuse_activation()
         self.init_fuse_residual()
         self.init_data_type()
+        self.check_pir_onednn = True
 
         conv2d_param = {
             'stride': self.stride,
@@ -184,7 +185,10 @@ class TestConv2DInt8Op(TestConv2DOp):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         # the atol for integer tests should be 1
         self.check_output_with_place(
-            core.CPUPlace(), atol=1, check_dygraph=False
+            core.CPUPlace(),
+            atol=1,
+            check_dygraph=False,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad(self):

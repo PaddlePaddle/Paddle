@@ -57,17 +57,23 @@ void MapExternCall(Expr *e, Target target) {
       CHECK(node);
       OptimizeConstantPow(node);
       if (target.arch == Target::Arch::NVGPU) {
-        DealWithNvGpuintrinsics(node, expr);
+        DealWithNvGpuIntrinsics(node, expr);
       } else {
-        DealWithCpuintrinsics(node, expr);
+        DealWithCpuIntrinsics(node, expr);
       }
     }
 
-    void DealWithCpuintrinsics(ir::Call *node, Expr *expr) {
+    void DealWithCpuIntrinsics(ir::Call *node, Expr *expr) {
       if (kExternFp32CallsCPU.count(node->name)) {
-        CHECK_GE(node->read_args.size(), 1UL);
+        PADDLE_ENFORCE_GE(
+            node->read_args.size(),
+            1UL,
+            phi::errors::InvalidArgument(
+                "The size of node's read args is incorrect."
+                "Expected size is greater than or equal to 1, but receive %d.",
+                node->read_args.size()));
         CHECK(node->read_args.front().type().is_float())
-            << "CPU extern call instrinsices only support float now! Please "
+            << "CPU extern call intrinsics only support float now! Please "
                "check.";
         if (node->read_args.front().type().is_float(32)) {
           auto out_type = node->type();
@@ -76,7 +82,7 @@ void MapExternCall(Expr *e, Target target) {
       }
     }
 
-    void DealWithNvGpuintrinsics(ir::Call *node, Expr *expr) {
+    void DealWithNvGpuIntrinsics(ir::Call *node, Expr *expr) {
       auto arg_size = node->read_args.size();
       if (arg_size == 0UL) {
         // some node like __syncthreads hasn't arguments

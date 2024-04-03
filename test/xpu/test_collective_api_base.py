@@ -200,10 +200,7 @@ class TestDistBase(unittest.TestCase):
     def setUp(self):
         self._port_set = set()
         self._trainers = 2
-        self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
-            self._find_free_port(),
-            self._find_free_port(),
-        )
+        self._ps_endpoints = f"127.0.0.1:{self._find_free_port()},127.0.0.1:{self._find_free_port()}"
         self._python_interp = sys.executable
         self._master_endpoints = "127.0.0.1:%s" % (self._find_free_port())
 
@@ -606,19 +603,19 @@ class TestDistBase(unittest.TestCase):
             result1 = []
             result2 = []
 
-            def is_empyt_list(x):
+            def is_empty_list(x):
                 if isinstance(x, list) and len(x) == 0:
                     return True
                 return False
 
             for i in range(tot_expert):
                 for arr in output1[i]:
-                    if is_empyt_list(arr):
+                    if is_empty_list(arr):
                         continue
                     result1.append(arr)
             for i in range(tot_expert):
                 for arr in output2[i]:
-                    if is_empyt_list(arr):
+                    if is_empty_list(arr):
                         continue
                     result2.append(arr)
 

@@ -173,9 +173,7 @@ class ParamStorage(InternalStorage):
     def _add_param_as_view(self, param, align, convert_gpu=True):
         assert (
             param.dtype == self.buffer.dtype
-        ), "Different types for the InternalStorage and the param, cannot proceed: {} - {}".format(
-            param.dtype, self.buffer.dtype
-        )
+        ), f"Different types for the InternalStorage and the param, cannot proceed: {param.dtype} - {self.buffer.dtype}"
 
         var_end = self._fill + param._numel()
         offset = var_end + align
@@ -294,7 +292,7 @@ class GradStorage(InternalStorage):
         self._param_ids.append(id(param))
 
     @paddle.autograd.no_grad()
-    def manumal_relase(self):
+    def manual_release(self):
         """
         Release the buffer from InternalStorage. The InternalStorage will need to be rebuilt before use.
         """

@@ -47,17 +47,16 @@ DenseTensor::DenseTensor(Allocator* a, const DenseTensorMeta& meta)
     : meta_(meta), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
 
 DenseTensor::DenseTensor(Allocator* a, DenseTensorMeta&& meta)
-    : meta_(std::move(meta)), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
+    : meta_(meta), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
 
 DenseTensor::DenseTensor(const std::shared_ptr<phi::Allocation>& holder,
                          const DenseTensorMeta& meta)
     : meta_(meta), holder_(holder) {}
 
-DenseTensor::DenseTensor(const DenseTensor& other) {
+DenseTensor::DenseTensor(const DenseTensor& other) {  // NOLINT
   this->meta_ = other.meta();
   holder_ = other.holder_;
-  storage_properties_ =
-      std::move(CopyStorageProperties(other.storage_properties_));
+  storage_properties_ = CopyStorageProperties(other.storage_properties_);
   inplace_version_counter_ = other.inplace_version_counter_;
 }
 
@@ -67,8 +66,7 @@ DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
   }
   meta_ = other.meta();
   holder_ = other.holder_;
-  storage_properties_ =
-      std::move(CopyStorageProperties(other.storage_properties_));
+  storage_properties_ = CopyStorageProperties(other.storage_properties_);
   inplace_version_counter_ = other.inplace_version_counter_;
   return *this;
 }
@@ -304,7 +302,25 @@ template const XPUStorageProperties& DenseTensor::storage_properties() const;
 #endif
 
 bool DenseTensor::storage_properties_initialized() const {
-  return storage_properties_ != nullptr;
+  if (storage_properties_ == nullptr) {
+    return false;
+  } else if (NPUStorageProperties::classof(storage_properties_.get())) {
+    return place().GetType() == AllocationType::CUSTOM;
+#ifdef PADDLE_WITH_XPU
+  } else if (XPUStorageProperties::classof(storage_properties_.get())) {
+    return place().GetType() == AllocationType::XPU;
+#endif
+#ifdef PADDLE_WITH_DNNL
+  } else if (OneDNNStorageProperties::classof(storage_properties_.get())) {
+    return place().GetType() == AllocationType::CPU;
+#endif
+  } else {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("The type of storage_properties [%s] is "
+                                     "inconsistent with tensor place [%s]",
+                                     storage_properties_->type_info().name(),
+                                     AllocationTypeStr(place().GetType())));
+  }
 }
 
 void DenseTensor::set_storage_properties(

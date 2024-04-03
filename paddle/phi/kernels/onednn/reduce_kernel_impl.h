@@ -20,7 +20,7 @@ namespace phi {
 inline std::vector<int64_t> CalculateReducedDims(
     const DenseTensor* input,
     const DenseTensor* output,
-    const std::vector<int64_t>& reduce_dims,  // NOLINT
+    const std::vector<int64_t>& dims,  // NOLINT
     bool reduce_all,
     bool keep_dim) {
   if (keep_dim) return common::vectorize(output->dims());
@@ -28,10 +28,9 @@ inline std::vector<int64_t> CalculateReducedDims(
   if (reduce_all) return std::vector<int64_t>(input->dims().size(), 1);
 
   std::vector<int64_t> output_dims(common::vectorize(input->dims()));
-  for (size_t i = 0; i < reduce_dims.size(); ++i) {
+  for (size_t i = 0; i < dims.size(); ++i) {
     // handle negative dims, f.e. "-1" means rightmost dimension
-    int index = (reduce_dims[i] >= 0) ? reduce_dims[i]
-                                      : input->dims().size() + reduce_dims[i];
+    int index = (dims[i] >= 0) ? dims[i] : input->dims().size() + dims[i];
     output_dims[index] = 1;
   }
 

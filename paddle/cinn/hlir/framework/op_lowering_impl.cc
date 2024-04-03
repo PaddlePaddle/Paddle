@@ -31,9 +31,6 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-using cinn::common::bfloat16;
-using cinn::common::float16;
-
 using framework::Node;
 using framework::NodeData;
 using framework::OpPatternKind;
@@ -74,7 +71,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::Lower(const GroupPtr& group,
                         apply_pass,
                         &OpLowererImpl::ReduceScheduleDetermineFunction);
     case framework::kOutFusible:
-      LOG(FATAL) << "Group Pattern Kind kOutFusible Is Not Implemented!";
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Group Pattern Kind kOutFusible Is Not Implemented!"));
     case framework::kNonFusible:
       return LowerGroup(group,
                         apply_op_schedule,
@@ -82,7 +80,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::Lower(const GroupPtr& group,
                         apply_pass,
                         &OpLowererImpl::NonFusibleScheduleDetermineFunction);
     default:
-      LOG(FATAL) << "Group Pattern Kind Is Unknown!";
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("Group Pattern Kind Is Unknown!"));
   }
 }
 
@@ -547,7 +546,7 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
               << ir_sch.GetModule().GetExprs().at(0);
       continue;
     }
-    // find master to computeat.
+    // find master to compute at.
     auto master = GetMasterToComputeAt(node,
                                        nodes_in_order,
                                        nodes_inline,
@@ -599,7 +598,7 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
           auto master_loops = ir_sch.GetLoops(GetNodeData(master)->id());
           std::vector<int> splits;
           for (auto loop : master_loops) {
-            splits.push_back(loop.As<ir::For>()->extent.as_int32());
+            splits.push_back(loop.As<ir::For>()->extent.as_int64());
           }
           loops = ir_sch.GetLoops(GetNodeData(node)->id());
           ir_sch.Split(loops[0], splits);

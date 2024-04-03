@@ -224,7 +224,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForOneHot(
 CINN_REGISTER_HELPER(one_hot_ops) {
   CINN_REGISTER_OP(one_hot)
       .describe(
-          "Returns a one-hot tensor where the locations repsented by indices "
+          "Returns a one-hot tensor where the locations represented by indices "
           "take value `on_value`, "
           "other locations take value `off_value`.")
       .set_num_inputs(3)

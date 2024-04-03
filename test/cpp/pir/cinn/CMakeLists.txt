@@ -14,12 +14,14 @@ if(WITH_TESTING AND WITH_CINN)
               pir_transforms)
 
   paddle_test(test_ir_op_fusion SRCS ir_op_fusion_test.cc)
+  paddle_test(test_ir_op_cluster SRCS ir_op_cluster_test.cc DEPS pir_transforms
+              cinn_transforms)
 
-  paddle_test(test_pir_all_path SRCS pir_all_path_test.cc)
+  paddle_test(test_pir_all_path SRCS pir_all_path_test.cc DEPS cinn_transforms)
 
   paddle_test(test_group_op SRCS group_op_test.cc)
 
-  paddle_test(dynamic_reshape_test SRCS dynamic_reshape_test.cc)
+  paddle_test(test_symbolic_lower SRCS symbolic_lower_test.cc)
 
   paddle_test(test_pir_build_cinn_pass SRCS build_cinn_pass_test.cc)
 
@@ -48,8 +50,11 @@ if(WITH_TESTING AND WITH_CINN)
       env
       TEST ${test_name}
       PROPERTY ENVIRONMENT)
-    set_property(TEST ${test_name}
-                 PROPERTY ENVIRONMENT "FLAGS_cinn_new_group_scheduler=1" ${env})
+    set_property(
+      TEST ${test_name}
+      PROPERTY ENVIRONMENT "FLAGS_cinn_new_group_scheduler=1"
+               "FLAGS_cinn_bucket_compile=1"
+               "FLAGS_group_schedule_tiling_first=1" ${env})
     set_tests_properties(${test_name} PROPERTIES LABELS "RUN_TYPE=CINN")
   endforeach()
 

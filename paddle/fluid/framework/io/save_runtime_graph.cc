@@ -15,7 +15,7 @@ limitations under the License. */
 #include <unordered_map>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/node.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
 
 namespace paddle {
 namespace framework {
@@ -32,6 +32,21 @@ void save_string(std::string content,
       true,
       phi::errors::Unavailable("Cannot open %s to save ", saved_path));
   fout << content;
+  fout.close();
+}
+
+void save_graph_compilation_key(int64_t graph_compilation_key,
+                                std::string type,
+                                std::string saved_path) {
+  VLOG(6) << type << " will be saved to " << saved_path;
+  MkDirRecursively(DirName(saved_path).c_str());
+
+  std::ofstream fout(saved_path);
+  PADDLE_ENFORCE_EQ(
+      static_cast<bool>(fout),
+      true,
+      phi::errors::Unavailable("Cannot open %s to save ", saved_path));
+  fout << std::to_string(graph_compilation_key);
   fout.close();
 }
 
@@ -78,6 +93,7 @@ void save_graph(const ir::Graph& graph,
 }
 
 void save_runtime_cinn_graph(const ir::Graph& graph,
+                             int64_t graph_compilation_key,
                              std::string clusters_ops,
                              std::string clusters_inputs,
                              std::string cluster_outputs,
@@ -91,7 +107,9 @@ void save_runtime_cinn_graph(const ir::Graph& graph,
   save_string(cluster_intervals,
               "cluster_intervals",
               saved_path + "/cluster_intervals.txt");
-
+  save_graph_compilation_key(graph_compilation_key,
+                             "graph_compilation_key",
+                             saved_path + "/graph_compilation_key.txt");
   save_graph(graph, "graph", saved_path + "/subgraph.txt");
 }
 

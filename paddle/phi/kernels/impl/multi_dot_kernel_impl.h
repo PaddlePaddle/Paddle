@@ -69,7 +69,7 @@ inline DenseTensor MatMul(const Context& ctx,
  * ins_dims: the shape of ins after reshape
  * order: the optimal order
  * i: the left of sub chain
- * j: the righe of sub chain
+ * j: the right of sub chain
  * save_result: set true by backward
  * results: save the intermediate result during backward
  */
@@ -272,8 +272,8 @@ void CalcGrad(const Context& ctx,
  * ins_dims: the shape of ins after reshape
  * order: the optimal order
  * i: the left of sub chain
- * j: the righe of sub chain
- * results: the intermediate result of farward
+ * j: the right of sub chain
+ * results: the intermediate result of forward
  */
 template <typename Context, typename T>
 void MatChainMulGrad(const Context& ctx,

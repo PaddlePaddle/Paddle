@@ -238,7 +238,7 @@ void CustomOpKernelContext::ConstructInplaceIndex(
     const std::unordered_map<std::string, std::string>& inplace_map) {
   // Cache inplace indices.
   if (inplace_map.empty() || !inplace_idx_map_.empty()) {
-    VLOG(4) << "Custom opertor ConstructInplaceIndex no need to recompute.";
+    VLOG(4) << "Custom operator ConstructInplaceIndex no need to recompute.";
     return;
   }
   for (size_t in_idx = 0; in_idx < inputs.size(); ++in_idx) {
@@ -258,7 +258,7 @@ void CustomOpKernelContext::ConstructInplaceIndex(
     inplace_idx_map_[in_idx] = out_idx;
     inplace_reverse_idx_map_[out_idx] = in_idx;
   }
-  VLOG(4) << "Custom opertor update inplace input-output map successfully.";
+  VLOG(4) << "Custom operator update inplace input-output map successfully.";
 }
 
 // Find out non-inplace output tensors.
@@ -268,7 +268,7 @@ void CustomOpKernelContext::UpdatePlainOutputs(
     const std::unordered_map<std::string, std::string>& inplace_map) {
   // Cache plain outputs vector.
   if (!plain_outputs_.empty()) {
-    VLOG(4) << "Custom opertor UpdatePlainOutputs no need to recompute.";
+    VLOG(4) << "Custom operator UpdatePlainOutputs no need to recompute.";
     return;
   }
   ConstructInplaceIndex(inputs, outputs, inplace_map);
@@ -282,7 +282,7 @@ void CustomOpKernelContext::UpdatePlainOutputs(
       plain_outputs_.push_back(&outputs_[idx]);
     }
   }
-  VLOG(4) << "Custom opertor update plain outputs map successfully.";
+  VLOG(4) << "Custom operator update plain outputs map successfully.";
 }
 
 // Assign input tensor to inplace output tensors.
@@ -303,7 +303,7 @@ void CustomOpKernelContext::AssignInplaceOutputs() {
     for (size_t i = 0; i < assign_tensor_size; ++i) {
       AssignTensorImpl(inputs_[in_start_idx + i], &outputs_[out_start_idx + i]);
     }
-    VLOG(4) << "Custom opertor update inplace input-output tensor "
+    VLOG(4) << "Custom operator update inplace input-output tensor "
                "successfully. Update map size = "
             << inplace_idx_map_.size();
   }
@@ -361,6 +361,20 @@ OpMetaInfo& OpMetaInfo::SetInferDtypeFn(InferDtypeFunc&& func) {
 OpMetaInfo& OpMetaInfo::SetInferSpmdFn(InferSpmdFunc&& func) {
   infer_spmd_fn_ = std::forward<InferSpmdFunc>(func);
   return *this;
+}
+
+bool OpMetaInfo::IsDoubleGradOp() const {
+  if (name_.find("_grad_grad") != name_.npos) {
+    return true;
+  }
+  return false;
+}
+
+bool OpMetaInfo::IsGradOp() const {
+  if (!IsDoubleGradOp() && name_.find("_grad") != name_.npos) {
+    return true;
+  }
+  return false;
 }
 
 #ifdef PADDLE_WITH_TENSORRT
@@ -596,8 +610,8 @@ extern "C" {
 
 #ifndef _WIN32
 // C-API to get global OpMetaInfoMap.
-paddle::OpMetaInfoMap& PD_GetOpMetaInfoMap() {
-  return paddle::OpMetaInfoMap::Instance();
+paddle::OpMetaInfoMap* PD_GetOpMetaInfoMap() {
+  return &paddle::OpMetaInfoMap::Instance();
 }
 #endif
 

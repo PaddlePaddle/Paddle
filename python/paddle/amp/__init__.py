@@ -12,33 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .auto_cast import (  # noqa: F401
-    auto_cast,
-    decorate,
-    amp_guard,
-    amp_decorate,
-)
-from .amp_lists import (  # noqa: F401
-    white_list,
-    black_list,
-)
-
-from . import (  # noqa: F401
-    debugging,
-    grad_scaler,
-    accuracy_compare,
-)
-
-from .grad_scaler import (  # noqa: F401
-    GradScaler,
-    AmpScaler,
-    OptimizerState,
-)
-
 from paddle.base import core
 from paddle.base.framework import (
     _current_expected_place,
     _get_paddle_place,
+)
+
+from . import (  # noqa: F401
+    accuracy_compare,
+    debugging,
+    grad_scaler,
+)
+from .amp_lists import (  # noqa: F401
+    black_list,
+    white_list,
+)
+from .auto_cast import (  # noqa: F401
+    amp_decorate,
+    amp_guard,
+    auto_cast,
+    decorate,
+)
+from .grad_scaler import (  # noqa: F401
+    AmpScaler,
+    GradScaler,
+    OptimizerState,
 )
 
 __all__ = [

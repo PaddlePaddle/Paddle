@@ -31,7 +31,7 @@
 namespace cinn {
 namespace auto_schedule {
 
-// Return lowerd ir AST for example functions used in this test
+// Return lowered ir AST for example functions used in this test
 std::vector<ir::LoweredFunc> LowerCompute(const std::vector<int>& shape,
                                           const Target& target) {
   CHECK(shape.size() == 2) << "shape should be 2";

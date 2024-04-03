@@ -54,43 +54,43 @@ class TensorArray : public TensorBase,
   /// \return The name of the class.
   static const char* name() { return "TensorArray"; }
 
-  /// \brief This overrided function is not used in TensorArray.
-  int64_t numel() const override;
+  /// \brief This overridden function is not used in TensorArray.
+  TEST_API int64_t numel() const override;
 
-  /// \brief This overrided function is not used in TensorArray.
-  const DDim& dims() const override;
+  /// \brief This overridden function is not used in TensorArray.
+  TEST_API const DDim& dims() const override;
 
-  /// \brief This overrided function is not used in TensorArray.
-  const Place& place() const override;
+  /// \brief This overridden function is not used in TensorArray.
+  TEST_API const Place& place() const override;
 
-  DataType dtype() const override;
+  TEST_API DataType dtype() const override;
 
 #ifndef PADDLE_WITH_CUSTOM_KERNEL
   void set_type(const DataType dtype);
 #endif
 
-  DataLayout layout() const override;
+  TEST_API DataLayout layout() const override;
 
 #ifndef PADDLE_WITH_CUSTOM_KERNEL
   void set_layout(const DataLayout layout);
 #endif
 
-  /// \brief This overrided function is not used in TensorArray.
-  bool valid() const override;
+  /// \brief This overridden function is not used in TensorArray.
+  TEST_API bool valid() const override;
 
   /// \brief Test whether the tensor's storage in TensorArray is allocated.
   /// return Whether all tensors in TensorArray is allocated.
-  bool initialized() const override;
+  TEST_API bool initialized() const override;
 
   /// \brief Clear all tensors in TensorArray.
   void clear() { tensors_.clear(); }
 
   /// \brief Allocate memory with requested size for all tensors from allocator.
   /// \return Void pointer
-  void* AllocateFrom(Allocator* allocator,
-                     DataType dtype,
-                     size_t requested_size = 0,
-                     bool fake_alloc = false) override;
+  TEST_API void* AllocateFrom(Allocator* allocator,
+                              DataType dtype,
+                              size_t requested_size = 0,
+                              bool fake_alloc = false) override;
 
   bool empty() const { return tensors_.empty(); }
 
@@ -105,11 +105,13 @@ class TensorArray : public TensorBase,
   void reserve(size_t n) { tensors_.reserve(n); }
 
   /// \brief Add the tensor to the end of TensorArray
-  void push_back(const DenseTensor& tensor);
+  TEST_API void push_back(const DenseTensor& tensor);
 
   void emplace_back();
 
   void emplace_back(const DenseTensor& tensor);
+
+  void pop(size_t i);
 
   /// \brief Return the last tensor in TensorArray
   DenseTensor& back() { return tensors_.back(); }

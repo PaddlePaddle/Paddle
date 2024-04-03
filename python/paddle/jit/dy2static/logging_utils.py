@@ -39,7 +39,7 @@ def synchronized(func):
 
 class TranslatorLogger:
     """
-    class for Logging and debugging during the tranformation from dygraph to static graph.
+    class for Logging and debugging during the transformation from dygraph to static graph.
     The object of this class is a singleton.
     """
 
@@ -162,13 +162,9 @@ class TranslatorLogger:
         if self.has_code_level(level):
             source_code = ast_to_source_code(ast_node)
             if level == LOG_AllTransformer:
-                header_msg = "After the last level ast transformer: '{}', the transformed code:\n".format(
-                    transformer_name
-                )
+                header_msg = f"After the last level ast transformer: '{transformer_name}', the transformed code:\n"
             else:
-                header_msg = "After the level {} ast transformer: '{}', the transformed code:\n".format(
-                    level, transformer_name
-                )
+                header_msg = f"After the level {level} ast transformer: '{transformer_name}', the transformed code:\n"
 
             msg = header_msg + source_code
             self.logger.info(msg, *args, **kwargs)
@@ -199,7 +195,7 @@ def set_verbosity(level=0, also_to_stdout=False):
     `set_verbosity` has a higher priority than the environment variable.
 
     Args:
-        level(int): The verbosity level. The larger value idicates more verbosity.
+        level(int): The verbosity level. The larger value indicates more verbosity.
             The default value is 0, which means no logging.
         also_to_stdout(bool): Whether to also output log messages to `sys.stdout`.
 

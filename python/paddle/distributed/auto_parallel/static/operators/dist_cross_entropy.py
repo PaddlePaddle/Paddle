@@ -64,7 +64,7 @@ class DistributedCrossEntropy(DistributedOperatorImplContainer):
 
         # step2: infer spmd
         rule = get_phi_spmd_rule("softmax_with_cross_entropy")
-        # tensor order following order in PHI defition
+        # tensor order following order in PHI definition
         fw_results = rule.infer_forward(
             logits_spec,
             label_spec,
@@ -87,7 +87,7 @@ class DistributedCrossEntropy(DistributedOperatorImplContainer):
         )
 
         # step3: update dist_attr
-        # tensor order following order in PHI defition
+        # tensor order following order in PHI definition
         changed = update_op_dims_mapping(
             dist_op,
             [logits_name, label_name],

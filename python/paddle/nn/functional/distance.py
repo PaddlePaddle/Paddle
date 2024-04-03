@@ -26,7 +26,7 @@ def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False, name=None):
     r"""
 
     It computes the pairwise distance between two vectors. The
-    distance is calculated by p-oreder norm:
+    distance is calculated by p-order norm:
 
     .. math::
 

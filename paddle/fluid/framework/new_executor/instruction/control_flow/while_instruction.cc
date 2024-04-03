@@ -29,13 +29,17 @@
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/type_defs.h"
 
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -132,8 +136,10 @@ WhileInstruction::WhileInstruction(
     body_skip_gc_names_set.insert(body_inter_->GetNameByValue(value));
   }
   for (auto value : body_outside_inputs) {
-    body_skip_gc_names_.push_back(body_inter_->GetNameByValue(value));
-    body_skip_gc_names_set.insert(body_inter_->GetNameByValue(value));
+    auto name = body_inter_->GetNameByValue(value);
+    external_input_names_.insert(name);
+    body_skip_gc_names_.push_back(name);
+    body_skip_gc_names_set.insert(name);
   }
   for (const auto& var_name : skip_gc_vars) {
     body_skip_gc_names_.push_back(var_name);
@@ -172,37 +178,26 @@ void WhileInstruction::ShareInputsToOutputs() {
   }
 }
 
-void WhileInstruction::CopyOutputsToBlockArgs() {
+void WhileInstruction::ShareOutputsToBlockArgs() {
   for (size_t i = 0; i < body_block_->args_size(); ++i) {
     auto block_arg = body_block_->arg(i);
     auto var_name = body_inter_->GetNameByValue(block_arg);
     auto* inner_var = body_inter_->local_scope()->GetVar(var_name);
 
     if (outputs_[i]->IsType<phi::DenseTensor>()) {
-      auto& src_tensor = outputs_[i]->Get<phi::DenseTensor>();
-      auto* dst_tensor = inner_var->GetMutable<phi::DenseTensor>();
-      dst_tensor->set_meta(src_tensor.meta());
-      framework::TensorCopy(src_tensor, src_tensor.place(), dst_tensor);
+      inner_var->GetMutable<phi::DenseTensor>()->ShareDataWith(
+          outputs_[i]->Get<phi::DenseTensor>());
     } else if (outputs_[i]->IsType<phi::TensorArray>()) {
-      auto src_tensor_array = outputs_[i]->Get<phi::TensorArray>();
-      auto* dst_tensor_array = inner_var->GetMutable<phi::TensorArray>();
-      dst_tensor_array->set_type(src_tensor_array.dtype());
-      dst_tensor_array->set_layout(src_tensor_array.layout());
-      while (dst_tensor_array->size() < src_tensor_array.size()) {
-        dst_tensor_array->emplace_back();
-      }
-      for (size_t id = 0; id < dst_tensor_array->size(); id++) {
-        auto& src_tensor = src_tensor_array[id];
-        phi::DenseTensor* tmp_dst_tensor = &dst_tensor_array->at(id);
-        tmp_dst_tensor->set_meta(src_tensor.meta());
-        framework::TensorCopy(src_tensor, src_tensor.place(), tmp_dst_tensor);
-      }
+      const auto& outer_array = outputs_[i]->Get<phi::TensorArray>();
+      auto* inner_array = inner_var->GetMutable<phi::TensorArray>();
+      *inner_array = outer_array;
+      VLOG(10) << inner_var
+               << " should be created: " << inner_var->IsInitialized();
     } else {
       PADDLE_THROW(
           phi::errors::Unimplemented("unsupported type %d", inner_var->Type()));
     }
   }
-  DeviceContext().Wait();
 }
 
 void WhileInstruction::ShareDatasToOutputs() {
@@ -214,7 +209,6 @@ void WhileInstruction::ShareDatasToOutputs() {
     auto& out_var_name = body_outputs_[i + 1];
     auto* out_var = body_inter_->local_scope()->GetVar(out_var_name);
     VLOG(6) << "share data from " << out_var_name << " -> " << i << " output";
-
     if (out_var->IsType<phi::DenseTensor>()) {
       outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
           out_var->Get<phi::DenseTensor>());
@@ -231,14 +225,43 @@ void WhileInstruction::ShareDatasToOutputs() {
 
     VLOG(6) << "done";
   }
+
+  for (size_t i = 0; i < outputs_.size(); ++i) {
+    auto& out_var_name = body_outputs_[i + 1];
+    auto* out_var = body_inter_->local_scope()->GetVar(out_var_name);
+    if (out_var->IsType<phi::DenseTensor>()) {
+      // NOTE(zhangbo): Delete the input of the yield operator, except for the
+      // external vars of the block.
+      if (external_input_names_.count(out_var_name) == 0) {
+        VLOG(6) << "clear internel input " << out_var_name;
+        out_var->GetMutable<phi::DenseTensor>()->clear();
+      }
+    }
+  }
+}
+
+void WhileInstruction::SetOutputHooks(
+    const std::vector<PirHookFunc>& hookfuncs) {
+  body_inter_->SetOutputHooks(hookfuncs);
+}
+
+void WhileInstruction::SetInputHooks(
+    const std::vector<PirHookFunc>& hookfuncs) {
+  body_inter_->SetInputHooks(hookfuncs);
 }
 
 void WhileInstruction::Run() {
+#ifdef PADDLE_WITH_DNNL
+  // Executor on being destroyed clears oneDNN cache and resets
+  // registered model data layout. This is unwanted for nested
+  // Executors (executors declared inside control ops)
+  paddle::platform::DontClearMKLDNNCache(body_inter_->GetPlace());
+#endif
   ShareInputsToOutputs();
   VLOG(6) << "while instruction start loop ...";
   while (GetCondData(cond_var_->Get<phi::DenseTensor>())) {
     VLOG(6) << "while instruction pass args to body block";
-    CopyOutputsToBlockArgs();
+    ShareOutputsToBlockArgs();
     VLOG(6) << "while instruction interpretercore run";
     body_inter_->Run({}, false);
     VLOG(6) << "while instruction get value form body block";

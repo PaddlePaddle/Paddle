@@ -14,8 +14,8 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include <unordered_set>
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
 
 namespace cinn::dialect {
 using namespace symbol;  // NOLINT
@@ -314,51 +314,14 @@ class SubstituteDimExprHelper final {
   DimExpr4SymbolNameT DimExpr4SymbolName_;
 };
 
-std::optional<DimExpr> SubstituteDimExpr(
+DimExpr SubstituteDimExpr(
     const DimExpr& dim_expr,
     const std::function<std::optional<DimExpr>(const std::string& symbol_name)>&
         DimExpr4SymbolName) {
-  return SubstituteDimExprHelper(DimExpr4SymbolName).Substitute(dim_expr);
-}
-
-std::function<std::optional<DimExpr>(const std::string& symbol_name)>
-MakeGetterDimExpr4SymbolName(
-    const std::vector<std::tuple<std::string /*symbol_name*/,
-                                 int /*in_tensor_idx*/,
-                                 int /*in_tensor_dim_idx*/>>& symbol_bindings,
-    const std::function<std::optional<DimExpr>(
-        int in_tensor_idx, int in_tensor_dim_idx)>& DimExpr4InputDim) {
-  std::unordered_map<std::string, std::vector<std::pair<int, int>>>
-      symbol_name2in_tensor_dim_pos;
-  for (const auto& tuple : symbol_bindings) {
-    const auto& [symbol_name, in_tensor_idx, in_tensor_dim_idx] = tuple;
-    symbol_name2in_tensor_dim_pos[symbol_name].emplace_back(
-        std::pair{in_tensor_idx, in_tensor_dim_idx});
-  }
-  return [map = std::move(symbol_name2in_tensor_dim_pos), DimExpr4InputDim](
-             const std::string& symbol_name) -> std::optional<DimExpr> {
-    const auto& iter = map.find(symbol_name);
-    if (iter == map.end()) {
-      return std::nullopt;
-    }
-    const auto& positions = iter->second;
-    std::optional<DimExpr> ret = std::nullopt;
-    for (const auto& [in_tensor_idx, in_tensor_dim_idx] : positions) {
-      const auto& current = DimExpr4InputDim(in_tensor_idx, in_tensor_dim_idx);
-      if (!current.has_value()) {
-        return std::nullopt;
-      }
-      if (ret.has_value()) {
-        // Same names, same DimExprs.
-        if (ret.value() != current.value()) {
-          return std::nullopt;
-        }
-      } else {
-        ret = current;
-      }
-    }
-    return ret;
-  };
+  const auto& opt_substituted =
+      SubstituteDimExprHelper(DimExpr4SymbolName).Substitute(dim_expr);
+  if (opt_substituted.has_value()) return opt_substituted.value();
+  return dim_expr;
 }
 
 namespace {
@@ -387,6 +350,12 @@ std::optional<DimExpr> GetDimExprBySymbolBindingImpl(
   return shape_or_data_dim_expr.shape().at(dim_idx);
 }
 
+std::string GetSymbolNameBySymbolBinding(
+    const GenerateShapeOp::SymbolBinding& symbol_binding) {
+  return std::visit([](const auto& impl) { return impl.symbol_name; },
+                    symbol_binding);
+}
+
 }  // namespace
 
 std::function<std::optional<DimExpr>(const std::string& symbol_name)>
@@ -396,6 +365,10 @@ MakeGetterDimExpr4SymbolName(
         DimExpr4InputDim) {
   std::unordered_map<std::string, std::vector<GenerateShapeOp::SymbolBinding>>
       symbol_name2symbol_bindins{};
+  for (const auto& symbol_binding : symbol_bindings) {
+    symbol_name2symbol_bindins[GetSymbolNameBySymbolBinding(symbol_binding)]
+        .emplace_back(symbol_binding);
+  }
   const auto& GetDimExpr =
       [&](const GenerateShapeOp::SymbolBinding& symbol_binding) {
         return std::visit(
@@ -588,7 +561,7 @@ void GenerateSymbolBindings(
         dim_exprs.shape(), symbol_names, i, symbol_bindings);
     if (dim_exprs.data().has_value()) {
       AppendSymbolBindings<GenerateShapeOp::DataSymbolBinding>(
-          dim_exprs.shape(), symbol_names, i, symbol_bindings);
+          dim_exprs.data().value(), symbol_names, i, symbol_bindings);
     }
   }
 }
@@ -596,14 +569,14 @@ void GenerateSymbolBindings(
 std::vector<pir::Value> GetMinimalInputs(
     const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value,
     const std::vector<pir::Value>& input_tensors) {
-  std::unordered_set<symbol::DimExpr> handdled_dim_exprs;
+  std::unordered_set<symbol::DimExpr> handled_dim_exprs;
   std::unordered_set<pir::Value> first_occurred_input_tensors;
   auto TryCollectFirstOcurredInput_tensor =
       [&](pir::Value input_tensor,
           const std::vector<symbol::DimExpr>& dim_exprs) {
         for (const auto& dim_expr : dim_exprs) {
-          if (dim_expr.isa<int64_t>()) continue;
-          if (!handdled_dim_exprs.insert(dim_expr).second) {
+          if (!dim_expr.isa<std::string>()) continue;
+          if (handled_dim_exprs.insert(dim_expr).second) {
             first_occurred_input_tensors.insert(input_tensor);
           }
         }
@@ -635,11 +608,11 @@ bool MakeGenerateShapeOpAttribute(
     const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value,
     const std::vector<symbol::DimExpr>& out_dim_exprs,
     const std::vector<pir::Value>& origin_inputs,
-    std::vector<pir::Value>* minial_inputs,
+    std::vector<pir::Value>* minimal_inputs,
     std::vector<pir::Attribute>* output_dim_expr_attrs,
     GenerateShapeOp::SymbolBindings* symbol_bindings) {
-  *minial_inputs = GetMinimalInputs(ShapeOrDataDimExprs4Value, origin_inputs);
-  if (!InputDimExprsAllSupported(ShapeOrDataDimExprs4Value, *minial_inputs)) {
+  *minimal_inputs = GetMinimalInputs(ShapeOrDataDimExprs4Value, origin_inputs);
+  if (!InputDimExprsAllSupported(ShapeOrDataDimExprs4Value, *minimal_inputs)) {
     VLOG(4) << "input dim_exprs are not as simple as symbols, please make sure "
                "they are handled by other passes";
     return false;
@@ -651,7 +624,7 @@ bool MakeGenerateShapeOpAttribute(
   std::set<std::string> symbol_names_in_out_dim_exprs{};
   CollectSymbolNames(out_dim_exprs, &symbol_names_in_out_dim_exprs);
   GenerateSymbolBindings(ShapeOrDataDimExprs4Value,
-                         *minial_inputs,
+                         *minimal_inputs,
                          symbol_names_in_out_dim_exprs,
                          /*out*/ symbol_bindings);
   return true;

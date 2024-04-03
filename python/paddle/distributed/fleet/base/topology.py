@@ -29,6 +29,10 @@ _use_four_directions = os.environ.get(
     'PADDLE_USE_FOUR_DIRECTIONS_P2P', paddle.base.core.is_compiled_with_xpu()
 )
 
+g_pipeline_nccl_comm_init_option = int(
+    os.environ.get("FLAGS_pipeline_nccl_comm_init_option", 0)
+)
+
 
 class ParallelMode:
     """
@@ -190,14 +194,8 @@ class HybridCommunicateGroup:
         self.stage_id = self._get_pipe_parallel_id()
 
         assert (
-            self._check_vaild_topo()
-        ), "mp_num: {}, sharding_num: {}, pp_num: {}, dp_num: {}, sep_num: {}".format(
-            self.nranks,
-            self._mp_degree,
-            self._sharding_degree,
-            self._pp_degree,
-            self._dp_degree,
-        )
+            self._check_valid_topo()
+        ), f"nranks: {self.nranks}, mp_num: {self._mp_degree}, sharding_num: {self._sharding_degree}, pp_num: {self._pp_degree}, dp_num: {self._dp_degree}, sep_num: {self._sep_degree}"
 
         # create comm group for pipe parallel
         self._pp_group, self._pp_comm_group = self._set_comm_group("pipe")
@@ -277,21 +275,14 @@ class HybridCommunicateGroup:
                 self._sep_degree,
             )
         )
-        debug_str += ", mp_group: {},  sharding_group: {}, pp_group: {}, dp_group: {}, sep:group: {}, check/clip group: {}".format(
-            self._mp_group,
-            self._sharding_group,
-            self._pp_group,
-            self._dp_group,
-            self._sep_group,
-            self._check_group,
-        )
+        debug_str += f", mp_group: {self._mp_group},  sharding_group: {self._sharding_group}, pp_group: {self._pp_group}, dp_group: {self._dp_group}, sep:group: {self._sep_group}, check/clip group: {self._check_group}"
         logger.info(debug_str)
 
         global _HYBRID_PARALLEL_GROUP
         _HYBRID_PARALLEL_GROUP = self
 
     def get_parallel_mode(self):
-        # there are five modes : DataParallel / TensorParallel / PipelineParallel / ShardingParallel / SepParalel
+        # there are five modes : DataParallel / TensorParallel / PipelineParallel / ShardingParallel / SepParallel
         # NOTE when sharding conjugates with other parallel, sharding should act like a optimizer and
         # adding its parallel logic within that parallelism
         # when use sharding alone, it should have its own parallelism for its parallel logic
@@ -328,7 +319,7 @@ class HybridCommunicateGroup:
             # pp may coexist with mp、sep、dp and sharding
             return ParallelMode.PIPELINE_PARALLEL
 
-    def _check_vaild_topo(self):
+    def _check_valid_topo(self):
         return (
             self._dp_degree
             * self._mp_degree
@@ -346,8 +337,16 @@ class HybridCommunicateGroup:
         parallel_comm_group = None
         parallel_groups = self._topo.get_comm_list(parallel_method)
 
+        group_nccl_comm_init_option = (
+            g_pipeline_nccl_comm_init_option
+            if (parallel_method == "pipe")
+            else 0
+        )
         for group in parallel_groups:
-            comm_group = paddle.distributed.new_group(ranks=group)
+            comm_group = paddle.distributed.new_group(
+                ranks=group,
+                nccl_comm_init_option=group_nccl_comm_init_option,
+            )
             if self.global_rank in group:
                 parallel_group = group
                 parallel_comm_group = comm_group
@@ -356,9 +355,7 @@ class HybridCommunicateGroup:
         assert parallel_comm_group is not None
 
         logger.info(
-            "Total {} {} comm group(s) create successfully!".format(
-                len(parallel_groups), parallel_method
-            )
+            f"Total {len(parallel_groups)} {parallel_method} comm group(s) create successfully!"
         )
         return parallel_group, parallel_comm_group
 
@@ -574,9 +571,7 @@ class HybridCommunicateGroup:
         assert len(parallel_comm_group) > 0
 
         logger.info(
-            "Total {} comm group(s) of fused {} create successfully!".format(
-                len(parallel_groups), fused_strategy_list
-            )
+            f"Total {len(parallel_groups)} comm group(s) of fused {fused_strategy_list} create successfully!"
         )
         if len(parallel_group) > 1:
             return parallel_group, parallel_comm_group

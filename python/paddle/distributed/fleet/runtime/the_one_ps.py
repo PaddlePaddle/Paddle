@@ -139,16 +139,12 @@ def check_embedding_dim(accessor, varname, o_main_program):
     fea_dim = accessor.fea_dim
     if fea_dim != embedding_dim:
         raise ValueError(
-            "The fea_dim is wrong, it will be sparse_embedding_dim: {}, but got {}".format(
-                embedding_dim, fea_dim
-            )
+            f"The fea_dim is wrong, it will be sparse_embedding_dim: {embedding_dim}, but got {fea_dim}"
         )
     embedx_dim = accessor.embedx_dim
     if embedx_dim != embedding_dim - 3:
         raise ValueError(
-            "The embedx_dim is wrong, it will be sparse_embedding_dim - 3: {}, but got {}".format(
-                embedding_dim - 3, embedx_dim
-            )
+            f"The embedx_dim is wrong, it will be sparse_embedding_dim - 3: {embedding_dim - 3}, but got {embedx_dim}"
         )
 
 
@@ -684,7 +680,7 @@ class TheOnePSRuntime(RuntimeBase):
         self.origin_main_program = context["origin_main_program"]
         self.origin_startup_program = context["origin_startup_program"]
         self.async_strategy = self._get_distributed_strategy()
-        self.compiled_strategy = self.build_compiled_startegy()
+        self.compiled_strategy = self.build_compiled_strategy()
 
     def _get_distributed_strategy(self):
         strategy = None
@@ -712,7 +708,7 @@ class TheOnePSRuntime(RuntimeBase):
             strategy.use_ps_gpu = True
         return strategy
 
-    def build_compiled_startegy(self):
+    def build_compiled_strategy(self):
         from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
             CompileTimeStrategy,
         )
@@ -1125,8 +1121,8 @@ class TheOnePSRuntime(RuntimeBase):
             if len(tensor_table_dict) > 0:
                 tables = _add_tensor_table(tables)
             else:
-                empty_porgram = Program()
-                self._server_sub_program.append(empty_porgram.desc)
+                empty_program = Program()
+                self._server_sub_program.append(empty_program.desc)
 
             barrier_table = _build_barrier_table(len(tables))
             tables.append(barrier_table)
@@ -1201,9 +1197,7 @@ class TheOnePSRuntime(RuntimeBase):
             for var_name in var_names:
                 if var_name not in distributed_varnames:
                     raise ValueError(
-                        "fleet.init server can only load sparse variables in {}".format(
-                            distributed_varnames
-                        )
+                        f"fleet.init server can only load sparse variables in {distributed_varnames}"
                     )
             load_varnames = var_names
 

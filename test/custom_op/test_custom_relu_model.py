@@ -26,9 +26,7 @@ from paddle.utils.cpp_extension.extension_utils import run_cmd
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
-file = '{}\\custom_relu_for_model_jit\\custom_relu_for_model_jit.pyd'.format(
-    get_build_directory()
-)
+file = f'{get_build_directory()}\\custom_relu_for_model_jit\\custom_relu_for_model_jit.pyd'
 if os.name == 'nt' and os.path.isfile(file):
     cmd = f'del {file}'
     run_cmd(cmd, True)
@@ -53,7 +51,7 @@ custom_module = load(
 
 class Net(nn.Layer):
     """
-    A simple exmaple for Regression Model.
+    A simple example for Regression Model.
     """
 
     def __init__(self, in_dim, out_dim, use_custom_op=False):
@@ -102,7 +100,7 @@ class TestDygraphModel(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.model_save_dir = os.path.join(self.temp_dir.name, 'infer_model')
         self.model_path_template = os.path.join(
-            self.model_save_dir, 'custom_relu_dygaph_model_{}.pdparams'
+            self.model_save_dir, 'custom_relu_dygraph_model_{}.pdparams'
         )
         self.model_dy2stat_path = os.path.join(
             self.model_save_dir, 'infer_model/custom_relu_model_dy2sta'

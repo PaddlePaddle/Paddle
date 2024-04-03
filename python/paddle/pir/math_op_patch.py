@@ -145,11 +145,33 @@ def monkey_patch_value():
         """
         Value don't have 'place' interface in static graph mode
         But this interface can greatly facilitate dy2static.
-        So we give a warnning here and return None.
+        So we give a warning here and return None.
         """
         warnings.warn(
             "Value do not have 'place' interface for pir graph mode, try not to use it. None will be returned."
         )
+
+    def contiguous(self):
+        """
+        Value don't have 'contiguous' interface in static graph mode
+        But this interface can greatly facilitate dy2static.
+        So we give a warning here and return None.
+        """
+        warnings.warn(
+            "Value do not have 'contiguous' interface for static graph mode, try not to use it. self will be returned."
+        )
+        return self
+
+    def is_contiguous(self):
+        """
+        Value don't have 'is_contiguous' interface in static graph mode
+        But this interface can greatly facilitate dy2static.
+        So we give a warning here and return None.
+        """
+        warnings.warn(
+            "Value do not have 'is_contiguous' interface for static graph mode, try not to use it. True will be returned."
+        )
+        return True
 
     @property
     def _ndim(self):
@@ -316,7 +338,7 @@ def monkey_patch_value():
                     python_api == paddle.divide
                     and self.dtype in _supported_int_dtype_
                 ):
-                    paddle.cast(self, DataType.FLOAT32)
+                    self = paddle.cast(self, DataType.FLOAT32)
                 # here use `scale` replace `elementwise` to get better performance
                 # but only +, -, *, / can use this method
                 if scalar_method is not None:
@@ -434,6 +456,27 @@ def monkey_patch_value():
 
         return _C_ops.transpose(self, perm)
 
+    def _int_(self):
+        raise TypeError(
+            "int(Value) is not supported in static graph mode. If you are using @to_static, you can try this:\n"
+            "1. If you want to get the value of Value, you can switch to non-fullgraph mode by setting @to_static(full_graph=True).\n"
+            "2. If you want to run it in full graph mode, you need use Value.astype(paddle.int32), and do not use int(Value)."
+        )
+
+    def _float_(self):
+        raise TypeError(
+            "float(Value) is not supported in static graph mode. If you are using @to_static, you can try this:\n"
+            "1. If you want to get the value of Value, you can switch to non-fullgraph mode by setting @to_static(full_graph=True).\n"
+            "2. If you want to run it in full graph mode, you need use Value directly, and do not use float(Value)."
+        )
+
+    def _bool_(self):
+        raise TypeError(
+            "bool(Value) is not supported in static graph mode. If you are using @to_static, you can try this:\n"
+            "1. If you want to get the value of Value, you can switch to non-fullgraph mode by setting @to_static(full_graph=True).\n"
+            "2. If you want to run it in full graph mode, you need use Value.astype(paddle.bool), and do not use bool(Value)."
+        )
+
     def clone(self):
         """
         Returns a new static Value, which is the clone of the original static
@@ -475,13 +518,12 @@ def monkey_patch_value():
             .. code-block:: python
 
                 >>> import paddle
-                >>> import paddle.base as base
                 >>> import numpy as np
 
                 >>> x = np.ones([2, 2], np.float32)
                 >>> inputs2 = []
                 >>> for _ in range(10):
-                >>>     tmp = base.dygraph.base.to_variable(x)
+                >>>     tmp = paddle.to_tensor(x)
                 >>>     tmp.stop_gradient=False
                 >>>     inputs2.append(tmp)
                 >>> ret2 = paddle.add_n(inputs2)
@@ -498,19 +540,41 @@ def monkey_patch_value():
 
     def append(self, var):
         """
-        **Notes**:
-           **The type Value must be LoD Tensor Array.
+        Notes:
+           The type of Value must be Tensor Array.
 
         """
         if not self.is_dense_tensor_array_type():
             raise TypeError(
-                "Only Value with pd_op.tensor_array support `append` method, but received type: {}".format(
-                    self.type()
-                )
+                f"Only Value with DenseTensorArray support `append` method, but received {self}"
             )
         from paddle.tensor.array import array_length, array_write
 
         array_write(x=var, i=array_length(self), array=self)
+
+    def pop(self, *args):
+        """
+        The type of Value must be Tensor Array.
+        When self is TensorArray, calling pop is similar to Python's pop on list.
+        This interface is used to simplify dygraph to static graph operations.
+
+        Args:
+            self(Value): The source variable, which must be DenseTensorArray
+            *args: optional, a int means index.
+        Returns:
+            Value: self[index]
+        """
+
+        if not self.is_dense_tensor_array_type():
+            raise TypeError(
+                f"Only Value with DenseTensorArray support `pop` method, but received {self}"
+            )
+        if len(args) == 0:
+            idx = -1
+        else:
+            idx = args[0]
+
+        return paddle._pir_ops.array_pop(self, idx)
 
     def set_shape(self, shape):
         assert (
@@ -526,7 +590,7 @@ def monkey_patch_value():
             )
 
     def value_hash(self):
-        raise NotImplementedError('In python Value can not hash!')
+        return hash(id(self))
 
     import paddle
 
@@ -534,6 +598,8 @@ def monkey_patch_value():
         ('cpu', cpu),
         ('cuda', cuda),
         ('place', place),
+        ('contiguous', contiguous),
+        ('is_contiguous', is_contiguous),
         ('item', _item),
         ('dim', dim),
         ('ndimension', ndimension),
@@ -544,6 +610,7 @@ def monkey_patch_value():
         ('clone', clone),
         ('clear_gradient', clear_gradient),
         ('append', append),
+        ('pop', pop),
         ('set_shape', set_shape),
         ('__hash__', value_hash),
         # For basic operators
@@ -626,7 +693,7 @@ def monkey_patch_value():
             _binary_creator_('__matmul__', paddle.tensor.matmul, False, None),
         ),
         ('__neg__', _scalar_neg_),
-        # For compare opeartors
+        # For compare operators
         (
             '__eq__',
             _binary_creator_('__eq__', paddle.tensor.equal, False, None),
@@ -653,6 +720,9 @@ def monkey_patch_value():
                 '__ge__', paddle.tensor.greater_equal, False, None
             ),
         ),
+        ('__float__', _float_),
+        ('__int__', _int_),
+        ('__bool__', _bool_),
     ]
 
     global _already_patch_value

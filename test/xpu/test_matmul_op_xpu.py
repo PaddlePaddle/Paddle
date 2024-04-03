@@ -151,8 +151,8 @@ class XPUTestMatmulOpErr(XPUOpTestWrapper):
             with base.dygraph.guard(device):
                 input_array1 = np.random.rand(3, 4).astype(self.in_type)
                 input_array2 = np.random.rand(4, 3).astype(self.in_type)
-                data1 = base.dygraph.to_variable(input_array1)
-                data2 = base.dygraph.to_variable(input_array2)
+                data1 = paddle.to_tensor(input_array1)
+                data2 = paddle.to_tensor(input_array2)
                 out = paddle.mm(data1, data2)
                 expected_result = np.matmul(input_array1, input_array2)
                 np.testing.assert_allclose(
@@ -165,12 +165,8 @@ class XPUTestMatmulOpErr(XPUOpTestWrapper):
             with base.dygraph.guard(device):
                 input_array1 = np.random.rand(3, 4).astype(self.in_type)
                 input_array2 = np.random.rand(4, 3).astype(self.in_type)
-                data1 = base.dygraph.to_variable(input_array1).astype(
-                    self.in_type
-                )
-                data2 = base.dygraph.to_variable(input_array2).astype(
-                    self.in_type
-                )
+                data1 = paddle.to_tensor(input_array1).astype(self.in_type)
+                data2 = paddle.to_tensor(input_array2).astype(self.in_type)
                 out = paddle.matmul(data1, data2)
                 expected_result = np.matmul(input_array1, input_array2)
                 np.testing.assert_allclose(
@@ -301,23 +297,21 @@ class XPUTestMatmulOp1(XPUOpTestWrapper):
         for dims in xpu_support_dims_list:
             dim_X = dims[0]
             dim_Y = dims[1]
-            for transose_x in [True, False]:
-                for transose_y in [True, False]:
+            for transpose_x in [True, False]:
+                for transpose_y in [True, False]:
                     for batch in batch_size:
                         no_need_check_grad = False
                         if batch >= 5:
                             no_need_check_grad = True
-                        class_name = 'TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}_batch_{}'.format(
-                            dim_X, dim_Y, transose_x, transose_y, batch
-                        )
+                        class_name = f'TestMatMulOp_dimX_{dim_X}_dim_Y_{dim_Y}_transX_{transpose_x}_transY_{transpose_y}_batch_{batch}'
                         shape_x, shape_y = generate_compatible_shapes(
-                            dim_X, dim_Y, transose_x, transose_y, batch
+                            dim_X, dim_Y, transpose_x, transpose_y, batch
                         )
                         attr_dict = {
                             'shape_X': shape_x,
                             'shape_Y': shape_y,
-                            'transpose_X': transose_x,
-                            'transpose_Y': transose_y,
+                            'transpose_X': transpose_x,
+                            'transpose_Y': transpose_y,
                             'no_need_check_grad': no_need_check_grad,
                             'op_type': "matmul",
                         }
@@ -337,9 +331,7 @@ class XPUTestMatmulOp3(XPUOpTestWrapper):
         for dim in [4]:
             for transpose_X in [False, True]:
                 for transpose_Y in [False, True]:
-                    class_name = 'TestMatMulOp2_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
-                        dim, dim, transpose_X, transpose_Y
-                    )
+                    class_name = f'TestMatMulOp2_dimX_{dim}_dim_Y_{dim}_transX_{transpose_X}_transY_{transpose_Y}'
                     shape_X, shape_Y = generate_compatible_shapes_2(
                         dim, transpose_X, transpose_Y
                     )
@@ -365,9 +357,7 @@ class XPUTestMatmulOpBF16(XPUOpTestWrapper):
         for dim in [2]:
             for transpose_X in [False, True]:
                 for transpose_Y in [False, True]:
-                    class_name = 'TestMatMulOp2_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
-                        dim, dim, transpose_X, transpose_Y
-                    )
+                    class_name = f'TestMatMulOp2_dimX_{dim}_dim_Y_{dim}_transX_{transpose_X}_transY_{transpose_Y}'
                     shape_X, shape_Y = generate_compatible_shapes_2(
                         dim, transpose_X, transpose_Y
                     )

@@ -16,8 +16,8 @@
 
 #include "paddle/fluid/framework/new_executor/pir_interpreter.h"
 #include "paddle/fluid/framework/new_executor/program_interpreter.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_serial_run,
@@ -136,6 +136,15 @@ void InterpreterCore::SetInputHooks(const std::vector<HookFunc>& hookfuncs) {
 }
 
 void InterpreterCore::SetOutputHooks(const std::vector<HookFunc>& hookfuncs) {
+  impl_->SetOutputHooks(hookfuncs);
+}
+
+void InterpreterCore::SetInputHooks(const std::vector<PirHookFunc>& hookfuncs) {
+  impl_->SetInputHooks(hookfuncs);
+}
+
+void InterpreterCore::SetOutputHooks(
+    const std::vector<PirHookFunc>& hookfuncs) {
   impl_->SetOutputHooks(hookfuncs);
 }
 

@@ -39,6 +39,21 @@ void AngleGradInferMeta(const MetaTensor& x,
   UnchangedInferMeta(x, x_grad);
 }
 
+void BatchFCGradInferMeta(const MetaTensor& input,
+                          const MetaTensor& w,
+                          const MetaTensor& bias,
+                          const MetaTensor& out_grad,
+                          MetaTensor* input_grad,
+                          MetaTensor* w_grad,
+                          MetaTensor* bias_grad) {
+  input_grad->set_dims(input.dims());
+  input_grad->set_dtype(input.dtype());
+  w_grad->set_dims(w.dims());
+  w_grad->set_dtype(w.dtype());
+  bias_grad->set_dims(bias.dims());
+  bias_grad->set_dtype(bias.dtype());
+}
+
 void BilinearGradInferMeta(const MetaTensor& x,
                            const MetaTensor& y,
                            const MetaTensor& weight,
@@ -662,6 +677,31 @@ void MarginCrossEntropyGradInferMeta(const MetaTensor& logits,
   logits_grad->set_dtype(softmax.dtype());
 }
 
+void MatchMatrixTensorGradInferMeta(const MetaTensor& x,
+                                    const MetaTensor& y,
+                                    const MetaTensor& w,
+                                    const MetaTensor& tmp,
+                                    const MetaTensor& out_grad,
+                                    int dim_t,
+                                    MetaTensor* x_grad,
+                                    MetaTensor* y_grad,
+                                    MetaTensor* w_grad) {
+  if (x_grad != nullptr) {
+    x_grad->set_dims(x.dims());
+    x_grad->share_lod(x);
+    x_grad->set_dtype(x.dtype());
+  }
+  if (y_grad != nullptr) {
+    y_grad->set_dims(y.dims());
+    y_grad->share_lod(y);
+    y_grad->set_dtype(y.dtype());
+  }
+  if (w_grad != nullptr) {
+    w_grad->set_dims(w.dims());
+    w_grad->set_dtype(w.dtype());
+  }
+}
+
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& mask,
                                    const MetaTensor& dout,
@@ -721,27 +761,33 @@ void MemoryEfficientAttentionGradInferMeta(const MetaTensor& query,
   const int64_t value_num_head = value.dims()[2];
   const int64_t value_head_size = value.dims()[3];
 
-  std::vector<int64_t> query_grad_dims(
-      {query_batch_size, query_seq_length, query_num_head, query_head_size});
-  std::vector<int64_t> key_grad_dims(
-      {key_batch_size, key_seq_length, key_num_head, key_head_size});
-  std::vector<int64_t> value_grad_dims(
-      {value_batch_size, value_seq_length, value_num_head, value_head_size});
-
-  query_grad->set_dims(common::make_ddim(query_grad_dims));
-  query_grad->share_lod(query);
-  query_grad->set_dtype(query.dtype());
-  query_grad->set_layout(query.layout());
-
-  key_grad->set_dims(common::make_ddim(key_grad_dims));
-  key_grad->share_lod(key);
-  key_grad->set_dtype(key.dtype());
-  key_grad->set_layout(key.layout());
-
-  value_grad->set_dims(common::make_ddim(value_grad_dims));
-  value_grad->share_lod(value);
-  value_grad->set_dtype(value.dtype());
-  value_grad->set_layout(value.layout());
+  if (query_grad) {
+    std::vector<int64_t> query_grad_dims;
+    query_grad_dims = {
+        query_batch_size, query_seq_length, query_num_head, query_head_size};
+    query_grad->set_dims(common::make_ddim(query_grad_dims));
+    query_grad->share_lod(query);
+    query_grad->set_dtype(query.dtype());
+    query_grad->set_layout(query.layout());
+  }
+  if (key_grad) {
+    std::vector<int64_t> key_grad_dims;
+    key_grad_dims = {
+        key_batch_size, key_seq_length, key_num_head, key_head_size};
+    key_grad->set_dims(common::make_ddim(key_grad_dims));
+    key_grad->share_lod(key);
+    key_grad->set_dtype(key.dtype());
+    key_grad->set_layout(key.layout());
+  }
+  if (value_grad) {
+    std::vector<int64_t> value_grad_dims;
+    value_grad_dims = {
+        value_batch_size, value_seq_length, value_num_head, value_head_size};
+    value_grad->set_dims(common::make_ddim(value_grad_dims));
+    value_grad->share_lod(value);
+    value_grad->set_dtype(value.dtype());
+    value_grad->set_layout(value.layout());
+  }
 
   if (bias && bias_grad) {
     const int64_t bias_batch_size = bias.dims()[0];
@@ -812,10 +858,21 @@ void NanmedianGradInferMeta(const MetaTensor& x,
                             const MetaTensor& out_grad,
                             const IntArray& axes,
                             bool keep_dim,
+                            const std::string& mode,
                             MetaTensor* x_grad) {
   auto x_dims = x.dims();
   x_grad->set_dims(x_dims);
   x_grad->set_dtype(x.dtype());
+}
+
+void PartialConcatGradInferMeta(const std::vector<const MetaTensor*>& xs,
+                                std::vector<MetaTensor*> x_grads) {
+  auto input_num = xs.size();
+  for (size_t i = 0; i < input_num; i++) {
+    auto x_dims = xs[i]->dims();
+    x_grads[i]->set_dims(x_dims);
+    x_grads[i]->set_dtype(xs[i]->dtype());
+  }
 }
 
 void NceGradInferMeta(const MetaTensor& input,
@@ -842,6 +899,16 @@ void NceGradInferMeta(const MetaTensor& input,
   if (bias_grad) {
     bias_grad->set_dims(bias_dims);
     bias_grad->set_dtype(bias.dtype());
+  }
+}
+
+void PartialSumGradInferMeta(const std::vector<const MetaTensor*>& xs,
+                             std::vector<MetaTensor*> x_grads) {
+  auto input_num = xs.size();
+  for (size_t i = 0; i < input_num; i++) {
+    auto x_dims = xs[i]->dims();
+    x_grads[i]->set_dims(x_dims);
+    x_grads[i]->set_dtype(xs[i]->dtype());
   }
 }
 
@@ -975,6 +1042,19 @@ void PsroiPoolGradInferMeta(const MetaTensor& x,
                             float spatial_scale,
                             MetaTensor* dx) {
   dx->share_meta(x);
+}
+
+void RankAttentionGradInferMeta(const MetaTensor& x,
+                                const MetaTensor& rank_offset,
+                                const MetaTensor& rank_param,
+                                const MetaTensor& input_help,
+                                const MetaTensor& ins_rank,
+                                const MetaTensor& out_grad,
+                                int max_rank,
+                                int max_size,
+                                MetaTensor* rank_param_grad) {
+  rank_param_grad->set_dims(rank_param.dims());
+  rank_param_grad->set_dtype(rank_param.dtype());
 }
 
 void RealAndImagGradInferMeta(const MetaTensor& out_grad, MetaTensor* dx) {
@@ -1133,20 +1213,32 @@ void StackGradInferMeta(const MetaTensor& out_grad,
   }
 }
 
+void SwiGLUGradInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         MetaTensor* x_grad,
+                         MetaTensor* y_grad) {
+  if (x_grad) {
+    x_grad->share_meta(x);
+  }
+  if (y && y_grad) {
+    y_grad->share_meta(y);
+  }
+}
+
 void TransposeGradInferMeta(const MetaTensor& x,
                             const std::vector<int>& axis,
                             MetaTensor* out) {
   size_t x_rank = x.dims().size();
-  std::vector<int> formated_axis = axis;
+  std::vector<int> formatted_axis = axis;
   for (size_t i = 0; i < axis.size(); i++) {
     if (axis[i] < 0) {
-      formated_axis[i] = static_cast<int>(axis[i] + x_rank);
+      formatted_axis[i] = static_cast<int>(axis[i] + x_rank);
     }
   }
 
   std::vector<int> reversed_axis(axis);
-  for (int i = 0; i < static_cast<int>(formated_axis.size()); i++) {
-    reversed_axis[formated_axis[i]] = i;
+  for (int i = 0; i < static_cast<int>(formatted_axis.size()); i++) {
+    reversed_axis[formatted_axis[i]] = i;
   }
 
   TransposeInferMeta(x, reversed_axis, out);
@@ -1312,6 +1404,7 @@ void FusedRopeGradInferMeta(const MetaTensor& sin,
                             const MetaTensor& dout_k,
                             const MetaTensor& dout_v,
                             bool use_neox_rotary_style,
+                            bool time_major,
                             MetaTensor* dq,
                             MetaTensor* dk,
                             MetaTensor* dv) {
@@ -1323,15 +1416,15 @@ void FusedRopeGradInferMeta(const MetaTensor& sin,
                                    "[batch_size, seq_len, num_heads, head_dim],"
                                    "but got %u.",
                                    input_dims.size()));
-  if (dout_q) {
+  if (dout_q && dq) {
     dq->set_dims(dout_q.dims());
     dq->set_dtype(dout_q.dtype());
   }
-  if (dout_k) {
+  if (dout_k && dk) {
     dk->set_dims(dout_k.dims());
     dk->set_dtype(dout_k.dtype());
   }
-  if (dout_v) {
+  if (dout_v && dv) {
     dv->set_dims(dout_v.dims());
     dv->set_dtype(dout_v.dtype());
   }
@@ -1352,5 +1445,4 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
     value_grad->share_lod(values);
   }
 }
-
 }  // namespace phi

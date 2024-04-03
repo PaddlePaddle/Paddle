@@ -71,7 +71,7 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
               (ref_level >= 0 && ref_level < static_cast<int>(y_lod.size())),
           true,
           platform::errors::InvalidArgument(
-              "Invlid `ref_level`, which should be either equal to -1 "
+              "Invalid `ref_level`, which should be either equal to -1 "
               "or in [0, %d), but received `ref_level` = %u.",
               y_lod.size(),
               ref_level));
@@ -152,7 +152,7 @@ class SequenceExpandOpMaker : public framework::OpProtoAndCheckerMaker {
 Sequence Expand Operator.
 
 This operator expands `X` according to specified level lod of `Y`. Current
-implementation constaints that lod level of `X` should be at most 1. Attribute
+implementation constraints that lod level of `X` should be at most 1. Attribute
 `ref_level` is used to specify which level lod of `Y` is referred to expand `X`.
 If set `ref_level` to -1, then last level lod of `Y` would be referred.
 Please note, rank of `X` should be at least 2, when the rank exceeds 2, `X`

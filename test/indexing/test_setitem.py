@@ -29,6 +29,21 @@ class TestSetitemInDygraph(unittest.TestCase):
         self.ndtype = np.float64
         self.dtype = 'float64'
 
+    def test_advanced_index(self):
+        np_data = np.zeros((3, 4, 5, 6), dtype='float32').astype(self.ndtype)
+        if self.dtype == 'bfloat16':
+            np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
+            np_data = np_data + 1j * np_data
+
+        x = paddle.to_tensor(np_data, dtype=self.dtype)
+        np_data[[0, 1], [1, 2], [1]] = 10.0
+        x[[0, 1], [1, 2], [1]] = 10.0
+
+        if self.dtype == 'bfloat16':
+            x = paddle.cast(x, dtype='float32')
+        np.testing.assert_allclose(x.numpy(), np_data)
+
     def test_combined_index_1(self):
         np_data = np.zeros((3, 4, 5, 6), dtype='float32').astype(self.ndtype)
         if self.dtype == 'bfloat16':
@@ -316,12 +331,12 @@ class TestSetitemInDygraph(unittest.TestCase):
         zero.stop_gradient = False
 
         zero1 = zero * 1
-        zero1[paddle.to_tensor([0, 1])] = vv
+        zero1[1, paddle.to_tensor([2, 0, 1])] = vv
 
         loss = zero1.sum()
         loss.backward()
 
-        expected_v_grad = np.ones((3, 1)) * 10.0
+        expected_v_grad = np.ones((3, 1)) * 5.0
         if self.dtype == 'bfloat16':
             np.testing.assert_allclose(
                 v.grad.cast('float32').numpy(), expected_v_grad
@@ -425,6 +440,20 @@ class TestSetitemInStatic(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
         self.exe = paddle.static.Executor()
+
+    @test_with_pir_api
+    def test_advanced_index(self):
+        # multi-int tensor
+        np_data = np.zeros((3, 4, 5, 6), dtype='float32')
+        np_data[[0, 1], [1, 2], [1]] = 10.0
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.zeros((3, 4, 5, 6), dtype='float32')
+            y = _setitem_static(x, ([0, 1], [1, 2], [1]), 10.0)
+            res = self.exe.run(fetch_list=[y])
+
+        np.testing.assert_allclose(res[0], np_data)
 
     @test_with_pir_api
     def test_combined_index_1(self):

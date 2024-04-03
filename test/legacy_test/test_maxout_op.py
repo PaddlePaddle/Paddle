@@ -124,6 +124,7 @@ class TestMaxoutAPI(unittest.TestCase):
         np.testing.assert_allclose(out3_ref, out3.numpy(), rtol=1e-05)
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.

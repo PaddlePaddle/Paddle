@@ -50,9 +50,8 @@ set(PYBIND_DEPS
     auto_parallel)
 
 if(WITH_CINN)
-  set(PYBIND_DEPS
-      ${PYBIND_DEPS} pir_transforms op_with_group_merge_pass
-      add_broadcast_to_elementwise_pass pd_to_cinn_pass sub_graph_checker)
+  set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms cinn_transforms
+                  sub_graph_checker add_cinn_pass)
 endif()
 
 if(WITH_PSCORE)
@@ -120,8 +119,6 @@ set(PYBIND_SRCS
     pybind.cc
     imperative.cc
     inference_api.cc
-    ops_api.cc
-    static_op_function.cc
     control_flow_api.cc
     pir.cc
     graph.cc
@@ -153,7 +150,13 @@ set(PYBIND_SRCS
     jit.cc
     auto_parallel_py.cc
     eval_frame_tools.cc
-    eval_frame.c)
+    cpython_internals.c
+    eval_frame.c
+    op_callstack_utils.cc)
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+set(PYBIND_SRCS ${PYBIND_SRCS} dist_api.cc)
+#endif
 
 if(NOT WITH_SHARED_IR)
   # Note: We want to compile pir source into paddle.so directly, because
@@ -265,7 +268,7 @@ endif()
 if(WITH_PYTHON)
   # generate op pybind functions automatically for dygraph.
 
-  set(OP_FUNCTION_GENERETOR_DEPS
+  set(OP_FUNCTION_GENERATOR_DEPS
       pybind
       proto_desc
       executor
@@ -274,23 +277,23 @@ if(WITH_PYTHON)
       engine
       imperative_profiler
       imperative_flag)
-  list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OP_LIB})
-  list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OPERATOR_DEPS})
+  list(APPEND OP_FUNCTION_GENERATOR_DEPS ${GLOB_OP_LIB})
+  list(APPEND OP_FUNCTION_GENERATOR_DEPS ${GLOB_OPERATOR_DEPS})
 
   if(WITH_NCCL OR WITH_RCCL)
-    list(APPEND OP_FUNCTION_GENERETOR_DEPS nccl_context)
+    list(APPEND OP_FUNCTION_GENERATOR_DEPS nccl_context)
   endif()
 
   if(WITH_XPU_BKCL)
-    list(APPEND OP_FUNCTION_GENERETOR_DEPS bkcl_context)
+    list(APPEND OP_FUNCTION_GENERATOR_DEPS bkcl_context)
   endif()
 
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
-    list(APPEND OP_FUNCTION_GENERETOR_DEPS ${PYTHON_LIBRARIES})
+    list(APPEND OP_FUNCTION_GENERATOR_DEPS ${PYTHON_LIBRARIES})
   endif()
 
   if(WITH_CUSTOM_DEVICE)
-    set(OP_FUNCTION_GENERETOR_DEPS ${OP_FUNCTION_GENERETOR_DEPS}
+    set(OP_FUNCTION_GENERATOR_DEPS ${OP_FUNCTION_GENERATOR_DEPS}
                                    custom_device_common_op_registry)
   endif()
 
@@ -298,14 +301,14 @@ if(WITH_PYTHON)
                  eager_legacy_op_function_generator.cc)
   set(GENERATOR_DEPS ${PYBIND_DEPS})
   list(REMOVE_DUPLICATES GENERATOR_DEPS)
-  if(NOT WITH_ARM)
+  if(WIN32)
     list(REMOVE_ITEM GENERATOR_DEPS python)
   endif()
   target_link_libraries(eager_legacy_op_function_generator ${GENERATOR_DEPS})
   if(NOT WIN32)
     add_executable(kernel_signature_generator kernel_signature_generator.cc)
     target_link_libraries(kernel_signature_generator
-                          ${OP_FUNCTION_GENERETOR_DEPS})
+                          ${OP_FUNCTION_GENERATOR_DEPS})
   endif()
 
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
@@ -437,7 +440,7 @@ if(WITH_PYTHON)
   else()
     # If there are no *.so in /usr/lib or LD_LIBRARY_PATH,
     # copy these *.so to current directory and append current directory to
-    # LD_LIBRARY_PATH. This is different with Windows platformm, which search
+    # LD_LIBRARY_PATH. This is different with Windows platform, which search
     # *.dll in current directory automatically.
     if(WITH_ONNXRUNTIME)
       set(PADDLE2ONNX_PYBIND_OUT
@@ -509,6 +512,8 @@ if(WITH_PYTHON)
     set(PYBIND_SRCS eager_legacy_op_function.cc ${PYBIND_SRCS})
     set(PYBIND_SRCS eager_op_function.cc ${PYBIND_SRCS})
     set(PYBIND_SRCS eager_math_op_patch.cc ${PYBIND_SRCS})
+    set(PYBIND_SRCS ops_api.cc ${PYBIND_SRCS})
+    set(PYBIND_SRCS static_op_function.cc ${PYBIND_SRCS})
     list(APPEND PYBIND_DEPS eager_api)
     list(APPEND PYBIND_DEPS autograd_meta)
     list(APPEND PYBIND_DEPS backward)

@@ -27,11 +27,11 @@
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/utils/rw_lock.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 #define SCOPE_VARS_READER_LOCK AutoRDLock auto_lock(&vars_lock_);
@@ -40,9 +40,13 @@ PHI_DECLARE_bool(dynamic_static_unified_comm);
 namespace paddle {
 namespace framework {
 
+class InstructionBase;
+class ValueExecutionInfo;
 using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
 
 using HookFunc = std::function<void(OperatorBase*, Scope*)>;
+using PirHookFunc =
+    std::function<void(InstructionBase*, ValueExecutionInfo*, Scope*)>;
 
 using SchedulingPriority = int64_t;
 
@@ -63,7 +67,7 @@ struct OpKernelFunc {
 struct VariableMetaInfo {
   int var_ref_count_{0};
   framework::VarDesc* var_desc_{nullptr};
-  bool sikp_inplace_{false};
+  bool skip_inplace_{false};
 
   VariableMetaInfo() {}
   VariableMetaInfo(int var_ref_count, framework::VarDesc* var_desc)
@@ -82,7 +86,7 @@ class VariableScope {
 
   void SetLocalScope(Scope* local_scope);
 
-  ~VariableScope();
+  ~VariableScope() = default;
 
   // Get variable id by name, return -1 if not found
   int GetIdByName(const std::string& name) const;
@@ -127,9 +131,9 @@ class VariableScope {
 
   std::vector<Variable*>& MutableVarList() { return var_list_; }
 
-  void SetVarSikpInplace(const std::string& name, bool skip);
+  void SetVarSkipInplace(const std::string& name, bool skip);
 
-  bool GetVarSikpInplace(int id) const;
+  bool GetVarSkipInplace(int id) const;
 
  private:
   // not owned, better remove it since all vars should be
@@ -309,7 +313,7 @@ class Instruction {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   bool need_record_stream_for_gc_ = false;
   gpuStream_t stream_{nullptr};
-  void UpdataRecordStreamForGcInfo();
+  void UpdateRecordStreamForGcInfo();
 #endif
 
   bool can_use_infermeta_ctx_ = false;
@@ -348,7 +352,7 @@ static constexpr char kFetchVarName[] = "fetch";
 
 // static_ref_ is the numer of last live ops calculated to statically after
 // `build` the Instructions. dynamic_ref_  is the runtime version ref which will
-// be decreased by one dynamiclly after the execution of an op (in last ops
+// be decreased by one dynamically after the execution of an op (in last ops
 // list). var_ is the related variable
 
 // The dynamic_ref_ is initialized to static_ref_ first, and is decreased to 1
@@ -379,7 +383,7 @@ class VarRefInfo {
 
 // static_dep_ is the numer of dependencies (ops that must run before it) of
 // each op which is calculated to statically. static_dep_  is the runtime
-// version dep which will be decreased by one dynamiclly after the execution of
+// version dep which will be decreased by one dynamically after the execution of
 // one dependency op.
 
 // The dynamic_dep_ is initialized to static_dep_ first, and is decreased to 1

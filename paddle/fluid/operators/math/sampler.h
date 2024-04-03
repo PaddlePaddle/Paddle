@@ -37,7 +37,7 @@ class Sampler {
         range,
         0,
         platform::errors::InvalidArgument(
-            "Range should be greater than 0, but recevied %d.", range));
+            "Range should be greater than 0, but received %d.", range));
     if (seed == 0) {
       std::random_device r;
       seed_ = r();

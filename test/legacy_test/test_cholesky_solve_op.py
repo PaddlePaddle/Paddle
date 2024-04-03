@@ -25,6 +25,7 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -69,9 +70,7 @@ def broadcast_shape(matA, matB):
             Broadshape.append(max(shapeA[idx], shapeB[idx]))
         else:
             raise Exception(
-                'shapeA and shapeB should be broadcasted, but got {} and {}'.format(
-                    shapeA, shapeB
-                )
+                f'shapeA and shapeB should be broadcasted, but got {shapeA} and {shapeB}'
             )
     bsA = Broadshape + list(shapeA[-2:])
     bsB = Broadshape + list(shapeB[-2:])
@@ -143,7 +142,7 @@ class TestCholeskySolveOp(OpTest):
 
     # check Op grad
     def test_check_grad_normal(self):
-        self.check_grad(['Y'], 'Out', max_relative_error=0.01)
+        self.check_grad(['Y'], 'Out', max_relative_error=0.01, check_pir=True)
 
 
 # test condition:  3D(broadcast) + 3D, upper=True
@@ -169,9 +168,12 @@ class TestCholeskySolveAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
+    @test_with_pir_api
     def check_static_result(self, place):
         paddle.enable_static()
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x = paddle.static.data(name="x", shape=[10, 2], dtype=self.dtype)
             y = paddle.static.data(name="y", shape=[10, 10], dtype=self.dtype)
             z = paddle.linalg.cholesky_solve(x, y, upper=self.upper)
@@ -187,7 +189,6 @@ class TestCholeskySolveAPI(unittest.TestCase):
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
                 feed={"x": x_np, "y": umat},
                 fetch_list=[z],
             )
@@ -239,7 +240,7 @@ class TestCholeskySolveAPI(unittest.TestCase):
 
 # test condition out of bounds
 class TestCholeskySolveOpError(unittest.TestCase):
-    def test_errors(self):
+    def test_errors_1(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             # The input type of solve_op must be Variable.
@@ -251,6 +252,10 @@ class TestCholeskySolveOpError(unittest.TestCase):
             )
             self.assertRaises(TypeError, paddle.linalg.cholesky_solve, x1, y1)
 
+    @test_with_pir_api
+    def test_errors_2(self):
+        paddle.enable_static()
+        with program_guard(Program(), Program()):
             # The data type of input must be float32 or float64.
             x2 = paddle.static.data(name="x2", shape=[30, 30], dtype="bool")
             y2 = paddle.static.data(name="y2", shape=[30, 10], dtype="bool")

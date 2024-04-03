@@ -28,10 +28,11 @@
  * @param err_msg_level A ScheduleErrorMessageLevel enum, level of error message
  * printing
  */
-#define CINN_IR_SCHEDULE_END(err_msg_level)                    \
-  }                                                            \
-  catch (const utils::ErrorHandler& err_hanlder) {             \
-    CINN_THROW(err_hanlder.FormatErrorMessage(err_msg_level)); \
+#define CINN_IR_SCHEDULE_END(err_msg_level)                                 \
+  }                                                                         \
+  catch (const utils::ErrorHandler& err_handler) {                          \
+    PADDLE_THROW(                                                           \
+        phi::errors::Fatal(err_handler.FormatErrorMessage(err_msg_level))); \
   }
 
 namespace cinn {
@@ -39,14 +40,25 @@ namespace ir {
 
 std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
                                         const std::vector<int>& factors) {
+  CINN_IR_SCHEDULE_BEGIN();
+  std::string primitive = "Split";
+  std::ostringstream os;
+
+  if (!loop.As<ir::For>()) {
+    os << "Expr param(loop) must be For node! Please check!\n";
+    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+  }
+  auto* for_node = loop.As<ir::For>();
+  if (!cinn::common::is_zero(for_node->min)) {
+    os << "The For node must start with 0! Please check!\n";
+    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+  }
+  if (factors.empty()) {
+    os << "The factors param of Split should not be empty! Please check!\n";
+    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+  }
+
   if (loop.As<For>()->extent.is_constant()) {
-    CHECK(loop.As<ir::For>())
-        << "Expr param of Split must be For node! Please check.";
-    auto* for_node = loop.As<ir::For>();
-    CHECK(cinn::common::is_zero(for_node->min))
-        << "The For node must start with 0! Please check.";
-    CHECK(for_node->extent.is_constant())
-        << "The For node's extent must be constant! Please check.";
     int tot_extent = for_node->extent.get_constant();
 
     VLOG(3) << "Try Split loop from (" << for_node->loop_var->name << ", 0, "
@@ -55,10 +67,8 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
             << loop;
 
     std::vector<int> processed_factors;
-    CINN_IR_SCHEDULE_BEGIN();
     processed_factors =
         ValidateFactors(factors, tot_extent, this->module_expr_);
-    CINN_IR_SCHEDULE_END(this->err_msg_level_);
     int prod_size = std::accumulate(processed_factors.begin(),
                                     processed_factors.end(),
                                     1,
@@ -95,13 +105,6 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
     VLOG(3) << "After Split, ir is:\n" << splited_loops.at(0);
     return splited_loops;
   }
-  CHECK(loop.As<ir::For>())
-      << "Expr param of Split must be For node! Please check.";
-  auto* for_node = loop.As<ir::For>();
-  CHECK(common::is_zero(for_node->min))
-      << "The For node must start with 0! Please check.";
-  CHECK(!factors.empty())
-      << "The factors param of Split should not be empty! Please check.";
 
   Expr tot_extent = for_node->extent;
 
@@ -125,9 +128,12 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
     if (factor < 1 && factor != -1) is_positive = false;
     if (factor == -1) ++num_minus1;
   });
-  CHECK((num_minus1 <= 1) && is_positive)
-      << "The params in factors of Split on dynamic shape should contains at "
-         "most one '-1' and the rest of them should be positive!\n";
+
+  if (num_minus1 > 1 || (!is_positive)) {
+    os << "The params in factors of Split on dynamic shape should contains at "
+          "most one '-1' and the rest of them should be positive!\n";
+    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+  }
 
   std::vector<Var> new_loop_vars;
   Expr substitute_value(0);
@@ -158,21 +164,37 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   this->Replace(loop, new_node);
   VLOG(3) << "After Split, ir is:\n" << splited_loops.at(0);
   return splited_loops;
+  CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
 
-// TODO(@LiuYang): now -1 can't exsit in factors,
+// TODO(@LiuYang): now -1 can't exist in factors.
 std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
                                         const std::vector<Expr>& factors) {
-  CHECK(loop.As<ir::For>())
-      << "Expr param of Split must be For node! Please check.";
+  CINN_IR_SCHEDULE_BEGIN();
+  std::string primitive = "Split";
+  std::ostringstream os;
+  if (!loop.As<ir::For>()) {
+    os << "Expr param(loop) must be For node! Please check!\n";
+    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+  }
+
   auto* for_node = loop.As<ir::For>();
-  CHECK(common::is_zero(for_node->min))
-      << "The For node must start with 0! Please check.";
-  CHECK(!factors.empty())
-      << "The factors param of Split should not be empty! Please check.";
-  CHECK(!loop.As<ir::For>()->extent.is_constant())
-      << "Can't Split a loop with constant extent but with variable in "
-         "factors!";
+
+  if (!common::is_zero(for_node->min)) {
+    os << "The For node must start with 0! Please check!\n";
+    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+  }
+  if (factors.empty()) {
+    os << "The factors param of Split should not be empty! Please check!\n";
+    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+  }
+
+  if (loop.As<ir::For>()->extent.is_constant()) {
+    os << "Can't Split a loop with constant extent but with variable in "
+          "factors! Please check!\n";
+    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+  }
+
   Expr tot_extent = for_node->extent;
 
   VLOG(3) << "Try Split loop from (" << for_node->loop_var->name << ", 0, "
@@ -185,9 +207,11 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   for (auto factor : factors) prod_size = prod_size * Expr(factor);
   common::cas_intervals_t var_intervals = {};
   cinn::common::SymbolicExprAnalyzer analyzer(var_intervals);
-  CHECK(analyzer.ProveEQ(tot_extent, prod_size).value_or(false))
-      << "Product of factors can't be proved to be equal to the extent of "
-         "current for loop!";
+  if (!analyzer.ProveEQ(tot_extent, prod_size).value_or(false)) {
+    os << "Product of factors can't be proved to be equal to the extent of "
+          "current for loop! Please check!\n";
+    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+  }
 
   std::vector<Var> new_loop_vars;
   Expr substitute_value(0);
@@ -216,26 +240,45 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   this->Replace(loop, new_node);
   VLOG(3) << "After Split, ir is:\n" << splited_loops.at(0);
   return splited_loops;
+  CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
 
 Expr DyScheduleImpl::Fuse(const std::vector<Expr>& loops) {
+  CINN_IR_SCHEDULE_BEGIN();
+  std::string primitive = "Fuse";
+  std::ostringstream os;
+
   VLOG(3) << "Tring to fuse:\n" << cinn::utils::Join(loops, "\n");
   std::vector<const ir::For*> for_nodes;
   std::vector<Var> loop_vars;
-  CHECK(!loops.empty())
-      << "The loops param of Fuse should not be empty! Please check.";
+  if (loops.empty()) {
+    os << "The loops param of Fuse should not be empty! Please check!\n";
+    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+  }
 
   for (const Expr& it_loop : loops) {
-    CHECK(it_loop.As<ir::For>())
-        << "Expr param of Fuse must be For node! Please check.";
+    if (!it_loop.As<ir::For>()) {
+      os << "Loop in vector<Expr> param(loops) of Fuse must be For node! "
+            "Please check!\n";
+      throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+    }
+
     if (!for_nodes.empty()) {
-      CHECK(for_nodes.back()->body.As<ir::Block>())
-          << "The body of for node is not Block!";
-      CHECK_EQ(for_nodes.back()->body.As<ir::Block>()->stmts.size(), 1U)
-          << "The Block'size of for node is not 1!";
-      CHECK_EQ(for_nodes.back()->body.As<ir::Block>()->stmts[0], it_loop)
-          << "The For nodes in loops param of Fuse must be adjacent! Please "
-             "check.";
+      if (!for_nodes.back()->body.As<ir::Block>()) {
+        os << "The body of for node is not Block! Please check!\n";
+        throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+      }
+
+      if (for_nodes.back()->body.As<ir::Block>()->stmts.size() != 1) {
+        os << "The Block's size of for node is not 1! Please check!\n";
+        throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+      }
+
+      if (for_nodes.back()->body.As<ir::Block>()->stmts[0] != it_loop) {
+        os << "The For nodes in loops param of Fuse must be adjacent! Please "
+              "check!\n";
+        throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+      }
     }
     for_nodes.push_back(it_loop.As<ir::For>());
     loop_vars.push_back(it_loop.As<ir::For>()->loop_var);
@@ -276,47 +319,77 @@ Expr DyScheduleImpl::Fuse(const std::vector<Expr>& loops) {
 
   VLOG(3) << "After fuse, ir is:\n" << new_stmt;
   return new_stmt;
+  CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
 
 Expr DyScheduleImpl::Fuse(const std::string& block_name,
                           const std::vector<int>& loops_index) {
+  CINN_IR_SCHEDULE_BEGIN();
+  std::string primitive = "Fuse";
+  std::ostringstream os;
   std::vector<Expr> all_loops = this->GetLoops(block_name);
   std::vector<Expr> loops_expr;
   loops_expr.reserve(loops_index.size());
   for (int i = 0; i < loops_index.size(); ++i) {
-    if (i > 0)
-      CHECK_EQ(loops_index[i - 1] + 1, loops_index[i])
-          << "Loops index in Fuse shoule be continuous!";
+    if (i > 0) {
+      if (loops_index[i - 1] + 1 != loops_index[i]) {
+        os << "Loops index in Fuse should be continuous!\n";
+        throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+      }
+    }
   }
   for (int i : loops_index) {
-    CHECK_LT(i, (int)all_loops.size())
-        << "The loop index in Fuse should be less than total loop's number.";
-    CHECK_GE(i, 0) << "The loop index in Fuse should be >= 0.";
+    if (i >= static_cast<int>(all_loops.size())) {
+      os << "The loop index in Fuse should be less than total loop's number!\n";
+      throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+    }
+
+    if (i < 0) {
+      os << "The loop index in Fuse should be >= 0!\n";
+      throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+    }
     loops_expr.emplace_back(all_loops[i]);
   }
   return this->Fuse(loops_expr);
+  CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
 
 Expr DyScheduleImpl::Fuse(const Expr& block,
                           const std::vector<int>& loops_index) {
+  CINN_IR_SCHEDULE_BEGIN();
+  std::string primitive = "Fuse";
+  std::ostringstream os;
   std::vector<Expr> all_loops = this->GetLoops(block);
   std::vector<Expr> loops_expr;
   loops_expr.reserve(loops_index.size());
   for (int i = 0; i < loops_index.size(); ++i) {
-    if (i > 0)
-      CHECK_EQ(loops_index[i - 1] + 1, loops_index[i])
-          << "Loops index in Fuse shoule be continuous!";
+    if (i > 0) {
+      if (loops_index[i - 1] + 1 != loops_index[i]) {
+        os << "Loops index in Fuse should be continuous!\n";
+        throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+      }
+    }
   }
   for (int i : loops_index) {
-    CHECK_LT(i, (int)all_loops.size())
-        << "The loop index in Fuse should be less than total loop's number.";
-    CHECK_GE(i, 0) << "The loop index in Fuse should be >= 0.";
+    if (i >= static_cast<int>(all_loops.size())) {
+      os << "The loop index in Fuse should be less than total loop's number!\n";
+      throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+    }
+
+    if (i <= 0) {
+      os << "The loop index in Fuse should be >= 0!\n";
+      throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+    }
     loops_expr.emplace_back(all_loops[i]);
   }
   return this->Fuse(loops_expr);
+  CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
 
 Expr DyScheduleImpl::Reorder(const std::vector<Expr>& loops) {
+  CINN_IR_SCHEDULE_BEGIN();
+  std::string primitive = "Reorder";
+  std::ostringstream os;
   if (loops.size() <= 1) {
     return Expr{nullptr};
   }
@@ -333,34 +406,60 @@ Expr DyScheduleImpl::Reorder(const std::vector<Expr>& loops) {
 
   VLOG(4) << "After Reorder, ir is:\n" << new_loop;
   return new_loop;
+  CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
 
 Expr DyScheduleImpl::Reorder(const std::string& block_name,
                              const std::vector<int>& loops_index) {
+  CINN_IR_SCHEDULE_BEGIN();
+  std::string primitive = "Reorder";
+  std::ostringstream os;
+
   std::vector<Expr> all_loops = this->GetLoops(block_name);
   std::vector<Expr> loops_expr;
   loops_expr.reserve(loops_index.size());
   for (int i : loops_index) {
-    CHECK_LT(i, (int)all_loops.size())
-        << "The loop index in Reorder should be less than total loop's number.";
-    CHECK_GE(i, 0) << "The loop index in Reorder should be >= 0.";
+    if (i >= static_cast<int>(all_loops.size())) {
+      os << "The loop index in Reorder should be less than total loop's "
+            "number!\n";
+      throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+    }
+
+    if (i < 0) {
+      os << "The loop index in Reorder should be >= 0!\n";
+      throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+    }
     loops_expr.emplace_back(all_loops[i]);
   }
   return this->Reorder(loops_expr);
+  CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
 
 Expr DyScheduleImpl::Reorder(const Expr& block,
                              const std::vector<int>& loops_index) {
+  CINN_IR_SCHEDULE_BEGIN();
+  std::string primitive = "Reorder";
+  std::ostringstream os;
+
   std::vector<Expr> all_loops = this->GetLoops(block);
   std::vector<Expr> loops_expr;
   loops_expr.reserve(loops_index.size());
   for (int i : loops_index) {
-    CHECK_LT(i, (int)all_loops.size())
-        << "The loop index in Reorder should be less than total loop's number.";
-    CHECK_GE(i, 0) << "The loop index in Reorder should be >= 0.";
+    if (i >= static_cast<int>(all_loops.size())) {
+      os << "The loop index in Reorder should be less than total loop's "
+            "number!\n";
+      throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+    }
+
+    if (i < 0) {
+      os << "The loop index in Reorder should be >= 0!\n";
+      throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+    }
+
     loops_expr.emplace_back(all_loops[i]);
   }
   return this->Reorder(loops_expr);
+  CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
 
 void DyScheduleImpl::FlattenLoops(const std::vector<Expr>& loops,
@@ -506,7 +605,7 @@ Expr StScheduleImpl::Fuse(const std::string& block_name,
   for (int i = 0; i < loops_index.size(); ++i) {
     if (i > 0)
       CHECK_EQ(loops_index[i - 1] + 1, loops_index[i])
-          << "Loops index in Fuse shoule be continuous!";
+          << "Loops index in Fuse should be continuous!";
   }
   for (int i : loops_index) {
     CHECK_LT(i, (int)all_loops.size())
@@ -525,7 +624,7 @@ Expr StScheduleImpl::Fuse(const Expr& block,
   for (int i = 0; i < loops_index.size(); ++i) {
     if (i > 0)
       CHECK_EQ(loops_index[i - 1] + 1, loops_index[i])
-          << "Loops index in Fuse shoule be continuous!";
+          << "Loops index in Fuse should be continuous!";
   }
   for (int i : loops_index) {
     CHECK_LT(i, (int)all_loops.size())

@@ -16,6 +16,7 @@
 #include "paddle/phi/kernels/funcs/embedding_grad.h"
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/amp_type_traits.h"
@@ -25,9 +26,8 @@
 #include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
-#include "paddle/utils/flags.h"
 
-PD_DECLARE_int64(embedding_deterministic);
+COMMON_DECLARE_int64(embedding_deterministic);
 
 namespace phi {
 
@@ -266,7 +266,9 @@ PD_REGISTER_KERNEL(embedding_grad,
                    float,
                    double,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(embedding_sparse_grad,
                    GPU,
@@ -275,4 +277,6 @@ PD_REGISTER_KERNEL(embedding_sparse_grad,
                    float,
                    double,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

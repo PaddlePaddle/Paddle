@@ -103,16 +103,14 @@ class TestPaddleModel(OpMapperTest):
         self.params_filename = args.params_filename
 
         logger.info(
-            "Run Model From \"{}\", which model filename is \"{}\", and parameter filename is \"{}\"".format(
-                self.model_dir, self.model_filename, self.params_filename
-            )
+            f"Run Model From \"{self.model_dir}\", which model filename is \"{self.model_filename}\", and parameter filename is \"{self.params_filename}\""
         )
 
         self.load_paddle_program()
         self.init_case()
 
     @staticmethod
-    def eliminate_unkown_shape(shape):
+    def eliminate_unknown_shape(shape):
         return [1 if dim == -1 else dim for dim in shape]
 
     def get_paddle_op_attrs(self, op):
@@ -132,13 +130,13 @@ class TestPaddleModel(OpMapperTest):
                 msg="Repeat feed name: " + self.feed_names[i],
             )
 
-            dtype = self.paddleddtype2nptype(self.feed_dtypes[i])
+            dtype = self.paddledtype2nptype(self.feed_dtypes[i])
             # random int type data should not limited to [0, 1]
             high = 1 if ("int" not in dtype) else self.feed_shapes[i][0]
 
             # the paddle's feed list need dict not list
             self.feed_data[self.feed_names[i]] = self.random(
-                self.eliminate_unkown_shape(self.feed_shapes[i]),
+                self.eliminate_unknown_shape(self.feed_shapes[i]),
                 dtype,
                 high=high,
             )
@@ -204,7 +202,7 @@ class TestPaddleModel(OpMapperTest):
         convertor = PaddleModelConvertor(target)
         for i in range(len(self.feed_names)):
             convertor.create_input(
-                dtype=self.paddleddtype2nptype(self.feed_dtypes[i]),
+                dtype=self.paddledtype2nptype(self.feed_dtypes[i]),
                 shape=self.feed_data[self.feed_names[i]].shape,
                 name=self.feed_names[i],
             )
@@ -289,6 +287,6 @@ class TestPaddleModel(OpMapperTest):
 
 if __name__ == "__main__":
     tester = unittest.defaultTestLoader.loadTestsFromTestCase(TestPaddleModel)
-    test_runer = unittest.TextTestRunner()
-    res = test_runer.run(tester)
+    test_runner = unittest.TextTestRunner()
+    res = test_runner.run(tester)
     sys.exit(not res.wasSuccessful())

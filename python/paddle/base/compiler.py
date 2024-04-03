@@ -202,9 +202,7 @@ class CompiledProgram:
 
         assert isinstance(
             places, (list, tuple)
-        ), "Currently, The places type can only be list or tuple, but the input type is {}.".format(
-            type(places)
-        )
+        ), f"Currently, The places type can only be list or tuple, but the input type is {type(places)}."
 
         if self._build_strategy is None:
             self._build_strategy = BuildStrategy()
@@ -269,7 +267,7 @@ class CompiledProgram:
             ), "DGC only used under CUDA environment."
             assert (
                 self._build_strategy.num_trainers * len(places) > 1
-            ), "DGC is not avaliable for single card training."
+            ), "DGC is not available for single card training."
             assert (
                 self._build_strategy.reduce_strategy
                 == BuildStrategy.ReduceStrategy.AllReduce
@@ -495,7 +493,7 @@ class IpuDynamicPatcher:
 
     @staticmethod
     def patch_program_cache(ipu_strategy):
-        """Monkey patch ProgramCache discriptor to support dynamic2static in IPU.
+        """Monkey patch ProgramCache descriptor to support dynamic2static in IPU.
 
         Args:
             ipu_strategy: The ipu_strategy used in dynamic graph.
@@ -528,7 +526,7 @@ class IpuDynamicPatcher:
                     )
                 if self._caches and not ipu_strategy.need_compile:
                     logging_utils.warn(
-                        "dynamic2static on IPU doesn't support mutiple caches. Please make sure"
+                        "dynamic2static on IPU doesn't support multiple caches. Please make sure"
                         "dynamic inputs is not used."
                     )
                 concrete_program, _ = self._build_once(item)
@@ -546,10 +544,8 @@ class IpuDynamicPatcher:
                 current_tracing_count = len(self._caches)
                 if current_tracing_count > MAX_TRACED_PROGRAM_COUNT:
                     logging_utils.warn(
-                        "Current traced program number: {} > `max_tracing_count`:{}. Too much cached programs will bring expensive overhead. "
-                        "The reason may be: (1) passing tensors with different shapes, (2) passing python objects instead of tensors.".format(
-                            current_tracing_count, MAX_TRACED_PROGRAM_COUNT
-                        )
+                        f"Current traced program number: {current_tracing_count} > `max_tracing_count`:{MAX_TRACED_PROGRAM_COUNT}. Too much cached programs will bring expensive overhead. "
+                        "The reason may be: (1) passing tensors with different shapes, (2) passing python objects instead of tensors."
                     )
 
             return self._caches[item_id]
@@ -631,7 +627,7 @@ class IpuStrategy:
 
     def register_patch(self):
         """
-        Register patchs function to support dynamic to static on IPU. This operation would break the dy2static functionality on CPU.
+        Register patch function to support dynamic to static on IPU. This operation would break the dy2static functionality on CPU.
         Use `release_patch` to release the patch.
 
         Examples:
@@ -751,7 +747,7 @@ class IpuStrategy:
             num_ipus (int, optional): Number of IPU devices. Default 1, which means only use 1 IPU.
             is_training (bool, optional): True is training graph, False is inference graph. Default True, which means is training mode.
             batch_size (int, optional): The batch-size in the graph. Used to make the graph batch-size fixed,
-                if the batch-size in the graph is dynamic. Default 1, which means the batch-size would be set 1, if the batch-size is dynamice.
+                if the batch-size in the graph is dynamic. Default 1, which means the batch-size would be set 1, if the batch-size is dynamic.
             enable_manual_shard (bool, optional): Enable graph sharding or not. Only if num_ipus > 1, enable_manual_shard is able to be set True.
                 Default False, which means disabled.
 

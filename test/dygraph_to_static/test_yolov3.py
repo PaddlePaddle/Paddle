@@ -85,9 +85,8 @@ fake_data_reader = FakeDataReader()
 def train():
     random.seed(0)
     np.random.seed(0)
+    paddle.seed(1000)
 
-    paddle.static.default_startup_program().random_seed = 1000
-    paddle.static.default_main_program().random_seed = 1000
     model = paddle.jit.to_static(YOLOv3(3, is_train=True))
 
     boundaries = cfg.lr_steps
@@ -133,7 +132,6 @@ def train():
         start_time = time.time()
         img = np.array([x[0] for x in data]).astype('float32')
         img = paddle.to_tensor(img)
-        # img = paddle.base.dygraph.to_variable(img)
 
         gt_box = np.array([x[1] for x in data]).astype('float32')
         gt_box = paddle.to_tensor(gt_box)
@@ -151,11 +149,7 @@ def train():
         total_sample += 1
 
         print(
-            "Iter {:d}, loss {:.6f}, time {:.5f}".format(
-                iter_id,
-                smoothed_loss.get_mean_value(),
-                start_time - prev_start_time,
-            )
+            f"Iter {iter_id:d}, loss {smoothed_loss.get_mean_value():.6f}, time {start_time - prev_start_time:.5f}"
         )
         ret.append(smoothed_loss.get_mean_value())
 

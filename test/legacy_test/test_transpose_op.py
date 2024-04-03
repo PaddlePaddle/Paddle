@@ -21,7 +21,7 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
@@ -499,9 +499,12 @@ class TestTransposeOpBool8D(TestTransposeOpBool):
 
 
 class TestTransposeOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x = paddle.static.data(
                 name='x', shape=[-1, 10, 5, 3], dtype='float64'
             )
@@ -511,15 +514,6 @@ class TestTransposeOpError(unittest.TestCase):
                 paddle.transpose("not_variable", perm=[1, 0, 2])
 
             self.assertRaises(TypeError, test_x_Variable_check)
-
-            def test_x_dtype_check():
-                # the Input(x)'s dtype must be one of [bool, float16, float32, float64, int32, int64]
-                x1 = paddle.static.data(
-                    name='x1', shape=[-1, 10, 5, 3], dtype='int8'
-                )
-                paddle.transpose(x1, perm=[1, 0, 2])
-
-            self.assertRaises(TypeError, test_x_dtype_check)
 
             def test_perm_list_check():
                 # Input(perm)'s type must be list
@@ -619,7 +613,7 @@ class TestTAPI(unittest.TestCase):
     def test_dygraph_out(self):
         with base.dygraph.guard():
             np_x = np.random.random([10]).astype("float64")
-            data = base.dygraph.to_variable(np_x)
+            data = paddle.to_tensor(np_x)
             z = paddle.t(data)
             np_z = z.numpy()
             z_expected = np.array(np.transpose(np_x))
@@ -627,7 +621,7 @@ class TestTAPI(unittest.TestCase):
 
         with base.dygraph.guard():
             np_x = np.random.random([10, 5]).astype("float64")
-            data = base.dygraph.to_variable(np_x)
+            data = paddle.to_tensor(np_x)
             z = paddle.t(data)
             np_z = z.numpy()
             z_expected = np.array(np.transpose(np_x))
@@ -635,7 +629,7 @@ class TestTAPI(unittest.TestCase):
 
         with base.dygraph.guard():
             np_x = np.random.random([1, 5]).astype("float64")
-            data = base.dygraph.to_variable(np_x)
+            data = paddle.to_tensor(np_x)
             z = paddle.t(data)
             np_z = z.numpy()
             z_expected = np.array(np.transpose(np_x))
@@ -749,7 +743,7 @@ class TestTransposeDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 
@@ -781,7 +775,7 @@ class TestTransposeTripleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 

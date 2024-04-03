@@ -177,10 +177,7 @@ class TestDistBase(unittest.TestCase):
     def setUp(self):
         self._port_set = set()
         self._trainers = 2
-        self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
-            self._find_free_port(),
-            self._find_free_port(),
-        )
+        self._ps_endpoints = f"127.0.0.1:{self._find_free_port()},127.0.0.1:{self._find_free_port()}"
         self._python_interp = sys.executable
 
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -339,12 +336,12 @@ class TestDistBase(unittest.TestCase):
             np.testing.assert_allclose(tr0_out, need_result1, rtol=0, atol=0)
             np.testing.assert_allclose(tr1_out, need_result2, rtol=0, atol=0)
         elif col_type == "reduce_slicegather":
-            slicesize = input1.shape[0] // 2
-            tmp10 = input1[0:slicesize]
-            tmp11 = input2[0:slicesize]
+            slice_size = input1.shape[0] // 2
+            tmp10 = input1[0:slice_size]
+            tmp11 = input2[0:slice_size]
             need_result1 = np.concatenate((tmp10, tmp11), axis=1)
-            tmp20 = input1[slicesize:]
-            tmp21 = input2[slicesize:]
+            tmp20 = input1[slice_size:]
+            tmp21 = input2[slice_size:]
             need_result2 = np.concatenate((tmp20, tmp21), axis=1)
             np.testing.assert_allclose(tr0_out, need_result1)
             np.testing.assert_allclose(tr1_out, need_result2)

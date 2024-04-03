@@ -13,7 +13,7 @@
 | [PDSA-2023-022](./advisory/pdsa-2023-022_cn.md) | FPE in paddle.argmin and paddle.argmax               |   < 2.6.0   | Peng Zhou (zpbrent) from Shanghai University                    |    |
 | [PDSA-2023-021](./advisory/pdsa-2023-021_cn.md) | Null pointer dereference in paddle.crop              |   < 2.6.0   | Peng Zhou (zpbrent) from Shanghai University                    |    |
 | [PDSA-2023-020](./advisory/pdsa-2023-020_cn.md) | Command injection in _wget_download                  |   < 2.6.0   | huntr.com                                                       |    |
-| [PDSA-2023-019](./advisory/pdsa-2023-019_cn.md) | Command injection in get_online_pass_interval        |   < 2.6.0   | huntr.com                                                       |    |
+| [PDSA-2023-019](./advisory/pdsa-2023-019_cn.md) | Command injection in get_online_pass_interval        |   < 2.6.0   | huntr.com and leeya_bug                                         |    |
 | [PDSA-2023-018](./advisory/pdsa-2023-018_cn.md) | Heap buffer overflow in paddle.repeat_interleave     |   < 2.6.0   | Tong Liu of CAS-IIE                                             |    |
 | [PDSA-2023-017](./advisory/pdsa-2023-017_cn.md) | FPE in paddle.amin                                   |   < 2.6.0   | Tong Liu of CAS-IIE                                             |    |
 | [PDSA-2023-016](./advisory/pdsa-2023-016_cn.md) | Stack overflow in paddle.linalg.lu_unpack            |   < 2.6.0   | Tong Liu of CAS-IIE                                             |    |

@@ -82,7 +82,7 @@ function(detect_installed_gpus out_variable)
       set(CUDA_gpu_detect_output
           ${nvcc_out}
           CACHE INTERNAL
-                "Returned GPU architetures from detect_installed_gpus tool"
+                "Returned GPU architectures from detect_installed_gpus tool"
                 FORCE)
     endif()
   endif()
@@ -122,7 +122,7 @@ function(select_nvcc_arch_flags out_variable out_arch_bin)
   # set CUDA_ARCH_NAME strings (so it will be seen as dropbox in CMake-Gui)
   set(CUDA_ARCH_NAME
       ${archs_name_default}
-      CACHE STRING "Select target NVIDIA GPU achitecture.")
+      CACHE STRING "Select target NVIDIA GPU architecture.")
   set_property(CACHE CUDA_ARCH_NAME PROPERTY STRINGS "" ${archs_names})
   mark_as_advanced(CUDA_ARCH_NAME)
 
@@ -294,13 +294,13 @@ select_nvcc_arch_flags(NVCC_FLAGS_EXTRA NVCC_ARCH_BIN)
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${NVCC_FLAGS_EXTRA}")
 message(STATUS "NVCC_FLAGS_EXTRA: ${NVCC_FLAGS_EXTRA}")
 
-# Set C++14 support
+# Set C++17 support
 set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
 # So, don't set these flags here.
 set(CMAKE_CUDA_STANDARD 17)
 
-# (Note) For windows, if delete /W[1-4], /W1 will be added defaultly and conflic with -w
+# (Note) For windows, if delete /W[1-4], /W1 will be added defaultly and conflict with -w
 # So replace /W[1-4] with /W0
 if(WIN32)
   string(REGEX REPLACE "/W[1-4]" " /W0 " CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}")

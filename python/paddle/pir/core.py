@@ -15,7 +15,7 @@
 
 import numpy as np
 
-from paddle.base.core import VarDesc
+from paddle.base.core import Place, VarDesc
 from paddle.base.libpaddle import DataType
 from paddle.base.libpaddle.pir import (
     Program,
@@ -25,7 +25,7 @@ from paddle.base.libpaddle.pir import (
     set_insertion_point_to_block_end,
 )
 
-from .._pir_ops import parameter, set_parameter
+from .._pir_ops import data, parameter, set_parameter, set_persistable_value
 from ..base import unique_name
 from ..base.core import set_static_op_arg_pre_cast_hook
 from ..base.wrapped_decorator import signature_safe_contextmanager
@@ -58,6 +58,18 @@ np_type_to_paddle_type = {
     np.dtype("int8"): DataType.INT8,
     np.dtype("complex64"): DataType.COMPLEX64,
     np.dtype("complex128"): DataType.COMPLEX128,
+    np.float16: DataType.FLOAT16,
+    np.float32: DataType.FLOAT32,
+    np.float64: DataType.FLOAT64,
+    np.int32: DataType.INT32,
+    np.int16: DataType.INT16,
+    np.int64: DataType.INT64,
+    np.bool_: DataType.BOOL,
+    np.uint16: DataType.BFLOAT16,
+    np.uint8: DataType.UINT8,
+    np.int8: DataType.INT8,
+    np.complex64: DataType.COMPLEX64,
+    np.complex128: DataType.COMPLEX128,
 }
 
 
@@ -74,7 +86,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
 
     """
     # Convert the data type string to numpy data type.
-    if isinstance(np_dtype, str) and np_dtype == "bfloat16":
+    if np_dtype == "bfloat16":
         # since there is still no support for bfloat16 in NumPy,
         # uint16 is used for casting bfloat16
         dtype = np.dtype("uint16")
@@ -274,22 +286,16 @@ def create_parameter(
     name=None,
     **kwargs,
 ):
-    regularizer = None
-    need_clip = None
     if 'initializer' not in kwargs:
         raise ValueError(
             "initializer is None, if you want to create parameter, please pass its initializer."
         )
-    if 'regularizer' in kwargs:
-        regularizer = kwargs['regularizer']
-    if 'need_clip' in kwargs:
-        need_clip = kwargs['need_clip']
     if dtype is not None:
         if not isinstance(dtype, DataType):
             dtype = convert_np_dtype_to_dtype_(dtype)
-    op_result_name = name
-    if not op_result_name:
-        op_result_name = unique_name.generate('parameter')
+    value_name = name
+    if not value_name:
+        value_name = unique_name.generate('parameter')
     startup_program = default_startup_program()
     main_program = default_main_program()
     parameter_meta = ParameterMeta(shape, dtype)
@@ -300,24 +306,95 @@ def create_parameter(
             parameter_meta, startup_program.global_block()
         )
         init_result.persistable = True
-        set_parameter(init_result, op_result_name)
+        set_parameter(init_result, value_name)
 
-    main_program.move_parameters_from(startup_program)
+    main_program.set_parameters_from(startup_program)
     with program_guard(default_main_program()):
         reset_insertion_point_to_start()
-        param = parameter(op_result_name, dtype, shape)
-        trainable = kwargs.get('trainable', True)
-        param.stop_gradient = not trainable
+        param = parameter(value_name)
         param.persistable = True
 
-    param.regularizer = regularizer
-    param.need_clip = need_clip
+    param.trainable = kwargs.get('trainable', True)
+    param.stop_gradient = not param.trainable
+    param.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
+    param.regularizer = kwargs.get('regularizer', None)
+    param.do_model_average = kwargs.get('do_model_average', None)
+    param.need_clip = kwargs.get('need_clip', True)
+    param.is_distributed = False
+    param.is_parameter = True
     return param
+
+
+def create_persistable_value(dtype, shape, name=None, **kwargs):
+    """
+    Create Value that is persistable in startup program and main program. The Value is initilized in startup program and
+    used in main program.
+
+    Returns:
+        Value: The created Value from main program
+    """
+    if 'initializer' not in kwargs:
+        raise ValueError(
+            "initializer is None, if you want to create parameter, please pass its initializer."
+        )
+    if dtype is not None:
+        if not isinstance(dtype, DataType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+    value_name = name
+    if not value_name:
+        value_name = unique_name.generate('persistable_value')
+    startup_program = default_startup_program()
+    main_program = default_main_program()
+
+    with program_guard(startup_program):
+        initializer = kwargs['initializer']
+        parameter_meta = ParameterMeta(shape, dtype)
+        init_result = initializer(
+            parameter_meta, startup_program.global_block()
+        )
+        init_result.persistable = True
+        set_persistable_value(init_result, value_name)
+
+    with program_guard(default_main_program()):
+        reset_insertion_point_to_start()
+        persist_value = data(value_name, shape, dtype, Place())
+        persist_value.persistable = True
+
+    return persist_value
+
+
+def _get_persistable_value(target_program, value_info):
+    """
+    Get a persistable value from a target program by using value that is in other program.
+    """
+    with program_guard(target_program):
+        target_value = data(
+            value_info.name, value_info.shape, value_info.dtype, Place()
+        )
+        target_value.persistable = True
+    return target_value
+
+
+def _get_parameter(target_program, param_info):
+    """
+    Get a parameter from a target program by using parameter that is in other program.
+    """
+    target_program.set_parameters_from(default_startup_program())
+    with program_guard(target_program):
+        target_param = parameter(param_info.name)
+        target_param.persistable = True
+        target_param.stop_gradient = param_info.stop_gradient
+
+    if hasattr(param_info, 'regularizer'):
+        target_param.regularizer = param_info.regularizer
+    if hasattr(param_info, 'need_clip'):
+        target_param.need_clip = param_info.need_clip
+    return target_param
 
 
 def _convert_into_value(tensor):
     """
-    Convert Tensor into OpResult.
+    Convert Tensor into Value.
     """
     import paddle
     from paddle.jit.pir_dy2static.parameter_recorder import (

@@ -43,9 +43,6 @@ class DenseTensor;
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
-namespace operators = paddle::operators;
-namespace memory = paddle::memory;
-namespace distributed = paddle::distributed;
 
 void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   auto x_var = scope->Var("x");
@@ -203,7 +200,7 @@ void RunBrpcPushSparse() {
   auto ph_host = paddle::distributed::PSHost(ip_, port_, 0);
   host_sign_list_.push_back(ph_host.SerializeToString());
 
-  // Srart Server
+  // Start Server
   std::thread server_thread(RunServer);
   sleep(1);
 

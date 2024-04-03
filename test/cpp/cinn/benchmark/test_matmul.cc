@@ -73,9 +73,9 @@ std::vector<ir::Tensor> MatmulBlockTester::CreateSpecificStrategy(
   auto k1 = Var(input_shapes_[0][1], "k1");
   CHECK_EQ(input_shapes_.size(), 2U) << "matmul's input shape should be 2.\n";
   CHECK_EQ(input_shapes_[0].size(), 2U)
-      << "matmul's input teosor's shape should be 2.\n";
+      << "matmul's input tensor's shape should be 2.\n";
   CHECK_EQ(input_shapes_[1].size(), 2U)
-      << "matmul's input teosor's shape should be 2.\n";
+      << "matmul's input tensor's shape should be 2.\n";
   CHECK_EQ(input_shapes_[0][1], input_shapes_[1][0])
       << "matmul's reduce axis shape should be same\n";
   auto C = Compute(
@@ -109,9 +109,9 @@ std::vector<ir::Tensor> MatmulVectorizeTester::CreateSpecificStrategy(
   auto k1 = Var(input_shapes_[0][1], "k1");
   CHECK_EQ(input_shapes_.size(), 2U) << "matmul's input shape should be 2.\n";
   CHECK_EQ(input_shapes_[0].size(), 2U)
-      << "matmul's input teosor's shape should be 2.\n";
+      << "matmul's input tensor's shape should be 2.\n";
   CHECK_EQ(input_shapes_[1].size(), 2U)
-      << "matmul's input teosor's shape should be 2.\n";
+      << "matmul's input tensor's shape should be 2.\n";
   CHECK_EQ(input_shapes_[0][1], input_shapes_[1][0])
       << "matmul's reduce axis shape should be same\n";
   auto C = Compute(
@@ -146,9 +146,9 @@ std::vector<ir::Tensor> MatmulLoopPermutationTester::CreateSpecificStrategy(
   auto k1 = Var(input_shapes_[0][1], "k1");
   CHECK_EQ(input_shapes_.size(), 2U) << "matmul's input shape should be 2.\n";
   CHECK_EQ(input_shapes_[0].size(), 2U)
-      << "matmul's input teosor's shape should be 2.\n";
+      << "matmul's input tensor's shape should be 2.\n";
   CHECK_EQ(input_shapes_[1].size(), 2U)
-      << "matmul's input teosor's shape should be 2.\n";
+      << "matmul's input tensor's shape should be 2.\n";
   CHECK_EQ(input_shapes_[0][1], input_shapes_[1][0])
       << "matmul's reduce axis shape should be same\n";
   auto C = Compute(
@@ -183,9 +183,9 @@ std::vector<ir::Tensor> MatmulArrayPackingTester::CreateSpecificStrategy(
   std::vector<ir::Tensor> outs;
   CHECK_EQ(input_shapes_.size(), 2U) << "matmul's input shape should be 2.\n";
   CHECK_EQ(input_shapes_[0].size(), 2U)
-      << "matmul's input teosor's shape should be 2.\n";
+      << "matmul's input tensor's shape should be 2.\n";
   CHECK_EQ(input_shapes_[1].size(), 2U)
-      << "matmul's input teosor's shape should be 2.\n";
+      << "matmul's input tensor's shape should be 2.\n";
   CHECK_EQ(input_shapes_[0][1], input_shapes_[1][0])
       << "matmul's reduce axis shape should be same\n";
 

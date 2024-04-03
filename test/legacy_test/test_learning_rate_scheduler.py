@@ -121,7 +121,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
         with base.dygraph.guard():
             x = np.random.uniform(-1, 1, [3, 10]).astype("float32")
             linear = paddle.nn.Linear(10, 10)
-            input = base.dygraph.to_variable(x)
+            input = paddle.to_tensor(x)
 
             Exponential_scheduler = paddle.optimizer.lr.ExponentialDecay(
                 learning_rate=0.1,
@@ -253,9 +253,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 self.assertAlmostEqual(
                     right_result,
                     base_result,
-                    msg='Failed lr scheduler in step {}, Python result is {}, Fluid result is {}'.format(
-                        step, right_result, base_result
-                    ),
+                    msg=f'Failed lr scheduler in step {step}, Python result is {right_result}, Fluid result is {base_result}',
                 )
 
     def test_LinearLrWarmup(self):
@@ -311,9 +309,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 self.assertAlmostEqual(
                     right_result,
                     base_result,
-                    msg='Failed lr scheduler in epoch {}, Python result is {}, Fluid result is {}'.format(
-                        epoch, right_result, base_result
-                    ),
+                    msg=f'Failed lr scheduler in epoch {epoch}, Python result is {right_result}, Fluid result is {base_result}',
                 )
 
             with self.assertRaises(ValueError):
@@ -350,9 +346,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 self.assertAlmostEqual(
                     right_result,
                     base_result,
-                    msg='Failed lr scheduler in epoch {}, Python result is {}, Fluid result is {}'.format(
-                        epoch, right_result, base_result
-                    ),
+                    msg=f'Failed lr scheduler in epoch {epoch}, Python result is {right_result}, Fluid result is {base_result}',
                 )
 
             with self.assertRaises(TypeError):
@@ -382,9 +376,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 self.assertAlmostEqual(
                     right_result,
                     base_result,
-                    msg='Failed lr scheduler in epoch {}, Python result is {}, Fluid result is {}'.format(
-                        epoch, right_result, base_result
-                    ),
+                    msg=f'Failed lr scheduler in epoch {epoch}, Python result is {right_result}, Fluid result is {base_result}',
                 )
 
             with self.assertRaises(TypeError):
@@ -426,12 +418,7 @@ class TestLearningRateDecay(unittest.TestCase):
             self.assertAlmostEqual(
                 python_decayed_lr,
                 lr_val[0],
-                msg='Failed lr scheduler is {}, step {}, Python result is {}, Fluid result is {}'.format(
-                    python_decay_fn.__name__,
-                    str(step),
-                    str(python_decayed_lr),
-                    str(lr_val[0]),
-                ),
+                msg=f'Failed lr scheduler is {python_decay_fn.__name__}, step {str(step)}, Python result is {str(python_decayed_lr)}, Fluid result is {str(lr_val[0])}',
             )
 
     def test_decay(self):
@@ -553,12 +540,7 @@ class TestLinearWamrupLearningRateDecay(unittest.TestCase):
             self.assertAlmostEqual(
                 python_decayed_lr,
                 lr_val[0],
-                msg='Test {} Failed, step {}, Python result is {}, Fluid result is {}'.format(
-                    python_decay_fn.__name__,
-                    str(step),
-                    str(python_decayed_lr),
-                    str(lr_val[0]),
-                ),
+                msg=f'Test {python_decay_fn.__name__} Failed, step {str(step)}, Python result is {str(python_decayed_lr)}, Fluid result is {str(lr_val[0])}',
             )
 
 
@@ -588,9 +570,7 @@ class TestLinearWamrupLearningRateDecayWithScalarInput(unittest.TestCase):
             self.assertAlmostEqual(
                 expected_lr,
                 lr_val[0],
-                msg='Test failed, step {}, expected {}, but got {}'.format(
-                    step, expected_lr, lr_val[0]
-                ),
+                msg=f'Test failed, step {step}, expected {expected_lr}, but got {lr_val[0]}',
             )
 
     def test_scalar_lr(self):

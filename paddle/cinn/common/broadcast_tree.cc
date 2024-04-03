@@ -17,8 +17,7 @@
 #include <optional>
 #include <unordered_map>
 
-#include "paddle/cinn/common/dim_expr_simplify.h"
-#include "paddle/cinn/common/dim_expr_util.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 namespace cinn::common {
 
@@ -116,77 +115,13 @@ void ForEachBroadcastDimExpr(const BroadcastLeaf& leaves,
   }
 }
 
-std::optional<symbol::Broadcastable<symbol::DimExpr>> GetFirstCstrBroadcastable(
-    const BroadcastLeaf& leaves) {
-  std::optional<symbol::Broadcastable<symbol::DimExpr>> ret;
-  ForEachBroadcastDimExpr(leaves, [&](const auto& broadcast) -> bool {
-    const auto& operands = broadcast.operands;
-    std::optional<symbol::DimExpr> lhs_symbol;
-    std::optional<symbol::DimExpr> rhs_symbol;
-    size_t i = 0;
-    for (; i < operands->size(); ++i) {
-      if (operands->at(i).template isa<std::string>()) {
-        lhs_symbol = operands->at(i);
-        break;
-      }
-    }
-    for (i++; i < operands->size(); ++i) {
-      if (operands->at(i).template isa<std::string>()) {
-        rhs_symbol = operands->at(i);
-        break;
-      }
-    }
-    if (lhs_symbol.has_value() && rhs_symbol.has_value()) {
-      CHECK(lhs_symbol != rhs_symbol);
-      ret = symbol::Broadcastable<symbol::DimExpr>{lhs_symbol.value(),
-                                                   rhs_symbol.value()};
-      return true;
-    }
-    return false;
-  });
-  if (ret.has_value()) return ret.value();
-  ForEachBroadcastDimExpr(leaves, [&](const auto& broadcast) -> bool {
-    const auto& operands = broadcast.operands;
-    std::optional<symbol::DimExpr> lhs_symbol;
-    std::optional<symbol::DimExpr> rhs;
-    for (const auto& operand : *operands) {
-      if (operand.template isa<std::string>()) {
-        lhs_symbol = operand;
-        break;
-      }
-    }
-    for (const auto& operand : *operands) {
-      if (operand != lhs_symbol) {
-        rhs = operand;
-        break;
-      }
-    }
-    if (lhs_symbol.has_value() && rhs.has_value()) {
-      ret = symbol::Broadcastable<symbol::DimExpr>{lhs_symbol.value(),
-                                                   rhs.value()};
-      return true;
-    }
-    return false;
-  });
-  if (ret.has_value()) return ret.value();
-  ForEachBroadcastDimExpr(leaves, [&](const auto& broadcast) -> bool {
-    const auto& operands = broadcast.operands;
-    CHECK_GE(operands->size(), 2);
-    CHECK(operands->at(0) != operands->at(1));
-    ret = symbol::Broadcastable<symbol::DimExpr>{operands->at(0),
-                                                 operands->at(1)};
-    return true;
-  });
-  return ret;
-}
-
 using Pattern2Placement = std::unordered_map<symbol::DimExpr, symbol::DimExpr>;
 
 Pattern2Placement ConstructCstrLhsEqRhsReplacement(
     const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition) {
   auto [lhs, rhs] = *broadcastable_condition;
-  if (lhs.isa<std::string>()) return Pattern2Placement{{lhs, rhs}};
   if (rhs.isa<std::string>()) return Pattern2Placement{{rhs, lhs}};
+  if (lhs.isa<std::string>()) return Pattern2Placement{{lhs, rhs}};
   return Pattern2Placement{{lhs, rhs}};
 }
 
@@ -207,7 +142,8 @@ symbol::DimExpr GetCstrLhsEqRhsDimExpr(
     const symbol::DimExpr& dim_expr) {
   const auto& pattern2replacement =
       ConstructCstrLhsEqRhsReplacement(broadcastable_condition);
-  return SimplifyDimExpr(SubstituteDimExpr(dim_expr, pattern2replacement));
+  return symbol::SimplifyDimExpr(
+      symbol::SubstituteDimExpr(dim_expr, pattern2replacement));
 }
 
 symbol::DimExpr GetCstrLhsEqOneDimExpr(
@@ -215,7 +151,8 @@ symbol::DimExpr GetCstrLhsEqOneDimExpr(
     const symbol::DimExpr& dim_expr) {
   const auto& pattern2replacement =
       ConstructCstrLhsEqOneReplacement(broadcastable_condition);
-  return SimplifyDimExpr(SubstituteDimExpr(dim_expr, pattern2replacement));
+  return symbol::SimplifyDimExpr(
+      symbol::SubstituteDimExpr(dim_expr, pattern2replacement));
 }
 
 symbol::DimExpr GetCstrRhsEqOneDimExpr(
@@ -223,7 +160,8 @@ symbol::DimExpr GetCstrRhsEqOneDimExpr(
     const symbol::DimExpr& dim_expr) {
   const auto& pattern2replacement =
       ConstructCstrRhsEqOneReplacement(broadcastable_condition);
-  return SimplifyDimExpr(SubstituteDimExpr(dim_expr, pattern2replacement));
+  return symbol::SimplifyDimExpr(
+      symbol::SubstituteDimExpr(dim_expr, pattern2replacement));
 }
 
 typedef symbol::DimExpr (*ConvertDimExprT)(
@@ -288,11 +226,122 @@ BroadcastBranch<BroadcastTree> ConstructBroadcastBranch(
 
 }  // namespace
 
+std::optional<symbol::Broadcastable<symbol::DimExpr>> GetFirstCstrBroadcastable(
+    const BroadcastLeaf& leaves) {
+  std::optional<symbol::Broadcastable<symbol::DimExpr>> ret;
+  ForEachBroadcastDimExpr(leaves, [&](const auto& broadcast) -> bool {
+    const auto& operands = broadcast.operands;
+    std::optional<symbol::DimExpr> lhs_symbol;
+    std::optional<symbol::DimExpr> rhs_symbol;
+    size_t i = 0;
+    for (; i < operands->size(); ++i) {
+      if (operands->at(i).template isa<std::string>()) {
+        lhs_symbol = operands->at(i);
+        break;
+      }
+    }
+    for (i++; i < operands->size(); ++i) {
+      if (operands->at(i).template isa<std::string>()) {
+        rhs_symbol = operands->at(i);
+        break;
+      }
+    }
+    if (lhs_symbol.has_value() && rhs_symbol.has_value()) {
+      CHECK(lhs_symbol != rhs_symbol)
+          << lhs_symbol.value() << " != " << rhs_symbol.value();
+      ret = symbol::Broadcastable<symbol::DimExpr>{lhs_symbol.value(),
+                                                   rhs_symbol.value()};
+      return true;
+    }
+    return false;
+  });
+  if (ret.has_value()) return ret.value();
+  ForEachBroadcastDimExpr(leaves, [&](const auto& broadcast) -> bool {
+    const auto& operands = broadcast.operands;
+    std::optional<symbol::DimExpr> lhs_symbol;
+    std::optional<symbol::DimExpr> rhs;
+    for (const auto& operand : *operands) {
+      if (operand.template isa<std::string>()) {
+        lhs_symbol = operand;
+        break;
+      }
+    }
+    for (const auto& operand : *operands) {
+      if (operand != lhs_symbol) {
+        rhs = operand;
+        break;
+      }
+    }
+    if (lhs_symbol.has_value() && rhs.has_value()) {
+      ret = symbol::Broadcastable<symbol::DimExpr>{lhs_symbol.value(),
+                                                   rhs.value()};
+      return true;
+    }
+    return false;
+  });
+  if (ret.has_value()) return ret.value();
+  ForEachBroadcastDimExpr(leaves, [&](const auto& broadcast) -> bool {
+    const auto& operands = broadcast.operands;
+    CHECK_GE(operands->size(), 2);
+    CHECK(operands->at(0) != operands->at(1));
+    ret = symbol::Broadcastable<symbol::DimExpr>{operands->at(0),
+                                                 operands->at(1)};
+    return true;
+  });
+  return ret;
+}
+
 BroadcastTree ConstructBroadcastTree(const BroadcastLeaf& leaves) {
   std::optional<symbol::Broadcastable<symbol::DimExpr>>
       broadcastable_condition = GetFirstCstrBroadcastable(leaves);
   if (!broadcastable_condition.has_value()) return leaves;
   return ConstructBroadcastBranch(broadcastable_condition.value(), leaves);
+}
+
+namespace {
+
+std::string ToTxtStringImpl(const BroadcastBranch<BroadcastTree>& branch) {
+  std::stringstream ss;
+  const auto& [cstr, lhs_eq_rhs, lhs_eq_one, rhs_eq_one] = branch.tuple();
+  const auto& [lhs, rhs] = *cstr;
+  const auto& Put = [&](const std::string& key, const auto& value) {
+    ss << "\"" << key << "\": ";
+    ss << ToTxtString(value);
+    ss << ",\n ";
+  };
+  ss << "{";
+  ss << "\"$lhs\": " << lhs << ",\n ";
+  ss << "\"$rhs\": " << rhs << ",\n ";
+  Put("$lhs == $rhs", lhs_eq_rhs);
+  Put("$lhs == 1", lhs_eq_one);
+  Put("$rhs == 1", rhs_eq_one);
+  ss << "}";
+  return ss.str();
+}
+
+std::string ToTxtStringImpl(const BroadcastLeaf& leaf) {
+  std::stringstream ss;
+  ss << "[";
+  for (const auto& dim_exprs : *leaf) {
+    ss << "[";
+    int j = 0;
+    for (const auto& dim_expr : dim_exprs) {
+      if (j++) {
+        ss << ",";
+      }
+      ss << dim_expr;
+    }
+    ss << "]";
+  }
+  ss << "]";
+  return ss.str();
+}
+
+}  // namespace
+
+std::string ToTxtString(const BroadcastTree& tree) {
+  return std::visit([&](const auto& impl) { return ToTxtStringImpl(impl); },
+                    tree.variant());
 }
 
 }  // namespace cinn::common

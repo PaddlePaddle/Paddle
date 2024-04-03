@@ -17,7 +17,7 @@ import logging
 import paddle
 
 from ..utils.log_utils import get_logger
-from .process_mesh import retrive_unique_id_for_process_mesh
+from .process_mesh import retrieve_unique_id_for_process_mesh
 from .static.utils import _get_idx_in_axis
 
 _logger = get_logger(logging.INFO)
@@ -29,7 +29,7 @@ _enable_random_control = False
 _basic_seed = 42
 _basic_name = ""
 
-# use Prime number as offset to avoid confict
+# use Prime number as offset to avoid conflict
 _mesh_offset = 173
 _dim_offsets = [11, 23, 37, 73]
 
@@ -57,7 +57,7 @@ def parallel_manual_seed(seed, name=""):
 
     This function should be called only once before auto parallel compiles the computation graph (e.g. auto_parallel.engine.prepare() or fit()).
 
-    This seed only affects how randomness-relative **operators** (dropout, fuse op with dropout inside, etc) are execute amonge mesh, and would NOT affect other processe like Parameter initialization.
+    This seed only affects how randomness-relative **operators** (dropout, fuse op with dropout inside, etc) are execute among mesh, and would NOT affect other process like Parameter initialization.
 
     Examples:
         # seed relative to training step
@@ -85,12 +85,10 @@ def determinate_rng(
     ), "Cannot provide dims mapping and placements at same time."
     # TODO(JZ-LIANG) Support Mesh with any high rank
     # use a string to unique integer hashing algorithm for seed computation.
-    # instead of using offsets to coodinate seed across devices.
+    # instead of using offsets to coordinate seed across devices.
     if len(process_mesh.shape) > 4:
         raise NotImplementedError(
-            "Auto Parallel Random Control for Mesh's rank > 4 is NOT supported! Got {}".format(
-                str(process_mesh)
-            )
+            f"Auto Parallel Random Control for Mesh's rank > 4 is NOT supported! Got {str(process_mesh)}"
         )
     global _basic_seed
     seed_ = _basic_seed
@@ -102,7 +100,7 @@ def determinate_rng(
 
     # FIXME
     # unique_id = process_mesh.unique_id
-    unique_id = retrive_unique_id_for_process_mesh(
+    unique_id = retrieve_unique_id_for_process_mesh(
         process_mesh.shape, process_mesh.process_ids
     )
     sharding_expr = name_ + f'mesh:{unique_id}'
@@ -131,9 +129,7 @@ def determinate_rng(
     else:
         assert (
             seed_ not in _rng_name_to_seed.values()
-        ), "Seed Confilt! current seed: {}, current sharding expr: {}, generated seed: {}".format(
-            seed_, sharding_expr, _rng_name_to_seed
-        )
+        ), f"Seed Conflict! current seed: {seed_}, current sharding expr: {sharding_expr}, generated seed: {_rng_name_to_seed}"
         _rng_name_to_seed[sharding_expr] = seed_
         if paddle.in_dynamic_mode():
             # for dygraph, just init the seed when meeting a new seed

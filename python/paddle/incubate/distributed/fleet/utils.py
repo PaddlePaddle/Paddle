@@ -119,13 +119,7 @@ def check_pruned_program_vars(train_prog, pruned_prog):
             or var.dtype != train_prog_var.dtype
         ):
             logger.error(
-                "variable: {} not match. in pruned program shape: {} dtype:{}, in train program shape: {} dtype: {}".format(
-                    var_name,
-                    var.shape,
-                    var.dtype,
-                    train_prog_var.shape,
-                    train_prog_var.dtype,
-                )
+                f"variable: {var_name} not match. in pruned program shape: {var.shape} dtype:{var.dtype}, in train program shape: {train_prog_var.shape} dtype: {train_prog_var.dtype}"
             )
             is_match = False
     return is_match
@@ -265,10 +259,8 @@ def try_load_model_vars(
             orig_shape = orig_para_shape.get(each_var.name)
             if new_shape != orig_shape:
                 raise RuntimeError(
-                    "Shape not matching: the Program requires a parameter with a shape of ({}), "
-                    "while the loaded parameter (namely [ {} ]) has a shape of  ({}).".format(
-                        orig_shape, each_var.name, new_shape
-                    )
+                    f"Shape not matching: the Program requires a parameter with a shape of ({orig_shape}), "
+                    f"while the loaded parameter (namely [ {each_var.name} ]) has a shape of  ({new_shape})."
                 )
 
         # check feed/fetch vars in program and config
@@ -284,9 +276,7 @@ def try_load_model_vars(
             and feed_target_names != feed_config.feeded_vars_names
         ):
             logger.warning(
-                "feed vars in program and config are diff: feed in program: {}. feed in config {}.".format(
-                    feed_target_names, feed_config.feeded_vars_names
-                )
+                f"feed vars in program and config are diff: feed in program: {feed_target_names}. feed in config {feed_config.feeded_vars_names}."
             )
             feed_name_list = feed_config.feeded_vars_names
             # remove feed op in inference_program. new feed op will be added in exe.run
@@ -303,9 +293,7 @@ def try_load_model_vars(
             and fetch_targets_names != fetch_config.fetch_vars_names
         ):
             logger.warning(
-                "fetch vars in program and config are diff: fetch in program: {}. fetch in config {}.".format(
-                    fetch_targets_names, fetch_config.fetch_vars_names
-                )
+                f"fetch vars in program and config are diff: fetch in program: {fetch_targets_names}. fetch in config {fetch_config.fetch_vars_names}."
             )
             fetch_list = [
                 inference_program.global_block().var(i)
@@ -344,11 +332,7 @@ def try_load_model_vars(
             var_shape = var.shape[1:]
             if tensor_shape != var_shape:
                 raise RuntimeError(
-                    "feed variable '{}' shape not match. infer program  shape: {}. feed tensor shape: {}".format(
-                        feed_config.feeded_vars_names[i],
-                        var_shape,
-                        tensor_shape,
-                    )
+                    f"feed variable '{feed_config.feeded_vars_names[i]}' shape not match. infer program  shape: {var_shape}. feed tensor shape: {tensor_shape}"
                 )
 
         if not feed_config.feeded_vars_filelist:

@@ -61,7 +61,8 @@ PD_REGISTER_KERNEL(max,
                    XPU,
                    ALL_LAYOUT,
                    phi::MaxKernel,
-                   float,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

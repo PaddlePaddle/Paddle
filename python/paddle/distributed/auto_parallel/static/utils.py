@@ -297,8 +297,8 @@ def _get_comm_group(processes, shape, axis, rank):
     assert (
         rank in processes
     ), f"rank [{rank}] is NOT in processes group {processes}"
-    rank_relatvie = processes.index(rank)
-    coordinate = _linear_idx2coordinate(shape, rank_relatvie)
+    rank_relative = processes.index(rank)
+    coordinate = _linear_idx2coordinate(shape, rank_relative)
     coordinates_in_group = [coordinate[:] for i in range(shape[axis])]
 
     # select comm group
@@ -319,7 +319,7 @@ def _get_idx_in_axis(processes, shape, axis, rank):
     Given a rank and the processes mesh the rank belongs to,
     compute the index of the rank in given axis.
 
-    Example: 27 processes managed in a 3-Dimensinal mesh with shape of [3, 3, 3].
+    Example: 27 processes managed in a 3-Dimensional mesh with shape of [3, 3, 3].
     the index of rank 22 are:
     in axis 0: 1
     in axis 1: 1
@@ -328,8 +328,8 @@ def _get_idx_in_axis(processes, shape, axis, rank):
 
     # NOTE _linear_idx2coordinate assume processes mesh start with 0 and continuous
     #  tricks to support processes mesh when it is not start with 0 or continuous
-    rank_relatvie = processes.index(rank)
-    coordinate = _linear_idx2coordinate(shape, rank_relatvie)
+    rank_relative = processes.index(rank)
+    coordinate = _linear_idx2coordinate(shape, rank_relative)
     return coordinate[axis]
 
 
@@ -364,18 +364,14 @@ def _coordinate2linear_idx(mesh_shape, coordinate):
 
     assert len(mesh_shape) == len(
         coordinate
-    ), "coordinate should have the same size as mesh shape, but got shape: {}, coordinate: {}".format(
-        mesh_shape, coordinate
-    )
+    ), f"coordinate should have the same size as mesh shape, but got shape: {mesh_shape}, coordinate: {coordinate}"
     for i in range(len(mesh_shape)):
         assert (
             coordinate[i] >= 0
         ), f"index in dimension [{i}] is least than zero. coordinate: {coordinate}"
         assert (
             coordinate[i] < mesh_shape[i]
-        ), "index beyond extent in dimension [{}]. shape: {}, coordinate: {}".format(
-            i, mesh_shape, coordinate
-        )
+        ), f"index beyond extent in dimension [{i}]. shape: {mesh_shape}, coordinate: {coordinate}"
 
     base = mesh_shape[-1]
     linear_idx = coordinate[-1]
@@ -410,9 +406,7 @@ def _linear_idx2coordinate(mesh_shape, linear_idx):
     assert linear_idx >= 0, f"linear index [{linear_idx}] is least than zero"
     assert linear_idx < np.prod(
         mesh_shape
-    ), "linear index beyond the extent of mesh shape. shape: {}, linear index: {}".format(
-        mesh_shape, linear_idx
-    )
+    ), f"linear index beyond the extent of mesh shape. shape: {mesh_shape}, linear index: {linear_idx}"
 
     base = 1
     coordinate = [-1] * len(mesh_shape)
@@ -861,7 +855,7 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
     """
     Merge parameters with previous dist_attr and slice parameters with current dist_attr
 
-    Arags:
+    Args:
         dist_param_dict(dict): parameters' value of all ranks.
         pre_dist_attr(dict): parameters' dist_attr of last training process.
         cur_dist_attr(dict): parameters' dist_attr of current training process.
@@ -872,9 +866,7 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
     assert _check_dist_attr(pre_dist_attr), "'pre_dist_attr' cannot be None."
     assert isinstance(
         dist_param_dict, dict
-    ), "The type of 'dist_param_dict' should be 'dict', but got {}.".format(
-        str(type(dist_param_dict))
-    )
+    ), f"The type of 'dist_param_dict' should be 'dict', but got {str(type(dist_param_dict))}."
     for name, value in dist_param_dict.items():
         if not isinstance(name, str):
             raise TypeError(
@@ -935,15 +927,11 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
 
     if param_not_in_pre:
         warnings.warn(
-            "Parameters '{}' are not found in last training process.".format(
-                str(param_not_in_pre)
-            )
+            f"Parameters '{str(param_not_in_pre)}' are not found in last training process."
         )
     if param_not_in_cur:
         warnings.warn(
-            "Parameters '{}' are not found in current training process.".format(
-                str(param_not_in_cur)
-            )
+            f"Parameters '{str(param_not_in_cur)}' are not found in current training process."
         )
 
     return dist_param_dict
@@ -962,14 +950,14 @@ def _merge_parameter_with_dist_attr(param_list, dist_attr):
     )
     # merge the parameter with dist_attr
     partition_param_list = []
-    merged_partiton = []
+    merged_partition = []
     for process in process_group:
         partition_index = Resharder.compute_partition_index(
             process, complete_shape, dims_mapping, process_shape, process_group
         )
         index = process_group.index(process)
-        if partition_index not in merged_partiton:
-            merged_partiton.append(partition_index)
+        if partition_index not in merged_partition:
+            merged_partition.append(partition_index)
             _merge_parameter(
                 partition_param_list,
                 param_list[index],
@@ -1012,7 +1000,7 @@ def _merge_parameter(
     partition_param_list, param, partition_index, complete_shape
 ):
     """
-    Merge partitial parameters to a complete one.
+    Merge partial parameters to a complete one.
 
     Returns:
         None
@@ -1295,9 +1283,7 @@ def set_var_dist_attr(dist_context, var, dims_mapping, process_mesh, **kwargs):
         tensor_dist_attr.process_mesh = process_mesh
     else:
         raise ValueError(
-            "{} must be a instance of ProcessMesh or list, but receive {}".format(
-                process_mesh, type(process_mesh)
-            )
+            f"{process_mesh} must be a instance of ProcessMesh or list, but receive {type(process_mesh)}"
         )
     if "mark_annotated" in kwargs and kwargs["mark_annotated"]:
         tensor_dist_attr.mark_annotated("dims_mapping")
@@ -1355,7 +1341,7 @@ def update_op_dims_mapping_by_default_dist_impl(dist_op):
     changed = False
     op_dist_attr = dist_op.dist_attr
     op_desc = dist_op.serial_op.desc
-    # The following statement will be replaced by a more elegent way
+    # The following statement will be replaced by a more elegant way
     if op_desc.type() == "shape" or op_desc.type() == "slice":
         return False
     output_names = op_desc.output_names()
@@ -1372,9 +1358,7 @@ def update_op_dims_mapping_by_default_dist_impl(dist_op):
             for idx, mapping in enumerate(dims_mapping[1:]):
                 assert (
                     mapping == -1
-                ), "{} only the batch dimension (0-dim) can be sharded, but the dimension {} is sharded by {} part.".format(
-                    op_desc.type(), idx, mapping
-                )
+                ), f"{op_desc.type()} only the batch dimension (0-dim) can be sharded, but the dimension {idx} is sharded by {mapping} part."
         if len(dims_mapping) >= 1:
             batch_dim_mappings.append(dims_mapping[0])
     for arg_name in op_desc.output_arg_names():
@@ -1387,24 +1371,18 @@ def update_op_dims_mapping_by_default_dist_impl(dist_op):
                 for idx, mapping in enumerate(dims_mapping[1:]):
                     assert (
                         mapping == -1
-                    ), "{} only the batch dimension (0-dim) can be sharded, but the dimension {} is sharded by {} part.".format(
-                        op_desc.type(), idx, mapping
-                    )
+                    ), f"{op_desc.type()} only the batch dimension (0-dim) can be sharded, but the dimension {idx} is sharded by {mapping} part."
             if len(dims_mapping) >= 1:
                 batch_dim_mappings.append(dims_mapping[0])
         else:
             assert (
                 dims_mapping[0] == -1
-            ), "{} only the batch dimension (1-dim) of XShape can be sharded, but the dimension 0 is sharded by {} part.".format(
-                op_desc.type(), mapping
-            )
+            ), f"{op_desc.type()} only the batch dimension (1-dim) of XShape can be sharded, but the dimension 0 is sharded by {mapping} part."
             if len(dims_mapping) > 2:
                 for idx, mapping in enumerate(dims_mapping[2:]):
                     assert (
                         mapping == -1
-                    ), "{} only the batch dimension (1-dim) of XShape can be sharded, but the dimension {} is sharded by {} part.".format(
-                        op_desc.type(), idx, mapping
-                    )
+                    ), f"{op_desc.type()} only the batch dimension (1-dim) of XShape can be sharded, but the dimension {idx} is sharded by {mapping} part."
             batch_dim_mappings.append(dims_mapping[1])
 
     compatible_dim_mapping = compute_compatible_dim_mapping(batch_dim_mappings)
@@ -1539,10 +1517,10 @@ def get_all_distributed_main_program(
 
 class SerialProgramInfo:
     def __init__(
-        self, train_program, satrtup_program, loss, optimizer, cluster=None
+        self, train_program, startup_program, loss, optimizer, cluster=None
     ):
         self._train_program = train_program
-        self._startup_program = satrtup_program
+        self._startup_program = startup_program
         self._loss = loss
         self._optimizer = optimizer
         self._cluster = cluster
@@ -1700,7 +1678,7 @@ def set_dist_op_desc_original_id(dist_op_desc, op_desc, dist_context):
     elif op_original_id in dist_context._dist_ops_for_program:
         dist_op_desc.set_original_id(op_original_id)
         return
-    # Third, print error infomation if we cannot find the original id
+    # Third, print error information if we cannot find the original id
     else:
         raise AssertionError(
             "Cannot find the original id in the distributed context"
@@ -1748,7 +1726,7 @@ def get_var_numel(var):
     input:
         - var: variable
     return:
-        number of elemnet in var
+        number of element in var
     """
     assert isinstance(var, Variable)
     assert -1 not in var.shape
@@ -1810,15 +1788,11 @@ def initialize_pg_in_full_mode(all_process_groups, cur_rank):
                 rank = int(rank)
                 if rank != recv_rank:
                     raise ValueError(
-                        "Please check comm pair, the recv rank should be {} but got {}.".format(
-                            recv_rank, rank
-                        )
+                        f"Please check comm pair, the recv rank should be {recv_rank} but got {rank}."
                     )
                 else:
                     print(
-                        "It is able to instantiate {} as sender now.".format(
-                            process_group.ranks
-                        )
+                        f"It is able to instantiate {process_group.ranks} as sender now."
                     )
                 client_socket.close()
             else:
@@ -1835,9 +1809,7 @@ def initialize_pg_in_full_mode(all_process_groups, cur_rank):
                         )
                         client_sockets[send_rank].close()
                         print(
-                            "It is able to instantiate {} as recver now.".format(
-                                process_group.ranks
-                            )
+                            f"It is able to instantiate {process_group.ranks} as receiver now."
                         )
                         break
         process_group.instantiate()
@@ -1982,7 +1954,7 @@ def set_data_parallel(x):
 
 
 def is_naive_data_parallel(dist_context):
-    # Navie data parallel only completes dist_attr once from the front to back.
+    # Naive data parallel only completes dist_attr once from the front to back.
     if not dist_context.data_parallel:
         return False
 
@@ -2146,9 +2118,7 @@ def insert_dependencies_for_two_ops(
     ).process_mesh
     assert (
         prior_op_mesh == posterior_mesh
-    ), "two ops of dependency should have same mesh but got [{}] and [{}]".format(
-        str(prior_op_mesh), str(posterior_mesh)
-    )
+    ), f"two ops of dependency should have same mesh but got [{str(prior_op_mesh)}] and [{str(posterior_mesh)}]"
 
     def _select_best_depend_var(vars):
         # parameter should not be dep var since it maybe partition in sharding pass
@@ -2193,12 +2163,13 @@ def insert_dependencies_for_vars(
     sync=False,
     op_namescope=None,
     use_nop=False,
+    skip_insert_when_sequential_run=True,
 ):
     """
     dependency: op that generates prior_vars should be run before op that generates post_vars
     """
 
-    if is_sequential_run():
+    if skip_insert_when_sequential_run and is_sequential_run():
         return
 
     if isinstance(prior_vars, Variable):
@@ -2315,7 +2286,7 @@ def is_sequential_run():
 
 def get_pp_degree(dist_context):
     if len(dist_context.process_meshes) < 2:
-        return 0
+        return 0, []
 
     process_ids = set()
     process_meshes = copy.deepcopy(dist_context.process_meshes)

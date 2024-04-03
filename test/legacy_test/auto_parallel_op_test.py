@@ -289,15 +289,11 @@ def run_subprocess(start_command, env, timeout):
         )
     except subprocess.TimeoutExpired as err:
         raise TimeoutError(
-            "Timeout while running command {}, try to set a longer period, {} is not enough.".format(
-                err.cmd, err.timeout
-            )
+            f"Timeout while running command {err.cmd}, try to set a longer period, {err.timeout} is not enough."
         )
     except subprocess.CalledProcessError as err:
         raise RuntimeError(
-            "Error occurs when running this test case. The return code of command {} is {}".format(
-                err.cmd, err.returncode
-            )
+            f"Error occurs when running this test case. The return code of command {err.cmd} is {err.returncode}"
         )
 
 
@@ -498,12 +494,8 @@ class AutoParallelForwardChecker:
             # check eager auto parallel forward
             if len(actual_ret) != len(self.eager_forward_desire):
                 msg = (
-                    "The eager auto parallel out tensor nums is different with eager out tensor nums on {}."
-                    'eager auto parallel out tensor nums = {}, eager out tensor nums = {}. \n'.format(
-                        str(self.place),
-                        len(actual_ret),
-                        len(self.eager_forward_desire),
-                    )
+                    f"The eager auto parallel out tensor nums is different with eager out tensor nums on {str(self.place)}."
+                    f'eager auto parallel out tensor nums = {len(actual_ret)}, eager out tensor nums = {len(self.eager_forward_desire)}. \n'
                 )
                 raise RuntimeError(msg)
             for i in range(len(actual_ret)):
@@ -566,6 +558,7 @@ class AutoParallelForwardChecker:
                 eager_tensor_inputs,
                 attrs_outputs,
                 self.kernel_sig,
+                target_dtype=paddle.core.VarDesc.VarType,
             )
             inputs_sig, _, _ = self.kernel_sig
             args = OpTestUtils.assumption_assert_and_transform(
@@ -720,12 +713,8 @@ class AutoParallelGradChecker(AutoParallelForwardChecker):
             # check eager auto parallel forward
             if len(actual_forward_res) != len(self.eager_forward_desire):
                 msg = (
-                    "The eager auto parallel out tensor nums is different with eager out tensor nums on {}."
-                    'eager auto parallel out tensor nums = {}, eager out tensor nums = {}. \n'.format(
-                        str(self.place),
-                        len(actual_forward_res),
-                        len(self.eager_forward_desire),
-                    )
+                    f"The eager auto parallel out tensor nums is different with eager out tensor nums on {str(self.place)}."
+                    f'eager auto parallel out tensor nums = {len(actual_forward_res)}, eager out tensor nums = {len(self.eager_forward_desire)}. \n'
                 )
                 raise RuntimeError(msg)
             for i in range(len(actual_forward_res)):
@@ -750,12 +739,8 @@ class AutoParallelGradChecker(AutoParallelForwardChecker):
             # check eager auto parallel grad
             if len(actual_grad_res) != len(self.eager_grad_desire):
                 msg = (
-                    "The eager auto parallel grad out tensor nums is different with eager grad out tensor nums on {}."
-                    'eager auto parallel grad out tensor nums = {}, eager grad out tensor nums = {}. \n'.format(
-                        str(self.place),
-                        len(actual_grad_res),
-                        len(self.eager_grad_desire),
-                    )
+                    f"The eager auto parallel grad out tensor nums is different with eager grad out tensor nums on {str(self.place)}."
+                    f'eager auto parallel grad out tensor nums = {len(actual_grad_res)}, eager grad out tensor nums = {len(self.eager_grad_desire)}. \n'
                 )
                 raise RuntimeError(msg)
             for i in range(len(actual_grad_res)):
@@ -794,9 +779,9 @@ class AutoParallelGradChecker(AutoParallelForwardChecker):
         return eager_vs
 
     def get_output_dict(self, np_outputs, api_outputs, outputs_sig):
-        assert len(api_outputs) <= len(outputs_sig), (
-            "forward api outputs length must be the less than or equal to KernelSignature outputs,but receive {} and {}"
-        ).format(len(api_outputs), len(outputs_sig))
+        assert len(api_outputs) <= len(
+            outputs_sig
+        ), f"forward api outputs length must be the less than or equal to KernelSignature outputs,but receive {len(api_outputs)} and {len(outputs_sig)}"
         output_dict = {}
         for i in range(len(api_outputs)):
             output_name = outputs_sig[i]
@@ -841,6 +826,7 @@ class AutoParallelGradChecker(AutoParallelForwardChecker):
                 eager_tensor_inputs,
                 attrs_outputs,
                 self.kernel_sig,
+                target_dtype=paddle.core.VarDesc.VarType,
             )
             inputs_sig, _, outputs_sig = self.kernel_sig
             if self.python_out_sig is not None:

@@ -85,7 +85,7 @@ def get_worker_info():
 
     :attr:`num_workers`: total worker process number, see `paddle.io.DataLoader`
 
-    :attr:`id`: the worker processs id, count from 0 to :attr:`num_workers - 1`
+    :attr:`id`: the worker process id, count from 0 to :attr:`num_workers - 1`
 
     :attr:`dataset`: the dataset object in this worker process
 
@@ -179,9 +179,7 @@ class _WorkerException:
         self.exc_msg = "".join(traceback.format_exception(*exc_info))
 
     def reraise(self):
-        msg = "DataLoader worker({}) caught {} with message:\n{}".format(
-            self.worker_id, self.exc_type.__name__, self.exc_msg
-        )
+        msg = f"DataLoader worker({self.worker_id}) caught {self.exc_type.__name__} with message:\n{self.exc_msg}"
         if getattr(self.exc_type, "message", None):
             raise self.exc_type(message=msg)
         raise self.exc_type(msg)
@@ -249,9 +247,9 @@ def _generate_states(base_seed=0, worker_id=0):
         result = (result ^ (result >> XSHIFT)) & MASK32
         return result
 
-    # init entropys with based_seed and worker_id and calculate pool
-    entropys = [worker_id, base_seed & MASK32, base_seed >> 32, 0]
-    pool = [hash(entropy) for entropy in entropys]
+    # init entropies with based_seed and worker_id and calculate pool
+    entropies = [worker_id, base_seed & MASK32, base_seed >> 32, 0]
+    pool = [hash(entropy) for entropy in entropies]
 
     # mix all bits together
     for i in range(len(pool)):
@@ -284,7 +282,7 @@ def _worker_loop(
     num_workers,
     use_shared_memory,
     base_seed,
-    shm_cahce_size=0,
+    shm_cache_size=0,
 ):
     try:
         # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
@@ -296,7 +294,7 @@ def _worker_loop(
         # set signal handler
         core._set_process_signal_handler()
 
-        core._set_max_memory_map_allocation_pool_size(shm_cahce_size)
+        core._set_max_memory_map_allocation_pool_size(shm_cache_size)
 
         # set different numpy seed for each worker
         try:

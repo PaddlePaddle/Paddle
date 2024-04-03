@@ -14,8 +14,8 @@
 
 
 import collections
+import sys
 import unittest
-from sys import version_info
 
 import paddle
 
@@ -28,10 +28,8 @@ class TestEvalFrame(unittest.TestCase):
         pass
 
     def test_eval_frame(self):
-        if version_info.major != 3 or (
-            version_info.minor <= 8 or version_info.minor >= 12
-        ):
-            # print("skip test_eval_frame, current only support 3.8 - 3.10")
+        if not (sys.version_info >= (3, 8) and sys.version_info < (3, 13)):
+            # skip test_eval_frame, current only support 3.8 - 3.12
             return
 
         CustomCode = collections.namedtuple(

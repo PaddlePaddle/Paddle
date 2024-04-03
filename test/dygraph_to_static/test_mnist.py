@@ -26,7 +26,6 @@ from predictor_utils import PredictorTools
 
 import paddle
 from paddle import base
-from paddle.base.dygraph import to_variable
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import Linear
 from paddle.optimizer import Adam
@@ -184,15 +183,12 @@ class TestMNISTWithToStatic(TestMNIST):
             dygraph_loss_cpu,
             dygraph_loss_mkldnn,
             rtol=1e-05,
-            err_msg='cpu dygraph is {}\n mkldnn dygraph is \n{}'.format(
-                dygraph_loss_cpu, dygraph_loss_mkldnn
-            ),
+            err_msg=f'cpu dygraph is {dygraph_loss_cpu}\n mkldnn dygraph is \n{dygraph_loss_mkldnn}',
         )
 
     def train(self, to_static=False):
         loss_data = []
-        base.default_main_program().random_seed = SEED
-        base.default_startup_program().random_seed = SEED
+        paddle.seed(SEED)
         mnist = MNIST()
         if to_static:
             mnist = paddle.jit.to_static(mnist, full_graph=True)
@@ -210,8 +206,8 @@ class TestMNISTWithToStatic(TestMNIST):
                     .reshape(-1, 1)
                 )
 
-                img = to_variable(dy_x_data)
-                label = to_variable(y_data)
+                img = paddle.to_tensor(dy_x_data)
+                label = paddle.to_tensor(y_data)
 
                 label.stop_gradient = True
                 prediction, acc, avg_loss = mnist(img, label=label)
@@ -223,13 +219,7 @@ class TestMNISTWithToStatic(TestMNIST):
                 mnist.clear_gradients()
                 if batch_id % 10 == 0:
                     print(
-                        "Loss at epoch {} step {}: loss: {:}, acc: {}, cost: {}".format(
-                            epoch,
-                            batch_id,
-                            avg_loss.numpy(),
-                            acc.numpy(),
-                            time() - start,
-                        )
+                        f"Loss at epoch {epoch} step {batch_id}: loss: {avg_loss.numpy()}, acc: {acc.numpy()}, cost: {time() - start}"
                     )
                     start = time()
                 if batch_id == 50:

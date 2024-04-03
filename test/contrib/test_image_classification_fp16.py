@@ -112,8 +112,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
 
     train_program = base.Program()
     startup_prog = base.Program()
-    train_program.random_seed = 123
-    startup_prog.random_seed = 456
+    paddle.seed(123)
     with base.program_guard(train_program, startup_prog):
         images = paddle.static.data(
             name='pixel', shape=[-1] + data_shape, dtype='float32'
@@ -182,12 +181,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
                     fetch_list=[scaled_loss, avg_cost],
                 )
                 print(
-                    'PassID {:1}, BatchID {:04}, train loss {:2.4}, scaled train closs {:2.4}'.format(
-                        pass_id,
-                        batch_id + 1,
-                        float(loss),
-                        float(np_scaled_loss),
-                    )
+                    f'PassID {pass_id:1}, BatchID {batch_id + 1:04}, train loss {float(loss):2.4}, scaled train loss {float(np_scaled_loss):2.4}'
                 )
                 if (batch_id % 10) == 0:
                     acc_list = []
@@ -208,12 +202,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
                     avg_loss_value = numpy.array(avg_loss_list).mean()
 
                     print(
-                        'PassID {:1}, BatchID {:04}, test loss {:2.2}, acc {:2.2}'.format(
-                            pass_id,
-                            batch_id + 1,
-                            float(avg_loss_value),
-                            float(acc_value),
-                        )
+                        f'PassID {pass_id:1}, BatchID {batch_id + 1:04}, test loss {float(avg_loss_value):2.2}, acc {float(acc_value):2.2}'
                     )
 
                     if acc_value > 0.08:  # Low threshold for speeding up CI
@@ -273,7 +262,7 @@ def infer(use_cuda, save_dirname=None):
         ] = paddle.static.io.load_inference_model(save_dirname, exe)
 
         # The input's dimension of conv should be 4-D or 5-D.
-        # Use normilized image pixels as input data, which should be in the range [0, 1.0].
+        # Use normalized image pixels as input data, which should be in the range [0, 1.0].
         batch_size = 1
         tensor_img = numpy.random.rand(batch_size, 3, 32, 32).astype("float32")
 
@@ -292,7 +281,7 @@ def infer(use_cuda, save_dirname=None):
             feed_target_names,
             fetch_targets,
             exe,
-            parogram=inference_program,
+            program=inference_program,
             clip_extra=True,
         )
 

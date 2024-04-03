@@ -20,6 +20,7 @@ from utils import check_output, extra_cc_args, extra_nvcc_args, paddle_includes
 
 import paddle
 from paddle import static
+from paddle.pir_utils import test_with_pir_api
 from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 
@@ -41,10 +42,7 @@ custom_ops = load(
 
 
 def is_complex(dtype):
-    return (
-        dtype == paddle.base.core.VarDesc.VarType.COMPLEX64
-        or dtype == paddle.base.core.VarDesc.VarType.COMPLEX128
-    )
+    return dtype == paddle.complex64 or dtype == paddle.complex128
 
 
 def to_complex(dtype):
@@ -86,10 +84,16 @@ def conj_static(func, shape, dtype, np_input):
             exe = static.Executor()
             exe.run(static.default_startup_program())
 
+            if paddle.framework.in_pir_mode():
+                ops = static.default_main_program().global_block().ops
+                fetch_list = [out, ops[-1].result(0)]
+            else:
+                fetch_list = [out.name, x.name + "@GRAD"]
+
             out_v, x_grad_v = exe.run(
                 static.default_main_program(),
                 feed={"x": np_input},
-                fetch_list=[out.name, x.name + "@GRAD"],
+                fetch_list=fetch_list,
             )
     paddle.disable_static()
     return out_v, x_grad_v
@@ -109,6 +113,7 @@ class TestCustomConjJit(unittest.TestCase):
             check_output(out, pd_out, "out")
             check_output(x_grad, pd_x_grad, "x's grad")
 
+    @test_with_pir_api
     def test_static(self):
         for dtype in self.dtypes:
             np_input = np.random.random(self.shape).astype(dtype)

@@ -16,11 +16,11 @@ limitations under the License. */
 
 #include <google/protobuf/text_format.h>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/string/string_helper.h"
-#include "paddle/utils/flags.h"
+#include "paddle/utils/string/string_helper.h"
 
 #define LEARNING_RATE_DECAY_COUNTER "@LR_DECAY_COUNTER@"
 #define STEP_COUNTER "@PS_STEP_COUNTER@"
@@ -254,8 +254,8 @@ void Communicator::RpcSendSparseParam(const std::string &varname,
     push_g_vec.push_back(tensor->data<float>() + i * dim);
   }
 
-  DownpourBrpcClosure *closure = new DownpourBrpcClosure(
-      request_call_num, [this, request_call_num](void *done) {
+  DownpourBrpcClosure *closure =
+      new DownpourBrpcClosure(request_call_num, [request_call_num](void *done) {
         int ret = 0;
         auto *closure = (DownpourBrpcClosure *)done;  // NOLINT
         for (size_t i = 0; i < request_call_num; ++i) {
@@ -422,8 +422,8 @@ void Communicator::SendGlobalStep(const CommContext &ctx,
   auto *data = out_t->mutable_data<int64_t>({1}, platform::CPUPlace());
   data[0] = static_cast<int64_t>(batches);
   VLOG(3) << "Communicator::SendGlobalStep send: " << batches;
-  DownpourBrpcClosure *closure = new DownpourBrpcClosure(
-      request_call_num, [this, request_call_num](void *done) {
+  DownpourBrpcClosure *closure =
+      new DownpourBrpcClosure(request_call_num, [request_call_num](void *done) {
         int ret = 0;
         auto *closure = (DownpourBrpcClosure *)done;  // NOLINT
         for (size_t i = 0; i < request_call_num; ++i) {

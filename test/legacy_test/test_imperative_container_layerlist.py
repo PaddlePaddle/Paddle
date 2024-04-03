@@ -40,7 +40,7 @@ class TestImperativeContainer(unittest.TestCase):
     def layer_list(self, use_base_api):
         data_np = np.random.uniform(-1, 1, [5, 1]).astype('float32')
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(data_np)
+            x = paddle.to_tensor(data_np)
             layerlist = self.paddle_imperative_list()
             size = len(layerlist)
 

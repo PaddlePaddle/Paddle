@@ -24,6 +24,9 @@ from copy import deepcopy
 from functools import cached_property
 from typing import Any, Callable
 
+from paddle.jit.utils import OrderedSet
+from paddle.utils import flatten
+
 from ...infer_meta import (
     InferMetaCache,
     LayerInferMetaCache,
@@ -36,7 +39,7 @@ from ...symbolic.symbolic_context import SymbolicTraceContext
 from ...utils import (
     ENV_SHOW_TRACKERS,
     NameGenerator,
-    OrderedSet,
+    SotUndefinedVar,
     inner_error_default_handler,
     is_inplace_api,
     is_paddle_api,
@@ -67,6 +70,7 @@ from .variables import (
     ListVariable,
     NullVariable,
     PaddleLayerVariable,
+    ParameterVariable,
     TensorVariable,
     VariableBase,
     VariableFactory,
@@ -105,16 +109,50 @@ def convert_to_symbol(inputs: Any):
     return map_variables(func, inputs)
 
 
-def get_symbol_meta_map(inputs):
-    output = {}
+def record_symbols(SIR, *args, **kwargs):
+    symbol_meta_map = {}
+    params = set()
+    non_params = set()
 
-    def func(x):
-        if isinstance(x, TensorVariable):
-            output[x.get_symbol()] = x.meta
-        return x
+    def fn(value):
+        if isinstance(value, TensorVariable):
+            symbol_meta_map[value.get_symbol()] = value.meta
+            if isinstance(value, ParameterVariable):
+                params.add(value.get_symbol())
+            else:
+                non_params.add(value.get_symbol())
+        return value
 
-    map_variables(func, inputs)
-    return output
+    map_variables(fn, [args, kwargs])
+    SIR.set_symbol_meta_map(symbol_meta_map)
+    SIR.set_parameter_info(params, non_params)
+
+
+def get_params_and_non_param_symbol(*args, **kwargs):
+    params = set()
+    non_params = set()
+
+    for value in flatten([args, kwargs]):
+        if isinstance(value, ParameterVariable):
+            params.add(value.get_symbol())
+        elif isinstance(value, TensorVariable):
+            non_params.add(value.get_symbol())
+
+    return params, non_params
+
+
+class VariableLoader:
+    def __init__(self, store_var_info, pycode_gen):
+        self._store_var_info = store_var_info
+        self._pycode_gen: PyCodeGen = pycode_gen
+
+    def load(self, var):
+        if var is SotUndefinedVar():
+            self._pycode_gen.gen_load_const(SotUndefinedVar())
+        elif isinstance(var, NullVariable):
+            var.reconstruct(self._pycode_gen)
+        else:
+            self._pycode_gen.gen_load(self._store_var_info[var.id])
 
 
 class FunctionGraph:
@@ -258,17 +296,6 @@ class FunctionGraph:
             return make_guard(guards)
 
     def _restore_origin_opcode(self, stack_vars, store_var_info, instr_idx):
-        class VariableLoader:
-            def __init__(self, store_var_info, pycode_gen):
-                self._store_var_info = store_var_info
-                self._pycode_gen: PyCodeGen = pycode_gen
-
-            def load(self, var):
-                if isinstance(var, NullVariable):
-                    var.reconstruct(self._pycode_gen)
-                    return
-                self._pycode_gen.gen_load(self._store_var_info[var.id])
-
         origin_instrs = get_instructions(self.pycode_gen._origin_code)
         is_precall = origin_instrs[instr_idx].opname == "PRECALL"
         current_idx = instr_idx
@@ -285,7 +312,7 @@ class FunctionGraph:
             restore_instr_names = restore_instr_names[:-1]
 
         self.pycode_gen.extend_instrs(restore_instrs)
-        nop = self.pycode_gen._add_instr("NOP")
+        nop = self.pycode_gen.add_instr("NOP")
 
         for instr in origin_instrs:
             if instr.jump_to == origin_instrs[current_idx]:
@@ -301,26 +328,21 @@ class FunctionGraph:
 
         name_gen = NameGenerator("__start_compile_saved_orig_")
 
+        # here is not update changed values, it just give names to stack vars
+        # and want keep same interface as _build_compile_fn_with_name_store
         for var in stack_vars[::-1]:
-            store_var_info[var.id] = name_gen.next()
-            self.pycode_gen.gen_store_fast(store_var_info[var.id])
+            if store_var_info[var.id] is None:
+                store_var_info[var.id] = name_gen.next()
+                self.pycode_gen.gen_store_fast(store_var_info[var.id])
+            else:
+                self.pycode_gen.gen_store(
+                    store_var_info[var.id], self.pycode_gen._origin_code
+                )
 
         return VariableLoader(store_var_info, self.pycode_gen)
 
-    def _build_compile_fn_with_name_store(self, to_store_vars):
-        class VariableLoader:
-            def __init__(self, index_for_load, pycode_gen):
-                self._index_for_load = index_for_load
-                self._pycode_gen: PyCodeGen = pycode_gen
-
-            def load(self, var, allow_push_null=True):
-                if isinstance(var, NullVariable):
-                    var.reconstruct(self._pycode_gen)
-                    return
-                self._pycode_gen.gen_load(self._index_for_load[var.id])
-
+    def _build_compile_fn_with_name_store(self, to_store_vars, store_var_info):
         # var_id -> local_name mapping
-        index_for_load = {}
         to_store_vars = list(
             filter(lambda x: not isinstance(x, NullVariable), to_store_vars)
         )
@@ -328,19 +350,15 @@ class FunctionGraph:
         name_gen = NameGenerator("__start_compile_saved_")
 
         for var in to_store_vars[::-1]:
-            index_for_load[var.id] = name_gen.next()
-
-            def _log_fn():
-                print(
-                    f"[StartCompile] saved var: {index_for_load[var.id]} = ",
-                    var,
+            if store_var_info[var.id] is None:
+                store_var_info[var.id] = name_gen.next()
+                self.pycode_gen.gen_store_fast(store_var_info[var.id])
+            else:
+                self.pycode_gen.gen_store(
+                    store_var_info[var.id], self.pycode_gen._origin_code
                 )
 
-            log_do(4, _log_fn)
-
-            self.pycode_gen.gen_store_fast(index_for_load[var.id])
-
-        return VariableLoader(index_for_load, self.pycode_gen)
+        return VariableLoader(store_var_info, self.pycode_gen)
 
     def get_compiled_fn(self, *ret_vars):
         ret_items = [
@@ -382,12 +400,12 @@ class FunctionGraph:
         ]
 
         tensor_items = self._find_tensor_outputs(ret_items)
-        compiled_fn, statment_ir = self.sir_ctx.compile_fn(
+        compiled_fn, statement_ir = self.sir_ctx.compile_fn(
             [Symbol(tensor_var.var_name) for tensor_var in tensor_items],
             **self._kwargs,
         )
-        input_names = statment_ir.inputs
-        compiled_fn_name = f"__compiled_fn_{statment_ir.name}"
+        input_names = statement_ir.inputs
+        compiled_fn_name = f"__compiled_fn_{statement_ir.name}"
         # prepare function and inputs
         self.pycode_gen.gen_load_object(compiled_fn, compiled_fn_name)
         for name in input_names:
@@ -440,7 +458,7 @@ class FunctionGraph:
         """
         assert is_paddle_api(func)
         # not fallback api, start symbolic trace.
-        # TODO(xiokgun): may have python buildin object inside metas.
+        # TODO(xiokgun): may have python builtin object inside metas.
         # TODO(xiokgun): 4 kinds of python arguments. support it !!
         log(3, f"call paddle.api : {func.__name__}", "\n")
 
@@ -527,7 +545,7 @@ class FunctionGraph:
             )
 
         def message_handler(*args, **kwargs):
-            return "Call ast faild"
+            return "Call ast failed"
 
         try:
             return inner_error_default_handler(
@@ -557,8 +575,7 @@ class FunctionGraph:
             convert_to_symbol(kwargs),
         )
 
-        self.sir_ctx.TOS.set_symbol_meta_map(get_symbol_meta_map(args))
-        self.sir_ctx.TOS.set_symbol_meta_map(get_symbol_meta_map(kwargs))
+        record_symbols(self.sir_ctx.TOS, *args, **kwargs)
 
         log(3, f"         inputs : {inputs_symbols}", "\n")
 
@@ -611,7 +628,7 @@ class FunctionGraph:
         from .opcode_executor import OpcodeExecutorBase
 
         if len(OpcodeExecutorBase.call_stack) == 0:
-            # In test case, we can meet this senario.
+            # In test case, we can meet this scenario.
             return []
         current_executor = OpcodeExecutorBase.call_stack[-1]
         current_line = current_executor._current_line
@@ -625,11 +642,7 @@ class FunctionGraph:
         code_line = source_lines[line_idx]
         stack = []
         stack.append(
-            '  File "{}", line {}, in {}'.format(
-                filename,
-                current_line,
-                current_executor._code.co_name,
-            )
+            f'  File "{filename}", line {current_line}, in {current_executor._code.co_name}'
         )
         stack.append(f'    {code_line}')
         return stack

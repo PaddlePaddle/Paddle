@@ -19,18 +19,20 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/cinn_group_lowering_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/lower_cinn_fusion_op_pass.h"
 #include "paddle/cinn/hlir/framework/pir/group.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/pass/pass_manager.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/pass/pass_manager.h"
 
 bool simple_cmp(float a, float b) { return std::abs((a - b) / a) < 1e-5; }
 
@@ -91,7 +93,7 @@ TEST(GroupOp, TestBuild) {
   int i = 0;
   for (auto& sub_op : *(program->block())) {
     EXPECT_TRUE(sub_op.isa<cinn::dialect::GroupOp>());
-    EXPECT_EQ(sub_op.dyn_cast<cinn::dialect::GroupOp>().ops().size(),
+    EXPECT_EQ(sub_op.dyn_cast<cinn::dialect::GroupOp>().GetOperators().size(),
               op_num[i]);
     ++i;
   }
@@ -146,7 +148,7 @@ TEST(GroupOp, TestBuildByBlock) {
   int i = 0;
   for (auto& sub_op : *(program->block())) {
     EXPECT_TRUE(sub_op.isa<cinn::dialect::GroupOp>());
-    EXPECT_EQ(sub_op.dyn_cast<cinn::dialect::GroupOp>().ops().size(),
+    EXPECT_EQ(sub_op.dyn_cast<cinn::dialect::GroupOp>().GetOperators().size(),
               op_num[i]);
     ++i;
   }
@@ -208,7 +210,8 @@ TEST(GroupOp, CINNLowering) {
 
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::PassManager pass_manager(ctx);
-  pass_manager.AddPass(cinn::dialect::ir::CreateCinnGroupLoweringPass());
+  pass_manager.AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
+  pass_manager.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
   pass_manager.Run(program.get());
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
@@ -256,9 +259,9 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
     auto* program = group_op->GetParentProgram();
     ::pir::Builder builder = ::pir::Builder(ctx, program->block());
     VLOG(4) << "Before GroupOpPattern: " << *program;
-    std::vector<::pir::Operation*> group_ops = group_op.ops();
-    auto yeild_op = group_ops.back();
-    std::vector<::pir::Type> output_type{yeild_op->operand_source(0).type()};
+    std::vector<::pir::Operation*> group_ops = group_op.GetOperators();
+    auto yield_op = group_ops.back();
+    std::vector<::pir::Type> output_type{yield_op->operand_source(0).type()};
 
     // construct hlir::Group
     Group group({group_ops.begin(), group_ops.end() - 1});
@@ -284,9 +287,9 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
     // Add yield op
     builder.SetInsertionPointToBlockEnd(new_group_op.block());
     std::vector<::pir::Value> yield_inputs{
-        new_group_op.ops().back()->result(0)};
+        new_group_op.GetOperators().back()->result(0)};
     builder.Build<::pir::YieldOp>(yield_inputs);
-    EXPECT_EQ(new_group_op.ops().size(), group_ops.size());
+    EXPECT_EQ(new_group_op.GetOperators().size(), group_ops.size());
 
     // replace result UD between GroupOp
     rewriter.ReplaceAllUsesWith(group_op->result(0), new_group_op->result(0));

@@ -52,7 +52,7 @@ class TestShadowOutputSlice(unittest.TestCase):
         pm = pir.PassManager()
         pm.add_pass(
             'dead_code_elimination_pass'
-        )  # apply pass to elimitate dead code
+        )  # apply pass to eliminate dead code
         pm.run(new_program)
         op_names = [op.name() for op in new_program.global_block().ops]
         # print(op_names)
@@ -60,7 +60,7 @@ class TestShadowOutputSlice(unittest.TestCase):
         self.assertFalse(pm.empty())
         self.assertTrue(
             'pd_op.uniform' not in op_names
-        )  # uniform is elimited because its output is not used
+        )  # uniform is eliminated because its output is not used
 
 
 if __name__ == "__main__":

@@ -49,7 +49,7 @@ class DistributedSplit(DistributedOperatorImplContainer):
 
         num = op_desc.attr('num')
         sections = op_desc.attr('sections')
-        if num is not None:
+        if num:
             assert (sections is None) or (
                 len(sections) == 0
             ), f"Both Attributes of num: {num} and sections: {sections} are specified."
@@ -57,7 +57,7 @@ class DistributedSplit(DistributedOperatorImplContainer):
             rule_type = "split_with_num"
         else:
             assert (
-                num is None
+                not num
             ), f"Both Attributes of num: {num} and sections: {sections} are specified."
             first_attr = sections
             rule_type = "split"
@@ -73,12 +73,12 @@ class DistributedSplit(DistributedOperatorImplContainer):
 
         # step2: infer spmd
         rule = get_phi_spmd_rule(rule_type)
-        # tensor order following order in PHI defition
+        # tensor order following order in PHI definition
         fw_results = rule.infer_forward(x_spec, first_attr, axis)
         bw_results = rule.infer_backward(x_spec, output_specs, first_attr, axis)
 
         # step3: update dist_attr
-        # tensor order following order in PHI defition
+        # tensor order following order in PHI definition
         changed = update_op_dims_mapping(
             dist_op, [x_name], output_arg_names, fw_results, bw_results
         )

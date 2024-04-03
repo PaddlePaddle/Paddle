@@ -13,6 +13,7 @@
 # limitations under the License.
 """Definition of Role Makers."""
 import os
+import re
 import time
 import warnings
 from multiprocessing import Manager, Process
@@ -488,12 +489,7 @@ class RoleMakerBase:
         return self._server_endpoints
 
     def to_string(self):
-        return "role: {}, current_id: {}, worker_endpoints: {}, server_endpoints: {}".format(
-            self._role,
-            self._current_id,
-            self._worker_endpoints,
-            self._server_endpoints,
-        )
+        return f"role: {self._role}, current_id: {self._current_id}, worker_endpoints: {self._worker_endpoints}, server_endpoints: {self._server_endpoints}"
 
     def _all_gather(self, input, comm_world="worker"):
         print("warning: RoleMakerBase does not have all gather worker.")
@@ -698,7 +694,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
     def _worker_num(self):
         """
-        retrun the current number of worker
+        return the current number of worker
         """
         if not self._role_is_generated:
             self._generate_role()
@@ -905,9 +901,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             "COORDINATOR",
         ]:
             raise ValueError(
-                "TRAINING_ROLE must be PSERVER or TRAINER or HETER_TRAINER or COORDINATOR, but get {}, please check your environment.".format(
-                    training_role
-                )
+                f"TRAINING_ROLE must be PSERVER or TRAINER or HETER_TRAINER or COORDINATOR, but get {training_role}, please check your environment."
             )
 
         # For Heter Parameter Server env setting
@@ -988,7 +982,9 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                     raise ValueError(
                         "Can not find PADDLE_STAGE_TRAINERS_NUM, please check your environment."
                     )
-                self._stage_trainers = eval(self._stage_trainers)
+                self._stage_trainers = tuple(
+                    [int(x) for x in re.findall(r'\d+', self._stage_trainers)]
+                )
             cur_port = os.getenv("PADDLE_PORT", None)
             if cur_port is None:
                 raise ValueError(
@@ -1040,7 +1036,9 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 raise ValueError(
                     "Can not find PADDLE_STAGE_TRAINERS_NUM, please check your environment."
                 )
-            self._stage_trainers = eval(self._stage_trainers)
+            self._stage_trainers = tuple(
+                [int(x) for x in re.findall(r'\d+', self._stage_trainers)]
+            )
 
             self._heter_trainer_device_type = os.getenv(
                 "HETER_DEVICE_TYPE", None

@@ -38,8 +38,8 @@ class TestComplexElementwiseLayers(unittest.TestCase):
 
     def paddle_calc(self, x, y, op, place):
         with dg.guard(place):
-            x_t = dg.to_variable(x)
-            y_t = dg.to_variable(y)
+            x_t = paddle.to_tensor(x)
+            y_t = paddle.to_tensor(y)
             return paddle_apis[op](x_t, y_t).numpy()
 
     def assert_check(self, pd_result, np_result, place):
@@ -47,11 +47,7 @@ class TestComplexElementwiseLayers(unittest.TestCase):
             pd_result,
             np_result,
             rtol=1e-05,
-            err_msg='\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n'.format(
-                place,
-                pd_result[~np.isclose(pd_result, np_result)],
-                np_result[~np.isclose(pd_result, np_result)],
-            ),
+            err_msg=f'\nplace: {place}\npaddle diff result:\n {pd_result[~np.isclose(pd_result, np_result)]}\nnumpy diff result:\n {np_result[~np.isclose(pd_result, np_result)]}\n',
         )
 
     def compare_by_basic_api(self, x, y):
@@ -72,8 +68,8 @@ class TestComplexElementwiseLayers(unittest.TestCase):
     def compare_op_by_basic_api(self, x, y):
         for place in self._places:
             with dg.guard(place):
-                var_x = dg.to_variable(x)
-                var_y = dg.to_variable(y)
+                var_x = paddle.to_tensor(x)
+                var_y = paddle.to_tensor(y)
                 self.assert_check((var_x + var_y).numpy(), x + y, place)
                 self.assert_check((var_x - var_y).numpy(), x - y, place)
                 self.assert_check((var_x * var_y).numpy(), x * y, place)

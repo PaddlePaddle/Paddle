@@ -15,11 +15,11 @@
 PaddlePaddle GitHub へようこそ。
 
 PaddlePaddle は中国初の独立系 R&D ディープラーニングプラットフォームとして、2016年からプロのコミュニティに正式にオープンソース化されました。コアとなる深層学習フレームワーク、基本モデルライブラリ、エンドツーエンドの開発キット、ツール＆コンポーネント、さらにサービスプラットフォームを網羅する、高度な技術と豊富な機能を備えた産業プラットフォームです。
-PaddlePaddle は、工業化に対するコミットメントを持つ工業的実践から生まれたものです。製造業、農業、企業サービスなど幅広い分野で採用され、800万人以上の開発者、22万以上の企業、80万以上のモデルを生み出しています。それにより PaddlePaddle は、ますます多くのパートナーの AI 商用化を支援しています。
+PaddlePaddle は、工業化に対するコミットメントを持つ工業的実践から生まれたものです。製造業、農業、企業サービスなど幅広い分野で採用され、1070万人以上の開発者、23.5万以上の企業、86万以上のモデルを生み出しています。それにより PaddlePaddle は、ますます多くのパートナーの AI 商用化を支援しています。
 
 ## インストール
 
-### PaddlePaddle の最新リリース: [v2.5](https://github.com/PaddlePaddle/Paddle/tree/release/2.5)
+### PaddlePaddle の最新リリース: [v2.6](https://github.com/PaddlePaddle/Paddle/tree/release/2.6)
 
 私たちのビジョンは、PaddlePaddle を通じて、誰もが深層学習を行えるようにすることです。
 PaddlePaddle の最新機能を追跡するために、私たちの[リリースのお知らせ](https://github.com/PaddlePaddle/Paddle/releases)を参照してください。
@@ -50,7 +50,7 @@ pip install paddlepaddle-gpu
 
 - **総合的な展開環境に対応した高性能推論エンジン**
 
-   PaddlePaddle は、サードパーティのオープンソースフレームワークで学習されたモデルとの互換性があるだけでなく、様々な生産シナリオに対応した完全な推論エンジン、システム、スイートを提供しています。当社の推論エンジン、システム、スイートには、[Paddle Inference](https://paddle-inference.readthedocs.io/en/master/guides/introduction/index_intro.html) があります： [Paddle Serving](https://github.com/PaddlePaddle/Serving): 高性能なサーバーおよびクラウド推論用のネイティブ推論ライブラリ： [Paddle Serving](https://github.com/PaddlePaddle/Paddle-Lite): 分散型やパイプライン型プロダクションに適したサービス指向フレームワーク; [Paddle Lite](https://github.com/PaddlePaddle/Paddle-Lite)： モバイルや IoT 環境向けの超軽量推論エンジン; [Paddle.js](https://www.paddlepaddle.org.cn/paddle/paddlejs)： ブラウザやミニアプリのためのフロントエンド推論エンジンです。さらに、各シナリオの主要なハードウェアに最適化することで、Paddle の推論エンジンは他の主流フレームワークのほとんどを凌駕しています。
+   PaddlePaddle は、サードパーティのオープンソースフレームワークで学習されたモデルとの互換性があるだけでなく、様々な生産シナリオに対応した完全な推論エンジン、システム、スイートを提供しています。当社の推論エンジン、システム、スイートには、[Paddle Inference](https://www.paddlepaddle.org.cn/inference/master/guides/introduction/index_intro.html) があります：高性能なサーバーおよびクラウド推論用のネイティブ推論ライブラリ; [FastDeploy](https://github.com/PaddlePaddle/FastDeploy): オールシナリオで使いやすく、柔軟で非常に効率的なAI推論デプロイツールです; [Paddle Lite](https://github.com/PaddlePaddle/Paddle-Lite)： モバイルや IoT 環境向けの超軽量推論エンジン; [Paddle.js](https://www.paddlepaddle.org.cn/paddle/paddlejs)： ブラウザやミニアプリのためのフロントエンド推論エンジンです。さらに、各シナリオの主要なハードウェアに最適化することで、Paddle の推論エンジンは他の主流フレームワークのほとんどを凌駕しています。
 
 - **オープンソースリポジトリによる業界指向のモデルやライブラリ**
 

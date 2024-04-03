@@ -18,7 +18,7 @@ from functools import wraps
 import numpy as np
 
 import paddle
-from paddle import base, set_flags, static
+from paddle import base, get_flags, set_flags, static
 from paddle.base import core
 from paddle.base.framework import _dygraph_guard
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
@@ -149,6 +149,24 @@ def static_guard():
     finally:
         if in_dygraph_outside:
             paddle.disable_static()
+
+
+@signature_safe_contextmanager
+def pir_executor_guard():
+    tmp_env = os.environ.get("FLAGS_enable_pir_in_executor")
+    tmp_cpp = get_flags("FLAGS_enable_pir_in_executor")[
+        "FLAGS_enable_pir_in_executor"
+    ]
+    try:
+        os.environ["FLAGS_enable_pir_in_executor"] = 'True'
+        set_flags({"FLAGS_enable_pir_in_executor": True})
+        yield
+    finally:
+        if tmp_env is None:
+            del os.environ["FLAGS_enable_pir_in_executor"]
+        else:
+            os.environ["FLAGS_enable_pir_in_executor"] = tmp_env
+        set_flags({"FLAGS_enable_pir_in_executor": tmp_cpp})
 
 
 def to_pir_pt_test(fn):

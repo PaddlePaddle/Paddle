@@ -16,13 +16,13 @@ from paddle.base import unique_name
 from paddle.utils import gast
 
 from ..utils import (
-    ORIGI_INFO,
+    ORIGIN_INFO,
     Dygraph2StaticException,
     ast_to_source_code,
-    index_in_list,
 )
 from .base import BaseTransformer
 from .break_continue_transformer import ForToWhileTransformer
+from .utils import create_bool_node, index_in_list
 
 __all__ = []
 
@@ -209,11 +209,7 @@ class SingleReturnTransformer(BaseTransformer):
         assert value in [True, False], "value must be True or False."
         if isinstance(parent_node_of_return, gast.If):
             # Prepend control flow boolean nodes such as '__return@1 = True'
-            node_str = "{} = _jst.create_bool_as_type({}, {})".format(
-                return_name,
-                ast_to_source_code(parent_node_of_return.test).strip(),
-                value,
-            )
+            node_str = f"{return_name} = _jst.create_bool_as_type({ast_to_source_code(parent_node_of_return.test).strip()}, {value})"
 
             assign_node = gast.parse(node_str).body[0]
             assign_nodes.append(assign_node)
@@ -232,6 +228,7 @@ class SingleReturnTransformer(BaseTransformer):
             return node
 
         # Prepend initialization of final return and append final return statement
+        return_flag_names = self.return_name
         value_name = self.return_value_name
         if value_name is not None:
             node.body.append(
@@ -256,6 +253,10 @@ class SingleReturnTransformer(BaseTransformer):
                 value=gast.Constant(kind=None, value=None),
             )
             node.body.insert(0, assign_return_value_node)
+
+        for return_flag_name in return_flag_names:
+            assign_return_flag_node = create_bool_node(return_flag_name, False)
+            node.body.insert(0, assign_return_flag_node)
 
         # Prepend no value placeholders
         return node
@@ -369,8 +370,8 @@ class SingleReturnTransformer(BaseTransformer):
                     value=return_node.value,
                 )
             )
-            return_origin_info = getattr(return_node, ORIGI_INFO, None)
-            setattr(assign_nodes[-1], ORIGI_INFO, return_origin_info)
+            return_origin_info = getattr(return_node, ORIGIN_INFO, None)
+            setattr(assign_nodes[-1], ORIGIN_INFO, return_origin_info)
 
         # If there is a return in the body or else of if, the remaining statements
         # will not be executed, so they can be properly replaced.

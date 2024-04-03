@@ -87,7 +87,7 @@ class MLPLayer(nn.Layer):
 
 
 class TestWholeProgram(unittest.TestCase):
-    def test_apply_optimzier(self):
+    def test_apply_optimizer(self):
         paddle.disable_static()
         mlp = MLPLayer(
             hidden_size=hidden_size,
@@ -114,7 +114,7 @@ class TestWholeProgram(unittest.TestCase):
         forward_ops = program_helper.main_program.block(0).ops
         self.assertEqual(len(forward_ops), 17)
 
-        # step 2: apply optimzer to generate whole program
+        # step 2: apply optimizer to generate whole program
         optimize_ops, _ = program_helper.apply_optimizer(optimizer)
         all_ops = program_helper.main_program.block(0).ops
         sgd_ops = [

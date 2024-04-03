@@ -23,6 +23,8 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/cinn/common/context.h"
+#include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/ir_visitor.h"
@@ -32,8 +34,8 @@
 #include "paddle/cinn/ir/schedule/schedule_desc.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-#include "paddle/cinn/utils/error.h"
 #include "paddle/cinn/utils/random_engine.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace ir {
@@ -72,9 +74,12 @@ std::vector<Expr> GetLoops(const std::vector<Expr>& exprs, const Expr& block) {
     FindLoopsVisitor visitor(block);
     auto find_loops = visitor(&it_expr);
     if (!find_loops.empty()) {
-      if (!result.empty())
-        LOG(FATAL) << "Find block with name: \n"
-                   << block_name << " appeared in more than one AST!";
+      if (!result.empty()) {
+        std::stringstream ss;
+        ss << "Find block with name: \n"
+           << block_name << " appeared in more than one AST!";
+        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+      }
       result = find_loops;
     }
   }
@@ -118,8 +123,10 @@ Expr GetBlock(const std::vector<Expr>& exprs, const std::string& block_name) {
       return result;
     }
   }
-  LOG(FATAL) << "Didn't find a block with name " << block_name
-             << " in this ModuleExpr!";
+  std::stringstream ss;
+  ss << "Didn't find a block with name " << block_name
+     << " in this ModuleExpr!";
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
 }
 
 Expr GetRootBlock(const std::vector<Expr>& exprs, const Expr& expr) {
@@ -137,9 +144,9 @@ Expr GetRootBlock(const std::vector<Expr>& exprs, const Expr& expr) {
       return it_expr.As<ir::Block>()->stmts[0];
     }
   }
-  LOG(FATAL) << "Didn't find expr \n"
-             << expr << "in StScheduleImpl:\n"
-             << exprs[0];
+  std::stringstream ss;
+  ss << "Didn't find expr \n" << expr << "in StScheduleImpl:\n" << exprs[0];
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
 }
 
 DeviceAPI GetDeviceAPI(const std::vector<Expr>& exprs) {
@@ -206,9 +213,10 @@ Expr AddUnitLoop(const std::vector<Expr>& exprs, const Expr& block) {
     visitor.target_->As<ir::ScheduleBlock>()->body = loop;
     return loop;
   } else {
-    LOG(FATAL) << "Can't find block's parent!";
+    PADDLE_THROW(phi::errors::InvalidArgument("Can't find block's parent!"));
   }
-  LOG(FATAL) << "Shouldn't reach code here in AddUnitLoop";
+  PADDLE_THROW(
+      phi::errors::InvalidArgument("Shouldn't reach code here in AddUnitLoop"));
   return Expr{nullptr};
 }
 
@@ -420,7 +428,15 @@ bool IsBroadcastSBlock(ir::Expr block) {
     return false;
   }
   // each load index can be found in store index and maintain relative order
+  const auto IsIndexZero = [](const ir::Expr& e) -> bool {
+    return e.is_constant() && e.get_constant() == 0;
+  };
+  int num_load_index_zero = 0;
   for (size_t i = 0; i < load->indices.size(); ++i) {
+    if (IsIndexZero(load->indices[i]) && !IsIndexZero(store->indices[i])) {
+      ++num_load_index_zero;
+      continue;
+    }
     bool found = false;
     for (size_t j = i; j < store->indices.size(); ++j) {
       ir::_Var_* load_var = load->indices[i].as_var();
@@ -437,7 +453,75 @@ bool IsBroadcastSBlock(ir::Expr block) {
       return false;
     }
   }
-  return load->indices.size() < store->indices.size();
+  return load->indices.size() - num_load_index_zero < store->indices.size();
+}
+
+std::vector<ir::Var> IndicesToVars(const std::vector<ir::Expr>& indices) {
+  std::vector<ir::Var> result;
+  for (const ir::Expr& e : indices) {
+    if (e.is_constant()) {
+      std::string var_name =
+          cinn::UniqName("constant" + static_cast<int>(e.get_constant()));
+      result.emplace_back(e, e, var_name, /* is_reduce = */ false);
+    } else if (e.As<ir::_Var_>() != nullptr) {
+      ir::Expr copy_e = ir::ir_utils::IRCopy(e);
+      ir::_Var_* var_ref = copy_e.As<ir::_Var_>();
+      result.emplace_back(ir::Var(var_ref));
+    } else {
+      std::string var_name = cinn::UniqName("expr");
+      common::cas_intervals_t var_intervals;
+      bool is_reduce = false;
+      ir::ir_utils::CollectIRNodes(e, [&](const ir::Expr* x) {
+        if (x->As<ir::_Var_>() != nullptr) {
+          ir::Var var = x->as_var_ref();
+          var_intervals.insert(
+              {var->name,
+               common::CasInterval{var->lower_bound, var->upper_bound}});
+          if (var->is_reduce_axis) is_reduce = true;
+        }
+        return false;
+      });
+      common::SymbolicExprAnalyzer analyzer(var_intervals);
+      result.emplace_back(
+          analyzer.LowerBound(e), analyzer.UpperBound(e), var_name, is_reduce);
+    }
+  }
+  return result;
+}
+
+void AnalyzeScheduleBlockReadWriteBuffer(ir::ScheduleBlock* sche_block) {
+  if (!sche_block->read_buffers.empty() || !sche_block->write_buffers.empty()) {
+    return;
+  }
+
+  ir::ir_utils::CollectIRNodesWithoutTensor(
+      sche_block->body, [&](const Expr* x) {
+        const ir::Load* load_expr = x->As<ir::Load>();
+        if (load_expr != nullptr) {
+          const ir::Tensor t = load_expr->tensor.as_tensor_ref();
+          sche_block->read_buffers.emplace_back(
+              ir::BufferRange(t->buffer, IndicesToVars(load_expr->indices)));
+          return false;
+        }
+        const ir::Store* store_expr = x->As<ir::Store>();
+        if (store_expr != nullptr) {
+          const ir::Tensor t = store_expr->tensor.as_tensor_ref();
+          sche_block->write_buffers.emplace_back(
+              ir::BufferRange(t->buffer, IndicesToVars(store_expr->indices)));
+          return false;
+        }
+        return false;
+      });
+}
+
+std::string GetBlockName(const ir::Expr block) {
+  const ir::ScheduleBlockRealize* block_realize =
+      block.As<ir::ScheduleBlockRealize>();
+  CHECK_NOTNULL(block_realize);
+  const ir::ScheduleBlock* block_node =
+      block_realize->schedule_block.As<ir::ScheduleBlock>();
+  CHECK_NOTNULL(block_node);
+  return block_node->name;
 }
 
 }  // namespace analyzer

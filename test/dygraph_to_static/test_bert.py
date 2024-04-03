@@ -101,8 +101,7 @@ class TestBert(Dy2StTestBase):
 
     def train(self, bert_config, data_reader, to_static):
         with unique_name.guard():
-            base.default_main_program().random_seed = SEED
-            base.default_startup_program().random_seed = SEED
+            paddle.seed(SEED)
 
             fake_dataset = FakeBertDataset(data_reader, STEP_NUM)
             data_loader = paddle.io.DataLoader(
@@ -321,28 +320,19 @@ class TestBert(Dy2StTestBase):
                         st_res,
                         dy_res,
                         rtol=1e-05,
-                        err_msg='dygraph_res: {},\n static_res: {}'.format(
-                            dy_res[~np.isclose(st_res, dy_res)],
-                            st_res[~np.isclose(st_res, dy_res)],
-                        ),
+                        err_msg=f'dygraph_res: {dy_res[~np.isclose(st_res, dy_res)]},\n static_res: {st_res[~np.isclose(st_res, dy_res)]}',
                     )
                     np.testing.assert_allclose(
                         st_res,
                         dy_jit_res,
                         rtol=1e-05,
-                        err_msg='dygraph_jit_res: {},\n static_res: {}'.format(
-                            dy_jit_res[~np.isclose(st_res, dy_jit_res)],
-                            st_res[~np.isclose(st_res, dy_jit_res)],
-                        ),
+                        err_msg=f'dygraph_jit_res: {dy_jit_res[~np.isclose(st_res, dy_jit_res)]},\n static_res: {st_res[~np.isclose(st_res, dy_jit_res)]}',
                     )
                     np.testing.assert_allclose(
                         st_res,
                         predictor_res,
                         rtol=1e-05,
-                        err_msg='dygraph_jit_res: {},\n static_res: {}'.format(
-                            predictor_res[~np.isclose(st_res, predictor_res)],
-                            st_res[~np.isclose(st_res, predictor_res)],
-                        ),
+                        err_msg=f'dygraph_jit_res: {predictor_res[~np.isclose(st_res, predictor_res)]},\n static_res: {st_res[~np.isclose(st_res, predictor_res)]}',
                     )
             break
 
