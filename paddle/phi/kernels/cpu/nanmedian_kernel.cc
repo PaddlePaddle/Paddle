@@ -103,8 +103,12 @@ void CalcMedianFunc(const Context& dev_ctx,
         offset = i * sort_k;
         int64_t pos = offset + sort_k - 1;
         o_ptr[i] = sort_out_ptr[pos];
-        m_ptr[2 * i] = sort_indices_ptr[pos];
-        m_ptr[2 * i + 1] = sort_indices_ptr[pos];
+        if (mode == "avg") {
+          m_ptr[2 * i] = sort_indices_ptr[pos];
+          m_ptr[2 * i + 1] = sort_indices_ptr[pos];
+        } else {
+          m_ptr[i] = sort_indices_ptr[pos];
+        }
       }
     } else {
       for (i = 0; i < pre_dim; i++) {
