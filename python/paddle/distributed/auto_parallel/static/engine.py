@@ -1074,8 +1074,17 @@ class Engine:
                 if scope_var and scope_var.get_tensor()._is_initialized():
                     continue
                 uninitialized.append(var)
-            if uninitialized:
-                prune_startup_prog = dist_startup_prog._prune(uninitialized)
+            # Make sure the number of communication operators is consistent
+            commu_ops = []
+            if self._nranks > 1:
+                for op in dist_startup_prog.global_block().ops:
+                    if auto_utils.is_comm_op(op):
+                        commu_ops.append(op)
+            reserved_vars_and_ops = uninitialized + commu_ops
+            if reserved_vars_and_ops:
+                prune_startup_prog = dist_startup_prog._prune(
+                    reserved_vars_and_ops
+                )
                 self._executor.run(prune_startup_prog)
 
             if hasattr(self, "_state_dict") and hasattr(self, "_dist_attr"):

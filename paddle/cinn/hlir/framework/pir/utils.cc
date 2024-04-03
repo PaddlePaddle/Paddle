@@ -334,6 +334,7 @@ bool IsDeniedInCinn(const ::pir::Operation& op) {
             << "So mark IsDeniedForCinn: " << true;
     return true;
   }
+
   // Strip the dialect, like pd_op.abs -> abs
   const auto op_name = OpNameAfterStripDialect(op);
   const bool is_denied = OpTransInfo().IsDeniedByDefault(op_name);

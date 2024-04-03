@@ -387,7 +387,7 @@ class Fleet:
         )
         if perf_threshold_time > -1 and ret > perf_threshold_time:
             logger.warning(
-                f"[Perf Warnning] AllReduce Test Timeout! {ret} > {perf_threshold_time}"
+                f"[Perf Warning] AllReduce Test Timeout! {ret} > {perf_threshold_time}"
             )
 
     # test reduce perf
@@ -408,7 +408,7 @@ class Fleet:
         )
         if perf_threshold_time > -1 and ret > perf_threshold_time:
             logger.warning(
-                f"[Perf Warnning] Reduce Test Timeout! {ret} > {perf_threshold_time}"
+                f"[Perf Warning] Reduce Test Timeout! {ret} > {perf_threshold_time}"
             )
 
     # test broadcast perf
@@ -431,7 +431,7 @@ class Fleet:
         )
         if perf_threshold_time > -1 and ret > perf_threshold_time:
             logger.warning(
-                f"[Perf Warnning] Broadcast Test Timeout! {ret} > {perf_threshold_time}"
+                f"[Perf Warning] Broadcast Test Timeout! {ret} > {perf_threshold_time}"
             )
 
     # test allgather perf
@@ -455,7 +455,7 @@ class Fleet:
         )
         if perf_threshold_time > -1 and ret > perf_threshold_time:
             logger.warning(
-                f"[Perf Warnning] Allgather Test Timeout! {ret} > {perf_threshold_time}"
+                f"[Perf Warning] Allgather Test Timeout! {ret} > {perf_threshold_time}"
             )
 
     # test reduce_scatter perf
@@ -498,7 +498,7 @@ class Fleet:
         )
         if perf_threshold_time > -1 and ret > perf_threshold_time:
             logger.warning(
-                f"[Perf Warnning] ReduceScatter Test Timeout! {ret} > {perf_threshold_time}"
+                f"[Perf Warning] ReduceScatter Test Timeout! {ret} > {perf_threshold_time}"
             )
 
     def _collective_perf_impl(self, round=50, context={}, hcg=None):

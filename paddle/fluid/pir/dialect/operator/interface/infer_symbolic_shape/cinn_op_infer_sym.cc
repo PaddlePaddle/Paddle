@@ -132,7 +132,7 @@ bool ReshapeOpInferSymbolicShape(
   const symbol::ShapeOrDataDimExprs &x_dim_expr =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
   if (x_dim_expr.data().has_value()) {
-    if (shape.size() == 1 && shape[0] == 1) {
+    if (shape.size() == 1 && shape.front() == 1) {
       shape_analysis->SetShapeOrDataForValue(
           op->result(0),
           symbol::TensorShapeOrDataDimExprs(std::vector<symbol::DimExpr>{1},
