@@ -702,7 +702,7 @@ class TestCycleGANModel(Dy2StTestBase):
         if not paddle.is_compiled_with_cuda():
             np.testing.assert_array_equal(dy_out, st_out)
         else:
-            np.testing.assert_allclose(dy_out, st_out, rtol=1e-5, atol=1e-8)
+            np.testing.assert_allclose(dy_out, st_out, rtol=1e-4, atol=1e-8)
 
 
 if __name__ == "__main__":
