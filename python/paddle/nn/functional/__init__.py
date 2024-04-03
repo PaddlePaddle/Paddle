@@ -15,6 +15,11 @@
 # TODO: import all neural network related api under this directory,
 # including layers, linear, conv, rnn etc.
 
+
+from .triton_ops import (
+    matmul_dequantize_int8_s2,
+)
+
 from .activation import (
     celu,
     elu,
@@ -179,6 +184,7 @@ __all__ = [
     'maxout',
     'prelu',
     'relu',
+    'matmul_dequantize_int8_s2',
     'relu_',
     'relu6',
     'selu',
