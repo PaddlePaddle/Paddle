@@ -215,6 +215,12 @@ class RandomSampler(Sampler):
                 f"replacement={self.replacement}"
             )
 
+        if not self.replacement and self._num_samples > len(self.data_source):
+            raise ValueError(
+                "num_samples should be smaller than or equal to length of data_source when replacement is False, "
+                f"but got num_samples: {self._num_samples} > data_source: {len(self.data_source)}"
+            )
+
         if not isinstance(self.num_samples, int) or self.num_samples <= 0:
             raise ValueError(
                 "num_samples should be a positive integer, "
@@ -243,13 +249,8 @@ class RandomSampler(Sampler):
                 ).tolist():
                     yield index
             else:
-                for _ in range(self.num_samples // n):
-                    for index in np.random.choice(
-                        np.arange(n), n, replace=False
-                    ).tolist():
-                        yield index
                 for index in np.random.choice(
-                    np.arange(n), self.num_samples % n, replace=False
+                    np.arange(n), self.num_samples, replace=False
                 ).tolist():
                     yield index
 

@@ -133,36 +133,26 @@ class TestRandomSplitApi(unittest.TestCase):
 
         self.assertTrue(len(elements_list) == 0)
 
-
-class TestRandomSplitApi2(unittest.TestCase):
-    def run_main(self, places):
+    def test_fraction(self):
         paddle.seed(1)
-        place = paddle.CPUPlace()
-        with base.dygraph.guard(place):
-            dataset1, dataset2, dataset3 = paddle.io.random_split(
-                range(5), [0.3, 0.0, 0.7]
-            )
 
-            self.assertTrue(len(dataset1) == 2)
-            self.assertTrue(len(dataset2) == 0)
-            self.assertTrue(len(dataset3) == 3)
+        dataset1, dataset2, dataset3 = paddle.io.random_split(
+            range(5), [0.3, 0.0, 0.7]
+        )
 
-            elements_list = list(range(5))
+        self.assertTrue(len(dataset1) == 2)
+        self.assertTrue(len(dataset2) == 0)
+        self.assertTrue(len(dataset3) == 3)
 
-            for _, val in enumerate(dataset1):
-                elements_list.remove(val)
+        elements_list = list(range(5))
 
-            for _, val in enumerate(dataset3):
-                elements_list.remove(val)
+        for _, val in enumerate(dataset1):
+            elements_list.remove(val)
 
-            self.assertTrue(len(elements_list) == 0)
+        for _, val in enumerate(dataset3):
+            elements_list.remove(val)
 
-    def test_main(self):
-        places = [paddle.CPUPlace()]
-        if paddle.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
-        for p in places:
-            self.run_main(places=p)
+        self.assertTrue(len(elements_list) == 0)
 
 
 class TestRandomSplitError(unittest.TestCase):
