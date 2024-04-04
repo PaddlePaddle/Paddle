@@ -685,6 +685,63 @@ struct CUBlas<phi::dtype::complex<float>> {
         ldb,
         batch_size));
   }
+
+  static void GETRF_BATCH(cublasHandle_t handle,
+                          int n,
+                          phi::dtype::complex<float> **A,
+                          int lda,
+                          int *ipiv,
+                          int *info,
+                          int batch_size) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasCgetrfBatched(
+        handle,
+        n,
+        reinterpret_cast<cuFloatComplex **>(A),
+        lda,
+        ipiv,
+        info,
+        batch_size));
+  }
+
+  static void GETRI_BATCH(cublasHandle_t handle,
+                          int n,
+                          const phi::dtype::complex<float> **A,
+                          int lda,
+                          const int *ipiv,
+                          phi::dtype::complex<float> **Ainv,
+                          int ldc,
+                          int *info,
+                          int batch_size) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasCgetriBatched(
+        handle,
+        n,
+        reinterpret_cast<const cuFloatComplex **>(A),
+        lda,
+        ipiv,
+        reinterpret_cast<cuFloatComplex **>(Ainv),
+        ldc,
+        info,
+        batch_size));
+  }
+
+  static void MATINV_BATCH(cublasHandle_t handle,
+                           int n,
+                           const phi::dtype::complex<float> **A,
+                           int lda,
+                           phi::dtype::complex<float> **Ainv,
+                           int lda_inv,
+                           int *info,
+                           int batch_size) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasCmatinvBatched(
+        handle,
+        n,
+        reinterpret_cast<const cuFloatComplex **>(A),
+        lda,
+        reinterpret_cast<cuFloatComplex **>(Ainv),
+        lda_inv,
+        info,
+        batch_size));
+  }
 };
 
 template <>
@@ -922,6 +979,63 @@ struct CUBlas<phi::dtype::complex<double>> {
     PADDLE_THROW(phi::errors::Unimplemented(
         "cublasGemmEx is not supported on cuda <= 7.5"));
 #endif
+  }
+
+  static void GETRF_BATCH(cublasHandle_t handle,
+                          int n,
+                          phi::dtype::complex<double> **A,
+                          int lda,
+                          int *ipiv,
+                          int *info,
+                          int batch_size) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasZgetrfBatched(
+        handle,
+        n,
+        reinterpret_cast<cuDoubleComplex **>(A),
+        lda,
+        ipiv,
+        info,
+        batch_size));
+  }
+
+  static void GETRI_BATCH(cublasHandle_t handle,
+                          int n,
+                          const phi::dtype::complex<double> **A,
+                          int lda,
+                          const int *ipiv,
+                          phi::dtype::complex<double> **Ainv,
+                          int ldc,
+                          int *info,
+                          int batch_size) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasZgetriBatched(
+        handle,
+        n,
+        reinterpret_cast<const cuDoubleComplex **>(A),
+        lda,
+        ipiv,
+        reinterpret_cast<cuDoubleComplex **>(Ainv),
+        ldc,
+        info,
+        batch_size));
+  }
+
+  static void MATINV_BATCH(cublasHandle_t handle,
+                           int n,
+                           const phi::dtype::complex<double> **A,
+                           int lda,
+                           phi::dtype::complex<double> **Ainv,
+                           int lda_inv,
+                           int *info,
+                           int batch_size) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasZmatinvBatched(
+        handle,
+        n,
+        reinterpret_cast<const cuDoubleComplex **>(A),
+        lda,
+        reinterpret_cast<cuDoubleComplex **>(Ainv),
+        lda_inv,
+        info,
+        batch_size));
   }
 };
 

@@ -28,6 +28,8 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
 
 template class MatrixInverseFunctor<CPUContext, float>;
 template class MatrixInverseFunctor<CPUContext, double>;
+template class MatrixInverseFunctor<CPUContext, phi::dtype::complex<float>>;
+template class MatrixInverseFunctor<CPUContext, phi::dtype::complex<double>>;
 
 }  // namespace funcs
 }  // namespace phi
