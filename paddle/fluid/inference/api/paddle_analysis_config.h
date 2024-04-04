@@ -1250,8 +1250,16 @@ struct PD_INFER_DECL AnalysisConfig {
                           bool custom_pass_only = false);
 
   ///
-  /// \brief Set passmanager opt level.Pass level lower than
-  /// opt level which will be added to passmanager
+  /// \brief Set pir Optimization level.
+  /// \param opt_level The optimization level
+  /// The optimization Level in range [0,4], Default 2.
+  /// Higher optimization level allows the predictor to apply more passes.
+  /// If 0, Only basic pass support.
+  /// If 1, Additional support for functional pass.
+  /// If 2, Additional support the fusion logical pass,maybe affect precision
+  /// and speed.
+  /// If 3, support layout pass, etc.
+  /// If 4, add the radicaloptimization, maybe affect precision, etc.
   ///
   void SetOptimizationLevel(int opt_level);
 

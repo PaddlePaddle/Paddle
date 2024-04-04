@@ -176,7 +176,7 @@ class TestRmsNormFusePattern_FP16(TestRmsNormFusePattern):
         self.check_pass_correct(atol=1e-3, rtol=1e-3)
 
 
-class TestAddRmsNormFusePattern(TestRmsNormFusePattern):
+class TestAddRmsNormFusePatternWithResidual(TestRmsNormFusePattern):
     r"""
         x         residual       w
         |           |
@@ -222,12 +222,25 @@ class TestAddRmsNormFusePattern(TestRmsNormFusePattern):
                                         np.random.random(w_shape).astype(w_type)
                                     ),
                                 )
+                                w1 = create_parameter(
+                                    name="w1",
+                                    shape=w_shape,
+                                    dtype=w_type,
+                                    initializer=paddle.nn.initializer.Assign(
+                                        np.random.random([4096, 4096]).astype(
+                                            w_type
+                                        )
+                                    ),
+                                )
                                 add_out = paddle.add(residual, x)
+                                add_out_1 = add_out
                                 variance = add_out.pow(2).mean(-1, keepdim=True)
                                 add_out = (
                                     paddle.rsqrt(variance + 1e-6) * add_out
                                 )
-                                out = add_out * w
+                                mul_out = add_out * w
+                                matmul_out = paddle.matmul(mul_out, w1)
+                                out = paddle.add(add_out_1, matmul_out)
                                 out = paddle.assign(out)
                                 self.pass_list = ['add_norm_fuse_pass']
                                 self.feeds = {
@@ -240,7 +253,6 @@ class TestAddRmsNormFusePattern(TestRmsNormFusePattern):
                                 }
                                 self.fetch_list = [out]
                                 self.valid_op_map = {
-                                    "pd_op.add": 0,
                                     "pd_op.pow": 0,
                                     "pd_op.mean": 0,
                                     "pd_op.full": 0,
@@ -288,13 +300,26 @@ class TestAddLayerNormFusePattern(TestRmsNormFusePattern):
                                         mean=0.0, std=2.0
                                     ),
                                 )
+                                w1 = create_parameter(
+                                    name="w1",
+                                    shape=w_shape,
+                                    dtype=w_type,
+                                    initializer=paddle.nn.initializer.Assign(
+                                        np.random.random([4096, 4096]).astype(
+                                            w_type
+                                        )
+                                    ),
+                                )
                                 add_out = paddle.add(residual, x)
+                                add_out_1 = add_out
                                 layer_norm = paddle.nn.LayerNorm(
                                     add_out.shape[-1:],
                                     epsilon=epilson,
                                     weight_attr=w_attr,
                                 )
-                                out = layer_norm(add_out)
+                                layer_norm_out = layer_norm(add_out)
+                                matmul_out = paddle.matmul(layer_norm_out, w1)
+                                out = paddle.add(add_out_1, matmul_out)
                                 out = paddle.assign(out)
                                 self.pass_list = ['add_norm_fuse_pass']
                                 self.feeds = {
@@ -307,12 +332,14 @@ class TestAddLayerNormFusePattern(TestRmsNormFusePattern):
                                 }
                                 self.fetch_list = [out]
                                 self.valid_op_map = {
-                                    "pd_op.add": 0,
                                     "pd_op.layer_norm": 0,
                                     "pd_op.fused_bias_residual_layernorm": 1,
                                 }
 
                                 yield [main_prog, start_prog], False
+
+    def test_check_output(self):
+        self.check_pass_correct(atol=1e-3, rtol=1e-3)
 
 
 if __name__ == "__main__":

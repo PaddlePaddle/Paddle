@@ -252,6 +252,8 @@ def shard_tensor(
         sharding_specs = get_shard_spec(mesh, placements, tensor.ndim)
         dims_mapping = convert_to_dims_mapping(sharding_specs, mesh)
         dist_tensor = paddle._pir_ops.shard_tensor(tensor, mesh, dims_mapping)
+        dist_tensor.stop_gradient = tensor.stop_gradient
+        dist_tensor.persistable = tensor.persistable
         return dist_tensor
     else:
         # TODO(zhiqiu): we need to refine the static shard_tensor
@@ -1701,12 +1703,18 @@ class DistModel:
         # call paddle.disable_static to keep the outside of DistModel in dynamic graph mode
 
         # set the default mode
-        if optimizer is not None and loss is not None:
-            self.train()
-        elif loss is not None:
-            self.eval()
-        else:
-            self.predict()
+        self._in_pir_mode = paddle.base.framework.get_flags(
+            "FLAGS_enable_pir_api"
+        )["FLAGS_enable_pir_api"]
+        if (
+            not self._in_pir_mode
+        ):  # TODO (2024-Q2) remove this when pir mode is fully constructed.
+            if optimizer is not None and loss is not None:
+                self.train()
+            elif loss is not None:
+                self.eval()
+            else:
+                self.predict()
 
     def train(self):
         """
@@ -1839,6 +1847,10 @@ class DistModel:
         return self._engine.get_serial_startup_program(mode)
 
     def _make_feeds(self, data_list):
+        # TODO (2024-Q2): formula make feed
+        if self._in_pir_mode:
+            self._feed_name_list[self._mode] = ['input0', 'label0']
+
         if (
             self._mode not in self._feed_name_list
             or self._feed_name_list[self._mode] == []

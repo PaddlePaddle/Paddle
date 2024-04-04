@@ -51,12 +51,17 @@ class ParametersRecorder:
             if tensor.placements is not None:  # import for shard tensor api
                 import paddle.distributed as dist
 
-                value = dist.shard_tensor(
+                dist_value = dist.shard_tensor(
                     value,
                     tensor.process_mesh,
                     tensor.placements,
                     stop_gradient=value.stop_gradient,
                 )
+                value.set_type(dist_value.type())
+                value.get_defining_op().dist_attr = (
+                    dist_value.get_defining_op().dist_attr
+                )
+                dist_value.block.remove_op(dist_value.get_defining_op())
 
             if isinstance(tensor, paddle.Tensor):
                 params.add(tensor)

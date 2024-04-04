@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,14 +14,13 @@
 
 #pragma once
 
-#include "paddle/cinn/backends/extern_func_jit_register.h"
+#include <memory>
+#include "paddle/pir/include/core/dll_decl.h"
 
-CINN_USE_REGISTER(host_intrinsics)
-#ifdef CINN_WITH_MKL_CBLAS
-CINN_USE_REGISTER(mkl_math)
-CINN_USE_REGISTER(cinn_cpu_mkl)
-#ifdef CINN_WITH_DNNL
-CINN_USE_REGISTER(cinn_cpu_onednn)
-#endif
-#endif
-CINN_USE_REGISTER(cinn_backend_parallel)
+namespace pir {
+
+class Pass;
+
+IR_API std::unique_ptr<Pass> CreateReshapeTransposeMatmulFusePass();
+
+}  // namespace pir
