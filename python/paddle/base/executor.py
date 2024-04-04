@@ -41,7 +41,6 @@ from .framework import (
     get_flags,
     in_pir_mode,
     paddle_type_to_proto_type,
-    process_type_promotion,
     set_flags,
 )
 from .incubate.checkpoint import auto_checkpoint as acp
@@ -1779,7 +1778,7 @@ class Executor:
             )
         else:
             # do type promotion if necessary
-            program = process_type_promotion(program)
+            # program = process_type_promotion(program)
             res = self._run_impl(
                 program=program,
                 feed=feed,
