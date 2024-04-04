@@ -28,6 +28,9 @@ from typing import Any
 
 import paddle
 from paddle.base import core, dygraph
+from paddle.base.compiler import (
+    BuildStrategy,
+)
 from paddle.base.dygraph.base import (
     switch_to_static_graph,
 )
@@ -226,7 +229,13 @@ def to_static(
 
         return static_layer
 
-    build_strategy = build_strategy
+    build_strategy = build_strategy or BuildStrategy()
+    if not isinstance(build_strategy, BuildStrategy):
+        raise TypeError(
+            "Required type(build_strategy) shall be `paddle.static.BuildStrategy`, but received {}".format(
+                type(build_strategy).__name__
+            )
+        )
     _check_and_set_backend(backend, build_strategy)
 
     # for usage: `to_static(foo, ...)`

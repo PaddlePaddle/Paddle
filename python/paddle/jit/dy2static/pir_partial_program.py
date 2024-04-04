@@ -23,6 +23,7 @@ from paddle import _legacy_C_ops
 from paddle.autograd.backward_utils import ValueDict
 from paddle.autograd.ir_backward import grad
 from paddle.base import core, framework
+from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.optimizer.lr import LRScheduler
@@ -433,7 +434,9 @@ class PartialProgramLayer:
             parameters if parameters is not None else ([], [])
         )
 
-        self._build_strategy = kwargs.get('build_strategy', None)
+        self._build_strategy = kwargs.get('build_strategy', BuildStrategy())
+        assert isinstance(self._build_strategy, BuildStrategy)
+
         self._origin_main_program = self._verify_program(main_program)
         self._cuda_graph_vec = self._create_cuda_graph_vec()
         self._cuda_graph_capture_mode = ""
@@ -593,6 +596,9 @@ class PartialProgramLayer:
     @cached_property
     def _train_program_id(self):
         program_id = paddle.utils._hash_with_id(self.train_program, self)
+        core._set_cached_executor_build_strategy(
+            program_id, self._build_strategy
+        )
         return program_id
 
     @cached_property
