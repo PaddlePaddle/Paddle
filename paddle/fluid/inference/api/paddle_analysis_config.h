@@ -967,7 +967,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param x whether to debug IR graph analysis phase.
   ///
-  void SwitchIrDebug(int x = true);
+  void SwitchIrDebug(int x = true, const std::vector<std::string>& passes = {});
 
   ///
   /// \brief Turn on MKLDNN.
@@ -1239,7 +1239,29 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool cinn_enabled() const;
 
-  void EnableCustomPasses(const std::vector<std::string>& passes);
+  ///
+  /// \brief Set the custom passes list .
+  ///
+  /// \param passes The custom passes list.
+  /// \param custom_pass_only Custom pass run mode. The default is false,
+  /// which means that paddle pass will run after custom pass.
+  ///
+  void EnableCustomPasses(const std::vector<std::string>& passes,
+                          bool custom_pass_only = false);
+
+  ///
+  /// \brief Set pir Optimization level.
+  /// \param opt_level The optimization level
+  /// The optimization Level in range [0,4], Default 2.
+  /// Higher optimization level allows the predictor to apply more passes.
+  /// If 0, Only basic pass support.
+  /// If 1, Additional support for functional pass.
+  /// If 2, Additional support the fusion logical pass,maybe affect precision
+  /// and speed.
+  /// If 3, support layout pass, etc.
+  /// If 4, add the radicaloptimization, maybe affect precision, etc.
+  ///
+  void SetOptimizationLevel(int opt_level);
 
  protected:
   // Update the config.
@@ -1468,8 +1490,10 @@ struct PD_INFER_DECL AnalysisConfig {
   bool skip_load_params_{false};
 
   bool use_pir_{false};
-
   std::vector<std::string> custom_passes_;
+  bool custom_pass_only_{false};
+  int pm_opt_level_{2};
+  std::vector<std::string> ir_debug_passes_;
 };
 
 }  // namespace paddle

@@ -32,13 +32,13 @@ cuda_config=OFF
 cudnn_config=OFF
 
 mklcblas_config=ON
-mkldnn_config=ON
+onednn_config=ON
 
 function mklcblas_off {
   mklcblas_config=OFF
 }
-function mkldnn_off {
-  mkldnn_config=OFF
+function onednn_off {
+  onednn_config=OFF
 }
 
 
@@ -204,11 +204,11 @@ function main {
         case $i in
             mklcblas_off)
                 mklcblas_off
-                mkldnn_off
+                onednn_off
                 shift
                 ;;
-            mkldnn_off)
-                mkldnn_off
+            onednn_off)
+                onednn_off
                 shift
                 ;;
             gpu_on)

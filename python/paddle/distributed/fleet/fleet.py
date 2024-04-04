@@ -245,9 +245,7 @@ class Fleet:
                 )
             else:
                 raise ValueError(
-                    "`is_collective` should be instance of `bool`, but got {}".format(
-                        type(is_collective)
-                    )
+                    f"`is_collective` should be instance of `bool`, but got {type(is_collective)}"
                 )
         else:
             if isinstance(role_maker, RoleMakerBase):
@@ -255,9 +253,7 @@ class Fleet:
                 self._is_collective = role_maker._is_collective
             else:
                 raise ValueError(
-                    "`role_maker` should be subclass of `RoleMakerBase`, but got {}".format(
-                        type(role_maker)
-                    )
+                    f"`role_maker` should be subclass of `RoleMakerBase`, but got {type(role_maker)}"
                 )
         self._role_maker._generate_role()
 
@@ -391,7 +387,7 @@ class Fleet:
         )
         if perf_threshold_time > -1 and ret > perf_threshold_time:
             logger.warning(
-                f"[Perf Warnning] AllReduce Test Timeout! {ret} > {perf_threshold_time}"
+                f"[Perf Warning] AllReduce Test Timeout! {ret} > {perf_threshold_time}"
             )
 
     # test reduce perf
@@ -412,7 +408,7 @@ class Fleet:
         )
         if perf_threshold_time > -1 and ret > perf_threshold_time:
             logger.warning(
-                f"[Perf Warnning] Reduce Test Timeout! {ret} > {perf_threshold_time}"
+                f"[Perf Warning] Reduce Test Timeout! {ret} > {perf_threshold_time}"
             )
 
     # test broadcast perf
@@ -435,7 +431,7 @@ class Fleet:
         )
         if perf_threshold_time > -1 and ret > perf_threshold_time:
             logger.warning(
-                f"[Perf Warnning] Broadcast Test Timeout! {ret} > {perf_threshold_time}"
+                f"[Perf Warning] Broadcast Test Timeout! {ret} > {perf_threshold_time}"
             )
 
     # test allgather perf
@@ -459,7 +455,7 @@ class Fleet:
         )
         if perf_threshold_time > -1 and ret > perf_threshold_time:
             logger.warning(
-                f"[Perf Warnning] Allgather Test Timeout! {ret} > {perf_threshold_time}"
+                f"[Perf Warning] Allgather Test Timeout! {ret} > {perf_threshold_time}"
             )
 
     # test reduce_scatter perf
@@ -502,7 +498,7 @@ class Fleet:
         )
         if perf_threshold_time > -1 and ret > perf_threshold_time:
             logger.warning(
-                f"[Perf Warnning] ReduceScatter Test Timeout! {ret} > {perf_threshold_time}"
+                f"[Perf Warning] ReduceScatter Test Timeout! {ret} > {perf_threshold_time}"
             )
 
     def _collective_perf_impl(self, round=50, context={}, hcg=None):

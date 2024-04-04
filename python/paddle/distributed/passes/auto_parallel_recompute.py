@@ -110,9 +110,7 @@ class RecomputeState(ProgramStats):
         for i in sorted(no_recompute_segments, reverse=True):
             assert i < len(
                 segments
-            ), "the no_recompute_segments idx [{}] should be lower the number of segment [{}]".format(
-                i, len(segments)
-            )
+            ), f"the no_recompute_segments idx [{i}] should be lower the number of segment [{len(segments)}]"
             segments.pop(i)
 
         return segments
@@ -328,9 +326,7 @@ class RecomputePass(PassBase):
                     op_names_of_stages[id].append(op.type)
         assert (
             len(ops) == reset_ops_count + pushed_ops_count
-        ), "The sum of pushed_ops_count and reset_ops_count must be the same as length of ops, but the sum is {} while length of ops is {}".format(
-            reset_ops_count + pushed_ops_count, len(ops)
-        )
+        ), f"The sum of pushed_ops_count and reset_ops_count must be the same as length of ops, but the sum is {reset_ops_count + pushed_ops_count} while length of ops is {len(ops)}"
         return ops_of_stages, op_names_of_stages
 
     def _apply_single_impl(self, main_program, startup_program, context):
@@ -416,18 +412,10 @@ class RecomputePass(PassBase):
         for i, (idx1, idx2) in enumerate(segments):
             logger.debug(f"recompute segment[{i + 1}/{len(segments)}]")
             logger.debug(
-                "segment start op: [{}]: [{}] [{}]".format(
-                    rc_state.ops[idx1].type,
-                    rc_state.ops[idx1].input_arg_names,
-                    rc_state.ops[idx1].output_arg_names,
-                )
+                f"segment start op: [{rc_state.ops[idx1].type}]: [{rc_state.ops[idx1].input_arg_names}] [{rc_state.ops[idx1].output_arg_names}]"
             )
             logger.debug(
-                "segment end op: [{}]: [{}] [{}]".format(
-                    rc_state.ops[idx2 - 1].type,
-                    rc_state.ops[idx2 - 1].input_arg_names,
-                    rc_state.ops[idx2 - 1].output_arg_names,
-                )
+                f"segment end op: [{rc_state.ops[idx2 - 1].type}]: [{rc_state.ops[idx2 - 1].input_arg_names}] [{rc_state.ops[idx2 - 1].output_arg_names}]"
             )
 
         # 4. get vars that should be hold in memory
@@ -439,10 +427,8 @@ class RecomputePass(PassBase):
             )
         cross_vars = set(vars_should_be_hold) - set(rc_state.checkpoints)
         logger.debug(
-            "found [{}] vars which cross recompute segment: [{}],"
-            "better checkpoints might be set to reduce those vars".format(
-                len(cross_vars), cross_vars
-            )
+            f"found [{len(cross_vars)}] vars which cross recompute segment: [{cross_vars}],"
+            "better checkpoints might be set to reduce those vars"
         )
         vars_should_be_hold.extend(rc_state.reserved_vars)
         vars_should_be_hold.extend(rc_state.get_input_nodes())

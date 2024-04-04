@@ -103,9 +103,7 @@ class LauncherInterface:
                     return ret
                 logger.error("ABORT!!! ABORT!!! ABORT!!!")
                 logger.error(
-                    "ERROR rank {} error with exit code {}, check log for detail.".format(
-                        p.rank, ret
-                    )
+                    f"ERROR rank {p.rank} error with exit code {ret}, check log for detail."
                 )
                 result = ret
         if not alive and result is None:
@@ -209,9 +207,7 @@ class ElasticManager:
 
         if not server or ':' not in server or not name or not self.np:
             logger.info(
-                'Elastic is not enabled with server {} name {} and np {}'.format(
-                    server, name, self.np
-                )
+                f'Elastic is not enabled with server {server} name {name} and np {self.np}'
             )
             self.enable = False
             return

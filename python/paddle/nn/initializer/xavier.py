@@ -41,14 +41,14 @@ class XavierInitializer(Initializer):
 
     .. math::
 
-        x = \sqrt{\\frac{6.0}{fan\_in + fan\_out}}
+        x = gain \times \sqrt{\\frac{6.0}{fan\_in + fan\_out}}
 
     In case of Normal distribution, the mean is 0 and the standard deviation
     is
 
     .. math::
 
-        \sqrt{\\frac{2.0}{fan\_in + fan\_out}}
+       gain \times \sqrt{\\frac{2.0}{fan\_in + fan\_out}}
 
 
     Args:
@@ -57,6 +57,7 @@ class XavierInitializer(Initializer):
                 inferred from the variable. Default is None.
         fan_out (float, optional): fan_out for Xavier initialization. If None, it is
                  inferred from the variable. Default is None.
+        gain (float, optional): Scaling Tensor. Default is 1.0.
         seed (int, optional): Random seed. Default is 0.
 
     Note:
@@ -64,7 +65,9 @@ class XavierInitializer(Initializer):
 
     """
 
-    def __init__(self, uniform=True, fan_in=None, fan_out=None, seed=0):
+    def __init__(
+        self, uniform=True, fan_in=None, fan_out=None, seed=0, gain=1.0
+    ):
         assert uniform is not None
         assert seed is not None
         super().__init__()
@@ -72,6 +75,7 @@ class XavierInitializer(Initializer):
         self._fan_in = fan_in
         self._fan_out = fan_out
         self._seed = seed
+        self._gain = gain
 
     def forward(self, var, block=None):
         """Initialize the input tensor with Xavier initialization.
@@ -136,7 +140,7 @@ class XavierInitializer(Initializer):
 
         if in_dygraph_mode():
             if self._uniform:
-                limit = math.sqrt(6.0 / float(fan_in + fan_out))
+                limit = self._gain * math.sqrt(6.0 / float(fan_in + fan_out))
                 out_var = _C_ops.uniform(
                     out_var_shape,
                     out_dtype,
@@ -146,7 +150,7 @@ class XavierInitializer(Initializer):
                     _current_expected_place(),
                 )
             else:
-                std = math.sqrt(2.0 / float(fan_in + fan_out))
+                std = self._gain * math.sqrt(2.0 / float(fan_in + fan_out))
 
                 place = _current_expected_place()
                 out_var = _C_ops.gaussian(
@@ -173,7 +177,7 @@ class XavierInitializer(Initializer):
             return None
         elif in_pir_mode():
             if self._uniform:
-                limit = math.sqrt(6.0 / float(fan_in + fan_out))
+                limit = self._gain * math.sqrt(6.0 / float(fan_in + fan_out))
                 out_var = paddle._pir_ops.uniform(
                     out_var.shape,
                     out_dtype,
@@ -183,7 +187,7 @@ class XavierInitializer(Initializer):
                     _current_expected_place(),
                 )
             else:
-                std = math.sqrt(2.0 / float(fan_in + fan_out))
+                std = self._gain * math.sqrt(2.0 / float(fan_in + fan_out))
                 out_var = _C_ops.gaussian(
                     out_var.shape,
                     0.0,
@@ -202,7 +206,7 @@ class XavierInitializer(Initializer):
             return out_var
         else:
             if self._uniform:
-                limit = math.sqrt(6.0 / float(fan_in + fan_out))
+                limit = self._gain * math.sqrt(6.0 / float(fan_in + fan_out))
                 op = block.append_op(
                     type="uniform_random",
                     inputs={},
@@ -217,7 +221,7 @@ class XavierInitializer(Initializer):
                     stop_gradient=True,
                 )
             else:
-                std = math.sqrt(2.0 / float(fan_in + fan_out))
+                std = self._gain * math.sqrt(2.0 / float(fan_in + fan_out))
                 op = block.append_op(
                     type="gaussian_random",
                     outputs={"Out": out_var},
@@ -254,7 +258,7 @@ class XavierNormal(XavierInitializer):
 
     .. math::
 
-        \sqrt{\frac{2.0}{fan\_in + fan\_out}}.
+        gain \times \sqrt{\frac{2.0}{fan\_in + fan\_out}}.
 
 
     Args:
@@ -262,6 +266,7 @@ class XavierNormal(XavierInitializer):
                 inferred from the Tensor. Default is None.
         fan_out (float, optional): fan_out for Xavier initialization, which is
                  inferred from the Tensor. Default is None.
+        gain (float, optional): Scaling Tensor. Default is 1.0.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -299,8 +304,10 @@ class XavierNormal(XavierInitializer):
              [[1.13615966, 0.89018601]]])
     """
 
-    def __init__(self, fan_in=None, fan_out=None, name=None):
-        super().__init__(uniform=False, fan_in=fan_in, fan_out=fan_out, seed=0)
+    def __init__(self, fan_in=None, fan_out=None, gain=1.0, name=None):
+        super().__init__(
+            uniform=False, fan_in=fan_in, fan_out=fan_out, seed=0, gain=gain
+        )
 
 
 class XavierUniform(XavierInitializer):
@@ -316,13 +323,14 @@ class XavierUniform(XavierInitializer):
 
     .. math::
 
-        x = \sqrt{\frac{6.0}{fan\_in + fan\_out}}.
+        x = gain \times \sqrt{\frac{6.0}{fan\_in + fan\_out}}.
 
     Args:
         fan_in (float, optional): fan_in for Xavier initialization, which is
                 inferred from the Tensor. Default is None.
         fan_out (float, optional): fan_out for Xavier initialization, which is
                  inferred from the Tensor. Default is None.
+        gain (float, optional): Scaling Tensor. Default is 1.0.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -359,5 +367,7 @@ class XavierUniform(XavierInitializer):
              [[-1.02494967,  0.67544925]]])
     """
 
-    def __init__(self, fan_in=None, fan_out=None, name=None):
-        super().__init__(uniform=True, fan_in=fan_in, fan_out=fan_out, seed=0)
+    def __init__(self, fan_in=None, fan_out=None, gain=1.0, name=None):
+        super().__init__(
+            uniform=True, fan_in=fan_in, fan_out=fan_out, seed=0, gain=gain
+        )

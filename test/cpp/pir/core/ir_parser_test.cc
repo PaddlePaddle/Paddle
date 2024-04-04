@@ -118,7 +118,6 @@ TestTask* ParserTest::GetTestTask() {
 bool ParserTest::ConsumeTestTask(TestTask* test_task, pir::IrContext* ctx) {
   std::string test_info = test_task->test_info;
   TestType test_type = test_task->test_type;
-  std::unique_ptr<pir::IrPrinter> printer;
   std::unique_ptr<pir::IrParser> parser;
   std::stringstream is(test_info);
   parser.reset(new pir::IrParser(ctx, is));

@@ -132,9 +132,7 @@ def sparse_coo_tensor(
 
         if nnz != values.shape[0]:
             raise ValueError(
-                "the indices and values must have same number of non-zero, but get {} and {}".format(
-                    nnz, values.shape[0]
-                )
+                f"the indices and values must have same number of non-zero, but get {nnz} and {values.shape[0]}"
             )
 
         dense_dim = len(values.shape) - 1
@@ -159,9 +157,7 @@ def sparse_coo_tensor(
                 )
             if len(shape) != sparse_dim + dense_dim:
                 raise ValueError(
-                    "the number of dimensions(len(shape) must be sparse_dim({}) + dense_dim({}), but get {}".format(
-                        sparse_dim, dense_dim, len(shape)
-                    )
+                    f"the number of dimensions(len(shape) must be sparse_dim({sparse_dim}) + dense_dim({dense_dim}), but get {len(shape)}"
                 )
 
         return _C_ops.sparse_sparse_coo_tensor(values, indices, shape)
@@ -269,9 +265,7 @@ def sparse_csr_tensor(
     if len(shape) == 2:
         if crows.shape[0] != rows + 1:
             raise ValueError(
-                "The length({}) of crows must be equal to the rows({})+1 of matrix.".format(
-                    crows.shape[0], rows
-                )
+                f"The length({crows.shape[0]}) of crows must be equal to the rows({rows})+1 of matrix."
             )
         if crows[0] != 0:
             raise ValueError("the 0th value of crows must be 0")
@@ -283,9 +277,7 @@ def sparse_csr_tensor(
     else:
         if crows.shape[0] % (rows + 1) != 0:
             raise ValueError(
-                "The length({}) of crows must be divisible the rows({})+1 of matrix.".format(
-                    crows.shape[0], rows
-                )
+                f"The length({crows.shape[0]}) of crows must be divisible the rows({rows})+1 of matrix."
             )
     # TODO(zkh2016): check whether the value in crows and cols is legal
 
