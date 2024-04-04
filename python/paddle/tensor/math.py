@@ -1582,29 +1582,29 @@ def sum_as(x, y, name=None):
 
     Args:
         x (Tensor): An N-D Tensor, the data type is bool, float16, float32, float64, int32 or int64.
-        y (Tensor): An N-D Tensor, the length of x shape must greater than or equal to the length of
-            y shape. The data type is bool, float16, float32, float64, int32 or int64.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        y (Tensor): An N-D Tensor, the length of x shape must greater than or equal to the length of y shape. The data type is bool, float16, float32, float64, int32 or int64.
 
     Returns:
-        Tensor: The sum of the input tensor x along some axis has the same shape as the shape of the input tensor y,
-        if `x.dtype='bool'`, `x.dtype='int32'`, it's data type is `'int64'`,
-        otherwise it's data type is the same as `x`.
+        Tensor: The sum of the input tensor x along some axis has the same shape as the shape of the input tensor y, if `x.dtype='bool'`, `x.dtype='int32'`, it's data type is `'int64'`, otherwise it's data type is the same as `x`.
 
     Examples:
         .. code-block:: python
+
+            >>> import paddle
+
             >>> x = paddle.to_tensor([[1, 2, 3, 4], [5, 6, 7, 8]])
             >>> x
             Tensor(shape=[2, 4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
-                [[1, 2, 3, 4],
-                 [5, 6, 7, 8]])
+            [[1, 2, 3, 4],
+             [5, 6, 7, 8]])
             >>> y = paddle.to_tensor([1, 2, 3, 4])
             >>> y
             Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
-                [1, 2, 3, 4])
-            >>> paddle.sum_as(x, y)
+            [1, 2, 3, 4])
+            >>> res = paddle.sum_as(x, y)
+            >>> res
             Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
-                [6 , 8 , 10, 12])
+            [6 , 8 , 10, 12])
     """
 
     if in_dynamic_or_pir_mode():
