@@ -53,7 +53,7 @@ enum class ScaleAlgo {
 ///
 /// \class MkldnnQuantizerConfig
 ///
-/// \brief Config for mkldnn quantize.
+/// \brief Config for onednn quantize.
 ///
 /// The MkldnnQuantizerConfig is used to configure Mkldnn's quantization
 /// parameters, including scale algorithm, warmup data, warmup batch size,

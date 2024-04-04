@@ -321,7 +321,7 @@ class AnalysisPredictor : public PaddlePredictor {
   void RegisterInputHook(const InputTensorHookFunc &hookfunc) override;
 
   ///
-  /// \brief Initialize mkldnn quantizer and execute mkldnn quantization pass
+  /// \brief Initialize onednn quantizer and execute onednn quantization pass
   ///
   /// \return Whether the function executed successfully
   ///

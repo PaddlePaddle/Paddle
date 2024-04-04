@@ -52,7 +52,7 @@ inline void DontClearMKLDNNCache(const platform::Place& place) {
   }
 }
 
-// If MKLDNN build and CPU place then register suffix in DeviceContext
+// If OneDNN build and CPU place then register suffix in DeviceContext
 inline void AttachPointerHashToMKLDNNKey(void* ptr,
                                          const platform::Place& place) {
   if (platform::is_cpu_place(place)) {

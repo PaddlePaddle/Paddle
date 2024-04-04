@@ -107,7 +107,7 @@ inline bool NeedTransformLayout(const DataLayout& l, const DataLayout& r) {
   bool ret =
       (l != DataLayout::kAnyLayout && r != DataLayout::kAnyLayout && l != r);
 #ifdef PADDLE_WITH_DNNL
-  // Layout transform needed for either non-MKLDNN to MKLDNN or vice versa
+  // Layout transform needed for either non-MKLDNN to OneDNN or vice versa
   ret |= (l != DataLayout::ONEDNN && r == DataLayout::ONEDNN);
   ret |= (l == DataLayout::ONEDNN && r != DataLayout::ONEDNN);
 #endif

@@ -274,7 +274,7 @@ TEST(Analyzer_lexical_test, Analyzer_lexical_analysis) {
     } else if (FLAGS_enable_int8_qat) {
       analysis_cfg.EnableMkldnnInt8();
     } else {
-      // if fp32 => disable mkldnn fc passes
+      // if fp32 => disable onednn fc passes
       // when passes are enabled dnnl error occurs for iterations==0
       analysis_cfg.DisableMkldnnFcPasses();
     }

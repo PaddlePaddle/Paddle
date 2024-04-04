@@ -419,7 +419,7 @@ class TestPool2D_Op_Mixin:
         return core.is_compiled_with_cuda() and self.use_cudnn
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         if self.has_cudnn():
             place = core.CUDAPlace(0)
             self.check_output_with_place(
@@ -440,7 +440,7 @@ class TestPool2D_Op_Mixin:
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         if self.has_cudnn() and self.pool_type != "max":
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
@@ -595,7 +595,7 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
             self.dtype = np.float16
 
         def test_check_output(self):
-            # TODO(wangzhongpu): support mkldnn op in dygraph mode
+            # TODO(wangzhongpu): support onednn op in dygraph mode
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
@@ -607,7 +607,7 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
                     )
 
         def test_check_grad(self):
-            # TODO(wangzhongpu): support mkldnn op in dygraph mode
+            # TODO(wangzhongpu): support onednn op in dygraph mode
             place = core.CUDAPlace(0)
             if (
                 core.is_float16_supported(place)
@@ -638,7 +638,7 @@ def create_test_fp16_class(parent, check_grad=True):
             self.dtype = np.float16
 
         def test_check_output(self):
-            # TODO(wangzhongpu): support mkldnn op in dygraph mode
+            # TODO(wangzhongpu): support onednn op in dygraph mode
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
@@ -650,7 +650,7 @@ def create_test_fp16_class(parent, check_grad=True):
                     )
 
         def test_check_grad(self):
-            # TODO(wangzhongpu): support mkldnn op in dygraph mode
+            # TODO(wangzhongpu): support onednn op in dygraph mode
             place = core.CUDAPlace(0)
             if (
                 core.is_float16_supported(place)

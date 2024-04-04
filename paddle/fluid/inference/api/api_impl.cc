@@ -71,7 +71,7 @@ bool NativePaddlePredictor::Init(
     platform::EnableProfiler(tracking_device);
   }
 
-  // no matter with or without MKLDNN
+  // no matter with or without OneDNN
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 
   if (config_.use_gpu) {

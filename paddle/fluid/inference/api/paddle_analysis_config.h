@@ -970,19 +970,19 @@ struct PD_INFER_DECL AnalysisConfig {
   void SwitchIrDebug(int x = true, const std::vector<std::string>& passes = {});
 
   ///
-  /// \brief Turn on MKLDNN.
+  /// \brief Turn on OneDNN.
   ///
   ///
   void EnableMKLDNN();
 
   ///
-  /// \brief Turn down MKLDNN.
+  /// \brief Turn down OneDNN.
   ///
   ///
   void DisableMKLDNN();
 
   ///
-  /// \brief Set the cache capacity of different input shapes for MKLDNN.
+  /// \brief Set the cache capacity of different input shapes for OneDNN.
   /// Default value 0 means not caching any shape.
   /// Please see MKL-DNN Data Caching Design Document:
   /// https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/design/mkldnn/caching/caching.md
@@ -991,9 +991,9 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void SetMkldnnCacheCapacity(int capacity);
   ///
-  /// \brief A boolean state telling whether to use the MKLDNN.
+  /// \brief A boolean state telling whether to use the OneDNN.
   ///
-  /// \return bool Whether to use the MKLDNN.
+  /// \return bool Whether to use the OneDNN.
   ///
   bool mkldnn_enabled() const { return use_mkldnn_; }
 
@@ -1021,7 +1021,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   NativeConfig ToNativeConfig() const;
   ///
-  /// \brief Specify the operator type list to use MKLDNN acceleration.
+  /// \brief Specify the operator type list to use OneDNN acceleration.
   ///
   /// \param op_list The operator type list.
   ///
@@ -1030,47 +1030,47 @@ struct PD_INFER_DECL AnalysisConfig {
   }
 
   ///
-  /// \brief Turn on MKLDNN quantization.
+  /// \brief Turn on OneDNN quantization.
   ///
   ///
   void EnableMkldnnQuantizer();
 
   ///
-  /// \brief Turn on MKLDNN int8.
+  /// \brief Turn on OneDNN int8.
   ///
   /// \param op_list The operator type list.
   ///
   void EnableMkldnnInt8(const std::unordered_set<std::string>& op_list = {});
 
   ///
-  /// \brief A boolean state telling whether to use the MKLDNN Int8.
+  /// \brief A boolean state telling whether to use the OneDNN Int8.
   ///
-  /// \return bool Whether to use the MKLDNN Int8.
+  /// \return bool Whether to use the OneDNN Int8.
   ///
   bool mkldnn_int8_enabled() const { return use_mkldnn_int8_; }
 
   ///
-  /// \brief Turn on MKLDNN bfloat16.
+  /// \brief Turn on OneDNN bfloat16.
   ///
   ///
   void EnableMkldnnBfloat16();
 
   ///
-  /// \brief Turn off MKLDNN fc passes.
+  /// \brief Turn off OneDNN fc passes.
   ///
   void DisableMkldnnFcPasses();
 
   ///
-  /// \brief A boolean state telling whether to disable the MKLDNN Fc passes.
+  /// \brief A boolean state telling whether to disable the OneDNN Fc passes.
   ///
-  /// \return bool Whether to disable the MKLDNN Fc passes.
+  /// \return bool Whether to disable the OneDNN Fc passes.
   ///
   bool mkldnn_fc_passes_disabled() const { return disable_mkldnn_fc_passes_; }
 
   ///
-  /// \brief A boolean state telling whether to use the MKLDNN Bfloat16.
+  /// \brief A boolean state telling whether to use the OneDNN Bfloat16.
   ///
-  /// \return bool Whether to use the MKLDNN Bfloat16.
+  /// \return bool Whether to use the OneDNN Bfloat16.
   ///
   bool mkldnn_bfloat16_enabled() const { return use_mkldnn_bfloat16_; }
 
@@ -1091,16 +1091,16 @@ struct PD_INFER_DECL AnalysisConfig {
   bool thread_local_stream_enabled() const { return thread_local_stream_; }
 
   ///
-  /// \brief A boolean state telling whether the MKLDNN quantization is enabled.
+  /// \brief A boolean state telling whether the OneDNN quantization is enabled.
   ///
-  /// \return bool Whether the MKLDNN quantization is enabled.
+  /// \return bool Whether the OneDNN quantization is enabled.
   ///
   bool mkldnn_quantizer_enabled() const { return use_mkldnn_quantizer_; }
 
   ///
-  /// \brief Get MKLDNN quantizer config.
+  /// \brief Get OneDNN quantizer config.
   ///
-  /// \return MkldnnQuantizerConfig* MKLDNN quantizer config.
+  /// \return MkldnnQuantizerConfig* OneDNN quantizer config.
   ///
   MkldnnQuantizerConfig* mkldnn_quantizer_config() const;
 
@@ -1427,7 +1427,7 @@ struct PD_INFER_DECL AnalysisConfig {
   // NNAdapter related
   LiteNNAdapterConfig nnadapter_config_;
 
-  // mkldnn related.
+  // onednn related.
   int mkldnn_cache_capacity_{10};
   bool use_mkldnn_quantizer_{false};
   std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config_;

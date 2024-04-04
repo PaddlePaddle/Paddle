@@ -69,7 +69,7 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
         }
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_output_with_place(
@@ -79,7 +79,7 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
             self.check_output(check_dygraph=False, check_pir_onednn=True)
 
     def test_check_grad(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         if self.use_cudnn or self.dtype == np.float16:
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):

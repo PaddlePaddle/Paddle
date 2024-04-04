@@ -255,7 +255,7 @@ class XPUTestConv3DOp(XPUOpTestWrapper):
 
         def test_check_grad(self):
             place = paddle.XPUPlace(0)
-            # TODO(wangzhongpu): support mkldnn op in dygraph mode
+            # TODO(wangzhongpu): support onednn op in dygraph mode
             self.check_grad_with_place(
                 place,
                 {'Input', 'Filter'},
@@ -265,7 +265,7 @@ class XPUTestConv3DOp(XPUOpTestWrapper):
 
         def test_check_grad_no_filter(self):
             place = paddle.XPUPlace(0)
-            # TODO(wangzhongpu): support mkldnn op in dygraph mode
+            # TODO(wangzhongpu): support onednn op in dygraph mode
             self.check_grad_with_place(
                 place,
                 ['Input'],
@@ -276,7 +276,7 @@ class XPUTestConv3DOp(XPUOpTestWrapper):
 
         def test_check_grad_no_input(self):
             place = paddle.XPUPlace(0)
-            # TODO(wangzhongpu): support mkldnn op in dygraph mode
+            # TODO(wangzhongpu): support onednn op in dygraph mode
             self.check_grad_with_place(
                 place,
                 ['Filter'],

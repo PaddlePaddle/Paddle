@@ -100,7 +100,7 @@ void BatchNormKernel(const Context &dev_ctx,
   if (!global_stats) {
     const unsigned int C = common::vectorize(mean.dims())[0];
 
-    // mkldnn only compute stats for current batch
+    // onednn only compute stats for current batch
     // so we need compute momentum stats via Eigen lib
     EigenVectorArrayMap<T> batch_mean_e(dev_ctx.template Alloc<T>(saved_mean),
                                         C);

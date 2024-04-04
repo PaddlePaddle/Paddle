@@ -408,7 +408,7 @@ bool AnalysisPredictor::Init(
     root_predictor_id_ = predictor_id_;
   }
 
-  // no matter with or without MKLDNN
+  // no matter with or without OneDNN
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 
   // Use Optimized model to inference
@@ -781,7 +781,7 @@ bool AnalysisPredictor::PrepareProgram(
     executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
 
     // if enable_ir_optim_ is false,
-    // the analysis pass(op fuse, graph analysis, trt subgraph, mkldnn etc) will
+    // the analysis pass(op fuse, graph analysis, trt subgraph, onednn etc) will
     // not be executed.
     model_precision_ =
         paddle::inference::GetModelPrecision(*inference_program_);
