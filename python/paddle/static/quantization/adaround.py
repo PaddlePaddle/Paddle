@@ -255,8 +255,6 @@ def run_adaround(
                 fetch_op_name = quant_op_out_name
 
         # build adaround program
-        exec_strategy = static.ExecutionStrategy()
-        exec_strategy.num_iteration_per_drop_scope = 1
         startup_program = static.Program()
         train_program = static.Program()
         with static.program_guard(train_program, startup_program):

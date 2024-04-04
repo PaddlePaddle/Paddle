@@ -13,14 +13,12 @@
 # limitations under the License.
 
 import sys
-import warnings
 
 from . import core, framework
 from .framework import cpu_places, cuda_places, xpu_places
 
 __all__ = []
 
-ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
 BuildStrategy = core.ParallelExecutor.BuildStrategy
 InferNativeConfig = core.NativeConfig
 InferAnalysisConfig = core.AnalysisConfig
@@ -209,32 +207,6 @@ class CompiledProgram:
         if self._build_strategy is None:
             self._build_strategy = BuildStrategy()
         self._build_strategy.is_distribution = _is_pserver_mode(self._program)
-
-        if self._exec_strategy is None:
-            self._exec_strategy = ExecutionStrategy()
-        self._exec_strategy._use_device = use_device
-
-        if self._exec_strategy.num_threads == 0:
-            if self._exec_strategy._use_device == DeviceType.CUDA:
-                # Experiments on se-resnext shows that too many threads hurt
-                # performance. Worth tunning for other models in the future.
-                self._exec_strategy.num_threads = len(places) * 4
-            elif self._exec_strategy._use_device == DeviceType.XPU:
-                # Currently only single thread is supported in Kunlun XPU.
-                self._exec_strategy.num_threads = 1
-            else:
-                self._exec_strategy.num_threads = len(places) * 2
-
-        if (
-            "FLAGS_use_cinn" in core.globals()
-            and core.globals()["FLAGS_use_cinn"]
-            and self._exec_strategy.num_threads != 1
-        ):
-            warnings.warn(
-                "At present, when CINN is turned on, each process can "
-                "only contain one thread, so reset the number of threads to 1 here."
-            )
-            self._exec_strategy.num_threads = 1
 
         # TODO(wuyi): trainer endpoints should be passed in through
         # build_strategy, not program.xxx.
