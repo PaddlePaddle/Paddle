@@ -112,8 +112,8 @@ class TestLstmModelPTQ(unittest.TestCase):
             config.disable_gpu()
             config.switch_use_feed_fetch_ops(True)
             config.switch_ir_optim(True)
-            config.enable_mkldnn()
-            config.disable_mkldnn_fc_passes()  # fc passes caused dnnl error
+            config.enable_onednn()
+            config.disable_onednn_fc_passes()  # fc passes caused dnnl error
             config.pass_builder().insert_pass(5, "fc_lstm_fuse_pass")
             config.set_mkldnn_cache_capacity(mkldnn_cache_capacity)
             if mode == "ptq":
@@ -121,7 +121,7 @@ class TestLstmModelPTQ(unittest.TestCase):
                 config.quantizer_config().set_quant_data(warmup_data)
                 config.quantizer_config().set_quant_batch_size(1)
             elif mode == "qat":
-                config.enable_mkldnn_int8()
+                config.enable_onednn_int8()
 
         return config
 

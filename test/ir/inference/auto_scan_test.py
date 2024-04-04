@@ -238,7 +238,7 @@ class AutoScanTest(unittest.TestCase):
         if use_gpu:
             config.enable_use_gpu(100, 0)
         if not use_mkldnn:
-            config.disable_mkldnn()
+            config.disable_onednn()
         if use_xpu:
             config.enable_xpu()
         if passes is not None:
@@ -335,7 +335,7 @@ class MkldnnAutoScanTest(AutoScanTest):
 
     def inference_config_str(self, config) -> str:
         dic = {}
-        enable_mkldnn = config.mkldnn_enabled()
+        enable_mkldnn = config.onednn_enabled()
         dic["use_mkldnn"] = enable_mkldnn
         enable_gpu = config.use_gpu()
         dic["use_gpu"] = enable_gpu
@@ -571,7 +571,7 @@ class PassAutoScanTest(AutoScanTest):
 
     def inference_config_str(self, config) -> str:
         dic = {}
-        enable_mkldnn = config.mkldnn_enabled()
+        enable_mkldnn = config.onednn_enabled()
         dic["use_mkldnn"] = enable_mkldnn
         enable_gpu = config.use_gpu()
         dic['use_gpu'] = enable_gpu

@@ -156,9 +156,9 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
         config.switch_specify_input_names(True)
         config.switch_ir_optim(True)
         config.switch_use_feed_fetch_ops(True)
-        config.enable_mkldnn()
+        config.enable_onednn()
         if target == 'int8':
-            config.enable_mkldnn_int8(self._quantized_ops)
+            config.enable_onednn_int8(self._quantized_ops)
         config.delete_pass(
             "constant_folding_pass"
         )  # same reason as in analyzer_ernie_int8_tester.cc

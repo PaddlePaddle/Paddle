@@ -136,7 +136,7 @@ class Predictor:
 
         # fast_tokenizer op only support cpu.
         config.disable_gpu()
-        config.disable_mkldnn()
+        config.disable_onednn()
         config.set_cpu_math_library_num_threads(10)
 
         config.switch_use_feed_fetch_ops(False)

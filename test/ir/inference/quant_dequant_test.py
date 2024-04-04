@@ -204,7 +204,7 @@ class QuantDequantTest(unittest.TestCase):
                 self.path + ".pdmodel", self.path + ".pdiparams"
             )
         config.disable_gpu()
-        config.disable_mkldnn()
+        config.disable_onednn()
         config.switch_specify_input_names(True)
         config.switch_ir_optim(True)
         config.switch_use_feed_fetch_ops(False)
@@ -231,9 +231,9 @@ class QuantDequantTest(unittest.TestCase):
                     config.enable_tensorrt_varseqlen()
 
         elif use_mkldnn:
-            config.enable_mkldnn()
+            config.enable_onednn()
             if self.enable_mkldnn_bfloat16:
-                config.enable_mkldnn_bfloat16()
+                config.enable_onednn_bfloat16()
         print('config summary:', config.summary())
         return config
 
