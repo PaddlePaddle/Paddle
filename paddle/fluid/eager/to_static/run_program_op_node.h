@@ -33,7 +33,8 @@
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
 
-COMMON_DECLARE_bool(enable_pir_with_pt_in_dy2st);
+COMMON_DECLARE_bool(
+    enable_pir_with_pt_in_dy2st);  // enable_pir_with_pt_in_dy2st
 COMMON_DECLARE_bool(enable_pir_in_executor);
 COMMON_DECLARE_bool(print_ir);
 
