@@ -25,4 +25,7 @@
 
 vjp_interface_black_list = [
     'silu_grad',
+    'exp_grad',
+    'log_grad',
+    'abs_double_grad',
 ]
