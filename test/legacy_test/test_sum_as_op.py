@@ -137,8 +137,8 @@ class TestSumAsDynamicShape(unittest.TestCase):
         self.shape_y = [200, 100]
         self.dtype_x = "float32"
         self.dtype_y = "float32"
-        self.init_x_shape = [None, 200, 100]
-        self.init_y_shape = [200, 100]
+        self.init_x_shape = [None, None, 100]
+        self.init_y_shape = [None, 100]
         self.x = np.random.random(self.shape_x).astype(self.dtype_x)
         self.y = np.random.random(self.shape_y).astype(self.dtype_y)
         self.net = sum_as_net
