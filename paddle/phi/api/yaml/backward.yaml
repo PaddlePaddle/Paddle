@@ -1836,9 +1836,9 @@
   optional : boxes_num
 
 - backward_op : push_gpups_sparse
-  forward : pull_gpups_sparse (Tensor w, Tensor ids, int[] size={}, bool is_sparse=false, bool is_distributed=false) -> Tensor(out)
-  args : (Tensor w, Tensor ids, Tensor out, int[] size, bool is_sparse, bool is_distributed)
-  output : Tensor(out_grad)
+  forward : pull_gpups_sparse (Tensor w, Tensor[] ids, int[] size={}, bool is_sparse=false, bool is_distributed=false) -> Tensor[](out)
+  args : (Tensor w, Tensor[] ids, Tensor[] out, int[] size, bool is_sparse, bool is_distributed)
+  output : Tensor[](out_grad)
   infer_meta :
     func : PushGpupsSparseInferMeta
   kernel :
