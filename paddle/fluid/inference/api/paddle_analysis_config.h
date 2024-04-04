@@ -995,7 +995,8 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \return bool Whether to use the MKLDNN.
   ///
-  bool mkldnn_enabled() const { return use_mkldnn_; }
+  bool mkldnn_enabled() const { return use_mkldnn_; }  // Deprecated
+  bool onednn_enabled() const { return use_mkldnn_; }
 
   ///
   /// \brief Set the number of cpu math library threads.
@@ -1047,7 +1048,8 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \return bool Whether to use the MKLDNN Int8.
   ///
-  bool mkldnn_int8_enabled() const { return use_mkldnn_int8_; }
+  bool mkldnn_int8_enabled() const { return use_mkldnn_int8_; }  // Deprecated
+  bool onednn_int8_enabled() const { return use_mkldnn_int8_; }
 
   ///
   /// \brief Turn on MKLDNN bfloat16.
@@ -1065,14 +1067,20 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \return bool Whether to disable the MKLDNN Fc passes.
   ///
-  bool mkldnn_fc_passes_disabled() const { return disable_mkldnn_fc_passes_; }
+  bool mkldnn_fc_passes_disabled() const {
+    return disable_mkldnn_fc_passes_;
+  }  // Deprecated
+  bool onednn_fc_passes_disabled() const { return disable_mkldnn_fc_passes_; }
 
   ///
   /// \brief A boolean state telling whether to use the MKLDNN Bfloat16.
   ///
   /// \return bool Whether to use the MKLDNN Bfloat16.
   ///
-  bool mkldnn_bfloat16_enabled() const { return use_mkldnn_bfloat16_; }
+  bool mkldnn_bfloat16_enabled() const {
+    return use_mkldnn_bfloat16_;
+  }  // Deprecated
+  bool onednn_bfloat16_enabled() const { return use_mkldnn_bfloat16_; }
 
   /// \brief Specify the operator type list to use Bfloat16 acceleration.
   ///
@@ -1095,7 +1103,10 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \return bool Whether the MKLDNN quantization is enabled.
   ///
-  bool mkldnn_quantizer_enabled() const { return use_mkldnn_quantizer_; }
+  bool mkldnn_quantizer_enabled() const {
+    return use_mkldnn_quantizer_;
+  }  // Deprecated
+  bool onednn_quantizer_enabled() const { return use_mkldnn_quantizer_; }
 
   ///
   /// \brief Get MKLDNN quantizer config.
