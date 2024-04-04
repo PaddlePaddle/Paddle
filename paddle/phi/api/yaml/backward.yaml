@@ -733,11 +733,11 @@
   forward : exp_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)
   args : (Tensor out, Tensor grad_out, Tensor grad_x_grad)
   output : Tensor(out_grad), Tensor(grad_out_grad)
-  # infer_meta :
-  #   func : GeneralBinaryGradInferMeta
-  #   param : [out, out]
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [out, out]
   composite : exp_double_grad(out, grad_out, grad_x_grad, out_grad, grad_out_grad)
-  # inplace : (grad_x_grad -> grad_out_grad)
+  inplace : (grad_x_grad -> grad_out_grad)
 
 - backward_op : exp_grad
   forward : exp (Tensor x) -> Tensor(out)
@@ -2758,6 +2758,9 @@
   forward: silu_grad (Tensor x, Tensor out, Tensor grad_out) -> Tensor(grad_x)
   args: (Tensor x, Tensor out, Tensor grad_out, Tensor grad_x_grad)
   output: Tensor(x_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, x]
   composite: silu_double_grad(x, out, grad_out, grad_x_grad, x_grad, grad_out_grad)
 
 - backward_op: unpool3d_grad
