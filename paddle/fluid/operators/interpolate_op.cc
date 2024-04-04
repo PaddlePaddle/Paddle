@@ -17,7 +17,7 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
 namespace paddle {

@@ -146,7 +146,7 @@ class TestMatmulv2ActivationMkldnnFusePass(PassAutoScanTest):
         config = self.create_inference_config(
             use_mkldnn=True,
             passes=[
-                'matmul_activation_mkldnn_fuse_pass',
+                'matmul_activation_onednn_fuse_pass',
                 'operator_scale_onednn_fuse_pass',
             ],
         )
@@ -157,7 +157,7 @@ class TestMatmulv2ActivationMkldnnFusePass(PassAutoScanTest):
             quant=False,
             max_examples=50,
             passes=[
-                'matmul_activation_mkldnn_fuse_pass',
+                'matmul_activation_onednn_fuse_pass',
                 'operator_scale_onednn_fuse_pass',
             ],
         )

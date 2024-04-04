@@ -24,7 +24,7 @@
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/denormal.h"
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #endif
 #ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/operators/tensorrt/tensorrt_engine_op.h"

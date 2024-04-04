@@ -176,47 +176,47 @@ class FusedMatmulOpMaker : public framework::OpProtoAndCheckerMaker {
  protected:
   void Apply() {
     AddInput("ResidualData",
-             "Extra input from matmul_elementwise_add_mkldnn_fuse_pass")
+             "Extra input from matmul_elementwise_add_onednn_fuse_pass")
         .AsDispensable()
         .AsExtra();
     AddAttr<float>("matmul_alpha", "Output scale used in matmul_v1")
         .SetDefault(1.0f);
     AddAttr<std::string>(
         "fuse_activation",
-        "Activation type from matmul_activation_mkldnn_fuse_pass")
+        "Activation type from matmul_activation_onednn_fuse_pass")
         .SetDefault("");
     AddAttr<float>("fuse_alpha",
-                   "Activation alpha from matmul_activation_mkldnn_fuse_pass")
+                   "Activation alpha from matmul_activation_onednn_fuse_pass")
         .SetDefault(0.0f);
     AddAttr<float>("fuse_beta",
-                   "Activation beta from matmul_activation_mkldnn_fuse_pass")
+                   "Activation beta from matmul_activation_onednn_fuse_pass")
         .SetDefault(0.0f);
     AddAttr<float>("fused_output_scale",
                    "Output scale from operator_scale_onednn_fuse_pass")
         .SetDefault(1.0f);
     AddAttr<std::vector<int>>("fused_reshape_X",
                               "Reshape's shape attribute from "
-                              "reshape_transpose_matmul_mkldnn_fuse_pass")
+                              "reshape_transpose_matmul_onednn_fuse_pass")
         .SetDefault({});
     AddAttr<std::vector<int>>("fused_transpose_X",
                               "Transpose's axis attribute from "
-                              "reshape_transpose_matmul_mkldnn_fuse_pass")
+                              "reshape_transpose_matmul_onednn_fuse_pass")
         .SetDefault({});
     AddAttr<std::vector<int>>("fused_reshape_Y",
                               "Reshape's shape attribute from "
-                              "reshape_transpose_matmul_mkldnn_fuse_pass")
+                              "reshape_transpose_matmul_onednn_fuse_pass")
         .SetDefault({});
     AddAttr<std::vector<int>>("fused_transpose_Y",
                               "Transpose's axis attribute from "
-                              "reshape_transpose_matmul_mkldnn_fuse_pass")
+                              "reshape_transpose_matmul_onednn_fuse_pass")
         .SetDefault({});
     AddAttr<std::vector<int>>("fused_reshape_Out",
                               "Reshape's shape attribute from "
-                              "matmul_transpose_reshape_mkldnn_fuse_pass")
+                              "matmul_transpose_reshape_onednn_fuse_pass")
         .SetDefault({});
     AddAttr<std::vector<int>>("fused_transpose_Out",
                               "Transpose's axis attribute from "
-                              "matmul_transpose_reshape_mkldnn_fuse_pass")
+                              "matmul_transpose_reshape_onednn_fuse_pass")
         .SetDefault({});
     AddAttr<std::string>("mkldnn_data_type", "oneDNN operator data type")
         .SetDefault("float32")

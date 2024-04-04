@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 
 namespace paddle {

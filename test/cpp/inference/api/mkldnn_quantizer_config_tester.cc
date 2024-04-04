@@ -15,7 +15,7 @@ limitations under the License. */
 #include <fstream>
 #include <iostream>
 
-#include "paddle/fluid/inference/api/paddle_mkldnn_quantizer_config.h"
+#include "paddle/fluid/inference/api/paddle_onednn_quantizer_config.h"
 #include "test/cpp/inference/api/tester_helper.h"
 
 namespace paddle {

@@ -97,7 +97,7 @@ class TestConvHardSigmoidMkldnnFusePass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(
-            quant=False, passes=["conv_activation_mkldnn_fuse_pass"]
+            quant=False, passes=["conv_activation_onednn_fuse_pass"]
         )
 
 

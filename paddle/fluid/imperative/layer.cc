@@ -27,7 +27,7 @@
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
 COMMON_DECLARE_bool(use_mkldnn);
