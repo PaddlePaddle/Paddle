@@ -14,6 +14,7 @@ set(PYBIND_DEPS
     pass
     generate_pass
     pass_builder
+    parallel_executor
     profiler
     layer
     tracer
@@ -126,6 +127,7 @@ set(PYBIND_SRCS
     protobuf.cc
     exception.cc
     op_function_common.cc
+    parallel_executor.cc
     tensor.cc
     place.cc
     const_value.cc
