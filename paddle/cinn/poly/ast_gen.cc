@@ -371,7 +371,11 @@ void EatBlock(const isl::ast_node& node, ir::Expr* expr) {
   VLOG(2) << "get isl ast body node";
   CHECK(!node.is_null());
   CHECK(expr);
-  CHECK_EQ(isl_ast_node_get_type(node.get()), isl_ast_node_block);
+  PADDLE_ENFORCE_EQ(
+      isl_ast_node_get_type(node.get()),
+      isl_ast_node_block,
+      platform::errors::InvalidArgument(
+          "Unexpected ISL node type. Expected type is isl_ast_node_block"));
   isl::ast_node_list list =
       isl::manage(isl_ast_node_block_get_children(node.get()));
   std::vector<ir::Expr> exprs;
@@ -387,14 +391,21 @@ void EatBlock(const isl::ast_node& node, ir::Expr* expr) {
 }
 // Eat an isl user node.
 void EatUser(const isl::ast_node& node, ir::Expr* expr) {
-  CHECK_EQ(isl_ast_node_get_type(node.get()), isl_ast_node_user);
+  PADDLE_ENFORCE_EQ(
+      isl_ast_node_get_type(node.get()),
+      isl_ast_node_user,
+      platform::errors::InvalidArgument(
+          "Unexpected ISL node type. Expected type is isl_ast_node_user"));
   isl::ast_expr isl_expr = isl::manage(isl_ast_node_user_get_expr(node.get()));
   IslAstExprToCinnExpr(isl_expr, expr);
 }
 // Eat an isl `for` node.
 void EatFor(const isl::ast_node& node, ir::Expr* expr) {
-  CHECK_EQ(isl_ast_node_get_type(node.get()), isl_ast_node_for);
-
+  PADDLE_ENFORCE_EQ(
+      isl_ast_node_get_type(node.get()),
+      isl_ast_node_for,
+      platform::errors::InvalidArgument(
+          "Unexpected ISL node type. Expected type is isl_ast_node_for"));
   // iter name
   isl::ast_expr iter = isl::manage(isl_ast_node_for_get_iterator(node.get()));
   isl::id iter_id = isl::manage(isl_ast_expr_get_id(iter.get()));
@@ -436,7 +447,11 @@ void EatFor(const isl::ast_node& node, ir::Expr* expr) {
 }
 
 void EatIf(const isl::ast_node& node, ir::Expr* expr) {
-  CHECK_EQ(isl_ast_node_get_type(node.get()), isl_ast_node_if);
+  PADDLE_ENFORCE_EQ(
+      isl_ast_node_get_type(node.get()),
+      isl_ast_node_if,
+      platform::errors::InvalidArgument(
+          "Unexpected ISL node type. Expected type is isl_ast_node_if"));
   isl::ast_node then_body = isl::manage(isl_ast_node_if_get_then(node.get()));
   isl::ast_expr condition = isl::manage(isl_ast_node_if_get_cond(node.get()));
 
@@ -561,8 +576,11 @@ void IslAstExprToCinnExpr(const isl::ast_expr& node, ir::Expr* expr) {
           *expr = ir::Div::Make(ops[0], ops[1]);
           break;
         case isl_ast_op_select:
-          CHECK_EQ(ops.size(), 3UL)
-              << "In ir::Select, the ops size should be 3";
+          PADDLE_ENFORCE_EQ(
+              ops.size(),
+              3UL,
+              platform::errors::InvalidArgument(
+                  "The ops size is incroccect. Expected ops size is 3"));
           ops[0]->set_type(Bool());
           *expr = ir::Select::Make(ops[0], ops[1], ops[2]);
           break;

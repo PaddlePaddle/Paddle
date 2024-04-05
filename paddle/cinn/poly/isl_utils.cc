@@ -57,8 +57,12 @@ void isl_set_dim_names(isl::map *map,
                        isl_dim_type dim_type,
                        const std::vector<std::string> &names) {
   const int dim = isl_map_dim(map->get(), dim_type);
-  CHECK_EQ(dim, names.size());
-
+  PADDLE_ENFORCE_EQ(
+      dim,
+      names.size(),
+      platform::errors::InvalidArgument("The value of dim is Incrorrect. It "
+                                        "should be equal to names.size():%d",
+                                        names.size()));
   for (int i = 0; i < dim; i++) {
     *map = isl::manage(
         isl_map_set_dim_name(map->release(), dim_type, i, names[i].c_str()));
@@ -67,8 +71,12 @@ void isl_set_dim_names(isl::map *map,
 
 void isl_set_dim_names(isl::set *set, const std::vector<std::string> &names) {
   int dim = isl_set_dim(set->get(), isl_dim_set);
-  CHECK_EQ(dim, names.size());
-
+  PADDLE_ENFORCE_EQ(
+      dim,
+      names.size(),
+      platform::errors::InvalidArgument("The value of dim is Incrorrect. It "
+                                        "should be equal to names.size():%d",
+                                        names.size()));
   for (int i = 0; i < dim; i++) {
     *set = isl::manage(
         isl_set_set_dim_name(set->release(), isl_dim_set, i, names[i].c_str()));
@@ -122,7 +130,13 @@ isl::set SetGetDims(isl::set set, const std::vector<int> &dims) {
   auto dim_names = isl_get_dim_names(set);
   std::vector<std::string> selected_dim_names;
   for (int v : dims) {
-    CHECK_LT(v, dim_names.size());
+    PADDLE_ENFORCE_LT(
+        v,
+        dim_names.size(),
+        platform::errors::OutOfRange("v (%d) is greater than the size of "
+                                     "dim_names (%d), which is not allowed",
+                                     v,
+                                     dim_names.size()));
     selected_dim_names.push_back(dim_names[v]);
   }
 
@@ -138,8 +152,13 @@ isl::set SetGetDims(isl::set set, const std::vector<int> &dims) {
 
 isl_set *isl_get_preceding_axis(isl_set *set, int level, bool with_tuple_name) {
   int n = isl_set_dim(set, isl_dim_set);
-  CHECK_LT(level, n);
-
+  PADDLE_ENFORCE_LT(
+      level,
+      n,
+      platform::errors::OutOfRange(
+          "level should be less than n, but got level = %d and n = %d",
+          level,
+          n));
   std::vector<std::string> domain_iterators;
   std::vector<std::string> range_iterators;
 
@@ -225,8 +244,16 @@ bool isl_is_removed_axis(isl_set __isl_keep *a, int level) {
 int isl_max_level_compatible(isl_set *a, isl_set *b) {
   int an = isl_set_dim(a, isl_dim_set);
   int bn = isl_set_dim(b, isl_dim_set);
-  CHECK_GE(an, 0);
-  CHECK_GE(bn, 0);
+  PADDLE_ENFORCE_GE(
+      an,
+      0,
+      platform::errors::InvalidArgument(
+          "an should be greater than or equal to 0, but got an = %d", an));
+  PADDLE_ENFORCE_GE(
+      bn,
+      0,
+      platform::errors::InvalidArgument(
+          "bn should be greater than or equal to 0, but got bn = %d", bn));
 
   int compatible_level = -1;
   for (int i = 0; i < std::min(an, bn); i++) {

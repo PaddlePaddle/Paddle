@@ -25,7 +25,11 @@ std::unique_ptr<Schedule> NaiveScheduler::BuildSchedule() {
 
   for (auto &group : groups_) {
     std::vector<Stage *> status;
-    CHECK_EQ(group.nodes.size(), 1UL);
+    PADDLE_ENFORCE_EQ(group.nodes.size(),
+                      1UL，platform ::errors::InvalidArgument(
+                          "The group.node size is incroccect. Expected size is "
+                          "1.Received %d.",
+                          group.nodes.size()))
     NaiveGroupScheduler scheduler(
         const_cast<Stage *>(group.nodes.front()->stage));
     scheduler.Build();
