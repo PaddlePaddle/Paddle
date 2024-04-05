@@ -173,7 +173,6 @@ class DistributedStrategy:
 
         self._build_strategy = base.BuildStrategy()
 
-        self._execute_strategy.num_threads = num_threads
         if num_threads > 1:
             self._build_strategy.reduce_strategy = (
                 base.BuildStrategy.ReduceStrategy.Reduce

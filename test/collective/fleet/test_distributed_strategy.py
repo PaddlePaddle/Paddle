@@ -37,7 +37,6 @@ class TestStrategyFactor(unittest.TestCase):
         self.assertEqual(strategy._program_config.sync_mode, False)
         self.assertEqual(strategy._program_config.runtime_split_send_recv, True)
         self.assertEqual(strategy._build_strategy.async_mode, True)
-        self.assertEqual(strategy._execute_strategy.num_threads, 2)
 
         # test set_program_config using DistributeTranspilerConfig()
         program_config_class = DistributeTranspilerConfig()
