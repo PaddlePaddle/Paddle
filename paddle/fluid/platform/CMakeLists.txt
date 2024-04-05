@@ -42,9 +42,9 @@ cc_test(
   DEPS place glog phi common)
 
 if(WITH_MKLDNN)
-  set(MKLDNN_CTX_DEPS mkldnn)
+  set(ONEDNN_CTX_DEPS onednn)
 else()
-  set(MKLDNN_CTX_DEPS)
+  set(ONEDNN_CTX_DEPS)
 endif()
 
 add_subdirectory(device)
@@ -126,7 +126,7 @@ cc_library(
        framework_proto
        ${IPU_CTX_DEPS}
        ${GPU_CTX_DEPS}
-       ${MKLDNN_CTX_DEPS}
+       ${ONEDNN_CTX_DEPS}
        ${dgc_deps}
        dlpack
        phi

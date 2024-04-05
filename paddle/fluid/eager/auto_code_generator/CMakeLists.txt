@@ -99,7 +99,7 @@ if(WIN32)
       OUTPUT ${eager_generator_path}/mkldnn.dll
       COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB}
               ${eager_generator_path}
-      DEPENDS mkldnn)
+      DEPENDS onednn)
     list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/mkldnn.dll)
   endif()
 

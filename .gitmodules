@@ -70,8 +70,8 @@
 	path = third_party/xbyak
 	url = https://github.com/herumi/xbyak.git
 	ignore = dirty
-[submodule "third_party/mkldnn"]
-	path = third_party/mkldnn
+[submodule "third_party/onednn"]
+	path = third_party/onednn
 	url = https://github.com/oneapi-src/oneDNN.git
 	ignore = dirty
 [submodule "third_party/flashattn"]

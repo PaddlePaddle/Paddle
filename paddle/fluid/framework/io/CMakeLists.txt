@@ -15,5 +15,5 @@ cc_library(
   DEPS ${framework_io_deps})
 
 if(WITH_MKLDNN)
-  add_dependencies(framework_io mkldnn)
+  add_dependencies(framework_io onednn)
 endif()

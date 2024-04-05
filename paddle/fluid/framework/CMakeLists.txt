@@ -153,10 +153,10 @@ if(WITH_XPU)
   target_link_libraries(var_type_traits dynload_xpti)
 endif()
 
-# every source file that includes "dnnl.h" must depends on mkldnn
-# or, the first one should depends on mkldnn
+# every source file that includes "dnnl.h" must depends on onednn
+# or, the first one should depends on onednn
 if(WITH_MKLDNN)
-  add_dependencies(var_type_traits mkldnn)
+  add_dependencies(var_type_traits onednn)
 endif()
 
 set(BRPC_DEPS "")
@@ -273,10 +273,10 @@ cc_library(
   SRCS shape_inference.cc
   DEPS phi common attribute selected_rows_utils)
 
-# every source file that includes "dnnl.h" must depends on mkldnn
-# or, the first one should depends on mkldnn
+# every source file that includes "dnnl.h" must depends on onednn
+# or, the first one should depends on onednn
 if(WITH_MKLDNN)
-  add_dependencies(shape_inference mkldnn)
+  add_dependencies(shape_inference onednn)
 endif()
 
 cc_library(
@@ -955,7 +955,7 @@ cc_library(
 target_link_libraries(type_info pir op_dialect)
 add_dependencies(type_info framework_proto auto_parallel_proto xxhash)
 if(WITH_MKLDNN)
-  add_dependencies(type_info mkldnn)
+  add_dependencies(type_info onednn)
 endif()
 
 set(FLUID_FRAMEWORK_MODULES

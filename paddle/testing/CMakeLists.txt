@@ -41,6 +41,6 @@ if(WITH_TESTING)
   endif()
 
   if(WITH_MKLDNN)
-    add_dependencies(paddle_gtest_main_new mkldnn)
+    add_dependencies(paddle_gtest_main_new onednn)
   endif()
 endif()

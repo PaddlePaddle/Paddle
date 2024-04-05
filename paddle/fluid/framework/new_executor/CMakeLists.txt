@@ -55,5 +55,5 @@ cc_library(
 add_dependencies(standalone_executor xxhash framework_proto)
 
 if(WITH_MKLDNN)
-  add_dependencies(standalone_executor mkldnn)
+  add_dependencies(standalone_executor onednn)
 endif()
