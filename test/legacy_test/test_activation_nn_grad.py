@@ -467,12 +467,14 @@ class TestLogDoubleGradCheck(unittest.TestCase):
 
         x_arr = np.random.uniform(0.1, 1, shape).astype(dtype)
 
+        core._set_prim_all_enabled(True)
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps
         )
         gradient_checker.double_grad_check_for_dygraph(
             self.log_wrapper, [x], y, x_init=x_arr, place=place
         )
+        core._set_prim_all_enabled(False)
 
     def test_grad(self):
         paddle.enable_static()
