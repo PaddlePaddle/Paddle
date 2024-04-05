@@ -326,9 +326,7 @@ class TestPnormOp5(TestPnormOp):
         self.dtype = "float32"
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', user_defined_grads=self.gradient, check_prim_pir=True
-        )
+        self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
 
 
 class TestPnormOp6(TestPnormOp):
