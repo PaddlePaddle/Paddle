@@ -8,7 +8,6 @@ register_unity_group(
   cc
   fused_elemwise_activation_op.cc
   fused_embedding_fc_lstm_op.cc
-  fused_embedding_seq_pool_op.cc
   fusion_lstm_op.cc
   fusion_seqpool_concat_op.cc
   multi_gru_op.cc

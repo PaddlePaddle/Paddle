@@ -135,8 +135,6 @@ void OpCompatibleMap::InitOpCompatibleMap() {
       "1.6.0", OpCompatibleType::possible};
   op_compatible_map_["edit_distance"] = {"1.6.0", OpCompatibleType::possible};
   op_compatible_map_["fc"] = {"1.6.0", OpCompatibleType::possible};
-  op_compatible_map_["fused_embedding_seq_pool"] = {"1.6.0",
-                                                    OpCompatibleType::possible};
   op_compatible_map_["group_norm"] = {"1.6.0", OpCompatibleType::possible};
   op_compatible_map_["hash"] = {"1.6.0", OpCompatibleType::possible};
   op_compatible_map_["leaky_relu"] = {"1.6.0", OpCompatibleType::possible};

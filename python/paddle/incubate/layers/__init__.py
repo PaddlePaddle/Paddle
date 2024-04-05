@@ -21,7 +21,6 @@ from .nn import (  # noqa: F401
     bilateral_slice,
     correlation,
     fused_bn_add_act,
-    fused_embedding_seq_pool,
     fused_seqpool_cvm,
     multiclass_nms2,
     partial_concat,
