@@ -23,6 +23,7 @@ import numpy as np
 from decorator_helper import prog_scope
 
 import paddle
+from paddle.framework import in_pir_mode
 from paddle.pir_utils import test_with_pir_api
 
 # Use to test zero-dim of Sundry API, which is unique and can not be classified
@@ -125,14 +126,36 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (5,))
 
+    @test_with_pir_api
     @prog_scope()
     def test_create_parameter_var(self):
-        zero_dim_param = paddle.create_parameter(shape=[], dtype='float32')
-        self.assertShapeEqual(zero_dim_param, [])
-        prog = paddle.static.default_startup_program()
-        res = self.exe.run(prog, fetch_list=[zero_dim_param])
-        self.assertEqual(res[0].shape, ())
+        if not in_pir_mode():
+            zero_dim_param = paddle.create_parameter(shape=[], dtype='float32')
+            self.assertShapeEqual(zero_dim_param, [])
+            prog = paddle.static.default_startup_program()
+            res = self.exe.run(prog, fetch_list=[zero_dim_param])
+            self.assertEqual(res[0].shape, ())
 
+            zero_dim_var = paddle.static.create_global_var(
+                shape=[], value=0.5, dtype='float32'
+            )
+            self.assertEqual(zero_dim_var.shape, ())
+            prog = paddle.static.default_startup_program()
+            res = self.exe.run(prog, fetch_list=[zero_dim_var])
+            self.assertEqual(res[0].shape, ())
+            self.assertEqual(res[0], 0.5)
+            return
+        zero_dim_param = paddle.create_parameter(shape=[], dtype='float32')
+        self.assertEqual(zero_dim_param.shape, [])
+        startup_prog = paddle.static.default_startup_program()
+        main_prog = paddle.static.default_main_program()
+        self.exe.run(startup_prog)
+        (zero_dim_param_res,) = self.exe.run(
+            main_prog, fetch_list=[zero_dim_param]
+        )
+        self.assertEqual(zero_dim_param_res.shape, ())
+
+        # TODO(SigureMo): Check the create_global_var is necessary in PIR mode
         zero_dim_var = paddle.static.create_global_var(
             shape=[], value=0.5, dtype='float32'
         )
