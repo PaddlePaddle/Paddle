@@ -818,7 +818,6 @@ class TestDropoutOrig2PrimCase1(TestElementWiseAddOrig2Prim):
 
         self.orig2prim_args = (None, X)
         self.all_ops = [
-            'bernoulli_p',
             'mul_p',
             'fill_constant_p',
             'div_p',
@@ -850,7 +849,7 @@ class TestDropoutOrig2PrimCase2(TestElementWiseAddOrig2Prim):
         }
 
         self.orig2prim_args = (None, X)
-        self.all_ops = ['bernoulli_p', 'mul_p', 'cast_p', 'dropout']
+        self.all_ops = ['mul_p', 'cast_p', 'dropout']
         # { prim_op_output_index: orig_op_output_var }
         self.out_map = {0: self.output['Mask'], 1: self.output['Out']}
 
@@ -876,7 +875,7 @@ class TestDropoutOrig2PrimCase3(TestElementWiseAddOrig2Prim):
         }
 
         self.orig2prim_args = (None, X)
-        self.all_ops = ['bernoulli_p', 'cast_p', 'dropout']
+        self.all_ops = ['cast_p', 'dropout']
         # { prim_op_output_index: orig_op_output_var }
         self.out_map = {0: self.output['Mask'], 1: self.output['Out']}
 
@@ -903,7 +902,6 @@ class TestDropoutOrig2PrimCase4(TestElementWiseAddOrig2Prim):
 
         self.orig2prim_args = (None, X)
         self.all_ops = [
-            'bernoulli_p',
             'fill_constant_p',
             'mul_p',
             'cast_p',
