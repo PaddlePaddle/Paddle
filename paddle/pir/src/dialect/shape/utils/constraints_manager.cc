@@ -23,8 +23,9 @@ bool CanSubstituteInConstraint(const DimExpr& lhs, const DimExpr& rhs) {
   int lhs_priority = GetDimExprPriority(lhs);
   int rhs_priority = GetDimExprPriority(rhs);
   if (lhs_priority >= 2 || rhs_priority >= 2) {
-    return 0;
+    return false;
   }
+  return true;
 }
 
 bool CanSubstituteInShapeAnalysis(const DimExpr& lhs, const DimExpr& rhs) {
@@ -33,6 +34,7 @@ bool CanSubstituteInShapeAnalysis(const DimExpr& lhs, const DimExpr& rhs) {
   if (lhs_priority >= 2 || rhs_priority >= 2) {
     return 0;
   }
+  return true;
 }
 }  // namespace
 
