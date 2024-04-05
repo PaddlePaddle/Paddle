@@ -1133,9 +1133,6 @@ def create_heter_program(
         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
     }
     # append the listen_and_serv op
-    heter_program.global_block().append_op(
-        type="heter_listen_and_serv", inputs={'X': []}, outputs={}, attrs=attrs
-    )
     check_heter_compile_time_strategy(program, config, send_grad_var_list)
 
 
@@ -1217,14 +1214,6 @@ def create_trainer_program(
         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
     }
     # append the listen_and_serv op
-    program.global_block()._insert_op(
-        index=0,
-        type="heter_listen_and_serv",
-        inputs={'X': []},
-        outputs={},
-        attrs=attrs,
-    )
-
     # TODO add check for bp block
     check_op_device(program.global_block(), DEFAULT_DEVICE)
 

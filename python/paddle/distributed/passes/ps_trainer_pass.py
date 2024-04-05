@@ -1020,12 +1020,6 @@ class SplitHeterWorkerOpsPass(PassBase):
             RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
         }
         # append the listen_and_serv op
-        heter_program.global_block().append_op(
-            type="heter_listen_and_serv",
-            inputs={'X': []},
-            outputs={},
-            attrs=attrs,
-        )
         # TODO check heter program
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
@@ -1232,13 +1226,6 @@ class SplitTrainerOpsPass(PassBase):
             RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
         }
         # append the listen_and_serv op
-        program.global_block()._insert_op(
-            index=0,
-            type="heter_listen_and_serv",
-            inputs={'X': []},
-            outputs={},
-            attrs=attrs,
-        )
 
         # TODO add check for bp block
         # check_op_device(program.global_block(), DEFAULT_DEVICE)
@@ -1531,13 +1518,7 @@ class SplitFlOpsPass(PassBase):
             "rpc_exec_thread_num": int(os.getenv("CPU_NUM", 32)),
             RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
         }
-        second_block._insert_op(
-            index=0,
-            type='heter_listen_and_serv',
-            inputs={'X': []},
-            outputs={},
-            attrs=attrs,
-        )
+
         # 2.2 insert push dense grad op
         send_ops = find_send_op(self.ori_main_program)  # push dense
         delete_same_ops(block, send_ops)
@@ -1592,13 +1573,6 @@ class SplitFlOpsPass(PassBase):
             "rpc_exec_thread_num": int(os.getenv("CPU_NUM", 32)),
             RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
         }
-        first_block._insert_op(
-            index=len(op_list1),
-            type="heter_listen_and_serv",
-            inputs={'X': []},
-            outputs={},
-            attrs=attrs,
-        )
 
         # logger.info('partB-first_block:{}'.format(first_block))
         # logger.info('partB-second_block:{}'.format(second_block))

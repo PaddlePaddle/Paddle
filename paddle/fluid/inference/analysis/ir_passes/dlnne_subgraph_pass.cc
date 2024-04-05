@@ -58,7 +58,6 @@ void analysis::DlnneSubgraphPass::InferShapeForDlnneMainGraph() const {
       "queue_generator",
       "dequeue",
       "enqueue",
-      "heter_listen_and_serv",
       "c_wait_comm",
       "c_wait_compute"};
 
