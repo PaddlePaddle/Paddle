@@ -584,22 +584,6 @@ struct DeviceIndependenceTensorOperations {
     return ret;
   }
 
-  phi::DenseTensor TrilTriu(const phi::DenseTensor& x,
-                            int diagonal,
-                            bool lower) {
-    framework::AttributeMap attrs;
-    attrs["diagonal"] = diagonal;
-    attrs["lower"] = lower;
-    NameInTensorMap inputs({{"X", {&x}}});
-    int x_rank = x.dims().size();
-    PADDLE_ENFORCE_GE(
-        x_rank,
-        2,
-        platform::errors::InvalidArgument("Rank must be at least 2."));
-    std::vector<int> out_shape = common::vectorize<int>(x.dims());
-    return CreateOpRunAndReturnTensor("tril_triu", inputs, attrs, out_shape);
-  }
-
   phi::DenseTensor TriangularSolve(const phi::DenseTensor& x,
                                    const phi::DenseTensor& y,
                                    bool upper,
