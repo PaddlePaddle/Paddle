@@ -155,7 +155,6 @@ register_unity_group(
   onednn/matmul_onednn_op.cc
   max_sequence_len_op.cc
   maxout_op.cc
-  merge_lod_tensor_op.cc
   merge_selected_rows_op.cc
   meshgrid_op.cc)
 register_unity_group(
@@ -247,7 +246,6 @@ register_unity_group(
 register_unity_group(
   cc
   spectral_norm_op.cc
-  split_lod_tensor_op.cc
   split_op.cc
   split_selected_rows_op.cc
   spp_op.cc
