@@ -86,13 +86,10 @@ def convert_np_dtype_to_dtype_(np_dtype):
 
     """
     # Convert the data type string to numpy data type.
-    if isinstance(np_dtype, str):
-        if np_dtype == "bfloat16":
-            # since there is still no support for bfloat16 in NumPy,
-            # uint16 is used for casting bfloat16
-            dtype = np.dtype("uint16")
-        else:
-            dtype = np.dtype(np_dtype)
+    if isinstance(np_dtype, str) and np_dtype == "bfloat16":
+        # since there is still no support for bfloat16 in NumPy,
+        # uint16 is used for casting bfloat16
+        dtype = np.dtype("uint16")
     else:
         dtype = np_dtype
 
