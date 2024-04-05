@@ -18,7 +18,7 @@ set(paddle2cinn_deps
     parallel_executor
     common)
 if(WITH_MKLDNN)
-  set(paddle2cinn ${paddle2cinn} mkldnn)
+  set(paddle2cinn ${paddle2cinn} onednn)
 endif()
 
 if(WITH_TESTING)
