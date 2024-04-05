@@ -105,9 +105,7 @@ class TestInverseOpComplex64(TestInverseOp):
         self.python_api = paddle.tensor.math.inverse
 
     def test_grad(self):
-        self.check_grad(
-            ['Input'], 'Output', max_relative_error=1e-2, check_pir=True
-        )
+        self.check_grad(['Input'], 'Output', check_pir=True)
 
 
 class TestInverseOpComplex128(TestInverseOp):
@@ -117,9 +115,7 @@ class TestInverseOpComplex128(TestInverseOp):
         self.python_api = paddle.tensor.math.inverse
 
     def test_grad(self):
-        self.check_grad(
-            ['Input'], 'Output', max_relative_error=1e-2, check_pir=True
-        )
+        self.check_grad(['Input'], 'Output', check_pir=True)
 
 
 class TestInverseAPI(unittest.TestCase):
