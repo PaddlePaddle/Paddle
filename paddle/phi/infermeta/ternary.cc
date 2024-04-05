@@ -1125,12 +1125,12 @@ void PutAlongAxisInferMeta(const MetaTensor& x,
 }
 
 void PushGpupsSparseInferMeta(const MetaTensor& w,
-                              const MetaTensor& ids,
-                              const MetaTensor& out,
+                              const std::vector<MetaTensor>& ids,
+                              const std::vector<MetaTensor>& out,
                               const std::vector<int>& size,
                               bool is_sparse,
                               bool is_distributed,
-                              MetaTensor* out_grad) {}
+                              std::vector<MetaTensor*> out_grad) {}
 
 void RandomRoutingInferMeta(const MetaTensor& prob,
                             const MetaTensor& topk_value,
