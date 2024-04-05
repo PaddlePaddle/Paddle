@@ -1439,7 +1439,7 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
     for (int i = static_cast<int>(index_dims[index_dims_size - 1]);
          i < ref_dims_size;
          ++i) {
-      if (index_dims[i] == -1) {
+      if (ref_dims[i] == -1) {
         without_dynamic_shape = false;
       }
       r_updates_dims.emplace_back(ref_dims[i]);
