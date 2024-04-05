@@ -44,7 +44,7 @@ inline bool IsShardTensorOp(pir::Operation* op) {
   return op_name.find("shard_tensor") != op_name.npos;
 }
 
-void ProcessBlock(pir::Block* block) {
+void ProcessMixBlock(pir::Block* block) {
   std::vector<pir::Operation*> deleted_ops;
 
   for (auto iter = block->begin(); iter != block->end(); ++iter) {
@@ -80,6 +80,15 @@ void ProcessBlock(pir::Block* block) {
 
       shard_operand_define_op->set_attribute(
           kAttrOpDistAttr, op_item->attribute(kAttrOpDistAttr));
+      // set stop gradient and persistable
+      if (op_item->HasAttribute(kAttrStopGradients)) {
+        shard_operand_define_op->set_attribute(
+            kAttrStopGradients, op_item->attribute(kAttrStopGradients));
+      }
+      if (op_item->HasAttribute(kAttrIsPersistable)) {
+        shard_operand_define_op->set_attribute(
+            kAttrIsPersistable, op_item->attribute(kAttrIsPersistable));
+      }
       deleted_ops.push_back(op_item);
     }
 
@@ -98,7 +107,7 @@ void ProcessBlock(pir::Block* block) {
     2. all Values (Results) are DistDenseTensorType.
     3. no shard_tensor in block.
 */
-void VerifyBlock(pir::Block* block) {
+void VerifyDistBlock(pir::Block* block) {
   for (auto iter = block->begin(); iter != block->end(); ++iter) {
     pir::Operation* op_item = &(*iter);
     PADDLE_ENFORCE_EQ(paddle::dialect::IsShardTensorOp(op_item),
@@ -135,8 +144,8 @@ std::shared_ptr<pir::Program> MixToDistPass(pir::Program* prog) {
   ctx->GetOrRegisterDialect<OperatorDialect>();
   ctx->GetOrRegisterDialect<DistDialect>();
 
-  ProcessBlock(new_prog->block());
-  VerifyBlock(new_prog->block());
+  ProcessMixBlock(new_prog->block());
+  VerifyDistBlock(new_prog->block());
 
   if (FLAGS_print_ir) {
     std::cout << "IR after MixToDist Pass = " << *new_prog << std::endl;

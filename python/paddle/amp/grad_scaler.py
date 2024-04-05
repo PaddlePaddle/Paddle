@@ -430,11 +430,7 @@ class AmpScaler:
             self._decr_count = self._decr_count + 1
             if self._decr_count == self._decr_every_n_nan_or_inf:
                 print(
-                    'Found inf or nan, current scale is: {}, decrease to: {}*{}'.format(
-                        float(self._scale),
-                        float(self._scale),
-                        float(self._decr_ratio),
-                    )
+                    f'Found inf or nan, current scale is: {float(self._scale)}, decrease to: {float(self._scale)}*{float(self._decr_ratio)}'
                 )
                 self._scale = self._scale * self._decr_ratio
                 self._decr_count = 0

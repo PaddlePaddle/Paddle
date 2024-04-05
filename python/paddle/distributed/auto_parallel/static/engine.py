@@ -54,7 +54,7 @@ from .dist_op import DistributedOperator
 from .dist_saver import DistributedSaver
 from .helper import ProgramHelper
 from .parallelizer_v2 import Parallelizer
-from .pir_pass import apply_partition_pass
+from .pir_pass import apply_partition_pass, apply_reshard_pass
 from .planner_v2 import Planner
 from .process_group import get_all_process_groups, new_process_group
 
@@ -209,7 +209,8 @@ class Engine:
         # TODO: remove _fwd_main_progs and _orig_optimizer and _pir_main_progs
         self._fwd_dist_contexts = {}
         self._fwd_main_progs = {}
-        self._pir_main_progs = {}
+        self._pir_dist_main_progs = {}
+        self._pir_dense_main_progs = {}
         self._orig_optimizer = copy.deepcopy(self._optimizer)
 
         self._executor = None
@@ -278,17 +279,13 @@ class Engine:
             data = tuple(data.values())
             if len(data) != 2:
                 raise ValueError(
-                    "Data should be a dict with two keys, but received {}.".format(
-                        len(data)
-                    )
+                    f"Data should be a dict with two keys, but received {len(data)}."
                 )
             inputs, labels = data
         elif isinstance(data, (list, tuple)):
             if len(data) != 2:
                 raise ValueError(
-                    "Data should be a list or tuple with two elements, but received {}.".format(
-                        len(data)
-                    )
+                    f"Data should be a list or tuple with two elements, but received {len(data)}."
                 )
             inputs, labels = data
         else:
@@ -337,9 +334,7 @@ class Engine:
                 labels = sample[split:]
         else:
             raise TypeError(
-                "Data should be a Dataset or IterableDataset, but received {}.".format(
-                    type(data).__name__
-                )
+                f"Data should be a Dataset or IterableDataset, but received {type(data).__name__}."
             )
         inputs = auto_utils.to_list(inputs)
         labels = auto_utils.to_list(labels)
@@ -369,9 +364,7 @@ class Engine:
                 specs.append(InputSpec([batch_size], type(item), name))
             else:
                 raise TypeError(
-                    "The sample's dtype returned of dataset should be number, np.ndarray or Tensor, but got {}".format(
-                        type(item).__name__
-                    )
+                    f"The sample's dtype returned of dataset should be number, np.ndarray or Tensor, but got {type(item).__name__}"
                 )
 
         if inputs is not None:
@@ -531,6 +524,10 @@ class Engine:
         fetch_names = []
         fetch_indices = []
 
+        # TODO(2024-Q2)
+        if self._in_pir_mode:
+            return fetch_names, fetch_indices
+
         def _process_fetch_group(group_name, var_list):
             group_indices = []
             for var in var_list:
@@ -681,7 +678,7 @@ class Engine:
         # TODO(hitywt) Step 3.2: Reshard Pass
         #   resolute the reshard op into special collective operation.
         #   collect the communicator created during resolution.
-        # dist_program = apply_reshard_pass(dist_program)
+        dist_program = apply_reshard_pass(dist_program)
 
         # Part 4: Optimization Pass
         # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
@@ -703,8 +700,11 @@ class Engine:
 
         # TODO(JZ-LIANG) Step 4.4 Dist2Dense Pass
         # NOTE All optimization pass that need dist_attr info should be called before Dist2Dense Pass.
-        #   dense_program = apply_dist2dense_pass_optimization_pass(dist_program)
-        self._pir_main_progs[mode] = dist_program
+        dense_program = paddle.base.libpaddle.pir.apply_dist2dense_pass(
+            dist_program
+        )
+        self._pir_dense_main_progs[mode] = dense_program
+        self._pir_dist_main_progs[mode] = dist_program
 
     def _prepare_program(self, mode, init_parameters=True):
         # Do the build process
@@ -837,6 +837,8 @@ class Engine:
             #     )
             # else:
 
+            # concrete_program: <class 'paddle.jit.dy2static.program_translator.ConcreteProgram'>
+            # serial_main_prog:  <class 'paddle.base.libpaddle.pir.Program'>
             self._fwd_main_progs[mode] = serial_main_prog
             return
 
@@ -990,9 +992,7 @@ class Engine:
                 ref_op = ref_blocks[ib].ops[iop]
                 assert (
                     op.type == ref_op.type
-                ), "'{}' mode op '{}' is different with '{}' op '{}'. ".format(
-                    mode, op.type, ref_mode, ref_op.type
-                )
+                ), f"'{mode}' mode op '{op.type}' is different with '{ref_mode}' op '{ref_op.type}'. "
                 ref_op_dist_attr = (
                     ref_dist_context.get_op_dist_attr_for_program(ref_op)
                 )
@@ -1003,6 +1003,9 @@ class Engine:
             if self._in_pir_mode:
                 # TODO(hitywt) Initialize the communicator collected in Reshard Pass.
                 # pir_init_comms()
+                all_process_groups = get_all_process_groups()
+                for process_group in all_process_groups:
+                    process_group.instantiate()
                 pass
                 return
 
@@ -1019,17 +1022,26 @@ class Engine:
                     process_group.instantiate()
 
     def _initialize(self, mode, init_parameters=True):
-        if self._in_pir_mode:
-            # TODO(xxxxx) Share the parameter tensor data from dygraph tensor to pir value.
-            # _pir_initialize()
-            pass
-            return
-
         self._place = _get_device()
         if isinstance(self._place, paddle.framework.CUDAPlace):
             self._place = paddle.framework.CUDAPlace(
                 paddle.distributed.ParallelEnv().dev_id
             )
+
+        if self._in_pir_mode:
+            # TODO(2024-Q2)
+            # 1. unify random control
+            # 2. initilization of non-parameter buffer
+            # 3. run startup program for pir
+            # 4. lazy init adaption
+            # 5. amp init adaption
+            # 6. vpp init adaption
+
+            self.program_helper.init_pir(
+                self._pir_dense_main_progs[mode], self._place
+            )
+
+            return
 
         if self._strategy.seed:
             paddle.seed(self._strategy.seed + self._dp_ranks[0])
@@ -1084,8 +1096,17 @@ class Engine:
                 if scope_var and scope_var.get_tensor()._is_initialized():
                     continue
                 uninitialized.append(var)
-            if uninitialized:
-                prune_startup_prog = dist_startup_prog._prune(uninitialized)
+            # Make sure the number of communication operators is consistent
+            commu_ops = []
+            if self._nranks > 1:
+                for op in dist_startup_prog.global_block().ops:
+                    if auto_utils.is_comm_op(op):
+                        commu_ops.append(op)
+            reserved_vars_and_ops = uninitialized + commu_ops
+            if reserved_vars_and_ops:
+                prune_startup_prog = dist_startup_prog._prune(
+                    reserved_vars_and_ops
+                )
                 self._executor.run(prune_startup_prog)
 
             if hasattr(self, "_state_dict") and hasattr(self, "_dist_attr"):
@@ -1756,13 +1777,26 @@ class Engine:
             self.enable_job_schedule_profiler
         )
 
+        # TODO(2024-Q2)
+        use_cache = self._strategy.use_cache
+        if self._in_pir_mode:
+            use_cache = False
+            fetch_names = [
+                self.main_program.get_output_value_by_name(self._loss_names[0])
+            ]
+
         outs = self._executor.run(
             self.main_program,
             feed=feed_dict,
             fetch_list=fetch_names,
-            use_program_cache=self._strategy.use_cache,
+            use_program_cache=use_cache,
             return_numpy=self._strategy.return_numpy,
         )
+
+        if self._in_pir_mode:
+            logs = {"outputs": outs[0], "loss": outs[0]}
+            return logs
+
         logs = self._prepare_logger(
             outs, None, None, None, fetch_names, fetch_indices, self._mode
         )
@@ -1927,21 +1961,15 @@ class Engine:
         if auto_utils.use_new_executor():
             assert (
                 len(set(self._dp_world_sizes)) == 1
-            ), "DistributedBatchSampler only support one data parallel group, but got [{}] different data parallel groups".format(
-                len(set(self._dp_world_sizes))
-            )
+            ), f"DistributedBatchSampler only support one data parallel group, but got [{len(set(self._dp_world_sizes))}] different data parallel groups"
             assert (
                 batch_size % self._dp_world_sizes[0] == 0
-            ), "batch_size [{}] is not divisible by dp_world_size [{}]".format(
-                str(batch_size), str(self._dp_world_sizes[0])
-            )
+            ), f"batch_size [{str(batch_size)}] is not divisible by dp_world_size [{str(self._dp_world_sizes[0])}]"
             return batch_size // self._dp_world_sizes[0]
         else:
             assert (
                 batch_size % self._acc_steps == 0
-            ), "Requires batch_size:[{}] to be divisible by acc_steps:[{}].".format(
-                batch_size, self._acc_steps
-            )
+            ), f"Requires batch_size:[{batch_size}] to be divisible by acc_steps:[{self._acc_steps}]."
             return batch_size // self._acc_steps
 
     def _validate_batch(self, batch):
@@ -1984,9 +2012,7 @@ class Engine:
                     shape = list(spec.shape)
                     assert (
                         shape[0] % self._acc_steps == 0
-                    ), "Requires batch_size[{}] to be divisible by k_steps[{}].".format(
-                        spec.shape[0], self._acc_steps
-                    )
+                    ), f"Requires batch_size[{spec.shape[0]}] to be divisible by k_steps[{self._acc_steps}]."
                     shape[0] //= self._acc_steps
                     spec.shape = shape
         return specs or []
@@ -2039,11 +2065,7 @@ class Engine:
                 continue
             if param_array.dtype != state_dict[name].dtype:
                 self._logger.info(
-                    "cast {}'s dtype from '{}' to '{}'".format(
-                        name,
-                        str(state_dict[name].dtype),
-                        str(param_array.dtype),
-                    )
+                    f"cast {name}'s dtype from '{str(state_dict[name].dtype)}' to '{str(param_array.dtype)}'"
                 )
                 state_dict[name] = state_dict[name].astype(param_array.dtype)
         program.set_state_dict(state_dict)
@@ -2215,9 +2237,7 @@ class Engine:
         assert mode is not None, "Please set mode."
         if mode not in self._has_prepared:
             raise ValueError(
-                "The mode {} is not in accepted modes {}".format(
-                    mode, list(self._has_prepared.keys())
-                )
+                f"The mode {mode} is not in accepted modes {list(self._has_prepared.keys())}"
             )
         self.to_mode(mode)
 
@@ -2263,6 +2283,8 @@ class Engine:
 
     @property
     def main_program(self):
+        if self._in_pir_mode:
+            return self._pir_dense_main_progs[self._mode]
         dist_context = self._dist_contexts[self._mode]
         return dist_context.dist_main_programs[self._cur_rank]
 

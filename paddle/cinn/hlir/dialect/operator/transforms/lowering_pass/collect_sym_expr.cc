@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/collect_sym_expr.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/utils.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_symbolic_shape.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 namespace {
@@ -189,27 +190,30 @@ symbol::ShapeOrDataDimExprs TrySubstitute(
   return SubstituteShapeOrData(shape_or_data, dim_expr_map);
 }
 
-}  // namespace
-
-namespace cinn::dialect::ir::details {
+void InferSymbolicShapeForOperation(
+    pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  auto infer_symbolic_shape_interface =
+      op->dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
+  if (infer_symbolic_shape_interface) {
+    infer_symbolic_shape_interface.InferSymbolicShape(shape_analysis);
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
+  }
+}
 
 std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
-CreateGroupShapeOrDataExprs(
-    const OpLoweringGroupPtr& group,
-    pir::ShapeConstraintIRAnalysis& shape_analysis) {  // NOLINT
-  std::unordered_map<symbol::DimExpr, symbol::DimExpr> dim_expr_map =
-      CollectSubstituteDimExprMap(group, shape_analysis);
+GetGroupValue2Shape(const OpLoweringGroupPtr& group,
+                    pir::ShapeConstraintIRAnalysis& shape_analysis) {  // NOLINT
   std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs> value2shape;
-  for (auto* op : group->ops()) {
+  for (auto op : group->ops()) {
     for (size_t i = 0; i < op->num_operands(); ++i) {
       auto operand = op->operand_source(i);
       if (operand && value2shape.find(operand) == value2shape.end() &&
           shape_analysis.HasShapeOrDataForValue(operand)) {
         VLOG(6) << "Add value_to_shape_or_data_exprs for " << operand.impl();
         value2shape.insert(
-            {operand,
-             TrySubstitute(shape_analysis.GetShapeOrDataForValue(operand),
-                           dim_expr_map)});
+            {operand, shape_analysis.GetShapeOrDataForValue(operand)});
       }
     }
     for (size_t i = 0; i < op->num_results(); ++i) {
@@ -218,9 +222,49 @@ CreateGroupShapeOrDataExprs(
           shape_analysis.HasShapeOrDataForValue(result)) {
         VLOG(6) << "Add value_to_shape_or_data_exprs for " << result.impl();
         value2shape.insert(
-            {result,
-             TrySubstitute(shape_analysis.GetShapeOrDataForValue(result),
-                           dim_expr_map)});
+            {result, shape_analysis.GetShapeOrDataForValue(result)});
+      }
+    }
+  }
+  return value2shape;
+}
+
+}  // namespace
+
+namespace cinn::dialect::ir::details {
+
+std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
+CreateGroupShapeOrDataExprs(
+    const OpLoweringGroupPtr& group,
+    pir::ShapeConstraintIRAnalysis& global_shape_analysis) {  // NOLINT
+  std::unordered_map<symbol::DimExpr, symbol::DimExpr> dim_expr_map =
+      CollectSubstituteDimExprMap(group, global_shape_analysis);
+  std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs> value2shape;
+  if (dim_expr_map.size() == 0) {
+    return GetGroupValue2Shape(group, global_shape_analysis);
+  }
+
+  pir::ShapeConstraintIRAnalysis local_shape_analysis({});
+
+  // process input values.
+  VisitEachInputValue(group, [&](::pir::Value value) {
+    auto new_shape_expr = TrySubstitute(
+        global_shape_analysis.GetShapeOrDataForValue(value), dim_expr_map);
+    local_shape_analysis.SetShapeOrDataForValue(value, new_shape_expr);
+    value2shape.insert({value, new_shape_expr});
+    VLOG(6) << "Add value_to_shape_or_data_exprs for " << value.impl();
+  });
+
+  // process the result values of each op.
+  for (auto* op : group->ops()) {
+    InferSymbolicShapeForOperation(op, &local_shape_analysis);
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      auto result = op->result(i);
+      if (result && !value2shape.count(result) &&
+          local_shape_analysis.HasShapeOrDataForValue(result)) {
+        VLOG(6) << "Add value_to_shape_or_data_exprs for " << result.impl();
+        value2shape.insert(
+            {result, local_shape_analysis.GetShapeOrDataForValue(result)});
       }
     }
   }
