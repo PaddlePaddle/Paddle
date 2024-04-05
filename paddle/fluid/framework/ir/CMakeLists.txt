@@ -404,10 +404,6 @@ cc_test(
   SRCS graph_to_program_pass_test.cc
   DEPS graph_to_program_pass)
 cc_test(
-  cost_model_test
-  SRCS cost_model_test.cc
-  DEPS cost_model op_registry)
-cc_test(
   test_graph_pattern_detector
   SRCS graph_pattern_detector_tester.cc
   DEPS graph_pattern_detector)
