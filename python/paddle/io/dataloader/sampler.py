@@ -215,10 +215,10 @@ class RandomSampler(Sampler):
                 f"replacement={self.replacement}"
             )
 
-        if not self.replacement and self._num_samples > len(self.data_source):
+        if not self.replacement and self.num_samples > len(self.data_source):
             raise ValueError(
                 "num_samples should be smaller than or equal to length of data_source when replacement is False, "
-                f"but got num_samples: {self._num_samples} > data_source: {len(self.data_source)}"
+                f"but got num_samples: {self.num_samples} > data_source: {len(self.data_source)}"
             )
 
         if not isinstance(self.num_samples, int) or self.num_samples <= 0:
