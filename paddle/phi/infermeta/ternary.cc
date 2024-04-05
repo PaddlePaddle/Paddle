@@ -1125,8 +1125,8 @@ void PutAlongAxisInferMeta(const MetaTensor& x,
 }
 
 void PushGpupsSparseInferMeta(const MetaTensor& w,
-                              const std::vector<MetaTensor>& ids,
-                              const std::vector<MetaTensor>& out,
+                              const std::vector<MetaTensor*>& ids,
+                              const std::vector<MetaTensor*>& out,
                               const std::vector<int>& size,
                               bool is_sparse,
                               bool is_distributed,
