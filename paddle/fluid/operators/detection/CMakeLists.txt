@@ -31,14 +31,6 @@ endfunction()
 detection_library(density_prior_box_op SRCS density_prior_box_op.cc
                   density_prior_box_op.cu)
 
-if(WITH_XPU)
-  detection_library(iou_similarity_op SRCS iou_similarity_op.cc
-                    iou_similarity_op_xpu.cc)
-else()
-  detection_library(iou_similarity_op SRCS iou_similarity_op.cc
-                    iou_similarity_op.cu)
-endif()
-
 detection_library(bipartite_match_op SRCS bipartite_match_op.cc)
 detection_library(mine_hard_examples_op SRCS mine_hard_examples_op.cc)
 detection_library(anchor_generator_op SRCS anchor_generator_op.cc
