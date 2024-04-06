@@ -362,7 +362,12 @@ class TestPool2D_API(unittest.TestCase):
             input_np = np.random.random([2, 3, 33, 33]).astype("float32")
             input = paddle.to_tensor(input_np)
             result, _ = max_pool2d(
-                input, kernel_size=5, ceil_mode=True, return_mask=True
+                input,
+                kernel_size=5,
+                stride=5,
+                padding=0,
+                ceil_mode=True,
+                return_mask=True,
             )
             result_np = pool2D_forward_naive(
                 input_np,
@@ -372,6 +377,7 @@ class TestPool2D_API(unittest.TestCase):
                 ceil_mode=True,
             )
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+            self.assertEqual(result.shape, list(result_np.shape))
 
     def test_pool2d(self):
         for place in self.places:
