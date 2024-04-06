@@ -320,22 +320,6 @@ if(WITH_CINN)
   include(cmake/cinn/external/jitify.cmake)
 endif()
 
-# cinn_only includes third-party libraries separately
-if(CINN_ONLY)
-  include(external/gtest)
-  include(external/protobuf)
-  if(WITH_PYTHON)
-    include(external/pybind11)
-  endif()
-  if(WITH_MKL)
-    include(external/mklml)
-  endif()
-  if(WITH_MKLDNN)
-    include(external/mkldnn)
-  endif()
-  return()
-endif()
-
 include(external/eigen) # download eigen3
 include(external/threadpool) # download threadpool
 include(external/dlpack) # download dlpack

@@ -198,6 +198,16 @@ IfInstruction::~IfInstruction() {
   }
 }
 
+void IfInstruction::SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs) {
+  true_branch_inter_->SetOutputHooks(hookfuncs);
+  false_branch_inter_->SetOutputHooks(hookfuncs);
+}
+
+void IfInstruction::SetInputHooks(const std::vector<PirHookFunc>& hookfuncs) {
+  true_branch_inter_->SetInputHooks(hookfuncs);
+  false_branch_inter_->SetInputHooks(hookfuncs);
+}
+
 void IfInstruction::Run() {
   bool cond = true;
   if (cond_var_->IsType<phi::DenseTensor>()) {

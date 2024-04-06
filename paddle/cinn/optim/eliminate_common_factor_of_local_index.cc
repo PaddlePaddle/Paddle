@@ -156,7 +156,7 @@ int ExtractNumberFromExpr(const ir::Expr& expr) {
     VLOG(6) << "Not supported for calculating gcd, expr = " << expr;
     return 1;
   }
-  LOG(FATAL) << "Dead code";
+  PADDLE_THROW(phi::errors::Fatal("Dead code"));
 }
 
 int gcd(int a, int b) {

@@ -81,9 +81,7 @@ def deprecated(update_to="", since="", reason="", level=0):
         if len(_update_to) > 0:
             assert _update_to.startswith(
                 "paddle."
-            ), 'Argument update_to must start with "paddle.", your value is "{}"'.format(
-                update_to
-            )
+            ), f'Argument update_to must start with "paddle.", your value is "{update_to}"'
             msg += f' Please use "{_update_to}" instead.'
         if len(_reason) > 0:
             msg += f"\n    Reason: {_reason}"

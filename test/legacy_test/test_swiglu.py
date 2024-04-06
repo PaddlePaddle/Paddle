@@ -15,13 +15,24 @@
 import unittest
 
 import numpy as np
+from op_test import OpTest
 
 import paddle
+import paddle.distributed as dist
 import paddle.nn.functional as F
+from paddle.distributed.auto_parallel.static.dist_attribute import (
+    DistTensorSpec,
+    TensorDistAttr,
+)
 from paddle.incubate.nn.functional import swiglu as fused_swiglu_impl
 
 
 def swiglu(x, y, out_grad):
+    if isinstance(x, np.ndarray):
+        x = paddle.to_tensor(x)
+        y = paddle.to_tensor(y)
+        out_grad = paddle.to_tensor(out_grad)
+
     origin_x = x.detach().clone()
     origin_x.stop_gradient = False
     x = origin_x
@@ -158,6 +169,72 @@ class TestSwiGLUDygraph(unittest.TestCase):
     def test_main(self):
         self.check_main([8, 100])
         self.check_main([4, 101])
+
+
+class TestSwigluOp(OpTest):
+    def config(self):
+        self.x_shape = (8, 128)
+        self.check_auto_parallel = True
+
+    def setUp(self):
+        self.config()
+        self.op_type = "swiglu"
+        self.python_api = fused_swiglu_impl
+        x = np.random.uniform(-1, 1, self.x_shape).astype("float64")
+        y = np.random.uniform(-1, 1, self.x_shape).astype("float64")
+        out_grad = np.random.uniform(-1, 1, self.x_shape).astype("float64")
+        res = swiglu(x, y, out_grad)
+        self.inputs = {'x': x, 'y': y}
+        self.outputs = {'out': res[0].numpy()}
+        self.placements = {
+            'x': [dist.Shard(1)],
+            'y': [dist.Shard(1)],
+            'out': [dist.Shard(1)],
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['x', 'y'],
+            'out',
+            check_auto_parallel=self.check_auto_parallel,
+            check_dygraph=1,
+        )
+
+
+@unittest.skipIf(
+    not paddle.base.core.is_compiled_with_dist(),
+    "The spmd rule is should be tested with distributed=ON",
+)
+class TestSwigluSpmd(unittest.TestCase):
+    def setUp(self):
+        self.kernel = 'swiglu'
+        self.rule = paddle.base.core.get_phi_spmd_rule(self.kernel)
+        x_shape = [64, 32]
+        process_mesh = dist.ProcessMesh(mesh=[0, 1, 2, 3])
+        x_tensor_dist_attr = TensorDistAttr()
+        x_tensor_dist_attr.dims_mapping = [-1, 0]
+        x_tensor_dist_attr.process_mesh = process_mesh
+        self.x_dist_tensor_spec = DistTensorSpec(x_shape, x_tensor_dist_attr)
+        self.y_dist_tensor_spec = DistTensorSpec(x_shape, x_tensor_dist_attr)
+        self.out_dist_tensor_spec = DistTensorSpec(self.x_dist_tensor_spec)
+
+    def test_input_x_y(self):
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_dist_tensor_spec, self.y_dist_tensor_spec
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+        self.assertEqual(len(result_dist_attrs), 2)
+        self.assertEqual(len(infered_input_dist_attrs), 2)
+        self.assertEqual(len(infered_output_dist_attrs), 1)
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, 0])
+
+    def test_input_x(self):
+        with self.assertRaises(NotImplementedError):
+            self.rule.infer_forward(self.x_dist_tensor_spec, DistTensorSpec())
 
 
 if __name__ == "__main__":

@@ -109,9 +109,22 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
       return true;
     };
 
+    auto IndiceContainsLoad =
+        [&](const IndicesAndExtent& indice_and_extent) -> bool {
+      for (const auto& index : indice_and_extent.indices) {
+        std::set<Expr> load_tensors = ir::ir_utils::CollectLoadTensors(
+            index, /*teller=*/[&](const Expr*) -> bool { return true; });
+        if (load_tensors.size() > 0) {
+          return true;
+        }
+      }
+      return false;
+    };
+
     auto IsGlobalTensorNeedEliminate =
         [&](const std::vector<IndicesAndExtent>& indice_and_extent) -> bool {
       if (indice_and_extent.size() <= 1) return false;
+      if (IndiceContainsLoad(indice_and_extent[0])) return false;
       return AllIndiceAndExtentEqual(indice_and_extent);
     };
 

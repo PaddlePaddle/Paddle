@@ -211,7 +211,7 @@ Operation* IrParser::ParseOperation() {
   std::vector<std::string> value_index = ParseValueList();
   ConsumeAToken("=");
 
-  OpInfo opinfo = ParseOpInfo();
+  OpInfo op_info = ParseOpInfo();
 
   std::vector<Value> inputs = ParseOperandList();
 
@@ -226,7 +226,7 @@ Operation* IrParser::ParseOperation() {
   std::vector<Type> type_vector = ParseTypeList();
 
   Operation* op =
-      Operation::Create(inputs, attributeMap, type_vector, opinfo, 0);
+      Operation::Create(inputs, attributeMap, type_vector, op_info, 0);
 
   for (uint32_t i = 0; i < op->num_results(); i++) {
     std::string key_t = value_index[i];

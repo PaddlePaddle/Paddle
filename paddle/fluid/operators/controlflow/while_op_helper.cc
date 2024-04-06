@@ -89,7 +89,7 @@ static void ModifyWhileOpAndWhileGradOpAttr(const OpVariant &fwd_op,
       platform::errors::PreconditionNotMet(
           "Backward output gradient number does not match forward input number."
           "The number of forward input number is %d and the number of backward "
-          "output geadient number is %d.",
+          "output gradient number is %d.",
           fwd_input.size(),
           in_grads.size()));
 
@@ -239,8 +239,8 @@ bool GetCondData(const phi::DenseTensor &cond) {
   return cpu_cond->data<bool>()[0];
 }
 
-bool StrInVaraiableNameMap(const std::string &name,
-                           const framework::VariableNameMap &var_names) {
+bool StrInVariableNameMap(const std::string &name,
+                          const framework::VariableNameMap &var_names) {
   for (auto &ipt : var_names) {
     if (std::find(ipt.second.begin(), ipt.second.end(), name) !=
         ipt.second.end()) {

@@ -302,9 +302,13 @@ class DygraphShardingOptimizer:
             for param in parameter_list:
                 g_var = self._get_param_grad(param)
                 if g_var is not None:
-                    reduce_op = (
-                        ReduceOp.AVG if self.use_reduce_avg else ReduceOp.SUM
-                    )
+                    reduce_op = ReduceOp.AVG
+                    if not self.use_reduce_avg:
+                        sharding_nrank = (
+                            hcg.get_sharding_parallel_group().nranks
+                        )
+                        g_var.scale_(1.0 / sharding_nrank)
+                        reduce_op = ReduceOp.SUM
                     param_rank = self._param2rank[param.name]
                     paddle.distributed.reduce(
                         g_var,

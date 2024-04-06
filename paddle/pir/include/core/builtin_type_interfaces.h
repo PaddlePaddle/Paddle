@@ -80,7 +80,10 @@ class IR_API ShapedTypeInterface
   /// If this is a ranked type, return the rank. Otherwise, abort.
   ///
   int64_t GetRank() const {
-    IR_ENFORCE((*this).HasRank(), "Cannot query rank of unranked shaped type.");
+    PADDLE_ENFORCE_EQ((*this).HasRank(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Cannot query rank of unranked shaped type."));
     return (*this).GetShape().size();
   }
 
@@ -110,7 +113,10 @@ class IR_API ShapedTypeInterface
   /// unranked types.
   ///
   bool IsDynamicDim(unsigned idx) const {
-    IR_ENFORCE(idx < GetRank(), "Invalid index for shaped type.");
+    PADDLE_ENFORCE_LT(
+        idx,
+        GetRank(),
+        phi::errors::InvalidArgument("Invalid index for shaped type."));
     return ShapedTypeInterface::IsDynamic((*this).GetShape()[idx]);
   }
 
@@ -129,7 +135,10 @@ class IR_API ShapedTypeInterface
   /// for unranked types.
   ///
   int64_t GetDimSize(unsigned idx) const {
-    IR_ENFORCE(idx < GetRank(), "Invalid index for shaped type.");
+    PADDLE_ENFORCE_LT(
+        idx,
+        GetRank(),
+        phi::errors::InvalidArgument("Invalid index for shaped type."));
     return (*this).GetShape()[idx];
   }
 

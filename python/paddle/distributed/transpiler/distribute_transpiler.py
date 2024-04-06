@@ -667,19 +667,13 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 assert (
                     trainers_num
                     > self.config.hierarchical_allreduce_inter_nranks
-                ), "trainers_num:{} < hierarchical_allreduce_inter_nranks:{}".format(
-                    trainers_num,
-                    self.config.hierarchical_allreduce_inter_nranks,
-                )
+                ), f"trainers_num:{trainers_num} < hierarchical_allreduce_inter_nranks:{self.config.hierarchical_allreduce_inter_nranks}"
 
                 assert (
                     trainers_num
                     % self.config.hierarchical_allreduce_inter_nranks
                     == 0
-                ), "trainers_num:{} mod hierarchical_allreduce_inter_nranks:{} != 0".format(
-                    trainers_num,
-                    self.config.hierarchical_allreduce_inter_nranks,
-                )
+                ), f"trainers_num:{trainers_num} mod hierarchical_allreduce_inter_nranks:{self.config.hierarchical_allreduce_inter_nranks} != 0"
 
                 self.origin_program._hierarchical_allreduce_inter_nranks = int(
                     self.config.hierarchical_allreduce_inter_nranks

@@ -120,8 +120,9 @@ ProgramDesc BuildConvRequantProgramDesc(bool use_mkldnn,
                                         float scale_out,
                                         float scale_in) {
   ProgramDesc prog;
-  for (auto& v : std::initializer_list<std::string>(
-           {"a", "w1", "b1", "d", "e", "f", "w2", "b2", "i"})) {
+  const std::vector<std::string> values = {
+      "a", "w1", "b1", "d", "e", "f", "w2", "b2", "i"};
+  for (auto& v : values) {
     auto* var = prog.MutableBlock(0)->Var(v);
     if (v.find("w") == 0 || v.find("b") == 0) {
       var->SetPersistable(true);
@@ -240,7 +241,7 @@ ProgramDesc BuildOpRequantProgramDesc(bool use_mkldnn,
         {"h"},
         use_mkldnn,
         {matmul_scale, requant_scale3});
-  SetOp(&prog, "concat", "Concat", {"c", "f", "h"}, {"g"}, {use_mkldnn});
+  SetOp(&prog, "concat", "Concat", {"c", "f", "h"}, {"g"}, use_mkldnn);
 
   return prog;
 }
@@ -683,7 +684,7 @@ ProgramDesc BuildRequantOpProgramDesc(bool use_mkldnn,
         {"h"},
         use_mkldnn,
         {op_scale_in, op_scale_out});
-  SetOp(&prog, "concat", "Concat", {"b", "e", "h"}, {"i"}, {use_mkldnn});
+  SetOp(&prog, "concat", "Concat", {"b", "e", "h"}, {"i"}, use_mkldnn);
 
   return prog;
 }

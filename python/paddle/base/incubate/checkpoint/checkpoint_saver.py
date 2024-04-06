@@ -86,9 +86,7 @@ class CheckpointSaver:
 
         cache_path = None
         if self._fs.need_upload_download():
-            cache_path = "{}/{}.{}.saved_cache".format(
-                local_cache_path, self._checkpoint_prefix, max_no
-            )
+            cache_path = f"{local_cache_path}/{self._checkpoint_prefix}.{max_no}.saved_cache"
 
             if trainer_id is not None:
                 cache_path = f"{cache_path}.{trainer_id}"
@@ -144,9 +142,7 @@ class CheckpointSaver:
 
         local_fs = LocalFS()
         if self._fs.need_upload_download():
-            cache_path = "{}/{}.{}.load_cache".format(
-                local_cache_path, self._checkpoint_prefix, checkpoint_no
-            )
+            cache_path = f"{local_cache_path}/{self._checkpoint_prefix}.{checkpoint_no}.load_cache"
 
             if trainer_id is not None:
                 cache_path = f"{cache_path}.{trainer_id}"

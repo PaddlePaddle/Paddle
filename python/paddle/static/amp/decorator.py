@@ -41,9 +41,7 @@ def _set_multi_precision(optimizer, multi_precision):
         (paddle.optimizer.Optimizer),
     ):
         raise RuntimeError(
-            "Current AMP training level is O2, optimizer is expected to be paddle.optimizer.Optimizer, but receive {}.".format(
-                type(optimizer)
-            )
+            f"Current AMP training level is O2, optimizer is expected to be paddle.optimizer.Optimizer, but receive {type(optimizer)}."
         )
 
     if multi_precision and hasattr(optimizer, "_multi_precision"):
@@ -485,8 +483,7 @@ class OptimizerWithMixedPrecision:
             for p, g in param_grads:
                 if g not in self._optimizer._master_grads:
                     if self._optimizer._is_dtype_fp16_or_bf16(g.dtype):
-                        master_g = paddle.cast(g, 'float32')
-                        self._optimizer._master_grads[g] = master_g
+                        master_g = self._optimizer._create_master_grad(g)
                         params_master_grads.append((p, master_g))
                     else:
                         params_master_grads.append((p, g))

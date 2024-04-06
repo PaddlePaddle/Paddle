@@ -166,7 +166,7 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
     out->set_mem_desc(out_mem_desc);
   } else if (src_layout == DataLayout::ONEDNN &&
              dst_layout != DataLayout::ONEDNN) {
-    // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
+    // Case2 - transform from MKLDNN OPKernel to Non-MKLDNN OPKernel
     // Do transform via MKLDNN lib
     funcs::TransDataLayoutFromOneDNN(
         src_layout, dst_layout, x, out, dev_ctx.GetPlace());

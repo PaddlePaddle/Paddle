@@ -41,6 +41,19 @@ MultiplyGradNode::operator()(
     bool is_new_grad) {
   VLOG(3) << "Running AD API GRAD: "
           << "multiply_grad";
+  // This 'Local_XXXGradNode' record event is different with
+  // 'Global_XXXGradNode' event.
+  // * 'Local_XXXGradNode' will only cover execution time of this function.
+  // * 'Global_XXXGradNode' will not only cover execution time of this function,
+  // but also include gradient
+  //    accumulation when the output(s) of corresponding forward OP are shared
+  //    by other OP(s), which may have extra accumulation overhead than
+  //    'Local_XXXGradNode'.
+  paddle::platform::RecordEvent node_execution_inner(
+      "Local_MultiplyGradNode",
+      paddle::platform::TracerEventType::OperatorInner,
+      1);
+
   // Fill Zero For GradIn Tensors
   const auto& input_metas = this->InputMeta();
   egr::EagerUtils::FillZeroForEmptyGradInput(&grads[0][0], input_metas[0][0]);
@@ -245,6 +258,19 @@ MultiplyDoubleGradNode::operator()(
     bool is_new_grad) {
   VLOG(3) << "Running AD API GRAD: "
           << "multiply_double_grad";
+  // This 'Local_XXXGradNode' record event is different with
+  // 'Global_XXXGradNode' event.
+  // * 'Local_XXXGradNode' will only cover execution time of this function.
+  // * 'Global_XXXGradNode' will not only cover execution time of this function,
+  // but also include gradient
+  //    accumulation when the output(s) of corresponding forward OP are shared
+  //    by other OP(s), which may have extra accumulation overhead than
+  //    'Local_XXXGradNode'.
+  paddle::platform::RecordEvent node_execution_inner(
+      "Local_MultiplyDoubleGradNode",
+      paddle::platform::TracerEventType::OperatorInner,
+      1);
+
   // Fill Zero For GradIn Tensors
   const auto& input_metas = this->InputMeta();
   egr::EagerUtils::FillZeroForEmptyOptionalGradInput(&grads[0][0],
@@ -505,6 +531,19 @@ MultiplyGradNode::operator()(
     bool is_new_grad) {
   VLOG(3) << "Running AD API GRAD: "
           << "multiply_grad";
+  // This 'Local_XXXGradNode' record event is different with
+  // 'Global_XXXGradNode' event.
+  // * 'Local_XXXGradNode' will only cover execution time of this function.
+  // * 'Global_XXXGradNode' will not only cover execution time of this function,
+  // but also include gradient
+  //    accumulation when the output(s) of corresponding forward OP are shared
+  //    by other OP(s), which may have extra accumulation overhead than
+  //    'Local_XXXGradNode'.
+  paddle::platform::RecordEvent node_execution_inner(
+      "Local_MultiplyGradNode",
+      paddle::platform::TracerEventType::OperatorInner,
+      1);
+
   // Fill Zero For GradIn Tensors
   const auto& input_metas = this->InputMeta();
   egr::EagerUtils::FillZeroForEmptyGradInput(&grads[0][0], input_metas[0][0]);

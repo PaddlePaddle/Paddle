@@ -35,9 +35,6 @@ if(WITH_CINN)
   add_custom_target(COPY_CINN_CORE_API ALL DEPENDS ${CINN_CORE_API}
                                                    ${CINN_PY_FILES})
 
-  if(CINN_ONLY)
-    return()
-  endif()
 endif()
 
 file(GLOB UTILS_PY_FILES . ./paddle/legacy/utils/*.py)

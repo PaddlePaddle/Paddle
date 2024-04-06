@@ -44,6 +44,7 @@ DEFAULT_RECOMPUTABLE_OPS: List[str] = [
     "pd_op.add",
     "pd_op.multiply",
     "pd_op.elementwise_pow",
+    "pd_op.rsqrt",
     "pd_op.reshape",
     "pd_op.full_like",
     "pd_op.assign",
@@ -54,6 +55,32 @@ DEFAULT_RECOMPUTABLE_OPS: List[str] = [
     "pd_op.where",
     "pd_op.sin",
     "pd_op.cos",
+    "pd_op.add_n",
+    "pd_op.any",
+    "pd_op.bitwise_and",
+    "pd_op.cast",
+    "pd_op.concat",
+    "pd_op.full_with_tensor",
+    "pd_op.gather_nd",
+    "pd_op.greater_than",
+    "pd_op.less_than",
+    "pd_op.logical_and",
+    "pd_op.logical_not",
+    "pd_op.not_equal",
+    "pd_op.pow",
+    "pd_op.shape",
+    "pd_op.slice",
+    "pd_op.squeeze",
+    "pd_op.unsqueeze",
+    "pd_op.transpose",
+    "pd_op.where",
+    "pd_op.prod",
+    "pd_op.log",
+    "pd_op.max",
+    "pd_op.expand_as",
+    "pd_op.split",
+    "pd_op.arange",
+    "pd_op.put_along_axis",
 ]
 
 VIEW_OPS: List[str] = []
@@ -66,8 +93,8 @@ COMPUTE_INTENSIVE_OPS: List[str] = [
     "pd_op.layer_norm",
     "pd_op.batchnorm",
     "pd_op.softmax",
-    "pd_op.add_n",
 ]
+
 
 AGGRESSIVE_RECOMPUTATION = False
 # Restricts the amount of computation recompute can do.
@@ -80,6 +107,7 @@ def auto_recompute(
     outputs: Sequence[pir.Value],
     grad_outputs: Sequence[pir.Value],
     fwd_op_end_idx: int,
+    backward_op_start_idx: int,
     recomputable_ops: Sequence[str] = None,
 ) -> Tuple[paddle.static.Program, int]:
     '''
@@ -103,6 +131,7 @@ def auto_recompute(
         grad_outputs:(list[Value]|tuple(Value)): initial gradient values
             of `outputs` .
         forward_op_end_idx(int): The index of the last forward op.
+        backward_op_start_idx(int): The index of the start backward op.
         recomputable_ops(list[str]|tuple(str)|None): The op names that can
             be recomputed. If 'recompute_ops' is None, we will use the
             default recomputable_ops. Default None.
@@ -144,6 +173,7 @@ def auto_recompute(
         >>>         [out],
         >>>         grad_outputs=[out_grad],
         >>>         fwd_op_end_idx=2,
+        >>>         backward_op_start_idx=4
         >>>     )
         >>>     exe = paddle.static.Executor(paddle.CUDAPlace(0))
         >>>     res = exe.run(
@@ -289,7 +319,7 @@ def auto_recompute(
 
         if (
             len(value_node.all_used_ops()) == 1
-            and value_node.all_used_ops()[0] == "builtin.split"
+            and value_node.all_used_ops()[0].name() == "builtin.split"
         ):
             continue
 
@@ -349,13 +379,19 @@ def auto_recompute(
         cut_value_nodes.add(value_node)
 
     saved_values = cut_value_nodes
-
+    # (TODO: wanghao107): remove it and fix model
+    saved_values = cut_value_nodes | inputs
     # 2.patition the joint graph by saved values.
     (
         program_after_recompute,
         fwd_op_end_idx_after_recompute,
     ) = partition_joint_graph(
-        program, saved_values, inputs, outputs, fwd_op_end_idx
+        program,
+        saved_values,
+        inputs,
+        outputs,
+        fwd_op_end_idx,
+        backward_op_start_idx,
     )
     return program_after_recompute, fwd_op_end_idx_after_recompute
 
@@ -366,6 +402,7 @@ def partition_joint_graph(
     inputs: List[pir.Value],
     outputs: List[pir.Value],
     fwd_op_end_idx: int,
+    backward_op_start_idx: int,
 ) -> Tuple[paddle.static.Program, int]:
     """
     Partition the joint graph, recompute the intermediate values
@@ -379,6 +416,7 @@ def partition_joint_graph(
         outputs(list[valueiable]): The out values
             of the forward graph.
         forward_op_end_idx(int): The index of the last forward op.
+        backward_op_start_idx(int): The index of the start backward op.
     Returns:
         recomputed_program(Program): The recomputed program.
         fwd_op_end_idx(int): The index of the last forward op in
@@ -389,19 +427,28 @@ def partition_joint_graph(
 
     # 1. Analyze the program, get all forward porgram mid hold values
     mid_hold_values = analyze_mid_hold_values(
-        program, saved_values, inputs, outputs, fwd_op_end_idx
+        program,
+        saved_values,
+        inputs,
+        outputs,
+        fwd_op_end_idx,
+        backward_op_start_idx,
     )
 
     # 2. Extract the recompute subgraph and replace forward mid hold values with recompute subgraph's outputs
     program, fwd_op_end_idx = replace_mid_values_with_forward_subgraph(
-        program, saved_values, mid_hold_values, fwd_op_end_idx
+        program,
+        saved_values,
+        mid_hold_values,
+        fwd_op_end_idx,
+        backward_op_start_idx,
     )
 
     return program, fwd_op_end_idx
 
 
 def replace_mid_values_with_forward_subgraph(
-    program, saved_values, mid_values, fwd_op_end_idx
+    program, saved_values, mid_values, fwd_op_end_idx, backward_op_start_idx
 ):
     def _extract_forward_recompute_subgraph_for_backward(
         saved_values, mid_values
@@ -421,9 +468,7 @@ def replace_mid_values_with_forward_subgraph(
                 "pd_op.full_int_array",
             ]:
                 raise Exception(
-                    "Every path to recompute value {} must have saved value or starting point of the path is one of op in [pd_op.full, pd_op.full_int_array], but find {} op".format(
-                        recompute_value, define_op.name()
-                    )
+                    f"Every path to recompute value {recompute_value} must have saved value or starting point of the path is one of op in [pd_op.full, pd_op.full_int_array], but find {define_op.name()} op"
                 )
             for op_input in op_inputs:
                 if op_input in saved_values:
@@ -458,8 +503,8 @@ def replace_mid_values_with_forward_subgraph(
         return recompute_subgraph
 
     forward_ops = set(program.global_block().ops[: fwd_op_end_idx + 1])
-    backward_ops = set(program.global_block().ops[fwd_op_end_idx + 1 :])
-    first_backward_op = program.global_block().ops[fwd_op_end_idx + 1]
+    backward_ops = set(program.global_block().ops[backward_op_start_idx:])
+    first_backward_op = program.global_block().ops[backward_op_start_idx]
 
     # 1. find forward subgraph to recompute mid values that backward need to hold.
     recompute_forward_subgraph = (
@@ -485,7 +530,7 @@ def replace_mid_values_with_forward_subgraph(
 
     # 4. reset recomputed ops location in program
     reseted_ops = set()
-    backward_ops_list = program.global_block().ops[fwd_op_end_idx + 1 :]
+    backward_ops_list = program.global_block().ops[backward_op_start_idx:]
     for op in backward_ops_list:
         op_inputs = op.operands_source()
         for op_input in op_inputs:
@@ -510,11 +555,8 @@ def classify_value_node(program, grad_outputs, fwd_op_end_idx):
     required_bw_value_nodes = backward_utils.ValueSet()
     required_bw_ops = set()
     for grad_output in grad_outputs:
-        required_bw_ops = (
-            required_bw_ops
-            | find_child_ops(grad_output)
-            | find_parent_ops(grad_output)
-        )
+        required_bw_ops = required_bw_ops | find_child_ops(grad_output)
+        required_bw_ops.add(grad_output.get_defining_op())
     for required_bw_op in required_bw_ops:
         bw_op_outputs = required_bw_op.results()
         required_bw_value_nodes = (
@@ -551,7 +593,7 @@ def find_value_node_users(value_node):
                 for result in results:
                     if (
                         len(result.all_used_ops()) == 1
-                        and result.all_used_ops()[0] == "builtin.split"
+                        and result.all_used_ops()[0].name() == "builtin.split"
                     ):
                         split_results = result.all_used_ops()[0].results()
                         users |= backward_utils.ValueSet(split_results)
@@ -562,7 +604,7 @@ def find_value_node_users(value_node):
             for result in results:
                 if (
                     len(result.all_used_ops()) == 1
-                    and result.all_used_ops()[0] == "builtin.split"
+                    and result.all_used_ops()[0].name() == "builtin.split"
                 ):
                     split_results = result.all_used_ops()[0].results()
                     users |= backward_utils.ValueSet(split_results)
@@ -634,10 +676,15 @@ def cal_value_nodes_dist_to_backward(all_ops, required_fw_value_nodes):
 
 
 def analyze_mid_hold_values(
-    program, saved_values, inputs, outputs, fwd_op_end_idx
+    program,
+    saved_values,
+    inputs,
+    outputs,
+    fwd_op_end_idx,
+    backward_op_start_idx,
 ):
     forward_ops = set(program.global_block().ops[: fwd_op_end_idx + 1])
-    backward_ops = set(program.global_block().ops[fwd_op_end_idx + 1 :])
+    backward_ops = set(program.global_block().ops[backward_op_start_idx:])
     mid_hold_values = backward_utils.ValueSet()
     for op in forward_ops:
         for result in op.results():
@@ -670,22 +717,38 @@ def clone_graph(program, origin_ops, graph_inputs, clone_insertion_op):
 
 
 def find_parent_ops(value):
-    parent_ops = set()
-    parent_op = value.get_defining_op()
-    parent_ops.add(parent_op)
-    op_inputs = parent_op.operands_source()
-    for op_input in op_inputs:
-        parent_ops = parent_ops | find_parent_ops(op_input)
-    return parent_ops
+    visited = backward_utils.ValueSet()
+
+    def _find_parent_ops(value):
+        parent_ops = set()
+        if value in visited:
+            return parent_ops
+        visited.add(value)
+        parent_op = value.get_defining_op()
+        parent_ops.add(parent_op)
+        op_inputs = parent_op.operands_source()
+        for op_input in op_inputs:
+            parent_ops = parent_ops | _find_parent_ops(op_input)
+        return parent_ops
+
+    return _find_parent_ops(value)
 
 
 def find_child_ops(value):
-    child_ops = set()
-    used_ops = value.all_used_ops()
-    child_ops |= set(used_ops)
-    op_results = backward_utils.ValueSet()
-    for used_op in used_ops:
-        op_results = op_results | backward_utils.ValueSet(used_op.results())
-    for op_result in op_results:
-        child_ops = child_ops | find_child_ops(op_result)
-    return child_ops
+    visited = backward_utils.ValueSet()
+
+    def _find_child_ops(value):
+        child_ops = set()
+        if value in visited:
+            return child_ops
+        visited.add(value)
+        used_ops = value.all_used_ops()
+        child_ops |= set(used_ops)
+        op_results = backward_utils.ValueSet()
+        for used_op in used_ops:
+            op_results = op_results | backward_utils.ValueSet(used_op.results())
+        for op_result in op_results:
+            child_ops = child_ops | _find_child_ops(op_result)
+        return child_ops
+
+    return _find_child_ops(value)
