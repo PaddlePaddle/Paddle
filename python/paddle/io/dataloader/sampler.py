@@ -160,11 +160,7 @@ class RandomSampler(Sampler):
                 object which implemented :code:`__len__` to get indices as the range of :code:`dataset` length. Default None.
         replacement(bool, optional): If False, sample the whole dataset, If True,
                 set :attr:`num_samples` for how many samples to draw. Default False.
-        num_samples(int, optional): Set sample number to draw. If :attr:`replacement`
-                is True, it will take samples according to the number you set. If
-                :attr:`replacement` is False, then it will yield randonly permutated
-                indices of the whohle dataset for :code:`num_samples//len(data_source)`
-                times and then yield indices without replacement for :code:`num_samples % len(data_source)` times. Default None.
+        num_samples(int, optional): set sample number to draw. Default None.
         generator(Generator, optional): specify a generator to sample the :code:`data_source`. Default None, disabled.
 
     Returns:
