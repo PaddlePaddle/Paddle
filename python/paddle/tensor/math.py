@@ -122,9 +122,7 @@ def _get_reduce_axis(axis, x):
             axis = [axis]
         else:
             raise TypeError(
-                "The type of axis must be int, list or tuple, but received {}".format(
-                    type(axis)
-                )
+                f"The type of axis must be int, list or tuple, but received {type(axis)}"
             )
     if axis is None:
         axis = []
@@ -719,9 +717,7 @@ def add_(x, y, name=None):
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
-            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                out_shape, x.shape
-            )
+            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
 
     return _C_ops.add_(x, y)
@@ -859,9 +855,7 @@ def subtract_(x, y, name=None):
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
-            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                out_shape, x.shape
-            )
+            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
 
     return _C_ops.subtract_(x, y)
@@ -916,9 +910,7 @@ def divide_(x, y, name=None):
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
-            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                out_shape, x.shape
-            )
+            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
     return _C_ops.divide_(x, y)
 
@@ -977,9 +969,7 @@ def floor_divide_(x, y, name=None):
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
-            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                out_shape, x.shape
-            )
+            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
     return _C_ops.floor_divide_(x, y)
 
@@ -1046,9 +1036,7 @@ def remainder_(x, y, name=None):
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
-            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                out_shape, x.shape
-            )
+            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
     return _C_ops.remainder_(x, y)
 
@@ -1133,9 +1121,7 @@ def multiply_(x, y, name=None):
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
-            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                out_shape, x.shape
-            )
+            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
 
     return _C_ops.multiply_(x, y)
@@ -2186,9 +2172,7 @@ def mm(input, mat2, name=None):
                 raise ValueError(
                     "After performing an optional transpose, Input X's width should be "
                     "equal to Y's width for multiplication "
-                    "prerequisites. But received X's shape: {}, Y's shape: {}\n".format(
-                        x_shape, y_shape
-                    )
+                    f"prerequisites. But received X's shape: {x_shape}, Y's shape: {y_shape}\n"
                 )
 
         if len(y_shape) > 2 and len(x_shape) > 2:
@@ -2263,49 +2247,35 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     y_shape = y.shape
     if not len(x_shape) == len(y_shape) == 2:
         raise ValueError(
-            "The dimension of x, y should be 2 but receive x's shape: {}, y's shape: {}".format(
-                x_shape, y_shape
-            )
+            f"The dimension of x, y should be 2 but receive x's shape: {x_shape}, y's shape: {y_shape}"
         )
     if x_shape[1] != y_shape[0]:
         raise ValueError(
-            "The input Variable x's width must be equal with Variable y' height. But received x's shape = {}, y's shape = {}.".format(
-                x_shape, y_shape
-            )
+            f"The input Variable x's width must be equal with Variable y' height. But received x's shape = {x_shape}, y's shape = {y_shape}."
         )
     if len(input_shape) == 2:
         if input_shape[0] != x_shape[0]:
             if input_shape[0] != 1:
                 raise ValueError(
-                    "When x's dimension[0] is not equal with input's dimension[0], input's dimension[0] must be 1 but got {}".format(
-                        input_shape[0]
-                    )
+                    f"When x's dimension[0] is not equal with input's dimension[0], input's dimension[0] must be 1 but got {input_shape[0]}"
                 )
             if input_shape[1] != y_shape[1] and input_shape[1] != 1:
                 raise ValueError(
-                    "When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {}".format(
-                        input_shape[1]
-                    )
+                    f"When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {input_shape[1]}"
                 )
         if input_shape[1] != y_shape[1]:
             if input_shape[1] != 1:
                 raise ValueError(
-                    "When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {}".format(
-                        input_shape[1]
-                    )
+                    f"When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {input_shape[1]}"
                 )
     elif len(input_shape) == 1:
         if input_shape[0] not in (y_shape[1], 1):
             raise ValueError(
-                "The input's shape: {} is not broadcastable with [x.shape[0], y.shape[1]]: [{},{}]".format(
-                    input_shape, x_shape[0], y_shape[1]
-                )
+                f"The input's shape: {input_shape} is not broadcastable with [x.shape[0], y.shape[1]]: [{x_shape[0]},{y_shape[1]}]"
             )
     else:
         raise ValueError(
-            "The dimension of input should be 2 or 1 but receive input's shape: {}".format(
-                input_shape
-            )
+            f"The dimension of input should be 2 or 1 but receive input's shape: {input_shape}"
         )
 
     if in_dynamic_mode():
@@ -2343,49 +2313,35 @@ def addmm_(input, x, y, beta=1.0, alpha=1.0, name=None):
     y_shape = y.shape
     if not len(x_shape) == len(y_shape) == 2:
         raise ValueError(
-            "The dimension of x, y should be 2 but receive x's shape: {}, y's shape: {}".format(
-                x_shape, y_shape
-            )
+            f"The dimension of x, y should be 2 but receive x's shape: {x_shape}, y's shape: {y_shape}"
         )
     if x_shape[1] != y_shape[0]:
         raise ValueError(
-            "The input Variable x's width must be equal with Variable y' height. But received x's shape = {}, y's shape = {}.".format(
-                x_shape, y_shape
-            )
+            f"The input Variable x's width must be equal with Variable y' height. But received x's shape = {x_shape}, y's shape = {y_shape}."
         )
     if len(input_shape) == 2:
         if input_shape[0] != x_shape[0]:
             if input_shape[0] != 1:
                 raise ValueError(
-                    "When x's dimension[0] is not equal with input's dimension[0], input's dimension[0] must be 1 but got {}".format(
-                        input_shape[0]
-                    )
+                    f"When x's dimension[0] is not equal with input's dimension[0], input's dimension[0] must be 1 but got {input_shape[0]}"
                 )
             if input_shape[1] != y_shape[1] and input_shape[1] != 1:
                 raise ValueError(
-                    "When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {}".format(
-                        input_shape[1]
-                    )
+                    f"When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {input_shape[1]}"
                 )
         if input_shape[1] != y_shape[1]:
             if input_shape[1] != 1:
                 raise ValueError(
-                    "When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {}".format(
-                        input_shape[1]
-                    )
+                    f"When y's dimension[1] is not equal with input's dimension[1], input's dimension[1] must be 1 but got {input_shape[1]}"
                 )
     elif len(input_shape) == 1:
         if input_shape[0] not in (y_shape[1], 1):
             raise ValueError(
-                "The input's shape: {} is not broadcastable with [x.shape[0], y.shape[1]]: [{},{}]".format(
-                    input_shape, x_shape[0], y_shape[1]
-                )
+                f"The input's shape: {input_shape} is not broadcastable with [x.shape[0], y.shape[1]]: [{x_shape[0]},{y_shape[1]}]"
             )
     else:
         raise ValueError(
-            "The dimension of input should be 2 or 1 but receive input's shape: {}".format(
-                input_shape
-            )
+            f"The dimension of input should be 2 or 1 but receive input's shape: {input_shape}"
         )
 
     if in_dynamic_mode():
@@ -2431,16 +2387,12 @@ def renorm(x, p, axis, max_norm):
     input_shape = x.shape
     if not axis < len(input_shape):
         raise ValueError(
-            "the axis:{} should be less then the shape's size {}:{}".format(
-                axis, len(input_shape), input_shape
-            )
+            f"the axis:{axis} should be less then the shape's size {len(input_shape)}:{input_shape}"
         )
     if not axis >= 0:
         if not axis >= -1 * len(input_shape):
             raise ValueError(
-                "the axis:{} should not be less than -1 * length of input_shape:{}".format(
-                    axis, -1 * len(input_shape)
-                )
+                f"the axis:{axis} should not be less than -1 * length of input_shape:{-1 * len(input_shape)}"
             )
         axis = axis + len(input_shape)
     if in_dynamic_or_pir_mode():
@@ -2469,16 +2421,12 @@ def renorm_(x, p, axis, max_norm):
     input_shape = x.shape
     if not axis < len(input_shape):
         raise ValueError(
-            "the axis:{} should be less then the shape's size {}:{}".format(
-                axis, len(input_shape), input_shape
-            )
+            f"the axis:{axis} should be less then the shape's size {len(input_shape)}:{input_shape}"
         )
     if not axis >= 0:
         if not axis >= -1 * len(input_shape):
             raise ValueError(
-                "the axis:{} should not be less than -1 * length of input_shape:{}".format(
-                    axis, -1 * len(input_shape)
-                )
+                f"the axis:{axis} should not be less than -1 * length of input_shape:{-1 * len(input_shape)}"
             )
         axis = axis + len(input_shape)
     if in_dynamic_mode():
@@ -2540,9 +2488,7 @@ def inner(x, y, name=None):
                     raise ValueError(
                         "After performing an optional transpose, Input X's last dim should be "
                         "equal to Y's last dim for multiplication "
-                        "prerequisites. But received X's shape: {}, Y's shape: {}\n".format(
-                            x_shape, y_shape
-                        )
+                        f"prerequisites. But received X's shape: {x_shape}, Y's shape: {y_shape}\n"
                     )
 
         __check_input(nx, ny)
@@ -5593,9 +5539,7 @@ def lerp_(x, y, weight, name=None):
         out_shape = broadcast_shape(out_shape, weight.shape)
     if out_shape != x.shape:
         raise ValueError(
-            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                out_shape, x.shape
-            )
+            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
     return _C_ops.lerp_(x, y, weight)
 
@@ -5878,9 +5822,7 @@ def gcd_(x, y, name=None):
     shape = paddle.broadcast_shape(x.shape, y.shape)
     if shape != x.shape:
         raise ValueError(
-            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                shape, x.shape
-            )
+            f"The shape of broadcast output {shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
     y = paddle.broadcast_to(y, shape)
     x = paddle.abs_(x)
@@ -6528,9 +6470,7 @@ def take(x, index, mode='raise', name=None):
             DataType.INT64,
         ]:
             raise TypeError(
-                "The data type of 'index' must be one of ['int32', 'int64'], but got {}".format(
-                    index.dtype
-                )
+                f"The data type of 'index' must be one of ['int32', 'int64'], but got {index.dtype}"
             )
 
     else:
@@ -7351,9 +7291,7 @@ def bitwise_left_shift_(x, y, is_arithmetic=True, out=None, name=None):
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
-            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                out_shape, x.shape
-            )
+            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
     if in_dynamic_or_pir_mode():
         return _C_ops.bitwise_left_shift_(x, y, is_arithmetic)
@@ -7429,9 +7367,7 @@ def bitwise_right_shift_(x, y, is_arithmetic=True, out=None, name=None):
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
-            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                out_shape, x.shape
-            )
+            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
 
     if in_dynamic_or_pir_mode():
@@ -7505,9 +7441,7 @@ def copysign(x, y, name=None):
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         warnings.warn(
-            "The shape of broadcast output {} is different from the input tensor x with shape: {}, please make sure you are using copysign api correctly.".format(
-                out_shape, x.shape
-            )
+            f"The shape of broadcast output {out_shape} is different from the input tensor x with shape: {x.shape}, please make sure you are using copysign api correctly."
         )
 
     if in_dynamic_or_pir_mode():
@@ -7532,9 +7466,7 @@ def copysign_(x, y, name=None):
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
-            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
-                out_shape, x.shape
-            )
+            f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
     return _C_ops.copysign_(x, y)
 

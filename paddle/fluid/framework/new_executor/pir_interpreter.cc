@@ -723,8 +723,16 @@ void PirInterpreter::BuildInstruction() {
       }
     } else if (op.dialect()->name() == "pd_op") {
       if (op.isa<paddle::dialect::IfOp>()) {  // NOLINT
-        vec_instruction_base_.emplace_back(std::make_unique<IfInstruction>(
-            op_idx++, place_, &op, value_exe_info_.get(), execution_config_));
+        std::unique_ptr<IfInstruction> if_instr_ptr =
+            std::make_unique<IfInstruction>(op_idx++,
+                                            place_,
+                                            &op,
+                                            value_exe_info_.get(),
+                                            execution_config_);
+        if_instr_ptr->SetOutputHooks(pir_output_hookfuncs_);
+        if_instr_ptr->SetInputHooks(pir_input_hookfuncs_);
+        vec_instruction_base_.emplace_back(std::move(if_instr_ptr));
+
         sub_blocks_.insert(
             {&op.dyn_cast<paddle::dialect::IfOp>().true_block(),
              dynamic_cast<IfInstruction*>(vec_instruction_base_.back().get())
@@ -742,8 +750,16 @@ void PirInterpreter::BuildInstruction() {
                  vec_instruction_base_.back().get())
                  ->ForwardInterpreter()});
       } else if (op.isa<paddle::dialect::WhileOp>()) {
-        vec_instruction_base_.emplace_back(std::make_unique<WhileInstruction>(
-            op_idx++, place_, &op, value_exe_info_.get(), execution_config_));
+        std::unique_ptr<WhileInstruction> while_instr_ptr =
+            std::make_unique<WhileInstruction>(op_idx++,
+                                               place_,
+                                               &op,
+                                               value_exe_info_.get(),
+                                               execution_config_);
+        while_instr_ptr->SetOutputHooks(pir_output_hookfuncs_);
+        while_instr_ptr->SetInputHooks(pir_input_hookfuncs_);
+        vec_instruction_base_.emplace_back(std::move(while_instr_ptr));
+
         sub_blocks_.insert(
             {&op.dyn_cast<paddle::dialect::WhileOp>().body(),
              dynamic_cast<WhileInstruction*>(vec_instruction_base_.back().get())
@@ -1764,6 +1780,13 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
             << " runs on " << platform::GetCurrentThreadName() << "\n"
             << "Before: " << cur_place << " "
             << instr_node->DebugStringEx(scope_, value_exe_info_.get());
+
+    if (execution_config_.used_for_inference) {
+      for (auto& hook : pir_input_hookfuncs_) {
+        hook(instr_node, value_exe_info_.get(), scope_);
+      }
+    }
+
     if (!instr_node->IsArtificial()) {
       instr_node->Run();
 
@@ -1789,6 +1812,13 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
       VLOG(4) << "done CheckGC";
       memory::LogDeviceMemoryStats(cur_place, instr_node->Name());
     }
+
+    if (execution_config_.used_for_inference) {
+      for (auto& hook : pir_output_hookfuncs_) {
+        hook(instr_node, value_exe_info_.get(), scope_);
+      }
+    }
+
     VLOG(5) << "after run kernel";
     instr_node->RecordEvent(cur_place);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

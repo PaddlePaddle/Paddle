@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/operators/fused/fusion_lstm_op.h"
-#include "paddle/fluid/operators/fused/mkldnn/fusion_rnn_mkldnn.h"
+#include "paddle/fluid/operators/fused/onednn/fusion_rnn_onednn.h"
 #include "paddle/phi/core/expect.h"
 
 namespace paddle {

@@ -209,9 +209,7 @@ class If:
             check_variable_and_dtype(cond, 'cond', ['bool'], 'static.nn.If')
             if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
                 raise TypeError(
-                    "condition expected shape as [1], but given shape as {}.".format(
-                        list(cond.shape)
-                    )
+                    f"condition expected shape as [1], but given shape as {list(cond.shape)}."
                 )
         self.if_op = build_if_op(cond)
         self.cond_var = self.if_op.cond()
@@ -578,9 +576,7 @@ class While:
         check_variable_and_dtype(cond, 'cond', ['bool'], 'static.nn.While')
         if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
             raise TypeError(
-                "condition expected shape as [1], but given shape as {}.".format(
-                    list(cond.shape)
-                )
+                f"condition expected shape as [1], but given shape as {list(cond.shape)}."
             )
         if in_pir_mode():
             return
@@ -672,9 +668,7 @@ def assign_skip_lod_tensor_array(input, output):
             and has_shape_diff(input, output)
         ):
             warnings.warn(
-                "In dy2static mode, we attempt to assign a variable with shape {} into a variable with shape{}, which is not always right.".format(
-                    input.shape, output.shape
-                )
+                f"In dy2static mode, we attempt to assign a variable with shape {input.shape} into a variable with shape{output.shape}, which is not always right."
             )
         # NOTE(dev): Avoid assign if input is output in Variable level which means
         # input is not generated in While sub block and modified by in-place and only
@@ -1554,18 +1548,14 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             if true_fn is not None:
                 if not callable(true_fn):
                     raise TypeError(
-                        "The true_fn in cond must be callable, but received {}".format(
-                            type(true_fn).__name__
-                        )
+                        f"The true_fn in cond must be callable, but received {type(true_fn).__name__}"
                     )
                 return true_fn()
         else:
             if false_fn is not None:
                 if not callable(false_fn):
                     raise TypeError(
-                        "The false_fn in cond must be callable, but received {}".format(
-                            type(false_fn).__name__
-                        )
+                        f"The false_fn in cond must be callable, but received {type(false_fn).__name__}"
                     )
                 return false_fn()
         return None
@@ -1578,18 +1568,14 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         if true_fn is not None:
             if not callable(true_fn):
                 raise TypeError(
-                    "The true_fn in cond must be callable, but received {}".format(
-                        type(true_fn).__name__
-                    )
+                    f"The true_fn in cond must be callable, but received {type(true_fn).__name__}"
                 )
             with if_op.true_block():
                 true_output = true_fn()
         if false_fn is not None:
             if not callable(false_fn):
                 raise TypeError(
-                    "The false_fn in cond must be callable, but received {}".format(
-                        type(false_fn).__name__
-                    )
+                    f"The false_fn in cond must be callable, but received {type(false_fn).__name__}"
                 )
             with if_op.false_block():
                 false_output = false_fn()
@@ -1599,9 +1585,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         if true_fn is not None:
             if not callable(true_fn):
                 raise TypeError(
-                    "The true_fn in cond must be callable, but received {}".format(
-                        type(true_fn).__name__
-                    )
+                    f"The true_fn in cond must be callable, but received {type(true_fn).__name__}"
                 )
             true_cond_block = ConditionalBlock([pred], is_scalar_condition=True)
             with true_cond_block.block():
@@ -1613,9 +1597,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         if false_fn is not None:
             if not callable(false_fn):
                 raise TypeError(
-                    "The false_fn in cond must be callable, but received {}".format(
-                        type(false_fn).__name__
-                    )
+                    f"The false_fn in cond must be callable, but received {type(false_fn).__name__}"
                 )
             false_cond_block = ConditionalBlock(
                 [paddle.logical_not(pred)], is_scalar_condition=True
@@ -1664,10 +1646,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         _to_sequence_except_dict(false_output)
     ):
         raise ValueError(
-            "true fn returns {} vars, but false fn returns {} vars, which is not equals".format(
-                len(_to_sequence_except_dict(true_output)),
-                len(_to_sequence_except_dict(false_output)),
-            )
+            f"true fn returns {len(_to_sequence_except_dict(true_output))} vars, but false fn returns {len(_to_sequence_except_dict(false_output))} vars, which is not equals"
         )
     for true_out, false_out, return_name in zip(
         _to_sequence_except_dict(true_output),
@@ -1678,9 +1657,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             assert_same_structure(true_out, false_out, check_types=False)
         except ValueError as e:
             raise ValueError(
-                "Incompatible return values of `{}` in true_fn and false_fn in cond: {}".format(
-                    return_name, e
-                )
+                f"Incompatible return values of `{return_name}` in true_fn and false_fn in cond: {e}"
             )
 
     def check_ret_none(seq_true, seq_false, seq_names):
@@ -1695,15 +1672,9 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                     and f_true[idx] is not None
                 ):
                     warnings.warn(
-                        "In cond : Var '{}' or part of it is set differently in ifelse branches, "
-                        "<{}, {}> in true branch and <{}, {}> in false branch. Set var to "
-                        "'None' in ifelse block might lead to error.".format(
-                            f_name,
-                            type(f_true[idx]),
-                            f_true[idx],
-                            type(f_false[idx]),
-                            f_false[idx],
-                        )
+                        f"In cond : Var '{f_name}' or part of it is set differently in ifelse branches, "
+                        f"<{type(f_true[idx])}, {f_true[idx]}> in true branch and <{type(f_false[idx])}, {f_false[idx]}> in false branch. Set var to "
+                        "'None' in ifelse block might lead to error."
                     )
 
     check_ret_none(
@@ -1927,8 +1898,8 @@ def select_input_with_buildin_type(inputs, mask, name):
         inputs = [to_static_variable(false_var), to_static_variable(true_var)]
         warnings.warn(
             "Return results from different branches in cond are not same type: "
-            "false_var returned by false_fn is '{}' and true_var of true_fn is "
-            "'{}'".format(type(false_var), type(true_var))
+            f"false_var returned by false_fn is '{type(false_var)}' and true_var of true_fn is "
+            f"'{type(true_var)}'"
         )
     elif (
         isinstance(false_var, UndefinedVar)
@@ -1944,9 +1915,7 @@ def select_input_with_buildin_type(inputs, mask, name):
     else:
         raise TypeError(
             "Unsupported return type of true_fn and false_fn in cond: false_var "
-            "returned by false_fn is '{}' and true_var of true_fn is '{}'".format(
-                type(false_var), type(true_var)
-            )
+            f"returned by false_fn is '{type(false_var)}' and true_var of true_fn is '{type(true_var)}'"
         )
     return start_select_input
 
@@ -1992,19 +1961,15 @@ def expand_undefined_var(nest1, nest2, names):
             if n1 is None and n2 is not None:
                 if order == 0:
                     warnings.warn(
-                        "In cond : Var '{}' or part of it is set differently in ifelse branches, "
-                        "<{}, {}> in true branch and <{}, {}> in false branch. Set var to "
-                        "'None' in ifelse block might lead to error.".format(
-                            name, type(n1), n1, type(n2), n2
-                        )
+                        f"In cond : Var '{name}' or part of it is set differently in ifelse branches, "
+                        f"<{type(n1)}, {n1}> in true branch and <{type(n2)}, {n2}> in false branch. Set var to "
+                        "'None' in ifelse block might lead to error."
                     )
                 else:
                     warnings.warn(
-                        "In cond : Var '{}' or part of it is set differently in ifelse branches, "
-                        "<{}, {}> in true branch and <{}, {}> in false branch. Set var to "
-                        "'None' in ifelse block might lead to error.".format(
-                            name, type(n2), n2, type(n1), n1
-                        )
+                        f"In cond : Var '{name}' or part of it is set differently in ifelse branches, "
+                        f"<{type(n2)}, {n2}> in true branch and <{type(n1)}, {n1}> in false branch. Set var to "
+                        "'None' in ifelse block might lead to error."
                     )
             return pack_undefined_var_as(n2)
         return n1

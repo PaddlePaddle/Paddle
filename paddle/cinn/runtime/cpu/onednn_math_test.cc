@@ -42,7 +42,7 @@ cinn_buffer_t *CreateBuffer(const std::vector<int> shape,
   return cinn::common::BufferBuilder(Float(32), shape).set_zero().Build();
 }
 
-TEST(cinn_cpu_mkldnn_conv2d_nchw_fp32, test) {
+TEST(cinn_cpu_onednn_conv2d_nchw_fp32, test) {
   int n(1);
   int c_in(3);
   int i_h(224);
@@ -65,7 +65,7 @@ TEST(cinn_cpu_mkldnn_conv2d_nchw_fp32, test) {
   auto call = Compute(
       {Expr(1)},
       [=]() -> Expr {
-        return lang::CallExtern("cinn_cpu_mkldnn_conv2d_nchw_fp32",
+        return lang::CallExtern("cinn_cpu_onednn_conv2d_nchw_fp32",
                                 {
                                     Expr(n),           // batch_size
                                     Expr(c_in),        // c_in
@@ -85,7 +85,7 @@ TEST(cinn_cpu_mkldnn_conv2d_nchw_fp32, test) {
                                     weights.tensor()   // weights
                                 });
       },
-      "cinn_cpu_mkldnn_conv2d_nchw_fp32");
+      "cinn_cpu_onednn_conv2d_nchw_fp32");
 
   auto out = call->TupleGet(0);
   out->WithBuffer(Float(32));
