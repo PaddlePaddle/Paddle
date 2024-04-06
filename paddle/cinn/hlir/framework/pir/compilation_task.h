@@ -31,15 +31,17 @@ class GroupCompilationContext {
  public:
   GroupCompilationContext(const Target& target,
                           const pir::OpLoweringGroupPtr& group)
-      : target_(target), group_(group) {}
+      : target_(target), group_(group), fusion_info_(*group) {}
 
   void SetLoweredFuncs(BucketLoweredFuncsWrapper&& funcs);
   std::string PrintPredicate2Funcs() const;
+  const pir::FusionInfo& FusionInfo() const { return fusion_info_; }
 
  private:
   friend class CompilationTask;
   const Target& target_;
   const pir::OpLoweringGroupPtr& group_;
+  pir::FusionInfo fusion_info_;
   std::vector<ir::SymbolicPredicate> predicates_;
   std::vector<ir::LoweredFunc> lowered_funcs_;
   ir::LoweredFunc infer_shape_lowered_func_;
@@ -50,14 +52,13 @@ class CompilationTask {
   explicit CompilationTask(GroupCompilationContext* context)
       : context_(context) {}
 
-  void operator()();
-  pir::CINNKernelInfo GetCINNKernelInfo();
+  std::shared_ptr<pir::CompilationResult> operator()();
 
  private:
   void Lowering();
-  void CodegenAndJit();
-  std::unique_ptr<Instruction> BuildInstruction();
-  void BuildPirCINNKernelInfo(const ir::Module& module);
+  std::shared_ptr<pir::CompilationResult> CodegenAndJit();
+  std::shared_ptr<pir::CompilationResult> BuildPirCINNKernelInfo(
+      const ir::Module& module);
 
   GroupCompilationContext* context_;
 };
