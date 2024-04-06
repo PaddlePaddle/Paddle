@@ -41,14 +41,14 @@ class MSRAInitializer(Initializer):
 
     .. math::
 
-        x = gain \times \sqrt{\frac{3}{fan\_in}}
+        x = gain \times \sqrt{\frac{3}{fan\_mode}}
 
     In case of Normal distribution, the mean is 0 and the standard deviation
     is
 
     .. math::
 
-        \frac{gain}{\sqrt{{fan\_in}}}
+        \frac{gain}{\sqrt{{fan\_mode}}}
 
     Args:
         uniform (bool, optional): whether to use uniform or normal distribution. Default is True.
@@ -56,6 +56,7 @@ class MSRAInitializer(Initializer):
         seed (int32, optional): random seed. Default is 0.
         negative_slope (float, optional): negative_slope (only used with leaky_relu). Default is 0.0.
         nonlinearity(str, optional): the non-linear function. Default is relu.
+        mode (str, optional): Support 'fan_in' and 'fan_out'. Indicate which fan mode to use. Default is 'fan_in'.
 
     Note:
         It is recommended to set fan_in to None for most cases.
@@ -69,6 +70,7 @@ class MSRAInitializer(Initializer):
         seed=0,
         negative_slope=0,
         nonlinearity='relu',
+        mode='fan_in',
     ):
         """Constructor for MSRAInitializer"""
         assert uniform is not None
@@ -79,6 +81,7 @@ class MSRAInitializer(Initializer):
         self._seed = seed
         self._negative_slope = negative_slope
         self._nonlinearity = nonlinearity
+        self._mode = mode
 
     def forward(self, var, block=None):
         """Initialize the input tensor with MSRA initialization.
@@ -102,7 +105,10 @@ class MSRAInitializer(Initializer):
         f_in, f_out = self._compute_fans(var)
 
         # If fan_in is passed, use it
-        fan_in = f_in if self._fan_in is None else self._fan_in
+        if self._fan_in is None:
+            fan = f_in if self._mode == 'fan_in' else f_out
+        else:
+            fan = self._fan_in
 
         if self._seed == 0:
             self._seed = block.program.random_seed
@@ -134,7 +140,7 @@ class MSRAInitializer(Initializer):
         if in_dygraph_mode():
             if self._uniform:
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
-                limit = gain * math.sqrt(3.0 / float(fan_in))
+                limit = gain * math.sqrt(3.0 / float(fan))
                 out_var = _C_ops.uniform(
                     var.shape,
                     out_dtype,
@@ -145,7 +151,7 @@ class MSRAInitializer(Initializer):
                 )
             else:
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
-                std = gain / math.sqrt(float(fan_in))
+                std = gain / math.sqrt(float(fan))
                 place = _current_expected_place()
                 out_var = _C_ops.gaussian(
                     out_var.shape, 0.0, std, self._seed, out_dtype, place
@@ -162,7 +168,7 @@ class MSRAInitializer(Initializer):
         elif in_pir_mode():
             if self._uniform:
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
-                limit = gain * math.sqrt(3.0 / float(fan_in))
+                limit = gain * math.sqrt(3.0 / float(fan))
                 out_var = _C_ops.uniform(
                     var.shape,
                     out_dtype,
@@ -173,7 +179,7 @@ class MSRAInitializer(Initializer):
                 )
             else:
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
-                std = gain / math.sqrt(float(fan_in))
+                std = gain / math.sqrt(float(fan))
                 place = _current_expected_place()
                 out_var = _C_ops.gaussian(
                     out_var.shape, 0.0, std, self._seed, out_dtype, place
@@ -189,7 +195,7 @@ class MSRAInitializer(Initializer):
         else:
             if self._uniform:
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
-                limit = gain * math.sqrt(3.0 / float(fan_in))
+                limit = gain * math.sqrt(3.0 / float(fan))
                 op = block.append_op(
                     type="uniform_random",
                     inputs={},
@@ -206,7 +212,7 @@ class MSRAInitializer(Initializer):
 
             else:
                 gain = calculate_gain(self._nonlinearity, self._negative_slope)
-                std = gain / math.sqrt(float(fan_in))
+                std = gain / math.sqrt(float(fan))
                 op = block.append_op(
                     type="gaussian_random",
                     outputs={"Out": out_var},
@@ -249,12 +255,13 @@ class KaimingNormal(MSRAInitializer):
 
     .. math::
 
-        \frac{gain}{\sqrt{{fan\_in}}}
+        \frac{gain}{\sqrt{{fan\_mode}}}
 
     Args:
         fan_in (float32|None, optional): fan_in (in_features) of trainable Tensor, If None, it will be infered automatically. If you don't want to use in_features of the Tensor, you can set the value of 'fan_in' smartly by yourself. Default is None.
         negative_slope (float, optional): negative_slope (only used with leaky_relu). Default is 0.0.
         nonlinearity(str, optional): the non-linear function. Default is relu.
+        mode (str, optional): Support 'fan_in' and 'fan_out'. Indicate which fan mode to use. Default is 'fan_in'.
 
     Note:
         It is recommended to set fan_in to None for most cases.
@@ -271,13 +278,25 @@ class KaimingNormal(MSRAInitializer):
 
     """
 
-    def __init__(self, fan_in=None, negative_slope=0.0, nonlinearity='relu'):
+    def __init__(
+        self,
+        fan_in=None,
+        negative_slope=0.0,
+        nonlinearity='relu',
+        mode='fan_in',
+    ):
+        if mode != 'fan_in' and mode != 'fan_out':
+            raise ValueError(
+                "Kaiming initializer\'s mode only support fan_in or fan_out."
+            )
+
         super().__init__(
             uniform=False,
             fan_in=fan_in,
             seed=0,
             negative_slope=negative_slope,
             nonlinearity=nonlinearity,
+            mode=mode,
         )
 
 
@@ -295,10 +314,11 @@ class KaimingUniform(MSRAInitializer):
 
     .. math::
 
-        x = gain \times \sqrt{\frac{3}{fan\_in}}
+        x = gain \times \sqrt{\frac{3}{fan\_mode}}
 
     Args:
         fan_in (float32|None, optional): fan_in (in_features) of trainable Tensor, If None, it will be infered automaticly. If you don't want to use in_features of the Tensor, you can set the value of 'fan_in' smartly by yourself. Default is None.
+        mode (str, optional): Support 'fan_in' and 'fan_out'. Indicate which fan mode to use. Default is 'fan_in'.
         negative_slope (float, optional): negative_slope (only used with leaky_relu). Default is 0.0.
         nonlinearity(str, optional): the non-linear function. Default is relu.
 
@@ -317,11 +337,23 @@ class KaimingUniform(MSRAInitializer):
 
     """
 
-    def __init__(self, fan_in=None, negative_slope=0.0, nonlinearity='relu'):
+    def __init__(
+        self,
+        fan_in=None,
+        negative_slope=0.0,
+        nonlinearity='relu',
+        mode='fan_in',
+    ):
+        if mode != 'fan_in' and mode != 'fan_out':
+            raise ValueError(
+                "Kaiming initializer\'s mode only support fan_in or fan_out."
+            )
+
         super().__init__(
             uniform=True,
             fan_in=fan_in,
             seed=0,
             negative_slope=negative_slope,
             nonlinearity=nonlinearity,
+            mode=mode,
         )

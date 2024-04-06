@@ -942,6 +942,52 @@ class TestMSRAInitializer(unittest.TestCase):
         """Test the MSRA initializer with bfloat16"""
         block = self.test_msra_initializer_supplied_arguments("uint16")
 
+    def test_uniform_msra_initializer_fan_mode(self):
+        """Test MSRA initializer with uniform distribution and
+        'fan_out' mode.
+        """
+        program = framework.Program()
+        block = program.global_block()
+        for _ in range(2):
+            param = block.create_parameter(
+                dtype="float32",
+                shape=[5, 10],
+                lod_level=0,
+                name="param",
+                initializer=paddle.nn.initializer.KaimingUniform(
+                    mode='fan_out'
+                ),
+            )
+        self.assertEqual(len(block.ops), 1)
+        init_op = block.ops[0]
+        self.assertEqual(init_op.type, 'uniform_random')
+        limit = np.sqrt(6.0 / param.shape[1])
+        self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
+        self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
+        self.assertEqual(init_op.attr('seed'), 0)
+
+    def test_normal_msra_initializer_fan_mode(self):
+        """Test MSRA initializer with normal distribution and
+        'fan_out' mode.
+        """
+        program = framework.Program()
+        block = program.global_block()
+        for _ in range(2):
+            param = block.create_parameter(
+                dtype="float32",
+                shape=[5, 10],
+                lod_level=0,
+                name="param",
+                initializer=paddle.nn.initializer.KaimingNormal(mode='fan_out'),
+            )
+        self.assertEqual(len(block.ops), 1)
+        init_op = block.ops[0]
+        self.assertEqual(init_op.type, 'gaussian_random')
+        std = np.sqrt(2.0 / param.shape[1])
+        self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
+        self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
+        self.assertEqual(init_op.attr('seed'), 0)
+
 
 class TestMSRAInitializerPir(unittest.TestCase):
     def setUp(self):
@@ -1170,6 +1216,68 @@ class TestMSRAInitializerPir(unittest.TestCase):
             exe = paddle.static.Executor(paddle.CUDAPlace(0))
             exe.run(startup_2)
             exe.run(main_2)
+
+    def test_uniform_msra_initializer_fan_mode(self):
+        """Test MSRA initializer with uniform distribution and
+        'fan_out' mode.
+        """
+        with paddle.pir_utils.IrGuard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                param = paddle.pir.core.create_parameter(
+                    dtype="float32",
+                    shape=[5, 10],
+                    name="param",
+                    initializer=paddle.nn.initializer.KaimingUniform(
+                        mode='fan_out'
+                    ),
+                )
+                block = startup.global_block()
+                checked_ops = self.get_init_ops_by_op_name(
+                    block, self.init_uniform_op_name
+                )
+                self.assertEqual(len(checked_ops), 1)
+                init_op = checked_ops[0]
+                limit = np.sqrt(6.0 / param.shape[1])
+                min = self.get_operand_definition_op_attrs(
+                    init_op, "min", "value"
+                )
+                max = self.get_operand_definition_op_attrs(
+                    init_op, "max", "value"
+                )
+                self.assertAlmostEqual(min, -limit, delta=DELTA)
+                self.assertAlmostEqual(max, limit, delta=DELTA)
+                self.assertEqual(init_op.attrs()['seed'], 0)
+
+    def test_normal_msra_initializer_fan_mode(self):
+        """Test MSRA initializer with normal distribution and
+        'fan_out' mode.
+        """
+        with paddle.pir_utils.IrGuard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                param = paddle.pir.core.create_parameter(
+                    dtype="float32",
+                    shape=[5, 10],
+                    name="param",
+                    initializer=paddle.nn.initializer.KaimingNormal(
+                        mode='fan_out'
+                    ),
+                )
+                block = startup.global_block()
+                checked_ops = self.get_init_ops_by_op_name(
+                    block, self.init_normal_op_name
+                )
+                self.assertEqual(len(checked_ops), 1)
+                init_op = checked_ops[0]
+                std = np.sqrt(2.0 / param.shape[1])
+                self.assertAlmostEqual(
+                    init_op.attrs()['mean'], 0.0, delta=DELTA
+                )
+                self.assertAlmostEqual(init_op.attrs()['std'], std, delta=DELTA)
+                self.assertEqual(init_op.attrs()['seed'], 0)
 
 
 class TestBilinearInitializer(unittest.TestCase):
@@ -2206,6 +2314,16 @@ class TestKaimingUniform(unittest.TestCase):
         self.assertRaises(
             ZeroDivisionError, self.func_kaiminguniform_initializer_fan_in_zero
         )
+
+    def test_input_error(self):
+        with self.assertRaises(ValueError):
+            paddle.nn.initializer.KaimingUniform(mode='in')
+
+
+class TestKaimingNormal(unittest.TestCase):
+    def test_input_error(self):
+        with self.assertRaises(ValueError):
+            paddle.nn.initializer.KaimingNormal(mode='in')
 
 
 class TestTruncatedNormalInitializerDygraph(unittest.TestCase):
