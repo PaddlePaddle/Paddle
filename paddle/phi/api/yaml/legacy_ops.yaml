@@ -389,7 +389,7 @@
   backward : elementwise_pow_grad
 
 - op : embedding
-  args : (Tensor x, Tensor weight, int64_t padding_idx=-1, bool scale_grad_by_freq=false, bool sparse=false)
+  args : (Tensor x, Tensor weight, int64_t padding_idx=-1, bool sparse=false)
   output : Tensor
   infer_meta :
     func : EmbeddingInferMeta
@@ -403,7 +403,7 @@
   backward : embedding_grad
 
 - op : embedding_grad_dense
-  args : (Tensor x, Tensor weight, Tensor out_grad, int64_t padding_idx=-1, bool scale_grad_by_freq=false, bool sparse=false)
+  args : (Tensor x, Tensor weight, Tensor out_grad, int64_t padding_idx=-1, bool sparse=false)
   output : Tensor(weight_grad)
   infer_meta :
     func : UnchangedInferMeta
