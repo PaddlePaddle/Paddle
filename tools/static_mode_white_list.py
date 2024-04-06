@@ -316,7 +316,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_memory_usage',
     'test_merge_ids_op',
     'test_meshgrid_op',
-    'test_mine_hard_examples_op',
     'test_minus_op',
     'test_mish_op',
     'test_modified_huber_loss_op',

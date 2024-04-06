@@ -40,7 +40,6 @@ else()
 endif()
 
 detection_library(bipartite_match_op SRCS bipartite_match_op.cc)
-detection_library(mine_hard_examples_op SRCS mine_hard_examples_op.cc)
 detection_library(anchor_generator_op SRCS anchor_generator_op.cc
                   anchor_generator_op.cu)
 detection_library(polygon_box_transform_op SRCS polygon_box_transform_op.cc
