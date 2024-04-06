@@ -56,15 +56,26 @@ no_perum_uint_qweight = no_perm_qweight.astype("int32")
 no_perum_uint_qweight = no_perum_uint_qweight + 128
 no_perum_uint_qweight = no_perum_uint_qweight.astype("uint8")
 
+
 for i in range(100):
     triton_output = triton_wint8(
         activation,
         no_perum_uint_qweight,
         scale,
-        bias, bool_trans_w=bool_trans_w_triton, with_bias = True)
+        bias, bool_trans_w=bool_trans_w_triton)
 
 paddle.device.cuda.synchronize()
 starttime = datetime.datetime.now()
+
+    # triton_output = paddle.zeros((M, N), dtype=paddle.float16)
+    # triton_wint8(
+    #     activation, no_perum_uint_qweight, triton_output,
+    #     scale, bias,
+    #     M, N, K,
+    #     K, 1,
+    #     1, K,
+    #     N, 1
+    # )
 
 for i in range(100):
     triton_output = triton_wint8(
@@ -72,7 +83,7 @@ for i in range(100):
         no_perum_uint_qweight,
         scale,
         bias, 
-        bool_trans_w = bool_trans_w_triton, with_bias = True)
+        bool_trans_w = bool_trans_w_triton)
 
 paddle.device.cuda.synchronize()
 endtime = datetime.datetime.now()

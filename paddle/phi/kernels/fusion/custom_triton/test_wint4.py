@@ -77,7 +77,7 @@ for i in range(100):
         activation,
         pack_no_perm_uint_qweight,
         scale,
-        bias, bool_trans_w=False, with_bias = True)
+        bias, bool_trans_w=False)
 
 paddle.device.cuda.synchronize()
 starttime = datetime.datetime.now()
@@ -88,7 +88,7 @@ for i in range(100):
         pack_no_perm_uint_qweight,
         scale,
         bias, 
-        bool_trans_w = False, with_bias = True)
+        bool_trans_w = False)
 
 paddle.device.cuda.synchronize()
 endtime = datetime.datetime.now()

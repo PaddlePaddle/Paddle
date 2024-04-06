@@ -24,8 +24,7 @@ std::vector<paddle::Tensor> TritonWint4(
     const paddle::Tensor& qweight,
     const paddle::Tensor& scales,
     paddle::optional<paddle::Tensor>& bias,
-    bool bool_trans_w,
-    bool with_bias) {
+    bool bool_trans_w) {
   int m = x.shape()[0];
   int k = x.shape()[1];
   int n = scales.shape()[0];
@@ -37,7 +36,7 @@ std::vector<paddle::Tensor> TritonWint4(
   auto dev_c = c_out.data<phi::dtype::float16>();
   auto dev_scales = scales.data<phi::dtype::float16>();
   phi::dtype::float16* dev_bias = nullptr;
-  if (with_bias) {
+  if (bias) {
     dev_bias = bias->data<phi::dtype::float16>();
   }
 
@@ -146,4 +145,4 @@ PD_BUILD_OP(triton_wint4)
     .Inputs({"x", "qweight", "scales", paddle::Optional("bias")})
     .Outputs({"out"})
     .SetKernelFn(PD_KERNEL(TritonWint4))
-    .Attrs({"bool_trans_w: bool", "with_bias: bool"});
+    .Attrs({"bool_trans_w: bool"});

@@ -24,8 +24,7 @@ std::vector<paddle::Tensor> TritonWint8(
     const paddle::Tensor& qweight,
     const paddle::Tensor& scales,
     paddle::optional<paddle::Tensor>& bias,
-    bool bool_trans_w,
-    bool with_bias) {
+    bool bool_trans_w) {
   int m = x.shape()[0];
   int k = x.shape()[1];
   int n = scales.shape()[0];
@@ -37,7 +36,7 @@ std::vector<paddle::Tensor> TritonWint8(
   auto dev_c = c_out.data<phi::dtype::float16>();
   auto dev_scales = scales.data<phi::dtype::float16>();
   phi::dtype::float16* dev_bias = nullptr;
-  if (with_bias) {
+  if (bias) {
     dev_bias = bias->data<phi::dtype::float16>();
   }
 
@@ -142,26 +141,20 @@ std::vector<paddle::Tensor> TritonWint8(
   return {c_out};
 }
 
-// std::vector<std::vector<int64_t>> TritonWint8InferShape(const
-// std::vector<int64_t>& a_shape,
-//                                                               const
-//                                                               std::vector<int64_t>&
-//                                                               b_shape) {
-//     return {{a_shape[0], b_shape[1]}};
-// }
+std::vector<std::vector<int64_t>> TritonWint8InferShape(const std::vector<int64_t>& a_shape,
+                                                        const std::vector<int64_t>& b_shape) {
+    return {{a_shape[0], b_shape[0]}};
+}
 
-// std::vector<paddle::DataType> TritonWint8InferDtype(const paddle::DataType&
-// A_dtype,
-//                                                         const
-//                                                         paddle::DataType&
-//                                                         B_dtype) {
-//     return {A_dtype};
-// }
+std::vector<paddle::DataType> TritonWint8InferDtype(const paddle::DataType& A_dtype) {
+    return {A_dtype};
+}
 
 PD_BUILD_OP(triton_wint8)
     .Inputs({"x", "qweight", "scales", paddle::Optional("bias")})
     .Outputs({"out"})
     .SetKernelFn(PD_KERNEL(TritonWint8))
-    .Attrs({"bool_trans_w: bool", "with_bias: bool"});
-// .SetInferShapeFn(PD_INFER_SHAPE(TritonWint8InferShape))
-// .SetInferDtypeFn(PD_INFER_DTYPE(TritonWint8InferDtype));
+    .Attrs({"bool_trans_w: bool"})
+    .SetInferDtypeFn(PD_INFER_DTYPE(TritonWint8InferDtype))
+    .SetInferShapeFn(PD_INFER_SHAPE(TritonWint8InferShape));
+ 
