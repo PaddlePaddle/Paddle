@@ -101,6 +101,10 @@ class ProgramInterpreter : public InterpreterBaseImpl {
     input_hookfuncs_ = hookfuncs;
   }
 
+  void SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs) override {}
+
+  void SetInputHooks(const std::vector<PirHookFunc>& hookfuncs) override {}
+
   std::unordered_map<std::string, std::shared_ptr<EventInter>>*
   GetForceEventsToWaitInfo() {
     return force_events_to_wait_;

@@ -19,9 +19,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
-#define MAX_RANK_SUPPORTED 6
+#define MAX_RANK_SUPPORTED 8
 
 namespace paddle {
 namespace operators {
@@ -128,6 +128,12 @@ class ExpandKernel : public framework::OpKernel<T> {
       case 6:
         Expand<6>(context);
         break;
+      case 7:
+        Expand<7>(context);
+        break;
+      case 8:
+        Expand<8>(context);
+        break;
     }
   }
 
@@ -166,10 +172,10 @@ class ExpandKernel : public framework::OpKernel<T> {
     // use 32-bit index to speed up
     bool use_32bit_index = y.size() < Eigen::NumTraits<int>::highest();
     if (use_32bit_index) {
-      EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+      phi::funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
           place, To32BitIndex(y), To32BitIndex(x), bcast_dims);
     } else {
-      EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+      phi::funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
           place, y, x, bcast_dims);
     }
   }
@@ -249,10 +255,17 @@ class ExpandGradKernel : public framework::OpKernel<T> {
         case 6:
           ExpandBackward<6>(context, reshape_dims_vec, reduce_dims_vec);
           break;
+        case 7:
+          ExpandBackward<7>(context, reshape_dims_vec, reduce_dims_vec);
+          break;
+        case 8:
+          ExpandBackward<8>(context, reshape_dims_vec, reduce_dims_vec);
+          break;
         default:
           PADDLE_THROW(platform::errors::InvalidArgument(
-              "Only support tensor with rank being between 1 and 6. But "
+              "Only support tensor with rank being between 1 and %d. But "
               "received tensor's rank = %d.",
+              MAX_RANK_SUPPORTED,
               dims));
       }
     }
@@ -294,8 +307,8 @@ class ExpandGradKernel : public framework::OpKernel<T> {
     auto out_grad = EigenVector<T>::Flatten(*in0);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
-        place, x_grad, out_grad, reduce_dims, reshape_dims);
+    phi::funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::
+        Eval(place, x_grad, out_grad, reduce_dims, reshape_dims);
   }
 };
 

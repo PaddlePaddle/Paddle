@@ -303,7 +303,7 @@ def get_cluster(
 
 
 def terminate_local_procs(procs):
-    # try to terminate process by group, this happend in multiprocess senario in user process
+    # try to terminate process by group, this happened in multiprocess scenario in user process
     if os.name != 'nt':
         for p in procs:
             if p.proc.poll() is None:

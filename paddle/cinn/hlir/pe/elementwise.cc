@@ -339,9 +339,16 @@ ir::Tensor Tril(const ir::Tensor& A,
   ir::Tensor res = Compute(
       ToCinnExprs(out_shape),
       [=](const std::vector<Expr>& indice) {
-        return ir::Select::Make(indice[0] >= indice[1] - diagonal,
+        PADDLE_ENFORCE_GE(indice.size(),
+                          size_t(2),
+                          phi::errors::InvalidArgument(
+                              "The Tril op input tensor must have a rank "
+                              "greater than or equal to 2."));
+        std::vector<Expr> new_indice(indice.end() - 2, indice.end());
+        Expr col_indice = indice.back();
+        return ir::Select::Make(new_indice[0] >= new_indice[1] - diagonal,
                                 A(indice),
-                                ir::Expr(static_cast<float>(0.)));
+                                ir::Zero(A->type()));
       },
       name);
   return res;
