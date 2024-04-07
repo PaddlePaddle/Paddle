@@ -73,7 +73,8 @@ std::vector<int64_t> BalancedSplit(int64_t total_nums, int64_t num_of_pieces);
 // created, it will be cached in the global instance, and get from the global
 // cache later. If the input dev_ctx is GPU, then nccl comm context will be
 // created. If the input dev_ctx is CPU, then gloo comm context will be created.
-CommContext* CreateOrGetCommContext(const std::vector<int64_t>& process_ids);
+CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
+                                    const std::vector<int64_t>& process_ids);
 
 phi::DDim InferShapeForReshardFromReplicate(
     const std::shared_ptr<phi::DenseTensor>& global_value,
@@ -121,7 +122,7 @@ phi::DDim InferShapeForReshardFromReplicate(
 
 #define RESHARD_FUNCTOR_WITH_COMM(dev_ctx, fn_name, dtype, process_ids, ...) \
   do {                                                                       \
-    auto* comm_context = CreateOrGetCommContext(process_ids);                \
+    auto* comm_context = CreateOrGetCommContext(*dev_ctx, process_ids);      \
     dev_ctx->SetCommContext(comm_context);                                   \
     RESHARD_FUNCTOR_IMPL(dev_ctx, fn_name, dtype, __VA_ARGS__);              \
   } while (0)
