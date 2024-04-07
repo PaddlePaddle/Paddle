@@ -36,7 +36,7 @@ template <typename T>
 struct FastGeluFunctor {
   inline __device__ T operator()(const T x) const {
 #ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE(0, "FastGelu not surpport for rocm");
+    PADDLE_THROW(phi::errors::Unimplemented("ROCM does not support FastGelu"));
 #else
     return phi::GeluFwd<T, true>(x);
 #endif
