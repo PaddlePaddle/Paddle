@@ -669,8 +669,7 @@ bool AutoMixedPrecisionPass::InputVarsNotConvert(
     if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
       return true;
     }
-  } else if (GetOpOriginalType(op_desc->Type()) == "instance_norm" ||
-             GetOpOriginalType(op_desc->Type()) == "layer_norm") {
+  } else if (GetOpOriginalType(op_desc->Type()) == "instance_norm") {
     auto vecs = op_desc->Input("Bias");
     if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
       return true;
@@ -770,15 +769,6 @@ bool AutoMixedPrecisionPass::OutputVarsNotConvert(
       return true;
     }
     vecs = op_desc->Output("Variance");
-    if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
-      return true;
-    }
-  } else if (GetOpOriginalType(op_desc->Type()) == "instance_norm") {
-    auto vecs = op_desc->Output("SavedMean");
-    if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
-      return true;
-    }
-    vecs = op_desc->Output("SavedVariance");
     if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
       return true;
     }

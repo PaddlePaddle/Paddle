@@ -28,6 +28,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 
+#include "paddle/cinn/frontend/group_cluster/group_cluster.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/attribute_storage.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
@@ -48,8 +49,7 @@
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
-// #include "paddle/cinn/frontend/group_cluster/group_cluster.h"
-// PD_DECLARE_bool(cinn_new_cluster_op_method);
+PD_DECLARE_bool(cinn_new_cluster_op_method);
 
 namespace cinn {
 namespace dialect {
@@ -249,7 +249,6 @@ std::vector<::pir::Value> GenerateOutputValue(
       if (outside_need_value.count(op->result(i))) {
         if (!inserted_val.count(op->result(i))) {
           temp_out.push_back(op->result(i));
-
           inserted_val.insert(op->result(i));
         }
       }
@@ -835,30 +834,35 @@ std::vector<GroupClusterNode> NodeMergeWithNode(
   return second_stage_output;
 }
 
-// std::vector<GroupClusterNode> NewOpMergeWithOp(
-//     cinn::dialect::GroupOp group_op) {
-//   const auto cluster_result = frontend::ClusterOps(group_op);
+std::vector<GroupClusterNode> NewOpMergeWithOp(
+    cinn::dialect::GroupOp group_op) {
+  auto cluster_result = frontend::ClusterOps(group_op.GetOperators(), true);
+  std::vector<std::vector<pir::Operation*>> result;
+  std::transform(cluster_result.begin(),
+                 cluster_result.end(),
+                 std::back_inserter(result),
+                 [](const frontend::group_cluster::PatternNodePtr node) {
+                   return node->GetOps();
+                 });
 
-//   // Each stmts corresponds to each fusion op(cluster node).
-//   // Concat all the ops of patterns in the stmts, and make them the op list
-//   of
-//   // cluster node.
-//   VLOG(4) << "Start Creating Cluster Nodes!";
-//   std::vector<GroupClusterNode> output_cluster_nodes;
-//   for (const auto& op_set : cluster_result) {
-//     GroupClusterNode cluster_node;
-//     for (const auto* op : op_set) {
-//       cluster_node.ops.push_back(const_cast<pir::Operation*>(op));
-//       auto op_kind = cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op);
-//       cluster_node.group_kind =
-//           cluster_node.group_kind > op_kind ? cluster_node.group_kind :
-//           op_kind;
-//     }
-//     output_cluster_nodes.push_back(cluster_node);
-//   }
-//   VLOG(4) << "Finished Creating Cluster Nodes!";
-//   return output_cluster_nodes;
-// }
+  // Each stmts corresponds to each fusion op(cluster node).
+  // Concat all the ops of patterns in the stmts, and make them the op list of
+  // cluster node.
+  VLOG(4) << "Start Creating Cluster Nodes!";
+  std::vector<GroupClusterNode> output_cluster_nodes;
+  for (const auto& op_set : result) {
+    GroupClusterNode cluster_node;
+    for (const auto* op : op_set) {
+      cluster_node.ops.push_back(const_cast<pir::Operation*>(op));
+      auto op_kind = cinn::hlir::framework::pir::CompatibleInfo::OpKind(*op);
+      cluster_node.group_kind =
+          cluster_node.group_kind > op_kind ? cluster_node.group_kind : op_kind;
+    }
+    output_cluster_nodes.push_back(cluster_node);
+  }
+  VLOG(4) << "Finished Creating Cluster Nodes!";
+  return output_cluster_nodes;
+}
 
 std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op) {
   // op merge with op
@@ -926,9 +930,9 @@ std::vector<GroupClusterNode> OpMergeWithOp(cinn::dialect::GroupOp group_op) {
 
 std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
   // stage 1
-  // if (FLAGS_cinn_new_cluster_op_method) {
-  //   return NewOpMergeWithOp(group_op);
-  // }
+  if (FLAGS_cinn_new_cluster_op_method) {
+    return NewOpMergeWithOp(group_op);
+  }
 
   auto first_stage_output = OpMergeWithOp(group_op);
 
@@ -1044,14 +1048,12 @@ class CinnGroupClusterPattern
       // update ir mapping
       for (size_t i = 0; i < output_values.size(); ++i) {
         ir_mapping.Add(output_values[i], new_group_op->result(i));
-
         if (shape_analysis.HasShapeOrDataForValue(output_values[i])) {
           shape_analysis.SetShapeOrDataForValue(
               new_group_op->result(i),
               shape_analysis.GetShapeOrDataForValue(output_values[i]));
         }
       }
-
       for (size_t i = 0; i < output_values.size(); ++i) {
         auto find_it = all_output_values.find(output_values[i]);
         if ((find_it != all_output_values.end()) &&
@@ -1062,6 +1064,7 @@ class CinnGroupClusterPattern
         }
       }
     }
+
     rewriter.EraseOp(group_op);
 
     return true;

@@ -389,7 +389,6 @@ def remove_op(block, op, state):
     '''
     remove op from block
     '''
-    block.remove_op(op)
     if state.opgrad_to_op[op] != []:
         fwd_op = state.opgrad_to_op[op][0]
         state.op_to_opgrad[fwd_op].remove(op)
@@ -403,6 +402,10 @@ def remove_op(block, op, state):
                 raise ValueError(
                     'input_grad in [%s] is value which need to sum ', op.name()
                 )
+    # NOTE(SigureMo): Ensure access to the op's results before removing it.
+    # Otherwise, the op will be deconstructed and access the num_results
+    # will be undefined behavior, it always cause hanging on the macOS.
+    block.remove_op(op)
 
 
 def while_prune_check(while_tuple_ops):
