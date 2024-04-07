@@ -56,10 +56,13 @@ bool Target::operator==(const Target &other) const {
          features == other.features;
 }
 
+bool Target::arch_is_x86() const { return arch == Arch::X86; }
+
 bool Target::arch_is_gpu() const {
   return (arch == Arch::NVGPU || arch == Arch::AMDGPU ||
           arch == Arch::IntelGPU);
 }
+
 bool Target::arch_is_xpu() const { return (arch == Arch::CambrianMLU); }
 
 int Target::runtime_arch() const {

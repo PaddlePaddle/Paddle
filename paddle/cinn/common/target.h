@@ -92,6 +92,8 @@ struct Target {
   bool defined() const {
     return os != OS::Unk && arch != Arch::Unk && bits != Bit::Unk;
   }
+  // x86 CPU
+  bool arch_is_x86() const;
   // gpu use SIMT
   bool arch_is_gpu() const;
   // xpu use vector/metric intrinsics
