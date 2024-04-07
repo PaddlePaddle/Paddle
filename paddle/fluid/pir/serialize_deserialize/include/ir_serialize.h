@@ -48,8 +48,8 @@ class ProgramWriter {
   Json WriteBlockArg(const pir::Value& value);
   Json WriteValue(const pir::Value& value);
   Json WriteOpOperand(const pir::OpOperand& op_operand);
-  Json WriteAttributesMap_0(const AttributeMap& attr_map);
-  Json WriteAttributesMap_1(const AttributeMap& attr_map);
+  Json WriteAttributesMapOpinfo(const AttributeMap& attr_map);
+  Json WriteAttributesMapTrain(const AttributeMap& attr_map);
   Json WriteAttribute(const std::string& op_attr_name,
                       const pir::Attribute& attr);
   Json WriteType(const pir::Type& type);
