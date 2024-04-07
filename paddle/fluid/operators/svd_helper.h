@@ -24,12 +24,12 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/diag_op.h"
-#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -732,7 +732,7 @@ struct DeviceIndependenceTensorOperations {
       offsets_32bit[i] = start[i];
       extents_32bit[i] = end[i];
     }
-    EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
+    phi::funcs::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
         eigen_place,
         framework::To32BitIndex(out_t),
         framework::To32BitIndex(in_t),
