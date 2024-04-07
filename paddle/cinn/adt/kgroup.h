@@ -45,8 +45,7 @@ class KGroup final {
       : cinn_group_(cinn_group), igroups_(igroups) {}
 
   std::shared_ptr<hlir::framework::pir::OpLoweringGroup> cinn_group() const {
-    return PADDLE_ENFORCE_NOT_NULL(
-        cinn_group_.lock(), phi::errors::InvalidArgument("cinn_group is null"));
+    return CHECK_NOTNULL(cinn_group_.lock());
   }
 
   const std::shared_ptr<IGroup>& GetSoleIGroup() const {
