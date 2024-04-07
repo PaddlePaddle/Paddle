@@ -178,9 +178,7 @@ class OpMapperTest(OpTest):
             self.assertNotIn(
                 out_name,
                 self.output_dtypes,
-                msg="The {} should not declare twice because it's a inplace output, you should remove it from \"set_op_outputs\"".format(
-                    out_name
-                ),
+                msg=f"The {out_name} should not declare twice because it's a inplace output, you should remove it from \"set_op_outputs\"",
             )
             self.assertIn(
                 in_name,
@@ -219,12 +217,7 @@ class OpMapperTest(OpTest):
             if self.fetch_targets[i].name not in self.skip_check_list:
                 check_outputs.append(results[i])
                 logger.debug(
-                    msg="{}, shape={}, dtype={}:\n{}".format(
-                        self.fetch_targets[i].name,
-                        results[i].shape,
-                        str(results[i].dtype),
-                        results[i],
-                    )
+                    msg=f"{self.fetch_targets[i].name}, shape={results[i].shape}, dtype={str(results[i].dtype)}:\n{results[i]}"
                 )
 
         return check_outputs

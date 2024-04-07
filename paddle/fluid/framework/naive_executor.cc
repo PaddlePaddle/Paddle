@@ -24,7 +24,7 @@
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/denormal.h"
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #endif
 #ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/operators/tensorrt/tensorrt_engine_op.h"
@@ -231,6 +231,20 @@ void NaiveExecutor::RegisterInputHook(const HookFunc &hookfunc) {
   input_hookfuncs_.push_back(hookfunc);
   if (interpreter_core_) {
     interpreter_core_->SetInputHooks(input_hookfuncs_);
+  }
+}
+
+void NaiveExecutor::RegisterOutputHook(const PirHookFunc &hookfunc) {
+  pir_output_hookfuncs_.push_back(hookfunc);
+  if (interpreter_core_) {
+    interpreter_core_->SetOutputHooks(pir_output_hookfuncs_);
+  }
+}
+
+void NaiveExecutor::RegisterInputHook(const PirHookFunc &hookfunc) {
+  pir_input_hookfuncs_.push_back(hookfunc);
+  if (interpreter_core_) {
+    interpreter_core_->SetInputHooks(pir_input_hookfuncs_);
   }
 }
 

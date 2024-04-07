@@ -133,18 +133,13 @@ class OpTransInfo {
       "depthwise_conv2d",
       "depthwise_conv2d_grad",
       "dropout",
-      "slice",
-      "concat",
-      "gather_nd",
       "pool2d",
       "pool2d_grad",
       "split",
       "matmul",
       "matmul_grad",
-      "transpose",
       "embedding_grad",
       "embedding",
-      "gather",
       "arange",
   };
 };
@@ -305,6 +300,20 @@ bool IsShapeComputeOp(const ::pir::Operation& op) {
     all_input_has_shape_data = false;
     break;
   }
+
+  for (uint32_t i = 0; i < op.num_results(); ++i) {
+    if (shape_analysis.HasShapeOrDataForValue(op.result(i))) {
+      const auto& shape_expr =
+          shape_analysis.GetShapeOrDataForValue(op.result(i));
+      if (shape_expr.isa<symbol::TensorShapeOrDataDimExprs>() &&
+          shape_expr.data()) {  // has shape data
+        continue;
+      }
+    }
+    all_input_has_shape_data = false;
+    break;
+  }
+
   return all_input_has_shape_data;
 }
 
@@ -314,7 +323,7 @@ bool IsTempDenySpecialOp(const ::pir::Operation& op) {
   if (op.name() == "cinn_op.generate_shape") {
     return false;
   }
-  return IsShapeComputeOp(op) || IsSmallNumelOp(op);
+  return IsShapeComputeOp(op);
 }
 
 // Mainly used for pd_to_cinn_pass and reused in IsSupportInCinn function.
@@ -325,11 +334,7 @@ bool IsDeniedInCinn(const ::pir::Operation& op) {
             << "So mark IsDeniedForCinn: " << true;
     return true;
   }
-  if (IsTempDenySpecialOp(op)) {
-    VLOG(5) << "Found " << op.name() << " is in TempDenySpecialOp."
-            << "So mark IsDeniedForCinn: " << true;
-    return true;
-  }
+
   // Strip the dialect, like pd_op.abs -> abs
   const auto op_name = OpNameAfterStripDialect(op);
   const bool is_denied = OpTransInfo().IsDeniedByDefault(op_name);

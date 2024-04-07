@@ -190,9 +190,7 @@ def train(args, to_static: bool):
             running_reward = 0.05 * ep_reward + (1 - 0.05) * running_reward
             if i_episode % args.log_interval == 0:
                 print(
-                    'Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}\t loss_probs: {}'.format(
-                        i_episode, ep_reward, running_reward, float(loss)
-                    )
+                    f'Episode {i_episode}\tLast reward: {ep_reward:.2f}\tAverage reward: {running_reward:.2f}\t loss_probs: {float(loss)}'
                 )
 
             if i_episode > args.train_step:

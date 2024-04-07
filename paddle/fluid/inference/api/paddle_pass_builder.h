@@ -43,7 +43,7 @@ namespace paddle {
 /// Example Usage:
 ///     Build a new pass.
 /// \code{cpp}
-/// const vector<string> passes(1, "conv_relu_mkldnn_fuse_pass");
+/// const vector<string> passes(1, "conv_relu_onednn_fuse_pass");
 /// PaddlePassBuilder builder(passes);
 /// \endcode
 class PD_INFER_DECL PaddlePassBuilder {
@@ -352,5 +352,10 @@ PD_INFER_DECL extern const std::vector<std::string> kCINNCompilerPasses;
 /// running errors. After fusion operator supports low precision, delete this.
 PD_INFER_DECL extern const std::vector<std::string> kGpuLowerPrecisionPasses;
 PD_INFER_DECL extern const std::vector<std::string> kTrtLowerPrecisionPasses;
+
+PD_INFER_DECL extern const std::vector<std::string> kPirGpuPasses;
+PD_INFER_DECL extern const std::vector<std::string> kPirCpuPasses;
+PD_INFER_DECL extern const std::vector<std::string> kPirXpuPasses;
+PD_INFER_DECL extern const std::vector<std::string> kPirMkldnnPasses;
 
 }  // namespace paddle

@@ -74,6 +74,7 @@ if not defined NEW_RELEASE_ALL set NEW_RELEASE_ALL=ON
 if not defined NEW_RELEASE_PYPI set NEW_RELEASE_PYPI=OFF
 if not defined NEW_RELEASE_JIT set NEW_RELEASE_JIT=OFF
 if not defined WITH_CPP_TEST set WITH_CPP_TEST=ON
+if not defined WITH_NIGHTLY_BUILD set WITH_NIGHTLY_BUILD=OFF
 
 rem variable to control pipeline process
 if not defined WITH_TPCACHE set WITH_TPCACHE=OFF
@@ -383,6 +384,8 @@ set CUDA_TOOLKIT_ROOT_DIR=%CUDA_TOOLKIT_ROOT_DIR:\=/%
 
 rem install ninja if GENERATOR is Ninja
 if %GENERATOR% == "Ninja" (
+    rem Set the default generator for cmake to Ninja 
+    setx CMAKE_GENERATOR Ninja
     pip install ninja
     if %errorlevel% NEQ 0 (
         echo pip install ninja failed!
@@ -513,7 +516,7 @@ echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -D
 -DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUDA_ARCH_BIN=%CUDA_ARCH_BIN% -DCUB_PATH=%THIRD_PARTY_HOME%/cub ^
 -DCUDA_TOOLKIT_ROOT_DIR="%CUDA_TOOLKIT_ROOT_DIR%" -DNEW_RELEASE_ALL=%NEW_RELEASE_ALL% -DNEW_RELEASE_PYPI=%NEW_RELEASE_PYPI% ^
 -DNEW_RELEASE_JIT=%NEW_RELEASE_JIT% -DWITH_ONNXRUNTIME=%WITH_ONNXRUNTIME% -DWITH_CPP_TEST=%WITH_CPP_TEST% ^
--DWIN_UNITTEST_LEVEL=%WIN_UNITTEST_LEVEL%
+-DWIN_UNITTEST_LEVEL=%WIN_UNITTEST_LEVEL% -DWITH_NIGHTLY_BUILD=%WITH_NIGHTLY_BUILD%
 
 echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
@@ -523,7 +526,7 @@ echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -D
 -DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUDA_ARCH_BIN=%CUDA_ARCH_BIN% -DCUB_PATH=%THIRD_PARTY_HOME%/cub ^
 -DCUDA_TOOLKIT_ROOT_DIR="%CUDA_TOOLKIT_ROOT_DIR%" -DNEW_RELEASE_ALL=%NEW_RELEASE_ALL% -DNEW_RELEASE_PYPI=%NEW_RELEASE_PYPI% ^
 -DNEW_RELEASE_JIT=%NEW_RELEASE_JIT% -DWITH_ONNXRUNTIME=%WITH_ONNXRUNTIME% -DWITH_CPP_TEST=%WITH_CPP_TEST% ^
--DWIN_UNITTEST_LEVEL=%WIN_UNITTEST_LEVEL% >> %work_dir%\win_cmake.sh
+-DWIN_UNITTEST_LEVEL=%WIN_UNITTEST_LEVEL% -DWITH_NIGHTLY_BUILD=%WITH_NIGHTLY_BUILD% >> %work_dir%\win_cmake.sh
 
 cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
@@ -533,7 +536,7 @@ cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_
 -DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUDA_ARCH_BIN=%CUDA_ARCH_BIN% -DCUB_PATH=%THIRD_PARTY_HOME%/cub ^
 -DCUDA_TOOLKIT_ROOT_DIR="%CUDA_TOOLKIT_ROOT_DIR%" -DNEW_RELEASE_ALL=%NEW_RELEASE_ALL% -DNEW_RELEASE_PYPI=%NEW_RELEASE_PYPI% ^
 -DNEW_RELEASE_JIT=%NEW_RELEASE_JIT% -DWITH_ONNXRUNTIME=%WITH_ONNXRUNTIME% -DWITH_CPP_TEST=%WITH_CPP_TEST% ^
--DWIN_UNITTEST_LEVEL=%WIN_UNITTEST_LEVEL%
+-DWIN_UNITTEST_LEVEL=%WIN_UNITTEST_LEVEL% -DWITH_NIGHTLY_BUILD=%WITH_NIGHTLY_BUILD%
 goto:eof
 
 :cmake_error
@@ -716,13 +719,13 @@ dir %THIRD_PARTY_PATH:/=\%\install\openblas\lib
 dir %THIRD_PARTY_PATH:/=\%\install\openblas\bin
 dir %THIRD_PARTY_PATH:/=\%\install\zlib\bin
 dir %THIRD_PARTY_PATH:/=\%\install\mklml\lib
-dir %THIRD_PARTY_PATH:/=\%\install\mkldnn\lib
+dir %THIRD_PARTY_PATH:/=\%\install\onednn\lib
 dir %THIRD_PARTY_PATH:/=\%\install\warpctc\bin
 dir %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib
 
 set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\install\openblas\bin;^
 %THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
-%THIRD_PARTY_PATH:/=\%\install\mkldnn\lib;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;^
+%THIRD_PARTY_PATH:/=\%\install\onednn\lib;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;^
 %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib;%THIRD_PARTY_PATH:/=\%\install\paddle2onnx\lib;^
 %work_dir%\%BUILD_DIR%\paddle\fluid\inference;%work_dir%\%BUILD_DIR%\paddle\fluid\pybind;%work_dir%\%BUILD_DIR%\paddle\fluid\inference\capi_exp;%work_dir%\%BUILD_DIR%\paddle\ir;^
 %PATH%
@@ -764,7 +767,7 @@ setlocal enabledelayedexpansion
 :: for /F %%# in ('cmd /C nvidia-smi -L ^|find "GPU" /C') do set CUDA_DEVICE_COUNT=%%#
 set CUDA_DEVICE_COUNT=1
 
-:: For hypothesis tests(mkldnn op and inference pass), we set use 'ci' profile
+:: For hypothesis tests(onednn op and inference pass), we set use 'ci' profile
 set HYPOTHESIS_TEST_PROFILE=ci
 
 %cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE% %PRECISION_TEST% %WITH_GPU%
@@ -776,7 +779,7 @@ echo    ========================================
 echo    Running CPU unit tests in parallel way ...
 echo    ========================================
 
-:: For hypothesis tests(mkldnn op and inference pass), we set use 'ci' profile
+:: For hypothesis tests(onednn op and inference pass), we set use 'ci' profile
 set HYPOTHESIS_TEST_PROFILE=ci
 %cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE% %PRECISION_TEST% %WITH_GPU%
 

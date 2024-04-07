@@ -1605,9 +1605,9 @@ void minimum_grad(const Tensor& x,
   if (x_grad) {
     auto x_tmp = cast<T>(less_than<T>(x, y), out_grad.dtype());
     auto dx_res = out_grad * x_tmp;
-    if (y.dims() != x.dims()) {
+    if (out_grad.dims() != x.dims()) {
       // Maybe need reduce here
-      auto reduce_dim = get_reduce_dims(x.dims(), y.dims());
+      auto reduce_dim = get_reduce_dims(x.dims(), out_grad.dims());
       if (!reduce_dim.size()) {
         set_output<T>(dx_res, x_grad);
       } else {
@@ -1624,9 +1624,9 @@ void minimum_grad(const Tensor& x,
   if (y_grad) {
     auto y_tmp = cast<T>(greater_equal<T>(x, y), out_grad.dtype());
     auto dy_res = out_grad * y_tmp;
-    if (x.dims() != y.dims()) {
+    if (out_grad.dims() != y.dims()) {
       // Maybe need reduce here
-      phi::DDim reduce_dim = get_reduce_dims(y.dims(), x.dims());
+      phi::DDim reduce_dim = get_reduce_dims(y.dims(), out_grad.dims());
       if (!reduce_dim.size()) {
         set_output<T>(dy_res, y_grad);
       } else {

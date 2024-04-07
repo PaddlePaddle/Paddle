@@ -792,7 +792,6 @@ FOURTH_HIGH_PARALLEL_JOB_NEW = [
     'test_grid_generator',
     'test_randn_op',
     'test_activation_mkldnn_op',
-    'test_lac',
     'test_pad_op',
     'test_lstmp_op',
     'test_loop',
@@ -3240,25 +3239,11 @@ def main():
 
     if platform.system() == 'Windows':
         print(
-            "{};{};{};{}".format(
-                high_parallel_job,
-                fourth_high_parallel_job,
-                fifth_high_parallel_job,
-                non_parallel_job,
-            )
+            f"{high_parallel_job};{fourth_high_parallel_job};{fifth_high_parallel_job};{non_parallel_job}"
         )
     else:
         print(
-            "{};{};{};{};{};{};{};{}".format(
-                high_parallel_job,
-                secondary_high_parallel_job,
-                third_high_parallel_job,
-                fourth_high_parallel_job,
-                fifth_high_parallel_job,
-                sixth_high_parallel_job,
-                lowest_high_parallel_job,
-                non_parallel_job,
-            )
+            f"{high_parallel_job};{secondary_high_parallel_job};{third_high_parallel_job};{fourth_high_parallel_job};{fifth_high_parallel_job};{sixth_high_parallel_job};{lowest_high_parallel_job};{non_parallel_job}"
         )
 
 

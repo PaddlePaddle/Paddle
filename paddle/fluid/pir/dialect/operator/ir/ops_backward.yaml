@@ -201,15 +201,15 @@
 
 - backward_op : divide_double_grad
   forward : divide_grad (Tensor x, Tensor y, Tensor out, Tensor grad_out, int axis = -1) -> Tensor(grad_x), Tensor(grad_y)
-  args : (Tensor y, Tensor out, Tensor grad_x, Tensor grad_x_grad, Tensor grad_y_grad, int axis = -1)
+  args : (Tensor y, Tensor out, Tensor grad_out, Tensor grad_x, Tensor grad_x_grad, Tensor grad_y_grad, int axis = -1)
   output : Tensor(y_grad), Tensor(out_grad), Tensor(grad_out_grad)
   infer_meta :
     func : GeneralTernaryGradInferMeta
-    param : [y, grad_x, grad_x]
+    param : [y, out, out]
   kernel :
     func : divide_double_grad
     data_type : out
-  optional : grad_x_grad, grad_y_grad
+  optional : grad_x, grad_x_grad, grad_y_grad
   inplace : (grad_x_grad -> grad_out_grad)
 
 - backward_op : divide_grad
@@ -656,6 +656,16 @@
   kernel :
     func : prod_grad
   composite: prod_grad(x, out, out_grad, dims, keep_dim, reduce_all, x_grad)
+
+- backward_op : rank_attention_grad
+  forward : rank_attention (Tensor x, Tensor rank_offset, Tensor rank_param, int max_rank = 3, int max_size = 0) -> Tensor(input_help), Tensor(out), Tensor(ins_rank)
+  args : (Tensor x, Tensor rank_offset, Tensor rank_param, Tensor input_help, Tensor ins_rank, Tensor out_grad, int max_rank = 3, int max_size = 0)
+  output : Tensor(rank_param_grad)
+  infer_meta :
+    func : RankAttentionGradInferMeta
+  kernel :
+    func : rank_attention_grad
+    data_type : out_grad
 
 - backward_op : repeat_interleave_grad
   forward : repeat_interleave(Tensor x, int repeats, int axis) -> Tensor(out)
