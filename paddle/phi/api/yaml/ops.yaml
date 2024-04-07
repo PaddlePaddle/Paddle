@@ -305,6 +305,7 @@
     data_type : input
   inplace : (input -> out)
   backward : bce_loss_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : bernoulli
   args : (Tensor x)
@@ -2591,6 +2592,7 @@
   inplace : (x -> out)
   backward : sigmoid_cross_entropy_with_logits_grad
   optional : pos_weight
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : sign
   args : (Tensor x)

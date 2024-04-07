@@ -329,6 +329,56 @@ bool NearestInterpOpInferSymbolicShape(
   return BicubicInterpOpInferSymbolicShape(op, shape_analysis);
 }
 
+bool SigmoidCrossEntropyWithLogitsOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  const auto x_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+  const auto label_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+  const std::vector<symbol::DimExpr> &x_dims = [&] {
+    std::vector<symbol::DimExpr> dims;
+    if (x_shape_or_data.data().has_value()) {
+      dims = x_shape_or_data.data().value();
+    } else {
+      dims = x_shape_or_data.shape();
+    }
+    return dims;
+  }();
+
+  const std::vector<symbol::DimExpr> &label_dims = [&] {
+    std::vector<symbol::DimExpr> dims;
+    if (label_shape_or_data.data().has_value()) {
+      dims = label_shape_or_data.data().value();
+    } else {
+      dims = label_shape_or_data.shape();
+    }
+    return dims;
+  }();
+
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    label_dims.size(),
+                    phi::errors::InvalidArgument(
+                        "Input(X) and Input(Label) shall have the same rank."
+                        "But received: the rank of Input(X) is [%d], "
+                        "the rank of Input(Label) is [%d].",
+                        x_dims.size(),
+                        label_dims.size()));
+
+  const symbol::ShapeOrDataDimExprs &shape_data = [&] {
+    std::vector<symbol::DimExpr> out_dims = x_dims;
+    return symbol::ShapeOrDataDimExprs{
+        symbol::TensorShapeOrDataDimExprs(out_dims)};
+  }();
+
+  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+  return true;
+}
+
+bool SigmoidCrossEntropyWithLogits_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return SigmoidCrossEntropyWithLogitsOpInferSymbolicShape(op, shape_analysis);
+}
+
 bool StackOpInferSymbolicShape(pir::Operation *op,
                                pir::ShapeConstraintIRAnalysis *shape_analysis) {
   pir::Value operand_source = op->operand_source(0);

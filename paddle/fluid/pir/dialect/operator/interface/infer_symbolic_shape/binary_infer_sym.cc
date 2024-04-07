@@ -64,6 +64,70 @@ inline void UpdatePaddingAndDilation(
 }  // namespace
 namespace paddle::dialect {
 
+bool BceLossOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  const auto x_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+  const auto label_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+  const std::vector<symbol::DimExpr> &x_dims = [&] {
+    std::vector<symbol::DimExpr> dims;
+    if (x_shape_or_data.data().has_value()) {
+      dims = x_shape_or_data.data().value();
+    } else {
+      dims = x_shape_or_data.shape();
+    }
+    return dims;
+  }();
+
+  const std::vector<symbol::DimExpr> &label_dims = [&] {
+    std::vector<symbol::DimExpr> dims;
+    if (label_shape_or_data.data().has_value()) {
+      dims = label_shape_or_data.data().value();
+    } else {
+      dims = label_shape_or_data.shape();
+    }
+    return dims;
+  }();
+
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    label_dims.size(),
+                    phi::errors::InvalidArgument(
+                        "Input(X) and Input(Label) shall have the same rank."
+                        "But received: the rank of Input(X) is [%d], "
+                        "the rank of Input(Label) is [%d].",
+                        x_dims.size(),
+                        label_dims.size()));
+
+  for (size_t i = 0; i < x_dims.size(); i++) {
+    PADDLE_ENFORCE_EQ(
+        x_dims[i] == label_dims[i] || x_dims[i].Get<int64_t>() <= 0 ||
+            label_dims[i].Get<int64_t>() <= 0,
+        true,
+        phi::errors::InvalidArgument(
+            "Input(X) and Input(Label) shall have the same "
+            "shape, or one of the two is less than or equal to 0. "
+            "But received: the shape of Input(X) is "
+            "[%s], the shape of Input(Label) is [%s].",
+            x_dims[i],
+            label_dims[i]));
+  }
+
+  const symbol::ShapeOrDataDimExprs &shape_data = [&] {
+    std::vector<symbol::DimExpr> out_dims = x_dims;
+    return symbol::ShapeOrDataDimExprs{
+        symbol::TensorShapeOrDataDimExprs(out_dims)};
+  }();
+
+  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+  return true;
+}
+
+bool BceLoss_OpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return BceLossOpInferSymbolicShape(op, shape_analysis);
+}
+
 bool Conv2dOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   const std::vector<int> strides =
@@ -153,6 +217,91 @@ bool Conv2dOpInferSymbolicShape(
 bool Conv3dOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return Conv2dOpInferSymbolicShape(op, shape_analysis);
+}
+
+bool DistributeFpnProposalsOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  const auto &attributes = op->attributes();
+  int max_level =
+      attributes.at("max_level").dyn_cast<pir::Int32Attribute>().data();
+  int min_level =
+      attributes.at("min_level").dyn_cast<pir::Int32Attribute>().data();
+  const auto multi_fpn_rois_shape_or_data_list =
+      shape_analysis->GetShapeOrDataForValue(op->result(0))
+          .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+  const auto multi_level_rois_num_shape_or_data_list =
+      shape_analysis->GetShapeOrDataForValue(op->result(1))
+          .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+  const auto restore_index_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->result(2));
+
+  PADDLE_ENFORCE_GE(multi_fpn_rois_shape_or_data_list.size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Outputs(MultiFpnRois) of "
+                        "DistributeFpnProposalsOp should not be empty"));
+  PADDLE_ENFORCE_GE(
+      max_level,
+      min_level,
+      phi::errors::InvalidArgument(
+          "max_level must not lower than "
+          "min_level. But received max_level = %d, min_level = %d",
+          max_level,
+          min_level));
+
+  const symbol::TensorListShapeOrDataDimExprs
+      &multi_fpn_rois_shape_dim_exprs_list = [&] {
+        symbol::TensorListShapeOrDataDimExprs
+            multi_fpn_rois_shape_dim_exprs_list;
+        std::vector<symbol::DimExpr> vec{-1, 4};
+        auto shape_dim_exprs = symbol::TensorShapeOrDataDimExprs(vec);
+
+        for (auto &multi_fpn_rois_shape_or_data :
+             multi_fpn_rois_shape_or_data_list) {
+          // if(multi_fpn_rois_shape_or_data==NULL)
+          //   continue;
+          multi_fpn_rois_shape_dim_exprs_list.emplace_back(shape_dim_exprs);
+        }
+
+        return multi_fpn_rois_shape_dim_exprs_list;
+      }();
+
+  const symbol::TensorListShapeOrDataDimExprs
+      &multi_level_rois_num_shape_dim_exprs_list = [&] {
+        symbol::TensorListShapeOrDataDimExprs
+            multi_level_rois_num_shape_dim_exprs_list;
+        std::vector<symbol::DimExpr> vec{-1};
+        auto shape_dim_exprs = symbol::TensorShapeOrDataDimExprs(vec);
+
+        for (auto &multi_level_rois_num_shape_or_data :
+             multi_level_rois_num_shape_or_data_list) {
+          // if(multi_level_rois_num_shape_or_data==NULL)
+          //   continue;
+          multi_level_rois_num_shape_dim_exprs_list.emplace_back(
+              shape_dim_exprs);
+        }
+
+        return multi_level_rois_num_shape_dim_exprs_list;
+      }();
+
+  const symbol::TensorShapeOrDataDimExprs &restore_index_shape_dim_exprs = [&] {
+    std::vector<symbol::DimExpr> vec{-1};
+    auto restore_index_shape_dim_exprs = symbol::TensorShapeOrDataDimExprs(vec);
+
+    return restore_index_shape_dim_exprs;
+  }();
+
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs(multi_fpn_rois_shape_dim_exprs_list));
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs(multi_level_rois_num_shape_dim_exprs_list));
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{restore_index_shape_dim_exprs});
+
+  return true;
 }
 
 bool EmbeddingOpInferSymbolicShape(
