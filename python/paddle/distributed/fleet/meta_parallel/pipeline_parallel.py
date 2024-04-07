@@ -294,6 +294,9 @@ class PipelineParallel(MetaParallelBase):
         self.global_rank = self._hcg.get_global_rank()
         self.micro_batch_id = 0
 
+        # default loss function index
+        self.loss_fn_idx = 0
+
         self._compute_loss = True
 
         logger.info(
@@ -686,8 +689,17 @@ class PipelineParallel(MetaParallelBase):
         )
         return micro_dataset
 
-    def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
+    def train_batch(
+        self, data, optimizer, lr_scheduler=None, scaler=None, loss_fn_idx=0
+    ):
         data = self._prepare_training(data, optimizer, lr_scheduler)
+
+        # set loss function index
+        assert loss_fn_idx in range(
+            len(self._layers._loss_fn)
+        ), "loss_fn_idx should be in range of loss_fn"
+        self.loss_fn_idx = loss_fn_idx
+
         # 1f1b scheduler for pipeline parallel
         train_loss = self.forward_backward_pipeline(data, scaler)
 
@@ -697,7 +709,7 @@ class PipelineParallel(MetaParallelBase):
 
         return train_loss
 
-    def eval_batch(self, data, compute_loss=False):
+    def eval_batch(self, data, compute_loss=False, loss_fn_idx=0):
         # reset the virtual pp rank for each run
         self.set_virtual_pipeline_rank(0)
 
@@ -709,6 +721,12 @@ class PipelineParallel(MetaParallelBase):
 
         # store total loss of entire batch
         self.total_loss = None
+
+        # set loss function index
+        assert loss_fn_idx in range(
+            len(self._layers._loss_fn)
+        ), "loss_fn_idx should be in range of loss_fn"
+        self.loss_fn_idx = loss_fn_idx
 
         startup_steps = self.num_stages - self.stage_id - 1
         startup_steps = min(startup_steps, self.accumulate_steps)
@@ -798,15 +816,23 @@ class PipelineParallel(MetaParallelBase):
 
                         if self.total_loss is None:
                             self.total_loss = []
-                        self.total_loss.append(paddle.zeros_like(output_tensor))
+                        # when self.total_loss length is less than idx, append a new tensor
+                        if len(self.total_loss) <= idx:
+                            self.total_loss.append(
+                                paddle.zeros_like(output_tensor)
+                            )
                         self.total_loss[idx] += output_tensor.detach()
 
+                    if idx == self.loss_fn_idx:
+                        loss_tensor = output_tensor
         if self.is_pipeline_first_stage() or self.is_pipeline_last_stage():
             # Only increase micro batch id at virtual first/last pp stage.
             # The micro batch id is used to load data, therefore, only increase it when load data.
             self.micro_batch_id += 1
         if self._enable_timer:
             self.timers("forward_step").stop()
+        if self.is_pipeline_last_stage() and self._compute_loss:
+            return loss_tensor
         return output_tensor
 
     def _backward_step(self, input_tensor, output_tensor, output_tensor_grad):
@@ -1723,8 +1749,17 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self.timer_printer()
         return train_loss
 
-    def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
+    def train_batch(
+        self, data, optimizer, lr_scheduler=None, scaler=None, loss_fn_idx=0
+    ):
         data = self._prepare_training(data, optimizer, lr_scheduler)
+
+        # set loss function index
+        assert loss_fn_idx in range(
+            len(self._layers._loss_fn)
+        ), "loss_fn_idx should be in range of loss_fn"
+        self.loss_fn_idx = loss_fn_idx
+
         # interleave scheduler for pipeline parallel
         train_loss = self.forward_backward_pipeline(data, scaler)
 
@@ -1734,12 +1769,18 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         return train_loss
 
-    def eval_batch(self, data, compute_loss=False):
+    def eval_batch(self, data, compute_loss=False, loss_fn_idx=0):
         # reset the virtual pp rank for each run
         self.set_virtual_pipeline_rank(0)
 
         self._layers.eval()
         self._compute_loss = compute_loss
+
+        # set loss function index
+        assert loss_fn_idx in range(
+            len(self._layers._loss_fn)
+        ), "loss_fn_idx should be in range of loss_fn"
+        self.loss_fn_idx = loss_fn_idx
 
         return self.forward_backward_pipeline(data, None, forward_only=True)
 

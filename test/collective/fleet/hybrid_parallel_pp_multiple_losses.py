@@ -197,8 +197,10 @@ class TestDistPPTraining(unittest.TestCase):
             x = paddle.to_tensor(x_data)
             x.stop_gradient = True
 
-            e_losses = model.eval_batch([x, x], True)
-            losses = model.train_batch([x, x], optimizer, scheduler)
+            e_losses = model.eval_batch([x, x], True, loss_fn_idx=1)
+            losses = model.train_batch(
+                [x, x], optimizer, scheduler, loss_fn_idx=1
+            )
 
             if pp_id != 0:
                 for e_loss, loss in zip(e_losses, losses):
