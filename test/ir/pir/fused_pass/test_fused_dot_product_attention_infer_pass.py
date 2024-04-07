@@ -539,8 +539,6 @@ class TestFusedDotProductAttentionPatternTransposeSlice(PassTest):
         |          |           |
         Q          K           V
         |          |           |
-    transpose  transpose   transpose
-        |          |           |
       scale    transpose       |
         |          |           |
         -- matmul--            |
@@ -566,6 +564,8 @@ class TestFusedDotProductAttentionPatternTransposeSlice(PassTest):
        slice slice slice                   mask
          |     |     |                       |
          Q     K     V                     cast
+         |     |     |                       |
+   tranpose tranpose tranpose                |
          |     |     |                       |
          ------fused_dot_product_attention----
                    |

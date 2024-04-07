@@ -130,12 +130,15 @@ class FusedDotProductAttentionPatternQscale
           if (q.size() != 4 || k.size() != 4 || v.size() != 4 ||
               !(q.at(0) == k.at(0) && k.at(0) == v.at(0)) ||
               !(q.at(1) == k.at(1) && k.at(1) == v.at(1)) ||
+              !(q.at(2) == k.at(2) && k.at(2) == v.at(2)) ||
               !(q.at(3) == k.at(3) && k.at(3) == v.at(3))) {
             return false;
           }
-          if (q.at(1) % 64 != 0 || k.at(1) % 64 != 0) {
+          // seq_len % 64 == 0
+          if (q.at(1) != -1 && q.at(1) % 64 != 0) {
             return false;
           }
+
           // add shape
           auto mask_add = pir::GetShapeFromValue(match_ctx.Tensor("mask"));
           if (mask_add.size() != 4) {
@@ -276,12 +279,15 @@ class FusedDotProductAttentionPatternOutscale
           if (q.size() != 4 || k.size() != 4 || v.size() != 4 ||
               !(q.at(0) == k.at(0) && k.at(0) == v.at(0)) ||
               !(q.at(1) == k.at(1) && k.at(1) == v.at(1)) ||
+              !(q.at(2) == k.at(2) && k.at(2) == v.at(2)) ||
               !(q.at(3) == k.at(3) && k.at(3) == v.at(3))) {
             return false;
           }
-          if (q.at(1) % 64 != 0 || k.at(1) % 64 != 0) {
+          // seq_len % 64 == 0
+          if (q.at(1) != -1 && q.at(1) % 64 != 0) {
             return false;
           }
+
           // add shape
           auto mask_add = pir::GetShapeFromValue(match_ctx.Tensor("mask"));
           if (mask_add.size() != 4) {
@@ -318,11 +324,11 @@ class FusedDotProductAttentionPatternOutscale
 };
 
 // slice qkv
-class FusedDotProductAttentionPatternTransposeSlice
+class TransposeSliceFusedDotProductAttentionPattern
     : public paddle::drr::DrrPatternBase {
  public:
   std::string name() const override {
-    return "FusedDotProductAttentionPatternTransposeSlice";
+    return "TransposeSliceFusedDotProductAttentionPattern";
   }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
@@ -428,12 +434,15 @@ class FusedDotProductAttentionPatternTransposeSlice
           if (q.size() != 4 || k.size() != 4 || v.size() != 4 ||
               !(q.at(0) == k.at(0) && k.at(0) == v.at(0)) ||
               !(q.at(1) == k.at(1) && k.at(1) == v.at(1)) ||
+              !(q.at(2) == k.at(2) && k.at(2) == v.at(2)) ||
               !(q.at(3) == k.at(3) && k.at(3) == v.at(3))) {
             return false;
           }
-          if (q.at(1) % 64 != 0 || k.at(1) % 64 != 0) {
+          // seq_len % 64 == 0
+          if (q.at(2) != -1 && q.at(2) % 64 != 0) {
             return false;
           }
+
           // add shape
           auto mask_add = pir::GetShapeFromValue(match_ctx.Tensor("mask"));
           if (mask_add.size() != 4) {
@@ -459,9 +468,20 @@ class FusedDotProductAttentionPatternTransposeSlice
                  {"is_training", res.BoolAttr(true)},
                  {"is_causal_masking", res.BoolAttr(false)}}});
 
-    fused_dot_product_attention({&res.Tensor("q"),
-                                 &res.Tensor("k"),
-                                 &res.Tensor("v"),
+    // [b, head, seq_len, head_dim] -> [b, seq_len, head, head_dim]
+    const auto &q_transpose = res.Op(
+        "pd_op.transpose", {{"perm", res.VectorInt32Attr({0, 2, 1, 3})}});
+    res.Tensor("q_transpose") = q_transpose(res.Tensor("q"));
+    const auto &k_transpose = res.Op(
+        "pd_op.transpose", {{"perm", res.VectorInt32Attr({0, 2, 1, 3})}});
+    res.Tensor("k_transpose") = k_transpose(res.Tensor("k"));
+    const auto &v_transpose = res.Op(
+        "pd_op.transpose", {{"perm", res.VectorInt32Attr({0, 2, 1, 3})}});
+    res.Tensor("v_transpose") = v_transpose(res.Tensor("v"));
+
+    fused_dot_product_attention({&res.Tensor("q_transpose"),
+                                 &res.Tensor("k_transpose"),
+                                 &res.Tensor("v_transpose"),
                                  &res.Tensor("mask_cast_out")},
                                 {&res.Tensor("out"),
                                  &res.Tensor("softmax_aux"),
@@ -484,7 +504,7 @@ class FusedDotProductAttentionInferPass : public pir::PatternRewritePass {
                                                                         true));
     ps.Add(paddle::drr::Create<FusedDotProductAttentionPatternOutscale>(context,
                                                                         false));
-    ps.Add(paddle::drr::Create<FusedDotProductAttentionPatternTransposeSlice>(
+    ps.Add(paddle::drr::Create<TransposeSliceFusedDotProductAttentionPattern>(
         context));
 
     return ps;
