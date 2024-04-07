@@ -8212,6 +8212,19 @@ def add_cast_for_type_promotion(op, block, idx, var_name, out_dtype):
     op.desc._rename_input(var_name.name, out_var.name)
 
 
+def can_skip_promote(op):
+    if op.type != "elementwis_add":
+        return False
+    input_names = op.input_arg_names
+    input_x_dtype = op.block._var_recursive(input_names[0]).dtype
+    input_y_dtype = op.block._var_recursive(input_names[1]).dtype
+    if input_x_dtype == paddle.float32 and (
+        input_y_dtype in [paddle.float16, paddle.bfloat16]
+    ):
+        return True
+    return False
+
+
 def process_type_promotion(program):
     org_program = program
     if program is None:
@@ -8234,7 +8247,7 @@ def process_type_promotion(program):
                 op.type, None
             )
             # type promotion only support some dyadic api
-            if need_transed_var_names is None:
+            if need_transed_var_names is None or can_skip_promote(op):
                 idx += 1
                 continue
 
