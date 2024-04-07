@@ -67,7 +67,7 @@ def convert_attr(x, attr):
     # the size attr into a method call. The AttributeJstTransformer and
     # convert_attr can be safely removed.
     if isinstance(x, Variable) and attr == "size":
-        return x.size()
+        return x.size
     else:
         return getattr(x, attr)
 
