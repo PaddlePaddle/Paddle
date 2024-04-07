@@ -14,13 +14,13 @@
 
 include(ExternalProject)
 
-set(MKLDNN_PROJECT "extern_mkldnn")
-set(MKLDNN_PREFIX_DIR ${THIRD_PARTY_PATH}/mkldnn)
-set(MKLDNN_INSTALL_DIR ${THIRD_PARTY_PATH}/install/mkldnn)
+set(ONEDNN_PROJECT "extern_onednn")
+set(ONEDNN_PREFIX_DIR ${THIRD_PARTY_PATH}/onednn)
+set(MKLDNN_INSTALL_DIR ${THIRD_PARTY_PATH}/install/onednn)
 set(MKLDNN_INC_DIR
     "${MKLDNN_INSTALL_DIR}/include"
-    CACHE PATH "mkldnn include directory." FORCE)
-set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/mkldnn)
+    CACHE PATH "oneDNN include directory." FORCE)
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/onednn)
 
 # Introduce variables:
 # * CMAKE_INSTALL_LIBDIR
@@ -36,28 +36,28 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}"
                         "${MKLDNN_INSTALL_DIR}/${LIBDIR}")
 
 include_directories(${MKLDNN_INC_DIR}
-)# For MKLDNN code to include internal headers.
+)# For oneDNN code to include internal headers.
 
 if(NOT WIN32)
-  set(MKLDNN_FLAG
+  set(ONEDNN_FLAG
       "-Wno-error=strict-overflow -Wno-error=unused-result -Wno-error=array-bounds"
   )
-  set(MKLDNN_FLAG "${MKLDNN_FLAG} -Wno-unused-result -Wno-unused-value")
-  set(MKLDNN_CFLAG "${CMAKE_C_FLAGS} ${MKLDNN_FLAG}")
-  set(MKLDNN_CXXFLAG "${CMAKE_CXX_FLAGS} ${MKLDNN_FLAG}")
-  set(MKLDNN_CXXFLAG_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
-  set(MKLDNN_CFLAG_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+  set(ONEDNN_FLAG "${ONEDNN_FLAG} -Wno-unused-result -Wno-unused-value")
+  set(ONEDNN_CFLAG "${CMAKE_C_FLAGS} ${ONEDNN_FLAG}")
+  set(ONEDNN_CXXFLAG "${CMAKE_CXX_FLAGS} ${ONEDNN_FLAG}")
+  set(ONEDNN_CXXFLAG_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+  set(ONEDNN_CFLAG_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
   set(MKLDNN_LIB
       "${MKLDNN_INSTALL_DIR}/${LIBDIR}/libdnnl.so"
-      CACHE FILEPATH "mkldnn library." FORCE)
+      CACHE FILEPATH "oneDNN library." FORCE)
 else()
-  set(MKLDNN_CXXFLAG "${CMAKE_CXX_FLAGS} /EHsc")
-  set(MKLDNN_CFLAG "${CMAKE_C_FLAGS}")
-  string(REPLACE "/O2 " "" MKLDNN_CFLAG_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
-  string(REPLACE "/O2 " "" MKLDNN_CXXFLAG_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+  set(ONEDNN_CXXFLAG "${CMAKE_CXX_FLAGS} /EHsc")
+  set(ONEDNN_CFLAG "${CMAKE_C_FLAGS}")
+  string(REPLACE "/O2 " "" ONEDNN_CFLAG_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+  string(REPLACE "/O2 " "" ONEDNN_CXXFLAG_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
   set(MKLDNN_LIB
       "${MKLDNN_INSTALL_DIR}/bin/mkldnn.lib"
-      CACHE FILEPATH "mkldnn library." FORCE)
+      CACHE FILEPATH "oneDNN library." FORCE)
 endif()
 
 if(LINUX)
@@ -67,21 +67,21 @@ else()
 endif()
 
 ExternalProject_Add(
-  ${MKLDNN_PROJECT}
+  ${ONEDNN_PROJECT}
   ${EXTERNAL_PROJECT_LOG_ARGS}
   SOURCE_DIR ${SOURCE_DIR}
-  DEPENDS ${MKLDNN_DEPENDS}
-  PREFIX ${MKLDNN_PREFIX_DIR}
+  DEPENDS ${ONEDNN_DEPENDS}
+  PREFIX ${ONEDNN_PREFIX_DIR}
   UPDATE_COMMAND ""
   #BUILD_ALWAYS        1
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
              -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-             -DCMAKE_CXX_FLAGS=${MKLDNN_CXXFLAG}
-             -DCMAKE_CXX_FLAGS_RELEASE=${MKLDNN_CXXFLAG_RELEASE}
+             -DCMAKE_CXX_FLAGS=${ONEDNN_CXXFLAG}
+             -DCMAKE_CXX_FLAGS_RELEASE=${ONEDNN_CXXFLAG_RELEASE}
              -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
-             -DCMAKE_C_FLAGS=${MKLDNN_CFLAG}
+             -DCMAKE_C_FLAGS=${ONEDNN_CFLAG}
              -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
-             -DCMAKE_C_FLAGS_RELEASE=${MKLDNN_CFLAG_RELEASE}
+             -DCMAKE_C_FLAGS_RELEASE=${ONEDNN_CFLAG_RELEASE}
              -DCMAKE_INSTALL_PREFIX=${MKLDNN_INSTALL_DIR}
              -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
              -DCMAKE_POSITION_INDEPENDENT_CODE=ON
@@ -90,7 +90,7 @@ ExternalProject_Add(
   CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${MKLDNN_INSTALL_DIR}
   BUILD_BYPRODUCTS ${BUILD_BYPRODUCTS_ARGS})
 
-message(STATUS "MKLDNN library: ${MKLDNN_LIB}")
+message(STATUS "OneDNN library: ${MKLDNN_LIB}")
 add_definitions(-DPADDLE_WITH_DNNL)
 # copy the real so.0 lib to install dir
 # it can be directly contained in wheel or capi
@@ -123,21 +123,21 @@ if(WIN32)
     COMMAND lib /def:${MKLDNN_INSTALL_DIR}/bin/mkldnn.def /out:${MKLDNN_LIB}
             /machine:x64
     COMMENT "Generate mkldnn.lib manually--->"
-    DEPENDS ${MKLDNN_PROJECT}
+    DEPENDS ${ONEDNN_PROJECT}
     VERBATIM)
-  add_custom_target(mkldnn_cmd ALL DEPENDS ${MKLDNN_LIB})
+  add_custom_target(onednn_cmd ALL DEPENDS ${MKLDNN_LIB})
 else()
   set(MKLDNN_SHARED_LIB ${MKLDNN_INSTALL_DIR}/libdnnl.so.3)
   add_custom_command(
     OUTPUT ${MKLDNN_SHARED_LIB}
     COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_LIB} ${MKLDNN_SHARED_LIB}
-    DEPENDS ${MKLDNN_PROJECT})
-  add_custom_target(mkldnn_cmd ALL DEPENDS ${MKLDNN_SHARED_LIB})
+    DEPENDS ${ONEDNN_PROJECT})
+  add_custom_target(onednn_cmd ALL DEPENDS ${MKLDNN_SHARED_LIB})
 endif()
 
-# generate a static dummy target to track mkldnn dependencies
-# for cc_library(xxx SRCS xxx.c DEPS mkldnn)
-generate_dummy_static_lib(LIB_NAME "mkldnn" GENERATOR "mkldnn.cmake")
+# generate a static dummy target to track onednn dependencies
+# for cc_library(xxx SRCS xxx.c DEPS onednn)
+generate_dummy_static_lib(LIB_NAME "onednn" GENERATOR "onednn.cmake")
 
-target_link_libraries(mkldnn ${MKLDNN_LIB} ${MKLML_IOMP_LIB})
-add_dependencies(mkldnn ${MKLDNN_PROJECT} mkldnn_cmd)
+target_link_libraries(onednn ${MKLDNN_LIB} ${MKLML_IOMP_LIB})
+add_dependencies(onednn ${ONEDNN_PROJECT} onednn_cmd)
