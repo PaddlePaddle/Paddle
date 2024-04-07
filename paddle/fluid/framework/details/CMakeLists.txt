@@ -162,5 +162,5 @@ cc_library(
   DEPS pass_builder ${IR_PASS_DEPS})
 
 if(WITH_MKLDNN)
-  target_link_libraries(build_strategy mkldnn_placement_pass)
+  target_link_libraries(build_strategy onednn_placement_pass)
 endif()
