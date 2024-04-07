@@ -234,8 +234,7 @@ const std::vector<std::string> kCINNCompilerPasses{
 const std::vector<std::string> CpuBasicPasses{
     "simplify_with_basic_ops_pass",  //
     "layer_norm_fuse_pass",
-    "attention_lstm_fuse_pass",       //
-    "seqconv_eltadd_relu_fuse_pass",  //
+    "attention_lstm_fuse_pass",  //
     // "seqpool_concat_fuse_pass",    //
     "seqpool_cvm_concat_fuse_pass",  //
     // "embedding_fc_lstm_fuse_pass", //

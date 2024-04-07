@@ -435,7 +435,6 @@ class Quant2Int8MkldnnPass:
         graph = self._apply_pass(graph, 'simplify_with_basic_ops_pass')
         graph = self._apply_pass(graph, 'layer_norm_fuse_pass')
         graph = self._apply_pass(graph, 'attention_lstm_fuse_pass')
-        graph = self._apply_pass(graph, 'seqconv_eltadd_relu_fuse_pass')
         graph = self._apply_pass(graph, 'fc_lstm_fuse_pass')
         graph = self._apply_pass(graph, 'mul_lstm_fuse_pass')
         graph = self._apply_pass(graph, 'fc_gru_fuse_pass')

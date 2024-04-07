@@ -1057,52 +1057,6 @@ PDNode *patterns::OperatorReshape2::operator()(const std::string &operator_type,
   return reshape2_out;
 }
 
-PDNode *patterns::SeqConvEltAddRelu::operator()(
-    paddle::framework::ir::PDNode *seqconv_input) {
-  // Create Operators
-  seqconv_input->assert_is_op_input("sequence_conv", "X");
-  auto *seqconv_op = pattern->NewNode(seqconv_repr())
-                         ->assert_is_op("sequence_conv")
-                         ->assert_has_n_inputs(2)
-                         ->assert_op_attr<bool>("paddingTrainable", false)
-                         ->assert_op_attr<int>("contextStride", 1);
-
-  auto *eltadd_op =
-      pattern->NewNode(eltadd_repr())->assert_is_op("elementwise_add");
-  auto *relu_op = pattern->NewNode(relu_repr())->assert_is_op("relu");
-  // Create variables
-  // Filter
-  auto *seqconv_weight_var =
-      pattern->NewNode(seqconv_weight_repr())
-          ->AsInput()
-          ->assert_is_persistable_var()
-          ->assert_is_op_input("sequence_conv", "Filter");
-  // Bias
-  auto *eltadd_bias_var = pattern->NewNode(eltadd_bias_repr())
-                              ->AsInput()
-                              ->assert_is_op_input("elementwise_add");
-  // intermediate variable, will be removed in the IR after fuse.
-  auto *seqconv_out_var = pattern->NewNode(seqconv_out_repr())
-                              ->AsIntermediate()
-                              ->assert_is_only_output_of_op("sequence_conv")
-                              ->assert_is_op_input("elementwise_add");
-  auto *eltadd_out_var = pattern->NewNode(eltadd_out_repr())
-                             ->AsIntermediate()
-                             ->assert_is_only_output_of_op("elementwise_add")
-                             ->assert_is_only_input_of_op("relu");
-  // output
-  auto *relu_out_var = pattern->NewNode(relu_out_repr())
-                           ->AsOutput()
-                           ->assert_is_op_output("relu");
-
-  seqconv_op->LinksFrom({seqconv_input, seqconv_weight_var})
-      .LinksTo({seqconv_out_var});
-  eltadd_op->LinksFrom({seqconv_out_var, eltadd_bias_var})
-      .LinksTo({eltadd_out_var});
-  relu_op->LinksFrom({eltadd_out_var}).LinksTo({relu_out_var});
-  return relu_out_var;
-}
-
 PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
                                  bool with_bias,
                                  bool with_relu) {

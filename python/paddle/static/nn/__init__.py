@@ -38,7 +38,6 @@ from .control_flow import case, cond, switch_case, while_loop
 from .loss import nce
 from .sequence_lod import (
     sequence_concat,
-    sequence_conv,
     sequence_enumerate,
     sequence_expand,
     sequence_expand_as,
@@ -80,7 +79,6 @@ __all__ = [
     'switch_case',
     'while_loop',
     'sparse_embedding',
-    'sequence_conv',
     'sequence_softmax',
     'sequence_pool',
     'sequence_concat',

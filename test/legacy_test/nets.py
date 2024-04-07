@@ -18,7 +18,6 @@ from paddle.utils import deprecated
 
 __all__ = [
     "simple_img_conv_pool",
-    "sequence_conv_pool",
     "glu",
     "scaled_dot_product_attention",
     "img_conv_group",
@@ -270,85 +269,6 @@ def img_conv_group(
             kernel_size=pool_size,
             stride=pool_stride,
         )
-    return pool_out
-
-
-def sequence_conv_pool(
-    input,
-    num_filters,
-    filter_size,
-    param_attr=None,
-    act="sigmoid",
-    pool_type="max",
-    bias_attr=None,
-):
-    """
-        :api_attr: Static Graph
-
-    **This api takes input as an LoDTensor. If input is a Tensor, please use**
-    :ref:`api_base_nets_simple_img_conv_pool` **instead**
-
-    The sequence_conv_pool is composed of :ref:`api_base_layers_sequence_conv`
-    and :ref:`api_base_layers_sequence_pool` .
-
-    Args:
-        input (Tensor): 2-D LoDTensor, the input of sequence_conv,
-            which supports variable-time length input sequence.
-            The underlying of input is a matrix with shape
-            (T, N), where T is the total time steps in this mini-batch and N is
-            the input_hidden_size. The data type is float32 or float64.
-        num_filters(int): The number of filter.
-        filter_size (int): The filter size.
-        param_attr (ParamAttr): The parameters of the sequence_conv Layer. Default: None.
-        act (str|None): Activation type for Sequence_conv Layer.
-                        If set to None, no activation will be applied. Default: "sigmoid".
-        pool_type (str): Pooling type can be :math:`max` for max-pooling, :math:`average` for
-            average-pooling, :math:`sum` for sum-pooling, :math:`sqrt` for sqrt-pooling.
-            Default :math:`max`.
-        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of sequence_conv.
-            If it is set to False, no bias will be added to the output units.
-            If it is set to None or one attribute of ParamAttr, sequence_conv
-            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
-            is not set, the bias is initialized zero. Default: None.
-
-    Returns:
-        The final result after sequence_conv and sequence_pool.
-        It is a 2-D Tensor, with the same data type as :attr:`input`
-
-    Return Type:
-        Tensor
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.base as base
-            import paddle
-            paddle.enable_static()
-            input_dim = 100 #len(word_dict)
-            emb_dim = 128
-            hid_dim = 512
-            data = paddle.static.data(name="words", shape=[None, 1], dtype="int64", lod_level=1)
-            emb = paddle.static.nn.embedding(input=data, size=[input_dim, emb_dim], is_sparse=True)
-            seq_conv = base.nets.sequence_conv_pool(input=emb,
-                                                     num_filters=hid_dim,
-                                                     filter_size=3,
-                                                     act="tanh",
-                                                     pool_type="sqrt")
-    """
-
-    check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'input')
-    conv_out = paddle.static.nn.sequence_lod.sequence_conv(
-        input=input,
-        num_filters=num_filters,
-        filter_size=filter_size,
-        param_attr=param_attr,
-        bias_attr=bias_attr,
-        act=act,
-    )
-
-    pool_out = paddle.static.nn.sequence_lod.sequence_pool(
-        input=conv_out, pool_type=pool_type
-    )
     return pool_out
 
 
