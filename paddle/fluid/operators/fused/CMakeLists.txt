@@ -70,7 +70,7 @@ if(WITH_GPU OR WITH_ROCM)
     op_library(resnet_unit_op)
   endif()
 
-  if(CUDA_VERSION GREATER_EQUAL 11.6)
+  if((NOT WITH_ROCM) AND (CUDA_VERSION GREATER_EQUAL 11.6))
     op_library(fused_gemm_epilogue_op)
   endif()
 endif()
