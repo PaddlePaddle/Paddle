@@ -383,16 +383,14 @@ bool IfOp::InferSymbolicShape(pir::ShapeConstraintIRAnalysis *shape_analysis) {
       if_results.emplace_back(symbol::TensorShapeOrDataDimExprs(out_dims));
     }
 
-    symbol::ShapeOrDataDimExprs if_shape_data{if_results};
     VLOG(0) << "IfOp::InferSymbolicShape: if_shape_data = " << if_shape_data;
     (*this)->set_attribute("out_shapedata",
                            pir::shape::SymbolAttribute::get(
-                               pir::IrContext::Instance(), if_shape_data));
+                               pir::IrContext::Instance(), if_results));
 
-    symbol::ShapeOrDataDimExprs true_shape_data{true_results};
     (*this)->set_attribute("true_shapedata",
                            pir::shape::SymbolAttribute::get(
-                               pir::IrContext::Instance(), true_shape_data));
+                               pir::IrContext::Instance(), true_results));
     symbol::ShapeOrDataDimExprs false_shape_data{false_results};
     (*this)->set_attribute("false_shapedata",
                            pir::shape::SymbolAttribute::get(

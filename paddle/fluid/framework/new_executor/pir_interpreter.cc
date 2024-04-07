@@ -1848,7 +1848,8 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
             }
             VLOG(vlog_level)
                 << "################ " << instr_node->Name()
-                << ", attribute(\"if_shapedata\") = "
+                << ", cond value = " << cond_rst
+                << ", attribute(\"out_shapedata\") = "
                 << instr_node->Operation()->attribute("out_shapedata");
 
             auto shapeordata = instr_node->Operation()
@@ -1856,40 +1857,55 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                                    .dyn_cast<pir::shape::SymbolAttribute>()
                                    .data();
             VLOG(vlog_level) << "################ " << instr_node->Name()
+                             << ", cond value = " << cond_rst
                              << ", shapeordata = " << shapeordata;
-            ShapeOrData runtime_shapeordata = shapeordata;
+
+            ShapeOrData runtime_shapeordata_tmp = shapeordata;
             if (cond_rst) {
-              runtime_shapeordata = instr_node->Operation()
-                                        ->attribute("true_shapedata")
-                                        .dyn_cast<pir::shape::SymbolAttribute>()
-                                        .data();
-              VLOG(vlog_level) << "################ " << instr_node->Name()
-                               << ": true_shapedata = {" << runtime_shapeordata
-                               << "}, shapedata = {" << shapeordata << "}";
+              runtime_shapeordata_tmp =
+                  instr_node->Operation()
+                      ->attribute("true_shapedata")
+                      .dyn_cast<pir::shape::SymbolAttribute>()
+                      .data();
+              VLOG(vlog_level)
+                  << "################ " << instr_node->Name()
+                  << ": true_shapedata = {" << runtime_shapeordata_tmp
+                  << "}, shapedata = {" << shapeordata << "}";
             } else {
-              runtime_shapeordata = instr_node->Operation()
-                                        ->attribute("false_shapedata")
-                                        .dyn_cast<pir::shape::SymbolAttribute>()
-                                        .data();
-              VLOG(vlog_level) << "################ " << instr_node->Name()
-                               << ": false_shapedata = {" << runtime_shapeordata
-                               << "}, shapedata = {" << shapeordata << "}";
+              runtime_shapeordata_tmp =
+                  instr_node->Operation()
+                      ->attribute("false_shapedata")
+                      .dyn_cast<pir::shape::SymbolAttribute>()
+                      .data();
+              VLOG(vlog_level)
+                  << "################ " << instr_node->Name()
+                  << ": false_shapedata = {" << runtime_shapeordata_tmp
+                  << "}, shapedata = {" << shapeordata << "}";
             }
 
             uint32_t num_rsts = instr_node->Operation()->num_results();
-            VLOG(vlog_level) << "################ " << instr_node->Name()
-                             << ", num_results = " << num_rsts
-                             << ", runtime_shapedata = {" << runtime_shapeordata
-                             << "}, shapedata = {" << shapeordata << "}";
+            VLOG(vlog_level)
+                << "################ " << instr_node->Name()
+                << ", num_results = " << num_rsts << ", runtime_shapedata = {"
+                << runtime_shapeordata_tmp << "}, shapedata = {" << shapeordata
+                << "}";
 
-            PADDLE_ENFORCE_EQ(
-                num_rsts,
-                runtime_shapeordata.dyn_cast<TensorListExprs>().size(),
-                platform::errors::PreconditionNotMet(
-                    "if_instruction's num_results(%d) MUST "
-                    "== runtime_shapeordata.size()(%d)",
-                    num_rsts,
-                    runtime_shapeordata.dyn_cast<TensorListExprs>().size()));
+            TensorListExprs runtime_shapeordata;
+            if (runtime_shapeordata_tmp.isa<TensorListExprs>()) {
+              runtime_shapeordata =
+                  runtime_shapeordata_tmp.dyn_cast<TensorListExprs>();
+            } else {
+              runtime_shapeordata.emplace_back(
+                  runtime_shapeordata_tmp.dyn_cast<TensorExprs>());
+            }
+
+            PADDLE_ENFORCE_EQ(num_rsts,
+                              runtime_shapeordata.size(),
+                              platform::errors::PreconditionNotMet(
+                                  "if_instruction's num_results(%d) MUST "
+                                  "== runtime_shapeordata.size()(%d)",
+                                  num_rsts,
+                                  runtime_shapeordata.size()));
             PADDLE_ENFORCE_EQ(num_rsts,
                               out_ddims.size(),
                               platform::errors::PreconditionNotMet(
@@ -1899,9 +1915,18 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                                   out_ddims.size()));
 
             for (uint32_t rst_idx = 0; rst_idx < num_rsts; rst_idx++) {
+              VLOG(vlog_level)
+                  << "################ " << instr_node->Name()
+                  << ", rst_idx = " << rst_idx
+                  << ", runtime_exprs.size = " << runtime_shapeordata.size();
+
               ExprVec runtime_exprs =
                   paddle::dialect::details::GetExprVecFromShape(
-                      runtime_shapeordata.dyn_cast<TensorListExprs>()[rst_idx]);
+                      runtime_shapeordata[rst_idx]);
+              VLOG(vlog_level)
+                  << "################ " << instr_node->Name()
+                  << ", rst_idx = " << rst_idx << ", runtime_exprs = "
+                  << paddle::dialect::details::PrintVec(runtime_exprs);
               ExprVec compiletime_exprs =
                   paddle::dialect::details::GetExprVecFromShape(
                       shapeordata.dyn_cast<TensorListExprs>()[rst_idx]);
