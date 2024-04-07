@@ -22,10 +22,6 @@ import paddle
 paddle.enable_static()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
 class TestConv2dAddFusePass(PassTest):
     r"""
     x_var   filter
@@ -59,7 +55,7 @@ class TestConv2dAddFusePass(PassTest):
                 )
                 out = paddle.add(conv2d(x), residual_data)
                 out = paddle.assign(out)
-                self.pass_list = ['conv_elementwise_add_mkldnn_fuse_pass']
+                self.pass_list = ['conv_elementwise_add_onednn_fuse_pass']
                 self.feeds = {
                     "x": np.random.random((3, 1, 28, 28)).astype("float32"),
                     "residual_data": np.random.random((3, 32, 28, 28)).astype(
@@ -84,10 +80,6 @@ class TestConv2dAddFusePass(PassTest):
         self.check_pass_correct()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
 class TestConv2dAddFusePassAsY(PassTest):
     r"""
             x_var   filter
@@ -121,7 +113,7 @@ class TestConv2dAddFusePassAsY(PassTest):
                 )
                 out = paddle.add(residual_data, conv2d(x))
                 out = paddle.assign(out)
-                self.pass_list = ['conv_elementwise_add_mkldnn_fuse_pass']
+                self.pass_list = ['conv_elementwise_add_onednn_fuse_pass']
                 self.feeds = {
                     "x": np.random.random((3, 1, 28, 28)).astype("float32"),
                     "residual_data": np.random.random((3, 32, 28, 28)).astype(
@@ -146,10 +138,6 @@ class TestConv2dAddFusePassAsY(PassTest):
         self.check_pass_correct()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
 class TestConv2dBiasAddFusePass(PassTest):
     r"""
     x_var   filter
@@ -199,7 +187,7 @@ class TestConv2dBiasAddFusePass(PassTest):
                 out = paddle.assign(out)
                 self.pass_list = [
                     'conv2d_bias_fuse_pass',
-                    'conv_elementwise_add_mkldnn_fuse_pass',
+                    'conv_elementwise_add_onednn_fuse_pass',
                 ]
 
                 self.feeds = {

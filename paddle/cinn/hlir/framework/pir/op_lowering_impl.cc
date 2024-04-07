@@ -204,6 +204,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   if (ops.size() == 1 && ops[0]->name() == "custom_call") {
     return {{{ir::Expr(1), LowerCustomCall(group)[0]}}, ir::LoweredFunc()};
   }
+
   std::vector<ir::Tensor> group_func_arg_tensors;
   std::unordered_map<::pir::Value, ir::Tensor> tensor_map;
   // for some op, it will output more tmp value and regard as
