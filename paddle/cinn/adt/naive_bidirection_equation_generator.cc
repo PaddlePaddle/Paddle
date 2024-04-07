@@ -16,7 +16,7 @@
 
 #include "paddle/cinn/adt/equation_graph.h"
 #include "paddle/cinn/adt/equation_solver.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn::adt {
 
 namespace {
@@ -68,7 +68,14 @@ template <typename DoEachT>
 void VisitEachInMsgOutMsgPair(const List<Index>& in_msg_indexes,
                               const List<Index>& out_msg_indexes,
                               const DoEachT& DoEach) {
-  CHECK_EQ(in_msg_indexes->size(), out_msg_indexes->size());
+  PADDLE_ENFORCE_EQ(
+      in_msg_indexes->size(),
+      out_msg_indexes->size(),
+      phi::errors::InvalidArgument(
+          "The size of in_msg_indexes and out_msg_indexes should be equal, but "
+          "got in_msg_indexes size = %d, out_msg_indexes size = %d.",
+          in_msg_indexes->size(),
+          out_msg_indexes->size()));
   for (std::size_t i = 0; i < in_msg_indexes->size(); ++i) {
     DoEach(in_msg_indexes->at(i), out_msg_indexes->at(i));
   }
