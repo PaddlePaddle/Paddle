@@ -428,7 +428,15 @@ bool IsBroadcastSBlock(ir::Expr block) {
     return false;
   }
   // each load index can be found in store index and maintain relative order
+  const auto IsIndexZero = [](const ir::Expr& e) -> bool {
+    return e.is_constant() && e.get_constant() == 0;
+  };
+  int num_load_index_zero = 0;
   for (size_t i = 0; i < load->indices.size(); ++i) {
+    if (IsIndexZero(load->indices[i]) && !IsIndexZero(store->indices[i])) {
+      ++num_load_index_zero;
+      continue;
+    }
     bool found = false;
     for (size_t j = i; j < store->indices.size(); ++j) {
       ir::_Var_* load_var = load->indices[i].as_var();
@@ -445,7 +453,7 @@ bool IsBroadcastSBlock(ir::Expr block) {
       return false;
     }
   }
-  return load->indices.size() < store->indices.size();
+  return load->indices.size() - num_load_index_zero < store->indices.size();
 }
 
 std::vector<ir::Var> IndicesToVars(const std::vector<ir::Expr>& indices) {

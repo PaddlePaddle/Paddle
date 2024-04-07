@@ -49,7 +49,7 @@ set_tests_properties(test_loop PROPERTIES TIMEOUT 180)
 set_tests_properties(test_mnist_amp PROPERTIES TIMEOUT 240)
 
 if(TEST test_resnet_amp)
-  set_tests_properties(test_resnet_amp PROPERTIES TIMEOUT 240)
+  set_tests_properties(test_resnet_amp PROPERTIES TIMEOUT 360)
 endif()
 
 if(NOT WIN32)

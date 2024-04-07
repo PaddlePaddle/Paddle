@@ -71,7 +71,7 @@ class XPUContext : public DeviceContext,
   // resource as external, and will not delete any resource when destructing.
   void SetXContext(xpu::Context*, int i = 0);
 
-  void SetL3Cache(int l3_size = 1024, int i = 0);
+  void SetL3Cache(int64_t l3_size = 1024, int i = 0);
 
   void SetXpuVersion(int version);
 

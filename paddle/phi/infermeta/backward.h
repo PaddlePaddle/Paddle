@@ -36,6 +36,14 @@ void AngleGradInferMeta(const MetaTensor& x,
                         const MetaTensor& out_grad,
                         MetaTensor* x_grad);
 
+void BatchFCGradInferMeta(const MetaTensor& input,
+                          const MetaTensor& w,
+                          const MetaTensor& bias,
+                          const MetaTensor& out_grad,
+                          MetaTensor* intput_grad,
+                          MetaTensor* w_grad,
+                          MetaTensor* bias_grad);
+
 void BilinearGradInferMeta(const MetaTensor& x,
                            const MetaTensor& y,
                            const MetaTensor& weight,
@@ -202,6 +210,7 @@ void FusedRopeGradInferMeta(const MetaTensor& sin,
                             const MetaTensor& dout_v,
                             bool use_neox_rotary_style,
                             bool time_major,
+                            float rotary_emb_base,
                             MetaTensor* dq,
                             MetaTensor* dk,
                             MetaTensor* dv);
@@ -373,6 +382,9 @@ void NanmedianGradInferMeta(const MetaTensor& x,
                             const std::string& mode,
                             MetaTensor* x_grad);
 
+void PartialConcatGradInferMeta(const std::vector<const MetaTensor*>& xs,
+                                std::vector<MetaTensor*> x_grads);
+
 void PartialSumGradInferMeta(const std::vector<const MetaTensor*>& xs,
                              std::vector<MetaTensor*> x_grads);
 
@@ -418,6 +430,16 @@ void PsroiPoolGradInferMeta(const MetaTensor& x,
                             int output_channels,
                             float spatial_scale,
                             MetaTensor* dx);
+
+void RankAttentionGradInferMeta(const MetaTensor& x,
+                                const MetaTensor& rank_offset,
+                                const MetaTensor& rank_param,
+                                const MetaTensor& input_help,
+                                const MetaTensor& ins_rank,
+                                const MetaTensor& out_grad,
+                                int max_rank,
+                                int max_size,
+                                MetaTensor* rank_param_grad);
 
 void RealAndImagGradInferMeta(const MetaTensor& out_grad, MetaTensor* dx);
 

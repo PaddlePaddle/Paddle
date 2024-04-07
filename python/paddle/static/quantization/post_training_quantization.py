@@ -318,14 +318,10 @@ class PostTrainingQuantization:
         ), "The algo should be KL, hist, mse, avg, abs_max, min_max or ptf."
         assert (
             activation_quantize_type in self._support_activation_quantize_type
-        ), "The activation_quantize_type ({}) should in ({}).".format(
-            activation_quantize_type, self._support_activation_quantize_type
-        )
+        ), f"The activation_quantize_type ({activation_quantize_type}) should in ({self._support_activation_quantize_type})."
         assert (
             weight_quantize_type in self._support_weight_quantize_type
-        ), "The weight_quantize_type ({}) should in ({}).".format(
-            weight_quantize_type, self._support_weight_quantize_type
-        )
+        ), f"The weight_quantize_type ({weight_quantize_type}) should in ({self._support_weight_quantize_type})."
 
         # Save input params
         self._bias_correction = bias_correction
@@ -418,9 +414,7 @@ class PostTrainingQuantization:
                 quant_bits=weight_bits,
             )
         else:
-            assert "Deploy Backend {} not support, please choose one of {}.".format(
-                deploy_backend, support_deploy_backend
-            )
+            assert f"Deploy Backend {deploy_backend} not support, please choose one of {support_deploy_backend}."
 
     def quantize(self):
         '''
@@ -1352,17 +1346,13 @@ class PostTrainingQuantization:
                 out_var_name not in threshold_map
             ):
                 _logger.warning(
-                    "{} is zero-size tensor and unable to calibrate, so skip quant it.".format(
-                        out_var_name
-                    )
+                    f"{out_var_name} is zero-size tensor and unable to calibrate, so skip quant it."
                 )
                 return
             else:
                 assert (
                     out_var_name in threshold_map
-                ), "The output ({}) of {} node does not have threshold.".format(
-                    out_var_name, op_node.type
-                )
+                ), f"The output ({out_var_name}) of {op_node.type} node does not have threshold."
             if self._onnx_format:
                 # For easy extension, every var_node set a dict to save parameters of quant.
                 self._calibration_scales[out_var_name] = {}
@@ -1640,9 +1630,7 @@ class WeightQuantization:
         ], "Input error: weight_bits should be 8 or 16."
         assert (
             weight_quantize_type in self._supported_weight_quantize_type
-        ), "Input error: weight_quantize_type should in {}".format(
-            self._supported_weight_quantize_type
-        )
+        ), f"Input error: weight_quantize_type should in {self._supported_weight_quantize_type}"
 
         quantized_model_dir = os.path.join(save_model_dir, "quantized_model")
         self._quantize_weight_to_int(

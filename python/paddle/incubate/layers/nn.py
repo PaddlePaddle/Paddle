@@ -841,10 +841,8 @@ def tdm_sampler(
     if len(neg_samples_num_list) != len(layer_node_num_list):
         raise ValueError(
             "The shape of negative samples list must match the shape of layers. "
-            "But received len of neg_samples_num_list: {},"
-            "and len of layer_node_num_list: {}, please check your input.".format(
-                len(neg_samples_num_list), len(layer_node_num_list)
-            )
+            f"But received len of neg_samples_num_list: {len(neg_samples_num_list)},"
+            f"and len of layer_node_num_list: {len(layer_node_num_list)}, please check your input."
         )
     assert leaf_node_num is not None, "leaf_node_num should not be None here."
 
@@ -858,13 +856,8 @@ def tdm_sampler(
         if neg_samples_num_list[layer_idx] >= layer_node_num_list[layer_idx]:
             raise ValueError(
                 "The number of negative samples must be less than the number of nodes "
-                "in the layer {}, But received negative nums {}, and num of node at layer {} "
-                "is {}, please check your input.".format(
-                    layer_idx,
-                    neg_samples_num_list[layer_idx],
-                    layer_idx,
-                    layer_node_num_list[layer_idx],
-                )
+                f"in the layer {layer_idx}, But received negative nums {neg_samples_num_list[layer_idx]}, and num of node at layer {layer_idx} "
+                f"is {layer_node_num_list[layer_idx]}, please check your input."
             )
     assert (
         leaf_node_num < node_nums
@@ -1317,8 +1310,8 @@ def fused_bn_add_act(
         y (Tensor): The rank of input tensor can be 2, 3, 4, 5. The data type
             is float16.
         momentum (float|Tensor, optional): The value used for the moving_mean and
-            moving_var computation. This should be a float number or a tensor with
-            shape [1] and data type as float32. The updated formula is:
+            moving_var computation. This should be a float number or a 0-D Tensor with
+            shape [] and data type as float32. The updated formula is:
             :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
             :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
             Default is 0.9.

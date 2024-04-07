@@ -70,9 +70,7 @@ def broadcast_shape(matA, matB):
             Broadshape.append(max(shapeA[idx], shapeB[idx]))
         else:
             raise Exception(
-                'shapeA and shapeB should be broadcasted, but got {} and {}'.format(
-                    shapeA, shapeB
-                )
+                f'shapeA and shapeB should be broadcasted, but got {shapeA} and {shapeB}'
             )
     bsA = Broadshape + list(shapeA[-2:])
     bsB = Broadshape + list(shapeB[-2:])

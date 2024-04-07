@@ -554,9 +554,7 @@ def _check_no_undefined_var(outs, names, branch_name):
     for var, name in zip(list(outs), names):
         if isinstance(var, UndefinedVar):
             raise ValueError(
-                "Required '{}' must be initialized both in if-else branch, but found it not initialized in '{}'.".format(
-                    name, branch_name
-                )
+                f"Required '{name}' must be initialized both in if-else branch, but found it not initialized in '{branch_name}'."
             )
 
 
@@ -734,9 +732,7 @@ def convert_var_dtype(var, dtype):
             'int32',
             'int64',
             'uint8',
-        ], "The dtype of var {} is {}, which is not supported in the cast op.".format(
-            var.name, src_dtype
-        )
+        ], f"The dtype of var {var.name} is {src_dtype}, which is not supported in the cast op."
         assert dtype in [
             'bool',
             'int',

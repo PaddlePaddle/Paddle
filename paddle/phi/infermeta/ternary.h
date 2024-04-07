@@ -53,6 +53,11 @@ void ArangeTensorInferMeta(const MetaTensor& start,
                            const MetaTensor& step,
                            MetaTensor* out);
 
+void BatchFCInferMeta(const MetaTensor& input,
+                      const MetaTensor& w,
+                      const MetaTensor& bias,
+                      MetaTensor* out);
+
 void BoxCoderInferMeta(const MetaTensor& prior_box,
                        const MetaTensor& prior_box_var,
                        const MetaTensor& target_box,
@@ -204,6 +209,15 @@ void RandomRoutingInferMeta(const MetaTensor& prob,
                             const MetaTensor& topk_value,
                             const MetaTensor& topk_idx,
                             MetaTensor* out);
+
+void RankAttentionInferMeta(const MetaTensor& x,
+                            const MetaTensor& rank_offset,
+                            const MetaTensor& rank_param,
+                            int max_rank,
+                            int max_size,
+                            MetaTensor* input_help,
+                            MetaTensor* out,
+                            MetaTensor* ins_rank);
 
 void RoiAlignInferMeta(const MetaTensor& x,
                        const MetaTensor& boxes,

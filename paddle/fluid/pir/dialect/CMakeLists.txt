@@ -264,6 +264,9 @@ file(GLOB_RECURSE dist_dialect_srcs
 set(op_dialect_srcs ${op_dialect_srcs} ${dist_dialect_srcs})
 # endif()
 set(op_dialect_deps phi common pir type_info string_helper)
+if(WITH_ROCM)
+  set(op_dialect_deps ${op_dialect_deps} global_utils)
+endif()
 
 cc_library(
   op_dialect

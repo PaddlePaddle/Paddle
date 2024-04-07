@@ -313,6 +313,7 @@ class TestNoBackwardAPIStatic(unittest.TestCase):
         )[0]
         np.testing.assert_array_equal(res, [1.0, 2.0, 3.0, 4.0, 5.0])
 
+    @test_with_pir_api
     def test_normal(self):
         mean = paddle.full([], 0.0)
         std = paddle.full([], 0.0)

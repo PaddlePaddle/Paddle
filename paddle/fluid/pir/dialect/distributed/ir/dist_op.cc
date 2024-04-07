@@ -21,6 +21,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/ir_context.h"
 
 namespace paddle {
@@ -155,6 +156,7 @@ void ShardTensorOp::Build(pir::Builder& builder,
                                                 tensor_dist_attr,
                                                 local_shape);
   argument.AddOutput(out_dist_tensor_type);
+  ::pir::PassStopGradientsDefaultly(argument);
 }
 
 void ReShardOp::VerifySig() {

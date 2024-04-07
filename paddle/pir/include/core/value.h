@@ -21,6 +21,8 @@
 
 namespace pir {
 class Operation;
+using PropertiesDeleter = void (*)(void *);
+using Property = std::pair<void *, PropertiesDeleter>;
 
 namespace detail {
 class ValueImpl;
@@ -115,6 +117,10 @@ class IR_API Value {
   }
 
   void set_attribute(const std::string &key, Attribute value);
+
+  void set_property(const std::string &key, const Property &value);
+
+  void *property(const std::string &name) const;
 
  protected:
   detail::ValueImpl *impl_{nullptr};

@@ -234,6 +234,20 @@ void NaiveExecutor::RegisterInputHook(const HookFunc &hookfunc) {
   }
 }
 
+void NaiveExecutor::RegisterOutputHook(const PirHookFunc &hookfunc) {
+  pir_output_hookfuncs_.push_back(hookfunc);
+  if (interpreter_core_) {
+    interpreter_core_->SetOutputHooks(pir_output_hookfuncs_);
+  }
+}
+
+void NaiveExecutor::RegisterInputHook(const PirHookFunc &hookfunc) {
+  pir_input_hookfuncs_.push_back(hookfunc);
+  if (interpreter_core_) {
+    interpreter_core_->SetInputHooks(pir_input_hookfuncs_);
+  }
+}
+
 void NaiveExecutor::MakeReusePlan(
     const std::unordered_map<std::string, std::string> &reuse_table) {
   std::unordered_map<std::string, std::unordered_set<std::string>> clusters;

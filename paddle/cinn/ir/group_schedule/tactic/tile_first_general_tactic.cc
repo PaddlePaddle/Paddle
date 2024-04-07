@@ -28,15 +28,6 @@ bool IsInnerThreadSpatialLoopGT(const ScheduleConfig& config, int num) {
   return config.tile_config.spatial_inner_num > num;
 }
 
-bool IsPerThreadReduceGELoopExtent(const ScheduleConfig& config,
-                                   const ir::Expr& loop) {
-  if (loop.As<ir::For>()->extent.is_constant()) {
-    int extent = ir::GetLoopExtent(loop);
-    return extent <= config.tile_config.tree_reduce_num;
-  }
-  return false;
-}
-
 bool IsReduceBlock(const ScheduleConfig& config, const std::string& block_id) {
   return config.base_info->reduce_tensor_names.count(block_id) > 0;
 }
@@ -87,7 +78,7 @@ void TileFirstGeneralTactic::Init(ScheduleContext* context) {
   reduce_current_axis_ =
       IsInnerThreadSpatialLoopGT(context_->config, 1) ? 2 : 1;
   if (context_->config.base_info->is_reduce_all) {
-    reduce_current_axis_ = 0;
+    reduce_current_axis_ = 1;
   }
   // reduce axis have be re-order to last
   vec_flatten_axis_.clear();
@@ -106,12 +97,12 @@ void TileFirstGeneralTactic::Init(ScheduleContext* context) {
 void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
                                    const std::string& block_id) {
   if (ir::IsReduceInitTensorName(block_id)) return;
-  MergeFlattenAxis(sch, block_id);
-  VLOG(6) << "After MergeFlattenAxis on block: [" << block_id
-          << "], loop nest:\n"
-          << sch->GetLoops(block_id)[0];
   MergeReduceAxis(sch, block_id);
   VLOG(6) << "After MergeReduceAxis on block: [" << block_id
+          << "], loop nest:\n"
+          << sch->GetLoops(block_id)[0];
+  MergeFlattenAxis(sch, block_id);
+  VLOG(6) << "After MergeFlattenAxis on block: [" << block_id
           << "], loop nest:\n"
           << sch->GetLoops(block_id)[0];
   SplitSptialInner(sch, block_id);
@@ -149,18 +140,8 @@ void TileFirstGeneralTactic::MergeFlattenAxis(ir::IRSchedule* sch,
 
 void TileFirstGeneralTactic::MergeReduceAxis(ir::IRSchedule* sch,
                                              const std::string& block_id) {
-  // should down reduce axis
-  std::vector<int32_t> fuse_axis = vec_reduce_axis_;
-  if (vec_reduce_axis_.size() >= 2) {
-    for (size_t i = 0; i < fuse_axis.size(); ++i) {
-      if (vec_flatten_axis_.size() > 2) {
-        fuse_axis[i] -= (vec_flatten_axis_.size() - 1);
-      }
-    }
-  }
-
   if (vec_reduce_axis_.size() >= 2 && !ir::IsReduceInitTensorName(block_id)) {
-    sch->Fuse(block_id, fuse_axis);
+    sch->Fuse(block_id, vec_reduce_axis_);
   }
 }
 
@@ -183,10 +164,6 @@ void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
 
   auto loops = sch->GetLoops(block_id);
   auto reduce_loop = loops[reduce_current_axis_].As<ir::For>();
-
-  if (IsPerThreadReduceGELoopExtent(context_->config, reduce_loop)) {
-    return;
-  }
 
   if (FLAGS_support_reduce_stride_read) {
     if (context_->config.base_info->reduce_numel <= 256) {

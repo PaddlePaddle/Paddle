@@ -444,6 +444,14 @@ def all_stop_gradient_true(block):
     return True
 
 
+def all_input_stop_gradient_true(list_of_list):
+    for list_ in list_of_list:
+        for stop_gradient in list_:
+            if stop_gradient is False:
+                return False
+    return True
+
+
 def all_output_grad_none(list_of_list):
     for list_ in list_of_list:
         for value in list_:

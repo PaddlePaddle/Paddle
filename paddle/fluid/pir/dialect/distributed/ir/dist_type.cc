@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/type_storage.h"
+#include "paddle/pir/include/core/ir_context.h"
 
 namespace paddle {
 namespace dialect {
@@ -42,11 +43,13 @@ common::DDim InferLocalDDim(const common::DDim& global_ddim,
                             TensorDistAttribute dist_attr) {
   auto& mesh_dim = dist_attr.process_mesh_attr().shape();
   auto& dim_mapping = dist_attr.dims_mapping();
-  PADDLE_ENFORCE_EQ(
-      global_ddim.size(),
-      dim_mapping.size(),
-      ::common::errors::PreconditionNotMet(
-          "The global ddim size must equal to dim_mapping's size!"));
+  PADDLE_ENFORCE_EQ(global_ddim.size(),
+                    dim_mapping.size(),
+                    ::common::errors::PreconditionNotMet(
+                        "The global ddim size must equal to dim_mapping's "
+                        "size, but bot %d vs %d",
+                        global_ddim.size(),
+                        dim_mapping.size()));
   common::DDim local_ddim(global_ddim);
   for (size_t i = 0; i < dim_mapping.size(); ++i) {
     if (dim_mapping[i] != -1) {
@@ -55,6 +58,15 @@ common::DDim InferLocalDDim(const common::DDim& global_ddim,
     }
   }
   return local_ddim;
+}
+
+auto DistDenseTensorType::local_type() const -> Type {
+  return pir::DenseTensorType::get(pir::IrContext::Instance(),
+                                   dtype(),
+                                   local_ddim(),
+                                   data_layout(),
+                                   lod(),
+                                   offset());
 }
 
 }  // namespace dialect

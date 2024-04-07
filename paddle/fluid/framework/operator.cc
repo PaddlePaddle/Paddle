@@ -65,7 +65,7 @@ PD_DECLARE_bool(benchmark);
 COMMON_DECLARE_bool(check_nan_inf);
 PD_DECLARE_bool(enable_unused_var_check);
 COMMON_DECLARE_bool(run_kp_kernel);
-COMMON_DECLARE_bool(enable_host_event_recorder_hook);
+PHI_DECLARE_bool(enable_host_event_recorder_hook);
 
 namespace paddle {
 namespace framework {
@@ -96,6 +96,12 @@ static DDim GetDimsDebug(const Scope& scope,
     }
   } else if (var->IsType<Strings>()) {
     return DDim({static_cast<int64_t>(var->Get<Strings>().size())});
+  } else if (var->IsType<phi::SparseCooTensor>()) {
+    const phi::SparseCooTensor& tensor = var->Get<phi::SparseCooTensor>();
+    return tensor.dims();
+  } else if (var->IsType<phi::SparseCsrTensor>()) {
+    const phi::SparseCsrTensor& tensor = var->Get<phi::SparseCsrTensor>();
+    return tensor.dims();
   } else {
     return DDim({-1});
   }
@@ -128,6 +134,18 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
     }
   } else if (var->IsType<Strings>()) {
     return "strings";
+  } else if (var->IsType<phi::SparseCooTensor>()) {
+    const phi::SparseCooTensor& tensor = var->Get<phi::SparseCooTensor>();
+    if (UNLIKELY(!tensor.initialized())) {
+      return "";
+    }
+    return DataTypeToString(framework::TransToProtoVarType(tensor.dtype()));
+  } else if (var->IsType<phi::SparseCsrTensor>()) {
+    const phi::SparseCsrTensor& tensor = var->Get<phi::SparseCsrTensor>();
+    if (UNLIKELY(!tensor.initialized())) {
+      return "";
+    }
+    return DataTypeToString(framework::TransToProtoVarType(tensor.dtype()));
   } else {
     return "";
   }
