@@ -1,4 +1,3 @@
-
 // Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,10 +23,10 @@ namespace phi {
 template <typename T, typename Context>
 void SumAsGradKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const DenseTensor& y,
+                     const DenseTensor& target,
                      const DenseTensor& out_grad,
                      DenseTensor* x_grad) {
-  auto reduce_dim = phi::funcs::GetReduceDims(x, y);
+  auto reduce_dim = phi::funcs::GetReduceDims(x, target);
   bool reduce_all = recompute_reduce_all(x, reduce_dim);
   ReduceGradKernel<Context, T, funcs::SumGradFunctor, true>(dev_ctx,
                                                             x,

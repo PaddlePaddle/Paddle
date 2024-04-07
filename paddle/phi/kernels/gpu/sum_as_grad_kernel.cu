@@ -25,10 +25,10 @@ namespace phi {
 template <typename T, typename Context>
 void SumAsGradKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const DenseTensor& y,
+                     const DenseTensor& target,
                      const DenseTensor& out_grad,
                      DenseTensor* x_grad) {
-  auto reduce_dim = phi::funcs::GetReduceDims(x, y);
+  auto reduce_dim = phi::funcs::GetReduceDims(x, target);
   bool reduce_all = recompute_reduce_all(x, reduce_dim);
   auto update_dims = common::vectorize(x.dims());
   for (auto i : reduce_dim) {

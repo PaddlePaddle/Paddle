@@ -2770,7 +2770,7 @@
   backward : stanh_grad
 
 - op : sum_as
-  args : (Tensor x, Tensor y)
+  args : (Tensor x, Tensor target)
   output : Tensor(out)
   infer_meta :
     func : SumAsInferMeta

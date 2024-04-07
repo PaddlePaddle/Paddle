@@ -24,9 +24,9 @@ namespace phi {
 template <typename T, typename Context>
 void SumAsKernel(const Context& dev_ctx,
                  const DenseTensor& x,
-                 const DenseTensor& y,
+                 const DenseTensor& target,
                  DenseTensor* out) {
-  auto reduce_dim = phi::funcs::GetReduceDims(x, y);
+  auto reduce_dim = phi::funcs::GetReduceDims(x, target);
   dev_ctx.template Alloc<T>(out);
   phi::SumKernel<T, Context>(dev_ctx, x, reduce_dim, out->type(), false, out);
 }

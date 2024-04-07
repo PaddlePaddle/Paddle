@@ -24,8 +24,8 @@ np.random.seed(100)
 paddle.seed(100)
 
 
-def sum_as_net(x, y):
-    return paddle.sum_as(x, y)
+def sum_as_net(x, target):
+    return paddle.sum_as(x, target)
 
 
 def apply_to_static(net, use_cinn, input_spec=None):
@@ -49,7 +49,7 @@ class TestSumAsOp(OpTest):
 
         self.python_api = paddle.sum_as
         self.op_type = "sum_as"
-        self.inputs = {'x': self.x, 'y': self.y}
+        self.inputs = {'x': self.x, 'target': self.y}
         self.outputs = {'out': self.out}
         self.if_enable_cinn()
 

@@ -1,4 +1,3 @@
-
 // Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,9 +23,9 @@ namespace phi {
 template <typename T, typename Context>
 void SumAsKernel(const Context& dev_ctx,
                  const DenseTensor& x,
-                 const DenseTensor& y,
+                 const DenseTensor& target,
                  DenseTensor* out) {
-  auto reduce_dim = phi::funcs::GetReduceDims(x, y);
+  auto reduce_dim = phi::funcs::GetReduceDims(x, target);
   bool reduce_all = recompute_reduce_all(x, reduce_dim);
   phi::Reduce<CPUContext, T, phi::funcs::SumFunctor>(
       dev_ctx, x, reduce_all, reduce_dim, false, out->type(), out);
