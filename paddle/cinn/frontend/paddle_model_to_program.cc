@@ -241,10 +241,11 @@ void PaddleModelToProgram::AddOpMapper_reshape2() {
 void PaddleModelToProgram::AddOpMapper_concat() {
   op_mappers_["concat"] = [&](const paddle::cpp::OpDesc& op_desc) {
     int input_size = op_desc.Input("X").size();
-    PADDLE_ENFORCE_GE(input_size, 2UL,
+    PADDLE_ENFORCE_GE(input_size,
+                      2UL,
                       phi::errors::InvalidArgument(
                           "The input size of the concat op is less than 2! "
-                          "Please check.");
+                          "Please check."));
     std::vector<Variable> input_vars;
     for (int i = 0; i < input_size; i++) {
       auto name = op_desc.Input("X")[i];
@@ -253,7 +254,8 @@ void PaddleModelToProgram::AddOpMapper_concat() {
     int axis = op_desc.GetAttr<int>("axis");
     VLOG(4) << "axis in op concat is : " << axis;
     auto out = net_builder_->Concat(input_vars, axis);
-    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1UL,
+    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(),
+                      1UL,
                       phi::errors::InvalidArgument(
                           "The output size of the concat op is not equal to 1! "
                           "Please check."));
@@ -286,10 +288,12 @@ void PaddleModelToProgram::AddOpMapper_assign() {
 
 void PaddleModelToProgram::AddOpMapper_fill_constant() {
   op_mappers_["fill_constant"] = [&](const paddle::cpp::OpDesc& op_desc) {
-    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1UL,
-                      phi::errors::InvalidArgument(
-                      "The output size of the fill_constant op is not equal "
-                      "to 1! Please check.");
+    PADDLE_ENFORCE_EQ(
+        op_desc.Output("Out").size(),
+        1UL,
+        phi::errors::InvalidArgument(
+            "The output size of the fill_constant op is not equal "
+            "to 1! Please check."));
     auto out_name = op_desc.Output("Out").front();
 
     CHECK(op_desc.HasAttr("shape"));
@@ -635,8 +639,8 @@ void PaddleModelToProgram::AddOpMapper_conv2d() {
     PADDLE_ENFORCE_EQ(
         op_desc.Input("Input").size(),
         1UL,
-        phi::errors::InvalidArgument(
-            "The input size of the conv2d op is not equal to 1! Please check."))
+        phi::errors::InvalidArgument("The input size of the conv2d op is not "
+                                     "equal to 1! Please check."));
     auto x_name = op_desc.Input("Input").front();
     PADDLE_ENFORCE_EQ(
         op_desc.Input("Filter").size(),
@@ -679,8 +683,8 @@ void PaddleModelToProgram::AddOpMapper_pool2d() {
     PADDLE_ENFORCE_EQ(
         op_desc.Input("X").size(),
         1UL,
-        phi::errors::InvalidArgument(
-            "The input size of the pool2d op is not equal to 1! Please check."))
+        phi::errors::InvalidArgument("The input size of the pool2d op is not "
+                                     "equal to 1! Please check."));
     auto x_name = op_desc.Input("X").front();
     PADDLE_ENFORCE_EQ(
         op_desc.Output("Out").size(),
