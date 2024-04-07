@@ -18,6 +18,7 @@
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
 
+#include "paddle/phi/common/data_type.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
@@ -60,11 +61,6 @@ class Fused2EmbeddingEltwiseLayernormPattern
         return false;
       }
 
-      auto bias_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("bias"));
-      if (w1_dtype != bias_dtype) {
-        return false;
-      }
-
       auto x1_shape = pir::GetShapeFromValue(match_ctx.Tensor("x1"));
       auto x2_shape = pir::GetShapeFromValue(match_ctx.Tensor("x2"));
       if (x1_shape.size() != x2_shape.size()) {
@@ -81,12 +77,24 @@ class Fused2EmbeddingEltwiseLayernormPattern
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
-    auto &combine_op_1 = res.Op(pir::CombineOp::name());
+    const auto &combine_op_1 = res.Op(pir::CombineOp::name());
     combine_op_1({&res.Tensor("x1"), &res.Tensor("x2")},
                  {&res.Tensor("combine1_out")});
-    auto &combine_op_2 = res.Op(pir::CombineOp::name());
+    const auto &combine_op_2 = res.Op(pir::CombineOp::name());
     combine_op_2({&res.Tensor("w1"), &res.Tensor("w2")},
                  {&res.Tensor("combine2_out")});
+
+    const auto &cast_op_dtype = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> phi::DataType {
+          auto w1_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w1"));
+          return paddle::dialect::TransToPhiDataType(w1_dtype);
+        });
+    const auto &cast_op_1 =
+        res.Op(paddle::dialect::CastOp::name(), {{"dtype", cast_op_dtype}});
+    res.Tensor("casted_bias") = cast_op_1(res.Tensor("bias"));
+    const auto &cast_op_2 =
+        res.Op(paddle::dialect::CastOp::name(), {{"dtype", cast_op_dtype}});
+    res.Tensor("casted_scale") = cast_op_2(res.Tensor("scale"));
 
     const auto &fused_embedding_eltwise_layernorm_op =
         res.Op(paddle::dialect::FusedEmbeddingEltwiseLayernormOp::name(),
@@ -95,8 +103,8 @@ class Fused2EmbeddingEltwiseLayernormPattern
                }});
     fused_embedding_eltwise_layernorm_op({&res.Tensor("combine1_out"),
                                           &res.Tensor("combine2_out"),
-                                          &res.Tensor("bias"),
-                                          &res.Tensor("scale")},
+                                          &res.Tensor("casted_bias"),
+                                          &res.Tensor("casted_scale")},
                                          {&res.Tensor("layernorm_out")});
   }
 };
@@ -144,11 +152,6 @@ class Fused3EmbeddingEltwiseLayernormPattern
         return false;
       }
 
-      auto bias_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("bias"));
-      if (w1_dtype != bias_dtype) {
-        return false;
-      }
-
       auto x1_shape = pir::GetShapeFromValue(match_ctx.Tensor("x1"));
       auto x2_shape = pir::GetShapeFromValue(match_ctx.Tensor("x2"));
       auto x3_shape = pir::GetShapeFromValue(match_ctx.Tensor("x3"));
@@ -174,6 +177,18 @@ class Fused3EmbeddingEltwiseLayernormPattern
     combine_op_2({&res.Tensor("w1"), &res.Tensor("w2"), &res.Tensor("w3")},
                  {&res.Tensor("combine2_out")});
 
+    const auto &cast_op_dtype = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> phi::DataType {
+          auto w1_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w1"));
+          return paddle::dialect::TransToPhiDataType(w1_dtype);
+        });
+    const auto &cast_op_1 =
+        res.Op(paddle::dialect::CastOp::name(), {{"dtype", cast_op_dtype}});
+    res.Tensor("casted_bias") = cast_op_1(res.Tensor("bias"));
+    const auto &cast_op_2 =
+        res.Op(paddle::dialect::CastOp::name(), {{"dtype", cast_op_dtype}});
+    res.Tensor("casted_scale") = cast_op_2(res.Tensor("scale"));
+
     const auto &fused_embedding_eltwise_layernorm_op =
         res.Op(paddle::dialect::FusedEmbeddingEltwiseLayernormOp::name(),
                {{
@@ -181,8 +196,8 @@ class Fused3EmbeddingEltwiseLayernormPattern
                }});
     fused_embedding_eltwise_layernorm_op({&res.Tensor("combine1_out"),
                                           &res.Tensor("combine2_out"),
-                                          &res.Tensor("bias"),
-                                          &res.Tensor("scale")},
+                                          &res.Tensor("casted_bias"),
+                                          &res.Tensor("casted_scale")},
                                          {&res.Tensor("layernorm_out")});
   }
 };

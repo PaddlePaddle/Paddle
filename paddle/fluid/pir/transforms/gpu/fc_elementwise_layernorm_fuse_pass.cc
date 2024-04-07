@@ -53,11 +53,9 @@ class FcElementwiseLayerNormFusePattern : public paddle::drr::DrrPatternBase {
          &pat.Tensor("layernorm_variance")});
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      auto bias0_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("bias0"));
-      auto bias1_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("bias1"));
-      if (bias0_dtype != bias1_dtype ||
-          (!bias0_dtype.isa<pir::Float16Type>() &&
-           !bias0_dtype.isa<pir::Float32Type>())) {
+      auto x_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("x"));
+      if (!x_dtype.isa<pir::Float16Type>() &&
+          !x_dtype.isa<pir::Float32Type>()) {
         return false;
       }
 
@@ -76,6 +74,18 @@ class FcElementwiseLayerNormFusePattern : public paddle::drr::DrrPatternBase {
     });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
+    const auto &cast_op_dtype = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> phi::DataType {
+          auto x_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("x"));
+          return paddle::dialect::TransToPhiDataType(x_dtype);
+        });
+    const auto &cast_op_1 =
+        res.Op(paddle::dialect::CastOp::name(), {{"dtype", cast_op_dtype}});
+    res.Tensor("casted_bias1") = cast_op_1(res.Tensor("bias1"));
+    const auto &cast_op_2 =
+        res.Op(paddle::dialect::CastOp::name(), {{"dtype", cast_op_dtype}});
+    res.Tensor("casted_scale") = cast_op_2(res.Tensor("scale"));
+
     const auto &fused_fc_elementwise_op =
         res.Op(paddle::dialect::FusedFcElementwiseLayernormOp::name(),
                {{
@@ -88,8 +98,8 @@ class FcElementwiseLayerNormFusePattern : public paddle::drr::DrrPatternBase {
                              &res.Tensor("w"),
                              &res.Tensor("y"),
                              &res.Tensor("bias0"),
-                             &res.Tensor("scale"),
-                             &res.Tensor("bias1")},
+                             &res.Tensor("casted_scale"),
+                             &res.Tensor("casted_bias1")},
                             {&res.Tensor("layernorm_out"),
                              &res.Tensor("layernorm_mean"),
                              &res.Tensor("layernorm_variance")});
