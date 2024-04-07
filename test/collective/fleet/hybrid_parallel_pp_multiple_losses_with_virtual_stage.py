@@ -33,9 +33,10 @@ def set_random_seed(seed, dp_id, rank_id):
     paddle.seed(seed + dp_id)
 
 
-batch_size = 8
+batch_size = 24
 length = 8
-micro_batch_size = 2
+micro_batch_size = 4
+num_virtual_pipeline_stages = 2
 vocab_size = 128
 hidden_size = 16
 d_model = hidden_size
@@ -85,7 +86,6 @@ class TransformerNet(Layer):
         product = paddle.scale(product, scale=d_model**-0.5)
 
         weights = F.softmax(product + mask)
-
         tgt = paddle.matmul(weights, v)
         residual = tgt
         tgt = self.norm1(tgt)
@@ -141,7 +141,6 @@ class ModelPipe(PipelineLayer):
     def __init__(self, topology, transformer_layer_num: int = 6):
         self.descs = []
         self.descs.append(LayerDesc(EmbeddingPipe))
-
         for x in range(transformer_layer_num):
             self.descs.append(LayerDesc(TransformerNetPipe))
 
@@ -151,6 +150,7 @@ class ModelPipe(PipelineLayer):
             layers=self.descs,
             loss_fn=[CriterionPipe(), MSEPipe(), L1Pipe()],
             topology=topology,
+            num_virtual_pipeline_stages=num_virtual_pipeline_stages,
             seg_method="layer:TransformerNetPipe",
         )
 
@@ -160,11 +160,14 @@ class TestDistPPTraining(unittest.TestCase):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 1
         self.data_parallel_size = 1
-        self.pipeline_parallel_size = 2
+        self.pipeline_parallel_size = 3
         strategy.hybrid_configs = {
             "dp_degree": self.data_parallel_size,
             "mp_degree": self.model_parallel_size,
             "pp_degree": self.pipeline_parallel_size,
+            "pp_configs": {
+                "enable_timer": True,
+            },
         }
         strategy.pipeline_configs = {
             "accumulate_steps": batch_size // micro_batch_size,
