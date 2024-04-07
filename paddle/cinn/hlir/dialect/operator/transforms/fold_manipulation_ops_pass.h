@@ -21,7 +21,7 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-std::unique_ptr<pir::Pass> CreateRemoveUnchangedReshapePass();
+std::unique_ptr<pir::Pass> CreateFoldManipulationOpsPass();
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn
