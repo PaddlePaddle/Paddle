@@ -91,7 +91,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
         # uint16 is used for casting bfloat16
         dtype = np.dtype("uint16")
     else:
-        dtype = np_dtype
+        dtype = np.dtype(np_dtype)
 
     if dtype in np_type_to_paddle_type.keys():
         return np_type_to_paddle_type[dtype]
