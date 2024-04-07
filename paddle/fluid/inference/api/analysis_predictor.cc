@@ -108,7 +108,7 @@
 #ifdef PADDLE_WITH_CINN
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/assert_dims_expr_util.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_util.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
 #endif
 

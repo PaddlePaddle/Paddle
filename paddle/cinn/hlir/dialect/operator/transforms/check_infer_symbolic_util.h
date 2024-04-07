@@ -18,6 +18,7 @@
 #include <optional>
 #include <functional>
 #include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_manager.h"
 
 namespace cinn {
 namespace dialect {

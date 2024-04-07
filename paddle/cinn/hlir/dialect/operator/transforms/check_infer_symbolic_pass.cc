@@ -47,10 +47,17 @@ class BlockDimExprsAsserter {
       builder_(ir_ctx, block) {}
 
   void AssertDimExprs() {
-    auto ops = block_->GetOperators();
+    const auto ops = [&]{
+      std::vector<const pir::Operation*> ops;
+      ops.reserve(block_->size());
+      for (const auto& op : *block_) {
+        ops.push_back(&op);
+      }
+      return ops;
+    }();
     for (const auto* op : ops) {
       if (op->num_regions() == 0) {
-        AssertDimExprForOutput(*op);
+        AssertDimExprForOutput(op);
       } else {
         AssertOpRegions(op);
       }
@@ -75,14 +82,14 @@ class BlockDimExprsAsserter {
       for (int i = 0; i < op.num_operands(); ++i) {
         pir::Value input = op.operand_source(i);
         std::optional<const symbol::ShapeOrDataDimExprs*> value_dim_exprs =
-            GraphDimExprs4Value(value);
+            GraphDimExprs4Value(input, block_);
         PADDLE_ENFORCE(value_dim_exprs.has_value());
         Visit(input, *value_dim_exprs.value());
       }
     };
     auto NewSymbolReplacedDimExprs = [&](const auto& dim_exprs) {
-      auto NewSymbolReplaced = [](const auto& dim_expr) {
-        if (dim_expr.isa<int64_t>()) return dim_expr;
+      auto NewSymbolReplaced = [shape_analysis](const auto& dim_expr) {
+        if (dim_expr.template isa<int64_t>()) return dim_expr;
         return symbol::DimExpr(shape_analysis->GetNextSymName());
       };
       std::vector<symbol::DimExpr> ret;
@@ -100,17 +107,21 @@ class BlockDimExprsAsserter {
           return symbol::ShapeOrDataDimExprs(
               symbol::TensorShapeOrDataDimExprs(shape));
         } else {
-          auto data = NewSymbolReplacedDimExprs(data.value());
+          auto replaecd_data = NewSymbolReplacedDimExprs(data.value());
           return symbol::ShapeOrDataDimExprs(
-              symbol::TensorShapeOrDataDimExprs(shape, data));
+              symbol::TensorShapeOrDataDimExprs(shape, replaecd_data));
         }
       };
     auto NewSymbolReplacedTensorList =
-      [&](const NewSymbolReplacedTensorList& shape_or_data_list) {
+      [&](const symbol::TensorListShapeOrDataDimExprs& shape_or_data_list) {
         symbol::TensorListShapeOrDataDimExprs ret;
         ret.reserve(shape_or_data_list.size());
         for (auto& shape_or_data : shape_or_data_list) {
-          ret.push_back(NewSymbolReplacedTensor(shape_or_data));
+          const auto& replaced_shape_or_data =
+              NewSymbolReplacedTensor(shape_or_data);
+          using ImplT = symbol::TensorShapeOrDataDimExprs;
+          PADDLE_ENFORCE(replaced_shape_or_data.isa<ImplT>());
+          ret.push_back(replaced_shape_or_data.dyn_cast<ImplT>());
         }
         return symbol::ShapeOrDataDimExprs(ret);
       };
@@ -127,42 +138,45 @@ class BlockDimExprsAsserter {
     });
   }
 
-  OptDimExprs4ValueT MakeOpDimExprs4Value(const pir::Operation& op) {
+  OptDimExprs4ValueT MakeOpDimExprs4Value(const pir::Operation* op) {
     auto shape_analysis = std::make_shared<pir::ShapeConstraintIRAnalysis>();
-    InitLocalShapeAnalysis(op, shape_analysis.get());
-    auto infer_symbolic_shape_interface =
-        op.dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
-    if (!infer_symbolic_shape_interface) {
+    InitLocalShapeAnalysis(*op, shape_analysis.get());
+
+    pir::Operation* mut_op = const_cast<pir::Operation*>(op);
+    auto interface =
+        mut_op->dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
+    if (!interface) {
       PADDLE_THROW(phi::errors::Unimplemented(
-          op.name() + " DOES NOT have InferSymbolicShapeInterface!"));
+          op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
     } else {
-      bool infer_result =
-          infer_symbolic_shape_interface.InferSymbolicShape(shape_analysis);
+      bool infer_result = interface.InferSymbolicShape(shape_analysis.get());
       PADDLE_ENFORCE(
           infer_result,
           "InferSymbolicShape for %s failed.",
-          op.name());
+          op->name());
     }
-    return [shape_analysis](pir::Value value)
+    const auto* my_block = block_;
+    return [shape_analysis, my_block](pir::Value value, const pir::Block* block)
         -> std::optional<const symbol::ShapeOrDataDimExprs*> {
+      if (block != my_block) return std::nullopt;
       if (!shape_analysis->HasShapeOrDataForValue(value)) return std::nullopt;
       return &shape_analysis->GetShapeOrDataForValue(value);
     };
   }
 
   void AssertDimExprForOutput(
-      const pir::Operation& op) {  // NOLINT
+      const pir::Operation* op) {  // NOLINT
     auto OpDimExprs4Value = MakeOpDimExprs4Value(op);
     const auto& inputs = [&]{
       std::vector<pir::Value> inputs;
-      inputs.reserve(op.num_operands())；
-      for (int i = 0; i < op.num_operands(); ++i) {
-        inputs.push_back(op.operand_source(i));
+      inputs.reserve(op->num_operands());
+      for (int i = 0; i < op->num_operands(); ++i) {
+        inputs.push_back(op->operand_source(i));
       }
       return inputs;
     }();
-    for (std::size_t i = 0; i < op.num_results(); ++i) {
-      pir::Value output = op.result(i);
+    for (std::size_t i = 0; i < op->num_results(); ++i) {
+      pir::Value output = op->result(i);
       const auto& shape_or_data_dim_expr = GraphDimExprs4Value(output, block_);
       if (!shape_or_data_dim_expr.has_value()) continue;
       const auto* dim_exprs = shape_or_data_dim_expr.value();
@@ -179,7 +193,8 @@ class BlockDimExprsAsserter {
     auto opt_shape_tensor_from_dim_exprs =
       BuildShapeTensorFromShapeDimExprs(inputs, output, OpDimExprs4Value);
     if (!opt_shape_tensor_from_dim_exprs.has_value()) return;
-    shape_tensor_from_dim_exprs = opt_shape_tensor_from_dim_exprs.value();
+    const auto& shape_tensor_from_dim_exprs =
+        opt_shape_tensor_from_dim_exprs.value();
     auto shape_tensor_from_infer_meta =
       BuildShapeTensorFromInferMeta(output);
     AddAssertEqual(shape_tensor_from_dim_exprs, shape_tensor_from_infer_meta);
@@ -208,7 +223,7 @@ class BlockDimExprsAsserter {
 
   std::optional<pir::Value> BuildShapeTensorFromDimExprs(
       const std::vector<pir::Value>& inputs,
-      pir::Value output,
+      const std::vector<symbol::DimExpr>& dim_exprs,
       const OptDimExprs4ValueT& OpDimExprs4Value) {
   const auto& LocalDimExprs4Value =
       [&](pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
@@ -264,33 +279,6 @@ class BlockDimExprsAsserter {
       .Build<paddle::dialect::AssertOp>(all_eq, lhs_eq_rhs, GetNumel(lhs));
   }
 
-  static std::vector<pir::Value> GetInputs(const pir::Block& block) {
-    const auto& block_ops = [&]{
-      std::set<const pir::Operation*> ops;
-      for (const auto& op : block) {
-        ops.insert(&op);
-      }
-      return ops;
-    }();
-    const auto& IsInput = [&](pir::Value input) {
-      const auto* block_ops = input.defining_op();
-      return ops.count(op) == 0;
-    };
-    std::vector<pir::Value> inputs;
-    const auto& Collected = [&](pir::Value input) {
-      return std::find(inputs.begin(), inputs.end(), input) != inputs.end();
-    };
-    for (const auto& op : block) {
-      for (int i = 0; i < op.num_operands(); ++i) {
-        pir::Value input = op.operand_source(i);
-        if (!IsInput(input)) continue;
-        if (Collected(input)) continue;
-        inputs.emplace_back(&op);
-      }
-    }
-    return inputs;
-  }
-
   OptDimExprs4ValueT GraphDimExprs4Value;
   pir::IrContext* ir_ctx_;
   pir::Block* block_;
@@ -307,7 +295,7 @@ class CheckInferSymbolicPass : public pir::Pass {
   void Run(pir::Operation* op) override {
     for (uint32_t i = 0; i < op->num_regions(); ++i) {
       for (auto& block : op->region(i)) {
-        auto* ir_ctx = IrContext::Instance();
+        auto* ir_ctx = pir::IrContext::Instance();
         BlockDimExprsAsserter asserter(GraphDimExprs4Value, ir_ctx, &block);
         asserter.AssertDimExprs();
       }
