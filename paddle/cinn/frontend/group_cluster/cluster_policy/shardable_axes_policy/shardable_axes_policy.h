@@ -18,15 +18,24 @@
 
 namespace cinn::frontend::group_cluster::policy {
 
-class ShardableAxesPolicy final : virtual public Policy {
+class ShardableAxesRRFusePolicy final : public Policy {
  public:
-  ShardableAxesPolicy(const std::vector<const pir::Operation*>& ops,
-                      const pir::ShapeConstraintIRAnalysis* shape_analysis)
+  ShardableAxesRRFusePolicy(
+      const std::vector<pir::Operation*>& ops,               // NOLINT
+      const pir::ShapeConstraintIRAnalysis* shape_analysis)  // NOLINT
       : axes_info_(ops, shape_analysis) {}
-  bool CanFuse(const PatternNodePtr upstream, const PatternNodePtr downstream);
+  bool CanFuse(const PatternNodePtr& upstream,
+               const PatternNodePtr& downstream) override;
+  std::string Name() { return "ShardableAxesRRFusePolicy"; }
 
  private:
+  bool ReduceTreeGrownCanMerge(const PatternNodePtr&, const PatternNodePtr&);
+  std::optional<ReducePattern> GetDownstreamFromCandidate(
+      const ReducePattern& upstream,
+      const std::vector<ReducePattern>& candidates);
   ShardableAxesInfoManager axes_info_;
+  bool IsDownstreamStmtDependReduceOp(pir::Operation* reduce,
+                                      const StmtPattern& downstream);
 };
 
 }  // namespace cinn::frontend::group_cluster::policy

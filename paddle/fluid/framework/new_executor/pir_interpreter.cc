@@ -37,7 +37,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_legacy_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_mixed_instruction.h"
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
