@@ -980,6 +980,7 @@ class ClusterPartitionUtil:
             device_meshed (list) : The possible device meshes.
         """
         partition_result = ClusterPartitionUtil.factorization(n)
+
         for func in filter:
             partition_result = func(partition_result, n)
         device_meshes = []
@@ -1049,7 +1050,7 @@ class RuleBasedTuner:
                      Default: o1.
     """
 
-    def __init__(self, dist_context, mode="train", level="o1"):
+    def __init__(self, dist_context, mode="train", level="o2"):
         self._dist_context = dist_context
         self._cluster = self._dist_context.cluster
         self._mode = mode
@@ -1191,7 +1192,6 @@ class RuleBasedTuner:
         vars = self._dist_context._serial_main_program.global_block().vars
         for var_name in vars:
             vars[var_name].dist_attr = TensorDistAttr(vars[var_name].desc)
-
         seq = [op.type for op in ops]
 
         while not OperatorClusteringUtil.stop_replace(seq):
@@ -1395,7 +1395,6 @@ class RuleBasedTuner:
                         dist_context.add_dist_tensor_for_program(dist_tensor)
                         has_set_tensor_count += 1
                         has_set_dist_attr_tensors.add(var_id)
-
             # check whether no dist attr in dist context
             if has_set_tensor_count > 0:
                 dist_context.initialize(no_default=True)
@@ -1623,12 +1622,7 @@ class RuleBasedTuner:
         Most of the logic is the same as the update completion in the completer.
         """
         world_ranks = ProcessMesh(
-            list(
-                range(
-                    self._cluster.get_num_machines()
-                    * self._cluster._num_devices_per_machine
-                )
-            )
+            list(range(self._cluster.get_num_machines() * 8))
         )
         dist_tensors = sub_program_dist_context._dist_tensors_for_program
 
@@ -1923,6 +1917,16 @@ class RuleBasedTuner:
         # When the process mesh is 1-D, the selective parallelism can be dp or mp.
         # Because the first layer often contains more ops than other layer, using beam search can find more accurate strategy.
         count = 0
+        max_memory = sys.maxsize
+        if self.cluster._topo:
+            for mesh in self.cluster.mesh_group.meshes.values():
+                for device in mesh.machines[0].devices.values():
+                    max_memory = min(max_memory, device.memory * (1024**3))
+        else:
+            max_memory = self.cluster.machines[0].devices[0].memory * (
+                1024**3
+            )
+
         for dist_context_x in dist_contexts_x:
             if end == start and count == 1:
                 break
@@ -1950,9 +1954,7 @@ class RuleBasedTuner:
                     dist_context
                 )
 
-                if local_stage_memory > 0.9 * self.cluster.machines[0].devices[
-                    0
-                ].memory * (1024**3):
+                if local_stage_memory > max_memory:
                     cost = sys.maxsize
 
                 index = -1
@@ -2102,6 +2104,8 @@ class RuleBasedTuner:
             self._cluster.get_num_machines(),
             self._cluster._num_devices_per_machine,
         )
+        if m is None:
+            m = 8
         device_meshes_list = ClusterPartitionUtil.partition_cluster(n, m)
         end = time.time()
         self._logger.info(f"Partition cluster in {end - begin:.2f}s.")
@@ -2323,9 +2327,19 @@ class RuleBasedTuner:
                             f"Cost Model: The max memory is {memory / (1024**3):.2f}GB and cost is {cost:.2f} when {parallelism} parallelism under process mesh shape {process_mesh_shape} on {len(device_meshes)} stages."
                         )
                         # 10% buffer is reserved safely for memory cost
-                        if memory > 0.9 * self.cluster.machines[0].devices[
-                            0
-                        ].memory * (1024**3):
+                        max_memory = sys.maxsize
+                        if self.cluster._topo:
+                            for mesh in self.cluster.mesh_group.meshes.values():
+                                for device in mesh.machines[0].devices.values():
+                                    max_memory = min(
+                                        max_memory, device.memory * (1024**3)
+                                    )
+                        else:
+                            max_memory = self.cluster.machines[0].devices[
+                                0
+                            ].memory * (1024**3)
+
+                        if memory > max_memory:
                             cost = sys.maxsize
 
                         if cost < best_cost:
@@ -2397,7 +2411,6 @@ class RuleBasedTuner:
 
         # prepare
         self.prepare()
-
         best_dist_context = None
         if self.level == "o2":
             best_dist_context = self.tune_o2()

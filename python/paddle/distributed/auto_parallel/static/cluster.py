@@ -102,6 +102,9 @@ class Mesh:
     def get_machine(self, id):
         return self._machines.get(id, None)
 
+    def get_num_machines(self):
+        return len(self._machines)
+
     def add_link(self, link):
         self._links[(link.source, link.target)] = link
 
@@ -994,6 +997,8 @@ class Cluster:
 
     def _build_from_topo(self, topo_info, local_size):
         self.mesh_group = MeshGroup()
+
+        new_global_device_id = 0
         for mesh_key, mesh_val in topo_info.items():
             # parse mesh
             mesh_id = self._generate_mesh_id()
@@ -1004,6 +1009,7 @@ class Cluster:
 
             # parse machine
             machine_ids = list(range(len(mesh_val)))
+
             for machine_id in range(len(mesh_val)):
                 machine_val = mesh_val[machine_id]
                 machine = Machine(id=machine_id, mesh=mesh, topo=True)
@@ -1018,9 +1024,6 @@ class Cluster:
                 # parse device
                 old_to_new_global_id_map = {}
                 for device_val in machine_val.get("devices"):
-                    new_global_device_id = (
-                        device_val.get("global_id") + machine_id * local_size
-                    )
                     old_to_new_global_id_map[
                         device_val.get("global_id")
                     ] = new_global_device_id
@@ -1036,22 +1039,32 @@ class Cluster:
                     device.dp_gflops = int(device_val.get("dp_gflops"))
                     device.memory = int(device_val.get("memory"))
                     machine.add_device(device)
+                    new_global_device_id += 1
 
                 for link_val in machine_val.get("links"):
+                    source_device_id = old_to_new_global_id_map[
+                        link_val.get("source_global_id")
+                    ]
+                    target_device_id = old_to_new_global_id_map[
+                        link_val.get("target_global_id")
+                    ]
                     device_link = Link(
-                        source=old_to_new_global_id_map[
-                            link_val.get("source_global_id")
-                        ],
-                        target=old_to_new_global_id_map[
-                            link_val.get("target_global_id")
-                        ],
+                        source=source_device_id,
+                        target=target_device_id,
                         topo=True,
                     )
                     device_link.type = link_val.get("type")
                     device_link.bandwidth = int(link_val.get("bandwidth"))
                     device_link.latency = int(link_val.get("latency"))
                     device_link.link_level = "device"
-                    machine.add_link(device_link)
+                    device_link.hop = link_val.get("hop", None)
+                    if device_link.hop is None:
+                        # Set the default of hop: If in the same machine, hop is 0. And if in the different machine, hop is 1.
+                        if source_device_id == target_device_id:
+                            device_link.hop = 0
+                        else:
+                            device_link.hop = Link.default_hop
+                        machine.add_link(device_link)
                 mesh.add_machine(machine)
             for i in mesh.machines:
                 for j in mesh.machines:
@@ -1115,8 +1128,8 @@ class Cluster:
         src_machine = src_device.machine
         tgt_machine = tgt_device.machine
 
-        src_mesh = src_machine.machine.mesh
-        tgt_mesh = tgt_machine.machine.mesh
+        src_mesh = src_machine.mesh
+        tgt_mesh = tgt_machine.mesh
 
         if src_mesh.id != tgt_mesh.id:
             link = self.mesh_group.get_link(src_mesh.id, tgt_mesh.id)
@@ -1168,12 +1181,14 @@ class Cluster:
     def cross_machine(self, device_ids):
         machine_ids = set()
         mesh_ids = set()
+
         for device_id in device_ids:
             device = self.get_device(device_id)
             machine_id = device.machine.id
             machine_ids.add(machine_id)
             if self._topo:
                 mesh_id = device.machine.mesh.id
+
                 mesh_ids.add(mesh_id)
         if self._topo:
             if len(mesh_ids) == 1 and len(machine_ids) == 1:
@@ -1206,7 +1221,13 @@ class Cluster:
         return count
 
     def get_num_machines(self):
-        return len(self._machines)
+        if self._topo:
+            n = 0
+            for mesh in self.mesh_group.meshes.values():
+                n += mesh.get_num_machines()
+            return n
+        else:
+            return len(self._machines)
 
     def get_num_devices_per_machine(self):
         # Only return the number of accelerators of each machine.
@@ -1306,10 +1327,10 @@ def get_default_cluster(json_config=None, auto_config=None):
                         mesh_idx = len(topo_dict[mesh_type])
                         global_topo_value = json.loads(value)
                         for device in global_topo_value["devices"]:
-                            device["global_id"] += mesh_idx*8
+                            device["global_id"] += mesh_idx * 8
                         for link in global_topo_value["links"]:
-                            link["source_global_id"] += mesh_idx*8
-                            link["target_global_id"] += mesh_idx*8
+                            link["source_global_id"] += mesh_idx * 8
+                            link["target_global_id"] += mesh_idx * 8
                         topo_dict[mesh_type].append(global_topo_value)
                     cluster._build_from_topo(topo_dict, local_size)
                     retry = False
@@ -1339,7 +1360,9 @@ def get_default_cluster(json_config=None, auto_config=None):
                     else:
                         logger.info("server stoped failed! retry later")
                         time.sleep(1)
-            logger.info(f'cluster_topo_info: {json.dumps(cluster.mesh_group.to_json(), indent=3)}')
+            logger.info(
+                f'cluster_topo_info: {json.dumps(cluster.mesh_group.to_json(), indent=3)}'
+            )
             return cluster
         else:
             # when single machine, use topo directory
@@ -1349,7 +1372,9 @@ def get_default_cluster(json_config=None, auto_config=None):
                 }
             }
             cluster._build_from_topo(topo_dict, local_size)
-            logger.info(f'cluster_topo_info: {json.dumps(cluster.mesh_group.to_json(), indent=3)}')
+            logger.info(
+                f'cluster_topo_info: {json.dumps(cluster.mesh_group.to_json(), indent=3)}'
+            )
             return cluster
     else:
         # Get GPU info by get_device_properties
