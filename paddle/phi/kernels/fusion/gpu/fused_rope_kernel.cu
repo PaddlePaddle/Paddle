@@ -92,7 +92,7 @@ void FusedRopeKernel(const Context& dev_ctx,
   MPType div_c = static_cast<MPType>(1.0f / head_dim);
 
   bool flag_sin_cos = false;
-
+  auto sin_dims = sin.get_ptr()->dims();
   if (sin.get_ptr() && cos.get_ptr()) {
     PADDLE_ENFORCE_EQ(sin.get_ptr()->dims(),
                       cos.get_ptr()->dims(),
@@ -102,7 +102,6 @@ void FusedRopeKernel(const Context& dev_ctx,
                           sin.get_ptr()->dims(),
                           cos.get_ptr()->dims()));
 
-    auto sin_dims = sin.get_ptr()->dims();
     int dims_size = sin_dims.size();
     PADDLE_ENFORCE_EQ(
         (dims_size == 2 || dims_size == 4),
@@ -111,12 +110,11 @@ void FusedRopeKernel(const Context& dev_ctx,
                                      "be 2 or 4, but received %d.",
                                      dims_size));
     if (dims_size == 4) {
-      // sin.shape: [1, seq_len, 1, head_dim]
-      PADDLE_ENFORCE_EQ(
-          (sin_dims[0] == 1 && sin_dims[2] == 1),
-          true,
-          phi::errors::InvalidArgument(
-              "The batch_size and num_heads of sin and cos must be 1."));
+      // sin.shape: [batch_size, seq_len, 1, head_dim]
+      PADDLE_ENFORCE_EQ((sin_dims[2] == 1),
+                        true,
+                        phi::errors::InvalidArgument(
+                            "The num_heads of sin and cos must be 1."));
     }
     int sin_seq_len_dim = (dims_size) == 4 ? 1 : 0;
 
@@ -196,6 +194,7 @@ void FusedRopeKernel(const Context& dev_ctx,
                                             position_ids_data,
                                             flag_sin_cos,
                                             sign,
+                                            sin_dims[0],
                                             batch_size,
                                             seq_len,
                                             inputs_num_heads[0],
@@ -239,6 +238,7 @@ void FusedRopeKernel(const Context& dev_ctx,
                                             position_ids_data,
                                             flag_sin_cos,
                                             sign,
+                                            sin_dims[0],
                                             batch_size,
                                             seq_len,
                                             inputs_num_heads[0],
@@ -264,6 +264,7 @@ void FusedRopeKernel(const Context& dev_ctx,
                                             position_ids_data,
                                             flag_sin_cos,
                                             sign,
+                                            sin_dims[0],
                                             batch_size,
                                             seq_len,
                                             inputs_num_heads[1],
@@ -355,9 +356,9 @@ void FusedRope3DKernel(const Context& dev_ctx,
                                    "be 4 or 6, but received %d.",
                                    dims_size));
   if (dims_size == 4) {
-    // sin.shape: [1, frame * height * width, 1, head_dim]
+    // sin.shape: [1 or batch_size, frame * height * width, 1, head_dim]
     PADDLE_ENFORCE_EQ(
-        (sin_dims[0] == 1 && sin_dims[2] == 1),
+        (sin_dims[2] == 1),
         true,
         phi::errors::InvalidArgument(
             "The batch_size and num_heads of sin and cos must be 1."));
@@ -367,9 +368,9 @@ void FusedRope3DKernel(const Context& dev_ctx,
                           "The sin.shape[1] must be equal to seq_len."));
   }
   if (dims_size == 6) {
-    // sin.shape: [1, frame, height, width, 1, head_dim]
+    // sin.shape: [1 or batch_size, frame, height, width, 1, head_dim]
     PADDLE_ENFORCE_EQ(
-        (sin_dims[0] == 1 && sin_dims[4] == 1),
+        (sin_dims[4] == 1),
         true,
         phi::errors::InvalidArgument(
             "The batch_size and num_heads of sin and cos must be 1."));
@@ -406,6 +407,7 @@ void FusedRope3DKernel(const Context& dev_ctx,
     VectorizedFusedRope3DKernel<T, MPType, vec_size>
         <<<grid, block, 0, stream>>>(ins_data,
                                      sin_cos_data,
+                                     sin_dims[0],
                                      sign,
                                      batch_size,
                                      seq_len,
@@ -444,6 +446,7 @@ void FusedRope3DKernel(const Context& dev_ctx,
     VectorizedFusedRope3DKernel<T, MPType, vec_size>
         <<<grid, block, 0, stream>>>(ins_data,
                                      sin_cos_data,
+                                     sin_dims[0],
                                      sign,
                                      batch_size,
                                      seq_len,
@@ -461,6 +464,7 @@ void FusedRope3DKernel(const Context& dev_ctx,
     VectorizedFusedRope3DKernel<T, MPType, vec_size>
         <<<grid, block, 0, stream>>>(input_kv,
                                      sin_cos_data,
+                                     sin_dims[0],
                                      sign,
                                      batch_size,
                                      seq_len,
