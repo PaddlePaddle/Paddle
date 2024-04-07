@@ -6,4 +6,4 @@ include_directories(pir_save_load PRIVATE
 cc_library(
   pir_save_load
   SRCS ${pir_save_load_CPP_SOURCES}
-  DEPS op_dialect json)
+  DEPS op_dialect phi json)
