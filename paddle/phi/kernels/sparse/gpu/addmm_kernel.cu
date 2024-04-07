@@ -132,6 +132,7 @@ PD_REGISTER_KERNEL(addmm_coo_dense,
                    phi::sparse::AddmmCooDenseKernel,
                    float,
                    double,
+				   phi::dtype::float16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
@@ -142,6 +143,7 @@ PD_REGISTER_KERNEL(addmm_csr_dense,
                    ALL_LAYOUT,
                    phi::sparse::AddmmCsrDenseKernel,
                    float,
-                   double) {
+                   double,
+                   phi::dtype::float16) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }

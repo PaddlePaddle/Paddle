@@ -37,13 +37,15 @@ PD_SPECIALIZE_CppTypeToIrAttribute(int32_t, pir::Int32Attribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(int64_t, pir::Int64Attribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(float, pir::FloatAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(std::string, pir::StrAttribute);
-PD_SPECIALIZE_CppTypeToIrAttribute(phi::DataType,
-                                   paddle::dialect::DataTypeAttribute);
-PD_SPECIALIZE_CppTypeToIrAttribute(phi::Place, paddle::dialect::PlaceAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(std::vector<int32_t>, pir::ArrayAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(std::vector<int64_t>,
                                    paddle::dialect::IntArrayAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(std::vector<float>, pir::ArrayAttribute);
+PD_SPECIALIZE_CppTypeToIrAttribute(phi::DataType,
+                                   paddle::dialect::DataTypeAttribute);
+PD_SPECIALIZE_CppTypeToIrAttribute(phi::Place, paddle::dialect::PlaceAttribute);
+PD_SPECIALIZE_CppTypeToIrAttribute(phi::DataLayout,
+                                   paddle::dialect::DataLayoutAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(phi::IntArray,
                                    paddle::dialect::IntArrayAttribute);
 

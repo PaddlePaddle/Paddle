@@ -28,9 +28,14 @@ namespace ir {
 namespace {
 
 template <typename DoEachT>
-void VisitEachOp(cinn::dialect::GroupOp op, const DoEachT& DoEach) {
-  for (pir::Operation* sub_op : op.GetOperators()) {
-    DoEach(sub_op);
+void VisitEachOp(pir::Operation* op, const DoEachT& DoEach) {
+  DoEach(op);
+  for (auto& region : *op) {
+    for (auto& block : region) {
+      for (auto& op_in_block : block) {
+        DoEach(&op_in_block);
+      }
+    }
   }
 }
 
@@ -113,7 +118,7 @@ int GetDimExprPriority(const symbol::DimExpr& dim_expr) {
 std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetDimExprSubstitution(
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
   const std::vector<symbol::DimExprConstraint>& dim_expr_constraints =
-      shape_analysis->CreateDimExprBuilder().constraints();
+      shape_analysis->DimExprBuilder().constraints();
   const cinn::common::UnionFindSet<symbol::DimExpr>& union_find_set = [&]() {
     cinn::common::UnionFindSet<symbol::DimExpr> union_find_set;
     for (const auto& constraint : dim_expr_constraints) {
@@ -147,15 +152,14 @@ std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetDimExprSubstitution(
   return substitution_pattern;
 }
 
-void SubstituteDimExprBasedOnConstraints(pir::Operation* op) {
+void SubstituteDimExprBasedOnConstraints(pir::Operation* region_op) {
   VLOG(4) << "SubstituteDimExprBasedOnConstraints start";
-  auto group_op = op->dyn_cast<cinn::dialect::GroupOp>();
   pir::ShapeConstraintIRAnalysis* shape_analysis =
-      &pir::ShapeAnalysisManager::Instance().Get(group_op->GetParentProgram());
+      &pir::ShapeAnalysisManager::Instance().Get(region_op->GetParentProgram());
   const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
       substitution_pattern = GetDimExprSubstitution(shape_analysis);
 
-  VisitEachOp(group_op, [&](pir::Operation* op) {
+  VisitEachOp(region_op, [&](pir::Operation* op) {
     VisitEachValue(op, [&](pir::Value value) {
       if (!shape_analysis->HasShapeOrDataForValue(value)) {
         VLOG(4) << "Can not find ShapeOrData for value of op(" << op->name()
@@ -173,6 +177,9 @@ void SubstituteDimExprBasedOnConstraints(pir::Operation* op) {
                                                substituted_shape_or_data);
       }
     });
+    if (op->num_regions() > 0) {
+      return;
+    }
     if (op->num_results() > 0) {
       pir::shape::SetShapeAttrForOp(
           op, shape_analysis->GetShapeOrDataForValue(op->result(0)));
@@ -194,7 +201,7 @@ class SubstituteDimExprBasedOnConstraintsPass : public pir::Pass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<cinn::dialect::GroupOp>() && op->num_regions() > 0;
+    return op->num_regions() > 0;
   }
 };
 

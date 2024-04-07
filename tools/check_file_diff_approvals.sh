@@ -18,6 +18,7 @@ if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
 
+
 PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../" && pwd )"
 API_FILES=("CMakeLists.txt"
            "paddle/fluid/framework/operator.h"
@@ -260,16 +261,6 @@ if [ ${HAS_LEGACY_KERNEL_REGISTRATION} ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 chenwhql zyfncg YuanRisheng phlrain
 fi
 
-DIFF_OUTPUT=$(git diff --unified=0 upstream/$BRANCH)
-# check if any .cc or .cu file in the phi/kernels/ directory is changed and if any template is added
-if echo "$DIFF_OUTPUT" | grep -q 'diff --git a/paddle/phi/kernels/.*\.cc b/paddle/phi/kernels/.*\.cc\|diff --git a/paddle/phi/kernels/.*\.cu b/paddle/phi/kernels/.*\.cu'; then
-    if echo "$DIFF_OUTPUT" | grep -q '+.*template <'; then
-        echo "A C++ template is added in .cc or .cu file in the phi/kernels directory,which can lead to an overly large size of the compiled .o file, resulting in a failure in multi-architecture compilation!"
-        echo_line="You must have one RD (risemeup1 or Galaxy1458) approval for the change of C++ template.\n"
-        check_approval 1 risemeup1 Galaxy1458
-    fi
-fi
-
 PYTHON_FILE_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- 'python/*.py' |grep "^+")
 IF_USE_SUBPROCESS=`echo $PYTHON_FILE_ADDED_LINES | grep -B5 --no-group-separator "subprocess\." || true`
 if [[ ${IF_USE_SUBPROCESS} ]]; then
@@ -335,6 +326,12 @@ HAS_MODIFIED_API_FW_BW_YAML=`git diff --name-only upstream/$BRANCH | grep -E "pa
 if [ "${HAS_MODIFIED_API_FW_BW_YAML}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must be approved by chenwhql or zyfncg or heavyrain-lzy for paddle/phi/api/yaml/ops.yaml or paddle/phi/api/yaml/backward.yaml changes, which manage the generated code for the C++ OP. You can only change them according to the specification at the begining of this two file.\n"
     check_approval 1 chenwhql zyfncg heavyrain-lzy
+fi
+
+HAS_MODIFIED_PRIMITIVE_YAML=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/primitive/primitive.yaml" || true`
+if [ "${HAS_MODIFIED_PRIMITIVE_YAML}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must be approved by jeff41404(gaoxiang) or cyber-pioneer(chenzhuo) for paddle/fluid/primitive/primitive.yaml changes.\n"
+    check_approval 1 jeff41404 cyber-pioneer
 fi
 
 HAS_MODIFIED_FRAMEWORK_EXECUTOR=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/framework/new_executor" || true`

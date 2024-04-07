@@ -167,7 +167,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
   int groups = 1;
   std::string key = "";
   std::string conv_type = "";
-  bool use_mkldnn = false;
+  bool use_onednn = false;
   if (attrs.attr_store.find("padding") != attrs.attr_store.end()) {
     padding = absl::get<std::vector<int>>(attrs.attr_store.at("padding"));
   }
@@ -183,8 +183,8 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
   if (attrs.attr_store.find("groups") != attrs.attr_store.end()) {
     groups = absl::get<int>(attrs.attr_store.at("groups"));
   }
-  if (attrs.attr_store.find("use_mkldnn") != attrs.attr_store.end()) {
-    use_mkldnn = absl::get<bool>(attrs.attr_store.at("use_mkldnn"));
+  if (attrs.attr_store.find("use_onednn") != attrs.attr_store.end()) {
+    use_onednn = absl::get<bool>(attrs.attr_store.at("use_onednn"));
   }
   if (attrs.attr_store.find("key") != attrs.attr_store.end()) {
     key = absl::get<std::string>(attrs.attr_store.at("key"));
@@ -231,7 +231,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
           // A is input: [N, C, H, W], B is filter: [C_out, C_in/group,
           // filter_h, filter_w]
           if (target.arch == Target::Arch::X86) {
-            if (groups == 1 && !use_mkldnn) {
+            if (groups == 1 && !use_onednn) {
               out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
                                        B.as_tensor_ref(),
                                        padding[0],
@@ -245,7 +245,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
                                        target);
             } else {
 #ifdef CINN_WITH_DNNL
-              out = pe::Conv2d_NCHW_MKLDNN(A.as_tensor_ref(),
+              out = pe::Conv2d_NCHW_ONEDNN(A.as_tensor_ref(),
                                            B.as_tensor_ref(),
                                            padding[0],
                                            padding[1],
@@ -305,7 +305,8 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
                                 dilation[1],
                                 tensor_name);
         } else {
-          LOG(FATAL) << "Only support NCHW and NHWC data layout\n";
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "Only support NCHW and NHWC data layout\n"));
         }
         auto stages = CreateStages({A.as_tensor_ref(), B.as_tensor_ref()});
 
@@ -368,7 +369,9 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
     } else if (target.arch == Target::Arch::X86) {
       CINN_NOT_IMPLEMENTED
     }
-    LOG(FATAL) << "This target [" << target << "] is not supported yet.";
+    std::stringstream ss;
+    ss << "This target [" << target << "] is not supported yet.";
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -713,8 +716,8 @@ std::shared_ptr<OpStrategy> StrategyForConv2dNCHWc(
     strategy->AddImpl(
         conv2d_compute, conv2d_schedule, "strategy.conv2d_NCHWc.x86", 1);
   } else {
-    LOG(FATAL)
-        << "conv2d_NCHWc op with dtype != float32 is not implemented yet!";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "conv2d_NCHWc op with dtype != float32 is not implemented yet!"));
   }
   return strategy;
 }
@@ -894,7 +897,8 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
                                       stride[1],
                                       tensor_name);
     } else {
-      LOG(FATAL) << "Only support NCHW and NHWC data layout\n";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Only support NCHW and NHWC data layout\n"));
     }
 
     auto stages = CreateStages({A.as_tensor_ref(), B.as_tensor_ref()});
@@ -1008,7 +1012,8 @@ std::vector<shape_t> InferShapeForDepthwiseConv2d(
             out_shape_w,
             inputs_shape[1][1] * inputs_shape[0][3]}};
   } else {
-    LOG(FATAL) << "Only support NCHW and NHWC data layout\n";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Only support NCHW and NHWC data layout\n"));
   }
   return res;
 }
@@ -1093,7 +1098,8 @@ std::shared_ptr<OpStrategy> StrategyForBatchNorm(
                       "strategy.batchnorm.x86",
                       1);
   } else {
-    LOG(FATAL) << "BatchNorm op with dtype != float32 is not implemented yet!";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "BatchNorm op with dtype != float32 is not implemented yet!"));
   }
   return strategy;
 }
@@ -1303,7 +1309,9 @@ std::vector<std::vector<int>> InferShapeForPool1d(
   } else if (data_format == "NWC") {
     width_axis = 1;
   } else {
-    LOG(FATAL) << "unsupported data_format: " << data_format << std::endl;
+    std::stringstream ss;
+    ss << "unsupported data_format: " << data_format << std::endl;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 
   if (ceil_mode) {
@@ -1406,8 +1414,8 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
       width_index = 3;
       data_format = "NCHW";
     } else {
-      LOG(FATAL)
-          << "Only support 'NCHW' or 'NHWC' or 'AnyLayout' data_format.\n";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Only support 'NCHW' or 'NHWC' or 'AnyLayout' data_format.\n"));
     }
     kernel_size = {A_tensor->shape[height_index].as_int32(),
                    A_tensor->shape[width_index].as_int32()};
@@ -1904,12 +1912,12 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
     const std::vector<std::vector<int>> &output_shapes,
     const Target &target) {
   int axis = -1;
-  bool use_mkldnn = false;
+  bool use_onednn = false;
   if (attrs.attr_store.count("axis")) {
     axis = absl::get<int>(attrs.attr_store.at("axis"));
   }
-  if (attrs.attr_store.count("use_mkldnn")) {
-    use_mkldnn = absl::get<bool>(attrs.attr_store.at("use_mkldnn"));
+  if (attrs.attr_store.count("use_onednn")) {
+    use_onednn = absl::get<bool>(attrs.attr_store.at("use_onednn"));
   }
   framework::CINNCompute softmax_compute(
       [=](lang::Args args, lang::RetValue *ret) {
@@ -1934,8 +1942,8 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
             pack_args[pack_args.size() - 1].operator std::string();
 
 #ifdef CINN_WITH_DNNL
-        if (use_mkldnn) {
-          out = pe::SoftmaxMKLDNN(A, new_axis, tensor_name);
+        if (use_onednn) {
+          out = pe::SoftmaxONEDNN(A, new_axis, tensor_name);
         } else {
           out = pe::Softmax(A, new_axis, tensor_name);
         }
@@ -2035,7 +2043,7 @@ std::vector<std::vector<std::string>> InferLayoutForSoftmax(
   CHECK_EQ(input_layouts.size(), 1U)
       << "The input's layout size is not 1! Please check again.";
   if (input_shapes[0].size() > 4) {
-    // input tensor needs to be transformed back to NCHW for mkldnn
+    // input tensor needs to be transformed back to NCHW for onednn
     return {{"NCHW", "NCHW"}, {"NCHW"}};
   }
   return {{input_layouts[0], input_layouts[0]}, input_layouts};
@@ -2206,7 +2214,8 @@ std::vector<framework::shape_t> InferShapeForBatchNormTrain(
   if (attrs.find("data_layout") != attrs.end()) {
     data_layout = absl::get<std::string>(attrs.at("data_layout"));
   } else {
-    LOG(FATAL) << "data_layout is not found, please check!";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "data_layout is not found, please check!"));
   }
 
   CHECK_EQ(inputs_shape[0].size(), 4) << "x dimension size is not required!";
@@ -2237,7 +2246,9 @@ std::vector<framework::shape_t> InferShapeForBatchNormTrain(
     CHECK_EQ(inputs_shape[0][3], inputs_shape[4][0])
         << "x and moving_variance dimension size is not equal!";
   } else {
-    LOG(FATAL) << "data_layout " << data_layout << " is not support!";
+    std::stringstream ss;
+    ss << "data_layout " << data_layout << " is not support!";
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 
   return {inputs_shape[0],
@@ -2271,8 +2282,9 @@ std::shared_ptr<OpStrategy> StrategyForGradOp(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<int>> &output_shapes,
     const Target &target) {
-  LOG(FATAL) << "Gradient operator will be decomposed into several primitive "
-                "operators. Please Use Decomposer Program Pass.";
+  PADDLE_THROW(phi::errors::Fatal(
+      "Gradient operator will be decomposed into several primitive "
+      "operators. Please Use Decomposer Program Pass."));
 }
 
 // batch norm grad
@@ -2285,7 +2297,8 @@ std::vector<framework::shape_t> InferShapeForBatchNormGrad(
   if (attrs.find("data_layout") != attrs.end()) {
     data_layout = absl::get<std::string>(attrs.at("data_layout"));
   } else {
-    LOG(FATAL) << "data_layout is not found, please check!";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "data_layout is not found, please check!"));
   }
 
   CHECK_EQ(inputs_shape[0].size(), 4) << "dy dimension size is not required!";
@@ -2313,7 +2326,9 @@ std::vector<framework::shape_t> InferShapeForBatchNormGrad(
     CHECK_EQ(inputs_shape[0][3], inputs_shape[4][0])
         << "dy and moving_variance dimension size is not equal!";
   } else {
-    LOG(FATAL) << "data_layout " << data_layout << " is not support!";
+    std::stringstream ss;
+    ss << "data_layout " << data_layout << " is not support!";
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 
   return {inputs_shape[0], inputs_shape[2], inputs_shape[2]};
