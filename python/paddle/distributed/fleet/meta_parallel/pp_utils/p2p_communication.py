@@ -325,9 +325,7 @@ class SendRecvMeta:
 
         assert (
             self.send_pack_type == actual_send_pack_type
-        ), "send_pack_type: {}, actual_send_pack_type: {}".format(
-            self.send_pack_type, actual_send_pack_type
-        )
+        ), f"send_pack_type: {self.send_pack_type}, actual_send_pack_type: {actual_send_pack_type}"
         assert (
             self.send_shape_message == actual_shape
         ), f"send_shape_message: {self.send_shape_message}, actual_shape: {actual_shape}"
@@ -336,14 +334,10 @@ class SendRecvMeta:
         ), f"send_dtype_message: {self.send_dtype_message}, actual_dtype: {actual_dtype}"
         assert (
             self.send_keys_names == actual_send_keys_names
-        ), "send_keys_names: {}, actual_send_keys_names: {}".format(
-            self.send_keys_names, actual_send_keys_names
-        )
+        ), f"send_keys_names: {self.send_keys_names}, actual_send_keys_names: {actual_send_keys_names}"
         assert (
             self.send_all_keys_names == actual_send_all_keys_names
-        ), "send_all_keys_names: {}, actual_send_all_keys_names: {}".format(
-            self.send_all_keys_names, actual_send_all_keys_names
-        )
+        ), f"send_all_keys_names: {self.send_all_keys_names}, actual_send_all_keys_names: {actual_send_all_keys_names}"
 
     def _serialize_from_string(
         self, string, encoding='utf-32', errors='strict'
@@ -359,18 +353,8 @@ class SendRecvMeta:
         return string
 
     def __repr__(self):
-        return "send_pack_type: {}, send_shape_message: {}, send_dtype_message: {}, send_keys_names: {}, send_all_keys_names: {}, recv_pack_type: {}, recv_shape_message: {}, recv_dtype_message: {}, recv_stop_gradient: {}, recv_keys_names: {}".format(
-            self.send_pack_type,
-            self.send_shape_message,
-            self.send_dtype_message,
-            self.send_keys_names,
-            self.send_all_keys_names,
-            self.recv_pack_type,
-            self.recv_shape_message,
-            self.recv_dtype_message,
-            self.recv_stop_gradient,
-            self.recv_keys_names,
-        )
+        return f"send_pack_type: {self.send_pack_type}, send_shape_message: {self.send_shape_message}, send_dtype_message: {self.send_dtype_message}, send_keys_names: {self.send_keys_names}, send_all_keys_names: {self.send_all_keys_names}, recv_pack_type: {self.recv_pack_type}, recv_shape_message: {self.recv_shape_message}, recv_dtype_message: {self.recv_dtype_message}, recv_stop_gradient: {self.recv_stop_gradient}, recv_keys_names: {self.recv_keys_names}"
+
 
 def _is_valid_send_recv_partial(tensor, mp_degree):
     if not _enable_partial_send_recv:
