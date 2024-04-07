@@ -22,6 +22,7 @@ from paddle.autograd.backward_utils import (
     ValueDict,
     ValueSet,
     _as_list,
+    all_input_stop_gradient_true,
     all_output_grad_none,
     all_stop_gradient_true,
     argument_to_value,
@@ -649,6 +650,14 @@ def append_backward_ops(
                     ]:
                         continue
 
+                    if all_input_stop_gradient_true(
+                        input_grad_stopgradients
+                    ) and op.name() not in [
+                        "pd_op.array_read",
+                        "pd_op.array_write_",
+                        "pd_op.increment_",
+                    ]:
+                        continue
                     if op.name() == "pd_op.if":
                         origin_inputs = get_real_op_inputs(op)
                         for sub_block in op.blocks():

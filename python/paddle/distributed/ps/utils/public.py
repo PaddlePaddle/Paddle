@@ -171,24 +171,20 @@ class TrainerRuntimeConfig:
             ]
             if max_merge_var_num != num_threads:
                 print(
-                    'WARNING: In {} mode, communicator_max_merge_var_num '
+                    f'WARNING: In {mode_str} mode, communicator_max_merge_var_num '
                     'must be equal to CPU_NUM. But received, '
-                    'communicator_max_merge_var_num = {}, CPU_NUM = '
-                    '{}. communicator_max_merge_var_num will be forced to {}.'.format(
-                        mode_str, max_merge_var_num, num_threads, num_threads
-                    )
+                    f'communicator_max_merge_var_num = {max_merge_var_num}, CPU_NUM = '
+                    f'{num_threads}. communicator_max_merge_var_num will be forced to {num_threads}.'
                 )
                 self.runtime_configs[
                     'communicator_max_merge_var_num'
                 ] = num_threads
             if send_queue_size != num_threads:
                 print(
-                    'WARNING: In {} mode, communicator_send_queue_size '
+                    f'WARNING: In {mode_str} mode, communicator_send_queue_size '
                     'must be equal to CPU_NUM. But received, '
-                    'communicator_send_queue_size = {}, CPU_NUM = '
-                    '{}. communicator_send_queue_size will be forced to {}.'.format(
-                        mode_str, send_queue_size, num_threads, num_threads
-                    )
+                    f'communicator_send_queue_size = {send_queue_size}, CPU_NUM = '
+                    f'{num_threads}. communicator_send_queue_size will be forced to {num_threads}.'
                 )
                 self.runtime_configs[
                     'communicator_send_queue_size'
@@ -905,9 +901,7 @@ def find_heter_ops(program, default_device="cpu"):
         for _, heter_block in heter_block_dict.items():
             total_heter_ops += len(heter_block)
     print(
-        "There are {} OPs in your main_program, and contains {} heter-OPs which is made up of {} heter-blocks.".format(
-            len(block.ops), total_heter_ops, heter_blocks
-        )
+        f"There are {len(block.ops)} OPs in your main_program, and contains {total_heter_ops} heter-OPs which is made up of {heter_blocks} heter-blocks."
     )
 
     return origin_program, heter_ops, default_ops, program_block_ops
@@ -1807,9 +1801,7 @@ def check_program(program):
             for var_name in input_var_names + output_var_names:
                 if not block._find_var_recursive(str(var_name)):
                     raise ValueError(
-                        'var: {} needed by op is not found in block: {}'.format(
-                            str(var_name), block_idx
-                        )
+                        f'var: {str(var_name)} needed by op is not found in block: {block_idx}'
                     )
         block_idx += 1
     print('program checked valid')

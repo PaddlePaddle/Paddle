@@ -980,14 +980,14 @@ class SubstituteDimExprHelper final {
     return SubstituteVariadic(dim_expr);
   }
 
-  template <typename T>
-  std::optional<DimExpr> SubstituteVariadic(const T& dim_expr) {
+  template <template <typename> class OpT>
+  std::optional<DimExpr> SubstituteVariadic(const OpT<DimExpr>& dim_expr) {
     auto opt_result = SubstituteEntireExpr(dim_expr);
 
     if (opt_result.has_value()) {
-      if (opt_result->template isa<T>()) {
-        auto new_result =
-            SubstituteSubOperands(opt_result->template dyn_cast<T>());
+      if (opt_result->template isa<OpT<DimExpr>>()) {
+        auto new_result = SubstituteSubOperands(
+            opt_result->template dyn_cast<OpT<DimExpr>>());
         if (new_result.has_value()) {
           return new_result;
         }
@@ -998,8 +998,8 @@ class SubstituteDimExprHelper final {
     }
   }
 
-  template <typename T>
-  std::optional<DimExpr> SubstituteEntireExpr(const T& dim_expr) {
+  template <template <typename> class OpT>
+  std::optional<DimExpr> SubstituteEntireExpr(const OpT<DimExpr>& dim_expr) {
     const auto& operands = *(dim_expr.operands);
     List<DimExpr> substituted_operands{};
     size_t replace_cnt = 0;
@@ -1011,15 +1011,15 @@ class SubstituteDimExprHelper final {
                                           : operand);
     }
     if (replace_cnt == 0) return std::nullopt;
-    return SimplifyDimExpr(T{substituted_operands});
+    return SimplifyDimExpr(OpT<DimExpr>{substituted_operands});
   }
 
-  template <typename T>
-  std::optional<DimExpr> SubstituteSubOperands(const T& dim_expr) {
+  template <template <typename> class OpT>
+  std::optional<DimExpr> SubstituteSubOperands(const OpT<DimExpr>& dim_expr) {
     const std::unordered_set<DimExpr> operands_set{dim_expr.operands->begin(),
                                                    dim_expr.operands->end()};
 
-    auto CanReplaceSubOperands = [&operands_set](const T& dim_expr) {
+    auto CanReplaceSubOperands = [&operands_set](const OpT<DimExpr>& dim_expr) {
       for (const auto& operand : *dim_expr.operands) {
         if (operands_set.find(operand) == operands_set.end()) return false;
       }
@@ -1027,8 +1027,8 @@ class SubstituteDimExprHelper final {
     };
 
     for (const auto& kv : pattern_to_replacement_) {
-      if (!kv.first.isa<T>()) continue;
-      const auto& dim_expr_pattern = kv.first.dyn_cast<T>();
+      if (!kv.first.isa<OpT<DimExpr>>()) continue;
+      const auto& dim_expr_pattern = kv.first.dyn_cast<OpT<DimExpr>>();
       if (!CanReplaceSubOperands(dim_expr_pattern)) continue;
 
       List<DimExpr> ret_operands{kv.second};
@@ -1039,7 +1039,7 @@ class SubstituteDimExprHelper final {
           ret_operands->push_back(operand);
         }
       }
-      return SimplifyDimExpr(T{ret_operands});
+      return SimplifyDimExpr(OpT<DimExpr>{ret_operands});
     }
 
     return std::nullopt;

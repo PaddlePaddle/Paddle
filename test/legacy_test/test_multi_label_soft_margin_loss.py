@@ -26,10 +26,10 @@ def call_MultiLabelSoftMarginLoss_layer(
     weight=None,
     reduction='mean',
 ):
-    multilabel_margin_loss = paddle.nn.MultiLabelSoftMarginLoss(
+    multi_label_margin_loss = paddle.nn.MultiLabelSoftMarginLoss(
         weight=weight, reduction=reduction
     )
-    res = multilabel_margin_loss(
+    res = multi_label_margin_loss(
         input=input,
         label=label,
     )
@@ -115,7 +115,7 @@ def test_dygraph(
         return dy_result
 
 
-def calc_multilabel_margin_loss(
+def calc_multi_label_margin_loss(
     input,
     label,
     weight=None,
@@ -151,7 +151,7 @@ class TestMultiLabelMarginLoss(unittest.TestCase):
         reductions = ['sum', 'mean', 'none']
         for place in places:
             for reduction in reductions:
-                expected = calc_multilabel_margin_loss(
+                expected = calc_multi_label_margin_loss(
                     input=input, label=label, reduction=reduction
                 )
 
@@ -218,7 +218,7 @@ class TestMultiLabelMarginLoss(unittest.TestCase):
         weight = np.random.randint(0, 2, size=(5, 5)).astype(np.float64)
         place = 'cpu'
         reduction = 'mean'
-        expected = calc_multilabel_margin_loss(
+        expected = calc_multi_label_margin_loss(
             input=input, label=label, weight=weight, reduction=reduction
         )
 

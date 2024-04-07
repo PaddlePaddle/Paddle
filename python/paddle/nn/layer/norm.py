@@ -543,9 +543,7 @@ class GroupNorm(Layer):
         )
 
     def extra_repr(self):
-        return 'num_groups={}, num_channels={}, epsilon={}'.format(
-            self._num_groups, self._num_channels, self._epsilon
-        )
+        return f'num_groups={self._num_groups}, num_channels={self._num_channels}, epsilon={self._epsilon}'
 
 
 class LayerNorm(Layer):
@@ -803,9 +801,7 @@ class _BatchNormBase(Layer):
         )
 
     def extra_repr(self):
-        main_str = 'num_features={}, momentum={}, epsilon={}'.format(
-            self._num_features, self._momentum, self._epsilon
-        )
+        main_str = f'num_features={self._num_features}, momentum={self._momentum}, epsilon={self._epsilon}'
         if self._data_format != 'NCHW':
             main_str += f', data_format={self._data_format}'
         if self._name is not None:

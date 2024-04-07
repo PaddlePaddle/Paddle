@@ -232,9 +232,7 @@ def to_static(
     build_strategy = build_strategy or BuildStrategy()
     if not isinstance(build_strategy, BuildStrategy):
         raise TypeError(
-            "Required type(build_strategy) shall be `paddle.static.BuildStrategy`, but received {}".format(
-                type(build_strategy).__name__
-            )
+            f"Required type(build_strategy) shall be `paddle.static.BuildStrategy`, but received {type(build_strategy).__name__}"
         )
     _check_and_set_backend(backend, build_strategy)
 
@@ -244,9 +242,7 @@ def to_static(
             if isinstance(function.forward, StaticFunction):
                 class_name = function.__class__.__name__
                 logging_utils.warn(
-                    "`{}.forward` has already been decorated somewhere. It will be redecorated to replace previous one.".format(
-                        class_name
-                    )
+                    f"`{class_name}.forward` has already been decorated somewhere. It will be redecorated to replace previous one."
                 )
             function.forward = decorated(function.forward)
             return function

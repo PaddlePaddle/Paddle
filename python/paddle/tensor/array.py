@@ -292,9 +292,7 @@ def create_array(dtype, initialized_list=None):
     if initialized_list is not None:
         if not isinstance(initialized_list, (list, tuple)):
             raise TypeError(
-                "Require type(initialized_list) should be list/tuple, but received {}".format(
-                    type(initialized_list)
-                )
+                f"Require type(initialized_list) should be list/tuple, but received {type(initialized_list)}"
             )
         array = list(initialized_list)
 
@@ -302,9 +300,7 @@ def create_array(dtype, initialized_list=None):
     for val in array:
         if not isinstance(val, (Variable, paddle.pir.Value)):
             raise TypeError(
-                "All values in `initialized_list` should be Variable or pir.Value, but received {}.".format(
-                    type(val)
-                )
+                f"All values in `initialized_list` should be Variable or pir.Value, but received {type(val)}."
             )
 
     if in_dynamic_mode():
