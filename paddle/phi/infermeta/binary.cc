@@ -2758,7 +2758,7 @@ void PullGpupsSparseInferMeta(const MetaTensor& w,
   outs_dims.resize(n_ids);
   for (size_t i = 0; i < n_ids; ++i) {
     int embedding_size = size[i];
-    const auto ids_dims = ids[i].dims();
+    const auto ids_dims = ids[i]->dims();
     int ids_rank = ids_dims.size();
     PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1],
                       1,
@@ -2774,7 +2774,7 @@ void PullGpupsSparseInferMeta(const MetaTensor& w,
 
   for (size_t i = 0; i < n_ids; ++i) {
     out[i]->set_dims(outs_dims[i]);
-    out[i]->share_lod(ids[i], i);
+    out[i]->share_lod(*ids[i], i);
   }
 }
 
