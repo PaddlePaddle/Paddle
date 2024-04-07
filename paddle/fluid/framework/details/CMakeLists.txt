@@ -55,7 +55,7 @@ set(op_handle_deps
     reference_count_pass_helper)
 
 if(WITH_MKLDNN)
-  set(op_handle_deps ${op_handle_deps} mkldnn)
+  set(op_handle_deps ${op_handle_deps} onednn)
 endif()
 
 if(WITH_DGC)
@@ -162,5 +162,5 @@ cc_library(
   DEPS pass_builder ${IR_PASS_DEPS})
 
 if(WITH_MKLDNN)
-  target_link_libraries(build_strategy mkldnn_placement_pass)
+  target_link_libraries(build_strategy onednn_placement_pass)
 endif()
