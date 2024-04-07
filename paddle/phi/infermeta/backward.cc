@@ -244,6 +244,13 @@ void FlashAttnGradInferMeta(const MetaTensor& q,
   }
 }
 
+void FlashAttnQKVPackedGradInferMeta(const MetaTensor& qkv,
+                            MetaTensor* dqkv) {
+  if (dqkv) {
+    dqkv->share_meta(qkv);
+  }
+}
+
 void FusedDropoutAddGradInferMeta(const MetaTensor& seed_offset,
                                   const MetaTensor& out_grad,
                                   MetaTensor* x_grad,
