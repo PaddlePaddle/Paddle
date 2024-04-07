@@ -175,11 +175,11 @@ class TestFusedDotProductAttentionPatternQscaleNoCast(PassTest):
                       |
                      out
 
-         Q   K   V          mask
-         |   |   |            |   
-         |   |   |          cast 
-         |   |   |            |
-         --scale_dot_product---
+         Q   K   V                    mask
+         |   |   |                      |
+         |   |   |                    cast
+         |   |   |                      |
+         --fused_dot_product_attention---
                    |
                   out
     """
@@ -301,11 +301,11 @@ class TestFusedDotProductAttentionPatternOutscaleCast(PassTest):
                       |
                      out
 
-         Q   K   V          mask
-         |   |   |            |   
-         |   |   |          cast 
-         |   |   |            |
-         --scale_dot_product---
+         Q   K   V                     mask
+         |   |   |                       |
+         |   |   |                     cast
+         |   |   |                       |
+         --fused_dot_product_attention---
                    |
                   out
     """
@@ -428,11 +428,11 @@ class TestFusedDotProductAttentionPatternOutscaleNoCast(PassTest):
                       |
                      out
 
-         Q   K   V          mask
-         |   |   |            |   
-         |   |   |          cast 
-         |   |   |            |
-         --scale_dot_product---
+         Q   K   V                     mask
+         |   |   |                       |
+         |   |   |                     cast
+         |   |   |                       |
+         --fused_dot_product_attention---
                    |
                   out
     """
@@ -533,7 +533,7 @@ class TestFusedDotProductAttentionPatternTransposeSlice(PassTest):
     r"""
                transpose
                    |
-        ---------slice----------
+         ----------+_----------
         |          |           |
       slice      slice        slice
         |          |           |
@@ -559,15 +559,15 @@ class TestFusedDotProductAttentionPatternTransposeSlice(PassTest):
                      |
                     out
 
-         transpose
-             |
-         --slice--
-         |   |   |                 
-         Q   K   V          mask
-         |   |   |            |   
-         |   |   |          cast 
-         |   |   |            |
-         --scale_dot_product---
+           transpose
+               |
+         ------+------
+         |     |     |
+       slice slice slice                   mask
+         |     |     |                       |
+         Q     K     V                     cast
+         |     |     |                       |
+         ------fused_dot_product_attention----
                    |
                   out
     """
@@ -588,7 +588,8 @@ class TestFusedDotProductAttentionPatternTransposeSlice(PassTest):
                             ):
                                 x = paddle.static.data(
                                     name='x',
-                                    shape=[bs, seq_len, 3, num_heads, head_dim],
+                                    shape=[bs, seq_len, 3,
+                                           num_heads, head_dim],
                                     dtype='float16',
                                 )
                                 mask_shape = [bs, num_heads, seq_len, seq_len]
@@ -642,6 +643,7 @@ class TestFusedDotProductAttentionPatternTransposeSlice(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct(atol=1e-3, rtol=1e-3)
+
 
 if __name__ == "__main__":
     unittest.main()
