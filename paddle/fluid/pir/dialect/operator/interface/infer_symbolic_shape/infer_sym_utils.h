@@ -203,6 +203,38 @@ inline void CheckSymShapeByValue(
   if (shapeordata.isa<TensorListExprs>()) {
     VLOG(vlog_level) << "********** " << op_info
                      << " 's shapeordata.isa<TensorListExprs>()";
+    TensorListExprs list = shapeordata.dyn_cast<TensorListExprs>();
+    for (auto item : list) {
+      auto sym_shape = item.shape();
+      std::vector<std::int64_t> sym_value_shape;
+      for (auto dim_expr : sym_shape) {
+        DimExpr ret = dim_expr;
+        DimExpr subs_expr = symbol::SubstituteDimExpr(ret, map_sym2sym);
+        ret = symbol::SimplifyDimExpr(subs_expr);
+        subs_expr = symbol::SubstituteDimExpr(ret, map_sym2value);
+        ret = symbol::SimplifyDimExpr(subs_expr);
+        if (ret.Has<std::int64_t>()) {
+          sym_value_shape.emplace_back(ret.Get<std::int64_t>());
+        } else {
+          sym_value_shape.emplace_back(-1);
+        }
+      }
+
+      auto real_shape = ::common::vectorize(ddim);
+      std::ostringstream os;
+
+      std::string real_shape_str = "real_shape" + PrintVec(real_shape);
+      std::string sym_shape_str = "sym_val_shape" + PrintVec(sym_value_shape) +
+                                  " -> " + PrintShapeOrData(shapeordata);
+
+      if (real_shape != sym_value_shape) {
+        VLOG(vlog_level) << "!!!!! [ShapeCheckFailed] " << op_info << ": "
+                         << real_shape_str << " != " << sym_shape_str;
+      } else {
+        VLOG(vlog_level) << "===== [ShapeCheckPassed] " << op_info << ": "
+                         << real_shape_str << " == " << sym_shape_str;
+      }
+    }
   } else {
     auto sym_shape = shapeordata.shape();
     std::vector<std::int64_t> sym_value_shape;
