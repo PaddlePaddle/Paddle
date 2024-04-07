@@ -297,10 +297,10 @@ bool LogsumexpOpInferSymbolicShape(
   return details::ReduceInferDim(op, shape_analysis, axis, keepdim, reduce_all);
 }
 
-bool MaxOpInferSymbolicShape(pir::Operation *op,
-                             pir::ShapeConstraintIRAnalysis *shape_analysis) {
+namespace {
+bool ReduceInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
   bool keepdim = GetBoolAttr(op, "keepdim");
-
   const std::vector<int64_t> axis = [&] {
     pir::Operation *axis_gen_op = op->operand_source(1).defining_op();
     std::vector<int64_t> axis_vec;
@@ -312,20 +312,31 @@ bool MaxOpInferSymbolicShape(pir::Operation *op,
       // paddle::dialect::DenseTensorType, but after PRIM, maybe always
       // FullIntArrayOp, to be confirmed
       PADDLE_THROW(
-          phi::errors::Unimplemented("MaxOpInferSymbolicShape: 'axis' only "
+          phi::errors::Unimplemented("ReduceInferSymbolicShape: 'axis' only "
                                      "support FullIntArrayOp's result now."));
     }
     return axis_vec;
   }();
 
-  bool reduce_all = axis.size() == 0 ? true : false;
-
+  bool reduce_all;
+  if (op->HasAttribute("reduce_all")) {
+    reduce_all = GetBoolAttr(op, "reduce_all");
+  } else {
+    reduce_all = axis.size() == 0 ? true : false;
+  }
   return details::ReduceInferDim(op, shape_analysis, axis, keepdim, reduce_all);
+}
+
+}  // namespace
+
+bool MaxOpInferSymbolicShape(pir::Operation *op,
+                             pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return ReduceInferSymbolicShape(op, shape_analysis);
 }
 
 bool MinOpInferSymbolicShape(pir::Operation *op,
                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  return MaxOpInferSymbolicShape(op, shape_analysis);
+  return ReduceInferSymbolicShape(op, shape_analysis);
 }
 
 bool PadOpInferSymbolicShape(pir::Operation *op,
@@ -337,24 +348,7 @@ bool PadOpInferSymbolicShape(pir::Operation *op,
 
 bool ProdOpInferSymbolicShape(pir::Operation *op,
                               pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  bool keepdim = GetBoolAttr(op, "keep_dim");
-  bool reduce_all = GetBoolAttr(op, "reduce_all");
-
-  auto axis_gen_op = op->operand_source(1).defining_op();
-  if (axis_gen_op->isa<paddle::dialect::FullIntArrayOp>()) {
-    std::vector<int64_t> axis = details::GetVectorAttr(
-        axis_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>(), "value");
-    return details::ReduceInferDim(
-        op, shape_analysis, axis, keepdim, reduce_all);
-  } else {
-    // TODO(lanxianghit): deal with other source: pir::VectorType,
-    // paddle::dialect::DenseTensorType
-    PADDLE_THROW(
-        phi::errors::Unimplemented("ProdOpInferSymbolicShape: 'axis' only "
-                                   "support FullIntArrayOp's result now."));
-  }
-
-  return true;
+  return ReduceInferSymbolicShape(op, shape_analysis);
 }
 
 bool RepeatInterleaveOpInferSymbolicShape(
@@ -699,27 +693,12 @@ bool SplitWithNumOpInferSymbolicShape(
 
 bool SumOpInferSymbolicShape(pir::Operation *op,
                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  bool keepdim = GetBoolAttr(op, "keepdim");
-  bool reduce_all = false;
+  return ReduceInferSymbolicShape(op, shape_analysis);
+}
 
-  auto axis_gen_op = op->operand_source(1).defining_op();
-  if (axis_gen_op->isa<paddle::dialect::FullIntArrayOp>()) {
-    std::vector<int64_t> axis = details::GetVectorAttr(
-        axis_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>(), "value");
-    if (axis.size() == 0) {
-      reduce_all = true;
-    }
-    return details::ReduceInferDim(
-        op, shape_analysis, axis, keepdim, reduce_all);
-  } else {
-    // TODO(lanxianghit): deal with other source: pir::VectorType,
-    // paddle::dialect::DenseTensorType
-    PADDLE_THROW(
-        phi::errors::Unimplemented("SumOpInferSymbolicShape: 'axis' only "
-                                   "support FullIntArrayOp's result now."));
-  }
-
-  return true;
+bool MeanOpInferSymbolicShape(pir::Operation *op,
+                              pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return ReduceInferSymbolicShape(op, shape_analysis);
 }
 
 bool TileOpInferSymbolicShape(pir::Operation *op,

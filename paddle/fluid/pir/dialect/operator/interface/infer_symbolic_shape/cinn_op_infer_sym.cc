@@ -109,6 +109,11 @@ bool ReduceMaxOpInferSymbolicShape(
   return ReduceInferSymbolicShape(op, shape_analysis);
 }
 
+bool ReduceMeanOpInferSymbolicShape(
+    pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
+  return ReduceInferSymbolicShape(op, shape_analysis);
+}
+
 bool ReduceMinOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return ReduceInferSymbolicShape(op, shape_analysis);
