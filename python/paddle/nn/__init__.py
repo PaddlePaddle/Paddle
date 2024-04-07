@@ -86,6 +86,7 @@ from .layer.conv import (
 from .layer.distance import PairwiseDistance
 from .layer.layers import Layer
 from .layer.loss import (
+    AdaptiveLogSoftmaxWithLoss,
     BCELoss,
     BCEWithLogitsLoss,
     CosineEmbeddingLoss,
@@ -295,6 +296,7 @@ __all__ = [
     'TripletMarginLoss',
     'SoftMarginLoss',
     'GaussianNLLLoss',
+    'AdaptiveLogSoftmaxWithLoss',
     'Unflatten',
     'FractionalMaxPool2D',
     'FractionalMaxPool3D',
