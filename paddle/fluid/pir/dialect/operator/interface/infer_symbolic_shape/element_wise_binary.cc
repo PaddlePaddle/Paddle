@@ -60,27 +60,17 @@ bool InferSymbolicShapeElementWiseBinary(
 
   const std::vector<symbol::DimExpr> shapes = [&] {
     std::vector<symbol::DimExpr> shapes;
-    symbol::DimExprBuilder builder{nullptr};
+    symbol::DimExprBuilder builder;
     for (size_t i = 0; i < shape_0.size(); i++) {
-      if (symbol::IsDimExprGreaterThanOne(shape_0[i]) &&
-          symbol::IsDimExprGreaterThanOne(shape_1[i])) {
-        auto simplify_dim_expr_pair =
-            SimplifyDimExprEqualCstr(shape_0[i], shape_1[i]);
-        shape_analysis->DimExprBuilder().CstrEq(simplify_dim_expr_pair.first,
-                                                simplify_dim_expr_pair.second);
-        shape_analysis->AddEqCstr(simplify_dim_expr_pair.first,
-                                  simplify_dim_expr_pair.second);
-      }
       if (shape_0[i] == shape_1[i]) {
         shapes.emplace_back(shape_0[i]);
-      } else if (shape_0[i] == 1 ||
-                 symbol::IsDimExprGreaterThanOne(shape_1[i])) {
+      } else if (shape_0[i] == 1) {
         shapes.emplace_back(shape_1[i]);
-      } else if (shape_1[i] == 1 ||
-                 symbol::IsDimExprGreaterThanOne(shape_0[i])) {
+      } else if (shape_1[i] == 1) {
         shapes.emplace_back(shape_0[i]);
       } else {
         shapes.emplace_back(builder.Broadcast(shape_0[i], shape_1[i]));
+        shape_analysis->AddBroadcastableCstr(shape_0[i], shape_1[i]);
       }
     }
     return shapes;

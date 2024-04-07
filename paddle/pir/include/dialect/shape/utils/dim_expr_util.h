@@ -27,10 +27,14 @@ IR_API DimExpr SubstituteDimExpr(
     const DimExpr& dim_expr,
     const std::unordered_map<DimExpr, DimExpr>& pattern_to_replacement);
 
+IR_API int GetDimExprPriority(const DimExpr& dim_expr);
+
+IR_API int CompareDimExprPriority(const DimExpr& lhs, const DimExpr& rhs);
+
 IR_API std::unordered_set<std::string> CollectDimExprSymbols(
     const DimExpr& dim_expr);
 
-IR_API bool IsDimExprGreaterThanOne(const DimExpr& dim_expr);
+// IR_API bool IsDimExprGreaterThanOne(const DimExpr& dim_expr);
 
 IR_API std::pair<DimExpr, DimExpr> SimplifyDimExprEqualCstr(const DimExpr& lhs,
                                                             const DimExpr& rhs);

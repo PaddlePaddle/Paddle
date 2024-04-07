@@ -939,9 +939,9 @@ bool IsDimExprGTOne(const symbol::DimExpr& dim_expr) {
 
 DimExpr SimplifyDimExpr(const DimExpr& expr) { return Simplify(expr); }
 
-bool IsDimExprGreaterThanOne(const symbol::DimExpr& dim_expr) {
-  return IsDimExprGTOne(dim_expr);
-}
+// bool IsDimExprGreaterThanOne(const symbol::DimExpr& dim_expr) {
+//   return IsDimExprGTOne(dim_expr);
+// }
 
 }  // namespace symbol
 
@@ -1083,6 +1083,55 @@ DimExpr SubstituteDimExpr(
   const auto& opt_replaced =
       SubstituteDimExprHelper(pattern_to_replacement).Substitute(dim_expr);
   return opt_replaced.has_value() ? opt_replaced.value() : dim_expr;
+}
+
+}  // namespace symbol
+
+namespace symbol {
+
+IR_API int GetDimExprPriority(const DimExpr& dim_expr) {
+  return std::visit(Overloaded{
+                        [&](std::int64_t) { return 0; },
+                        [&](const std::string&) { return 1; },
+                        [&](const Negative<DimExpr>&) { return 2; },
+                        [&](const Reciprocal<DimExpr>&) { return 2; },
+                        [&](const Add<DimExpr>&) { return 2; },
+                        [&](const Mul<DimExpr>&) { return 2; },
+                        [&](const Max<DimExpr>&) { return 2; },
+                        [&](const Min<DimExpr>&) { return 2; },
+                        [&](const Broadcast<DimExpr>&) { return 2; },
+                    },
+                    dim_expr.variant());
+}
+
+/**
+ * @brief Compare the two dim exprs priority
+ *
+ * @param lhs The left-hand side dim expr
+ * @param rhs The right-hand side dim expr
+ *
+ * @return -1 if lhs is less than rhs, 1 if lhs is greater than rhs, and 0 if
+ * they are equal
+ */
+int CompareDimExprPriority(const DimExpr& lhs, const DimExpr& rhs) {
+  int lhs_priority = GetDimExprPriority(lhs);
+  int rhs_priority = GetDimExprPriority(rhs);
+
+  if (lhs_priority != rhs_priority) {
+    return lhs_priority < rhs_priority ? -1 : 1;
+  }
+  // if the priority is same, we compare the string value to find the smallest
+  // one
+  if (lhs.isa<std::string>()) {
+    const auto& lhs_str = lhs.dyn_cast<std::string>();
+    const auto& rhs_str = rhs.dyn_cast<std::string>();
+    if (lhs_str.size() != rhs_str.size()) {
+      return lhs_str.size() < rhs_str.size() ? -1 : 1;
+    }
+    return lhs_str.compare(rhs_str);
+  }
+  // for the other tpye dim expr, we consider them to be equal
+  return 0;
 }
 
 }  // namespace symbol

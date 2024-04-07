@@ -775,7 +775,7 @@ bool WhileOp::InferSymbolicShape(
 
   pir::InferSymExprForBlock(body(), shape_analysis);
 
-  shape_analysis->PrintDimExprClusters();
+  // shape_analysis->PrintDimExprClusters();
 
   // add constraints for args
   std::unordered_map<symbol::DimExpr, symbol::DimExpr>
@@ -852,15 +852,13 @@ bool WhileOp::InferSymbolicShape(
       }
       if (input_arg_shape[j] ==
           yield_value_shape[j]) {  // Dim isn't changed in while
-        shape_analysis->DimExprBuilder().CstrEq(original_input_shape[j],
-                                                input_arg_shape[j]);
+        shape_analysis->AddEqCstr(original_input_shape[j], input_arg_shape[j]);
         continue;
       }
       if (original_input_shape.size() == yield_value_shape.size() &&
           IsSameWithDimExprBeforeWhile(original_input_shape[j],
                                        yield_value_shape[j])) {
-        shape_analysis->DimExprBuilder().CstrEq(original_input_shape[j],
-                                                input_arg_shape[j]);
+        shape_analysis->AddEqCstr(original_input_shape[j], input_arg_shape[j]);
         continue;
       }
     }

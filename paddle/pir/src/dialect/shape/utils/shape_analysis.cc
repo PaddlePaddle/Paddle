@@ -62,6 +62,10 @@ static std::string GetValueId(Value val) {
 void ShapeConstraintIRAnalysis::Init() {
   value_to_shape_or_data_.clear();
   next_sym_idx_ = 0;
+  cstrs_manager_.SetEqualCallbackFunc(
+      [&](const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
+        return SubstituteDimExpr(lhs, rhs);
+      });
 }
 
 const std::string ShapeConstraintIRAnalysis::GetNextSymName() {
@@ -88,16 +92,53 @@ ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) const {
 
 void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
     Value val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
+  const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
+      symbol::SubstituteShapeOrData(shape_or_data, substitute_map_);
   auto iter = value_to_shape_or_data_.find(val);
   if (iter == value_to_shape_or_data_.end()) {
-    value_to_shape_or_data_.emplace(val, shape_or_data);
+    value_to_shape_or_data_.emplace(val, substituted_shape_or_data);
   } else {
-    iter->second = shape_or_data;
+    iter->second = substituted_shape_or_data;
   }
 }
 
 symbol::DimExprBuilder ShapeConstraintIRAnalysis::DimExprBuilder() {
-  return symbol::DimExprBuilder(&constraints_);
+  return symbol::DimExprBuilder();
+}
+
+void ShapeConstraintIRAnalysis::SubstituteDimExpr(
+    const symbol::DimExpr& origin, const symbol::DimExpr& substituted) {
+  substitute_map_[origin] = substituted;
+  std::unordered_map<symbol::DimExpr, symbol::DimExpr> substitution_pattern;
+  substitution_pattern[origin] = substituted;
+  for (auto it = value_to_shape_or_data_.begin();
+       it != value_to_shape_or_data_.end();
+       it++) {
+    const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
+        symbol::SubstituteShapeOrData(it->second, substitution_pattern);
+    SetShapeOrDataForValue(it->first, substituted_shape_or_data);
+  }
+}
+
+void ShapeConstraintIRAnalysis::AddEqCstr(const symbol::DimExpr& lhs,
+                                          const symbol::DimExpr& rhs) {
+  VLOG(0) << "##### AddEqCstr : " << lhs << " == " << rhs;
+  cstrs_manager_.AddEqCstr(lhs, rhs);
+}
+
+void ShapeConstraintIRAnalysis::AddBroadcastableCstr(
+    const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
+  VLOG(0) << "##### AddBroadcastableCstr : " << lhs << " <==> " << rhs;
+  cstrs_manager_.AddBroadcastableCstr(lhs, rhs);
+}
+
+void ShapeConstraintIRAnalysis::AddGTOneCstr(const symbol::DimExpr& dim_expr) {
+  cstrs_manager_.AddGTOneCstr(dim_expr);
+}
+
+bool ShapeConstraintIRAnalysis::IsDimExprEqual(const symbol::DimExpr& lhs,
+                                               const symbol::DimExpr& rhs) {
+  return cstrs_manager_.IsDimExprEqual(lhs, rhs);
 }
 
 void ShapeConstraintIRAnalysis::PrintShapeOrDatas() const {
@@ -237,30 +278,6 @@ bool ShapeConstraintIRAnalysis::IsSameNumel(Value lhs, Value rhs) const {
                         rhs,
                         0,
                         static_cast<int>(rhs_type.GetRank()));
-}
-
-void ShapeConstraintIRAnalysis::AddEqCstr(const symbol::DimExpr& lhs,
-                                          const symbol::DimExpr& rhs) {
-  eq_cstr_set.Union(lhs, rhs);
-}
-
-bool ShapeConstraintIRAnalysis::IsDimExprEqual(const symbol::DimExpr& lhs,
-                                               const symbol::DimExpr& rhs) {
-  if (lhs == rhs) return true;
-
-  if (eq_cstr_set.Find(lhs) == eq_cstr_set.Find(rhs)) {
-    return true;
-  }
-
-  return false;
-}
-
-void ShapeConstraintIRAnalysis::PrintDimExprClusters() {
-  const auto& clusters = eq_cstr_set.Clusters();
-  VLOG(0) << "##### shape analysis clusters: ";
-  for (auto& cluster : clusters) {
-    VLOG(0) << "  cluster: " << cluster;
-  }
 }
 
 symbol::DimExpr ShapeConstraintIRAnalysis::GetProductDimExpr(

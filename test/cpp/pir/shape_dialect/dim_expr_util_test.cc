@@ -65,7 +65,7 @@ TEST(DimExprUtil, Calculate) {
 
 TEST(DimExpr, CollectDimExprSymbol) {
   DimExpr dim_expr = [&]() -> DimExpr {
-    DimExprBuilder builder(nullptr);
+    DimExprBuilder builder;
     DimExpr max_expr = builder.Max(DimExpr("S2"), DimExpr("S3"));
     DimExpr min_expr = builder.Min(max_expr, DimExpr("S4"));
     DimExpr broadcast_expr = builder.Broadcast(min_expr, DimExpr("S5"));

@@ -3903,9 +3903,9 @@ symbol::DimExpr GetBroadcastDimExpr(const symbol::DimExpr &lhs,
                                     const symbol::DimExpr &rhs) {
   if (lhs == rhs) {
     return lhs;
-  } else if (lhs == 1 || symbol::IsDimExprGreaterThanOne(rhs)) {
+  } else if (lhs == 1) {
     return rhs;
-  } else if (rhs == 1 || symbol::IsDimExprGreaterThanOne(lhs)) {
+  } else if (rhs == 1) {
     return lhs;
   } else {
     return symbol::Broadcast<symbol::DimExpr>{
@@ -3934,14 +3934,6 @@ std::vector<symbol::DimExpr> ComputeBroadcastShape(
   for (size_t i = 0; i < small_shape.size(); ++i) {
     const auto &lhs = large_shape.at(i + rank_gap);
     const auto &rhs = small_shape.at(i);
-    if (symbol::IsDimExprGreaterThanOne(lhs) &&
-        symbol::IsDimExprGreaterThanOne(rhs)) {
-      auto simplify_dim_expr_pair = SimplifyDimExprEqualCstr(lhs, rhs);
-      shape_analysis->DimExprBuilder().CstrEq(simplify_dim_expr_pair.first,
-                                              simplify_dim_expr_pair.second);
-      shape_analysis->AddEqCstr(simplify_dim_expr_pair.first,
-                                simplify_dim_expr_pair.second);
-    }
     output_data.emplace_back(
         GetBroadcastDimExpr(large_shape.at(i + rank_gap), small_shape.at(i)));
   }
