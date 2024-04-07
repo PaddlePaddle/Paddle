@@ -41,7 +41,6 @@ enum XPUFCCalcType {
 
 template <typename T>
 XPUFCCalcType FCCalcType() {
-  if (std::getenv("XPU_PADDLE_FC_FLOAT16") != nullptr &&
   const char* xpu_paddle_fc_float16 = std::getenv("XPU_PADDLE_FC_FLOAT16");
   if (xpu_paddle_fc_float16 != nullptr &&
       (std::is_same<phi::dtype::float16, T>::value ||
