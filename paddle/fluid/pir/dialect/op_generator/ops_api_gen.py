@@ -159,6 +159,8 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'lars_momentum_',
     'max_pool2d_v2',
     'partial_sum',
+    'p_send',
+    'p_recv',
     'random_routing',
     'rank_attention',
     'recv_v2',

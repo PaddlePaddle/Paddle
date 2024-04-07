@@ -1205,6 +1205,27 @@
   output : Tensor(out)
   invoke : full_like(x, 1, dtype, place)
 
+- op : p_recv
+  args : (int ring_id = 0, int peer = 0, DataType dtype = DataType::FLOAT32, bool dynamic_shape = false)
+  output : Tensor(out)
+  infer_meta :
+    func : PRecvInferMeta
+    param : [peer, dtype]
+  kernel :
+    func : p_recv
+    param : [peer, dtype, dynamic_shape]
+    data_type : dtype
+
+- op : p_send
+  args : (Tensor x, str ring_id = "0", int peer = 0, bool dynamic_shape = false)
+  output :
+  infer_meta:
+    func: PSendInferMeta
+    param: [x, peer]
+  kernel :
+    func : p_send
+    param : [x, peer, dynamic_shape]
+
 - op : pad
   args : (Tensor x, int[] paddings, Scalar pad_value)
   output : Tensor
