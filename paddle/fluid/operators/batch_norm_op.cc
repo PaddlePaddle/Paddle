@@ -20,7 +20,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_layout.h"
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
 #include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
