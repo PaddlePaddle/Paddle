@@ -36,13 +36,13 @@ class FcElementwiseLayerNormFusePattern : public paddle::drr::DrrPatternBase {
                {
                    {"in_num_col_dims", pat.Attr("in_num_col_dims")},
                    {"activation_type", pat.Attr("activation_type")},
-                   {"padding_weights", pat.Attr("padding_weights")},
                });
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
     const auto &layernorm =
         pat.Op(paddle::dialect::LayerNormOp::name(),
                {{"epsilon", pat.Attr("epsilon")},
                 {"begin_norm_axis", pat.Attr("begin_norm_axis")}});
+
     fc({&pat.Tensor("x"), &pat.Tensor("w"), &pat.Tensor("bias0")},
        {&pat.Tensor("fc_out")});
     add({&pat.Tensor("fc_out"), &pat.Tensor("y")}, {&pat.Tensor("add_out")});
@@ -51,8 +51,16 @@ class FcElementwiseLayerNormFusePattern : public paddle::drr::DrrPatternBase {
         {&pat.Tensor("layernorm_out"),
          &pat.Tensor("layernorm_mean"),
          &pat.Tensor("layernorm_variance")});
-    // Constrains the activation is none
+
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      auto bias0_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("bias0"));
+      auto bias1_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("bias1"));
+      if (bias0_dtype != bias1_dtype ||
+          (!bias0_dtype.isa<pir::Float16Type>() &&
+           !bias0_dtype.isa<pir::Float32Type>())) {
+        return false;
+      }
+
       int64_t layer_norm_x = 1;
       auto fc_out_dims = pir::GetShapeFromValue(match_ctx.Tensor("fc_out"));
       auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
