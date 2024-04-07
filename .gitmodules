@@ -78,6 +78,7 @@
 	path = third_party/flashattn
 	url = https://github.com/PaddlePaddle/flash-attention.git
 	ignore = dirty
+	update = none
 [submodule "third_party/gtest"]
 	path = third_party/gtest
 	url = https://github.com/google/googletest.git

@@ -72,9 +72,7 @@ def _math_attention(
     query = paddle.transpose(query, [0, 2, 1, 3])
     key = paddle.transpose(key, [0, 2, 1, 3])
     value = paddle.transpose(value, [0, 2, 1, 3])
-    product = paddle.matmul(
-        x=query * (head_dim**-0.5), y=key, transpose_y=True
-    )
+    product = paddle.matmul(x=query * (head_dim**-0.5), y=key, transpose_y=True)
 
     if not causal:
         weights = F.softmax(product)
@@ -300,6 +298,152 @@ def flash_attention(
             )
 
 
+def flash_attn_qkvpacked(
+    qkv,
+    dropout=0.0,
+    causal=False,
+    return_softmax=False,
+    *,
+    fixed_seed_offset=None,
+    rng_name="",
+    training=True,
+    name=None,
+):
+    r"""
+    The equation is:
+
+    .. math::
+
+        result=softmax(\frac{ Q * K^T }{\sqrt{d}}) * V
+
+    where : ``Q``, ``K``, and ``V`` represent the three input parameters of the attention module.
+    The dimensions of the three parameters are the same.
+    ``d`` represents the size of the last dimension of the three parameters.
+
+    Warning:
+        This API is only support inputs with dtype float16 and bfloat16.
+
+    Args:
+        qkv(Tensor): The query/key/value packed tensor in the Attention module.
+                        5-D tensor with shape:
+                        [batchsize, seqlen , num_heads/num_heads_k + 2, num_heads_k, head_dim].
+                        The dtype can be float16 or bfloat16.
+        dropout(float): The dropout ratio.
+        causal(bool): Whether enable causal mode.
+        return_softmax(bool): Whether to return softmax.
+        fixed_seed_offset(Tensor, optional): With fixed seed, offset for dropout mask.
+        training(bool): Whether it is in the training phase.
+        rng_name(str): The name to select Generator.
+        name(str, optional): The default value is None. Normally there is no need for user
+                        to set this property. For more information, please refer to
+                        :ref:`api_guide_Name`.
+
+    Returns:
+        out(Tensor): The attention tensor.
+                    4-D tensor with shape: [batch_size, seq_len, num_heads, head_dim].
+                    The dtype can be float16 or bfloat16.
+        softmax(Tensor): The softmax tensor. None if return_softmax is False.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> paddle.seed(2023)
+            >>> q = paddle.rand((1, 128, 2, 16))
+            >>> qkv = paddle.stack([q,q,q], axis=3)
+            >>> output = paddle.nn.functional.flash_attention.flash_attn_qkvpacked(qkv, 0.9, False, False)
+            >>> print(output)
+            (Tensor(shape=[1, 128, 2, 16], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[0.34992966, 0.34456208, 0.45826620, ..., 0.39883569,
+                0.42132431, 0.39157745],
+               [0.76687670, 0.65837246, 0.69117945, ..., 0.82817286,
+                0.76690865, 0.71485823]],
+              ...,
+              [[0.71662450, 0.57275224, 0.57053083, ..., 0.48108247,
+                0.53336465, 0.54540104],
+               [0.59137970, 0.51350880, 0.50449550, ..., 0.38860250,
+                0.40526697, 0.60541755]]]]), None)
+
+    """
+    head_dim = qkv.shape[-1]
+    sdp_func_name = _select_sdp(head_dim)
+
+    if sdp_func_name == "flash_attn":
+        if in_dynamic_or_pir_mode():
+            (result_attention, result_softmax, _, _) = _C_ops.flash_attn_qkvpacked(
+                qkv,
+                fixed_seed_offset,
+                None,
+                dropout,
+                causal,
+                return_softmax,
+                not training,
+                rng_name,
+            )
+            return result_attention, result_softmax if return_softmax else None
+
+        helper = LayerHelper('flash_attn_qkvpacked', **locals())
+        dtype = helper.input_dtype(input_param_name='qkv')
+        out = helper.create_variable_for_type_inference(dtype)
+        softmax = helper.create_variable_for_type_inference(dtype)
+        softmax_lse = helper.create_variable_for_type_inference(paddle.float32)
+        seed_offset = helper.create_variable_for_type_inference(paddle.int64)
+        inputs = {
+            'qkv': qkv,
+            'fixed_seed_offset': fixed_seed_offset,
+        }
+        outputs = {
+            'out': out,
+            'softmax': softmax,
+            'softmax_lse': softmax_lse,
+            'seed_offset': seed_offset,
+        }
+        helper.append_op(
+            type='flash_attn_qkvpacked',
+            inputs=inputs,
+            outputs=outputs,
+            attrs={
+                'dropout': dropout,
+                'causal': causal,
+                'return_softmax': return_softmax,
+                'is_test': not training,
+                'rng_name': rng_name,
+            },
+        )
+        return out, softmax if return_softmax else None
+    else:
+        # don't call qkvpacked if not using flash_attn
+        query = qkv[:, :, :-2].reshape([0, 0, -1, qkv.shape[-1]])
+        key = qkv[:, :, -2]
+        value = qkv[:, :, -1]
+        if sdp_func_name == "mem_efficient":
+            from paddle.incubate.nn.memory_efficient_attention import (
+                memory_efficient_attention,
+            )
+
+            output = memory_efficient_attention(
+                query,
+                key,
+                value,
+                attn_bias=None,
+                p=dropout,
+                scale=None,
+                training=training,
+            )
+            return output, None
+        else:
+            return _math_attention(
+                query,
+                key,
+                value,
+                dropout_rate=dropout,
+                causal=causal,
+                return_softmax=return_softmax,
+                training=training,
+            )
+
+
 def flash_attn_unpadded(
     query,
     key,
@@ -438,7 +582,8 @@ def flash_attn_unpadded(
     )
     return out, softmax if return_softmax else None
 
-def flash_attn_unpadded_qkvpacked(
+
+def flash_attn_varlen_qkvpacked(
     qkv,
     cu_seqlens_q,
     cu_seqlens_k,
@@ -450,6 +595,7 @@ def flash_attn_unpadded_qkvpacked(
     return_softmax=False,
     fixed_seed_offset=None,
     rng_name="",
+    varlen_padded=True,
     training=True,
     name=None,
 ):
@@ -468,23 +614,15 @@ def flash_attn_unpadded_qkvpacked(
         This API is only support inputs with dtype float16 and bfloat16.
 
     Args:
-        query(Tensor): The query tensor in the Attention module.
-                        3-D tensor with shape:
-                        [total_seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
-        key(Tensor): The key tensor in the Attention module.
-                        3-D tensor with shape:
-                        [total_seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
-        value(Tensor): The value tensor in the Attention module.
-                        3-D tensor with shape:
-                        [total_seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
+        qkv(Tensor): The padded query/key/value packed tensor in the Attention module. The padding part won't be computed
+                        4-D tensor with shape:
+                        [total_seq_len, num_heads/num_heads_k + 2, num_heads_k, head_dim].
+                        The dtype can be float16 or bfloat16.
         cu_seqlens_q(Tensor): The cumulative sequence lengths of the sequences in the batch,
                         used to index query.
         cu_seqlens_k(Tensor): The cumulative sequence lengths of the sequences in the batch,
                         used to index key and value.
-        max_seqlen_q(int): Maximum sequence length of query in the batch.
+        max_seqlen_q(int): Maximum sequence length of query in the batch. Note it's the padding length, not the max actual seqlen
         max_seqlen_k(int): Maximum sequence length of key/value in the batch.
         scale(float): The scaling of QK^T before applying softmax.
         dropout(float): The dropout ratio.
@@ -498,8 +636,8 @@ def flash_attn_unpadded_qkvpacked(
                         :ref:`api_guide_Name`.
 
     Returns:
-        out(Tensor): The attention tensor.
-                    4-D tensor with shape: [batch_size, seq_len, num_heads, head_dim].
+        out(Tensor): The attention tensor. The tensor is padded by zeros.
+                    3-D tensor with shape: [total_seq_len, num_heads, head_dim].
                     The dtype can be float16 or bfloat16.
         softmax(Tensor): The softmax tensor. None if return_softmax is False.
 
@@ -511,14 +649,15 @@ def flash_attn_unpadded_qkvpacked(
             >>> q = paddle.rand((2, 128, 8, 16), dtype='float16')
             >>> cu = paddle.arange(0, 384, 128, dtype='int32')
             >>> qq = paddle.reshape(q, [256, 8, 16])
-            >>> output = paddle.nn.functional.flash_attention.flash_attn_unpadded(qq, qq, qq, cu, cu, 128, 128, 0.25, 0.0, False, False)
+            >>> qkv = paddle.stack([qq,qq,qq], axis=2)
+            >>> output = paddle.nn.functional.flash_attention.flash_attn_varlen_qkvpacked(qkv, cu, cu, 128, 128, 0.25, 0.0, False, False)
 
     """
     if in_dynamic_mode():
         (
             result_attention,
             result_softmax,
-        ) = _C_ops.flash_attn_unpadded_qkvpacked(
+        ) = _C_ops.flash_attn_varlen_qkvpacked(
             qkv,
             cu_seqlens_q,
             cu_seqlens_k,
@@ -532,19 +671,18 @@ def flash_attn_unpadded_qkvpacked(
             return_softmax,
             not training,
             rng_name,
+            varlen_padded,
         )
         return result_attention, result_softmax if return_softmax else None
 
-    helper = LayerHelper('flash_attn_unpadded', **locals())
-    dtype = helper.input_dtype(input_param_name='q')
+    helper = LayerHelper('flash_attn_varlen_qkvpacked', **locals())
+    dtype = helper.input_dtype(input_param_name='qkv')
     out = helper.create_variable_for_type_inference(dtype)
     softmax = helper.create_variable_for_type_inference(dtype)
     softmax_lse = helper.create_variable_for_type_inference(paddle.float32)
     seed_offset = helper.create_variable_for_type_inference(paddle.int64)
     inputs = {
-        'q': query,
-        'k': key,
-        'v': value,
+        'qkv': qkv,
         'cu_seqlens_q': cu_seqlens_q,
         'cu_seqlens_k': cu_seqlens_k,
         'fixed_seed_offset': fixed_seed_offset,
@@ -556,7 +694,7 @@ def flash_attn_unpadded_qkvpacked(
         'seed_offset': seed_offset,
     }
     helper.append_op(
-        type='flash_attn_unpadded',
+        type='flash_attn_varlen_qkvpacked',
         inputs=inputs,
         outputs=outputs,
         attrs={
@@ -571,6 +709,7 @@ def flash_attn_unpadded_qkvpacked(
         },
     )
     return out, softmax if return_softmax else None
+
 
 def scaled_dot_product_attention(
     query,

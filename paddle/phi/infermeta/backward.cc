@@ -245,9 +245,9 @@ void FlashAttnGradInferMeta(const MetaTensor& q,
 }
 
 void FlashAttnQKVPackedGradInferMeta(const MetaTensor& qkv,
-                            MetaTensor* dq) {
-  if (dq) {
-    dq->share_meta(qkv);
+                            MetaTensor* dqkv) {
+  if (dqkv) {
+    dqkv->share_meta(qkv);
   }
 }
 
