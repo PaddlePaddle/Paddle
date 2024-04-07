@@ -12,5 +12,5 @@ register_unity_group(
   fusion_lstm_op.cc
   fusion_seqpool_concat_op.cc
   multi_gru_op.cc
-  mkldnn/multi_gru_mkldnn_op.cc
+  onednn/multi_gru_onednn_op.cc
   fusion_seqpool_cvm_concat_op.cc)
