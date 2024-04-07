@@ -18,7 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 
 namespace paddle {
@@ -101,7 +101,7 @@ void CropFunction(const framework::ExecutionContext& context) {
   }
   auto& place =
       *context.template device_context<DeviceContext>().eigen_device();
-  EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(
+  phi::funcs::EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(
       place, out_tensor, x_tensor, e_offsets, e_shape);
 }
 
@@ -165,7 +165,7 @@ void CropGradFunction(const framework::ExecutionContext& context) {
     auto d_out_tensor = EigenTensor<T, D>::From(*d_out);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    EigenPad<std::decay_t<decltype(place)>, T, D>::Eval(
+    phi::funcs::EigenPad<std::decay_t<decltype(place)>, T, D>::Eval(
         place, d_x_tensor, d_out_tensor, paddings, static_cast<T>(0));
   }
 }

@@ -246,7 +246,7 @@ TEST(test_prepare_op, test_complex_eager) {
 }
 
 #ifdef PADDLE_WITH_DNNL
-TEST(test_prepare_op, test_prepare_data_cpu_mkldnn) {
+TEST(test_prepare_op, test_prepare_data_cpu_onednn) {
   TestPrepareDataSamePlace({{"use_mkldnn", true}});
 }
 #endif

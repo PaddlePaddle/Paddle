@@ -115,71 +115,6 @@ void ForEachBroadcastDimExpr(const BroadcastLeaf& leaves,
   }
 }
 
-std::optional<symbol::Broadcastable<symbol::DimExpr>> GetFirstCstrBroadcastable(
-    const BroadcastLeaf& leaves) {
-  std::optional<symbol::Broadcastable<symbol::DimExpr>> ret;
-  ForEachBroadcastDimExpr(leaves, [&](const auto& broadcast) -> bool {
-    const auto& operands = broadcast.operands;
-    std::optional<symbol::DimExpr> lhs_symbol;
-    std::optional<symbol::DimExpr> rhs_symbol;
-    size_t i = 0;
-    for (; i < operands->size(); ++i) {
-      if (operands->at(i).template isa<std::string>()) {
-        lhs_symbol = operands->at(i);
-        break;
-      }
-    }
-    for (i++; i < operands->size(); ++i) {
-      if (operands->at(i).template isa<std::string>()) {
-        rhs_symbol = operands->at(i);
-        break;
-      }
-    }
-    if (lhs_symbol.has_value() && rhs_symbol.has_value()) {
-      CHECK(lhs_symbol != rhs_symbol)
-          << lhs_symbol.value() << " != " << rhs_symbol.value();
-      ret = symbol::Broadcastable<symbol::DimExpr>{lhs_symbol.value(),
-                                                   rhs_symbol.value()};
-      return true;
-    }
-    return false;
-  });
-  if (ret.has_value()) return ret.value();
-  ForEachBroadcastDimExpr(leaves, [&](const auto& broadcast) -> bool {
-    const auto& operands = broadcast.operands;
-    std::optional<symbol::DimExpr> lhs_symbol;
-    std::optional<symbol::DimExpr> rhs;
-    for (const auto& operand : *operands) {
-      if (operand.template isa<std::string>()) {
-        lhs_symbol = operand;
-        break;
-      }
-    }
-    for (const auto& operand : *operands) {
-      if (operand != lhs_symbol) {
-        rhs = operand;
-        break;
-      }
-    }
-    if (lhs_symbol.has_value() && rhs.has_value()) {
-      ret = symbol::Broadcastable<symbol::DimExpr>{lhs_symbol.value(),
-                                                   rhs.value()};
-      return true;
-    }
-    return false;
-  });
-  if (ret.has_value()) return ret.value();
-  ForEachBroadcastDimExpr(leaves, [&](const auto& broadcast) -> bool {
-    const auto& operands = broadcast.operands;
-    CHECK_GE(operands->size(), 2);
-    CHECK(operands->at(0) != operands->at(1));
-    ret = symbol::Broadcastable<symbol::DimExpr>{operands->at(0),
-                                                 operands->at(1)};
-    return true;
-  });
-  return ret;
-}
-
 using Pattern2Placement = std::unordered_map<symbol::DimExpr, symbol::DimExpr>;
 
 Pattern2Placement ConstructCstrLhsEqRhsReplacement(
@@ -290,6 +225,71 @@ BroadcastBranch<BroadcastTree> ConstructBroadcastBranch(
 }
 
 }  // namespace
+
+std::optional<symbol::Broadcastable<symbol::DimExpr>> GetFirstCstrBroadcastable(
+    const BroadcastLeaf& leaves) {
+  std::optional<symbol::Broadcastable<symbol::DimExpr>> ret;
+  ForEachBroadcastDimExpr(leaves, [&](const auto& broadcast) -> bool {
+    const auto& operands = broadcast.operands;
+    std::optional<symbol::DimExpr> lhs_symbol;
+    std::optional<symbol::DimExpr> rhs_symbol;
+    size_t i = 0;
+    for (; i < operands->size(); ++i) {
+      if (operands->at(i).template isa<std::string>()) {
+        lhs_symbol = operands->at(i);
+        break;
+      }
+    }
+    for (i++; i < operands->size(); ++i) {
+      if (operands->at(i).template isa<std::string>()) {
+        rhs_symbol = operands->at(i);
+        break;
+      }
+    }
+    if (lhs_symbol.has_value() && rhs_symbol.has_value()) {
+      CHECK(lhs_symbol != rhs_symbol)
+          << lhs_symbol.value() << " != " << rhs_symbol.value();
+      ret = symbol::Broadcastable<symbol::DimExpr>{lhs_symbol.value(),
+                                                   rhs_symbol.value()};
+      return true;
+    }
+    return false;
+  });
+  if (ret.has_value()) return ret.value();
+  ForEachBroadcastDimExpr(leaves, [&](const auto& broadcast) -> bool {
+    const auto& operands = broadcast.operands;
+    std::optional<symbol::DimExpr> lhs_symbol;
+    std::optional<symbol::DimExpr> rhs;
+    for (const auto& operand : *operands) {
+      if (operand.template isa<std::string>()) {
+        lhs_symbol = operand;
+        break;
+      }
+    }
+    for (const auto& operand : *operands) {
+      if (operand != lhs_symbol) {
+        rhs = operand;
+        break;
+      }
+    }
+    if (lhs_symbol.has_value() && rhs.has_value()) {
+      ret = symbol::Broadcastable<symbol::DimExpr>{lhs_symbol.value(),
+                                                   rhs.value()};
+      return true;
+    }
+    return false;
+  });
+  if (ret.has_value()) return ret.value();
+  ForEachBroadcastDimExpr(leaves, [&](const auto& broadcast) -> bool {
+    const auto& operands = broadcast.operands;
+    CHECK_GE(operands->size(), 2);
+    CHECK(operands->at(0) != operands->at(1));
+    ret = symbol::Broadcastable<symbol::DimExpr>{operands->at(0),
+                                                 operands->at(1)};
+    return true;
+  });
+  return ret;
+}
 
 BroadcastTree ConstructBroadcastTree(const BroadcastLeaf& leaves) {
   std::optional<symbol::Broadcastable<symbol::DimExpr>>

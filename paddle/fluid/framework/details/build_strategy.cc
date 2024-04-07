@@ -78,7 +78,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendMultiDevPass();
     AppendMultiGraphOptPasses();
 
-    AppendPassToSetMkldnnAttr("mkldnn_placement_pass");
+    AppendPassToSetMkldnnAttr("onednn_placement_pass");
     // runtime_context_cache pass should be the last pass to enable the attr of
     // all original and fused operators. But no operators can be enabled this
     // attr if putting it after MultiDevPass.
@@ -179,7 +179,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
         "delete_dropout_op_x_pass");
     AppendPassWithCheck(
         strategy_.enable_inference_pass_ && strategy_.use_mkldnn_,
-        "mkldnn_placement_pass");
+        "onednn_placement_pass");
 
     // 2. trainning pass
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
@@ -480,7 +480,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                    "GPU, skipped.";
         continue;
       }
-    } else if (pass->Type() == "mkldnn_placement_pass") {
+    } else if (pass->Type() == "onednn_placement_pass") {
       pass->Set("mkldnn_enabled_op_types",
                 new std::unordered_set<std::string>(mkldnn_enabled_op_types_));
     } else if (pass->Type() == "backward_optimizer_op_deps_pass") {
@@ -548,7 +548,7 @@ USE_PASS(build_cinn_pass);
 USE_PASS(fused_feedforward_pass);
 #endif
 #ifdef PADDLE_WITH_DNNL
-USE_PASS(mkldnn_placement_pass);
+USE_PASS(onednn_placement_pass);
 #endif
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     !defined(_WIN32) && !defined(__APPLE__)

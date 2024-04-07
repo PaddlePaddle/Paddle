@@ -48,13 +48,13 @@ make sure all the key mutually exclusive */
 
 // value's key:
 //  value's type which should be pir::Type's json object(ID or ID and DATA).
-#define TYPE_TYPE "type"
+#define TYPE_TYPE "t_type"
 
 // attr's name which is operation's feature.
 #define NAME "name"
 
 // attr's value which is pir::Attribute's json object(ID and DATA).
-#define ATTR_TYPE "attr"
+#define ATTR_TYPE "a_type"
 
 // type/attr's contents which is json::array.
 #define DATA "data"

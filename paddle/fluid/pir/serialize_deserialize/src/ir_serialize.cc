@@ -121,8 +121,8 @@ Json ProgramWriter::WriteOp(const pir::Operation& op) {
   op_json[OPRESULTS] = opresults_json;
 
   // serialize attributes
-  op_json[ATTRS] = WriteAttributesMap_0(op.attributes());
-  op_json[OPRESULTS_ATTRS] = WriteAttributesMap_1(op.attributes());
+  op_json[ATTRS] = WriteAttributesMapOpinfo(op.attributes());
+  op_json[OPRESULTS_ATTRS] = WriteAttributesMapTrain(op.attributes());
 
   VLOG(6) << "Finish write Operation " << op.name();
   return op_json;
@@ -136,7 +136,7 @@ Json ProgramWriter::WriteOpOperand(const pir::OpOperand& op_operand) {
   return operand_json;
 }
 
-Json ProgramWriter::WriteAttributesMap_1(const AttributeMap& attr_map) {
+Json ProgramWriter::WriteAttributesMapTrain(const AttributeMap& attr_map) {
   Json operesult_attrs_json = Json::array();
   for (auto& attr : attr_map) {
     if (attr.first == "stop_gradient" || attr.first == "persistable") {
@@ -148,9 +148,12 @@ Json ProgramWriter::WriteAttributesMap_1(const AttributeMap& attr_map) {
   return operesult_attrs_json;
 }
 
-Json ProgramWriter::WriteAttributesMap_0(const AttributeMap& attr_map) {
+Json ProgramWriter::WriteAttributesMapOpinfo(const AttributeMap& attr_map) {
   Json attrs_json = Json::array();
   for (auto& attr : attr_map) {
+    if (attr.first == "op_callstack") {
+      continue;
+    }
     if (attr.first != "stop_gradient" && attr.first != "persistable") {
       attrs_json.emplace_back(WriteAttribute(attr.first, attr.second));
     }
