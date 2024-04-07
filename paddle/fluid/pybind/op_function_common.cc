@@ -36,6 +36,7 @@
 #include "paddle/phi/common/complex.h"
 #include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/op_result.h"
+#include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
 
 namespace paddle {
@@ -864,14 +865,16 @@ void CastPyArg2AttrIRProgram(PyObject* obj,
                              const std::string& op_type,
                              ssize_t arg_pos) {
   VLOG(1) << "After Process shared_ptr<pir::Program>";
-  ::pybind11::object o =
-      ::pybind11::reinterpret_borrow<::pybind11::object>(obj);
+  ::pybind11::object o = ::pybind11::reinterpret_steal<::pybind11::object>(obj);
+  // ::pybind11::object o =
+  //     ::pybind11::reinterpret_borrow<::pybind11::object>(obj);
   // ::pybind11::detail::instance* inst =
   //     (::pybind11::detail::instance*)obj;  // NOLINT
   // void** vh = inst->simple_layout ? inst->simple_value_holder
-  //                                 : &inst->nonsimple.values_and_holders[0];
+  //                                 :
+  //                                 &inst->nonsimple.values_and_holders[0];
   // attrs[key] = reinterpret_cast<std::shared_ptr<::pir::Program>>(vh[0]);
-  attrs[key] = o.cast<std::shared_ptr<::pir::Program>&>();
+  attrs[key] = o.cast<std::shared_ptr<::pir::Program>>();
 }
 
 void CastPyArg2AttrValues(PyObject* obj,
@@ -1040,7 +1043,7 @@ void ConstructAttrMapForRunProgram(
       CastPyArg2AttrIRBlock(obj, attrs, key, op_type, arg_pos);
     } else if (std::set<std::string>({"forward_program", "backward_program"})
                    .count(key)) {
-      CastPyArg2AttrIRBlock(obj, attrs, key, op_type, arg_pos);
+      CastPyArg2AttrIRProgram(obj, attrs, key, op_type, arg_pos);
     } else if (std::set<std::string>({"is_test", "use_interpretorcore"})
                    .count(key)) {
       CastPyArg2AttrBoolean(obj, attrs, key, op_type, arg_pos);
