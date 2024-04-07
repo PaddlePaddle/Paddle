@@ -97,9 +97,11 @@ hlir::framework::Tensor Interpreter::GetTensor(const std::string& name) {
 
   auto it = impl_->var_map_paddle_to_cinn_.find(name);
   if (it == impl_->var_map_paddle_to_cinn_.end()) {
-    LOG(FATAL) << "No variable called [" << name
-               << "] found in executor\nThe existing vars: "
-               << utils::Join(impl_->scope_->var_names(), ", ");
+    std::stringstream ss;
+    ss << "No variable called [" << name
+       << "] found in executor\nThe existing vars: "
+       << utils::Join(impl_->scope_->var_names(), ", ");
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return impl_->scope_->GetTensor(it->second);
 }

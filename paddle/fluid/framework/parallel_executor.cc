@@ -1416,7 +1416,7 @@ void ParallelExecutor::PreludeToRun(
   platform::RecordEvent record_run(
       "ParallelExecutor::Run", platform::TracerEventType::UserDefined, 1);
   VLOG(3) << "enter ParallelExecutor Run";
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::IsCUDAGraphCapturing()) {
     PADDLE_ENFORCE_EQ(fetch_tensors.empty(),
                       true,
@@ -1804,7 +1804,7 @@ const ir::Graph &ParallelExecutor::Graph() const {
 void ParallelExecutor::PrepareForCUDAGraphCapture(ir::Graph *graph) {
   const auto &build_strategy = member_->build_strategy_;
   if (!build_strategy.allow_cuda_graph_capture_) return;
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_EQ(
       build_strategy.async_mode_,
       false,

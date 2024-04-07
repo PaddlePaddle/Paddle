@@ -121,7 +121,7 @@ struct SparseTensorMeta {
   bool valid() const noexcept;
 
   DDim dims;
-  DataType dtype;
+  DataType dtype{DataType::UNDEFINED};
   DataLayout layout{DataLayout::NCHW};
 };
 

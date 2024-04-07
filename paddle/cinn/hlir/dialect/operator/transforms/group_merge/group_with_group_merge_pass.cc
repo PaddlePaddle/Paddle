@@ -30,6 +30,7 @@
 #include "paddle/common/flags.h"
 
 #include "paddle/cinn/common/is_reachable_predicator.h"
+#include "paddle/common/enforce.h"
 
 PD_DECLARE_bool(enhance_vertical_fusion_with_recompute);
 
@@ -1139,11 +1140,11 @@ class GeneralFusionMergePassHelper {
 
     while (DoGeneralRecomputeAndVerticalFusion()) {
     }
-    DoPrologueGenerateShapeOpGroupFustion();
+    DoPrologueGenerateShapeOpGroupFusion();
   }
 
-  void DoPrologueGenerateShapeOpGroupFustion() {
-    VLOG(3) << "DoPrologueGenerateShapeOpGroupFustion...!";
+  void DoPrologueGenerateShapeOpGroupFusion() {
+    VLOG(3) << "DoPrologueGenerateShapeOpGroupFusion...!";
     bool updated = false;
     for (size_t idx = 0; idx < fusion_groups_.size(); ++idx) {
       auto producer = fusion_groups_[idx];
@@ -1296,7 +1297,7 @@ class GeneralFusionMergePassHelper {
         }
       }
       if (is_ring) {
-        LOG(FATAL) << "Exists Ring, Please Check!";
+        PADDLE_THROW(phi::errors::Fatal("Exists Ring, Please Check!"));
       }
     }
   }

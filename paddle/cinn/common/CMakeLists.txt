@@ -47,8 +47,7 @@ if(WITH_CUDA)
   cinn_nv_test(test_fp16_bf16_cuda SRCS float16_bfloat16_cuda_test.cu DEPS
                gtest glog)
 endif()
-if(NOT CINN_ONLY)
-  cinn_cc_test(dim_expr_converter_test SRCS dim_expr_converter_test.cc DEPS
-               cinncore)
-  cinn_cc_test(broadcast_tree_test SRCS broadcast_tree_test.cc DEPS cinncore)
-endif()
+
+cinn_cc_test(dim_expr_converter_test SRCS dim_expr_converter_test.cc DEPS
+             cinncore)
+cinn_cc_test(broadcast_tree_test SRCS broadcast_tree_test.cc DEPS cinncore)

@@ -11,8 +11,9 @@ if(NOT WIN32)
     # show statistics summary of ccache
     message("ccache version\t\t\t    " ${ccache_version} "\n"
             ${cache_directory})
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE_PATH})
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ${CCACHE_PATH})
+    set(CMAKE_C_COMPILER_LAUNCHER ${CCACHE_PATH})
+    set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE_PATH})
+    set(CMAKE_CUDA_COMPILER_LAUNCHER ${CCACHE_PATH})
   endif()
 elseif("${CMAKE_GENERATOR}" STREQUAL "Ninja")
   # (Note:zhouwei25) Only Ninja Generator can support sccache now

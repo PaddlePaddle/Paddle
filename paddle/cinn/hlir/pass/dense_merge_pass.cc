@@ -26,7 +26,7 @@ using framework::Node;
 using framework::NodeAttr;
 
 // Dense Merge Pass: merge those gemm which has same var as input into a batched
-// cubals call op. A * B, A * C, A * D,... after A * [B, C, D,...] Using cublas
+// cublas call op. A * B, A * C, A * D,... after A * [B, C, D,...] Using cublas
 // batched gemm can avoid do concat and slice.
 
 class DenseMergePassHelper : public FusionHelperBase {

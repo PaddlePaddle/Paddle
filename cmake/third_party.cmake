@@ -320,22 +320,6 @@ if(WITH_CINN)
   include(cmake/cinn/external/jitify.cmake)
 endif()
 
-# cinn_only includes third-party libraries separately
-if(CINN_ONLY)
-  include(external/gtest)
-  include(external/protobuf)
-  if(WITH_PYTHON)
-    include(external/pybind11)
-  endif()
-  if(WITH_MKL)
-    include(external/mklml)
-  endif()
-  if(WITH_MKLDNN)
-    include(external/mkldnn)
-  endif()
-  return()
-endif()
-
 include(external/eigen) # download eigen3
 include(external/threadpool) # download threadpool
 include(external/dlpack) # download dlpack
@@ -379,8 +363,8 @@ elseif(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
 endif()
 
 if(WITH_MKLDNN)
-  include(external/mkldnn) # download, build, install mkldnn
-  list(APPEND third_party_deps extern_mkldnn)
+  include(external/onednn) # download, build, install onednn
+  list(APPEND third_party_deps extern_onednn)
 endif()
 
 include(external/protobuf) # find first, then download, build, install protobuf

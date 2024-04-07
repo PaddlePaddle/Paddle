@@ -20,7 +20,6 @@ from semi_auto_parallel_llama_model import (
     LlamaForCausalLMAuto,
     LlamaPretrainingCriterionAuto,
     get_mesh,
-    set_global_mesh,
 )
 
 import paddle
@@ -140,7 +139,7 @@ class TestLlamaAuto:
             0, reduce(lambda x, y: x * y, mesh_shape, 1)
         ).reshape(mesh_shape)
         global_mesh = dist.ProcessMesh(mesh_arr, dim_names)
-        set_global_mesh(global_mesh)
+        dist.auto_parallel.set_mesh(global_mesh)
 
     def run_llama(self, to_static=0):
         if self.config.use_lazy_init:

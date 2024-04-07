@@ -104,7 +104,7 @@ class TesBackward_1(unittest.TestCase):
             out = paddle.mean(tanh_out)
             input_grad = grad(out, input, no_grad_vars=[input])
             self.assertEqual(
-                pir_program.global_block().ops[-1].name(), "pd_op.mean"
+                pir_program.global_block().ops[-3].name(), "pd_op.mean"
             )
 
     def test_split(self):
@@ -145,9 +145,7 @@ def get_ir_program_1():
     )
     with paddle.static.program_guard(main_program, start_program):
         x_s = paddle.static.data('x', [4, 4], x.dtype)
-        y_s = paddle.static.data('y', [4, 4], x.dtype)
         x_s.stop_gradient = False
-        y_s.stop_gradient = False
 
         k_s = paddle.tanh(x_s)
         z_x = paddle.tanh(x_s)
@@ -192,7 +190,6 @@ class TesBackward_2(unittest.TestCase):
             out = paddle.concat([add_out, add_out])
             input_grad = grad(out, input_x)
         ops_name = [
-            "pd_op.data",
             "pd_op.data",
             "pd_op.tanh",
             "pd_op.tanh",
@@ -293,6 +290,31 @@ class TestBackward_4(unittest.TestCase):
             (grad_x,) = exe.run(program, fetch_list=[out])
             res = np.full([2, 2], 6.0, dtype='float32')
             self.assertEqual((grad_x == res).all(), True)
+
+
+class TestBackward_5(unittest.TestCase):
+    def tearDown(self) -> None:
+        paddle.framework.set_flags({"FLAGS_enable_pir_api": False})
+
+    def test_skip_vjp(self):
+        if not paddle.framework.in_pir_mode():
+            return
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            x = paddle.static.data('x', [4, 4], 'float32')
+            x.stop_gradient = True
+            y = paddle.nn.functional.relu(x)
+            y.stop_gradient = False
+            z = paddle.nn.functional.relu(y)
+            loss = paddle.mean(z)
+
+        paddle.autograd.ir_backward.append_backward(loss)
+        relu_grad_number = 0
+        for op in program.global_block().ops:
+            if op.name() == "pd_op.relu_grad":
+                relu_grad_number += 1
+
+        self.assertEqual(relu_grad_number, 1)
 
 
 class TestValueSet(unittest.TestCase):

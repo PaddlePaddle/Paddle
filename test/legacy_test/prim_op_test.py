@@ -673,13 +673,8 @@ class PrimForwardChecker:
         # check static forward
         if len(ret) != len(self.eager_desire):
             msg = (
-                "The static comp forward api out tensor nums is different with eager forward api out tensor nums on {}."
-                'when enable_fw_comp is {}, static comp forward api out tensor nums = {}, eager forward api out tensor nums = {}. \n'.format(
-                    str(self.place),
-                    self.enable_fw_comp,
-                    len(ret),
-                    len(self.eager_desire),
-                )
+                f"The static comp forward api out tensor nums is different with eager forward api out tensor nums on {str(self.place)}."
+                f'when enable_fw_comp is {self.enable_fw_comp}, static comp forward api out tensor nums = {len(ret)}, eager forward api out tensor nums = {len(self.eager_desire)}. \n'
             )
             raise RuntimeError(msg)
         for i in range(len(ret)):
@@ -759,13 +754,8 @@ class PrimForwardChecker:
             # check jit comp forward
             if len(ret) != len(self.eager_desire):
                 msg = (
-                    "The jit comp forward api out tensor nums is different with eager forward api out tensor nums on {}."
-                    'when enable_fw_comp is {}, jit comp forward api out tensor nums = {}, eager forward api out tensor nums = {}. \n'.format(
-                        str(self.place),
-                        self.enable_fw_comp,
-                        len(ret),
-                        len(self.eager_desire),
-                    )
+                    f"The jit comp forward api out tensor nums is different with eager forward api out tensor nums on {str(self.place)}."
+                    f'when enable_fw_comp is {self.enable_fw_comp}, jit comp forward api out tensor nums = {len(ret)}, eager forward api out tensor nums = {len(self.eager_desire)}. \n'
                 )
                 raise RuntimeError(msg)
             for i in range(len(ret)):
@@ -857,14 +847,8 @@ class PrimForwardChecker:
             # check jit comp forward
             if len(ret) != len(self.eager_desire):
                 msg = (
-                    "The jit comp with cinn forward api out tensor nums is different with eager forward api out tensor nums on {}."
-                    'when enable_fw_comp is {}, enable_cinn is {}, jit comp forward api out tensor nums = {}, eager forward api out tensor nums = {}. \n'.format(
-                        str(self.place),
-                        self.enable_fw_comp,
-                        core.is_compiled_with_cinn() and self.enable_cinn,
-                        len(ret),
-                        len(self.eager_desire),
-                    )
+                    f"The jit comp with cinn forward api out tensor nums is different with eager forward api out tensor nums on {str(self.place)}."
+                    f'when enable_fw_comp is {self.enable_fw_comp}, enable_cinn is {core.is_compiled_with_cinn() and self.enable_cinn}, jit comp forward api out tensor nums = {len(ret)}, eager forward api out tensor nums = {len(self.eager_desire)}. \n'
                 )
                 raise RuntimeError(msg)
             for i in range(len(ret)):
@@ -935,9 +919,9 @@ class PrimGradChecker(PrimForwardChecker):
                     self.check_jit_comp()
 
     def get_output_dict(self, np_outputs, api_outputs, outputs_sig):
-        assert len(api_outputs) <= len(outputs_sig), (
-            "forward api outputs length must be the less than or equal to KernelSignature outputs,but receive {} and {}"
-        ).format(len(api_outputs), len(outputs_sig))
+        assert len(api_outputs) <= len(
+            outputs_sig
+        ), f"forward api outputs length must be the less than or equal to KernelSignature outputs,but receive {len(api_outputs)} and {len(outputs_sig)}"
         output_dict = {}
         for i in range(len(api_outputs)):
             output_name = outputs_sig[i]
@@ -1060,13 +1044,8 @@ class PrimGradChecker(PrimForwardChecker):
             # check static forward
             if len(actual_ret) != len(self.eager_desire):
                 msg = (
-                    "The eager comp grad out tensor nums is different with eager grad out tensor nums on {}."
-                    'when enable_rev_comp is {}, eager comp grad api out tensor nums = {}, eager grad out tensor nums = {}. \n'.format(
-                        str(self.place),
-                        self.enable_rev_comp,
-                        len(actual_ret),
-                        len(self.eager_desire),
-                    )
+                    f"The eager comp grad out tensor nums is different with eager grad out tensor nums on {str(self.place)}."
+                    f'when enable_rev_comp is {self.enable_rev_comp}, eager comp grad api out tensor nums = {len(actual_ret)}, eager grad out tensor nums = {len(self.eager_desire)}. \n'
                 )
                 raise RuntimeError(msg)
             for i in range(len(actual_ret)):
@@ -1183,14 +1162,8 @@ class PrimGradChecker(PrimForwardChecker):
         # check static grad out
         if len(actual_ret) != len(self.eager_desire):
             msg = (
-                "The static comp grad out tensor nums is different with eager grad out tensor nums on {}."
-                'when enable_fw_comp is {},enable_rev_comp is {}, static comp grad out tensor nums = {}, eager grad out tensor nums = {}. \n'.format(
-                    str(self.place),
-                    self.enable_fw_comp,
-                    self.enable_rev_comp,
-                    len(actual_ret),
-                    len(self.eager_desire),
-                )
+                f"The static comp grad out tensor nums is different with eager grad out tensor nums on {str(self.place)}."
+                f'when enable_fw_comp is {self.enable_fw_comp},enable_rev_comp is {self.enable_rev_comp}, static comp grad out tensor nums = {len(actual_ret)}, eager grad out tensor nums = {len(self.eager_desire)}. \n'
             )
             raise RuntimeError(msg)
         for i in range(len(actual_ret)):
@@ -1303,14 +1276,8 @@ class PrimGradChecker(PrimForwardChecker):
             # check jit comp grad out
             if len(ret) != len(self.eager_desire):
                 msg = (
-                    "The jit comp grad out tensor nums is different with eager grad out tensor nums on {}."
-                    'when enable_fw_comp is {}, enable_rev_comp is {}, jit comp grad out tensor nums = {}, eager grad out tensor nums = {}. \n'.format(
-                        str(self.place),
-                        self.enable_fw_comp,
-                        self.enable_rev_comp,
-                        len(ret),
-                        len(self.eager_desire),
-                    )
+                    f"The jit comp grad out tensor nums is different with eager grad out tensor nums on {str(self.place)}."
+                    f'when enable_fw_comp is {self.enable_fw_comp}, enable_rev_comp is {self.enable_rev_comp}, jit comp grad out tensor nums = {len(ret)}, eager grad out tensor nums = {len(self.eager_desire)}. \n'
                 )
                 raise RuntimeError(msg)
             for i in range(len(ret)):
@@ -1436,15 +1403,8 @@ class PrimGradChecker(PrimForwardChecker):
             # check jit comp grad out
             if len(ret) != len(self.eager_desire):
                 msg = (
-                    "The jit comp with cinn grad out tensor nums is different with eager grad out tensor nums on {}."
-                    'when enable_fw_comp is {}, enable_rev_comp is {}, enable_cinn is {}, jit comp grad out tensor nums = {}, eager grad out tensor nums = {}. \n'.format(
-                        str(self.place),
-                        self.enable_fw_comp,
-                        self.enable_rev_comp,
-                        self.enable_cinn and core.is_compiled_with_cinn(),
-                        len(ret),
-                        len(self.eager_desire),
-                    )
+                    f"The jit comp with cinn grad out tensor nums is different with eager grad out tensor nums on {str(self.place)}."
+                    f'when enable_fw_comp is {self.enable_fw_comp}, enable_rev_comp is {self.enable_rev_comp}, enable_cinn is {self.enable_cinn and core.is_compiled_with_cinn()}, jit comp grad out tensor nums = {len(ret)}, eager grad out tensor nums = {len(self.eager_desire)}. \n'
                 )
                 raise RuntimeError(msg)
             for i in range(len(ret)):

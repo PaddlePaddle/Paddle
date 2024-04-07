@@ -44,8 +44,6 @@ namespace paddle {
 namespace imperative {
 thread_local std::string Tracer::python_stack_ = "";
 
-thread_local bool Tracer::enable_program_desc_tracing_ = false;
-
 thread_local bool Tracer::has_grad_ = true;
 
 thread_local bool Tracer::use_layout_autotune_ = false;
@@ -367,11 +365,6 @@ void Tracer::TraceOpImpl(const std::string& type,
         "Operator %s raises an unknown exception.", type));
   }
 
-  if (enable_program_desc_tracing_) {
-    VLOG(5) << "Trace op " << type << " into ProgramDesc";
-    program_desc_tracer_->InsertOp(type, new_ins, outs, attrs);
-  }
-
   {
     platform::RecordEvent node_creation_record_event(
         "grad_node_creation", platform::TracerEventType::OperatorInner, 1);
@@ -592,14 +585,6 @@ bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,
     }
   }
   return false;
-}
-
-void Tracer::SetEnableProgramDescTracing(bool enabled) {
-  enable_program_desc_tracing_ = enabled;
-}
-
-bool Tracer::IsProgramDescTracingEnabled() const {
-  return enable_program_desc_tracing_;
 }
 
 void Tracer::SetAmpDtype(std::string amp_dtype) {

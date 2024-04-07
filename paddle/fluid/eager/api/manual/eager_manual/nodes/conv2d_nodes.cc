@@ -38,6 +38,19 @@ Conv2dGradNodeFinal::operator()(
     bool is_new_grad) {
   // Fill Zero For GradIn Tensors
   VLOG(3) << " Running Conv2dGradNodeFinal: " << this;
+  // This 'Local_XXXGradNode' record event is different with
+  // 'Global_XXXGradNode' event.
+  // * 'Local_XXXGradNode' will only cover execution time of this function.
+  // * 'Global_XXXGradNode' will not only cover execution time of this function,
+  // but also include gradient
+  //    accumulation when the output(s) of corresponding forward OP are shared
+  //    by other OP(s), which may have extra accumulation overhead than
+  //    'Local_XXXGradNode'.
+  paddle::platform::RecordEvent node_execution_inner(
+      "Local_Conv2dGradNodeFinal",
+      paddle::platform::TracerEventType::OperatorInner,
+      1);
+
   // Apply Gradient Hooks
   auto hooked_grads = ApplyGradientHooks(grads);
 
@@ -208,6 +221,19 @@ Conv2dDoubleGradNodeFinal::operator()(
                          egr::kSlotSmallVectorSize>& grads,
     bool create_graph,
     bool is_new_grad) {
+  // This 'Local_XXXGradNode' record event is different with
+  // 'Global_XXXGradNode' event.
+  // * 'Local_XXXGradNode' will only cover execution time of this function.
+  // * 'Global_XXXGradNode' will not only cover execution time of this function,
+  // but also include gradient
+  //    accumulation when the output(s) of corresponding forward OP are shared
+  //    by other OP(s), which may have extra accumulation overhead than
+  //    'Local_XXXGradNode'.
+  paddle::platform::RecordEvent node_execution_inner(
+      "Local_Conv2dDoubleGradNodeFinal",
+      paddle::platform::TracerEventType::OperatorInner,
+      1);
+
   // Fill Zero For GradIn Tensors
   const auto& input_metas = this->InputMeta();
   egr::EagerUtils::FillZeroForEmptyOptionalGradInput(&grads[0][0],

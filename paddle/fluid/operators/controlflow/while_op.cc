@@ -20,7 +20,7 @@
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #endif
 #include "paddle/fluid/platform/flags.h"
 
@@ -113,7 +113,7 @@ class WhileOp : public framework::OperatorBase {
         const framework::VariableNameMap &output_var_names = op->Outputs();
         for (auto &ipt : input_var_names) {
           for (const std::string &var_name : ipt.second) {
-            if (StrInVaraiableNameMap(var_name, output_var_names)) {
+            if (StrInVariableNameMap(var_name, output_var_names)) {
               no_copy_var_names.insert(var_name);
             }
           }

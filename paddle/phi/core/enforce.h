@@ -316,7 +316,7 @@ DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);
 }  // namespace details
 
 template <typename T>
-std::string GetExternalErrorMsg(T status);
+TEST_API std::string GetExternalErrorMsg(T status);
 
 /*************** CUDA ERROR ***************/
 inline bool is_error(cudaError_t e) { return e != cudaSuccess; }

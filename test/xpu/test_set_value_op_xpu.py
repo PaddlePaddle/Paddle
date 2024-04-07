@@ -1230,16 +1230,12 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             np.testing.assert_array_equal(
                 inps.grad.numpy(),
                 input_grad,
-                err_msg='The gradient of value should be \n{},\n but received {}'.format(
-                    input_grad, inps.grad.numpy()
-                ),
+                err_msg=f'The gradient of value should be \n{input_grad},\n but received {inps.grad.numpy()}',
             )
             np.testing.assert_array_equal(
                 value.grad.numpy(),
                 value_grad,
-                err_msg='The gradient of input should be \n{},\n but received {}'.format(
-                    value_grad, value.grad.numpy()
-                ),
+                err_msg=f'The gradient of input should be \n{value_grad},\n but received {value.grad.numpy()}',
             )
 
             # case 2
@@ -1266,16 +1262,12 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             np.testing.assert_array_equal(
                 inps2.grad.numpy(),
                 input_grad2,
-                err_msg='The gradient of value should be \n{},\n but received {}'.format(
-                    input_grad, inps2.grad.numpy()
-                ),
+                err_msg=f'The gradient of value should be \n{input_grad},\n but received {inps2.grad.numpy()}',
             )
             np.testing.assert_array_equal(
                 value2.grad.numpy(),
                 value_grad2,
-                err_msg='The gradient of input should be \n{},\n but received {}'.format(
-                    value_grad, value2.grad.numpy()
-                ),
+                err_msg=f'The gradient of input should be \n{value_grad},\n but received {value2.grad.numpy()}',
             )
 
             # case 3
@@ -1324,16 +1316,12 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             np.testing.assert_array_equal(
                 inps.grad.numpy(),
                 input_grad,
-                err_msg='The gradient of value should be \n{},\n but received {}'.format(
-                    input_grad, inps.grad.numpy()
-                ),
+                err_msg=f'The gradient of value should be \n{input_grad},\n but received {inps.grad.numpy()}',
             )
             np.testing.assert_array_equal(
                 value.grad.numpy(),
                 value_grad,
-                err_msg='The gradient of input should be \n{},\n but received {}'.format(
-                    value_grad, value.grad.numpy()
-                ),
+                err_msg=f'The gradient of input should be \n{value_grad},\n but received {value.grad.numpy()}',
             )
 
             # case 4: step >0
@@ -1372,16 +1360,12 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             np.testing.assert_array_equal(
                 inps.grad.numpy(),
                 input_grad,
-                err_msg='The gradient of value should be \n{},\n but received {}'.format(
-                    input_grad, inps.grad.numpy()
-                ),
+                err_msg=f'The gradient of value should be \n{input_grad},\n but received {inps.grad.numpy()}',
             )
             np.testing.assert_array_equal(
                 value.grad.numpy(),
                 value_grad,
-                err_msg='The gradient of input should be \n{},\n but received {}'.format(
-                    value_grad, value.grad.numpy()
-                ),
+                err_msg=f'The gradient of input should be \n{value_grad},\n but received {value.grad.numpy()}',
             )
 
             # case 5:a[0].shape==value.shape
@@ -1426,16 +1410,12 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             np.testing.assert_array_equal(
                 inps.grad.numpy(),
                 input_grad,
-                err_msg='The gradient of value should be \n{},\n but received {}'.format(
-                    input_grad, inps.grad.numpy()
-                ),
+                err_msg=f'The gradient of value should be \n{input_grad},\n but received {inps.grad.numpy()}',
             )
             np.testing.assert_array_equal(
                 value.grad.numpy(),
                 value_grad,
-                err_msg='The gradient of input should be \n{},\n but received {}'.format(
-                    value_grad, value.grad.numpy()
-                ),
+                err_msg=f'The gradient of input should be \n{value_grad},\n but received {value.grad.numpy()}',
             )
 
             # case 6: pass stop_gradient from value to x

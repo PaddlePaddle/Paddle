@@ -904,9 +904,19 @@ void FusedRopeInferMeta(const MetaTensor& q,
                         const MetaTensor& position_ids,
                         bool use_neox_rotary_style,
                         bool time_major,
+                        float rotary_emb_base,
                         MetaTensor* out_q,
                         MetaTensor* out_k,
                         MetaTensor* out_v);
+
+void FusedTokenPruneInferMeta(const MetaTensor& attn,
+                              const MetaTensor& x,
+                              const MetaTensor& mask,
+                              const MetaTensor& new_mask,
+                              bool keep_first_token,
+                              bool keep_order,
+                              MetaTensor* slimmed_x,
+                              MetaTensor* cls_inds);
 
 void MultiheadMatmulInferMeta(const MetaTensor& input,
                               const MetaTensor& w,
