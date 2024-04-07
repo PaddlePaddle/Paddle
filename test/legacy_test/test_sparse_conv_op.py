@@ -234,6 +234,13 @@ class TestSparseConv(unittest.TestCase):
                 1, 1, (1, 3, 3), data_format='NCDHW', key='subm_conv'
             )
 
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        or paddle.device.cuda.get_device_capability()[0] * 10
+        + paddle.device.cuda.get_device_capability()[1]
+        < 75,
+        "run test when minimum gpu's compute capability is 7.5.",
+    )
     def test_SubmConv3D_igemm_forward(self):
         indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
         values = [[1], [2], [3], [4]]
