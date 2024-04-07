@@ -7,7 +7,7 @@ if(WITH_MKLDNN)
   cc_library(
     index_sampler
     SRCS index_sampler.cc
-    DEPS xxhash index_wrapper eigen3 mkldnn)
+    DEPS xxhash index_wrapper eigen3 onednn)
 else()
   cc_library(
     index_sampler
