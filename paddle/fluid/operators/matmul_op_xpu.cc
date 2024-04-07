@@ -19,7 +19,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/xpu_api_wrapper.h"
+#include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 
 namespace paddle {
 namespace operators {

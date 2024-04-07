@@ -16,10 +16,28 @@
 
 namespace cinn::frontend::group_cluster::policy {
 
-bool GeneralTopoPolicy::CanFuse(const PatternNodePtr upstream,
-                                const PatternNodePtr downstream) {
-  // TODO(wuzhanfei) topo policy (if lead to loop)
+bool IsDownstreamNode(const PatternNodePtr start, const PatternNodePtr target) {
+  if (start == target) return true;
+  for (const auto& down_node : start->downstream_) {
+    if (IsDownstreamNode(down_node, target)) return true;
+  }
   return false;
+}
+
+bool IsIndirectDownstreamNode(const PatternNodePtr start,
+                              const PatternNodePtr target) {
+  for (const auto& node : start->downstream_) {
+    if (node == target) continue;
+    if (IsDownstreamNode(node, target)) return true;
+  }
+  return false;
+}
+
+bool GeneralTopoPolicy::CanFuse(const PatternNodePtr& first,
+                                const PatternNodePtr& second) {
+  VLOG(4) << "Start GeneralTopoPolicy";
+  return !(IsIndirectDownstreamNode(first, second) ||
+           IsIndirectDownstreamNode(second, first));
 }
 
 }  // namespace cinn::frontend::group_cluster::policy
