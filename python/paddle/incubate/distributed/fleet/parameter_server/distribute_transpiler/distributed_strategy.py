@@ -105,24 +105,20 @@ class TrainerRuntimeConfig:
             ]
             if max_merge_var_num != num_threads:
                 print(
-                    'WARNING: In {} mode, communicator_max_merge_var_num '
+                    f'WARNING: In {mode_str} mode, communicator_max_merge_var_num '
                     'must be equal to CPU_NUM. But received, '
-                    'communicator_max_merge_var_num = {}, CPU_NUM = '
-                    '{}. communicator_max_merge_var_num will be forced to {}.'.format(
-                        mode_str, max_merge_var_num, num_threads, num_threads
-                    )
+                    f'communicator_max_merge_var_num = {max_merge_var_num}, CPU_NUM = '
+                    f'{num_threads}. communicator_max_merge_var_num will be forced to {num_threads}.'
                 )
                 self.runtime_configs[
                     'communicator_max_merge_var_num'
                 ] = num_threads
             if send_queue_size != num_threads:
                 print(
-                    'WARNING: In {} mode, communicator_send_queue_size '
+                    f'WARNING: In {mode_str} mode, communicator_send_queue_size '
                     'must be equal to CPU_NUM. But received, '
-                    'communicator_send_queue_size = {}, CPU_NUM = '
-                    '{}. communicator_send_queue_size will be forced to {}.'.format(
-                        mode_str, send_queue_size, num_threads, num_threads
-                    )
+                    f'communicator_send_queue_size = {send_queue_size}, CPU_NUM = '
+                    f'{num_threads}. communicator_send_queue_size will be forced to {num_threads}.'
                 )
                 self.runtime_configs[
                     'communicator_send_queue_size'

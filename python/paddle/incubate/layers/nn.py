@@ -841,10 +841,8 @@ def tdm_sampler(
     if len(neg_samples_num_list) != len(layer_node_num_list):
         raise ValueError(
             "The shape of negative samples list must match the shape of layers. "
-            "But received len of neg_samples_num_list: {},"
-            "and len of layer_node_num_list: {}, please check your input.".format(
-                len(neg_samples_num_list), len(layer_node_num_list)
-            )
+            f"But received len of neg_samples_num_list: {len(neg_samples_num_list)},"
+            f"and len of layer_node_num_list: {len(layer_node_num_list)}, please check your input."
         )
     assert leaf_node_num is not None, "leaf_node_num should not be None here."
 
@@ -858,13 +856,8 @@ def tdm_sampler(
         if neg_samples_num_list[layer_idx] >= layer_node_num_list[layer_idx]:
             raise ValueError(
                 "The number of negative samples must be less than the number of nodes "
-                "in the layer {}, But received negative nums {}, and num of node at layer {} "
-                "is {}, please check your input.".format(
-                    layer_idx,
-                    neg_samples_num_list[layer_idx],
-                    layer_idx,
-                    layer_node_num_list[layer_idx],
-                )
+                f"in the layer {layer_idx}, But received negative nums {neg_samples_num_list[layer_idx]}, and num of node at layer {layer_idx} "
+                f"is {layer_node_num_list[layer_idx]}, please check your input."
             )
     assert (
         leaf_node_num < node_nums

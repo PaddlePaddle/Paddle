@@ -47,7 +47,7 @@ class XPUTestReduceMinOp(XPUOpTestWrapper):
                 'dim': self.axis,
             }
             self.temp_x = np.random.random(self.shape)
-            if self.dtype == np.uint16:  # bfloat16 acturally
+            if self.dtype == np.uint16:  # bfloat16 actually
                 self.x = convert_float_to_uint16(self.temp_x)
             else:
                 self.x = self.temp_x.astype(self.dtype)

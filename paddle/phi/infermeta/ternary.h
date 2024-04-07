@@ -210,6 +210,15 @@ void RandomRoutingInferMeta(const MetaTensor& prob,
                             const MetaTensor& topk_idx,
                             MetaTensor* out);
 
+void RankAttentionInferMeta(const MetaTensor& x,
+                            const MetaTensor& rank_offset,
+                            const MetaTensor& rank_param,
+                            int max_rank,
+                            int max_size,
+                            MetaTensor* input_help,
+                            MetaTensor* out,
+                            MetaTensor* ins_rank);
+
 void RoiAlignInferMeta(const MetaTensor& x,
                        const MetaTensor& boxes,
                        const MetaTensor& boxes_num,

@@ -48,19 +48,34 @@ elseif(WIN32)
   set(GFORTRAN_LIB "${LAPACK_LIB_DIR}/libgfortran-3.dll")
   set(BLAS_LIB "${LAPACK_LIB_DIR}/libblas.dll")
   set(LAPACK_LIB "${LAPACK_LIB_DIR}/liblapack.dll")
-else()
-  set(LAPACK_FILE
-      "lapack_mac_v3.10.0.20210628.tar.gz"
-      CACHE STRING "" FORCE)
-  set(LAPACK_URL
-      "https://paddlepaddledeps.bj.bcebos.com/${LAPACK_FILE}"
-      CACHE STRING "" FORCE)
-  set(LAPACK_URL_MD5 427aecf8dee8523de3566ca8e47944d7)
-  set(GNU_RT_LIB_1 "${LAPACK_LIB_DIR}/libquadmath.0.dylib")
-  set(GNU_RT_LIB_2 "${LAPACK_LIB_DIR}/libgcc_s.1.dylib")
-  set(GFORTRAN_LIB "${LAPACK_LIB_DIR}/libgfortran.5.dylib")
-  set(BLAS_LIB "${LAPACK_LIB_DIR}/libblas.3.dylib")
-  set(LAPACK_LIB "${LAPACK_LIB_DIR}/liblapack.3.dylib")
+else() # MacOS
+  if(APPLE AND WITH_ARM)
+    set(LAPACK_FILE
+        "lapack_mac_arm64_v0.3.26.tar.gz"
+        CACHE STRING "" FORCE)
+    set(LAPACK_URL
+        "https://paddlepaddledeps.bj.bcebos.com/${LAPACK_FILE}"
+        CACHE STRING "" FORCE)
+    set(LAPACK_URL_MD5 3f6412105ae2b7465e5ee90c8673e6d4)
+    set(GNU_RT_LIB_1 "${LAPACK_LIB_DIR}/libquadmath.0.dylib")
+    set(GNU_RT_LIB_2 "${LAPACK_LIB_DIR}/libgcc_s.1.dylib")
+    set(GFORTRAN_LIB "${LAPACK_LIB_DIR}/libgfortran.5.dylib")
+    set(BLAS_LIB "${LAPACK_LIB_DIR}/libblas.dylib")
+    set(LAPACK_LIB "${LAPACK_LIB_DIR}/liblapack.dylib")
+  else()
+    set(LAPACK_FILE
+        "lapack_mac_v3.10.0.20210628.tar.gz"
+        CACHE STRING "" FORCE)
+    set(LAPACK_URL
+        "https://paddlepaddledeps.bj.bcebos.com/${LAPACK_FILE}"
+        CACHE STRING "" FORCE)
+    set(LAPACK_URL_MD5 427aecf8dee8523de3566ca8e47944d7)
+    set(GNU_RT_LIB_1 "${LAPACK_LIB_DIR}/libquadmath.0.dylib")
+    set(GNU_RT_LIB_2 "${LAPACK_LIB_DIR}/libgcc_s.1.dylib")
+    set(GFORTRAN_LIB "${LAPACK_LIB_DIR}/libgfortran.5.dylib")
+    set(BLAS_LIB "${LAPACK_LIB_DIR}/libblas.3.dylib")
+    set(LAPACK_LIB "${LAPACK_LIB_DIR}/liblapack.3.dylib")
+  endif()
 endif()
 
 function(download_lapack)

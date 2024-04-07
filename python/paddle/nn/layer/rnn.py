@@ -774,9 +774,7 @@ class SimpleRNNCell(RNNCellBase):
         super().__init__()
         if hidden_size <= 0:
             raise ValueError(
-                "hidden_size of {} must be greater than 0, but now equals to {}".format(
-                    self.__class__.__name__, hidden_size
-                )
+                f"hidden_size of {self.__class__.__name__} must be greater than 0, but now equals to {hidden_size}"
             )
         std = 1.0 / math.sqrt(hidden_size)
         if weight_ih_attr is not False:
@@ -969,9 +967,7 @@ class LSTMCell(RNNCellBase):
         super().__init__()
         if hidden_size <= 0:
             raise ValueError(
-                "hidden_size of {} must be greater than 0, but now equals to {}".format(
-                    self.__class__.__name__, hidden_size
-                )
+                f"hidden_size of {self.__class__.__name__} must be greater than 0, but now equals to {hidden_size}"
             )
         std = 1.0 / math.sqrt(hidden_size)
         if weight_ih_attr is not False:
@@ -1162,9 +1158,7 @@ class GRUCell(RNNCellBase):
         super().__init__()
         if hidden_size <= 0:
             raise ValueError(
-                "hidden_size of {} must be greater than 0, but now equals to {}".format(
-                    self.__class__.__name__, hidden_size
-                )
+                f"hidden_size of {self.__class__.__name__} must be greater than 0, but now equals to {hidden_size}"
             )
         std = 1.0 / math.sqrt(hidden_size)
         if weight_ih_attr is not False:
