@@ -26,6 +26,7 @@
 namespace phi {
 namespace distributed {
 
+namespace {
 std::string GenUniqueCommKey(const std::vector<int64_t>& process_ids) {
   std::string unique_comm_key = "ReshardGroup";
   for (const auto& id : process_ids) {
@@ -33,6 +34,7 @@ std::string GenUniqueCommKey(const std::vector<int64_t>& process_ids) {
   }
   return unique_comm_key;
 }
+}  // namespace
 
 std::vector<int64_t> GetUnionProcessIds(std::vector<int64_t> in_process_ids,
                                         std::vector<int64_t> out_process_ids) {
@@ -128,6 +130,9 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
 #endif
     }
   }
+
+  auto* comm_context = CommContextManager::GetInstance().Get(unique_comm_key);
+  return comm_context;
 }
 
 std::map<int, int64_t> GetSplitAxisWithDimsMapping(
@@ -188,8 +193,8 @@ Place GetDefaultPlace() {
 
 phi::DeviceContext* GetDistTensorDeviceContext(
     phi::distributed::DistTensor* input) {
-  // TODO(GhostScreaming): pipeline parallel may create an undefined middle
-  // grad tensor. In such case, we need to get default place.
+  // TODO(GhostScreaming): pipeline parallel may create an undefined middle grad
+  // tensor. In such case, we need to get default place.
   auto place =
       input && input->initialized() ? input->place() : GetDefaultPlace();
   return phi::DeviceContextPool::Instance().Get(place);
@@ -254,5 +259,6 @@ bool IsSubMesh(const ProcessMesh& global_mesh, const ProcessMesh& sub_mesh) {
   }
   return false;
 }
+
 }  // namespace distributed
 }  // namespace phi
