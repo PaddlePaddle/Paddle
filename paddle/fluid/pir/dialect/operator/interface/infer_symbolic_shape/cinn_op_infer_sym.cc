@@ -129,6 +129,18 @@ bool ReshapeOpInferSymbolicShape(
   std::vector<int> shape =
       paddle::dialect::details::GetVectorAttr<int>(op, "shape");
 
+  const symbol::ShapeOrDataDimExprs &x_dim_expr =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+  if (x_dim_expr.data().has_value()) {
+    if (shape.size() == 1 && shape.front() == 1) {
+      shape_analysis->SetShapeOrDataForValue(
+          op->result(0),
+          symbol::TensorShapeOrDataDimExprs(std::vector<symbol::DimExpr>{1},
+                                            x_dim_expr.data().value()));
+      return true;
+    }
+  }
+
   const auto &GetProduct = [&](const auto &dim_exprs, const auto &Filter) {
     symbol::DimExpr product{1};
     for (const auto &dim_expr : dim_exprs) {

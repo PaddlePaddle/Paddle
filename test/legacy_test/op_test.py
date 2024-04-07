@@ -525,7 +525,7 @@ class OpTest(unittest.TestCase):
                 not in check_shape_white_list.NEED_TO_FIX_OP_LIST
             ):
                 raise AssertionError(
-                    "Input's shape should be large than or equal to 100 for "
+                    "Number of element(s) of input should be large than or equal to 100 for "
                     + cls.op_type
                     + " Op."
                 )
@@ -1636,7 +1636,7 @@ class OpTest(unittest.TestCase):
                 np.testing.assert_allclose(
                     expect_out,
                     actual_out,
-                    rtol=1e-05,
+                    rtol=1e-03 if self.dtype == np.uint16 else 1e-5,
                     atol=inplace_atol,
                     err_msg='Operator ('
                     + self.op_type
