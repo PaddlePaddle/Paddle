@@ -372,7 +372,7 @@ if(TARGET extern_protobuf)
   list(APPEND third_party_deps extern_protobuf)
 endif()
 
-include(external/json) # find first, then download, build, install protobuf
+include(external/json) # find first, then build json
 if(TARGET extern_json)
   list(APPEND third_party_deps extern_json)
 endif()
