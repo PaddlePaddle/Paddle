@@ -22,6 +22,7 @@
     spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : add
+    data_type: x
   inplace : (x -> out)
   backward : add_grad
   data_transform :
