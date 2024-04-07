@@ -1408,6 +1408,7 @@ def AutoCodeGen(
                 all_interface_str = ""
                 if len(all_interface_list) > 0:
                     all_interface_str = "," + ",".join(all_interface_list)
+
                 all_declare_str = (
                     exclusive_interface_str
                     + '\n'

@@ -37,10 +37,10 @@ TEST(layout_transformation_interface_test, operator) {
   };
 
   auto fused_conv = builder.Build<paddle::dialect::FusedConv2dAddActOp>(
-      build_input_value(std::vector<int64_t>{2, 2, 2, 2}).result(0),
-      build_input_value(std::vector<int64_t>{2, 2, 2, 2}).result(0),
-      build_input_value().result(0),
-      build_input_value().result(0));
+      build_input_value(std::vector<int64_t>{2, 2, 2, 2}).out(),
+      build_input_value(std::vector<int64_t>{2, 2, 2, 2}).out(),
+      build_input_value().out(),
+      build_input_value().out());
 
   auto layout_transformation_iface =
       fused_conv->dyn_cast<paddle::dialect::LayoutTransformationInterface>();
