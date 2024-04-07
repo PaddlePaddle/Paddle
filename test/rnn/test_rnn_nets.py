@@ -227,7 +227,9 @@ class TestLSTM(unittest.TestCase):
         x = np.random.randn(12, 4, 16)
         if not self.time_major:
             x = np.transpose(x, [1, 0, 2])
-        prev_h = np.random.randn(2 * self.num_directions, 4, 32)
+        prev_h = np.random.randn(
+            2 * self.num_directions, 4, getattr(self, "proj_size", 32)
+        )
         prev_c = np.random.randn(2 * self.num_directions, 4, 32)
 
         y1, (h1, c1) = rnn1(x, (prev_h, prev_c))
@@ -287,6 +289,35 @@ class TestLSTM(unittest.TestCase):
         self.test_with_zero_state()
         self.test_with_input_lengths()
         self.test_predict()
+
+
+class TestLSTMWithProjSize(TestLSTM):
+    def setUp(self):
+        # Since `set_device` is global, set `set_device` in `setUp` rather than
+        # `__init__` to avoid using an error device set by another test case.
+        place = paddle.set_device(self.place)
+        paddle.disable_static(place)
+        rnn1 = LSTM(
+            16,
+            32,
+            2,
+            time_major=self.time_major,
+            direction=self.direction,
+            proj_size=8,
+        )
+        rnn2 = paddle.nn.LSTM(
+            16,
+            32,
+            2,
+            time_major=self.time_major,
+            direction=self.direction,
+            proj_size=8,
+        )
+        convert_params_for_net(rnn1, rnn2)
+
+        self.rnn1 = rnn1
+        self.rnn2 = rnn2
+        self.proj_size = 8
 
 
 def predict_test_util(place, mode, stop_gradient=True):
