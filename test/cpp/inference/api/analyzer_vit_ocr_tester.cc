@@ -102,8 +102,8 @@ TEST(Analyzer_vit_ocr, fuse_status) {
   auto fuse_statis = GetFuseStatis(
       static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
 
-  CHECK_EQ(fuse_statis.at("fc_mkldnn_pass"), 33);
-  CHECK_EQ(fuse_statis.at("fused_conv2d_gelu_mkldnn_fuse_pass"), 2);
+  CHECK_EQ(fuse_statis.at("fc_onednn_pass"), 33);
+  CHECK_EQ(fuse_statis.at("fused_conv2d_gelu_onednn_fuse_pass"), 2);
 }
 #endif
 

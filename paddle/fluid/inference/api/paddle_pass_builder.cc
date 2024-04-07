@@ -358,34 +358,34 @@ void CpuPassStrategy::EnableMKLDNN() {
 // TODO(Superjomn) Consider the way to mix CPU with GPU.
 #ifdef PADDLE_WITH_DNNL
   if (!use_mkldnn_) {
-    passes_.insert(passes_.begin(), "mkldnn_placement_pass");
+    passes_.insert(passes_.begin(), "onednn_placement_pass");
 
     for (auto &pass : std::vector<std::string>({
              "squeeze2_transpose2_onednn_fuse_pass",
-             "depthwise_conv_mkldnn_pass",    //
+             "depthwise_conv_onednn_pass",    //
              "conv_bn_fuse_pass",             // Execute BN passes again to
              "conv_eltwiseadd_bn_fuse_pass",  // preserve correct pass order
-             "conv_affine_channel_mkldnn_fuse_pass",    //
+             "conv_affine_channel_onednn_fuse_pass",    //
              "conv_transpose_bn_fuse_pass",             //
              "conv_transpose_eltwiseadd_bn_fuse_pass",  //
-             "conv_bias_mkldnn_fuse_pass",              //
-             "conv_transpose_bias_mkldnn_fuse_pass",
+             "conv_bias_onednn_fuse_pass",              //
+             "conv_transpose_bias_onednn_fuse_pass",
              // TODO(baoachun): Need to support 5-dimensional input.
-             // "conv3d_bias_mkldnn_fuse_pass",  //
-             "conv_elementwise_add_mkldnn_fuse_pass",
-             "conv_activation_mkldnn_fuse_pass",           //
+             // "conv3d_bias_onednn_fuse_pass",  //
+             "conv_elementwise_add_onednn_fuse_pass",
+             "conv_activation_onednn_fuse_pass",           //
              "scale_matmul_fuse_pass",                     //
-             "reshape_transpose_matmul_mkldnn_fuse_pass",  //
-             "matmul_transpose_reshape_mkldnn_fuse_pass",  //
-             "matmul_elementwise_add_mkldnn_fuse_pass",    //
-             "matmul_activation_mkldnn_fuse_pass",         //
+             "reshape_transpose_matmul_onednn_fuse_pass",  //
+             "matmul_transpose_reshape_onednn_fuse_pass",  //
+             "matmul_elementwise_add_onednn_fuse_pass",    //
+             "matmul_activation_onednn_fuse_pass",         //
              // Disabled due to topology-dependent speed-up
-             "fc_mkldnn_pass",
-             "fc_act_mkldnn_fuse_pass",
+             "fc_onednn_pass",
+             "fc_act_onednn_fuse_pass",
              "self_attention_fuse_pass",              //
              "batch_norm_act_fuse_pass",              //
              "softplus_activation_onednn_fuse_pass",  //
-             "shuffle_channel_mkldnn_detect_pass",    //
+             "shuffle_channel_onednn_detect_pass",    //
              "elementwise_act_onednn_fuse_pass",      //
              "operator_scale_onednn_fuse_pass",       //
              "operator_unsqueeze2_onednn_fuse_pass",  //
@@ -419,8 +419,8 @@ void CpuPassStrategy::EnableMkldnnQuantizer() {
 void CpuPassStrategy::EnableMkldnnBfloat16() {
 #ifdef PADDLE_WITH_DNNL
   if (!use_mkldnn_bfloat16_) {
-    passes_.emplace_back("fc_mkldnn_pass");
-    passes_.emplace_back("fc_act_mkldnn_fuse_pass");
+    passes_.emplace_back("fc_onednn_pass");
+    passes_.emplace_back("fc_act_onednn_fuse_pass");
 
     passes_.emplace_back("cpu_bfloat16_placement_pass");
     passes_.emplace_back("cpu_bfloat16_pass");
@@ -437,8 +437,8 @@ void CpuPassStrategy::EnableMkldnnInt8() {
   if (!use_mkldnn_int8_) {
     passes_.clear();
     passes_.emplace_back("simplify_with_basic_ops_pass");
-    passes_.emplace_back("quant_dequant_mkldnn_pass");
-    passes_.emplace_back("mkldnn_placement_pass");
+    passes_.emplace_back("quant_dequant_onednn_pass");
+    passes_.emplace_back("onednn_placement_pass");
     passes_.emplace_back("constant_folding_pass");
     passes_.emplace_back("squeeze2_transpose2_onednn_fuse_pass");
     passes_.emplace_back("layer_norm_fuse_pass");
@@ -462,27 +462,27 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.emplace_back("matmul_scale_fuse_pass");
     passes_.emplace_back("gpu_cpu_map_matmul_to_mul_pass");
     passes_.emplace_back("repeated_fc_relu_fuse_pass");
-    passes_.emplace_back("depthwise_conv_mkldnn_pass");
+    passes_.emplace_back("depthwise_conv_onednn_pass");
     passes_.emplace_back("conv_bn_fuse_pass");
     passes_.emplace_back("conv_eltwiseadd_bn_fuse_pass");
-    passes_.emplace_back("conv_affine_channel_mkldnn_fuse_pass");
+    passes_.emplace_back("conv_affine_channel_onednn_fuse_pass");
     passes_.emplace_back("conv_transpose_bn_fuse_pass");
     passes_.emplace_back("conv_transpose_eltwiseadd_bn_fuse_pass");
-    passes_.emplace_back("conv_bias_mkldnn_fuse_pass");
-    passes_.emplace_back("conv_transpose_bias_mkldnn_fuse_pass");
-    passes_.emplace_back("conv_elementwise_add_mkldnn_fuse_pass");
-    passes_.emplace_back("conv_activation_mkldnn_fuse_pass");
+    passes_.emplace_back("conv_bias_onednn_fuse_pass");
+    passes_.emplace_back("conv_transpose_bias_onednn_fuse_pass");
+    passes_.emplace_back("conv_elementwise_add_onednn_fuse_pass");
+    passes_.emplace_back("conv_activation_onednn_fuse_pass");
     passes_.emplace_back("fc_fuse_pass");
     passes_.emplace_back("repeated_fc_relu_fuse_pass");
-    passes_.emplace_back("fc_mkldnn_pass");
-    passes_.emplace_back("fc_act_mkldnn_fuse_pass");
-    passes_.emplace_back("matmul_transpose_reshape_mkldnn_fuse_pass");
+    passes_.emplace_back("fc_onednn_pass");
+    passes_.emplace_back("fc_act_onednn_fuse_pass");
+    passes_.emplace_back("matmul_transpose_reshape_onednn_fuse_pass");
     passes_.emplace_back("batch_norm_act_fuse_pass");
     passes_.emplace_back("softplus_activation_onednn_fuse_pass");
-    passes_.emplace_back("compute_propagate_scales_mkldnn_pass");
+    passes_.emplace_back("compute_propagate_scales_onednn_pass");
     passes_.emplace_back("scale_matmul_fuse_pass");
-    passes_.emplace_back("reshape_transpose_matmul_mkldnn_fuse_pass");
-    passes_.emplace_back("matmul_elementwise_add_mkldnn_fuse_pass");
+    passes_.emplace_back("reshape_transpose_matmul_onednn_fuse_pass");
+    passes_.emplace_back("matmul_elementwise_add_onednn_fuse_pass");
     passes_.emplace_back("operator_scale_onednn_fuse_pass");
     passes_.emplace_back("operator_unsqueeze2_onednn_fuse_pass");
     passes_.emplace_back("operator_reshape2_onednn_fuse_pass");
@@ -510,7 +510,7 @@ void CpuPassStrategy::DisableMkldnnFcPasses() {
 
 void CpuPassStrategy::EraseFcMkldnnPasses() {
   std::vector<std::string> fc_passes_to_erase(
-      {"fc_mkldnn_pass", "fc_act_mkldnn_fuse_pass"});
+      {"fc_onednn_pass", "fc_act_onednn_fuse_pass"});
   for (const auto &pass : fc_passes_to_erase) {
     int idx = static_cast<int>(GetPassIndex(pass));
     if (idx != -1) {
@@ -627,7 +627,7 @@ const std::vector<std::string> kPirMkldnnPasses{
     "reshape_transpose_matmul_fuse_pass",
     "matmul_elementwise_add_fuse_pass",
     "matmul_activation_fuse_pass",
-    "conv_elementwise_add_mkldnn_fuse_pass"};
+    "conv_elementwise_add_onednn_fuse_pass"};
 
 const std::vector<std::string> kPirCpuPasses{};
 

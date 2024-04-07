@@ -80,7 +80,7 @@
 #endif
 
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/inference/api/mkldnn_quantizer.h"
+#include "paddle/fluid/inference/api/onednn_quantizer.h"
 #endif
 
 #ifdef PADDLE_WITH_ONNXRUNTIME

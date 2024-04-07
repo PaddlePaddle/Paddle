@@ -39,7 +39,7 @@
 #include "paddle_api.h"           // NOLINT
 #include "paddle_pass_builder.h"  // NOLINT
 #ifdef PADDLE_WITH_DNNL
-#include "paddle_mkldnn_quantizer_config.h"  // NOLINT
+#include "paddle_onednn_quantizer_config.h"  // NOLINT
 #endif
 
 namespace paddle {
