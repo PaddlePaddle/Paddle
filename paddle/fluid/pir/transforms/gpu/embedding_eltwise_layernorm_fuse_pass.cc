@@ -116,7 +116,7 @@ class Fused3EmbeddingEltwiseLayernormPattern
     const auto &add1 = pat.Op(paddle::dialect::AddOp::name());
     const auto &add2 = pat.Op(paddle::dialect::AddOp::name());
     const auto &layernorm = pat.Op(paddle::dialect::LayerNormOp::name(),
-                                   {"epsilon", pat.Attr("epsilon")});
+                                   {{"epsilon", pat.Attr("epsilon")}});
 
     embedding_1({&pat.Tensor("x1"), &pat.Tensor("w1")},
                 {&pat.Tensor("embedding_1_out")});
