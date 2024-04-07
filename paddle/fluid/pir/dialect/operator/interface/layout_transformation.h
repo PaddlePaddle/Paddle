@@ -27,38 +27,6 @@
 namespace paddle {
 namespace dialect {
 
-// template< typename ConcreteOp>
-// common::DataLayout PreferLayoutImpl(pir::Operation* op) {
-//     return common::DataLayout::ALL_LAYOUT;
-// }
-
-// template< typename ConcreteOp>
-// void RewriteByLayoutImpl(pir::Operation* op, common::DataLayout new_layout) {
-//     PADDLE_THROW(common::errors::Unimplemented(
-//         "Op %s should have a specialized RewriteByLayout function",
-//         pir::get_type_name<ConcreteOp>()
-//     ));
-// }
-
-// template< typename ConcreteOp>
-// std::vector<pir::Value> RelevantInputsImpl(pir::Operation* op) {
-//     return op->operands_source();
-// }
-
-// template< typename ConcreteOp>
-// std::vector<pir::Value> RelevantOutputsImpl(pir::Operation* op) {
-//     return op->results();
-// }
-
-// class FusedConv2dAddActOp;
-// template<> common::DataLayout
-// PreferLayoutImpl<FusedConv2dAddActOp>(pir::Operation*); extern template
-// common::DataLayout PreferLayoutImpl<FusedConv2dAddActOp>(pir::Operation*);
-// template<> void RewriteByLayoutImpl<FusedConv2dAddActOp>(pir::Operation*,
-// common::DataLayout); extern template void
-// RewriteByLayoutImpl<FusedConv2dAddActOp>(pir::Operation*,
-// common::DataLayout);
-
 class LayoutTransformationInterface
     : public pir::OpInterfaceBase<LayoutTransformationInterface> {
  public:
