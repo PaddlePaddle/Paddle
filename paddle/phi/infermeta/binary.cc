@@ -2789,13 +2789,13 @@ void PullGpupsSparseInferMeta(const MetaTensor& w,
 
 void PullSparseV2InferMeta(const std::vector<MetaTensor>& ids,
                            const std::vector<MetaTensor>& w,
-                           int embeddingdim,
-                           int tableid,
-                           const std::string& accessorclass,
-                           const std::string& ctrlabelname,
-                           int paddingid,
-                           bool scalesparsegrad,
-                           const std::string& inputnames,
+                           int embedding_dim,
+                           int table_id,
+                           const std::string& accessor_class,
+                           const std::string& ctrlabel_name,
+                           int padding_id,
+                           bool scale_sparse_grad,
+                           const std::string& input_names,
                            bool is_distributed,
                            std::vector<MetaTensor*> out) {
   PADDLE_ENFORCE_GE(ids.size(),
@@ -2813,6 +2813,7 @@ void PullSparseV2InferMeta(const std::vector<MetaTensor>& ids,
   std::vector<phi::DDim> outs_dims;
   outs_dims.resize(n_ids);
   for (size_t i = 0; i < n_ids; ++i) {
+    const auto ids_dims = ids[i]->dims();
     auto out_dim = common::vectorize(ids_dims);
     out_dim.push_back(hidden_size);
     outs_dims[i] = common::make_ddim(out_dim);
@@ -2820,7 +2821,7 @@ void PullSparseV2InferMeta(const std::vector<MetaTensor>& ids,
   // ctx->SetOutputsDim("Out", outs_dims);
   for (size_t i = 0; i < n_ids; ++i) {
     out[i]->set_dims(outs_dims[i]);
-    out[i]->share_lod(ids[i], i);
+    out[i]->share_lod(*ids[i], i);
   }
 }
 
