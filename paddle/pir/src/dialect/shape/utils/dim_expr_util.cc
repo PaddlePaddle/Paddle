@@ -1093,18 +1093,16 @@ int CompareDimExprPriority(const DimExpr& lhs, const DimExpr& rhs) {
   if (lhs_priority != rhs_priority) {
     return lhs_priority < rhs_priority ? -1 : 1;
   }
-  // if the priority is same, we compare the string value to find the smallest
-  // one
-  if (lhs.isa<std::string>()) {
-    const auto& lhs_str = lhs.dyn_cast<std::string>();
-    const auto& rhs_str = rhs.dyn_cast<std::string>();
-    if (lhs_str.size() != rhs_str.size()) {
-      return lhs_str.size() < rhs_str.size() ? -1 : 1;
-    }
-    return lhs_str.compare(rhs_str);
-  }
-  // for the other tpye dim expr, we consider them to be equal
-  return 0;
+
+  auto CompareForEqualPrority =
+      Overloaded{[](const std::string& lhs, const std::string& rhs) {
+                   if (lhs.size() != rhs.size()) {
+                     return lhs.size() < rhs.size() ? -1 : 1;
+                   }
+                   return lhs.compare(rhs);
+                 },
+                 [](const auto& lhs, const auto& rhs) { return 0; }};
+  return std::visit(CompareForEqualPrority, lhs.variant(), rhs.variant());
 }
 
 }  // namespace symbol

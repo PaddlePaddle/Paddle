@@ -47,7 +47,7 @@ class IR_API ShapeConstraintIRAnalysis {
   void AddBroadcastableCstr(const symbol::DimExpr& lhs,
                             const symbol::DimExpr& rhs);
 
-  void AddGTOneCstr(const symbol::DimExpr& dim_expr);
+  void AddGreatThanOneCstr(const symbol::DimExpr& dim_expr);
 
   bool IsDimExprEqual(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs);
 

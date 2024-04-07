@@ -46,27 +46,26 @@ void ConstraintsManager::AddEqCstr(const DimExpr& lhs, const DimExpr& rhs) {
   VLOG(8) << "AddEqCstr the constraint: " << lhs << " == " << rhs;
 
   auto simplify_result = SimpliyEqualCstr(lhs, rhs);
-  if (simplify_result.has_value()) {
-    AddEqCstr(simplify_result->first, simplify_result->second);
+  if (simplify_result.first != lhs && simplify_result.second != rhs) {
+    AddEqCstr(simplify_result.first, simplify_result.second);
   } else {
     DimExpr origin, subsutituted;
-    if (CompareDimExprPriority(simplify_result->first,
-                               simplify_result->second) > 0) {
-      origin = simplify_result->first;
-      subsutituted = simplify_result->second;
+    if (CompareDimExprPriority(lhs, rhs) > 0) {
+      origin = lhs;
+      subsutituted = rhs;
     } else {
-      origin = simplify_result->second;
-      subsutituted = simplify_result->first;
+      origin = rhs;
+      subsutituted = lhs;
     }
-    if (CanSubstituteInConstraint(simplify_result->first,
-                                  simplify_result->second)) {
-      SubstituteDimExprInConstraint(simplify_result->first,
-                                    simplify_result->second);
+    if (CanSubstituteInConstraint(simplify_result.first,
+                                  simplify_result.second)) {
+      SubstituteDimExprInConstraint(simplify_result.first,
+                                    simplify_result.second);
     }
     if (equal_callback_func_ &&
-        CanSubstituteInShapeAnalysis(simplify_result->first,
-                                     simplify_result->second)) {
-      equal_callback_func_(simplify_result->first, simplify_result->second);
+        CanSubstituteInShapeAnalysis(simplify_result.first,
+                                     simplify_result.second)) {
+      equal_callback_func_(simplify_result.first, simplify_result.second);
     }
   }
 }
@@ -75,8 +74,8 @@ void ConstraintsManager::AddBroadcastableCstr(const DimExpr& lhs,
                                               const DimExpr& rhs) {
   broadcastables_.push_back(Broadcastable<DimExpr>(lhs, rhs));
 
-  bool lhs_gtone = IsDimExprGTOne(lhs);
-  bool rhs_gtone = IsDimExprGTOne(rhs);
+  bool lhs_gtone = IsGTOne(lhs);
+  bool rhs_gtone = IsGTOne(rhs);
   DimExprBuilder builder;
   if (lhs_gtone && rhs_gtone) {
     AddEqCstr(lhs, rhs);
@@ -92,7 +91,7 @@ void ConstraintsManager::AddGTOneCstr(const DimExpr& dim_expr) {
 
   auto InsertEqualCstr = [&](const DimExpr& gtone_dim_expr,
                              const DimExpr& other_dim_expr) {
-    if (IsDimExprGTOne(other_dim_expr)) {
+    if (IsGTOne(other_dim_expr)) {
       AddEqCstr(gtone_dim_expr, other_dim_expr);
     } else {
       DimExprBuilder builder;
@@ -112,24 +111,25 @@ void ConstraintsManager::AddGTOneCstr(const DimExpr& dim_expr) {
 
 namespace {
 
-bool IsDimExprGreaterThanOne(const DimExpr& dim_expr) {
-  if (std::holds_alternative<std::int64_t>(dim_expr)) {
-    if (std::get<std::int64_t>(dim_expr) > 1) return true;
-  } else if (std::holds_alternative<Add<DimExpr>>(dim_expr)) {
-    const auto& sub_dim_exprs = *std::get<Add<DimExpr>>(dim_expr).operands;
-    for (auto sub_dim_expr : sub_dim_exprs) {
-      if (std::holds_alternative<std::int64_t>(sub_dim_expr)) {
-        if (std::get<std::int64_t>(sub_dim_expr) > 1) return true;
-      }
-    }
-  }
-  return false;
+bool IsGTOneBaseOnValue(const DimExpr& dim_expr) {
+  auto IsGTOnePredicater =
+      Overloaded{[&](std::int64_t dim_expr) { return dim_expr > 1; },
+                 [&](const Add<DimExpr>& dim_expr) {
+                   for (auto sub_dim_expr : *dim_expr.operands) {
+                     if (sub_dim_expr.isa<std::int64_t>())
+                       if (sub_dim_expr.Get<std::int64_t>() > 1) return true;
+                   }
+                   return false;
+                 },
+                 [&](const auto& dim_expr) { return false; }};
+
+  std::visit(IsGTOnePredicater, dim_expr.variant());
 }
 
 }  // namespace
 
-bool ConstraintsManager::IsDimExprGTOne(const DimExpr& dim_expr) {
-  return gtones_.count(dim_expr) || IsDimExprGreaterThanOne(dim_expr);
+bool ConstraintsManager::IsGTOne(const DimExpr& dim_expr) {
+  return gtones_.count(dim_expr) || IsGTOneBaseOnValue(dim_expr);
 }
 
 bool ConstraintsManager::IsDimExprEqual(const DimExpr& lhs,
@@ -201,51 +201,70 @@ void ConstraintsManager::SubstituteDimExprInConstraint(
   }
 }
 
-std::optional<std::pair<DimExpr, DimExpr>> ConstraintsManager::SimpliyEqualCstr(
-    const DimExpr& lhs, const DimExpr& rhs) {
-  if (!((lhs.isa<Add<DimExpr>>() && rhs.isa<Add<DimExpr>>()) ||
-        (lhs.isa<Mul<DimExpr>>() && rhs.isa<Mul<DimExpr>>()))) {
-    return std::nullopt;
-  }
-  List<DimExpr> lhs_list, rhs_list;
-  if (lhs.isa<Add<DimExpr>>()) {
-    lhs_list = lhs.Get<Add<DimExpr>>().operands;
-    rhs_list = lhs.Get<Add<DimExpr>>().operands;
-  } else {
-    lhs_list = lhs.Get<Mul<DimExpr>>().operands;
-    rhs_list = lhs.Get<Mul<DimExpr>>().operands;
-  }
-  if (lhs_list->size() != rhs_list->size()) {
-    return std::nullopt;
-  }
+namespace {
 
-  int diff_count = 0;
-  DimExpr lhs_diff, rhs_diff;
-  std::unordered_map<DimExpr, int> lhs_hash;
-  for (DimExpr lhs_dim_expr : *lhs_list) {
-    if (lhs_hash.count(lhs_dim_expr)) {
-      lhs_hash[lhs_dim_expr] = lhs_hash[lhs_dim_expr]++;
-    } else {
-      lhs_hash[lhs_dim_expr] = 1;
-    }
+std::pair<List<DimExpr>, List<DimExpr>> GetEqualFromAddAndMul(
+    const List<DimExpr>& lhs_list, const List<DimExpr>& rhs_list) {
+  if (lhs_list->size() != rhs_list->size()) {
+    return std::pair(lhs_list, rhs_list);
   }
-  for (DimExpr rhs_dim_expr : *rhs_list) {
+  int diff_count = 0;
+  List<DimExpr> lhs_diffs, rhs_diffs;
+  std::unordered_map<DimExpr, int> lhs_hash;
+  for (const auto& lhs_dim_expr : *lhs_list) {
+    lhs_hash[lhs_dim_expr]++;
+  }
+  for (const auto& rhs_dim_expr : *rhs_list) {
     if (lhs_hash.count(rhs_dim_expr)) {
       if (lhs_hash[rhs_dim_expr] >= 1) {
         lhs_hash[rhs_dim_expr]--;
         continue;
       }
     }
-    if (++diff_count > 1) return std::nullopt;
-    rhs_diff = rhs_dim_expr;
+    rhs_diffs->push_back(rhs_dim_expr);
   }
-  for (auto it = lhs_hash.begin(); it != lhs_hash.end(); it++) {
-    if (it->second < 0) {
-      lhs_diff = it->first;
-      break;
+  for (const auto& lhs_dim_expr : *lhs_list) {
+    if (lhs_hash.at(lhs_dim_expr) >= 1) {
+      lhs_hash[lhs_dim_expr]--;
+      lhs_diffs->push_back(lhs_dim_expr);
     }
   }
-  return std::pair(lhs_diff, rhs_diff);
+  return std::pair(lhs_diffs, rhs_diffs);
+}
+
+}  // namespace
+
+std::pair<DimExpr, DimExpr> ConstraintsManager::SimpliyEqualCstr(
+    const DimExpr& lhs, const DimExpr& rhs) {
+  auto DoSimpliy = Overloaded{
+      [](const Add<DimExpr>& lhs,
+         const Add<DimExpr>& rhs) -> std::pair<DimExpr, DimExpr> {
+        List<DimExpr> lhs_list = lhs.operands;
+        List<DimExpr> rhs_list = rhs.operands;
+        std::tie(lhs_list, rhs_list) =
+            GetEqualFromAddAndMul(lhs_list, rhs_list);
+        auto lhs_diff =
+            lhs_list->size() == 1 ? lhs_list->at(0) : Add<DimExpr>{lhs_list};
+        auto rhs_diff =
+            rhs_list->size() == 1 ? rhs_list->at(0) : Add<DimExpr>{rhs_list};
+        return std::pair(lhs_diff, rhs_diff);
+      },
+      [](const Mul<DimExpr>& lhs,
+         const Mul<DimExpr>& rhs) -> std::pair<DimExpr, DimExpr> {
+        List<DimExpr> lhs_list = lhs.operands;
+        List<DimExpr> rhs_list = rhs.operands;
+        std::tie(lhs_list, rhs_list) =
+            GetEqualFromAddAndMul(lhs_list, rhs_list);
+        auto lhs_diff =
+            lhs_list->size() == 1 ? lhs_list->at(0) : Mul<DimExpr>{lhs_list};
+        auto rhs_diff =
+            rhs_list->size() == 1 ? rhs_list->at(0) : Mul<DimExpr>{rhs_list};
+        return std::pair(lhs_diff, rhs_diff);
+      },
+      [](const auto& lhs, const auto& rhs) -> std::pair<DimExpr, DimExpr> {
+        return std::make_pair(DimExpr(lhs), DimExpr(rhs));
+      }};
+  return std::visit(DoSimpliy, lhs.variant(), rhs.variant());
 }
 
 }  // namespace symbol

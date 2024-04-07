@@ -29,7 +29,7 @@ class IR_API ConstraintsManager {
 
   void AddGTOneCstr(const DimExpr& dim_expr);
 
-  bool IsDimExprGTOne(const DimExpr& dim_expr);
+  bool IsGTOne(const DimExpr& dim_expr);
 
   bool IsDimExprEqual(const DimExpr& lhs, const DimExpr& rhs);
 
@@ -40,8 +40,9 @@ class IR_API ConstraintsManager {
 
  private:
   void SubstituteDimExprInConstraint(const DimExpr& lhs, const DimExpr& rhs);
-  std::optional<std::pair<DimExpr, DimExpr>> SimpliyEqualCstr(
-      const DimExpr& lhs, const DimExpr& rhs);
+
+  std::pair<DimExpr, DimExpr> SimpliyEqualCstr(const DimExpr& lhs,
+                                               const DimExpr& rhs);
 
  private:
   EqualCallbackFunc equal_callback_func_ = nullptr;

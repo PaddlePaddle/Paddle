@@ -94,7 +94,8 @@ void ShapeConstraintIRAnalysis::AddBroadcastableCstr(
   cstrs_manager_.AddBroadcastableCstr(lhs, rhs);
 }
 
-void ShapeConstraintIRAnalysis::AddGTOneCstr(const symbol::DimExpr& dim_expr) {
+void ShapeConstraintIRAnalysis::AddGreatThanOneCstr(
+    const symbol::DimExpr& dim_expr) {
   cstrs_manager_.AddGTOneCstr(dim_expr);
 }
 
