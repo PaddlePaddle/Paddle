@@ -503,7 +503,8 @@ class PartialProgramLayer:
             self._cuda_graph_vec,
             *attrs,
         )
-        return out_vars
+        restored_nest_out = self._restore_out(out_vars)
+        return restored_nest_out
 
     @cached_property
     def origin_runnable_program(self):
