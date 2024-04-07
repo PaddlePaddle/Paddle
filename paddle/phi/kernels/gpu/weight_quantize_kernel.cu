@@ -73,14 +73,14 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                                 weight_shape,
                                 arch);
   } else if (algo == "weight_only_int4") {
-    PADDLE_FATAL(phi::errors::Unimplemented(
+    PADDLE_FATAL(
         "Weight quant gpu kernel currently don't support weight_only_int4 "
-        "algo, please use cpu version."));
+        "algo, please use cpu version.");
   } else {
-    PADDLE_FATAL(phi::errors::Unimplemented(
+    PADDLE_FATAL(
         "The algo must be in ['weight_only_int8', 'weight_only_int4', "
         "'llm.int8'], but got[%s]",
-        algo));
+        algo);
   }
 }
 }  // namespace phi
