@@ -111,7 +111,6 @@ Variable NetBuilder::BinaryOp(const std::string& op_type,
                     true,
                     phi::errors::InvalidArgument(
                         "The inputs type of op type should be equal!"));
-  << "The inputs type of op " << op_type << " should be equal!";
   return CustomInstr(op_type, {lhs, rhs}, {{"axis", axis}}).front();
 }
 
@@ -466,8 +465,7 @@ Variable NetBuilder::Gather(const Variable& operand,
                     x_ndim,
                     phi::errors::InvalidArgument(
                         "Axis must be in [ %d - %d]", -x_ndim, x_ndim - 1));
-  ) << "" <<  << ", " <<
-                         << ").";
+
   Variable transformed_index = index;
   // If we got 1-D Tensor, the first step is reshape, in order to keep
   // operand.rank == index.rank
