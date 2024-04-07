@@ -799,9 +799,9 @@ class PipelineParallel(MetaParallelBase):
                 labels = next(micro_dataset)[1]
                 self._check_micro_batch_data_valid(labels)
                 for idx, loss_fn in enumerate(self._layers._loss_fn):
-                    output_tensor = loss_fn(output_tensor, labels)
+                    loss_tensor = loss_fn(output_tensor, labels)
                     assert isinstance(
-                        output_tensor,
+                        loss_tensor,
                         (paddle.Tensor, framework.core.eager.Tensor),
                     ), "Currently, loss_fn should obtain Paddle.Tensor dtype"
 
@@ -810,21 +810,19 @@ class PipelineParallel(MetaParallelBase):
                             self.accumulate_steps > 1
                             and not self._delay_scale_loss
                         ):
-                            output_tensor = (
-                                output_tensor / self.accumulate_steps
-                            )
+                            loss_tensor = loss_tensor / self.accumulate_steps
 
                         if self.total_loss is None:
                             self.total_loss = []
                         # when self.total_loss length is less than idx, append a new tensor
                         if len(self.total_loss) <= idx:
                             self.total_loss.append(
-                                paddle.zeros_like(output_tensor)
+                                paddle.zeros_like(loss_tensor)
                             )
-                        self.total_loss[idx] += output_tensor.detach()
+                        self.total_loss[idx] += loss_tensor.detach()
 
                     if idx == self.loss_fn_idx:
-                        loss_tensor = output_tensor
+                        backward_loss_tensor = loss_tensor
         if self.is_pipeline_first_stage() or self.is_pipeline_last_stage():
             # Only increase micro batch id at virtual first/last pp stage.
             # The micro batch id is used to load data, therefore, only increase it when load data.
@@ -832,7 +830,7 @@ class PipelineParallel(MetaParallelBase):
         if self._enable_timer:
             self.timers("forward_step").stop()
         if self.is_pipeline_last_stage() and self._compute_loss:
-            return loss_tensor
+            return backward_loss_tensor
         return output_tensor
 
     def _backward_step(self, input_tensor, output_tensor, output_tensor_grad):
