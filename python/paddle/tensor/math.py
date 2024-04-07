@@ -7627,7 +7627,7 @@ def signbit(x, name=None):
             Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True , True , False])
     """
-    if not isinstance(x, (paddle.Tensor, Variable)):
+    if not isinstance(x, (paddle.Tensor, Variable, paddle.pir.Value)):
         raise TypeError(f"x must be tensor type, but got {type(x)}")
 
     check_variable_and_dtype(
@@ -7646,7 +7646,9 @@ def signbit(x, name=None):
         ],
         "signbit",
     )
-    neg_zero_x = paddle.to_tensor(np.copysign(1, x.numpy()), dtype=x.dtype)
+    ones = [1.0] * math.prod(x.shape)
+    ones = paddle.to_tensor(ones, x.dtype).reshape(x.shape)
+    neg_zero_x = paddle.copysign(ones, x)
     x = paddle.sign(neg_zero_x)
     out = paddle.cast(x < 0, dtype='bool')
     return out
