@@ -720,7 +720,11 @@ PyObject* eager_api_run_custom_op(PyObject* self,
       if (ctx.OutputRangeAt(i).first + 1 == ctx.OutputRangeAt(i).second) {
         paddle::Tensor* out_tensor =
             ctx.MutableOutputAt(ctx.OutputRangeAt(i).first);
-        if (!out_tensor->initialized()) {
+        // TODO(gongwb): it's tmp solution, we should use a better way to check.
+        bool valid =
+            (!out_tensor->is_dense_tensor() && out_tensor->is_initialized()) ||
+            (out_tensor->is_dense_tensor() &&
+             out_tensor->has_allocation()) if (!valid) {
           PADDLE_ENFORCE(
               paddle::framework::detail::IsOptionalVar(outputs.at(i)) ||
                   out_tensor->is_dist_tensor(),
