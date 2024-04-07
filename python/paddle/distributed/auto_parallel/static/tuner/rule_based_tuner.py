@@ -2104,8 +2104,11 @@ class RuleBasedTuner:
             self._cluster.get_num_machines(),
             self._cluster._num_devices_per_machine,
         )
+
+        # TODO(chenzhichao): update _num_devices_per_machine with new cluster
         if m is None:
             m = 8
+
         device_meshes_list = ClusterPartitionUtil.partition_cluster(n, m)
         end = time.time()
         self._logger.info(f"Partition cluster in {end - begin:.2f}s.")

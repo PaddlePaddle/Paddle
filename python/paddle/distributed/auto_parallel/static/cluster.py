@@ -361,13 +361,7 @@ class Link:
         str = ""
         source_id = self.source if self._topo else self.source.global_id
         target_id = self.target if self._topo else self.target.global_id
-        str += "source_global_id: {}, target_global_id: {}, type: {}, bandwidth: {}, latency: {}".format(
-            source_id,
-            target_id,
-            self.type,
-            self.bandwidth,
-            self.latency,
-        )
+        str += f"source_global_id: {source_id}, target_global_id: {target_id}, type: {self.type}, bandwidth: {self.bandwidth}, latency: {self.latency}"
         return str
 
     def __repr__(self):
