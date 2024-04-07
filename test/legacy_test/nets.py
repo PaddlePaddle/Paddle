@@ -490,12 +490,8 @@ def scaled_dot_product_attention(
     if not (queries.dtype == keys.dtype == values.dtype):
         raise TypeError(
             "The dtype of keys, values and queries should be the same."
-            "But received queries.dtype = {}, "
-            " keys.dtype = {}, values.dtype) = {}.".format(
-                convert_dtype(queries.dtype),
-                convert_dtype(keys.dtype),
-                convert_dtype(values.dtype),
-            )
+            f"But received queries.dtype = {convert_dtype(queries.dtype)}, "
+            f" keys.dtype = {convert_dtype(keys.dtype)}, values.dtype) = {convert_dtype(values.dtype)}."
         )
 
     if not (len(queries.shape) == len(keys.shape) == len(values.shape) == 3):

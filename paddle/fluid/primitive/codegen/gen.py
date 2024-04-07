@@ -53,6 +53,7 @@ BACKENDS_BLACK_LIST = [
     "embedding_grad",
     "full",
     "partial_send",
+    "push_dense",
 ]
 
 # prim op with one input and one output, with no attribute

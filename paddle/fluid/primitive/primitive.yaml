@@ -3,6 +3,7 @@
 - multiply
 - divide
 - elementwise_pow
+- rsqrt
 - sin
 - sinh
 - asin

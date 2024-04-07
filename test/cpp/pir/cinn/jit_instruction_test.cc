@@ -97,12 +97,14 @@ TEST(CinnJitInstruction, Run) {
        ++it) {
     if (checking_cinn_ops.count(it->name())) {
       auto ir_compiler =
-          cinn::hlir::framework::PirCompilerManager::Create(target);
+          std::make_shared<cinn::hlir::framework::PirCompiler>(target);
 
       std::vector<::pir::Operation*> ops = {it};
-      auto group = std::make_shared<cinn::hlir::framework::pir::Group>(ops);
-      group->loop_ranges = std::vector<int64_t>{8, 8};
-      group->output_values.push_back(it->result(0));
+      auto group =
+          std::make_shared<cinn::hlir::framework::pir::OpLoweringGroup>(ops);
+      auto loop_ranges = std::vector<int64_t>{8, 8};
+      group->set_loop_ranges(loop_ranges);
+      group->mut_output_values().push_back(it->result(0));
       auto fn_ptr_res = ir_compiler->Build({group});
       std::unordered_map<std::string, ::pir::Attribute> op_attrs{
           {cinn::dialect::JitKernelOp::kAttrName,

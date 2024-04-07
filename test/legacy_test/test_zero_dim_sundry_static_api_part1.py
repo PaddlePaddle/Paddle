@@ -142,6 +142,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 0.5)
 
+    @test_with_pir_api
     @prog_scope()
     def test_getitem(self):
         # case1: When all axis have a scalar indice, output should be a 0-d Tensor;
@@ -764,6 +765,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, (2, 2))
         self.assertEqual(res[3].shape, (2, 2))
 
+    @test_with_pir_api
     @prog_scope()
     def test_tensordot(self):
         x = paddle.full(shape=[10], fill_value=0.25, dtype='float64')

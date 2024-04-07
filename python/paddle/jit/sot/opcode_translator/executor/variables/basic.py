@@ -321,9 +321,7 @@ class TensorVariable(VariableBase):
             self.meta = tensor
         else:
             raise InnerError(
-                "Required type(tensor) is paddle.Tensor or ProxyTensor, but received {}.".format(
-                    type(tensor).__name__
-                )
+                f"Required type(tensor) is paddle.Tensor or ProxyTensor, but received {type(tensor).__name__}."
             )
         self.origin_meta = self.meta
         self.var_name = TensorVariable.var_name_generator.next()
