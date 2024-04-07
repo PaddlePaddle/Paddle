@@ -1486,6 +1486,9 @@ class PirPrimHooker(PirPartialProgramLayerHook):
                 dst_vars = decomposition.decompose(
                     forward_program, src_vars, blacklist=self.custom_vjps
                 )
+                paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
+                    forward_program
+                )
                 return forward_program, dst_vars
             return forward_program, src_vars
 
@@ -1506,6 +1509,9 @@ class PirPrimHooker(PirPartialProgramLayerHook):
                 dst_vars = decomposition.decompose(
                     whole_program, src_vars, whitelist=self.custom_vjps
                 )
+                paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
+                    whole_program
+                )
                 new_start_index = (
                     len(whole_program.global_block().ops) - backward_length
                 )
@@ -1517,6 +1523,9 @@ class PirPrimHooker(PirPartialProgramLayerHook):
             if core._is_fwd_prim_enabled():
                 targets = decomposition.decompose(
                     infer_program.program, infer_program.out_values
+                )
+                paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
+                    infer_program.program
                 )
                 infer_program.out_values = targets
                 infer_program.forward_range = (
