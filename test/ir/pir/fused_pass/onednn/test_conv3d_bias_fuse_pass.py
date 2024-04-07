@@ -22,10 +22,6 @@ import paddle
 paddle.enable_static()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
 class TestConv3dAddFusePass(PassTest):
     def is_program_valid(self, program=None):
         return True
@@ -87,10 +83,6 @@ class TestConv3dAddFusePass(PassTest):
         self.check_pass_correct()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
 class TestConv3dAddFusePassWithAddParam(PassTest):
     def is_program_valid(self, program=None):
         return True
