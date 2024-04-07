@@ -30,8 +30,10 @@ namespace distributed {
 
 bool PToRReshardFunction::IsSuitable(const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr) {
-  VLOG(0) << "PToRReshardFunction::IsSuitable in dist_attr" << in.dist_attr().to_string();
-  VLOG(0) << "PToRReshardFunction::IsSuitable out dist_attr" << out_dist_attr.to_string();
+  VLOG(0) << "PToRReshardFunction::IsSuitable in dist_attr"
+          << in.dist_attr().to_string();
+  VLOG(0) << "PToRReshardFunction::IsSuitable out dist_attr"
+          << out_dist_attr.to_string();
   VLOG(0) << "in is partial " << in.dist_attr().is_partial();
   VLOG(0) << "out is replicated " << out_dist_attr.is_replicated();
   RESHARD_SHORTCUT_IF_FALSE(in.dist_attr().is_partial());
@@ -73,14 +75,15 @@ void PToRReshardFunction::Eval(DeviceContext* dev_ctx,
 
   if (dev_ctx) {
     RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
-                            AllReduce,
-                            dtype,
-                            in_process_ids,
-                            in.value(),
-                            reduce_type,
-                            GetMutableTensor(out));
+                              AllReduce,
+                              dtype,
+                              in_process_ids,
+                              in.value(),
+                              reduce_type,
+                              GetMutableTensor(out));
   } else {
-    reshard_func_descs_.emplace_back(std::make_unique<AllReduceOpDesc>(dtype, in_process_ids, reduce_type));
+    reshard_func_descs_.emplace_back(
+        std::make_unique<AllReduceOpDesc>(dtype, in_process_ids, reduce_type));
   }
 
   if (reduce_mean) {
@@ -89,20 +92,21 @@ void PToRReshardFunction::Eval(DeviceContext* dev_ctx,
     IntArray shape({1});
     if (dev_ctx) {
       RESHARD_FUNCTOR(dev_ctx,
-                    Full,
-                    in.dtype(),
-                    shape,
-                    static_cast<int64_t>(in_process_ids.size()),
-                    &tensor_of_num_process);
+                      Full,
+                      in.dtype(),
+                      shape,
+                      static_cast<int64_t>(in_process_ids.size()),
+                      &tensor_of_num_process);
       RESHARD_FUNCTOR(dev_ctx,
-                    Divide,
-                    dtype,
-                    out->value(),
-                    tensor_of_num_process,
-                    GetMutableTensor(out));
+                      Divide,
+                      dtype,
+                      out->value(),
+                      tensor_of_num_process,
+                      GetMutableTensor(out));
     } else {
-      //reshard_func_descs_.emplace_back(std::make_unique<FullOpDesc>(dtype, shape, static_cast<int64_t>(in_process_ids.size())));
-      //reshard_func_descs_.emplace_back(std::make_unique<DivideOpDesc>(dtype));
+      // reshard_func_descs_.emplace_back(std::make_unique<FullOpDesc>(dtype,
+      // shape, static_cast<int64_t>(in_process_ids.size())));
+      // reshard_func_descs_.emplace_back(std::make_unique<DivideOpDesc>(dtype));
     }
   }
 
@@ -118,6 +122,9 @@ bool PToRReshardFunctionCrossMesh::IsSuitable(
 
   const auto& in_process_mesh = in_dist_attr.process_mesh();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
+
+  VLOG(0) << "cross_mesh in mesh " << in_process_mesh.to_string();
+  VLOG(0) << "cross_mesh out mesh " << out_process_mesh.to_string();
 
   RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.ndim() == 1);
   RESHARD_SHORTCUT_IF_FALSE(out_process_mesh.ndim() == 1);
@@ -142,8 +149,11 @@ void PToRReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
   tmp_dist_attr.set_process_mesh(out_process_mesh);
   same_status_func.Eval(dev_ctx, in, tmp_dist_attr, &tmp_result);
 
+  VLOG(0) << "find same_status_func func_size " << reshard_func_descs_.size();
+
   int64_t cur_global_rank = GetCurGlobalRank();
   if (out_process_mesh.contains(cur_global_rank)) {
+    VLOG(0) << "out_process_mesh contains " << cur_global_rank;
     PToRReshardFunction p_to_r_func;
     PADDLE_ENFORCE(
         p_to_r_func.IsSuitable(tmp_result, out_dist_attr),
@@ -153,6 +163,7 @@ void PToRReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
             out_dist_attr));
     p_to_r_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
   } else {
+    VLOG(0) << "out_process_mesh not contains " << cur_global_rank;
     SetDistProps(out, in.dims(), out_dist_attr);
     SetValue(out, tmp_result.value());
   }

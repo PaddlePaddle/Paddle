@@ -1206,7 +1206,7 @@
   invoke : full_like(x, 1, dtype, place)
 
 - op : p_recv
-  args : (int ring_id = 0, int peer = 0, DataType dtype = DataType::FLOAT32, bool dynamic_shape = false)
+  args : (str ring_id = "0", int peer = 0, DataType dtype = DataType::FLOAT32, bool dynamic_shape = false)
   output : Tensor(out)
   infer_meta :
     func : PRecvInferMeta

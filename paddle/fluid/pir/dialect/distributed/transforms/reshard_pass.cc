@@ -51,74 +51,96 @@ inline bool IsReShardOp(pir::Operation* op) {
 }
 
 static void ProcessBlock(pir::Block* block) {
-    pir::IrContext* ctx = pir::IrContext::Instance();
-    pir::Builder builder(ctx, block);
-    std::vector<pir::Operation*> deleted_ops;
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::Builder builder(ctx, block);
+  std::vector<pir::Operation*> deleted_ops;
 
-    for (auto iter = block->begin(); iter != block->end();) {
-        pir::Operation* op_item = &(*iter);
-        ++iter;
-        VLOG(0) << "reshard main loop over op name " << op_item->name();
+  for (auto iter = block->begin(); iter != block->end();) {
+    pir::Operation* op_item = &(*iter);
+    ++iter;
+    VLOG(0) << "reshard main loop over op name " << op_item->name();
 
-        if (paddle::dialect::IsReShardOp(op_item)) {
-            // Trans pir::Value to DenseTensor/DistTensor
-            pir::Value reshard_operand_value = op_item->operand_source(0);
+    if (paddle::dialect::IsReShardOp(op_item)) {
+      // Trans pir::Value to DenseTensor/DistTensor
+      pir::Value reshard_operand_value = op_item->operand_source(0);
 
-            // TODO(ywt01) hack GPUPlace
-            DistDenseTensorType dist_tensor_type = reshard_operand_value.type().dyn_cast<DistDenseTensorType>();
+      // TODO(ywt01) hack GPUPlace
+      DistDenseTensorType dist_tensor_type =
+          reshard_operand_value.type().dyn_cast<DistDenseTensorType>();
 
-            // construct src TensorDistAttr from src TensorDistAttribute
-            std::unique_ptr<phi::distributed::TensorDistAttr> src_dist_attr = std::make_unique<phi::distributed::TensorDistAttr>();
-            TensorDistAttribute src_tensor_dist_attr = dist_tensor_type.tensor_dist_attr();
-            src_dist_attr->set_process_mesh(src_tensor_dist_attr.process_mesh_attr().process_mesh());
-            src_dist_attr->set_dims_mapping(src_tensor_dist_attr.dims_mapping());
-            src_dist_attr->set_partial_status(src_tensor_dist_attr.partial_status());
+      // construct src TensorDistAttr from src TensorDistAttribute
+      std::unique_ptr<phi::distributed::TensorDistAttr> src_dist_attr =
+          std::make_unique<phi::distributed::TensorDistAttr>();
+      TensorDistAttribute src_tensor_dist_attr =
+          dist_tensor_type.tensor_dist_attr();
+      src_dist_attr->set_process_mesh(
+          src_tensor_dist_attr.process_mesh_attr().process_mesh());
+      src_dist_attr->set_dims_mapping(src_tensor_dist_attr.dims_mapping());
+      src_dist_attr->set_partial_status(src_tensor_dist_attr.partial_status());
 
-            //auto dist_tensor = std::make_unique<phi::distributed::DistTensor>(dense_tensor, *src_dist_attr);
-            auto dist_tensor = std::make_unique<phi::distributed::DistTensor>(TransToPhiDataType(dist_tensor_type.dtype()));
-            dist_tensor->unsafe_set_dims(dist_tensor_type.global_ddim());
-            dist_tensor->unsafe_set_dist_attr(*src_dist_attr);
+      // auto dist_tensor =
+      // std::make_unique<phi::distributed::DistTensor>(dense_tensor,
+      // *src_dist_attr);
+      auto dist_tensor = std::make_unique<phi::distributed::DistTensor>(
+          TransToPhiDataType(dist_tensor_type.dtype()));
+      dist_tensor->unsafe_set_dims(dist_tensor_type.global_ddim());
+      dist_tensor->unsafe_set_dist_attr(*src_dist_attr);
 
-            // construct dst TensorDistAttr from dst TensorDistAttribute
-            TensorDistAttribute dst_tensor_dist_attr = op_item->attribute<OperationDistAttribute>(kAttrOpDistAttr).result_dist_attr(0);
-            std::unique_ptr<phi::distributed::TensorDistAttr> dst_dist_attr = std::make_unique<phi::distributed::TensorDistAttr>();
-            dst_dist_attr->set_process_mesh(dst_tensor_dist_attr.process_mesh_attr().process_mesh());
-            dst_dist_attr->set_dims_mapping(dst_tensor_dist_attr.dims_mapping());
-            dst_dist_attr->set_partial_status(dst_tensor_dist_attr.partial_status());
+      // construct dst TensorDistAttr from dst TensorDistAttribute
+      TensorDistAttribute dst_tensor_dist_attr =
+          op_item->attribute<OperationDistAttribute>(kAttrOpDistAttr)
+              .result_dist_attr(0);
+      std::unique_ptr<phi::distributed::TensorDistAttr> dst_dist_attr =
+          std::make_unique<phi::distributed::TensorDistAttr>();
+      dst_dist_attr->set_process_mesh(
+          dst_tensor_dist_attr.process_mesh_attr().process_mesh());
+      dst_dist_attr->set_dims_mapping(dst_tensor_dist_attr.dims_mapping());
+      dst_dist_attr->set_partial_status(dst_tensor_dist_attr.partial_status());
 
-            VLOG(0) << "src_dist_attr " << src_dist_attr->to_string();
-            VLOG(0) << "dst_dist_attr " << dst_dist_attr->to_string();
+      VLOG(0) << "src_dist_attr " << src_dist_attr->to_string();
+      VLOG(0) << "dst_dist_attr " << dst_dist_attr->to_string();
 
-            VLOG(0) << "find reshard op " << op_item->name();
+      VLOG(0) << "find reshard op " << op_item->name();
 
-            if (dist_tensor->dist_attr() != *dst_dist_attr) {
-                VLOG(0) << "find diff dist_attr ";
-                auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor, *dst_dist_attr);
-                func->Eval(nullptr, *dist_tensor, *dst_dist_attr);
+      if (dist_tensor->dist_attr() != *dst_dist_attr) {
+        VLOG(0) << "find diff dist_attr ";
+        auto* func = phi::distributed::ChooseProperReshardFunction(
+            *dist_tensor, *dst_dist_attr);
+        func->Eval(nullptr, *dist_tensor, *dst_dist_attr);
 
-                auto reshard_func_desc = func->GetReshardFuncDescs();
-                // TODO replace reshard op with common and other op list
-                auto func_size = reshard_func_desc.size();
-                VLOG(0) << "find diff func_size " << func_size;
+        auto reshard_func_desc = func->GetReshardFuncDescs();
+        auto func_size = reshard_func_desc.size();
+        VLOG(0) << "find diff func_size " << func_size;
 
-                pir::Operation* new_op;
-                for (size_t i = 0; i < func_size; ++i) {
-                    if (i == 0) {
-                        builder.set_insertion_point(op_item);
-                        new_op = Build(reshard_func_desc[i].get(), builder, std::vector<pir::Value>({reshard_operand_value}));
-                        reshard_operand_value.ReplaceUsesWithIf(new_op->result(0), [new_op](pir::OpOperand op){ return op.owner() != new_op; });
-                        op_item->Erase();
-                    } else {
-                        pir::Operation* new_op_tmp = Build(reshard_func_desc[i].get(), builder, new_op->results());                  
-                        new_op->result(0).ReplaceAllUsesWith(new_op_tmp->result(0));
-                        new_op = new_op_tmp;
-                    }
-                }
-            } else {
-                VLOG(0) << "not find diff dist_attr ";
-            }
+        pir::Operation* new_op;
+        for (size_t i = 0; i < func_size; ++i) {
+          if (i == 0) {
+            builder.set_insertion_point(op_item);
+            new_op = Build(reshard_func_desc[i].get(),
+                           builder,
+                           std::vector<pir::Value>({reshard_operand_value}));
+            reshard_operand_value.ReplaceUsesWithIf(
+                new_op->result(0),
+                [new_op](pir::OpOperand op) { return op.owner() != new_op; });
+            op_item->Erase();
+          } else {
+            reshard_operand_value = new_op->result(0);
+            pir::Operation* new_op_tmp =
+                Build(reshard_func_desc[i].get(),
+                      builder,
+                      std::vector<pir::Value>({reshard_operand_value}));
+            reshard_operand_value.ReplaceUsesWithIf(
+                new_op_tmp->result(0), [new_op_tmp](pir::OpOperand op) {
+                  return op.owner() != new_op_tmp;
+                });
+            new_op = new_op_tmp;
+          }
         }
+      } else {
+        VLOG(0) << "not find diff dist_attr ";
+      }
     }
+  }
 }
 
 /* Verification:
@@ -129,10 +151,10 @@ static void ProcessBlock(pir::Block* block) {
 static void VerifyBlock(pir::Block* block) {
   for (auto iter = block->begin(); iter != block->end(); ++iter) {
     pir::Operation* op_item = &(*iter);
-    PADDLE_ENFORCE_EQ(paddle::dialect::IsReShardOp(op_item),
-                      false,
-                      phi::errors::PreconditionNotMet(
-                          "Block still contain reshard_op."));
+    PADDLE_ENFORCE_EQ(
+        paddle::dialect::IsReShardOp(op_item),
+        false,
+        phi::errors::PreconditionNotMet("Block still contain reshard_op."));
 
     if (op_item && !op_item->HasAttribute(kAttrOpDistAttr)) {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -165,7 +187,7 @@ std::shared_ptr<pir::Program> ReshardPass(pir::Program* prog) {
   ctx->GetOrRegisterDialect<DistDialect>();
 
   ProcessBlock(new_prog->block());
-  //VerifyBlock(new_prog->block());
+  // VerifyBlock(new_prog->block());
 
   if (FLAGS_print_ir) {
     std::cout << "IR after Reshard Pass = " << *new_prog << std::endl;

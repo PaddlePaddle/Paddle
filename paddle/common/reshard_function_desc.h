@@ -14,77 +14,100 @@
 
 #pragma once
 #include <memory>
-#include <vector>
 #include <string>
+#include <vector>
 
-#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/place.h"
-//#include "paddle/pir/include/core/builder.h"
-//#include "paddle/pir/include/core/value.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 namespace distributed {
 
-class ReshardFuncDesc {
-public:
-    ReshardFuncDesc(const std::string& n, DataType d): name(n), dtype(d){}
-    virtual ~ReshardFuncDesc() {}
-    //virtual pir::Operation* Build(pir::Builder& builder, pir::Value& input) = 0;
+struct BaseOpDesc {
+  ReshardFuncDesc(const std::string& n, DataType d) : name(n), dtype(d) {}
+  ReshardFuncDesc(const std::string& n,
+                  DataType d,
+                  const std::vector<int64_t>& pids)
+      : name(n), dtype(d), process_ids(pids) {}
+  virtual ~ReshardFuncDesc() {}
 
-    std::string name;
-    DataType dtype;
-
+  std::string name;
+  DataType dtype;
+  std::vector<int64_t> process_ids;
 };
 
-class AllReduceOpDesc : public ReshardFuncDesc {
-public:
-    AllReduceOpDesc(DataType dt, const std::vector<int64_t>& pids, int red_type): ReshardFuncDesc("AllReduce", dt), process_ids(pids), reduce_type(red_type) {}
-    //fir::Operation* Build(pir::Builder& builder, pir::Value& input) override { }
-
-    std::vector<int64_t> process_ids;
-    int reduce_type;
+struct AllReduceOpDesc : public BaseOpDesc {
+  AllReduceOpDesc(DataType dt, const std::vector<int64_t>& pids, int red_type)
+      : ReshardFuncDesc("AllReduce", dt, pids), reduce_type(red_type) {}
+  int reduce_type;
 };
 
-class AllGatherOpDesc : public ReshardFuncDesc {
-public:
-    AllGatherOpDesc(DataType dt, const std::vector<int64_t>& pids): ReshardFuncDesc("Split", dt), process_ids(pids) {}
-
-private:
-    std::vector<int64_t> process_ids;
+struct AllGatherOpDesc : public BaseOpDesc {
+  AllGatherOpDesc(DataType dt, const std::vector<int64_t>& pids)
+      : ReshardFuncDesc("Split", dt, pids) {}
 };
 
-class SplitOpDesc : public ReshardFuncDesc {
-public:
-    SplitOpDesc(DataType dt, const std::vector<int64_t>& sts, int64_t ax): ReshardFuncDesc("Split", dt), sections(sts), axis(ax) { }
-private:
-    std::vector<int64_t> sections;
-    int64_t axis;
+struct SplitOpDesc : public BaseOpDesc {
+  SplitOpDesc(DataType dt, const std::vector<int64_t>& sts, int64_t ax)
+      : ReshardFuncDesc("Split", dt), sections(sts), axis(ax) {}
+
+  std::vector<int64_t> sections;
+  int64_t axis;
 };
 
-class ConcatOpDesc : public ReshardFuncDesc {
-public:
-    ConcatOpDesc(DataType dt, int64_t ax): ReshardFuncDesc("Concat", dt), axis(ax) { }
-private:
-    int64_t axis;
+struct ConcatOpDesc : public BaseOpDesc {
+  ConcatOpDesc(DataType dt, int64_t ax)
+      : ReshardFuncDesc("Concat", dt), axis(ax) {}
+  int64_t axis;
 };
 
 //  struct FullOpDesc : public ReshardFuncDesc {
 //      phi::IntArray shape;
 //      int64_t value;
-//      FullOpDesc(DataType dt, const phi::IntArray& array, int64_t val): ReshardFuncDesc("Full", dt), shape(array), value(val) { }
+//      FullOpDesc(DataType dt, const phi::IntArray& array, int64_t val):
+//      ReshardFuncDesc("Full", dt), shape(array), value(val) { }
 
-//      pir::Operation* Build(pir::Builder& builder, pir::Value& input) override {
+//      pir::Operation* Build(pir::Builder& builder, pir::Value& input) override
+//      {
 //          return builder.Build<paddle::dialect::FullOp>(shape, value);
 //      }
 //  };
 
 //  struct DivideOpDesc : public ReshardFuncDesc {
 //      DivideOpDesc(DataType dt): ReshardFuncDesc("Full", dt) {}
-//      pir::Operation* Build(pir::Builder& builder, pir::Value& input) override {
-//          return builder.Build<paddle::dialect::DivideOp>(input, ring_id, reduce_type);
+//      pir::Operation* Build(pir::Builder& builder, pir::Value& input) override
+//      {
+//          return builder.Build<paddle::dialect::DivideOp>(input, ring_id,
+//          reduce_type);
 //      }
 //  };
+
+struct SendOpDesc : public BaseOpDesc {
+  SendOpDesc(DataType dt,
+             const std::vector<int64_t>& pids,
+             int peer_rank,
+             bool dyn_shape)
+      : ReshardFuncDesc("Send", dt, pids),
+        peer(peer_rank),
+        dynamic_shape(dyn_shape) {}
+
+  int peer;
+  bool dynamic_shape;
+};
+
+struct RecvOpDesc : public BaseOpDesc {
+  RecvOpDesc(DataType dt,
+             const std::vector<int64_t>& pids,
+             int peer_rank,
+             bool dyn_shape)
+      : ReshardFuncDesc("Recv", dt, pids),
+        peer(peer_rank),
+        dynamic_shape(dyn_shape) {}
+
+  int peer;
+  bool dynamic_shape;
+};
 
 }  // namespace distributed
 }  // namespace phi

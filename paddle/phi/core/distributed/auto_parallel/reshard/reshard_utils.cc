@@ -88,7 +88,8 @@ std::vector<int64_t> GetCurRankCoordInMesh(const ProcessMesh& process_mesh) {
   return coord;
 }
 
-CommContext* CreateOrGetCommContext(const std::vector<int64_t>& process_ids) {
+CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
+                                    const std::vector<int64_t>& process_ids) {
   std::string unique_comm_key = GenUniqueCommKey(process_ids);
 
   if (!CommContextManager::GetInstance().Has(unique_comm_key)) {
@@ -97,25 +98,36 @@ CommContext* CreateOrGetCommContext(const std::vector<int64_t>& process_ids) {
     VLOG(3) << "local world size: " << world_size << " local rank: " << rank;
 
     auto store = CreateOrGetGlobalTCPStore();
+    if (phi::CPUContext::classof(&dev_ctx)) {
 #if defined(PADDLE_WITH_GLOO)
-    CommContextManager::CreateGlooCommContext(store,
-            unique_comm_key,
-            static_cast<int>(rank),
-            static_cast<int>(world_size));
-#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
-    CommContextManager::CreateXCCLCommContext(
-            store, unique_comm_key, dev_ctx.GetPlace(), rank, world_size);
-#elif defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    CommContextManager::SetDeviceId(rank);
-    CommContextManager::CreateNCCLCommContext(store,
-            unique_comm_key,
-            static_cast<int>(rank),
-            static_cast<int>(world_size));
+      CommContextManager::CreateGlooCommContext(store,
+                                                unique_comm_key,
+                                                static_cast<int>(rank),
+                                                static_cast<int>(world_size));
+#else
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Cannot use gloo on CPU, please turn PADDLE_WITH_GLOO flag on."));
 #endif
+    } else if (phi::CustomContext::classof(&dev_ctx)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      CommContextManager::CreateXCCLCommContext(
+          store, unique_comm_key, dev_ctx.GetPlace(), rank, world_size);
+#endif
+    } else {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+      if (phi::GPUContext::classof(&dev_ctx)) {
+        CommContextManager::CreateNCCLCommContext(store,
+                                                  unique_comm_key,
+                                                  static_cast<int>(rank),
+                                                  static_cast<int>(world_size));
+      }
+#else
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "CommContext is only supported on CPU and GPU for now, other devices "
+          "will be supported later."));
+#endif
+    }
   }
-
-  auto* comm_context = CommContextManager::GetInstance().Get(unique_comm_key);
-  return comm_context;
 }
 
 std::map<int, int64_t> GetSplitAxisWithDimsMapping(
@@ -176,8 +188,8 @@ Place GetDefaultPlace() {
 
 phi::DeviceContext* GetDistTensorDeviceContext(
     phi::distributed::DistTensor* input) {
-  // TODO(GhostScreaming): pipeline parallel may create an undefined middle grad
-  // tensor. In such case, we need to get default place.
+  // TODO(GhostScreaming): pipeline parallel may create an undefined middle
+  // grad tensor. In such case, we need to get default place.
   auto place =
       input && input->initialized() ? input->place() : GetDefaultPlace();
   return phi::DeviceContextPool::Instance().Get(place);
@@ -242,6 +254,5 @@ bool IsSubMesh(const ProcessMesh& global_mesh, const ProcessMesh& sub_mesh) {
   }
   return false;
 }
-
 }  // namespace distributed
 }  // namespace phi

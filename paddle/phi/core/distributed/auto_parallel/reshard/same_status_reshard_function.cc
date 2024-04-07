@@ -93,23 +93,37 @@ void SameStatusReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       int64_t dst_local_rank = GetLocalRankInParticipate(all_process_ids, dst);
       // Since send kernel only has input, so we don't need to infermeta
       // actually. According to this reason, just use the kernel directly.
-      RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
-                                PSendKernel,
-                                dtype,
-                                all_process_ids,
-                                in.value(),
-                                dst_local_rank,
-                                dynamic_shape);
+      if (dev_ctx) {
+        VLOG(0) << "Send from src " << src << " to dst " << dst;
+        RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
+                                  PSendKernel,
+                                  dtype,
+                                  all_process_ids,
+                                  in.value(),
+                                  dst_local_rank,
+                                  dynamic_shape);
+      } else {
+        VLOG(0) << "Send from src " << src << " to dst " << dst;
+        reshard_func_descs_.emplace_back(std::make_unique<SendOpDesc>(
+            dtype, in_process_ids, dst_local_rank, dynamic_shape));
+      }
     } else if (dst == cur_global_rank) {
       VLOG(3) << "Recv from src " << src << " to dst " << dst;
       int64_t src_local_rank = GetLocalRankInParticipate(all_process_ids, src);
-      RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
-                                PRecv,
-                                dtype,
-                                all_process_ids,
-                                src_local_rank,
-                                dynamic_shape,
-                                GetMutableTensor(out));
+      if (dev_ctx) {
+        VLOG(0) << "Recv from src " << src << " to dst " << dst;
+        RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
+                                  PRecv,
+                                  dtype,
+                                  all_process_ids,
+                                  src_local_rank,
+                                  dynamic_shape,
+                                  GetMutableTensor(out));
+      } else {
+        VLOG(0) << "Recv from src " << src << " to dst " << dst;
+        reshard_func_descs_.emplace_back(std::make_unique<RecvOpDesc>(
+            dtype, in_process_ids, src_local_rank, dynamic_shape));
+      }
     }
   }
   SetDistProps(out, in.dims(), out_dist_attr);
