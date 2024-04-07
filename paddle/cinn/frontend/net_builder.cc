@@ -110,7 +110,7 @@ Variable NetBuilder::BinaryOp(const std::string& op_type,
   PADDLE_ENFORCE_EQ(lhs->type == rhs->type,
                     true,
                     phi::errors::InvalidArgument(
-                        "The inputs type of op %s should be equal!", op_type));
+                        "The inputs type of op type should be equal!"));
   << "The inputs type of op " << op_type << " should be equal!";
   return CustomInstr(op_type, {lhs, rhs}, {{"axis", axis}}).front();
 }
