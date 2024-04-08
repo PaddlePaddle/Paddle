@@ -63,6 +63,31 @@ if(WITH_MKLDNN)
   add_definitions(-DCINN_WITH_DNNL)
 endif()
 
+if(CINN_WITH_SYCL)
+  message(STATUS "CINN Compile with SYCL support")
+  set(DPCPP_DIR ${PROJECT_SOURCE_DIR}/cmake/cinn)
+  find_package(DPCPP REQUIRED CONFIG)
+  add_definitions(-DCINN_WITH_SYCL)
+endif()
+
+if(WITH_ROCM)
+  set(CINN_WITH_ROCM True)
+endif()
+if(CINN_WITH_ROCM)
+  message(STATUS "CINN Compile with ROCM support")
+  if(NOT WITH_ROCM)
+    include(hip)
+  endif()
+  link_libraries(${ROCM_HIPRTC_LIB})
+  add_definitions(-DCINN_WITH_ROCM)
+endif()
+
+if(WITH_GPU
+   OR CINN_WITH_SYCL
+   OR CINN_WITH_ROCM)
+  add_definitions(-DCINN_WITH_GPU)
+endif()
+
 if(WITH_GPU)
   message(STATUS "Enable CINN CUDA")
   add_definitions(-DCINN_WITH_CUDA)

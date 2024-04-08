@@ -29,7 +29,28 @@
 namespace cinn {
 namespace ir {
 
-static bool IsProhibitScheduleExternCallBlock(ir::Expr block) {
+static const std::unordered_set<std::string>
+    kProhibitScheduleExternalFuncNames = {
+#define CINN_NVGPU_FUNC2STRING(str) #str
+#define CINN_NVGPU_FUNC_TYPE(FUNC, TYPE) \
+  CINN_NVGPU_FUNC2STRING(cinn_cuda_##FUNC##TYPE)
+
+#define GEN_FUNC_NAME(_, impl) \
+  _(impl, gt_num)              \
+  _(impl, lt_num)              \
+  _(impl, index_add)           \
+  _(impl, next_smallest)
+
+#define GEN_FUNC_NAME_WITH_TYPE(_, ...)                                     \
+  _(__VA_ARGS__, _bool), _(__VA_ARGS__, _fp16), _(__VA_ARGS__, _fp32),      \
+      _(__VA_ARGS__, _fp64), _(__VA_ARGS__, _uint8), _(__VA_ARGS__, _int8), \
+      _(__VA_ARGS__, _int16), _(__VA_ARGS__, _int32), _(__VA_ARGS__, _int64),
+
+        GEN_FUNC_NAME(GEN_FUNC_NAME_WITH_TYPE, CINN_NVGPU_FUNC_TYPE)
+#undef GEN_FUNC_NAME
+};
+
+bool IsProhibitScheduleExternCallBlock(ir::Expr block) {
   ir::ScheduleBlockRealize* sch_block_realize =
       block.As<ir::ScheduleBlockRealize>();
   CHECK_NOTNULL(sch_block_realize);
@@ -114,12 +135,12 @@ void StaticShapeGroupScheduler::Schedule() {
       &StaticShapeGroupScheduler::IsKeepGraphDependency);
   DoLoopAlignment();
   DoComputeInline();
-#ifdef CINN_WITH_CUDA
+#ifdef CINN_WITH_GPU
   OptimizeReduction();
 #endif
   DoHorizontalLoopFusion();
   DoVerticalLoopFusion();
-#ifdef CINN_WITH_CUDA
+#ifdef CINN_WITH_GPU
   BindCudaAxis();
   AllocateStorage();
 #endif
@@ -127,7 +148,7 @@ void StaticShapeGroupScheduler::Schedule() {
 
 void StaticShapeGroupScheduler::MapExprSchedule() {
   DoComputeInline();
-#ifdef CINN_WITH_CUDA
+#ifdef CINN_WITH_GPU
   AllocateStorage();
 #endif
 }
@@ -555,7 +576,7 @@ void StaticShapeGroupScheduler::DoVerticalLoopFusion() {
 }
 
 void StaticShapeGroupScheduler::BindCudaAxis() {
-  if (target_.arch != Target::Arch::NVGPU) return;
+  if (!target_.arch_is_gpu()) return;
   VLOG(5) << "[Start BindCudaAxis] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 
@@ -594,7 +615,7 @@ std::ostream& operator<<(std::ostream& os, const Range& x) {
 // and MultiDimIntegerSet, re implement this function to simplify these ugly
 // codes.
 void StaticShapeGroupScheduler::AllocateStorage() {
-  if (target_.arch != Target::Arch::NVGPU) return;
+  if (!target_.arch_is_gpu()) return;
   VLOG(5) << "[Start AllocateStorage] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 

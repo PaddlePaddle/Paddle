@@ -22,6 +22,7 @@
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/hlir/pass/use_pass.h"
+#include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
@@ -177,7 +178,7 @@ class FusionHelperBase {
         lane = inshape[idx];
       }
       int max_num_threads =
-          cinn::common::DefaultNVGPUTarget().max_num_threads();
+          runtime::CurrentTarget::GetCurrentTarget().max_num_threads();
       if (lane > max_num_threads / 2) {
         return 0;
       }

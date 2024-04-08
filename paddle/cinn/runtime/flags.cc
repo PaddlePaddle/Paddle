@@ -158,6 +158,10 @@ PD_DEFINE_bool(
     "technique which contract fp multiplication and addition/subtraction into "
     "multiply-add operation. It may result in different fp precision.");
 
+PD_DEFINE_bool(cinn_compile_with_hiprtc,
+               BoolFromEnv("FLAGS_cinn_compile_with_hiprtc", true),
+               "Whether compile hip source with hiprtc.");
+
 // FLAGS for performance analysis and accuracy debug
 PD_DEFINE_bool(cinn_sync_run,
                BoolFromEnv("FLAGS_cinn_sync_run", false),
@@ -327,6 +331,8 @@ bool CanUseNvccCompiler() {
          (!FLAGS_cinn_compile_with_nvrtc);
 }
 
+bool CanUseHipccCompiler() { return !FLAGS_cinn_compile_with_hiprtc; }
+
 bool IsCompiledWithCUDA() {
 #if !defined(CINN_WITH_CUDA)
   return false;
@@ -343,20 +349,60 @@ bool IsCompiledWithCUDNN() {
 #endif
 }
 
-cinn::common::Target CurrentTarget::target_ = cinn::common::DefaultTarget();
+bool IsCompiledWithSYCL() {
+#if !defined(CINN_WITH_SYCL)
+  return false;
+#else
+  return true;
+#endif
+}
 
-void CurrentTarget::SetCurrentTarget(const cinn::common::Target& target) {
+bool IsCompiledWithHIP() {
+#if !defined(CINN_WITH_ROCM)
+  return false;
+#else
+  return true;
+#endif
+}
+bool IsCompiledWithBangC() {
+#if !defined(CINN_WITH_BangC)
+  return false;
+#else
+  return true;
+#endif
+}
+void CheckCompileWith(common::Target::Language backend_language) {
   if (!IsCompiledWithCUDA() &&
-      target.arch == cinn::common::Target::Arch::NVGPU) {
-    PADDLE_THROW(phi::errors::Fatal(
-        "Current CINN version does not support NVGPU, please try to "
-        "recompile with -DWITH_CUDA."));
-  } else {
-    target_ = target;
+      backend_language == common::Target::Language::cuda) {
+    PADDLE_THROW(
+        ::common::errors::Fatal("Current CINN version does not support cuda, "
+                                "please try to recompile with -DWITH_CUDA."));
+  } else if (!IsCompiledWithSYCL() &&
+             backend_language == common::Target::Language::sycl) {
+    PADDLE_THROW(::common::errors::Fatal(
+        "Current CINN version does not support sycl, please try to "
+        "recompile with CINN_WITH_SYCL."));
+  } else if (!IsCompiledWithHIP() &&
+             backend_language == common::Target::Language::hip) {
+    PADDLE_THROW(::common::errors::Fatal(
+        "Current CINN version does not support hip, please try to "
+        "recompile with CINN_WITH_ROCM."));
+  } else if (!IsCompiledWithBangC() &&
+             backend_language == common::Target::Language::bangc) {
+    PADDLE_THROW(::common::errors::Fatal(
+        "Current CINN version does not support bangc, please try to "
+        "recompile with CINN_WITH_MLU."));
   }
 }
 
-cinn::common::Target& CurrentTarget::GetCurrentTarget() { return target_; }
+common::Target CurrentTarget::target_ = common::DefaultTarget();
+
+void CurrentTarget::SetCurrentTarget(const common::Target& target) {
+  CheckCompileWith(target.language);
+  target_ = target;
+}
+
+common::Target& CurrentTarget::GetCurrentTarget() { return target_; }
 
 }  // namespace runtime
 }  // namespace cinn

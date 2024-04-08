@@ -198,7 +198,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
                                         1,
                                         std::multiplies<int>());
     if (prod_size > 1) {
-      if (target.arch == Target::Arch::NVGPU) {
+      if (target.arch_is_gpu()) {
         pe::IRCudaScheduleInjective(ir_sch, output_shapes.front(), target);
       } else if (target.arch == Target::Arch::X86) {
         pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);

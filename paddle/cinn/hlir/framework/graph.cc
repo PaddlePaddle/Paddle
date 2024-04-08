@@ -21,6 +21,7 @@
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
 #endif
+#include "paddle/cinn/runtime/backend_api.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/string.h"
 
@@ -321,9 +322,10 @@ void Graph::VisualizeGroupedGraph(
   for (int idx = 0; idx < groups.size(); ++idx) {
     // Create fusion_group_x folder
     int device_id = 0;
-#ifdef CINN_WITH_CUDA
-    cudaGetDevice(&device_id);
-#endif
+    if (this->target_.arch_is_gpu()) {
+      using cinn::runtime::BackendAPI;
+      device_id = BackendAPI::get_backend(this->target_)->get_device();
+    }
     auto group_path =
         utils::StringFormat("%s/device_%d/fusion_group_%d",
                             FLAGS_cinn_fusion_groups_graphviz_dir.c_str(),

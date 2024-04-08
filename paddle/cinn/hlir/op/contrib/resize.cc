@@ -56,9 +56,15 @@ ir::Tensor Resize(const ir::Tensor &input,
                   const std::string &output_name) {
   std::string func_name;
 
-  if (target.arch == cinn::common::Target::Arch::NVGPU) {
+  if (target.language == common::Target::Language::cuda) {
     func_name.assign("cinn_cuda_resize_");
-  } else if (target.arch == cinn::common::Target::Arch::X86) {
+  } else if (target.language == common::Target::Language::sycl) {
+    func_name.assign("cinn_sycl_resize_");
+  } else if (target.language == common::Target::Language::hip) {
+    func_name.assign("cinn_hip_resize_");
+  } else if (target.language == common::Target::Language::bangc) {
+    func_name.assign("cinn_bangc_resize_");
+  } else if (target.arch == common::Target::Arch::X86) {
     func_name.assign("cinn_host_resize_");
   } else {
     PADDLE_THROW(phi::errors::Fatal(
@@ -241,7 +247,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForResize(
                                         1,
                                         std::multiplies<int>());
     if (prod_size > 1) {
-      if (target.arch == Target::Arch::NVGPU) {
+      if (target.arch_is_gpu()) {
         pe::IRCudaScheduleInjective(ir_sch, output_shapes.front(), target);
       } else if (target.arch == Target::Arch::X86) {
         pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
