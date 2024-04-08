@@ -8212,7 +8212,10 @@ def add_cast_for_type_promotion(op, block, idx, var_name, out_dtype):
     op.desc._rename_input(var_name.name, out_var.name)
 
 
-def can_skip_promote(op):
+def can_skip_promote(op, device):
+    # Only GPU elementwise_add kernel supports the pattern "float + half".
+    if device != 'GPU':
+        return False
     if op.type != "elementwise_add":
         return False
     input_x_dtype = op.block._find_var_recursive(op.input('X')[0]).dtype
@@ -8226,6 +8229,12 @@ def can_skip_promote(op):
 
 
 def process_type_promotion(program):
+    # Get _current_expected_place place
+    device = None
+    if core.is_compiled_with_cuda() and isinstance(
+        _current_expected_place(), core.CUDAPlace
+    ):
+        device = 'GPU'
     org_program = program
     if program is None:
         program = default_main_program()
@@ -8247,7 +8256,7 @@ def process_type_promotion(program):
                 op.type, None
             )
             # type promotion only support some dyadic api
-            if need_transed_var_names is None or can_skip_promote(op):
+            if need_transed_var_names is None or can_skip_promote(op, device):
                 idx += 1
                 continue
 
