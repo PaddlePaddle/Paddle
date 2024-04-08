@@ -244,9 +244,7 @@ def run_check():
         use_custom = True
         if len(paddle.framework.core.get_all_custom_device_type()) > 1:
             logging.warning(
-                "More than one kind of custom devices detected, but run check would only be executed on {}.".format(
-                    paddle.framework.core.get_all_custom_device_type()[0]
-                )
+                f"More than one kind of custom devices detected, but run check would only be executed on {paddle.framework.core.get_all_custom_device_type()[0]}."
             )
 
     if use_cuda:

@@ -65,7 +65,7 @@ class TestConv2DMKLDNNOp(TestConv2DOp):
 
         output = self.outputs['Output']
 
-        # mkldnn only support either conv-sum-relu, or conv-relu.
+        # onednn only support either conv-sum-relu, or conv-relu.
         if self.fuse_bias and self.bias_size is not None:
             bias = np.random.random(self.bias_size).astype(self.dtype)
             output = conv2d_bias_naive(output, bias)
@@ -146,7 +146,7 @@ class TestConv2DMKLDNNOp2(TestConv2DOp):
 
         output = self.outputs['Output']
 
-        # mkldnn only support either conv-sum-relu, or conv-relu.
+        # onednn only support either conv-sum-relu, or conv-relu.
         if self.fuse_bias and self.bias_size is not None:
             bias = np.random.random(self.bias_size).astype(self.dtype)
             output = conv2d_bias_naive(output, bias)

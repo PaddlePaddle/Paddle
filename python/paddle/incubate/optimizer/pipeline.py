@@ -660,9 +660,7 @@ class PipelineOptimizer:
             op_role = op.attr(self._op_role_key)
             assert (
                 int(op_role) in valid_op_role_value
-            ), "op_role {} for op {} must be one of {}".format(
-                op_role, op.type, valid_op_role_value
-            )
+            ), f"op_role {op_role} for op {op.type} must be one of {valid_op_role_value}"
 
             assert op.has_attr(
                 self._op_device_key
@@ -752,16 +750,12 @@ class PipelineOptimizer:
                     if is_forward:
                         assert prev_id < cur_id, (
                             "In forward, send/recv can only be passed forward, but now "
-                            "prev_stage={} great than cur_stage={}, please check op_device of op={}".format(
-                                prev_id, cur_id, op
-                            )
+                            f"prev_stage={prev_id} great than cur_stage={cur_id}, please check op_device of op={op}"
                         )
                     elif is_backward:
                         assert prev_id > cur_id, (
                             "In backward, send/recv can only be passed backward, but now "
-                            "prev_stage={} less than cur_stage={}, please check op_device of op={}".format(
-                                prev_id, cur_id, op
-                            )
+                            f"prev_stage={prev_id} less than cur_stage={cur_id}, please check op_device of op={op}"
                         )
 
                 def _insert_send_recv(cur_id, prev_id):

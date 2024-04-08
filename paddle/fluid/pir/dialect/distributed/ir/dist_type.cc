@@ -43,11 +43,13 @@ common::DDim InferLocalDDim(const common::DDim& global_ddim,
                             TensorDistAttribute dist_attr) {
   auto& mesh_dim = dist_attr.process_mesh_attr().shape();
   auto& dim_mapping = dist_attr.dims_mapping();
-  PADDLE_ENFORCE_EQ(
-      global_ddim.size(),
-      dim_mapping.size(),
-      ::common::errors::PreconditionNotMet(
-          "The global ddim size must equal to dim_mapping's size!"));
+  PADDLE_ENFORCE_EQ(global_ddim.size(),
+                    dim_mapping.size(),
+                    ::common::errors::PreconditionNotMet(
+                        "The global ddim size must equal to dim_mapping's "
+                        "size, but bot %d vs %d",
+                        global_ddim.size(),
+                        dim_mapping.size()));
   common::DDim local_ddim(global_ddim);
   for (size_t i = 0; i < dim_mapping.size(); ++i) {
     if (dim_mapping[i] != -1) {

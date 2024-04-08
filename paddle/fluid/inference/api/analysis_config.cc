@@ -505,7 +505,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(dlnne_precision_mode_);
   CP_MEMBER(dlnne_disable_nodes_by_outputs_);
   CP_MEMBER(dlnne_input_shape_dict_);
-  // MKLDNN related.
+  // OneDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
   CP_MEMBER(mkldnn_cache_capacity_);
@@ -593,7 +593,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_new_executor_);
   CP_MEMBER(use_pir_);
   CP_MEMBER(custom_passes_);
+  CP_MEMBER(custom_pass_only_);
   CP_MEMBER(pm_opt_level_);
+  CP_MEMBER(ir_debug_passes_);
 
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_,
@@ -989,18 +991,18 @@ void AnalysisConfig::Update() {
 #ifdef PADDLE_WITH_DNNL
   // Since EnableMKLDNN is default, the pass_builder has created in the first
   // time.
-  // Case1: User manually disable mkldnn after pass_builder
+  // Case1: User manually disable onednn after pass_builder
   // create.(config.disable_mkldnn())
   // Case2: User device is gpu/ipu/xpu, use
   // EnableXpu(), EnableCUDNN(), PassStrategy has been reset in the above code
   // block
   //  Case3: pass_builder_ has been created and belongs to
-  // GpuPassStrategy(or IpuPassStrategy), neither enable mkldnn and
-  // disable mkldnn will be executed
+  // GpuPassStrategy(or IpuPassStrategy), neither enable onednn and
+  // disable onednn will be executed
   if ((!use_gpu() && !use_xpu() && !use_ipu() && !use_mkldnn_) ||
       (use_mkldnn_ &&
        !phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx2))) {
-    // User manually disable mkldnn or disable when not support AVX2
+    // User manually disable onednn or disable when not support AVX2
     use_mkldnn_ = false;
     pass_builder()->DisableMKLDNN();
   }
@@ -1052,7 +1054,7 @@ void AnalysisConfig::Update() {
   if (!use_gpu() && !use_xpu() && !use_ipu()) {
     if (use_mkldnn_ && enable_ir_optim_) {
 #ifdef PADDLE_WITH_DNNL
-      // default enable mkldnn when device is cpu and enable_ir_optim
+      // default enable onednn when device is cpu and enable_ir_optim
       pass_builder()->EnableMKLDNN();
 #endif
     }
@@ -1326,8 +1328,10 @@ NativeConfig AnalysisConfig::ToNativeConfig() const {
   return config;
 }
 
-void AnalysisConfig::SwitchIrDebug(int x) {
+void AnalysisConfig::SwitchIrDebug(int x,
+                                   const std::vector<std::string> &passes) {
   ir_debug_ = x;
+  ir_debug_passes_ = passes;
   Update();
 }
 
