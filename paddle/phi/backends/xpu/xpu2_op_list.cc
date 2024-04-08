@@ -549,6 +549,8 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::FLOAT32})},
       {"grid_sampler_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"grid_sampler", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"group_norm_silu_xpu",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"hard_sigmoid_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"hard_sigmoid",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},

@@ -192,6 +192,13 @@ void YieldStoreOp::Build(pir::Builder& builder,
 
 void YieldStoreOp::VerifySig() {}
 
+bool YieldStoreOp::InferSymbolicShape(
+    pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  shape_analysis->SetShapeOrDataForValue(
+      result(0), shape_analysis->GetShapeOrDataForValue(operand_source(0)));
+  return true;
+}
+
 bool ConcatOp::InferSymbolicShape(
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
   VLOG(4) << "Infer symbolic shape for cinn_op.concat";

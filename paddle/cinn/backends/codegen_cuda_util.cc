@@ -91,12 +91,7 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
   ir::Var kernel_ptr(GenDeviceKernelName(func_node->name, predicate),
                      type_of<std::string>());
 
-  // shared_mem_bytes Can be calculated after codegen_cuda_dev buffer creation
-  // however, this make CodeGenCUDA_Dev before spliting the host and device
-  // module Maybe we could reorder the process.
-  CodeGenCUDA_Dev codegen_dev(cinn::common::DefaultNVGPUTarget());
-  codegen_dev.Compile(ir::LoweredFunc(func.as_lowered_func_ref()));
-  Expr shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
+  Expr shared_mem_bytes = CalculateSharedMemory(func);
 
   VLOG(6) << "Add a call node for func_node->name " << func_node->name << "\n"
           << "grid_dim: (" << func_node->cuda_axis_info.grid_dim(0) << ", "

@@ -39,16 +39,12 @@ def _default_pruning(weight_nparray, m, n, func_name, param_name):
     exclude_cond_shape4 = len(shape) == 4 and shape[1] < m
     if exclude_cond_shape2:
         _logger.warning(
-            '{} is not pruned because the first dimension of {} is smaller than {}'.format(
-                param_name, shape, m
-            )
+            f'{param_name} is not pruned because the first dimension of {shape} is smaller than {m}'
         )
         return weight_pruned_nparray, weight_sparse_mask
     if exclude_cond_shape4:
         _logger.warning(
-            '{} is not pruned because the second dimension of {} is smaller than {}'.format(
-                param_name, shape, m
-            )
+            f'{param_name} is not pruned because the second dimension of {shape} is smaller than {m}'
         )
         return weight_pruned_nparray, weight_sparse_mask
 
