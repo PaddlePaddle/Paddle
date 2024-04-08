@@ -16,10 +16,6 @@
 # including layers, linear, conv, rnn etc.
 
 
-from .triton_ops import (
-    matmul_dequantize_int8_s2,
-)
-
 from .activation import (
     celu,
     elu,
@@ -153,6 +149,9 @@ from .pooling import (
     max_unpool3d,
 )
 from .sparse_attention import sparse_attention
+from .triton_ops import (
+    weight_only_int8,
+)
 from .vision import (
     affine_grid,
     channel_shuffle,
@@ -184,7 +183,7 @@ __all__ = [
     'maxout',
     'prelu',
     'relu',
-    'matmul_dequantize_int8_s2',
+    'weight_only_int8',
     'relu_',
     'relu6',
     'selu',
