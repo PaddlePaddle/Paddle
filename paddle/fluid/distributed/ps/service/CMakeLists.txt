@@ -11,6 +11,10 @@ else()
 
 endif()
 
+if(WITH_PSCORE)
+  set(BRPC_DEPS ${BRPC_DEPS} ps_service)
+endif()
+
 brpc_library(
   sendrecv_rpc
   SRCS
