@@ -34,10 +34,6 @@ def rotate_permutation(x):
 
 
 def apply_rotary_pos_emb(q, k, v, sin, cos):
-    if len(sin.shape) == 6:
-        target_shape = [-1, q.shape[1], 1, q.shape[3]]
-        sin = paddle.reshape(sin, target_shape)
-        cos = paddle.reshape(cos, target_shape)
     q_embed = (
         (q * cos) + (rotate_permutation(q) * sin) if q is not None else None
     )
@@ -64,26 +60,26 @@ def apply_rotary_pos_emb(q, k, v, sin, cos):
             [2, 8, 2, 24],  # bs, seq_len, num_heads, head_dim
             [1, 8, 1, 24],  # bs, seq_len, num_heads, head_dim
         ),
-        ("qk_input", [2, 8, 2, 24], [2, 8, 2, 24], None, [1, 2, 2, 2, 1, 24]),
-        ("qv_input", [2, 8, 2, 24], None, [2, 8, 2, 24], [1, 2, 2, 2, 1, 24]),
-        ("q_input", [2, 8, 2, 24], None, None, [1, 2, 2, 2, 1, 24]),
-        ("q_input", [2, 8, 2, 24], None, None, [2, 2, 2, 2, 1, 24]),
+        ("qk_input", [2, 8, 2, 24], [2, 8, 2, 24], None, [1, 8, 1, 24]),
+        ("qv_input", [2, 8, 2, 24], None, [2, 8, 2, 24], [1, 8, 1, 24]),
+        ("q_input", [2, 8, 2, 24], None, None, [1, 8, 1, 24]),
+        ("q_input_bs2", [2, 8, 2, 24], None, None, [2, 8, 1, 24]),
         (
             "qkv_input_mqa",
             [2, 8, 4, 24],
             [2, 8, 1, 24],
             [2, 8, 1, 24],
-            [1, 2, 2, 2, 1, 24],
+            [1, 8, 1, 24],
         ),
         ("qk_input_mqa", [2, 8, 4, 24], [2, 8, 1, 24], None, [1, 8, 1, 24]),
         ("qv_input_mqa", [2, 8, 4, 24], None, [2, 8, 1, 24], [1, 8, 1, 24]),
-        ("qv_input_mqa", [2, 8, 4, 24], None, [2, 8, 1, 24], [2, 8, 1, 24]),
+        ("qv_input_mqa_bs2", [2, 8, 4, 24], None, [2, 8, 1, 24], [2, 8, 1, 24]),
         (
             "qkv_input_gqa",
             [1, 8, 4, 24],
             [1, 8, 2, 24],
             [1, 8, 2, 24],
-            [1, 2, 2, 2, 1, 24],
+            [1, 8, 1, 24],
         ),
         (
             "qk_input_gqa",
