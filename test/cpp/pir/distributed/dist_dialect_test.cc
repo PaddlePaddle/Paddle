@@ -20,7 +20,6 @@
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_op.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/distributed/transforms/mix_to_dist_pass.h"
-#include "paddle/fluid/pir/dialect/distributed/transforms/reshard_pass.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -368,12 +367,6 @@ TEST(shard_tensor_op_replicate_test, base) {
   EXPECT_EQ(reshard_op.attribute<OperationDistAttribute>("op_dist_attr")
                 .process_mesh_attr(),
             mesh_attr);
-
-  // check reshard_pass
-  std::cout << "IR before Reshard Pass = " << program << std::endl;
-  std::shared_ptr<pir::Program> new_program = paddle::dialect::ReshardPass(&program);
-  std::cout << "IR after Reshard Pass = " << new_program << std::endl;
-  //pir::Block* new_block = new_program->block();
 }
 
 TEST(shard_tensor_op_shard_row_test, base) {
