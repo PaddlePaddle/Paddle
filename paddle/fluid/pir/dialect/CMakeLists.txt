@@ -260,8 +260,6 @@ file(GLOB_RECURSE dist_dialect_srcs
      "${CMAKE_CURRENT_SOURCE_DIR}/distributed/ir/*.cc"
      "${CMAKE_CURRENT_SOURCE_DIR}/distributed/transforms/*.cc")
 
-message("debug dist_dialect_srcs ${dist_dialect_srcs}")
-
 # if(WITH_DISTRIBUTE) FIXME in next PR
 set(op_dialect_srcs ${op_dialect_srcs} ${dist_dialect_srcs})
 # endif()
