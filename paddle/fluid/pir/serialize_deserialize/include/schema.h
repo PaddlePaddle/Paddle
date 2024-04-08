@@ -11,8 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#ifndef PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_UTILS_H_
-#define PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_UTILS_H_
+#pragma once
 
 namespace pir {
 /* define all keys in serialized files to ensure accuracy for deserialization
@@ -60,4 +59,3 @@ make sure all the key mutually exclusive */
 #define DATA "data"
 
 }  // namespace pir
-#endif  // PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_UTILS_H_

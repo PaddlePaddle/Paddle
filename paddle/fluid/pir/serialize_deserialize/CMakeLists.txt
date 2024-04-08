@@ -1,9 +1,9 @@
-file(GLOB_RECURSE pir_save_load_CPP_SOURCES "*.cc")
+file(GLOB_RECURSE SERIALIZE_DESERIALIZE_CPP_SOURCES "*.cc")
 
 include_directories(pir_save_load PRIVATE
                     ${PADDLE_SOURCE_DIR}/third_party/nlohmann_json/include/)
 
 cc_library(
   pir_save_load
-  SRCS ${pir_save_load_CPP_SOURCES}
-  DEPS op_dialect json)
+  SRCS ${SERIALIZE_DESERIALIZE_CPP_SOURCES}
+  DEPS op_dialect phi json)

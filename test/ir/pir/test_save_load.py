@@ -19,8 +19,6 @@ from paddle import base
 
 
 class TestA(unittest.TestCase):
-    # @test_with_pir_api
-
     def test_save_load(self):
         with paddle.pir_utils.IrGuard():
             main_program = paddle.static.Program()
@@ -34,8 +32,6 @@ class TestA(unittest.TestCase):
                 bias = paddle.full(shape=[64], fill_value=1.0, dtype='float32')
                 x = paddle.matmul(input, weight)
                 y = paddle.add(x, bias)
-
-                print(main_program)
 
             file_path = "test_save_program1.json"
             pir_version = 1
@@ -52,13 +48,12 @@ class TestA(unittest.TestCase):
                 )
                 out1, out2 = paddle.split(x=x_2, num_or_sections=2, axis=0)
                 out = paddle.concat([out1, out2], axis=1)
-                print(main_program)
 
-                file_path = "test_save_program2.json"
-                pir_version = 1
-                base.core.serialize_pir_program(
-                    main_program, file_path, pir_version, True, True
-                )
+            file_path = "test_save_program2.json"
+            pir_version = 1
+            base.core.serialize_pir_program(
+                main_program, file_path, pir_version, True, True
+            )
 
 
 if __name__ == '__main__':
