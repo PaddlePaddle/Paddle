@@ -703,7 +703,9 @@ class WeightOnlyLinearTestCaseStatic(WeightOnlyLinearTestCase):
     "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearBackwardAndWeightDequantizeTestCase(unittest.TestCase):
-    def test_weightonly_linear_backward(self):
+    def test_weightonly_linear_backward(
+        self, algo='weight_only_int8', weight_dtype='int8'
+    ):
         x = (
             paddle.rand(shape=(128, 4096), dtype='float16')
             * 1
@@ -719,7 +721,7 @@ class WeightOnlyLinearBackwardAndWeightDequantizeTestCase(unittest.TestCase):
         )
 
         quant_weight, quant_scale = Q.weight_quantize(
-            x=weight.cuda(), algo='weight_only_int8'
+            x=weight.cuda(), algo=algo
         )
         dequant_weight = Q.weight_dequantize(quant_weight.cuda(), quant_scale)
         np.testing.assert_allclose(weight, dequant_weight, rtol=1e-2, atol=1e-2)
@@ -728,7 +730,7 @@ class WeightOnlyLinearBackwardAndWeightDequantizeTestCase(unittest.TestCase):
             x=quant_x,
             weight=quant_weight,
             weight_scale=quant_scale,
-            weight_dtype="int8",
+            weight_dtype=weight_dtype,
         )
         out = paddle.matmul(x=x, y=weight)
         np.testing.assert_allclose(quant_out, out, rtol=1e-3, atol=1e-3)
@@ -736,6 +738,11 @@ class WeightOnlyLinearBackwardAndWeightDequantizeTestCase(unittest.TestCase):
         quant_out.backward()
         out.backward()
         np.testing.assert_allclose(quant_x.grad, x.grad, rtol=1e-3, atol=1e-3)
+
+    def test_weightonly_linear_backward_int4(self):
+        self.test_weightonly_linear_backward(
+            algo='weight_only_int4', weight_dtype='int4'
+        )
 
 
 if __name__ == '__main__':
