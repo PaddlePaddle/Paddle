@@ -24,11 +24,11 @@ rem -------clean up environment-----------
 set work_dir=%cd%
 if not defined cache_dir set cache_dir=%work_dir:Paddle=cache%
 if not exist %cache_dir%\tools (
-    cd /d cache_dir
+    cd /d %cache_dir%
     python -m pip install wget
     python -c "import wget;wget.download('https://paddle-ci.gz.bcebos.com/window_requirement/tools.zip')"
     tar xf tools.zip
-    cd /d work_dir
+    cd /d %work_dir%
 )
 taskkill /f /im cmake.exe /t 2>NUL
 taskkill /f /im ninja.exe /t 2>NUL
