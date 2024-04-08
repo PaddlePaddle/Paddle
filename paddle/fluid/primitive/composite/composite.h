@@ -155,8 +155,7 @@ Tensor p_norm_decomp(const Tensor& x,
     res = sum<T>(res, {axis}, x_tmp.dtype(), keepdim);
   } else if (porder == 2.0) {
     // 2-norm
-    auto one = full<T>(empty_shape, 1, x_tmp.dtype());
-    res = one / rsqrt<T>(sum<T>(x_tmp * x_tmp, {axis}, x_tmp.dtype(), keepdim));
+    res = sqrt<T>(sum<T>(x_tmp * x_tmp, {axis}, x_tmp.dtype(), keepdim));
   } else if (porder == INFINITY) {
     // +INF-norm
     res = abs<T>(x_tmp);
