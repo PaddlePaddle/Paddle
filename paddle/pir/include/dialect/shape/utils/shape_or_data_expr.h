@@ -73,15 +73,15 @@ class ShapeOrData {
       if (data_.value().size() != other.data_.value().size()) return false;
 
       for (size_t i = 0; i < data_.value().size(); ++i) {
-        DimExpr dim0 = symbol::SimplifyDimExpr(data_.value()[i]);
-        DimExpr dim1 = symbol::SimplifyDimExpr(other.data_.value()[i]);
+        DimExpr dim0 = SimplifyDimExpr(data_.value()[i]);
+        DimExpr dim1 = SimplifyDimExpr(other.data_.value()[i]);
         if (dim0 != dim1) return false;
       }
     }
 
     for (size_t i = 0; i < shape_.size(); ++i) {
-      DimExpr dim0 = symbol::SimplifyDimExpr(shape_[i]);
-      DimExpr dim1 = symbol::SimplifyDimExpr(other.shape_[i]);
+      DimExpr dim0 = SimplifyDimExpr(shape_[i]);
+      DimExpr dim1 = SimplifyDimExpr(other.shape_[i]);
       if (dim0 != dim1) return false;
     }
 
@@ -165,6 +165,14 @@ class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
     std::get<TensorShapeOrDataDimExprs>(*this).SetData(data);
   }
 };
+
+IR_API TensorShapeOrDataDimExprs SubstituteTensorShapeOrData(
+    const TensorShapeOrDataDimExprs& shape_or_data,
+    const std::unordered_map<DimExpr, DimExpr>& substitution_pattern);
+
+IR_API ShapeOrDataDimExprs SubstituteShapeOrData(
+    const ShapeOrDataDimExprs& shape_or_data,
+    const std::unordered_map<DimExpr, DimExpr>& ssubstitution_pattern);
 
 IR_API std::ostream& operator<<(std::ostream&,
                                 const ShapeOrDataDimExprs& dim_expr);

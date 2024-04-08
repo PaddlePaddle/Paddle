@@ -29,6 +29,10 @@ static std::string GetValueId(Value val) {
 void ShapeConstraintIRAnalysis::Init() {
   value_to_shape_or_data_.clear();
   next_sym_idx_ = 0;
+  cstrs_manager_.SetEqualCallbackFunc(
+      [&](const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
+        return SubstituteDimExpr(lhs, rhs);
+      });
 }
 
 const std::string ShapeConstraintIRAnalysis::GetNextSymName() {
@@ -64,7 +68,44 @@ void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
 }
 
 symbol::DimExprBuilder ShapeConstraintIRAnalysis::DimExprBuilder() {
-  return symbol::DimExprBuilder(&constraints_);
+  return symbol::DimExprBuilder();
+}
+
+void ShapeConstraintIRAnalysis::SubstituteDimExpr(
+    const symbol::DimExpr& origin, const symbol::DimExpr& substituted) {
+  std::unordered_map<symbol::DimExpr, symbol::DimExpr> substitution_pattern;
+  substitution_pattern[origin] = substituted;
+  for (auto it = value_to_shape_or_data_.begin();
+       it != value_to_shape_or_data_.end();
+       it++) {
+    const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
+        symbol::SubstituteShapeOrData(it->second, substitution_pattern);
+    SetShapeOrDataForValue(it->first, substituted_shape_or_data);
+  }
+}
+
+void ShapeConstraintIRAnalysis::AddEqCstr(const symbol::DimExpr& lhs,
+                                          const symbol::DimExpr& rhs) {
+  cstrs_manager_.AddEqCstr(lhs, rhs);
+}
+
+void ShapeConstraintIRAnalysis::AddBroadcastableCstr(
+    const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
+  cstrs_manager_.AddBroadcastableCstr(lhs, rhs);
+}
+
+void ShapeConstraintIRAnalysis::AddGreatThanOneCstr(
+    const symbol::DimExpr& dim_expr) {
+  cstrs_manager_.AddGTOneCstr(dim_expr);
+}
+
+bool ShapeConstraintIRAnalysis::IsDimExprEqual(const symbol::DimExpr& lhs,
+                                               const symbol::DimExpr& rhs) {
+  return cstrs_manager_.IsDimExprEqual(lhs, rhs);
+}
+
+void ShapeConstraintIRAnalysis::PrintDimExprClusters(std::stringstream& ss) {
+  return cstrs_manager_.PrintDimExprClusters(ss);
 }
 
 void ShapeConstraintIRAnalysis::PrintShapeOrDatas() const {

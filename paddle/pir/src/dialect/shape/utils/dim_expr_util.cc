@@ -1061,6 +1061,53 @@ DimExpr SubstituteDimExpr(
 }  // namespace symbol
 
 namespace symbol {
+
+IR_API int GetDimExprPriority(const DimExpr& dim_expr) {
+  return std::visit(Overloaded{
+                        [&](std::int64_t) { return 0; },
+                        [&](const std::string&) { return 1; },
+                        [&](const Negative<DimExpr>&) { return 2; },
+                        [&](const Reciprocal<DimExpr>&) { return 2; },
+                        [&](const Add<DimExpr>&) { return 2; },
+                        [&](const Mul<DimExpr>&) { return 2; },
+                        [&](const Max<DimExpr>&) { return 2; },
+                        [&](const Min<DimExpr>&) { return 2; },
+                        [&](const Broadcast<DimExpr>&) { return 2; },
+                    },
+                    dim_expr.variant());
+}
+
+/**
+ * @brief Compare the two dim exprs priority
+ *
+ * @param lhs The left-hand side dim expr
+ * @param rhs The right-hand side dim expr
+ *
+ * @return -1 if lhs is less than rhs, 1 if lhs is greater than rhs, and 0 if
+ * they are equal
+ */
+int CompareDimExprPriority(const DimExpr& lhs, const DimExpr& rhs) {
+  int lhs_priority = GetDimExprPriority(lhs);
+  int rhs_priority = GetDimExprPriority(rhs);
+
+  if (lhs_priority != rhs_priority) {
+    return lhs_priority < rhs_priority ? -1 : 1;
+  }
+
+  auto CompareForEqualPrority =
+      Overloaded{[](const std::string& lhs, const std::string& rhs) {
+                   if (lhs.size() != rhs.size()) {
+                     return lhs.size() < rhs.size() ? -1 : 1;
+                   }
+                   return lhs.compare(rhs);
+                 },
+                 [](const auto& lhs, const auto& rhs) { return 0; }};
+  return std::visit(CompareForEqualPrority, lhs.variant(), rhs.variant());
+}
+
+}  // namespace symbol
+
+namespace symbol {
 namespace {
 
 void CollectUnaryDimExprSymbolsImpl(const DimExpr& dim_expr,
