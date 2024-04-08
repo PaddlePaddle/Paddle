@@ -155,7 +155,7 @@ static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
               dout_dims,
               in_dims,
               dout_dims[i],
-              in_dims[i],
+              in_shape[i],
               i));
     }
   }
