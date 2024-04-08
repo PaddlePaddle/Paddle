@@ -302,12 +302,30 @@ inline std::vector<int64_t> GetReduceDims(const DenseTensor &in,
   auto out_dims = out.dims();
 
   int diff = in_dims.size() - out_dims.size();
-  for (int i = 0; i < diff; ++i) {
-    reduce_dims.push_back(i);
+
+  std::vector<int64_t> out_shape(diff, 1);
+  for (int i = 0; i < out_dims.size(); ++i) {
+    out_shape.push_back(out_dims[i]);
   }
-  for (int i = diff; i < in_dims.size(); ++i) {
-    if (out_dims[i - diff] != in_dims[i]) {
+
+  for (int i = 0; i < in_dims.size(); ++i) {
+    if (out_shape[i] != in_dims[i] && out_shape[i] == 1) {
       reduce_dims.push_back(i);
+    } else {
+      PADDLE_ENFORCE_EQ(
+          in_dims[i],
+          out_shape[i],
+          phi::errors::InvalidArgument(
+              "ReduceDims dimension mismatch. Operands could "
+              "not be broadcast together with the shape of in_dims = [%s] and "
+              "the shape of out_shape = [%s]. Received [%d] in X is not equal "
+              "to "
+              "[%d] in Y at i:%d.",
+              in_dims,
+              out_dims,
+              in_dims[i],
+              out_shape[i],
+              i));
     }
   }
   return reduce_dims;
