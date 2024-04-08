@@ -15,7 +15,7 @@
 #     attrs : [bool is_test = false]
 
 - op : abs
-  backward : abs_grad
+  backward : abs_grad, abs_double_grad, abs_triple_grad
   inputs :
     x : X
   outputs :
@@ -295,6 +295,12 @@
   manual_signature : [assign, assign_grad]
   get_expected_kernel_type :
     assign : GetAssignExpectedKernelType
+
+- op : assign_pos
+  inputs :
+    {x : X}
+  outputs :
+    out : Out
 
 - op : assign_value
   outputs :
@@ -818,6 +824,12 @@
   outputs :
     out : Out
 
+- op : dgc_momentum
+  inputs :
+    {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam, current_step_tensor : current_step, nranks_tensor : nranks}
+  outputs :
+    {param_out : ParamOut, velocity_out : VelocityOut, master_param_out : MasterParamOut, grad_out : Grad_out}
+
 - op : diag (diag_v2)
   backward : diag_grad (diag_v2_grad)
   inputs :
@@ -1019,7 +1031,7 @@
     out : Out
 
 - op : exp
-  backward : exp_grad
+  backward : exp_grad, exp_double_grad
   inputs :
     x : X
   outputs :

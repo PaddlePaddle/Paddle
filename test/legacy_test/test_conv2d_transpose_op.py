@@ -223,7 +223,7 @@ class TestConv2DTransposeOp(OpTest):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_output_with_place(

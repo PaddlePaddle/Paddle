@@ -146,6 +146,25 @@ void AddmmInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
 }
 
+void AssignPosInferMeta(const MetaTensor& x,
+                        const MetaTensor& cum_count,
+                        const MetaTensor& eff_num_len,
+                        MetaTensor* out) {
+  phi::DataType X_dtype = x.dtype();
+  phi::DataType cum_count_dtype = cum_count.dtype();
+
+  PADDLE_ENFORCE_EQ(cum_count_dtype,
+                    X_dtype,
+                    phi::errors::InvalidArgument(
+                        "The dtype of the cum_count and X should be same"));
+  PADDLE_ENFORCE_EQ(cum_count_dtype,
+                    phi::DataType::INT64,
+                    phi::errors::InvalidArgument(
+                        "The dtype of the cum_count_dtype, eff_num_len and "
+                        "X should be same as int64"));
+  out->set_dtype(X_dtype);
+}
+
 void BatchFCInferMeta(const MetaTensor& input,
                       const MetaTensor& w,
                       const MetaTensor& bias,
@@ -1429,12 +1448,19 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
 
     // update.shape = index.shape[:-1] + output.shape[index.shape[-1]:]
     std::vector<int64_t> r_updates_dims;
+    bool without_dynamic_shape = true;
     for (int i = 0; i < index_dims_size - 1; ++i) {
+      if (index_dims[i] == -1) {
+        without_dynamic_shape = false;
+      }
       r_updates_dims.emplace_back(index_dims[i]);
     }
     for (int i = static_cast<int>(index_dims[index_dims_size - 1]);
          i < ref_dims_size;
          ++i) {
+      if (ref_dims[i] == -1) {
+        without_dynamic_shape = false;
+      }
       r_updates_dims.emplace_back(ref_dims[i]);
     }
     // check for non-0d updates
@@ -1442,25 +1468,27 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
         r_updates_dims.size(),
         updates_dims_size,
         phi::errors::InvalidArgument(
-            "Updates has wrong shape. The shape of Updates and Input(Updates) "
+            "Updates has wrong shape. The shape of Updates and "
+            "Input(Updates) "
             "should be same, but received the shape of Updates is %d, "
             "the shape of Input(Updates) is %d.",
             r_updates_dims.size(),
             updates_dims_size));
-
-    for (int64_t i = 0; i < updates_dims_size; ++i) {
-      PADDLE_ENFORCE_EQ(
-          r_updates_dims[i],
-          updates_dims[i],
-          phi::errors::InvalidArgument(
-              "Updates has wrong shape. The dimensions of Updates and "
-              "Input(Updates) should match, but received Updates's"
-              "%d-th dimension is %d, Input(Updates)'s %d-th "
-              "dimension is %d.",
-              i,
-              r_updates_dims[i],
-              i,
-              updates_dims[i]));
+    if (without_dynamic_shape) {
+      for (int64_t i = 0; i < updates_dims_size; ++i) {
+        PADDLE_ENFORCE_EQ(
+            r_updates_dims[i],
+            updates_dims[i],
+            phi::errors::InvalidArgument(
+                "Updates has wrong shape. The dimensions of Updates and "
+                "Input(Updates) should match, but received Updates's"
+                "%d-th dimension is %d, Input(Updates)'s %d-th "
+                "dimension is %d.",
+                i,
+                r_updates_dims[i],
+                i,
+                updates_dims[i]));
+      }
     }
   }
   out->set_dims(ref_dims);
