@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import argparse
+import datetime
+import os
 import re
 import sys
-import os
-import datetime
 
-COPYRIGHT = '''Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+COPYRIGHT = '''Copyright (c) {year} PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,27 +32,27 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.'''
 
+
 def _generate_copyright(comment_mark):
-    copyright=COPYRIGHT.split(os.linesep)
-    header = copyright[0].rstrip()
+    year = datetime.datetime.now().year
+    copyright = COPYRIGHT.format(year=year)
 
-    p = re.search(r'(\d{4})', header).group(0)
-    now = datetime.datetime.now()
+    return [
+        (
+            f"{comment_mark} {line}{os.linesep}"
+            if line
+            else f"{comment_mark}{os.linesep}"
+        )
+        for line in copyright.splitlines()
+    ]
 
-    header = header.replace(p,str(now.year))
-
-    ans=[comment_mark + " " + header + os.linesep]
-    for idx, line in enumerate(copyright[1:]):
-        ans.append(comment_mark + " " + line.rstrip() + os.linesep)
-
-    return ans
 
 def _get_comment_mark(path):
-    lang_type=re.compile(r"\.(py|sh)$")
+    lang_type = re.compile(r"\.(py|sh)$")
     if lang_type.search(path) is not None:
         return "#"
 
-    lang_type=re.compile(r"\.(h|c|hpp|cc|cpp|cu|go|cuh|proto)$")
+    lang_type = re.compile(r"\.(h|c|hpp|cc|cpp|cu|go|cuh|proto)$")
     if lang_type.search(path) is not None:
         return "//"
 
@@ -63,8 +63,9 @@ RE_ENCODE = re.compile(r"^[ \t\v]*#.*?coding[:=]", re.IGNORECASE)
 RE_COPYRIGHT = re.compile(r".*Copyright \(c\) \d{4}", re.IGNORECASE)
 RE_SHEBANG = re.compile(r"^[ \t\v]*#[ \t]?\!")
 
+
 def _check_copyright(path):
-    head=[]
+    head = []
     try:
         with open(path, 'r', encoding='utf-8') as f:
             head = [next(f) for x in range(4)]
@@ -77,38 +78,45 @@ def _check_copyright(path):
 
     return False
 
+
 def generate_copyright(path, comment_mark):
     original_contents = open(path, 'r', encoding="utf-8").readlines()
     head = original_contents[0:4]
 
-    insert_line_no=0
+    insert_line_no = 0
     for i, line in enumerate(head):
         if RE_ENCODE.search(line) or RE_SHEBANG.search(line):
-            insert_line_no=i+1
+            insert_line_no = i + 1
 
     copyright = _generate_copyright(comment_mark)
     if insert_line_no == 0:
         new_contents = copyright
-        if len(original_contents) > 0 and len(original_contents[0].strip()) != 0:
+        if (
+            len(original_contents) > 0
+            and len(original_contents[0].strip()) != 0
+        ):
             new_contents.append(os.linesep)
         new_contents.extend(original_contents)
     else:
-        new_contents=original_contents[0:insert_line_no]
+        new_contents = original_contents[0:insert_line_no]
         new_contents.append(os.linesep)
         new_contents.extend(copyright)
-        if len(original_contents) > insert_line_no and len(original_contents[insert_line_no].strip()) != 0:
+        if (
+            len(original_contents) > insert_line_no
+            and len(original_contents[insert_line_no].strip()) != 0
+        ):
             new_contents.append(os.linesep)
         new_contents.extend(original_contents[insert_line_no:])
-    new_contents="".join(new_contents)
+    new_contents = "".join(new_contents)
 
     with open(path, 'w', encoding='utf-8') as output_file:
         output_file.write(new_contents)
 
 
-
 def main(argv=None):
     parser = argparse.ArgumentParser(
-        description='Checker for copyright declaration.')
+        description='Checker for copyright declaration.'
+    )
     parser.add_argument('filenames', nargs='*', help='Filenames to check')
     args = parser.parse_args(argv)
 
@@ -126,4 +134,4 @@ def main(argv=None):
 
 
 if __name__ == '__main__':
-    exit(main())
+    sys.exit(main())

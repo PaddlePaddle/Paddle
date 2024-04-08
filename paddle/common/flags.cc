@@ -741,13 +741,13 @@ PHI_DEFINE_EXPORTED_bool(set_to_1d, false, "set 0D Tensor to 1D numpy");
 
 /**
  * Debug related FLAG
- * Name: tracer_mkldnn_ops_on
+ * Name: tracer_onednn_ops_on
  * Since Version: 2.0.0
  * Value Range: string, default=empty
  * Example:
  * Note: Holds list of operation types with OneDNN kernels to be enabled.
  */
-PHI_DEFINE_EXPORTED_string(tracer_mkldnn_ops_on,
+PHI_DEFINE_EXPORTED_string(tracer_onednn_ops_on,
                            "",
                            "List of OneDNN operation types to be turned on");
 
@@ -765,13 +765,13 @@ PHI_DEFINE_EXPORTED_string(static_runtime_data_save_path,
 
 /**
  * Debug related FLAG
- * Name: tracer_mkldnn_ops_off
+ * Name: tracer_onednn_ops_off
  * Since Version: 2.0.0
  * Value Range: string, default=empty
  * Example:
  * Note: Holds list of operation types with OneDNN kernels to be disabled.
  */
-PHI_DEFINE_EXPORTED_string(tracer_mkldnn_ops_off,
+PHI_DEFINE_EXPORTED_string(tracer_onednn_ops_off,
                            "",
                            "List of OneDNN operation types to be turned off");
 
