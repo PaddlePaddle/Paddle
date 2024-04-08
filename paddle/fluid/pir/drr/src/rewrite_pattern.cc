@@ -608,7 +608,6 @@ void DrrRewritePattern::DeleteSourcePatternOp(
             << ") in source_pattern_graph.";
     DeleteOpAndUpdateQueue(op, &delete_ops_que);
   }
-  
 }
 
 std::unique_ptr<DrrRewritePattern> DrrPatternBase::Build(
