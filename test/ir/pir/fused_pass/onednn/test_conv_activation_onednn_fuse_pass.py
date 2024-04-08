@@ -47,7 +47,7 @@ class TestConv2dReluFusePass(PassTest):
                 act_op = paddle.nn.ReLU()
                 out = act_op(conv2d(x))
                 out = paddle.assign(out)
-                self.pass_list = ['conv_activation_mkldnn_fuse_pass']
+                self.pass_list = ['conv_activation_onednn_fuse_pass']
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                 }
@@ -95,7 +95,7 @@ class TestConv2dGELUFusePass(PassTest):
                 act_op = paddle.nn.GELU()
                 out = act_op(conv2d(x))
                 out = paddle.assign(out)
-                self.pass_list = ['conv_activation_mkldnn_fuse_pass']
+                self.pass_list = ['conv_activation_onednn_fuse_pass']
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                 }
@@ -142,7 +142,7 @@ class TestConv2dClipFusePass(PassTest):
                 )
                 out = paddle.clip(conv2d(x), min=-15.0, max=15.0)
                 out = paddle.assign(out)
-                self.pass_list = ['conv_activation_mkldnn_fuse_pass']
+                self.pass_list = ['conv_activation_onednn_fuse_pass']
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                 }
@@ -199,7 +199,7 @@ class TestConv2dBiasReluFusePass(PassTest):
                 out = paddle.assign(out)
                 self.pass_list = [
                     'conv2d_bias_fuse_pass',
-                    'conv_activation_mkldnn_fuse_pass',
+                    'conv_activation_onednn_fuse_pass',
                 ]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
