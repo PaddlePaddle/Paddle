@@ -627,6 +627,7 @@ const std::vector<std::string> kPirMkldnnPasses{
     "conv3d_bias_fuse_pass",
     "batch_norm_act_fuse_pass",
     "reshape_transpose_matmul_fuse_pass",
+    "matmul_transpose_reshape_fuse_pass",
     "matmul_elementwise_add_fuse_pass",
     "matmul_activation_fuse_pass",
     "conv_elementwise_add_onednn_fuse_pass"};
