@@ -880,10 +880,13 @@ bool Transpose_OpInferSymbolicShape(
 
 bool SqueezeOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  IR_ENFORCE(op->num_operands() == 2,
-             "SqueezeOpInferSymbolicShape ONLY support num_operands() == 2 "
-             "now, but got %d operands",
-             op->num_operands());
+  PADDLE_ENFORCE_EQ(
+      op->num_operands(),
+      2,
+      phi::errors::InvalidArgument(
+          "SqueezeOpInferSymbolicShape ONLY support num_operands() == 2 "
+          "now, but got %d operands",
+          op->num_operands()));
 
   auto x_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
@@ -993,10 +996,13 @@ bool UniqueConsecutiveOpInferSymbolicShape(
 
 bool UnsqueezeOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  IR_ENFORCE(op->num_operands() == 2,
-             "UnsqueezeOp InferSymbolicShape ONLY support num_operands() == 2 "
-             "now, but got %d operands",
-             op->num_operands());
+  PADDLE_ENFORCE_EQ(
+      op->num_operands(),
+      2,
+      phi::errors::InvalidArgument(
+          "UnsqueezeOp InferSymbolicShape ONLY support num_operands() == 2 "
+          "now, but got %d operands",
+          op->num_operands()));
 
   auto x_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
