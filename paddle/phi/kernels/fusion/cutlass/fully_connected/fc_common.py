@@ -26,7 +26,6 @@ cutlass::Status ${kernel_func_name}(const FcAllParams& params) {
         ${align_b},         // AlignB
         ${math_operator}    // Operation performed by GEMM
     >;
-    // printf("swizzling_functor: ${swizzling_functor}, Tshape: ${Tshape}, Wshape: ${Wshape}\\n");
 
 '''
 

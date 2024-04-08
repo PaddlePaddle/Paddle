@@ -55,7 +55,6 @@ typedef enum {
 
 // fc_diff_gpu calculate diff of cutlass output and baseline output, you can
 // use them to debug. return value is the max diff between cutlass and baseline.
-// 模板的实现和声明分离可能会造成什么问题？
 template <typename T>
 float fc_diff_gpu(const FcAllParams& params, OpType op_type);
 
