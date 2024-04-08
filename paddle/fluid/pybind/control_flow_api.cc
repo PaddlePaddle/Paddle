@@ -24,6 +24,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/data_type.h"
@@ -103,12 +104,26 @@ void BindPyLayerOp(py::module* m) {
       .def("update_output", &PyLayerOp::UpdateOutput)
       .def(
           "as_operation", &PyLayerOp::operation, return_value_policy::reference)
-      .def("results", [](PyLayerOp& self) -> py::list {
-        py::list op_list;
-        for (uint32_t i = 0; i < self->num_results(); i++) {
-          op_list.append(self.result(i));
+      .def("results",
+           [](PyLayerOp& self) -> py::list {
+             py::list op_list;
+             for (uint32_t i = 0; i < self->num_results(); i++) {
+               op_list.append(self.result(i));
+             }
+             return op_list;
+           })
+      .def("register_backward_function", [](PyLayerOp& self, py::object func) {
+        uint64_t unique_id = self.operator()->id();
+        if (PyLayerOp::backward_py_callables.find(unique_id) !=
+            PyLayerOp::backward_py_callables.end()) {
+          LOG(WARNING) << "unique_id " << unique_id
+                       << " has already registered backward function in "
+                          "PyLayerOp::backward_py_callables. This operation "
+                          "will override the old one.";
         }
-        return op_list;
+        // NOTE(MarioLulab): May cause segment fault because of reference count
+        // ?
+        PyLayerOp::backward_py_callables[unique_id] = func;
       });
 }
 

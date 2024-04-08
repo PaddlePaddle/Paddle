@@ -18,6 +18,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -362,6 +363,11 @@ void OperatorDialect::initialize() {
   RegisterOps<
 #define GET_OP_LIST
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.cc"  // NOLINT
+      >();
+
+  RegisterOps<
+#define GET_OP_LIST
+#include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.cc"  // NOLINT
       >();
 
 #ifdef PADDLE_WITH_DNNL

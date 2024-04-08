@@ -33,8 +33,8 @@
 #include "paddle/pir/include/core/value.h"
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
-#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/onednn_helper.h"
