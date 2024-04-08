@@ -437,7 +437,7 @@ ScheduleMesh MeshPadding(const ScheduleMesh& sched_mesh,
   for (std::size_t i = 0; i < input_dims->size(); ++i) {
     if (input_dims->at(i).Has<std::int64_t>() &&
         output_dims->at(i).Has<std::int64_t>()) {
-      PADDLE_ENFORCE_EQ(input_dims->at(i).Get<std::int64_t>() ==
+      PADDLE_ENFORCE_LE(input_dims->at(i).Get<std::int64_t>() ==
                             output_dims->at(i).Get<std::int64_t>(),
                         true,
                         phi::errors::InvalidArgument(

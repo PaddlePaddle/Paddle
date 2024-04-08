@@ -18,7 +18,6 @@
 #include <vector>
 
 #include "paddle/cinn/adt/map_expr.h"
-#include "paddle/common/enforce.h"
 
 namespace cinn::hlir::framework::pir {
 
