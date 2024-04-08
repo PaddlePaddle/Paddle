@@ -72,11 +72,11 @@ def list_available_backends() -> List[str]:
     except ImportError:
         package = "paddleaudio"
         warn_msg = (
-            "Failed importing {}. \n"
+            f"Failed importing {package}. \n"
             "only wave_backend(only can deal with PCM16 WAV) supported.\n"
             "if want soundfile_backend(more audio type supported),\n"
-            "please manually installed (usually with `pip install {} >= 1.0.2`). "
-        ).format(package, package)
+            f"please manually installed (usually with `pip install {package} >= 1.0.2`). "
+        )
         warnings.warn(warn_msg)
 
     if "paddleaudio" in sys.modules:

@@ -29,6 +29,7 @@ void TileKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const IntArray& repeat_times_arr,
                 DenseTensor* out) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   auto rank = x.dims().size();
   std::vector<int64_t> repeat_times = repeat_times_arr.GetData();
   int repeat_times_size = repeat_times.size();
@@ -123,17 +124,23 @@ void TileKernel(const Context& dev_ctx,
                                  vec_out_dims);
 
   } else {
-    ret = xpu::broadcast<T>(dev_ctx.x_context(),
-                            x.data<T>(),
-                            out->data<T>(),
-                            vec_in_dims,
-                            vec_out_dims);
+    const auto* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
+    auto* out_data = reinterpret_cast<XPUType*>(out->data<T>());
+    ret = xpu::broadcast<XPUType>(
+        dev_ctx.x_context(), x_data, out_data, vec_in_dims, vec_out_dims);
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "broadcast");
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    tile, XPU, ALL_LAYOUT, phi::TileKernel, bool, float, double, int, int64_t) {
-}
+PD_REGISTER_KERNEL(tile,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::TileKernel,
+                   bool,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::bfloat16) {}

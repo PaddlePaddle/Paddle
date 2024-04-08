@@ -741,10 +741,7 @@ class TestTrain(Dy2StTestBase):
             dygraph_res,
             static_res,
             rtol=1e-05,
-            err_msg='dygraph_res: {},\n static_res: {}'.format(
-                dygraph_res[~np.isclose(dygraph_res, static_res)],
-                static_res[~np.isclose(dygraph_res, static_res)],
-            ),
+            err_msg=f'dygraph_res: {dygraph_res[~np.isclose(dygraph_res, static_res)]},\n static_res: {static_res[~np.isclose(dygraph_res, static_res)]}',
             atol=1e-8,
         )
 
@@ -757,10 +754,7 @@ class TestTrain(Dy2StTestBase):
             dygraph_res,
             static_res,
             rtol=1e-05,
-            err_msg='dygraph_res: {},\n static_res: {}'.format(
-                dygraph_res[~np.isclose(dygraph_res, static_res)],
-                static_res[~np.isclose(dygraph_res, static_res)],
-            ),
+            err_msg=f'dygraph_res: {dygraph_res[~np.isclose(dygraph_res, static_res)]},\n static_res: {static_res[~np.isclose(dygraph_res, static_res)]}',
             atol=1e-8,
         )
 
@@ -788,30 +782,21 @@ class TestTrain(Dy2StTestBase):
                     st_res,
                     dy_res,
                     rtol=1e-05,
-                    err_msg='dygraph_res: {},\n static_res: {}'.format(
-                        dy_res[~np.isclose(st_res, dy_res)],
-                        st_res[~np.isclose(st_res, dy_res)],
-                    ),
+                    err_msg=f'dygraph_res: {dy_res[~np.isclose(st_res, dy_res)]},\n static_res: {st_res[~np.isclose(st_res, dy_res)]}',
                     atol=1e-8,
                 )
                 np.testing.assert_allclose(
                     st_res,
                     dy_jit_res,
                     rtol=1e-05,
-                    err_msg='dygraph_jit_res: {},\n static_res: {}'.format(
-                        dy_jit_res[~np.isclose(st_res, dy_jit_res)],
-                        st_res[~np.isclose(st_res, dy_jit_res)],
-                    ),
+                    err_msg=f'dygraph_jit_res: {dy_jit_res[~np.isclose(st_res, dy_jit_res)]},\n static_res: {st_res[~np.isclose(st_res, dy_jit_res)]}',
                     atol=1e-8,
                 )
                 np.testing.assert_allclose(
                     st_res,
                     predictor_res,
                     rtol=1e-05,
-                    err_msg='dygraph_jit_res: {},\n static_res: {}'.format(
-                        predictor_res[~np.isclose(st_res, predictor_res)],
-                        st_res[~np.isclose(st_res, predictor_res)],
-                    ),
+                    err_msg=f'dygraph_jit_res: {predictor_res[~np.isclose(st_res, predictor_res)]},\n static_res: {st_res[~np.isclose(st_res, predictor_res)]}',
                     atol=1e-8,
                 )
             break

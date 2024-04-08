@@ -57,6 +57,7 @@ ops_to_fill_zero_for_empty_grads = {
     "conv3d_double_grad",
     "depthwise_conv2d_grad_grad",
     "concat_double_grad",
+    "stack_double_grad",
     "expand_grad",
     "argsort_grad",
     "eigh_grad",

@@ -15,7 +15,7 @@
 
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
-from ..completion import get_phi_spmd_rule
+from ..completion import contains_spmd_rule, get_phi_spmd_rule
 from ..cost import (
     _g_op_cost_factory,
     build_comp_costs_from_descs,
@@ -122,9 +122,7 @@ class DistributedDefault(DistributedOperatorImplContainer):
         for i in range(num_inputs):
             assert not is_parameter_related(
                 input_arg_names[i], main_block
-            ), "input {} of op {} is parameter, op should not use default rule.".format(
-                input_arg_names[i], str(dist_op.serial_op)
-            )
+            ), f"input {input_arg_names[i]} of op {str(dist_op.serial_op)} is parameter, op should not use default rule."
             input_specs.append(
                 get_dist_tensor_spec(dist_op, input_arg_names[i])
             )
@@ -133,18 +131,21 @@ class DistributedDefault(DistributedOperatorImplContainer):
         for i in range(num_outputs):
             assert not is_parameter_related(
                 output_arg_names[i], main_block
-            ), "output {} of op {} is parameter, op should not use default rule.".format(
-                output_arg_names[i], str(dist_op.serial_op)
-            )
+            ), f"output {output_arg_names[i]} of op {str(dist_op.serial_op)} is parameter, op should not use default rule."
             output_specs.append(
                 get_dist_tensor_spec(dist_op, output_arg_names[i], False)
             )
 
         # step2: infer spmd
-        rule = get_phi_spmd_rule("default_")
-        # tensor order following order in PHI definition
-        fw_results = rule.infer_forward(input_specs, output_specs)
-        bw_results = rule.infer_backward(input_specs, output_specs)
+        if contains_spmd_rule(dist_op.serial_op.type):
+            rule = get_phi_spmd_rule(dist_op.serial_op.type)
+            fw_results = rule.infer_forward(*input_specs)
+            bw_results = rule.infer_backward(*input_specs, output_specs)
+        else:
+            rule = get_phi_spmd_rule('default_')
+            # tensor order following order in PHI definition
+            fw_results = rule.infer_forward(input_specs, output_specs)
+            bw_results = rule.infer_backward(input_specs, output_specs)
 
         # step3: update dist_attr
         # tensor order following order in PHI definition
