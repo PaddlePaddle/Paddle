@@ -929,9 +929,7 @@ class PipelineParallel(MetaParallelBase):
                     sync_op=True,
                     group=self.pp_group,
                 )
-        if len(losses) == 1:
-            return losses[0]
-        return losses
+        return losses[0] if len(losses) == 1 else losses
 
     def _optimizer_step(self):
         if self._delay_scale_loss:
