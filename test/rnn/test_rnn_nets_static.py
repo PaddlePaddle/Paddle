@@ -29,19 +29,27 @@ bidirectional_list = ["bidirectional", "bidirect"]
 
 
 class TestSimpleRNN(unittest.TestCase):
-    def __init__(self, time_major=True, direction="forward", place="cpu"):
+    def __init__(
+        self, time_major=True, direction="forward", place="cpu", mode="RNN_TANH"
+    ):
         super().__init__("runTest")
         self.time_major = time_major
         self.direction = direction
         self.num_directions = 2 if direction in bidirectional_list else 1
         self.place = place
+        self.mode = mode
 
     def setUp(self):
         # Since `set_device` is global, set `set_device` in `setUp` rather than
         # `__init__` to avoid using an error device set by another test case.
         place = paddle.set_device(self.place)
         rnn1 = SimpleRNN(
-            16, 32, 2, time_major=self.time_major, direction=self.direction
+            16,
+            32,
+            2,
+            time_major=self.time_major,
+            direction=self.direction,
+            nonlinearity=self.mode,
         )
 
         mp = paddle.static.Program()
@@ -54,6 +62,7 @@ class TestSimpleRNN(unittest.TestCase):
                     2,
                     time_major=self.time_major,
                     direction=self.direction,
+                    activation=self.mode[4:].lower(),
                 )
 
         exe = paddle.static.Executor(place)
@@ -568,6 +577,12 @@ def load_tests(loader, tests, pattern):
                     TestLSTMWithProjSize,
                 ]:
                     suite.addTest(test_class(time_major, direction, device))
+                    if test_class == TestSimpleRNN:
+                        suite.addTest(
+                            test_class(
+                                time_major, direction, device, mode="RNN_RELU"
+                            )
+                        )
     return suite
 
 

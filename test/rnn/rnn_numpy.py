@@ -49,7 +49,7 @@ class SimpleRNNCell(LayerMixin):
         self.bias = bias
         if nonlinearity == 'RNN_TANH':
             self.nonlinearity = np.tanh
-        else:
+        elif nonlinearity == 'RNN_RELU':
             self.nonlinearity = lambda x: np.maximum(x, 0.0)
 
         self.parameters = {}
@@ -516,10 +516,16 @@ class SimpleRNN(RNNMixin):
             self.append(BiRNN(cell_fw, cell_bw, time_major))
             for i in range(1, num_layers):
                 cell_fw = SimpleRNNCell(
-                    2 * hidden_size, hidden_size, nonlinearity, dtype=dtype
+                    2 * hidden_size,
+                    hidden_size,
+                    nonlinearity=nonlinearity,
+                    dtype=dtype,
                 )
                 cell_bw = SimpleRNNCell(
-                    2 * hidden_size, hidden_size, nonlinearity, dtype=dtype
+                    2 * hidden_size,
+                    hidden_size,
+                    nonlinearity=nonlinearity,
+                    dtype=dtype,
                 )
                 self.append(BiRNN(cell_fw, cell_bw, time_major))
         else:

@@ -27,12 +27,15 @@ bidirectional_list = ["bidirectional", "bidirect"]
 
 
 class TestSimpleRNN(unittest.TestCase):
-    def __init__(self, time_major=True, direction="forward", place="cpu"):
+    def __init__(
+        self, time_major=True, direction="forward", place="cpu", mode='RNN_TANH'
+    ):
         super().__init__("runTest")
         self.time_major = time_major
         self.direction = direction
         self.num_directions = 2 if direction in bidirectional_list else 1
         self.place = place
+        self.mode = mode
 
     def setUp(self):
         # Since `set_device` is global, set `set_device` in `setUp` rather than
@@ -40,10 +43,20 @@ class TestSimpleRNN(unittest.TestCase):
         place = paddle.set_device(self.place)
         paddle.disable_static(place)
         rnn1 = SimpleRNN(
-            16, 32, 2, time_major=self.time_major, direction=self.direction
+            16,
+            32,
+            2,
+            time_major=self.time_major,
+            direction=self.direction,
+            nonlinearity=self.mode,
         )
         rnn2 = paddle.nn.SimpleRNN(
-            16, 32, 2, time_major=self.time_major, direction=self.direction
+            16,
+            32,
+            2,
+            time_major=self.time_major,
+            direction=self.direction,
+            activation=self.mode[4:].lower(),
         )
         convert_params_for_net(rnn1, rnn2)
 
@@ -394,8 +407,19 @@ def load_tests(loader, tests, pattern):
     for direction in ["forward", "bidirectional", "bidirect"]:
         for time_major in [True, False]:
             for device in devices:
-                for test_class in [TestSimpleRNN, TestLSTM, TestGRU]:
+                for test_class in [
+                    TestSimpleRNN,
+                    TestLSTM,
+                    TestGRU,
+                    TestLSTMWithProjSize,
+                ]:
                     suite.addTest(test_class(time_major, direction, device))
+                    if test_class == TestSimpleRNN:
+                        suite.addTest(
+                            test_class(
+                                time_major, direction, device, mode="RNN_RELU"
+                            )
+                        )
     return suite
 
 

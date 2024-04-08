@@ -138,6 +138,15 @@ class TestLstmWithProjsize(TestLstm):
         self.net = Net(12, 8, 4)
         self.inputs = paddle.zeros((2, 10, 12))
 
+    def test_error(self):
+        # proj_size < 0
+        with self.assertRaises(ValueError):
+            nn.LSTM(4, 4, 4, proj_size=-1)
+
+        # proj_size >= hidden_size
+        with self.assertRaises(ValueError):
+            nn.LSTM(4, 4, 4, proj_size=20)
+
 
 class LinearNet(nn.Layer):
     def __init__(self):
