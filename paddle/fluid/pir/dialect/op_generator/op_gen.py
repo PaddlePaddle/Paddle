@@ -1802,12 +1802,12 @@ def AutoCodeGen(
                         extra_args=extra_args,
                         skip_transform_inputs=skip_transform_inputs,
                         data_format_tensors=data_format_tensors,
-                        is_onednn_only="true"
-                        if op_info.is_onednn_only
-                        else "false",
-                        dynamic_fallback="true"
-                        if op_info.dynamic_fallback
-                        else "false",
+                        is_onednn_only=(
+                            "true" if op_info.is_onednn_only else "false"
+                        ),
+                        dynamic_fallback=(
+                            "true" if op_info.dynamic_fallback else "false"
+                        ),
                     )
                 # generate op verify function str
                 op_verify_str = ''
