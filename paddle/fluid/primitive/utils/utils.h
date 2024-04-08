@@ -134,16 +134,19 @@ static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
                                           const phi::DDim& in_dims) {
   std::vector<int64_t> result;
   int bat = dout_dims.size() - in_dims.size();
-  for (int i = 0; i < bat; ++i) {
-    result.push_back(i);
+
+  std::vector<int64_t> in_shape(bat, 1);
+  for (int i = 0; i < in_dims.size(); i++) {
+    in_shape.push_back(in_dims[i]);
   }
-  for (int i = 0; i < in_dims.size(); ++i) {
-    if (in_dims[i] == 1 && dout_dims[i] != 1) {
-      result.push_back(i + bat);
+
+  for (int i = 0; i < dout_dims.size(); i++) {
+    if (in_shape[i] != dout_dims[i] && in_shape[i] == 1) {
+      result.push_back(i);
     } else {
       PADDLE_ENFORCE_EQ(
           in_dims[i],
-          dout_dims[i + bat],
+          dout_dims[i],
           platform::errors::InvalidArgument(
               "ReduceDims dimension mismatch. Operands could "
               "not be broadcast together with the shape of dout = [%s] and "
@@ -151,7 +154,7 @@ static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
               "[%d] in Y at i:%d.",
               dout_dims,
               in_dims,
-              dout_dims[i + bat],
+              dout_dims[i],
               in_dims[i],
               i));
     }
