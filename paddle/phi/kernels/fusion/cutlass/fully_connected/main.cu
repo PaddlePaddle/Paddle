@@ -3,14 +3,15 @@
 #include <dlfcn.h>
 #include <random>
 #include <ctime>
+#include <nvtx3/nvToolsExt.h>
 // namespace phi{
 // namespace fusion{
 // namespace cutlass_internal{
 
-using DataType_ = __nv_bfloat16;
-// using DataType_ = half;
+// using DataType_ = __nv_bfloat16;
+using DataType_ = half;
 
-cutlass::Status fc_bias_sm80_bf16(const FcAllParams& params);
+cutlass::Status fc_bias_sm80(const FcAllParams& params);
 
 typedef void (*func)(FcAllParams);
 
@@ -87,15 +88,18 @@ void EnumParamList_MNK_Act(int M_, int N_, int K_, OpType op_type, std::string a
     // }
     // fc_func(params);
 
-    cutlass::Status status = fc_bias_sm80_bf16(params);
-    
-    CUTLASS_CHECK(status);
-    CUDA_CHECK(cudaDeviceSynchronize());
+    for(int i = 0; i < 5; i++){
+        nvtxRangeId_t post_kernel_id = nvtxRangeStartA("fc_bias_sm80");
+        cutlass::Status status = fc_bias_sm80(params);
+        CUTLASS_CHECK(status);
+        CUDA_CHECK(cudaDeviceSynchronize());
+        nvtxRangeEnd(post_kernel_id);
+    }
     
 
     // navie and diff
-    float max_diff = fc_diff_gpu<DataType_>(params, op_type);
-    std::cout << max_diff << std::endl;
+    // float max_diff = fc_diff_gpu<DataType_>(params, op_type);
+    // std::cout << max_diff << std::endl;
 
     // dlclose(dlhandler);
     CUDA_CHECK(cudaStreamDestroy(stream));
@@ -134,9 +138,9 @@ int main(){
 
     /// 
     /**/
-    int M = 64;
-    int N = 64;
-    int K = 64;
+    int M = 2;
+    int N = 4096;
+    int K = 11008;
     OpType op_type = OpType::FC_BIAS;
     std::string activation = OpType2String(op_type);
     EnumParamList_MNK_Act(M, N, K, op_type, activation, 1.f);

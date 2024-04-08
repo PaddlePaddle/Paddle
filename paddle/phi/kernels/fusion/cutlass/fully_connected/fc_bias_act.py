@@ -106,7 +106,7 @@ swizzling_functors = [
 ]
 
 # (mode == GemmUniversalMode::kGemm) the tile-splitting factor (1 defaults to StreamK, >1 emulates Split-K)
-split_k_factors = ["1","2","4","8","16"]
+split_k_factors = ["1","2" ,"4"] #,"8","16"]
 
 # 暂时没有考虑fp32 所以只用128bit对齐 128/sizeof(half)
 alignments = [8]
@@ -307,29 +307,30 @@ def generate_sm80_16816(cutlass_dtype="cutlass::half_t"):
                 kernel_dict["layout_c"] = layout[2]
                 for math_inst in math_instructions:
                     tiles = [
-                        # TileDesc("256, 128, 32", 3, "64, 64, 32", math_inst),
-                        # TileDesc("128, 256, 32", 3, "64, 64, 32", math_inst),
-                        # TileDesc("256, 64, 32", 3, "64, 64, 32", math_inst),
-                        # TileDesc("256, 64, 32", 4, "64, 64, 32", math_inst),
-                        # TileDesc("64, 256, 32", 4, "64, 64, 32", math_inst),
-                        # TileDesc("128, 128, 32", 3, "64, 64, 32", math_inst),
-                        # TileDesc("128, 128, 32", 4, "64, 64, 32", math_inst),
-                        # TileDesc("128, 128, 32", 5, "64, 64, 32", math_inst),
-                        # TileDesc("128, 64, 32", 6, "64, 32, 32", math_inst),
-                        # TileDesc("64, 128, 32", 6, "32, 64, 32", math_inst),
-                        # TileDesc("64, 64, 32", 10, "32, 32, 32", math_inst),
-                        # TileDesc("256, 128, 64", 3, "64, 64, 64", math_inst),
-                        # TileDesc("128, 256, 64", 3, "64, 64, 64", math_inst),
-                        # TileDesc("256, 64, 64", 4, "64, 64, 64", math_inst),
-                        # TileDesc("64, 256, 64", 4, "64, 64, 64", math_inst),
-                        # TileDesc("128, 128, 64", 4, "64, 64, 64", math_inst),
-                        # TileDesc("256, 64, 64", 3, "64, 64, 64", math_inst),
-                        # TileDesc("64, 256, 64", 3, "64, 64, 64", math_inst),
-                        # TileDesc("128, 128, 64", 3, "64, 64, 64", math_inst),
-                        # TileDesc("128, 64, 64", 3, "64, 32, 64", math_inst),
-                        # TileDesc("64, 128, 64", 3, "32, 64, 64", math_inst),
-                        # TileDesc("64, 64, 64", 5, "32, 32, 64", math_inst),
-                        # kai mod
+                        TileDesc("256, 128, 32", 3, "64, 64, 32", math_inst),
+                        TileDesc("128, 256, 32", 3, "64, 64, 32", math_inst),
+                        TileDesc("256, 64, 32", 3, "64, 64, 32", math_inst),
+                        TileDesc("256, 64, 32", 4, "64, 64, 32", math_inst),
+                        TileDesc("64, 256, 32", 4, "64, 64, 32", math_inst),
+                        TileDesc("128, 128, 32", 3, "64, 64, 32", math_inst),
+                        TileDesc("128, 128, 32", 4, "64, 64, 32", math_inst),
+                        TileDesc("128, 128, 32", 5, "64, 64, 32", math_inst),
+                        TileDesc("128, 64, 32", 6, "64, 32, 32", math_inst),
+                        TileDesc("64, 128, 32", 6, "32, 64, 32", math_inst),
+                        TileDesc("64, 64, 32", 10, "32, 32, 32", math_inst),
+                        TileDesc("256, 128, 64", 3, "64, 64, 64", math_inst),
+                        TileDesc("128, 256, 64", 3, "64, 64, 64", math_inst),
+                        TileDesc("256, 64, 64", 4, "64, 64, 64", math_inst),
+                        TileDesc("64, 256, 64", 4, "64, 64, 64", math_inst),
+                        TileDesc("128, 128, 64", 4, "64, 64, 64", math_inst),
+                        TileDesc("256, 64, 64", 3, "64, 64, 64", math_inst),
+                        TileDesc("64, 256, 64", 3, "64, 64, 64", math_inst),
+                        TileDesc("128, 128, 64", 3, "64, 64, 64", math_inst),
+                        TileDesc("128, 64, 64", 3, "64, 32, 64", math_inst),
+                        TileDesc("64, 128, 64", 3, "32, 64, 64", math_inst),
+                        TileDesc("64, 64, 64", 5, "32, 32, 64", math_inst),
+                        #
+                        TileDesc("32, 64, 64", 5, "16, 32, 64", math_inst),
                         TileDesc("16, 64, 64", 5, "16, 32, 64", math_inst),
                     ]
                     for tile in tiles:

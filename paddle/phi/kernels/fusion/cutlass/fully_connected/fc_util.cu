@@ -145,6 +145,9 @@ int ProfileToGetBestConfig(
     const std::vector<std::function<cutlass::Status(FcAllParams)>> &all_func,
     const FcAllParams &params,
     OpType op_type) {
+
+    std::cout << "we are tunning for problem: [" << params.m << ", " << params.n << ", " <<  params.k << "]"<< std::endl;
+
     constexpr int WARMUP = 10;
     constexpr int REPEAT = 10;
     float min_time = 100000.f;
@@ -177,6 +180,9 @@ int ProfileToGetBestConfig(
       CUDA_CHECK(cudaEventSynchronize(end));
       float elapsed_time;
       CUDA_CHECK(cudaEventElapsedTime(&elapsed_time, beg, end));
+      // std::cout << "kai_____: fp16_"
+      //               << OpType2String(op_type) << ": tactic " << i
+      //               << ", cost_time: " << elapsed_time << "ms." << std::endl;
       if (elapsed_time < min_time && status == cutlass::Status::kSuccess) {
         min_time = elapsed_time;
         min_time_index = i;

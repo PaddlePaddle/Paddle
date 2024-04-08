@@ -39,14 +39,7 @@ void FCKernel(const Context& dev_ctx,
               const std::string& activation_type,
               const bool padding_weights,
               DenseTensor* out) {
-  // std::cout << "kai-----------FusedFcAddActKernel.begin: " << std::endl;
-
-  // 暂时把下两个参数从参数列表移到这里, 以对齐FCKernel
-  // const std::string& data_format,
-  // float leaky_alpha,
-  const std::string data_format("RRR");
-  float leaky_alpha = 0.01;
-
+  /// 参数检查
   if(!bias){
     PADDLE_THROW(phi::errors::InvalidArgument("bias is needed!!!"));
     return;
@@ -54,46 +47,42 @@ void FCKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(padding_weights, false,
                     phi::errors::PermissionDenied("Weight padding in fc can not be used in GPU scope."));
 
+  const std::string data_format("RRR");
+  // 后续实现要求参与计算的矩阵必须是RRR的
+  CHECK_EQ(data_format == "RRR", true);
   auto weight_dims = w.dims();
-  /// fc_out should be reshape when run since can not get lod in infershap
+  CHECK_EQ(weight_dims.size() == 2UL, true);
+
+  // fc_out should be reshape when run since can not get lod in infershape
   std::vector<int64_t> output_dims;
   phi::funcs::FCOutputSize(
       input.dims(), weight_dims, output_dims, in_num_col_dims, padding_weights);
   out->Resize(common::make_ddim(output_dims));
   out->set_lod(input.lod());
-  ///
 
   dev_ctx.template Alloc<T>(out);
-  auto bias_dims = bias->dims();
+
   auto out_dims = out->dims();
-
-  CHECK_EQ(weight_dims.size() == 2UL, true);
-  CHECK_EQ(data_format == "RRR", true);
-
+  auto bias_dims = bias->dims();
+  // 本算子的pass支持两种类型的bias elementwiseAdd。对于[M,N]维的output，bias要么是长度为N的向量，要么也是[M,N]维。
+  // isVec_bias用于区分bias是否为向量
+  bool isVec_bias = true;
+  if(bias_dims.size()>2 || (bias_dims.size()==2 && bias_dims[0] != 1)){
+    isVec_bias = false;
+  }
+  
   /// 这里参考blas的实现
   int M = common::product(out_dims) / weight_dims[1];
   const int K = weight_dims[0];
   const int N = weight_dims[1];
-  
-  bool vecBias = true;
-  if(bias_dims.size()>2){
-    vecBias = false;
-  }
-  else if(bias_dims.size()==2 && bias_dims[0] != 1){
-    vecBias = false;
-  }
-  
-  // std::cout << "MNK: [" << M  << ", " << N << ", " << K << "]" << std::endl;
-  // 在RRR的情况下
   const int lda = K;
   const int ldb = N;
   const int ldd = N;
-  // 这里暂时写死GEMM内核实现部分的Align参数为8，判定一下输入是否可接受
+  // 这里暂时写死GEMM内核实现部分的Align参数为8，然后判定一下输入是否可接受
   const int alignA = 8;
   const int alignB = 8;
   bool isAMisaligned = false;
   bool isBMisaligned = false;
-  // 在RRR情况下 
   isAMisaligned = lda % alignA;
   isBMisaligned = ldb % alignB;
   if (isAMisaligned) {
@@ -124,12 +113,9 @@ void FCKernel(const Context& dev_ctx,
 
   auto cutlass_dispatch_sm_version = [&](int device_sm_version) -> int {
     if (device_sm_version < 75) {
-      PADDLE_ENFORCE_GE(
-          device_sm_version,
-          75,
+      PADDLE_ENFORCE_GE(device_sm_version, 75,
           phi::errors::PreconditionNotMet(
-              "fused_fc_add_act only supports sm >= 75, but got %d.",
-              device_sm_version));
+              "fused_fc_add_act only supports sm >= 75, but got %d.", device_sm_version));
     } else if (device_sm_version > 80) {
       return 80;
     } else {
@@ -150,7 +136,7 @@ void FCKernel(const Context& dev_ctx,
       ldd,
       dev_ctx.stream(),
       get_fc_dtype(input.dtype()),
-      vecBias,
+      isVec_bias,
       cutlass_dispatch_sm_version(sm_version),
       leaky_alpha,       // for leaky_relu
   };
@@ -158,7 +144,6 @@ void FCKernel(const Context& dev_ctx,
   void* dlhandler = phi::dynload::GetCutlassFcHandle();
   func fc_func = NULL;
   CHECK_EQ(dlhandler == NULL, false);
-  // std::cout << "kai-----------FusedFcAddActKernel.activation_type: " << activation_type << std::endl;
   if (activation_type == "relu") {
     fc_func = (func)(dlsym(dlhandler, "FcBiasRelu"));
   } else if (activation_type == "swish") {
@@ -177,6 +162,7 @@ void FCKernel(const Context& dev_ctx,
   }
   fc_func(params);
 }
+
 }  // namespace cutlass_internal
 }  // namespace fusion
 }  // namespace phi

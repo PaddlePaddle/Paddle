@@ -37,13 +37,13 @@ CommonCutlassFcKernelArguments = '''
     cutlass::bfloat16_t *weight = (cutlass::bfloat16_t *)(params.weight);
     cutlass::bfloat16_t *bias = (cutlass::bfloat16_t *)(params.bias);
     cutlass::bfloat16_t *output = (cutlass::bfloat16_t *)(params.output);
-    /// 仅适用于RRR格式
+    // 仅适用于RRR格式
     int64_t batch_stride_C = problem_size.n();
-    if(!params.vecBias)     { batch_stride_C = problem_size.mn().product(); }
+    if(!params.isVec_bias)     { batch_stride_C = problem_size.mn().product(); }
     long lda = (long)params.lda;   
     long ldb = (long)params.ldb;
     long ldc_bias = 0;
-    if(!params.vecBias)     { ldc_bias = (long)params.ldd; } 
+    if(!params.isVec_bias)     { ldc_bias = (long)params.ldd; } 
     long ldd = (long)params.ldd;
 
     typename DeviceKernalName::Arguments arguments{

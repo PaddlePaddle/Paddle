@@ -106,32 +106,6 @@ using pir::Type;
 using pir::Value;
 using pybind11::return_value_policy;
 
-// USE_PIR_PASS(dead_code_elimination_pass);
-// USE_PIR_PASS(multihead_matmul_fuse_pass);
-// USE_PIR_PASS(transpose_flatten_concat_fuse_pass);
-// USE_PIR_PASS(fused_gemm_epilogue_pass);
-// USE_PIR_PASS(fused_dropout_add_pass);
-// USE_PIR_PASS(fused_weight_only_linear_pass);
-// USE_PIR_PASS(fused_linear_param_grad_add_pass);
-// USE_PIR_PASS(inplace_pass);
-// USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
-// USE_PIR_PASS(identity_op_clean_pass);
-// USE_PIR_PASS(map_op_to_another_pass);
-// USE_PIR_PASS(matmul_scale_fuse_pass);
-// USE_PIR_PASS(matmul_transpose_fuse_pass);
-// USE_PIR_PASS(fc_fuse_pass);
-// USE_PIR_PASS(silu_fuse_pass);
-// USE_PIR_PASS(fc_elementwise_layernorm_fuse_pass);
-// USE_PIR_PASS(conv2d_bn_fuse_pass);
-// USE_PIR_PASS(conv2d_add_fuse_pass);
-// USE_PIR_PASS(conv2d_add_act_fuse_pass);
-// USE_PIR_PASS(embedding_eltwise_layernorm_fuse_pass);
-// USE_PIR_PASS(fused_dot_product_attention_pass);
-
-// #ifdef PADDLE_WITH_DNNL
-// USE_PIR_PASS(batch_norm_act_fuse_pass);
-// #endif
-
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
 

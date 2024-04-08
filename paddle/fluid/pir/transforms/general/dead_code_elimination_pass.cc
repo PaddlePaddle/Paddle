@@ -56,7 +56,6 @@ class DeadCodeEliminationPass : public pir::Pass {
     }
 
     for (auto* op : deleted_ops) {
-      printf("kai======== void EraseOp(const pir::Block& block, int64_t* num_erasers)\n");
       op->Erase();
       (*num_erasers)++;
     }
