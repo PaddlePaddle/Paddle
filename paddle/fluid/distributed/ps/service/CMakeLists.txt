@@ -11,7 +11,7 @@ else()
 
 endif()
 
-if(WITH_PSCORE)
+if(WITH_PSCORE AND NOT WITH_HETERPS)
   set(BRPC_DEPS ${BRPC_DEPS} ps_service)
 endif()
 
