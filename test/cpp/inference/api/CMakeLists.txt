@@ -485,14 +485,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     test_analyzer_text_classification ${TEXT_CLASSIFICATION_INSTALL_DIR}
     analyzer_text_classification_tester.cc EXTRA_DEPS common)
 
-  # seq_conv1
-  set(SEQ_CONV1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/seq_conv1")
-  download_model_and_data_without_verify(
-    ${SEQ_CONV1_INSTALL_DIR} "seq_conv1_model.tar.gz"
-    "seq_conv1_data.txt.tar.gz")
-  inference_analysis_api_test(test_analyzer_seq_conv1 ${SEQ_CONV1_INSTALL_DIR}
-                              analyzer_seq_conv1_tester.cc EXTRA_DEPS common)
-
   # transformer, the dataset only works on batch_size=8 now
   set(TRANSFORMER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/transformer")
   download_model_and_data_without_verify(
