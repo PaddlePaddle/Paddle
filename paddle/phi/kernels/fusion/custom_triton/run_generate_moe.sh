@@ -74,6 +74,21 @@ python3.8  ${compile_file}  ${triton_op_file}    -n fused_moe_kernel_splitk \
 -w 4   -ns 2 -s "${sig}" \
 -g   "((EM+16-1)/16) * ((N+64-1)/64), 2, 1" 
 
+
+sig="*fp16:16, *fp16:16, *fp16:16, *fp16:16, *i32:16, *i32:16, *i32:16, \
+i32:16,i32:16, i32, \
+i32, \
+i32:16,i32:1, \
+i32:16,i32:16,i32:1,\
+i32:16,i32:1, \
+i32:1, i32, \
+16, 64, 128, 11111, 1, 1, 1, 11111"
+
+python3.8  ${compile_file}  ${triton_op_file}    -n fused_moe_kernel_splitk \
+-o ${moe_dir}/moe2     --out-name moe_kernel2      \
+-w 4   -ns 2 -s "${sig}" \
+-g   "((EM+16-1)/16) * ((N+64-1)/64), 1, 1" 
+
 python3.8  ${link_file}  ${moe_dir}/*.h -o ${moe_dir}/moe2
 
 python3.8 ${gen_paddle_file}  -on "triton_moe2" -kn "moe_kernel2" -kid "0,1,2" -header "moe2.h" -oi 2 -cof "generated/moe2/triton_moe2.cu" -s "${sig}"

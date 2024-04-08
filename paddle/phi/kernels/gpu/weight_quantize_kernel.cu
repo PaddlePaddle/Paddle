@@ -63,9 +63,10 @@ void WeightQuantizeKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(scale);
     weight_quant_gpu<T, Context>(dev_ctx,
                                  x.data<T>(),
-                                 quanted_x.data<int8_t>(),
+                                 out->data<int8_t>(),
                                  scale->data<T>(),
                                  weight_shape);
+                return;
     weight_permute_gpu<Context>(dev_ctx,
                                 quanted_x.data<int8_t>(),
                                 out->data<int8_t>(),
