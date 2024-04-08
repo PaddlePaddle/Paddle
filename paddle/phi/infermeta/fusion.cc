@@ -116,6 +116,20 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void GroupNormalizeSiluXPUInferMeta(const MetaTensor& x,
+                                    const MetaTensor& scale,
+                                    const MetaTensor& bias,
+                                    int groups,
+                                    float epsilon,
+                                    MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto out_dims = x_dims;
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out->share_lod(x);
+}
+
 void FusedMultiTransformerInferMeta(
     const MetaTensor& x,
     const std::vector<const MetaTensor*>& ln_scales,
@@ -3032,7 +3046,7 @@ void FusedConv2dAddActInferMeta(const MetaTensor& input,
                                 MetaTensor* output,
                                 std::vector<MetaTensor*> outputs,
                                 MetaConfig config) {
-  // TODO(liuyuanle): mkldnn seems only support nchw.
+  // TODO(liuyuanle): onednn seems only support nchw.
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
   std::vector<int64_t> out_shape = ComputeOutputShape(input,
                                                       filter,

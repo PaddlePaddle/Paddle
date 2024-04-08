@@ -197,7 +197,7 @@ class TestOneDNNElementwiseSubOpZeroDim3(TestOneDNNElementwiseSubOp):
 
 
 # Special cases for swin transformer, will ignore grad check
-class TestOneDNNlementwiseSubSrcDifferentShape(TestOneDNNElementwiseSubOp):
+class TestOneDNNElementwiseSubSrcDifferentShape(TestOneDNNElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.random((6, 1, 144)).astype(self.dtype)
         self.y = np.random.random((6, 144, 1)).astype(self.dtype)

@@ -199,9 +199,7 @@ def monkey_patch_tensor():
         if isinstance(value, (dict, str)):
             assert len(self) == len(
                 value
-            ), "Variable length not match, Variable [ {} ] need tensor with length {} but load set tensor with length {}".format(
-                self.name, len(self), len(value)
-            )
+            ), f"Variable length not match, Variable [ {self.name} ] need tensor with length {len(self)} but load set tensor with length {len(value)}"
             if isinstance(value, dict):
                 self.value().set_vocab(value)
             else:
@@ -209,9 +207,7 @@ def monkey_patch_tensor():
         else:
             assert self.shape == list(
                 value.shape
-            ), "Variable Shape not match, Variable [ {} ] need tensor with shape {} but load set tensor with shape {}".format(
-                self.name, self.shape, value.shape
-            )
+            ), f"Variable Shape not match, Variable [ {self.name} ] need tensor with shape {self.shape} but load set tensor with shape {value.shape}"
 
             if isinstance(value, paddle.Tensor):
                 dtype = value.dtype
@@ -222,9 +218,7 @@ def monkey_patch_tensor():
 
             assert (
                 self.dtype == dtype
-            ), "Variable dtype not match, Variable [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
-                self.name, self.dtype, dtype
-            )
+            ), f"Variable dtype not match, Variable [ {self.name} ] need tensor with dtype {self.dtype}  but load tensor with dtype {dtype}"
 
             # NOTE(wuweilong): self could be Tensor, the subsequent behavior are defined in different files
             # if self is Tensor, method value() return self that defined in this file, get_tensor() defined in eager_method.cc
@@ -328,9 +322,7 @@ def monkey_patch_tensor():
 
                 assert (
                     grad_tensor.shape == self.shape
-                ), "Tensor shape not match, Tensor of grad_tensor [ {} ] with shape {} mismatch Tensor [ {} ] with shape {}".format(
-                    grad_tensor.name, grad_tensor.shape, self.name, self.shape
-                )
+                ), f"Tensor shape not match, Tensor of grad_tensor [ {grad_tensor.name} ] with shape {grad_tensor.shape} mismatch Tensor [ {self.name} ] with shape {self.shape}"
 
             if grad_tensor is None:
                 grad_tensor = []

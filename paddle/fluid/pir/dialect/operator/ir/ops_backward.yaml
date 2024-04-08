@@ -201,15 +201,15 @@
 
 - backward_op : divide_double_grad
   forward : divide_grad (Tensor x, Tensor y, Tensor out, Tensor grad_out, int axis = -1) -> Tensor(grad_x), Tensor(grad_y)
-  args : (Tensor y, Tensor out, Tensor grad_x, Tensor grad_x_grad, Tensor grad_y_grad, int axis = -1)
+  args : (Tensor y, Tensor out, Tensor grad_out, Tensor grad_x, Tensor grad_x_grad, Tensor grad_y_grad, int axis = -1)
   output : Tensor(y_grad), Tensor(out_grad), Tensor(grad_out_grad)
   infer_meta :
     func : GeneralTernaryGradInferMeta
-    param : [y, grad_x, grad_x]
+    param : [y, out, out]
   kernel :
     func : divide_double_grad
     data_type : out
-  optional : grad_x_grad, grad_y_grad
+  optional : grad_x, grad_x_grad, grad_y_grad
   inplace : (grad_x_grad -> grad_out_grad)
 
 - backward_op : divide_grad

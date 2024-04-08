@@ -70,6 +70,13 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
                               float epsilon,
                               MetaTensor* out);
 
+void GroupNormalizeSiluXPUInferMeta(const MetaTensor& x,
+                                    const MetaTensor& scale,
+                                    const MetaTensor& bias,
+                                    int groups,
+                                    float epsilon,
+                                    MetaTensor* out);
+
 void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
                                       const MetaTensor& key_cache,
                                       const MetaTensor& value_cache,

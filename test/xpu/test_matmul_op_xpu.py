@@ -303,9 +303,7 @@ class XPUTestMatmulOp1(XPUOpTestWrapper):
                         no_need_check_grad = False
                         if batch >= 5:
                             no_need_check_grad = True
-                        class_name = 'TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}_batch_{}'.format(
-                            dim_X, dim_Y, transpose_x, transpose_y, batch
-                        )
+                        class_name = f'TestMatMulOp_dimX_{dim_X}_dim_Y_{dim_Y}_transX_{transpose_x}_transY_{transpose_y}_batch_{batch}'
                         shape_x, shape_y = generate_compatible_shapes(
                             dim_X, dim_Y, transpose_x, transpose_y, batch
                         )
@@ -333,9 +331,7 @@ class XPUTestMatmulOp3(XPUOpTestWrapper):
         for dim in [4]:
             for transpose_X in [False, True]:
                 for transpose_Y in [False, True]:
-                    class_name = 'TestMatMulOp2_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
-                        dim, dim, transpose_X, transpose_Y
-                    )
+                    class_name = f'TestMatMulOp2_dimX_{dim}_dim_Y_{dim}_transX_{transpose_X}_transY_{transpose_Y}'
                     shape_X, shape_Y = generate_compatible_shapes_2(
                         dim, transpose_X, transpose_Y
                     )
@@ -361,9 +357,7 @@ class XPUTestMatmulOpBF16(XPUOpTestWrapper):
         for dim in [2]:
             for transpose_X in [False, True]:
                 for transpose_Y in [False, True]:
-                    class_name = 'TestMatMulOp2_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
-                        dim, dim, transpose_X, transpose_Y
-                    )
+                    class_name = f'TestMatMulOp2_dimX_{dim}_dim_Y_{dim}_transX_{transpose_X}_transY_{transpose_Y}'
                     shape_X, shape_Y = generate_compatible_shapes_2(
                         dim, transpose_X, transpose_Y
                     )

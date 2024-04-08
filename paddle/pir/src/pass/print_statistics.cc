@@ -32,24 +32,20 @@ class PrintStatistics : public PassInstrumentation {
   ~PrintStatistics() override = default;
 
   void RunBeforePass(Pass *pass, Operation *op) override {
-    if (pass->name() == "replace_fetch_with_shadow_output_pass") {
-      return;
-    }
     paddle::string::PrettyLogH1("--- Running PIR pass [%s]",
                                 pass->pass_info().name);
   }
 
   void RunAfterPass(Pass *pass, Operation *op) override {
-    if (pass->name() == "replace_fetch_with_shadow_output_pass") {
-      return;
-    }
     if (pass->Has("__match_count__") && pass->Has("__all_count__")) {
       auto match_count = pass->Get<int64_t>("__match_count__");
       auto all_count = pass->Get<int64_t>("__all_count__");
-      IR_ENFORCE(match_count <= all_count,
-                 "match_count: %d should smaller than all_count: %d",
-                 match_count,
-                 all_count);
+      PADDLE_ENFORCE_LE(match_count,
+                        all_count,
+                        phi::errors::InvalidArgument(
+                            "match_count: %d should smaller than all_count: %d",
+                            match_count,
+                            all_count));
       if (match_count > 0) {
         LOG(INFO) << pass->pass_info().name
                   << "--- detected [" << match_count << "/" << all_count

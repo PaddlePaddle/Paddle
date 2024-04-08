@@ -153,12 +153,7 @@ def train(
                         return
                     else:
                         print(
-                            'PassID {:1}, BatchID {:04}, Test Loss {:2.2}, Acc {:2.2}'.format(
-                                pass_id,
-                                batch_id + 1,
-                                float(avg_loss_val),
-                                float(acc_val),
-                            )
+                            f'PassID {pass_id:1}, BatchID {batch_id + 1:04}, Test Loss {float(avg_loss_val):2.2}, Acc {float(acc_val):2.2}'
                         )
                         if math.isnan(float(avg_loss_val)):
                             sys.exit("got NaN loss, training failed.")
