@@ -372,7 +372,7 @@ static void sliceFlattenView(const DenseTensor& in,
                       DDim{dimArr.data(), in.dims().size() - 1},
                       DDim(strideArr.data(), in.dims().size() - 1)}};
   out->set_offset(in.offset() +
-                  offset * in.strides()[axis] * SizeOf(out.dtype()));
+                  offset * in.strides()[axis] * SizeOf(out->dtype()));
 }
 template <typename OutT>
 struct ZeroFunctor {
