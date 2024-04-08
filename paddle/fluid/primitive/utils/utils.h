@@ -145,7 +145,7 @@ static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
       result.push_back(i);
     } else {
       PADDLE_ENFORCE_EQ(
-          in_dims[i],
+          in_shape[i],
           dout_dims[i],
           platform::errors::InvalidArgument(
               "ReduceDims dimension mismatch. Operands could "
