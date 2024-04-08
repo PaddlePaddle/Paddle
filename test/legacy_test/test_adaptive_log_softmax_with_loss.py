@@ -24,7 +24,6 @@ from paddle.nn import functional as F
 
 class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
     def setUp(self):
-
         self.place = ['cpu']
         if paddle.is_compiled_with_cuda():
             self.place.append('gpu')
@@ -66,7 +65,7 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
         )
         asfm.head_weight.detach().abs()
         asfm.head_bias.detach().abs()
-        asfm.head_weight.detach()[asfm.shortlist_size:, :] *= 0.0
+        asfm.head_weight.detach()[asfm.shortlist_size :, :] *= 0.0
 
         out = asfm.predict(x)
         np.testing.assert_array_almost_equal(
@@ -92,12 +91,12 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
         asfm.head_bias.detach().abs()
 
         x[:32, : asfm.shortlist_size] *= 0.0
-        x[32:, asfm.shortlist_size:] *= 0.0
+        x[32:, asfm.shortlist_size :] *= 0.0
         asfm.head_weight.detach()[
-            : asfm.shortlist_size, asfm.shortlist_size:
+            : asfm.shortlist_size, asfm.shortlist_size :
         ] *= 0.0
         asfm.head_weight.detach()[
-            asfm.shortlist_size:, : asfm.shortlist_size
+            asfm.shortlist_size :, : asfm.shortlist_size
         ] *= 0.0
 
         out = asfm.predict(x)
@@ -262,8 +261,7 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
             asfm(x, y)
 
     def test_cluster(self):
-        asfm = nn.AdaptiveLogSoftmaxWithLoss(
-            16, 20, [5, 10, 15], div_value=2.0)
+        asfm = nn.AdaptiveLogSoftmaxWithLoss(16, 20, [5, 10, 15], div_value=2.0)
         x = paddle.randn((128, 16))
         y = paddle.randint(low=0, high=20, shape=[128])
         output, loss = asfm(x, y)

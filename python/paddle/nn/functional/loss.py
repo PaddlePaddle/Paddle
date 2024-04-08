@@ -4387,8 +4387,7 @@ def adaptive_log_softmax_with_loss(
                 cluster_logprob, relative_label.unsqueeze(1), axis=1
             )
             scatter_output = paddle.scatter_nd(
-                row_indices.unsqueeze(
-                    1), local_logprob.squeeze(1), output.shape
+                row_indices.unsqueeze(1), local_logprob.squeeze(1), output.shape
             )
             output = output * (scatter_output == 0) + scatter_output
 
