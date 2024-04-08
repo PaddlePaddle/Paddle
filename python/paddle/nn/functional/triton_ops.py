@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import triton
+import triton.language as tl
+
 import paddle
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
@@ -24,19 +27,16 @@ from .triton_utils import (
     get_pointer_hint,
     get_value_hint,
     multi_process_do,
+    paddle_custom_op_head_part,
     rename_c_to_cu,
+    tune_and_invoke_part,
 )
-
-__all__ = []
-
-import triton
-import triton.language as tl
 
 
 def get_wint8_kernel_config():
     configs = []
-    for num_stages in [2]:
-        for block_m in [16, 32]:
+    for num_stages in [3, 4]:
+        for block_m in [16]:
             for block_n in [64, 128, 256]:
                 for block_k in [64, 128, 256]:
                     for split_k in [1, 2, 4]:
@@ -144,7 +144,6 @@ def wint8_kernel(
 
     c = accumulator.to(tl.float16)
 
-    # -----------------------------------------------------------
     # Write back the block of the output matrix C with masks.
     offs_cm = pid_m * BLOCK_SIZE_M + tl.arange(0, BLOCK_SIZE_M)
     offs_cn = pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)
@@ -157,13 +156,9 @@ def wint8_kernel(
         tl.atomic_add(c_ptrs, c, mask=c_mask)
 
 
-triton_wint8_template = """
-#include <vector>
-#include "${op_name}_kernel.h"
-#include "paddle/extension.h"
-
-std::map<std::vector<int>, int> map_problem_${op_name};
-
+triton_wint8_template = (
+    paddle_custom_op_head_part
+    + """
 std::vector<paddle::Tensor> ${op_name}_func(
     const paddle::Tensor& x,
     const paddle::Tensor& qweight,
@@ -176,13 +171,13 @@ std::vector<paddle::Tensor> ${op_name}_func(
 
   auto c_out = paddle::full({m, n}, 0, x.dtype(), x.place());
 
-  auto dev_x = x.data<phi::dtype::float16>();
-  auto dev_weight = qweight.data<uint8_t>();
-  auto dev_c = c_out.data<phi::dtype::float16>();
-  auto dev_scales = scales.data<phi::dtype::float16>();
-  const phi::dtype::float16* dev_bias = nullptr;
+  auto dev_x = get_tensor_ptr(x);
+  auto dev_weight = get_tensor_ptr(qweight);
+  auto dev_c = get_tensor_ptr(c_out);
+  auto dev_scales = get_tensor_ptr(scales);
+  CUdeviceptr dev_bias = (CUdeviceptr)(nullptr);
   if (bias) {
-    dev_bias = bias->data<phi::dtype::float16>();
+    dev_bias = get_tensor_ptr(*bias);
   }
 
   int stride_bk = n;
@@ -193,16 +188,13 @@ std::vector<paddle::Tensor> ${op_name}_func(
     stride_bn = k;
   }
 
-  std::vector<int> problem_size = {m, n, k};
-
-  if (map_problem_${op_name}.count(problem_size)) {
-    int algo_id = map_problem_${op_name}[problem_size];
-    auto status = ${op_name}_kernel(c_out.stream(),
-                               (CUdeviceptr)(dev_x),
-                               (CUdeviceptr)(dev_weight),
-                               (CUdeviceptr)(dev_c),
-                               (CUdeviceptr)(dev_scales),
-                               (CUdeviceptr)(dev_bias),
+auto run_triton_kernel = [&](int algo_id) -> CUresult{
+    return ${op_name}_kernel(c_out.stream(),
+                               dev_x,
+                               dev_weight,
+                               dev_c,
+                               dev_scales,
+                               dev_bias,
                                m,
                                n,
                                k,
@@ -213,79 +205,12 @@ std::vector<paddle::Tensor> ${op_name}_func(
                                n,
                                1,
                                algo_id);
-    assert(status == CUDA_SUCCESS);
-    return {c_out};
-  }
+};
 
-  std::cout << "we are tuning for ${op_name} which key is: ";
-  for (int i = 0; i < problem_size.size(); i++) {
-    std::cout << problem_size[i] << ", ";
-  }
-
-  float min_time = 10000.f;
-  int select_id = -1;
-  constexpr int WARMUP = 5;
-  constexpr int REPEAT = 10;
-
-  for (int algo_id = 0; algo_id < ${op_name}_kernel_get_num_algos(); ++algo_id) {
-    cudaEvent_t beg[REPEAT];
-    cudaEvent_t end[REPEAT];
-    float elapsed_times[REPEAT];
-
-    auto status = CUDA_SUCCESS;
-
-    for (int ii = 0; ii < WARMUP + REPEAT; ii++) {
-      int repeat_id = ii - WARMUP;
-
-      if (repeat_id >= 0) {
-        (cudaEventCreate(beg + repeat_id));
-        (cudaEventCreate(end + repeat_id));
-        (cudaEventRecord(beg[repeat_id]));
-      }
-
-      auto flush_l2_cache = paddle::full(
-          {10 * 1024 * 1024}, 0, paddle::DataType::INT32, x.place());
-      // std::cout << &flush_l2_cache  << std::endl;
-
-      cudaMemset(dev_c, 0, sizeof(phi::dtype::float16) * m * n);
-      status = ${op_name}_kernel(c_out.stream(),
-                            (CUdeviceptr)(dev_x),
-                            (CUdeviceptr)(dev_weight),
-                            (CUdeviceptr)(dev_c),
-                            (CUdeviceptr)(dev_scales),
-                            (CUdeviceptr)(dev_bias),
-                            m,
-                            n,
-                            k,
-                            k,
-                            1,
-                            stride_bk,
-                            stride_bn,
-                            n,
-                            1,
-                            algo_id);
-      // assert(status == CUDA_SUCCESS);
-
-      if (repeat_id >= 0) {
-        (cudaEventRecord(end[repeat_id]));
-        (cudaEventSynchronize(end[repeat_id]));
-        (cudaEventElapsedTime(
-            elapsed_times + repeat_id, beg[repeat_id], end[repeat_id]));
-      }
-    }
-
-    float avg_elapsed_time = 0.f;
-    for (int ii = 0; ii < REPEAT; ++ii) {
-      avg_elapsed_time += elapsed_times[ii];
-    }
-    if (avg_elapsed_time < min_time && status == CUDA_SUCCESS) {
-      min_time = avg_elapsed_time;
-      select_id = algo_id;
-    }
-  }
-
-  map_problem_${op_name}[problem_size] = select_id;
-  std::cout << "select algo id: " << select_id << std::endl;
+std::vector<int> problem_size = {m, n, k};
+"""
+    + tune_and_invoke_part
+    + """
   return {c_out};
 }
 
@@ -306,6 +231,7 @@ PD_BUILD_OP(${op_name})
     .SetInferDtypeFn(PD_INFER_DTYPE(${op_name}_InferDtype))
     .SetInferShapeFn(PD_INFER_SHAPE(${op_name}_InferShape));
 """
+)
 
 
 def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
@@ -383,7 +309,11 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
     py_script_file = f"{generated_dir}/triton_kernels.py"
     extract_triton_kernel(wint8_kernel, py_script_file)
 
-    op_dict = {"op_name": op_name}
+    op_dict = {"op_name": op_name, "reset_zero_when_tune": " "}
+    # when tunning, we need to reset the out to zero.
+    op_dict[
+        "reset_zero_when_tune"
+    ] = "cudaMemset((void*)dev_c, 0, sizeof(phi::dtype::float16) * m * n);"
     paddle_custom_op_file_path = f"{generated_dir}/{op_name}.cu"
     so_path = find_so_path(generated_dir, python_package_name)
 
@@ -398,11 +328,7 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
 
         # ahead of time compile command.
         aot_template = (
-            f"""
-        {python_path}   {compile_file} {py_script_file}   \
-        -n wint8_kernel   \
-        -o {generated_dir}/{op_name}_kernel     \
-        --out-name {op_name}_kernel     """
+            f"""{python_path}   {compile_file} {py_script_file}   -n wint8_kernel   -o {generated_dir}/{op_name}_kernel --out-name {op_name}_kernel """
             + """ -w {num_warps}   -ns {num_stages}  \
         -s   "{address_hint} {value_hint}  {block_m},{block_n},{block_k}, 1, {split_k}"   \
         -g   "((M+{block_m}-1)/{block_m}) * ((N+{block_n}-1)/{block_n}), {split_k}, 1" \
@@ -431,7 +357,6 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
                 block_k=block_k,
                 split_k=split_k,
             )
-            print("codegen_command", codegen_command)
             codegen_commands.append(codegen_command)
 
         multi_process_do(codegen_commands)
@@ -459,8 +384,7 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
         'scales': scales,
         'bias@OPTIONAL': bias,
     }
-    if bias is not None:
-        inputs['bias'] = bias
+
     helper.append_op(
         type=op_name,
         inputs=inputs,

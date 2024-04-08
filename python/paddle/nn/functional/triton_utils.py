@@ -195,3 +195,96 @@ def get_pointer_hint(tensor):
         return "*i8:16"
     elif tensor.dtype == paddle.float32:
         return "*fp32:16"
+
+
+paddle_custom_op_head_part = """ #include <vector>
+#include "${op_name}_kernel.h"
+#include "paddle/extension.h"
+
+std::map<std::vector<int>, int> map_problem_${op_name};
+
+CUdeviceptr get_tensor_ptr(const paddle::Tensor& input){
+  if (input.type() == paddle::DataType::FLOAT16) {
+    return (CUdeviceptr)(input.data<phi::dtype::float16>());
+  } else if (input.type() == paddle::DataType::INT32) {
+    return (CUdeviceptr)(input.data<int>());
+  } else if (input.type() == paddle::DataType::FLOAT32) {
+    return (CUdeviceptr)(input.data<float>());
+  } else if (input.type() == paddle::DataType::UINT8) {
+    return (CUdeviceptr)(input.data<uint8_t>());
+  } else if (input.type() == paddle::DataType::INT8) {
+    return (CUdeviceptr)(input.data<int8_t>());
+  } else {
+    assert(false);
+    return (CUdeviceptr)(nullptr);
+  }
+} """
+
+
+tune_and_invoke_part = """
+if (!map_problem_${op_name}.count(problem_size)) {
+    std::cout << "we are tuning for ${op_name} which key is: ";
+    for (int i = 0; i < problem_size.size(); i++) {
+        std::cout << problem_size[i] << ", ";
+    }
+
+    float min_time = 10000.f;
+    int select_id = -1;
+    constexpr int WARMUP = 5;
+    constexpr int REPEAT = 10;
+
+    for (int algo_id = 0; algo_id < ${op_name}_kernel_get_num_algos(); ++algo_id) {
+        cudaEvent_t beg[REPEAT];
+        cudaEvent_t end[REPEAT];
+        float elapsed_times[REPEAT];
+
+        auto status = CUDA_SUCCESS;
+
+        for (int ii = 0; ii < WARMUP + REPEAT; ii++) {
+        int repeat_id = ii - WARMUP;
+
+        if (repeat_id >= 0) {
+            (cudaEventCreate(beg + repeat_id));
+            (cudaEventCreate(end + repeat_id));
+            (cudaEventRecord(beg[repeat_id]));
+        }
+
+        auto flush_l2_cache = paddle::full(
+            {10 * 1024 * 1024}, 0, paddle::DataType::INT32, x.place());
+        // std::cout << &flush_l2_cache  << std::endl;
+        // this is used when out is need to be reset to zero, such as split-k gemm.
+        ${reset_zero_when_tune};
+
+        status = status = run_triton_kernel(algo_id);
+        // assert(status == CUDA_SUCCESS);
+
+        if (repeat_id >= 0) {
+            (cudaEventRecord(end[repeat_id]));
+            (cudaEventSynchronize(end[repeat_id]));
+            (cudaEventElapsedTime(
+                elapsed_times + repeat_id, beg[repeat_id], end[repeat_id]));
+        }
+        }
+
+        float avg_elapsed_time = 0.f;
+        for (int ii = 0; ii < REPEAT; ++ii) {
+        avg_elapsed_time += elapsed_times[ii];
+        }
+        if (avg_elapsed_time < min_time && status == CUDA_SUCCESS) {
+        min_time = avg_elapsed_time;
+        select_id = algo_id;
+        }
+    }
+
+    map_problem_${op_name}[problem_size] = select_id;
+    std::cout << "select algo id: " << select_id << std::endl;
+    ${reset_zero_when_tune};
+}
+
+  auto status = CUDA_SUCCESS;
+  if (map_problem_${op_name}.count(problem_size)) {
+    int algo_id = map_problem_${op_name}[problem_size];
+    status = run_triton_kernel(algo_id);
+    assert(status == CUDA_SUCCESS);
+  }
+"""
