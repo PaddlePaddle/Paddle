@@ -647,17 +647,13 @@ class PipelineLayer(nn.Layer):
                 logger.info(stage_to_virtual_stage_info)
 
         if self._loss_fn[0]:
-            if len(self._loss_fn) == 1:
+            loss_fn_names = []
+            for idx in range(len(self._loss_fn)):
                 try:
-                    logger.info(f"loss: {self._loss_fn[0].__name__}")
+                    loss_fn_names.append(self._loss_fn[idx].__name__)
                 except AttributeError:
-                    logger.info(f"loss: {self._loss_fn[0].__class__.__name__}")
-            else:
-                for idx, loss_fn in enumerate(self._loss_fn):
-                    try:
-                        logger.info(f"loss {idx}: {loss_fn.__name__}")
-                    except AttributeError:
-                        logger.info(f"loss {idx}: {loss_fn.__class__.__name__}")
+                    loss_fn_names.append(self._loss_fn[idx].__class__.__name__)
+            logger.info(f"loss: {", ".join(loss_fn_names)}")
 
     def _build_layer_with_interleave(self):
         from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
