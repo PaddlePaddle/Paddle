@@ -137,9 +137,7 @@ class AddLrDecayTablePass(PassBase):
                 )
         else:
             raise ValueError(
-                "Not supported current LearningRate strategy, please use follow decay strategy: {}".format(
-                    scheduler_decay
-                )
+                f"Not supported current LearningRate strategy, please use follow decay strategy: {scheduler_decay}"
             )
 
         return decay_main_program, decay_startup_program, lr_name

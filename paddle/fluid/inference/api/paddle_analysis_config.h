@@ -39,7 +39,7 @@
 #include "paddle_api.h"           // NOLINT
 #include "paddle_pass_builder.h"  // NOLINT
 #ifdef PADDLE_WITH_DNNL
-#include "paddle_mkldnn_quantizer_config.h"  // NOLINT
+#include "paddle_onednn_quantizer_config.h"  // NOLINT
 #endif
 
 namespace paddle {
@@ -967,7 +967,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param x whether to debug IR graph analysis phase.
   ///
-  void SwitchIrDebug(int x = true);
+  void SwitchIrDebug(int x = true, const std::vector<std::string>& passes = {});
 
   ///
   /// \brief Turn on MKLDNN.
@@ -1250,8 +1250,16 @@ struct PD_INFER_DECL AnalysisConfig {
                           bool custom_pass_only = false);
 
   ///
-  /// \brief Set passmanager opt level.Pass level lower than
-  /// opt level which will be added to passmanager
+  /// \brief Set pir Optimization level.
+  /// \param opt_level The optimization level
+  /// The optimization Level in range [0,4], Default 2.
+  /// Higher optimization level allows the predictor to apply more passes.
+  /// If 0, Only basic pass support.
+  /// If 1, Additional support for functional pass.
+  /// If 2, Additional support the fusion logical pass,maybe affect precision
+  /// and speed.
+  /// If 3, support layout pass, etc.
+  /// If 4, add the radicaloptimization, maybe affect precision, etc.
   ///
   void SetOptimizationLevel(int opt_level);
 
@@ -1485,6 +1493,7 @@ struct PD_INFER_DECL AnalysisConfig {
   std::vector<std::string> custom_passes_;
   bool custom_pass_only_{false};
   int pm_opt_level_{2};
+  std::vector<std::string> ir_debug_passes_;
 };
 
 }  // namespace paddle

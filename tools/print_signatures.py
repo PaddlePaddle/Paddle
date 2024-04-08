@@ -116,9 +116,7 @@ def visit_all_module(mod):
                     and member_name != instance.__name__
                 ):
                     print(
-                        "Found alias API, alias name is: {}, original name is: {}".format(
-                            member_name, instance.__name__
-                        ),
+                        f"Found alias API, alias name is: {member_name}, original name is: {instance.__name__}",
                         file=sys.stderr,
                     )
         except:

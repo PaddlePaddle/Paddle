@@ -191,9 +191,7 @@ class Optimizer:
             if isinstance(parameters, (paddle.Tensor, core.eager.Tensor)):
                 raise TypeError(
                     "`parameters` argument given to the optimizer should be "
-                    "an iterable of paddle Tensors, but got argument type is `{}`.".format(
-                        type(parameters)
-                    )
+                    f"an iterable of paddle Tensors, but got argument type is `{type(parameters)}`."
                 )
             if isinstance(parameters, dict):
                 raise TypeError(
@@ -1411,10 +1409,8 @@ class Optimizer:
                 assert isinstance(callbacks, list)
             program = loss.block.program
             assert np.prod(loss.shape) == 1, (
-                "The number of elements of loss should be 1, but the current loss.shape is {}, whose number of elements is not 1. "
-                "Maybe that you should call paddle.mean to process the current loss.".format(
-                    loss.shape
-                )
+                f"The number of elements of loss should be 1, but the current loss.shape is {loss.shape}, whose number of elements is not 1. "
+                "Maybe that you should call paddle.mean to process the current loss."
             )
             parameter_list = parameters if parameters else self._parameter_list
             with paddle.static.program_guard(program, startup_program):

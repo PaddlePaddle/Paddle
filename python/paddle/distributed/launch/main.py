@@ -491,14 +491,10 @@ def launch():
 
                 # launch task
                 ctx.logger.info(
-                    "Launch task from auto tuner: job_id {}, log_dir {}, config {}".format(
-                        task_job_id, log_dir, gbs_cur_cfg
-                    )
+                    f"Launch task from auto tuner: job_id {task_job_id}, log_dir {log_dir}, config {gbs_cur_cfg}"
                 )
                 logger.info(
-                    "Launch task from auto tuner: job_id {}, log_dir {}, config {}".format(
-                        task_job_id, log_dir, gbs_cur_cfg
-                    )
+                    f"Launch task from auto tuner: job_id {task_job_id}, log_dir {log_dir}, config {gbs_cur_cfg}"
                 )
                 c = controllers.init(ctx)
                 c.run()
@@ -572,9 +568,7 @@ def launch():
             # prevent no valid global batch size found
             if best_gbs is None:
                 raise ValueError(
-                    "No valid global batch size found, check memory or valid search time. cur_tuner_cfg{}".format(
-                        gbs_tuner_cfg
-                    )
+                    f"No valid global batch size found, check memory or valid search time. cur_tuner_cfg{gbs_tuner_cfg}"
                 )
             # set best global batch size to tuner cfg
             tuner_cfg["model_cfg"]["global_batch_size"] = best_gbs

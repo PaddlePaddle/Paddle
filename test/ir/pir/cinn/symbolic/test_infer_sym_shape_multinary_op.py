@@ -22,6 +22,7 @@ from test_infer_sym_shape_utils import (
 )
 
 import paddle
+import paddle.nn.functional as F
 from paddle.static import InputSpec
 
 
@@ -298,6 +299,37 @@ class TrilOpInferSymbolicShapeTest(TestBase):
             check_infer_results(net, input_spec, 'pd_op.tril', self.expected)
 
         return True
+
+
+class InterpolateNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        input_data = paddle.empty(shape=(2, 3, 6, 10))
+        output = F.interpolate(x=input_data, size=[12, 12])
+        return output
+
+
+class InterpolateOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.x = paddle.rand([1, 3], 'float32')
+        self.expected = [
+            'shape[2, 3, 12, 12], data[NULL]',
+        ]
+
+    def test_eval_symbolic(self):
+        net = InterpolateNet()
+        input_spec = [
+            InputSpec(shape=[None, None], dtype='float32'),
+        ]
+        net = apply_to_static(net, False, input_spec)
+        net.eval()
+        check_infer_results(
+            net, input_spec, 'pd_op.nearest_interp', self.expected
+        )
+        out = net(self.x)
+        return out
 
 
 if __name__ == '__main__':

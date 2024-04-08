@@ -294,12 +294,7 @@ class CacheKey:
         return not self == other
 
     def __repr__(self):
-        return "id(function_spec): {}, input_args_with_spec: {}, input_kwargs_with_spec: {}, class_instance: {}".format(
-            id(self.function_spec),
-            self.input_args_with_spec,
-            self.input_kwargs_with_spec,
-            self.class_instance,
-        )
+        return f"id(function_spec): {id(self.function_spec)}, input_args_with_spec: {self.input_args_with_spec}, input_kwargs_with_spec: {self.input_kwargs_with_spec}, class_instance: {self.class_instance}"
 
 
 def unwrap_decorators(func):
@@ -398,10 +393,8 @@ class StaticFunction:
             and self._class_instance.training is False
         ):
             raise RuntimeError(
-                "Failed to switch train mode. {} is a Layer's method, "
-                "please use Layer.train() to switch train mode.".format(
-                    self.dygraph_function
-                )
+                f"Failed to switch train mode. {self.dygraph_function} is a Layer's method, "
+                "please use Layer.train() to switch train mode."
             )
         self._training = True
 
@@ -411,10 +404,8 @@ class StaticFunction:
             and self._class_instance.training is True
         ):
             raise RuntimeError(
-                "Failed to switch eval mode. {} is a Layer's method, "
-                "please use Layer.eval() to switch eval mode.".format(
-                    self.dygraph_function
-                )
+                f"Failed to switch eval mode. {self.dygraph_function} is a Layer's method, "
+                "please use Layer.eval() to switch eval mode."
             )
         self._training = False
 
@@ -612,9 +603,7 @@ class StaticFunction:
         func_name = self._dygraph_function.__name__
         assert (
             func_name in self._class_instance._original_funcs
-        ), "Not Found function '{}' in class '{}'.".format(
-            func_name, self._class_instance.__class__
-        )
+        ), f"Not Found function '{func_name}' in class '{self._class_instance.__class__}'."
         func = self._class_instance._original_funcs[func_name]
         setattr(
             self._class_instance, func_name, func.__get__(self._class_instance)
@@ -661,10 +650,8 @@ class StaticFunction:
             net_name = type(self._class_instance).__name__
             logging_utils.log(
                 level=-1,
-                msg="Not recommend to deepcopy '{}' decorated with @to_static, it has side effect that will"
-                " rollback into original state before @to_static. Please deepcopy '{}' before applying @to_static.".format(
-                    net_name, net_name
-                ),
+                msg=f"Not recommend to deepcopy '{net_name}' decorated with @to_static, it has side effect that will"
+                f" rollback into original state before @to_static. Please deepcopy '{net_name}' before applying @to_static.",
             )
             self.rollback()
             return self._dygraph_function.__get__(
@@ -968,18 +955,14 @@ class ASTStaticFunction(StaticFunction):
                 flatten(input_spec), flatten(self._function_spec.input_spec)
             ):
                 raise ValueError(
-                    "The `input_spec`: {} used to construct concrete_program is conflict with the `input_spec`: {} in `@paddle.jit.to_static`".format(
-                        input_spec, self._function_spec.input_spec
-                    )
+                    f"The `input_spec`: {input_spec} used to construct concrete_program is conflict with the `input_spec`: {self._function_spec.input_spec} in `@paddle.jit.to_static`"
                 )
             # NOTE(chenweihang): we should always translated program based on the `input_spec`
             # decorated on forward if it is valid
             desired_input_spec = self._function_spec.input_spec
             if input_spec is not None:
                 logging_utils.warn(
-                    "\n\nYou have specified `input_spec` both in function definition (higher priority) and `paddle.jit.save` (will be ignored.)\n\n\t Using: {}\n\n\t Ignore: {}\n".format(
-                        desired_input_spec, input_spec
-                    )
+                    f"\n\nYou have specified `input_spec` both in function definition (higher priority) and `paddle.jit.save` (will be ignored.)\n\n\t Using: {desired_input_spec}\n\n\t Ignore: {input_spec}\n"
                 )
 
         has_input_spec = desired_input_spec is not None
@@ -998,9 +981,7 @@ class ASTStaticFunction(StaticFunction):
                 )
                 if cached_program_len > 1:
                     logging_utils.warn(
-                        "Current {} has more than one cached programs: {}, the last traced progam will be return by default.".format(
-                            self._function_spec, cached_program_len
-                        )
+                        f"Current {self._function_spec} has more than one cached programs: {cached_program_len}, the last traced progam will be return by default."
                     )
 
                 cache_key = self._program_cache._recent_cache_key
@@ -1020,9 +1001,7 @@ class ASTStaticFunction(StaticFunction):
 
             else:
                 raise ValueError(
-                    "No valid transformed program for {}.\n\t    Please specific `input_spec` in `@paddle.jit.to_static` or feed input tensor to call the decorated function at once.\n".format(
-                        self._function_spec
-                    )
+                    f"No valid transformed program for {self._function_spec}.\n\t    Please specific `input_spec` in `@paddle.jit.to_static` or feed input tensor to call the decorated function at once.\n"
                 )
 
     @property
@@ -1081,10 +1060,8 @@ def _verify_init_in_dynamic_mode(class_instance):
         if not class_instance._init_in_dynamic_mode:
             raise RuntimeError(
                 " `paddle.jit.to_static` is only available in dynamic mode. Please call `paddle.disable_static()` before "
-                "initializing your Layer class `{}` . Because parameters of Layer class should be initialized firstly "
-                "in dynamic mode while applying transformation.".format(
-                    class_instance
-                )
+                f"initializing your Layer class `{class_instance}` . Because parameters of Layer class should be initialized firstly "
+                "in dynamic mode while applying transformation."
             )
 
 
@@ -1641,9 +1618,7 @@ class ProgramCache:
             for var in concrete_program.main_program.list_vars():
                 if var.type not in NO_SHAPE_VAR_TYPE and -1 in var.shape:
                     warnings.warn(
-                        "Now prim and cinn do not support -1 shape, but the shape of var {} is {}".format(
-                            var.name, var.shape
-                        )
+                        f"Now prim and cinn do not support -1 shape, but the shape of var {var.name} is {var.shape}"
                     )
 
         if use_pir_api():
@@ -1687,10 +1662,8 @@ class ProgramCache:
             current_tracing_count = len(self._caches)
             if current_tracing_count > MAX_TRACED_PROGRAM_COUNT:
                 logging_utils.warn(
-                    "Current traced program number: {} > `max_tracing_count`:{}. Too much cached programs will bring expensive overhead. "
-                    "The reason may be: (1) passing tensors with different shapes, (2) passing python objects instead of tensors.".format(
-                        current_tracing_count, MAX_TRACED_PROGRAM_COUNT
-                    )
+                    f"Current traced program number: {current_tracing_count} > `max_tracing_count`:{MAX_TRACED_PROGRAM_COUNT}. Too much cached programs will bring expensive overhead. "
+                    "The reason may be: (1) passing tensors with different shapes, (2) passing python objects instead of tensors."
                 )
 
         return self._caches[item_id]

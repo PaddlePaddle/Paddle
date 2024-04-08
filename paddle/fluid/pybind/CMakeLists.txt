@@ -403,7 +403,7 @@ if(WITH_PYTHON)
       add_custom_command(
         OUTPUT ${op_impl_path}/mkldnn.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB} ${op_impl_path}
-        DEPENDS mkldnn)
+        DEPENDS onednn)
       list(APPEND OP_IMPL_DEPS ${op_impl_path}/mkldnn.dll)
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/mkldnn.dll)
     endif()
@@ -440,7 +440,7 @@ if(WITH_PYTHON)
   else()
     # If there are no *.so in /usr/lib or LD_LIBRARY_PATH,
     # copy these *.so to current directory and append current directory to
-    # LD_LIBRARY_PATH. This is different with Windows platformm, which search
+    # LD_LIBRARY_PATH. This is different with Windows platform, which search
     # *.dll in current directory automatically.
     if(WITH_ONNXRUNTIME)
       set(PADDLE2ONNX_PYBIND_OUT
@@ -479,7 +479,7 @@ if(WITH_PYTHON)
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libdnnl.so.0
         COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB}
                 ${CMAKE_CURRENT_BINARY_DIR}
-        DEPENDS mkldnn)
+        DEPENDS onednn)
       list(APPEND OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libdnnl.so.0)
       list(APPEND EAGER_OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libdnnl.so.0)
     endif()

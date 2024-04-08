@@ -2,7 +2,6 @@ register_unity_group(
   cc
   reshape_p_op.cc
   broadcast_p_op.cc
-  reduce_p_op.cc
   transpose_p_op.cc
   split_p_op.cc
   concat_p_op.cc

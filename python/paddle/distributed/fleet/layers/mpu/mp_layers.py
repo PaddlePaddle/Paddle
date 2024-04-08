@@ -306,6 +306,7 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
                     task.wait()
                     return dx, None, None
                 else:
+                    # When main_grad is not enabled and gradient_accumulation is used, the grad is not initialized for the first acc step.
                     (
                         dw,
                         dbias,
