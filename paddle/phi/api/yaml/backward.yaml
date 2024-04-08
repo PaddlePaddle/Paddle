@@ -13,6 +13,7 @@
   kernel :
     func : abs_double_grad
     data_type : grad_x_grad
+  backward : abs_triple_grad
 
 - backward_op : abs_grad
   forward : abs (Tensor x) -> Tensor(out)
@@ -26,6 +27,17 @@
     data_type : x
   composite : abs_grad(x, out_grad, x_grad)
   backward : abs_double_grad
+
+- backward_op : abs_triple_grad
+  forward : abs_double_grad (Tensor x, Tensor grad_x_grad) -> Tensor(grad_out_grad)
+  args : (Tensor x, Tensor grad_out_grad_grad)
+  output : Tensor(grad_x_grad_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  data_transform :
+    support_trans_dtype : x
+  composite : abs_triple_grad(x, grad_out_grad_grad, grad_x_grad_grad)
 
 - backward_op : acos_grad
   forward : acos (Tensor x) -> Tensor(out)
@@ -717,6 +729,16 @@
   kernel :
     func : erfinv_grad
 
+- backward_op : exp_double_grad
+  forward : exp_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)
+  args : (Tensor out, Tensor grad_out, Tensor grad_x_grad)
+  output : Tensor(out_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [out, out]
+  composite : exp_double_grad(out, grad_out, grad_x_grad, out_grad, grad_out_grad)
+  inplace : (grad_x_grad -> grad_out_grad)
+
 - backward_op : exp_grad
   forward : exp (Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
@@ -728,6 +750,7 @@
   kernel :
     func : exp_grad
   inplace : (out_grad -> x_grad)
+  backward : exp_double_grad
   composite : exp_grad(out, out_grad, x_grad)
 
 - backward_op : expand_as_grad
@@ -1434,6 +1457,7 @@
     param : [x, x]
   kernel :
     func : log_double_grad
+  composite : log_double_grad(x, grad_out, grad_x_grad, x_grad, grad_out_grad)
   inplace : (grad_x_grad -> grad_out_grad)
 
 - backward_op : log_grad
@@ -2734,6 +2758,9 @@
   forward: silu_grad (Tensor x, Tensor out, Tensor grad_out) -> Tensor(grad_x)
   args: (Tensor x, Tensor out, Tensor grad_out, Tensor grad_x_grad)
   output: Tensor(x_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, x]
   composite: silu_double_grad(x, out, grad_out, grad_x_grad, x_grad, grad_out_grad)
 
 - backward_op: unpool3d_grad
