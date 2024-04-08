@@ -30,9 +30,9 @@ class ConvActivationFusePattern : public paddle::drr::DrrPatternBase {
   std::string activation_name_;
   /*
    * fused_level_ = 0 : conv2d + activation
-    fused_level_ = 1 : conv2d + bias + activation
-    fused_level_ = 2 : conv2d + residual + activation
-    fused_level_ = 3 : conv2d + + bias + residual + activation
+    fused_level_ > 0 : conv2d + bias + activation
+                     : conv2d + residual + activation
+                     : conv2d + + bias + residual + activation
   */
   const int fused_level_;
 
@@ -92,223 +92,27 @@ class ConvActivationFusePattern : public paddle::drr::DrrPatternBase {
     if (activation_name_ == "hard_swish") {
       // oneDNN use hard_swish, paddle use hardswish
       activation_name_op = "pd_op.hardswish";
-    }
-    const auto &activation = pat.Op(activation_name_op);
-    if (fused_level_ == 1) {
-      conv({&pat.Tensor("input"),
-            &pat.Tensor("filter"),
-            &pat.Tensor("bias"),
-            &pat.Tensor("__@input_none_tensor@__")},
-           {&pat.Tensor("conv2d_out")});
-
-    } else if (fused_level_ == 2) {
-      conv({&pat.Tensor("input"),
-            &pat.Tensor("filter"),
-            &pat.Tensor("__@input_none_tensor@__"),
-            &pat.Tensor("residual_param")},
-           {&pat.Tensor("conv2d_out")});
-
-    } else if (fused_level_ == 3) {
-      conv({&pat.Tensor("input"),
-            &pat.Tensor("filter"),
-            &pat.Tensor("bias"),
-            &pat.Tensor("residual_param")},
-           {&pat.Tensor("conv2d_out")});
-
-    } else {
-      conv({&pat.Tensor("input"), &pat.Tensor("filter")},
-           {&pat.Tensor("conv2d_out")});
-    }
-    pat.Tensor("act_out") = activation(pat.Tensor("conv2d_out"));
-
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      if (activation_name_ == "swish") {
-        float beta = match_ctx.Attr<float>("beta");
-        // x * sigmod(βx)
-        if (beta < 0.0) {
-          return false;
-        }
-      }
-      return true;
-    });
-
-    paddle::drr::ResultPattern res = pat.ResultPattern();
-    auto fuse_beta = res.Float32Attr(0.0f);
-    auto fuse_alpha = res.Float32Attr(0.0f);
-    if (activation_name_ == "relu6") {
-      fuse_beta = res.Float32Attr(6.0f);
-    } else if (activation_name_ == "hard_swish") {
-      // hard swish have not attr float threshold = 6.0f, float scale = 6.0f,
-      // float offset = 3.0f attr But in previous implementation hard swish,
-      // fuse_alpha=1.f / 6.f， fuse_beta=1.f / 2.f, it has fixed
-      fuse_beta = res.Float32Attr(1.f / 2.f);
-      fuse_alpha = res.Float32Attr(1.f / 6.f);
-    } else if (activation_name_ == "swish") {
-      fuse_alpha = res.StrAttr("swish");
+    } else if (activation_name_ == "hard_sigmoid") {
+      activation_name_op = "pd_op.hardsigmoid";
     }
 
-    const auto &fused_conv =
-        fused_level_ == 0
-            ? res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
-                     {{
-                         {"strides", pat.Attr("strides")},
-                         {"paddings", pat.Attr("paddings")},
-                         {"padding_algorithm", pat.Attr("padding_algorithm")},
-                         {"dilations", pat.Attr("dilations")},
-                         {"groups", pat.Attr("groups")},
-                         {"data_format", pat.Attr("data_format")},
-                         {"mkldnn_data_type", res.StrAttr("float32")},
-                         {"fuse_activation", res.StrAttr(activation_name_)},
-                         {"fuse_residual_connection", res.BoolAttr(false)},
-                         {"force_fp32_output", res.BoolAttr(false)},
-                         {"fuse_alpha", fuse_alpha},
-                         {"fuse_beta", fuse_beta},
-                         {"scale_in", res.Float32Attr(1.0f)},
-                         {"scale_out", res.Float32Attr(1.0f)},
-                         {"scale_in_eltwise", res.Float32Attr(1.0f)},
-                         {"scale_weights", res.VectorFloatAttr({1.0f})},
-                     }})
-            : res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
-                     {{
-                         {"strides", pat.Attr("strides")},
-                         {"paddings", pat.Attr("paddings")},
-                         {"padding_algorithm", pat.Attr("padding_algorithm")},
-                         {"dilations", pat.Attr("dilations")},
-                         {"groups", pat.Attr("groups")},
-                         {"data_format", pat.Attr("data_format")},
-                         {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
-                         {"fuse_activation", res.StrAttr(activation_name_)},
-                         {"fuse_residual_connection",
-                          pat.Attr("fuse_residual_connection")},
-                         {"force_fp32_output", pat.Attr("force_fp32_output")},
-                         {"fuse_alpha", fuse_alpha},
-                         {"fuse_beta", fuse_beta},
-                         {"scale_in", pat.Attr("scale_in")},
-                         {"scale_out", pat.Attr("scale_out")},
-                         {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
-                         {"scale_weights", pat.Attr("scale_weights")},
-                     }});
-
-    if (fused_level_ == 1) {
-      fused_conv({&res.Tensor("input"),
-                  &res.Tensor("filter"),
-                  &res.Tensor("bias"),
-                  &res.InputNoneTensor()},
-                 {&res.Tensor("act_out")});
-
-    } else if (fused_level_ == 2) {
-      fused_conv({&res.Tensor("input"),
-                  &res.Tensor("filter"),
-                  &res.InputNoneTensor(),
-                  &res.Tensor("residual_param")},
-                 {&res.Tensor("act_out")});
-
-    } else if (fused_level_ == 3) {
-      fused_conv({&res.Tensor("input"),
-                  &res.Tensor("filter"),
-                  &res.Tensor("bias"),
-                  &res.Tensor("residual_param")},
-                 {&res.Tensor("act_out")});
-    } else {
-      fused_conv({&res.Tensor("input"),
-                  &res.Tensor("filter"),
-                  &res.InputNoneTensor(),
-                  &res.InputNoneTensor()},
-                 {&res.Tensor("act_out")});
+    std::unordered_map<std::string, paddle::drr::Attribute> act_attrs;
+    if (activation_name_op == paddle::dialect::HardsigmoidOp::name()) {
+      act_attrs.emplace("slope", pat.Attr("slope"));
+      act_attrs.emplace("offset", pat.Attr("offset"));
+    } else if (activation_name_op == paddle::dialect::LeakyReluOp::name()) {
+      act_attrs.emplace("negative_slope", pat.Attr("negative_slope"));
+    } else if (activation_name_op == paddle::dialect::GeluOp::name()) {
+      act_attrs.emplace("approximate", pat.Attr("approximate"));
     }
-  }
-};
+    const auto &activation = pat.Op(activation_name_op, act_attrs);
 
-class ConvActivationFusePattern2 : public paddle::drr::DrrPatternBase {
- private:
-  const size_t activation_count_;
-  std::string activation_name_;
-  /*
-   * fused_level_ = 0 : conv2d + activation
-    fused_level_ = 1 : conv2d + bias + activation
-    fused_level_ = 2 : conv2d + residual + activation
-    fused_level_ = 3 : conv2d + + bias + residual + activation
-  */
-  const int fused_level_;
-
- public:
-  ConvActivationFusePattern2(size_t activation_count,
-                             const std::string &activation_name,
-                             int fused_level)
-      : activation_count_(activation_count),
-        activation_name_(activation_name),
-        fused_level_(fused_level) {}
-
-  std::string name() const override {
-    return "Conv" + std::to_string(fused_level_) + activation_name_ +
-           "FusePattern2";
-  }
-
-  uint32_t benefit() const override { return activation_count_; }
-
-  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
-    paddle::drr::SourcePattern pat = ctx->SourcePattern();
-    std::string conv_name = paddle::dialect::Conv2dOp::name();
     if (fused_level_ > 0) {
-      conv_name = paddle::onednn::dialect::FusedConv2dOp::name();
-    }
-    const auto &conv =
-        fused_level_ == 0
-            ? pat.Op(conv_name,
-                     {{"strides", pat.Attr("strides")},
-                      {"paddings", pat.Attr("paddings")},
-                      {"padding_algorithm", pat.Attr("padding_algorithm")},
-                      {"dilations", pat.Attr("dilations")},
-                      {"groups", pat.Attr("groups")},
-                      {"data_format", pat.Attr("data_format")}})
-            : pat.Op(conv_name,
-                     {{
-                         {"strides", pat.Attr("strides")},
-                         {"paddings", pat.Attr("paddings")},
-                         {"padding_algorithm", pat.Attr("padding_algorithm")},
-                         {"dilations", pat.Attr("dilations")},
-                         {"groups", pat.Attr("groups")},
-                         {"data_format", pat.Attr("data_format")},
-                         {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
-                         {"fuse_activation", pat.Attr("fuse_activation")},
-                         {"fuse_residual_connection",
-                          pat.Attr("fuse_residual_connection")},
-                         {"force_fp32_output", pat.Attr("force_fp32_output")},
-                         {"fuse_alpha", pat.Attr("fuse_alpha")},
-                         {"fuse_beta", pat.Attr("fuse_beta")},
-                         {"scale_in", pat.Attr("scale_in")},
-                         {"scale_out", pat.Attr("scale_out")},
-                         {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
-                         {"scale_weights", pat.Attr("scale_weights")},
-                     }});
-
-    std::string activation_name_op = "pd_op." + activation_name_;
-    if (activation_name_ == "hard_swish") {
-      // oneDNN use hard_swish, paddle use hardswish
-      activation_name_op = "pd_op.hardswish";
-    }
-    const auto &activation = pat.Op(activation_name_op);
-    if (fused_level_ == 1) {
-      conv({&pat.Tensor("input"),
-            &pat.Tensor("filter"),
-            &pat.Tensor("bias"),
-            &pat.Tensor("__@input_none_tensor@__")},
-           {&pat.Tensor("conv2d_out")});
-
-    } else if (fused_level_ == 2) {
-      conv({&pat.Tensor("input"),
-            &pat.Tensor("filter"),
-            &pat.Tensor("__@input_none_tensor@__"),
-            &pat.Tensor("residual_param")},
-           {&pat.Tensor("conv2d_out")});
-
-    } else if (fused_level_ == 3) {
       conv({&pat.Tensor("input"),
             &pat.Tensor("filter"),
             &pat.Tensor("bias"),
             &pat.Tensor("residual_param")},
            {&pat.Tensor("conv2d_out")});
-
     } else {
       conv({&pat.Tensor("input"), &pat.Tensor("filter")},
            {&pat.Tensor("conv2d_out")});
@@ -316,10 +120,10 @@ class ConvActivationFusePattern2 : public paddle::drr::DrrPatternBase {
     pat.Tensor("act_out") = activation(pat.Tensor("conv2d_out"));
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      if (activation_name_ == "swish") {
-        float beta = match_ctx.Attr<float>("beta");
-        // x * sigmod(βx)
-        if (beta < 0.0) {
+      if (activation_name_ == "leaky_relu") {
+        float negative_slope = match_ctx.Attr<float>("negative_slope");
+        // leaky relu alpha is a positive number
+        if (negative_slope <= 0.0) {
           return false;
         }
       }
@@ -338,7 +142,12 @@ class ConvActivationFusePattern2 : public paddle::drr::DrrPatternBase {
       fuse_beta = res.Float32Attr(1.f / 2.f);
       fuse_alpha = res.Float32Attr(1.f / 6.f);
     } else if (activation_name_ == "swish") {
-      fuse_alpha = res.StrAttr("swish");
+      fuse_alpha = res.Float32Attr(1.0f);
+    } else if (activation_name_ == "leaky_relu") {
+      fuse_alpha = pat.Attr("negative_slope");
+    } else if (activation_name_ == "hard_sigmoid") {
+      fuse_alpha = pat.Attr("slope");
+      fuse_beta = pat.Attr("offset");
     }
 
     const auto &fused_conv =
@@ -383,21 +192,7 @@ class ConvActivationFusePattern2 : public paddle::drr::DrrPatternBase {
                          {"scale_weights", pat.Attr("scale_weights")},
                      }});
 
-    if (fused_level_ == 1) {
-      fused_conv({&res.Tensor("input"),
-                  &res.Tensor("filter"),
-                  &res.Tensor("bias"),
-                  &res.InputNoneTensor()},
-                 {&res.Tensor("act_out")});
-
-    } else if (fused_level_ == 2) {
-      fused_conv({&res.Tensor("input"),
-                  &res.Tensor("filter"),
-                  &res.InputNoneTensor(),
-                  &res.Tensor("residual_param")},
-                 {&res.Tensor("act_out")});
-
-    } else if (fused_level_ == 3) {
+    if (fused_level_ > 0) {
       fused_conv({&res.Tensor("input"),
                   &res.Tensor("filter"),
                   &res.Tensor("bias"),
@@ -467,27 +262,12 @@ class ConvLeakyReluFusePattern : public paddle::drr::DrrPatternBase {
 
     const auto &activation = pat.Op(
         activation_name_, {{"negative_slope", pat.Attr("negative_slope")}});
-    if (fused_level_ == 1) {
-      conv({&pat.Tensor("input"),
-            &pat.Tensor("filter"),
-            &pat.Tensor("bias"),
-            &pat.Tensor("__@input_none_tensor@__")},
-           {&pat.Tensor("conv2d_out")});
-
-    } else if (fused_level_ == 2) {
-      conv({&pat.Tensor("input"),
-            &pat.Tensor("filter"),
-            &pat.Tensor("__@input_none_tensor@__"),
-            &pat.Tensor("residual_param")},
-           {&pat.Tensor("conv2d_out")});
-
-    } else if (fused_level_ == 3) {
+    if (fused_level_ > 0) {
       conv({&pat.Tensor("input"),
             &pat.Tensor("filter"),
             &pat.Tensor("bias"),
             &pat.Tensor("residual_param")},
            {&pat.Tensor("conv2d_out")});
-
     } else {
       conv({&pat.Tensor("input"), &pat.Tensor("filter")},
            {&pat.Tensor("conv2d_out")});
@@ -547,181 +327,7 @@ class ConvLeakyReluFusePattern : public paddle::drr::DrrPatternBase {
                          {"scale_weights", pat.Attr("scale_weights")},
                      }});
 
-    if (fused_level_ == 1) {
-      fused_conv({&res.Tensor("input"),
-                  &res.Tensor("filter"),
-                  &res.Tensor("bias"),
-                  &res.InputNoneTensor()},
-                 {&res.Tensor("act_out")});
-
-    } else if (fused_level_ == 2) {
-      fused_conv({&res.Tensor("input"),
-                  &res.Tensor("filter"),
-                  &res.InputNoneTensor(),
-                  &res.Tensor("residual_param")},
-                 {&res.Tensor("act_out")});
-
-    } else if (fused_level_ == 3) {
-      fused_conv({&res.Tensor("input"),
-                  &res.Tensor("filter"),
-                  &res.Tensor("bias"),
-                  &res.Tensor("residual_param")},
-                 {&res.Tensor("act_out")});
-    } else {
-      fused_conv({&res.Tensor("input"),
-                  &res.Tensor("filter"),
-                  &res.InputNoneTensor(),
-                  &res.InputNoneTensor()},
-                 {&res.Tensor("act_out")});
-    }
-  }
-};
-
-class ConvHardSigmoidFusePattern : public paddle::drr::DrrPatternBase {
- private:
-  std::string activation_name_;
-  const int fused_level_;
-
- public:
-  ConvHardSigmoidFusePattern(const std::string &activation_name,
-                             int fused_level)
-      : activation_name_(activation_name), fused_level_(fused_level) {}
-
-  std::string name() const override { return "ConvHardSigmoidFusePattern"; }
-
-  uint32_t benefit() const override { return fused_level_ + 1; }
-
-  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
-    paddle::drr::SourcePattern pat = ctx->SourcePattern();
-    std::string conv_name = paddle::dialect::Conv2dOp::name();
     if (fused_level_ > 0) {
-      conv_name = paddle::onednn::dialect::FusedConv2dOp::name();
-    }
-
-    const auto &conv =
-        fused_level_ == 0
-            ? pat.Op(conv_name,
-                     {{"strides", pat.Attr("strides")},
-                      {"paddings", pat.Attr("paddings")},
-                      {"padding_algorithm", pat.Attr("padding_algorithm")},
-                      {"dilations", pat.Attr("dilations")},
-                      {"groups", pat.Attr("groups")},
-                      {"data_format", pat.Attr("data_format")}})
-            : pat.Op(conv_name,
-                     {{
-                         {"strides", pat.Attr("strides")},
-                         {"paddings", pat.Attr("paddings")},
-                         {"padding_algorithm", pat.Attr("padding_algorithm")},
-                         {"dilations", pat.Attr("dilations")},
-                         {"groups", pat.Attr("groups")},
-                         {"data_format", pat.Attr("data_format")},
-                         {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
-                         {"fuse_activation", pat.Attr("fuse_activation")},
-                         {"fuse_residual_connection",
-                          pat.Attr("fuse_residual_connection")},
-                         {"force_fp32_output", pat.Attr("force_fp32_output")},
-                         {"fuse_alpha", pat.Attr("fuse_alpha")},
-                         {"fuse_beta", pat.Attr("fuse_beta")},
-                         {"scale_in", pat.Attr("scale_in")},
-                         {"scale_out", pat.Attr("scale_out")},
-                         {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
-                         {"scale_weights", pat.Attr("scale_weights")},
-                     }});
-
-    const auto &activation =
-        pat.Op(activation_name_,
-               {{"slope", pat.Attr("slope")}, {"offset", pat.Attr("offset")}});
-    if (fused_level_ == 1) {
-      conv({&pat.Tensor("input"),
-            &pat.Tensor("filter"),
-            &pat.Tensor("bias"),
-            &pat.Tensor("__@input_none_tensor@__")},
-           {&pat.Tensor("conv2d_out")});
-
-    } else if (fused_level_ == 2) {
-      conv({&pat.Tensor("input"),
-            &pat.Tensor("filter"),
-            &pat.Tensor("__@input_none_tensor@__"),
-            &pat.Tensor("residual_param")},
-           {&pat.Tensor("conv2d_out")});
-
-    } else if (fused_level_ == 3) {
-      conv({&pat.Tensor("input"),
-            &pat.Tensor("filter"),
-            &pat.Tensor("bias"),
-            &pat.Tensor("residual_param")},
-           {&pat.Tensor("conv2d_out")});
-
-    } else {
-      conv({&pat.Tensor("input"), &pat.Tensor("filter")},
-           {&pat.Tensor("conv2d_out")});
-    }
-    pat.Tensor("act_out") = activation(pat.Tensor("conv2d_out"));
-
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      // WIP: whether need conditions
-      return true;
-    });
-
-    paddle::drr::ResultPattern res = pat.ResultPattern();
-
-    const auto &fused_conv =
-        fused_level_ == 0
-            ? res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
-                     {{
-                         {"strides", pat.Attr("strides")},
-                         {"paddings", pat.Attr("paddings")},
-                         {"padding_algorithm", pat.Attr("padding_algorithm")},
-                         {"dilations", pat.Attr("dilations")},
-                         {"groups", pat.Attr("groups")},
-                         {"data_format", pat.Attr("data_format")},
-                         {"mkldnn_data_type", res.StrAttr("float32")},
-                         {"fuse_activation", res.StrAttr("hard_sigmoid")},
-                         {"fuse_residual_connection", res.BoolAttr(false)},
-                         {"force_fp32_output", res.BoolAttr(false)},
-                         {"fuse_alpha", pat.Attr("slope")},
-                         {"fuse_beta", pat.Attr("offset")},
-                         {"scale_in", res.Float32Attr(1.0f)},
-                         {"scale_out", res.Float32Attr(1.0f)},
-                         {"scale_in_eltwise", res.Float32Attr(1.0f)},
-                         {"scale_weights", res.VectorFloatAttr({1.0f})},
-                     }})
-            : res.Op(paddle::onednn::dialect::FusedConv2dOp::name(),
-                     {{
-                         {"strides", pat.Attr("strides")},
-                         {"paddings", pat.Attr("paddings")},
-                         {"padding_algorithm", pat.Attr("padding_algorithm")},
-                         {"dilations", pat.Attr("dilations")},
-                         {"groups", pat.Attr("groups")},
-                         {"data_format", pat.Attr("data_format")},
-                         {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
-                         {"fuse_activation", res.StrAttr("hard_sigmoid")},
-                         {"fuse_residual_connection",
-                          pat.Attr("fuse_residual_connection")},
-                         {"force_fp32_output", pat.Attr("force_fp32_output")},
-                         {"fuse_alpha", pat.Attr("slope")},
-                         {"fuse_beta", pat.Attr("offset")},
-                         {"scale_in", pat.Attr("scale_in")},
-                         {"scale_out", pat.Attr("scale_out")},
-                         {"scale_in_eltwise", pat.Attr("scale_in_eltwise")},
-                         {"scale_weights", pat.Attr("scale_weights")},
-                     }});
-
-    if (fused_level_ == 1) {
-      fused_conv({&res.Tensor("input"),
-                  &res.Tensor("filter"),
-                  &res.Tensor("bias"),
-                  &res.InputNoneTensor()},
-                 {&res.Tensor("act_out")});
-
-    } else if (fused_level_ == 2) {
-      fused_conv({&res.Tensor("input"),
-                  &res.Tensor("filter"),
-                  &res.InputNoneTensor(),
-                  &res.Tensor("residual_param")},
-                 {&res.Tensor("act_out")});
-
-    } else if (fused_level_ == 3) {
       fused_conv({&res.Tensor("input"),
                   &res.Tensor("filter"),
                   &res.Tensor("bias"),
@@ -789,21 +395,7 @@ class ConvGeluFusePattern : public paddle::drr::DrrPatternBase {
 
     const auto &activation =
         pat.Op(activation_name_, {{"approximate", pat.Attr("approximate")}});
-    if (fused_level_ == 1) {
-      conv({&pat.Tensor("input"),
-            &pat.Tensor("filter"),
-            &pat.Tensor("bias"),
-            &pat.Tensor("__@input_none_tensor@__")},
-           {&pat.Tensor("conv2d_out")});
-
-    } else if (fused_level_ == 2) {
-      conv({&pat.Tensor("input"),
-            &pat.Tensor("filter"),
-            &pat.Tensor("__@input_none_tensor@__"),
-            &pat.Tensor("residual_param")},
-           {&pat.Tensor("conv2d_out")});
-
-    } else if (fused_level_ == 3) {
+    if (fused_level_ > 0) {
       conv({&pat.Tensor("input"),
             &pat.Tensor("filter"),
             &pat.Tensor("bias"),
@@ -873,21 +465,7 @@ class ConvGeluFusePattern : public paddle::drr::DrrPatternBase {
                          {"scale_weights", pat.Attr("scale_weights")},
                      }});
 
-    if (fused_level_ == 1) {
-      fused_conv({&res.Tensor("input"),
-                  &res.Tensor("filter"),
-                  &res.Tensor("bias"),
-                  &res.InputNoneTensor()},
-                 {&res.Tensor("act_out")});
-
-    } else if (fused_level_ == 2) {
-      fused_conv({&res.Tensor("input"),
-                  &res.Tensor("filter"),
-                  &res.InputNoneTensor(),
-                  &res.Tensor("residual_param")},
-                 {&res.Tensor("act_out")});
-
-    } else if (fused_level_ == 3) {
+    if (fused_level_ > 0) {
       fused_conv({&res.Tensor("input"),
                   &res.Tensor("filter"),
                   &res.Tensor("bias"),
@@ -960,21 +538,7 @@ class ConvClipFusePattern : public paddle::drr::DrrPatternBase {
                      }});
 
     const auto &activation = pat.Op(activation_name_);
-    if (fused_level_ == 1) {
-      conv({&pat.Tensor("input"),
-            &pat.Tensor("filter"),
-            &pat.Tensor("bias"),
-            &pat.Tensor("__@input_none_tensor@__")},
-           {&pat.Tensor("conv2d_out")});
-
-    } else if (fused_level_ == 2) {
-      conv({&pat.Tensor("input"),
-            &pat.Tensor("filter"),
-            &pat.Tensor("__@input_none_tensor@__"),
-            &pat.Tensor("residual_param")},
-           {&pat.Tensor("conv2d_out")});
-
-    } else if (fused_level_ == 3) {
+    if (fused_level_ > 0) {
       conv({&pat.Tensor("input"),
             &pat.Tensor("filter"),
             &pat.Tensor("bias"),
@@ -1032,21 +596,7 @@ class ConvClipFusePattern : public paddle::drr::DrrPatternBase {
                          {"scale_weights", pat.Attr("scale_weights")},
                      }});
 
-    if (fused_level_ == 1) {
-      fused_conv({&res.Tensor("input"),
-                  &res.Tensor("filter"),
-                  &res.Tensor("bias"),
-                  &res.InputNoneTensor()},
-                 {&res.Tensor("act_out")});
-
-    } else if (fused_level_ == 2) {
-      fused_conv({&res.Tensor("input"),
-                  &res.Tensor("filter"),
-                  &res.InputNoneTensor(),
-                  &res.Tensor("residual_param")},
-                 {&res.Tensor("act_out")});
-
-    } else if (fused_level_ == 3) {
+    if (fused_level_ > 0) {
       fused_conv({&res.Tensor("input"),
                   &res.Tensor("filter"),
                   &res.Tensor("bias"),
@@ -1065,12 +615,12 @@ class ConvClipFusePattern : public paddle::drr::DrrPatternBase {
 class ConvActFusePass : public pir::PatternRewritePass {
  public:
   ConvActFusePass()
-      : pir::PatternRewritePass("conv_activation_mkldnn_fuse_pass", 3) {}
+      : pir::PatternRewritePass("conv_activation_mkldnn_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
 
-    // This nine activations have no extra attribute, can use the same pattern
+    // This eleven activations have no extra attribute, can use the same pattern
     std::vector<std::string> supported_activations_name = {"abs",
                                                            "sqrt",
                                                            "mish",
@@ -1079,7 +629,10 @@ class ConvActFusePass : public pir::PatternRewritePass {
                                                            "tanh",
                                                            "relu6",
                                                            "hard_swish",
-                                                           "swish"};
+                                                           "swish",
+                                                           "leaky_relu",
+                                                           "hard_sigmoid"};
+
     size_t pattern_num = 1;
     // conv + activation -> fused_conv2d
     for (auto activation : supported_activations_name) {
@@ -1087,6 +640,7 @@ class ConvActFusePass : public pir::PatternRewritePass {
           context, pattern_num, activation, 0));
       pattern_num++;
     }
+    // pattern_num = 1;
 
     // conv + bias -> fused_conv2d + activation -> fused_conv2d
     for (auto activation : supported_activations_name) {
@@ -1094,64 +648,16 @@ class ConvActFusePass : public pir::PatternRewritePass {
           context, pattern_num, activation, 1));
       pattern_num++;
     }
-    /**
-     *  We create different class pattern and not reused all class is
-     *  because we have 13*4 = 52 patterns, we found if write in one class,
-     *  the program will drumped since benefit too large.
-     *  Thus we limit the benefit and create different class pattern
-     */
-
-    pattern_num = 1;
-    // conv + residual -> fused_conv2d + activation -> fused_conv2d
-    for (auto activation : supported_activations_name) {
-      ps.Add(paddle::drr::Create<ConvActivationFusePattern2>(
-          context, pattern_num, activation, 2));
-      pattern_num++;
-    }
-
-    // conv + bias + residual -> fused_conv2d + activation -> fused_conv2d
-    for (auto activation : supported_activations_name) {
-      ps.Add(paddle::drr::Create<ConvActivationFusePattern2>(
-          context, pattern_num, activation, 3));
-      pattern_num++;
-    }
-
-    ps.Add(paddle::drr::Create<ConvLeakyReluFusePattern>(
-        context, paddle::dialect::LeakyReluOp::name(), 0));
-    ps.Add(paddle::drr::Create<ConvLeakyReluFusePattern>(
-        context, paddle::dialect::LeakyReluOp::name(), 1));
-    ps.Add(paddle::drr::Create<ConvLeakyReluFusePattern>(
-        context, paddle::dialect::LeakyReluOp::name(), 2));
-    ps.Add(paddle::drr::Create<ConvLeakyReluFusePattern>(
-        context, paddle::dialect::LeakyReluOp::name(), 3));
-
-    ps.Add(paddle::drr::Create<ConvHardSigmoidFusePattern>(
-        context, paddle::dialect::HardsigmoidOp::name(), 0));
-    ps.Add(paddle::drr::Create<ConvHardSigmoidFusePattern>(
-        context, paddle::dialect::HardsigmoidOp::name(), 1));
-    ps.Add(paddle::drr::Create<ConvHardSigmoidFusePattern>(
-        context, paddle::dialect::HardsigmoidOp::name(), 2));
-    ps.Add(paddle::drr::Create<ConvHardSigmoidFusePattern>(
-        context, paddle::dialect::HardsigmoidOp::name(), 3));
 
     ps.Add(paddle::drr::Create<ConvGeluFusePattern>(
         context, paddle::dialect::GeluOp::name(), 0));
     ps.Add(paddle::drr::Create<ConvGeluFusePattern>(
         context, paddle::dialect::GeluOp::name(), 1));
-    ps.Add(paddle::drr::Create<ConvGeluFusePattern>(
-        context, paddle::dialect::GeluOp::name(), 2));
-    ps.Add(paddle::drr::Create<ConvGeluFusePattern>(
-        context, paddle::dialect::GeluOp::name(), 3));
 
     ps.Add(paddle::drr::Create<ConvClipFusePattern>(
         context, paddle::dialect::ClipOp::name(), 0));
     ps.Add(paddle::drr::Create<ConvClipFusePattern>(
         context, paddle::dialect::ClipOp::name(), 1));
-    ps.Add(paddle::drr::Create<ConvClipFusePattern>(
-        context, paddle::dialect::ClipOp::name(), 2));
-    ps.Add(paddle::drr::Create<ConvClipFusePattern>(
-        context, paddle::dialect::ClipOp::name(), 3));
-
     return ps;
   }
 };
@@ -1161,11 +667,11 @@ class ConvActFusePass : public pir::PatternRewritePass {
 namespace pir {
 
 std::unique_ptr<Pass> CreateConv2dActFusePass() {
-  /**1.
+  /**
    *   conv
    *    |     ->  fused_conv
    * activation
-   * 2.
+   *
    * fused_conv2d (bias or residual)
    *      |                         -> fused_conv2d
    *  activation
