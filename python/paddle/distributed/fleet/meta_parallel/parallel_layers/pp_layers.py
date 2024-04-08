@@ -653,7 +653,7 @@ class PipelineLayer(nn.Layer):
                     loss_fn_names.append(self._loss_fn[idx].__name__)
                 except AttributeError:
                     loss_fn_names.append(self._loss_fn[idx].__class__.__name__)
-            logger.info(f"loss: {", ".join(loss_fn_names)}")
+            logger.info(f"loss: {', '.join(loss_fn_names)}")
 
     def _build_layer_with_interleave(self):
         from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
