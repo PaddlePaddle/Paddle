@@ -19,7 +19,7 @@ except ImportError:
     pass
 
 
-from cinn.schedule import IRSchedule
+from paddle.cinn.schedule import IRSchedule
 
 
 def is_node_parsed_in_schedule(node: ast.Call):

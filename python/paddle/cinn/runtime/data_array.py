@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import numpy as np
-from cinn import common, runtime
-from cinn.common import BFloat16, Bool, Float, Float16, Int, UInt
+
+from paddle.cinn import common, runtime
+from paddle.cinn.common import BFloat16, Bool, Float, Float16, Int, UInt
 
 
 class DataArray:
