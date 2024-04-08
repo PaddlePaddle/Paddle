@@ -69,7 +69,6 @@ class TestConv2dReluFusePass(PassTest):
         self.check_pass_correct()
 
 
-
 class TestConv2dGELUFusePass(PassTest):
     def is_program_valid(self, program=None):
         return True
@@ -118,7 +117,6 @@ class TestConv2dGELUFusePass(PassTest):
         self.check_pass_correct()
 
 
-
 class TestConv2dClipFusePass(PassTest):
     def is_program_valid(self, program=None):
         return True
@@ -164,7 +162,6 @@ class TestConv2dClipFusePass(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct()
-
 
 
 class TestConv2dBiasReluFusePass(PassTest):
