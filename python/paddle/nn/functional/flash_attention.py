@@ -72,7 +72,9 @@ def _math_attention(
     query = paddle.transpose(query, [0, 2, 1, 3])
     key = paddle.transpose(key, [0, 2, 1, 3])
     value = paddle.transpose(value, [0, 2, 1, 3])
-    product = paddle.matmul(x=query * (head_dim**-0.5), y=key, transpose_y=True)
+    product = paddle.matmul(
+        x=query * (head_dim**-0.5), y=key, transpose_y=True
+    )
 
     if not causal:
         weights = F.softmax(product)
@@ -371,7 +373,12 @@ def flash_attn_qkvpacked(
 
     if sdp_func_name == "flash_attn":
         if in_dynamic_or_pir_mode():
-            (result_attention, result_softmax, _, _) = _C_ops.flash_attn_qkvpacked(
+            (
+                result_attention,
+                result_softmax,
+                _,
+                _,
+            ) = _C_ops.flash_attn_qkvpacked(
                 qkv,
                 fixed_seed_offset,
                 None,

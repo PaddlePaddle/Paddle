@@ -26,9 +26,9 @@ from paddle.base import core
 from paddle.nn.functional.flash_attention import (
     flash_attention,
     flash_attention_with_sparse_mask,
+    flash_attn_qkvpacked,
     flash_attn_unpadded,
     flash_attn_varlen_qkvpacked,
-    flash_attn_qkvpacked,
     scaled_dot_product_attention,
 )
 from paddle.pir_utils import test_with_pir_api

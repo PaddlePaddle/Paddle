@@ -846,7 +846,7 @@
   kernel :
     func : flash_attn_grad
     data_type: q
-  
+
 - backward_op : flash_attn_qkvpacked_grad
   forward : flash_attn_qkvpacked (Tensor qkv,  Tensor fixed_seed_offset, Tensor attn_mask, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "") -> Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
   args : (Tensor qkv, Tensor out, Tensor softmax_lse, Tensor seed_offset, Tensor attn_mask, Tensor out_grad, float dropout = 0.0, bool causal = false)
@@ -871,17 +871,6 @@
     func : flash_attn_unpadded_grad
     data_type: q
 
-- backward_op : flash_attn_with_sparse_mask_grad
-  forward : flash_attn_with_sparse_mask (Tensor q, Tensor k, Tensor v, Tensor attn_mask_start_row_indices, Tensor fixed_seed_offset, float dropout = 0.0, bool causal = false, int attn_mask_start_row = 0, bool return_softmax = false, bool is_test = false, str rng_name = "") -> Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
-  args : (Tensor q, Tensor k, Tensor v, Tensor attn_mask_start_row_indices, Tensor out, Tensor softmax_lse, Tensor seed_offset, Tensor out_grad, float dropout = 0.0, bool causal = false, int attn_mask_start_row = 0)
-  output : Tensor(q_grad), Tensor(k_grad), Tensor(v_grad)
-  infer_meta :
-    func : FlashAttnGradInferMeta
-    param : [q, k, v]
-  kernel :
-    func : flash_attn_with_sparse_mask_grad
-    data_type: q
-    
 - backward_op : flash_attn_varlen_qkvpacked_grad
   forward : flash_attn_varlen_qkvpacked (Tensor qkv, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor fixed_seed_offset, Tensor attn_mask, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "", bool varlen_padded = true) -> Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
   args : (Tensor qkv, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor out, Tensor softmax_lse, Tensor seed_offset, Tensor attn_mask, Tensor out_grad, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool varlen_padded = true)
@@ -892,7 +881,18 @@
     param : [qkv]
   kernel :
     func : flash_attn_varlen_qkvpacked_grad
-    data_type: qkv  
+    data_type: qkv
+
+- backward_op : flash_attn_with_sparse_mask_grad
+  forward : flash_attn_with_sparse_mask (Tensor q, Tensor k, Tensor v, Tensor attn_mask_start_row_indices, Tensor fixed_seed_offset, float dropout = 0.0, bool causal = false, int attn_mask_start_row = 0, bool return_softmax = false, bool is_test = false, str rng_name = "") -> Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
+  args : (Tensor q, Tensor k, Tensor v, Tensor attn_mask_start_row_indices, Tensor out, Tensor softmax_lse, Tensor seed_offset, Tensor out_grad, float dropout = 0.0, bool causal = false, int attn_mask_start_row = 0)
+  output : Tensor(q_grad), Tensor(k_grad), Tensor(v_grad)
+  infer_meta :
+    func : FlashAttnGradInferMeta
+    param : [q, k, v]
+  kernel :
+    func : flash_attn_with_sparse_mask_grad
+    data_type: q
 
 - backward_op : flatten_grad
   forward : flatten(Tensor x, int start_axis = 1, int stop_axis = 1) -> Tensor(out), Tensor(xshape)

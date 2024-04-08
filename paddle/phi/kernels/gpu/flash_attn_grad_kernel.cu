@@ -47,7 +47,7 @@ bool isContiguous(const DenseTensor& t) {
   return true;
 }
 template <typename T>
-__global__ void SumStridedKV(T* src,
+__global__ void SumStridedKV(const T* src,
                              T* dst,
                              size_t sRowDim1,
                              size_t sRowDim2,
@@ -75,44 +75,47 @@ __global__ void SumStridedKV(T* src,
 template <typename T, typename Context>
 void kvReduceForGQA(const Context& ctx,
                     const DenseTensor& dk_tmp,
-                    DenseTensor& dk) {
+                    DenseTensor* dk) {
   const size_t reduceDimSize = dk_tmp.dims()[2];
-  const size_t blockNum = std::min((dk_tmp.dims()[0] + 127) / 128, 1024l);
-  SumStridedKV<T><<<blockNum, 128, 0, ctx.stream()>>>((T*)dk_tmp.data(),
-                                                      (T*)dk.data(),
-                                                      dk_tmp.dims()[0],
-                                                      dk_tmp.dims()[1],
-                                                      dk_tmp.dims()[3],
-                                                      dk_tmp.dims()[2],
-                                                      dk_tmp.strides()[0],
-                                                      dk_tmp.strides()[1],
-                                                      dk_tmp.strides()[3],
-                                                      dk_tmp.strides()[2],
-                                                      dk.strides()[0],
-                                                      dk.strides()[1],
-                                                      dk.strides()[2]);
+  const size_t blockNum =
+      std::min((static_cast<size_t>(dk_tmp.dims()[0] + 127) / 128),
+               static_cast<size_t>(1024l));
+  SumStridedKV<T><<<blockNum, 128, 0, ctx.stream()>>>(
+      reinterpret_cast<const T*>(dk_tmp.data()),
+      reinterpret_cast<T*>(dk->data()),
+      dk_tmp.dims()[0],
+      dk_tmp.dims()[1],
+      dk_tmp.dims()[3],
+      dk_tmp.dims()[2],
+      dk_tmp.strides()[0],
+      dk_tmp.strides()[1],
+      dk_tmp.strides()[3],
+      dk_tmp.strides()[2],
+      dk->strides()[0],
+      dk->strides()[1],
+      dk->strides()[2]);
 }
 template <typename T, typename Context>
 void kvReduceBatchedForGQA(const Context& ctx,
                            const DenseTensor& dk_tmp,
-                           DenseTensor& dk) {
+                           DenseTensor* dk) {
   const size_t reduceDimSize = dk_tmp.dims()[3];
   const size_t blockNum = std::min((dk_tmp.dims()[0] + 127) / 128, 1024l);
   // here implicitly flat [batch,seqlen], and require batch dim to be contiguous
-  SumStridedKV<T>
-      <<<blockNum, 128, 0, ctx.stream()>>>((T*)dk_tmp.data(),
-                                           (T*)dk.data(),
-                                           dk_tmp.dims()[0] * dk_tmp.dims()[1],
-                                           dk_tmp.dims()[2],
-                                           dk_tmp.dims()[4],
-                                           dk_tmp.dims()[3],
-                                           dk_tmp.strides()[1],
-                                           dk_tmp.strides()[2],
-                                           dk_tmp.strides()[4],
-                                           dk_tmp.strides()[3],
-                                           dk.strides()[1],
-                                           dk.strides()[2],
-                                           dk.strides()[3]);
+  SumStridedKV<T><<<blockNum, 128, 0, ctx.stream()>>>(
+      reinterpret_cast<const T*>(dk_tmp.data()),
+      reinterpret_cast<T*>(dk->data()),
+      dk_tmp.dims()[0] * dk_tmp.dims()[1],
+      dk_tmp.dims()[2],
+      dk_tmp.dims()[4],
+      dk_tmp.dims()[3],
+      dk_tmp.strides()[1],
+      dk_tmp.strides()[2],
+      dk_tmp.strides()[4],
+      dk_tmp.strides()[3],
+      dk->strides()[1],
+      dk->strides()[2],
+      dk->strides()[3]);
 }
 template <typename T, typename Context>
 void FlashAttnUnpaddedGradBaseKernel(
@@ -272,13 +275,13 @@ void FlashAttnUnpaddedGradBaseKernel(
       if (isContiguous(*dk))
         phi::SumKernel<T, Context>(ctx, dk_tmp, {2}, dk->type(), false, dk);
       else
-        kvReduceForGQA<T, Context>(ctx, dk_tmp, *dk);
+        kvReduceForGQA<T, Context>(ctx, dk_tmp, dk);
     }
     if (dv) {
       if (isContiguous(*dv))
         phi::SumKernel<T, Context>(ctx, dv_tmp, {2}, dv->type(), false, dv);
       else
-        kvReduceForGQA<T, Context>(ctx, dv_tmp, *dv);
+        kvReduceForGQA<T, Context>(ctx, dv_tmp, dv);
     }
   }
 #else
@@ -342,7 +345,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
 }
 
 static void sliceFlattenView(const DenseTensor& in,
-                             DenseTensor& out,
+                             DenseTensor* out,
                              int axis,
                              int64_t offset,
                              int64_t sliceLength) {
@@ -363,13 +366,13 @@ static void sliceFlattenView(const DenseTensor& in,
     id++;
     is++;
   }
-  out = DenseTensor{
+  *out = DenseTensor{
       in.Holder(),
       DenseTensorMeta{in.dtype(),
                       DDim{dimArr.data(), in.dims().size() - 1},
                       DDim(strideArr.data(), in.dims().size() - 1)}};
-  out.set_offset(in.offset() +
-                 offset * in.strides()[axis] * SizeOf(out.dtype()));
+  out->set_offset(in.offset() +
+                  offset * in.strides()[axis] * SizeOf(out.dtype()));
 }
 template <typename OutT>
 struct ZeroFunctor {
@@ -399,9 +402,9 @@ void FlashAttnVarlenQKVPackedGradKernel(
   // q,k,v [total_*, num_heads, head_dim]
   const auto head_groupnum = qkv.dims()[1];  // nheads/nheads_k + 1 + 1
   DenseTensor q, k, v;
-  sliceFlattenView(qkv, q, 1, 0, head_groupnum - 2);
-  sliceFlattenView(qkv, k, 1, head_groupnum - 2, 1);
-  sliceFlattenView(qkv, v, 1, head_groupnum - 1, 1);
+  sliceFlattenView(qkv, &q, 1, 0, head_groupnum - 2);
+  sliceFlattenView(qkv, &k, 1, head_groupnum - 2, 1);
+  sliceFlattenView(qkv, &v, 1, head_groupnum - 1, 1);
   // DenseTensor dqkv_tmp;
   if (!dqkv) {
     return;
@@ -416,9 +419,9 @@ void FlashAttnVarlenQKVPackedGradKernel(
     phi::funcs::ElementwiseKernel<T>(ctx, inputs, &outputs, ZeroFunctor<T>());
   }
   DenseTensor dq, dk, dv;
-  sliceFlattenView(*dqkv, dq, 1, 0, head_groupnum - 2);
-  sliceFlattenView(*dqkv, dk, 1, head_groupnum - 2, 1);
-  sliceFlattenView(*dqkv, dv, 1, head_groupnum - 1, 1);
+  sliceFlattenView(*dqkv, &dq, 1, 0, head_groupnum - 2);
+  sliceFlattenView(*dqkv, &dk, 1, head_groupnum - 2, 1);
+  sliceFlattenView(*dqkv, &dv, 1, head_groupnum - 1, 1);
   FlashAttnUnpaddedGradBaseKernel<T>(ctx,
                                      q,
                                      k,
@@ -612,14 +615,14 @@ void FlashAttnGradBaseKernel(
       if (isContiguous(*dk))
         phi::SumKernel<T, Context>(ctx, dk_tmp, {3}, dk->type(), false, dk);
       else
-        kvReduceBatchedForGQA<T, Context>(ctx, dk_tmp, *dk);
+        kvReduceBatchedForGQA<T, Context>(ctx, dk_tmp, dk);
     }
 
     if (dv) {
       if (isContiguous(*dv))
         phi::SumKernel<T, Context>(ctx, dv_tmp, {3}, dv->type(), false, dv);
       else
-        kvReduceBatchedForGQA<T, Context>(ctx, dv_tmp, *dv);
+        kvReduceBatchedForGQA<T, Context>(ctx, dv_tmp, dv);
     }
   }
 #else
@@ -685,9 +688,9 @@ void FlashAttnQKVPackedGradKernel(
   // qkv [batchsize, seqlen, nheads/nheads_k+2, nheads_k, head_dim]
   const auto head_groupnum = qkv.dims()[2];  // nheads/nheads_k + 1 + 1
   DenseTensor q, k, v;
-  sliceFlattenView(qkv, q, 2, 0, head_groupnum - 2);
-  sliceFlattenView(qkv, k, 2, head_groupnum - 2, 1);
-  sliceFlattenView(qkv, v, 2, head_groupnum - 1, 1);
+  sliceFlattenView(qkv, &q, 2, 0, head_groupnum - 2);
+  sliceFlattenView(qkv, &k, 2, head_groupnum - 2, 1);
+  sliceFlattenView(qkv, &v, 2, head_groupnum - 1, 1);
   // DenseTensor dqkv_tmp;
   if (!dqkv) {
     return;
@@ -697,9 +700,9 @@ void FlashAttnQKVPackedGradKernel(
   }
   ctx.template Alloc<T>(dqkv);
   DenseTensor dq, dk, dv;
-  sliceFlattenView(*dqkv, dq, 2, 0, head_groupnum - 2);
-  sliceFlattenView(*dqkv, dk, 2, head_groupnum - 2, 1);
-  sliceFlattenView(*dqkv, dv, 2, head_groupnum - 1, 1);
+  sliceFlattenView(*dqkv, &dq, 2, 0, head_groupnum - 2);
+  sliceFlattenView(*dqkv, &dk, 2, head_groupnum - 2, 1);
+  sliceFlattenView(*dqkv, &dv, 2, head_groupnum - 1, 1);
   FlashAttnGradBaseKernel<T, Context>(ctx,
                                       q,
                                       k,

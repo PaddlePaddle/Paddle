@@ -270,7 +270,8 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     auto kernel_iter = iter->second.find(
         {Backend::GPUDNN, phi::DataLayout::ALL_LAYOUT, kernel_key.dtype()});
     if (kernel_iter != iter->second.end()) {
-      return {kernel_iter->second, false, kernel_iter->second.IsSupportStride()};
+      return {
+          kernel_iter->second, false, kernel_iter->second.IsSupportStride()};
     }
     kernel_key =
         KernelKey(Backend::GPU, kernel_key.layout(), kernel_key.dtype());

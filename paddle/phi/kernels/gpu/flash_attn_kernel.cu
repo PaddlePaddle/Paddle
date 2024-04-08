@@ -205,7 +205,7 @@ void FlashAttnUnpaddedKernel(
 }
 
 static void sliceFlattenView(const DenseTensor& in,
-                             DenseTensor& out,
+                             DenseTensor* out,
                              int axis,
                              int64_t offset,
                              int64_t sliceLength) {
@@ -226,13 +226,13 @@ static void sliceFlattenView(const DenseTensor& in,
     id++;
     is++;
   }
-  out = DenseTensor{
+  *out = DenseTensor{
       in.Holder(),
       DenseTensorMeta{in.dtype(),
                       DDim{dimArr.data(), in.dims().size() - 1},
                       DDim(strideArr.data(), in.dims().size() - 1)}};
-  out.set_offset(in.offset() +
-                 offset * in.strides()[axis] * SizeOf(out.dtype()));
+  out->set_offset(in.offset() +
+                  offset * in.strides()[axis] * SizeOf(out.dtype()));
 }
 template <typename T, typename Context>
 void FlashAttnVarlenQKVPackedKernel(
@@ -258,9 +258,9 @@ void FlashAttnVarlenQKVPackedKernel(
 #ifdef PADDLE_WITH_FLASHATTN
   const auto head_groupnum = qkv.dims()[1];  // nheads/nheads_k + 1 + 1
   DenseTensor q, k, v;
-  sliceFlattenView(qkv, q, 1, 0, head_groupnum - 2);
-  sliceFlattenView(qkv, k, 1, head_groupnum - 2, 1);
-  sliceFlattenView(qkv, v, 1, head_groupnum - 1, 1);
+  sliceFlattenView(qkv, &q, 1, 0, head_groupnum - 2);
+  sliceFlattenView(qkv, &k, 1, head_groupnum - 2, 1);
+  sliceFlattenView(qkv, &v, 1, head_groupnum - 1, 1);
   FlashAttnUnpaddedBaseKernel<T>(ctx,
                                  q,
                                  k,
@@ -471,9 +471,9 @@ void FlashAttnQKVPackedKernel(
 #ifdef PADDLE_WITH_FLASHATTN
   const auto head_groupnum = qkv.dims()[2];  // nheads/nheads_k + 1 + 1
   DenseTensor q, k, v;
-  sliceFlattenView(qkv, q, 2, 0, head_groupnum - 2);
-  sliceFlattenView(qkv, k, 2, head_groupnum - 2, 1);
-  sliceFlattenView(qkv, v, 2, head_groupnum - 1, 1);
+  sliceFlattenView(qkv, &q, 2, 0, head_groupnum - 2);
+  sliceFlattenView(qkv, &k, 2, head_groupnum - 2, 1);
+  sliceFlattenView(qkv, &v, 2, head_groupnum - 1, 1);
   FlashAttnBaseKernel<T, Context>(ctx,
                                   q,
                                   k,
