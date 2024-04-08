@@ -126,9 +126,10 @@ class OpLoweringGroup {
 
   const symbol::ShapeOrDataDimExprs& GetShapeOrDataExprs(
       const ::pir::Value& value) const {
-    PADDLE_ENFORCE(HasShapeOrDataExprs(value),
-                   ::common::errors::NotFound(
-                       "value not found in value_to_shape_or_data_exprs_"));
+    PADDLE_ENFORCE_EQ(HasShapeOrDataExprs(value),
+                      true,
+                      ::common::errors::NotFound(
+                          "value not found in value_to_shape_or_data_exprs_"));
     return value_to_shape_or_data_exprs_.at(value);
   }
 
@@ -146,7 +147,7 @@ class OpLoweringGroup {
     }
   }
 
-  void OpLoweringGroup::UpdateShapeOrDataExprs();
+  void UpdateShapeOrDataExprs();
 
   void WalkOps(const std::function<void(::pir::Operation*)>& VisitOp) const {
     for (const auto& op : ops_) {
