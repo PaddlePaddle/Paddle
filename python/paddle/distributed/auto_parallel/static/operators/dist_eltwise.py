@@ -66,7 +66,7 @@ class DistributedElementwise(DistributedOperatorImplContainer):
         output_spec = get_dist_tensor_spec(dist_op, output_arg_name, False)
 
         # step2: infer spmd
-        # TODO reivse me
+        # TODO revise me
         op_type = op_desc.type()
         rule = get_phi_spmd_rule(op_type)
         fw_results = rule.infer_forward(*input_specs)

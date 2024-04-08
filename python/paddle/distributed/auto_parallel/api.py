@@ -252,6 +252,8 @@ def shard_tensor(
         sharding_specs = get_shard_spec(mesh, placements, tensor.ndim)
         dims_mapping = convert_to_dims_mapping(sharding_specs, mesh)
         dist_tensor = paddle._pir_ops.shard_tensor(tensor, mesh, dims_mapping)
+        dist_tensor.stop_gradient = tensor.stop_gradient
+        dist_tensor.persistable = tensor.persistable
         return dist_tensor
     else:
         # TODO(zhiqiu): we need to refine the static shard_tensor
@@ -1443,33 +1445,39 @@ class Strategy(auto_strategy.BaseConfig):
         )
         self._sp_optimization = auto_strategy.SPOptimizationConfig(config_dict)
 
-    def _from_legacy_strategy(self, auto_stragety):
+    def _from_legacy_strategy(self, legacy_strategy):
         """
         NOTE(lizhiyu): This is a template function to get `dist.Strategy` from `fleet.auto.Strategy`.
         """
         import copy
 
-        self._fused_passes.enable = auto_stragety.fused_passes.enable
+        category = auto_strategy.constants.BASE
+        base_config = auto_strategy.constants.get_category_default_config(
+            category
+        )
+        for key in base_config.keys():
+            setattr(self, key, getattr(legacy_strategy, key))
+        self._fused_passes.enable = legacy_strategy.fused_passes.enable
         if (
             "fused_gemm_epilogue_pass"
-            in auto_stragety.fused_passes.fused_passes_list
+            in legacy_strategy.fused_passes.fused_passes_list
         ):
             self._fused_passes.gemm_epilogue = True
         if (
             "fused_dropout_add_pass"
-            in auto_stragety.fused_passes.fused_passes_list
+            in legacy_strategy.fused_passes.fused_passes_list
         ):
             self._fused_passes.dropout_add = True
 
-        self._amp = copy.deepcopy(auto_stragety.amp)
-        self._sharding = copy.deepcopy(auto_stragety.sharding)
-        self._gradient_merge = copy.deepcopy(auto_stragety.gradient_merge)
-        self._pipeline = copy.deepcopy(auto_stragety.pipeline)
+        self._amp = copy.deepcopy(legacy_strategy.amp)
+        self._sharding = copy.deepcopy(legacy_strategy.sharding)
+        self._gradient_merge = copy.deepcopy(legacy_strategy.gradient_merge)
+        self._pipeline = copy.deepcopy(legacy_strategy.pipeline)
         # The below are template interfaces
-        self._recompute = copy.deepcopy(auto_stragety.recompute)
-        self._mp_optimization = copy.deepcopy(auto_stragety.mp_optimization)
-        self._dp_optimization = copy.deepcopy(auto_stragety.dp_optimization)
-        self._sp_optimization = copy.deepcopy(auto_stragety.sp_optimization)
+        self._recompute = copy.deepcopy(legacy_strategy.recompute)
+        self._mp_optimization = copy.deepcopy(legacy_strategy.mp_optimization)
+        self._dp_optimization = copy.deepcopy(legacy_strategy.dp_optimization)
+        self._sp_optimization = copy.deepcopy(legacy_strategy.sp_optimization)
 
     @property
     def sharding(self):
@@ -1695,12 +1703,18 @@ class DistModel:
         # call paddle.disable_static to keep the outside of DistModel in dynamic graph mode
 
         # set the default mode
-        if optimizer is not None and loss is not None:
-            self.train()
-        elif loss is not None:
-            self.eval()
-        else:
-            self.predict()
+        self._in_pir_mode = paddle.base.framework.get_flags(
+            "FLAGS_enable_pir_api"
+        )["FLAGS_enable_pir_api"]
+        if (
+            not self._in_pir_mode
+        ):  # TODO (2024-Q2) remove this when pir mode is fully constructed.
+            if optimizer is not None and loss is not None:
+                self.train()
+            elif loss is not None:
+                self.eval()
+            else:
+                self.predict()
 
     def train(self):
         """
@@ -1833,6 +1847,10 @@ class DistModel:
         return self._engine.get_serial_startup_program(mode)
 
     def _make_feeds(self, data_list):
+        # TODO (2024-Q2): formula make feed
+        if self._in_pir_mode:
+            self._feed_name_list[self._mode] = ['input0', 'label0']
+
         if (
             self._mode not in self._feed_name_list
             or self._feed_name_list[self._mode] == []
@@ -1885,6 +1903,12 @@ class DistModel:
         if strategy is None:
             return None
         inner_strategy = auto_strategy.Strategy()
+        category = auto_strategy.constants.BASE
+        base_config = auto_strategy.constants.get_category_default_config(
+            category
+        )
+        for key in base_config.keys():
+            setattr(inner_strategy, key, getattr(strategy, key))
         inner_strategy.fused_passes.enable = strategy.fused_passes.enable
         if getattr(strategy.fused_passes, "gemm_epilogue", False):
             inner_strategy.fused_passes.fused_passes_list.append(

@@ -515,7 +515,7 @@ def update_dims_mapping_matmul(dist_op):
         trans_x = False
         trans_y = False
 
-    # TODO (zhangyichen) replace dist tensor spece by dist tensor in future.
+    # TODO (zhangyichen) replace dist tensor spec by dist tensor in future.
     x_spec = get_dist_tensor_spec(dist_op, x_name)
     y_spec = get_dist_tensor_spec(dist_op, y_name)
     out_spec = get_dist_tensor_spec(dist_op, out_name, False)

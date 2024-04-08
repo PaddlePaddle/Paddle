@@ -26,7 +26,7 @@ namespace phi {
 namespace fusion {
 namespace cutlass_internal {
 
-typedef void (*func)(phi::fusion::cutlass_internal::ConvAllParams);
+typedef bool (*func)(phi::fusion::cutlass_internal::ConvAllParams);
 
 template <typename T, typename Context>
 void FusedConv2dAddActKernel(const Context& ctx,
@@ -230,7 +230,12 @@ void FusedConv2dAddActKernel(const Context& ctx,
           "Cutlass conv2d_depthwise does not support this activation: %s.",
           activation.c_str()));
     }
-    conv_func(params);
+
+    if (!conv_func(params)) {
+      PADDLE_THROW(
+          phi::errors::Fatal("no fused_conv2d_add_act cutlass kernel "));
+    }
+
     output->set_layout(DataLayout::NHWC);
     return;
   }
@@ -265,7 +270,11 @@ void FusedConv2dAddActKernel(const Context& ctx,
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Cutlass does not support this activation: %s.", activation.c_str()));
   }
-  conv_func(params);
+
+  if (!conv_func(params)) {
+    PADDLE_THROW(phi::errors::Fatal("no fused_conv2d_add_act cutlass kernel "));
+  }
+
   output->set_layout(DataLayout::NHWC);
 }
 }  // namespace cutlass_internal

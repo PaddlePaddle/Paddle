@@ -327,6 +327,7 @@
   backward : bicubic_interp_grad
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : bilinear
   args : (Tensor x, Tensor y, Tensor weight, Tensor bias)
@@ -350,6 +351,7 @@
   backward : bilinear_interp_grad
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : bincount
   args: (Tensor x, Tensor weights, Scalar(int) minlength = 0)
@@ -1658,6 +1660,7 @@
   backward : linear_interp_grad
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : llm_int8_linear
   args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, float threshold=6.0)
@@ -2068,6 +2071,7 @@
   backward : nearest_interp_grad
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : nextafter
   args : (Tensor x, Tensor y)
@@ -2913,6 +2917,7 @@
   backward : trilinear_interp_grad
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : trunc
   args : (Tensor input)
