@@ -26,7 +26,6 @@
 namespace phi {
 namespace distributed {
 
-namespace {
 std::string GenUniqueCommKey(const std::vector<int64_t>& process_ids) {
   std::string unique_comm_key = "ReshardGroup";
   for (const auto& id : process_ids) {
@@ -34,7 +33,6 @@ std::string GenUniqueCommKey(const std::vector<int64_t>& process_ids) {
   }
   return unique_comm_key;
 }
-}  // namespace
 
 std::vector<int64_t> GetUnionProcessIds(std::vector<int64_t> in_process_ids,
                                         std::vector<int64_t> out_process_ids) {

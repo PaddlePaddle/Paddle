@@ -149,6 +149,11 @@ void PToRReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
   tmp_dist_attr.set_process_mesh(out_process_mesh);
   same_status_func.Eval(dev_ctx, in, tmp_dist_attr, &tmp_result);
 
+  auto reshard_descs = same_status_func.GetReshardFuncDescs();
+  for (auto iter = reshard_descs.begin(); iter != reshard_descs.end();) {
+    reshard_func_descs_.emplace_back(std::move(*iter));
+    iter = reshard_descs.erase(iter);
+  }
   VLOG(0) << "find same_status_func func_size " << reshard_func_descs_.size();
 
   int64_t cur_global_rank = GetCurGlobalRank();
@@ -162,6 +167,12 @@ void PToRReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
             tmp_result.dist_attr(),
             out_dist_attr));
     p_to_r_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
+    auto reshard_descs = p_to_r_func.GetReshardFuncDescs();
+    for (auto iter = reshard_descs.begin(); iter != reshard_descs.end();) {
+      reshard_func_descs_.emplace_back(std::move(*iter));
+      iter = reshard_descs.erase(iter);
+    }
+    VLOG(0) << "find same_status_func func_size " << reshard_func_descs_.size();
   } else {
     VLOG(0) << "out_process_mesh not contains " << cur_global_rank;
     SetDistProps(out, in.dims(), out_dist_attr);

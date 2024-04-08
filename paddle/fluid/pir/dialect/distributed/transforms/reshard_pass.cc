@@ -50,6 +50,16 @@ inline bool IsReShardOp(pir::Operation* op) {
   return op_name.find("reshard") != op_name.npos;
 }
 
+inline bool IsSendOp(pir::Operation* op) {
+  std::string op_name = op->name();
+  return op_name.find("p_send") != op_name.npos;
+}
+
+inline bool IsRecvOp(pir::Operation* op) {
+  std::string op_name = op->name();
+  return op_name.find("p_recv") != op_name.npos;
+}
+
 static void ProcessBlock(pir::Block* block) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::Builder builder(ctx, block);
@@ -111,24 +121,56 @@ static void ProcessBlock(pir::Block* block) {
         auto reshard_func_desc = func->GetReshardFuncDescs();
         auto func_size = reshard_func_desc.size();
         VLOG(0) << "find diff func_size " << func_size;
+        for (size_t i = 0; i < func_size; ++i) {
+          VLOG(0) << "reshard func_desc name " << reshard_func_desc[i]->name;
+        }
 
         pir::Operation* new_op;
         for (size_t i = 0; i < func_size; ++i) {
           if (i == 0) {
             builder.set_insertion_point(op_item);
-            new_op = Build(reshard_func_desc[i].get(),
-                           builder,
-                           std::vector<pir::Value>({reshard_operand_value}));
-            reshard_operand_value.ReplaceUsesWithIf(
-                new_op->result(0),
-                [new_op](pir::OpOperand op) { return op.owner() != new_op; });
-            op_item->Erase();
+            VLOG(0) << "process reshard func desc "
+                    << reshard_func_desc[i]->name;
+            if (reshard_func_desc[i]->name == "Send" ||
+                reshard_func_desc[i]->name == "Recv") {
+              phi::distributed::BaseOpDesc* send_op_desc = nullptr;
+              phi::distributed::BaseOpDesc* recv_op_desc = nullptr;
+              if (reshard_func_desc[i]->name == "Send") {
+                send_op_desc = reshard_func_desc[i].get();
+                recv_op_desc = reshard_func_desc[++i].get();
+              } else if (reshard_func_desc[i]->name == "Recv") {
+                recv_op_desc = reshard_func_desc[i].get();
+                send_op_desc = reshard_func_desc[++i].get();
+              }
+
+              pir::Operation* send_op =
+                  Build(send_op_desc,
+                        builder,
+                        std::vector<pir::Value>({reshard_operand_value}));
+              pir::Operation* recv_op =
+                  Build(recv_op_desc, builder, std::vector<pir::Value>());
+              reshard_operand_value.ReplaceUsesWithIf(
+                  recv_op->result(0), [send_op](pir::OpOperand op) {
+                    return op.owner() != send_op;
+                  });
+              op_item->Erase();
+              new_op = recv_op;
+              builder.SetInsertionPointAfter(recv_op);
+            } else {
+              reshard_operand_value.ReplaceUsesWithIf(
+                  new_op->result(0),
+                  [new_op](pir::OpOperand op) { return op.owner() != new_op; });
+              op_item->Erase();
+            }
           } else {
+            VLOG(0) << "process reshard func desc "
+                    << reshard_func_desc[i]->name;
             reshard_operand_value = new_op->result(0);
             pir::Operation* new_op_tmp =
                 Build(reshard_func_desc[i].get(),
                       builder,
                       std::vector<pir::Value>({reshard_operand_value}));
+
             reshard_operand_value.ReplaceUsesWithIf(
                 new_op_tmp->result(0), [new_op_tmp](pir::OpOperand op) {
                   return op.owner() != new_op_tmp;

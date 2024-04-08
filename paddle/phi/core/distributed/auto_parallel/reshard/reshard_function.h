@@ -16,8 +16,8 @@
 #include <memory>
 #include <vector>
 
-#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/common/reshard_function_desc.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 class DeviceContext;
@@ -44,7 +44,7 @@ class ReshardFunction {
                     const TensorDistAttr& out_dist_attr,
                     DistTensor* out) = 0;
 
-  std::vector<std::unique_ptr<ReshardFuncDesc>> GetReshardFuncDescs() {
+  std::vector<std::unique_ptr<BaseOpDesc>> GetReshardFuncDescs() {
     return std::move(reshard_func_descs_);
   }
   virtual std::string Name() { return "ReshardBase"; }
@@ -56,7 +56,7 @@ class ReshardFunction {
                     const TensorDistAttr& dist_attr);
   void SetDistProps(DistTensor* tensor, const TensorDistAttr& dist_attr);
   DenseTensor* GetMutableTensor(DistTensor* tensor);
-  std::vector<std::unique_ptr<ReshardFuncDesc>> reshard_func_descs_;
+  std::vector<std::unique_ptr<BaseOpDesc>> reshard_func_descs_;
 };
 
 }  // namespace distributed

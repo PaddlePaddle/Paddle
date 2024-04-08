@@ -25,12 +25,10 @@ namespace phi {
 namespace distributed {
 
 struct BaseOpDesc {
-  ReshardFuncDesc(const std::string& n, DataType d) : name(n), dtype(d) {}
-  ReshardFuncDesc(const std::string& n,
-                  DataType d,
-                  const std::vector<int64_t>& pids)
+  BaseOpDesc(const std::string& n, DataType d) : name(n), dtype(d) {}
+  BaseOpDesc(const std::string& n, DataType d, const std::vector<int64_t>& pids)
       : name(n), dtype(d), process_ids(pids) {}
-  virtual ~ReshardFuncDesc() {}
+  virtual ~BaseOpDesc() {}
 
   std::string name;
   DataType dtype;
@@ -39,56 +37,16 @@ struct BaseOpDesc {
 
 struct AllReduceOpDesc : public BaseOpDesc {
   AllReduceOpDesc(DataType dt, const std::vector<int64_t>& pids, int red_type)
-      : ReshardFuncDesc("AllReduce", dt, pids), reduce_type(red_type) {}
+      : BaseOpDesc("AllReduce", dt, pids), reduce_type(red_type) {}
   int reduce_type;
 };
-
-struct AllGatherOpDesc : public BaseOpDesc {
-  AllGatherOpDesc(DataType dt, const std::vector<int64_t>& pids)
-      : ReshardFuncDesc("Split", dt, pids) {}
-};
-
-struct SplitOpDesc : public BaseOpDesc {
-  SplitOpDesc(DataType dt, const std::vector<int64_t>& sts, int64_t ax)
-      : ReshardFuncDesc("Split", dt), sections(sts), axis(ax) {}
-
-  std::vector<int64_t> sections;
-  int64_t axis;
-};
-
-struct ConcatOpDesc : public BaseOpDesc {
-  ConcatOpDesc(DataType dt, int64_t ax)
-      : ReshardFuncDesc("Concat", dt), axis(ax) {}
-  int64_t axis;
-};
-
-//  struct FullOpDesc : public ReshardFuncDesc {
-//      phi::IntArray shape;
-//      int64_t value;
-//      FullOpDesc(DataType dt, const phi::IntArray& array, int64_t val):
-//      ReshardFuncDesc("Full", dt), shape(array), value(val) { }
-
-//      pir::Operation* Build(pir::Builder& builder, pir::Value& input) override
-//      {
-//          return builder.Build<paddle::dialect::FullOp>(shape, value);
-//      }
-//  };
-
-//  struct DivideOpDesc : public ReshardFuncDesc {
-//      DivideOpDesc(DataType dt): ReshardFuncDesc("Full", dt) {}
-//      pir::Operation* Build(pir::Builder& builder, pir::Value& input) override
-//      {
-//          return builder.Build<paddle::dialect::DivideOp>(input, ring_id,
-//          reduce_type);
-//      }
-//  };
 
 struct SendOpDesc : public BaseOpDesc {
   SendOpDesc(DataType dt,
              const std::vector<int64_t>& pids,
              int peer_rank,
              bool dyn_shape)
-      : ReshardFuncDesc("Send", dt, pids),
+      : BaseOpDesc("Send", dt, pids),
         peer(peer_rank),
         dynamic_shape(dyn_shape) {}
 
@@ -101,7 +59,7 @@ struct RecvOpDesc : public BaseOpDesc {
              const std::vector<int64_t>& pids,
              int peer_rank,
              bool dyn_shape)
-      : ReshardFuncDesc("Recv", dt, pids),
+      : BaseOpDesc("Recv", dt, pids),
         peer(peer_rank),
         dynamic_shape(dyn_shape) {}
 

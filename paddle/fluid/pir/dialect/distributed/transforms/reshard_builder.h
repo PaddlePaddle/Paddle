@@ -60,25 +60,25 @@ static CommContext* GetCommContext(const std::vector<int64_t>& process_ids) {
   return comm_context;
 }
 
-inline pir::Operation* Build(const ReshardFuncDesc* base_desc,
-                             const pir::Builder& builder,
+inline pir::Operation* Build(BaseOpDesc* op_desc,    // NOLINT
+                             pir::Builder& builder,  // NOLINT
                              const std::vector<pir::Value>& inputs) {
-  if (base_desc->name == "AllReduce") {
-    AllReduceOpDesc* desc = dynamic_cast<AllReduceOpDesc*>(base_desc);
+  if (op_desc->name == "AllReduce") {
+    AllReduceOpDesc* desc = dynamic_cast<AllReduceOpDesc*>(op_desc);
     GetCommContext(desc->process_ids);
 
     std::string ring_id = GenUniqueCommKey(desc->process_ids);
     return builder.Build<paddle::dialect::AllReduceOp>(
         inputs[0], ring_id, desc->reduce_type);
-  } else if (base_desc->name == "Send") {
-    SendOpDesc* desc = dynamic_cast<SendOpDesc*>(base_desc);
+  } else if (op_desc->name == "Send") {
+    SendOpDesc* desc = dynamic_cast<SendOpDesc*>(op_desc);
     GetCommContext(desc->process_ids);
 
     std::string ring_id = GenUniqueCommKey(desc->process_ids);
     return builder.Build<paddle::dialect::PSendOp>(
         inputs[0], ring_id, desc->peer, desc->dynamic_shape);
-  } else if (base_desc->name == "Recv") {
-    RecvOpDesc* desc = dynamic_cast<RecvOpDesc*>(base_desc);
+  } else if (op_desc->name == "Recv") {
+    RecvOpDesc* desc = dynamic_cast<RecvOpDesc*>(op_desc);
     GetCommContext(desc->process_ids);
 
     std::string ring_id = GenUniqueCommKey(desc->process_ids);

@@ -127,6 +127,7 @@ void SameStatusReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     }
   }
   SetDistProps(out, in.dims(), out_dist_attr);
+  VLOG(0) << "find same_status_func func_size " << reshard_func_descs_.size();
 }
 
 }  // namespace distributed
