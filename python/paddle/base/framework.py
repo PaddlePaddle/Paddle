@@ -8215,13 +8215,13 @@ def add_cast_for_type_promotion(op, block, idx, var_name, out_dtype):
 def can_skip_promote(op):
     if op.type != "elementwise_add":
         return False
-    input_names = op.input_arg_names
-    input_x_dtype = op.block._var_recursive(input_names[0]).dtype
-    input_y_dtype = op.block._var_recursive(input_names[1]).dtype
+    input_x_dtype = op.block._find_var_recursive(op.input('X')[0]).dtype
+    input_y_dtype = op.block._find_var_recursive(op.input('Y')[0]).dtype
     if input_x_dtype == paddle.float32 and (
         input_y_dtype in [paddle.float16, paddle.bfloat16]
     ):
         return True
+
     return False
 
 
