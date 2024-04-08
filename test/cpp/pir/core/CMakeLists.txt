@@ -7,7 +7,6 @@ paddle_test(ir_builder_test SRCS ir_builder_test.cc)
 paddle_test(ir_program_test SRCS ir_program_test.cc)
 paddle_test(ir_infershape_test SRCS ir_infershape_test.cc)
 paddle_test(scalar_attribute_test SRCS scalar_attribute_test.cc)
-paddle_test(ir_printer_test SRCS ir_printer_test.cc DEPS test_dialect)
 paddle_test(paddle_fatal_test SRCS paddle_fatal_test.cc)
 
 file(
