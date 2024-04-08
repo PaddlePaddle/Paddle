@@ -112,7 +112,7 @@ class FusedWeightOnlyLinearWithBiasPattern
       // TODO(liuyuanle): When the operator weight_quantize supports
       // weight_only_int4 on gpu version, delete the memory copy.
       const auto &memcpy_d2h =
-          res.Op(paddle::dialect::MemcpyOp::name(),
+          res.Op(paddle::dialect::MemcpyD2hOp::name(),
                  {{"dst_place_type", res.Int32Attr(0 /*cpu*/)}});
       res.Tensor("w_cpu") = memcpy_d2h(res.Tensor("w"));
       const auto &weight_quantize =
@@ -125,12 +125,12 @@ class FusedWeightOnlyLinearWithBiasPattern
                        &res.Tensor("weight_scale_tensor_cpu")});
 
       const auto &memcpy_h2d_1 =
-          res.Op(paddle::dialect::MemcpyOp::name(),
+          res.Op(paddle::dialect::MemcpyH2dOp::name(),
                  {{"dst_place_type", res.Int32Attr(1 /*gpu*/)}});
       res.Tensor("quanted_weight_tensor") =
           memcpy_h2d_1(res.Tensor("quanted_weight_tensor_cpu"));
       const auto &memcpy_h2d_2 =
-          res.Op(paddle::dialect::MemcpyOp::name(),
+          res.Op(paddle::dialect::MemcpyH2dOp::name(),
                  {{"dst_place_type", res.Int32Attr(1 /*gpu*/)}});
       res.Tensor("weight_scale_tensor") =
           memcpy_h2d_2(res.Tensor("weight_scale_tensor_cpu"));
@@ -225,7 +225,7 @@ class FusedWeightOnlyLinearNoBiasPattern : public paddle::drr::DrrPatternBase {
       // TODO(liuyuanle): When the operator weight_quantize supports
       // weight_only_int4 on gpu version, delete the memory copy.
       const auto &memcpy_d2h =
-          res.Op(paddle::dialect::MemcpyOp::name(),
+          res.Op(paddle::dialect::MemcpyD2hOp::name(),
                  {{"dst_place_type", res.Int32Attr(0 /*cpu*/)}});
       res.Tensor("w_cpu") = memcpy_d2h(res.Tensor("w"));
       const auto &weight_quantize =
@@ -238,12 +238,12 @@ class FusedWeightOnlyLinearNoBiasPattern : public paddle::drr::DrrPatternBase {
                        &res.Tensor("weight_scale_tensor_cpu")});
 
       const auto &memcpy_h2d_1 =
-          res.Op(paddle::dialect::MemcpyOp::name(),
+          res.Op(paddle::dialect::MemcpyH2dOp::name(),
                  {{"dst_place_type", res.Int32Attr(1 /*gpu*/)}});
       res.Tensor("quanted_weight_tensor") =
           memcpy_h2d_1(res.Tensor("quanted_weight_tensor_cpu"));
       const auto &memcpy_h2d_2 =
-          res.Op(paddle::dialect::MemcpyOp::name(),
+          res.Op(paddle::dialect::MemcpyH2dOp::name(),
                  {{"dst_place_type", res.Int32Attr(1 /*gpu*/)}});
       res.Tensor("weight_scale_tensor") =
           memcpy_h2d_2(res.Tensor("weight_scale_tensor_cpu"));
@@ -279,7 +279,7 @@ class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {
         sm_version_(getSMVersion()) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
-    std::string algo = "weight_only_int8";
+    std::string algo = "weight_only_int4";
     if (Has("weight_only_algo")) {
       algo = Get<std::string>("weight_only_algo");
     }

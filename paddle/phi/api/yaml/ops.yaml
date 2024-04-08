@@ -2559,7 +2559,7 @@
   kernel :
     func : shape {dense -> dense},
            shape_sr {selected_rows -> dense}
-  data_transform:
+  data_transform :
     skip_transform : input
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
@@ -2620,7 +2620,7 @@
     spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : sin
-  inplace: (x -> out)
+  inplace : (x -> out)
   backward : sin_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
@@ -2781,10 +2781,10 @@
 - op : swiglu
   args : (Tensor x, Tensor y)
   output : Tensor(out)
-  infer_meta:
-     func: SwiGLUInferMeta
-     spmd_rule: SwiGLUInferSpmd
-  kernel:
+  infer_meta :
+     func : SwiGLUInferMeta
+     spmd_rule : SwiGLUInferSpmd
+  kernel :
      func : swiglu
   optional : y
   backward: swiglu_grad
@@ -2808,7 +2808,7 @@
     func : UnchangedInferMeta
   kernel :
     func : tan
-  inplace: (x -> out)
+  inplace : (x -> out)
   backward : tan_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
@@ -3057,9 +3057,9 @@
     func : WarpctcInferMeta
   kernel :
     func : warpctc
-    data_type: logits
-  optional: logits_length, labels_length
-  intermediate: warpctcgrad
+    data_type : logits
+  optional : logits_length, labels_length
+  intermediate : warpctcgrad
   backward : warpctc_grad
 
 - op : warprnnt
@@ -3069,8 +3069,8 @@
     func : WarprnntInferMeta
   kernel :
     func : warprnnt
-    data_type: input
-  intermediate: warprnntgrad
+    data_type : input
+  intermediate : warprnntgrad
   backward : warprnnt_grad
 
 - op : weight_dequantize
@@ -3090,8 +3090,8 @@
   kernel :
     func : weight_only_linear
     data_type : x
-  optional: bias
-  backward: weight_only_linear_grad
+  optional : bias
+  backward : weight_only_linear_grad
 
 - op : weight_quantize
   args : (Tensor x, str algo = "weight_only_int8", int arch = 80, int group_size = -1)
@@ -3100,7 +3100,8 @@
     func : WeightQuantizeInferMeta
   kernel :
     func : weight_quantize
-    data_type: x
+    data_type : x
+    backend : x
 
 - op : weighted_sample_neighbors
   args : (Tensor row, Tensor colptr, Tensor edge_weight, Tensor input_nodes, Tensor eids, int sample_size, bool return_eids)
@@ -3119,7 +3120,7 @@
     spmd_rule: WhereInferSpmd
   kernel :
     func : where
-  inplace: (x -> out)
+  inplace : (x -> out)
   backward : where_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
