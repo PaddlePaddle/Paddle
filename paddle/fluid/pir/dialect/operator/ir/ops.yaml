@@ -107,6 +107,14 @@
   inplace : (output -> out)
   backward : assign_out__grad
 
+- op : assign_pos
+  args : (Tensor x, Tensor cum_count, Tensor eff_num_len)
+  output : Tensor(out)
+  infer_meta :
+    func : AssignPosInferMeta
+  kernel :
+    func : assign_pos
+
 - op : assign_value
   args : (int[] shape, DataType dtype, Scalar[] values, Place place = {})
   output : Tensor(out)
@@ -469,6 +477,16 @@
     data_type : x
   optional : in_accum, in_state, out_scale, out_accum, out_state
   inplace : (scale -> out_scale, in_accum -> out_accum, in_state -> out_state)
+
+- op : dgc_momentum
+  args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, Tensor current_step_tensor, Tensor nranks_tensor, float mu, bool use_nesterov=false, str regularization_method="", float regularization_coeff=0.0f, bool multi_precision=false, float rescale_grad=1.0f, float rampup_begin_step=-1.0f)
+  output : Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out), Tensor(grad_out)
+  infer_meta :
+    func : DGCMomentumInferMeta
+  kernel :
+    func : dgc_momentum
+    data_type : param
+  optional : master_param, master_param_out
 
 - op : disable_check_model_nan_inf
   args: (Tensor x, int flag = 0)

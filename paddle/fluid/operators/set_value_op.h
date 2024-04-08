@@ -23,8 +23,8 @@
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/assign_value_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
