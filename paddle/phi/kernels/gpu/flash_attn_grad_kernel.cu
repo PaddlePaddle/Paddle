@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/flash_attn_grad_kernel.h"
 #include <cstddef>
 #include "glog/logging.h"  // For VLOG()
+#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
@@ -33,7 +34,7 @@ int get_num_split() {
   // 0 for an internal heuristic, which is optimal
   return FLAGS_cudnn_deterministic ? 1 : 0;
 }
-bool isContiguous(const DenseTensor& t) {
+static bool isContiguous(const DenseTensor& t) {
   auto rank = t.dims().size();
   auto s = t.strides()[rank - 1];
   if (s != 1) return false;
@@ -46,41 +47,114 @@ bool isContiguous(const DenseTensor& t) {
   }
   return true;
 }
-template <typename T>
-__global__ void SumStridedKV(const T* src,
-                             T* dst,
-                             size_t sRowDim1,
-                             size_t sRowDim2,
-                             size_t sRowDim3,
-                             size_t sColDim,
-                             size_t sRowStride1,
-                             size_t sRowStride2,
-                             size_t sRowStride3,
-                             size_t sColStride,
-                             size_t dRowStride1,
-                             size_t dRowStride2,
-                             size_t dRowStride3) {
-  for (size_t row1 = blockIdx.x; row1 < sRowDim1; row1 += gridDim.x)
-    for (size_t row2 = 0; row2 < sRowDim2; row2++)
-      for (size_t row3 = threadIdx.x; row3 < sRowDim3; row3 += blockDim.x) {
-        T v{0};
-        for (size_t col = 0; col < sColDim; col++) {
-          v += src[row1 * sRowStride1 + row2 * sRowStride2 +
-                   row3 * sRowStride3 + col * sColStride];
-        }
-        dst[row1 * dRowStride1 + row2 * dRowStride2 + row3 * dRowStride3] = v;
+template <typename T, uint64_t HeaddimDiv32>
+static __global__ void SumStridedKV(const T* src,
+                                    T* dst,
+                                    const uint64_t sRowDim1,
+                                    const uint64_t sRowDim2,
+                                    const uint64_t sRowDim3,
+                                    const uint64_t sColDim,
+                                    const uint64_t sRowStride1,
+                                    const uint64_t sRowStride2,
+                                    const uint64_t sColStride,
+                                    const uint64_t dRowStride1,
+                                    const uint64_t dRowStride2) {
+  // SrcShape [seqlen, num_heads_k, num_heads/num_heads_k, headdim]
+  // AxisName [row1  , row2       , col                  , row3   ]
+  // LoopMap  [blockx, thready    , serialreduce         , threadx]
+  // Ensure blockDim.x == 32 && blockDim.z == 1
+  // Ensure sRowStride3 == dRowStride3 == 1 (headdim dim is contiguous)
+  using IndexType = uint64_t;
+  constexpr IndexType BlockDimX = 32;
+  const IndexType SRow1Begin = blockIdx.x * sRowStride1;
+  const IndexType SRow1End = sRowDim1 * sRowStride1;
+  const IndexType SRow1Stride = gridDim.x * sRowStride1;
+
+  const IndexType SRow2Begin = threadIdx.y * sRowStride2;
+  const IndexType SRow2End = sRowDim2 * sRowStride2;
+  const IndexType SRow2Stride = blockDim.y * sRowStride2;
+
+  // const IndexType SRow3Begin = threadIdx.x * sRowStride3;
+  // const IndexType SRow3End = sRowDim3 * sRowStride3;
+  // const IndexType SRow3Stride = BlockDimX * sRowStride3;
+
+  constexpr IndexType SColBegin = 0;
+  const IndexType SColEnd = sColDim * sColStride;
+  const IndexType SColStride = sColStride;
+
+  const IndexType DRow1Begin = blockIdx.x * dRowStride1;
+  const IndexType DRow1Stride = gridDim.x * dRowStride1;
+
+  const IndexType DRow2Begin = threadIdx.y * dRowStride2;
+  const IndexType DRow2Stride = dRowStride2;
+
+  // const IndexType DRow3Begin = threadIdx.x * dRowStride3;
+  // const IndexType DRow3Stride = blockDim.x * dRowStride3;
+
+  for (auto row1 = SRow1Begin, drow1 = DRow1Begin; row1 < SRow1End;
+       row1 += SRow1Stride, drow1 += DRow1Stride) {
+    for (auto row2 = SRow2Begin, drow2 = DRow2Begin; row2 < SRow2End;
+         row2 += SRow2Stride, drow2 += DRow2Stride) {
+      const auto i1 = row1 + row2 + threadIdx.x;
+      const auto di1 = drow1 + drow2 + threadIdx.x;
+      T v[HeaddimDiv32];
+#pragma unroll
+      for (auto i = IndexType(0); i < HeaddimDiv32; i++) {
+        v[i] = T{0};
       }
+      for (auto col = SColBegin; col < SColEnd; col += SColStride) {
+        const auto i2 = i1 + col;
+#pragma unroll
+        for (auto i = IndexType(0); i < HeaddimDiv32; i++) {
+          v[i] += src[i2 + i * BlockDimX];
+        }
+      }
+#pragma unroll
+      for (auto i = IndexType(0); i < HeaddimDiv32; i++) {
+        dst[di1 + i * BlockDimX] = v[i];
+      }
+    }
+  }
+}
+
+template <typename T>
+static auto selectSumkernel(int64_t headdim) {
+  PADDLE_ENFORCE_LE(headdim, 256, "FlashAttention only support headdim <= 256");
+  PADDLE_ENFORCE_EQ(
+      headdim % 32, 0, "FlashAttention only support headdim %% 32 == 0");
+  PADDLE_ENFORCE_NE(headdim, 0, "Headdim can't be zero");
+#define CASEN(n) \
+  case n:        \
+    return SumStridedKV<T, n>;
+  switch (headdim / 32) {
+    CASEN(1);
+    CASEN(2);
+    CASEN(3);
+    CASEN(4);
+    CASEN(5);
+    CASEN(6);
+    CASEN(7);
+    CASEN(8);
+  }
+  PADDLE_FATAL("Unreachable in selectSumKernel");
+#undef CASEN
 }
 
 template <typename T, typename Context>
-void kvReduceForGQA(const Context& ctx,
-                    const DenseTensor& dk_tmp,
-                    DenseTensor* dk) {
-  const size_t reduceDimSize = dk_tmp.dims()[2];
+static void kvReduceForGQA(const Context& ctx,
+                           const DenseTensor& dk_tmp,
+                           DenseTensor* dk) {
+  PADDLE_ENFORCE_EQ(
+      dk->strides()[2], 1, "headdim dimention must be contiguous");
+  PADDLE_ENFORCE_EQ(
+      dk_tmp.strides()[3], 1, "headdim dimention must be contiguous");
+  const int64_t reduceDimSize = dk_tmp.dims()[2];
   const size_t blockNum =
-      std::min((static_cast<size_t>(dk_tmp.dims()[0] + 127) / 128),
-               static_cast<size_t>(1024l));
-  SumStridedKV<T><<<blockNum, 128, 0, ctx.stream()>>>(
+      std::min((static_cast<int64_t>(dk_tmp.dims()[0] + 31) / 32),
+               static_cast<int64_t>(1024l));
+  constexpr dim3 threadNum{32, 4, 1};
+  auto sumkernel = selectSumkernel<T>(dk_tmp.dims()[3]);
+  sumkernel<<<blockNum, threadNum, 0, ctx.stream()>>>(
       reinterpret_cast<const T*>(dk_tmp.data()),
       reinterpret_cast<T*>(dk->data()),
       dk_tmp.dims()[0],
@@ -89,20 +163,35 @@ void kvReduceForGQA(const Context& ctx,
       dk_tmp.dims()[2],
       dk_tmp.strides()[0],
       dk_tmp.strides()[1],
-      dk_tmp.strides()[3],
+      // dk_tmp.strides()[3],
       dk_tmp.strides()[2],
       dk->strides()[0],
-      dk->strides()[1],
-      dk->strides()[2]);
+      dk->strides()[1]
+      // dk->strides()[2]
+  );
 }
 template <typename T, typename Context>
-void kvReduceBatchedForGQA(const Context& ctx,
-                           const DenseTensor& dk_tmp,
-                           DenseTensor* dk) {
-  const size_t reduceDimSize = dk_tmp.dims()[3];
-  const size_t blockNum = std::min((dk_tmp.dims()[0] + 127) / 128, 1024l);
+static void kvReduceBatchedForGQA(const Context& ctx,
+                                  const DenseTensor& dk_tmp,
+                                  DenseTensor* dk) {
+  PADDLE_ENFORCE_EQ(
+      dk->strides()[3], 1, "headdim dimention must be contiguous");
+  PADDLE_ENFORCE_EQ(
+      dk_tmp.strides()[4], 1, "headdim dimention must be contiguous");
+  PADDLE_ENFORCE_EQ(dk->strides()[0],
+                    dk->strides()[1] * dk->dims()[1],
+                    "batchsize dimention must be contiguous");
+  PADDLE_ENFORCE_EQ(dk_tmp.strides()[0],
+                    dk_tmp.strides()[1] * dk_tmp.dims()[1],
+                    "batchsize dimention must be contiguous");
+  const int64_t reduceDimSize = dk_tmp.dims()[3];
+  const size_t blockNum = std::min(
+      (static_cast<int64_t>(dk_tmp.dims()[0] * dk_tmp.dims()[1] + 31) / 32),
+      static_cast<int64_t>(1024l));
+  constexpr dim3 threadNum{32, 4, 1};
+  auto sumkernel = selectSumkernel<T>(dk_tmp.dims()[4]);
   // here implicitly flat [batch,seqlen], and require batch dim to be contiguous
-  SumStridedKV<T><<<blockNum, 128, 0, ctx.stream()>>>(
+  sumkernel<<<blockNum, threadNum, 0, ctx.stream()>>>(
       reinterpret_cast<const T*>(dk_tmp.data()),
       reinterpret_cast<T*>(dk->data()),
       dk_tmp.dims()[0] * dk_tmp.dims()[1],
@@ -111,12 +200,14 @@ void kvReduceBatchedForGQA(const Context& ctx,
       dk_tmp.dims()[3],
       dk_tmp.strides()[1],
       dk_tmp.strides()[2],
-      dk_tmp.strides()[4],
+      // dk_tmp.strides()[4],
       dk_tmp.strides()[3],
       dk->strides()[1],
-      dk->strides()[2],
-      dk->strides()[3]);
+      dk->strides()[2]
+      // dk->strides()[3]
+  );
 }
+
 template <typename T, typename Context>
 void FlashAttnUnpaddedGradBaseKernel(
     const Context& ctx,
