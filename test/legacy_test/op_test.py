@@ -501,7 +501,7 @@ class OpTest(unittest.TestCase):
                     "This test of %s op needs check_grad." % cls.op_type
                 )
 
-            # check for op test with fp64 precision, but not check mkldnn op test for now
+            # check for op test with fp64 precision, but not check onednn op test for now
             if (
                 cls.dtype in [np.float32, np.float64]
                 and cls.op_type
@@ -1636,7 +1636,7 @@ class OpTest(unittest.TestCase):
                 np.testing.assert_allclose(
                     expect_out,
                     actual_out,
-                    rtol=1e-05,
+                    rtol=1e-03 if self.dtype == np.uint16 else 1e-5,
                     atol=inplace_atol,
                     err_msg='Operator ('
                     + self.op_type

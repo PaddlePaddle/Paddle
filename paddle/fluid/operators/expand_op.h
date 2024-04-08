@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 #define MAX_RANK_SUPPORTED 8
 
@@ -172,10 +172,10 @@ class ExpandKernel : public framework::OpKernel<T> {
     // use 32-bit index to speed up
     bool use_32bit_index = y.size() < Eigen::NumTraits<int>::highest();
     if (use_32bit_index) {
-      EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+      phi::funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
           place, To32BitIndex(y), To32BitIndex(x), bcast_dims);
     } else {
-      EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
+      phi::funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
           place, y, x, bcast_dims);
     }
   }
@@ -307,8 +307,8 @@ class ExpandGradKernel : public framework::OpKernel<T> {
     auto out_grad = EigenVector<T>::Flatten(*in0);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
-        place, x_grad, out_grad, reduce_dims, reshape_dims);
+    phi::funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::
+        Eval(place, x_grad, out_grad, reduce_dims, reshape_dims);
   }
 };
 
