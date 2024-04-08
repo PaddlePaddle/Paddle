@@ -531,45 +531,45 @@ class TestFusedDotProductAttentionPatternOutscaleNoCast(PassTest):
 )
 class TestFusedDotProductAttentionPatternTransposeSlice(PassTest):
     r"""
-               transpose
-                   |
-         ----------+_----------
-        |          |           |
-      slice      slice        slice
-        |          |           |
-        Q          K           V
-        |          |           |
-      scale    transpose       |
-        |          |           |
-        -- matmul--            |
-             |                 |
-  mask------add                |
-             |                 |
-           cast                |
-             |                 |
-          softmax              |
-             |                 |
-            cast               |
-             |                 |
-             ------matmul------
-                     |
                  transpose
                      |
-                    out
+           ----------+_----------
+          |          |           |
+        slice      slice        slice
+          |          |           |
+          Q          K           V
+          |          |           |
+        scale    transpose       |
+          |          |           |
+          -- matmul--            |
+               |                 |
+    mask------add                |
+               |                 |
+             cast                |
+               |                 |
+            softmax              |
+               |                 |
+              cast               |
+               |                 |
+               ------matmul------
+                       |
+                   transpose
+                       |
+                      out
 
-           transpose
-               |
-         ------+------
-         |     |     |
-       slice slice slice                   mask
-         |     |     |                       |
-         Q     K     V                     cast
-         |     |     |                       |
-   tranpose tranpose tranpose                |
-         |     |     |                       |
-         ------fused_dot_product_attention----
-                   |
-                  out
+             transpose
+                 |
+           ------+------
+           |     |     |
+         slice slice slice                   mask
+           |     |     |                       |
+           Q     K     V                     cast
+           |     |     |                       |
+     tranpose tranpose tranpose                |
+           |     |     |                       |
+           ------fused_dot_product_attention----
+                     |
+                    out
     """
 
     def is_program_valid(self, program=None):
@@ -588,8 +588,7 @@ class TestFusedDotProductAttentionPatternTransposeSlice(PassTest):
                             ):
                                 x = paddle.static.data(
                                     name='x',
-                                    shape=[bs, seq_len, 3,
-                                           num_heads, head_dim],
+                                    shape=[bs, seq_len, 3, num_heads, head_dim],
                                     dtype='float16',
                                 )
                                 mask_shape = [bs, num_heads, seq_len, seq_len]

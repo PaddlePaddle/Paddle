@@ -161,7 +161,7 @@ class FusedDotProductAttentionPatternQscale
         res.Op("pd_op.fused_dot_product_attention",
                {{{"scaling_factor", src.Attr("scale_q_value")},
                  {"dropout_probability", res.Float32Attr(0.0)},
-                 {"is_training", res.BoolAttr(true)},
+                 {"is_training", res.BoolAttr(false)},
                  {"is_causal_masking", res.BoolAttr(false)}}});
 
     fused_dot_product_attention({&res.Tensor("q"),
@@ -310,7 +310,7 @@ class FusedDotProductAttentionPatternOutscale
         res.Op("pd_op.fused_dot_product_attention",
                {{{"scaling_factor", src.Attr("scale_out_value")},
                  {"dropout_probability", res.Float32Attr(0.0)},
-                 {"is_training", res.BoolAttr(true)},
+                 {"is_training", res.BoolAttr(false)},
                  {"is_causal_masking", res.BoolAttr(false)}}});
 
     fused_dot_product_attention({&res.Tensor("q"),
@@ -465,7 +465,7 @@ class TransposeSliceFusedDotProductAttentionPattern
         res.Op("pd_op.fused_dot_product_attention",
                {{{"scaling_factor", src.Attr("scale_out_value")},
                  {"dropout_probability", res.Float32Attr(0.0)},
-                 {"is_training", res.BoolAttr(true)},
+                 {"is_training", res.BoolAttr(false)},
                  {"is_causal_masking", res.BoolAttr(false)}}});
 
     // [b, head, seq_len, head_dim] -> [b, seq_len, head, head_dim]
