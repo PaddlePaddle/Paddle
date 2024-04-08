@@ -442,7 +442,6 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.emplace_back("squeeze2_transpose2_onednn_fuse_pass");
     passes_.emplace_back("layer_norm_fuse_pass");
     passes_.emplace_back("attention_lstm_fuse_pass");
-    passes_.emplace_back("seqconv_eltadd_relu_fuse_pass");
     passes_.emplace_back("fc_lstm_fuse_pass");
     passes_.emplace_back("mul_lstm_fuse_pass");
     passes_.emplace_back("fc_gru_fuse_pass");
