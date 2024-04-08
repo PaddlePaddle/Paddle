@@ -66,7 +66,11 @@ def convert_attr(x, attr):
     # Value and Tensor are unified. So we don't need to transform
     # the size attr into a method call. The AttributeJstTransformer and
     # convert_attr can be safely removed.
-    if isinstance(x, Variable) and attr == "size":
+    if (
+        isinstance(x, Variable)
+        and not isinstance(x, paddle.Tensor)
+        and attr == "size"
+    ):
         return x.size()
     else:
         return getattr(x, attr)

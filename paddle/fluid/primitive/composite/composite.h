@@ -128,6 +128,60 @@ static bool valid_type(const DataType& dtype) {
 }
 
 template <typename T>
+Tensor p_norm_decomp(const Tensor& x,
+                     const float& porder = 2.0,
+                     const int& axis = -1,
+                     const float epsilon = 1.0e-12f,
+                     const bool& keepdim = false,
+                     const bool& asvector = false) {
+  auto org_dtype = x.dtype();
+  auto x_tmp = x;
+
+  bool need_cast = is_half_dtype(org_dtype);
+  if (need_cast) {
+    x_tmp = cast<T>(x, DataType::FLOAT32);
+  }
+
+  Tensor res;
+  if (porder == 0.0) {
+    // 0-norm
+    auto zero = full<T>(empty_shape, 0, x_tmp.dtype());
+    auto none_zero = not_equal<T>(x_tmp, zero);
+    res = cast<T>(none_zero, x_tmp.dtype());
+    res = sum<T>(res, {axis}, x_tmp.dtype(), keepdim);
+  } else if (porder == 1.0) {
+    // 1-norm
+    res = abs<T>(x_tmp);
+    res = sum<T>(res, {axis}, x_tmp.dtype(), keepdim);
+  } else if (porder == 2.0) {
+    // 2-norm
+    auto one = full<T>(empty_shape, 1, x_tmp.dtype());
+    res = one / rsqrt<T>(sum<T>(x_tmp * x_tmp, {axis}, x_tmp.dtype(), keepdim));
+  } else if (porder == INFINITY) {
+    // +INF-norm
+    res = abs<T>(x_tmp);
+    res = max<T>(x_tmp, {axis}, keepdim);
+  } else if (porder == -INFINITY) {
+    // -INF-norm
+    res = abs<T>(x_tmp);
+    res = min<T>(x_tmp, {axis}, keepdim);
+  } else {
+    // vanilla p-norm
+    auto porder_tensor = full<T>(empty_shape, porder, x_tmp.dtype());
+    auto inv_porder_tensor = full<T>(empty_shape, 1 / porder, x_tmp.dtype());
+    res = elementwise_pow<T>(x_tmp, porder_tensor);
+    res = sum<T>(res, {axis}, x_tmp.dtype(), keepdim);
+    res = elementwise_pow<T>(res, inv_porder_tensor);
+  }
+
+  if (need_cast) {
+    return cast<T>(res, org_dtype);
+  } else {
+    return res;
+  }
+}
+
+template <typename T>
 Tensor pow_decomp(const Tensor& x, const paddle::Scalar& y) {
   auto org_dtype = x.dtype();
   auto x_cast = x;

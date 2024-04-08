@@ -324,7 +324,11 @@ bool DrrRewritePattern::MatchFromOutputToInput(
     }
     return false;
   };
-
+  // Check whether Drr Tensor and IR Value is None.
+  const auto& IsNoneTensorAndValue = [](const Tensor* drr_input_tensor,
+                                        pir::Value ir_value) {
+    return drr_input_tensor->is_none() && ir_value == nullptr;
+  };
   // Step 1: Initialize DRR matched queue.
   bool matched = true;
   size_t step = 0;
@@ -348,7 +352,15 @@ bool DrrRewritePattern::MatchFromOutputToInput(
     auto ir_input_values = ir_node->operands_source();
     for (size_t i = 0; i < drr_input_tensors.size(); ++i) {
       if (drr_input_tensors[i]->is_none()) {
-        continue;
+        if (IsNoneTensorAndValue(drr_input_tensors[i], ir_input_values[i])) {
+          continue;
+        } else {
+          VLOG(8) << drr_node->name() << "Match failed:drr_input[" << i
+                  << "] !=  pir_intput[" << i << "] , drr_input_tensor[" << i
+                  << "] is None.";
+          matched = false;
+          break;
+        }
       }
       if (HasVisitedOperands(drr_input_tensors[i], ir_input_values[i])) {
         matched = false;
