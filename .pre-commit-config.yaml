@@ -42,7 +42,7 @@ repos:
     hooks:
     -   id: copyright_checker
         name: copyright_checker
-        entry: python ./tools/codestyle/copyright.hook
+        entry: python ./tools/codestyle/copyright.py
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|xpu|kps|py|sh)$
         exclude: |
@@ -67,7 +67,7 @@ repos:
     -   id: clang-format
         name: clang-format
         description: Format files with ClangFormat.
-        entry: bash ./tools/codestyle/clang_format.hook -i
+        entry: bash ./tools/codestyle/clang_format.sh -i
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps)$
 -   repo: local
@@ -75,7 +75,7 @@ repos:
     -   id: cpplint-cpp-source
         name: cpplint
         description: Check C++ code style using cpplint.py.
-        entry: bash ./tools/codestyle/cpplint_pre_commit.hook
+        entry: bash ./tools/codestyle/cpplint_pre_commit.sh
         language: system
         files: \.(cc|cxx|cpp|cu|h|hpp|hxx)$
         args:
