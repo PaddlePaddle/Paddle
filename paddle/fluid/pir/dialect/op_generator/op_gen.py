@@ -54,6 +54,7 @@ need_export_symbol_op_list = [
     'BatchNormOp',
     'FetchOp',
     'FullIntArrayOp',
+    'FusedConv2dAddActOp',
     'MatmulOp',
     'SoftmaxOp',
     'ReshapeOp',
