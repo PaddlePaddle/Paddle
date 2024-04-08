@@ -157,6 +157,9 @@ static void ProcessBlock(pir::Block* block) {
               new_op = recv_op;
               builder.SetInsertionPointAfter(recv_op);
             } else {
+              new_op = Build(reshard_func_desc[i].get(),
+                             builder,
+                             std::vector<pir::Value>({reshard_operand_value}));
               reshard_operand_value.ReplaceUsesWithIf(
                   new_op->result(0),
                   [new_op](pir::OpOperand op) { return op.owner() != new_op; });
