@@ -111,6 +111,11 @@ void FusedRopeKernel(const Context& dev_ctx,
                                      dims_size));
     if (dims_size == 4) {
       // sin.shape: [batch_size, seq_len, 1, head_dim]
+      PADDLE_ENFORCE_EQ(
+          (sin_dims[0] == 1 || sin_dims[0] == batch_size),
+          true,
+          phi::errors::InvalidArgument("The batch_size of sin and cos must be "
+                                       "1 or equal to batch_size."));
       PADDLE_ENFORCE_EQ((sin_dims[2] == 1),
                         true,
                         phi::errors::InvalidArgument(
@@ -355,25 +360,25 @@ void FusedRope3DKernel(const Context& dev_ctx,
       phi::errors::InvalidArgument("The dims of sin and cos is expected to "
                                    "be 4 or 6, but received %d.",
                                    dims_size));
+  // sin.shape: [1 or batch_size, frame * height * width, 1, head_dim] or
+  // sin.shape: [1 or batch_size, frame, height, width, 1, head_dim]
+  PADDLE_ENFORCE_EQ(
+      (sin_dims[0] == 1 || sin_dims[0] == batch_size),
+      true,
+      phi::errors::InvalidArgument(
+          "The batch_size and num_heads of sin and cos must be 1."));
+  PADDLE_ENFORCE_EQ(
+      (sin_dims[dims_size - 2] == 1),
+      true,
+      phi::errors::InvalidArgument(
+          "The batch_size and num_heads of sin and cos must be 1."));
   if (dims_size == 4) {
-    // sin.shape: [1 or batch_size, frame * height * width, 1, head_dim]
-    PADDLE_ENFORCE_EQ(
-        (sin_dims[2] == 1),
-        true,
-        phi::errors::InvalidArgument(
-            "The batch_size and num_heads of sin and cos must be 1."));
     PADDLE_ENFORCE_EQ((sin_dims[1] == seq_len),
                       true,
                       phi::errors::InvalidArgument(
                           "The sin.shape[1] must be equal to seq_len."));
   }
   if (dims_size == 6) {
-    // sin.shape: [1 or batch_size, frame, height, width, 1, head_dim]
-    PADDLE_ENFORCE_EQ(
-        (sin_dims[4] == 1),
-        true,
-        phi::errors::InvalidArgument(
-            "The batch_size and num_heads of sin and cos must be 1."));
     PADDLE_ENFORCE_EQ((sin_dims[1] * sin_dims[2] * sin_dims[3] == seq_len),
                       true,
                       phi::errors::InvalidArgument(

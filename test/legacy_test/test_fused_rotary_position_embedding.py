@@ -241,8 +241,8 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         tensor_v = self.get_paddle_tensor(self.shape_v)
 
         if return_random_sin_cos and with_sin_cos:
-            tensor_sin = self.get_paddle_tensor(self.shape_sin)
-            tensor_cos = self.get_paddle_tensor(self.shape_sin)
+            tensor_sin = paddle.uniform(self.shape_sin, self.dtype, -1, 1.0)
+            tensor_cos = paddle.uniform(self.shape_sin, self.dtype, -1, 1.0)
         else:
             tensor_sin, tensor_cos = (
                 get_sin_cos_tensor(tensor_q.shape[1], tensor_q.shape[3], 1)

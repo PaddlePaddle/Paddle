@@ -105,7 +105,7 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
     def setUp(self):
         self.dtype = 'float32'
         self.training = True
-        self.seed = 1203
+        self.seed = 9876
         self.rtol = 2e-5
 
     def get_paddle_tensor(self, shape):
@@ -123,8 +123,8 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         tensor_q = self.get_paddle_tensor(self.shape_q)
         tensor_k = self.get_paddle_tensor(self.shape_k)
         tensor_v = self.get_paddle_tensor(self.shape_v)
-        tensor_sin = self.get_paddle_tensor(self.shape_sin)
-        tensor_cos = self.get_paddle_tensor(self.shape_sin)
+        tensor_sin = paddle.uniform(self.shape_sin, self.dtype, -1, 1.0)
+        tensor_cos = paddle.uniform(self.shape_sin, self.dtype, -1, 1.0)
 
         return tensor_q, tensor_k, tensor_v, tensor_sin, tensor_cos
 
