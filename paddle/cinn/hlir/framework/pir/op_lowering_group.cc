@@ -19,6 +19,25 @@ namespace hlir {
 namespace framework {
 namespace pir {
 
+void OpLoweringGroup::UpdateShapeOrDataExprs() {
+  const auto& input_values = this->GetInputOpValues();
+  if (input_values.size() == 0) return;
+  const auto& UpdateDimExprs =
+      [&](const ::pir::Value& value) -> decltype(auto) {
+    auto* program = value.defining_op()->GetParentProgram();
+    auto& shape_analysis = ::pir::ShapeAnalysisManager::Instance().Get(program);
+    if (!shape_analysis.HasShapeOrDataForValue(value)) return;
+    VLOG(6) << "UpdateShapeOrDataExprs for value_id: " << value.impl();
+    this->SetShapeOrDataExprs(value,
+                              shape_analysis.GetShapeOrDataForValue(value));
+  };
+
+  for (const auto& value : input_values) {
+    if (!value || !value.defining_op()) continue;
+    UpdateDimExprs(value);
+  }
+}
+
 std::shared_ptr<OpLoweringGroup> OpLoweringGroup::Clone(
     ::pir::Block* target_block, ::pir::IrMapping* ir_mapping) const {
   std::vector<::pir::Operation*> new_ops;

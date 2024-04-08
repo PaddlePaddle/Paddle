@@ -88,33 +88,36 @@ std::unordered_map<std::string, ::pir::Attribute> GetJitKernelAttr(
 
 OpLoweringGroupPtr BuildOpLoweringGroup(pir::Operation* fusion_op_ptr) {
   auto fusion_op = fusion_op_ptr->dyn_cast<cinn::dialect::FusionOp>();
-  auto group = std::make_shared<OpLoweringGroup>();
-  group->set_op_pattern_kind(
-      cinn::hlir::framework::OpPatternKind::kElementWise);
+  std::vector<::pir::Operation*> ops;
+  auto group_op_kind = cinn::hlir::framework::OpPatternKind::kElementWise;
+  // Rebuild ops of the group
+  for (auto op : fusion_op.GetOperators()) {
+    if (!op->isa<::pir::YieldOp>()) {
+      ops.push_back(op);
+      group_op_kind = static_cast<int>(CompatibleInfo::OpKind(*op)) >
+                              static_cast<int>(group_op_kind)
+                          ? CompatibleInfo::OpKind(*op)
+                          : group_op_kind;
+    }
+  }
+
+  auto group = std::make_shared<OpLoweringGroup>(ops);
+
   if (fusion_op.attributes().count("group_info")) {
     auto attr = fusion_op.attribute("group_info")
                     .dyn_cast<cinn::dialect::GroupInfoAttribute>()
                     .data();
 
-    group->set_op_pattern_kind(attr.op_pattern_kind);
+    group_op_kind =
+        static_cast<int>(attr.op_pattern_kind) > static_cast<int>(group_op_kind)
+            ? attr.op_pattern_kind
+            : group_op_kind;
     group->set_loop_ranges(attr.loop_ranges);
     group->set_loop_ranges_expr(attr.loop_ranges_expr);
-
     group->set_reduce_axis(attr.reduce_axis);
     group->set_alignment_schedule_info(attr.alignment_schedule_info);
   }
-
-  // Rebuild ops of the group
-  for (auto op : fusion_op.GetOperators()) {
-    if (!op->isa<::pir::YieldOp>()) {
-      group->mut_ops().push_back(op);
-      auto op_pattern_kind = static_cast<int>(CompatibleInfo::OpKind(*op)) >
-                                     static_cast<int>(group->op_pattern_kind())
-                                 ? CompatibleInfo::OpKind(*op)
-                                 : group->op_pattern_kind();
-      group->set_op_pattern_kind(op_pattern_kind);
-    }
-  }
+  group->set_op_pattern_kind(group_op_kind);
 
   // Rebuild output_ops and input_ops of the group
   auto yield_op = fusion_op.GetOperators().back();
