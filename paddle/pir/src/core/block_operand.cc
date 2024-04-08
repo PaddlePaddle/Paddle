@@ -20,10 +20,12 @@
 
 namespace pir {
 
-#define CHECK_BLOCK_OPERAND_NULL_IMPL(func_name)                \
-  IR_ENFORCE(impl_,                                             \
-             "impl_ pointer is null when call func:" #func_name \
-             " , in class: BlockOperand.")
+#define CHECK_BLOCK_OPERAND_NULL_IMPL(func_name)             \
+  PADDLE_ENFORCE_NOT_NULL(                                   \
+      impl_,                                                 \
+      phi::errors::InvalidArgument(                          \
+          "impl_ pointer is null when call func:" #func_name \
+          " , in class: BlockOperand."))
 
 BlockOperand &BlockOperand::operator=(const BlockOperand &rhs) {
   if (this == &rhs) return *this;
