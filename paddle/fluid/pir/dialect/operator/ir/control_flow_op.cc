@@ -827,16 +827,27 @@ void HasElementsOp::Build(pir::Builder &builder,             // NOLINT
 void HasElementsOp::VerifySig() {
   VLOG(4) << "Verifying inputs, outputs ,attributes for: HasElementsOp.";
   // Verify inputs:
-  IR_ENFORCE(num_operands() == 1u, "The size of inputs must equal to 1.");
-  IR_ENFORCE(operand_type(0).isa<pir::ContainerType>(),
-             "The first input of cf.has_elements must be container type.");
+  PADDLE_ENFORCE_EQ(
+      num_operands(),
+      1u,
+      phi::errors::InvalidArgument("The size of inputs must equal to 1."));
+  PADDLE_ENFORCE_EQ(
+      operand_type(0).isa<pir::ContainerType>(),
+      true,
+      phi::errors::InvalidArgument(
+          "The first input of cf.has_elements must be container type."));
 
   // No attributes should be verify.
 
   // Verify outputs:
-  IR_ENFORCE(num_results() == 1u, "The size of outputs must be equal to 1.");
-  IR_ENFORCE((*this)->result_type(0).isa<DenseTensorType>(),
-             "The type of cf.has_elements' output is not correct.");
+  PADDLE_ENFORCE_EQ(
+      num_results(),
+      1u,
+      phi::errors::InvalidArgument("The size of outputs must be equal to 1."));
+  PADDLE_ENFORCE_EQ((*this)->result_type(0).isa<DenseTensorType>(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The type of cf.has_elements' output is not correct."));
 }
 
 const char *AssertOp::attributes_name[1] = {"summarize"};
@@ -886,9 +897,11 @@ void AssertOp::VerifySig() {
   VLOG(4) << "Verifying inputs:";
   {
     auto input_size = num_operands();
-    IR_ENFORCE(input_size == 2u,
-               "The size %d of inputs must be equal to 2.",
-               input_size);
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        2u,
+        phi::errors::InvalidArgument(
+            "The size %d of inputs must be equal to 2.", input_size));
 
     if ((*this)->operand_source(0).type().isa<pir::DenseTensorType>()) {
       IR_ENFORCE((*this)
@@ -921,16 +934,24 @@ void AssertOp::VerifySig() {
   VLOG(4) << "Verifying attributes:";
   {
     auto &attributes = this->attributes();
-    IR_ENFORCE(attributes.count("summarize") > 0, "summarize does not exist.");
-    IR_ENFORCE(attributes.at("summarize").isa<pir::Int64Attribute>(),
-               "Type of attribute: summarize is not pir::Int64Attribute.");
+    PADDLE_ENFORCE_GT(
+        attributes.count("summarize"),
+        0,
+        phi::errors::InvalidArgument("summarize does not exist."));
+    PADDLE_ENFORCE_EQ(
+        attributes.at("summarize").isa<pir::Int64Attribute>(),
+        true,
+        phi::errors::InvalidArgument(
+            "Type of attribute: summarize is not pir::Int64Attribute."));
   }
   VLOG(4) << "Verifying outputs:";
   {
     auto output_size = num_results();
-    IR_ENFORCE(output_size == 0u,
-               "The size %d of outputs must be equal to 0.",
-               output_size);
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        0u,
+        phi::errors::InvalidArgument(
+            "The size %d of outputs must be equal to 0.", output_size));
     // Outputs num is 0, not need to check outputs type.
   }
   VLOG(4) << "End Verifying for: AssertOp.";
@@ -941,74 +962,104 @@ void SelectInputOp::VerifySig() {
   VLOG(4) << "Verifying inputs:";
   {
     auto in_size = num_operands();
-    IR_ENFORCE(in_size == 3u, "Size %d of inputs must be 3.", in_size);
+    PADDLE_ENFORCE_EQ(
+        in_size,
+        3u,
+        phi::errors::InvalidArgument("Size %d of inputs must be 3.", in_size));
     auto input1 = (*this)->operand_source(1).type();
     auto input2 = (*this)->operand_source(2).type();
     if (input1.isa<paddle::dialect::DenseTensorType>() &&
         input2.isa<paddle::dialect::DenseTensorType>()) {
       auto tensor1 = input1.dyn_cast<paddle::dialect::DenseTensorType>();
       auto tensor2 = input2.dyn_cast<paddle::dialect::DenseTensorType>();
-      IR_ENFORCE(
-          tensor1.dtype() == tensor2.dtype(),
-          "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+      PADDLE_ENFORCE_EQ(
           tensor1.dtype(),
-          tensor2.dtype());
-      IR_ENFORCE(tensor1.data_layout() == tensor2.data_layout(),
-                 "The 1st input data_layout %s should be equal to 2ed input "
-                 "data_layout %s.",
-                 tensor1.data_layout(),
-                 tensor2.data_layout());
-      IR_ENFORCE(tensor1.lod() == tensor2.lod(),
-                 "The 1st input lod %s should be equal to 2ed input lod %s.",
-                 tensor1.lod(),
-                 tensor2.lod());
-      IR_ENFORCE(
-          tensor1.offset() == tensor2.offset(),
-          "The 1st input offset %s should be equal to 2ed input offset %s.",
+          tensor2.dtype(),
+          phi::errors::InvalidArgument(
+              "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+              tensor1.dtype(),
+              tensor2.dtype()));
+      PADDLE_ENFORCE_EQ(
+          tensor1.data_layout(),
+          tensor2.data_layout(),
+          phi::errors::InvalidArgument(
+              "The 1st input data_layout %s should be equal to 2ed input "
+              "data_layout %s.",
+              tensor1.data_layout(),
+              tensor2.data_layout()));
+      PADDLE_ENFORCE_EQ(
+          tensor1.lod(),
+          tensor2.lod(),
+          phi::errors::InvalidArgument(
+              "The 1st input lod %s should be equal to 2ed input lod %s.",
+              tensor1.lod(),
+              tensor2.lod()));
+      PADDLE_ENFORCE_EQ(
           tensor1.offset(),
-          tensor2.offset());
+          tensor2.offset(),
+          phi::errors::InvalidArgument(
+              "The 1st input offset %s should be equal to 2ed input offset %s.",
+              tensor1.offset(),
+              tensor2.offset()));
     } else if (input1.isa<paddle::dialect::AllocatedDenseTensorType>() &&
                input2.isa<paddle::dialect::AllocatedDenseTensorType>()) {
       auto tensor1 =
           input1.dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
       auto tensor2 =
           input1.dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
-      IR_ENFORCE(
-          tensor1.dtype() == tensor2.dtype(),
-          "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+      PADDLE_ENFORCE_EQ(
           tensor1.dtype(),
-          tensor2.dtype());
-      IR_ENFORCE(tensor1.data_layout() == tensor2.data_layout(),
-                 "The 1st input data_layout %s should be equal to 2ed input "
-                 "data_layout %s.",
-                 tensor1.data_layout(),
-                 tensor2.data_layout());
-      IR_ENFORCE(tensor1.lod() == tensor2.lod(),
-                 "The 1st input lod %s should be equal to 2ed input lod %s.",
-                 tensor1.lod(),
-                 tensor2.lod());
-      IR_ENFORCE(
-          tensor1.offset() == tensor2.offset(),
-          "The 1st input offset %s should be equal to 2ed input offset %s.",
+          tensor2.dtype(),
+          phi::errors::InvalidArgument(
+              "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+              tensor1.dtype(),
+              tensor2.dtype()));
+      PADDLE_ENFORCE_EQ(
+          tensor1.data_layout(),
+          tensor2.data_layout(),
+          phi::errors::InvalidArgument(
+              "The 1st input data_layout %s should be equal to 2ed input "
+              "data_layout %s.",
+              tensor1.data_layout(),
+              tensor2.data_layout()));
+      PADDLE_ENFORCE_EQ(
+          tensor1.lod(),
+          tensor2.lod(),
+          phi::errors::InvalidArgument(
+              "The 1st input lod %s should be equal to 2ed input lod %s.",
+              tensor1.lod(),
+              tensor2.lod()));
+      PADDLE_ENFORCE_EQ(
           tensor1.offset(),
-          tensor2.offset());
-      IR_ENFORCE(
-          tensor1.place() == tensor2.place(),
-          "The 1st input place %s should be equal to 2ed input place %s.",
+          tensor2.offset(),
+          phi::errors::InvalidArgument(
+              "The 1st input offset %s should be equal to 2ed input offset %s.",
+              tensor1.offset(),
+              tensor2.offset()));
+      PADDLE_ENFORCE_EQ(
           tensor1.place(),
-          tensor2.place());
+          tensor2.place(),
+          phi::errors::InvalidArgument(
+              "The 1st input place %s should be equal to 2ed input place %s.",
+              tensor1.place(),
+              tensor2.place()));
     } else {
-      IR_ENFORCE(input1 == input2,
-                 "The 1st input type %s should be equal to 2ed input type %s.",
-                 input1,
-                 input2);
+      PADDLE_ENFORCE_EQ(
+          input1,
+          input2,
+          phi::errors::InvalidArgument(
+              "The 1st input type %s should be equal to 2ed input type %s.",
+              input1,
+              input2));
     }
   }
   VLOG(4) << "Verifying outputs:";
   {
     auto out_size = num_results();
-    IR_ENFORCE(
-        out_size == 1u, "Size %d of outputs must be equal to 1.", out_size);
+    PADDLE_ENFORCE_EQ(out_size,
+                      1u,
+                      phi::errors::InvalidArgument(
+                          "Size %d of outputs must be equal to 1.", out_size));
   }
   VLOG(4) << "End Verifying for: AssignArray_Op.";
 }
@@ -1061,13 +1112,18 @@ void SelectOutputOp::VerifySig() {
   VLOG(4) << "Verifying inputs:";
   {
     auto in_size = num_operands();
-    IR_ENFORCE(in_size == 2u, "Size %d of inputs must be 2.", in_size);
+    PADDLE_ENFORCE_EQ(
+        in_size,
+        2u,
+        phi::errors::InvalidArgument("Size %d of inputs must be 2.", in_size));
   }
   VLOG(4) << "Verifying outputs:";
   {
     auto out_size = num_results();
-    IR_ENFORCE(
-        out_size == 2u, "Size %d of outputs must be equal to 2.", out_size);
+    PADDLE_ENFORCE_EQ(out_size,
+                      2u,
+                      phi::errors::InvalidArgument(
+                          "Size %d of outputs must be equal to 2.", out_size));
 
     auto out1 = (*this)->result(0).type();
     auto out2 = (*this)->result(1).type();
@@ -1075,58 +1131,83 @@ void SelectOutputOp::VerifySig() {
         out2.isa<paddle::dialect::DenseTensorType>()) {
       auto tensor1 = out1.dyn_cast<paddle::dialect::DenseTensorType>();
       auto tensor2 = out2.dyn_cast<paddle::dialect::DenseTensorType>();
-      IR_ENFORCE(
-          tensor1.dtype() == tensor2.dtype(),
-          "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+      PADDLE_ENFORCE_EQ(
           tensor1.dtype(),
-          tensor2.dtype());
-      IR_ENFORCE(tensor1.data_layout() == tensor2.data_layout(),
-                 "The 1st input data_layout %s should be equal to 2ed input "
-                 "data_layout %s.",
-                 tensor1.data_layout(),
-                 tensor2.data_layout());
-      IR_ENFORCE(tensor1.lod() == tensor2.lod(),
-                 "The 1st input lod %s should be equal to 2ed input lod %s.",
-                 tensor1.lod(),
-                 tensor2.lod());
-      IR_ENFORCE(
-          tensor1.offset() == tensor2.offset(),
-          "The 1st input offset %s should be equal to 2ed input offset %s.",
+          tensor2.dtype(),
+          phi::errors::InvalidArgument(
+              "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+              tensor1.dtype(),
+              tensor2.dtype()));
+      PADDLE_ENFORCE_EQ(
+          tensor1.data_layout(),
+          tensor2.data_layout(),
+          phi::errors::InvalidArgument(
+              "The 1st input data_layout %s should be equal to 2ed input "
+              "data_layout %s.",
+              tensor1.data_layout(),
+              tensor2.data_layout()));
+      PADDLE_ENFORCE_EQ(
+          tensor1.lod(),
+          tensor2.lod(),
+          phi::errors::InvalidArgument(
+              "The 1st input lod %s should be equal to 2ed input lod %s.",
+              tensor1.lod(),
+              tensor2.lod()));
+      PADDLE_ENFORCE_EQ(
           tensor1.offset(),
-          tensor2.offset());
+          tensor2.offset(),
+          phi::errors::InvalidArgument(
+              "The 1st input offset %s should be equal to 2ed input offset %s.",
+              tensor1.offset(),
+              tensor2.offset()));
     } else if (out1.isa<paddle::dialect::AllocatedDenseTensorType>() &&
                out2.isa<paddle::dialect::AllocatedDenseTensorType>()) {
       auto tensor1 = out1.dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
       auto tensor2 = out2.dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
-      IR_ENFORCE(
-          tensor1.dtype() == tensor2.dtype(),
-          "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+      PADDLE_ENFORCE_EQ(
           tensor1.dtype(),
-          tensor2.dtype());
-      IR_ENFORCE(tensor1.data_layout() == tensor2.data_layout(),
-                 "The 1st input data_layout %s should be equal to 2ed input "
-                 "data_layout %s.",
-                 tensor1.data_layout(),
-                 tensor2.data_layout());
-      IR_ENFORCE(tensor1.lod() == tensor2.lod(),
-                 "The 1st input lod %s should be equal to 2ed input lod %s.",
-                 tensor1.lod(),
-                 tensor2.lod());
-      IR_ENFORCE(
-          tensor1.offset() == tensor2.offset(),
-          "The 1st input offset %s should be equal to 2ed input offset %s.",
+          tensor2.dtype(),
+          phi::errors::InvalidArgument(
+              "The 1st input dtype %s should be equal to 2ed input dtype %s.",
+              tensor1.dtype(),
+              tensor2.dtype()));
+      PADDLE_ENFORCE_EQ(
+          tensor1.data_layout(),
+          tensor2.data_layout(),
+          phi::errors::InvalidArgument(
+              "The 1st input data_layout %s should be equal to 2ed input "
+              "data_layout %s.",
+              tensor1.data_layout(),
+              tensor2.data_layout()));
+      PADDLE_ENFORCE_EQ(
+          tensor1.lod(),
+          tensor2.lod(),
+          phi::errors::InvalidArgument(
+              "The 1st input lod %s should be equal to 2ed input lod %s.",
+              tensor1.lod(),
+              tensor2.lod()));
+      PADDLE_ENFORCE_EQ(
           tensor1.offset(),
-          tensor2.offset());
-      IR_ENFORCE(
-          tensor1.place() == tensor2.place(),
-          "The 1st input place %s should be equal to 2ed input place %s.",
+          tensor2.offset(),
+          phi::errors::InvalidArgument(
+              "The 1st input offset %s should be equal to 2ed input offset %s.",
+              tensor1.offset(),
+              tensor2.offset()));
+      PADDLE_ENFORCE_EQ(
           tensor1.place(),
-          tensor2.place());
+          tensor2.place(),
+          phi::errors::InvalidArgument(
+              "The 1st input place %s should be equal to 2ed input place %s.",
+              tensor1.place(),
+              tensor2.place()));
     } else {
-      IR_ENFORCE(out1 == out2,
-                 "The 1st input type %s should be equal to 2ed input type %s.",
-                 out1,
-                 out2);
+      PADDLE_ENFORCE_EQ(
+          out1,
+          out2,
+          phi::errors::InvalidArgument(
+              "The 1st input type %s should be equal to 2ed input type %s.",
+              out1,
+              out2));
     }
   }
   VLOG(4) << "End Verifying for: AssignArray_Op.";

@@ -37,7 +37,10 @@ Region::Iterator Region::insert(ConstIterator position, Block *block) {
 }
 
 Region::Iterator Region::erase(ConstIterator position) {
-  IR_ENFORCE(position->GetParent() == this, "iterator not own this region.");
+  PADDLE_ENFORCE_EQ(
+      position->GetParent(),
+      this,
+      phi::errors::InvalidArgument("iterator not own this region."));
   delete position;
   return blocks_.erase(position);
 }
