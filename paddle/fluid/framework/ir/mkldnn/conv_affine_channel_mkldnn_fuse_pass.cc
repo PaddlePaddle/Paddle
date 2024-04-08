@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/conv_affine_channel_mkldnn_fuse_pass.h"
 
+#include <Eigen/Dense>
 #include <cmath>
 
 #include "paddle/fluid/framework/convert_utils.h"

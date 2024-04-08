@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
 
+#include <Eigen/Dense>
 #include <memory>
 #include <sstream>
 #include <string>

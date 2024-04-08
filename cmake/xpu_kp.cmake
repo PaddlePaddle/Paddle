@@ -149,6 +149,7 @@ macro(compile_kernel COMPILE_ARGS)
   foreach(dir IN LISTS dirs)
     list(APPEND XPU_CXX_INCLUDES "-I${dir}")
   endforeach()
+  list(APPEND XPU_CXX_INCLUDES "-I/usr/include/x86_64-linux-gnu")
   string(REPLACE ";" " " XPU_CXX_INCLUDES "${XPU_CXX_INCLUDES}")
   separate_arguments(XPU_CXX_INCLUDES UNIX_COMMAND "${XPU_CXX_INCLUDES}")
 
