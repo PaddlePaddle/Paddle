@@ -15,6 +15,7 @@
 import paddle
 
 from .process_group import new_process_group
+from .reshard_funcs.base_reshard_func import choose_reshard_func
 
 
 def apply_partition_pass(program):
@@ -78,5 +79,26 @@ def apply_reshard_pass(program):
                 reduced_value.set_type(op.result(0).type())
                 op.result(0).replace_all_uses_with(reduced_value)
                 new_program.global_block().remove_op(op)
+
+    return new_program
+
+
+def apply_reshard_pass_v2(program):
+    new_program = program.clone()
+    with paddle.static.program_guard(new_program):
+        for op in new_program.global_block().ops:
+            # TODO(ywt): add common reshard rules
+            # only support 1-D partial to replicated now
+            if op.name() == 'dist_op.reshard':
+                op_operand_dist_attr = op.operand_source(0).dist_attr()
+                op_target_dist_attr = (
+                    op.attrs().at("op_dist_attr").operand_dist_attr(0)
+                )
+                reshard_func = choose_reshard_func(
+                    op_operand_dist_attr, op_target_dist_attr
+                )
+                reshard_func.eval(
+                    new_program, op, op_operand_dist_attr, op_target_dist_attr
+                )
 
     return new_program
