@@ -269,9 +269,6 @@ class TestSparseConv(unittest.TestCase):
             default_initializer=paddle.nn.initializer.Constant(value=1.0),
         )
 
-        # test extra_repr
-        print(subm_conv3d.extra_repr())
-
         sparse_out = subm_conv3d(sparse_input)
         # the output shape of subm_conv is same as input shape
         np.testing.assert_array_equal(indices, sparse_out.indices().numpy())
