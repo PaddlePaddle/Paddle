@@ -28,6 +28,12 @@ class ReduceTreePattern;
 class ReduceTreePlusTrivialPattern;
 class UnsupportPattern;
 class HorizontalFusionPattern;
+using StmtPattern = std::variant<TrivialPattern,
+                                 ReducePattern,
+                                 ReduceTreePattern,
+                                 ReduceTreePlusTrivialPattern,
+                                 HorizontalFusionPattern,
+                                 UnsupportPattern>;
 
 template <typename T>
 void ExtendVector(std::vector<T>* first, const std::vector<T>& second) {
@@ -106,18 +112,11 @@ struct UnsupportPattern {
 };
 
 struct HorizontalFusionPattern {
-  explicit HorizontalFusionPattern(const std::vector<pir::Operation*>& ops)
-      : ops_(ops) {}
-  std::vector<pir::Operation*> ops_;
-  std::vector<pir::Operation*> ops() const { return ops_; }
+  explicit HorizontalFusionPattern(const std::vector<StmtPattern>& patterns)
+      : patterns_(patterns) {}
+  std::vector<StmtPattern> patterns_;
+  std::vector<pir::Operation*> ops() const;
   static std::string name() { return "HorizontalFusionPattern"; }
 };
-
-using StmtPattern = std::variant<TrivialPattern,
-                                 ReducePattern,
-                                 ReduceTreePattern,
-                                 ReduceTreePlusTrivialPattern,
-                                 HorizontalFusionPattern,
-                                 UnsupportPattern>;
 
 }  // namespace cinn::frontend::group_cluster

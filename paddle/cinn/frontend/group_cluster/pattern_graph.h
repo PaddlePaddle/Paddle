@@ -222,8 +222,7 @@ struct MergeTrivialPatternOperation {
 
 struct LiftToHorizontalFusionPatternOperation {
   void operator()(PatternGraph* graph, PatternNodePtr i) {
-    i->stmt_pattern_ =
-        HorizontalFusionPattern(GetOpsInPattern(i->stmt_pattern_));
+    i->stmt_pattern_ = HorizontalFusionPattern({i->stmt_pattern_});
   }
 };
 

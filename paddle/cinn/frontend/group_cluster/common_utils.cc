@@ -168,7 +168,7 @@ StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second) {
     return TrivialPattern(ops);
   } else if (IsHorizontalFusionPattern(first) &&
              IsHorizontalFusionPattern(second)) {
-    return HorizontalFusionPattern(ops);
+    return HorizontalFusionPattern({first, second});
   } else {
     // Not Implementation.
     CHECK(false) << "Found not support merge!";

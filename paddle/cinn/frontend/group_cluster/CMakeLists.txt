@@ -1,5 +1,5 @@
 gather_srcs(group_cluster_src SRCS common_utils.cc pattern_node.cc
-            pattern_graph.cc)
+            pattern_graph.cc pattern.cc)
 
 add_subdirectory(cluster_policy)
 
