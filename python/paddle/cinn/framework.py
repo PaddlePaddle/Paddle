@@ -1,4 +1,4 @@
-# Copyright (c) 2023 CINN Authors. All Rights Reserved.
+# Copyright (c) 2021 CINN Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,19 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core_api.utils import (  # noqa: F401
-    EventType,
-    HostEvent,
-    HostEventRecorder,
-    ProfilerHelper,
-    kCodeGen,
-    kCompile,
-    kCompute,
-    kFusePass,
-    kGraph,
-    kInstruction,
-    kOptimize,
-    kOrdinary,
-    kProgram,
-    kSchedule,
-)
+from paddle.base import core
+
+__all__ = []
+
+for name in dir(core.cinn.framework):
+    globals()[name] = getattr(core.cinn.framework, name)
+    __all__.append(name)

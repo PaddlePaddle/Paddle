@@ -14,7 +14,7 @@
 
 import ast
 
-from cinn import ir
+from paddle.cinn import ir
 
 # The Python native AST node that cinn ir supports
 AST2CINN = {

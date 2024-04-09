@@ -12,4 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# used for setup.py.in to store the thirdparty shared libraries
+from paddle.base import core
+
+__all__ = []
+
+for name in dir(core.cinn.common):
+    globals()[name] = getattr(core.cinn.common, name)
+    __all__.append(name)

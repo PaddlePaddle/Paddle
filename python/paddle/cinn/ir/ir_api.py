@@ -1,4 +1,4 @@
-# Copyright (c) 2021 CINN Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,12 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core_api.poly import (  # noqa: F401
-    Condition,
-    Iterator,
-    SharedStage,
-    SharedStageMap,
-    Stage,
-    StageMap,
-    create_stages,
-)
+from paddle.cinn import ir
+
+from .ir_context import ForContext
+
+
+# Python's range() function calls the sequential()
+def sequential(min, extent=None):
+    if extent is None:
+        extent = min
+        min = ir.Expr(0)
+    if not isinstance(min, ir.Expr):
+        min = ir.Expr(min)
+    if not isinstance(extent, ir.Expr):
+        extent = ir.Expr(extent)
+    return ForContext(min, extent)

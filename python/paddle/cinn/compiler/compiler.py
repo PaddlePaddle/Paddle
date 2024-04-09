@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import cinn
+from paddle import cinn
+from paddle.cinn import lang
 
 from ..runtime import CinnLowerLevelIrJit
 from .compute_code_generator import ComputeCodeGenerator
@@ -33,7 +34,7 @@ def ast_to_llir(fn, inputs_signature):
 
 
 def llir_to_runtime_module(llir_func, target, function_name, arg_names):
-    cinn_builder = cinn.lang.Module.Builder(function_name, target)
+    cinn_builder = lang.Module.Builder(function_name, target)
     cinn_builder.add_function(llir_func)
     llir_module = cinn_builder.build()
     return cinn.runtime.Module(llir_module, target, function_name, arg_names)
