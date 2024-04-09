@@ -33,7 +33,8 @@ SpmdInfo SwiGLUInferSpmd(const DistMetaTensor& x, const DistMetaTensor& y) {
           phi::errors::Unimplemented("The input y is none and input x's last "
                                      "dim is sharded is not supported"));
     }
-    return ElementwiseUnaryInferSpmd(x);
+    auto res = ElementwiseUnaryInferSpmd(x);
+    return {{res.first[0], y.dist_attr()}, {res.second[0]}};
   } else {
     return ElementwiseBinaryInferSpmd(x, y);
   }
@@ -49,7 +50,8 @@ SpmdInfo SwiGLUInferSpmdReverse(const DistMetaTensor& x,
           phi::errors::Unimplemented("The input y is none and input x's last "
                                      "dim is sharded is not supported"));
     }
-    return ElementwiseUnaryInferSpmdReverse(x, out);
+    auto res = ElementwiseUnaryInferSpmdReverse(x, out);
+    return {{res.first[0], y.dist_attr()}, {res.second[0]}};
   } else {
     return ElementwiseBinaryInferSpmdReverse(x, y, out);
   }
@@ -65,7 +67,9 @@ SpmdInfo SwiGLUGradInferSpmd(const DistMetaTensor& x,
           phi::errors::Unimplemented("The input y is none and input x's last "
                                      "dim is sharded is not supported"));
     }
-    return ElementwiseUnaryGradInferSpmd(x, out_grad);
+    auto res = ElementwiseUnaryGradInferSpmd(x, out_grad);
+    return {{res.first[0], y.dist_attr(), res.first[1]},
+            {res.second[0], y.dist_attr()}};
   } else {
     return ElementwiseBinaryGradInferSpmd(x, y, out_grad);
   }

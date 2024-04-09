@@ -242,12 +242,15 @@ class TestSwigluSpmd(unittest.TestCase):
         x_tensor_dist_attr = TensorDistAttr()
         x_tensor_dist_attr.dims_mapping = [0, -1]
         x_tensor_dist_attr.process_mesh = process_mesh
+        self.x_dist_tensor_spec = DistTensorSpec(x_shape, x_tensor_dist_attr)
 
-        result_dist_attrs = self.rule.infer_forward(self.x_dist_tensor_spec)
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_dist_tensor_spec, DistTensorSpec()
+        )
         infered_input_dist_attrs = result_dist_attrs[0]
         infered_output_dist_attrs = result_dist_attrs[1]
         self.assertEqual(len(result_dist_attrs), 2)
-        self.assertEqual(len(infered_input_dist_attrs), 1)
+        self.assertEqual(len(infered_input_dist_attrs), 2)
         self.assertEqual(len(infered_output_dist_attrs), 1)
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1])
 
