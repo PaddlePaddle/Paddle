@@ -1077,32 +1077,34 @@ IR_API int GetDimExprPriority(const DimExpr& dim_expr) {
                     dim_expr.variant());
 }
 
-/**
- * @brief Compare the two dim exprs priority
- *
- * @param lhs The left-hand side dim expr
- * @param rhs The right-hand side dim expr
- *
- * @return -1 if lhs is less than rhs, 1 if lhs is greater than rhs, and 0 if
- * they are equal
- */
-int CompareDimExprPriority(const DimExpr& lhs, const DimExpr& rhs) {
+IR_API PriorityComparisonStatus CompareDimExprPriority(const DimExpr& lhs,
+                                                       const DimExpr& rhs) {
   int lhs_priority = GetDimExprPriority(lhs);
   int rhs_priority = GetDimExprPriority(rhs);
 
   if (lhs_priority != rhs_priority) {
-    return lhs_priority < rhs_priority ? -1 : 1;
+    return lhs_priority < rhs_priority ? PriorityComparisonStatus::Superior
+                                       : PriorityComparisonStatus::Inferior;
   }
 
-  auto CompareForEqualPrority =
-      Overloaded{[](const std::string& lhs, const std::string& rhs) {
-                   if (lhs.size() != rhs.size()) {
-                     return lhs.size() < rhs.size() ? -1 : 1;
-                   }
-                   return lhs.compare(rhs);
-                 },
-                 [](const auto& lhs, const auto& rhs) { return 0; }};
-  return std::visit(CompareForEqualPrority, lhs.variant(), rhs.variant());
+  auto CompareForEqualPriority = Overloaded{
+      [](const std::string& lhs, const std::string& rhs) {
+        if (lhs.size() != rhs.size()) {
+          return lhs.size() < rhs.size() ? PriorityComparisonStatus::Superior
+                                         : PriorityComparisonStatus::Inferior;
+        }
+        int compare_result = lhs.compare(rhs);
+        if (compare_result == 0)
+          return PriorityComparisonStatus::Equal;
+        else if (compare_result < 0)
+          return PriorityComparisonStatus::Superior;
+        else
+          return PriorityComparisonStatus::Inferior;
+      },
+      [](const auto& lhs, const auto& rhs) {
+        return PriorityComparisonStatus::Equal;
+      }};
+  return std::visit(CompareForEqualPriority, lhs.variant(), rhs.variant());
 }
 
 }  // namespace symbol

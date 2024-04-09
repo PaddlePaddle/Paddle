@@ -25,15 +25,15 @@ class IR_API ConstraintsManager {
  public:
   void AddEqCstr(const DimExpr& lhs, const DimExpr& rhs);
 
-  bool IsEqual(const DimExpr& lhs, const DimExpr& rhs);
+  bool IsEqual(const DimExpr& lhs, const DimExpr& rhs) const;
+
+  std::vector<std::vector<DimExpr>> GetEqualClusters() const;
 
   void AddGTOneCstr(const DimExpr& dim_expr);
 
-  bool IsGTOne(const DimExpr& dim_expr);
+  bool IsGTOne(const DimExpr& dim_expr) const;
 
-  void AddBCableCstr(const DimExpr& lhs, const DimExpr& rhs);
-
-  void PrintDimExprClusters(std::stringstream& ss);
+  void AddBroadcastableCstr(const DimExpr& lhs, const DimExpr& rhs);
 
   using EqualCallbackFunc = std::function<void(const DimExpr&, const DimExpr&)>;
   void SetEqualCallbackFunc(EqualCallbackFunc equal_callback_func);
@@ -41,19 +41,28 @@ class IR_API ConstraintsManager {
  private:
   void SubstituteInConstraint(const DimExpr& lhs, const DimExpr& rhs);
 
-  std::pair<DimExpr, DimExpr> SimplifyEqualCstr(const DimExpr& lhs,
-                                                const DimExpr& rhs);
+  template <typename DoEachT>
+  void EqualConstraintsVisitor(const DoEachT& DoEach);
+
+  template <typename DoEachT>
+  void GTOneConstraintsVisitor(const DoEachT& DoEach);
+
+  template <typename DoEachT>
+  void BroadcastableConstraintsVisitor(const DoEachT& DoEach);
 
  private:
   EqualCallbackFunc equal_callback_func_ = nullptr;
 
   using EqualConstraints = common::UnionFindSet<DimExpr>;
   using GTOneConstraints = std::unordered_set<DimExpr>;
-  using BCableConstraints = std::vector<Broadcastable<DimExpr>>;
+  using BroadcastableConstraints = std::vector<Broadcastable<DimExpr>>;
 
   EqualConstraints equals_;
   GTOneConstraints gtones_;
-  BCableConstraints bcables_;
+  BroadcastableConstraints broadcastables_;
 };
+
+std::ostream& operator<<(std::ostream& os,
+                         const ConstraintsManager& constraints_manager);
 
 }  // namespace symbol

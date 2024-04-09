@@ -22,14 +22,11 @@ namespace common {
 template <typename T>
 class UnionFindSet {
  public:
-  T Find(const T& x) {
+  T Find(const T& x) const {
     if (parent_.find(x) == parent_.end()) {
       return x;
     }
-    if (parent_[x] != x) {
-      parent_[x] = Find(parent_[x]);
-    }
-    return parent_[x];
+    return parent_.at(x);
   }
 
   void Union(const T& p, const T& q) {
@@ -42,7 +39,7 @@ class UnionFindSet {
     parent_[Find(q)] = Find(p);
   }
 
-  std::vector<std::vector<T>> Clusters() {
+  std::vector<std::vector<T>> Clusters() const {
     std::unordered_map<T, std::vector<T>> clusters_map;
     for (auto it = parent_.begin(); it != parent_.end(); it++) {
       clusters_map[Find(it->first)].emplace_back(it->first);
@@ -54,9 +51,9 @@ class UnionFindSet {
     return clusters;
   }
 
-  bool IsConnect(const T& p, const T& q) { return Find(p) == Find(q); }
+  bool IsConnect(const T& p, const T& q) const { return Find(p) == Find(q); }
 
-  std::unordered_map<T, T> GetMap() { return parent_; }
+  std::unordered_map<T, T>* GetMap() { return &parent_; }
 
  private:
   std::unordered_map<T, T> parent_;

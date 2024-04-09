@@ -23,25 +23,24 @@ TEST(ConstraintsManager, AddEqCstr) {
   ConstraintsManager cstr_mgr;
   DimExprBuilder builder(nullptr);
 
-  // Eq(S1,1) -> S1==1
-  DimExpr int_expr = builder.ConstSize(1);
-  DimExpr sym_expr_1 = builder.Symbol("S1");
-  cstr_mgr.AddEqCstr(int_expr, sym_expr_1);
-  ASSERT_TRUE(cstr_mgr.IsEqual(int_expr, sym_expr_1));
-
-  // Eq(S1,1) and Eq(S0,S1) -> S0==1
+  // Eq(Mul(S0,S1),Mul(S2,S3))
   DimExpr sym_expr_0 = builder.Symbol("S0");
-  cstr_mgr.AddEqCstr(sym_expr_0, sym_expr_1);
-  ASSERT_TRUE(cstr_mgr.IsEqual(int_expr, sym_expr_0));
-
-  // Eq(Add(S1,S3),Add(S2,S3)) -> S1==S2
+  DimExpr sym_expr_1 = builder.Symbol("S1");
   DimExpr sym_expr_2 = builder.Symbol("S2");
   DimExpr sym_expr_3 = builder.Symbol("S3");
-  DimExpr add_expr_1 = builder.Add(sym_expr_1, sym_expr_3);
-  DimExpr add_expr_0 = builder.Add(sym_expr_2, sym_expr_3);
+  DimExpr mul_expr_0 = builder.Mul(sym_expr_0, sym_expr_1);
+  DimExpr mul_expr_1 = builder.Mul(sym_expr_2, sym_expr_3);
+  cstr_mgr.AddEqCstr(mul_expr_0, mul_expr_1);
+  ASSERT_TRUE(cstr_mgr.IsEqual(mul_expr_0, mul_expr_1));
+
+  // Eq(Add(S0,S1),Add(S0,1))
+  DimExpr int_expr_1 = builder.ConstSize(1);
+  DimExpr add_expr_0 = builder.Add(sym_expr_0, sym_expr_1);
+  DimExpr add_expr_1 = builder.Add(sym_expr_0, int_expr_1);
   cstr_mgr.AddEqCstr(add_expr_0, add_expr_1);
   ASSERT_FALSE(cstr_mgr.IsEqual(add_expr_0, add_expr_1));
-  ASSERT_TRUE(cstr_mgr.IsEqual(sym_expr_1, sym_expr_2));
+  DimExpr mul_expr_2 = builder.Mul(sym_expr_0, int_expr_1);
+  ASSERT_TRUE(cstr_mgr.IsEqual(mul_expr_2, mul_expr_1));
 }
 
 }  // namespace symbol::test

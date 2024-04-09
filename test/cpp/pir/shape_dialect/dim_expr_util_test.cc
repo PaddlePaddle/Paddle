@@ -83,10 +83,12 @@ TEST(DimExprUtil, CompareDimExprPriority) {
   DimExpr sym_expr_1 = builder.Symbol("S1");
   DimExpr add_expr = builder.Add(DimExpr("S2"), DimExpr("S3"));
   DimExpr bc_expr = builder.Broadcast(DimExpr("S4"), DimExpr("S5"));
-  std::cout << "compare:  " << CompareDimExprPriority(sym_expr_0, sym_expr_1);
-  ASSERT_LT(CompareDimExprPriority(sym_expr_0, sym_expr_1), 0);
-  ASSERT_GT(CompareDimExprPriority(add_expr, sym_expr_0), 0);
-  ASSERT_EQ(CompareDimExprPriority(add_expr, bc_expr), 0);
+  ASSERT_EQ(CompareDimExprPriority(sym_expr_0, sym_expr_1),
+            PriorityComparisonStatus::Superior);
+  ASSERT_EQ(CompareDimExprPriority(add_expr, sym_expr_0),
+            PriorityComparisonStatus::Inferior);
+  ASSERT_EQ(CompareDimExprPriority(add_expr, bc_expr),
+            PriorityComparisonStatus::Equal);
 }
 
 TEST(DimExpr, CollectDimExprSymbol) {

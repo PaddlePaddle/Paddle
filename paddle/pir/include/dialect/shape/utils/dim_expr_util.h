@@ -29,7 +29,13 @@ IR_API DimExpr SubstituteDimExpr(
 
 IR_API int GetDimExprPriority(const DimExpr& dim_expr);
 
-IR_API int CompareDimExprPriority(const DimExpr& lhs, const DimExpr& rhs);
+enum class PriorityComparisonStatus {
+  Superior,  // lhs has a higher priority than rhs
+  Equal,     // lhs and rhs have equal priority
+  Inferior   // lhs has a lower priority than rhs
+};
+IR_API PriorityComparisonStatus CompareDimExprPriority(const DimExpr& lhs,
+                                                       const DimExpr& rhs);
 
 IR_API std::unordered_set<std::string> CollectDimExprSymbols(
     const DimExpr& dim_expr);
