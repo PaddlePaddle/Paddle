@@ -460,6 +460,15 @@ void sqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
 }
 
 template <typename T>
+void rsqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    // This calculation is important for resnet.
+    auto x_grad_tmp = -0.5 * out * out * out * out_grad;
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+}
+
+template <typename T>
 void floor_grad(const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     auto zero_tensor =
