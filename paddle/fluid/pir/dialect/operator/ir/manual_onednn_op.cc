@@ -124,16 +124,21 @@ void ExpandOp::Build(pir::Builder& builder,
                      pir::AttributeMap attributes) {
   VLOG(4) << "Start build ExpandOp";
 
-  IR_ENFORCE(attributes.find("shape") != attributes.end(),
-             "'shape' Attribute is expected for ExpandOp. ");
+  PADDLE_ENFORCE_NE(attributes.find("shape"),
+                    attributes.end(),
+                    phi::errors::InvalidArgument(
+                        "'shape' Attribute is expected for ExpandOp. "));
   std::vector<int64_t> shape =
       attributes.at("shape")
           .dyn_cast<paddle::dialect::IntArrayAttribute>()
           .data()
           .GetData();
 
-  IR_ENFORCE(attributes.find("mkldnn_data_type") != attributes.end(),
-             "'mkldnn_data_type' Attribute is expected for ExpandOp. ");
+  PADDLE_ENFORCE_NE(
+      attributes.find("mkldnn_data_type"),
+      attributes.end(),
+      phi::errors::InvalidArgument(
+          "'mkldnn_data_type' Attribute is expected for ExpandOp. "));
   std::string mkldnn_data_type = attributes.at("mkldnn_data_type")
                                      .dyn_cast<pir::StrAttribute>()
                                      .AsString();
@@ -190,9 +195,11 @@ void ExpandOp::VerifySig() {
   VLOG(4) << "Verifying inputs:";
   {
     auto input_size = num_operands();
-    IR_ENFORCE(input_size == 2u,
-               "The size %d of inputs must be equal to 2.",
-               input_size);
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        2u,
+        phi::errors::InvalidArgument(
+            "The size %d of inputs must be equal to 2.", input_size));
     IR_ENFORCE((*this)
                    ->operand_source(0)
                    .type()
@@ -218,20 +225,29 @@ void ExpandOp::VerifySig() {
   VLOG(4) << "Verifying attributes:";
   {
     auto& attributes = this->attributes();
-    IR_ENFORCE(attributes.count("mkldnn_data_type") > 0,
-               "mkldnn_data_type does not exist.");
-    IR_ENFORCE(attributes.at("mkldnn_data_type").isa<pir::StrAttribute>(),
-               "Type of attribute: mkldnn_data_type is not pir::StrAttribute.");
+    PADDLE_ENFORCE_GT(
+        attributes.count("mkldnn_data_type"),
+        0,
+        phi::errors::InvalidArgument("mkldnn_data_type does not exist."));
+    PADDLE_ENFORCE_EQ(
+        attributes.at("mkldnn_data_type").isa<pir::StrAttribute>(),
+        true,
+        phi::errors::InvalidArgument(
+            "Type of attribute: mkldnn_data_type is not pir::StrAttribute."));
   }
   VLOG(4) << "Verifying outputs:";
   {
     auto output_size = num_results();
-    IR_ENFORCE(output_size == 1u,
-               "The size %d of outputs must be equal to 1.",
-               output_size);
-    IR_ENFORCE(
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        1u,
+        phi::errors::InvalidArgument(
+            "The size %d of outputs must be equal to 1.", output_size));
+    PADDLE_ENFORCE_EQ(
         (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>(),
-        "Type validation failed for the 0th output.");
+        true,
+        phi::errors::InvalidArgument(
+            "Type validation failed for the 0th output."));
   }
   VLOG(4) << "End Verifying for: ExpandOp.";
 }
@@ -248,9 +264,11 @@ std::vector<pir::Type> ExpandOp::InferMeta(
       p_attributes,
       common::errors::Fatal(
           "AttrtibueMap pointer in InferMeta function is nullptr."));
-  IR_ENFORCE(input_values.size() == 2,
-             "Num of inputs is expected to be 2 but got %d.",
-             input_values.size());
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 2 but got %d.",
+                        input_values.size()));
 
   pir::Value x_ = input_values[0];
   pir::Value shape_ = input_values[1];
