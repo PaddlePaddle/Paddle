@@ -1624,7 +1624,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
 class TestSqrt(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "sqrt"
-        self.prim_op_type = "comp"
+        self.prim_op_type = "prim"
         self.python_api = paddle.sqrt
         self.public_python_api = paddle.sqrt
 
@@ -1667,7 +1667,7 @@ class TestSqrt(TestActivation, TestParameter):
 class TestSqrtPrimFp32(TestActivation):
     def setUp(self):
         self.op_type = "sqrt"
-        self.prim_op_type = "comp"
+        self.prim_op_type = "prim"
         self.python_api = paddle.sqrt
         self.public_python_api = paddle.sqrt
         self.init_dtype()
@@ -1718,7 +1718,7 @@ class TestSqrt_ZeroDim(TestSqrt):
 class TestSqrtBF16(OpTest):
     def setUp(self):
         self.op_type = "sqrt"
-        self.prim_op_type = "comp"
+        self.prim_op_type = "prim"
         self.python_api = paddle.sqrt
         self.public_python_api = paddle.sqrt
         self.init_dtype()
@@ -1767,7 +1767,7 @@ class TestSqrtBF16(OpTest):
 class TestSqrtComp(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "sqrt"
-        self.prim_op_type = "comp"
+        self.prim_op_type = "prim"
         self.python_api = paddle.sqrt
         self.public_python_api = paddle.sqrt
         self.init_dtype()
@@ -1811,7 +1811,7 @@ class TestSqrtComp(TestActivation, TestParameter):
 class TestSqrtCompFp32(TestActivation):
     def setUp(self):
         self.op_type = "sqrt"
-        self.prim_op_type = "comp"
+        self.prim_op_type = "prim"
         self.python_api = paddle.sqrt
         self.public_python_api = paddle.sqrt
         self.init_dtype()

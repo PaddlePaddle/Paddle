@@ -42,8 +42,9 @@ bool ShapeConstraintIRAnalysis::HasShapeOrDataForValue(Value val) const {
 const symbol::ShapeOrDataDimExprs&
 ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) const {
   // TODO(zhangbopd): Uncomment this part and remove `if` later.
-  // IR_ENFORCE(this->HasShapeOrDataForValue(val),
-  //            "No shape_or_data for this value.");
+  // PADDLE_ENFORCE_EQ(this->HasShapeOrDataForValue(val), true,
+  // phi::errors::InvalidArgument(//            "No shape_or_data for this
+  // value."));
   if (!HasShapeOrDataForValue(val)) {
     static symbol::ShapeOrDataDimExprs empty{
         symbol::TensorShapeOrDataDimExprs{}};

@@ -3745,13 +3745,14 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
                               const MetaTensor& q_max,
                               const MetaTensor& k_max,
                               const MetaTensor& v_max,
+                              const MetaTensor& qk_max,
+                              const MetaTensor& qkv_max,
                               float alpha,
                               int head_num,
                               int head_dim,
                               bool qkv_fc_fusion,
                               DataType out_dtype,
-                              MetaTensor* qkv,
-                              MetaTensor* qkv_max) {
+                              MetaTensor* qkv) {
   auto q_dims = q.dims();
   auto k_dims = k.dims();
   auto v_dims = v.dims();
@@ -3795,9 +3796,6 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
   qkv->set_dims(phi::make_ddim({q_dims[0], q_dims[1], head_num * head_dim}));
   qkv->set_dtype(out_dtype);
   qkv->set_layout(q.layout());
-  qkv_max->set_dims(phi::make_ddim({6}));
-  qkv_max->set_dtype(out_dtype);
-  qkv_max->set_layout(q.layout());
 }
 void SinePosXPUInferMeta(const MetaTensor& x,
                          const MetaTensor& y,

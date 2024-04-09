@@ -151,7 +151,7 @@ class Quant2Int8MkldnnPass:
 
     def _label_skip_quantized_op(self, graph):
         """
-        For some ops(conv2d, depthwise_conv2d, mul, matml), find and label
+        For some ops(conv2d, depthwise_conv2d, mul, matmul), find and label
         the skip quantized ops. cpu_quantize_placement_pass will use the
         label to identify it.
         For static models, the skip quantized ops have `skip_quant` attr.
