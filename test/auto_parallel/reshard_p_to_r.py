@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 from paddle.framework import core
+from paddle.distributed.auto_parallel.static.pir_pass import apply_reshard_pass_v2
 
 
 class TestReshardPToR:
@@ -45,6 +46,40 @@ class TestReshardPToR:
         assert np.equal(out.shape, input_tensor.shape).all()
         np.testing.assert_equal(out._local_value().numpy(), a.numpy())
 
+    def run_pir_test_case(self):
+        paddle.enable_static()
+        if self._backend == "cpu":
+            paddle.set_device("cpu")
+            place = paddle.CPUPlace()
+        elif self._backend == "gpu":
+            place = paddle.CUDAPlace(dist.get_rank())
+
+        BATCH_SIZE = 2
+        SEQ_LEN = 4
+        HIDDEN_SIZE = 8
+        MP_SIZE = 2
+
+        with paddle.pir_utils.IrGuard():
+            main_program = paddle.base.Program()
+            with paddle.base.program_guard(main_program):
+                mesh = dist.ProcessMesh([0, 1], dim_names=['mp'])
+                input = paddle.static.data(
+                    name='input', shape=[BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE]
+                )
+                w0 = paddle.pir.core.create_parameter(
+                    dtype="float32",
+                    shape=[HIDDEN_SIZE, HIDDEN_SIZE],
+                    name="w0",
+                    initializer=paddle.nn.initializer.Uniform(),
+                )
+
+                shard_tensor = paddle._pir_ops.shard_tensor(w0, self._mesh, [-1,-1], [0])
+                reshard_tensor = paddle._pir_ops.reshard(shard_tensor, self._mesh, [-1,-1])
+            print(f'before reshard pass dist_program: {main_program}')
+            dist_program = apply_reshard_pass_v2(main_program)
+            print(f'after reshard pass dist_program: {dist_program}')
+
 
 if __name__ == '__main__':
     TestReshardPToR().run_test_case()
+    TestReshardPToR().run_pir_test_case()

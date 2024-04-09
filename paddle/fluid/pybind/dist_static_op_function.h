@@ -42,9 +42,12 @@ static PyObject *static_api_shard_tensor(PyObject *self,
     PyObject *dims_mapping_obj = PyTuple_GET_ITEM(args, 2);
     auto dims_mapping = CastPyArg2VectorOfInt64(dims_mapping_obj, 2);
 
+    PyObject *partial_dims_obj = PyTuple_GET_ITEM(args, 3);
+    auto partial_dims = CastPyArg2VectorOfInt64(partial_dims_obj, 3);
+
     // Call ir static api
     auto static_api_out =
-        paddle::dialect::shard_tensor(input, process_mesh, dims_mapping);
+        paddle::dialect::shard_tensor(input, process_mesh, dims_mapping, partial_dims);
 
     return ToPyObject(static_api_out);
   } catch (...) {
