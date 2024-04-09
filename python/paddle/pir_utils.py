@@ -21,7 +21,6 @@ from paddle.framework.dtype import bind_datatype, bind_vartype
 
 def _switch_to_pir_():
     paddle.framework.set_flags({"FLAGS_enable_pir_in_executor": True})
-    paddle.base.framework.global_var._use_pir_api_ = True
     paddle.pir.register_paddle_dialect()
     # TODO find a better place to init the registion of dist dialect.
     paddle.pir.register_dist_dialect()
@@ -41,8 +40,7 @@ def _switch_to_pir_():
 
 
 def _switch_to_old_ir_():
-    paddle.framework.set_flags({"FLAGS_enable_pir_api": False})
-    paddle.base.framework.global_var._use_pir_api_ = False
+    paddle.framework.set_flags({"FLAGS_enable_pir_in_executor": False})
 
     paddle.base.Program = paddle.base.framework.Program
     paddle.base.program_guard = paddle.base.framework.program_guard
@@ -71,6 +69,8 @@ class IrGuard:
         if self.in_dygraph_outside:
             paddle.enable_static()
         if not self.old_flag:
+            paddle.framework.set_flags({"FLAGS_enable_pir_api": True})
+            paddle.base.framework.global_var._use_pir_api_ = True
             bind_datatype()
             self._switch_to_pir()
 
@@ -78,6 +78,8 @@ class IrGuard:
         if self.in_dygraph_outside:
             paddle.disable_static()
         if not self.old_flag:
+            paddle.framework.set_flags({"FLAGS_enable_pir_api": False})
+            paddle.base.framework.global_var._use_pir_api_ = False
             bind_vartype()
             self._switch_to_old_ir()
 
@@ -108,6 +110,8 @@ class OldIrGuard:
         if self.in_dygraph_outside:
             paddle.enable_static()
         if self.old_flag:
+            paddle.framework.set_flags({"FLAGS_enable_pir_api": False})
+            paddle.base.framework.global_var._use_pir_api_ = False
             bind_vartype()
             _switch_to_old_ir_()
 
@@ -115,6 +119,9 @@ class OldIrGuard:
         if self.in_dygraph_outside:
             paddle.disable_static()
         if self.old_flag:
+            paddle.framework.set_flags({"FLAGS_enable_pir_api": True})
+            paddle.base.framework.global_var._use_pir_api_ = True
+            bind_datatype()
             _switch_to_pir_()
 
 
@@ -133,3 +140,5 @@ def test_with_old_ir_only(func):
     def impl(*args, **kwargs):
         with OldIrGuard():
             func(*args, **kwargs)
+
+    return impl
