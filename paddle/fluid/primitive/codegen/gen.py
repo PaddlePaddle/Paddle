@@ -307,8 +307,6 @@ def extend_compat_info(apis, compats):
 def process_backward_invoke_info(apis):
     apis_dict = to_named_dict(apis)
     for api in apis:
-        # if api['name']=="divide_scalar_grad_sp":
-        #     breakpoint()
         if api['is_fwd']:
             continue
         if 'invoke' in api and api['invoke']['func'] in apis_dict:

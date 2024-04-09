@@ -931,8 +931,6 @@ def gen_infermeta_func_str(args, op_info):
         inuse_infer_meta_args + spmd_params,
         attr_args_is_map,
     )
-    # if op_info.is_sparse_op and op_info.class_name=="SparseCooTensorGradSpOp":
-    #     breakpoint()
     infermeta_outputs_str = GenBuildOutputsPart2(
         args,
         op_info,

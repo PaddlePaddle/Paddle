@@ -363,6 +363,7 @@ void OperatorDialect::initialize() {
 #define GET_OP_LIST
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.cc"  // NOLINT
       >();
+
 #ifdef PADDLE_WITH_DNNL
   RegisterOps<
 #define GET_OP_LIST

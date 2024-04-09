@@ -381,10 +381,6 @@ class CodeGen:
     def _gen_one_declare(
         self, op_info, op_name, is_mutable_attr, is_vector_mutable_attr
     ):
-        # if op_info.is_sparse_op and op_name=="sum":
-        #     breakpoint()
-        # op_name_suffix = '_sp' if op_info.is_sparse_op else ''
-        # op_name+=op_name_suffix
         if op_info.is_sparse_op:
             op_name += "sp_" if op_name[-1] == "_" else "_sp"
         return API_DECLARE_TEMPLATE.format(
@@ -550,8 +546,6 @@ class CodeGen:
     def _gen_compute_op(
         self, op_info, op_name, in_combine_op_list, is_mutable_attr
     ):
-        # if op_info.is_sparse_op and op_name=="batch_norm_sp_":
-        #     breakpoint()
         if op_info.is_sparse_op:
             op_class_name = to_pascal_case(op_name) + 'SpOp'
         else:
@@ -843,15 +837,11 @@ class CodeGen:
                                 f'{name}.type().isa<paddle::dialect::SparseCsrTensorType>()'
                             )
                 ret_type = self._gen_ret_type(op_info)
-                # if op_info.is_sparse_op and op_name=="abs":
-                #     breakpoint()
                 in_combine, in_combine_op_list = self._gen_in_combine(
                     op_info, is_mutable_attr, is_vector_mutable_attr
                 )
                 if op_name.endswith('_') and not kernel_name.endswith('_'):
                     kernel_name = kernel_name + '_'
-                # kernel_name_suffix="_sp" if op_info.is_sparse_op else ""
-                # kernel_name+=kernel_name_suffix
                 compute_op, op_inst_name = self._gen_compute_op(
                     op_info, kernel_name, in_combine_op_list, is_mutable_attr
                 )
@@ -957,12 +947,6 @@ class CodeGen:
         impl_str = ""
         for op_info in op_info_items:
             for op_name in op_info.op_phi_name:
-                # sparse_op_name_suffix = '_sp' if op_info.is_sparse_op else ''
-                # sparse_op_inplace_name_suffix = 'sp_' if op_info.is_sparse_op else ''
-                # if op_name[-1] == '_':
-                #     op_name = op_name + sparse_op_inplace_name_suffix
-                # else:
-                #     op_name = op_name + sparse_op_name_suffix
                 # NOTE:When infer_meta_func is None, the Build() function generated in pd_op
                 # is wrong, so temporarily skip the automatic generation of these APIs
                 if (
@@ -995,7 +979,6 @@ class CodeGen:
         h_file_path,
         cpp_file_path,
     ):
-        # op_yaml_files=['/paddle_cuda11.2/build_pr/paddle/fluid/pir/dialect/operator/ir/generated/sparse_ops.parsed.yaml', '/paddle_cuda11.2/build_pr/paddle/fluid/pir/dialect/operator/ir/generated/sparse_backward.parsed.yaml']
         if os.path.exists(h_file_path):
             os.remove(h_file_path)
         if os.path.exists(cpp_file_path):

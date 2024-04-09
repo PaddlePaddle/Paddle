@@ -674,15 +674,12 @@ class OpInfoParser:
         """
         mutable_attribute_name_list = []
         mutable_attribute_type_list = []
-        # if self.yaml_file.endswith("sparse_ops.parsed.yaml") and self.op_phi_name[0]=='scale':
-        #     breakpoint()
         # scalar
         if (
             (self.op_compat_item is not None)
             and ('scalar' in self.op_compat_item)
             and not self.yaml_file.endswith("sparse_ops.parsed.yaml")
         ):
-            # breakpoint()
             for scalar_attr in self.op_compat_item['scalar'].keys():
                 if not self.is_mutable_attribute(
                     self.op_compat_item['scalar'][scalar_attr]
@@ -818,8 +815,6 @@ class OpInfoParser:
 
     def parse_input_type_dict(self):
         type_dict = {}
-        # if self.is_sparse_op and self.op_phi_name[0]=="sparse_coo_tensor_grad":
-        #     breakpoint()
         if (
             self.kernel_map is None
             or self.kernel_map['dispatch'][self.kernel_map['func'][0]] is None
@@ -1321,7 +1316,6 @@ def AutoCodeGen(
         exclusive_interface_str = gen_exclusive_interface_str(
             op_info, op_info_items
         )
-        # is_sparse_op = op_info.is_sparse_op
 
         if dialect_name == "pd_op" or dialect_name == "onednn_op":
             op_interfaces += ["paddle::dialect::GetKernelTypeForVarInterface"]
@@ -1448,8 +1442,6 @@ def AutoCodeGen(
                             + kernel_func_name
                             + op_dialect_name_suffix
                         )
-                # if op_info.is_sparse_op and op_info.op_phi_name[0]=="sparse_coo_tensor_grad":
-                #     breakpoint()
                 if kernel_func_name is None:
                     op_input_type_list = op_info.input_type_dict['default']
                     op_output_type_list = op_info.output_type_dict['default']
@@ -1556,8 +1548,6 @@ def AutoCodeGen(
                             attr_args_is_map=True,
                         )
                         build_attr_num_over_1 = f"static void Build({build_args_with_attr_is_map_for_declare});"
-                    # if not op_info.is_sparse_op and op_name=="scale":
-                    #     breakpoint()
                     if len(op_mutable_attribute_name_list) > 0:
                         (
                             build_args_with_muta_attr_is_input_for_declare,
@@ -2133,10 +2123,6 @@ def OpGenerator(
             op_yaml_items = op_yaml_items + ops
         op_info_items = {}
         for op in op_yaml_items:
-            # if yaml_file.endswith("sparse_ops.parsed.yaml") or yaml_file.endswith('sparse_backward.parsed.yaml'):
-            #     op['name']+='_sp'
-            # if op['name']=='scale':
-            #     breakpoint()
             op_compat_item = None
             if dialect_name == "pd_op" or dialect_name == "onednn_op":
                 op_compat_item = op_compat_parser.get_compat(op['name'])
