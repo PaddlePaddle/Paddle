@@ -89,6 +89,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   MPType div_c = static_cast<MPType>(1.0f / head_dim);
 
   bool flag_sin_cos = false;
+  int sin_bs = 1;
   if (sin.get_ptr() && cos.get_ptr()) {
     sin_cos_data[0] = sin->data<T>();
     sin_cos_data[1] = cos->data<T>();
@@ -98,6 +99,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     if (position_ids) {
       position_ids_data = position_ids->data<int64_t>();
     }
+    sin_bs = sin.get_ptr()->dims()[0];
   }
 
   bool is_same_num_heads = true;
@@ -126,7 +128,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                                             position_ids_data,
                                             flag_sin_cos,
                                             sign,
-                                            sin.get_ptr()->dims()[0],
+                                            sin_bs,
                                             batch_size,
                                             seq_len,
                                             inputs_num_heads[0],
@@ -148,7 +150,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                                             position_ids_data,
                                             flag_sin_cos,
                                             sign,
-                                            sin.get_ptr()->dims()[0],
+                                            sin_bs,
                                             batch_size,
                                             seq_len,
                                             inputs_num_heads[0],
@@ -174,7 +176,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                                             position_ids_data,
                                             flag_sin_cos,
                                             sign,
-                                            sin.get_ptr()->dims()[0],
+                                            sin_bs,
                                             batch_size,
                                             seq_len,
                                             inputs_num_heads[1],
