@@ -56,7 +56,6 @@ __all__ = [
     "masked_multihead_attention",
     "block_multihead_attention",
     "swiglu",
-    "weight_only_int8",
 ]
 
 try:
@@ -65,5 +64,3 @@ try:
     __all__ += ["weight_only_int8"]
 except:
     print("import triton_ops failed")
-
-print(__all__)
