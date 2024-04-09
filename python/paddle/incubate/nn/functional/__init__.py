@@ -61,5 +61,5 @@ __all__ = [
     "masked_multihead_attention",
     "block_multihead_attention",
     "swiglu",
-]
     "weight_only_int8",
+]
