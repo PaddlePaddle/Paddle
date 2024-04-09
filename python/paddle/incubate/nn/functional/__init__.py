@@ -37,7 +37,7 @@ from .masked_multihead_attention import masked_multihead_attention
 from .swiglu import swiglu
 
 try:
-    from .triton_ops import weight_only_int8
+    pass
 except:
     print("import triton_ops failed")
 
@@ -62,5 +62,4 @@ __all__ = [
     "masked_multihead_attention",
     "block_multihead_attention",
     "swiglu",
-    "weight_only_int8",
 ]
