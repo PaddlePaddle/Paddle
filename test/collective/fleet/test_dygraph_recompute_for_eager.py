@@ -376,6 +376,7 @@ class TestRecompute(unittest.TestCase):
                 loss_ref, param_ref, grad_ref = run_model(
                     recompute_block=[1, 2, 3],
                     recompute_kwargs={"pos": new_pos, "use_reentrant": flag},
+                    recompute_use_kwargs_as_inputs=recompute_use_kwargs_as_inputs,
                 )
 
                 self.assertEqual(loss_ref, loss)
@@ -402,6 +403,7 @@ class TestRecompute(unittest.TestCase):
                 loss_ref, param_ref, grad_ref = run_model(
                     recompute_block=[1, 2, 3],
                     recompute_kwargs={"pos": (new_pos,), "use_reentrant": flag},
+                    recompute_use_kwargs_as_inputs=recompute_use_kwargs_as_inputs,
                 )
 
                 self.assertEqual(loss_ref, loss)
