@@ -65,8 +65,6 @@ class TEST_API GradNodeAccumulation : public GradNodeBase {
         new GradNodeAccumulation(nullptr));
   }
 
-  void SetFakeEmpty(bool is_fake_empty) { is_fake_empty_ = is_fake_empty; }
-
  private:
   // TODO(Jiabin): remove this when we make our clear gradient really cleared;
   bool is_fake_empty_ = {false};

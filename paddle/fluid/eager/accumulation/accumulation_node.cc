@@ -28,121 +28,113 @@
 
 namespace egr {
 
-static void CopyOrAddTensor(paddle::Tensor* tensor,
-                            const paddle::Tensor& t,
-                            bool is_fake_empty) {
-  if (is_fake_empty) {
+static void CopyOrAddTensor(paddle::Tensor* tensor, const paddle::Tensor& t) {
+  if (!tensor->defined() || !tensor->initialized()) {
+    // Simply copy tensor->impl
     VLOG(3) << "Move Tensor ptr: " << t.impl();
     *tensor = t;
   } else {
-    if (!tensor->defined() || !tensor->initialized()) {
-      // Simply copy tensor->impl
-      VLOG(3) << "Move Tensor ptr: " << t.impl();
-      *tensor = t;
-    } else {
-      VLOG(3) << "Add Tensor ptr: " << t.impl()
-              << " with Tensor ptr: " << tensor->impl();
-      // Accumulation
-      if (LIKELY(t.is_dense_tensor())) {
-        if (LIKELY(tensor->is_dense_tensor())) {
-          if (t.is_custom_device()) {
-            auto* dev_ctx =
-                phi::DeviceContextPool::Instance().Get(tensor->place());
-            auto kernel_result =
-                phi::KernelFactory::Instance().SelectKernelOrThrowError(
-                    "add",
-                    phi::KernelKey(phi::TransToPhiBackend(tensor->place()),
-                                   phi::DataLayout::ALL_LAYOUT,
-                                   tensor->dtype()));
-            const auto& kernel = kernel_result.kernel;
-            using kernel_signature = void (*)(const phi::DeviceContext&,
-                                              const phi::DenseTensor&,
-                                              const phi::DenseTensor&,
-                                              phi::DenseTensor*);
-            auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-            (*kernel_fn)(
-                *dev_ctx,
-                *reinterpret_cast<phi::DenseTensor*>(tensor->impl().get()),
-                *reinterpret_cast<phi::DenseTensor*>(t.impl().get()),
-                reinterpret_cast<phi::DenseTensor*>(tensor->impl().get()));
-          } else {
-            paddle::imperative::TensorAdd<paddle::Tensor>(t, tensor);
-          }
+    VLOG(3) << "Add Tensor ptr: " << t.impl()
+            << " with Tensor ptr: " << tensor->impl();
+    // Accumulation
+    if (LIKELY(t.is_dense_tensor())) {
+      if (LIKELY(tensor->is_dense_tensor())) {
+        if (t.is_custom_device()) {
+          auto* dev_ctx =
+              phi::DeviceContextPool::Instance().Get(tensor->place());
+          auto kernel_result =
+              phi::KernelFactory::Instance().SelectKernelOrThrowError(
+                  "add",
+                  phi::KernelKey(phi::TransToPhiBackend(tensor->place()),
+                                 phi::DataLayout::ALL_LAYOUT,
+                                 tensor->dtype()));
+          const auto& kernel = kernel_result.kernel;
+          using kernel_signature = void (*)(const phi::DeviceContext&,
+                                            const phi::DenseTensor&,
+                                            const phi::DenseTensor&,
+                                            phi::DenseTensor*);
+          auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+          (*kernel_fn)(
+              *dev_ctx,
+              *reinterpret_cast<phi::DenseTensor*>(tensor->impl().get()),
+              *reinterpret_cast<phi::DenseTensor*>(t.impl().get()),
+              reinterpret_cast<phi::DenseTensor*>(tensor->impl().get()));
         } else {
-          // TODO(jiabin): Support Other TensorBase later
-          // TODO(zhanlve): Replace SelectedRowsAddTensor with
-          // add_dygraph_function once it's supported
-          paddle::Tensor new_buffer(std::make_shared<phi::DenseTensor>(),
-                                    "tmp_accumulator");
-          paddle::imperative::SelectedRowsAddTensor(*tensor, t, &new_buffer);
-          tensor->set_impl(new_buffer.impl());
+          paddle::imperative::TensorAdd<paddle::Tensor>(t, tensor);
         }
-      } else if (LIKELY(t.is_sparse_coo_tensor())) {
-        // In fact, the gradient of SparseTensor is still a SparseTensor
-        if (LIKELY(tensor->is_sparse_coo_tensor())) {
-          auto t_sparse =
-              std::dynamic_pointer_cast<phi::SparseCooTensor>(t.impl());
-          paddle::Tensor t_values(std::make_shared<phi::DenseTensor>(
-              t_sparse->non_zero_elements()));
-          auto tensor_sparse =
-              std::dynamic_pointer_cast<phi::SparseCooTensor>(tensor->impl());
-          paddle::Tensor tensor_values(std::make_shared<phi::DenseTensor>(
-              tensor_sparse->non_zero_elements()));
-          if (t.is_custom_device()) {
-            auto* dev_ctx =
-                phi::DeviceContextPool::Instance().Get(tensor->place());
-            auto kernel_result =
-                phi::KernelFactory::Instance().SelectKernelOrThrowError(
-                    "add_coo_coo",
-                    phi::KernelKey(phi::TransToPhiBackend(tensor->place()),
-                                   phi::DataLayout::ALL_LAYOUT,
-                                   tensor->dtype()));
-            const auto& kernel = kernel_result.kernel;
-            using kernel_signature = void (*)(const phi::DeviceContext&,
-                                              const phi::SparseCooTensor&,
-                                              const phi::SparseCooTensor&,
-                                              phi::SparseCooTensor*);
-            auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-            (*kernel_fn)(
-                *dev_ctx,
-                *reinterpret_cast<phi::SparseCooTensor*>(tensor->impl().get()),
-                *reinterpret_cast<phi::SparseCooTensor*>(t.impl().get()),
-                reinterpret_cast<phi::SparseCooTensor*>(tensor->impl().get()));
-          } else {
-            paddle::imperative::TensorAdd<paddle::Tensor>(t_values,
-                                                          &tensor_values);
-          }
-        }
-      } else if (LIKELY(t.is_dist_tensor())) {
-        PADDLE_ENFORCE(
-            tensor->is_dist_tensor(),
-            paddle::platform::errors::Fatal("A DistTensor can only do gradient "
-                                            "merge with another DistTensor."));
-        PADDLE_ENFORCE(!t.is_custom_device(),
-                       paddle::platform::errors::Fatal(
-                           "DistTensor doesn't support custom device."));
-        auto t_dist =
-            std::dynamic_pointer_cast<phi::distributed::DistTensor>(t.impl());
-        paddle::Tensor t_values(
-            std::make_shared<phi::DenseTensor>(t_dist->value()));
-        auto tensor_dist =
-            std::dynamic_pointer_cast<phi::distributed::DistTensor>(
-                tensor->impl());
-        paddle::Tensor tensor_values(
-            std::make_shared<phi::DenseTensor>(tensor_dist->value()));
-        paddle::imperative::TensorAdd<paddle::Tensor>(t_values, &tensor_values);
       } else {
         // TODO(jiabin): Support Other TensorBase later
         // TODO(zhanlve): Replace SelectedRowsAddTensor with
-        // add_dygraph_function
-        // once it's supported
-        if (tensor->is_dense_tensor()) {
-          paddle::imperative::SelectedRowsAddToTensor(t, tensor);
+        // add_dygraph_function once it's supported
+        paddle::Tensor new_buffer(std::make_shared<phi::DenseTensor>(),
+                                  "tmp_accumulator");
+        paddle::imperative::SelectedRowsAddTensor(*tensor, t, &new_buffer);
+        tensor->set_impl(new_buffer.impl());
+      }
+    } else if (LIKELY(t.is_sparse_coo_tensor())) {
+      // In fact, the gradient of SparseTensor is still a SparseTensor
+      if (LIKELY(tensor->is_sparse_coo_tensor())) {
+        auto t_sparse =
+            std::dynamic_pointer_cast<phi::SparseCooTensor>(t.impl());
+        paddle::Tensor t_values(
+            std::make_shared<phi::DenseTensor>(t_sparse->non_zero_elements()));
+        auto tensor_sparse =
+            std::dynamic_pointer_cast<phi::SparseCooTensor>(tensor->impl());
+        paddle::Tensor tensor_values(std::make_shared<phi::DenseTensor>(
+            tensor_sparse->non_zero_elements()));
+        if (t.is_custom_device()) {
+          auto* dev_ctx =
+              phi::DeviceContextPool::Instance().Get(tensor->place());
+          auto kernel_result =
+              phi::KernelFactory::Instance().SelectKernelOrThrowError(
+                  "add_coo_coo",
+                  phi::KernelKey(phi::TransToPhiBackend(tensor->place()),
+                                 phi::DataLayout::ALL_LAYOUT,
+                                 tensor->dtype()));
+          const auto& kernel = kernel_result.kernel;
+          using kernel_signature = void (*)(const phi::DeviceContext&,
+                                            const phi::SparseCooTensor&,
+                                            const phi::SparseCooTensor&,
+                                            phi::SparseCooTensor*);
+          auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+          (*kernel_fn)(
+              *dev_ctx,
+              *reinterpret_cast<phi::SparseCooTensor*>(tensor->impl().get()),
+              *reinterpret_cast<phi::SparseCooTensor*>(t.impl().get()),
+              reinterpret_cast<phi::SparseCooTensor*>(tensor->impl().get()));
         } else {
-          *tensor =
-              std::move(*paddle::imperative::SelectedRowsMerge<paddle::Tensor>(
-                  t, *tensor));
+          paddle::imperative::TensorAdd<paddle::Tensor>(t_values,
+                                                        &tensor_values);
         }
+      }
+    } else if (LIKELY(t.is_dist_tensor())) {
+      PADDLE_ENFORCE(
+          tensor->is_dist_tensor(),
+          paddle::platform::errors::Fatal("A DistTensor can only do gradient "
+                                          "merge with another DistTensor."));
+      PADDLE_ENFORCE(!t.is_custom_device(),
+                     paddle::platform::errors::Fatal(
+                         "DistTensor doesn't support custom device."));
+      auto t_dist =
+          std::dynamic_pointer_cast<phi::distributed::DistTensor>(t.impl());
+      paddle::Tensor t_values(
+          std::make_shared<phi::DenseTensor>(t_dist->value()));
+      auto tensor_dist =
+          std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+              tensor->impl());
+      paddle::Tensor tensor_values(
+          std::make_shared<phi::DenseTensor>(tensor_dist->value()));
+      paddle::imperative::TensorAdd<paddle::Tensor>(t_values, &tensor_values);
+    } else {
+      // TODO(jiabin): Support Other TensorBase later
+      // TODO(zhanlve): Replace SelectedRowsAddTensor with
+      // add_dygraph_function
+      // once it's supported
+      if (tensor->is_dense_tensor()) {
+        paddle::imperative::SelectedRowsAddToTensor(t, tensor);
+      } else {
+        *tensor = std::move(
+            *paddle::imperative::SelectedRowsMerge<paddle::Tensor>(t, *tensor));
       }
     }
   }
@@ -180,10 +172,8 @@ GradNodeAccumulation::operator()(
     auto grad = weak_grad_.lock();
     if (grad_out.defined() &&
         (grad_out.is_dist_tensor() || grad_out.initialized())) {
-      CopyOrAddTensor(grad.get(), grad_out, is_fake_empty_);
+      CopyOrAddTensor(grad.get(), grad_out);
     }
-    // else { do nothing since there is no valid value in grad out tensor }
-    is_fake_empty_ = false;
   }
 
   // Apply Reduce Hooks

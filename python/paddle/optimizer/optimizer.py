@@ -1681,7 +1681,7 @@ class Optimizer:
             return no_grad_set
 
     @framework.non_static_only
-    def clear_grad(self, set_to_zero=True):
+    def clear_grad(self, set_to_zero=False):
         """
         Clear the gradients of all optimized parameters for model.
 
@@ -1690,7 +1690,7 @@ class Optimizer:
         There are two method to clear grad: set_to_zero or delete grad.
 
         Args:
-            set_to_zero (bool, optional): If set grads to zero or not, default is True.
+            set_to_zero (bool, optional): If set grads to zero or not, default is False.
 
         Returns:
             None
