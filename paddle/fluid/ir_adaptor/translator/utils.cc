@@ -27,6 +27,10 @@
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_onednn_dialect.h"
 #endif
+#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/pir/dialect/operator/ir/xpu_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_xpu_dialect.h"
+#endif
 
 namespace paddle {
 namespace dialect {
@@ -108,7 +112,9 @@ std::vector<std::string> CheckUnregisteredOperation(
 #ifdef PADDLE_WITH_DNNL
   ctx->GetOrRegisterDialect<dialect::OneDNNOperatorDialect>();
 #endif
-
+#ifdef PADDLE_WITH_XPU
+  ctx->GetOrRegisterDialect<dialect::XpuOperatorDialect>();
+#endif
   std::vector<std::string> unregistered_ops;
   for (size_t block_idx = 0; block_idx < legacy_program.Size(); block_idx++) {
     const framework::BlockDesc& block = legacy_program.Block(block_idx);

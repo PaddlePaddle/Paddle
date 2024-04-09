@@ -125,6 +125,40 @@ if(WITH_MKLDNN)
   set(DRR_SRCS ${DRR_SRCS} ${ONEDNN_SOURCE_FILE})
 endif()
 
+if(WITH_XPU)
+  set(xpu_dialect_name xpu_op)
+  set(pir_op_xpu_yaml
+      ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/generated/xpu.parsed.yaml
+  )
+  set(xpu_op_creator_file
+      ${PADDLE_BINARY_DIR}/paddle/fluid/pir/drr/src/xpu_op_factory_generated.cc
+  )
+  set(xpu_op_creator_file_tmp ${xpu_op_creator_file}.tmp)
+
+  add_custom_command(
+    OUTPUT ${xpu_op_creator_file}
+    COMMAND
+      ${PYTHON_EXECUTABLE} ${op_creator_gen_file} --op_yaml_files
+      ${op_yaml_files} --op_compat_yaml_file ${op_compat_yaml_file}
+      --dialect_name ${xpu_dialect_name} --op_creator_file
+      ${xpu_op_creator_file_tmp} --xpu_yaml_file ${pir_op_xpu_yaml}
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${xpu_op_creator_file_tmp}
+            ${xpu_op_creator_file}
+    COMMENT "copy_if_different ${xpu_op_creator_file}"
+    DEPENDS ${op_creator_gen_file}
+            ${op_forward_yaml_file}
+            ${op_backward_yaml_file}
+            ${op_compat_yaml_file}
+            ${op_yaml_file_1}
+            ${op_yaml_file_2}
+            op_dialect
+    VERBATIM)
+
+  set(XPU_SOURCE_FILE ${xpu_op_creator_file})
+
+  set(DRR_SRCS ${DRR_SRCS} ${XPU_SOURCE_FILE})
+endif()
+
 cc_library(
   drr
   SRCS ${DRR_SRCS}

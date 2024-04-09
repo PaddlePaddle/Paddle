@@ -721,7 +721,7 @@ void PirInterpreter::BuildInstruction() {
         VLOG(6) << "skip process cf dialect op: " << op.name();
         continue;
       }
-    } else if (op.dialect()->name() == "pd_op") {
+    } else if (op.dialect()->name() == "pd_op" || op.dialect()->name() == "xpu_op") {
       if (op.isa<paddle::dialect::IfOp>()) {  // NOLINT
         std::unique_ptr<IfInstruction> if_instr_ptr =
             std::make_unique<IfInstruction>(op_idx++,

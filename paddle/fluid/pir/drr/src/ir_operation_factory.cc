@@ -28,6 +28,9 @@
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #endif
+#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/pir/dialect/operator/ir/xpu_op.h"
+#endif
 
 namespace paddle {
 namespace drr {

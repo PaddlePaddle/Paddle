@@ -25,6 +25,9 @@
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/pir/dialect/operator/ir/op_onednn_dialect.h"
 #endif
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/dialect/operator/ir/op_xpu_dialect.h"
+#endif
 namespace paddle {
 
 using LegacyProgramDesc = ::paddle::framework::ProgramDesc;
@@ -36,6 +39,9 @@ std::unique_ptr<Program> TranslateLegacyProgramToProgram(
   ctx->GetOrRegisterDialect<dialect::OperatorDialect>();
 #ifdef PADDLE_WITH_DNNL
   ctx->GetOrRegisterDialect<dialect::OneDNNOperatorDialect>();
+#endif
+#ifdef PADDLE_WITH_XPU
+  ctx->GetOrRegisterDialect<dialect::XpuOperatorDialect>();
 #endif
   auto program = std::make_unique<Program>(ctx);
   translator::ProgramTranslator program_translator(&legacy_program,

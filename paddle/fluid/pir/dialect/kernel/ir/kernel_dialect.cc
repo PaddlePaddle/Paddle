@@ -233,6 +233,83 @@ pir::OpPrintFn OneDNNKernelDialect::PrintOperation(pir::Operation *op) const {
 }
 #endif
 
+#ifdef PADDLE_WITH_XPU
+XpuKernelDialect::XpuKernelDialect(pir::IrContext *context)
+    : pir::Dialect(name(), context, pir::TypeId::get<XpuKernelDialect>()) {
+  initialize();
+}
+
+void XpuKernelDialect::initialize() {
+  RegisterOps<dialect::PhiKernelOp, dialect::LegacyKernelOp>();
+  RegisterAttributes<paddle::dialect::KernelAttribute>();
+}
+
+void XpuKernelDialect::PrintType(pir::Type type, std::ostream &os) const {
+  PrintKernelType(type, os);
+}
+
+void XpuKernelDialect::PrintAttribute(pir::Attribute attr,
+                                         std::ostream &os) const {
+  PrintKernelAttribute(attr, os);
+}
+
+pir::OpPrintFn XpuKernelDialect::PrintOperation(pir::Operation *op) const {
+  std::once_flag flag;
+  std::call_once(flag, [&]() {
+    std::cout << "XpuKernelDialect::PrintOperation" << std::endl;
+    auto traceback =
+        ::common::enforce::GetCurrentTraceBackString(/*for_signal=*/true);
+    if (traceback.empty()) {
+      std::cout
+          << "No stack trace in paddle, may be caused by external reasons.\n";
+    } else {
+      std::cout << traceback;
+    }
+    if (op->dyn_cast<PhiKernelOp>() || op->dyn_cast<LegacyKernelOp>()) {
+      std::cout << "XpuKernelDialect PhiKernelOp Or LegacyKernelOp\n";
+    } else {
+      std::cout << "XpuKernelDialect PhiKernelOp Or LegacyKernelOp NOT \n";
+    }
+  });
+  if (op->dyn_cast<PhiKernelOp>() || op->dyn_cast<LegacyKernelOp>()) {
+    return [](pir::Operation *op, pir::IrPrinter &printer) {
+      auto &os = printer.os;
+      printer.PrintOpResult(op);
+      os << " =";
+      if (auto phi_kernel_op = op->dyn_cast<PhiKernelOp>()) {
+        std::string kernel_name = phi_kernel_op.kernel_name();
+        if (op->attributes().count("is_inplace") != 0 &&
+            op->attributes()
+                .at("is_inplace")
+                .dyn_cast<pir::BoolAttribute>()
+                .data()) {
+          kernel_name = kernel_name + "_";
+        }
+        os << " \"" << kernel_name << "(phi_kernel)\"";
+      } else {
+        auto legacy_kernel_op = op->dyn_cast<LegacyKernelOp>();
+        std::string kernel_name = legacy_kernel_op.kernel_name();
+        if (op->attributes().count("is_inplace") != 0 &&
+            op->attributes()
+                .at("is_inplace")
+                .dyn_cast<pir::BoolAttribute>()
+                .data()) {
+          kernel_name = kernel_name + "_";
+        }
+        os << " \"" << kernel_name << "(legacy_kernel)\"";
+      }
+      printer.PrintOpOperands(op);
+      printer.PrintAttributeMap(op);
+      os << " :";
+      printer.PrintOperandsType(op);
+      os << " -> ";
+      printer.PrintOpReturnType(op);
+    };
+  }
+  return nullptr;
+}
+#endif
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -240,4 +317,7 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::KernelDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CustomKernelDialect)
 #ifdef PADDLE_WITH_DNNL
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNKernelDialect)
+#endif
+#ifdef PADDLE_WITH_XPU
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::XpuKernelDialect)
 #endif
