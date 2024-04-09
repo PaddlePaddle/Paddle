@@ -247,7 +247,7 @@ def _gather_state_dict(state_dict, dst, group, max_size="3G"):
         group(ProcessGroup):
             group across which the state dicts are gathered
         max_size(int|str):
-            The max limitation of the gathered tensor group size transformered a time. Default is 3G bits.
+            The max limitation of the gathered tensor group size transformed a time. Default is 3G bits.
             Each rank 's max tensor group before gathering is max_size // group.size
     Returns:
         Gathered state dict
@@ -306,10 +306,10 @@ def _grouped_gather_data_dict(state_data_dict, dst, group, max_size):
         group(ProcessGroup):
             group across which the state dicts are gathered
         max_size(int|str):
-            The max limitation of the gathered tensor group size transformered a time. Default is 3G bits.
+            The max limitation of the gathered tensor group size transformed a time. Default is 3G bits.
             Each rank 's max tensor group before gathering is max_size // group.size
     Returns:
-        Gatherd state_data_dict
+        Gathered state_data_dict
 
     """
     numpy_dict = {}
@@ -343,7 +343,7 @@ def _grouped_gather_data_dict(state_data_dict, dst, group, max_size):
             f"s list size: {sum(len(s) for s in s_list)} output: {len(output_state)}"
         )
 
-    # Because each size of groups may be different, here we should wait all objects gatherd.
+    # Because each size of groups may be different, here we should wait all objects gathered.
     # The while block breaks until all objects from every rank are empty, which means all of the objects transforming is done.
     while True:
         s_list = []

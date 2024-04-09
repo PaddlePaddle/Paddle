@@ -1070,18 +1070,25 @@ ir::Tensor SliceSymbolic(const ir::Tensor& A,
     input_shape.emplace_back(shape);
   }
 
-  std::vector<int> new_starts(starts);
+  std::vector<Expr> new_starts;
+  std::transform(starts.begin(),
+                 starts.end(),
+                 std::back_inserter(new_starts),
+                 [](const int start) { return ir::Expr(start); });
+
   for (int i = 0; i < axes.size(); i++) {
-    CHECK(input_shape[axes[i]].is_constant())
-        << "Not supported Slice in dynamic dimensions, because the "
-           "relationship between slice range and symbol size cannot be "
-           "determined at compile time";
-    if (new_starts[i] < -input_shape[axes[i]].as_int64()) {
-      new_starts[i] = 0;
-    } else if (new_starts[i] < 0) {
-      new_starts[i] = input_shape[axes[i]].as_int64() + new_starts[i];
-    } else if (new_starts[i] > input_shape[axes[i]].as_int64()) {
-      new_starts[i] = input_shape[axes[i]].as_int64() - 1;
+    if (input_shape[axes[i]].is_constant()) {
+      if (new_starts[i].as_int64() < -input_shape[axes[i]].as_int64()) {
+        new_starts[i] = ir::Expr(0);
+      } else if (new_starts[i].as_int64() < 0) {
+        new_starts[i] = input_shape[axes[i]].as_int64() + new_starts[i];
+      } else if (new_starts[i].as_int64() > input_shape[axes[i]].as_int64()) {
+        new_starts[i] = input_shape[axes[i]].as_int64() - ir::Expr(1);
+      }
+    } else {
+      if (new_starts[i].as_int64() < 0) {
+        new_starts[i] = ir::Add::Make(input_shape[axes[i]], new_starts[i]);
+      }
     }
   }
 

@@ -69,9 +69,7 @@ def record_program_ops_pre_hook(layer, inputs):
         else:
             layer._op_recorder.is_valid = False
             warnings.warn(
-                "{} has recorded the op information before. Please check whether you call this layer twice.".format(
-                    layer._full_name
-                )
+                f"{layer._full_name} has recorded the op information before. Please check whether you call this layer twice."
             )
 
 
@@ -1239,9 +1237,7 @@ class Layer:
             raise ValueError("super().__init__() should be called first")
         elif not isinstance(name, str):
             raise TypeError(
-                "The name of buffer should be a string, but received {}.".format(
-                    type(name).__name__
-                )
+                f"The name of buffer should be a string, but received {type(name).__name__}."
             )
         elif '.' in name:
             raise KeyError(
@@ -1255,9 +1251,7 @@ class Layer:
             raise KeyError(f"attribute '{name}' already exists.")
         elif tensor is not None and not (type(tensor) == core.eager.Tensor):
             raise TypeError(
-                "The registered buffer should be a Paddle.Tensor, but received {}.".format(
-                    type(tensor).__name__
-                )
+                f"The registered buffer should be a Paddle.Tensor, but received {type(tensor).__name__}."
             )
         else:
             self._buffers[name] = tensor
@@ -1532,9 +1526,7 @@ class Layer:
             raise RuntimeError("super().__init__() should be called firstly.")
         elif not isinstance(name, str):
             raise TypeError(
-                "The name of parameter should be a string, but received {}.".format(
-                    type(name).__name__
-                )
+                f"The name of parameter should be a string, but received {type(name).__name__}."
             )
         elif '.' in name:
             raise KeyError(
@@ -1550,9 +1542,7 @@ class Layer:
             parameter, framework.Parameter
         ):
             raise TypeError(
-                "The parameter to be added should be a Parameter, but received {}.".format(
-                    type(parameter).__name__
-                )
+                f"The parameter to be added should be a Parameter, but received {type(parameter).__name__}."
             )
         else:
             if parameter is None:
@@ -1561,9 +1551,7 @@ class Layer:
             if len(self._loaddict_holder) > 0:
                 assert (
                     parameter.name in self._loaddict_holder
-                ), "Parameter not found, Can't not find [ {} ] in state_dict".format(
-                    parameter.name
-                )
+                ), f"Parameter not found, Can't not find [ {parameter.name} ] in state_dict"
 
                 parameter.set_value(self._loaddict_holder[parameter.name])
 
@@ -1687,9 +1675,7 @@ class Layer:
         elif params is not None and name in params:
             if value is not None:
                 raise TypeError(
-                    "assignment to parameter '{}' should be of type Parameter or None, but got '{}'".format(
-                        name, type(value).__name__
-                    )
+                    f"assignment to parameter '{name}' should be of type Parameter or None, but got '{type(value).__name__}'"
                 )
             params[name] = None
         else:
@@ -1705,9 +1691,7 @@ class Layer:
             elif layers is not None and name in layers:
                 if value is not None:
                     raise TypeError(
-                        "assignment to sublayer '{}' should be of type Layer or None, but got '{}'".format(
-                            name, type(value).__name__
-                        )
+                        f"assignment to sublayer '{name}' should be of type Layer or None, but got '{type(value).__name__}'"
                     )
                 layers[name] = None
             else:
@@ -1754,9 +1738,7 @@ class Layer:
                             assign(value, getattr(self, name))
                     elif value is not None:
                         raise TypeError(
-                            "assignment to buffers '{}' should be of type core.Tensor or None, but got '{}'".format(
-                                name, type(value).__name__
-                            )
+                            f"assignment to buffers '{name}' should be of type core.Tensor or None, but got '{type(value).__name__}'"
                         )
                     else:
                         # Assigning None will remove the buffer, but if re-assign a new varBase to it,
@@ -2064,9 +2046,7 @@ class Layer:
                 if list(state_shape) != list(param.shape):
                     missing_keys.append(key)
                     raise ValueError(
-                        "{} receives a shape {}, but the expected shape is {}.".format(
-                            key, list(state_shape), list(param.shape)
-                        )
+                        f"{key} receives a shape {list(state_shape)}, but the expected shape is {list(param.shape)}."
                     )
                 match_keys.add(key)
                 return param, state

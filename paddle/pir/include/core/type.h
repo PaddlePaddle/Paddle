@@ -99,7 +99,7 @@ class IR_API Type {
 
   template <typename T>
   bool isa() const {
-    return pir::isa<T>(*this);
+    return *this && pir::isa<T>(*this);
   }
 
   template <typename U>

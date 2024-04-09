@@ -153,11 +153,11 @@ class TestAutoRecomputeRmsNorm(unittest.TestCase):
                 atol=TOLERANCE[self.dtype]["atol"],
                 rtol=TOLERANCE[self.dtype]["rtol"],
             )
-            forward_ops = recompute_program.global_block().ops[:14]
-            backward_ops = recompute_program.global_block().ops[14:]
-            saved_values = forward_ops[9].results()[0]
+            forward_ops = recompute_program.global_block().ops[:13]
+            backward_ops = recompute_program.global_block().ops[13:]
+            saved_values = forward_ops[10].results()[0]
             define_op = saved_values.get_defining_op()
-            self.assertTrue(define_op.name() == "pd_op.scale")
+            self.assertTrue(define_op.name() == "pd_op.rsqrt")
             for op in forward_ops:
                 if op.name() == "pd_op.data":
                     continue

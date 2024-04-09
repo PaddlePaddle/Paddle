@@ -39,9 +39,9 @@ def all_gather(tensor_list, tensor, group=None, sync_op=True):
 
     Args:
         tensor_list (list): A list of output Tensors. Every element in the list must be a Tensor whose data type
-            should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
+            should be float16, float32, float64, int32, int64, int8, uint8, bool, bfloat16, complex64 or complex128.
         tensor (Tensor): The Tensor to send. Its data type
-            should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
+            should be float16, float32, float64, int32, int64, int8, uint8, bool, bfloat16, complex64 or complex128.
         group (Group, optional): The group instance return by new_group or None for global default group.
         sync_op (bool, optional): Whether this op is a sync op. The default value is True.
 

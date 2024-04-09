@@ -219,9 +219,12 @@ void BindFrontend(pybind11::module *m) {
               auto in_tensor = scope->GetTensor(tensor_inputs[i]->id);
               auto dtype = tensor_inputs[i]->type;
               auto *data = in_tensor->mutable_data(target, dtype);
-              CHECK_EQ(input_data[i].size(), in_tensor->shape().numel())
-                  << "The size of tensor [" << tensor_inputs[i]->id
-                  << "] is different with the input data's size! Please check.";
+              PADDLE_ENFORCE_EQ(input_data[i].size(),
+                                in_tensor->shape().numel(),
+                                phi::errors::InvalidArgument(
+                                    "The size of tensor [%d] is different with "
+                                    "the input data's size! Please check.",
+                                    tensor_inputs[i]->id));
               if (target.arch == Target::Arch::NVGPU) {
 #ifdef CINN_WITH_CUDA
                 CUDA_CALL(cudaMemcpy(data,
@@ -314,9 +317,12 @@ void BindFrontend(pybind11::module *m) {
             for (size_t i = 0; i < tensor_inputs.size(); i++) {
               auto in_tensor = scope->GetTensor(tensor_inputs[i]->id);
               auto *data = in_tensor->mutable_data<float>(target);
-              CHECK_EQ(input_data[i].size(), in_tensor->shape().numel())
-                  << "The size of tensor [" << tensor_inputs[i]->id
-                  << "] is different with the input data's size! Please check.";
+              PADDLE_ENFORCE_EQ(input_data[i].size(),
+                                in_tensor->shape().numel(),
+                                phi::errors::InvalidArgument(
+                                    "The size of tensor [%d] is different with "
+                                    "the input data's size! Please check.",
+                                    tensor_inputs[i]->id));
               if (target.arch == Target::Arch::NVGPU) {
 #ifdef CINN_WITH_CUDA
                 CUDA_CALL(cudaMemcpy(reinterpret_cast<void *>(data),
@@ -365,9 +371,12 @@ void BindFrontend(pybind11::module *m) {
             for (size_t i = 0; i < tensor_inputs.size(); i++) {
               auto in_tensor = scope->GetTensor(tensor_inputs[i]->id);
               auto *data = in_tensor->mutable_data<float>(target);
-              CHECK_EQ(input_data[i].size(), in_tensor->shape().numel())
-                  << "The size of tensor [" << tensor_inputs[i]->id
-                  << "] is different with the input data's size! Please check.";
+              PADDLE_ENFORCE_EQ(input_data[i].size(),
+                                in_tensor->shape().numel(),
+                                phi::errors::InvalidArgument(
+                                    "The size of tensor [%d] is different with "
+                                    "the input data's size! Please check.",
+                                    tensor_inputs[i]->id));
               if (target.arch == Target::Arch::NVGPU) {
 #ifdef CINN_WITH_CUDA
                 CUDA_CALL(cudaMemcpy(reinterpret_cast<void *>(data),

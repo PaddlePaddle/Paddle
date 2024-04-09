@@ -69,9 +69,7 @@ class ConversionOptions:
             setattr(func, CONVERSION_OPTIONS, self)
         else:
             translator_logger.warn(
-                "Only support @not_to_static to type(function) or type(method), but received {}".format(
-                    type(func)
-                )
+                f"Only support @not_to_static to type(function) or type(method), but received {type(func)}"
             )
 
 
@@ -226,9 +224,7 @@ def convert_call(func):
         translator_logger.warn(
             "\n\n"
             + "*" * number_of_stars
-            + "\nYour function:`{}` doesn't support to transform to static function because it is a generator function, it will be run as-is.".format(
-                func.__name__
-            )
+            + f"\nYour function:`{func.__name__}` doesn't support to transform to static function because it is a generator function, it will be run as-is."
             + "\n"
             + "*" * number_of_stars
             + "\n\n"

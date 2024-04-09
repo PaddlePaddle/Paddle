@@ -31,9 +31,6 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-using cinn::common::bfloat16;
-using cinn::common::float16;
-
 using framework::Node;
 using framework::NodeData;
 using framework::OpPatternKind;

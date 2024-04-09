@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import paddle
 from paddle import distributed as dist
 from paddle.autograd import PyLayer
@@ -27,6 +29,8 @@ from paddle.nn import (
     Layer,
     functional as F,
 )
+
+from .log_util import logger
 
 ####################################################
 #                                                  #
@@ -43,9 +47,7 @@ def scatter(input):
     seq_len = input.shape[0]
     assert (
         seq_len % parallelism == 0
-    ), "Input sequence length {} can't be divided exactly by sequence parallelism {}".format(
-        seq_len, parallelism
-    )
+    ), f"Input sequence length {seq_len} can't be divided exactly by sequence parallelism {parallelism}"
     interval = seq_len // parallelism
     input = paddle.slice(
         input, axes=[0], starts=[interval * rank], ends=[interval * (rank + 1)]
@@ -71,9 +73,7 @@ def reduce_scatter(input):
     output_shape = input.shape
     assert (
         input.shape[0] % parallelism == 0
-    ), "Input sequence length {} can't be divided exactly by sequence parallelism {}".format(
-        input.shape[0], parallelism
-    )
+    ), f"Input sequence length {input.shape[0]} can't be divided exactly by sequence parallelism {parallelism}"
     output_shape[0] = output_shape[0] // parallelism
     output = paddle.empty(shape=output_shape, dtype=input.dtype)
     dist.stream.reduce_scatter(
@@ -234,6 +234,9 @@ def is_fused_linear_param_grad_add_supported():
         return False
 
 
+_raise_cuda_env_unset_warning_for_sp = True
+
+
 class SPInnerOverlapLinear(paddle.autograd.PyLayer):
     @staticmethod
     def forward(
@@ -274,9 +277,7 @@ class SPInnerOverlapLinear(paddle.autograd.PyLayer):
 
         assert (
             dinput_parallel.shape[0] % parallelism == 0
-        ), "Input sequence length {} can't be divided exactly by sequence parallelism {}".format(
-            dinput_parallel.shape[0], parallelism
-        )
+        ), f"Input sequence length {dinput_parallel.shape[0]} can't be divided exactly by sequence parallelism {parallelism}"
 
         dx_shape = dinput_parallel.shape
         dx_shape[0] = dx_shape[0] // parallelism
@@ -290,6 +291,17 @@ class SPInnerOverlapLinear(paddle.autograd.PyLayer):
             group=group,
             sync_op=False,
         )
+        # Using small operation to preempt GPU SMs for all_reduce to achieve overlap.
+        if int(os.getenv("CUDA_DEVICE_MAX_CONNECTIONS", "0")) != 1:
+            global _raise_cuda_env_unset_warning_for_sp
+            if _raise_cuda_env_unset_warning_for_sp:
+                logger.warning(
+                    "You set mp_async_allreduce=True, but you forget to set environment "
+                    "variable CUDA_DEVICE_MAX_CONNECTIONS=1, which may leads to performance "
+                    "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
+                )
+            _raise_cuda_env_unset_warning_for_sp = False
+            tmp = paddle.ones([512])
 
         if ctx.mp_fused_linear_param_grad_add:
             if not is_fused_linear_param_grad_add_supported():
@@ -355,6 +367,7 @@ class SPInnerOverlapLinear(paddle.autograd.PyLayer):
                     task.wait()
                     return dx, None, None
                 else:
+                    # When main_grad is not enabled and gradient_accumulation is used, the grad is not initialized for the first acc step.
                     (
                         dw,
                         dbias,
