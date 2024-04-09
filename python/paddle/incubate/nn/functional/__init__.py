@@ -39,6 +39,11 @@ from .variable_length_memory_efficient_attention import (
     variable_length_memory_efficient_attention,
 )
 
+try:
+    from .triton_ops import weight_on
+except:
+    print("import triton_ops failed")
+
 __all__ = [
     'fused_multi_head_attention',
     'fused_feedforward',
@@ -56,4 +61,5 @@ __all__ = [
     "masked_multihead_attention",
     "block_multihead_attention",
     "swiglu",
+    "weight_only_int8",
 ]
