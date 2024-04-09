@@ -138,7 +138,7 @@ void FCKernel(const Context& dev_ctx,
       get_fc_dtype(input.dtype()),
       isVec_bias,
       cutlass_dispatch_sm_version(sm_version),
-      leaky_alpha,       // for leaky_relu
+      0.01,       // for leaky_relu
   };
 
   void* dlhandler = phi::dynload::GetCutlassFcHandle();

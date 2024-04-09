@@ -91,6 +91,7 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
         });
 
 #ifdef USE_CUTLASS
+    // 这里忽略了转置参数，没有实现。
     const auto &fc = res.Op(paddle::dialect::GemmEpilogueOp::name(),
                             {{
                                 {"in_num_col_dims", in_num_col_dims_attr},
@@ -231,39 +232,43 @@ class RightMatmulAddPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-// gelu 有一个approximate属性，待写入
+/// 激活很多的情况下，可以写一个统一的实现。当前还是分开写
 class FcWithGeluPattern : public paddle::drr::DrrPatternBase {
  public:
   std::string name() const override { return "FcWithGeluPattern"; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &fc =
-        pat.Op(paddle::dialect::GemmEpilogueOp::name(),
-               {{
-                   {"in_num_col_dims", pat.Attr("in_num_col_dims")},
-                   {"activation_type", pat.Attr("activation_type")},
-                   {"padding_weights", pat.Attr("padding_weights")},
-               }});
+    const auto &fc = pat.Op(paddle::dialect::GemmEpilogueOp::name(),
+                      {{
+                          {"in_num_col_dims", pat.Attr("in_num_col_dims")},
+                          {"activation_type", pat.Attr("activation_type")},
+                          {"padding_weights", pat.Attr("padding_weights")},
+                      }});
+    std::unordered_map<std::string, paddle::drr::Attribute> act_attrs;
+    act_attrs.emplace("approximate", pat.Attr("approximate"));
+    const auto &gelu = pat.Op(paddle::dialect::GeluOp::name(), act_attrs);
+
     fc({&pat.Tensor("x"), &pat.Tensor("w"), &pat.Tensor("y")},
        {&pat.Tensor("fc_out")});
-    const auto &gelu = pat.Op(paddle::dialect::GeluOp::name());
     gelu({&pat.Tensor("fc_out")}, {&pat.Tensor("gelu_out")});
 
-    // Constrains the activation is none
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      return match_ctx.Attr<std::string>("activation_type").empty();
+        bool isEmpty_act = match_ctx.Attr<std::string>("activation_type").empty();
+        if(!isEmpty_act) return false;
+        bool Attr_approx = match_ctx.Attr<bool>("approximate");
+        // 参考onednn实现。这里的意思我理解是，不支持gelu的估算。cutlass也没有approx参数。
+        if (Attr_approx) return false;      
+        return true;
     });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
-
-    const auto &fc_with_gelu =
-        res.Op(paddle::dialect::GemmEpilogueOp::name(),
-               {{
-                   {"in_num_col_dims", pat.Attr("in_num_col_dims")},
-                   {"activation_type", res.StrAttr("gelu")},
-                   {"padding_weights", pat.Attr("padding_weights")},
-               }});
+    std::unordered_map<std::string, paddle::drr::Attribute> fused_attrs{
+      {"in_num_col_dims", pat.Attr("in_num_col_dims")},
+      {"activation_type", res.StrAttr("gelu")},
+      {"padding_weights", pat.Attr("padding_weights")},
+    };
+    const auto &fc_with_gelu = res.Op(paddle::dialect::GemmEpilogueOp::name(), fused_attrs);
     fc_with_gelu({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("y")},
                  {&res.Tensor("gelu_out")});
   }
