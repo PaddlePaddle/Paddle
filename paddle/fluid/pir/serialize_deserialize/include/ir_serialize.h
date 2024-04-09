@@ -11,8 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#ifndef PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_IR_SERIALIZE_H_
-#define PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_IR_SERIALIZE_H_
+#pragma once
+
 #include <nlohmann/json.hpp>
 #include "paddle/pir/include/core/program.h"
 using Json = nlohmann::json;
@@ -56,4 +56,3 @@ class ProgramWriter {
 };
 
 }  // namespace pir
-#endif  // PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_IR_SERIALIZE_H_

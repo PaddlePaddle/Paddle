@@ -11,8 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#ifndef PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_DESERIALIZE_UTILS_H_
-#define PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_DESERIALIZE_UTILS_H_
+#pragma once
 #include <fstream>
 #include <initializer_list>
 #include <string>
@@ -23,7 +22,7 @@
 #include "paddle/common/layout.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
-#include "paddle/fluid/pir/serialize_deserialize/include/utils.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/schema.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_type.h"
@@ -314,5 +313,3 @@ pir::Attribute parseAttr(Json* attr_json) {
 }
 
 }  // namespace pir
-
-#endif  // PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_DESERIALIZE_UTILS_H_

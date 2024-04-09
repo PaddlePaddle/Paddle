@@ -44,8 +44,9 @@ void WriteModule(const pir::Program& program,
 
   ProgramWriter writer(pir_version);
   // write program
+  auto t1 = std::chrono::high_resolution_clock::now();
   total[PROGRAM] = writer.GetProgramJson(&program);
-
+  auto t2 = std::chrono::high_resolution_clock::now();
   std::string total_str;
   if (readable) {
     total_str = total.dump(4);
@@ -53,6 +54,7 @@ void WriteModule(const pir::Program& program,
     total_str = total.dump();
   }
 
+  auto t3 = std::chrono::high_resolution_clock::now();
   MkDirRecursively(DirName(file_path).c_str());
   std::ofstream fout(file_path, std::ios::binary);
   PADDLE_ENFORCE_EQ(static_cast<bool>(fout),

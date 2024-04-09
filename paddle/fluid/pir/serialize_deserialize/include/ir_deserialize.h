@@ -11,8 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#ifndef PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_IR_DESERIALIZE_H_
-#define PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_IR_DESERIALIZE_H_
+#pragma once
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include "paddle/common/enforce.h"
@@ -52,5 +51,3 @@ class ProgramReader {
 };
 
 }  // namespace pir
-
-#endif  // PADDLE_FLUID_PIR_SERIALIZE_DESERIALIZE_INCLUDE_IR_DESERIALIZE_H_
