@@ -286,7 +286,7 @@ def matmul_v2_orig2prim(op, x, y):
     return matmul(x, y)
 
 
-# NOTE(lml): The second output of reshape2 Xshape, which is only used in reshape2_grad, is meanlingless in new autograd mechanism, thus we use a zero tensor instead.
+# NOTE(lml): The second output of reshape2 Xshape, which is only used in reshape2_grad, is meaningless in new autograd mechanism, thus we use a zero tensor instead.
 @REGISTER_ORIG2PRIM('reshape2')
 def reshape2_orig2prim(op, shape_t, shape_tl, x):
     assert (
