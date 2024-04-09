@@ -21,6 +21,31 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
+/*
+fuse gn + activation block in to group_norm_silu op
+For example:
+graph:
+                      X
+              Scale   |   Bias
+                   \  |  /
+                  group norm
+                   /  |  \
+                  /   |   \
+            variance  |   mean
+                      |
+                     silu
+                      |
+                    output
+------------------------------------------------------
+After the pass is applied:
+                      X
+              Scale   |   Bias
+                   \  |  /
+                group_norm_silu
+                      |
+                     Out
+*/
+
 namespace {
 
 class GroupNormSiluPattern : public paddle::drr::DrrPatternBase {
@@ -56,8 +81,8 @@ class GroupNormSiluPattern : public paddle::drr::DrrPatternBase {
         paddle::dialect::GroupNormSiluXpuOp::name(),
         {{{"epsilon", pat.Attr("epsilon")}, {"groups", pat.Attr("groups")}}});
     group_norm_silu_xpu(
-        {&res.Tensor("x"), &res.Tensor("bias"), &res.Tensor("scale")},
-        {&res.Tensor("out")});
+        {&res.Tensor("X"), &res.Tensor("Bias"), &res.Tensor("Scale")},
+        {&res.Tensor("Out")});
   }
 };
 

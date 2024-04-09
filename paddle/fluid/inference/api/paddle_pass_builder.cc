@@ -618,7 +618,8 @@ const std::vector<std::string> kPirXpuPasses{// Functional pass
                                              "map_op_to_another_pass",
                                              "identity_op_clean_pass",
                                              // Operator fusion pass
-                                             "add_layernorm_xpu_fuse_pass"};
+                                             "add_layernorm_xpu_fuse_pass",
+                                             "group_norm_silu_xpu_fuse_pass"};
 
 const std::vector<std::string> kPirMkldnnPasses{
     "conv2d_bias_fuse_pass",
