@@ -961,10 +961,6 @@ class TestlayernormStaticOpCPU(unittest.TestCase):
         self.epsilon = 1e-5
         self.residual_alpha = np.random.uniform(low=0.1, high=1.1, size=[1])
 
-        self.quant_scale = 0.15
-        self.quant_round_type = 1
-        self.quant_max_bound = 127
-        self.quant_min_bound = -127
         self.place = paddle.CPUPlace()
 
     def check_layernorm(self, x_np, gamma_np, beta_np, dtype):
@@ -1038,10 +1034,6 @@ class TestlayernormStaticOpCPU(unittest.TestCase):
                 bias=bias_static,
                 residual=residual_static,
                 residual_alpha=self.residual_alpha,
-                quant_scale=self.quant_scale,
-                quant_round_type=self.quant_round_type,
-                quant_max_bound=self.quant_max_bound,
-                quant_min_bound=self.quant_min_bound,
             )
 
             exe = paddle.static.Executor(self.place)
