@@ -131,8 +131,8 @@ set(generated_files_pd_op
     "${pir_op_source_file}"
     "${pir_bwd_op_source_file}"
     "${pir_update_op_source_file}"
-    "${sparse_op_source_file_tmp}"
-    "${bwd_sparse_op_source_file_tmp}")
+    "${sparse_op_source_file}"
+    "${bwd_sparse_op_source_file}")
 
 if(WITH_MKLDNN)
   set(pir_op_onednn_yaml ${parsed_op_dir}/onednn.parsed.yaml)
@@ -199,11 +199,16 @@ set(python_c_source_file
 set(python_c_header_file_tmp ${python_c_header_file}.tmp)
 set(python_c_source_file_tmp ${python_c_source_file}.tmp)
 
+set(trimmed_op_yaml_files
+    ${op_fwd_yaml},${op_bwd_yaml},${fused_op_fwd_yaml},${fused_op_bwd_yaml},${pir_op_fwd_yaml},${pir_op_bwd_yaml},${pir_update_op_fwd_yaml}
+)
+
 execute_process(
   COMMAND
-    ${PYTHON_EXECUTABLE} ${python_c_gen_file} --op_yaml_files ${op_yaml_files}
-    --op_compat_yaml_file ${op_compat_yaml_file} --namespaces "paddle,pybind"
-    --python_c_def_h_file ${python_c_header_file_tmp} --python_c_def_cc_file
+    ${PYTHON_EXECUTABLE} ${python_c_gen_file} --op_yaml_files
+    ${trimmed_op_yaml_files} --op_compat_yaml_file ${op_compat_yaml_file}
+    --namespaces "paddle,pybind" --python_c_def_h_file
+    ${python_c_header_file_tmp} --python_c_def_cc_file
     ${python_c_source_file_tmp})
 
 set(generated_files_python_c "${python_c_header_file}"
@@ -216,9 +221,9 @@ set(ops_api_source_file_tmp ${ops_api_source_file}.tmp)
 
 execute_process(
   COMMAND
-    ${PYTHON_EXECUTABLE} ${ops_api_gen_file} --op_yaml_files ${op_yaml_files}
-    --op_compat_yaml_file ${op_compat_yaml_file} --namespaces "paddle,pybind"
-    --ops_api_file ${ops_api_source_file_tmp})
+    ${PYTHON_EXECUTABLE} ${ops_api_gen_file} --op_yaml_files
+    ${trimmed_op_yaml_files} --op_compat_yaml_file ${op_compat_yaml_file}
+    --namespaces "paddle,pybind" --ops_api_file ${ops_api_source_file_tmp})
 
 set(generated_files_ops_api "${ops_api_source_file}")
 
@@ -257,6 +262,7 @@ set(op_dialect_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/control_flow_op.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/ir_meta_tensor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/ir_selected_rows.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/ir_sparse.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/ir_tensor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_api.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op.cc
@@ -270,6 +276,8 @@ set(op_dialect_srcs
     ${pir_op_source_file}
     ${pir_bwd_op_source_file}
     ${pir_update_op_source_file}
+    ${sparse_op_source_file}
+    ${bwd_sparse_op_source_file}
     ${api_source_file}
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/transforms/shape_optimization_pass.cc)
 
@@ -286,7 +294,7 @@ file(GLOB_RECURSE dist_dialect_srcs
 # if(WITH_DISTRIBUTE) FIXME in next PR
 set(op_dialect_srcs ${op_dialect_srcs} ${dist_dialect_srcs})
 # endif()
-set(op_dialect_deps phi common pir type_info string_helper)
+set(op_dialect_deps phi common pir type_info string_helper phi)
 if(WITH_ROCM)
   set(op_dialect_deps ${op_dialect_deps} global_utils)
 endif()
@@ -312,7 +320,7 @@ if(WITH_MKLDNN)
       ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/op_onednn_dialect.cc)
 endif()
 
-set(op_dialect_vjp_deps primitive_vjp_experimental op_dialect)
+set(op_dialect_vjp_deps primitive_vjp_experimental op_dialect phi)
 
 cc_library(
   op_dialect_vjp

@@ -17,17 +17,17 @@
 
 namespace paddle {
 namespace dialect {
-IrSparseCooTensor::IrSparseCooTensor(const common::DDim& dims,
+IrSparseCooTensor::IrSparseCooTensor(phi::DataType dtype,
+                                     const common::DDim& dims,
                                      common::DDim non_zero_dims,
-                                     phi::DataType dtype,
                                      common::DataLayout layout,
                                      pir::DenseTensorType non_zero_indices,
                                      pir::DenseTensorType non_zero_elements,
-                                     bool coalesced = false)
+                                     bool coalesced)
     : dims_(dims),
       non_zero_dims_(non_zero_dims),
-      dtype_({dtype}),
-      layout_({layout}),
+      dtype_(dtype),
+      layout_(layout),
       non_zero_indices_(non_zero_indices),
       non_zero_elements_(non_zero_elements),
       coalesced_(coalesced) {}
@@ -79,15 +79,15 @@ void* IrSparseCooTensor::AllocateFrom(phi::Allocator* allocator,
   IR_THROW("Don't use IrSparseCooTensor::AllocateFrom method.");
 }
 
-IrSparseCsrTensor::IrSparseCsrTensor(const common::DDim& dims,
-                                     phi::DataType dtype,
-                                     common::DataLayout layout,
+IrSparseCsrTensor::IrSparseCsrTensor(phi::DataType dtype,
+                                     const common::DDim& dims,
+                                     const common::DataLayout layout,
                                      pir::DenseTensorType non_zero_crows,
                                      pir::DenseTensorType non_zero_cols,
                                      pir::DenseTensorType non_zero_elements)
     : dims_(dims),
-      dtype_({dtype}),
-      layout_({layout}),
+      dtype_(dtype),
+      layout_(layout),
       non_zero_crows_(non_zero_crows),
       non_zero_cols_({non_zero_cols}),
       non_zero_elements_(non_zero_elements) {}

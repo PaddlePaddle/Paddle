@@ -241,7 +241,6 @@ def gen_op_vjp_str(
             build_attr_str += op_attribute_list[idx] + ", "
     build_args_str += build_attr_str
     if op_info.is_sparse_op:
-        print(op_info.op_phi_name[0])
         if op_info.op_phi_name[0].endswith('_'):
             op_phi_name_suffix = 'sp_'
         else:

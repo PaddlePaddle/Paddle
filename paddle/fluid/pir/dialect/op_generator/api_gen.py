@@ -401,16 +401,6 @@ class CodeGen:
             for op_name in op_info.op_phi_name:
                 # NOTE:When infer_meta_func is None, the Build() function generated in pd_op
                 # is wrong, so temporarily skip the automatic generation of these APIs
-                # sparse_op_name_suffix = '_sp' if op_info.is_sparse_op else ''
-                # sparse_op_inplace_name_suffix = 'sp_' if op_info.is_sparse_op else ''
-                # if op_name[-1] == '_':
-                #     op_name = op_name + sparse_op_inplace_name_suffix
-                # else:
-                #     op_name = op_name + sparse_op_name_suffix
-
-                # if (
-                #     self._need_skip(op_info, op_name)
-                #     or op_name in PD_MANUAL_API_LIST
                 if (
                     self._need_skip(op_info, op_name)
                     or op_name in PD_MANUAL_API_LIST
