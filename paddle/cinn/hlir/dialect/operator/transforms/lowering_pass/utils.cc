@@ -33,29 +33,6 @@ using cinn::hlir::framework::PirCompiler;
 using cinn::hlir::framework::pir::CINNKernelInfo;
 using cinn::hlir::framework::pir::CompatibleInfo;
 
-std::vector<pir::Value> GetBlockOutsideInput(
-    const std::vector<pir::Operation*>& op_list) {
-  std::vector<pir::Value> vec_res;
-  std::unordered_set<::pir::Value> block_inner_output;
-  for (size_t k = 0; k < op_list.size(); ++k) {
-    for (size_t i = 0; i < op_list[k]->num_results(); ++i) {
-      block_inner_output.insert(op_list[k]->result(i));
-    }
-  }
-
-  std::unordered_set<::pir::Value> insert_value;
-  for (size_t k = 0; k < op_list.size(); ++k) {
-    for (size_t i = 0; i < op_list[k]->num_operands(); ++i) {
-      if (!block_inner_output.count(op_list[k]->operand_source(i)) &&
-          !insert_value.count(op_list[k]->operand_source(i))) {
-        vec_res.push_back(op_list[k]->operand_source(i));
-        insert_value.insert(op_list[k]->operand_source(i));
-      }
-    }
-  }
-  return vec_res;
-}
-
 std::unordered_map<OpLoweringGroupPtr,
                    std::unordered_map<std::string, pir::Attribute>>
 CompileGroupAsOpAttribute(const std::vector<OpLoweringGroupPtr>& group_list) {
