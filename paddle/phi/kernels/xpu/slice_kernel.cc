@@ -48,6 +48,17 @@ void SliceKernel(const Context& ctx,
   auto in_dims = input.dims();
   auto out_dims = out->dims();
   auto slice_dims = out_dims;
+  if (in_dims.size() == out_dims.size()) {
+    for (int i = 0; i < in_dims.size(); i++) {
+      if (in_dims[i] != out_dims[i]) {
+        break;
+      } else {
+        continue;
+      }
+    }
+    phi::Copy<Context>(ctx, input, ctx.GetPlace(), false, out);
+    return;
+  }
 
   // 2.1 Infer output dims
   for (size_t i = 0; i < axes.size(); ++i) {

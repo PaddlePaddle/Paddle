@@ -367,7 +367,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void EnableXpu(int l3_size = 0xfffc00,
                  bool l3_locked = false,
-                 bool conv_autotune = true,
+                 bool conv_autotune = false,
                  const std::string& conv_autotune_file = "",
                  const std::string& transformer_encoder_precision = "int16",
                  bool transformer_encoder_adaptive_seqlen = false,

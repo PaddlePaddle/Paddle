@@ -3816,6 +3816,58 @@ void SinePosXPUInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void Pad2dXPUInferMeta(const MetaTensor& x,
+                       const std::vector<int>& paddings,
+                       const std::string& mode,
+                       float pad_value,
+                       const std::string& data_format,
+                       MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto x_dims_size = x_dims.size();
+  PADDLE_ENFORCE_EQ(
+      x_dims_size,
+      4,
+      phi::errors::InvalidArgument(
+          "x_dims_size should be 4, but received x_dims_size is %d",
+          x_dims_size));
+
+  auto paddings_dims_size = paddings.size();
+  PADDLE_ENFORCE_EQ(
+      paddings_dims_size,
+      6,
+      phi::errors::InvalidArgument(
+          "x_dims_size should be 6, but received x_dims_size is %d",
+          paddings_dims_size));
+
+  phi::DDim out_dim;
+  if (data_format == "NCHW") {
+    out_dim = phi::make_ddim(
+        {x_dims[0],
+         x_dims[1],
+         x_dims[2] + paddings[2] + paddings[3],    // top bootom height
+         x_dims[3] + paddings[0] + paddings[1]});  // left right weight
+  } else {                                         //(data_format == "NHWC")
+    out_dim = phi::make_ddim({x_dims[0],
+                              x_dims[1] + paddings[2] + paddings[3],  // height
+                              x_dims[2] + paddings[0] + paddings[1],  // width
+                              x_dims[3]});
+  }
+  out_dim = phi::make_ddim(
+      {x_dims[0],
+       x_dims[1],
+       x_dims[2] + paddings[2] + paddings[3],    // top bootom height
+       x_dims[3] + paddings[0] + paddings[1]});  // left right weight
+
+  if (data_format == "NHWC") {
+    out->set_layout(phi::DataLayout::NHWC);
+  } else if (data_format == "NCHW") {
+    out->set_layout(phi::DataLayout::NCHW);
+  }
+
+  out->set_dims(out_dim);
+  out->set_dtype(x.dtype());
+}
+
 void MultiGruInferMeta(
     const MetaTensor& x,
     const std::vector<const MetaTensor*>& weight_x,
