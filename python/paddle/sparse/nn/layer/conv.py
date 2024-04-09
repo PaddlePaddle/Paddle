@@ -132,9 +132,7 @@ class _Conv3D(Layer):
             )
         else:
             raise ValueError(
-                "The value of 'backend' in Conv3D should be None or 'igemm', but got {}.".format(
-                    self._backend
-                )
+                f"The value of 'backend' in Conv3D should be None or 'igemm', but got {self._backend}."
             )
         return out
 
@@ -262,9 +260,7 @@ class _Conv2D(Layer):
             )
         else:
             raise ValueError(
-                "The value of 'backend' in Conv2D should be None or 'igemm', but got {}.".format(
-                    self._backend
-                )
+                f"The value of 'backend' in Conv2D should be None or 'igemm', but got {self._backend}."
             )
         return out
 
