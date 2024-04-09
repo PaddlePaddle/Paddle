@@ -37,7 +37,7 @@ __global__ void naive_fc_kernel(
     int M, int N, int K,
     int lda, int ldb, int ldd,
     float leaky_alpha,
-    bool vecBias,
+    bool isVec_bias,
     OpType op_type
 ){
   int j = threadIdx.x + blockIdx.x * blockDim.x;
@@ -50,7 +50,7 @@ __global__ void naive_fc_kernel(
       float weight_ele = static_cast<float>(weight[k * ldb + j]);
       accumulator += input_ele * weight_ele;
     }
-    if(vecBias){
+    if(isVec_bias){
       accumulator += static_cast<float>(bias[j]);
     }
     else{
@@ -91,7 +91,7 @@ float fc_diff_gpu(const FcAllParams& params, OpType op_type){
     int M = params.m, N = params.n, K = params.k;
     int lda = params.lda, ldb = params.ldb, ldd= params.ldd;
     float leaky_alpha = params.leaky_alpha;
-    bool vecBias = params.vecBias;
+    bool isVec_bias = params.isVec_bias;
     
     size_t outSize = sizeof(T) * M * N;
     T *output_naive_D;
@@ -99,7 +99,7 @@ float fc_diff_gpu(const FcAllParams& params, OpType op_type){
     dim3 block(16, 16);
     dim3 grid((N + block.x - 1) / block.x, (M + block.y - 1) / block.y);
     naive_fc_kernel<T><<<grid, block>>>(input, weight, bias, output_naive_D,
-                                        M, N, K,lda, ldb, ldd, leaky_alpha, vecBias, op_type);
+                                        M, N, K,lda, ldb, ldd, leaky_alpha, isVec_bias, op_type);
     cudaGetLastError();
     CUDA_CHECK(cudaDeviceSynchronize());
 
