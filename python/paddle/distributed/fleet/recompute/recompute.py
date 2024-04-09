@@ -529,12 +529,15 @@ def recompute(function, *args, **kwargs):
 
     if use_reentrant:
         input_args = args
-        if kwargs:
-            # rearrange `position-args + keyword-args` into `position-args`
+        # rearrange `position-args + keyword-args` into `position-args`
+        if isinstance(function, paddle.nn.Layer):
             dyfunc_sig = inspect.signature(function.forward)
-            bound_args = dyfunc_sig.bind(*args, **kwargs)
-            bound_args.apply_defaults()
-            input_args = list(bound_args.arguments.values())
+        else:
+            dyfunc_sig = inspect.signature(function)
+
+        bound_args = dyfunc_sig.bind(*args, **kwargs)
+        bound_args.apply_defaults()
+        input_args = list(bound_args.arguments.values())
         return RecomputeFunction.apply(function, preserve, *input_args)
     else:
         return _recompute_without_reentrant(function, preserve, *args, **kwargs)
