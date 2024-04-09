@@ -41,8 +41,6 @@ class TestReshardPToR:
 
         input_tensor = dist.shard_tensor(a, self._mesh, [dist.Partial()])
         out = dist.reshard(input_tensor, self._mesh, [dist.Replicate()])
-        print(input_tensor)
-        print(out)
 
         assert np.equal(out.shape, input_tensor.shape).all()
         np.testing.assert_equal(out._local_value().numpy(), a.numpy())

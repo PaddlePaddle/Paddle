@@ -16,13 +16,11 @@ import unittest
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
 
 class TestDataFeeder(unittest.TestCase):
-    @test_with_pir_api
     def test_lod_level_0_converter(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -45,7 +43,6 @@ class TestDataFeeder(unittest.TestCase):
             except ValueError:
                 self.assertTrue(True)
 
-    @test_with_pir_api
     def test_lod_level_1_converter(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -74,7 +71,6 @@ class TestDataFeeder(unittest.TestCase):
             )
             self.assertEqual(result['label'].recursive_sequence_lengths(), [])
 
-    @test_with_pir_api
     def test_lod_level_2_converter(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

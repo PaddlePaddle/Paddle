@@ -32,7 +32,6 @@ limitations under the License. */
 #include "paddle/fluid/jit/function.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/operators/py_func_op.h"
-#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -47,6 +46,7 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/placement_types.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/pir/include/core/attribute.h"
 
 COMMON_DECLARE_bool(check_nan_inf);
@@ -1073,6 +1073,12 @@ PyObject* ToPyObject(const paddle::framework::proto::VarType& type) {
 
 PyObject* ToPyObject(const phi::DenseTensor* value) {
   auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
+  obj.inc_ref();
+  return obj.ptr();
+}
+
+PyObject* ToPyObject(const phi::DataType& dtype) {
+  auto obj = ::pybind11::cast(dtype);
   obj.inc_ref();
   return obj.ptr();
 }
@@ -2410,9 +2416,11 @@ paddle::DataType CastPyArg2DataType(PyObject* obj,
   if (obj == Py_None) {
     return phi::DataType::UNDEFINED;
   }
-
-  framework::proto::VarType::Type type = CastPyArg2ProtoType(obj, arg_pos);
-  return framework::TransToPhiDataType(type);
+  if (PyObject_TypeCheck(obj, g_vartype_pytype)) {
+    framework::proto::VarType::Type type = CastPyArg2ProtoType(obj, arg_pos);
+    return framework::TransToPhiDataType(type);
+  }
+  return CastPyArg2DataTypeDirectly(obj, op_type, arg_pos);
 }
 
 paddle::Tensor PyTensorHook::operator()(const paddle::Tensor& var) {

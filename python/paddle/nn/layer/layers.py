@@ -31,7 +31,6 @@ from paddle.base.dygraph.base import (
     _convert_into_variable,
     in_declarative_mode,  # noqa: F401
     in_to_static_mode,
-    program_desc_tracing_guard,
 )
 from paddle.base.dygraph_utils import _append_activation_in_dygraph
 from paddle.base.executor import Executor, global_scope
@@ -44,6 +43,7 @@ from paddle.base.framework import (
     in_dygraph_mode,
     in_pir_mode,
     name_struct,
+    paddle_type_to_proto_type,
 )
 from paddle.base.layer_helper_base import LayerHelperBase
 from paddle.base.param_attr import ParamAttr
@@ -69,9 +69,7 @@ def record_program_ops_pre_hook(layer, inputs):
         else:
             layer._op_recorder.is_valid = False
             warnings.warn(
-                "{} has recorded the op information before. Please check whether you call this layer twice.".format(
-                    layer._full_name
-                )
+                f"{layer._full_name} has recorded the op information before. Please check whether you call this layer twice."
             )
 
 
@@ -1239,9 +1237,7 @@ class Layer:
             raise ValueError("super().__init__() should be called first")
         elif not isinstance(name, str):
             raise TypeError(
-                "The name of buffer should be a string, but received {}.".format(
-                    type(name).__name__
-                )
+                f"The name of buffer should be a string, but received {type(name).__name__}."
             )
         elif '.' in name:
             raise KeyError(
@@ -1255,9 +1251,7 @@ class Layer:
             raise KeyError(f"attribute '{name}' already exists.")
         elif tensor is not None and not (type(tensor) == core.eager.Tensor):
             raise TypeError(
-                "The registered buffer should be a Paddle.Tensor, but received {}.".format(
-                    type(tensor).__name__
-                )
+                f"The registered buffer should be a Paddle.Tensor, but received {type(tensor).__name__}."
             )
         else:
             self._buffers[name] = tensor
@@ -1395,8 +1389,7 @@ class Layer:
                 inputs = hook_result
 
         if not self._built:
-            with program_desc_tracing_guard(False):
-                self._build_once(*inputs, **kwargs)
+            self._build_once(*inputs, **kwargs)
 
             self._built = True
 
@@ -1533,9 +1526,7 @@ class Layer:
             raise RuntimeError("super().__init__() should be called firstly.")
         elif not isinstance(name, str):
             raise TypeError(
-                "The name of parameter should be a string, but received {}.".format(
-                    type(name).__name__
-                )
+                f"The name of parameter should be a string, but received {type(name).__name__}."
             )
         elif '.' in name:
             raise KeyError(
@@ -1551,9 +1542,7 @@ class Layer:
             parameter, framework.Parameter
         ):
             raise TypeError(
-                "The parameter to be added should be a Parameter, but received {}.".format(
-                    type(parameter).__name__
-                )
+                f"The parameter to be added should be a Parameter, but received {type(parameter).__name__}."
             )
         else:
             if parameter is None:
@@ -1562,9 +1551,7 @@ class Layer:
             if len(self._loaddict_holder) > 0:
                 assert (
                     parameter.name in self._loaddict_holder
-                ), "Parameter not found, Can't not find [ {} ] in state_dict".format(
-                    parameter.name
-                )
+                ), f"Parameter not found, Can't not find [ {parameter.name} ] in state_dict"
 
                 parameter.set_value(self._loaddict_holder[parameter.name])
 
@@ -1688,9 +1675,7 @@ class Layer:
         elif params is not None and name in params:
             if value is not None:
                 raise TypeError(
-                    "assignment to parameter '{}' should be of type Parameter or None, but got '{}'".format(
-                        name, type(value).__name__
-                    )
+                    f"assignment to parameter '{name}' should be of type Parameter or None, but got '{type(value).__name__}'"
                 )
             params[name] = None
         else:
@@ -1706,9 +1691,7 @@ class Layer:
             elif layers is not None and name in layers:
                 if value is not None:
                     raise TypeError(
-                        "assignment to sublayer '{}' should be of type Layer or None, but got '{}'".format(
-                            name, type(value).__name__
-                        )
+                        f"assignment to sublayer '{name}' should be of type Layer or None, but got '{type(value).__name__}'"
                     )
                 layers[name] = None
             else:
@@ -1755,9 +1738,7 @@ class Layer:
                             assign(value, getattr(self, name))
                     elif value is not None:
                         raise TypeError(
-                            "assignment to buffers '{}' should be of type core.Tensor or None, but got '{}'".format(
-                                name, type(value).__name__
-                            )
+                            f"assignment to buffers '{name}' should be of type core.Tensor or None, but got '{type(value).__name__}'"
                         )
                     else:
                         # Assigning None will remove the buffer, but if re-assign a new varBase to it,
@@ -2065,9 +2046,7 @@ class Layer:
                 if list(state_shape) != list(param.shape):
                     missing_keys.append(key)
                     raise ValueError(
-                        "{} receives a shape {}, but the expected shape is {}.".format(
-                            key, list(state_shape), list(param.shape)
-                        )
+                        f"{key} receives a shape {list(state_shape)}, but the expected shape is {list(param.shape)}."
                     )
                 match_keys.add(key)
                 return param, state
@@ -2223,13 +2202,18 @@ class Layer:
         if dtype is None:
             dtype = t.dtype
 
-        if type(dtype) is not VarDesc.VarType:
+        if not isinstance(dtype, (VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
         # 1. gpu place need to determine whether the memory is sufficient for allocation:
         if t.place.is_gpu_place():
             # for gpu, minimum memory allocation unit is 256 bytes.
-            size_dtype = core.size_of_dtype(dtype)
+            proto_dtype = (
+                paddle_type_to_proto_type[dtype]
+                if isinstance(dtype, core.DataType)
+                else dtype
+            )
+            size_dtype = core.size_of_dtype(proto_dtype)
             # Note(zhangbo): Paddle GPU minimum memory allocation unit is 256 bytes, waiting_alloc_memory will compute ‘t’ occupied memory space.
             # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.
             waiting_alloc_memory = (

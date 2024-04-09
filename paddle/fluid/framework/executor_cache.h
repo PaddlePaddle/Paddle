@@ -27,7 +27,7 @@
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/pir/include/core/dialect.h"

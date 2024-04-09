@@ -141,6 +141,9 @@ class ValueSet:
         for val in other:
             self.add(val)
 
+    def pop(self):
+        return self._set.pop()._value
+
     def __and__(self, other: ValueSet):
         return ValueSet(self._set & other._set)
 
@@ -272,19 +275,7 @@ def _as_list(x):
 
 
 def some_in_set(value_list, value_set):
-    def operand2value(values):
-        value_set = ValueSet()
-        for item in values:
-            if isinstance(item, pir.OpOperand):
-                value_set.add(item.source())
-            else:
-                value_set.add(item)
-        return value_set
-
-    if operand2value(value_list) & operand2value(value_set):
-        return True
-    else:
-        return False
+    return any(v in value_set for v in value_list)
 
 
 def is_control_flow(op):
@@ -398,7 +389,6 @@ def remove_op(block, op, state):
     '''
     remove op from block
     '''
-    block.remove_op(op)
     if state.opgrad_to_op[op] != []:
         fwd_op = state.opgrad_to_op[op][0]
         state.op_to_opgrad[fwd_op].remove(op)
@@ -412,6 +402,19 @@ def remove_op(block, op, state):
                 raise ValueError(
                     'input_grad in [%s] is value which need to sum ', op.name()
                 )
+    # NOTE(SigureMo): Ensure access to the op's results before removing it.
+    # Otherwise, the op will be deconstructed and access the num_results
+    # will be undefined behavior, it always cause hanging on the macOS.
+    block.remove_op(op)
+
+
+def while_prune_check(while_tuple_ops):
+    if len(while_tuple_ops) != 0:
+        for opresult in while_tuple_ops[0].results():
+            if not opresult.use_empty():
+                return False
+        return True
+    return False
 
 
 def remove_useless_full_like_ops(block, ops, state):
@@ -440,6 +443,14 @@ def all_stop_gradient_true(block):
     for op in block.ops:
         for value in op.results():
             if value.stop_gradient is False:
+                return False
+    return True
+
+
+def all_input_stop_gradient_true(list_of_list):
+    for list_ in list_of_list:
+        for stop_gradient in list_:
+            if stop_gradient is False:
                 return False
     return True
 

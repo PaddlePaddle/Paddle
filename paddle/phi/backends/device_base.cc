@@ -267,6 +267,10 @@ size_t DeviceInterface::GetExtraPaddingSize(size_t dev_id) {
   return 0;
 }
 
+void DeviceInterface::CCLCommName(ccl::CCLComm ccl_comm, char* comm_name) {
+  INTERFACE_UNIMPLEMENT;
+}
+
 void DeviceInterface::CCLDestroyComm(ccl::CCLComm ccl_comm) {
   INTERFACE_UNIMPLEMENT;
 }

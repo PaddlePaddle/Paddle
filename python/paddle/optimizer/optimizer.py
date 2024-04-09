@@ -22,6 +22,7 @@ import paddle
 import paddle.autograd as imperative_base
 from paddle import _C_ops
 from paddle._pir_ops import parameter, set_parameter
+from paddle.autograd.backward_utils import ValueDict
 from paddle.base import core
 from paddle.base.framework import (
     Variable,
@@ -190,9 +191,7 @@ class Optimizer:
             if isinstance(parameters, (paddle.Tensor, core.eager.Tensor)):
                 raise TypeError(
                     "`parameters` argument given to the optimizer should be "
-                    "an iterable of paddle Tensors, but got argument type is `{}`.".format(
-                        type(parameters)
-                    )
+                    f"an iterable of paddle Tensors, but got argument type is `{type(parameters)}`."
                 )
             if isinstance(parameters, dict):
                 raise TypeError(
@@ -292,7 +291,10 @@ class Optimizer:
 
     def _create_master_grad_states(self):
         # master gradients states
-        self._master_grads = {}
+        if in_pir_mode():
+            self._master_grads = ValueDict()
+        else:
+            self._master_grads = {}
         self._master_grad = False
 
     def _set_auxiliary_var(self, key, val):
@@ -768,7 +770,7 @@ class Optimizer:
     def _create_param_lr(self, param_and_grad):
         # create learning rate tensor for every parameter
         param = param_and_grad[0]
-        if hasattr(param, 'optimize_attr'):
+        if hasattr(param, 'optimize_attr') and param.optimize_attr is not None:
             param_lr = param.optimize_attr['learning_rate']
             if isinstance(param_lr, (Variable, paddle.pir.Value)):
                 return param_lr
@@ -791,7 +793,31 @@ class Optimizer:
         else:
             var_name = self._gen_master_weight_var_name(param)
             if in_pir_mode():
-                var = paddle.cast(param, 'float32')
+                startup_program = paddle.static.default_startup_program()
+                main_program = paddle.static.default_main_program()
+                with paddle.static.program_guard(startup_program):
+
+                    def get_param_from_startup(startup, name):
+                        for op in startup.global_block().ops:
+                            if (
+                                op.name() == 'builtin.set_parameter'
+                                and name == op.attrs()['parameter_name']
+                            ):
+                                return op.operand(0).source()
+                        return None
+
+                    startup_param = get_param_from_startup(
+                        startup_program, param.name
+                    )
+                    var = paddle.cast(startup_param, 'float32')
+                    var.persistable = True
+                    paddle._pir_ops.set_persistable_value(var, var_name)
+                with paddle.static.program_guard(main_program):
+                    paddle.pir.reset_insertion_point_to_start()
+                    var = paddle.static.data(
+                        var_name, var.shape, var.dtype, core.Place()
+                    )
+                    var.persistable = True
             elif framework.in_dygraph_mode():
                 var = paddle.cast(param, 'float32')
                 var.name = var_name
@@ -823,21 +849,28 @@ class Optimizer:
 
     def _create_master_grad(self, grad):
         assert self._is_dtype_fp16_or_bf16(grad.dtype)
-        if grad.name in self._master_grads:
-            var = self._master_grads[grad.name]
+        if in_pir_mode():
+            if grad in self._master_grads:
+                var = self._master_grads[grad]
+            else:
+                var = paddle.cast(grad, 'float32')
+                self._master_grads[grad] = var
         else:
-            var_name = grad.name + "_fp32_master"
-            var_name = unique_name.generate(var_name)
-            var = grad.block.create_var(
-                name=var_name,
-                shape=grad.shape,
-                value=0,
-                dtype='float32',
-                lod_level=grad.lod_level,
-                persistable=grad.persistable,
-                is_data=grad.is_data,
-            )
-            self._master_grads[grad.name] = var
+            if grad.name in self._master_grads:
+                var = self._master_grads[grad.name]
+            else:
+                var_name = grad.name + "_fp32_master"
+                var_name = unique_name.generate(var_name)
+                var = grad.block.create_var(
+                    name=var_name,
+                    shape=grad.shape,
+                    value=0,
+                    dtype='float32',
+                    lod_level=grad.lod_level,
+                    persistable=grad.persistable,
+                    is_data=grad.is_data,
+                )
+                self._master_grads[grad.name] = var
         return var
 
     def _create_accumulators(self, block, parameters):
@@ -1226,6 +1259,7 @@ class Optimizer:
         # Get custom finish ops for subclasses
         # FIXME: Need to fix this once we figure out how to handle dependencies
         self._finish_update(target_block, parameters_and_grads)
+        paddle.base.core._set_warmup(False)
 
         end = len(target_block.ops)
         return target_block._slice_ops(start, end)
@@ -1299,6 +1333,7 @@ class Optimizer:
         # Get custom finish ops for subclasses
         # FIXME: Need to fix this once we figure out how to handle dependencies
         self._finish_update(target_block, parameters_and_grads)
+        paddle.base.core._set_warmup(False)
 
         end = len(target_block.ops)
         return target_block._slice_ops(start, end)
@@ -1374,10 +1409,8 @@ class Optimizer:
                 assert isinstance(callbacks, list)
             program = loss.block.program
             assert np.prod(loss.shape) == 1, (
-                "The number of elements of loss should be 1, but the current loss.shape is {}, whose number of elements is not 1. "
-                "Maybe that you should call paddle.mean to process the current loss.".format(
-                    loss.shape
-                )
+                f"The number of elements of loss should be 1, but the current loss.shape is {loss.shape}, whose number of elements is not 1. "
+                "Maybe that you should call paddle.mean to process the current loss."
             )
             parameter_list = parameters if parameters else self._parameter_list
             with paddle.static.program_guard(program, startup_program):

@@ -48,7 +48,7 @@ from codegen_utils import (
 # so we should check parameter(output) with rule of inplace.
 # But because there is no check in old dygraph mode, in order to
 # keeping the code compatible, here we also skip inplace check in new dygraph temporarily,
-# and this will be fixed in the futrue.
+# and this will be fixed in the future.
 inplace_check_blacklist = {"assign_out_"}
 
 # Black Ops list that's NO NEED to apply code generation
@@ -73,9 +73,14 @@ prim_white_list = [
     "add_triple_grad",
     "silu_double_grad",
     "tanh_triple_grad",
+    "minimum_double_grad",
+    "maximum_double_grad",
+    "abs_triple_grad",
+    "exp_double_grad",
+    "log_double_grad",
 ]
 
-# white ops list whose kernel can automaically do type promotion.
+# white ops list whose kernel can automatically do type promotion.
 # future will get this list from same place with static graph.
 type_promote_white_list = {
     "add": ["x", "y"],
@@ -83,8 +88,8 @@ type_promote_white_list = {
     "where": ["x", "y"],
 }
 
-# dict of special api that forward api's output will affect bacward api's output
-# bacward api's output usually affected by backward api's input
+# dict of special api that forward api's output will affect backward api's output
+# backward api's output usually affected by backward api's input
 special_prune_dict = {
     "matmul_grad": {"x": "grad_y", "y": "grad_x"},
 }
@@ -208,6 +213,12 @@ class {} : public egr::GradNodeBase {{
 GRAD_FUNCTION_TEMPLATE = """
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}::operator()(paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {{
   VLOG(3) << \"Running AD API GRAD: \" << \"{}\";
+
+   // This 'Local_XXXGradNode' record event is different with 'Global_XXXGradNode' event.
+   // * 'Local_XXXGradNode' will only cover execution time of this function.
+   // * 'Global_XXXGradNode' will not only cover execution time of this function, but also include gradient
+   //    accumulation when the output(s) of corresponding forward OP are shared by other OP(s), which may have extra accumulation overhead than 'Local_XXXGradNode'.
+  paddle::platform::RecordEvent grad_node_record_event_inner(\"Local_{}\", paddle::platform::TracerEventType::OperatorInner, 1);
 
   // Fill Zero For GradIn Tensors
 {}
@@ -1120,7 +1131,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                             need_pre_contiguous_set.add(name)
                             set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper_{name}({name}_tmp);"
                 set_input_tensor_wrappers_list.append(set_tensor_wrappers)
-            else:  # Forwad's output as backward's input
+            else:  # Forward's output as backward's input
                 if num_fwd_outputs > 1:
                     # Aligned with forward output position
                     assert name in forward_outputs_position_map, AssertMessage(
@@ -1147,7 +1158,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             for name, (ttype, pos) in forward_inputs_position_map.items():
                 if name in need_pre_contiguous_set:
                     pre_contiguous_list.append(
-                        f"{indent}const auto& {name}_tmp = (require_any_grad && {name}.is_dense_tensor() && !std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl())->meta().is_contiguous()) ? paddle::Tensor(std::make_shared<phi::DenseTensor>(std::move(paddle::experimental::Trans2Contiguous(*(std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl()))))), {name}.mutable_autograd_meta()) : {name};"
+                        f"{indent}const auto& {name}_tmp = (require_any_grad && {name}.is_dense_tensor() && !std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl())->meta().is_contiguous()) ? paddle::Tensor(std::make_shared<phi::DenseTensor>(paddle::experimental::Trans2Contiguous(*(std::dynamic_pointer_cast<phi::DenseTensor>({name}.impl())))), {name}.mutable_autograd_meta(), {name}.name()) : {name};"
                     )
                     self.inputs_call_list_tmp[pos] = (
                         self.inputs_call_list_tmp[pos] + '_tmp'
@@ -1822,9 +1833,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             f"return {forward_ad_function_name}({amp_inputs_call_args_str});"
         )
         if is_inplaced or (forward_api_name == "cast"):
-            amp_logic_str = "\n VLOG(5) << \" No AMP for {} because it is a inplace or cast api. \"; ".format(
-                forward_ad_function_name
-            )
+            amp_logic_str = f"\n VLOG(5) << \" No AMP for {forward_ad_function_name} because it is a inplace or cast api. \"; "
         else:
             amp_logic_str = AMP_LOGIC_TEMPLATE.format(
                 kernel_trans2_op_name_str,
@@ -1851,11 +1860,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 return_value=type_promote_call_list,
             )
         else:
-            type_promotion_logic_str = (
-                "\n VLOG(5) << \" No Type Promotion for {} api. \"; ".format(
-                    forward_ad_function_name
-                )
-            )
+            type_promotion_logic_str = f"\n VLOG(5) << \" No Type Promotion for {forward_ad_function_name} api. \"; "
         # Forward layout autotune
         layout_autotune_list_str = "    ".join(
             layout_autotune_list
@@ -1889,9 +1894,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         # Generate forward_definition_str and forward_declaration_str
         if self.is_forward_only:
             if len(amp_tensors_vector_list) == 0:
-                amp_logic_str = "\n VLOG(7) << \" No AMP for {} because it has no input. \"; ".format(
-                    forward_ad_function_name
-                )
+                amp_logic_str = f"\n VLOG(7) << \" No AMP for {forward_ad_function_name} because it has no input. \"; "
             self.forward_definition_str += (
                 FORWARD_ONLY_FUNCTION_TEMPLATE.format(
                     returns_type_str,
@@ -2115,7 +2118,10 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                 next_grad_node_creation_str = "\n".join(
                     next_grad_node_creation_str
                 )
-                next_grad_node_creation_str = f"""
+                if self.backward_api_name in prim_white_list:
+                    next_grad_node_creation_str = ""
+                else:
+                    next_grad_node_creation_str = f"""
   if (!paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() || need_skip) {{
 {next_grad_node_creation_str}
   }}
@@ -2584,7 +2590,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             def _gen_api_call_code_block(
                 in_prim_white_list: bool,
                 has_kernel_impl: bool,
-                has_higher_order_node: bool,
                 indention: int,
             ):
                 """This function will generate code block for calling composite or
@@ -2602,7 +2607,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                 Args:
                     in_prim_white_list (bool): Whether current op in `prim_white_list`.
                     has_kernel_impl (bool): Whether current op has kernel implementation.
-                    has_higher_order_node (bool): Whether current op has next grad op.
                     indention (int): Number of single space for whole code block indention.
                 """
                 if in_prim_white_list:
@@ -2617,8 +2621,6 @@ if (!create_graph) {{
 {indent}egr::Controller::Instance().SetHasGrad(original_global_grad);
 }}
 """
-                    if has_higher_order_node:
-                        code = f"auto need_skip = false;{code}"
                 else:
                     code = f"""
 std::string grad_op_name = "{composite_grad_api_name}";
@@ -2670,14 +2672,12 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
                 grad_function_call_str = _gen_api_call_code_block(
                     self.backward_api_name in prim_white_list,
                     has_kernel_impl,
-                    has_higher_order_node,
                     0,
                 )
             else:
                 grad_function_call_str = _gen_api_call_code_block(
                     self.backward_api_name in prim_white_list,
                     has_kernel_impl,
-                    has_higher_order_node,
                     2,
                 )
         else:
@@ -2790,6 +2790,7 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
         self.node_definition_str = GRAD_FUNCTION_TEMPLATE.format(
             grad_node_name,
             self.backward_api_name,
+            grad_node_name,
             fill_zero_str,
             get_grad_in_args_str,
             grad_function_prepare_str,
@@ -3057,7 +3058,7 @@ if __name__ == "__main__":
     for i in range(len(api_yaml_paths)):
         api_yaml_path = api_yaml_paths[i]
 
-        # string api is forwrad only
+        # string api is forward only
         if not api_yaml_path.endswith('strings_ops.yaml'):
             backward_yaml_path = backward_yaml_paths[i]
         else:

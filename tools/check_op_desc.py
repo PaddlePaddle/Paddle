@@ -336,9 +336,7 @@ def print_desc_error_message(error_message):
             for arg in changed_args:
                 ori_value, new_value = changed_args.get(arg)
                 print(
-                    " * The arg '{}' of Input '{}' is changed: from '{}' to '{}'.".format(
-                        arg, name, ori_value, new_value
-                    )
+                    f" * The arg '{arg}' of Input '{name}' is changed: from '{ori_value}' to '{new_value}'."
                 )
 
         for name in Inputs_error.get(QUANT, {}):
@@ -364,9 +362,7 @@ def print_desc_error_message(error_message):
             for arg in changed_args:
                 ori_value, new_value = changed_args.get(arg)
                 print(
-                    " * The arg '{}' of Output '{}' is changed: from '{}' to '{}'.".format(
-                        arg, name, ori_value, new_value
-                    )
+                    f" * The arg '{arg}' of Output '{name}' is changed: from '{ori_value}' to '{new_value}'."
                 )
 
         for name in Outputs_error.get(QUANT, {}):
@@ -392,9 +388,7 @@ def print_desc_error_message(error_message):
             for arg in changed_args:
                 ori_value, new_value = changed_args.get(arg)
                 print(
-                    " * The arg '{}' of attr '{}' is changed: from '{}' to '{}'.".format(
-                        arg, name, ori_value, new_value
-                    )
+                    f" * The arg '{arg}' of attr '{name}' is changed: from '{ori_value}' to '{new_value}'."
                 )
 
         for name in attrs_error.get(QUANT, {}):

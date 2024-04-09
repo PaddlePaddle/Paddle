@@ -15,8 +15,17 @@
 # repo: PaddleClas
 # model: ppcls^configs^ImageNet^ShuffleNet^ShuffleNetV2_x2_0
 # api:paddle.tensor.manipulation.concat||api:paddle.tensor.manipulation.reshape||api:paddle.tensor.linalg.transpose||api:paddle.tensor.manipulation.reshape
+import os
 import unittest
 
+os.environ['FLAGS_cinn_new_group_scheduler'] = '1'
+os.environ['FLAGS_group_schedule_tiling_first'] = '1'
+os.environ['FLAGS_prim_all'] = 'true'
+os.environ['FLAGS_print_ir'] = '1'
+os.environ['FLAGS_enable_pir_api'] = '1'
+os.environ['FLAGS_use_cinn'] = '1'
+os.environ['FLAGS_cinn_bucket_compile'] = '1'
+# os.environ['GLOG_vmodule'] = 'op_lowering_impl=4'
 import numpy as np
 
 import paddle

@@ -95,9 +95,9 @@ class CUDAGraphContextManager {
   std::set<DeviceContext *> capturing_ctxs_;
 };
 
-class CUDAKernelParams {
+class gpuKernelParams {
  public:
-  explicit CUDAKernelParams(void **params) : kernelParams(params) {}
+  explicit gpuKernelParams(void **params) : kernelParams(params) {}
 
   template <typename T>
   T &As(size_t idx) const {
@@ -132,20 +132,20 @@ class CUDAGraphNodeLauncher {
   //  Sets the kernel's parameters BEFORE activating the CUDA graph. It enables
   //  dynamic determination and setup of kernel arguments.
   //
-  //  parameterSetter_t parameterSetter = [saved_state](CUDAKernelParams
+  //  parameterSetter_t parameterSetter = [saved_state](gpuKernelParams
   //  &param){
   //      // Code to compute and the parameter values from the saved_state
   //      // ...
   //      param.As<type>(idx) = calculated_value;
   //  };
-  using parameterSetter_t = std::function<void(CUDAKernelParams &)>;
+  using parameterSetter_t = std::function<void(gpuKernelParams &)>;
 
   //  [CUDA Kernel Callback]
   //  Acts as the launcher for the kernel. It accepts an `unsigned int`
   //  identifier and uses it for the kernel launch.
   //  The `cudaGetFuncBySymbol` method can be used to fetch the `cudaFunction_t`
   //  reference of the kernel from the kernel pointer.
-  //  cudaKernelCallback_t cudaKernelCallback = [=](unsigned int id) {
+  //  gpuKernelCallback_t cudaKernelCallback = [=](unsigned int id) {
   //      // cudaFunction_t is REQUIRED to get here
   //      cudaFunction_t cudaFunc;
   //      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetFuncBySymbol(&cudaFunc, &kernel));
@@ -153,18 +153,18 @@ class CUDAGraphNodeLauncher {
   //      kernel<<<>>>(id, ...);  // Launching the kernel with id
   //      return cudaFunc;
   //  };
-  using cudaKernelCallback_t = std::function<cudaFunction_t(unsigned int)>;
+  using gpuKernelCallback_t = std::function<cudaFunction_t(unsigned int)>;
 
   //  [Kernel Launch]
   //  With the callbacks defined and the CUDA function obtained, the kernel can
   //  be launched using the `KernelNodeLaunch` method.
   void KernelNodeLaunch(parameterSetter_t parameterSetter,
-                        cudaKernelCallback_t cudakernelCallback);
+                        gpuKernelCallback_t cudakernelCallback);
 
   std::vector<cudaGraphExecuterSetter_t> GetParameterSettersForExecGraph(
       cudaGraph_t graph);
 
-  parameterSetter_t GetParameterSetter(const CUDAKernelParams &params);
+  parameterSetter_t GetParameterSetter(const gpuKernelParams &params);
 
   static CUDAGraphNodeLauncher &Instance() {
     static CUDAGraphNodeLauncher *launcher = new CUDAGraphNodeLauncher;
@@ -185,7 +185,7 @@ class CUDAGraphNodeLauncher {
 #if CUDA_VERSION >= 10010
 static void ThrowErrorIfNotSupportCUDAGraph() {}
 #else
-enum cudaStreamCaptureMode {
+enum gpuStreamCaptureMode {
   cudaStreamCaptureModeGlobal = 0,
   cudaStreamCaptureModeThreadLocal = 1,
   cudaStreamCaptureModeRelaxed = 2
@@ -262,7 +262,7 @@ class CUDAGraph {
 
   static void BeginCapture(phi::GPUPlace place,
                            cudaStream_t stream,
-                           cudaStreamCaptureMode mode);
+                           gpuStreamCaptureMode mode);
   static std::unique_ptr<CUDAGraph> EndCapture();
 
   static void BeginSegmentCapture();
@@ -309,7 +309,7 @@ class CUDAGraph {
     }
   }
 
-  using SetSeedFunc = std::function<bool(CUDAKernelParams *, bool)>;
+  using SetSeedFunc = std::function<bool(gpuKernelParams *, bool)>;
   static void RecordRandomKernelInfo(SetSeedFunc set_seed_func) {
     std::lock_guard<std::mutex> guard(capturing_graph_->func_mtx_);
     capturing_graph_->set_seed_funcs_.emplace_back(std::move(set_seed_func));
@@ -324,7 +324,7 @@ class CUDAGraph {
 #if CUDA_VERSION >= 10010
   std::vector<cudaGraph_t> graphs_;
   std::vector<cudaGraphExec_t> exec_graphs_;
-  cudaStreamCaptureMode capture_mode_;
+  gpuStreamCaptureMode capture_mode_;
 #endif
   cudaStream_t stream_{nullptr};
   phi::GPUPlace place_;
@@ -368,7 +368,7 @@ class CUDAGraphCaptureModeGuard {
 
  public:
   explicit CUDAGraphCaptureModeGuard(
-      cudaStreamCaptureMode mode = cudaStreamCaptureModeRelaxed) {
+      gpuStreamCaptureMode mode = cudaStreamCaptureModeRelaxed) {
     if (UNLIKELY(CUDAGraph::IsCapturing())) {
       PADDLE_ENFORCE_GPU_SUCCESS(cudaThreadExchangeStreamCaptureMode(&mode));
       // After cudaThreadExchangeStreamCaptureMode is called,
@@ -385,7 +385,7 @@ class CUDAGraphCaptureModeGuard {
   }
 
  private:
-  cudaStreamCaptureMode old_mode_;
+  gpuStreamCaptureMode old_mode_;
 };
 #else
 class CUDAGraphCaptureModeGuard {
@@ -393,7 +393,7 @@ class CUDAGraphCaptureModeGuard {
 
  public:
   explicit CUDAGraphCaptureModeGuard(
-      cudaStreamCaptureMode mode = cudaStreamCaptureModeRelaxed) {}
+      gpuStreamCaptureMode mode = cudaStreamCaptureModeRelaxed) {}
 };
 #endif
 

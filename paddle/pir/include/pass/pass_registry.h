@@ -34,14 +34,18 @@ class PassRegistry {
   }
 
   void Insert(const std::string &pass_type, const PassCreator &pass_creator) {
-    IR_ENFORCE(
-        Has(pass_type) != true, "Pass %s has been registered.", pass_type);
+    PADDLE_ENFORCE_NE(Has(pass_type),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Pass %s has been registered.", pass_type));
     pass_map_.insert({pass_type, pass_creator});
   }
 
   std::unique_ptr<Pass> Get(const std::string &pass_type) const {
-    IR_ENFORCE(
-        Has(pass_type) == true, "Pass %s has not been registered.", pass_type);
+    PADDLE_ENFORCE_EQ(Has(pass_type),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Pass %s has not been registered.", pass_type));
     return pass_map_.at(pass_type)();
   }
 

@@ -708,11 +708,11 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 )
 
             if (
-                sum_square.dtype == core.VarDesc.VarType.FP16
-                or sum_square.dtype == core.VarDesc.VarType.BF16
+                sum_square.dtype == paddle.float16
+                or sum_square.dtype == paddle.bfloat16
             ):
                 sum_square_list_fp16.append(sum_square)
-            elif sum_square.dtype == core.VarDesc.VarType.FP32:
+            elif sum_square.dtype == paddle.float32:
                 sum_square_list_fp32.append(sum_square)
             else:
                 sum_square_list.append(sum_square)

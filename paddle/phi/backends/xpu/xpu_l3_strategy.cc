@@ -14,12 +14,14 @@ limitations under the License. */
 
 #include "paddle/phi/backends/xpu/xpu_l3_strategy.h"
 #include "glog/logging.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 
 namespace phi {
 
 void XPUL3CacheBlock::Set(void* addr, size_t size) {
   if (addr == nullptr || size == 0) {
-    LOG(FATAL) << "Set XPUL3CacheBlock Size as Zero";
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("Set XPUL3CacheBlock Size as Zero"));
   }
   addr_ = addr;
   size_ = size;

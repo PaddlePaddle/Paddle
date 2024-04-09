@@ -27,8 +27,8 @@
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/argument.h"
-#include "paddle/fluid/string/pretty_log.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace inference {
@@ -132,7 +132,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("graph_viz_path", new std::string(std::move(dot_file_path)));
       pass->Set("optim_cache_dir", new std::string(std::move(optim_cache_dir)));
       pass_num++;
-    } else if (pass_name == "mkldnn_placement_pass") {
+    } else if (pass_name == "onednn_placement_pass") {
       pass->Set("mkldnn_enabled_op_types",
                 new std::unordered_set<std::string>(
                     argument->mkldnn_enabled_op_types()));
@@ -173,6 +173,15 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set(
           "trt_exclude_var_names",
           new std::vector<std::string>(argument->trt_exclude_var_names()));
+      pass->Set(
+          "trt_parameter_run_fp16",
+          new std::vector<std::string>(argument->trt_parameter_run_fp16()));
+      pass->Set(
+          "trt_parameter_run_int8",
+          new std::vector<std::string>(argument->trt_parameter_run_int8()));
+      pass->Set(
+          "trt_parameter_run_bfp16",
+          new std::vector<std::string>(argument->trt_parameter_run_bfp16()));
       pass->Set("forbid_dynamic_op",
                 new bool(argument->trt_forbid_dynamic_op()));
 
@@ -355,13 +364,13 @@ void IRPassManager::CreatePasses(Argument *argument,
                     argument->nnadapter_model_cache_token()));
     } else if (pass_name == "fc_fuse_pass") {
       pass->Set("use_gpu", new bool(argument->use_gpu()));
-      bool fc_mkldnn_pass = false;
+      bool fc_onednn_pass = false;
       for (const std::string &pass_n : passes) {
-        if (pass_n == "fc_mkldnn_pass") {
-          fc_mkldnn_pass = true;
+        if (pass_n == "fc_onednn_pass") {
+          fc_onednn_pass = true;
         }
       }
-      bool use_fc_padding = !fc_mkldnn_pass && argument->use_fc_padding();
+      bool use_fc_padding = !fc_onednn_pass && argument->use_fc_padding();
       pass->Set("use_fc_padding", new bool(use_fc_padding));
     } else if (pass_name == "fused_multi_transformer_xpu_pass") {
       int quant_post_dynamic_weight_precision =

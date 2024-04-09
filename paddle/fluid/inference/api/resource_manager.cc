@@ -355,7 +355,7 @@ int GPUContextResource::GetGpuMaxThreadsPerBlock() const {
   return max_threads_per_block_;
 }
 
-std::array<int, 3> GPUContextResource::GetGpuMaxGridDimSize() const {
+std::array<unsigned int, 3> GPUContextResource::GetGpuMaxGridDimSize() const {
   return max_grid_dim_size_;
 }
 

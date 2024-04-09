@@ -22,8 +22,8 @@
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/common/flags.h"
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/core/generator.h"
+#include "paddle/utils/string/string_helper.h"
 
 #if defined(PADDLE_WITH_CUDA)
 COMMON_DECLARE_bool(cudnn_deterministic);

@@ -415,16 +415,14 @@ DenseTensor& DenseTensor::ShareDataWith(const DenseTensor& src) {
   meta_.offset = src.meta_.offset;
   meta_.use_gpudnn = src.meta_.use_gpudnn;
   meta_.strides = src.meta_.strides;
-  storage_properties_ =
-      std::move(CopyStorageProperties(src.storage_properties_));
+  storage_properties_ = CopyStorageProperties(src.storage_properties_);
   return *this;
 }
 
 DenseTensor& DenseTensor::ShareDataNoCheckWith(const DenseTensor& src) {
   holder_ = src.holder_;
   set_meta(src.meta());
-  storage_properties_ =
-      std::move(CopyStorageProperties(src.storage_properties_));
+  storage_properties_ = CopyStorageProperties(src.storage_properties_);
   return *this;
 }
 

@@ -32,6 +32,8 @@
 #include "paddle/cinn/poly/isl_utils.h"
 #include "paddle/cinn/poly/stage.h"
 
+PD_DECLARE_bool(cinn_bucket_compile);
+
 namespace cinn {
 namespace ir {
 
@@ -506,7 +508,9 @@ void _Tensor_::WithBuffer(const std::string &memory_type,
     } else if (memory_type == "global") {
       this->buffer->memory_type = MemoryType::Heap;
     } else {
-      LOG(FATAL) << "Not supported memory type " << memory_type;
+      std::stringstream ss;
+      ss << "Not supported memory type " << memory_type;
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
   } else {
     lang::Buffer buf(buf_type, buffer_name);
@@ -520,7 +524,9 @@ void _Tensor_::WithBuffer(const std::string &memory_type,
     } else if (memory_type == "global") {
       buf->memory_type = MemoryType::Heap;
     } else {
-      LOG(FATAL) << "Not supported memory type " << memory_type;
+      std::stringstream ss;
+      ss << "Not supported memory type " << memory_type;
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
   }
 }
@@ -689,7 +695,18 @@ ir::Tensor _Tensor_::ReshapeCopied(const std::vector<Expr> &shape,
 }
 
 Shared<poly::Stage> CreateStage(Tensor tensor) {
-  auto isl_domain = tensor->GenerateIslDomain();
+  isl::set isl_domain;
+  // We will remove isl, and the subsequent compilation process will no longer
+  // use it. But it has not been completely removed in the process. it cannot be
+  // supported here under dynamic shape. Therefore, we temporarily use fake
+  // domain.
+  if (FLAGS_cinn_bucket_compile) {
+    poly::Domain fake_domain(Context::isl_ctx(), "fake_domain", {});
+    isl_domain = fake_domain.to_isl();
+  } else {
+    isl_domain = tensor->GenerateIslDomain();
+  }
+
   return poly::Stage::New(isl_domain, tensor->body(), tensor.self());
 }
 

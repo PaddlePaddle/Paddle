@@ -43,7 +43,7 @@ using CinnCompiledObject = framework::paddle2cinn::CinnCompiledObject;
 
 namespace details {
 
-// Tranform Paddle place to CINN target
+// Transform Paddle place to CINN target
 const ::cinn::common::Target& PlaceToCinnTarget(const platform::Place& place);
 
 // Print detailed compilation result of graph for debug

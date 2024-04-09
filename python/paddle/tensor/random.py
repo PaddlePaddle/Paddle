@@ -23,6 +23,7 @@ from paddle.framework import (
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
     in_pir_mode,
+    use_pir_api,
 )
 
 from ..base.data_feeder import (
@@ -476,9 +477,7 @@ def gaussian(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
         dtype = paddle.framework.get_default_dtype()
         if dtype not in supported_dtypes:
             raise TypeError(
-                "{} only supports {}, but the default dtype is {}".format(
-                    op_type_for_check, supported_dtypes, dtype
-                )
+                f"{op_type_for_check} only supports {supported_dtypes}, but the default dtype is {dtype}"
             )
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
@@ -740,10 +739,14 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
             [0.48646951, 0.00815189, 3.74022293])
             >>> # doctest: -SKIP
     """
-    if not in_dynamic_or_pir_mode():
-        check_type(mean, 'mean', (int, float, Variable), 'normal')
-        check_type(std, 'std', (int, float, Variable), 'normal')
-        if isinstance(mean, Variable):
+    if not in_dynamic_mode():
+        check_type(
+            mean, 'mean', (int, float, Variable, paddle.pir.Value), 'normal'
+        )
+        check_type(
+            std, 'std', (int, float, Variable, paddle.pir.Value), 'normal'
+        )
+        if isinstance(mean, (Variable, paddle.pir.Value)):
             check_dtype(
                 mean.dtype,
                 'mean',
@@ -751,7 +754,7 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
                 'normal',
                 "If mean is Tensor, it's data type only support float32, float64.",
             )
-        if isinstance(std, Variable):
+        if isinstance(std, (Variable, paddle.pir.Value)):
             check_dtype(
                 std.dtype,
                 'std',
@@ -762,8 +765,8 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
         if shape is not None:
             check_shape(shape, 'normal')
 
-    if isinstance(mean, Variable):
-        if isinstance(std, Variable):
+    if isinstance(mean, (Variable, paddle.pir.Value)):
+        if isinstance(std, (Variable, paddle.pir.Value)):
             if std.dtype != mean.dtype:
                 std = paddle.cast(std, mean.dtype)
             mean_shape = paddle.shape(mean)
@@ -771,7 +774,7 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
         else:
             std = float(std)
         out = standard_normal(paddle.shape(mean), mean.dtype, name)
-    elif isinstance(std, Variable):
+    elif isinstance(std, (Variable, paddle.pir.Value)):
         mean = float(mean)
         out = standard_normal(paddle.shape(std), std.dtype, name)
     else:
@@ -904,9 +907,7 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
         dtype = paddle.framework.get_default_dtype()
         if dtype not in supported_dtypes:
             raise TypeError(
-                "uniform/rand only supports {}, but the default dtype is {}".format(
-                    supported_dtypes, dtype
-                )
+                f"uniform/rand only supports {supported_dtypes}, but the default dtype is {dtype}"
             )
 
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
@@ -1100,9 +1101,9 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
         low = 0
     if dtype is None:
         dtype = core.VarDesc.VarType.INT64
-        if in_pir_mode():
+        if use_pir_api():
             dtype = DataType.INT64
-    elif not isinstance(dtype, core.VarDesc.VarType):
+    elif not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_mode():
@@ -1111,7 +1112,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
             low, high, shape, dtype, _current_expected_place()
         )
     elif in_pir_mode():
-        check_type(shape, 'shape', (list, tuple, paddle.pir.Value), 'randint')
+        check_shape(shape, 'randint')
         check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint')
         if paddle.utils._contain_var(shape):
             shape = paddle.utils.get_int_tensor_list(

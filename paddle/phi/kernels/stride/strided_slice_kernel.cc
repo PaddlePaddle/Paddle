@@ -139,8 +139,11 @@ void StridedSliceStridedKernel(const Context& dev_ctx,
       dev_ctx, x, axes, starts, ends, strides, infer_flags, decrease_axis, out);
 }
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    strided_slice_raw, STRIDED, phi::StridedSliceRawStridedKernel) {}
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    strided_slice, STRIDED, phi::StridedSliceStridedKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(strided_slice_raw,
+                                         STRIDED,
+                                         phi::StridedSliceRawStridedKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(strided_slice,
+                                         STRIDED,
+                                         phi::StridedSliceStridedKernel) {}

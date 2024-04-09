@@ -24,18 +24,10 @@ class TestHybridParallel(TestMultipleAccelerators):
     # check sharding logic as well as the accuracy with single mode
     def test_hybrid_parallel_sharding_logic(self):
         # test shard v2
-        os.environ["FLAGS_shard_use_reduce"] = "1"
-        os.environ["FLAGS_shard_norm_align_dp"] = "0"
         os.environ["FLAGS_shard_split_param"] = "1"
         self.run_mnist_2accelerators('hybrid_parallel_sharding_model.py')
+
         # test shard grad reduce
-        os.environ["FLAGS_shard_use_reduce"] = "1"
-        os.environ["FLAGS_shard_norm_align_dp"] = "0"
-        os.environ["FLAGS_shard_split_param"] = "0"
-        self.run_mnist_2accelerators('hybrid_parallel_sharding_model.py')
-        # test shard grad allreduce
-        os.environ["FLAGS_shard_use_reduce"] = "0"
-        os.environ["FLAGS_shard_norm_align_dp"] = "1"
         os.environ["FLAGS_shard_split_param"] = "0"
         self.run_mnist_2accelerators('hybrid_parallel_sharding_model.py')
 

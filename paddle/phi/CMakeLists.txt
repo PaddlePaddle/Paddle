@@ -63,7 +63,7 @@ if(WITH_XBYAK)
 endif()
 
 if(WITH_MKLDNN)
-  list(APPEND PHI_DEPS mkldnn)
+  list(APPEND PHI_DEPS onednn)
 endif()
 
 if(WITH_GLOO)

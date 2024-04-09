@@ -1099,6 +1099,7 @@
   kernel :
     func : split
   backward : split_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : split_with_num
   args : (Tensor x, int num, Scalar(int) axis)

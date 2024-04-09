@@ -753,7 +753,7 @@ struct GPUContext::Impl {
   int multi_process_;
   int max_threads_per_mp_;
   int max_threads_per_block_;
-  std::array<int, 3> max_grid_dim_size_;
+  std::array<unsigned int, 3> max_grid_dim_size_;
 
   CUDAStream* stream_{nullptr};
   Eigen::GpuDevice* eigen_device_{nullptr};
@@ -873,7 +873,7 @@ int GPUContext::GetMaxThreadsPerBlock() const {
   return impl_->max_threads_per_block_;
 }
 
-std::array<int, 3> GPUContext::GetCUDAMaxGridDimSize() const {
+std::array<unsigned int, 3> GPUContext::GetCUDAMaxGridDimSize() const {
   return impl_->max_grid_dim_size_;
 }
 
@@ -1024,7 +1024,7 @@ void GPUContext::SetMaxThreadsPerBlock(int val) {
   impl_->max_threads_per_block_ = val;
 }
 
-void GPUContext::SetMaxGridDimSize(const std::array<int, 3>& val) {
+void GPUContext::SetMaxGridDimSize(const std::array<unsigned int, 3>& val) {
   impl_->max_grid_dim_size_ = val;
 }
 

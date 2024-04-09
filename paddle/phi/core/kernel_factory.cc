@@ -249,6 +249,17 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     if (stride_kernel_iter != iter->second.end()) {
       return {stride_kernel_iter->second, false, true};
     }
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    if (stride_kernel_iter == iter->second.end() &&
+        const_kernel_key.backend() > phi::Backend::NUM_BACKENDS) {
+      stride_kernel_iter = iter->second.find({phi::Backend::CUSTOM,
+                                              phi::DataLayout::STRIDED,
+                                              const_kernel_key.dtype()});
+      if (stride_kernel_iter != iter->second.end()) {
+        return {stride_kernel_iter->second, false, true};
+      }
+    }
+#endif
   }
 
   KernelKey kernel_key = KernelKey(const_kernel_key.backend(),

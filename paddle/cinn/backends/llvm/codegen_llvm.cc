@@ -264,7 +264,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::FloatImm *op) {
   } else if (op->type().is_float16()) {
     return llvm::ConstantFP::get(b_->getHalfTy(), op->value);
   } else {
-    LOG(FATAL) << "illegal float type.";
+    PADDLE_THROW(phi::errors::InvalidArgument("illegal float type."));
   }
   return nullptr;
 }
@@ -1379,7 +1379,7 @@ void CodeGenLLVM::InitTarget(const Target &target) {
       } else if (target.bits == Target::Bit::k64) {
         naive_vec_alignment_ = 512;
       } else {
-        LOG(FATAL) << "get unknown bits";
+        PADDLE_THROW(phi::errors::InvalidArgument("get unknown bits"));
       }
       break;
     case Target::Arch::ARM:
@@ -1389,7 +1389,7 @@ void CodeGenLLVM::InitTarget(const Target &target) {
       naive_vec_alignment_ = 128;
       break;
     case Target::Arch::Unk:
-      LOG(FATAL) << "unknown Arch found";
+      PADDLE_THROW(phi::errors::InvalidArgument("unknown Arch found"));
       break;
   }
 }
@@ -1669,7 +1669,9 @@ llvm::Value *CodeGenLLVM::Visit(const ir::intrinsics::PodValueToX *op) {
   } else if (to_type == type_of<cinn_buffer_t *>()) {
     callee = m_->getFunction(runtime::intrinsic::pod_value_to_buffer_p);
   } else {
-    LOG(FATAL) << "Not supported type: " << to_type;
+    std::stringstream ss;
+    ss << "Not supported type: " << to_type;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 
   CHECK(callee);

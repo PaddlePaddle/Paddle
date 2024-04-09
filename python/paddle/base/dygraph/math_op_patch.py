@@ -87,7 +87,7 @@ def monkey_patch_math_tensor():
                 >>> print("new tensor's dtype is: {}".format(new_tensor.dtype))
                 new tensor's dtype is: paddle.float32
         """
-        if not isinstance(dtype, core.VarDesc.VarType):
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
         return _C_ops.cast(self, dtype)
 

@@ -161,6 +161,32 @@ phi::ccl::CCLComm ProcessGroupCustom::XCCLComm(const Place& place) const {
   return iter->second->xccl_comm();
 }
 
+std::string ProcessGroupCustom::GetCommName(int rank) {
+  PADDLE_ENFORCE_GE(rank,
+                    0,
+                    phi::errors::PreconditionNotMet(
+                        "The rank must greater or equal than 0!"));
+  auto num_devices = phi::DeviceManager::GetDeviceCount(device_type_);
+  PADDLE_ENFORCE_GT(
+      num_devices,
+      0,
+      phi::errors::InvalidArgument("The num_devices must greater than 0!"));
+
+  auto place_id = rank % num_devices;
+  platform::CustomPlace place(device_type_, place_id);
+  const auto& key = GetKeyFromPlace(place);
+  phi::DeviceGuard guard(place);
+  if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
+    CreateXCCLEnvCache(place, key);
+  }
+
+  char comm_name[128];
+  phi::DeviceManager::CCLCommName(
+      device_type_, this->GetCommContext()->GetXcclComm(), comm_name);
+  std::string name_str(comm_name);
+  return name_str;
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
     phi::DenseTensor* out_tensor,
     const phi::DenseTensor& in_tensor,

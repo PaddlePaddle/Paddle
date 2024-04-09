@@ -7,17 +7,9 @@ set(SOT_ENVS SOT_LOG_LEVEL=0 COST_MODEL=False MIN_GRAPH_SIZE=0
              STRICT_MODE=False)
 set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0)
 
-list(REMOVE_ITEM TEST_OPS test_lac)
-# NOTE(Aurelius84): In case of Windows CI, if open ON_INFER, RWLOCK of Scope
-# will be removed and will cause some random failed in multi-thread.
-if(WITH_PYTHON)
-  py_test_modules(test_lac MODULES test_lac)
-  set_tests_properties(test_lac PROPERTIES TIMEOUT 120)
-endif()
-
 if(WIN32 AND NOT WITH_GPU)
-  list(REMOVE_ITEM TEST_OPS test_resnet_amp
-  )# disable on Windows CPU CI for timeout
+  # disable on Windows CPU CI for timeout
+  list(REMOVE_ITEM TEST_OPS test_resnet_amp)
 endif()
 
 if(NOT WITH_GPU)
@@ -46,6 +38,12 @@ set_tests_properties(test_basic_api_transformation PROPERTIES TIMEOUT 240)
 set_tests_properties(test_reinforcement_learning PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bmn PROPERTIES TIMEOUT 300)
 set_tests_properties(test_loop PROPERTIES TIMEOUT 180)
+set_tests_properties(test_mnist_amp PROPERTIES TIMEOUT 240)
+set_tests_properties(test_sentiment PROPERTIES TIMEOUT 150)
+
+if(TEST test_resnet_amp)
+  set_tests_properties(test_resnet_amp PROPERTIES TIMEOUT 360)
+endif()
 
 if(NOT WIN32)
   set_tests_properties(test_tsm PROPERTIES TIMEOUT 900)
@@ -78,5 +76,14 @@ foreach(ITEST ${LEGACY_ONLY_TEST_FILES})
   else()
     message(
       STATUS "PT Disabled OpTest: not found ${ITEST} in dygraph_to_static")
+  endif()
+endforeach()
+
+# PIR only tests for dygraph_to_static
+set(PIR_ONLY_TEST_FILES test_error)
+foreach(ITEST ${PIR_ONLY_TEST_FILES})
+  if(TEST ${ITEST})
+    set_tests_properties(${ITEST} PROPERTIES ENVIRONMENT
+                                             "FLAGS_enable_pir_api=True")
   endif()
 endforeach()

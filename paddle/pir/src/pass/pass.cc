@@ -21,7 +21,6 @@
 #include "paddle/pir/include/pass/pass_instrumentation.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
-#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 #include "paddle/pir/src/pass/pass_adaptor.h"
 
 #include "paddle/common/enforce.h"
@@ -36,7 +35,9 @@ Pass::~Pass() = default;
 bool Pass::CanApplyOn(Operation* op) const { return op->num_regions() > 0; }
 
 detail::PassExecutionState& Pass::pass_state() {
-  IR_ENFORCE(pass_state_.has_value() == true, "pass state has no value");
+  PADDLE_ENFORCE_EQ(pass_state_.has_value(),
+                    true,
+                    phi::errors::InvalidArgument("pass state has no value"));
   return *pass_state_;
 }
 
@@ -45,22 +46,30 @@ detail::PassExecutionState& Pass::pass_state() {
 //===----------------------------------------------------------------------===//
 bool PatternRewritePass::Initialize(IrContext* context) {
   RewritePatternSet ps = InitializePatterns(context);
-  IR_ENFORCE(ps.Empty() == false,
-             "Pass creation failed."
-             "When using PatternRewritePass to create a Pass, the number of "
-             "customized Patterns is required to be greater than zero."
-             "Suggested fix: Check whether Pattern is added to the "
-             "InitializePatterns() function of class [%s]",
-             name());
+  PADDLE_ENFORCE_EQ(
+      ps.Empty(),
+      false,
+      phi::errors::InvalidArgument(
+          "Pass creation failed."
+          "When using PatternRewritePass to create a Pass, the number of "
+          "customized Patterns is required to be greater than zero."
+          "Suggested fix: Check whether Pattern is added to the "
+          "InitializePatterns() function of class [%s]",
+          name()));
   patterns_ = FrozenRewritePatternSet(std::move(ps));
   return true;
 }
 
+GreedyRewriteConfig PatternRewritePass::InitializeConfig() {
+  GreedyRewriteConfig config;
+  config.use_top_down_traversal = true;
+  config.max_iterations = 10;
+  return config;
+}
+
 void PatternRewritePass::Run(Operation* op) {
-  GreedyRewriteConfig cfg;
-  cfg.use_top_down_traversal = true;
-  cfg.max_iterations = 10;
-  auto [_, num_rewrites] = ApplyPatternsGreedily(op, patterns_, cfg);
+  auto [_, num_rewrites] =
+      ApplyPatternsGreedily(op, patterns_, InitializeConfig());
   AddStatistics(num_rewrites);
 }
 

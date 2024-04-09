@@ -231,14 +231,14 @@ std::vector<ir::Expr> CustomCallArgsForCublas(
 
     if (is_infer) {
       CHECK_EQ(a_width, b_width)
-          << "The K dimension of mul shold be equal! Please check.";
+          << "The K dimension of mul should be equal! Please check.";
       trans_b = true;
     } else {
       CHECK_EQ(a_width, b_height)
-          << "The K dimension of mul shold be equal! Please check.";
+          << "The K dimension of mul should be equal! Please check.";
     }
   } else {
-    LOG(FATAL) << "Unkown Matmul Setting!";
+    PADDLE_THROW(phi::errors::InvalidArgument("Unkown Matmul Setting!"));
   }
 
   CHECK_EQ(a_shape.size(), 4);
@@ -365,14 +365,14 @@ std::vector<ir::Expr> CustomCallArgsForBatchedCublas(
 
     if (is_infer) {
       CHECK_EQ(a_width, b_width)
-          << "The K dimension of mul shold be equal! Please check.";
+          << "The K dimension of mul should be equal! Please check.";
       trans_b = true;
     } else {
       CHECK_EQ(a_width, b_height)
-          << "The K dimension of mul shold be equal! Please check.";
+          << "The K dimension of mul should be equal! Please check.";
     }
   } else {
-    LOG(FATAL) << "Unkown Matmul Setting!";
+    PADDLE_THROW(phi::errors::InvalidArgument("Unkown Matmul Setting!"));
   }
 
   CHECK_EQ(a_shape.size(), 4);
@@ -878,10 +878,12 @@ std::vector<ir::Expr> CustomCallArgsForMemset(
     void operator()(int64_t v) { *scalar_ = static_cast<int>(v); }
     void operator()(bool v) { *scalar_ = v ? 0xFFFFFFFF : 0; }
 
-#define EXPAND_MEMSET_TYPE_UNSUPPORT(TYPE)                                    \
-  void operator()(const TYPE &) {                                             \
-    LOG(FATAL) << "The type of \"value\" of memset custom_call not support: " \
-               << #TYPE;                                                      \
+#define EXPAND_MEMSET_TYPE_UNSUPPORT(TYPE)                            \
+  void operator()(const TYPE &) {                                     \
+    std::stringstream ss;                                             \
+    ss << "The type of \"value\" of memset custom_call not support: " \
+       << #TYPE;                                                      \
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));             \
   }
 
     EXPAND_MEMSET_TYPE_UNSUPPORT(std::string)
@@ -937,7 +939,7 @@ std::vector<ir::Expr> CustomCallArgsForMemcpy(
   return {Expr(count)};
 }
 
-bool RegisteryCustomCallArgsFunc() {
+bool RegisterCustomCallArgsFunc() {
 #ifdef CINN_WITH_CUDA
   CustomCallArgsFuncRegistry::Global().Register(
       "cinn_call_cublas",
@@ -1025,7 +1027,7 @@ bool RegisteryCustomCallArgsFunc() {
   return true;
 }
 
-static bool registry_custom_call_list_func = RegisteryCustomCallArgsFunc();
+static bool registry_custom_call_list_func = RegisterCustomCallArgsFunc();
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn

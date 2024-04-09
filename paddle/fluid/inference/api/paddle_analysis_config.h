@@ -39,7 +39,7 @@
 #include "paddle_api.h"           // NOLINT
 #include "paddle_pass_builder.h"  // NOLINT
 #ifdef PADDLE_WITH_DNNL
-#include "paddle_mkldnn_quantizer_config.h"  // NOLINT
+#include "paddle_onednn_quantizer_config.h"  // NOLINT
 #endif
 
 namespace paddle {
@@ -111,6 +111,7 @@ struct PD_INFER_DECL XpuConfig {
   bool conv_autotune_file_writeback{false};
 
   // Fc autotune level. The Optional values are 0-9. Default 0 means no
+  // autotune.
   int fc_autotune_level{0};
   // Base fc autotune info is read from fc_autotune_file.
   std::string fc_autotune_file;
@@ -810,9 +811,27 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void Exp_DisableTensorRtOPs(const std::vector<std::string>& ops);
 
+  ///
+  /// \brief Prevent TensorRtSubgraph running in Paddle-TRT
+  /// NOTE: just experimental, not an official stable API, easy to be broken.
+  ///
   void Exp_DisableTensorRtSubgraph(
       const std::vector<std::string>& var_name_not_trt);
 
+  ///
+  /// \brief Specify TensorRT subgraph precision,fp16, int8 or bfp16(TensorRT
+  /// Version>=9.0) NOTE: just experimental, not an official stable API, easy to
+  /// be broken.
+  ///
+  void Exp_SpecifyTensorRTSubgraphPrecision(
+      const std::vector<std::string>& trt_parameters_fp16,
+      const std::vector<std::string>& trt_parameters_int8,
+      const std::vector<std::string>& trt_parameters_bfp16);
+
+  ///
+  /// \brief Prevent DynamicShape OPs running in Paddle-TRT
+  /// NOTE: just experimental, not an official stable API, easy to be broken.
+  ///
   void Exp_DisableTensorRTDynamicShapeOPs(bool trt_forbid_dynamic_op);
 
   ///
@@ -948,22 +967,22 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param x whether to debug IR graph analysis phase.
   ///
-  void SwitchIrDebug(int x = true);
+  void SwitchIrDebug(int x = true, const std::vector<std::string>& passes = {});
 
   ///
-  /// \brief Turn on MKLDNN.
+  /// \brief Turn on OneDNN.
   ///
   ///
   void EnableMKLDNN();
 
   ///
-  /// \brief Turn down MKLDNN.
+  /// \brief Turn down OneDNN.
   ///
   ///
   void DisableMKLDNN();
 
   ///
-  /// \brief Set the cache capacity of different input shapes for MKLDNN.
+  /// \brief Set the cache capacity of different input shapes for OneDNN.
   /// Default value 0 means not caching any shape.
   /// Please see MKL-DNN Data Caching Design Document:
   /// https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/design/mkldnn/caching/caching.md
@@ -972,9 +991,9 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void SetMkldnnCacheCapacity(int capacity);
   ///
-  /// \brief A boolean state telling whether to use the MKLDNN.
+  /// \brief A boolean state telling whether to use the OneDNN.
   ///
-  /// \return bool Whether to use the MKLDNN.
+  /// \return bool Whether to use the OneDNN.
   ///
   bool mkldnn_enabled() const { return use_mkldnn_; }
 
@@ -1002,7 +1021,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   NativeConfig ToNativeConfig() const;
   ///
-  /// \brief Specify the operator type list to use MKLDNN acceleration.
+  /// \brief Specify the operator type list to use OneDNN acceleration.
   ///
   /// \param op_list The operator type list.
   ///
@@ -1011,47 +1030,47 @@ struct PD_INFER_DECL AnalysisConfig {
   }
 
   ///
-  /// \brief Turn on MKLDNN quantization.
+  /// \brief Turn on OneDNN quantization.
   ///
   ///
   void EnableMkldnnQuantizer();
 
   ///
-  /// \brief Turn on MKLDNN int8.
+  /// \brief Turn on OneDNN int8.
   ///
   /// \param op_list The operator type list.
   ///
   void EnableMkldnnInt8(const std::unordered_set<std::string>& op_list = {});
 
   ///
-  /// \brief A boolean state telling whether to use the MKLDNN Int8.
+  /// \brief A boolean state telling whether to use the OneDNN Int8.
   ///
-  /// \return bool Whether to use the MKLDNN Int8.
+  /// \return bool Whether to use the OneDNN Int8.
   ///
   bool mkldnn_int8_enabled() const { return use_mkldnn_int8_; }
 
   ///
-  /// \brief Turn on MKLDNN bfloat16.
+  /// \brief Turn on OneDNN bfloat16.
   ///
   ///
   void EnableMkldnnBfloat16();
 
   ///
-  /// \brief Turn off MKLDNN fc passes.
+  /// \brief Turn off OneDNN fc passes.
   ///
   void DisableMkldnnFcPasses();
 
   ///
-  /// \brief A boolean state telling whether to disable the MKLDNN Fc passes.
+  /// \brief A boolean state telling whether to disable the OneDNN Fc passes.
   ///
-  /// \return bool Whether to disable the MKLDNN Fc passes.
+  /// \return bool Whether to disable the OneDNN Fc passes.
   ///
   bool mkldnn_fc_passes_disabled() const { return disable_mkldnn_fc_passes_; }
 
   ///
-  /// \brief A boolean state telling whether to use the MKLDNN Bfloat16.
+  /// \brief A boolean state telling whether to use the OneDNN Bfloat16.
   ///
-  /// \return bool Whether to use the MKLDNN Bfloat16.
+  /// \return bool Whether to use the OneDNN Bfloat16.
   ///
   bool mkldnn_bfloat16_enabled() const { return use_mkldnn_bfloat16_; }
 
@@ -1072,16 +1091,16 @@ struct PD_INFER_DECL AnalysisConfig {
   bool thread_local_stream_enabled() const { return thread_local_stream_; }
 
   ///
-  /// \brief A boolean state telling whether the MKLDNN quantization is enabled.
+  /// \brief A boolean state telling whether the OneDNN quantization is enabled.
   ///
-  /// \return bool Whether the MKLDNN quantization is enabled.
+  /// \return bool Whether the OneDNN quantization is enabled.
   ///
   bool mkldnn_quantizer_enabled() const { return use_mkldnn_quantizer_; }
 
   ///
-  /// \brief Get MKLDNN quantizer config.
+  /// \brief Get OneDNN quantizer config.
   ///
-  /// \return MkldnnQuantizerConfig* MKLDNN quantizer config.
+  /// \return MkldnnQuantizerConfig* OneDNN quantizer config.
   ///
   MkldnnQuantizerConfig* mkldnn_quantizer_config() const;
 
@@ -1220,6 +1239,30 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool cinn_enabled() const;
 
+  ///
+  /// \brief Set the custom passes list .
+  ///
+  /// \param passes The custom passes list.
+  /// \param custom_pass_only Custom pass run mode. The default is false,
+  /// which means that paddle pass will run after custom pass.
+  ///
+  void EnableCustomPasses(const std::vector<std::string>& passes,
+                          bool custom_pass_only = false);
+
+  ///
+  /// \brief Set pir Optimization level.
+  /// \param opt_level The optimization level
+  /// The optimization Level in range [0,4], Default 2.
+  /// Higher optimization level allows the predictor to apply more passes.
+  /// If 0, Only basic pass support.
+  /// If 1, Additional support for functional pass.
+  /// If 2, Additional support the fusion logical pass,maybe affect precision
+  /// and speed.
+  /// If 3, support layout pass, etc.
+  /// If 4, add the radicaloptimization, maybe affect precision, etc.
+  ///
+  void SetOptimizationLevel(int opt_level);
+
  protected:
   // Update the config.
   void Update();
@@ -1289,6 +1332,10 @@ struct PD_INFER_DECL AnalysisConfig {
 
   std::vector<std::string> trt_output_tensor_names_{};
   std::vector<std::string> trt_exclude_var_names_{};
+  std::vector<std::string> trt_parameters_run_fp16_{};
+  std::vector<std::string> trt_parameters_run_int8_{};
+  std::vector<std::string> trt_parameters_run_bfp16_{};
+
   std::string tensorrt_transformer_posid_{""};
   std::string tensorrt_transformer_maskid_{""};
   bool trt_use_dla_{false};
@@ -1380,7 +1427,7 @@ struct PD_INFER_DECL AnalysisConfig {
   // NNAdapter related
   LiteNNAdapterConfig nnadapter_config_;
 
-  // mkldnn related.
+  // onednn related.
   int mkldnn_cache_capacity_{10};
   bool use_mkldnn_quantizer_{false};
   std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config_;
@@ -1443,6 +1490,10 @@ struct PD_INFER_DECL AnalysisConfig {
   bool skip_load_params_{false};
 
   bool use_pir_{false};
+  std::vector<std::string> custom_passes_;
+  bool custom_pass_only_{false};
+  int pm_opt_level_{2};
+  std::vector<std::string> ir_debug_passes_;
 };
 
 }  // namespace paddle

@@ -31,11 +31,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/pybind/complex.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -696,7 +696,7 @@ void _sliceCompute(const phi::DenseTensor *in,
   auto out_t =
       framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
           *out);
-  operators::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
+  phi::funcs::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
       eigen_place, out_t, in_t, offsets, extents);
 }
 
@@ -970,14 +970,12 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
 
   std::vector<ssize_t> py_dims(rank);
   std::vector<ssize_t> py_strides(rank);
-  size_t numel = 1;
 
   auto tensor_stride = tensor.strides();
 
   for (int i = tensor_dims.size() - 1; i >= 0; --i) {
     py_dims[i] = static_cast<size_t>(tensor_dims[i]);
     py_strides[i] = sizeof_dtype * tensor_stride[i];
-    numel *= py_dims[i];
   }
 
   const void *tensor_buf_ptr = tensor.data();

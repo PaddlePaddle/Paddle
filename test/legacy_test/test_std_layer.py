@@ -116,6 +116,7 @@ class TestStdAPI_alias(unittest.TestCase):
 
 class TestStdError(unittest.TestCase):
     def test_error(self):
+        paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', [2, 3, 4], 'int32')
             self.assertRaises(TypeError, paddle.std, x)

@@ -209,11 +209,7 @@ class SingleReturnTransformer(BaseTransformer):
         assert value in [True, False], "value must be True or False."
         if isinstance(parent_node_of_return, gast.If):
             # Prepend control flow boolean nodes such as '__return@1 = True'
-            node_str = "{} = _jst.create_bool_as_type({}, {})".format(
-                return_name,
-                ast_to_source_code(parent_node_of_return.test).strip(),
-                value,
-            )
+            node_str = f"{return_name} = _jst.create_bool_as_type({ast_to_source_code(parent_node_of_return.test).strip()}, {value})"
 
             assign_node = gast.parse(node_str).body[0]
             assign_nodes.append(assign_node)
