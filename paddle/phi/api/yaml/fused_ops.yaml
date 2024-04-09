@@ -186,6 +186,7 @@
     func : fused_conv2d_add_act
     data_type : input
   optional : bias, residual_data, outputs
+  interfaces : paddle::dialect::LayoutTransformationInterface
 
 - op : fused_dconv_drelu_dbn
   args : (Tensor grad_output, Tensor weight, Tensor grad_output_add, Tensor residual_input, Tensor bn1_eqscale, Tensor bn1_eqbias, Tensor conv_input, Tensor bn1_mean, Tensor bn1_inv_std, Tensor bn1_gamma, Tensor bn1_beta, Tensor bn1_input, Tensor bn2_mean, Tensor bn2_inv_std, Tensor bn2_gamma, Tensor bn2_beta, Tensor bn2_input, int[] paddings, int[] dilations, int[] strides, str padding_algorithm, int groups, str data_format, bool fuse_shortcut, bool fuse_dual, bool fuse_add, bool exhaustive_search)
@@ -273,7 +274,7 @@
   optional : cache_kv, pre_caches, rotary_pos_emb, time_step, seq_lengths, src_mask, gather_index
 
 - op : fused_rotary_position_embedding
-  args : (Tensor q, Tensor k, Tensor v, Tensor sin, Tensor cos, Tensor position_ids, bool use_neox_rotary_style = true, bool time_major = false)
+  args : (Tensor q, Tensor k, Tensor v, Tensor sin, Tensor cos, Tensor position_ids, bool use_neox_rotary_style = true, bool time_major = false, float rotary_emb_base = 10000.0)
   output : Tensor(out_q), Tensor(out_k), Tensor(out_v)
   infer_meta :
     func : FusedRopeInferMeta
@@ -374,6 +375,15 @@
   kernel :
     func : generate_sequence_xpu
     data_type : dtype
+
+- op : group_norm_silu_xpu
+  args : (Tensor x, Tensor scale, Tensor bias, int groups, float epsilon)
+  output : Tensor(out)
+  infer_meta :
+    func : GroupNormalizeSiluXPUInferMeta
+  kernel :
+    func : group_norm_silu_xpu
+    data_type : x
 
 - op : layer_norm_act_xpu
   args : (Tensor x, Tensor scale, Tensor bias, int begin_norm_axis, float epsilon, int act_type, float act_param)

@@ -231,6 +231,8 @@ class AddBroadcastToElementwisePass : public pir::PatternRewritePass {
         context);
 
     // bitwise ops
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseAndOp>>(
+        context);
     ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseOrOp>>(
         context);
     ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseXorOp>>(

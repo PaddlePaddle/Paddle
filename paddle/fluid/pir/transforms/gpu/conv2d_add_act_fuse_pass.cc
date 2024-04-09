@@ -44,8 +44,8 @@ class Conv2dAddActFusePattern
 
     pir::Value add_input = op.x();
     PADDLE_ENFORCE_EQ(
-        add_input && conv2d_out,
-        true,
+        add_input,
+        conv2d_out,
         phi::errors::PreconditionNotMet("The type of add input should be the "
                                         "same as the type of conv2d's out."));
 
