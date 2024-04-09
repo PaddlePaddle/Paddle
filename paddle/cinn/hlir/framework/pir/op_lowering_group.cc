@@ -19,23 +19,15 @@ namespace hlir {
 namespace framework {
 namespace pir {
 
-void OpLoweringGroup::UpdateShapeOrDataExprs() {
-  const auto& input_values = this->GetInputOpValues();
-  if (input_values.size() == 0) return;
-  const auto& UpdateDimExprs =
-      [&](const ::pir::Value& value) -> decltype(auto) {
-    auto* program = value.defining_op()->GetParentProgram();
-    auto& shape_analysis = ::pir::ShapeAnalysisManager::Instance().Get(program);
-    if (!shape_analysis.HasShapeOrDataForValue(value)) return;
-    VLOG(6) << "UpdateShapeOrDataExprs for value_id: " << value.impl();
-    this->SetShapeOrDataExprs(value,
-                              shape_analysis.GetShapeOrDataForValue(value));
-  };
-
-  for (const auto& value : input_values) {
-    if (!value || !value.defining_op()) continue;
-    UpdateDimExprs(value);
-  }
+::pir::Program* OpLoweringGroup::GetParentProgram() const {
+  PADDLE_ENFORCE_GT(ops_.size(),
+                    0,
+                    ::common::errors::PreconditionNotMet(
+                        "Require at least one op in the group."));
+  PADDLE_ENFORCE_NOT_NULL(
+      ops_[0],
+      ::common::errors::Unavailable("Found group.ops_[0] is nullptr."));
+  return ops_[0]->GetParentProgram();
 }
 
 std::shared_ptr<OpLoweringGroup> OpLoweringGroup::Clone(

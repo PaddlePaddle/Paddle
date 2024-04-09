@@ -147,8 +147,6 @@ class OpLoweringGroup {
     }
   }
 
-  void UpdateShapeOrDataExprs();
-
   void WalkOps(const std::function<void(::pir::Operation*)>& VisitOp) const {
     for (const auto& op : ops_) {
       VisitOp(op);
@@ -202,6 +200,8 @@ class OpLoweringGroup {
         ::common::errors::Unavailable("Required map_expr_ctx_ != nullptr."));
     return *map_expr_ctx_;
   }
+
+  ::pir::Program* GetParentProgram() const;
 
   void set_value_to_shape_or_data_exprs(
       const std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>&

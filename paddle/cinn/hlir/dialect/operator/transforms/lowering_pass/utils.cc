@@ -130,16 +130,20 @@ OpLoweringGroupPtr BuildOpLoweringGroup(pir::Operation* fusion_op_ptr) {
   // Because the group is rebuilt, the order of group.output_values generated
   // by BuildCUDAJITInfo may not be same with the order bound in the yield op,
   // so a mapping is required.
-  auto& shape_analysis =
-      pir::ShapeAnalysisManager::Instance().Get(fusion_op->GetParentProgram());
-  group->set_value_to_shape_or_data_exprs(
-      CreateGroupShapeOrDataExprs(group, shape_analysis));
+  UpdateGroupShapeOrDataExprs(group);
   if (FLAGS_cinn_enable_map_expr) {
     cinn::adt::TryGenerateMapExprFromGroup(group);
   }
   // Rebuild other informations
   // TODO(zhangyuqin1998): Do we need group.master_ops?
   return group;
+}
+
+void UpdateGroupShapeOrDataExprs(OpLoweringGroupPtr group) {
+  auto& shape_analysis =
+      pir::ShapeAnalysisManager::Instance().Get(group->GetParentProgram());
+  group->set_value_to_shape_or_data_exprs(
+      CreateGroupShapeOrDataExprs(group, shape_analysis));
 }
 
 }  // namespace cinn::dialect::ir::details
