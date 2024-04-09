@@ -203,8 +203,7 @@ void NllLossRawInferMeta(const MetaTensor& input,
                          MetaTensor* total_weight,
                          MetaConfig config = MetaConfig());
 
-void PushGpupsSparseInferMeta(const MetaTensor& w,
-                              const std::vector<const MetaTensor*> ids,
+void PushGpupsSparseInferMeta(const std::vector<const MetaTensor*> ids,
                               const std::vector<const MetaTensor*> out,
                               const std::vector<int>& size,
                               bool is_sparse,

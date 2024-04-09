@@ -1124,8 +1124,7 @@ void PutAlongAxisInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void PushGpupsSparseInferMeta(const MetaTensor& w,
-                              const std::vector<const MetaTensor*> ids,
+void PushGpupsSparseInferMeta(const std::vector<const MetaTensor*> ids,
                               const std::vector<const MetaTensor*> out,
                               const std::vector<int>& size,
                               bool is_sparse,
