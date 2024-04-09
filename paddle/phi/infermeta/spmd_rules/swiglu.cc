@@ -27,8 +27,13 @@ namespace distributed {
 SpmdInfo SwiGLUInferSpmd(const DistMetaTensor& x, const DistMetaTensor& y) {
   // y.dist_attr() is empty means y is None
   if (y.dist_attr() == TensorDistAttr()) {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("The input y is not allowed to be None"));
+    auto x_dims_mapping = x.dist_attr().dims_mapping();
+    if (x_dims_mapping.back() != -1) {
+      PADDLE_THROW(
+          phi::errors::Unimplemented("The input y is none and input x's last "
+                                     "dim is sharded is not supported"));
+    }
+    return ElementwiseUnaryInferSpmd(x);
   } else {
     return ElementwiseBinaryInferSpmd(x, y);
   }
@@ -38,8 +43,13 @@ SpmdInfo SwiGLUInferSpmdReverse(const DistMetaTensor& x,
                                 const DistMetaTensor& y,
                                 const DistMetaTensor& out) {
   if (y.dist_attr() == TensorDistAttr()) {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("The input y is not allowed to be None"));
+    auto x_dims_mapping = x.dist_attr().dims_mapping();
+    if (x_dims_mapping.back() != -1) {
+      PADDLE_THROW(
+          phi::errors::Unimplemented("The input y is none and input x's last "
+                                     "dim is sharded is not supported"));
+    }
+    return ElementwiseUnaryInferSpmdReverse(x);
   } else {
     return ElementwiseBinaryInferSpmdReverse(x, y, out);
   }
@@ -49,8 +59,13 @@ SpmdInfo SwiGLUGradInferSpmd(const DistMetaTensor& x,
                              const DistMetaTensor& y,
                              const DistMetaTensor& out_grad) {
   if (y.dist_attr() == TensorDistAttr()) {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("The input y is not allowed to be None"));
+    auto x_dims_mapping = x.dist_attr().dims_mapping();
+    if (x_dims_mapping.back() != -1) {
+      PADDLE_THROW(
+          phi::errors::Unimplemented("The input y is none and input x's last "
+                                     "dim is sharded is not supported"));
+    }
+    return ElementwiseUnaryGradInferSpmd(x);
   } else {
     return ElementwiseBinaryGradInferSpmd(x, y, out_grad);
   }
