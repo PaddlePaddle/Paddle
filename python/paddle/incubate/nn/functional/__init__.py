@@ -35,6 +35,9 @@ from .fused_transformer import (
 )
 from .masked_multihead_attention import masked_multihead_attention
 from .swiglu import swiglu
+from .variable_length_memory_efficient_attention import (
+    variable_length_memory_efficient_attention,
+)
 
 try:
     from .triton_ops import weight_on
