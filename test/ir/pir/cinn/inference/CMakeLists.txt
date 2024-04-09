@@ -11,6 +11,8 @@ if(WITH_GPU)
       COMMAND
         ${CMAKE_COMMAND} -E env
         PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
+        FLAGS_deny_cinn_ops="softmax"
+        FLAGS_prim_forward_blacklist="pd_op.embedding;pd_op.softmax"
         FLAGS_prim_enable_dynamic=True FLAGS_prim_all=True
         FLAGS_enable_pir_api=1 FLAGS_cinn_bucket_compile=True
         FLAGS_group_schedule_tiling_first=1 ${PYTHON_EXECUTABLE}
