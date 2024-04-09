@@ -2125,7 +2125,39 @@ def empty(shape, dtype=None, name=None):
     dtype = convert_dtype(dtype)
 
     if in_dynamic_or_pir_mode():
-        shape = paddle.utils.convert_shape_to_list(shape)
+        if in_dynamic_mode():
+            shape = paddle.utils.convert_shape_to_list(shape)
+        else:
+            check_dtype(
+                dtype,
+                'dtype',
+                [
+                    'bool',
+                    'float16',
+                    'float32',
+                    'float64',
+                    'uint16',
+                    'int32',
+                    'int64',
+                    'complex64',
+                    'complex128',
+                ],
+                'empty',
+            )
+
+            paddle.utils.check_shape(shape)
+            if isinstance(shape, np.ndarray):
+                shape = shape.tolist()
+            if isinstance(shape, (list, tuple)):
+                if paddle.utils._contain_var(shape):
+                    shape = paddle.utils.get_int_tensor_list(
+                        shape, _current_expected_place()
+                    )
+            elif isinstance(shape, paddle.pir.Value):
+                pass
+            else:
+                raise TypeError("Shape only supports Value, or list, or tuple.")
+
         out = _C_ops.empty(
             shape, convert_np_dtype_to_dtype_(dtype), _current_expected_place()
         )
