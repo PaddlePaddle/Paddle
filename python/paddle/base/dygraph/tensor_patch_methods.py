@@ -1066,6 +1066,25 @@ def monkey_patch_tensor():
             return res
 
     @framework.dygraph_only
+    def xpu(self, device_id=None, blocking=True):
+        if device_id is None:
+            res_place = framework._current_expected_place()
+            if not isinstance(res_place, core.XPUPlace):
+                res_place = core.XPUPlace(0)
+        elif isinstance(device_id, int):
+            res_place = core.XPUPlace(device_id)
+        else:
+            raise ValueError("device_id must be int|None")
+
+        if self.place._equals(res_place):
+            return self
+        else:
+            res = self._copy_to(res_place, blocking)
+            res.stop_gradient = self.stop_gradient
+            res.persistable = self.persistable
+            return res
+
+    @framework.dygraph_only
     def pin_memory(self, blocking=True):
         if self.place.is_cuda_pinned_place():
             return self
@@ -1249,6 +1268,7 @@ def monkey_patch_tensor():
         ("value", value),
         ("cpu", cpu),
         ("cuda", cuda),
+        ("xpu", xpu),
         ("pin_memory", pin_memory),
         ("_slice", _slice),
         ("_numel", _numel),
