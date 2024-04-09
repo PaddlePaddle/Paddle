@@ -163,7 +163,7 @@ class AnalysisMap {
   void Invalidate(const PreservedAnalyses& pa) {
     PreservedAnalyses pa_copy(pa);
 
-    // Remove any analyses that were invalidaed.
+    // Remove any analyses that were invalidated.
     // As using MapVector, order of insertion is preserved and
     // dependencies always go before users, so need only one iteration.
     for (auto it = analyses_.begin(); it != analyses_.end();) {
@@ -240,7 +240,7 @@ class AnalysisMap {
 }  // namespace detail
 
 /// This class is intended to be passed around by value, and can not be
-/// constructed direcyly.
+/// constructed directly.
 class AnalysisManager {
  public:
   using PreservedAnalyses = detail::PreservedAnalyses;
