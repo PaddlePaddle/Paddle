@@ -167,6 +167,53 @@ class TestHistogramOp_ZeroDim(TestHistogramOp):
         self.max = 5
 
 
+class TestHistogramOpApi(OpTest):
+    def setUp(self):
+        self.op_type = "histogram"
+        self.init_test_case()
+        self.python_api = paddle.histogram
+        self.init_attrs()
+        Out = np.histogram(
+            a=self.inputs["X"],
+            weights=self.inputs["Weight"],
+            bins=self.bins,
+            range=(self.min, self.max),
+            density=self.density,
+        )
+        self.outputs = {"Out": Out[0].astype(np.float32)}
+
+    def init_test_case(self):
+        self.in_shape = (10, 12)
+        self.density = False
+        self.bins = 5
+        self.min = 1
+        self.max = 5
+
+    def init_attrs(self):
+        self.inputs = {
+            "X": np.random.uniform(low=0.0, high=20.0, size=self.in_shape),
+            "Weight": np.random.uniform(low=0.0, high=1.0, size=self.in_shape),
+        }
+        self.attrs = {
+            "bins": self.bins,
+            "min": self.min,
+            "max": self.max,
+            "density": self.density,
+        }
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+
+class TestHistogramOpDensity(TestHistogramOpApi):
+    def init_test_case(self):
+        self.in_shape = (10, 12)
+        self.density = True
+        self.bins = 5
+        self.min = 1
+        self.max = 5
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
