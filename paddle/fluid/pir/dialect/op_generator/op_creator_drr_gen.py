@@ -75,11 +75,13 @@ Dialect2NameSpaceMap = {
     "pd_op": "paddle::dialect",
     "cinn_op": "cinn::dialect",
     "onednn_op": "paddle::onednn::dialect",
+    "xpu_op": "paddle::xpu::dialect",
 }
 Dialect2OpHeaderMap = {
     "pd_op": "#include \"paddle/fluid/pir/dialect/operator/ir/pd_op.h\"",
     "cinn_op": "#include \"paddle/cinn/hlir/dialect/operator/ir/cinn_op.h\"",
     "onednn_op": "#include \"paddle/fluid/pir/dialect/operator/ir/onednn_op.h\"",
+    "xpu_op": "#include \"paddle/fluid/pir/dialect/operator/ir/xpu_op.h\"",
 }
 
 
@@ -89,12 +91,14 @@ class OpCreatorCodeGen:
         op_yaml_files,
         op_compat_yaml_file,
         dialect_name,
+        xpu_yaml_file=None,
         onednn_yaml_file=None,
         ops_onednn_extra_yaml_file=None,
     ):
         self.op_info_items = self.parse_yaml(
             op_yaml_files,
             op_compat_yaml_file,
+            xpu_yaml_file,
             onednn_yaml_file,
             ops_onednn_extra_yaml_file,
         )
@@ -104,6 +108,7 @@ class OpCreatorCodeGen:
         self,
         op_yaml_files,
         op_compat_yaml_file,
+        xpu_yaml_file=None,
         onednn_yaml_file=None,
         ops_onednn_extra_yaml_file=None,
     ):
@@ -132,6 +137,23 @@ class OpCreatorCodeGen:
                         if op['name'] in ops_onednn_extra_set:
                             onednn_ops.append(op)
                     op_yaml_items = op_yaml_items + onednn_ops
+        elif dialect_name == "xpu_op":
+            with open(xpu_yaml_file, "r") as f:
+                ops = yaml.safe_load(f)
+                xpu_ops = []
+                for op in ops:
+                    xpu_ops.append(op)
+                op_yaml_items = op_yaml_items + xpu_ops
+
+            for yaml_file in op_yaml_files:
+                with open(yaml_file, "r") as f:
+                    ops = yaml.safe_load(f)
+                    xpu_ops = []
+                    for op in ops:
+                        # if op['name'] in ops_onednn_extra_set:
+                        #     xpu_ops.append(op)
+                        pass
+                    op_yaml_items = op_yaml_items + xpu_ops
 
         else:
             for yaml_file in op_yaml_files:
@@ -222,6 +244,7 @@ def ParseArguments():
     parser.add_argument('--op_compat_yaml_file', type=str)
     parser.add_argument('--dialect_name', type=str)
     parser.add_argument('--op_creator_file', type=str)
+    parser.add_argument('--xpu_yaml_file', type=str)
     parser.add_argument('--onednn_yaml_file', type=str)
     parser.add_argument('--ops_onednn_extra_yaml_file', type=str)
     return parser.parse_args()
@@ -233,6 +256,7 @@ if __name__ == '__main__':
     op_compat_yaml_file = args.op_compat_yaml_file
     op_creator_file = args.op_creator_file
     dialect_name = args.dialect_name
+    xpu_yaml_file = args.xpu_yaml_file
     onednn_yaml_file = args.onednn_yaml_file
     ops_onednn_extra_yaml_file = args.ops_onednn_extra_yaml_file
 
@@ -240,6 +264,7 @@ if __name__ == '__main__':
         op_yaml_files,
         op_compat_yaml_file,
         dialect_name,
+        xpu_yaml_file,
         onednn_yaml_file,
         ops_onednn_extra_yaml_file,
     )

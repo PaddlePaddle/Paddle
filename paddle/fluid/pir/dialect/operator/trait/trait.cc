@@ -17,6 +17,9 @@
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/pir/dialect/operator/trait/onednn.h"
 #endif
+#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/pir/dialect/operator/trait/xpu.h"
+#endif
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::InplaceTrait)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CustomVjpTrait)
 
@@ -24,4 +27,7 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CustomVjpTrait)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNTrait)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNOnlyTrait)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNDynamicFallbackTrait)
+#endif
+#ifdef PADDLE_WITH_XPU
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::XpuTrait)
 #endif

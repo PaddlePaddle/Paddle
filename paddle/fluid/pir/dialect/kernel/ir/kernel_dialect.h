@@ -69,6 +69,24 @@ class OneDNNKernelDialect : public pir::Dialect {
 };
 #endif
 
+#ifdef PADDLE_WITH_XPU
+class XpuKernelDialect : public pir::Dialect {
+ public:
+  explicit XpuKernelDialect(pir::IrContext* context);
+
+  static const char* name() { return "xpu_kernel"; }
+
+  void PrintType(pir::Type type, std::ostream& os) const override;
+
+  void PrintAttribute(pir::Attribute attr, std::ostream& os) const override;
+
+  pir::OpPrintFn PrintOperation(pir::Operation* op) const override;  // NOLINT
+
+ private:
+  void initialize();
+};
+#endif
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -76,4 +94,8 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::KernelDialect)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CustomKernelDialect)
 #ifdef PADDLE_WITH_DNNL
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNKernelDialect)
+#endif
+
+#ifdef PADDLE_WITH_DNNL
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::XpuKernelDialect)
 #endif

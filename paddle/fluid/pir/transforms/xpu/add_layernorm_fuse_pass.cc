@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/pir/transforms/xpu/add_layernorm_fuse_pass.h"
 
+#include "paddle/fluid/pir/dialect/operator/ir/xpu_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
@@ -55,7 +56,7 @@ class AddLayernormPattern : public paddle::drr::DrrPatternBase {
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &add_layernorm_xpu =
-        res.Op(paddle::dialect::AddLayernormXpuOp::name(),
+        res.Op(paddle::xpu::dialect::AddLayernormXpuOp::name(),
                {{{"epsilon", pat.Attr("epsilon")},
                  {"begin_norm_axis", pat.Attr("begin_norm_axis")}}});
     add_layernorm_xpu({&res.Tensor("x"),
