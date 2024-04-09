@@ -274,6 +274,14 @@ class SparseCooTensor : public TensorBase,
     return &iter->second;
   }
 
+  void ClearKmaps() {
+    if (kmaps_ != nullptr) {
+      // set shared_ptr to nullptr,
+      // if no other shared_ptr point to it, it will be released.
+      kmaps_ = nullptr;
+    }
+  }
+
  private:
   friend class DenseTensorUtils;
 

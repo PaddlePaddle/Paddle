@@ -25,6 +25,22 @@ struct KmapCache {
   DenseTensor* hashmap_keys = nullptr;
   DenseTensor* hashmap_values = nullptr;
   // std::vector<int>* spatial_range;
+
+  // destructor
+  ~KmapCache() {
+    if (out_in_map) {
+      delete out_in_map;
+    }
+    if (coords) {
+      delete coords;
+    }
+    if (hashmap_keys) {
+      delete hashmap_keys;
+    }
+    if (hashmap_values) {
+      delete hashmap_values;
+    }
+  }
 };
 
 }  // namespace phi

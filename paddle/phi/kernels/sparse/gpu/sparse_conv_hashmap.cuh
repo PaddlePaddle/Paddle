@@ -219,6 +219,7 @@ void build_sparse_conv_kmap(
 {
   int nnz = x.nnz();
   const phi::KmapCache* in_kmap_cache_ptr = x.GetKmapCache(key);
+  out->ClearKmaps();
   phi::KmapCache* out_kmap_cache_ptr = nullptr;
   bool to_insert = false;
   if (in_kmap_cache_ptr == nullptr)
@@ -233,7 +234,7 @@ void build_sparse_conv_kmap(
       set_zero(dev_ctx, tmp_hashmap_keys, static_cast<IntT>(0));
       out_kmap_cache_ptr->hashmap_keys = tmp_hashmap_keys;
       to_insert = true;
-   }
+    }
     if (out_kmap_cache_ptr->hashmap_values == nullptr) {
       phi::DenseTensor* tmp_hashmap_values = new phi::DenseTensor();
       tmp_hashmap_values->Resize({2 * x.nnz()});
@@ -278,7 +279,10 @@ void build_sparse_conv_kmap(
         dev_ctx, *(out_kmap_cache_ptr->coords), kernel_sizes_tensor.data<int32_t>(), strides_tensor.data<int32_t>(), kernel_volume, out_kmap_cache_ptr->out_in_map);
 
   } else {
+      // out tensor takes the kmaps from x
       out->SetKmaps(x.GetKmaps());
+      // force clear the kmaps of x
+      const_cast<phi::SparseCooTensor&>(x).ClearKmaps();
   }
   const phi::KmapCache* new_out_kmap_cache_ptr = out->GetKmapCache(key);
   assert(new_out_kmap_cache_ptr != nullptr);
