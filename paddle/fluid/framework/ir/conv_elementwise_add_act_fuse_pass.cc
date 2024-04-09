@@ -222,7 +222,7 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
 #ifdef PADDLE_WITH_CUDA
     sm = platform::GetGPUComputeCapability(platform::GetCurrentDeviceId());
 #endif
-    if (cutlass_can_fuse && cutlass_enable && sm >= 80) {
+    if (cutlass_can_fuse && cutlass_enable && (is_fp16_precision || sm >= 80)) {
       new_op_desc.SetAttr("use_cudnn", false);
       new_op_desc.Flush();
     }
