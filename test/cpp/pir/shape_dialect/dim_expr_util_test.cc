@@ -84,11 +84,11 @@ TEST(DimExprUtil, CompareDimExprPriority) {
   DimExpr add_expr = builder.Add(DimExpr("S2"), DimExpr("S3"));
   DimExpr bc_expr = builder.Broadcast(DimExpr("S4"), DimExpr("S5"));
   ASSERT_EQ(CompareDimExprPriority(sym_expr_0, sym_expr_1),
-            PriorityComparisonStatus::Superior);
+            PriorityComparisonStatus::HIGHER);
   ASSERT_EQ(CompareDimExprPriority(add_expr, sym_expr_0),
-            PriorityComparisonStatus::Inferior);
+            PriorityComparisonStatus::LOWER);
   ASSERT_EQ(CompareDimExprPriority(add_expr, bc_expr),
-            PriorityComparisonStatus::Equal);
+            PriorityComparisonStatus::EQUAL);
 }
 
 TEST(DimExpr, CollectDimExprSymbol) {

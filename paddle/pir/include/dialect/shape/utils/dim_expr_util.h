@@ -30,9 +30,9 @@ IR_API DimExpr SubstituteDimExpr(
 IR_API int GetDimExprPriority(const DimExpr& dim_expr);
 
 enum class PriorityComparisonStatus {
-  Superior,  // lhs has a higher priority than rhs
-  Equal,     // lhs and rhs have equal priority
-  Inferior   // lhs has a lower priority than rhs
+  HIGHER,  // lhs has a higher priority than rhs
+  EQUAL,   // lhs and rhs have equal priority
+  LOWER    // lhs has a lower priority than rhs
 };
 IR_API PriorityComparisonStatus CompareDimExprPriority(const DimExpr& lhs,
                                                        const DimExpr& rhs);

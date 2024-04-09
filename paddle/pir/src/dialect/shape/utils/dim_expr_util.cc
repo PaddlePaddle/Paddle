@@ -1083,26 +1083,26 @@ IR_API PriorityComparisonStatus CompareDimExprPriority(const DimExpr& lhs,
   int rhs_priority = GetDimExprPriority(rhs);
 
   if (lhs_priority != rhs_priority) {
-    return lhs_priority < rhs_priority ? PriorityComparisonStatus::Superior
-                                       : PriorityComparisonStatus::Inferior;
+    return lhs_priority < rhs_priority ? PriorityComparisonStatus::HIGHER
+                                       : PriorityComparisonStatus::LOWER;
   }
 
   auto CompareForEqualPriority = Overloaded{
       [](const std::string& lhs, const std::string& rhs) {
         if (lhs.size() != rhs.size()) {
-          return lhs.size() < rhs.size() ? PriorityComparisonStatus::Superior
-                                         : PriorityComparisonStatus::Inferior;
+          return lhs.size() < rhs.size() ? PriorityComparisonStatus::HIGHER
+                                         : PriorityComparisonStatus::LOWER;
         }
         int compare_result = lhs.compare(rhs);
         if (compare_result == 0)
-          return PriorityComparisonStatus::Equal;
+          return PriorityComparisonStatus::EQUAL;
         else if (compare_result < 0)
-          return PriorityComparisonStatus::Superior;
+          return PriorityComparisonStatus::HIGHER;
         else
-          return PriorityComparisonStatus::Inferior;
+          return PriorityComparisonStatus::LOWER;
       },
       [](const auto& lhs, const auto& rhs) {
-        return PriorityComparisonStatus::Equal;
+        return PriorityComparisonStatus::EQUAL;
       }};
   return std::visit(CompareForEqualPriority, lhs.variant(), rhs.variant());
 }

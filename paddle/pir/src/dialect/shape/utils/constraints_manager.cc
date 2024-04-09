@@ -36,9 +36,9 @@ bool CanEqualCStrInsert(const DimExpr& lhs, const DimExpr& rhs) {
   return true;
 }
 
-template <typename AddOrMul>
-std::pair<DimExpr, DimExpr> FindDifferences(const AddOrMul& lhs,
-                                            const AddOrMul& rhs) {
+template <template <class> class OpT>
+std::pair<DimExpr, DimExpr> FindDifferences(const OpT<DimExpr>& lhs,
+                                            const OpT<DimExpr>& rhs) {
   List<DimExpr> lhs_list = lhs.operands;
   List<DimExpr> rhs_list = rhs.operands;
   List<DimExpr> lhs_diffs, rhs_diffs;
@@ -62,9 +62,9 @@ std::pair<DimExpr, DimExpr> FindDifferences(const AddOrMul& lhs,
   if (lhs_diffs->size() == 0 || rhs_diffs->size() == 0)
     return std::pair(lhs, rhs);
   auto lhs_diff =
-      lhs_diffs->size() == 1 ? lhs_diffs->at(0) : AddOrMul{lhs_diffs};
+      lhs_diffs->size() == 1 ? lhs_diffs->at(0) : OpT<DimExpr>{lhs_diffs};
   auto rhs_diff =
-      rhs_diffs->size() == 1 ? rhs_diffs->at(0) : AddOrMul{rhs_diffs};
+      rhs_diffs->size() == 1 ? rhs_diffs->at(0) : OpT<DimExpr>{rhs_diffs};
   return std::pair(lhs_diff, rhs_diff);
 }
 
@@ -73,11 +73,11 @@ std::pair<DimExpr, DimExpr> SimplifyEqCstr(const DimExpr& lhs,
   auto DoSimplify = Overloaded{
       [](const Add<DimExpr>& lhs,
          const Add<DimExpr>& rhs) -> std::pair<DimExpr, DimExpr> {
-        return FindDifferences<Add<DimExpr>>(lhs, rhs);
+        return FindDifferences<Add>(lhs, rhs);
       },
       [](const Mul<DimExpr>& lhs,
          const Mul<DimExpr>& rhs) -> std::pair<DimExpr, DimExpr> {
-        return FindDifferences<Mul<DimExpr>>(lhs, rhs);
+        return FindDifferences<Mul>(lhs, rhs);
       },
       [](const auto& lhs, const auto& rhs) -> std::pair<DimExpr, DimExpr> {
         return std::make_pair(DimExpr(lhs), DimExpr(rhs));
@@ -95,27 +95,27 @@ void ConstraintsManager::AddEqCstr(const DimExpr& lhs, const DimExpr& rhs) {
   auto simplify_result = SimplifyEqCstr(lhs, rhs);
   if (simplify_result.first != lhs && simplify_result.second != rhs) {
     AddEqCstr(simplify_result.first, simplify_result.second);
+    return;
+  }
+  if (CanEqualCStrInsert(lhs, rhs)) {
+    equals_.Union(lhs, rhs);
+  }
+  DimExpr origin, subsutituted;
+  auto comp_result = CompareDimExprPriority(lhs, rhs);
+  if (comp_result == PriorityComparisonStatus::LOWER) {
+    origin = lhs;
+    subsutituted = rhs;
+  } else if (comp_result == PriorityComparisonStatus::HIGHER) {
+    origin = rhs;
+    subsutituted = lhs;
   } else {
-    if (CanEqualCStrInsert(lhs, rhs)) {
-      equals_.Union(lhs, rhs);
-    }
-    DimExpr origin, subsutituted;
-    auto comp_result = CompareDimExprPriority(lhs, rhs);
-    if (comp_result == PriorityComparisonStatus::Inferior) {
-      origin = lhs;
-      subsutituted = rhs;
-    } else if (comp_result == PriorityComparisonStatus::Superior) {
-      origin = rhs;
-      subsutituted = lhs;
-    } else {
-      return;
-    }
-    if (CanSubstituteInConstraint(origin, subsutituted)) {
-      SubstituteInConstraint(origin, subsutituted);
-    }
-    if (equal_callback_func_) {
-      equal_callback_func_(origin, subsutituted);
-    }
+    return;
+  }
+  if (CanSubstituteInConstraint(origin, subsutituted)) {
+    SubstituteInConstraint(origin, subsutituted);
+  }
+  if (equal_callback_func_) {
+    equal_callback_func_(origin, subsutituted);
   }
 }
 
