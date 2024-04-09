@@ -309,8 +309,8 @@ inline std::vector<int64_t> GetReduceDims(const DenseTensor &in,
       reduce_dims.push_back(i + diff);
     } else {
       PADDLE_ENFORCE_EQ(
-          in_dims[i],
-          out_dims[i + diff],
+          in_dims[i + diff],
+          out_dims[i],
           phi::errors::InvalidArgument(
               "ReduceDims dimension mismatch. Operands could "
               "not be broadcast together with the shape of in_dims = [%s] and "
