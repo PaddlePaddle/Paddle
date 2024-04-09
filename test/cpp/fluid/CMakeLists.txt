@@ -62,7 +62,7 @@ if(WITH_GPU)
   nv_test(
     dropout_op_test
     SRCS dropout_op_test.cc
-    DEPS dropout_op tensor phi common)
+    DEPS dropout_op tensor phi common global_utils)
   nv_test(
     test_leaky_relu_grad_grad_functor
     SRCS test_leaky_relu_grad_grad_functor.cc

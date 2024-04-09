@@ -434,15 +434,26 @@ class TransposeSliceFlashAttnPattern : public paddle::drr::DrrPatternBase {
     // Result Pattern.
     //
     paddle::drr::ResultPattern res = src.ResultPattern();
+    // [b, head, seq_len, head_dim] -> [b, seq_len, head, head_dim]
+    const auto &q_transpose = res.Op(
+        "pd_op.transpose", {{"perm", res.VectorInt32Attr({0, 2, 1, 3})}});
+    res.Tensor("q_transpose") = q_transpose(res.Tensor("q"));
+    const auto &k_transpose = res.Op(
+        "pd_op.transpose", {{"perm", res.VectorInt32Attr({0, 2, 1, 3})}});
+    res.Tensor("k_transpose") = k_transpose(res.Tensor("k"));
+    const auto &v_transpose = res.Op(
+        "pd_op.transpose", {{"perm", res.VectorInt32Attr({0, 2, 1, 3})}});
+    res.Tensor("v_transpose") = v_transpose(res.Tensor("v"));
+
     const auto &flash_attn = res.Op("pd_op.flash_attn",
                                     {{{"dropout", res.Float32Attr(0.0)},
                                       {"causal", res.BoolAttr(false)},
                                       {"return_softmax", res.BoolAttr(false)},
                                       {"is_test", res.BoolAttr(true)},
                                       {"rng_name", res.StrAttr("")}}});
-    flash_attn({&res.Tensor("q"),
-                &res.Tensor("k"),
-                &res.Tensor("v"),
+    flash_attn({&res.Tensor("q_transpose"),
+                &res.Tensor("k_transpose"),
+                &res.Tensor("v_transpose"),
                 &res.InputNoneTensor(),
                 &res.Tensor("mask")},
                {&res.Tensor("out"),

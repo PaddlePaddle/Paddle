@@ -41,11 +41,14 @@ USE_PIR_PASS(fused_dot_product_attention_pass);
 USE_PIR_PASS(fused_flash_attn_pass);
 
 #ifdef PADDLE_WITH_DNNL
+USE_PIR_PASS(depthwise_conv_onednn_pass);
+USE_PIR_PASS(squeeze_transpose_onednn_fuse_pass);
 USE_PIR_PASS(batch_norm_act_fuse_pass);
 USE_PIR_PASS(conv2d_bias_fuse_pass);
 USE_PIR_PASS(conv2d_transpose_bias_fuse_pass);
 USE_PIR_PASS(conv3d_bias_fuse_pass);
 USE_PIR_PASS(reshape_transpose_matmul_fuse_pass);
+USE_PIR_PASS(matmul_transpose_reshape_fuse_pass);
 USE_PIR_PASS(matmul_elementwise_add_fuse_pass);
 USE_PIR_PASS(matmul_activation_fuse_pass);
 USE_PIR_PASS(conv_elementwise_add_onednn_fuse_pass);

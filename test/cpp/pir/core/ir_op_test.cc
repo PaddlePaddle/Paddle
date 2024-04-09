@@ -500,3 +500,62 @@ TEST(op_test, same_operands_and_result_type_trait_test3) {
                    dense_tensor_dtype1),
                pir::IrNotMetException);
 }
+
+TEST(printer_test, custom_hooks) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  pir::Dialect *test_dialect = ctx->GetOrRegisterDialect<test::TestDialect>();
+  EXPECT_EQ(test_dialect != nullptr, true);
+
+  pir::OpInfo op1_info = ctx->GetRegisteredOpInfo(test::Operation1::name());
+  pir::OpInfo op2_info = ctx->GetRegisteredOpInfo(test::Operation2::name());
+
+  pir::Operation *op1 = pir::Operation::Create(
+      {},
+      test::CreateAttributeMap({"op1_attr1", "op1_attr2"},
+                               {"op1_attr1", "op1_attr2"}),
+      {pir::Float32Type::get(ctx)},
+      op1_info);
+  pir::Operation *op2 = pir::Operation::Create(
+      {op1->result(0)}, {}, {pir::Float32Type::get(ctx)}, op2_info);
+
+  pir::Program program(ctx);
+  program.block()->push_back(op1);
+  program.block()->push_back(op2);
+
+  pir::PrintHooks hooks;
+  // this one retains old printing and adds new info
+  hooks.value_print_hook = [](pir::Value v, pir::IrPrinter &printer) {
+    printer.IrPrinter::PrintValue(v);
+    printer.os << " [extra info]";
+  };
+  // this one overrides old printing
+  hooks.op_print_hook = [](pir::Operation *op, pir::IrPrinter &printer) {
+    printer.PrintOpResult(op);
+    printer.os << " :=";
+
+    printer.os << " \"" << op->name() << "\"";
+    printer.PrintOpOperands(op);
+    printer.PrintAttributeMap(op);
+    printer.os << " :";
+    printer.PrintOpReturnType(op);
+  };
+
+  hooks.attribute_print_hook = [](pir::Attribute attr,
+                                  pir::IrPrinter &printer) {
+    printer.os << "[PlaceHolder]";
+  };
+  hooks.type_print_hook = [](pir::Type type, pir::IrPrinter &printer) {
+    printer.os << "[" << type << "]";
+  };
+
+  std::stringstream ss;
+
+  ss << pir::CustomPrintHelper{program, hooks};
+  EXPECT_EQ(
+      ss.str(),
+      "{\n"
+      "(%0 [extra info]) := \"test.operation1\" () "
+      "{op1_attr1:[PlaceHolder],op1_attr2:[PlaceHolder]} :[f32]\n"
+      "(%1 [extra info]) := \"test.operation2\" (%0 [extra info]) {} :[f32]\n"
+      "}\n");
+}
