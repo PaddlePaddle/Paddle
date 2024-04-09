@@ -150,7 +150,7 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
   is_in_op_profiling_mode_ = enable_op_profiling;
 
   std::vector<paddle::framework::OpFuncNode> op_func_nodes;
-  Build(feed_names, &op_func_nodes);
+  Build(feed_names, &op_func_nodes, switch_stream);
 
   if (!is_build_) {
     SetFeedVarsInplaceSkip(feed_names);
@@ -208,7 +208,8 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
 
 void ProgramInterpreter::Build(
     const std::vector<std::string>& feed_names,
-    std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
+    std::vector<paddle::framework::OpFuncNode>* op_func_nodes,
+    bool switch_stream) {
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
@@ -216,7 +217,7 @@ void ProgramInterpreter::Build(
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
 
-  if (!is_build_) {
+  if (!is_build_ || switch_stream) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
     paddle::framework::interpreter::BuildVariableScope(
         block_, execution_config_, &var_scope_);
