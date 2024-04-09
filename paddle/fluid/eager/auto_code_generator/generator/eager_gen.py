@@ -48,7 +48,7 @@ from codegen_utils import (
 # so we should check parameter(output) with rule of inplace.
 # But because there is no check in old dygraph mode, in order to
 # keeping the code compatible, here we also skip inplace check in new dygraph temporarily,
-# and this will be fixed in the futrue.
+# and this will be fixed in the future.
 inplace_check_blacklist = {"assign_out_"}
 
 # Black Ops list that's NO NEED to apply code generation
@@ -80,7 +80,7 @@ prim_white_list = [
     "log_double_grad",
 ]
 
-# white ops list whose kernel can automaically do type promotion.
+# white ops list whose kernel can automatically do type promotion.
 # future will get this list from same place with static graph.
 type_promote_white_list = {
     "add": ["x", "y"],
@@ -88,8 +88,8 @@ type_promote_white_list = {
     "where": ["x", "y"],
 }
 
-# dict of special api that forward api's output will affect bacward api's output
-# bacward api's output usually affected by backward api's input
+# dict of special api that forward api's output will affect backward api's output
+# backward api's output usually affected by backward api's input
 special_prune_dict = {
     "matmul_grad": {"x": "grad_y", "y": "grad_x"},
 }
@@ -1131,7 +1131,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                             need_pre_contiguous_set.add(name)
                             set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper_{name}({name}_tmp);"
                 set_input_tensor_wrappers_list.append(set_tensor_wrappers)
-            else:  # Forwad's output as backward's input
+            else:  # Forward's output as backward's input
                 if num_fwd_outputs > 1:
                     # Aligned with forward output position
                     assert name in forward_outputs_position_map, AssertMessage(
@@ -3058,7 +3058,7 @@ if __name__ == "__main__":
     for i in range(len(api_yaml_paths)):
         api_yaml_path = api_yaml_paths[i]
 
-        # string api is forwrad only
+        # string api is forward only
         if not api_yaml_path.endswith('strings_ops.yaml'):
             backward_yaml_path = backward_yaml_paths[i]
         else:

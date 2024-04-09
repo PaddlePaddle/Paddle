@@ -69,7 +69,7 @@ void divide_grad(const Tensor& x,
                  Tensor* dy) {
   if (dy) {
     // dy = -(x/y^2) * dout
-    auto dy_res = -(x / y.pow(2.0)) * out_grad;
+    auto dy_res = -(x / (y * y)) * out_grad;
     if (out_grad.dims() != y.dims()) {
       phi::DDim reduce_dim =
           get_reduce_dims_from_out(out_grad.dims(), y.dims());
@@ -566,9 +566,7 @@ void layer_norm_grad(const Tensor& x,
 
   auto x_sub_mean = x_cast - mean_;          // M,N
   auto tmp = (1.0 / (variance_ + epsilon));  // M,1
-  // auto sqrt_var_1 = sqrt<T>(tmp);            // M,1
-  auto sqrt_var_1 = elementwise_pow<T>(
-      tmp, full<T>(common::vectorize(tmp.dims()), 0.5, tmp.dtype()));
+  auto sqrt_var_1 = sqrt<T>(tmp);            // M,1
   auto x_sub_mean_mul_sqrt_var_1 = x_sub_mean * sqrt_var_1;
 
   if (x_grad) {
@@ -1254,7 +1252,7 @@ void batch_norm_grad(const Tensor& x,
     auto eps =
         full<T>(common::vectorize(run_var.dims()), epsilon, run_var.dtype());
     mean_data = run_mean;
-    rsqrt_var = (run_var + eps).pow(-0.5);
+    rsqrt_var = rsqrt<T>(run_var + eps);
   } else {
     mean_data = saved_mean;
     rsqrt_var = saved_variance;
@@ -1596,7 +1594,7 @@ void group_norm_grad(const Tensor& x,
       p1 = (reshape<T>(inv_std, {N, groups, 1})).expand(shape_group);
     }
 
-    auto p2 = (d2 * mean - d1) * (inv_std_mul_s * inv_std * inv_std);
+    auto p2 = (d2 * mean - d1) * (inv_std_mul_s / var_eps);
     auto p3 = -p2 * mean - d2 * inv_std_mul_s;
     std::vector<int64_t> first_shape;
     std::vector<int64_t> second_shape;
