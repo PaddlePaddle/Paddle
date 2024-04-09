@@ -20,6 +20,7 @@ from paddle.framework.dtype import bind_datatype, bind_vartype
 
 
 def _switch_to_pir_():
+    paddle.base.framework.global_var._use_pir_api_ = True
     paddle.framework.set_flags({"FLAGS_enable_pir_in_executor": True})
     paddle.pir.register_paddle_dialect()
     # TODO find a better place to init the registion of dist dialect.
@@ -40,6 +41,7 @@ def _switch_to_pir_():
 
 
 def _switch_to_old_ir_():
+    paddle.base.framework.global_var._use_pir_api_ = False
     paddle.framework.set_flags({"FLAGS_enable_pir_in_executor": False})
 
     paddle.base.Program = paddle.base.framework.Program
