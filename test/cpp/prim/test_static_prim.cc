@@ -174,13 +174,13 @@ TEST(StaticPrim, TanhBackwardComposite) {
       static_cast<prim::DescTensor*>(out_grad.impl().get())->get_ptr();
   target_block->RenameVar(out_grad_desc->Name(), "b@GRAD");
   std::vector<std::unique_ptr<framework::OpDesc>> grad_ops =
-      std::move(framework::OpInfoMap::Instance()
-                    .Get(forward_opdesc->Type())
-                    .CompGradOpMaker()(*forward_opdesc,
-                                       std::unordered_set<std::string>(),
-                                       &grad_to_var,
-                                       target_block,
-                                       grad_sub_block));
+      framework::OpInfoMap::Instance()
+          .Get(forward_opdesc->Type())
+          .CompGradOpMaker()(*forward_opdesc,
+                             std::unordered_set<std::string>(),
+                             &grad_to_var,
+                             target_block,
+                             grad_sub_block);
   ASSERT_EQ(target_block->AllOps().size(), static_cast<std::size_t>(1));
   ASSERT_EQ(grad_ops.size(), static_cast<std::size_t>(4));
   ASSERT_EQ(target_block->AllOps()[0]->Type(), "tanh");

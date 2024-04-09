@@ -1485,9 +1485,7 @@ class Model:
                 raise ValueError(f"{key} is not found in the providing file.")
             if list(state.shape) != list(param.shape):
                 raise ValueError(
-                    "{} receives a shape {}, but the expected shape is {}.".format(
-                        key, list(state.shape), list(param.shape)
-                    )
+                    f"{key} receives a shape {list(state.shape)}, but the expected shape is {list(param.shape)}."
                 )
             return param, state
 
@@ -1652,9 +1650,7 @@ class Model:
             }
             if amp_config_key_set - accepted_param_set:
                 raise ValueError(
-                    "Except for 'level', the keys of 'amp_configs' must be accepted by mixed precision APIs, but {} could not be recognized.".format(
-                        tuple(amp_config_key_set - accepted_param_set)
-                    )
+                    f"Except for 'level', the keys of 'amp_configs' must be accepted by mixed precision APIs, but {tuple(amp_config_key_set - accepted_param_set)} could not be recognized."
                 )
 
             if 'use_fp16_guard' in amp_config_key_set:

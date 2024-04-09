@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import copy
+import multiprocessing
 
 # TODO: check the hooks of tensor
 # TODO: check serializing named tensor
@@ -117,8 +118,53 @@ def _reduce_tensor(tensor):
         )
 
 
-def _rebuild_lodtensor_filename(cls, ipc_name, size, type_idx, dims, lod):
-    lodtensor = cls._new_shared_filename((ipc_name, size, type_idx, dims, lod))
+def _rebuild_lodtensor_filename(
+    cls,
+    ipc_name,
+    shared_fd,
+    size,
+    type_idx,
+    dims,
+    lod,
+    dataloader_use_file_descriptor,
+):
+    lodtensor = cls._new_shared_filename(
+        (
+            ipc_name,
+            shared_fd,
+            size,
+            type_idx,
+            dims,
+            lod,
+            dataloader_use_file_descriptor,
+        )
+    )
+    lodtensor._shared_decref()
+    return lodtensor
+
+
+def _rebuild_lodtensor_filedescriptor(
+    cls,
+    ipc_name,
+    shared_fd,
+    size,
+    type_idx,
+    dims,
+    lod,
+    dataloader_use_file_descriptor,
+):
+    shared_fd = shared_fd.detach()
+    lodtensor = cls._new_shared_filename(
+        (
+            ipc_name,
+            shared_fd,
+            size,
+            type_idx,
+            dims,
+            lod,
+            dataloader_use_file_descriptor,
+        )
+    )
     lodtensor._shared_decref()
     return lodtensor
 
@@ -161,15 +207,23 @@ def _reduce_lodtensor(lodtensor):
             if dim == 0:
                 # Empty tensors have nothing be mapped.
                 return (_rebuild_lodtensor_empty, (type(lodtensor),))
-
+        dataloader_use_file_descriptor = paddle.base.core.globals()[
+            "FLAGS_dataloader_use_file_descriptor"
+        ]
         # Default use share filename strategy
-        metadata = (
-            lodtensor._share_filename()
-        )  # ipc_name, size, type_idx, dims, lod
-        rebuild = _rebuild_lodtensor_filename
+        metadata = lodtensor._share_filename(
+            dataloader_use_file_descriptor
+        )  # ipc_name, fd, size, type_idx, dims, lod
+
+        if dataloader_use_file_descriptor:
+            metalist = list(metadata)
+            metalist[1] = multiprocessing.reduction.DupFd(metalist[1])
+            metadata = tuple(metalist)
+            rebuild = _rebuild_lodtensor_filedescriptor
+        else:
+            rebuild = _rebuild_lodtensor_filename
         lodtensor._shared_incref()
         # TODO, maintain reference for lodtensor
-        # TODO: support file_descriptor strategy
     elif lodtensor._place().is_gpu_place():
         metadata = lodtensor._share_cuda()
         rebuild = _rebuild_cuda_tensor

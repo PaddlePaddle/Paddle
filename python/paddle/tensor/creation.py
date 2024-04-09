@@ -378,10 +378,8 @@ def linspace(start, stop, num, dtype=None, name=None):
             and out_dtype == "int32"
         ):
             raise ValueError(
-                "The dtype of start/stop is {}/{} but the attr(dtype) of linspace is {}, "
-                "which may cause data type overflows. Please reset attr(dtype) of linspace.".format(
-                    start_dtype, stop_dtype, dtype
-                )
+                f"The dtype of start/stop is {start_dtype}/{stop_dtype} but the attr(dtype) of linspace is {dtype}, "
+                "which may cause data type overflows. Please reset attr(dtype) of linspace."
             )
 
         out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -532,10 +530,8 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
             and out_dtype == "int32"
         ):
             raise ValueError(
-                "The dtype of start/stop/base is {}/{}/{} but the attr(dtype) of logspace is {}, "
-                "which may cause data type overflows. Please reset attr(dtype) of logspace.".format(
-                    start_dtype, stop_dtype, base_dtype, dtype
-                )
+                f"The dtype of start/stop/base is {start_dtype}/{stop_dtype}/{base_dtype} but the attr(dtype) of logspace is {dtype}, "
+                "which may cause data type overflows. Please reset attr(dtype) of logspace."
             )
 
         out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -612,9 +608,7 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
             return data
         else:
             raise TypeError(
-                "Can't constructs a 'paddle.Tensor' with data type {}, data type must be scalar|list|tuple|np.ndarray|paddle.Tensor".format(
-                    type(data)
-                )
+                f"Can't constructs a 'paddle.Tensor' with data type {type(data)}, data type must be scalar|list|tuple|np.ndarray|paddle.Tensor"
             )
         if not dtype:
             if data.dtype in [
@@ -2058,9 +2052,7 @@ def diag(x, offset=0, padding_value=0, name=None):
         check_type(padding_value, 'padding_value', (int, float), 'diag_v2')
         if len(x.shape) != 1 and len(x.shape) != 2:
             raise ValueError(
-                "The dimension of input x must be either 1 or 2, but received {}".format(
-                    len(x.shape)
-                )
+                f"The dimension of input x must be either 1 or 2, but received {len(x.shape)}"
             )
 
         helper = LayerHelper("diag_v2", **locals())
@@ -2133,7 +2125,39 @@ def empty(shape, dtype=None, name=None):
     dtype = convert_dtype(dtype)
 
     if in_dynamic_or_pir_mode():
-        shape = paddle.utils.convert_shape_to_list(shape)
+        if in_dynamic_mode():
+            shape = paddle.utils.convert_shape_to_list(shape)
+        else:
+            check_dtype(
+                dtype,
+                'dtype',
+                [
+                    'bool',
+                    'float16',
+                    'float32',
+                    'float64',
+                    'uint16',
+                    'int32',
+                    'int64',
+                    'complex64',
+                    'complex128',
+                ],
+                'empty',
+            )
+
+            paddle.utils.check_shape(shape)
+            if isinstance(shape, np.ndarray):
+                shape = shape.tolist()
+            if isinstance(shape, (list, tuple)):
+                if paddle.utils._contain_var(shape):
+                    shape = paddle.utils.get_int_tensor_list(
+                        shape, _current_expected_place()
+                    )
+            elif isinstance(shape, paddle.pir.Value):
+                pass
+            else:
+                raise TypeError("Shape only supports Value, or list, or tuple.")
+
         out = _C_ops.empty(
             shape, convert_np_dtype_to_dtype_(dtype), _current_expected_place()
         )

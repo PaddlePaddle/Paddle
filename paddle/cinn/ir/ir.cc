@@ -395,7 +395,6 @@ Expr Store::index() const {
     return indices[0];
   }
   Expr res = cinn::common::IndiceToAbsOffset(tensor_n->shape, indices);
-  optim::Simplify(&res);
   return res;
 }
 
@@ -633,8 +632,6 @@ Expr Load::index() const {
       return indices[0];
     }
     Expr res = cinn::common::IndiceToAbsOffset(tensor_n->shape, indices);
-    VLOG(3) << "Begin Load::index Simplify";
-    optim::Simplify(&res);
     return res;
   } else {
     CHECK_EQ(indices.size(), 1UL);

@@ -263,7 +263,7 @@ file(GLOB_RECURSE dist_dialect_srcs
 # if(WITH_DISTRIBUTE) FIXME in next PR
 set(op_dialect_srcs ${op_dialect_srcs} ${dist_dialect_srcs})
 # endif()
-set(op_dialect_deps phi common pir type_info string_helper)
+set(op_dialect_deps phi common pir type_info string_helper global_utils amp)
 if(WITH_ROCM)
   set(op_dialect_deps ${op_dialect_deps} global_utils)
 endif()
@@ -289,7 +289,7 @@ if(WITH_MKLDNN)
       ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/op_onednn_dialect.cc)
 endif()
 
-set(op_dialect_vjp_deps primitive_vjp_experimental op_dialect)
+set(op_dialect_vjp_deps primitive_vjp_experimental op_dialect prim_utils)
 
 cc_library(
   op_dialect_vjp
