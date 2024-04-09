@@ -15,7 +15,7 @@
 #     attrs : [bool is_test = false]
 
 - op : abs
-  backward : abs_grad
+  backward : abs_grad, abs_double_grad, abs_triple_grad
   inputs :
     x : X
   outputs :
@@ -295,6 +295,12 @@
   manual_signature : [assign, assign_grad]
   get_expected_kernel_type :
     assign : GetAssignExpectedKernelType
+
+- op : assign_pos
+  inputs :
+    {x : X}
+  outputs :
+    out : Out
 
 - op : assign_value
   outputs :
@@ -818,6 +824,12 @@
   outputs :
     out : Out
 
+- op : dgc_momentum
+  inputs :
+    {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam, current_step_tensor : current_step, nranks_tensor : nranks}
+  outputs :
+    {param_out : ParamOut, velocity_out : VelocityOut, master_param_out : MasterParamOut, grad_out : Grad_out}
+
 - op : diag (diag_v2)
   backward : diag_grad (diag_v2_grad)
   inputs :
@@ -1019,7 +1031,7 @@
     out : Out
 
 - op : exp
-  backward : exp_grad
+  backward : exp_grad, exp_double_grad
   inputs :
     x : X
   outputs :
@@ -3712,6 +3724,12 @@
     multi_fpn_rois : MultiFpnRois
     multi_level_rois_num: MultiLevelRoIsNum
     restore_index: RestoreIndex
+
+- op: distributed_fused_lamb
+  inputs:
+    {param: Param, grad: Grad, fp32_fused_param: FP32FusedParam, fp32_fused_grad: FP32FusedGrad, fp16_fused_param: FP16FusedParam, fp16_fused_grad: FP16FusedGrad, moment1: Moment1, moment2: Moment2, beta1pow: Beta1Pow, beta2pow: Beta2Pow, fused_param_offsets: FusedParamOffsets, fp32_shard_fused_param_offsets: FP32ShardFusedParamOffsets, fp16_shard_fused_param_offsets: FP16ShardFusedParamOffsets, param_info: ParamInfo, param_order: ParamOrder, learning_rate: LearningRate, global_scale: GlobalScale}
+  outputs:
+    {param_out : ParamOut, fp32_fused_param_out: FP32FusedParamOut, fp16_fused_param_out: FP16FusedParamOut, fp32_acc_fused_grad: FP32AccFusedGrad, fp16_acc_fused_grad: FP16AccFusedGrad, moment1_out: Moment1Out, moment2_out: Moment2Out, beta1pow_out: Beta1PowOut, beta2pow_out: Beta2PowOut, found_inf: FoundInf, acc_step: AccStep, stop_update: StopUpdate, step: Step}
 
 - op: distributed_fused_lamb_init
   inputs:
