@@ -29,22 +29,22 @@ register_unity_group(
   bmm_op.cc
   bpr_loss_op.cc
   cast_op.cc
-  mkldnn/cast_mkldnn_op.cc
+  onednn/cast_onednn_op.cc
   cholesky_op.cc
   chunk_eval_op.cc
   clip_by_norm_op.cc
   clip_op.cc
   coalesce_tensor_op.cc
-  mkldnn/activation_mkldnn_op.cc
-  mkldnn/interpolate_mkldnn_op.cc
-  mkldnn/pool_mkldnn_op.cc
-  mkldnn/softmax_mkldnn_op.cc)
+  onednn/activation_onednn_op.cc
+  onednn/interpolate_onednn_op.cc
+  onednn/pool_onednn_op.cc
+  onednn/softmax_onednn_op.cc)
 register_unity_group(
   cc
   center_loss_op.cc
-  mkldnn/concat_mkldnn_op.cc
-  mkldnn/conv_mkldnn_op.cc
-  mkldnn/conv_transpose_mkldnn_op.cc
+  onednn/concat_onednn_op.cc
+  onednn/conv_onednn_op.cc
+  onednn/conv_transpose_onednn_op.cc
   correlation_op.cc
   cos_sim_op.cc
   crf_decoding_op.cc
@@ -69,7 +69,7 @@ register_unity_group(
   delete_var_op.cc
   dequantize_abs_max_op.cc
   dequantize_op.cc
-  mkldnn/dequantize_mkldnn_op.cc)
+  onednn/dequantize_onednn_op.cc)
 register_unity_group(
   cc
   dequeue_op.cc
@@ -92,7 +92,7 @@ register_unity_group(
   expand_v2_op.cc
   fake_dequantize_op.cc
   fc_op.cc
-  mkldnn/fc_mkldnn_op.cc
+  onednn/fc_onednn_op.cc
   fill_any_like_op.cc
   fill_constant_batch_size_like_op.cc
   fill_constant_op.cc
@@ -105,7 +105,7 @@ register_unity_group(
   gather_nd_op.cc
   gather_tree_op.cc
   gaussian_random_batch_size_like_op.cc
-  mkldnn/gaussian_random_mkldnn_op.cc
+  onednn/gaussian_random_onednn_op.cc
   group_norm_op.cc
   gru_op.cc)
 register_unity_group(
@@ -143,7 +143,7 @@ register_unity_group(
   log_softmax_op.cc
   lookup_table_dequant_op.cc
   lrn_op.cc
-  mkldnn/lrn_mkldnn_op.cc
+  onednn/lrn_onednn_op.cc
   lstm_unit_op.cc)
 register_unity_group(
   cc
@@ -152,7 +152,7 @@ register_unity_group(
   masked_select_op.cc
   match_matrix_tensor_op.cc
   matmul_op.cc
-  mkldnn/matmul_mkldnn_op.cc
+  onednn/matmul_onednn_op.cc
   max_sequence_len_op.cc
   maxout_op.cc
   merge_lod_tensor_op.cc
@@ -204,7 +204,7 @@ register_unity_group(
   cc
   push_dense_op.cc
   quantize_op.cc
-  mkldnn/quantize_mkldnn_op.cc
+  onednn/quantize_onednn_op.cc
   queue_generator_op.cc
   range_op.cc
   rank_attention_op.cc
@@ -212,7 +212,7 @@ register_unity_group(
   recurrent_op.cc
   reorder_lod_tensor_by_rank_op.cc
   requantize_op.cc
-  mkldnn/requantize_mkldnn_op.cc
+  onednn/requantize_onednn_op.cc
   reshape_op.cc
   reverse_op.cc)
 register_unity_group(
@@ -224,7 +224,7 @@ register_unity_group(
   save_combine_op.cc
   save_op.cc
   scale_op.cc
-  mkldnn/scale_mkldnn_op.cc
+  onednn/scale_onednn_op.cc
   scatter_nd_add_op.cc
   scatter_op.cc
   seed_op.cc
@@ -256,7 +256,7 @@ register_unity_group(
   stack_op.cc
   strided_slice_op.cc
   sum_op.cc
-  mkldnn/sum_mkldnn_op.cc
+  onednn/sum_onednn_op.cc
   tdm_child_op.cc
   tdm_sampler_op.cc
   teacher_student_sigmoid_loss_op.cc
@@ -269,7 +269,7 @@ register_unity_group(
   top_k_v2_op.cc
   trace_op.cc
   transpose_op.cc
-  mkldnn/transpose_mkldnn_op.cc
+  onednn/transpose_onednn_op.cc
   unbind_op.cc
   unfold_op.cc)
 register_unity_group(

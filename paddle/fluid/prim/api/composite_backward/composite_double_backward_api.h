@@ -702,9 +702,9 @@ void add_double_grad(const Tensor& y,
     if (grad_x_grad && grad_y_grad) {
       set_output<T>(grad_x_grad.get() + grad_y_grad.get(), grad_out_grad);
     } else if (grad_x_grad) {
-      set_output<T>(grad_x_grad.get(), grad_out_grad);
+      by_pass<T>(grad_x_grad.get(), grad_out_grad);
     } else if (grad_y_grad) {
-      set_output<T>(grad_y_grad.get(), grad_out_grad);
+      by_pass<T>(grad_y_grad.get(), grad_out_grad);
     } else {
       set_output<T>(full<T>(common::vectorize(grad_out.dims()), 0.0, y.dtype()),
                     grad_out_grad);
@@ -773,14 +773,63 @@ void subtract_double_grad(const Tensor& y,
     if (grad_x_grad && grad_y_grad) {
       set_output<T>(grad_x_grad.get() - grad_y_grad.get(), grad_out_grad);
     } else if (grad_x_grad) {
-      set_output<T>(grad_x_grad.get(), grad_out_grad);
+      by_pass<T>(grad_x_grad.get(), grad_out_grad);
     } else if (grad_y_grad) {
-      set_output<T>(-grad_y_grad.get(), grad_out_grad);
+      by_pass<T>(-grad_y_grad.get(), grad_out_grad);
     } else {
       set_output<T>(
           full<T>(common::vectorize(grad_out.dims()), 0, grad_out.dtype()),
           grad_out_grad);
     }
+  }
+}
+
+template <typename T>
+void exp_double_grad(const Tensor& out,
+                     const Tensor& grad_out,
+                     const Tensor& grad_x_grad,
+                     Tensor* out_grad,
+                     Tensor* grad_out_grad) {
+  // dout = dout_old * ddx
+  if (out_grad) {
+    auto out_grad_tmp = grad_out * grad_x_grad;
+    set_output<T>(out_grad_tmp, out_grad);
+  }
+
+  // ddout = out * ddx
+  if (grad_out_grad) {
+    auto grad_out_grad_tmp = out * grad_x_grad;
+    set_output<T>(grad_out_grad_tmp, grad_out_grad);
+  }
+}
+
+template <typename T>
+void log_double_grad(const Tensor& x,
+                     const Tensor& grad_out,
+                     const Tensor& grad_x_grad,
+                     Tensor* x_grad,
+                     Tensor* grad_out_grad) {
+  // dx = -dout/x^2 * ddx
+  if (x_grad) {
+    auto x_grad_tmp = -grad_out / (x * x) * grad_x_grad;
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+
+  // ddout = ddx / x
+  if (grad_out_grad) {
+    auto grad_out_grad_tmp = grad_x_grad / x;
+    set_output<T>(grad_out_grad_tmp, grad_out_grad);
+  }
+}
+
+template <typename T>
+void abs_triple_grad(const Tensor& x,
+                     const Tensor& grad_out_grad_grad,
+                     Tensor* grad_grad_x_grad) {
+  // dddx = sign(x) * dddout
+  if (grad_grad_x_grad) {
+    auto grad_grad_x_grad_tmp = sign<T>(x) * grad_out_grad_grad;
+    set_output<T>(grad_grad_x_grad_tmp, grad_grad_x_grad);
   }
 }
 

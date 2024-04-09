@@ -149,6 +149,11 @@ ir::Tensor Arange(
     const Type& dtype,
     const std::string& name = UniqName("T_Elementwise_Arange_out"));
 
+ir::Tensor Tril(const ir::Tensor& A,
+                const int diagonal,
+                const std::vector<ir::Dim>& out_shape,
+                const std::string& name = UniqName("T_Elementwise_Tril_out"));
+
 }  // namespace pe
 }  // namespace hlir
 }  // namespace cinn
