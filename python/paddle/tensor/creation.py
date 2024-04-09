@@ -2136,6 +2136,7 @@ def empty(shape, dtype=None, name=None):
                     'float16',
                     'float32',
                     'float64',
+                    'uint16',
                     'int32',
                     'int64',
                     'complex64',
@@ -2145,6 +2146,8 @@ def empty(shape, dtype=None, name=None):
             )
 
             paddle.utils.check_shape(shape)
+            if isinstance(shape, np.ndarray):
+                shape = shape.tolist()
             if isinstance(shape, (list, tuple)):
                 if paddle.utils._contain_var(shape):
                     shape = paddle.utils.get_int_tensor_list(
