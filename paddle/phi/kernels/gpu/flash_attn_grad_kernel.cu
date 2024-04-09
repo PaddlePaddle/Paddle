@@ -34,19 +34,7 @@ int get_num_split() {
   // 0 for an internal heuristic, which is optimal
   return FLAGS_cudnn_deterministic ? 1 : 0;
 }
-static bool isContiguous(const DenseTensor& t) {
-  auto rank = t.dims().size();
-  auto s = t.strides()[rank - 1];
-  if (s != 1) return false;
-  for (auto i = rank - 1; i > 0;) {
-    s *= t.dims()[i];
-    i--;
-    if (t.strides()[i] != s) {
-      return false;
-    }
-  }
-  return true;
-}
+
 template <typename T, uint64_t HeaddimDiv32>
 static __global__ void SumStridedKV(const T* src,
                                     T* dst,
@@ -363,13 +351,13 @@ void FlashAttnUnpaddedGradBaseKernel(
   CheckFlashAttnStatus(succ);
   if (!is_mha) {
     if (dk) {
-      if (isContiguous(*dk))
+      if (dk->meta().is_contiguous())
         phi::SumKernel<T, Context>(ctx, dk_tmp, {2}, dk->type(), false, dk);
       else
         kvReduceForGQA<T, Context>(ctx, dk_tmp, dk);
     }
     if (dv) {
-      if (isContiguous(*dv))
+      if (dv->meta().is_contiguous())
         phi::SumKernel<T, Context>(ctx, dv_tmp, {2}, dv->type(), false, dv);
       else
         kvReduceForGQA<T, Context>(ctx, dv_tmp, dv);
@@ -703,14 +691,14 @@ void FlashAttnGradBaseKernel(
   CheckFlashAttnStatus(succ);
   if (!is_mha) {
     if (dk) {
-      if (isContiguous(*dk))
+      if (dk->meta().is_contiguous())
         phi::SumKernel<T, Context>(ctx, dk_tmp, {3}, dk->type(), false, dk);
       else
         kvReduceBatchedForGQA<T, Context>(ctx, dk_tmp, dk);
     }
 
     if (dv) {
-      if (isContiguous(*dv))
+      if (dv->meta().is_contiguous())
         phi::SumKernel<T, Context>(ctx, dv_tmp, {3}, dv->type(), false, dv);
       else
         kvReduceBatchedForGQA<T, Context>(ctx, dv_tmp, dv);

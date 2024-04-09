@@ -270,8 +270,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     auto kernel_iter = iter->second.find(
         {Backend::GPUDNN, phi::DataLayout::ALL_LAYOUT, kernel_key.dtype()});
     if (kernel_iter != iter->second.end()) {
-      return {
-          kernel_iter->second, false, kernel_iter->second.IsSupportStride()};
+      return {kernel_iter->second, false, false};
     }
     kernel_key =
         KernelKey(Backend::GPU, kernel_key.layout(), kernel_key.dtype());
@@ -352,7 +351,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
             << ", expected_kernel_key:" << kernel_key
             << ", fallbacking to CPU one!";
 
-    return {kernel_iter->second, true, kernel_iter->second.IsSupportStride()};
+    return {kernel_iter->second, true, false};
   }
 
   PADDLE_ENFORCE_NE(
@@ -367,7 +366,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
           kernel_name,
           KernelSelectionErrorMessage(kernel_name, kernel_key)));
 
-  return {kernel_iter->second, false, kernel_iter->second.IsSupportStride()};
+  return {kernel_iter->second, false, false};
 }
 
 const KernelArgsDef& KernelFactory::GetFirstKernelArgsDef(
