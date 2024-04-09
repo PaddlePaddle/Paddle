@@ -15,7 +15,6 @@
 # TODO: import all neural network related api under this directory,
 # including layers, linear, conv, rnn etc.
 
-
 from .activation import (
     celu,
     elu,
