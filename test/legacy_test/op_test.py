@@ -501,7 +501,7 @@ class OpTest(unittest.TestCase):
                     "This test of %s op needs check_grad." % cls.op_type
                 )
 
-            # check for op test with fp64 precision, but not check mkldnn op test for now
+            # check for op test with fp64 precision, but not check onednn op test for now
             if (
                 cls.dtype in [np.float32, np.float64]
                 and cls.op_type

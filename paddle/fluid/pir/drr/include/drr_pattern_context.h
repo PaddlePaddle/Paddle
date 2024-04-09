@@ -304,10 +304,44 @@ class TEST_API ResultPattern {
 
   Attribute VectorFloatAttr(const std::vector<float>& value) const;
 
+  // {"bool", phi::DataType::BOOL},
+  // {"uint8", phi::DataType::UINT8},
+  // {"int8", phi::DataType::INT8},
+  // {"uint16", phi::DataType::UINT16},
+  // {"int16", phi::DataType::INT16},
+  // {"uint32", phi::DataType::UINT32},
+  // {"int32", phi::DataType::INT32},
+  // {"uint64", phi::DataType::UINT64},
+  // {"int64", phi::DataType::INT64},
+  // {"float32", phi::DataType::FLOAT32},
+  // {"complex64", phi::DataType::COMPLEX64},
+  // {"complex128", phi::DataType::COMPLEX128},
+  // {"Undefined", phi::DataType::UNDEFINED},
+  // {"psting", phi::DataType::PSTRING},
+  // {"float16", phi::DataType::FLOAT16},
+  // {"bfloat16", phi::DataType::BFLOAT16},
+  // {"float64", phi::DataType::FLOAT64}};
   Attribute DataTypeAttr(const std::string& value) const;
 
+  // {"cpu", phi::CPUPlace{}},
+  // {"gpu", phi::GPUPlace{}},
+  // {"gpu_pinned", phi::GPUPinnedPlace{}},
+  // {"xpu", phi::XPUPlace{}},
+  // {"ipu", phi::IPUPlace{}},
+  // {":", phi::CustomPlace{}},
+  // {"undefined", phi::Place{}}};
   Attribute PlaceAttr(const std::string& value) const;
 
+  // {"NHWC", phi::DataLayout::kNHWC},
+  // {"NCHW", phi::DataLayout::kNCHW},
+  // {"Undefined", phi::DataLayout::kAnyLayout},
+  // {"ONEDNN", phi::DataLayout::ONEDNN},
+  // {"SPARSE_COO", phi::DataLayout::SPARSE_COO},
+  // {"SPARSE_CSR", phi::DataLayout::SPARSE_CSR},
+  // {"NDHWC", phi::DataLayout::kNDHWC},
+  // {"NCDHW", phi::DataLayout::kNCDHW},
+  // {"PSTRING_UNION", phi::DataLayout::PSTRING_UNION},
+  // {"STRIDED", phi::DataLayout::STRIDED}};
   Attribute DataLayoutAttr(const std::string& value) const;
 
   Attribute ComputeAttr(const AttrComputeFunc& attr_compute_func) const;
