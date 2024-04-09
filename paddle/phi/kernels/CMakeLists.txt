@@ -265,6 +265,11 @@ if(NOT
   list(REMOVE_ITEM kernel_cc "fusion/cpu/self_dp_attention_kernel.cc")
 endif()
 
+if(NOT WITH_XFT)
+  list(REMOVE_ITEM kernel_cc "fusion/cpu/xft_weight_only_linear_kernel.cc")
+  list(REMOVE_ITEM kernel_cc "fusion/cpu/xft_weight_quantize_kernel.cc")
+endif()
+
 file(
   GLOB kernel_xpu
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"

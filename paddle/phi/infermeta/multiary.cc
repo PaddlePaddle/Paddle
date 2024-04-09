@@ -4312,6 +4312,54 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void XFTWeightOnlyLinearInferMeta(const MetaTensor& x,
+                                  const MetaTensor& weight,
+                                  const MetaTensor& bias,
+                                  const MetaTensor& weight_scale,
+                                  const MetaTensor& weight_zero_point,
+                                  const std::string& weight_dtype,
+                                  MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto w_dims = weight.dims();
+  auto n = weight_scale.dims()[0];
+  PADDLE_ENFORCE(
+      weight_dtype == "int8" || weight_dtype == "int4" || weight_dtype == "nf4",
+      errors::InvalidArgument(
+          "quant_method must be 'int8' or 'int4' or 'nf4'."));
+  PADDLE_ENFORCE_EQ(
+      w_dims.size(),
+      2UL,
+      errors::InvalidArgument("The input(weight) must be a 2D Tensor."));
+  PADDLE_ENFORCE_EQ(
+      weight_scale.dims().size(),
+      1UL,
+      errors::InvalidArgument("The input(weight_scale) must be a 1D Tensor."));
+  PADDLE_ENFORCE_EQ(
+      w_dims[0] % 16,
+      0,
+      phi::errors::InvalidArgument("The first dimension of input(weight) must "
+                                   "be divisible by 16, but got[%d]",
+                                   w_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      w_dims[1] % 16,
+      0,
+      phi::errors::InvalidArgument("The second dimension of input(weight) must "
+                                   "be divisible by 16, but got[%d]",
+                                   w_dims[1]));
+  // PADDLE_ENFORCE_EQ(
+  //     x_dims[x_dims.size() - 1],
+  //     w_dims[1],
+  //     errors::InvalidArgument(
+  //         "Input(X) dim[-1] and Input(Weight) dim[1] should be euqal."
+  //         "But received Input(X) dim[-1](%s) != Input(Weight) dim[1](%s)",
+  //         x_dims[x_dims.size() - 1],
+  //         w_dims[1]));
+  auto out_dims = x_dims;
+  out_dims[out_dims.size() - 1] = n;
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+}
+
 void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& x,
                     const MetaTensor& y,
