@@ -140,7 +140,7 @@ static void kvReduceForGQA(const Context& ctx,
   const size_t blockNum =
       std::min((static_cast<int64_t>(dk_tmp.dims()[0] + 31) / 32),
                static_cast<int64_t>(1024l));
-  constexpr dim3 threadNum{32, 4, 1};
+  const dim3 threadNum{32, 4, 1};
   auto sumkernel = selectSumkernel<T>(dk_tmp.dims()[3]);
   sumkernel<<<blockNum, threadNum, 0, ctx.stream()>>>(
       reinterpret_cast<const T*>(dk_tmp.data()),
@@ -176,7 +176,7 @@ static void kvReduceBatchedForGQA(const Context& ctx,
   const size_t blockNum = std::min(
       (static_cast<int64_t>(dk_tmp.dims()[0] * dk_tmp.dims()[1] + 31) / 32),
       static_cast<int64_t>(1024l));
-  constexpr dim3 threadNum{32, 4, 1};
+  const dim3 threadNum{32, 4, 1};
   auto sumkernel = selectSumkernel<T>(dk_tmp.dims()[4]);
   // here implicitly flat [batch,seqlen], and require batch dim to be contiguous
   sumkernel<<<blockNum, threadNum, 0, ctx.stream()>>>(
