@@ -20,9 +20,11 @@ namespace phi {
 template <typename T, typename Context>
 void HistogramKernel(const Context& dev_ctx,
                      const DenseTensor& input,
+                     const paddle::optional<DenseTensor>& weight,
                      int64_t bins,
                      int min,
                      int max,
+                     bool density,
                      DenseTensor* output);
 
 }  // namespace phi
