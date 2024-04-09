@@ -129,8 +129,6 @@ class OpLoweringGroup {
     return *map_expr_ctx_;
   }
 
-  ::pir::Program* GetParentProgram() const;
-
   void set_value_to_shape_or_data_exprs(
       const std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>&
           value_to_shape_or_data_exprs) {
