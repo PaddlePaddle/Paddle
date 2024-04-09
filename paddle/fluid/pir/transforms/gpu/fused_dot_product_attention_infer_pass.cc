@@ -18,6 +18,7 @@
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
 
+#include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
@@ -139,9 +140,13 @@ class FusedDotProductAttentionPatternQscale
             return false;
           }
 
-          // add shape
+          // mask's shape [bs, 1, seq_len, seq_len]
           auto mask_add = pir::GetShapeFromValue(match_ctx.Tensor("mask"));
-          if (mask_add.size() != 4) {
+          if (mask_add.size() != 4 || mask_add.at(1) != 1) {
+            return false;
+          }
+          auto mask_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("mask"));
+          if (!mask_dtype.isa<pir::Int32Type>()) {
             return false;
           }
 
@@ -288,9 +293,13 @@ class FusedDotProductAttentionPatternOutscale
             return false;
           }
 
-          // add shape
+          // mask's shape [bs, 1, seq_len, seq_len]
           auto mask_add = pir::GetShapeFromValue(match_ctx.Tensor("mask"));
-          if (mask_add.size() != 4) {
+          if (mask_add.size() != 4 || mask_add.at(1) != 1) {
+            return false;
+          }
+          auto mask_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("mask"));
+          if (!mask_dtype.isa<pir::Int32Type>()) {
             return false;
           }
 
@@ -443,9 +452,13 @@ class TransposeSliceFusedDotProductAttentionPattern
             return false;
           }
 
-          // add shape
+          // mask's shape [bs, 1, seq_len, seq_len]
           auto mask_add = pir::GetShapeFromValue(match_ctx.Tensor("mask"));
-          if (mask_add.size() != 4) {
+          if (mask_add.size() != 4 || mask_add.at(1) != 1) {
+            return false;
+          }
+          auto mask_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("mask"));
+          if (!mask_dtype.isa<pir::Int32Type>()) {
             return false;
           }
 

@@ -73,7 +73,7 @@ class TestFusedDotProductAttentionPatternQscaleCast(PassTest):
                             with paddle.pir.core.program_guard(
                                 main_prog, start_prog
                             ):
-                                mask_shape = (bs, num_heads, seq_len, seq_len)
+                                mask_shape = (bs, 1, seq_len, seq_len)
                                 Q = paddle.static.data(
                                     name='Q',
                                     shape=[bs, seq_len, num_heads, head_dim],
@@ -128,9 +128,9 @@ class TestFusedDotProductAttentionPatternQscaleCast(PassTest):
                                     "V": np.random.random(
                                         (bs, seq_len, num_heads, head_dim)
                                     ).astype("float16"),
-                                    "mask": np.random.random(
-                                        (bs, num_heads, seq_len, seq_len)
-                                    ).astype("float16"),
+                                    "mask": np.ones(mask_shape).astype(
+                                        "float16"
+                                    ),
                                 }
                                 self.fetch_list = [out]
                                 self.valid_op_map = {
@@ -198,7 +198,7 @@ class TestFusedDotProductAttentionPatternQscaleNoCast(PassTest):
                             with paddle.pir.core.program_guard(
                                 main_prog, start_prog
                             ):
-                                mask_shape = (bs, num_heads, seq_len, seq_len)
+                                mask_shape = (bs, 1, seq_len, seq_len)
                                 Q = paddle.static.data(
                                     name='Q',
                                     shape=[bs, seq_len, num_heads, head_dim],
@@ -249,9 +249,9 @@ class TestFusedDotProductAttentionPatternQscaleNoCast(PassTest):
                                     "V": np.random.random(
                                         (bs, seq_len, num_heads, head_dim)
                                     ).astype("float16"),
-                                    "mask": np.random.random(
-                                        (bs, num_heads, seq_len, seq_len)
-                                    ).astype("float16"),
+                                    "mask": np.ones(mask_shape).astype(
+                                        "float16"
+                                    ),
                                 }
                                 self.fetch_list = [out]
                                 self.valid_op_map = {
@@ -324,7 +324,7 @@ class TestFusedDotProductAttentionPatternOutscaleCast(PassTest):
                             with paddle.pir.core.program_guard(
                                 main_prog, start_prog
                             ):
-                                mask_shape = (bs, num_heads, seq_len, seq_len)
+                                mask_shape = (bs, 1, seq_len, seq_len)
                                 Q = paddle.static.data(
                                     name='Q',
                                     shape=[bs, seq_len, num_heads, head_dim],
@@ -379,9 +379,9 @@ class TestFusedDotProductAttentionPatternOutscaleCast(PassTest):
                                     "V": np.random.random(
                                         (bs, seq_len, num_heads, head_dim)
                                     ).astype("float16"),
-                                    "mask": np.random.random(
-                                        (bs, num_heads, seq_len, seq_len)
-                                    ).astype("float16"),
+                                    "mask": np.ones(mask_shape).astype(
+                                        "float16"
+                                    ),
                                 }
                                 self.fetch_list = [out]
                                 self.valid_op_map = {
@@ -451,7 +451,7 @@ class TestFusedDotProductAttentionPatternOutscaleNoCast(PassTest):
                             with paddle.pir.core.program_guard(
                                 main_prog, start_prog
                             ):
-                                mask_shape = (bs, num_heads, seq_len, seq_len)
+                                mask_shape = (bs, 1, seq_len, seq_len)
                                 Q = paddle.static.data(
                                     name='Q',
                                     shape=[bs, seq_len, num_heads, head_dim],
@@ -502,9 +502,9 @@ class TestFusedDotProductAttentionPatternOutscaleNoCast(PassTest):
                                     "V": np.random.random(
                                         (bs, seq_len, num_heads, head_dim)
                                     ).astype("float16"),
-                                    "mask": np.random.random(
-                                        (bs, num_heads, seq_len, seq_len)
-                                    ).astype("float16"),
+                                    "mask": np.ones(mask_shape).astype(
+                                        "float16"
+                                    ),
                                 }
                                 self.fetch_list = [out]
                                 self.valid_op_map = {
@@ -591,7 +591,7 @@ class TestFusedDotProductAttentionPatternTransposeSlice(PassTest):
                                     shape=[bs, seq_len, 3, num_heads, head_dim],
                                     dtype='float16',
                                 )
-                                mask_shape = [bs, num_heads, seq_len, seq_len]
+                                mask_shape = [bs, 1, seq_len, seq_len]
                                 mask = paddle.static.data(
                                     name='mask',
                                     shape=mask_shape,
@@ -623,9 +623,9 @@ class TestFusedDotProductAttentionPatternTransposeSlice(PassTest):
                                     "x": np.random.random(
                                         (bs, seq_len, 3, num_heads, head_dim)
                                     ).astype("float16"),
-                                    "mask": np.random.random(
-                                        (bs, num_heads, seq_len, seq_len)
-                                    ).astype("float16"),
+                                    "mask": np.ones(mask_shape).astype(
+                                        "float16"
+                                    ),
                                 }
                                 self.fetch_list = [out]
                                 self.valid_op_map = {
