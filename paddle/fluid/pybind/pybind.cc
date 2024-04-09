@@ -190,6 +190,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_CINN
+#include "paddle/cinn/pybind/bind.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/pybind/test.h"
 #endif
@@ -3053,6 +3054,7 @@ All parameter, weight, gradient are variables in Paddle.
 
 #if defined(PADDLE_WITH_CINN)
   BindTest(&m);
+  cinn::pybind::BindCINN(&m);
 #endif
 
   BindPir(&m);

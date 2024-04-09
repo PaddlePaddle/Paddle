@@ -81,11 +81,13 @@ void DimExprBuilder::CstrEq(const DimExpr& lhs, const DimExpr& rhs) {
 
 void DimExprBuilder::CstrEq(const std::vector<DimExpr>& lhs,
                             const std::vector<DimExpr>& rhs) {
-  IR_ENFORCE(lhs.size() == rhs.size(),
-             "Please make sure input sizes are equal, "
-             "lhs.size() = %d, rhs.size() = %d.",
-             lhs.size(),
-             rhs.size());
+  PADDLE_ENFORCE_EQ(
+      lhs.size(),
+      rhs.size(),
+      phi::errors::InvalidArgument("Please make sure input sizes are equal, "
+                                   "lhs.size() = %d, rhs.size() = %d.",
+                                   lhs.size(),
+                                   rhs.size()));
   for (std::size_t i = 0; i < lhs.size(); ++i) {
     CstrEq(lhs.at(i), rhs.at(i));
   }
