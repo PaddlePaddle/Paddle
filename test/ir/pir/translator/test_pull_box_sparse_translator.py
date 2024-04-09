@@ -20,9 +20,12 @@ import paddle
 from paddle.base.layer_helper import LayerHelper
 
 
-class TestPullBoxSparseOpTranslator(test_op_translator.TestOpTranslator):
+class TestPullBoxSparseOpTranslator(
+    test_op_translator.TestOpWithBackwardTranslator
+):
     def append_op(self):
-        self.op_type = "pull_box_sparse"
+        self.forward_op_type = "pull_box_sparse"
+        self.backward_op_type = "push_box_sparse"
         ids = paddle.ones(shape=(1, 1), dtype='float32')
         w = paddle.ones(shape=(1, 1), dtype='float32')
         out = paddle.ones(shape=(1, 1), dtype='float32')
@@ -31,10 +34,17 @@ class TestPullBoxSparseOpTranslator(test_op_translator.TestOpTranslator):
             'is_distributed': False,
             'size': 1,
         }
-        helper = LayerHelper(self.op_type)
-        helper.append_op(
-            type=self.op_type,
+        forward_helper = LayerHelper(self.forward_op_type)
+        forward_helper.append_op(
+            type=self.forward_op_type,
             inputs={"W": w, "Ids": [ids]},
+            outputs={"Out": [out]},
+            attrs=attrs,
+        )
+        backward_helper = LayerHelper(self.backward_op_type)
+        backward_helper.append_op(
+            type=self.backward_op_type,
+            inputs={"Ids": [ids]},
             outputs={"Out": [out]},
             attrs=attrs,
         )
