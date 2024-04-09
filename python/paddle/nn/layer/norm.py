@@ -543,9 +543,7 @@ class GroupNorm(Layer):
         )
 
     def extra_repr(self):
-        return 'num_groups={}, num_channels={}, epsilon={}'.format(
-            self._num_groups, self._num_channels, self._epsilon
-        )
+        return f'num_groups={self._num_groups}, num_channels={self._num_channels}, epsilon={self._epsilon}'
 
 
 class LayerNorm(Layer):
@@ -573,7 +571,7 @@ class LayerNorm(Layer):
 
     Parameters:
         normalized_shape(int|list|tuple): Input shape from an expected input of
-            size :math:`[*, normalized_shape[0], normalized_shape[1], ..., normalized_shape[-1]]`.
+            size ``[*, normalized_shape[0], normalized_shape[1], ..., normalized_shape[-1]]`` .
             If it is a single integer, this module will normalize over the last dimension
             which is expected to be of that specific size.
         epsilon(float, optional): The small value added to the variance to prevent
@@ -591,7 +589,7 @@ class LayerNorm(Layer):
         - output: same shape as input x.
 
     Returns:
-        None
+        ``Tensor`` , the dimension is the same as :attr:`x`, but the internal values have been normalized by ``LayerNorm`` .
 
     Examples:
 
@@ -803,9 +801,7 @@ class _BatchNormBase(Layer):
         )
 
     def extra_repr(self):
-        main_str = 'num_features={}, momentum={}, epsilon={}'.format(
-            self._num_features, self._momentum, self._epsilon
-        )
+        main_str = f'num_features={self._num_features}, momentum={self._momentum}, epsilon={self._epsilon}'
         if self._data_format != 'NCHW':
             main_str += f', data_format={self._data_format}'
         if self._name is not None:

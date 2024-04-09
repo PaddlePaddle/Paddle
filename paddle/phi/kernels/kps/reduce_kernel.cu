@@ -248,8 +248,25 @@ void SumRawKernel(const Context& dev_ctx,
         "now."));
 #endif
   } else {
-    phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
-        dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
+    if (x.dtype() == phi::DataType::BFLOAT16 &&
+        out_dtype == phi::DataType::FLOAT32) {
+      std::vector<int> reduce_dims = phi::funcs::details::GetReduceDim(
+          dims.GetData(), x.dims().size(), reduce_all);
+
+      phi::funcs::ReduceKernel<
+          phi::dtype::bfloat16,
+          float,
+          kps::AddFunctor,
+          kps::IdentityFunctor<phi::dtype::bfloat16, float>>(
+          dev_ctx,
+          x,
+          out,
+          kps::IdentityFunctor<phi::dtype::bfloat16, float>(),
+          reduce_dims);
+    } else {
+      phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
+          dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
+    }
   }
 }
 }  // namespace phi

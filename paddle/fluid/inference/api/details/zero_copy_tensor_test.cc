@@ -57,9 +57,10 @@ std::unique_ptr<Tensor> CreateTensor(paddle_infer::PlaceType place,
 
 template <typename T>
 struct RandomGenerator {
-  RandomGenerator(double min = (std::numeric_limits<T>::min)(),
-                  double max = (std::numeric_limits<T>::max)())
-      : dist_{static_cast<double>(min), static_cast<double>(max)} {}
+  RandomGenerator(
+      double min = static_cast<double>((std::numeric_limits<T>::min)()),
+      double max = static_cast<double>((std::numeric_limits<T>::max)()))
+      : dist_{min, max} {}
   T operator()() { return static_cast<T>(dist_(random_engine_)); }
 
  private:

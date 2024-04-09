@@ -24,12 +24,12 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/diag_op.h"
-#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -584,22 +584,6 @@ struct DeviceIndependenceTensorOperations {
     return ret;
   }
 
-  phi::DenseTensor TrilTriu(const phi::DenseTensor& x,
-                            int diagonal,
-                            bool lower) {
-    framework::AttributeMap attrs;
-    attrs["diagonal"] = diagonal;
-    attrs["lower"] = lower;
-    NameInTensorMap inputs({{"X", {&x}}});
-    int x_rank = x.dims().size();
-    PADDLE_ENFORCE_GE(
-        x_rank,
-        2,
-        platform::errors::InvalidArgument("Rank must be at least 2."));
-    std::vector<int> out_shape = common::vectorize<int>(x.dims());
-    return CreateOpRunAndReturnTensor("tril_triu", inputs, attrs, out_shape);
-  }
-
   phi::DenseTensor TriangularSolve(const phi::DenseTensor& x,
                                    const phi::DenseTensor& y,
                                    bool upper,
@@ -732,7 +716,7 @@ struct DeviceIndependenceTensorOperations {
       offsets_32bit[i] = start[i];
       extents_32bit[i] = end[i];
     }
-    EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
+    phi::funcs::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
         eigen_place,
         framework::To32BitIndex(out_t),
         framework::To32BitIndex(in_t),

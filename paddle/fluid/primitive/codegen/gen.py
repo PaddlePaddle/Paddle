@@ -53,6 +53,7 @@ BACKENDS_BLACK_LIST = [
     "embedding_grad",
     "full",
     "partial_send",
+    "push_dense",
 ]
 
 # prim op with one input and one output, with no attribute
@@ -116,6 +117,9 @@ CUSTOM_VJP = [
     'relu_grad',
     'sigmoid_grad',
     'silu_grad',
+    'exp_grad',
+    'log_grad',
+    'abs_double_grad',
     'softmax_grad',
     'sqrt_grad',
 ]  # custom vjp list of composite op
