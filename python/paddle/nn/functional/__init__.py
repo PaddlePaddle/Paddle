@@ -149,9 +149,6 @@ from .pooling import (
     max_unpool3d,
 )
 from .sparse_attention import sparse_attention
-from .triton_ops import (
-    weight_only_int8,
-)
 from .vision import (
     affine_grid,
     channel_shuffle,
@@ -183,7 +180,6 @@ __all__ = [
     'maxout',
     'prelu',
     'relu',
-    'weight_only_int8',
     'relu_',
     'relu6',
     'selu',
