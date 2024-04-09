@@ -1576,7 +1576,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         return out
 
 
-def sum_as(x, target, name=None):
+def reduce_as(x, target, name=None):
     """
     Computes the sum of tensor elements make the shape of its result equal to the shape of target.
 
@@ -1601,14 +1601,14 @@ def sum_as(x, target, name=None):
             >>> target
             Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
             [1, 2, 3, 4])
-            >>> res = paddle.sum_as(x, target)
+            >>> res = paddle.reduce_as(x, target)
             >>> res
             Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
             [6 , 8 , 10, 12])
     """
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.sum_as(x, target)
+        return _C_ops.reduce_as(x, target)
     else:
         check_variable_and_dtype(
             x,
@@ -1623,7 +1623,7 @@ def sum_as(x, target, name=None):
                 'int32',
                 'int64',
             ],
-            'sum_as',
+            'reduce_as',
         )
         check_variable_and_dtype(
             target,
@@ -1638,13 +1638,13 @@ def sum_as(x, target, name=None):
                 'int32',
                 'int64',
             ],
-            'sum_as',
+            'reduce_as',
         )
 
-        helper = LayerHelper('sum_as', **locals())
+        helper = LayerHelper('reduce_as', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
-            type='sum_as',
+            type='reduce_as',
             inputs={'x': x, 'target': target},
             outputs={'out': out},
         )

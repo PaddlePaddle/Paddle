@@ -1876,6 +1876,16 @@
     func : reciprocal_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : reduce_as_grad
+  forward : reduce_as(Tensor x, Tensor target) -> Tensor(out)
+  args : (Tensor x, Tensor target, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : reduce_as_grad
+
 - backward_op : relu6_grad
   forward : relu6 (Tensor x) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
@@ -2406,16 +2416,6 @@
     param : [x]
   kernel :
     func : stanh_grad
-
-- backward_op : sum_as_grad
-  forward : sum_as(Tensor x, Tensor target) -> Tensor(out)
-  args : (Tensor x, Tensor target, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : sum_as_grad
 
 - backward_op : svd_grad
   forward : svd (Tensor x, bool full_matrices = false) -> Tensor(u), Tensor(s), Tensor(vh)

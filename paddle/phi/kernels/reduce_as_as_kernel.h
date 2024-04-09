@@ -22,9 +22,9 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SumAsKernel(const Context& dev_ctx,
-                 const DenseTensor& x,
-                 const DenseTensor& target,
-                 DenseTensor* out);
+void ReduceAsKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& target,
+                    DenseTensor* out);
 
 }  // namespace phi

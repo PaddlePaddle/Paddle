@@ -12,31 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/sum_as_kernel.h"
+#include "paddle/phi/kernels/reduce_as_kernel.h"
 
-#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/cpu/reduce.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void SumAsKernel(const Context& dev_ctx,
-                 const DenseTensor& x,
-                 const DenseTensor& target,
-                 DenseTensor* out) {
+void ReduceAsKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& target,
+                    DenseTensor* out) {
   auto reduce_dim = phi::funcs::GetReduceDims(x, target);
-  bool reduce_all = recompute_reduce_all(x, reduce_dim);
-  phi::Reduce<CPUContext, T, phi::funcs::SumFunctor>(
-      dev_ctx, x, reduce_all, reduce_dim, false, out->type(), out);
+  dev_ctx.template Alloc<T>(out);
+  phi::SumKernel<T, Context>(dev_ctx, x, reduce_dim, out->type(), false, out);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sum_as,
-                   CPU,
+PD_REGISTER_KERNEL(reduce_as,
+                   GPU,
                    ALL_LAYOUT,
-                   phi::SumAsKernel,
+                   phi::ReduceAsKernel,
                    bool,
                    float,
                    double,

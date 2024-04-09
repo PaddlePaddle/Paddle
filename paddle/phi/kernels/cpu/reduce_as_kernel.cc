@@ -12,38 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/sum_as_kernel.h"
+#include "paddle/phi/kernels/reduce_as_kernel.h"
 
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/reduce_grad.h"
+#include "paddle/phi/kernels/cpu/reduce.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void SumAsGradKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const DenseTensor& target,
-                     const DenseTensor& out_grad,
-                     DenseTensor* x_grad) {
+void ReduceAsKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& target,
+                    DenseTensor* out) {
   auto reduce_dim = phi::funcs::GetReduceDims(x, target);
   bool reduce_all = recompute_reduce_all(x, reduce_dim);
-  ReduceGradKernel<Context, T, funcs::SumGradFunctor, true>(dev_ctx,
-                                                            x,
-                                                            paddle::none,
-                                                            out_grad,
-                                                            reduce_dim,
-                                                            false,
-                                                            reduce_all,
-                                                            x_grad);
+  phi::Reduce<CPUContext, T, phi::funcs::SumFunctor>(
+      dev_ctx, x, reduce_all, reduce_dim, false, out->type(), out);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sum_as_grad,
+PD_REGISTER_KERNEL(reduce_as,
                    CPU,
                    ALL_LAYOUT,
-                   phi::SumAsGradKernel,
+                   phi::ReduceAsKernel,
                    bool,
                    float,
                    double,
@@ -53,6 +46,4 @@ PD_REGISTER_KERNEL(sum_as_grad,
                    int,
                    int64_t,
                    uint8_t,
-                   int8_t) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
-}
+                   int8_t) {}

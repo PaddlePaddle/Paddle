@@ -24,8 +24,8 @@ np.random.seed(100)
 paddle.seed(100)
 
 
-def sum_as_net(x, target):
-    return paddle.sum_as(x, target)
+def reduce_as_net(x, target):
+    return paddle.reduce_as(x, target)
 
 
 def apply_to_static(net, use_cinn, input_spec=None):
@@ -47,8 +47,8 @@ class TestSumAsOp(OpTest):
         self.init_attrs()
         self.calc_output()
 
-        self.python_api = paddle.sum_as
-        self.op_type = "sum_as"
+        self.python_api = paddle.reduce_as
+        self.op_type = "reduce_as"
         self.inputs = {'x': self.x, 'target': self.y}
         self.outputs = {'out': self.out}
         self.if_enable_cinn()
@@ -131,15 +131,15 @@ class TestSumAsOp9(TestSumAsOp):
 class TestSumAsDynamicShape(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
-        self.shape_x = [300, 200, 100]
-        self.shape_y = [200, 100]
+        self.shape_x = [300, 20, 100]
+        self.shape_y = [20, 100]
         self.dtype_x = "float32"
         self.dtype_y = "float32"
         self.init_x_shape = [None, None, 100]
         self.init_y_shape = [None, 100]
         self.x = np.random.random(self.shape_x).astype(self.dtype_x)
         self.y = np.random.random(self.shape_y).astype(self.dtype_y)
-        self.net = sum_as_net
+        self.net = reduce_as_net
         self.enable_cinn = False
         self.tol = 1e-6
 

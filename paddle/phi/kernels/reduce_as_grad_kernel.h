@@ -22,10 +22,10 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SumAsGradKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const DenseTensor& target,
-                     const DenseTensor& out_grad,
-                     DenseTensor* x_grad);
+void ReduceAsGradKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& target,
+                        const DenseTensor& out_grad,
+                        DenseTensor* x_grad);
 
 }  // namespace phi
