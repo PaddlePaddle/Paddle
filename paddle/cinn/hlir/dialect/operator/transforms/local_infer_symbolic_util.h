@@ -19,14 +19,21 @@
 #include <functional>
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/local_infer_symbolic_util.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace cinn {
 namespace dialect {
 namespace ir {
 
-std::unique_ptr<::pir::Pass> CreateCheckInferSymbolicPass(
-    const OptDimExprs4ValueT& OptDimExprs4Value);
+using OptDimExprs = std::optional<const symbol::ShapeOrDataDimExprs*>;
+using OptDimExprs4ValueT =
+    std::function<OptDimExprs(pir::Value, const pir::Block*)>;
+
+std::shared_ptr<pir::ShapeConstraintIRAnalysis> MakeOpShapeAnalysis(
+    const pir::Operation* op, const OptDimExprs4ValueT& GraphDimExprs4Value);
+
+OptDimExprs4ValueT MakeOpDimExprs4Value(
+    const pir::Operation* op, const OptDimExprs4ValueT& GraphDimExprs4Value);
 
 }  // namespace ir
 }  // namespace dialect
