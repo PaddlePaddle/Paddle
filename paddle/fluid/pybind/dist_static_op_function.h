@@ -69,9 +69,22 @@ static PyObject *static_api_reshard(PyObject *self,
     PyObject *dims_mapping_obj = PyTuple_GET_ITEM(args, 2);
     auto dims_mapping = CastPyArg2VectorOfInt64(dims_mapping_obj, 2);
 
+    PyObject *placements_obj = PyTuple_GET_ITEM(args, 3);
+    auto placements = CastPyArg2VectorOfPlacement(placements_obj, 3);
+
+    paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status;
+    for (size_t i = 0; i < placements.size(); ++i) {
+      auto &p = placements[i];
+      if (p->is_partial()) {
+        partial_status.insert(
+            {i,
+             dynamic_cast<phi::distributed::Partial &>(*p).get_reduce_type()});
+      }
+    }
+
     // Call ir static api
-    auto static_api_out =
-        paddle::dialect::reshard(input, process_mesh, dims_mapping);
+    auto static_api_out = paddle::dialect::reshard(
+        input, process_mesh, dims_mapping, partial_status);
 
     return ToPyObject(static_api_out);
   } catch (...) {

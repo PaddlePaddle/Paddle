@@ -28,12 +28,16 @@ from paddle.base.framework import (
     EagerParamBase,
     Variable,
     default_main_program,
+    in_pir_mode,
 )
 from paddle.distributed.auto_parallel import Engine, strategy as auto_strategy
 from paddle.distributed.auto_parallel.interface import (
     shard_tensor as shard_tensor_static,
 )
-from paddle.distributed.auto_parallel.placement_type import to_placements
+from paddle.distributed.auto_parallel.placement_type import (
+    to_dim_map,
+    to_placements,
+)
 from paddle.distributed.auto_parallel.static.completion import (
     mark_as_sharding_propagation_skip_op,
 )
@@ -388,6 +392,9 @@ def reshard(dist_tensor, mesh, placements):
             dist_attr._set_partial_dims(partial_dims)
 
         return paddle.base.core.reshard(dist_tensor, dist_attr)
+    elif in_pir_mode():
+        dim_map = to_dim_map(placements, dist_tensor.ndim)
+        return paddle._pir_ops.reshard(dist_tensor, mesh, dim_map, placements)
     else:
         assert isinstance(
             dist_tensor, Variable
