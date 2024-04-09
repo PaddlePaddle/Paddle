@@ -29,10 +29,9 @@ def convert_float_to_uint16(x):
     return output
 
 
-def test_cuda_api(shape, type, value):
-    data = paddle.rand(shape, dtype=type)
+def test_cuda_api(data, np_data, value):
     _C_ops.full_(data, data.shape, float(value), data.dtype, core.CUDAPlace(0))
-    assert np.array_equal(data, np.full(shape, value, dtype=type))
+    assert np.array_equal(data, np_data)
 
 
 class TestFP16Full_(unittest.TestCase):
@@ -43,7 +42,11 @@ class TestFP16Full_(unittest.TestCase):
 
     def test_cuda_api(self):
         if paddle.device.is_compiled_with_cuda():
-            test_cuda_api(self.shape, self.type, self.value)
+            data = paddle.rand(self.shape, dtype=self.type)
+            np_data = np.full(self.shape, self.value, dtype=self.type)
+            test_cuda_api(data, np_data, self.value)
+        else:
+            pass
 
     def test_cpu_api(self):
         data = paddle.rand(self.shape, dtype=self.type)
@@ -64,7 +67,11 @@ class TestFP32Full_(unittest.TestCase):
 
     def test_cuda_api(self):
         if paddle.device.is_compiled_with_cuda():
-            test_cuda_api(self.shape, self.type, self.value)
+            data = paddle.rand(self.shape, dtype=self.type)
+            np_data = np.full(self.shape, self.value, dtype=self.type)
+            test_cuda_api(data, np_data, self.value)
+        else:
+            pass
 
     def test_cpu_api(self):
         data = paddle.rand(self.shape, dtype=self.type)
@@ -85,7 +92,11 @@ class TestFP64Full_(unittest.TestCase):
 
     def test_cuda_api(self):
         if paddle.device.is_compiled_with_cuda():
-            test_cuda_api(self.shape, self.type, self.value)
+            data = paddle.rand(self.shape, dtype=self.type)
+            np_data = np.full(self.shape, self.value, dtype=self.type)
+            test_cuda_api(data, np_data, self.value)
+        else:
+            pass
 
     def test_cpu_api(self):
         data = paddle.rand(self.shape, dtype=self.type)
@@ -106,7 +117,13 @@ class TestBF16Full_(unittest.TestCase):
 
     def test_cuda_api(self):
         if paddle.device.is_compiled_with_cuda():
-            test_cuda_api(self.shape, self.type, self.value)
+            data = paddle.rand(self.shape, dtype=self.type)
+            np_data = np.full(
+                self.shape, convert_float_to_uint16(self.value), dtype='uint16'
+            )
+            test_cuda_api(data, np_data, self.value)
+        else:
+            pass
 
     def test_cpu_api(self):
         data = paddle.rand(self.shape, dtype=self.type)
