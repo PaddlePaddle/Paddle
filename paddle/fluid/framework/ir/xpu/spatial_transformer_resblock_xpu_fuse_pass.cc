@@ -337,12 +337,20 @@ void SpatialTransformerResBlockXPUFusePass::ApplyImpl(ir::Graph* graph) const {
       for (auto include_silu : {false}) {
         if (conv_fix == true) {
           for (auto input_max : {true, false}) {
-            found_subgraph_count += FuseSpatialTransformerResBlock(
-                graph, conv_fix /*true*/, input_max);
+            found_subgraph_count +=
+                FuseSpatialTransformerResBlock(graph,
+                                               conv_fix /*true*/,
+                                               input_max,
+                                               has_silu_fc_input,
+                                               include_silu);
           }
         } else {
           found_subgraph_count +=
-              FuseSpatialTransformerResBlock(graph, conv_fix /*false*/, false);
+              FuseSpatialTransformerResBlock(graph,
+                                             conv_fix /*false*/,
+                                             false,
+                                             has_silu_fc_input,
+                                             include_silu);
         }
       }
     }
