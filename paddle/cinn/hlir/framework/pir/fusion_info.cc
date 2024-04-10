@@ -88,12 +88,10 @@ std::ostream& operator<<(std::ostream& os, const OperationInfo& op_info) {
   return os;
 }
 
-FusionInfo::FusionInfo(const cinn::dialect::FusionOp& fusion_op,
-                       const IntArgsMap& int_args_map) {
+FusionInfo::FusionInfo(const cinn::dialect::FusionOp& fusion_op) {
   for (const auto* op : TopologySort(fusion_op.operation())) {
     op_infos_.emplace_back(*op);
   }
-  int_args_map_ = int_args_map;
 }
 
 FusionInfo::FusionInfo(const OpLoweringGroup& group) {
@@ -101,25 +99,14 @@ FusionInfo::FusionInfo(const OpLoweringGroup& group) {
   for (const auto* op : TopologySort(parent_op)) {
     op_infos_.emplace_back(*op);
   }
-  int_args_map_ = group.int_args_map();
 }
 
 std::size_t FusionInfo::hash() const {
   if (cached_hash_value_ != 0U) {
     return cached_hash_value_;
   }
-  std::size_t seed = HashIntArgsMap();
-  for (const auto& info : op_infos_) hash_combine(seed, info);
-  return seed;
-}
-
-std::size_t FusionInfo::HashIntArgsMap() const {
   std::size_t seed = 2153;
-  for (const auto& [input_idx, dim_idx] : int_args_map_) {
-    hash_combine(seed, input_idx);
-    hash_combine(seed, dim_idx.arg_idx);
-    hash_combine(seed, dim_idx.dim_idx);
-  }
+  for (const auto& info : op_infos_) hash_combine(seed, info);
   return seed;
 }
 
@@ -131,6 +118,27 @@ std::ostream& operator<<(std::ostream& os, const FusionInfo& fusion_info) {
     os << "}\n";
   }
   return os;
+}
+
+std::size_t HashIntArgsMap(
+    const std::map<int, CINNKernelInfo::ArgDimIdx>& int_args_map) {
+  std::size_t seed = 2153;
+  for (const auto& [input_idx, dim_idx] : int_args_map) {
+    hash_combine(seed, input_idx);
+    hash_combine(seed, dim_idx.arg_idx);
+    hash_combine(seed, dim_idx.dim_idx);
+  }
+  return seed;
+}
+std::ostream& operator<<(
+    std::ostream& os,
+    const std::map<int, CINNKernelInfo::ArgDimIdx>& int_args_map) {
+  os << "int_args_map: {\n";
+  for (const auto& [input_idx, dim_idx] : int_args_map) {
+    os << "input_idx: " << input_idx << ":[ " << dim_idx.arg_idx << ", "
+       << dim_idx.dim_idx << " ]\n";
+  }
+  os << "}\n";
 }
 
 std::vector<::pir::Operation*> TopologySort(::pir::Operation* op) {

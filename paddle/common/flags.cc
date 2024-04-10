@@ -1027,6 +1027,19 @@ PHI_DEFINE_EXPORTED_string(deny_cinn_ops,
 
 /*
  * CINN related FLAG
+ * Name: FLAGS_deny_cinn_ops
+ * Since Version: 3.0 Beta
+ * Value Range: bool, default=true
+ * Example: FLAGS_enable_cinn_compile_cache=true would reuse cached Kernel
+ * function
+ */
+PHI_DEFINE_EXPORTED_bool(
+    enable_cinn_compile_cache,
+    true,
+    "It controls whether to enable cinn compilation cache.");
+
+/*
+ * CINN related FLAG
  * Name: FLAGS_enable_pe_launch_cinn
  * Since Version: 2.3
  * Value Range: bool, default=true

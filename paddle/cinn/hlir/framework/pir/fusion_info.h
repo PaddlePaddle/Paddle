@@ -62,8 +62,7 @@ class FusionInfo {
   using IntArgsMap = std::map<int, CINNKernelInfo::ArgDimIdx>;
 
  public:
-  explicit FusionInfo(const cinn::dialect::FusionOp &fusion_op,
-                      const IntArgsMap &int_args_map);
+  explicit FusionInfo(const cinn::dialect::FusionOp &fusion_op);
   explicit FusionInfo(const OpLoweringGroup &group);
   FusionInfo() = delete;
   FusionInfo(const FusionInfo &) = default;
@@ -77,11 +76,7 @@ class FusionInfo {
   friend std::ostream &operator<<(std::ostream &os, const FusionInfo &info);
 
  private:
-  std::size_t HashIntArgsMap() const;
-
- private:
   std::vector<OperationInfo> op_infos_;
-  IntArgsMap int_args_map_;
   std::size_t cached_hash_value_{0};
 };
 
@@ -98,6 +93,11 @@ inline void hash_combine(std::size_t &seed,  // NOLINT
   seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 }
 
+std::size_t HashIntArgsMap(
+    const std::map<int, CINNKernelInfo::ArgDimIdx> &int_args_map);
+std::ostream &operator<<(
+    std::ostream &os,
+    const std::map<int, CINNKernelInfo::ArgDimIdx> &int_args_map);
 std::vector<::pir::Operation *> TopologySort(::pir::Operation *op);
 
 }  // namespace cinn::hlir::framework::pir
@@ -116,5 +116,4 @@ REGISTER_STD_HASH(AttributeInfo);
 REGISTER_STD_HASH(ValueInfo);
 REGISTER_STD_HASH(OperationInfo);
 REGISTER_STD_HASH(FusionInfo)
-
 }  // namespace std

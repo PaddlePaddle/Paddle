@@ -17,6 +17,9 @@
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/utils/multi_threading.h"
 #include "paddle/common/enforce.h"
+#include "paddle/common/flags.h"
+
+PD_DECLARE_bool(enable_cinn_compile_cache);
 
 namespace cinn::hlir::framework {
 
@@ -56,7 +59,9 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
   auto& compilation_results = ctx_mapper.MutableCompilationResult();
 
   const size_t task_size = group_compilation_contexts.size();
-  VLOG(5) << "Found " << task_size << " new  parsed from " << groups.size();
+  const size_t thread_size = FLAGS_enable_cinn_compile_cache ? task_size : 1;
+  VLOG(5) << "Found " << task_size << " new groups parsed from "
+          << groups.size();
   if (task_size > 0) {
     auto worker_fn = [&](int index) {
       CompilationTask task(&group_compilation_contexts[index]);
@@ -64,7 +69,7 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
     };
     utils::parallel_run(worker_fn,
                         utils::SequenceDispatcher(0, task_size),
-                        /*thread_num=*/task_size);
+                        /*thread_num=*/thread_size);
   }
   ctx_mapper.SetFinalize(true);
   ctx_mapper.UpdateGlobalCache();
@@ -73,7 +78,7 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
 
 void CompilationContextMapper::Construct(
     const Target& target, const std::vector<pir::OpLoweringGroupPtr>& groups) {
-  std::unordered_map<size_t, size_t> unique_infos;
+  std::unordered_set<size_t> unique_infos;
   const auto IsNewAndUnique =
       [&unique_infos](const pir::FusionInfo& info) -> bool {
     const bool is_unique = unique_infos.find(info.hash()) == unique_infos.end();
@@ -83,12 +88,15 @@ void CompilationContextMapper::Construct(
 
   for (size_t i = 0; i < groups.size(); ++i) {
     fusion_infos_.emplace_back(*groups[i]);
-    if (IsNewAndUnique(fusion_infos_[i])) {
+    // If FLAGS_enable_cinn_compile_cache=False, Cache strategy will not take
+    // effects.
+    if (IsNewAndUnique(fusion_infos_[i]) || !FLAGS_enable_cinn_compile_cache) {
       mapper_index_.push_back(i);
       group_compilation_contexts_.emplace_back(target, groups[i]);
       compilation_results_.push_back(
           std::make_shared<pir::CompilationResult>(target));
     }
+    unique_infos.insert(fusion_infos_[i].hash());
   }
 }
 
@@ -125,6 +133,10 @@ void CompilationContextMapper::UpdateGlobalCache() {
                       ::common::errors::PreconditionNotMet(
                           "Required mapper_index < fusion_infos_.size()."));
     const auto& fusion_info = fusion_infos_[mapper_index_[i]];
+    const auto& int_args_map =
+        compilation_results_[i]->GetBackendResource()->GetIntArgsMap();
+    VLOG(5) << "Insert new compiled result into cache, fusion_info: "
+            << fusion_info << ", int_args_map: " << int_args_map;
     CompilationCache::Instance().Insert(fusion_info, compilation_results_[i]);
   }
 }
