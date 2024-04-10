@@ -15,6 +15,8 @@
 import unittest
 
 import paddle
+from paddle.autograd.ir_backward import grad
+from paddle.base.core import call_vjp, has_vjp
 from paddle.base.libpaddle.pir import (
     build_pipe_for_block,
     get_used_external_value,
@@ -108,3 +110,50 @@ class TestConstructModuleWithPyLayerOp(unittest.TestCase):
             # check build_pipe_for_block interface
             fwd_block = pylayer_op.as_pylayer_op().forward_block()
             build_pipe_for_block(fwd_block)
+    def test_pylayer_op_call_vjp_interface(self):
+        """
+        pseudocode:
+
+        y = 3 * x
+        dx = 3 * dy
+        """
+
+        def forward_fn(x):
+            return 3 * x
+        
+        def backward_fn(dy):
+            return (3 * dy, )
+        with paddle.pir_utils.IrGuard():
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program, startup_program):
+                x = paddle.static.data(name="x", shape=[6, 1], dtype="float32")
+                x.stop_gradient = False
+                out = paddle.static.nn.static_pylayer(
+                    forward_fn, [x], backward_fn=backward_fn
+                )
+                y = paddle.mean(out)
+
+                dataop = main_program.global_block().ops[0]
+                pylayer_op = main_program.global_block().ops[-2]
+                self.assertEqual(pylayer_op.name(), "pd_op.pylayer")
+                self.assertEqual(len(pylayer_op.results()), 1)
+
+                out_grad = paddle.full(shape=[6, 1], dtype='float32', fill_value=3)
+                pylayer_input = [[input] for input in get_used_external_value(pylayer_op)]
+                pylayer_input_stop_gradients = [[False]]
+                pylayer_output = [pylayer_op.results()]
+                pylayer_output_grad = [[out_grad]]
+                self.assertEqual(has_vjp(pylayer_op), False)
+                
+                print(pylayer_input)
+                grad_outs = call_vjp(
+                    pylayer_op,
+                    pylayer_input[1:],
+                    pylayer_output,
+                    pylayer_output_grad,
+                    pylayer_input_stop_gradients,
+                )
+                
+        print("==== main_program ====")
+        print(main_program)

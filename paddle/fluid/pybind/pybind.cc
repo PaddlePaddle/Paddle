@@ -763,6 +763,7 @@ static std::vector<std::vector<pir::Value>> GenerateBackwardBlockForPyLayerOp(
       dialect::ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(
           output_grads);
 
+  std::vector<pir::Value> pylayer_grad_inputs(output_types.size());
   auto pylayer_grad =
       dialect::ApiBuilder::Instance()
           .GetBuilder()
@@ -778,10 +779,9 @@ static std::vector<std::vector<pir::Value>> GenerateBackwardBlockForPyLayerOp(
   VLOG(6) << "pylayer op unique_id is " << unique_id;
   auto py_callable =
       paddle::pybind::PythonCallableRegistrar::GetInstance().Get(unique_id);
-  std::vector<pir::Value> pylayer_grad_inputs(output_types.size());
   {
     // enter block of pylayer_grad
-    PyLayerBlockContextManager(&(pylayer_grad.forward_block()));
+    PyLayerBlockContextManager pylayer_block_context_manager(&(pylayer_grad.forward_block()));
 
     VLOG(6) << "call pylayer op backward function";
     PirCallPythonFunc(py_callable, output_grads, &pylayer_grad_inputs);
@@ -794,7 +794,7 @@ static std::vector<std::vector<pir::Value>> GenerateBackwardBlockForPyLayerOp(
   VLOG(6) << "Construct pylayer backward block finished";
 
   std::vector<std::vector<pir::Value>> res{inputs_.size()};
-  for (size_t i = 0; i < output_types.size(); ++i) {
+  for (size_t i = 0; i < pylayer_grad_inputs.size(); ++i) {
     res[i].resize(1);
     res[i][0] = pylayer_grad->result(i);
   }

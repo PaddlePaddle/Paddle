@@ -34,6 +34,7 @@ from paddle.autograd.backward_utils import (
     inverse_sort_op,
     is_control_flow,
     is_inplace_net,
+    op_has_vjp,
     parent_total_ops,
     remove_op,
     remove_useless_full_like_ops,
@@ -604,7 +605,7 @@ def append_backward_ops(
     with bwd_block:
         while_tuple_ops = []
         for op in clear_effective_forward_ops:
-            if paddle.framework.core.has_vjp(op):
+            if op_has_vjp(op):
                 # prepare output_grad
                 zero_flag, outputs, output_grads = make_output_with_output_grad(
                     op

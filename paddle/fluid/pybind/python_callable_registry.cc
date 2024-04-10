@@ -30,6 +30,10 @@ void PirCallPythonFunc(py::object *callable,
     in_args[i] = py::cast(ins[i]);
   }
 
+  VLOG(2) << "[PirCallPythonFunc] ins.size() = " << ins.size();
+  VLOG(2) << "[PirCallPythonFunc] outs->size() = " << outs->size();
+
+
   auto ret = (*callable)(*in_args);
   auto ret_tuple = py::cast<py::tuple>(ret);
   size_t ret_num = py::len(ret_tuple);
@@ -94,6 +98,7 @@ void PythonCallableRegistrar::Register(uint64_t unique_id,
                     "python_callable_registry_. This operation "
                     "will override the old one.";
   }
+  python_callable_registry_[unique_id] = callable;
 }
 
 // Return pybind11::object* instead of pybind11::object

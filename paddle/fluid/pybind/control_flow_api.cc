@@ -116,8 +116,7 @@ void BindPyLayerOp(py::module* m) {
            })
       .def("register_backward_function", [](PyLayerOp& self, py::object func) {
         uint64_t unique_id = self.operation()->id();
-        // NOTE(MarioLulab): May cause segment fault because of reference count
-        // ?
+        VLOG(2) << "register backward function for op id: " << unique_id;
         paddle::pybind::PythonCallableRegistrar::GetInstance().Register(
             unique_id, func);
       });

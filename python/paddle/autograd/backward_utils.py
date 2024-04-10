@@ -459,6 +459,9 @@ def all_output_grad_none(list_of_list):
                 return False
     return True
 
+def op_has_vjp(op):
+    return core.has_vjp(op) or op.name() == "pd_op.pylayer"
+
 
 def parent_total_ops(block):
     '''
