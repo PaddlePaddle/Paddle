@@ -68,6 +68,7 @@ class TestConv2dReluFusePass(PassTest):
     def test_check_output(self):
         self.check_pass_correct()
 
+
 class TestConv2dHardsigmoidFusePass(PassTest):
     def is_program_valid(self, program=None):
         return True
@@ -114,6 +115,7 @@ class TestConv2dHardsigmoidFusePass(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct()
+
 
 class TestConv2dHardSwishFusePass(PassTest):
     def is_program_valid(self, program=None):
