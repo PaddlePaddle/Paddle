@@ -202,5 +202,4 @@ Json ProgramWriter::WriteAttributesMapOpinfo(pir::Operation* op,
   VLOG(6) << "Finish write Opinfo AttributeMap ";
   return attrs_json;
 }
-
 }  // namespace pir

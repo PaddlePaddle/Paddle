@@ -108,11 +108,12 @@ void UpdateGroupShapeExprs(
     const auto& origin_shape_or_data =
         origin_group->GetShapeOrDataExprs(origin_val);
     if (origin_shape_or_data.data()) {
+      std::vector<symbol::DimExpr> shape_dim_expr_shape = {
+          symbol::DimExpr(static_cast<int64_t>(shape_dim_expr.size()))};
       new_group->SetShapeOrDataExprs(
           new_val,
           symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
-              std::vector<symbol::DimExpr>{shape_dim_expr.size()},
-              shape_dim_expr)});
+              shape_dim_expr_shape, shape_dim_expr)});
     } else {
       new_group->SetShapeOrDataExprs(
           new_val,

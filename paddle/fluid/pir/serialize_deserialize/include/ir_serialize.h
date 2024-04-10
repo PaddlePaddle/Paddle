@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
-
 #include "paddle/fluid/pir/serialize_deserialize/include/third_part.h"
 #include "paddle/pir/include/core/program.h"
 
@@ -21,6 +20,7 @@ namespace pir {
  * ProgramWriter is used to serialize pir program to json object.
  *
  */
+
 class ProgramWriter {
  public:
   explicit ProgramWriter(const uint64_t version) : version_(version) {}
@@ -48,6 +48,7 @@ class ProgramWriter {
 
   /** xxx_id_ is used to record current id of IR structure
    * which should be serialized.*/
+
   int64_t region_id_ = 0;
   int64_t block_id_ = 0;
   int64_t value_id_ = 1;

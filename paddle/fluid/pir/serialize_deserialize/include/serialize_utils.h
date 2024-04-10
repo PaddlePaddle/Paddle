@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "glog/logging.h"
+
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/schema.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/third_part.h"
@@ -44,6 +45,7 @@ namespace pir {
  * std::string, int, float and so on. if not, serailizeTypeToJson
  * need to be specialized.
  */
+
 template <typename T>
 Json serializeTypeToJson(const T& type) {
   Json json_obj;
@@ -67,6 +69,7 @@ Json serializeTypeToJson(const T& type) {
  * float and so on. if not, serailizeAttrToJson
  * need to be specialized.
  */
+
 template <typename T>
 Json serializeAttrToJson(const T& attr) {
   Json json_obj;

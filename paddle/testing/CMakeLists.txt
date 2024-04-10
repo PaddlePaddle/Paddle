@@ -40,7 +40,7 @@ if(WITH_TESTING)
       DEPS gtest xxhash framework_proto eigen3 dlpack)
   endif()
 
-  if(WITH_MKLDNN)
+  if(WITH_ONEDNN)
     add_dependencies(paddle_gtest_main_new onednn)
   endif()
 endif()
