@@ -1025,17 +1025,9 @@ bool UnbindOpInferSymbolicShape(
   const auto &x_dims_sym = x_shape_or_data.shape();
 
   // axis
-  CHECK(op->operand_source(2).defining_op()->isa<paddle::dialect::FullOp>());
-
-  int64_t axis = op->operand_source(2)
-                     .defining_op<paddle::dialect::FullOp>()
-                     .attributes()
-                     .at("value")
-                     .dyn_cast<paddle::dialect::ScalarAttribute>()
-                     .data()
-                     .to<int64_t>();
-  size_t rank = x_dims_sym.size();
-  axis = axis >= 0 ? axis : std::max(int64_t(0), int64_t(axis + rank));
+  int axis = op->attributes().at("axis").dyn_cast<pir::Int32Attribute>().data();
+  int rank = x_dims_sym.size();
+  axis = axis >= 0 ? axis : axis + rank;
 
   // output
   const symbol::TensorListShapeOrDataDimExprs &output_shape_data_list = [&] {
@@ -1050,11 +1042,6 @@ bool UnbindOpInferSymbolicShape(
                           "dim with constant length!"));
     output_dims_sym.erase(output_dims_sym.begin() + axis);
     const int64_t unbound_dim_length = unbound_dim.dyn_cast<int64_t>();
-    PADDLE_ENFORCE_EQ(
-        unbound_dim_length,
-        op->num_results(),
-        phi::errors::InvalidArgument("InferSymbolicShape of UnbindOp: unbound "
-                                     "dim and num_results mismatch!"));
 
     for (uint32_t idx = 0; idx < unbound_dim_length; idx++) {
       shape_data_list.push_back(
@@ -1101,7 +1088,7 @@ bool UniqueOpInferSymbolicShape(
     }
     std::vector<symbol::DimExpr> out_dims = x_dims_sym;
     int axis = axes[0];
-    axis = axis >= 0 ? axis : std::max(int64_t(0), int64_t(axis + rank));
+    axis = axis >= 0 ? axis : axis + rank;
     out_dims[axis] = unique_dim_sym;
     return out_dims;
   }();
@@ -1117,7 +1104,7 @@ bool UniqueOpInferSymbolicShape(
       inverse_dims.push_back(product);
     } else {
       int axis = axes[0];
-      axis = axis >= 0 ? axis : std::max(int64_t(0), int64_t(axis + rank));
+      axis = axis >= 0 ? axis : axis + rank;
       inverse_dims.push_back(x_dims_sym[axis]);
     }
     return inverse_dims;
@@ -1165,7 +1152,7 @@ bool UniqueConsecutiveOpInferSymbolicShape(
     }
     std::vector<symbol::DimExpr> out_dims = x_dims_sym;
     int axis = axes[0];
-    axis = axis >= 0 ? axis : std::max(int64_t(0), int64_t(axis + rank));
+    axis = axis >= 0 ? axis : axis + rank;
     out_dims[axis] = unique_dim_sym;
     return out_dims;
   }();
@@ -1181,7 +1168,7 @@ bool UniqueConsecutiveOpInferSymbolicShape(
       inverse_dims.push_back(product);
     } else {
       int axis = axes[0];
-      axis = axis >= 0 ? axis : std::max(int64_t(0), int64_t(axis + rank));
+      axis = axis >= 0 ? axis : axis + rank;
       inverse_dims.push_back(x_dims_sym[axis]);
     }
     return inverse_dims;

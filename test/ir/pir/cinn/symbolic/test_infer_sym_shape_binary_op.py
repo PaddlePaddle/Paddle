@@ -228,49 +228,6 @@ class Conv3dOpInferSymbolicShapeTest(TestBase):
         return True
 
 
-class ExpandAsNet(paddle.nn.Layer):
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, x, y):
-        out = paddle.expand_as(x, y)
-        return out
-
-
-class ExpandAsOpInferSymbolicShapeTest(TestBase):
-    def prepare_data(self):
-        self.cases = [
-            (np.random.rand(5, 6), np.random.rand(4, 5, 6)),
-            (np.random.rand(6), np.random.rand(4, 5, 6)),
-        ]
-        self.expected = [
-            ['shape[S2, S3, S4], data[NULL]'],
-            ['shape[S1, S2, S3], data[NULL]'],
-        ]
-
-    def test_eval_symbolic(self):
-        net = ExpandAsNet()
-
-        for i in range(len(self.cases)):
-            x, y = self.cases[i]
-            x_spec = InputSpec(
-                shape=[None for _ in range(len(x.shape))], dtype='float32'
-            )
-            y_spec = InputSpec(
-                shape=[None for _ in range(len(y.shape))], dtype='float32'
-            )
-
-            input_spec = [x_spec, y_spec]
-            net = apply_to_static(net, False, input_spec)
-            net.eval()
-
-            check_infer_results(
-                net, input_spec, 'pd_op.expand_as', self.expected[i]
-            )
-
-        return True
-
-
 class MaskedSelectNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()

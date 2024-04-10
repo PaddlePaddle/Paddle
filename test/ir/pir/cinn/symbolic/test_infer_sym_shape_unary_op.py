@@ -725,7 +725,10 @@ class PadOpInferSymbolicShapeTest(TestBase):
         for i in range(len(self.cases)):
             x = self.cases[i]
             x_spec = InputSpec(
-                shape=[None for index in range(len(x.shape))], dtype='float32'
+                # shape=[4, None, None], dtype='float32'
+                # shape=[x.shape[index] for index in range(len(x.shape))], dtype='float32'
+                shape=[None for index in range(len(x.shape))],
+                dtype='float32',
             )
 
             input_spec = [x_spec]
@@ -737,53 +740,52 @@ class PadOpInferSymbolicShapeTest(TestBase):
         return True
 
 
-# FIXME: unbind infer sym shape causes
-#           terminate called after throwing an instance of 'std::length_error'
-#           what():  cannot create std::vector larger than max_size()
-# class UnbindNet(paddle.nn.Layer):
-#     def __init__(self):
-#         super().__init__()
+class UnbindNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
 
-#     def forward(self, x):
-#         out1 = paddle.unbind(x)
-#         out2 = paddle.unbind(x, axis=0)
-#         out3 = paddle.unbind(x, axis=2)
-#         out4 = paddle.unbind(x, axis=-2)
-#         out5 = paddle.unbind(x, axis=-3)
-#         return out1, out2, out3, out4, out5
+    def forward(self, x):
+        out1 = paddle.unbind(x)
+        out2 = paddle.unbind(x, axis=0)
+        out3 = paddle.unbind(x, axis=1)
+        out4 = paddle.unbind(x, axis=-2)
+        out5 = paddle.unbind(x, axis=-3)
+        return out1, out2, out3, out4, out5
 
 
-# class UnbindOpInferSymbolicShapeTest(TestBase):
-#     def prepare_data(self):
-#         self.cases = [np.random.rand(4, 5, 6)]
-#         self.expected = [
-#             [
-#                 ', '.join(['shape[S1, S2], data[NULL]'] * 4),
-#                 ', '.join(['shape[S1, S2], data[NULL]'] * 4),
-#                 ', '.join(['shape[S0, S1], data[NULL]'] * 6),
-#                 ', '.join(['shape[S0, S2], data[NULL]'] * 5),
-#                 ', '.join(['shape[S1, S2], data[NULL]'] * 4),
-#             ]
-#         ]
+class UnbindOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.cases = [np.random.rand(4, 5, 6)]
+        self.expected = [
+            [
+                ', '.join(['shape[5, S0], data[NULL]'] * 4),
+                ', '.join(['shape[5, S0], data[NULL]'] * 4),
+                ', '.join(['shape[4, S0], data[NULL]'] * 4),
+                ', '.join(['shape[4, S0], data[NULL]'] * 4),
+                ', '.join(['shape[5, S0], data[NULL]'] * 4),
+            ]
+        ]
 
-#     def test_eval_symbolic(self):
-#         net = UnbindNet()
+    def test_eval_symbolic(self):
+        net = UnbindNet()
 
-#         for i in range(len(self.cases)):
-#             x = self.cases[i]
-#             x_spec = InputSpec(
-#                 shape=[None for index in range(len(x.shape))], dtype='float32'
-#             )
+        for i in range(len(self.cases)):
+            x = self.cases[i]
+            x_spec = InputSpec(
+                shape=[x.shape[index] for index in range(len(x.shape) - 1)]
+                + [None],
+                dtype='float32',
+            )
 
-#             input_spec = [x_spec]
-#             net = apply_to_static(net, False, input_spec)
-#             net.eval()
+            input_spec = [x_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
 
-#             check_infer_results(
-#                 net, input_spec, 'pd_op.unbind', self.expected[i]
-#             )
+            check_infer_results(
+                net, input_spec, 'pd_op.unbind', self.expected[i]
+            )
 
-#         return True
+        return True
 
 
 class UniqueNet(paddle.nn.Layer):
@@ -803,39 +805,7 @@ class UniqueOpInferSymbolicShapeTest(TestBase):
         self.cases = [np.random.rand(4, 5, 6)]
         self.expected = [
             [
-                # ', '.join(
-                #     [
-                #         'shape[S3], data[NULL]',
-                #         'shape[S3], data[NULL]',
-                #         'shape[Mul(Mul(S0, S1), S2)], data[NULL]',
-                #         'shape[S3], data[NULL]',
-                #     ]
-                # ),
-                # ', '.join(
-                #     [
-                #         'shape[S4, S1, S2], data[NULL]',
-                #         'shape[S4], data[NULL]',
-                #         'shape[S0], data[NULL]',
-                #         'shape[S3], data[NULL]',
-                #     ]
-                # ),
-                # ', '.join(
-                #     [
-                #         'shape[S0, S1, S5], data[NULL]',
-                #         'shape[S3], data[NULL]',
-                #         'shape[S2], data[NULL]',
-                #         'shape[S5], data[NULL]',
-                #     ]
-                # ),
-                # ', '.join(
-                #     [
-                #         'shape[S0, S1, S6], data[NULL]',
-                #         'shape[S3], data[NULL]',
-                #         'shape[S2], data[NULL]',
-                #         'shape[S6], data[NULL]',
-                #     ]
-                # ),
-                # FIXME: Now only the first output is exported to sym_shape_str.
+                # TODO: Now only the first output is tested because only the first is exported to `sym_shape_str`.
                 'shape[S3], data[NULL]',
                 'shape[S4, S1, S2], data[NULL]',
                 'shape[S0, S1, S5], data[NULL]',
@@ -880,35 +850,7 @@ class UniqueConsecutiveOpInferSymbolicShapeTest(TestBase):
         self.cases = [np.random.rand(4, 5, 6)]
         self.expected = [
             [
-                # ', '.join(
-                #     [
-                #         'shape[S3], data[NULL]',
-                #         'shape[Mul(Mul(S0, S1), S2)], data[NULL]',
-                #         'shape[S3], data[NULL]',
-                #     ]
-                # ),
-                # ', '.join(
-                #     [
-                #         'shape[S4, S1, S2], data[NULL]',
-                #         'shape[S0], data[NULL]',
-                #         'shape[S4], data[NULL]',
-                #     ]
-                # ),
-                # ', '.join(
-                #     [
-                #         'shape[S0, S1, S5], data[NULL]',
-                #         'shape[S2], data[NULL]',
-                #         'shape[S5], data[NULL]',
-                #     ]
-                # ),
-                # ', '.join(
-                #     [
-                #         'shape[S0, S1, S6], data[NULL]',
-                #         'shape[S2], data[NULL]',
-                #         'shape[S6], data[NULL]',
-                #     ]
-                # ),
-                # FIXME: Now only the first output is exported to sym_shape_str.
+                # TODO: Now only the first output is tested because only the first is exported to `sym_shape_str`.
                 'shape[S3], data[NULL]',
                 'shape[S4, S1, S2], data[NULL]',
                 'shape[S0, S1, S5], data[NULL]',

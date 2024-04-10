@@ -204,12 +204,13 @@ bool SparseWeightEmbeddingOpInferSymbolicShape(
 
 bool ExpandAsOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  const auto &y_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+  // TODO(fty1777): Why is `y` marked optional in the yaml file? The shape of
+  // `y` is currently empty and target_shape is all -1. The symbolic inference
+  // cannot be done for now.
 
-  // TODO(fty1777): Why is `y` marked optional in the yaml file? What is the use
-  // of target_shape? The assumed implementation of this function should `y` be
-  // not provided
+  // const auto &y_shape_or_data =
+  //     shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+
   // // target_shape
   // std::vector<int> target_shape =
   //     paddle::dialect::details::GetVectorAttr<int>(op, "target_shape");
@@ -222,7 +223,11 @@ bool ExpandAsOpInferSymbolicShape(
   //   return output_dims;
   // }();
 
-  shape_analysis->SetShapeOrDataForValue(op->result(0), y_shape_or_data);
+  // shape_analysis->SetShapeOrDataForValue(op->result(0), y_shape_or_data);
+  PADDLE_THROW(phi::errors::Unimplemented(
+      op->name() +
+      " 's InferSymbolicShape interface is NOT implemented "
+      "now because of the lack of necessary information."));
   return true;
 }
 
