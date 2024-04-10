@@ -13,8 +13,11 @@
 # limitations under the License.
 
 import re
+
 import triton
+
 import paddle
+
 
 def SubstituteTemplate(template, values):
     text = template

@@ -16,6 +16,7 @@ import triton
 import triton.language as tl
 from paddle import _C_ops
 import paddle
+from paddle import _C_ops
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
 
@@ -286,7 +287,9 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
     from paddle.base.framework import OpProtoHolder
     if op_name in OpProtoHolder.instance().op_proto_map.keys():
         if in_dynamic_or_pir_mode():
-            outs = _C_ops._run_custom_op(op_name, x, qweight, scales, bias, bool_trans_w)
+            outs = _C_ops._run_custom_op(
+                op_name, x, qweight, scales, bias, bool_trans_w
+            )
             return outs[0]
 
     address_hint = get_pointer_hint(x) + ","
@@ -307,7 +310,9 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
     value_hint += get_value_hint(N) + ","
     value_hint += get_value_hint(1) + ","
 
-    generated_dir = f"/zhoukangkang/2023-06-06minigpt/PaddleNLP/llm/inference/{op_name}"
+    generated_dir = (
+        f"/zhoukangkang/2023-06-06minigpt/PaddleNLP/llm/inference/{op_name}"
+    )
     os.makedirs(generated_dir, exist_ok=True)
 
     py_script_file = f"{generated_dir}/triton_kernels.py"
@@ -380,9 +385,10 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
         so_path = find_so_path(generated_dir, python_package_name)
         paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
 
-    
     if in_dynamic_or_pir_mode():
-        outs = _C_ops._run_custom_op("triton_wint8_trans", x, qweight, scales, bias, bool_trans_w)
+        outs = _C_ops._run_custom_op(
+            "triton_wint8_trans", x, qweight, scales, bias, bool_trans_w
+        )
         return outs[0]
 
     helper = LayerHelper(op_name, **locals())
