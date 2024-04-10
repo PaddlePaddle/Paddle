@@ -1061,6 +1061,55 @@ DimExpr SubstituteDimExpr(
 }  // namespace symbol
 
 namespace symbol {
+
+IR_API int GetDimExprPriority(const DimExpr& dim_expr) {
+  return std::visit(Overloaded{
+                        [&](std::int64_t) { return 0; },
+                        [&](const std::string&) { return 1; },
+                        [&](const Negative<DimExpr>&) { return 2; },
+                        [&](const Reciprocal<DimExpr>&) { return 2; },
+                        [&](const Add<DimExpr>&) { return 2; },
+                        [&](const Mul<DimExpr>&) { return 2; },
+                        [&](const Max<DimExpr>&) { return 2; },
+                        [&](const Min<DimExpr>&) { return 2; },
+                        [&](const Broadcast<DimExpr>&) { return 2; },
+                    },
+                    dim_expr.variant());
+}
+
+IR_API PriorityComparisonStatus CompareDimExprPriority(const DimExpr& lhs,
+                                                       const DimExpr& rhs) {
+  int lhs_priority = GetDimExprPriority(lhs);
+  int rhs_priority = GetDimExprPriority(rhs);
+
+  if (lhs_priority != rhs_priority) {
+    return lhs_priority < rhs_priority ? PriorityComparisonStatus::HIGHER
+                                       : PriorityComparisonStatus::LOWER;
+  }
+
+  auto CompareForEqualPriority = Overloaded{
+      [](const std::string& lhs, const std::string& rhs) {
+        if (lhs.size() != rhs.size()) {
+          return lhs.size() < rhs.size() ? PriorityComparisonStatus::HIGHER
+                                         : PriorityComparisonStatus::LOWER;
+        }
+        int compare_result = lhs.compare(rhs);
+        if (compare_result == 0)
+          return PriorityComparisonStatus::EQUAL;
+        else if (compare_result < 0)
+          return PriorityComparisonStatus::HIGHER;
+        else
+          return PriorityComparisonStatus::LOWER;
+      },
+      [](const auto& lhs, const auto& rhs) {
+        return PriorityComparisonStatus::EQUAL;
+      }};
+  return std::visit(CompareForEqualPriority, lhs.variant(), rhs.variant());
+}
+
+}  // namespace symbol
+
+namespace symbol {
 namespace {
 
 void CollectUnaryDimExprSymbolsImpl(const DimExpr& dim_expr,
