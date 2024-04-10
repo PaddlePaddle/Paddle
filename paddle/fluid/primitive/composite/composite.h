@@ -155,8 +155,7 @@ Tensor p_norm_decomp(const Tensor& x,
     res = sum<T>(res, {axis}, x_tmp.dtype(), keepdim);
   } else if (porder == 2.0) {
     // 2-norm
-    auto one = full<T>(empty_shape, 1, x_tmp.dtype());
-    res = one / rsqrt<T>(sum<T>(x_tmp * x_tmp, {axis}, x_tmp.dtype(), keepdim));
+    res = sqrt<T>(sum<T>(x_tmp * x_tmp, {axis}, x_tmp.dtype(), keepdim));
   } else if (porder == INFINITY) {
     // +INF-norm
     res = abs<T>(x_tmp);
@@ -643,24 +642,6 @@ std::tuple<Tensor, Tensor> dropout_decomp(
       // train: out = input * mask
       return std::make_tuple(x * mask, cast<T>(mask, DataType::UINT8));
     }
-  }
-}
-
-template <typename T>
-Tensor sqrt_decomp(const Tensor& x) {
-  auto org_dtype = x.dtype();
-  Tensor x_cast = x;
-
-  bool need_cast = is_half_dtype(org_dtype);
-  if (need_cast) {
-    x_cast = cast<T>(x, DataType::FLOAT32);
-  }
-
-  auto ans = 1.0 / rsqrt<T>(x_cast);
-  if (need_cast) {
-    return cast<T>(ans, org_dtype);
-  } else {
-    return ans;
   }
 }
 

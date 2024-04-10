@@ -419,12 +419,12 @@ std::string CompatibleInfo::OpFuncName(const ::pir::Operation& op) {
 
 std::string CompatibleInfo::GroupOpsName(
     const std::vector<::pir::Operation*>& ops) {
-  std::string name = "fn";
+  std::string name = "fn_";
   for (auto* op : ops) {
-    std::string op_name = OpName(*op);
-    name += "_" + cinn::common::Context::Global().NewName(op_name);
+    name += OpName(*op);
+    name += "_";
   }
-  return name;
+  return cinn::common::Context::Global().NewName(name);
 }
 
 std::string CompatibleInfo::ValueName(const ::pir::Value& value) {

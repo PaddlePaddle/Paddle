@@ -20,7 +20,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/utils.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/split_kernel.h"
 namespace paddle {
 namespace operators {
