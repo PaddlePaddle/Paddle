@@ -300,6 +300,15 @@ void BindProgram(py::module *m) {
           [](std::shared_ptr<Program> self, int64_t random_seed) {
             SetProgramInt64Attr(self, "random_seed", random_seed);
           })
+      .def_property_readonly(
+          "blocks",
+          [](const std::shared_ptr<Program> &self) {
+            // Note: We only return global block currently.
+            py::list op_list;
+            op_list.append(self->block());
+            return op_list;
+          },
+          return_value_policy::reference)
       .def("get_output_value_by_name",
            [](Program &self, const std::string &name) {
              return GetOutputValueByName(self, name);
