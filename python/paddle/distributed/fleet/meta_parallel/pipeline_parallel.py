@@ -694,10 +694,13 @@ class PipelineParallel(MetaParallelBase):
     ):
         data = self._prepare_training(data, optimizer, lr_scheduler)
 
-        # set loss function index
+        # check loss_fn_idx is valid and loss_fn exists
         assert loss_fn_idx in range(
             len(self._layers._loss_fn)
         ), "loss_fn_idx should be in range of loss_fn"
+        assert (
+            self._layers._loss_fn[loss_fn_idx] is not None
+        ), f"loss function {loss_fn_idx} should exist to compute loss"
         self.loss_fn_idx = loss_fn_idx
 
         # 1f1b scheduler for pipeline parallel
@@ -722,10 +725,13 @@ class PipelineParallel(MetaParallelBase):
         # store total loss of entire batch
         self.total_loss = None
 
-        # set loss function index
+        # check loss_fn_idx is valid and loss_fn exists
         assert loss_fn_idx in range(
             len(self._layers._loss_fn)
         ), "loss_fn_idx should be in range of loss_fn"
+        assert (
+            self._layers._loss_fn[loss_fn_idx] is not None
+        ), f"loss function {loss_fn_idx} should exist to compute loss"
         self.loss_fn_idx = loss_fn_idx
 
         startup_steps = self.num_stages - self.stage_id - 1
@@ -798,7 +804,7 @@ class PipelineParallel(MetaParallelBase):
             # train calculate loss for train
             if self._compute_loss:
                 assert (
-                    self._layers._loss_fn[0] is not None
+                    self._layers._loss_fn[self.loss_fn_idx] is not None
                 ), "loss function should exist to compute loss"
                 labels = next(micro_dataset)[1]
                 self._check_micro_batch_data_valid(labels)
@@ -893,15 +899,18 @@ class PipelineParallel(MetaParallelBase):
                 else self.total_loss[idx] / self.accumulate_steps
                 for idx in range(len(self._layers._loss_fn))
             ]
-            is_fp32 = (
-                paddle.full([], 1, 'int64')
-                if losses[0].dtype == paddle.float32
-                else paddle.full([], 0, 'int64')
-            )
-            paddle.distributed.broadcast(
-                is_fp32, src=self.global_rank, sync_op=True, group=self.pp_group
-            )
-            for idx in range(len(losses)):
+            for idx in range(len(self._layers._loss_fn)):
+                is_fp32 = (
+                    paddle.full([], 1, 'int64')
+                    if losses[idx].dtype == paddle.float32
+                    else paddle.full([], 0, 'int64')
+                )
+                paddle.distributed.broadcast(
+                    is_fp32,
+                    src=self.global_rank,
+                    sync_op=True,
+                    group=self.pp_group,
+                )
                 paddle.distributed.broadcast(
                     losses[idx],
                     src=self.global_rank,
@@ -909,20 +918,20 @@ class PipelineParallel(MetaParallelBase):
                     group=self.pp_group,
                 )
         else:
-            is_fp32 = paddle.full([], 1, 'int64')
-            paddle.distributed.broadcast(
-                is_fp32,
-                src=self._hcg.get_rank_from_stage(self.num_stages - 1),
-                sync_op=True,
-                group=self.pp_group,
-            )
-            losses = [
-                paddle.zeros(shape=[1], dtype="float32")
-                if is_fp32.item()
-                else paddle.zeros(shape=[1], dtype="float16")
-                for _ in range(len(self._layers._loss_fn))
-            ]
-            for idx in range(len(losses)):
+            losses = []
+            for idx in range(len(self._layers._loss_fn)):
+                is_fp32 = paddle.full([], 1, 'int64')
+                paddle.distributed.broadcast(
+                    is_fp32,
+                    src=self._hcg.get_rank_from_stage(self.num_stages - 1),
+                    sync_op=True,
+                    group=self.pp_group,
+                )
+                losses.append(
+                    paddle.zeros(shape=[1], dtype="float32")
+                    if is_fp32.item()
+                    else paddle.zeros(shape=[1], dtype="float16")
+                )
                 paddle.distributed.broadcast(
                     losses[idx],
                     src=self._hcg.get_rank_from_stage(self.num_stages - 1),
@@ -1752,10 +1761,13 @@ class PipelineParallelWithInterleave(PipelineParallel):
     ):
         data = self._prepare_training(data, optimizer, lr_scheduler)
 
-        # set loss function index
+        # check loss_fn_idx is valid and loss_fn exists
         assert loss_fn_idx in range(
             len(self._layers._loss_fn)
         ), "loss_fn_idx should be in range of loss_fn"
+        assert (
+            self._layers._loss_fn[loss_fn_idx] is not None
+        ), f"loss function {loss_fn_idx} should exist to compute loss"
         self.loss_fn_idx = loss_fn_idx
 
         # interleave scheduler for pipeline parallel
@@ -1774,10 +1786,13 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self._layers.eval()
         self._compute_loss = compute_loss
 
-        # set loss function index
+        # check loss_fn_idx is valid and loss_fn exists
         assert loss_fn_idx in range(
             len(self._layers._loss_fn)
         ), "loss_fn_idx should be in range of loss_fn"
+        assert (
+            self._layers._loss_fn[loss_fn_idx] is not None
+        ), f"loss function {loss_fn_idx} should exist to compute loss"
         self.loss_fn_idx = loss_fn_idx
 
         return self.forward_backward_pipeline(data, None, forward_only=True)
