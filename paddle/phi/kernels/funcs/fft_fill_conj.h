@@ -205,13 +205,7 @@ struct FFTFillConjGradFunctor {
         double_length_(double_length) {}
 
   HOSTDEVICE void operator()(size_t index) {
-    // size_t offtset = index;  // back
     size_t index_i = (index % strides_axis_minus_1) / strides_axis;
-    // for (size_t i = 0; i <= axis_; i++) {
-    //   index_i = offtset / strides_[i];
-    //   offtset %= strides_[i];
-    // }
-
     if ((0 < index_i) && (index_i < double_length_ + 1)) {
       input_[index] *= static_cast<T>(2);
     }
