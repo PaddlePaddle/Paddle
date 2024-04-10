@@ -48,8 +48,7 @@ set(PYBIND_DEPS
     detail_op_handle
     static_tensor_operants
     type_info
-    auto_parallel
-    serialize_deserialize)
+    auto_parallel)
 
 if(WITH_CINN)
   set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms cinn_transforms
