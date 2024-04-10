@@ -21,10 +21,6 @@ import paddle
 paddle.enable_static()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
 class TestConv2dConcatReluFusePass(PassTest):
     def is_program_valid(self, program=None):
         return True
@@ -76,10 +72,6 @@ class TestConv2dConcatReluFusePass(PassTest):
         self.check_pass_correct()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
 class TestConv2dConcat3ReluFusePass(PassTest):
     def is_program_valid(self, program=None):
         return True
@@ -165,10 +157,6 @@ class TestConv2dConcat3ReluFusePass(PassTest):
         self.check_pass_correct()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
 class TestConv2dConcat3GELUFusePass(PassTest):
     def is_program_valid(self, program=None):
         return True
@@ -253,10 +241,6 @@ class TestConv2dConcat3GELUFusePass(PassTest):
         self.check_pass_correct()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
 class TestConv2dConcat3HardsigmoidFusePass(PassTest):
     def is_program_valid(self, program=None):
         return True
@@ -341,10 +325,6 @@ class TestConv2dConcat3HardsigmoidFusePass(PassTest):
         self.check_pass_correct()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
 class TestConv2dConcat3ClipFusePass(PassTest):
     def is_program_valid(self, program=None):
         return True
@@ -411,10 +391,6 @@ class TestConv2dConcat3ClipFusePass(PassTest):
         self.check_pass_correct()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
 class TestConv2dConcat6ReluFusePass(PassTest):
     def is_program_valid(self, program=None):
         return True
