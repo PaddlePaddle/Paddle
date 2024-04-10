@@ -888,9 +888,6 @@ void ProgramInterpreter::Convert(
   AnalyseExecuteOrderForTrace();
 }
 
-void ProgramInterpreter::BuildOpFuncNode(
-    std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {}
-
 void ProgramInterpreter::BuildSkipShareLoDInfo() {
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     bool can_skip_lod = true;
