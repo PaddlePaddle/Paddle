@@ -902,9 +902,6 @@ class LSTMCell(RNNCellBase):
     Parameters:
         input_size (int): The input size.
         hidden_size (int): The hidden size.
-        proj_size (int, optional): If specified, the output hidden state
-            will be projected to `proj_size`. `proj_size` must be smaller than
-            `hidden_size`. Default: None.
         weight_ih_attr(ParamAttr, optional): The parameter attribute for
             `weight_ih`. Default: None.
         weight_hh_attr(ParamAttr, optional): The parameter attribute for
@@ -913,6 +910,9 @@ class LSTMCell(RNNCellBase):
             `bias_ih`. Default: None.
         bias_hh_attr (ParamAttr, optional): The parameter attribute for the
             `bias_hh`. Default: None.
+        proj_size (int, optional): If specified, the output hidden state
+            will be projected to `proj_size`. `proj_size` must be smaller than
+            `hidden_size`. Default: None.
         name (str, optional): Name for the operation (optional, default is
             None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -963,11 +963,11 @@ class LSTMCell(RNNCellBase):
         self,
         input_size,
         hidden_size,
-        proj_size=0,
         weight_ih_attr=None,
         weight_hh_attr=None,
         bias_ih_attr=None,
         bias_hh_attr=None,
+        proj_size=0,
         name=None,
     ):
         super().__init__()
@@ -975,12 +975,12 @@ class LSTMCell(RNNCellBase):
             raise ValueError(
                 f"hidden_size of {self.__class__.__name__} must be greater than 0, but now equals to {hidden_size}"
             )
-        if proj_size and proj_size < 0:
+        if proj_size < 0:
             raise ValueError(
                 f"proj_size of {self.__class__.__name__} must be greater than 0, but now equals to {hidden_size}"
             )
 
-        if proj_size and proj_size >= hidden_size:
+        if proj_size >= hidden_size:
             raise ValueError("proj_size must be smaller than hidden_size")
 
         std = 1.0 / math.sqrt(hidden_size)
@@ -1452,7 +1452,6 @@ class RNNBase(LayerList):
         mode,
         input_size,
         hidden_size,
-        proj_size=0,
         num_layers=1,
         direction="forward",
         time_major=False,
@@ -1461,6 +1460,7 @@ class RNNBase(LayerList):
         weight_hh_attr=None,
         bias_ih_attr=None,
         bias_hh_attr=None,
+        proj_size=0,
     ):
         super().__init__()
         bidirectional_list = ["bidirectional", "bidirect"]
@@ -1862,7 +1862,6 @@ class SimpleRNN(RNNBase):
             mode,
             input_size,
             hidden_size,
-            0,  # proj_size
             num_layers,
             direction,
             time_major,
@@ -1871,6 +1870,7 @@ class SimpleRNN(RNNBase):
             weight_hh_attr,
             bias_ih_attr,
             bias_hh_attr,
+            0,  # proj_size
         )
 
 
@@ -1920,9 +1920,6 @@ class LSTM(RNNBase):
         dropout (float, optional): The dropout probability. Dropout is applied
             to the input of each layer except for the first layer. The range of
             dropout from 0 to 1. Defaults to 0.
-        proj_size (int, optional): If specified, the output hidden state of each layer
-            will be projected to `proj_size`. `proj_size` must be smaller than `hidden_size`.
-            Default: 0.
         weight_ih_attr (ParamAttr, optional): The parameter attribute for
             `weight_ih` of each cell. Default: None.
         weight_hh_attr (ParamAttr, optional): The parameter attribute for
@@ -1931,6 +1928,9 @@ class LSTM(RNNBase):
             `bias_ih` of each cells. Default: None.
         bias_hh_attr (ParamAttr, optional): The parameter attribute for the
             `bias_hh` of each cells. Default: None.
+        proj_size (int, optional): If specified, the output hidden state of each layer
+            will be projected to `proj_size`. `proj_size` must be smaller than `hidden_size`.
+            Default: 0.
         name (str, optional): Name for the operation (optional, default is
             None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1983,18 +1983,17 @@ class LSTM(RNNBase):
         direction="forward",
         time_major=False,
         dropout=0.0,
-        proj_size=0,
         weight_ih_attr=None,
         weight_hh_attr=None,
         bias_ih_attr=None,
         bias_hh_attr=None,
+        proj_size=0,
         name=None,
     ):
         super().__init__(
             "LSTM",
             input_size,
             hidden_size,
-            proj_size,
             num_layers,
             direction,
             time_major,
@@ -2003,6 +2002,7 @@ class LSTM(RNNBase):
             weight_hh_attr,
             bias_ih_attr,
             bias_hh_attr,
+            proj_size,
         )
 
 
@@ -2114,7 +2114,6 @@ class GRU(RNNBase):
             "GRU",
             input_size,
             hidden_size,
-            0,  # proj_size
             num_layers,
             direction,
             time_major,
@@ -2123,4 +2122,5 @@ class GRU(RNNBase):
             weight_hh_attr,
             bias_ih_attr,
             bias_hh_attr,
+            0,  # proj_size
         )
