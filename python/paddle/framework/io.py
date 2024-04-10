@@ -384,7 +384,7 @@ def _pickle_save(obj, f, protocol):
     def reduce_LoDTensor(self):
         p = core.Place()
         p.set_place(paddle.CPUPlace())
-        if self.is_dense() and self.place.is_custom_place():
+        if self._place().is_custom_place():
             data = np.array(paddle._C_ops.npu_identity(self, -1)._copy(p))
         else:
             data = np.array(self._copy(p))
