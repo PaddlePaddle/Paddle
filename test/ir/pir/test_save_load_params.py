@@ -21,7 +21,6 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.optimizer import Adam
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 IMAGE_SIZE = 784
@@ -54,7 +53,6 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
                     opt_dict.update({name: get_tensor(name)})
         return param_dict, opt_dict
 
-    @test_with_pir_api
     def test_params1(self):
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, paddle.static.Program()):
@@ -88,32 +86,30 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
                 fetch_list=[y],
             )
             scope = paddle.static.global_scope()
-            if paddle.framework.in_pir_mode():
-                params = main_program.global_block().all_parameters()
-                param_dict = {}
-                # save parameters
-                for v in params:
+            params = main_program.global_block().all_parameters()
+            param_dict = {}
+            # save parameters
+            for v in params:
+                name = v.get_defining_op().attrs()["parameter_name"]
+                param_dict.update({name: scope.var(name).get_tensor()})
+
+            path = os.path.join(self.temp_dir.name, "save_pickle")
+            paddle.static.io.save_pir(main_program, path)
+
+            # change the value of parameters
+            for v in params:
+                name = v.get_defining_op().attrs()["parameter_name"]
+                tensor = scope.var(name).get_tensor()
+                tensor.set(np.zeros_like(np.array(tensor)), place)
+
+            # load parameters
+            paddle.static.io.load_pir(main_program, path)
+            for v in params:
+                if v.get_defining_op().name() == "builtin.parameter":
                     name = v.get_defining_op().attrs()["parameter_name"]
-                    param_dict.update({name: scope.var(name).get_tensor()})
+                    t = scope.find_var(name).get_tensor()
+                    np.testing.assert_array_equal(t, param_dict[name])
 
-                path = os.path.join(self.temp_dir.name, "save_pickle")
-                paddle.static.io.save_pir(main_program, path)
-
-                # change the value of parameters
-                for v in params:
-                    name = v.get_defining_op().attrs()["parameter_name"]
-                    tensor = scope.var(name).get_tensor()
-                    tensor.set(np.zeros_like(np.array(tensor)), place)
-
-                # load parameters
-                paddle.static.io.load_pir(main_program, path)
-                for v in params:
-                    if v.get_defining_op().name() == "builtin.parameter":
-                        name = v.get_defining_op().attrs()["parameter_name"]
-                        t = scope.find_var(name).get_tensor()
-                        np.testing.assert_array_equal(t, param_dict[name])
-
-    @test_with_pir_api
     def test_params2(self):
         paddle.enable_static()
         prog = paddle.static.Program()
@@ -131,62 +127,58 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
             exe.run(paddle.static.default_startup_program())
             fake_inputs = np.random.randn(2, IMAGE_SIZE).astype('float32')
             exe.run(prog, feed={'static_x': fake_inputs}, fetch_list=[loss])
-            if paddle.framework.in_pir_mode():
-                param_dict, opt_dict = self.get_params(prog)
-                # test save_func and load_func
-                save_dir = os.path.join(self.temp_dir.name, "save_params")
-                for k, v in param_dict.items():
-                    path = os.path.join(save_dir, k, '.pdparams')
 
-                    paddle.base.core.save_func(v, k, path, True, False)
-                    tensor = param_dict[k]
-                    tensor.set(np.zeros_like(np.array(tensor)), place)
-                    paddle.base.core.load_func(path, -1, [], False, tensor)
-                    np.testing.assert_array_equal(tensor, v)
+            param_dict, opt_dict = self.get_params(prog)
+            # test save_func and load_func
+            save_dir = os.path.join(self.temp_dir.name, "save_params")
+            for k, v in param_dict.items():
+                path = os.path.join(save_dir, k, '.pdparams')
 
-                # test save_combine_func and load_combine_func
-                save_dir = os.path.join(
-                    self.temp_dir.name, "save_combine_params"
-                )
-                path = os.path.join(save_dir, 'demo.pdiparams')
-                param_vec = list(param_dict.values())
-                paddle.base.core.save_combine_func(
-                    param_vec, list(param_dict.keys()), path, True, False, False
-                )
-                param_new = []
-                for tensor in param_vec:
-                    tensor.set(np.zeros_like(np.array(tensor)), place)
-                    param_new.append(tensor)
-                paddle.base.core.load_combine_func(
-                    path, list(param_dict.keys()), param_new, False
-                )
-                np.testing.assert_equal(param_new, param_vec)
+                paddle.base.core.save_func(v, k, path, True, False)
+                tensor = param_dict[k]
+                tensor.set(np.zeros_like(np.array(tensor)), place)
+                paddle.base.core.load_func(path, -1, [], False, tensor)
+                np.testing.assert_array_equal(tensor, v)
 
-                # test save_vars
-                path_prefix = os.path.join(save_dir, 'new')
-                params_path = path_prefix + ".pdiparams"
-                if os.path.isdir(params_path):
-                    raise ValueError(
-                        f"'{params_path}' is an existing directory."
-                    )
+            # test save_combine_func and load_combine_func
+            save_dir = os.path.join(self.temp_dir.name, "save_combine_params")
+            path = os.path.join(save_dir, 'demo.pdiparams')
+            param_vec = list(param_dict.values())
+            paddle.base.core.save_combine_func(
+                param_vec, list(param_dict.keys()), path, True, False, False
+            )
+            param_new = []
+            for tensor in param_vec:
+                tensor.set(np.zeros_like(np.array(tensor)), place)
+                param_new.append(tensor)
+            paddle.base.core.load_combine_func(
+                path, list(param_dict.keys()), param_new, False
+            )
+            np.testing.assert_equal(param_new, param_vec)
 
-                save_dirname = os.path.dirname(params_path)
-                params_filename = os.path.basename(params_path)
-                paddle.static.io.save_vars_pir(
-                    exe,
-                    dirname=save_dirname,
-                    main_program=prog,
-                    filename=params_filename,
-                )
-                # test load_vars
-                load_dirname = os.path.dirname(params_path)
-                load_filename = os.path.basename(params_path)
-                paddle.static.io.load_vars_pir(
-                    exe,
-                    dirname=load_dirname,
-                    main_program=prog,
-                    filename=load_filename,
-                )
+            # test save_vars
+            path_prefix = os.path.join(save_dir, 'new')
+            params_path = path_prefix + ".pdiparams"
+            if os.path.isdir(params_path):
+                raise ValueError(f"'{params_path}' is an existing directory.")
+
+            save_dirname = os.path.dirname(params_path)
+            params_filename = os.path.basename(params_path)
+            paddle.static.io.save_vars_pir(
+                exe,
+                dirname=save_dirname,
+                main_program=prog,
+                filename=params_filename,
+            )
+            # test load_vars
+            load_dirname = os.path.dirname(params_path)
+            load_filename = os.path.basename(params_path)
+            paddle.static.io.load_vars_pir(
+                exe,
+                dirname=load_dirname,
+                main_program=prog,
+                filename=load_filename,
+            )
 
 
 if __name__ == '__main__':
