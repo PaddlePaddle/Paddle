@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
-#include "paddle/fluid/pir/serialize_deserialize/save_load_parameters.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/save_load_parameters.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/utils/pybind.h"
