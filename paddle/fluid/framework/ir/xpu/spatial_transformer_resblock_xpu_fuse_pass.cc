@@ -437,18 +437,12 @@ int SpatialTransformerResBlockXPUFusePass::FuseSpatialTransformerResBlock(
     gn_groups.emplace_back(std::move(gn_silu_1_groups));
 
     // conv2d_0
-    float conv2d_0_act_param =
-        PADDLE_GET_CONST(float, conv2d_0->Op()->GetAttr("act_param"));
-    int conv2d_0_act_type =
-        PADDLE_GET_CONST(int, conv2d_0->Op()->GetAttr("act_type"));
     auto conv2d_0_dilations = PADDLE_GET_CONST(
         std::vector<int>, conv2d_0->Op()->GetAttr("dilations"));
     dilations.emplace_back(std::move(conv2d_0_dilations));
     int conv2d_0_groups =
         PADDLE_GET_CONST(int, conv2d_0->Op()->GetAttr("groups"));
     groups.emplace_back(std::move(conv2d_0_groups));
-    int conv2d_0_out_dtype =
-        PADDLE_GET_CONST(int, conv2d_0->Op()->GetAttr("out_dtype"));
     auto conv2d_0_paddings =
         PADDLE_GET_CONST(std::vector<int>, conv2d_0->Op()->GetAttr("paddings"));
     paddings.emplace_back(std::move(conv2d_0_paddings));
@@ -459,18 +453,12 @@ int SpatialTransformerResBlockXPUFusePass::FuseSpatialTransformerResBlock(
     strides.emplace_back(std::move(conv2d_0_strides));
 
     // conv2d_1
-    float conv2d_1_act_param =
-        PADDLE_GET_CONST(float, conv2d_1->Op()->GetAttr("act_param"));
-    int conv2d_1_act_type =
-        PADDLE_GET_CONST(int, conv2d_1->Op()->GetAttr("act_type"));
     auto conv2d_1_dilations = PADDLE_GET_CONST(
         std::vector<int>, conv2d_1->Op()->GetAttr("dilations"));
     dilations.emplace_back(std::move(conv2d_1_dilations));
     int conv2d_1_groups =
         PADDLE_GET_CONST(int, conv2d_1->Op()->GetAttr("groups"));
     groups.emplace_back(std::move(conv2d_1_groups));
-    int conv2d_1_out_dtype =
-        PADDLE_GET_CONST(int, conv2d_1->Op()->GetAttr("out_dtype"));
     auto conv2d_1_paddings =
         PADDLE_GET_CONST(std::vector<int>, conv2d_1->Op()->GetAttr("paddings"));
     paddings.emplace_back(std::move(conv2d_1_paddings));
@@ -488,23 +476,14 @@ int SpatialTransformerResBlockXPUFusePass::FuseSpatialTransformerResBlock(
                                                    conv2d_1_filter_max->Name()};
 
     // conv2d_2
-    float conv2d_2_act_param = 0.f;
-    int conv2d_2_act_type = 0;
-    int conv2d_2_out_dtype = 0;
     std::string conv2d_2_padding_algorithm;
     if (conv_fix) {
-      conv2d_2_act_param =
-          PADDLE_GET_CONST(float, conv2d_2->Op()->GetAttr("act_param"));
-      conv2d_2_act_type =
-          PADDLE_GET_CONST(int, conv2d_2->Op()->GetAttr("act_type"));
       auto conv2d_2_dilations = PADDLE_GET_CONST(
           std::vector<int>, conv2d_2->Op()->GetAttr("dilations"));
       dilations.emplace_back(std::move(conv2d_2_dilations));
       int conv2d_2_groups =
           PADDLE_GET_CONST(int, conv2d_2->Op()->GetAttr("groups"));
       groups.emplace_back(std::move(conv2d_2_groups));
-      conv2d_2_out_dtype =
-          PADDLE_GET_CONST(int, conv2d_2->Op()->GetAttr("out_dtype"));
       auto conv2d_2_paddings = PADDLE_GET_CONST(
           std::vector<int>, conv2d_2->Op()->GetAttr("paddings"));
       paddings.emplace_back(std::move(conv2d_2_paddings));
