@@ -208,8 +208,7 @@ Tensor pow_decomp(const Tensor& x, const paddle::Scalar& y) {
 
 template <typename T>
 Tensor reciprocal_decomp(const Tensor& x) {
-  Tensor index = full<T>(empty_shape, -1.0, x.dtype());
-  return elementwise_pow<T>(x, index);
+  return full<T>(empty_shape, 1.0, x.dtype()) / x;
 }
 
 template <typename T>
