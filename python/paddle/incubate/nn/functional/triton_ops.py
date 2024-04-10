@@ -216,8 +216,15 @@ std::vector<int> problem_size = {m, n, k};
 }
 
 std::vector<std::vector<int64_t>> ${op_name}_InferShape(const std::vector<int64_t>& a_shape,
-                                                        const std::vector<int64_t>& b_shape) {
-    return {{a_shape[0], b_shape[0]}};
+                                                        const std::vector<int64_t>& b_shape,
+                                                        const std::vector<int64_t>& c_shape,
+                                                        const std::vector<int64_t>& d_shape,
+                                                        bool bool_trans_w) {
+    if (bool_trans_w) {
+        return {{a_shape[0], b_shape[0]}};
+    } else {
+        return {{a_shape[0], b_shape[1]}};
+    }
 }
 
 std::vector<paddle::DataType> ${op_name}_InferDtype(const paddle::DataType& A_dtype) {
