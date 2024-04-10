@@ -227,6 +227,7 @@ bool GatherOpInferSymbolicShape(
       shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
   const auto &index_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+  VLOG(-1) << "Gather op infer symbolic shape";
 
   const auto &numel = [&] {
     symbol::DimExpr numel{1};
@@ -249,8 +250,14 @@ bool GatherOpInferSymbolicShape(
           ? index_shape_or_data.data().value()
           : index_shape_or_data.shape();
 
-  int axis =
-      static_cast<int>(axis_shape_or_data.data().value()[0].Get<int64_t>());
+  int axis = 0;
+  if (op->attributes().count("index")) {
+    axis = GetBoolAttr(op, "index");
+  } else {
+    axis =
+        static_cast<int>(axis_shape_or_data.data().value()[0].Get<int64_t>());
+    VLOG(-1) << "gather infer shape: " << axis;
+  }
   if (axis < 0) axis += input_sym_shape.size();
 
   const auto &out_sym_shape = [&] {

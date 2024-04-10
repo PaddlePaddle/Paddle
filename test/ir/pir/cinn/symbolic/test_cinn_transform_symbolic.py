@@ -26,24 +26,15 @@ sys.path.append(dirname(dirname(__file__)))
 import utils
 
 
-class CastLayer(nn.Layer):
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, x):
-        x = paddle.cast(x, dtype="float16")
-        return paddle.cast(x, dtype="float32")
-
-
 class GatherLayer(nn.Layer):
     def __init__(self):
         super().__init__()
 
     def forward(self, x, index):
-        return paddle.gather(x, index)
+        return paddle.gather(x, index, axis=1)
 
 
-class TestCast(unittest.TestCase):
+class TestGatherSymbolic(unittest.TestCase):
     def setUp(self):
         paddle.seed(2022)
         self.prepare_data()

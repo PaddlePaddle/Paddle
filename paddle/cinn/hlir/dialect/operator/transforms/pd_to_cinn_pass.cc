@@ -886,6 +886,53 @@ class UnsqueezeOpPattern
   }
 };
 
+class GatherOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::GatherOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::GatherOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::GatherOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    VLOG(-1) << "xx ";
+    auto gather_op = op->dyn_cast<paddle::dialect::GatherOp>();
+    auto x = op.operand_source(0);
+    auto index = op->operand_source(1);
+    int axis = 0;
+    VLOG(-1) << "xx ";
+    pir::ShapeConstraintIRAnalysis &shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+    VLOG(-1) << "xx ";
+    const auto &axis_shape_or_data =
+        shape_analysis.GetShapeOrDataForValue(op->operand_source(2));
+    VLOG(-1) << "xx ";
+    if (gather_op->attributes().count("index")) {
+      VLOG(-1) << "xx ";
+      axis =
+          gather_op.attribute("index").dyn_cast<pir::Int32Attribute>().data();
+      VLOG(-1) << "xx ";
+    } else {
+      VLOG(-1) << "xx ";
+      axis_shape_or_data.data();
+      VLOG(-1) << "xx ";
+      axis_shape_or_data.data().value();
+      VLOG(-1) << "xx ";
+      axis_shape_or_data.data().value()[0];
+      VLOG(-1) << "xx ";
+      axis =
+          static_cast<int>(axis_shape_or_data.data().value()[0].Get<int64_t>());
+      VLOG(-1) << "xx ";
+    }
+    VLOG(-1) << "xx ";
+    auto out =
+        rewriter.Build<cinn::dialect::GatherOp>(x, index, axis)->result(0);
+    rewriter.ReplaceAllUsesWith(op->result(0), out);
+    rewriter.EraseOp(op);
+
+    // TODO(6clc): use 528 row to generate axis
+    // if (axis < 0) axis += input_sym_shape.size();
+  }
+};
+
 PdOpToCinnOpPass::PdOpToCinnOpPass()
     : pir::PatternRewritePass("pd_to_cinn_pass", 1) {}
 
@@ -911,6 +958,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<RefreshCombineOpPattern>(context);
   ps.Add<SqueezeOpPattern>(context);
   ps.Add<UnsqueezeOpPattern>(context);
+  ps.Add<GatherOpPattern>(context);
 
   return ps;
 }
