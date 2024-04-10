@@ -1282,7 +1282,7 @@
 - op : full_with_tensor
   int_array:
     shape :
-      data_type : int
+      data_type : int64_t
       support_tensor : true
 
 - op : fused_adam_(fused_adam)
