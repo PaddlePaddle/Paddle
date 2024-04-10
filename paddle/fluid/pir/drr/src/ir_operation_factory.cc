@@ -14,6 +14,7 @@
 
 #include <any>
 
+#include "paddle/common/enforce.h"
 #include "paddle/common/layout.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -362,11 +363,11 @@ std::vector<pir::Value> GetIrValuesByDrrTensors(
 void BindIrOutputsWithDrrOutputs(const std::vector<const Tensor*>& tensors,
                                  pir::Operation* op,
                                  MatchContextImpl* match_ctx) {
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_LE(
       tensors.size(),
       op->num_results(),
       phi::errors::InvalidArgument(
-          "The size of Drr outputs should equal to the size of Ir outputs"));
+          "The size of Drr outputs should less equal the size of Ir outputs"));
   for (size_t i = 0; i < tensors.size(); ++i) {
     match_ctx->BindIrValue(tensors[i]->name(), op->result(i));
   }
