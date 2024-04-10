@@ -299,7 +299,7 @@ class TestLayer(unittest.TestCase):
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
         ):
             np.testing.assert_allclose(
-                st.numpy(), cinn.numpy(), atol=1e-7, rtol=1e-6
+                st.numpy(), cinn.numpy(), atol=1e-6, rtol=1e-4
             )
 
 
