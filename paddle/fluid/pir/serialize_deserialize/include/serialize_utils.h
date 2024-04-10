@@ -53,6 +53,7 @@ Json serializeAttrToJson(const T& attr) {
   }
 
 SERIALIZE_ATTR_TO_JSON(pir::StrAttribute, attr.AsString());
+
 SERIALIZE_ATTR_TO_JSON(pir::Complex64Attribute,
                        std::vector({attr.data().real, attr.data().imag}));
 SERIALIZE_ATTR_TO_JSON(pir::Complex128Attribute,

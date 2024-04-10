@@ -39,6 +39,21 @@ class TestA(unittest.TestCase):
                 main_program, file_path, pir_version, True, True
             )
 
+            recover_program = paddle.static.Program()
+            base.core.deserialize_pir_program(
+                file_path, recover_program, pir_version
+            )
+
+            self.assertEqual(
+                len(main_program.global_block().ops),
+                len(recover_program.global_block().ops),
+            )
+            for i in range(len(main_program.global_block().ops)):
+                self.assertEqual(
+                    main_program.global_block().ops[i].name(),
+                    recover_program.global_block().ops[i].name(),
+                )
+
     def test_builtin_save(self):
         with paddle.pir_utils.IrGuard():
             main_program = paddle.static.Program()
@@ -54,6 +69,21 @@ class TestA(unittest.TestCase):
             base.core.serialize_pir_program(
                 main_program, file_path, pir_version, True, True
             )
+
+            recover_program = paddle.static.Program()
+            base.core.deserialize_pir_program(
+                file_path, recover_program, pir_version
+            )
+
+            self.assertEqual(
+                len(main_program.global_block().ops),
+                len(recover_program.global_block().ops),
+            )
+            for i in range(len(main_program.global_block().ops)):
+                self.assertEqual(
+                    main_program.global_block().ops[i].name(),
+                    recover_program.global_block().ops[i].name(),
+                )
 
 
 if __name__ == '__main__':
