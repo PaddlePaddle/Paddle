@@ -3731,10 +3731,22 @@ class TestReciprocal_Complex64(TestReciprocal):
     def init_dtype(self):
         self.dtype = np.complex64
 
+    def test_check_output(self):
+        self.check_output(
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+        )
+
 
 class TestReciprocal_Complex128(TestReciprocal):
     def init_dtype(self):
         self.dtype = np.complex128
+
+    def test_check_output(self):
+        self.check_output(
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+        )
 
 
 class TestReciprocal_ZeroDim(TestReciprocal):
