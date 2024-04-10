@@ -62,9 +62,7 @@ class _Conv3D(Layer):
         valid_format = {'NDHWC'}
         if data_format not in valid_format:
             raise ValueError(
-                "data_format must be one of {}, but got data_format='{}'".format(
-                    valid_format, data_format
-                )
+                f"data_format must be one of {valid_format}, but got data_format='{data_format}'"
             )
 
         channel_last = data_format == "NDHWC"
@@ -168,9 +166,7 @@ class _Conv2D(Layer):
         valid_format = {'NHWC'}
         if data_format not in valid_format:
             raise ValueError(
-                "data_format must be one of {}, but got data_format='{}'".format(
-                    valid_format, data_format
-                )
+                f"data_format must be one of {valid_format}, but got data_format='{data_format}'"
             )
 
         channel_last = data_format == "NHWC"

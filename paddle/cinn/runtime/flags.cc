@@ -75,7 +75,7 @@ PD_DEFINE_bool(group_schedule_tiling_first,
                "Whether to enable new group scheduler tiling first strategy.");
 
 PD_DEFINE_bool(cinn_new_cluster_op_method,
-               BoolFromEnv("FLAGS_cinn_new_cluster_op_method", false),
+               BoolFromEnv("FLAGS_cinn_new_cluster_op_method", true),
                "Whether to enable newly developed clustering method of group "
                "op for cinn.");
 
@@ -142,7 +142,7 @@ PD_DEFINE_bool(cinn_use_dense_merge_pass,
 
 PD_DEFINE_bool(
     nvrtc_compile_to_cubin,
-    BoolFromEnv("FLAGS_nvrtc_compile_to_cubin", false),
+    BoolFromEnv("FLAGS_nvrtc_compile_to_cubin", true),
     "Whether nvrtc compile cuda source into cubin instead of ptx (only "
     "works after cuda-11.1).");
 

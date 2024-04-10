@@ -16,7 +16,7 @@ include(python_module)
 
 check_py_version(${PY_VERSION})
 
-# Find Python with mnimum PY_VERSION specified or will raise error!
+# Find Python with minimum PY_VERSION specified or will raise error!
 find_package(PythonInterp ${PY_VERSION} REQUIRED)
 find_package(PythonLibs ${PY_VERSION} REQUIRED)
 

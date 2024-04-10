@@ -151,9 +151,9 @@ def grad(outputs, inputs, grad_outputs=None):
     """
     if not utils.prim_enabled():
         grad_inputs = backward.gradients(outputs, inputs, grad_outputs)
-        # backward.gradients returns a list though the inputs is a signle Tensor.
+        # backward.gradients returns a list though the inputs is a single Tensor.
         # The follow code snippet fixes the problem by return the first element
-        # of grad_inputs when the inputs is a signle Tensor.
+        # of grad_inputs when the inputs is a single Tensor.
         if (
             isinstance(inputs, framework.Variable)
             and isinstance(grad_inputs, typing.Sequence)

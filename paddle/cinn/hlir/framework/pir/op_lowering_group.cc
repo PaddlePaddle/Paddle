@@ -19,6 +19,17 @@ namespace hlir {
 namespace framework {
 namespace pir {
 
+::pir::Program* OpLoweringGroup::GetParentProgram() const {
+  PADDLE_ENFORCE_GT(ops_.size(),
+                    0,
+                    ::common::errors::PreconditionNotMet(
+                        "Require at least one op in the group."));
+  PADDLE_ENFORCE_NOT_NULL(
+      ops_[0],
+      ::common::errors::Unavailable("Found group.ops_[0] is nullptr."));
+  return ops_[0]->GetParentProgram();
+}
+
 std::shared_ptr<OpLoweringGroup> OpLoweringGroup::Clone(
     ::pir::Block* target_block, ::pir::IrMapping* ir_mapping) const {
   std::vector<::pir::Operation*> new_ops;
@@ -55,10 +66,29 @@ std::shared_ptr<OpLoweringGroup> OpLoweringGroup::Clone(
 }
 
 std::ostream& operator<<(std::ostream& os, const OpLoweringGroup& group) {
+  auto PrintSymbolDims = [&](const ::pir::Operation& op) {
+    if (group.value_to_shape_or_data_exprs_.empty()) return;
+    os << " {";
+    for (uint32_t i = 0; i < op.num_operands(); ++i) {
+      if (i > 0) os << ",";
+      if (group.HasShapeOrDataExprs(op.operand_source(i))) {
+        os << "<" << group.GetShapeOrDataExprs(op.operand_source(i)) << ">";
+      }
+    }
+    os << "} -> {";
+    for (uint32_t i = 0; i < op.num_results(); ++i) {
+      if (i > 0) os << ",";
+      if (group.HasShapeOrDataExprs(op.result(i))) {
+        os << "<" << group.GetShapeOrDataExprs(op.result(i)) << ">";
+      }
+    }
+    os << "}";
+  };
   ::pir::IrPrinter printer(os);
   os << "Group " << group.group_id() << " :\n";
   for (auto* op : group.ops()) {
     printer.PrintOperation(op);
+    PrintSymbolDims(*op);
     os << "\n";
   }
   return os;

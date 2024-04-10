@@ -323,9 +323,7 @@ def check_models(models):
     for model in models:
         if not isinstance(model, paddle.nn.Layer):
             raise RuntimeError(
-                "Current train mode is pure fp16, models should be paddle.nn.Layer, but receive {}.".format(
-                    type(model)
-                )
+                f"Current train mode is pure fp16, models should be paddle.nn.Layer, but receive {type(model)}."
             )
         if isinstance(model, paddle.DataParallel):
             raise RuntimeError(
@@ -353,9 +351,7 @@ def check_optimizers(optimizers):
     for optimizer in optimizers:
         if not _is_valid_optimizer(optimizer):
             raise RuntimeError(
-                "Current train mode is pure fp16, optimizers should be paddle.optimizer.Optimizer or DygraphShardingOptimizer, but receive {}.".format(
-                    type(optimizer)
-                )
+                f"Current train mode is pure fp16, optimizers should be paddle.optimizer.Optimizer or DygraphShardingOptimizer, but receive {type(optimizer)}."
             )
 
 
