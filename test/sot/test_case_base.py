@@ -106,42 +106,16 @@ class TestCaseBase(unittest.TestCase):
 
 
 # Some decorators for PIR test
-@contextlib.contextmanager
-def pir_dygraph_guard():
-    in_dygraph_mode = paddle.in_dynamic_mode()
-    with paddle.pir_utils.IrGuard():
-        if in_dygraph_mode:
-            paddle.disable_static()
-        yield
-
-
-@contextlib.contextmanager
-def legacy_ir_dygraph_guard():
-    in_dygraph_mode = paddle.in_dynamic_mode()
-    with paddle.pir_utils.OldIrGuard():
-        if in_dygraph_mode:
-            paddle.disable_static()
-        yield
-
-
 def to_pir_test(fn):
     # NOTE(SigureMo): This function should sync with test/dygraph_to_static/dygraph_to_static_utils.py
     @wraps(fn)
     def impl(*args, **kwargs):
-        with pir_dygraph_guard():
+        in_dygraph_mode = paddle.in_dynamic_mode()
+        with paddle.pir_utils.IrGuard():
+            if in_dygraph_mode:
+                paddle.disable_static()
             ir_outs = fn(*args, **kwargs)
         return ir_outs
-
-    return impl
-
-
-def to_pt_test(fn):
-    # NOTE(SigureMo): This function should sync with test/dygraph_to_static/dygraph_to_static_utils.py
-    @wraps(fn)
-    def impl(*args, **kwargs):
-        with legacy_ir_dygraph_guard():
-            pt_outs = fn(*args, **kwargs)
-        return pt_outs
 
     return impl
 
@@ -160,12 +134,12 @@ def run_in_both_default_and_pir(fn):
     @wraps(fn)
     def impl(*args, **kwargs):
         OpcodeExecutorCache().clear()
+        default_fn = fn
         pir_fn = to_pir_test(fn)
-        pt_fn = to_pt_test(fn)
-        pt_outs = pt_fn(*args, **kwargs)
+        default_outs = default_fn(*args, **kwargs)
         OpcodeExecutorCache().clear()
         # The out of test case should be None, which is not used.
         _pir_outs = pir_fn(*args, **kwargs)
-        return pt_outs
+        return default_outs
 
     return impl
