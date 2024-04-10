@@ -99,8 +99,8 @@ function make_ubuntu20_cu12_dockerfile(){
 }
 
 
-function make_ubuntu20_cu12_dockerfile(){
-  dockerfile_name="Dockerfile.cuda123_cudnn9_gcc122_ubuntu20_coverage"
+function make_ubuntu20_cu123_dockerfile(){
+  dockerfile_name="Dockerfile.cuda123_cudnn9_gcc122_ubuntu20"
   sed "s#<baseimg>#nvidia/cuda:12.3.1-devel-ubuntu20.04#g" ./Dockerfile.ubuntu20 >${dockerfile_name}
   sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-12.3/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" ${dockerfile_name}
   sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
@@ -158,6 +158,7 @@ function main() {
   make_ce_framework_dockcerfile
   make_ubuntu20_cu12_dockerfile
   make_ubuntu20_cu112_dockerfile
+  make_ubuntu20_cu123_dockerfile
 }
 
 main "$@"
