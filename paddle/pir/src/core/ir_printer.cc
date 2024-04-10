@@ -356,7 +356,9 @@ void IrPrinter::PrintOpReturnType(Operation* op) {
 
 void IrPrinter::AddValueAlias(Value v, const std::string& alias) {
   const void* key = v.impl();
-  IR_ENFORCE(aliases_.find(key) == aliases_.end(), "Value already has alias");
+  PADDLE_ENFORCE_EQ(aliases_.find(key),
+                    aliases_.end(),
+                    phi::errors::InvalidArgument("Value already has alias"));
   aliases_[key] = alias;
 }
 

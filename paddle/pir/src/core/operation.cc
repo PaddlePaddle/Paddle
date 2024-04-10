@@ -131,7 +131,7 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
   if (op_info) {
     try {
       op_info.VerifySig(op);
-    } catch (const pir::IrNotMetException &e) {
+    } catch (const common::enforce::EnforceNotMet &e) {
       op->Destroy();
       throw e;
     }
@@ -297,14 +297,20 @@ std::vector<Value> Operation::operands_source() const {
 /// \brief op successor related public interfaces
 ///
 BlockOperand Operation::block_operand(uint32_t index) const {
-  IR_ENFORCE(index < num_successors_, "Invalid block_operand index");
+  PADDLE_ENFORCE_LT(
+      index,
+      num_successors_,
+      phi::errors::InvalidArgument("Invalid block_operand index"));
   return block_operands_ + index;
 }
 Block *Operation::successor(uint32_t index) const {
   return block_operand(index).source();
 }
 void Operation::set_successor(Block *block, unsigned index) {
-  IR_ENFORCE(index < num_operands_, "Invalid block_operand index");
+  PADDLE_ENFORCE_LT(
+      index,
+      num_operands_,
+      phi::errors::InvalidArgument("Invalid block_operand index"));
   (block_operands_ + index)->set_source(block);
 }
 
@@ -312,11 +318,15 @@ void Operation::set_successor(Block *block, unsigned index) {
 /// \brief region related public interfaces implementation
 ///
 Region &Operation::region(unsigned index) {
-  IR_ENFORCE(index < num_regions_, "invalid region index");
+  PADDLE_ENFORCE_LT(index,
+                    num_regions_,
+                    phi::errors::InvalidArgument("invalid region index"));
   return regions_[index];
 }
 const Region &Operation::region(unsigned index) const {
-  IR_ENFORCE(index < num_regions_, "invalid region index");
+  PADDLE_ENFORCE_LT(index,
+                    num_regions_,
+                    phi::errors::InvalidArgument("invalid region index"));
   return regions_[index];
 }
 
@@ -343,7 +353,8 @@ void Operation::SetParent(Block *parent, const Block::Iterator &position) {
 }
 
 void Operation::MoveTo(Block *block, Block::Iterator position) {
-  IR_ENFORCE(parent_, "Operation does not have parent");
+  PADDLE_ENFORCE_NOT_NULL(
+      parent_, phi::errors::InvalidArgument("Operation does not have parent"));
   Operation *op = parent_->Take(this);
   block->insert(position, op);
 }
@@ -367,8 +378,10 @@ bool Operation::use_empty() {
 }
 
 void Operation::ReplaceAllUsesWith(const std::vector<Value> &values) {
-  IR_ENFORCE(num_results_ == values.size(),
-             "the num of result should be the same.");
+  PADDLE_ENFORCE_EQ(
+      num_results_,
+      values.size(),
+      phi::errors::InvalidArgument("the num of result should be the same."));
   for (uint32_t i = 0; i < num_results_; ++i) {
     result(i).ReplaceAllUsesWith(values[i]);
   }

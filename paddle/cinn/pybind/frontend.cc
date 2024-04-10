@@ -937,7 +937,7 @@ void BindFrontend(pybind11::module *m) {
       .def("get_cinn_name",
            [](PaddleModelConvertor &self, const std::string &paddle_name) {
              CHECK(self.var_model_to_program_map().count(paddle_name))
-                 << "Cannot find variabel " << paddle_name
+                 << "Cannot find variable " << paddle_name
                  << " in CINN! Please check.";
              return self.var_model_to_program_map().at(paddle_name);
            });

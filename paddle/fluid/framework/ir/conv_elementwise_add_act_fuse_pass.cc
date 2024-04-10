@@ -15,6 +15,9 @@
 #include "paddle/fluid/framework/ir/conv_elementwise_add_act_fuse_pass.h"
 #include "paddle/fluid/framework/ir/cutlass_teller.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -215,7 +218,11 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
     auto new_op_proto =
         PrepareOpDesc(base_op_desc, bias_name, act_op_type, act_op_out, alpha);
     framework::OpDesc new_op_desc(new_op_proto, nullptr);
-    if (cutlass_can_fuse && cutlass_enable && is_fp16_precision) {
+    int sm = 0;
+#ifdef PADDLE_WITH_CUDA
+    sm = platform::GetGPUComputeCapability(platform::GetCurrentDeviceId());
+#endif
+    if (cutlass_can_fuse && cutlass_enable && (is_fp16_precision || sm >= 80)) {
       new_op_desc.SetAttr("use_cudnn", false);
       new_op_desc.Flush();
     }

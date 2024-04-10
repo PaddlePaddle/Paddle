@@ -4921,10 +4921,10 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
   }
 }
 
-void FullWithTensorInferMeta(const MetaTensor& shape,
+void FullWithTensorInferMeta(const IntArray& shape,
                              DataType dtype,
                              MetaTensor* out) {
-  out->set_dims(common::make_ddim(std::vector<int64_t>(shape.numel(), -1)));
+  out->set_dims(common::make_ddim(shape.GetData()));
   out->set_dtype(dtype);
 }
 
