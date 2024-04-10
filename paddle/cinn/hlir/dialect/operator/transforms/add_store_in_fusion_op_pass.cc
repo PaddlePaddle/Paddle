@@ -39,6 +39,7 @@ class AddYieldStoreInFusionOpPattern
         continue;
       }
 
+      rewriter.SetInsertionPointAfter(op->operand_source(i).defining_op());
       auto store_op = rewriter.Build<cinn::dialect::YieldStoreOp>(
           op->operand_source(i), op->operand_source(i).type());
       auto orignal_base = op->operand_source(i);

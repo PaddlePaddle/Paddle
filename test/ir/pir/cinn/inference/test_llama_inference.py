@@ -26,7 +26,7 @@ from paddle.static import InputSpec
 sys.path.append(dirname(dirname(__file__)))
 
 import utils
-from test_llama_forward import LlamaConfig, LlamaModel
+from llama_test_model import LlamaConfig, LlamaModel
 
 
 class LlamaInference(nn.Layer):

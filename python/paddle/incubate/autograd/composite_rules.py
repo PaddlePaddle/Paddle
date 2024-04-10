@@ -74,7 +74,7 @@ def composite_batchnorm(
 ):
     """
     define composite rule of op batch_norm
-    As the same with op kernel, the position of savedvariance indeed return inverse std.
+    As the same with op kernel, the position of saved variance indeed return inverse std.
     """
 
     is_amp = False
@@ -136,7 +136,7 @@ def composite_batchnorm(
     run_mean_ = assign(run_mean)
     run_var_ = assign(run_var)
 
-    # reserve_space is not needed in composite rule, but still ruturn None to keep same as phi op definition.
+    # reserve_space is not needed in composite rule, but still return None to keep same as phi op definition.
     reserve_space = None
     if not use_run_stat:
         return y, run_mean_, run_var_, batch_mean_, inv_std_, reserve_space

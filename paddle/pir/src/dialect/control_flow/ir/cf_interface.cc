@@ -18,14 +18,20 @@
 namespace pir {
 TuplePushOp ContainerOpInterface::tuple_push_op() {
   auto value = inlet();
-  IR_ENFORCE(value.HasOneUse(),
-             "The inlet value of container op can only be used once.");
+  PADDLE_ENFORCE_EQ(
+      value.HasOneUse(),
+      true,
+      phi::errors::InvalidArgument(
+          "The inlet value of container op can only be used once."));
   return value.first_use().owner()->dyn_cast<TuplePushOp>();
 }
 TuplePopOp ContainerOpInterface::tuple_pop_op() {
   auto value = outlet();
-  IR_ENFORCE(value.HasOneUse(),
-             "The outlet value of container op can only be used once.");
+  PADDLE_ENFORCE_EQ(
+      value.HasOneUse(),
+      true,
+      phi::errors::InvalidArgument(
+          "The outlet value of container op can only be used once."));
   return value.first_use().owner()->dyn_cast<TuplePopOp>();
 }
 
