@@ -32,32 +32,33 @@ BackendAPI* BackendAPI::get_backend(common::Target::Language target_language) {
     case common::Target::Language::cuda:
       temp_backend_api =
           GlobalSymbolRegistry::Global().Lookup("backend_api.cuda");
-      PADDLE_ENFORCE_NE(temp_backend_api,
-                        nullptr,
-                        cinn::common::errors::Fatal(
-                            "global symbol (backend_api.cuda) not found!"));
+      PADDLE_ENFORCE_NOT_NULL(
+          temp_backend_api,
+          cinn::common::errors::Fatal(
+              "global symbol (backend_api.cuda) not found!"));
       break;
     case common::Target::Language::sycl:
       temp_backend_api =
           GlobalSymbolRegistry::Global().Lookup("backend_api.sycl");
-      PADDLE_ENFORCE_NE(temp_backend_api,
-                        nullptr,
-                        cinn::common::errors::Fatal(
-                            "global symbol (backend_api.sycl) not found!"));
+      PADDLE_ENFORCE_NOT_NULL(
+          temp_backend_api,
+          cinn::common::errors::Fatal(
+              "global symbol (backend_api.sycl) not found!"));
       break;
     case common::Target::Language::hip:
       temp_backend_api =
           GlobalSymbolRegistry::Global().Lookup("backend_api.hip");
-      PADDLE_ENFORCE_NE(temp_backend_api,
-                        nullptr,
-                        cinn::common::errors::Fatal(
-                            "global symbol (backend_api.hip) not found!"));
+      PADDLE_ENFORCE_NOT_NULL(
+          temp_backend_api,
+          cinn::common::errors::Fatal(
+              "global symbol (backend_api.hip) not found!"));
       break;
     case common::Target::Language::bangc:
-      LOG(FATAL) << "Target(" << target_language
-                 << ") is not support get_backend now.";
+      PADDLE_THROW(cinn::common::errors::Fatal(
+          "Target(" << target_language << ") is not support get_backend now."));
     default:
-      LOG(FATAL) << "Target(" << target_language << ") is not supported now.";
+      PADDLE_THROW(cinn::common::errors::Fatal(
+          "Target(" << target_language << ") is not supported now."));
   }
   return reinterpret_cast<BackendAPI*>(temp_backend_api);
 }
