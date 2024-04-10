@@ -128,6 +128,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/pir.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
+#include "paddle/fluid/pybind/python_callable_registry.h"
 #include "paddle/fluid/pybind/xpu_streams_py.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
@@ -204,6 +205,8 @@ limitations under the License. */
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
+#include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
 #include "paddle/fluid/pir/dialect/operator/trait/custom_vjp.h"
 #include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
 #include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
@@ -216,6 +219,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 #include "pybind11/stl.h"
 
 COMMON_DECLARE_bool(use_mkldnn);
@@ -713,59 +718,151 @@ static int GetNCCLVersion() {
 }
 #endif
 
+// NOTE: Use to manage the context of pylayer op constructing block
+class PyLayerBlockContextManager {
+ public:
+  explicit PyLayerBlockContextManager(pir::Block *block) {
+    dialect::ApiBuilder::Instance().PushInsertionPoint();
+    dialect::ApiBuilder::Instance().SetInsertionPointToBlockEnd(block);
+  }
+
+  ~PyLayerBlockContextManager() {
+    dialect::ApiBuilder::Instance().LoadInsertionPoint();
+  }
+
+  PyLayerBlockContextManager(const PyLayerBlockContextManager &) = delete;
+  PyLayerBlockContextManager &operator=(const PyLayerBlockContextManager &) =
+      delete;
+
+ private:
+  // disable default constructor
+  PyLayerBlockContextManager() = default;
+};
+
+static std::vector<std::vector<pir::Value>> GenerateBackwardBlockForPyLayerOp(
+    pir::Operation *op,
+    const std::vector<std::vector<pir::Value>> &inputs_,
+    const std::vector<std::vector<pir::Value>> &outputs,
+    const std::vector<std::vector<pir::Value>> &out_grads,
+    const std::vector<std::vector<bool>> &stop_gradients) {
+  // 1. construct pylayer grad op
+  VLOG(6) << "Prepare Outputs for pylayer_grad";
+  std::vector<pir::Type> output_types;
+  for (size_t i = 0; i < inputs_.size(); ++i) {
+    if (!stop_gradients[i][0]) {
+      output_types.push_back(inputs_[i][0].type());
+    }
+  }
+
+  VLOG(6) << "Prepare Inputs for pylayer_grad";
+  std::vector<pir::Value> output_grads;
+  for (size_t i = 0; i < out_grads.size(); ++i) {
+    output_grads.push_back(out_grads[i][0]);
+  }
+  auto out_grads_combine_op =
+      dialect::ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(
+          output_grads);
+
+  auto pylayer_grad =
+      dialect::ApiBuilder::Instance()
+          .GetBuilder()
+          ->Build<paddle::dialect::PyLayerOp>(out_grads_combine_op.out(),
+                                              std::move(output_types));
+
+  VLOG(6) << "Construct pylayer_grad finished";
+
+  // 2. Get registered backward function from
+  // `PythonCallableRegistrar::python_callable_registry_`. auto *py_callable =
+  // GetPythonCallableObject(op->id());
+  uint64_t unique_id = op->id();
+  VLOG(6) << "pylayer op unique_id is " << unique_id;
+  auto py_callable =
+      paddle::pybind::PythonCallableRegistrar::GetInstance().Get(unique_id);
+  std::vector<pir::Value> pylayer_grad_inputs(output_types.size());
+  {
+    // enter block of pylayer_grad
+    PyLayerBlockContextManager(&(pylayer_grad.forward_block()));
+
+    VLOG(6) << "call pylayer op backward function";
+    PirCallPythonFunc(py_callable, output_grads, &pylayer_grad_inputs);
+
+    // append yield op for outputs value
+    dialect::ApiBuilder::Instance().GetBuilder()->Build<pir::YieldOp>(
+        pylayer_grad_inputs);
+    // exit block of pylayer_grad
+  }
+  VLOG(6) << "Construct pylayer backward block finished";
+
+  std::vector<std::vector<pir::Value>> res{inputs_.size()};
+  for (size_t i = 0; i < output_types.size(); ++i) {
+    res[i].resize(1);
+    res[i][0] = pylayer_grad->result(i);
+  }
+  return res;
+}
+
 void BindVjp(pybind11::module *m) {
-  m->def(
-      "call_vjp",
-      [](pir::Operation &fwd_op,
-         const std::vector<std::vector<pir::Value>> &inputs,
-         const std::vector<std::vector<pir::Value>> &outputs,
-         const std::vector<std::vector<pir::Value>> &out_grads,
-         const std::vector<std::vector<bool>> &stop_gradients) {
-        py::list res;
-        paddle::dialect::VjpInterface vjp_interface =
-            fwd_op.dyn_cast<paddle::dialect::VjpInterface>();
-        PADDLE_ENFORCE(
-            vjp_interface,
-            phi::errors::InvalidArgument(
-                "The vjp function is not registered in %s op ", fwd_op.name()));
-        std::vector<std::vector<pir::Value>> vjp_res = vjp_interface.Vjp(
-            &fwd_op, inputs, outputs, out_grads, stop_gradients);
-        PADDLE_ENFORCE_EQ(
-            stop_gradients.size(),
-            vjp_res.size(),
-            phi::errors::InvalidArgument(
-                "The size of stop_gradients should be the same as vjp_res "
-                "size."
-                "But the size of stop_gradients: %d, vjp_res size: %d",
-                stop_gradients.size(),
-                vjp_res.size()));
-        for (size_t i = 0; i < vjp_res.size(); ++i) {
-          PADDLE_ENFORCE_EQ(stop_gradients[i].size(),
-                            vjp_res[i].size(),
+  m->def("call_vjp",
+         [](pir::Operation &fwd_op,
+            const std::vector<std::vector<pir::Value>> &inputs,
+            const std::vector<std::vector<pir::Value>> &outputs,
+            const std::vector<std::vector<pir::Value>> &out_grads,
+            const std::vector<std::vector<bool>> &stop_gradients) {
+           py::list res;
+           std::vector<std::vector<pir::Value>> vjp_res;
+           if (fwd_op.isa<paddle::dialect::PyLayerOp>()) {
+             // NOTE(MarioLulab): In PIR mode, even though the `PyLayer` op does
+             // not have a vjp interface, we still need to generate the backward
+             // block based on its registered backward function.
+             vjp_res = GenerateBackwardBlockForPyLayerOp(
+                 &fwd_op, inputs, outputs, out_grads, stop_gradients);
+           } else {
+             paddle::dialect::VjpInterface vjp_interface =
+                 fwd_op.dyn_cast<paddle::dialect::VjpInterface>();
+             PADDLE_ENFORCE(vjp_interface,
                             phi::errors::InvalidArgument(
-                                "The size of stop_gradients[%d] should be the "
-                                "same as vjp_res[%d] "
-                                "size."
-                                "But the size of stop_gradients[%d]: %d, "
-                                "vjp_res[%d] size: %d",
-                                i,
-                                i,
-                                i,
-                                stop_gradients[i].size(),
-                                i,
-                                vjp_res[i].size()));
-          py::list sub_res;
-          for (size_t j = 0; j < vjp_res[i].size(); ++j) {
-            if (!vjp_res[i][j]) {
-              sub_res.append(nullptr);
-            } else {
-              sub_res.append(vjp_res[i][j]);
-            }
-          }
-          res.append(sub_res);
-        }
-        return res;
-      });
+                                "The vjp function is not registered in %s op ",
+                                fwd_op.name()));
+             vjp_res = vjp_interface.Vjp(
+                 &fwd_op, inputs, outputs, out_grads, stop_gradients);
+           }
+           PADDLE_ENFORCE_EQ(
+               stop_gradients.size(),
+               vjp_res.size(),
+               phi::errors::InvalidArgument(
+                   "The size of stop_gradients should be the same as vjp_res "
+                   "size."
+                   "But the size of stop_gradients: %d, vjp_res size: %d",
+                   stop_gradients.size(),
+                   vjp_res.size()));
+           for (size_t i = 0; i < vjp_res.size(); ++i) {
+             PADDLE_ENFORCE_EQ(
+                 stop_gradients[i].size(),
+                 vjp_res[i].size(),
+                 phi::errors::InvalidArgument(
+                     "The size of stop_gradients[%d] should be the "
+                     "same as vjp_res[%d] "
+                     "size."
+                     "But the size of stop_gradients[%d]: %d, "
+                     "vjp_res[%d] size: %d",
+                     i,
+                     i,
+                     i,
+                     stop_gradients[i].size(),
+                     i,
+                     vjp_res[i].size()));
+             py::list sub_res;
+             for (size_t j = 0; j < vjp_res[i].size(); ++j) {
+               if (!vjp_res[i][j]) {
+                 sub_res.append(nullptr);
+               } else {
+                 sub_res.append(vjp_res[i][j]);
+               }
+             }
+             res.append(sub_res);
+           }
+           return res;
+         });
 
   m->def("has_vjp", [](pir::Operation &fwd_op) {
     pir::IrContext *ctx = pir::IrContext::Instance();

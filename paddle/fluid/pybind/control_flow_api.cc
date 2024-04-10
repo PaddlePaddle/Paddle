@@ -35,6 +35,8 @@
 #include "paddle/pir/include/core/value.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
+#include "paddle/fluid/pybind/python_callable_registry.h"
+
 namespace py = pybind11;
 using paddle::dialect::ApiBuilder;
 using paddle::dialect::AssertOp;
@@ -113,17 +115,11 @@ void BindPyLayerOp(py::module* m) {
              return op_list;
            })
       .def("register_backward_function", [](PyLayerOp& self, py::object func) {
-        uint64_t unique_id = self.operator()->id();
-        if (PyLayerOp::backward_py_callables.find(unique_id) !=
-            PyLayerOp::backward_py_callables.end()) {
-          LOG(WARNING) << "unique_id " << unique_id
-                       << " has already registered backward function in "
-                          "PyLayerOp::backward_py_callables. This operation "
-                          "will override the old one.";
-        }
+        uint64_t unique_id = self.operation()->id();
         // NOTE(MarioLulab): May cause segment fault because of reference count
         // ?
-        PyLayerOp::backward_py_callables[unique_id] = func;
+        paddle::pybind::PythonCallableRegistrar::GetInstance().Register(
+            unique_id, func);
       });
 }
 

@@ -14,19 +14,13 @@
 
 #pragma once
 #include <vector>
-
-#include "paddle/fluid/framework/python_headers.h"
-
-#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_symbolic_shape.h"
-#include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
-#include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
 #include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/op_base.h"
 
 namespace paddle {
 namespace dialect {
 
-class PyLayerOp : public pir::Op<PyLayerOp, VjpInterface> {
+class PyLayerOp : public pir::Op<PyLayerOp> {
  public:
   using Op::Op;
 
@@ -50,13 +44,6 @@ class PyLayerOp : public pir::Op<PyLayerOp, VjpInterface> {
   void Print(pir::IrPrinter &printer);  // NOLINT
   void VerifySig();
   void VerifyRegion();
-
-  static std::vector<std::vector<pir::Value>> Vjp(
-      pir::Operation *op,
-      const std::vector<std::vector<pir::Value>> &inputs_,
-      const std::vector<std::vector<pir::Value>> &outputs,
-      const std::vector<std::vector<pir::Value>> &out_grads,
-      const std::vector<std::vector<bool>> &stop_gradients);
 
   void UpdateOutput();
 };

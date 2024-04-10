@@ -232,6 +232,7 @@ set(op_dialect_srcs
     ${op_dialect_srcs}
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/api_builder.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/control_flow_op.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_pylayer_op.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/ir_meta_tensor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/ir_selected_rows.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/ir_tensor.cc
@@ -256,12 +257,6 @@ if(WITH_MKLDNN)
       ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_onednn_op.cc)
 endif()
 
-if(WITH_PYTHON)
-  set(op_dialect_srcs
-      ${op_dialect_srcs}
-      ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_pylayer_op.cc)
-endif()
-
 file(GLOB_RECURSE dist_dialect_srcs
      "${CMAKE_CURRENT_SOURCE_DIR}/distributed/ir/*.cc"
      "${CMAKE_CURRENT_SOURCE_DIR}/distributed/transforms/*.cc")
@@ -272,10 +267,6 @@ set(op_dialect_srcs ${op_dialect_srcs} ${dist_dialect_srcs})
 set(op_dialect_deps phi common pir type_info string_helper)
 if(WITH_ROCM)
   set(op_dialect_deps ${op_dialect_deps} global_utils)
-endif()
-
-if(WITH_PYTHON)
-  set(op_dialect_deps ${op_dialect_deps} python pybind)
 endif()
 
 cc_library(

@@ -25,7 +25,6 @@ paddle::dialect::PyLayerOp
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
@@ -39,106 +38,6 @@ paddle::dialect::PyLayerOp
 
 namespace paddle {
 namespace dialect {
-
-namespace py = ::pybind11;
-
-static std::unordered_map<uint64_t, py::object> g_backward_py_callables;
-
-// Return pybind11::object* instead of pybind11::object
-// Returning pybind11::object would cause reference count increasing
-// but without GIL, reference count in Python may not be safe
-static py::object *GetPythonCallableObject(uint64_t unique_id) {
-  PADDLE_ENFORCE_NE(
-      g_backward_py_callables.find(unique_id),
-      g_backward_py_callables.end(),
-      platform::errors::InvalidArgument(
-          "Unique_id %d is not found in g_backward_py_callables. The possible "
-          "reasons are below:"
-          "1. The callable function was not registered for `unique_id` by "
-          "`RegisterPyCallableObject`"
-          "2. The callable function was remove from g_backward_py_callables",
-          unique_id));
-  return &(g_backward_py_callables[unique_id]);
-}
-
-// NOTE: Use to manage the context of pylayer op constructing block
-class PyLayerBlockContextManager {
- public:
-  explicit PyLayerBlockContextManager(pir::Block *block) {
-    ApiBuilder::Instance().PushInsertionPoint();
-    ApiBuilder::Instance().SetInsertionPointToBlockEnd(block);
-  }
-
-  ~PyLayerBlockContextManager() { ApiBuilder::Instance().LoadInsertionPoint(); }
-
-  PyLayerBlockContextManager(const PyLayerBlockContextManager &) = delete;
-  PyLayerBlockContextManager &operator=(const PyLayerBlockContextManager &) =
-      delete;
-
- private:
-  // disable default constructor
-  PyLayerBlockContextManager() {}
-};
-
-void CallPythonFunc(py::object *callable,
-                    const std::vector<pir::Value> &ins,
-                    std::vector<pir::Value> *outs) {
-  py::gil_scoped_acquire guard;
-  py::tuple in_args(ins.size());
-  for (size_t i = 0; i < ins.size(); ++i) {
-    in_args[i] = py::cast(ins[i]);
-  }
-
-  auto ret = (*callable)(*in_args);
-  auto ret_tuple = py::cast<py::tuple>(ret);
-  size_t ret_num = py::len(ret_tuple);
-  size_t out_num = outs->size();
-  if (UNLIKELY(ret_num != out_num)) {
-    // Python function has no return values or returns None
-    // In this case, ret_num = 1 && ret[0] == None && out_num should be 0
-    // Otherwise, ret_num must be equal to out_num
-    PADDLE_ENFORCE_EQ(ret_num == 1,
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Python function has no return values or returns "
-                          "None. In this case, ret_num = 1 && ret[0] == None "
-                          "&& out_num should be 0. But ret_num is %d",
-                          ret_num));
-
-    PADDLE_ENFORCE_EQ(
-        out_num == 0,
-        true,
-        platform::errors::InvalidArgument(
-            "Python function has no return values or returns None. In "
-            "this case, ret_num = 1 && ret[0] == None && out_num should "
-            "be 0. But out_num is %d",
-            out_num));
-
-    PADDLE_ENFORCE_EQ(
-        py::cast<pir::Value *>(ret_tuple[0]) == nullptr,
-        true,
-        platform::errors::InvalidArgument(
-            "Python function has no return values or returns None. In "
-            "this case, ret_num = 1 && ret[0] == None && out_num should "
-            "be 0. But ret[0] is not None"));
-  }
-
-  for (size_t i = 0; i < out_num; ++i) {
-    try {
-      // NOTE(MarioLulab): why can cast ? Might release Value in dangerous.
-      auto py_out_value = py::cast<pir::Value>(ret_tuple[i]);
-      PADDLE_ENFORCE_NOT_NULL(py_out_value.impl(),
-                              platform::errors::InvalidArgument(
-                                  "Output value %d should not be nullptr", i));
-      (*outs)[i] = py_out_value;
-    } catch (py::cast_error &) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "pybind11::cast to pir::Value error. The %d-th output exception is "
-          "pir::Value",
-          i));
-    }
-  }
-}
 
 void PyLayerOp::Build(pir::Builder &builder,             // NOLINT
                       pir::OperationArgument &argument,  // NOLINT
@@ -247,53 +146,6 @@ void PyLayerOp::UpdateOutput() {
   block->Assign(iter, new_pylayer_op);
   PyLayerOp::operator=(new_pylayer_op);
   VerifyRegion();
-}
-
-std::vector<std::vector<pir::Value>> PyLayerOp::Vjp(
-    pir::Operation *op,
-    const std::vector<std::vector<pir::Value>> &inputs_,
-    const std::vector<std::vector<pir::Value>> &outputs,
-    const std::vector<std::vector<pir::Value>> &out_grads,
-    const std::vector<std::vector<bool>> &stop_gradients) {
-  std::vector<pir::Type> output_types;
-  for (size_t i = 0; i < inputs_.size(); ++i) {
-    if (!stop_gradients[i][0]) {
-      output_types.push_back(inputs_[i][0].type());
-    }
-  }
-
-  std::vector<pir::Value> output_grads;
-  for (size_t i = 0; i < out_grads.size(); ++i) {
-    output_grads.push_back(out_grads[i][0]);
-  }
-
-  auto out_grads_combine_op =
-      ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(output_grads);
-
-  auto pylayer_grad = ApiBuilder::Instance().GetBuilder()->Build<PyLayerOp>(
-      out_grads_combine_op.out(), std::move(output_types));
-
-  std::vector<pir::Value> pylayer_grad_inputs(output_types.size());
-  auto *py_callable = GetPythonCallableObject(op->id());
-
-  {
-    // enter block of pylayer_grad
-    PyLayerBlockContextManager(&(pylayer_grad.forward_block()));
-    CallPythonFunc(py_callable, output_grads, &pylayer_grad_inputs);
-
-    // append yield op for outputs value
-    ApiBuilder::Instance().GetBuilder()->Build<pir::YieldOp>(
-        pylayer_grad_inputs);
-
-    // exit block of pylayer_grad
-  }
-
-  std::vector<std::vector<pir::Value>> res{inputs_.size()};
-  for (size_t i = 0; i < output_types.size(); ++i) {
-    res[i].resize(1);
-    res[i][0] = pylayer_grad->result(i);
-  }
-  return res;
 }
 
 }  // namespace dialect
