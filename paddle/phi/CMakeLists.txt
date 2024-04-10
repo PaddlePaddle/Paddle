@@ -62,7 +62,7 @@ if(WITH_XBYAK)
   list(APPEND PHI_DEPS xbyak)
 endif()
 
-if(WITH_MKLDNN)
+if(WITH_ONEDNN)
   list(APPEND PHI_DEPS onednn)
 endif()
 

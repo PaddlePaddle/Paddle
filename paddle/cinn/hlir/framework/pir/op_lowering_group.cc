@@ -19,6 +19,17 @@ namespace hlir {
 namespace framework {
 namespace pir {
 
+::pir::Program* OpLoweringGroup::GetParentProgram() const {
+  PADDLE_ENFORCE_GT(ops_.size(),
+                    0,
+                    ::common::errors::PreconditionNotMet(
+                        "Require at least one op in the group."));
+  PADDLE_ENFORCE_NOT_NULL(
+      ops_[0],
+      ::common::errors::Unavailable("Found group.ops_[0] is nullptr."));
+  return ops_[0]->GetParentProgram();
+}
+
 std::shared_ptr<OpLoweringGroup> OpLoweringGroup::Clone(
     ::pir::Block* target_block, ::pir::IrMapping* ir_mapping) const {
   std::vector<::pir::Operation*> new_ops;
