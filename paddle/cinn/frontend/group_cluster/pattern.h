@@ -22,18 +22,29 @@
 
 namespace cinn::frontend::group_cluster {
 
+template <typename T>
+struct PatternContent {};
+
+template <typename T>
 class TrivialPattern;
+template <typename T>
 class ReducePattern;
+template <typename T>
 class ReduceTreePattern;
+template <typename T>
 class ReduceTreePlusTrivialPattern;
+template <typename T>
 class UnsupportPattern;
+template <typename T>
 class HorizontalFusionPattern;
-using StmtPattern = std::variant<TrivialPattern,
-                                 ReducePattern,
-                                 ReduceTreePattern,
-                                 ReduceTreePlusTrivialPattern,
-                                 HorizontalFusionPattern,
-                                 UnsupportPattern>;
+
+template <typename T>
+using StmtPattern = std::variant<TrivialPattern<T>,
+                                 ReducePattern<T>,
+                                 ReduceTreePattern<T>,
+                                 ReduceTreePlusTrivialPattern<T>,
+                                 HorizontalFusionPattern<T>,
+                                 UnsupportPattern<T>>;
 
 template <typename T>
 void ExtendVector(std::vector<T>* first, const std::vector<T>& second) {
@@ -55,68 +66,88 @@ std::vector<T> MergeVector(const std::vector<T>& first,
   return result;
 }
 
+template <typename T>
 struct TrivialPattern {
-  explicit TrivialPattern(const std::vector<pir::Operation*>& ops)
-      : ops_(ops) {}
-  std::vector<pir::Operation*> ops_;
+  explicit TrivialPattern(const std::vector<PatternContent<T>>& contents)
+      : contents_(contents) {}
+  std::vector<PatternContent<T>> contents_;
   static std::string name() { return "Trivial"; }
-  std::vector<pir::Operation*> ops() const { return ops_; }
+  std::vector<PatternContent<T>> contents() const { return contents_; }
 };
 
+template <typename T>
 struct ReducePattern {
-  explicit ReducePattern(const std::vector<pir::Operation*>& ops) : ops_(ops) {}
-  std::vector<pir::Operation*> ops_;
-  std::vector<pir::Operation*> ops() const { return ops_; }
-  pir::Operation* GetReduceOp() const { return ops_.back(); }
+  explicit ReducePattern(const std::vector<PatternContent<T>>& contents)
+      : contents_(contents) {}
+  std::vector<PatternContent<T>> contents_;
+  std::vector<PatternContent<T>> contents() const { return contents_; }
+  pir::Operation* GetReduceOp() const { return contents_.back().op; }
   static std::string name() { return "Reduce"; }
 };
 
+template <typename T>
 struct ReduceTreePattern {
-  explicit ReduceTreePattern(const std::vector<ReducePattern>& v,
-                             const ReducePattern& root)
+  explicit ReduceTreePattern(const std::vector<ReducePattern<T>>& v,
+                             const ReducePattern<T>& root)
       : reduce_patterns_(v), root_(root) {}
-  std::vector<ReducePattern> reduce_patterns_;
-  const ReducePattern& GetRootPattern() const { return root_; }
-  std::vector<pir::Operation*> ops() const {
-    std::vector<pir::Operation*> result;
+  const ReducePattern<T>& GetRootPattern() const { return root_; }
+  std::vector<PatternContent<T>> contents() const {
+    std::vector<PatternContent<T>> result;
     for (const auto& reduce_pattern : reduce_patterns_) {
-      result = MergeVector(result, reduce_pattern.ops());
+      result = MergeVector(result, reduce_pattern.contents());
     }
     return result;
   }
   static std::string name() { return "ReduceTree"; }
+  const std::vector<ReducePattern<T>>& reduce_patterns() const {
+    return reduce_patterns_;
+  }
 
  private:
-  ReducePattern root_;
+  std::vector<ReducePattern<T>> reduce_patterns_;
+  ReducePattern<T> root_;
 };
 
+template <typename T>
 struct ReduceTreePlusTrivialPattern {
-  explicit ReduceTreePlusTrivialPattern(const ReduceTreePattern& tree,
-                                        const TrivialPattern& sink_trivial)
+  explicit ReduceTreePlusTrivialPattern(const ReduceTreePattern<T>& tree,
+                                        const TrivialPattern<T>& sink_trivial)
       : tree(tree), sink_trivial(sink_trivial) {}
-  ReduceTreePattern tree;
-  TrivialPattern sink_trivial;
-  std::vector<pir::Operation*> ops() const {
-    return MergeVector(tree.ops(), sink_trivial.ops());
+  ReduceTreePattern<T> tree;
+  TrivialPattern<T> sink_trivial;
+  std::vector<PatternContent<T>> contents() const {
+    return MergeVector(tree.contents(), sink_trivial.contents());
   }
   static std::string name() { return "ReduceTree+Trivial"; }
   std::vector<size_t> fake_reduce_iter_idx;
 };
 
+template <typename T>
 struct UnsupportPattern {
-  explicit UnsupportPattern(const std::vector<pir::Operation*>& ops)
-      : ops_(ops) {}
-  std::vector<pir::Operation*> ops_;
-  std::vector<pir::Operation*> ops() const { return ops_; }
+  explicit UnsupportPattern(const std::vector<PatternContent<T>>& contents)
+      : contents_(contents) {}
+  std::vector<PatternContent<T>> contents_;
+  std::vector<PatternContent<T>> contents() const { return contents_; }
   static std::string name() { return "Unsupport"; }
 };
 
+template <typename T>
 struct HorizontalFusionPattern {
-  explicit HorizontalFusionPattern(const std::vector<StmtPattern>& patterns)
+  explicit HorizontalFusionPattern(const std::vector<StmtPattern<T>>& patterns)
       : patterns_(patterns) {}
-  std::vector<StmtPattern> patterns_;
-  std::vector<pir::Operation*> ops() const;
+  std::vector<StmtPattern<T>> patterns_;
+  std::vector<PatternContent<T>> contents() const;
   static std::string name() { return "HorizontalFusionPattern"; }
 };
+
+template <typename T>
+std::vector<PatternContent<T>> HorizontalFusionPattern<T>::contents() const {
+  std::vector<PatternContent<T>> result;
+  for (const auto& pattern : patterns_) {
+    auto contents = GetContentsInPattern(pattern);
+    ExtendVector(&result, contents);
+  }
+  return result;
+}
 
 }  // namespace cinn::frontend::group_cluster

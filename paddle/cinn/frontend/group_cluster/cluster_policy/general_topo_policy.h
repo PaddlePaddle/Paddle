@@ -17,10 +17,11 @@
 
 namespace cinn::frontend::group_cluster::policy {
 
-class GeneralTopoPolicy final : virtual public Policy {
+template <typename T>
+class GeneralTopoPolicy final : virtual public Policy<T> {
  public:
-  bool CanFuse(const PatternNodePtr& upstream,
-               const PatternNodePtr& downstream) override;
+  bool CanFuse(const PatternNodePtr<T>& upstream,
+               const PatternNodePtr<T>& downstream) override;
   std::string Name() { return "GeneralTopoPolicy"; }
 };
 

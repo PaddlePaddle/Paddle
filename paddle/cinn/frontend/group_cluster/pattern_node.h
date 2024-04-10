@@ -18,29 +18,50 @@
 
 namespace cinn::frontend::group_cluster {
 
+template <typename T>
 struct PatternNode {
-  using PatternNodePtr = std::shared_ptr<PatternNode>;
+  using PatternNodePtr = std::shared_ptr<PatternNode<T>>;
 
-  explicit PatternNode(pir::Operation* op);
+  explicit PatternNode(const PatternContent<T>& content)
+      : sink_op_(content.op), stmt_pattern_(ConvertToStmtPattern<T>(content)) {}
+
   explicit PatternNode(PatternNodePtr fused_up_node,
-                       PatternNodePtr fused_down_node);
+                       PatternNodePtr fused_down_node)
+      : sink_op_(fused_down_node->sink_op_),
+        stmt_pattern_(MergePattern<T>(fused_up_node->stmt_pattern_,
+                                      fused_down_node->stmt_pattern_)) {}
 
-  bool IsTrivial() const;
-  bool IsReduce() const;
-  bool IsReduceTree() const;
-  bool IsUnsupport() const;
-  bool IsReduceTrivial() const;
+  bool IsTrivial() const { return IsTrivialPattern(stmt_pattern_); }
 
-  std::vector<pir::Operation*> GetOps() const;
+  bool IsReduce() const { return IsReducePattern(stmt_pattern_); }
 
-  StmtPattern stmt_pattern_;
+  bool IsReduceTree() const { return IsReduceTreePattern(stmt_pattern_); }
+
+  bool IsUnsupport() const { return IsUnsupportPattern(stmt_pattern_); }
+
+  bool IsReduceTrivial() const { return IsReduceTrivialPattern(stmt_pattern_); }
+
+  std::string DebugStr() const {
+    std::stringstream ss;
+    ss << "Node: " << this << ", Pattern: " << GetPatternName(stmt_pattern_)
+       << "\n    -u>:  ";
+    for (const auto& u : upstream_) {
+      ss << u << ", ";
+    }
+    ss << "\n    <d-:  ";
+    for (const auto& d : downstream_) {
+      ss << d << ", ";
+    }
+    return ss.str();
+  }
+
+  StmtPattern<T> stmt_pattern_;
   pir::Operation* sink_op_;
 
   std::vector<PatternNodePtr> upstream_;
   std::vector<PatternNodePtr> downstream_;
-
-  std::string DebugStr() const;
 };
 
-using PatternNodePtr = PatternNode::PatternNodePtr;
+template <typename T>
+using PatternNodePtr = std::shared_ptr<PatternNode<T>>;
 }  // namespace cinn::frontend::group_cluster

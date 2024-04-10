@@ -838,12 +838,14 @@ std::vector<GroupClusterNode> NewOpMergeWithOp(
     cinn::dialect::GroupOp group_op) {
   auto cluster_result = frontend::ClusterOps(group_op.GetOperators(), true);
   std::vector<std::vector<pir::Operation*>> result;
-  std::transform(cluster_result.begin(),
-                 cluster_result.end(),
-                 std::back_inserter(result),
-                 [](const frontend::group_cluster::PatternNodePtr node) {
-                   return node->GetOps();
-                 });
+  std::transform(
+      cluster_result.begin(),
+      cluster_result.end(),
+      std::back_inserter(result),
+      [](const frontend::group_cluster::PatternNodePtr<frontend::FrontendStage>
+             node) {
+        return frontend::group_cluster::GetOpsInPattern(node->stmt_pattern_);
+      });
 
   // Each stmts corresponds to each fusion op(cluster node).
   // Concat all the ops of patterns in the stmts, and make them the op list of

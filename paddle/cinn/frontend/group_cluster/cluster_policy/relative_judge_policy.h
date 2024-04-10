@@ -257,7 +257,8 @@ struct SplitDims {
   }
 };
 
-class RelativeJudgePolicy final : public Policy {
+template <typename T>
+class RelativeJudgePolicy final : public Policy<T> {
  public:
   RelativeJudgePolicy(const std::vector<pir::Operation*>& ops,
                       const pir::ShapeConstraintIRAnalysis* shape_analysis)
@@ -266,14 +267,14 @@ class RelativeJudgePolicy final : public Policy {
     index_expr_map_ = AnalysisIndexExprRelation(ops);
     VLOG(4) << "[relative_judge_policy] End AnalysisIndexExprRelation.";
   }
-  bool CanFuse(const PatternNodePtr& upstream,
-               const PatternNodePtr& downstream) override;
+  bool CanFuse(const PatternNodePtr<T>& upstream,
+               const PatternNodePtr<T>& downstream) override;
 
   std::string Name() { return "RelativeJudgePolicy"; }
 
   std::vector<size_t> GetFakeReduceIterIdx(
-      const PatternNodePtr& upstream,
-      const PatternNodePtr& downstream) override;
+      const PatternNodePtr<T>& upstream,
+      const PatternNodePtr<T>& downstream) override;
 
   bool IsRelated(ValueDim in, ValueDim out) {
     return index_expr_map_[in].count(out) == 1;
@@ -282,18 +283,20 @@ class RelativeJudgePolicy final : public Policy {
  private:
   ValueDimRelation index_expr_map_;
   ShardableAxesInfoManager axes_info_;
-  bool ReduceTreeGrownCanMerge(const PatternNodePtr&, const PatternNodePtr&);
-  bool IsFlattenDimSmaller(const PatternNodePtr& upstream,
-                           const PatternNodePtr& downstream);
-  bool ReducePlusTrivialCanMerge(const PatternNodePtr&, const PatternNodePtr&);
+  bool ReduceTreeGrownCanMerge(const PatternNodePtr<T>&,
+                               const PatternNodePtr<T>&);
+  bool IsFlattenDimSmaller(const PatternNodePtr<T>& upstream,
+                           const PatternNodePtr<T>& downstream);
+  bool ReducePlusTrivialCanMerge(const PatternNodePtr<T>&,
+                                 const PatternNodePtr<T>&);
   SplitDims SplitDimsWithRelationship(
       const std::vector<ValueDim>& targets,
       const std::vector<ValueDim>& related_with);
-  std::optional<ReducePattern> GetDownstreamFromCandidate(
-      const ReducePattern& upstream,
-      const std::vector<ReducePattern>& candidates);
+  std::optional<ReducePattern<T>> GetDownstreamFromCandidate(
+      const ReducePattern<T>& upstream,
+      const std::vector<ReducePattern<T>>& candidates);
   bool IsDownstreamStmtDependReduceOp(pir::Operation* reduce,
-                                      const StmtPattern& downstream);
+                                      const StmtPattern<T>& downstream);
   bool IsBroadcastEdge(const std::vector<ValueDim>& upstream_out_dims,
                        const std::vector<ValueDim>&);
 };

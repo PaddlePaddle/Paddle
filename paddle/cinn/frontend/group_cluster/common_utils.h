@@ -52,12 +52,149 @@ std::optional<std::pair<pir::Value, pir::Value>> GetBroadcastOpInputOuputValue(
 
 namespace cinn::frontend::group_cluster {
 
-bool IsTrivialPattern(const StmtPattern& pattern);
-bool IsHorizontalFusionPattern(const StmtPattern& pattern);
-bool IsReducePattern(const StmtPattern& pattern);
-bool IsReduceTreePattern(const StmtPattern& pattern);
-bool IsUnsupportPattern(const StmtPattern& pattern);
-bool IsReduceTrivialPattern(const StmtPattern& pattern);
+template <typename T>
+bool IsTrivialPattern(const StmtPattern<T>& pattern) {
+  return std::holds_alternative<TrivialPattern<T>>(pattern);
+}
+
+template <typename T>
+bool IsReducePattern(const StmtPattern<T>& pattern) {
+  return std::holds_alternative<ReducePattern<T>>(pattern);
+}
+
+template <typename T>
+bool IsReduceTreePattern(const StmtPattern<T>& pattern) {
+  return std::holds_alternative<ReduceTreePattern<T>>(pattern);
+}
+
+template <typename T>
+bool IsOpsDependents(const StmtPattern<T>& pattern) {
+  return std::holds_alternative<ReduceTreePattern<T>>(pattern);
+}
+
+template <typename T>
+bool IsUnsupportPattern(const StmtPattern<T>& pattern) {
+  return std::holds_alternative<UnsupportPattern<T>>(pattern);
+}
+
+template <typename T>
+bool IsReduceTrivialPattern(const StmtPattern<T>& pattern) {
+  return std::holds_alternative<ReduceTreePlusTrivialPattern<T>>(pattern);
+}
+
+template <typename T>
+std::unordered_set<pir::Value> GetPatternInputValuesIncludeInner(
+    const StmtPattern<T>& A) {
+  std::unordered_set<pir::Value> result;
+  for (const auto& op : GetOpsInPattern(A)) {
+    for (const auto& value : op->operands()) {
+      result.insert(value.source());
+    }
+  }
+  return result;
+}
+
+template <typename T>
+std::unordered_set<pir::Value> GetPatternOutputValuesIncludedInner(
+    const StmtPattern<T>& A) {
+  std::unordered_set<pir::Value> result;
+  for (const auto& op : GetOpsInPattern(A)) {
+    for (const auto& value : op->results()) {
+      result.insert(value);
+    }
+  }
+  return result;
+}
+
+template <typename T>
+std::unordered_set<pir::Value> GetPatternInputValues(const StmtPattern<T>& A) {
+  auto all_input_values = GetPatternInputValuesIncludeInner(A);
+  for (const auto& value : GetPatternOutputValuesIncludedInner(A)) {
+    all_input_values.erase(value);
+  }
+  VLOG(4) << "GetPatternInputValues: " << all_input_values.size();
+  return all_input_values;
+}
+
+template <typename T>
+std::vector<PatternContent<T>> GetContentsInPattern(
+    const StmtPattern<T>& pattern) {
+  return std::visit([](const auto& impl) { return impl.contents(); }, pattern);
+}
+
+template <typename T>
+pir::Operation* GetOpFromContent(const PatternContent<T>& content) {
+  return content.op;
+}
+
+template <typename T>
+std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern<T>& pattern) {
+  std::function<pir::Operation*(PatternContent<T>)> func = GetOpFromContent<T>;
+  return MapVector(GetContentsInPattern(pattern), func);
+}
+
+template <typename T>
+std::string StmtPatternDebugStr(const StmtPattern<T>& stmt) {
+  std::stringstream ss;
+  auto all_ops = GetOpsInPattern(stmt);
+  ss << "StmtPattern, size " << all_ops.size() << " :\n";
+  ss << OpsDebugStr(all_ops);
+  return ss.str();
+}
+
+template <typename T>
+StmtPattern<T> MergePattern(const StmtPattern<T>& first,
+                            const StmtPattern<T>& second) {
+  std::vector<PatternContent<T>> contents =
+      MergeVector(GetContentsInPattern(first), GetContentsInPattern(second));
+  if (IsUnsupportPattern(first) || IsUnsupportPattern(second)) {
+    return UnsupportPattern<T>(contents);
+  } else if (IsReduceTreePattern(first) && IsReduceTreePattern(second)) {
+    const auto& merged =
+        ConcatVector(std::get<ReduceTreePattern<T>>(first).reduce_patterns(),
+                     std::get<ReduceTreePattern<T>>(second).reduce_patterns());
+    return ReduceTreePattern<T>(
+        merged, std::get<ReduceTreePattern<T>>(second).GetRootPattern());
+  } else if (IsReduceTreePattern(first) && IsTrivialPattern(second)) {
+    return ReduceTreePlusTrivialPattern<T>(
+        std::get<ReduceTreePattern<T>>(first),
+        std::get<TrivialPattern<T>>(second));
+  } else if (IsTrivialPattern(first) && IsReducePattern(second)) {
+    return ReducePattern<T>(contents);
+  } else if (IsTrivialPattern(first) && IsTrivialPattern(second)) {
+    return TrivialPattern<T>(contents);
+  } else if (IsHorizontalFusionPattern(first) &&
+             IsHorizontalFusionPattern(second)) {
+    return HorizontalFusionPattern<T>({first, second});
+  } else {
+    // Not Implementation.
+    CHECK(false) << "Found not support merge!";
+  }
+}
+
+template <typename T>
+bool IsHorizontalFusionPattern(const StmtPattern<T>& pattern) {
+  return std::holds_alternative<HorizontalFusionPattern<T>>(pattern);
+}
+
+template <typename T>
+StmtPattern<T> ConvertToStmtPattern(const PatternContent<T>& content) {
+  const auto& kind = GetOpPatternKind(content.op);
+  if (kind == hlir::framework::kReduction) {
+    return ReducePattern<T>({content});
+  } else if (kind == hlir::framework::kElementWise ||
+             kind == hlir::framework::kBroadcast ||
+             kind == hlir::framework::kInjective) {
+    return TrivialPattern<T>({content});
+  } else {
+    return UnsupportPattern<T>({content});
+  }
+}
+
+template <typename T>
+ReducePattern<T> ToReducePattern(const StmtPattern<T>& second) {
+  return std::get<ReducePattern<T>>(second);
+}
 
 template <typename T>
 void RemoveFromVector(std::vector<T>* vec, T item) {
@@ -86,6 +223,16 @@ std::vector<T> FilterVector(const std::vector<T>& first, const F& func) {
   return result;
 }
 
+template <class A, class B>
+std::vector<B> MapVector(const std::vector<A>& as,
+                         const std::function<B(A)>& func) {
+  std::vector<B> res;
+  for (const auto& a : as) {
+    res.push_back(func(a));
+  }
+  return res;
+}
+
 template <typename T>
 std::set<T> ToSet(const std::vector<T>& input) {
   std::set<T> result(input.begin(), input.end());
@@ -110,12 +257,8 @@ std::vector<T> UniqueVectorBySet(const std::vector<T>& v) {
   return std::vector<T>(unique.begin(), unique.end());
 }
 
-std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern& pattern);
-std::string StmtPatternDebugStr(const StmtPattern& pattern);
-StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second);
-ReducePattern ToReducePattern(const StmtPattern& second);
-std::string GetPatternName(const StmtPattern& s);
-
-StmtPattern ConvertToStmtPattern(pir::Operation* op);
-std::unordered_set<pir::Value> GetPatternInputValues(const StmtPattern& A);
+template <typename T>
+std::string GetPatternName(const StmtPattern<T>& s) {
+  return std::visit([](const auto& impl) { return impl.name(); }, s);
+}
 }  // namespace cinn::frontend::group_cluster

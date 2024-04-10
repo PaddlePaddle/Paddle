@@ -13,11 +13,13 @@
 // limitations under the License.
 
 #include "paddle/cinn/frontend/group_cluster/cluster_policy/relative_judge_policy.h"
+#include "paddle/cinn/frontend/group_cluster/group_cluster.h"
 
 namespace cinn::frontend::group_cluster::policy {
 
-bool RelativeJudgePolicy::IsDownstreamStmtDependReduceOp(
-    pir::Operation* reduce, const StmtPattern& downstream) {
+template <typename T>
+bool RelativeJudgePolicy<T>::IsDownstreamStmtDependReduceOp(
+    pir::Operation* reduce, const StmtPattern<T>& downstream) {
   const auto& values = GetPatternInputValues(downstream);
   for (const auto& value : reduce->results()) {
     if (std::find(values.begin(), values.end(), value) != values.end()) {
@@ -27,9 +29,11 @@ bool RelativeJudgePolicy::IsDownstreamStmtDependReduceOp(
   return false;
 }
 
-std::optional<ReducePattern> RelativeJudgePolicy::GetDownstreamFromCandidate(
-    const ReducePattern& upstream,
-    const std::vector<ReducePattern>& candidates) {
+template <typename T>
+std::optional<ReducePattern<T>>
+RelativeJudgePolicy<T>::GetDownstreamFromCandidate(
+    const ReducePattern<T>& upstream,
+    const std::vector<ReducePattern<T>>& candidates) {
   pir::Operation* reduce = upstream.GetReduceOp();
   for (const auto& candidate : candidates) {
     if (IsDownstreamStmtDependReduceOp(reduce, candidate)) {
@@ -78,7 +82,8 @@ SplitDims SplitReduceOutputDimsIfRelatedWithNonReduceAxis(
   return result;
 }
 
-bool RelativeJudgePolicy::IsBroadcastEdge(
+template <typename T>
+bool RelativeJudgePolicy<T>::IsBroadcastEdge(
     const std::vector<ValueDim>& upstream_out_dims,
     const std::vector<ValueDim>& downstream_reduce_dims) {
   VLOG(4) << "IsBroadcastEdge: upstream_out_dims.size()"
@@ -100,23 +105,24 @@ bool RelativeJudgePolicy::IsBroadcastEdge(
   return true;
 }
 
-bool RelativeJudgePolicy::ReduceTreeGrownCanMerge(
-    const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
+template <typename T>
+bool RelativeJudgePolicy<T>::ReduceTreeGrownCanMerge(
+    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
   const auto& upstream_tree =
-      std::get<ReduceTreePattern>(upstream->stmt_pattern_);
+      std::get<ReduceTreePattern<T>>(upstream->stmt_pattern_);
   VLOG(4) << "upstream->stmt_pattern_:"
-          << OpsDebugStr(GetOpsInPattern(upstream_tree));
+          << OpsDebugStr(GetOpsInPattern<T>(upstream_tree));
   const auto& downstream_tree =
-      std::get<ReduceTreePattern>(downstream->stmt_pattern_);
+      std::get<ReduceTreePattern<T>>(downstream->stmt_pattern_);
   VLOG(4) << "downstream->stmt_pattern_"
-          << OpsDebugStr(GetOpsInPattern(downstream_tree));
+          << OpsDebugStr(GetOpsInPattern<T>(downstream_tree));
   const auto& maybe_downstream_op = GetDownstreamFromCandidate(
-      upstream_tree.GetRootPattern(), downstream_tree.reduce_patterns_);
+      upstream_tree.GetRootPattern(), downstream_tree.reduce_patterns());
   int idx = 0;
-  for (const auto& r_pattern : downstream_tree.reduce_patterns_) {
+  for (const auto& r_pattern : downstream_tree.reduce_patterns()) {
     idx += 1;
     VLOG(4) << "downstream_tree.reduce_patterns_"
-            << "[" << idx << "]" << OpsDebugStr(GetOpsInPattern(r_pattern));
+            << "[" << idx << "]" << OpsDebugStr(GetOpsInPattern<T>(r_pattern));
   }
   if (!maybe_downstream_op.has_value()) {
     VLOG(4) << "can't find candidate from patterns. can fuse return false.";
@@ -137,7 +143,8 @@ bool RelativeJudgePolicy::ReduceTreeGrownCanMerge(
   return res;
 }
 
-SplitDims RelativeJudgePolicy::SplitDimsWithRelationship(
+template <typename T>
+SplitDims RelativeJudgePolicy<T>::SplitDimsWithRelationship(
     const std::vector<ValueDim>& targets,
     const std::vector<ValueDim>& related_with) {
   VLOG(4) << "SplitDimsWithRelationship";
@@ -188,8 +195,9 @@ bool DimsEqual(const std::vector<ValueDim>& first,
   return true;
 }
 
-bool RelativeJudgePolicy::ReducePlusTrivialCanMerge(
-    const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
+template <typename T>
+bool RelativeJudgePolicy<T>::ReducePlusTrivialCanMerge(
+    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
   VLOG(4) << "RT can fuse";
 
   // const auto& split_reduce_dims_result =
@@ -231,8 +239,9 @@ bool RelativeJudgePolicy::ReducePlusTrivialCanMerge(
   return res;
 }
 
-bool RelativeJudgePolicy::IsFlattenDimSmaller(
-    const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
+template <typename T>
+bool RelativeJudgePolicy<T>::IsFlattenDimSmaller(
+    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
   const auto& split_reduce_dims_result =
       SplitReduceInputDimsIfRelatedWithNonReduceAxis(
           axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
@@ -257,8 +266,9 @@ bool RelativeJudgePolicy::IsFlattenDimSmaller(
   return res;
 }
 
-bool RelativeJudgePolicy::CanFuse(const PatternNodePtr& upstream,
-                                  const PatternNodePtr& downstream) {
+template <typename T>
+bool RelativeJudgePolicy<T>::CanFuse(const PatternNodePtr<T>& upstream,
+                                     const PatternNodePtr<T>& downstream) {
   if (upstream->IsReduceTree() && downstream->IsTrivial()) {
     return ReducePlusTrivialCanMerge(upstream, downstream);
   }
@@ -268,8 +278,9 @@ bool RelativeJudgePolicy::CanFuse(const PatternNodePtr& upstream,
   return true;  // other case.
 }
 
-std::vector<size_t> RelativeJudgePolicy::GetFakeReduceIterIdx(
-    const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
+template <typename T>
+std::vector<size_t> RelativeJudgePolicy<T>::GetFakeReduceIterIdx(
+    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
   if (!upstream->IsReduceTree() || !downstream->IsTrivial()) {
     PADDLE_THROW("Illegal Call GetFakeReduceIterIdx");
   }
@@ -321,5 +332,7 @@ std::vector<size_t> RelativeJudgePolicy::GetFakeReduceIterIdx(
   VLOG(4) << "FakeReduceIterIdx: " << cinn::utils::Join(result, ", ");
   return result;
 }
+
+template class RelativeJudgePolicy<frontend::FrontendStage>;
 
 }  // namespace cinn::frontend::group_cluster::policy

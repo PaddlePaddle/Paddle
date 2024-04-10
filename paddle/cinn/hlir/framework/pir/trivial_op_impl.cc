@@ -562,11 +562,13 @@ std::vector<T> FilterVector(const std::vector<T>& ops, const F& f) {
 }
 
 FusionGraph::FusionGraph(
-    const cinn::frontend::group_cluster::PatternNodePtr& pattern_node,
+    const cinn::frontend::group_cluster::PatternNodePtr<
+        frontend::FrontendStage>& pattern_node,
     const std::unordered_map<::pir::Operation*, ir::Expr>& op_expr_map) {
   VLOG(4) << "CreateFusionGraph";
 
-  std::vector<::pir::Operation*> ops = pattern_node->GetOps();
+  const auto& ops =
+      frontend::group_cluster::GetOpsInPattern(pattern_node->stmt_pattern_);
   std::vector<ir::Expr> op_compute_bodies = std::vector<ir::Expr>();
   std::transform(ops.begin(),
                  ops.end(),
@@ -575,8 +577,8 @@ FusionGraph::FusionGraph(
 
   if (pattern_node->IsReduceTrivial()) {
     fake_reduce_iter_idx_ =
-        std::get<cinn::frontend::group_cluster::ReduceTreePlusTrivialPattern>(
-            pattern_node->stmt_pattern_)
+        std::get<cinn::frontend::group_cluster::ReduceTreePlusTrivialPattern<
+            frontend::FrontendStage>>(pattern_node->stmt_pattern_)
             .fake_reduce_iter_idx;
   }
 

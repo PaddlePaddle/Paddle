@@ -37,6 +37,19 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 namespace cinn {
+
+namespace frontend::group_cluster {
+
+struct BackendStage {};
+
+template <>
+struct PatternContent<BackendStage> {
+  pir::Operation* op;
+  ir::Expr body;
+};
+
+}  // namespace frontend::group_cluster
+
 namespace hlir {
 namespace framework {
 namespace pir {
@@ -129,7 +142,8 @@ FusibleOp CreateFusibleOp(ir::Expr compute_body, OpPatternKind op_pattern);
 
 struct FusionGraph {
   explicit FusionGraph(
-      const cinn::frontend::group_cluster::PatternNodePtr& pattern_node,
+      const cinn::frontend::group_cluster::PatternNodePtr<
+          frontend::FrontendStage>& pattern_node,
       const std::unordered_map<::pir::Operation*, ir::Expr>& op_expr_map);
   ~FusionGraph();
 

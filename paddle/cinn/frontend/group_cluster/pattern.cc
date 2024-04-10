@@ -18,17 +18,9 @@
 #include <vector>
 #include "glog/logging.h"
 #include "paddle/cinn/frontend/group_cluster/common_utils.h"
+#include "paddle/cinn/frontend/group_cluster/group_cluster.h"
 #include "paddle/pir/include/core/operation.h"
 
 namespace cinn::frontend::group_cluster {
-
-std::vector<pir::Operation*> HorizontalFusionPattern::ops() const {
-  std::vector<pir::Operation*> result;
-  for (const auto& pattern : patterns_) {
-    auto ops = GetOpsInPattern(pattern);
-    ExtendVector(&result, ops);
-  }
-  return result;
-}
 
 }  // namespace cinn::frontend::group_cluster

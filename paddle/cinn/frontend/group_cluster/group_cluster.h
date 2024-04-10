@@ -21,7 +21,33 @@
 
 namespace cinn::frontend {
 
-inline std::vector<group_cluster::PatternNodePtr> ClusterOps(
+struct FrontendStage {};
+
+template <>
+struct group_cluster::PatternContent<FrontendStage> {
+  explicit PatternContent<FrontendStage>(pir::Operation* op) : op(op) {}
+  pir::Operation* op;
+  bool operator==(
+      const group_cluster::PatternContent<FrontendStage>& other) const {
+    return op == other.op;
+  }
+};
+
+}  // namespace cinn::frontend
+
+namespace std {
+template <>
+struct hash<cinn::frontend::group_cluster::PatternContent<
+    cinn::frontend::FrontendStage>> {
+  size_t operator()(const cinn::frontend::group_cluster::PatternContent<
+                    cinn::frontend::FrontendStage>& content) const {
+    return std::hash<pir::Operation*>()(content.op);
+  }
+};
+}  // namespace std
+
+namespace cinn::frontend {
+inline std::vector<group_cluster::PatternNodePtr<FrontendStage>> ClusterOps(
     const std::vector<pir::Operation*>& origin_ops,
     bool with_horizontal_fusion = false) {
   CHECK_GT(origin_ops.size(), 0);
@@ -53,21 +79,27 @@ inline std::vector<group_cluster::PatternNodePtr> ClusterOps(
   // std::make_shared<group_cluster::policy::RelativeJudgePolicy>(
   // ops, shape_analysis);
   VLOG(4) << "Start Create Policies and PolicyManager!";
-  const auto& relative_judge_policy =
-      std::make_shared<group_cluster::policy::RelativeJudgePolicy>(
-          ops, shape_analysis);
+  const auto& relative_judge_policy = std::make_shared<
+      group_cluster::policy::RelativeJudgePolicy<FrontendStage>>(
+      ops, shape_analysis);
 
-  const auto& general_topo_policy =
-      std::make_shared<group_cluster::policy::GeneralTopoPolicy>();
+  const auto& general_topo_policy = std::make_shared<
+      group_cluster::policy::GeneralTopoPolicy<FrontendStage>>();
 
-  auto policy_manager = group_cluster::policy::PolicyManager(
+  auto policy_manager = group_cluster::policy::PolicyManager<FrontendStage>(
       {relative_judge_policy, general_topo_policy});
 
-  auto topo_manager = group_cluster::policy::PolicyManager(
+  auto topo_manager = group_cluster::policy::PolicyManager<FrontendStage>(
       {relative_judge_policy, general_topo_policy});
 
   VLOG(4) << "Start Create PatternGraph";
-  group_cluster::PatternGraph graph(ops, outputs, policy_manager, topo_manager);
+  std::function<group_cluster::PatternContent<FrontendStage>(pir::Operation*)>
+      f = [](pir::Operation* op) {
+        return group_cluster::PatternContent<FrontendStage>(op);
+      };
+  const auto& nodes = group_cluster::MapVector(ops, f);
+  group_cluster::PatternGraph<FrontendStage> graph(
+      nodes, outputs, policy_manager, topo_manager);
   auto result = graph.ClusterOps(with_horizontal_fusion);
 
   VLOG(4) << "End Cluster Ops! result size:" << result.size();

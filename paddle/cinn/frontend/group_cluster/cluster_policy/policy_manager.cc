@@ -13,20 +13,24 @@
 // limitations under the License.
 
 #include "paddle/cinn/frontend/group_cluster/cluster_policy/policy_manager.h"
+#include "paddle/cinn/frontend/group_cluster/group_cluster.h"
 #include "paddle/common/enforce.h"
 
 namespace cinn::frontend::group_cluster::policy {
 
-bool PolicyManager::CanFuse(const PatternNodePtr& upstream,
-                            const PatternNodePtr& downstream) const {
+template <typename T>
+bool PolicyManager<T>::CanFuse(const PatternNodePtr<T>& upstream,
+                               const PatternNodePtr<T>& downstream) const {
   for (const auto& policy : policies_) {
     if (!policy->CanFuse(upstream, downstream)) return false;
   }
   return true;
 }
 
-std::vector<size_t> PolicyManager::GetFakeReduceIterIdx(
-    const PatternNodePtr& upstream, const PatternNodePtr& downstream) const {
+template <typename T>
+std::vector<size_t> PolicyManager<T>::GetFakeReduceIterIdx(
+    const PatternNodePtr<T>& upstream,
+    const PatternNodePtr<T>& downstream) const {
   for (const auto& policy : policies_) {
     if (policy->Name() == "RelativeJudgePolicy") {
       return policy->GetFakeReduceIterIdx(upstream, downstream);
@@ -34,5 +38,7 @@ std::vector<size_t> PolicyManager::GetFakeReduceIterIdx(
   }
   return {};
 }
+
+template class PolicyManager<frontend::FrontendStage>;
 
 }  // namespace cinn::frontend::group_cluster::policy

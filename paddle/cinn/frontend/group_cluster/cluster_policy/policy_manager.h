@@ -18,30 +18,34 @@
 
 namespace cinn::frontend::group_cluster::policy {
 
+template <typename T>
 class Policy {
  public:
   virtual std::string Name() = 0;
-  virtual bool CanFuse(const PatternNodePtr& upstream,
-                       const PatternNodePtr& downstream) = 0;
+  virtual bool CanFuse(const PatternNodePtr<T>& upstream,
+                       const PatternNodePtr<T>& downstream) = 0;
   virtual std::vector<size_t> GetFakeReduceIterIdx(
-      const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
+      const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
     return {};
   }
 };
 
-using PolicyPtr = std::shared_ptr<Policy>;
+template <typename T>
+using PolicyPtr = std::shared_ptr<Policy<T>>;
 
+template <typename T>
 class PolicyManager {
  public:
-  explicit PolicyManager(const std::vector<PolicyPtr>& policies)
+  explicit PolicyManager(const std::vector<PolicyPtr<T>>& policies)
       : policies_(policies) {}
-  bool CanFuse(const PatternNodePtr& upstream,
-               const PatternNodePtr& downstream) const;
+  bool CanFuse(const PatternNodePtr<T>& upstream,
+               const PatternNodePtr<T>& downstream) const;
   std::vector<size_t> GetFakeReduceIterIdx(
-      const PatternNodePtr& upstream, const PatternNodePtr& downstream) const;
+      const PatternNodePtr<T>& upstream,
+      const PatternNodePtr<T>& downstream) const;
 
  private:
-  std::vector<PolicyPtr> policies_;
+  std::vector<PolicyPtr<T>> policies_;
 };
 
 }  // namespace cinn::frontend::group_cluster::policy
