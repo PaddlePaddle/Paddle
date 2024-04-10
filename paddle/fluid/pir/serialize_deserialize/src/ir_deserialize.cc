@@ -96,9 +96,16 @@ pir::Operation* ProgramReader::ReadOp(Json* op_json) {
 
   // serialize necessary attributes
   Json& attrs_json = op_json->at(ATTRS);
-  Json& opresults_attrs_json = op_json->at(OPRESULTS_ATTRS);
-  pir::AttributeMap attributes =
-      ReadAttributesMap(&attrs_json, &opresults_attrs_json);
+
+  pir::AttributeMap attributes;
+  if (op_json->contains(OPRESULTS_ATTRS)) {
+    Json& opresults_attrs_json = op_json->at(OPRESULTS_ATTRS);
+    attributes = ReadAttributesMap(&attrs_json, &opresults_attrs_json);
+  } else {
+    Json empty_json = Json::array();
+    attributes = ReadAttributesMap(&attrs_json, &empty_json);
+  }
+
   pir::IrContext* ctx_ = pir::IrContext::Instance();
   // prepare opinfo
   pir::OpInfo op_info = ctx_->GetRegisteredOpInfo(op_name);
@@ -115,7 +122,7 @@ pir::Operation* ProgramReader::ReadOp(Json* op_json) {
           op->num_results(),
           output_ids.size()));
 
-  for (auto i = 0; i < op->num_results(); i++) {
+  for (uint32_t i = 0; i < op->num_results(); i++) {
     id_value_map[output_ids[i]] = op->result(i);
   }
 

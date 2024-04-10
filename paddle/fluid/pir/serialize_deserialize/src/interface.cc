@@ -28,7 +28,8 @@ void WriteModule(const pir::Program& program,
                  const std::string& file_path,
                  const uint64_t& pir_version,
                  bool overwrite,
-                 bool readable) {
+                 bool readable,
+                 bool trainable) {
   PADDLE_ENFORCE_EQ(
       FileExists(file_path) && !overwrite,
       false,
@@ -42,7 +43,7 @@ void WriteModule(const pir::Program& program,
 
   total[BASE_CODE] = {{MAGIC, PIR}, {PIRVERSION, pir_version}};
 
-  ProgramWriter writer(pir_version);
+  ProgramWriter writer(pir_version, trainable);
   // write program
   total[PROGRAM] = writer.GetProgramJson(&program);
   std::string total_str;
