@@ -134,7 +134,6 @@ class TEST_API DrrPatternContext {
           {});
   drr::Tensor& ResultTensorPattern(const std::string& name);
 
-  // void RequireEqual(const Attribute& first, const Attribute& second);
   void RequireEqual(const TensorShape& first, const TensorShape& second);
   void RequireEqual(const TensorDataType& first, const TensorDataType& second);
   void RequireNativeCall(const ConstraintFunction& custom_fn);
@@ -159,11 +158,6 @@ class Op {
                               const Tensor& arg2) const;
   TEST_API void operator()(const std::vector<const Tensor*>& args,
                            const std::vector<const Tensor*>& outputs) const;
-  // const Tensor& operator()(const Tensor& arg0, const Tensor& arg1, const
-  // Tensor& arg2) const; const Tensor& operator()(const Tensor& arg0, const
-  // Tensor& arg1, const Tensor& arg2, const Tensor& arg3) const; const Tensor&
-  // operator()(const Tensor& arg0, const Tensor& arg1, const Tensor& arg2,
-  // const Tensor& arg3, const Tensor& arg4) const;
 
   static const char* prefix;
 

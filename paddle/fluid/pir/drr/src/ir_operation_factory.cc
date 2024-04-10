@@ -367,7 +367,7 @@ void BindIrOutputsWithDrrOutputs(const std::vector<const Tensor*>& tensors,
       tensors.size(),
       op->num_results(),
       phi::errors::InvalidArgument(
-          "The size of Drr outputs should less equal the size of Ir outputs"));
+          "The size of drr outputs should less equal the size of pir outputs"));
   for (size_t i = 0; i < tensors.size(); ++i) {
     match_ctx->BindIrValue(tensors[i]->name(), op->result(i));
   }
