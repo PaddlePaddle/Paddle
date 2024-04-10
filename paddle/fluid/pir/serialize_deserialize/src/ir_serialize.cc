@@ -140,21 +140,6 @@ Json ProgramWriter::WriteOpOperand(const pir::OpOperand& op_operand) {
   return operand_json;
 }
 
-Json ProgramWriter::WriteAttribute(const std::string& op_attr_name,
-                                   const pir::Attribute& attr) {
-  Json attr_json;
-  attr_json[NAME] = op_attr_name;
-  attr_json[ATTR_TYPE] = pir::writeAttr(attr);
-
-  VLOG(6) << "Finish write Attribute. ";
-  return attr_json;
-}
-
-Json ProgramWriter::WriteType(const pir::Type& type) {
-  VLOG(6) << "Finish write Type. ";
-  return pir::writeType(type);
-}
-
 Json ProgramWriter::WriteAttributesMapOther(const AttributeMap& attr_map) {
   Json operesult_attrs_json = Json::array();
   for (auto& attr : attr_map) {
@@ -180,9 +165,6 @@ Json ProgramWriter::WriteAttributesMapOpinfo(pir::Operation* op,
           if (attr_map.find(it->name) != attr_map.end()) {
             attrs_json.emplace_back(
                 WriteAttribute(it->name, attr_map.at(it->name)));
-            // PADDLE_ENFORCE_EQ(it->type_name, attr_map[it->name]),
-            // common::errors::Unavailable("op's attr type is not match it's
-            // OpAttribute Info"));
           }
         }
       }
@@ -201,5 +183,20 @@ Json ProgramWriter::WriteAttributesMapOpinfo(pir::Operation* op,
 
   VLOG(6) << "Finish write Opinfo AttributeMap ";
   return attrs_json;
+}
+
+Json ProgramWriter::WriteAttribute(const std::string& op_attr_name,
+                                   const pir::Attribute& attr) {
+  Json attr_json;
+  attr_json[NAME] = op_attr_name;
+  attr_json[ATTR_TYPE] = pir::writeAttr(attr);
+
+  VLOG(6) << "Finish write Attribute. ";
+  return attr_json;
+}
+
+Json ProgramWriter::WriteType(const pir::Type& type) {
+  VLOG(6) << "Finish write Type. ";
+  return pir::writeType(type);
 }
 }  // namespace pir
