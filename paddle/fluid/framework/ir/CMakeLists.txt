@@ -174,7 +174,7 @@ if(WITH_GPU OR WITH_ROCM)
   pass_library(embedding_eltwise_layernorm_fuse_pass inference)
 endif()
 
-if(WITH_MKLDNN)
+if(WITH_ONEDNN)
   pass_library(onednn_placement_pass base DEPS placement_pass_base DIR onednn)
   pass_library(depthwise_conv_onednn_pass base DIR onednn)
   pass_library(conv_affine_channel_onednn_fuse_pass inference DIR onednn)
@@ -538,7 +538,7 @@ if(NOT WIN32)
     SRCS dense_multihead_matmul_to_sparse_pass_tester.cc
     DEPS multihead_matmul_fuse_pass dense_multihead_matmul_to_sparse_pass)
 endif()
-if(WITH_MKLDNN)
+if(WITH_ONEDNN)
   cc_test(
     test_depthwise_conv_onednn_pass
     SRCS onednn/depthwise_conv_onednn_pass_tester.cc
