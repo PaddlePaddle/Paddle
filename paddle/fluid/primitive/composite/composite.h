@@ -208,6 +208,12 @@ Tensor pow_decomp(const Tensor& x, const paddle::Scalar& y) {
 }
 
 template <typename T>
+Tensor reciprocal_decomp(const Tensor& x) {
+  Tensor index = full<T>(empty_shape, -1.0, x.dtype());
+  return elementwise_pow<T>(x, index);
+}
+
+template <typename T>
 std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
     const Tensor& x,
     const Tensor& run_mean,
