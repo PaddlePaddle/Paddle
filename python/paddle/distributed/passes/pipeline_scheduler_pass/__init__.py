@@ -20,13 +20,7 @@ from .pipeline_eager_1f1b import PipelineEager1F1BPass
 from .pipeline_fthenb import PipelineFThenBPass
 from .pipeline_vpp import PipelineVirtualPipelinePass
 
-__all__ = [
-    "apply_pass",
-    "PipelineFThenBPass",
-    "Pipeline1F1BPass",
-    "PipelineEager1F1BPass",
-    "PipelineVirtualPipelinePass",
-]
+__all__ = []
 
 
 def apply_pass(main_program, startup_program, pass_name, pass_attr={}):
