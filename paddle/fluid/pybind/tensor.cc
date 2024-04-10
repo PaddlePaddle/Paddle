@@ -382,16 +382,6 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("tensor"),
            py::arg("place"),
            py::arg("batch_size") = -1)
-      .def("_copy_from_paddle_tensor",
-           &TensorCopyFromPaddleTensor<paddle::platform::Place>,
-           py::arg("tensor"),
-           py::arg("place"),
-           py::arg("batch_size") = -1)
-      .def("_copy_from_paddle_tensor",
-           &TensorCopyFromPaddleTensor<paddle::platform::CUDAPlace>,
-           py::arg("tensor"),
-           py::arg("place"),
-           py::arg("batch_size") = -1)
       .def("set",
            SetTensorFromPyArray<paddle::platform::CPUPlace>,
            py::arg("array"),

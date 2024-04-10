@@ -34,9 +34,9 @@ using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 using float16 = ::phi::dtype::float16;
 using bfloat16 = ::phi::dtype::bfloat16;
-using pstring = ::phi::dtype::pstring;
 using float8_e4m3fn = ::phi::dtype::float8_e4m3fn;
 using float8_e5m2 = ::phi::dtype::float8_e5m2;
+using pstring = ::phi::dtype::pstring;
 
 // The enum value are consistent with jit/property.proto
 enum class TEST_API DataType {
@@ -78,6 +78,7 @@ enum class TEST_API DataType {
   FLOAT8_E4M3FN,
   // This format has 1 sign bit, 5 exponent bits, and 2 mantissa bits.
   FLOAT8_E5M2,
+
   NUM_DATA_TYPES,
   // See Note [ Why we need ALL in basic kernel key member? ]
   ALL_DTYPE = UNDEFINED,
