@@ -65,6 +65,9 @@ class OperationFactory {
 #ifdef PADDLE_WITH_DNNL
     RegisterOnednnOpGeneratedOpCreator();
 #endif
+#ifdef PADDLE_WITH_XPU
+    RegisterXpuOpGeneratedOpCreator();
+#endif
     RegisterManualOpCreator();
   }
 
@@ -75,6 +78,9 @@ class OperationFactory {
 #endif
 #ifdef PADDLE_WITH_DNNL
   void RegisterOnednnOpGeneratedOpCreator();
+#endif
+#ifdef PADDLE_WITH_XPU
+  void RegisterXpuOpGeneratedOpCreator();
 #endif
   std::unordered_map<std::string, operation_create_fn> op_creator_map;
 };

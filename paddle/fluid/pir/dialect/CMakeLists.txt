@@ -148,6 +148,40 @@ if(WITH_MKLDNN)
       "${onednn_op_header_file}" "${onednn_op_source_file}"
       "${op_onednn_info_file}")
 endif()
+
+if(WITH_XPU)
+  set(pir_op_xpu_yaml ${parsed_op_dir}/xpu.parsed.yaml)
+
+  set(pd_xpu_op_yaml_file
+      ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/xpu.yaml)
+
+  set(op_xpu_info_file ${PD_DIALECT_SOURCE_DIR}/xpu_op_info.cc)
+  set(op_xpu_info_file_tmp ${op_xpu_info_file}.tmp)
+
+  set(xpu_op_namespace paddle,xpu,dialect)
+  set(xpu_dialect_name xpu_op)
+  set(xpu_op_header_file ${PD_DIALECT_SOURCE_DIR}/xpu_op.h)
+  set(xpu_op_source_file ${PD_DIALECT_SOURCE_DIR}/xpu_op.cc)
+  set(xpu_op_header_file_tmp ${xpu_op_header_file}.tmp)
+  set(xpu_op_source_file_tmp ${xpu_op_source_file}.tmp)
+
+  execute_process(
+    COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
+            ${pd_xpu_op_yaml_file} --output_path ${pir_op_xpu_yaml})
+
+  execute_process(
+    COMMAND
+      ${PYTHON_EXECUTABLE} ${op_gen_file} --op_yaml_files ${op_yaml_files}
+      --op_compat_yaml_file ${op_compat_yaml_file} --namespaces
+      ${xpu_op_namespace} --dialect_name ${xpu_dialect_name}
+      --op_def_h_file ${xpu_op_header_file_tmp} --op_info_file
+      ${op_xpu_info_file_tmp} --op_def_cc_file ${xpu_op_source_file_tmp}
+      --xpu_yaml_file ${pir_op_xpu_yaml} --with_distributed ${WITH_DISTRIBUTE})
+
+  set(generated_files_xpu_pd_op
+      "${xpu_op_header_file}" "${xpu_op_source_file}"
+      "${op_xpu_info_file}")
+endif()
 set(api_gen_yaml_files
     ${op_fwd_yaml},${op_bwd_yaml},${pir_op_fwd_yaml},${pir_op_bwd_yaml},${pir_update_op_fwd_yaml}
 )
@@ -201,6 +235,7 @@ set(generated_files_ops_api "${ops_api_source_file}")
 
 set(generated_files_pir
     ${generated_files_pd_op} ${generated_files_onednn_pd_op}
+    ${generated_files_pd_op} ${generated_files_xpu_pd_op}
     ${generated_files_pd_api} ${generated_files_python_c}
     ${generated_files_ops_api})
 foreach(generated_file ${generated_files_pir})
@@ -256,6 +291,11 @@ if(WITH_MKLDNN)
       ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_onednn_op.cc)
 endif()
 
+if(WITH_XPU)
+  set(op_dialect_srcs
+      ${op_dialect_srcs} ${xpu_op_source_file} ${op_xpu_info_file})
+endif()
+
 file(GLOB_RECURSE dist_dialect_srcs
      "${CMAKE_CURRENT_SOURCE_DIR}/distributed/ir/*.cc"
      "${CMAKE_CURRENT_SOURCE_DIR}/distributed/transforms/*.cc")
@@ -263,7 +303,7 @@ file(GLOB_RECURSE dist_dialect_srcs
 # if(WITH_DISTRIBUTE) FIXME in next PR
 set(op_dialect_srcs ${op_dialect_srcs} ${dist_dialect_srcs})
 # endif()
-set(op_dialect_deps phi common pir type_info string_helper global_utils amp)
+set(op_dialect_deps phi common pir type_info string_helper)
 if(WITH_ROCM)
   set(op_dialect_deps ${op_dialect_deps} global_utils)
 endif()
@@ -289,7 +329,13 @@ if(WITH_MKLDNN)
       ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/op_onednn_dialect.cc)
 endif()
 
-set(op_dialect_vjp_deps primitive_vjp_experimental op_dialect prim_utils)
+if(WITH_XPU)
+  set(op_dialect_vjp_srcs
+      ${op_dialect_vjp_srcs}
+      ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/op_xpu_dialect.cc)
+endif()
+
+set(op_dialect_vjp_deps primitive_vjp_experimental op_dialect)
 
 cc_library(
   op_dialect_vjp
