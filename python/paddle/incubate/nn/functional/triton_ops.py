@@ -14,7 +14,7 @@
 
 import triton
 import triton.language as tl
-from paddle import _C_ops
+
 import paddle
 from paddle import _C_ops
 from paddle.base.layer_helper import LayerHelper
@@ -216,8 +216,15 @@ std::vector<int> problem_size = {m, n, k};
 }
 
 std::vector<std::vector<int64_t>> ${op_name}_InferShape(const std::vector<int64_t>& a_shape,
-                                                        const std::vector<int64_t>& b_shape) {
-    return {{a_shape[0], b_shape[0]}};
+                                                        const std::vector<int64_t>& b_shape,
+                                                        const std::vector<int64_t>& c_shape,
+                                                        const std::vector<int64_t>& d_shape,
+                                                        bool bool_trans_w) {
+    if (bool_trans_w) {
+        return {{a_shape[0], b_shape[0]}};
+    } else {
+        return {{a_shape[0], b_shape[1]}};
+    }
 }
 
 std::vector<paddle::DataType> ${op_name}_InferDtype(const paddle::DataType& A_dtype) {
@@ -285,6 +292,7 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
     python_package_name = f"{op_name}_package"
 
     from paddle.base.framework import OpProtoHolder
+
     if op_name in OpProtoHolder.instance().op_proto_map.keys():
         if in_dynamic_or_pir_mode():
             outs = _C_ops._run_custom_op(
