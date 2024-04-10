@@ -657,22 +657,6 @@ def unsqueeze_composite(x, axis):
     return [out, None]
 
 
-@REGISTER_COMPOSITE('rsqrt')
-def rsqrt_composite(x):
-    """define composite rule of op rsqrt."""
-    # rsqrt(x) = x^(-0.5)
-    is_amp = False
-    from paddle.base.data_feeder import convert_dtype
-
-    dtype = convert_dtype(x.dtype)
-    if dtype in ["float16", "uint16"]:
-        is_amp = True
-        x = cast(x, "float32")
-    y = full(x.shape if len(x.shape) == 0 else [1], -0.5, x.dtype)
-    res = pow(x, y)
-    return res if not is_amp else cast(res, dtype)
-
-
 @REGISTER_COMPOSITE('group_norm')
 def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):
     """

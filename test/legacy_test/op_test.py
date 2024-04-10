@@ -96,7 +96,7 @@ def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
         check_out_dtype(base.layers.pad_constant_like, [([2,3,2,3], 'float64'), ([1, 3, 1,3], )], ['float32', 'float64', 'int64'], target_index=1, pad_value=0.)
 
     """
-    with paddle_static_guard():
+    with paddle.pir_utils.OldIrGuard():
         for i, expect_dtype in enumerate(expect_dtypes):
             with paddle.static.program_guard(paddle.static.Program()):
                 input_t = []
@@ -1141,7 +1141,7 @@ class OpTest(unittest.TestCase):
             return result
 
         with base.dygraph.base.guard(place=place):
-            block = base.default_main_program().global_block()
+            block = base.framework.default_main_program().global_block()
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
             # prepare input variable
             dygraph_tensor_inputs = (
@@ -1208,7 +1208,7 @@ class OpTest(unittest.TestCase):
             self.op_type
         )  # for ci check, please not delete it for now
         with base.dygraph.base.guard(place=place):
-            block = base.default_main_program().global_block()
+            block = base.framework.default_main_program().global_block()
 
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
 
@@ -1246,7 +1246,7 @@ class OpTest(unittest.TestCase):
 
     def get_kernel_signature(self, place, egr_inps=None, egr_oups=None):
         with base.dygraph.base.guard(place=place):
-            block = base.default_main_program().global_block()
+            block = base.framework.default_main_program().global_block()
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
             # prepare input variable
             dygraph_tensor_inputs = (
@@ -1525,7 +1525,7 @@ class OpTest(unittest.TestCase):
         for_inplace_test=None,
         check_cinn=False,
     ):
-        with static_guard():
+        with paddle.pir_utils.OldIrGuard():
             program = Program()
             block = program.global_block()
             op = self._append_ops(block)
@@ -1590,6 +1590,7 @@ class OpTest(unittest.TestCase):
                 program = compiled_prog
 
             executor = Executor(place)
+
             outs = executor.run(
                 program,
                 feed=feed_map,
@@ -1685,37 +1686,38 @@ class OpTest(unittest.TestCase):
         Returns:
             grad_program (program): The program which contains the grad_op.
         """
-        grad_program = Program()
-        grad_block = grad_program.global_block()
-        new_op_desc = grad_block.desc.append_op()
-        new_op_desc.copy_from(grad_op_desc)
-        grad_program._sync_with_cpp()
+        with paddle.pir_utils.OldIrGuard():
+            grad_program = Program()
+            grad_block = grad_program.global_block()
+            new_op_desc = grad_block.desc.append_op()
+            new_op_desc.copy_from(grad_op_desc)
+            grad_program._sync_with_cpp()
 
-        # Create grad vars based on fwd vars (shape and dtype)
-        for arg in (
-            grad_op_desc.input_arg_names() + grad_op_desc.output_arg_names()
-        ):
-            fwd_var_name = op_grad_to_var.get(arg, None)
-            if fwd_var_name is None:
-                fwd_var_name = arg
-            fwd_var = fwd_program.global_block().vars.get(fwd_var_name)
-            assert fwd_var is not None, f"{fwd_var_name} cannot be found"
-            grad_var = grad_block.create_var(
-                name=arg,
-                dtype=fwd_var.dtype,
-                shape=fwd_var.shape,
-                type=fwd_var.type,
-                persistable=False,
-            )
+            # Create grad vars based on fwd vars (shape and dtype)
+            for arg in (
+                grad_op_desc.input_arg_names() + grad_op_desc.output_arg_names()
+            ):
+                fwd_var_name = op_grad_to_var.get(arg, None)
+                if fwd_var_name is None:
+                    fwd_var_name = arg
+                fwd_var = fwd_program.global_block().vars.get(fwd_var_name)
+                assert fwd_var is not None, f"{fwd_var_name} cannot be found"
+                grad_var = grad_block.create_var(
+                    name=arg,
+                    dtype=fwd_var.dtype,
+                    shape=fwd_var.shape,
+                    type=fwd_var.type,
+                    persistable=False,
+                )
 
-            # Some variables' tensors hold no buffer (tensor's _holder is NULL), like XShape in reshape2 op,
-            # and the shapes of those variables contain 0 (eg. Xshape.shape = [0, 2, 5]).
-            # Set persistable for those variables in order to get them from global_scope for inplace grad test directly other than feed them,
-            # since feed op calls check_memory_size() which fails when tensor's holder_ is NULL.
-            if 0 in grad_var.shape:
-                grad_var.persistable = True
-        grad_program._sync_with_cpp()
-        return grad_program
+                # Some variables' tensors hold no buffer (tensor's _holder is NULL), like XShape in reshape2 op,
+                # and the shapes of those variables contain 0 (eg. Xshape.shape = [0, 2, 5]).
+                # Set persistable for those variables in order to get them from global_scope for inplace grad test directly other than feed them,
+                # since feed op calls check_memory_size() which fails when tensor's holder_ is NULL.
+                if 0 in grad_var.shape:
+                    grad_var.persistable = True
+            grad_program._sync_with_cpp()
+            return grad_program
 
     def _construct_grad_feed_map_from_forward(
         self, place, fwd_res, grad_op_desc, op_grad_to_var
@@ -3412,7 +3414,7 @@ class OpTest(unittest.TestCase):
             check_dygraph = False
 
         with base.dygraph.base.guard(place=place):
-            block = base.default_main_program().global_block()
+            block = base.framework.default_main_program().global_block()
 
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
 
@@ -3637,7 +3639,7 @@ class OpTest(unittest.TestCase):
         parallel=False,
         check_cinn=False,
     ):
-        with static_guard():
+        with paddle.pir_utils.OldIrGuard():
             prog = Program()
             scope = core.Scope()
             ir_scope = core.Scope()
