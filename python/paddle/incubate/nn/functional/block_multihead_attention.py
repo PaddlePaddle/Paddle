@@ -83,7 +83,7 @@ def block_multihead_attention(
         block_size (Int): The block_size of cache. Default is 64.
         use_neox_style (Bool): Whether neox_style RoPE is used or not. Default is False.
         use_dynamic_cachekv_quant (Bool): Whether dynamic cache kv quantization is applied or not. Default is False.
-        quant_round_type (Int): The quant rount type in cache kv quantization and fmha_out quantization. If 0 is set, value will be rounding to nearest ties to even. If 1 is set, value will be rounding to nearest ties away from zero.
+        quant_round_type (Int): The quant round type in cache kv quantization and fmha_out quantization. If 0 is set, value will be rounding to nearest ties to even. If 1 is set, value will be rounding to nearest ties away from zero.
         quant_max_bound (Float32): The max bound of float type to int type.
         quant_min_bound (Float32): The min bound of float type to int type.
         out_scale (Float32): The quant scale of fmha_out. Default is -1, which means do not apply quantization for fmha_out.

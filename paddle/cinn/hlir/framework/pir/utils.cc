@@ -300,6 +300,20 @@ bool IsShapeComputeOp(const ::pir::Operation& op) {
     all_input_has_shape_data = false;
     break;
   }
+
+  for (uint32_t i = 0; i < op.num_results(); ++i) {
+    if (shape_analysis.HasShapeOrDataForValue(op.result(i))) {
+      const auto& shape_expr =
+          shape_analysis.GetShapeOrDataForValue(op.result(i));
+      if (shape_expr.isa<symbol::TensorShapeOrDataDimExprs>() &&
+          shape_expr.data()) {  // has shape data
+        continue;
+      }
+    }
+    all_input_has_shape_data = false;
+    break;
+  }
+
   return all_input_has_shape_data;
 }
 
@@ -309,7 +323,7 @@ bool IsTempDenySpecialOp(const ::pir::Operation& op) {
   if (op.name() == "cinn_op.generate_shape") {
     return false;
   }
-  return IsShapeComputeOp(op) || IsSmallNumelOp(op);
+  return IsShapeComputeOp(op);
 }
 
 // Mainly used for pd_to_cinn_pass and reused in IsSupportInCinn function.
@@ -320,11 +334,7 @@ bool IsDeniedInCinn(const ::pir::Operation& op) {
             << "So mark IsDeniedForCinn: " << true;
     return true;
   }
-  if (IsTempDenySpecialOp(op)) {
-    VLOG(5) << "Found " << op.name() << " is in TempDenySpecialOp."
-            << "So mark IsDeniedForCinn: " << true;
-    return true;
-  }
+
   // Strip the dialect, like pd_op.abs -> abs
   const auto op_name = OpNameAfterStripDialect(op);
   const bool is_denied = OpTransInfo().IsDeniedByDefault(op_name);
@@ -409,12 +419,12 @@ std::string CompatibleInfo::OpFuncName(const ::pir::Operation& op) {
 
 std::string CompatibleInfo::GroupOpsName(
     const std::vector<::pir::Operation*>& ops) {
-  std::string name = "fn";
+  std::string name = "fn_";
   for (auto* op : ops) {
-    std::string op_name = OpName(*op);
-    name += "_" + cinn::common::Context::Global().NewName(op_name);
+    name += OpName(*op);
+    name += "_";
   }
-  return name;
+  return cinn::common::Context::Global().NewName(name);
 }
 
 std::string CompatibleInfo::ValueName(const ::pir::Value& value) {

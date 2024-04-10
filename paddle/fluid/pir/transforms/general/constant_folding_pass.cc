@@ -238,7 +238,11 @@ class ConstantFoldingPattern : public pir::RewritePattern {
       const std::vector<std::pair<pir::Operation*, int32_t>>& use_ops) const {
     for (auto [use_op, idx] : use_ops) {
       if (use_op->isa<pir::CombineOp>()) {
-        if (!ReplaceResultByParameterOp(use_op)) return false;
+        if (!ReplaceResultByParameterOp(use_op)) {
+          return false;
+        }
+      } else if (use_op->isa<paddle::dialect::MemcpyH2dOp>()) {
+        return false;
       } else if (use_op->HasInterface<paddle::dialect::OpYamlInfoInterface>()) {
         auto [input_infos, _1, _2, _3, _4] =
             use_op->dyn_cast<paddle::dialect::OpYamlInfoInterface>()
@@ -255,6 +259,9 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   }
 
   bool ReplaceResultByParameterOp(pir::Operation* op) const {
+    if (op->isa<paddle::dialect::MemcpyD2hOp>()) {
+      return false;
+    }
     for (uint32_t i = 0; i < op->num_results(); i++) {
       auto use_ops = pir::GetUseOpsForOutput(op, i);
       if (!CheckUseOps(use_ops)) return false;
@@ -461,30 +468,27 @@ class ConstantFoldingPatternForTrain : public ConstantFoldingPattern {
 
 class ConstantFoldingPass : public pir::Pass {
  public:
-  ConstantFoldingPass()
-      : pir::Pass("constant_folding_pass", 1),
-        place_(phi::CPUPlace{}),
-        scope_(nullptr) {}
+  ConstantFoldingPass() : pir::Pass("constant_folding_pass", 1) {}
 
  private:
   bool Initialize(pir::IrContext* context) override {
     PADDLE_ENFORCE_EQ(
-        Has(pir::kPlaceAttr),
+        Has(pir::Pass::kPlaceAttr),
         true,
         phi::errors::InvalidArgument(
             "Pass initialize failed."
             "When using ConstantFoldingPass, place attribute is required!"
             "Use Set method to set the place attribute."));
     PADDLE_ENFORCE_EQ(
-        Has(pir::kParamScopeAttr),
+        Has(pir::Pass::kParamScopeAttr),
         true,
         phi::errors::InvalidArgument(
             "Pass initialize failed."
             "When using ConstantFoldingPass, scope attribute is required!"
             "Use Set method to set the scope attribute."));
 
-    place_ = Get<phi::Place>(pir::kPlaceAttr);
-    scope_ = &Get<paddle::framework::Scope>(pir::kParamScopeAttr);
+    place_ = Get<phi::Place>(pir::Pass::kPlaceAttr);
+    scope_ = &Get<paddle::framework::Scope>(pir::Pass::kParamScopeAttr);
 
     PADDLE_ENFORCE_NOT_NULL(
         scope_, phi::errors::InvalidArgument("scope can not be nullptr"));
@@ -529,7 +533,7 @@ class ConstantFoldingPass : public pir::Pass {
 
  private:
   size_t suffix_{0};
-  phi::Place place_;
+  phi::Place place_{phi::CPUPlace{}};
   paddle::framework::Scope* scope_{nullptr};
   paddle::framework::interpreter::ExecutionConfig exe_config_{};
   std::vector<std::string> deleted_vars_;
