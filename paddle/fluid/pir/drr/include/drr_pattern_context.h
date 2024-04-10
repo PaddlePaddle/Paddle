@@ -129,7 +129,9 @@ class TEST_API DrrPatternContext {
 
   const Op& ResultOpPattern(
       const std::string& op_type,
-      const std::unordered_map<std::string, Attribute>& attributes = {});
+      const std::unordered_map<std::string, Attribute>& attributes = {},
+      const std::unordered_map<std::string, Attribute>& runtime_attributes =
+          {});
   drr::Tensor& ResultTensorPattern(const std::string& name);
 
   // void RequireEqual(const Attribute& first, const Attribute& second);
@@ -167,24 +169,23 @@ class Op {
 
  private:
   Op(const std::string& op_type_name,
+     PatternGraph* pattern_graph,
      const std::unordered_map<std::string, Attribute>& attributes,
-     PatternGraph* pattern_graph)
+     const std::unordered_map<std::string, Attribute>& runtime_attributes = {})
       : op_type_name_(op_type_name),
+        pattern_graph_(pattern_graph),
         attributes_(attributes),
-        pattern_graph_(pattern_graph) {}
+        runtime_attributes_(runtime_attributes) {}
 
-  const std::unordered_map<std::string, Attribute>& attributes() const {
-    return attributes_;
-  }
+  std::string op_type_name_;
+  PatternGraph* pattern_graph_{nullptr};
+  std::unordered_map<std::string, Attribute> attributes_;
+  std::unordered_map<std::string, Attribute> runtime_attributes_;
+
+  thread_local static int64_t count;
 
   friend class DrrPatternContext;
   friend class OpCall;
-
-  std::string op_type_name_;
-  std::unordered_map<std::string, Attribute> attributes_;
-  PatternGraph* pattern_graph_{nullptr};
-
-  thread_local static int64_t count;
 };
 
 class TEST_API Tensor {
@@ -244,7 +245,8 @@ class TEST_API OpCall {
       : op_name_(op->op_type_name_),
         inputs_(inputs),
         outputs_(outputs),
-        attributes_(op->attributes_) {}
+        attributes_(op->attributes_),
+        runtime_attributes_(op->runtime_attributes_) {}
 
   const std::string& name() const { return op_name_; }
 
@@ -256,18 +258,24 @@ class TEST_API OpCall {
     return attributes_;
   }
 
+  const std::unordered_map<std::string, Attribute>& runtime_attributes() const {
+    return runtime_attributes_;
+  }
+
  private:
   std::string op_name_;
   std::vector<const Tensor*> inputs_;
   std::vector<const Tensor*> outputs_;
   std::unordered_map<std::string, Attribute> attributes_;
+  std::unordered_map<std::string, Attribute> runtime_attributes_;
 };
 
 class TEST_API ResultPattern {
  public:
-  const drr::Op& Op(
-      const std::string& op_type,
-      const std::unordered_map<std::string, Attribute>& attributes = {});
+  const drr::Op&
+  Op(const std::string& op_type,
+     const std::unordered_map<std::string, Attribute>& attributes = {},
+     const std::unordered_map<std::string, Attribute>& runtime_attributes = {});
 
   drr::Tensor& Tensor(const std::string& name);
 
