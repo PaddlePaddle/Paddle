@@ -22,7 +22,7 @@ namespace common {
 template <typename T>
 class UnionFindSet {
  public:
-  T Find(const T& x) const {
+  const T& Find(const T& x) const {
     if (parent_.find(x) == parent_.end()) {
       return x;
     }
@@ -39,19 +39,24 @@ class UnionFindSet {
     parent_[Find(q)] = Find(p);
   }
 
-  std::vector<std::vector<T>> Clusters() const {
+  template <typename DoEachClusterT>
+  void VisitCluster(const DoEachClusterT& DoEachCluster) const {
     std::unordered_map<T, std::vector<T>> clusters_map;
     for (auto it = parent_.begin(); it != parent_.end(); it++) {
       clusters_map[Find(it->first)].emplace_back(it->first);
     }
-    std::vector<std::vector<T>> clusters;
-    for (auto it = clusters_map.begin(); it != clusters_map.end(); it++) {
-      clusters.emplace_back(it->second);
+    for (const auto& [_, clusters] : clusters_map) {
+      DoEachCluster(clusters);
     }
+  }
+
+  std::vector<std::vector<T>> Clusters() const {
+    std::vector<std::vector<T>> clusters;
+    VisitCluster([&](const auto& cluster) { clusters.emplace_back(cluster); });
     return clusters;
   }
 
-  bool IsConnect(const T& p, const T& q) const { return Find(p) == Find(q); }
+  bool HasSameRoot(const T& p, const T& q) const { return Find(p) == Find(q); }
 
   std::unordered_map<T, T>* GetMap() { return &parent_; }
 
