@@ -14,21 +14,23 @@
 
 #include <any>
 
-#include "paddle/common/enforce.h"
 #include "paddle/common/layout.h"
+
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
+#endif
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
 #include "paddle/fluid/pir/drr/src/attr_type_uilts.h"
 #include "paddle/fluid/pir/drr/src/ir_operation_factory.h"
-#include "paddle/phi/core/enforce.h"
+
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/value.h"
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
-#endif
+
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace drr {
