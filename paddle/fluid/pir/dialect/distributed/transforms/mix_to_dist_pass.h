@@ -22,9 +22,9 @@ namespace dialect {
 
 TEST_API std::shared_ptr<pir::Program> MixToDistPass(pir::Program* prog);
 
-void ProcessBlock(pir::Block* block);
+void ProcessMixBlock(pir::Block* block);
 
-void VerifyBlock(pir::Block* block);
+void VerifyDistBlock(pir::Block* block);
 
 }  // namespace dialect
 }  // namespace paddle

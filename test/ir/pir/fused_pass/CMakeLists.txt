@@ -1,4 +1,6 @@
-add_subdirectory(onednn)
+if(WITH_ONEDNN)
+  add_subdirectory(onednn)
+endif()
 
 if(WITH_XPU)
   add_subdirectory(xpu)

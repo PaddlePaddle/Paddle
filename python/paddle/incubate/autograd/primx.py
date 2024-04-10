@@ -189,7 +189,7 @@ class VarMap:
 # TODO(lml): supporting control flow, nested blocks, and block other than current block of main program.
 class Transform:
     """An object that maintains the state of transformations applied to a
-    primitve program."""
+    primitive program."""
 
     def __init__(self, block):
         assert (
@@ -555,7 +555,7 @@ def _lower_composite(
     start_idx=-1,
     backward_length=-1,
 ):
-    """The operators in block wich satisfy the filter conditon will be decomposite into primitives."""
+    """The operators in block which satisfy the filter condition will be decomposite into primitives."""
 
     def bind(args, to_bind, value_table):
         for i in range(len(args)):
@@ -633,12 +633,12 @@ def _lower_composite(
             op_name = op.type
 
             # NOTE: why need _sync_with_cpp here
-            # _sync_wich_cpp after every copied operator is very slow.
-            # However, _sync_wich_cpp only support continuous block currently.
+            # _sync_with_cpp after every copied operator is very slow.
+            # However, _sync_with_cpp only support continuous block currently.
             # The lowering transformation will generate program which is
             # crossed combination of copy block and lower block, such as
             # op1(copy) -> op2(copy) -> op3(lower) -> op4(lower) -> op5(copy) -> op6(copy)
-            # It will cause _sync_wich_cpp error.
+            # It will cause _sync_with_cpp error.
             # So, _sync_with_cpp will be executed only once after every continuous copy block.
             lower = (
                 (lookup_fn(op_name) is not None)

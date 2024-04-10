@@ -619,7 +619,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     test_analyzer_mobilenet_depthwise_conv ${IMG_CLASS_TEST_APP}
     ${MOBILENET_MODEL_DIR} false)
 
-  if(WITH_MKLDNN)
+  if(WITH_ONEDNN)
 
     ### INT8 tests
 
@@ -1262,7 +1262,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     --infer_data=${OCR_INSTALL_DIR}/data.txt
     --refer_result=${OCR_INSTALL_DIR}/result.txt)
 
-  if(WITH_MKLDNN)
+  if(WITH_ONEDNN)
     inference_analysis_test(
       test_analyzer_capi_exp_int
       SRCS
@@ -1326,7 +1326,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
                                                                        300)
   endif()
 
-  if(WITH_MKLDNN)
+  if(WITH_ONEDNN)
     set_tests_properties(test_analyzer_int8_resnet50 PROPERTIES TIMEOUT 120)
     set_tests_properties(test_analyzer_int8_mobilenet_ssd PROPERTIES TIMEOUT
                                                                      120)
@@ -1362,7 +1362,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       set_tests_properties(trt_rebind_stream_test
                            PROPERTIES TIMEOUT 360 LABELS "RUN_TYPE=EXCLUSIVE")
     endif()
-    if(WITH_MKLDNN)
+    if(WITH_ONEDNN)
       set_tests_properties(test_analyzer_bfloat16_resnet50 PROPERTIES TIMEOUT
                                                                       120)
     endif()
@@ -1494,7 +1494,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       --dirname=${WORD2VEC_MODEL_DIR})
   endif()
 
-  if(WITH_TESTING AND WITH_MKLDNN)
+  if(WITH_TESTING AND WITH_ONEDNN)
     if(NOT APPLE)
       inference_base_test(
         test_mkldnn_quantizer

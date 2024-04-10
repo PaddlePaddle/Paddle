@@ -95,7 +95,7 @@ std::vector<std::string> CheckUnregisteredOperationInBlock(
     OpTranscriber general_handler;
     try {
       general_handler.LookUpOpInfo(ctx, *op);
-    } catch (pir::IrNotMetException& e) {
+    } catch (common::enforce::EnforceNotMet& e) {
       unregistered_ops.push_back(op->Type());
     }
   }

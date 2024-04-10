@@ -19,7 +19,7 @@ import weakref
 from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
 from ...profiler import EventGuard
-from ...utils import InnerError, current_tmp_name_records, log, log_do
+from ...utils import current_tmp_name_records, log, log_do
 
 Guard = Callable[[types.FrameType], bool]
 
@@ -49,16 +49,6 @@ class StringifyExpression:
             *[arg.debug_expr for arg in sub_exprs]
         )
         self.free_vars = free_vars
-
-    def __post_init__(self):
-        self.check_expr(self.expr)
-
-    def check_expr(self, expr: str):
-        try:
-            pass
-            # ast.parse(expr) # TODO(xiongkun): too slow
-        except SyntaxError as e:
-            raise InnerError(f"Invalid expression: {expr}") from e
 
     def __hash__(self):
         if self.free_vars:
