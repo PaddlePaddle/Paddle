@@ -317,10 +317,11 @@ pir::Attribute CreateIrAttribute(const std::any& obj) {
   }
 }
 
-pir::AttributeMap CreateAttributeMap(const OpCall& op_call,
-                                     const MatchContextImpl& src_match_ctx) {
+pir::AttributeMap CreateAttributeMap(
+    const std::unordered_map<std::string, Attribute>& attrs,
+    const MatchContextImpl& src_match_ctx) {
   pir::AttributeMap attr_map;
-  for (const auto& kv : op_call.attributes()) {
+  for (const auto& kv : attrs) {
     std::visit(
         [&](auto&& arg) {
           if constexpr (std::is_same_v<std::decay_t<decltype(arg)>,
@@ -339,34 +340,12 @@ pir::AttributeMap CreateAttributeMap(const OpCall& op_call,
   return attr_map;
 }
 
-pir::AttributeMap CreateRuntimeAttributeMap(
-    const OpCall& op_call, const MatchContextImpl& src_match_ctx) {
-  pir::AttributeMap runtime_attr_map;
-  for (const auto& kv : op_call.runtime_attributes()) {
-    std::visit(
-        [&](auto&& arg) {
-          if constexpr (std::is_same_v<std::decay_t<decltype(arg)>,
-                                       NormalAttribute>) {
-            runtime_attr_map[kv.first] = src_match_ctx.GetIrAttr(arg.name());
-          }
-          if constexpr (std::is_same_v<std::decay_t<decltype(arg)>,
-                                       ComputeAttribute>) {
-            MatchContext ctx(std::make_shared<MatchContextImpl>(src_match_ctx));
-            runtime_attr_map[kv.first] =
-                CreateIrAttribute(arg.attr_compute_func()(ctx));
-          }
-        },
-        kv.second);
-  }
-  return runtime_attr_map;
-}
-
-pir::Value GetIrValueByDrrTensor(const Tensor& tensor,
+pir::Value GetIrValueByDrrTensor(const Tensor* tensor,
                                  const MatchContextImpl& res_match_ctx) {
-  if (tensor.is_none()) {
+  if (tensor->is_none()) {
     return pir::Value{};
   }
-  return res_match_ctx.GetIrValue(tensor.name());
+  return res_match_ctx.GetIrValue(tensor->name());
 }
 
 std::vector<pir::Value> GetIrValuesByDrrTensors(
@@ -375,16 +354,21 @@ std::vector<pir::Value> GetIrValuesByDrrTensors(
   std::vector<pir::Value> ir_values;
   ir_values.reserve(tensors.size());
   for (const auto* tensor : tensors) {
-    ir_values.push_back(GetIrValueByDrrTensor(*tensor, res_match_ctx));
+    ir_values.push_back(GetIrValueByDrrTensor(tensor, res_match_ctx));
   }
   return ir_values;
 }
 
-void BindIrOutputs(const OpCall& op_call,
-                   pir::Operation* op,
-                   MatchContextImpl* match_ctx) {
-  for (size_t i = 0; i < op_call.outputs().size(); ++i) {
-    match_ctx->BindIrValue(op_call.outputs()[i]->name(), op->result(i));
+void BindIrOutputsWithDrrOutputs(const std::vector<const Tensor*>& tensors,
+                                 pir::Operation* op,
+                                 MatchContextImpl* match_ctx) {
+  PADDLE_ENFORCE_EQ(
+      tensors.size(),
+      op->num_results(),
+      phi::errors::InvalidArgument(
+          "The size of Drr outputs should equal to the size of Ir outputs"));
+  for (size_t i = 0; i < tensors.size(); ++i) {
+    match_ctx->BindIrValue(tensors[i]->name(), op->result(i));
   }
 }
 
@@ -393,19 +377,17 @@ pir::Operation* CreateOperation(const OpCall& op_call,
                                 pir::PatternRewriter& rewriter,  // NOLINT
                                 MatchContextImpl* res_match_ctx) {
   VLOG(6) << "Drr create [" << op_call.name() << "] op...";
-  const auto& inputs = op_call.inputs();
-  std::vector<pir::Value> ir_values =
-      GetIrValuesByDrrTensors(inputs, *res_match_ctx);
   pir::Operation* op = OperationFactory::Instance().CreateOperation(
       op_call.name(),
-      ir_values,
-      CreateAttributeMap(op_call, src_match_ctx),
+      GetIrValuesByDrrTensors(op_call.inputs(), *res_match_ctx),
+      CreateAttributeMap(op_call.attributes(), src_match_ctx),
       rewriter);
-  auto runtime_attr_map = CreateRuntimeAttributeMap(op_call, src_match_ctx);
+  auto runtime_attr_map =
+      CreateAttributeMap(op_call.runtime_attributes(), src_match_ctx);
   for (const auto& kv : runtime_attr_map) {
     op->set_attribute(kv.first, kv.second);
   }
-  BindIrOutputs(op_call, op, res_match_ctx);
+  BindIrOutputsWithDrrOutputs(op_call.outputs(), op, res_match_ctx);
   VLOG(6) << "Drr create [" << op_call.name() << " @" << op << "] op done.";
   return op;
 }
