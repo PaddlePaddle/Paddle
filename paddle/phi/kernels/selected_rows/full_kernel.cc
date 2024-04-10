@@ -37,12 +37,12 @@ void FullKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void FullWithTensorKernel(const Context& dev_ctx,
-                          const DenseTensor& shape,
                           const DenseTensor& value,
+                          const IntArray& shape,
                           DataType dtype,
                           SelectedRows* out) {
   phi::FullWithTensorKernel<T>(
-      dev_ctx, shape, value, dtype, out->mutable_value());
+      dev_ctx, value, shape, dtype, out->mutable_value());
 }
 
 }  // namespace sr

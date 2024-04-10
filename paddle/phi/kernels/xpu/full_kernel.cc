@@ -23,7 +23,7 @@
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
-#include "paddle/phi/kernels/impl/full_whit_tensor_kernel_impl.h"
+#include "paddle/phi/kernels/impl/full_with_tensor_kernel_impl.h"
 
 namespace phi {
 

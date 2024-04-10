@@ -200,26 +200,33 @@ void ExpandOp::VerifySig() {
         2u,
         phi::errors::InvalidArgument(
             "The size %d of inputs must be equal to 2.", input_size));
-    IR_ENFORCE((*this)
-                   ->operand_source(0)
-                   .type()
-                   .isa<paddle::dialect::DenseTensorType>(),
-               "Type validation failed for the 0th input, got %s.",
-               (*this)->operand_source(0).type());
+    PADDLE_ENFORCE_EQ((*this)
+                          ->operand_source(0)
+                          .type()
+                          .isa<paddle::dialect::DenseTensorType>(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Type validation failed for the 0th input, got %s.",
+                          (*this)->operand_source(0).type()));
     if (auto vec_type =
             (*this)->operand_source(1).type().dyn_cast<pir::VectorType>()) {
       for (size_t i = 0; i < vec_type.size(); ++i) {
-        IR_ENFORCE(vec_type[i].isa<paddle::dialect::DenseTensorType>(),
-                   "Type validation failed for the 1th input, got %s.",
-                   (*this)->operand_source(1).type());
+        PADDLE_ENFORCE_EQ(
+            vec_type[i].isa<paddle::dialect::DenseTensorType>(),
+            true,
+            phi::errors::InvalidArgument(
+                "Type validation failed for the 1th input, got %s.",
+                (*this)->operand_source(1).type()));
       }
     } else {
-      IR_ENFORCE((*this)
-                     ->operand_source(1)
-                     .type()
-                     .isa<paddle::dialect::DenseTensorType>(),
-                 "Type validation failed for the 1th input, got %s.",
-                 (*this)->operand_source(1).type());
+      PADDLE_ENFORCE_EQ((*this)
+                            ->operand_source(1)
+                            .type()
+                            .isa<paddle::dialect::DenseTensorType>(),
+                        true,
+                        phi::errors::InvalidArgument(
+                            "Type validation failed for the 1th input, got %s.",
+                            (*this)->operand_source(1).type()));
     }
   }
   VLOG(4) << "Verifying attributes:";
