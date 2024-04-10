@@ -20,12 +20,11 @@ namespace phi {
 
 template <typename T, typename Context>
 void FullWithTensorKernel(const Context& dev_ctx,
-                          const DenseTensor& shape,
                           const DenseTensor& value,
+                          const IntArray& shape,
                           DataType dtype,
                           DenseTensor* out) {
-  auto shape_tmp = IntArray(shape);
-  out->Resize(common::make_ddim(shape_tmp.GetData()));
-  FullKernel<T, Context>(dev_ctx, shape_tmp, Scalar(value), dtype, out);
+  out->Resize(common::make_ddim(shape.GetData()));
+  FullKernel<T, Context>(dev_ctx, shape, Scalar(value), dtype, out);
 }
 }  // namespace phi
