@@ -589,12 +589,12 @@ ConstRational MulConstRational(const ConstRational& lhs,
   const auto [lhs_num, lhs_dem] = lhs;
   const auto [rhs_num, rhs_dem] = rhs;
   // Crossing is correct.
-  const auto [simplifed_lhs_num, simplifed_rhs_dem] =
+  const auto [simplified_lhs_num, simplified_rhs_dem] =
       SimplifiedConstRational(lhs_num, rhs_dem);
-  const auto [simplifed_rhs_num, simplifed_lhs_dem] =
+  const auto [simplified_rhs_num, simplified_lhs_dem] =
       SimplifiedConstRational(rhs_num, lhs_dem);
-  return ConstRational{simplifed_lhs_num * simplifed_rhs_num,
-                       simplifed_lhs_dem * simplifed_rhs_dem};
+  return ConstRational{simplified_lhs_num * simplified_rhs_num,
+                       simplified_lhs_dem * simplified_rhs_dem};
 }
 
 template <>
