@@ -751,7 +751,6 @@ void ProgramInterpreter::Convert(
   }
 
   // calculate last_live_ops_
-  auto op_nums = (*op_func_nodes).size();
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
     Instruction& instr = vec_instruction_[op_idx];
     OpInOutInfo info;
