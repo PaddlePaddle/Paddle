@@ -356,25 +356,25 @@ void AccessorWrapper<GPUAccessor>::CopyForPushImpl(
   int* d_slot_vector = reinterpret_cast<int*>(buf_slot_vector->ptr());
   int* d_mf_dim_vector = reinterpret_cast<int*>(buf_mf_dim_vector->ptr());
   cudaMemcpyAsync(gpu_values,
-             grad_values.data(),
-             grad_values.size() * sizeof(float*),
-             cudaMemcpyHostToDevice,
-             stream);
+                  grad_values.data(),
+                  grad_values.size() * sizeof(float*),
+                  cudaMemcpyHostToDevice,
+                  stream);
   cudaMemcpyAsync(gpu_len,
-             slot_lengths_lod.data(),
-             slot_lengths.size() * sizeof(int64_t),
-             cudaMemcpyHostToDevice,
-             stream);
+                  slot_lengths_lod.data(),
+                  slot_lengths.size() * sizeof(int64_t),
+                  cudaMemcpyHostToDevice,
+                  stream);
   cudaMemcpyAsync(d_slot_vector,
-             slot_vector.data(),
-             slot_lengths_lod.size() * sizeof(int),
-             cudaMemcpyHostToDevice,
-             stream);
+                  slot_vector.data(),
+                  slot_lengths_lod.size() * sizeof(int),
+                  cudaMemcpyHostToDevice,
+                  stream);
   cudaMemcpyAsync(d_mf_dim_vector,
-             slot_mf_dim_vector.data(),
-             slot_lengths_lod.size() * sizeof(int),
-             cudaMemcpyHostToDevice,
-             stream);
+                  slot_mf_dim_vector.data(),
+                  slot_lengths_lod.size() * sizeof(int),
+                  cudaMemcpyHostToDevice,
+                  stream);
   PushCopyWithPool<<<(total_length + 1024 - 1) / 1024, 1024, 0, stream>>>(
       total_grad_values_gpu,
       gpu_values,
