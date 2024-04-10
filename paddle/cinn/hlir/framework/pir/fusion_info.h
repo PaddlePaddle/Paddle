@@ -62,14 +62,14 @@ class FusionInfo {
   using IntArgsMap = std::map<int, CINNKernelInfo::ArgDimIdx>;
 
  public:
-  explicit FusionInfo(const cinn::dialect::FusionOp &fusion_op);
+  explicit FusionInfo(const cinn::dialect::FusionOp &fusion_op,
+                      const IntArgsMap &int_args_map);
   explicit FusionInfo(const OpLoweringGroup &group);
   FusionInfo() = delete;
   FusionInfo(const FusionInfo &) = default;
   FusionInfo(FusionInfo &&) = default;
 
   std::size_t hash() const;
-  void SetIntArgsMap(const IntArgsMap &int_args_map);
 
   bool operator==(const FusionInfo &other) const {
     return this->hash() == other.hash();
@@ -82,8 +82,6 @@ class FusionInfo {
  private:
   std::vector<OperationInfo> op_infos_;
   IntArgsMap int_args_map_;
-
-  bool is_finalized_{false};
   std::size_t cached_hash_value_{0};
 };
 
@@ -100,8 +98,7 @@ inline void hash_combine(std::size_t &seed,  // NOLINT
   seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 }
 
-std::vector<::pir::Operation *> TopologySort(
-    const cinn::dialect::FusionOp &fusion_op);
+std::vector<::pir::Operation *> TopologySort(::pir::Operation *op);
 
 }  // namespace cinn::hlir::framework::pir
 

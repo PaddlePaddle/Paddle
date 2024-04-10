@@ -68,7 +68,7 @@ class OpLoweringGroup {
   };
 
   const std::string& FuncName() const { return this->fn_name_; }
-  cinn::dialect::FusionOp FusionOp() const;
+  ::pir::Operation* GetParentOp() const;
   ::pir::Program* GetParentProgram() const;
   std::vector<::pir::Value> GetGroupOutputValues() const;
   std::unordered_set<::pir::Value> GetInputOpValues() const;

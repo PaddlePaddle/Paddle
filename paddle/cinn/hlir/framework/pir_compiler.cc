@@ -23,9 +23,8 @@ namespace cinn::hlir::framework {
 class CompilationContextMapper {
  public:
   CompilationContextMapper(const Target& target,
-                           const std::vector<pir::OpLoweringGroupPtr>& groups)
-      : groups_(groups) {
-    Construct(target);
+                           const std::vector<pir::OpLoweringGroupPtr>& groups) {
+    Construct(target, groups);
   }
   std::vector<GroupCompilationContext>& UniqueCompilationContexts() {
     return group_compilation_contexts_;
@@ -40,10 +39,10 @@ class CompilationContextMapper {
   void SetFinalize(bool val) { is_finalized_ = val; }
 
  private:
-  void Construct(const Target& target);
-
-  const std::vector<pir::OpLoweringGroupPtr>& groups_;
+  void Construct(const Target& target,
+                 const std::vector<pir::OpLoweringGroupPtr>& groups);
   std::vector<size_t> mapper_index_;
+  std::vector<pir::FusionInfo> fusion_infos_;
   std::vector<GroupCompilationContext> group_compilation_contexts_;
   std::vector<std::shared_ptr<pir::CompilationResult>> compilation_results_;
 
@@ -56,34 +55,40 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
   auto& group_compilation_contexts = ctx_mapper.UniqueCompilationContexts();
   auto& compilation_results = ctx_mapper.MutableCompilationResult();
 
-  auto worker_fn = [&](int index) {
-    CompilationTask task(&group_compilation_contexts[index]);
-    compilation_results[index] = task();
-  };
-  utils::parallel_run(
-      worker_fn, utils::SequenceDispatcher(0, groups.size()), -1);
+  const size_t task_size = group_compilation_contexts.size();
+  VLOG(5) << "Found " << task_size << " new  parsed from " << groups.size();
+  if (task_size > 0) {
+    auto worker_fn = [&](int index) {
+      CompilationTask task(&group_compilation_contexts[index]);
+      compilation_results[index] = task();
+    };
+    utils::parallel_run(worker_fn,
+                        utils::SequenceDispatcher(0, task_size),
+                        /*thread_num=*/task_size);
+  }
   ctx_mapper.SetFinalize(true);
   ctx_mapper.UpdateGlobalCache();
-
   return ctx_mapper.RecoverKernelInfos();
 }
 
-void CompilationContextMapper::Construct(const Target& target) {
-  // Step 1: Generate unqiue group_compilation_contexts_;
-  std::unordered_map<pir::FusionInfo, size_t> unique_infos;
-  for (size_t i = 0; i < groups_.size(); ++i) {
-    GroupCompilationContext ctx(target, groups_[i]);
-    if (unique_infos.find(ctx.FusionInfo()) == unique_infos.end()) {
-      unique_infos[ctx.FusionInfo()] = i;
-      group_compilation_contexts_.push_back(ctx);
-    }
-    mapper_index_.push_back(unique_infos[ctx.FusionInfo()]);
-  }
+void CompilationContextMapper::Construct(
+    const Target& target, const std::vector<pir::OpLoweringGroupPtr>& groups) {
+  std::unordered_map<size_t, size_t> unique_infos;
+  const auto IsNewAndUnique =
+      [&unique_infos](const pir::FusionInfo& info) -> bool {
+    const bool is_unique = unique_infos.find(info.hash()) == unique_infos.end();
+    const bool is_new = !CompilationCache::Instance().Has(info);
+    return is_new && is_unique;
+  };
 
-  // Step 2: Generate empty compilation_results_;
-  for (size_t i = 0; i < group_compilation_contexts_.size(); ++i) {
-    compilation_results_.push_back(
-        std::make_shared<pir::CompilationResult>(target));
+  for (size_t i = 0; i < groups.size(); ++i) {
+    fusion_infos_.emplace_back(*groups[i]);
+    if (IsNewAndUnique(fusion_infos_[i])) {
+      mapper_index_.push_back(i);
+      group_compilation_contexts_.emplace_back(target, groups[i]);
+      compilation_results_.push_back(
+          std::make_shared<pir::CompilationResult>(target));
+    }
   }
 }
 
@@ -94,16 +99,16 @@ CompilationContextMapper::RecoverKernelInfos() {
       true,
       ::common::errors::PreconditionNotMet(
           "Required is_finalized_ = true, please call SetFinalize() firstly."));
-  PADDLE_ENFORCE_EQ(
-      groups_.size(),
-      compilation_results_.size(),
-      ::common::errors::PreconditionNotMet(
-          "Required groups_.size() = compilation_results_.size()."));
+  PADDLE_ENFORCE_EQ(group_compilation_contexts_.size(),
+                    compilation_results_.size(),
+                    ::common::errors::PreconditionNotMet(
+                        "Required group_compilation_contexts_.size() = "
+                        "compilation_results_.size()."));
 
-  std::vector<pir::CINNKernelInfo> kernel_infos(groups_.size());
-  for (size_t i = 0; i < mapper_index_.size(); ++i) {
-    size_t index = mapper_index_[i];
-    kernel_infos[i] = compilation_results_[index]->GetKernelInfo();
+  std::vector<pir::CINNKernelInfo> kernel_infos(fusion_infos_.size());
+  for (size_t i = 0; i < fusion_infos_.size(); ++i) {
+    kernel_infos[i] =
+        CompilationCache::Instance().GetKernelInfo(fusion_infos_[i]);
   }
   return kernel_infos;
 }
@@ -115,7 +120,11 @@ void CompilationContextMapper::UpdateGlobalCache() {
       ::common::errors::PreconditionNotMet(
           "Required is_finalized_ = true, please call SetFinalize() firstly."));
   for (size_t i = 0; i < compilation_results_.size(); ++i) {
-    const auto& fusion_info = group_compilation_contexts_[i].FusionInfo();
+    PADDLE_ENFORCE_LT(mapper_index_[i],
+                      fusion_infos_.size(),
+                      ::common::errors::PreconditionNotMet(
+                          "Required mapper_index < fusion_infos_.size()."));
+    const auto& fusion_info = fusion_infos_[mapper_index_[i]];
     CompilationCache::Instance().Insert(fusion_info, compilation_results_[i]);
   }
 }

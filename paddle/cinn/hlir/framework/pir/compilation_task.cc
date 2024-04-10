@@ -80,6 +80,7 @@ std::shared_ptr<pir::CompilationResult> CompilationTask::BuildPirCINNKernelInfo(
       context_->group_->FuncName(),
       context_->group_->FuncName() + "_infer_shape",
       context_->group_->int_args_map());
+  VLOG(5) << "Start to compile module into cuda kernel...";
   backend_resource->GetBackendCompiler()->Build(module, "");
   compilation_result->SetBackendResource(backend_resource);
   return compilation_result;

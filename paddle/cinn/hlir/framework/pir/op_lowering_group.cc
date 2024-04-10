@@ -30,16 +30,17 @@ namespace pir {
   return ops_[0]->GetParentProgram();
 }
 
-cinn::dialect::FusionOp OpLoweringGroup::FusionOp() const {
+::pir::Operation* OpLoweringGroup::GetParentOp() const {
   PADDLE_ENFORCE_GT(this->ops_.size(),
                     0,
                     ::common::errors::PreconditionNotMet(
                         "Required at least one operation in OpLoweringGroup."));
   auto* parent_op = this->ops_[0]->GetParentOp();
-  PADDLE_ENFORCE(parent_op && parent_op->isa<cinn::dialect::FusionOp>(),
-                 ::common::errors::Unavailable(
-                     "Required inner op's parent must be FusionOp."));
-  return parent_op->dyn_cast<cinn::dialect::FusionOp>();
+  PADDLE_ENFORCE_NOT_NULL(
+      parent_op,
+      ::common::errors::Unavailable(
+          "Required inner op's parent must not be nullptr."));
+  return parent_op;
 }
 
 std::vector<::pir::Value> OpLoweringGroup::GetGroupOutputValues() const {

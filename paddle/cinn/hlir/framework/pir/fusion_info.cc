@@ -18,6 +18,9 @@
 
 namespace cinn::hlir::framework::pir {
 
+using cinn::dialect::FusionOp;
+using cinn::dialect::GroupOp;
+
 constexpr static char* kOpCallStack = "op_callstack";
 
 std::size_t AttributeInfo::hash() const { return attr_.hash(); }
@@ -85,27 +88,23 @@ std::ostream& operator<<(std::ostream& os, const OperationInfo& op_info) {
   return os;
 }
 
-FusionInfo::FusionInfo(const cinn::dialect::FusionOp& fusion_op) {
-  for (const auto* op : TopologySort(fusion_op)) {
+FusionInfo::FusionInfo(const cinn::dialect::FusionOp& fusion_op,
+                       const IntArgsMap& int_args_map) {
+  for (const auto* op : TopologySort(fusion_op.operation())) {
     op_infos_.emplace_back(*op);
   }
+  int_args_map_ = int_args_map;
 }
 
 FusionInfo::FusionInfo(const OpLoweringGroup& group) {
-  auto fusion_op = group.FusionOp();
-  for (const auto* op : TopologySort(fusion_op)) {
+  auto* parent_op = group.GetParentOp();
+  for (const auto* op : TopologySort(parent_op)) {
     op_infos_.emplace_back(*op);
   }
   int_args_map_ = group.int_args_map();
-  is_finalized_ = true;
 }
 
 std::size_t FusionInfo::hash() const {
-  PADDLE_ENFORCE_EQ(
-      is_finalized_,
-      true,
-      ::common::errors::PreconditionNotMet(
-          "Required is_finalized_=true, please call SetIntArgsMap() firstly."));
   if (cached_hash_value_ != 0U) {
     return cached_hash_value_;
   }
@@ -115,11 +114,6 @@ std::size_t FusionInfo::hash() const {
 }
 
 std::size_t FusionInfo::HashIntArgsMap() const {
-  PADDLE_ENFORCE_EQ(
-      is_finalized_,
-      true,
-      ::common::errors::PreconditionNotMet(
-          "Required is_finalized_=true, please call SetIntArgsMap() firstly."));
   std::size_t seed = 2153;
   for (const auto& [input_idx, dim_idx] : int_args_map_) {
     hash_combine(seed, input_idx);
@@ -127,16 +121,6 @@ std::size_t FusionInfo::HashIntArgsMap() const {
     hash_combine(seed, dim_idx.dim_idx);
   }
   return seed;
-}
-
-void FusionInfo::SetIntArgsMap(const IntArgsMap& int_args_map) {
-  PADDLE_ENFORCE_EQ(
-      is_finalized_,
-      false,
-      ::common::errors::PreconditionNotMet(
-          "Required is_finalized_=false before call SetIntArgsMap()."));
-  int_args_map_ = int_args_map;
-  is_finalized_ = true;
 }
 
 std::ostream& operator<<(std::ostream& os, const FusionInfo& fusion_info) {
@@ -149,10 +133,15 @@ std::ostream& operator<<(std::ostream& os, const FusionInfo& fusion_info) {
   return os;
 }
 
-std::vector<::pir::Operation*> TopologySort(
-    const cinn::dialect::FusionOp& fusion_op) {
-  // TODO(Aurelius84): Need upgrade this logic
-  return fusion_op.GetOperators();
+std::vector<::pir::Operation*> TopologySort(::pir::Operation* op) {
+  if (op->isa<FusionOp>()) {
+    return op->dyn_cast<FusionOp>().GetOperators();
+  }
+  if (op->isa<GroupOp>()) {
+    return op->dyn_cast<GroupOp>().GetOperators();
+  }
+  PADDLE_THROW(::common::errors::PreconditionNotMet(
+      "Required FusionOp or GroupOp, but got %s.", op->name()));
 }
 
 }  // namespace cinn::hlir::framework::pir

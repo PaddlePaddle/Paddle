@@ -31,17 +31,15 @@ class GroupCompilationContext {
  public:
   GroupCompilationContext(const Target& target,
                           const pir::OpLoweringGroupPtr& group)
-      : target_(target), group_(group), fusion_info_(*group) {}
+      : target_(target), group_(group) {}
 
   void SetLoweredFuncs(BucketLoweredFuncsWrapper&& funcs);
   std::string PrintPredicate2Funcs() const;
-  const pir::FusionInfo& FusionInfo() const { return fusion_info_; }
 
  private:
   friend class CompilationTask;
   const Target& target_;
   const pir::OpLoweringGroupPtr& group_;
-  pir::FusionInfo fusion_info_;
   std::vector<ir::SymbolicPredicate> predicates_;
   std::vector<ir::LoweredFunc> lowered_funcs_;
   ir::LoweredFunc infer_shape_lowered_func_;
