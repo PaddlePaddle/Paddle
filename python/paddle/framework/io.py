@@ -1181,7 +1181,7 @@ def load(path, **configs):
                     if config.return_numpy:
                         p = core.Place()
                         p.set_place(paddle.CPUPlace())
-                        if tensor.is_dense() and tensor.place.is_custom_place():
+                        if tensor._place().is_custom_place():
                             return np.array(
                                 paddle._C_ops.npu_identity(tensor, -1)._copy(p)
                             )
