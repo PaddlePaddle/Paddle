@@ -98,10 +98,13 @@ bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) const {
   auto lhs_shape_data = GetShapeOrDataForValue(lhs);
   auto rhs_shape_data = GetShapeOrDataForValue(rhs);
 
-  IR_ENFORCE(lhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>() &&
-                 rhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>(),
-             "Currently, IsShapeEqual only support TensorShapeOrDataDimExprs "
-             "but not TensorListShapeOrDataDimExprs.");
+  PADDLE_ENFORCE_EQ(
+      lhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>() &&
+          rhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>(),
+      true,
+      phi::errors::InvalidArgument(
+          "Currently, IsShapeEqual only support TensorShapeOrDataDimExprs "
+          "but not TensorListShapeOrDataDimExprs."));
 
   // For static shape, directly compare the shapes.
   if (lhs_type.IsStaticShape() && rhs_type.IsStaticShape()) {
@@ -146,10 +149,13 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(
   auto lhs_shape_data = GetShapeOrDataForValue(lhs);
   auto rhs_shape_data = GetShapeOrDataForValue(rhs);
 
-  IR_ENFORCE(lhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>() &&
-                 rhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>(),
-             "Currently, IsProductEqual only support TensorShapeOrDataDimExprs "
-             "but not TensorListShapeOrDataDimExprs.");
+  PADDLE_ENFORCE_EQ(
+      lhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>() &&
+          rhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>(),
+      true,
+      phi::errors::InvalidArgument(
+          "Currently, IsProductEqual only support TensorShapeOrDataDimExprs "
+          "but not TensorListShapeOrDataDimExprs."));
 
   symbol::DimExpr lhs_product(1);
   symbol::DimExpr rhs_product(1);
