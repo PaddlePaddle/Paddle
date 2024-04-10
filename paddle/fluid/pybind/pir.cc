@@ -1291,7 +1291,8 @@ static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
             auto value = op->operand_source(counter);
             if (!op_input_info.no_need_buffer) {
               need_buffer_values.insert(value);
-              if (value.defining_op()->isa<pir::CombineOp>()) {
+              if (!IsFakeValue(value) &&
+                  value.defining_op()->isa<pir::CombineOp>()) {
                 for (const auto &combine_value :
                      value.defining_op()->operands_source()) {
                   need_buffer_values.insert(combine_value);
