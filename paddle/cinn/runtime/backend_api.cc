@@ -16,6 +16,7 @@
 #include <glog/logging.h>
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
 #include "paddle/cinn/runtime/flags.h"
+#include "paddle/common/enforce.h"
 
 using cinn::backends::GlobalSymbolRegistry;
 
@@ -34,7 +35,7 @@ BackendAPI* BackendAPI::get_backend(common::Target::Language target_language) {
           GlobalSymbolRegistry::Global().Lookup("backend_api.cuda");
       PADDLE_ENFORCE_NOT_NULL(
           temp_backend_api,
-          cinn::common::errors::Fatal(
+          ::common::errors::Fatal(
               "global symbol (backend_api.cuda) not found!"));
       break;
     case common::Target::Language::sycl:
@@ -42,7 +43,7 @@ BackendAPI* BackendAPI::get_backend(common::Target::Language target_language) {
           GlobalSymbolRegistry::Global().Lookup("backend_api.sycl");
       PADDLE_ENFORCE_NOT_NULL(
           temp_backend_api,
-          cinn::common::errors::Fatal(
+          ::common::errors::Fatal(
               "global symbol (backend_api.sycl) not found!"));
       break;
     case common::Target::Language::hip:
@@ -50,15 +51,17 @@ BackendAPI* BackendAPI::get_backend(common::Target::Language target_language) {
           GlobalSymbolRegistry::Global().Lookup("backend_api.hip");
       PADDLE_ENFORCE_NOT_NULL(
           temp_backend_api,
-          cinn::common::errors::Fatal(
+          ::common::errors::Fatal(
               "global symbol (backend_api.hip) not found!"));
       break;
     case common::Target::Language::bangc:
-      PADDLE_THROW(cinn::common::errors::Fatal(
-          "Target(" << target_language << ") is not support get_backend now."));
+      PADDLE_THROW(::common::errors::Fatal(
+          "Target(bangc) is not support get_backend now."));
     default:
-      PADDLE_THROW(cinn::common::errors::Fatal(
-          "Target(" << target_language << ") is not supported now."));
+      std::ostringstream error_message;
+      error_message << "Target(" << target_language
+                    << ") is not supported now.";
+      PADDLE_THROW(::common::errors::Fatal(error_message.str()));
   }
   return reinterpret_cast<BackendAPI*>(temp_backend_api);
 }
