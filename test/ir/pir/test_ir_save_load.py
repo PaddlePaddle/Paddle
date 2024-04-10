@@ -23,20 +23,23 @@ class TestA(unittest.TestCase):
         with paddle.pir_utils.IrGuard():
             main_program = paddle.static.Program()
             with paddle.static.program_guard(main_program):
-                input = paddle.full(
-                    shape=[1, 512, 64], fill_value=0.5, dtype='float32'
-                )
-                weight = paddle.full(
-                    shape=[64, 64], fill_value=0.5, dtype='float32'
-                )
-                bias = paddle.full(shape=[64], fill_value=1.0, dtype='float32')
-                x = paddle.matmul(input, weight)
-                y = paddle.add(x, bias)
+                for i in range(2501):
+                    input = paddle.full(
+                        shape=[1, 512, 64], fill_value=0.5, dtype='float32'
+                    )
+                    weight = paddle.full(
+                        shape=[64, 64], fill_value=0.5, dtype='float32'
+                    )
+                    bias = paddle.full(
+                        shape=[64], fill_value=1.0, dtype='float32'
+                    )
+                    x = paddle.matmul(input, weight)
+                    y = paddle.add(x, bias)
 
             file_path = "test_save_program1.json"
             pir_version = 1
             base.core.serialize_pir_program(
-                main_program, file_path, pir_version, True, True
+                main_program, file_path, pir_version, True, False
             )
 
     def test_builtin_save(self):

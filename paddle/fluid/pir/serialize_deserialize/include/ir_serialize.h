@@ -13,11 +13,14 @@
 // limitations under the License.
 #pragma once
 
-#include <nlohmann/json.hpp>
+#include "paddle/fluid/pir/serialize_deserialize/include/third_part.h"
 #include "paddle/pir/include/core/program.h"
-using Json = nlohmann::json;
-namespace pir {
 
+namespace pir {
+/**
+ * ProgramWriter is used to serialize pir program to json object.
+ *
+ */
 class ProgramWriter {
  public:
   explicit ProgramWriter(const uint64_t version) : version_(version) {}
@@ -27,15 +30,24 @@ class ProgramWriter {
   ProgramWriter& operator=(const ProgramWriter&) = delete;
   ProgramWriter& operator=(ProgramWriter&&);
 
-  // static void staticInit()
-
+  /** GetProgramJson is used by writeModulde api*/
   Json GetProgramJson(const pir::Program* program);
   ~ProgramWriter() = default;
 
  private:
+  /** version_ is the version of paddlepaddle. which is used to
+   * Conduct version compatibility judgment and modification.*/
   uint64_t version_;
+
+  /** program_json is the json object of pir program. */
   Json program_json;
+
+  /** value_id_map is used to record the serialize id of pir::Value.
+   * which is used to serilize op's operands. */
   std::map<pir::Value, int64_t> value_id_map;
+
+  /** xxx_id_ is used to record current id of IR structure
+   * which should be serialized.*/
   int64_t region_id_ = 0;
   int64_t block_id_ = 0;
   int64_t value_id_ = 1;
@@ -48,8 +60,14 @@ class ProgramWriter {
   Json WriteBlockArg(const pir::Value& value);
   Json WriteValue(const pir::Value& value);
   Json WriteOpOperand(const pir::OpOperand& op_operand);
-  Json WriteAttributesMapOpinfo(const AttributeMap& attr_map);
-  Json WriteAttributesMapTrain(const AttributeMap& attr_map);
+  Json WriteAttributesMapOpinfo(pir::Operation* op,
+                                const AttributeMap& attr_map);
+  Json WriteAttributesMapOther(const AttributeMap& attr_map);
+
+  /** WriteAttribute is used to write attribute of op.
+   * which call writeAttr to get Derived Class‘s json object.
+   * same as WriteType
+   */
   Json WriteAttribute(const std::string& op_attr_name,
                       const pir::Attribute& attr);
   Json WriteType(const pir::Type& type);

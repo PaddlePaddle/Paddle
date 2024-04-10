@@ -13,9 +13,5 @@
 // limitations under the License.
 #pragma once
 
-#include <fstream>
-#include "paddle/common/enforce.h"
-#include "paddle/fluid/pir/serialize_deserialize/include/third_part.h"
-#include "paddle/pir/include/core/program.h"
-
-namespace pir {}
+#include "nlohmann/json.hpp"
+using Json = nlohmann::json;
