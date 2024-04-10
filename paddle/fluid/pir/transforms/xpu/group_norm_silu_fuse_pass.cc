@@ -64,17 +64,6 @@ class GroupNormSiluPattern : public paddle::drr::DrrPatternBase {
               {&pat.Tensor("Y"), &pat.Tensor("Mean"), &pat.Tensor("Variance")});
     silu({&pat.Tensor("Y")}, {&pat.Tensor("Out")});
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      std::vector<int64_t> x_shape =
-          pir::GetShapeFromValue(match_ctx.Tensor("X"));
-      std::vector<int64_t> y_shape =
-          pir::GetShapeFromValue(match_ctx.Tensor("Y"));
-      if (x_shape.size() == y_shape.size()) {
-        return true;
-      }
-      return false;
-    });
-
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &group_norm_silu_xpu = res.Op(
