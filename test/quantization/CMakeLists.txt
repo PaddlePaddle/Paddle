@@ -244,7 +244,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_apply_per_channel_scale)
 endif()
 
-if(LINUX AND WITH_MKLDNN)
+if(LINUX AND WITH_ONEDNN)
 
   #### Image classification dataset: ImageNet (small)
   # The dataset should already be downloaded for INT8v2 unit tests
@@ -516,7 +516,7 @@ set_tests_properties(test_imperative_qat_user_defined PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_qat_lsq PROPERTIES TIMEOUT 300)
 set_tests_properties(test_imperative_qat_matmul PROPERTIES TIMEOUT 300)
 
-if(LINUX AND WITH_MKLDNN)
+if(LINUX AND WITH_ONEDNN)
   set_tests_properties(test_quant2_int8_mobilenetv1_mkldnn PROPERTIES TIMEOUT
                                                                       120)
   set_tests_properties(convert_model2dot_ernie PROPERTIES TIMEOUT 120)

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/remove_unchanged_reshape_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/fold_manipulation_ops_pass.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
@@ -75,7 +75,7 @@ bool RemoveOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
 }
 
 template <typename OPTYPE>
-class RemoveUnchangedReshapePattern : public pir::OpRewritePattern<OPTYPE> {
+class RemoveUnchangedOpPattern : public pir::OpRewritePattern<OPTYPE> {
  public:
   using pir::OpRewritePattern<OPTYPE>::OpRewritePattern;
 
@@ -85,18 +85,19 @@ class RemoveUnchangedReshapePattern : public pir::OpRewritePattern<OPTYPE> {
   }
 };
 
-class MergeReshapePattern
-    : public pir::OpRewritePattern<cinn::dialect::ReshapeOp> {
+template <typename OPTYPE>
+class MergeRedundantOpPattern : public pir::OpRewritePattern<OPTYPE> {
  public:
-  using pir::OpRewritePattern<cinn::dialect::ReshapeOp>::OpRewritePattern;
+  using pir::OpRewritePattern<OPTYPE>::OpRewritePattern;
 
-  bool MatchAndRewrite(cinn::dialect::ReshapeOp op,
+  bool MatchAndRewrite(OPTYPE op,
                        pir::PatternRewriter& rewriter) const override {
-    if (auto pre_shape = op->operand_source(0)
-                             .defining_op()
-                             ->dyn_cast<cinn::dialect::ReshapeOp>()) {
-      op->operand(0).set_source(pre_shape->operand_source(0));
-
+    if (auto pre_op = (op->operand_source(0).defining_op())
+                          ->template dyn_cast<OPTYPE>()) {
+      op->operand(0).set_source(pre_op->operand_source(0));
+      if (pre_op->use_empty()) {
+        rewriter.EraseOp(pre_op);
+      }
       return true;
     }
 
@@ -104,18 +105,24 @@ class MergeReshapePattern
   }
 };
 
-class RemoveUnchangedReshapePass : public pir::PatternRewritePass {
+class FoldManipulationOpsPass : public pir::PatternRewritePass {
  public:
-  RemoveUnchangedReshapePass()
-      : pir::PatternRewritePass("remove_unchanged_reshape_pass", 1) {}
+  FoldManipulationOpsPass()
+      : pir::PatternRewritePass("fold_manipulation_ops_pass", 1) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
 
-    // remove out_shape equal in_shape reshape op
-    ps.Add<RemoveUnchangedReshapePattern<cinn::dialect::ReshapeOp>>(context);
-    ps.Add<RemoveUnchangedReshapePattern<paddle::dialect::ReshapeOp>>(context);
-    ps.Add<MergeReshapePattern>(context);
+    // remove out_shape equal in_shape ops
+    ps.Add<RemoveUnchangedOpPattern<cinn::dialect::ReshapeOp>>(context);
+    ps.Add<RemoveUnchangedOpPattern<paddle::dialect::ReshapeOp>>(context);
+    ps.Add<RemoveUnchangedOpPattern<cinn::dialect::BroadcastOp>>(context);
+    ps.Add<RemoveUnchangedOpPattern<paddle::dialect::ExpandOp>>(context);
+    // merge redundant ops
+    ps.Add<MergeRedundantOpPattern<cinn::dialect::ReshapeOp>>(context);
+    ps.Add<MergeRedundantOpPattern<paddle::dialect::ReshapeOp>>(context);
+    ps.Add<MergeRedundantOpPattern<cinn::dialect::BroadcastOp>>(context);
+    ps.Add<MergeRedundantOpPattern<paddle::dialect::ExpandOp>>(context);
     ps.Add<RefreshCombineOpPattern>(context);
 
     return ps;
@@ -126,13 +133,12 @@ class RemoveUnchangedReshapePass : public pir::PatternRewritePass {
   }
 };
 
-std::unique_ptr<pir::Pass> CreateRemoveUnchangedReshapePass() {
-  return std::make_unique<RemoveUnchangedReshapePass>();
+std::unique_ptr<pir::Pass> CreateFoldManipulationOpsPass() {
+  return std::make_unique<FoldManipulationOpsPass>();
 }
-
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn
 
-REGISTER_IR_PASS(remove_unchanged_reshape_pass,
-                 ::cinn::dialect::ir::RemoveUnchangedReshapePass);
+REGISTER_IR_PASS(fold_manipulation_ops_pass,
+                 ::cinn::dialect::ir::FoldManipulationOpsPass);
