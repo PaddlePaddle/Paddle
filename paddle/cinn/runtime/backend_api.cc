@@ -58,10 +58,8 @@ BackendAPI* BackendAPI::get_backend(common::Target::Language target_language) {
       PADDLE_THROW(::common::errors::Fatal(
           "Target(bangc) is not support get_backend now."));
     default:
-      std::ostringstream error_message;
-      error_message << "Target(" << target_language
-                    << ") is not supported now.";
-      PADDLE_THROW(::common::errors::Fatal(error_message.str()));
+      PADDLE_THROW(::common::errors::Fatal(
+          "Target(%s) is not support get_backend now.", target_language));
   }
   return reinterpret_cast<BackendAPI*>(temp_backend_api);
 }
