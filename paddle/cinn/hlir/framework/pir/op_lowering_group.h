@@ -22,6 +22,7 @@
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/common/enforce.h"
 #include "paddle/pir/include/core/builtin_type_interfaces.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/value.h"
@@ -38,15 +39,18 @@ namespace framework {
 namespace pir {
 class OpLoweringGroup {
  public:
-  OpLoweringGroup() = default;
   OpLoweringGroup(const OpLoweringGroup&) = delete;
   OpLoweringGroup(OpLoweringGroup&&) = delete;
 
   explicit OpLoweringGroup(const std::vector<::pir::Operation*>& group_ops)
-      : ops_(group_ops) {}
+      : ops_(group_ops) {
+    fn_name_ = CompatibleInfo::GroupOpsName(ops_);
+  }
 
   explicit OpLoweringGroup(std::initializer_list<::pir::Operation*> group_ops)
-      : ops_(group_ops) {}
+      : ops_(group_ops) {
+    fn_name_ = CompatibleInfo::GroupOpsName(ops_);
+  }
 
   struct SharedGroupHasher {
     size_t operator()(
@@ -88,27 +92,18 @@ class OpLoweringGroup {
 
   std::unordered_set<::pir::Value> GetInputOpValues() const {
     std::unordered_set<::pir::Value> group_inputs;
-
-    std::unordered_set<::pir::Operation*> ops_set;
-    for (auto op : this->ops_) {
-      ops_set.insert(op);
-    }
+    std::unordered_set<::pir::Operation*> ops_set(this->ops_.begin(),
+                                                  this->ops_.end());
 
     // count all op's input Value
-    for (auto op : this->ops_) {
+    for (auto op : ops_set) {
       for (auto& value : op->operands_source()) {
-        if (!value || !value.type()) {
+        if (!value || !value.type() || ops_set.count(value.defining_op()))
           continue;
-        }
-
-        if (!ops_set.count(value.defining_op())) {
-          // if the input value owner op is not in OpSet, it's the group's input
-          group_inputs.insert(value);
-          continue;
-        }
+        // if the input value owner op is not in OpSet, it's the group's input
+        group_inputs.insert(value);
       }
     }
-
     return group_inputs;
   }
 
@@ -127,19 +122,14 @@ class OpLoweringGroup {
     return group_outputs;
   }
 
-  std::string FuncName() const {
-    if (fn_name_ == "") {
-      // TODO(Aurelius84): Polish this implementation.
-      const_cast<OpLoweringGroup*>(this)->fn_name_ =
-          CompatibleInfo::GroupOpsName(ops_);
-    }
-    return this->fn_name_;
-  }
+  const std::string& FuncName() const { return fn_name_; }
 
   const symbol::ShapeOrDataDimExprs& GetShapeOrDataExprs(
       const ::pir::Value& value) const {
-    CHECK(value_to_shape_or_data_exprs_.count(value))
-        << "value not found in value_to_shape_or_data_exprs_";
+    PADDLE_ENFORCE_EQ(HasShapeOrDataExprs(value),
+                      true,
+                      ::common::errors::NotFound(
+                          "value not found in value_to_shape_or_data_exprs_"));
     return value_to_shape_or_data_exprs_.at(value);
   }
 
@@ -198,13 +188,20 @@ class OpLoweringGroup {
   }
 
   std::shared_ptr<adt::MapExprCtx> mut_map_expr_ctx() {
-    CHECK_NOTNULL(map_expr_ctx_);
+    PADDLE_ENFORCE_NOT_NULL(
+        map_expr_ctx_,
+        ::common::errors::Unavailable("Required map_expr_ctx_ != nullptr."));
     return map_expr_ctx_;
   }
 
   const adt::MapExprCtx& map_expr_ctx() const {
-    return *CHECK_NOTNULL(map_expr_ctx_);
+    PADDLE_ENFORCE_NOT_NULL(
+        map_expr_ctx_,
+        ::common::errors::Unavailable("Required map_expr_ctx_ != nullptr."));
+    return *map_expr_ctx_;
   }
+
+  ::pir::Program* GetParentProgram() const;
 
   void set_value_to_shape_or_data_exprs(
       const std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>&
@@ -285,6 +282,7 @@ class OpLoweringGroup {
   std::string group_id_{common::UniqName("group_")};
   // op in this group
   std::vector<::pir::Operation*> ops_;
+  std::string fn_name_;
   // output ops of the group.
   std::unordered_set<::pir::Operation*> output_ops_;
   // op pattern kind.
@@ -293,7 +291,6 @@ class OpLoweringGroup {
   std::vector<std::string> input_names_;
   std::vector<std::string> output_names_;
   std::vector<::pir::Value> output_values_;
-  std::string fn_name_{""};
   std::map<int, CINNKernelInfo::ArgDimIdx> int_args_map_;
 
   alignment_schedule_info_t alignment_schedule_info_;

@@ -430,14 +430,14 @@
   optional : bias_qk
 
 - op : qkv_attention_xpu
-  args : (Tensor q, Tensor k, Tensor v, Tensor q_max, Tensor k_max, Tensor v_max, float alpha, int head_num, int head_dim, bool qkv_fc_fusion, DataType out_dtype)
-  output : Tensor(qkv), Tensor(qkv_max)
+  args : (Tensor q, Tensor k, Tensor v, Tensor q_max, Tensor k_max, Tensor v_max, Tensor qk_max, Tensor qkv_max, float alpha, int head_num, int head_dim, bool qkv_fc_fusion, DataType out_dtype)
+  output : Tensor(qkv)
   infer_meta :
     func : QKVAttentionXPUInferMeta
   kernel :
     func : qkv_attention_xpu
     data_type : q
-  optional : q_max, k_max, v_max
+  optional : q_max, k_max, v_max, qk_max, qkv_max
 
 - op : quantize_xpu
   args : (Tensor x, DataType out_dtype, float scale = 1.0f)
