@@ -131,7 +131,7 @@ void LoadCombineFunction(const std::string& file_path,
                         "whether the model file is complete or damaged.",
                         file_path));
   for (size_t i = 0; i < names.size(); i++) {
-    auto tensor = out[i];
+    auto tensor = out->at(i);
     paddle::framework::DeserializeFromStream(fin, tensor);
   }
   fin.peek();
