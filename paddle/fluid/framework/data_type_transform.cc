@@ -159,6 +159,14 @@ void TransDataType(const phi::DenseTensor& in,
     case proto::VarType::FP16:
       XPUTransDataType<platform::float16>(in, out, dst_type, ctx);
       break;
+    case proto::VarType::FP8_E4M3FN:
+      framework::VisitDataType(
+          dst_type, CastDataType<::phi::dtype::float8_e4m3fn>(in, out, ctx));
+      break;
+    case proto::VarType::FP8_E5M2:
+      framework::VisitDataType(
+          dst_type, CastDataType<::phi::dtype::float8_e5m2>(in, out, ctx));
+      break;
     case proto::VarType::FP32:
       XPUTransDataType<float>(in, out, dst_type, ctx);
       break;
