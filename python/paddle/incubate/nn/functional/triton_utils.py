@@ -13,8 +13,11 @@
 # limitations under the License.
 
 import re
+
 import triton
+
 import paddle
+
 
 def SubstituteTemplate(template, values):
     text = template
@@ -145,11 +148,11 @@ def get_value_hint(x):
     if x % 16 == 0:
         return "i32:16"
     elif x % 8 == 0:
-        return "i32:8"
+        return "i32"
     elif x % 4 == 0:
-        return "i32:4"
+        return "i32"
     elif x % 2 == 0:
-        return "i32:2"
+        return "i32"
     elif x == 1:
         return "i32:1"
     else:
