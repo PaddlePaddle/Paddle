@@ -194,12 +194,14 @@ class TestDistPPTraining(unittest.TestCase):
 
         for _ in range(5):
             x_data = np.random.randint(0, vocab_size, size=[batch_size, length])
+            y_data = np.random.randn(batch_size, length, d_model)
             x = paddle.to_tensor(x_data)
+            y = paddle.to_tensor(y_data)
             x.stop_gradient = True
 
-            e_losses = model.eval_batch([x, x], True, loss_fn_idx=1)
+            e_losses = model.eval_batch([x, y], True, loss_fn_idx=1)
             losses = model.train_batch(
-                [x, x], optimizer, scheduler, loss_fn_idx=1
+                [x, y], optimizer, scheduler, loss_fn_idx=1
             )
 
             if pp_id != 0:

@@ -58,10 +58,12 @@ class SimpleNet(Layer):
         fc = paddle.matmul(x_emb, self.softmax_weight)
         fc = paddle.add(fc, self.softmax_bias)
         projection = paddle.reshape(fc, shape=[-1, vocab_size])
-        loss = paddle.nn.functional.softmax_with_cross_entropy(
+        loss_0 = (projection - y1).square().mean()
+        loss_1 = paddle.nn.functional.softmax_with_cross_entropy(
             logits=projection, label=y1, soft_label=False
-        )
-        return loss.mean()
+        ).mean()
+        loss_2 = (projection - y1).abs().mean()
+        return loss_0, loss_1, loss_2
 
 
 class EmbeddingNet(Layer):
@@ -229,7 +231,7 @@ class TestDistPPTraining(unittest.TestCase):
             y1.stop_gradient = True
 
             loss_a = model_a(x1, x2, y1)
-            loss_a.backward()
+            loss_a[loss_fn_idx].backward()
 
             optimizer_a.step()
             optimizer_a.clear_grad()
@@ -242,12 +244,13 @@ class TestDistPPTraining(unittest.TestCase):
                 loss_fn_idx=loss_fn_idx,
             )
 
-            np.testing.assert_allclose(
-                loss_a.numpy(),
-                loss_b[loss_fn_idx].numpy(),
-                rtol=1e-6,
-                atol=1e-6,
-            )
+            for idx in range(3):
+                np.testing.assert_allclose(
+                    loss_a[idx].numpy(),
+                    loss_b[idx].numpy(),
+                    rtol=1e-6,
+                    atol=1e-6,
+                )
 
 
 if __name__ == "__main__":
