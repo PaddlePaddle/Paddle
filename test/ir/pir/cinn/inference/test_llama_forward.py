@@ -88,7 +88,6 @@ class TestLlamaModel(unittest.TestCase):
 
     def test_eval(self):
         dy_out = self.eval(use_cinn=False)
-        # if utils.unittest_use_cinn():
         cinn_out = self.eval(use_cinn=True)
         np.testing.assert_allclose(
             cinn_out.numpy(), dy_out.numpy(), atol=1e-5, rtol=1e-6
