@@ -372,6 +372,11 @@ if(TARGET extern_protobuf)
   list(APPEND third_party_deps extern_protobuf)
 endif()
 
+include(external/json) # find first, then build json
+if(TARGET extern_json)
+  list(APPEND third_party_deps extern_json)
+endif()
+
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   include(external/python) # find python and python_module
   include(external/pybind11) # prepare submodule pybind11
