@@ -254,6 +254,59 @@ def monkey_patch_variable():
         return output
 
     @static_only
+    def xpu(self, device_id=None, blocking=True):
+        """
+        In dy2static, Variable also needs cpu() and xpu() interface.
+        But, the underneath operator has only forward op but not backward one.
+
+        Args:
+            self(Variable): The variable itself.
+            device_id(int, optional): The destination XPU device id. Default: None, means current device.
+                We add this argument for dy2static translation, please do not use it.
+            blocking(bool, optional): Whether blocking or not, Default: True.
+                We add this argument for dy2static translation, please do not use it.
+
+        Returns:
+            The tensor which has copied to xpu place.
+
+        Examples:
+            In Static Graph Mode:
+
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.static.data(name="x", shape=[2,2], dtype='float32')
+                >>> y = x.cpu()
+                >>> z = y.xpu()
+        """
+        if device_id is not None:
+            warnings.warn("device_id is not supported, and it will be ignored.")
+        if blocking is not True:
+            warnings.warn("blocking is not supported, and it will be ignored.")
+
+        block = current_block(self)
+        tmp_name = unique_tmp_name()
+        output = block.create_var(
+            name=tmp_name,
+            dtype=self.dtype,
+            shape=self.shape,
+            type=self.type,
+            persistable=False,
+            stop_gradient=True,
+        )
+        # 3 means xpu place, see paddle/phi/kernels/memcpy_kernel.cc
+        attrs = {'dst_place_type': 3}
+        block.append_op(
+            type='memcpy',
+            inputs={'X': [self]},
+            outputs={'Out': [output]},
+            attrs=attrs,
+        )
+        return output
+
+    @static_only
     def place(self):
         """
         Variable don't have 'place' interface in static graph mode
@@ -729,6 +782,7 @@ def monkey_patch_variable():
         ('astype', astype),
         ('cpu', cpu),
         ('cuda', cuda),
+        ('xpu', xpu),
         ('place', place),
         ('contiguous', contiguous),
         ('is_contiguous', is_contiguous),

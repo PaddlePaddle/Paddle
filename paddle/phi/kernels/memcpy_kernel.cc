@@ -105,12 +105,12 @@ void MemcpyKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GE(
       dst_place_type,
       0,
-      errors::OutOfRange("dst_place_type only support 0-2, but got: %d",
+      errors::OutOfRange("dst_place_type only support 0-3, but got: %d",
                          dst_place_type));
   PADDLE_ENFORCE_LE(
       dst_place_type,
-      2,
-      errors::OutOfRange("dst_place_type only support 0-2, but got: %d",
+      3,
+      errors::OutOfRange("dst_place_type only support 0-3, but got: %d",
                          dst_place_type));
   switch (dst_place_type) {
     case 0: /* CPUPlace */
@@ -125,6 +125,12 @@ void MemcpyKernel(const Context& dev_ctx,
     case 2: /* CUDAPinnedPlace */
       dev_ctx.Alloc(out, x.dtype(), 0, true);
       Copy(dev_ctx, x, GPUPinnedPlace(), false, out);
+      break;
+#endif
+#ifdef PADDLE_WITH_XPU
+    case 3: /* XPUPlace */
+      dev_ctx.Alloc(out, x.dtype());
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
       break;
 #endif
     default:
@@ -209,6 +215,13 @@ PD_REGISTER_KERNEL_FOR_ALL_DTYPE(memcpy_d2h_multi_io,
                                  ALL_LAYOUT,
                                  phi::MemcpyD2HMultiIOKernel<phi::XPUContext>) {
   kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
+}
+
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(memcpy,
+                                 XPU,
+                                 ALL_LAYOUT,
+                                 phi::MemcpyKernel<phi::XPUContext>) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 
 #endif

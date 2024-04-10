@@ -82,7 +82,6 @@ DYGRAPH_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         'tolist',
         'value',
         'values',
-        'xpu',
         'zero_',
     ]
 )

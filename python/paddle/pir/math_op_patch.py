@@ -141,6 +141,42 @@ def monkey_patch_value():
         # 1 means cuda place, see paddle/phi/kernels/memcpy_kernel.cc
         return _C_ops.memcpy(self, 1)
 
+    def xpu(self, device_id=None, blocking=True):
+        """
+        In dy2static, Value also needs cpu() and xpu() interface.
+        But, the underneath operator has only forward op but not backward one.
+
+        Args:
+            self(Value): The variable itself.
+            device_id(int, optional): The destination XPU device id. Default: None, means current device.
+                We add this argument for dy2static translation, please do not use it.
+            blocking(bool, optional): Whether blocking or not, Default: True.
+                We add this argument for dy2static translation, please do not use it.
+
+        Returns:
+            The tensor which has copied to xpu place.
+
+        Examples:
+            In Static Graph Mode:
+
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.static.data(name="x", shape=[2,2], dtype='float32')
+                >>> y = x.cpu()
+                >>> z = y.xpu()
+        """
+
+        if device_id is not None:
+            warnings.warn("device_id is not supported, and it will be ignored.")
+        if blocking is not True:
+            warnings.warn("blocking is not supported, and it will be ignored.")
+
+        # 3 means xpu place, see paddle/phi/kernels/memcpy_kernel.cc
+        return _C_ops.memcpy(self, 3)
+
     def place(self):
         """
         Value don't have 'place' interface in static graph mode
@@ -597,6 +633,7 @@ def monkey_patch_value():
     value_methods = [
         ('cpu', cpu),
         ('cuda', cuda),
+        ('xpu', xpu),
         ('place', place),
         ('contiguous', contiguous),
         ('is_contiguous', is_contiguous),
