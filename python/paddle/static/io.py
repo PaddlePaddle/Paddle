@@ -113,7 +113,7 @@ def _get_valid_program(program=None):
         warnings.warn(
             "The input is a CompiledProgram, this is not recommended."
         )
-    if not isinstance(program, Program):
+    if not isinstance(program, paddle.static.Program):
         raise TypeError(
             "The type of input program is invalid, expected type is base.Program, but received %s"
             % type(program)
@@ -1162,6 +1162,80 @@ def save_vars(
             return global_scope().find_var(params_var_name).get_bytes()
 
 
+@dygraph_not_support
+def save_vars_pir(
+    executor,
+    dirname,
+    main_program=None,
+    vars=None,
+    predicate=None,
+    filename=None,
+):
+    save_to_memory = False
+    if dirname is None and filename is None:
+        save_to_memory = True
+
+    main_program = _get_valid_program(main_program)
+
+    if vars is None:
+        param, opt = get_parameters(main_program)
+        vars_list = param + opt
+        return save_vars_pir(
+            executor,
+            main_program=main_program,
+            dirname=dirname,
+            vars=list(filter(predicate, vars_list)),
+            filename=filename,
+        )
+    else:
+        params_var_name = "saved_params"
+        # give warning when there is no var in model
+        if len(list(vars)) == 0:
+            warnings.warn(
+                "no variable in your model, please ensure there are any variables in your model to save"
+            )
+            return None
+
+        save_var_map = {}
+        for var_name in vars:
+            var = global_scope().find_var(var_name)
+            # NOTE: don't save the variable which type is RAW
+            # if var.type == core.VarDesc.VarType.RAW:
+            #     continue
+            if filename is None and save_to_memory is False:
+                save_file_path = os.path.join(
+                    os.path.normpath(dirname), var_name
+                )
+                core.save_func(
+                    var.get_tensor(), var_name, save_file_path, True, False
+                )
+            else:
+                save_var_map[var_name] = var.get_tensor()
+
+        if filename is not None or save_to_memory:
+            save_var_list = []
+            save_var_names = []
+            for name in sorted(save_var_map.keys()):
+                save_var_list.append(save_var_map[name])
+                save_var_names.append(name)
+
+            save_path = ''
+            if save_to_memory is False:
+                save_path = os.path.join(os.path.normpath(dirname), filename)
+
+            core.save_combine_func(
+                save_var_list,
+                save_var_names,
+                save_path,
+                True,
+                False,
+                save_to_memory,
+            )
+
+        if save_to_memory:
+            return global_scope().find_var(params_var_name).get_bytes()
+
+
 def load_vars(
     executor,
     dirname,
@@ -1421,6 +1495,75 @@ def load_vars(
                 )
 
 
+def load_vars_pir(
+    executor,
+    dirname,
+    main_program=None,
+    vars=None,
+    predicate=None,
+    filename=None,
+):
+    vars_from_memory = False
+    if dirname is not None:
+        dirname = os.path.normpath(dirname)
+    else:
+        vars_from_memory = True
+
+    if filename == '':
+        filename = None
+
+    if vars is None:
+        if main_program is None:
+            main_program = default_main_program()
+
+        param, opt = get_parameters(main_program)
+        vars_list = param + opt
+        load_vars_pir(
+            executor,
+            dirname=dirname,
+            main_program=main_program,
+            vars=list(filter(predicate, vars_list)),
+            filename=filename,
+        )
+    else:
+        if main_program is None:
+            main_program = default_main_program()
+
+        # save origin param shape
+        orig_para_shape = {}
+        load_var_map = {}
+
+        check_vars = []
+        sparse_vars = []
+
+        for var_name in vars:
+            var = global_scope().find_var(var_name)
+            assert isinstance(var, paddle.base.libpaddle.Variable)
+            if filename is None:
+                if dirname is None:
+                    raise ValueError(
+                        "The directory path and params cannot be None at the same time."
+                    )
+                file_path = os.path.join(dirname, var_name)
+                core.load_func(file_path, -1, [], False, var.get_tensor())
+            else:
+                load_var_map[var_name] = var
+
+        if filename is not None:
+            load_var_list = []
+            load_var_names = []
+            for name in sorted(load_var_map.keys()):
+                load_var_list.append(load_var_map[name].get_tensor())
+                load_var_names.append(name)
+
+            if vars_from_memory is False:
+                filename = os.path.join(dirname, filename)
+
+            core.load_combine_func(
+                filename, load_var_names, load_var_list, False
+            )
+
+
 @static_only
 def save(program, model_path, protocol=4, **configs):
     """
@@ -1518,6 +1661,77 @@ def save(program, model_path, protocol=4, **configs):
 
     with open(model_path + ".pdmodel", "wb") as f:
         f.write(program.desc.serialize_to_string())
+
+
+def get_parameters(program):
+    params = []
+    opts = []
+    for op in program.global_block().ops:
+        if op.name() == "builtin.parameter" and "persistable" in op.attrs():
+            if op.attrs()['persistable'] == [True]:
+                name = op.attrs()["parameter_name"]
+                params.append(name)
+        elif op.name() == "pd_op.data" and "persistable" in op.attrs():
+            if op.attrs()['persistable'] == [True]:
+                name = op.attrs()["name"]
+                opts.append(name)
+    return params, opts
+
+
+@static_only
+def save_pir(program, model_path, protocol=4, **configs):
+    base_name = os.path.basename(model_path)
+    assert (
+        base_name != ""
+    ), "The input model_path MUST be format of dirname/filename [dirname\\filename in Windows system], but received model_path is empty string."
+    if 'pickle_protocol' in configs:
+        protocol = configs['pickle_protocol']
+        warnings.warn(
+            "'pickle_protocol' is a deprecated argument. Please use 'protocol' instead."
+        )
+
+    if not isinstance(protocol, int):
+        raise ValueError(
+            f"The 'protocol' MUST be `int`, but received {type(protocol)}"
+        )
+
+    if protocol < 2 or protocol > 4:
+        raise ValueError(
+            f"Expected 1<'protocol'<5, but received protocol={protocol}"
+        )
+
+    dir_name = os.path.dirname(model_path)
+    if dir_name and not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+
+    def get_tensor(name):
+        t = global_scope().find_var(name).get_tensor()
+        return np.array(t)
+
+    # get parameters and optimizer variables
+    parameter_list, optimizer_param_list = get_parameters(program)
+    param_dict = {name: get_tensor(name) for name in parameter_list}
+    opt_dict = {name: get_tensor(name) for name in optimizer_param_list}
+
+    # save parameters
+    param_dict = _unpack_saved_dict(param_dict, protocol)
+
+    # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
+    if sys.platform == 'darwin' and sys.version_info.major == 3:
+        pickle_bytes = pickle.dumps(param_dict, protocol=protocol)
+        with open(model_path + ".pdparams", 'wb') as f:
+            max_bytes = 2**30
+            for i in range(0, len(pickle_bytes), max_bytes):
+                f.write(pickle_bytes[i : i + max_bytes])
+    else:
+        with open(model_path + ".pdparams", 'wb') as f:
+            pickle.dump(param_dict, f, protocol=protocol)
+
+    # save optimizer parameters
+    with open(model_path + ".pdopt", 'wb') as f:
+        pickle.dump(opt_dict, f, protocol=protocol)
+
+    ### TODO(chenzhiyang): save program
 
 
 @static_only
@@ -1732,6 +1946,81 @@ def load(program, model_path, executor=None, var_list=None):
                 v.name in load_dict
             ), f"Can not find [{v.name}] in model file [{opt_file_name}]"
             set_var(v, load_dict[v.name])
+
+
+@static_only
+def load_pir(program, model_path, executor=None, var_list=None):
+    assert executor is None or isinstance(executor, Executor)
+
+    model_prefix = model_path
+    if model_prefix.endswith(".pdparams"):
+        model_prefix = model_prefix[:-9]
+    elif model_prefix.endswith(".pdopt"):
+        model_prefix = model_prefix[:-6]
+    elif model_prefix.endswith(".pdmodel"):
+        model_prefix = model_prefix[:-8]
+
+    parameter_file_name = model_prefix + ".pdparams"
+
+    # TODO(chenzhiyang): if not os.path.exists(parameter_file_name): load_vars
+
+    def set_var(name, ndarray):
+        t = global_scope().find_var(name).get_tensor()
+        p = t._place()
+        if p.is_cpu_place():
+            place = paddle.base.CPUPlace()
+        elif p.is_cuda_pinned_place():
+            place = paddle.base.CUDAPinnedPlace()
+        elif p.is_xpu_place():
+            p = paddle.base.core.Place()
+            p.set_place(t._place())
+            place = paddle.base.XPUPlace(p.xpu_device_id())
+        elif p.is_custom_place():
+            p = paddle.base.core.Place()
+            p.set_place(t._place())
+            place = paddle.base.CustomPlace(
+                paddle.device.get_device().split(':')[0], p.custom_device_id()
+            )
+        else:
+            p = paddle.base.core.Place()
+            p.set_place(t._place())
+            place = paddle.base.CUDAPlace(p.gpu_device_id())
+
+        t.set(ndarray, place)
+
+    parameter_list, optimizer_param_list = get_parameters(program)
+
+    with open(parameter_file_name, 'rb') as f:
+        # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
+        if sys.platform == 'darwin' and sys.version_info.major == 3:
+            load_dict = _pickle_loads_mac(parameter_file_name, f)
+        else:
+            load_dict = _safe_load_pickle(f, encoding='latin1')
+        load_dict = _pack_loaded_dict(load_dict)
+    for name in parameter_list:
+        assert (
+            name in load_dict
+        ), f"Can not find [{name}] in model file [{parameter_file_name}]"
+        set_var(name, load_dict[name])
+
+    if len(optimizer_param_list) > 0:
+        opt_file_name = model_prefix + ".pdopt"
+        assert os.path.exists(
+            opt_file_name
+        ), f"Optimizer file [{opt_file_name}] not exits"
+
+        if executor:
+            paddle.base.core._create_loaded_parameter(
+                optimizer_param_list, global_scope(), executor._default_executor
+            )
+
+        with open(opt_file_name, 'rb') as f:
+            load_dict = _safe_load_pickle(f, encoding='latin1')
+        for name in optimizer_param_list:
+            assert (
+                name in load_dict
+            ), f"Can not find [{name}] in model file [{opt_file_name}]"
+            set_var(name, load_dict[name])
 
 
 @static_only
