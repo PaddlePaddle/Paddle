@@ -105,7 +105,7 @@ void ScheduleBase::Broadcast(const std::string& block_name,
   }
   std::vector<Expr> all_loops = this->GetLoops(block_name);
   if (axes[0] >= all_loops.size()) {
-    throw std::runtime_error("axes execeed loop size");
+    throw std::runtime_error("axes exceed loop size");
   }
 
   // Get Last loop
@@ -150,14 +150,14 @@ void ScheduleBase::Broadcast(const std::string& block_name,
     auto stride = Expr(1);
     auto in_offset = Expr(0);
 
-    std::set<int> brodacast_set(info.broadcast_axes.begin(),
+    std::set<int> broadcast_set(info.broadcast_axes.begin(),
                                 info.broadcast_axes.end());
     for (int i = all_loops.size() - 1; i >= 0; --i) {
       auto loop_temp = all_loops[i].As<ir::For>();
       offset = offset + loop_temp->loop_var * stride;
 
       stride = stride * loop_temp->extent;
-      if (!brodacast_set.count(i)) {
+      if (!broadcast_set.count(i)) {
         in_offset = in_offset + loop_temp->loop_var * stride;
       }
     }

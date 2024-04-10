@@ -1,6 +1,6 @@
 add_subdirectory(generator)
 
-set(EAGER_GENERETOR_DEPS
+set(EAGER_GENERATOR_DEPS
     ${GLOB_OP_LIB}
     ${GLOB_OPERATOR_DEPS}
     pybind
@@ -13,12 +13,12 @@ set(EAGER_GENERETOR_DEPS
     imperative_flag)
 
 if(WITH_CUSTOM_DEVICE)
-  set(EAGER_GENERETOR_DEPS ${EAGER_GENERETOR_DEPS}
+  set(EAGER_GENERATOR_DEPS ${EAGER_GENERATOR_DEPS}
                            custom_device_common_op_registry)
 endif()
 
 add_executable(eager_generator eager_generator.cc)
-target_link_libraries(eager_generator ${EAGER_GENERETOR_DEPS})
+target_link_libraries(eager_generator ${EAGER_GENERATOR_DEPS})
 
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
 target_link_libraries(eager_generator ${os_dependency_modules})
