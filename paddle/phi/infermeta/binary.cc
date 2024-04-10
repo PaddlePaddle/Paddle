@@ -2807,8 +2807,7 @@ void PullSparseV2InferMeta(const std::vector<MetaTensor>& ids,
                     phi::errors::InvalidArgument(
                         "Output(Out) of PullSparseV2Op can not be null"));
 
-  auto hidden_size = embeddingdim;
-
+  auto hidden_size = embedding_dim;
   const size_t n_ids = ids.size();
   std::vector<phi::DDim> outs_dims;
   outs_dims.resize(n_ids);
@@ -2818,7 +2817,7 @@ void PullSparseV2InferMeta(const std::vector<MetaTensor>& ids,
     out_dim.push_back(hidden_size);
     outs_dims[i] = common::make_ddim(out_dim);
   }
-  // ctx->SetOutputsDim("Out", outs_dims);
+
   for (size_t i = 0; i < n_ids; ++i) {
     out[i]->set_dims(outs_dims[i]);
     out[i]->share_lod(*ids[i], i);
