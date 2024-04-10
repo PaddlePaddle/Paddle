@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/onednn/reshape_transpose_matmul_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/onednn/scale_matmul_fuse_pass.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -22,61 +22,58 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 
 namespace {
-class ReshapeTransposeMatmulFusePattern : public paddle::drr::DrrPatternBase {
+class ScaleMatmulFusePattern : public paddle::drr::DrrPatternBase {
  private:
   std::string matmul_name_;
   std::string fused_matmul_name_;
   uint32_t benefit_;
-  bool as_x_;  // decide if the output of transpose is for input_x of matmul
+  bool as_x_;  // decide if the output of scale is for input_x of matmul
 
  public:
-  ReshapeTransposeMatmulFusePattern(const std::string &matmul_name,
-                                    const std::string &fused_matmul_name,
-                                    uint32_t benefit,
-                                    bool as_x)
+  ScaleMatmulFusePattern(const std::string &matmul_name,
+                         const std::string &fused_matmul_name,
+                         uint32_t benefit,
+                         bool as_x)
       : matmul_name_(matmul_name),
         fused_matmul_name_(fused_matmul_name),
         benefit_(benefit),
         as_x_(as_x) {}
 
-  std::string name() const override {
-    return "ReshapeTransposeMatmulFusePattern";
-  }
+  std::string name() const override { return "ScaleMatmulFusePattern"; }
 
   uint32_t benefit() const override { return benefit_; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
 
-    const auto &full_int_array = pat.Op(paddle::dialect::FullIntArrayOp::name(),
-                                        {{"value", pat.Attr("int_array")}});
-    pat.Tensor("shape") = full_int_array();
+    const auto &full = pat.Op(paddle::dialect::FullOp::name(),
+                              {{"value", pat.Attr("scale_")}});
+    pat.Tensor("scale") = full();
 
-    const auto &reshape = pat.Op(paddle::dialect::ReshapeOp::name());
-    reshape({&pat.Tensor("reshape_in"), &pat.Tensor("shape")},
-            {&pat.Tensor("reshape_out"), &pat.Tensor("Xshape")});
-
-    const auto &transpose = pat.Op(paddle::dialect::TransposeOp::name(),
-                                   {{"perm", pat.Attr("perm")}});
-    pat.Tensor("transpose_out") = transpose(pat.Tensor("reshape_out"));
+    const auto &scale =
+        pat.Op(paddle::dialect::ScaleOp::name(),
+               {{"bias", pat.Attr("bias")},
+                {"bias_after_scale", pat.Attr("bias_after_scale")}});
+    scale({&pat.Tensor("scale_in"), &pat.Tensor("scale")},
+          {&pat.Tensor("scale_out")});
 
     const auto &matmul = pat.Op(matmul_name_,
                                 {{"transpose_x", pat.Attr("transpose_x")},
                                  {"transpose_y", pat.Attr("transpose_y")}});
     if (as_x_) {
-      matmul({&pat.Tensor("transpose_out"), &pat.Tensor("other")},
+      matmul({&pat.Tensor("scale_out"), &pat.Tensor("other")},
              {&pat.Tensor("Out")});
     } else {
-      matmul({&pat.Tensor("other"), &pat.Tensor("transpose_out")},
+      matmul({&pat.Tensor("other"), &pat.Tensor("scale_out")},
              {&pat.Tensor("Out")});
     }
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      auto shape = match_ctx.Attr<std::vector<int64_t>>("int_array");
-      auto perm = match_ctx.Attr<std::vector<int>>("perm");
-      if (shape.size() < 2 || shape.size() > 4) return false;
-      if (shape.size() != perm.size()) return false;
-      if (std::count(shape.begin(), shape.end(), -1) > 1) return false;
+      auto scale = match_ctx.Attr<float>("scale_");
+      auto bias = match_ctx.Attr<float>("bias");
+      // conditions align with fluid pass
+      if (bias != 0.0f) return false;
+      if (scale <= 0.0f) return false;
       return true;
     });
 
@@ -85,10 +82,13 @@ class ReshapeTransposeMatmulFusePattern : public paddle::drr::DrrPatternBase {
     std::unordered_map<std::string, paddle::drr::Attribute> fused_attrs{
         {"trans_x", pat.Attr("transpose_x")},
         {"trans_y", pat.Attr("transpose_y")},
-        {"matmul_alpha", res.Float32Attr(1.0f)},
         {"fuse_activation", res.StrAttr("")},
         {"fuse_alpha", res.Float32Attr(0.0f)},
         {"fuse_beta", res.Float32Attr(0.0f)},
+        {"fused_reshape_x", res.VectorInt32Attr({})},
+        {"fused_transpose_x", res.VectorInt32Attr({})},
+        {"fused_reshape_y", res.VectorInt32Attr({})},
+        {"fused_transpose_y", res.VectorInt32Attr({})},
         {"fused_output_scale", res.Float32Attr(1.0f)},
         {"fused_reshape_out", res.VectorInt32Attr({})},
         {"fused_transpose_out", res.VectorInt32Attr({})},
@@ -99,46 +99,31 @@ class ReshapeTransposeMatmulFusePattern : public paddle::drr::DrrPatternBase {
         {"scale_out", res.Float32Attr(1.0f)},
         {"force_fp32_output", res.BoolAttr(false)}};
 
-    const auto &fused_reshape_attr = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
-          std::vector<int> int_array_value;
-          auto shape = match_ctx.Attr<std::vector<int64_t>>("int_array");
-          for (auto i : shape) {
-            int_array_value.emplace_back(static_cast<int>(i));
-          }
-          return int_array_value;
+    const auto &matmul_alpha_attr = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
+          auto scale = match_ctx.Attr<float>("scale_");
+          return scale;
         });
 
-    if (as_x_) {
-      fused_attrs.emplace("fused_reshape_x", fused_reshape_attr);
-      fused_attrs.emplace("fused_transpose_x", pat.Attr("perm"));
-      fused_attrs.emplace("fused_reshape_y", res.VectorInt32Attr({}));
-      fused_attrs.emplace("fused_transpose_y", res.VectorInt32Attr({}));
-    } else {
-      fused_attrs.emplace("fused_reshape_x", res.VectorInt32Attr({}));
-      fused_attrs.emplace("fused_transpose_x", res.VectorInt32Attr({}));
-      fused_attrs.emplace("fused_reshape_y", fused_reshape_attr);
-      fused_attrs.emplace("fused_transpose_y", pat.Attr("perm"));
-    }
+    fused_attrs.emplace("matmul_alpha", matmul_alpha_attr);
 
     const auto &fused_matmul = res.Op(fused_matmul_name_, fused_attrs);
 
     if (as_x_) {
-      fused_matmul({&res.Tensor("reshape_in"),
+      fused_matmul({&res.Tensor("scale_in"),
                     &res.Tensor("other"),
                     &res.InputNoneTensor()},
                    {&res.Tensor("Out")});
     } else {
       fused_matmul({&res.Tensor("other"),
-                    &res.Tensor("reshape_in"),
+                    &res.Tensor("scale_in"),
                     &res.InputNoneTensor()},
                    {&res.Tensor("Out")});
     }
   }
 };
 
-class ReshapeTransposeFusedMatmulFusePattern
-    : public paddle::drr::DrrPatternBase {
+class ScaleFusedMatmulFusePattern : public paddle::drr::DrrPatternBase {
  private:
   std::string matmul_name_;
   std::string fused_matmul_name_;
@@ -146,35 +131,32 @@ class ReshapeTransposeFusedMatmulFusePattern
   bool as_x_;  // decide if the output of transpose is for input_x of matmul
 
  public:
-  ReshapeTransposeFusedMatmulFusePattern(const std::string &matmul_name,
-                                         const std::string &fused_matmul_name,
-                                         uint32_t benefit,
-                                         bool as_x)
+  ScaleFusedMatmulFusePattern(const std::string &matmul_name,
+                              const std::string &fused_matmul_name,
+                              uint32_t benefit,
+                              bool as_x)
       : matmul_name_(matmul_name),
         fused_matmul_name_(fused_matmul_name),
         benefit_(benefit),
         as_x_(as_x) {}
 
-  std::string name() const override {
-    return "ReshapeTransposFusedMatmulFusePattern";
-  }
+  std::string name() const override { return "ScaleFusedMatmulFusePattern"; }
 
   uint32_t benefit() const override { return benefit_; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
 
-    const auto &full_int_array = pat.Op(paddle::dialect::FullIntArrayOp::name(),
-                                        {{"value", pat.Attr("int_array")}});
-    pat.Tensor("shape") = full_int_array();
+    const auto &full = pat.Op(paddle::dialect::FullOp::name(),
+                              {{"value", pat.Attr("scale_")}});
+    pat.Tensor("scale") = full();
 
-    const auto &reshape = pat.Op(paddle::dialect::ReshapeOp::name());
-    reshape({&pat.Tensor("reshape_in"), &pat.Tensor("shape")},
-            {&pat.Tensor("reshape_out"), &pat.Tensor("Xshape")});
-
-    const auto &transpose = pat.Op(paddle::dialect::TransposeOp::name(),
-                                   {{"perm", pat.Attr("perm")}});
-    pat.Tensor("transpose_out") = transpose(pat.Tensor("reshape_out"));
+    const auto &scale =
+        pat.Op(paddle::dialect::ScaleOp::name(),
+               {{"bias", pat.Attr("bias")},
+                {"bias_after_scale", pat.Attr("bias_after_scale")}});
+    scale({&pat.Tensor("scale_in"), &pat.Tensor("scale")},
+          {&pat.Tensor("scale_out")});
 
     const auto &matmul =
         pat.Op(matmul_name_,
@@ -198,35 +180,25 @@ class ReshapeTransposeFusedMatmulFusePattern
                 {"scale_out", pat.Attr("scale_out")},
                 {"force_fp32_output", pat.Attr("force_fp32_output")}});
     if (as_x_) {
-      matmul({&pat.Tensor("transpose_out"),
+      matmul({&pat.Tensor("scale_out"),
               &pat.Tensor("other"),
               &pat.Tensor("residual")},
              {&pat.Tensor("Out")});
     } else {
       matmul({&pat.Tensor("other"),
-              &pat.Tensor("transpose_out"),
+              &pat.Tensor("scale_out"),
               &pat.Tensor("residual")},
              {&pat.Tensor("Out")});
     }
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      auto shape = match_ctx.Attr<std::vector<int64_t>>("int_array");
-      auto perm = match_ctx.Attr<std::vector<int>>("perm");
-      if (shape.size() < 2 || shape.size() > 4) return false;
-      if (shape.size() != perm.size()) return false;
-      if (std::count(shape.begin(), shape.end(), -1) > 1) return false;
-
-      return true;
-    });
-
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      if (as_x_) {
-        if (!(match_ctx.Attr<std::vector<int>>("fused_reshape_x").empty()))
-          return false;
-      } else {
-        if (!(match_ctx.Attr<std::vector<int>>("fused_reshape_y").empty()))
-          return false;
-      }
+      auto matmul_alpha = match_ctx.Attr<float>("matmul_alpha");
+      auto scale = match_ctx.Attr<float>("scale_");
+      auto bias = match_ctx.Attr<float>("bias");
+      // conditions align with fluid pass
+      if (matmul_alpha == 0.0f) return false;
+      if (bias != 0.0f) return false;
+      if (scale <= 0.0f) return false;
       return true;
     });
 
@@ -235,10 +207,13 @@ class ReshapeTransposeFusedMatmulFusePattern
     std::unordered_map<std::string, paddle::drr::Attribute> fused_attrs{
         {"trans_x", pat.Attr("transpose_x")},
         {"trans_y", pat.Attr("transpose_y")},
-        {"matmul_alpha", pat.Attr("matmul_alpha")},
         {"fuse_activation", pat.Attr("fuse_activation")},
         {"fuse_alpha", pat.Attr("fuse_alpha")},
         {"fuse_beta", pat.Attr("fuse_beta")},
+        {"fused_reshape_x", pat.Attr("fused_reshape_x")},
+        {"fused_transpose_x", pat.Attr("fused_transpose_x")},
+        {"fused_reshape_y", pat.Attr("fused_reshape_y")},
+        {"fused_transpose_y", pat.Attr("fused_transpose_y")},
         {"fused_output_scale", pat.Attr("fused_output_scale")},
         {"fused_reshape_out", pat.Attr("fused_reshape_out")},
         {"fused_transpose_out", pat.Attr("fused_transpose_out")},
@@ -249,47 +224,34 @@ class ReshapeTransposeFusedMatmulFusePattern
         {"scale_out", pat.Attr("scale_out")},
         {"force_fp32_output", pat.Attr("force_fp32_output")}};
 
-    const auto &fused_reshape_attr = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
-          std::vector<int> int_array_value;
-          auto shape = match_ctx.Attr<std::vector<int64_t>>("int_array");
-          for (auto i : shape) {
-            int_array_value.emplace_back(static_cast<int>(i));
-          }
-          return int_array_value;
+    const auto &matmul_alpha_attr = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
+          auto scale = match_ctx.Attr<float>("scale_");
+          auto matmul_alpha = match_ctx.Attr<float>("matmul_alpha");
+          return scale * matmul_alpha;
         });
 
-    if (as_x_) {
-      fused_attrs.emplace("fused_reshape_x", fused_reshape_attr);
-      fused_attrs.emplace("fused_transpose_x", pat.Attr("perm"));
-      fused_attrs.emplace("fused_reshape_y", pat.Attr("fused_reshape_y"));
-      fused_attrs.emplace("fused_transpose_y", pat.Attr("fused_transpose_y"));
-    } else {
-      fused_attrs.emplace("fused_reshape_x", pat.Attr("fused_reshape_x"));
-      fused_attrs.emplace("fused_transpose_x", pat.Attr("fused_transpose_x"));
-      fused_attrs.emplace("fused_reshape_y", fused_reshape_attr);
-      fused_attrs.emplace("fused_transpose_y", pat.Attr("perm"));
-    }
+    fused_attrs.emplace("matmul_alpha", matmul_alpha_attr);
 
     const auto &fused_matmul = res.Op(fused_matmul_name_, fused_attrs);
 
     if (as_x_) {
-      fused_matmul({&res.Tensor("reshape_in"),
+      fused_matmul({&res.Tensor("scale_in"),
                     &res.Tensor("other"),
                     &res.Tensor("residual")},
                    {&res.Tensor("Out")});
     } else {
       fused_matmul({&res.Tensor("other"),
-                    &res.Tensor("reshape_in"),
+                    &res.Tensor("scale_in"),
                     &res.Tensor("residual")},
                    {&res.Tensor("Out")});
     }
   }
 };
 
-class ReshapeTransposeMatmulFusePass : public pir::PatternRewritePass {
+class ScaleMatmulFusePass : public pir::PatternRewritePass {
  public:
-  ReshapeTransposeMatmulFusePass()
+  ScaleMatmulFusePass()
       : pir::PatternRewritePass("reshape_transpose_matmul_fuse_pass", 3) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
@@ -297,7 +259,7 @@ class ReshapeTransposeMatmulFusePass : public pir::PatternRewritePass {
     std::vector<bool> bool_set = {false, true};
     int benefit_idx = 5;
     for (auto as_x : bool_set) {
-      ps.Add(paddle::drr::Create<ReshapeTransposeMatmulFusePattern>(
+      ps.Add(paddle::drr::Create<ScaleMatmulFusePattern>(
           context,
           paddle::dialect::MatmulOp::name(),
           paddle::onednn::dialect::FusedMatmulOp::name(),
@@ -307,7 +269,7 @@ class ReshapeTransposeMatmulFusePass : public pir::PatternRewritePass {
     }
 
     for (auto as_x : bool_set) {
-      ps.Add(paddle::drr::Create<ReshapeTransposeFusedMatmulFusePattern>(
+      ps.Add(paddle::drr::Create<ScaleFusedMatmulFusePattern>(
           context,
           paddle::onednn::dialect::FusedMatmulOp::name(),
           paddle::onednn::dialect::FusedMatmulOp::name(),
@@ -323,13 +285,12 @@ class ReshapeTransposeMatmulFusePass : public pir::PatternRewritePass {
 
 namespace pir {
 
-std::unique_ptr<Pass> CreateReshapeTransposeMatmulFusePass() {
+std::unique_ptr<Pass> CreateScaleMatmulFusePass() {
   // pd_op.reshape + pd_op.transpose + pd_op.matmul -> onednn_op.fused_matmul
   // pd_op.reshape + pd_op.transpose + pd_op.fused_matmul ->
   // onednn_op.fused_matmul
-  return std::make_unique<ReshapeTransposeMatmulFusePass>();
+  return std::make_unique<ScaleMatmulFusePass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(reshape_transpose_matmul_fuse_pass,
-                 ReshapeTransposeMatmulFusePass);
+REGISTER_IR_PASS(scale_matmul_fuse_pass, ScaleMatmulFusePass);
