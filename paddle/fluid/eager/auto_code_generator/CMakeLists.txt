@@ -93,7 +93,7 @@ if(WIN32)
     list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/openblas.dll)
   endif()
 
-  if(WITH_MKLDNN)
+  if(WITH_ONEDNN)
     message("Copied mkldnn.dll for Eager AutoCodeGen")
     add_custom_command(
       OUTPUT ${eager_generator_path}/mkldnn.dll

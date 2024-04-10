@@ -432,6 +432,8 @@ std::vector<FusibleOp> FusionGraph::TransformReduceLoopRange(
         new_tensor,
         GetOutputTensor(upstream));
     results.emplace_back(ReduceOp(new_reduce));
+    VLOG(4) << "After Tmp Transform, upstream is : \n"
+            << _GetRootExpr(results.back());
     ExprTransformerUtils::ReplaceTarget(
         &modified_downstream_compute_body,
         load_tensor,
