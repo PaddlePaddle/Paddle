@@ -362,47 +362,5 @@ inline bool is_error(const T& stat) {
 }
 
 namespace pir {
-class IrNotMetException : public std::exception {
- public:
-  explicit IrNotMetException(const std::string& str)
-      : err_str_(str + ::common::enforce::GetCurrentTraceBackString()) {}
-
-  const char* what() const noexcept override { return err_str_.c_str(); }
-
- private:
-  std::string err_str_;
-  ::common::enforce::details::PaddleFatalGuard paddle_fatal_guard_;
-};
-
-#define IR_THROW(...)                                                     \
-  do {                                                                    \
-    try {                                                                 \
-      throw pir::IrNotMetException(                                       \
-          paddle::string::Sprintf("Error occurred at: %s:%d :\n%s",       \
-                                  __FILE__,                               \
-                                  __LINE__,                               \
-                                  paddle::string::Sprintf(__VA_ARGS__))); \
-    } catch (const std::exception& e) {                                   \
-      std::cout << e.what() << std::endl;                                 \
-      throw;                                                              \
-    }                                                                     \
-  } while (0)
-
-#define IR_ENFORCE(COND, ...)                                               \
-  do {                                                                      \
-    bool __cond__(COND);                                                    \
-    if (UNLIKELY(is_error(__cond__))) {                                     \
-      try {                                                                 \
-        throw pir::IrNotMetException(                                       \
-            paddle::string::Sprintf("Error occurred at: %s:%d :\n%s",       \
-                                    __FILE__,                               \
-                                    __LINE__,                               \
-                                    paddle::string::Sprintf(__VA_ARGS__))); \
-      } catch (const std::exception& e) {                                   \
-        std::cout << e.what() << std::endl;                                 \
-        throw;                                                              \
-      }                                                                     \
-    }                                                                       \
-  } while (0)
-
+#define IR_THROW(...) PADDLE_THROW(phi::errors::Fatal(__VA_ARGS__))
 }  // namespace pir

@@ -108,11 +108,12 @@ void UpdateGroupShapeExprs(
     const auto& origin_shape_or_data =
         origin_group->GetShapeOrDataExprs(origin_val);
     if (origin_shape_or_data.data()) {
+      std::vector<symbol::DimExpr> shape_dim_expr_shape = {
+          symbol::DimExpr(static_cast<int64_t>(shape_dim_expr.size()))};
       new_group->SetShapeOrDataExprs(
           new_val,
           symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
-              std::vector<symbol::DimExpr>{shape_dim_expr.size()},
-              shape_dim_expr)});
+              shape_dim_expr_shape, shape_dim_expr)});
     } else {
       new_group->SetShapeOrDataExprs(
           new_val,
@@ -134,7 +135,9 @@ bool EraseOneExpand(
     if (!SameInputOutputShape(expand, ShapeOrDataDimExprs4Value)) continue;
     auto generate_shape_op =
         expand.shape().defining_op<cinn::dialect::GenerateShapeOp>();
-    CHECK_NOTNULL(generate_shape_op);
+    PADDLE_ENFORCE_NOT_NULL(generate_shape_op,
+                            phi::errors::PreconditionNotMet(
+                                "The generate shape op must not be null."));
     rewriter.ReplaceAllUsesWith(expand.out(), expand.x());
     rewriter.EraseOp(expand);
     if (generate_shape_op->use_empty()) {
@@ -280,7 +283,15 @@ void SetLeafBlockByGroupView(
   }
 
   auto new_group = CloneGroup(origin_group, block, &ir_mapping);
-  CHECK_EQ(origin_group->ops().size(), new_group->ops().size());
+  PADDLE_ENFORCE_EQ(
+      origin_group->ops().size(),
+      new_group->ops().size(),
+      phi::errors::InvalidArgument(
+          "The size of origin group ops and new group ops is not equal,"
+          "where the size of origin group ops:%d but the size of new group "
+          "ops:%d.",
+          origin_group->ops().size(),
+          new_group->ops().size()));
   UpdateGroupShapeExprs(new_group,
                         origin_group,
                         ir_mapping,

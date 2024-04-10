@@ -203,6 +203,7 @@ bool RelativeJudgePolicy::ReducePlusTrivialCanMerge(
 
   // TODO(wuzhanfei) fix bug in relation that if has multi path in graph
   // test_rms_norm can test
+
   const auto& split_reduce_input_dims_result =
       SplitReduceInputDimsIfRelatedWithNonReduceAxis(
           axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
@@ -273,12 +274,29 @@ std::vector<size_t> RelativeJudgePolicy::GetFakeReduceIterIdx(
     PADDLE_THROW("Illegal Call GetFakeReduceIterIdx");
   }
 
-  const auto& split_reduce_dims_result =
+  // TODO(xiongkun): replace after fix bug in relation that if has multi path in
+  // graph const auto& split_reduce_dims_result =
+  // SplitReduceInputDimsIfRelatedWithNonReduceAxis(
+  // axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
+
+  // const auto& upstream_reduce_dims = split_reduce_dims_result.non_related;
+  // const auto& upstream_non_reduce_dims = split_reduce_dims_result.related;
+  //
+
+  const auto& split_reduce_input_dims_result =
       SplitReduceInputDimsIfRelatedWithNonReduceAxis(
           axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
+  VLOG(4) << split_reduce_input_dims_result.DebugStr();
+  const auto& upstream_reduce_dims = split_reduce_input_dims_result.non_related;
 
-  const auto& upstream_reduce_dims = split_reduce_dims_result.non_related;
-  const auto& upstream_non_reduce_dims = split_reduce_dims_result.related;
+  const auto& split_reduce_output_dims_result =
+      SplitReduceOutputDimsIfRelatedWithNonReduceAxis(
+          axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
+  VLOG(4) << split_reduce_input_dims_result.DebugStr();
+  const auto& upstream_non_reduce_dims =
+      split_reduce_output_dims_result.related;
+
+  // =======================
 
   const auto& split_trivial_dims_result = SplitDimsWithRelationship(
       GetAllValueDimFromValue(downstream->sink_op_->result(0)),

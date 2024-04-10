@@ -99,22 +99,6 @@ symbol::ShapeOrDataDimExprs SubstituteShapeOrData(
   return std::visit(lambdas, shape_or_data.variant());
 }
 
-int GetDimExprPriority(const symbol::DimExpr& dim_expr) {
-  return std::visit(
-      symbol::Overloaded{
-          [&](std::int64_t) { return 0; },
-          [&](const std::string&) { return 1; },
-          [&](const symbol::Negative<symbol::DimExpr>&) { return 2; },
-          [&](const symbol::Reciprocal<symbol::DimExpr>&) { return 2; },
-          [&](const symbol::Add<symbol::DimExpr>&) { return 2; },
-          [&](const symbol::Mul<symbol::DimExpr>&) { return 2; },
-          [&](const symbol::Max<symbol::DimExpr>&) { return 2; },
-          [&](const symbol::Min<symbol::DimExpr>&) { return 2; },
-          [&](const symbol::Broadcast<symbol::DimExpr>&) { return 2; },
-      },
-      dim_expr.variant());
-}
-
 std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetDimExprSubstitution(
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
   const std::vector<symbol::DimExprConstraint>& dim_expr_constraints =
@@ -139,7 +123,8 @@ std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetDimExprSubstitution(
     CHECK(!dim_expr_cluster.empty());
     auto dim_expr_root = dim_expr_cluster[0];
     for (const auto& dim_expr : dim_expr_cluster) {
-      if (GetDimExprPriority(dim_expr) < GetDimExprPriority(dim_expr_root)) {
+      if (symbol::GetDimExprPriority(dim_expr) <
+          symbol::GetDimExprPriority(dim_expr_root)) {
         dim_expr_root = dim_expr;
       }
     }

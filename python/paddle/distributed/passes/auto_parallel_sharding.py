@@ -1603,7 +1603,7 @@ def _is_param_grad_fp32_cast_op(block, op):
         block, op, __amp_target_dtype__, core.VarDesc.VarType.FP32
     ):
         return False
-    if _is_master_grad_cast_op(block, op, __amp_target_dtype_name__):
+    if _is_master_grad_cast_op(block, op):
         return False
     output_name = op.output_arg_names[0]
     base_name = output_name[: output_name.find("@")]
