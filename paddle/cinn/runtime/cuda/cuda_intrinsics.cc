@@ -15,7 +15,11 @@
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/backends/function_prototype.h"
+#include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
+using cinn::backends::GlobalSymbolRegistry;
 #include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/runtime/cuda/cuda_backend_api.h"
+using cinn::runtime::cuda::CUDABackendAPI;
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
 #include "paddle/cinn/runtime/custom_function.h"
 
@@ -599,6 +603,8 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .AddInputType<bool>()    // only_warning
       .AddInputType<void *>()  // stream
       .End();
+  GlobalSymbolRegistry::Global().RegisterFn(
+      "backend_api.cuda", reinterpret_cast<void *>(CUDABackendAPI::Global()));
 
 #ifdef CINN_WITH_CUDNN
   using cinn::runtime::cuda::cinn_call_cudnn_conv2d_forward;

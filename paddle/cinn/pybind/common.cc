@@ -47,19 +47,23 @@ void BindTarget(py::module *m) {
   py::class_<Target> target(*m, "Target");
   target.def_readwrite("os", &Target::os)
       .def_readwrite("arch", &Target::arch)
+      .def_readwrite("language", &Target::language)
       .def_readwrite("bits", &Target::bits)
       .def_readwrite("features", &Target::features)
       .def(py::init<>())
       .def(py::init<Target::OS,
                     Target::Arch,
+                    Target::Language,
                     Target::Bit,
                     const std::vector<Target::Feature> &>())
       .def("defined", &Target::defined)
-      .def("runtime_arch", &Target::runtime_arch);
+      .def("runtime_arch", &Target::runtime_arch)
+      .def("SetActiveDevices", &Target::SetActiveDevices, py::arg("deviceIds"));
 
-  m->def("DefaultHostTarget", &cinn::common::DefaultHostTarget)
-      .def("DefaultNVGPUTarget", &cinn::common::DefaultNVGPUTarget)
-      .def("DefaultTarget", &cinn::common::DefaultTarget);
+  m->def("DefaultHostTarget", &common::DefaultHostTarget)
+      .def("DefaultNVGPUTarget", &common::DefaultNVGPUTarget)
+      .def("DefaultROCMTarget", &common::DefaultROCMTarget)
+      .def("DefaultTarget", &common::DefaultTarget);
 
   m->def("get_target", &cinn::runtime::CurrentTarget::GetCurrentTarget);
   m->def("set_target",
@@ -75,7 +79,19 @@ void BindTarget(py::module *m) {
   arch.value("Unk", Target::Arch::Unk)
       .value("X86", Target::Arch::X86)
       .value("ARM", Target::Arch::ARM)
-      .value("NVGPU", Target::Arch::NVGPU);
+      .value("NVGPU", Target::Arch::NVGPU)
+      .value("AMDGPU", Target::Arch::AMDGPU)
+      .value("IntelGPU", Target::Arch::IntelGPU);
+
+  m->def(
+      "SYCLTarget", &common::SYCLTarget, py::arg("arch") = Target::Arch::Unk);
+
+  py::enum_<Target::Language> language(target, "Language");
+  language.value("Unk", Target::Language::Unk)
+      .value("llvm", Target::Language::llvm)
+      .value("cuda", Target::Language::cuda)
+      .value("hip", Target::Language::hip)
+      .value("sycl", Target::Language::sycl);
 
   py::enum_<Target::Bit> bit(target, "Bit");
   bit.value("Unk", Target::Bit::Unk)
@@ -88,6 +104,9 @@ void BindTarget(py::module *m) {
 
   m->def("is_compiled_with_cuda", cinn::runtime::IsCompiledWithCUDA);
   m->def("is_compiled_with_cudnn", cinn::runtime::IsCompiledWithCUDNN);
+  m->def("is_compiled_with_sycl", cinn::runtime::IsCompiledWithSYCL);
+  m->def("is_compiled_with_hip", cinn::runtime::IsCompiledWithHIP);
+  m->def("is_compiled_with_bangc", cinn::runtime::IsCompiledWithBangC);
   m->def("reset_name_id", ResetGlobalNameID);
 }
 
