@@ -301,24 +301,6 @@ SpatialTransformerResBlockXPUPattern::SpatialTransformerResBlockXPUPattern(
 }  // namespace patterns
 
 namespace {
-void setIntermediateOut(OpDesc* desc,
-                        const std::string& out_name,
-                        const std::string& scope_name) {
-  std::string new_name = scope_name + "/at." + out_name + ".new";
-  desc->SetOutput(out_name, {new_name});
-}
-
-void addIntermediateOut(Node* op_node,
-                        const std::string& out_name,
-                        const std::string& scope_name,
-                        Graph* graph) {
-  std::string new_name = scope_name + "/at." + out_name + ".new";
-  VarDesc out_var(new_name);
-  out_var.SetPersistable(false);
-  auto* node_var = graph->CreateVarNode(&out_var);
-  IR_NODE_LINK_TO(op_node, node_var);
-}
-
 static std::vector<int> IntVec2DTo1D(const std::vector<std::vector<int>>& vec) {
   std::vector<int> res;
   for (const auto& v : vec) {
