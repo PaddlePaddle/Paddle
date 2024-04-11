@@ -508,6 +508,11 @@ void PSendInferMeta(const MetaTensor& x, int peer);
 
 void PSendArrayInferMeta(const MetaTensor& x, int peer);
 
+void PushDenseInferMeta(const std::vector<const MetaTensor*>& ids,
+                        int table_id,
+                        float scale_data_norm,
+                        const std::vector<std::string>& input_names);
+
 void SendV2InferMeta(const int peer, const int ring_id);
 
 void QrInferMeta(const MetaTensor& x,

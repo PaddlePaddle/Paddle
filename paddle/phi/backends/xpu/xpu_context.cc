@@ -31,7 +31,7 @@ namespace xpu = baidu::xpu::api;
 namespace phi {
 
 struct XPUContext::Impl {
-  void SetL3Cache(int l3_size = 1024) {
+  void SetL3Cache(int64_t l3_size = 1024) {
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(context_->xpu_stream));
     context_->_l3_mgr.set(nullptr, 0, true);  // free origin l3
     void* l3_ptr = nullptr;
@@ -130,7 +130,7 @@ struct XPUContext::Impl {
     }
   }
 
-  void Init(int gm_default_size = 1024, int l3_default_size = 1024) {
+  void Init(int64_t gm_default_size = 1024, int64_t l3_default_size = 1024) {
     owned_ = true;
     backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
     LOG_FIRST_N(WARNING, 1)
@@ -222,26 +222,26 @@ struct XPUContext::Impl {
   xpu::BKCLContext_t bkcl_context_{nullptr};
 };
 
-static int get_gm_size(int i) {
-  int default_size = 1024;
+static int64_t get_gm_size(int i) {
+  int64_t default_size = 1024;
   if (std::getenv("XPUAPI_DEFAULT_SIZE") != nullptr) {
-    default_size = atoi(std::getenv("XPUAPI_DEFAULT_SIZE"));
+    default_size = std::atoll(std::getenv("XPUAPI_DEFAULT_SIZE"));
   }
   std::string cur_env = std::string("XPUAPI_DEFAULT_SIZE") + std::to_string(i);
   if (std::getenv(cur_env.c_str()) != nullptr) {
-    default_size = atoi(std::getenv(cur_env.c_str()));
+    default_size = std::atoll(std::getenv(cur_env.c_str()));
   }
   return default_size;
 }
 
-static int get_l3_size(int i) {
-  int default_size = 1024;
+static int64_t get_l3_size(int i) {
+  int64_t default_size = 1024;
   if (std::getenv("XPU_PADDLE_L3_SIZE") != nullptr) {
-    default_size = atoi(std::getenv("XPU_PADDLE_L3_SIZE"));
+    default_size = std::atoll(std::getenv("XPU_PADDLE_L3_SIZE"));
   }
   std::string cur_env = std::string("XPU_PADDLE_L3_SIZE") + std::to_string(i);
   if (std::getenv(cur_env.c_str()) != nullptr) {
-    default_size = atoi(std::getenv(cur_env.c_str()));
+    default_size = std::atoll(std::getenv(cur_env.c_str()));
   }
   return default_size;
 }
@@ -324,7 +324,7 @@ void XPUContext::SetXContext(xpu::Context* context, int i) {
   impls_[i]->SetXContext(context);
 }
 
-void XPUContext::SetL3Cache(int l3_size, int i) {
+void XPUContext::SetL3Cache(int64_t l3_size, int i) {
   impls_[i]->SetL3Cache(l3_size);
 }
 

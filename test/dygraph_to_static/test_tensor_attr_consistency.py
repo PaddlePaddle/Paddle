@@ -109,6 +109,13 @@ STATIC_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         'dist_attr',
         'value_assign',
         'replace_grad_users_with',
+        'do_model_average',
+        'is_distributed',
+        'is_parameter',
+        'need_clip',
+        'optimize_attr',
+        'regularizer',
+        'trainable',
     ]
 )
 

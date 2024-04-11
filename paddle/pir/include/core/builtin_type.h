@@ -44,6 +44,7 @@ class IR_API VectorType
   using Base::Base;
 
   std::vector<Type> data() const;
+  static std::string name() { return "t_vec"; }
 
   size_t size() const { return data().size(); }
 
@@ -66,7 +67,7 @@ class IR_API DenseTensorType : public Type::TypeBase<DenseTensorType,
   DataLayout data_layout() const;
   const LoD &lod() const;
   size_t offset() const;
-
+  static std::string name() { return "t_dtensor"; }
   ///
   /// \brief Implementation of 'classof' that compares the type id of
   /// the provided value with the concrete type id.
@@ -85,28 +86,28 @@ class IR_API DenseTensorType : public Type::TypeBase<DenseTensorType,
   }
 };
 
-#define DECLARE_BUILTIN_TYPE(__name)                                       \
+#define DECLARE_BUILTIN_TYPE(__name, s_name)                               \
   class IR_API __name : public Type::TypeBase<__name, Type, TypeStorage> { \
    public:                                                                 \
     using Base::Base;                                                      \
     static __name get(IrContext *context);                                 \
+    static std::string name() { return s_name; }                           \
   };
 
 #define FOREACH_BUILTIN_TYPE(__macro) \
-  __macro(BFloat16Type);              \
-  __macro(Float16Type);               \
-  __macro(Float32Type);               \
-  __macro(Float64Type);               \
-  __macro(Int8Type);                  \
-  __macro(UInt8Type);                 \
-  __macro(Int16Type);                 \
-  __macro(Int32Type);                 \
-  __macro(Int64Type);                 \
-  __macro(IndexType);                 \
-  __macro(BoolType);                  \
-  __macro(Complex64Type);             \
-  __macro(Complex128Type);
-
+  __macro(BFloat16Type, "t_bf16");    \
+  __macro(Float16Type, "t_f16");      \
+  __macro(Float32Type, "t_f32");      \
+  __macro(Float64Type, "t_f64");      \
+  __macro(Int8Type, "t_i8");          \
+  __macro(UInt8Type, "t_ui8");        \
+  __macro(Int16Type, "t_i16");        \
+  __macro(Int32Type, "t_i32");        \
+  __macro(Int64Type, "t_i64");        \
+  __macro(IndexType, "t_index");      \
+  __macro(BoolType, "t_bool");        \
+  __macro(Complex64Type, "t_c64");    \
+  __macro(Complex128Type, "t_c128");
 FOREACH_BUILTIN_TYPE(DECLARE_BUILTIN_TYPE)
 
 #undef FOREACH_BUILTIN_TYPE

@@ -46,9 +46,11 @@ struct CombineOpInferSymbolicShapeInterfaceModel
     const auto shape_data_list = [&] {
       symbol::TensorListShapeOrDataDimExprs shape_data_list;
       for (size_t i = 0; i < op->num_operands(); ++i) {
-        IR_ENFORCE(op->operand(i).type().dyn_cast<DenseTensorType>(),
-                   "Currently InferSymbolicShape of CombineOp only support "
-                   "DenseTensorType.");
+        PADDLE_ENFORCE_NOT_NULL(
+            op->operand(i).type().dyn_cast<DenseTensorType>(),
+            phi::errors::InvalidArgument(
+                "Currently InferSymbolicShape of CombineOp only support "
+                "DenseTensorType."));
 
         shape_data_list.emplace_back(
             shape_analysis->GetShapeOrDataForValue(op->operand_source(i))
@@ -70,9 +72,11 @@ struct ConstantOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
       pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
-    IR_ENFORCE(op->result(0).type().dyn_cast<DenseTensorType>(),
-               "Currently InferSymbolicShape of ConstantOp only support "
-               "DenseTensorType result.");
+    PADDLE_ENFORCE_NOT_NULL(
+        op->result(0).type().dyn_cast<DenseTensorType>(),
+        phi::errors::InvalidArgument(
+            "Currently InferSymbolicShape of ConstantOp only support "
+            "DenseTensorType result."));
 
     const std::vector<symbol::DimExpr> out_dims = [op] {
       std::vector<symbol::DimExpr> dims;
@@ -128,6 +132,17 @@ struct ParameterOpInferSymbolicShapeInterfaceModel
   }
 
   ParameterOpInferSymbolicShapeInterfaceModel()
+      : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
+};
+
+struct SetParameterOpInferSymbolicShapeInterfaceModel
+    : public InferSymbolicShapeInterface::Concept {
+  static inline bool InferSymbolicShape(
+      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
+    return true;
+  }
+
+  SetParameterOpInferSymbolicShapeInterfaceModel()
       : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
 };
 
@@ -232,14 +247,24 @@ OperatorDialect::OperatorDialect(pir::IrContext* ctx)
                        ShadowOutputOpInferSymbolicShapeInterfaceModel>());
 
   info = ctx->GetRegisteredOpInfo(pir::SplitOp::name());
-  info.AttachInterface(std::move(
+  info.AttachInterface(
       pir::InterfaceValue::Get<InferSymbolicShapeInterface,
-                               SplitOpInferSymbolicShapeInterfaceModel>()));
+                               SplitOpInferSymbolicShapeInterfaceModel>());
 
   info = ctx->GetRegisteredOpInfo(pir::YieldOp::name());
   info.AttachInterface(
       pir::InterfaceValue::Get<InferSymbolicShapeInterface,
                                YieldOpInferSymbolicShapeInterfaceModel>());
+
+  info = ctx->GetRegisteredOpInfo(pir::SetParameterOp::name());
+  info.AttachInterface(pir::InterfaceValue::Get<
+                       InferSymbolicShapeInterface,
+                       SetParameterOpInferSymbolicShapeInterfaceModel>());
+
+  info = ctx->GetRegisteredOpInfo(pir::SliceOp::name());
+  info.AttachInterface(
+      pir::InterfaceValue::Get<InferSymbolicShapeInterface,
+                               SliceOpInferSymbolicShapeInterfaceModel>());
 }
 
 void PrintTypeImpl(pir::Type type, std::ostream& os) {
@@ -506,7 +531,7 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
       auto attr_name = attr_name_and_type[0];
       auto attr_type_str = attr_name_and_type[1];
       param_names.push_back(attr_name);
-      if (AttrTypeMap().find(attr_type_str) == AttrTypeMap().end()) {
+      if (CppTypeToAttrTypeMap().count(attr_type_str) == 0) {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported `%s` type value as custom attribute now. "
             "Supported data types include `bool`, `int`, `float`, "
@@ -516,7 +541,7 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
             "the attribute data type and data type string are matched.",
             attr_type_str));
       }
-      std::string attr_pir_type = AttrTypeMap().at(attr_type_str);
+      std::string attr_pir_type = CppTypeToAttrTypeMap().at(attr_type_str);
       attributes_info.emplace_back(attr_name, attr_pir_type, "");
     }
 

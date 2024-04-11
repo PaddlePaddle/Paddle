@@ -298,6 +298,7 @@ class AmpScaler:
         if hasattr(optimizer, "_set_auxiliary_var"):
             optimizer._set_auxiliary_var('found_inf', self._found_inf)
             optimize_ops, params_grads = optimizer.minimize(*args, **kwargs)
+            # TODO: Fix to _cache_found_inf after PaddleNLP update
             self._cache_founf_inf = optimizer._get_auxiliary_var('found_inf')
         else:
             if self._found_inf:
@@ -430,11 +431,7 @@ class AmpScaler:
             self._decr_count = self._decr_count + 1
             if self._decr_count == self._decr_every_n_nan_or_inf:
                 print(
-                    'Found inf or nan, current scale is: {}, decrease to: {}*{}'.format(
-                        float(self._scale),
-                        float(self._scale),
-                        float(self._decr_ratio),
-                    )
+                    f'Found inf or nan, current scale is: {float(self._scale)}, decrease to: {float(self._scale)}*{float(self._decr_ratio)}'
                 )
                 self._scale = self._scale * self._decr_ratio
                 self._decr_count = 0

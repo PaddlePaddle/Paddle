@@ -11,6 +11,7 @@ set(ALLOCATOR_SRCS
     allocator_strategy.cc
     allocator_facade.cc
     auto_growth_best_fit_allocator.cc
+    auto_growth_best_fit_allocator_v2.cc
     virtual_memory_auto_growth_best_fit_allocator.cc
     retry_allocator.cc
     memory_block.cc

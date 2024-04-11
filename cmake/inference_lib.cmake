@@ -114,8 +114,8 @@ function(copy_part_of_third_party TARGET DST)
     endif()
   endif()
 
-  if(WITH_MKLDNN)
-    set(dst_dir "${DST}/third_party/install/mkldnn")
+  if(WITH_ONEDNN)
+    set(dst_dir "${DST}/third_party/install/onednn")
     if(WIN32)
       copy(
         ${TARGET}

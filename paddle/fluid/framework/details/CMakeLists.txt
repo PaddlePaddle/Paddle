@@ -54,8 +54,8 @@ set(op_handle_deps
     selected_rows_utils
     reference_count_pass_helper)
 
-if(WITH_MKLDNN)
-  set(op_handle_deps ${op_handle_deps} mkldnn)
+if(WITH_ONEDNN)
+  set(op_handle_deps ${op_handle_deps} onednn)
 endif()
 
 if(WITH_DGC)
@@ -161,6 +161,6 @@ cc_library(
   SRCS build_strategy.cc
   DEPS pass_builder ${IR_PASS_DEPS})
 
-if(WITH_MKLDNN)
-  target_link_libraries(build_strategy mkldnn_placement_pass)
+if(WITH_ONEDNN)
+  target_link_libraries(build_strategy onednn_placement_pass)
 endif()

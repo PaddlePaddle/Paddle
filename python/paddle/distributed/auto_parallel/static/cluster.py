@@ -140,17 +140,7 @@ class Device:
 
     def __str__(self):
         str = ""
-        str += "global_id: {}, local_id: {}, machine_id: {}, type: {}, model: {}, dp_flops: {}, sp_flops: {}, hp_flops: {}, memory: {}".format(
-            self.global_id,
-            self.local_id,
-            self.machine.id,
-            self.type.name,
-            self.model,
-            self.dp_gflops,
-            self.sp_gflops,
-            self.hp_gflops,
-            self.memory,
-        )
+        str += f"global_id: {self.global_id}, local_id: {self.local_id}, machine_id: {self.machine.id}, type: {self.type.name}, model: {self.model}, dp_flops: {self.dp_gflops}, sp_flops: {self.sp_gflops}, hp_flops: {self.hp_gflops}, memory: {self.memory}"
         return str
 
     def __repr__(self):
@@ -221,13 +211,7 @@ class Link:
 
     def __str__(self):
         str = ""
-        str += "source_global_id: {}, target_global_id: {}, type: {}, bandwidth: {}, latency: {}".format(
-            self.source.global_id,
-            self.target.global_id,
-            self.type,
-            self.bandwidth,
-            self.latency,
-        )
+        str += f"source_global_id: {self.source.global_id}, target_global_id: {self.target.global_id}, type: {self.type}, bandwidth: {self.bandwidth}, latency: {self.latency}"
         return str
 
     def __repr__(self):
