@@ -697,7 +697,7 @@ def cinn():
                 'with_mkl': env_dict.get("WITH_MKL"),
                 'cinn': get_cinn_version(),
                 'with_pip_cuda_libraries': env_dict.get(
-                    "with_pip_cuda_libraries"
+                    "WITH_PIP_CUDA_LIBRARIES"
                 ),
             }
         )
