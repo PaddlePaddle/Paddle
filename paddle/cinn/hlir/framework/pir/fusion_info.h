@@ -14,7 +14,6 @@
 
 #pragma once
 #include <ostream>
-#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
 
 namespace cinn::hlir::framework::pir {
@@ -62,7 +61,6 @@ class FusionInfo {
   using IntArgsMap = std::map<int, CINNKernelInfo::ArgDimIdx>;
 
  public:
-  explicit FusionInfo(const cinn::dialect::FusionOp &fusion_op);
   explicit FusionInfo(const OpLoweringGroup &group);
   FusionInfo() = delete;
   FusionInfo(const FusionInfo &) = default;
@@ -98,7 +96,8 @@ std::size_t HashIntArgsMap(
 std::ostream &operator<<(
     std::ostream &os,
     const std::map<int, CINNKernelInfo::ArgDimIdx> &int_args_map);
-std::vector<::pir::Operation *> TopologySort(::pir::Operation *op);
+std::vector<const ::pir::Operation *> TopologySort(
+    const OpLoweringGroup &group);
 
 }  // namespace cinn::hlir::framework::pir
 

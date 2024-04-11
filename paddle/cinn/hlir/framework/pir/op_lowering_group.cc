@@ -30,17 +30,24 @@ namespace pir {
   return ops_[0]->GetParentProgram();
 }
 
-::pir::Operation* OpLoweringGroup::GetParentOp() const {
+::pir::Block* OpLoweringGroup::GetParentBlock() const {
   PADDLE_ENFORCE_GT(this->ops_.size(),
                     0,
                     ::common::errors::PreconditionNotMet(
                         "Required at least one operation in OpLoweringGroup."));
-  auto* parent_op = this->ops_[0]->GetParentOp();
+  auto* block = this->ops_[0]->GetParent();
   PADDLE_ENFORCE_NOT_NULL(
-      parent_op,
+      block,
       ::common::errors::Unavailable(
-          "Required inner op's parent must not be nullptr."));
-  return parent_op;
+          "Required inner op's parent block must not be nullptr."));
+  for (size_t i = 1; i < this->ops_.size(); ++i) {
+    PADDLE_ENFORCE_EQ(this->ops_[0]->GetParent(),
+                      block,
+                      ::common::errors::PreconditionNotMet(
+                          "Required all ops must belong into same block."));
+  }
+
+  return block;
 }
 
 std::vector<::pir::Value> OpLoweringGroup::GetGroupOutputValues() const {
@@ -101,9 +108,10 @@ std::unordered_set<::pir::Value> OpLoweringGroup::GetOutputOpValues() const {
 
 const symbol::ShapeOrDataDimExprs& OpLoweringGroup::GetShapeOrDataExprs(
     const ::pir::Value& value) const {
-  PADDLE_ENFORCE(HasShapeOrDataExprs(value),
-                 ::common::errors::NotFound(
-                     "value not found in value_to_shape_or_data_exprs_"));
+  PADDLE_ENFORCE_EQ(HasShapeOrDataExprs(value),
+                    true,
+                    ::common::errors::NotFound(
+                        "value not found in value_to_shape_or_data_exprs_"));
   return value_to_shape_or_data_exprs_.at(value);
 }
 

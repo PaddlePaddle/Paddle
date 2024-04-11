@@ -18,9 +18,6 @@
 
 namespace cinn::hlir::framework::pir {
 
-using cinn::dialect::FusionOp;
-using cinn::dialect::GroupOp;
-
 constexpr static char* kOpCallStack = "op_callstack";
 
 std::size_t AttributeInfo::hash() const { return attr_.hash(); }
@@ -88,15 +85,8 @@ std::ostream& operator<<(std::ostream& os, const OperationInfo& op_info) {
   return os;
 }
 
-FusionInfo::FusionInfo(const cinn::dialect::FusionOp& fusion_op) {
-  for (const auto* op : TopologySort(fusion_op.operation())) {
-    op_infos_.emplace_back(*op);
-  }
-}
-
 FusionInfo::FusionInfo(const OpLoweringGroup& group) {
-  auto* parent_op = group.GetParentOp();
-  for (const auto* op : TopologySort(parent_op)) {
+  for (const auto* op : TopologySort(group)) {
     op_infos_.emplace_back(*op);
   }
 }
@@ -141,15 +131,16 @@ std::ostream& operator<<(
   os << "}\n";
 }
 
-std::vector<::pir::Operation*> TopologySort(::pir::Operation* op) {
-  if (op->isa<FusionOp>()) {
-    return op->dyn_cast<FusionOp>().GetOperators();
+std::vector<const ::pir::Operation*> TopologySort(
+    const OpLoweringGroup& group) {
+  // NOTE(Aurelius84): Use simplest one-by-one order temporaly.
+  auto* block = group.GetParentBlock();
+  std::vector<const ::pir::Operation*> ops;
+  ops.reserve(block->size());
+  for (auto& op : *block) {
+    ops.push_back(&op);
   }
-  if (op->isa<GroupOp>()) {
-    return op->dyn_cast<GroupOp>().GetOperators();
-  }
-  PADDLE_THROW(::common::errors::PreconditionNotMet(
-      "Required FusionOp or GroupOp, but got %s.", op->name()));
+  return ops;
 }
 
 }  // namespace cinn::hlir::framework::pir

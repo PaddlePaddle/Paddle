@@ -20,7 +20,6 @@
 #include "glog/logging.h"
 
 #include "paddle/cinn/common/context.h"
-#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/common/enforce.h"
@@ -53,22 +52,8 @@ class OpLoweringGroup {
     fn_name_ = CompatibleInfo::GroupOpsName(ops_);
   }
 
-  struct SharedGroupHasher {
-    size_t operator()(
-        const std::shared_ptr<OpLoweringGroup>& group) const noexcept {
-      return std::hash<std::string>()(group->group_id());
-    }
-  };
-  struct SharedGroupComparator {
-    bool operator()(
-        const std::shared_ptr<OpLoweringGroup>& first,
-        const std::shared_ptr<OpLoweringGroup>& second) const noexcept {
-      return first->group_id() == second->group_id();
-    }
-  };
-
   const std::string& FuncName() const { return this->fn_name_; }
-  ::pir::Operation* GetParentOp() const;
+  ::pir::Block* GetParentBlock() const;
   ::pir::Program* GetParentProgram() const;
   std::vector<::pir::Value> GetGroupOutputValues() const;
   std::unordered_set<::pir::Value> GetInputOpValues() const;
