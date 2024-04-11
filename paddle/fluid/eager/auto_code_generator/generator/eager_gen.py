@@ -292,7 +292,7 @@ TEST_API {} {}({}) {{
 
   // Forward API Call
 {}
-  // Log memory infomation
+  // Log memory information
 {}
   // Check NaN and Inf if needed
 {}
@@ -346,7 +346,7 @@ TEST_API {} {}({}) {{
 {}
   // Forward API Call
 {}
-  // Log memory infomation
+  // Log memory information
 {}
   // Check NaN and Inf if needed
 {}
@@ -538,8 +538,8 @@ AMP_LOGIC_TEMPLATE = """  if (egr::Controller::Instance().GetAMPLevel() != paddl
 """
 
 TYPE_PROMOTION_LOGIC_TEMPLATE = """   if (phi::NeedTypePromotion({x}.dtype(), {y}.dtype())) {{
-    VLOG(5) << "got different data type, run type protmotion automatically.";
-    LOG_FIRST_N(WARNING, 1) << "got different data type, run type protmotion automatically, this may cause data type been changed.";
+    VLOG(5) << "got different data type, run type promotion automatically.";
+    LOG_FIRST_N(WARNING, 1) << "got different data type, run type promotion automatically, this may cause data type been changed.";
     {op_name}
     auto promotion_type = phi::GetPromoteDtype(op_name, {x}.dtype(), {y}.dtype());
 

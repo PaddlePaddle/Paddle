@@ -41,6 +41,7 @@ set(PYBIND_DEPS
     op_dialect_vjp
     program_translator
     pir_transforms
+    pir_save_load
     new_profiler
     fluid_jit
     prim_utils

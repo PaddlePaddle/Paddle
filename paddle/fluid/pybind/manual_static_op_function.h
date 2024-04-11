@@ -159,7 +159,7 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
       CallStackRecorder callstack_recoder("full_with_tensor");
       callstack_recoder.Record();
       auto static_api_out =
-          paddle::dialect::full_with_tensor(shape, value, dtype);
+          paddle::dialect::full_with_tensor(value, shape, dtype);
       callstack_recoder.AttachToOps();
 
       return ToPyObject(static_api_out);

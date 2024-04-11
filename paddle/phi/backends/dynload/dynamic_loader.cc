@@ -103,13 +103,14 @@ static constexpr char* win_nvjpeg_lib =
     ".dll;nvjpeg64_" CUDA_VERSION_MAJOR ".dll;nvjpeg64_10.dll";
 static constexpr char* win_cusolver_lib =
     "cusolver64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
-    ".dll;cusolver64_" CUDA_VERSION_MAJOR ".dll;cusolver64_10.dll";
+    ".dll;cusolver64_" CUDA_VERSION_MAJOR
+    ".dll;cusolver64_11.dll;cusolver64_10.dll";
 static constexpr char* win_cusparse_lib =
     "cusparse64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cusparse64_" CUDA_VERSION_MAJOR ".dll;cusparse64_10.dll";
 static constexpr char* win_cufft_lib =
     "cufft64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
-    ".dll;cufft64_" CUDA_VERSION_MAJOR ".dll;cufft64_10.dll";
+    ".dll;cufft64_" CUDA_VERSION_MAJOR ".dll;cufft64_11.dll;cufft64_10.dll";
 #else
 static constexpr char* win_curand_lib =
     "curand64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
