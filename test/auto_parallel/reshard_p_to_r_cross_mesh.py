@@ -86,6 +86,9 @@ class TestReshardPToRCrossMesh:
                     shard_tensor, self._out_mesh, [-1, -1]
                 )
             dist_program = apply_reshard_pass_v2(main_program)
+        np.testing.assert_equal(dist_program.num_ops(), 6)
+        ops = [op.name() for op in dist_program.global_block().ops]
+        np.testing.assert_equal(ops, ['builtin.parameter', 'pd_op.data', 'dist_op.shard_tensor', 'pd_op.send_v2', 'pd_op.recv_v2', 'pd_op.c_allreduce_sum_'])
 
 
 if __name__ == '__main__':
