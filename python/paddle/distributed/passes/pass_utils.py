@@ -983,6 +983,61 @@ class PipelineMemoryEstimator:
         self.skip_gc_vars = {}
         self.rank = rank
 
+    def estimate_memory_usage(self, program, dist_context):
+        memories = {}  # Memory usage per process
+        max_memories = {}  # Max memory usage per process
+        var_info = {}  # Contains variable usage and memory info
+        parameters = set()
+
+        # Step1: Sort operations by id
+        ordered_ops = [
+            [op.desc.id(), op] for block in program.blocks for op in block.ops
+        ]
+        ordered_ops.sort(key=lambda x: x[0])
+
+        # Step2: Process operations to update memories and var_info
+        self._process_operations(
+            ordered_ops, dist_context, var_info, memories, parameters
+        )
+
+        # Step3: Calculate max memory usage and program usage
+        has_used_vars = set()
+        not_calc_vars = set()
+
+        for _, op in ordered_ops:
+            dist_op = dist_context.get_dist_op_for_program(op)
+            if not dist_op:
+                continue
+            self._manage_memory(
+                op,
+                dist_op,
+                var_info,
+                max_memories,
+                memories,
+                parameters,
+                has_used_vars,
+                not_calc_vars,
+            )
+
+        max_memory = max(max_memories.values())
+        program_usage = memories[self.rank]
+
+        return max_memory, program_usage
+
+    def add_sub_program(self, program, dist_context, program_mem_usage=None):
+        if program_mem_usage is None:
+            _, program_mem_usage = self.estimate_memory_usage(
+                program, dist_context
+            )
+
+        self.mem_usage += program_mem_usage
+        self._add_skip_gc_vars(program)
+
+    def gc_all_vars(self):
+        for _, mem in self.skip_gc_vars.items():
+            self.mem_usage -= mem
+        self.skip_gc_vars.clear()
+
     def _convert_pm_and_dm_to_str(process_mesh, dims_mapping):
         processes = ",".join([str(x) for x in process_mesh.process_ids])
         topology = ",".join([str(x) for x in process_mesh.shape])
@@ -1147,53 +1202,6 @@ class PipelineMemoryEstimator:
             )
             memories[process_id] -= can_free_memories.get(process_id, 0)
 
-    def estimate_memory_usage(self, program, dist_context):
-        memories = {}  # Memory usage per process
-        max_memories = {}
-        var_info = {}  # Contains variable usage and memory info
-        parameters = set()
-
-        ordered_ops = [
-            [op.desc.id(), op] for block in program.blocks for op in block.ops
-        ]
-        ordered_ops.sort(key=lambda x: x[0])
-
-        self._process_operations(
-            ordered_ops, dist_context, var_info, memories, parameters
-        )
-
-        has_used_vars = set()
-        not_calc_vars = set()
-
-        for _, op in ordered_ops:
-            dist_op = dist_context.get_dist_op_for_program(op)
-            if not dist_op:
-                continue
-            self._manage_memory(
-                op,
-                dist_op,
-                var_info,
-                max_memories,
-                memories,
-                parameters,
-                has_used_vars,
-                not_calc_vars,
-            )
-
-        max_memory = max(max_memories.values())
-        program_usage = memories[self.rank]
-
-        return max_memory, program_usage
-
-    def add_sub_program(self, program, dist_context, program_mem_usage=None):
-        if program_mem_usage is None:
-            _, program_mem_usage = self.estimate_memory_usage(
-                program, dist_context
-            )
-
-        self.mem_usage += program_mem_usage
-        self._add_skip_gc_vars(program)
-
     def _get_var_memory(self, program, var_name):
         block = program.global_block()
         var = block._find_var_recursive(var_name)
@@ -1217,11 +1225,6 @@ class PipelineMemoryEstimator:
         dtype_factor = dtype_to_size.get(dtype, 8)
 
         return total_count * dtype_factor
-
-    def gc_all_vars(self):
-        for _, mem in self.skip_gc_vars.items():
-            self.mem_usage -= mem
-        self.skip_gc_vars.clear()
 
     def _add_skip_gc_vars(self, sub_program):
         required_vars = _get_required_vars_of_program(sub_program)
