@@ -198,9 +198,9 @@ void SToRReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
   VLOG(3) << "Call " << Name();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
 
-  SameStatusReshardFunction same_status_func;
   DistTensor tmp_result;
 
+  SameStatusReshardFunction same_status_func;
   TensorDistAttr tmp_dist_attr = in.dist_attr();
   tmp_dist_attr.set_process_mesh(out_process_mesh);
   same_status_func.Eval(dev_ctx, in, tmp_dist_attr, &tmp_result);

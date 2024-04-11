@@ -55,10 +55,13 @@ class CommunicationTestDistBase(unittest.TestCase):
         if user_defined_envs is not None:
             runtime_envs.update(user_defined_envs)
         runtime_envs["CUDA_VISIBLE_DEVICES"] = self._devices
+        log_dir = "log_dir"
+        if os.path.exists(log_dir):
+            shutil.rmtree(log_dir)
         if self._nnode > 1:
             start_command = f"{self._python_interp} -u -m paddle.distributed.launch --nnode={self._nnode} --master=127.0.0.1:{self._find_free_port()} --log_dir {self._log_dir.name} --devices {self._devices} {script_file}"
         else:
-            start_command = f"{self._python_interp} -u -m paddle.distributed.launch --log_dir {self._log_dir.name} --devices {self._devices} {script_file}"
+            start_command = f"{self._python_interp} -u -m paddle.distributed.launch --log_dir {log_dir} --devices {self._devices} {script_file}"
         start_command_list = start_command.strip().split()
 
         if self._nnode > 1:
