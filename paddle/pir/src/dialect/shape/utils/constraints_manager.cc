@@ -167,7 +167,8 @@ bool IsGTOneBaseOnValue(const DimExpr& dim_expr) {
       if (dim_expr.isa<Broadcast<DimExpr>>() ||
           (dim_expr.isa<std::int64_t>() && dim_expr.Get<std::int64_t>() >= 1))
         flag_exist_gtone = true;
-      if (!dim_expr.isa<std::string>()) return false;
+      else if (!dim_expr.isa<std::string>())
+        return false;
     }
     return flag_exist_gtone;
   };
@@ -182,6 +183,8 @@ bool IsGTOneBaseOnValue(const DimExpr& dim_expr) {
                  },
                  [&](const Mul<DimExpr>& dim_expr) {
                    if (AllOperandGTOne(dim_expr.operands)) return true;
+                   if (GTOneWithSomeOperandsGEOne(dim_expr.operands))
+                     return true;
                    return false;
                  },
                  [&](const auto& dim_expr) { return false; }};
