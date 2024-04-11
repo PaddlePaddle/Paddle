@@ -155,23 +155,38 @@ void ConstraintsManager::AddGTOneCstr(const DimExpr& dim_expr) {
 namespace {
 
 bool IsGTOneBaseOnValue(const DimExpr& dim_expr) {
+  auto AllOperandGTOne = [](List<DimExpr> dim_exprs) {
+    for (const auto& dim_expr : *dim_exprs) {
+      if (IsGTOneBaseOnValue(dim_expr) == false) return false;
+    }
+    return true;
+  };
+  auto GTOneWithSomeOperandsGEOne = [](List<DimExpr> dim_exprs) {
+    bool flag_exist_gtone = false;
+    for (const auto& dim_expr : *dim_exprs) {
+      if (dim_expr.isa<Broadcast<DimExpr>>() ||
+          (dim_expr.isa<std::int64_t>() && dim_expr.Get<std::int64_t>() >= 1))
+        flag_exist_gtone = true;
+      if (dim_expr.isa<Reciprocal<DimExpr>>() ||
+          dim_expr.isa<Negative<DimExpr>>() || dim_expr.isa<Mul<DimExpr>>() ||
+          dim_expr.isa<Add<DimExpr>>() || dim_expr.isa<Min<DimExpr>>() ||
+          dim_expr.isa<Max<DimExpr>>())
+        return false;
+    }
+    return flag_exist_gtone;
+  };
+
   auto IsGTOnePredicater =
       Overloaded{[&](std::int64_t dim_expr) { return dim_expr > 1; },
                  [&](const Add<DimExpr>& dim_expr) {
-                   bool flag_gtone = false;
-                   for (auto sub_dim_expr : *dim_expr.operands) {
-                     if (sub_dim_expr.isa<Negative<DimExpr>>()) return false;
-                     if (IsGTOneBaseOnValue(sub_dim_expr)) flag_gtone = true;
-                   }
-                   return flag_gtone;
+                   if (AllOperandGTOne(dim_expr.operands)) return true;
+                   if (GTOneWithSomeOperandsGEOne(dim_expr.operands))
+                     return true;
+                   return false;
                  },
                  [&](const Mul<DimExpr>& dim_expr) {
-                   bool flag_gtone = false;
-                   for (auto sub_dim_expr : *dim_expr.operands) {
-                     if (sub_dim_expr.isa<Reciprocal<DimExpr>>()) return false;
-                     if (IsGTOneBaseOnValue(sub_dim_expr)) flag_gtone = true;
-                   }
-                   return flag_gtone;
+                   if (AllOperandGTOne(dim_expr.operands)) return true;
+                   return false;
                  },
                  [&](const auto& dim_expr) { return false; }};
 
