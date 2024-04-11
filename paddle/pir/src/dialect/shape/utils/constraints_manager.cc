@@ -167,11 +167,7 @@ bool IsGTOneBaseOnValue(const DimExpr& dim_expr) {
       if (dim_expr.isa<Broadcast<DimExpr>>() ||
           (dim_expr.isa<std::int64_t>() && dim_expr.Get<std::int64_t>() >= 1))
         flag_exist_gtone = true;
-      if (dim_expr.isa<Reciprocal<DimExpr>>() ||
-          dim_expr.isa<Negative<DimExpr>>() || dim_expr.isa<Mul<DimExpr>>() ||
-          dim_expr.isa<Add<DimExpr>>() || dim_expr.isa<Min<DimExpr>>() ||
-          dim_expr.isa<Max<DimExpr>>())
-        return false;
+      if (!dim_expr.isa<std::string>()) return false;
     }
     return flag_exist_gtone;
   };
