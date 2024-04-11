@@ -26,6 +26,17 @@ class UnionFindSet {
     if (parent_.find(x) == parent_.end()) {
       return x;
     }
+    if (parent_.at(x) != x) return Find(parent_.at(x));
+    return parent_.at(x);
+  }
+
+  const T& Find(const T& x) {
+    if (parent_.find(x) == parent_.end()) {
+      return x;
+    }
+    if (parent_[x] != x) {
+      parent_[x] = Find(parent_[x]);
+    }
     return parent_.at(x);
   }
 
@@ -48,12 +59,6 @@ class UnionFindSet {
     for (const auto& [_, clusters] : clusters_map) {
       DoEachCluster(clusters);
     }
-  }
-
-  std::vector<std::vector<T>> Clusters() const {
-    std::vector<std::vector<T>> clusters;
-    VisitCluster([&](const auto& cluster) { clusters.emplace_back(cluster); });
-    return clusters;
   }
 
   bool HasSameRoot(const T& p, const T& q) const { return Find(p) == Find(q); }

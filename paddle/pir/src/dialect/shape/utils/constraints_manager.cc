@@ -123,8 +123,10 @@ bool ConstraintsManager::IsEqual(const DimExpr& lhs, const DimExpr& rhs) const {
   return lhs == rhs || equals_.HasSameRoot(lhs, rhs);
 }
 
-std::vector<std::vector<DimExpr>> ConstraintsManager::GetEqualClusters() const {
-  return equals_.Clusters();
+template <typename DoEachClusterT>
+void ConstraintsManager::VisitEqualClusters(
+    const DoEachClusterT& DoEachCluster) const {
+  equals_.VisitCluster(DoEachCluster);
 }
 
 void ConstraintsManager::AddGTOneCstr(const DimExpr& dim_expr) {
@@ -156,12 +158,20 @@ bool IsGTOneBaseOnValue(const DimExpr& dim_expr) {
   auto IsGTOnePredicater =
       Overloaded{[&](std::int64_t dim_expr) { return dim_expr > 1; },
                  [&](const Add<DimExpr>& dim_expr) {
+                   bool flag_gtone = false;
                    for (auto sub_dim_expr : *dim_expr.operands) {
-                     if (sub_dim_expr.isa<std::int64_t>() &&
-                         sub_dim_expr.Get<std::int64_t>() > 1)
-                       return true;
+                     if (sub_dim_expr.isa<Negative<DimExpr>>()) return false;
+                     if (IsGTOneBaseOnValue(sub_dim_expr)) flag_gtone = true;
                    }
-                   return false;
+                   return flag_gtone;
+                 },
+                 [&](const Mul<DimExpr>& dim_expr) {
+                   bool flag_gtone = false;
+                   for (auto sub_dim_expr : *dim_expr.operands) {
+                     if (sub_dim_expr.isa<Reciprocal<DimExpr>>()) return false;
+                     if (IsGTOneBaseOnValue(sub_dim_expr)) flag_gtone = true;
+                   }
+                   return flag_gtone;
                  },
                  [&](const auto& dim_expr) { return false; }};
 
@@ -262,16 +272,14 @@ void ConstraintsManager::BroadcastableConstraintsVisitor(
 
 std::ostream& operator<<(std::ostream& stream,
                          const ConstraintsManager& constraints_manager) {
-  const std::vector<std::vector<DimExpr>>& equal_clusters =
-      constraints_manager.GetEqualClusters();
   stream << "Equal Constraints Clusters:" << std::endl;
-  for (auto equal_cluster : equal_clusters) {
+  constraints_manager.VisitEqualClusters([&](const auto& cluster) {
     stream << "{" << std::endl;
-    for (auto dim_expr : equal_cluster) {
+    for (const auto& dim_expr : cluster) {
       stream << dim_expr << std::endl;
     }
     stream << "}" << std::endl;
-  }
+  });
   return stream;
 }
 

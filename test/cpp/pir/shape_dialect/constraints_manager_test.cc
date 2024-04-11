@@ -46,6 +46,9 @@ TEST(ConstraintsManager, EqualCstr) {
 TEST(ConstraintsManager, GreatThanOneCstr) {
   ConstraintsManager cstr_mgr;
   DimExpr sym_expr_0 = DimExpr("S0");
+  DimExpr int_expr = DimExpr(5);
+  ASSERT_TRUE(cstr_mgr.IsGTOne(int_expr + sym_expr_0));
+  ASSERT_TRUE(cstr_mgr.IsGTOne(int_expr * sym_expr_0));
   cstr_mgr.AddGTOneCstr(sym_expr_0);
   ASSERT_TRUE(cstr_mgr.IsGTOne(sym_expr_0));
 }
