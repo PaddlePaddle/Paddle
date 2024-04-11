@@ -247,7 +247,7 @@ template <typename T>
 void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
                        const phi::DenseTensor& mat_a,
                        const phi::DenseTensor& mat_b,
-                       phi::DenseTensor& workspace,  // NOLINT
+                       phi::DenseTensor* workspace,
                        phi::DenseTensor* out) {
   int m = mat_a.dims()[0];
   int k = mat_a.dims()[1];
@@ -282,7 +282,7 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
   int returnedResults = 0;
   cublasLtMatmulHeuristicResult_t heuristicResult = {};
   cublasLtMatmulPreference_t preference = NULL;
-  size_t work_space_size = workspace.numel();
+  size_t work_space_size = workspace->numel();
 
   status = dyl::cublasLtMatmulPreferenceCreate(&preference);
   status = dyl::cublasLtMatmulPreferenceSetAttribute(
@@ -302,27 +302,31 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
                                                &heuristicResult,
                                                &returnedResults);
 
-  PADDLE_ENFORCE_NE(returnedResults, 0, phi::errors::NotFound("Not support"));
+  PADDLE_ENFORCE_NE(
+      returnedResults,
+      0,
+      phi::errors::NotFound("Unable to find suitable cuBLAS GEMM algorithm"));
 
-  status = dyl::cublasLtMatmul(dev_ctx.cublaslt_handle(),
-                               matmul_desc_,
-                               &alpha_,
-                               mat_b.data<phi::dtype::float8_e4m3fn>(),
-                               B_desc_,
-                               mat_a.data<phi::dtype::float8_e4m3fn>(),
-                               A_desc_,
-                               &beta_,
-                               out->data<T>(),
-                               C_desc_,
-                               out->data<T>(),
-                               C_desc_,
-                               // nullptr,
-                               &heuristicResult.algo,
-                               //  nullptr,
-                               (void*)workspace.data<int8_t>(),  // NOLINT
-                               // 0,
-                               work_space_size,
-                               dev_ctx.stream());
+  status =
+      dyl::cublasLtMatmul(dev_ctx.cublaslt_handle(),
+                          matmul_desc_,
+                          &alpha_,
+                          mat_b.data<phi::dtype::float8_e4m3fn>(),
+                          B_desc_,
+                          mat_a.data<phi::dtype::float8_e4m3fn>(),
+                          A_desc_,
+                          &beta_,
+                          out->data<T>(),
+                          C_desc_,
+                          out->data<T>(),
+                          C_desc_,
+                          // nullptr,
+                          &heuristicResult.algo,
+                          //  nullptr,
+                          reinterpret_cast<void*>(workspace->data<int8_t>()),
+                          // 0,
+                          work_space_size,
+                          dev_ctx.stream());
 }
 
 }  // namespace phi

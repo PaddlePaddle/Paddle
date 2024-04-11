@@ -1484,7 +1484,7 @@ DispatchMatmulFP8Kernel(const Context& ctx,
   workspace.Resize({30 * 1024 * 1024});
   ctx.template Alloc<int8_t>(&workspace);
   ctx.template Alloc<phi::dtype::float16>(out);
-  CublasLtMatmulFP8<phi::dtype::float16>(ctx, x, y, workspace, out);
+  CublasLtMatmulFP8<phi::dtype::float16>(ctx, x, y, &workspace, out);
 }
 #endif
 
