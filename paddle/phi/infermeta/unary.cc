@@ -5781,9 +5781,10 @@ void FakeQuantizeRangeInferMeta(const MetaTensor& x,
     out_scales->set_dims({window_size});
   }
   out_scale->set_dims({1});
-  // out->set_dims(x.dims());
-  // out->set_dtype(x.dtype());
-  // out->set_layout(x.layout());
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out->share_lod(x);
 }
 
 void FakeQuantizeMovingAverageInferMeta(const MetaTensor& x,
