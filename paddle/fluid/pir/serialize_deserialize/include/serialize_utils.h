@@ -140,9 +140,8 @@ Json serializeAttrToJson<paddle::dialect::ScalarAttribute>(
     content.push_back(scalar.to<phi::dtype::complex<double>>().real);
     content.push_back(scalar.to<phi::dtype::complex<double>>().imag);
   } else {
-    PADDLE_ENFORCE(false,
-                   phi::errors::InvalidArgument(
-                       "Invalid tensor data type `", dtype_, "`."));
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Invalid tensor data type `", dtype_, "`."));
   }
   json_obj[DATA] = content;
   return json_obj;
