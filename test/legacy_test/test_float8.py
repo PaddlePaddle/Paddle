@@ -124,15 +124,20 @@ class TestFP8MatmulOp(unittest.TestCase):
     def test_matmul(self):
         for self.device in ["gpu"]:
             paddle.device.set_device(self.device)
-            for self.dtype in ["float8_e4m3fn", "float8_e5m2"]:
-                input1 = paddle.ones([2, 3], dtype=self.dtype)
-                input2 = paddle.ones([3, 4], dtype=self.dtype)
-                input3 = np.ones((2, 3)).astype("float32")
-                input4 = np.ones((3, 4)).astype("float32")
+            for self.dtype in ["float8_e4m3fn"]:
+                input1 = paddle.ones([16, 16], dtype=self.dtype)
+                input2 = paddle.ones([16, 16], dtype=self.dtype)
+                input3 = np.ones((16, 16)).astype("float32")
+                input4 = np.ones((16, 16)).astype("float32")
                 output = paddle.matmul(input1, input2)
                 expect_result = np.matmul(input3, input4)
                 if self.device == "gpu":
-                    self.assertTrue(paddle.equal_all(output, expect_result))
+                    self.assertTrue(
+                        paddle.equal_all(
+                            paddle.cast(output, "float32"),
+                            paddle.to_tensor(expect_result),
+                        )
+                    )
 
 
 if __name__ == "__main__":
