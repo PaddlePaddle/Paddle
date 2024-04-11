@@ -1527,6 +1527,7 @@ def get_setup_parameters():
         'paddle.distributed.auto_parallel.static.operators',
         'paddle.distributed.auto_parallel.static.tuner',
         'paddle.distributed.auto_parallel.static.cost',
+        'paddle.distributed.auto_parallel.static.reshard_funcs',
         'paddle.distributed.passes',
         'paddle.distributed.models',
         'paddle.distributed.models.moe',
