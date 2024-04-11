@@ -31,7 +31,7 @@ struct InjectiveSourcePattern {};
 template <typename T>
 struct SingleReductionOpPattern {};
 
-// ElementWise/Broadcast ops which have shardable dimentions and reduction
+// ElementWise/Broadcast ops which have shardable dimensions and reduction
 // ancestors.
 template <typename T>
 struct PartialShardablePattern {};

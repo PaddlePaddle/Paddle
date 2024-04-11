@@ -155,7 +155,7 @@ static ValueDimRelation CreateOpRelativenessForReduce(pir::Operation* op) {
   int out_idx = 0;
   bool keep_dim = GetReduceOpKeepDims(op);
   for (int i = 0; i < input_rank; i++) {
-    if (std::find(reduce_axis_idx.begin(), reduce_axis_idx.end(), i) !=
+    if (std::find(reduce_axis_idx.begin(), reduce_axis_idx.end(), i) ==
         reduce_axis_idx.end()) {
       res[ValueDim(op->operand_source(0), i)]
          [ValueDim(op->result(0), out_idx)] = true;

@@ -91,7 +91,9 @@ void PatternGraph::ReduceLiftReduceTree() {
 
 void PatternGraph::HorizontalFusion() {
   GraphTransformer<NodePattern,
-                   StmtPatternGraphMatcher<TrivialPattern>,
+                   Or<Or<StmtPatternGraphMatcher<TrivialPattern>,
+                         StmtPatternGraphMatcher<ReduceTreePlusTrivialPattern>>,
+                      StmtPatternGraphMatcher<ReduceTreePattern>>,
                    LiftToHorizontalFusionPatternOperation>(this);
 
   GraphTransformer<NodePairPattern,
