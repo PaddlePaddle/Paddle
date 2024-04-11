@@ -60,7 +60,6 @@ class SameStatusReshardFunction(ReshardFunction):
                 src_local_rank = get_local_rank(all_process_ids, src)
                 local_rank_map["src_local_rank"] = src_local_rank
 
-        paddle.pir.set_insertion_point(op)
         group = new_process_group(src_mesh.process_ids)
         paddle._pir_ops.send_v2(
             op.operand_source(0),
