@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import re
+import sys
 
 import triton
 
@@ -34,7 +36,9 @@ def SubstituteTemplate(template, values):
 
 
 def find_so_path(generated_dir, python_package_name):
-    import os
+    """
+    find the specified so in generated_dir, if not found it will return None.
+    """
 
     so_path = []
     for root, dirs, files in os.walk(generated_dir):
@@ -51,7 +55,6 @@ def find_so_path(generated_dir, python_package_name):
 def multi_process_do(commands):
     THREADS = 40
     import multiprocessing
-    import os
 
     process = []
 
@@ -72,6 +75,14 @@ def multi_process_do(commands):
 
 
 def extract_triton_kernel(kernel, file_name):
+    """
+    Extract the triton kernel and write it to the specified file_name.
+
+    Args:
+        kernel: the triton kernel name.
+        file_name: the file name you want to write.
+    """
+
     import inspect
     import re
     import textwrap
@@ -160,9 +171,13 @@ def get_value_hint(x):
 
 
 def build_package(generated_dir, python_package_name):
-    import os
-    import sys
+    """
+    Build the package, not install it.
 
+    Args:
+        generated_dir: the source cu file dir.
+        python_package_name: the python package name.
+    """
     setup_file_path = generated_dir + "/setup_cuda.py"
     python_path = sys.executable
     with open(setup_file_path, "w") as f:
@@ -176,8 +191,9 @@ def build_package(generated_dir, python_package_name):
 
 
 def rename_c_to_cu(generated_dir):
-    import os
-
+    """
+    Rename the .c files int generated_dir to .cu file, becuase the triton aot tool generate the .c files.
+    """
     # rename the .c file to .cu
     for filename in os.listdir(generated_dir):
         if filename.endswith(".c"):
