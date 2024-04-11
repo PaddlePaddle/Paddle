@@ -46,8 +46,8 @@ static PyObject *static_api_shard_tensor(PyObject *self,
     auto partial_dims = CastPyArg2VectorOfInt64(partial_dims_obj, 3);
 
     // Call ir static api
-    auto static_api_out =
-        paddle::dialect::shard_tensor(input, process_mesh, dims_mapping, partial_dims);
+    auto static_api_out = paddle::dialect::shard_tensor(
+        input, process_mesh, dims_mapping, partial_dims);
 
     return ToPyObject(static_api_out);
   } catch (...) {

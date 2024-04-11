@@ -24,13 +24,16 @@ class ReshardFunction:
         if len(dist_attr.partial_status) > 0:
             return True
         return False
-        
+
     def is_replicated(self, dist_attr):
         dims_mapping_set = set(dist_attr.dims_mapping)
-        if len(dist_attr.partial_status) == 0 and len(dims_mapping_set) == 1 and -1 in dims_mapping_set:
+        if (
+            len(dist_attr.partial_status) == 0
+            and len(dims_mapping_set) == 1
+            and -1 in dims_mapping_set
+        ):
             return True
         return False
-
 
 
 def choose_reshard_func(src_dist_attr, dst_dist_attr):
@@ -42,12 +45,15 @@ def choose_reshard_func(src_dist_attr, dst_dist_attr):
             return reshard_func
     return None
 
+
 def register_reshard_func(reshard_func):
     global _g_reshard_func_list
     _g_reshard_func_list.append(reshard_func)
 
+
 def clean_reshard_funcs():
     global _g_reshard_func_list
     _g_reshard_func_list.clear()
+
 
 _g_reshard_func_list = []

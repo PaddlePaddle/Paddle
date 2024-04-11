@@ -13,16 +13,16 @@
 # limitations under the License.
 
 import paddle
-from paddle.distributed.communication.reduce import ReduceOp
 
 from ..process_group import new_process_group
 from .base_reshard_func import ReshardFunction
+
 
 class SameStatusReshardFunction(ReshardFunction):
     def is_suitable(self, src_dist_attr, dst_dist_attr):
         if src_dist_attr.dims_mapping == dst_dist_attr.dims_mapping:
             return False
-        if src_dist_attr.partial_dims == dst_dist_atrr.partial_dims:
+        if src_dist_attr.partial_dims == dst_dist_attr.partial_dims:
             return False
 
         in_mesh = src_dist_attr.process_mesh
@@ -65,7 +65,11 @@ class SameStatusReshardFunction(ReshardFunction):
         paddle.pir.set_insertion_point(op)
         group = new_process_group(src_mesh.process_ids)
         paddle._pir_ops.send_v2(
-            op.operand_source(0), group.id, local_rank_map['dst_local_rank'], False, True
+            op.operand_source(0),
+            group.id,
+            local_rank_map['dst_local_rank'],
+            False,
+            True,
         )
         recv_value = paddle._pir_ops.recv_v2(
             [], dtype, local_rank_map['src_local_rank'], group.id, False, True

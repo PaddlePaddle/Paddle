@@ -19,6 +19,7 @@ from ..process_group import new_process_group
 from .base_reshard_func import ReshardFunction
 from .same_status_reshard_func import SameStatusReshardFunction
 
+
 class PToRReshardFunction(ReshardFunction):
     def is_suitable(self, src_dist_attr, dst_dist_attr):
         if not self.is_partial(src_dist_attr):
@@ -75,9 +76,13 @@ class PToRReshardFunctionCrossMesh(ReshardFunction):
         in_mesh = src_dist_attr.process_mesh
         out_mesh = dst_dist_attr.process_mesh
 
-        if in_mesh.ndim != 1 or out_mesh.ndim != 1 or in_mesh.shape != out_mesh.shape:
+        if (
+            in_mesh.ndim != 1
+            or out_mesh.ndim != 1
+            or in_mesh.shape != out_mesh.shape
+        ):
             return False
-        
+
         if in_mesh == out_mesh:
             return False
 
@@ -85,11 +90,19 @@ class PToRReshardFunctionCrossMesh(ReshardFunction):
 
     def eval(self, program, op, src_dist_attr, dst_dist_attr):
         same_status_func = SameStatusReshardFunction()
-        tmp_dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(dst_dist_attr.process_mesh, src_dist_attr.dims_mapping, src_dist_attr.partial_status)
-        out, out_dist_attr = same_status_func.eval(program, op, src_dist_attr, tmp_dist_attr)
+        tmp_dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+            dst_dist_attr.process_mesh,
+            src_dist_attr.dims_mapping,
+            src_dist_attr.partial_status,
+        )
+        out, out_dist_attr = same_status_func.eval(
+            program, op, src_dist_attr, tmp_dist_attr
+        )
 
         curr_global_rank = paddle.distributed.get_rank()
         if curr_global_rank in dst_dist_attr.process_mesh.process_ids:
             p_to_r_func = PToRReshardFunction()
-            assert(p_to_r_func.is_suitable(out_dist_attr, dst_dist_attr)), f"Invoke the p to r reshard function is not valid from {out.dist_attr()} to {dst_dist_attr}"
+            assert p_to_r_func.is_suitable(
+                out_dist_attr, dst_dist_attr
+            ), f"Invoke the p to r reshard function is not valid from {out.dist_attr()} to {dst_dist_attr}"
             p_to_r_func.eval(program, out, out_dist_attr, dst_dist_attr, False)

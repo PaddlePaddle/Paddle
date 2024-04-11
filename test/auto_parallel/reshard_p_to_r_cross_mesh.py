@@ -19,7 +19,9 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 from paddle.base import core
-from paddle.distributed.auto_parallel.static.pir_pass import apply_reshard_pass_v2
+from paddle.distributed.auto_parallel.static.pir_pass import (
+    apply_reshard_pass_v2,
+)
 
 
 class TestReshardPToRCrossMesh:
@@ -77,8 +79,12 @@ class TestReshardPToRCrossMesh:
                     initializer=paddle.nn.initializer.Uniform(),
                 )
 
-                shard_tensor = paddle._pir_ops.shard_tensor(w0, self._in_mesh, [-1,-1], [0])
-                reshard_tensor = paddle._pir_ops.reshard(shard_tensor, self._out_mesh, [-1,-1])
+                shard_tensor = paddle._pir_ops.shard_tensor(
+                    w0, self._in_mesh, [-1, -1], [0]
+                )
+                reshard_tensor = paddle._pir_ops.reshard(
+                    shard_tensor, self._out_mesh, [-1, -1]
+                )
             print(f'before reshard pass dist_program: {main_program}')
             dist_program = apply_reshard_pass_v2(main_program)
             print(f'after reshard pass dist_program: {dist_program}')

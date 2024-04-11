@@ -15,8 +15,10 @@
 import paddle
 
 from .process_group import new_process_group
-from .reshard_funcs.base_reshard_func import choose_reshard_func, clean_reshard_funcs
-from .reshard_funcs.reshard_func_register import register_reshard_funcs
+from .reshard_funcs.base_reshard_func import (
+    choose_reshard_func,
+)
+
 
 def apply_partition_pass(program):
     new_program = program.clone()
@@ -91,13 +93,15 @@ def apply_reshard_pass_v2(program):
             # only support 1-D partial to replicated now
             if op.name() == 'dist_op.reshard':
                 op_operand_dist_attr = op.operand_source(0).dist_attr()
-                op_target_dist_attr = (
-                    op.attrs()["op_dist_attr"].result_dist_attr(0)
-                )
+                op_target_dist_attr = op.attrs()[
+                    "op_dist_attr"
+                ].result_dist_attr(0)
                 reshard_func = choose_reshard_func(
                     op_operand_dist_attr, op_target_dist_attr
                 )
-                print(f'debug op_operand_dist_attr: {op_operand_dist_attr}, op_target_dist_attr: {op_target_dist_attr}')
+                print(
+                    f'debug op_operand_dist_attr: {op_operand_dist_attr}, op_target_dist_attr: {op_target_dist_attr}'
+                )
                 reshard_func.eval(
                     new_program, op, op_operand_dist_attr, op_target_dist_attr
                 )

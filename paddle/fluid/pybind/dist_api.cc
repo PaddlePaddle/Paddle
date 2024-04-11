@@ -108,17 +108,15 @@ void BindDistOpsAPI(pybind11::module *module) {
 }
 
 TensorDistAttribute CreateTensorDistAttribute(
-      const phi::distributed::ProcessMesh& mesh,
-      const std::vector<int64_t>& dims_mapping,
-      const flat_hash_map<int64_t, phi::ReduceType>& partial_status = {}) {
-    return TensorDistAttribute::get(pir::IrContext::Instance(),
-                                    mesh,
-                                    dims_mapping,
-                                    partial_status);
+    const phi::distributed::ProcessMesh &mesh,
+    const std::vector<int64_t> &dims_mapping,
+    const flat_hash_map<int64_t, phi::ReduceType> &partial_status = {}) {
+  return TensorDistAttribute::get(
+      pir::IrContext::Instance(), mesh, dims_mapping, partial_status);
 }
 
 void BindDistUtils(pybind11::module *m) {
-    m->def("create_tensor_dist_attribute", CreateTensorDistAttribute);
+  m->def("create_tensor_dist_attribute", CreateTensorDistAttribute);
 }
 
 void BindDistPassAPI(pybind11::module *module) {
