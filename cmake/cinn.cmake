@@ -169,8 +169,8 @@ cinn_cc_library(
   ${jitify_deps})
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
-target_link_libraries(cinnapi op_dialect cinn_op_dialect pir phi)
-add_dependencies(cinnapi op_dialect cinn_op_dialect pir phi)
+target_link_libraries(cinnapi op_dialect pir phi)
+add_dependencies(cinnapi op_dialect pir phi)
 
 target_link_libraries(cinnapi ${PYTHON_LIBRARIES})
 
@@ -229,8 +229,8 @@ function(gen_cinncore LINKTYPE)
     ${jitify_deps})
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
-  target_link_libraries(${CINNCORE_TARGET} op_dialect cinn_op_dialect pir phi)
-  add_dependencies(${CINNCORE_TARGET} op_dialect cinn_op_dialect pir phi)
+  target_link_libraries(${CINNCORE_TARGET} op_dialect pir phi)
+  add_dependencies(${CINNCORE_TARGET} op_dialect pir phi)
 
   # add_dependencies(${CINNCORE_TARGET} pybind)
   target_link_libraries(${CINNCORE_TARGET} ${PYTHON_LIBRARIES})
