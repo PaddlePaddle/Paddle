@@ -165,7 +165,7 @@ bool IsGTOneBaseOnValue(const DimExpr& dim_expr) {
                  },
                  [&](const auto& dim_expr) { return false; }};
 
-  std::visit(IsGTOnePredicater, dim_expr.variant());
+  return std::visit(IsGTOnePredicater, dim_expr.variant());
 }
 
 }  // namespace
