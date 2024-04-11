@@ -1156,13 +1156,45 @@ def save_vars(
 
 @dygraph_not_support
 def save_vars_pir(
-    executor,
     dirname,
     main_program=None,
     vars=None,
     predicate=None,
     filename=None,
 ):
+    """
+    Save specific variables in the `Program` to files.
+
+    There are two ways to specify the variables to be saved: set variables in
+    a list and assign it to the `vars`, or use the `predicate` function to select
+    variables that make `predicate(variable) == True`. The first way has a higher priority.
+
+    The `dirname` is used to specify the folder where to save variables.
+    If you prefer to save variables in separate files in the `dirname` folder,
+    do not set `filename`. If you prefer to save all variables in a single file,
+    use `filename` to specify it.
+
+    Args:
+        dirname(str, optional): The folder to save variables.
+                            When you need to save the parameter to the memory, set it to None.
+        main_program(Program, optional): The program whose variables will be saved.
+                                    If it is None, the default main program will
+                                    be used automatically.
+                                    Default: None
+        vars(list[Variable], optional): The list contains all variables to be saved.
+                                        Default: None
+        predicate(function, optional): The function selects the variables that make
+                                       `predicate(variable) == True`.
+                                       Default: None
+        filename(str, optional): If you prefer to save all variables in a single file,
+                                 use `filename` to specify it. Otherwise, let `filename` be None.
+                                 Default: None
+
+    Returns:
+        str: When saving parameters to a file, returns None.
+             When saving parameters to memory, returns a binary string containing parameters.
+    """
+
     save_to_memory = False
     if dirname is None and filename is None:
         save_to_memory = True
@@ -1170,10 +1202,9 @@ def save_vars_pir(
     main_program = _get_valid_program(main_program)
 
     if vars is None:
-        param, opt = get_parameters(main_program)
+        param, opt = get_pir_parameters(main_program)
         vars_list = param + opt
         return save_vars_pir(
-            executor,
             main_program=main_program,
             dirname=dirname,
             vars=list(filter(predicate, vars_list)),
@@ -1191,9 +1222,7 @@ def save_vars_pir(
         save_var_map = {}
         for var_name in vars:
             var = global_scope().find_var(var_name)
-            # NOTE: don't save the variable which type is RAW
-            # if var.type == core.VarDesc.VarType.RAW:
-            #     continue
+            # TODO(chenzhiyang): deal with RAW type and sparse
             if filename is None and save_to_memory is False:
                 save_file_path = os.path.join(
                     os.path.normpath(dirname), var_name
@@ -1486,18 +1515,50 @@ def load_vars(
 
 
 def load_vars_pir(
-    executor,
     dirname,
     main_program=None,
     vars=None,
     predicate=None,
     filename=None,
 ):
+    """
+    :api_attr: PIR Static Graph
+
+    This API loads variables from files by C++ function.
+
+    There are two ways to specify the variables to be loaded: the first way, set
+    variables in a list and assign it to the `vars`; the second way, use the
+    `predicate` function to select variables that make `predicate(variable) == True`.
+    The first way has a higher priority.
+
+    The `dirname` is used to specify the folder where to load variables.
+    If variables were saved in separate files in the folder `dirname`,
+    set `filename` None. If all variables were saved in a single file,
+    use `filename` to specify it.
+
+    Args:
+        dirname(str): The folder where to load the variables.
+        main_program(Program, optional): The program whose variables will be loaded.
+                                    If it is None, the default main program will
+                                    be used automatically.
+                                    Default: None
+        vars(list[Variable], optional): The list that contains all variables to be loaded.
+                                   Default: None
+        predicate(function, optional): The function selects variables that make
+                                        `predicate(variable) == True`.
+                                        Default: None
+        filename(str, optional): The file which saved all required variables. If variables
+                                were saved in separate files, set it to be None.
+                                Default: None
+
+    Returns:
+        None
+    """
+
     vars_from_memory = False
     if dirname is not None:
         dirname = os.path.normpath(dirname)
-    else:
-        vars_from_memory = True
+    # TODO(chenzhiyang): vars_from_memory
 
     if filename == '':
         filename = None
@@ -1506,10 +1567,9 @@ def load_vars_pir(
         if main_program is None:
             main_program = default_main_program()
 
-        param, opt = get_parameters(main_program)
+        param, opt = get_pir_parameters(main_program)
         vars_list = param + opt
         load_vars_pir(
-            executor,
             dirname=dirname,
             main_program=main_program,
             vars=list(filter(predicate, vars_list)),
@@ -1519,12 +1579,8 @@ def load_vars_pir(
         if main_program is None:
             main_program = default_main_program()
 
-        # save origin param shape
-        orig_para_shape = {}
+        # TODO(chenzhiyang):save origin param shape, check vars
         load_var_map = {}
-
-        check_vars = []
-        sparse_vars = []
 
         for var_name in vars:
             var = global_scope().find_var(var_name)
@@ -1653,7 +1709,12 @@ def save(program, model_path, protocol=4, **configs):
         f.write(program.desc.serialize_to_string())
 
 
-def get_parameters(program):
+def get_pir_parameters(program):
+    """
+    Get parameters and optimizer variables from program.
+        Args:
+            program(Program): The program to get parameters and optimizer variables.
+    """
     params = []
     opts = []
     for op in program.global_block().ops:
@@ -1670,6 +1731,24 @@ def get_parameters(program):
 
 @static_only
 def save_pir(program, model_path, protocol=4, **configs):
+    """
+    This function saves parameters, optimizer information and network description to model_path.
+
+    The parameters contain all the trainable Tensor, and save to a file with suffix ".pdparams".
+    The optimizer information contains all the Tensor used by optimizer. For Adam optimizer, contains beta1, beta2, momentum etc. All the information will be saved to a file with suffix ".pdopt". (If the optimizer has no Tensor to save (like SGD), the file will not be generated).
+    The network description is the description of the program. It's only used for deployment. The description will be saved to a file with a suffix ".pdmodel".
+
+    Args:
+        program(Program) : The program to be saved.
+        model_path(str): The file prefix to save the program. The format is "dirname/file_prefix". If file_prefix is an empty str, an exception will be raised.
+        protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
+                                 Default: 4
+        configs(dict, optional) : Optional keyword arguments.
+
+    Returns:
+        None
+    """
+
     base_name = os.path.basename(model_path)
     assert (
         base_name != ""
@@ -1699,7 +1778,7 @@ def save_pir(program, model_path, protocol=4, **configs):
         return np.array(t)
 
     # get parameters and optimizer variables
-    parameter_list, optimizer_param_list = get_parameters(program)
+    parameter_list, optimizer_param_list = get_pir_parameters(program)
     param_dict = {name: get_tensor(name) for name in parameter_list}
     opt_dict = {name: get_tensor(name) for name in optimizer_param_list}
 
@@ -1938,6 +2017,29 @@ def load(program, model_path, executor=None, var_list=None):
 
 @static_only
 def load_pir(program, model_path, executor=None, var_list=None):
+    """
+    :api_attr: PIR Static Graph
+
+    This function gets parameters and optimizer information from program, and then gets corresponding value from file.
+    An exception will be thrown if shape or dtype of the parameters does not match.
+
+    This function can also load model file saved with [ save_params, save_persistables, save_vars ].
+    var_list can not be None when loading a single model file
+    ( filename is not None when save_params, save_persistables or save_vars is called ).
+
+    Args:
+        program(Program): The program to be loaded
+        model_path(str): The file prefix to store the program
+        executor(Executor, optional): The executor used for initializing the parameter
+                                      when startup program is not run.
+        var_list(list|tuple, optional): The Tensor list/tuple to load a single model file saved with
+                                  [ save_params, save_persistables, save_vars ].
+                                  Default: None
+
+    Returns:
+        None
+    """
+
     assert executor is None or isinstance(executor, Executor)
 
     model_prefix = model_path
@@ -1976,7 +2078,7 @@ def load_pir(program, model_path, executor=None, var_list=None):
 
         t.set(ndarray, place)
 
-    parameter_list, optimizer_param_list = get_parameters(program)
+    parameter_list, optimizer_param_list = get_pir_parameters(program)
 
     with open(parameter_file_name, 'rb') as f:
         # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'

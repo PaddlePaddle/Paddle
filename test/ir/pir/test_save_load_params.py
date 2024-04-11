@@ -137,9 +137,16 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
                 save_dir = os.path.join(self.temp_dir.name, "save_params")
                 for k, v in param_dict.items():
                     path = os.path.join(save_dir, k, '.pdparams')
-
                     paddle.base.core.save_func(v, k, path, True, False)
                     tensor = param_dict[k]
+                    tensor.set(np.zeros_like(np.array(tensor)), place)
+                    paddle.base.core.load_func(path, -1, [], False, tensor)
+                    np.testing.assert_array_equal(tensor, v)
+
+                for k, v in opt_dict.items():
+                    path = os.path.join(save_dir, k, '.pdopt')
+                    paddle.base.core.save_func(v, k, path, True, False)
+                    tensor = opt_dict[k]
                     tensor.set(np.zeros_like(np.array(tensor)), place)
                     paddle.base.core.load_func(path, -1, [], False, tensor)
                     np.testing.assert_array_equal(tensor, v)
@@ -161,6 +168,10 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
                     path, list(param_dict.keys()), param_new, False
                 )
                 np.testing.assert_equal(param_new, param_vec)
+                # save to memory
+                paddle.base.core.save_combine_func(
+                    param_vec, list(param_dict.keys()), path, True, False, True
+                )
 
                 # test save_vars
                 path_prefix = os.path.join(save_dir, 'new')
@@ -172,20 +183,30 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
 
                 save_dirname = os.path.dirname(params_path)
                 params_filename = os.path.basename(params_path)
+                # test combine
                 paddle.static.io.save_vars_pir(
-                    exe,
                     dirname=save_dirname,
                     main_program=prog,
                     filename=params_filename,
                 )
+                # test sepearate
+                paddle.static.io.save_vars_pir(
+                    dirname=save_dirname,
+                    main_program=prog,
+                )
                 # test load_vars
                 load_dirname = os.path.dirname(params_path)
                 load_filename = os.path.basename(params_path)
+                # test combine
                 paddle.static.io.load_vars_pir(
-                    exe,
                     dirname=load_dirname,
                     main_program=prog,
                     filename=load_filename,
+                )
+                # test sepearate
+                paddle.static.io.load_vars_pir(
+                    dirname=load_dirname,
+                    main_program=prog,
                 )
 
 
