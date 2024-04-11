@@ -53,6 +53,7 @@ using pir::Operation;
 using pir::Program;
 using pir::Region;
 using pir::StackCreateOp;
+using pir::TuplePopOp;
 using pir::TuplePushOp;
 using pir::Type;
 using pir::Value;
@@ -104,6 +105,8 @@ void BindPyLayerOp(py::module* m) {
       .def("update_output", &PyLayerOp::UpdateOutput)
       .def(
           "as_operation", &PyLayerOp::operation, return_value_policy::reference)
+      .def("id",
+           [](PyLayerOp& self) -> uint64_t { return self.operation()->id(); })
       .def("results",
            [](PyLayerOp& self) -> py::list {
              py::list op_list;
@@ -154,6 +157,53 @@ void BindAssertOp(py::module* m) {
   )DOC");
   assert_op.def(
       "as_operation", &AssertOp::operation, return_value_policy::reference);
+}
+
+void BindTuplePushOp(py::module* m) {
+  py::class_<TuplePushOp> tuple_push_op(*m, "TuplePushOp", R"DOC(
+    TuplePushOp in python api.
+  )DOC");
+  tuple_push_op
+      .def("as_operation",
+           &TuplePushOp::operation,
+           return_value_policy::reference)
+      .def("pop_values", [](TuplePushOp& self) {
+        auto pop_op = ApiBuilder::Instance().GetBuilder()->Build<TuplePopOp>(
+            self.outlet());
+        std::vector<std::vector<pir::Value>> res{pop_op.num_results()};
+        for (size_t i = 0; i < res.size(); ++i) {
+          res[i].resize(1);
+          res[i][0] = pop_op.result(i);
+        }
+        return res;
+      });
+}
+
+pir::TuplePushOp BuildPipeForPyLayer(Block* block,
+                                     const std::vector<pir::Value>& values) {
+  PADDLE_ENFORCE_NOT_NULL(
+      block,
+      paddle::platform::errors::InvalidArgument(
+          "The block used to hook local value can't be nullptr"));
+  auto& builder = *(ApiBuilder::Instance().GetBuilder());
+  Program* program = block->parent_program();
+  PADDLE_ENFORCE_NOT_NULL(
+      program,
+      paddle::platform::errors::InvalidArgument(
+          "The block used to hook local value must belong to a program"));
+
+  auto original_position = builder.insertion_point();
+
+  builder.SetInsertionPointToStart(program->block());
+  auto inlet = builder.Build<StackCreateOp>().inlet();
+  auto iter = block->end();
+  if (!block->empty() && block->back().isa<YieldOp>()) {
+    --iter;
+  }
+  builder.set_insertion_point(block, iter);
+  auto tuple_push_op = builder.Build<TuplePushOp>(inlet, values);
+  builder.set_insertion_point(original_position);
+  return tuple_push_op;
 }
 
 Value BuildHasElementsOp(Operation& fwd_op) {  // NOLINT
@@ -312,6 +362,7 @@ void BindControlFlowApi(py::module* m) {
   m->def("get_used_external_value",
          [](const Block& block) { return pir::GetUsedExternalValue(block); });
   m->def("build_pipe_for_block", BuildPipeForBlock);
+  m->def("build_pipe_for_pylayer", BuildPipeForPyLayer);
   m->def("cf_has_elements", BuildHasElementsOp);
   m->def("cf_yield", [](py::list inputs) {
     std::vector<Value> input_values;
@@ -324,6 +375,7 @@ void BindControlFlowApi(py::module* m) {
   BindWhileOp(m);
   BindAssertOp(m);
   BindPyLayerOp(m);
+  BindTuplePushOp(m);
 }
 
 }  // namespace pybind

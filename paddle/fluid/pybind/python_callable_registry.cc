@@ -110,9 +110,9 @@ py::object *PythonCallableRegistrar::Get(uint64_t unique_id) {
       phi::errors::InvalidArgument(
           "Unique_id %d is not found in python_callable_registry_. The "
           "possible "
-          "reasons are below:"
+          "reasons are below:\n"
           "1. The python callable was not registered for `unique_id` by "
-          "`PythonCallableRegistrar::Register`"
+          "`PythonCallableRegistrar::Register`\n"
           "2. The python callable was remove from python_callable_registry_",
           unique_id));
   return &(python_callable_registry_[unique_id]);

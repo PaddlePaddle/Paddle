@@ -15,9 +15,11 @@
 import functools
 import inspect
 
-from paddle.base.framework import Variable
+from paddle.base.framework import Variable, in_pir_mode
+from paddle.base.libpaddle.pir import build_pipe_for_pylayer
 from paddle.common_ops_import import LayerHelper
 from paddle.static.nn import static_pylayer
+from paddle import pir
 
 from .program_translator import convert_to_static, unwrap_decorators
 
@@ -26,22 +28,34 @@ class StaticPyLayerContext:
     def __init__(self):
         self.saved_vars = []
 
+        if in_pir_mode():
+            self.tuple_push_op = None
+
     def save_for_backward(self, *tensors):
-        for tensor in tensors:
-            assert isinstance(tensor, Variable)
-            self.saved_vars.append(tensor)
+        if in_pir_mode():
+            current_block = pir.default_main_program().current_block()
+            self.tuple_push_op = build_pipe_for_pylayer(current_block, *tensors)
+        else:
+            for tensor in tensors:
+                assert isinstance(tensor, Variable)
+                self.saved_vars.append(tensor)
 
     def saved_tensor(self):
-        helper = LayerHelper("StaticPyLayerContext")
-        out_list = []
-        for saved_var in self.saved_vars:
-            out = helper.create_variable(
-                name=saved_var.name,
-                dtype=saved_var.dtype,
-                shape=saved_var.shape,
-                type=saved_var.type,
-            )
-            out_list.append(out)
+        if in_pir_mode():
+            out_list = self.tuple_push_op.pop_values()
+            print("======== saved_tensor ========")
+            print(f"out_list = {out_list}")
+        else:
+            helper = LayerHelper("StaticPyLayerContext")
+            out_list = []
+            for saved_var in self.saved_vars:
+                out = helper.create_variable(
+                    name=saved_var.name,
+                    dtype=saved_var.dtype,
+                    shape=saved_var.shape,
+                    type=saved_var.type,
+                )
+                out_list.append(out)
 
         return out_list
 

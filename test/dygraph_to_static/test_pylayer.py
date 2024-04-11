@@ -17,7 +17,13 @@ Only test simple cases here."""
 import sys
 from pathlib import Path
 
-from dygraph_to_static_utils import enable_to_static_guard
+from dygraph_to_static_utils import (
+    enable_to_static_guard,
+    to_ast_test,
+    to_pir_test,
+)
+
+from paddle.pir_utils import IrGuard
 
 sys.path.append(
     str(Path(__file__).absolute().parent.parent.joinpath("legacy_test"))
@@ -284,9 +290,17 @@ class TestPyLayerBase(unittest.TestCase):
         self.to_static = False
         return self._run(*args, **kwargs)
 
+    @to_ast_test
+    @to_pir_test
     def _run_static(self, *args, **kwargs):
         self.to_static = True
         return self._run(*args, **kwargs)
+
+    def _run_pir(self, *args, **kwargs):
+        self.to_static = True
+        with IrGuard():
+            results = self._run(*args, **kwargs)
+        return results
 
     # TODO(MarioLulab): In the future, this will be supported: not only `paddle.Tensor`
     # but also non-Tensor objects will be included in the argument list.
@@ -297,7 +311,7 @@ class TestPyLayerBase(unittest.TestCase):
         for v in args:
             assert isinstance(
                 v, paddle.Tensor
-            ), "Only Support `paddle.Tensor` now"
+            ), f"Only Support `paddle.Tensor` now, but got {type(v)}"
             stop_gradient = v.stop_gradient
             # detach from the compute graph to turn `dygraph_inp_args` and `static_inp_args` into leaf nodes
             v = v.detach()
@@ -325,6 +339,7 @@ class TestPyLayerBase(unittest.TestCase):
         # Step2. Run the dygraph and the static separately
         dygraph_res = self._run_dygraph(*dygraph_inp_args, **dygraph_inp_kwargs)
         static_res = self._run_static(*static_inp_args, **static_inp_kwargs)
+        # static_res = self._run_pir(*static_inp_args, **static_inp_kwargs)
 
         # Step3. Compare forward result between dygraph and static
         if not isinstance(dygraph_res, tuple):

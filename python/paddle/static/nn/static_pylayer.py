@@ -360,6 +360,13 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                     f"``stop_gradient`` attr of all inputs to ``forward_fn`` are expected to be True, when ``backward_fn == None``, but {input_var.name}.stop_gradient got {input_var.stop_gradient}"
                 )
 
+    # judge if in dy2st or not, by checking binding args of `forward_fn` and `backward_fn`
+    fwd_fn_ctx = _get_ctx_from_func_(forward_fn)
+    bwd_fn_ctx = _get_ctx_from_func_(backward_fn)
+    static_pylayer_context = (
+        fwd_fn_ctx if fwd_fn_ctx and (fwd_fn_ctx == bwd_fn_ctx) else None
+    )
+
     if in_pir_mode():
         pylayer_op = build_pylayer_op(inputs)
         if forward_fn is not None:
@@ -434,13 +441,6 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
             if len(pylayer_op.results()) == 1
             else pylayer_op.results()
         )
-
-    # judge if in dy2st or not, by checking binding args of `forward_fn` and `backward_fn`
-    fwd_fn_ctx = _get_ctx_from_func_(forward_fn)
-    bwd_fn_ctx = _get_ctx_from_func_(backward_fn)
-    static_pylayer_context = (
-        fwd_fn_ctx if fwd_fn_ctx and (fwd_fn_ctx == bwd_fn_ctx) else None
-    )
 
     check_type(name, "name", (str, type(None)), "base.layers.static_pylayer")
     helper = LayerHelper('static_pylayer', **locals())
