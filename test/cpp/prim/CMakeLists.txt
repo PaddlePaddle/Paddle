@@ -16,8 +16,6 @@ set(prim_eager_deps
 set(prim_generated_deps final_dygraph_function final_dygraph_node
                         dygraph_function dygraph_node)
 
-paddle_test(test_comp_static SRCS test_static_prim.cc)
-
 if(NOT (NOT WITH_PYTHON AND ON_INFER))
   if(WITH_CINN)
     set(prim_eager_deps ${prim_eager_deps})
