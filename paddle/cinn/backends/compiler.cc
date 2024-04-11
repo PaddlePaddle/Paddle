@@ -229,9 +229,9 @@ void SourceCodePrint::write(const std::string& source_code) {
 }
 
 void Compiler::Build(const Module& module, const std::string& code) {
-  if (target_.arch == Target::Arch::NVGPU) {
+  if (target_.arch == Arch::NVGPU) {
     CompileCudaModule(module, code);
-  } else if (target_.arch == Target::Arch::X86) {
+  } else if (target_.arch == Arch::X86) {
     CompileX86Module(module);
   } else {
     CINN_NOT_IMPLEMENTED
@@ -239,7 +239,7 @@ void Compiler::Build(const Module& module, const std::string& code) {
 }
 
 std::string Compiler::GetSourceCode(const ir::Module& module) {
-  if (target_.arch == Target::Arch::NVGPU) {
+  if (target_.arch == Arch::NVGPU) {
 #ifdef CINN_WITH_CUDA
     auto _host_module_device_module_ =
         SplitCudaAndHostModule(module);  // NOLINT
@@ -257,9 +257,9 @@ std::string Compiler::GetSourceCode(const ir::Module& module) {
 }
 
 void Compiler::BuildDefault(const Module& module) {
-  if (target_.arch == Target::Arch::NVGPU) {
+  if (target_.arch == Arch::NVGPU) {
     CompileCudaModule(module);
-  } else if (target_.arch == Target::Arch::X86) {
+  } else if (target_.arch == Arch::X86) {
     CompileX86Module(module);
   } else {
     CINN_NOT_IMPLEMENTED

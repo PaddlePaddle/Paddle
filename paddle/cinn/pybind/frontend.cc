@@ -225,7 +225,7 @@ void BindFrontend(pybind11::module *m) {
                                     "The size of tensor [%d] is different with "
                                     "the input data's size! Please check.",
                                     tensor_inputs[i]->id));
-              if (target.arch == Target::Arch::NVGPU) {
+              if (target.arch == Arch::NVGPU) {
 #ifdef CINN_WITH_CUDA
                 CUDA_CALL(cudaMemcpy(data,
                                      input_data[i].data(),
@@ -235,7 +235,7 @@ void BindFrontend(pybind11::module *m) {
      PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
      "you need to set WITH_CUDA ON!"));
 #endif
-              } else if (target.arch == Target::Arch::X86) {
+              } else if (target.arch == Arch::X86) {
                 memcpy(data,
                        input_data[i].data(),
                        in_tensor->shape().numel() *
@@ -323,7 +323,7 @@ void BindFrontend(pybind11::module *m) {
                                     "The size of tensor [%d] is different with "
                                     "the input data's size! Please check.",
                                     tensor_inputs[i]->id));
-              if (target.arch == Target::Arch::NVGPU) {
+              if (target.arch == Arch::NVGPU) {
 #ifdef CINN_WITH_CUDA
                 CUDA_CALL(cudaMemcpy(reinterpret_cast<void *>(data),
                                      input_data[i].data(),
@@ -333,7 +333,7 @@ void BindFrontend(pybind11::module *m) {
      PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
      "you need to set WITH_CUDA ON!"));
 #endif
-              } else if (target.arch == Target::Arch::X86) {
+              } else if (target.arch == Arch::X86) {
                 for (size_t j = 0; j < in_tensor->shape().numel(); j++) {
                   data[j] = reinterpret_cast<const float *>(
                       input_data[i].data())[j];  // All random data
@@ -377,7 +377,7 @@ void BindFrontend(pybind11::module *m) {
                                     "The size of tensor [%d] is different with "
                                     "the input data's size! Please check.",
                                     tensor_inputs[i]->id));
-              if (target.arch == Target::Arch::NVGPU) {
+              if (target.arch == Arch::NVGPU) {
 #ifdef CINN_WITH_CUDA
                 CUDA_CALL(cudaMemcpy(reinterpret_cast<void *>(data),
                                      input_data[i].data(),
@@ -387,7 +387,7 @@ void BindFrontend(pybind11::module *m) {
      PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
      "you need to set WITH_CUDA ON!"));
 #endif
-              } else if (target.arch == Target::Arch::X86) {
+              } else if (target.arch == Arch::X86) {
                 for (size_t j = 0; j < in_tensor->shape().numel(); j++) {
                   data[j] = reinterpret_cast<const float *>(
                       input_data[i].data())[j];  // All random data

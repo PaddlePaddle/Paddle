@@ -60,7 +60,7 @@ std::shared_ptr<ComputationContext> CompileProgram(
     hlir::framework::ApplyPass(ctx->graph.get(), "InferShape");
 
 #ifndef CINN_WITH_CUDA
-    if (target.arch == Target::Arch::X86) {
+    if (target.arch == Arch::X86) {
       hlir::framework::ApplyPass(ctx->graph.get(), "AlterLayout");
     }
 #endif
@@ -200,13 +200,13 @@ void CinnComputation::SetTensorData(hlir::framework::Tensor &t,
                                     size_t size) {
   void *tdata = t->mutable_data(context_->target, t->type());
   CHECK_EQ(size, t->shape().numel() * t->type().bytes());
-  if (context_->target.arch == Target::Arch::NVGPU) {
+  if (context_->target.arch == Arch::NVGPU) {
 #ifdef CINN_WITH_CUDA
     CUDA_CALL(cudaMemcpy(tdata, data, size, cudaMemcpyHostToDevice));
 #else
     CINN_NOT_IMPLEMENTED
 #endif
-  } else if (context_->target.arch == Target::Arch::X86) {
+  } else if (context_->target.arch == Arch::X86) {
     memcpy(tdata, data, size);
   } else {
     CINN_NOT_IMPLEMENTED
@@ -217,13 +217,13 @@ void CinnComputation::GetTensorData(hlir::framework::Tensor &t,
                                     size_t size) {
   void *tdata = t->mutable_data(context_->target, t->type());
   CHECK_EQ(size, t->shape().numel() * t->type().bytes());
-  if (context_->target.arch == Target::Arch::NVGPU) {
+  if (context_->target.arch == Arch::NVGPU) {
 #ifdef CINN_WITH_CUDA
     CUDA_CALL(cudaMemcpy(data, tdata, size, cudaMemcpyDeviceToHost));
 #else
     CINN_NOT_IMPLEMENTED
 #endif
-  } else if (context_->target.arch == Target::Arch::X86) {
+  } else if (context_->target.arch == Arch::X86) {
     memcpy(data, tdata, size);
   } else {
     CINN_NOT_IMPLEMENTED

@@ -1373,7 +1373,7 @@ void CodeGenLLVM::InitTarget(const Target &target) {
   llvm::InitializeAllAsmParsers();
   llvm::InitializeAllAsmPrinters();
   switch (target.arch) {
-    case Target::Arch::X86:
+    case Arch::X86:
       if (target.bits == Target::Bit::k32) {
         naive_vec_alignment_ = 256;
       } else if (target.bits == Target::Bit::k64) {
@@ -1382,13 +1382,13 @@ void CodeGenLLVM::InitTarget(const Target &target) {
         PADDLE_THROW(phi::errors::InvalidArgument("get unknown bits"));
       }
       break;
-    case Target::Arch::ARM:
+    case Arch::ARM:
       naive_vec_alignment_ = 128;
       break;
-    case Target::Arch::NVGPU:
+    case Arch::NVGPU:
       naive_vec_alignment_ = 128;
       break;
-    case Target::Arch::Unk:
+    case Arch::Unk:
       PADDLE_THROW(phi::errors::InvalidArgument("unknown Arch found"));
       break;
   }

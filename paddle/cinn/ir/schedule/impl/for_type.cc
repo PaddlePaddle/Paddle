@@ -124,7 +124,7 @@ void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
   }
   int offset = thread_axis.back() - 'x';
   auto cur_dev_info =
-      common::DevInfoMgr<common::Target::Arch::NVGPU>::GetDevInfo(0);
+      common::DevInfoMgr<common::NVGPUArch>::GetDevInfo(0);
   const std::array<int, 3> kMaxBlockDims = cur_dev_info->GetMaxBlockDims();
   const std::array<int, 3> kMaxGridDims = cur_dev_info->GetMaxGridDims();
   auto check_offset = [&](const char& c) -> bool {
@@ -202,7 +202,7 @@ void StScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
       << "thread_axis " << thread_axis << " is not supported";
   int offset = thread_axis.back() - 'x';
   auto cur_dev_info =
-      cinn::common::DevInfoMgr<cinn::common::Target::Arch::NVGPU>::GetDevInfo(
+      cinn::common::DevInfoMgr<cinn::common::NVGPUArch>::GetDevInfo(
           0);
   const std::array<int, 3> kMaxBlockDims = cur_dev_info->GetMaxBlockDims();
   const std::array<int, 3> kMaxGridDims = cur_dev_info->GetMaxGridDims();

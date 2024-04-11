@@ -51,9 +51,9 @@ std::vector<ir::Tensor> ArgSort(const ir::Tensor &A,
                                 const std::string &name) {
   std::string find_func_name;
   std::string index_func_name;
-  if (target.arch == cinn::common::Target::Arch::NVGPU) {
+  if (target.arch == cinn::common::Arch::NVGPU) {
     find_func_name.assign("cinn_nvgpu_next_smallest_int32");
-  } else if (target.arch == cinn::common::Target::Arch::X86) {
+  } else if (target.arch == cinn::common::Arch::X86) {
     find_func_name.assign("cinn_host_next_smallest_int32");
   } else {
     PADDLE_THROW(phi::errors::Fatal(
@@ -215,7 +215,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(
                                             output_shapes[0].end(),
                                             1,
                                             std::multiplies<int>());
-        if (prod_size > 1 && target.arch == Target::Arch::X86) {
+        if (prod_size > 1 && target.arch == Arch::X86) {
           pe::IRScheduleInjectiveCPU(
               ir_sch, output_shapes.front(), target, true);
         }
@@ -298,7 +298,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
                                         output_shapes[0].end(),
                                         1,
                                         std::multiplies<int>());
-    if (prod_size > 1 && target.arch == Target::Arch::X86) {
+    if (prod_size > 1 && target.arch == Arch::X86) {
       pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
     }
     std::vector<cinn::common::CINNValue> res{

@@ -148,7 +148,7 @@ void Instruction::Run(
   utils::RecordEvent record_args("Instruction::Run",
                                  cinn::utils::EventType::kInstruction);
 #if defined(CINN_WITH_CUDA) && !defined(CINN_WITH_CUDNN)
-  if (function_name_ == "cublas_gemm" && target_.arch == Target::Arch::NVGPU) {
+  if (function_name_ == "cublas_gemm" && target_.arch == Arch::NVGPU) {
     auto& pod_args = args_cached_[0];
     VLOG(3) << "The pod_args size of cublas_gemm: " << pod_args.size();
     runtime::cuda::cinn_gpu_cublas_gemm(attrs,
@@ -158,7 +158,7 @@ void Instruction::Run(
                                         pod_args[3],
                                         static_cast<cudaStream_t>(stream));
   } else if (function_name_ == "cublas_matmul" &&
-             target_.arch == Target::Arch::NVGPU) {
+             target_.arch == Arch::NVGPU) {
     auto& pod_args = args_cached_[0];
     VLOG(3) << "The pod_args size of cublas_matmul: " << pod_args.size();
     runtime::cuda::cinn_gpu_cublas_gemm(attrs,
@@ -191,7 +191,7 @@ void Instruction::Run(
   // Here conv2d and depthwise_conv2d are implemented by one cudnn api
   // cudnnConvolutionForward
   if ((function_name_ == "conv2d" || function_name_ == "depthwise_conv2d") &&
-      target_.arch == Target::Arch::NVGPU) {
+      target_.arch == Arch::NVGPU) {
     if (str_attrs[0] == "forward") {
       if (str_attrs.size() > 1 && str_attrs[1] == "NHWC") {
         absl::flat_hash_map<std::string, int> attrs_map = {
@@ -277,18 +277,18 @@ void Instruction::Run(
           static_cast<cudaStream_t>(stream));
     }
   } else if (function_name_ == "pool2d" &&
-             target_.arch == Target::Arch::NVGPU) {
+             target_.arch == Arch::NVGPU) {
     runtime::cuda::cinn_gpu_cudnn_pool2d(attrs,
                                          str_attrs,
                                          pod_args[0],
                                          pod_args[1],
                                          static_cast<cudaStream_t>(stream));
   } else if (function_name_ == "softmax" &&
-             target_.arch == Target::Arch::NVGPU) {
+             target_.arch == Arch::NVGPU) {
     CHECK_EQ(pod_args.size(), 3);
     runtime::cuda::cinn_gpu_cudnn_softmax(
         attrs, pod_args[0], pod_args[1], static_cast<cudaStream_t>(stream));
-  } else if (function_name_ == "mul" && target_.arch == Target::Arch::NVGPU) {
+  } else if (function_name_ == "mul" && target_.arch == Arch::NVGPU) {
     CHECK_EQ(pod_args.size(), 4);
     runtime::cuda::cinn_gpu_cublas_mul(attrs,
                                        pod_args[0],
@@ -296,7 +296,7 @@ void Instruction::Run(
                                        pod_args[2],
                                        static_cast<cudaStream_t>(stream));
   } else if (function_name_ == "cublas_gemm" &&
-             target_.arch == Target::Arch::NVGPU) {
+             target_.arch == Arch::NVGPU) {
     VLOG(3) << "The pod_args size of cublas_gemm: " << pod_args.size();
     runtime::cuda::cinn_gpu_cublas_gemm(attrs,
                                         pod_args[0],
@@ -305,7 +305,7 @@ void Instruction::Run(
                                         pod_args[3],
                                         static_cast<cudaStream_t>(stream));
   } else if (function_name_ == "cublas_matmul" &&
-             target_.arch == Target::Arch::NVGPU) {
+             target_.arch == Arch::NVGPU) {
     auto& pod_args = args_cached_[0];
     VLOG(3) << "The pod_args size of cublas_matmul: " << pod_args.size();
     runtime::cuda::cinn_gpu_cublas_gemm(attrs,

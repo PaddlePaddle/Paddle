@@ -74,13 +74,27 @@ cinn_buffer_t *CreateBufferFromNumpy(py::array data,
   return buffer;
 }
 
-cinn_buffer_t *CreateBufferFromNumpy(
-    py::array data,
-    cinn::common::Target target = cinn::common::DefaultHostTarget(),
-    int align = 0) {
-  if (target == cinn::common::DefaultHostTarget()) {
-    return CreateBufferFromNumpy(data, cinn_x86_device);
-  } else if (target.arch == Target::Arch::NVGPU) {
+cinn_buffer_t *CreateBufferFromNumpyImpl(
+    common::UnknownArch,
+    py::array data) {
+  LOG(FATAL) << "NotImplemented.";
+}
+
+cinn_buffer_t *CreateBufferFromNumpyImpl(
+    common::X86Arch,
+    py::array data) {
+  return CreateBufferFromNumpy(data, cinn_x86_device);
+}
+
+cinn_buffer_t *CreateBufferFromNumpyImpl(
+    common::ARMArch,
+    py::array data) {
+  LOG(FATAL) << "NotImplemented.";
+}
+
+cinn_buffer_t *CreateBufferFromNumpyImpl(
+    common::NVGPUArch,
+    py::array data) {
 #ifdef CINN_WITH_CUDA
     std::vector<int> shape;
     std::copy_n(data.shape(), data.ndim(), std::back_inserter(shape));
@@ -95,9 +109,21 @@ cinn_buffer_t *CreateBufferFromNumpy(
     PADDLE_THROW(phi::errors::Fatal(
         "To use CUDA backends, you need to set WITH_CUDA ON!"));
 #endif
-  } else {
-    CINN_NOT_IMPLEMENTED
-  }
+}
+
+cinn_buffer_t *InterfaceCreateBufferFromNumpy(
+    common::Arch arch,
+    py::array data) {
+  return std::visit([&](const auto& impl) {
+    return CreateBufferFromNumpyImpl(impl, data);
+  }, arch.variant());
+}
+
+cinn_buffer_t *CreateBufferFromNumpy(
+    py::array data,
+    cinn::common::Target target = cinn::common::DefaultHostTarget(),
+    int align = 0) {
+  return InterfaceCreateBufferFromNumpy(target.arch, data);
 }
 
 void BufferCopyTo(const cinn_buffer_t &buffer, py::array array) {

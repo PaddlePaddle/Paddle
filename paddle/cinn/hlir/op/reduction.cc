@@ -205,7 +205,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
-    if (!FLAGS_cinn_new_group_scheduler && target.arch == Target::Arch::NVGPU) {
+    if (!FLAGS_cinn_new_group_scheduler && target.arch == Arch::NVGPU) {
       if (!WithoutLastDimInReduce(inputs[0]->shape, reduce_axes)) {
         if (arg_pack.size() == 4) {
           CHECK_EQ(vec_tensor.size(), 2);

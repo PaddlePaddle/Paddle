@@ -230,7 +230,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
         if (data_format == "NCHW") {
           // A is input: [N, C, H, W], B is filter: [C_out, C_in/group,
           // filter_h, filter_w]
-          if (target.arch == Target::Arch::X86) {
+          if (target.arch == Arch::X86) {
             if (groups == 1 && !use_onednn) {
               out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
                                        B.as_tensor_ref(),
@@ -339,7 +339,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
-    if (target.arch == Target::Arch::NVGPU) {
+    if (target.arch == Arch::NVGPU) {
 #ifdef CINN_WITH_CUDNN
       // If conv_type is backward_filter or backward_data, we built a fake op.
       // As runtime use cudnn to compute conv2d, this fake op is not to be
@@ -366,7 +366,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
       } else {
         CINN_NOT_IMPLEMENTED
       }
-    } else if (target.arch == Target::Arch::X86) {
+    } else if (target.arch == Arch::X86) {
       CINN_NOT_IMPLEMENTED
     }
     std::stringstream ss;
@@ -619,7 +619,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2dNCHWc(
         CHECK_EQ(dilation.size(), 2)
             << "The size of stride in conv2d_NCHWc op is not 2! Please check.";
         std::vector<ir::Tensor> out;
-        CHECK(target.arch == Target::Arch::X86)
+        CHECK(target.arch == Arch::X86)
             << "conv2d_NCHWc op is only used in x86";
         // A is input: [N, C_in_outer, H, W, C_in_inner], B is filter: [C_out,
         // C_in_group_outer, filter_h, filter_w, C_in_group_inner]
@@ -867,7 +867,7 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
     CHECK(pack_args[2].is_string());
     std::string tensor_name = pack_args[2].operator std::string();
     if (data_format == "NCHW") {
-      if (target.arch == Target::Arch::X86) {
+      if (target.arch == Arch::X86) {
         out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
                                  B.as_tensor_ref(),
                                  padding[0],
@@ -934,7 +934,7 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
         ir::ModuleExpr mod_expr(vec_ast);
         ir::IRSchedule ir_sch(mod_expr);
         ir_sch.MergeExprs();
-        if (target.arch == Target::Arch::NVGPU) {
+        if (target.arch == Arch::NVGPU) {
           pe::IRCudaScheduleDepthwiseConv(ir_sch, vec_tensor);
         } else {
           CINN_NOT_IMPLEMENTED
@@ -1063,7 +1063,7 @@ std::shared_ptr<OpStrategy> StrategyForBatchNorm(
     CHECK(Variance.as_tensor());
     ir::Tensor out;
     auto tensor_input = A.as_tensor_ref();
-    if (tensor_input->shape.size() != 4 && target.arch == Target::Arch::X86) {
+    if (tensor_input->shape.size() != 4 && target.arch == Arch::X86) {
       CHECK_EQ(input_layouts.size(), 5U)
           << "batch_norm_NCHWc's input layout should be 5";
       std::string input_layout = input_layouts[0];
@@ -1246,7 +1246,7 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
       auto block_input_pad = ir_sch.GetBlock(input_pad.as_tensor()->name);
       ir_sch.ComputeInline(block_input_pad);
     }
-    if (target.arch == Target::Arch::NVGPU) {
+    if (target.arch == Arch::NVGPU) {
       CHECK(!vec_tensor.empty());
       Expr Out = vec_tensor[0];
       CHECK(Out.as_tensor());
@@ -1469,7 +1469,7 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
-    if (target.arch == Target::Arch::NVGPU) {
+    if (target.arch == Arch::NVGPU) {
       pe::IRGlobalPoolScheduleGPU(ir_sch, target);
     } else {
       CINN_NOT_IMPLEMENTED
@@ -1548,7 +1548,7 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
       auto block_input_pad = ir_sch.GetBlock(input_pad_name);
       ir_sch.ComputeInline(block_input_pad);
     }
-    if (target.arch == Target::Arch::NVGPU) {
+    if (target.arch == Arch::NVGPU) {
       pe::IRPoolScheduleGPU(ir_sch, target, arg_pack_size);
     }
     std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
@@ -1559,7 +1559,7 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
 
   bool use_warp_reduce = false;
   if (global_pooling && data_format == "NCHW" &&
-      target.arch == Target::Arch::NVGPU) {
+      target.arch == Arch::NVGPU) {
     // TODO(hp03): 32 may not be the exact number, try also 16 or 8 or other
     // number
     //      we choose 32 to make sure all the threads in a warp has work to do,
@@ -1778,7 +1778,7 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
       auto block_input_pad = ir_sch.GetBlock(input_pad.as_tensor()->name);
       ir_sch.ComputeInline(block_input_pad);
     }
-    if (target.arch == Target::Arch::NVGPU) {
+    if (target.arch == Arch::NVGPU) {
       CHECK(!vec_tensor.empty());
       Expr Out = vec_tensor[0];
       CHECK(Out.as_tensor());
@@ -1979,7 +1979,7 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
-    if (target.arch == Target::Arch::NVGPU) {
+    if (target.arch == Arch::NVGPU) {
       if (output_shapes[0].size() > 1) {
         auto all_blocks = ir_sch.GetAllBlocks();
         CHECK_EQ(all_blocks.size(), 3);
@@ -2004,7 +2004,7 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
       std::vector<CINNValue> res{
           CINNValue(ir_sch.GetModule().GetExprs().at(0))};
       *ret = CINNValuePack{res};
-    } else if (target.arch == Target::Arch::X86) {
+    } else if (target.arch == Arch::X86) {
       pe::IRSoftmaxScheduleCPU(ir_sch, axis);
       std::vector<CINNValue> res{
           CINNValue(ir_sch.GetModule().GetExprs().at(0))};

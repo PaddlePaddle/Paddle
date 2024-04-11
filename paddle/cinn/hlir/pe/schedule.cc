@@ -36,21 +36,35 @@ namespace cinn {
 namespace hlir {
 namespace pe {
 
-ScheduleParam::ScheduleParam(cinn::common::Target::Arch arch) {
-  switch (arch) {
-    case cinn::common::Target::Arch::X86: {
-      param_data = CreateX86Params();
-      break;
-    }
-    case cinn::common::Target::Arch::NVGPU: {
-      param_data = CreateCudaParams();
-      break;
-    }
-    default: {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "Schedule params must be initialized with target x86 or nvgpu."));
-    }
-  }
+using ParamsT = absl::flat_hash_map<std::string,
+                      absl::flat_hash_map<std::string, std::vector<int>>>;
+
+ParamsT CreateParamsImpl(common::UnknownArch) {
+  PADDLE_THROW(phi::errors::InvalidArgument(
+    "Schedule params must be initialized with target x86 or nvgpu."));
+}
+
+ParamsT CreateParamsImpl(common::X86Arch) {
+  return CreateX86Params();
+}
+
+ParamsT CreateParamsImpl(common::ARMArch) {
+  PADDLE_THROW(phi::errors::InvalidArgument(
+    "Schedule params must be initialized with target x86 or nvgpu."));
+}
+
+ParamsT CreateParamsImpl(common::NVGPUArch) {
+  return CreateCudaParams();
+}
+
+ParamsT CreateParams(common::Arch arch) {
+  return std::visit([](const auto& impl) {
+    return CreateParamsImpl(impl);
+  }, arch.variant());
+}
+
+ScheduleParam::ScheduleParam(cinn::common::Arch arch) {
+  param_data = CreateParams(arch);
 }
 
 ScheduleParam::~ScheduleParam() {}
@@ -873,7 +887,7 @@ void Conv2d_NCHWc_1X1_Schedule_CPU(poly::StageMap stages,
                                    const cinn::common::Target &target,
                                    const std::string &key,
                                    bool do_padding) {
-  CHECK(target.arch == Target::Arch::X86)
+  CHECK(target.arch == Arch::X86)
       << "Conv2d_NCHWc_1X1_Schedule_CPU schedule only used in x86";
   CHECK(packed_out.defined());
   CHECK(input_pad.defined());
@@ -1022,7 +1036,7 @@ void Conv2d_NCHWc_1X1_Schedule_CPU_Nofuse(poly::StageMap stages,
                                           const ir::Tensor &weights_dilation,
                                           const ir::Tensor &data,
                                           const cinn::common::Target &target) {
-  CHECK(target.arch == Target::Arch::X86)
+  CHECK(target.arch == Arch::X86)
       << "Conv2d_NCHWc_1X1_Schedule_CPU_Nofuse schedule only used in x86";
   CHECK(packed_out.defined());
   CHECK(input_pad.defined());
@@ -1144,7 +1158,7 @@ void Conv2d_NCHWc_Schedule_CPU_Nofuse(poly::StageMap stages,
                                       const ir::Tensor &weights_dilation,
                                       const ir::Tensor &data,
                                       const cinn::common::Target &target) {
-  CHECK(target.arch == Target::Arch::X86)
+  CHECK(target.arch == Arch::X86)
       << "Conv2d_NCHWc_Schedule_CPU_Nofuse schedule only used in x86";
   CHECK(packed_out.defined());
   CHECK(input_pad.defined());
@@ -1251,7 +1265,7 @@ void Conv2d_NCHWc_Schedule_CPU(poly::StageMap stages,
                                const cinn::common::Target &target,
                                const std::string &key,
                                bool do_padding) {
-  CHECK(target.arch == Target::Arch::X86)
+  CHECK(target.arch == Arch::X86)
       << "Conv2d_NCHWc_Schedule_CPU schedule only used in x86";
   CHECK(packed_out.defined());
   CHECK(input_pad.defined());
@@ -1383,7 +1397,7 @@ void Depthwise_Conv2d_NCHWc_Schedule_CPU_Nofuse(
     const ir::Tensor &data,
     const cinn::common::Target &target,
     bool do_padding) {
-  CHECK(target.arch == Target::Arch::X86)
+  CHECK(target.arch == Arch::X86)
       << "Depthwise_Conv2d_NCHWc_Schedule_CPU_Nofuse schedule only used in x86";
   CHECK(packed_out.defined());
   CHECK(input_pad.defined());
@@ -2813,7 +2827,7 @@ void CudaSplitSchedule(cinn::common::CINNValuePack *arg_pack,
     if (i != axis) fused_shape = fused_shape * output_shapes[0][i];
   }
   int compute_at_level = 0;
-  if (target.arch == Target::Arch::NVGPU) {
+  if (target.arch == Arch::NVGPU) {
     if (fused_shape > target.max_num_threads()) {
       stages[last_output]->Split(0, target.max_num_threads());
       stages[last_output]->Bind(0, "blockIdx.x");

@@ -18,6 +18,8 @@
 #include <ostream>
 #include <string>
 #include <vector>
+#include <variant>
+#include "paddle/cinn/common/arch.h"
 
 namespace cinn {
 namespace common {
@@ -33,16 +35,6 @@ struct Target {
     Windows,
   };
 
-  /**
-   * The architecture used by the target. Determines the instruction set to use.
-   */
-  enum class Arch : int {
-    Unk = -1,
-    X86,
-    ARM,
-    NVGPU,
-  };
-
   enum class Bit : int {
     Unk = -1,
     k32,
@@ -50,7 +42,7 @@ struct Target {
   };
 
   OS os{OS::Unk};
-  Arch arch{Arch::Unk};
+  Arch arch{UnknownArch{}};
   Bit bits{Bit::Unk};
 
   enum class Feature : int {
@@ -69,13 +61,13 @@ struct Target {
   std::vector<Lib> libs;
 
   explicit Target(OS o = OS::Linux,
-                  Arch a = Arch::Unk,
+                  Arch a = UnknownArch{},
                   Bit b = Bit::Unk,
                   const std::vector<Feature>& features = {},
                   const std::vector<Lib>& libs = {});
 
   bool defined() const {
-    return os != OS::Unk && arch != Arch::Unk && bits != Bit::Unk;
+    return os != OS::Unk && IsDefined(arch) && bits != Bit::Unk;
   }
 
   //! Get the Runtime architecture, it is casted to integer to avoid header file
@@ -112,8 +104,6 @@ const Target& DefaultTarget();
 int GetMaxThreads();
 
 int GetMaxBlocks();
-
-std::ostream& operator<<(std::ostream& os, Target::Arch arch);
 
 }  // namespace common
 }  // namespace cinn

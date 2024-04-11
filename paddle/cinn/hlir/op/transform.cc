@@ -89,7 +89,7 @@ std::shared_ptr<OpStrategy> StrategyForMatMul(
     auto new_B = tensor_B->Reshape(new_shape_B_e, stages);
 
     std::vector<ir::Tensor> out;
-    if (target.arch == Target::Arch::X86) {
+    if (target.arch == Arch::X86) {
 #ifdef CINN_WITH_MKL_CBLAS
       out = pe::MatmulMKL(new_A,
                           new_B,
@@ -619,7 +619,7 @@ std::shared_ptr<OpStrategy> StrategyForMul(
         CHECK(pack_args.back().is_string());
         std::string tensor_name = pack_args.back().operator std::string();
 
-        if (target.arch == Target::Arch::X86) {
+        if (target.arch == Arch::X86) {
 #ifdef CINN_WITH_MKL_CBLAS
           out = pe::MatmulMKL(
               new_A, new_B, false, is_infer, 1.0f, tensor_name, target);
@@ -854,7 +854,7 @@ std::shared_ptr<OpStrategy> StrategyForLayoutTransform(
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
 
-    if (target.arch == Target::Arch::X86) {
+    if (target.arch == Arch::X86) {
       pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target);
     } else {
       CINN_NOT_IMPLEMENTED

@@ -1,4 +1,4 @@
-// Copyright (c) 2023 CINN Authors. All Rights Reserved.
+// Copyright (c) 2021 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,18 +13,20 @@
 // limitations under the License.
 
 #pragma once
-#include <string>
 
-#include "paddle/cinn/ir/ir.h"
+#include <array>
+#include <ostream>
+#include <string>
+#include <vector>
+#include <variant>
+#include <ostream>
 
 namespace cinn {
-namespace optim {
+namespace common {
 
-/**
- * Given Expr AST, translate dynamic shape in buffers to
- * static shape, the pass is just used on Nvidia GPU temporarily.
- */
-void CudaTransBufferWithDynamicShape(ir::Expr* expr);
+std::string GetArchName(Arch arch);
+std::ostream& operator<<(std::ostream& os, Arch arch);
 
-}  // namespace optim
+
+}  // namespace common
 }  // namespace cinn

@@ -77,7 +77,7 @@ void TensorFromStream(std::istream &is,
   void *buf;
   size_t size = tensor->shape().numel() * SizeOfType(desc.data_type());
   // allocate memory
-  if (target.arch == Target::Arch::X86) {
+  if (target.arch == Arch::X86) {
     switch (static_cast<int>(desc.data_type())) {
 #define SET_TENSOR(desc, type, precision)     \
   case Type::VarType_Type_##desc:             \
@@ -98,7 +98,7 @@ void TensorFromStream(std::istream &is,
     }
     // tensor->set_persistable(true);
     is.read(static_cast<char *>(buf), size);
-  } else if (target.arch == Target::Arch::NVGPU) {
+  } else if (target.arch == Arch::NVGPU) {
 #ifdef CINN_WITH_CUDA
     if (desc.data_type() != Type::VarType_Type_FP32)
       PADDLE_THROW(

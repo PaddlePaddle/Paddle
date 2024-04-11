@@ -46,12 +46,12 @@ void ResetGlobalNameID() { cinn::common::Context::Global().ResetNameId(); }
 void BindTarget(py::module *m) {
   py::class_<Target> target(*m, "Target");
   target.def_readwrite("os", &Target::os)
-      .def_readwrite("arch", &Target::arch)
+      .def_readwrite("arch", &Arch)
       .def_readwrite("bits", &Target::bits)
       .def_readwrite("features", &Target::features)
       .def(py::init<>())
       .def(py::init<Target::OS,
-                    Target::Arch,
+                    Arch,
                     Target::Bit,
                     const std::vector<Target::Feature> &>())
       .def("defined", &Target::defined)
@@ -71,11 +71,11 @@ void BindTarget(py::module *m) {
       .value("Linux", Target::OS::Linux)
       .value("Windows", Target::OS::Windows);
 
-  py::enum_<Target::Arch> arch(target, "Arch");
-  arch.value("Unk", Target::Arch::Unk)
-      .value("X86", Target::Arch::X86)
-      .value("ARM", Target::Arch::ARM)
-      .value("NVGPU", Target::Arch::NVGPU);
+  py::enum_<Arch> arch(target, "Arch");
+  arch.value("Unk", Arch::Unk)
+      .value("X86", Arch::X86)
+      .value("ARM", Arch::ARM)
+      .value("NVGPU", Arch::NVGPU);
 
   py::enum_<Target::Bit> bit(target, "Bit");
   bit.value("Unk", Target::Bit::Unk)
