@@ -164,7 +164,7 @@ def OpNameNormalizerInitialization(
         "atol_tensor": "TolTensor",
         "out": "Out",
     }
-    # print("op_arg_name_mappings[straight_through_estimator]: ",op_arg_name_mappings["straight_through_estimator"])
+
     op_arg_name_mappings["straight_through_estimator"] = {
         "x": "X",
         "out": "Out",

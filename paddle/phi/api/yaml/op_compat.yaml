@@ -14,12 +14,6 @@
 #   extra :
 #     attrs : [bool is_test = false]
 
-# - op : straight_through_estimator_grad
-#   inputs :
-#     {out : Out}
-#   outputs :
-#     {x : X}
-
 - op : abs
   backward : abs_grad, abs_double_grad, abs_triple_grad
   inputs :

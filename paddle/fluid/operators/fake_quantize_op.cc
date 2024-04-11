@@ -882,7 +882,6 @@ class StraightThroughEstimatorGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     auto out_grad_name = framework::GradVarName("Out");
     auto x_grad_name = framework::GradVarName("X");
-
     OP_INOUT_CHECK(ctx->HasInput(out_grad_name),
                    "Input",
                    out_grad_name,
