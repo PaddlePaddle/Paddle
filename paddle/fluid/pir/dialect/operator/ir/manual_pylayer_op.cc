@@ -53,23 +53,38 @@ void PyLayerOp::Build(pir::Builder &builder,             // NOLINT
                       pir::Value combined_inputs,
                       std::unique_ptr<pir::Block> &&fwd_block) {
   VLOG(4) << "Start build PyLayerOp";
-  if (fwd_block && !fwd_block->empty() &&
-      fwd_block->back().isa<pir::YieldOp>()) {
-    auto &op = fwd_block->back();
 
-    std::vector<pir::Attribute> outs_stop_gradient;
-    for (size_t i = 0; i < op.num_operands(); ++i) {
-      argument.AddOutput(op.operand(i).type());
-      auto bool_attr = op.operand_source(i).attribute<pir::BoolAttribute>(
-          pir::kStopGradientAttrName);
-      outs_stop_gradient.push_back(bool_attr ? bool_attr
-                                             : builder.bool_attr(false));
-    }
+  PADDLE_ENFORCE_NOT_NULL(fwd_block,
+                          paddle::platform::errors::InvalidArgument(
+                              "The sub-block for building pylayer_op "
+                              "can't be None"));
 
-    argument.AddAttribute(
-        pir::kStopGradientAttrName,
-        pir::ArrayAttribute::get(builder.ir_context(), outs_stop_gradient));
+  PADDLE_ENFORCE_NE(fwd_block->empty(),
+                    true,
+                    paddle::platform::errors::InvalidArgument(
+                        "The sub-block for building pylayer_op "
+                        "can't be empty"));
+
+  PADDLE_ENFORCE_EQ(fwd_block->back().isa<pir::YieldOp>(),
+                    true,
+                    paddle::platform::errors::InvalidArgument(
+                        "The last op of sub-block for building pylayer_op "
+                        "must be pir::YieldOp"));
+
+  auto &op = fwd_block->back();
+
+  std::vector<pir::Attribute> outs_stop_gradient;
+  for (size_t i = 0; i < op.num_operands(); ++i) {
+    argument.AddOutput(op.operand(i).type());
+    auto bool_attr = op.operand_source(i).attribute<pir::BoolAttribute>(
+        pir::kStopGradientAttrName);
+    outs_stop_gradient.push_back(bool_attr ? bool_attr
+                                           : builder.bool_attr(false));
   }
+
+  argument.AddAttribute(
+      pir::kStopGradientAttrName,
+      pir::ArrayAttribute::get(builder.ir_context(), outs_stop_gradient));
 
   argument.AddRegion().push_back(fwd_block.release());
   argument.AddInput(combined_inputs);
