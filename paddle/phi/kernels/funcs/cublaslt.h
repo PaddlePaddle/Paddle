@@ -343,7 +343,7 @@ void CublasLtMatmulE5M2FP8(const phi::GPUContext& dev_ctx,
   // init data structure
   cublasStatus_t status;
   auto A_type = CUDA_R_8F_E5M2;
-  auto B_type = CUDA_R_8F_E5M2;
+  auto B_type = CUDA_R_8F_E4M3;
   auto C_type = GetCublasLtDataType<T>();
 
   cublasLtMatmulDesc_t matmul_desc_;
