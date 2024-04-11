@@ -58,11 +58,9 @@ class PToRReshardFunction(ReshardFunction):
             op_value, group.id, False, False
         )
         reduced_value.set_type(op_value.type())
-        print(f'deal with op: {op}, op_result: {op.num_results()}')
         if remove_op:
             op.result(0).replace_all_uses_with(reduced_value)
             program.global_block().remove_op(op)
-        print(f'8 deal with op: {op}, program: {program}')
 
 
 class PToRReshardFunctionCrossMesh(ReshardFunction):
