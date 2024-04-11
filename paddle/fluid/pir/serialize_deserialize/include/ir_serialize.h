@@ -61,9 +61,8 @@ class ProgramWriter {
   Json WriteBlockArg(const pir::Value& value);
   Json WriteValue(const pir::Value& value);
   Json WriteOpOperand(const pir::OpOperand& op_operand);
-  Json WriteAttributesMapOpinfo(pir::Operation* op,
-                                const AttributeMap& attr_map);
-  Json WriteAttributesMapOther(const AttributeMap& attr_map);
+  Json WriteAttributesMapOpinfo(const AttributeMap& attr_map);
+  Json WriteAttributesMapTrain(const AttributeMap& attr_map);
 
   /** WriteAttribute is used to write attribute of op.
    * which call writeAttr to get Derived Class‘s json object.
