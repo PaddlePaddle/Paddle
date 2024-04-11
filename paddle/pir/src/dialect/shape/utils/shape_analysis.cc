@@ -193,12 +193,31 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(
 
   symbol::DimExpr lhs_product(1);
   symbol::DimExpr rhs_product(1);
-  for (int i : lhs_dim_idxs) {
-    lhs_product = lhs_product * lhs_shape_data.shape()[i];
+
+  if (lhs_shape_data.shape().size() >
+      0) {  // Special Process for 0-d shape, to be removed in the future
+    for (int i : lhs_dim_idxs) {
+      PADDLE_ENFORCE_GT(lhs_shape_data.shape().size(),
+                        i,
+                        phi::errors::InvalidArgument(
+                            "Please ensure that the index for comparison is "
+                            "less than the rank of value."));
+      lhs_product = lhs_product * lhs_shape_data.shape()[i];
+    }
   }
-  for (int i : rhs_dim_idxs) {
-    rhs_product = rhs_product * rhs_shape_data.shape()[i];
+
+  if (rhs_shape_data.shape().size() >
+      0) {  // Special Process for 0-d shape, to be removed in the future
+    for (int i : rhs_dim_idxs) {
+      PADDLE_ENFORCE_GT(rhs_shape_data.shape().size(),
+                        i,
+                        phi::errors::InvalidArgument(
+                            "Please ensure that the index for comparison is "
+                            "less than the rank of value."));
+      rhs_product = rhs_product * rhs_shape_data.shape()[i];
+    }
   }
+
   return symbol::SimplifyDimExpr(lhs_product) ==
          symbol::SimplifyDimExpr(rhs_product);
 }
