@@ -19,8 +19,6 @@
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/program.h"
 
-using Json = nlohmann::json;
-
 namespace pir {
 
 class ProgramReader {
