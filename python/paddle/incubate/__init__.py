@@ -21,6 +21,7 @@ from . import (  # noqa: F401
     layers,
     multiprocessing,
     nn,
+    tt,
     xpu,
 )
 from .checkpoint import auto_checkpoint  # noqa: F401
