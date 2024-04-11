@@ -20,8 +20,6 @@
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 
 #include "paddle/fluid/pir/utils/general_functions.h"
-#include "paddle/pir/include/core/builtin_op.h"
-#include "paddle/pir/include/core/value.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
@@ -89,7 +87,7 @@ class Conv2dAddFusePattern : public paddle::drr::DrrPatternBase {
                           &res.Tensor("filter"),
                           &res.Tensor("bias"),
                           &res.InputNoneTensor()},
-                         {&res.Tensor("add_out")});
+                         {&res.Tensor("add_out"), &res.OutputNoneTensor()});
   }
 };
 

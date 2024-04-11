@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/datatype_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -72,11 +73,11 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                                 weight_shape,
                                 arch);
   } else if (algo == "weight_only_int4") {
-    phi::errors::Unimplemented(
+    PADDLE_FATAL(
         "Weight quant gpu kernel currently don't support weight_only_int4 "
         "algo, please use cpu version.");
   } else {
-    phi::errors::Unimplemented(
+    PADDLE_FATAL(
         "The algo must be in ['weight_only_int8', 'weight_only_int4', "
         "'llm.int8'], but got[%s]",
         algo);

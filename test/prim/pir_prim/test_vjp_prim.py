@@ -81,7 +81,7 @@ class TestVjpPrim(unittest.TestCase):
             reshape_op2 = pir_program.global_block().ops[-1]
             reshape_op1 = pir_program.global_block().ops[-4]
             self.assertEqual(len(grad_outs), 2)
-            self.assertEqual(len(pir_program.global_block().ops), 17)
+            self.assertEqual(len(pir_program.global_block().ops), 16)
             self.assertTrue(reshape_op2.result(0).is_same(grad_outs[0][0]))
             self.assertTrue(reshape_op1.result(0).is_same(grad_outs[1][0]))
             all_op_names = [
@@ -89,8 +89,7 @@ class TestVjpPrim(unittest.TestCase):
                 "pd_op.full",
                 "pd_op.full",
                 "pd_op.divide",
-                "pd_op.full",
-                "pd_op.elementwise_pow",
+                "pd_op.multiply",
                 "pd_op.divide",
                 "pd_op.full",
                 "pd_op.scale",

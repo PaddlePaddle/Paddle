@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import bisect
+import math
+import warnings
 from typing import Iterable
 
 import paddle
@@ -487,7 +489,7 @@ def random_split(dataset, lengths, generator=None):
 
     Args:
         dataset (Dataset): Dataset to be split
-        lengths (sequence): lengths of splits to be produced
+        lengths (sequence): lengths or fractions of splits to be produced
         generator (Generator, optional): Generator used for the random permutation. Default is None then the DefaultGenerator is used in manual_seed().
 
     Returns:
@@ -522,6 +524,28 @@ def random_split(dataset, lengths, generator=None):
             5 3
             6 8
     """
+    if math.isclose(sum(lengths), 1) and sum(lengths) <= 1:
+        subset_lengths = []
+        for i, frac in enumerate(lengths):
+            if frac < 0 or frac > 1:
+                raise ValueError(
+                    f"Fraction at index {i} is not between 0 and 1"
+                )
+            n_items_in_split = int(math.floor(len(dataset) * frac))
+            subset_lengths.append(n_items_in_split)
+        remainder = len(dataset) - sum(subset_lengths)
+
+        for i in range(remainder):
+            idx_to_add_at = i % len(subset_lengths)
+            subset_lengths[idx_to_add_at] += 1
+        lengths = subset_lengths
+        for i, length in enumerate(lengths):
+            if length == 0:
+                warnings.warn(
+                    f"Length of split at index {i} is 0. "
+                    f"This might result in an empty dataset."
+                )
+
     # Cannot verify that dataset is Sized
     if sum(lengths) != len(dataset):  # type: ignore
         raise ValueError(
