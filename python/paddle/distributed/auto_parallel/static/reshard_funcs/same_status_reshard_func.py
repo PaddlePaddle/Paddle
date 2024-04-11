@@ -42,8 +42,6 @@ class SameStatusReshardFunction(ReshardFunction):
 
         dtype = op.operand_source(0).dtype
 
-        paddle.pir.set_insertion_point(op)
-
         def get_local_rank(all_process_ids, global_rank=-1):
             if global_rank == -1:
                 global_rank = paddle.distributed.get_rank()
