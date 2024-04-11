@@ -15,10 +15,10 @@
 import paddle
 
 from .process_group import new_process_group
-from .reshard_funcs.reshard_func_register import register_reshard_funcs
 from .reshard_funcs.base_reshard_func import (
     choose_reshard_func,
 )
+from .reshard_funcs.reshard_func_register import register_reshard_funcs
 
 register_reshard_funcs()
 

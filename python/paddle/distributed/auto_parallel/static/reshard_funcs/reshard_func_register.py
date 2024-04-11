@@ -12,11 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .p_to_r_reshard_func import PToRReshardFunction, PToRReshardFunctionCrossMesh
 from .base_reshard_func import register_reshard_func
+from .p_to_r_reshard_func import (
+    PToRReshardFunction,
+    PToRReshardFunctionCrossMesh,
+)
+
 
 def register_reshard_funcs():
     register_reshard_func(PToRReshardFunction())
     register_reshard_func(PToRReshardFunctionCrossMesh())
+
 
 register_reshard_funcs()
