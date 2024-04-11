@@ -6,7 +6,7 @@ if(NOT WITH_CINN)
     ${CMAKE_CURRENT_SOURCE_DIR}/sub_graph_detector.cc)
 endif()
 
-if(NOT WITH_MKLDNN)
+if(NOT WITH_ONEDNN)
   file(GLOB_RECURSE onednn_srcs "onednn/*.cc")
   list(REMOVE_ITEM transforms_srcs ${onednn_srcs})
 endif()

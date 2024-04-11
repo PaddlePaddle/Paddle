@@ -41,7 +41,7 @@ cc_test(
   SRCS place_test.cc
   DEPS place glog phi common)
 
-if(WITH_MKLDNN)
+if(WITH_ONEDNN)
   set(ONEDNN_CTX_DEPS onednn)
 else()
   set(ONEDNN_CTX_DEPS)
