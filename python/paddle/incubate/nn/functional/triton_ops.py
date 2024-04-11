@@ -36,11 +36,11 @@ from .triton_utils import (
 
 def get_wint8_kernel_config():
     configs = []
-    for num_stages in [3, 4]:
+    for num_stages in [2, 3, 4]:
         for block_m in [16]:
-            for block_n in [64, 128, 256]:
-                for block_k in [64, 128, 256]:
-                    for split_k in [1, 2, 4]:
+            for block_n in [32, 64, 128, 256]:
+                for block_k in [32, 64, 128, 256]:
+                    for split_k in [1, 2]:
                         configs.append(
                             triton.Config(
                                 {
@@ -289,16 +289,6 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
     op_name = "triton_wint8"
     if bool_trans_w:
         op_name += "_trans"
-    python_package_name = f"{op_name}_package"
-
-    from paddle.base.framework import OpProtoHolder
-
-    if op_name in OpProtoHolder.instance().op_proto_map.keys():
-        if in_dynamic_or_pir_mode():
-            outs = _C_ops._run_custom_op(
-                op_name, x, qweight, scales, bias, bool_trans_w
-            )
-            return outs[0]
 
     address_hint = get_pointer_hint(x) + ","
     address_hint += get_pointer_hint(qweight) + ","
@@ -317,6 +307,21 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
     value_hint += get_value_hint(stride_bn) + ","
     value_hint += get_value_hint(N) + ","
     value_hint += get_value_hint(1) + ","
+
+    op_name += value_hint.replace(",", "").replace(":", "")
+
+    python_package_name = f"{op_name}_package"
+
+    from paddle.base.framework import OpProtoHolder
+
+    if (
+        op_name in OpProtoHolder.instance().op_proto_map.keys()
+        and in_dynamic_or_pir_mode()
+    ):
+        outs = _C_ops._run_custom_op(
+            op_name, x, qweight, scales, bias, bool_trans_w
+        )
+        return outs[0]
 
     generated_dir = (
         f"/zhoukangkang/2023-06-06minigpt/PaddleNLP/llm/inference/{op_name}"
@@ -395,7 +400,7 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
 
     if in_dynamic_or_pir_mode():
         outs = _C_ops._run_custom_op(
-            "triton_wint8_trans", x, qweight, scales, bias, bool_trans_w
+            op_name, x, qweight, scales, bias, bool_trans_w
         )
         return outs[0]
 
