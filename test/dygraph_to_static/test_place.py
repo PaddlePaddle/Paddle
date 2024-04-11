@@ -15,12 +15,17 @@
 import unittest
 import warnings
 
-from dygraph_to_static_utils import Dy2StTestBase, test_pir_only
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    test_legacy_and_pt,
+    test_pir_only,
+)
 
 import paddle
 
 
 class TestPlace(Dy2StTestBase):
+    @test_legacy_and_pt
     def test_place_legacy(self):
         # TODO(cleanup-legacy-ir): remove this test case
         paddle.enable_static()
