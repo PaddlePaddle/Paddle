@@ -204,26 +204,6 @@ bool SparseWeightEmbeddingOpInferSymbolicShape(
 
 bool ExpandAsOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  // TODO(fty1777): Why is `y` marked optional in the yaml file? The shape of
-  // `y` is currently empty and target_shape is all -1. The symbolic inference
-  // cannot be done for now.
-
-  // const auto &y_shape_or_data =
-  //     shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
-
-  // // target_shape
-  // std::vector<int> target_shape =
-  //     paddle::dialect::details::GetVectorAttr<int>(op, "target_shape");
-  // const std::vector<symbol::DimExpr> &output_dims = [&] {
-  //   std::vector<symbol::DimExpr> output_dims;
-  //   output_dims.reserve(target_shape.size());
-  //   for (int shape : target_shape) {
-  //     output_dims.push_back(shape_analysis->DimExprBuilder().ConstSize(shape));
-  //   }
-  //   return output_dims;
-  // }();
-
-  // shape_analysis->SetShapeOrDataForValue(op->result(0), y_shape_or_data);
   PADDLE_THROW(phi::errors::Unimplemented(
       op->name() +
       " 's InferSymbolicShape interface is NOT implemented "
