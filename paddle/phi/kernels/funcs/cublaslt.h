@@ -19,6 +19,7 @@ limitations under the License. */
 #include <unordered_map>
 #include "paddle/phi/backends/dynload/cublasLt.h"
 #include "paddle/phi/common/float8_e4m3fn.h"
+#include "paddle/phi/common/float8_e5m2.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace dyl = phi::dynload;
@@ -244,11 +245,11 @@ inline cudaDataType_t GetCublasLtDataType<phi::dtype::bfloat16>() {
 }
 
 template <typename T>
-void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
-                       const phi::DenseTensor& mat_a,
-                       const phi::DenseTensor& mat_b,
-                       phi::DenseTensor* workspace,
-                       phi::DenseTensor* out) {
+void CublasLtMatmulE4M3FP8(const phi::GPUContext& dev_ctx,
+                           const phi::DenseTensor& mat_a,
+                           const phi::DenseTensor& mat_b,
+                           phi::DenseTensor* workspace,
+                           phi::DenseTensor* out) {
   int m = mat_a.dims()[0];
   int k = mat_a.dims()[1];
   int n = mat_b.dims()[1];
@@ -314,6 +315,92 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
                           mat_b.data<phi::dtype::float8_e4m3fn>(),
                           B_desc_,
                           mat_a.data<phi::dtype::float8_e4m3fn>(),
+                          A_desc_,
+                          &beta_,
+                          out->data<T>(),
+                          C_desc_,
+                          out->data<T>(),
+                          C_desc_,
+                          // nullptr,
+                          &heuristicResult.algo,
+                          //  nullptr,
+                          reinterpret_cast<void*>(workspace->data<int8_t>()),
+                          // 0,
+                          work_space_size,
+                          dev_ctx.stream());
+}
+
+template <typename T>
+void CublasLtMatmulE5M2FP8(const phi::GPUContext& dev_ctx,
+                           const phi::DenseTensor& mat_a,
+                           const phi::DenseTensor& mat_b,
+                           phi::DenseTensor* workspace,
+                           phi::DenseTensor* out) {
+  int m = mat_a.dims()[0];
+  int k = mat_a.dims()[1];
+  int n = mat_b.dims()[1];
+
+  // init data structure
+  cublasStatus_t status;
+  auto A_type = CUDA_R_8F_E5M2;
+  auto B_type = CUDA_R_8F_E5M2;
+  auto C_type = GetCublasLtDataType<T>();
+
+  cublasLtMatmulDesc_t matmul_desc_;
+  cublasLtMatrixLayout_t A_desc_;
+  cublasLtMatrixLayout_t B_desc_;
+  cublasLtMatrixLayout_t C_desc_;
+  float alpha_ = 1.0f;
+  float beta_ = 0.0f;
+
+  cublasComputeType_t cudaComputeType = CUBLAS_COMPUTE_32F;
+  status =
+      dyl::cublasLtMatmulDescCreate(&matmul_desc_, cudaComputeType, CUDA_R_32F);
+  cublasOperation_t op_transpose = CUBLAS_OP_T;
+  status = dyl::cublasLtMatmulDescSetAttribute(matmul_desc_,
+                                               CUBLASLT_MATMUL_DESC_TRANSA,
+                                               &op_transpose,
+                                               sizeof(op_transpose));
+  status = dyl::cublasLtMatrixLayoutCreate(&B_desc_, B_type, k, n, k);
+  status = dyl::cublasLtMatrixLayoutCreate(&A_desc_, A_type, k, m, k);
+  status = dyl::cublasLtMatrixLayoutCreate(&C_desc_, C_type, n, m, n);
+
+  // Need to use heuristic
+  int returnedResults = 0;
+  cublasLtMatmulHeuristicResult_t heuristicResult = {};
+  cublasLtMatmulPreference_t preference = NULL;
+  size_t work_space_size = workspace->numel();
+
+  status = dyl::cublasLtMatmulPreferenceCreate(&preference);
+  status = dyl::cublasLtMatmulPreferenceSetAttribute(
+      preference,
+      CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
+      &work_space_size,
+      sizeof(work_space_size));
+
+  status = dyl::cublasLtMatmulAlgoGetHeuristic(dev_ctx.cublaslt_handle(),
+                                               matmul_desc_,
+                                               B_desc_,
+                                               A_desc_,
+                                               C_desc_,
+                                               C_desc_,
+                                               preference,
+                                               1,
+                                               &heuristicResult,
+                                               &returnedResults);
+
+  PADDLE_ENFORCE_NE(
+      returnedResults,
+      0,
+      phi::errors::NotFound("Unable to find suitable cuBLAS GEMM algorithm"));
+
+  status =
+      dyl::cublasLtMatmul(dev_ctx.cublaslt_handle(),
+                          matmul_desc_,
+                          &alpha_,
+                          mat_b.data<phi::dtype::float8_e5m2>(),
+                          B_desc_,
+                          mat_a.data<phi::dtype::float8_e5m2>(),
                           A_desc_,
                           &beta_,
                           out->data<T>(),

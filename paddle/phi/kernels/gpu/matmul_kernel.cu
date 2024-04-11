@@ -30,6 +30,7 @@ PD_REGISTER_KERNEL(matmul,
                    int64_t,
 #if CUDA_VERSION >= 11800
                    phi::dtype::float8_e4m3fn,
+                   phi::dtype::float8_e5m2,
 #endif
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
@@ -40,7 +41,8 @@ PD_REGISTER_KERNEL(matmul,
     kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
   }
 #if CUDA_VERSION >= 11800
-  if (kernel_key.dtype() == phi::DataType::FLOAT8_E4M3FN) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT8_E4M3FN ||
+      kernel_key.dtype() == phi::DataType::FLOAT8_E5M2) {
     kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT16);
   }
 #endif

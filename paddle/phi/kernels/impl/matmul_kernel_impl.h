@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
+#include <type_traits>
 #include "glog/logging.h"
 
 #include "paddle/phi/common/memory_utils.h"
@@ -1464,12 +1464,6 @@ DispatchMatmulFP8Kernel(const Context& ctx,
                         DenseTensor* out,
                         bool transpose_x,
                         bool transpose_y) {
-  if (x.dtype() != DataType::FLOAT8_E4M3FN ||
-      y.dtype() != DataType::FLOAT8_E4M3FN) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "float8 matmul needs input x and y be float8_e4m3fn"));
-  }
-
   PADDLE_ENFORCE_EQ(
       x_dims.size(), 2, "mat x for matmul fp8 just support 2-dim tensor");
   PADDLE_ENFORCE_EQ(
@@ -1484,7 +1478,36 @@ DispatchMatmulFP8Kernel(const Context& ctx,
   workspace.Resize({30 * 1024 * 1024});
   ctx.template Alloc<int8_t>(&workspace);
   ctx.template Alloc<phi::dtype::float16>(out);
-  CublasLtMatmulFP8<phi::dtype::float16>(ctx, x, y, &workspace, out);
+  CublasLtMatmulE4M3FP8<phi::dtype::float16>(ctx, x, y, &workspace, out);
+}
+#endif
+
+#if defined(PADDLE_WITH_CUDA)
+template <typename Context>
+typename std::enable_if<std::is_same<Context, phi::GPUContext>::value>::type
+DispatchMatmulFP8KernelV2(const Context& ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& y,
+                          const std::vector<std::int64_t>& x_dims,
+                          const std::vector<std::int64_t>& y_dims,
+                          DenseTensor* out,
+                          bool transpose_x,
+                          bool transpose_y) {
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(), 2, "mat x for matmul fp8 just support 2-dim tensor");
+  PADDLE_ENFORCE_EQ(
+      y_dims.size(), 2, "mat y for matmul fp8 just support 2-dim tensor");
+  PADDLE_ENFORCE_EQ(
+      x_dims[1], y_dims[0], "x_dims[1] needs to equal to y_dims[0]");
+
+  PADDLE_ENFORCE_EQ(x_dims[1] % 16, 0, "fp8 matmul need x_dims[1] % 16 = 0.");
+  PADDLE_ENFORCE_EQ(y_dims[0] % 16, 0, "fp8 matmul need y_dims[0] % 16 = 0.");
+
+  phi::DenseTensor workspace;
+  workspace.Resize({30 * 1024 * 1024});
+  ctx.template Alloc<int8_t>(&workspace);
+  ctx.template Alloc<phi::dtype::float16>(out);
+  CublasLtMatmulE5M2FP8<phi::dtype::float16>(ctx, x, y, &workspace, out);
 }
 #endif
 
@@ -1514,8 +1537,25 @@ DispatchMatmulKernel(const Context& ctx,
 }
 
 template <typename Context, typename T>
-typename std::enable_if<
-    !std::is_same<T, phi::dtype::float8_e4m3fn>::value>::type
+typename std::enable_if<std::is_same<T, phi::dtype::float8_e5m2>::value>::type
+DispatchMatmulKernel(const Context& ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     const std::vector<std::int64_t>& x_dims,
+                     const std::vector<std::int64_t>& y_dims,
+                     DenseTensor* out,
+                     bool transpose_x,
+                     bool transpose_y) {
+  // 根据 phi::dtype::float8_e5m2 类型的特定需求调用相应的处理函数
+  // 这里只是一个示例，具体实现应根据实际需求设计
+  DispatchMatmulFP8KernelV2<Context>(
+      ctx, x, y, x_dims, y_dims, out, transpose_x, transpose_y);
+}
+
+template <typename Context, typename T>
+typename std::enable_if<std::negation<
+    std::disjunction<std::is_same<T, phi::dtype::float8_e4m3fn>,
+                     std::is_same<T, phi::dtype::float8_e5m2>>>::value>::type
 DispatchMatmulKernel(const Context& ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
