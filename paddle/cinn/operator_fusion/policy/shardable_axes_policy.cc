@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/cinn/operator_fusion/policy/shardable_axes_policy.h"
+#include "paddle/cinn/operator_fusion/backend/pattern.h"
+#include "paddle/cinn/operator_fusion/frontend/pattern.h"
 
 namespace cinn::fusion {
 
@@ -91,4 +93,7 @@ bool ShardableAxesRRFusePolicy<T>::CanFuse(
   return ReduceTreeGrownCanMerge(upstream, downstream);
 }
 
-}  // namespace cinn::frontend::group_cluster::policy
+template class RelativeJudgePolicy<FrontendStage>;
+template class RelativeJudgePolicy<BackendStage>;
+
+}  // namespace cinn::fusion
