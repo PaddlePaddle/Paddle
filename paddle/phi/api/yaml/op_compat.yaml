@@ -462,6 +462,13 @@
   outputs :
     output_box : OutputBox
 
+- op : bpr_loss
+  backward : bpr_loss_grad
+  inputs :
+    {input : X, label : Label}
+  outputs :
+    out : Y
+
 - op : broadcast_tensors
   backward : broadcast_tensors_grad
   inputs :

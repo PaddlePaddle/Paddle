@@ -20,6 +20,7 @@ _INFERMETA_NEED_META_CONFIG = {
     'ArrayWriteInferMeta',
     'ArrayReadInferMeta',
     'BCELossInferMeta',
+    'BprLossInferMeta',
     'BinomialInferMeta',
     'ConvInferMeta',
     'Conv3DInferMeta',

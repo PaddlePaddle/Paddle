@@ -62,6 +62,11 @@ void BCELossInferMeta(const MetaTensor& input,
                       MetaTensor* out,
                       MetaConfig config = MetaConfig());
 
+void BprLossInferMeta(const MetaTensor& input,
+                      const MetaTensor& label,
+                      MetaTensor* out,
+                      MetaConfig config = MetaConfig());
+
 void BincountInferMeta(const MetaTensor& x,
                        const MetaTensor& weights,
                        const Scalar& minlength,

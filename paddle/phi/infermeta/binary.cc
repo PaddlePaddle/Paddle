@@ -242,6 +242,44 @@ void BCELossInferMeta(const MetaTensor& input,
   out->share_lod(input);
 }
 
+void BprLossInferMeta(const MetaTensor& input,
+                      const MetaTensor& label,
+                      MetaTensor* out,
+                      MetaConfig config) {
+  auto input_dims = input.dims();
+  auto label_dims = label.dims();
+
+  int rank = input_dims.size();
+  PADDLE_ENFORCE_EQ(rank,
+                    label_dims.size(),
+                    phi::errors::InvalidArgument(
+                        "Input(X) and Input(Label) shall have the same rank."
+                        "But received: the rank of Input(X) is [%d], "
+                        "the rank of Input(Label) is [%d].",
+                        rank,
+                        label_dims.size()));
+
+  bool check = true;
+  if ((!config.is_runtime) &&
+      (common::product(input_dims) <= 0 || common::product(label_dims) <= 0)) {
+    check = false;
+  }
+
+  if (check) {
+    PADDLE_ENFORCE_EQ(common::slice_ddim(input_dims, 0, rank - 1),
+                      common::slice_ddim(label_dims, 0, rank - 1),
+                      phi::errors::InvalidArgument(
+                          "Input(X) and Input(Label) shall have the same shape "
+                          "except the last dimension."));
+  }
+
+  auto y_dims = input_dims;
+  y_dims[rank - 1] = 1;
+  out->set_dims(y_dims);
+  out->set_dtype(input.dtype());
+  out->share_lod(input);
+}
+
 void BincountInferMeta(const MetaTensor& x,
                        const MetaTensor& weights,
                        const Scalar& minlength,

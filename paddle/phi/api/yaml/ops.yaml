@@ -453,6 +453,15 @@
     func : box_coder
   optional : prior_box_var
 
+- op : bpr_loss
+  args : (Tensor input, Tensor label)
+  output : Tensor(out)
+  infer_meta :
+    func : BprLossInferMeta
+  kernel :
+    func : bpr_loss
+  backward : bpr_loss_grad
+
 - op : broadcast_tensors
   args: (Tensor[] input)
   output: Tensor[]{input.size()}
