@@ -18,16 +18,14 @@
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/hlir/framework/pir/compilation_task.h"
 
-namespace cinn {
-namespace hlir {
-namespace framework {
+namespace cinn::hlir::framework {
 
 class PirCompiler final {
  public:
-  using CompileResult = std::vector<pir::CINNKernelInfo>;
   PirCompiler(const Target& target) : target_(target) {}
 
-  CompileResult Build(const std::vector<pir::OpLoweringGroupPtr>& groups);
+  std::vector<pir::CINNKernelInfo> Build(
+      const std::vector<pir::OpLoweringGroupPtr>& groups);
 
  private:
   CINN_DISALLOW_COPY_AND_ASSIGN(PirCompiler);
@@ -36,30 +34,4 @@ class PirCompiler final {
   std::vector<GroupCompilationContext> group_compilation_contexts_;
 };
 
-class PirCompilerManager {
- public:
-  static PirCompilerManager& Instance() {
-    static PirCompilerManager instance;
-    return instance;
-  }
-
-  static std::shared_ptr<PirCompiler> Create(const Target& target) {
-    std::shared_ptr<PirCompiler> compiler =
-        std::make_shared<PirCompiler>(target);
-    PirCompilerManager::Instance().insert(compiler);
-    return compiler;
-  }
-
-  void insert(const std::shared_ptr<PirCompiler>& compiler) {
-    compilers_.push_back(compiler);
-  }
-
-  void clear() { compilers_.clear(); }
-
- private:
-  std::vector<std::shared_ptr<PirCompiler>> compilers_;
-};
-
-}  // namespace framework
-}  // namespace hlir
-}  // namespace cinn
+}  // namespace cinn::hlir::framework

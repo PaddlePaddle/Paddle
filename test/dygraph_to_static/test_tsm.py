@@ -346,13 +346,7 @@ def train(args, fake_data_reader):
             total_sample += 1
 
             print(
-                'TRAIN Epoch {}, iter {}, loss = {}, acc1 {}, acc5 {}'.format(
-                    epoch,
-                    batch_id,
-                    float(avg_loss),
-                    float(acc_top1),
-                    float(acc_top5),
-                )
+                f'TRAIN Epoch {epoch}, iter {batch_id}, loss = {float(avg_loss)}, acc1 {float(acc_top1)}, acc5 {float(acc_top5)}'
             )
             ret.extend(
                 [
@@ -363,12 +357,7 @@ def train(args, fake_data_reader):
             )
 
         print(
-            'TRAIN End, Epoch {}, avg_loss= {}, avg_acc1= {}, avg_acc5= {}'.format(
-                epoch,
-                total_loss / total_sample,
-                total_acc1 / total_sample,
-                total_acc5 / total_sample,
-            )
+            f'TRAIN End, Epoch {epoch}, avg_loss= {total_loss / total_sample}, avg_acc1= {total_acc1 / total_sample}, avg_acc5= {total_acc5 / total_sample}'
         )
     return ret
 

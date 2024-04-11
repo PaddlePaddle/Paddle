@@ -438,6 +438,18 @@ class TestDygraphInplaceFlatten(TestDygraphInplace):
         return var.flatten_()
 
 
+class TestDygraphInplaceFlattenStride(TestDygraphInplace):
+    def init_data(self):
+        self.input_var_numpy = np.random.randn(2, 3, 2)
+        self.dtype = "float32"
+
+    def non_inplace_api_processing(self, var):
+        return var.flatten(0, 1)
+
+    def inplace_api_processing(self, var):
+        return var.flatten_(0, 1)
+
+
 class TestDygraphInplaceScatter(TestDygraphInplace):
     def init_data(self):
         self.input_var_numpy = np.array([[1, 1], [2, 2], [3, 3]])

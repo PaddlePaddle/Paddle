@@ -79,15 +79,11 @@ class CommunicationTestDistBase(unittest.TestCase):
             )
         except subprocess.TimeoutExpired as err:
             raise TimeoutError(
-                "Timeout while running command {}, try to set a longer period, {} is not enough.".format(
-                    err.cmd, err.timeout
-                )
+                f"Timeout while running command {err.cmd}, try to set a longer period, {err.timeout} is not enough."
             )
         except subprocess.CalledProcessError as err:
             raise RuntimeError(
-                "Error occurs when running this test case. The return code of command {} is {}".format(
-                    err.cmd, err.returncode
-                )
+                f"Error occurs when running this test case. The return code of command {err.cmd} is {err.returncode}"
             )
 
     def tearDown(self):

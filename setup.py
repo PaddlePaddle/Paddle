@@ -34,7 +34,6 @@ from setuptools.command.install import install as InstallCommandBase
 from setuptools.command.install_lib import install_lib
 from setuptools.dist import Distribution
 
-# check python
 python_version = platform.python_version()
 version_detail = sys.version_info
 version = str(version_detail[0]) + '.' + str(version_detail[1])
@@ -251,9 +250,7 @@ class DevelopCommand(DevelopCommandBase):
             filename=f'{paddle_source_dir}/python/paddle/cuda_env.py'
         )
         write_parameter_server_version_py(
-            filename='{}/python/paddle/incubate/distributed/fleet/parameter_server/version.py'.format(
-                paddle_source_dir
-            )
+            filename=f'{paddle_source_dir}/python/paddle/incubate/distributed/fleet/parameter_server/version.py'
         )
         DevelopCommandBase.run(self)
 
@@ -699,7 +696,7 @@ def cinn():
                 'with_mkl': env_dict.get("WITH_MKL"),
                 'cinn': get_cinn_version(),
                 'with_pip_cuda_libraries': env_dict.get(
-                    "with_pip_cuda_libraries"
+                    "WITH_PIP_CUDA_LIBRARIES"
                 ),
             }
         )
@@ -1166,7 +1163,7 @@ def get_package_data_and_package_dir():
             )
         package_data['paddle.libs'] += ['libps' + ext_suffix]
         package_data['paddle.libs'] += ['libjvm' + ext_suffix]
-    if env_dict.get("WITH_MKLDNN") == 'ON':
+    if env_dict.get("WITH_ONEDNN") == 'ON':
         if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
             # only change rpath in Release mode.
             # TODO(typhoonzero): use install_name_tool to patch mkl libs once
@@ -1436,7 +1433,7 @@ def get_headers():
             )
         )
 
-    if env_dict.get("WITH_MKLDNN") == 'ON':
+    if env_dict.get("WITH_ONEDNN") == 'ON':
         headers += list(
             find_files('*', env_dict.get("MKLDNN_INSTALL_DIR") + '/include')
         )  # mkldnn
@@ -1799,9 +1796,7 @@ def main():
         filename=f'{paddle_binary_dir}/python/paddle/cuda_env.py'
     )
     write_parameter_server_version_py(
-        filename='{}/python/paddle/incubate/distributed/fleet/parameter_server/version.py'.format(
-            paddle_binary_dir
-        )
+        filename=f'{paddle_binary_dir}/python/paddle/incubate/distributed/fleet/parameter_server/version.py'
     )
     (
         setup_requires,

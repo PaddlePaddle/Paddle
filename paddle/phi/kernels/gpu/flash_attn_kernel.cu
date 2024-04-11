@@ -65,25 +65,28 @@ void FlashAttnUnpaddedKernel(
 
   // TODO(umiswing): add shape check
 
-  FlashAttnFwdParamsV2<T> params = FlashAttnFwdParamsV2<T>(ctx,
-                                                           batch_size,
-                                                           max_seqlen_q,
-                                                           max_seqlen_k,
-                                                           num_heads,
-                                                           num_heads_k,
-                                                           head_size,
-                                                           dropout,
-                                                           scale,
-                                                           causal,
-                                                           return_softmax,
-                                                           q.dtype(),
-                                                           is_test,
-                                                           rng_name,
-                                                           fixed_seed_offset,
-                                                           attn_mask,
-                                                           softmax,
-                                                           softmax_lse,
-                                                           seed_offset);
+  FlashAttnFwdParamsV2<T> params =
+      FlashAttnFwdParamsV2<T>(ctx,
+                              batch_size,
+                              max_seqlen_q,
+                              max_seqlen_k,
+                              num_heads,
+                              num_heads_k,
+                              head_size,
+                              dropout,
+                              scale,
+                              causal,
+                              return_softmax,
+                              q.dtype(),
+                              is_test,
+                              rng_name,
+                              0,  // attn_mask_start_row
+                              fixed_seed_offset,
+                              attn_mask,
+                              nullptr,  // attn_mask_start_row_indices
+                              softmax,
+                              softmax_lse,
+                              seed_offset);
 
   VLOG(10) << "FlashAttn fwd seed: " << params.seed
            << ", offset: " << params.offset;
@@ -125,21 +128,24 @@ void FlashAttnUnpaddedKernel(
 }
 
 template <typename T, typename Context>
-void FlashAttnKernel(const Context& ctx,
-                     const DenseTensor& q,
-                     const DenseTensor& k,
-                     const DenseTensor& v,
-                     const paddle::optional<DenseTensor>& fixed_seed_offset,
-                     const paddle::optional<DenseTensor>& attn_mask,
-                     float dropout,
-                     bool causal,
-                     bool return_softmax,
-                     bool is_test,
-                     const std::string& rng_name,
-                     DenseTensor* out,
-                     DenseTensor* softmax,
-                     DenseTensor* softmax_lse,
-                     DenseTensor* seed_offset) {
+void FlashAttnBaseKernel(
+    const Context& ctx,
+    const DenseTensor& q,
+    const DenseTensor& k,
+    const DenseTensor& v,
+    const paddle::optional<DenseTensor>& fixed_seed_offset,
+    const paddle::optional<DenseTensor>& attn_mask,
+    const paddle::optional<DenseTensor>& attn_mask_start_row_indices,
+    float dropout,
+    bool causal,
+    bool return_softmax,
+    bool is_test,
+    const std::string& rng_name,
+    int attn_mask_start_row,
+    DenseTensor* out,
+    DenseTensor* softmax,
+    DenseTensor* softmax_lse,
+    DenseTensor* seed_offset) {
 #ifdef PADDLE_WITH_FLASHATTN
   // q, k, v [batch_size, seq_len, num_heads, head_dim]
   const auto& dims = q.dims();
@@ -161,25 +167,28 @@ void FlashAttnKernel(const Context& ctx,
   const float softmax_scale = 1.0f / std::sqrt(head_size);
   const float softmax_unscale = std::sqrt(head_size);
 
-  FlashAttnFwdParamsV2<T> params = FlashAttnFwdParamsV2<T>(ctx,
-                                                           batch_size,
-                                                           seqlen_q,
-                                                           seqlen_k,
-                                                           num_heads,
-                                                           num_heads_k,
-                                                           head_size,
-                                                           dropout,
-                                                           softmax_scale,
-                                                           causal,
-                                                           return_softmax,
-                                                           q.dtype(),
-                                                           is_test,
-                                                           rng_name,
-                                                           fixed_seed_offset,
-                                                           attn_mask,
-                                                           softmax,
-                                                           softmax_lse,
-                                                           seed_offset);
+  FlashAttnFwdParamsV2<T> params =
+      FlashAttnFwdParamsV2<T>(ctx,
+                              batch_size,
+                              seqlen_q,
+                              seqlen_k,
+                              num_heads,
+                              num_heads_k,
+                              head_size,
+                              dropout,
+                              softmax_scale,
+                              causal,
+                              return_softmax,
+                              q.dtype(),
+                              is_test,
+                              rng_name,
+                              attn_mask_start_row,
+                              fixed_seed_offset,
+                              attn_mask,
+                              attn_mask_start_row_indices,
+                              softmax,
+                              softmax_lse,
+                              seed_offset);
 
   VLOG(10) << "[FlashAttn Forward] q.shape=[" << q.dims() << "], k.shape=["
            << k.dims() << "], v.shape=[" << v.dims() << "]";
@@ -223,11 +232,90 @@ void FlashAttnKernel(const Context& ctx,
       params.seed,
       params.offset,
       params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
-      params.mask_dims.data());
+      params.mask_dims.data(),
+      params.attn_mask_start_row_indices_tensor
+          ? params.attn_mask_start_row_indices_tensor->data()
+          : nullptr,
+      params.attn_mask_start_row_indices_tensor
+          ? params.attn_mask_start_row_indices_dims.data()
+          : nullptr,
+      params.attn_mask_start_row);
   CheckFlashAttnStatus(succ);
 #else
   RaiseNotSupportedError();
 #endif
+}
+
+template <typename T, typename Context>
+void FlashAttnKernel(const Context& ctx,
+                     const DenseTensor& q,
+                     const DenseTensor& k,
+                     const DenseTensor& v,
+                     const paddle::optional<DenseTensor>& fixed_seed_offset,
+                     const paddle::optional<DenseTensor>& attn_mask,
+                     float dropout,
+                     bool causal,
+                     bool return_softmax,
+                     bool is_test,
+                     const std::string& rng_name,
+                     DenseTensor* out,
+                     DenseTensor* softmax,
+                     DenseTensor* softmax_lse,
+                     DenseTensor* seed_offset) {
+  FlashAttnBaseKernel<T, Context>(ctx,
+                                  q,
+                                  k,
+                                  v,
+                                  fixed_seed_offset,
+                                  attn_mask,
+                                  paddle::none,
+                                  dropout,
+                                  causal,
+                                  return_softmax,
+                                  is_test,
+                                  rng_name,
+                                  0,
+                                  out,
+                                  softmax,
+                                  softmax_lse,
+                                  seed_offset);
+}
+
+template <typename T, typename Context>
+void FlashAttnWithSparseMaskKernel(
+    const Context& ctx,
+    const DenseTensor& q,
+    const DenseTensor& k,
+    const DenseTensor& v,
+    const DenseTensor& attn_mask_start_row_indices,
+    const paddle::optional<DenseTensor>& fixed_seed_offset,
+    float dropout,
+    bool causal,
+    int attn_mask_start_row,
+    bool return_softmax,
+    bool is_test,
+    const std::string& rng_name,
+    DenseTensor* out,
+    DenseTensor* softmax,
+    DenseTensor* softmax_lse,
+    DenseTensor* seed_offset) {
+  FlashAttnBaseKernel<T, Context>(ctx,
+                                  q,
+                                  k,
+                                  v,
+                                  fixed_seed_offset,
+                                  paddle::none,
+                                  attn_mask_start_row_indices,
+                                  dropout,
+                                  causal,
+                                  return_softmax,
+                                  is_test,
+                                  rng_name,
+                                  attn_mask_start_row,
+                                  out,
+                                  softmax,
+                                  softmax_lse,
+                                  seed_offset);
 }
 
 }  // namespace phi
@@ -249,5 +337,15 @@ PD_REGISTER_KERNEL(flash_attn,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
   kernel->InputAt(3).SetBackend(
+      phi::Backend::ALL_BACKEND);  // fixed_seed_offset
+}
+
+PD_REGISTER_KERNEL(flash_attn_with_sparse_mask,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FlashAttnWithSparseMaskKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+  kernel->InputAt(4).SetBackend(
       phi::Backend::ALL_BACKEND);  // fixed_seed_offset
 }

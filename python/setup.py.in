@@ -770,7 +770,7 @@ if '${WITH_PSLIB}' == 'ON':
     package_data['paddle.libs'] += ['libps' + ext_name]
     package_data['paddle.libs'] += ['libjvm' + ext_name]
 
-if '${WITH_MKLDNN}' == 'ON':
+if '${WITH_ONEDNN}' == 'ON':
     if '${CMAKE_BUILD_TYPE}' == 'Release' and os.name != 'nt':
         # only change rpath in Release mode.
         # TODO(typhoonzero): use install_name_tool to patch mkl libs once
@@ -911,7 +911,7 @@ jit_layer_headers = ['layer.h', 'serializer.h', 'serializer_utils.h', 'all.h', '
 for f in jit_layer_headers:
     headers += list(find_files(f, '@PADDLE_SOURCE_DIR@/paddle/fluid/jit', recursive=True))
 
-if '${WITH_MKLDNN}' == 'ON':
+if '${WITH_ONEDNN}' == 'ON':
     headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
 
 if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':

@@ -60,6 +60,9 @@ logger.setLevel(logging.WARNING)
 ENV_ENABLE_PIR_WITH_PT_IN_DY2ST = BooleanEnvironmentVariable(
     "FLAGS_enable_pir_with_pt_in_dy2st", True
 )
+ENV_EXE_SEQUENTIAL_RUN = BooleanEnvironmentVariable(
+    "FLAGS_new_executor_sequential_run", False
+)
 
 
 class ToStaticMode(Flag):
@@ -438,3 +441,17 @@ def enable_to_static_guard(flag: bool):
         yield
     finally:
         program_translator.enable(original_flag_value)
+
+
+@contextmanager
+def exe_sequential_run_guard(value: bool):
+    exe_sequential_run_flag = ENV_EXE_SEQUENTIAL_RUN.name
+    original_flag_value = paddle.get_flags(exe_sequential_run_flag)[
+        exe_sequential_run_flag
+    ]
+    with EnvironmentVariableGuard(ENV_EXE_SEQUENTIAL_RUN, value):
+        try:
+            set_flags({exe_sequential_run_flag: value})
+            yield
+        finally:
+            set_flags({exe_sequential_run_flag: original_flag_value})

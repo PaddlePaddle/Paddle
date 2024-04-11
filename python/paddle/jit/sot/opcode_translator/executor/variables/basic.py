@@ -32,6 +32,7 @@ from ....utils import (
     FallbackError,
     NameGenerator,
     paddle_tensor_methods,
+    printable,
 )
 from ....utils.exceptions import HasNoAttributeError, InnerError
 from ..dispatch_functions import tensor_numel
@@ -321,9 +322,7 @@ class TensorVariable(VariableBase):
             self.meta = tensor
         else:
             raise InnerError(
-                "Required type(tensor) is paddle.Tensor or ProxyTensor, but received {}.".format(
-                    type(tensor).__name__
-                )
+                f"Required type(tensor) is paddle.Tensor or ProxyTensor, but received {type(tensor).__name__}."
             )
         self.origin_meta = self.meta
         self.var_name = TensorVariable.var_name_generator.next()
@@ -606,7 +605,12 @@ class ObjectVariable(VariableBase):
 
     @property
     def main_info(self) -> dict[str, Any]:
-        return {"value": self.value}
+        # NOTE(SigureMo): There are some objects that cannot be printed, such as
+        # uninitialized dataclass, we should fallback to the class name.
+        if printable(self.value):
+            return {"value": self.value}
+        else:
+            return {"value": f"instance {self.value.__class__.__name__}"}
 
     def get_py_value(self, allow_tensor=False) -> Any:
         return self.value

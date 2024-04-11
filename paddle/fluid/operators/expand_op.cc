@@ -44,10 +44,11 @@ class ExpandOp : public framework::OperatorWithKernel {
             static_cast<size_t>(x_dims.size())));
     PADDLE_ENFORCE_LE(
         x_dims.size(),
-        6,
+        MAX_RANK_SUPPORTED,
         platform::errors::InvalidArgument(
             "The number of dimensions of the input for Op(expand) "
-            "must not be greater than 6, but the value received is %d.",
+            "must not be greater than %d, but the value received is %d.",
+            MAX_RANK_SUPPORTED,
             x_dims.size()));
 
     std::vector<int64_t> out_shape(x_dims.size());
@@ -98,7 +99,7 @@ class ExpandOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(Tensor, default Tensor<float>). A tensor with rank in [1, 6]."
+             "(Tensor, default Tensor<float>). A tensor with rank in [1, 8]."
              "X is the input to be expanded.");
     AddInput("ExpandTimes",
              "(Tensor<int>), optional). If provided, expand according to "
@@ -112,7 +113,7 @@ class ExpandOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable()
         .AsDispensable();
     AddOutput("Out",
-              "(Tensor, default Tensor<float>). A tensor with rank in [1, 6]."
+              "(Tensor, default Tensor<float>). A tensor with rank in [1, 8]."
               "The rank of Output(Out) have the same with Input(X). "
               "After expanding, size of each dimension of Output(Out) is equal "
               "to size of the corresponding dimension of Input(X) multiplying "
@@ -123,7 +124,7 @@ class ExpandOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Expand operator tiles the input by given times number. You should set times
 number for each dimension by providing attribute 'expand_times'. The rank of X
-should be in [1, 6]. Please note that size of 'expand_times' must be the same
+should be in [1, 8]. Please note that size of 'expand_times' must be the same
 with X's rank. Following is a using case:
 Input(X) is a 3-D tensor with shape [2, 3, 1]:
         [

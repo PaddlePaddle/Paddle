@@ -224,9 +224,7 @@ class Table:
             print('The row_str should be a list')
         if len(row_str) != self.col_num:
             print(
-                'The length of row data should be equal the length of table heads, but the data: {} is not equal table heads {}'.format(
-                    len(row_str), self.col_num
-                )
+                f'The length of row data should be equal the length of table heads, but the data: {len(row_str)} is not equal table heads {self.col_num}'
             )
         for i in range(self.col_num):
             if len(str(row_str[i])) > self.table_len[i]:
