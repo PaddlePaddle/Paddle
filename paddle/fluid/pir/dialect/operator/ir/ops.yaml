@@ -698,6 +698,7 @@
   args : (str name, int col)
   output : Tensor(out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits: pir::ImmutableLayoutTrait
 
 - op : fetch
   args : (Tensor x, str name, int col)
@@ -708,7 +709,7 @@
   kernel :
     func : fetch
     param : [x]
-  traits : pir::SideEffectTrait
+  traits : pir::SideEffectTrait, pir::ImmutableLayoutTrait
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : floor_divide
