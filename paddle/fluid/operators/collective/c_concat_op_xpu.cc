@@ -169,4 +169,5 @@ PD_REGISTER_STRUCT_KERNEL(c_concat,
                           float,
                           int,
                           int64_t,
-                          plat::float16) {}
+                          plat::float16,
+                          plat::bfloat16) {}

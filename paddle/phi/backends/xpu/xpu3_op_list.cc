@@ -125,6 +125,7 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::INT64})},
       {"c_concat",
        XPUKernelSet({phi::DataType::FLOAT16,
+                     phi::DataType::BFLOAT16,
                      phi::DataType::FLOAT32,
                      phi::DataType::INT32,
                      phi::DataType::INT64})},
