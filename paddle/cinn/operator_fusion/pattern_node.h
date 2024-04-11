@@ -14,9 +14,11 @@
 
 #pragma once
 
-#include "paddle/cinn/frontend/group_cluster/common_utils.h"
+#include "paddle/cinn/operator_fusion/utils.h"
+#include "paddle/cinn/operator_fusion/pattern.h"
+#include "paddle/cinn/operator_fusion/pattern_api.h"
 
-namespace cinn::frontend::group_cluster {
+namespace cinn::fusion {
 
 template <typename T>
 struct PatternNode {

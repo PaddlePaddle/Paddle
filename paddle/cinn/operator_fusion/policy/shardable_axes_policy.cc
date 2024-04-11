@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/frontend/group_cluster/cluster_policy/shardable_axes_policy/shardable_axes_policy.h"
+#include "paddle/cinn/operator_fusion/policy/shardable_axes_policy.h"
 
-namespace cinn::frontend::group_cluster::policy {
+namespace cinn::fusion {
 
 template <typename T>
 bool ShardableAxesRRFusePolicy<T>::IsDownstreamStmtDependReduceOp(

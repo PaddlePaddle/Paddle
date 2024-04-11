@@ -12,10 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/frontend/group_cluster/pattern_graph.h"
-#include "paddle/cinn/frontend/group_cluster/group_cluster.h"
+#include "paddle/cinn/operator_fusion/pattern_graph.h"
+#include "paddle/cinn/operator_fusion/frontend/pattern.h"
+#include "paddle/cinn/operator_fusion/frontend/pattern_api.h"
+#include "paddle/cinn/operator_fusion/backend/pattern.h"
+#include "paddle/cinn/operator_fusion/backend/pattern_api.h"
 
-namespace cinn::frontend::group_cluster {
+namespace cinn::fusion {
 
 template <typename T>
 std::vector<PatternNodePtr<T>> PatternGraph<T>::ClusterOps(
@@ -129,8 +132,8 @@ void PatternGraph<T>::ReduceTree_Trivial_Fusion() {
 template <typename T>
 PatternGraph<T>::PatternGraph(const std::vector<PatternContent<T>>& contents,
                               const std::vector<pir::Value>& outputs,
-                              const policy::PolicyManager<T> policy_manager,
-                              const policy::PolicyManager<T> topo_manager)
+                              const PolicyManager<T> policy_manager,
+                              const PolicyManager<T> topo_manager)
     : policy_manager_(policy_manager),
       topo_manager_(topo_manager),
       outputs_(outputs) {
@@ -252,6 +255,7 @@ PatternNodePtr<T> PatternGraph<T>::MergeNode(
   return merged_node;
 }
 
-template class PatternGraph<cinn::frontend::FrontendStage>;
+template class PatternGraph<FrontendStage>;
+template class PatternGraph<BackendStage>;
 
 }  // namespace cinn::frontend::group_cluster

@@ -28,7 +28,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 
-#include "paddle/cinn/frontend/group_cluster/group_cluster.h"
+#include "paddle/cinn/operator_fusion/group_cluster.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/attribute_storage.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
@@ -836,15 +836,19 @@ std::vector<GroupClusterNode> NodeMergeWithNode(
 
 std::vector<GroupClusterNode> NewOpMergeWithOp(
     cinn::dialect::GroupOp group_op) {
-  auto cluster_result = frontend::ClusterOps(group_op.GetOperators(), true);
+  std::function<cinn::fusion::FrontendContent(pir::Operation*)> func = [](pir::Operation* op){
+    return cinn::fusion::FrontendContent(op);
+  };
+  const auto& contents = cinn::fusion::MapVector(group_op.GetOperators(), func);
+  auto cluster_result = cinn::fusion::ClusterOps(contents, true);
   std::vector<std::vector<pir::Operation*>> result;
   std::transform(
       cluster_result.begin(),
       cluster_result.end(),
       std::back_inserter(result),
-      [](const frontend::group_cluster::PatternNodePtr<frontend::FrontendStage>
+      [](const cinn::fusion::PatternNodePtr<cinn::fusion::FrontendStage>
              node) {
-        return frontend::group_cluster::GetOpsInPattern(node->stmt_pattern_);
+        return cinn::fusion::GetOpsInPattern(node->stmt_pattern_);
       });
 
   // Each stmts corresponds to each fusion op(cluster node).

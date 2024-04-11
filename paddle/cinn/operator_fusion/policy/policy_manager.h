@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "paddle/cinn/frontend/group_cluster/pattern_node.h"
+#include "paddle/cinn/operator_fusion/pattern_node.h"
 
-namespace cinn::frontend::group_cluster::policy {
+namespace cinn::fusion {
 
 template <typename T>
 class Policy {

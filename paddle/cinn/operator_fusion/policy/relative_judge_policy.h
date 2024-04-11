@@ -14,11 +14,11 @@
 
 #pragma once
 #include <functional>
-#include "paddle/cinn/frontend/group_cluster/cluster_policy/policy_manager.h"
-#include "paddle/cinn/frontend/group_cluster/cluster_policy/shardable_axes_policy/shardable_axes_base.h"
-#include "paddle/cinn/frontend/group_cluster/common_utils.h"
+#include "paddle/cinn/operator_fusion/utils.h"
+#include "paddle/cinn/operator_fusion/policy/policy_manager.h"
+#include "paddle/cinn/operator_fusion/policy/shardable_axes_base.h"
 
-namespace cinn::frontend::group_cluster::policy {
+namespace cinn::fusion {
 
 struct ValueDim {
   pir::Value v_;

@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "paddle/cinn/frontend/group_cluster/common_utils.h"
+#include "paddle/cinn/operator_fusion/utils.h"
 
-namespace cinn::frontend::group_cluster::policy {
+namespace cinn::fusion {
 
 struct ShardableAxes {
   ShardableAxes() : axis_names({}) {}

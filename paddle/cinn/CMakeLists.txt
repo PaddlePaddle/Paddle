@@ -17,6 +17,7 @@ add_subdirectory(optim)
 add_subdirectory(hlir)
 add_subdirectory(pybind)
 add_subdirectory(frontend)
+add_subdirectory(operator_fusion)
 
 # Download a model
 download_and_uncompress("${DOWNLOAD_MODEL_DIR}" "${PADDLE_RESOURCE_URL}"

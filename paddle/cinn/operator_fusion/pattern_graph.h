@@ -13,12 +13,12 @@
 // limitations under the License.
 #pragma once
 
-#include "paddle/cinn/frontend/group_cluster/cluster_policy/policy_manager.h"
-#include "paddle/cinn/frontend/group_cluster/cluster_policy/relative_judge_policy.h"
-#include "paddle/cinn/frontend/group_cluster/common_utils.h"
-#include "paddle/cinn/frontend/group_cluster/pattern_node.h"
+#include "paddle/cinn/operator_fusion/policy/policy_manager.h"
+#include "paddle/cinn/operator_fusion/policy/relative_judge_policy.h"
+#include "paddle/cinn/operator_fusion/utils.h"
+#include "paddle/cinn/operator_fusion/pattern_node.h"
 
-namespace cinn::frontend::group_cluster {
+namespace cinn::fusion {
 
 template <typename T>
 using PatternNodePtrSet = std::unordered_set<PatternNodePtr<T>>;
@@ -28,8 +28,8 @@ class PatternGraph {
  public:
   PatternGraph(const std::vector<PatternContent<T>>& nodes,
                const std::vector<pir::Value>& outputs,
-               const policy::PolicyManager<T> policy_manager,
-               const policy::PolicyManager<T> topo_manager);
+               const PolicyManager<T> policy_manager,
+               const PolicyManager<T> topo_manager);
 
   std::vector<PatternNodePtr<T>> ClusterOps(
       bool with_horizontal_fusion = false);
@@ -52,8 +52,8 @@ class PatternGraph {
  public:
   PatternNodePtrSet<T> all_pattern_nodes_;
   std::vector<pir::Value> outputs_;
-  policy::PolicyManager<T> policy_manager_;
-  policy::PolicyManager<T> topo_manager_;
+  PolicyManager<T> policy_manager_;
+  PolicyManager<T> topo_manager_;
 };
 
 // PatternGraphFusionOperation := (GraphMatcher, GraphOperation)
@@ -177,8 +177,8 @@ struct MergeReduceTreeAndTrivialOperation {
 struct LiftReduceToReduceTreeOperation {
   template <typename Phrase>
   void operator()(PatternGraph<Phrase>* graph, PatternNodePtr<Phrase> node) {
-    const auto& reduce_pattern = ToReducePattern(node->stmt_pattern_);
-    node->stmt_pattern_ = ReduceTreePattern({reduce_pattern}, reduce_pattern);
+    const auto& reduce_pattern = ToReducePattern<Phrase>(node->stmt_pattern_);
+    node->stmt_pattern_ = ReduceTreePattern<Phrase>({reduce_pattern}, reduce_pattern);
     VLOG(4) << "LiftReduceToReduceTreeOperation: \nnode " << node->DebugStr();
   }
 };

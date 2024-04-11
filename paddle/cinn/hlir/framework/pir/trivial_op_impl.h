@@ -16,7 +16,7 @@
 #include <unordered_map>
 #include <variant>
 
-#include "paddle/cinn/frontend/group_cluster/group_cluster.h"
+#include "paddle/cinn/operator_fusion/pattern_graph.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/compile_error.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_util.h"
@@ -37,19 +37,6 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 namespace cinn {
-
-namespace frontend::group_cluster {
-
-struct BackendStage {};
-
-template <>
-struct PatternContent<BackendStage> {
-  pir::Operation* op;
-  ir::Expr body;
-};
-
-}  // namespace frontend::group_cluster
-
 namespace hlir {
 namespace framework {
 namespace pir {
@@ -140,10 +127,34 @@ bool CheckAllLoopRangeEq(ReduceOp reduce_upper, TrivialOp trivial_down);
 
 FusibleOp CreateFusibleOp(ir::Expr compute_body, OpPatternKind op_pattern);
 
+template <class DownStreamOp>
+DownStreamOp TrivalxOther_Fusion(TrivialOp upstream,
+                                 DownStreamOp downstream) {
+  VLOG(4) << "Trivial x OtherFusion begin.";
+
+  const auto& replaced_tensor = GetOutputTensor(upstream);
+  VLOG(4) << "upstream is " << upstream.GetFuncBody();
+  VLOG(4) << "downstream is " << downstream.GetFuncBody();
+
+  ir::Expr modified_body = ir::ir_utils::IRCopy(downstream.GetFuncBody());
+  SequenceMutator(
+      ComposeUtils::GetEachTensorLoadExpr(modified_body, replaced_tensor),
+      &modified_body,
+      [&](const ir::Expr& downstream_load_expr, ir::Expr* downstream_body) {
+        ComposeUtils::ReplaceDownstreamLoadExprWithUpstreamComputeBody(
+            upstream, downstream_load_expr, downstream_body);
+      });
+
+  VLOG(4) << "TTFusion end:\n" << modified_body;
+  return DownStreamOp(modified_body);
+}
+
+std::pair<TrivialOp, ReduceOp> SplitReduceOp(const ReduceOp& reduce_op);
+
 struct FusionGraph {
+  template <typename T>
   explicit FusionGraph(
-      const cinn::frontend::group_cluster::PatternNodePtr<
-          frontend::FrontendStage>& pattern_node,
+      const cinn::fusion::PatternNodePtr<T>& pattern_node,
       const std::unordered_map<::pir::Operation*, ir::Expr>& op_expr_map);
   ~FusionGraph();
 
@@ -161,28 +172,6 @@ struct FusionGraph {
 
  private:
   FusibleOp TrivialFusion(FusionNode* upstream, FusionNode* downstream);
-
-  template <class DownStreamOp>
-  DownStreamOp TrivalxOther_Fusion(TrivialOp upstream,
-                                   DownStreamOp downstream) {
-    VLOG(4) << "Trivial x OtherFusion begin.";
-
-    const auto& replaced_tensor = GetOutputTensor(upstream);
-    VLOG(4) << "upstream is " << upstream.GetFuncBody();
-    VLOG(4) << "downstream is " << downstream.GetFuncBody();
-
-    ir::Expr modified_body = ir::ir_utils::IRCopy(downstream.GetFuncBody());
-    SequenceMutator(
-        ComposeUtils::GetEachTensorLoadExpr(modified_body, replaced_tensor),
-        &modified_body,
-        [&](const ir::Expr& downstream_load_expr, ir::Expr* downstream_body) {
-          ComposeUtils::ReplaceDownstreamLoadExprWithUpstreamComputeBody(
-              upstream, downstream_load_expr, downstream_body);
-        });
-
-    VLOG(4) << "TTFusion end:\n" << modified_body;
-    return DownStreamOp(modified_body);
-  }
 
   std::vector<FusibleOp> ReduceTransform(FusionNode* downstream);
   std::vector<FusibleOp> ReduceTransformRecursive(FusibleOp root_op,

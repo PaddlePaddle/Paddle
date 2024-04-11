@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/cinn/frontend/group_cluster/cluster_policy/policy_manager.h"
+#include "paddle/cinn/operator_fusion/policy/policy_manager.h"
 
-namespace cinn::frontend::group_cluster::policy {
+namespace cinn::fusion{
 
 template <typename T>
 class GeneralTopoPolicy final : virtual public Policy<T> {
