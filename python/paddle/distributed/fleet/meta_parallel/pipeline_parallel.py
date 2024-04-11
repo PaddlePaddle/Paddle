@@ -695,11 +695,9 @@ class PipelineParallel(MetaParallelBase):
         data = self._prepare_training(data, optimizer, lr_scheduler)
 
         # check loss_fn_idx is valid and loss_fn exists
-        assert loss_fn_idx in range(
-            len(self._layers._loss_fn)
-        ), "loss_fn_idx should be in range of loss_fn"
         assert (
-            self._layers._loss_fn[loss_fn_idx] is not None
+            loss_fn_idx in range(len(self._layers._loss_fn))
+            and self._layers._loss_fn[loss_fn_idx] is not None
         ), f"loss function {loss_fn_idx} should exist to compute loss"
         self.loss_fn_idx = loss_fn_idx
 
@@ -726,11 +724,9 @@ class PipelineParallel(MetaParallelBase):
         self.total_loss = None
 
         # check loss_fn_idx is valid and loss_fn exists
-        assert loss_fn_idx in range(
-            len(self._layers._loss_fn)
-        ), "loss_fn_idx should be in range of loss_fn"
         assert (
-            self._layers._loss_fn[loss_fn_idx] is not None
+            loss_fn_idx in range(len(self._layers._loss_fn))
+            and self._layers._loss_fn[loss_fn_idx] is not None
         ), f"loss function {loss_fn_idx} should exist to compute loss"
         self.loss_fn_idx = loss_fn_idx
 
@@ -1762,11 +1758,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
         data = self._prepare_training(data, optimizer, lr_scheduler)
 
         # check loss_fn_idx is valid and loss_fn exists
-        assert loss_fn_idx in range(
-            len(self._layers._loss_fn)
-        ), "loss_fn_idx should be in range of loss_fn"
         assert (
-            self._layers._loss_fn[loss_fn_idx] is not None
+            loss_fn_idx in range(len(self._layers._loss_fn))
+            and self._layers._loss_fn[loss_fn_idx] is not None
         ), f"loss function {loss_fn_idx} should exist to compute loss"
         self.loss_fn_idx = loss_fn_idx
 
@@ -1787,11 +1781,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self._compute_loss = compute_loss
 
         # check loss_fn_idx is valid and loss_fn exists
-        assert loss_fn_idx in range(
-            len(self._layers._loss_fn)
-        ), "loss_fn_idx should be in range of loss_fn"
         assert (
-            self._layers._loss_fn[loss_fn_idx] is not None
+            loss_fn_idx in range(len(self._layers._loss_fn))
+            and self._layers._loss_fn[loss_fn_idx] is not None
         ), f"loss function {loss_fn_idx} should exist to compute loss"
         self.loss_fn_idx = loss_fn_idx
 
