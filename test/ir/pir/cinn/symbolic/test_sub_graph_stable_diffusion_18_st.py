@@ -15,9 +15,12 @@
 # repo: diffusers_sub_grpah
 # model: stable_diffusion
 # api:paddle.nn.functional.conv.conv2d||method:transpose||method:flatten||api:paddle.nn.functional.norm.layer_norm||api:paddle.nn.functional.common.linear||api:paddle.nn.functional.common.linear||api:paddle.nn.functional.common.linear||method:reshape||method:transpose||method:reshape||method:transpose||method:reshape||method:transpose||api:paddle.tensor.linalg.matmul||method:__mul__||api:paddle.nn.functional.activation.softmax||api:paddle.tensor.linalg.matmul||method:transpose||method:reshape||api:paddle.nn.functional.common.linear||api:paddle.nn.functional.common.dropout||method:__truediv__||method:__add__||api:paddle.nn.functional.norm.layer_norm||api:paddle.nn.functional.common.linear||api:paddle.nn.functional.common.linear||api:paddle.nn.functional.common.linear||method:reshape||method:transpose||method:reshape||method:transpose||method:reshape||method:transpose||api:paddle.tensor.linalg.matmul||method:__mul__||api:paddle.nn.functional.activation.softmax||api:paddle.tensor.linalg.matmul||method:transpose||method:reshape||api:paddle.nn.functional.common.linear||api:paddle.nn.functional.common.dropout||method:__truediv__||method:__add__||api:paddle.nn.functional.norm.layer_norm||api:paddle.nn.functional.common.linear||method:chunk||api:paddle.nn.functional.activation.gelu||method:__mul__||api:paddle.nn.functional.common.dropout||api:paddle.nn.functional.common.linear||method:__add__||method:reshape||method:transpose||api:paddle.nn.functional.conv.conv2d||method:__add__
+import os
 import unittest
 
 import numpy as np
+
+os.environ["FLAGS_disable_dyshape_in_train"] = "True"
 
 import paddle
 
@@ -287,12 +290,14 @@ class TestLayer(unittest.TestCase):
     def test_ast_prim_cinn(self):
         st_out = self.train(self.net, to_static=True)
         cinn_out = self.train(
-            self.net, to_static=True, with_prim=False, with_cinn=False
+            self.net, to_static=True, with_prim=True, with_cinn=False
         )
         for st, cinn in zip(
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
         ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
+            np.testing.assert_allclose(
+                st.numpy(), cinn.numpy(), atol=1e-6, rtol=1e-2
+            )
 
 
 if __name__ == '__main__':
