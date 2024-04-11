@@ -916,6 +916,8 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::INT16,
                      phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16})},
+      {"spatial_transformer_resblock_xpu",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"split",
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,

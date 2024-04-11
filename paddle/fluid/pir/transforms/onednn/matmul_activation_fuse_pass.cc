@@ -92,16 +92,6 @@ class MatmulActivationFusePattern : public paddle::drr::DrrPatternBase {
 
     pat.Tensor("act_out") = act(pat.Tensor("Out"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      std::set<bool> bool_sets = {true, false};
-      auto result_x = match_ctx.Attr<bool>("transpose_x");
-      auto result_y = match_ctx.Attr<bool>("transpose_y");
-      if (bool_sets.count(result_x) == 0 || bool_sets.count(result_y) == 0) {
-        return false;
-      }
-      return true;
-    });
-
     if (act_type_ == paddle::dialect::GeluOp::name()) {
       pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
         auto result_gelu = match_ctx.Attr<bool>("approximate");
@@ -188,15 +178,6 @@ class MatmulGeluTanhFusePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("act_out") = act(pat.Tensor("Out"));
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      std::set<bool> bool_sets = {true, false};
-      auto result_x = match_ctx.Attr<bool>("transpose_x");
-      auto result_y = match_ctx.Attr<bool>("transpose_y");
-      if (bool_sets.count(result_x) == 0 || bool_sets.count(result_y) == 0) {
-        return false;
-      }
-      return true;
-    });
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       auto result_gelu = match_ctx.Attr<bool>("approximate");
       if (!result_gelu) return false;
       return true;
@@ -271,16 +252,6 @@ class MatmulClipFusePattern : public paddle::drr::DrrPatternBase {
 
     pat.Tensor("act_out") =
         act(pat.Tensor("Out"), pat.Tensor("min"), pat.Tensor("max"));
-
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      std::set<bool> bool_sets = {true, false};
-      auto result_x = match_ctx.Attr<bool>("transpose_x");
-      auto result_y = match_ctx.Attr<bool>("transpose_y");
-      if (bool_sets.count(result_x) == 0 || bool_sets.count(result_y) == 0) {
-        return false;
-      }
-      return true;
-    });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
@@ -375,16 +346,11 @@ class FusedMatmulActivationFusePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("act_out") = act(pat.Tensor("Out"));
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      std::set<bool> bool_sets = {true, false};
-      auto result_x = match_ctx.Attr<bool>("transpose_x");
-      auto result_y = match_ctx.Attr<bool>("transpose_y");
       auto act_type = match_ctx.Attr<std::string>("fuse_activation");
-      if (bool_sets.count(result_x) == 0 || bool_sets.count(result_y) == 0 ||
-          act_type != "") {
-        return false;
-      }
+      if (act_type != "") return false;
       return true;
     });
+
     if (act_type_ == paddle::dialect::GeluOp::name()) {
       pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
         auto result_gelu = match_ctx.Attr<bool>("approximate");
@@ -490,16 +456,11 @@ class FusedMatmulGeluTanhFusePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("act_out") = act(pat.Tensor("Out"));
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      std::set<bool> bool_sets = {true, false};
-      auto result_x = match_ctx.Attr<bool>("transpose_x");
-      auto result_y = match_ctx.Attr<bool>("transpose_y");
       auto act_type = match_ctx.Attr<std::string>("fuse_activation");
-      if (bool_sets.count(result_x) == 0 || bool_sets.count(result_y) == 0 ||
-          act_type != "") {
-        return false;
-      }
+      if (act_type != "") return false;
       return true;
     });
+
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       auto result_gelu = match_ctx.Attr<bool>("approximate");
       if (!result_gelu) return false;
@@ -597,14 +558,8 @@ class FusedMatmulClipFusePattern : public paddle::drr::DrrPatternBase {
         act(pat.Tensor("Out"), pat.Tensor("min"), pat.Tensor("max"));
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      std::set<bool> bool_sets = {true, false};
-      auto result_x = match_ctx.Attr<bool>("transpose_x");
-      auto result_y = match_ctx.Attr<bool>("transpose_y");
       auto act_type = match_ctx.Attr<std::string>("fuse_activation");
-      if (bool_sets.count(result_x) == 0 || bool_sets.count(result_y) == 0 ||
-          act_type != "") {
-        return false;
-      }
+      if (act_type != "") return false;
       return true;
     });
 
@@ -645,7 +600,6 @@ class MatmulActivationFusePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    // std::vector<bool> bool_set = {false, true};
     int benefit_idx = 1;
     for (auto act_op : act_ops) {
       ps.Add(paddle::drr::Create<MatmulActivationFusePattern>(

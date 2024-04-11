@@ -1279,6 +1279,12 @@
       data_type : float
       support_tensor : true
 
+- op : full_with_tensor
+  int_array:
+    shape :
+      data_type : int64_t
+      support_tensor : true
+
 - op : fused_adam_(fused_adam)
   inputs :
     {params : Params, grads : Grads, learning_rate : LearningRate, moments1 : Moments1,
