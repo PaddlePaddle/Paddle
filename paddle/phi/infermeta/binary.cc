@@ -2787,8 +2787,8 @@ void PullGpupsSparseInferMeta(const MetaTensor& w,
   }
 }
 
-void PullSparseV2InferMeta(const std::vector<MetaTensor>& ids,
-                           const std::vector<MetaTensor>& w,
+void PullSparseV2InferMeta(const std::vector<const MetaTensor*>& ids,
+                           const std::vector<const MetaTensor*>& w,
                            int embedding_dim,
                            int table_id,
                            const std::string& accessor_class,
