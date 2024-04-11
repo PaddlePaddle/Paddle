@@ -2195,15 +2195,6 @@ std::vector<pir::Value> BuildInputs(
             "[%d]'s input of [%s] op MUST in map pair", i, op_item->name()));
 
     auto new_in = map_value_pair->at(cur_in);
-    // if (op_info_parser->IsTensorAttribute(i) &&
-    //     new_in.defining_op()->isa<PhiKernelOp>() &&
-    //     new_in.defining_op()->dyn_cast<PhiKernelOp>().op_name() ==
-    //         "pd_op.shadow_feed") {
-    //   auto op_iter =
-    //       std::find(block->begin(), block->end(), *new_in.defining_op());
-    //   VLOG(1) << "op_iter == block->end(): " << (op_iter == block->end());
-    //   new_in = new_in.defining_op()->operand_source(0);
-    // }
     auto new_in_type = new_in.type();
 
     auto& kernel = phi::KernelFactory::Instance().SelectKernelWithGPUDNN(

@@ -394,8 +394,11 @@ std::unique_ptr<::pir::Program> ApplyShadowFeedPass(
   pm.AddPass(::pir::CreateRemoveShadowFeedPass(block, place, scope));
   pm.Run(program.get());
 
-  std::cout << "IR After RemoveShadowFeedPass -------------------" << std::endl;
-  std::cout << *program << std::endl;
+  if (FLAGS_print_ir) {
+    std::cout << "IR After RemoveShadowFeedPass -------------------"
+              << std::endl;
+    std::cout << *program << std::endl;
+  }
 
   return program;
 }
