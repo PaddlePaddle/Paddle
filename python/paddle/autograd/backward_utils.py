@@ -299,6 +299,9 @@ def get_real_op_inputs(op):
         return op.operands_source() + get_used_external_value(
             op.as_while_op().body()
         )
+    elif op.name() == "pd_op.pylayer":
+        # exclude values[0] which is combined value
+        return get_used_external_value(op)[1:]
     else:
         return op.operands_source()
 
@@ -459,6 +462,7 @@ def all_output_grad_none(list_of_list):
                 return False
     return True
 
+
 def op_has_vjp(op):
     return core.has_vjp(op) or op.name() == "pd_op.pylayer"
 
@@ -526,6 +530,7 @@ def get_grad_semantic_info(op):
         "builtin.combine",
         "pd_op.if",
         "pd_op.while",
+        "pd_op.pylayer",
         "cf.tuple_push",
     ]:
         grad_semantic_info = [True for _ in range(len(get_real_op_inputs(op)))]

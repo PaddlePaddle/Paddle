@@ -790,6 +790,29 @@ def append_backward_ops(
                         )
                         # update input_grad map
                         update_input_grad_map(op, input_grads, origin_inputs)
+                    elif op.name() == "pd_op.pylayer":
+                        # create grad_op
+
+                        before_ops_num = len(bwd_block.ops)
+                        with dynamic_shape_prim_vjp_guard(op, inputs):
+                            input_grads = paddle.framework.core.call_vjp(
+                                op,
+                                inputs,
+                                outputs,
+                                output_grads,
+                                input_grad_stopgradients,
+                            )
+                        after_ops_num = len(bwd_block.ops)
+
+                        # update grad_op structure
+                        bwd_ops = [
+                            bwd_block.ops[i]
+                            for i in range(before_ops_num, after_ops_num)
+                        ]
+                        # update input_grad map
+                        update_input_grad_map(
+                            op, input_grads, get_real_op_inputs(op)
+                        )
                     else:
                         # create grad_op
 
