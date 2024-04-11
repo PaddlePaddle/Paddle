@@ -611,6 +611,16 @@ class FakeChannelWiseQuantizeDequantizeAbsMaxOpMaker
                                 "the received is %d",
                                 bit_length));
         });
+    AddAttr<int>("round_type", "(int, default 0)")
+        .SetDefault(0)
+        .AddCustomChecker([](const int &round_type) {
+          PADDLE_ENFORCE_EQ(round_type == 0 || round_type == 1,
+                            true,
+                            platform::errors::InvalidArgument(
+                                "'round_type' should be between 0 or 1, but "
+                                "the received is %d",
+                                round_type));
+        });
     AddComment(R"DOC(
 The scale of FakeChannelWiseQuantize operator is a vector.
 In detail, each channel of the input X has a scale value.
@@ -872,6 +882,7 @@ class StraightThroughEstimatorGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     auto out_grad_name = framework::GradVarName("Out");
     auto x_grad_name = framework::GradVarName("X");
+
     OP_INOUT_CHECK(ctx->HasInput(out_grad_name),
                    "Input",
                    out_grad_name,

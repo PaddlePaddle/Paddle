@@ -14,6 +14,12 @@
 #   extra :
 #     attrs : [bool is_test = false]
 
+# - op : straight_through_estimator_grad
+#   inputs :
+#     {out : Out}
+#   outputs :
+#     {x : X}
+
 - op : abs
   backward : abs_grad
   inputs :
@@ -1087,6 +1093,10 @@
     attrs : [int round_type = 1]
 
 - op : fake_channel_wise_quantize_dequantize_abs_max
+  inputs :
+    {x : X, bit_length : bit_length, quant_axis : quant_axis}
+  outputs :
+    {out : Out, out_scale : OutScale}
   extra :
     attrs : [int round_type = 1]
 
@@ -1099,10 +1109,15 @@
     attrs : [int round_type = 1]
 
 - op : fake_quantize_dequantize_abs_max
+  inputs :
+    {x : X, bit_length : bit_length, round_type : round_type}
+  outputs :
+    {out : Out, out_scale : OutScale}
   extra :
     attrs : [int round_type = 1]
 
 - op : fake_quantize_dequantize_moving_average_abs_max
+  backward: straight_through_estimator_grad
   inputs :
     {x : X, in_scale : InScale, in_accum : InAccum, in_state : InState, moving_rate : moving_rate, bit_length : bit_length, round_type : round_type, is_test : is_test}
   outputs :

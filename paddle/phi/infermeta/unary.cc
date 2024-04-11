@@ -5744,8 +5744,8 @@ void ArrayPopInferMeta(const MetaTensor& array,
 void FakeQuantizeInferMeta(const MetaTensor& x,
                            MetaTensor* out,
                            MetaTensor* out_scale) {
-  // UnchangedInferMeta(x, out);
-  out->set_dims(x.dims());
+  UnchangedInferMeta(x, out);
+  // out->set_dims(x.dims());
   out_scale->set_dims({1});
 }
 
@@ -5765,9 +5765,12 @@ void FakeQuantizeRangeInferMeta(const MetaTensor& x,
                                 MetaTensor* out_scales) {
   UnchangedInferMeta(x, out);
   if (out_scales != nullptr) {
-    out_scale->set_dims({window_size});
+    out_scales->set_dims({window_size});
   }
   out_scale->set_dims({1});
+  // out->set_dims(x.dims());
+  // out->set_dtype(x.dtype());
+  // out->set_layout(x.layout());
 }
 
 void FakeQuantizeMovingAverageInferMeta(const MetaTensor& x,

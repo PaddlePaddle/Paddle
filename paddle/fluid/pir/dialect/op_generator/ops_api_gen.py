@@ -193,6 +193,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'nop',
     'nop_',
     'fake_channel_wise_quantize_abs_max',
+    'fake_channel_wise_quantize_dequantize_abs_max',
     'fake_quantize_abs_max',
     'fake_quantize_dequantize_abs_max',
     'fake_quantize_dequantize_moving_average_abs_max',
