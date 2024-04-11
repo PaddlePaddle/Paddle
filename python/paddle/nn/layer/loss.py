@@ -2220,23 +2220,31 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
     different number of targets each. Additionally, clusters containing less frequent labels assign lower dimensional
     embeddings to those labels, which speeds up the computation. For each minibatch, only clusters for which at least
     one target is present are evaluated.
+
     The idea is that the clusters which are accessed frequently (like the first one, containing most frequent labels),
     should also be cheap to compute -- that is, contain a small number of assigned labels. We highly recommend taking
     a look at the original paper for more details.
+
     For :attr:`cutoffs` should be an ordered Sequence of integers sorted in the increasing order. It controls number of
     clusters and the partitioning of targets into clusters. For example setting ``cutoffs = [10, 100, 1000]`` means that
     first `10` targets will be assigned to the 'head' of the adaptive softmax, targets `11, 12, ..., 100` will be assigned
     to the first cluster, and targets `101, 102, ..., 1000` will be assigned to the second cluster, while targets
     `1001, 1002, ..., n_classes - 1` will be assigned to the last, third cluster.
+
     For :attr:`div_value` is used to compute the size of each additional cluster, which is given as
-    :math:`\left\lfloor\frac{\texttt{in\_features}}{\texttt{div\_value}^{idx}}\right\rfloor`,
+
+    .. math::
+        `\left\lfloor\frac{\texttt{in\_features}}{\texttt{div\_value}^{idx}}\right\rfloor`,
+
     where :math:`idx` is the cluster index (with clusters for less frequent words having larger indices, and indices starting from :math:`1`).
     For :attr:`head_bias` if set to True, adds a bias term to the 'head' of the adaptive softmax. See paper for details.
     Set to False in the official implementation.
+
     Note:
         Labels passed as inputs to this module should be sorted according to their frequency. This means that the most
         frequent label should be represented by the index `0`, and the least frequent label should be represented by
         the index `n_classes - 1`. To compute log-probabilities for all classes, the ``log_prob`` method can be used.
+
     Args:
         in_features (int): Number of features in the input tensor
         n_classes (int): Number of classes in the dataset.
@@ -2244,15 +2252,19 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
         div_value (float, optional): value used as an exponent to compute sizes of the clusters. Default: 4.0.
         head_bias (bool, optional): If ``True``, adds a bias term to the 'head' of the adaptive softmax. Default: ``False``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
     Shape:
         - input (Tensor): The input tensor. The shapes is [N, in_features]. N is batch size.
         - label (Tensor): target. The shapes is `[N]`
         - output1 (Tensor): The shape is `[N]`
         - output2 (Scalar):
+
     Returns:
         A callable object of AdaptiveLogSoftmaxWithLoss.
+
     Examples::
         .. code-block:: python
+
             >>> import paddle
             >>> import paddle.nn as nn
             >>> paddle.seed(2023)
