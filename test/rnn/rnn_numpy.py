@@ -197,7 +197,7 @@ class LSTMCell(LayerMixin):
         self.proj_size = proj_size
         if proj_size:
             self.weight_ho = np.random.uniform(
-                -std, std, (proj_size, hidden_size)
+                -std, std, (hidden_size, proj_size)
             ).astype(dtype)
             self.parameters['weight_ho'] = self.weight_ho
 
@@ -240,7 +240,7 @@ class LSTMCell(LayerMixin):
         h = o * np.tanh(c)
 
         if self.proj_size:
-            h = np.matmul(h, self.weight_ho.T)
+            h = np.matmul(h, self.weight_ho)
 
         return h, (h, c)
 

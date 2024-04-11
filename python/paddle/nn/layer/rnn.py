@@ -1042,9 +1042,9 @@ class LSTMCell(RNNCellBase):
             self.bias_hh.stop_gradient = True
 
         self.proj_size = proj_size
-        if proj_size:
+        if proj_size > 0:
             self.weight_ho = self.create_parameter(
-                (proj_size, hidden_size),
+                (hidden_size, proj_size),
                 weight_hh_attr,
                 default_initializer=I.Uniform(-std, std),
             )
@@ -1072,8 +1072,8 @@ class LSTMCell(RNNCellBase):
         o = self._gate_activation(chunked_gates[3])
         c = f * pre_cell + i * self._activation(chunked_gates[2])
         h = o * self._activation(c)
-        if self.proj_size:
-            h = paddle.matmul(h, self.weight_ho, transpose_y=True)
+        if self.proj_size > 0:
+            h = paddle.matmul(h, self.weight_ho)
 
         return h, (h, c)
 
