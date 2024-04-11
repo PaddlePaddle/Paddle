@@ -38,10 +38,8 @@ class ReshardFunction:
 
 def choose_reshard_func(src_dist_attr, dst_dist_attr):
     global _g_reshard_func_list
-    print(f'debug _g_reshard_func_list: {_g_reshard_func_list}')
     for reshard_func in _g_reshard_func_list:
         if reshard_func.is_suitable(src_dist_attr, dst_dist_attr):
-            print(f'debug find reshard_func: {reshard_func}')
             return reshard_func
     return None
 

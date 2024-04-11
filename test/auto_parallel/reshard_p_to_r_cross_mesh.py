@@ -85,9 +85,7 @@ class TestReshardPToRCrossMesh:
                 reshard_tensor = paddle._pir_ops.reshard(
                     shard_tensor, self._out_mesh, [-1, -1]
                 )
-            print(f'before reshard pass dist_program: {main_program}')
             dist_program = apply_reshard_pass_v2(main_program)
-            print(f'after reshard pass dist_program: {dist_program}')
 
 
 if __name__ == '__main__':
