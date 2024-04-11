@@ -392,7 +392,7 @@ def reshard(dist_tensor, mesh, placements):
 
         return paddle.base.core.reshard(dist_tensor, dist_attr)
     elif in_pir_mode():
-        return paddle._pir_ops.reshard(dist_tensor, mesh, placements)
+        return paddle._C_ops.reshard(dist_tensor, mesh, placements)
     else:
         assert isinstance(
             dist_tensor, Variable
