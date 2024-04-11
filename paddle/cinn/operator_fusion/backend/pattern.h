@@ -13,19 +13,21 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/cinn/hlir/framework/pir/trivial_op_impl.h"
+#include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/operator_fusion/pattern.h"
 #include "paddle/cinn/operator_fusion/pattern_api.h"
 #include "paddle/cinn/operator_fusion/utils.h"
-#include "paddle/cinn/ir/ir_base.h"
-#include "paddle/cinn/hlir/framework/pir/trivial_op_impl.h"
 
-namespace cinn::fusion{
+namespace cinn::fusion {
 
 struct BackendStage {};
 
 template <>
 struct PatternContent<BackendStage> {
-  explicit PatternContent<BackendStage>(pir::Operation* op, std::optional<ir::Expr> expr) : op(op), expr(expr){ }
+  explicit PatternContent<BackendStage>(pir::Operation* op,
+                                        std::optional<ir::Expr> expr)
+      : op(op), expr(expr) {}
   pir::Operation* op;
   std::optional<ir::Expr> expr;
 };
@@ -33,10 +35,11 @@ struct PatternContent<BackendStage> {
 using BackendContent = PatternContent<BackendStage>;
 using TrivialOp = cinn::hlir::framework::pir::trivial_fusion_detail::TrivialOp;
 using ReduceOp = cinn::hlir::framework::pir::trivial_fusion_detail::ReduceOp;
-using FusionOp = std::variant<TrivialOp, ReduceOp>;
+using FusionOp = std::variant<ReduceOp, TrivialOp>;
 template <>
 struct TrivialPattern<BackendStage> {
-  explicit TrivialPattern(const std::vector<pir::Operation*>& ops, const TrivialOp& op)
+  explicit TrivialPattern(const std::vector<pir::Operation*>& ops,
+                          const TrivialOp& op)
       : ops_(ops), trivial_op(op) {}
   std::vector<pir::Operation*> ops_;
   TrivialOp trivial_op;
@@ -46,7 +49,8 @@ struct TrivialPattern<BackendStage> {
 
 template <>
 struct ReducePattern<BackendStage> {
-  explicit ReducePattern(const std::vector<pir::Operation*>& ops, const ReduceOp& op)
+  explicit ReducePattern(const std::vector<pir::Operation*>& ops,
+                         const ReduceOp& op)
       : ops_(ops), reduce_op(op) {}
   std::vector<pir::Operation*> ops_;
   ReduceOp reduce_op;
@@ -66,7 +70,8 @@ struct UnsupportPattern<BackendStage> {
 
 template <>
 struct HorizontalFusionPattern<BackendStage> {
-  explicit HorizontalFusionPattern(const std::vector<StmtPattern<BackendStage>>& patterns)
+  explicit HorizontalFusionPattern(
+      const std::vector<StmtPattern<BackendStage>>& patterns)
       : patterns_(patterns) {}
   std::vector<StmtPattern<BackendStage>> patterns_;
   std::vector<pir::Operation*> ops() const {
@@ -80,4 +85,4 @@ struct HorizontalFusionPattern<BackendStage> {
   static std::string name() { return "HorizontalFusionPattern"; }
 };
 
-}  // namespace cinn::frontend::group_cluster
+}  // namespace cinn::fusion

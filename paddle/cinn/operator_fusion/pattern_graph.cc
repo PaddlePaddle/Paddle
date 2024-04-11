@@ -13,16 +13,15 @@
 // limitations under the License.
 
 #include "paddle/cinn/operator_fusion/pattern_graph.h"
-#include "paddle/cinn/operator_fusion/frontend/pattern.h"
-#include "paddle/cinn/operator_fusion/frontend/pattern_api.h"
 #include "paddle/cinn/operator_fusion/backend/pattern.h"
 #include "paddle/cinn/operator_fusion/backend/pattern_api.h"
+#include "paddle/cinn/operator_fusion/frontend/pattern.h"
+#include "paddle/cinn/operator_fusion/frontend/pattern_api.h"
 
 namespace cinn::fusion {
 
 template <typename T>
-std::vector<PatternNodePtr<T>> PatternGraph<T>::ClusterOps(
-    bool with_horizontal_fusion) {
+std::vector<PatternNodePtr<T>> PatternGraph<T>::ClusterOps() {
   VLOG(4) << "[Group Cluster] Initial Condition: " << GraphInfo();
 
   VLOG(4) << "[Group Cluster] Start SinkTrivialPattern";
@@ -45,11 +44,9 @@ std::vector<PatternNodePtr<T>> PatternGraph<T>::ClusterOps(
   VLOG(4) << "[Group Cluster] After ReduceTree_Trivial_Fusion: " << GraphInfo();
 
   // Horizontal fusion.
-  if (with_horizontal_fusion) {
-    VLOG(4) << "[Group Cluster] Start HorizontalFusion";
-    HorizontalFusion();
-    VLOG(4) << "[Group Cluster] After HorizontalFusion: " << GraphInfo();
-  }
+  VLOG(4) << "[Group Cluster] Start HorizontalFusion";
+  HorizontalFusion();
+  VLOG(4) << "[Group Cluster] After HorizontalFusion: " << GraphInfo();
 
   return SortByTopoOrder();
 }
@@ -258,4 +255,4 @@ PatternNodePtr<T> PatternGraph<T>::MergeNode(
 template class PatternGraph<FrontendStage>;
 template class PatternGraph<BackendStage>;
 
-}  // namespace cinn::frontend::group_cluster
+}  // namespace cinn::fusion

@@ -118,9 +118,9 @@ bool RelativeJudgePolicy<T>::ReduceTreeGrownCanMerge(
   VLOG(4) << "downstream->stmt_pattern_"
           << OpsDebugStr(GetOpsInPattern<T>(downstream_tree));
   const auto& maybe_downstream_op = GetDownstreamFromCandidate(
-      upstream_tree.GetRootPattern(), downstream_tree.reduce_patterns());
+      upstream_tree.GetRootPattern(), downstream_tree.FlattenReducePattern());
   int idx = 0;
-  for (const auto& r_pattern : downstream_tree.reduce_patterns()) {
+  for (const auto& r_pattern : downstream_tree.childs()) {
     idx += 1;
     VLOG(4) << "downstream_tree.reduce_patterns_"
             << "[" << idx << "]" << OpsDebugStr(GetOpsInPattern<T>(r_pattern));

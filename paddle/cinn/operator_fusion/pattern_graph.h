@@ -13,10 +13,10 @@
 // limitations under the License.
 #pragma once
 
+#include "paddle/cinn/operator_fusion/pattern_node.h"
 #include "paddle/cinn/operator_fusion/policy/policy_manager.h"
 #include "paddle/cinn/operator_fusion/policy/relative_judge_policy.h"
 #include "paddle/cinn/operator_fusion/utils.h"
-#include "paddle/cinn/operator_fusion/pattern_node.h"
 
 namespace cinn::fusion {
 
@@ -31,8 +31,7 @@ class PatternGraph {
                const PolicyManager<T> policy_manager,
                const PolicyManager<T> topo_manager);
 
-  std::vector<PatternNodePtr<T>> ClusterOps(
-      bool with_horizontal_fusion = false);
+  std::vector<PatternNodePtr<T>> ClusterOps();
 
  public:
   void SinkTrivialPattern();
@@ -178,7 +177,7 @@ struct LiftReduceToReduceTreeOperation {
   template <typename Phrase>
   void operator()(PatternGraph<Phrase>* graph, PatternNodePtr<Phrase> node) {
     const auto& reduce_pattern = ToReducePattern<Phrase>(node->stmt_pattern_);
-    node->stmt_pattern_ = ReduceTreePattern<Phrase>({reduce_pattern}, reduce_pattern);
+    node->stmt_pattern_ = ReduceTreePattern<Phrase>({}, reduce_pattern);
     VLOG(4) << "LiftReduceToReduceTreeOperation: \nnode " << node->DebugStr();
   }
 };
@@ -365,4 +364,4 @@ void GraphTransformer(PatternGraph<Phrase>* graph) {
   alog();
 }
 
-}  // namespace cinn::frontend::group_cluster
+}  // namespace cinn::fusion

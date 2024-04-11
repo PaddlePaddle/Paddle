@@ -14,9 +14,9 @@
 
 #pragma once
 #include <functional>
-#include "paddle/cinn/operator_fusion/utils.h"
 #include "paddle/cinn/operator_fusion/policy/policy_manager.h"
 #include "paddle/cinn/operator_fusion/policy/shardable_axes_base.h"
+#include "paddle/cinn/operator_fusion/utils.h"
 
 namespace cinn::fusion {
 
@@ -301,4 +301,4 @@ class RelativeJudgePolicy final : public Policy<T> {
                        const std::vector<ValueDim>&);
 };
 
-}  // namespace cinn::frontend::group_cluster::policy
+}  // namespace cinn::fusion

@@ -14,36 +14,39 @@
 
 #pragma once
 
+#include "paddle/cinn/operator_fusion/backend/pattern.h"
 #include "paddle/cinn/operator_fusion/pattern.h"
 #include "paddle/cinn/operator_fusion/pattern_api.h"
-#include "paddle/cinn/operator_fusion/backend/pattern.h"
 
 namespace cinn::fusion {
 
 // extern template to don't allow compiler specialize the following code.
 
-template <> StmtPattern<BackendStage> ConvertToStmtPattern(const PatternContent<BackendStage>& content) ;
+template <>
+StmtPattern<BackendStage> ConvertToStmtPattern(
+    const PatternContent<BackendStage>& content);
 
 template <>
-StmtPattern<BackendStage> RT_x_RT(const ReduceTreePattern<BackendStage>& first,
-                       const ReduceTreePattern<BackendStage>& second) ;
+StmtPattern<BackendStage> RT_x_Trivial(
+    const ReduceTreePattern<BackendStage>& first,
+    const TrivialPattern<BackendStage>& second);
 
 template <>
-StmtPattern<BackendStage> RT_x_Trivial(const ReduceTreePattern<BackendStage>& first,
-                            const TrivialPattern<BackendStage>& second) ;
+StmtPattern<BackendStage> Trivial_x_Reduce(
+    const TrivialPattern<BackendStage>& first,
+    const ReducePattern<BackendStage>& second);
 
 template <>
-StmtPattern<BackendStage> Trivial_x_Reduce(const TrivialPattern<BackendStage>& first,
-                            const ReducePattern<BackendStage>& second) ;
+StmtPattern<BackendStage> Trivial_x_Trivial(
+    const TrivialPattern<BackendStage>& first,
+    const TrivialPattern<BackendStage>& second);
 
 template <>
-StmtPattern<BackendStage> Trivial_x_Trivial(const TrivialPattern<BackendStage>& first,
-                            const TrivialPattern<BackendStage>& second) ;
+StmtPattern<BackendStage> H_x_H(
+    const HorizontalFusionPattern<BackendStage>& first,
+    const HorizontalFusionPattern<BackendStage>& second);
 
-template <>
-StmtPattern<BackendStage> H_x_H(const HorizontalFusionPattern<BackendStage>& first,
-                     const HorizontalFusionPattern<BackendStage>& second) ;
+std::vector<ir::Expr> GetExprFromPattern(
+    const StmtPattern<BackendStage>& pattern);
 
-std::vector<ir::Expr> GetExprFromPattern (const StmtPattern<BackendStage>& pattern);
-
-}
+}  // namespace cinn::fusion

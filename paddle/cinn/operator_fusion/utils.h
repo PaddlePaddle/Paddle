@@ -16,15 +16,15 @@
 
 #include <algorithm>
 #include <atomic>
+#include <functional>
 #include <memory>
 #include <optional>
+#include <set>
 #include <typeinfo>
 #include <unordered_map>
 #include <unordered_set>
 #include <variant>
 #include <vector>
-#include <functional>
-#include <set>
 
 #include "glog/logging.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
@@ -79,8 +79,8 @@ static std::string OpsDebugStr(std::vector<pir::Operation*> ops) {
   return ss.str();
 }
 
-static std::optional<std::pair<pir::Value, pir::Value>> GetBroadcastOpInputOuputValue(
-    pir::Operation* op) {
+static std::optional<std::pair<pir::Value, pir::Value>>
+GetBroadcastOpInputOuputValue(pir::Operation* op) {
   auto* mut_op = const_cast<pir::Operation*>(op);
   if (op->isa<paddle::dialect::ExpandOp>()) {
     auto expand_op = mut_op->dyn_cast<paddle::dialect::ExpandOp>();
@@ -155,7 +155,6 @@ std::vector<T> UniqueVectorBySet(const std::vector<T>& v) {
   return std::vector<T>(unique.begin(), unique.end());
 }
 
-
 template <typename T>
 void ExtendVector(std::vector<T>* first, const std::vector<T>& second) {
   std::unordered_set<T> visited =
@@ -169,11 +168,11 @@ void ExtendVector(std::vector<T>* first, const std::vector<T>& second) {
 }
 
 template <typename T>
-std::vector<T> MergeVector(const std::vector<T>& first,
-                           const std::vector<T>& second) {
+std::vector<T> UniqueConcatVector(const std::vector<T>& first,
+                                  const std::vector<T>& second) {
   std::vector<T> result = std::vector<T>(first);
   ExtendVector(&result, second);
   return result;
 }
 
-}
+}  // namespace cinn::fusion

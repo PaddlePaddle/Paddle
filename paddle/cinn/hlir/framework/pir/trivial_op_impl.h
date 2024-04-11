@@ -16,7 +16,6 @@
 #include <unordered_map>
 #include <variant>
 
-#include "paddle/cinn/operator_fusion/pattern_graph.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/compile_error.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_util.h"
@@ -30,6 +29,7 @@
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/lang/placeholder.h"
+#include "paddle/cinn/operator_fusion/pattern_graph.h"
 #include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/common/ddim.h"
@@ -128,8 +128,7 @@ bool CheckAllLoopRangeEq(ReduceOp reduce_upper, TrivialOp trivial_down);
 FusibleOp CreateFusibleOp(ir::Expr compute_body, OpPatternKind op_pattern);
 
 template <class DownStreamOp>
-DownStreamOp TrivalxOther_Fusion(TrivialOp upstream,
-                                 DownStreamOp downstream) {
+DownStreamOp TrivalxOther_Fusion(TrivialOp upstream, DownStreamOp downstream) {
   VLOG(4) << "Trivial x OtherFusion begin.";
 
   const auto& replaced_tensor = GetOutputTensor(upstream);
@@ -150,6 +149,29 @@ DownStreamOp TrivalxOther_Fusion(TrivialOp upstream,
 }
 
 std::pair<TrivialOp, ReduceOp> SplitReduceOp(const ReduceOp& reduce_op);
+
+std::vector<FusibleOp> TransformReduceLoopRange(
+    const ReduceOp& upstream,
+    FusibleOp* downstream,
+    std::vector<size_t> fake_reduce_iter_idx);
+
+template <typename T>
+std::vector<T> FilterWithFakeReduceIter(
+    const std::vector<T>& input, std::vector<size_t> fake_reduce_iter_idx) {
+  std::vector<T> result;
+  for (size_t i = 0; i < input.size(); i++) {
+    if (std::find(fake_reduce_iter_idx.begin(),
+                  fake_reduce_iter_idx.end(),
+                  i) == fake_reduce_iter_idx.end()) {
+      result.emplace_back(input.at(i));
+    }
+  }
+  return result;
+}
+
+FusibleOp SinkTrivialLoopAlign(TrivialOp trivial_op,
+                               ReduceOp reduce_op,
+                               std::vector<size_t> fake_reduce_iter_idx);
 
 struct FusionGraph {
   template <typename T>
@@ -176,22 +198,6 @@ struct FusionGraph {
   std::vector<FusibleOp> ReduceTransform(FusionNode* downstream);
   std::vector<FusibleOp> ReduceTransformRecursive(FusibleOp root_op,
                                                   FusionNode* fusion_tree);
-  std::vector<FusibleOp> TransformReduceLoopRange(const ReduceOp& upstream,
-                                                  FusibleOp* downstream);
-  FusibleOp SinkTrivialLoopAlign(TrivialOp trivial_op, ReduceOp reduce_op);
-
-  template <typename T>
-  std::vector<T> FilterWithFakeReduceIter(const std::vector<T>& input) {
-    std::vector<T> result;
-    for (size_t i = 0; i < input.size(); i++) {
-      if (std::find(fake_reduce_iter_idx_.begin(),
-                    fake_reduce_iter_idx_.end(),
-                    i) == fake_reduce_iter_idx_.end()) {
-        result.emplace_back(input.at(i));
-      }
-    }
-    return result;
-  }
 
  private:
   std::unordered_set<FusionNode*> all_fusion_nodes_;

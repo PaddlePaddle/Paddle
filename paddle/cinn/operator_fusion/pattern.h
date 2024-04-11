@@ -18,8 +18,8 @@
 #include <variant>
 #include <vector>
 #include "glog/logging.h"
-#include "paddle/pir/include/core/operation.h"
 #include "paddle/cinn/operator_fusion/utils.h"
+#include "paddle/pir/include/core/operation.h"
 
 namespace cinn::fusion {
 
@@ -34,24 +34,33 @@ class ReducePattern {};
 
 template <typename T>
 struct ReduceTreePattern {
-  explicit ReduceTreePattern(const std::vector<ReducePattern<T>>& v,
+  explicit ReduceTreePattern(const std::vector<ReduceTreePattern<T>>& childs,
                              const ReducePattern<T>& root)
-      : reduce_patterns_(v), root_(root) {}
+      : childs_(childs), root_(root) {}
   const ReducePattern<T>& GetRootPattern() const { return root_; }
   std::vector<pir::Operation*> ops() const {
-    std::vector<pir::Operation*> result;
-    for (const auto& reduce_pattern : reduce_patterns_) {
-      result = MergeVector(result, reduce_pattern.ops());
+    std::vector<pir::Operation*> result{root_.ops()};
+    for (const auto& child : childs_) {
+      result = UniqueConcatVector(result, child.ops());
     }
     return result;
   }
   static std::string name() { return "ReduceTree"; }
-  const std::vector<ReducePattern<T>>& reduce_patterns() const {
-    return reduce_patterns_;
+  const std::vector<ReduceTreePattern<T>>& childs() const { return childs_; }
+  std::vector<ReduceTreePattern<T>>& childs() { return childs_; }
+  void InsertChild(const ReduceTreePattern<T>& child) {
+    childs_.push_back(child);
+  }
+  std::vector<ReducePattern<T>> FlattenReducePattern() const {
+    std::vector<ReducePattern<T>> result;
+    for (const auto& child : childs_) {
+      result = ConcatVector(result, child.FlattenReducePattern());
+    }
+    return result;
   }
 
  private:
-  std::vector<ReducePattern<T>> reduce_patterns_;
+  std::vector<ReduceTreePattern<T>> childs_;
   ReducePattern<T> root_;
 };
 
@@ -63,7 +72,7 @@ struct ReduceTreePlusTrivialPattern {
   ReduceTreePattern<T> tree;
   TrivialPattern<T> sink_trivial;
   std::vector<pir::Operation*> ops() const {
-    return MergeVector(tree.ops(), sink_trivial.ops());
+    return UniqueConcatVector(tree.ops(), sink_trivial.ops());
   }
   static std::string name() { return "ReduceTree+Trivial"; }
   std::vector<size_t> fake_reduce_iter_idx;
@@ -81,4 +90,4 @@ using StmtPattern = std::variant<TrivialPattern<T>,
                                  ReduceTreePlusTrivialPattern<T>,
                                  HorizontalFusionPattern<T>,
                                  UnsupportPattern<T>>;
-}  // namespace cinn::frontend::group_cluster
+}  // namespace cinn::fusion

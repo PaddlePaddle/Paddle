@@ -14,13 +14,14 @@
 
 #pragma once
 
-#include "paddle/cinn/operator_fusion/frontend/pattern.h"
 #include "paddle/cinn/operator_fusion/frontend/pattern_api.h"
+#include "paddle/cinn/operator_fusion/frontend/pattern.h"
 
 namespace cinn::fusion {
 
 template <>
-StmtPattern<FrontendStage> ConvertToStmtPattern(const PatternContent<FrontendStage>& content) {
+StmtPattern<FrontendStage> ConvertToStmtPattern(
+    const PatternContent<FrontendStage>& content) {
   const auto& kind = GetOpPatternKind(content.op);
   if (kind == hlir::framework::kReduction) {
     return ReducePattern<FrontendStage>({content.op});
@@ -34,42 +35,44 @@ StmtPattern<FrontendStage> ConvertToStmtPattern(const PatternContent<FrontendSta
 }
 
 template <>
-StmtPattern<FrontendStage> RT_x_RT(const ReduceTreePattern<FrontendStage>& first,
-                       const ReduceTreePattern<FrontendStage>& second) {
-    const auto& merged = ConcatVector(first.reduce_patterns(),
-                                      second.reduce_patterns());
-    return ReduceTreePattern<FrontendStage>(merged, second.GetRootPattern());
-}
-
-template <>
-StmtPattern<FrontendStage> RT_x_Trivial(const ReduceTreePattern<FrontendStage>& first,
-                            const TrivialPattern<FrontendStage>& second) {
+StmtPattern<FrontendStage> RT_x_Trivial(
+    const ReduceTreePattern<FrontendStage>& first,
+    const TrivialPattern<FrontendStage>& second) {
   return ReduceTreePlusTrivialPattern<FrontendStage>(first, second);
 }
 
+// template StmtPattern<FrontendStage> RT_x_RT(const
+// ReduceTreePattern<FrontendStage>& upstream, const
+// ReduceTreePattern<FrontendStage>& downstream);
+
 template <>
-StmtPattern<FrontendStage> Trivial_x_Reduce(const TrivialPattern<FrontendStage>& first,
-                            const ReducePattern<FrontendStage>& second) {
+StmtPattern<FrontendStage> Trivial_x_Reduce(
+    const TrivialPattern<FrontendStage>& first,
+    const ReducePattern<FrontendStage>& second) {
   const auto& contents =
-      MergeVector(GetOpsInPattern<FrontendStage>(first), GetOpsInPattern<FrontendStage>(second));
+      UniqueConcatVector(GetOpsInPattern<FrontendStage>(first),
+                         GetOpsInPattern<FrontendStage>(second));
   return ReducePattern<FrontendStage>(contents);
 }
 
 template <>
-StmtPattern<FrontendStage> Trivial_x_Trivial(const TrivialPattern<FrontendStage>& first,
-                            const TrivialPattern<FrontendStage>& second) {
+StmtPattern<FrontendStage> Trivial_x_Trivial(
+    const TrivialPattern<FrontendStage>& first,
+    const TrivialPattern<FrontendStage>& second) {
   const auto& contents =
-      MergeVector(GetOpsInPattern<FrontendStage>(first), GetOpsInPattern<FrontendStage>(second));
+      UniqueConcatVector(GetOpsInPattern<FrontendStage>(first),
+                         GetOpsInPattern<FrontendStage>(second));
   return TrivialPattern<FrontendStage>(contents);
 }
 
 template <>
-StmtPattern<FrontendStage> H_x_H(const HorizontalFusionPattern<FrontendStage>& first,
-                     const HorizontalFusionPattern<FrontendStage>& second) {
+StmtPattern<FrontendStage> H_x_H(
+    const HorizontalFusionPattern<FrontendStage>& first,
+    const HorizontalFusionPattern<FrontendStage>& second) {
   const auto& contents =
-      MergeVector(GetOpsInPattern<FrontendStage>(first), GetOpsInPattern<FrontendStage>(second));
+      UniqueConcatVector(GetOpsInPattern<FrontendStage>(first),
+                         GetOpsInPattern<FrontendStage>(second));
   return HorizontalFusionPattern<FrontendStage>({first, second});
 }
 
-
-}
+}  // namespace cinn::fusion

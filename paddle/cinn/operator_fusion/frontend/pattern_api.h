@@ -14,34 +14,36 @@
 
 #pragma once
 
+#include "paddle/cinn/operator_fusion/frontend/pattern.h"
 #include "paddle/cinn/operator_fusion/pattern.h"
 #include "paddle/cinn/operator_fusion/pattern_api.h"
-#include "paddle/cinn/operator_fusion/frontend/pattern.h"
 
 namespace cinn::fusion {
 
 // extern template to don't allow compiler specialize the following code.
 
-template <> StmtPattern<FrontendStage> ConvertToStmtPattern(const PatternContent<FrontendStage>& content) ;
+template <>
+StmtPattern<FrontendStage> ConvertToStmtPattern(
+    const PatternContent<FrontendStage>& content);
 
 template <>
-StmtPattern<FrontendStage> RT_x_RT(const ReduceTreePattern<FrontendStage>& first,
-                       const ReduceTreePattern<FrontendStage>& second) ;
+StmtPattern<FrontendStage> RT_x_Trivial(
+    const ReduceTreePattern<FrontendStage>& first,
+    const TrivialPattern<FrontendStage>& second);
 
 template <>
-StmtPattern<FrontendStage> RT_x_Trivial(const ReduceTreePattern<FrontendStage>& first,
-                            const TrivialPattern<FrontendStage>& second) ;
+StmtPattern<FrontendStage> Trivial_x_Reduce(
+    const TrivialPattern<FrontendStage>& first,
+    const ReducePattern<FrontendStage>& second);
 
 template <>
-StmtPattern<FrontendStage> Trivial_x_Reduce(const TrivialPattern<FrontendStage>& first,
-                            const ReducePattern<FrontendStage>& second) ;
+StmtPattern<FrontendStage> Trivial_x_Trivial(
+    const TrivialPattern<FrontendStage>& first,
+    const TrivialPattern<FrontendStage>& second);
 
 template <>
-StmtPattern<FrontendStage> Trivial_x_Trivial(const TrivialPattern<FrontendStage>& first,
-                            const TrivialPattern<FrontendStage>& second) ;
+StmtPattern<FrontendStage> H_x_H(
+    const HorizontalFusionPattern<FrontendStage>& first,
+    const HorizontalFusionPattern<FrontendStage>& second);
 
-template <>
-StmtPattern<FrontendStage> H_x_H(const HorizontalFusionPattern<FrontendStage>& first,
-                     const HorizontalFusionPattern<FrontendStage>& second) ;
-
-}
+}  // namespace cinn::fusion
