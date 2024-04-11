@@ -34,7 +34,7 @@ class SameStatusReshardFunction(ReshardFunction):
             return False
         return True
 
-    def eval(self, program, op, src_dist_attr, dst_dist_attr):
+    def reshard(self, program, op, src_dist_attr, dst_dist_attr):
         src_mesh = src_dist_attr.process_mesh
         dst_mesh = dst_dist_attr.process_mesh
 

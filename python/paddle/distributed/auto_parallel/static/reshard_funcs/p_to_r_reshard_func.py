@@ -39,7 +39,9 @@ class PToRReshardFunction(ReshardFunction):
             return False
         return True
 
-    def eval(self, program, op, src_dist_attr, dst_dist_attr, remove_op=True):
+    def reshard(
+        self, program, op, src_dist_attr, dst_dist_attr, remove_op=True
+    ):
         src_mesh = src_dist_attr.process_mesh
         src_reduce_type = src_dist_attr.partial_status[0]
         reduce_mean = False
@@ -86,14 +88,14 @@ class PToRReshardFunctionCrossMesh(ReshardFunction):
 
         return True
 
-    def eval(self, program, op, src_dist_attr, dst_dist_attr):
+    def reshard(self, program, op, src_dist_attr, dst_dist_attr):
         same_status_func = SameStatusReshardFunction()
         tmp_dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
             dst_dist_attr.process_mesh,
             src_dist_attr.dims_mapping,
             src_dist_attr.partial_status,
         )
-        out, out_dist_attr = same_status_func.eval(
+        out, out_dist_attr = same_status_func.reshard(
             program, op, src_dist_attr, tmp_dist_attr
         )
 
@@ -103,4 +105,6 @@ class PToRReshardFunctionCrossMesh(ReshardFunction):
             assert p_to_r_func.is_suitable(
                 out_dist_attr, dst_dist_attr
             ), f"Invoke the p to r reshard function is not valid from {out.dist_attr()} to {dst_dist_attr}"
-            p_to_r_func.eval(program, out, out_dist_attr, dst_dist_attr, False)
+            p_to_r_func.reshard(
+                program, out, out_dist_attr, dst_dist_attr, False
+            )

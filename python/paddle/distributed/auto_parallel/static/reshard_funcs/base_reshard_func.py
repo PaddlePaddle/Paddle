@@ -17,7 +17,7 @@ class ReshardFunction:
     def is_suitable(self, dist_tensor, dist_attr):
         return "ReshardFunction is_suitable not implemented"
 
-    def eval(self, program, op, src_tensor, dst_dist_attr):
+    def reshard(self, program, op, src_tensor, dst_dist_attr):
         return "ReshardFunction eval not implemented"
 
     def is_partial(self, dist_attr):

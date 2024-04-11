@@ -15,9 +15,12 @@
 import paddle
 
 from .process_group import new_process_group
+from .reshard_funcs import reshard_func_register
 from .reshard_funcs.base_reshard_func import (
     choose_reshard_func,
 )
+
+reshard_func_register.register_reshard_funcs()
 
 
 def apply_partition_pass(program):
@@ -97,7 +100,7 @@ def apply_reshard_pass_v2(program):
                 reshard_func = choose_reshard_func(
                     op_operand_dist_attr, op_target_dist_attr
                 )
-                reshard_func.eval(
+                reshard_func.reshard(
                     new_program, op, op_operand_dist_attr, op_target_dist_attr
                 )
 
