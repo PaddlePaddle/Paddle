@@ -316,11 +316,11 @@ class RunnableProgram:
         value_program_attr = {}
         for k, ns in self.program_name_attr.items():
             if k.startswith("f"):
-                values = [fwd_map[n] for n in ns]
+                values = [fwd_map.get(n, fake_value()) for n in ns]
             elif k.startswith("b"):
-                values = [bwd_map[n] for n in ns]
+                values = [bwd_map.get(n, fake_value()) for n in ns]
             elif k == "no_need_buffers":
-                values = [fwd_map[n] for n in ns]
+                values = [fwd_map.get(n, fake_value()) for n in ns]
             else:
                 raise ValueError(f"Unknown program attr: {k}")
             value_program_attr[k] = values

@@ -717,8 +717,8 @@ std::string EagerUtils::GradNodeStr(const egr::GradNodeBase& node) {
       in_slot_str +=
           paddle::string::Sprintf(SLOT_INFO_TEMPLATE, i, sg_str, edges_str);
     }
-    std::string in_meta_str =
-        paddle::string::Sprintf(GRAD_SLOT_META_TEMPLATE, in_slot_str);
+    std::string in_meta_str = paddle::string::Sprintf(
+        GRAD_SLOT_META_TEMPLATE, in_metas.size(), in_slot_str);
     return paddle::string::Sprintf(
         GRAD_NODE_TEMPLATE, out_meta_str, in_meta_str);
   } else if (VLOG_IS_ON(5)) {

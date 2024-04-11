@@ -148,9 +148,11 @@ std::vector<pir::Type> AddNOp::InferMeta(
     const std::vector<pir::Value> &input_values,
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta AddNOp";
-  IR_ENFORCE(input_values.size() == 1,
-             "Num of inputs is expected to be 1 but got %d.",
-             input_values.size());
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 1 but got %d.",
+                        input_values.size()));
   pir::Value inputs_ = input_values[0];
 
   VLOG(4) << "Builder construction outputs";
@@ -294,9 +296,11 @@ std::vector<pir::Type> AddN_Op::InferMeta(
     const std::vector<pir::Value> &input_values,
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta AddN_Op";
-  IR_ENFORCE(input_values.size() == 1,
-             "Num of inputs is expected to be 1 but got %d.",
-             input_values.size());
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 1 but got %d.",
+                        input_values.size()));
   pir::Value inputs_ = input_values[0];
 
   VLOG(4) << "Builder construction outputs";
@@ -444,9 +448,11 @@ std::vector<pir::Type> AddNArrayOp::InferMeta(
     const std::vector<pir::Value> &input_values,
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta AddNArrayOp";
-  IR_ENFORCE(input_values.size() == 1,
-             "Num of inputs is expected to be 1 but got %d.",
-             input_values.size());
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 1 but got %d.",
+                        input_values.size()));
   pir::Value inputs_ = input_values[0];
   VLOG(4) << "Builder construction outputs";
   pir::VectorType inputs = inputs_.type().dyn_cast<pir::VectorType>();
@@ -670,9 +676,11 @@ std::vector<pir::Type> FusedGemmEpilogueOp::InferMeta(
           "AttrtibueMap pointer in InferMeta function is nullptr."));
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta FusedGemmEpilogueOp";
-  IR_ENFORCE(input_values.size() == 3,
-             "Num of inputs is expected to be 3 but got %d.",
-             input_values.size());
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    3,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 3 but got %d.",
+                        input_values.size()));
   pir::Value x_ = input_values[0];
   pir::Value y_ = input_values[1];
   pir::Value bias_ = input_values[2];
@@ -919,9 +927,11 @@ std::vector<pir::Type> FusedGemmEpilogueGradOp::InferMeta(
       common::errors::Fatal(
           "AttrtibueMap pointer in InferMeta function is nullptr."));
   auto &attributes = *p_attributes;
-  IR_ENFORCE(input_values.size() == 4,
-             "Num of inputs is expected to be 4 but got %d.",
-             input_values.size());
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 4 but got %d.",
+                        input_values.size()));
 
   pir::Value x_ = input_values[0];
   pir::Value y_ = input_values[1];
@@ -1218,9 +1228,11 @@ std::vector<pir::Type> SplitGradOp::InferMeta(
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta SplitGradOp";
 
-  IR_ENFORCE(input_values.size() == 2,
-             "Num of inputs is expected to be 2 but got %d.",
-             input_values.size());
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 2 but got %d.",
+                        input_values.size()));
   pir::Value out_grad_ = input_values[0];
   pir::Value axis_ = input_values[1];
 
@@ -1479,9 +1491,11 @@ std::vector<pir::Type> CreateArrayLikeOp::InferMeta(
     const std::vector<pir::Value> &input_values,
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta CreateArrayLikeOp";
-  IR_ENFORCE(input_values.size() == 1,
-             "Num of inputs is expected to be 1 but got %d.",
-             input_values.size());
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 1 but got %d.",
+                        input_values.size()));
   pir::Value input_ = input_values[0];
 
   VLOG(4) << "Builder construction outputs";
@@ -1600,9 +1614,11 @@ std::vector<pir::Type> ArrayLengthOp::InferMeta(
     const std::vector<pir::Value> &input_values,
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta ArrayLengthOp";
-  IR_ENFORCE(input_values.size() == 1,
-             "Num of inputs is expected to be 1 but got %d.",
-             input_values.size());
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 1 but got %d.",
+                        input_values.size()));
   pir::Value x_ = input_values[0];
 
   paddle::dialect::DenseTensorArrayType x_type;
@@ -1756,9 +1772,11 @@ std::vector<pir::Type> ArrayReadOp::InferMeta(
     const std::vector<pir::Value> &input_values,
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta ArrayLengthOp";
-  IR_ENFORCE(input_values.size() == 2,
-             "Num of inputs is expected to be 2 but got %d.",
-             input_values.size());
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 2 but got %d.",
+                        input_values.size()));
   pir::Value array_ = input_values[0];
   pir::Value i_ = input_values[1];
 
@@ -1924,9 +1942,11 @@ std::vector<pir::Type> ArrayWrite_Op::InferMeta(
     const std::vector<pir::Value> &input_values,
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta ArrayWrite_Op";
-  IR_ENFORCE(input_values.size() == 3,
-             "Num of inputs is expected to be 3 but got %d.",
-             input_values.size());
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    3,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 3 but got %d.",
+                        input_values.size()));
   pir::Value array_ = input_values[0];
   pir::Value x_ = input_values[1];
 
@@ -2121,17 +2141,23 @@ std::vector<pir::Type> ArrayToTensorOp::InferMeta(
           "AttrtibueMap pointer in InferMeta function is nullptr."));
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta ArrayToTensorOp";
-  IR_ENFORCE(input_values.size() == 1,
-             "Num of inputs is expected to be 1 but got %d.",
-             input_values.size());
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 1 but got %d.",
+                        input_values.size()));
   pir::Value x_ = input_values[0];
 
-  IR_ENFORCE(attributes.find("axis") != attributes.end(),
-             "'value' Attribute is expected for IncrementOp. ");
+  PADDLE_ENFORCE_NE(attributes.find("axis"),
+                    attributes.end(),
+                    phi::errors::InvalidArgument(
+                        "'value' Attribute is expected for IncrementOp. "));
   int32_t axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
 
-  IR_ENFORCE(attributes.find("use_stack") != attributes.end(),
-             "'value' Attribute is expected for IncrementOp. ");
+  PADDLE_ENFORCE_NE(attributes.find("use_stack"),
+                    attributes.end(),
+                    phi::errors::InvalidArgument(
+                        "'value' Attribute is expected for IncrementOp. "));
   bool use_stack =
       attributes.at("use_stack").dyn_cast<pir::BoolAttribute>().data();
 
@@ -2315,21 +2341,27 @@ std::vector<pir::Type> TensorToArrayOp::InferMeta(
           "AttrtibueMap pointer in InferMeta function is nullptr."));
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta TensorToArrayOp";
-  IR_ENFORCE(input_values.size() == 2,
-             "Num of inputs is expected to be 2 but got %d.",
-             input_values.size());
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 2 but got %d.",
+                        input_values.size()));
   pir::Value x_ = input_values[0];
   pir::Value out_grad_ = input_values[1];
 
   VLOG(4) << "Builder construction attributes";
   pir::AttributeMap argument_attributes = {};
 
-  IR_ENFORCE(attributes.find("axis") != attributes.end(),
-             "'value' Attribute is expected for IncrementOp. ");
+  PADDLE_ENFORCE_NE(attributes.find("axis"),
+                    attributes.end(),
+                    phi::errors::InvalidArgument(
+                        "'value' Attribute is expected for IncrementOp. "));
   int32_t axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
 
-  IR_ENFORCE(attributes.find("use_stack") != attributes.end(),
-             "'value' Attribute is expected for IncrementOp. ");
+  PADDLE_ENFORCE_NE(attributes.find("use_stack"),
+                    attributes.end(),
+                    phi::errors::InvalidArgument(
+                        "'value' Attribute is expected for IncrementOp. "));
   bool use_stack =
       attributes.at("use_stack").dyn_cast<pir::BoolAttribute>().data();
 
@@ -2430,39 +2462,53 @@ void SliceArrayOp::VerifySig() {
   VLOG(4) << "Verifying inputs:";
   {
     auto input_size = num_operands();
-    IR_ENFORCE(input_size == 3u,
-               "The size %d of inputs must be equal to 3.",
-               input_size);
-    IR_ENFORCE((*this)
-                   ->operand_source(0)
-                   .type()
-                   .isa<paddle::dialect::DenseTensorArrayType>(),
-               "Type validation failed for the 0th input, got %s.",
-               (*this)->operand_source(0).type());
-    IR_ENFORCE((*this)->operand_source(1).type().isa<pir::VectorType>() ||
-                   (*this)
-                       ->operand_source(1)
-                       .type()
-                       .isa<paddle::dialect::DenseTensorType>(),
-               "Type validation failed for the 1st input, got %s.",
-               (*this)->operand_source(1).type());
-    IR_ENFORCE((*this)->operand_source(2).type().isa<pir::VectorType>() ||
-                   (*this)
-                       ->operand_source(2)
-                       .type()
-                       .isa<paddle::dialect::DenseTensorType>(),
-               "Type validation failed for the 1st input, got %s.",
-               (*this)->operand_source(2).type());
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        3u,
+        phi::errors::InvalidArgument(
+            "The size %d of inputs must be equal to 3.", input_size));
+    PADDLE_ENFORCE_EQ((*this)
+                          ->operand_source(0)
+                          .type()
+                          .isa<paddle::dialect::DenseTensorArrayType>(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Type validation failed for the 0th input, got %s.",
+                          (*this)->operand_source(0).type()));
+    PADDLE_ENFORCE_EQ(
+        (*this)->operand_source(1).type().isa<pir::VectorType>() ||
+            (*this)
+                ->operand_source(1)
+                .type()
+                .isa<paddle::dialect::DenseTensorType>(),
+        true,
+        phi::errors::InvalidArgument(
+            "Type validation failed for the 1st input, got %s.",
+            (*this)->operand_source(1).type()));
+    PADDLE_ENFORCE_EQ(
+        (*this)->operand_source(2).type().isa<pir::VectorType>() ||
+            (*this)
+                ->operand_source(2)
+                .type()
+                .isa<paddle::dialect::DenseTensorType>(),
+        true,
+        phi::errors::InvalidArgument(
+            "Type validation failed for the 1st input, got %s.",
+            (*this)->operand_source(2).type()));
   }
   VLOG(4) << "Verifying outputs:";
   {
     auto output_size = num_results();
-    IR_ENFORCE(output_size == 1u,
-               "The size %d of outputs must be equal to 1.",
-               output_size);
-    IR_ENFORCE(
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        1u,
+        phi::errors::InvalidArgument(
+            "The size %d of outputs must be equal to 1.", output_size));
+    PADDLE_ENFORCE_EQ(
         (*this)->result(0).type().isa<paddle::dialect::DenseTensorArrayType>(),
-        "Type validation failed for the 0th output.");
+        true,
+        phi::errors::InvalidArgument(
+            "Type validation failed for the 0th output."));
   }
   VLOG(4) << "End Verifying for: SliceArrayOp.";
 }
@@ -2527,9 +2573,11 @@ std::vector<pir::Type> SliceArrayOp::InferMeta(
     const std::vector<pir::Value> &input_values,
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta SliceArrayOp";
-  IR_ENFORCE(input_values.size() == 3,
-             "Num of inputs is expected to be 3 but got %d.",
-             input_values.size());
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    3,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 3 but got %d.",
+                        input_values.size()));
   pir::Value input = input_values[0];
   pir::Value starts = input_values[1];
   pir::Value ends = input_values[2];
@@ -2622,32 +2670,43 @@ void SliceArrayDenseOp::VerifySig() {
   VLOG(4) << "Verifying inputs:";
   {
     auto input_size = num_operands();
-    IR_ENFORCE(input_size == 2u,
-               "The size %d of inputs must be equal to 2.",
-               input_size);
-    IR_ENFORCE((*this)
-                   ->operand_source(0)
-                   .type()
-                   .isa<paddle::dialect::DenseTensorArrayType>(),
-               "Type validation failed for the 0th input, got %s.",
-               (*this)->operand_source(0).type());
-    IR_ENFORCE((*this)->operand_source(1).type().isa<pir::VectorType>() ||
-                   (*this)
-                       ->operand_source(1)
-                       .type()
-                       .isa<paddle::dialect::DenseTensorType>(),
-               "Type validation failed for the 1st input, got %s.",
-               (*this)->operand_source(1).type());
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        2u,
+        phi::errors::InvalidArgument(
+            "The size %d of inputs must be equal to 2.", input_size));
+    PADDLE_ENFORCE_EQ((*this)
+                          ->operand_source(0)
+                          .type()
+                          .isa<paddle::dialect::DenseTensorArrayType>(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Type validation failed for the 0th input, got %s.",
+                          (*this)->operand_source(0).type()));
+    PADDLE_ENFORCE_EQ(
+        (*this)->operand_source(1).type().isa<pir::VectorType>() ||
+            (*this)
+                ->operand_source(1)
+                .type()
+                .isa<paddle::dialect::DenseTensorType>(),
+        true,
+        phi::errors::InvalidArgument(
+            "Type validation failed for the 1st input, got %s.",
+            (*this)->operand_source(1).type()));
   }
   VLOG(4) << "Verifying outputs:";
   {
     auto output_size = num_results();
-    IR_ENFORCE(output_size == 1u,
-               "The size %d of outputs must be equal to 1.",
-               output_size);
-    IR_ENFORCE(
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        1u,
+        phi::errors::InvalidArgument(
+            "The size %d of outputs must be equal to 1.", output_size));
+    PADDLE_ENFORCE_EQ(
         (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>(),
-        "Type validation failed for the 0th output.");
+        true,
+        phi::errors::InvalidArgument(
+            "Type validation failed for the 0th output."));
   }
   VLOG(4) << "End Verifying for: SliceArrayOp.";
 }
@@ -2678,9 +2737,11 @@ std::vector<pir::Type> SliceArrayDenseOp::InferMeta(
     const std::vector<pir::Value> &input_values,
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta SliceArrayDenseOp";
-  IR_ENFORCE(input_values.size() == 2,
-             "Num of inputs is expected to be 2 but got %d.",
-             input_values.size());
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 2 but got %d.",
+                        input_values.size()));
   pir::Value input = input_values[0];
   pir::Value starts = input_values[1];
 
@@ -2772,15 +2833,19 @@ void AssignArrayOp::VerifySig() {
   VLOG(4) << "Verifying inputs:";
   {
     auto input_size = num_operands();
-    IR_ENFORCE(input_size == 1u,
-               "The size %d of inputs must be equal to 1.",
-               input_size);
-    IR_ENFORCE((*this)
-                   ->operand_source(0)
-                   .type()
-                   .isa<paddle::dialect::DenseTensorArrayType>(),
-               "Type validation failed for the 0th input, got %s.",
-               (*this)->operand_source(0).type());
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        1u,
+        phi::errors::InvalidArgument(
+            "The size %d of inputs must be equal to 1.", input_size));
+    PADDLE_ENFORCE_EQ((*this)
+                          ->operand_source(0)
+                          .type()
+                          .isa<paddle::dialect::DenseTensorArrayType>(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Type validation failed for the 0th input, got %s.",
+                          (*this)->operand_source(0).type()));
   }
   VLOG(4) << "Verifying attributes:";
   {
@@ -2789,12 +2854,16 @@ void AssignArrayOp::VerifySig() {
   VLOG(4) << "Verifying outputs:";
   {
     auto output_size = num_results();
-    IR_ENFORCE(output_size == 1u,
-               "The size %d of outputs must be equal to 1.",
-               output_size);
-    IR_ENFORCE(
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        1u,
+        phi::errors::InvalidArgument(
+            "The size %d of outputs must be equal to 1.", output_size));
+    PADDLE_ENFORCE_EQ(
         (*this)->result(0).type().isa<paddle::dialect::DenseTensorArrayType>(),
-        "Type validation failed for the 0th output.");
+        true,
+        phi::errors::InvalidArgument(
+            "Type validation failed for the 0th output."));
   }
   VLOG(4) << "End Verifying for: AssignArrayOp.";
 }
@@ -2817,9 +2886,11 @@ std::vector<pir::Type> AssignArrayOp::InferMeta(
     const std::vector<pir::Value> &input_values,
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta AssignArrayOp";
-  IR_ENFORCE(input_values.size() == 1,
-             "Num of inputs is expected to be 1 but got %d.",
-             input_values.size());
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 1 but got %d.",
+                        input_values.size()));
   pir::Value x_ = input_values[0];
 
   VLOG(4) << "Builder construction outputs";
@@ -2885,26 +2956,35 @@ void AssignArray_Op::VerifySig() {
   VLOG(4) << "Verifying inputs:";
   {
     auto input_size = num_operands();
-    IR_ENFORCE(input_size == 1u,
-               "The size %d of inputs must be equal to 1.",
-               input_size);
-    IR_ENFORCE((*this)
-                   ->operand_source(0)
-                   .type()
-                   .isa<paddle::dialect::DenseTensorArrayType>(),
-               "Type validation failed for the 0th input, but got %s.",
-               (*this)->operand_source(0).type());
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        1u,
+        phi::errors::InvalidArgument(
+            "The size %d of inputs must be equal to 1.", input_size));
+    PADDLE_ENFORCE_EQ(
+        (*this)
+            ->operand_source(0)
+            .type()
+            .isa<paddle::dialect::DenseTensorArrayType>(),
+        true,
+        phi::errors::InvalidArgument(
+            "Type validation failed for the 0th input, but got %s.",
+            (*this)->operand_source(0).type()));
   }
   VLOG(4) << "Verifying attributes:";
   VLOG(4) << "Verifying outputs:";
   {
     auto output_size = num_results();
-    IR_ENFORCE(output_size == 1u,
-               "The size %d of outputs must be equal to 1.",
-               output_size);
-    IR_ENFORCE(
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        1u,
+        phi::errors::InvalidArgument(
+            "The size %d of outputs must be equal to 1.", output_size));
+    PADDLE_ENFORCE_EQ(
         (*this)->result(0).type().isa<paddle::dialect::DenseTensorArrayType>(),
-        "Type validation failed for the 0th output.");
+        true,
+        phi::errors::InvalidArgument(
+            "Type validation failed for the 0th output."));
   }
   VLOG(4) << "End Verifying for: AssignArray_Op.";
 }
@@ -2918,9 +2998,11 @@ std::vector<pir::Type> AssignArray_Op::InferMeta(
     const std::vector<pir::Value> &input_values,
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta AssignArray_Op";
-  IR_ENFORCE(input_values.size() == 1,
-             "Num of inputs is expected to be 1 but got %d.",
-             input_values.size());
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 1 but got %d.",
+                        input_values.size()));
   pir::Value x_ = input_values[0];
 
   VLOG(4) << "Builder construction outputs";
@@ -3022,8 +3104,10 @@ void ExpandOp::Build(pir::Builder &builder,
                      pir::AttributeMap attributes) {
   VLOG(4) << "Start build ExpandOp";
 
-  IR_ENFORCE(attributes.find("shape") != attributes.end(),
-             "'shape' Attribute is expected for ExpandOp. ");
+  PADDLE_ENFORCE_NE(attributes.find("shape"),
+                    attributes.end(),
+                    phi::errors::InvalidArgument(
+                        "'shape' Attribute is expected for ExpandOp. "));
   std::vector<int64_t> shape =
       attributes.at("shape")
           .dyn_cast<paddle::dialect::IntArrayAttribute>()
@@ -3114,10 +3198,13 @@ bool ExpandOp::InferSymbolicShape(
     if (expand_shape[i] == -1) {  // copy the dim from x
       // the shape is right aligned
       int index = i - (expand_shape.size() - x_dims.size());
-      IR_ENFORCE(index >= 0,
-                 "in ExpandOpInferSymbolicShape, the dim to copy must >= 0, "
-                 "but got %d",
-                 index);
+      PADDLE_ENFORCE_GE(
+          index,
+          0,
+          phi::errors::InvalidArgument(
+              "in ExpandOpInferSymbolicShape, the dim to copy must >= 0, "
+              "but got %d",
+              index));
 
       out_shape[i] = x_dims[index];
     }
@@ -3136,26 +3223,34 @@ void ExpandOp::VerifySig() {
   VLOG(4) << "Verifying inputs:";
   {
     auto input_size = num_operands();
-    IR_ENFORCE(input_size == 2u,
-               "The size %d of inputs must be equal to 2.",
-               input_size);
-    IR_ENFORCE((*this)
-                   ->operand_source(0)
-                   .type()
-                   .isa<paddle::dialect::DenseTensorType>(),
-               "Type validation failed for the 0th input.");
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        2u,
+        phi::errors::InvalidArgument(
+            "The size %d of inputs must be equal to 2.", input_size));
+    PADDLE_ENFORCE_EQ((*this)
+                          ->operand_source(0)
+                          .type()
+                          .isa<paddle::dialect::DenseTensorType>(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Type validation failed for the 0th input."));
     if (auto vec_type =
             (*this)->operand_source(1).type().dyn_cast<pir::VectorType>()) {
       for (size_t i = 0; i < vec_type.size(); ++i) {
-        IR_ENFORCE(vec_type[i].isa<paddle::dialect::DenseTensorType>(),
-                   "Type validation failed for the 1th input.");
+        PADDLE_ENFORCE_EQ(vec_type[i].isa<paddle::dialect::DenseTensorType>(),
+                          true,
+                          phi::errors::InvalidArgument(
+                              "Type validation failed for the 1th input."));
       }
     } else {
-      IR_ENFORCE((*this)
-                     ->operand_source(1)
-                     .type()
-                     .isa<paddle::dialect::DenseTensorType>(),
-                 "Type validation failed for the 1th input.");
+      PADDLE_ENFORCE_EQ((*this)
+                            ->operand_source(1)
+                            .type()
+                            .isa<paddle::dialect::DenseTensorType>(),
+                        true,
+                        phi::errors::InvalidArgument(
+                            "Type validation failed for the 1th input."));
     }
   }
   VLOG(4) << "Verifying attributes:";
@@ -3165,12 +3260,16 @@ void ExpandOp::VerifySig() {
   VLOG(4) << "Verifying outputs:";
   {
     auto output_size = num_results();
-    IR_ENFORCE(output_size == 1u,
-               "The size %d of outputs must be equal to 1.",
-               output_size);
-    IR_ENFORCE(
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        1u,
+        phi::errors::InvalidArgument(
+            "The size %d of outputs must be equal to 1.", output_size));
+    PADDLE_ENFORCE_EQ(
         (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>(),
-        "Type validation failed for the 0th output.");
+        true,
+        phi::errors::InvalidArgument(
+            "Type validation failed for the 0th output."));
   }
   VLOG(4) << "End Verifying for: ExpandOp.";
 }
@@ -3184,9 +3283,11 @@ std::vector<pir::Type> ExpandOp::InferMeta(
     const std::vector<pir::Value> &input_values,
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta ExpandOp";
-  IR_ENFORCE(input_values.size() == 2,
-             "Num of inputs is expected to be 2 but got %d.",
-             input_values.size());
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 2 but got %d.",
+                        input_values.size()));
   pir::Value x_ = input_values[0];
   pir::Value shape_ = input_values[1];
 
@@ -3341,8 +3442,10 @@ void IncrementOp::Build(pir::Builder &builder,
                         pir::AttributeMap attributes) {
   VLOG(4) << "Start build IncrementOp";
 
-  IR_ENFORCE(attributes.find("value") != attributes.end(),
-             "'value' Attribute is expected for IncrementOp. ");
+  PADDLE_ENFORCE_NE(attributes.find("value"),
+                    attributes.end(),
+                    phi::errors::InvalidArgument(
+                        "'value' Attribute is expected for IncrementOp. "));
   float value = attributes.at("value").dyn_cast<pir::FloatAttribute>().data();
 
   VLOG(4) << "Builder construction inputs";
@@ -3367,32 +3470,45 @@ void IncrementOp::VerifySig() {
   VLOG(4) << "Verifying inputs:";
   {
     auto input_size = num_operands();
-    IR_ENFORCE(input_size == 1u,
-               "The size %d of inputs must be equal to 1.",
-               input_size);
-    IR_ENFORCE((*this)
-                   ->operand_source(0)
-                   .type()
-                   .isa<paddle::dialect::DenseTensorType>(),
-               "Type validation failed for the 0th input, got %s.",
-               (*this)->operand_source(0).type());
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        1u,
+        phi::errors::InvalidArgument(
+            "The size %d of inputs must be equal to 1.", input_size));
+    PADDLE_ENFORCE_EQ((*this)
+                          ->operand_source(0)
+                          .type()
+                          .isa<paddle::dialect::DenseTensorType>(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Type validation failed for the 0th input, got %s.",
+                          (*this)->operand_source(0).type()));
   }
   VLOG(4) << "Verifying attributes:";
   {
     auto &attributes = this->attributes();
-    IR_ENFORCE(attributes.count("value") > 0, "value does not exist.");
-    IR_ENFORCE(attributes.at("value").isa<pir::FloatAttribute>(),
-               "Type of attribute: value is not pir::FloatAttribute.");
+    PADDLE_ENFORCE_GT(attributes.count("value"),
+                      0,
+                      phi::errors::InvalidArgument("value does not exist."));
+    PADDLE_ENFORCE_EQ(
+        attributes.at("value").isa<pir::FloatAttribute>(),
+        true,
+        phi::errors::InvalidArgument(
+            "Type of attribute: value is not pir::FloatAttribute."));
   }
   VLOG(4) << "Verifying outputs:";
   {
     auto output_size = num_results();
-    IR_ENFORCE(output_size == 1u,
-               "The size %d of outputs must be equal to 1.",
-               output_size);
-    IR_ENFORCE(
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        1u,
+        phi::errors::InvalidArgument(
+            "The size %d of outputs must be equal to 1.", output_size));
+    PADDLE_ENFORCE_EQ(
         (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>(),
-        "Type validation failed for the 0th output.");
+        true,
+        phi::errors::InvalidArgument(
+            "Type validation failed for the 0th output."));
   }
   VLOG(4) << "End Verifying for: IncrementOp.";
 }
@@ -3411,13 +3527,17 @@ std::vector<pir::Type> IncrementOp::InferMeta(
           "AttrtibueMap pointer in InferMeta function is nullptr."));
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta IncrementOp";
-  IR_ENFORCE(input_values.size() == 1,
-             "Num of inputs is expected to be 1 but got %d.",
-             input_values.size());
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 1 but got %d.",
+                        input_values.size()));
   pir::Value x_ = input_values[0];
 
-  IR_ENFORCE(attributes.find("value") != attributes.end(),
-             "'value' Attribute is expected for IncrementOp. ");
+  PADDLE_ENFORCE_NE(attributes.find("value"),
+                    attributes.end(),
+                    phi::errors::InvalidArgument(
+                        "'value' Attribute is expected for IncrementOp. "));
   float value = attributes.at("value").dyn_cast<pir::FloatAttribute>().data();
 
   VLOG(4) << "Builder construction outputs";
@@ -3526,8 +3646,10 @@ void Increment_Op::Build(pir::Builder &builder,
                          pir::AttributeMap attributes) {
   VLOG(4) << "Start build Increment_Op";
 
-  IR_ENFORCE(attributes.find("value") != attributes.end(),
-             "'value' Attribute is expected for Increment_Op. ");
+  PADDLE_ENFORCE_NE(attributes.find("value"),
+                    attributes.end(),
+                    phi::errors::InvalidArgument(
+                        "'value' Attribute is expected for Increment_Op. "));
   float value = attributes.at("value").dyn_cast<pir::FloatAttribute>().data();
 
   VLOG(4) << "Builder construction inputs";
@@ -3553,32 +3675,45 @@ void Increment_Op::VerifySig() {
   VLOG(4) << "Verifying inputs:";
   {
     auto input_size = num_operands();
-    IR_ENFORCE(input_size == 1u,
-               "The size %d of inputs must be equal to 1.",
-               input_size);
-    IR_ENFORCE((*this)
-                   ->operand_source(0)
-                   .type()
-                   .isa<paddle::dialect::DenseTensorType>(),
-               "Type validation failed for the 0th input, got %s.",
-               (*this)->operand_source(0).type());
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        1u,
+        phi::errors::InvalidArgument(
+            "The size %d of inputs must be equal to 1.", input_size));
+    PADDLE_ENFORCE_EQ((*this)
+                          ->operand_source(0)
+                          .type()
+                          .isa<paddle::dialect::DenseTensorType>(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Type validation failed for the 0th input, got %s.",
+                          (*this)->operand_source(0).type()));
   }
   VLOG(4) << "Verifying attributes:";
   {
     auto &attributes = this->attributes();
-    IR_ENFORCE(attributes.count("value") > 0, "value does not exist.");
-    IR_ENFORCE(attributes.at("value").isa<pir::FloatAttribute>(),
-               "Type of attribute: value is not pir::FloatAttribute.");
+    PADDLE_ENFORCE_GT(attributes.count("value"),
+                      0,
+                      phi::errors::InvalidArgument("value does not exist."));
+    PADDLE_ENFORCE_EQ(
+        attributes.at("value").isa<pir::FloatAttribute>(),
+        true,
+        phi::errors::InvalidArgument(
+            "Type of attribute: value is not pir::FloatAttribute."));
   }
   VLOG(4) << "Verifying outputs:";
   {
     auto output_size = num_results();
-    IR_ENFORCE(output_size == 1u,
-               "The size %d of outputs must be equal to 1.",
-               output_size);
-    IR_ENFORCE(
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        1u,
+        phi::errors::InvalidArgument(
+            "The size %d of outputs must be equal to 1.", output_size));
+    PADDLE_ENFORCE_EQ(
         (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>(),
-        "Type validation failed for the 0th output.");
+        true,
+        phi::errors::InvalidArgument(
+            "Type validation failed for the 0th output."));
   }
   VLOG(4) << "End Verifying for: Increment_Op.";
 }
@@ -3597,13 +3732,17 @@ std::vector<pir::Type> Increment_Op::InferMeta(
           "AttrtibueMap pointer in InferMeta function is nullptr."));
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta Increment_Op";
-  IR_ENFORCE(input_values.size() == 1,
-             "Num of inputs is expected to be 1 but got %d.",
-             input_values.size());
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 1 but got %d.",
+                        input_values.size()));
   pir::Value x_ = input_values[0];
 
-  IR_ENFORCE(attributes.find("value") != attributes.end(),
-             "'value' Attribute is expected for Increment_Op. ");
+  PADDLE_ENFORCE_NE(attributes.find("value"),
+                    attributes.end(),
+                    phi::errors::InvalidArgument(
+                        "'value' Attribute is expected for Increment_Op. "));
   float value = attributes.at("value").dyn_cast<pir::FloatAttribute>().data();
 
   VLOG(4) << "Builder construction outputs";
@@ -3715,21 +3854,27 @@ void AssignOut_Op::VerifySig() {
   VLOG(4) << "Verifying inputs:";
   {
     auto input_size = num_operands();
-    IR_ENFORCE(input_size == 2u,
-               "The size %d of inputs must be equal to 2.",
-               input_size);
-    IR_ENFORCE((*this)
-                   ->operand_source(0)
-                   .type()
-                   .isa<paddle::dialect::DenseTensorType>(),
-               "Type validation failed for the 0th input, got %s.",
-               (*this)->operand_source(0).type());
-    IR_ENFORCE((*this)
-                   ->operand_source(1)
-                   .type()
-                   .isa<paddle::dialect::DenseTensorType>(),
-               "Type validation failed for the 1th input, got %s.",
-               (*this)->operand_source(1).type());
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        2u,
+        phi::errors::InvalidArgument(
+            "The size %d of inputs must be equal to 2.", input_size));
+    PADDLE_ENFORCE_EQ((*this)
+                          ->operand_source(0)
+                          .type()
+                          .isa<paddle::dialect::DenseTensorType>(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Type validation failed for the 0th input, got %s.",
+                          (*this)->operand_source(0).type()));
+    PADDLE_ENFORCE_EQ((*this)
+                          ->operand_source(1)
+                          .type()
+                          .isa<paddle::dialect::DenseTensorType>(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Type validation failed for the 1th input, got %s.",
+                          (*this)->operand_source(1).type()));
   }
   VLOG(4) << "Verifying attributes:";
   {
@@ -3738,12 +3883,16 @@ void AssignOut_Op::VerifySig() {
   VLOG(4) << "Verifying outputs:";
   {
     auto output_size = num_results();
-    IR_ENFORCE(output_size == 1u,
-               "The size %d of outputs must be equal to 1.",
-               output_size);
-    IR_ENFORCE(
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        1u,
+        phi::errors::InvalidArgument(
+            "The size %d of outputs must be equal to 1.", output_size));
+    PADDLE_ENFORCE_EQ(
         (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>(),
-        "Type validation failed for the 0th output.");
+        true,
+        phi::errors::InvalidArgument(
+            "Type validation failed for the 0th output."));
   }
   VLOG(4) << "End Verifying for: AssignOut_Op.";
 }
@@ -3756,9 +3905,11 @@ void AssignOut_Op::InferMeta(phi::InferMetaContext *infer_meta) {
 std::vector<pir::Type> AssignOut_Op::InferMeta(
     const std::vector<pir::Value> &input_values,
     pir::AttributeMap *p_attributes) {
-  IR_ENFORCE(input_values.size() == 2,
-             "Num of inputs is expected to be 2 but got %d.",
-             input_values.size());
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 2 but got %d.",
+                        input_values.size()));
 
   pir::Value x_ = input_values[0];
   VLOG(4) << "Builder construction outputs";
@@ -3859,9 +4010,11 @@ std::vector<pir::Type> ShapeBroadcastOp::InferMeta(
     const std::vector<pir::Value> &input_values,
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta ShapeBroadcastOp";
-  IR_ENFORCE(input_values.size() == 2,
-             "Num of inputs is expected to be 2 but got %d.",
-             input_values.size());
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 2 but got %d.",
+                        input_values.size()));
   pir::Value x_ = input_values[0];
   pir::Value y_ = input_values[1];
 
@@ -3944,11 +4097,14 @@ symbol::DimExpr GetBroadcastDimExpr(const symbol::DimExpr &lhs,
 std::vector<symbol::DimExpr> ComputeBroadcastShape(
     const std::vector<symbol::DimExpr> &large_shape,
     const std::vector<symbol::DimExpr> &small_shape) {
-  IR_ENFORCE(large_shape.size() >= small_shape.size(),
-             "Size of large_shape is expected to be greater or equal size of "
-             "small_shape, but got [%d] >= [%d].",
-             large_shape.size(),
-             small_shape.size());
+  PADDLE_ENFORCE_GE(
+      large_shape.size(),
+      small_shape.size(),
+      phi::errors::InvalidArgument(
+          "Size of large_shape is expected to be greater or equal size of "
+          "small_shape, but got [%d] >= [%d].",
+          large_shape.size(),
+          small_shape.size()));
   std::vector<symbol::DimExpr> output_data;
   output_data.reserve(large_shape.size());
   auto rank_gap = large_shape.size() - small_shape.size();
@@ -3967,16 +4123,22 @@ bool ShapeBroadcastOp::InferSymbolicShape(
   pir::Value x = operand_source(0);
   pir::Value y = operand_source(1);
 
-  IR_ENFORCE(shape_analysis->HasShapeOrDataForValue(x) > 0,
-             "Value x does not exist.");
-  IR_ENFORCE(shape_analysis->HasShapeOrDataForValue(y) > 0,
-             "Value y does not exist.");
+  PADDLE_ENFORCE_GT(shape_analysis->HasShapeOrDataForValue(x),
+                    0,
+                    phi::errors::InvalidArgument("Value x does not exist."));
+  PADDLE_ENFORCE_GT(shape_analysis->HasShapeOrDataForValue(y),
+                    0,
+                    phi::errors::InvalidArgument("Value y does not exist."));
   const auto &x_data_shape = shape_analysis->GetShapeOrDataForValue(x);
   const auto &y_data_shape = shape_analysis->GetShapeOrDataForValue(y);
-  IR_ENFORCE(x_data_shape.data().has_value(),
-             "Value x comes from ShapeOp, it must have data");
-  IR_ENFORCE(y_data_shape.data().has_value(),
-             "Value y comes from ShapeOp, it must have data");
+  PADDLE_ENFORCE_EQ(x_data_shape.data().has_value(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Value x comes from ShapeOp, it must have data"));
+  PADDLE_ENFORCE_EQ(y_data_shape.data().has_value(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Value y comes from ShapeOp, it must have data"));
   const auto &x_data = x_data_shape.data().value();
   const auto &y_data = y_data_shape.data().value();
 
@@ -4028,34 +4190,48 @@ void MemcpyD2hMultiIoOp::VerifySig() {
   VLOG(4) << "Verifying inputs:";
   {
     auto input_size = num_operands();
-    IR_ENFORCE(input_size == 1u,
-               "The size %d of inputs must be equal to 1.",
-               input_size);
-    IR_ENFORCE((*this)
-                   ->operand_source(0)
-                   .type()
-                   .isa<paddle::dialect::DenseTensorArrayType>(),
-               "Type validation failed for the 0th input, got %s.",
-               (*this)->operand_source(0).type());
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        1u,
+        phi::errors::InvalidArgument(
+            "The size %d of inputs must be equal to 1.", input_size));
+    PADDLE_ENFORCE_EQ((*this)
+                          ->operand_source(0)
+                          .type()
+                          .isa<paddle::dialect::DenseTensorArrayType>(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Type validation failed for the 0th input, got %s.",
+                          (*this)->operand_source(0).type()));
   }
   VLOG(4) << "Verifying attributes:";
   {
     auto &attributes = this->attributes();
-    IR_ENFORCE(attributes.count("dst_place_type") > 0,
-               "dst_place_type does not exist.");
-    IR_ENFORCE(attributes.at("dst_place_type").isa<pir::Int32Attribute>(),
-               "Type of attribute: dst_place_type is not pir::Int32Attribute.");
+    PADDLE_ENFORCE_GT(
+        attributes.count("dst_place_type"),
+        0,
+        phi::errors::InvalidArgument("dst_place_type does not exist."));
+    PADDLE_ENFORCE_EQ(
+        attributes.at("dst_place_type").isa<pir::Int32Attribute>(),
+        true,
+        phi::errors::InvalidArgument(
+            "Type of attribute: dst_place_type is not pir::Int32Attribute."));
   }
   VLOG(4) << "Verifying outputs:";
   {
     auto output_size = num_results();
-    IR_ENFORCE(output_size == 1u,
-               "The size %d of outputs must be equal to 1.",
-               output_size);
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        1u,
+        phi::errors::InvalidArgument(
+            "The size %d of outputs must be equal to 1.", output_size));
     auto output_0_type = (*this)->result(0).type();
 
-    IR_ENFORCE(output_0_type.isa<paddle::dialect::DenseTensorArrayType>(),
-               "Type validation failed for the 0th output.");
+    PADDLE_ENFORCE_EQ(
+        output_0_type.isa<paddle::dialect::DenseTensorArrayType>(),
+        true,
+        phi::errors::InvalidArgument(
+            "Type validation failed for the 0th output."));
   }
   VLOG(4) << "End Verifying for: MemcpyD2hMultiIoOp.";
 }
@@ -4068,9 +4244,11 @@ void MemcpyD2hMultiIoOp::InferMeta(phi::InferMetaContext *infer_meta) {
 std::vector<pir::Type> MemcpyD2hMultiIoOp::InferMeta(
     const std::vector<pir::Value> &input_values,
     pir::AttributeMap *p_attributes) {
-  IR_ENFORCE(input_values.size() == 1,
-             "Num of inputs is expected to be 1 but got %d.",
-             input_values.size());
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 1 but got %d.",
+                        input_values.size()));
 
   pir::Value x_ = input_values[0];
   VLOG(4) << "Builder construction outputs";
@@ -4153,35 +4331,50 @@ void ArrayPopOp::VerifySig() {
   VLOG(4) << "Verifying inputs:";
   {
     auto input_size = num_operands();
-    IR_ENFORCE(input_size == 1u,
-               "The size %d of inputs must be equal to 1.",
-               input_size);
-    IR_ENFORCE((*this)
-                   ->operand_source(0)
-                   .type()
-                   .isa<paddle::dialect::DenseTensorArrayType>(),
-               "Type validation failed for the 0th input, got %s.",
-               (*this)->operand_source(0).type());
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        1u,
+        phi::errors::InvalidArgument(
+            "The size %d of inputs must be equal to 1.", input_size));
+    PADDLE_ENFORCE_EQ((*this)
+                          ->operand_source(0)
+                          .type()
+                          .isa<paddle::dialect::DenseTensorArrayType>(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Type validation failed for the 0th input, got %s.",
+                          (*this)->operand_source(0).type()));
   }
   VLOG(4) << "Verifying attributes:";
   {
     auto &attributes = this->attributes();
-    IR_ENFORCE(attributes.count("index") > 0, "index does not exist.");
-    IR_ENFORCE(attributes.at("index").isa<pir::Int32Attribute>(),
-               "Type of attribute: index is not pir::Int32Attribute.");
+    PADDLE_ENFORCE_GT(attributes.count("index"),
+                      0,
+                      phi::errors::InvalidArgument("index does not exist."));
+    PADDLE_ENFORCE_EQ(
+        attributes.at("index").isa<pir::Int32Attribute>(),
+        true,
+        phi::errors::InvalidArgument(
+            "Type of attribute: index is not pir::Int32Attribute."));
   }
   VLOG(4) << "Verifying outputs:";
   {
     auto output_size = num_results();
-    IR_ENFORCE(output_size == 2u,
-               "The size %d of outputs must be equal to 2.",
-               output_size);
-    IR_ENFORCE(
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        2u,
+        phi::errors::InvalidArgument(
+            "The size %d of outputs must be equal to 2.", output_size));
+    PADDLE_ENFORCE_EQ(
         (*this)->result(0).type().isa<paddle::dialect::DenseTensorArrayType>(),
-        "Type validation failed for the 0th output.");
-    IR_ENFORCE(
+        true,
+        phi::errors::InvalidArgument(
+            "Type validation failed for the 0th output."));
+    PADDLE_ENFORCE_EQ(
         (*this)->result(1).type().isa<paddle::dialect::DenseTensorType>(),
-        "Type validation failed for the 1st output.");
+        true,
+        phi::errors::InvalidArgument(
+            "Type validation failed for the 1st output."));
   }
   VLOG(4) << "End Verifying for: ArrayPopOp.";
 }
@@ -4221,9 +4414,11 @@ std::vector<pir::Type> ArrayPopOp::InferMeta(
           "AttrtibueMap pointer in InferMeta function is nullptr."));
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta ArrayPopOp";
-  IR_ENFORCE(input_values.size() == 1,
-             "Num of inputs is expected to be 1 but got %d.",
-             input_values.size());
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 1 but got %d.",
+                        input_values.size()));
   pir::Value input = input_values[0];
 
   VLOG(4) << "Builder construction outputs";
@@ -4236,8 +4431,10 @@ std::vector<pir::Type> ArrayPopOp::InferMeta(
         "paddle::dialect::AllocatedDenseTensorArrayType"));
   }
 
-  IR_ENFORCE(attributes.find("index") != attributes.end(),
-             "'index' Attribute is expected for ArrayPopOp. ");
+  PADDLE_ENFORCE_NE(attributes.find("index"),
+                    attributes.end(),
+                    phi::errors::InvalidArgument(
+                        "'index' Attribute is expected for ArrayPopOp. "));
   int index = attributes.at("index").dyn_cast<pir::Int32Attribute>().data();
 
   paddle::dialect::IrTensor dense_input(

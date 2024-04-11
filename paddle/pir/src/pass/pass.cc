@@ -35,7 +35,9 @@ Pass::~Pass() = default;
 bool Pass::CanApplyOn(Operation* op) const { return op->num_regions() > 0; }
 
 detail::PassExecutionState& Pass::pass_state() {
-  IR_ENFORCE(pass_state_.has_value() == true, "pass state has no value");
+  PADDLE_ENFORCE_EQ(pass_state_.has_value(),
+                    true,
+                    phi::errors::InvalidArgument("pass state has no value"));
   return *pass_state_;
 }
 
@@ -44,13 +46,16 @@ detail::PassExecutionState& Pass::pass_state() {
 //===----------------------------------------------------------------------===//
 bool PatternRewritePass::Initialize(IrContext* context) {
   RewritePatternSet ps = InitializePatterns(context);
-  IR_ENFORCE(ps.Empty() == false,
-             "Pass creation failed."
-             "When using PatternRewritePass to create a Pass, the number of "
-             "customized Patterns is required to be greater than zero."
-             "Suggested fix: Check whether Pattern is added to the "
-             "InitializePatterns() function of class [%s]",
-             name());
+  PADDLE_ENFORCE_EQ(
+      ps.Empty(),
+      false,
+      phi::errors::InvalidArgument(
+          "Pass creation failed."
+          "When using PatternRewritePass to create a Pass, the number of "
+          "customized Patterns is required to be greater than zero."
+          "Suggested fix: Check whether Pattern is added to the "
+          "InitializePatterns() function of class [%s]",
+          name()));
   patterns_ = FrozenRewritePatternSet(std::move(ps));
   return true;
 }

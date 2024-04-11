@@ -1927,7 +1927,8 @@ Variable* PirInterpreter::DebugVar(const std::string& name) const {
 
 void PirInterpreter::Build(
     const std::vector<std::string>& feed_names,
-    std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
+    std::vector<paddle::framework::OpFuncNode>* op_func_nodes,
+    bool switch_stream) {
   PADDLE_THROW(platform::errors::Unimplemented(
       "Build is not implemented in PirInterpreter."));
 }

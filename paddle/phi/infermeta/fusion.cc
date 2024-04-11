@@ -582,6 +582,36 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
   out->set_dtype(out_dtype);
 }
 
+void SpatialTransformerResblockXPUInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& x_max,
+    const std::vector<const MetaTensor*>& conv_bias,
+    const std::vector<const MetaTensor*>& conv_filter,
+    const std::vector<const MetaTensor*>& conv_filter_max,
+    const std::vector<const MetaTensor*>& gn_bias,
+    const std::vector<const MetaTensor*>& gn_scale,
+    const std::vector<int>& dilations,
+    const std::vector<int>& paddings,
+    const std::vector<int>& strides,
+    const std::vector<float>& gn_eps,
+    const std::vector<int>& gn_groups,
+    const std::vector<int>& groups,
+    bool conv_fix,
+    bool has_silu_fc_input,
+    bool include_silu,
+    MetaTensor* out,
+    MetaTensor* out_max) {
+  auto input_shape = x.dims();
+  auto batch_size = input_shape[0];
+  auto channel_out = conv_filter[0]->dims()[0];
+  auto h = input_shape[2];
+  auto w = input_shape[3];
+  out->set_dims(common::make_ddim({batch_size, channel_out, h, w}));
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out->share_lod(x);
+}
+
 void EmbeddingWithEltwiseAddXPUInferMeta(
     const std::vector<const MetaTensor*>& ids,
     const std::vector<const MetaTensor*>& tables,
@@ -3046,7 +3076,7 @@ void FusedConv2dAddActInferMeta(const MetaTensor& input,
                                 MetaTensor* output,
                                 std::vector<MetaTensor*> outputs,
                                 MetaConfig config) {
-  // TODO(liuyuanle): mkldnn seems only support nchw.
+  // TODO(liuyuanle): onednn seems only support nchw.
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
   std::vector<int64_t> out_shape = ComputeOutputShape(input,
                                                       filter,
@@ -3745,13 +3775,14 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
                               const MetaTensor& q_max,
                               const MetaTensor& k_max,
                               const MetaTensor& v_max,
+                              const MetaTensor& qk_max,
+                              const MetaTensor& qkv_max,
                               float alpha,
                               int head_num,
                               int head_dim,
                               bool qkv_fc_fusion,
                               DataType out_dtype,
-                              MetaTensor* qkv,
-                              MetaTensor* qkv_max) {
+                              MetaTensor* qkv) {
   auto q_dims = q.dims();
   auto k_dims = k.dims();
   auto v_dims = v.dims();
@@ -3795,9 +3826,6 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
   qkv->set_dims(phi::make_ddim({q_dims[0], q_dims[1], head_num * head_dim}));
   qkv->set_dtype(out_dtype);
   qkv->set_layout(q.layout());
-  qkv_max->set_dims(phi::make_ddim({6}));
-  qkv_max->set_dtype(out_dtype);
-  qkv_max->set_layout(q.layout());
 }
 void SinePosXPUInferMeta(const MetaTensor& x,
                          const MetaTensor& y,

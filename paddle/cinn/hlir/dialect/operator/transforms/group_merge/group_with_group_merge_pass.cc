@@ -1941,7 +1941,14 @@ class GeneralFusionMergePassHelper {
         }
       }
 
-      CHECK_GE(producer->consumer_groups().size(), candidates.size());
+      PADDLE_ENFORCE_GE(
+          producer->consumer_groups().size(),
+          candidates.size(),
+          phi::errors::InvalidArgument(
+              "The size of producer consumer groups is incorrect."
+              "Expected size is greater than or equal to %d, but receive %d.",
+              candidates.size(),
+              producer->consumer_groups().size()));
       if (producer->consumer_groups().size() == 0 && candidates.size() == 0 &&
           output_ops_set_.count(producer->CollectOps()[0]) == 0) {
         producer->belong_groups.insert(*fusionable_consumers->begin());
@@ -2204,8 +2211,24 @@ class GeneralFusionMergePassHelper {
         CHECK(consumer->belong_groups.size());
         consumers.insert(*consumer->belong_groups.begin());
       }
-      CHECK_EQ(group->producer_groups().size(), producers.size());
-      CHECK_EQ(group->consumer_groups().size(), consumers.size());
+      PADDLE_ENFORCE_EQ(
+          group->producer_groups().size(),
+          producers.size(),
+          phi::errors::InvalidArgument(
+              "The size of group's producer groups and producers is not equal,"
+              "where the size of group's producer groups:%d but the size of "
+              "producers:%d.",
+              group->producer_groups().size(),
+              producers.size()));
+      PADDLE_ENFORCE_EQ(
+          group->consumer_groups().size(),
+          consumers.size(),
+          phi::errors::InvalidArgument(
+              "The size of group's consumer groups and consumers is not equal,"
+              "where the size of group's consumer groups:%d but the size of "
+              "consumers:%d.",
+              group->consumer_groups().size(),
+              consumers.size()));
       (*group->mut_producer_groups()) = producers;
       (*group->mut_consumer_groups()) = consumers;
     }

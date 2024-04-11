@@ -4,6 +4,7 @@
 - divide
 - elementwise_pow
 - rsqrt
+- sqrt
 - sin
 - sinh
 - asin
