@@ -226,8 +226,7 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
           void* functionPtr = reinterpret_cast<void*>(
               &(VectorizedDropoutForward<T, NoMaskFwFunctor<T, float>>));
 #ifdef PADDLE_WITH_HIP
-          hipFunction_t cudaFunc =
-              reinterpret_cast<hipFunction_t>(functionPtr);
+          hipFunction_t cudaFunc = reinterpret_cast<hipFunction_t>(functionPtr);
 #else
           cudaFunction_t cudaFunc;
           PADDLE_ENFORCE_GPU_SUCCESS(
