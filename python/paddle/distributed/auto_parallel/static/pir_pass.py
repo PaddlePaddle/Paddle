@@ -97,8 +97,10 @@ def apply_reshard_pass_v2(program):
                 reshard_func = choose_reshard_func(
                     op_operand_dist_attr, op_target_dist_attr
                 )
+                print(f'debug op_operand_dist_attr: {op_operand_dist_attr}, op_target_dist_attr: {op_target_dist_attr}')
                 reshard_func.eval(
                     new_program, op, op_operand_dist_attr, op_target_dist_attr
                 )
+                print(f'debug after reshard eval, program: {new_program}')
 
     return new_program

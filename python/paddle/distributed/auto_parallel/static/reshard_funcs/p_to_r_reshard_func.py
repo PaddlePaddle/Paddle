@@ -16,21 +16,16 @@ import paddle
 from paddle.distributed.communication.reduce import ReduceOp
 
 from ..process_group import new_process_group
-from .base_reshard_func import ReshardFunction, register_reshard_func
-
+from .base_reshard_func import ReshardFunction
+from .same_status_reshard_func import SameStatusReshardFunction
 
 class PToRReshardFunction(ReshardFunction):
     def is_suitable(self, src_dist_attr, dst_dist_attr):
-        print(f'debug src_dist_attr: {src_dist_attr}, dst_dist_attr: {dst_dist_attr}')
         if not self.is_partial(src_dist_attr):
-            print(f'debug src_dist_attr not is_partial')
             return False
-        print(f'debug src_dist_attr is_partial')
 
         if not self.is_replicated(dst_dist_attr):
-            print(f'debug dst_dist_attr not is_replicated')
             return False
-        print(f'debug dst_dist_attr is_replicated')
 
         in_mesh = src_dist_attr.process_mesh
         out_mesh = dst_dist_attr.process_mesh
@@ -43,21 +38,58 @@ class PToRReshardFunction(ReshardFunction):
             return False
         return True
 
-    def eval(self, program, op, src_dist_attr, dst_dist_attr):
+    def eval(self, program, op, src_dist_attr, dst_dist_attr, remove_op=True):
         src_mesh = src_dist_attr.process_mesh
-        print(f'debug dist_attr: {src_dist_attr}, partial_status: {src_dist_attr.partial_status}')
         src_reduce_type = src_dist_attr.partial_status[0]
         reduce_mean = False
         if src_reduce_type == ReduceOp.AVG:
             src_reduce_type = ReduceOp.SUM
             reduce_mean = True
 
-        paddle.pir.set_insertion_point(op)
+        op_value = op.result(0)
+        if remove_op:
+            paddle.pir.set_insertion_point(op)
+            op_value = op.operand_source(0)
+        else:
+            paddle.pir.set_insertion_point_after(op)
         group = new_process_group(src_mesh.process_ids)
         reduced_value = paddle._pir_ops.c_allreduce_sum_(
-            op.operand_source(0), group.id, False, False
+            op_value, group.id, False, False
         )
-        reduced_value.set_type(op.result(0).type())
-        op.result(0).replace_all_uses_with(reduced_value)
-        program.global_block().remove_op(op)
+        reduced_value.set_type(op_value.type())
+        print(f'deal with op: {op}, op_result: {op.num_results()}')
+        if remove_op:
+            op.result(0).replace_all_uses_with(reduced_value)
+            program.global_block().remove_op(op)
+        print(f'8 deal with op: {op}, program: {program}')
 
+
+class PToRReshardFunctionCrossMesh(ReshardFunction):
+    def is_suitable(self, src_dist_attr, dst_dist_attr):
+        if not self.is_partial(src_dist_attr):
+            return False
+
+        if not self.is_replicated(dst_dist_attr):
+            return False
+
+        in_mesh = src_dist_attr.process_mesh
+        out_mesh = dst_dist_attr.process_mesh
+
+        if in_mesh.ndim != 1 or out_mesh.ndim != 1 or in_mesh.shape != out_mesh.shape:
+            return False
+        
+        if in_mesh == out_mesh:
+            return False
+
+        return True
+
+    def eval(self, program, op, src_dist_attr, dst_dist_attr):
+        same_status_func = SameStatusReshardFunction()
+        tmp_dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(dst_dist_attr.process_mesh, src_dist_attr.dims_mapping, src_dist_attr.partial_status)
+        out, out_dist_attr = same_status_func.eval(program, op, src_dist_attr, tmp_dist_attr)
+
+        curr_global_rank = paddle.distributed.get_rank()
+        if curr_global_rank in dst_dist_attr.process_mesh.process_ids:
+            p_to_r_func = PToRReshardFunction()
+            assert(p_to_r_func.is_suitable(out_dist_attr, dst_dist_attr)), f"Invoke the p to r reshard function is not valid from {out.dist_attr()} to {dst_dist_attr}"
+            p_to_r_func.eval(program, out, out_dist_attr, dst_dist_attr, False)
