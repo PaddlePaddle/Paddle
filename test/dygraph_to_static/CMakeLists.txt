@@ -4,8 +4,8 @@ file(
   "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 set(SOT_ENVS SOT_LOG_LEVEL=0 COST_MODEL=False MIN_GRAPH_SIZE=0
-             STRICT_MODE=False FLAGS_enable_pir_api=True)
-set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0)
+             STRICT_MODE=False)
+set(PIR_ENVS FLAGS_enable_pir_api=True)
 
 if(WIN32 AND NOT WITH_GPU)
   # disable on Windows CPU CI for timeout
@@ -27,7 +27,7 @@ if(NOT WITH_GPU)
 endif()
 
 foreach(TEST_OP ${TEST_OPS})
-  py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS} ${SOT_ENVS})
+  py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${SOT_ENVS} ${PIR_ENVS})
 endforeach()
 
 set_tests_properties(test_se_resnet PROPERTIES TIMEOUT 900)
