@@ -192,8 +192,9 @@ class BlockDimExprsAsserter {
       const std::vector<pir::Value>& inputs,
       pir::Value output,
       const OptDimExprs4ValueT& OpDimExprs4Value) {
-    VLOG(0) << "#### TryAssertDimExprsForOutputShape #### "
-            << output.defining_op()->name();
+    if (!::common::contain_unknown_dim(
+            output.type().dyn_cast<paddle::dialect::DenseTensorType>().dims()))
+      return;
     auto opt_shape_tensor_from_dim_exprs =
         BuildShapeTensorFromShapeDimExprs(inputs, output, OpDimExprs4Value);
     if (!opt_shape_tensor_from_dim_exprs.has_value()) return;
