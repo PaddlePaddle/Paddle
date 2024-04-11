@@ -65,7 +65,6 @@ void GroupOp::Build(pir::Builder& builder,             // NOLINT
                     std::unique_ptr<pir::Block>&& block) {
   VLOG(4) << "Start build GroupOp";
   if (block && !block->empty()) {
-    // IR_ENFORCE(block->back().isa<pir::YieldOp>());
     PADDLE_ENFORCE_EQ(block->back().isa<pir::YieldOp>(), true);
     auto& op = block->back();
     for (size_t i = 0; i < op.num_operands(); ++i) {
@@ -191,6 +190,13 @@ void YieldStoreOp::Build(pir::Builder& builder,
 }
 
 void YieldStoreOp::VerifySig() {}
+
+bool YieldStoreOp::InferSymbolicShape(
+    pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  shape_analysis->SetShapeOrDataForValue(
+      result(0), shape_analysis->GetShapeOrDataForValue(operand_source(0)));
+  return true;
+}
 
 bool ConcatOp::InferSymbolicShape(
     pir::ShapeConstraintIRAnalysis* shape_analysis) {

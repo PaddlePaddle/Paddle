@@ -92,9 +92,7 @@ class Parallelizer:
                 params_grads,
             )
             self._logger.debug(
-                "within parallel apply_pre_optimization time: {}, mode {}".format(
-                    time.time() - time0, self._mode
-                )
+                f"within parallel apply_pre_optimization time: {time.time() - time0}, mode {self._mode}"
             )
             # Do logical partition
             time0 = time.time()
@@ -110,9 +108,7 @@ class Parallelizer:
             init_auto_parallel_rng()
 
             self._logger.debug(
-                "within parallel partitioner time: {}, mode {}".format(
-                    time.time() - time0, self._mode
-                )
+                f"within parallel partitioner time: {time.time() - time0}, mode {self._mode}"
             )
             # Generate optimizer
             time0 = time.time()
@@ -123,9 +119,7 @@ class Parallelizer:
                 dist_params_grads,
             )
             self._logger.debug(
-                "within parallel optimizer time: {}, mode {}".format(
-                    time.time() - time0, self._mode
-                )
+                f"within parallel optimizer time: {time.time() - time0}, mode {self._mode}"
             )
 
             resharder = Resharder(
@@ -137,9 +131,7 @@ class Parallelizer:
             )
             resharder.reshard()
             self._logger.debug(
-                "within parallel reshard time: {}, mode {}".format(
-                    time.time() - time0, self._mode
-                )
+                f"within parallel reshard time: {time.time() - time0}, mode {self._mode}"
             )
             # Apply post optimization passes
             time0 = time.time()
@@ -147,9 +139,7 @@ class Parallelizer:
                 dist_main_prog, dist_startup_prog, rank, dist_params_grads
             )
             self._logger.debug(
-                "within parallel apply_post_optimization time: {}, mode {}".format(
-                    time.time() - time0, self._mode
-                )
+                f"within parallel apply_post_optimization time: {time.time() - time0}, mode {self._mode}"
             )
         else:
             # Apply pre optimization passes
@@ -162,9 +152,7 @@ class Parallelizer:
                 serial_main_program, serial_startup_program, None, None, []
             )
             self._logger.debug(
-                "within parallel apply_pre_optimization time: {}, mode {}".format(
-                    time.time() - time0, self._mode
-                )
+                f"within parallel apply_pre_optimization time: {time.time() - time0}, mode {self._mode}"
             )
             # Do logical partition
             time0 = time.time()
@@ -178,9 +166,7 @@ class Parallelizer:
             )
             # Do reshard process
             self._logger.debug(
-                "within parallel partitioner time: {}, mode {}".format(
-                    time.time() - time0, self._mode
-                )
+                f"within parallel partitioner time: {time.time() - time0}, mode {self._mode}"
             )
             time0 = time.time()
             # Do reshard process
@@ -199,9 +185,7 @@ class Parallelizer:
             )
             resharder.reshard()
             self._logger.debug(
-                "within parallel reshard time: {}, mode {}".format(
-                    time.time() - time0, self._mode
-                )
+                f"within parallel reshard time: {time.time() - time0}, mode {self._mode}"
             )
             # Apply post optimization passes
             time0 = time.time()
@@ -209,9 +193,7 @@ class Parallelizer:
                 dist_main_prog, dist_startup_prog, rank, dist_params_grads
             )
             self._logger.debug(
-                "within parallel apply_post_optimization time: {}, mode {}".format(
-                    time.time() - time0, self._mode
-                )
+                f"within parallel apply_post_optimization time: {time.time() - time0}, mode {self._mode}"
             )
 
         # Clone program for test

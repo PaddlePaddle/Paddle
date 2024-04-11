@@ -201,9 +201,7 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
         )
     if not isinstance(input, expected_type):
         raise TypeError(
-            "The type of '{}' in {} must be {}, but received {}. {}".format(
-                input_name, op_name, expected_type, type(input), extra_message
-            )
+            f"The type of '{input_name}' in {op_name} must be {expected_type}, but received {type(input)}. {extra_message}"
         )
 
 
@@ -216,13 +214,7 @@ def check_dtype(
 
     if convert_dtype(input_dtype) not in expected_dtype:
         raise TypeError(
-            "The data type of '{}' in {} must be {}, but received {}. {}".format(
-                input_name,
-                op_name,
-                expected_dtype,
-                convert_dtype(input_dtype),
-                extra_message,
-            )
+            f"The data type of '{input_name}' in {op_name} must be {expected_dtype}, but received {convert_dtype(input_dtype)}. {extra_message}"
         )
 
 
@@ -294,9 +286,7 @@ class DataToLoDTensorConverter:
         for s1, s2 in zip(self.shape, shape):
             if s1 != s2 and s1 >= 0 and s2 >= 0:
                 raise ValueError(
-                    "Shape not match. What is defined in data layer is {}, but receive {}".format(
-                        self.shape, shape
-                    )
+                    f"Shape not match. What is defined in data layer is {self.shape}, but receive {shape}"
                 )
 
     def done(self):
@@ -307,9 +297,7 @@ class DataToLoDTensorConverter:
                     arr = arr.reshape(self.shape)
                 except ValueError:
                     raise ValueError(
-                        "Reshape error. What is defined in data layer is {}, but receive {}".format(
-                            self.shape, arr.shape
-                        )
+                        f"Reshape error. What is defined in data layer is {self.shape}, but receive {arr.shape}"
                     )
         t = core.LoDTensor()
         t.set(arr, self.place)

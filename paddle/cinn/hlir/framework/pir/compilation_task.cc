@@ -17,7 +17,7 @@
 #include "paddle/cinn/hlir/framework/pir/compilation_task.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/hlir/framework/op_lowering.h"
-#include "paddle/cinn/ir/module.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace hlir {
@@ -29,7 +29,6 @@ void GroupCompilationContext::SetLoweredFuncs(
        funcs.predicate2funcs) {
     predicates_.push_back(std::move(predicate2func.first));
     lowered_funcs_.push_back(std::move(predicate2func.second));
-    ++func_size_;
   }
   infer_shape_lowered_func_ = std::move(funcs.infer_shape_func);
 }
@@ -43,15 +42,13 @@ std::string GroupCompilationContext::PrintPredicate2Funcs() const {
   return ss.str();
 }
 
-void* GroupCompilationContext::FuncPtr() {
-  return backend_compiler_->Lookup(host_func_name_);
-}
-
-std::shared_ptr<backends::Compiler> GroupCompilationContext::BackendCompiler() {
-  return backend_compiler_;
-}
-
 void CompilationTask::operator()() {
+  VLOG(4) << "Run Compilation Task for : " << context_->group_.get();
+  if (CompilationCache::Instance().Has(context_->group_)) {
+    VLOG(4) << "Found cached kernel info for group: "
+            << context_->group_->FuncName();
+    return;
+  }
   Lowering();
   CodegenAndJit();
 }
@@ -77,25 +74,27 @@ void CompilationTask::CodegenAndJit() {
   }
   builder.SetInferShapeFunc(context_->infer_shape_lowered_func_);
   ir::Module ir_module = builder.Build();
-
-  context_->backend_compiler_ = backends::Compiler::Create(context_->target_);
-  context_->backend_compiler_->Build(ir_module, "");
+  BuildPirCINNKernelInfo(ir_module);
 }
 
-pir::CINNKernelInfo CompilationTask::BuildPirCINNKernelInfo() {
-  std::string fn_name = context_->group_->FuncName();
-  VLOG(4) << "Lookup kernel name: " << fn_name;
-  auto* fn_ptr = context_->backend_compiler_->Lookup(fn_name);
-  CHECK(fn_ptr);
-  auto* infer_shape_fn_ptr =
-      context_->backend_compiler_->Lookup(fn_name + "_infer_shape");
-  CHECK(infer_shape_fn_ptr);
-  pir::CINNKernelInfo cinn_kernel_info;
-  cinn_kernel_info.fn_name = fn_name;
-  cinn_kernel_info.fn_ptr = fn_ptr;
-  cinn_kernel_info.infer_shape_fn_ptr = infer_shape_fn_ptr;
-  cinn_kernel_info.int_args_map = context_->group_->int_args_map();
-  return cinn_kernel_info;
+pir::CINNKernelInfo CompilationTask::GetCINNKernelInfo() {
+  if (!CompilationCache::Instance().Has(context_->group_)) {
+    PADDLE_THROW(phi::errors::NotFound(
+        "Kernel info has been cached for current group."));
+  }
+  return CompilationCache::Instance().GetKernelInfo(context_->group_);
+}
+
+void CompilationTask::BuildPirCINNKernelInfo(const ir::Module& module) {
+  auto compilation_result =
+      std::make_shared<pir::CompilationResult>(context_->target_);
+  pir::BackendResource& backend_resource =
+      compilation_result->MutableBackendResource();
+  backend_resource.GetBackendCompiler()->Build(module, "");
+  backend_resource.SetHostFnName(context_->group_->FuncName());
+  backend_resource.SetInferFnName(context_->group_->FuncName() +
+                                  "_infer_shape");
+  CompilationCache::Instance().Insert(context_->group_, compilation_result);
 }
 
 }  // namespace framework

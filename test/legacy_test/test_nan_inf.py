@@ -179,7 +179,7 @@ class TestNanInfStack(TestNanInfBase):
     def test_check_stack(self):
         self.check_stack(" check_nan_inf_backward_stack.py")
 
-    def test_statck_check_stack(self):
+    def test_static_check_stack(self):
         self.check_stack(" check_nan_inf_backward_static_stack.py")
 
 

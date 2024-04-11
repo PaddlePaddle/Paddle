@@ -210,6 +210,7 @@ void FusedRopeGradInferMeta(const MetaTensor& sin,
                             const MetaTensor& dout_v,
                             bool use_neox_rotary_style,
                             bool time_major,
+                            float rotary_emb_base,
                             MetaTensor* dq,
                             MetaTensor* dk,
                             MetaTensor* dv);
@@ -429,6 +430,16 @@ void PsroiPoolGradInferMeta(const MetaTensor& x,
                             int output_channels,
                             float spatial_scale,
                             MetaTensor* dx);
+
+void RankAttentionGradInferMeta(const MetaTensor& x,
+                                const MetaTensor& rank_offset,
+                                const MetaTensor& rank_param,
+                                const MetaTensor& input_help,
+                                const MetaTensor& ins_rank,
+                                const MetaTensor& out_grad,
+                                int max_rank,
+                                int max_size,
+                                MetaTensor* rank_param_grad);
 
 void RealAndImagGradInferMeta(const MetaTensor& out_grad, MetaTensor* dx);
 

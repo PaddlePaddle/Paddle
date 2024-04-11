@@ -80,32 +80,24 @@ def check_embedding_dim(accessor_proto, varname, program_id, context):
     if accessor_proto.accessor_class == "SparseAccessor":
         if fea_dim != embedding_dim + 2:
             raise ValueError(
-                "The fea_dim is wrong, it will be sparse_embedding_dim + 2: {}, but got {}".format(
-                    embedding_dim + 2, fea_dim
-                )
+                f"The fea_dim is wrong, it will be sparse_embedding_dim + 2: {embedding_dim + 2}, but got {fea_dim}"
             )
     else:
         if fea_dim != embedding_dim:
             raise ValueError(
-                "The fea_dim is wrong, it will be sparse_embedding_dim: {}, but got {}".format(
-                    embedding_dim, fea_dim
-                )
+                f"The fea_dim is wrong, it will be sparse_embedding_dim: {embedding_dim}, but got {fea_dim}"
             )
 
     embedx_dim = accessor_proto.embedx_dim
     if accessor_proto.accessor_class == "SparseAccessor":
         if embedx_dim != embedding_dim - 1:
             raise ValueError(
-                "The embedx_dim is wrong, it will be sparse_embedding_dim - 1: {}, but got {}".format(
-                    embedding_dim - 1, embedx_dim
-                )
+                f"The embedx_dim is wrong, it will be sparse_embedding_dim - 1: {embedding_dim - 1}, but got {embedx_dim}"
             )
     else:
         if embedx_dim != embedding_dim - 3:
             raise ValueError(
-                "The embedx_dim is wrong, it will be sparse_embedding_dim - 3: {}, but got {}".format(
-                    embedding_dim - 3, embedx_dim
-                )
+                f"The embedx_dim is wrong, it will be sparse_embedding_dim - 3: {embedding_dim - 3}, but got {embedx_dim}"
             )
 
 
@@ -1365,9 +1357,7 @@ class TheOnePSRuntime(RuntimeBase):
             for var_name in var_names:
                 if var_name not in distributed_varnames:
                     raise ValueError(
-                        "fleet.init server can only load sparse variables in {}".format(
-                            distributed_varnames
-                        )
+                        f"fleet.init server can only load sparse variables in {distributed_varnames}"
                     )
             load_varnames = var_names
 

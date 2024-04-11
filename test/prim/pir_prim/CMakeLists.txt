@@ -38,6 +38,7 @@ if(WITH_CINN)
       ${target}
       ENVS
       GLOG_v=1
+      FLAGS_group_schedule_tiling_first=true
       FLAGS_prim_check_ops=true
       FLAGS_enable_pir_api=true
       FLAGS_prim_enable_dynamic=true

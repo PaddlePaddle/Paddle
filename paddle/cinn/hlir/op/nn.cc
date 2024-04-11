@@ -167,7 +167,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
   int groups = 1;
   std::string key = "";
   std::string conv_type = "";
-  bool use_mkldnn = false;
+  bool use_onednn = false;
   if (attrs.attr_store.find("padding") != attrs.attr_store.end()) {
     padding = absl::get<std::vector<int>>(attrs.attr_store.at("padding"));
   }
@@ -183,8 +183,8 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
   if (attrs.attr_store.find("groups") != attrs.attr_store.end()) {
     groups = absl::get<int>(attrs.attr_store.at("groups"));
   }
-  if (attrs.attr_store.find("use_mkldnn") != attrs.attr_store.end()) {
-    use_mkldnn = absl::get<bool>(attrs.attr_store.at("use_mkldnn"));
+  if (attrs.attr_store.find("use_onednn") != attrs.attr_store.end()) {
+    use_onednn = absl::get<bool>(attrs.attr_store.at("use_onednn"));
   }
   if (attrs.attr_store.find("key") != attrs.attr_store.end()) {
     key = absl::get<std::string>(attrs.attr_store.at("key"));
@@ -231,7 +231,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
           // A is input: [N, C, H, W], B is filter: [C_out, C_in/group,
           // filter_h, filter_w]
           if (target.arch == Target::Arch::X86) {
-            if (groups == 1 && !use_mkldnn) {
+            if (groups == 1 && !use_onednn) {
               out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
                                        B.as_tensor_ref(),
                                        padding[0],
@@ -245,7 +245,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
                                        target);
             } else {
 #ifdef CINN_WITH_DNNL
-              out = pe::Conv2d_NCHW_MKLDNN(A.as_tensor_ref(),
+              out = pe::Conv2d_NCHW_ONEDNN(A.as_tensor_ref(),
                                            B.as_tensor_ref(),
                                            padding[0],
                                            padding[1],
@@ -1912,12 +1912,12 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
     const std::vector<std::vector<int>> &output_shapes,
     const Target &target) {
   int axis = -1;
-  bool use_mkldnn = false;
+  bool use_onednn = false;
   if (attrs.attr_store.count("axis")) {
     axis = absl::get<int>(attrs.attr_store.at("axis"));
   }
-  if (attrs.attr_store.count("use_mkldnn")) {
-    use_mkldnn = absl::get<bool>(attrs.attr_store.at("use_mkldnn"));
+  if (attrs.attr_store.count("use_onednn")) {
+    use_onednn = absl::get<bool>(attrs.attr_store.at("use_onednn"));
   }
   framework::CINNCompute softmax_compute(
       [=](lang::Args args, lang::RetValue *ret) {
@@ -1942,8 +1942,8 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
             pack_args[pack_args.size() - 1].operator std::string();
 
 #ifdef CINN_WITH_DNNL
-        if (use_mkldnn) {
-          out = pe::SoftmaxMKLDNN(A, new_axis, tensor_name);
+        if (use_onednn) {
+          out = pe::SoftmaxONEDNN(A, new_axis, tensor_name);
         } else {
           out = pe::Softmax(A, new_axis, tensor_name);
         }
@@ -2043,7 +2043,7 @@ std::vector<std::vector<std::string>> InferLayoutForSoftmax(
   CHECK_EQ(input_layouts.size(), 1U)
       << "The input's layout size is not 1! Please check again.";
   if (input_shapes[0].size() > 4) {
-    // input tensor needs to be transformed back to NCHW for mkldnn
+    // input tensor needs to be transformed back to NCHW for onednn
     return {{"NCHW", "NCHW"}, {"NCHW"}};
   }
   return {{input_layouts[0], input_layouts[0]}, input_layouts};

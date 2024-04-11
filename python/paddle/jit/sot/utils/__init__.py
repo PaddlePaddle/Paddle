@@ -75,5 +75,6 @@ from .utils import (  # noqa: F401
     map_if_extend,
     meta_str,
     no_eval_frame,
+    printable,
     tmp_name_guard,
 )
