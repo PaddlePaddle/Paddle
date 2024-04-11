@@ -23,7 +23,7 @@
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
-#include "paddle/phi/kernels/impl/full_whit_tensor_kernel_impl.h"
+#include "paddle/phi/kernels/impl/full_with_tensor_kernel_impl.h"
 
 namespace phi {
 
@@ -171,5 +171,4 @@ PD_REGISTER_KERNEL(full_with_tensor,
                    bool,
                    phi::dtype::float16) {
   kernel->InputAt(0).SetBackend(phi::Backend::CPU);
-  kernel->InputAt(1).SetBackend(phi::Backend::CPU);
 }

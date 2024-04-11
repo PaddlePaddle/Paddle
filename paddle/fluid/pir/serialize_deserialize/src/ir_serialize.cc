@@ -13,7 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/serialize_deserialize/include/ir_serialize.h"
+#include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/serialize_utils.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/operation.h"
 
 namespace pir {
 
@@ -121,8 +124,11 @@ Json ProgramWriter::WriteOp(const pir::Operation& op) {
   op_json[OPRESULTS] = opresults_json;
 
   // serialize attributes
-  op_json[ATTRS] = WriteAttributesMapOpinfo(op.attributes());
-  op_json[OPRESULTS_ATTRS] = WriteAttributesMapTrain(op.attributes());
+  op_json[ATTRS] = WriteAttributesMapOpinfo(const_cast<pir::Operation*>(&op),
+                                            op.attributes());
+  if (trainable_) {
+    op_json[OPRESULTS_ATTRS] = WriteAttributesMapOther(op.attributes());
+  }
 
   VLOG(6) << "Finish write Operation " << op.name();
   return op_json;
@@ -136,7 +142,40 @@ Json ProgramWriter::WriteOpOperand(const pir::OpOperand& op_operand) {
   return operand_json;
 }
 
-Json ProgramWriter::WriteAttributesMapTrain(const AttributeMap& attr_map) {
+Json ProgramWriter::WriteAttributesMapOpinfo(pir::Operation* op,
+                                             const AttributeMap& attr_map) {
+  Json attrs_json = Json::array();
+
+  if (op->dialect()->name() == "pd_op") {
+    if (op->dyn_cast<paddle::dialect::OpYamlInfoInterface>() != nullptr) {
+      auto [_1, attr_info, _3, _4, _5] =
+          op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
+      if (attr_info.size() != 0) {
+        for (auto it = attr_info.begin(); it != attr_info.end(); it++) {
+          if (attr_map.find(it->name) != attr_map.end()) {
+            attrs_json.emplace_back(
+                WriteAttribute(it->name, attr_map.at(it->name)));
+          }
+        }
+      }
+    } else {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "the %s do not has OpYamlInfoInterface", op->name()));
+    }
+  } else {
+    for (auto& attr : attr_map) {
+      if (attr.first != "stop_gradient" && attr.first != "persistable" &&
+          attr.first != "op_callstack") {
+        attrs_json.emplace_back(WriteAttribute(attr.first, attr.second));
+      }
+    }
+  }
+
+  VLOG(6) << "Finish write Opinfo AttributeMap ";
+  return attrs_json;
+}
+
+Json ProgramWriter::WriteAttributesMapOther(const AttributeMap& attr_map) {
   Json operesult_attrs_json = Json::array();
   for (auto& attr : attr_map) {
     if (attr.first == "stop_gradient" || attr.first == "persistable") {
@@ -144,22 +183,9 @@ Json ProgramWriter::WriteAttributesMapTrain(const AttributeMap& attr_map) {
           WriteAttribute(attr.first, attr.second));
     }
   }
-  VLOG(6) << "Finish write other AttributeMap ";
-  return operesult_attrs_json;
-}
 
-Json ProgramWriter::WriteAttributesMapOpinfo(const AttributeMap& attr_map) {
-  Json attrs_json = Json::array();
-  for (auto& attr : attr_map) {
-    if (attr.first == "op_callstack") {
-      continue;
-    }
-    if (attr.first != "stop_gradient" && attr.first != "persistable") {
-      attrs_json.emplace_back(WriteAttribute(attr.first, attr.second));
-    }
-  }
-  VLOG(6) << "Finish write AttributeMap ";
-  return attrs_json;
+  VLOG(6) << "Finish write Other AttributeMap ";
+  return operesult_attrs_json;
 }
 
 Json ProgramWriter::WriteAttribute(const std::string& op_attr_name,
