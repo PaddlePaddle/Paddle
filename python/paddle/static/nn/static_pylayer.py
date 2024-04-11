@@ -237,19 +237,20 @@ def copy_var_from_parent_block(parent_block_var, layer_helper):
     return current_block_var
 
 
-class PyLayerBackwardFunction:    
+class PyLayerBackwardFunction:
     _register_backward_funcs = []
+
     def __init__(self, backward_function, hook_check_func):
         if backward_function is None or not callable(backward_function):
             raise TypeError('func must be a Python function')
 
         self._func = backward_function
-        
+
         # Note: Used to verify the number of `Value` inputs to ``forward_fn`` the same as the
         # number of `Value` outputs to ``backward_fn``, and the number of `Value` outputs to ``forward_fn``
         # the same as the number of `Value` inputs to ``backward_fn``.
         self._hook_check_func = hook_check_func
-        
+
         '''
         Why record self here?
            For increasing reference count of self.
@@ -257,18 +258,18 @@ class PyLayerBackwardFunction:
            whose reference count is 1 would cause
            segmentation fault error in C++ side.
            May be lack of Python GC in C++ side?
-        '''        
+        '''
         PyLayerBackwardFunction._register_backward_funcs.append(self)
 
     def __call__(self, *output_grads):
         assert self._hook_check_func
-        
+
         input_grads = self._func(*output_grads)
         if not isinstance(input_grads, (list, tuple)):
             input_grads = (input_grads,)
-        
+
         self._hook_check_func(output_grads, input_grads)
-        
+
         return input_grads
 
 
@@ -377,37 +378,52 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
         if backward_fn is not None:
             if not callable(backward_fn):
                 raise ValueError("`bakcward_fn` should be callable")
-            
+
             def hook_inputs_outputs_check_function(output_grads, input_grads):
                 # 1. Verify the number of `Value` inputs to ``forward_fn`` the same as the
                 # number of `Value` outputs to ``backward_fn``
                 forward_inputs = [
-                    x for x in flatten(inputs) if isinstance(x, paddle.pir.Value)
+                    x
+                    for x in flatten(inputs)
+                    if isinstance(x, paddle.pir.Value)
                 ]
                 if len(input_grads) != len(forward_inputs):
                     raise ValueError(
                         f"The number of input grads should be equal to the number of inputs, but got {len(input_grads)} and {len(inputs)}."
                     )
                 for inp_grad, fwd_input in zip(input_grads, forward_inputs):
-                    assert inp_grad.dtype == fwd_input.dtype, f"dtype of inp_grad({inp_grad.dtype}) and fwd_input({fwd_input.dtype}) should be the same"
-                    assert inp_grad.shape == fwd_input.shape, f"shape of inp_grad({inp_grad.shape}) and fwd_input({fwd_input.shape}) should be the same"
-                    assert inp_grad.type() == fwd_input.type(), f"type of inp_grad({inp_grad.type}) and fwd_input({fwd_input.type}) should be the same"
-                    
+                    assert (
+                        inp_grad.dtype == fwd_input.dtype
+                    ), f"dtype of inp_grad({inp_grad.dtype}) and fwd_input({fwd_input.dtype}) should be the same"
+                    assert (
+                        inp_grad.shape == fwd_input.shape
+                    ), f"shape of inp_grad({inp_grad.shape}) and fwd_input({fwd_input.shape}) should be the same"
+                    assert (
+                        inp_grad.type() == fwd_input.type()
+                    ), f"type of inp_grad({inp_grad.type}) and fwd_input({fwd_input.type}) should be the same"
+
                 # 2. Verify the number of `Value` outputs to ``forward_fn``
                 # the same as the number of `Value` inputs to ``backward_fn``
                 forward_outputs = [
-                    x for x in flatten(fwd_outputs) if isinstance(x, paddle.pir.Value)
+                    x
+                    for x in flatten(fwd_outputs)
+                    if isinstance(x, paddle.pir.Value)
                 ]
                 if len(output_grads) != len(forward_outputs):
                     raise ValueError(
                         f"The number of output grads should be equal to the number of outputs, but got {len(output_grads)} and {len(fwd_outputs)}."
                     )
                 for out_grad, fwd_output in zip(output_grads, forward_outputs):
-                    assert out_grad.dtype == fwd_output.dtype, f"dtype of out_grad({out_grad.dtype}) and fwd_output({fwd_output.dtype}) should be the same"
-                    assert out_grad.shape == fwd_output.shape, f"shape of out_grad({out_grad.shape}) and fwd_output({fwd_output.shape}) should be the same"
-                    assert out_grad.type() == fwd_output.type(), f"type of out_grad({out_grad.type}) and fwd_output({fwd_output.type}) should be the same"
-                
-            
+                    assert (
+                        out_grad.dtype == fwd_output.dtype
+                    ), f"dtype of out_grad({out_grad.dtype}) and fwd_output({fwd_output.dtype}) should be the same"
+                    assert (
+                        out_grad.shape == fwd_output.shape
+                    ), f"shape of out_grad({out_grad.shape}) and fwd_output({fwd_output.shape}) should be the same"
+                    assert (
+                        out_grad.type() == fwd_output.type()
+                    ), f"type of out_grad({out_grad.type}) and fwd_output({fwd_output.type}) should be the same"
+
             bwd_fn = PyLayerBackwardFunction(
                 backward_fn, hook_check_func=hook_inputs_outputs_check_function
             )

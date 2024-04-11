@@ -33,7 +33,6 @@ void PirCallPythonFunc(py::object *callable,
   VLOG(2) << "[PirCallPythonFunc] ins.size() = " << ins.size();
   VLOG(2) << "[PirCallPythonFunc] outs->size() = " << outs->size();
 
-
   auto ret = (*callable)(*in_args);
   auto ret_tuple = py::cast<py::tuple>(ret);
   size_t ret_num = py::len(ret_tuple);
