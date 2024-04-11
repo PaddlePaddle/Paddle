@@ -139,7 +139,10 @@ template <typename T>
 static T&& FillValue(T&& allocation) {
   if (allocation != nullptr) {
     if (FLAGS_sync_after_alloc || FLAGS_alloc_fill_value >= 0) {
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+      bool need_sync = !platform::is_cpu_place(allocation->place());
+      if (need_sync) {
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+      }
       if (FLAGS_alloc_fill_value >= 0) {
         VLOG(10) << "Set " << FLAGS_alloc_fill_value << " on "
                  << allocation->ptr() << " " << allocation->place() << " "
@@ -151,7 +154,9 @@ static T&& FillValue(T&& allocation) {
           std::memset(
               allocation->ptr(), FLAGS_alloc_fill_value, allocation->size());
         }
-        PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+        if (need_sync) {
+          PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+        }
       }
     }
   }
