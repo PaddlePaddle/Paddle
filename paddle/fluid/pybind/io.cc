@@ -123,7 +123,14 @@ void BindIO(pybind11::module *m) {
     paddle::framework::LoadTensor(path, &tensor_load);
     return tensor_load;
   });
-  m->def("serialize_pir_program", &pir::WriteModule);
+  m->def("serialize_pir_program",
+         &pir::WriteModule,
+         py::arg("program"),
+         py::arg("file_path"),
+         py::arg("pir_version"),
+         py::arg("overwrite") = true,
+         py::arg("readable") = false,
+         py::arg("trainable") = true);
   m->def("deserialize_pir_program", &pir::ReadModule);
 }
 }  // namespace pybind

@@ -130,7 +130,8 @@ class OldIrGuard:
 def test_with_pir_api(func):
     @wraps(func)
     def impl(*args, **kwargs):
-        func(*args, **kwargs)
+        with OldIrGuard():
+            func(*args, **kwargs)
         with IrGuard():
             func(*args, **kwargs)
 

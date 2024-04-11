@@ -21,6 +21,8 @@ namespace pir {
 class ProgramWriter {
  public:
   explicit ProgramWriter(const uint64_t version) : version_(version) {}
+  explicit ProgramWriter(const uint64_t version, const bool trainable)
+      : version_(version), trainable_(trainable) {}
 
   ProgramWriter(ProgramWriter&&) = delete;
   ProgramWriter(const ProgramWriter& ProgramWriter) = delete;
@@ -41,6 +43,8 @@ class ProgramWriter {
   int64_t value_id_ = 1;
   int64_t blockarg_id_ = -1;
 
+  bool trainable_ = true;
+
   Json WriteProgram(const pir::Program* program);
   Json WriteRegion(const pir::Region* region, const std::string& region_name);
   Json WriteBlock(const pir::Block* block, const std::string& block_name);
@@ -48,8 +52,9 @@ class ProgramWriter {
   Json WriteBlockArg(const pir::Value& value);
   Json WriteValue(const pir::Value& value);
   Json WriteOpOperand(const pir::OpOperand& op_operand);
-  Json WriteAttributesMapOpinfo(const AttributeMap& attr_map);
-  Json WriteAttributesMapTrain(const AttributeMap& attr_map);
+  Json WriteAttributesMapOpinfo(pir::Operation* op,
+                                const AttributeMap& attr_map);
+  Json WriteAttributesMapOther(const AttributeMap& attr_map);
   Json WriteAttribute(const std::string& op_attr_name,
                       const pir::Attribute& attr);
   Json WriteType(const pir::Type& type);
