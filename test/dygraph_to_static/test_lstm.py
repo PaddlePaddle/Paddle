@@ -30,7 +30,7 @@ from paddle.framework import use_pir_api
 
 
 class LSTMLayer(nn.Layer):
-    def __init__(self, in_channels, hidden_size, proj_size=None):
+    def __init__(self, in_channels, hidden_size, proj_size=0):
         super().__init__()
         self.cell = nn.LSTM(
             in_channels,
@@ -46,7 +46,7 @@ class LSTMLayer(nn.Layer):
 
 
 class Net(nn.Layer):
-    def __init__(self, in_channels, hidden_size, proj_size=None):
+    def __init__(self, in_channels, hidden_size, proj_size=0):
         super().__init__()
         self.lstm = LSTMLayer(in_channels, hidden_size, proj_size=proj_size)
 
