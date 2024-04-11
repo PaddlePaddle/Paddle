@@ -96,7 +96,7 @@ function(version version_file)
     "Paddle version: ${PADDLE_VERSION}\n"
     "GIT COMMIT ID: ${PADDLE_GIT_COMMIT}\n"
     "WITH_MKL: ${WITH_MKL}\n"
-    "WITH_MKLDNN: ${WITH_MKLDNN}\n"
+    "WITH_ONEDNN: ${WITH_ONEDNN}\n"
     "WITH_GPU: ${WITH_GPU}\n"
     "WITH_ROCM: ${WITH_ROCM}\n"
     "WITH_IPU: ${WITH_IPU}\n")
