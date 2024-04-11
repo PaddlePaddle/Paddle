@@ -29,15 +29,29 @@ class PyLayerOp : public pir::Op<PyLayerOp> {
   static constexpr uint32_t attributes_num = 0;
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::Value combined_inputs,
+                    const std::vector<pir::Value> &inputs,
                     std::vector<pir::Type> &&output_types);
 
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::Value combined_inputs,
+                    const std::vector<pir::Value> &inputs,
                     std::unique_ptr<pir::Block> &&fwd_block);
 
-  pir::Value combined_inputs() { return operand_source(0); }
+  std::vector<pir::Value> inputs() {
+    std::vector<pir::Value> input_values;
+    for (size_t index = 0; index < num_operands(); ++index) {
+      input_values.push_back(operand_source(index));
+    }
+    return input_values;
+  }
+  pir::Value input(size_t index) {
+    PADDLE_ENFORCE_LT(
+        index,
+        num_operands(),
+        phi::errors::InvalidArgument("The index of input must be less than "
+                                     "num_operands of pylayer op."));
+    return operand_source(index);
+  }
   pir::Block &forward_block();
   pir::Region &forward_region() { return (*this)->region(0); }
 

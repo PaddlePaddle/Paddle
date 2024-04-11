@@ -91,10 +91,8 @@ void BindIfOp(py::module* m) {
 
 void BindPyLayerOp(py::module* m) {
   m->def("build_pylayer_op", [](const std::vector<Value>& inputs) {
-    auto inputs_combine_op =
-        ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(inputs);
     return ApiBuilder::Instance().GetBuilder()->Build<PyLayerOp>(
-        inputs_combine_op.out(), std::vector<Type>{});
+        inputs, std::vector<Type>{});
   });
   py::class_<PyLayerOp> pylayer_op(*m, "PyLayerOp", R"DOC(
     TODO(MarioLulab): Add some docs for pd_op.pylayer

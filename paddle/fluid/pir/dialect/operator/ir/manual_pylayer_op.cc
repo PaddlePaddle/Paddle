@@ -41,16 +41,16 @@ namespace dialect {
 
 void PyLayerOp::Build(pir::Builder &builder,             // NOLINT
                       pir::OperationArgument &argument,  // NOLINT
-                      pir::Value combined_inputs,
+                      const std::vector<pir::Value> &inputs,
                       std::vector<pir::Type> &&output_types) {
-  argument.AddInput(combined_inputs);
+  argument.AddInputs(inputs);
   argument.output_types.swap(output_types);
   argument.AddRegion().emplace_back();
 }
 
 void PyLayerOp::Build(pir::Builder &builder,             // NOLINT
                       pir::OperationArgument &argument,  // NOLINT
-                      pir::Value combined_inputs,
+                      const std::vector<pir::Value> &inputs,
                       std::unique_ptr<pir::Block> &&fwd_block) {
   VLOG(4) << "Start build PyLayerOp";
 
@@ -87,7 +87,7 @@ void PyLayerOp::Build(pir::Builder &builder,             // NOLINT
       pir::ArrayAttribute::get(builder.ir_context(), outs_stop_gradient));
 
   argument.AddRegion().push_back(fwd_block.release());
-  argument.AddInput(combined_inputs);
+  argument.AddInputs(inputs);
 }
 
 pir::Block &PyLayerOp::forward_block() {
@@ -157,7 +157,7 @@ void PyLayerOp::UpdateOutput() {
   pir::Block::Iterator iter = **this;
   pir::Builder builder(ir_context(), false);
   auto new_pylayer_op =
-      builder.Build<PyLayerOp>(combined_inputs(), forward_region().TakeBack());
+      builder.Build<PyLayerOp>(inputs(), forward_region().TakeBack());
   block->Assign(iter, new_pylayer_op);
   PyLayerOp::operator=(new_pylayer_op);
   VerifyRegion();

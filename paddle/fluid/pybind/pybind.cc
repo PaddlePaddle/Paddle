@@ -759,16 +759,12 @@ static std::vector<std::vector<pir::Value>> GenerateBackwardBlockForPyLayerOp(
   for (size_t i = 0; i < out_grads.size(); ++i) {
     output_grads.push_back(out_grads[i][0]);
   }
-  auto out_grads_combine_op =
-      dialect::ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(
-          output_grads);
 
   std::vector<pir::Value> pylayer_grad_inputs(output_types.size());
-  auto pylayer_grad =
-      dialect::ApiBuilder::Instance()
-          .GetBuilder()
-          ->Build<paddle::dialect::PyLayerOp>(out_grads_combine_op.out(),
-                                              std::move(output_types));
+  auto pylayer_grad = dialect::ApiBuilder::Instance()
+                          .GetBuilder()
+                          ->Build<paddle::dialect::PyLayerOp>(
+                              output_grads, std::move(output_types));
 
   VLOG(6) << "Construct pylayer_grad finished";
 

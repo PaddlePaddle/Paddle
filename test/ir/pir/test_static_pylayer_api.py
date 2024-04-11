@@ -51,15 +51,8 @@ class TestConstructModuleWithPyLayerOp(unittest.TestCase):
             self.assertEqual(pylayer_op.name(), "pd_op.pylayer")
             self.assertEqual(len(pylayer_op.results()), 1)
             value_list = get_used_external_value(pylayer_op)
-            self.assertEqual(len(value_list), 2)
+            self.assertEqual(len(value_list), 1)
             self.assertTrue(value_list[0].is_same(pylayer_op.operand_source(0)))
-            self.assertTrue(
-                value_list[1].is_same(
-                    pylayer_op.operand_source(0)
-                    .get_defining_op()
-                    .operand_source(0)
-                )
-            )
 
     def test_fwd_only_with_multi_inputs_multi_outpus(self):
         """
@@ -90,22 +83,9 @@ class TestConstructModuleWithPyLayerOp(unittest.TestCase):
             self.assertEqual(pylayer_op.name(), "pd_op.pylayer")
             self.assertEqual(len(pylayer_op.results()), 2)
             value_list = get_used_external_value(pylayer_op)
-            self.assertEqual(len(value_list), 3)
+            self.assertEqual(len(value_list), 2)
             self.assertTrue(value_list[0].is_same(pylayer_op.operand_source(0)))
-            self.assertTrue(
-                value_list[1].is_same(
-                    pylayer_op.operand_source(0)
-                    .get_defining_op()
-                    .operand_source(0)
-                )
-            )
-            self.assertTrue(
-                value_list[2].is_same(
-                    pylayer_op.operand_source(0)
-                    .get_defining_op()
-                    .operand_source(1)
-                )
-            )
+            self.assertTrue(value_list[1].is_same(pylayer_op.operand_source(1)))
 
             # check build_pipe_for_block interface
             fwd_block = pylayer_op.as_pylayer_op().forward_block()
@@ -158,7 +138,7 @@ class TestConstructModuleWithPyLayerOp(unittest.TestCase):
 
                 grad_outs = call_vjp(
                     pylayer_op,
-                    pylayer_input[1:],
+                    pylayer_input,
                     pylayer_output,
                     pylayer_output_grad,
                     pylayer_input_stop_gradients,

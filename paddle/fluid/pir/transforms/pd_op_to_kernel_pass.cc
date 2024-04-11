@@ -1245,14 +1245,18 @@ void HandleForPyLayerOp(
     pir::IrContext* ctx,
     std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
     std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
-  auto old_vec_ins = op_item->operand_source(0);
+  std::vector<pir::Value> new_vec_input(op_item->num_operands());
+  for (size_t index = 0; index < op_item->num_operands(); ++index) {
+    const auto old_input = op_item->operand_source(index);
 
-  PADDLE_ENFORCE_EQ(
-      map_value_pair->count(old_vec_ins),
-      true,
-      phi::errors::PreconditionNotMet(
-          "[%d]'s input of [%s] op MUST in map pair", 0, op_item->name()));
-  auto new_vec_ins = map_value_pair->at(old_vec_ins);
+    PADDLE_ENFORCE_EQ(
+        map_value_pair->count(old_input),
+        true,
+        phi::errors::PreconditionNotMet(
+            "[%d]'s input of [%s] op MUST in map pair", 0, op_item->name()));
+    const auto& new_input = map_value_pair->at(old_input);
+    new_vec_input[index] = new_input;
+  }
 
   auto old_pylayerop = op_item->dyn_cast<PyLayerOp>();
   std::vector<pir::Type> new_pylayerop_outputs;
@@ -1264,7 +1268,7 @@ void HandleForPyLayerOp(
   // Create PyLayerOp and insert to kernel dialect program
   pir::Builder builder(ctx, block);
   auto new_pylayerop =
-      builder.Build<PyLayerOp>(new_vec_ins, std::move(new_pylayerop_outputs));
+      builder.Build<PyLayerOp>(new_vec_input, std::move(new_pylayerop_outputs));
 
   // process sub block
   auto& fwd_block = new_pylayerop.forward_block();

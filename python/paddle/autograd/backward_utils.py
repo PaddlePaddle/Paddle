@@ -300,8 +300,7 @@ def get_real_op_inputs(op):
             op.as_while_op().body()
         )
     elif op.name() == "pd_op.pylayer":
-        # exclude values[0] which is combined value
-        return get_used_external_value(op)[1:]
+        return get_used_external_value(op)
     else:
         return op.operands_source()
 
