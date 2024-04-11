@@ -239,7 +239,7 @@ class LlamaRMSNorm(nn.Layer):
         self.weight = paddle.create_parameter(
             shape=[self.hidden_size],
             dtype=paddle.get_default_dtype(),
-            default_initializer=nn.initializer.Constant(1.0),
+            default_initializer=nn.initializer.Constant(0.2),
         )
         self.variance_epsilon = config.rms_norm_eps
         self.config = config
