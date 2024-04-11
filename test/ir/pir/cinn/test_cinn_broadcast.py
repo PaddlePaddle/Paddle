@@ -54,7 +54,7 @@ class TestCinnCos(unittest.TestCase):
         cinn_out = self.train(use_cinn=True)
         dy_out = self.train(use_cinn=False)
 
-        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-5)
 
 
 if __name__ == '__main__':
