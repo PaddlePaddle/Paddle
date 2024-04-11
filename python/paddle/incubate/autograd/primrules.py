@@ -21,7 +21,6 @@ import paddle
 from . import primops
 from .primops import (
     add,
-    bernoulli,
     broadcast,
     concat,
     cos,
@@ -457,34 +456,6 @@ def gelu_orig2prim(op, x):
                 fill_const(1.0, x.shape, x.dtype),
                 erf(mul(x, fill_const(1 / math.sqrt(2.0), x.shape, x.dtype))),
             ),
-        )
-
-
-@REGISTER_ORIG2PRIM('dropout')
-def dropout_orig2prim(op, seed_t, x):
-    assert (
-        seed_t is None
-    ), 'Can not lower dropout into prim ops with seedtensor.'
-    mask = bernoulli(shape=x.shape, dtype=x.dtype, p=op.attr('dropout_prob'))
-    if op.attr('dropout_implementation') == 'upscale_in_train':
-        if not op.attr('is_test'):
-            out = div(
-                mul(x, mask),
-                fill_const(1.0 - op.attr('dropout_prob'), x.shape, x.dtype),
-            )
-            return primops.cast(mask, dtype=paddle.uint8), out
-        else:
-            return primops.cast(mask, dtype=paddle.uint8), x
-    elif op.attr('dropout_implementation') == 'downgrade_in_infer':
-        if not op.attr('is_test'):
-            return primops.cast(mask, dtype=paddle.uint8), mul(x, mask)
-        else:
-            return primops.cast(mask, dtype=paddle.uint8), mul(
-                x, fill_const(1.0 - op.attr('dropout_prob'), x.shape, x.dtype)
-            )
-    else:
-        raise RuntimeError(
-            'Unsupported dropout_implementation, only support upscale_in_train and downgrade_in_infer'
         )
 
 
