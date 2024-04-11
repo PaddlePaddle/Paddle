@@ -237,17 +237,13 @@ CrossAttentionFusePattern::CrossAttentionFusePattern(
 
   // link nodes
   q_mul->LinksFrom({input_q, q_mul_w}).LinksTo({q_mul_out});
-  k_mul->LinksFrom({input_kv, k_mul_w}).LinksTo({k_mul_out});
-  v_mul->LinksFrom({input_kv, v_mul_w}).LinksTo({v_mul_out});
   q_add->LinksFrom({q_mul_out, q_add_bias}).LinksTo({q_add_out});
-  k_add->LinksFrom({k_mul_out, k_add_bias}).LinksTo({k_add_out});
-  v_add->LinksFrom({v_mul_out, v_add_bias}).LinksTo({v_add_out});
   reshape_1->LinksFrom({q_add_out}).LinksTo({reshape_1_out});
-  reshape_2->LinksFrom({k_add_out}).LinksTo({reshape_2_out});
-  reshape_3->LinksFrom({v_add_out}).LinksTo({reshape_3_out});
   transpose_1->LinksFrom({reshape_1_out}).LinksTo({transpose_1_out});
+  k_mul->LinksFrom({input_kv, k_mul_w}).LinksTo({k_mul_out});
+  k_add->LinksFrom({k_mul_out, k_add_bias}).LinksTo({k_add_out});
+  reshape_2->LinksFrom({k_add_out}).LinksTo({reshape_2_out});
   transpose_2->LinksFrom({reshape_2_out}).LinksTo({transpose_2_out});
-  transpose_3->LinksFrom({reshape_3_out}).LinksTo({transpose_3_out});
   if (with_q_scale_) {
     scale->LinksFrom({transpose_1_out}).LinksTo({scale_out});
     qk_matmul->LinksFrom({scale_out, transpose_2_out}).LinksTo({qk_matmul_out});
@@ -257,6 +253,10 @@ CrossAttentionFusePattern::CrossAttentionFusePattern(
   }
   qk_add->LinksFrom({qk_matmul_out, mask}).LinksTo({qk_add_out});
   qk_softmax->LinksFrom({qk_add_out}).LinksTo({qk_softmax_out});
+  v_mul->LinksFrom({input_kv, v_mul_w}).LinksTo({v_mul_out});
+  v_add->LinksFrom({v_mul_out, v_add_bias}).LinksTo({v_add_out});
+  reshape_3->LinksFrom({v_add_out}).LinksTo({reshape_3_out});
+  transpose_3->LinksFrom({reshape_3_out}).LinksTo({transpose_3_out});
   qkv_matmul->LinksFrom({qk_softmax_out, transpose_3_out})
       .LinksTo({qkv_matmul_out});
   transpose_4->LinksFrom({qkv_matmul_out}).LinksTo({transpose_4_out});
