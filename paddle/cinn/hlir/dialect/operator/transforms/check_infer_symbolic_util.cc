@@ -14,16 +14,17 @@
 
 #pragma once
 
+#include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_util.h"
+#include <functional>
 #include <memory>
 #include <optional>
-#include <functional>
-#include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_util.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
-#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 #include "paddle/common/flags.h"
+#include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 
 COMMON_DECLARE_bool(check_infer_symbolic);
+PD_DECLARE_bool(prim_all);
 
 namespace cinn {
 namespace dialect {
@@ -32,27 +33,26 @@ namespace ir {
 namespace {
 
 OptDimExprs4ValueT MakeOptDimExprs4Value(
-    pir::Program* program,
-    const PassManagerCreater& CreatePassManager) {
+    pir::Program* program, const PassManagerCreater& CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   pass_manager->Run(program);
   const auto* shape_analysis =
       &pir::ShapeAnalysisManager::Instance().Get(program);
   return [shape_analysis](pir::Value value, const pir::Block*)
-    -> std::optional<const symbol::ShapeOrDataDimExprs*> {
+             -> std::optional<const symbol::ShapeOrDataDimExprs*> {
     if (!shape_analysis->HasShapeOrDataForValue(value)) return std::nullopt;
     return &shape_analysis->GetShapeOrDataForValue(value);
   };
 }
 
-}
+}  // namespace
 
 void CheckInferSymbolicIfNeed(pir::Program* program,
                               const PassManagerCreater& CreatePassManager) {
-  if (!FLAGS_check_infer_symbolic) return;
+  if (!FLAGS_prim_all || !FLAGS_check_infer_symbolic) return;
   const auto& GraphDimExprs4Value =
-    MakeOptDimExprs4Value(program, CreatePassManager);
+      MakeOptDimExprs4Value(program, CreatePassManager);
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   pass_manager->AddPass(CreateCheckInferSymbolicPass(GraphDimExprs4Value));
   pass_manager->AddPass(CreateSplitGenerateShapeIntoShapeOpsPass());

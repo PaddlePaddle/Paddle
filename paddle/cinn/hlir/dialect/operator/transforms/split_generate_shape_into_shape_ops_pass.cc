@@ -116,6 +116,12 @@ struct CachedDimExprToValueConverter {
   }
 
   pir::Value ConvertTensorDimToValue(const TensorDimInData& tensor_dim) {
+    if (tensor_dim.value.type()
+            .dyn_cast<paddle::dialect::DenseTensorType>()
+            .dims()
+            .size() == 0) {
+      return tensor_dim.value;
+    }
     return rewriter
         ->Build<paddle::dialect::SliceOp>(
             tensor_dim.value,
@@ -240,6 +246,7 @@ class SplitGenerateShapeIntoShapeOps
   std::optional<pir::Value> GetOutReplacement(
       cinn::dialect::GenerateShapeOp op, pir::PatternRewriter* rewriter) const {
     std::vector<symbol::DimExpr> dim_exprs = GetOutDimExprs(op);
+    VLOG(0) << "##### dim_exprs: " << dim_exprs;
     TensorDim4SymbolNameT TensorDim4SymbolName =
         MakeGetterTensorDim4SymbolName(op);
     if (!TensorDim4SymbolName) return std::nullopt;
