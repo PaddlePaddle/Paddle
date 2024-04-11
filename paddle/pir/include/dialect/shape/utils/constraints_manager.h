@@ -35,6 +35,8 @@ class IR_API ConstraintsManager {
 
   void AddBroadcastableCstr(const DimExpr& lhs, const DimExpr& rhs);
 
+  bool IsBroadcastable(const DimExpr& lhs, const DimExpr& rhs) const;
+
   using EqualCallbackFunc = std::function<void(const DimExpr&, const DimExpr&)>;
   void SetEqualCallbackFunc(EqualCallbackFunc equal_callback_func);
 
