@@ -1481,7 +1481,7 @@ class RNNBase(LayerList):
         }
 
         self.proj_size = proj_size
-        if proj_size:
+        if proj_size > 0:
             assert mode == 'LSTM'
 
         if mode == "LSTM":
@@ -1689,10 +1689,8 @@ class RNNBase(LayerList):
         batch_index = 1 if self.time_major else 0
         dtype = inputs.dtype
         if initial_states is None:
-            state_shape = (self.num_layers * self.num_directions, -1)
             dims = ([self.proj_size or self.hidden_size], [self.hidden_size])
-
-            fill_shape = list(state_shape)
+            fill_shape = [self.num_layers * self.num_directions, -1]
             if inputs.shape[batch_index] > 0:
                 fill_shape[1] = inputs.shape[batch_index]
             else:
