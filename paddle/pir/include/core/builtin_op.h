@@ -87,7 +87,8 @@ class IR_API SetParameterOp : public pir::Op<SetParameterOp, SideEffectTrait> {
 /// \brief ShdowOutputOp: ShdowOutputOp(OpOperand, {StrAttribute,
 /// StrAttribute})
 ///
-class IR_API ShadowOutputOp : public pir::Op<ShadowOutputOp, SideEffectTrait> {
+class IR_API ShadowOutputOp
+    : public pir::Op<ShadowOutputOp, SideEffectTrait, ImmutableLayoutTrait> {
  public:
   using Op::Op;
   static const char *name() { return "builtin.shadow_output"; }

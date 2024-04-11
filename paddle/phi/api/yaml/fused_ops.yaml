@@ -186,6 +186,7 @@
     func : fused_conv2d_add_act
     data_type : input
   optional : bias, residual_data, outputs
+  interfaces : paddle::dialect::LayoutTransformationInterface
 
 - op : fused_dconv_drelu_dbn
   args : (Tensor grad_output, Tensor weight, Tensor grad_output_add, Tensor residual_input, Tensor bn1_eqscale, Tensor bn1_eqbias, Tensor conv_input, Tensor bn1_mean, Tensor bn1_inv_std, Tensor bn1_gamma, Tensor bn1_beta, Tensor bn1_input, Tensor bn2_mean, Tensor bn2_inv_std, Tensor bn2_gamma, Tensor bn2_beta, Tensor bn2_input, int[] paddings, int[] dilations, int[] strides, str padding_algorithm, int groups, str data_format, bool fuse_shortcut, bool fuse_dual, bool fuse_add, bool exhaustive_search)
@@ -429,14 +430,14 @@
   optional : bias_qk
 
 - op : qkv_attention_xpu
-  args : (Tensor q, Tensor k, Tensor v, Tensor q_max, Tensor k_max, Tensor v_max, float alpha, int head_num, int head_dim, bool qkv_fc_fusion, DataType out_dtype)
-  output : Tensor(qkv), Tensor(qkv_max)
+  args : (Tensor q, Tensor k, Tensor v, Tensor q_max, Tensor k_max, Tensor v_max, Tensor qk_max, Tensor qkv_max, float alpha, int head_num, int head_dim, bool qkv_fc_fusion, DataType out_dtype)
+  output : Tensor(qkv)
   infer_meta :
     func : QKVAttentionXPUInferMeta
   kernel :
     func : qkv_attention_xpu
     data_type : q
-  optional : q_max, k_max, v_max
+  optional : q_max, k_max, v_max, qk_max, qkv_max
 
 - op : quantize_xpu
   args : (Tensor x, DataType out_dtype, float scale = 1.0f)
@@ -481,6 +482,15 @@
     func : SkipLayerNormInferMeta
   kernel :
     func : skip_layernorm
+    data_type : x
+
+- op : spatial_transformer_resblock_xpu
+  args : (Tensor x, Tensor[] x_max, Tensor[] conv_bias, Tensor[] conv_filter, Tensor[] conv_filter_max, Tensor[] gn_bias, Tensor[] gn_scale, int[] dilations, int[] paddings, int[] strides, float[] gn_eps, int[] gn_groups, int[] groups, bool conv_fix, bool has_silu_fc_input, bool include_silu)
+  output : Tensor(out), Tensor(out_max)
+  infer_meta :
+    func : SpatialTransformerResblockXPUInferMeta
+  kernel :
+    func : spatial_transformer_resblock_xpu
     data_type : x
 
 - op : squeeze_excitation_block

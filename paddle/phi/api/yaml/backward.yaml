@@ -2034,6 +2034,7 @@
     spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : rsqrt_grad
+  composite : rsqrt_grad(out, out_grad, x_grad)
   backward : rsqrt_double_grad
   inplace : (out_grad -> x_grad)
 

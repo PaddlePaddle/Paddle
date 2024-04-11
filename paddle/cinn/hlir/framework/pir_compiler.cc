@@ -31,7 +31,7 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
     kernel_infos[index] = task.GetCINNKernelInfo();
   };
   utils::parallel_run(
-      worker_fn, utils::SequenceDispatcher(0, groups.size()), -1);
+      worker_fn, utils::SequenceDispatcher(0, groups.size()), 1);
   return kernel_infos;
 }
 

@@ -300,7 +300,6 @@ std::vector<size_t> RelativeJudgePolicy<T>::GetFakeReduceIterIdx(
           axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
   VLOG(4) << split_reduce_input_dims_result.DebugStr();
   const auto& upstream_reduce_dims = split_reduce_input_dims_result.non_related;
-
   const auto& split_reduce_output_dims_result =
       SplitReduceOutputDimsIfRelatedWithNonReduceAxis(
           axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);

@@ -1353,13 +1353,13 @@ PHI_DEFINE_EXPORTED_bool(use_shm_cache,
  * mmap_allocator related FLAG
  * Name: dataloader_use_file_descriptor
  * Since Version: 2.6.2
- * Value Range: bool, default=true
+ * Value Range: bool, default=false
  * Example:
  * Note: . If True, mmap_allocator will use file descripor to open shared memory
  * operation.
  */
 PHI_DEFINE_EXPORTED_bool(dataloader_use_file_descriptor,
-                         true,
+                         false,
                          "Use file descriptor in mmap_allocator.");
 
 /**
@@ -1384,7 +1384,7 @@ PHI_DEFINE_EXPORTED_string(tensor_operants_mode,
  * Since Version: 2.6.0
  * Value Range: bool, default=false
  * Example:
- * Note: If Ture, executor will use new IR
+ * Note: If True, executor will use new IR
  */
 PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor,
                          false,
@@ -1397,7 +1397,7 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor,
  * Since Version: 2.6.0
  * Value Range: bool, default=true
  * Example:
- * Note: If Ture, program will be translated to pir program
+ * Note: If True, program will be translated to pir program
  * and then run in executor for dy2st mode.
  */
 PHI_DEFINE_EXPORTED_bool(enable_pir_with_pt_in_dy2st,
@@ -1547,7 +1547,7 @@ PHI_DEFINE_EXPORTED_int64(alloc_fill_value,
  * Since Version: 3.0.0
  * Value Range: bool, default=false
  * Example:
- * Note: If Ture, will apply shape_optimization pass to new IR.
+ * Note: If True, will apply shape_optimization pass to new IR.
  */
 PHI_DEFINE_EXPORTED_bool(pir_apply_shape_optimization_pass,
                          false,
