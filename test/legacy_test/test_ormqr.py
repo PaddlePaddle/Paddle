@@ -157,7 +157,7 @@ class TestOrmqrAPI(unittest.TestCase):
             other = paddle.static.data(
                 'other', self.other.shape, dtype=self.other.dtype
             )
-            out = paddle.libnalg.ormqr(x, tau, other)
+            out = paddle.linalg.ormqr(x, tau, other)
             exe = paddle.static.Executor(self.place)
             res = exe.run(
                 feed={'x': self.geqrf_x, 'tau': self.tau, 'other': self.other},
