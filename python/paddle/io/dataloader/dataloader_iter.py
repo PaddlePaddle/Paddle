@@ -705,8 +705,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     self._exit_thread_unexpectedly()
                     pids = ', '.join(str(w.pid) for w in failed_workers)
                     logging.warning(
-                        "DataLoader {} workers exit unexpectedly, "
-                        "pids: {}".format(len(failed_workers), pids)
+                        f"DataLoader {len(failed_workers)} workers exit unexpectedly, "
+                        f"pids: {pids}"
                     )
                     return
 

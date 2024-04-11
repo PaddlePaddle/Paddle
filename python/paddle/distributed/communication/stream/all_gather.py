@@ -76,6 +76,8 @@ def _all_gather_in_static_mode(tensor_list, tensor, group, sync_op):
                 'bool',
                 'int8',
                 'uint8',
+                'complex64',
+                'complex128',
             ],
             'all_gather',
         )
@@ -91,6 +93,8 @@ def _all_gather_in_static_mode(tensor_list, tensor, group, sync_op):
             'bool',
             'int8',
             'uint8',
+            'complex64',
+            'complex128',
         ],
         'all_gather',
     )
@@ -130,7 +134,7 @@ def all_gather(
         tensor_or_tensor_list (Union[Tensor, List[Tensor]]): The output. If it is a tensor, it should be correctly-sized. If it is a list, it
             should be empty or contain correctly-sized tensors.
         tensor (Tensor): The input tensor on each rank. The result will overwrite this tenor after communication. Support
-            float16, float32, float64, int32, int64, int8, uint8 or bool as the input data type.
+            float16, float32, float64, int32, int64, int8, uint, bool, complex64 or complex128 as the input data type.
         group (Group, optional): Communicate in which group. If none is given, use the global group as default.
         sync_op (bool, optional): Indicate whether the communication is sync or not. If none is given, use true as default.
         use_calc_stream (bool, optional): Indicate whether the communication is done on calculation stream. If none is given, use false as default. This

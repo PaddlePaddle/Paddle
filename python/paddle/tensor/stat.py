@@ -624,9 +624,7 @@ def _compute_quantile(
         "midpoint",
     ]:
         raise ValueError(
-            "interpolation must be one of 'linear', 'lower', 'higher', 'nearest' or 'midpoint', but got {}".format(
-                interpolation
-            )
+            f"interpolation must be one of 'linear', 'lower', 'higher', 'nearest' or 'midpoint', but got {interpolation}"
         )
     # Validate axis
     dims = len(x.shape)

@@ -322,9 +322,7 @@ class ProcessMesh(core.ProcessMesh):
         return not self.__eq__(other)
 
     def __str__(self):
-        str = "shape {}, process_ids {}, dim_nams {}".format(
-            self.shape, self.process_ids, self.dim_names
-        )
+        str = f"shape {self.shape}, process_ids {self.process_ids}, dim_nams {self.dim_names}"
         return str
 
     def __hash__(self):

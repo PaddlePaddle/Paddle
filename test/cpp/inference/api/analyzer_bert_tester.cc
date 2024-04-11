@@ -120,7 +120,7 @@ TEST(Analyzer_bert, transfer_scope_cache) {
   std::string line;
 
   for (int i = 0; i < threads_num; i++) {
-    threads.emplace_back([&, i]() {
+    threads.emplace_back([&]() {
       std::getline(fin, line);
       input = ParseInputStreamToVector(line);
       predictor->Run(input, &output, FLAGS_batch_size);

@@ -81,11 +81,13 @@ void DimExprBuilder::CstrEq(const DimExpr& lhs, const DimExpr& rhs) {
 
 void DimExprBuilder::CstrEq(const std::vector<DimExpr>& lhs,
                             const std::vector<DimExpr>& rhs) {
-  IR_ENFORCE(lhs.size() == rhs.size(),
-             "Please make sure input sizes are equal, "
-             "lhs.size() = %d, rhs.size() = %d.",
-             lhs.size(),
-             rhs.size());
+  PADDLE_ENFORCE_EQ(
+      lhs.size(),
+      rhs.size(),
+      phi::errors::InvalidArgument("Please make sure input sizes are equal, "
+                                   "lhs.size() = %d, rhs.size() = %d.",
+                                   lhs.size(),
+                                   rhs.size()));
   for (std::size_t i = 0; i < lhs.size(); ++i) {
     CstrEq(lhs.at(i), rhs.at(i));
   }
@@ -106,11 +108,14 @@ std::vector<DimExpr> DimExprBuilder::Concat(const std::vector<DimExpr>& lhs,
 
 std::pair<std::vector<DimExpr>, std::vector<DimExpr>> DimExprBuilder::SplitAt(
     const std::vector<DimExpr> dim_exprs, int index) {
-  IR_ENFORCE(index > 0 && index < static_cast<int>(dim_exprs.size()),
-             "Index invalid, index = %d, dim_exprs.size() = %d. Please check "
-             "your inputs.",
-             index,
-             dim_exprs.size());
+  PADDLE_ENFORCE_EQ(
+      index > 0 && index < static_cast<int>(dim_exprs.size()),
+      true,
+      phi::errors::InvalidArgument(
+          "Index invalid, index = %d, dim_exprs.size() = %d. Please check "
+          "your inputs.",
+          index,
+          dim_exprs.size()));
   std::vector<DimExpr> lhs(dim_exprs.begin(), dim_exprs.begin() + index);
   std::vector<DimExpr> rhs(dim_exprs.begin() + index, dim_exprs.end());
   return std::make_pair(lhs, rhs);
