@@ -24,9 +24,6 @@
 namespace pir {
 
 using PassCreator = std::function<std::unique_ptr<Pass>()>;
-// FIXME(Aurelius84): Shape Analysis related logic shall be remove into
-//  libpir.so to avoid initializing global symbol variable twice!
-constexpr static char *kShapeOptimizePass = "shape_optimization_pass";
 
 class PassRegistry {
  public:
@@ -37,7 +34,9 @@ class PassRegistry {
   }
 
   void Insert(const std::string &pass_type, const PassCreator &pass_creator) {
-    PADDLE_ENFORCE_NE(Has(pass_type) && pass_type != kShapeOptimizePass,
+    // FIXME(Aurelius84): Shape Analysis related logic shall be remove into
+    //  libpir.so to avoid initializing global symbol variable twice!
+    PADDLE_ENFORCE_NE(Has(pass_type) && pass_type != "shape_optimization_pass",
                       true,
                       phi::errors::InvalidArgument(
                           "Pass %s has been registered.", pass_type));
