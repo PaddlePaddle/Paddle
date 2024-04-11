@@ -18,7 +18,7 @@ import warnings
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_legacy_only,
+    test_legacy_and_pir,
 )
 
 import paddle
@@ -43,9 +43,8 @@ def false_fn():
 
 
 class TestReturnNoneInIfelse(Dy2StTestBase):
-    # Why add test_legacy_only? : PIR not support if true and false branch output with different dtype
-    @test_legacy_only
     @test_ast_only
+    @test_legacy_and_pir
     def test_dy2static_warning(self):
         paddle.disable_static()
         with warnings.catch_warnings(record=True) as w:
@@ -62,6 +61,8 @@ class TestReturnNoneInIfelse(Dy2StTestBase):
                     break
             self.assertTrue(flag)
 
+    # TODO(cleanup-legacy-ir): This case cannot be supported by PIR, we should remove this
+    # in the future.
     def test_cond_warning(self):
         paddle.enable_static()
         with warnings.catch_warnings(record=True) as w:

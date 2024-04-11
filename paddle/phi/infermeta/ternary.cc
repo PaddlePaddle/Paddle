@@ -146,6 +146,66 @@ void AddmmInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
 }
 
+void AssignPosInferMeta(const MetaTensor& x,
+                        const MetaTensor& cum_count,
+                        const MetaTensor& eff_num_len,
+                        MetaTensor* out) {
+  phi::DataType X_dtype = x.dtype();
+  phi::DataType cum_count_dtype = cum_count.dtype();
+
+  PADDLE_ENFORCE_EQ(cum_count_dtype,
+                    X_dtype,
+                    phi::errors::InvalidArgument(
+                        "The dtype of the cum_count and X should be same"));
+  PADDLE_ENFORCE_EQ(cum_count_dtype,
+                    phi::DataType::INT64,
+                    phi::errors::InvalidArgument(
+                        "The dtype of the cum_count_dtype, eff_num_len and "
+                        "X should be same as int64"));
+  out->set_dtype(X_dtype);
+}
+
+void BatchFCInferMeta(const MetaTensor& input,
+                      const MetaTensor& w,
+                      const MetaTensor& bias,
+                      MetaTensor* out) {
+  auto input_dims = input.dims();
+  auto w_dims = w.dims();
+
+  PADDLE_ENFORCE_EQ(
+      input_dims.size(),
+      3,
+      phi::errors::InvalidArgument("Input of BatchFCOp should have 3D."));
+  PADDLE_ENFORCE_EQ(
+      w_dims.size(),
+      3,
+      phi::errors::InvalidArgument("W of BatchFCOp should have 3D."));
+  PADDLE_ENFORCE_EQ(
+      input_dims[0],
+      w_dims[0],
+      phi::errors::InvalidArgument(
+          "Input.dim[0] and W.dim[0] of BatchFCOp should be same."));
+  PADDLE_ENFORCE_EQ(
+      input_dims[2],
+      w_dims[1],
+      phi::errors::InvalidArgument(
+          "Input.dim[2] and W.dim[1] of BatchFCOp should be same."));
+
+  auto bias_dims = bias.dims();
+  PADDLE_ENFORCE_EQ(bias_dims[0],
+                    input_dims[0],
+                    phi::errors::InvalidArgument(
+                        "Bias.dim[0] should be same as input.dim[0]."));
+  PADDLE_ENFORCE_EQ(bias_dims[1],
+                    w_dims[2],
+                    phi::errors::InvalidArgument(
+                        "Bias.dim[1] should be same as input.dim[2]."));
+
+  out->set_dims({input_dims[0], input_dims[1], w_dims[2]});
+  out->share_lod(input);
+  out->set_dtype(input.dtype());
+}
+
 void BoxCoderInferMeta(const MetaTensor& prior_box,
                        const MetaTensor& prior_box_var,
                        const MetaTensor& target_box,
@@ -459,6 +519,33 @@ void InstanceNormInferMeta(const MetaTensor& x,
     saved_variance->set_dims({NxC});
     saved_variance->set_dtype(param_type);
   }
+}
+
+void GlobalScatterInferMeta(const MetaTensor& x,
+                            const MetaTensor& local_count,
+                            const MetaTensor& global_count,
+                            int ring_id,
+                            bool use_calc_stream,
+                            MetaTensor* out) {
+  PADDLE_ENFORCE_GE(
+      ring_id,
+      0,
+      phi::errors::InvalidArgument(
+          "The ring_id (%d) for global scatter op must be non-negative.",
+          ring_id));
+  auto input_dims = x.dims();
+  auto ndim_input = input_dims.size();
+  // dim check
+  PADDLE_ENFORCE_EQ(
+      ndim_input,
+      2,
+      phi::errors::InvalidArgument("The input tensor's dimension must be 2. "
+                                   "But received input's dimension = %d.",
+                                   ndim_input));
+
+  phi::DDim out_dims = common::make_ddim({-1, -1});
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
 }
 
 void GroupNormInferMeta(const MetaTensor& x,
@@ -1066,6 +1153,45 @@ void RandomRoutingInferMeta(const MetaTensor& prob,
   out->share_lod(topk_idx);
 }
 
+void RankAttentionInferMeta(const MetaTensor& x,
+                            const MetaTensor& rank_offset,
+                            const MetaTensor& rank_param,
+                            int max_rank,
+                            int max_size,
+                            MetaTensor* input_help,
+                            MetaTensor* out,
+                            MetaTensor* ins_rank) {
+  auto x_dims = x.dims();
+  auto ins_num = x_dims[0];
+  auto param_dims = rank_param.dims();
+  auto para_col = param_dims[1];
+  auto rank_offset_dims = rank_offset.dims();
+  auto x_fea_dim = x_dims[1];
+  auto block_matrix_row = max_rank * x_fea_dim;
+
+  PADDLE_ENFORCE_EQ(
+      (rank_offset_dims[1] - 1) / 2,
+      max_rank,
+      phi::errors::InvalidArgument("Input(RankOffset) has wrong columns, "
+                                   "except columns to be %d, but got %d",
+                                   max_rank,
+                                   (rank_offset_dims[1] - 1) / 2));
+
+  std::vector<int64_t> out_dims({ins_num, para_col});
+  out->set_dims(common::make_ddim(out_dims));
+  out->set_dtype(x.dtype());
+
+  std::vector<int64_t> input_help_dims({ins_num, block_matrix_row});
+  input_help->set_dims(common::make_ddim(input_help_dims));
+  input_help->set_dtype(x.dtype());
+
+  std::vector<int64_t> ins_rank_dims({ins_num, 1});
+  ins_rank->set_dims(common::make_ddim(ins_rank_dims));
+  ins_rank->set_dtype(x.dtype());
+
+  out->share_lod(x);
+}
+
 void RoiAlignInferMeta(const MetaTensor& x,
                        const MetaTensor& boxes,
                        const MetaTensor& boxes_num,
@@ -1322,12 +1448,19 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
 
     // update.shape = index.shape[:-1] + output.shape[index.shape[-1]:]
     std::vector<int64_t> r_updates_dims;
+    bool without_dynamic_shape = true;
     for (int i = 0; i < index_dims_size - 1; ++i) {
+      if (index_dims[i] == -1) {
+        without_dynamic_shape = false;
+      }
       r_updates_dims.emplace_back(index_dims[i]);
     }
     for (int i = static_cast<int>(index_dims[index_dims_size - 1]);
          i < ref_dims_size;
          ++i) {
+      if (ref_dims[i] == -1) {
+        without_dynamic_shape = false;
+      }
       r_updates_dims.emplace_back(ref_dims[i]);
     }
     // check for non-0d updates
@@ -1335,25 +1468,27 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
         r_updates_dims.size(),
         updates_dims_size,
         phi::errors::InvalidArgument(
-            "Updates has wrong shape. The shape of Updates and Input(Updates) "
+            "Updates has wrong shape. The shape of Updates and "
+            "Input(Updates) "
             "should be same, but received the shape of Updates is %d, "
             "the shape of Input(Updates) is %d.",
             r_updates_dims.size(),
             updates_dims_size));
-
-    for (int64_t i = 0; i < updates_dims_size; ++i) {
-      PADDLE_ENFORCE_EQ(
-          r_updates_dims[i],
-          updates_dims[i],
-          phi::errors::InvalidArgument(
-              "Updates has wrong shape. The dimensions of Updates and "
-              "Input(Updates) should match, but received Updates's"
-              "%d-th dimension is %d, Input(Updates)'s %d-th "
-              "dimension is %d.",
-              i,
-              r_updates_dims[i],
-              i,
-              updates_dims[i]));
+    if (without_dynamic_shape) {
+      for (int64_t i = 0; i < updates_dims_size; ++i) {
+        PADDLE_ENFORCE_EQ(
+            r_updates_dims[i],
+            updates_dims[i],
+            phi::errors::InvalidArgument(
+                "Updates has wrong shape. The dimensions of Updates and "
+                "Input(Updates) should match, but received Updates's"
+                "%d-th dimension is %d, Input(Updates)'s %d-th "
+                "dimension is %d.",
+                i,
+                r_updates_dims[i],
+                i,
+                updates_dims[i]));
+      }
     }
   }
   out->set_dims(ref_dims);

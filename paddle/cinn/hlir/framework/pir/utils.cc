@@ -23,6 +23,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/op_mapper.h"
+#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -124,26 +125,22 @@ class OpTransInfo {
   DeParamCondT deny_param_cond_{{"batch_norm", {"ReserveSpace"}},
                                 {"batch_norm_grad", {"ReserveSpace"}}};
 
-  std::unordered_set<std::string> default_deny_ops_{
-      "feed",
-      "fetch",
-      "conv2d",
-      "conv2d_grad",
-      "dropout",
-      "slice",
-      "concat",
-      "gather_nd",
-      "pool2d",
-      "pool2d_grad",
-      "split",
-      "matmul",
-      "matmul_grad",
-      "transpose",
-      "embedding_grad",
-      "embedding",
-      "gather",
-      "arange",
-  };
+  std::unordered_set<std::string> default_deny_ops_{"feed",
+                                                    "fetch",
+                                                    "conv2d",
+                                                    "conv2d_grad",
+                                                    "depthwise_conv2d",
+                                                    "depthwise_conv2d_grad",
+                                                    "dropout",
+                                                    "pool2d",
+                                                    "pool2d_grad",
+                                                    "split",
+                                                    "matmul",
+                                                    "matmul_grad",
+                                                    "embedding_grad",
+                                                    "embedding",
+                                                    "arange",
+                                                    "softmax"};
 };
 
 std::string OpNameAfterStripDialect(const ::pir::Operation& op) {
@@ -302,6 +299,20 @@ bool IsShapeComputeOp(const ::pir::Operation& op) {
     all_input_has_shape_data = false;
     break;
   }
+
+  for (uint32_t i = 0; i < op.num_results(); ++i) {
+    if (shape_analysis.HasShapeOrDataForValue(op.result(i))) {
+      const auto& shape_expr =
+          shape_analysis.GetShapeOrDataForValue(op.result(i));
+      if (shape_expr.isa<symbol::TensorShapeOrDataDimExprs>() &&
+          shape_expr.data()) {  // has shape data
+        continue;
+      }
+    }
+    all_input_has_shape_data = false;
+    break;
+  }
+
   return all_input_has_shape_data;
 }
 
@@ -311,7 +322,7 @@ bool IsTempDenySpecialOp(const ::pir::Operation& op) {
   if (op.name() == "cinn_op.generate_shape") {
     return false;
   }
-  return IsShapeComputeOp(op) || IsSmallNumelOp(op);
+  return IsShapeComputeOp(op);
 }
 
 // Mainly used for pd_to_cinn_pass and reused in IsSupportInCinn function.
@@ -322,11 +333,7 @@ bool IsDeniedInCinn(const ::pir::Operation& op) {
             << "So mark IsDeniedForCinn: " << true;
     return true;
   }
-  if (IsTempDenySpecialOp(op)) {
-    VLOG(5) << "Found " << op.name() << " is in TempDenySpecialOp."
-            << "So mark IsDeniedForCinn: " << true;
-    return true;
-  }
+
   // Strip the dialect, like pd_op.abs -> abs
   const auto op_name = OpNameAfterStripDialect(op);
   const bool is_denied = OpTransInfo().IsDeniedByDefault(op_name);
@@ -386,7 +393,9 @@ bool CompatibleInfo::IsDeniedForCinn(const ::pir::Operation& op) {
 }
 
 bool CompatibleInfo::IsSupportForCinn(const ::pir::Operation& op) {
-  bool flag = IsSupportInCinn(op);
+  const bool not_builtin_op = op.dialect()->name() != "builtin";
+  const bool flag = IsSupportInCinn(op) && not_builtin_op;
+
   VLOG(4) << "CompatibleInfo::IsSupportForCinn of " << op.name()
           << " is: " << flag;
   return flag;
@@ -409,12 +418,12 @@ std::string CompatibleInfo::OpFuncName(const ::pir::Operation& op) {
 
 std::string CompatibleInfo::GroupOpsName(
     const std::vector<::pir::Operation*>& ops) {
-  std::string name = "fn";
+  std::string name = "fn_";
   for (auto* op : ops) {
-    std::string op_name = OpName(*op);
-    name += "_" + cinn::common::Context::Global().NewName(op_name);
+    name += OpName(*op);
+    name += "_";
   }
-  return name;
+  return cinn::common::Context::Global().NewName(name);
 }
 
 std::string CompatibleInfo::ValueName(const ::pir::Value& value) {
@@ -471,15 +480,17 @@ static utils::Attribute ConvertArrayAttribute(
               element.dyn_cast<::pir::StrAttribute>().AsString());
         }
       } else {
-        LOG(FATAL)
-            << "only support bool/int32/int64/float/double/string attribute in "
-               "ArrayAttribute";
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "only support bool/int32/int64/float/double/string attribute in "
+            "ArrayAttribute"));
       }
     }
   } else if (src_attr.isa<::pir::shape::SymbolAttribute>()) {
     // do nothing for now
   } else {
-    LOG(FATAL) << "unknown Attribute: " << src_attr;
+    std::stringstream ss;
+    ss << "unknown Attribute: " << src_attr;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return dst_attr;
 }
@@ -548,7 +559,9 @@ cinn::common::Type CompatibleInfo::ConvertIRType(::pir::Type type) {
   CASE_TYPE(IndexType, I32)
   CASE_TYPE(BoolType, UI1)
 
-  LOG(FATAL) << "unknown ir::Type " << type;
+  std::stringstream ss;
+  ss << "unknown ir::Type " << type;
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
 }
 #undef CASE_TYPE
 

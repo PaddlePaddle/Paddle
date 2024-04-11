@@ -202,9 +202,7 @@ class CompiledProgram:
 
         assert isinstance(
             places, (list, tuple)
-        ), "Currently, The places type can only be list or tuple, but the input type is {}.".format(
-            type(places)
-        )
+        ), f"Currently, The places type can only be list or tuple, but the input type is {type(places)}."
 
         if self._build_strategy is None:
             self._build_strategy = BuildStrategy()
@@ -546,10 +544,8 @@ class IpuDynamicPatcher:
                 current_tracing_count = len(self._caches)
                 if current_tracing_count > MAX_TRACED_PROGRAM_COUNT:
                     logging_utils.warn(
-                        "Current traced program number: {} > `max_tracing_count`:{}. Too much cached programs will bring expensive overhead. "
-                        "The reason may be: (1) passing tensors with different shapes, (2) passing python objects instead of tensors.".format(
-                            current_tracing_count, MAX_TRACED_PROGRAM_COUNT
-                        )
+                        f"Current traced program number: {current_tracing_count} > `max_tracing_count`:{MAX_TRACED_PROGRAM_COUNT}. Too much cached programs will bring expensive overhead. "
+                        "The reason may be: (1) passing tensors with different shapes, (2) passing python objects instead of tensors."
                     )
 
             return self._caches[item_id]

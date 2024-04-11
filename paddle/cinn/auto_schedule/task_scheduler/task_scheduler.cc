@@ -34,7 +34,9 @@ std::unique_ptr<TaskScheduler> TaskScheduler::Make(
     return std::make_unique<EfficiencyPriority>(tasks, config);
   }
 
-  LOG(FATAL) << "Unimplemented strategy:" << strategy;
+  std::stringstream ss;
+  ss << "Unimplemented strategy:" << strategy;
+  PADDLE_THROW(phi::errors::Unimplemented(ss.str()));
   return nullptr;
 }
 

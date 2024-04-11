@@ -72,15 +72,6 @@ def fill_const(value, shape, dtype, out=None):
     return out
 
 
-def bernoulli(shape, dtype, p, out=None):
-    attrs = {'shape': shape, 'dtype': dtype, 'p': p}
-    helper = LayerHelper('bernoulli_p', **locals())
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(type=helper.layer_type, outputs={'Y': out}, attrs=attrs)
-    return out
-
-
 def neg(x, out=None):
     zero = fill_const(0.0, x.shape, x.dtype)
     return sub(zero, x)
@@ -456,16 +447,12 @@ def log(x, out=None):
 def select(cond, x, y, out=None):
     if len(cond.shape) != len(x.shape):
         raise ValueError(
-            "len(cond.shape) should be equal to len(x.shape), but len(cond.shape)={} and len(x.shape)={}.".format(
-                len(cond.shape), len(x.shape)
-            )
+            f"len(cond.shape) should be equal to len(x.shape), but len(cond.shape)={len(cond.shape)} and len(x.shape)={len(x.shape)}."
         )
 
     if len(x.shape) != len(y.shape):
         raise ValueError(
-            "len(x.shape) should be equal to len(y.shape), but len(x.shape)={} and len(y.shape)={}.".format(
-                len(x.shape), len(y.shape)
-            )
+            f"len(x.shape) should be equal to len(y.shape), but len(x.shape)={len(x.shape)} and len(y.shape)={len(y.shape)}."
         )
 
     helper = LayerHelper('select_p', **locals())

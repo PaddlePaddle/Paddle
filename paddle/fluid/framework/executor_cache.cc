@@ -19,7 +19,7 @@
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
-#include "paddle/fluid/pir/transforms/inplace_pass.h"
+#include "paddle/fluid/pir/transforms/general/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"

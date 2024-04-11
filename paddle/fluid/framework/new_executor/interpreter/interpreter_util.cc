@@ -42,7 +42,7 @@
 #include "paddle/phi/core/kernel_factory.h"
 
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -478,7 +478,7 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
               op_device));
 #else
       VLOG(1) << string::Sprintf(
-          "Cannot use get_all_custom_device_type because you have installed"
+          "Cannot use get_all_custom_device_type because you have installed "
           "CPU/GPU version PaddlePaddle.\n"
           "If you want to use get_all_custom_device_type, please try to "
           "install CustomDevice version "

@@ -435,12 +435,13 @@ PD_REGISTER_SPMD_RULE(
     logical_xor,
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
-
 PD_REGISTER_SPMD_RULE(
     not_equal,
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
-
+PD_REGISTER_SPMD_RULE(swiglu,
+                      PD_INFER_SPMD(phi::distributed::SwiGLUInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::SwiGLUInferSpmdReverse));
 // TODO(pkuzyc): add multiary elementwise rule
 
 // reduction rule
@@ -500,6 +501,16 @@ PD_REGISTER_SPMD_RULE(
     layer_norm,
     PD_INFER_SPMD(phi::distributed::LayerNormInferSpmd),
     PD_INFER_SPMD(phi::distributed::LayerNormInferSpmdReverse));
+
+// fused_rms_norm
+// NOTE(ZHIQIU): Temporally register fused_rms_norm rule,
+// this is not for rms_norm kernel, but for the custom kernel
+// 'fused_rms_norm' in PaddleNLP.
+// It will be no longer needed when the PIR-AutoParallel project
+// is finished.
+PD_REGISTER_SPMD_RULE(fused_rms_norm,
+                      PD_INFER_SPMD(phi::distributed::RmsNormInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::RmsNormInferSpmdReverse));
 
 PD_REGISTER_SPMD_RULE(
     flash_attention,

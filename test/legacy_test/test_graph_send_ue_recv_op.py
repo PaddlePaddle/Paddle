@@ -754,9 +754,7 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
                 paddle_res,
                 rtol=1e-05,
                 atol=1e-06,
-                err_msg='two value is                {}\n{}, check diff!'.format(
-                    np_res, paddle_res
-                ),
+                err_msg=f'two value is                {np_res}\n{paddle_res}, check diff!',
             )
 
     def test_compute_all_with_mean(self):
@@ -793,9 +791,7 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
                 paddle_res,
                 rtol=1e-05,
                 atol=1e-06,
-                err_msg='two value is                {}\n{}, check diff!'.format(
-                    np_res, paddle_res
-                ),
+                err_msg=f'two value is                {np_res}\n{paddle_res}, check diff!',
             )
 
     def test_compute_all_with_max(self):
@@ -833,9 +829,7 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
                 paddle_res,
                 rtol=1e-05,
                 atol=1e-06,
-                err_msg='two value is                {}\n{}, check diff!'.format(
-                    np_res, paddle_res
-                ),
+                err_msg=f'two value is                {np_res}\n{paddle_res}, check diff!',
             )
 
     def test_compute_all_with_max_fp16(self):
@@ -892,9 +886,7 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
                         paddle_res,
                         rtol=1e-05,
                         atol=1e-06,
-                        err_msg='two value is                        {}\n{}, check diff!'.format(
-                            np_res, paddle_res
-                        ),
+                        err_msg=f'two value is                        {np_res}\n{paddle_res}, check diff!',
                     )
 
     def test_compute_all_with_min(self):
@@ -931,9 +923,7 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
                 paddle_res,
                 rtol=1e-05,
                 atol=1e-06,
-                err_msg='two value is                {}\n{}, check diff!'.format(
-                    np_res, paddle_res
-                ),
+                err_msg=f'two value is                {np_res}\n{paddle_res}, check diff!',
             )
 
     def test_compute_all_with_min_fp16(self):
@@ -986,9 +976,7 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
                         paddle_res,
                         rtol=1e-05,
                         atol=1e-06,
-                        err_msg='two value is                        {}\n{}, check diff!'.format(
-                            np_res, paddle_res
-                        ),
+                        err_msg=f'two value is                        {np_res}\n{paddle_res}, check diff!',
                     )
 
     def test_reshape_lhs_rhs(self):
@@ -1011,9 +999,7 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
             res_add,
             rtol=1e-05,
             atol=1e-06,
-            err_msg='two value is                        {}\n{}, check diff!'.format(
-                np_add, res_add
-            ),
+            err_msg=f'two value is                        {np_add}\n{res_add}, check diff!',
         )
 
     @test_with_pir_api
@@ -1056,9 +1042,7 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
             ret[0],
             rtol=1e-05,
             atol=1e-06,
-            err_msg='two value is                        {}\n{}, check diff!'.format(
-                np_sum, ret[0]
-            ),
+            err_msg=f'two value is                        {np_sum}\n{ret[0]}, check diff!',
         )
 
 

@@ -367,7 +367,7 @@ TEST(AnalysisPredictor, mkldnn_fc_passes_cpu_pass_strategy) {
   CpuPassStrategy cpuPassStrategy;
   cpuPassStrategy.EnableMKLDNN();
   const std::vector<std::string> fc_passes_to_erase(
-      {"fc_mkldnn_pass", "fc_act_mkldnn_fuse_pass"});
+      {"fc_onednn_pass", "fc_act_onednn_fuse_pass"});
   for (const auto& pass : fc_passes_to_erase) {
     ASSERT_NE(cpuPassStrategy.GetPassIndex(pass), (size_t)-1);
   }
@@ -552,7 +552,7 @@ TEST(Tensor, GpuShareExternalData) {
       std::accumulate(
           out_shape.begin(), out_shape.end(), 1, std::multiplies<int>()) *
       sizeof(float);
-  cudaMalloc(reinterpret_cast<void**>(out_data), out_size * sizeof(float));
+  cudaMalloc(reinterpret_cast<void**>(&out_data), out_size * sizeof(float));
   out->ShareExternalData<float>(out_data, out_shape, PlaceType::kGPU);
 
   predictor->Run();
@@ -699,7 +699,7 @@ TEST(Tensor, RunWithExternalStream) {
       std::accumulate(
           out_shape.begin(), out_shape.end(), 1, std::multiplies<int>()) *
       sizeof(float);
-  cudaMalloc(reinterpret_cast<void**>(out_data), out_size * sizeof(float));
+  cudaMalloc(reinterpret_cast<void**>(&out_data), out_size * sizeof(float));
   out->ShareExternalData<float>(out_data, out_shape, PlaceType::kGPU);
 
   cudaStream_t external_stream;

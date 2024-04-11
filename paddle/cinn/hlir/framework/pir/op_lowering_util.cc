@@ -601,8 +601,8 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
     }
     lane *= inshape[axes[index]];
     if (index == 0 && lane <= max_num_threads) {
-      LOG(FATAL)
-          << "Error! lane is less equal than max_num_threads, Please check!";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Error! lane is less equal than max_num_threads, Please check!"));
     }
     if (lane >= max_num_threads / 2) {
       if (lane <= max_num_threads) {
@@ -1008,7 +1008,8 @@ void MergeReduceToReduce(
                        n_loops.size() - 1);
           }
         } else {
-          LOG(FATAL) << "not support this type fusion!";
+          PADDLE_THROW(
+              phi::errors::InvalidArgument("not support this type fusion!"));
         }
       }
     } else {
@@ -1112,7 +1113,8 @@ void MergeReduceToReduce(
         ir_sch.SimpleComputeAt(block, loops.back());
       }
     } else {
-      LOG(FATAL) << "Error! Unkown Reduce Type, Please Check!";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Error! Unkown Reduce Type, Please Check!"));
     }
   }
 }
@@ -1506,7 +1508,7 @@ void LoopAssignReduce(
       // copy loop info form rloops.
       copy_loop_info(nloops, rloops);
     } else {
-      LOG(FATAL) << "Error! Unkown Reduce Type!";
+      PADDLE_THROW(phi::errors::InvalidArgument("Error! Unkown Reduce Type!"));
     }
   }
 }

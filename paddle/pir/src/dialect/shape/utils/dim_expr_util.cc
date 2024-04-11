@@ -78,6 +78,7 @@ struct SimplifyUnitOneOperand {
 /*
  * Simplify Example:
  * Negative(Negative(dim_expr)) => dim_expr
+ * Negative(int) => -int
  */
 struct SimplifyDoubleNeg {
   using dim_expr_type = Negative<DimExpr>;
@@ -87,6 +88,8 @@ struct SimplifyDoubleNeg {
     if (inner_expr.Has<Negative<DimExpr>>()) {
       const auto& ret_expr = inner_expr.Get<Negative<DimExpr>>()->data;
       return ret_expr;
+    } else if (inner_expr.Has<std::int64_t>()) {
+      return -inner_expr.Get<std::int64_t>();
     } else {
       return expr;
     }
@@ -586,12 +589,12 @@ ConstRational MulConstRational(const ConstRational& lhs,
   const auto [lhs_num, lhs_dem] = lhs;
   const auto [rhs_num, rhs_dem] = rhs;
   // Crossing is correct.
-  const auto [simplifed_lhs_num, simplifed_rhs_dem] =
+  const auto [simplified_lhs_num, simplified_rhs_dem] =
       SimplifiedConstRational(lhs_num, rhs_dem);
-  const auto [simplifed_rhs_num, simplifed_lhs_dem] =
+  const auto [simplified_rhs_num, simplified_lhs_dem] =
       SimplifiedConstRational(rhs_num, lhs_dem);
-  return ConstRational{simplifed_lhs_num * simplifed_rhs_num,
-                       simplifed_lhs_dem * simplifed_rhs_dem};
+  return ConstRational{simplified_lhs_num * simplified_rhs_num,
+                       simplified_lhs_dem * simplified_rhs_dem};
 }
 
 template <>
@@ -626,7 +629,10 @@ struct FoldOperandTrait<Mul> {
                                    List<DimExpr>* ret) {
     const auto& [num, dem] = value;
     (*ret)->emplace_back(num);
-    CHECK_NE(dem, 0);
+    PADDLE_ENFORCE_NE(dem,
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The denominator of rational can not be zero."));
     if (dem != 1) {
       (*ret)->emplace_back(Reciprocal<DimExpr>{DimExpr{dem}});
     }
@@ -662,7 +668,13 @@ struct FoldOperandTrait<Broadcast> {
     if (*value == 1) {
       *value = expr_value;
     } else if (expr_value != 1) {
-      CHECK_EQ(*value, expr_value);
+      PADDLE_ENFORCE_EQ(
+          *value,
+          expr_value,
+          phi::errors::InvalidArgument("The value (%d) should be equel to expr "
+                                       "(%d) when they are both not 1.",
+                                       *value,
+                                       expr_value));
     } else {
       // do nothing.
     }
@@ -791,7 +803,15 @@ struct FoldRedundantSymbolicBroadcast {
       if (ret.has_value()) {
         if (int64_value > 1) {
           if (ret.value().value > 1) {
-            CHECK_EQ(ret.value().value, int64_value);
+            PADDLE_ENFORCE_EQ(
+                ret.value().value,
+                int64_value,
+                phi::errors::InvalidArgument(
+                    "The value of return (%d) should be equel to expr (%d) of "
+                    "operands at index (%d) when they are both > 1.",
+                    ret.value().value,
+                    int64_value,
+                    i));
           }
           ret = MaxInt64{int64_value, i};
         }
@@ -960,8 +980,26 @@ class SubstituteDimExprHelper final {
     return SubstituteVariadic(dim_expr);
   }
 
-  template <typename T>
-  std::optional<DimExpr> SubstituteVariadic(const T& dim_expr) {
+  template <template <typename> class OpT>
+  std::optional<DimExpr> SubstituteVariadic(const OpT<DimExpr>& dim_expr) {
+    auto opt_result = SubstituteEntireExpr(dim_expr);
+
+    if (opt_result.has_value()) {
+      if (opt_result->template isa<OpT<DimExpr>>()) {
+        auto new_result = SubstituteSubOperands(
+            opt_result->template dyn_cast<OpT<DimExpr>>());
+        if (new_result.has_value()) {
+          return new_result;
+        }
+      }
+      return opt_result;
+    } else {
+      return SubstituteSubOperands(dim_expr);
+    }
+  }
+
+  template <template <typename> class OpT>
+  std::optional<DimExpr> SubstituteEntireExpr(const OpT<DimExpr>& dim_expr) {
     const auto& operands = *(dim_expr.operands);
     List<DimExpr> substituted_operands{};
     size_t replace_cnt = 0;
@@ -973,7 +1011,38 @@ class SubstituteDimExprHelper final {
                                           : operand);
     }
     if (replace_cnt == 0) return std::nullopt;
-    return T{substituted_operands};
+    return SimplifyDimExpr(OpT<DimExpr>{substituted_operands});
+  }
+
+  template <template <typename> class OpT>
+  std::optional<DimExpr> SubstituteSubOperands(const OpT<DimExpr>& dim_expr) {
+    const std::unordered_set<DimExpr> operands_set{dim_expr.operands->begin(),
+                                                   dim_expr.operands->end()};
+
+    auto CanReplaceSubOperands = [&operands_set](const OpT<DimExpr>& dim_expr) {
+      for (const auto& operand : *dim_expr.operands) {
+        if (operands_set.find(operand) == operands_set.end()) return false;
+      }
+      return true;
+    };
+
+    for (const auto& kv : pattern_to_replacement_) {
+      if (!kv.first.isa<OpT<DimExpr>>()) continue;
+      const auto& dim_expr_pattern = kv.first.dyn_cast<OpT<DimExpr>>();
+      if (!CanReplaceSubOperands(dim_expr_pattern)) continue;
+
+      List<DimExpr> ret_operands{kv.second};
+      for (const auto& operand : operands_set) {
+        if (std::find(dim_expr_pattern.operands->begin(),
+                      dim_expr_pattern.operands->end(),
+                      operand) == dim_expr_pattern.operands->end()) {
+          ret_operands->push_back(operand);
+        }
+      }
+      return SimplifyDimExpr(OpT<DimExpr>{ret_operands});
+    }
+
+    return std::nullopt;
   }
 
   std::unordered_map<DimExpr, DimExpr> pattern_to_replacement_;
@@ -987,6 +1056,55 @@ DimExpr SubstituteDimExpr(
   const auto& opt_replaced =
       SubstituteDimExprHelper(pattern_to_replacement).Substitute(dim_expr);
   return opt_replaced.has_value() ? opt_replaced.value() : dim_expr;
+}
+
+}  // namespace symbol
+
+namespace symbol {
+
+IR_API int GetDimExprPriority(const DimExpr& dim_expr) {
+  return std::visit(Overloaded{
+                        [&](std::int64_t) { return 0; },
+                        [&](const std::string&) { return 1; },
+                        [&](const Negative<DimExpr>&) { return 2; },
+                        [&](const Reciprocal<DimExpr>&) { return 2; },
+                        [&](const Add<DimExpr>&) { return 2; },
+                        [&](const Mul<DimExpr>&) { return 2; },
+                        [&](const Max<DimExpr>&) { return 2; },
+                        [&](const Min<DimExpr>&) { return 2; },
+                        [&](const Broadcast<DimExpr>&) { return 2; },
+                    },
+                    dim_expr.variant());
+}
+
+IR_API PriorityComparisonStatus CompareDimExprPriority(const DimExpr& lhs,
+                                                       const DimExpr& rhs) {
+  int lhs_priority = GetDimExprPriority(lhs);
+  int rhs_priority = GetDimExprPriority(rhs);
+
+  if (lhs_priority != rhs_priority) {
+    return lhs_priority < rhs_priority ? PriorityComparisonStatus::HIGHER
+                                       : PriorityComparisonStatus::LOWER;
+  }
+
+  auto CompareForEqualPriority = Overloaded{
+      [](const std::string& lhs, const std::string& rhs) {
+        if (lhs.size() != rhs.size()) {
+          return lhs.size() < rhs.size() ? PriorityComparisonStatus::HIGHER
+                                         : PriorityComparisonStatus::LOWER;
+        }
+        int compare_result = lhs.compare(rhs);
+        if (compare_result == 0)
+          return PriorityComparisonStatus::EQUAL;
+        else if (compare_result < 0)
+          return PriorityComparisonStatus::HIGHER;
+        else
+          return PriorityComparisonStatus::LOWER;
+      },
+      [](const auto& lhs, const auto& rhs) {
+        return PriorityComparisonStatus::EQUAL;
+      }};
+  return std::visit(CompareForEqualPriority, lhs.variant(), rhs.variant());
 }
 
 }  // namespace symbol

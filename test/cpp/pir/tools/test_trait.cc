@@ -19,10 +19,12 @@
 namespace test {
 void OneRegionTrait::Verify(pir::Operation *op) {
   VLOG(1) << "here";
-  IR_ENFORCE(op->num_regions() == 1u,
-             "%s op has one region trait, but its region size is %u",
-             op->name(),
-             op->num_regions());
+  PADDLE_ENFORCE_EQ(op->num_regions(),
+                    1u,
+                    phi::errors::InvalidArgument(
+                        "%s op has one region trait, but its region size is %u",
+                        op->name(),
+                        op->num_regions()));
 }
 }  // namespace test
 

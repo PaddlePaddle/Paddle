@@ -213,6 +213,7 @@ if(WITH_ROCM)
     "gpu/put_along_axis_grad_kernel.cu"
     "gpu/put_along_axis_kernel.cu"
     "gpu/qr_kernel.cu"
+    "gpu/rms_norm_grad_kernel.cu"
     "gpu/svd_kernel.cu"
     "gpudnn/mha_cudnn_frontend.cu"
     "fusion/gpu/block_multi_head_attention_kernel.cu"
@@ -238,7 +239,7 @@ set(cc_search_pattern
     "stride/*.cc"
     "fusion/cpu/*.cc")
 
-if(WITH_MKLDNN)
+if(WITH_ONEDNN)
   set(cc_search_pattern ${cc_search_pattern} "legacy/onednn/*.cc" "onednn/*.cc"
                         "fusion/onednn/*.cc")
 endif()
@@ -261,6 +262,7 @@ if(NOT
     AND AVX512F_FOUND
     AND AVX512F_FLAG
     AND WITH_MKL))
+  list(REMOVE_ITEM kernel_cc "fusion/cpu/fused_layer_norm_avx_kernel.cc")
   list(REMOVE_ITEM kernel_cc "fusion/cpu/self_dp_attention_kernel.cc")
 endif()
 

@@ -380,6 +380,11 @@ void IndexAddInferMeta(const MetaTensor& x,
 
 void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
+void LimitByCapacityInferMeta(const MetaTensor& expert_count,
+                              const MetaTensor& capacity,
+                              int n_worker,
+                              MetaTensor* out);
+
 void LogicalBinaryInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             MetaTensor* out);

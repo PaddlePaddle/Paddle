@@ -845,9 +845,7 @@ class TestJitSaveMultiCases(unittest.TestCase):
         np.testing.assert_array_equal(
             pred,
             loaded_pred,
-            err_msg='Result diff when load and inference:\nlayer result:\n{}\nloaded layer result:\n{}'.format(
-                pred, loaded_pred
-            ),
+            err_msg=f'Result diff when load and inference:\nlayer result:\n{pred}\nloaded layer result:\n{loaded_pred}',
         )
 
     def test_no_prune_to_static_after_train(self):
@@ -1649,9 +1647,7 @@ class TestJitSaveLoadDataParallel(unittest.TestCase):
         np.testing.assert_array_equal(
             pred,
             loaded_pred,
-            err_msg='Result diff when load and inference:\nlayer result:\n{}\nloaded layer result:\n{}'.format(
-                pred, loaded_pred
-            ),
+            err_msg=f'Result diff when load and inference:\nlayer result:\n{pred}\nloaded layer result:\n{loaded_pred}',
         )
 
     def test_jit_save_data_parallel_with_inputspec(self):

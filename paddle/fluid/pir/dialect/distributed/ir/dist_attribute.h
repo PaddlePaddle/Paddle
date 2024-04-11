@@ -79,12 +79,12 @@ class TensorDistAttribute : public pir::AttrBase<TensorDistAttribute,
       pir::IrContext* ctx,
       ProcessMeshAttribute mesh,
       const std::vector<int64_t>& dims_mapping,
-      const flat_hash_map<int64_t, phi::ReduceType>& partial_status);
+      const flat_hash_map<int64_t, phi::ReduceType>& partial_status = {});
   static TensorDistAttribute get(
       pir::IrContext* ctx,
       const phi::distributed::ProcessMesh& mesh,
       const std::vector<int64_t>& dims_mapping,
-      const flat_hash_map<int64_t, phi::ReduceType>& partial_status) {
+      const flat_hash_map<int64_t, phi::ReduceType>& partial_status = {}) {
     return get(ctx,
                ProcessMeshAttribute::get(ctx, mesh),
                dims_mapping,
