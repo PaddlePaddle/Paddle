@@ -150,9 +150,6 @@ class TensorWrapper {
     inplace_version_snapshot_ = other.inplace_version_snapshot_;
     packed_value_ = other.packed_value_;
     unpack_hook_ = other.unpack_hook_;
-    if (packed_value_) {
-      packed_value_->inc_ref();
-    }
   }
 
   TensorWrapper& operator=(const TensorWrapper& other) {
@@ -162,9 +159,6 @@ class TensorWrapper {
     inplace_version_snapshot_ = other.inplace_version_snapshot_;
     packed_value_ = other.packed_value_;
     unpack_hook_ = other.unpack_hook_;
-    if (packed_value_) {
-      packed_value_->inc_ref();
-    }
     return *this;
   }
 #endif
