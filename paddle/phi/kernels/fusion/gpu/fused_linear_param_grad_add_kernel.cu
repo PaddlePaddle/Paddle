@@ -72,11 +72,19 @@ void FusedLinearParamGradAddImpl(const Context &ctx,
     auto dout_copy = dout;
     dout_copy.Resize({M, N});
     if (kIsMultiPrecision) {
-      *dbias_out = phi::Sum<T, Context>(
-          ctx, dout_copy, {0}, phi::CppTypeToDataType<MT>::Type(), false);
+      phi::SumKernel<T, Context>(ctx,
+                                 dout_copy,
+                                 {0},
+                                 phi::CppTypeToDataType<MT>::Type(),
+                                 false,
+                                 dbias_out);
     } else {
-      *dbias_out = phi::Sum<T, Context>(
-          ctx, dout_copy, {0}, phi::CppTypeToDataType<T>::Type(), false);
+      phi::SumKernel<T, Context>(ctx,
+                                 dout_copy,
+                                 {0},
+                                 phi::CppTypeToDataType<T>::Type(),
+                                 false,
+                                 dbias_out);
     }
   }
 
@@ -132,6 +140,10 @@ void FusedLinearParamGradAdd(const Context &ctx,
                              DenseTensor *dbias_out) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
+  if (std::is_same<T, MT>::value) {
+    multi_precision = false;
+  }
+
   bool use_addto = false;
   if (dweight_out) {
     if (dweight_out->dtype() == phi::DataType::FLOAT16) {
@@ -164,12 +176,27 @@ void FusedLinearParamGradAdd(const Context &ctx,
     }
   }
 
-  if (std::is_same<T, MT>::value) {
-    multi_precision = false;
-  }
-
   if (has_bias && dbias_out) {
-    ctx.template Alloc<T>(dbias_out);
+    if (dbias) {
+      *dbias_out = dbias.get();
+      if (multi_precision) {
+        PADDLE_ENFORCE_EQ(
+            dbias_out->dtype(),
+            phi::CppTypeToDataType<MT>::Type(),
+            phi::errors::InvalidArgument("Invaid data type error."));
+      } else {
+        PADDLE_ENFORCE_EQ(
+            dbias_out->dtype(),
+            phi::CppTypeToDataType<T>::Type(),
+            phi::errors::InvalidArgument("Invaid data type error."));
+      }
+    } else {
+      if (multi_precision) {
+        ctx.template Alloc<MT>(dbias_out);
+      } else {
+        ctx.template Alloc<T>(dbias_out);
+      }
+    }
   }
 
   int64_t K = x.dims()[x.dims().size() - 1];
