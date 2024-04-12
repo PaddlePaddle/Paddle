@@ -21,10 +21,9 @@ template <typename T, typename DeviceContext>
 class PolygonBoxTransformCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        platform::is_cpu_place(ctx.GetPlace()),
-        true,
-        platform::errors::InvalidArgument("It must use CUDAPlace."));
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()),
+                      true,
+                      phi::errors::InvalidArgument("It must use CUDAPlace."));
     auto* in = ctx.Input<phi::DenseTensor>("Input");
     auto in_dims = common::vectorize<int>(in->dims());
     const T* in_data = in->data<T>();
@@ -66,12 +65,12 @@ class PolygonBoxTransformOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         in_dim.size(),
         4,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "input's rank must be 4. But received: Input rank is [%d]",
             in_dim.size()));
     PADDLE_ENFORCE_EQ(in_dim[1] % 2,
                       0,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "input's second dimension must be even. But "
                           "received: Input 2nd dimension is [%d]",
                           in_dim[1]));

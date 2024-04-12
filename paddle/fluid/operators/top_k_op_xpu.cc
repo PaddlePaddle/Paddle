@@ -92,5 +92,5 @@ class TopkXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_XPU_KERNEL(top_k,
                        ops::TopkXPUKernel<float>,
-                       ops::TopkXPUKernel<paddle::platform::float16>);
+                       ops::TopkXPUKernel<phi::dtype::float16>);
 #endif

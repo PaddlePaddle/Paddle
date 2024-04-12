@@ -47,13 +47,13 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(
         root_id,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The root_id (%d) for c_scatter_op must be non-negative.",
             root_id));
     PADDLE_ENFORCE_GE(
         ring_id,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The ring_id (%d) for c_scatter_op must be non-negative.",
             ring_id));
 
@@ -62,7 +62,7 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -73,12 +73,12 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
           comm_context_manager.Get(std::to_string(ring_id)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        platform::errors::Unavailable(
+                        phi::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
       PADDLE_ENFORCE_EQ(nranks,
                         comm_ctx->GetSize(),
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The number of ranks (%d) you set of must "
                             "be equal to comm_ctx->GetSize() (%d).",
                             nranks,
@@ -90,7 +90,7 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
       comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
       PADDLE_ENFORCE_EQ(nranks,
                         comm->nranks(),
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The number of ranks (%d) you set of must "
                             "be equal to comm->nranks (%d).",
                             nranks,
@@ -158,7 +158,7 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         true,
         false,
-        platform::errors::Unavailable("PaddlePaddle should compile with GPU."));
+        phi::errors::Unavailable("PaddlePaddle should compile with GPU."));
 #endif
   }
 };
@@ -177,4 +177,4 @@ PD_REGISTER_STRUCT_KERNEL(c_scatter,
                           double,
                           int,
                           int64_t,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

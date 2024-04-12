@@ -89,7 +89,7 @@ class TestParallelExecutorBase(unittest.TestCase):
         exe = base.Executor(place)
         exe.run(startup)
 
-        build_strategy, exec_strategy = cls.set_strategy(
+        build_strategy = cls.set_strategy(
             enable_inplace,
             enable_sequential_execution,
             fuse_all_optimizer_ops,
@@ -188,7 +188,7 @@ class TestParallelExecutorBase(unittest.TestCase):
         exe = base.Executor(place)
         exe.run(startup)
 
-        build_strategy, exec_strategy = cls.set_strategy(
+        build_strategy = cls.set_strategy(
             enable_inplace,
             enable_sequential_execution,
             fuse_all_optimizer_ops,
@@ -222,9 +222,6 @@ class TestParallelExecutorBase(unittest.TestCase):
         use_reduce,
         use_device,
     ):
-        exec_strategy = base.ExecutionStrategy()
-        if use_fast_executor:
-            exec_strategy.use_experimental_executor = True
         build_strategy = base.BuildStrategy()
         build_strategy.reduce_strategy = (
             base.BuildStrategy.ReduceStrategy.Reduce
@@ -249,7 +246,7 @@ class TestParallelExecutorBase(unittest.TestCase):
             build_strategy.enable_inplace = False
             build_strategy.enable_sequential_execution = False
 
-        return build_strategy, exec_strategy
+        return build_strategy
 
     @classmethod
     def build_model(

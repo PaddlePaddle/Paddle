@@ -221,8 +221,8 @@ class FTRLOpKernel : public framework::OpKernel<T> {
           lin_accum_out->mutable_data<T>(ctx.GetPlace()));
       for_range(functor);
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Unsupported Variable Type of Grad"));
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("Unsupported Variable Type of Grad"));
     }
   }
 };

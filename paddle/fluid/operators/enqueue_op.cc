@@ -52,14 +52,14 @@ class EnqueueOp : public framework::OperatorBase {
     auto* queue_holder_var = scope.FindVar(queue_name);
     PADDLE_ENFORCE_NOT_NULL(
         queue_holder_var,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "No LoDTensorBlockingQueueHolder variable with name %s found.",
             queue_name));
     const std::string& var_name = Input("X");
     auto* in_var = scope.FindVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(in_var,
-                            platform::errors::NotFound(
-                                "No variable with name %s found.", var_name));
+    PADDLE_ENFORCE_NOT_NULL(
+        in_var,
+        phi::errors::NotFound("No variable with name %s found.", var_name));
     auto* in_tensor = in_var->GetMutable<phi::DenseTensor>();
     auto* queue_holder =
         queue_holder_var->template GetMutable<LoDTensorBlockingQueueHolder>();
