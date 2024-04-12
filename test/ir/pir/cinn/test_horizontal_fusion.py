@@ -35,7 +35,7 @@ class TestHorizontalGraph(unittest.TestCase):
         self.prepare_data()
 
     def prepare_data(self):
-        self.x = paddle.randn([256, 128], dtype="bfloat16")
+        self.x = paddle.randn([256, 128], dtype="float32")
         self.x.stop_gradient = True
 
     def check_jit_kernel_info(self, static_fn):
