@@ -200,7 +200,11 @@ class TestFakeQuantizeRangeAbsMaxOp(OpTest):
         }
         self.dtype = dtype
         self.attrs['is_test'] = is_test
-        self.check_output(check_dygraph=False)
+
+        # If is_test is set to true, there is no need for out_scale.
+        no_check_set = ['OutScale', 'OutScales'] if is_test else None
+
+        self.check_output(check_dygraph=False, no_check_set=no_check_set)
 
     def test_fake_quantize_range_abs_max(self):
         dtype_options = [np.float16, np.float32]

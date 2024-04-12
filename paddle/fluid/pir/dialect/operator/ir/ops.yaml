@@ -1978,7 +1978,7 @@
   output: Tensor(out), Tensor(out_scale), Tensor(out_scales)
   infer_meta:
     func: FakeQuantizeRangeInferMeta
-    param: [x, window_size]
+    param: [x, window_size, is_test]
   kernel:
     func: fake_quantize_range_abs_max
     data_type: x

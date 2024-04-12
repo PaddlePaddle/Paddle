@@ -883,6 +883,7 @@ void FakeChannelWiseQuantizeInferMeta(const MetaTensor& x,
 
 void FakeQuantizeRangeInferMeta(const MetaTensor& x,
                                 int window_size,
+                                bool is_test,
                                 MetaTensor* out,
                                 MetaTensor* out_scale,
                                 MetaTensor* out_scales);

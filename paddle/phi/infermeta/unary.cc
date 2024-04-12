@@ -5773,18 +5773,20 @@ void FakeChannelWiseQuantizeInferMeta(const MetaTensor& x,
 
 void FakeQuantizeRangeInferMeta(const MetaTensor& x,
                                 int window_size,
+                                bool is_test,
                                 MetaTensor* out,
                                 MetaTensor* out_scale,
                                 MetaTensor* out_scales) {
   UnchangedInferMeta(x, out);
+
   if (out_scales != nullptr) {
     out_scales->set_dims({window_size});
   }
-  out_scale->set_dims({1});
-  out->set_dims(x.dims());
-  out->set_dtype(x.dtype());
-  out->set_layout(x.layout());
-  out->share_lod(x);
+
+  // If is_test is set to true, there is no need for out_scale.
+  if (!is_test) {
+    out_scale->set_dims({1});
+  }
 }
 
 void FakeQuantizeMovingAverageInferMeta(const MetaTensor& x,
