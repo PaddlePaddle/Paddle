@@ -32,11 +32,11 @@ class SequenceEraseKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         lod.empty(),
         false,
-        platform::errors::InvalidArgument("Input(X) Tensor of SequenceEraseOp "
-                                          "does not contain LoD information."));
+        phi::errors::InvalidArgument("Input(X) Tensor of SequenceEraseOp "
+                                     "does not contain LoD information."));
     PADDLE_ENFORCE_EQ(lod[lod.size() - 1].back(),
                       static_cast<size_t>(in->numel()),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The actual input size %d mismatches with the LoD "
                           "information size %d.",
                           lod[lod.size() - 1].back(),

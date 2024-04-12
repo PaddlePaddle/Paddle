@@ -36,7 +36,7 @@ class SequenceSoftmaxCUDNNKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         dims[0],
         static_cast<int64_t>(lod[level].back()),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The first dimension of Input(X) should be equal to the sum of all "
             "sequences' lengths. But received first dimension of Input(X) is "
             "%d, the sum of all sequences' lengths is %d.",
@@ -44,7 +44,7 @@ class SequenceSoftmaxCUDNNKernel : public framework::OpKernel<T> {
             static_cast<int64_t>(lod[level].back())));
     PADDLE_ENFORCE_EQ(dims[0],
                       x->numel(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The width of each timestep in Input(X) of "
                           "SequenceSoftmaxOp should be 1."));
 

@@ -30,7 +30,7 @@ static inline T NormalizeL1(T* x, size_t len) {
   PADDLE_ENFORCE_GT(
       sum,
       0.,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The unnormalized probabilities of all possible unfinished "
           "sequences must be greater than 0."));
   T s = 1. / sum;
@@ -89,7 +89,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           seq_num,
           emission_dims[0],
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "the size of Input(length) must be equal to "
               "emission_dims[0]. But input_size = %d, emission_dims[0] = %d.",
               seq_num,
@@ -98,7 +98,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           seq_num,
           label_dims[0],
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "the size of Input(length) must be equal to "
               "label_dims[0]. But input_size = %d, label_dims[0] = %d.",
               seq_num,
@@ -116,10 +116,10 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
           ctx.device_context(), alpha, static_cast<T>(0.0));
     } else {
       in_lod = ctx.Input<phi::DenseTensor>("Label")->lod();
-      PADDLE_ENFORCE_NE(in_lod.size(),
-                        0,
-                        platform::errors::InvalidArgument(
-                            "Input(Label) must be a sequence."));
+      PADDLE_ENFORCE_NE(
+          in_lod.size(),
+          0,
+          phi::errors::InvalidArgument("Input(Label) must be a sequence."));
       seq_num = in_lod[0].size() - 1;
       batch_size = emission_dims[0];
       tag_num = emission_dims[1];
@@ -233,7 +233,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_LT(
         static_cast<size_t>(*std::max_element(lbl, lbl + seq_length)),
         tag_num,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "An invalid tag label that excesses the largest tag number."));
 
     // Calculate the nominator part, which depends on the label sequence.
@@ -288,10 +288,10 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
           {emission_dims[0] * emission_dims[1], emission_dims[2]});
     } else {
       in_lod = ctx.Input<phi::DenseTensor>("Label")->lod();
-      PADDLE_ENFORCE_NE(in_lod.size(),
-                        0,
-                        platform::errors::InvalidArgument(
-                            "Input(Label) must be a sequence."));
+      PADDLE_ENFORCE_NE(
+          in_lod.size(),
+          0,
+          phi::errors::InvalidArgument("Input(Label) must be a sequence."));
       seq_num = static_cast<int64_t>(in_lod[0].size() - 1);
     }
 

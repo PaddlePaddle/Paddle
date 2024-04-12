@@ -74,7 +74,7 @@ class TransferLayoutFunctor {
       PADDLE_ENFORCE_NE(
           in_layout,
           out_layout,
-          platform::errors::PreconditionNotMet(
+          phi::errors::PreconditionNotMet(
               "No layout transform needed between two oneDNN OPKernels."));
 
       if (in_layout != DataLayout::ONEDNN && out_layout == DataLayout::ONEDNN) {
@@ -136,7 +136,7 @@ class TransferLayoutFunctor {
     PADDLE_ENFORCE_EQ(
         common::arity(in.dims()),
         4,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input dimension arity only can be 4, the input dimension is %s.",
             in.dims()));
 

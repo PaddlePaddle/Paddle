@@ -66,8 +66,8 @@ class GetPlacesOp : public framework::OperatorBase {
     PADDLE_ENFORCE_NE(
         device_count,
         0UL,
-        platform::errors::InvalidArgument("Cannot indicate %s device count",
-                                          is_gpu ? "GPU" : "CPU"));
+        phi::errors::InvalidArgument("Cannot indicate %s device count",
+                                     is_gpu ? "GPU" : "CPU"));
 
     auto out_var_name = Output("Out");
     auto &places =
@@ -78,7 +78,7 @@ class GetPlacesOp : public framework::OperatorBase {
     if (is_gpu) {
       PADDLE_ENFORCE_LE(device_count,
                         CUDADevCount(),
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Only %d CUDA devices found, cannot set to %d",
                             CUDADevCount(),
                             device_count));

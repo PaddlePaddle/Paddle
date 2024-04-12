@@ -27,4 +27,4 @@ PD_REGISTER_STRUCT_KERNEL(share_data,
                           int64_t,
                           float,
                           double,
-                          plat::float16) {}
+                          phi::dtype::float16) {}
