@@ -19,14 +19,32 @@
 #include <vector>
 
 #include "glog/logging.h"
-#include "nlohmann/json.hpp"
+
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/schema.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/third_part.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_type.h"
-using Json = nlohmann::json;
+
 namespace pir {
+/** serializeTypeToJson is a template function to serialize
+ * a pir type to a json object. a pir type may have value or no value
+ * Value free types only have ID, while value based types have
+ * DATA in addition to ID.
+ *
+ * If a new pir type is added, which needs to be serialized,
+ * it must have a name() method, returning a string which
+ * should be different from other types' names.
+ * (The name template is t_dialectname_typename).
+ * Note: The prefixes t are assumed to represent 'type'.
+ *
+ * If the pir type has value, it should have a data() method,
+ * which returns the value of type. The data() method is better
+ * suited to return TYPE  which supported by json like std::vector,
+ * std::string, int, float and so on. if not, serailizeTypeToJson
+ * need to be specialized.
+ */
 
 template <typename T>
 Json serializeTypeToJson(const T& type) {
@@ -34,6 +52,23 @@ Json serializeTypeToJson(const T& type) {
   json_obj[ID] = type.name();
   return json_obj;
 }
+
+/** serializeAttrToJson is a template function to serialize
+ * pir attribute to json object. pir attribute usually have
+ * value, so it's json object has DATA and ID.
+ *
+ * If a new pir attr is added, which needs to be serialized,
+ * it must have a name() method, returning a string which
+ * should be different from other types' names.
+ * (The name template is a_dialectname_typename).
+ * Note: The prefixes a are assumed to represent 'attribute'.
+ *
+ * It also need have a data() method, which returns the value of
+ * attribute. The data() method is better suited to return TYPE
+ * which supported by json like std::vector, std::string, int,
+ * float and so on. if not, serailizeAttrToJson
+ * need to be specialized.
+ */
 
 template <typename T>
 Json serializeAttrToJson(const T& attr) {
@@ -105,9 +140,8 @@ Json serializeAttrToJson<paddle::dialect::ScalarAttribute>(
     content.push_back(scalar.to<phi::dtype::complex<double>>().real);
     content.push_back(scalar.to<phi::dtype::complex<double>>().imag);
   } else {
-    PADDLE_ENFORCE(false,
-                   phi::errors::InvalidArgument(
-                       "Invalid tensor data type `", dtype_, "`."));
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Invalid tensor data type `", dtype_, "`."));
   }
   json_obj[DATA] = content;
   return json_obj;

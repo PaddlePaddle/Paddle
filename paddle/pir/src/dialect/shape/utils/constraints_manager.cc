@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/pir/include/dialect/shape/utils/constraints_manager.h"
-#include "paddle/pir/include/dialect/shape/utils/dim_expr_builder.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
+
 namespace symbol {
 namespace {
 
@@ -37,8 +37,8 @@ bool CanEqualCStrInsert(const DimExpr& lhs, const DimExpr& rhs) {
 }
 
 template <template <class> class OpT>
-std::pair<DimExpr, DimExpr> FindDifferences(const OpT<DimExpr>& lhs,
-                                            const OpT<DimExpr>& rhs) {
+std::pair<DimExpr, DimExpr> EliminateCommonFactor(const OpT<DimExpr>& lhs,
+                                                  const OpT<DimExpr>& rhs) {
   List<DimExpr> lhs_list = lhs.operands;
   List<DimExpr> rhs_list = rhs.operands;
   List<DimExpr> lhs_diffs, rhs_diffs;
@@ -73,11 +73,11 @@ std::pair<DimExpr, DimExpr> SimplifyEqCstr(const DimExpr& lhs,
   auto DoSimplify = Overloaded{
       [](const Add<DimExpr>& lhs,
          const Add<DimExpr>& rhs) -> std::pair<DimExpr, DimExpr> {
-        return FindDifferences<Add>(lhs, rhs);
+        return EliminateCommonFactor<Add>(lhs, rhs);
       },
       [](const Mul<DimExpr>& lhs,
          const Mul<DimExpr>& rhs) -> std::pair<DimExpr, DimExpr> {
-        return FindDifferences<Mul>(lhs, rhs);
+        return EliminateCommonFactor<Mul>(lhs, rhs);
       },
       [](const auto& lhs, const auto& rhs) -> std::pair<DimExpr, DimExpr> {
         return std::make_pair(DimExpr(lhs), DimExpr(rhs));
@@ -120,11 +120,108 @@ void ConstraintsManager::AddEqCstr(const DimExpr& lhs, const DimExpr& rhs) {
 }
 
 bool ConstraintsManager::IsEqual(const DimExpr& lhs, const DimExpr& rhs) const {
-  return lhs == rhs || equals_.IsConnect(lhs, rhs);
+  return lhs == rhs || equals_.HasSameRoot(lhs, rhs);
 }
 
-std::vector<std::vector<DimExpr>> ConstraintsManager::GetEqualClusters() const {
-  return equals_.Clusters();
+template <typename DoEachClusterT>
+void ConstraintsManager::VisitEqualClusters(
+    const DoEachClusterT& DoEachCluster) const {
+  equals_.VisitCluster(DoEachCluster);
+}
+
+void ConstraintsManager::AddGTOneCstr(const DimExpr& dim_expr) {
+  gtones_.insert(dim_expr);
+
+  auto InsertEqualCstr = [&](const DimExpr& gtone_dim_expr,
+                             const DimExpr& other_dim_expr) {
+    if (IsGTOne(other_dim_expr)) {
+      AddEqCstr(gtone_dim_expr, other_dim_expr);
+    } else {
+      AddEqCstr(
+          gtone_dim_expr,
+          Broadcast<DimExpr>{List<DimExpr>{gtone_dim_expr, other_dim_expr}});
+    }
+  };
+
+  for (auto broadcastable : broadcastables_) {
+    if (broadcastable->lhs == dim_expr) {
+      InsertEqualCstr(dim_expr, broadcastable->rhs);
+    } else if (broadcastable->rhs == dim_expr) {
+      InsertEqualCstr(dim_expr, broadcastable->lhs);
+    }
+  }
+}
+
+namespace {
+
+bool IsGTOneBaseOnValue(const DimExpr& dim_expr) {
+  auto AllOperandGTOne = [](List<DimExpr> dim_exprs) {
+    for (const auto& dim_expr : *dim_exprs) {
+      if (IsGTOneBaseOnValue(dim_expr) == false) return false;
+    }
+    return true;
+  };
+  auto GTOneWithSomeOperandsGEOne = [](List<DimExpr> dim_exprs) {
+    bool flag_exist_gtone = false;
+    for (const auto& dim_expr : *dim_exprs) {
+      if (dim_expr.isa<Broadcast<DimExpr>>() ||
+          (dim_expr.isa<std::int64_t>() && dim_expr.Get<std::int64_t>() >= 1))
+        flag_exist_gtone = true;
+      else if (!dim_expr.isa<std::string>())
+        return false;
+    }
+    return flag_exist_gtone;
+  };
+
+  auto IsGTOnePredicater =
+      Overloaded{[&](std::int64_t dim_expr) { return dim_expr > 1; },
+                 [&](const Add<DimExpr>& dim_expr) {
+                   if (AllOperandGTOne(dim_expr.operands)) return true;
+                   if (GTOneWithSomeOperandsGEOne(dim_expr.operands))
+                     return true;
+                   return false;
+                 },
+                 [&](const Mul<DimExpr>& dim_expr) {
+                   if (AllOperandGTOne(dim_expr.operands)) return true;
+                   if (GTOneWithSomeOperandsGEOne(dim_expr.operands))
+                     return true;
+                   return false;
+                 },
+                 [&](const auto& dim_expr) { return false; }};
+
+  return std::visit(IsGTOnePredicater, dim_expr.variant());
+}
+
+}  // namespace
+
+bool ConstraintsManager::IsGTOne(const DimExpr& dim_expr) const {
+  return gtones_.count(dim_expr) || IsGTOneBaseOnValue(dim_expr);
+}
+
+void ConstraintsManager::AddBroadcastableCstr(const DimExpr& lhs,
+                                              const DimExpr& rhs) {
+  broadcastables_.push_back(Broadcastable<DimExpr>(lhs, rhs));
+
+  bool lhs_gtone = IsGTOne(lhs);
+  bool rhs_gtone = IsGTOne(rhs);
+  if (lhs_gtone && rhs_gtone) {
+    AddEqCstr(lhs, rhs);
+  } else if (lhs_gtone) {
+    AddEqCstr(lhs, Broadcast<DimExpr>{List<DimExpr>{lhs, rhs}});
+  } else if (rhs_gtone) {
+    AddEqCstr(rhs, Broadcast<DimExpr>{List<DimExpr>{lhs, rhs}});
+  }
+}
+
+bool ConstraintsManager::IsBroadcastable(const DimExpr& lhs,
+                                         const DimExpr& rhs) const {
+  for (auto broadcastable : broadcastables_) {
+    if ((broadcastable->lhs == lhs && broadcastable->rhs == rhs) ||
+        (broadcastable->rhs == lhs && broadcastable->lhs == rhs)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void ConstraintsManager::SetEqualCallbackFunc(
@@ -189,16 +286,14 @@ void ConstraintsManager::BroadcastableConstraintsVisitor(
 
 std::ostream& operator<<(std::ostream& stream,
                          const ConstraintsManager& constraints_manager) {
-  const std::vector<std::vector<DimExpr>>& equal_clusters =
-      constraints_manager.GetEqualClusters();
   stream << "Equal Constraints Clusters:" << std::endl;
-  for (auto equal_cluster : equal_clusters) {
+  constraints_manager.VisitEqualClusters([&](const auto& cluster) {
     stream << "{" << std::endl;
-    for (auto dim_expr : equal_cluster) {
+    for (const auto& dim_expr : cluster) {
       stream << dim_expr << std::endl;
     }
     stream << "}" << std::endl;
-  }
+  });
   return stream;
 }
 

@@ -1688,15 +1688,13 @@ def read_metric_log(
         re_metric_pattern = (
             target_metric + r":* *(\d+(\.\d*)?)|(\d+(\.\d*)?) *" + target_metric
         )
-        re_out_of_memory_pattern = r"Out of memory"
+        re_out_of_memory_pattern = r"Out of memory error on"
         out_of_memory_flag = 0
         metric_list = []
         lines = f.readlines()
         for line in lines:
             metric = re.findall(re_metric_pattern, line)
-            out_of_memory = re.findall(
-                re_out_of_memory_pattern, line, re.IGNORECASE
-            )
+            out_of_memory = re.findall(re_out_of_memory_pattern, line)
             if metric:
                 value = None
                 for item in metric[0]:

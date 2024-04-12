@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/save_load_parameters.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/utils/pybind.h"
@@ -123,6 +124,15 @@ void BindIO(pybind11::module *m) {
     paddle::framework::LoadTensor(path, &tensor_load);
     return tensor_load;
   });
+
+  m->def("save_func", &pir::SaveFunction);
+
+  m->def("save_combine_func", &pir::SaveCombineFunction);
+
+  m->def("load_func", &pir::LoadFunction);
+
+  m->def("load_combine_func", &pir::LoadCombineFunction);
+
   m->def("serialize_pir_program",
          &pir::WriteModule,
          py::arg("program"),
