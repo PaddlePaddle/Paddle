@@ -3,18 +3,6 @@
 # 2) The definitions of static graphs and dynamic graphs are inconsistent, but the final definition plan has not yet been clarified.
 # After the definition is clearly defined, migrate to paddle /fluid/pir/dialect/operator/ir/update_ops.yaml or paddle/phi/api/yaml/ops.yaml
 
-# - backward_op: straight_through_estimator_grad
-#   forward: fake_quantize_dequantize_moving_average_abs_max (Tensor x, Tensor in_scale, Tensor in_accum, Tensor in_state, float moving_rate = 0.9, int bit_length = 8, int round_type = 0, bool is_test = false) -> Tensor(out), Tensor(out_scale), Tensor(out_state), Tensor(out_accum)
-#   args: (Tensor out_grad, float moving_rate = 0.9, int bit_length = 8, int round_type = 0, bool is_test = false)
-#   # args: (Tensor out_grad)
-#   output: Tensor(x_grad)
-#   infer_meta:
-#     func: UnchangedInferMeta
-#     param : [out_grad]
-#   kernel:
-#     func: straight_through_estimator_grad
-#     data_type: out_grad
-
 - backward_op : add_double_grad
   forward : add_grad (Tensor x, Tensor y, Tensor grad_out, int axis = -1) -> Tensor(grad_x), Tensor(grad_y)
   args : (Tensor y, Tensor grad_out, Tensor grad_x_grad, Tensor grad_y_grad, int axis = -1)
