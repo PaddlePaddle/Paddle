@@ -887,7 +887,7 @@ void Conv2d_NCHWc_1X1_Schedule_CPU(poly::StageMap stages,
                                    const cinn::common::Target &target,
                                    const std::string &key,
                                    bool do_padding) {
-  CHECK(target.arch == Arch::X86)
+  CHECK(std::holds_alternative<common::X86Arch>(target.arch))
       << "Conv2d_NCHWc_1X1_Schedule_CPU schedule only used in x86";
   CHECK(packed_out.defined());
   CHECK(input_pad.defined());
@@ -1036,7 +1036,7 @@ void Conv2d_NCHWc_1X1_Schedule_CPU_Nofuse(poly::StageMap stages,
                                           const ir::Tensor &weights_dilation,
                                           const ir::Tensor &data,
                                           const cinn::common::Target &target) {
-  CHECK(target.arch == Arch::X86)
+  CHECK(std::holds_alternative<common::X86Arch>(target.arch))
       << "Conv2d_NCHWc_1X1_Schedule_CPU_Nofuse schedule only used in x86";
   CHECK(packed_out.defined());
   CHECK(input_pad.defined());
@@ -1158,7 +1158,7 @@ void Conv2d_NCHWc_Schedule_CPU_Nofuse(poly::StageMap stages,
                                       const ir::Tensor &weights_dilation,
                                       const ir::Tensor &data,
                                       const cinn::common::Target &target) {
-  CHECK(target.arch == Arch::X86)
+  CHECK(std::holds_alternative<common::X86Arch>(target.arch))
       << "Conv2d_NCHWc_Schedule_CPU_Nofuse schedule only used in x86";
   CHECK(packed_out.defined());
   CHECK(input_pad.defined());
@@ -1265,7 +1265,7 @@ void Conv2d_NCHWc_Schedule_CPU(poly::StageMap stages,
                                const cinn::common::Target &target,
                                const std::string &key,
                                bool do_padding) {
-  CHECK(target.arch == Arch::X86)
+  CHECK(std::holds_alternative<common::X86Arch>(target.arch))
       << "Conv2d_NCHWc_Schedule_CPU schedule only used in x86";
   CHECK(packed_out.defined());
   CHECK(input_pad.defined());
@@ -1397,7 +1397,7 @@ void Depthwise_Conv2d_NCHWc_Schedule_CPU_Nofuse(
     const ir::Tensor &data,
     const cinn::common::Target &target,
     bool do_padding) {
-  CHECK(target.arch == Arch::X86)
+  CHECK(std::holds_alternative<common::X86Arch>(target.arch))
       << "Depthwise_Conv2d_NCHWc_Schedule_CPU_Nofuse schedule only used in x86";
   CHECK(packed_out.defined());
   CHECK(input_pad.defined());
@@ -2827,16 +2827,27 @@ void CudaSplitSchedule(cinn::common::CINNValuePack *arg_pack,
     if (i != axis) fused_shape = fused_shape * output_shapes[0][i];
   }
   int compute_at_level = 0;
-  if (target.arch == Arch::NVGPU) {
-    if (fused_shape > target.max_num_threads()) {
-      stages[last_output]->Split(0, target.max_num_threads());
-      stages[last_output]->Bind(0, "blockIdx.x");
-      stages[last_output]->Bind(1, "threadIdx.x");
-      compute_at_level++;
-    } else {
-      stages[last_output]->Bind(0, "threadIdx.x");
-    }
-  }
+  target.arch.Visit(adt::match{
+    [&](common::UnknownArch) {
+      CINN_NOT_IMPLEMENTED;
+    },
+    [&](common::X86Arch) {
+      CINN_NOT_IMPLEMENTED;
+    },
+    [&](common::ARMArch) {
+      CINN_NOT_IMPLEMENTED;
+    },
+    [&](common::NVGPUArch) {
+      if (fused_shape > target.max_num_threads()) {
+        stages[last_output]->Split(0, target.max_num_threads());
+        stages[last_output]->Bind(0, "blockIdx.x");
+        stages[last_output]->Bind(1, "threadIdx.x");
+        compute_at_level++;
+      } else {
+        stages[last_output]->Bind(0, "threadIdx.x");
+      }
+    },
+  });
 
   for (int i = 0; i < out_tensors.size() - 1; i++) {
     stages[out_tensors[i]]->ComputeAt2(stages[last_output], compute_at_level);

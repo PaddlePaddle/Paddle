@@ -92,30 +92,21 @@
 namespace cinn {
 namespace backends {
 
-const char* GetTargetToBackendReprImpl(common::UnknownArch) {
-  CINN_NOT_IMPLEMENTED;
-}
-
-const char* GetTargetToBackendReprImpl(common::X86Arch) {
-  return backend_llvm_host;
-}
-
-const char* GetTargetToBackendReprImpl(common::ARMArch) {
-  CINN_NOT_IMPLEMENTED;
-}
-
-const char* GetTargetToBackendReprImpl(common::NVGPUArch) {
-  return backend_nvgpu;
-}
-
-const char* GetTargetToBackendRepr(common::Arch arch) {
-  return std::visit([](const auto& impl) {
-    return GetTargetToBackendReprImpl(impl);
-  }, arch.variant());
-}
-
 static const char* TargetToBackendRepr(Target target) {
-  return GetTargetToBackendRepr(target.arch);
+  return target.arch.Visit(adt::match{
+    [&](common::UnknownArch) -> const char* {
+      CINN_NOT_IMPLEMENTED;
+    },
+    [&](common::X86Arch) -> const char* {
+      return backend_llvm_host;
+    },
+    [&](common::ARMArch) -> const char* {
+      CINN_NOT_IMPLEMENTED;
+    },
+    [&](common::NVGPUArch) -> const char* {
+      return backend_nvgpu;
+    },
+  });
 }
 
 /**

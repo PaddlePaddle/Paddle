@@ -72,12 +72,6 @@ CINNSchedule GetInjectiveScheduleFunc(
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
     pe::IRInjectiveSchedule(ir_sch, output_shapes.front(), target);
-    /*if (target.arch == Arch::NVGPU) {
-      pe::IRInjectiveSchedule(ir_sch, output_shapes.front(), target);
-    } else if (target.arch == Arch::X86) {
-      pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target,
-    vectorizable);
-    }*/
     std::vector<cinn::common::CINNValue> res{
         cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
     *ret = cinn::common::CINNValuePack{res};
@@ -113,7 +107,7 @@ std::string GetExternFuncNameArchPrefix(
     common::Arch arch, const std::string& func_name) {
   return std::visit([&](const auto& impl) {
     return GetExternFuncNameArchPrefixImpl(impl, func_name);
-  }, arch.variant())
+  }, arch.variant());
 }
 
 std::string GetExternFuncName(const cinn::common::Target& target,

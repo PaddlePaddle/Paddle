@@ -20,6 +20,7 @@
 #include <vector>
 #include <variant>
 #include "paddle/cinn/common/arch.h"
+#include "paddle/cinn/adt/adt.h"
 
 namespace cinn {
 namespace common {

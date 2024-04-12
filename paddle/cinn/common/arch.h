@@ -40,6 +40,11 @@ using ArchBase = std::variant<UnknownArch, X86Arch, ARMArch, NVGPUArch>;
 struct Arch final : public ArchBase {
   using ArchBase::ArchBase;
 
+  template <typename VisitorT>
+  decltype(auto) Visit(VisitorT&& visitor) const {
+    return std::visit(visitor, variant());
+  }
+
   const ArchBase& variant() const {
     return static_cast<const ArchBase&>(*this);
   }
@@ -53,7 +58,7 @@ struct Arch final : public ArchBase {
   }
 };
 
-bool IsDefined(Arch arch) {
+inline bool IsDefined(Arch arch) {
   return !std::holds_alternative<UnknownArch>(arch);
 }
 

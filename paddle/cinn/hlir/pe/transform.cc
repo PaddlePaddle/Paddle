@@ -800,7 +800,7 @@ std::vector<Tensor> MulMKL(const Tensor& A,
                            const Tensor& B,
                            const std::string& name,
                            const cinn::common::Target& target) {
-  CHECK(target.arch == Arch::X86)
+  CHECK(std::holds_alternative<cinn::common::X86Arch>(target.arch))
       << "mkl should be used in the cpu environment";
   std::vector<Expr> shape_A = A->shape;
   std::vector<Expr> shape_B = B->shape;
@@ -1320,14 +1320,22 @@ ir::Tensor ScatterAssign(const ir::Tensor& input,
   CHECK_EQ(index->type(), cinn::common::Int(32))
       << "Param [Index] of ScatterAssign only support int32 ! Please Check.\n";
   std::string extern_fun_name;
-  if (target.arch == cinn::common::Arch::NVGPU) {
-    extern_fun_name.assign("cinn_cuda_find_int");
-  } else if (target.arch == cinn::common::Arch::X86) {
-    extern_fun_name.assign("cinn_host_find_int");
-  } else {
-    PADDLE_THROW(phi::errors::Fatal(
-        "ScatterAssign only support X86 and NVGPU ! Please Check.\n"));
-  }
+  target.arch.Visit(adt::match{
+    [&](common::UnknownArch) {
+      PADDLE_THROW(phi::errors::Fatal(
+          "ScatterAssign only support X86 and NVGPU ! Please Check.\n"));
+    },
+    [&](common::X86Arch) {
+      extern_fun_name.assign("cinn_host_find_int");
+    },
+    [&](common::ARMArch) {
+      PADDLE_THROW(phi::errors::Fatal(
+          "ScatterAssign only support X86 and NVGPU ! Please Check.\n"));
+    },
+    [&](common::NVGPUArch) {
+      extern_fun_name.assign("cinn_cuda_find_int");
+    },
+  });
 
   auto pos_axis = axis;
   if (pos_axis < 0) pos_axis += input->shape.size();
@@ -1358,7 +1366,7 @@ ir::Tensor ScatterAdd(const ir::Tensor& input,
                       const cinn::common::Target& target,
                       const int axis,
                       const std::string& output_name) {
-  CHECK_EQ(target.arch, cinn::common::Arch::NVGPU)
+  CHECK(std::holds_alternative<common::NVGPUArch>(target.arch))
       << "Op IndexAdd only support NVGPU now ! Please Check.\n";
 
   CHECK_EQ(index->type(), cinn::common::Int(32))

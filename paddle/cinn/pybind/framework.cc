@@ -121,30 +121,37 @@ void BindFramework(pybind11::module *m) {
       .def(py::init<>())  //
       .def("get_tensor",
            [](Scope &self, const std::string &name, const Target &target) {
-             auto t = self.GetTensor(name);
-             py::dtype dt(cinn::common::Type2Str(t->type()));
-             py::array::ShapeContainer shape(t->shape().data().begin(),
-                                             t->shape().data().end());
-             py::array array(std::move(dt), std::move(shape));
-             auto *mutable_data = array.mutable_data();
-             if (target.arch == Arch::X86) {
-               std::memcpy(mutable_data,
+              auto t = self.GetTensor(name);
+              py::dtype dt(cinn::common::Type2Str(t->type()));
+              py::array::ShapeContainer shape(t->shape().data().begin(),
+                                              t->shape().data().end());
+              py::array array(std::move(dt), std::move(shape));
+              auto *mutable_data = array.mutable_data();
+              target.arch.Visit(adt::match{
+                [&](common::UnknownArch) {
+                  CINN_NOT_IMPLEMENTED;
+                },
+                [&](common::X86Arch) {
+                  std::memcpy(mutable_data,
                            t->data<void>(),
                            t->shape().numel() * t->type().bytes());
-             } else if (target.arch == Arch::NVGPU) {
+                },
+                [&](common::ARMArch) {
+                  CINN_NOT_IMPLEMENTED;
+                },
+                [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-               CUDA_CALL(cudaMemcpy(
-                   mutable_data,
-                   reinterpret_cast<void *>(t->mutable_data(target, t->type())),
-                   t->shape().numel() * t->type().bytes(),
-                   cudaMemcpyDeviceToHost));
+                  CUDA_CALL(cudaMemcpy(
+                      mutable_data,
+                      reinterpret_cast<void *>(t->mutable_data(target, t->type())),
+                      t->shape().numel() * t->type().bytes(),
+                      cudaMemcpyDeviceToHost));
 #else
     PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
     "you need to set WITH_CUDA ON!"));
 #endif
-             } else {
-               CINN_NOT_IMPLEMENTED
-             }
+                },
+              });
              return array;
            })
       .def("var_names", &Scope::var_names);
@@ -173,23 +180,30 @@ void BindFramework(pybind11::module *m) {
                                             self->shape().data().end());
             py::array array(std::move(dt), std::move(shape));
             void *array_data = array.mutable_data();
-            if (target.arch == Arch::X86) {
-              std::memcpy(array_data,
-                          self->data<void>(),
-                          self->shape().numel() * self->type().bytes());
-            } else if (target.arch == Arch::NVGPU) {
+            target.arch.Visit(adt::match{
+              [&](common::UnknownArch) {
+                CINN_NOT_IMPLEMENTED;
+              },
+              [&](common::X86Arch) {
+                std::memcpy(array_data,
+                            self->data<void>(),
+                            self->shape().numel() * self->type().bytes());
+              },
+              [&](common::ARMArch) {
+                CINN_NOT_IMPLEMENTED;
+              },
+              [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-              CUDA_CALL(cudaMemcpy(array_data,
-                                   self->data<void>(),
-                                   self->shape().numel() * self->type().bytes(),
-                                   cudaMemcpyDeviceToHost));
+                CUDA_CALL(cudaMemcpy(array_data,
+                                    self->data<void>(),
+                                    self->shape().numel() * self->type().bytes(),
+                                    cudaMemcpyDeviceToHost));
 #else
     PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
     "you need to set WITH_CUDA ON!"));
 #endif
-            } else {
-              CINN_NOT_IMPLEMENTED
-            }
+              },
+            });
             return array;
           })
       .def(
@@ -219,23 +233,30 @@ void BindFramework(pybind11::module *m) {
                                     [](int32_t a, int32_t b) { return a * b; }),
                     self->shape().numel()));
             auto *data = self->mutable_data(target, self->type());
-            if (target.arch == Arch::X86) {
-              std::memcpy(data,
-                          array.data(),
-                          self->shape().numel() * self->type().bytes());
-            } else if (target.arch == Arch::NVGPU) {
+            target.arch.Visit(adt::match{
+              [&](common::UnknownArch) {
+                CINN_NOT_IMPLEMENTED;
+              },
+              [&](common::X86Arch) {
+                std::memcpy(data,
+                            array.data(),
+                            self->shape().numel() * self->type().bytes());
+              },
+              [&](common::ARMArch) {
+                CINN_NOT_IMPLEMENTED;
+              },
+              [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-              CUDA_CALL(cudaMemcpy(reinterpret_cast<void *>(data),
-                                   reinterpret_cast<const void *>(array.data()),
-                                   self->shape().numel() * self->type().bytes(),
-                                   cudaMemcpyHostToDevice));
+                CUDA_CALL(cudaMemcpy(reinterpret_cast<void *>(data),
+                                    reinterpret_cast<const void *>(array.data()),
+                                    self->shape().numel() * self->type().bytes(),
+                                    cudaMemcpyHostToDevice));
 #else
     PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
     "you need to set WITH_CUDA ON!"));
 #endif
-            } else {
-              CINN_NOT_IMPLEMENTED
-            }
+              },
+            });
           });
 
   py::class_<Instruction> instruction(*m, "Instruction");

@@ -30,6 +30,11 @@ namespace cinn::pybind {
 using cinn::common::bfloat16;
 using cinn::common::CINNValue;
 using cinn::common::float16;
+using cinn::common::UnknownArch;
+using cinn::common::X86Arch;
+using cinn::common::ARMArch;
+using cinn::common::NVGPUArch;
+using cinn::common::Arch;
 using cinn::common::Target;
 using cinn::common::Type;
 using utils::GetStreamCnt;
@@ -44,9 +49,16 @@ void BindCinnValue(py::module *);
 void ResetGlobalNameID() { cinn::common::Context::Global().ResetNameId(); }
 
 void BindTarget(py::module *m) {
+
+  py::class_<UnknownArch>(*m, "UnknownArch");
+  py::class_<X86Arch>(*m, "X86Arch");
+  py::class_<ARMArch>(*m, "ARMArch");
+  py::class_<NVGPUArch>(*m, "NVGPUArch");
+  py::class_<Arch>(*m, "Arch");
+
   py::class_<Target> target(*m, "Target");
   target.def_readwrite("os", &Target::os)
-      .def_readwrite("arch", &Arch)
+      .def_readwrite("arch", &Target::arch)
       .def_readwrite("bits", &Target::bits)
       .def_readwrite("features", &Target::features)
       .def(py::init<>())
@@ -70,12 +82,6 @@ void BindTarget(py::module *m) {
   os.value("Unk", Target::OS::Unk)
       .value("Linux", Target::OS::Linux)
       .value("Windows", Target::OS::Windows);
-
-  py::enum_<Arch> arch(target, "Arch");
-  arch.value("Unk", Arch::Unk)
-      .value("X86", Arch::X86)
-      .value("ARM", Arch::ARM)
-      .value("NVGPU", Arch::NVGPU);
 
   py::enum_<Target::Bit> bit(target, "Bit");
   bit.value("Unk", Target::Bit::Unk)

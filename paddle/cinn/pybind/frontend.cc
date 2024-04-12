@@ -225,7 +225,20 @@ void BindFrontend(pybind11::module *m) {
                                     "The size of tensor [%d] is different with "
                                     "the input data's size! Please check.",
                                     tensor_inputs[i]->id));
-              if (target.arch == Arch::NVGPU) {
+              target.arch.Visit(adt::match{
+                [&](common::UnknownArch) {
+                      CINN_NOT_IMPLEMENTED;
+                },
+                [&](common::X86Arch) {
+                  memcpy(data,
+                        input_data[i].data(),
+                        in_tensor->shape().numel() *
+                            dtype.bytes());  // All random data
+                },
+                [&](common::ARMArch) {
+                      CINN_NOT_IMPLEMENTED;
+                },
+                [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
                 CUDA_CALL(cudaMemcpy(data,
                                      input_data[i].data(),
@@ -235,14 +248,8 @@ void BindFrontend(pybind11::module *m) {
      PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
      "you need to set WITH_CUDA ON!"));
 #endif
-              } else if (target.arch == Arch::X86) {
-                memcpy(data,
-                       input_data[i].data(),
-                       in_tensor->shape().numel() *
-                           dtype.bytes());  // All random data
-              } else {
-                CINN_NOT_IMPLEMENTED
-              }
+                },
+              });
             }
             program->Execute();
 
@@ -323,24 +330,31 @@ void BindFrontend(pybind11::module *m) {
                                     "The size of tensor [%d] is different with "
                                     "the input data's size! Please check.",
                                     tensor_inputs[i]->id));
-              if (target.arch == Arch::NVGPU) {
+              target.arch.Visit(adt::match{
+                [&](common::UnknownArch) {
+                  CINN_NOT_IMPLEMENTED;
+                },
+                [&](common::X86Arch) {
+                  for (size_t j = 0; j < in_tensor->shape().numel(); j++) {
+                    data[j] = reinterpret_cast<const float *>(
+                        input_data[i].data())[j];  // All random data
+                  }
+                },
+                [&](common::ARMArch) {
+                  CINN_NOT_IMPLEMENTED;
+                },
+                [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-                CUDA_CALL(cudaMemcpy(reinterpret_cast<void *>(data),
-                                     input_data[i].data(),
-                                     in_tensor->shape().numel() * sizeof(float),
-                                     cudaMemcpyHostToDevice));
+                  CUDA_CALL(cudaMemcpy(reinterpret_cast<void *>(data),
+                                      input_data[i].data(),
+                                      in_tensor->shape().numel() * sizeof(float),
+                                      cudaMemcpyHostToDevice));
 #else
      PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
      "you need to set WITH_CUDA ON!"));
 #endif
-              } else if (target.arch == Arch::X86) {
-                for (size_t j = 0; j < in_tensor->shape().numel(); j++) {
-                  data[j] = reinterpret_cast<const float *>(
-                      input_data[i].data())[j];  // All random data
-                }
-              } else {
-                CINN_NOT_IMPLEMENTED
-              }
+                },
+              });
             }
             VLOG(3) << info;
             program->ExecuteTest(repeat_);
@@ -377,24 +391,31 @@ void BindFrontend(pybind11::module *m) {
                                     "The size of tensor [%d] is different with "
                                     "the input data's size! Please check.",
                                     tensor_inputs[i]->id));
-              if (target.arch == Arch::NVGPU) {
+              target.arch.Visit(adt::match{
+                [&](common::UnknownArch) {
+                  CINN_NOT_IMPLEMENTED;
+                },
+                [&](common::X86Arch) {
+                  for (size_t j = 0; j < in_tensor->shape().numel(); j++) {
+                    data[j] = reinterpret_cast<const float *>(
+                        input_data[i].data())[j];  // All random data
+                  }
+                },
+                [&](common::ARMArch) {
+                  CINN_NOT_IMPLEMENTED;
+                },
+                [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-                CUDA_CALL(cudaMemcpy(reinterpret_cast<void *>(data),
-                                     input_data[i].data(),
-                                     in_tensor->shape().numel() * sizeof(float),
-                                     cudaMemcpyHostToDevice));
+                  CUDA_CALL(cudaMemcpy(reinterpret_cast<void *>(data),
+                                      input_data[i].data(),
+                                      in_tensor->shape().numel() * sizeof(float),
+                                      cudaMemcpyHostToDevice));
 #else
      PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
      "you need to set WITH_CUDA ON!"));
 #endif
-              } else if (target.arch == Arch::X86) {
-                for (size_t j = 0; j < in_tensor->shape().numel(); j++) {
-                  data[j] = reinterpret_cast<const float *>(
-                      input_data[i].data())[j];  // All random data
-                }
-              } else {
-                CINN_NOT_IMPLEMENTED
-              }
+                },
+              });
             }
             VLOG(3) << info;
             program->ExecuteTest(repeat_);

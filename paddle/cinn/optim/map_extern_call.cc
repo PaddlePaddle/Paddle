@@ -64,7 +64,7 @@ void DealWithCpuIntrinsics(ir::Call *node, Expr *expr) {
 }
 
 void DealWithIntrinsicsImpl(common::UnknownArch, ir::Call *node, Expr *expr) {
-  LOG(FATAL) << "NotImplemented.";
+  DealWithCpuIntrinsics(node, expr);
 }
 
 void DealWithIntrinsicsImpl(common::X86Arch, ir::Call *node, Expr *expr) {
