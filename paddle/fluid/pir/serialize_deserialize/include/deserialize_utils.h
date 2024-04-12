@@ -18,16 +18,15 @@
 #include <vector>
 
 #include "glog/logging.h"
-#include "nlohmann/json.hpp"
 #include "paddle/common/layout.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/schema.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/third_part.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_type.h"
 
-using Json = nlohmann::json;
 namespace pir {
 
 template <typename T>
