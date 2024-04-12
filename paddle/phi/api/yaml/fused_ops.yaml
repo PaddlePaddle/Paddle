@@ -1,4 +1,4 @@
-# This file is designed for fusion C++ farward operators, which manages the
+# This file is designed for fusion C++ forward operators, which manages the
 # generated code for static mode and dynamic mode (when `support_dygraph_mode` is true).
 # "support_dygraph_mode" is an extra configuration item in this file,
 # if one operator have "support_dygraph_mode : true", it supports dygraph mode,
