@@ -573,6 +573,9 @@ class DygraphShardingOptimizerV2:
         if not self.pp_overlap and self.comm_overlap:
             self.register_reduce_overlap_hook(use_comm=True)
 
+        self._all_gather_overlap_forward = True
+        self._forward_pre_hook_remove_helper = []
+
     def register_reduce_overlap_hook(self, use_comm):
         # Register backward hooks for each parameter in the buffer
         for buffer in self._comm_buffer_list:
@@ -672,8 +675,27 @@ class DygraphShardingOptimizerV2:
 
         logger.debug("sharding start sync parameters")
         with framework.no_grad():
-            for comm_buffer in self._comm_buffer_list:
-                comm_buffer.sync_params()
+            if self._all_gather_overlap_forward:
+                param2task = {}
+                for comm_buffer in self._comm_buffer_list:
+                    comm_buffer.sync_params(sync=False, param2task=param2task)
+
+                for layer in self._layers.sublayers():
+                    if len(layer.sublayers() == 0):
+                        tasks = []
+                        for param in layer.parameters():
+                            if param.trainable:
+                                if param.name in param2task:
+                                    tasks.append(param2task)
+
+                self._forward_pre_hook_remove_helper.append(
+                    layer.register_forward_pre_hook(
+                        self._forward_pre_hook_function(tasks)
+                    )
+                )
+            else:
+                for comm_buffer in self._comm_buffer_list:
+                    comm_buffer.sync_params()
 
     def _update_trainable(self):
         """
@@ -735,6 +757,13 @@ class DygraphShardingOptimizerV2:
     def step(self):
         # TODO Check whether the model trainable param changed and update state accordingly
         # hack for pp comm overlap
+
+        if self._all_gather_overlap_forward:
+            # Clear the pre forward hook in the optimizer step.
+            for hook_remove in self._forward_pre_hook_remove_helper:
+                hook_remove.remove()
+            self._forward_pre_hook_remove_helper = []
+
         self._collect_comm_buffers()
         self._assign_slice_grad()
 

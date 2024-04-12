@@ -548,7 +548,7 @@ class FusedCommBuffer:
         grad_view.assign_slice_grad(slice_param)
 
     @imperative_base.no_grad
-    def sync_params(self):
+    def sync_params(self, sync=True, param2task={}):
         assert self._act == HOOK_ACTION.REDUCE_SCATTER
         full_buffer = self.param_storage
         group = self._comm_group
@@ -556,7 +556,13 @@ class FusedCommBuffer:
         begin = shard_size * group.rank
         end = begin + shard_size
         slice_buffer = full_buffer._slice(begin, end)
-        group.process_group.all_gather(slice_buffer, full_buffer).wait()
+        if sync:
+            group.process_group.all_gather(slice_buffer, full_buffer).wait()
+        else:
+            task = group.process_group.all_gather(slice_buffer, full_buffer)
+            for param in slice_buffer:
+                assert param.name not in param2task
+                param2task[param.name] = task
 
     @property
     def params(self):
