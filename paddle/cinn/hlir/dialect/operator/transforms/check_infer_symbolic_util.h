@@ -14,9 +14,9 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <optional>
-#include <functional>
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 
@@ -27,7 +27,7 @@ namespace ir {
 using PassManagerCreater = std::function<std::shared_ptr<pir::PassManager>()>;
 
 void CheckInferSymbolicIfNeed(pir::Program* program,
-                    const PassManagerCreater& CreatePassManager);
+                              const PassManagerCreater& CreatePassManager);
 
 }  // namespace ir
 }  // namespace dialect

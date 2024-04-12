@@ -27,10 +27,11 @@ std::vector<T> ComputeBroadcastShape(const paddle::array_ref<T>& large_shape,
   PADDLE_ENFORCE_GE(
       large_shape.size(),
       small_shape.size(),
-      "Size of large_shape is expected to be greater or equal size of "
-      "small_shape, but got [%d] >= [%d].",
-      large_shape.size(),
-      small_shape.size());
+      phi::errors::PreconditionNotMet(
+          "Size of large_shape is expected to be greater or equal size of "
+          "small_shape, but got [%d] >= [%d].",
+          large_shape.size(),
+          small_shape.size()));
   std::vector<T> output_data;
   output_data.reserve(large_shape.size());
   auto rank_gap = large_shape.size() - small_shape.size();
