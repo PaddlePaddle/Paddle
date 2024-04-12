@@ -1873,6 +1873,7 @@ void BindUtils(pybind11::module *m) {
 
 namespace {
 
+#ifdef PADDLE_WITH_CINN
 std::shared_ptr<pir::PassManager> CreatePassManager() {
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -1884,6 +1885,7 @@ std::shared_ptr<pir::PassManager> CreatePassManager() {
   }
   return pass_manager;
 }
+#endif
 
 void ApplyCinnPass(Program &program) {  // NOLINT
 #ifdef PADDLE_WITH_CINN
