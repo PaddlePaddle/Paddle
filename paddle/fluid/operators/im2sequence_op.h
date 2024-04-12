@@ -19,7 +19,7 @@
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/im2col.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
