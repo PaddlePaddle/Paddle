@@ -29,6 +29,10 @@ static std::string GetValueId(Value val) {
 void ShapeConstraintIRAnalysis::Init() {
   value_to_shape_or_data_.clear();
   next_sym_idx_ = 0;
+  constraints_manager_.SetEqualCallbackFunc(
+      [&](const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
+        return SubstituteDimExpr(lhs, rhs);
+      });
 }
 
 const std::string ShapeConstraintIRAnalysis::GetNextSymName() {
@@ -42,8 +46,9 @@ bool ShapeConstraintIRAnalysis::HasShapeOrDataForValue(Value val) const {
 const symbol::ShapeOrDataDimExprs&
 ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) const {
   // TODO(zhangbopd): Uncomment this part and remove `if` later.
-  // IR_ENFORCE(this->HasShapeOrDataForValue(val),
-  //            "No shape_or_data for this value.");
+  // PADDLE_ENFORCE_EQ(this->HasShapeOrDataForValue(val), true,
+  // phi::errors::InvalidArgument(//            "No shape_or_data for this
+  // value."));
   if (!HasShapeOrDataForValue(val)) {
     static symbol::ShapeOrDataDimExprs empty{
         symbol::TensorShapeOrDataDimExprs{}};
@@ -65,6 +70,36 @@ void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
 
 symbol::DimExprBuilder ShapeConstraintIRAnalysis::DimExprBuilder() {
   return symbol::DimExprBuilder(&constraints_);
+}
+
+void ShapeConstraintIRAnalysis::AddEqualCstr(const symbol::DimExpr& lhs,
+                                             const symbol::DimExpr& rhs) {
+  constraints_manager_.AddEqCstr(lhs, rhs);
+}
+
+bool ShapeConstraintIRAnalysis::IsEqual(const symbol::DimExpr& lhs,
+                                        const symbol::DimExpr& rhs) const {
+  return constraints_manager_.IsEqual(lhs, rhs);
+}
+
+void ShapeConstraintIRAnalysis::AddGreatThanOneCstr(
+    const symbol::DimExpr& dim_expr) {
+  constraints_manager_.AddGTOneCstr(dim_expr);
+}
+
+bool ShapeConstraintIRAnalysis::IsGreatThanOne(
+    const symbol::DimExpr& dim_expr) const {
+  return constraints_manager_.IsGTOne(dim_expr);
+}
+
+void ShapeConstraintIRAnalysis::AddBroadcastableCstr(
+    const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
+  constraints_manager_.AddBroadcastableCstr(lhs, rhs);
+}
+
+bool ShapeConstraintIRAnalysis::IsBroadcastable(
+    const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) const {
+  return constraints_manager_.IsBroadcastable(lhs, rhs);
 }
 
 void ShapeConstraintIRAnalysis::PrintShapeOrDatas() const {
@@ -97,10 +132,13 @@ bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) const {
   auto lhs_shape_data = GetShapeOrDataForValue(lhs);
   auto rhs_shape_data = GetShapeOrDataForValue(rhs);
 
-  IR_ENFORCE(lhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>() &&
-                 rhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>(),
-             "Currently, IsShapeEqual only support TensorShapeOrDataDimExprs "
-             "but not TensorListShapeOrDataDimExprs.");
+  PADDLE_ENFORCE_EQ(
+      lhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>() &&
+          rhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>(),
+      true,
+      phi::errors::InvalidArgument(
+          "Currently, IsShapeEqual only support TensorShapeOrDataDimExprs "
+          "but not TensorListShapeOrDataDimExprs."));
 
   // For static shape, directly compare the shapes.
   if (lhs_type.IsStaticShape() && rhs_type.IsStaticShape()) {
@@ -145,10 +183,13 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(
   auto lhs_shape_data = GetShapeOrDataForValue(lhs);
   auto rhs_shape_data = GetShapeOrDataForValue(rhs);
 
-  IR_ENFORCE(lhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>() &&
-                 rhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>(),
-             "Currently, IsProductEqual only support TensorShapeOrDataDimExprs "
-             "but not TensorListShapeOrDataDimExprs.");
+  PADDLE_ENFORCE_EQ(
+      lhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>() &&
+          rhs_shape_data.isa<symbol::TensorShapeOrDataDimExprs>(),
+      true,
+      phi::errors::InvalidArgument(
+          "Currently, IsProductEqual only support TensorShapeOrDataDimExprs "
+          "but not TensorListShapeOrDataDimExprs."));
 
   symbol::DimExpr lhs_product(1);
   symbol::DimExpr rhs_product(1);
@@ -225,6 +266,34 @@ symbol::DimExpr ShapeConstraintIRAnalysis::GetProductDimExpr(
     product = product * shape_data.shape()[i];
   }
   return symbol::SimplifyDimExpr(product);
+}
+
+namespace {
+
+bool CanSubstituteInShapeAnalysis(const symbol::DimExpr& lhs,
+                                  const symbol::DimExpr& rhs) {
+  int lhs_priority = symbol::GetDimExprPriority(lhs);
+  int rhs_priority = symbol::GetDimExprPriority(rhs);
+  if (lhs_priority >= 2 && rhs_priority >= 2) {
+    return 0;
+  }
+  return true;
+}
+
+}  // namespace
+
+void ShapeConstraintIRAnalysis::SubstituteDimExpr(
+    const symbol::DimExpr& origin, const symbol::DimExpr& substituted) {
+  if (!CanSubstituteInShapeAnalysis(origin, substituted)) return;
+  std::unordered_map<symbol::DimExpr, symbol::DimExpr> substitution_pattern;
+  substitution_pattern[origin] = substituted;
+  for (auto it = value_to_shape_or_data_.begin();
+       it != value_to_shape_or_data_.end();
+       it++) {
+    const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
+        symbol::SubstituteShapeOrData(it->second, substitution_pattern);
+    SetShapeOrDataForValue(it->first, substituted_shape_or_data);
+  }
 }
 
 pir::PrintHooks ShapeConstraintIRAnalysis::PrintHook() const {

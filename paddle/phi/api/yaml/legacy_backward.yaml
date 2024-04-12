@@ -411,6 +411,7 @@
     param: [x]
   kernel :
     func : min_grad
+  composite : min_grad(x, out, out_grad, axis, keepdim, reduce_all, x_grad)
 
 - backward_op : minimum_grad
   forward : minimum(Tensor x, Tensor y) -> Tensor(out)

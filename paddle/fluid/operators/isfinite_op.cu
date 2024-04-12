@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/operators/isfinite_op.h"
-#include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
@@ -23,7 +23,9 @@ REGISTER_OP_CUDA_KERNEL(
     ops::OverflowKernel<phi::GPUContext, int, ops::InfinityFunctor>,
     ops::OverflowKernel<phi::GPUContext, float, ops::InfinityFunctor>,
     ops::OverflowKernel<phi::GPUContext, double, ops::InfinityFunctor>,
-    ops::OverflowKernel<phi::GPUContext, plat::float16, ops::InfinityFunctor>,
+    ops::OverflowKernel<phi::GPUContext,
+                        phi::dtype::float16,
+                        ops::InfinityFunctor>,
     ops::OverflowKernel<phi::GPUContext, plat::bfloat16, ops::InfinityFunctor>);
 
 REGISTER_OP_CUDA_KERNEL(
@@ -31,5 +33,5 @@ REGISTER_OP_CUDA_KERNEL(
     ops::OverflowKernel<phi::GPUContext, int, ops::NANFunctor>,
     ops::OverflowKernel<phi::GPUContext, float, ops::NANFunctor>,
     ops::OverflowKernel<phi::GPUContext, double, ops::NANFunctor>,
-    ops::OverflowKernel<phi::GPUContext, plat::float16, ops::NANFunctor>,
+    ops::OverflowKernel<phi::GPUContext, phi::dtype::float16, ops::NANFunctor>,
     ops::OverflowKernel<phi::GPUContext, plat::bfloat16, ops::NANFunctor>);

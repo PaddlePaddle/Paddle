@@ -36,7 +36,7 @@ class SequenceSliceOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         offset_dim.size(),
         2UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input Offset dimension error. SequenceSlice operator only support "
             "one level sequence now, the dimension of input Offset must be 2, "
             "but received dimension is %d.",
@@ -44,7 +44,7 @@ class SequenceSliceOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         length_dim.size(),
         2UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input Length dimension error. SequenceSlice operator only support "
             "one level sequence now, the dimension of input Length must be 2, "
             "but received dimension is %d.",

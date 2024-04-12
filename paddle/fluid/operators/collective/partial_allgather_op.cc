@@ -26,14 +26,14 @@ class PartialAllGatherOp : public framework::OperatorWithKernel {
     int nranks = ctx->Attrs().Get<int>("nranks");
     int rank = ctx->Attrs().Get<int>("rank");
 
-    PADDLE_ENFORCE_GE(nranks,
-                      2,
-                      platform::errors::InvalidArgument(
-                          "The value of nranks should be >=2."));
+    PADDLE_ENFORCE_GE(
+        nranks,
+        2,
+        phi::errors::InvalidArgument("The value of nranks should be >=2."));
     PADDLE_ENFORCE_EQ(
         (rank >= 0 && rank < nranks),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The rank (%d) for partial_allgather op must >=0 and <nranks (%d)",
             rank,
             nranks));
@@ -93,4 +93,4 @@ PD_REGISTER_STRUCT_KERNEL(partial_allgather,
                           double,
                           int,
                           int64_t,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

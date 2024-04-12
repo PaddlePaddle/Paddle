@@ -26,7 +26,7 @@ class BatchFCKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()),
         true,
-        platform::errors::Unimplemented("BatchFC only supports GPU now."));
+        phi::errors::Unimplemented("BatchFC only supports GPU now."));
   }
 };
 }  // namespace operators
