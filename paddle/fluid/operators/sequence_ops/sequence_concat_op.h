@@ -53,9 +53,9 @@ inline std::vector<std::reference_wrapper<T>> GetDataVectorSafely(
   std::vector<std::reference_wrapper<T>> result;
   result.reserve(vec.size());
   for (auto *ptr : vec) {
-    PADDLE_ENFORCE_NOT_NULL(ptr,
-                            platform::errors::InvalidArgument(
-                                "The input variable X contains nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(
+        ptr,
+        phi::errors::InvalidArgument("The input variable X contains nullptr."));
     result.emplace_back(*ptr);
   }
   return result;
@@ -75,14 +75,14 @@ class SeqConcatKernel : public framework::OpKernel<T> {
       if (lod_size == 0) {
         PADDLE_ENFORCE_EQ(x.get().lod().empty(),
                           false,
-                          platform::errors::NotFound(
+                          phi::errors::NotFound(
                               "Input(X) Tensor of SequenceConcatOp does not "
                               "contain LoD information."));
         lod_size = x.get().lod()[0].size();
       } else {
         PADDLE_ENFORCE_EQ(lod_size,
                           x.get().lod()[0].size(),
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "The lod size of each input must be the same, "
                               "But the lod size of input we received is %d, "
                               "the first input is %d",
@@ -93,7 +93,7 @@ class SeqConcatKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_NE(
         lod_size,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Each input must have sequence lod information. But we "
             "received input lod size is %d",
             lod_size));
@@ -116,7 +116,7 @@ class SeqConcatGradKernel : public framework::OpKernel<T> {
         context.MultiOutput<phi::DenseTensor>(framework::GradVarName("X"));
     PADDLE_ENFORCE_EQ(xs.size(),
                       dxs.size(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The rank of Input X and Output Grad X must be "
                           "same, But the rank of Input X we received is %d, "
                           "the rank of Output Grad X is %d",

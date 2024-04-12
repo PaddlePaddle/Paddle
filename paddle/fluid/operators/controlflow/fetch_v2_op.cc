@@ -128,14 +128,14 @@ class FetchV2Kernel {
     PADDLE_ENFORCE_EQ(
         ctx.HasOutput("Out"),
         true,
-        platform::errors::NotFound("Output(Out) of fetch_v2_op is not found."));
+        phi::errors::NotFound("Output(Out) of fetch_v2_op is not found."));
     auto *out_var = ctx.OutputVar("Out");
 
     int col = ctx.Attr<int>("col");
     PADDLE_ENFORCE_GE(
         col,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Expected the column index (the attribute 'col' of "
             "operator 'Fetch') of current fetching variable to be "
             "no less than 0. But received column index = %d.",
@@ -163,8 +163,8 @@ class FetchV2Kernel {
       PADDLE_ENFORCE_EQ(
           check_place,
           true,
-          platform::errors::InvalidArgument("Tensor's place of input(X) must "
-                                            "be CPUPlace or CUDAPinnedPlace."));
+          phi::errors::InvalidArgument("Tensor's place of input(X) must "
+                                       "be CPUPlace or CUDAPinnedPlace."));
       if (deepcopy) {
         DeepCopy(src_item, fetch_var_name, dst_item);
       } else {
@@ -186,7 +186,7 @@ class FetchV2Kernel {
       for (size_t i = 0; i < src_item.size(); ++i) {
         PADDLE_ENFORCE_EQ(platform::is_cpu_place(src_item[i].place()),
                           true,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "Tensor's place of input(X) must be CPUPlace."));
         if (deepcopy) {
           DeepCopy(src_item[i], fetch_var_name, &dst_item[i]);
@@ -244,7 +244,7 @@ PD_REGISTER_STRUCT_KERNEL(fetch_v2,
                           int64_t,
                           uint8_t,
                           bool,
-                          plat::float16,
+                          phi::dtype::float16,
                           plat::bfloat16,
                           plat::complex<float>,
                           plat::complex<double>) {}

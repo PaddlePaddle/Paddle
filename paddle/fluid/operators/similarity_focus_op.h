@@ -46,15 +46,15 @@ class SimilarityFocusKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GT(
         indexes.size(),
         0,
-        platform::errors::InvalidArgument("The size of Attr(indexes) must be "
-                                          "greater than 0, but received %d.",
-                                          indexes.size()));
+        phi::errors::InvalidArgument("The size of Attr(indexes) must be "
+                                     "greater than 0, but received %d.",
+                                     indexes.size()));
 
     for (size_t i = 0; i < indexes.size(); i++) {
       PADDLE_ENFORCE_GT(
           dim[axis],
           indexes[i],
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Each value of Attr(indexes) must be less than X.dim[axis], "
               "but indexes[%d] received %d.",
               i,
@@ -84,13 +84,13 @@ class SimilarityFocusKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GT(
         axis,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The value of Attr(axis) must be 1 or 2 or 3, but received %d.",
             axis));
     PADDLE_ENFORCE_LT(
         axis,
         4,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The value of Attr(axis) must be 1 or 2 or 3, but received %d.",
             axis));
     memset(out_data, 0, sizeof(T) * batch_size * dim[1] * dim[2] * dim[3]);

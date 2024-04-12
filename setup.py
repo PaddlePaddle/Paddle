@@ -34,7 +34,6 @@ from setuptools.command.install import install as InstallCommandBase
 from setuptools.command.install_lib import install_lib
 from setuptools.dist import Distribution
 
-# check python
 python_version = platform.python_version()
 version_detail = sys.version_info
 version = str(version_detail[0]) + '.' + str(version_detail[1])
@@ -697,7 +696,7 @@ def cinn():
                 'with_mkl': env_dict.get("WITH_MKL"),
                 'cinn': get_cinn_version(),
                 'with_pip_cuda_libraries': env_dict.get(
-                    "with_pip_cuda_libraries"
+                    "WITH_PIP_CUDA_LIBRARIES"
                 ),
             }
         )

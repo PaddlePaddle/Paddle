@@ -609,10 +609,17 @@ def GenDistBranch(args, op_info):
   // Auto Parallel condition
   ProcessMeshAttribute op_mesh;
   if(HasDistInput(input_values, &op_mesh)) {{
+    {}
     CvtAllInputsToDist(input_values, op_mesh);
     auto ctx = pir::IrContext::Instance();
     std::vector<TensorDistAttribute> operand_dist_attrs, result_dist_attrs;"""
-    dist_branch_str = TEMPLATE.format()
+
+    extra_call = ""
+    for name in op_info.spmd_params:
+        if name == "learning_rate":
+            extra_call = "CopyLeafOpToMesh(learning_rate_, op_mesh);"
+            break
+    dist_branch_str = TEMPLATE.format(extra_call)
     infer_spmd_args_list = []
     # Prepare inputs_meta_tensor & attributes for infer spmd
     for name in op_info.spmd_params:
