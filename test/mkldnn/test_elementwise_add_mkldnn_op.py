@@ -149,7 +149,7 @@ class TestInt8(TestElementwiseAddOp):
         self.attrs['scale_out'] = 1.0
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.init_scales()
         self.check_output(
             check_dygraph=(not self.use_mkldnn),
