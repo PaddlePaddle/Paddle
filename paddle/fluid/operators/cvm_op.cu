@@ -110,7 +110,7 @@ class CVMCUDAKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           batch_size,
           lod[lod.size() - 1],
-          platform::errors::PreconditionNotMet(
+          phi::errors::PreconditionNotMet(
               "Input(X)'s dim[0] must be equal to last element of lod"));
       CvmComputeKernel<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
                              PADDLE_CUDA_NUM_THREADS,
@@ -164,7 +164,7 @@ class CVMGradCUDAKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           batch_size,
           lod[lod.size() - 1],
-          platform::errors::PreconditionNotMet(
+          phi::errors::PreconditionNotMet(
               "Output(X@GRAD)'s dim[0] must be equal to last element of lod"));
       phi::MixVector<size_t> mixv_lod(&lod);
       CvmGradComputeKernel<<<(dx_numel + PADDLE_CUDA_NUM_THREADS - 1) /

@@ -35,7 +35,7 @@ class SequenceExpandAsOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_GE(x_dims.size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Dimension number of Input(X) should be at least 2. "
                           "But received X's dimensions = %d, X's shape = [%s].",
                           x_dims.size(),
@@ -52,14 +52,14 @@ class SequenceExpandAsOp : public framework::OperatorWithKernel {
 
       PADDLE_ENFORCE_EQ(y_lod.size(),
                         1,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Level number of Input(Y)'s lod should be 1. But "
                             "received Y's lod level = %d.",
                             y_lod.size()));
 
       PADDLE_ENFORCE_EQ(static_cast<size_t>(x_dim[0]),
                         y_lod[0].size() - 1,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The first dimension of Input(X) should be one "
                             "less than the size of Input(Y)'s 0 level lod. But "
                             "received X's shape[0] = %d, Y's lod[0].size = %d.",

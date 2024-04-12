@@ -155,7 +155,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -166,7 +166,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
           comm_context_manager.Get(std::to_string(rid)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        platform::errors::Unavailable(
+                        phi::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
 
@@ -551,11 +551,11 @@ PD_REGISTER_STRUCT_KERNEL(c_softmax_with_cross_entropy,
                           ops::CSoftmaxWithCrossEntropyOpCUDAKernel,
                           float,
                           double,
-                          plat::float16) {}
+                          phi::dtype::float16) {}
 PD_REGISTER_STRUCT_KERNEL(c_softmax_with_cross_entropy_grad,
                           GPU,
                           ALL_LAYOUT,
                           ops::CSoftmaxWithCrossEntropyGradCUDAKernel,
                           float,
                           double,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

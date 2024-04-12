@@ -205,7 +205,9 @@ bool SparseWeightEmbeddingOpInferSymbolicShape(
 bool ExpandAsOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+      op->name() +
+      " 's InferSymbolicShape interface is NOT implemented "
+      "now because of the lack of necessary information."));
   return true;
 }
 
@@ -354,8 +356,16 @@ bool KronOpInferSymbolicShape(pir::Operation *op,
 
 bool MaskedSelectOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  const std::vector<symbol::DimExpr> &out_dims = [&] {
+    std::vector<symbol::DimExpr> out_dims;
+    symbol::DimExpr out_shape =
+        shape_analysis->GetNextSymName();  // unknown until runtime
+    out_dims.push_back(out_shape);
+    return out_dims;
+  }();
+  // TODO(fty1777): Add constrains between the shapes of x and mask
+  shape_analysis->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs{out_dims});
   return true;
 }
 
@@ -462,8 +472,12 @@ bool MatmulOpInferSymbolicShape(
 
 bool SearchsortedOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      op->name() + " 's InferSymbolicShape interface is NOT implemented now."));
+  // The shape of output is the same as input `values` (op->operand_source(1))
+  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+  // TODO(fty1777): Add constrains between the shapes of `sorted_sequence` and
+  // `values`
+  shape_analysis->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
   return true;
 }
 

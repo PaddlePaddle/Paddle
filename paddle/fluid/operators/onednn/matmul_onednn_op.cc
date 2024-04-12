@@ -400,15 +400,15 @@ class MatMulMKLDNNKernel : public paddle::framework::OpKernel<T> {
                                 trans_y,
                                 out);
     } else if (is_bfloat16) {
-      ExecuteMatMulV1<T, paddle::platform::bfloat16>(ctx,
-                                                     onednn_engine,
-                                                     x,
-                                                     x_bd_dims,
-                                                     trans_x,
-                                                     y,
-                                                     y_bd_dims,
-                                                     trans_y,
-                                                     out);
+      ExecuteMatMulV1<T, phi::dtype::bfloat16>(ctx,
+                                               onednn_engine,
+                                               x,
+                                               x_bd_dims,
+                                               trans_x,
+                                               y,
+                                               y_bd_dims,
+                                               trans_y,
+                                               out);
     } else {
       ExecuteMatMulV1<T, int8_t>(ctx,
                                  onednn_engine,
@@ -661,7 +661,7 @@ REGISTER_OP_KERNEL(matmul,
                    MKLDNN,
                    ::phi::CPUPlace,
                    MatMulMKLDNNKernel<float>,
-                   MatMulMKLDNNKernel<paddle::platform::bfloat16>,
+                   MatMulMKLDNNKernel<phi::dtype::bfloat16>,
                    MatMulMKLDNNKernel<int8_t>,
                    MatMulMKLDNNKernel<uint8_t>);
 
@@ -669,4 +669,4 @@ REGISTER_OP_KERNEL(matmul_grad,
                    MKLDNN,
                    ::phi::CPUPlace,
                    MatMulGradMKLDNNKernel<float>,
-                   MatMulGradMKLDNNKernel<paddle::platform::bfloat16>);
+                   MatMulGradMKLDNNKernel<phi::dtype::bfloat16>);

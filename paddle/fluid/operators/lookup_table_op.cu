@@ -15,8 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/lookup_table_op.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -195,7 +195,7 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
           common::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
       PADDLE_ENFORCE_EQ(d_table_value->dims(),
                         d_output_dims_2d,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "ShapeError: The shape of lookup_table@Grad and "
                             "output@Grad should be same. "
                             "But received lookup_table@Grad's shape = [%s], "
@@ -252,10 +252,10 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(lookup_table,
                         ops::LookupTableCUDAKernel<float>,
                         ops::LookupTableCUDAKernel<double>,
-                        ops::LookupTableCUDAKernel<plat::float16>,
+                        ops::LookupTableCUDAKernel<phi::dtype::float16>,
                         ops::LookupTableCUDAKernel<int8_t>,
                         ops::LookupTableCUDAKernel<int16_t>);
 REGISTER_OP_CUDA_KERNEL(lookup_table_grad,
                         ops::LookupTableGradCUDAKernel<float>,
                         ops::LookupTableGradCUDAKernel<double>,
-                        ops::LookupTableGradCUDAKernel<plat::float16>);
+                        ops::LookupTableGradCUDAKernel<phi::dtype::float16>);
