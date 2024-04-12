@@ -69,11 +69,11 @@ Expr Optimize(Expr e,
   // TransBufferWithDynamicShape(&copied);
 #endif
 
-  std::cout << "before optim " << copied << std::endl;
+  // std::cout << "before optim " << copied << std::endl;
 
   SimplifyBlocks(&copied);
 
-  std::cout << "after optim " << copied << std::endl;
+  // std::cout << "after optim " << copied << std::endl;
   VLOG(4) << "After SimplifyBlocks:" << copied;
 
   MapExternCall(&copied, target);
