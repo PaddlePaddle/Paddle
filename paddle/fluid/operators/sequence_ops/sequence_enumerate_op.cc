@@ -45,7 +45,7 @@ class SequenceEnumerateOpMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker([](const int& win_size) {
           PADDLE_ENFORCE_GE(win_size,
                             2,
-                            platform::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "The window size should be not less than 2."
                                 "Received window size is %d",
                                 win_size));

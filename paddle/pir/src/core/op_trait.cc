@@ -23,11 +23,14 @@ namespace {
 void VerifySameOperandsShapeTrait(pir::Operation *op) {
   VLOG(10) << "Verify SameOperandsShapeTrait for : " << op->name();
 
-  IR_ENFORCE(op->num_operands() > 0,
-             "Op %s with SameOperandsShapeTrait requires at least 1 operands, "
-             "but got %u operands.",
-             op->name(),
-             op->num_operands());
+  PADDLE_ENFORCE_GT(
+      op->num_operands(),
+      0,
+      phi::errors::InvalidArgument(
+          "Op %s with SameOperandsShapeTrait requires at least 1 operands, "
+          "but got %u operands.",
+          op->name(),
+          op->num_operands()));
 
   std::vector<pir::OpOperand> operands = op->operands();
   std::vector<pir::Type> types;
@@ -35,26 +38,35 @@ void VerifySameOperandsShapeTrait(pir::Operation *op) {
     types.push_back(op.type());
   });
 
-  IR_ENFORCE(VerifyCompatibleShapes(types),
-             "Op %s with SameOperandsShapeTrait requires the same shape for "
-             "all operands.",
-             op->name());
+  PADDLE_ENFORCE_EQ(
+      VerifyCompatibleShapes(types),
+      true,
+      phi::errors::InvalidArgument(
+          "Op %s with SameOperandsShapeTrait requires the same shape for "
+          "all operands.",
+          op->name()));
 }
 
 void VerifySameOperandsAndResultShapeTrait(pir::Operation *op) {
   VLOG(10) << "Verify SameOperandsAndResultShapeTrait for : " << op->name();
 
-  IR_ENFORCE(op->num_operands() > 0,
-             "Op %s with SameOperandsAndResultShapeTrait requires at least 1 "
-             "operands, but got %u operands.",
-             op->name(),
-             op->num_operands());
+  PADDLE_ENFORCE_GT(
+      op->num_operands(),
+      0,
+      phi::errors::InvalidArgument(
+          "Op %s with SameOperandsAndResultShapeTrait requires at least 1 "
+          "operands, but got %u operands.",
+          op->name(),
+          op->num_operands()));
 
-  IR_ENFORCE(op->num_results() > 0,
-             "Op %s with SameOperandsAndResultShapeTrait requires at least 1 "
-             "results, but got %u results.",
-             op->name(),
-             op->num_results());
+  PADDLE_ENFORCE_GT(
+      op->num_results(),
+      0,
+      phi::errors::InvalidArgument(
+          "Op %s with SameOperandsAndResultShapeTrait requires at least 1 "
+          "results, but got %u results.",
+          op->name(),
+          op->num_results()));
 
   std::vector<pir::OpOperand> operands = op->operands();
   std::vector<pir::Value> results = op->results();
@@ -69,27 +81,36 @@ void VerifySameOperandsAndResultShapeTrait(pir::Operation *op) {
     types.push_back(op.type());
   });
 
-  IR_ENFORCE(VerifyCompatibleShapes(types),
-             "Op %s with SameOperandsAndResultShapeTrait requires compatible "
-             "shapes for operands and results.",
-             op->name());
+  PADDLE_ENFORCE_EQ(
+      VerifyCompatibleShapes(types),
+      true,
+      phi::errors::InvalidArgument(
+          "Op %s with SameOperandsAndResultShapeTrait requires compatible "
+          "shapes for operands and results.",
+          op->name()));
 }
 
 void VerifySameOperandsElementTypeTrait(pir::Operation *op) {
   VLOG(10) << "Verify SameOperandsElementTypeTrait for : " << op->name();
 
-  IR_ENFORCE(op->num_operands() > 0,
-             "Op %s with SameOperandsElementTypeTrait requires at least 1 "
-             "operands, but got %u operands.",
-             op->name(),
-             op->num_operands());
+  PADDLE_ENFORCE_GT(
+      op->num_operands(),
+      0,
+      phi::errors::InvalidArgument(
+          "Op %s with SameOperandsElementTypeTrait requires at least 1 "
+          "operands, but got %u operands.",
+          op->name(),
+          op->num_operands()));
 
   auto elementType = GetElementTypeOrSelf(op->result(0).type());
   for (auto operand : op->operands()) {
-    IR_ENFORCE(GetElementTypeOrSelf(operand.type()) == elementType,
-               "Op %s with SameOperandsElementTypeTrait requires the same "
-               "element type for all operands.",
-               op->name());
+    PADDLE_ENFORCE_EQ(
+        GetElementTypeOrSelf(operand.type()),
+        elementType,
+        phi::errors::InvalidArgument(
+            "Op %s with SameOperandsElementTypeTrait requires the same "
+            "element type for all operands.",
+            op->name()));
   }
 }
 
@@ -97,77 +118,107 @@ void VerifySameOperandsAndResultElementTypeTrait(pir::Operation *op) {
   VLOG(10) << "Verify SameOperandsAndResultElementTypeTrait for : "
            << op->name();
 
-  IR_ENFORCE(op->num_operands() > 0,
-             "Op %s with SameOperandsAndResultElementTypeTrait requires at "
-             "least 1 operands, but got %u operands.",
-             op->name(),
-             op->num_operands());
+  PADDLE_ENFORCE_GT(
+      op->num_operands(),
+      0,
+      phi::errors::InvalidArgument(
+          "Op %s with SameOperandsAndResultElementTypeTrait requires at "
+          "least 1 operands, but got %u operands.",
+          op->name(),
+          op->num_operands()));
 
-  IR_ENFORCE(op->num_results() > 0,
-             "Op %s with SameOperandsAndResultElementTypeTrait requires at "
-             "least 1 results, but got %u results.",
-             op->name(),
-             op->num_results());
+  PADDLE_ENFORCE_GT(
+      op->num_results(),
+      0,
+      phi::errors::InvalidArgument(
+          "Op %s with SameOperandsAndResultElementTypeTrait requires at "
+          "least 1 results, but got %u results.",
+          op->name(),
+          op->num_results()));
 
   auto elementType = GetElementTypeOrSelf(op->result(0).type());
 
   // Verify result element type matches first result's element type.
   for (auto result : op->results()) {
-    IR_ENFORCE(GetElementTypeOrSelf(result.type()) == elementType,
-               "Op %s with SameOperandsAndResultElementTypeTrait requires the "
-               "same element type for all operands and results.",
-               op->name());
+    PADDLE_ENFORCE_EQ(
+        GetElementTypeOrSelf(result.type()),
+        elementType,
+        phi::errors::InvalidArgument(
+            "Op %s with SameOperandsAndResultElementTypeTrait requires the "
+            "same element type for all operands and results.",
+            op->name()));
   }
 
   // Verify operand's element type matches first result's element type.
   for (auto operand : op->operands()) {
-    IR_ENFORCE(GetElementTypeOrSelf(operand.type()) == elementType,
-               "Op %s with SameOperandsAndResultElementTypeTrait requires the "
-               "same element type for all operands and results.",
-               op->name());
+    PADDLE_ENFORCE_EQ(
+        GetElementTypeOrSelf(operand.type()),
+        elementType,
+        phi::errors::InvalidArgument(
+            "Op %s with SameOperandsAndResultElementTypeTrait requires the "
+            "same element type for all operands and results.",
+            op->name()));
   }
 }
 
 void VerifySameOperandsAndResultTypeTrait(pir::Operation *op) {
   VLOG(10) << "Verify SameOperandsAndResultTypeTrait for : " << op->name();
 
-  IR_ENFORCE(op->num_operands() > 0,
-             "Op %s with SameOperandsAndResultTypeTrait requires at least 1 "
-             "operands, but got %u operands.",
-             op->name(),
-             op->num_operands());
+  PADDLE_ENFORCE_GT(
+      op->num_operands(),
+      0,
+      phi::errors::InvalidArgument(
+          "Op %s with SameOperandsAndResultTypeTrait requires at least 1 "
+          "operands, but got %u operands.",
+          op->name(),
+          op->num_operands()));
 
-  IR_ENFORCE(op->num_results() > 0,
-             "Op %s with SameOperandsAndResultTypeTrait requires at least 1 "
-             "results, but got %u results.",
-             op->name(),
-             op->num_results());
+  PADDLE_ENFORCE_GT(
+      op->num_results(),
+      0,
+      phi::errors::InvalidArgument(
+          "Op %s with SameOperandsAndResultTypeTrait requires at least 1 "
+          "results, but got %u results.",
+          op->name(),
+          op->num_results()));
 
   auto type = op->result(0).type();
   auto elementType = GetElementTypeOrSelf(type);
 
   for (auto result : op->results()) {
-    IR_ENFORCE(GetElementTypeOrSelf(result.type()) == elementType,
-               "Op %s with SameOperandsAndResultTypeTrait requires the same "
-               "type for all operands and results.",
-               op->name());
+    PADDLE_ENFORCE_EQ(
+        GetElementTypeOrSelf(result.type()),
+        elementType,
+        phi::errors::InvalidArgument(
+            "Op %s with SameOperandsAndResultTypeTrait requires the same "
+            "type for all operands and results.",
+            op->name()));
 
-    IR_ENFORCE(VerifyCompatibleShape(result.type(), type),
-               "Op %s with SameOperandsAndResultTypeTrait requires the same "
-               "type for all operands and results.",
-               op->name());
+    PADDLE_ENFORCE_EQ(
+        VerifyCompatibleShape(result.type(), type),
+        true,
+        phi::errors::InvalidArgument(
+            "Op %s with SameOperandsAndResultTypeTrait requires the same "
+            "type for all operands and results.",
+            op->name()));
   }
 
   for (auto operand : op->operands()) {
-    IR_ENFORCE(GetElementTypeOrSelf(operand.type()) == elementType,
-               "Op %s with SameOperandsAndResultTypeTrait requires the same "
-               "type for all operands and results.",
-               op->name());
+    PADDLE_ENFORCE_EQ(
+        GetElementTypeOrSelf(operand.type()),
+        elementType,
+        phi::errors::InvalidArgument(
+            "Op %s with SameOperandsAndResultTypeTrait requires the same "
+            "type for all operands and results.",
+            op->name()));
 
-    IR_ENFORCE(VerifyCompatibleShape(operand.type(), type),
-               "Op %s with SameOperandsAndResultTypeTrait requires the same "
-               "type for all operands and results.",
-               op->name());
+    PADDLE_ENFORCE_EQ(
+        VerifyCompatibleShape(operand.type(), type),
+        true,
+        phi::errors::InvalidArgument(
+            "Op %s with SameOperandsAndResultTypeTrait requires the same "
+            "type for all operands and results.",
+            op->name()));
   }
 }
 
@@ -181,18 +232,24 @@ void VerifySameTypeOperandsTrait(pir::Operation *op) {
   auto type = op->operand(0).type();
 
   for (auto operand : op->operands()) {
-    IR_ENFORCE(operand.type() == type,
-               "Op %s with SameTypeOperandsTrait requires all operands to have "
-               "the same type.",
-               op->name());
+    PADDLE_ENFORCE_EQ(
+        operand.type(),
+        type,
+        phi::errors::InvalidArgument(
+            "Op %s with SameTypeOperandsTrait requires all operands to have "
+            "the same type.",
+            op->name()));
   }
 }
 
 void VerifyOneResultTrait(pir::Operation *op) {
-  IR_ENFORCE(op->num_results() == 1,
-             "Op %s with OneResultTrait requires 1 result, but got %u results.",
-             op->name(),
-             op->num_results());
+  PADDLE_ENFORCE_EQ(
+      op->num_results(),
+      1,
+      phi::errors::InvalidArgument(
+          "Op %s with OneResultTrait requires 1 result, but got %u results.",
+          op->name(),
+          op->num_results()));
 }
 }  // namespace
 
@@ -231,3 +288,4 @@ IR_DEFINE_EXPLICIT_TYPE_ID(pir::SameOperandsAndResultTypeTrait)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SameTypeOperandsTrait)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::OneResultTrait)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SideEffectTrait)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::ImmutableLayoutTrait)

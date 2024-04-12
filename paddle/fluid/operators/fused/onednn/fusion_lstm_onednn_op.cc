@@ -66,17 +66,17 @@ class LSTMMKLDNNHandler
       PADDLE_ENFORCE_EQ(
           ctx.Attr<std::string>("gate_activation"),
           "sigmoid",
-          platform::errors::Unimplemented("oneDNN fusion_lstm supports only "
-                                          "sigmoid as a gate activation."));
+          phi::errors::Unimplemented("oneDNN fusion_lstm supports only "
+                                     "sigmoid as a gate activation."));
       PADDLE_ENFORCE_EQ(
           ctx.Attr<std::string>("cell_activation"),
           "tanh",
-          platform::errors::Unimplemented(
+          phi::errors::Unimplemented(
               "oneDNN fusion_lstm supports only tanh as a cell activation."));
       PADDLE_ENFORCE_EQ(
           ctx.Attr<std::string>("candidate_activation"),
           "tanh",
-          platform::errors::Unimplemented(
+          phi::errors::Unimplemented(
               "oneDNN fusion_lstm supports only tanh a candidate activation."));
 
       // Weights for int8 kernel are of a type s8
@@ -325,7 +325,7 @@ template <typename T, typename DeviceContext>
 class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const bool is_bf16 = std::is_same<T, paddle::platform::bfloat16>::value;
+    const bool is_bf16 = std::is_same<T, phi::dtype::bfloat16>::value;
     const bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
 
     // BF16 does not support force output
@@ -407,14 +407,11 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
           handler.template AcquireWeightHMemory<float>(weight_h);
     } else if (framework::TransToProtoVarType(weight_h->dtype()) ==
                paddle::framework::proto::VarType_Type_BF16) {
-      h0_memory_p =
-          handler.template AcquireH0Memory<paddle::platform::bfloat16>(h0);
+      h0_memory_p = handler.template AcquireH0Memory<phi::dtype::bfloat16>(h0);
       weight_x_memory_p =
-          handler.template AcquireWeightXMemory<paddle::platform::bfloat16>(
-              weight_x);
+          handler.template AcquireWeightXMemory<phi::dtype::bfloat16>(weight_x);
       weight_h_memory_p =
-          handler.template AcquireWeightHMemory<paddle::platform::bfloat16>(
-              weight_h);
+          handler.template AcquireWeightHMemory<phi::dtype::bfloat16>(weight_h);
     } else {
       h0_memory_p = handler.template AcquireH0Memory<uint8_t>(h0);
       weight_x_memory_p =
@@ -478,4 +475,4 @@ PD_REGISTER_STRUCT_KERNEL(fusion_lstm,
                           ops::FusionLSTMMKLDNNKernel,
                           float,
                           uint8_t,
-                          paddle::platform::bfloat16) {}
+                          phi::dtype::bfloat16) {}

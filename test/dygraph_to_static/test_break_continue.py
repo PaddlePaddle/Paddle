@@ -18,11 +18,13 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
+    exe_sequential_run_guard,
     test_ast_only,
     test_legacy_and_pt_and_pir,
 )
 
 import paddle
+from paddle.framework import use_pir_api
 from paddle.jit.dy2static.utils import Dygraph2StaticException
 
 SEED = 2020
@@ -354,11 +356,17 @@ class TestOptimBreakInWhile(TestContinueInWhile):
     def init_dygraph_func(self):
         self.dygraph_func = test_optim_break_in_while
 
-    # TODO: Open PIR test when while_loop dy2st fixed
+    @test_legacy_and_pt_and_pir
     def test_transformed_static_result(self):
         self.init_dygraph_func()
         dygraph_res = self.run_dygraph_mode()
-        static_res = self.run_static_mode()
+        # NOTE(SigureMo): Temperary run the test in sequential run mode to avoid dependency
+        # on the execution order of the test cases.
+        if use_pir_api():
+            with exe_sequential_run_guard(True):
+                static_res = self.run_static_mode()
+        else:
+            static_res = self.run_static_mode()
         np.testing.assert_allclose(
             dygraph_res,
             static_res,
