@@ -144,7 +144,7 @@ class FleetTranspiler(Fleet):
 
                 if len(dist_varnames) != 0:
                     raise ValueError(
-                        "GeoStrategy can not support large scale embeding now, please use paddle.static.nn.embedding"
+                        "GeoStrategy can not support large scale embedding now, please use paddle.static.nn.embedding"
                     )
 
                 init_attrs = []

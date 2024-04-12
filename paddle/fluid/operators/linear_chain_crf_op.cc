@@ -167,7 +167,7 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
     auto transition_dims = ctx->GetInputDim("Transition");
     PADDLE_ENFORCE_EQ(transition_dims.size(),
                       2UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The Input(Transition) should be a 2-D tensor. But "
                           "received: input rank %u, input shape [%s].",
                           transition_dims.size(),
@@ -181,7 +181,7 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           transition_dims[0] - 2,
           transition_dims[1],
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "An invalid dimension for the Input(Transition), which should "
               "be a 2-D tensor with shape [(D + 2) x D]. But received: input "
               "rank %u, "
@@ -193,7 +193,7 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
     if (ctx->HasInput("Length")) {
       PADDLE_ENFORCE_EQ(emission_dims.size(),
                         3,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The Input(Emission) should be a 3-D tensor. But "
                             "received: input rank %u, input shape [%s].",
                             emission_dims.size(),
@@ -203,7 +203,7 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
           (label_dims.size() == 3UL && label_dims[2] == 1) ||
               (label_dims.size() == 2UL),
           true,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The Input(Label) should be a 3-D tensor with last dimension "
               "fixed to 1 or a 2-D tensor in padding mode. But received: input "
               "rank %u, input shape [%s].",
@@ -212,7 +212,7 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
       if (ctx->IsRuntime()) {
         PADDLE_ENFORCE_EQ(emission_dims[0],
                           label_dims[0],
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "The batch size of Input(Emission) "
                               "and Input(Label) should be the same. But "
                               "received Input(Emission): "
@@ -224,7 +224,7 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
                               label_dims));
         PADDLE_ENFORCE_EQ(emission_dims[1],
                           label_dims[1],
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "The max length of Input(Emission) "
                               "and Input(Label) should be the same. But "
                               "received Input(Emission): "
@@ -239,7 +239,7 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           emission_dims.size(),
           2,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The Input(Emission) should be a 2-D tensor. But received: "
               "input rank %u, input shape [%s].",
               emission_dims.size(),
@@ -247,7 +247,7 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
       if (ctx->IsRuntime()) {
         PADDLE_ENFORCE_EQ(emission_dims[1],
                           transition_dims[1],
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "The 2nd dimension of the Input(Emission) and "
                               "the Input(Transition) "
                               "should be equal to the tag number. But received "
@@ -264,7 +264,7 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           label_dims.size(),
           2,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The Input(Label) should be a 2-D tensor with the 2nd "
               "dimensions fixed to 1. But received: input rank %u, "
               "input shape [%s].",
@@ -274,7 +274,7 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             emission_dims[0],
             label_dims[0],
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The first dimension of Input(Emission) and Input(Label) "
                 "should be the same. But received Input(Emission): rank %u, "
                 "shape "

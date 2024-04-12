@@ -31,24 +31,24 @@ class IOUSimilarityOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x_dims.size(),
         2UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The rank of Input(X) must be 2, but got dimension = %d.",
             x_dims.size()));
     PADDLE_ENFORCE_EQ(
         x_dims[1],
         4UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The shape of X is [N, 4], bug got dimension = %d.", x_dims[1]));
     PADDLE_ENFORCE_EQ(
         y_dims.size(),
         2UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The rank of Input(Y) must be 2, but got dimension = %d.",
             y_dims.size()));
     PADDLE_ENFORCE_EQ(
         y_dims[1],
         4UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The shape of Y is [M, 4], but got dimension = %d.", y_dims[1]));
 
     ctx->ShareLoD("X", /*->*/ "Out");

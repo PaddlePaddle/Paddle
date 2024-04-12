@@ -45,28 +45,28 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         det_dims.size(),
         2UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(DetectRes) ndim must be 2, the shape is [N, 6],"
             "but received the ndim is %d",
             det_dims.size()));
     PADDLE_ENFORCE_EQ(
         det_dims[1],
         6UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The shape is of Input(DetectRes) [N, 6], but received"
             " shape is [N, %d]",
             det_dims[1]));
     auto label_dims = ctx->GetInputDim("Label");
     PADDLE_ENFORCE_EQ(label_dims.size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The ndim of Input(Label) must be 2, but received %d",
                           label_dims.size()));
     if (ctx->IsRuntime() || label_dims[1] > 0) {
       PADDLE_ENFORCE_EQ(
           (label_dims[1] == 6 || label_dims[1] == 5),
           true,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The shape of Input(Label) is [N, 6] or [N, 5], but received "
               "[N, %d]",
               label_dims[1]));
@@ -75,12 +75,12 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
     if (ctx->HasInput("PosCount")) {
       PADDLE_ENFORCE(
           ctx->HasInput("TruePos"),
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Input(TruePos) of DetectionMAPOp should not be null when "
               "Input(PosCount) is not null."));
       PADDLE_ENFORCE(
           ctx->HasInput("FalsePos"),
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Input(FalsePos) of DetectionMAPOp should not be null when "
               "Input(PosCount) is not null."));
     }
@@ -197,7 +197,7 @@ class DetectionMAPOpMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE_NE(
               GetAPType(ap_type),
               APType::kNone,
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "The ap_type should be 'integral' or '11point."));
         });
     AddComment(R"DOC(
