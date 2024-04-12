@@ -8,7 +8,10 @@ cc_test(
   DEPS proto_desc)
 
 if(WITH_DISTRIBUTE)
-  cc_library(spmd_rule_test_util SRCS spmd_rule_test_util.cc)
+  cc_library(
+    spmd_rule_test_util
+    SRCS spmd_rule_test_util.cc
+    DEPS gtest)
   cc_test(
     dist_tensor_test
     SRCS dist_tensor_test.cc

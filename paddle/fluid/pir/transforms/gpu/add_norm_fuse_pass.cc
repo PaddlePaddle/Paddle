@@ -235,6 +235,18 @@ class AddLayerNormFusePattern : public paddle::drr::DrrPatternBase {
     }
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
+    const auto &cast_op_dtype = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> phi::DataType {
+          auto x_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("x"));
+          return paddle::dialect::TransToPhiDataType(x_dtype);
+        });
+    const auto &cast_op_1 =
+        res.Op(paddle::dialect::CastOp::name(), {{"dtype", cast_op_dtype}});
+    res.Tensor("casted_bias") = cast_op_1(res.Tensor("bias"));
+    const auto &cast_op_2 =
+        res.Op(paddle::dialect::CastOp::name(), {{"dtype", cast_op_dtype}});
+    res.Tensor("casted_w") = cast_op_2(res.Tensor("w"));
+
     const auto &fuse_layer_norm =
         res.Op(paddle::dialect::FusedBiasResidualLayernormOp::name(),
                {{"epsilon", pat.Attr("epsilon")},
@@ -248,9 +260,9 @@ class AddLayerNormFusePattern : public paddle::drr::DrrPatternBase {
     fuse_layer_norm(
         {
             &res.Tensor("x"),
-            &res.Tensor("bias"),
+            &res.Tensor("casted_bias"),
             &res.Tensor("residual"),
-            &res.Tensor("w"),
+            &res.Tensor("casted_w"),
             &res.InputNoneTensor(),
         },
         {&res.Tensor("layer_norm_out"),

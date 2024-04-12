@@ -300,6 +300,15 @@ void BindProgram(py::module *m) {
           [](std::shared_ptr<Program> self, int64_t random_seed) {
             SetProgramInt64Attr(self, "random_seed", random_seed);
           })
+      .def_property_readonly(
+          "blocks",
+          [](const std::shared_ptr<Program> &self) {
+            // Note: We only return global block currently.
+            py::list op_list;
+            op_list.append(self->block());
+            return op_list;
+          },
+          return_value_policy::reference)
       .def("get_output_value_by_name",
            [](Program &self, const std::string &name) {
              return GetOutputValueByName(self, name);
@@ -1274,6 +1283,10 @@ static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
   std::unordered_set<::pir::Value> no_need_buffer_values;
   range_block_do(
       whole_block, range, [&need_buffer_values](::pir::Operation *op) {
+        // NOTE(SigureMo): We should process the CombineOp in it's users.
+        if (op->isa<pir::CombineOp>()) {
+          return;
+        }
         if (op->HasInterface<paddle::dialect::OpYamlInfoInterface>() == false) {
           // not a OpYamlInfoInterface, can't have no_need_buffer.
           for (const auto &operand : op->operands_source()) {
@@ -1284,8 +1297,16 @@ static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
               op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
           int counter = 0;
           for (const auto &op_input_info : std::get<0>(opinfo)) {
+            auto value = op->operand_source(counter);
             if (!op_input_info.no_need_buffer) {
-              need_buffer_values.insert(op->operand_source(counter));
+              need_buffer_values.insert(value);
+              if (!IsFakeValue(value) && value.defining_op() &&
+                  value.defining_op()->isa<pir::CombineOp>()) {
+                for (const auto &combine_value :
+                     value.defining_op()->operands_source()) {
+                  need_buffer_values.insert(combine_value);
+                }
+              }
             }
             counter += 1;
           }

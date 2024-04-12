@@ -37,7 +37,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_legacy_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/onednn/onednn_mixed_instruction.h"
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
@@ -1927,7 +1927,8 @@ Variable* PirInterpreter::DebugVar(const std::string& name) const {
 
 void PirInterpreter::Build(
     const std::vector<std::string>& feed_names,
-    std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
+    std::vector<paddle::framework::OpFuncNode>* op_func_nodes,
+    bool switch_stream) {
   PADDLE_THROW(platform::errors::Unimplemented(
       "Build is not implemented in PirInterpreter."));
 }

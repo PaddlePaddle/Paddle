@@ -14,13 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from cinn.common import is_compiled_with_cuda
-from cinn.frontend import NetBuilder
-from cinn.runtime import set_cinn_cudnn_deterministic
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
 import paddle
+from paddle.cinn.common import is_compiled_with_cuda
+from paddle.cinn.frontend import NetBuilder
+from paddle.cinn.runtime import set_cinn_cudnn_deterministic
 
 set_cinn_cudnn_deterministic(True)
 paddle.base.set_flags({'FLAGS_cudnn_deterministic': 1})

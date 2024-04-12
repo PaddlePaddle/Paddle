@@ -93,7 +93,7 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
     PADDLE_ENFORCE_LT(
         -1,
         input_id,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Variable value (input) of OP(fluid.layers.tdm_sampler) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
@@ -102,7 +102,7 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
     PADDLE_ENFORCE_LT(
         input_id,
         travel_dim[0],
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Variable value (input) of OP(fluid.layers.tdm_sampler) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
@@ -126,7 +126,7 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
       PADDLE_ENFORCE_LE(
           sample_num,
           node_nums - 1,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Neg sample nums id of OP(fluid.layers.tdm_sampler) at layer %ld "
               "expected <= %ld - 1 (positive included), but got %ld. Please "
               "check neg_samples_num_list.",
@@ -163,7 +163,7 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
       PADDLE_ENFORCE_LE(
           positive_node_id,
           node_id_max,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Positive node id of OP(fluid.layers.tdm_sampler) at layer %ld "
               "expected >= %ld and <= %ld, but got %ld. Please check input "
               "value.",
@@ -174,7 +174,7 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
       PADDLE_ENFORCE_LE(
           node_id_min,
           positive_node_id,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Positive node id of OP(fluid.layers.tdm_sampler) at layer %ld "
               "expected >= %ld and <= %ld, but got %ld. Please check input "
               "value.",
@@ -224,7 +224,7 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
         PADDLE_ENFORCE_LE(
             layer_data[layer_offset_lod[layer_idx] + sample_res],
             node_id_max,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Negative node id of OP(fluid.layers.tdm_sampler) at layer %ld"
                 "expected >= %ld and <= %ld, but got %ld. Please check input "
                 "tdm tree structure and tdm travel info.",
@@ -270,7 +270,7 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
                             input_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(input_type_match,
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input(X) holds the wrong type, it holds %s, but "
                           "desires to be %s or %s",
                           paddle::framework::DataTypeToString(input_type),
@@ -286,7 +286,7 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         travel_type_match,
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(Travel) holds the wrong type, it holds %s, but "
             "desires to be %s or %s",
             paddle::framework::DataTypeToString(travel_type),
@@ -301,7 +301,7 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
                             layer_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(layer_type_match,
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input(Layer) holds the wrong type, it holds %s, but "
                           "desires to be %s or %s",
                           paddle::framework::DataTypeToString(layer_type),
@@ -312,7 +312,7 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         travel_type,
         layer_type,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(Travel) must holds the same type with "
             "Input(Layer), but Travel holds %s, and Layer holds %s",
             paddle::framework::DataTypeToString(travel_type),

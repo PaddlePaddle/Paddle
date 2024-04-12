@@ -17,10 +17,12 @@
 
 #include "paddle/common/enforce.h"
 
-#define CHECK_NULL_IMPL(class_name, func_name)                  \
-  IR_ENFORCE(impl_,                                             \
-             "impl_ pointer is null when call func:" #func_name \
-             " , in class: " #class_name ".")
+#define CHECK_NULL_IMPL(class_name, func_name)               \
+  PADDLE_ENFORCE_NOT_NULL(                                   \
+      impl_,                                                 \
+      phi::errors::InvalidArgument(                          \
+          "impl_ pointer is null when call func:" #func_name \
+          " , in class: " #class_name "."))
 
 #define CHECK_OP_OPERAND_NULL_IMPL(func_name) \
   CHECK_NULL_IMPL(OpOperand, func_name)

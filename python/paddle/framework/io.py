@@ -137,6 +137,8 @@ def _build_saved_state_dict(state_dict):
                     raise ValueError(
                         "The saved tensor is not initialized. If you used group sharded, please use save_group_sharded_model."
                     )
+                if value.is_dense() and value.place.is_custom_place():
+                    value = paddle._C_ops.npu_identity(value, -1)
                 save_dict[key] = np.array(value.cpu())
             name_table[key] = value.name
         else:
@@ -166,9 +168,13 @@ def _load_state_dict_from_save_inference_model(model_path, config):
         # 3. construct state_dict
         load_param_dict = {}
         for var_name in persistable_var_dict:
-            load_param_dict[var_name] = np.array(
-                persistable_var_dict[var_name].cpu()
-            )
+            tmp_var = persistable_var_dict[var_name]
+            if tmp_var.is_dense() and tmp_var.place.is_custom_place():
+                load_param_dict[var_name] = np.array(
+                    paddle._C_ops.npu_identity(tmp_var, -1).cpu()
+                )
+            else:
+                load_param_dict[var_name] = np.array(tmp_var.cpu())
 
         # if *.info exists, we can recover structured_name
         var_info_filename = str(config.params_filename) + ".info"
@@ -222,6 +228,8 @@ def _load_state_dict_from_save_params(model_path):
     # 3. construct state_dict
     load_param_dict = {}
     for var in load_var_list:
+        if var.is_dense() and var.place.is_custom_place():
+            var = paddle._C_ops.npu_identity(var, -1)
         load_param_dict[var.name] = np.array(var.cpu())
 
     return load_param_dict
@@ -365,7 +373,10 @@ def _pickle_save(obj, f, protocol):
         )
 
     def reduce_varbase(self):
-        data = np.array(self.cpu())
+        if self.is_dense() and self.place.is_custom_place():
+            data = np.array(paddle._C_ops.npu_identity(self, -1).cpu())
+        else:
+            data = np.array(self.cpu())
         name = self.name
 
         return (tuple, ((name, data),))
@@ -373,7 +384,10 @@ def _pickle_save(obj, f, protocol):
     def reduce_LoDTensor(self):
         p = core.Place()
         p.set_place(paddle.CPUPlace())
-        data = np.array(self._copy(p))
+        if self._place().is_custom_place():
+            data = np.array(paddle._C_ops.npu_identity(self, -1)._copy(p))
+        else:
+            data = np.array(self._copy(p))
 
         return (eval, ('data', {'data': data}))
 
@@ -1167,7 +1181,12 @@ def load(path, **configs):
                     if config.return_numpy:
                         p = core.Place()
                         p.set_place(paddle.CPUPlace())
-                        return np.array(tensor._copy(p))
+                        if tensor._place().is_custom_place():
+                            return np.array(
+                                paddle._C_ops.npu_identity(tensor, -1)._copy(p)
+                            )
+                        else:
+                            return np.array(tensor._copy(p))
                     else:
                         if in_dygraph_mode():
                             return _lod_tensor2varbase(tensor)

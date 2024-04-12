@@ -16,8 +16,9 @@
 
 import unittest
 
-from cinn import framework
 from test_utils import SingleOpTester
+
+from paddle.cinn import framework
 
 
 class OpTest_add_0(SingleOpTester):

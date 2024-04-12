@@ -43,7 +43,7 @@ class FakeInitOp : public framework::OperatorBase {
       tensor = out_var.GetMutable<phi::SelectedRows>()->mutable_value();
       tensor->Resize(common::make_ddim(Attr<std::vector<int64_t>>("shape")));
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "fake init op's output only"
           "supports SelectedRows and phi::DenseTensor"));
     }
