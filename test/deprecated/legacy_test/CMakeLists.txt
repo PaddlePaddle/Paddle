@@ -829,18 +829,6 @@ if(WITH_HETERPS)
   set_tests_properties(test_dist_fleet_ps12 PROPERTIES LABELS "RUN_TYPE=GPUPS")
 endif()
 
-if(WIN32)
-  cc_test(
-    cc_imp_py_test
-    SRCS cc_imp_py_test.cc
-    DEPS python)
-  # if(WITH_ONNXRUNTIME)
-  #   # Copy onnxruntime for some c++ test in Windows, since the test will
-  #   # be build only in CI, so suppose the generator in Windows is Ninja.
-  #   copy_onnx(cc_imp_py_test)
-  # endif()
-endif()
-
 set_tests_properties(
   test_data_norm_op test_dataloader_keep_order test_dataloader_unkeep_order
   PROPERTIES LABELS "RUN_TYPE=DIST")
@@ -1002,9 +990,6 @@ endif()
 
 if(APPLE)
   set_tests_properties(test_callback_early_stop PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_callback_reduce_lr_on_plateau PROPERTIES TIMEOUT
-                                                                     300)
-  set_tests_properties(test_vision_models PROPERTIES TIMEOUT 300)
 endif()
 
 if(WITH_DISTRIBUTE
@@ -1018,7 +1003,6 @@ endif()
 if(APPLE)
   set_tests_properties(test_imperative_transformer_sorted_gradient
                        PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_multiclass_nms_op PROPERTIES TIMEOUT 300)
 endif()
 
 if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
