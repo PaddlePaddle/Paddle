@@ -1115,6 +1115,7 @@
     attrs : [int round_type = 1]
 
 - op : fake_quantize_dequantize_abs_max
+  backward: fake_quantize_dequantize_abs_max_grad
   inputs :
     {x : X, bit_length : bit_length, round_type : round_type}
   outputs :
@@ -1123,7 +1124,7 @@
     attrs : [int round_type = 1]
 
 - op : fake_quantize_dequantize_moving_average_abs_max
-  backward: straight_through_estimator_grad
+  backward: fake_quantize_dequantize_moving_average_abs_max_grad
   inputs :
     {x : X, in_scale : InScale, in_accum : InAccum, in_state : InState, moving_rate : moving_rate, bit_length : bit_length, round_type : round_type, is_test : is_test}
   outputs :
