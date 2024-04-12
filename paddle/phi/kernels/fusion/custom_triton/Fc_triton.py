@@ -1,9 +1,10 @@
 import triton
 import triton.language as tl
 @triton.jit
-def FcRelu(
+def Fc(
         # Pointers to matrices
-        a_ptr, b_ptr, c_ptr, bias_ptr,
+        a_ptr, b_ptr, c_ptr,
+        # a_ptr, b_ptr, c_ptr, bias_ptr,
         # Matrix dimensions
         M, N, K,
         # The stride variables represent how much to increase the ptr by when moving by 1
@@ -16,7 +17,6 @@ def FcRelu(
         BLOCK_SIZE_M: tl.constexpr, BLOCK_SIZE_N: tl.constexpr, BLOCK_SIZE_K: tl.constexpr,  #
         GROUP_SIZE_M: tl.constexpr,  #
 ):
-    
     """Kernel for computing the matmul C = A x B.
     A has shape (M, K), B has shape (K, N) and C has shape (M, N)
     """
@@ -41,11 +41,13 @@ def FcRelu(
     # `a_ptrs` is a block of [BLOCK_SIZE_M, BLOCK_SIZE_K] pointers
     # `b_ptrs` is a block of [BLOCK_SIZE_K, BLOCK_SIZE_N] pointers
     # See above `Pointer Arithmetics` section for details
+    
     offs_am = (pid_m * BLOCK_SIZE_M + tl.arange(0, BLOCK_SIZE_M)) % M
     offs_bn = (pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)) % N
     offs_k = tl.arange(0, BLOCK_SIZE_K)
     a_ptrs = a_ptr + (offs_am[:, None] * stride_am + offs_k[None, :] * stride_ak)
     b_ptrs = b_ptr + (offs_k[:, None] * stride_bk + offs_bn[None, :] * stride_bn)
+
 
     # -----------------------------------------------------------
     # Iterate to compute a block of the C matrix.
@@ -66,13 +68,14 @@ def FcRelu(
     # You can fuse arbitrary activation functions here
     # while the accumulator is still in FP32!
     # if ACTIVATION == "leaky_relu":
-    
-    accumulator = accumulator.to(tl.float16)
-    bias_ptr = bias_ptr + offs_bn[None, :]
-    bias = tl.load(bias_ptr, mask=offs_bn[None, :] < N, other=0.0)
-    accumulator = accumulator + bias
-    c = tl.where( accumulator >= 0, accumulator, 0)
+    # 没有加bias
+    c = accumulator.to(tl.float16)
+    # bias_ptr = bias_ptr + offs_bn[None, :]
+    # bias = tl.load(bias_ptr, mask=offs_bn[None, :] < N, other=0.0)
+    # accumulator = accumulator + bias
+    # c = tl.where( accumulator >= 0, accumulator, 0)
     # c = accumulator + bias
+
     # c = accumulator.to(tl.float16)
     # -----------------------------------------------------------
     # Write back the block of the output matrix C with masks.

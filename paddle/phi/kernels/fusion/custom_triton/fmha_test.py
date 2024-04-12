@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "6"
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
 from triton_ops import triton_fmha
 from triton_ops import triton_fmha2
@@ -11,13 +11,22 @@ from paddle.incubate.nn.functional import (
 import os
 import paddle.nn.functional as F
 
-batch = 16
+# 16， 32，512，128
+batch = 1
 seq_len = 512
 heads = 32
 head_dim = 128
 q = paddle.rand((batch, heads, seq_len, head_dim),dtype ="float16")
 k = paddle.rand((batch, heads, seq_len, head_dim),dtype ="float16")
 v = paddle.rand((batch, heads, seq_len, head_dim),dtype ="float16")
+
+# q = paddle.load('/nishirong/PaddleNLP/llm/q_out')
+# k = paddle.load('/nishirong/PaddleNLP/llm/k_out')
+# v = paddle.load('/nishirong/PaddleNLP/llm/v_out')
+
+
+# seq_len = q.shape[2]
+# print(q.shape)
 
 seq_lens = paddle.to_tensor([[seq_len] * batch]).astype("int32")
 scale=float(head_dim**-0.5)
@@ -40,13 +49,21 @@ scale=float(head_dim**-0.5)
 qkv_out0_1 = variable_length_memory_efficient_attention(q, k, v, seq_lens, seq_lens, mask=None, scale=scale,causal=True)
 qkv_out1_1 = triton_fmha(q, k, v, scale)
 qkv_out2_1 = triton_fmha2(q, k, v, scale)
+qkv_out2_1_ = triton_fmha2(q, k, v, scale)
 qkv_out3_1 = triton_fmha3(q, k, v, scale)
 
 
 print(paddle.max(qkv_out1_1 - qkv_out0_1))
-print(paddle.max(qkv_out2_1 - qkv_out0_1))
+# print((qkv_out2_1 - qkv_out0_1)[0][0][0])
+# print((qkv_out2_1 - qkv_out0_1)[0][0][1])
+print(paddle.max((qkv_out2_1 - qkv_out0_1)))
 print(paddle.max(qkv_out3_1 - qkv_out0_1))
 
+# for i in range(s):
+#     print("================================")
+#     print((qkv_out2_1 - qkv_out0_1)[0][0][i])
+#     if(paddle.max((qkv_out2_1 - qkv_out0_1)[0][0][i]) > 0.05):
+#         print(q[0][0][i])
 
 #耗时验证
 import datetime
@@ -105,3 +122,10 @@ endtime = datetime.datetime.now()
 duringtime = endtime - starttime
 time_ms = duringtime.seconds * 1000 + duringtime.microseconds / 1000.0
 print("The TRITON OP 3 end to end time : ", time_ms, "ms")
+
+
+print(paddle.max(qkv_out3 - qkv_out0))
+
+print(paddle.max(qkv_out2 - qkv_out0))
+
+print(paddle.max(qkv_out1 - qkv_out0))

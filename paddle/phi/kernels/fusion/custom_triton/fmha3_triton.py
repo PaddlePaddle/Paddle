@@ -83,7 +83,8 @@ def _attn_fwd(Q, K, V, sm_scale, M, Out,  #
     # block pointers
     Q_block_ptr = tl.make_block_ptr(
         base=Q + qvk_offset,
-        shape=(N_CTX, BLOCK_DMODEL),
+        # shape=(N_CTX, BLOCK_DMODEL),
+        shape=(S, BLOCK_DMODEL),
         strides=(D, 1),
         offsets=(start_m * BLOCK_M, 0),
         block_shape=(BLOCK_M, BLOCK_DMODEL),
@@ -91,7 +92,8 @@ def _attn_fwd(Q, K, V, sm_scale, M, Out,  #
     )
     V_block_ptr = tl.make_block_ptr(
         base=V + qvk_offset,
-        shape=(N_CTX, BLOCK_DMODEL),
+        # shape=(N_CTX, BLOCK_DMODEL),
+        shape=(S, BLOCK_DMODEL),
         strides=(D, 1),
         offsets=(0, 0),
         block_shape=(BLOCK_N, BLOCK_DMODEL),
@@ -99,7 +101,8 @@ def _attn_fwd(Q, K, V, sm_scale, M, Out,  #
     )
     K_block_ptr = tl.make_block_ptr(
         base=K + qvk_offset,
-        shape=(BLOCK_DMODEL, N_CTX),
+        # shape=(BLOCK_DMODEL, N_CTX),
+        shape=(BLOCK_DMODEL, S),
         strides=(1, D),
         offsets=(0, 0),
         block_shape=(BLOCK_DMODEL, BLOCK_N),
@@ -107,7 +110,8 @@ def _attn_fwd(Q, K, V, sm_scale, M, Out,  #
     )
     O_block_ptr = tl.make_block_ptr(
         base=Out + qvk_offset,
-        shape=(N_CTX, BLOCK_DMODEL),
+        # shape=(N_CTX, BLOCK_DMODEL),
+        shape=(S, BLOCK_DMODEL),
         strides=(D, 1),
         offsets=(start_m * BLOCK_M, 0),
         block_shape=(BLOCK_M, BLOCK_DMODEL),
@@ -124,13 +128,14 @@ def _attn_fwd(Q, K, V, sm_scale, M, Out,  #
     qk_scale = sm_scale
     qk_scale *= 1.44269504  # 1/log(2)
     # load q: it will stay in SRAM throughout
+    # q = tl.load(Q_block_ptr, boundary_check=(0, ))
     q = tl.load(Q_block_ptr)
     # stage 1: off-band
     # For causal = True, STAGE = 3 and _attn_fwd_inner gets 1 as its STAGE
     # For causal = False, STAGE = 1, and _attn_fwd_inner gets 3 as its STAGE
     #if STAGE & 1:
     acc, l_i, m_i = fmha3_triton_util._attn_fwd_inner(acc, l_i, m_i, q, K_block_ptr, V_block_ptr,  #
-                                    start_m, qk_scale,  #
+                                    start_m, qk_scale,  S,#
                                     BLOCK_M, BLOCK_DMODEL, BLOCK_N,  #
                                     1, offs_m, offs_n, N_CTX  #
                                     )
@@ -141,7 +146,7 @@ def _attn_fwd(Q, K, V, sm_scale, M, Out,  #
         # two loops independently
         #tl.debug_barrier()
     acc, l_i, m_i = fmha3_triton_util._attn_fwd_inner(acc, l_i, m_i, q, K_block_ptr, V_block_ptr,  #
-                                    start_m, qk_scale,  #
+                                    start_m, qk_scale,  S,#
                                     BLOCK_M, BLOCK_DMODEL, BLOCK_N,  #
                                     2, offs_m, offs_n, N_CTX  #
                                     )
@@ -155,8 +160,9 @@ def _attn_fwd(Q, K, V, sm_scale, M, Out,  #
     # epilogue
     m_i += tl.math.log2(l_i)
     acc = acc / l_i[:, None]
-    m_ptrs = M + off_hz * N_CTX + offs_m
-    tl.store(m_ptrs, m_i)
-    tl.store(O_block_ptr, acc.to(Out.type.element_ty))
+    # m_ptrs = M + off_hz * N_CTX + offs_m
+    # 这个先注释掉，后面再改
+    # tl.store(m_ptrs, m_i)
+    tl.store(O_block_ptr, acc.to(Out.type.element_ty), boundary_check=(0,))
 
 

@@ -4,9 +4,10 @@ import triton.language as tl
 @triton.jit
 def _attn_fwd_inner(acc, l_i, m_i, q,  #
                     K_block_ptr, V_block_ptr,  #
-                    start_m, qk_scale,  S,#
+                    start_m, qk_scale,  #
                     BLOCK_M: tl.constexpr, BLOCK_DMODEL: tl.constexpr, BLOCK_N: tl.constexpr,  #
-                    STAGE: tl.constexpr, offs_m: tl.constexpr, offs_n: tl.constexpr):
+                    STAGE: tl.constexpr, offs_m: tl.constexpr, offs_n: tl.constexpr,  #
+                    N_CTX: tl.constexpr):
     # range of values handled by this stage
     if STAGE == 1:
         lo, hi = 0, start_m * BLOCK_M
@@ -15,15 +16,13 @@ def _attn_fwd_inner(acc, l_i, m_i, q,  #
         lo = tl.multiple_of(lo, BLOCK_M)
     # causal = False
     else:
-        # lo, hi = 0, N_CTX
-        lo, hi = 0, S
+        lo, hi = 0, N_CTX
     K_block_ptr = tl.advance(K_block_ptr, (0, lo))
     V_block_ptr = tl.advance(V_block_ptr, (lo, 0))
     # loop over k, v and update accumulator
     for start_n in range(lo, hi, BLOCK_N):
         start_n = tl.multiple_of(start_n, BLOCK_N)
         # -- compute qk ----
-        # k = tl.load(K_block_ptr, boundary_check=(1,))
         k = tl.load(K_block_ptr)
         qk = tl.zeros([BLOCK_M, BLOCK_N], dtype=tl.float32)
         qk += tl.dot(q, k)
@@ -43,7 +42,6 @@ def _attn_fwd_inner(acc, l_i, m_i, q,  #
         # -- update output accumulator --
         acc = acc * alpha[:, None]
         # update acc
-        #v = tl.load(V_block_ptr, boundary_check=(0,))
         v = tl.load(V_block_ptr)
         acc += tl.dot(p.to(tl.float16), v)
         # update m_i and l_i

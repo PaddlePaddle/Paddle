@@ -42,6 +42,7 @@ def fused_attention_kernel(
     stride_h = BLOCK_DMODEL * seq_len
 
     # initialize offsets
+    # offs_m = start_m * BLOCK_M + tl.arange(0, BLOCK_M)
     offs_m = start_m * BLOCK_M + tl.arange(0, BLOCK_M)
     offs_n = tl.arange(0, BLOCK_N)
     offs_d = tl.arange(0, BLOCK_DMODEL)
@@ -60,7 +61,7 @@ def fused_attention_kernel(
     
     #q = tl.load(q_ptrs)
     q = tl.load(q_ptrs, mask=offs_m[:, None] < seq_len, other=0.0)
-    
+    sm_scale *= 1.44269504
     # loop over k, v and update accumulator
     for start_n in range(0, (start_m + 1) * BLOCK_M, BLOCK_N):
         # -- compute qk ----
@@ -74,9 +75,9 @@ def fused_attention_kernel(
         # compute new m
         m_curr = tl.maximum(tl.max(qk, 1), m_prev)
         # correct old l
-        l_prev *= tl.exp(m_prev - m_curr)
+        l_prev *= tl.math.exp2(m_prev - m_curr)
         # attention weights
-        p = tl.exp(qk - m_curr[:, None])
+        p = tl.math.exp2(qk - m_curr[:, None])
         l_curr = tl.sum(p, 1) + l_prev
         # rescale operands of matmuls
         l_rcp = 1. / l_curr
