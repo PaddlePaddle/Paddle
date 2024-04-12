@@ -24,16 +24,16 @@ class PullBoxExtendedSparseOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(
         ctx->Inputs("Ids").size(),
         1UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Inputs(Ids) of PullBoxExtendedSparseOp should not be empty."));
     PADDLE_ENFORCE_GE(
         ctx->Outputs("Out").size(),
         1UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Outputs(Out) of PullBoxExtendedSparseOp should not be empty."));
     PADDLE_ENFORCE_GE(ctx->Outputs("OutExtend").size(),
                       1UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Outputs(OutExtend) of PullBoxExtendedSparseOp "
                           "should not be empty."));
     auto emb_size = static_cast<int64_t>(ctx->Attrs().Get<int>("emb_size"));
@@ -50,7 +50,7 @@ class PullBoxExtendedSparseOp : public framework::OperatorWithKernel {
       int ids_rank = ids_dims.size();
       PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1],
                         1,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Shape error in %lu id, the last dimension of the "
                             "'Ids' tensor must be 1.",
                             i));

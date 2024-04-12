@@ -31,4 +31,4 @@ PD_REGISTER_STRUCT_KERNEL(c_allreduce_min,
                           double,
                           int,
                           int64_t,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

@@ -34,18 +34,18 @@ class GlobalScatterOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(
         ring_id,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The ring_id (%d) for global scatter op must be non-negative.",
             ring_id));
     auto input_dims = ctx->GetInputDim("X");
     auto ndim_input = input_dims.size();
     // dim check
-    PADDLE_ENFORCE_EQ(ndim_input,
-                      2,
-                      platform::errors::InvalidArgument(
-                          "The input tensor's dimension must be 2. "
-                          "But received input's dimension = %d.",
-                          ndim_input));
+    PADDLE_ENFORCE_EQ(
+        ndim_input,
+        2,
+        phi::errors::InvalidArgument("The input tensor's dimension must be 2. "
+                                     "But received input's dimension = %d.",
+                                     ndim_input));
 
     framework::DDim out_dims = common::make_ddim({-1, -1});
     ctx->SetOutputDim("Out", out_dims);
@@ -123,4 +123,4 @@ PD_REGISTER_STRUCT_KERNEL(global_scatter,
                           double,
                           int,
                           int64_t,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

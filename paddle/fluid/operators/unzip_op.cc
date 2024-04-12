@@ -32,8 +32,8 @@ class unzipOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         lod_dims.size(),
         1UL,
-        platform::errors::InvalidArgument(
-            "Input(X)'s rank should be 1, but got %d", lod_dims.size()));
+        phi::errors::InvalidArgument("Input(X)'s rank should be 1, but got %d",
+                                     lod_dims.size()));
     auto len = static_cast<int64_t>(ctx->Attrs().Get<int>("len"));
     ctx->SetOutputDim("Y", {lod_dims[0] - 1, len});
   }
@@ -70,13 +70,13 @@ class unzipGradientOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x_dims.size(),
         2,
-        platform::errors::InvalidArgument(
-            "Expect Input(X)'s rank == 2, but got %d", x_dims.size()));
+        phi::errors::InvalidArgument("Expect Input(X)'s rank == 2, but got %d",
+                                     x_dims.size()));
     PADDLE_ENFORCE_EQ(
         lod_dims.size(),
         1,
-        platform::errors::InvalidArgument(
-            "Expect Input(X)'s rank == 1, but got %d", lod_dims.size()));
+        phi::errors::InvalidArgument("Expect Input(X)'s rank == 1, but got %d",
+                                     lod_dims.size()));
 
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     ctx->ShareLoD("X", framework::GradVarName("X"));

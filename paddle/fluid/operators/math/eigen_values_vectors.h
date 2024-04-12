@@ -38,7 +38,7 @@ static void CheckEighResult(const int batch, const int info) {
   PADDLE_ENFORCE_LE(
       info,
       0,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "For batch [%d]: the [%d] off-diagonal elements of an intermediate"
           "tridiagonal form did not converge to zero",
           batch,
@@ -46,7 +46,7 @@ static void CheckEighResult(const int batch, const int info) {
   PADDLE_ENFORCE_GE(
       info,
       0,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "For batch [%d]: the [%d] argument had an illegal value",
           batch,
           info));
@@ -160,7 +160,7 @@ struct MatrixEighFunctor<phi::CPUContext, T> {
     }
     if (has_vectors) {
       PADDLE_ENFORCE_NOT_NULL(eigen_vectors,
-                              platform::errors::InvalidArgument(
+                              phi::errors::InvalidArgument(
                                   "When has_vectors is true,"
                                   "the eigenvectors needs to be calculated, "
                                   "so the eigenvectors must be provided."));
@@ -293,7 +293,7 @@ struct MatrixEighFunctor<phi::GPUContext, T> {
     }
     if (has_vectors) {
       PADDLE_ENFORCE_NOT_NULL(eigen_vectors,
-                              platform::errors::InvalidArgument(
+                              phi::errors::InvalidArgument(
                                   "When has_vectors is true,"
                                   "the eigenvectors needs to be calculated,"
                                   "so the eigenvectors must be provided."));
