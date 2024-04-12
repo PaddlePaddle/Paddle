@@ -25,6 +25,22 @@
 
 namespace pir {
 
+class IR_API ShapeConstraintIRAnalysis;
+
+class UnionFindSet {
+ public:
+  friend class ShapeConstraintIRAnalysis;
+
+ private:
+  const symbol::DimExpr& Find(const symbol::DimExpr& x);
+
+  void Union(const symbol::DimExpr& p, const symbol::DimExpr& q);
+
+  std::vector<std::vector<symbol::DimExpr>> Clusters();
+
+  std::unordered_map<symbol::DimExpr, symbol::DimExpr> parent_;
+};
+
 // The implementation is based on shape constraint ir.
 class IR_API ShapeConstraintIRAnalysis {
  public:
@@ -71,6 +87,8 @@ class IR_API ShapeConstraintIRAnalysis {
   // Returns true if the two value have the same number elements.
   bool IsSameNumel(Value lhs, Value rhs) const;
 
+  void AddEqCstr(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs);
+
   pir::PrintHooks PrintHook() const;
 
   symbol::DimExpr GetProductDimExpr(Value lhs,
@@ -80,6 +98,15 @@ class IR_API ShapeConstraintIRAnalysis {
   ModuleOp m_;
 
   int64_t next_sym_idx_ = 0;
+
+  using EqualConstraints = UnionFindSet;
+  using BroadcastableConstraints =
+      std::vector<symbol::Broadcastable<symbol::DimExpr>>;
+  using GTOneConstraints = std::unordered_set<symbol::DimExpr>;
+
+  EqualConstraints equal_constraints_;
+  BroadcastableConstraints broadcastable_constraints_;
+  GTOneConstraints gtone_constraints_;
 
   std::unordered_map<Value, symbol::ShapeOrDataDimExprs>
       value_to_shape_or_data_;
