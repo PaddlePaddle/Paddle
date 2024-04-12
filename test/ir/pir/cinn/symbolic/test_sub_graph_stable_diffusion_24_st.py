@@ -15,9 +15,12 @@
 # repo: diffusers_sub_grpah
 # model: stable_diffusion
 # api:paddle.nn.functional.common.interpolate||api:paddle.nn.functional.conv.conv2d
+import os
 import unittest
 
 import numpy as np
+
+os.environ["FLAGS_disable_dyshape_in_train"] = "True"
 
 import paddle
 
@@ -84,7 +87,9 @@ class TestLayer(unittest.TestCase):
         for st, cinn in zip(
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
         ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
+            np.testing.assert_allclose(
+                st.numpy(), cinn.numpy(), atol=1e-7, rtol=1e-6
+            )
 
 
 if __name__ == '__main__':

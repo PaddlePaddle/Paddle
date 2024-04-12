@@ -51,12 +51,16 @@
 
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(check_infer_symbolic);
+COMMON_DECLARE_bool(disable_dyshape_in_train);
 PD_DECLARE_bool(group_schedule_tiling_first);
 
 namespace cinn::dialect::ir {
 
 namespace {
 bool HasDynamicShape(const pir::Program& program) {
+  if (FLAGS_disable_dyshape_in_train) {
+    return false;
+  }
   for (const auto& op : *program.block()) {
     if (op.isa<pir::CombineOp>()) {
       continue;
