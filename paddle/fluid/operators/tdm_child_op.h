@@ -56,7 +56,7 @@ void TDMChildInner(const framework::ExecutionContext &context,
     PADDLE_ENFORCE_LT(
         input_data[input_ids],
         node_nums,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "input id of OP(paddle.incubate.layers.tdm_child) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
@@ -65,7 +65,7 @@ void TDMChildInner(const framework::ExecutionContext &context,
     PADDLE_ENFORCE_LE(
         0,
         input_data[input_ids],
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "input id of OP(paddle.incubate.layers.tdm_child) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
@@ -119,7 +119,7 @@ class TDMChildKernel : public framework::OpKernel<T> {
                             input_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(input_type_match,
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input(X) holds the wrong type, it holds %s, but "
                           "desires to be %s or %s",
                           paddle::framework::DataTypeToString(input_type),
@@ -136,7 +136,7 @@ class TDMChildKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         info_type_match,
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(TreeInfo) holds the wrong type, it holds %s, but "
             "desires to be %s or %s",
             paddle::framework::DataTypeToString(info_type),
@@ -156,7 +156,7 @@ class TDMChildKernel : public framework::OpKernel<T> {
                           output_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(out_type_match,
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Output(Child) & Output(LeafMask) holds the wrong "
                           "type, it holds %s, but "
                           "desires to be %s or %s",

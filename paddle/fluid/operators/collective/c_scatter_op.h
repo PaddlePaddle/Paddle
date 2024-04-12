@@ -44,7 +44,7 @@ class CScatterOpCPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         gloo->IsInitialized(),
         true,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "You must initialize the gloo environment first to use it."));
 
     int64_t send_numel = out->numel();
@@ -66,7 +66,7 @@ class CScatterOpCPUKernel : public framework::OpKernel<T> {
 
     gloo::scatter(opts);
 #else
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON"));
 #endif
   }

@@ -49,26 +49,26 @@ class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(
         rid,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The ring_id (%d) for partial_recv op must be non-negative.", rid));
     PADDLE_ENFORCE_GE(
         peer,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The peer (%d) for partial_recv op must be non-negative.", peer));
     PADDLE_ENFORCE_GE(num,
                       1,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The num (%d) for partial_recv op must >=1", num));
     PADDLE_ENFORCE_EQ(
         (id >= 0 && id < num),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The id (%d) for partial_recv op must >=0 and <num (%d)", id, num));
     PADDLE_ENFORCE_EQ(
         (numel % num),
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The input numel (%d) must be divisible by num(%d)", numel, num));
 
     auto place = ctx.GetPlace();
@@ -98,7 +98,7 @@ class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(
             comm_context_manager.Has(std::to_string(rid)),
             true,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "You choose to use new communication library by "
                 "setting environment "
                 "variable FLAGS_dynamic_static_unified_comm True. "
@@ -110,7 +110,7 @@ class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_NE(
             comm_ctx,
             nullptr,
-            platform::errors::Unavailable(
+            phi::errors::Unavailable(
                 "NCCLCommContext is nullptr, collective op should "
                 "has ring_id attr."));
 
@@ -134,13 +134,13 @@ class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
         stream = ctx.cuda_device_context().stream();
       }
 
-      PADDLE_ENFORCE_LT(peer,
-                        nranks,
-                        platform::errors::InvalidArgument(
-                            "The value of peer (%d) you set must "
-                            "be less than nranks (%d).",
-                            peer,
-                            nranks));
+      PADDLE_ENFORCE_LT(
+          peer,
+          nranks,
+          phi::errors::InvalidArgument("The value of peer (%d) you set must "
+                                       "be less than nranks (%d).",
+                                       peer,
+                                       nranks));
 
       ncclDataType_t dtype = platform::ToNCCLDataType(type);
 
@@ -161,7 +161,7 @@ class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
               << offset << "] from " << peer;
     }
 #else
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "PaddlePaddle should be compiled with NCCL and "
         "NCCL version >= 2.7.3 is needed."));
 #endif
@@ -185,5 +185,5 @@ PD_REGISTER_STRUCT_KERNEL(partial_recv,
 #endif
                           int,
                           int64_t,
-                          plat::float16) {
+                          phi::dtype::float16) {
 }

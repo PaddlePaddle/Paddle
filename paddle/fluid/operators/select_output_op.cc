@@ -55,7 +55,7 @@ class SelectOutputOp : public framework::OperatorBase {
     PADDLE_ENFORCE_LT(
         output_branch,
         out_names.size(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input 'Mask' in SelectOutputOp is invalid. "
             "'Mask' must be less than the size of output vector 'Out'. "
             "But received Mask = %d, Out's size = %d.",

@@ -47,7 +47,7 @@ class BarrierOpCUDAKernel : public framework::OpKernel<T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -58,7 +58,7 @@ class BarrierOpCUDAKernel : public framework::OpKernel<T> {
           comm_context_manager.Get(std::to_string(rid)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        platform::errors::Unavailable(
+                        phi::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
       auto stream = comm_ctx->GetStream();
@@ -82,8 +82,8 @@ class BarrierOpCUDAKernel : public framework::OpKernel<T> {
       VLOG(3) << "old NCCLCommContext has rid " << rid;
     }
 #else
-    PADDLE_THROW(platform::errors::Unavailable(
-        "PaddlePaddle should compile with NCCL."));
+    PADDLE_THROW(
+        phi::errors::Unavailable("PaddlePaddle should compile with NCCL."));
 #endif
   }
 };

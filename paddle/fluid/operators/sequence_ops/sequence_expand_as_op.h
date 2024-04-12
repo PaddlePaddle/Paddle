@@ -78,21 +78,21 @@ class SequenceExpandAsKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         y->lod().empty(),
         false,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(Y) of SequenceExpandAsOp has wrong LoD information. "
             "Expected Y's lod is not empty, but received empty lod."));
 
     auto &y_lod = y->lod();
     PADDLE_ENFORCE_EQ(y_lod.size(),
                       1,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input(Y) of SequenceExpandAsOp has wrong LoD "
                           "information. Expected Y's lod level = 1, but "
                           "received  lod level = %d.",
                           y_lod.size()));
     PADDLE_ENFORCE_GT(y_lod[0].size(),
                       1,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input(Y) of SequenceExpandAsOp has wrong LoD "
                           "information. Expected the size of Y's lod[0] > 1, "
                           "but received lod[0].size = %d.",
