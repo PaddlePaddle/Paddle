@@ -2568,11 +2568,12 @@ class OpTest(unittest.TestCase):
                 )
 
         if check_prim:
-            prim_checker = PrimForwardChecker(self, place)
-            prim_checker.check()
-            # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
-            self.__class__.check_prim = True
-            self.__class__.op_type = self.op_type
+            with paddle.pir_utils.OldIrGuard():
+                prim_checker = PrimForwardChecker(self, place)
+                prim_checker.check()
+                # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
+                self.__class__.check_prim = True
+                self.__class__.op_type = self.op_type
 
         if check_prim_pir:
             with paddle.pir_utils.IrGuard():
