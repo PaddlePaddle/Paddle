@@ -413,7 +413,7 @@ class Pad2dOp : public framework::OperatorWithKernel {
     auto x_dim = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(x_dim.size(),
                       4,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The size of Input(X)'s dimension should be equal to "
                           "4, but received %d. ",
                           x_dim.size()));
@@ -425,14 +425,14 @@ class Pad2dOp : public framework::OperatorWithKernel {
       auto paddings_dim = ctx->GetInputDim("Paddings");
       PADDLE_ENFORCE_EQ(paddings_dim.size(),
                         1,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Size of Input(Paddings)'s dimension should be "
                             "equal to 1, but received %d.",
                             paddings_dim.size()));
       if (ctx->IsRuntime()) {
         PADDLE_ENFORCE_EQ(paddings_dim[0],
                           4,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "Shape of Input(Paddings) should be equal to "
                               "[4], but received [%d].",
                               paddings_dim[0]));
@@ -445,7 +445,7 @@ class Pad2dOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           paddings.size(),
           4,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Size of paddings should be equal to 4, but received %d.",
               static_cast<int>(paddings.size())));
       if (data_format == "NCHW") {

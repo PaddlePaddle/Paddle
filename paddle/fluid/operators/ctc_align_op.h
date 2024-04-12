@@ -72,7 +72,7 @@ class CTCAlignKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           input_dims[0],
           static_cast<int64_t>(input_lod[level].back()),
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The first dimension %d of CTCAlign operator Input(Input) should "
               "be equal to "
               "the sum of all sequences' lengths %d.",

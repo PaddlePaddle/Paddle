@@ -61,13 +61,13 @@ class PrecisionRecallKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_GE(
           idx,
           0,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Class index of each instance should be "
               "greater than or equal to 0, But the index we received is %d",
               idx));
       PADDLE_ENFORCE_LT(idx,
                         cls_num,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Class index of each instance should be less than "
                             "cls_num = %d, But the index we received is %d",
                             cls_num,
@@ -75,13 +75,13 @@ class PrecisionRecallKernel : public framework::OpKernel<T> {
 
       PADDLE_ENFORCE_GE(label,
                         0,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Label of each instance should be greater than or "
                             "equal to 0, But the label we received is %d",
                             label));
       PADDLE_ENFORCE_LT(label,
                         cls_num,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Label of each instance should be less than "
                             "cls_num = %d, But the label we received is %d",
                             cls_num,

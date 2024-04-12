@@ -385,6 +385,14 @@ def hashable(obj):
         return False
 
 
+def printable(obj):
+    try:
+        str(obj)
+        return True
+    except Exception as e:
+        return False
+
+
 class StepState(Enum):
     COLLECT_INFO = 1
     RUN_SOT = 2

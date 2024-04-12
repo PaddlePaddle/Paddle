@@ -116,7 +116,7 @@ endforeach()
 
 if(WIN32 AND WIN_UNITTEST_LEVEL LESS 2)
   message(STATUS "Skip tests unrelated to CUDA/TRT")
-elseif(WITH_MKLDNN)
+elseif(WITH_ONEDNN)
   foreach(target ${TEST_MKLDNN_IR_PASSES})
     py_test_modules(${target} MODULES ${target})
     set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
@@ -144,7 +144,7 @@ if(WITH_XPU)
   endforeach()
 endif()
 
-if(WITH_MKLDNN
+if(WITH_ONEDNN
    AND TENSORRT_FOUND
    AND WITH_GPU)
   foreach(target ${TEST_INFERENCE_IR_PASSES})
@@ -153,7 +153,7 @@ if(WITH_MKLDNN
   endforeach()
 endif()
 
-if(NOT WITH_MKLDNN
+if(NOT WITH_ONEDNN
    AND NOT TENSORRT_FOUND
    AND NOT WITH_GPU)
   foreach(target ${TEST_INFERENCE_CPU_UT})
@@ -173,9 +173,11 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_dynamic_shape PROPERTIES TIMEOUT 120)
   set_tests_properties(test_trt_inspector PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_inference_predictor PROPERTIES TIMEOUT 60)
-  set_tests_properties(test_trt_inference_fp16_io PROPERTIES TIMEOUT 300)
   set_tests_properties(test_trt_optimization_level PROPERTIES TIMEOUT 300)
   set_tests_properties(test_trt_ops_fp32_mix_precision PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_inference_fp16_io PROPERTIES TIMEOUT 500)
+  set_tests_properties(test_trt_convert_unary PROPERTIES TIMEOUT 600)
+  set_tests_properties(test_seq_concat_fc_fuse_pass PROPERTIES TIMEOUT 200)
   if(NOT WIN32)
     set_tests_properties(test_trt_explicit_quantization_resnet
                          PROPERTIES TIMEOUT 300)
@@ -213,7 +215,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_nearest_interp_v2_op PROPERTIES TIMEOUT 30)
   set_tests_properties(test_trt_multiclass_nms3_op PROPERTIES TIMEOUT 60)
 
-  if(WITH_MKLDNN)
+  if(WITH_ONEDNN)
     set_tests_properties(test_merge_layernorm_fuse_pass PROPERTIES TIMEOUT 180)
     set_tests_properties(test_skip_merge_layernorm_fuse_pass PROPERTIES TIMEOUT
                                                                         180)

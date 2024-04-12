@@ -84,7 +84,7 @@ static void PushBoxExtendedSparseFunctor(
     } else {
       PADDLE_ENFORCE_EQ(batch_size,
                         cur_batch_size,
-                        platform::errors::PreconditionNotMet(
+                        phi::errors::PreconditionNotMet(
                             "The batch size of all input slots should be same,"
                             "please check"));
     }
