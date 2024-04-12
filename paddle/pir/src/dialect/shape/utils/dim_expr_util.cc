@@ -589,12 +589,12 @@ ConstRational MulConstRational(const ConstRational& lhs,
   const auto [lhs_num, lhs_dem] = lhs;
   const auto [rhs_num, rhs_dem] = rhs;
   // Crossing is correct.
-  const auto [simplifed_lhs_num, simplifed_rhs_dem] =
+  const auto [simplified_lhs_num, simplified_rhs_dem] =
       SimplifiedConstRational(lhs_num, rhs_dem);
-  const auto [simplifed_rhs_num, simplifed_lhs_dem] =
+  const auto [simplified_rhs_num, simplified_lhs_dem] =
       SimplifiedConstRational(rhs_num, lhs_dem);
-  return ConstRational{simplifed_lhs_num * simplifed_rhs_num,
-                       simplifed_lhs_dem * simplifed_rhs_dem};
+  return ConstRational{simplified_lhs_num * simplified_rhs_num,
+                       simplified_lhs_dem * simplified_rhs_dem};
 }
 
 template <>
@@ -1056,6 +1056,55 @@ DimExpr SubstituteDimExpr(
   const auto& opt_replaced =
       SubstituteDimExprHelper(pattern_to_replacement).Substitute(dim_expr);
   return opt_replaced.has_value() ? opt_replaced.value() : dim_expr;
+}
+
+}  // namespace symbol
+
+namespace symbol {
+
+IR_API int GetDimExprPriority(const DimExpr& dim_expr) {
+  return std::visit(Overloaded{
+                        [&](std::int64_t) { return 0; },
+                        [&](const std::string&) { return 1; },
+                        [&](const Negative<DimExpr>&) { return 2; },
+                        [&](const Reciprocal<DimExpr>&) { return 2; },
+                        [&](const Add<DimExpr>&) { return 2; },
+                        [&](const Mul<DimExpr>&) { return 2; },
+                        [&](const Max<DimExpr>&) { return 2; },
+                        [&](const Min<DimExpr>&) { return 2; },
+                        [&](const Broadcast<DimExpr>&) { return 2; },
+                    },
+                    dim_expr.variant());
+}
+
+IR_API PriorityComparisonStatus CompareDimExprPriority(const DimExpr& lhs,
+                                                       const DimExpr& rhs) {
+  int lhs_priority = GetDimExprPriority(lhs);
+  int rhs_priority = GetDimExprPriority(rhs);
+
+  if (lhs_priority != rhs_priority) {
+    return lhs_priority < rhs_priority ? PriorityComparisonStatus::HIGHER
+                                       : PriorityComparisonStatus::LOWER;
+  }
+
+  auto CompareForEqualPriority = Overloaded{
+      [](const std::string& lhs, const std::string& rhs) {
+        if (lhs.size() != rhs.size()) {
+          return lhs.size() < rhs.size() ? PriorityComparisonStatus::HIGHER
+                                         : PriorityComparisonStatus::LOWER;
+        }
+        int compare_result = lhs.compare(rhs);
+        if (compare_result == 0)
+          return PriorityComparisonStatus::EQUAL;
+        else if (compare_result < 0)
+          return PriorityComparisonStatus::HIGHER;
+        else
+          return PriorityComparisonStatus::LOWER;
+      },
+      [](const auto& lhs, const auto& rhs) {
+        return PriorityComparisonStatus::EQUAL;
+      }};
+  return std::visit(CompareForEqualPriority, lhs.variant(), rhs.variant());
 }
 
 }  // namespace symbol

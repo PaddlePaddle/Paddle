@@ -57,7 +57,7 @@ cutlass::Status ${kernel_func_name}(const ConvAllParams& params) {
   ${element_c} *bias = (${element_c} *)(params.bias);
   ${element_c} *output = (${element_c} *)(params.output);
   // only used by conv2d_bias_residual
- auto residual = (${element_c} *)(params.residual);
+  auto residual = (${element_c} *)(params.residual);
 
   int batch = params.batch;
   int ic = params.ic;
@@ -96,8 +96,8 @@ CommonCutlassConvKernelExecute = """
   ImplicitGemm implicit_gemm_op;
   size_t bytes = implicit_gemm_op.get_workspace_size(arguments);
 
-auto stream = params.stream;
-void *workspace = params.workspace;
+  auto stream = params.stream;
+  void *workspace = params.workspace;
 
   cutlass::Status status = implicit_gemm_op.can_implement(arguments);
   CUTLASS_CHECK(status);
@@ -125,7 +125,7 @@ std::vector<std::function<cutlass::Status(const ConvAllParams)>>
 std::map<std::vector<int>, int> map_problem_${func_name};
 std::mutex ${func_name}_mutex;
 
-void ${func_name}(ConvAllParams params) {
+bool ${func_name}(ConvAllParams params) {
   int batch = params.batch;
   int ic = params.ic;
   int ih = params.ih;
@@ -145,7 +145,7 @@ void ${func_name}(ConvAllParams params) {
   if (map_problem_${func_name}.count(problem_size)) {
     ${func_name}_all_func[map_problem_${func_name}.at(problem_size)](
         params);
-    return;
+    return true;
   }
 
   int best_config_index = ProfileToGetBestConfig(
@@ -155,6 +155,7 @@ void ${func_name}(ConvAllParams params) {
 
   map_problem_${func_name}[problem_size] = best_config_index;
   ${func_name}_all_func[best_config_index](params);
+  return true;
 }
 """
 
@@ -164,8 +165,8 @@ void ${func_name}(ConvAllParams params) {
 # this function is invoked by phi kernel
 
 CommonWrapperForPhi = """
-void ${op_name}(ConvAllParams params) {
-    ${dispatch_body}
+bool ${op_name}(ConvAllParams params) {
+  ${dispatch_body}
 }
 """
 
@@ -173,14 +174,18 @@ void ${op_name}(ConvAllParams params) {
 def convert_c_data_type(dtype):
     if dtype == "fp16":
         return "Conv2dDataType::fp16"
-    if dtype == "bf16":
+    elif dtype == "bf16":
         return "Conv2dDataType::bf16"
+    elif dtype == "fp32":
+        return "Conv2dDataType::fp32"
+    else:
+        return None
 
 
 CommonDispatchTemp = '''
     if (params.sm_version == ${sm_code} && params.data_type == ${data_type})
     {
-        ${op_name_with_sm}(params);
+        return ${op_name_with_sm}(params);
     }
     '''
 
@@ -213,6 +218,7 @@ def GenerateFunctionForPhi(
                 + data_type
             )
             dispatch_body += SubstituteTemplate(CommonDispatchTemp, sm_dicts)
+        dispatch_body += '''    return false;'''
         op_dicts = {}
         op_dicts["dispatch_body"] = dispatch_body
         op_dicts["op_name"] = camel_names[epi_func]

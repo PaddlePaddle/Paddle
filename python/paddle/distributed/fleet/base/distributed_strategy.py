@@ -263,45 +263,6 @@ class DistributedStrategy:
             )
 
     @property
-    def execution_strategy(self):
-        """
-        Configure ExecutionStrategy for DistributedStrategy
-
-        Examples:
-            .. code-block:: python
-
-                >>> import paddle
-                >>> exe_strategy = paddle.static.ExecutionStrategy()
-                >>> exe_strategy.num_threads = 10
-                >>> exe_strategy.num_iteration_per_drop_scope = 10
-                >>> exe_strategy.num_iteration_per_run = 10
-
-                >>> strategy = paddle.distributed.fleet.DistributedStrategy()
-                >>> strategy.execution_strategy = exe_strategy
-
-        """
-        execution_strategy = paddle.static.ExecutionStrategy()
-        fields = self.strategy.execution_strategy.DESCRIPTOR.fields
-        for f in fields:
-            setattr(
-                execution_strategy,
-                f.name,
-                getattr(self.strategy.execution_strategy, f.name),
-            )
-        return execution_strategy
-
-    @execution_strategy.setter
-    @is_strict_auto
-    def execution_strategy(self, strategy):
-        fields = self.strategy.execution_strategy.DESCRIPTOR.fields
-        for f in fields:
-            setattr(
-                self.strategy.execution_strategy,
-                f.name,
-                getattr(strategy, f.name),
-            )
-
-    @property
     def build_strategy(self):
         """
 
@@ -2656,7 +2617,7 @@ class DistributedStrategy:
 
         env_draws = line + "\n"
         for f in fields:
-            if "build_strategy" in f.name or "execution_strategy" in f.name:
+            if "build_strategy" in f.name:
                 continue
             if "_configs" in f.name:
                 continue
@@ -2732,15 +2693,5 @@ class DistributedStrategy:
             )
         build_strategy_str += border + "\n"
 
-        execution_strategy_str = h1_format.format("Execution Strategy")
-        execution_strategy_str += line + "\n"
-
-        fields = self.strategy.execution_strategy.DESCRIPTOR.fields
-        for f in fields:
-            execution_strategy_str += h2_format.format(
-                f.name, str(getattr(self.strategy.execution_strategy, f.name))
-            )
-        execution_strategy_str += border + "\n"
-
-        result_res += build_strategy_str + execution_strategy_str
+        result_res += build_strategy_str
         return result_res

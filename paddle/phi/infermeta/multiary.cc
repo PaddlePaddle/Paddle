@@ -4273,6 +4273,15 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
           "But received Input(X) dim[-1](%s) != Input(Weight) dim[1](%s)",
           x_dims[x_dims.size() - 1],
           w_dims[1]));
+  if (bias.initialized()) {
+    auto bias_dims = bias.dims();
+    PADDLE_ENFORCE_EQ(
+        bias_dims.size(),
+        1UL,
+        errors::InvalidArgument(
+            "The size of Input(Bias)'s dimension should equal to 1UL.",
+            bias_dims.size()));
+  }
 
   // per-channel dequantization
   if (group_size == -1) {
@@ -4554,6 +4563,7 @@ void FusedRopeInferMeta(const MetaTensor& q,
                         const MetaTensor& position_ids,
                         bool use_neox_rotary_style,
                         bool time_major,
+                        float rotary_emb_base,
                         MetaTensor* out_q,
                         MetaTensor* out_k,
                         MetaTensor* out_v) {
@@ -4911,10 +4921,10 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
   }
 }
 
-void FullWithTensorInferMeta(const MetaTensor& shape,
+void FullWithTensorInferMeta(const IntArray& shape,
                              DataType dtype,
                              MetaTensor* out) {
-  out->set_dims(common::make_ddim(std::vector<int64_t>(shape.numel(), -1)));
+  out->set_dims(common::make_ddim(shape.GetData()));
   out->set_dtype(dtype);
 }
 

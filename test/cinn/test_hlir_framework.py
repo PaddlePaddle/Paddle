@@ -15,8 +15,9 @@
 import unittest
 
 import numpy as np
-from cinn import Target
-from cinn.framework import Tensor
+
+from paddle.cinn import Target
+from paddle.cinn.framework import Tensor
 
 
 class TensorTest(unittest.TestCase):

@@ -481,13 +481,13 @@ class PipelineOptimizer:
         if device:
             assert device[0:3] == 'gpu', (
                 "Now, only gpu devices are "
-                "supported in pipeline parallemism."
+                "supported in pipeline parallelism."
             )
         return device
 
     def _add_op_device_attr_for_op(self, op, idx, block):
         """
-        Add op_device attrribute for ops that have not that attribute set.
+        Add op_device attribute for ops that have not that attribute set.
         We use "gpu:all" to represent the op should be put on all
         sub-programs, such as lr-related ops. Note that: "gpu:all"
         is only used by pipeline as an indicator.
@@ -609,7 +609,7 @@ class PipelineOptimizer:
 
     def _add_op_device_attr(self, block):
         """
-        Add op_device attrribute for ops in block that have
+        Add op_device attribute for ops in block that have
         not that attribute set.
         """
         for idx, op in enumerate(list(block.ops)):
@@ -1005,7 +1005,7 @@ class PipelineOptimizer:
             if op.type == 'cast' or op.type == "c_sync_comm_stream":
                 continue
             # append "MERGED" to the names of parameter gradients,
-            # and mofify the op_role_var attribute (by rename_arg func).
+            # and modify the op_role_var attribute (by rename_arg func).
             for name in in_out_names:
                 if core.grad_var_suffix() not in name:
                     continue

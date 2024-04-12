@@ -125,23 +125,22 @@ class OpTransInfo {
   DeParamCondT deny_param_cond_{{"batch_norm", {"ReserveSpace"}},
                                 {"batch_norm_grad", {"ReserveSpace"}}};
 
-  std::unordered_set<std::string> default_deny_ops_{
-      "feed",
-      "fetch",
-      "conv2d",
-      "conv2d_grad",
-      "depthwise_conv2d",
-      "depthwise_conv2d_grad",
-      "dropout",
-      "pool2d",
-      "pool2d_grad",
-      "split",
-      "matmul",
-      "matmul_grad",
-      "embedding_grad",
-      "embedding",
-      "arange",
-  };
+  std::unordered_set<std::string> default_deny_ops_{"feed",
+                                                    "fetch",
+                                                    "conv2d",
+                                                    "conv2d_grad",
+                                                    "depthwise_conv2d",
+                                                    "depthwise_conv2d_grad",
+                                                    "dropout",
+                                                    "pool2d",
+                                                    "pool2d_grad",
+                                                    "split",
+                                                    "matmul",
+                                                    "matmul_grad",
+                                                    "embedding_grad",
+                                                    "embedding",
+                                                    "arange",
+                                                    "softmax"};
 };
 
 std::string OpNameAfterStripDialect(const ::pir::Operation& op) {
@@ -334,11 +333,7 @@ bool IsDeniedInCinn(const ::pir::Operation& op) {
             << "So mark IsDeniedForCinn: " << true;
     return true;
   }
-  if (IsTempDenySpecialOp(op)) {
-    VLOG(5) << "Found " << op.name() << " is in TempDenySpecialOp."
-            << "So mark IsDeniedForCinn: " << true;
-    return true;
-  }
+
   // Strip the dialect, like pd_op.abs -> abs
   const auto op_name = OpNameAfterStripDialect(op);
   const bool is_denied = OpTransInfo().IsDeniedByDefault(op_name);
@@ -423,12 +418,12 @@ std::string CompatibleInfo::OpFuncName(const ::pir::Operation& op) {
 
 std::string CompatibleInfo::GroupOpsName(
     const std::vector<::pir::Operation*>& ops) {
-  std::string name = "fn";
+  std::string name = "fn_";
   for (auto* op : ops) {
-    std::string op_name = OpName(*op);
-    name += "_" + cinn::common::Context::Global().NewName(op_name);
+    name += OpName(*op);
+    name += "_";
   }
-  return name;
+  return cinn::common::Context::Global().NewName(name);
 }
 
 std::string CompatibleInfo::ValueName(const ::pir::Value& value) {

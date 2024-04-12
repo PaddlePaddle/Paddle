@@ -416,21 +416,23 @@ symbol::ShapeOrDataDimExprs CreateShapeOrDataForXShape(
 
 bool ReshapeOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  pir::Value operand_source = op->operand_source(0);
-  if (shape_analysis->GetShapeOrDataForValue(operand_source)
-          .data()
-          .has_value()) {
-    const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
-        shape_analysis->GetShapeOrDataForValue(operand_source);
-    shape_analysis->SetShapeOrDataForValue(op->result(0),
-                                           operand_shape_or_data);
-    return true;
+  const symbol::ShapeOrDataDimExprs &x_dim_expr =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+  const symbol::ShapeOrDataDimExprs &shape_dim_expr =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(1));
+  if (x_dim_expr.data().has_value()) {
+    const auto &shape_data = details::GetExprVecFromData(shape_dim_expr);
+    auto IsOne = [](const symbol::DimExpr &expr) {
+      return expr.isa<int64_t>() && expr.dyn_cast<int64_t>() == 1;
+    };
+    if (shape_data.size() == 1 && IsOne(shape_data.at(0))) {
+      shape_analysis->SetShapeOrDataForValue(
+          op->result(0),
+          symbol::TensorShapeOrDataDimExprs(shape_data,
+                                            x_dim_expr.data().value()));
+      return true;
+    }
   }
-
-  pir::Value operand_source_shape = op->operand_source(1);
-
-  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(operand_source_shape);
 
   const auto &GetProduct = [&](const auto &dim_exprs, const auto &Filter) {
     symbol::DimExpr product{1};
@@ -463,7 +465,7 @@ bool ReshapeOpInferSymbolicShape(
     const auto &numel =
         GetProduct(original_shape, [](const auto &) { return true; });
 
-    ExprVec target_shape = details::GetExprVecFromData(operand_shape_or_data);
+    ExprVec target_shape = details::GetExprVecFromData(shape_dim_expr);
     const auto &product_exclude_minus_one =
         GetProduct(target_shape, IsNotMinusOne);
 
@@ -499,7 +501,7 @@ bool ReshapeOpInferSymbolicShape(
   shape_analysis->SetShapeOrDataForValue(
       op->result(1),
       CreateShapeOrDataForXShape(
-          shape_analysis->GetShapeOrDataForValue(operand_source)));
+          shape_analysis->GetShapeOrDataForValue(op->operand_source(0))));
   return true;
 }
 
@@ -878,10 +880,13 @@ bool Transpose_OpInferSymbolicShape(
 
 bool SqueezeOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  IR_ENFORCE(op->num_operands() == 2,
-             "SqueezeOpInferSymbolicShape ONLY support num_operands() == 2 "
-             "now, but got %d operands",
-             op->num_operands());
+  PADDLE_ENFORCE_EQ(
+      op->num_operands(),
+      2,
+      phi::errors::InvalidArgument(
+          "SqueezeOpInferSymbolicShape ONLY support num_operands() == 2 "
+          "now, but got %d operands",
+          op->num_operands()));
 
   auto x_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
@@ -904,10 +909,13 @@ bool SqueezeOpInferSymbolicShape(
 
   std::vector<int> squeeze_dims;
   for (auto squeeze_dim : squeeze_dims_sym) {
-    IR_ENFORCE(squeeze_dim.Has<std::int64_t>(),
-               "in SqueezeOpInferSymbolicShape, axes must be known int type, "
-               "but got: %s",
-               symbol::ToString(squeeze_dim));
+    PADDLE_ENFORCE_EQ(
+        squeeze_dim.Has<std::int64_t>(),
+        true,
+        phi::errors::InvalidArgument(
+            "in SqueezeOpInferSymbolicShape, axes must be known int type, "
+            "but got: %s",
+            symbol::ToString(squeeze_dim)));
     squeeze_dims.emplace_back(
         static_cast<int>(squeeze_dim.Get<std::int64_t>()));
   }
@@ -991,10 +999,13 @@ bool UniqueConsecutiveOpInferSymbolicShape(
 
 bool UnsqueezeOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  IR_ENFORCE(op->num_operands() == 2,
-             "UnsqueezeOp InferSymbolicShape ONLY support num_operands() == 2 "
-             "now, but got %d operands",
-             op->num_operands());
+  PADDLE_ENFORCE_EQ(
+      op->num_operands(),
+      2,
+      phi::errors::InvalidArgument(
+          "UnsqueezeOp InferSymbolicShape ONLY support num_operands() == 2 "
+          "now, but got %d operands",
+          op->num_operands()));
 
   auto x_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
@@ -1023,10 +1034,13 @@ bool UnsqueezeOpInferSymbolicShape(
 
   int cur_output_rank = x_dims_size;
   for (auto axis_expr : axes_sym) {
-    IR_ENFORCE(axis_expr.Has<std::int64_t>(),
-               "in UnsqueezeOpInferSymbolicShape, axes must be known int type, "
-               "but got: %s",
-               symbol::ToString(axis_expr));
+    PADDLE_ENFORCE_EQ(
+        axis_expr.Has<std::int64_t>(),
+        true,
+        phi::errors::InvalidArgument(
+            "in UnsqueezeOpInferSymbolicShape, axes must be known int type, "
+            "but got: %s",
+            symbol::ToString(axis_expr)));
     int axis = static_cast<int>(axis_expr.Get<std::int64_t>());
     int cur = axis < 0 ? axis + cur_output_rank + 1 : axis;
 

@@ -323,12 +323,6 @@ class PaddingRNNTestBase(unittest.TestCase):
         self.reader = Reader()
         self.device_count = 1
 
-        # The default exec_strategy used for PaddingRNN.
-        # You can change it in set_customed_config.
-        self.exec_strategy = base.ExecutionStrategy()
-        self.exec_strategy.num_threads = self.device_count
-        self.exec_strategy.num_iteration_per_drop_scope = 100
-
         # The default build_strategy used for PaddingRNN.
         # You can change it in set_customed_config.
         self.build_strategy = base.BuildStrategy()
