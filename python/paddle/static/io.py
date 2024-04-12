@@ -711,6 +711,12 @@ def save_inference_model(
         )
 
     else:
+        program = normalize_program(
+            program,
+            feed_vars,
+            fetch_vars,
+            skip_prune_program=kwargs.get('skip_prune_program', False),
+        )
         legacy_format = kwargs.get('legacy_format', False)
         program_bytes = _serialize_program(
             program._remove_training_info(clip_extra=clip_extra),
