@@ -59,7 +59,7 @@ void IndexSelectInner(const framework::ExecutionContext& context,
     PADDLE_ENFORCE_GE(
         index_data[i],
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Variable value (index) of OP(index_select) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
@@ -68,7 +68,7 @@ void IndexSelectInner(const framework::ExecutionContext& context,
     PADDLE_ENFORCE_LT(
         index_data[i],
         input_dim[dim],
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Variable value (index) of OP(index_select) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",

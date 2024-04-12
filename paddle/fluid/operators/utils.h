@@ -29,13 +29,13 @@ inline std::vector<T> GetDataFromTensorList(
   std::vector<T> vec_new_data;
   for (size_t i = 0; i < list_tensor.size(); ++i) {
     auto tensor = list_tensor[i];
-    PADDLE_ENFORCE_EQ(tensor->dims(),
-                      common::make_ddim({1}),
-                      platform::errors::InvalidArgument(
-                          "The shape of Tensor in list must be [1]. "
-                          "But received its shape "
-                          "is [%s]",
-                          tensor->dims()));
+    PADDLE_ENFORCE_EQ(
+        tensor->dims(),
+        common::make_ddim({1}),
+        phi::errors::InvalidArgument("The shape of Tensor in list must be [1]. "
+                                     "But received its shape "
+                                     "is [%s]",
+                                     tensor->dims()));
 
     if (framework::TransToProtoVarType(tensor->dtype()) ==
         framework::proto::VarType::INT32) {
@@ -57,7 +57,7 @@ inline std::vector<T> GetDataFromTensorList(
         vec_new_data.push_back(static_cast<T>(*tensor->data<int64_t>()));
       }
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "The dtype of Tensor in list must be int32 or int64, but received: "
           "%s",
           tensor->dtype()));
