@@ -39,7 +39,7 @@ const Op& DrrPatternContext::SourceOpPattern(
     const std::string& op_type,
     const std::unordered_map<std::string, Attribute>& attributes) {
   owned_ops_.push_back(std::shared_ptr<drr::Op>(
-      new drr::Op(op_type, attributes, source_pattern_graph_.get())));
+      new drr::Op(op_type, source_pattern_graph_.get(), attributes)));
   return *owned_ops_.back();
 }
 
@@ -50,9 +50,10 @@ drr::Tensor& DrrPatternContext::SourceTensorPattern(const std::string& name) {
 
 const Op& DrrPatternContext::ResultOpPattern(
     const std::string& op_type,
-    const std::unordered_map<std::string, Attribute>& attributes) {
-  owned_ops_.push_back(std::shared_ptr<drr::Op>(
-      new drr::Op(op_type, attributes, result_pattern_graph_.get())));
+    const std::unordered_map<std::string, Attribute>& attributes,
+    const std::unordered_map<std::string, Attribute>& runtime_attributes) {
+  owned_ops_.push_back(std::shared_ptr<drr::Op>(new drr::Op(
+      op_type, result_pattern_graph_.get(), attributes, runtime_attributes)));
   return *owned_ops_.back();
 }
 
@@ -174,8 +175,9 @@ void Tensor::operator=(const Tensor& other) const {  // NOLINT
 
 const drr::Op& ResultPattern::Op(
     const std::string& op_type,
-    const std::unordered_map<std::string, Attribute>& attributes) {
-  return ctx_->ResultOpPattern(op_type, attributes);
+    const std::unordered_map<std::string, Attribute>& attributes,
+    const std::unordered_map<std::string, Attribute>& runtime_attributes) {
+  return ctx_->ResultOpPattern(op_type, attributes, runtime_attributes);
 }
 
 drr::Tensor& ResultPattern::Tensor(const std::string& name) {

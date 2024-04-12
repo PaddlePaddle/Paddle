@@ -1027,6 +1027,19 @@ PHI_DEFINE_EXPORTED_string(deny_cinn_ops,
 
 /*
  * CINN related FLAG
+ * Name: FLAGS_deny_cinn_ops
+ * Since Version: 3.0 Beta
+ * Value Range: bool, default=true
+ * Example: FLAGS_enable_cinn_compile_cache=true would reuse cached Kernel
+ * function
+ */
+PHI_DEFINE_EXPORTED_bool(
+    enable_cinn_compile_cache,
+    true,
+    "It controls whether to enable cinn compilation cache.");
+
+/*
+ * CINN related FLAG
  * Name: FLAGS_enable_pe_launch_cinn
  * Since Version: 2.3
  * Value Range: bool, default=true
@@ -1353,13 +1366,13 @@ PHI_DEFINE_EXPORTED_bool(use_shm_cache,
  * mmap_allocator related FLAG
  * Name: dataloader_use_file_descriptor
  * Since Version: 2.6.2
- * Value Range: bool, default=true
+ * Value Range: bool, default=false
  * Example:
  * Note: . If True, mmap_allocator will use file descripor to open shared memory
  * operation.
  */
 PHI_DEFINE_EXPORTED_bool(dataloader_use_file_descriptor,
-                         true,
+                         false,
                          "Use file descriptor in mmap_allocator.");
 
 /**

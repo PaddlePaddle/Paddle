@@ -24,18 +24,18 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         context->HasInputs("MultiLevelRois"),
         true,
-        platform::errors::NotFound("Inputs(MultiLevelRois) of "
-                                   "CollectFpnProposalsOp is not found"));
+        phi::errors::NotFound("Inputs(MultiLevelRois) of "
+                              "CollectFpnProposalsOp is not found"));
     PADDLE_ENFORCE_EQ(
         context->HasInputs("MultiLevelScores"),
         true,
-        platform::errors::NotFound("Inputs(MultiLevelScores) of "
-                                   "CollectFpnProposalsOp is not found"));
+        phi::errors::NotFound("Inputs(MultiLevelScores) of "
+                              "CollectFpnProposalsOp is not found"));
     PADDLE_ENFORCE_EQ(
         context->HasOutput("FpnRois"),
         true,
-        platform::errors::NotFound("Outputs(MultiFpnRois) of "
-                                   "CollectFpnProposalsOp is not found"));
+        phi::errors::NotFound("Outputs(MultiFpnRois) of "
+                              "CollectFpnProposalsOp is not found"));
     auto roi_dims = context->GetInputsDim("MultiLevelRois");
     auto score_dims = context->GetInputsDim("MultiLevelScores");
     auto post_nms_topN = context->Attrs().Get<int>("post_nms_topN");
@@ -44,7 +44,7 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           roi_dim[1],
           4,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Second dimension of Input"
               "(MultiLevelRois) must be 4. But received dimension = %d",
               roi_dim[1]));
@@ -53,7 +53,7 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           score_dim[1],
           1,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Second dimension of Input"
               "(MultiLevelScores) must be 1. But received dimension = %d",
               score_dim[1]));
@@ -79,7 +79,7 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             roi_lod,
             score_lod,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Inputs(MultiLevelRois) and "
                 "Inputs(MultiLevelScores) should have same lod."));
       }

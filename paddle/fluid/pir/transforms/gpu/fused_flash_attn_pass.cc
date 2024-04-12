@@ -135,9 +135,9 @@ class FlashAttnPatternQscale : public paddle::drr::DrrPatternBase {
                 k_transpose_out.at(3) == v_transpose_out.at(3))) {
             return false;
           }
-          // add shape
+          // mask's shape [bs, 1, seq_len, seq_len]
           auto mask_add = pir::GetShapeFromValue(match_ctx.Tensor("mask"));
-          if (mask_add.size() != 4) {
+          if (mask_add.size() != 4 || mask_add.at(1) != 1) {
             return false;
           }
 
@@ -279,9 +279,9 @@ class FlashAttnPatternOutscale : public paddle::drr::DrrPatternBase {
                 k_transpose_out.at(3) == v_transpose_out.at(3))) {
             return false;
           }
-          // add shape
+          // mask's shape [bs, 1, seq_len, seq_len]
           auto mask_add = pir::GetShapeFromValue(match_ctx.Tensor("mask"));
-          if (mask_add.size() != 4) {
+          if (mask_add.size() != 4 || mask_add.at(1) != 1) {
             return false;
           }
 
@@ -421,9 +421,9 @@ class TransposeSliceFlashAttnPattern : public paddle::drr::DrrPatternBase {
               !(q.at(3) == k.at(3) && k.at(3) == v.at(3))) {
             return false;
           }
-          // add shape
+          // mask's shape [bs, 1, seq_len, seq_len]
           auto mask_add = pir::GetShapeFromValue(match_ctx.Tensor("mask"));
-          if (mask_add.size() != 4) {
+          if (mask_add.size() != 4 || mask_add.at(1) != 1) {
             return false;
           }
 

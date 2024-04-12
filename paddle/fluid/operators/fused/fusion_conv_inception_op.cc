@@ -33,21 +33,21 @@ class ConvInceptionFusionOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         in_dims.size(),
         4,
-        platform::errors::InvalidArgument("Conv intput should be 4-D tensor."));
+        phi::errors::InvalidArgument("Conv intput should be 4-D tensor."));
     PADDLE_ENFORCE_EQ(
         w_dims.size(),
         4,
-        platform::errors::InvalidArgument("There should be 4 filters."));
+        phi::errors::InvalidArgument("There should be 4 filters."));
     PADDLE_ENFORCE_EQ(w_dims[0][1],
                       in_dims[1],
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Invalid filter channel number %d, which should be "
                           "equal to input channel number %d.",
                           w_dims[0][1],
                           in_dims[1]));
     PADDLE_ENFORCE_EQ(w_dims[1][1],
                       in_dims[1],
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Invalid filter channel number %d, which should be "
                           "equal to input channel number %d.",
                           w_dims[1][1],

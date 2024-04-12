@@ -63,16 +63,6 @@ class MatmulTransposeReshapeFusePattern : public paddle::drr::DrrPatternBase {
             {&pat.Tensor("reshape_out"), &pat.Tensor("Xshape")});
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      std::set<bool> bool_sets = {true, false};
-      auto result_x = match_ctx.Attr<bool>("transpose_x");
-      auto result_y = match_ctx.Attr<bool>("transpose_y");
-      if (bool_sets.count(result_x) == 0 || bool_sets.count(result_y) == 0) {
-        return false;
-      }
-      return true;
-    });
-
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       auto shape = match_ctx.Attr<std::vector<int64_t>>("int_array");
       auto perm = match_ctx.Attr<std::vector<int>>("perm");
       const std::vector<int> supported_axis{0, 2, 1, 3};
@@ -249,7 +239,6 @@ class MatmulTransposeReshapeFusePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    std::vector<bool> bool_set = {false, true};
     int benefit_idx = 1;
     ps.Add(paddle::drr::Create<MatmulTransposeReshapeFusePattern>(
         context,
