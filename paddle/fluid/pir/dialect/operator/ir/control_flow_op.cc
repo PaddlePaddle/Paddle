@@ -904,31 +904,39 @@ void AssertOp::VerifySig() {
             "The size %d of inputs must be equal to 2.", input_size));
 
     if ((*this)->operand_source(0).type().isa<pir::DenseTensorType>()) {
-      IR_ENFORCE((*this)
-                     ->operand_source(0)
-                     .type()
-                     .dyn_cast<pir::DenseTensorType>()
-                     .dtype()
-                     .isa<pir::BoolType>(),
-                 "Type validation failed for the 0th input, it should be a "
-                 "bool DenseTensorType.");
+      PADDLE_ENFORCE_EQ(
+          (*this)
+              ->operand_source(0)
+              .type()
+              .dyn_cast<pir::DenseTensorType>()
+              .dtype()
+              .isa<pir::BoolType>(),
+          true,
+          phi::errors::InvalidArgument(
+              "Type validation failed for the 0th input, it should be a "
+              "bool DenseTensorType."));
     }
 
     if (auto vec_type =
             (*this)->operand(1).type().dyn_cast<pir::VectorType>()) {
       for (size_t i = 0; i < vec_type.size(); ++i) {
-        IR_ENFORCE(vec_type[i].isa<paddle::dialect::DenseTensorType>() ||
-                       vec_type[i].isa<paddle::dialect::SelectedRowsType>(),
-                   "Type validation failed for the 1th input.");
+        PADDLE_ENFORCE_EQ(
+            vec_type[i].isa<paddle::dialect::DenseTensorType>() ||
+                vec_type[i].isa<paddle::dialect::SelectedRowsType>(),
+            true,
+            phi::errors::InvalidArgument(
+                "Type validation failed for the 1th input."));
       }
     } else {
-      IR_ENFORCE(
+      PADDLE_ENFORCE_EQ(
           (*this)->operand(1).type().isa<paddle::dialect::DenseTensorType>() ||
               (*this)
                   ->operand(1)
                   .type()
                   .isa<paddle::dialect::SelectedRowsType>(),
-          "Type validation failed for the 1th input.");
+          true,
+          phi::errors::InvalidArgument(
+              "Type validation failed for the 1th input."));
     }
   }
   VLOG(4) << "Verifying attributes:";

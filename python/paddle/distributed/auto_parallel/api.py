@@ -392,7 +392,7 @@ def reshard(dist_tensor, mesh, placements):
 
         return paddle.base.core.reshard(dist_tensor, dist_attr)
     elif in_pir_mode():
-        return paddle._pir_ops.reshard(dist_tensor, mesh, placements)
+        return paddle._C_ops.reshard(dist_tensor, mesh, placements)
     else:
         assert isinstance(
             dist_tensor, Variable
@@ -1929,16 +1929,21 @@ class DistModel:
         inner_strategy.gradient_merge = copy.deepcopy(strategy.gradient_merge)
         inner_strategy.pipeline = copy.deepcopy(strategy.pipeline)
         # The below are template interfaces
-        inner_strategy.recompute = copy.deepcopy(strategy._recompute)
-        inner_strategy.mp_optimization = copy.deepcopy(
-            strategy._mp_optimization
-        )
-        inner_strategy.dp_optimization = copy.deepcopy(
-            strategy._dp_optimization
-        )
-        inner_strategy.sp_optimization = copy.deepcopy(
-            strategy._sp_optimization
-        )
+        if hasattr(strategy, "_recompute"):
+            inner_strategy.recompute = copy.deepcopy(strategy._recompute)
+
+        if hasattr(strategy, "_mp_optimization"):
+            inner_strategy.mp_optimization = copy.deepcopy(
+                strategy._mp_optimization
+            )
+        if hasattr(strategy, "_dp_optimization"):
+            inner_strategy.dp_optimization = copy.deepcopy(
+                strategy._dp_optimization
+            )
+        if hasattr(strategy, "_sp_optimization"):
+            inner_strategy.sp_optimization = copy.deepcopy(
+                strategy._sp_optimization
+            )
 
         return inner_strategy
 

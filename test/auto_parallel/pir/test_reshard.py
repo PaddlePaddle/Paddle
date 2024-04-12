@@ -23,7 +23,7 @@ from paddle import nn
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[0]))
 from test_to_static_pir_program import (
     BATCH_SIZE,
-    IMAGE_SIZE,
+    CLASS_NUM,
     DemoNet,
     create_data_loader,
 )
@@ -77,7 +77,7 @@ class TestToStaticPirProgramTrain(unittest.TestCase):
                     )
                     self.assertEqual(
                         self.fwd_input._local_shape,
-                        [BATCH_SIZE, IMAGE_SIZE // 2],
+                        [BATCH_SIZE, CLASS_NUM],
                     )
                     self.fwd_output = op.result(0)
                     self.assertEqual(
@@ -88,7 +88,7 @@ class TestToStaticPirProgramTrain(unittest.TestCase):
                     )
                     self.assertEqual(
                         self.fwd_output._local_shape,
-                        [BATCH_SIZE / 2, IMAGE_SIZE // 2],
+                        [BATCH_SIZE / 2, CLASS_NUM],
                     )
                 elif index == 1:
                     # backward reshard op
