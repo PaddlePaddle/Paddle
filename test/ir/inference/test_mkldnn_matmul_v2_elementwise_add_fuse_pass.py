@@ -93,7 +93,7 @@ class TestMatmulV2ElementwiseAddMkldnnFusePass(PassAutoScanTest):
         self.run_and_statis(
             quant=False,
             max_examples=30,
-            passes=['matmul_elementwise_add_mkldnn_fuse_pass'],
+            passes=['matmul_elementwise_add_onednn_fuse_pass'],
         )
 
 

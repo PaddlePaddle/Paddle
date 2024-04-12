@@ -34,9 +34,9 @@ class UniqueWithCountsOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         in_dims.size(),
         1,
-        platform::errors::InvalidArgument("The Input(X) should be 1-D Tensor, "
-                                          "But now the dims of Input(X) is %d.",
-                                          in_dims.size()));
+        phi::errors::InvalidArgument("The Input(X) should be 1-D Tensor, "
+                                     "But now the dims of Input(X) is %d.",
+                                     in_dims.size()));
 
     ctx->SetOutputDim("Out", {-1});
     ctx->SetOutputDim("Index", in_dims);

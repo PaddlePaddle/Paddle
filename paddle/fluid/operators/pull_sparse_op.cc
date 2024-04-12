@@ -25,11 +25,11 @@ class PullSparseOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_GE(ctx->Inputs("Ids").size(),
                       1UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input(Ids) of PullSparseOp can not be null"));
     PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(),
                       1UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Output(Out) of PullSparseOp can not be null"));
 
     auto hidden_size =
@@ -43,7 +43,7 @@ class PullSparseOp : public framework::OperatorWithKernel {
       int ids_rank = ids_dims.size();
       PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1],
                         1,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Shape error in %lu id, the last dimension of "
                             " the 'Ids' tensor must be 1.",
                             i));

@@ -2,12 +2,12 @@ add_subdirectory(allocation)
 
 file(GLOB fluid_memory_srcs "*.cc")
 
-if(WITH_MKLDNN)
-  set(MKLDNN_CTX_DEPS mkldnn)
+if(WITH_ONEDNN)
+  set(ONEDNN_CTX_DEPS onednn)
 else()
-  set(MKLDNN_CTX_DEPS)
+  set(ONEDNN_CTX_DEPS)
 endif()
-set(fluid_memory_deps place enforce common allocator ${MKLDNN_CTX_DEPS})
+set(fluid_memory_deps place enforce common allocator ${ONEDNN_CTX_DEPS})
 
 cc_library(
   fluid_memory

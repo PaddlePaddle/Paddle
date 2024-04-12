@@ -25,14 +25,14 @@ namespace operators {
 
 template <typename T>
 inline HOSTDEVICE T BernoulliFunctor(T p, T rand) {
-  PADDLE_ENFORCE_LE(p,
-                    1.0,
-                    platform::errors::OutOfRange(
-                        "The probability should be <= 1, but got %f", p));
-  PADDLE_ENFORCE_GE(p,
-                    0.0,
-                    platform::errors::OutOfRange(
-                        "The probability should be >= 0, but got %f", p));
+  PADDLE_ENFORCE_LE(
+      p,
+      1.0,
+      phi::errors::OutOfRange("The probability should be <= 1, but got %f", p));
+  PADDLE_ENFORCE_GE(
+      p,
+      0.0,
+      phi::errors::OutOfRange("The probability should be >= 0, but got %f", p));
   return static_cast<T>(rand < p);
 }
 

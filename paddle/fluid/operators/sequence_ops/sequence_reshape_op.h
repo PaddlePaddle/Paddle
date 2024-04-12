@@ -32,14 +32,14 @@ class SequenceReshapeKernel : public framework::OpKernel<T> {
     int64_t in_width = in_dims[1];
     auto& in_lod = in->lod();
 
-    PADDLE_ENFORCE_EQ(in_lod.empty(),
-                      false,
-                      platform::errors::NotFound(
-                          "Input(X) Tensor of SequenceReshapeOp does not "
-                          "contain LoD information."));
+    PADDLE_ENFORCE_EQ(
+        in_lod.empty(),
+        false,
+        phi::errors::NotFound("Input(X) Tensor of SequenceReshapeOp does not "
+                              "contain LoD information."));
     PADDLE_ENFORCE_EQ(in_lod.size(),
                       1UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input(X) Tensor of SequenceReshapeOp Only support "
                           "one level sequence now. But lod size "
                           "of Input(X) is %d",
@@ -47,7 +47,7 @@ class SequenceReshapeKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         (uint64_t)in_dims[0],
         in_lod[0].back(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The size of SequenceReshapeOp X.shape[0] and X.lod()[0].back() "
             "should "
             "be same. But X.shape[0] = %d, X.lod()[0].back() = %d",
@@ -71,7 +71,7 @@ class SequenceReshapeKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(
             offset * out_width,
             seq_len * in_width,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Please make sure (sequence_length * dimension) "
                 "can be divided by context Attr(new_dim) with no remainder for "
                 "each sequence. But the %dth sequence is invalid.",

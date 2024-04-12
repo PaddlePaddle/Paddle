@@ -100,12 +100,12 @@ class CustomReaderInferShape : public framework::InferShapeBase {
     PADDLE_ENFORCE_NE(
         ctx->IsRuntime(),
         true,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "'CustomReaderInferShape' should only be invoked during "
             "compile time."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
                       true,
-                      platform::errors::NotFound(
+                      phi::errors::NotFound(
                           "The output decorated reader should not be null."));
     const auto* sub_block =
         ctx->Attrs().Get<framework::BlockDesc*>("sub_block");
@@ -117,7 +117,7 @@ class CustomReaderInferShape : public framework::InferShapeBase {
       auto* sink_var = sub_block->FindVar(var_name);
       PADDLE_ENFORCE_NOT_NULL(
           sink_var,
-          platform::errors::NotFound(
+          phi::errors::NotFound(
               "The sink variable is not found in CustomReader."));
       res_dims.emplace_back(sink_var->GetShape());
       res_lod_levels.push_back(sink_var->GetLoDLevel());
@@ -135,7 +135,7 @@ class CustomReaderInferVarType : public framework::VarTypeInference {
     auto& out_var_name = ctx->Output("Out")[0];
     PADDLE_ENFORCE_EQ(ctx->HasVar(out_var_name),
                       true,
-                      platform::errors::NotFound(
+                      phi::errors::NotFound(
                           "The output reader variable should not be null."));
     ctx->SetType(out_var_name, framework::proto::VarType::READER);
 
@@ -148,7 +148,7 @@ class CustomReaderInferVarType : public framework::VarTypeInference {
       framework::VarDesc* var = sub_block->FindVar(var_name);
       PADDLE_ENFORCE_NOT_NULL(
           var,
-          platform::errors::NotFound(
+          phi::errors::NotFound(
               "The sink variable is not found in CustomReader."));
       res_data_types.emplace_back(var->GetDataType());
     }
@@ -167,7 +167,7 @@ void CustomReader::ReadNextImpl(paddle::framework::LoDTensorArray* out) {
   PADDLE_ENFORCE_EQ(
       source_var_names_.size(),
       underlying_outs.size(),
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The size of source_var_names(%d) and the size of "
           "underlying_outs(%d) are not consistent. Each feeding element "
           "must have its own source variable.",
@@ -192,8 +192,8 @@ void CustomReader::ReadNextImpl(paddle::framework::LoDTensorArray* out) {
     auto* var = exe_scope->FindVar(sink_var_names_[i]);
     PADDLE_ENFORCE_NOT_NULL(
         var,
-        platform::errors::NotFound("The variable %s is not in current scope.",
-                                   sink_var_names_[i]));
+        phi::errors::NotFound("The variable %s is not in current scope.",
+                              sink_var_names_[i]));
     const auto& tensor = var->Get<phi::DenseTensor>();
     framework::TensorCopySync(tensor, platform::CPUPlace(), &(*out)[i]);
   }

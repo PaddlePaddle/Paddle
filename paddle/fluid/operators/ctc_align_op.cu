@@ -82,7 +82,7 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "CTCAlign operator CUDA kernel must use CUDAPlace "
                           "rather than CPUPlace."));
     auto* input = ctx.Input<phi::DenseTensor>("Input");

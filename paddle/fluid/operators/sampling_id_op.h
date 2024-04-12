@@ -38,13 +38,13 @@ class SamplingIdKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(
         batch_size,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "batch_size(dims[0]) must be nonnegative. but it is %d.",
             batch_size));
     PADDLE_ENFORCE_GE(
         width,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "width(dims[1]) must be nonnegative. but it is %d.", width));
 
     std::vector<T> ins_vector;
