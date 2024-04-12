@@ -75,7 +75,6 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_attention_op)
   list(REMOVE_ITEM TEST_OPS test_fused_attention_op_api)
   list(REMOVE_ITEM TEST_OPS test_fused_multi_transformer_op)
-  list(REMOVE_ITEM TEST_OPS test_fused_multi_transformer_int8_op)
   list(REMOVE_ITEM TEST_OPS test_fused_transformer_encoder_layer)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
@@ -101,13 +100,10 @@ list(REMOVE_ITEM TEST_OPS test_fuse_dot_product_attention_pass)
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
   list(REMOVE_ITEM TEST_OPS test_c_embedding_op)
-  list(REMOVE_ITEM TEST_OPS test_pipeline_parallel)
-  list(REMOVE_ITEM TEST_OPS test_fleet_perf_test)
   list(REMOVE_ITEM TEST_OPS test_memcpy_op)
   list(REMOVE_ITEM TEST_OPS test_raw_program_optimizer)
   list(REMOVE_ITEM TEST_OPS test_fleet_gradient_scale)
   list(REMOVE_ITEM TEST_OPS test_disable_signal_handler)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_with_task_nodes)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_multi_devices)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_origin_scheduler)
@@ -158,7 +154,6 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_complex_matmul)
   list(REMOVE_ITEM TEST_OPS test_ops_nms)
   list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_bias)
-  list(REMOVE_ITEM TEST_OPS test_fused_multi_transformer_int8_op)
   list(REMOVE_ITEM TEST_OPS test_masked_multihead_attention_op)
   list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
   list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
@@ -185,7 +180,6 @@ endif()
 
 if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_fused_conv2d_add_act_op)
-  list(REMOVE_ITEM TEST_OPS test_rank_attention_op)
   # TODO(shenliang03): rank_attention_op support CPU device in future
   list(REMOVE_ITEM TEST_OPS test_batch_fc_op)
   # TODO(shenliang03): batch_fc_op support CPU device in future
@@ -218,8 +212,6 @@ endif()
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fused_gate_attention_op)
   list(REMOVE_ITEM TEST_OPS test_boxps)
-  list(REMOVE_ITEM TEST_OPS test_allgather)
-  list(REMOVE_ITEM TEST_OPS test_reducescatter)
   list(REMOVE_ITEM TEST_OPS test_reducescatter_api)
 endif()
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op)
@@ -483,7 +475,6 @@ if(APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exit_func)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_static)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_iterable_dataset)
-  list(REMOVE_ITEM TEST_OPS test_paddle_multiprocessing)
 endif()
 
 if(NOT WITH_GLOO)
@@ -1038,23 +1029,9 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_static_model_parallel_fused_multi_transformer
                          PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_pipeline_parallel PROPERTIES LABELS
-                                                           "RUN_TYPE=DIST")
-    set_tests_properties(test_fleet_perf_test PROPERTIES LABELS "RUN_TYPE=DIST")
-    set_tests_properties(test_reducescatter PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_allgather PROPERTIES TIMEOUT 120)
   endif()
-  set_tests_properties(test_paddle_multiprocessing PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_pipeline_parallel PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_fleet_perf_test PROPERTIES TIMEOUT 120)
 endif()
-if(WITH_GPU OR WITH_ROCM)
-  set_tests_properties(test_rank_attention_op PROPERTIES TIMEOUT 120)
-endif()
-if(WITH_GPU AND NOT WIN32)
-  set_tests_properties(test_fused_multi_transformer_int8_op PROPERTIES TIMEOUT
-                                                                       60)
-endif()
+
 set_tests_properties(test_inplace_addto_strategy PROPERTIES TIMEOUT 120)
 
 if(WITH_CUDNN_FRONTEND)
@@ -1250,19 +1227,6 @@ set_tests_properties(test_paddle_save_load_binary_static_build
 set_tests_properties(test_reduce_op_static_build PROPERTIES TIMEOUT 500)
 py_test_modules(test_stride MODULES test_stride ENVS
                 FLAGS_use_stride_kernel=true)
-
-if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
-  # These UTs are specially designed for FleetExecutor
-  set_tests_properties(
-    test_fleet_executor PROPERTIES ENVIRONMENT
-                                   "FLAGS_new_executor_micro_batching=False")
-  set_tests_properties(
-    test_fleet_executor_origin_scheduler
-    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
-  set_tests_properties(
-    test_fleet_executor_with_task_nodes
-    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
-endif()
 
 set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 120)
 set_pit_tests_properties()
