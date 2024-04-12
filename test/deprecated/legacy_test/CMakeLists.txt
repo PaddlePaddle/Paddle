@@ -22,13 +22,8 @@ endif()
 if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_unique)
 endif()
-list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
-list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_feedforward)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_attention)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_multi_transformer)
-list(APPEND DIST_TEST_OPS test_auto_parallel_data_unshard)
-list(APPEND DIST_TEST_OPS test_auto_parallel_save_load)
-list(APPEND DIST_TEST_OPS test_auto_parallel_autoconvert)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 
@@ -38,7 +33,6 @@ list(APPEND MIXED_DIST_TEST_OPS test_communicator_ps_gpu)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_geo)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_ps)
 list(APPEND MIXED_DIST_TEST_OPS test_launch_coverage)
-list(APPEND MIXED_DIST_TEST_OPS test_fleetrun)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_run_random_port)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_async)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_cloud)
@@ -184,7 +178,6 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_batch_fc_op)
   # TODO(shenliang03): batch_fc_op support CPU device in future
   # TODO(Yancey1989): parallel dygraph support CPU device in future
-  list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel)
   list(REMOVE_ITEM TEST_OPS test_fleet_base_single)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner_gpt)
@@ -195,9 +188,6 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_mppp)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_dpmppp)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_cost_model)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_data_unshard)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_save_load)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_autoconvert)
 
 elseif(WITH_GPU)
   if(${CUDNN_VERSION} VERSION_LESS 7100)
@@ -679,8 +669,6 @@ if(WITH_DISTRIBUTE)
       py_test_modules(test_launch_coverage MODULES test_launch_coverage)
     endif()
 
-    bash_test_modules(test_fleetrun START_BASH test_fleetrun.sh ENVS
-                      PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
     if(WITH_GPU
        OR WITH_XPU
        OR WITH_ASCEND
@@ -733,17 +721,6 @@ if(WITH_DISTRIBUTE)
       ENVS
       "PADDLE_DIST_UT_PORT=${dist_ut_port}"
       PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
-    if(WITH_GLOO)
-      bash_test_modules(
-        test_cpuonly_launch
-        START_BASH
-        test_cpuonly_launch.sh
-        LABELS
-        "RUN_TYPE=EXCLUSIVE"
-        ENVS
-        "PADDLE_DIST_UT_PORT=${dist_ut_port}"
-        PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
-    endif()
   endif()
 endif()
 
@@ -992,28 +969,9 @@ if(APPLE)
   set_tests_properties(test_callback_early_stop PROPERTIES TIMEOUT 300)
 endif()
 
-if(WITH_DISTRIBUTE
-   AND WITH_GPU
-   AND WITH_NCCL)
-  set_tests_properties(test_auto_parallel_data_unshard PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_auto_parallel_save_load PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_auto_parallel_autoconvert PROPERTIES TIMEOUT 120)
-endif()
-
 if(APPLE)
   set_tests_properties(test_imperative_transformer_sorted_gradient
                        PROPERTIES TIMEOUT 300)
-endif()
-
-if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
-  if(WITH_DISTRIBUTE)
-    set_tests_properties(test_static_model_parallel_fused_feedforward
-                         PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_static_model_parallel_fused_attention
-                         PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_static_model_parallel_fused_multi_transformer
-                         PROPERTIES TIMEOUT 120)
-  endif()
 endif()
 
 set_tests_properties(test_inplace_addto_strategy PROPERTIES TIMEOUT 120)
