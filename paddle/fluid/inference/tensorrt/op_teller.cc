@@ -127,6 +127,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                   bool use_no_calib_int8 = false,
                   bool with_dynamic_shape = false,
                   bool forbid_dynamic_op_enter_into_trt = false,
+                  bool cutlass_enable = false,
                   bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
 
@@ -385,7 +386,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       // for cutlass HWC kernel
       if (op_type == "fused_conv2d_add_act" &&
-          desc.Input("ResidualData").size() == 0) {
+          desc.Input("ResidualData").size() == 0 && cutlass_enable) {
         auto input_var_name = desc.Input("Input")[0];
         auto* input_var_desc = block->FindVarRecursive(input_var_name);
         auto input_dtype = input_var_desc->GetDataType();
@@ -3260,6 +3261,7 @@ struct GenericPluginTeller : public Teller {
                   bool use_no_calib_int8 = false,
                   bool with_dynamic_shape = false,
                   bool forbid_dynamic_op_enter_into_trt = false,
+                  bool cutlass_enable = false,
                   bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
 
@@ -3335,6 +3337,7 @@ struct CustomPluginTeller : public Teller {
                   bool use_no_calib_int8 = false,
                   bool with_dynamic_shape = false,
                   bool forbid_dynamic_op_enter_into_trt = false,
+                  bool cutlass_enable = false,
                   bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
     std::string expect_plugin_name;
@@ -3365,6 +3368,7 @@ struct CustomGenericPluginTeller : public Teller {
                   bool use_no_calib_int8 = false,
                   bool with_dynamic_shape = false,
                   bool forbid_dynamic_op_enter_into_trt = false,
+                  bool cutlass_enable = false,
                   bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
 
@@ -3402,6 +3406,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                     bool use_no_calib_int8,
                     bool with_dynamic_shape,
                     bool forbid_dynamic_op_enter_into_trt,
+                    bool cutlass_enable,
                     bool use_explicit_quantization) {
   const std::string op_type = node->Op()->Type();
   const framework::OpDesc desc = *node->Op();

@@ -42,6 +42,7 @@ struct Teller {
                           bool use_no_calib_int8 = false,
                           bool with_dynamic_shape = false,
                           bool forbid_dynamic_op_enter_into_trt = false,
+                          bool cutlass_enable = false,
                           bool use_explicit_quantization = false) = 0;
 
   virtual ~Teller() = default;
@@ -79,6 +80,7 @@ class OpTeller {
             bool use_no_calib_int8 = false,
             bool with_dynamic_shape = false,
             bool forbid_dynamic_op_enter_into_trt = false,
+            bool cutlass_enable = false,
             bool use_explicit_quantization = false);
 
   std::unique_ptr<Teller>& GetDefaultTeller() { return tellers_.at(0); }
