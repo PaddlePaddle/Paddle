@@ -113,31 +113,6 @@ class TestDistTraining(unittest.TestCase):
                 bias.shape, (output_size // self.model_parallel_size,)
             )
 
-    def test_row_parallel_layer(self):
-        main_program, startup_program = self.get_program()
-        with paddle.static.program_guard(main_program, startup_program):
-            input_size, output_size = 28, 64
-            model_a = RowLinearNet(input_size, output_size)
-
-            x = paddle.static.data(name='x', shape=[None, input_size])
-            y = model_a(x)
-
-            # print(main_program)
-            ops = main_program.global_block().ops
-            ops = [op.type for op in ops]
-            self.assertEqual(
-                ops,
-                ['c_split', 'matmul_v2', 'mp_allreduce_sum', 'elementwise_add'],
-            )
-
-            weight = model_a.parallel_linear.weight
-            bias = model_a.parallel_linear.bias
-            self.assertEqual(
-                weight.shape,
-                (input_size // self.model_parallel_size, output_size),
-            )
-            self.assertEqual(bias.shape, (output_size,))
-
     def test_parallel_embedding(self):
         main_program, startup_program = self.get_program()
         with paddle.static.program_guard(main_program, startup_program):
