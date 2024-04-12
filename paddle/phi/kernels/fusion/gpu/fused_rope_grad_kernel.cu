@@ -34,6 +34,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                          bool use_neox_rotary_style,
                          bool time_major,
                          float rotary_emb_base,
+                         int64_t actual_num_heads,
                          DenseTensor* dq,
                          DenseTensor* dk,
                          DenseTensor* dv) {
@@ -118,10 +119,14 @@ void FusedRopeGradKernel(const Context& dev_ctx,
           ? VectorizedFusedRopeWithRotateEveryTwoKernel<T, MPType, vec_size>
           : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, vec_size>;
 
+  bool has_actual_num_heads = actual_num_heads >= 0;
+  printf("RopeBackward get actual_num_heads=%d\n", actual_num_heads);
   if (is_same_num_heads) {
     int64_t batch_stride =
         time_major ? dout_q.strides()[1] : dout_q.strides()[0];
     int64_t seq_stride = time_major ? dout_q.strides()[0] : dout_q.strides()[1];
+    actual_num_heads =
+        has_actual_num_heads ? actual_num_heads : inputs_num_heads[0];
     kernel_func<<<grid, block, 0, stream>>>(ins_data,
                                             sin_cos_data,
                                             position_ids_data,
@@ -136,7 +141,8 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                                             num_inputs,
                                             div_c,
                                             rotary_emb_base,
-                                            outs_data);
+                                            outs_data,
+                                            actual_num_heads);
 
   } else {
     // rotary position embedding Q
@@ -144,6 +150,8 @@ void FusedRopeGradKernel(const Context& dev_ctx,
         time_major ? dout_q.strides()[1] : dout_q.strides()[0];
     int64_t seq_stride_q =
         time_major ? dout_q.strides()[0] : dout_q.strides()[1];
+    actual_num_heads =
+        has_actual_num_heads ? actual_num_heads : inputs_num_heads[0];
     kernel_func<<<grid, block, 0, stream>>>(ins_data,
                                             sin_cos_data,
                                             position_ids_data,
@@ -158,7 +166,8 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                                             1,
                                             div_c,
                                             rotary_emb_base,
-                                            outs_data);
+                                            outs_data,
+                                            actual_num_heads);
 
     // rotary position embedding K,V
     int64_t batch_stride_kv = time_major
@@ -170,6 +179,8 @@ void FusedRopeGradKernel(const Context& dev_ctx,
 
     phi::Array<const T*, 3> input_kv{ins_data[1], ins_data[2], nullptr};
     phi::Array<T*, 3> out_kv{outs_data[1], outs_data[2], nullptr};
+    actual_num_heads =
+        has_actual_num_heads ? actual_num_heads : inputs_num_heads[1];
     kernel_func<<<grid, block, 0, stream>>>(input_kv,
                                             sin_cos_data,
                                             position_ids_data,
@@ -184,7 +195,8 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                                             num_inputs - 1,
                                             div_c,
                                             rotary_emb_base,
-                                            out_kv);
+                                            out_kv,
+                                            actual_num_heads);
   }
 }
 

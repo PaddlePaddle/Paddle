@@ -34,6 +34,7 @@ void FusedRopeKernel(const Context& dev_ctx,
                      bool use_neox_rotary_style,
                      bool time_major,
                      float rotary_emb_base,
+                     int64_t actual_num_heads,
                      DenseTensor* out_q,
                      DenseTensor* out_k,
                      DenseTensor* out_v) {
@@ -189,9 +190,12 @@ void FusedRopeKernel(const Context& dev_ctx,
           ? VectorizedFusedRopeWithRotateEveryTwoKernel<T, MPType, vec_size>
           : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, vec_size>;
 
+  bool has_actual_num_heads = actual_num_heads >= 0;
   if (is_same_num_heads) {
     int64_t batch_stride = time_major ? q.strides()[1] : q.strides()[0];
     int64_t seq_stride = time_major ? q.strides()[0] : q.strides()[1];
+    actual_num_heads =
+        has_actual_num_heads ? actual_num_heads : inputs_num_heads[0];
     kernel_func<<<grid, block, 0, stream>>>(ins_data,
                                             sin_cos_data,
                                             position_ids_data,
@@ -206,7 +210,8 @@ void FusedRopeKernel(const Context& dev_ctx,
                                             num_inputs,
                                             div_c,
                                             rotary_emb_base,
-                                            outs_data);
+                                            outs_data,
+                                            actual_num_heads);
   } else {
     // Multi Query Attention (MQA) or Group Query Attention (GQA)
     PADDLE_ENFORCE_EQ(
@@ -236,6 +241,8 @@ void FusedRopeKernel(const Context& dev_ctx,
     int64_t batch_stride_q = time_major ? q.strides()[1] : q.strides()[0];
     int64_t seq_stride_q = time_major ? q.strides()[0] : q.strides()[1];
 
+    actual_num_heads =
+        has_actual_num_heads ? actual_num_heads : inputs_num_heads[0];
     kernel_func<<<grid, block, 0, stream>>>(ins_data,
                                             sin_cos_data,
                                             position_ids_data,
@@ -250,7 +257,8 @@ void FusedRopeKernel(const Context& dev_ctx,
                                             1,
                                             div_c,
                                             rotary_emb_base,
-                                            outs_data);
+                                            outs_data,
+                                            actual_num_heads);
 
     // rotary position embedding K,V
     phi::Array<const T*, 3> input_kv{ins_data[1], ins_data[2], nullptr};
@@ -262,6 +270,8 @@ void FusedRopeKernel(const Context& dev_ctx,
                                 ? batch_size * inputs_num_heads[1] * head_dim
                                 : inputs_num_heads[1] * head_dim;
 
+    actual_num_heads =
+        has_actual_num_heads ? actual_num_heads : inputs_num_heads[1];
     kernel_func<<<grid, block, 0, stream>>>(input_kv,
                                             sin_cos_data,
                                             position_ids_data,
@@ -276,7 +286,8 @@ void FusedRopeKernel(const Context& dev_ctx,
                                             num_inputs - 1,
                                             div_c,
                                             rotary_emb_base,
-                                            out_kv);
+                                            out_kv,
+                                            actual_num_heads);
   }
 }
 }  // namespace fusion

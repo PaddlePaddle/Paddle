@@ -20,6 +20,29 @@ namespace phi {
 namespace fusion {
 constexpr int kDefaultRotaryBase = 10000;
 constexpr float Epsilon = 1e-7;
+
+template <typename T, typename MPType, int VecSize = 2>
+__device__ __forceinline__ void norotate(phi::Array<const T*, 3> ins_data,
+                                         int num_inputs,
+                                         int64_t index,
+                                         phi::Array<T*, 3> outs_data) {
+  T store[VecSize];
+  using VecType = phi::AlignedVector<T, VecSize>;
+#pragma unroll
+  for (int iter = 0; iter < 3; iter++) {
+    if (iter >= num_inputs) break;
+    const T* input_v = ins_data[iter] + index;
+    VecType* out = reinterpret_cast<VecType*>(outs_data[iter] + index);
+
+#pragma unroll
+    for (int nx = 0; nx < VecSize; ++nx) {
+      MPType p0 = static_cast<MPType>(input_v[nx]);
+      store[nx] = static_cast<T>(p0);
+    }
+    out[0] = *(reinterpret_cast<VecType*>(store));
+  }
+}
+
 template <typename T, typename MPType, int VecSize>
 using VectorizedFusedRopeCudaKernelFunc =
     void (*)(phi::Array<const T*, 3> ins_data,
@@ -36,7 +59,8 @@ using VectorizedFusedRopeCudaKernelFunc =
              int num_inputs,
              MPType div_c,
              float rotary_emb_base,
-             phi::Array<T*, 3> outs_data);
+             phi::Array<T*, 3> outs_data,
+             int64_t actual_num_heads);
 
 template <typename T, typename MPType, int VecSize = 2>
 __device__ __forceinline__ void get_sin_cos_by_passed_values(
@@ -248,7 +272,8 @@ __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
     int num_inputs,
     MPType div_c,
     float rotary_emb_base,
-    phi::Array<T*, 3> outs_data) {
+    phi::Array<T*, 3> outs_data,
+    int64_t actual_num_heads) {
   int64_t index =
       (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
        threadIdx.x) *
@@ -262,42 +287,56 @@ __global__ void VectorizedFusedRopeWithRotateEveryTwoKernel(
   if (fabs(rotary_emb_base - static_cast<float>(kDefaultRotaryBase)) <
       Epsilon) {
     for (; index < size; index += stride) {
-      VectorizedGetSinCos<T, MPType, VecSize, kDefaultRotaryBase>::run(
-          sin_cos_data,
-          position_ids_data,
-          flag_sin_cos,
-          index,
-          batch_size,
-          seq_len,
-          num_heads,
-          head_dim,
-          batch_stride,
-          seq_stride,
-          div_c,
-          rotary_emb_base,
-          sin_value,
-          cos_value);
-      rotate_every_two<T, MPType, VecSize>(
-          ins_data, num_inputs, index, sign, sin_value, cos_value, outs_data);
+      int64_t head_pos =
+          index / head_dim % num_heads;  // here we need head_dim == head_stride
+      if (head_pos >= actual_num_heads) {
+        // The branch serve for qkvpacked, where the heads of v (maybe also k)
+        // should not be rotated
+        norotate<T, MPType, VecSize>(ins_data, num_inputs, index, outs_data);
+      } else {
+        VectorizedGetSinCos<T, MPType, VecSize, kDefaultRotaryBase>::run(
+            sin_cos_data,
+            position_ids_data,
+            flag_sin_cos,
+            index,
+            batch_size,
+            seq_len,
+            num_heads,
+            head_dim,
+            batch_stride,
+            seq_stride,
+            div_c,
+            rotary_emb_base,
+            sin_value,
+            cos_value);
+        rotate_every_two<T, MPType, VecSize>(
+            ins_data, num_inputs, index, sign, sin_value, cos_value, outs_data);
+      }
     }
   } else {
     for (; index < size; index += stride) {
-      VectorizedGetSinCos<T, MPType, VecSize>::run(sin_cos_data,
-                                                   position_ids_data,
-                                                   flag_sin_cos,
-                                                   index,
-                                                   batch_size,
-                                                   seq_len,
-                                                   num_heads,
-                                                   head_dim,
-                                                   batch_stride,
-                                                   seq_stride,
-                                                   div_c,
-                                                   rotary_emb_base,
-                                                   sin_value,
-                                                   cos_value);
-      rotate_every_two<T, MPType, VecSize>(
-          ins_data, num_inputs, index, sign, sin_value, cos_value, outs_data);
+      int64_t head_pos =
+          index / head_dim % num_heads;  // here we need head_dim == head_stride
+      if (head_pos >= actual_num_heads) {
+        norotate<T, MPType, VecSize>(ins_data, num_inputs, index, outs_data);
+      } else {
+        VectorizedGetSinCos<T, MPType, VecSize>::run(sin_cos_data,
+                                                     position_ids_data,
+                                                     flag_sin_cos,
+                                                     index,
+                                                     batch_size,
+                                                     seq_len,
+                                                     num_heads,
+                                                     head_dim,
+                                                     batch_stride,
+                                                     seq_stride,
+                                                     div_c,
+                                                     rotary_emb_base,
+                                                     sin_value,
+                                                     cos_value);
+        rotate_every_two<T, MPType, VecSize>(
+            ins_data, num_inputs, index, sign, sin_value, cos_value, outs_data);
+      }
     }
   }
 }
@@ -358,7 +397,8 @@ __global__ void VectorizedFusedRopeWithRotateHalfKernel(
     int num_inputs,
     MPType div_c,
     float rotary_emb_base,
-    phi::Array<T*, 3> outs_data) {
+    phi::Array<T*, 3> outs_data,
+    int64_t actual_num_heads) {
   int64_t index =
       (static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.x) +
        threadIdx.x) *
@@ -372,21 +412,56 @@ __global__ void VectorizedFusedRopeWithRotateHalfKernel(
   if (fabs(rotary_emb_base - static_cast<float>(kDefaultRotaryBase)) <
       Epsilon) {
     for (; index < size; index += stride) {
-      VectorizedGetSinCos<T, MPType, VecSize, kDefaultRotaryBase>::run(
-          sin_cos_data,
-          position_ids_data,
-          flag_sin_cos,
-          index,
-          batch_size,
-          seq_len,
-          num_heads,
-          head_dim,
-          batch_stride,
-          seq_stride,
-          div_c,
-          rotary_emb_base,
-          sin_value,
-          cos_value);
+      int64_t head_pos =
+          index / head_dim % num_heads;  // here we need head_dim == head_stride
+      if (head_pos >= actual_num_heads) {
+        norotate<T, MPType, VecSize>(ins_data, num_inputs, index, outs_data);
+      } else {
+        VectorizedGetSinCos<T, MPType, VecSize, kDefaultRotaryBase>::run(
+            sin_cos_data,
+            position_ids_data,
+            flag_sin_cos,
+            index,
+            batch_size,
+            seq_len,
+            num_heads,
+            head_dim,
+            batch_stride,
+            seq_stride,
+            div_c,
+            rotary_emb_base,
+            sin_value,
+            cos_value);
+        rotate_half<T, MPType, VecSize>(ins_data,
+                                        num_inputs,
+                                        head_dim,
+                                        index,
+                                        sign,
+                                        sin_value,
+                                        cos_value,
+                                        outs_data);
+      }
+    }
+  } else {
+    int64_t head_pos =
+        index / head_dim % num_heads;  // here we need head_dim == head_stride
+    if (head_pos >= actual_num_heads) {
+      norotate<T, MPType, VecSize>(ins_data, num_inputs, index, outs_data);
+    } else {
+      VectorizedGetSinCos<T, MPType, VecSize>::run(sin_cos_data,
+                                                   position_ids_data,
+                                                   flag_sin_cos,
+                                                   index,
+                                                   batch_size,
+                                                   seq_len,
+                                                   num_heads,
+                                                   head_dim,
+                                                   batch_stride,
+                                                   seq_stride,
+                                                   div_c,
+                                                   rotary_emb_base,
+                                                   sin_value,
+                                                   cos_value);
       rotate_half<T, MPType, VecSize>(ins_data,
                                       num_inputs,
                                       head_dim,
@@ -396,29 +471,6 @@ __global__ void VectorizedFusedRopeWithRotateHalfKernel(
                                       cos_value,
                                       outs_data);
     }
-  } else {
-    VectorizedGetSinCos<T, MPType, VecSize>::run(sin_cos_data,
-                                                 position_ids_data,
-                                                 flag_sin_cos,
-                                                 index,
-                                                 batch_size,
-                                                 seq_len,
-                                                 num_heads,
-                                                 head_dim,
-                                                 batch_stride,
-                                                 seq_stride,
-                                                 div_c,
-                                                 rotary_emb_base,
-                                                 sin_value,
-                                                 cos_value);
-    rotate_half<T, MPType, VecSize>(ins_data,
-                                    num_inputs,
-                                    head_dim,
-                                    index,
-                                    sign,
-                                    sin_value,
-                                    cos_value,
-                                    outs_data);
   }
 }
 

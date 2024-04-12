@@ -1406,6 +1406,7 @@ void FusedRopeGradInferMeta(const MetaTensor& sin,
                             bool use_neox_rotary_style,
                             bool time_major,
                             float rotary_emb_base,
+                            int64_t actual_num_heads,
                             MetaTensor* dq,
                             MetaTensor* dk,
                             MetaTensor* dv) {
