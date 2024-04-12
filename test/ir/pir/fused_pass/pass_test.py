@@ -31,16 +31,20 @@ class PassTest(unittest.TestCase):
         self.pir_program = None
         self.places = []
         self.skip_accuracy_verification = False
+        self.pass_attr_map = {}
 
     def run_pir_pass(self, program):
         if not isinstance(self.pass_list, list):
             self.pass_list = [self.pass_list]
-
         pm = pir.PassManager(opt_level=4)
         pm.enable_print_statistics()
         pm.enable_ir_printing()
         for pass_name in self.pass_list:
             pm.add_pass(pass_name)
+            for need_set_attr_pass, attr_map in self.pass_attr_map.items():
+                if pass_name == need_set_attr_pass:
+                    for attr_name, attr_v in attr_map.items():
+                        pm.set_not_owned(pass_name, attr_name, attr_v)
         pm.run(program)
         return program
 

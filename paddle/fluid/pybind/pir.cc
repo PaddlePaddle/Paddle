@@ -1948,6 +1948,30 @@ void BindPassManager(pybind11::module *m) {
              }
              return pass_names;
            })
+      .def("set_not_owned",
+           [](PassManager &self,
+              const std::string &pass_name,
+              const std::string &attr_name,
+              py::object &attr) {
+             for (const auto &pass : self.passes()) {
+               if (pass->name() == pass_name) {
+                 if (py::isinstance<py::str>(attr)) {
+                   auto attr_cast =
+                       std::make_shared<std::string>(attr.cast<std::string>());
+                   pass->SetNotOwned(attr_name, &attr_cast);
+                 } else if (py::isinstance<py::bool_>(attr)) {
+                   auto attr_cast = attr.cast<bool>();
+                   pass->SetNotOwned(attr_name, &attr_cast);
+                 } else if (py::isinstance<py::int_>(attr)) {
+                   auto attr_cast = attr.cast<int>();
+                   pass->SetNotOwned(attr_name, &attr_cast);
+                 } else {
+                   PADDLE_THROW(phi::errors::InvalidArgument(
+                       "The type is not supported yed."));
+                 }
+               }
+             }
+           })
       .def("run", [](PassManager &self, Program *p) { self.Run(p); })
       .def("empty", &PassManager::empty)
       .def("clear", &PassManager::clear)
