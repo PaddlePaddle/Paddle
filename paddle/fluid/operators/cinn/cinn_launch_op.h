@@ -78,7 +78,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     // Step 1. Find graph object and prepare input
     PADDLE_ENFORCE_EQ(ctx.HasAttr(kCompilationKey),
                       true,
-                      platform::errors::NotFound(
+                      phi::errors::NotFound(
                           "No Attribute(%s) found for CinnLaunchOp operator.",
                           kCompilationKey));
     const auto& compilation_key = ctx.template Attr<int64_t>(kCompilationKey);

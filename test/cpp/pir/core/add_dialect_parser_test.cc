@@ -87,9 +87,12 @@ pir::Attribute TestParserDialect::ParseAttribute(
     pir::IrParser& parser) {  // NOLINT
   std::string type_name = parser.ConsumeToken().val_;
   std::string parenthesis_token_val = parser.ConsumeToken().val_;
-  IR_ENFORCE(parenthesis_token_val == ")",
-             "The token value of expectation is ), not " +
-                 parenthesis_token_val + "." + parser.GetErrorLocationInfo());
+  PADDLE_ENFORCE_EQ(
+      parenthesis_token_val,
+      ")",
+      phi::errors::InvalidArgument("The token value of expectation is ), not " +
+                                   parenthesis_token_val + "." +
+                                   parser.GetErrorLocationInfo()));
   return CharAttribute::Parse(parser);
 }
 

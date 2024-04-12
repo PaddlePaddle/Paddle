@@ -20,6 +20,7 @@
 #include "paddle/pir/include/core/dll_decl.h"
 #include "paddle/pir/include/core/utils.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_op.h"
+#include "paddle/pir/include/dialect/shape/utils/constraints_manager.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_builder.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 
@@ -40,6 +41,20 @@ class IR_API ShapeConstraintIRAnalysis {
                               const symbol::ShapeOrDataDimExprs& shape_or_data);
 
   symbol::DimExprBuilder DimExprBuilder();
+
+  void AddEqualCstr(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs);
+
+  bool IsEqual(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) const;
+
+  void AddGreatThanOneCstr(const symbol::DimExpr& dim_expr);
+
+  bool IsGreatThanOne(const symbol::DimExpr& dim_expr) const;
+
+  void AddBroadcastableCstr(const symbol::DimExpr& lhs,
+                            const symbol::DimExpr& rhs);
+
+  bool IsBroadcastable(const symbol::DimExpr& lhs,
+                       const symbol::DimExpr& rhs) const;
 
   // Used to debug
   void PrintShapeOrDatas() const;
@@ -77,6 +92,10 @@ class IR_API ShapeConstraintIRAnalysis {
                                     const std::vector<int>& lhs_dim_idxs) const;
 
  private:
+  void SubstituteDimExpr(const symbol::DimExpr& origin,
+                         const symbol::DimExpr& substituted);
+
+ private:
   ModuleOp m_;
 
   int64_t next_sym_idx_ = 0;
@@ -85,6 +104,8 @@ class IR_API ShapeConstraintIRAnalysis {
       value_to_shape_or_data_;
 
   std::vector<symbol::DimExprConstraint> constraints_;
+
+  symbol::ConstraintsManager constraints_manager_;
 };
 
 class IR_API ShapeAnalysisManager {

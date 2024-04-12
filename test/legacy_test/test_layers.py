@@ -2465,6 +2465,28 @@ class TestExcludedLayersSupportBool(unittest.TestCase):
             self.assertTrue(model._linear.weight.dtype == paddle.float32)
 
 
+class TestLayerClearGradientSetToZero(unittest.TestCase):
+    def test_layer_clear_gradient_set_to_zero_true(self):
+        with base.dygraph.guard():
+            net = MyLayer()
+            inputs = paddle.randn([10, 1])
+            outputs = net(inputs)
+            outputs.backward()
+            net.clear_gradients()
+            self.assertTrue(
+                net._linear.weight.grad.numpy() == np.array([[0.0]])
+            )
+
+    def test_layer_clear_gradient_set_to_zero_false(self):
+        with base.dygraph.guard():
+            net = MyLayer()
+            inputs = paddle.randn([10, 1])
+            outputs = net(inputs)
+            outputs.backward()
+            net.clear_gradients(set_to_zero=False)
+            self.assertTrue(net._linear.weight.grad is None)
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

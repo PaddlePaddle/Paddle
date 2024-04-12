@@ -53,7 +53,7 @@ class ChunkEvalOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         inference_dim,
         label_dim,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(Inference)'s shape must be the same as Input(Label)'s "
             "shape, but received [%s] (Inference) vs [%s] (Label).",
             inference_dim,
@@ -65,7 +65,7 @@ class ChunkEvalOp : public framework::OperatorWithKernel {
           (inference_dim.size() == 3 && inference_dim[2] == 1) ||
               inference_dim.size() == 2,
           true,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "when Input(SeqLength) is provided, Input(Inference) "
               "should be of dim 3 (batch_size, bucket, 1) or dim 2 "
               "(batch_size, bucket), but received [%s].",
@@ -73,7 +73,7 @@ class ChunkEvalOp : public framework::OperatorWithKernel {
       auto seq_length_dim = ctx->GetInputDim("SeqLength");
       PADDLE_ENFORCE_LE(seq_length_dim.size(),
                         2,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Input(SeqLength)'s rank should not be greater "
                             "than 2, but received %d.",
                             seq_length_dim.size()));

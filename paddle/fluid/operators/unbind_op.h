@@ -21,7 +21,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
-#include "paddle/fluid/operators/utils.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 
 namespace paddle {

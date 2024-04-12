@@ -23,13 +23,14 @@ void FlattenInferStridedKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                int start_axis UNUSED,
                                int stop_axis UNUSED,
-                               DenseTensor* out) {
+                               DenseTensor* out,
+                               DenseTensor* xshape) {
   ReshapeStridedKernel<Context>(
       dev_ctx,
       x,
       IntArray(common::vectorize<int64_t>(out->dims())),
       out,
-      nullptr);
+      xshape);
 }
 
 template <typename Context>
@@ -38,8 +39,9 @@ void FlattenStridedKernel(const Context& dev_ctx,
                           int start_axis,
                           int stop_axis,
                           DenseTensor* out,
-                          DenseTensor* xshape UNUSED) {
-  FlattenInferStridedKernel<Context>(dev_ctx, x, start_axis, stop_axis, out);
+                          DenseTensor* xshape) {
+  FlattenInferStridedKernel<Context>(
+      dev_ctx, x, start_axis, stop_axis, out, xshape);
 }
 
 }  // namespace phi

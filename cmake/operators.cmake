@@ -126,7 +126,7 @@ function(register_onednn_kernel TARGET)
         "The MKLDNN kernel file of ${TARGET} should contains at least one *.*_onednn_op.cc file"
     )
   endif()
-  if(WITH_MKLDNN)
+  if(WITH_ONEDNN)
     cc_library(
       ${TARGET}
       SRCS ${onednn_cc_srcs}
@@ -237,7 +237,7 @@ function(op_library TARGET)
         list(APPEND miopen_cu_srcs ${MIOPEN_FILE}.cu)
       endif()
     endif()
-    if(WITH_MKLDNN)
+    if(WITH_ONEDNN)
       string(REPLACE "_op" "_onednn_op" MKLDNN_FILE "${TARGET}")
       if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/onednn/${MKLDNN_FILE}.cc)
         list(APPEND onednn_cc_srcs onednn/${MKLDNN_FILE}.cc)
@@ -275,7 +275,7 @@ function(op_library TARGET)
         list(APPEND cudnn_cu_cc_srcs ${src})
       elseif(WITH_GPU AND ${src} MATCHES ".*\\.cu.cc$")
         list(APPEND cu_cc_srcs ${src})
-      elseif(WITH_MKLDNN AND ${src} MATCHES ".*_onednn_op.cc$")
+      elseif(WITH_ONEDNN AND ${src} MATCHES ".*_onednn_op.cc$")
         list(APPEND onednn_cc_srcs ${src})
       elseif(WITH_XPU AND ${src} MATCHES ".*_op_xpu.cc$")
         list(APPEND xpu_cc_srcs ${src})
@@ -610,7 +610,7 @@ function(op_library TARGET)
   endif()
 
   # pybind USE_OP_DEVICE_KERNEL for MKLDNN
-  if(WITH_MKLDNN AND ${onednn_cc_srcs_len} GREATER 0)
+  if(WITH_ONEDNN AND ${onednn_cc_srcs_len} GREATER 0)
     # Append first implemented MKLDNN activation operator
     if(${MKLDNN_FILE} STREQUAL "activation_onednn_op")
       file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(softplus, MKLDNN);\n")

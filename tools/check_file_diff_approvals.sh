@@ -223,10 +223,10 @@ for API_FILE in ${API_FILES[*]}; do
             echo_line="You must be approved by Aurelius84(zhangliujie) or cxxly(chenxiaoxu) or xiaoguoguo626807(wangruting) or changeyoung98(chenzhiyang) for python/paddle/autograd/ir_backward.py or python/paddle/autograd/backward_utils.py changes.\n"
             check_approval 1 Aurelius84 cxxly xiaoguoguo626807 changeyoung98
       elif [ "${API_FILE}" == "paddle/scripts/paddle_build.sh" ]; then
-	      echo_line="You must have one RD (tianshuo78520a or risemeup1 or zhangbo9674 or XieYunshen) for ${API_FILE} changes, which manages the Paddle CI on Linux.\n "
+            echo_line="You must have one RD (tianshuo78520a or risemeup1 or zhangbo9674 or XieYunshen) for ${API_FILE} changes, which manages the Paddle CI on Linux.\n "
             check_approval 1 tianshuo78520a risemeup1 zhangbo9674 XieYunshen
       elif [ "${API_FILE}" == "paddle/phi/infermeta/spmd_rules" ]; then
-	      echo_line="You must have one RD (liuzhenhai(liuzhenhai93) or liyurui(LiYuRio) or shenliang03(ForFishes) or zhangyichen03(pkuzyc) or chenqiuliang(zhiqiu)) approval for changing ${API_FILE} , which manages the code for spmd_rules.\n"
+            echo_line="You must have one RD (liuzhenhai(liuzhenhai93) or liyurui(LiYuRio) or shenliang03(ForFishes) or zhangyichen03(pkuzyc) or chenqiuliang(zhiqiu)) approval for changing ${API_FILE} , which manages the code for spmd_rules.\n"
             check_approval 1 liuzhenhai93 LiYuRio ForFishes pkuzyc zhiqiu
       else
           echo_line="You must have one RD (XiaoguangHu01,chenwhql,zhiqiu,Xreki,luotao1,qili93,Aurelius84) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
@@ -284,19 +284,19 @@ HAS_UNITTEST_SKIP=`git diff -U0 upstream/$BRANCH ${NO_NPU_FILE} | grep "^+[[:spa
 if [ "${HAS_UNITTEST_SKIP}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="Unittest is not allowed to be disabled.\nYou must have one RD (kolinwei(Recommend), wanghuancoder, luotao1, QingshuChen, qili93 or ZzSean or Aurelius84) approval for the usage of @unittest.skip or @unittest.skipIf.\n${HAS_UNITTEST_SKIP}\n"
     check_approval 1 kolinwei wanghuancoder luotao1 QingshuChen qili93 ZzSean Aurelius84
-  fi
+fi
 
 HAS_MODIFIED_DEMO_CMAKE=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/inference/api/demo_ci/CMakeLists.txt" || true`
 if [ "${HAS_MODIFIED_DEMO_CMAKE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD (yuanlehome (Recommend), vivienfanghuagood or Aurelius84) approval for paddle/fluid/inference/api/demo_ci/CMakeLists.txt.\nwhich manages the compilation parameter of inference demo\n"
     check_approval 1 Superjomn Shixiaowei02 luotao1 Aurelius84
-  fi
+fi
 
 HAS_MODIFIED_DECLARATIONS=`git diff -U0 upstream/$BRANCH |grep "^+" |grep "paddle/phi/kernels/declarations.h" || true`
 if [ "${HAS_MODIFIED_DECLARATIONS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must be approved by chenwhql or zyfncg for paddle/phi/kernels/declarations.h using. Thanks!\n"
     check_approval 1 chenwhql zyfncg
-  fi
+fi
 
 HAS_USED_CCTESTOLD=`git diff -U0 upstream/$BRANCH |grep "cc_test_old" || true`
 if [ "${HAS_USED_CCTESTOLD}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
@@ -444,7 +444,7 @@ if [ "${ENABLE_TO_STATIC_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 SigureMo Aurelius84 2742195759
 fi
 
-HAS_MODIFIED_DY2ST_TEST_FILES=$(git diff --name-only upstream/$BRANCH | grep "test/dygraph_to_static/test_" || true)
+HAS_MODIFIED_DY2ST_TEST_FILES=$(git diff --name-only --diff-filter=ACMR upstream/$BRANCH | grep "test/dygraph_to_static/test_" || true)
 if [ "${HAS_MODIFIED_DY2ST_TEST_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     error_lines=`python ${PADDLE_ROOT}/test/dygraph_to_static/check_approval.py ${HAS_MODIFIED_DY2ST_TEST_FILES}`
     if [ $? -ne 0 ]; then
@@ -525,7 +525,7 @@ for CHANGE_FILE in ${ALL_CHANGE_FILES}; do
     fi
 done
 if [ "${ALL_OPTEST_BAN_DYGRAPH_MESSAGE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-  echo_line="Developers are not allowed to set the check_dygraph field directly, which is set to True by default. If you need to change the check_dygraph field, you must have one RD (phlrain (Recommend), fuyinno4, QingshuChen (Recommend for kunlun) or lanxianghit) review and approve. \nThe code that do not meet the specification are as follows:\n${ALL_OPTEST_BAN_DYGRAPH_MESSAGE}\n"
+    echo_line="Developers are not allowed to set the check_dygraph field directly, which is set to True by default. If you need to change the check_dygraph field, you must have one RD (phlrain (Recommend), fuyinno4, QingshuChen (Recommend for kunlun) or lanxianghit) review and approve. \nThe code that do not meet the specification are as follows:\n${ALL_OPTEST_BAN_DYGRAPH_MESSAGE}\n"
     check_approval 1 phlrain fuyinno4 QingshuChen lanxianghit
 fi
 
@@ -538,7 +538,7 @@ for CHANGE_FILE in ${ALL_CHANGE_YAML_FILES}; do
     fi
 done
 if [ "${BAN_COMP_MESSAGE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-  echo_line="If you need to change the key composite, you must have one RD (Charles-hit(wanghao), cyber-pioneer(chenzhuo), cxxly(chenxiaoxu)) review and approve. \nThe code that do not meet the specification are as follows:\n${BAN_COMP_MESSAGE}\n"
+    echo_line="If you need to change the key composite, you must have one RD (Charles-hit(wanghao), cyber-pioneer(chenzhuo), cxxly(chenxiaoxu)) review and approve. \nThe code that do not meet the specification are as follows:\n${BAN_COMP_MESSAGE}\n"
     check_approval 1 Charles-hit cyber-pioneer cxxly
 fi
 
@@ -657,14 +657,14 @@ wget https://sys-p0.bj.bcebos.com/blk/block.txt --no-check-certificate --no-prox
 wget https://sys-p0.bj.bcebos.com/bk-ci/bk.txt --no-check-certificate --no-proxy
 HASUTFIXED=`python ${PADDLE_ROOT}/tools/check_ut.py | grep "has unit-test to be fixed" || true`
 if [ "${HASUTFIXED}" != "" ]; then
-  echo_line="${HASUTFIXED} You must have one RD (chalsliu (Recommend) or kolinwei) approval.\n"
-  check_approval 1 chalsliu kolinwei
+    echo_line="${HASUTFIXED} You must have one RD (chalsliu (Recommend) or kolinwei) approval.\n"
+    check_approval 1 chalsliu kolinwei
 fi
 
 HASUTFIXED=`python ${PADDLE_ROOT}/tools/check_ut.py | grep "has benchmark issue to be fixed" || true`
 if [ "${HASUTFIXED}" != "" ]; then
     echo_line="${HASUTFIXED} You must have one RD (hysunflower or xiegegege or Xreki) approval.\n"
-  check_approval 1 hysunflower xiegegege Xreki
+    check_approval 1 hysunflower xiegegege Xreki
 fi
 
 # NOTE(Avin0323): Files with the name "unity_build_rule.cmake" are rules used

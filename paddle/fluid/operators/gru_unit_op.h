@@ -46,7 +46,7 @@ class GRUUnitKernel : public framework::OpKernel<T> {
       else
         ReluCUDAFunctor<T>()(d, x, y);
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported activation type, only supports identity, sigmoid, tanh "
           "and relu."));
     }
@@ -169,7 +169,7 @@ class GRUUnitGradKernel : public framework::OpKernel<T> {
     else if (act_type == relu)
       ReluGradFunctor<T>()(d, x, y, dy, dx);
     else
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported activation type, only supports identity, sigmoid, tanh "
           "and relu."));
   }
