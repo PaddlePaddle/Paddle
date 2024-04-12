@@ -71,8 +71,7 @@ inline std::vector<fusion::PatternNodePtr<T>> ClusterOps(
   auto policy_manager =
       fusion::PolicyManager<T>({relative_judge_policy, general_topo_policy});
 
-  auto topo_manager =
-      fusion::PolicyManager<T>({relative_judge_policy, general_topo_policy});
+  auto topo_manager = fusion::PolicyManager<T>({general_topo_policy});
 
   VLOG(4) << "Start Create PatternGraph";
   fusion::PatternGraph<T> graph(
