@@ -69,7 +69,11 @@ Expr Optimize(Expr e,
   // TransBufferWithDynamicShape(&copied);
 #endif
 
+  std::cout << "before optim " << copied << std::endl;
+
   SimplifyBlocks(&copied);
+
+  std::cout << "after optim " << copied << std::endl;
   VLOG(4) << "After SimplifyBlocks:" << copied;
 
   MapExternCall(&copied, target);
@@ -93,6 +97,7 @@ Expr Optimize(Expr e,
 
 ir::Module Optimize(const ir::Module& module, const Target& target) {
   auto copied = ir::ir_utils::IRCopy(Expr(module));
+
   ReplaceCrossThreadReduction(&copied);
   UnrollLoop(&copied);
   VectorizeLoops(&copied, Target());
@@ -106,6 +111,7 @@ ir::Module Optimize(const ir::Module& module, const Target& target) {
   LowerIntrin(&copied, target);
   VLOG(10) << "After LowerIntrin:" << copied.as_module_ref();
 
+  // std::cerr << "after optim " << copied.as_module_ref() << std::endl;
   return copied.as_module_ref();
 }
 
