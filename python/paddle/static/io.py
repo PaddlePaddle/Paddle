@@ -23,6 +23,7 @@ import warnings
 import numpy as np
 
 import paddle
+from paddle import pir
 from paddle.base import (
     CompiledProgram,
     Program,
@@ -36,6 +37,7 @@ from paddle.base.executor import Executor, global_scope
 from paddle.base.framework import (
     Parameter,
     dygraph_not_support,
+    in_pir_mode,
     process_type_promotion,
     static_only,
 )
@@ -75,7 +77,7 @@ def _check_args(caller, args, supported_args=None, deprecated_args=None):
 def _check_vars(name, var_list):
     if not isinstance(var_list, list):
         var_list = [var_list]
-    if not all(isinstance(var, Variable) for var in var_list):
+    if not all(isinstance(var, (Variable, pir.Value)) for var in var_list):
         raise ValueError(
             f"'{name}' should be a Variable or a list of Variable."
         )
@@ -109,7 +111,7 @@ def _get_valid_program(program=None):
         warnings.warn(
             "The input is a CompiledProgram, this is not recommended."
         )
-    if not isinstance(program, Program):
+    if not isinstance(program, (Program, paddle.pir.Program)):
         raise TypeError(
             "The type of input program is invalid, expected type is base.Program, but received %s"
             % type(program)
@@ -189,6 +191,100 @@ def append_fetch_ops(
             outputs={'Out': [fetch_var]},
             attrs={'col': i},
         )
+
+
+def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
+    """
+
+    Normalize/Optimize a program according to feed_vars and fetch_vars.
+
+    Args:
+        program(Program): Specify a program you want to optimize.
+        feed_vars(Tensor | list[Tensor]): Values needed by inference.
+        fetch_vars(Tensor | list[Tensor]): Values returned by inference.
+        kwargs: Supported keys including ``skip_prune_program``.
+            - skip_prune_program(bool): whether to skip pruning program. Defaults to False.
+
+    Returns:
+        Program: Normalized/Optimized program.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> paddle.enable_static()
+
+            >>> path_prefix = "./infer_model"
+
+            # User defined network, here a softmax regression example
+            >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
+            >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
+            >>> predict = paddle.static.nn.fc(image, 10, activation='softmax')
+
+            >>> loss = paddle.nn.functional.cross_entropy(predict, label)
+
+            >>> exe = paddle.static.Executor(paddle.CPUPlace())
+            >>> exe.run(paddle.static.default_startup_program())
+
+            # normalize main program.
+            >>> program = paddle.static.default_main_program()
+            >>> normalized_program = paddle.static.normalize_program(program, [image], [predict])
+
+    """
+    if not isinstance(program, pir.Program):
+        raise TypeError(
+            "program type must be `paddle.pir.Program`, but received `%s`"
+            % type(program)
+        )
+    if not isinstance(feed_vars, list):
+        feed_vars = [feed_vars]
+    if not all(isinstance(v, pir.Value) for v in feed_vars):
+        raise TypeError("feed_vars type must be a Value or a list of Variable.")
+    if not isinstance(fetch_vars, list):
+        fetch_vars = [fetch_vars]
+    if not all(isinstance(v, pir.Value) for v in fetch_vars):
+        raise TypeError(
+            "fetch_vars type must be a Value or a list of Variable."
+        )
+
+    # TODO(Ruting) remind users to set auc_states to 0 if auc op were found.
+
+    # fix the bug that the activation op's output as target will be pruned.
+    # will affect the inference performance.
+    # TODO(Superjomn) add an IR pass to remove 1-scale op.
+    with paddle.static.program_guard(program):
+        uniq_fetch_vars = []
+        for i, var in enumerate(fetch_vars):
+            if var.dtype != paddle.bool:
+                var = paddle.scale(var, 1.0, name=f"save_infer_model/scale_{i}")
+            uniq_fetch_vars.append(var)
+        fetch_vars = uniq_fetch_vars
+
+    # serialize program
+    copy_program = program.clone()
+    global_block = copy_program.global_block()
+    remove_ops = []
+    for op in global_block.ops:
+        if op.name() == "pd_op.feed" or op.name() == "pd_op.fetch":
+            remove_ops.append(op)
+
+    for op in remove_ops:
+        global_block.remove_op(op)
+
+    # feed_var_names = [var.name for var in feed_vars]
+
+    # skip_prune_program = kwargs.get('skip_prune_program', False)
+    # if not skip_prune_program:
+    #     copy_program = copy_program._prune_with_input(
+    #         feeded_var_names=feed_var_names, targets=fetch_vars
+    #     )
+    # copy_program = copy_program._inference_optimize(prune_read_op=True)
+    # fetch_var_names = [var.name for var in fetch_vars]
+    # prepend_feed_ops(copy_program, feed_var_names)
+    # append_fetch_ops(copy_program, fetch_var_names)
+
+    return copy_program
 
 
 def normalize_program(program, feed_vars, fetch_vars, **kwargs):
@@ -578,7 +674,12 @@ def save_inference_model(
     except OSError as e:
         if e.errno != errno.EEXIST:
             raise
-    model_path = path_prefix + ".pdmodel"
+
+    if in_pir_mode():
+        model_path = path_prefix + ".json"
+    else:
+        model_path = path_prefix + ".pdmodel"
+
     params_path = path_prefix + ".pdiparams"
     if os.path.isdir(model_path):
         raise ValueError(f"'{model_path}' is an existing directory.")
@@ -596,39 +697,45 @@ def save_inference_model(
     program = process_type_promotion(program)
 
     clip_extra = kwargs.get('clip_extra', True)
-    program = normalize_program(
-        program,
-        feed_vars,
-        fetch_vars,
-        skip_prune_program=kwargs.get('skip_prune_program', False),
-    )
-
     # serialize and save program
-    legacy_format = kwargs.get('legacy_format', False)
-    program_bytes = _serialize_program(
-        program._remove_training_info(clip_extra=clip_extra),
-        legacy_format=legacy_format,
-    )
 
-    save_to_file(model_path, program_bytes)
-
-    vars = list(filter(is_persistable, program.list_vars()))
-
-    if len(list(vars)) == 0:
-        warnings.warn(
-            "no variable in your model, please ensure there are any variables in your model to save"
+    if in_pir_mode():
+        program = normalize_pir_program(
+            program,
+            feed_vars,
+            fetch_vars,
+            skip_prune_program=kwargs.get('skip_prune_program', False),
+        )
+        paddle.core.serialize_pir_program(
+            program, model_path, 1, True, False, True
         )
 
-    if len(vars) > 0:
-        save_dirname = os.path.dirname(params_path)
-        params_filename = os.path.basename(params_path)
-        save_vars(
-            executor,
-            dirname=save_dirname,
-            main_program=program,
-            predicate=is_persistable,
-            filename=params_filename,
+    else:
+        legacy_format = kwargs.get('legacy_format', False)
+        program_bytes = _serialize_program(
+            program._remove_training_info(clip_extra=clip_extra),
+            legacy_format=legacy_format,
         )
+
+        save_to_file(model_path, program_bytes)
+
+        vars = list(filter(is_persistable, program.list_vars()))
+
+        if len(list(vars)) == 0:
+            warnings.warn(
+                "no variable in your model, please ensure there are any variables in your model to save"
+            )
+
+        if len(vars) > 0:
+            save_dirname = os.path.dirname(params_path)
+            params_filename = os.path.basename(params_path)
+            save_vars(
+                executor,
+                dirname=save_dirname,
+                main_program=program,
+                predicate=is_persistable,
+                filename=params_filename,
+            )
 
 
 @static_only
@@ -905,12 +1012,17 @@ def load_inference_model(path_prefix, executor, **kwargs):
             raise ValueError(
                 "params_filename cannot be None when path_prefix is None."
             )
-        program_bytes = model_filename
-        # deserialize bytes to program
-        program = deserialize_program(program_bytes)
 
-        # do type promotion
-        program = process_type_promotion(program)
+        # deserialize bytes to program
+        if in_pir_mode():
+            program = paddle.static.Program()
+            paddle.base.core.deserialize_pir_program(model_filename, program, 1)
+        else:
+            program_bytes = model_filename
+            program = deserialize_program(program_bytes)
+
+            # do type promotion
+            program = process_type_promotion(program)
 
         vars = list(filter(is_persistable, program.list_vars()))
         if len(vars) > 0:
@@ -932,7 +1044,10 @@ def load_inference_model(path_prefix, executor, **kwargs):
         # set model_path and params_path in new way,
         # path_prefix represents a file path without suffix in this case.
         if not kwargs:
-            model_path = path_prefix + ".pdmodel"
+            if in_pir_mode():
+                model_path = path_prefix + ".json"
+            else:
+                model_path = path_prefix + ".pdmodel"
             params_path = path_prefix + ".pdiparams"
         # set model_path and params_path in old way for compatible,
         # path_prefix represents a directory path.
@@ -943,9 +1058,14 @@ def load_inference_model(path_prefix, executor, **kwargs):
             if model_filename is None:
                 model_path = os.path.join(path_prefix, "__model__")
             else:
-                model_path = os.path.join(
-                    path_prefix, model_filename + ".pdmodel"
-                )
+                if in_pir_mode():
+                    model_path = os.path.join(
+                        path_prefix, model_filename + ".json"
+                    )
+                else:
+                    model_path = os.path.join(
+                        path_prefix, model_filename + ".pdmodel"
+                    )
                 if not os.path.exists(model_path):
                     model_path = os.path.join(path_prefix, model_filename)
             # set params_path
@@ -962,13 +1082,16 @@ def load_inference_model(path_prefix, executor, **kwargs):
                 f" model path: {model_path}, params path: {params_path}"
             )
 
-        program_bytes = load_from_file(model_path)
-
         # deserialize bytes to program
-        program = deserialize_program(program_bytes)
+        if in_pir_mode():
+            program = paddle.static.Program()
+            paddle.base.core.deserialize_pir_program(model_path, program, 1)
+        else:
+            program_bytes = load_from_file(model_path)
+            program = deserialize_program(program_bytes)
 
-        # do type promotion
-        program = process_type_promotion(program)
+            # do type promotion
+            program = process_type_promotion(program)
 
         vars = list(filter(is_persistable, program.list_vars()))
         if len(vars) > 0:

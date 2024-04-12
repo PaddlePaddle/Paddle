@@ -58,4 +58,6 @@ make sure all the key mutually exclusive */
 // type/attr's contents which is json::array.
 #define DATA "data"
 
+// NULL_TYPE
+#define NULL_TYPE "NULL"
 }  // namespace pir
