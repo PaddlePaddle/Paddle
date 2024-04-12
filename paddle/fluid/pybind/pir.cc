@@ -1943,19 +1943,18 @@ void BindPassManager(pybind11::module *m) {
              auto pass = pir::PassRegistry::Instance().Get(pass_name);
              for (const auto &attr : attrs) {
                if (py::isinstance<py::str>(attr.second)) {
-                 pass->Set<std::string>(
-                     attr.first,
-                     new std::string(attr.second.cast<std::string>()));
+                 pass->Set(attr.first,
+                           new std::string(attr.second.cast<std::string>()));
                } else if (py::isinstance<py::bool_>(attr.second)) {
-                 pass->Set<bool>(attr.first,
-                                 new bool(attr.second.cast<bool>()));
+                 pass->Set(attr.first, new bool(attr.second.cast<bool>()));
                } else if (py::isinstance<py::int_>(attr.second)) {
-                 pass->Set<int>(attr.first, new int(attr.second.cast<int>()));
+                 pass->Set(attr.first, new int(attr.second.cast<int>()));
+               } else if (py::isinstance<py::float_>(attr.second)) {
+                 pass->Set(attr.first, new float(attr.second.cast<float>()));
                } else {
                  PADDLE_THROW(phi::errors::InvalidArgument(
-                     "The type is not supported yed."));
+                     "The pass attr is not supported this type."));
                }
-               pass->Set(attr.first, &attr.second);
              }
              self.AddPass(std::move(pass));
            })
