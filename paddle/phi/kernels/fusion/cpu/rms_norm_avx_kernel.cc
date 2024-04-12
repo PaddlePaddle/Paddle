@@ -15,14 +15,9 @@
 #include <immintrin.h>
 #include <math.h>
 #include <omp.h>
-#include <stdio.h>
-#include <string.h>
-
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
-
-#include "glog/logging.h"
 
 namespace phi {
 namespace fusion {
@@ -137,10 +132,9 @@ void RmsNormAvxKernel(const Context& dev_ctx,
       }
 
       // vy = vx * vvar * vw + vb
-      __m512 vy;
       vx = _mm512_mul_ps(vx, vvar);
       vx = _mm512_mul_ps(vx, vw);
-      vy = _mm512_add_ps(vx, vb);
+      __m512 vy = _mm512_add_ps(vx, vb);
       _mm512_storeu_ps(py + col, vy);
     }
     if (col < size) {
@@ -159,10 +153,9 @@ void RmsNormAvxKernel(const Context& dev_ctx,
         vb = _mm512_maskz_loadu_ps(mask, norm_bias_data + col);
       }
       // vx * vvar * vw + vb
-      __m512 vy;
       vx = _mm512_mask_mul_ps(vx, mask, vx, vvar);
       vx = _mm512_mask_mul_ps(vx, mask, vx, vw);
-      vy = _mm512_mask_add_ps(vy, mask, vx, vb);
+      __m512 vy = _mm512_mask_add_ps(vx, mask, vx, vb);
       _mm512_mask_storeu_ps(py + col, mask, vy);
     }
   }  // end for rows
