@@ -151,7 +151,7 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
     float eta = context.Attr<float>("eta");
     PADDLE_ENFORCE_GE(eta,
                       1.,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Not support adaptive NMS. The attribute 'eta' "
                           "should not less than 1. But received eta=[%d]",
                           eta));

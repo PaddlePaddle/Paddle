@@ -34,7 +34,7 @@ class ProximalGDOp : public framework::OperatorWithKernel {
     auto param_dim = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(param_dim,
                       ctx->GetInputDim("Grad"),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The shape of Intput(Param) should be equal to the "
                           "Input(Grad) of ProximalGD Op. But received "
                           "Input(Param).dimensions=[%s], "
@@ -46,7 +46,7 @@ class ProximalGDOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         common::product(lr_dim),
         1,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Learning Rate should be a scalar. But received dimensions:[%s]",
             lr_dim));
 

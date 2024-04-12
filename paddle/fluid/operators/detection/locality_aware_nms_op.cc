@@ -39,20 +39,20 @@ class LocalityAwareNMSOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           score_size,
           3,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The rank of Input(Scores) must be 3. But received %d.",
               score_size));
       PADDLE_ENFORCE_EQ(
           box_dims.size(),
           3,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The rank of Input(BBoxes) must be 3. But received %d.",
               box_dims.size()));
       PADDLE_ENFORCE_EQ(
           box_dims[2] == 4 || box_dims[2] == 8 || box_dims[2] == 16 ||
               box_dims[2] == 24 || box_dims[2] == 32,
           true,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The last dimension of Input(BBoxes) must be 4 or 8, "
               "represents the layout of coordinate "
               "[xmin, ymin, xmax, ymax] or "
@@ -65,7 +65,7 @@ class LocalityAwareNMSOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           box_dims[1],
           score_dims[2],
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The 2nd dimension of Input(BBoxes) must be equal to "
               "last dimension of Input(Scores), which represents the "
               "predicted bboxes. But received the 2nd dimension of "

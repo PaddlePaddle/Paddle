@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -26,10 +26,9 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(
-        platform::is_xpu_place(place),
-        true,
-        platform::errors::PreconditionNotMet("It must use XPUPlace."));
+    PADDLE_ENFORCE_EQ(platform::is_xpu_place(place),
+                      true,
+                      phi::errors::PreconditionNotMet("It must use XPUPlace."));
 
     bool is_nchw = (ctx.Attr<std::string>("data_format") == "NCHW");
     // input x
@@ -188,10 +187,9 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(
-        platform::is_xpu_place(place),
-        true,
-        platform::errors::PreconditionNotMet("It must use XPUPlace."));
+    PADDLE_ENFORCE_EQ(platform::is_xpu_place(place),
+                      true,
+                      phi::errors::PreconditionNotMet("It must use XPUPlace."));
 
     bool is_nchw = (ctx.Attr<std::string>("data_format") == "NCHW");
     const phi::DenseTensor *y_grad =
@@ -365,11 +363,11 @@ PD_REGISTER_STRUCT_KERNEL(resnet_unit,
                           XPU,
                           ALL_LAYOUT,
                           ops::ResNetUnitXPUKernel,
-                          plat::float16,
+                          phi::dtype::float16,
                           float) {}
 PD_REGISTER_STRUCT_KERNEL(resnet_unit_grad,
                           XPU,
                           ALL_LAYOUT,
                           ops::ResNetUnitGradXPUKernel,
-                          plat::float16,
+                          phi::dtype::float16,
                           float) {}
