@@ -68,9 +68,20 @@ class DistDenseTensorType
   static DistDenseTensorType get(pir::IrContext* ctx,
                                  pir::DenseTensorType dense_tensor_type,
                                  TensorDistAttribute tensor_dist_attr) {
+    if (!dense_tensor_type) return nullptr;
     auto local_ddim =
         InferLocalDDim(dense_tensor_type.dims(), tensor_dist_attr);
     return get(ctx, dense_tensor_type, tensor_dist_attr, local_ddim);
+  }
+
+  // return the replicated dist dense tensor type.
+  static DistDenseTensorType get(pir::IrContext* ctx,
+                                 pir::DenseTensorType dense_tensor_type,
+                                 ProcessMeshAttribute process_mesh_attr) {
+    auto& ddim = dense_tensor_type.dims();
+    auto attr = TensorDistAttribute::get(
+        ctx, process_mesh_attr, std::vector<int64_t>(ddim.size(), -1));
+    return get(ctx, dense_tensor_type, attr, ddim);
   }
 };
 

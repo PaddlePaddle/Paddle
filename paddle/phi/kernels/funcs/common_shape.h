@@ -52,7 +52,6 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
           "Axis should be less than or equal to %d, but received axis is %d.",
           max_dim,
           axis));
-
   if (x_dims.size() > y_dims.size()) {
     std::fill(y_dims_array, y_dims_array + axis, 1);
     if (axis + y_dims.size() < max_dim) {
@@ -68,7 +67,6 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
     std::copy(x_dims.Get(), x_dims.Get() + x_dims.size(), x_dims_array + axis);
     std::copy(y_dims.Get(), y_dims.Get() + y_dims.size(), y_dims_array);
   }
-
   for (int i = 0; i < max_dim; ++i) {
     PADDLE_ENFORCE_EQ(
         x_dims_array[i] == y_dims_array[i] || x_dims_array[i] <= 1 ||

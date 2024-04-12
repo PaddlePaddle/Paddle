@@ -35,8 +35,6 @@ if (WITH_PSCORE)
     add_subdirectory(pscore)
 endif()
 
-add_subdirectory(amp)
-
 add_subdirectory(reader)
 
 if (NOT WIN32)

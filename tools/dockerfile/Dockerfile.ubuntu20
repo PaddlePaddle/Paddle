@@ -173,9 +173,8 @@ RUN wget -q https://paddle-ci.gz.bcebos.com/ccache-4.8.2.tar.gz && \
     ln -s /usr/local/ccache-4.8.2/bin/ccache /usr/local/bin/ccache && \
     cd ../../ && rm -rf ccache-4.8.2.tar.gz
 
-# clang+llvm 3.8.0
-RUN wget https://paddle-ci.cdn.bcebos.com/clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz && \ 
-    tar xf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz && cd clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04 && \
-    cp -rn * /usr/local && cd .. && rm -rf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04 && rm -rf clang+llvm-3.8.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz 
+# clang12
+RUN apt-get update &&\
+    apt install -y clang-12
 
 EXPOSE 22

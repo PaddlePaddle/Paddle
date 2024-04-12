@@ -477,9 +477,7 @@ def gaussian(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
         dtype = paddle.framework.get_default_dtype()
         if dtype not in supported_dtypes:
             raise TypeError(
-                "{} only supports {}, but the default dtype is {}".format(
-                    op_type_for_check, supported_dtypes, dtype
-                )
+                f"{op_type_for_check} only supports {supported_dtypes}, but the default dtype is {dtype}"
             )
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
@@ -909,9 +907,7 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
         dtype = paddle.framework.get_default_dtype()
         if dtype not in supported_dtypes:
             raise TypeError(
-                "uniform/rand only supports {}, but the default dtype is {}".format(
-                    supported_dtypes, dtype
-                )
+                f"uniform/rand only supports {supported_dtypes}, but the default dtype is {dtype}"
             )
 
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):

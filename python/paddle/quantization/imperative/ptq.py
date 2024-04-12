@@ -287,9 +287,7 @@ class ImperativePTQ:
             sub_layer._set_op_attrs({"out_threshold": output_thresholds[0]})
         else:
             _logger.warning(
-                "output_thresholds shape of {} need to be 1, but received {}".format(
-                    output_names[0], len(output_thresholds)
-                )
+                f"output_thresholds shape of {output_names[0]} need to be 1, but received {len(output_thresholds)}"
             )
 
     def _wrap_simulated_layers(self, model):
