@@ -34,9 +34,7 @@ class PassRegistry {
   }
 
   void Insert(const std::string &pass_type, const PassCreator &pass_creator) {
-    // FIXME(Aurelius84): Shape Analysis related logic shall be remove into
-    //  libpir.so to avoid initializing global symbol variable twice!
-    PADDLE_ENFORCE_NE(Has(pass_type) && pass_type != "shape_optimization_pass",
+    PADDLE_ENFORCE_NE(Has(pass_type),
                       true,
                       phi::errors::InvalidArgument(
                           "Pass %s has been registered.", pass_type));
