@@ -942,7 +942,13 @@ bool AnalysisPredictor::PrepareExecutor() {
         // gpu
         if (!config_.custom_pass_only_) {
           for (const auto &gpu_pass : kPirGpuPasses) {
-            pass_pm.AddPass(pir::PassRegistry::Instance().Get(gpu_pass));
+            auto pass = pir::PassRegistry::Instance().Get(gpu_pass);
+            if(pass->name() == "fc_fuse_pass"){
+              pass->Set("use_cutlass", new bool(config_.use_cutlass_));
+              if(pass->Get<bool>("use_cutlass"))
+                printf("pass->Get<bool>(use_cutlass)");
+            }
+            pass_pm.AddPass(std::move(pass));
           }
         }
 

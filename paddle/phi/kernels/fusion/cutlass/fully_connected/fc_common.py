@@ -69,12 +69,13 @@ CommonCutlassFcKernelExecute = '''
 
     /// CommonCutlassFcKernelExecute
     DeviceKernalName device_gemm;
-    size_t workspace_size = DeviceKernalName::get_workspace_size(arguments);
-    cutlass::device_memory::allocation<uint8_t> workspace(workspace_size);
+    // size_t workspace_size = DeviceKernalName::get_workspace_size(arguments);
+    // cutlass::device_memory::allocation<uint8_t> workspace(workspace_size);
 
     cutlass::Status status = device_gemm.can_implement(arguments);
     CUTLASS_CHECK(status);
-    status = device_gemm.initialize(arguments, workspace.get());
+    // status = device_gemm.initialize(arguments, workspace.get());
+    status = device_gemm.initialize(arguments, params.workspace);
     CUTLASS_CHECK(status);
     status = device_gemm();
     CUTLASS_CHECK(status);
@@ -115,7 +116,6 @@ void ${func_name}(FcAllParams params) {
 
   map_problem_${func_name}[problem_size] = best_config_index;
   ${func_name}_all_func[best_config_index](params);
-  printf("${func_name}_%d\\n", best_config_index);
 }
 '''
 

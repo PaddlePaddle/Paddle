@@ -24,15 +24,26 @@
 
 namespace {
 
-// 我们希望cutlass是可选的
-// 如果关闭cutlass 那么使用FcOp，只能匹配[M, N]+[1,N]的模式，激活只支持["","relu"]
-// 如果开启cutlass 那么使用GemmEpilogueOp, 额外支持[M, N]+[M, N]的模式，激活支持["", "relu", "gelu", "sigmoid", "silu"]
-// 可能扩展的包括 其他Layout(如RCR)，其他激活(如leakyRelu)，详尽的输入参数。
+// 当前pass有两种Op实现，FcOp(cublasLt) 和 GemmEpilogueOp(cutlass)
+// 用户可以通过python API `exp_enable_use_cutlass()` 和 C++ API `Exp_EnableUseCutlass()` 来选择是否启用cutlass实现的Op
+// 如果不开启cutlass 那么使用FcOp，只能匹配[M, N]+[1,N]的模式，激活只支持["","relu"]
+// 如果开启cutlass 那么使用GemmEpilogueOp, 额外支持[M, N]+[M, N]的模式，激活支持["", "relu", "gelu"]
 // 需要注意的是：两种Op共用FCInferMeta函数，我们放宽了该函数的约束以匹配额外模式。也就是说FcOp不能处理的模式，目前只在pass的约束中过滤，FCInferMeta中的check被取消了。
-#define USE_CUTLASS
+std::set<std::string> act_ops = {{paddle::dialect::GeluOp::name()},
+                                 {paddle::dialect::ReluOp::name()},};
+std::unordered_map<std::string, std::string> activation_type = {
+    {paddle::dialect::GeluOp::name(), "gelu"},
+    {paddle::dialect::ReluOp::name(), "relu"},};                                 
 
 class MatmulAddPattern : public paddle::drr::DrrPatternBase {
+ private:
+ std::string fused_op_name_;
+ bool reverse_add_;
+
  public:
+  explicit MatmulAddPattern(std::string fused_op_name, bool reverse_add)
+      : fused_op_name_(fused_op_name), reverse_add_(reverse_add) {}
+ 
   std::string name() const override { return "MatmulAddPattern"; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
@@ -42,7 +53,8 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
                                  {"transpose_y", pat.Attr("transpose_y")}});
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
     matmul({&pat.Tensor("x"), &pat.Tensor("w")}, {&pat.Tensor("matmul_out")});
-    pat.Tensor("add_out") = add(pat.Tensor("matmul_out"), pat.Tensor("y"));
+    pat.Tensor("add_out") = reverse_add_ ? add(pat.Tensor("y"), pat.Tensor("matmul_out"))
+                                         : add(pat.Tensor("matmul_out"), pat.Tensor("y"));
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
@@ -60,157 +72,26 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
       if (y_dims.size() == 1) {
         return y_dims.at(0) == w_dims.at(1);
       }
-#ifdef USE_CUTLASS
-      // kai mod 要融合 M*N + N 和 M*N + M*N 两种elementwiseAdd模式。
-      // 要求bias的维度：如果是1，那么需要是[N]。如果是2，那么要么是[1,N],要么是[M,N]。如果是大于2，则除最后一维外，和x相同；最后一维和w_dims.at[1]相同。
-      if (y_dims.size() == x_dims.size()){
+
+      if(fused_op_name_ == paddle::dialect::FcOp::name()){
         if (y_dims.size() == 2) {
-          return ((y_dims.at(0) == 1) || (y_dims.at(0) == x_dims.at(0))) && y_dims.at(1) == w_dims.at(1);
+          return y_dims.at(0) == 1 && y_dims.at(1) == w_dims.at(1);
         }
-        for(size_t ii = 0; ii < x_dims.size()-1; ii++){
-          if(y_dims.at(ii) != x_dims.at(ii)){
-            return false;
+      }
+      else{
+        // kai mod 要融合 M*N + N 和 M*N + M*N 两种elementwiseAdd模式。
+        // 要求bias的维度：如果是1，那么需要是[N]。如果是2，那么要么是[1,N],要么是[M,N]。如果是大于2，则除最后一维外，和x相同；最后一维和w_dims.at[1]相同。
+        if (y_dims.size() == x_dims.size()){
+          if (y_dims.size() == 2) {
+            return ((y_dims.at(0) == 1) || (y_dims.at(0) == x_dims.at(0))) && y_dims.at(1) == w_dims.at(1);
           }
-        }
-        return y_dims.at(y_dims.size() - 1) == w_dims.at(1);
-      }
-#else
-      if (y_dims.size() == 2) {
-        return y_dims.at(0) == 1 && y_dims.at(1) == w_dims.at(1);
-      }
-#endif
-      return false;
-    });
-
-    paddle::drr::ResultPattern res = pat.ResultPattern();
-
-    const auto &in_num_col_dims_attr =
-        res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx) -> int {
-          auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
-          return static_cast<int>(x_dims.size()) - 1;
-        });
-
-#ifdef USE_CUTLASS
-    // 这里忽略了转置参数，没有实现。
-    const auto &fc = res.Op(paddle::dialect::GemmEpilogueOp::name(),
-                            {{
-                                {"in_num_col_dims", in_num_col_dims_attr},
-                                {"activation_type", res.StrAttr("")},
-                                {"padding_weights", res.BoolAttr(false)},
-                            }});
-#else
-    const auto &fc = res.Op(paddle::dialect::FcOp::name(),
-                            {{
-                                {"in_num_col_dims", in_num_col_dims_attr},
-                                {"activation_type", res.StrAttr("")},
-                                {"padding_weights", res.BoolAttr(false)},
-                            }});
-#endif
-    fc({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("y")},
-       {&res.Tensor("add_out")});
-  }
-};
-
-class FcWithReluPattern : public paddle::drr::DrrPatternBase {
- public:
-  std::string name() const override { return "FcWithReluPattern"; }
-
-  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
-    paddle::drr::SourcePattern pat = ctx->SourcePattern();
-#ifdef USE_CUTLASS
-    const auto &fc =
-        pat.Op(paddle::dialect::GemmEpilogueOp::name(),
-               {{
-                   {"in_num_col_dims", pat.Attr("in_num_col_dims")},
-                   {"activation_type", pat.Attr("activation_type")},
-                   {"padding_weights", pat.Attr("padding_weights")},
-               }});
-#else
-    const auto &fc =
-        pat.Op(paddle::dialect::FcOp::name(),
-               {{
-                   {"in_num_col_dims", pat.Attr("in_num_col_dims")},
-                   {"activation_type", pat.Attr("activation_type")},
-                   {"padding_weights", pat.Attr("padding_weights")},
-               }});
-#endif
-    fc({&pat.Tensor("x"), &pat.Tensor("w"), &pat.Tensor("y")},
-       {&pat.Tensor("fc_out")});
-    const auto &relu = pat.Op(paddle::dialect::ReluOp::name());
-    relu({&pat.Tensor("fc_out")}, {&pat.Tensor("relu_out")});
-
-    // Constrains the activation is none
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      return match_ctx.Attr<std::string>("activation_type").empty();
-    });
-
-    paddle::drr::ResultPattern res = pat.ResultPattern();
-
-#ifdef USE_CUTLASS
-    const auto &fc_with_relu =
-        res.Op(paddle::dialect::GemmEpilogueOp::name(),
-               {{
-                   {"in_num_col_dims", pat.Attr("in_num_col_dims")},
-                   {"activation_type", res.StrAttr("relu")},
-                   {"padding_weights", pat.Attr("padding_weights")},
-               }});
-#else
-    const auto &fc_with_relu =
-        res.Op(paddle::dialect::FcOp::name(),
-               {{
-                   {"in_num_col_dims", pat.Attr("in_num_col_dims")},
-                   {"activation_type", res.StrAttr("relu")},
-                   {"padding_weights", pat.Attr("padding_weights")},
-               }});
-#endif
-    fc_with_relu({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("y")},
-                 {&res.Tensor("relu_out")});
-  }
-};
-
-#ifdef USE_CUTLASS
-// 这个Pattern是为了匹配 将matmul_out作为AddOp右操作数 的模式
-class RightMatmulAddPattern : public paddle::drr::DrrPatternBase {
- public:
-  std::string name() const override { return "RightMatmulAddPattern"; }
-
-  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
-    paddle::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
-                                {{"transpose_x", pat.Attr("transpose_x")},
-                                 {"transpose_y", pat.Attr("transpose_y")}});
-    const auto &add = pat.Op(paddle::dialect::AddOp::name());
-    matmul({&pat.Tensor("x"), &pat.Tensor("w")}, {&pat.Tensor("matmul_out")});
-    pat.Tensor("add_out") = add(pat.Tensor("y"), pat.Tensor("matmul_out"));
-
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
-      auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
-      auto y_dims = pir::GetShapeFromValue(match_ctx.Tensor("y"));
-      if (w_dims.size() != 2 || x_dims.size() < 2) {
-        return false;
-      }
-      if (x_dims.at(x_dims.size() - 1) != w_dims.at(0) ||
-          match_ctx.Attr<bool>("transpose_x") == true ||
-          match_ctx.Attr<bool>("transpose_y") == true) {
-        return false;
-      }
-
-      if (y_dims.size() == 1) {
-        return y_dims.at(0) == w_dims.at(1);
-      }
-      // kai mod 要融合 M*N + N 和 M*N + M*N 两种elementwiseAdd模式。
-      // 要求bias的维度：如果是1，那么需要是[N]。如果是2，那么要么是[1,N],要么是[M,N]。如果是大于2，则除最后一维外，和x相同；最后一维和w_dims.at[1]相同。
-      if (y_dims.size() == x_dims.size()){
-        if (y_dims.size() == 2) {
-          return ((y_dims.at(0) == 1) || (y_dims.at(0) == x_dims.at(0))) && y_dims.at(1) == w_dims.at(1);
-        }
-        for(size_t ii = 0; ii < x_dims.size()-1; ii++){
-          if(y_dims.at(ii) != x_dims.at(ii)){
-            return false;
+          for(size_t ii = 0; ii < x_dims.size()-1; ii++){
+            if(y_dims.at(ii) != x_dims.at(ii)){
+              return false;
+            }
           }
+          return y_dims.at(y_dims.size() - 1) == w_dims.at(1);
         }
-        return y_dims.at(y_dims.size() - 1) == w_dims.at(1);
       }
       return false;
     });
@@ -221,7 +102,7 @@ class RightMatmulAddPattern : public paddle::drr::DrrPatternBase {
           auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
           return static_cast<int>(x_dims.size()) - 1;
         });
-    const auto &fc = res.Op(paddle::dialect::GemmEpilogueOp::name(),
+    const auto &fc = res.Op(fused_op_name_,
                             {{
                                 {"in_num_col_dims", in_num_col_dims_attr},
                                 {"activation_type", res.StrAttr("")},
@@ -232,50 +113,58 @@ class RightMatmulAddPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-/// 激活很多的情况下，可以写一个统一的实现。当前还是分开写
-class FcWithGeluPattern : public paddle::drr::DrrPatternBase {
+/// 当前只支持[Relu, Gelu]
+class FcWithActPattern : public paddle::drr::DrrPatternBase {
+ private:
+  std::string act_type_;
+  std::string fused_op_name_;
+
  public:
-  std::string name() const override { return "FcWithGeluPattern"; }
+  explicit FcWithActPattern(std::string act_type, std::string fused_op_name)
+      : act_type_(act_type), fused_op_name_(fused_op_name) {}
+
+  std::string name() const override { return "FcWithActPattern"; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &fc = pat.Op(paddle::dialect::GemmEpilogueOp::name(),
+    const auto &fc = pat.Op(fused_op_name_,
                       {{
                           {"in_num_col_dims", pat.Attr("in_num_col_dims")},
                           {"activation_type", pat.Attr("activation_type")},
                           {"padding_weights", pat.Attr("padding_weights")},
                       }});
     std::unordered_map<std::string, paddle::drr::Attribute> act_attrs;
-    act_attrs.emplace("approximate", pat.Attr("approximate"));
-    const auto &gelu = pat.Op(paddle::dialect::GeluOp::name(), act_attrs);
+    if (act_type_ == paddle::dialect::GeluOp::name()) {
+      act_attrs.emplace("approximate", pat.Attr("approximate"));
+    }
+    const auto &act = pat.Op(act_type_, act_attrs);
 
     fc({&pat.Tensor("x"), &pat.Tensor("w"), &pat.Tensor("y")},
        {&pat.Tensor("fc_out")});
-    gelu({&pat.Tensor("fc_out")}, {&pat.Tensor("gelu_out")});
+    act({&pat.Tensor("fc_out")}, {&pat.Tensor("act_out")});
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
         bool isEmpty_act = match_ctx.Attr<std::string>("activation_type").empty();
         if(!isEmpty_act) return false;
-        bool Attr_approx = match_ctx.Attr<bool>("approximate");
-        // 参考onednn实现。这里的意思我理解是，不支持gelu的估算。cutlass也没有approx参数。
-        if (Attr_approx) return false;      
+        if (act_type_ == paddle::dialect::GeluOp::name()) {
+          bool Attr_approx = match_ctx.Attr<bool>("approximate");
+          // 参考onednn实现。这里的意思我理解是，不支持gelu的估算。cutlass也没有approx参数。
+          if (Attr_approx) return false;    
+        }  
         return true;
     });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
     std::unordered_map<std::string, paddle::drr::Attribute> fused_attrs{
       {"in_num_col_dims", pat.Attr("in_num_col_dims")},
-      {"activation_type", res.StrAttr("gelu")},
+      {"activation_type", res.StrAttr(activation_type[act_type_])},
       {"padding_weights", pat.Attr("padding_weights")},
     };
-    const auto &fc_with_gelu = res.Op(paddle::dialect::GemmEpilogueOp::name(), fused_attrs);
-    fc_with_gelu({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("y")},
-                 {&res.Tensor("gelu_out")});
+    const auto &fc_with_act = res.Op(fused_op_name_, fused_attrs);
+    fc_with_act({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("y")},
+                 {&res.Tensor("act_out")});
   }
 };
-/// other Act
-
-#endif
 
 class FcFusePass : public pir::PatternRewritePass {
  public:
@@ -283,13 +172,31 @@ class FcFusePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(paddle::drr::Create<MatmulAddPattern>(context));
-    ps.Add(paddle::drr::Create<FcWithReluPattern>(context));
-#ifdef USE_CUTLASS
-    ps.Add(paddle::drr::Create<RightMatmulAddPattern>(context));
-    ps.Add(paddle::drr::Create<FcWithGeluPattern>(context));
 
-#endif
+    // Set(std::string("use_cutlass"), new bool(true));
+    bool use_cutlass = false;
+    if(Has(std::string("use_cutlass"))){
+      use_cutlass = Get<bool>(std::string("use_cutlass"));
+    }
+    // if(use_cutlass){
+    //   printf("use_cutlass !\n");
+    // }
+
+    if(use_cutlass){
+      /// MatmulAddPattern
+      ps.Add(paddle::drr::Create<MatmulAddPattern>(context, paddle::dialect::GemmEpilogueOp::name(), true));
+      ps.Add(paddle::drr::Create<MatmulAddPattern>(context, paddle::dialect::GemmEpilogueOp::name(), false));
+      /// FcWithActPattern
+      for(const auto& act_op: act_ops){
+        ps.Add(paddle::drr::Create<FcWithActPattern>(context, act_op, paddle::dialect::GemmEpilogueOp::name()));
+      }
+    }
+    else{
+      /// MatmulAddPattern
+      ps.Add(paddle::drr::Create<MatmulAddPattern>(context, paddle::dialect::FcOp::name(), false));
+      /// FcWithActPattern
+      ps.Add(paddle::drr::Create<FcWithActPattern>(context, paddle::dialect::ReluOp::name(), paddle::dialect::FcOp::name()));
+    }
     return ps;
   }
 };

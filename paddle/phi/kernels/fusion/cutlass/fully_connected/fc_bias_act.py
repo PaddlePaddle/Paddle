@@ -288,7 +288,7 @@ def generate_sm80_16816(cutlass_dtype="cutlass::half_t"):
     ]
 
     sm80_code = ""
-    for epi_func in SupportedAct:
+    for epi_func in SupportedAct:    # [FbaAct.Identity]:
         op_dict = {}
         op_dict["func_name"] = (
             UnderScoreName[epi_func].lower() + "_sm80_"
@@ -340,11 +340,11 @@ def generate_sm80_16816(cutlass_dtype="cutlass::half_t"):
                         kernel_dict["stages"] = str(tile.stages)
                         kernel_dict["element_accum"] = tile.math_inst[3]
                         all_kernel_names_universal, all_kernel_declares_universal, suffix = sm80_16816_forUniversal(op_dict, kernel_dict, suffix, epi_func)
-                        all_kernel_names_streamk, all_kernel_declares_streamk, suffix = sm80_16816_forStreamK(op_dict, kernel_dict, suffix, epi_func)
+                        # all_kernel_names_streamk, all_kernel_declares_streamk, suffix = sm80_16816_forStreamK(op_dict, kernel_dict, suffix, epi_func)
                         all_kernel_declares += all_kernel_declares_universal
-                        all_kernel_declares += all_kernel_declares_streamk
+                        # all_kernel_declares += all_kernel_declares_streamk
                         all_kernel_names += all_kernel_names_universal  
-                        all_kernel_names += all_kernel_names_streamk     
+                        # all_kernel_names += all_kernel_names_streamk     
         # Generate op code
         op_dict["kernel_func_declare"] = all_kernel_declares
         op_dict["all_kernel_func_name"] = all_kernel_names

@@ -123,6 +123,16 @@ void FCKernel(const Context& dev_ctx,
     }
   };
 
+  void * workspace = nullptr; 
+  
+  size_t workspace_size_bytes = ((M-1+16)/16) * ((N-1+64)/64) * sizeof(int);
+
+  phi::Allocator::AllocationPtr tmp_ptr = phi::memory_utils::Alloc(
+        dev_ctx.GetPlace(),
+        workspace_size_bytes,
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));  
+  workspace = tmp_ptr->ptr();
+  
   FcAllParams params = {
       reinterpret_cast<const void*>(input.data<T>()),
       reinterpret_cast<const void*>(w.data<T>()),
@@ -139,6 +149,7 @@ void FCKernel(const Context& dev_ctx,
       isVec_bias,
       cutlass_dispatch_sm_version(sm_version),
       0.01,       // for leaky_relu
+      workspace,
   };
 
   void* dlhandler = phi::dynload::GetCutlassFcHandle();

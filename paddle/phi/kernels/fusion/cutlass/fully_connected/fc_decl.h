@@ -43,6 +43,7 @@ typedef struct {
   bool isVec_bias = true;
   int sm_version = 75;
   float leaky_alpha = 1.0;
+  void *workspace = nullptr;
 } FcAllParams;
 
 // Below functions are provided by cutlass, they are called by phi.

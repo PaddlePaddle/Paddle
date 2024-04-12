@@ -167,6 +167,7 @@ int ProfileToGetBestConfig(
       for (int ii = 0; ii < WARMUP; ii++) {
         status = func(params);
       }
+      CUDA_CHECK(cudaDeviceSynchronize());
 
       cudaEvent_t beg, end;
       CUDA_CHECK(cudaEventCreate(&beg));
