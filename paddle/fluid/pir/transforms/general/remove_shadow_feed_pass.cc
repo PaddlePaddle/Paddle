@@ -28,7 +28,7 @@
 
 namespace {
 
-std::unique_ptr<paddle::dialect::OpYamlInfoParser> GetOpYamlInfoParser(
+std::unique_ptr<paddle::dialect::OpYamlInfoParser> GetParser(
     pir::Operation *op) {
   std::unique_ptr<paddle::dialect::OpYamlInfoParser> op_info_parser(nullptr);
   std::string op_name = op->dyn_cast<paddle::dialect::PhiKernelOp>().op_name();
@@ -41,6 +41,19 @@ std::unique_ptr<paddle::dialect::OpYamlInfoParser> GetOpYamlInfoParser(
         op_info_tuple, paddle::dialect::IsLegacyOp(op_name));
   }
   return op_info_parser;
+}
+
+template <typename T>
+phi::Place GetVarPlace(const paddle::framework::Variable *var,
+                       const phi::Place &exe_place) {
+  phi::Place place;
+  auto &tensor = var->Get<T>();
+  if (tensor.initialized()) {
+    place = tensor.place();
+  } else {
+    place = exe_place;
+  }
+  return place;
 }
 
 class RemoveShadowFeedPattern : public pir::RewritePattern {
@@ -73,12 +86,12 @@ class RemoveShadowFeedPattern : public pir::RewritePattern {
       auto *var = scope_->FindVar(in_name);
       phi::Place var_place;
       if (var->IsType<phi::DenseTensor>()) {
-        auto &tensor = var->Get<phi::DenseTensor>();
-        if (tensor.initialized()) {
-          var_place = tensor.place();
-        } else {
-          var_place = place_;
-        }
+        var_place = GetVarPlace<phi::DenseTensor>(var, place_);
+      } else if (var->IsType<phi::SelectedRows>()) {
+        var_place = GetVarPlace<phi::SelectedRows>(var, place_);
+      } else if (var->IsType<paddle::framework::VariableRefArray>()) {
+        var_place =
+            GetVarPlace<paddle::framework::VariableRefArray>(var, place_);
       } else {
         PADDLE_THROW(paddle::platform::errors::InvalidArgument(
             "RemoveShadowFeedPattern only support output "
@@ -93,19 +106,24 @@ class RemoveShadowFeedPattern : public pir::RewritePattern {
     if (op->isa<paddle::dialect::PhiKernelOp>() &&
         op->dyn_cast<paddle::dialect::PhiKernelOp>().op_name() ==
             "pd_op.shadow_feed") {
+      auto in = op->operand_source(0);
+      if (!kwargs_map_.count(in)) {
+        return false;
+      }
       auto out = op->result(0);
       if (out.use_count() == 1) {
         auto use_op = out.first_use().owner();
-        auto op_info_parser = GetOpYamlInfoParser(use_op);
+        if (!use_op->isa<paddle::dialect::PhiKernelOp>()) {
+          return false;
+        }
+        auto op_info_parser = GetParser(use_op);
         for (size_t i = 0; i < use_op->num_operands(); ++i) {
           if (out == use_op->operand_source(i) &&
               op_info_parser->IsTensorAttribute(i)) {
             return true;
           }
         }
-        return false;
       }
-      return false;
     }
     return false;
   }
