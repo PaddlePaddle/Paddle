@@ -75,4 +75,4 @@ REGISTER_OP_KERNEL(shuffle_channel,
                    MKLDNN,
                    phi::CPUPlace,
                    ops::ShuffleChannelMKLDNNKernel<float>,
-                   ops::ShuffleChannelMKLDNNKernel<paddle::platform::bfloat16>);
+                   ops::ShuffleChannelMKLDNNKernel<phi::dtype::bfloat16>);

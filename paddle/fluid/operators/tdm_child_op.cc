@@ -60,18 +60,18 @@ class TDMChildOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Inputs(X) of TdmChild should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("TreeInfo"),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Inputs(TreeInfo) of TdmChild should not be null."));
 
     int child_nums = ctx->Attrs().Get<int>("child_nums");
     PADDLE_ENFORCE_GT(
         child_nums,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "ValueError: The value of the 'child_nums' must greater than 0. "
             "But received child_nums value = %d, ",
             child_nums));
@@ -82,7 +82,7 @@ class TDMChildOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         info_dims.size(),
         2,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "ShapeError: The dimensions of the 'tree info' must be 2. "
             "But received tree info's dimensions = %d, "
             "tree info's shape = [%s].",

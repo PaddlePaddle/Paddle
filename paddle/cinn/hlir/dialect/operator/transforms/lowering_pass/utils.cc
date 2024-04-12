@@ -78,7 +78,8 @@ CompileGroupAsOpAttribute(const std::vector<OpLoweringGroupPtr>& group_list) {
 
 std::unordered_map<std::string, ::pir::Attribute> GetJitKernelAttr(
     const OpLoweringGroupPtr& group) {
-  auto kernel_info = CompilationCache::Instance().GetKernelInfo(group);
+  hlir::framework::pir::FusionInfo fusion_info(*group);
+  auto kernel_info = CompilationCache::Instance().GetKernelInfo(fusion_info);
   std::unordered_map<std::string, ::pir::Attribute> attrs{
       {cinn::dialect::JitKernelOp::kAttrName,
        cinn::dialect::CINNKernelInfoAttribute::get(pir::IrContext::Instance(),

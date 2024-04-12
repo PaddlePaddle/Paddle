@@ -19,7 +19,7 @@
 
 namespace symbol::test {
 
-TEST(ConstraintsManager, AddEqCstr) {
+TEST(ConstraintsManager, EqualCstr) {
   ConstraintsManager cstr_mgr;
   DimExprBuilder builder(nullptr);
 
@@ -41,6 +41,24 @@ TEST(ConstraintsManager, AddEqCstr) {
   ASSERT_FALSE(cstr_mgr.IsEqual(add_expr_0, add_expr_1));
   DimExpr mul_expr_2 = builder.Mul(sym_expr_0, int_expr_1);
   ASSERT_TRUE(cstr_mgr.IsEqual(mul_expr_2, mul_expr_1));
+}
+
+TEST(ConstraintsManager, GreatThanOneCstr) {
+  ConstraintsManager cstr_mgr;
+  DimExpr sym_expr_0 = DimExpr("S0");
+  DimExpr int_expr = DimExpr(5);
+  ASSERT_TRUE(cstr_mgr.IsGTOne(int_expr + sym_expr_0));
+  ASSERT_TRUE(cstr_mgr.IsGTOne(int_expr * sym_expr_0));
+  cstr_mgr.AddGTOneCstr(sym_expr_0);
+  ASSERT_TRUE(cstr_mgr.IsGTOne(sym_expr_0));
+}
+
+TEST(ConstraintsManager, BroadcastableCstr) {
+  ConstraintsManager cstr_mgr;
+  DimExpr sym_expr_0 = DimExpr("S0");
+  DimExpr int_expr = DimExpr(5);
+  cstr_mgr.AddBroadcastableCstr(sym_expr_0, int_expr);
+  ASSERT_TRUE(cstr_mgr.IsBroadcastable(sym_expr_0, int_expr));
 }
 
 }  // namespace symbol::test
