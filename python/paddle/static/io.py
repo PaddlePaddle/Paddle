@@ -232,7 +232,7 @@ def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
             >>> normalized_program = paddle.static.normalize_program(program, [image], [predict])
 
     """
-    if not isinstance(paddle.static.Program):
+    if not isinstance(program, paddle.static.Program):
         raise TypeError(
             "program type must be `paddle.static.Program`, but received `%s`"
             % type(program)
