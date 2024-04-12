@@ -62,7 +62,8 @@ class SToRReshardFunction(ReshardFunction):
         is_balanced_split = num_of_padding == 0
 
         if is_balanced_split:
-            reshard_s_to_r_with_padding(program, op, split_axis, src_dist_attr.process_mesh.process_ids) 
+            new_value = reshard_s_to_r_with_padding(program, op, split_axis, src_dist_attr.process_mesh.process_ids) 
+            return new_value, dst_dist_attr
         else:
             pass
 
@@ -71,5 +72,19 @@ class SToRReshardFunction(ReshardFunction):
         dtype = op.operand_source(0).dtype
 
         paddle.pir.set_insertion_point(op)
-        
+        op_value = op.result(0)
+        group = new_process_group(process_ids)
+        allgather_value = paddle._pir_ops.c_allgather(
+            op_value, group.id, num_of_process,  False
+        )
+        allgather_value.set_type(op.result(0).type())
+        op.result(0).replace_all_uses_with(allgather_value)
+        program.global_block().remove_op(op)
+
+        if split_axis != 0 || padding_num != 0:
+            sections = [num_of_process, op.operand_value(0).shape[0]]
+            split_value = paddle._pir_ops.split(all_gather_value.result(0), sections, 0)
+            concat_value = paddle._pir_ops.concat(split_value, split_axis)
+            return concat_value.get_defining_op()
+        return allgather_value.get_defining_op()
         

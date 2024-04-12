@@ -49,6 +49,57 @@ class TestReshardSToR:
         assert np.equal(out.shape, input_tensor.shape).all()
         np.testing.assert_equal(out.numpy(), a.numpy())
 
+    def run_pir_test_case(self):
+        paddle.enable_static()
+        if self._backend == "cpu":
+            paddle.set_device("cpu")
+            place = paddle.CPUPlace()
+        elif self._backend == "gpu":
+            place = paddle.CUDAPlace(dist.get_rank())
+
+        BATCH_SIZE = 2
+        SEQ_LEN = 4
+        HIDDEN_SIZE = 8
+        MP_SIZE = 2
+
+        with paddle.pir_utils.IrGuard():
+            main_program = paddle.base.Program()
+            with paddle.base.program_guard(main_program):
+                mesh = dist.ProcessMesh([0, 1], dim_names=['mp'])
+                input = paddle.static.data(
+                    name='input', shape=[BATCH_SIZE, SEQ_LEN, HIDDEN_SIZE]
+                )
+                w0 = paddle.pir.core.create_parameter(
+                    dtype="float32",
+                    shape=[HIDDEN_SIZE, HIDDEN_SIZE],
+                    name="w0",
+                    initializer=paddle.nn.initializer.Uniform(),
+                )
+
+                dims_mapping = [-1, -1]
+                dims_mapping[self._shard] = self._shard
+                shard_tensor = paddle._pir_ops.shard_tensor(
+                    w0, self._mesh, dims_mapping
+                )
+                reshard_tensor = paddle._pir_ops.reshard(
+                    shard_tensor, self._mesh, [-1, -1]
+                )
+            print(f'debug main_program: {main_program}')
+            dist_program = apply_reshard_pass_v2(main_program)
+            print(f'debug dist_program: {dist_program}')
+       #np.testing.assert_equal(dist_program.num_ops(), 4)
+       #ops = [op.name() for op in dist_program.global_block().ops]
+       #np.testing.assert_equal(
+       #    ops,
+       #    [
+       #        'builtin.parameter',
+       #        'pd_op.data',
+       #        'dist_op.shard_tensor',
+       #        'pd_op.c_allreduce_sum_',
+       #    ],
+       #)
+
 
 if __name__ == '__main__':
-    TestReshardSToR().run_test_case()
+    #TestReshardSToR().run_test_case()
+    TestReshardSToR().run_pir_test_case()
