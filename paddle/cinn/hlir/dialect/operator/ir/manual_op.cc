@@ -82,7 +82,10 @@ pir::Block* GroupOp::block() {
 
 pir::Block* GroupOp::block() const {
   pir::Region& region = (*this)->region(0);
-  CHECK(!region.empty());
+  PADDLE_ENFORCE_EQ(region.empty(),
+                    false,
+                    ::common::errors::Unavailable(
+                        "Required GroupOp's region must not be emptpy."));
   return &region.front();
 }
 
@@ -155,7 +158,16 @@ pir::Block* FusionOp::block() {
   return &region.front();
 }
 
-std::vector<pir::Operation*> FusionOp::GetOperators() {
+pir::Block* FusionOp::block() const {
+  pir::Region& region = (*this)->region(0);
+  PADDLE_ENFORCE_EQ(region.empty(),
+                    false,
+                    ::common::errors::Unavailable(
+                        "Required FusionOp's region must not be emptpy."));
+  return &region.front();
+}
+
+std::vector<pir::Operation*> FusionOp::GetOperators() const {
   std::vector<pir::Operation*> rt_ops;
   for (auto& op : *block()) {
     rt_ops.push_back(&op);
@@ -304,7 +316,9 @@ void GenerateShapeOp::Build(
   if (inputs.empty()) {
     VLOG(3) << "GenerateShapeOp inputs is empty";
     for (const auto& attr : output_dim_exprs) {
-      CHECK(attr.isa<pir::Int64Attribute>());
+      PADDLE_ENFORCE(attr.isa<pir::Int64Attribute>(),
+                     ::common::errors::PreconditionNotMet(
+                         "Reqiured attr must be Int64Attribute."));
     }
   }
   argument.AddInputs(inputs);
@@ -466,11 +480,15 @@ bool GenerateShapeOp::InferSymbolicShape(
   const auto attr_dim_exprs = [&] {
     std::vector<symbol::DimExpr> dim_exprs{};
     pir::Attribute dim_expr_attr = this->attributes().at("output_dim_exprs");
-    CHECK(dim_expr_attr.isa<pir::ArrayAttribute>());
+    PADDLE_ENFORCE(dim_expr_attr.isa<pir::ArrayAttribute>(),
+                   ::common::errors::PreconditionNotMet(
+                       "Required dim_expr_attr is ArrayAttribute."));
     auto array = dim_expr_attr.dyn_cast<pir::ArrayAttribute>();
     for (int i = 0; i < array.size(); ++i) {
       const auto& dim_expr = ConvertAttributeToDimExpr(array.at(i));
-      CHECK(dim_expr.has_value());
+      PADDLE_ENFORCE(dim_expr.has_value(),
+                     ::common::errors::PreconditionNotMet(
+                         "Required dim_expr.has_value()==true."));
       dim_exprs.push_back(dim_expr.value());
     }
     return dim_exprs;
@@ -480,7 +498,9 @@ bool GenerateShapeOp::InferSymbolicShape(
         this->attributes().at("symbol_bindings");
     auto symbol_bindings =
         ConvertAttributeToSymbolBindings(symbol_bindings_attr);
-    CHECK(symbol_bindings.has_value());
+    PADDLE_ENFORCE(symbol_bindings.has_value(),
+                   ::common::errors::PreconditionNotMet(
+                       "Required symbol_bindings.has_value()==true."));
     return symbol_bindings.value();
   }();
   auto DimExprs4InputDim =
