@@ -36,11 +36,15 @@ from .triton_utils import (
 
 def get_wint8_kernel_config():
     configs = []
-    for num_stages in [2, 3, 4]:
-        for block_m in [16]:
-            for block_n in [32, 64, 128, 256]:
-                for block_k in [32, 64, 128, 256]:
-                    for split_k in [1, 2]:
+    for num_stages in [2, 3, 4, 5, 6]:
+        for block_m in [16, 32, 64]:
+            for block_n in [64, 128, 256]:
+                for block_k in [64, 128, 256]:
+                    for split_k in [1, 2, 4, 8]:
+                        num_warps = 4
+                        if block_m * block_n >= 128 * 256:
+                            num_warps = 8
+
                         configs.append(
                             triton.Config(
                                 {
@@ -48,10 +52,10 @@ def get_wint8_kernel_config():
                                     "BLOCK_SIZE_M": block_m,
                                     "BLOCK_SIZE_N": block_n,
                                     "BLOCK_SIZE_K": block_k,
-                                    "GROUP_SIZE_M": 1,
+                                    "GROUP_SIZE_M": 2,
                                 },
                                 num_stages=num_stages,
-                                num_warps=4,
+                                num_warps=num_warps,
                             )
                         )
     return configs
@@ -92,13 +96,15 @@ def wint8_kernel(
     pid_sp_k = tl.program_id(axis=1)
     num_pid_m = tl.cdiv(M, BLOCK_SIZE_M)
     num_pid_n = tl.cdiv(N, BLOCK_SIZE_N)
-    num_pid_k = tl.cdiv(K, BLOCK_SIZE_K)
-    num_pid_in_group = GROUP_SIZE_M * num_pid_n
-    group_id = pid // num_pid_in_group
-    first_pid_m = group_id * GROUP_SIZE_M
-    group_size_m = min(num_pid_m - first_pid_m, GROUP_SIZE_M)
-    pid_m = first_pid_m + (pid % group_size_m)
-    pid_n = (pid % num_pid_in_group) // group_size_m
+    # num_pid_k = tl.cdiv(K, BLOCK_SIZE_K)
+    # num_pid_in_group = GROUP_SIZE_M * num_pid_n
+    # group_id = pid // num_pid_in_group
+    # first_pid_m = group_id * GROUP_SIZE_M
+    # group_size_m = min(num_pid_m - first_pid_m, GROUP_SIZE_M)
+
+    pid_m = pid % num_pid_n
+    pid_n = pid // num_pid_n
+
     offs_am = (pid_m * BLOCK_SIZE_M + tl.arange(0, BLOCK_SIZE_M)) % M
     # offs_am = (pid_m * BLOCK_SIZE_M + tl.arange(0, BLOCK_SIZE_M))
     offs_bn = (pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)) % N
@@ -298,15 +304,8 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
     # bias type is same as x
     address_hint += get_pointer_hint(x) + ","
 
-    value_hint = get_value_hint(M) + ","
-    value_hint += get_value_hint(N) + ","
-    value_hint += get_value_hint(K) + ","
-    value_hint += get_value_hint(K) + ","
-    value_hint += get_value_hint(1) + ","
-    value_hint += get_value_hint(stride_bk) + ","
-    value_hint += get_value_hint(stride_bn) + ","
-    value_hint += get_value_hint(N) + ","
-    value_hint += get_value_hint(1) + ","
+    x_list = [M, N, K, K, 1, stride_bk, stride_bn, N, 1]
+    value_hint = get_value_hint(x_list)
 
     op_name += value_hint.replace(",", "").replace(":", "")
 

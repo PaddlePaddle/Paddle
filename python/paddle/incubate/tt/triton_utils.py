@@ -156,18 +156,18 @@ setup(
 
 
 def get_value_hint(x):
-    if x % 16 == 0:
-        return "i32:16"
-    elif x % 8 == 0:
-        return "i32"
-    elif x % 4 == 0:
-        return "i32"
-    elif x % 2 == 0:
-        return "i32"
-    elif x == 1:
-        return "i32:1"
-    else:
-        return "i32"
+    hint = ""
+    for ele in x:
+        if type(ele) == int:
+            if ele % 16 == 0:
+                hint += "i32:16,"
+            elif ele == 1:
+                hint += "i32:1,"
+            else:
+                hint += "i32,"
+        if type(ele) == float:
+            hint += "fp32,"
+    return hint
 
 
 def build_package(generated_dir, python_package_name):
