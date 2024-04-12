@@ -597,9 +597,6 @@ class PartialProgramLayer:
                     paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
                         forward_program
                     )
-                    paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
-                        backward_program
-                    )
                 return forward_program, backward_program
 
             train_program.apply_pir_program_pass(pass_fn)
