@@ -32,7 +32,6 @@
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_dialect.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
-#include "paddle/fluid/pir/dialect/distributed/transforms/mix_to_dist_pass.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
@@ -301,6 +300,15 @@ void BindProgram(py::module *m) {
           [](std::shared_ptr<Program> self, int64_t random_seed) {
             SetProgramInt64Attr(self, "random_seed", random_seed);
           })
+      .def_property_readonly(
+          "blocks",
+          [](const std::shared_ptr<Program> &self) {
+            // Note: We only return global block currently.
+            py::list op_list;
+            op_list.append(self->block());
+            return op_list;
+          },
+          return_value_policy::reference)
       .def("get_output_value_by_name",
            [](Program &self, const std::string &name) {
              return GetOutputValueByName(self, name);
@@ -675,14 +683,19 @@ void BindOperation(py::module *m) {
                 pir::ArrayAttribute::get(pir::IrContext::Instance(),
                                          op_callstack_infos));
           })
-      .def("dist_attr", [](Operation &self) {
-        if (self.HasAttribute(kAttrOpDistAttr)) {
-          return self.attribute<OperationDistAttribute>(kAttrOpDistAttr);
-        } else {
-          PADDLE_THROW(
-              phi::errors::InvalidArgument("dist_attr is only for dist op."));
-        }
-      });
+      .def_property(
+          "dist_attr",
+          [](Operation &self) {
+            if (self.HasAttribute(kAttrOpDistAttr)) {
+              return self.attribute<OperationDistAttribute>(kAttrOpDistAttr);
+            } else {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "dist_attr is only for dist op."));
+            }
+          },
+          [](Operation &self, OperationDistAttribute op_dist_attr) {
+            self.set_attribute(kAttrOpDistAttr, op_dist_attr);
+          });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
     The Operation_BlockContainer only use to walk all blocks in the operation.
@@ -1270,6 +1283,10 @@ static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
   std::unordered_set<::pir::Value> no_need_buffer_values;
   range_block_do(
       whole_block, range, [&need_buffer_values](::pir::Operation *op) {
+        // NOTE(SigureMo): We should process the CombineOp in it's users.
+        if (op->isa<pir::CombineOp>()) {
+          return;
+        }
         if (op->HasInterface<paddle::dialect::OpYamlInfoInterface>() == false) {
           // not a OpYamlInfoInterface, can't have no_need_buffer.
           for (const auto &operand : op->operands_source()) {
@@ -1280,8 +1297,16 @@ static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
               op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
           int counter = 0;
           for (const auto &op_input_info : std::get<0>(opinfo)) {
+            auto value = op->operand_source(counter);
             if (!op_input_info.no_need_buffer) {
-              need_buffer_values.insert(op->operand_source(counter));
+              need_buffer_values.insert(value);
+              if (!IsFakeValue(value) && value.defining_op() &&
+                  value.defining_op()->isa<pir::CombineOp>()) {
+                for (const auto &combine_value :
+                     value.defining_op()->operands_source()) {
+                  need_buffer_values.insert(combine_value);
+                }
+              }
             }
             counter += 1;
           }
@@ -1836,16 +1861,13 @@ void BindUtils(pybind11::module *m) {
                 >>> print(mappings)
                 {'matmul_v2_0.tmp_0': [Value(define_op_name=pd_op.matmul, index=0, dtype=builtin.tensor<4x4xf32>)], 'x': [Value(define_op_name=pd_op.data, index=0, dtype=builtin.tensor<4x4xf32>)], 'tanh_0.tmp_0': [Value(define_op_name=pd_op.tanh, index=0, dtype=builtin.tensor<4x4xf32>)], 'elementwise_add_0': [Value(define_op_name=pd_op.add, index=0, dtype=builtin.tensor<4x4xf32>)]}
     )DOC");
-
-  m->def("clear_cinn_compilation_cache",
-         []() {
+  m->def("clear_cinn_compilation_cache", []() {
 #ifdef PADDLE_WITH_CINN
-           pybind11::gil_scoped_release release;
-           VLOG(4) << "clear CINN CompilationCache and free BackendResource.";
-           cinn::hlir::framework::CompilationCache::Instance().Clear();
+    pybind11::gil_scoped_release release;
+    VLOG(4) << "clear CINN CompilationCache and free BackendResource.";
+    cinn::hlir::framework::CompilationCache::Instance().Clear();
 #endif
-         }),
-      m->def("apply_mix2dist_pass", paddle::dialect::MixToDistPass);
+  });
 }
 
 namespace {

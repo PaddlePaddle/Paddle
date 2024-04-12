@@ -2023,6 +2023,19 @@ struct FillConstant2FullWithTensorTranscriber : public OpTranscriber {
       const OpInputInfoList& input_infos,
       pir::Block* block) override {
     std::vector<pir::Value> op_inputs;
+    if (op_desc.HasInput("ValueTensor", true) &&
+        op_desc.Input("ValueTensor", true).size() > 0) {
+      auto value_tensor_vars = op_desc.Input("ValueTensor", true);
+      auto defining_info = (*param_map)[value_tensor_vars[0]];
+      op_inputs.push_back(defining_info.value);
+    } else {
+      float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
+      pir::Attribute new_attr = pir::FloatAttribute::get(ctx, value);
+      auto defining_op =
+          InsertFullOperationForAttributeInput(ctx, block, new_attr);
+      op_inputs.push_back(defining_op->result(0));
+    }
+
     if (op_desc.HasInput("ShapeTensor", true) &&
         op_desc.Input("ShapeTensor", true).size() > 0) {
       auto shape_tensor_vars = op_desc.Input("ShapeTensor", true);
@@ -2044,18 +2057,6 @@ struct FillConstant2FullWithTensorTranscriber : public OpTranscriber {
       op_inputs.push_back(defining_op->result(0));
     }
 
-    if (op_desc.HasInput("ValueTensor", true) &&
-        op_desc.Input("ValueTensor", true).size() > 0) {
-      auto value_tensor_vars = op_desc.Input("ValueTensor", true);
-      auto defining_info = (*param_map)[value_tensor_vars[0]];
-      op_inputs.push_back(defining_info.value);
-    } else {
-      float value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
-      pir::Attribute new_attr = pir::FloatAttribute::get(ctx, value);
-      auto defining_op =
-          InsertFullOperationForAttributeInput(ctx, block, new_attr);
-      op_inputs.push_back(defining_op->result(0));
-    }
     return op_inputs;
   }
 

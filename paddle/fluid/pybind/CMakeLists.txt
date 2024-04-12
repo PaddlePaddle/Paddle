@@ -41,6 +41,7 @@ set(PYBIND_DEPS
     op_dialect_vjp
     program_translator
     pir_transforms
+    pir_save_load
     new_profiler
     fluid_jit
     prim_utils
@@ -399,11 +400,11 @@ if(WITH_PYTHON)
       list(APPEND OP_IMPL_DEPS ${op_impl_path}/openblas.dll)
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/openblas.dll)
     endif()
-    if(WITH_MKLDNN)
+    if(WITH_ONEDNN)
       add_custom_command(
         OUTPUT ${op_impl_path}/mkldnn.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB} ${op_impl_path}
-        DEPENDS mkldnn)
+        DEPENDS onednn)
       list(APPEND OP_IMPL_DEPS ${op_impl_path}/mkldnn.dll)
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/mkldnn.dll)
     endif()
@@ -474,12 +475,12 @@ if(WITH_PYTHON)
       list(APPEND OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libiomp5.so)
       list(APPEND EAGER_OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libiomp5.so)
     endif()
-    if(WITH_MKLDNN)
+    if(WITH_ONEDNN)
       add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libdnnl.so.0
         COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB}
                 ${CMAKE_CURRENT_BINARY_DIR}
-        DEPENDS mkldnn)
+        DEPENDS onednn)
       list(APPEND OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libdnnl.so.0)
       list(APPEND EAGER_OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libdnnl.so.0)
     endif()

@@ -15,6 +15,7 @@
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_op.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -28,7 +29,7 @@ namespace paddle {
 namespace dialect {
 
 const char* ShardTensorOp::attributes_name[1] = {"op_dist_attr"};
-const char* ReShardOp::attributes_name[1] = {"op_dist_attr"};
+const char* ReshardOp::attributes_name[1] = {"op_dist_attr"};
 
 void ShardTensorOp::VerifySig() {
   VLOG(4)
@@ -159,8 +160,54 @@ void ShardTensorOp::Build(pir::Builder& builder,
   ::pir::PassStopGradientsDefaultly(argument);
 }
 
-void ReShardOp::VerifySig() {
-  VLOG(4) << "Start Verifying inputs, outputs and attributes for: ReShardOp.";
+OpInfoTuple ReshardOp::GetOpInfo() {
+  return OpInfoTuple(
+      {OpInputInfo()}, {}, {OpOutputInfo()}, OpRunTimeInfo(), "reshard");
+}
+
+std::vector<std::vector<pir::Value>> ReshardOp::Vjp(
+    pir::Operation* op,
+    const std::vector<std::vector<pir::Value>>& inputs_,
+    const std::vector<std::vector<pir::Value>>& outputs,
+    const std::vector<std::vector<pir::Value>>& out_grads,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  VLOG(6) << "Start call vjp for reshard op.";
+  PADDLE_ENFORCE_EQ(
+      inputs_.size(),
+      1,
+      common::errors::InvalidArgument("reshard op's inputs' size should be 1"));
+  PADDLE_ENFORCE_EQ(inputs_[0].size(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "reshard op's inputs[0]'s size should be 1"));
+  auto dist_type = inputs_[0][0].type().dyn_cast<DistTypeInterface>();
+
+  PADDLE_ENFORCE_NOT_NULL(
+      dist_type,
+      common::errors::InvalidArgument(
+          "Currently, reshard op's inputs type must be dist type."));
+
+  PADDLE_ENFORCE_EQ(out_grads.size(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "reshard op's outputs  grad size should be 1"));
+
+  PADDLE_ENFORCE_EQ(out_grads[0].size(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "reshard op's outputs grad[0] size should be 1"));
+
+  auto& builder = *ApiBuilder::Instance().GetBuilder();
+
+  auto grad_op =
+      builder.Build<ReshardOp>(out_grads[0][0], dist_type.tensor_dist_attr());
+
+  VLOG(6) << "End call vjp for reshard op.";
+
+  return {std::vector<pir::Value>{grad_op->result(0)}};
+}
+void ReshardOp::VerifySig() {
+  VLOG(4) << "Start Verifying inputs, outputs and attributes for: ReshardOp.";
   VLOG(4) << "Verifying inputs:";
   {
     auto input_size = num_operands();
@@ -224,11 +271,11 @@ void ReShardOp::VerifySig() {
   VLOG(4) << "End Verifying for: ShardTensorOp.";
 }
 
-void ReShardOp::Build(pir::Builder& builder,
+void ReshardOp::Build(pir::Builder& builder,
                       pir::OperationArgument& argument,
                       pir::Value input,
                       TensorDistAttribute tensor_dist_attr) {
-  VLOG(4) << "Start build ReShardOp";
+  VLOG(4) << "Start build ReshardOp";
 
   paddle::dialect::DistDenseTensorType input_tensor_type;
   if (input.type().isa<paddle::dialect::DistDenseTensorType>()) {
@@ -270,10 +317,11 @@ void ReShardOp::Build(pir::Builder& builder,
       tensor_dist_attr,
       local_shape);
   argument.AddOutput(out_dist_tensor_type);
+  ::pir::PassStopGradientsDefaultly(argument);
 }
 
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ShardTensorOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ReShardOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ReshardOp)

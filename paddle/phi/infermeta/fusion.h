@@ -70,6 +70,13 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
                               float epsilon,
                               MetaTensor* out);
 
+void GroupNormalizeSiluXPUInferMeta(const MetaTensor& x,
+                                    const MetaTensor& scale,
+                                    const MetaTensor& bias,
+                                    int groups,
+                                    float epsilon,
+                                    MetaTensor* out);
+
 void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
                                       const MetaTensor& key_cache,
                                       const MetaTensor& value_cache,
@@ -144,6 +151,26 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
                         DataType out_dtype,
                         MetaTensor* out,
                         MetaTensor* out_max);
+
+void SpatialTransformerResblockXPUInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& x_max,
+    const std::vector<const MetaTensor*>& conv_bias,
+    const std::vector<const MetaTensor*>& conv_filter,
+    const std::vector<const MetaTensor*>& conv_filter_max,
+    const std::vector<const MetaTensor*>& gn_bias,
+    const std::vector<const MetaTensor*>& gn_scale,
+    const std::vector<int>& dilations,
+    const std::vector<int>& paddings,
+    const std::vector<int>& strides,
+    const std::vector<float>& gn_eps,
+    const std::vector<int>& gn_groups,
+    const std::vector<int>& groups,
+    bool conv_fix,
+    bool has_silu_fc_input,
+    bool include_silu,
+    MetaTensor* out,
+    MetaTensor* out_max);
 
 void EmbeddingWithEltwiseAddXPUInferMeta(
     const std::vector<const MetaTensor*>& ids,
@@ -862,13 +889,14 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
                               const MetaTensor& q_max,
                               const MetaTensor& k_max,
                               const MetaTensor& v_max,
+                              const MetaTensor& qk_max,
+                              const MetaTensor& qkv_max,
                               float alpha,
                               int head_num,
                               int head_dim,
                               bool qkv_fc_fusion,
                               DataType out_dtype,
-                              MetaTensor* qkv,
-                              MetaTensor* qkv_max);
+                              MetaTensor* qkv);
 void SinePosXPUInferMeta(const MetaTensor& x,
                          const MetaTensor& y,
                          MetaTensor* out);
