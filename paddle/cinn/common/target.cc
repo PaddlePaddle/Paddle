@@ -337,11 +337,17 @@ int GetMaxBlocks() {
   return max_blocks;
 }
 
-const Target &DefaultTarget() {
+const Target &DefaultGPUTarget() {
 #ifdef CINN_WITH_CUDA
   return DefaultNVGPUTarget();
 #elif defined(CINN_WITH_ROCM)
   return DefaultROCMTarget();
+#endif
+}
+
+const Target &DefaultTarget() {
+#ifdef CINN_WITH_GPU
+  return DefaultGPUTarget();
 #else
   return DefaultHostTarget();
 #endif

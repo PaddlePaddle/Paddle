@@ -27,15 +27,6 @@
 
 import os
 
-from .runtime.cinn_jit import to_cinn_llir  # noqa: F401
-
-cinndir = os.path.dirname(os.path.abspath(__file__))
-runtime_include_dir = os.path.join(cinndir, "libs")
-cuhfile = os.path.join(runtime_include_dir, "cinn_cuda_runtime_source.cuh")
-
-if os.path.exists(cuhfile):
-    os.environ.setdefault('runtime_include_dir', runtime_include_dir)
-
 from .backends import (  # noqa: F401
     Compiler,
     ExecutionEngine,
@@ -61,10 +52,31 @@ from .common import (  # noqa: F401
     Void,
     _CINNValuePack_,
     get_target,
+    is_compiled_with_bangc,
     is_compiled_with_cuda,
     is_compiled_with_cudnn,
+    is_compiled_with_hip,
+    is_compiled_with_sycl,
     make_const,
     reset_name_id,
     set_target,
     type_of,
 )
+from .runtime.cinn_jit import to_cinn_llir  # noqa: F401
+
+is_compiled_with_device = (
+    is_compiled_with_cuda() or is_compiled_with_sycl() or is_compiled_with_hip()
+)
+if is_compiled_with_device:
+    cinndir = os.path.dirname(os.path.abspath(__file__))
+    runtime_include_dir = os.path.join(cinndir, "libs")
+    if is_compiled_with_cuda():
+        hfile = os.path.join(
+            runtime_include_dir, "cinn_cuda_runtime_source.cuh"
+        )
+    elif is_compiled_with_sycl():
+        hfile = os.path.join(runtime_include_dir, "cinn_sycl_runtime_source.h")
+    elif is_compiled_with_hip():
+        hfile = os.path.join(runtime_include_dir, "cinn_hip_runtime_source.h")
+    if os.path.exists(hfile):
+        os.environ.setdefault('runtime_include_dir', runtime_include_dir)

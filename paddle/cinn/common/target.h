@@ -135,6 +135,7 @@ const Target& SYCLTarget(Target::Arch arch = Target::Arch::Unk);
 
 const Target& DefaultROCMTarget();
 
+const Target& DefaultGPUTarget();
 const Target& DefaultTarget();
 
 int GetMaxThreads();

@@ -232,27 +232,29 @@ __device__ inline int FN_INT32(mod)(int a, int b) {
 // int64 unary and binary operator
 #define FN_INT64(func) cinn_hip_##func##_int64
 
-__device__ inline int64 FN_INT64(bitwise_and)(int64 a, int64 b) {
+__device__ inline int64_t FN_INT64(bitwise_and)(int64_t a, int64_t b) {
   return a & b;
 }
-__device__ inline int64 FN_INT64(bitwise_or)(int64 a, int64 b) { return a | b; }
-__device__ inline int64 FN_INT64(bitwise_xor)(int64 a, int64 b) {
+__device__ inline int64_t FN_INT64(bitwise_or)(int64_t a, int64_t b) {
+  return a | b;
+}
+__device__ inline int64_t FN_INT64(bitwise_xor)(int64_t a, int64_t b) {
   return a ^ b;
 }
-__device__ inline int64 FN_INT64(bitwise_not)(int64 a) { return ~a; }
-__device__ inline int64 FN_INT64(clz)(int64 a) { return __clzll(a); }
-__device__ inline int64 FN_INT64(popc)(int64 a) { return __popcll(a); }
-__device__ inline int64 FN_INT64(logical_right_shift)(int64 a, int64 b) {
-  return ((unsigned int64)a >> b);
+__device__ inline int64_t FN_INT64(bitwise_not)(int64_t a) { return ~a; }
+__device__ inline int64_t FN_INT64(clz)(int64_t a) { return __clzll(a); }
+__device__ inline int64_t FN_INT64(popc)(int64_t a) { return __popcll(a); }
+__device__ inline int64_t FN_INT64(logical_right_shift)(int64_t a, int64_t b) {
+  return ((uint64_t)a >> b);
 }
-__device__ inline int64 FN_INT64(trunc)(int64 a) { return a; }
-__device__ inline int64 FN_INT64(mod)(int64 a, int64 b) {
-  int64 res = a % b;
+__device__ inline int64_t FN_INT64(trunc)(int64_t a) { return a; }
+__device__ inline int64_t FN_INT64(mod)(int64_t a, int64_t b) {
+  int64_t res = a % b;
   if ((res != 0) && ((b ^ res) < 0)) res += b;
   return res;
 }
 
-__device__ inline int64 FN_INT64(pow)(int64 a, int64 b) {
+__device__ inline int64_t FN_INT64(pow)(int64_t a, int64_t b) {
   double res = pow(__ll2double_rd(a), __ll2double_rd(b));
   return __double2ll_rn(res);
 }
@@ -510,22 +512,27 @@ __device__ inline int cinn_min_int32(const int left, const int right) {
   return min(left, right);
 }
 
-#define EXPAND_REDUCE_INT64_MARCO(MARCO, ...)                               \
-  MARCO(sum_int64, 0, int64, ##__VA_ARGS__)                                 \
-  MARCO(prod_int64, 1, int64, ##__VA_ARGS__)                                \
-  MARCO(max_int64, std::numeric_limits<int64>::min(), int64, ##__VA_ARGS__) \
-  MARCO(min_int64, std::numeric_limits<int64>::max(), int64, ##__VA_ARGS__)
+#define EXPAND_REDUCE_INT64_MARCO(MARCO, ...)                                 \
+  MARCO(sum_int64, 0, int64_t, ##__VA_ARGS__)                                 \
+  MARCO(prod_int64, 1, int64_t, ##__VA_ARGS__)                                \
+  MARCO(                                                                      \
+      max_int64, std::numeric_limits<int64_t>::min(), int64_t, ##__VA_ARGS__) \
+  MARCO(min_int64, std::numeric_limits<int64_t>::max(), int64_t, ##__VA_ARGS__)
 
-__device__ inline int64 cinn_sum_int64(const int64 left, const int64 right) {
+__device__ inline int64_t cinn_sum_int64(const int64_t left,
+                                         const int64_t right) {
   return left + right;
 }
-__device__ inline int64 cinn_prod_int64(const int64 left, const int64 right) {
+__device__ inline int64_t cinn_prod_int64(const int64_t left,
+                                          const int64_t right) {
   return left * right;
 }
-__device__ inline int64 cinn_max_int64(const int64 left, const int64 right) {
+__device__ inline int64_t cinn_max_int64(const int64_t left,
+                                         const int64_t right) {
   return max(left, right);
 }
-__device__ inline int64 cinn_min_int64(const int64 left, const int64 right) {
+__device__ inline int64_t cinn_min_int64(const int64_t left,
+                                         const int64_t right) {
   return min(left, right);
 }
 
@@ -685,17 +692,16 @@ EXPAND_REDUCE_FP16_MACRO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
 
 #undef CINN_WARP_SHUFFLE_INTERNAL_IMPL
 
-#define CINN_WARP_REDUCE_IMPL(REDUCE_TYPE, INITIAL_VALUE, DTYPE)
-__device__ inline DTYPE cinn_warp_reduce_##REDUCE_TYPE(const DTYPE *buf,
-                                                       int offset,
-                                                       int extend) {
-  DTYPE tmp_val = (DTYPE)(INITIAL_VALUE);
-  unsigned int thread_id = threadIdx.x;
-  for (int i = thread_id; i < extend; i += WARP_SIZE) {
-    tmp_val = cinn_##REDUCE_TYPE(tmp_val, buf[offset + i]);
+#define CINN_WARP_REDUCE_IMPL(REDUCE_TYPE, INITIAL_VALUE, DTYPE) \
+  __device__ inline DTYPE cinn_warp_reduce_##REDUCE_TYPE(        \
+      const DTYPE *buf, int offset, int extend) {                \
+    DTYPE tmp_val = (DTYPE)(INITIAL_VALUE);                      \
+    unsigned int thread_id = threadIdx.x;                        \
+    for (int i = thread_id; i < extend; i += WARP_SIZE) {        \
+      tmp_val = cinn_##REDUCE_TYPE(tmp_val, buf[offset + i]);    \
+    }                                                            \
+    return cinn_warp_shuffle_##REDUCE_TYPE##_internal(tmp_val);  \
   }
-  return cinn_warp_shuffle_##REDUCE_TYPE##_internal(tmp_val);
-}
 
 EXPAND_REDUCE_INT32_MARCO(CINN_WARP_REDUCE_IMPL)
 EXPAND_REDUCE_INT64_MARCO(CINN_WARP_REDUCE_IMPL)
@@ -719,30 +725,30 @@ __device__ inline float cinn_warp_reduce_avg_fp32(const float *buf,
   return cinn_warp_reduce_sum_fp32(buf, offset, extend) / extend;
 }
 
-#define CINN_BLOCK_REDUCE_INTERNAL_IMPL(
-    TYPE, value, init_value, cinn_warp_shuffle_internal)
-unsigned int thread_id = threadIdx.x;
-    int warp_id = thread_id / WARP_SIZE;
-    unsigned int block_dim = blockDim.x * blockDim.y * blockDim.z;
-    TYPE tmp_val = cinn_warp_shuffle_internal(value);
-    if (block_dim <= WARP_SIZE) {
-      return tmp_val;
-    }
-    __shared__ TYPE tmp[WARP_SIZE];
-    if (warp_id == 0) {
-      tmp[thread_id] = init_value;
-    }
-    __syncthreads();
-    if (__lane_id() == 0) {
-      tmp[warp_id] = tmp_val;
-    }
-    __syncthreads();
-    if (warp_id == 0) {
-      tmp_val = tmp[thread_id];
-      tmp[thread_id] = cinn_warp_shuffle_internal(tmp_val);
-    }
-    __syncthreads();
-    return tmp[0];
+#define CINN_BLOCK_REDUCE_INTERNAL_IMPL(                         \
+    TYPE, value, init_value, cinn_warp_shuffle_internal)         \
+  unsigned int thread_id = threadIdx.x;                          \
+  int warp_id = thread_id / WARP_SIZE;                           \
+  unsigned int block_dim = blockDim.x * blockDim.y * blockDim.z; \
+  TYPE tmp_val = cinn_warp_shuffle_internal(value);              \
+  if (block_dim <= WARP_SIZE) {                                  \
+    return tmp_val;                                              \
+  }                                                              \
+  __shared__ TYPE tmp[WARP_SIZE];                                \
+  if (warp_id == 0) {                                            \
+    tmp[thread_id] = init_value;                                 \
+  }                                                              \
+  __syncthreads();                                               \
+  if (__lane_id() == 0) {                                        \
+    tmp[warp_id] = tmp_val;                                      \
+  }                                                              \
+  __syncthreads();                                               \
+  if (warp_id == 0) {                                            \
+    tmp_val = tmp[thread_id];                                    \
+    tmp[thread_id] = cinn_warp_shuffle_internal(tmp_val);        \
+  }                                                              \
+  __syncthreads();                                               \
+  return tmp[0];
 
 #define CINN_BLOCK_REDUCE_INTERNAL_MACRO(REDUCE_TYPE, INITIAL_VALUE, DTYPE) \
   __device__ inline DTYPE cinn_block_reduce_##REDUCE_TYPE##_internal(       \
@@ -754,44 +760,44 @@ unsigned int thread_id = threadIdx.x;
         cinn_warp_shuffle_##REDUCE_TYPE##_internal);                        \
   }
 
-    EXPAND_REDUCE_INT32_MARCO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
-    EXPAND_REDUCE_INT64_MARCO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
-    EXPAND_REDUCE_FP32_MACRO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
-    EXPAND_REDUCE_FP64_MACRO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
-    EXPAND_REDUCE_BOOL_MACRO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
+EXPAND_REDUCE_INT32_MARCO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
+EXPAND_REDUCE_INT64_MARCO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
+EXPAND_REDUCE_FP32_MACRO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
+EXPAND_REDUCE_FP64_MACRO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
+EXPAND_REDUCE_BOOL_MACRO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
 
 #ifdef CINN_HIP_BF16
-    EXPAND_REDUCE_BF16_MACRO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
+EXPAND_REDUCE_BF16_MACRO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
 #endif
 
 #ifdef CINN_HIP_FP16
-    EXPAND_REDUCE_FP16_MACRO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
+EXPAND_REDUCE_FP16_MACRO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
 #endif
 
 #undef CINN_BLOCK_REDUCE_INTERNAL_IMPL
 #undef CINN_BLOCK_REDUCE_INTERNAL_MACRO
 
-#define CINN_BLOCK_REDUCE_INTERNAL_SHM_IMPL(
-    TYPE, value, init_value, cinn_warp_shuffle_internal)
-int warp_id = threadIdx.x / WARP_SIZE;
-    TYPE tmp_val = cinn_warp_shuffle_internal(value);
-    if (blockDim.x <= WARP_SIZE) {
-      return tmp_val;
-    }
-    if (warp_id == 0) {
-      shm[threadIdx.x] = init_value;
-    }
-    __syncthreads();
-    if (__lane_id() == 0) {
-      shm[warp_id] = tmp_val;
-    }
-    __syncthreads();
-    if (warp_id == 0) {
-      tmp_val = shm[threadIdx.x];
-      shm[threadIdx.x] = cinn_warp_shuffle_internal(tmp_val);
-    }
-    __syncthreads();
-    return shm[0];
+#define CINN_BLOCK_REDUCE_INTERNAL_SHM_IMPL(                \
+    TYPE, value, init_value, cinn_warp_shuffle_internal)    \
+  int warp_id = threadIdx.x / WARP_SIZE;                    \
+  TYPE tmp_val = cinn_warp_shuffle_internal(value);         \
+  if (blockDim.x <= WARP_SIZE) {                            \
+    return tmp_val;                                         \
+  }                                                         \
+  if (warp_id == 0) {                                       \
+    shm[threadIdx.x] = init_value;                          \
+  }                                                         \
+  __syncthreads();                                          \
+  if (__lane_id() == 0) {                                   \
+    shm[warp_id] = tmp_val;                                 \
+  }                                                         \
+  __syncthreads();                                          \
+  if (warp_id == 0) {                                       \
+    tmp_val = shm[threadIdx.x];                             \
+    shm[threadIdx.x] = cinn_warp_shuffle_internal(tmp_val); \
+  }                                                         \
+  __syncthreads();                                          \
+  return shm[0];
 
 #define CINN_BLOCK_REDUCE_INTERNAL_SHM_MACRO(                             \
     REDUCE_TYPE, INITIAL_VALUE, DTYPE)                                    \
@@ -804,47 +810,46 @@ int warp_id = threadIdx.x / WARP_SIZE;
         cinn_warp_shuffle_##REDUCE_TYPE##_internal);                      \
   }
 
-    EXPAND_REDUCE_INT32_MARCO(CINN_BLOCK_REDUCE_INTERNAL_SHM_MACRO)
-    EXPAND_REDUCE_INT64_MARCO(CINN_BLOCK_REDUCE_INTERNAL_SHM_MACRO)
-    EXPAND_REDUCE_FP32_MACRO(CINN_BLOCK_REDUCE_INTERNAL_SHM_MACRO)
-    EXPAND_REDUCE_FP64_MACRO(CINN_BLOCK_REDUCE_INTERNAL_SHM_MACRO)
-    EXPAND_REDUCE_BOOL_MACRO(CINN_BLOCK_REDUCE_INTERNAL_SHM_MACRO)
+EXPAND_REDUCE_INT32_MARCO(CINN_BLOCK_REDUCE_INTERNAL_SHM_MACRO)
+EXPAND_REDUCE_INT64_MARCO(CINN_BLOCK_REDUCE_INTERNAL_SHM_MACRO)
+EXPAND_REDUCE_FP32_MACRO(CINN_BLOCK_REDUCE_INTERNAL_SHM_MACRO)
+EXPAND_REDUCE_FP64_MACRO(CINN_BLOCK_REDUCE_INTERNAL_SHM_MACRO)
+EXPAND_REDUCE_BOOL_MACRO(CINN_BLOCK_REDUCE_INTERNAL_SHM_MACRO)
 
 #ifdef CINN_HIP_BF16
-    EXPAND_REDUCE_BF16_MACRO(CINN_BLOCK_REDUCE_INTERNAL_SHM_MACRO)
+EXPAND_REDUCE_BF16_MACRO(CINN_BLOCK_REDUCE_INTERNAL_SHM_MACRO)
 #endif
 
 #ifdef CINN_HIP_FP16
-    EXPAND_REDUCE_FP16_MACRO(CINN_BLOCK_REDUCE_INTERNAL_SHM_MACRO)
+EXPAND_REDUCE_FP16_MACRO(CINN_BLOCK_REDUCE_INTERNAL_SHM_MACRO)
 #endif
 
 #undef CINN_BLOCK_REDUCE_INTERNAL_SHM_IMPL
 #undef CINN_BLOCK_REDUCE_INTERNAL_SHM_MACRO
 
-#define CINN_BLOCK_REDUCE_IMPL(REDUCE_TYPE, INITIAL_VALUE, DTYPE)
-    __device__ inline DTYPE cinn_block_reduce_##REDUCE_TYPE(const DTYPE *buf,
-                                                            int offset,
-                                                            int extend) {
-      __shared__ DTYPE shm[WARP_SIZE];
-      DTYPE tmp_val = (DTYPE)(INITIAL_VALUE);
-      for (int i = threadIdx.x; i < extend; i += blockDim.x) {
-        tmp_val = cinn_##REDUCE_TYPE(tmp_val, buf[offset + i]);
-      }
-      return cinn_block_reduce_##REDUCE_TYPE##_internal_shm(tmp_val, shm);
-    }
+#define CINN_BLOCK_REDUCE_IMPL(REDUCE_TYPE, INITIAL_VALUE, DTYPE)        \
+  __device__ inline DTYPE cinn_block_reduce_##REDUCE_TYPE(               \
+      const DTYPE *buf, int offset, int extend) {                        \
+    __shared__ DTYPE shm[WARP_SIZE];                                     \
+    DTYPE tmp_val = (DTYPE)(INITIAL_VALUE);                              \
+    for (int i = threadIdx.x; i < extend; i += blockDim.x) {             \
+      tmp_val = cinn_##REDUCE_TYPE(tmp_val, buf[offset + i]);            \
+    }                                                                    \
+    return cinn_block_reduce_##REDUCE_TYPE##_internal_shm(tmp_val, shm); \
+  }
 
-    EXPAND_REDUCE_INT32_MARCO(CINN_BLOCK_REDUCE_IMPL)
-    EXPAND_REDUCE_INT64_MARCO(CINN_BLOCK_REDUCE_IMPL)
-    EXPAND_REDUCE_FP32_MACRO(CINN_BLOCK_REDUCE_IMPL)
-    EXPAND_REDUCE_FP64_MACRO(CINN_BLOCK_REDUCE_IMPL)
-    EXPAND_REDUCE_BOOL_MACRO(CINN_BLOCK_REDUCE_IMPL)
+EXPAND_REDUCE_INT32_MARCO(CINN_BLOCK_REDUCE_IMPL)
+EXPAND_REDUCE_INT64_MARCO(CINN_BLOCK_REDUCE_IMPL)
+EXPAND_REDUCE_FP32_MACRO(CINN_BLOCK_REDUCE_IMPL)
+EXPAND_REDUCE_FP64_MACRO(CINN_BLOCK_REDUCE_IMPL)
+EXPAND_REDUCE_BOOL_MACRO(CINN_BLOCK_REDUCE_IMPL)
 
 #ifdef CINN_HIP_BF16
-    EXPAND_REDUCE_BF16_MACRO(CINN_BLOCK_REDUCE_IMPL)
+EXPAND_REDUCE_BF16_MACRO(CINN_BLOCK_REDUCE_IMPL)
 #endif
 
 #ifdef CINN_HIP_FP16
-    EXPAND_REDUCE_FP16_MACRO(CINN_BLOCK_REDUCE_IMPL)
+EXPAND_REDUCE_FP16_MACRO(CINN_BLOCK_REDUCE_IMPL)
 #endif
 
 #undef CINN_BLOCK_REDUCE_IMPL
@@ -863,8 +868,8 @@ int warp_id = threadIdx.x / WARP_SIZE;
 #undef EXPAND_REDUCE_FP16_MACRO
 #endif
 
-    // *************************************************************** //
-    // other function
+// *************************************************************** //
+// other function
 #define __cinn_hip_find_kernel(buf, size, num, begin, stride)            \
   do {                                                                   \
     for (int i = (size - 1) * stride + begin; i >= begin; i -= stride) { \
@@ -873,42 +878,42 @@ int warp_id = threadIdx.x / WARP_SIZE;
     return -1;                                                           \
   } while (0)
 
-    __device__ inline int cinn_hip_find_int(const int *buf, int size, int num) {
-      __cinn_hip_find_kernel(buf, size, num, 0, 1);
-    }
+__device__ inline int cinn_hip_find_int(const int *buf, int size, int num) {
+  __cinn_hip_find_kernel(buf, size, num, 0, 1);
+}
 
-    __device__ inline int cinn_hip_find_float(const float *buf,
-                                              int size,
-                                              float num) {
-      __cinn_hip_find_kernel(buf, size, num, 0, 1);
-    }
+__device__ inline int cinn_hip_find_float(const float *buf,
+                                          int size,
+                                          float num) {
+  __cinn_hip_find_kernel(buf, size, num, 0, 1);
+}
 
-    __device__ inline int cinn_hip_find_int_nd(
-        const int *buf, int size, int num, int begin, int stride) {
-      __cinn_hip_find_kernel(buf, size, num, begin, stride);
-    }
+__device__ inline int cinn_hip_find_int_nd(
+    const int *buf, int size, int num, int begin, int stride) {
+  __cinn_hip_find_kernel(buf, size, num, begin, stride);
+}
 
-    __device__ inline int cinn_hip_find_float_nd(
-        const float *buf, int size, float num, int begin, int stride) {
-      __cinn_hip_find_kernel(buf, size, num, begin, stride);
-    }
+__device__ inline int cinn_hip_find_float_nd(
+    const float *buf, int size, float num, int begin, int stride) {
+  __cinn_hip_find_kernel(buf, size, num, begin, stride);
+}
 
 #undef __cinn_hip_find_kernel
 
-    __device__ inline int cinn_hip_next_smallest_int32(
-        int *buf, int size, int num, int begin, int stride) {
-      int id = -1;
-      for (int i = begin; i < begin + size * stride; i += stride) {
-        if (id == -1 || buf[i] < buf[id]) {
-          id = i;
-        }
-      }
-      if (id != -1) {
-        buf[id] = CINN_INT32_MAX;
-        return (id - begin) / stride;
-      }
-      return -1;
+__device__ inline int cinn_hip_next_smallest_int32(
+    int *buf, int size, int num, int begin, int stride) {
+  int id = -1;
+  for (int i = begin; i < begin + size * stride; i += stride) {
+    if (id == -1 || buf[i] < buf[id]) {
+      id = i;
     }
+  }
+  if (id != -1) {
+    buf[id] = CINN_INT32_MAX;
+    return (id - begin) / stride;
+  }
+  return -1;
+}
 
 #define __cinn_hip_find_from_kernel(buf, size, num, begin) \
   do {                                                     \
@@ -918,19 +923,19 @@ int warp_id = threadIdx.x / WARP_SIZE;
     return -1;                                             \
   } while (0)
 
-    __device__ inline int cinn_hip_find_int_from(const int *buf,
-                                                 int size,
-                                                 int num,
-                                                 int begin) {
-      __cinn_hip_find_from_kernel(buf, size, num, begin);
-    }
+__device__ inline int cinn_hip_find_int_from(const int *buf,
+                                             int size,
+                                             int num,
+                                             int begin) {
+  __cinn_hip_find_from_kernel(buf, size, num, begin);
+}
 
-    __device__ inline int cinn_hip_find_float_from(const float *buf,
-                                                   int size,
-                                                   float num,
-                                                   int begin) {
-      __cinn_hip_find_from_kernel(buf, size, num, begin);
-    }
+__device__ inline int cinn_hip_find_float_from(const float *buf,
+                                               int size,
+                                               float num,
+                                               int begin) {
+  __cinn_hip_find_from_kernel(buf, size, num, begin);
+}
 
 #undef __cinn_hip_find_from_kernel
 
@@ -947,14 +952,14 @@ int warp_id = threadIdx.x / WARP_SIZE;
     return out;                                                            \
   }
 
-    CINN_HIP_LT_NUM(fp32, float)
-    CINN_HIP_LT_NUM(fp64, double)
-    CINN_HIP_LT_NUM(uint8, uint8_t)
-    CINN_HIP_LT_NUM(int16, int16_t)
-    CINN_HIP_LT_NUM(int32, int)
-    CINN_HIP_LT_NUM(int64, long long int)  //  NOLINT
+CINN_HIP_LT_NUM(fp32, float)
+CINN_HIP_LT_NUM(fp64, double)
+CINN_HIP_LT_NUM(uint8, uint8_t)
+CINN_HIP_LT_NUM(int16, int16_t)
+CINN_HIP_LT_NUM(int32, int)
+CINN_HIP_LT_NUM(int64, int64_t)
 #ifdef CINN_HIP_FP16
-    CINN_HIP_LT_NUM(fp16, float16)
+CINN_HIP_LT_NUM(fp16, float16)
 #endif
 
 #undef CINN_HIP_LT_NUM
@@ -972,14 +977,14 @@ int warp_id = threadIdx.x / WARP_SIZE;
     return out;                                                            \
   }
 
-    CINN_HIP_GT_NUM(fp32, float)
-    CINN_HIP_GT_NUM(fp64, double)
-    CINN_HIP_GT_NUM(uint8, uint8_t)
-    CINN_HIP_GT_NUM(int16, int16_t)
-    CINN_HIP_GT_NUM(int32, int)
-    CINN_HIP_GT_NUM(int64, long long int)  // NOLINT
+CINN_HIP_GT_NUM(fp32, float)
+CINN_HIP_GT_NUM(fp64, double)
+CINN_HIP_GT_NUM(uint8, uint8_t)
+CINN_HIP_GT_NUM(int16, int16_t)
+CINN_HIP_GT_NUM(int32, int)
+CINN_HIP_GT_NUM(int64, int64_t)
 #ifdef CINN_HIP_FP16
-    CINN_HIP_GT_NUM(fp16, float16)
+CINN_HIP_GT_NUM(fp16, float16)
 #endif
 
 #undef CINN_HIP_GT_NUM
@@ -1004,119 +1009,119 @@ int warp_id = threadIdx.x / WARP_SIZE;
     return res;                                                              \
   }
 
-    CINN_HIP_INDEX_ADD(bool, bool)
-    CINN_HIP_INDEX_ADD(int8, int8_t)
-    CINN_HIP_INDEX_ADD(int32, int32_t)
-    CINN_HIP_INDEX_ADD(int64, int64_t)
-    CINN_HIP_INDEX_ADD(fp32, float)
-    CINN_HIP_INDEX_ADD(fp64, double)
+CINN_HIP_INDEX_ADD(bool, bool)
+CINN_HIP_INDEX_ADD(int8, int8_t)
+CINN_HIP_INDEX_ADD(int32, int32_t)
+CINN_HIP_INDEX_ADD(int64, int64_t)
+CINN_HIP_INDEX_ADD(fp32, float)
+CINN_HIP_INDEX_ADD(fp64, double)
 #ifdef CINN_HIP_FP16
-    CINN_HIP_INDEX_ADD(fp16, float16)
+CINN_HIP_INDEX_ADD(fp16, float16)
 #endif
 
 #undef CINN_HIP_INDEX_ADD
 
-    __device__ int cinn_hip_resize_bilinear(const int *buf,
-                                            const int c_size,
-                                            const int in_h,
-                                            const int in_w,
-                                            const int out_h,
-                                            const int out_w,
-                                            const int n,
-                                            const int c,
-                                            const int y,
-                                            const int x) {
-      float scale_y = static_cast<float>(in_h) / out_h;
-      float scale_x = static_cast<float>(in_w) / out_w;
-      float in_y = (y + 0.5F) * scale_y - 0.5F;
-      float in_x = (x + 0.5F) * scale_x - 0.5F;
-      int in_y_int = static_cast<int>(FN_FP32(floor)(in_y));
-      int in_x_int = static_cast<int>(FN_FP32(floor)(in_x));
-      float y_lerp = in_y - in_y_int;
-      float x_lerp = in_x - in_x_int;
-      float p[2][2];
+__device__ int cinn_hip_resize_bilinear(const int *buf,
+                                        const int c_size,
+                                        const int in_h,
+                                        const int in_w,
+                                        const int out_h,
+                                        const int out_w,
+                                        const int n,
+                                        const int c,
+                                        const int y,
+                                        const int x) {
+  float scale_y = static_cast<float>(in_h) / out_h;
+  float scale_x = static_cast<float>(in_w) / out_w;
+  float in_y = (y + 0.5F) * scale_y - 0.5F;
+  float in_x = (x + 0.5F) * scale_x - 0.5F;
+  int in_y_int = static_cast<int>(FN_FP32(floor)(in_y));
+  int in_x_int = static_cast<int>(FN_FP32(floor)(in_x));
+  float y_lerp = in_y - in_y_int;
+  float x_lerp = in_x - in_x_int;
+  float p[2][2];
 
-      for (int i = 0; i < 2; ++i) {
-        for (int j = 0; j < 2; ++j) {
-          int near_y = in_y_int + i;
-          int near_x = in_x_int + j;
-          near_y = FN_INT32(max)(FN_INT32(min)(near_y, in_h - 1), 0);
-          near_x = FN_INT32(max)(FN_INT32(min)(near_x, in_w - 1), 0);
-          p[i][j] = buf[n * c_size * in_h * in_w + c * in_h * in_w +
-                        near_y * in_w + near_x];
-        }
-      }
-
-      float top = p[0][0] * (1.0F - x_lerp) + p[0][1] * x_lerp;
-      float bottom = p[1][0] * (1.0F - x_lerp) + p[1][1] * x_lerp;
-      float value = top * (1.0F - y_lerp) + bottom * y_lerp;
-      return value;
+  for (int i = 0; i < 2; ++i) {
+    for (int j = 0; j < 2; ++j) {
+      int near_y = in_y_int + i;
+      int near_x = in_x_int + j;
+      near_y = FN_INT32(max)(FN_INT32(min)(near_y, in_h - 1), 0);
+      near_x = FN_INT32(max)(FN_INT32(min)(near_x, in_w - 1), 0);
+      p[i][j] = buf[n * c_size * in_h * in_w + c * in_h * in_w + near_y * in_w +
+                    near_x];
     }
+  }
 
-    __device__ int cinn_hip_resize_bicubic(const int *buf,
-                                           const int c_size,
-                                           const int in_h,
-                                           const int in_w,
-                                           const int out_h,
-                                           const int out_w,
-                                           const int n,
-                                           const int c,
-                                           const int y,
-                                           const int x) {
-      float scale_y = static_cast<float>(in_h) / out_h;
-      float scale_x = static_cast<float>(in_w) / out_w;
-      float in_y = (y + 0.5F) * scale_y - 0.5F;
-      float in_x = (x + 0.5F) * scale_x - 0.5F;
-      int in_y_int = static_cast<int>(cinn_hip_floor_fp32(in_y));
-      int in_x_int = static_cast<int>(cinn_hip_floor_fp32(in_x));
-      float y_fract = in_y - cinn_hip_floor_fp32(in_y);
-      float x_fract = in_x - cinn_hip_floor_fp32(in_x);
-      float p[4][4];
+  float top = p[0][0] * (1.0F - x_lerp) + p[0][1] * x_lerp;
+  float bottom = p[1][0] * (1.0F - x_lerp) + p[1][1] * x_lerp;
+  float value = top * (1.0F - y_lerp) + bottom * y_lerp;
+  return value;
+}
 
-      for (int i = 0; i < 4; ++i) {
-        for (int j = 0; j < 4; ++j) {
-          int near_y = in_y_int + i - 1;
-          int near_x = in_x_int + j - 1;
-          near_y = FN_INT32(max)(FN_INT32(min)(near_y, in_h - 1), 0);
-          near_x = FN_INT32(max)(FN_INT32(min)(near_x, in_w - 1), 0);
-          p[i][j] = buf[n * c_size * in_h * in_w + c * in_h * in_w +
-                        near_y * in_w + near_x];
-        }
-      }
+__device__ int cinn_hip_resize_bicubic(const int *buf,
+                                       const int c_size,
+                                       const int in_h,
+                                       const int in_w,
+                                       const int out_h,
+                                       const int out_w,
+                                       const int n,
+                                       const int c,
+                                       const int y,
+                                       const int x) {
+  float scale_y = static_cast<float>(in_h) / out_h;
+  float scale_x = static_cast<float>(in_w) / out_w;
+  float in_y = (y + 0.5F) * scale_y - 0.5F;
+  float in_x = (x + 0.5F) * scale_x - 0.5F;
+  int in_y_int = static_cast<int>(cinn_hip_floor_fp32(in_y));
+  int in_x_int = static_cast<int>(cinn_hip_floor_fp32(in_x));
+  float y_fract = in_y - cinn_hip_floor_fp32(in_y);
+  float x_fract = in_x - cinn_hip_floor_fp32(in_x);
+  float p[4][4];
 
-      float alpha = -0.5F;
-      float w[2][4];
-
-      for (int i = 0; i < 2; ++i) {
-        float t = (i == 0 ? x_fract : y_fract);
-        float t2 = t * t;
-        float t3 = t * t * t;
-        w[i][0] = alpha * (t3 - 2 * t2 + t);
-        w[i][1] = (alpha + 2) * t3 - (3 + alpha) * t2 + 1;
-        w[i][2] = -(alpha + 2) * t3 + (3 + 2 * alpha) * t2 - alpha * t;
-        w[i][3] = -alpha * t3 + alpha * t2;
-      }
-
-      float col[4];
-
-      for (int i = 0; i < 4; ++i) {
-        col[i] = 0.0F;
-        for (int j = 0; j < 4; ++j) {
-          col[i] += p[i][j] * w[0][j];
-        }
-      }
-
-      float value = 0.0F;
-
-      for (int i = 0; i < 4; ++i) {
-        value += col[i] * w[1][i];
-      }
-
-      return value;
+  for (int i = 0; i < 4; ++i) {
+    for (int j = 0; j < 4; ++j) {
+      int near_y = in_y_int + i - 1;
+      int near_x = in_x_int + j - 1;
+      near_y = FN_INT32(max)(FN_INT32(min)(near_y, in_h - 1), 0);
+      near_x = FN_INT32(max)(FN_INT32(min)(near_x, in_w - 1), 0);
+      p[i][j] = buf[n * c_size * in_h * in_w + c * in_h * in_w + near_y * in_w +
+                    near_x];
     }
+  }
 
-    // *************************************************************** //
-    // end of macro undef
+  float alpha = -0.5F;
+  float w[2][4];
+
+  for (int i = 0; i < 2; ++i) {
+    float t = (i == 0 ? x_fract : y_fract);
+    float t2 = t * t;
+    float t3 = t * t * t;
+    w[i][0] = alpha * (t3 - 2 * t2 + t);
+    w[i][1] = (alpha + 2) * t3 - (3 + alpha) * t2 + 1;
+    w[i][2] = -(alpha + 2) * t3 + (3 + 2 * alpha) * t2 - alpha * t;
+    w[i][3] = -alpha * t3 + alpha * t2;
+  }
+
+  float col[4];
+
+  for (int i = 0; i < 4; ++i) {
+    col[i] = 0.0F;
+    for (int j = 0; j < 4; ++j) {
+      col[i] += p[i][j] * w[0][j];
+    }
+  }
+
+  float value = 0.0F;
+
+  for (int i = 0; i < 4; ++i) {
+    value += col[i] * w[1][i];
+  }
+
+  return value;
+}
+
+// *************************************************************** //
+// end of macro undef
 #undef CINN_INT32_MAX
 #undef CINN_INT32_MIN
 #undef FN_BOOL
@@ -1135,4 +1140,4 @@ int warp_id = threadIdx.x / WARP_SIZE;
 #ifdef CINN_HIP_FP16
 #undef FN_FP16
 #endif
-    }  // end of extern "C"
+}  // end of extern "C"

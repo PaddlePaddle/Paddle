@@ -70,16 +70,12 @@ if(CINN_WITH_SYCL)
   add_definitions(-DCINN_WITH_SYCL)
 endif()
 
-if(WITH_ROCM)
-  set(CINN_WITH_ROCM True)
-endif()
 if(CINN_WITH_ROCM)
   message(STATUS "CINN Compile with ROCM support")
   if(NOT WITH_ROCM)
     include(hip)
+    add_definitions(-DCINN_WITH_ROCM)
   endif()
-  link_libraries(${ROCM_HIPRTC_LIB})
-  add_definitions(-DCINN_WITH_ROCM)
 endif()
 
 if(WITH_GPU
@@ -221,6 +217,10 @@ if(WITH_GPU)
   if(NVTX_FOUND)
     target_link_libraries(cinnapi ${CUDA_NVTX_LIB})
   endif()
+endif()
+
+if(CINN_WITH_ROCM)
+  target_link_libraries(cinnapi ${ROCM_HIPRTC_LIB})
 endif()
 
 if(WITH_CUTLASS)

@@ -16,4 +16,4 @@ set(CINN_WITH_SYCL OFF)
 # Possible values:
 # - ON: enable ROCM with cmake's auto search.
 # - OFF: disable ROCM
-set(CINN_WITH_ROCM OFF)
+# set(CINN_WITH_ROCM ON)
