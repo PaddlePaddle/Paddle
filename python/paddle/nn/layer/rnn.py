@@ -893,6 +893,11 @@ class LSTMCell(RNNCellBase):
 
         y_{t} & = h_{t}
 
+    If `proj_size` is specified, the dimension of hidden state :math:`h_{t}` will be projected to `proj_size`:
+
+    .. math::
+        h_{t} & = h_{t}W_{proj_size}
+
     where :math:`\sigma` is the sigmoid function, and * is the elementwise
     multiplication operator.
 
@@ -928,9 +933,9 @@ class LSTMCell(RNNCellBase):
         - **states** (list|tuple, optional): a list/tuple of two tensors, each of shape `[batch_size, hidden_size]`, the previous hidden state, corresponding to :math:`h_{t-1}, c_{t-1}` in the formula. When states is None, zero state is used. Defaults to None.
 
     Returns:
-        - **outputs** (Tensor): shape `[batch_size, hidden_size]`, the output, corresponding to :math:`h_{t}` in the formula.
-        - **states** (tuple): a tuple of two tensors, each of shape `[batch_size, hidden_size]`, if proj_size is specified, output shape of the first element will be `[batch_size, proj_size]`
-            the new hidden states, corresponding to :math:`h_{t}, c_{t}` in the formula.
+        - **outputs** (Tensor): shape `[batch_size, hidden_size]`, the output, corresponding to :math:`h_{t}` in the formula. If `proj_size` is specified, output shape will be `[batch_size, proj_size]`.
+        - **states** (tuple): a tuple of two tensors, each of shape `[batch_size, hidden_size]`, the new hidden states, corresponding to :math:`h_{t}, c_{t}` in the formula.
+            If `proj_size` is specified, shape of :math:`h_{t}` will be `[batch_size, proj_size]`.
 
     Notes:
         All the weights and bias are initialized with `Uniform(-std, std)` by
@@ -1899,6 +1904,11 @@ class LSTM(RNNBase):
 
         y_{t} & = h_{t}
 
+    If `proj_size` is specified, the dimension of hidden state :math:`h_{t}` will be projected to `proj_size`:
+
+    .. math::
+        h_{t} & = h_{t}W_{proj_size}
+
     where :math:`\sigma` is the sigmoid function, and * is the elementwise
     multiplication operator.
 
@@ -1939,8 +1949,7 @@ class LSTM(RNNBase):
 
     Returns:
 
-        - **outputs** (Tensor): the output sequence. If `time_major` is True, the shape is `[time_steps, batch_size, num_directions * hidden_size]`, If `time_major` is False, the shape is `[batch_size, time_steps, num_directions * hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" else 1. `time_steps` means the length of the output sequence.
-
+        - **outputs** (Tensor): the output sequence. If `time_major` is True, the shape is `[time_steps, batch_size, num_directions * hidden_size]`. If `proj_size` is specified, shape will be `[time_major, batch_size, num_directions * proj_size]`. If `time_major` is False, the shape is `[batch_size, time_steps, num_directions * hidden_size]`. Note that `num_directions` is 2 if direction is "bidirectional" else 1. `time_steps` means the length of the output sequence.
         - **final_states** (tuple): the final state, a tuple of two tensors, h and c. The shape of each is `[num_layers * num_directions, batch_size, hidden_size]`. If `proj_size` is specified, the last dimension of h will be proj_size.
             Note that `num_directions` is 2 if direction is "bidirectional" (the index of forward states are 0, 2, 4, 6... and the index of backward states are 1, 3, 5, 7...), else 1.
 
