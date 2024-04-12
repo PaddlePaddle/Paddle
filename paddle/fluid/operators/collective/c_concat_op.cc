@@ -72,7 +72,7 @@ class CConcatOpGradMaker : public framework::SingleGradOpMaker<T> {
 
  protected:
   void Apply(GradOpPtr<T> retv) const override {
-    retv->SetType("c_split");
+    retv->SetType("c_concat");
     retv->SetInput("X", this->OutputGrad("Out"));
     retv->SetOutput("Out", this->InputGrad("X"));
     retv->SetAttrMap(this->Attrs());
