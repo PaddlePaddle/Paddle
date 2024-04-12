@@ -32,18 +32,17 @@ namespace ir {
 
 namespace {
 
-OptDimExprs4ValueT MakeOptDimExprs4Value(
+DimExprs4ValueT MakeDimExprs4Value(
     pir::Program* program, const PassManagerCreater& CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   pass_manager->Run(program);
   const auto* shape_analysis =
       &pir::ShapeAnalysisManager::Instance().Get(program);
-  return [shape_analysis](pir::Value value, const pir::Block*)
-             -> std::optional<const symbol::ShapeOrDataDimExprs*> {
-    if (!shape_analysis->HasShapeOrDataForValue(value)) return std::nullopt;
-    return &shape_analysis->GetShapeOrDataForValue(value);
-  };
+  return
+      [shape_analysis](pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
+        return shape_analysis->GetShapeOrDataForValue(value);
+      };
 }
 
 }  // namespace
@@ -52,7 +51,7 @@ void CheckInferSymbolicIfNeed(pir::Program* program,
                               const PassManagerCreater& CreatePassManager) {
   if (!FLAGS_prim_all || !FLAGS_check_infer_symbolic) return;
   const auto& GraphDimExprs4Value =
-      MakeOptDimExprs4Value(program, CreatePassManager);
+      MakeDimExprs4Value(program, CreatePassManager);
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   pass_manager->AddPass(CreateCheckInferSymbolicPass(GraphDimExprs4Value));
   pass_manager->AddPass(CreateSplitGenerateShapeIntoShapeOpsPass());
