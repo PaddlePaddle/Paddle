@@ -16,4 +16,4 @@ cinn_cc_library(cinn_transforms SRCS ${cinn_transforms_srcs} DEPS
 cc_library(
   add_cinn_pass
   SRCS add_cinn_pass.cc
-  DEPS op_dialect pir cinn_op_dialect cinnapi pir_transforms cinn_transforms)
+  DEPS pir_transforms cinn_transforms)

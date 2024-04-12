@@ -77,7 +77,8 @@ class IR_API FusionOp : public pir::Op<FusionOp> {
                     const cinn::dialect::GroupInfo &group_info);
 
   pir::Block *block();
-  std::vector<pir::Operation *> GetOperators();
+  pir::Block *block() const;
+
   std::vector<pir::Operation *> GetOperators() const;
 
   void VerifySig();
