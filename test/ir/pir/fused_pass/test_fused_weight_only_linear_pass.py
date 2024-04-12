@@ -196,10 +196,8 @@ class TestFusedWeightOnlyLinearPass_NoBias(PassTest):
             self.places.append(paddle.CUDAPlace(0))
 
     def sample_program(self):
-        # for dtype in ['float16', "float32"]:
-        # for w_shape in [[4096, 2048], [4096, 1024]]:
-        for dtype in ['float16']:
-            for w_shape in [[4096, 2048]]:
+        for dtype in ['float16', "float32"]:
+            for w_shape in [[4096, 2048], [4096, 1024]]:
                 rand_value = (
                     0.001 * paddle.rand(shape=w_shape, dtype=dtype).numpy()
                 )

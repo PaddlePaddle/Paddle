@@ -40,11 +40,10 @@ class PassTest(unittest.TestCase):
         pm.enable_print_statistics()
         pm.enable_ir_printing()
         for pass_name in self.pass_list:
-            pm.add_pass(pass_name)
-            for need_set_attr_pass, attr_map in self.pass_attr_map.items():
-                if pass_name == need_set_attr_pass:
-                    for attr_name, attr_v in attr_map.items():
-                        pm.set_not_owned(pass_name, attr_name, attr_v)
+            if self.pass_attr_map.count(pass_name):
+                pm.add_pass(pass_name, self.pass_attr_map[pass_name])
+            else:
+                pm.add_pass(pass_name)
         pm.run(program)
         return program
 

@@ -1937,8 +1937,27 @@ void BindPassManager(pybind11::module *m) {
            }),
            py::arg("opt_level") = 2)
       .def("add_pass",
-           [](PassManager &self, const std::string &pass_name) {
-             self.AddPass(pir::PassRegistry::Instance().Get(pass_name));
+           [](PassManager &self,
+              const std::string &pass_name,
+              const std::unordered_map<std::string, py::object> attrs = {}) {
+             auto pass = pir::PassRegistry::Instance().Get(pass_name);
+             for (const auto &attr : attrs) {
+               if (py::isinstance<py::str>(attr.second)) {
+                 pass->Set<std::string>(
+                     attr.first,
+                     new std::string(attr.second.cast<std::string>()));
+               } else if (py::isinstance<py::bool_>(attr.second)) {
+                 pass->Set<bool>(attr.first,
+                                 new bool(attr.second.cast<bool>()));
+               } else if (py::isinstance<py::int_>(attr.second)) {
+                 pass->Set<int>(attr.first, new int(attr.second.cast<int>()));
+               } else {
+                 PADDLE_THROW(phi::errors::InvalidArgument(
+                     "The type is not supported yed."));
+               }
+               pass->Set(attr.first, &attr.second);
+             }
+             self.AddPass(std::move(pass));
            })
       .def("passes",
            [](PassManager &self) {
@@ -1947,30 +1966,6 @@ void BindPassManager(pybind11::module *m) {
                pass_names.emplace_back(pass->name());
              }
              return pass_names;
-           })
-      .def("set_not_owned",
-           [](PassManager &self,
-              const std::string &pass_name,
-              const std::string &attr_name,
-              py::object &attr) {
-             for (const auto &pass : self.passes()) {
-               if (pass->name() == pass_name) {
-                 if (py::isinstance<py::str>(attr)) {
-                   auto attr_cast =
-                       std::make_shared<std::string>(attr.cast<std::string>());
-                   pass->SetNotOwned(attr_name, &attr_cast);
-                 } else if (py::isinstance<py::bool_>(attr)) {
-                   auto attr_cast = attr.cast<bool>();
-                   pass->SetNotOwned(attr_name, &attr_cast);
-                 } else if (py::isinstance<py::int_>(attr)) {
-                   auto attr_cast = attr.cast<int>();
-                   pass->SetNotOwned(attr_name, &attr_cast);
-                 } else {
-                   PADDLE_THROW(phi::errors::InvalidArgument(
-                       "The type is not supported yed."));
-                 }
-               }
-             }
            })
       .def("run", [](PassManager &self, Program *p) { self.Run(p); })
       .def("empty", &PassManager::empty)
