@@ -411,11 +411,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   set_tests_properties(test_hybrid_parallel_inference_helper PROPERTIES TIMEOUT
                                                                         "120")
 endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  py_test_modules(
-    test_fleet_rolemaker_new MODULES test_fleet_rolemaker_new ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-endif()
+
 if((WITH_GPU OR WITH_ROCM) AND (LINUX OR WIN32))
   py_test_modules(
     test_dist_mnist_gradient_merge MODULES test_dist_mnist_gradient_merge ENVS
@@ -423,11 +419,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX OR WIN32))
   set_tests_properties(test_dist_mnist_gradient_merge
                        PROPERTIES TIMEOUT "360" LABELS "RUN_TYPE=DIST")
 endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  py_test_modules(
-    test_recv_save_op MODULES test_recv_save_op ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-endif()
+
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_communicator_sync
@@ -454,11 +446,7 @@ if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
     test_fleet_gradient_merge_meta_optimizer ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
-if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
-  py_test_modules(
-    test_fleet_amp_init MODULES test_fleet_amp_init ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-endif()
+
 if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_meta_optimizer_base MODULES test_fleet_meta_optimizer_base ENVS
@@ -535,12 +523,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   set_tests_properties(test_dygraph_group_sharded_api_for_eager
                        PROPERTIES TIMEOUT "120")
 endif()
-if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
-  py_test_modules(
-    test_fleet_distributed_strategy MODULES test_fleet_distributed_strategy
-    ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-endif()
+
 if(WITH_DGC)
   if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     py_test_modules(
@@ -699,11 +682,7 @@ if((WITH_ROCM) AND LOCAL_ALL_PLAT)
   set_tests_properties(test_parallel_dygraph_sparse_embedding_over_height
                        PROPERTIES TIMEOUT "350")
 endif()
-if(LOCAL_ALL_ARCH AND (LINUX OR APPLE))
-  py_test_modules(
-    test_distributed_strategy MODULES test_distributed_strategy ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-endif()
+
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_auto_parallel_parallelizer
@@ -995,13 +974,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_fleet_checkpoint PROPERTIES TIMEOUT "200" LABELS
                                      "RUN_TYPE=EXCLUSIVE:NIGHTLY")
 endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  py_test_modules(
-    test_fleet_log MODULES test_fleet_log ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-  set_tests_properties(test_fleet_log PROPERTIES TIMEOUT "200" LABELS
-                                                 "RUN_TYPE=DIST")
-endif()
+
 if((WITH_GPU) AND (LINUX))
   py_test_modules(
     test_dygraph_dist_save_load MODULES test_dygraph_dist_save_load ENVS

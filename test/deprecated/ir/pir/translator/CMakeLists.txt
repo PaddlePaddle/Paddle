@@ -4,6 +4,9 @@ file(
   "test_*.py")
 string(REPLACE ".py" "" TEST_INTERP_CASES "${TEST_INTERP_CASES}")
 
+# test_op_translator has been tested in test/ir/pir/translator/ dir
+list(REMOVE_ITEM TEST_INTERP_CASES test_op_translator)
+
 set(DISTRIBUTED_OP_TRANSLATOR_TEST test_all_reduce_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_barrier_translator)
 list(APPEND DISTRIBUTED_OP_TRANSLATOR_TEST test_c_reduce_min_translator)

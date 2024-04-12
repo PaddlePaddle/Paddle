@@ -98,6 +98,16 @@ list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
 list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_dot_product_attention_pass)
 
+# The following unittest is now in deprecated dir, we can delete this code when we move it from deprecated dir to this dir
+list(REMOVE_ITEM TEST_OPS test_lstm_op)
+list(REMOVE_ITEM TEST_OPS test_softmax_op)
+list(REMOVE_ITEM TEST_OPS test_fc_op)
+list(REMOVE_ITEM TEST_OPS test_imperative_lod_tensor_to_selected_rows)
+list(REMOVE_ITEM TEST_OPS test_pool2d_op)
+list(REMOVE_ITEM TEST_OPS test_pool3d_op)
+list(REMOVE_ITEM TEST_OPS test_static_save_load)
+list(REMOVE_ITEM TEST_OPS test_squared_l2_norm_op)
+
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
   list(REMOVE_ITEM TEST_OPS test_c_embedding_op)
@@ -1116,7 +1126,6 @@ if(WITH_CUDNN_FRONTEND)
 endif()
 
 set(TEST_CINN_OPS
-    test_softmax_op
     test_expand_v2_op
     test_reduce_op
     test_slice_op
@@ -1162,7 +1171,6 @@ set(TEST_CINN_OPS
     test_triangular_solve_op
     test_scatter_nd_op
     test_strided_slice_op
-    test_pool2d_op
     test_instance_norm_op
     test_cumsum_op
     test_pad_op

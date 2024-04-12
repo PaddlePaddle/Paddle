@@ -16,7 +16,7 @@ import functools
 import unittest
 
 import numpy as np
-from legacy_test.test_prune import TestExecutorRunAutoPrune, TestPruneBase
+from test_prune import TestExecutorRunAutoPrune, TestPruneBase
 
 import paddle
 from paddle import base
