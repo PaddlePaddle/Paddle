@@ -141,6 +141,7 @@ class OpTransInfo {
                                                     "embedding_grad",
                                                     "embedding",
                                                     "arange",
+                                                    "softmax",
                                                     "randint"};
 };
 

@@ -59,16 +59,6 @@ class MatmulElementwiseAddFusePattern : public paddle::drr::DrrPatternBase {
         as_x_ ? add(pat.Tensor("Out"), pat.Tensor("residual"))
               : add(pat.Tensor("residual"), pat.Tensor("Out"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      std::set<bool> bool_sets = {true, false};
-      auto result_x = match_ctx.Attr<bool>("transpose_x");
-      auto result_y = match_ctx.Attr<bool>("transpose_y");
-      if (bool_sets.count(result_x) == 0 || bool_sets.count(result_y) == 0) {
-        return false;
-      }
-      return true;
-    });
-
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &fused_matmul =
@@ -156,16 +146,6 @@ class FusedMatmulElementwiseAddFusePattern
     pat.Tensor("add_out") =
         as_x_ ? add(pat.Tensor("Out"), pat.Tensor("residual"))
               : add(pat.Tensor("residual"), pat.Tensor("Out"));
-
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      std::set<bool> bool_sets = {true, false};
-      auto result_x = match_ctx.Attr<bool>("transpose_x");
-      auto result_y = match_ctx.Attr<bool>("transpose_y");
-      if (bool_sets.count(result_x) == 0 || bool_sets.count(result_y) == 0) {
-        return false;
-      }
-      return true;
-    });
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
       auto none_tensor = match_ctx.Tensor("none");

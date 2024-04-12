@@ -484,6 +484,15 @@
     func : skip_layernorm
     data_type : x
 
+- op : spatial_transformer_resblock_xpu
+  args : (Tensor x, Tensor[] x_max, Tensor[] conv_bias, Tensor[] conv_filter, Tensor[] conv_filter_max, Tensor[] gn_bias, Tensor[] gn_scale, int[] dilations, int[] paddings, int[] strides, float[] gn_eps, int[] gn_groups, int[] groups, bool conv_fix, bool has_silu_fc_input, bool include_silu)
+  output : Tensor(out), Tensor(out_max)
+  infer_meta :
+    func : SpatialTransformerResblockXPUInferMeta
+  kernel :
+    func : spatial_transformer_resblock_xpu
+    data_type : x
+
 - op : squeeze_excitation_block
   args : (Tensor x, Tensor filter, Tensor filter_max, Tensor bias, Tensor branch, int[] act_type, float[] act_param, int[] filter_dims)
   output : Tensor(out)

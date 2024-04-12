@@ -502,6 +502,16 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::LayerNormInferSpmd),
     PD_INFER_SPMD(phi::distributed::LayerNormInferSpmdReverse));
 
+// fused_rms_norm
+// NOTE(ZHIQIU): Temporally register fused_rms_norm rule,
+// this is not for rms_norm kernel, but for the custom kernel
+// 'fused_rms_norm' in PaddleNLP.
+// It will be no longer needed when the PIR-AutoParallel project
+// is finished.
+PD_REGISTER_SPMD_RULE(fused_rms_norm,
+                      PD_INFER_SPMD(phi::distributed::RmsNormInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::RmsNormInferSpmdReverse));
+
 PD_REGISTER_SPMD_RULE(
     flash_attention,
     PD_INFER_SPMD(phi::distributed::FlashAttInferSpmdStatic),
