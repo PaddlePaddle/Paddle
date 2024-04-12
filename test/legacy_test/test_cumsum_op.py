@@ -605,6 +605,15 @@ class TestTensorAxis(unittest.TestCase):
                     self.save_path, [x], [out], exe, program=main_prog
                 )
 
+                load_program, _, _ = paddle.static.load_inference_model(
+                    self.save_path, exe
+                )
+
+                self.assertEqual(
+                    len(load_program.global_block().ops) + 1,
+                    len(main_prog.global_block().ops),
+                )
+
 
 class TestCumSumOpFp16(unittest.TestCase):
     @test_with_pir_api

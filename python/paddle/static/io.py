@@ -1086,6 +1086,8 @@ def load_inference_model(path_prefix, executor, **kwargs):
         if in_pir_mode():
             program = paddle.static.Program()
             paddle.base.core.deserialize_pir_program(model_path, program, 1)
+
+            return [program, [], []]
         else:
             program_bytes = load_from_file(model_path)
             program = deserialize_program(program_bytes)
@@ -1093,26 +1095,26 @@ def load_inference_model(path_prefix, executor, **kwargs):
             # do type promotion
             program = process_type_promotion(program)
 
-        vars = list(filter(is_persistable, program.list_vars()))
-        if len(vars) > 0:
-            load_dirname = os.path.dirname(params_path)
-            params_filename = os.path.basename(params_path)
+            vars = list(filter(is_persistable, program.list_vars()))
+            if len(vars) > 0:
+                load_dirname = os.path.dirname(params_path)
+                params_filename = os.path.basename(params_path)
 
-            load_vars(
-                executor,
-                dirname=load_dirname,
-                main_program=program,
-                predicate=is_persistable,
-                filename=params_filename,
-            )
+                load_vars(
+                    executor,
+                    dirname=load_dirname,
+                    main_program=program,
+                    predicate=is_persistable,
+                    filename=params_filename,
+                )
 
-    feed_target_names = program.desc.get_feed_target_names()
-    fetch_target_names = program.desc.get_fetch_target_names()
-    fetch_targets = [
-        program.global_block().var(name) for name in fetch_target_names
-    ]
+            feed_target_names = program.desc.get_feed_target_names()
+            fetch_target_names = program.desc.get_fetch_target_names()
+            fetch_targets = [
+                program.global_block().var(name) for name in fetch_target_names
+            ]
 
-    return [program, feed_target_names, fetch_targets]
+            return [program, feed_target_names, fetch_targets]
 
 
 @dygraph_not_support
