@@ -166,6 +166,10 @@ class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
   }
 };
 
+IR_API ShapeOrDataDimExprs SubstituteShapeOrData(
+    const ShapeOrDataDimExprs& shape_or_data,
+    const std::unordered_map<DimExpr, DimExpr>& substitution_pattern);
+
 IR_API std::ostream& operator<<(std::ostream&,
                                 const ShapeOrDataDimExprs& dim_expr);
 }  // namespace symbol
