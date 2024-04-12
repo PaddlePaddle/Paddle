@@ -3287,26 +3287,34 @@ class TestHardSwish(TestActivation):
         self.check_grad(
             ['X'],
             'Out',
-            check_prim=True
-            if self.dtype not in [np.complex64, np.complex128]
-            else False,
+            check_prim=(
+                True
+                if self.dtype not in [np.complex64, np.complex128]
+                else False
+            ),
             only_check_prim=self.if_only_check_prim(),
             check_pir=True,
-            check_prim_pir=True
-            if self.dtype not in [np.complex64, np.complex128]
-            else False,
+            check_prim_pir=(
+                True
+                if self.dtype not in [np.complex64, np.complex128]
+                else False
+            ),
             check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_output(self):
         self.check_output(
-            check_prim=True
-            if self.dtype not in [np.complex64, np.complex128]
-            else False,
+            check_prim=(
+                True
+                if self.dtype not in [np.complex64, np.complex128]
+                else False
+            ),
             check_pir=True,
-            check_prim_pir=True
-            if self.dtype not in [np.complex64, np.complex128]
-            else False,
+            check_prim_pir=(
+                True
+                if self.dtype not in [np.complex64, np.complex128]
+                else False
+            ),
             check_pir_onednn=self.check_pir_onednn,
         )
 
@@ -4864,8 +4872,8 @@ class TestSoftsignAPI(unittest.TestCase):
                     F.softsign(x_fp16)
 
 
-def ref_thresholded_relu(x, threshold=1.0):
-    out = (x > threshold) * x
+def ref_thresholded_relu(x, threshold=1.0, value=0.0):
+    out = (x > threshold) * x + (x <= threshold) * value
     return out
 
 
@@ -4877,15 +4885,16 @@ class TestThresholdedRelu(TestActivation):
         self.python_api = paddle.nn.functional.thresholded_relu
 
         threshold = 15
+        value = 5
 
         np.random.seed(1024)
         x = np.random.uniform(-20, 20, self.shape).astype(self.dtype)
         x[np.abs(x) < 0.005] = 0.02
-        out = ref_thresholded_relu(x, threshold)
+        out = ref_thresholded_relu(x, threshold, value)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
-        self.attrs = {"threshold": threshold}
+        self.attrs = {"threshold": threshold, "value": value}
         self.convert_input_output()
 
     def init_shape(self):

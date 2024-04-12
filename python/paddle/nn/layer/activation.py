@@ -1164,13 +1164,14 @@ class ThresholdedReLU(Layer):
             \left\{
                 \begin{array}{rl}
                 x,& \text{if } \ x > threshold \\
-                0,& \text{otherwise}
+                value,& \text{otherwise}
                 \end{array}
             \right.
 
 
     Parameters:
         threshold (float, optional): The value of threshold for ThresholdedReLU. Default is 1.0
+        value (float, optinal): The value to replace with when x is less than threshold. Default is 0.0
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1191,17 +1192,18 @@ class ThresholdedReLU(Layer):
             [2., 0., 0.])
     """
 
-    def __init__(self, threshold=1.0, name=None):
+    def __init__(self, threshold=1.0, value=0.0, name=None):
         super().__init__()
         self._threshold = threshold
+        self._value = value
         self._name = name
 
     def forward(self, x):
-        return F.thresholded_relu(x, self._threshold, self._name)
+        return F.thresholded_relu(x, self._threshold, self._value, self._name)
 
     def extra_repr(self):
         name_str = f', name={self._name}' if self._name else ''
-        return f'threshold={self._threshold}{name_str}'
+        return f'threshold={self._threshold}, value={self._value}{name_str}'
 
 
 class Silu(Layer):

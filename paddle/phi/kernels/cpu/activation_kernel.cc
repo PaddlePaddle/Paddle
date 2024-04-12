@@ -106,9 +106,6 @@ DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Exp, ExpFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Expm1, Expm1Functor)
 
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, LeakyReluFunctor, alpha)
-DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
-                                     ThresholdedReluFunctor,
-                                     threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Mish, MishFunctor, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(HardShrink, HardShrinkFunctor, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(SoftShrink, SoftShrinkFunctor, lambda)
@@ -122,6 +119,10 @@ DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
                                      HardSigmoidFunctor,
                                      slope,
                                      offset)
+DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(ThresholdedRelu,
+                                     ThresholdedReluFunctor,
+                                     threshold,
+                                     value)
 
 template <typename T, typename Context>
 void HardSwishKernel(const Context& dev_ctx,
