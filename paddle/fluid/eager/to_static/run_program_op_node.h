@@ -33,7 +33,7 @@
 #include "paddle/pir/include/core/value.h"
 
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
 COMMON_DECLARE_bool(enable_pir_with_pt_in_dy2st);

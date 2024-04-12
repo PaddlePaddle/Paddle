@@ -754,7 +754,7 @@ static phi::Backend GetKernelBackendByYaml(
   auto& backend_info = op_info_parser->OpRuntimeInfo().kernel_key_backend;
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
 
-  for (auto slot_name : backend_info) {
+  for (const auto& slot_name : backend_info) {
     auto& input_map = op_info_parser->InputName2Id();
 
     if (input_map.count(slot_name)) {

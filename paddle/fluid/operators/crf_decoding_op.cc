@@ -103,7 +103,7 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
     if (has_length) {
       PADDLE_ENFORCE_EQ(emission_dims.size(),
                         3,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The Input(Emission) should be a 3-D tensor. But "
                             "received: input rank %u, input shape [%s]. ",
                             emission_dims.size(),
@@ -111,7 +111,7 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
     } else {
       PADDLE_ENFORCE_EQ(emission_dims.size(),
                         2,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The Input(Emission) should be a 2-D tensor. But "
                             "received: input rank %u, input shape [%s].",
                             emission_dims.size(),
@@ -121,7 +121,7 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
     auto transition_dims = ctx->GetInputDim("Transition");
     PADDLE_ENFORCE_EQ(transition_dims.size(),
                       2UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The Input(Transition) should be a 2-D tensor. But "
                           "received: input rank %u, input shape [%s].",
                           transition_dims.size(),
@@ -129,7 +129,7 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         transition_dims[0] - 2,
         transition_dims[1],
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "An invalid dimension for the Input(Transition), which should "
             "be a 2-D tensor with shape [(D + 2) x D]. But received: input "
             "rank %u, "
@@ -140,7 +140,7 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
                              transition_dims[transition_dims.size() - 1] > 0)) {
       PADDLE_ENFORCE_EQ(emission_dims[emission_dims.size() - 1],
                         transition_dims[transition_dims.size() - 1],
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The last dimension of the Input(Emission) and the "
                             "Input(Transition) "
                             "should be equal to the tag number. But received "
@@ -159,7 +159,7 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
             (label_dims.size() == 3UL && label_dims[2] == 1) ||
                 label_dims.size() == 2UL,
             true,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The Input(Label) should be a 3-D tensor with last dimension "
                 "fixed to 1 or a 2-D tensor in padding mode. But received: "
                 "input "
@@ -171,7 +171,7 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
             (label_dims.size() == 2UL && label_dims[1] == 1) ||
                 label_dims.size() == 1UL,
             true,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The Input(Label) should be a 2-D tensor with last "
                 "dimension fixed to 1 or a 1-D tensor. But received: "
                 "input rank %u, input shape [%s].",
@@ -182,7 +182,7 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             emission_dims[0],
             label_dims[0],
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The first dimension of Input(Emission) and Input(Label) "
                 "should be the same. But received Input(Emission): rank %u, "
                 "shape [%s]; received Input(Label): rank %u, shape [%s].",

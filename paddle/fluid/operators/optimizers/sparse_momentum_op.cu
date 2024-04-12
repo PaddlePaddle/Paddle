@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/operators/optimizers/sparse_momentum_op.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
@@ -24,4 +24,4 @@ PD_REGISTER_STRUCT_KERNEL(sparse_momentum,
                           ops::SparseMomentumOpKernel,
                           float,
                           double,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

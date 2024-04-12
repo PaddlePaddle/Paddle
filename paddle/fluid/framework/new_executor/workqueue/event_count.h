@@ -121,7 +121,7 @@ class EventCount {
       CheckState(state, true);
       uint64_t newstate;
       if ((state & kSignalMask) != 0) {
-        // Consume the signal and return immidiately.
+        // Consume the signal and return immediately.
         newstate = state - kWaiterInc - kSignalInc;
       } else {
         // Remove this thread from pre-wait counter and add to the waiter stack.
@@ -148,7 +148,7 @@ class EventCount {
       CheckState(state, true);
       uint64_t newstate = state - kWaiterInc;
       // We don't know if the thread was also notified or not,
-      // so we should not consume a signal unconditionaly.
+      // so we should not consume a signal unconditionally.
       // Only if number of waiters is equal to number of signals,
       // we know that the thread was notified and we must take away the signal.
       if (((state & kWaiterMask) >> kWaiterShift) ==

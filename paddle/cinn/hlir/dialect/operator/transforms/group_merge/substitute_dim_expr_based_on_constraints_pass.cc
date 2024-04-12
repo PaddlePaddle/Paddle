@@ -49,72 +49,6 @@ void VisitEachValue(const pir::Operation* op, const DoEachT& DoEach) {
   }
 }
 
-symbol::TensorShapeOrDataDimExprs SubstituteTensorShapeOrData(
-    const symbol::TensorShapeOrDataDimExprs& shape_or_data,
-    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
-        substitution_pattern) {
-  auto SubstituteOneDimExpr =
-      [](const std::vector<symbol::DimExpr>& original_dim_expr,
-         const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
-             substitution_pattern) -> std::vector<symbol::DimExpr> {
-    std::vector<symbol::DimExpr> substituted_dim_expr{};
-    for (const symbol::DimExpr& dim_expr : original_dim_expr) {
-      const auto& tmp_dim_expr =
-          symbol::SubstituteDimExpr(dim_expr, substitution_pattern);
-      substituted_dim_expr.push_back(symbol::SimplifyDimExpr(tmp_dim_expr));
-    }
-    return substituted_dim_expr;
-  };
-
-  std::vector<symbol::DimExpr> substituted_shape =
-      SubstituteOneDimExpr(shape_or_data.shape(), substitution_pattern);
-  if (!shape_or_data.data().has_value()) {
-    return symbol::ShapeOrData<symbol::DimExpr>(substituted_shape);
-  } else {
-    std::vector<symbol::DimExpr> substituted_data = SubstituteOneDimExpr(
-        shape_or_data.data().value(), substitution_pattern);
-    return symbol::ShapeOrData<symbol::DimExpr>(substituted_shape,
-                                                substituted_data);
-  }
-}
-
-symbol::ShapeOrDataDimExprs SubstituteShapeOrData(
-    const symbol::ShapeOrDataDimExprs& shape_or_data,
-    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
-        substitution_pattern) {
-  auto lambdas = symbol::Overloaded{
-      [&](const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data) {
-        return symbol::ShapeOrDataDimExprs(SubstituteTensorShapeOrData(
-            tensor_shape_or_data, substitution_pattern));
-      },
-      [&](const symbol::TensorListShapeOrDataDimExprs& tensor_list) {
-        symbol::TensorListShapeOrDataDimExprs substituted_tensor_list;
-        for (symbol::TensorShapeOrDataDimExprs tensor_shape_or_data :
-             tensor_list) {
-          substituted_tensor_list.push_back(SubstituteTensorShapeOrData(
-              tensor_shape_or_data, substitution_pattern));
-        }
-        return symbol::ShapeOrDataDimExprs(substituted_tensor_list);
-      }};
-  return std::visit(lambdas, shape_or_data.variant());
-}
-
-int GetDimExprPriority(const symbol::DimExpr& dim_expr) {
-  return std::visit(
-      symbol::Overloaded{
-          [&](std::int64_t) { return 0; },
-          [&](const std::string&) { return 1; },
-          [&](const symbol::Negative<symbol::DimExpr>&) { return 2; },
-          [&](const symbol::Reciprocal<symbol::DimExpr>&) { return 2; },
-          [&](const symbol::Add<symbol::DimExpr>&) { return 2; },
-          [&](const symbol::Mul<symbol::DimExpr>&) { return 2; },
-          [&](const symbol::Max<symbol::DimExpr>&) { return 2; },
-          [&](const symbol::Min<symbol::DimExpr>&) { return 2; },
-          [&](const symbol::Broadcast<symbol::DimExpr>&) { return 2; },
-      },
-      dim_expr.variant());
-}
-
 std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetDimExprSubstitution(
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
   const std::vector<symbol::DimExprConstraint>& dim_expr_constraints =
@@ -139,7 +73,8 @@ std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetDimExprSubstitution(
     CHECK(!dim_expr_cluster.empty());
     auto dim_expr_root = dim_expr_cluster[0];
     for (const auto& dim_expr : dim_expr_cluster) {
-      if (GetDimExprPriority(dim_expr) < GetDimExprPriority(dim_expr_root)) {
+      if (symbol::GetDimExprPriority(dim_expr) <
+          symbol::GetDimExprPriority(dim_expr_root)) {
         dim_expr_root = dim_expr;
       }
     }
@@ -170,7 +105,8 @@ void SubstituteDimExprBasedOnConstraints(pir::Operation* region_op) {
         VLOG(8) << op->name()
                 << "      origin_shape_or_data: " << origin_shape_or_data;
         const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
-            SubstituteShapeOrData(origin_shape_or_data, substitution_pattern);
+            symbol::SubstituteShapeOrData(origin_shape_or_data,
+                                          substitution_pattern);
         VLOG(8) << op->name()
                 << " substituted_shape_or_data: " << substituted_shape_or_data;
         shape_analysis->SetShapeOrDataForValue(value,
