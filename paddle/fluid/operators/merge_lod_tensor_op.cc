@@ -60,7 +60,7 @@ class MergeLoDTensorOp : public framework::OperatorBase {
     PADDLE_ENFORCE_EQ(
         in_true.numel() || in_false.numel(),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(InTrue) or Input(InFalse) should be initialized."));
 
     auto &mask_dim = mask.dims();
@@ -72,7 +72,7 @@ class MergeLoDTensorOp : public framework::OperatorBase {
       framework::TensorCopy(
           mask, platform::CPUPlace(), dev_ctx, cpu_mask.get());
 #else
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
           "Not supported GPU, Please recompile or reinstall paddle with CUDA "
           "support."));
 #endif
@@ -129,7 +129,7 @@ class MergeLoDTensorOp : public framework::OperatorBase {
 
       PADDLE_ENFORCE_GE(end_offset,
                         start_offset,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The end offset less than start offset, end offset "
                             "is %d, start offset is %d.",
                             end_offset,
@@ -216,7 +216,7 @@ class MergeLoDTensorInferShape : public framework::InferShapeBase {
     auto mask_dim = context->GetInputDim("Mask");
     PADDLE_ENFORCE_EQ(mask_dim.size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "If you are using IfElse OP:"
                           "\n\nie = fluid.layers.IfElse(cond=cond)\nwith "
                           "ie.true_block():\n    out_1 = ie.input(x)\n\n"
@@ -227,7 +227,7 @@ class MergeLoDTensorInferShape : public framework::InferShapeBase {
     if (context->IsRuntime() || mask_dim[1] > 0) {
       PADDLE_ENFORCE_EQ(mask_dim[1],
                         1,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "If you are using IfElse OP:"
                             "\n\nie = fluid.layers.IfElse(cond=cond)\nwith "
                             "ie.true_block():\n    out_1 = ie.input(x)\n\n"

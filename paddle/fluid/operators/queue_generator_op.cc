@@ -46,13 +46,13 @@ class QueueGeneratorOp : public framework::OperatorBase {
     PADDLE_ENFORCE_GT(
         names.size(),
         0,
-        platform::errors::InvalidArgument("The attribute 'names' for "
-                                          "Op(queue_generator) must be set."));
+        phi::errors::InvalidArgument("The attribute 'names' for "
+                                     "Op(queue_generator) must be set."));
 
     int capacity = Attr<int>("capacity");
     PADDLE_ENFORCE_GT(capacity,
                       0,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The attribute 'capacity' for Op(queue_generator) "
                           "must be set a positive value, "
                           "but the one received is %d.",
@@ -71,8 +71,8 @@ class QueueGeneratorOp : public framework::OperatorBase {
     auto var = scope->FindVar(name);
     PADDLE_ENFORCE_NOT_NULL(
         var,
-        platform::errors::NotFound(
-            "Can't find var named '%s' in the global scope.", name));
+        phi::errors::NotFound("Can't find var named '%s' in the global scope.",
+                              name));
     auto ptr = var->GetMutable<reader::LoDTensorBlockingQueueHolder>();
     ptr->InitOnce(capacity);
 

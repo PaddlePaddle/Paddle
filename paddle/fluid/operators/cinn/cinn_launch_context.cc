@@ -179,7 +179,7 @@ void CinnLaunchContext::BuildVarNameMap(
     PADDLE_ENFORCE_EQ(
         res.second,
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Cinn variable(%s) maps to more than one paddle variable(%s,%s)",
             x.second,
             res.first->second,
@@ -198,7 +198,7 @@ void CinnLaunchContext::BuildVarNameMap(
   PADDLE_ENFORCE_EQ(
       paddle2cinn_varmap_.size(),
       cinn2paddle_varmap_.size(),
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "Size of variables is not equal, paddle[%ld] vs cinn[%ld]",
           paddle2cinn_varmap_.size(),
           cinn2paddle_varmap_.size()));
@@ -236,7 +236,7 @@ CinnTensor CinnLaunchContext::GetCinnTensorOfVar(const std::string& var_name) {
   PADDLE_ENFORCE_EQ(
       IsVariableUsed(var_name),
       true,
-      platform::errors::NotFound("Variable(%s) not applied in CINN", var_name));
+      phi::errors::NotFound("Variable(%s) not applied in CINN", var_name));
   const auto& arg_name = paddle2cinn_varmap_.at(var_name);
   return cinn_scope_->GetTensor(arg_name);
 }
@@ -276,7 +276,7 @@ void CinnLaunchContext::CheckTensorEquivalent(
     const std::string& var_name, const phi::DenseTensor& paddle_tensor) {
   PADDLE_ENFORCE_EQ(IsVariableUsed(var_name),
                     true,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Variable(%s) not applied in cinn", var_name));
   // check dimension
   auto cinn_tensor = GetCinnTensorOfVar(var_name);
@@ -309,7 +309,7 @@ void CinnLaunchContext::CheckTensorEquivalent(
       framework::paddle2cinn::TransToPaddleDataType(cinn_tensor->type());
   PADDLE_ENFORCE_EQ(paddle_tensor.dtype(),
                     cinn_dtype,
-                    platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "Tensors' dtype in variable(%s) are not equivalent, "
                         "paddle is = [%s], but cinn is = [%s].",
                         var_name,
@@ -345,7 +345,7 @@ void CinnLaunchContext::InitializeArguments() {
 void CinnLaunchContext::AssignExternalVariable(const std::string& var_name) {
   PADDLE_ENFORCE_EQ(IsVariableUsed(var_name),
                     true,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Variable(%s) not applied in cinn", var_name));
   auto* cinn_buffer = GetCinnBufferOfVar(var_name);
   std::string revise_var_name = RedirectVarName(var_name);
@@ -372,7 +372,7 @@ void CinnLaunchContext::AssignExternalVariable(const std::string& var_name) {
 void CinnLaunchContext::AssignInternalVariable(const std::string& var_name) {
   PADDLE_ENFORCE_EQ(IsVariableUsed(var_name),
                     true,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Variable(%s) not applied in cinn", var_name));
   auto* cinn_buffer = GetCinnBufferOfVar(var_name);
   std::string revise_var_name = RedirectVarName(var_name);
@@ -458,7 +458,7 @@ std::unique_ptr<framework::ProgramDesc> CinnLaunchContext::BuildCompiledProgram(
             PADDLE_ENFORCE_NE(
                 res,
                 cinn2paddle_varmap_.end(),
-                platform::errors::NotFound("Argument(%s) not found", arg));
+                phi::errors::NotFound("Argument(%s) not found", arg));
             var_names.emplace_back(res->second);
           }
         }
@@ -592,8 +592,8 @@ cinn_buffer_t* CinnLaunchContext::GetCinnBufferOfVar(
   PADDLE_ENFORCE_NE(
       res,
       paddle2argument_.end(),
-      platform::errors::NotFound("Variable(%s) not found in compilation result",
-                                 var_name));
+      phi::errors::NotFound("Variable(%s) not found in compilation result",
+                            var_name));
   return static_cast<cinn_buffer_t*>(res->second);
 }
 

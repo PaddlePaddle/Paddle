@@ -26,28 +26,28 @@ class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(
         ctx->Inputs("BBoxes").size(),
         1UL,
-        platform::errors::InvalidArgument("The length of Input(BBoxes) should "
-                                          "be greater than 0, but received "
-                                          "BBoxes length is:%d.",
-                                          ctx->Inputs("BBoxes").size()));
+        phi::errors::InvalidArgument("The length of Input(BBoxes) should "
+                                     "be greater than 0, but received "
+                                     "BBoxes length is:%d.",
+                                     ctx->Inputs("BBoxes").size()));
     PADDLE_ENFORCE_GE(
         ctx->Inputs("Scores").size(),
         1UL,
-        platform::errors::InvalidArgument("The length of Input(Scores) should "
-                                          "be greater than 0, but received "
-                                          "Scores length is:%d.",
-                                          ctx->Inputs("Scores").size()));
+        phi::errors::InvalidArgument("The length of Input(Scores) should "
+                                     "be greater than 0, but received "
+                                     "Scores length is:%d.",
+                                     ctx->Inputs("Scores").size()));
     PADDLE_ENFORCE_GE(
         ctx->Inputs("Anchors").size(),
         1UL,
-        platform::errors::InvalidArgument("The length of Input(Anchors) should "
-                                          "be greater than 0, but received "
-                                          "Anchors length is:%d.",
-                                          ctx->Inputs("Anchors").size()));
+        phi::errors::InvalidArgument("The length of Input(Anchors) should "
+                                     "be greater than 0, but received "
+                                     "Anchors length is:%d.",
+                                     ctx->Inputs("Anchors").size()));
     PADDLE_ENFORCE_EQ(
         ctx->Inputs("BBoxes").size(),
         ctx->Inputs("Scores").size(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(BBoxes) and Input(Scores) should have the same length, but "
             "received BBoxes length is:%d, Scores length is:%d.",
             ctx->Inputs("BBoxes").size(),
@@ -55,7 +55,7 @@ class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->Inputs("BBoxes").size(),
         ctx->Inputs("Anchors").size(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(BBoxes) and Input(Anchors) should have the same length, but "
             "received BBoxes length is:%d, Anchors length is:%d.",
             ctx->Inputs("BBoxes").size(),
@@ -73,25 +73,25 @@ class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
     auto im_info_dims = ctx->GetInputDim("ImInfo");
 
     const size_t b_n = bboxes_dims.size();
-    PADDLE_ENFORCE_GT(b_n,
-                      0,
-                      platform::errors::InvalidArgument(
-                          "The number of Variables in Input(BBoxes) "
-                          "should be greater than 0, "
-                          "but received number is:%d.",
-                          b_n));
+    PADDLE_ENFORCE_GT(
+        b_n,
+        0,
+        phi::errors::InvalidArgument("The number of Variables in Input(BBoxes) "
+                                     "should be greater than 0, "
+                                     "but received number is:%d.",
+                                     b_n));
     const size_t s_n = scores_dims.size();
-    PADDLE_ENFORCE_GT(s_n,
-                      0,
-                      platform::errors::InvalidArgument(
-                          "The number of Variables in Input(Scores) "
-                          "should be greater than 0, "
-                          "but received number is:%d.",
-                          s_n));
+    PADDLE_ENFORCE_GT(
+        s_n,
+        0,
+        phi::errors::InvalidArgument("The number of Variables in Input(Scores) "
+                                     "should be greater than 0, "
+                                     "but received number is:%d.",
+                                     s_n));
     const size_t a_n = anchors_dims.size();
     PADDLE_ENFORCE_GT(a_n,
                       0,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The number of Variables in Input(Anchors) "
                           "should be greater than 0, "
                           "but received number is:%d.",
@@ -103,35 +103,35 @@ class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           score_dims.size(),
           3,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The rank of each Variable in Input(Scores) must be 3, "
               "but received rank is:%d.",
               score_dims.size()));
       PADDLE_ENFORCE_EQ(
           bbox_dims.size(),
           3,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The rank of each Variable in Input(BBoxes) must be 3, "
               "but received rank is:%d.",
               bbox_dims.size()));
       PADDLE_ENFORCE_EQ(
           anchor_dims.size(),
           2,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The rank of each Variable in Input(Anchors) must be 2, "
               "but received rank is:%d.",
               anchor_dims.size()));
       PADDLE_ENFORCE_EQ(
           bbox_dims[2],
           4,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The last dimension of each Variable in Input(BBoxes) must be 4 "
               "representing the layout of coordinate [xmin, ymin, xmax, ymax], "
               "but received dimension is:%d.",
               bbox_dims[2]));
       PADDLE_ENFORCE_EQ(bbox_dims[1],
                         score_dims[1],
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The 2nd dimension of Variables in Input(BBoxes) "
                             "and Input(Scores) "
                             "must be same, which represents the number of the "
@@ -143,7 +143,7 @@ class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           anchor_dims[0],
           bbox_dims[1],
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The 1st dimension of each Variables in Input(Anchors) must be "
               "equal "
               "to the 2nd dimension of corresponding Variables in "
@@ -155,7 +155,7 @@ class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
               bbox_dims[1]));
       PADDLE_ENFORCE_EQ(im_info_dims.size(),
                         2,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The rank of Input(ImInfo) must be 2,  but "
                             "received ImInfo rank is:%d.",
                             im_info_dims.size()));

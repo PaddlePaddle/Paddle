@@ -67,10 +67,10 @@ class MemcpyD2HKernel {
     if (x == nullptr) {
       return;
     }
-    PADDLE_ENFORCE_EQ(ctx.HasOutput("Out"),
-                      true,
-                      platform::errors::NotFound(
-                          "Output(Out) of memcpy_d2h_op is not found."));
+    PADDLE_ENFORCE_EQ(
+        ctx.HasOutput("Out"),
+        true,
+        phi::errors::NotFound("Output(Out) of memcpy_d2h_op is not found."));
     auto *out = ctx.OutputVar("Out");
     // Get dev_ctx from ExecutionContext, it's D2H stream
     auto &dev_ctx = ctx.device_context();
@@ -136,13 +136,13 @@ REGISTER_OP_IPU_KERNEL_FUNCTOR(memcpy_d2h,
                                ops::MemcpyD2HKernel,
                                bool,
                                ops::MemcpyD2HKernel,
-                               paddle::platform::bfloat16,
+                               phi::dtype::bfloat16,
                                ops::MemcpyD2HKernel,
                                paddle::platform::complex<float>,
                                ops::MemcpyD2HKernel,
                                paddle::platform::complex<double>,
                                ops::MemcpyD2HKernel,
-                               plat::float16,
+                               phi::dtype::float16,
                                ops::MemcpyD2HKernel,
                                int16_t,
                                ops::MemcpyD2HKernel);
