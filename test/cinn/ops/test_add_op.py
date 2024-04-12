@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import numpy as np
-from cinn.frontend import NetBuilder
 from op_test import OpTest, OpTestTool, is_compile_with_device
 from op_test_helper import TestCaseHelper
 
 import paddle
+from paddle.cinn.frontend import NetBuilder
 
 
 @OpTestTool.skip_if(

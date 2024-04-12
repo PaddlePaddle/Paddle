@@ -26,7 +26,7 @@ namespace experimental {
  * and the higher backend bit has a higher priority.
  *
  * A Tensor may belong to multiple backends at the same time, such CPU and
- * MKLDNN. Only one backend value cannot
+ * OneDNN. Only one backend value cannot
  */
 class BackendSet final {
  public:

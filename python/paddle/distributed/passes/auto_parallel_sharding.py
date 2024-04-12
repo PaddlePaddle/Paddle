@@ -674,18 +674,22 @@ class ShardingPass(PassBase):
                 assert len(op.output_arg_names) == 1
                 output_name = op.output_arg_names[0]
 
-                if (
-                    op.type == "c_broadcast"
-                    and op.attr("ring_id") in dp_ring_ids
-                ):
-                    if (
-                        self.outer_dp_group
-                        and sharding_info.get_var_rank(output_name)
-                        == sharding_info.local_rank
-                    ):
-                        op._set_attr("ring_id", self.outer_dp_group.id)
-                    else:
-                        startup_block._remove_op(idx, sync=False)
+                if op.type == "c_broadcast":
+                    if op.attr("ring_id") in dp_ring_ids:
+                        if (
+                            self.outer_dp_group
+                            and sharding_info.get_var_rank(output_name)
+                            == sharding_info.local_rank
+                        ):
+                            op._set_attr("ring_id", self.outer_dp_group.id)
+                        else:
+                            startup_block._remove_op(idx, sync=False)
+                    else:  # We should remove the `c_broadcast` between `TensorParallel` mesh dim.
+                        if (
+                            sharding_info.get_var_rank(output_name)
+                            != sharding_info.local_rank
+                        ):
+                            startup_block._remove_op(idx, sync=False)
                     continue
 
                 if (
@@ -1599,7 +1603,7 @@ def _is_param_grad_fp32_cast_op(block, op):
         block, op, __amp_target_dtype__, core.VarDesc.VarType.FP32
     ):
         return False
-    if _is_master_grad_cast_op(block, op, __amp_target_dtype_name__):
+    if _is_master_grad_cast_op(block, op):
         return False
     output_name = op.output_arg_names[0]
     base_name = output_name[: output_name.find("@")]

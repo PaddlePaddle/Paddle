@@ -15,14 +15,14 @@
 
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
-from ..completion import get_phi_spmd_rule
+from ..completion import contains_spmd_rule, get_phi_spmd_rule
 from ..cost import (
     _g_op_cost_factory,
     build_comp_costs_from_descs,
     build_comp_desc_from_dist_op,
     build_dp_costs,
 )
-from ..dist_attribute import OperatorDistAttr
+from ..dist_attribute import DistTensorSpec, OperatorDistAttr
 from ..process_group import new_process_group
 from ..utils import (
     _get_comm_group,
@@ -137,10 +137,22 @@ class DistributedDefault(DistributedOperatorImplContainer):
             )
 
         # step2: infer spmd
-        rule = get_phi_spmd_rule("default_")
-        # tensor order following order in PHI definition
-        fw_results = rule.infer_forward(input_specs, output_specs)
-        bw_results = rule.infer_backward(input_specs, output_specs)
+        if contains_spmd_rule(dist_op.serial_op.type):
+            # when some inputs are optional, the input_arg_names will be less than input_names
+            # and we can pass empty DistTensorSpec() as argument
+            if len(op_desc.input_names()) > len(op_desc.input_arg_names()):
+                for i in range(
+                    len(op_desc.input_names()) - len(op_desc.input_arg_names())
+                ):
+                    input_specs.append(DistTensorSpec())
+            rule = get_phi_spmd_rule(dist_op.serial_op.type)
+            fw_results = rule.infer_forward(*input_specs)
+            bw_results = rule.infer_backward(*input_specs, output_specs)
+        else:
+            rule = get_phi_spmd_rule('default_')
+            # tensor order following order in PHI definition
+            fw_results = rule.infer_forward(input_specs, output_specs)
+            bw_results = rule.infer_backward(input_specs, output_specs)
 
         # step3: update dist_attr
         # tensor order following order in PHI definition
