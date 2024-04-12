@@ -2211,11 +2211,10 @@ class GaussianNLLLoss(Layer):
 
 
 class AdaptiveLogSoftmaxWithLoss(Layer):
-    r"""Efficient softmax approximation as described in `Efficient softmax approximation for GPUs by Edouard Grave,
-    Armand Joulin, Moustapha Cissé, David Grangier, and Hervé Jégou <https://arxiv.org/abs/1609.04309>`__.
-    Adaptive softmax is an approximate strategy for training models with large output spaces. It is most effective when
+    r"""Adaptive softmax is an approximate strategy for training models with large output spaces. It is most effective when
     the label distribution is highly imbalanced, for example in natural language modelling, where the word frequency
-    distribution approximately follows the `Zipf's law`_. _Zipf's law: https://en.wikipedia.org/wiki/Zipf%27s_law
+    distribution approximately follows the ``Zipf's law``.
+
     Adaptive softmax partitions the labels into several clusters, according to their frequency. These clusters may contain
     different number of targets each. Additionally, clusters containing less frequent labels assign lower dimensional
     embeddings to those labels, which speeds up the computation. For each minibatch, only clusters for which at least
@@ -2225,28 +2224,24 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
     should also be cheap to compute -- that is, contain a small number of assigned labels. We highly recommend taking
     a look at the original paper for more details.
 
-    For :attr:`cutoffs` should be an ordered Sequence of integers sorted in the increasing order. It controls number of
+    For :attr:``cutoffs`` should be an ordered Sequence of integers sorted in the increasing order. It controls number of
     clusters and the partitioning of targets into clusters. For example setting ``cutoffs = [10, 100, 1000]`` means that
-    first `10` targets will be assigned to the 'head' of the adaptive softmax, targets `11, 12, ..., 100` will be assigned
-    to the first cluster, and targets `101, 102, ..., 1000` will be assigned to the second cluster, while targets
-    `1001, 1002, ..., n_classes - 1` will be assigned to the last, third cluster.
+    first ``10`` targets will be assigned to the 'head' of the adaptive softmax, targets ``11, 12, ..., 100`` will be assigned
+    to the first cluster, and targets ``101, 102, ..., 1000`` will be assigned to the second cluster, while targets
+    ``1001, 1002, ..., n_classes - 1`` will be assigned to the last, third cluster.
 
-    For :attr:`div_value` is used to compute the size of each additional cluster, which is given as
+    For :attr:``div_value`` is used to compute the size of each additional cluster, which is given as follow:
 
     .. math::
-        `\left\lfloor\frac{\texttt{in\_features}}{\texttt{div\_value}^{idx}}\right\rfloor`,
+        \lfloor \frac{\text{in\_features}}{\text{div\_value}^{idx}} \rfloor
 
-    where :math:`idx` is the cluster index (with clusters for less frequent words having larger indices, and indices starting from :math:`1`).
-    For :attr:`head_bias` if set to True, adds a bias term to the 'head' of the adaptive softmax. See paper for details.
-    Set to False in the official implementation.
+    where :math:``idx`` is the cluster index (with clusters for less frequent words having larger indices, and indices starting from :math:``1``).
 
-    Note:
-        Labels passed as inputs to this module should be sorted according to their frequency. This means that the most
-        frequent label should be represented by the index `0`, and the least frequent label should be represented by
-        the index `n_classes - 1`. To compute log-probabilities for all classes, the ``log_prob`` method can be used.
+    For :attr:``head_bias`` if set to True, adds a bias term to the 'head' of the adaptive softmax. See paper for details. Set to False in the official implementation.
+
 
     Args:
-        in_features (int): Number of features in the input tensor
+        in_features (int): Number of features in the input tensor.
         n_classes (int): Number of classes in the dataset.
         cutoffs (Sequence): Cutoffs used to assign targets to their buckets.
         div_value (float, optional): value used as an exponent to compute sizes of the clusters. Default: 4.0.
@@ -2262,31 +2257,39 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
     Returns:
         A callable object of AdaptiveLogSoftmaxWithLoss.
 
-    Examples::
+     Examples::
         .. code-block:: python
 
             >>> import paddle
             >>> import paddle.nn as nn
-            >>> paddle.seed(2023)
-            >>> input = paddle.randn([3, 5], dtype=paddle.float32)
-            >>> asfm = nn.AdaptiveLogSoftmaxWithLoss(in_features=5, n_classes=3, cutoffs=[2], div_value=2.0, head_bias=False)
-            >>> out, loss = asfm(input, paddle.full((3,), 1, dtype='int64'))
+            >>> paddle.seed(2024)
+
+            >>> input = paddle.randn([3, 5], dtype="float32")
+            >>> target = paddle.full((3,), 1, dtype='int64')
+            >>> asfm = nn.AdaptiveLogSoftmaxWithLoss(in_features=5, n_classes=3, cutoffs=[
+                                  2], div_value=2.0, head_bias=False)
+            >>> out, loss = asfm(input, target)
             >>> print(out)
-            Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-                   [-1.21106601, -0.88425100, -0.86460060])
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [-1.04691017, -0.42341536, -1.16909981])
             >>> print(loss)
-            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-                    0.98663920)
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+            0.87980843)
             >>> out = asfm.log_prob(input)
             >>> print(out)
-            Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-                    [[-1.50912428, -1.21106601, -0.73185283],
-                    [-1.75451684, -0.88425100, -0.88192356],
-                    [-2.56547689, -0.86460060, -0.68935889]])
+            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[-1.13710010, -1.04691017, -1.11403584],
+            [-1.51841831, -0.42341536, -2.07040048],
+            [-4.25405550, -1.16909981, -0.39282480]])
             >>> out = asfm.predict(input)
             >>> print(out)
-            Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
-                   [2, 2, 2])
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1., 1., 2.])
+
+    Note:
+        Labels passed as inputs to this module should be sorted according to their frequency. This means that the most
+        frequent label should be represented by the index `0`, and the least frequent label should be represented by
+        the index `n_classes - 1`. To compute log-probabilities for all classes, the ``log_prob`` method can be used.
     """
 
     def __init__(
@@ -2331,14 +2334,15 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
             dtype=self._dtype,
             is_bias=False,
         )
-        self.head_bias = None
         if self.is_head_bias:
             self.head_bias = self.create_parameter(
                 shape=[self.head_size],
-                attr=self.is_head_bias,
+                attr=None,
                 dtype=self._dtype,
                 is_bias=True,
             )
+        else:
+            self.head_bias = None
 
         self.tail_weights = []
 
@@ -2362,7 +2366,6 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
                     is_bias=False,
                 )
             )
-
             self.tail_weights.append(projection)
 
     def forward(self, input, label):
@@ -2404,6 +2407,7 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
             output_logprob = cluster_logprob + head_logprob[
                 :, self.shortlist_size + i
             ].unsqueeze(1)
+
             if paddle.in_dynamic_mode():
                 out[:, start_idx:stop_idx] = output_logprob
             else:
@@ -2422,15 +2426,6 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
         return self._get_full_log_prob(input, head_output)
 
     def predict(self, input):
-        r"""This is equivalent to `self.log_pob(input).argmax(axis=1)`, but is more efficient in some cases.
-        Args:
-            input (Tensor): a minibatch of examples, The shape is [N, in_features]
-        Returns:
-            output (Tensor): a class with the highest probability for each example
-        Examples::
-            Please refer to the example of AdaptiveLogSoftmaxWithLoss.
-        """
-
         head_output = F.linear(
             x=input, weight=self.head_weight, bias=self.head_bias
         )
@@ -2440,16 +2435,17 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
 
         if all_in_shortlist:
             return output
-
         elif not_in_shortlist.all():
             log_prob = self._get_full_log_prob(input, head_output)
             return paddle.argmax(log_prob, axis=1)
-
         else:
             log_prob = self._get_full_log_prob(
                 input[not_in_shortlist], head_output[not_in_shortlist]
             )
-            output[not_in_shortlist] = paddle.argmax(log_prob, axis=1).cast(
-                'float32'
+            indices = paddle.masked_select(
+                paddle.arange(len(not_in_shortlist)), not_in_shortlist
             )
-            return output
+            result = paddle.scatter(
+                output, indices, paddle.argmax(log_prob, axis=1).cast('float32')
+            )
+            return result

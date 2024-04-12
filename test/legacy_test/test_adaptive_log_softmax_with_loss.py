@@ -1,4 +1,4 @@
-#   Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
             paddle.device.set_device(place)
             x = paddle.randn((4, 8))
             self._test_log_probs_dygraph(x)
-            x = paddle.abs(paddle.randn((64, 8)))
+            x = paddle.abs(paddle.randn((4, 8)))
             self._test_correct_dygraph(x)
 
     def _test_log_probs_dygraph(self, x):

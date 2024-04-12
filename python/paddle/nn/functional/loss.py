@@ -4269,9 +4269,10 @@ def gaussian_nll_loss(
 def adaptive_log_softmax_with_loss(
     input, label, head_weight, tail_weights, cutoffs, head_bias=None
 ):
-    r"""Compute adaptive logsoftmax result and negative log likelihood between `input` and `label`.
-    parameter `head_weight`, `tail_weights`, `cutoffs` and `head_bias` are inner members of AdaptiveLogSoftmaxWithLoss
+    r"""Compute adaptive logsoftmax result and negative log likelihood between ``input`` and ``label``.
+    Parameter ``head``, ``tail_weights``, ``cutoffs`` are inner members of AdaptiveLogSoftmaxWithLoss
     Please refer to :ref:`_cn_api_paddle_nn_AdaptiveLogSoftmaxWithLoss`.
+
     Args:
         input (Tensor): Input tensor, the data type should be float32 or float64.
         label (Tensor): Label tensor, the data type should be float32 or float64.
@@ -4279,30 +4280,35 @@ def adaptive_log_softmax_with_loss(
         tail_weights (Tensor): weight tensor for linear computation, the data type should be float32 or float64.
         cutoffs (Sequence): Cutoffs used to assign targets to their buckets.
         head_bias (Tensor, optional): bias tensor for linear computation, the data type should be float32 or float64.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
         output (Tensor): The tensor sotring adaptive logsoftmax result, the shape of output is [N]
         loss (Tensor): The tensor variable storing the adaptive_log_softmax_loss of input and label.
+
     Examples::
         .. code-block:: python
+
             >>> import paddle
             >>> import paddle.nn.functional as F
+
+            >>> paddle.seed(2024)
             >>> input = paddle.randn([3, 5], dtype=paddle.float32)
             >>> head_weight = paddle.randn([5, 3], dtype=paddle.float32)
             >>> head_bias = paddle.randn([3], dtype=paddle.float32)
             >>> tail_weights = []
-            >>> tail_weights.append(paddle.randn([5, 1], dtype=paddle.float32))
-            >>> tail_weights.append(paddle.randn([1, 2], dtype=paddle.float32))
-            >>> out, loss = F.adaptive_log_softmax_with_loss(input, paddle.full((3,), 1, dtype='int64'), head_weight, head_bias, tail_weights, cutoffs=[2])
+            >>> tail_weights.append(paddle.randn([5, 2], dtype=paddle.float32))
+            >>> tail_weights.append(paddle.randn([2, 1], dtype=paddle.float32))
+            >>> out, loss = F.adaptive_log_softmax_with_loss(input, paddle.full((3,), 1, dtype='int64'), head_weight, tail_weights, cutoffs=[2], head_bias=head_bias)
             >>> print(out)
-            Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                        [-4.26640177, -5.79977274, -0.00650562])
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.99842924, -2.27753878, -0.16740258])
             >>> print(loss)
-            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                        3.35756016)
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            1.14779019)
     """
-    targ_dim = label.dim()
-    if targ_dim == 1:
+    targt_dim = label.dim()
+
+    if targt_dim == 1:
         if input.shape[0] != label.shape[0]:
             raise ValueError(
                 'Input and label should have the same size '
@@ -4314,7 +4320,7 @@ def adaptive_log_softmax_with_loss(
                 'but found inputs with size',
                 input.size(),
             )
-    elif targ_dim == 0:
+    elif targt_dim == 0:
         if input.dim() != 1:
             raise ValueError(
                 '0D label tensor expects 1D input tensors, '
@@ -4326,7 +4332,7 @@ def adaptive_log_softmax_with_loss(
             '0D or 1D label tensor expected, ' 'multi-label not supported'
         )
 
-    is_batched = targ_dim > 0
+    is_batched = targt_dim > 0
     input = input if is_batched else input.unsqueeze(0)
     label = label if is_batched else label.unsqueeze(0)
 
@@ -4354,7 +4360,6 @@ def adaptive_log_softmax_with_loss(
                 gather_inds.shape,
             )
             gather_inds = scatter_output
-
         else:
             relative_label = label[label_mask] - low_idx
             input_subset = input.index_select(row_indices, axis=0)
@@ -4365,6 +4370,7 @@ def adaptive_log_softmax_with_loss(
             cluster_output = paddle.nn.functional.linear(
                 x=cluster_output, weight=tail_weights[i - 1][1]
             )
+
             cluster_index = cutoffs[0] + i - 1
 
             gather_inds = paddle.index_fill(
@@ -4384,6 +4390,7 @@ def adaptive_log_softmax_with_loss(
             output = output * (scatter_output == 0) + scatter_output
 
         used_rows += row_indices.numel()
+
     if used_rows != batch_size:
         raise ValueError(
             f"label values should be in [0, n_classes - 1], "
