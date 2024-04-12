@@ -48,4 +48,4 @@ class PolicyManager {
   std::vector<PolicyPtr<T>> policies_;
 };
 
-}  // namespace cinn::frontend::group_cluster::policy
+}  // namespace cinn::fusion

@@ -302,4 +302,4 @@ std::string ShardableAxesInfoManager::NameUnionDebugStr() const {
   return ss.str();
 }
 
-}  // namespace cinn::frontend::group_cluster::policy
+}  // namespace cinn::fusion

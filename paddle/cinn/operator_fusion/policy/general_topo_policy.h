@@ -15,7 +15,7 @@
 #pragma once
 #include "paddle/cinn/operator_fusion/policy/policy_manager.h"
 
-namespace cinn::fusion{
+namespace cinn::fusion {
 
 template <typename T>
 class GeneralTopoPolicy final : virtual public Policy<T> {
@@ -25,4 +25,4 @@ class GeneralTopoPolicy final : virtual public Policy<T> {
   std::string Name() { return "GeneralTopoPolicy"; }
 };
 
-}  // namespace cinn::frontend::group_cluster::policy
+}  // namespace cinn::fusion

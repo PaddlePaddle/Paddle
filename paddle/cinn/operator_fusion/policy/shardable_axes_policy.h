@@ -16,7 +16,7 @@
 #include "paddle/cinn/operator_fusion/policy/policy_manager.h"
 #include "paddle/cinn/operator_fusion/policy/shardable_axes_base.h"
 
-namespace cinn::fusion{
+namespace cinn::fusion {
 
 template <typename T>
 class ShardableAxesRRFusePolicy final : public Policy<T> {
@@ -40,4 +40,4 @@ class ShardableAxesRRFusePolicy final : public Policy<T> {
                                       const StmtPattern<T>& downstream);
 };
 
-}  // namespace cinn::frontend::group_cluster::policy
+}  // namespace cinn::fusion

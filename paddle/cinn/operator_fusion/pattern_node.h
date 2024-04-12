@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "paddle/cinn/operator_fusion/utils.h"
 #include "paddle/cinn/operator_fusion/pattern.h"
 #include "paddle/cinn/operator_fusion/pattern_api.h"
+#include "paddle/cinn/operator_fusion/utils.h"
 
 namespace cinn::fusion {
 
@@ -66,4 +66,4 @@ struct PatternNode {
 
 template <typename T>
 using PatternNodePtr = std::shared_ptr<PatternNode<T>>;
-}  // namespace cinn::frontend::group_cluster
+}  // namespace cinn::fusion

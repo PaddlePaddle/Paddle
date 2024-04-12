@@ -17,7 +17,7 @@
 #include "paddle/cinn/operator_fusion/pattern_api.h"
 #include "paddle/cinn/operator_fusion/utils.h"
 
-namespace cinn::fusion{
+namespace cinn::fusion {
 
 struct FrontendStage {};
 
@@ -32,7 +32,7 @@ struct PatternContent<FrontendStage> {
 
 using FrontendContent = PatternContent<FrontendStage>;
 
-}
+}  // namespace cinn::fusion
 
 namespace std {
 template <>
@@ -42,10 +42,9 @@ struct hash<cinn::fusion::FrontendContent> {
   }
 };
 
-
 }  // namespace std
 
-namespace cinn::fusion{
+namespace cinn::fusion {
 template <>
 struct TrivialPattern<FrontendStage> {
   explicit TrivialPattern(const std::vector<pir::Operation*>& ops)
@@ -57,8 +56,7 @@ struct TrivialPattern<FrontendStage> {
 
 template <>
 struct ReducePattern<FrontendStage> {
-  explicit ReducePattern(const std::vector<pir::Operation*>& ops)
-      : ops_(ops) {}
+  explicit ReducePattern(const std::vector<pir::Operation*>& ops) : ops_(ops) {}
   std::vector<pir::Operation*> ops_;
   std::vector<pir::Operation*> ops() const { return ops_; }
   pir::Operation* GetReduceOp() const { return ops_.back(); }
@@ -74,10 +72,10 @@ struct UnsupportPattern<FrontendStage> {
   static std::string name() { return "Unsupport"; }
 };
 
-
 template <>
 struct HorizontalFusionPattern<FrontendStage> {
-  explicit HorizontalFusionPattern(const std::vector<StmtPattern<FrontendStage>>& patterns)
+  explicit HorizontalFusionPattern(
+      const std::vector<StmtPattern<FrontendStage>>& patterns)
       : patterns_(patterns) {}
   std::vector<StmtPattern<FrontendStage>> patterns_;
   std::vector<pir::Operation*> ops() const {
@@ -91,4 +89,4 @@ struct HorizontalFusionPattern<FrontendStage> {
   static std::string name() { return "HorizontalFusionPattern"; }
 };
 
-}  // namespace cinn::frontend::group_cluster
+}  // namespace cinn::fusion

@@ -52,4 +52,4 @@ struct ShardableAxesInfoManager {
   std::unordered_map<std::string, std::string> name_union_;
 };
 
-}  // namespace cinn::frontend::group_cluster::policy
+}  // namespace cinn::fusion
