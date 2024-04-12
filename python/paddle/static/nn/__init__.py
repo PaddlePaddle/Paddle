@@ -39,19 +39,10 @@ from .loss import nce
 from .sequence_lod import (
     sequence_concat,
     sequence_conv,
-    sequence_enumerate,
-    sequence_expand,
-    sequence_expand_as,
     sequence_first_step,
     sequence_last_step,
-    sequence_pad,
     sequence_pool,
-    sequence_reshape,
-    sequence_reverse,
-    sequence_scatter,
-    sequence_slice,
     sequence_softmax,
-    sequence_unpad,
 )
 from .static_pylayer import static_pylayer
 
@@ -86,14 +77,5 @@ __all__ = [
     'sequence_concat',
     'sequence_first_step',
     'sequence_last_step',
-    'sequence_slice',
-    'sequence_expand',
-    'sequence_expand_as',
-    'sequence_pad',
-    'sequence_unpad',
-    'sequence_reshape',
-    'sequence_scatter',
-    'sequence_enumerate',
-    'sequence_reverse',
     'prelu',
 ]
