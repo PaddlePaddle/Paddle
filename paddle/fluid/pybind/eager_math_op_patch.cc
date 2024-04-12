@@ -838,8 +838,6 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
 
   // 1. scalar exists cases
   // there is no scalar_div function for __rdiv__ and __rtruediv__
-  // double other_double = 0.0;
-  // bool has_other_double = false;
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (_supported_int_dtype_.find(self_tensor.dtype()) !=
@@ -858,17 +856,6 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
   // 2. create or get tensor for other_obj
 
   paddle::Tensor other_tensor;
-  // if (has_other_double) {
-  //   eager_gil_scoped_release guard;
-  //   other_tensor = full_ad_func(self_tensor.shape(),
-  //                               phi::Scalar(other_double),
-  //                               self_tensor.dtype(),
-  //                               place);
-  //   const phi::distributed::ProcessMesh* mesh = nullptr;
-  //   if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
-  //     ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
-  //   }
-  // } else
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
@@ -968,25 +955,9 @@ static PyObject* tensor__gt__method(TensorObject* self,
   paddle::Tensor ret;
   paddle::Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
-  // bool has_other_double = false;
-  // double other_double =0.0;
 
   // 1. scalar exists cases
   // there is no scalar function for __gt__ now
-  // if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
-  //     IsNumpyType(other_obj)) {
-  //   if (PyFloat_Check(other_obj)) {
-  //     // other_double = CastPyArg2Double(other_obj, "__gt__", 0);
-  //     // has_other_double = true;
-  //     if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-  //         _supported_int_dtype_.end()) {
-  //       eager_gil_scoped_release guard;
-  //       self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
-  //     }
-  //   } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-  //     // other_double = CastPyArg2Double(other_obj, "__gt__", 0);
-  //     // has_other_double = true;
-  //   }
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
@@ -1010,17 +981,6 @@ static PyObject* tensor__gt__method(TensorObject* self,
 
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
-  // if (has_other_double) {
-  //   eager_gil_scoped_release guard;
-  //   other_tensor = full_ad_func(self_tensor.shape(),
-  //                               phi::Scalar(other_double),
-  //                               self_tensor.dtype(),
-  //                               place);
-  //   const phi::distributed::ProcessMesh* mesh = nullptr;
-  //   if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
-  //     ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
-  //   }
-  // } else
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
@@ -1113,22 +1073,6 @@ static PyObject* tensor__ge__method(TensorObject* self,
 
   // 1. scalar exists cases
   // there is no scalar function for __ge__ now
-  // double other_double = 0.0;
-  // bool has_other_double = false;
-  // if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
-  //     IsNumpyType(other_obj)) {
-  //   if (PyFloat_Check(other_obj)) {
-  //     // other_double = CastPyArg2Double(other_obj, "__ge__", 0);
-  //     // has_other_double = true;
-  //     if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-  //         _supported_int_dtype_.end()) {
-  //       eager_gil_scoped_release guard;
-  //       self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
-  //     }
-  //   } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-  //     other_double = CastPyArg2Double(other_obj, "__ge__", 0);
-  //     has_other_double = true;
-  //   }
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
@@ -1152,17 +1096,6 @@ static PyObject* tensor__ge__method(TensorObject* self,
 
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
-  // if (has_other_double) {
-  //   eager_gil_scoped_release guard;
-  //   other_tensor = full_ad_func(self_tensor.shape(),
-  //                               phi::Scalar(other_double),
-  //                               self_tensor.dtype(),
-  //                               place);
-  //   const phi::distributed::ProcessMesh* mesh = nullptr;
-  //   if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
-  //     ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
-  //   }
-  // } else
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
@@ -1256,27 +1189,6 @@ static PyObject* tensor__mod__method(TensorObject* self,
 
   // 1. scalar exists cases
   // there is no scalar_mod function for __mod__ now
-  // float other_double = 0.0f;
-  // bool has_other_double = false;
-  // if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
-  //     IsNumpyType(other_obj)) {
-  //   if (PyFloat_Check(other_obj)) {
-  //     other_double = CastPyArg2Double(other_obj, "__mod__", 0);  // NOLINT
-  //     has_other_double = true;
-  //     if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-  //         _supported_int_dtype_.end()) {
-  //       eager_gil_scoped_release guard;
-  //       self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
-  //     }
-  //   } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-  //     if (PyCheckInteger(other_obj) && self_tensor.dtype() == DataType::BOOL)
-  //     {
-  //       eager_gil_scoped_release guard;
-  //       self_tensor = cast_ad_func(self_tensor, DataType::INT64);
-  //     }
-  //     other_double = CastPyArg2Double(other_obj, "__mod__", 0);  // NOLINT
-  //     has_other_double = true;
-  //   }
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
@@ -1300,17 +1212,6 @@ static PyObject* tensor__mod__method(TensorObject* self,
 
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
-  // if (has_other_double) {
-  //   eager_gil_scoped_release guard;
-  //   other_tensor = full_ad_func(self_tensor.shape(),
-  //                               phi::Scalar(other_double),
-  //                               self_tensor.dtype(),
-  //                               self_tensor.place());
-  //   const phi::distributed::ProcessMesh* mesh = nullptr;
-  //   if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
-  //     ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
-  //   }
-  // } else
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
@@ -1528,22 +1429,6 @@ static PyObject* tensor__lt__method(TensorObject* self,
 
   // 1. scalar exists cases
   // there is no scalar function for __lt__ now
-  // float other_double = 0.0f;
-  // bool has_other_double = false;
-  // if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
-  //     IsNumpyType(other_obj)) {
-  //   if (PyFloat_Check(other_obj)) {
-  //     other_double = CastPyArg2Double(other_obj, "__lt__", 0);  // NOLINT
-  //     has_other_double = true;
-  //     if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-  //         _supported_int_dtype_.end()) {
-  //       eager_gil_scoped_release guard;
-  //       self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
-  //     }
-  //   } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-  //     other_double = CastPyArg2Double(other_obj, "__lt__", 0);  // NOLINT
-  //     has_other_double = true;
-  //   }
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
@@ -1567,17 +1452,6 @@ static PyObject* tensor__lt__method(TensorObject* self,
 
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
-  // if (has_other_double) {
-  //   eager_gil_scoped_release guard;
-  //   other_tensor = full_ad_func(self_tensor.shape(),
-  //                               phi::Scalar(other_double),
-  //                               self_tensor.dtype(),
-  //                               self_tensor.place());
-  //   const phi::distributed::ProcessMesh* mesh = nullptr;
-  //   if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
-  //     ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
-  //   }
-  // } else
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
@@ -1670,22 +1544,6 @@ static PyObject* tensor__le__method(TensorObject* self,
 
   // 1. scalar exists cases
   // there is no scalar function for __le__ now
-  // float other_double = 0.0f;
-  // bool has_other_double = false;
-  // if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
-  //     IsNumpyType(other_obj)) {
-  //   if (PyFloat_Check(other_obj)) {
-  //     other_double = CastPyArg2Double(other_obj, "__le__", 0);  // NOLINT
-  //     has_other_double = true;
-  //     if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-  //         _supported_int_dtype_.end()) {
-  //       eager_gil_scoped_release guard;
-  //       self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
-  //     }
-  //   } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-  //     other_double = CastPyArg2Double(other_obj, "__le__", 0);  // NOLINT
-  //     has_other_double = true;
-  //   }
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
@@ -1709,17 +1567,6 @@ static PyObject* tensor__le__method(TensorObject* self,
 
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
-  // if (has_other_double) {
-  //   eager_gil_scoped_release guard;
-  //   other_tensor = full_ad_func(self_tensor.shape(),
-  //                               phi::Scalar(other_double),
-  //                               self_tensor.dtype(),
-  //                               self_tensor.place());
-  //   const phi::distributed::ProcessMesh* mesh = nullptr;
-  //   if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
-  //     ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
-  //   }
-  // } else
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
@@ -1813,27 +1660,6 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
   // 1. scalar exists cases or not
   // there is no scalar case for floordiv, but alse need to cast self_tensor
   // in need.
-  // double other_double = 0.0;
-  // bool has_other_double = false;
-  // if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
-  //     IsNumpyType(other_obj)) {
-  //   if (PyFloat_Check(other_obj)) {
-  //     other_double = CastPyArg2Double(other_obj, "__floordiv__", 0);
-  //     has_other_double = true;
-  //     if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-  //         _supported_int_dtype_.end()) {
-  //       eager_gil_scoped_release guard;
-  //       self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
-  //     }
-  //   } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-  //     if (PyCheckInteger(other_obj) && self_tensor.dtype() == DataType::BOOL)
-  //     {
-  //       eager_gil_scoped_release guard;
-  //       self_tensor = cast_ad_func(self_tensor, DataType::INT64);
-  //     }
-  //     other_double = CastPyArg2Double(other_obj, "__floordiv__", 0);
-  //     has_other_double = true;
-  //   }
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
@@ -1857,17 +1683,6 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
 
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
-  // if (has_other_double) {
-  //   eager_gil_scoped_release guard;
-  //   other_tensor = full_ad_func(self_tensor.shape(),
-  //                               phi::Scalar(other_double),
-  //                               self_tensor.dtype(),
-  //                               self_tensor.place());
-  //   const phi::distributed::ProcessMesh* mesh = nullptr;
-  //   if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
-  //     ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
-  //   }
-  // } else
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
@@ -2079,27 +1894,6 @@ static PyObject* tensor__rpow__method(TensorObject* self,
   // 1. scalar exists cases or not
   // there is no scalar case for rpow, but also need to cast self_tensor in
   // need.
-  // double other_double = 0.0;
-  // bool has_other_double = false;
-  // if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
-  //     IsNumpyType(other_obj)) {
-  //   if (PyFloat_Check(other_obj)) {
-  //     other_double = CastPyArg2Double(other_obj, "__rpow__", 0);
-  //     has_other_double = true;
-  //     if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-  //         _supported_int_dtype_.end()) {
-  //       eager_gil_scoped_release guard;
-  //       self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
-  //     }
-  //   } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-  //     if (PyCheckInteger(other_obj) && self_tensor.dtype() == DataType::BOOL)
-  //     {
-  //       eager_gil_scoped_release guard;
-  //       self_tensor = cast_ad_func(self_tensor, DataType::INT64);
-  //     }
-  //     other_double = CastPyArg2Double(other_obj, "__rpow__", 0);
-  //     has_other_double = true;
-  //   }
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
@@ -2123,17 +1917,6 @@ static PyObject* tensor__rpow__method(TensorObject* self,
 
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
-  // if (has_other_double) {
-  //   eager_gil_scoped_release guard;
-  //   other_tensor = full_ad_func(self_tensor.shape(),
-  //                               phi::Scalar(other_double),
-  //                               self_tensor.dtype(),
-  //                               self_tensor.place());
-  //   const phi::distributed::ProcessMesh* mesh = nullptr;
-  //   if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
-  //     ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
-  //   }
-  // } else
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
@@ -2226,22 +2009,6 @@ static PyObject* tensor__ne__method(TensorObject* self,
 
   // 1. scalar exists cases
   // there is no scalar function for __ne__ now
-  // double other_double = 0.0;
-  // bool has_other_double = false;
-  // if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
-  //     IsNumpyType(other_obj)) {
-  //   if (PyFloat_Check(other_obj)) {
-  //     other_double = CastPyArg2Double(other_obj, "__ne__", 0);
-  //     has_other_double = true;
-  //     if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-  //         _supported_int_dtype_.end()) {
-  //       eager_gil_scoped_release guard;
-  //       self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
-  //     }
-  //   } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-  //     other_double = CastPyArg2Double(other_obj, "__ne__", 0);
-  //     has_other_double = true;
-  //   }
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
@@ -2265,17 +2032,6 @@ static PyObject* tensor__ne__method(TensorObject* self,
 
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
-  // if (has_other_double) {
-  //   eager_gil_scoped_release guard;
-  //   other_tensor = full_ad_func(self_tensor.shape(),
-  //                               phi::Scalar(other_double),
-  //                               self_tensor.dtype(),
-  //                               self_tensor.place());
-  //   const phi::distributed::ProcessMesh* mesh = nullptr;
-  //   if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
-  //     ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
-  //   }
-  // } else
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
@@ -2366,22 +2122,6 @@ static PyObject* tensor__eq__method(TensorObject* self,
 
   // 1. scalar exists cases
   // there is no scalar function for __eq__ now
-  // double other_double = 0.0;
-  // bool has_other_double = false;
-  // if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
-  //     IsNumpyType(other_obj)) {
-  //   if (PyFloat_Check(other_obj)) {
-  //     other_double = CastPyArg2Double(other_obj, "__eq__", 0);
-  //     has_other_double = true;
-  //     if (_supported_int_dtype_.find(self_tensor.dtype()) !=
-  //         _supported_int_dtype_.end()) {
-  //       eager_gil_scoped_release guard;
-  //       self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
-  //     }
-  //   } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-  //     other_double = CastPyArg2Double(other_obj, "__eq__", 0);
-  //     has_other_double = true;
-  //   }
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
     if (PyFloat_Check(other_obj)) {
@@ -2405,17 +2145,6 @@ static PyObject* tensor__eq__method(TensorObject* self,
 
   // 2. create or get tensor for other_obj
   paddle::Tensor other_tensor;
-  // if (has_other_double) {
-  //   eager_gil_scoped_release guard;
-  //   other_tensor = full_ad_func(self_tensor.shape(),
-  //                               phi::Scalar(other_double),
-  //                               self_tensor.dtype(),
-  //                               self_tensor.place());
-  //   const phi::distributed::ProcessMesh* mesh = nullptr;
-  //   if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
-  //     ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
-  //   }
-  // } else
   if (PyCheckTensor(other_obj)) {
     auto& self_tensor_ref_addr = self->tensor;
     auto& other_tensor_ref_addr = CastPyArg2Tensor(other_obj, 0);
