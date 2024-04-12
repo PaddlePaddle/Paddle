@@ -142,27 +142,6 @@ class TensorWrapper {
     }
   }
 
-#ifndef PADDLE_NO_PYTHON
-  TensorWrapper(const TensorWrapper& other) {
-    no_need_buffer_ = other.no_need_buffer_;
-    intermidiate_tensor_ = other.intermidiate_tensor_;
-    weak_grad_node_ = other.weak_grad_node_;
-    inplace_version_snapshot_ = other.inplace_version_snapshot_;
-    packed_value_ = other.packed_value_;
-    unpack_hook_ = other.unpack_hook_;
-  }
-
-  TensorWrapper& operator=(const TensorWrapper& other) {
-    no_need_buffer_ = other.no_need_buffer_;
-    intermidiate_tensor_ = other.intermidiate_tensor_;
-    weak_grad_node_ = other.weak_grad_node_;
-    inplace_version_snapshot_ = other.inplace_version_snapshot_;
-    packed_value_ = other.packed_value_;
-    unpack_hook_ = other.unpack_hook_;
-    return *this;
-  }
-#endif
-
   paddle::Tensor recover() {
     VLOG(6) << "Recover tensor: " << intermidiate_tensor_.name()
             << " for wrapper";
