@@ -35,7 +35,6 @@ USE_OP_ITSELF(cinn_launch);
 USE_OP_ITSELF(cinn_instruction_run);
 USE_OP_ITSELF(elementwise_add);
 COMMON_DECLARE_double(eager_delete_tensor_gb);
-COMMON_DECLARE_bool(enable_pe_launch_cinn);
 COMMON_DECLARE_bool(enable_interpretercore_launch_cinn);
 COMMON_DECLARE_bool(enable_cinn_auto_tune);
 
@@ -93,7 +92,7 @@ class TestCinnLaunchOp : public ::testing::Test {
   void TearDown() override { CinnCompiler::GetInstance()->Clear(); }
 };
 
-TEST_F(TestCinnLaunchOp, TestRunCPUInstructionByPE) {
+TEST_F(TestCinnLaunchOp, TestRunCPUInstructionByNewExecutor) {
   framework::Scope scope1;
   RunAndCheck(platform::CPUPlace(), &scope1);
   // the second run on the same place is to check the cache logic
@@ -102,7 +101,7 @@ TEST_F(TestCinnLaunchOp, TestRunCPUInstructionByPE) {
 }
 
 #ifdef PADDLE_WITH_CUDA
-TEST_F(TestCinnLaunchOp, TestRunGPUInstructionByPE) {
+TEST_F(TestCinnLaunchOp, TestRunGPUInstructionByNewExecutor) {
   framework::Scope scope1;
   RunAndCheck(platform::CUDAPlace(), &scope1);
   framework::Scope scope2;
@@ -111,9 +110,8 @@ TEST_F(TestCinnLaunchOp, TestRunGPUInstructionByPE) {
 #endif
 
 TEST_F(TestCinnLaunchOp, TestRunCPUInstructionByCinnProgram) {
-  // set FLAGS_enable_pe_launch_cinn=false to switch to use
+  // set FLAGS_enable_interpretercore_launch_cinn=false to switch to use
   // default scheduler of CINN to execute the compiled program
-  FLAGS_enable_pe_launch_cinn = false;
   FLAGS_enable_interpretercore_launch_cinn = false;
   framework::Scope scope1;
   RunAndCheck(platform::CPUPlace(), &scope1);
@@ -123,9 +121,8 @@ TEST_F(TestCinnLaunchOp, TestRunCPUInstructionByCinnProgram) {
 
 #ifdef PADDLE_WITH_CUDA
 TEST_F(TestCinnLaunchOp, TestRunGPUInstructionByCinnProgram) {
-  // set FLAGS_enable_pe_launch_cinn=false to switch to use
+  // set FLAGS_enable_interpretercore_launch_cinn=false to switch to use
   // default scheduler of CINN to execute the compiled program
-  FLAGS_enable_pe_launch_cinn = false;
   FLAGS_enable_interpretercore_launch_cinn = false;
   framework::Scope scope1;
   RunAndCheck(platform::CUDAPlace(), &scope1);

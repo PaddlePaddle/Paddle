@@ -33,7 +33,6 @@
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
 
-COMMON_DECLARE_bool(enable_pe_launch_cinn);
 COMMON_DECLARE_bool(enable_interpretercore_launch_cinn);
 namespace paddle {
 namespace operators {
@@ -152,24 +151,15 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     // set CINN global random seed
     details::SetCinnRandomSeed<DeviceContext>();
 
-    // Step 4. Execute the compiled CINN instructions by a PE or
-    //         by the CINN compiled program in sequential order
-    if (FLAGS_enable_pe_launch_cinn) {
-      if (FLAGS_enable_interpretercore_launch_cinn) {
-        platform::RecordEvent record_event_4(
-            "Step 4. Execute the runtime program by InterpreterCore.");
-        VLOG(4) << "Execute the runtime program by InterpreterCore";
-        auto* interpreter_core = launch_context->InitializeInterpreterCore(
-            place, const_cast<framework::Scope*>(&scope));
-        interpreter_core->Run({}, false);
-      } else {
-        platform::RecordEvent record_event_4(
-            "Step 4. Execute the runtime graph by PE.");
-        VLOG(4) << "Execute the runtime graph by PE";
-        framework::Scope& exec_scope = scope.NewScope();
-        auto* pe = launch_context->InitializePE(place, &exec_scope);
-        pe->RunWithoutFetch(launch_context->GetSkipEagerVars());
-      }
+    // Step 4. Execute the compiled CINN instructions by
+    //         the CINN compiled program in sequential order
+    if (FLAGS_enable_interpretercore_launch_cinn) {
+      platform::RecordEvent record_event_4(
+          "Step 4. Execute the runtime program by InterpreterCore.");
+      VLOG(4) << "Execute the runtime program by InterpreterCore";
+      auto* interpreter_core = launch_context->InitializeInterpreterCore(
+          place, const_cast<framework::Scope*>(&scope));
+      interpreter_core->Run({}, false);
     } else {
       platform::RecordEvent record_event_4(
           "Step 4. Execute the compiled executable program.");
