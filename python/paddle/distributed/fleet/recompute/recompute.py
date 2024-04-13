@@ -525,7 +525,9 @@ def recompute(function, *args, **kwargs):
     use_reentrant = kwargs.pop('use_reentrant', True)
 
     if framework._dygraph_tracer()._has_grad:
-        check_recompute_necessary(args)
+        check_args = list(args)
+        check_args.extend(list(kwargs.values()))
+        check_recompute_necessary(check_args)
 
     if use_reentrant:
         input_args = args
