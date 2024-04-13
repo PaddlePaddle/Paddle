@@ -30,7 +30,6 @@ from .nn import (  # noqa: F401
     rank_attention,
     search_pyramid_hash,
     shuffle_batch,
-    tdm_child,
     tdm_sampler,
 )
 
