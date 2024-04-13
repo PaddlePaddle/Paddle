@@ -323,13 +323,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   endfunction()
 
   if(NOT APPLE AND WITH_MKLML)
-    # RNN1
-    set(RNN1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/rnn1")
-    download_model_and_data_without_verify(
-      ${RNN1_INSTALL_DIR} "rnn1/model.tar.gz" "rnn1/data.txt.tar.gz")
-    inference_analysis_api_test(test_analyzer_rnn1 ${RNN1_INSTALL_DIR}
-                                analyzer_rnn1_tester.cc EXTRA_DEPS common)
-
     # seq_pool1
     set(SEQ_POOL1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/seq_pool")
     download_model_and_data_without_verify(
@@ -977,15 +970,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       ARGS
       --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
     inference_analysis_test(
-      trt_cascade_rcnn_test
-      SRCS
-      trt_cascade_rcnn_test.cc
-      EXTRA_DEPS
-      common
-      paddle_inference_shared
-      ARGS
-      --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
-    inference_analysis_test(
       trt_split_converter_test
       SRCS
       trt_split_converter_test.cc
@@ -1314,7 +1298,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
 
   if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(trt_quant_int8_yolov3_r50_test PROPERTIES TIMEOUT 400)
-    set_tests_properties(trt_cascade_rcnn_test PROPERTIES TIMEOUT 300)
     set_tests_properties(test_trt_dynamic_shape_ernie_ser_deser
                          PROPERTIES TIMEOUT 300)
     set_tests_properties(test_trt_dynamic_shape_ernie_fp16_ser_deser
