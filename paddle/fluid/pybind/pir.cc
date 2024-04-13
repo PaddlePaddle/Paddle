@@ -646,6 +646,10 @@ void BindOperation(py::module *m) {
           "callstack",
           [](Operation &self) -> py::list {
             py::list callstack_list;
+            if (!self.HasAttribute(paddle::framework::OpProtoAndCheckerMaker::
+                                       OpCreationCallstackAttrName())) {
+              return callstack_list;
+            }
             pir::Attribute op_callstack = self.attribute<pir::Attribute>(
                 paddle::framework::OpProtoAndCheckerMaker::
                     OpCreationCallstackAttrName());
