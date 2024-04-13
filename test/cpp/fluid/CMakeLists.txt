@@ -7,7 +7,7 @@ if(WITH_CINN)
   add_subdirectory(cinn)
 endif()
 add_subdirectory(controlflow)
-add_subdirectory(detection)
+
 if(WITH_DLNNE)
   add_subdirectory(dlnne)
 endif()
