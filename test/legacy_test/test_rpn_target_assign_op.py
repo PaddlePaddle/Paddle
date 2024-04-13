@@ -17,11 +17,86 @@ import unittest
 import numpy as np
 from op_test import OpTest
 from test_anchor_generator_op import anchor_generator_in_python
-from test_generate_proposal_labels_op import (
-    _bbox_overlaps,
-    _box_to_delta,
-    _generate_groundtruth,
-)
+
+
+def _bbox_overlaps(roi_boxes, gt_boxes):
+    w1 = np.maximum(roi_boxes[:, 2] - roi_boxes[:, 0] + 1, 0)
+    h1 = np.maximum(roi_boxes[:, 3] - roi_boxes[:, 1] + 1, 0)
+    w2 = np.maximum(gt_boxes[:, 2] - gt_boxes[:, 0] + 1, 0)
+    h2 = np.maximum(gt_boxes[:, 3] - gt_boxes[:, 1] + 1, 0)
+    area1 = w1 * h1
+    area2 = w2 * h2
+
+    overlaps = np.zeros((roi_boxes.shape[0], gt_boxes.shape[0]))
+    for ind1 in range(roi_boxes.shape[0]):
+        for ind2 in range(gt_boxes.shape[0]):
+            inter_x1 = np.maximum(roi_boxes[ind1, 0], gt_boxes[ind2, 0])
+            inter_y1 = np.maximum(roi_boxes[ind1, 1], gt_boxes[ind2, 1])
+            inter_x2 = np.minimum(roi_boxes[ind1, 2], gt_boxes[ind2, 2])
+            inter_y2 = np.minimum(roi_boxes[ind1, 3], gt_boxes[ind2, 3])
+            inter_w = np.maximum(inter_x2 - inter_x1 + 1, 0)
+            inter_h = np.maximum(inter_y2 - inter_y1 + 1, 0)
+            inter_area = inter_w * inter_h
+            iou = inter_area / (area1[ind1] + area2[ind2] - inter_area)
+            overlaps[ind1, ind2] = iou
+    return overlaps
+
+
+def _box_to_delta(ex_boxes, gt_boxes, weights):
+    ex_w = ex_boxes[:, 2] - ex_boxes[:, 0] + 1
+    ex_h = ex_boxes[:, 3] - ex_boxes[:, 1] + 1
+    ex_ctr_x = ex_boxes[:, 0] + 0.5 * ex_w
+    ex_ctr_y = ex_boxes[:, 1] + 0.5 * ex_h
+
+    gt_w = gt_boxes[:, 2] - gt_boxes[:, 0] + 1
+    gt_h = gt_boxes[:, 3] - gt_boxes[:, 1] + 1
+    gt_ctr_x = gt_boxes[:, 0] + 0.5 * gt_w
+    gt_ctr_y = gt_boxes[:, 1] + 0.5 * gt_h
+
+    dx = (gt_ctr_x - ex_ctr_x) / ex_w / weights[0]
+    dy = (gt_ctr_y - ex_ctr_y) / ex_h / weights[1]
+    dw = (np.log(gt_w / ex_w)) / weights[2]
+    dh = (np.log(gt_h / ex_h)) / weights[3]
+
+    targets = np.vstack([dx, dy, dw, dh]).transpose()
+    return targets
+
+
+def _generate_groundtruth(images_shape, class_nums, gt_nums):
+    ground_truth = []
+    gts_lod = []
+    num_gts = 0
+    for i, image_shape in enumerate(images_shape):
+        # Avoid background
+        gt_classes = np.random.randint(
+            low=1, high=class_nums, size=gt_nums
+        ).astype(np.int32)
+        gt_boxes = _generate_boxes(image_shape, gt_nums)
+        is_crowd = np.zeros((gt_nums), dtype=np.int32)
+        is_crowd[0] = 1
+        ground_truth.append(
+            {'gt_classes': gt_classes, 'boxes': gt_boxes, 'is_crowd': is_crowd}
+        )
+        num_gts += len(gt_classes)
+        gts_lod.append(num_gts)
+    return ground_truth, [gts_lod]
+
+
+def _generate_boxes(image_size, box_nums):
+    width = image_size[0]
+    height = image_size[1]
+    xywh = np.random.rand(box_nums, 4)
+    xy1 = xywh[:, [0, 1]] * image_size
+    wh = xywh[:, [2, 3]] * (image_size - xy1)
+    xy2 = xy1 + wh
+    boxes = np.hstack([xy1, xy2])
+    boxes[:, [0, 2]] = np.minimum(
+        width - 1.0, np.maximum(0.0, boxes[:, [0, 2]])
+    )
+    boxes[:, [1, 3]] = np.minimum(
+        height - 1.0, np.maximum(0.0, boxes[:, [1, 3]])
+    )
+    return boxes.astype(np.float32)
 
 
 def rpn_target_assign(
