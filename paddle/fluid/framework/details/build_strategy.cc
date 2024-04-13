@@ -62,7 +62,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       // removed in the near future.
       AppendPass("cinn_zero_tensor_trick_pass");
       // Note: This pass is used to enable cinn.
-      AppendPass("build_cinn_pass");
+      // AppendPass("build_cinn_pass");
       AppendPrintGraphPass("graph_viz_pass", "_build_cinn_graph");
     }
 #endif
