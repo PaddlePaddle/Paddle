@@ -141,7 +141,7 @@ class TestConvAffineChannelFusePass(PassAutoScanTest):
                 return True
             return False
 
-        # mkldnn Output has diff with bias!
+        # onednn Output has diff with bias!
         def teller2(program_config, predictor_config):
             return (
                 predictor_config.mkldnn_enabled()

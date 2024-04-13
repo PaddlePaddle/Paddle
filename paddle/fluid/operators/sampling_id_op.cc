@@ -27,7 +27,7 @@ class SamplingIdOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_LT(
         ctx->Attrs().Get<float>("min"),
         ctx->Attrs().Get<float>("max"),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "min must less then max, but here min is %f, max is %f",
             ctx->Attrs().Get<float>("min"),
             ctx->Attrs().Get<float>("max")));
@@ -36,7 +36,7 @@ class SamplingIdOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         input_dims.size(),
         2,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(X, Filter) should be 2-D tensor. But X dim is %d",
             input_dims.size()));
 

@@ -17,11 +17,11 @@
 import unittest
 
 import numpy as np
-from cinn.common import Float
-from cinn.frontend import NetBuilder
 from op_test import OpTest
 
 import paddle
+from paddle.cinn.common import Float
+from paddle.cinn.frontend import NetBuilder
 
 
 class TestBroadcastToOp(OpTest):

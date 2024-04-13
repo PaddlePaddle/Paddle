@@ -45,7 +45,7 @@ framework::DDim GetOutputShape(const std::vector<int> squeeze_dims,
       PADDLE_ENFORCE_GE(
           current,
           0,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Each axis in Attr(axes) should be in the range of [%d, %d]"
               "But current axis is:%d, input tensor's shape = [%s].",
               -in_dims.size(),
@@ -55,7 +55,7 @@ framework::DDim GetOutputShape(const std::vector<int> squeeze_dims,
       PADDLE_ENFORCE_LT(
           current,
           in_dims.size(),
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Each axis in Attr(axes) should be in the range of [%d, %d]"
               "But current axis is:%d, input tensor's shape = [%s].",
               -in_dims.size(),

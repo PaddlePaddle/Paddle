@@ -30,7 +30,7 @@ class PartialSumKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         ins[0] != nullptr,
         true,
-        platform::errors::InvalidArgument("The input should not be null."));
+        phi::errors::InvalidArgument("The input should not be null."));
 
     auto place = ctx.GetPlace();  // CPUPlace only now
 
@@ -68,7 +68,7 @@ class PartialSumGradientOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         ins[0] != nullptr,
         true,
-        platform::errors::InvalidArgument("The input should not be null."));
+        phi::errors::InvalidArgument("The input should not be null."));
     auto start_index = ctx.Attr<int>("start_index");
     auto length = ctx.Attr<int>("length");
     auto batch_size = ins[0]->dims()[0];

@@ -76,7 +76,7 @@ int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
   auto x_var = ctx.InputVar("X");
   PADDLE_ENFORCE_NOT_NULL(
       x_var,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Unable to get input Variable X, Variable name is %s.\n",
           ctx.InputName("X")));
   auto *y = ctx.Input<phi::DenseTensor>("Y");
@@ -89,13 +89,13 @@ int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
   } else if (x_var->IsType<phi::SelectedRows>()) {
     PADDLE_ENFORCE_EQ(y->dims().size() == 1 && y->dims()[0] == 1,
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "For elementwise_op, if X is Sparse, Y must be "
                           "scalar. But received the size of Y = %d.",
                           y->dims().size()));
     PADDLE_ENFORCE_NOT_NULL(
         x_for_selectedrows,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The parameter x_for_selectedrows is excepted to "
             "be valid, once input variable X`s class type is "
             "SelectedRows.\n"));
@@ -110,7 +110,7 @@ int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
     z = ctx.Output<phi::SelectedRows>("Out")->mutable_value();
     ins->emplace_back(x_for_selectedrows);
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "X's type[%s] is not supported by elementwise_op. X's type should be "
         "phi::DenseTensor or SelectedRows.",
         framework::ToTypeName(x_var->Type())));
@@ -1403,7 +1403,7 @@ void FusedElemwiseAndActGradComputeEx(const framework::ExecutionContext &ctx,
   if (UseIntermediateOut) {
     PADDLE_ENFORCE_NOT_NULL(
         intermediate_out,
-        platform::errors::InvalidArgument("Intermediate out is null pointer."));
+        phi::errors::InvalidArgument("Intermediate out is null pointer."));
   }
   if (x_dim == y_dim) {
     FusedElemwiseAndActGradComputeNoBroadcast<DeviceContext,
@@ -1507,7 +1507,7 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
   if (KeepIntermediateOut) {
     PADDLE_ENFORCE_NOT_NULL(
         intermediate_out,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The save_intermediate_out is opened, intermediate "
             "out is null pointer."));
   }
