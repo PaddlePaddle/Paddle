@@ -22,6 +22,7 @@ from .asgd import ASGD
 from .lamb import Lamb
 from .lbfgs import LBFGS
 from .momentum import Momentum
+from .nadam import NAdam
 from .optimizer import Optimizer
 from .rmsprop import RMSProp
 from .rprop import Rprop
@@ -39,6 +40,7 @@ __all__ = [
     'SGD',
     'Rprop',
     'Momentum',
+    'NAdam'
     'Lamb',
     'LBFGS',
 ]
