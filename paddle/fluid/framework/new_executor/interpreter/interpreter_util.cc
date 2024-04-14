@@ -605,8 +605,6 @@ void BuildOpFuncList(const platform::Place& place,
         main_program, block.ID(), ops_unique);
     operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
         main_program, block.ID(), ops_unique);
-    operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
-        main_program, block.ID(), ops_unique);
   }
 
 #ifdef PADDLE_WITH_DNNL

@@ -271,8 +271,6 @@ GetEagerDeletionCleanVarsForPartial(const ProgramDesc &origin_program,
         program, 0, global_block_ops);
     operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
         program, 0, global_block_ops);
-    operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
-        program, 0, global_block_ops);
   }
 
   // find the skip vars on each block

@@ -54,8 +54,6 @@ void ExecutorPrepareContext::PrepareUnusedVars(
         prog_, static_cast<int>(block_id_), ops_);
     operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
         prog_, static_cast<int>(block_id_), ops_);
-    operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
-        prog_, static_cast<int>(block_id_), ops_);
   }
 
   force_disable_gc_ = force_disable_gc;

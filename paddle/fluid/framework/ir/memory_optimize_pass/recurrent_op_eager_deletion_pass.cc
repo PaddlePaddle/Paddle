@@ -58,14 +58,6 @@ void RecurrentOpEagerDeletionPass::ApplyImpl(Graph *graph) const {
     }
   }
 
-  for (auto &entry : target_ops) {
-    // Prepare safe eager deletion on different devices because the garbage
-    // collection may be different across devices
-    OpAndGradOpPair &op_pair = entry.second;
-    PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
-        graph->OriginProgram(), &op_pair);
-  }
-
   auto all_ops = ir::FilterByNodeWrapper<details::OpHandleBase>(*graph);
   for (auto op_hander : all_ops) {
     auto *compute_op = dynamic_cast<details::ComputationOpHandle *>(op_hander);
