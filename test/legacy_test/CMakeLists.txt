@@ -1108,7 +1108,6 @@ set_tests_properties(test_imperative_mnist PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fused_elemwise_activation_op PROPERTIES TIMEOUT 270)
 set_tests_properties(test_fused_elemwise_activation_op
                      PROPERTIES LABELS "RUN_TYPE=NIGHTLY")
-set_tests_properties(test_gru_op PROPERTIES TIMEOUT 200)
 set_tests_properties(test_regularizer PROPERTIES TIMEOUT 150)
 set_tests_properties(test_imperative_resnet PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_resnet_sorted_gradient PROPERTIES TIMEOUT
