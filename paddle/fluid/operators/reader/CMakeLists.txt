@@ -33,7 +33,5 @@ reader_library(create_double_buffer_reader_op SRCS
                create_double_buffer_reader_op.cc DEPS buffered_reader)
 reader_library(create_py_reader_op SRCS create_py_reader_op.cc DEPS py_reader)
 
-op_library(read_op DEPS py_reader buffered_reader)
-
 # Export local libraries to parent
 # set(READER_LIBRARY ${LOCAL_READER_LIBS} PARENT_SCOPE)
