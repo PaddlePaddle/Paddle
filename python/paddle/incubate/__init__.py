@@ -43,7 +43,6 @@ from .optimizer import (
     LookAhead,
     ModelAverage,
 )
-from .passes import fuse_resnet_unit_pass  # noqa: F401
 from .tensor import (
     _npu_identity,  # noqa: F401
     segment_max,
