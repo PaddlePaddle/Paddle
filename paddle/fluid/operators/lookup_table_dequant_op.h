@@ -65,7 +65,7 @@ class LookupTableDequantKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(
         table_var->Type(),
         framework::VarTypeTrait<phi::DenseTensor>::kId,
-        platform::errors::InvalidArgument("lookup table must be LodTensor"));
+        phi::errors::InvalidArgument("lookup table must be LodTensor"));
     auto *table_t = context.Input<phi::DenseTensor>("W");
     int64_t row_number = table_t->dims()[0];
     int64_t quant_number = table_t->dims()[1];
@@ -81,7 +81,7 @@ class LookupTableDequantKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_LT(
             ids[i],
             row_number,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Variable value (input) of OP(fluid.layers.embedding) "
                 "expected >= 0 and < %ld, but got %ld. Please check input "
                 "value.",
@@ -90,7 +90,7 @@ class LookupTableDequantKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_GE(
             ids[i],
             0,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Variable value (input) of OP(fluid.layers.embedding) "
                 "expected >= 0 and < %ld, but got %ld. Please check input "
                 "value.",

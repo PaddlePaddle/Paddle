@@ -37,13 +37,13 @@ inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
   PADDLE_ENFORCE_GE(
       axis,
       0,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
   PADDLE_ENFORCE_LE(
       axis,
       max_dim,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Axis should be less than or equal to %d, but received axis is %d.",
           max_dim,
           axis));
@@ -68,7 +68,7 @@ inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
         x_dims_array[i] == y_dims_array[i] || x_dims_array[i] <= 1 ||
             y_dims_array[i] <= 1,
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Broadcast dimension mismatch. Operands could "
             "not be broadcast together with the shape of X = [%s] and "
             "the shape of Y = [%s]. Received [%d] in X is not equal to "
@@ -126,7 +126,7 @@ void UnaryOpUnchangedInferShapeCheckAxis(framework::InferShapeContext *ctx) {
   PADDLE_ENFORCE_GE(
       axis,
       -x_rank,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Attr(axis) value should be in range [-R, R-1], "
           "R is the rank of Input(X). But received axis: %d, R: %d.",
           axis,
@@ -134,7 +134,7 @@ void UnaryOpUnchangedInferShapeCheckAxis(framework::InferShapeContext *ctx) {
   PADDLE_ENFORCE_LT(
       axis,
       x_rank,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Attr(axis) value should be in range [-R, R-1], "
           "R is the rank of Input(X). But received axis: %d, R: %d.",
           axis,
@@ -153,7 +153,7 @@ void BinaryOpBroadcastInferShape(framework::InferShapeContext *ctx) {
   PADDLE_ENFORCE_EQ(
       ctx->GetInputsVarType(y_name).front(),
       framework::proto::VarType::LOD_TENSOR,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The var type of input %s should be phi::DenseTensor, but got %s.",
           ctx->Inputs(y_name).front(),
           ctx->GetInputsVarType(y_name).front()));
@@ -162,7 +162,7 @@ void BinaryOpBroadcastInferShape(framework::InferShapeContext *ctx) {
       framework::proto::VarType::SELECTED_ROWS) {
     PADDLE_ENFORCE_EQ(y_dims.size(),
                       1u,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "For binary broadcastable operator, if X is "
                           "Sparse(VarType.SELECTED_ROWS"
                           "), Y must be scalar, and the size of Y should be 1. "
@@ -171,7 +171,7 @@ void BinaryOpBroadcastInferShape(framework::InferShapeContext *ctx) {
     PADDLE_ENFORCE_EQ(
         y_dims[0],
         1,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "For binary broadcastable operator, if X is "
             "Sparse(VarType.SELECTED_ROWS"
             "), Y must be scalar, the first dimension of Y should be 1. "
@@ -179,7 +179,7 @@ void BinaryOpBroadcastInferShape(framework::InferShapeContext *ctx) {
             y_dims[0]));
   } else if (ctx->GetInputsVarType(x_name).front() !=
              framework::proto::VarType::LOD_TENSOR) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "For binary broadcastable operator, the var type of input X should "
         "be LOD_TENSOR, but got %s",
         ctx->GetInputsVarType(x_name).front()));

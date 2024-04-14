@@ -24,12 +24,12 @@ class BoxClipOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Input"),
                       true,
-                      platform::errors::NotFound("Input(Input) of BoxClipOp "
-                                                 "is not found."));
+                      phi::errors::NotFound("Input(Input) of BoxClipOp "
+                                            "is not found."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("ImInfo"),
                       true,
-                      platform::errors::NotFound("Input(ImInfo) of BoxClipOp "
-                                                 "is not found."));
+                      phi::errors::NotFound("Input(ImInfo) of BoxClipOp "
+                                            "is not found."));
 
     auto input_box_dims = ctx->GetInputDim("Input");
     auto im_info_dims = ctx->GetInputDim("ImInfo");
@@ -39,20 +39,20 @@ class BoxClipOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           input_box_dims[input_box_size - 1],
           4,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The last dimension of Input(Input) in BoxClipOp must be 4. "
               "But received last dimension = %d",
               input_box_dims[input_box_size - 1]));
       PADDLE_ENFORCE_EQ(im_info_dims.size(),
                         2,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The rank of Input(Input) in BoxClipOp must be 2."
                             " But received rank = %d",
                             im_info_dims.size()));
       PADDLE_ENFORCE_EQ(
           im_info_dims[1],
           3,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The last dimension of Input(ImInfo) of BoxClipOp must be 3. "
               "But received last dimension = %d",
               im_info_dims[1]));

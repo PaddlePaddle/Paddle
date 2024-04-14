@@ -102,8 +102,11 @@ IR_DEFINE_EXPLICIT_TYPE_ID(AddOp)
 
 struct CountOpAnalysis {
   explicit CountOpAnalysis(pir::Operation *container_op) {
-    IR_ENFORCE(container_op->num_regions() > 0,
-               "op must be a container with zero or multiple regions.");
+    PADDLE_ENFORCE_GT(
+        container_op->num_regions(),
+        0,
+        phi::errors::InvalidArgument(
+            "op must be a container with zero or multiple regions."));
 
     LOG(INFO) << "In CountOpAnalysis, op is " << container_op->name() << "\n";
     for (size_t i = 0; i < container_op->num_regions(); ++i) {

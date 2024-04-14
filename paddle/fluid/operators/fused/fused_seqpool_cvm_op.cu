@@ -463,7 +463,7 @@ class FusedSeqpoolCVMCUDAKernel : public framework::OpKernel<T> {
       } else {
         PADDLE_ENFORCE_EQ(batch_size,
                           cur_batch_size,
-                          platform::errors::PreconditionNotMet(
+                          phi::errors::PreconditionNotMet(
                               "The batch size of all input should be same, "
                               "please cheack, last batchsize is %d, current "
                               "batchsize is %d",
@@ -550,7 +550,7 @@ class FusedSeqpoolCVMGradCUDAKernel : public framework::OpKernel<T> {
       } else {
         PADDLE_ENFORCE_EQ(batch_size,
                           cur_batch_size,
-                          platform::errors::PreconditionNotMet(
+                          phi::errors::PreconditionNotMet(
                               "The batch size of all input should be same, "
                               "please cheack, last batchsize is %d, current "
                               "batchsize is %d",

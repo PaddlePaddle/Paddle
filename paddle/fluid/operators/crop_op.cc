@@ -34,7 +34,7 @@ class CropOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           int64_t(shape.size()),
           x_dim.size(),
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The number of elements (%d) of CropOp's "
               "'shape' attribute should be equal to the number of dimensions "
               "(%d) of the Input(X).",
@@ -49,7 +49,7 @@ class CropOp : public framework::OperatorWithKernel {
       auto y_dim = ctx->GetInputDim("Y");
       PADDLE_ENFORCE_EQ(common::arity(x_dim),
                         common::arity(y_dim),
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The number of dimensions (%d) of CropOp's input(X)"
                             " must be equal to that (%d) of input(Y).",
                             common::arity(x_dim),

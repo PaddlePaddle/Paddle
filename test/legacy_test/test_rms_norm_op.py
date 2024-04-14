@@ -98,7 +98,8 @@ def naive_residual_biasadd_rms_norm_int8(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA "
+    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
+    "core is not compiled with CUDA or ROCM",
 )
 class TestRMSNormOp(unittest.TestCase):
     def setUp(self):
@@ -347,7 +348,8 @@ class TestRMSNormOp(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA "
+    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
+    "core is not compiled with CUDA or ROCM",
 )
 class TestRMSNormStaticOp(unittest.TestCase):
     def setUp(self):
