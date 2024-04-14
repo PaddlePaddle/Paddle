@@ -79,7 +79,7 @@ class TestReshardPToR:
                     w0, self._mesh, [-1, -1], [0]
                 )
                 reshard_tensor = paddle._pir_ops.reshard(
-                    shard_tensor, self._mesh, [-1, -1]
+                    shard_tensor, self._mesh, [dist.Replicate()]
                 )
             dist_program = apply_reshard_pass_v2(main_program)
         np.testing.assert_equal(dist_program.num_ops(), 4)
