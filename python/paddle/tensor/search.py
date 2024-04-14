@@ -36,7 +36,7 @@ from ..framework import (
 __all__ = []
 
 
-def argsort(x, axis=-1, descending=False, name=None):
+def argsort(x, axis=-1, descending=False, stable=False, name=None):
     """
     Sorts the input along the given axis, and returns the corresponding index tensor for the sorted output values. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
 
@@ -49,6 +49,9 @@ def argsort(x, axis=-1, descending=False, name=None):
         descending (bool, optional) : Descending is a flag, if set to true,
             algorithm will sort by descending order, else sort by
             ascending order. Default is false.
+        stable (bool, optional): Whether to use stable sorting algorithm or not.
+            When using stable sorting algorithm, the order of equivalent elements
+            will be preserved. Default is False.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -100,7 +103,7 @@ def argsort(x, axis=-1, descending=False, name=None):
               [0, 2, 1, 1]]])
     """
     if in_dynamic_or_pir_mode():
-        _, ids = _C_ops.argsort(x, axis, descending)
+        _, ids = _C_ops.argsort(x, axis, descending, stable)
         return ids
     else:
         check_variable_and_dtype(
@@ -129,7 +132,7 @@ def argsort(x, axis=-1, descending=False, name=None):
             type='argsort',
             inputs={'X': x},
             outputs={'Out': out, 'Indices': ids},
-            attrs={'axis': axis, 'descending': descending},
+            attrs={'axis': axis, 'descending': descending, 'stable': stable},
         )
         return ids
 
@@ -500,7 +503,7 @@ def nonzero(x, as_tuple=False):
         return tuple(list_out)
 
 
-def sort(x, axis=-1, descending=False, name=None):
+def sort(x, axis=-1, descending=False, stable=False, name=None):
     """
 
     Sorts the input along the given axis, and returns the sorted output tensor. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
@@ -514,6 +517,9 @@ def sort(x, axis=-1, descending=False, name=None):
         descending (bool, optional) : Descending is a flag, if set to true,
             algorithm will sort by descending order, else sort by
             ascending order. Default is false.
+        stable (bool, optional): Whether to use stable sorting algorithm or not.
+            When using stable sorting algorithm, the order of equivalent elements
+            will be preserved. Default is False.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -557,7 +563,7 @@ def sort(x, axis=-1, descending=False, name=None):
               [5. 7. 7. 9.]]]
     """
     if in_dynamic_or_pir_mode():
-        outs, _ = _C_ops.argsort(x, axis, descending)
+        outs, _ = _C_ops.argsort(x, axis, descending, stable)
         return outs
     else:
         helper = LayerHelper("sort", **locals())
@@ -571,7 +577,7 @@ def sort(x, axis=-1, descending=False, name=None):
             type='argsort',
             inputs={'X': x},
             outputs={'Out': out, 'Indices': ids},
-            attrs={'axis': axis, 'descending': descending},
+            attrs={'axis': axis, 'descending': descending, 'stable': stable},
         )
         return out
 

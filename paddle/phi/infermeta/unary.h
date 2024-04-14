@@ -55,6 +55,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
 void ArgsortInferMeta(const MetaTensor& input,
                       int axis,
                       bool descending,
+                      bool stable,
                       MetaTensor* output,
                       MetaTensor* indices);
 
