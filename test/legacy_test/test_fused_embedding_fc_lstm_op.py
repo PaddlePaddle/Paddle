@@ -16,7 +16,115 @@ import unittest
 
 import numpy as np
 from op_test import OpTest
-from test_lstm_op import ACTIVATION, lstm
+
+SIGMOID_THRESHOLD_MIN = -40.0
+SIGMOID_THRESHOLD_MAX = 13.0
+EXP_MAX_INPUT = 40.0
+
+
+def identity(x):
+    return x
+
+
+def sigmoid(x):
+    y = np.copy(x)
+    y[x < SIGMOID_THRESHOLD_MIN] = SIGMOID_THRESHOLD_MIN
+    y[x > SIGMOID_THRESHOLD_MAX] = SIGMOID_THRESHOLD_MAX
+    return 1.0 / (1.0 + np.exp(-y))
+
+
+def tanh(x):
+    y = -2.0 * x
+    y[y > EXP_MAX_INPUT] = EXP_MAX_INPUT
+    return (2.0 / (1.0 + np.exp(y))) - 1.0
+
+
+def relu(x):
+    return np.maximum(x, 0)
+
+
+ACTIVATION = {
+    'identity': identity,
+    'sigmoid': sigmoid,
+    'tanh': tanh,
+    'relu': relu,
+}
+
+
+def lstm(
+    input,  # T x 4D
+    lod,  # 1 x N
+    h0=None,  # N x D
+    c0=None,  # N x D
+    w_h=None,  # D x 4D
+    w_b=None,  # 1 x 4D
+    w_c=None,  # 1 x 3D
+    is_reverse=False,
+    act_gate=None,
+    act_cell=None,
+    act_cand=None,
+):
+    def _step(x, w_h, w_c, h_pre, c_pre, act_gate, act_cell, act_cand):
+        g = np.dot(h_pre, w_h)  # 1 x 4D
+        g = g + x
+        g = np.reshape(g, (1, g.size))
+        c, g_i, g_f, g_o = np.split(g, 4, axis=1)
+        if w_c is None:
+            g_i = act_gate(g_i)  # 1 x D
+            g_f = act_gate(g_f)  # 1 x D
+        else:
+            w_ic, w_fc, w_oc = np.split(w_c, 3, axis=1)
+            g_i = act_gate(g_i + w_ic * c_pre)  # 1 x D
+            g_f = act_gate(g_f + w_fc * c_pre)  # 1 x D
+        c = g_f * c_pre + g_i * act_cand(c)  # 1 x D
+
+        if w_c is None:
+            g_o = act_gate(g_o)  # 1 x D
+        else:
+            _, _, w_oc = np.split(w_c, 3, axis=1)
+            g_o = act_gate(g_o + w_oc * c)  # 1 x D
+        h = g_o * act_cell(c)
+        return h, c
+
+    def _reverse(x, offset):
+        y = np.zeros_like(x)
+        for i in range(len(offset) - 1):
+            b, e = offset[i], offset[i + 1]
+            y[b:e, :] = np.flip(x[b:e, :], 0)
+        return y
+
+    offset = [0]
+    for l in lod[0]:
+        offset.append(offset[-1] + l)
+    batch_size = len(lod[0])
+    hidden = []
+    cell = []
+    input = _reverse(input, offset) if is_reverse else input
+    if w_b is not None:
+        input = input + np.tile(w_b, (offset[-1], 1))
+    for i in range(batch_size):
+        # compute one sequence
+        seq_len = lod[0][i]
+        x = input[offset[i] : offset[i + 1], :]
+        h_pre = h0[i]  # 1 x D
+        c_pre = c0[i]  # 1 x D
+        for j in range(seq_len):
+            # compute one step
+            h_pre, c_pre = _step(
+                x[j], w_h, w_c, h_pre, c_pre, act_gate, act_cell, act_cand
+            )
+            hidden.append(h_pre.flatten())
+            cell.append(c_pre.flatten())
+
+    hidden = np.array(hidden).astype('float64')
+    cell = np.array(cell).astype('float64')
+
+    hidden = _reverse(hidden, offset) if is_reverse else hidden
+    cell = _reverse(cell, offset) if is_reverse else cell
+
+    assert hidden.shape == (input.shape[0], input.shape[1] / 4)
+    assert cell.shape == (input.shape[0], input.shape[1] / 4)
+    return hidden, cell
 
 
 def fc(x, w, b):
