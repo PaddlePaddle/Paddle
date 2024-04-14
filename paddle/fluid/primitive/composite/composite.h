@@ -207,6 +207,32 @@ Tensor pow_decomp(const Tensor& x, const paddle::Scalar& y) {
 }
 
 template <typename T>
+Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
+  std::vector<Tensor> out_shape_concat;
+  auto x_shape_tensor = shape<T>(x);
+
+  out_shape_concat.push_back(x_shape_tensor);
+  out_shape_concat.push_back(num_classes);
+
+  auto output_shape_tensor = concat<T>(out_shape_concat, 0);
+
+  auto out_temp =
+      backend::full_with_tensor<T>(out_shape_concat, 0.0, DataType::INT32);
+
+  auto update = full<T>(x.shape(), 1, x.dtype());
+  auto ans = cast<T>(scatter_nd_add<T>(out_temp, update), DataType::FLOAT32);
+
+  // std::vector<int64_t> x_dim = x.shape();
+  // std::vector<int64_t> out_dim;
+  // out_dim.push_back(x_dim[0]);
+  // int* num_pointer = const_cast<int*>(num_classes.data());
+  // out_dim.push_back(num_pointer[0]);
+  // auto ans = full<T>(out_dim, 0.0, DataType::FLOAT32);
+
+  return ans;
+}
+
+template <typename T>
 std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
     const Tensor& x,
     const Tensor& run_mean,

@@ -187,6 +187,23 @@ def gen(
     process_optional_output_info(apis)
 
     for item in apis:
+        # if ('one_hot' in item['name']):
+        #     print(item)
+        # if ('one_hot' in item['name']):
+        #     item['attrs'][0]['name'] = 'depth_tensor'
+        #     item['attrs'][0]['data_type'] = 'int'
+        # if ('one_hot' in item['name']):
+        #     print(item)
+        if 'one_hot' in item['name']:
+            depth_input = {
+                'typename': 'Tensor',
+                'name': 'num_classes',
+                'optional': False,
+                'no_need_buffer': False,
+                'data_transform': {},
+            }
+            item['inputs'].append(depth_input)
+            item['attrs'] = []
         for attr_item in item["attrs"]:
             if attr_item["typename"] not in attr_types_map.keys():
                 raise TypeError

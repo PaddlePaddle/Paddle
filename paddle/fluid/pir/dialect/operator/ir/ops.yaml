@@ -3,6 +3,24 @@
 # 2) The definitions of static graphs and dynamic graphs are inconsistent, but the final definition plan has not yet been clarified.
 # After the definition is clearly defined, migrate to paddle/fluid/pir/dialect/operator/ir/update_ops.yaml or paddle/phi/api/yaml/ops.yaml
 
+# - op : one_hot
+#   args : (Tensor x, Scalar depth, DataType dtype = DataType::FLOAT32, bool allow_out_of_range = false)
+#   output : Tensor(out)
+#   infer_meta :
+#     func : OneHotRawInferMeta
+#   kernel :
+#     func : one_hot_raw
+#     data_type : x
+
+# - op : one_hot_raw
+#   args : (Tensor x, Scalar(int) depth = -1, DataType dtype = DataType::FLOAT32, bool allow_out_of_range = false)
+#   output : Tensor(out)
+#   infer_meta :
+#     func : OneHotRawInferMeta
+#   kernel :
+#     func : one_hot_raw
+#     data_type : x
+
 - op : adadelta_
   args : (Tensor param, Tensor grad, Tensor avg_squared_grad, Tensor avg_squared_update, Tensor learning_rate, Tensor master_param, float rho, float epsilon, bool multi_precision)
   output : Tensor(param_out), Tensor(moment_out), Tensor(inf_norm_out), Tensor(master_param_out)
