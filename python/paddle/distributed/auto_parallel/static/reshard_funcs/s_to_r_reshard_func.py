@@ -22,11 +22,9 @@ from .same_status_reshard_func import SameStatusReshardFunction
 class SToRReshardFunction(ReshardFunction):
     def is_suitable(self, src_dist_attr, dst_dist_attr):
         if not self.is_shard(src_dist_attr):
-            print(f'not shard')
             return False
 
         if not self.is_replicated(dst_dist_attr):
-            print(f'not replicated')
             return False
 
         in_mesh = src_dist_attr.process_mesh
@@ -78,7 +76,6 @@ class SToRReshardFunction(ReshardFunction):
         allgather_value = paddle._pir_ops.c_allgather(
             op_value, group.id, num_of_process,  False
         )
-        #allgather_value.set_type(op.result(0).type())
         op.result(0).replace_all_uses_with(allgather_value)
         program.global_block().remove_op(op)
 
