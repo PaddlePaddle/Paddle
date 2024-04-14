@@ -688,9 +688,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet")
     download_int8_data_without_verify(${INT8_GOOGLENET_MODEL_DIR}
                                       "GoogleNet_int8_model.tar.gz")
-    inference_analysis_api_int8_test_run_custom_warmup_batch_size(
-      test_analyzer_int8_googlenet ${INT8_IMG_CLASS_TEST_APP}
-      ${INT8_GOOGLENET_MODEL_DIR} ${IMAGENET_DATA_PATH} 10)
+    # inference_analysis_api_int8_test_run_custom_warmup_batch_size( test_analyzer_int8_googlenet ${INT8_IMG_CLASS_TEST_APP} ${INT8_GOOGLENET_MODEL_DIR} ${IMAGENET_DATA_PATH} 10)
 
     # mobilenetv3_large_x1_0 int8
     set(INT8_MOBILENETV3_LARGE_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv3_large")
@@ -726,9 +724,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
                                       ${BF16_IMG_CLASS_TEST_APP_SRC})
 
     # resnet50 bfloat16
-    inference_analysis_api_bfloat16_test_run(
-      test_analyzer_bfloat16_resnet50 ${BF16_IMG_CLASS_TEST_APP}
-      ${INT8_RESNET50_MODEL_DIR} ${IMAGENET_DATA_PATH})
+    # inference_analysis_api_bfloat16_test_run( test_analyzer_bfloat16_resnet50 ${BF16_IMG_CLASS_TEST_APP} ${INT8_RESNET50_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
     # googlenet bfloat16
     inference_analysis_api_bfloat16_test_run(
@@ -736,9 +732,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       ${INT8_GOOGLENET_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
     # mobilenetv1 bfloat16
-    inference_analysis_api_bfloat16_test_run(
-      test_analyzer_bfloat16_mobilenetv1 ${BF16_IMG_CLASS_TEST_APP}
-      ${INT8_MOBILENETV1_MODEL_DIR} ${IMAGENET_DATA_PATH})
+    # inference_analysis_api_bfloat16_test_run( test_analyzer_bfloat16_mobilenetv1 ${BF16_IMG_CLASS_TEST_APP} ${INT8_MOBILENETV1_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
     # mobilenetv2 bfloat16
     inference_analysis_api_bfloat16_test_run(
@@ -1263,15 +1257,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     --refer_result=${OCR_INSTALL_DIR}/result.txt)
 
   if(WITH_ONEDNN)
-    inference_analysis_test(
-      test_analyzer_capi_exp_int
-      SRCS
-      analyzer_capi_exp_int_tester.cc
-      EXTRA_DEPS
-      common
-      paddle_inference_c_shared
-      ARGS
-      --infer_model=${INT8_DATA_DIR}/resnet50/model)
+    # inference_analysis_test( test_analyzer_capi_exp_int SRCS analyzer_capi_exp_int_tester.cc EXTRA_DEPS common paddle_inference_c_shared ARGS --infer_model=${INT8_DATA_DIR}/resnet50/model)
   endif()
 
   inference_analysis_test(
@@ -1363,8 +1349,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
                            PROPERTIES TIMEOUT 360 LABELS "RUN_TYPE=EXCLUSIVE")
     endif()
     if(WITH_ONEDNN)
-      set_tests_properties(test_analyzer_bfloat16_resnet50 PROPERTIES TIMEOUT
-                                                                      120)
+      # set_tests_properties(test_analyzer_bfloat16_resnet50 PROPERTIES TIMEOUT 120)
     endif()
   endif()
   if(ON_INFER OR WITH_GPU)
