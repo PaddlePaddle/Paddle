@@ -19,6 +19,9 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 from paddle.base import core
+from paddle.distributed.auto_parallel.static.pir_pass import (
+    apply_reshard_pass_v2,
+)
 
 
 class TestReshardSToR:
@@ -77,29 +80,33 @@ class TestReshardSToR:
                 )
 
                 dims_mapping = [-1, -1]
-                dims_mapping[self._shard] = self._shard
+                dims_mapping[self._shard] = 0
                 shard_tensor = paddle._pir_ops.shard_tensor(
                     w0, self._mesh, dims_mapping
                 )
                 reshard_tensor = paddle._pir_ops.reshard(
-                    shard_tensor, self._mesh, [-1, -1]
+                    shard_tensor, self._mesh, [dist.Replicate()]
                 )
-            print(f'debug main_program: {main_program}')
             dist_program = apply_reshard_pass_v2(main_program)
-            print(f'debug dist_program: {dist_program}')
-       #np.testing.assert_equal(dist_program.num_ops(), 4)
-       #ops = [op.name() for op in dist_program.global_block().ops]
-       #np.testing.assert_equal(
-       #    ops,
-       #    [
-       #        'builtin.parameter',
-       #        'pd_op.data',
-       #        'dist_op.shard_tensor',
-       #        'pd_op.c_allreduce_sum_',
-       #    ],
-       #)
+        if self._shard == 1:
+            np.testing.assert_equal(dist_program.num_ops(), 11)
+            old_ops = [op.name() for op in main_program.global_block().ops]
+            new_ops = [op.name() for op in dist_program.global_block().ops]
+            assert('pd_op.c_allgather' in new_ops)
+            assert('pd_op.split' in new_ops)
+            assert('pd_op.concat' in new_ops)
+            assert('pd_op.concat' in new_ops)
+            assert('dist_op.reshard' not in new_ops)
+            assert('dist_op.reshard' in old_ops)
+        elif self._shard == 0:
+            np.testing.assert_equal(dist_program.num_ops(), 4)
+            old_ops = [op.name() for op in main_program.global_block().ops]
+            new_ops = [op.name() for op in dist_program.global_block().ops]
+            assert('pd_op.c_allgather' in new_ops)
+            assert('dist_op.reshard' not in new_ops)
+            assert('dist_op.reshard' in old_ops)
 
 
 if __name__ == '__main__':
-    #TestReshardSToR().run_test_case()
+    TestReshardSToR().run_test_case()
     TestReshardSToR().run_pir_test_case()
