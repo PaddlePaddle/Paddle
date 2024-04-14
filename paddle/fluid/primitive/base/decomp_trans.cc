@@ -426,8 +426,11 @@ void DecompProgram::decomp_block(
       std::vector<pir::Value> standard_decomp_res =
           format_decomp_res(op->name(), orig_outs, decomp_res);
       check_decomp_outputs(op->name(), orig_outs, standard_decomp_res);
-      construct_dst_vars(
-          op->name(), orig_outs, standard_decomp_res, orig_vars_dict, &tar_vars);
+      construct_dst_vars(op->name(),
+                         orig_outs,
+                         standard_decomp_res,
+                         orig_vars_dict,
+                         &tar_vars);
 
       op->ReplaceAllUsesWith(standard_decomp_res);
       bool remove_op = true;
