@@ -695,11 +695,11 @@ class DygraphShardingOptimizerV2:
                                 if param.name in param2task:
                                     tasks.append(param2task)
 
-                self._forward_pre_hook_remove_helper.append(
-                    layer.register_forward_pre_hook(
-                        self._forward_pre_hook_function(tasks)
+                    self._forward_pre_hook_remove_helper.append(
+                        layer.register_forward_pre_hook(
+                            self._forward_pre_hook_function(tasks)
+                        )
                     )
-                )
             else:
                 for comm_buffer in self._comm_buffer_list:
                     comm_buffer.sync_params()
