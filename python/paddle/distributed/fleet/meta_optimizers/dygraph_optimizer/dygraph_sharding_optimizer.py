@@ -573,8 +573,15 @@ class DygraphShardingOptimizerV2:
         if not self.pp_overlap and self.comm_overlap:
             self.register_reduce_overlap_hook(use_comm=True)
 
-        self._all_gather_overlap_forward = True
+        self._all_gather_overlap_forward = False
         self._forward_pre_hook_remove_helper = []
+
+    def _set_all_gather_overlap_forward(
+        self, all_gather_overlap_forward, layers
+    ):
+        self._all_gather_overlap_forward = all_gather_overlap_forward
+        if self._all_gather_overlap_forward:
+            self._layers = layers
 
     def register_reduce_overlap_hook(self, use_comm):
         # Register backward hooks for each parameter in the buffer
