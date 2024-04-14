@@ -91,6 +91,27 @@ class TestGroupNormSubGraph(unittest.TestCase):
         # )
 
 
+# Todo: Origin group_norm does not support float16 or bfloat16 in NHWC and rank3
+class _TestGroupNormSubGraphF16NHWCRank3(TestGroupNormSubGraph):
+    def setUp(self):
+        paddle.seed(2024)
+        self.shape = [80, 128, 128]
+        self.dtype = "float16"
+        self.data_format = "NHWC"
+        self.prepare_data()
+
+    def test_prim(self):
+        cinn_out, cinn_x_grad, cinn_weight_grad, cinn_bias_grad = self.eval(
+            use_cinn=False, use_prim=True
+        )
+        dy_out, dy_x_grad, dy_weight_grad, dy_bias_grad = self.eval(
+            use_cinn=False
+        )
+        np.testing.assert_allclose(cinn_x_grad, dy_x_grad, atol=1e-5, rtol=1e-5)
+        np.testing.assert_allclose(cinn_weight_grad, dy_weight_grad, atol=5e-4)
+        np.testing.assert_allclose(cinn_bias_grad, dy_bias_grad, rtol=1e-5)
+
+
 class TestGroupNormSubGraphRank3(TestGroupNormSubGraph):
     def setUp(self):
         paddle.seed(2024)
