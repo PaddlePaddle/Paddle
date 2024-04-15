@@ -75,7 +75,9 @@ class TestReshardPToR:
                     initializer=paddle.nn.initializer.Uniform(),
                 )
 
-                input_tensor = dist.shard_tensor(w0, self._mesh, [dist.Partial()])
+                input_tensor = dist.shard_tensor(
+                    w0, self._mesh, [dist.Partial()]
+                )
                 reshard_tensor = paddle._C_ops.reshard(
                     input_tensor, self._mesh, [dist.Replicate()]
                 )

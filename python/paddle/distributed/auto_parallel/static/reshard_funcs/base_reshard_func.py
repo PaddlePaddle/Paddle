@@ -38,10 +38,12 @@ def clean_reshard_funcs():
     global _g_reshard_func_list
     _g_reshard_func_list.clear()
 
+
 def is_partial(dist_attr):
     if len(dist_attr.partial_status) > 0:
         return True
     return False
+
 
 def is_replicated(dist_attr):
     dims_mapping_set = set(dist_attr.dims_mapping)
