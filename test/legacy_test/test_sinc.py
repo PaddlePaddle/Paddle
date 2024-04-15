@@ -80,7 +80,7 @@ class TestSincAPI(unittest.TestCase):
                         res = paddle.sinc(x)
                         static_result = exe.run(
                             feed={'x': x_data}, fetch_list=[res]
-                        )
+                        )[0]
                         out_expected = np_sinc(x_data)
                     np.testing.assert_allclose(
                         static_result, out_expected, rtol=1e-6, atol=1e-6
@@ -114,42 +114,8 @@ class TestSincAPI(unittest.TestCase):
                         out.numpy(), out_expected, rtol=1e-6, atol=1e-6
                     )
 
-        def run_static(place):
-            paddle.enable_static()
-            if core.is_compiled_with_cuda():
-                support_dtypes = self.cuda_support_dtypes
-            else:
-                support_dtypes = self.cpu_support_dtypes
-            for dtype in support_dtypes:
-                for shape in self.shapes:
-                    x_data = np.random.rand(*shape).astype(dtype)
-                    mask = (
-                        (np.random.rand(*shape) > 0.5)
-                        .astype('int')
-                        .astype(dtype)
-                    )
-                    x_data = x_data * mask
-                    startup_program = paddle.static.Program()
-                    main_program = paddle.static.Program()
-                    exe = base.Executor(place)
-                    with paddle.static.program_guard(
-                        main_program, startup_program
-                    ):
-                        x = paddle.static.data(
-                            name='x', shape=shape, dtype=dtype
-                        )
-                        res = paddle.sinc(x)
-                        static_result = exe.run(
-                            feed={'x': x_data}, fetch_list=[res]
-                        )
-                        out_expected = np_sinc(x_data)
-                    np.testing.assert_allclose(
-                        static_result, out_expected, rtol=1e-6, atol=1e-6
-                    )
-
         for place in self.place:
             run_dygraph(place)
-            run_static(place)
 
     def test_input_type_error(self):
         with self.assertRaises(TypeError):
