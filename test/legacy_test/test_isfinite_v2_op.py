@@ -267,11 +267,22 @@ class TestCUDANormal(unittest.TestCase):
 
     def test_posinf(self):
         test(self, 'isposinf', True, data_set=TEST_META_DATA2)
-        test(self, 'isposinf', True, data_set=TEST_META_DATA3)
 
     def test_neginf(self):
         test(self, 'isneginf', True, data_set=TEST_META_DATA2)
+
+
+@unittest.skipIf(
+    not base.core.is_compiled_with_cuda()
+    or not base.core.is_float16_supported(base.core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the float16",
+)
+class TestCUDAFP16(unittest.TestCase):
+    def test_posinf(self):
         test(self, 'isposinf', True, data_set=TEST_META_DATA3)
+
+    def test_neginf(self):
+        test(self, 'isneginf', True, data_set=TEST_META_DATA3)
 
 
 @unittest.skipIf(
