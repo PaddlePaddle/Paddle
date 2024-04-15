@@ -30,7 +30,7 @@ from paddle.optimizer.lr import LRScheduler
 from paddle.pir import Value, fake_value, is_fake_value
 
 from .logging_utils import TranslatorLogger
-from .utils import RETURN_NO_VALUE_MAGIC_NUM, backend_guard
+from .utils import RETURN_NO_VALUE_MAGIC_NUM, backend_guard, cinn_is_enabled
 
 __all__ = []
 
@@ -586,7 +586,7 @@ class PartialProgramLayer:
                 pm.run(forward_program)
 
                 # if-else pass
-                if self._build_strategy.build_cinn_pass:
+                if cinn_is_enabled(self._build_strategy, self._backend):
                     paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
 
                 return forward_program, backward_program
@@ -606,7 +606,7 @@ class PartialProgramLayer:
             self._set_grad_type(self._params, train_program)
 
             def pass_fn(forward_program, backward_program):
-                if self._build_strategy.build_cinn_pass:
+                if cinn_is_enabled(self._build_strategy, self._backend):
                     paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
                     paddle.base.libpaddle.pir.apply_cinn_pass(backward_program)
                 return forward_program, backward_program
