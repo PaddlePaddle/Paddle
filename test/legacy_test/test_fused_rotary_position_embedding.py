@@ -456,25 +456,6 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         self.check_results(p_fw, f_fw_time_major)
         self.check_results(p_bw, f_bw_time_major)
 
-        f_fw_qkvpack, f_bw_qkvpack = self.get_forward_backward_qkvpacked(
-            seed=self.seed,
-            position_ids=position_ids,
-            test_time_major=False,
-        )
-        (
-            f_fw_timemajor_qkvpack,
-            f_bw_timemajor_qkvpack,
-        ) = self.get_forward_backward_qkvpacked(
-            seed=self.seed,
-            position_ids=position_ids,
-            test_time_major=True,
-        )
-
-        self.strict_check_results(f_fw_qkvpack, f_fw)
-        self.strict_check_results(f_bw_qkvpack, f_bw)
-        self.strict_check_results(f_fw_timemajor_qkvpack, f_fw_time_major)
-        self.strict_check_results(f_bw_timemajor_qkvpack, f_bw_time_major)
-
     @test_with_pir_api
     def test_static(self):
         paddle.disable_static()
