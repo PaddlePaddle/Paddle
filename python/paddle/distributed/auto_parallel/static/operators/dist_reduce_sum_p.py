@@ -54,7 +54,7 @@ class DistributedReduceSum(DistributedOperatorImplContainer):
         keep_dim = op_desc.attr('keep_dim')
         dims = op_desc.attr('dim')
 
-        # TODO (zhangyichen) replace dist tensor spece by dist tensor in future.
+        # TODO (zhangyichen) replace dist tensor spec by dist tensor in future.
         input_spec = get_dist_tensor_spec(dist_op, input_arg_name)
         output_spec = get_dist_tensor_spec(dist_op, output_arg_name, False)
         # len(dims) == 0 means reduce_all
@@ -118,18 +118,18 @@ class DistributedReduceSum(DistributedOperatorImplContainer):
 register_distributed_operator_impl_container(DistributedReduceSum("reduce_sum"))
 
 
-class DistributedReduceSumPrimtive(DistributedOperatorImplContainer):
+class DistributedReduceSumPrimitive(DistributedOperatorImplContainer):
     def __init__(self, op_type):
         super().__init__(op_type)
 
 
 register_distributed_operator_impl_container(
-    DistributedReduceSumPrimtive("reduce_sum_p")
+    DistributedReduceSumPrimitive("reduce_sum_p")
 )
 
 
 # Batch Dimension ReduceSum Primitive
-class DistributedReduceSumPrimtiveImpl0(DistributedOperatorImpl):
+class DistributedReduceSumPrimitiveImpl0(DistributedOperatorImpl):
     def __init__(self, name):
         super().__init__(name)
         self._forward_implemented = True
@@ -237,5 +237,5 @@ class DistributedReduceSumPrimtiveImpl0(DistributedOperatorImpl):
 
 register_distributed_operator_impl(
     "reduce_sum_p",
-    DistributedReduceSumPrimtiveImpl0("batch_dimension_reduce_sum_p"),
+    DistributedReduceSumPrimitiveImpl0("batch_dimension_reduce_sum_p"),
 )

@@ -63,19 +63,19 @@ class SppOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Input(X) of SppOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"),
+        true,
+        phi::errors::InvalidArgument("Input(X) of SppOp should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Output(Out) of SppOp should not be null."));
     auto in_x_dims = ctx->GetInputDim("X");
     int pyramid_height = ctx->Attrs().Get<int>("pyramid_height");
     PADDLE_ENFORCE_EQ(in_x_dims.size(),
                       4,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Spping intput must be of 4-dimensional."));
     int outlen =
         ((std::pow(4, pyramid_height) - 1) / (4 - 1)) * in_x_dims[1];  // NOLINT
@@ -91,11 +91,11 @@ class SppOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("X"),
         true,
-        platform::errors::InvalidArgument("Input(X) must not be null."));
+        phi::errors::InvalidArgument("Input(X) must not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput(framework::GradVarName("X")),
         true,
-        platform::errors::InvalidArgument("Input(X@GRAD) should not be null."));
+        phi::errors::InvalidArgument("Input(X@GRAD) should not be null."));
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };

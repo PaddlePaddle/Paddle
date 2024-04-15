@@ -80,13 +80,13 @@ class AffineChannelOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         scale_dims.size(),
         1UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The dimensions of Input(Scale) must be 1,"
             "But received the dimensions of Input(Scale) is [%d] ",
             scale_dims.size()));
     PADDLE_ENFORCE_EQ(b_dims.size(),
                       1UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dimensions of Input(Bias) must be 1,"
                           "But received the dimensions of Input(Bias) is [%d] ",
                           scale_dims.size()));
@@ -94,7 +94,7 @@ class AffineChannelOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           scale_dims[0],
           C,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The first dimension value of Input(Scale) must be [%d],"
               "But received [%d].",
               C,
@@ -104,7 +104,7 @@ class AffineChannelOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           b_dims[0],
           C,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The first dimension value of Input(Bias) must be [%d],"
               "But received [%d].",
               C,

@@ -73,7 +73,7 @@ class SplitLoDTensorOp : public framework::OperatorBase {
       framework::TensorCopy(
           mask, platform::CPUPlace(), dev_ctx, cpu_mask.get());
 #else
-      PADDLE_THROW(paddle::platform::errors::Fatal(
+      PADDLE_THROW(phi::errors::Fatal(
           "Not support GPU, Please compile WITH_GPU option"));
 #endif
     }
@@ -177,7 +177,7 @@ class SplitLoDTensorInferShape : public framework::InferShapeBase {
     PADDLE_ENFORCE_EQ(
         mask_dim.size(),
         2,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "If you are using IfElse OP:"
             "\n\nie = fluid.layers.IfElse(cond=cond)\nwith "
             "ie.true_block():\n    out_1 = ie.input(x)\n\n"
@@ -188,7 +188,7 @@ class SplitLoDTensorInferShape : public framework::InferShapeBase {
             "].\n"));
     PADDLE_ENFORCE_EQ(mask_dim[1],
                       1,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "If you are using IfElse OP:"
                           "\n\nie = fluid.layers.IfElse(cond=cond)\nwith "
                           "ie.true_block():\n    out_1 = ie.input(x)\n\n"

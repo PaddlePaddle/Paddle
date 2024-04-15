@@ -19,8 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/cublaslt.h"
 #include "paddle/fluid/operators/fused/quant_dequant_kernel.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
@@ -87,12 +87,12 @@ class AttnMatmulINT8 {
       std::vector<phi::DenseTensor*> outs = {bias_out};
       phi::funcs::BroadcastKernel<T>(
           dev_ctx_, ins, &outs, phi::funcs::AddFunctor<T>());
-      PADDLE_ENFORCE_EQ(cudaGetLastError(),
-                        cudaSuccess,
-                        platform::errors::Fatal(
-                            "cuda error occurred after computing bias. "
-                            "But it does not mean this error is caused by "
-                            "bias computing"));
+      PADDLE_ENFORCE_EQ(
+          cudaGetLastError(),
+          cudaSuccess,
+          phi::errors::Fatal("cuda error occurred after computing bias. "
+                             "But it does not mean this error is caused by "
+                             "bias computing"));
     }
   }
 
@@ -141,12 +141,12 @@ class AttnMatmulINT8 {
       std::vector<phi::DenseTensor*> outs = {bias_out};
       phi::funcs::BroadcastKernel<T>(
           dev_ctx_, ins, &outs, phi::funcs::AddFunctor<T>());
-      PADDLE_ENFORCE_EQ(cudaGetLastError(),
-                        cudaSuccess,
-                        platform::errors::Fatal(
-                            "cuda error occurred after computing bias. "
-                            "But it does not mean this error is caused by "
-                            "bias computing"));
+      PADDLE_ENFORCE_EQ(
+          cudaGetLastError(),
+          cudaSuccess,
+          phi::errors::Fatal("cuda error occurred after computing bias. "
+                             "But it does not mean this error is caused by "
+                             "bias computing"));
     }
   }
 
