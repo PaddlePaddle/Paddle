@@ -139,13 +139,6 @@ TEST_META_DATA2 = [
     {
         'low': 0.1,
         'high': 1,
-        'np_shape': [8, 17, 5, 6, 7],
-        'type': 'float16',
-        'sv_list': [np.inf, -np.inf],
-    },
-    {
-        'low': 0.1,
-        'high': 1,
         'np_shape': [11, 17],
         'type': 'float32',
         'sv_list': [-np.inf, np.inf],
@@ -190,6 +183,16 @@ TEST_META_DATA2 = [
         'high': 999,
         'np_shape': [132],
         'type': 'int64',
+        'sv_list': [np.inf, -np.inf],
+    },
+]
+
+TEST_META_DATA3 = [
+    {
+        'low': 0.1,
+        'high': 1,
+        'np_shape': [8, 17, 5, 6, 7],
+        'type': 'float16',
         'sv_list': [np.inf, -np.inf],
     },
 ]
@@ -252,9 +255,11 @@ class TestCUDANormal(unittest.TestCase):
 
     def test_posinf(self):
         test(self, 'isposinf', True, data_set=TEST_META_DATA2)
+        test(self, 'isposinf', True, data_set=TEST_META_DATA3)
 
     def test_neginf(self):
         test(self, 'isneginf', True, data_set=TEST_META_DATA2)
+        test(self, 'isposinf', True, data_set=TEST_META_DATA3)
 
 
 class TestError(unittest.TestCase):
