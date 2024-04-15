@@ -77,7 +77,6 @@
     backend : place
   data_transform :
     support_trans_dtype : start, end, step
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : assign
   args : (Tensor x)
@@ -1099,7 +1098,6 @@
   kernel :
     func : split
   backward : split_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : split_with_num
   args : (Tensor x, int num, Scalar(int) axis)

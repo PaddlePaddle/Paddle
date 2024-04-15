@@ -45,17 +45,17 @@ class SequenceConcatOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         context->HasInputs("X"),
         true,
-        platform::errors::NotFound("SequenceConcatOp Input(X) of Sequence "
-                                   "Concat Op should not be null."));
+        phi::errors::NotFound("SequenceConcatOp Input(X) of Sequence "
+                              "Concat Op should not be null."));
     PADDLE_ENFORCE_EQ(
         context->HasOutput("Out"),
         true,
-        platform::errors::NotFound("SequenceConcatOp Output(Out) of Sequence "
-                                   "Concat Op should not be null."));
+        phi::errors::NotFound("SequenceConcatOp Output(Out) of Sequence "
+                              "Concat Op should not be null."));
 
     PADDLE_ENFORCE_GT(context->Inputs("X").size(),
                       1,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The number of SequenceConcatOp inputs should be "
                           "greater than 1. But "
                           "the number of inputs we received is %d",
@@ -72,7 +72,7 @@ class SequenceConcatOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_NE(
           x_dim[0],
           0,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The first dim of SequenceConcatOp inputs must not be 0."));
       if (feature_size == 0) {
         feature_size = common::product(x_dim) / x_dim[0];
@@ -80,7 +80,7 @@ class SequenceConcatOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             feature_size,
             common::product(x_dim) / x_dim[0],
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Each input of SequenceConcatOp inputs must have same feature "
                 "size, But "
                 "the feature size we received is %d, the feature size of 1st "

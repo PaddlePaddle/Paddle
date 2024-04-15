@@ -66,33 +66,33 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(
       ctx->HasInput("X"),
       true,
-      platform::errors::NotFound("X(Input) of VarConv2dOP is not found."));
+      phi::errors::NotFound("X(Input) of VarConv2dOP is not found."));
   PADDLE_ENFORCE_EQ(
       ctx->HasInput("W"),
       true,
-      platform::errors::NotFound("W(Input) of VarConv2dOP is not found."));
+      phi::errors::NotFound("W(Input) of VarConv2dOP is not found."));
   PADDLE_ENFORCE_EQ(
       ctx->HasInput("ROW"),
       true,
-      platform::errors::NotFound("Input(ROW) of VarConv2dOP is not found."));
+      phi::errors::NotFound("Input(ROW) of VarConv2dOP is not found."));
   PADDLE_ENFORCE_EQ(
       ctx->HasInput("COLUMN"),
       true,
-      platform::errors::NotFound("Input(COLUMN) of VarConv2dOP is not found."));
+      phi::errors::NotFound("Input(COLUMN) of VarConv2dOP is not found."));
   PADDLE_ENFORCE_EQ(
       ctx->HasOutput("Out"),
       true,
-      platform::errors::NotFound("Out(Output) of VarConv2dOP is not found."));
+      phi::errors::NotFound("Out(Output) of VarConv2dOP is not found."));
   PADDLE_ENFORCE_EQ(
       ctx->HasOutput("Col"),
       true,
-      platform::errors::NotFound("Col(Output) of VarConv2dOP is not found."));
+      phi::errors::NotFound("Col(Output) of VarConv2dOP is not found."));
 
   auto x_dims = ctx->GetInputDim("X");
   PADDLE_ENFORCE_EQ(
       x_dims.size(),
       2,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The rank of X(Input) can't be less than 2, but received rank is %u.",
           x_dims.size()));
 
@@ -101,7 +101,7 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(
       w_dims.size(),
       2,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Input W should be a 2-D tensor, but its actual dimension is %u.",
           w_dims.size()));
   int output_channel = ctx->Attrs().Get<int>("OutputChannel");
@@ -111,7 +111,7 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(
       w_dims[0],
       output_channel,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Input W's dimension[0] should be equal to OutputChannel, the "
           "dimension[0] is %d, OutputChannel is %d.",
           w_dims[0],
@@ -119,7 +119,7 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(
       w_dims[1],
       input_channel * kernel_h * kernel_w,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Input W's dimension[1] should be equal to InputChannel * StrideH * "
           "StrideW, the dimension[1] is %d, expected value is %d.",
           w_dims[1],
@@ -131,17 +131,17 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
     const auto& x_lod = x_var->Get<phi::DenseTensor>().lod();
     PADDLE_ENFORCE_EQ(!x_lod.empty(),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The Input(X) phi::DenseTensor of VarConv2dOP "
                           "does not contain LoD information."));
 
-    PADDLE_ENFORCE_GE(x_lod.size(),
-                      1,
-                      platform::errors::InvalidArgument(
-                          "The Input(X)'s lod info is corrupted."));
+    PADDLE_ENFORCE_GE(
+        x_lod.size(),
+        1,
+        phi::errors::InvalidArgument("The Input(X)'s lod info is corrupted."));
     PADDLE_ENFORCE_EQ(x_dims[0],
                       static_cast<int64_t>(x_lod[0].back()),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The Input(X)'s lod info mismatches the actual "
                           "tensor shape, input lod is %s, tensor shape is %s.",
                           x_lod,
@@ -153,7 +153,7 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
     PADDLE_ENFORCE_EQ(
         !row_lod.empty(),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The Input(ROW) phi::DenseTensor of VarConv2dOP does not "
             "contain LoD information."));
 
@@ -163,7 +163,7 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
     PADDLE_ENFORCE_EQ(
         !col_lod.empty(),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The Input(COLUMN) phi::DenseTensor of VarConv2dOP does not "
             "contain LoD information."));
   } else {
@@ -370,17 +370,17 @@ class VarConv2dGradMaker : public framework::SingleGradOpMaker<T> {
 };
 
 void VarConv2dOpGrad::InferShape(framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
-                    true,
-                    platform::errors::NotFound(
-                        "Input(X) of SequencePadGradOp is not found."));
-  PADDLE_ENFORCE_EQ(ctx->HasInput("W"),
-                    true,
-                    platform::errors::NotFound(
-                        "Input(W) of SequencePadGradOp is not found."));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("X"),
+      true,
+      phi::errors::NotFound("Input(X) of SequencePadGradOp is not found."));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("W"),
+      true,
+      phi::errors::NotFound("Input(W) of SequencePadGradOp is not found."));
   PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")),
                     true,
-                    platform::errors::NotFound(
+                    phi::errors::NotFound(
                         "Input(Out@GRAD) of SequencePadGradOp is not found."));
 
   if (ctx->HasOutput(framework::GradVarName("X"))) {
