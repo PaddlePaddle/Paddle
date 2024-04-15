@@ -7678,7 +7678,8 @@ def sinc(x, name=None):
     if not isinstance(x, (paddle.Tensor, Variable, paddle.pir.Value)):
         raise TypeError(f"x must be tensor type, but got {type(x)}")
 
-    tmp = math.pi * paddle.where(x == 0, 1.0e-20, x)
+    tmp = paddle.where(x != 0, x, paddle.full_like(x, 1.0e-20))
+    tmp = paddle.multiply(tmp, paddle.to_tensor(math.pi, dtype=x.dtype))
     return paddle.divide(tmp.sin(), tmp)
 
 
