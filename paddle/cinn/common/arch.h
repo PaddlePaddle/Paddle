@@ -21,21 +21,17 @@
 namespace cinn {
 namespace common {
 
-struct UnknownArch {
-};
+struct UnknownArch {};
 
-struct X86Arch {
-};
+struct X86Arch {};
 
-struct ARMArch {
-};
+struct ARMArch {};
 
-struct NVGPUArch {
-};
+struct NVGPUArch {};
 
 /**
-  * The architecture used by the target. Determines the instruction set to use.
-  */
+ * The architecture used by the target. Determines the instruction set to use.
+ */
 using ArchBase = std::variant<UnknownArch, X86Arch, ARMArch, NVGPUArch>;
 struct Arch final : public ArchBase {
   using ArchBase::ArchBase;
@@ -53,9 +49,7 @@ struct Arch final : public ArchBase {
     return this->index() == other.index();
   }
 
-  bool operator!=(const auto& other) const {
-    return !(*this == other);
-  }
+  bool operator!=(const auto& other) const { return !(*this == other); }
 };
 
 inline bool IsDefined(Arch arch) {
@@ -67,11 +61,11 @@ inline bool IsDefined(Arch arch) {
 
 namespace std {
 
-template<>
+template <>
 struct hash<::cinn::common::Arch> {
   std::size_t operator()(const ::cinn::common::Arch& arch) const {
     return arch.index();
   }
 };
 
-}
+}  // namespace std

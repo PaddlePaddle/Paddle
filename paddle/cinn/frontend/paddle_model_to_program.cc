@@ -412,22 +412,20 @@ void PaddleModelToProgram::AddOpMapper_relu6() {
 }
 
 template <typename T>
-Variable AddOpMapperDepthwiseConv2dImpl(
-    common::UnknownArch,
-    T* net_builder,
-    const paddle::cpp::OpDesc& op_desc,
-    const Variable& x,
-    const Variable& y) {
+Variable AddOpMapperDepthwiseConv2dImpl(common::UnknownArch,
+                                        T* net_builder,
+                                        const paddle::cpp::OpDesc& op_desc,
+                                        const Variable& x,
+                                        const Variable& y) {
   LOG(FATAL) << "NotImplemented.";
 }
 
 template <typename T>
-Variable AddOpMapperDepthwiseConv2dImpl(
-    common::X86Arch,
-    T* net_builder,
-    const paddle::cpp::OpDesc& op_desc,
-    const Variable& x,
-    const Variable& y) {
+Variable AddOpMapperDepthwiseConv2dImpl(common::X86Arch,
+                                        T* net_builder,
+                                        const paddle::cpp::OpDesc& op_desc,
+                                        const Variable& x,
+                                        const Variable& y) {
   CHECK(op_desc.HasAttr("paddings"));
   auto paddings = op_desc.GetAttr<std::vector<int>>("paddings");
   CHECK(op_desc.HasAttr("strides"));
@@ -446,22 +444,20 @@ Variable AddOpMapperDepthwiseConv2dImpl(
 }
 
 template <typename T>
-Variable AddOpMapperDepthwiseConv2dImpl(
-    common::ARMArch,
-    T* net_builder,
-    const paddle::cpp::OpDesc& op_desc,
-    const Variable& x,
-    const Variable& y) {
+Variable AddOpMapperDepthwiseConv2dImpl(common::ARMArch,
+                                        T* net_builder,
+                                        const paddle::cpp::OpDesc& op_desc,
+                                        const Variable& x,
+                                        const Variable& y) {
   LOG(FATAL) << "NotImplemented.";
 }
 
 template <typename T>
-Variable AddOpMapperDepthwiseConv2dImpl(
-    common::NVGPUArch,
-    T* net_builder,
-    const paddle::cpp::OpDesc& op_desc,
-    const Variable& x,
-    const Variable& y) {
+Variable AddOpMapperDepthwiseConv2dImpl(common::NVGPUArch,
+                                        T* net_builder,
+                                        const paddle::cpp::OpDesc& op_desc,
+                                        const Variable& x,
+                                        const Variable& y) {
   CHECK(op_desc.HasAttr("paddings"));
   auto paddings = op_desc.GetAttr<std::vector<int>>("paddings");
   CHECK(op_desc.HasAttr("strides"));
@@ -481,15 +477,16 @@ Variable AddOpMapperDepthwiseConv2dImpl(
 }
 
 template <typename T>
-Variable AddOpMapperDepthwiseConv2d(
-    common::Arch arch,
-    T* net_builder,
-    const paddle::cpp::OpDesc& op_desc,
-    const Variable& x,
-    const Variable& y) {
-  return std::visit([&](const auto& impl) {
-    return AddOpMapperDepthwiseConv2dImpl(impl, net_builder, op_desc, x, y);
-  }, arch.variant());
+Variable AddOpMapperDepthwiseConv2d(common::Arch arch,
+                                    T* net_builder,
+                                    const paddle::cpp::OpDesc& op_desc,
+                                    const Variable& x,
+                                    const Variable& y) {
+  return std::visit(
+      [&](const auto& impl) {
+        return AddOpMapperDepthwiseConv2dImpl(impl, net_builder, op_desc, x, y);
+      },
+      arch.variant());
 }
 
 void PaddleModelToProgram::AddOpMapper_depthwise_conv2d() {
@@ -501,7 +498,7 @@ void PaddleModelToProgram::AddOpMapper_depthwise_conv2d() {
     auto x = GetVar(TransValidVarName(x_name));
     auto y = GetVar(TransValidVarName(y_name));
     auto* net_builder = net_builder_.get();
-    Variable out = 
+    Variable out =
         AddOpMapperDepthwiseConv2d(target_.arch, net_builder, op_desc, x, y);
     CHECK_EQ(op_desc.Output("Output").size(), 1UL);
     auto out_name = op_desc.Output("Output").front();

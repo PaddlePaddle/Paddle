@@ -696,8 +696,7 @@ std::vector<Tensor> MulBaseCallImpl(common::X86Arch,
             << indice.size();
         return lang::ReduceSum(
             A({indice[0], reduce_k_first * Expr(split_factor) + indice[2]}) *
-                B({indice[1],
-                    reduce_k_first * Expr(split_factor) + indice[2]}),
+                B({indice[1], reduce_k_first * Expr(split_factor) + indice[2]}),
             {reduce_k_first});
       },
       UniqName("mul_reduce_k_first"));
@@ -709,25 +708,25 @@ std::vector<Tensor> MulBaseCallImpl(common::X86Arch,
                 std::vector<Expr> new_indice = indice;
                 new_indice.push_back(reduce_k_second);
                 return lang::ReduceSum(mul_reduce_first(new_indice),
-                                        {reduce_k_second});
+                                       {reduce_k_second});
               },
               name),
           mul_reduce_first};
 }
 
 std::vector<Tensor> MulBaseCallImpl(common::ARMArch,
-                                const Tensor& A,
-                                const Tensor& B,
-                                const std::string& name,
-                                const cinn::common::Target& target) {
+                                    const Tensor& A,
+                                    const Tensor& B,
+                                    const std::string& name,
+                                    const cinn::common::Target& target) {
   LOG(FATAL) << "NotImplemented.";
 }
 
 std::vector<Tensor> MulBaseCallImpl(common::NVGPUArch,
-                                const Tensor& A,
-                                const Tensor& B,
-                                const std::string& name,
-                                const cinn::common::Target& target) {
+                                    const Tensor& A,
+                                    const Tensor& B,
+                                    const std::string& name,
+                                    const cinn::common::Target& target) {
   std::vector<Expr> output_shape;
   CHECK_EQ(A->shape.size(), 2U)
       << "tensor_A's shape size should be two while current shape size is "
@@ -762,9 +761,11 @@ std::vector<Tensor> MulBaseCall(const Tensor& A,
                                 const Tensor& B,
                                 const std::string& name,
                                 const cinn::common::Target& target) {
-  return std::visit([&](const auto& impl){
-    return MulBaseCallImpl(impl, A, B, name, target);
-  }, target.arch.variant());
+  return std::visit(
+      [&](const auto& impl) {
+        return MulBaseCallImpl(impl, A, B, name, target);
+      },
+      target.arch.variant());
 }
 
 std::vector<Tensor> MulBase(const Tensor& A,
@@ -1321,20 +1322,16 @@ ir::Tensor ScatterAssign(const ir::Tensor& input,
       << "Param [Index] of ScatterAssign only support int32 ! Please Check.\n";
   std::string extern_fun_name;
   target.arch.Visit(adt::match{
-    [&](common::UnknownArch) {
-      PADDLE_THROW(phi::errors::Fatal(
-          "ScatterAssign only support X86 and NVGPU ! Please Check.\n"));
-    },
-    [&](common::X86Arch) {
-      extern_fun_name.assign("cinn_host_find_int");
-    },
-    [&](common::ARMArch) {
-      PADDLE_THROW(phi::errors::Fatal(
-          "ScatterAssign only support X86 and NVGPU ! Please Check.\n"));
-    },
-    [&](common::NVGPUArch) {
-      extern_fun_name.assign("cinn_cuda_find_int");
-    },
+      [&](common::UnknownArch) {
+        PADDLE_THROW(phi::errors::Fatal(
+            "ScatterAssign only support X86 and NVGPU ! Please Check.\n"));
+      },
+      [&](common::X86Arch) { extern_fun_name.assign("cinn_host_find_int"); },
+      [&](common::ARMArch) {
+        PADDLE_THROW(phi::errors::Fatal(
+            "ScatterAssign only support X86 and NVGPU ! Please Check.\n"));
+      },
+      [&](common::NVGPUArch) { extern_fun_name.assign("cinn_cuda_find_int"); },
   });
 
   auto pos_axis = axis;

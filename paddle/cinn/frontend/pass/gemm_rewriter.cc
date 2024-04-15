@@ -40,8 +40,8 @@ class GemmRewriterPass : public ProgramPass {
   void ApplyImpl(Program* prog,
                  const std::unordered_set<std::string>& fetch_ids,
                  const cinn::common::Target& target) override {
-    if (!std::holds_alternative<common::NVGPUArch>(target.arch)
-        || !prog->size()) {
+    if (!std::holds_alternative<common::NVGPUArch>(target.arch) ||
+        !prog->size()) {
       return;
     }
 

@@ -56,9 +56,9 @@ void CastBoolExprToInt8Impl(common::NVGPUArch, Expr* e) {
 }
 
 void CastBoolExprToInt8(common::Arch arch, Expr* e) {
-  return std::visit([&](const auto& impl) {
-    return CastBoolExprToInt8Impl(impl, e);
-  }, arch.variant());
+  return std::visit(
+      [&](const auto& impl) { return CastBoolExprToInt8Impl(impl, e); },
+      arch.variant());
 }
 
 void CastBoolToInt8(Expr* e, Target target) {

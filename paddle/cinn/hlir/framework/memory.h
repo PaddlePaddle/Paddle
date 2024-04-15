@@ -19,9 +19,9 @@
 
 #include <memory>
 
+#include "paddle/cinn/common/arch_util.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/common/target.h"
-#include "paddle/cinn/common/arch_util.h"
 
 namespace cinn {
 namespace hlir {
@@ -57,12 +57,14 @@ class MemoryManager final {
 
   MemoryInterface* RetrieveSafely(key_t key) {
     auto* res = Retrieve(key);
-    CHECK(res) << "no MemoryInterface for architecture [" << GetArchName(key) << "]";
+    CHECK(res) << "no MemoryInterface for architecture [" << GetArchName(key)
+               << "]";
     return res;
   }
 
   MemoryInterface* Register(key_t key, MemoryInterface* item) {
-    CHECK(!memory_mngs_.count(key)) << "Duplicate register [" << GetArchName(key) << "]";
+    CHECK(!memory_mngs_.count(key))
+        << "Duplicate register [" << GetArchName(key) << "]";
     memory_mngs_[key].reset(item);
     return item;
   }
@@ -70,8 +72,7 @@ class MemoryManager final {
  private:
   MemoryManager();
 
-  absl::flat_hash_map<cinn::common::Arch,
-                      std::unique_ptr<MemoryInterface>>
+  absl::flat_hash_map<cinn::common::Arch, std::unique_ptr<MemoryInterface>>
       memory_mngs_;
 
   CINN_DISALLOW_COPY_AND_ASSIGN(MemoryManager);

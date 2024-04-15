@@ -55,7 +55,7 @@ void DealWithCpuIntrinsics(ir::Call *node, Expr *expr) {
             node->read_args.size()));
     CHECK(node->read_args.front().type().is_float())
         << "CPU extern call intrinsics only support float now! Please "
-            "check.";
+           "check.";
     if (node->read_args.front().type().is_float(32)) {
       auto out_type = node->type();
       *expr = lang::CallExtern(node->name + "f", node->read_args);
@@ -90,15 +90,17 @@ void DealWithIntrinsicsImpl(common::NVGPUArch, ir::Call *node, Expr *expr) {
     return;
   }
 
-  std::string extern_func = hlir::GetExternFuncName(
-      cinn::common::DefaultNVGPUTarget(), dtype, name);
+  std::string extern_func =
+      hlir::GetExternFuncName(cinn::common::DefaultNVGPUTarget(), dtype, name);
   *expr = lang::CallExtern(extern_func, node->read_args, node->attrs);
 }
 
 void DealWithIntrinsics(common::Arch arch, ir::Call *node, Expr *expr) {
-  return std::visit([&](const auto& impl) {
-    return DealWithIntrinsicsImpl(impl, node, expr);
-  }, arch.variant());
+  return std::visit(
+      [&](const auto &impl) {
+        return DealWithIntrinsicsImpl(impl, node, expr);
+      },
+      arch.variant());
 }
 
 void MapExternCall(Expr *e, Target target) {

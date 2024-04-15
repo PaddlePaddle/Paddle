@@ -17,9 +17,8 @@
 #include <array>
 #include <ostream>
 #include <string>
-#include <vector>
 #include <variant>
-#include <ostream>
+#include <vector>
 #include "paddle/cinn/common/arch.h"
 
 namespace cinn {
@@ -27,7 +26,6 @@ namespace common {
 
 std::string GetArchName(Arch arch);
 std::ostream& operator<<(std::ostream& os, Arch arch);
-
 
 }  // namespace common
 }  // namespace cinn

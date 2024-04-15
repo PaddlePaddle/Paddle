@@ -366,9 +366,8 @@ void CheckCompileOptionImpl(cinn::common::NVGPUArch) {
 }
 
 void CheckCompileOption(cinn::common::Arch arch) {
-  return std::visit([](const auto& impl){
-    CheckCompileOptionImpl(impl);
-  }, arch.variant());
+  return std::visit([](const auto& impl) { CheckCompileOptionImpl(impl); },
+                    arch.variant());
 }
 
 cinn::common::Target CurrentTarget::target_ = cinn::common::DefaultTarget();

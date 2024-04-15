@@ -56,20 +56,16 @@ ir::Tensor Resize(const ir::Tensor &input,
                   const std::string &output_name) {
   std::string func_name;
   target.arch.Visit(adt::match{
-    [&](common::UnknownArch) {
-      PADDLE_THROW(phi::errors::Fatal(
-          "Resize only supports X86 and NVGPU ! Please Check.\n"));
-    },
-    [&](common::X86Arch) {
-      func_name.assign("cinn_host_resize_");
-    },
-    [&](common::ARMArch) {
-      PADDLE_THROW(phi::errors::Fatal(
-          "Resize only supports X86 and NVGPU ! Please Check.\n"));
-    },
-    [&](common::NVGPUArch) {
-      func_name.assign("cinn_cuda_resize_");
-    },
+      [&](common::UnknownArch) {
+        PADDLE_THROW(phi::errors::Fatal(
+            "Resize only supports X86 and NVGPU ! Please Check.\n"));
+      },
+      [&](common::X86Arch) { func_name.assign("cinn_host_resize_"); },
+      [&](common::ARMArch) {
+        PADDLE_THROW(phi::errors::Fatal(
+            "Resize only supports X86 and NVGPU ! Please Check.\n"));
+      },
+      [&](common::NVGPUArch) { func_name.assign("cinn_cuda_resize_"); },
   });
 
   if (mode == "bilinear") {
@@ -249,18 +245,15 @@ std::shared_ptr<framework::OpStrategy> StrategyForResize(
                                         std::multiplies<int>());
     if (prod_size > 1) {
       target.arch.Visit(adt::match{
-        [&](common::UnknownArch) {
-          CINN_NOT_IMPLEMENTED;
-        },
-        [&](common::X86Arch) {
-          pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
-        },
-        [&](common::ARMArch) {
-          CINN_NOT_IMPLEMENTED;
-        },
-        [&](common::NVGPUArch) {
-          pe::IRCudaScheduleInjective(ir_sch, output_shapes.front(), target);
-        },
+          [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+          [&](common::X86Arch) {
+            pe::IRScheduleInjectiveCPU(
+                ir_sch, output_shapes.front(), target, true);
+          },
+          [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+          [&](common::NVGPUArch) {
+            pe::IRCudaScheduleInjective(ir_sch, output_shapes.front(), target);
+          },
       });
     }
     std::vector<cinn::common::CINNValue> res{

@@ -17,10 +17,10 @@
 #include <array>
 #include <ostream>
 #include <string>
-#include <vector>
 #include <variant>
-#include "paddle/cinn/common/arch.h"
+#include <vector>
 #include "paddle/cinn/adt/adt.h"
+#include "paddle/cinn/common/arch.h"
 
 namespace cinn {
 namespace common {
