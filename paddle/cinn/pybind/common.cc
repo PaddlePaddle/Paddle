@@ -49,24 +49,21 @@ void BindCinnValue(py::module *);
 void ResetGlobalNameID() { cinn::common::Context::Global().ResetNameId(); }
 
 void BindTarget(py::module *m) {
-
   py::class_<Arch>(*m, "Arch")
-    .def("IsX86Arch", [](const common::Arch& arch) {
-      return std::holds_alternative<common::X86Arch>(arch);
-    })
-    .def("IsNVGPUArch", [](const common::Arch& arch) {
-      return std::holds_alternative<common::NVGPUArch>(arch);
-    });
+      .def("IsX86Arch",
+           [](const common::Arch &arch) {
+             return std::holds_alternative<common::X86Arch>(arch);
+           })
+      .def("IsNVGPUArch", [](const common::Arch &arch) {
+        return std::holds_alternative<common::NVGPUArch>(arch);
+      });
 
   py::class_<Target> target(*m, "Target");
   target.def_readwrite("os", &Target::os)
       .def_readwrite("arch", &Target::arch)
-      .def_static("X86Arch", []() ->common::Arch {
-        return common::X86Arch{};
-      })
-      .def_static("NVGPUArch", []() ->common::Arch {
-        return common::NVGPUArch{};
-      })
+      .def_static("X86Arch", []() -> common::Arch { return common::X86Arch{}; })
+      .def_static("NVGPUArch",
+                  []() -> common::Arch { return common::NVGPUArch{}; })
       .def_readwrite("bits", &Target::bits)
       .def_readwrite("features", &Target::features)
       .def(py::init<>())
