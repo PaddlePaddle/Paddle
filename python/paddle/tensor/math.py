@@ -7753,7 +7753,7 @@ def isposinf(x, name=None):
             [False, True, False, False, False])
 
     """
-    if not isinstance(x, (paddle.Tensor, Variable)):
+    if not isinstance(x, (paddle.Tensor, Variable, paddle.pir.Value)):
         raise TypeError(f"x must be tensor type, but got {type(x)}")
 
     check_variable_and_dtype(
@@ -7799,7 +7799,7 @@ def isneginf(x, name=None):
             [False, False, False, True, False])
 
     """
-    if not isinstance(x, (paddle.Tensor, Variable)):
+    if not isinstance(x, (paddle.Tensor, Variable, paddle.pir.Value)):
         raise TypeError(f"x must be tensor type, but got {type(x)}")
 
     check_variable_and_dtype(
