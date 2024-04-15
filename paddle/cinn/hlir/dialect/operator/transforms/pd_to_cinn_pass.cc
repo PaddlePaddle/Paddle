@@ -911,22 +911,22 @@ class GatherOpPattern
           gather_op.attribute("index").dyn_cast<pir::Int32Attribute>().data();
       VLOG(-1) << "xx ";
     } else {
-      VLOG(-1) << "xx ";
-      axis_shape_or_data.data();
-      VLOG(-1) << "xx ";
-      axis_shape_or_data.data().value();
-      VLOG(-1) << "xx ";
-      axis_shape_or_data.data().value()[0];
-      VLOG(-1) << "xx ";
-      axis =
-          static_cast<int>(axis_shape_or_data.data().value()[0].Get<int64_t>());
-      VLOG(-1) << "xx ";
+      VLOG(-1) << "xx axis full_Op ";
+      auto axis_full_op = op.operand_source(2)
+                              .defining_op()
+                              ->dyn_cast<paddle::dialect::FullOp>();
+      VLOG(-1) << "xx get attribute  value";
+      axis = static_cast<int>(axis_full_op.attribute("value")
+                                  .dyn_cast<::pir::FloatAttribute>()
+                                  .data());
     }
     VLOG(-1) << "xx ";
     auto out =
         rewriter.Build<cinn::dialect::GatherOp>(x, index, axis)->result(0);
+    VLOG(-1) << "xx ";
     rewriter.ReplaceAllUsesWith(op->result(0), out);
     rewriter.EraseOp(op);
+    return true;
 
     // TODO(6clc): use 528 row to generate axis
     // if (axis < 0) axis += input_sym_shape.size();

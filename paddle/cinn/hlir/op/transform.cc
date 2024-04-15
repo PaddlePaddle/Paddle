@@ -1357,7 +1357,7 @@ std::shared_ptr<OpStrategy> StrategyForGatherSymbolic(
         // TODO(6clc): to judge axis's category
         // CHECK_EQ(input_args.size(), 3U);
         // CHECK(input_args[2].is_string());
-        std::string tensor_name = input_args[3].operator std::string();
+        std::string tensor_name = input_args[2].operator std::string();
 
         auto out = pe::Gather(x.as_tensor_ref(),
                               index.as_tensor_ref(),
