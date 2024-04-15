@@ -25,13 +25,6 @@ from paddle.pir_utils import test_with_pir_api
 position_ids_list = [[7, 5, 4, 6, 3, 1, 2, 0], [3, 1, 4, 0, 7, 6, 5, 2]]
 
 
-def deal_qkv(init_value):
-    if init_value is None:
-        return None
-    perm = [0, 2, 1, 3]
-    return paddle.transpose(x=init_value, perm=perm)
-
-
 def mult_qkv(value, cos_tensor, sin_tensor):
     if value is None:
         return None
@@ -102,34 +95,31 @@ def get_sin_cos_tensor(seq_len, head_dim, sign=1):
 
 
 def paddle_fused_rotary_position_embedding(
-    init_q,
-    init_k,
-    init_v,
+    q,
+    k,
+    v,
     sin_tensor=None,
     cos_tensor=None,
     position_ids=None,
     use_neox_rotary_style=True,
     **kwargs
 ):
-    # permute q, k, v from [batch_size, seq_len, num_heads, head_dim]
-    # to [batch_size, num_heads, seq_len, head_dim]
-    q = deal_qkv(init_q)
-    k = deal_qkv(init_k)
-    v = deal_qkv(init_v)
-
     if position_ids is not None:
-        sin_tensor = sin_tensor.squeeze(axis=[0, 2])  # [seq_len, dim]
-        cos_tensor = cos_tensor.squeeze(axis=[0, 2])  # [seq_len, dim]
-        sin_tensor = sin_tensor[position_ids].unsqueeze(
-            2
-        )  # [bs, seq_len, 1, dim]
-        cos_tensor = cos_tensor[position_ids].unsqueeze(
-            2
-        )  # [bs, seq_len, 1, dim]
+        sin_tensor = sin_tensor.squeeze()  # [seq_len, dim]
+        cos_tensor = cos_tensor.squeeze()  # [seq_len, dim]
+        if len(sin_tensor.shape) == 2 and len(cos_tensor.shape) == 2:
+            sin_tensor = sin_tensor[position_ids]
+            cos_tensor = cos_tensor[position_ids]
+        else:
+            sin_tensor = paddle.stack(
+                [sin_tensor[i, j] for i, j in enumerate(position_ids)], axis=0
+            )
+            cos_tensor = paddle.stack(
+                [cos_tensor[i, j] for i, j in enumerate(position_ids)], axis=0
+            )
 
-    perm = [0, 2, 1, 3]
-    sin_tensor = paddle.transpose(x=sin_tensor, perm=perm)
-    cos_tensor = paddle.transpose(x=cos_tensor, perm=perm)
+        sin_tensor = sin_tensor.unsqueeze(2)  # [bs, seq_len, 1, dim]
+        cos_tensor = cos_tensor.unsqueeze(2)  # [bs, seq_len, 1, dim]
 
     if use_neox_rotary_style:
         query = mult_qkv(q, cos_tensor, sin_tensor)
@@ -140,11 +130,7 @@ def paddle_fused_rotary_position_embedding(
         value = mult_qkv_rotate_half(v, cos_tensor, sin_tensor)
         key = mult_qkv_rotate_half(k, cos_tensor, sin_tensor)
 
-    # permute the result back to [batch_size, seq_len, num_heads, head_dim]
-    r_query = deal_qkv(query)
-    r_key = deal_qkv(key)
-    r_value = deal_qkv(value)
-    return r_query, r_key, r_value
+    return query, key, value
 
 
 @unittest.skipIf(
@@ -152,7 +138,15 @@ def paddle_fused_rotary_position_embedding(
     "core is not compiled with CUDA ",
 )
 @param.parameterized_class(
-    ("name", 'shape_q', 'shape_k', 'shape_v', 'position_ids_list'),
+    (
+        "name",
+        'shape_q',
+        'shape_k',
+        'shape_v',
+        'position_ids_list',
+        'shape_sin',
+        'return_random_sin_cos',
+    ),
     [
         (
             "qkv_input",
@@ -162,8 +156,26 @@ def paddle_fused_rotary_position_embedding(
             position_ids_list,
         ),
         ("qk_input", [2, 8, 2, 16], [2, 8, 2, 16], None, position_ids_list),
-        ("qv_input", [2, 8, 2, 16], None, [2, 8, 2, 16], position_ids_list),
+        ("qv_input_bs2", [2, 8, 2, 16], None, [2, 8, 2, 16], position_ids_list),
         ("q_input", [2, 8, 2, 16], None, None, position_ids_list),
+        (
+            "q_input_without_sin_cos",
+            [2, 8, 2, 16],
+            None,
+            None,
+            position_ids_list,
+            [],
+            False,
+        ),
+        (
+            "q_input",
+            [2, 8, 2, 16],
+            None,
+            None,
+            position_ids_list,
+            [2, 8, 1, 16],
+            True,
+        ),
         (
             "qkv_input_mqa",
             [2, 8, 4, 8],
@@ -173,6 +185,15 @@ def paddle_fused_rotary_position_embedding(
         ),
         ("qk_input_mqa", [2, 8, 4, 8], [2, 8, 1, 8], None, position_ids_list),
         ("qv_input_mqa", [2, 8, 4, 8], None, [2, 8, 1, 8], position_ids_list),
+        (
+            "qv_input_mqa",
+            [2, 8, 4, 8],
+            None,
+            [2, 8, 1, 8],
+            position_ids_list,
+            [2, 8, 1, 8],
+            True,
+        ),
         (
             "qkv_input_gqa",
             [1, 8, 4, 8],
@@ -194,6 +215,15 @@ def paddle_fused_rotary_position_embedding(
             [1, 8, 2, 8],
             position_ids_list[:1],
         ),
+        (
+            "qv_input_gqa_bs2",
+            [2, 8, 4, 8],
+            None,
+            [2, 8, 2, 8],
+            position_ids_list,
+            [2, 8, 1, 8],
+            True,
+        ),
     ],
 )
 class TestFusedRotaryPositionEmbedding(unittest.TestCase):
@@ -211,7 +241,7 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         tmp.stop_gradient = False
         return tmp
 
-    def get_inputs(self, seed, with_sin_cos):
+    def get_inputs(self, seed, with_sin_cos, return_random_sin_cos=False):
         paddle.disable_static()
         paddle.seed(seed)
         # tensor_q shape: [batch_size, seq_len, num_heads, head_dim]
@@ -219,11 +249,19 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         tensor_k = self.get_paddle_tensor(self.shape_k)
         tensor_v = self.get_paddle_tensor(self.shape_v)
 
-        tensor_sin, tensor_cos = (
-            get_sin_cos_tensor(tensor_q.shape[1], tensor_q.shape[3], 1)
-            if with_sin_cos
-            else (None, None)
-        )
+        # when batch_size of sin and cos is not 1, we generate random sin and cos.
+        if with_sin_cos and (
+            hasattr(self, 'return_random_sin_cos')
+            and self.return_random_sin_cos
+        ):
+            tensor_sin = paddle.uniform(self.shape_sin, self.dtype, -1, 1.0)
+            tensor_cos = paddle.uniform(self.shape_sin, self.dtype, -1, 1.0)
+        else:
+            tensor_sin, tensor_cos = (
+                get_sin_cos_tensor(tensor_q.shape[1], tensor_q.shape[3], 1)
+                if with_sin_cos
+                else (None, None)
+            )
         return tensor_q, tensor_k, tensor_v, tensor_sin, tensor_cos
 
     def get_forward_backward(
@@ -311,7 +349,14 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         self.check_results(p_fw, f_fw_time_major)
         self.check_results(p_bw, f_bw_time_major)
 
-    def test_fused_rope_with_sin_cos(self):
+    def test_fused_rope_without_sin_cos(self):
+        # The default with_sin_cos of get_forward_backward API is True, here we test with_sin_cos=False.
+        # when return_random_sin_cos is True, it means sin and cos are generated by OP.
+        if (
+            hasattr(self, 'return_random_sin_cos')
+            and self.return_random_sin_cos
+        ):
+            return
         p_fw, p_bw = self.get_forward_backward(
             paddle_fused_rotary_position_embedding,
             seed=self.seed,
@@ -320,13 +365,13 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         f_fw, f_bw = self.get_forward_backward(
             fused_rotary_position_embedding,
             seed=self.seed,
-            with_sin_cos=True,
+            with_sin_cos=False,
             test_time_major=False,
         )
         f_fw_time_major, f_bw_time_major = self.get_forward_backward(
             fused_rotary_position_embedding,
             seed=self.seed,
-            with_sin_cos=True,
+            with_sin_cos=False,
             test_time_major=True,
         )
 
@@ -388,7 +433,8 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
     def test_static(self):
         paddle.disable_static()
         tensor_q, tensor_k, tensor_v, tensor_sin, tensor_cos = self.get_inputs(
-            self.seed, True
+            self.seed,
+            True,
         )
         p_fw, p_bw = self.get_forward_backward(
             paddle_fused_rotary_position_embedding,
@@ -426,12 +472,12 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
 
             sin = paddle.static.data(
                 name="sin",
-                shape=(1, tensor_q.shape[1], 1, tensor_q.shape[3]),
+                shape=tensor_sin.shape,
                 dtype=self.dtype,
             )
             cos = paddle.static.data(
                 name="cos",
-                shape=(1, tensor_q.shape[1], 1, tensor_q.shape[3]),
+                shape=tensor_cos.shape,
                 dtype=self.dtype,
             )
 
@@ -539,12 +585,12 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
 
             sin = paddle.static.data(
                 name="sin",
-                shape=(1, shape_q[0], 1, shape_q[3]),
+                shape=tensor_sin.shape,
                 dtype=self.dtype,
             )
             cos = paddle.static.data(
                 name="cos",
-                shape=(1, shape_q[0], 1, shape_q[3]),
+                shape=tensor_cos.shape,
                 dtype=self.dtype,
             )
 
