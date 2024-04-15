@@ -524,9 +524,6 @@ def recompute(function, *args, **kwargs):
 
         return static_auto_recompute(function)(*args, **kwargs)
 
-    # whether to use reentrant method to implement recompute
-    use_reentrant = kwargs.pop('use_reentrant', True)
-
     if framework._dygraph_tracer()._has_grad:
         check_args = list(args)
         check_args.extend(list(kwargs.values()))
