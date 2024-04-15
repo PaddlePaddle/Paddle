@@ -40,7 +40,7 @@ class PToRReshardFunction(ReshardFunction):
         return True
 
     def reshard(
-        self, program, op, src_dist_attr, dst_dist_attr, remove_op=True
+        self, program, op, src_dist_attr, dst_dist_attr, reshard_op=True
     ):
         src_mesh = src_dist_attr.process_mesh
         src_reduce_type = src_dist_attr.partial_status[0]
@@ -50,7 +50,7 @@ class PToRReshardFunction(ReshardFunction):
             reduce_mean = True
 
         op_value = op.result(0)
-        if remove_op:
+        if reshard_op:
             paddle.pir.set_insertion_point(op)
             op_value = op.operand_source(0)
         else:
@@ -60,7 +60,7 @@ class PToRReshardFunction(ReshardFunction):
             op_value, group.id, False, False
         )
         reduced_value.set_type(op_value.type())
-        if remove_op:
+        if reshard_op:
             op.result(0).replace_all_uses_with(reduced_value)
             program.global_block().remove_op(op)
 

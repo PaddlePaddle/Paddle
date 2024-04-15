@@ -93,15 +93,15 @@ def apply_reshard_pass_v2(program):
     with paddle.base.program_guard(new_program):
         for op in new_program.global_block().ops:
             if op.name() == 'dist_op.reshard':
-                op_operand_dist_attr = op.operand_source(0).dist_attr()
-                op_target_dist_attr = op.attrs()[
-                    "op_dist_attr"
-                ].result_dist_attr(0)
+                op_dist_attr = op.attrs()["op_dist_attr"]
+                src_dist_attr = op_dist_attr.operand_dist_attr(0)
+                dst_dist_attr = op_dist_attr.result_dist_attr(0)
+
                 reshard_func = choose_reshard_func(
-                    op_operand_dist_attr, op_target_dist_attr
+                    src_dist_attr, dst_dist_attr
                 )
                 reshard_func.reshard(
-                    new_program, op, op_operand_dist_attr, op_target_dist_attr
+                    new_program, op, src_dist_attr, dst_dist_attr
                 )
 
     return new_program

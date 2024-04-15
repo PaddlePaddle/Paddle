@@ -18,7 +18,7 @@ class ReshardFunction:
         return "ReshardFunction is_suitable not implemented"
 
     def reshard(self, program, op, src_tensor, dst_dist_attr):
-        return "ReshardFunction eval not implemented"
+        return "ReshardFunction reshard not implemented"
 
 
 def choose_reshard_func(src_dist_attr, dst_dist_attr):
