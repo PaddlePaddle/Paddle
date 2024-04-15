@@ -44,57 +44,57 @@ class GenerateMaskLabelsOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("ImInfo"),
         true,
-        platform::errors::InvalidArgument("Input(ImInfo) shouldn't be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("GtClasses"),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Input(GtClasses) shouldn't be null."));
+        phi::errors::InvalidArgument("Input(ImInfo) shouldn't be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("GtClasses"),
+        true,
+        phi::errors::InvalidArgument("Input(GtClasses) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("IsCrowd"),
         true,
-        platform::errors::InvalidArgument("Input(IsCrowd) shouldn't be null."));
+        phi::errors::InvalidArgument("Input(IsCrowd) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("GtSegms"),
         true,
-        platform::errors::InvalidArgument("Input(GtSegms) shouldn't be null."));
+        phi::errors::InvalidArgument("Input(GtSegms) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Rois"),
         true,
-        platform::errors::InvalidArgument("Input(Rois) shouldn't be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("LabelsInt32"),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Input(LabelsInt32) shouldn't be null."));
+        phi::errors::InvalidArgument("Input(Rois) shouldn't be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("LabelsInt32"),
+        true,
+        phi::errors::InvalidArgument("Input(LabelsInt32) shouldn't be null."));
 
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("MaskRois"),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Output(MaskRois) of GenerateMaskLabelsOp should not be null"));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("RoiHasMaskInt32"),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Output(RoiHasMaskInt32) of GenerateMaskLabelsOp "
                           "should not be null"));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("MaskInt32"),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Output(MaskInt32) of GenerateMaskLabelsOp should not be null"));
 
     auto im_info_dims = ctx->GetInputDim("ImInfo");
     auto gt_segms_dims = ctx->GetInputDim("GtSegms");
-    PADDLE_ENFORCE_EQ(im_info_dims.size(),
-                      2,
-                      platform::errors::InvalidArgument(
-                          "The rank of Input(ImInfo) must be 2."));
-    PADDLE_ENFORCE_EQ(gt_segms_dims.size(),
-                      2,
-                      platform::errors::InvalidArgument(
-                          "The rank of Input(GtSegms) must be 2."));
+    PADDLE_ENFORCE_EQ(
+        im_info_dims.size(),
+        2,
+        phi::errors::InvalidArgument("The rank of Input(ImInfo) must be 2."));
+    PADDLE_ENFORCE_EQ(
+        gt_segms_dims.size(),
+        2,
+        phi::errors::InvalidArgument("The rank of Input(GtSegms) must be 2."));
     PADDLE_ENFORCE_EQ(gt_segms_dims[1],
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The second dim of Input(GtSegms) must be 2."));
     int num_classes = ctx->Attrs().Get<int>("num_classes");
     int resolution = ctx->Attrs().Get<int>("resolution");
@@ -170,7 +170,7 @@ std::vector<phi::DenseTensor> SampleMaskForOneImage(
   const int* label_int32_data = label_int32.data<int>();
   PADDLE_ENFORCE_EQ(roi_size,
                     label_int32.dims()[0],
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The first dim of label [%d] is the different from "
                         "roi_size [%d], they should be same.",
                         label_int32.dims()[0],
@@ -197,7 +197,7 @@ std::vector<phi::DenseTensor> SampleMaskForOneImage(
         int e = static_cast<int>(lod2[s_idx + j + 1]);
         PADDLE_ENFORCE_NE(s,
                           e,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "The start point and the end point in the poly "
                               "segment [%d] should not be same, but received "
                               "the start point [%d] and the end point [%d].",
@@ -349,34 +349,34 @@ class GenerateMaskLabelsKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         gt_classes->lod().size(),
         1UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "GenerateMaskLabelsOp gt_classes needs 1 level of LoD"));
     PADDLE_ENFORCE_EQ(
         is_crowd->lod().size(),
         1UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "GenerateMaskLabelsOp is_crowd needs 1 level of LoD"));
     PADDLE_ENFORCE_EQ(rois->lod().size(),
                       1UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "GenerateMaskLabelsOp rois needs 1 level of LoD"));
     PADDLE_ENFORCE_EQ(
         label_int32->lod().size(),
         1UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "GenerateMaskLabelsOp label_int32 needs 1 level of LoD"));
 
     PADDLE_ENFORCE_EQ(
         gt_segms->lod().size(),
         3UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "GenerateMaskLabelsOp gt_segms needs 3 level of LoD"));
 
     int64_t n = static_cast<int64_t>(gt_classes->lod().back().size() - 1);
     PADDLE_ENFORCE_EQ(
         gt_segms->lod()[0].size() - 1,
         n,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Batchsize of Input(gt_segms) and Input(gt_classes) should be "
             "same, but received gt_segms[%d], gt_classes[%d].",
             gt_segms->lod()[0].size() - 1,

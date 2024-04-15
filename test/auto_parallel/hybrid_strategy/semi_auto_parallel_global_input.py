@@ -21,7 +21,7 @@ import paddle.distributed as dist
 from paddle.io import BatchSampler, DataLoader, Dataset
 
 SEQ_LEN = 4
-HIDDLE_SIZE = 8
+HIDDEN_SIZE = 8
 global_mesh = dist.ProcessMesh(
     [[[0, 1], [2, 3]], [[4, 5], [6, 7]]], dim_names=['pp', 'dp', 'mp']
 )
@@ -33,19 +33,19 @@ class MlpModel(paddle.nn.Layer):
     def __init__(self, variable_initial_values, run_single_process=False):
         super().__init__()
         self.w0 = self.create_parameter(
-            shape=[HIDDLE_SIZE, HIDDLE_SIZE],
+            shape=[HIDDEN_SIZE, HIDDEN_SIZE],
             default_initializer=paddle.nn.initializer.Assign(
                 variable_initial_values[0]
             ),
         )
         self.w1 = self.create_parameter(
-            shape=[HIDDLE_SIZE, HIDDLE_SIZE],
+            shape=[HIDDEN_SIZE, HIDDEN_SIZE],
             default_initializer=paddle.nn.initializer.Assign(
                 variable_initial_values[1]
             ),
         )
         self.global_input = paddle.uniform(
-            shape=[SEQ_LEN, HIDDLE_SIZE],
+            shape=[SEQ_LEN, HIDDEN_SIZE],
             dtype=paddle.float32,
             min=-0.0001,
             max=0.0001,
@@ -121,7 +121,7 @@ class RandomDataset(Dataset):
 
 
 def create_dataloader():
-    dataset = RandomDataset(SEQ_LEN, HIDDLE_SIZE)
+    dataset = RandomDataset(SEQ_LEN, HIDDEN_SIZE)
     sampler = BatchSampler(
         dataset,
         batch_size=2,
@@ -138,7 +138,7 @@ def get_variable_initial_value(var_num=2):
     for i in range(var_num):
         res.append(
             paddle.uniform(
-                shape=[HIDDLE_SIZE, HIDDLE_SIZE],
+                shape=[HIDDEN_SIZE, HIDDEN_SIZE],
                 dtype=paddle.float32,
                 min=-0.0001,
                 max=0.0001,

@@ -82,12 +82,12 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         label_lod.size(),
         1UL,
-        platform::errors::InvalidArgument("Only support LodTensor of lod_level "
-                                          "with 1 in label, but received %d.",
-                                          label_lod.size()));
+        phi::errors::InvalidArgument("Only support LodTensor of lod_level "
+                                     "with 1 in label, but received %d.",
+                                     label_lod.size()));
     PADDLE_ENFORCE_EQ(label_lod[0].size(),
                       detect_lod[0].size(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The batch_size of input(Label) and input(Detection) "
                           "must be the same, but received %d:%d",
                           label_lod[0].size(),
@@ -212,7 +212,7 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
           PADDLE_ENFORCE_EQ(
               input_label.dims()[1],
               5,
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "The input label width"
                   " must be 5, but received %d, please check your input data",
                   input_label.dims()[1]));
@@ -504,7 +504,7 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
         mAP += average_precisions;
         ++count;
       } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
+        PADDLE_THROW(phi::errors::Unimplemented(
             "Unkown ap version %s. Now only supports integral and l1point.",
             ap_type));
       }
