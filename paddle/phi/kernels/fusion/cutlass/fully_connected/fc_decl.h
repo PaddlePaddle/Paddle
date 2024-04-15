@@ -41,7 +41,7 @@ typedef struct {
   cudaStream_t stream;
   FcDataType data_type;
   bool isVec_bias = true;
-  int sm_version = 75;
+  int sm_version = 80;
   float leaky_alpha = 1.0;
   void *workspace = nullptr;
 } FcAllParams;

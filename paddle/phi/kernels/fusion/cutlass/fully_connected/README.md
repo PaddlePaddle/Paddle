@@ -15,7 +15,7 @@ step1.
 ```shell
 python_exe_path="python"
 cuda_root_path="/usr/local/cuda"
-gpu_cc="75"
+gpu_cc="80"
 ```
 compile.sh 脚本中会下载cutlass，执行CMakeLists.txt脚本，编译生成动态库。
 
