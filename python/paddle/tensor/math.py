@@ -7770,6 +7770,6 @@ def sinc_(x, name=None):
 
     paddle.where_(x != 0, x, paddle.full_like(x, 1.0e-20))
     paddle.multiply_(x, paddle.to_tensor(math.pi, dtype=x.dtype))
+    tmp = paddle.clone(x)
     paddle.sin_(x)
-    tmp = paddle.asin(x)
     return paddle.divide_(x, tmp)

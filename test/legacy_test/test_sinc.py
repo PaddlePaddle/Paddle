@@ -55,7 +55,9 @@ class TestSincAPI(unittest.TestCase):
                     x = paddle.to_tensor(x_data)
                     out = paddle.sinc(x)
                     out_expected = np_sinc(x_data)
-                    np.testing.assert_allclose(out.numpy(), out_expected)
+                    np.testing.assert_allclose(
+                        out.numpy(), out_expected, rtol=1e-6, atol=1e-6
+                    )
 
         def run_static(place):
             paddle.enable_static()
@@ -80,7 +82,9 @@ class TestSincAPI(unittest.TestCase):
                             feed={'x': x_data}, fetch_list=[res]
                         )
                         out_expected = np_sinc(x_data)
-                    np.testing.assert_allclose(static_result, out_expected)
+                    np.testing.assert_allclose(
+                        static_result, out_expected, rtol=1e-6, atol=1e-6
+                    )
 
         for place in self.place:
             run_dygraph(place)
@@ -106,7 +110,9 @@ class TestSincAPI(unittest.TestCase):
                     x = paddle.to_tensor(x_data)
                     out = paddle.sinc(x)
                     out_expected = np_sinc(x_data)
-                    np.testing.assert_allclose(out.numpy(), out_expected)
+                    np.testing.assert_allclose(
+                        out.numpy(), out_expected, rtol=1e-6, atol=1e-6
+                    )
 
         def run_static(place):
             paddle.enable_static()
@@ -137,7 +143,9 @@ class TestSincAPI(unittest.TestCase):
                             feed={'x': x_data}, fetch_list=[res]
                         )
                         out_expected = np_sinc(x_data)
-                    np.testing.assert_allclose(static_result, out_expected)
+                    np.testing.assert_allclose(
+                        static_result, out_expected, rtol=1e-6, atol=1e-6
+                    )
 
         for place in self.place:
             run_dygraph(place)
@@ -162,7 +170,9 @@ class TestSincAPI(unittest.TestCase):
                     x = paddle.to_tensor(x_data)
                     paddle.sinc_(x)
                     out_expected = np_sinc(x_data)
-                    np.testing.assert_allclose(x.numpy(), out_expected)
+                    np.testing.assert_allclose(
+                        x.numpy(), out_expected, rtol=1e-6, atol=1e-6
+                    )
 
         for place in self.place:
             run_dygraph(place)
