@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <cctype>
 #include <numeric>
+#include <regex>
 #include <string>
 #include <tuple>
 #include <typeinfo>
@@ -140,6 +141,14 @@ inline bool IsInplace(const OpDesc& op_desc) {
 inline std::string OpNameCompatibleMapping(std::string op_name) {
   auto& op_normalizer = OpNameNormalizer::instance();
   return op_normalizer[op_name];
+}
+inline bool isSparseString(const std::string& str) {
+  std::regex pattern("^sparse_[a-zA-Z0-9_]+$");
+  if (std::regex_match(str, pattern)) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 inline pir::Operation* InsertCombineOperationForTarget(
@@ -277,6 +286,7 @@ inline std::string GetPrefix(pir::IrContext* ctx, const OpDesc& op_desc) {
 
 pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
                                         const OpDesc& op_desc) {
+  VLOG(6) << "[------]: " << op_desc.Type();
   std::string target_op_name =
       GetPrefix(ctx, op_desc) + OpNameCompatibleMapping(op_desc.Type());
   if (IsInplace(op_desc) && *target_op_name.rbegin() != '_') {
@@ -284,13 +294,16 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
   }
   VLOG(6) << "[op name normalizing]: " << op_desc.Type() << " to "
           << target_op_name;
+  if (isSparseString(target_op_name)) {
+    target_op_name = OpNameNormalizer::instance()[target_op_name];
+  }
   auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
   if (!op_info) {
     IR_THROW("Op %d should have corresponding OpInfo %d",
              op_desc.Type(),
              target_op_name);
   }
-
+  VLOG(6) << "[----294]: " << OpNameCompatibleMapping(op_desc.Type());
   if (!paddle::dialect::HaveOpToMultiKernelsMap(
           OpNameCompatibleMapping(op_desc.Type()))) {
     return op_info;
@@ -348,11 +361,16 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
   }
 
   target_op_name = OpNameCompatibleMapping(op_desc.Type());
-
+  VLOG(6) << "[------352]:" << target_op_name;
+  VLOG(6) << "[------351]: " << op_desc.Type();
   auto sig_infos = paddle::dialect::LegacyOpToPdOpsMapping(target_op_name);
 
   target_op_name = "";
+
   for (const auto& sig : sig_infos) {
+    VLOG(6) << "[need_inputs_sig.size: " << need_inputs_sig.size()
+            << " sig.inputs.size:" << sig.inputs.size()
+            << " sig.name:" << sig.name;
     if (need_inputs_sig.size() != sig.inputs.size()) {
       continue;
     }
@@ -361,11 +379,13 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
       if (need_inputs_sig[i] == "") {
         continue;
       }
+      VLOG(6) << ":" << need_inputs_sig[i] << " " << sig.inputs[i];
       if (need_inputs_sig[i] != sig.inputs[i]) {
         break;
       }
     }
     if (i == need_inputs_sig.size()) {
+      VLOG(6) << "[------372]:" << target_op_name;
       target_op_name = sig.name;
       break;
     }

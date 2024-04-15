@@ -31,10 +31,17 @@
 namespace paddle {
 namespace dialect {
 bool HaveOpToMultiKernelsMap(std::string op_name) {
-  return op_to_multi_kernels_map.find(op_name) != op_to_multi_kernels_map.end();
+  for (const auto& map :
+       {&op_to_multi_kernels_map, &sp_op_to_multi_kernels_map}) {
+    if (map->find(op_name) != map->end()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 const std::vector<PdOpSig>& LegacyOpToPdOpsMapping(std::string op_name) {
+  VLOG(6) << "---------:38: " << op_name;
   return op_to_multi_kernels_map[op_name];
 }
 
