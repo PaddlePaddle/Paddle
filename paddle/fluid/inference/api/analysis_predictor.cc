@@ -937,8 +937,8 @@ bool AnalysisPredictor::PrepareExecutor() {
         VLOG(4) << "[ShapeDialect] Run AddShapeOptimizationPass";
         shape_pm->Run(pir_program_.get());
 
-        cinn::dialect::ir::CheckInferSymbolicIfNeed(
-            pir_program_.get(), CreatePassMgr);
+        cinn::dialect::ir::CheckInferSymbolicIfNeed(pir_program_.get(),
+                                                    CreatePassMgr);
       }
 
       if (config_.cinn_enabled()) {

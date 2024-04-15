@@ -155,8 +155,10 @@ class BlockDimExprsAsserter {
 
   void AssertDimExprForOutput(pir::Operation* op) {  // NOLINT
     VLOG(5) << "Add assert for result of [ " << op->name() << " ]";
-    if (!op->HasInterface<paddle::dialect::InferSymbolicShapeInterface>())
+    if (!op->HasInterface<paddle::dialect::InferSymbolicShapeInterface>()) {
+      LOG(INFO) << "skip the checking for [ " << op->name() << " ]";
       return;
+    }
     auto OpDimExprs4Value = MakeOpDimExprs4Value(op);
     const auto& inputs = [&] {
       std::vector<pir::Value> inputs;
