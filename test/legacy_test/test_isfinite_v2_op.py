@@ -267,9 +267,11 @@ class TestCUDANormal(unittest.TestCase):
 
     def test_posinf(self):
         test(self, 'isposinf', True, data_set=TEST_META_DATA2)
+        test(self, 'isposinf', True, data_set=TEST_META_DATA3)
 
     def test_neginf(self):
         test(self, 'isneginf', True, data_set=TEST_META_DATA2)
+        test(self, 'isposinf', True, data_set=TEST_META_DATA3)
 
 
 @unittest.skipIf(
