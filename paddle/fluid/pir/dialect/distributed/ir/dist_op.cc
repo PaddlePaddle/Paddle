@@ -271,11 +271,36 @@ void ReshardOp::VerifySig() {
   VLOG(4) << "End Verifying for: ShardTensorOp.";
 }
 
+ProcessMeshAttribute MergeMeshes(const ProcessMeshAttribute& mesh1,
+                                 const ProcessMeshAttribute& mesh2) {
+  VLOG(0) << "MergeMeshes MergeMeshes MergeMeshes";
+  if (mesh1 == mesh2) return mesh1;
+  VLOG(0) << "MergeMeshes conbime conbime";
+  // Combine the two ids
+  std::vector<int64_t> merged_ids;
+  std::vector<int64_t> ids1 = mesh1.process_ids();
+  std::vector<int64_t> ids2 = mesh2.process_ids();
+
+  merged_ids.reserve(ids1.size() + ids2.size());
+  merged_ids.insert(merged_ids.end(), ids1.begin(), ids1.end());
+  merged_ids.insert(merged_ids.end(), ids1.begin(), ids1.end());
+
+  // Remove duplicates
+  std::sort(merged_ids.begin(), merged_ids.end());
+  auto last = std::unique(merged_ids.begin(), merged_ids.end());
+  merged_ids.erase(last, merged_ids.end());
+
+  return ProcessMeshAttribute::get(pir::IrContext::Instance(),
+                                   {1},  // flatten mesh shape
+                                   merged_ids,
+                                   {"merged"});
+}
+
 void ReshardOp::Build(pir::Builder& builder,
                       pir::OperationArgument& argument,
                       pir::Value input,
                       TensorDistAttribute tensor_dist_attr) {
-  VLOG(4) << "Start build ReshardOp";
+  VLOG(0) << "Start build ReshardOp";
 
   paddle::dialect::DistDenseTensorType input_tensor_type;
   if (input.type().isa<paddle::dialect::DistDenseTensorType>()) {
@@ -292,7 +317,8 @@ void ReshardOp::Build(pir::Builder& builder,
   VLOG(4) << "Builder construction attributes";
   pir::Attribute op_dist_attr = OperationDistAttribute::get(
       pir::IrContext::Instance(),
-      input_tensor_type.tensor_dist_attr().process_mesh_attr(),
+      MergeMeshes(input_tensor_type.tensor_dist_attr().process_mesh_attr(),
+                  tensor_dist_attr.process_mesh_attr()),
       std::vector<TensorDistAttribute>{input_tensor_type.tensor_dist_attr()},
       std::vector<TensorDistAttribute>{tensor_dist_attr});
   argument.AddAttribute("op_dist_attr", op_dist_attr);

@@ -21,6 +21,29 @@ def apply_partition_pass(program):
     new_program = program.clone()
     with paddle.static.program_guard(new_program):
         for op in new_program.global_block().ops:
+            # # deal with user reshard
+            # if op.name() == "dist_op.reshard":
+            #     print("encounter dist_op.reshard ")
+            #     reshard_in_dist_attr = op.dist_attr.operand_dist_attr(0)
+            #     reshard_out_dist_attr = op.dist_attr.result_dist_attr(0)
+            #     reshard_out1 = op.result(0)
+            #     reshard_in1 = op.operand(0)
+            #     # cross mesh reshard
+            #     print("reshard_in_dist_attr.process_mesh: ", reshard_in_dist_attr.process_mesh)
+            #     print("reshard_out_dist_attr.process_mesh: ", reshard_out_dist_attr.process_mesh)
+            #     if reshard_in_dist_attr.process_mesh != reshard_out_dist_attr.process_mesh:
+            #         print("copy reshard......")
+            #         paddle.pir.set_insertion_point(op)
+            #         reshard_out0 = paddle._pir_ops.reshard_v2(reshard_in1.source(), reshard_out_dist_attr)
+
+            #         # first reshard: do notthing
+            #         # second reshard: set input operand as null, op's mesh to output's mesh
+            #         new_op_dist_attr = paddle.base.libpaddle.pir.create_operator_dist_attr(reshard_out_dist_attr.process_mesh, op.dist_attr.operand_dist_attrs(), op.dist_attr.result_dist_attrs())
+            #         op.dist_attr = new_op_dist_attr
+            #         reshard_in1.set_source(None)
+
+            #     continue
+
             # assert len(op.operands()) == len(op.dist_attr().operand_dist_attrs()), f'The number of operand and operand_dist_attrs are not equal in op: {op}'
             for var, operand_dist_attr in zip(
                 op.operands(), op.dist_attr.operand_dist_attrs()

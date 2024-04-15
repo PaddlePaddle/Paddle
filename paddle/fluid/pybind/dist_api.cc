@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <Python.h>
+#include <algorithm>
 #include "pybind11/stl.h"
 
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_api.h"
@@ -66,6 +67,19 @@ void BindOperationDistAttribute(py::module *m) {
            &OperationDistAttribute::num_result_dist_attrs)
       .def("result_dist_attrs", &OperationDistAttribute::result_dist_attrs)
       .def("result_dist_attr", &OperationDistAttribute::result_dist_attr);
+
+  m->def("create_operator_dist_attr",
+         [](const phi::distributed::ProcessMesh &mesh,
+            const std::vector<TensorDistAttribute> &operand_dist_attrs,
+            const std::vector<TensorDistAttribute> &result_dist_attrs)
+             -> OperationDistAttribute {
+           OperationDistAttribute dist_attr =
+               OperationDistAttribute::get(pir::IrContext::Instance(),
+                                           mesh,
+                                           operand_dist_attrs,
+                                           result_dist_attrs);
+           return dist_attr;
+         });
 }
 
 void BindTensorDistAttribute(py::module *m) {

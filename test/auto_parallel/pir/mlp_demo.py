@@ -172,6 +172,16 @@ class TestMLPPipelineParallel(unittest.TestCase):
             )
         print(dist_program)
 
+        from paddle.distributed.auto_parallel.static.pir_pass import (
+            apply_partition_pass,
+        )
+
+        dist_program = apply_partition_pass(dist_program)
+        print(
+            "================" + "partitioner dist program" + "================"
+        )
+        print(dist_program)
+
         # dist_model.train()
         # mode = "train"
         # # dist_model._engine._build(mode)

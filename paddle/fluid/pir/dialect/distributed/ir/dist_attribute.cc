@@ -106,17 +106,21 @@ OperationDistAttribute OperationDistAttribute::get(
     ProcessMeshAttribute mesh,
     const std::vector<TensorDistAttribute>& operand_dist_attrs,
     const std::vector<TensorDistAttribute>& result_dist_attrs) {
+  // reshard input'mesh maybe different to op's mesh
   for (const auto& iter : operand_dist_attrs) {
     // NOTE: The operand dist attr maybe empty while the corresponding input is
     // optional.
     if (iter) {
-      PADDLE_ENFORCE_EQ(mesh,
-                        iter.process_mesh_attr(),
-                        common::errors::PreconditionNotMet(
-                            "operand_dist_attrs element's mesh(%s) not equal "
-                            "to input mesh(%s)",
-                            iter.process_mesh_attr(),
-                            mesh));
+      auto ids = mesh.process_ids();
+      for (const auto& id : iter.process_mesh_attr().process_ids()) {
+        PADDLE_ENFORCE_EQ(std::find(ids.begin(), ids.end(), id) != ids.end(),
+                          true,
+                          common::errors::PreconditionNotMet(
+                              "operand_dist_attrs element's mesh(%s) not equal "
+                              "to input mesh(%s)",
+                              iter.process_mesh_attr(),
+                              mesh));
+      }
     }
   }
   return Base::get(ctx, mesh, operand_dist_attrs, result_dist_attrs);
