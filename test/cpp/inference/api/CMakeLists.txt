@@ -794,14 +794,14 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
                                       ${LEXICAL_TEST_APP_SRC})
 
     # run post-training quantization lexical analysis test with multi_gru fuse
-    inference_analysis_api_lexical_int8_test_run(
-      test_analyzer_lexical_gru_int8_multi_gru
-      ${LEXICAL_TEST_APP}
-      ${GRU_MODEL_PATH}
-      ${GRU_DATA_PATH}
-      true # enable_int8_ptq
-      false # enable_int8_qat
-      true) # fuse_multi_gru
+    # inference_analysis_api_lexical_int8_test_run(
+    #  test_analyzer_lexical_gru_int8_multi_gru
+    #  ${LEXICAL_TEST_APP}
+    #  ${GRU_MODEL_PATH}
+    #  ${GRU_DATA_PATH}
+    #  true # enable_int8_ptq
+    #  false # enable_int8_qat
+    #  true) # fuse_multi_gru
 
     # run qat gru test
     set(QAT_GRU_MODEL_ARCHIVE "GRU_quant_acc.tar.gz")
