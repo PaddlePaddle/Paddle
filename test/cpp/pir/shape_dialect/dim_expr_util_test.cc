@@ -64,7 +64,7 @@ TEST(DimExprUtil, Calculate) {
 }
 
 TEST(DimExprUtil, GetDimExprPriority) {
-  DimExprBuilder builder(nullptr);
+  DimExprBuilder builder;
   int priority_int = GetDimExprPriority(builder.ConstSize(1));
   ASSERT_EQ(priority_int, 0);
   int priority_sym = GetDimExprPriority(builder.Symbol("S0"));
@@ -78,7 +78,7 @@ TEST(DimExprUtil, GetDimExprPriority) {
 }
 
 TEST(DimExprUtil, CompareDimExprPriority) {
-  DimExprBuilder builder(nullptr);
+  DimExprBuilder builder;
   DimExpr sym_expr_0 = builder.Symbol("S0");
   DimExpr sym_expr_1 = builder.Symbol("S1");
   DimExpr add_expr = builder.Add(DimExpr("S2"), DimExpr("S3"));

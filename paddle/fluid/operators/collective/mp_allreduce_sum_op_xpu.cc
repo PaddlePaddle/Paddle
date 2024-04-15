@@ -28,4 +28,4 @@ PD_REGISTER_STRUCT_KERNEL(mp_allreduce_sum,
                           ops::CAllReduceSumXPUKernel,
                           float,
                           int,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

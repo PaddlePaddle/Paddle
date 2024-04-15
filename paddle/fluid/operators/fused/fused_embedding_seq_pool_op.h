@@ -95,7 +95,7 @@ struct EmbeddingVSumFunctor {
 
     PADDLE_ENFORCE_LE(table_width * idx_width,
                       out_width,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "table_width * idx_width should be less than or "
                           "equal to out_width. But received "
                           "table_width * idx_width = %s, out_width = %d.",
@@ -103,7 +103,7 @@ struct EmbeddingVSumFunctor {
                           out_width));
     PADDLE_ENFORCE_GT(ids_lod.size(),
                       1UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The tensor ids's LoD[0] should be greater than 1. "
                           "But received the ids's LoD[0] = %d.",
                           ids_lod.size()));
@@ -152,7 +152,7 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
     // in run time, the LoD of ids must be 1
     PADDLE_ENFORCE_EQ(ids_lod.size(),
                       1UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The LoD level of Input(Ids) should be 1. But "
                           "received Ids's LoD level = %d.",
                           ids_lod.size()));
@@ -236,7 +236,7 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       auto *table_t = context.Input<phi::SelectedRows>("W");
       table_dim = table_t->value().dims();
     } else {
-      PADDLE_THROW(platform::errors::PermissionDenied(
+      PADDLE_THROW(phi::errors::PermissionDenied(
           "The parameter W of a LookupTable "
           "must be either phi::DenseTensor or SelectedRows."));
     }
@@ -293,7 +293,7 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       const auto &ids_lod = ids->lod();
       PADDLE_ENFORCE_EQ(ids_lod.size(),
                         1UL,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The LoD level of Input(Ids) should be 1. But "
                             "received Ids's LoD level = %d.",
                             ids_lod.size()));

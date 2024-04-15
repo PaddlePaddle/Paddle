@@ -104,8 +104,8 @@ void BuildCstrEqForTensorListAlongAxis(
     const symbol::TensorListShapeOrDataDimExprs &shape_data_list,
     int axis) {
   for (size_t i = 1; i < shape_data_list.size(); ++i) {
-    shape_analysis->AddEqCstr(shape_data_list[0].shape()[axis],
-                              shape_data_list[i].shape()[axis]);
+    shape_analysis->AddEqualCstr(shape_data_list[0].shape()[axis],
+                                 shape_data_list[i].shape()[axis]);
   }
 }
 
@@ -114,10 +114,7 @@ void BuildCstrEqForTensorListAlongAxis(
     const std::vector<pir::Value> &values,
     int axis) {
   for (size_t i = 1; i < values.size(); ++i) {
-    shape_analysis->AddEqCstr(
-        shape_analysis->GetShapeOrDataForValue(values[0]).shape()[axis],
-        shape_analysis->GetShapeOrDataForValue(values[i]).shape()[axis]);
-    shape_analysis->AddEqCstr(
+    shape_analysis->AddEqualCstr(
         shape_analysis->GetShapeOrDataForValue(values[0]).shape()[axis],
         shape_analysis->GetShapeOrDataForValue(values[i]).shape()[axis]);
   }

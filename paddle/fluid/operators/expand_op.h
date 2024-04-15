@@ -97,14 +97,14 @@ class ExpandKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(
         rank,
         1,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The number of dimensions of the input 'x' for Op(expand) "
             "must be greater than or equal to 1, but the value received is %d.",
             rank));
     PADDLE_ENFORCE_LE(
         rank,
         MAX_RANK_SUPPORTED,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The number of dimensions of the input 'x' for Op(expand) "
             "must be less than or equal to %d, but the value received is %d.",
             MAX_RANK_SUPPORTED,
@@ -146,7 +146,7 @@ class ExpandKernel : public framework::OpKernel<T> {
     auto expand_times = get_expand_times(context);
     PADDLE_ENFORCE_EQ(static_cast<size_t>(in_dims.size()),
                       expand_times.size(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The number of elements (%d) of 'expand_times' for "
                           "Op(expand) must be equal to the number "
                           "of dimensions (%d) of the input.",
@@ -222,7 +222,7 @@ class ExpandGradKernel : public framework::OpKernel<T> {
     } else {
       PADDLE_ENFORCE_GE(dims,
                         1,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The number of dimensions of the input "
                             "'Out@GRAD' for Op(expand_grad)"
                             " must be greater than or equal to 1, but "
@@ -230,7 +230,7 @@ class ExpandGradKernel : public framework::OpKernel<T> {
                             dims));
       PADDLE_ENFORCE_LE(dims,
                         MAX_RANK_SUPPORTED,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The number of dimensions of the input 'Out@GRAD' "
                             "for Op(expand_grad) must be less than or equal "
                             "to %d, but the value received is %d.",
@@ -262,7 +262,7 @@ class ExpandGradKernel : public framework::OpKernel<T> {
           ExpandBackward<8>(context, reshape_dims_vec, reduce_dims_vec);
           break;
         default:
-          PADDLE_THROW(platform::errors::InvalidArgument(
+          PADDLE_THROW(phi::errors::InvalidArgument(
               "Only support tensor with rank being between 1 and %d. But "
               "received tensor's rank = %d.",
               MAX_RANK_SUPPORTED,
@@ -280,14 +280,14 @@ class ExpandGradKernel : public framework::OpKernel<T> {
     size_t reduce_size = reduce_dims_vec.size();
     PADDLE_ENFORCE_EQ(reshape_size,
                       reshape_dims_vec.size(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Inconsistent size between template Dims (%d) and "
                           "reshape dimensions (%d).",
                           reshape_size,
                           reshape_dims_vec.size()));
     PADDLE_ENFORCE_EQ(reduce_size,
                       reduce_dims_vec.size(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Inconsistent size between template Dims (%d) and "
                           "reduce dimensions (%d).",
                           reduce_size,

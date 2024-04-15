@@ -28,4 +28,4 @@ PD_REGISTER_STRUCT_KERNEL(c_allreduce_prod,
                           ops::CAllReduceProdXPUKernel,
                           float,
                           int,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

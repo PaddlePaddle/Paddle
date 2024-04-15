@@ -228,5 +228,109 @@ class Conv3dOpInferSymbolicShapeTest(TestBase):
         return True
 
 
+class MaskedSelectNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x, mask):
+        out = paddle.masked_select(x, mask)
+        return out
+
+
+class MaskedSelectOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.cases = [
+            (
+                np.random.rand(4, 5, 6),
+                np.random.rand(4, 5, 6).astype(np.int64),
+            ),
+            (
+                np.random.rand(4, 5, 6),
+                np.random.rand(4, 5, 6).astype(np.int64),
+            ),
+        ]
+        self.expected = [
+            ['shape[S6], data[NULL]'],
+            ['shape[S6], data[NULL]'],
+        ]
+
+    def test_eval_symbolic(self):
+        net = MaskedSelectNet()
+
+        for i in range(len(self.cases)):
+            x, mask = self.cases[i]
+            x_spec = InputSpec(
+                shape=[None for _ in range(len(x.shape))], dtype='float32'
+            )
+            mask_spec = InputSpec(
+                shape=[None for _ in range(len(mask.shape))], dtype='float32'
+            )
+
+            input_spec = [x_spec, mask_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+
+            check_infer_results(
+                net, input_spec, 'pd_op.masked_select', self.expected[i]
+            )
+
+        return True
+
+
+class SearchsortedNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, sorted_sequence, values):
+        out = paddle.searchsorted(sorted_sequence, values)
+        return out
+
+
+class SearchsortedOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.cases = [
+            (
+                np.random.rand(4, 5, 6),
+                np.random.rand(4, 5, 3),
+            ),
+            (
+                np.random.rand(4, 5, 6),
+                np.random.rand(4, 5, 100),
+            ),
+            (
+                np.random.rand(6),
+                np.random.rand(100),
+            ),
+        ]
+        self.expected = [
+            ['shape[S3, S4, S5], data[NULL]'],
+            ['shape[S3, S4, S5], data[NULL]'],
+            ['shape[S1], data[NULL]'],
+        ]
+
+    def test_eval_symbolic(self):
+        net = SearchsortedNet()
+
+        for i in range(len(self.cases)):
+            sorted_sequence, values = self.cases[i]
+            sorted_sequence_spec = InputSpec(
+                shape=[None for _ in range(len(sorted_sequence.shape))],
+                dtype='float32',
+            )
+            values_spec = InputSpec(
+                shape=[None for _ in range(len(values.shape))], dtype='float32'
+            )
+
+            input_spec = [sorted_sequence_spec, values_spec]
+            net = apply_to_static(net, False, input_spec)
+            net.eval()
+
+            check_infer_results(
+                net, input_spec, 'pd_op.searchsorted', self.expected[i]
+            )
+
+        return True
+
+
 if __name__ == '__main__':
     unittest.main()

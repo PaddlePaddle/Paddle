@@ -131,7 +131,7 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
 namespace {  // NOLINT
 
 namespace plat = paddle::platform;
-using float16 = plat::float16;
+using float16 = phi::dtype::float16;
 
 #define MMHA_USE_FP32_ACUM_FOR_LOGITS
 #define MMHA_USE_FP32_ACUM_FOR_OUT
@@ -746,9 +746,9 @@ inline __device__ void convert_from_float(float4 &dst, float4 src) {  // NOLINT
   dst = src;
 }
 
-inline __device__ void convert_from_float(plat::float16 &dst,  // NOLINT
+inline __device__ void convert_from_float(phi::dtype::float16 &dst,  // NOLINT
                                           float src) {
-  dst = static_cast<plat::float16>(src);
+  dst = static_cast<phi::dtype::float16>(src);
 }
 
 inline __device__ void convert_from_float(uint4 &dst, Float8_ src) {  // NOLINT

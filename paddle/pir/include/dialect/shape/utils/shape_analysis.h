@@ -61,6 +61,20 @@ class IR_API ShapeConstraintIRAnalysis {
 
   symbol::DimExprBuilder DimExprBuilder();
 
+  void AddEqualCstr(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs);
+
+  bool IsEqual(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) const;
+
+  void AddGreatThanOneCstr(const symbol::DimExpr& dim_expr);
+
+  bool IsGreatThanOne(const symbol::DimExpr& dim_expr) const;
+
+  void AddBroadcastableCstr(const symbol::DimExpr& lhs,
+                            const symbol::DimExpr& rhs);
+
+  bool IsBroadcastable(const symbol::DimExpr& lhs,
+                       const symbol::DimExpr& rhs) const;
+
   // Used to debug
   void PrintShapeOrDatas() const;
 
@@ -77,15 +91,6 @@ class IR_API ShapeConstraintIRAnalysis {
                       const std::vector<int>& lhs_dim_idxs,
                       Value rhs,
                       const std::vector<int>& rhs_dim_idxs) const;
-
-  void AddEqCstr(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs);
-
-  void AddBroadcastableCstr(const symbol::DimExpr& lhs,
-                            const symbol::DimExpr& rhs);
-
-  void AddGTOneCstr(const symbol::DimExpr& dim_expr);
-
-  bool IsDimExprEqual(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs);
 
   void PrintDimExprClusters();
 
@@ -119,7 +124,7 @@ class IR_API ShapeConstraintIRAnalysis {
 
   std::unordered_map<symbol::DimExpr, symbol::DimExpr> substitute_map_;
 
-  symbol::ConstraintsManager cstrs_manager_;
+  symbol::ConstraintsManager constraints_manager_;
 };
 
 class IR_API ShapeAnalysisManager {

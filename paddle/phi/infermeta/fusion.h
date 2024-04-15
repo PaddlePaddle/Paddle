@@ -905,6 +905,19 @@ void RoformerRelativePosXPUInferMeta(const MetaTensor& x,
                                      const MetaTensor& cos_emb,
                                      int max_pos_len,
                                      MetaTensor* out);
+void CrossAttentionXPUInferMeta(
+    const MetaTensor& input_q,
+    const MetaTensor& input_kv,
+    const std::vector<const MetaTensor*>& fc_weight,
+    const std::vector<const MetaTensor*>& fc_weight_max,
+    const std::vector<const MetaTensor*>& fc_bias,
+    const MetaTensor& mask,
+    int head_num,
+    int head_dim,
+    float alpha,
+    DataType out_dtype,
+    MetaTensor* qkv,
+    MetaTensor* qkv_max);
 
 void MultiGruInferMeta(
     const MetaTensor& x,
