@@ -82,8 +82,6 @@ pass_library(multi_batch_merge_pass base)
 pass_library(map_op_to_another_pass inference)
 pass_library(conv_bn_fuse_pass inference)
 pass_library(seqconv_eltadd_relu_fuse_pass inference)
-pass_library(seqpool_concat_fuse_pass inference)
-pass_library(seqpool_cvm_concat_fuse_pass inference)
 pass_library(repeated_fc_relu_fuse_pass inference)
 pass_library(squared_mat_sub_fuse_pass inference)
 pass_library(is_test_pass base)
@@ -433,14 +431,6 @@ cc_test(
   test_fc_gru_fuse_pass_cc
   SRCS fc_gru_fuse_pass_tester.cc
   DEPS fc_gru_fuse_pass framework_proto)
-cc_test(
-  test_seqpool_concat_fuse_pass
-  SRCS seqpool_concat_fuse_pass_tester.cc
-  DEPS seqpool_concat_fuse_pass framework_proto)
-cc_test(
-  test_seqpool_cvm_concat_fuse_pass
-  SRCS seqpool_cvm_concat_fuse_pass_tester.cc
-  DEPS seqpool_cvm_concat_fuse_pass framework_proto)
 cc_test(
   test_repeated_fc_relu_fuse_pass_cc
   SRCS repeated_fc_relu_fuse_pass_tester.cc
