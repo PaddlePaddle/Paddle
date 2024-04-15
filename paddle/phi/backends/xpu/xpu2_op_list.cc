@@ -1231,6 +1231,8 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
       {"roformer_relative_embedding_xpu",
        XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
+      {"cross_attention_xpu",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"variable_length_memory_efficient_attention",
        XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
       {"flash_attn_unpadded",

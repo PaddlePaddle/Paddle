@@ -79,7 +79,7 @@ class FeedForward(nn.Layer):
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestFusedFeedforwadPass(unittest.TestCase):
+class TestFusedFeedforwardPass(unittest.TestCase):
     def setUp(self):
         self.pre_layer_norm = True
         self.add_residual = True

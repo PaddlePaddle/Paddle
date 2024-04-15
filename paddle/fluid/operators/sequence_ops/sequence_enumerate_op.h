@@ -31,7 +31,7 @@ class SequenceEnumerateKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         in->lod().empty(),
         false,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(X) phi::DenseTensor of SequenceEnumerateOp does not contain "
             "LoD information."));
 
@@ -40,7 +40,7 @@ class SequenceEnumerateKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         static_cast<uint64_t>(in_dims[0]),
         lod0.back(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The actual input data's size mismatched with LoD information."
             "Received input data size is %d (actual) vs %d (loD information).",
             static_cast<uint64_t>(in_dims[0]),
@@ -48,13 +48,13 @@ class SequenceEnumerateKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         in_dims.size(),
         2UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(X) of SequenceEnumerate operator's rank should be 2."
             "Received %d instead.",
             in_dims.size()));
     PADDLE_ENFORCE_EQ(in_dims[1],
                       1,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input(X) of SequenceEnumerate operator's 2nd "
                           "dimension should be 1. Received %d instead.",
                           in_dims[1]));

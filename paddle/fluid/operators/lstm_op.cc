@@ -46,20 +46,20 @@ class LSTMOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         in_dims.size(),
         2,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(X)'s rank must be 2, but received %d.", in_dims.size()));
 
     if (ctx->HasInput("H0")) {
       PADDLE_ENFORCE_EQ(
           ctx->HasInput("C0"),
           true,
-          platform::errors::NotFound("Input(Cell) and Input(Hidden) of LSTM "
-                                     "should not be null at the same time."));
+          phi::errors::NotFound("Input(Cell) and Input(Hidden) of LSTM "
+                                "should not be null at the same time."));
       auto h_dims = ctx->GetInputDim("H0");
       auto c_dims = ctx->GetInputDim("C0");
       PADDLE_ENFORCE_EQ(h_dims,
                         c_dims,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The dimension of Input(H0) and Input(C0) should "
                             "be the same, but received [%s] (H0) vs [%s] (C0).",
                             h_dims,
@@ -71,19 +71,19 @@ class LSTMOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         w_dims.size(),
         2,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The rank of Input(Weight) should be 2, but received %d.",
             w_dims.size()));
     PADDLE_ENFORCE_EQ(w_dims[0],
                       frame_size,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The first dimension of Input(Weight) should be %d, "
                           "but received %d.",
                           frame_size,
                           w_dims[0]));
     PADDLE_ENFORCE_EQ(w_dims[1],
                       4 * frame_size,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The second dimension of Input(Weight) should be 4 * "
                           "%d, but received %d.",
                           frame_size,
@@ -93,13 +93,13 @@ class LSTMOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         b_dims.size(),
         2,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The rank of Input(Bias) should be 2, but received %d.",
             b_dims.size()));
     PADDLE_ENFORCE_EQ(
         b_dims[0],
         1,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The first dimension of Input(Bias) should be 1, but received %d.",
             b_dims[0]));
 
@@ -107,7 +107,7 @@ class LSTMOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           b_dims[1],
           7 * frame_size,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The second dimension of Input(Bias) should be 7 * %d if enable "
               "peepholes connection, but received %d.",
               frame_size,
@@ -116,7 +116,7 @@ class LSTMOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           b_dims[1],
           4 * frame_size,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The second dimension of Input(Bias) should be 4 * %d if disable "
               "peepholes connection, but received %d.",
               frame_size,
