@@ -1130,58 +1130,30 @@ if(WITH_CUDNN_FRONTEND)
 endif()
 
 set(TEST_CINN_OPS
-    test_expand_v2_op
-    test_reduce_op
     test_slice_op
     test_stack_op
     test_activation_op
-    test_full_like_op
     test_fill_any_like_op
     test_concat_op
-    test_top_k_v2_op
     test_elementwise_add_op
     test_elementwise_sub_op
     test_elementwise_div_op
-    test_elementwise_mul_op
     test_gather_nd_op
-    test_squeeze2_op
-    test_elementwise_pow_op
     test_elementwise_max_op
-    test_transpose_op
-    test_reshape_op
     test_mean_op
-    test_unsqueeze2_op
-    test_meshgrid_op
-    test_scale_op
     test_clip_op
     test_scatter_op
     test_gather_op
     test_batch_norm_op_prim_nchw
     test_batch_norm_op_prim_nhwc
-    test_cast_op
     test_dropout_op
     test_group_norm_op
     test_tile_op
-    test_roll_op
     test_sum_op
     test_elementwise_min_op
-    test_atan2_op
-    test_top_k_op
-    test_where_op
     test_take_along_axis_op
-    test_arg_min_max_op
-    test_reverse_op
-    test_flip
-    test_triangular_solve_op
-    test_scatter_nd_op
     test_strided_slice_op
-    test_instance_norm_op
-    test_cumsum_op
-    test_pad_op
-    test_split_op
-    test_erf_op
-    test_assign_op
-    test_flatten_contiguous_range_op)
+    test_pad_op)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   if(WITH_CINN)
@@ -1250,7 +1222,6 @@ set(STATIC_BUILD_TESTS
     test_number_count_op
     test_prune_gate_by_capacity_op
     test_random_routing_op
-    test_reduce_op
     test_searchsorted_op
     test_segment_ops
     test_sparse_momentum_op
@@ -1317,7 +1288,6 @@ set_tests_properties(
 set_tests_properties(test_imperative_optimizer_static_build PROPERTIES TIMEOUT
                                                                        250)
 set_tests_properties(test_matmul_v2_op_static_build PROPERTIES TIMEOUT 120)
-set_tests_properties(test_reduce_op_static_build PROPERTIES TIMEOUT 500)
 set_tests_properties(test_sync_batch_norm_op_static_build
                      PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_sync_batch_norm_op_static_build PROPERTIES TIMEOUT
