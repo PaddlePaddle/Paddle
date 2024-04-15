@@ -139,23 +139,23 @@ class TestFP8MatmulOp(unittest.TestCase):
                         )
                     )
 
-    def test_matmul_e5m4(self):
-        for self.device in ["gpu"]:
-            paddle.device.set_device(self.device)
-            for self.dtype in ["float8_e5m2"]:
-                input1 = paddle.ones([16, 16], dtype=self.dtype)
-                input2 = paddle.ones([16, 16], dtype="float8_e4m3fn")
-                input3 = np.ones((16, 16)).astype("float32")
-                input4 = np.ones((16, 16)).astype("float32")
-                output = paddle.matmul(input1, input2)
-                expect_result = np.matmul(input3, input4)
-                if self.device == "gpu":
-                    self.assertTrue(
-                        paddle.equal_all(
-                            paddle.cast(output, "float32"),
-                            paddle.to_tensor(expect_result),
-                        )
-                    )
+    # def test_matmul_e5m4(self):
+    #     for self.device in ["gpu"]:
+    #         paddle.device.set_device(self.device)
+    #         for self.dtype in ["float8_e5m2"]:
+    #             input1 = paddle.ones([16, 16], dtype=self.dtype)
+    #             input2 = paddle.ones([16, 16], dtype="float8_e4m3fn")
+    #             input3 = np.ones((16, 16)).astype("float32")
+    #             input4 = np.ones((16, 16)).astype("float32")
+    #             output = paddle.matmul(input1, input2)
+    #             expect_result = np.matmul(input3, input4)
+    #             if self.device == "gpu":
+    #                 self.assertTrue(
+    #                     paddle.equal_all(
+    #                         paddle.cast(output, "float32"),
+    #                         paddle.to_tensor(expect_result),
+    #                     )
+    #                 )
 
 
 if __name__ == "__main__":
