@@ -406,6 +406,10 @@ bool SupportsInt8() {
 #endif
 }
 
+bool SupportsAvx512F() {
+  return phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512f);
+}
+
 bool SupportsVNNI() {
 #ifndef PADDLE_WITH_DNNL
   return false;
@@ -2154,6 +2158,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
   m.def("supports_int8", SupportsInt8);
+  m.def("supports_avx512f", SupportsAvx512F);
   m.def("supports_vnni", SupportsVNNI);
   m.def("op_supported_infos", imperative::OpSupportedInfos);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);

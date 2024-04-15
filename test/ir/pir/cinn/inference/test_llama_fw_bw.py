@@ -19,6 +19,8 @@ from os.path import dirname
 
 os.environ['FLAGS_prim_forward_blacklist'] = 'pd_op.embedding'
 
+import numpy as np
+
 import paddle
 
 sys.path.append(dirname(dirname(__file__)))
@@ -75,25 +77,23 @@ class TestLlamaModel(unittest.TestCase):
         net = llama_test_model.LlamaModel(self.config)
 
         net = utils.apply_to_static(net, use_cinn)
-        # net.eval()
+
         out = net(self.input_ids, self.position_ids, self.attention_mask)
 
-        # loss = out.sum()
+        loss = out.sum()
 
-        # loss.backward()
+        loss.backward()
         return out, net.embed_tokens.weight.gradient()
 
     def test_eval(self):
         dy_out, dy_d_emb = self.eval(use_cinn=False)
 
         cinn_out, cinn_d_emb = self.eval(use_cinn=True)
-        # np.testing.assert_allclose(
-        #     cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
-        # )
+        np.testing.assert_allclose(
+            cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+        )
 
-        # np.testing.assert_allclose(
-        #     dy_d_emb, cinn_d_emb, atol=1e-6, rtol=1e-6
-        # )
+        np.testing.assert_allclose(dy_d_emb, cinn_d_emb, atol=1e-4, rtol=1e-2)
 
 
 if __name__ == '__main__':

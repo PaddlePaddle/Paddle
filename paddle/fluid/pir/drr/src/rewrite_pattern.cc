@@ -15,6 +15,7 @@
 #include <glog/logging.h>
 #include <queue>
 
+#include "glog/vlog_is_on.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/drr/include/drr_rewrite_pattern.h"
 #include "paddle/fluid/pir/drr/src/ir_operation_factory.h"
@@ -43,12 +44,17 @@ DrrRewritePattern::DrrRewritePattern(
       constraints_(drr_context.constraints()),
       result_pattern_graph_(drr_context.result_pattern_graph()),
       drr_pattern_owner_(drr_pattern_owner) {
-  PADDLE_ENFORCE_NE(
-      source_pattern_graph_->owned_op_call().empty(),
-      true,
-      phi::errors::InvalidArgument("Source pattern graph is empty."
-                                   "Suggested fix: Please check the DRR "
-                                   "source pattern definition code."));
+  PADDLE_ENFORCE_NE(source_pattern_graph_->owned_op_call().empty(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Source pattern graph is empty. Suggested fix: please "
+                        "check the drr source pattern definition code."));
+  if (VLOG_IS_ON(4)) {
+    std::cout << "\nThe source pattern graph in [" << pattern_name << "]:\n"
+              << *source_pattern_graph_ << std::endl;
+    std::cout << "\nThe result pattern graph in [" << pattern_name << "]:\n"
+              << *result_pattern_graph_ << std::endl;
+  }
 }
 
 bool DrrRewritePattern::MatchAndRewrite(
@@ -415,9 +421,8 @@ bool DrrRewritePattern::MatchFromOutputToInput(
         step,
         source_pattern_graph.CountOfOpCalls(),
         phi::errors::PreconditionNotMet(
-            "Pattern matching failed."
-            "The number of successful matches and the number of OpCalls in the "
-            "source pattern graph are not equal."));
+            "Pattern matching failed. The number of successful matches and the "
+            "number of OpCalls in the source pattern graph are not equal."));
   } else {
     return matched;
   }
@@ -465,10 +470,10 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
     PADDLE_ENFORCE_NE(
         result_pattern_graph.id2owned_tensor().count(in_tensor),
         0,
-        phi::errors::NotFound("Not found the input tensor."
-                              "Drr input tensor [%s] must exist in the result "
-                              "pattern graph to be obtained.",
-                              in_tensor));
+        phi::errors::NotFound(
+            "Not found the input tensor. Drr input tensor [%s] must exist in "
+            "the result pattern graph to be obtained.",
+            in_tensor));
     if (!result_pattern_graph.id2owned_tensor().at(in_tensor)->is_none()) {
       res_match_ctx.BindIrValue(in_tensor, src_match_ctx.GetIrValue(in_tensor));
     }
