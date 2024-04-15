@@ -1093,7 +1093,6 @@ def load_inference_model(path_prefix, executor, **kwargs):
             program = paddle.static.Program()
             paddle.base.core.deserialize_pir_program(model_path, program, 1)
 
-            return [program, [], []]
         else:
             program_bytes = load_from_file(model_path)
             program = deserialize_program(program_bytes)
@@ -1121,6 +1120,7 @@ def load_inference_model(path_prefix, executor, **kwargs):
             ]
 
             return [program, feed_target_names, fetch_targets]
+    return [program, [], []]
 
 
 @dygraph_not_support
