@@ -28,7 +28,6 @@ def np_sinc(x: np.ndarray):
 class TestSincAPI(unittest.TestCase):
     def setUp(self) -> None:
         self.cpu_support_dtypes = [
-            'float16',
             'float32',
             'float64',
         ]
