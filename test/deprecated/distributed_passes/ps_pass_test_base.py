@@ -52,7 +52,7 @@ class PsPassTestBase(unittest.TestCase):
                 sys.executable,
                 "-u",
                 "-m",
-                "launch",
+                "paddle.distributed.launch",
                 "--log_dir",
                 self.config['log_dir'],
                 "--worker_num",
