@@ -16,10 +16,8 @@ limitations under the License. */
 #include <numeric>
 
 #include "glog/logging.h"
-#include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/phi/common/port.h"
-#include "paddle/phi/kernels/funcs/data_type_transform.h"
 
 namespace pir {
 
