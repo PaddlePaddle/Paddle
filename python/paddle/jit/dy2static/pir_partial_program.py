@@ -29,7 +29,7 @@ from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.optimizer.lr import LRScheduler
 from paddle.pir import Value, fake_value, is_fake_value
 
-from .utils import RETURN_NO_VALUE_MAGIC_NUM, backend_guard
+from .utils import RETURN_NO_VALUE_MAGIC_NUM, backend_guard, cinn_is_enabled
 
 __all__ = []
 
@@ -566,8 +566,12 @@ class PartialProgramLayer:
                 pm.run(forward_program)
 
                 # if-else pass
-                if self._build_strategy.build_cinn_pass:
+                if cinn_is_enabled(self._build_strategy, self._backend):
                     paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
+                else:
+                    paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
+                        forward_program
+                    )
 
                 return forward_program, backward_program
 
@@ -586,9 +590,13 @@ class PartialProgramLayer:
             self._set_grad_type(self._params, train_program)
 
             def pass_fn(forward_program, backward_program):
-                if self._build_strategy.build_cinn_pass:
+                if cinn_is_enabled(self._build_strategy, self._backend):
                     paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
                     paddle.base.libpaddle.pir.apply_cinn_pass(backward_program)
+                else:
+                    paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
+                        forward_program
+                    )
                 return forward_program, backward_program
 
             train_program.apply_pir_program_pass(pass_fn)

@@ -29,7 +29,7 @@ class ShuffleChannelOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         input_dims.size(),
         4,
-        platform::errors::InvalidArgument("The layout of input is NCHW."));
+        phi::errors::InvalidArgument("The layout of input is NCHW."));
 
     ctx->SetOutputDim("Out", input_dims);
   }
@@ -55,10 +55,10 @@ class ShuffleChannelOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("group", "the number of groups.")
         .SetDefault(1)
         .AddCustomChecker([](const int& group) {
-          PADDLE_ENFORCE_GE(group,
-                            1,
-                            platform::errors::InvalidArgument(
-                                "group should be larger than 0."));
+          PADDLE_ENFORCE_GE(
+              group,
+              1,
+              phi::errors::InvalidArgument("group should be larger than 0."));
         });
     AddComment(R"DOC(
     Shuffle Channel operator
@@ -83,7 +83,7 @@ class ShuffleChannelGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         input_dims.size(),
         4,
-        platform::errors::InvalidArgument("The layout of input is NCHW."));
+        phi::errors::InvalidArgument("The layout of input is NCHW."));
 
     ctx->SetOutputDim(framework::GradVarName("X"), input_dims);
   }

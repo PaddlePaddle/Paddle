@@ -47,17 +47,17 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_NE(
         scale_in,
         0.0f,
-        platform::errors::InvalidArgument("Scale of input cannot be 0.0"));
+        phi::errors::InvalidArgument("Scale of input cannot be 0.0"));
     PADDLE_ENFORCE_NE(
         scale_out,
         0.0f,
-        platform::errors::InvalidArgument("Scale of output cannot be 0.0"));
+        phi::errors::InvalidArgument("Scale of output cannot be 0.0"));
     if (shift_in != 0) {
       PADDLE_ENFORCE_EQ(
           input->dtype(),
           DataType::UINT8,
-          platform::errors::Unimplemented("Requantize does not support nonzero "
-                                          "shift for signed input."));
+          phi::errors::Unimplemented("Requantize does not support nonzero "
+                                     "shift for signed input."));
     }
 
     auto& dev_ctx = ctx.template device_context<phi::OneDNNContext>();
@@ -140,4 +140,4 @@ PD_REGISTER_STRUCT_KERNEL(requantize,
                           ops::ReQuantOpKernel,
                           int8_t,
                           uint8_t,
-                          paddle::platform::bfloat16) {}
+                          phi::dtype::bfloat16) {}

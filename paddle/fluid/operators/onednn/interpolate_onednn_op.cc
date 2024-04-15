@@ -115,9 +115,8 @@ class InterpolateOneDNNKernel : public framework::OpKernel<T> {
         std::all_of(
             out_dims.begin(), out_dims.end(), [](int i) { return i > 0; }),
         0,
-        platform::errors::InvalidArgument(
-            "out_d, out_h, out_w of Op(interpolate) "
-            "should be greater than 0."));
+        phi::errors::InvalidArgument("out_d, out_h, out_w of Op(interpolate) "
+                                     "should be greater than 0."));
 
     const std::vector<int64_t> nc_dims = {in_dims[0], in_dims[1]};
     out_dims.insert(out_dims.begin(), nc_dims.begin(), nc_dims.end());

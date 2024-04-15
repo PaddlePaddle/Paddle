@@ -15,15 +15,12 @@
 #pragma once
 
 #include <memory>
-#include <optional>
-#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/core/dll_decl.h"
 
-namespace cinn {
-namespace dialect {
-namespace ir {
+namespace pir {
 
-// This is a helper pass for checking the symbolic inference accuracy.
-std::unique_ptr<::pir::Pass> CreateCheckInferSymbolicPass();
-}  // namespace ir
-}  // namespace dialect
-}  // namespace cinn
+class Pass;
+
+IR_API std::unique_ptr<Pass> CreateRemoveRedundantTransposePass();
+
+}  // namespace pir
