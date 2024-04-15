@@ -29,7 +29,11 @@ static std::string GetFusedElement(const std::string elementwise_type) {
       {"pd_op.subtract", "onednn_op.fused_elementwise_sub"},
       {"pd_op.multiply", "onednn_op.fused_elementwise_mul"}};
   auto it = fused_ops.find(elementwise_type);
-  return it->second;
+  if (it != fused_ops.end()) {
+    return it->second;
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented("The op type is not supported."));
+  }
 }
 class ElementwiseActivationFusePattern : public paddle::drr::DrrPatternBase {
  private:
@@ -70,8 +74,6 @@ class ElementwiseActivationFusePattern : public paddle::drr::DrrPatternBase {
       act_attrs.emplace("offset", pat.Attr("offset"));
     } else if (activation_name_op == paddle::dialect::LeakyReluOp::name()) {
       act_attrs.emplace("negative_slope", pat.Attr("negative_slope"));
-    } else if (activation_name_op == paddle::dialect::GeluOp::name()) {
-      act_attrs.emplace("approximate", pat.Attr("approximate"));
     }
     const auto &activation = pat.Op(activation_name_op, act_attrs);
     elementwise({&pat.Tensor("x"), &pat.Tensor("y")},
@@ -96,9 +98,6 @@ class ElementwiseActivationFusePattern : public paddle::drr::DrrPatternBase {
     if (activation_name_ == "relu6") {
       fuse_beta = res.Float32Attr(6.0f);
     } else if (activation_name_ == "hard_swish") {
-      // hard swish have not attr float threshold = 6.0f, float scale = 6.0f,
-      // float offset = 3.0f attr But in previous implementation hard swish,
-      // fuse_alpha=1.f / 6.f， fuse_beta=1.f / 2.f, it has fixed
       fuse_beta = res.Float32Attr(1.f / 2.f);
       fuse_alpha = res.Float32Attr(1.f / 6.f);
     } else if (activation_name_ == "swish") {
@@ -149,7 +148,7 @@ class ElementwiseGeluFusePattern : public paddle::drr::DrrPatternBase {
     return elementwise_type_ + "GeluFusePattern";
   }
 
-  uint32_t benefit() const override { return 2; }
+  uint32_t benefit() const override { return level_; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -161,11 +160,6 @@ class ElementwiseGeluFusePattern : public paddle::drr::DrrPatternBase {
                 {&pat.Tensor("elementwise_out")});
 
     pat.Tensor("act_out") = activation(pat.Tensor("elementwise_out"));
-
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-      // WIP: whether need conditions
-      return true;
-    });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &gelu = res.ComputeAttr(
@@ -212,7 +206,7 @@ class ElementwiseClipFusePattern : public paddle::drr::DrrPatternBase {
     return elementwise_type_ + "ClipFusePattern";
   }
 
-  uint32_t benefit() const override { return 2; }
+  uint32_t benefit() const override { return level_; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
