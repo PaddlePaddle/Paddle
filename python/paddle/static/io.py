@@ -1001,6 +1001,8 @@ def load_inference_model(path_prefix, executor, **kwargs):
             # fetch_targets, we can use an executor to run the inference
             # program to get the inference result.
     """
+    if in_pir_mode():
+        return load_pir_inference_model(path_prefix, executor, **kwargs)
     # check kwargs
     supported_args = ('model_filename', 'params_filename')
     deprecated_args = ('pserver_endpoints',)
@@ -1018,17 +1020,12 @@ def load_inference_model(path_prefix, executor, **kwargs):
             raise ValueError(
                 "params_filename cannot be None when path_prefix is None."
             )
-
+        program_bytes = model_filename
         # deserialize bytes to program
-        if in_pir_mode():
-            program = paddle.static.Program()
-            paddle.base.core.deserialize_pir_program(model_filename, program, 1)
-        else:
-            program_bytes = model_filename
-            program = deserialize_program(program_bytes)
+        program = deserialize_program(program_bytes)
 
-            # do type promotion
-            program = process_type_promotion(program)
+        # do type promotion
+        program = process_type_promotion(program)
 
         vars = list(filter(is_persistable, program.list_vars()))
         if len(vars) > 0:
@@ -1050,10 +1047,7 @@ def load_inference_model(path_prefix, executor, **kwargs):
         # set model_path and params_path in new way,
         # path_prefix represents a file path without suffix in this case.
         if not kwargs:
-            if in_pir_mode():
-                model_path = path_prefix + ".json"
-            else:
-                model_path = path_prefix + ".pdmodel"
+            model_path = path_prefix + ".pdmodel"
             params_path = path_prefix + ".pdiparams"
         # set model_path and params_path in old way for compatible,
         # path_prefix represents a directory path.
@@ -1064,14 +1058,176 @@ def load_inference_model(path_prefix, executor, **kwargs):
             if model_filename is None:
                 model_path = os.path.join(path_prefix, "__model__")
             else:
-                if in_pir_mode():
-                    model_path = os.path.join(
-                        path_prefix, model_filename + ".json"
-                    )
-                else:
-                    model_path = os.path.join(
-                        path_prefix, model_filename + ".pdmodel"
-                    )
+                model_path = os.path.join(
+                    path_prefix, model_filename + ".pdmodel"
+                )
+                if not os.path.exists(model_path):
+                    model_path = os.path.join(path_prefix, model_filename)
+            # set params_path
+            if params_filename is None:
+                params_path = os.path.join(path_prefix, "")
+            else:
+                params_path = os.path.join(
+                    path_prefix, params_filename + ".pdiparams"
+                )
+                if not os.path.exists(params_path):
+                    params_path = os.path.join(path_prefix, params_filename)
+            _logger.warning(
+                "The old way to load inference model is deprecated. Please specify path_prefix."
+                f" model path: {model_path}, params path: {params_path}"
+            )
+
+        program_bytes = load_from_file(model_path)
+
+        # deserialize bytes to program
+        program = deserialize_program(program_bytes)
+
+        # do type promotion
+        program = process_type_promotion(program)
+
+        vars = list(filter(is_persistable, program.list_vars()))
+        if len(vars) > 0:
+            load_dirname = os.path.dirname(params_path)
+            params_filename = os.path.basename(params_path)
+
+            load_vars(
+                executor,
+                dirname=load_dirname,
+                main_program=program,
+                predicate=is_persistable,
+                filename=params_filename,
+            )
+
+    feed_target_names = program.desc.get_feed_target_names()
+    fetch_target_names = program.desc.get_fetch_target_names()
+    fetch_targets = [
+        program.global_block().var(name) for name in fetch_target_names
+    ]
+
+    return [program, feed_target_names, fetch_targets]
+
+
+@static_only
+def load_pir_inference_model(path_prefix, executor, **kwargs):
+    """
+
+    Load inference model from a given path. By this API, you can get the model
+    structure(Inference Program) and model parameters.
+
+    Args:
+        path_prefix(str | None): One of the following:
+          - Directory path to save model + model name without suffix.
+          - Set to None when reading the model from memory.
+        executor(Executor): The executor to run for loading inference model.
+                            See :ref:`api_guide_executor_en` for more details about it.
+        kwargs: Supported keys including 'model_filename', 'params_filename'. Attention please, kwargs is used for backward compatibility mainly.
+
+            - model_filename(str): specify model_filename if you don't want to use default name.
+
+            - params_filename(str): specify params_filename if you don't want to use default name.
+
+    Returns:
+        list: The return of this API is a list with three elements:
+        (program, feed_target_names, fetch_targets). The `program` is a
+        ``Program`` (refer to :ref:`api_guide_Program_en`), which is used for inference.
+        The `feed_target_names` is a list of ``str``, which contains names of variables
+        that need to feed data in the inference program. The `fetch_targets` is a list of
+        ``Variable`` (refer to :ref:`api_guide_Program_en`). It contains variables from which
+        we can get inference results.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import numpy as np
+
+            >>> paddle.enable_static()
+
+            # Build the model
+            >>> startup_prog = paddle.static.default_startup_program()
+            >>> main_prog = paddle.static.default_main_program()
+            >>> with paddle.static.program_guard(main_prog, startup_prog):
+            ...     image = paddle.static.data(name="img", shape=[64, 784])
+            ...     w = paddle.create_parameter(shape=[784, 200], dtype='float32')
+            ...     b = paddle.create_parameter(shape=[200], dtype='float32')
+            ...     hidden_w = paddle.matmul(x=image, y=w)
+            ...     hidden_b = paddle.add(hidden_w, b)
+            >>> exe = paddle.static.Executor(paddle.CPUPlace())
+            >>> exe.run(startup_prog)
+
+            # Save the inference model
+            >>> path_prefix = "./infer_model"
+            >>> paddle.static.save_inference_model(path_prefix, [image], [hidden_b], exe)
+
+            >>> [inference_program, feed_target_names, fetch_targets] = (
+            ...     paddle.static.load_inference_model(path_prefix, exe))
+            >>> tensor_img = np.array(np.random.random((64, 784)), dtype=np.float32)
+            >>> results = exe.run(inference_program,
+            ...               feed={feed_target_names[0]: tensor_img},
+            ...               fetch_list=fetch_targets)
+
+            # In this example, the inference program was saved in file
+            # "./infer_model.pdmodel" and parameters were saved in file
+            # " ./infer_model.pdiparams".
+            # By the inference program, feed_target_names and
+            # fetch_targets, we can use an executor to run the inference
+            # program to get the inference result.
+    """
+    # check kwargs
+    supported_args = ('model_filename', 'params_filename')
+    deprecated_args = ('pserver_endpoints',)
+    caller = inspect.currentframe().f_code.co_name
+    _check_args(caller, kwargs, supported_args, deprecated_args)
+
+    # load from memory
+    if path_prefix is None:
+        _logger.warning(
+            "Load inference model from memory is deprecated. Please specify path_prefix."
+        )
+        model_filename = kwargs.get('model_filename', None)
+        params_filename = kwargs.get('params_filename', None)
+        if params_filename is None:
+            raise ValueError(
+                "params_filename cannot be None when path_prefix is None."
+            )
+
+        # deserialize bytes to program
+        program = paddle.static.Program()
+        paddle.base.core.deserialize_pir_program(model_filename, program, 1)
+
+        vars = list(filter(is_persistable, program.list_vars()))
+        if len(vars) > 0:
+            load_vars(
+                executor,
+                # load from memory, dirname is None
+                dirname=None,
+                main_program=program,
+                predicate=is_persistable,
+                filename=params_filename,
+            )
+    # load from file
+    else:
+        # check and norm path_prefix
+        path_prefix = _normalize_path_prefix(path_prefix)
+        dir_path = os.path.dirname(path_prefix)
+        if not os.path.isdir(dir_path):
+            raise ValueError(f"There is no directory named {dir_path}")
+        # set model_path and params_path in new way,
+        # path_prefix represents a file path without suffix in this case.
+        if not kwargs:
+            model_path = path_prefix + ".json"
+            params_path = path_prefix + ".pdiparams"
+        # set model_path and params_path in old way for compatible,
+        # path_prefix represents a directory path.
+        else:
+            model_filename = kwargs.get('model_filename', None)
+            params_filename = kwargs.get('params_filename', None)
+            # set model_path
+            if model_filename is None:
+                model_path = os.path.join(path_prefix, "__model__")
+            else:
+                model_path = os.path.join(path_prefix, model_filename + ".json")
+
                 if not os.path.exists(model_path):
                     model_path = os.path.join(path_prefix, model_filename)
             # set params_path
@@ -1089,37 +1245,9 @@ def load_inference_model(path_prefix, executor, **kwargs):
             )
 
         # deserialize bytes to program
-        if in_pir_mode():
-            program = paddle.static.Program()
-            paddle.base.core.deserialize_pir_program(model_path, program, 1)
+        program = paddle.static.Program()
+        paddle.base.core.deserialize_pir_program(model_path, program, 1)
 
-        else:
-            program_bytes = load_from_file(model_path)
-            program = deserialize_program(program_bytes)
-
-            # do type promotion
-            program = process_type_promotion(program)
-
-            vars = list(filter(is_persistable, program.list_vars()))
-            if len(vars) > 0:
-                load_dirname = os.path.dirname(params_path)
-                params_filename = os.path.basename(params_path)
-
-                load_vars(
-                    executor,
-                    dirname=load_dirname,
-                    main_program=program,
-                    predicate=is_persistable,
-                    filename=params_filename,
-                )
-
-            feed_target_names = program.desc.get_feed_target_names()
-            fetch_target_names = program.desc.get_fetch_target_names()
-            fetch_targets = [
-                program.global_block().var(name) for name in fetch_target_names
-            ]
-
-            return [program, feed_target_names, fetch_targets]
     return [program, [], []]
 
 
