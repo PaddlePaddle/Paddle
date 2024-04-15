@@ -92,19 +92,19 @@ class TestReshardSToR:
             np.testing.assert_equal(dist_program.num_ops(), 11)
             old_ops = [op.name() for op in main_program.global_block().ops]
             new_ops = [op.name() for op in dist_program.global_block().ops]
-            assert('pd_op.c_allgather' in new_ops)
-            assert('pd_op.split' in new_ops)
-            assert('pd_op.concat' in new_ops)
-            assert('pd_op.concat' in new_ops)
-            assert('dist_op.reshard' not in new_ops)
-            assert('dist_op.reshard' in old_ops)
+            assert 'pd_op.c_allgather' in new_ops
+            assert 'pd_op.split' in new_ops
+            assert 'pd_op.concat' in new_ops
+            assert 'pd_op.concat' in new_ops
+            assert 'dist_op.reshard' not in new_ops
+            assert 'dist_op.reshard' in old_ops
         elif self._shard == 0:
             np.testing.assert_equal(dist_program.num_ops(), 4)
             old_ops = [op.name() for op in main_program.global_block().ops]
             new_ops = [op.name() for op in dist_program.global_block().ops]
-            assert('pd_op.c_allgather' in new_ops)
-            assert('dist_op.reshard' not in new_ops)
-            assert('dist_op.reshard' in old_ops)
+            assert 'pd_op.c_allgather' in new_ops
+            assert 'dist_op.reshard' not in new_ops
+            assert 'dist_op.reshard' in old_ops
 
 
 if __name__ == '__main__':

@@ -13,11 +13,10 @@
 # limitations under the License.
 
 import paddle
-from paddle.distributed.communication.reduce import ReduceOp
 
 from ..process_group import new_process_group
 from .base_reshard_func import ReshardFunction
-from .same_status_reshard_func import SameStatusReshardFunction
+
 
 class SToRReshardFunction(ReshardFunction):
     def is_suitable(self, src_dist_attr, dst_dist_attr):
@@ -48,25 +47,33 @@ class SToRReshardFunction(ReshardFunction):
                     split_axis[idx] = v
             return split_axis
 
-        split_axis_map = get_split_axis_with_dims_mapping(src_dist_attr.dims_mapping)
+        split_axis_map = get_split_axis_with_dims_mapping(
+            src_dist_attr.dims_mapping
+        )
 
         split_axis = -1
         for k, v in split_axis_map.items():
             split_axis = k
             break
-        
+
         op_operand_value = op.operand_source(0)
-        num_of_padding = op_operand_value.shape[split_axis] % src_dist_attr.process_mesh.size
+        num_of_padding = (
+            op_operand_value.shape[split_axis] % src_dist_attr.process_mesh.size
+        )
         is_balanced_split = num_of_padding == 0
 
         if is_balanced_split:
-            new_value = self.reshard_s_to_r_with_padding(program, op, split_axis, src_dist_attr.process_mesh.process_ids) 
+            new_value = self.reshard_s_to_r_with_padding(
+                program, op, split_axis, src_dist_attr.process_mesh.process_ids
+            )
             return new_value, dst_dist_attr
         else:
             # TODO(ywt01) support unbalanced split
             pass
 
-    def reshard_s_to_r_with_padding(self, program, op, split_axis, process_ids, padding_num=0):
+    def reshard_s_to_r_with_padding(
+        self, program, op, split_axis, process_ids, padding_num=0
+    ):
         num_of_process = len(process_ids)
         dtype = op.operand_source(0).dtype
 
@@ -74,7 +81,7 @@ class SToRReshardFunction(ReshardFunction):
         group = new_process_group(process_ids)
         op_value = op.operand_source(0)
         allgather_value = paddle._pir_ops.c_allgather(
-            op_value, group.id, num_of_process,  False
+            op_value, group.id, num_of_process, False
         )
         op.result(0).replace_all_uses_with(allgather_value)
         program.global_block().remove_op(op)
@@ -83,8 +90,9 @@ class SToRReshardFunction(ReshardFunction):
             sections = num_of_process * [op_value.shape[0]]
             allgather_op = allgather_value.get_defining_op()
             paddle.pir.set_insertion_point_after(allgather_op)
-            split_value = paddle._pir_ops.split(allgather_op.result(0), sections, 0)
+            split_value = paddle._pir_ops.split(
+                allgather_op.result(0), sections, 0
+            )
             concat_value = paddle._pir_ops.concat(split_value, split_axis)
             return concat_value.get_defining_op()
         return allgather_value.get_defining_op()
-        
