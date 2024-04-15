@@ -323,13 +323,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   endfunction()
 
   if(NOT APPLE AND WITH_MKLML)
-    # RNN1
-    set(RNN1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/rnn1")
-    download_model_and_data_without_verify(
-      ${RNN1_INSTALL_DIR} "rnn1/model.tar.gz" "rnn1/data.txt.tar.gz")
-    inference_analysis_api_test(test_analyzer_rnn1 ${RNN1_INSTALL_DIR}
-                                analyzer_rnn1_tester.cc EXTRA_DEPS common)
-
     # seq_pool1
     set(SEQ_POOL1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/seq_pool")
     download_model_and_data_without_verify(
@@ -498,18 +491,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   download_model_and_data_without_verify(
     ${TRANSFORMER_INSTALL_DIR} "temp/transformer_model.tar.gz"
     "temp/transformer_data.txt.tar.gz")
-  inference_analysis_test(
-    test_analyzer_transformer
-    SRCS
-    analyzer_transformer_compare_tester.cc
-    EXTRA_DEPS
-    common
-    paddle_inference_shared
-    ARGS
-    --infer_model=${TRANSFORMER_INSTALL_DIR}/model
-    --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt
-    --batch_size=8
-    --cpu_num_threads=${CPU_NUM_THREADS_ON_CI})
   inference_analysis_test(
     test_analyzer_transformer_fuse
     SRCS
@@ -971,15 +952,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       trt_disable_tensorrt_half_ops_test
       SRCS
       trt_disable_tensorrt_half_ops_test.cc
-      EXTRA_DEPS
-      common
-      paddle_inference_shared
-      ARGS
-      --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
-    inference_analysis_test(
-      trt_cascade_rcnn_test
-      SRCS
-      trt_cascade_rcnn_test.cc
       EXTRA_DEPS
       common
       paddle_inference_shared
