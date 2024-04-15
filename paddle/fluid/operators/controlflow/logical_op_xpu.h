@@ -82,7 +82,7 @@ class BinaryLogicalOpXPUKernel : public framework::OpKernel<T> {
                                  bcast_ydims);
       PADDLE_ENFORCE_EQ(ret,
                         XPU_SUCCESS,
-                        platform::errors::External(
+                        phi::errors::External(
                             "XPU broadcast kernel return wrong value[%d %s]",
                             ret,
                             XPUAPIErrorMsg[ret]));
@@ -118,7 +118,7 @@ class BinaryLogicalOpXPUKernel : public framework::OpKernel<T> {
                                  bcast_ydims);
       PADDLE_ENFORCE_EQ(ret,
                         XPU_SUCCESS,
-                        platform::errors::External(
+                        phi::errors::External(
                             "XPU broadcast kernel return wrong value[%d %s]",
                             ret,
                             XPUAPIErrorMsg[ret]));
@@ -144,11 +144,11 @@ class BinaryLogicalOpXPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         ret,
         XPU_SUCCESS,
-        platform::errors::External("XPU API return wrong value[%d %s] in "
-                                   "op_name[%s].",
-                                   ret,
-                                   XPUAPIErrorMsg[ret],
-                                   XpuLogicalType2Str(xpu_type)));
+        phi::errors::External("XPU API return wrong value[%d %s] in "
+                              "op_name[%s].",
+                              ret,
+                              XPUAPIErrorMsg[ret],
+                              XpuLogicalType2Str(xpu_type)));
 
     if (need_broad_cast && dev_ctx.x_context()->xpu_stream != nullptr) {
       dev_ctx.Wait();
@@ -178,7 +178,7 @@ class UnaryLogicalOpXPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         ret,
         XPU_SUCCESS,
-        platform::errors::External(
+        phi::errors::External(
             "XPU API return wrong value[%d %s].", ret, XPUAPIErrorMsg[ret]));
   }
 };

@@ -66,7 +66,7 @@ class SimilarityFocusOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x_dims.size(),
         4,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The dimension size of Input(X) be 4, but received %d.",
             x_dims.size()));
     ctx->SetOutputDim("Out", x_dims);

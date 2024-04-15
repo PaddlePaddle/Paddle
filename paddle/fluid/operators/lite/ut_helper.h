@@ -60,8 +60,8 @@ void serialize_params(std::string* str,
   for (const auto& param : params) {
     PADDLE_ENFORCE_NOT_NULL(
         scope->FindVar(param),
-        platform::errors::NotFound("Block should already have a '%s' variable",
-                                   param));
+        phi::errors::NotFound("Block should already have a '%s' variable",
+                              param));
     auto* tensor = scope->FindVar(param)->GetMutable<phi::DenseTensor>();
     framework::SerializeToStream(os, *tensor, ctx);
   }
@@ -81,7 +81,7 @@ void RandomizeTensor(phi::DenseTensor* tensor, const platform::Place& place) {
   size_t num_elements = analysis::AccuDims(dims, dims.size());
   PADDLE_ENFORCE_GT(num_elements,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The input tensor dimension of the randomized tensor "
                         "function should be greater than zero."));
   platform::CPUPlace cpu_place;

@@ -60,7 +60,7 @@ common::DDim InferLocalDDim(const common::DDim& global_ddim,
   return local_ddim;
 }
 
-auto DistDenseTensorType::local_type() const -> Type {
+pir::DenseTensorType DistDenseTensorType::local_type() const {
   return pir::DenseTensorType::get(pir::IrContext::Instance(),
                                    dtype(),
                                    local_ddim(),

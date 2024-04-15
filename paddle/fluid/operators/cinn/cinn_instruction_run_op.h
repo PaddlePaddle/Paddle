@@ -45,12 +45,12 @@ class CinnInstructionRunOpKernel : public framework::OpKernel<T> {
         CinnCompiler::GetInstance()->GetCompiledObject(cached_index);
     const std::vector<std::unique_ptr<CinnInstruction>>& instructions =
         compiled_object.runtime_program->GetRunInstructions();
-    PADDLE_ENFORCE_LT(ins_index,
-                      instructions.size(),
-                      platform::errors::InvalidArgument(
-                          "Index(%ld) > instructions.size(%ld).",
-                          ins_index,
-                          instructions.size()));
+    PADDLE_ENFORCE_LT(
+        ins_index,
+        instructions.size(),
+        phi::errors::InvalidArgument("Index(%ld) > instructions.size(%ld).",
+                                     ins_index,
+                                     instructions.size()));
     auto&& instruction = instructions.at(ins_index);
 
     // step 2: prepare the input and output arguments of the instruction
