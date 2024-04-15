@@ -70,6 +70,7 @@ bool InferSymbolicShapeElementWiseBinary(
         shapes.emplace_back(shape_0[i]);
       } else {
         shapes.emplace_back(builder.Broadcast(shape_0[i], shape_1[i]));
+        shape_analysis->AddBroadcastableCstr(shape_0[i], shape_1[i]);
       }
     }
     return shapes;
