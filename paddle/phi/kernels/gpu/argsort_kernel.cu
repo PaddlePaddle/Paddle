@@ -260,7 +260,7 @@ void ArgsortKernel(const Context& dev_ctx,
                                    out_data,
                                    out_data + size,
                                    ids_data,
-                                   thrust::greater<KeyT>());
+                                   thrust::greater<T>());
       } else {
         thrust::stable_sort_by_key(
             thrust::device, out_data, out_data + size, ids_data);
