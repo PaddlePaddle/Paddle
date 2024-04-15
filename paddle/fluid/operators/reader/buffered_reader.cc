@@ -315,7 +315,30 @@ void BufferedReader::ReadAsync(size_t i) {
                               custom_device.size(),
                               cpu.size()));
       }
+      TensorVec pinned_device{cpu.size()};
+      if (pin_memory_) {
+        platform::CustomPinnedPlace pinned_place(place_.GetDeviceType());
+        platform::CPUPlace cpu_place;
+        std::vector<void *> custom_pinned_ptrs;
+        custom_pinned_ptrs.reserve(cpu.size());
+        for (size_t i = 0; i < cpu.size(); ++i) {
+          if (platform::is_cpu_place(cpu[i].place())) {
+            pinned_device[i].Resize(cpu[i].dims());
+            pinned_device[i].set_layout(cpu[i].layout());
+            custom_pinned_ptrs[i] =
+                pinned_device[i].mutable_data(pinned_place, cpu[i].dtype());
+            auto size = cpu[i].numel() * phi::SizeOf(cpu[i].dtype());
 
+            memory::Copy(cpu_place,
+                         custom_pinned_ptrs[i],
+                         cpu[i].place(),
+                         cpu[i].data(),
+                         size);
+
+            pinned_device[i].set_lod(cpu[i].lod());
+          }
+        }
+      }
       std::vector<void *> custom_device_ptrs;
       custom_device_ptrs.reserve(cpu.size());
       for (size_t i = 0; i < cpu.size(); ++i) {
@@ -335,7 +358,8 @@ void BufferedReader::ReadAsync(size_t i) {
                                          1);
       for (size_t i = 0; i < cpu.size(); ++i) {
         auto cpu_place = cpu[i].place();
-        auto cpu_ptr = cpu[i].data();
+        auto cpu_ptr = auto cpu_ptr =
+            pin_memory_ ? pinned_device[i].data() : cpu[i].data();
         auto custom_device_ptr = custom_device_ptrs[i];
         auto size = cpu[i].numel() * phi::SizeOf(cpu[i].dtype());
         if ((platform::is_custom_place(cpu_place))) {
