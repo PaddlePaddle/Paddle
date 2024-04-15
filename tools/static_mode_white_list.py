@@ -279,7 +279,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_instance_norm_op_v2',
     'test_inverse_op',
     'test_io_save_load',
-    'test_iou_similarity_op',
     'test_ir_memory_optimize_pass',
     'test_kldiv_loss_op',
     'test_kron_op',
