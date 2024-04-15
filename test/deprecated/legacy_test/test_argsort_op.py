@@ -450,12 +450,15 @@ class TestArgsort4(TestArgsort):
 
 
 class TestStableArgsort(unittest.TestCase):
-    def setUp(self):
+    def init(self):
         self.input_shape = [
             30,
         ]
         self.axis = 0
         self.data = np.array([100.0, 50.0, 10.0] * 10)
+
+    def setUp(self):
+        self.init()
 
     def cpu_place(self):
         self.place = core.CPUPlace()
@@ -546,12 +549,14 @@ class TestStableArgsort(unittest.TestCase):
 class TestStableArgsort2(TestStableArgsort):
     def init(self):
         self.input_shape = [30, 1]
+        self.data = np.array([100.0, 50.0, 10.0] * 10).reshape(self.input_shape)
         self.axis = 0
 
 
 class TestStableArgsort3(TestStableArgsort):
     def init(self):
         self.input_shape = [1, 30]
+        self.data = np.array([100.0, 50.0, 10.0] * 10).reshape(self.input_shape)
         self.axis = 1
 
 
