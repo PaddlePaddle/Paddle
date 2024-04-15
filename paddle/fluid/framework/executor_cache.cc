@@ -385,13 +385,17 @@ std::unique_ptr<::pir::Program> ApplyIrPass(::pir::Program *program,
   return ir_res;
 }
 
-std::unique_ptr<::pir::Program> ApplyShadowFeedPass(
+std::unique_ptr<::pir::Program> ApplyRemoveShadowFeedPass(
     std::unique_ptr<::pir::Program> program,
     const pir::Block *block,
     const phi::Place &place,
     const paddle::framework::Scope *scope) {
   ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
-  pm.AddPass(::pir::CreateRemoveShadowFeedPass(block, place, scope));
+  auto pass = ::pir::CreateRemoveShadowFeedPass();
+  pass->SetNotOwned(pir::Pass::kBlockAttr, block);
+  pass->SetNotOwned(pir::Pass::kPlaceAttr, &place);
+  pass->SetNotOwned(pir::Pass::kParamScopeAttr, scope);
+  pm.AddPass(std::move(pass));
   pm.Run(program.get());
 
   if (FLAGS_print_ir) {

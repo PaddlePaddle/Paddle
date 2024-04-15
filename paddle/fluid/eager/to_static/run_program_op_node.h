@@ -1104,7 +1104,7 @@ inline void PirRunProgramGradAPI(
         paddle::framework::ApplyIrPass(backward_program, place);
 
     const auto &new_block = passed_kernel_program->block();
-    passed_kernel_program = paddle::framework::ApplyShadowFeedPass(
+    passed_kernel_program = paddle::framework::ApplyRemoveShadowFeedPass(
         std::move(passed_kernel_program), new_block, place, global_inner_scope);
 
     if (FLAGS_print_ir) {

@@ -30,9 +30,6 @@ namespace pir {
 
 class Pass;
 
-IR_API std::unique_ptr<Pass> CreateRemoveShadowFeedPass(
-    const pir::Block *block,
-    const phi::Place &place,
-    const paddle::framework::Scope *scope);
+IR_API std::unique_ptr<Pass> CreateRemoveShadowFeedPass();
 
 }  // namespace pir

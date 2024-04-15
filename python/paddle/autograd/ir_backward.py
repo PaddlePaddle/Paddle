@@ -62,7 +62,7 @@ def append_full_like(float_value, copy_value, value, state, backward_ops):
             state.value_to_valuegrad[value] = [[paddle.pir.fake_value()]]
             return
         if copy_value.is_dense_tensor_array_type():
-            value_grad = paddle._pir_ops.create_array_like(
+            value_grad = paddle._C_ops.create_array_like(
                 copy_value,
                 float_value,
             )
@@ -106,7 +106,7 @@ def append_add_n(
             state.value_to_valuegrad[value] = []
         else:
             if value.is_dense_tensor_array_type():
-                add_n_value = paddle._pir_ops.add_n_array(add_n_list)
+                add_n_value = paddle._C_ops.add_n_array(add_n_list)
             else:
                 add_n_value = paddle.add_n(add_n_list)
 

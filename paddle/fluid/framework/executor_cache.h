@@ -273,7 +273,7 @@ std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
 std::unique_ptr<::pir::Program> ApplyIrPass(::pir::Program* program,
                                             phi::Place place);
 
-std::unique_ptr<::pir::Program> ApplyShadowFeedPass(
+std::unique_ptr<::pir::Program> ApplyRemoveShadowFeedPass(
     const std::unique_ptr<::pir::Program> program,
     const pir::Block* block,
     const phi::Place& place,
