@@ -675,6 +675,13 @@ class DygraphShardingOptimizerV2:
 
                 comm_buffer.scale_grads()
 
+    def _forward_pre_hook_function(self, tasks):
+        def __impl__(x, y):
+            for task in tasks:
+                task.wait()
+
+        return __impl__
+
     def _sharding_sync_parameters(self):
         """
         sync parameter across sharding group
@@ -688,18 +695,18 @@ class DygraphShardingOptimizerV2:
                     comm_buffer.sync_params(sync=False, param2task=param2task)
 
                 for layer in self._layers.sublayers():
-                    if len(layer.sublayers() == 0):
+                    if len(layer.sublayers()) == 0:
                         tasks = []
                         for param in layer.parameters():
                             if param.trainable:
                                 if param.name in param2task:
                                     tasks.append(param2task)
 
-                    self._forward_pre_hook_remove_helper.append(
-                        layer.register_forward_pre_hook(
-                            self._forward_pre_hook_function(tasks)
+                        self._forward_pre_hook_remove_helper.append(
+                            layer.register_forward_pre_hook(
+                                self._forward_pre_hook_function(tasks)
+                            )
                         )
-                    )
             else:
                 for comm_buffer in self._comm_buffer_list:
                     comm_buffer.sync_params()
