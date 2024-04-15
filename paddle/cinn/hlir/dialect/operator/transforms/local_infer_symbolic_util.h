@@ -1,0 +1,40 @@
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#pragma once
+
+#include <memory>
+#include <optional>
+#include <functional>
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
+
+namespace cinn {
+namespace dialect {
+namespace ir {
+
+using OptDimExprs = std::optional<const symbol::ShapeOrDataDimExprs*>;
+using OptDimExprs4ValueT =
+    std::function<OptDimExprs(pir::Value, const pir::Block*)>;
+
+std::shared_ptr<pir::ShapeConstraintIRAnalysis> MakeOpShapeAnalysis(
+    const pir::Operation* op, const OptDimExprs4ValueT& GraphDimExprs4Value);
+
+OptDimExprs4ValueT MakeOpDimExprs4Value(
+    const pir::Operation* op, const OptDimExprs4ValueT& GraphDimExprs4Value);
+
+}  // namespace ir
+}  // namespace dialect
+}  // namespace cinn

@@ -16,14 +16,18 @@
 
 #include <memory>
 #include <optional>
+#include <functional>
 #include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/local_infer_symbolic_util.h"
 
 namespace cinn {
 namespace dialect {
 namespace ir {
 
-// This is a helper pass for checking the symbolic inference accuracy.
-std::unique_ptr<::pir::Pass> CreateCheckInferSymbolicPass();
+std::unique_ptr<::pir::Pass> CreateCheckInferSymbolicPass(
+    const OptDimExprs4ValueT& OptDimExprs4Value);
+
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn
