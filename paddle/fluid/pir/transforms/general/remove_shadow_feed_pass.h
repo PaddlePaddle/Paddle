@@ -15,16 +15,7 @@
 #pragma once
 
 #include <memory>
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/dll_decl.h"
-
-namespace paddle {
-namespace framework {
-class Scope;
-}
-}  // namespace paddle
 
 namespace pir {
 

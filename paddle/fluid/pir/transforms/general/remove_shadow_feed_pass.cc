@@ -19,7 +19,9 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/pass/pass.h"
@@ -72,7 +74,7 @@ class RemoveShadowFeedPattern
     }
   }
 
-  bool IsSamePlaceShadowFeed(paddle::dialect::PhiKernelOp op) const {
+  bool IsSamePlaceShadowFeed(const paddle::dialect::PhiKernelOp op) const {
     if (op.op_name() == "pd_op.shadow_feed") {
       auto in = op.operand_source(0);
       if (!kwargs_map_.count(in)) {
@@ -98,7 +100,7 @@ class RemoveShadowFeedPattern
     return false;
   }
 
-  bool IsTensorAttrShadowFeed(paddle::dialect::PhiKernelOp op) const {
+  bool IsTensorAttrShadowFeed(const paddle::dialect::PhiKernelOp op) const {
     if (op.op_name() == "pd_op.shadow_feed") {
       auto in = op.operand_source(0);
       if (!kwargs_map_.count(in)) {
@@ -172,6 +174,8 @@ class RemoveShadowFeedPass : public pir::PatternRewritePass {
     auto &place = Get<const phi::Place>(pir::Pass::kPlaceAttr);
     auto scope =
         &Get<const paddle::framework::Scope>(pir::Pass::kParamScopeAttr);
+    PADDLE_ENFORCE_NOT_NULL(
+        block, phi::errors::InvalidArgument("block can not be nullptr"));
     PADDLE_ENFORCE_NOT_NULL(
         scope, phi::errors::InvalidArgument("scope can not be nullptr"));
 
