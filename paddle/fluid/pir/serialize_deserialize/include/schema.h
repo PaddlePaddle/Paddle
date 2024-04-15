@@ -14,8 +14,12 @@
 #pragma once
 
 namespace pir {
-/* define all keys in serialized files to ensure accuracy for deserialization
-make sure all the key mutually exclusive */
+/**
+ * IMPORTANT!!!
+ * all those defining strings can't be changed, otherwise the deserialization
+ * will failed. define all keys in serialized files to ensure accuracy for
+ * deserialization make sure all the key mutually exclusive
+ */
 
 // all IR structure's identifier (region, block, op, attr, type value etc)
 // which can be string , int64_t etc.
@@ -36,26 +40,26 @@ make sure all the key mutually exclusive */
 
 // operation's key:
 // which is json array with opoperand json object(ID)
-#define OPOPERANDS "operands"
+#define OPOPERANDS "I"
 
 // which is json array with value json object(ID and TYPE_TYPE)
-#define OPRESULTS "opresults"
+#define OPRESULTS "O"
 
 // which is json array with json object(NAME and ATTR_TYPE)
-#define ATTRS "attrs"
-#define OPRESULTS_ATTRS "opresults_attrs"
+#define ATTRS "A"
+#define OPRESULTS_ATTRS "OA"
 
 // value's key:
 //  value's type which should be pir::Type's json object(ID or ID and DATA).
-#define TYPE_TYPE "t_type"
+#define TYPE_TYPE "TT"
 
 // attr's name which is operation's feature.
-#define NAME "name"
+#define NAME "N"
 
 // attr's value which is pir::Attribute's json object(ID and DATA).
-#define ATTR_TYPE "a_type"
+#define ATTR_TYPE "AT"
 
 // type/attr's contents which is json::array.
-#define DATA "data"
+#define DATA "D"
 
 }  // namespace pir

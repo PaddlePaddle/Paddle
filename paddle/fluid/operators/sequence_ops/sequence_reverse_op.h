@@ -31,17 +31,17 @@ class SequenceReverseOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("X"),
         true,
-        platform::errors::NotFound("Input(X) of SequenceReverse must exist"));
+        phi::errors::NotFound("Input(X) of SequenceReverse must exist"));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("Y"),
         true,
-        platform::errors::NotFound("Output(Y) of SequenceReverse must exist"));
+        phi::errors::NotFound("Output(Y) of SequenceReverse must exist"));
 
     auto x_dim = ctx->GetInputDim("X");
     PADDLE_ENFORCE_GE(
         x_dim.size(),
         2,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The rank of SequenceReverseOp Input(X) must be greater "
             "than or equal to 2. But the Input(X) tensor's rank we received is "
             "%d",
@@ -120,15 +120,15 @@ class SequenceReverseOpKernel : public framework::OpKernel<T> {
     auto &x = *ctx.Input<LoDTensor>("X");
     auto *y = ctx.Output<LoDTensor>("Y");
 
-    PADDLE_ENFORCE_EQ(x.lod().empty(),
-                      false,
-                      platform::errors::NotFound(
-                          "Input(X) Tensor of SequenceReverseOp does not "
-                          "contain LoD information."));
+    PADDLE_ENFORCE_EQ(
+        x.lod().empty(),
+        false,
+        phi::errors::NotFound("Input(X) Tensor of SequenceReverseOp does not "
+                              "contain LoD information."));
 
     PADDLE_ENFORCE_EQ(x.lod().size(),
                       1,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "SequenceReverseOp only support one "
                           "level lod. But the Input(X) lod size is %d",
                           x.lod().size()));
@@ -156,7 +156,7 @@ class SequenceReverseOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_NE(
         x_data,
         y_data,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "SequenceReverse Op does not support in-place operation"));
 
     if (platform::is_cpu_place(ctx.GetPlace())) {

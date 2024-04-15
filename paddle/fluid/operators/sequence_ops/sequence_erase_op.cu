@@ -73,7 +73,7 @@ class SequenceEraseOpCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         lod[lod.size() - 1].back(),
         (size_t)in->numel(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The actual size mismatches with the LoD information."));
     auto tokens = ctx.Attr<std::vector<int>>("tokens");
     auto in_len = in->numel();

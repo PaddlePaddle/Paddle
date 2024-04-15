@@ -25,7 +25,7 @@ PyReader::PyReader(
     const std::vector<bool>& need_check_feed)
     : framework::FileReader(dims, var_types, need_check_feed) {
   PADDLE_ENFORCE_NOT_NULL(queue,
-                          platform::errors::PreconditionNotMet(
+                          phi::errors::PreconditionNotMet(
                               "LoDTensorBlockingQueue must not be null."));
   queue_ = queue;
 }

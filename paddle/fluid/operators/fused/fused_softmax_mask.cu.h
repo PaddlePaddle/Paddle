@@ -123,9 +123,10 @@ __global__ void FusedSoftmaxMaskVecKernel(T* dst,
 // #define SELECT_SOFTMAX_MASK_KERNEL(ELEMENTS) \
 //   do { \
 //     if (sizeof(T) == 2 && seq_len % 8 == 0) { \
-//       FusedSoftmaxMaskVecKernel<plat::float16, 8, ELEMENTS> \
+//       FusedSoftmaxMaskVecKernel<phi::dtype::float16, 8, ELEMENTS> \
 //            <<<grid, block, 0, stream>>>( \
-//           (plat::float16*)dst, (const plat::float16*)src, mask, seq_len); \
+//           (phi::dtype::float16*)dst, (const phi::dtype::float16*)src, mask,
+//           seq_len); \
 //     } \
 //     else if (seq_len % 4 == 0) SOFTMAX_MASK_KERNEL(4, ELEMENTS); \
 //     else if (seq_len % 2 == 0) SOFTMAX_MASK_KERNEL(2, ELEMENTS); \
@@ -159,9 +160,9 @@ void LaunchFusedSoftmaxMaskKernel(const T* src,
   PADDLE_ENFORCE_EQ(
       seq_len > 0 && seq_len <= 4096,
       true,
-      platform::errors::InvalidArgument("seq_len must be between (0, 4096] "
-                                        "received the seq_len is %d",
-                                        seq_len));
+      phi::errors::InvalidArgument("seq_len must be between (0, 4096] "
+                                   "received the seq_len is %d",
+                                   seq_len));
 
   constexpr int block_size = 128;
   constexpr int warp_size = 32;
@@ -196,7 +197,7 @@ void LaunchFusedSoftmaxMaskKernel(const T* src,
       CASE_SOFTMAX_MASK_KERNEL(64);   // <=2048
       CASE_SOFTMAX_MASK_KERNEL(128);  // <=4096
     default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "seq_len must be between (0, 4096], received the seq_len is %d",
           seq_len));
   }

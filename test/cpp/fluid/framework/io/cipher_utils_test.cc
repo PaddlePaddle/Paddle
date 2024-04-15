@@ -26,7 +26,7 @@ TEST(CipherUtils, load_config) {
   std::string filename("cryptotest_config_file.conf");
 
   std::ofstream fout(filename, std::ios::out);
-  fout << "# anotation test line:"
+  fout << "# annotation test line:"
           " must have two space along ':'."
        << std::endl;
   std::vector<std::string> key_value;

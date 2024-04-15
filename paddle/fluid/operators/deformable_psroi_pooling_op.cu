@@ -213,7 +213,7 @@ class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         num_rois,
         out->dims()[0],
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The number of Input(ROIs) should be same with the number of "
             "Output(Output), but received ROIs number is:%d, Output number "
             "is:%d.",
@@ -225,7 +225,7 @@ class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T> {
         no_trans ? output_dim : output_dim / num_classes;
     PADDLE_ENFORCE_GE(channels_each_class,
                       1,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "channels_each_class should not be lower than 1, but "
                           "channels_each_class is:%d.",
                           channels_each_class));
@@ -243,7 +243,7 @@ class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         rois_batch_size,
         batch,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "rois_batch_size should be equal to the batch_size, but "
             "rois_batch_size is:%d, batch_size is:%d.",
             rois_batch_size,
@@ -251,7 +251,7 @@ class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T> {
     int rois_num_with_lod = rois_lod[rois_batch_size];
     PADDLE_ENFORCE_EQ(num_rois,
                       rois_num_with_lod,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The rois_num from input and lod must be same, but"
                           "rois_num from input is:%d, rois_num from lod is:%d.",
                           num_rois,
@@ -555,7 +555,7 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         rois_batch_size,
         batch,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "rois_batch_size should be equal to the batch_size, but "
             "rois_batch_size is:%d, batch_size is:%d.",
             rois_batch_size,
@@ -564,7 +564,7 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T> {
     int rois_num_with_lod = rois_lod[rois_batch_size];
     PADDLE_ENFORCE_EQ(num_rois,
                       rois_num_with_lod,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The rois_num from input and lod must be same, but"
                           "rois_num from input is:%d, rois_num from lod is:%d.",
                           num_rois,

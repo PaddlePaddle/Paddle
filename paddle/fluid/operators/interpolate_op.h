@@ -37,7 +37,7 @@ inline std::vector<int> get_new_shape(
     auto tensor = list_new_shape_tensor[i];
     PADDLE_ENFORCE_EQ(tensor->dims(),
                       common::make_ddim({1}),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The shape of dimension tensor should be [1],"
                           "but received d%.",
                           tensor->dims()));
@@ -890,7 +890,7 @@ static void Interpolate1DCPUFwd(const framework::ExecutionContext& ctx,
   }
   PADDLE_ENFORCE_GT(out_w,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "out_w in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
   framework::DDim dim_out;
@@ -969,12 +969,12 @@ static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
   }
   PADDLE_ENFORCE_GT(out_h,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "out_h in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
   PADDLE_ENFORCE_GT(out_w,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "out_w in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
   framework::DDim dim_out;
@@ -1090,17 +1090,17 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
   }
   PADDLE_ENFORCE_GT(out_d,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "out_d in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
   PADDLE_ENFORCE_GT(out_h,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "out_h in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
   PADDLE_ENFORCE_GT(out_w,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "out_w in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
 
