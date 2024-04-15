@@ -420,6 +420,10 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
     out_grad_names = []
     if is_parameter_related(Y_var.name, main_block):
         out_grad_names = [kwargs['Y@GRAD'][0]]
+    # NOTE(liym27): when Y_var is not a parameter, but Y_var is resharded by a parameter.
+    # This is a temporary handling method that will be abandoned in the future.
+    elif "reshard_api" in Y_var.name:
+        out_grad_names = [kwargs['Y@GRAD'][0]]
 
     if trans_x:
         trans_x_y_dims_mapping(True, False, X_var_dims_mapping, None)
