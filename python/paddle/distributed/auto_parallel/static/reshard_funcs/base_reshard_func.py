@@ -37,7 +37,7 @@ def clean_reshard_funcs():
     global _g_reshard_func_list
     _g_reshard_func_list.clear()
 
-def is_shard(self, dist_attr):
+def is_shard(dist_attr):
     for v in dist_attr.dims_mapping:
         if v != -1:
             return True

@@ -79,13 +79,12 @@ class TestReshardSToR:
                     initializer=paddle.nn.initializer.Uniform(),
                 )
 
-                dims_mapping = [-1, -1]
-                dims_mapping[self._shard] = 0
-                shard_tensor = paddle._pir_ops.shard_tensor(
-                    w0, self._mesh, dims_mapping
+                input_tensor = dist.shard_tensor(
+                    w0, self._mesh, [dist.Shard(self._shard)]
                 )
-                reshard_tensor = paddle._pir_ops.reshard(
-                    shard_tensor, self._mesh, [dist.Replicate()]
+
+                reshard_tensor = paddle._C_ops.reshard(
+                    input_tensor, self._mesh, [dist.Replicate()]
                 )
             dist_program = apply_reshard_pass_v2(main_program)
         if self._shard == 1:
