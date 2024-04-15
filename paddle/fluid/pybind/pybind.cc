@@ -1744,6 +1744,10 @@ All parameter, weight, gradient are variables in Paddle.
         paddle::memory::allocation::AllocatorFacade::Instance()
           .GetZeroAllocator(paddle::platform::CPUPlace())
           .get());
+      context->SetPinnedAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::XPUPinnedPlace())
+          .get());
       return context;
 #endif
           })

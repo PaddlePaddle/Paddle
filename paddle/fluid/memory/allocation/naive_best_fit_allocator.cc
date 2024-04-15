@@ -175,6 +175,30 @@ void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
 }
 
 template <>
+void *Alloc<platform::XPUPinnedPlace>(const platform::XPUPinnedPlace &place,
+                                      size_t size) {
+#ifdef PADDLE_WITH_XPU
+  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  void *ptr = nullptr;
+  int ret = xpu_host_alloc(&ptr, size, 0);
+  PADDLE_ENFORCE_EQ(
+      ret,
+      XPU_SUCCESS,
+      platform::errors::External(
+          "XPU API return wrong value [%d], no enough pinned memory.", ret));
+  if (FLAGS_init_allocated_mem) {
+    memset(ptr, 0xEF, size);
+  }
+  VLOG(10) << " pointer=" << ptr;
+  return ptr;
+#else
+  PADDLE_THROW(
+      platform::errors::PermissionDenied("XPUPinnedPlace is not supported"));
+  return nullptr;
+#endif
+}
+
+template <>
 void Free<platform::XPUPlace>(const platform::XPUPlace &place,
                               void *p,
                               size_t size) {
@@ -191,12 +215,39 @@ void Free<platform::XPUPlace>(const platform::XPUPlace &place,
 }
 
 template <>
+void Free<platform::XPUPinnedPlace>(const platform::XPUPinnedPlace &place,
+                                    void *p,
+                                    size_t size) {
+#ifdef PADDLE_WITH_XPU
+  VLOG(10) << "Free " << size << " bytes on " << platform::Place(place);
+  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
+  xpu_host_free(p);
+#else
+  PADDLE_THROW(
+      platform::errors::PermissionDenied("XPUPinnedPlace is not supported"));
+#endif
+}
+
+template <>
 uint64_t Release<platform::XPUPlace>(const platform::XPUPlace &place) {
 #ifdef PADDLE_WITH_XPU
   LOG(WARNING) << "Release XPU pool is not supported now, no action here.";
 #else
   PADDLE_THROW(
       platform::errors::PermissionDenied("'XPUPlace' is not supported."));
+#endif
+  return -1;
+}
+
+template <>
+uint64_t Release<platform::XPUPinnedPlace>(
+    const platform::XPUPinnedPlace &place) {
+#ifdef PADDLE_WITH_XPU
+  LOG(WARNING)
+      << "Release XPU pin memory pool is not supported now, no action here.";
+#else
+  PADDLE_THROW(
+      platform::errors::PermissionDenied("'XPUPinnedPlace' is not supported."));
 #endif
   return -1;
 }
@@ -209,6 +260,17 @@ size_t Used<platform::XPUPlace>(const platform::XPUPlace &place) {
 #else
   PADDLE_THROW(
       platform::errors::PermissionDenied("'XPUPlace' is not supported."));
+#endif
+}
+
+template <>
+size_t Used<platform::XPUPinnedPlace>(const platform::XPUPinnedPlace &place) {
+#ifdef PADDLE_WITH_XPU
+  printf("Used func return 0 for XPUPinnedPlace\n");
+  return 0;
+#else
+  PADDLE_THROW(
+      platform::errors::PermissionDenied("'XPUPinnedPlace' is not supported."));
 #endif
 }
 

@@ -223,7 +223,74 @@ void Copy<platform::XPUPlace, platform::XPUPlace>(platform::XPUPlace dst_place,
   platform::MemcpySyncD2D(dst, dst_place, src, src_place, num);
 }
 
-// NOTE: only for (CPUPlace and XPUPlace) -> (XPUPlace).
+template <>
+void Copy<platform::CPUPlace, platform::XPUPinnedPlace>(
+    phi::CPUPlace dst_place,
+    void* dst,
+    phi::XPUPinnedPlace src_place,
+    const void* src,
+    size_t num) {
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place;
+  if (UNLIKELY(num == 0)) return;
+  std::memcpy(dst, src, num);
+}
+
+template <>
+void Copy<platform::XPUPinnedPlace, platform::CPUPlace>(
+    phi::XPUPinnedPlace dst_place,
+    void* dst,
+    phi::CPUPlace src_place,
+    const void* src,
+    size_t num) {
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place;
+  if (UNLIKELY(num == 0)) return;
+  std::memcpy(dst, src, num);
+}
+
+template <>
+void Copy<platform::XPUPinnedPlace, platform::XPUPinnedPlace>(
+    phi::XPUPinnedPlace dst_place,
+    void* dst,
+    phi::XPUPinnedPlace src_place,
+    const void* src,
+    size_t num) {
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place;
+  if (UNLIKELY(num == 0)) return;
+  std::memcpy(dst, src, num);
+}
+
+template <>
+void Copy<platform::XPUPinnedPlace, platform::XPUPlace>(
+    phi::XPUPinnedPlace dst_place,
+    void* dst,
+    phi::XPUPlace src_place,
+    const void* src,
+    size_t num) {
+  if (num <= 0) {
+    VLOG(1) << "memcpy XPU_DEVICE_TO_HOST size <= 0 (" << num << ")";
+    return;
+  }
+  platform::MemcpySyncD2H(dst, src, num, src_place);
+}
+
+template <>
+void Copy<platform::XPUPlace, platform::XPUPinnedPlace>(
+    phi::XPUPlace dst_place,
+    void* dst,
+    phi::XPUPinnedPlace src_place,
+    const void* src,
+    size_t num) {
+  if (num <= 0) {
+    VLOG(1) << "memcpy XPU_DEVICE_TO_HOST size <= 0 (" << num << ")";
+    return;
+  }
+  platform::MemcpySyncD2H(dst, src, num, src_place);
+}
+
+// NOTE: only for (CPUPlace, XPUPinnedPlace and XPUPlace) -> (XPUPlace).
 template <>
 void Copy<phi::XPUPlace, phi::Place>(phi::XPUPlace dst_place,
                                      void* dst,
@@ -233,13 +300,16 @@ void Copy<phi::XPUPlace, phi::Place>(phi::XPUPlace dst_place,
   if (src_place.GetType() == phi::AllocationType::CPU) {
     platform::CPUPlace place_src;
     return Copy(dst_place, dst, place_src, src, num);
+  } else if (src_place.GetType() == phi::AllocationType::XPUPINNED) {
+    platform::XPUPinnedPlace place_src;
+    return Copy(dst_place, dst, place_src, src, num);
   } else if (src_place.GetType() == phi::AllocationType::XPU) {
     platform::XPUPlace place_src(src_place.GetDeviceId());
     return Copy(dst_place, dst, place_src, src, num);
   }
 }
 
-// NOTE: only for (XPUPlace) -> (CPUPlace and XPUPlace).
+// NOTE: only for (XPUPlace) -> (CPUPlace, XPUPinnedPlace and XPUPlace).
 template <>
 void Copy<phi::Place, phi::XPUPlace>(phi::Place dst_place,
                                      void* dst,
@@ -248,6 +318,9 @@ void Copy<phi::Place, phi::XPUPlace>(phi::Place dst_place,
                                      size_t num) {
   if (dst_place.GetType() == phi::AllocationType::CPU) {
     platform::CPUPlace place_dst;
+    return Copy(place_dst, dst, src_place, src, num);
+  } else if (dst_place.GetType() == phi::AllocationType::XPUPINNED) {
+    platform::XPUPinnedPlace place_dst;
     return Copy(place_dst, dst, src_place, src, num);
   } else if (dst_place.GetType() == phi::AllocationType::XPU) {
     platform::XPUPlace place_dst(dst_place.GetDeviceId());

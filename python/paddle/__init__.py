@@ -137,6 +137,7 @@ from .framework import (  # noqa: F401
     CustomPlace,
     IPUPlace,
     ParamAttr,
+    XPUPinnedPlace,
     XPUPlace,
     async_save,
     clear_async_save_task_queue,

@@ -33,6 +33,7 @@ enum class AllocationType : int8_t {
   GPU = 2,
   GPUPINNED = 3,
   XPU = 4,
+  XPUPINNED = 5,
   IPU = 7,
   CUSTOM = 9,
 };
@@ -159,6 +160,15 @@ class XPUPlace : public Place {
       : Place(AllocationType::XPU, place.GetDeviceId()) {}
 };
 
+class XPUPinnedPlace : public Place {
+ public:
+  XPUPinnedPlace() : Place(AllocationType::XPUPINNED) {}
+
+  XPUPinnedPlace(const XPUPinnedPlace&) = default;
+  XPUPinnedPlace(const Place& place UNUSED)  // NOLINT
+      : Place(AllocationType::XPUPINNED) {}
+};
+
 class IPUPlace : public Place {
  public:
   IPUPlace() : Place(AllocationType::IPU, 0) {}
@@ -197,6 +207,7 @@ namespace experimental {
 using AllocationType = phi::AllocationType;
 using GPUPinnedPlace = phi::GPUPinnedPlace;
 using XPUPlace = phi::XPUPlace;
+using XPUPinnedPlace = phi::XPUPinnedPlace;
 }  // namespace experimental
 
 using AllocationType = phi::AllocationType;

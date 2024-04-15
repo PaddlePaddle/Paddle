@@ -73,7 +73,8 @@ void Copy(const Context& dev_ctx,
 #endif
 #ifdef PADDLE_WITH_XPU
   } else if (dst_place.GetType() == AllocationType::XPU) {
-    dst_ptr = dev_ctx.Alloc(dst, src.dtype());
+    dst_ptr = dev_ctx.Alloc(
+        dst, src.dtype(), 0, dst_place.GetType() == AllocationType::GPUPINNED);
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   } else if (dst_place.GetType() == AllocationType::CUSTOM) {

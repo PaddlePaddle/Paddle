@@ -106,6 +106,8 @@ inline std::unique_ptr<DeviceContext> CreateDeviceContext(
   } else if (p.GetType() == phi::AllocationType::XPU) {
 #if defined(PADDLE_WITH_XPU)
     dev_ctx->SetAllocator(instance.GetAllocator(p).get());
+    dev_ctx->SetPinnedAllocator(
+        instance.GetAllocator(phi::XPUPinnedPlace()).get());
     dev_ctx->SetGenerator(phi::DefaultXPUGenerator(p.GetDeviceId()).get());
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE

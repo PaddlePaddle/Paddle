@@ -30,6 +30,7 @@ using CPUPlace = phi::CPUPlace;
 using CUDAPlace = phi::GPUPlace;
 using CUDAPinnedPlace = phi::GPUPinnedPlace;
 using XPUPlace = phi::XPUPlace;
+using XPUPinnedPlace = phi::XPUPinnedPlace;
 using IPUPlace = phi::IPUPlace;
 using CustomPlace = phi::CustomPlace;
 
@@ -49,6 +50,7 @@ bool is_xpu_place(const Place &);
 bool is_ipu_place(const Place &);
 TEST_API bool is_cpu_place(const Place &);
 bool is_cuda_pinned_place(const Place &);
+bool is_xpu_pinned_place(const Place &);
 bool is_custom_place(const Place &p);
 bool places_are_same_class(const Place &, const Place &);
 bool is_same_place(const Place &, const Place &);
@@ -85,6 +87,16 @@ typename Visitor::result_type VisitPlace(const Place &place,
       PADDLE_THROW(paddle::platform::errors::Unavailable(
           "Paddle is not compiled with XPU. Cannot visit xpu device"));
       return typename Visitor::result_type();
+#endif
+    }
+    case phi::AllocationType::XPUPINNED: {
+#ifdef PADDLE_WITH_XPU
+      platform::XPUPinnedPlace p;
+      return visitor(p);
+#else
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Paddle is not compiled with XPU. Cannot visit xpu_pinned"));
+      return typename Visitor::result_tpye();
 #endif
     }
     case phi::AllocationType::IPU: {

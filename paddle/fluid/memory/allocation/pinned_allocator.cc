@@ -16,13 +16,19 @@
 
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
+
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#endif
 namespace paddle {
 namespace memory {
 namespace allocation {
 bool CPUPinnedAllocator::IsAllocThreadSafe() const { return true; }
 void CPUPinnedAllocator::FreeImpl(phi::Allocation *allocation) {
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_GPU_SUCCESS(hipHostFree(allocation->ptr()));
+#elif defined(PADDLE_WITH_XPU)
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_host_free(allocation->ptr()));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaFreeHost(allocation->ptr()));
 #endif
@@ -36,8 +42,10 @@ void CPUPinnedAllocator::FreeImpl(phi::Allocation *allocation) {
 }
 phi::Allocation *CPUPinnedAllocator::AllocateImpl(size_t size) {
   void *ptr;
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_GPU_SUCCESS(hipHostMalloc(&ptr, size, hipHostMallocPortable));
+#elif defined(PADDLE_WITH_XPU)
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_host_alloc(&ptr, size, 0));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaHostAlloc(&ptr, size, cudaHostAllocPortable));
 #endif

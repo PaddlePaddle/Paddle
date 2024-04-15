@@ -2080,6 +2080,8 @@ class Layer:
                     place = core.CPUPlace()
                 elif p.is_cuda_pinned_place():
                     place = core.CUDAPinnedPlace()
+                elif p.is_xpu_pinned_place():
+                    place = core.XPUPinnedPlace()
                 elif p.is_xpu_place():
                     p = core.Place()
                     p.set_place(t._place())
@@ -2303,6 +2305,7 @@ class Layer:
                     core.CUDAPlace,
                     core.CUDAPinnedPlace,
                     core.XPUPlace,
+                    core.XPUPinnedPlace,
                 ),
             ):
                 pass

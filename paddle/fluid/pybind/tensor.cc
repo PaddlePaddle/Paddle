@@ -245,6 +245,10 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              self.mutable_data<float>(place);
            })
       .def("_alloc_float",
+           [](phi::DenseTensor &self, paddle::platform::XPUPinnedPlace &place) {
+             self.mutable_data<float>(place);
+           })
+      .def("_alloc_float",
            [](phi::DenseTensor &self, paddle::platform::CPUPlace &place) {
              self.mutable_data<float>(place);
            })
@@ -273,6 +277,10 @@ void BindTensor(pybind11::module &m) {  // NOLINT
           [](phi::DenseTensor &self, paddle::platform::CUDAPinnedPlace &place) {
             self.mutable_data<int>(place);
           })
+      .def("_alloc_int",
+           [](phi::DenseTensor &self, paddle::platform::XPUPinnedPlace &place) {
+             self.mutable_data<int>(place);
+           })
       .def(
           "_alloc_float",
           [](phi::DenseTensor &self, paddle::platform::CUDAPinnedPlace &place) {
@@ -295,6 +303,13 @@ void BindTensor(pybind11::module &m) {  // NOLINT
       .def("_mutable_data",
            [](phi::DenseTensor &self,
               paddle::platform::XPUPlace &place,
+              paddle::framework::proto::VarType::Type type) {
+             return reinterpret_cast<uintptr_t>(
+                 self.mutable_data(place, framework::TransToPhiDataType(type)));
+           })
+      .def("_mutable_data",
+           [](phi::DenseTensor &self,
+              paddle::platform::XPUPinnedPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(
                  self.mutable_data(place, framework::TransToPhiDataType(type)));
@@ -330,6 +345,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("place"),
            py::arg("batch_size") = -1)
       .def("_copy_from",
+           &TensorCopyFrom<paddle::platform::XPUPinnedPlace>,
+           py::arg("tensor"),
+           py::arg("place"),
+           py::arg("batch_size") = -1)
+      .def("_copy_from",
            &TensorCopyFrom<paddle::platform::CUDAPlace>,
            py::arg("tensor"),
            py::arg("place"),
@@ -361,6 +381,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("zero_copy") = false)
       .def("set",
            SetTensorFromPyArray<paddle::platform::XPUPlace>,
+           py::arg("array"),
+           py::arg("place"),
+           py::arg("zero_copy") = false)
+      .def("set",
+           SetTensorFromPyArray<paddle::platform::XPUPinnedPlace>,
            py::arg("array"),
            py::arg("place"),
            py::arg("zero_copy") = false)
@@ -868,8 +893,10 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              auto holder = self.Holder();
              PADDLE_ENFORCE_EQ(
                  platform::is_cpu_place(holder->place()) ||
-                     platform::is_cuda_pinned_place(holder->place()),
-                 true, platform::errors::InvalidArgument(
+                 platform::is_cuda_pinned_place(holder->place()) ||
+                 platform::is_xpu_pinned_place(holder->place()),
+                 true,
+                 platform::errors::InvalidArgument(
                            "Tensor is not on CPU. share_filename only "
                            "support CPU Tensor."));
 
@@ -908,6 +935,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 #ifdef PADDLE_WITH_CUDA
                  memory::Copy(platform::CPUPlace(), shared_holder->ptr(),
                               platform::CUDAPinnedPlace(), data_ptr, data_size);
+#endif
+               } else if (platform::is_xpu_pinned_place(holder->place())) {
+#ifdef PADDLE_WITH_XPU
+                 memory::Copy(platform::CPUPlace(), shared_holder->ptr(),
+                              platform::XPUPinnedPlace(), data_ptr, data_size);
 #endif
                } else {
                  memory::Copy(platform::CPUPlace(), shared_holder->ptr(),

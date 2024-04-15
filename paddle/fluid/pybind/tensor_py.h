@@ -315,7 +315,8 @@ T TensorGetElement(const phi::DenseTensor &self, size_t offset) {
 
   T b = static_cast<T>(0);
   if (platform::is_cpu_place(self.place()) ||
-      platform::is_cuda_pinned_place(self.place())) {
+      platform::is_cuda_pinned_place(self.place()) ||
+      platform::is_xpu_pinned_place(self.place())) {
     b = self.data<T>()[offset];
   } else if (platform::is_xpu_place(self.place())) {
 #ifdef PADDLE_WITH_XPU
@@ -352,7 +353,8 @@ void TensorSetElement(phi::DenseTensor *self, size_t offset, T elem) {
                         "The offset exceeds the size of tensor."));
   VLOG(10) << "TensorSetElement, place: " << self->place()
            << ", offset: " << offset << ", element: " << elem;
-  if (platform::is_cpu_place(self->place())) {
+  if (platform::is_cpu_place(self->place()) ||
+      platform::is_xpu_pinned_place(self->place())) {
     self->mutable_data<T>(self->place())[offset] = elem;
   } else if (platform::is_xpu_place(self->place())) {
 #ifdef PADDLE_WITH_XPU
@@ -415,6 +417,15 @@ void SetTensorFromPyArrayT(
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Cannot use XPUPlace in CPU/GPU version, "
+        "Please recompile or reinstall Paddle with XPU support."));
+#endif
+  } else if (paddle::platform::is_xpu_pinned_place(place)) {
+#ifdef PADDLE_WITH_XPU
+    auto dst = self->mutable_data<T>(place);
+    std::memcpy(dst, array.data(), array.nbytes());
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Cannot use XPUPinnedPlace in CPU/GPU version, "
         "Please recompile or reinstall Paddle with XPU support."));
 #endif
   } else if (paddle::platform::is_ipu_place(place)) {
@@ -785,7 +796,8 @@ inline phi::DenseTensor *_getTensor(const phi::DenseTensor &self,
   auto place = self.place();
   if (platform::is_cpu_place(place)) {
     output->mutable_data(place, self.dtype());
-  } else if (platform::is_xpu_place(place)) {
+  } else if (platform::is_xpu_place(place) ||
+             platform::is_xpu_pinned_place(place)) {
 #ifdef PADDLE_WITH_XPU
     output->mutable_data(place, self.dtype());
 #endif

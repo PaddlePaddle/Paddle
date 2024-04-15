@@ -45,6 +45,10 @@ bool is_cuda_pinned_place(const Place &p) {
   return p.GetType() == phi::AllocationType::GPUPINNED;
 }
 
+bool is_xpu_pinned_place(const Place &p) {
+  return p.GetType() == phi::AllocationType::XPUPINNED;
+}
+
 bool is_custom_place(const Place &p) {
   return p.GetType() == phi::AllocationType::CUSTOM;
 }
