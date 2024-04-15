@@ -358,8 +358,7 @@ void BufferedReader::ReadAsync(size_t i) {
                                          1);
       for (size_t i = 0; i < cpu.size(); ++i) {
         auto cpu_place = cpu[i].place();
-        auto cpu_ptr = auto cpu_ptr =
-            pin_memory_ ? pinned_device[i].data() : cpu[i].data();
+        auto cpu_ptr = pin_memory_ ? pinned_device[i].data() : cpu[i].data();
         auto custom_device_ptr = custom_device_ptrs[i];
         auto size = cpu[i].numel() * phi::SizeOf(cpu[i].dtype());
         if ((platform::is_custom_place(cpu_place))) {
