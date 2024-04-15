@@ -20,21 +20,6 @@ class ReshardFunction:
     def reshard(self, program, op, src_tensor, dst_dist_attr):
         return "ReshardFunction eval not implemented"
 
-    def is_partial(self, dist_attr):
-        if len(dist_attr.partial_status) > 0:
-            return True
-        return False
-
-    def is_replicated(self, dist_attr):
-        dims_mapping_set = set(dist_attr.dims_mapping)
-        if (
-            len(dist_attr.partial_status) == 0
-            and len(dims_mapping_set) == 1
-            and -1 in dims_mapping_set
-        ):
-            return True
-        return False
-
 
 def choose_reshard_func(src_dist_attr, dst_dist_attr):
     global _g_reshard_func_list
@@ -52,6 +37,21 @@ def register_reshard_func(reshard_func):
 def clean_reshard_funcs():
     global _g_reshard_func_list
     _g_reshard_func_list.clear()
+
+def is_partial(self, dist_attr):
+    if len(dist_attr.partial_status) > 0:
+        return True
+    return False
+
+def is_replicated(self, dist_attr):
+    dims_mapping_set = set(dist_attr.dims_mapping)
+    if (
+        len(dist_attr.partial_status) == 0
+        and len(dims_mapping_set) == 1
+        and -1 in dims_mapping_set
+    ):
+        return True
+    return False
 
 
 _g_reshard_func_list = []

@@ -17,15 +17,16 @@ from paddle.distributed.communication.reduce import ReduceOp
 
 from ..process_group import new_process_group
 from .base_reshard_func import ReshardFunction
+from .base_reshard_func import is_partial, is_replicated
 from .same_status_reshard_func import SameStatusReshardFunction
 
 
 class PToRReshardFunction(ReshardFunction):
     def is_suitable(self, src_dist_attr, dst_dist_attr):
-        if not self.is_partial(src_dist_attr):
+        if not is_partial(src_dist_attr):
             return False
 
-        if not self.is_replicated(dst_dist_attr):
+        if not is_replicated(dst_dist_attr):
             return False
 
         in_mesh = src_dist_attr.process_mesh
@@ -67,10 +68,10 @@ class PToRReshardFunction(ReshardFunction):
 
 class PToRReshardFunctionCrossMesh(ReshardFunction):
     def is_suitable(self, src_dist_attr, dst_dist_attr):
-        if not self.is_partial(src_dist_attr):
+        if not is_partial(src_dist_attr):
             return False
 
-        if not self.is_replicated(dst_dist_attr):
+        if not is_replicated(dst_dist_attr):
             return False
 
         in_mesh = src_dist_attr.process_mesh
