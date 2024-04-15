@@ -85,7 +85,9 @@ class FcOneDNNEnablePattern : public paddle::drr::DrrPatternBase {
         {"force_fp32_output", res.BoolAttr(false)},
         {"fuse_activation", res.StrAttr("")},
         {"fuse_alpha", res.Float32Attr(0.0f)},
-        {"fuse_beta", res.Float32Attr(0.0f)}};
+        {"fuse_beta", res.Float32Attr(0.0f)},
+        {"fused_output_scale", res.Float32Attr(1.0f)},
+        {"fused_reshape2_shape", res.VectorInt32Attr({})}};
 
     const auto &fused_fc = res.Op(fused_fc_name_, fused_attrs);
 
