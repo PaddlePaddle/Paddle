@@ -13,6 +13,7 @@
 # limitations under the License.
 import unittest
 import sys
+
 sys.path.append("../")
 import numpy as np
 from pass_test import PassTest
@@ -63,6 +64,7 @@ class TestAddReluFusePass(PassTest):
     def test_check_output(self):
         self.check_pass_correct()
 
+
 class TestSubReluFusePass(PassTest):
     def is_program_valid(self, program=None):
         return True
@@ -104,6 +106,7 @@ class TestSubReluFusePass(PassTest):
     def test_check_output(self):
         self.check_pass_correct()
 
+
 class TestMulReluFusePass(PassTest):
     def is_program_valid(self, program=None):
         return True
@@ -144,7 +147,6 @@ class TestMulReluFusePass(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct()
-
 
 
 class TestAddSwishFusePass(PassTest):
@@ -309,8 +311,8 @@ class TestAddGeluFusePass(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct()
-   
- 
+
+
 class TestAddHardsigmoidFusePass(PassTest):
     def is_program_valid(self, program=None):
         return True
@@ -350,7 +352,7 @@ class TestAddHardsigmoidFusePass(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct()
-  
+
 
 class TestAddHardswishFusePass(PassTest):
     def is_program_valid(self, program=None):
@@ -390,7 +392,7 @@ class TestAddHardswishFusePass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
-        self.check_pass_correct()  
+        self.check_pass_correct()
 
 
 class TestAddLeakyReluFusePass(PassTest):
@@ -431,8 +433,8 @@ class TestAddLeakyReluFusePass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
-        self.check_pass_correct()  
-        
+        self.check_pass_correct()
+
 
 class TestAddMishFusePass(PassTest):
     def is_program_valid(self, program=None):
@@ -472,7 +474,7 @@ class TestAddMishFusePass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
-        self.check_pass_correct()  
+        self.check_pass_correct()
 
 
 class TestAddRelu6FusePass(PassTest):
@@ -514,8 +516,8 @@ class TestAddRelu6FusePass(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct()
-  
-  
+
+
 class TestAddSigmoidFusePass(PassTest):
     def is_program_valid(self, program=None):
         return True
@@ -554,7 +556,7 @@ class TestAddSigmoidFusePass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
-        self.check_pass_correct()           
+        self.check_pass_correct()
 
 
 class TestAddSqrtFusePass(PassTest):
@@ -636,7 +638,8 @@ class TestAddTanhFusePass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
-        self.check_pass_correct()        
+        self.check_pass_correct()
+
 
 if __name__ == "__main__":
     unittest.main()
