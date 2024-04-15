@@ -103,8 +103,6 @@ def _keep_fp32_input(op, in_name):
         return in_name != 'X'
     if op_type == 'fused_bn_add_activation':
         return in_name not in {'X', 'Z'}
-    if op_type == 'resnet_unit':
-        return in_name not in {'X', 'FilterX', 'Z', 'FilterZ'}
     if op_type in ['fused_attention', 'fused_feedforward']:
         return in_name in {
             'LnScale',
@@ -132,8 +130,6 @@ def _keep_fp32_output(op, out_name):
         return out_name != 'Y'
     if op_type == 'layer_norm' and _keep_layer_norm_scale_bias_to_fp32():
         return out_name != 'Y'
-    if op_type == 'resnet_unit':
-        return out_name not in {'Y', 'ConvX', 'ConvZ'}
     if op_type in ['fused_attention', 'fused_feedforward']:
         return out_name in {
             'LnMean',

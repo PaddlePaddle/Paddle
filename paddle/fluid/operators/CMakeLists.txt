@@ -19,7 +19,6 @@ add_subdirectory(controlflow)
 add_subdirectory(detection)
 add_subdirectory(elementwise)
 add_subdirectory(fused)
-add_subdirectory(metrics)
 add_subdirectory(optimizers)
 add_subdirectory(reduce_ops)
 add_subdirectory(sequence_ops)
@@ -47,10 +46,6 @@ endif()
 
 if (WITH_DLNNE)
     add_subdirectory(dlnne)
-endif()
-
-if (WITH_LITE)
-    add_subdirectory(lite)
 endif()
 
 if(WITH_CINN)

@@ -191,8 +191,6 @@ endif()
 
 if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_fused_conv2d_add_act_op)
-  list(REMOVE_ITEM TEST_OPS test_rank_attention_op)
-  # TODO(shenliang03): rank_attention_op support CPU device in future
   list(REMOVE_ITEM TEST_OPS test_batch_fc_op)
   # TODO(shenliang03): batch_fc_op support CPU device in future
   # TODO(Yancey1989): parallel dygraph support CPU device in future
@@ -251,7 +249,6 @@ if(APPLE)
   )
   # this op is not support on mac
   list(REMOVE_ITEM TEST_OPS test_fusion_seqexpand_concat_fc_op)
-  list(REMOVE_ITEM TEST_OPS test_detection_map_op)
   list(REMOVE_ITEM TEST_OPS test_fuse_elewise_add_act_pass)
 endif()
 if(NOT WITH_MKLML)
@@ -525,7 +522,6 @@ set(TEST_OPS_WITH_GC
     test_fill_zeros_like2_op
     test_gather_op
     test_gather_nd_op
-    test_linear_chain_crf_op
     test_lod_reset_op
     test_lookup_table_op
     test_mean_op
@@ -1186,9 +1182,6 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
   set_tests_properties(test_paddle_multiprocessing PROPERTIES TIMEOUT 120)
   set_tests_properties(test_pipeline_parallel PROPERTIES TIMEOUT 120)
   set_tests_properties(test_fleet_perf_test PROPERTIES TIMEOUT 120)
-endif()
-if(WITH_GPU OR WITH_ROCM)
-  set_tests_properties(test_rank_attention_op PROPERTIES TIMEOUT 120)
 endif()
 if(WITH_GPU AND NOT WIN32)
   set_tests_properties(test_fused_multi_transformer_int8_op PROPERTIES TIMEOUT

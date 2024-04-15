@@ -30,7 +30,6 @@ from paddle.incubate.layers.nn import (
     batch_fc,
     partial_concat,
     partial_sum,
-    rank_attention,
     shuffle_batch,
 )
 from paddle.pir_utils import test_with_pir_api
@@ -2265,27 +2264,6 @@ class TestBook(LayerTest):
                 act="relu",
             )
         return out
-
-    def test_rank_attention(self):
-        with self.static_graph():
-            input = paddle.static.data(
-                name="input", shape=[None, 2], dtype="float32"
-            )
-            rank_offset = paddle.static.data(
-                name="rank_offset", shape=[None, 7], dtype="int32"
-            )
-            out = rank_attention(
-                input=input,
-                rank_offset=rank_offset,
-                rank_param_shape=[18, 3],
-                rank_param_attr=base.ParamAttr(
-                    learning_rate=1.0,
-                    name="ubm_rank_param.w_0",
-                    initializer=paddle.nn.initializer.XavierNormal(),
-                ),
-                max_rank=3,
-            )
-            return out
 
     def test_row_conv(self):
         # TODO(minqiyang): dygraph do not support lod now

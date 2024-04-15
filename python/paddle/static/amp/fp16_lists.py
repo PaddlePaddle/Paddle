@@ -127,7 +127,7 @@ def _get_unsupported_list(dtype):
 # The set of ops that support fp16 calculation and are considered numerically-
 # safe and performance-critical. These ops are always converted to fp16.
 
-_only_supported_fp16_list = {'resnet_unit', 'fused_bn_add_activation'}
+_only_supported_fp16_list = {'fused_bn_add_activation'}
 
 
 def _get_white_list(dtype):

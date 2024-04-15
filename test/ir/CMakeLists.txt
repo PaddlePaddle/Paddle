@@ -18,7 +18,6 @@ else()
     set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
   endforeach()
   add_subdirectory(pir)
-  set_tests_properties(test_fuse_resnet_unit PROPERTIES TIMEOUT 120)
   set_tests_properties(test_convert_to_mixed_precision PROPERTIES TIMEOUT 300)
 endif()
 
