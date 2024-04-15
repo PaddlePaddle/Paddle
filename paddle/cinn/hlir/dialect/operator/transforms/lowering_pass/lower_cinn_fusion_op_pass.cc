@@ -35,6 +35,9 @@ pir::Operation* ProcessDyShapeGroup(
     const OpLoweringGroupPtr& group,
     pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
     pir::PatternRewriter& rewriter) {                // NOLINT
+  // NOTE(dev): Need UpdateShapeOrDataExprs firstly and the logic
+  // will be migated into BucketLower later.
+  UpdateGroupShapeOrDataExprs(const_cast<OpLoweringGroupPtr&>(group));
   auto group_inputs = GetBlockOutsideInput(group->ops());
   group->set_value_to_shape_or_data_exprs(
       CreateGroupShapeOrDataExprs(group, shape_analysis));

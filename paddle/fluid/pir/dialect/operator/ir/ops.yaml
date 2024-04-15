@@ -1,7 +1,7 @@
 # The operators included in this file are:
 # 1) Operators defined only in PIR, dynamic graphs do not exist;
 # 2) The definitions of static graphs and dynamic graphs are inconsistent, but the final definition plan has not yet been clarified.
-# After the definition is clearly defined, migrate to paddle /fluid/pir/dialect/operator/ir/update_ops.yaml or paddle/phi/api/yaml/ops.yaml
+# After the definition is clearly defined, migrate to paddle/fluid/pir/dialect/operator/ir/update_ops.yaml or paddle/phi/api/yaml/ops.yaml
 
 - op : adadelta_
   args : (Tensor param, Tensor grad, Tensor avg_squared_grad, Tensor avg_squared_update, Tensor learning_rate, Tensor master_param, float rho, float epsilon, bool multi_precision)
@@ -479,6 +479,14 @@
   optional : in_accum, in_state, out_scale, out_accum, out_state
   inplace : (scale -> out_scale, in_accum -> out_accum, in_state -> out_state)
 
+- op : dgc
+  args : (Tensor u, Tensor v, Tensor grad, Tensor param, Tensor current_step, Tensor nranks, float[] sparsity, float m=0.9, bool use_nesterov=true, float rampup_begin_step=0.0, float rampup_step=0.0, float regular_coeff=0.0, int regular_type=0)
+  output : Tensor(u_out), Tensor(v_out), Tensor(encode_grad), Tensor(grad_out), Tensor(k), Tensor(gather_buff)
+  kernel :
+    func : dgc
+    param : [u, v, grad, param, current_step, nranks, m, use_nesterov, sparsity, rampup_begin_step, rampup_step, regular_coeff, regular_type]
+  optional: param
+
 - op : dgc_momentum
   args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, Tensor current_step_tensor, Tensor nranks_tensor, float mu, bool use_nesterov=false, str regularization_method="", float regularization_coeff=0.0f, bool multi_precision=false, float rescale_grad=1.0f, float rampup_begin_step=-1.0f)
   output : Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out), Tensor(grad_out)
@@ -690,6 +698,7 @@
   args : (str name, int col)
   output : Tensor(out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits: pir::ImmutableLayoutTrait
 
 - op : fetch
   args : (Tensor x, str name, int col)
@@ -700,7 +709,7 @@
   kernel :
     func : fetch
     param : [x]
-  traits : pir::SideEffectTrait
+  traits : pir::SideEffectTrait, pir::ImmutableLayoutTrait
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : floor_divide
@@ -777,7 +786,7 @@
     skip_transform : x
 
 - op : full_with_tensor
-  args : (Tensor shape, Tensor value, DataType dtype=DataType::FLOAT32)
+  args : (Tensor value, IntArray shape, DataType dtype=DataType::FLOAT32)
   output: Tensor(out)
   infer_meta :
     func : FullWithTensorInferMeta

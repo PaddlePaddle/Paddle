@@ -712,6 +712,7 @@ class Engine:
         # TODO(zhiqiu): fit the processes below for pir
         if self._in_pir_mode:
             self._parallel_pir(mode)
+            self._has_prepared[mode] = True
             return
         # Do the planning process
         self._plan(mode)

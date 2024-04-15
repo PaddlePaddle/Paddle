@@ -25,34 +25,47 @@ class IR_API ConstraintsManager {
  public:
   void AddEqCstr(const DimExpr& lhs, const DimExpr& rhs);
 
-  void AddBroadcastableCstr(const DimExpr& lhs, const DimExpr& rhs);
+  bool IsEqual(const DimExpr& lhs, const DimExpr& rhs) const;
 
   void AddGTOneCstr(const DimExpr& dim_expr);
 
-  bool IsDimExprGTOne(const DimExpr& dim_expr);
+  bool IsGTOne(const DimExpr& dim_expr) const;
 
-  bool IsDimExprEqual(const DimExpr& lhs, const DimExpr& rhs);
+  void AddBroadcastableCstr(const DimExpr& lhs, const DimExpr& rhs);
 
-  void PrintDimExprClusters(std::stringstream& ss);
+  bool IsBroadcastable(const DimExpr& lhs, const DimExpr& rhs) const;
+
+  template <typename DoEachClusterT>
+  void VisitEqualClusters(const DoEachClusterT& DoEachCluster) const;
 
   using EqualCallbackFunc = std::function<void(const DimExpr&, const DimExpr&)>;
   void SetEqualCallbackFunc(EqualCallbackFunc equal_callback_func);
 
  private:
-  void SubstituteDimExprInConstraint(const DimExpr& lhs, const DimExpr& rhs);
-  std::optional<std::pair<DimExpr, DimExpr>> SimpliyEqualCstr(
-      const DimExpr& lhs, const DimExpr& rhs);
+  void SubstituteInConstraint(const DimExpr& lhs, const DimExpr& rhs);
+
+  template <typename DoEachT>
+  void EqualConstraintsVisitor(const DoEachT& DoEach);
+
+  template <typename DoEachT>
+  void GTOneConstraintsVisitor(const DoEachT& DoEach);
+
+  template <typename DoEachT>
+  void BroadcastableConstraintsVisitor(const DoEachT& DoEach);
 
  private:
   EqualCallbackFunc equal_callback_func_ = nullptr;
 
   using EqualConstraints = common::UnionFindSet<DimExpr>;
-  using BroadcastableConstraints = std::vector<Broadcastable<DimExpr>>;
   using GTOneConstraints = std::unordered_set<DimExpr>;
+  using BroadcastableConstraints = std::vector<Broadcastable<DimExpr>>;
 
   EqualConstraints equals_;
-  BroadcastableConstraints broadcastables_;
   GTOneConstraints gtones_;
+  BroadcastableConstraints broadcastables_;
 };
+
+std::ostream& operator<<(std::ostream& os,
+                         const ConstraintsManager& constraints_manager);
 
 }  // namespace symbol

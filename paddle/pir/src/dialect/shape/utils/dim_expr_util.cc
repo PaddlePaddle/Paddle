@@ -589,12 +589,12 @@ ConstRational MulConstRational(const ConstRational& lhs,
   const auto [lhs_num, lhs_dem] = lhs;
   const auto [rhs_num, rhs_dem] = rhs;
   // Crossing is correct.
-  const auto [simplifed_lhs_num, simplifed_rhs_dem] =
+  const auto [simplified_lhs_num, simplified_rhs_dem] =
       SimplifiedConstRational(lhs_num, rhs_dem);
-  const auto [simplifed_rhs_num, simplifed_lhs_dem] =
+  const auto [simplified_rhs_num, simplified_lhs_dem] =
       SimplifiedConstRational(rhs_num, lhs_dem);
-  return ConstRational{simplifed_lhs_num * simplifed_rhs_num,
-                       simplifed_lhs_dem * simplifed_rhs_dem};
+  return ConstRational{simplified_lhs_num * simplified_rhs_num,
+                       simplified_lhs_dem * simplified_rhs_dem};
 }
 
 template <>
@@ -1104,34 +1104,34 @@ IR_API int GetDimExprPriority(const DimExpr& dim_expr) {
                     dim_expr.variant());
 }
 
-/**
- * @brief Compare the two dim exprs priority
- *
- * @param lhs The left-hand side dim expr
- * @param rhs The right-hand side dim expr
- *
- * @return -1 if lhs is less than rhs, 1 if lhs is greater than rhs, and 0 if
- * they are equal
- */
-int CompareDimExprPriority(const DimExpr& lhs, const DimExpr& rhs) {
+IR_API PriorityComparisonStatus CompareDimExprPriority(const DimExpr& lhs,
+                                                       const DimExpr& rhs) {
   int lhs_priority = GetDimExprPriority(lhs);
   int rhs_priority = GetDimExprPriority(rhs);
 
   if (lhs_priority != rhs_priority) {
-    return lhs_priority < rhs_priority ? -1 : 1;
+    return lhs_priority < rhs_priority ? PriorityComparisonStatus::HIGHER
+                                       : PriorityComparisonStatus::LOWER;
   }
-  // if the priority is same, we compare the string value to find the smallest
-  // one
-  if (lhs.isa<std::string>()) {
-    const auto& lhs_str = lhs.dyn_cast<std::string>();
-    const auto& rhs_str = rhs.dyn_cast<std::string>();
-    if (lhs_str.size() != rhs_str.size()) {
-      return lhs_str.size() < rhs_str.size() ? -1 : 1;
-    }
-    return lhs_str.compare(rhs_str);
-  }
-  // for the other tpye dim expr, we consider them to be equal
-  return 0;
+
+  auto CompareForEqualPriority = Overloaded{
+      [](const std::string& lhs, const std::string& rhs) {
+        if (lhs.size() != rhs.size()) {
+          return lhs.size() < rhs.size() ? PriorityComparisonStatus::HIGHER
+                                         : PriorityComparisonStatus::LOWER;
+        }
+        int compare_result = lhs.compare(rhs);
+        if (compare_result == 0)
+          return PriorityComparisonStatus::EQUAL;
+        else if (compare_result < 0)
+          return PriorityComparisonStatus::HIGHER;
+        else
+          return PriorityComparisonStatus::LOWER;
+      },
+      [](const auto& lhs, const auto& rhs) {
+        return PriorityComparisonStatus::EQUAL;
+      }};
+  return std::visit(CompareForEqualPriority, lhs.variant(), rhs.variant());
 }
 
 }  // namespace symbol

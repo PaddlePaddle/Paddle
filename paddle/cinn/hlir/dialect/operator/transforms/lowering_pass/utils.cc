@@ -17,6 +17,7 @@
 #include "paddle/cinn/adt/generate_map_expr.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/collect_sym_expr.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/pir/compilation_cache.h"
@@ -77,7 +78,8 @@ CompileGroupAsOpAttribute(const std::vector<OpLoweringGroupPtr>& group_list) {
 
 std::unordered_map<std::string, ::pir::Attribute> GetJitKernelAttr(
     const OpLoweringGroupPtr& group) {
-  auto kernel_info = CompilationCache::Instance().GetKernelInfo(group);
+  hlir::framework::pir::FusionInfo fusion_info(*group);
+  auto kernel_info = CompilationCache::Instance().GetKernelInfo(fusion_info);
   std::unordered_map<std::string, ::pir::Attribute> attrs{
       {cinn::dialect::JitKernelOp::kAttrName,
        cinn::dialect::CINNKernelInfoAttribute::get(pir::IrContext::Instance(),
@@ -87,33 +89,36 @@ std::unordered_map<std::string, ::pir::Attribute> GetJitKernelAttr(
 
 OpLoweringGroupPtr BuildOpLoweringGroup(pir::Operation* fusion_op_ptr) {
   auto fusion_op = fusion_op_ptr->dyn_cast<cinn::dialect::FusionOp>();
-  auto group = std::make_shared<OpLoweringGroup>();
-  group->set_op_pattern_kind(
-      cinn::hlir::framework::OpPatternKind::kElementWise);
+  std::vector<::pir::Operation*> ops;
+  auto group_op_kind = cinn::hlir::framework::OpPatternKind::kElementWise;
+  // Rebuild ops of the group
+  for (auto op : fusion_op.GetOperators()) {
+    if (!op->isa<::pir::YieldOp>()) {
+      ops.push_back(op);
+      group_op_kind = static_cast<int>(CompatibleInfo::OpKind(*op)) >
+                              static_cast<int>(group_op_kind)
+                          ? CompatibleInfo::OpKind(*op)
+                          : group_op_kind;
+    }
+  }
+
+  auto group = std::make_shared<OpLoweringGroup>(ops);
+
   if (fusion_op.attributes().count("group_info")) {
     auto attr = fusion_op.attribute("group_info")
                     .dyn_cast<cinn::dialect::GroupInfoAttribute>()
                     .data();
 
-    group->set_op_pattern_kind(attr.op_pattern_kind);
+    group_op_kind =
+        static_cast<int>(attr.op_pattern_kind) > static_cast<int>(group_op_kind)
+            ? attr.op_pattern_kind
+            : group_op_kind;
     group->set_loop_ranges(attr.loop_ranges);
     group->set_loop_ranges_expr(attr.loop_ranges_expr);
-
     group->set_reduce_axis(attr.reduce_axis);
     group->set_alignment_schedule_info(attr.alignment_schedule_info);
   }
-
-  // Rebuild ops of the group
-  for (auto op : fusion_op.GetOperators()) {
-    if (!op->isa<::pir::YieldOp>()) {
-      group->mut_ops().push_back(op);
-      auto op_pattern_kind = static_cast<int>(CompatibleInfo::OpKind(*op)) >
-                                     static_cast<int>(group->op_pattern_kind())
-                                 ? CompatibleInfo::OpKind(*op)
-                                 : group->op_pattern_kind();
-      group->set_op_pattern_kind(op_pattern_kind);
-    }
-  }
+  group->set_op_pattern_kind(group_op_kind);
 
   // Rebuild output_ops and input_ops of the group
   auto yield_op = fusion_op.GetOperators().back();
@@ -123,12 +128,23 @@ OpLoweringGroupPtr BuildOpLoweringGroup(pir::Operation* fusion_op_ptr) {
     group->mut_output_ops().insert(in.defining_op());
   }
 
+  // Because the group is rebuilt, the order of group.output_values generated
+  // by BuildCUDAJITInfo may not be same with the order bound in the yield op,
+  // so a mapping is required.
+  UpdateGroupShapeOrDataExprs(group);
   if (FLAGS_cinn_enable_map_expr) {
     cinn::adt::TryGenerateMapExprFromGroup(group);
   }
   // Rebuild other informations
   // TODO(zhangyuqin1998): Do we need group.master_ops?
   return group;
+}
+
+void UpdateGroupShapeOrDataExprs(OpLoweringGroupPtr group) {
+  auto& shape_analysis =
+      pir::ShapeAnalysisManager::Instance().Get(group->GetParentProgram());
+  group->set_value_to_shape_or_data_exprs(
+      CreateGroupShapeOrDataExprs(group, shape_analysis));
 }
 
 }  // namespace cinn::dialect::ir::details

@@ -154,7 +154,15 @@ struct StaticDimToDynamicConverter {
       const auto& origin_shape = GetOriginValueShape(value);
       const auto& target_shape = GetTargetValueShape(
           shape_analysis->GetShapeOrDataForValue(value).shape());
-      CHECK_EQ(origin_shape.size(), target_shape.size());
+      PADDLE_ENFORCE_EQ(
+          origin_shape.size(),
+          target_shape.size(),
+          phi::errors::InvalidArgument(
+              "The size of origin shape and target shape is not equal,"
+              "where the size of origin shape:%d but the size of target "
+              "shape:%d.",
+              origin_shape.size(),
+              target_shape.size()));
       const auto& origin_type = value.type().dyn_cast<::pir::DenseTensorType>();
       pir::DenseTensorType target_type =
           pir::DenseTensorType::get(pir::IrContext::Instance(),
