@@ -296,7 +296,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_logspace',
     'test_load_op',
     'test_load_vars_shape_check',
-    'test_locality_aware_nms_op',
     'test_lod_array_length_op',
     'test_lod_tensor_array_ops',
     'test_log_loss_op',
