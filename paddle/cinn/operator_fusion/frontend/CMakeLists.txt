@@ -1,1 +1,1 @@
-gather_srcs(frontend_fusion_src SRCS pattern_api.cc)
+gather_srcs(frontend_fusion_src SRCS pattern_fuser.cc)

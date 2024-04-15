@@ -15,7 +15,7 @@
 #include "paddle/cinn/hlir/framework/pir/trivial_op_impl.h"
 #include <variant>
 #include "paddle/cinn/operator_fusion/backend/pattern.h"
-#include "paddle/cinn/operator_fusion/backend/pattern_api.h"
+#include "paddle/cinn/operator_fusion/backend/pattern_fuser.h"
 #include "paddle/cinn/operator_fusion/group_cluster.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"

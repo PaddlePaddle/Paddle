@@ -16,7 +16,7 @@
 #include "paddle/cinn/hlir/framework/pir/trivial_op_impl.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/operator_fusion/pattern.h"
-#include "paddle/cinn/operator_fusion/pattern_api.h"
+#include "paddle/cinn/operator_fusion/pattern_fuser.h"
 #include "paddle/cinn/operator_fusion/utils.h"
 
 namespace cinn::fusion {
