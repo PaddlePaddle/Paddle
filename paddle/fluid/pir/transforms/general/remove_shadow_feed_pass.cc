@@ -74,7 +74,7 @@ class RemoveShadowFeedPattern
     }
   }
 
-  bool IsSamePlaceShadowFeed(const paddle::dialect::PhiKernelOp op) const {
+  bool IsSamePlaceShadowFeed(const paddle::dialect::PhiKernelOp &op) const {
     if (op.op_name() == "pd_op.shadow_feed") {
       auto in = op.operand_source(0);
       if (!kwargs_map_.count(in)) {
@@ -100,7 +100,7 @@ class RemoveShadowFeedPattern
     return false;
   }
 
-  bool IsTensorAttrShadowFeed(const paddle::dialect::PhiKernelOp op) const {
+  bool IsTensorAttrShadowFeed(const paddle::dialect::PhiKernelOp &op) const {
     if (op.op_name() == "pd_op.shadow_feed") {
       auto in = op.operand_source(0);
       if (!kwargs_map_.count(in)) {
