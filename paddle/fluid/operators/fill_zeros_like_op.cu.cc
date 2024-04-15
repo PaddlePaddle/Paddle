@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
@@ -29,7 +29,7 @@ PD_REGISTER_STRUCT_KERNEL(fill_zeros_like,
                           int64_t,
                           float,
                           double,
-                          plat::float16,
+                          phi::dtype::float16,
                           bool,
                           plat::complex<float>,
                           plat::complex<double>) {}
@@ -42,7 +42,7 @@ PD_REGISTER_STRUCT_KERNEL(fill_zeros_like2,
                           int64_t,
                           float,
                           double,
-                          plat::float16,
+                          phi::dtype::float16,
                           bool,
                           plat::complex<float>,
                           plat::complex<double>) {}
