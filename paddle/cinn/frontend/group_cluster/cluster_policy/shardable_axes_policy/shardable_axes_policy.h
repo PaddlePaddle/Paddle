@@ -21,8 +21,8 @@ namespace cinn::frontend::group_cluster::policy {
 class ShardableAxesRRFusePolicy final : public Policy {
  public:
   ShardableAxesRRFusePolicy(
-      const std::vector<pir::Operation*>& ops,               // NOLINT
-      const pir::ShapeConstraintIRAnalysis* shape_analysis)  // NOLINT
+      const std::vector<pir::Operation*>& ops,         // NOLINT
+      pir::ShapeConstraintIRAnalysis* shape_analysis)  // NOLINT
       : axes_info_(ops, shape_analysis) {}
   bool CanFuse(const PatternNodePtr& upstream,
                const PatternNodePtr& downstream) override;

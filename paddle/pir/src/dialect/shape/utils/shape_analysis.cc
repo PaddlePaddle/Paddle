@@ -14,6 +14,7 @@
 
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 #include <string>
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_symbolic_shape.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 namespace pir {
@@ -39,16 +40,30 @@ bool ShapeConstraintIRAnalysis::HasShapeOrDataForValue(Value val) const {
   return value_to_shape_or_data_.count(val) > 0;
 }
 
+void ShapeConstraintIRAnalysis::GetAndSetShapeOrDataForValueFromDefiningOp(
+    Value val) {
+  auto infer_symbolic_shape_interface =
+      val.defining_op()
+          ->dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
+  if (infer_symbolic_shape_interface) {
+    infer_symbolic_shape_interface.InferSymbolicShape(this);
+    if (!HasShapeOrDataForValue(val)) {
+      PADDLE_THROW(
+          phi::errors::Fatal(val.defining_op()->name() +
+                             " HAS ERROR on InferSymbolicShape backtrack!"));
+    }
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        val.defining_op()->name() +
+        " DOES NOT have InferSymbolicShapeInterface!"));
+  }
+}
+
 const symbol::ShapeOrDataDimExprs&
-ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) const {
-  // TODO(zhangbopd): Uncomment this part and remove `if` later.
-  // PADDLE_ENFORCE_EQ(this->HasShapeOrDataForValue(val), true,
-  // phi::errors::InvalidArgument(//            "No shape_or_data for this
-  // value."));
+ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) {
   if (!HasShapeOrDataForValue(val)) {
-    static symbol::ShapeOrDataDimExprs empty{
-        symbol::TensorShapeOrDataDimExprs{}};
-    return empty;
+    // backtrack to infer shape from defining op
+    GetAndSetShapeOrDataForValueFromDefiningOp(val);
   }
 
   return value_to_shape_or_data_.at(val);
@@ -82,7 +97,7 @@ void ShapeConstraintIRAnalysis::PrintShapeOrDatas() const {
 
 // Currently, we only support TensorShapeOrDataDimExprs but not
 // TensorListShapeOrDataDimExprs to compare the shape.
-bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) const {
+bool ShapeConstraintIRAnalysis::IsShapeEqual(Value lhs, Value rhs) {
   if (lhs == rhs) return true;
 
   if (!HasShapeOrDataForValue(lhs) || !HasShapeOrDataForValue(rhs)) {
@@ -116,7 +131,7 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(
     Value lhs,
     const std::vector<int>& lhs_dim_idxs,
     Value rhs,
-    const std::vector<int>& rhs_dim_idxs) const {
+    const std::vector<int>& rhs_dim_idxs) {
   if (lhs == rhs) return true;
 
   auto lhs_type = lhs.type().dyn_cast<ShapedTypeInterface>();
@@ -163,12 +178,8 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(
          symbol::SimplifyDimExpr(rhs_product);
 }
 
-bool ShapeConstraintIRAnalysis::IsProductEqual(Value lhs,
-                                               int lhs_from,
-                                               int lhs_to,
-                                               Value rhs,
-                                               int rhs_from,
-                                               int rhs_to) const {
+bool ShapeConstraintIRAnalysis::IsProductEqual(
+    Value lhs, int lhs_from, int lhs_to, Value rhs, int rhs_from, int rhs_to) {
   std::vector<int> lhs_dim_idxs, rhs_dim_idxs;
 
   lhs_dim_idxs.reserve(lhs_to - lhs_from);
@@ -180,7 +191,7 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(Value lhs,
   return IsProductEqual(lhs, lhs_dim_idxs, rhs, rhs_dim_idxs);
 }
 
-bool ShapeConstraintIRAnalysis::IsSameNumel(Value lhs, Value rhs) const {
+bool ShapeConstraintIRAnalysis::IsSameNumel(Value lhs, Value rhs) {
   if (lhs == rhs) return true;
 
   auto lhs_type = lhs.type().dyn_cast<ShapedTypeInterface>();
@@ -208,7 +219,7 @@ bool ShapeConstraintIRAnalysis::IsSameNumel(Value lhs, Value rhs) const {
 }
 
 symbol::DimExpr ShapeConstraintIRAnalysis::GetProductDimExpr(
-    Value value, const std::vector<int>& dim_idxs) const {
+    Value value, const std::vector<int>& dim_idxs) {
   // For static shape
   auto value_type = value.type().dyn_cast<ShapedTypeInterface>();
   if (value_type.IsStaticShape()) {
@@ -228,7 +239,7 @@ symbol::DimExpr ShapeConstraintIRAnalysis::GetProductDimExpr(
   return symbol::SimplifyDimExpr(product);
 }
 
-pir::PrintHooks ShapeConstraintIRAnalysis::PrintHook() const {
+pir::PrintHooks ShapeConstraintIRAnalysis::PrintHook() {
   pir::PrintHooks print_hook;
   print_hook.op_print_hook = [&](Operation* op, IrPrinter& printer) {
     printer.IrPrinter::PrintOperation(op);

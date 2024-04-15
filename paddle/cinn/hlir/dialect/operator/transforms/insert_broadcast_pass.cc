@@ -43,11 +43,6 @@ pir::Value GetOutputDimTensor(pir::PatternRewriter* rewriter,
   pir::Operation* shape_broadcast_op =
       rewriter->Build<paddle::dialect::ShapeBroadcastOp>(x_shape_op->result(0),
                                                          y_shape_op->result(0));
-  for (auto* op : std::vector{x_shape_op, y_shape_op, shape_broadcast_op}) {
-    auto infer_symbolic_shape_interface =
-        op->dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
-    infer_symbolic_shape_interface.InferSymbolicShape(shape_analysis);
-  }
   return shape_broadcast_op->result(0);
 }
 

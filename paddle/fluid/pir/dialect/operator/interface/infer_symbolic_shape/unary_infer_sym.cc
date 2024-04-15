@@ -430,6 +430,10 @@ bool ReshapeOpInferSymbolicShape(
           op->result(0),
           symbol::TensorShapeOrDataDimExprs(shape_data,
                                             x_dim_expr.data().value()));
+      shape_analysis->SetShapeOrDataForValue(
+          op->result(1),
+          CreateShapeOrDataForXShape(
+              shape_analysis->GetShapeOrDataForValue(op->operand_source(0))));
       return true;
     }
   }

@@ -46,8 +46,7 @@ inline std::vector<group_cluster::PatternNodePtr> ClusterOps(
 
   pir::Program* program = ops.at(0)->GetParentProgram();
 
-  const auto* shape_analysis =
-      &pir::ShapeAnalysisManager::Instance().Get(program);
+  auto* shape_analysis = &pir::ShapeAnalysisManager::Instance().Get(program);
 
   // const auto& shardable_axes_policy =
   // std::make_shared<group_cluster::policy::RelativeJudgePolicy>(

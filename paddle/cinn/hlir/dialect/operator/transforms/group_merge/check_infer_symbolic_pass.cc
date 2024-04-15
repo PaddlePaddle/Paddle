@@ -88,13 +88,13 @@ std::vector<std::int64_t> GetShapeFromTensor(
 }
 
 std::vector<std::vector<std::int64_t>> GetDynamicValueShape(
-    pir::Value value, const pir::ShapeConstraintIRAnalysis& shape_analysis) {
+    pir::Value value, pir::ShapeConstraintIRAnalysis* shape_analysis) {
   std::vector<std::vector<std::int64_t>> dynamic_shapes;
-  if (!shape_analysis.HasShapeOrDataForValue(value)) {
+  if (!shape_analysis->HasShapeOrDataForValue(value)) {
     return dynamic_shapes;
   }
   symbol::ShapeOrDataDimExprs shape_or_data =
-      shape_analysis.GetShapeOrDataForValue(value);
+      shape_analysis->GetShapeOrDataForValue(value);
   auto lambdas = symbol::Overloaded{
       [&](const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data) {
         dynamic_shapes.push_back(GetShapeFromTensor(tensor_shape_or_data));
@@ -110,7 +110,7 @@ std::vector<std::vector<std::int64_t>> GetDynamicValueShape(
 
 void CompareStaticAndDynamicValueShape(
     pir::Value value,
-    const pir::ShapeConstraintIRAnalysis& shape_analysis,
+    pir::ShapeConstraintIRAnalysis* shape_analysis,
     int op_index,
     pir::ModuleOp module_op) {
   std::vector<std::vector<std::int64_t>> static_value_shape =
@@ -130,18 +130,18 @@ void CompareStaticAndDynamicValueShape(
 void CheckInferSymbolic(pir::ModuleOp module_op) {
   VLOG(4) << "CheckInferSymbolic start";
   int op_index = 0;
-  const auto& shape_analysis =
+  auto& shape_analysis =
       pir::ShapeAnalysisManager::Instance().Get(module_op.program());
   for (uint32_t i = 0; i < module_op->num_regions(); i++) {
     for (const auto& block : module_op->region(i)) {
       for (const auto& op : block) {
         for (std::size_t j = 0; j < op.num_operands(); ++j) {
           CompareStaticAndDynamicValueShape(
-              op.operand_source(j), shape_analysis, op_index, module_op);
+              op.operand_source(j), &shape_analysis, op_index, module_op);
         }
         for (std::size_t j = 0; j < op.num_results(); ++j) {
           CompareStaticAndDynamicValueShape(
-              op.result(j), shape_analysis, op_index, module_op);
+              op.result(j), &shape_analysis, op_index, module_op);
         }
         op_index++;
       }
