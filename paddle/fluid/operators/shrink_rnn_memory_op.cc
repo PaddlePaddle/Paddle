@@ -40,15 +40,15 @@ class ShrinkRNNMemoryOp : public ArrayOp {
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
     auto *x_var = scope.FindVar(Input("X"));
-    PADDLE_ENFORCE_NOT_NULL(x_var,
-                            platform::errors::NotFound(
-                                "Input(X) of ShrinkRNNMemoryOp is not found."));
+    PADDLE_ENFORCE_NOT_NULL(
+        x_var,
+        phi::errors::NotFound("Input(X) of ShrinkRNNMemoryOp is not found."));
     auto &x_tensor = x_var->Get<phi::DenseTensor>();
     size_t offset = this->GetOffset(scope, place);
     auto *rank_table_var = scope.FindVar(Input("RankTable"));
     PADDLE_ENFORCE_NOT_NULL(
         rank_table_var,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "Input(RankTable) of ShrinkRNNMemoryOp is not found."));
     auto &rank_table = rank_table_var->Get<framework::LoDRankTable>();
 
@@ -64,7 +64,7 @@ class ShrinkRNNMemoryOp : public ArrayOp {
     auto *out_var = scope.FindVar(Output("Out"));
     PADDLE_ENFORCE_NOT_NULL(
         out_var,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "Output(Out) of ShrinkRNNMemoryOp is not found."));
     auto &out_tensor = *out_var->GetMutable<phi::DenseTensor>();
 
@@ -148,12 +148,12 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
     auto *dx_var = scope.FindVar(Output(framework::GradVarName("X")));
     PADDLE_ENFORCE_NOT_NULL(
         dx_var,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "Input(X@GRAD) of ShrinkRNNMemoryGradOp is not found."));
     auto *x_var = scope.FindVar(Input("X"));
     PADDLE_ENFORCE_NOT_NULL(
         x_var,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "Input(x) of ShrinkRNNMemoryGradOp is not found."));
     auto &x_tensor = x_var->Get<phi::DenseTensor>();
     auto &dx_tensor = *dx_var->GetMutable<phi::DenseTensor>();

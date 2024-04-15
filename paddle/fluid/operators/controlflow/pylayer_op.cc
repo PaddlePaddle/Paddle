@@ -95,7 +95,7 @@ class PyLayerForwardOp : public PyLayerOp {
     auto *scope_var = scope.FindVar(Output(kScope));
     PADDLE_ENFORCE_NOT_NULL(
         scope_var,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "Expect Scope variable to be set in pylayer_op, but "
             "got a null Scope variable. Please set the Scope variable."));
 
@@ -109,7 +109,7 @@ class PyLayerForwardOp : public PyLayerOp {
     PADDLE_ENFORCE_GT(
         blocks.size(),
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Expect blocks contains at least 1 block, but got: %d",
             blocks.size()));
 
@@ -123,7 +123,7 @@ class PyLayerForwardOp : public PyLayerOp {
     LOG_FIRST_N(INFO, 1) << "[ControlFlow][PyLayer] New Executor is Running.";
 
     CreateInterpreter(dev_place, *forward_block, &cur_scope, skip_vars);
-    PADDLE_ENFORCE_NOT_NULL(core_, platform::errors::Fatal("core_ is nullptr"));
+    PADDLE_ENFORCE_NOT_NULL(core_, phi::errors::Fatal("core_ is nullptr"));
     core_->Run({}, false);
   }
 };
@@ -156,7 +156,7 @@ class PyLayerBackwardMaker : public framework::SingleGradOpMaker<T> {
     PADDLE_ENFORCE_GT(
         blocks.size(),
         static_cast<size_t>(PyLayerBlockIndex::kBACKWARD),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Expect blocks contains at least 2 block, but got: %d",
             blocks.size()));
     grad_op->SetBlockAttr(
@@ -188,7 +188,7 @@ class PyLayerBackwardOp : public PyLayerOp {
     PADDLE_ENFORCE_EQ(
         inside_grads.size(),
         outside_grads.size(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Mismatch inside_grads.size(): %d, and outside_grads.size(): %d",
             inside_grads.size(),
             outside_grads.size()));
@@ -196,14 +196,14 @@ class PyLayerBackwardOp : public PyLayerOp {
     auto *scope_var = scope.FindVar(Input(PyLayerOp::kScope));
     PADDLE_ENFORCE_NOT_NULL(
         scope_var,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "Expect Scope variable to be set in pylayer_op, but "
             "got a null Scope variable. Please set the Scope variable."));
     auto &scopes = scope_var->Get<std::vector<framework::Scope *>>();
     PADDLE_ENFORCE_GT(
         scopes.size(),
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Expect Scope variable contains at least 1 scope, but got: %d",
             scopes.size()));
     framework::Scope &cur_scope = *(scopes[0]);
@@ -216,7 +216,7 @@ class PyLayerBackwardOp : public PyLayerOp {
         << "[ControlFlow][PyLayerBackwardOp] New Executor is Running.";
 
     CreateInterpreter(dev_place, *backward_block, &cur_scope, inside_grads);
-    PADDLE_ENFORCE_NOT_NULL(core_, platform::errors::Fatal("core_ is nullptr"));
+    PADDLE_ENFORCE_NOT_NULL(core_, phi::errors::Fatal("core_ is nullptr"));
 
     core_->Run({}, false);
 
@@ -252,7 +252,7 @@ class PyLayerBackwardInferVarType : public framework::VarTypeInference {
         ctx->OutputSize(framework::GradVarName(PyLayerOp::kInputs));
     PADDLE_ENFORCE_EQ(forward_input_size,
                       backward_output_size,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "input_size and output_size should be equal for "
                           "pylayer_grad op."));
     for (size_t i = 0; i < backward_output_size; ++i) {

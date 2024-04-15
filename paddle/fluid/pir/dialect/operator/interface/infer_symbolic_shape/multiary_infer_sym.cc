@@ -33,8 +33,6 @@ bool BicubicInterpOpInferSymbolicShape(
   int out_d = attributes.at("out_d").dyn_cast<pir::Int32Attribute>().data();
   int out_h = attributes.at("out_h").dyn_cast<pir::Int32Attribute>().data();
   int out_w = attributes.at("out_w").dyn_cast<pir::Int32Attribute>().data();
-  const std::vector<float> &scale =
-      paddle::dialect::details::GetVectorAttr<float>(op, "scale");
 
   std::vector<int> size_tensor;
   if (out_d != -1) size_tensor.push_back(out_d);
@@ -261,7 +259,7 @@ bool ConcatOpInferSymbolicShape(
 
 bool FullWithTensorOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
-  pir::Value operand_source = op->operand_source(0);
+  pir::Value operand_source = op->operand_source(1);
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(operand_source);
 

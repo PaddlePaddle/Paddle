@@ -25,32 +25,32 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("MaxProbs"),
         true,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "PrecisionRecallOp Input(MaxProbs) should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Indices"),
         true,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "PrecisionRecallOp Input(Indices) should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Labels"),
         true,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "PrecisionRecallOp Input(Labels) should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("BatchMetrics"),
         true,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "PrecisionRecallOp Output(BatchMetrics) should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("AccumMetrics"),
         true,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "PrecisionRecallOp Output(AccumMetrics) should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("AccumStatesInfo"),
         true,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "PrecisionRecallOp Output(AccumStatesInfo) should not be null."));
 
     int64_t cls_num =
@@ -61,7 +61,7 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(max_probs_dims[1],
                         1,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Each instance of PrecisionRecallOp "
                             "Input(MaxProbs) contains one max probability, "
                             "the shape of Input(MaxProbs) should be "
@@ -72,7 +72,7 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           ctx->GetInputDim("Indices"),
           max_probs_dims,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The shape of PrecisionRecallOp Input(Indices) should be same "
               "with "
               "max_probs_dims. But received the shape of Input(Indices) is "
@@ -84,7 +84,7 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           max_probs_dims[0],
           labels_dims[0],
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The 1st dimension of PrecisionRecallOp Input(MaxProbs) and "
               "Input(Labels) both should be batch_size"
               "But the 1st dimension we received max_probs_dims[0] = %d, "
@@ -93,7 +93,7 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
               labels_dims[0]));
       PADDLE_ENFORCE_EQ(labels_dims[1],
                         1,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The 2nd dimension of PrecisionRecallOp "
                             "Input(Labels) contains instance label and "
                             "the shape should be equal to 1. But the 2nd "
@@ -107,7 +107,7 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             weights_dims,
             common::make_ddim({max_probs_dims[0], 1}),
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The shape of PrecisionRecallOp Input(Weights) should be "
                 "[batch_size, 1]. But the shape we received is [%d, %d]",
                 weights_dims[0],
@@ -121,7 +121,7 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             states_dims,
             common::make_ddim({cls_num, 4}),
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The shape of PrecisionRecallOp Input(StatesInfo) should be "
                 "[class_number, 4]. But the shape we received is [%d, %d]",
                 states_dims[0],

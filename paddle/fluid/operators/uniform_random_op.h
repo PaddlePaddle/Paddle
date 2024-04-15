@@ -60,7 +60,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
     }
     return vec_new_data;
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Expected dtype of ShapeTensor must be int32, int64. But got "
         "unsupport dtype: %s.",
         new_data_tensor->dtype()));
@@ -76,7 +76,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
     PADDLE_ENFORCE_EQ(
         tensor->dims(),
         common::make_ddim({1}),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Shape of dim tensor in uniform_random_op should be [1]"
             "But received tensor's dim=%s.",
             tensor->dims()));
@@ -100,7 +100,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
         vec_new_shape.push_back(*tensor->data<int64_t>());
       }
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Expected dtype of ShapeTensorList of %d-th must be int32, int64. "
           "But got "
           "unsupport dtype: %s.",

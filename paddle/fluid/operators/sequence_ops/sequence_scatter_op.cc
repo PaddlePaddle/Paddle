@@ -90,7 +90,7 @@ class SequenceScatterOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         updates_dim[0],
         ids_dim[0],
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The shape of SequenceScatter operator's input Updates and Ids do "
             "not match, receive Updates's shape is [%s], Ids's shape is [%s].",
             updates_dim,
@@ -108,7 +108,7 @@ class SequenceScatterOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           ids_lod.size(),
           1,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The SequenceScatter operator’s Input Ids holds wrong LoD "
               "information. Currently SequenceScatter operator can only deal "
               "with one level LoD for input Ids, but received LoD level is %d.",
@@ -116,7 +116,7 @@ class SequenceScatterOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           updates_lod.size(),
           1,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The SequenceScatter operator’s Input Updates holds wrong LoD "
               "information. Currently SequenceScatter operator can only deal "
               "with one level LoD for input Updates, but received LoD level is "
