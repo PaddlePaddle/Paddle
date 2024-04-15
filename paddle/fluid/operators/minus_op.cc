@@ -34,15 +34,15 @@ class MinusOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("X"),
         true,
-        platform::errors::NotFound("Input(X) of MinusOp is not found."));
+        phi::errors::NotFound("Input(X) of MinusOp is not found."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Y"),
         true,
-        platform::errors::NotFound("Input(Y) of MinusOp is not found."));
+        phi::errors::NotFound("Input(Y) of MinusOp is not found."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("Out"),
         true,
-        platform::errors::NotFound("Output(Out) of MinusOp is not found."));
+        phi::errors::NotFound("Output(Out) of MinusOp is not found."));
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
@@ -52,7 +52,7 @@ class MinusOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           x_dims,
           y_dims,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Minus operator must take two tensor with same dim, but received "
               "input X dim is:[%s], Y dim is:[%s]",
               x_dims,
