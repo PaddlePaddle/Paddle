@@ -3558,7 +3558,7 @@ void FusionSeqExpandConcatFCInferMeta(const std::vector<const MetaTensor*>& x,
   out->share_lod(*x[0]);
 }
 
-/// kai mod：放宽了对bias维度和激活函数的约束
+// Current constraint is appropriate for GemmEpilogueOp but relaxed for FcOp
 void FCInferMeta(const MetaTensor& input,
                  const MetaTensor& w,
                  const MetaTensor& bias,
@@ -3616,7 +3616,7 @@ void FCInferMeta(const MetaTensor& input,
           in_dims.size(),
           in_dims));
 
-  std::unordered_set<std::string> support_acts = {"", "relu", "gelu"};   // "leaky_relu", "sigmoid", "silu"
+  std::unordered_set<std::string> support_acts = {"", "relu", "gelu"};
   PADDLE_ENFORCE_EQ(support_acts.count(activation_type),
                     1,
                     phi::errors::InvalidArgument(

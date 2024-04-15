@@ -1,3 +1,17 @@
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
 import sys
 
@@ -5,7 +19,6 @@ dirname, filename = os.path.split(os.path.abspath(sys.argv[0]))
 sys.path.append(dirname + "/../")
 from util import SubstituteTemplate
 
-# 对于GemmUniversal C和D的数据类型是一样的 Accumulator固定为float Epilogue固定为float
 CommonCutlassFcKernelDeclare = '''
 cutlass::Status ${kernel_func_name}(const FcAllParams& params) {
     /// CommonCutlassFcKernelDeclare
@@ -36,7 +49,7 @@ CommonCutlassFcKernelArguments = '''
     cutlass::bfloat16_t *weight = (cutlass::bfloat16_t *)(params.weight);
     cutlass::bfloat16_t *bias = (cutlass::bfloat16_t *)(params.bias);
     cutlass::bfloat16_t *output = (cutlass::bfloat16_t *)(params.output);
-    // 仅适用于RRR格式
+    // Only available in RRR format
     int64_t batch_stride_C = problem_size.n();
     if(!params.isVec_bias)     { batch_stride_C = problem_size.mn().product(); }
     long lda = (long)params.lda;   

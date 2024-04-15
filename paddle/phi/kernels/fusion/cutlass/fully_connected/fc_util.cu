@@ -1,3 +1,16 @@
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 #include "paddle/phi/kernels/fusion/cutlass/fully_connected/fc_util.h"
 #include <iostream>
 #include <cmath>
@@ -12,7 +25,6 @@ float diff(const T *C_cutlass, const T *C_naive, int n) {
   for (int i = 0; i < n; i++) {
     float cutlass_value = static_cast<float>(C_cutlass[i]);
     float naive_value = static_cast<float>(C_naive[i]);
-    // std::cout << "cutlass-naive: " << cutlass_value << "-" << naive_value << "    ";
     if (std::abs(naive_value - cutlass_value) > max_diff) {
       max_diff = std::abs(naive_value - cutlass_value);
     }
@@ -20,14 +32,13 @@ float diff(const T *C_cutlass, const T *C_naive, int n) {
   return max_diff;
 }
 
-__device__ inline float tanh_kai(float x){
+__device__ inline float naive_tanh(float x){
   if(x > 0)
       return (1-exp(-2*x))/(1+exp(-2*x));
   else
       return (exp(2*x)-1)/(1+exp(2*x));
 }
 
-// 暂时假设输入都是行主序的。
 template <typename T = half>
 __global__ void naive_fc_kernel(
     const T *input,
@@ -73,7 +84,7 @@ __global__ void naive_fc_kernel(
           accumulator = 1.f / (1.f + std::exp(-accumulator));
           break;
         case FC_BIAS_GELU:
-          accumulator = 0.5*accumulator*(1+tanh_kai(std::sqrt(2/M_PI)*(accumulator+0.044715*std::pow(accumulator,3))));
+          accumulator = 0.5*accumulator*(1+naive_tanh(std::sqrt(2/M_PI)*(accumulator+0.044715*std::pow(accumulator,3))));
           break;
         default:
             break;
@@ -157,7 +168,7 @@ int ProfileToGetBestConfig(
       auto func = all_func[i];
       // When func has large diff, we will make it nullptr.
       if (!func) continue;
-      // 这里写死了sizeof(half) 注意！！
+      // sizeof(half) attention！！
       CUDA_CHECK(cudaMemset(params.output,
                 0,
                 sizeof(half) * params.m * params.n));

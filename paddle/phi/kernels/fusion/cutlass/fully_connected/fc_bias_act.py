@@ -1,3 +1,17 @@
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import enum
 
 from fc_common import(
@@ -30,7 +44,6 @@ namespace cutlass_internal{
 '''
 
 
-# cutlass::epilogue::thread::LinearCombinationRelu<cutlass::half_t, 8, float, float>
 dict_for_declare_part = {
     "epi_part": "${epi_func}<${element_c}, ${epilogue_vector_length}, ${element_accum}, ${element_epilogue}, ${scale_type}>",
 }
@@ -99,16 +112,14 @@ layouts = [
     ('cutlass::layout::RowMajor', 'cutlass::layout::RowMajor', 'cutlass::layout::RowMajor')
 ]
 
-# cutlass 写死是1的 我理解就等同于没有swizzle 或许是它通用的原因？
 swizzling_functors = [
     'GemmIdentityThreadblockSwizzle<1>',
     'ThreadblockSwizzleStreamK'
 ]
 
 # (mode == GemmUniversalMode::kGemm) the tile-splitting factor (1 defaults to StreamK, >1 emulates Split-K)
-split_k_factors = ["1","2" ,"4"] #,"8","16"]
+split_k_factors = ["1","2" ,"4"]    #,"8","16"]
 
-# 暂时没有考虑fp32 所以只用128bit对齐 128/sizeof(half)
 alignments = [8]
 
 def generate_sm75_1688():
@@ -124,14 +135,13 @@ def generate_sm75_1688():
         "math_operator": "cutlass::arch::OpMultiplyAdd",
         "scale_type": "cutlass::epilogue::thread::ScaleType::NoBetaScaling",
     }
-    # 以下三个和alignments需要对齐一下
+    # The following three parameters need to be the same as alignments
     kernel_dict["epilogue_vector_length"] = "8"
     kernel_dict["align_a"] = "8"
     kernel_dict["align_b"] = "8"
     math_instructions = [
         ("16,8,8", "cutlass::half_t", "cutlass::half_t", "float")
     ]
-    # (mode == GemmUniversalMode::kGemm) the tile-splitting factor (1 defaults to StreamK, >1 emulates Split-K)
     kernel_dict["split_k_factor"] = "1"
 
     sm75_code = ""
@@ -278,7 +288,7 @@ def generate_sm80_16816(cutlass_dtype="cutlass::half_t"):
         "math_operator": "cutlass::arch::OpMultiplyAdd",
         "scale_type": "cutlass::epilogue::thread::ScaleType::NoBetaScaling",
     }
-    # 以下三个和alignments需要对齐一下
+    # The following three parameters need to be the same as alignments
     kernel_dict["epilogue_vector_length"] = "8"
     kernel_dict["align_a"] = "8"
     kernel_dict["align_b"] = "8"
@@ -288,7 +298,7 @@ def generate_sm80_16816(cutlass_dtype="cutlass::half_t"):
     ]
 
     sm80_code = ""
-    for epi_func in SupportedAct:    # [FbaAct.Identity]:
+    for epi_func in SupportedAct:
         op_dict = {}
         op_dict["func_name"] = (
             UnderScoreName[epi_func].lower() + "_sm80_"
@@ -356,7 +366,7 @@ if __name__ == "__main__":
     sm_versions_and_types = []
     args = parse_args()
     all_code = mutex_include + fba_header
-    # 暂时没有考虑fp32
+    # fp32 is not considered for the time being
     if args.cuda_arch == "75":
         sm_versions_and_types.append(["75", "fp16"])
         all_code += generate_sm75_1688()
@@ -372,4 +382,3 @@ if __name__ == "__main__":
     all_code += CommonTail
     with open(build_dir + "generated_tmp/fc_bias_act.cu", "w") as f:
         f.write(all_code)
-        f.close()

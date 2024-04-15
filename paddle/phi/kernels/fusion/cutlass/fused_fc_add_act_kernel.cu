@@ -21,7 +21,6 @@
 #include "paddle/phi/kernels/fusion/cutlass/fully_connected/fc_decl.h"
 
 #include "paddle/phi/backends/dynload/cutlass_fc.h"
-#include <iostream>
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
@@ -39,20 +38,15 @@ void FCKernel(const Context& dev_ctx,
               const std::string& activation_type,
               const bool padding_weights,
               DenseTensor* out) {
-  /// 参数检查
   if(!bias){
-    PADDLE_THROW(phi::errors::InvalidArgument("bias is needed!!!"));
+    PADDLE_THROW(phi::errors::InvalidArgument("Bias is needed!!!"));
     return;
   }
   PADDLE_ENFORCE_EQ(padding_weights, false,
                     phi::errors::PermissionDenied("Weight padding in fc can not be used in GPU scope."));
 
-  const std::string data_format("RRR");
-  // 后续实现要求参与计算的矩阵必须是RRR的
-  CHECK_EQ(data_format == "RRR", true);
   auto weight_dims = w.dims();
   CHECK_EQ(weight_dims.size() == 2UL, true);
-
   // fc_out should be reshape when run since can not get lod in infershape
   std::vector<int64_t> output_dims;
   phi::funcs::FCOutputSize(
@@ -64,21 +58,20 @@ void FCKernel(const Context& dev_ctx,
 
   auto out_dims = out->dims();
   auto bias_dims = bias->dims();
-  // 本算子的pass支持两种类型的bias elementwiseAdd。对于[M,N]维的output，bias要么是长度为N的向量，要么也是[M,N]维。
-  // isVec_bias用于区分bias是否为向量
+  // This Op supports two types of bias elementwiseAdd.
+  // For an output of dimension [M,N], a bias is either a vector of length N or also a matrix of dimension [M,N].
+  // isVec_bias is used to distinguish whether bias is a vector or not
   bool isVec_bias = true;
   if(bias_dims.size()>2 || (bias_dims.size()==2 && bias_dims[0] != 1)){
     isVec_bias = false;
   }
   
-  /// 这里参考blas的实现
   int M = common::product(out_dims) / weight_dims[1];
   const int K = weight_dims[0];
   const int N = weight_dims[1];
   const int lda = K;
   const int ldb = N;
   const int ldd = N;
-  // 这里暂时写死GEMM内核实现部分的Align参数为8，然后判定一下输入是否可接受
   const int alignA = 8;
   const int alignB = 8;
   bool isAMisaligned = false;
@@ -108,14 +101,22 @@ void FCKernel(const Context& dev_ctx,
         return FcDataType::fp16;
       case phi::DataType::BFLOAT16:
         return FcDataType::bf16;
+      default:
+        return FcDataType::fp32;
     }
   };
+  auto fc_dtype = get_fc_dtype(input.dtype());
+  if ((fc_dtype != FcDataType::fp16) && (fc_dtype != FcDataType::bf16)) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Gemm_epilogue kernel only supports fp16 and bf16, input dtype error!"));
+    return;
+  }
 
   auto cutlass_dispatch_sm_version = [&](int device_sm_version) -> int {
-    if (device_sm_version < 75) {
-      PADDLE_ENFORCE_GE(device_sm_version, 75,
+    if (device_sm_version < 80) {
+      PADDLE_ENFORCE_GE(device_sm_version, 80,
           phi::errors::PreconditionNotMet(
-              "fused_fc_add_act only supports sm >= 75, but got %d.", device_sm_version));
+              "Gemm_epilogue only supports sm >= 80, but got %d.", device_sm_version));
     } else if (device_sm_version > 80) {
       return 80;
     } else {
@@ -124,9 +125,7 @@ void FCKernel(const Context& dev_ctx,
   };
 
   void * workspace = nullptr; 
-  
   size_t workspace_size_bytes = ((M-1+16)/16) * ((N-1+64)/64) * sizeof(int);
-
   phi::Allocator::AllocationPtr tmp_ptr = phi::memory_utils::Alloc(
         dev_ctx.GetPlace(),
         workspace_size_bytes,
@@ -145,7 +144,7 @@ void FCKernel(const Context& dev_ctx,
       ldb,
       ldd,
       dev_ctx.stream(),
-      get_fc_dtype(input.dtype()),
+      fc_dtype,
       isVec_bias,
       cutlass_dispatch_sm_version(sm_version),
       0.01,       // for leaky_relu

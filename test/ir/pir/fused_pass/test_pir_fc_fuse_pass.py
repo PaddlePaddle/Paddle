@@ -94,7 +94,9 @@ class TestFcFusePassPattern(PassTest):
     def test_check_output(self):
         self.check_pass_correct(atol=1e-3, rtol=1e-3)
 
-# 如果不开use_cutlass就得关掉 *reverseAdd* 单测
+
+# FcOp does not support reverseAdd pattern
+# so, if config.use_cutlass_ is false, Test with *reverseAdd* should be commented out
 class TestFcFusePassPattern_reverseAdd(PassTest):
     r'''
       Y     Matmul

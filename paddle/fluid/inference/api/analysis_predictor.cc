@@ -956,8 +956,9 @@ bool AnalysisPredictor::PrepareExecutor() {
             auto pass = pir::PassRegistry::Instance().Get(gpu_pass);
             if(pass->name() == "fc_fuse_pass"){
               pass->Set("use_cutlass", new bool(config_.use_cutlass_));
-              if(pass->Get<bool>("use_cutlass"))
-                printf("pass->Get<bool>(use_cutlass)");
+              if(pass->Get<bool>("use_cutlass")){
+                VLOG(4) << "[fc_fuse_pass] use_cutlass is enabled, will run fc with GemmEpilogueOp";
+              }
             }
             pass_pm.AddPass(std::move(pass));
           }

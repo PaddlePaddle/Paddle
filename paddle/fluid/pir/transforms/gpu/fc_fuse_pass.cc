@@ -20,15 +20,9 @@
 
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
-#include <iostream>
 
 namespace {
 
-// 当前pass有两种Op实现，FcOp(cublasLt) 和 GemmEpilogueOp(cutlass)
-// 用户可以通过python API `exp_enable_use_cutlass()` 和 C++ API `Exp_EnableUseCutlass()` 来选择是否启用cutlass实现的Op
-// 如果不开启cutlass 那么使用FcOp，只能匹配[M, N]+[1,N]的模式，激活只支持["","relu"]
-// 如果开启cutlass 那么使用GemmEpilogueOp, 额外支持[M, N]+[M, N]的模式，激活支持["", "relu", "gelu"]
-// 需要注意的是：两种Op共用FCInferMeta函数，我们放宽了该函数的约束以匹配额外模式。也就是说FcOp不能处理的模式，目前只在pass的约束中过滤，FCInferMeta中的check被取消了。
 std::set<std::string> act_ops = {{paddle::dialect::GeluOp::name()},
                                  {paddle::dialect::ReluOp::name()},};
 std::unordered_map<std::string, std::string> activation_type = {
@@ -63,6 +57,7 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
       if (w_dims.size() != 2 || x_dims.size() < 2) {
         return false;
       }
+      // Currently，FcOp and GemmEpilogueOp support only RRR format 
       if (x_dims.at(x_dims.size() - 1) != w_dims.at(0) ||
           match_ctx.Attr<bool>("transpose_x") == true ||
           match_ctx.Attr<bool>("transpose_y") == true) {
@@ -79,8 +74,6 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
         }
       }
       else{
-        // kai mod 要融合 M*N + N 和 M*N + M*N 两种elementwiseAdd模式。
-        // 要求bias的维度：如果是1，那么需要是[N]。如果是2，那么要么是[1,N],要么是[M,N]。如果是大于2，则除最后一维外，和x相同；最后一维和w_dims.at[1]相同。
         if (y_dims.size() == x_dims.size()){
           if (y_dims.size() == 2) {
             return ((y_dims.at(0) == 1) || (y_dims.at(0) == x_dims.at(0))) && y_dims.at(1) == w_dims.at(1);
@@ -113,7 +106,7 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-/// 当前只支持[Relu, Gelu]
+// Act supports [Relu, Gelu]
 class FcWithActPattern : public paddle::drr::DrrPatternBase {
  private:
   std::string act_type_;
@@ -148,7 +141,6 @@ class FcWithActPattern : public paddle::drr::DrrPatternBase {
         if(!isEmpty_act) return false;
         if (act_type_ == paddle::dialect::GeluOp::name()) {
           bool Attr_approx = match_ctx.Attr<bool>("approximate");
-          // 参考onednn实现。这里的意思我理解是，不支持gelu的估算。cutlass也没有approx参数。
           if (Attr_approx) return false;    
         }  
         return true;
@@ -173,15 +165,10 @@ class FcFusePass : public pir::PatternRewritePass {
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
 
-    // Set(std::string("use_cutlass"), new bool(true));
     bool use_cutlass = false;
     if(Has(std::string("use_cutlass"))){
       use_cutlass = Get<bool>(std::string("use_cutlass"));
     }
-    // if(use_cutlass){
-    //   printf("use_cutlass !\n");
-    // }
-
     if(use_cutlass){
       /// MatmulAddPattern
       ps.Add(paddle::drr::Create<MatmulAddPattern>(context, paddle::dialect::GemmEpilogueOp::name(), true));
