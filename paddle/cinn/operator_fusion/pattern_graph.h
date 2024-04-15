@@ -190,7 +190,10 @@ struct MergeTrivialPatternOperation {
         upstream->downstream_;
     upstream->downstream_.clear();
     for (const auto& downstream : fusion_candidate) {
-      if (downstream->IsReduce() || downstream->IsTrivial()) {
+      if (std::holds_alternative<ReducePattern<Phrase>>(
+              downstream->stmt_pattern_) ||
+          std::holds_alternative<TrivialPattern<Phrase>>(
+              downstream->stmt_pattern_)) {
         auto merged_node = graph->MergeNode(upstream, downstream);
         graph->RemoveNode(downstream);
         VLOG(4) << "MergeTrivialPatternOperation: \nupstream "
@@ -235,8 +238,10 @@ struct StmtPatternGraphMatcher {
 struct CanFuseRxTMatcher {
   template <typename T>
   bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
-    return (node->IsReduceTree() && !node->downstream_.empty() &&
-            node->downstream_.at(0)->IsTrivial());
+    return (std::holds_alternative<ReduceTreePattern<T>>(node->stmt_pattern_) &&
+            !node->downstream_.empty() &&
+            std::holds_alternative<TrivialPattern<T>>(
+                node->downstream_.at(0)->stmt_pattern_));
   }
 };
 
@@ -245,7 +250,8 @@ struct CanFuseReduceTreeMatcher {
   bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
     return StmtPatternGraphMatcher<ReduceTreePattern<T>>()(graph, node) &&
            !node->downstream_.empty() &&
-           node->downstream_.at(0)->IsReduceTree() &&
+           std::holds_alternative<ReduceTreePattern<T>>(
+               node->downstream_.at(0)->stmt_pattern_) &&
            graph.policy_manager_.CanFuse(node, node->downstream_.at(0));
   }
 };
@@ -254,7 +260,9 @@ struct CanFuseReduceTreeAndTrivialMatcher {
   template <typename T>
   bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
     return StmtPatternGraphMatcher<ReduceTreePattern<T>>()(graph, node) &&
-           !node->downstream_.empty() && node->downstream_.at(0)->IsTrivial() &&
+           !node->downstream_.empty() &&
+           std::holds_alternative<TrivialPattern<T>>(
+               node->downstream_.at(0)->stmt_pattern_) &&
            graph.policy_manager_.CanFuse(node, node->downstream_.at(0));
   }
 };

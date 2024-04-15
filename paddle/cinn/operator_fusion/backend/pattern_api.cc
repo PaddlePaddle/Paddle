@@ -47,14 +47,14 @@ StmtPattern<BackendStage> ConvertToStmtPattern(
 // ReduceTreePattern<BackendStage>& downstream);
 
 template <>
-StmtPattern<BackendStage> RT_x_Trivial(
+StmtPattern<BackendStage> MergePatternImpl(
     const ReduceTreePattern<BackendStage>& first,
     const TrivialPattern<BackendStage>& second) {
   return ReduceTreePlusTrivialPattern<BackendStage>(first, second);
 }
 
 template <>
-StmtPattern<BackendStage> Trivial_x_Reduce(
+StmtPattern<BackendStage> MergePatternImpl(
     const TrivialPattern<BackendStage>& first,
     const ReducePattern<BackendStage>& second) {
   const auto& ops = UniqueConcatVector(GetOpsInPattern<BackendStage>(first),
@@ -66,7 +66,7 @@ StmtPattern<BackendStage> Trivial_x_Reduce(
 }
 
 template <>
-StmtPattern<BackendStage> Trivial_x_Trivial(
+StmtPattern<BackendStage> MergePatternImpl(
     const TrivialPattern<BackendStage>& first,
     const TrivialPattern<BackendStage>& second) {
   const auto& ops = UniqueConcatVector(GetOpsInPattern<BackendStage>(first),
@@ -78,7 +78,7 @@ StmtPattern<BackendStage> Trivial_x_Trivial(
 }
 
 template <>
-StmtPattern<BackendStage> H_x_H(
+StmtPattern<BackendStage> MergePatternImpl(
     const HorizontalFusionPattern<BackendStage>& first,
     const HorizontalFusionPattern<BackendStage>& second) {
   const auto& contents =

@@ -33,16 +33,6 @@ struct PatternNode {
         stmt_pattern_(MergePattern<T>(fused_up_node->stmt_pattern_,
                                       fused_down_node->stmt_pattern_)) {}
 
-  bool IsTrivial() const { return IsTrivialPattern(stmt_pattern_); }
-
-  bool IsReduce() const { return IsReducePattern(stmt_pattern_); }
-
-  bool IsReduceTree() const { return IsReduceTreePattern(stmt_pattern_); }
-
-  bool IsUnsupport() const { return IsUnsupportPattern(stmt_pattern_); }
-
-  bool IsReduceTrivial() const { return IsReduceTrivialPattern(stmt_pattern_); }
-
   std::string DebugStr() const {
     std::stringstream ss;
     ss << "Node: " << this << ", Pattern: " << GetPatternName(stmt_pattern_)

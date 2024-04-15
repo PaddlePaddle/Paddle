@@ -27,22 +27,22 @@ StmtPattern<FrontendStage> ConvertToStmtPattern(
     const PatternContent<FrontendStage>& content);
 
 template <>
-StmtPattern<FrontendStage> RT_x_Trivial(
+StmtPattern<FrontendStage> MergePatternImpl(
     const ReduceTreePattern<FrontendStage>& first,
     const TrivialPattern<FrontendStage>& second);
 
 template <>
-StmtPattern<FrontendStage> Trivial_x_Reduce(
+StmtPattern<FrontendStage> MergePatternImpl(
     const TrivialPattern<FrontendStage>& first,
     const ReducePattern<FrontendStage>& second);
 
 template <>
-StmtPattern<FrontendStage> Trivial_x_Trivial(
+StmtPattern<FrontendStage> MergePatternImpl(
     const TrivialPattern<FrontendStage>& first,
     const TrivialPattern<FrontendStage>& second);
 
 template <>
-StmtPattern<FrontendStage> H_x_H(
+StmtPattern<FrontendStage> MergePatternImpl(
     const HorizontalFusionPattern<FrontendStage>& first,
     const HorizontalFusionPattern<FrontendStage>& second);
 

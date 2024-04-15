@@ -270,10 +270,12 @@ bool RelativeJudgePolicy<T>::IsFlattenDimSmaller(
 template <typename T>
 bool RelativeJudgePolicy<T>::CanFuse(const PatternNodePtr<T>& upstream,
                                      const PatternNodePtr<T>& downstream) {
-  if (upstream->IsReduceTree() && downstream->IsTrivial()) {
+  if (std::holds_alternative<ReduceTreePattern<T>>(upstream->stmt_pattern_) &&
+      std::holds_alternative<TrivialPattern<T>>(downstream->stmt_pattern_)) {
     return ReducePlusTrivialCanMerge(upstream, downstream);
   }
-  if (upstream->IsReduceTree() && downstream->IsReduceTree()) {
+  if (std::holds_alternative<ReduceTreePattern<T>>(upstream->stmt_pattern_) &&
+      std::holds_alternative<ReduceTreePattern<T>>(downstream->stmt_pattern_)) {
     return ReduceTreeGrownCanMerge(upstream, downstream);
   }
   return true;  // other case.
@@ -282,7 +284,8 @@ bool RelativeJudgePolicy<T>::CanFuse(const PatternNodePtr<T>& upstream,
 template <typename T>
 std::vector<size_t> RelativeJudgePolicy<T>::GetFakeReduceIterIdx(
     const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
-  if (!upstream->IsReduceTree() || !downstream->IsTrivial()) {
+  if (!std::holds_alternative<ReduceTreePattern<T>>(upstream->stmt_pattern_) &&
+      !std::holds_alternative<TrivialPattern<T>>(downstream->stmt_pattern_)) {
     PADDLE_THROW("Illegal Call GetFakeReduceIterIdx");
   }
 

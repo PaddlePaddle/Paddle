@@ -35,18 +35,14 @@ StmtPattern<FrontendStage> ConvertToStmtPattern(
 }
 
 template <>
-StmtPattern<FrontendStage> RT_x_Trivial(
+StmtPattern<FrontendStage> MergePatternImpl(
     const ReduceTreePattern<FrontendStage>& first,
     const TrivialPattern<FrontendStage>& second) {
   return ReduceTreePlusTrivialPattern<FrontendStage>(first, second);
 }
 
-// template StmtPattern<FrontendStage> RT_x_RT(const
-// ReduceTreePattern<FrontendStage>& upstream, const
-// ReduceTreePattern<FrontendStage>& downstream);
-
 template <>
-StmtPattern<FrontendStage> Trivial_x_Reduce(
+StmtPattern<FrontendStage> MergePatternImpl(
     const TrivialPattern<FrontendStage>& first,
     const ReducePattern<FrontendStage>& second) {
   const auto& contents =
@@ -56,7 +52,7 @@ StmtPattern<FrontendStage> Trivial_x_Reduce(
 }
 
 template <>
-StmtPattern<FrontendStage> Trivial_x_Trivial(
+StmtPattern<FrontendStage> MergePatternImpl(
     const TrivialPattern<FrontendStage>& first,
     const TrivialPattern<FrontendStage>& second) {
   const auto& contents =
@@ -66,7 +62,7 @@ StmtPattern<FrontendStage> Trivial_x_Trivial(
 }
 
 template <>
-StmtPattern<FrontendStage> H_x_H(
+StmtPattern<FrontendStage> MergePatternImpl(
     const HorizontalFusionPattern<FrontendStage>& first,
     const HorizontalFusionPattern<FrontendStage>& second) {
   const auto& contents =

@@ -26,6 +26,7 @@
 
 #include "glog/logging.h"
 
+#include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/operator_fusion/pattern.h"
 #include "paddle/cinn/operator_fusion/utils.h"
@@ -48,18 +49,8 @@ StmtPattern<T> ConvertToStmtPattern(const PatternContent<T>& content) {
 }
 
 template <typename T>
-bool IsHorizontalFusionPattern(const StmtPattern<T>& pattern) {
-  return std::holds_alternative<HorizontalFusionPattern<T>>(pattern);
-}
-
-template <typename T>
 std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern<T>& pattern) {
   return std::visit([](const auto& impl) { return impl.ops(); }, pattern);
-}
-
-template <typename T>
-bool IsTrivialPattern(const StmtPattern<T>& pattern) {
-  return std::holds_alternative<TrivialPattern<T>>(pattern);
 }
 
 template <typename T>
@@ -158,8 +149,8 @@ int InsertDownstreamIntoTree(const ReduceTreePattern<T>& upstream,
 }
 
 template <typename T>
-StmtPattern<T> RT_x_RT(const ReduceTreePattern<T>& upstream,
-                       const ReduceTreePattern<T>& downstream) {
+StmtPattern<T> MergePatternImpl(const ReduceTreePattern<T>& upstream,
+                                const ReduceTreePattern<T>& downstream) {
   ReduceTreePattern<T> result = downstream;  // copy first.
   int insert_num = InsertDownstreamIntoTree(upstream, result);
   CHECK(insert_num == 1) << "Must insert only once, but insert " << insert_num;
@@ -167,26 +158,26 @@ StmtPattern<T> RT_x_RT(const ReduceTreePattern<T>& upstream,
 }
 
 template <typename T>
-StmtPattern<T> RT_x_Trivial(const ReduceTreePattern<T>& first,
-                            const TrivialPattern<T>& second) {
+StmtPattern<T> MergePatternImpl(const ReduceTreePattern<T>& first,
+                                const TrivialPattern<T>& second) {
   CHECK(false) << "Please specialization!";
 }
 
 template <typename T>
-StmtPattern<T> Trivial_x_Reduce(const TrivialPattern<T>& first,
+StmtPattern<T> MergePatternImpl(const TrivialPattern<T>& first,
                                 const ReducePattern<T>& second) {
   CHECK(false) << "Please specialization!";
 }
 
 template <typename T>
-StmtPattern<T> Trivial_x_Trivial(const TrivialPattern<T>& first,
-                                 const TrivialPattern<T>& second) {
+StmtPattern<T> MergePatternImpl(const TrivialPattern<T>& first,
+                                const TrivialPattern<T>& second) {
   CHECK(false) << "Please specialization!";
 }
 
 template <typename T>
-StmtPattern<T> H_x_H(const HorizontalFusionPattern<T>& first,
-                     const HorizontalFusionPattern<T>& second) {
+StmtPattern<T> MergePatternImpl(const HorizontalFusionPattern<T>& first,
+                                const HorizontalFusionPattern<T>& second) {
   CHECK(false) << "Please specialization!";
 }
 
@@ -195,30 +186,29 @@ StmtPattern<T> MergePattern(const StmtPattern<T>& first,
                             const StmtPattern<T>& second) {
   VLOG(4) << "MergePattern: " << GetPatternName(first) << " x "
           << GetPatternName(second);
-  VLOG(4) << "MergePattern: " << IsReduceTreePattern<T>(first) << " x "
-          << IsTrivialPattern<T>(second);
-  if (IsUnsupportPattern(first) || IsUnsupportPattern(second)) {
-    CHECK(false) << "Found not support merge!" << GetPatternName(first) << "X"
-                 << GetPatternName(second);
-  } else if (IsReduceTreePattern<T>(first) && IsReduceTreePattern<T>(second)) {
-    return RT_x_RT(std::get<ReduceTreePattern<T>>(first),
-                   std::get<ReduceTreePattern<T>>(second));
-  } else if (IsReduceTreePattern<T>(first) && IsTrivialPattern<T>(second)) {
-    return RT_x_Trivial<T>(std::get<ReduceTreePattern<T>>(first),
-                           std::get<TrivialPattern<T>>(second));
-  } else if (IsTrivialPattern<T>(first) && IsReducePattern<T>(second)) {
-    return Trivial_x_Reduce<T>(std::get<TrivialPattern<T>>(first),
-                               std::get<ReducePattern<T>>(second));
-  } else if (IsTrivialPattern<T>(first) && IsTrivialPattern<T>(second)) {
-    return Trivial_x_Trivial<T>(std::get<TrivialPattern<T>>(first),
-                                std::get<TrivialPattern<T>>(second));
-  } else if (IsHorizontalFusionPattern<T>(first) &&
-             IsHorizontalFusionPattern<T>(second)) {
-    return H_x_H<T>(std::get<HorizontalFusionPattern<T>>(first),
-                    std::get<HorizontalFusionPattern<T>>(second));
-  }
-  CHECK(false) << "Found not support merge!" << GetPatternName(first) << "X"
-               << GetPatternName(second);
+  const auto PatternMatch = adt::match{
+      [&](const ReduceTreePattern<T>& lhs, const ReduceTreePattern<T>& rhs) {
+        return MergePatternImpl(lhs, rhs);
+      },
+      [&](const ReduceTreePattern<T>& lhs, const TrivialPattern<T>& rhs) {
+        return MergePatternImpl(lhs, rhs);
+      },
+      [&](const TrivialPattern<T>& lhs, const ReducePattern<T>& rhs) {
+        return MergePatternImpl(lhs, rhs);
+      },
+      [&](const TrivialPattern<T>& lhs, const TrivialPattern<T>& rhs) {
+        return MergePatternImpl(lhs, rhs);
+      },
+      [&](const HorizontalFusionPattern<T>& lhs,
+          const HorizontalFusionPattern<T>& rhs) {
+        return MergePatternImpl(lhs, rhs);
+      },
+      [&](const auto& lhs, const auto& rhs) -> StmtPattern<T> {
+        CHECK(false) << "Found not support merge!" << GetPatternName(first)
+                     << "X" << GetPatternName(second);
+      },
+  };
+  return std::visit(PatternMatch, first, second);
 }
 
 }  // namespace cinn::fusion
