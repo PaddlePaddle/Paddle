@@ -92,6 +92,13 @@ def fused_rotary_position_embedding(
                [-0.03628540, -0.20202637]]]])
     """
     if in_dynamic_or_pir_mode():
+        if (sin is None) or (cos is None):
+            assert (
+                position_ids is None
+            ), "position_ids without sin/cos is not correctly supported now. if you have used this before, the result is wrong."
+            assert (
+                use_neox_rotary_style
+            ), "rotate_half without sin/cos is not correctly supported now. if you have used this before, the result is wrong."
         return _C_ops.fused_rotary_position_embedding(
             q,
             k,
@@ -135,6 +142,7 @@ def fused_rotary_position_embedding(
             'use_neox_rotary_style': use_neox_rotary_style,
             'time_major': time_major,
             'rotary_emb_base': rotary_emb_base,
+            'actual_num_heads': -1,
         },
     )
 

@@ -120,7 +120,6 @@ void FusedRopeGradKernel(const Context& dev_ctx,
           : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, vec_size>;
 
   bool has_actual_num_heads = actual_num_heads >= 0;
-  printf("RopeBackward get actual_num_heads=%d\n", actual_num_heads);
   if (is_same_num_heads) {
     int64_t batch_stride =
         time_major ? dout_q.strides()[1] : dout_q.strides()[0];
