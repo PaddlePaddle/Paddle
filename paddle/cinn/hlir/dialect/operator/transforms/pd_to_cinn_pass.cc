@@ -893,43 +893,30 @@ class GatherOpPattern
 
   bool MatchAndRewrite(paddle::dialect::GatherOp op,
                        pir::PatternRewriter &rewriter) const override {
-    VLOG(-1) << "xx ";
     auto gather_op = op->dyn_cast<paddle::dialect::GatherOp>();
     auto x = op.operand_source(0);
     auto index = op->operand_source(1);
     int axis = 0;
-    VLOG(-1) << "xx ";
     pir::ShapeConstraintIRAnalysis &shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
-    VLOG(-1) << "xx ";
     const auto &axis_shape_or_data =
         shape_analysis.GetShapeOrDataForValue(op->operand_source(2));
-    VLOG(-1) << "xx ";
     if (gather_op->attributes().count("index")) {
-      VLOG(-1) << "xx ";
       axis =
           gather_op.attribute("index").dyn_cast<pir::Int32Attribute>().data();
-      VLOG(-1) << "xx ";
     } else {
-      VLOG(-1) << "xx axis full_Op ";
       auto axis_full_op = op.operand_source(2)
                               .defining_op()
                               ->dyn_cast<paddle::dialect::FullOp>();
-      VLOG(-1) << "xx get attribute  value";
       axis = static_cast<int>(axis_full_op.attribute("value")
                                   .dyn_cast<::pir::FloatAttribute>()
                                   .data());
     }
-    VLOG(-1) << "xx ";
     auto out =
         rewriter.Build<cinn::dialect::GatherOp>(x, index, axis)->result(0);
-    VLOG(-1) << "xx ";
     rewriter.ReplaceAllUsesWith(op->result(0), out);
     rewriter.EraseOp(op);
     return true;
-
-    // TODO(6clc): use 528 row to generate axis
-    // if (axis < 0) axis += input_sym_shape.size();
   }
 };
 
