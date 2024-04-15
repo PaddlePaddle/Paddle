@@ -772,6 +772,9 @@ def _program_for_vpp(
 
 
 def _get_backward_op_type(block, op):
+    # For the op doesn't have output such as 'send_v2', it should be backward_b.
+    if len(op.output_arg_names) == 0:
+        return "backward_b"
     for name in op.output_arg_names:
         name = name.split("@")[0]
         if not block._find_var_recursive(name):
