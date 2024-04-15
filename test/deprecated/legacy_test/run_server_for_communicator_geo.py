@@ -13,20 +13,25 @@
 # limitations under the License.
 
 import os
-import sys
 
-sys.path.append("../../cpp_extension")
-from utils import paddle_includes
+from test_communicator_geo import TestCommunicatorGeoEnd2End
 
-from paddle.utils.cpp_extension import CppExtension, setup
+import paddle
 
-setup(
-    name='mix_relu_extension',
-    ext_modules=CppExtension(
-        sources=["mix_relu_and_extension.cc"],
-        include_dirs=paddle_includes
-        + [os.path.dirname(os.path.abspath(__file__))],
-        extra_compile_args={'cc': ['-w', '-g']},
-        verbose=True,
-    ),
-)
+paddle.enable_static()
+
+pipe_name = os.getenv("PIPE_FILE")
+
+
+class RunServer(TestCommunicatorGeoEnd2End):
+    def runTest(self):
+        pass
+
+
+os.environ["TRAINING_ROLE"] = "PSERVER"
+
+half_run_server = RunServer()
+with open(pipe_name, 'w') as pipe:
+    pipe.write('done')
+
+half_run_server.run_ut()

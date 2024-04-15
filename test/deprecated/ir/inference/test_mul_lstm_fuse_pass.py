@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 from functools import partial
 
 import hypothesis.strategies as st
 import numpy as np
+
+sys.path.append("../../../ir/inference")
 from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 

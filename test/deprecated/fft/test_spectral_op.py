@@ -17,6 +17,8 @@ import sys
 
 import numpy as np
 from op_test import OpTest
+
+sys.path.append("../../fft")
 from spectral_op_np import fft_c2c, fft_c2r, fft_r2c
 
 import paddle

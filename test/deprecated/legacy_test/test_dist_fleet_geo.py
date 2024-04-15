@@ -15,8 +15,10 @@
 import os
 
 os.environ["WITH_DISTRIBUTE"] = "ON"
+import sys
 import unittest
 
+sys.path.append("../../legacy_test")
 from dist_fleet_simnet_bow import train_network
 from test_dist_fleet_base import TestFleetBase
 

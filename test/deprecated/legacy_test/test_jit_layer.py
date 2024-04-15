@@ -24,7 +24,7 @@ from paddle.base.framework import _dygraph_place_guard
 from paddle.jit.layer import Layer
 from paddle.static import InputSpec
 
-sys.path.append("../dygraph_to_static")
+sys.path.append("../../dygraph_to_static")
 from dygraph_to_static_utils import enable_to_static_guard
 
 paddle.seed(1)
