@@ -144,6 +144,16 @@ class TestFusedTranposeUnsqueezeFusePass(PassTest):
 
 
 class TestFusedMulUnsqueezeFusePass(PassTest):
+    r"""
+    x     w
+     \   /
+     matmul
+        |
+     [relu]
+        |
+    unsqueeze
+    """
+
     def is_program_valid(self, program=None):
         return True
 
