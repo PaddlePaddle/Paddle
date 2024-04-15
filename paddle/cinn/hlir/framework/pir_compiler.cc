@@ -69,7 +69,7 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
     };
     utils::parallel_run(worker_fn,
                         utils::SequenceDispatcher(0, task_size),
-                        /*thread_num=*/thread_size);
+                        /*thread_num=*/1);
   }
   ctx_mapper.SetFinalize(true);
   ctx_mapper.UpdateGlobalCache();

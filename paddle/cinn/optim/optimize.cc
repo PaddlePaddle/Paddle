@@ -83,10 +83,10 @@ Expr Optimize(Expr e,
   VLOG(10) << "After Optimize ExternCallMultiOutputShallowStore:" << copied;
   // Simplify already contains CastSimplify
   Simplify(&copied);
-  VLOG(10) << "After Optimize Simplify:" << copied;
+  std::cerr << "After Optimize Simplify:" << copied;
 
-  IfFusion(&copied);
-  VLOG(10) << "After Optimize IfFusion" << copied;
+  // IfFusion(&copied);
+  std::cerr << "After Optimize IfFusion" << copied;
 
   if (runtime_debug_info) {
     LOG(WARNING) << "Turn on runtime debug information output";
