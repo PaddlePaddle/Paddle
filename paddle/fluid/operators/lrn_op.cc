@@ -199,23 +199,23 @@ class LRNOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x_dim.size(),
         4,
-        platform::errors::InvalidArgument("Input(input) rank should be 4, "
-                                          "but received input rank (%d) != 4",
-                                          x_dim.size()));
+        phi::errors::InvalidArgument("Input(input) rank should be 4, "
+                                     "but received input rank (%d) != 4",
+                                     x_dim.size()));
 
     int n = ctx->Attrs().Get<int>("n");
-    PADDLE_ENFORCE_GT(n,
-                      0UL,
-                      platform::errors::InvalidArgument(
-                          "Argument(n) should be positive, "
-                          "but received n(%d) not greater than 0",
-                          n));
-    PADDLE_ENFORCE_EQ(n % 2,
-                      1UL,
-                      platform::errors::InvalidArgument(
-                          "Argument(n) should be odd value, "
-                          "but received n(%d) is not an odd value",
-                          n));
+    PADDLE_ENFORCE_GT(
+        n,
+        0UL,
+        phi::errors::InvalidArgument("Argument(n) should be positive, "
+                                     "but received n(%d) not greater than 0",
+                                     n));
+    PADDLE_ENFORCE_EQ(
+        n % 2,
+        1UL,
+        phi::errors::InvalidArgument("Argument(n) should be odd value, "
+                                     "but received n(%d) is not an odd value",
+                                     n));
 
     ctx->SetOutputDim("Out", x_dim);
     ctx->ShareLoD("X", /*->*/ "Out");

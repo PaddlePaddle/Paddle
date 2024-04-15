@@ -34,28 +34,28 @@ class FSPOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x_dims.size(),
         4UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The Input(X) must have shape [batch_size, channel, height, width]."
             "Now the dimension of 'X' is %d.",
             x_dims.size()));
     PADDLE_ENFORCE_EQ(
         y_dims.size(),
         4UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The Input(Y) must have shape [batch_size, channel, height, width]."
             "Now the dimension of 'Y' is %d.",
             y_dims.size()));
     PADDLE_ENFORCE_EQ(
         x_dims[2],
         y_dims[2],
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The Input(X)(%d) and Input(Y)(%d) should have the same height.",
             x_dims[2],
             y_dims[2]));
     PADDLE_ENFORCE_EQ(
         x_dims[3],
         y_dims[3],
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The Input(X)(%d) and Input(Y)(%d) should have the same width.",
             x_dims[3],
             y_dims[3]));

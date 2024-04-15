@@ -193,18 +193,18 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(cls_loss_dims.size(),
                       2UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The shape of ClsLoss is [N, Np]. But received %d.",
                           cls_loss_dims.size()));
     PADDLE_ENFORCE_EQ(
         idx_dims.size(),
         2UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The shape of MatchIndices is [N, Np]. But received %d.",
             idx_dims.size()));
     PADDLE_ENFORCE_EQ(dis_dims.size(),
                       2UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The shape of MatchDist is [N, Np]. But received %d.",
                           dis_dims.size()));
 
@@ -212,13 +212,13 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
       auto loc_loss_dims = ctx->GetInputDim("LocLoss");
       PADDLE_ENFORCE_EQ(loc_loss_dims.size(),
                         2UL,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The shape of LocLoss is [N, Np]. But received %d.",
                             loc_loss_dims.size()));
       if (ctx->IsRuntime()) {
         PADDLE_ENFORCE_EQ(cls_loss_dims[0],
                           loc_loss_dims[0],
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "Batch size of ClsLoss and LocLoss must be the "
                               "same. But received batch size of ClsLoss was "
                               "%d, batch size of LocLoss was %d.",
@@ -226,7 +226,7 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
                               loc_loss_dims[0]));
         PADDLE_ENFORCE_EQ(cls_loss_dims[1],
                           loc_loss_dims[1],
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "Prior box number of ClsLoss and LocLoss must be "
                               "the same. But received box number of ClsLoss "
                               "was %d, box number of LocLoss was %d.",
@@ -238,7 +238,7 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(cls_loss_dims[0],
                         idx_dims[0],
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Batch size of ClsLoss and MatchIndices must be "
                             "the same. But received batch size of ClsLoss was "
                             "%d, batch size of MatchIndices was %d.",
@@ -247,7 +247,7 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           cls_loss_dims[1],
           idx_dims[1],
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Prior box number of ClsLoss and "
               "MatchIndices must be the same. But received box number of "
               "ClsLoss was %d, box number of MatchIndices was %d.",
@@ -256,7 +256,7 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
 
       PADDLE_ENFORCE_EQ(cls_loss_dims[0],
                         dis_dims[0],
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Batch size of ClsLoss and MatchDist must be the "
                             "same. But received batch size of ClsLoss was %d, "
                             "batch size of MatchDist was %d.",
@@ -264,7 +264,7 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
                             dis_dims[0]));
       PADDLE_ENFORCE_EQ(cls_loss_dims[1],
                         idx_dims[1],
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Prior box number of ClsLoss and MatchDist must be "
                             "the same. But received box number of ClsLoss was "
                             "%d, box number of MatchDist was %d.",
@@ -277,7 +277,7 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_NE(mining_type,
                       MiningType::kNone,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "mining_type must be hard_example or max_negative"));
 
     if (mining_type == MiningType::kMaxNegative) {
@@ -285,30 +285,30 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
       auto neg_dist_threshold = ctx->Attrs().Get<float>("neg_dist_threshold");
       PADDLE_ENFORCE_GT(neg_pos_ratio,
                         0.0f,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "neg_pos_ratio must greater than zero in "
                             "max_negative mode. But received %f.",
                             neg_pos_ratio));
       PADDLE_ENFORCE_LT(neg_dist_threshold,
                         1.0f,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "neg_dist_threshold must less than one in "
                             "max_negative mode. But received %f.",
                             neg_dist_threshold));
       PADDLE_ENFORCE_GT(neg_dist_threshold,
                         0.0f,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "neg_dist_threshold must greater "
                             "than zero in max_negative mode. But received %f.",
                             neg_dist_threshold));
     } else if (mining_type == MiningType::kHardExample) {
       auto sample_size = ctx->Attrs().Get<int>("sample_size");
-      PADDLE_ENFORCE_GT(sample_size,
-                        0,
-                        platform::errors::InvalidArgument(
-                            "sample_size must greater than zero in "
-                            "hard_example mode. But received %d.",
-                            sample_size));
+      PADDLE_ENFORCE_GT(
+          sample_size,
+          0,
+          phi::errors::InvalidArgument("sample_size must greater than zero in "
+                                       "hard_example mode. But received %d.",
+                                       sample_size));
     }
 
     ctx->SetOutputDim("UpdatedMatchIndices", idx_dims);

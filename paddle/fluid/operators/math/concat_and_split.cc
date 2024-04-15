@@ -110,7 +110,7 @@ class ConcatFunctor<platform::XPUDeviceContext, T> {
     PADDLE_ENFORCE_EQ(
         r,
         XPU_SUCCESS,
-        platform::errors::External(
+        phi::errors::External(
             "XPU API return wrong value[%d %s], please check whether "
             "Baidu Kunlun Card is properly installed.",
             r,
@@ -169,7 +169,7 @@ class SplitFunctor<platform::XPUDeviceContext, T> {
     PADDLE_ENFORCE_EQ(
         r,
         XPU_SUCCESS,
-        platform::errors::External(
+        phi::errors::External(
             "XPU API return wrong value[%d %s], please check whether "
             "Baidu Kunlun Card is properly installed.",
             r,
@@ -190,8 +190,8 @@ FOR_ALL_TYPES(DEFINE_FUNCTOR);
   template class SplitFunctor<platform::XPUDeviceContext, type>;
 
 DEFINE_XPU_FUNCTOR(float)
-DEFINE_XPU_FUNCTOR(platform::float16)
-DEFINE_XPU_FUNCTOR(platform::bfloat16)
+DEFINE_XPU_FUNCTOR(phi::dtype::float16)
+DEFINE_XPU_FUNCTOR(phi::dtype::bfloat16)
 #endif
 }  // namespace math
 }  // namespace operators

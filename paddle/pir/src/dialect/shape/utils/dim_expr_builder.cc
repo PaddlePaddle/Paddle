@@ -108,11 +108,14 @@ std::vector<DimExpr> DimExprBuilder::Concat(const std::vector<DimExpr>& lhs,
 
 std::pair<std::vector<DimExpr>, std::vector<DimExpr>> DimExprBuilder::SplitAt(
     const std::vector<DimExpr> dim_exprs, int index) {
-  IR_ENFORCE(index > 0 && index < static_cast<int>(dim_exprs.size()),
-             "Index invalid, index = %d, dim_exprs.size() = %d. Please check "
-             "your inputs.",
-             index,
-             dim_exprs.size());
+  PADDLE_ENFORCE_EQ(
+      index > 0 && index < static_cast<int>(dim_exprs.size()),
+      true,
+      phi::errors::InvalidArgument(
+          "Index invalid, index = %d, dim_exprs.size() = %d. Please check "
+          "your inputs.",
+          index,
+          dim_exprs.size()));
   std::vector<DimExpr> lhs(dim_exprs.begin(), dim_exprs.begin() + index);
   std::vector<DimExpr> rhs(dim_exprs.begin() + index, dim_exprs.end());
   return std::make_pair(lhs, rhs);

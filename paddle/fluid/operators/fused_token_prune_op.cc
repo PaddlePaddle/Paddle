@@ -107,59 +107,59 @@ class FusedTokenPruneOp : public framework::OperatorWithKernel {
     auto new_mask_dim = ctx->GetInputDim("NewMask");
 
     // check input dims number
-    PADDLE_ENFORCE_EQ(mask_dim.size(),
-                      4,
-                      platform::errors::InvalidArgument(
-                          "The input mask must be 4-dimension"));
-    PADDLE_ENFORCE_EQ(attn_dim.size(),
-                      4,
-                      platform::errors::InvalidArgument(
-                          "The input attn must be 4-dimension"));
+    PADDLE_ENFORCE_EQ(
+        mask_dim.size(),
+        4,
+        phi::errors::InvalidArgument("The input mask must be 4-dimension"));
+    PADDLE_ENFORCE_EQ(
+        attn_dim.size(),
+        4,
+        phi::errors::InvalidArgument("The input attn must be 4-dimension"));
     PADDLE_ENFORCE_EQ(
         x_dim.size(),
         3,
-        platform::errors::InvalidArgument("The input x must be 4-dimension"));
-    PADDLE_ENFORCE_EQ(new_mask_dim.size(),
-                      4,
-                      platform::errors::InvalidArgument(
-                          "The input attn must be 4-dimension"));
+        phi::errors::InvalidArgument("The input x must be 4-dimension"));
+    PADDLE_ENFORCE_EQ(
+        new_mask_dim.size(),
+        4,
+        phi::errors::InvalidArgument("The input attn must be 4-dimension"));
 
     // check input dims relations
     PADDLE_ENFORCE_EQ(mask_dim[0],
                       attn_dim[0],
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The first dim of mask and attn should be the same"
                           "which is batch size"));
     PADDLE_ENFORCE_EQ(mask_dim[1],
                       attn_dim[1],
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The second dim of mask and attn should be the same"
                           "which is nb_head"));
     PADDLE_ENFORCE_EQ(mask_dim[0],
                       x_dim[0],
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The first dim of mask and x should be the same"
                           "which is batch size"));
     PADDLE_ENFORCE_EQ(
         mask_dim[2],
         mask_dim[3],
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The third dim and the fourth dim of mask should be the same"
             "which is max seq len"));
     PADDLE_ENFORCE_EQ(
         attn_dim[2],
         attn_dim[3],
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The third dim and the fourth dim of mask should be the same"
             "which is max seq len"));
     PADDLE_ENFORCE_EQ(attn_dim[2],
                       mask_dim[2],
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The third dim of mask and attn should be the same"
                           "which is max seq len"));
     PADDLE_ENFORCE_EQ(attn_dim[2],
                       x_dim[1],
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The third dim of mask and the second dim of attn"
                           "should be the same which is max seq len"));
 

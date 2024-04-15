@@ -14,6 +14,7 @@
 
 import abc
 import logging
+import warnings
 
 import paddle
 from paddle.base.log_helper import get_logger
@@ -738,12 +739,14 @@ def update_op_dims_mapping(
 
     op_dist_attr = dist_op.dist_attr
     changed = False
-    assert len(input_arg_names) == len(
-        infered_input_dims_mappings
-    ), f"dims mapping is NOT Match, infered [{len(infered_input_dims_mappings)}], original: [{len(input_arg_names)}]; dist op: [{str(dist_op)}]"
-    assert len(output_arg_names) == len(
-        infered_output_dims_mappings
-    ), f"dims mapping is NOT Match, infered [{len(infered_output_dims_mappings)}], original: [{len(output_arg_names)}]; dist op: [{str(dist_op)}]"
+    if len(input_arg_names) != len(infered_input_dims_mappings):
+        warnings.warn(
+            f"dims mapping is NOT Match, infered [{len(infered_input_dims_mappings)}], original: [{len(input_arg_names)}]; dist op: [{str(dist_op)}]"
+        )
+    if len(output_arg_names) != len(infered_output_dims_mappings):
+        warnings.warn(
+            f"dims mapping is NOT Match, infered [{len(infered_output_dims_mappings)}], original: [{len(output_arg_names)}]; dist op: [{str(dist_op)}]"
+        )
 
     for i in range(len(input_arg_names)):
         original_dims_mapping = op_dist_attr.get_input_dims_mapping(

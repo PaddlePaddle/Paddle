@@ -31,7 +31,7 @@ struct QuantizeDataType {
 };
 
 template <>
-struct QuantizeDataType<paddle::platform::float16> {
+struct QuantizeDataType<phi::dtype::float16> {
   using type = float;
 };
 
@@ -92,7 +92,7 @@ struct FindAbsMaxFunctor<phi::GPUContext, T> {
 };
 
 template struct FindAbsMaxFunctor<phi::GPUContext, float>;
-template struct FindAbsMaxFunctor<phi::GPUContext, paddle::platform::float16>;
+template struct FindAbsMaxFunctor<phi::GPUContext, phi::dtype::float16>;
 
 template <typename T>
 __global__ void FindChannelAbsMaxKernelQuantAxis0(const T *in,
@@ -172,9 +172,9 @@ struct FindChannelAbsMaxFunctor<phi::GPUContext, T> {
     PADDLE_ENFORCE_EQ(
         quant_axis == 0 || quant_axis == 1,
         true,
-        platform::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
-                                          "the received is %d",
-                                          quant_axis));
+        phi::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                     "the received is %d",
+                                     quant_axis));
     const int num = in_tensor.numel();
     auto in_dims = in_tensor.dims();
     const T *in_data = in_tensor.data<T>();
@@ -419,9 +419,9 @@ struct ChannelClipAndFakeQuantFunctor<phi::GPUContext, T> {
     PADDLE_ENFORCE_EQ(
         quant_axis == 0 || quant_axis == 1,
         true,
-        platform::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
-                                          "the received is %d",
-                                          quant_axis));
+        phi::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                     "the received is %d",
+                                     quant_axis));
 
     int64_t num = in.numel();
     auto in_dims = in.dims();
@@ -665,9 +665,9 @@ struct ChannelClipFakeQuantDequantFunctor<phi::GPUContext, T> {
     PADDLE_ENFORCE_EQ(
         quant_axis == 0 || quant_axis == 1,
         true,
-        platform::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
-                                          "the received is %d",
-                                          quant_axis));
+        phi::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                     "the received is %d",
+                                     quant_axis));
 
     int num = in.numel();
     auto in_dims = in.dims();

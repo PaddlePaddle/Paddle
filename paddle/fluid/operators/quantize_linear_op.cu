@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/quantize_linear_op.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 
-using float16 = paddle::platform::float16;
+using float16 = phi::dtype::float16;
 
 namespace paddle {
 namespace operators {
