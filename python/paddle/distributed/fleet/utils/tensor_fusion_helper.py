@@ -552,15 +552,25 @@ class FusedCommBuffer:
         assert self._act == HOOK_ACTION.REDUCE_SCATTER
         full_buffer = self.param_storage
         group = self._comm_group
+        # print("group.ranks", group.ranks)
+        # print("full_buffer._numel()", full_buffer._numel())
         shard_size = full_buffer._numel() // group.nranks
+        # print("shard_size", shard_size)
+        # print("group.rank", group.rank)
+
         begin = shard_size * group.rank
         end = begin + shard_size
         slice_buffer = full_buffer._slice(begin, end)
+        # group.process_group.all_gather(slice_buffer, full_buffer).wait()
+        # task = group.process_group.all_gather(slice_buffer, full_buffer, sync_op=sync)
+        task = group.process_group.all_gather(
+            full_buffer, slice_buffer, sync_op=sync
+        )
         if sync:
-            group.process_group.all_gather(slice_buffer, full_buffer).wait()
+            task.wait()
         else:
-            task = group.process_group.all_gather(slice_buffer, full_buffer)
-            for param in slice_buffer:
+            for param in self.params:
+                # print("param.name", param.name)
                 assert param.name not in param2task
                 param2task[param.name] = task
 
