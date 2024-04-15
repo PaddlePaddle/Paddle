@@ -23,6 +23,7 @@ from paddle import nn
 from paddle.static import InputSpec
 
 sys.path.append(dirname(dirname(__file__)))
+
 import utils
 
 
@@ -35,24 +36,14 @@ class CastLayer(nn.Layer):
         return paddle.cast(x, dtype="float32")
 
 
-class GatherLayer(nn.Layer):
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, x, index):
-        return paddle.gather(x, index)
-
-
 class TestCast(unittest.TestCase):
     def setUp(self):
         paddle.seed(2022)
         self.prepare_data()
 
     def prepare_data(self):
-        self.shape = [1024, 17]
+        self.shape = [1024, 32, 1024, 17]
         self.x = paddle.randn(self.shape, dtype="float32")
-        self.x.stop_gradient = True
-        self.index = paddle.to_tensor([0, 1])
         self.x.stop_gradient = True
 
     def check_jit_kernel_info(self, static_fn):
@@ -60,14 +51,13 @@ class TestCast(unittest.TestCase):
         utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
 
     def eval(self, use_cinn):
-        net = GatherLayer()
+        net = CastLayer()
         input_spec = [
-            InputSpec(shape=[None, 32], dtype='float32'),
-            InputSpec(shape=[None, 32], dtype='int32'),
+            InputSpec(shape=[None, 32, None, None], dtype='float32'),
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
-        out = net(self.x, self.index)
+        out = net(self.x)
         if use_cinn:
             self.check_jit_kernel_info(net.forward)
         return out

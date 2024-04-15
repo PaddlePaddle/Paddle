@@ -896,22 +896,24 @@ class GatherOpPattern
     auto gather_op = op->dyn_cast<paddle::dialect::GatherOp>();
     auto x = op.operand_source(0);
     auto index = op->operand_source(1);
-    int axis = 0;
-    pir::ShapeConstraintIRAnalysis &shape_analysis =
-        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
-    const auto &axis_shape_or_data =
-        shape_analysis.GetShapeOrDataForValue(op->operand_source(2));
-    if (gather_op->attributes().count("index")) {
-      axis =
-          gather_op.attribute("index").dyn_cast<pir::Int32Attribute>().data();
-    } else {
-      auto axis_full_op = op.operand_source(2)
-                              .defining_op()
-                              ->dyn_cast<paddle::dialect::FullOp>();
-      axis = static_cast<int>(axis_full_op.attribute("value")
-                                  .dyn_cast<::pir::FloatAttribute>()
-                                  .data());
-    }
+    const int axis = [&]() -> int {
+      int axis = 0;
+      if (gather_op->attributes().count("index")) {
+        axis =
+            gather_op.attribute("index").dyn_cast<pir::Int32Attribute>().data();
+      } else {
+        auto axis_gen_op = op.operand_source(2).defining_op();
+        PADDLE_ENFORCE_EQ(axis_gen_op->isa<paddle::dialect::FullOp>(),
+                          true,
+                          "Not Supported: The gather operator for CINN only "
+                          "supports constant value");
+        auto full_op = axis_gen_op->dyn_cast<paddle::dialect::FullOp>();
+        axis = static_cast<int>(full_op.attribute("value")
+                                    .dyn_cast<::pir::FloatAttribute>()
+                                    .data());
+        return axis;
+      }
+    }();
     auto out =
         rewriter.Build<cinn::dialect::GatherOp>(x, index, axis)->result(0);
     rewriter.ReplaceAllUsesWith(op->result(0), out);
