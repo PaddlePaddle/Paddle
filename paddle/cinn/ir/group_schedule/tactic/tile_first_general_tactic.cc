@@ -249,6 +249,7 @@ void TileFirstGeneralTactic::SplitWarpNumber(ir::IRSchedule* sch,
   } else if (IsWarpReduce(context_->config)) {
     // get num warp from flatten num
     LimitWarpNum(loops[0], &(context_->config));
+    if (!IsWarpNumGT(1)) return;
     int thread_y = context_->config.tile_config.warp_num * 32 /
                    context_->config.tile_config.tree_reduce_num;
     sch->Split(loops[0], std::vector<int>({-1, thread_y}));
@@ -325,11 +326,20 @@ void TileFirstGeneralTactic::BindCudaInfo(ir::IRSchedule* sch,
     sch->Split(loops[0], std::vector<int>({1, -1}));
   }
 
+  const auto IsWarpNumGT = [&](int64_t num) {
+    return context_->config.tile_config.warp_num > num;
+  };
+
   const auto DoBind = [&](const std::vector<ir::Expr>& loops) {
     sch->Bind(loops[0], "blockIdx.x");
     if (IsWarpReduce(context_->config)) {
-      sch->Bind(loops[1], "threadIdx.y");
-      sch->Bind(loops[2], "threadIdx.x");
+      if (IsWarpNumGT(1)) {
+        sch->Bind(loops[1], "threadIdx.y");
+        sch->Bind(loops[2], "threadIdx.x");
+      } else {
+        sch->Bind(loops[1], "threadIdx.x");
+        sch->Bind(loops[2], "threadIdx.y");
+      }
     } else {
       sch->Bind(loops[1], "threadIdx.x");
     }
