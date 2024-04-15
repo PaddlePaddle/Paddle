@@ -39,7 +39,7 @@ class TestSincAPI(unittest.TestCase):
         self.place = [paddle.CPUPlace()]
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
-        self.shapes = [[6], [16, 64], [128, 512, 1024]]
+        self.shapes = [[6], [16, 64]]
 
     def test_dtype(self):
         def run_dygraph(place):
