@@ -29,6 +29,77 @@ namespace memory {
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 template <>
+void Copy<platform::CustomPinnedPlace, platform::CPUPlace>(
+    platform::CustomPinnedPlace dst_place,
+    void* dst,
+    platform::CPUPlace src_place,
+    const void* src,
+    size_t num) {
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place;
+  if (UNLIKELY(num == 0)) return;
+  std::memcpy(dst, src, num);
+}
+
+template <>
+void Copy<platform::CPUPlace, platform::CustomPinnedPlace>(
+    platform::CPUPlace dst_place,
+    void* dst,
+    platform::CustomPinnedPlace src_place,
+    const void* src,
+    size_t num) {
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place;
+  if (UNLIKELY(num == 0)) return;
+  std::memcpy(dst, src, num);
+}
+
+template <>
+void Copy<platform::CustomPinnedPlace, platform::CustomPlace>(
+    platform::CustomPinnedPlace dst_place,
+    void* dst,
+    platform::CustomPlace src_place,
+    const void* src,
+    size_t num,
+    void* stream) {
+  if (UNLIKELY(num == 0)) return;
+
+  auto src_type = platform::PlaceHelper::GetDeviceType(src_place);
+  auto dst_type = platform::PlaceHelper::GetDeviceType(dst_place);
+  std::string msg = "Memcpy:" + src_type + "->" + dst_type + "_pinned";
+  platform::RecordEvent record_event(msg);
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place << ", stream=" << stream;
+
+  phi::DeviceManager::SetDevice(src_place);
+  phi::stream::Stream stream_wrapper(src_place, stream);
+  phi::DeviceManager::GetDeviceWithPlace(src_place)->MemoryCopyD2H(
+      dst, src, num, &stream_wrapper);
+}
+
+template <>
+void Copy<platform::CustomPlace, platform::CustomPinnedPlace>(
+    platform::CustomPlace dst_place,
+    void* dst,
+    platform::CustomPinnedPlace src_place,
+    const void* src,
+    size_t num,
+    void* stream) {
+  if (UNLIKELY(num == 0)) return;
+  auto src_type = platform::PlaceHelper::GetDeviceType(src_place);
+  auto dst_type = platform::PlaceHelper::GetDeviceType(dst_place);
+  std::string msg = "Memcpy:" + src_type + "_pinned ->" + dst_type;
+  platform::RecordEvent record_event(msg);
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place << ", stream=" << stream;
+
+  phi::DeviceManager::SetDevice(dst_place);
+  phi::stream::Stream stream_wrapper(dst_place, stream);
+  phi::DeviceManager::GetDeviceWithPlace(dst_place)->MemoryCopyH2D(
+      dst, src, num, &stream_wrapper);
+}
+
+template <>
 void Copy<platform::CPUPlace, platform::CustomPlace>(
     platform::CPUPlace dst_place,
     void* dst,
@@ -806,6 +877,19 @@ void Copy<phi::Place, phi::Place>(phi::Place dst_place,
                                     dst_place.GetDeviceId());
     platform::CPUPlace place_src;
     return Copy(place_dst, dst, place_src, src, num, nullptr);
+  } else if (src_place.GetType() ==
+                 phi::AllocationType::CUSTOMPINNED &&  // NOLINT
+             dst_place.GetType() == phi::AllocationType::CUSTOM) {
+    platform::CustomPlace place_dst(dst_place.GetDeviceType(),
+                                    dst_place.GetDeviceId());
+    platform::CPUPlace place_src;
+    return Copy(place_dst, dst, place_src, src, num, nullptr);
+  } else if (src_place.GetType() == phi::AllocationType::CUSTOM &&
+             dst_place.GetType() == phi::AllocationType::CUSTOMPINNED) {
+    platform::CustomPlace place_src(src_place.GetDeviceType(),
+                                    src_place.GetDeviceId());
+    platform::CPUPlace place_dst;
+    return Copy(place_dst, dst, place_src, src, num, nullptr);
   } else if (src_place.GetType() == phi::AllocationType::CUSTOM &&
              dst_place.GetType() == phi::AllocationType::CPU) {
     platform::CustomPlace place_src(src_place.GetDeviceType(),
@@ -858,8 +942,19 @@ void Copy<phi::Place, phi::Place>(phi::Place dst_place,
     platform::CPUPlace place_src;
     platform::CustomPlace place_dst(dst_place);
     return Copy(place_dst, dst, place_src, src, num, stream);
+  } else if (src_place.GetType() ==
+                 phi::AllocationType::CUSTOMPINNED &&  // NOLINT
+             dst_place.GetType() == phi::AllocationType::CUSTOM) {
+    platform::CPUPlace place_src;
+    platform::CustomPlace place_dst(dst_place);
+    return Copy(place_dst, dst, place_src, src, num, stream);
   } else if (src_place.GetType() == phi::AllocationType::CUSTOM &&  // NOLINT
              dst_place.GetType() == phi::AllocationType::CPU) {
+    platform::CustomPlace place_src(src_place);
+    platform::CPUPlace place_dst;
+    return Copy(place_dst, dst, place_src, src, num, stream);
+  } else if (src_place.GetType() == phi::AllocationType::CUSTOM &&  // NOLINT
+             dst_place.GetType() == phi::AllocationType::CUSTOMPINNED) {
     platform::CustomPlace place_src(src_place);
     platform::CPUPlace place_dst;
     return Copy(place_dst, dst, place_src, src, num, stream);

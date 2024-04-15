@@ -35,6 +35,7 @@ enum class AllocationType : int8_t {
   XPU = 4,
   IPU = 7,
   CUSTOM = 9,
+  CUSTOMPINNED = 11,
 };
 
 class TEST_API CustomRegisteredDeviceMap {
@@ -182,6 +183,22 @@ class CustomPlace : public Place {
     if (place.GetType() == AllocationType::CUSTOM) {
       this->Reset(
           AllocationType::CUSTOM, place.GetDeviceId(), place.GetDeviceType());
+    }
+  }
+};
+
+class CustomPinnedPlace : public Place {
+ public:
+  CustomPinnedPlace() : Place(AllocationType::CUSTOMPINNED, 0, "") {}
+  explicit CustomPinnedPlace(const std::string dev_type)
+      : Place(AllocationType::CUSTOMPINNED, 0, dev_type) {}
+
+  CustomPinnedPlace(const CustomPinnedPlace&) = default;
+  CustomPinnedPlace(const Place& place) {  // NOLINT
+    if (place.GetType() == AllocationType::CUSTOMPINNED) {
+      this->Reset(AllocationType::CUSTOMPINNED,
+                  place.GetDeviceId(),
+                  place.GetDeviceType());
     }
   }
 };

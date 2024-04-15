@@ -95,6 +95,11 @@ struct DLDeviceVisitor {
         "platform::CustomPlace is not supported"));
   }
 
+  inline ::DLDevice operator()(const platform::CustomPinnedPlace &place) const {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "platform::CustomPinnedPlace is not supported"));
+  }
+
   inline ::DLDevice operator()(const platform::CUDAPlace &place) const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     ::DLDevice device;
