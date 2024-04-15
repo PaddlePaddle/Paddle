@@ -488,6 +488,8 @@ from .tensor.math import (  # noqa: F401
     signbit,
     sin,
     sin_,
+    sinc,
+    sinc_,
     sinh,
     sinh_,
     sqrt,

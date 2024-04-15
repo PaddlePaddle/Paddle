@@ -7728,3 +7728,47 @@ def signbit(x, name=None):
     x = paddle.sign(neg_zero_x)
     out = paddle.cast(x < 0, dtype='bool')
     return out
+
+
+def sinc(x, name=None):
+    r"""
+    Calculate the normalized sinc of ``x`` elementwise.
+
+    .. math::
+
+        out_i =
+        \left\{
+        \begin{aligned}
+        &1 & \text{ if $x_i = 0$} \\
+        &\frac{\sin(\pi x_i)}{\pi x_i} & \text{ otherwise}
+        \end{aligned}
+        \right.
+
+    Args:
+        x (Tensor): The input Tensor. Must be one of the following types: float16, float32, float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): The Tensor of elementwise computed normalized sinc result.
+    """
+    if not isinstance(x, (paddle.Tensor, Variable, paddle.pir.Value)):
+        raise TypeError(f"x must be tensor type, but got {type(x)}")
+
+    tmp = math.pi * paddle.where(x == 0, 1.0e-20, x)
+    return paddle.divide(tmp.sin(), tmp)
+
+
+@inplace_apis_in_dygraph_only
+def sinc_(x, name=None):
+    r"""
+    Inplace version of ``sinc`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_sinc`.
+    """
+    if not isinstance(x, (paddle.Tensor, Variable)):
+        raise TypeError(f"x must be tensor type, but got {type(x)}")
+
+    paddle.where_(x != 0, x, paddle.full_like(x, 1.0e-20))
+    paddle.multiply_(x, paddle.to_tensor(math.pi, dtype=x.dtype))
+    paddle.sin_(x)
+    tmp = paddle.asin(x)
+    return paddle.divide_(x, tmp)
