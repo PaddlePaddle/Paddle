@@ -60,18 +60,18 @@ def fused_rotary_position_embedding(
             >>> # batch_size = 2
             >>> # seq_len = 2
             >>> # num_heads = 2
-            >>> # head_dim = 2
+            >>> # head_dim = 4
 
             >>> paddle.seed(1204)
 
             >>> # q, k, v: [batch_size, seq_len, num_heads, head_dim]
-            >>> q = paddle.randn([2, 2, 2, 2], dtype='float16')
-            >>> k = paddle.randn([2, 2, 2, 2], dtype='float16')
-            >>> v = paddle.randn([2, 2, 2, 2], dtype='float16')
+            >>> q = paddle.randn([2, 2, 2, 4], dtype='float16')
+            >>> k = paddle.randn([2, 2, 2, 4], dtype='float16')
+            >>> v = paddle.randn([2, 2, 2, 4], dtype='float16')
 
             >>> # sin, cos: [1, seq_len, 1, head_dim]
-            >>> x = paddle.randn([1, 2, 1, 2], dtype='float16')
-            >>> y = paddle.randn([1, 2, 1, 2], dtype='float16')
+            >>> x = paddle.randn([1, 2, 1, 4], dtype='float16')
+            >>> y = paddle.randn([1, 2, 1, 4], dtype='float16')
             >>> sin = paddle.sin(x)
             >>> cos = paddle.cos(y)
 
@@ -81,24 +81,28 @@ def fused_rotary_position_embedding(
             >>> # out_q, out_k, out_v: [batch_size, seq_len, num_heads, head_dim]
             >>> out_q, out_k, out_v = fused_rotary_position_embedding(q, k, v, sin=sin, cos=cos, position_ids=position_ids, use_neox_rotary_style=False)
             >>> print(out_q)
-            Tensor(shape=[2, 2, 2, 2], dtype=float16, place=Place(gpu:0), stop_gradient=True,
-            [[[[-0.54931641,  0.64990234],
-               [-1.08691406,  1.18261719]],
-              [[ 0.57812500,  0.11749268],
-               [-0.63281250,  0.15551758]]],
-             [[[-0.77050781,  0.07733154],
-               [-0.73730469, -0.16735840]],
-              [[ 0.07116699, -0.90966797],
-               [-0.03628540, -0.20202637]]]])
+            Tensor(shape=[2, 2, 2, 4], dtype=float16, place=Place(gpu:0), stop_gradient=True,
+                [[[[-0.44238281,  1.53222656,  0.62255859,  0.21667480],
+                    [ 0.41552734, -0.20666504, -0.58496094,  0.06628418]],
+
+                    [[-0.59228516, -0.12359619,  0.29125977, -1.81640625],
+                    [ 0.38061523, -0.03918457, -1.51660156, -0.52148438]]],
+
+
+                    [[[-0.52392578,  0.72021484, -0.18920898,  1.49609375],
+                    [-0.00397110, -0.80419922, -0.74267578,  1.43359375]],
+
+                    [[ 0.08770752, -0.69970703, -0.17639160, -0.28027344],
+                    [ 0.00321198, -0.22937012,  0.01106262, -0.26416016]]]])
     """
+    if (sin is None) or (cos is None):
+        assert (
+            position_ids is None
+        ), "position_ids without sin/cos is not correctly supported now. if you have used this before, the result is wrong."
+        assert (
+            use_neox_rotary_style
+        ), "rotate_half without sin/cos is not correctly supported now. if you have used this before, the result is wrong."
     if in_dynamic_or_pir_mode():
-        if (sin is None) or (cos is None):
-            assert (
-                position_ids is None
-            ), "position_ids without sin/cos is not correctly supported now. if you have used this before, the result is wrong."
-            assert (
-                use_neox_rotary_style
-            ), "rotate_half without sin/cos is not correctly supported now. if you have used this before, the result is wrong."
         return _C_ops.fused_rotary_position_embedding(
             q,
             k,
@@ -184,44 +188,58 @@ def fused_rotary_position_embedding_qkvpacked(
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
-            >>> from paddle.incubate.nn.functional import fused_rotary_position_embedding
+            >>> from paddle.incubate.nn.functional import fused_rotary_position_embedding_qkvpacked
 
             >>> paddle.set_device('gpu')
 
             >>> # batch_size = 2
             >>> # seq_len = 2
             >>> # num_heads = 2
-            >>> # head_dim = 2
+            >>> # head_dim = 4
 
             >>> paddle.seed(1204)
 
             >>> # q, k, v: [batch_size, seq_len, num_heads, head_dim]
-            >>> q = paddle.randn([2, 2, 2, 2], dtype='float16')
-            >>> k = paddle.randn([2, 2, 2, 2], dtype='float16')
-            >>> v = paddle.randn([2, 2, 2, 2], dtype='float16')
+            >>> q = paddle.randn([2, 2, 2, 4], dtype='float16')
+            >>> k = paddle.randn([2, 2, 2, 4], dtype='float16')
+            >>> v = paddle.randn([2, 2, 2, 4], dtype='float16')
+            >>> # qkv: [batch_size, seq_len, num_group+2, num_heads, head_dim]
+            >>> qkv = paddle.stack([q, k, v], axis=2)
 
             >>> # sin, cos: [1, seq_len, 1, head_dim]
-            >>> x = paddle.randn([1, 2, 1, 2], dtype='float16')
-            >>> y = paddle.randn([1, 2, 1, 2], dtype='float16')
+            >>> x = paddle.randn([1, 2, 1, 4], dtype='float16')
+            >>> y = paddle.randn([1, 2, 1, 4], dtype='float16')
             >>> sin = paddle.sin(x)
             >>> cos = paddle.cos(y)
 
             >>> # position_ids: [batch_size, seq_len]
             >>> position_ids = paddle.randint(high=2, shape=[2, 2], dtype='int64')
 
-            >>> # out_q, out_k, out_v: [batch_size, seq_len, num_heads, head_dim]
-            >>> out_q, out_k, out_v = fused_rotary_position_embedding(q, k, v, sin=sin, cos=cos, position_ids=position_ids, use_neox_rotary_style=False)
+            >>> # out_qkv: [batch_size, seq_len, num_group+2, num_heads, head_dim]
+            >>> out_qkv = fused_rotary_position_embedding_qkvpacked(qkv, rotate_kv=True, sin=sin, cos=cos, position_ids=position_ids, use_neox_rotary_style=False)
+            >>> out_q = out_qkv[:,:,0,:,:] # num_group==1
             >>> print(out_q)
-            Tensor(shape=[2, 2, 2, 2], dtype=float16, place=Place(gpu:0), stop_gradient=True,
-            [[[[-0.54931641,  0.64990234],
-               [-1.08691406,  1.18261719]],
-              [[ 0.57812500,  0.11749268],
-               [-0.63281250,  0.15551758]]],
-             [[[-0.77050781,  0.07733154],
-               [-0.73730469, -0.16735840]],
-              [[ 0.07116699, -0.90966797],
-               [-0.03628540, -0.20202637]]]])
+            Tensor(shape=[2, 2, 2, 4], dtype=float16, place=Place(gpu:0), stop_gradient=True,
+                [[[[-0.44238281,  1.53222656,  0.62255859,  0.21667480],
+                    [ 0.41552734, -0.20666504, -0.58496094,  0.06628418]],
+
+                    [[-0.59228516, -0.12359619,  0.29125977, -1.81640625],
+                    [ 0.38061523, -0.03918457, -1.51660156, -0.52148438]]],
+
+
+                    [[[-0.52392578,  0.72021484, -0.18920898,  1.49609375],
+                    [-0.00397110, -0.80419922, -0.74267578,  1.43359375]],
+
+                    [[ 0.08770752, -0.69970703, -0.17639160, -0.28027344],
+                    [ 0.00321198, -0.22937012,  0.01106262, -0.26416016]]]])
     """
+    if (sin is None) or (cos is None):
+        assert (
+            position_ids is None
+        ), "position_ids without sin/cos is not correctly supported now. if you have used this before, the result is wrong."
+        assert (
+            use_neox_rotary_style
+        ), "rotate_half without sin/cos is not correctly supported now. if you have used this before, the result is wrong."
     input_shape = qkv.shape
     num_heads_k = qkv.shape[-2]
     num_group = qkv.shape[-3] - 2
@@ -234,9 +252,6 @@ def fused_rotary_position_embedding_qkvpacked(
         actual_num_heads += 2 * num_heads_k
     elif rotate_k:
         actual_num_heads += num_heads_k
-    assert (
-        actual_num_heads % 2 == 0
-    ), f"Rope QKVPacked need actual_num_heads%2==0 now but get {actual_num_heads}"
 
     if in_dynamic_or_pir_mode():
         out_qkv, _, _ = _C_ops.fused_rotary_position_embedding(

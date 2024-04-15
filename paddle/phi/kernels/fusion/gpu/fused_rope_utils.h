@@ -368,6 +368,10 @@ __device__ __forceinline__ void rotate_half(phi::Array<const T*, 3> ins_data,
     const T* input_r = ins_data[iter] + index_r;
     VecType* out = reinterpret_cast<VecType*>(outs_data[iter] + index);
 
+    /*
+      input_r are not changed in this loop of VecSize, so a VecSize can't
+      cross the stride_r point. so we need (head_dim / 2) % VecSize == 0.
+    */
 #pragma unroll
     for (int nx = 0; nx < VecSize; ++nx) {
       MPType p0 = static_cast<MPType>(input_v[nx]);

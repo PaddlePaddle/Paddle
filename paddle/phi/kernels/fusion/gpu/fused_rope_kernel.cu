@@ -51,12 +51,14 @@ void FusedRopeKernel(const Context& dev_ctx,
   inputs_num_heads[0] = q.dims()[2];
   auto head_dim = q.dims()[3];
 
-  PADDLE_ENFORCE_EQ(head_dim % 2,
-                    0,
-                    phi::errors::InvalidArgument(
-                        "The head_dim of input must be a multiple of 2."));
-
   constexpr const int vec_size = 2;
+  // The `rotate_half` kernel needs this, see `rotate_half` for more details
+  PADDLE_ENFORCE_EQ(
+      head_dim % (vec_size * 2),
+      0,
+      phi::errors::InvalidArgument(
+          "The head_dim of input must be a multiple of %d (2*vec_size).",
+          vec_size * 2));
 
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);

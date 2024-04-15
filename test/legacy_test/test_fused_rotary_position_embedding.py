@@ -19,7 +19,10 @@ import parameterized as param
 
 import paddle
 from paddle.base import core
-from paddle.incubate.nn.functional import fused_rotary_position_embedding
+from paddle.incubate.nn.functional import (
+    fused_rotary_position_embedding,
+    fused_rotary_position_embedding_qkvpacked,
+)
 from paddle.pir_utils import test_with_pir_api
 
 position_ids_list = [[7, 5, 4, 6, 3, 1, 2, 0], [3, 1, 4, 0, 7, 6, 5, 2]]
@@ -120,7 +123,7 @@ def paddle_fused_rotary_position_embedding(
     cos_tensor=None,
     position_ids=None,
     use_neox_rotary_style=True,
-    **kwargs
+    **kwargs,
 ):
     # permute q, k, v from [batch_size, seq_len, num_heads, head_dim]
     # to [batch_size, num_heads, seq_len, head_dim]
@@ -163,7 +166,7 @@ def paddle_fused_rotary_position_embedding(
     "core is not compiled with CUDA ",
 )
 @param.parameterized_class(
-    ("name", 'shape_q', 'shape_k', 'shape_v', 'position_ids_list'),
+    ("name", "shape_q", "shape_k", "shape_v", "position_ids_list"),
     [
         (
             "qkv_input",
@@ -209,7 +212,7 @@ def paddle_fused_rotary_position_embedding(
 )
 class TestFusedRotaryPositionEmbedding(unittest.TestCase):
     def setUp(self):
-        self.dtype = 'float32'
+        self.dtype = "float32"
         self.training = True
         self.seed = 1203
         self.rtol = 1e-5
@@ -223,7 +226,9 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         tmp.stop_gradient = False
         return tmp
 
-    def get_inputs(self, seed, with_sin_cos, rotate_half=False):
+    def get_inputs(
+        self, seed, with_sin_cos, with_grads=False, rotate_half=False
+    ):
         paddle.disable_static()
         paddle.seed(seed)
         # tensor_q shape: [batch_size, seq_len, num_heads, head_dim]
@@ -238,7 +243,21 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
             if with_sin_cos
             else (None, None)
         )
-        return tensor_q, tensor_k, tensor_v, tensor_sin, tensor_cos
+        if not with_grads:
+            return (tensor_q, tensor_k, tensor_v, tensor_sin, tensor_cos)
+        tensor_grad_outq = self.get_paddle_tensor(self.shape_q)
+        tensor_grad_outk = self.get_paddle_tensor(self.shape_k)
+        tensor_grad_outv = self.get_paddle_tensor(self.shape_v)
+        return (
+            tensor_q,
+            tensor_k,
+            tensor_v,
+            tensor_sin,
+            tensor_cos,
+            tensor_grad_outq,
+            tensor_grad_outk,
+            tensor_grad_outv,
+        )
 
     def get_forward_backward(
         self,
@@ -253,8 +272,20 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         fw = []
         bw = []
 
-        tensor_q, tensor_k, tensor_v, tensor_sin, tensor_cos = self.get_inputs(
-            seed, with_sin_cos, rotate_half=not use_neox_rotary_style
+        (
+            tensor_q,
+            tensor_k,
+            tensor_v,
+            tensor_sin,
+            tensor_cos,
+            tensor_grad_outq,
+            tensor_grad_outk,
+            tensor_grad_outv,
+        ) = self.get_inputs(
+            seed,
+            with_sin_cos,
+            with_grads=True,
+            rotate_half=not use_neox_rotary_style,
         )
 
         if test_time_major:
@@ -265,7 +296,27 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
                 tensor_k = paddle.transpose(tensor_k, perm=[1, 0])
             if tensor_v is not None:
                 tensor_v = paddle.transpose(tensor_v, perm=[1, 0])
+            if tensor_grad_outq is not None:
+                tensor_grad_outq = paddle.transpose(
+                    tensor_grad_outq, perm=[1, 0]
+                )
+            if tensor_grad_outk is not None:
+                tensor_grad_outk = paddle.transpose(
+                    tensor_grad_outk, perm=[1, 0]
+                )
+            if tensor_grad_outv is not None:
+                tensor_grad_outv = paddle.transpose(
+                    tensor_grad_outv, perm=[1, 0]
+                )
 
+        tensor_q = tensor_q.detach().clone()
+        tensor_q.stop_gradient = False
+        if tensor_k is not None:
+            tensor_k = tensor_k.detach().clone()
+            tensor_k.stop_gradient = False
+        if tensor_v is not None:
+            tensor_v = tensor_v.detach().clone()
+            tensor_v.stop_gradient = False
         out_q, out_k, out_v = rope_function(
             tensor_q,
             tensor_k,
@@ -282,12 +333,20 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
             if out_value is None or not out_value._is_initialized():
                 continue
             fw.append(out_value)
-            out_init_grad.append(paddle.randn(out_value.shape, self.dtype))
+        for grad_value in [
+            tensor_grad_outq,
+            tensor_grad_outk,
+            tensor_grad_outv,
+        ]:
+            if grad_value is None or not grad_value._is_initialized():
+                continue
+            out_init_grad.append(grad_value)
 
         paddle.autograd.backward(fw, out_init_grad, True)
         bw = list(
             filter(lambda x: x is not None, [tensor_q, tensor_k, tensor_v])
         )
+        bw = [x.grad for x in bw]
 
         if test_time_major:
             # transpose back
@@ -297,6 +356,127 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
 
         return fw, bw
 
+    def get_forward_backward_qkvpacked(
+        self,
+        seed,
+        with_sin_cos=True,
+        use_neox_rotary_style=True,
+        position_ids=None,
+        test_time_major=False,
+    ):
+        paddle.disable_static()
+        fw = []
+        bw = []
+
+        (
+            tensor_q,
+            tensor_k,
+            tensor_v,
+            tensor_sin,
+            tensor_cos,
+            tensor_grad_outq,
+            tensor_grad_outk,
+            tensor_grad_outv,
+        ) = self.get_inputs(
+            seed,
+            with_sin_cos,
+            with_grads=True,
+            rotate_half=not use_neox_rotary_style,
+        )
+
+        if self.shape_k is None:
+            shape_k = self.shape_q if self.shape_v is None else self.shape_v
+        else:
+            shape_k = self.shape_k
+        if self.shape_v is None:
+            shape_v = shape_k
+        else:
+            shape_v = self.shape_v
+        num_group = self.shape_q[-2] // shape_k[-2]
+
+        def packqkv(q, k, v):
+            tq = q.reshape((0, 0, num_group, k.shape[-2], q.shape[-1]))
+            kv = paddle.stack([k, v], axis=2)
+            qkv = paddle.concat([tq, kv], axis=2)
+            return qkv
+
+        def unpackqkv(qkv):
+            out_q = qkv[:, :, :num_group, :, :].reshape(self.shape_q)
+            out_k = qkv[:, :, num_group, :, :]
+            out_v = qkv[:, :, num_group + 1, :, :]
+            return out_q, out_k, out_v
+
+        out_init_grad = [tensor_grad_outq, tensor_grad_outk, tensor_grad_outv]
+        if tensor_k is None:
+            tensor_k = self.get_paddle_tensor(shape_k)
+            out_init_grad[1] = paddle.randn(shape_k, self.dtype)
+        if tensor_v is None:
+            tensor_v = self.get_paddle_tensor(shape_v)
+            out_init_grad[2] = paddle.randn(shape_v, self.dtype)
+        out_grad = packqkv(*out_init_grad)
+
+        v_notrans = tensor_v.numpy()
+        k_notrans = tensor_k.numpy()
+
+        if test_time_major:
+            # [batch_size, seq_len, num_heads, head_dim] -> [seq_len, batch_size, num_heads, head_dim]
+            tensor_q = paddle.transpose(tensor_q, perm=[1, 0])
+            tensor_k = paddle.transpose(tensor_k, perm=[1, 0])
+            tensor_v = paddle.transpose(tensor_v, perm=[1, 0])
+            out_grad = paddle.transpose(out_grad, perm=[1, 0])
+
+        qkv = packqkv(tensor_q, tensor_k, tensor_v)
+        qkv = qkv.detach().clone()
+        qkv.stop_gradient = False
+        out_qkv = fused_rotary_position_embedding_qkvpacked(
+            qkv,
+            self.shape_k is not None,
+            self.shape_v is not None,
+            tensor_sin,
+            tensor_cos,
+            position_ids=position_ids,
+            use_neox_rotary_style=use_neox_rotary_style,
+            time_major=test_time_major,
+        )
+        paddle.autograd.backward([out_qkv], [out_grad], True)
+        grad_qkv = qkv.grad
+
+        if test_time_major:
+            # transpose back
+            # [seq_len, batch_size, num_heads, head_dim] -> [batch_size, seq_len, num_heads, head_dim]
+            out_qkv = paddle.transpose(out_qkv, perm=[1, 0])
+            grad_qkv = paddle.transpose(grad_qkv, perm=[1, 0])
+
+        out_q, out_k, out_v = unpackqkv(out_qkv)
+        fw = [out_q]
+        if self.shape_k is None:
+            if self.shape_v is None:
+                # we must rotate k if rotate v now, so don't check k if v rotated
+                np.testing.assert_array_equal(out_k.numpy(), k_notrans)
+        else:
+            fw.append(out_k)
+        if self.shape_v is None:
+            np.testing.assert_array_equal(out_v.numpy(), v_notrans)
+        else:
+            fw.append(out_v)
+
+        grad_q, grad_k, grad_v = unpackqkv(grad_qkv)
+        bw = [grad_q]
+        grad_out_q, grad_out_k, grad_out_v = (*out_init_grad,)
+        if self.shape_k is None:
+            if self.shape_v is None:
+                # we must rotate k if rotate v now, so don't check k if v rotated
+                np.testing.assert_array_equal(
+                    grad_k.numpy(), grad_out_k.numpy()
+                )
+        else:
+            bw.append(grad_k)
+        if self.shape_v is None:
+            np.testing.assert_array_equal(grad_v.numpy(), grad_out_v.numpy())
+        else:
+            bw.append(grad_v)
+        return fw, bw
+
     def check_results(self, p_results, f_results):
         for i in range(len(p_results)):
             np.testing.assert_allclose(
@@ -304,6 +484,15 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
                 f_results[i].numpy(),
                 rtol=self.rtol,
                 atol=self.atol,
+                err_msg=f"Tensor {i} not match",
+            )
+
+    def strict_check_results(self, p_results, f_results):
+        for i in range(len(p_results)):
+            np.testing.assert_array_equal(
+                p_results[i].numpy(),
+                f_results[i].numpy(),
+                err_msg=f"Tensor {i} not match",
             )
 
     def test_fused_rope(self):
@@ -325,6 +514,20 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         self.check_results(p_bw, f_bw)
         self.check_results(p_fw, f_fw_time_major)
         self.check_results(p_bw, f_bw_time_major)
+
+        f_fw_qkvpack, f_bw_qkvpack = self.get_forward_backward_qkvpacked(
+            seed=self.seed, test_time_major=False
+        )
+        (
+            f_fw_timemajor_qkvpack,
+            f_bw_timemajor_qkvpack,
+        ) = self.get_forward_backward_qkvpacked(
+            seed=self.seed, test_time_major=True
+        )
+        self.strict_check_results(f_fw_qkvpack, f_fw)
+        self.strict_check_results(f_bw_qkvpack, f_bw)
+        self.strict_check_results(f_fw_timemajor_qkvpack, f_fw_time_major)
+        self.strict_check_results(f_bw_timemajor_qkvpack, f_bw_time_major)
 
     def test_fused_rope_with_sin_cos(self):
         p_fw, p_bw = self.get_forward_backward(
@@ -350,6 +553,25 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         self.check_results(p_fw, f_fw_time_major)
         self.check_results(p_bw, f_bw_time_major)
 
+        f_fw_qkvpack, f_bw_qkvpack = self.get_forward_backward_qkvpacked(
+            seed=self.seed,
+            with_sin_cos=True,
+            test_time_major=False,
+        )
+        (
+            f_fw_timemajor_qkvpack,
+            f_bw_timemajor_qkvpack,
+        ) = self.get_forward_backward_qkvpacked(
+            seed=self.seed,
+            with_sin_cos=True,
+            test_time_major=True,
+        )
+
+        self.strict_check_results(f_fw_qkvpack, f_fw)
+        self.strict_check_results(f_bw_qkvpack, f_bw)
+        self.strict_check_results(f_fw_timemajor_qkvpack, f_fw_time_major)
+        self.strict_check_results(f_bw_timemajor_qkvpack, f_bw_time_major)
+
     def test_fused_rope_rotate_half(self):
         p_fw, p_bw = self.get_forward_backward(
             paddle_fused_rotary_position_embedding,
@@ -373,6 +595,25 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         self.check_results(p_bw, f_bw)
         self.check_results(p_fw, f_fw_time_major)
         self.check_results(p_bw, f_bw_time_major)
+
+        f_fw_qkvpack, f_bw_qkvpack = self.get_forward_backward_qkvpacked(
+            seed=self.seed,
+            use_neox_rotary_style=False,
+            test_time_major=False,
+        )
+        (
+            f_fw_timemajor_qkvpack,
+            f_bw_timemajor_qkvpack,
+        ) = self.get_forward_backward_qkvpacked(
+            seed=self.seed,
+            use_neox_rotary_style=False,
+            test_time_major=True,
+        )
+
+        self.strict_check_results(f_fw_qkvpack, f_fw)
+        self.strict_check_results(f_bw_qkvpack, f_bw)
+        self.strict_check_results(f_fw_timemajor_qkvpack, f_fw_time_major)
+        self.strict_check_results(f_bw_timemajor_qkvpack, f_bw_time_major)
 
     def test_fused_rope_position_ids(self):
         position_ids = paddle.to_tensor(self.position_ids_list)
@@ -398,6 +639,25 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         self.check_results(p_bw, f_bw)
         self.check_results(p_fw, f_fw_time_major)
         self.check_results(p_bw, f_bw_time_major)
+
+        f_fw_qkvpack, f_bw_qkvpack = self.get_forward_backward_qkvpacked(
+            seed=self.seed,
+            position_ids=position_ids,
+            test_time_major=False,
+        )
+        (
+            f_fw_timemajor_qkvpack,
+            f_bw_timemajor_qkvpack,
+        ) = self.get_forward_backward_qkvpacked(
+            seed=self.seed,
+            position_ids=position_ids,
+            test_time_major=True,
+        )
+
+        self.strict_check_results(f_fw_qkvpack, f_fw)
+        self.strict_check_results(f_bw_qkvpack, f_bw)
+        self.strict_check_results(f_fw_timemajor_qkvpack, f_fw_time_major)
+        self.strict_check_results(f_bw_timemajor_qkvpack, f_bw_time_major)
 
     @test_with_pir_api
     def test_static(self):
@@ -463,11 +723,11 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         exe = paddle.static.Executor()
 
         feed = {
-            'sin': tensor_sin.numpy(),
-            'cos': tensor_cos.numpy(),
+            "sin": tensor_sin.numpy(),
+            "cos": tensor_cos.numpy(),
         }
         for var_name, input_tensor in zip(
-            ['q', 'k', 'v'], [tensor_q, tensor_k, tensor_v]
+            ["q", "k", "v"], [tensor_q, tensor_k, tensor_v]
         ):
             if input_tensor is not None:
                 feed[var_name] = input_tensor.numpy()
@@ -575,11 +835,11 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         exe = paddle.static.Executor()
 
         feed = {
-            'sin': tensor_sin.numpy(),
-            'cos': tensor_cos.numpy(),
+            "sin": tensor_sin.numpy(),
+            "cos": tensor_cos.numpy(),
         }
         for var_name, input_tensor in zip(
-            ['q', 'k', 'v'], [tensor_q, tensor_k, tensor_v]
+            ["q", "k", "v"], [tensor_q, tensor_k, tensor_v]
         ):
             if input_tensor is not None:
                 feed[var_name] = input_tensor.numpy().transpose((1, 0, 2, 3))
@@ -608,5 +868,5 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
         paddle.disable_static()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
