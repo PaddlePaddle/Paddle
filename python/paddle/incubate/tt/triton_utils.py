@@ -202,15 +202,18 @@ def rename_c_to_cu(generated_dir):
             os.rename(old_path, new_path)
 
 
-def get_pointer_hint(tensor):
-    if tensor.dtype == paddle.float16:
-        return "*fp16:16"
-    elif tensor.dtype == paddle.uint8:
-        return "*u8:16"
-    elif tensor.dtype == paddle.int8:
-        return "*i8:16"
-    elif tensor.dtype == paddle.float32:
-        return "*fp32:16"
+def get_pointer_hint(dtypes):
+    hint = ""
+    for ele in dtypes:
+        if ele == paddle.float16:
+            hint += "*fp16:16,"
+        elif ele == paddle.uint8:
+            hint += "*u8:16,"
+        elif ele == paddle.int8:
+            hint += "*i8:16,"
+        elif ele == paddle.float32:
+            hint += "*fp32:16,"
+    return hint
 
 
 paddle_custom_op_head_part = """ #include <vector>

@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import sys
+
 import triton
 import triton.language as tl
 
 import paddle
 from paddle import _C_ops
+from paddle.base.framework import OpProtoHolder
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
 
@@ -37,7 +41,7 @@ from .triton_utils import (
 def get_wint8_kernel_config():
     configs = []
     for num_stages in [2, 3, 4, 5, 6]:
-        for block_m in [16, 32, 64]:
+        for block_m in [16, 32, 64, 128]:
             for block_n in [64, 128, 256]:
                 for block_k in [64, 128, 256]:
                     for split_k in [1, 2, 4, 8]:
@@ -52,7 +56,7 @@ def get_wint8_kernel_config():
                                     "BLOCK_SIZE_M": block_m,
                                     "BLOCK_SIZE_N": block_n,
                                     "BLOCK_SIZE_K": block_k,
-                                    "GROUP_SIZE_M": 2,
+                                    "GROUP_SIZE_M": 1,
                                 },
                                 num_stages=num_stages,
                                 num_warps=num_warps,
@@ -296,20 +300,13 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
         # )
         # return output
 
-    import os
-    import sys
-
     op_name = "triton_wint8"
     if bool_trans_w:
         op_name += "_trans"
 
-    address_hint = get_pointer_hint(x) + ","
-    address_hint += get_pointer_hint(qweight) + ","
-    # output type is same as x
-    address_hint += get_pointer_hint(x) + ","
-    address_hint += get_pointer_hint(scales) + ","
-    # bias type is same as x
-    address_hint += get_pointer_hint(x) + ","
+    # output type is same as x, bias type is same as x
+    dtypes = [x.dtype, qweight.dtype, x.dtype, scales.dtype, x.dtype]
+    address_hint = get_pointer_hint(dtypes)
 
     x_list = [M, N, K, K, 1, stride_bk, stride_bn, N, 1]
     value_hint = get_value_hint(x_list)
@@ -317,8 +314,6 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
     op_name += value_hint.replace(",", "").replace(":", "")
 
     python_package_name = f"{op_name}_package"
-
-    from paddle.base.framework import OpProtoHolder
 
     if (
         op_name in OpProtoHolder.instance().op_proto_map.keys()
@@ -398,8 +393,6 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
         # build the package to so, not install
         build_package(generated_dir, python_package_name)
 
-    from paddle.base.framework import OpProtoHolder
-
     if op_name not in OpProtoHolder.instance().op_proto_map.keys():
         so_path = find_so_path(generated_dir, python_package_name)
         paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
@@ -422,7 +415,7 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
     helper.append_op(
         type=op_name,
         inputs=inputs,
-        attrs={"bool_trans_w": True},
+        attrs={"bool_trans_w": bool_trans_w},
         outputs={'out': out},
     )
     return out
