@@ -154,7 +154,7 @@ void PoolRawKernel(const Context& ctx,
                          pool_process);
         }
       } else {  // lp_pool2d
-        funcs::Pool2dFunctor<Context, funcs::AvgPool<T>, T> pool2d_forward;
+        funcs::Pool2dFunctor<Context, funcs::LPPool<T>, T> pool2d_forward;
         funcs::LPPool<T> pool_process;
         pool_process.setNormType(norm_type);
         pool2d_forward(ctx,

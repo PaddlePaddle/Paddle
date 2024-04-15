@@ -35,7 +35,6 @@ void Pool2dKernel(const Context& ctx,
                   bool global_pooling,
                   bool adaptive,
                   const std::string& padding_algorithm,
-                  const float norm_type,
                   DenseTensor* out);
 
 template <typename T, typename Context>
