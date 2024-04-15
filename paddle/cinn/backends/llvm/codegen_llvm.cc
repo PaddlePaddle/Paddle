@@ -1388,9 +1388,9 @@ int GetNaiveVecAlignmentImpl(common::NVGPUArch, const Target &target) {
 }
 
 int GetNaiveVecAlignment(const Target &target) {
-  return std::visit([&](const auto& impl) {
-    return GetNaiveVecAlignmentImpl(impl, target);
-  }, target.arch.variant());
+  return std::visit(
+      [&](const auto &impl) { return GetNaiveVecAlignmentImpl(impl, target); },
+      target.arch.variant());
 }
 
 void CodeGenLLVM::InitTarget(const Target &target) {

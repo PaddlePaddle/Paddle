@@ -39,9 +39,7 @@ std::optional<int> GetDataAlignmentImpl(common::UnknownArch arch) {
   return std::nullopt;
 }
 
-std::optional<int> GetDataAlignmentImpl(common::X86Arch arch) {
-  return 32;
-}
+std::optional<int> GetDataAlignmentImpl(common::X86Arch arch) { return 32; }
 
 std::optional<int> GetDataAlignmentImpl(common::ARMArch arch) {
   return std::nullopt;
@@ -52,9 +50,8 @@ std::optional<int> GetDataAlignmentImpl(common::NVGPUArch arch) {
 }
 
 std::optional<int> GetDataAlignment(common::Arch arch) {
-  return std::visit([](const auto& impl){
-    return GetDataAlignmentImpl(impl);
-  }, arch.variant());
+  return std::visit([](const auto &impl) { return GetDataAlignmentImpl(impl); },
+                    arch.variant());
 }
 
 void Module::Builder::AddBuffer(ir::Buffer buffer) {

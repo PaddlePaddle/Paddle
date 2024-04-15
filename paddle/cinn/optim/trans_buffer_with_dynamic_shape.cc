@@ -107,8 +107,7 @@ void CudaTransBufferWithDynamicShape(ir::Expr* e) {
   Mutator mutator;
   mutator.Visit(e, e);
 #ifdef CINN_WITH_CUDA
-  auto cur_dev_info =
-      common::DevInfoMgr<common::NVGPUArch>::GetDevInfo(0);
+  auto cur_dev_info = common::DevInfoMgr<common::NVGPUArch>::GetDevInfo(0);
   if (cur_dev_info->IsValid()) {
     size_t max_shm_per_block = cur_dev_info->GetMaxSharedMemPerBlock();
     CHECK(mutator.shared_mem_size_used_ <= max_shm_per_block)

@@ -147,7 +147,7 @@ void Instruction::Run(
 
   utils::RecordEvent record_args("Instruction::Run",
                                  cinn::utils::EventType::kInstruction);
-  const auto DefaultRun = [&]{               
+  const auto DefaultRun = [&] {
 #if defined(CINN_WITH_CUDA) && !defined(CINN_WITH_CUDNN)
     VLOG(3) << "Running extern function " << function_name_;
     for (int idx = 0; idx < fn_ptrs_.size(); ++idx) {
@@ -167,9 +167,9 @@ void Instruction::Run(
     }
     VLOG(3) << "Done Running extern function " << function_name_;
 #elif defined(CINN_WITH_CUDNN)
-  auto& pod_args = args_cached_[0];
-  // Here conv2d and depthwise_conv2d are implemented by one cudnn api
-  // cudnnConvolutionForward
+    auto& pod_args = args_cached_[0];
+    // Here conv2d and depthwise_conv2d are implemented by one cudnn api
+    // cudnnConvolutionForward
     VLOG(3) << "Running extern function " << function_name_;
     for (int idx = 0; idx < fn_ptrs_.size(); ++idx) {
       VLOG(3) << "Running func name: " << fn_names_[idx];
@@ -201,8 +201,8 @@ void Instruction::Run(
     }
     VLOG(3) << "Done Running extern function " << function_name_;
 #endif
-  };  
-  const auto NVGPURun = [&]{                        
+  };
+  const auto NVGPURun = [&] {
 #if defined(CINN_WITH_CUDA) && !defined(CINN_WITH_CUDNN)
     if (function_name_ == "cublas_gemm") {
       auto& pod_args = args_cached_[0];
@@ -227,15 +227,16 @@ void Instruction::Run(
       for (int idx = 0; idx < fn_ptrs_.size(); ++idx) {
         VLOG(3) << "Running func name: " << fn_names_[idx];
         auto& pod_args = args_cached_[idx];
-        CHECK(fn_ptrs_[idx]) << "The LoweredFunc address should be set first by "
-                                "calling SetLoweredFunc method";
+        CHECK(fn_ptrs_[idx])
+            << "The LoweredFunc address should be set first by "
+               "calling SetLoweredFunc method";
         if (!dryrun) {
           if (target_ == cinn::common::DefaultNVGPUTarget()) {
             ((lower_func_ptr_g)fn_ptrs_[idx])(
                 static_cast<void*>(pod_args.data()), pod_args.size(), stream);
           } else {
-            ((lower_func_ptr_t)fn_ptrs_[idx])(static_cast<void*>(pod_args.data()),
-                                              pod_args.size());
+            ((lower_func_ptr_t)fn_ptrs_[idx])(
+                static_cast<void*>(pod_args.data()), pod_args.size());
           }
         }
       }
@@ -260,12 +261,13 @@ void Instruction::Run(
               {"output_h", attrs[16]},   {"output_w", attrs[17]},
               {"output_c", attrs[18]},
           };
-          runtime::cuda::cinn_gpu_cudnn_conv2d(attrs_map,
-                                              pod_args[0],
-                                              pod_args[1],
-                                              pod_args[2],
-                                              static_cast<cudaStream_t>(stream),
-                                              cinn::common::Layout::kNHWC);
+          runtime::cuda::cinn_gpu_cudnn_conv2d(
+              attrs_map,
+              pod_args[0],
+              pod_args[1],
+              pod_args[2],
+              static_cast<cudaStream_t>(stream),
+              cinn::common::Layout::kNHWC);
 
         } else {
           absl::flat_hash_map<std::string, int> attrs_map = {
@@ -280,12 +282,13 @@ void Instruction::Run(
               {"output_c", attrs[16]},   {"output_h", attrs[17]},
               {"output_w", attrs[18]},
           };
-          runtime::cuda::cinn_gpu_cudnn_conv2d(attrs_map,
-                                              pod_args[0],
-                                              pod_args[1],
-                                              pod_args[2],
-                                              static_cast<cudaStream_t>(stream),
-                                              cinn::common::Layout::kNCHW);
+          runtime::cuda::cinn_gpu_cudnn_conv2d(
+              attrs_map,
+              pod_args[0],
+              pod_args[1],
+              pod_args[2],
+              static_cast<cudaStream_t>(stream),
+              cinn::common::Layout::kNCHW);
         }
       } else if (str_attrs[0] == "backward_data") {
         // w, dy, dx
@@ -332,10 +335,10 @@ void Instruction::Run(
       }
     } else if (function_name_ == "pool2d") {
       runtime::cuda::cinn_gpu_cudnn_pool2d(attrs,
-                                          str_attrs,
-                                          pod_args[0],
-                                          pod_args[1],
-                                          static_cast<cudaStream_t>(stream));
+                                           str_attrs,
+                                           pod_args[0],
+                                           pod_args[1],
+                                           static_cast<cudaStream_t>(stream));
     } else if (function_name_ == "softmax") {
       CHECK_EQ(pod_args.size(), 3);
       runtime::cuda::cinn_gpu_cudnn_softmax(
@@ -343,10 +346,10 @@ void Instruction::Run(
     } else if (function_name_ == "mul") {
       CHECK_EQ(pod_args.size(), 4);
       runtime::cuda::cinn_gpu_cublas_mul(attrs,
-                                        pod_args[0],
-                                        pod_args[1],
-                                        pod_args[2],
-                                        static_cast<cudaStream_t>(stream));
+                                         pod_args[0],
+                                         pod_args[1],
+                                         pod_args[2],
+                                         static_cast<cudaStream_t>(stream));
     } else if (function_name_ == "cublas_gemm") {
       VLOG(3) << "The pod_args size of cublas_gemm: " << pod_args.size();
       runtime::cuda::cinn_gpu_cublas_gemm(attrs,
@@ -369,8 +372,9 @@ void Instruction::Run(
       for (int idx = 0; idx < fn_ptrs_.size(); ++idx) {
         VLOG(3) << "Running func name: " << fn_names_[idx];
         auto& pod_args = args_cached_[idx];
-        CHECK(fn_ptrs_[idx]) << "The LoweredFunc address should be set first by "
-                                "calling SetLoweredFunc method";
+        CHECK(fn_ptrs_[idx])
+            << "The LoweredFunc address should be set first by "
+               "calling SetLoweredFunc method";
         if (!dryrun) {
           ((lower_func_ptr_g)fn_ptrs_[idx])(
               static_cast<void*>(pod_args.data()), pod_args.size(), stream);
@@ -396,21 +400,13 @@ void Instruction::Run(
       }
     }
     VLOG(3) << "Done Running extern function " << function_name_;
-#endif    
+#endif
   };
   target_.arch.Visit(adt::match{
-    [&](common::UnknownArch) {
-      CINN_NOT_IMPLEMENTED;
-    },
-    [&](common::X86Arch) {
-      DefaultRun();
-    },
-    [&](common::ARMArch) {
-      CINN_NOT_IMPLEMENTED;
-    },
-    [&](common::NVGPUArch) {
-      NVGPURun();
-    },
+      [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::X86Arch) { DefaultRun(); },
+      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::NVGPUArch) { NVGPURun(); },
   });
   if (!cinn::runtime::CheckStringFlagFalse(FLAGS_cinn_self_check_accuracy)) {
     CheckResults(name2podargs, stream);

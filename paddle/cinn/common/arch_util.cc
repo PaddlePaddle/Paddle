@@ -19,26 +19,17 @@
 namespace cinn {
 namespace common {
 
-std::string GetArchNameImpl(UnknownArch arch) {
-  return "Unk";
-}
+std::string GetArchNameImpl(UnknownArch arch) { return "Unk"; }
 
-std::string GetArchNameImpl(X86Arch arch) {
-  return "X86";
-}
+std::string GetArchNameImpl(X86Arch arch) { return "X86"; }
 
-std::string GetArchNameImpl(ARMArch arch) {
-  return "ARM";
-}
+std::string GetArchNameImpl(ARMArch arch) { return "ARM"; }
 
-std::string GetArchNameImpl(NVGPUArch arch) {
-  return "NVGPU";
-}
+std::string GetArchNameImpl(NVGPUArch arch) { return "NVGPU"; }
 
 std::string GetArchName(Arch arch) {
-  return std::visit([](const auto& impl) {
-    return GetArchNameImpl(impl);
-  }, arch.variant());
+  return std::visit([](const auto& impl) { return GetArchNameImpl(impl); },
+                    arch.variant());
 }
 
 std::ostream& operator<<(std::ostream& os, Arch arch) {

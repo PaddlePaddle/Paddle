@@ -26,11 +26,11 @@ namespace cinn {
 namespace optim {
 
 template <typename T>
-void LowerIntrinImpl(const T&, const Target& target, Expr *e) {
+void LowerIntrinImpl(const T &, const Target &target, Expr *e) {
   // Do nothing.
 }
 
-void LowerIntrinImpl(common::X86Arch, const Target& target, Expr *e) {
+void LowerIntrinImpl(common::X86Arch, const Target &target, Expr *e) {
   codegen::RegisterCpuIntrinRule();
 
   struct Mutator : ir::IRMutator<Expr *> {
@@ -47,16 +47,16 @@ void LowerIntrinImpl(common::X86Arch, const Target& target, Expr *e) {
       if (node->type().is_float()) {
         if (const ir::Mul *mul = node->b().As<ir::Mul>()) {
           ret = ir::Call::Make(node->type(),
-                                "fma",
-                                {mul->a(), mul->b(), node->a()},
-                                {},
-                                ir::CallType::Intrinsic);
+                               "fma",
+                               {mul->a(), mul->b(), node->a()},
+                               {},
+                               ir::CallType::Intrinsic);
         } else if (const ir::Mul *mul = node->a().As<ir::Mul>()) {
           ret = ir::Call::Make(node->type(),
-                                "fma",
-                                {mul->a(), mul->b(), node->b()},
-                                {},
-                                ir::CallType::Intrinsic);
+                               "fma",
+                               {mul->a(), mul->b(), node->b()},
+                               {},
+                               ir::CallType::Intrinsic);
         }
         if (ret.defined()) {
           ir::IRMutator<>::Visit(&ret, &ret);
@@ -101,10 +101,10 @@ void LowerIntrinImpl(common::X86Arch, const Target& target, Expr *e) {
   m(e);
 }
 
-void LowerIntrinByArch(Expr *e, const Target& target) {
-  return std::visit([&](const auto& impl) {
-    return LowerIntrinImpl(impl, target, e);
-  }, target.arch.variant());
+void LowerIntrinByArch(Expr *e, const Target &target) {
+  return std::visit(
+      [&](const auto &impl) { return LowerIntrinImpl(impl, target, e); },
+      target.arch.variant());
 }
 
 void LowerIntrin(Expr *e, Target target) {

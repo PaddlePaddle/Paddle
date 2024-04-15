@@ -183,7 +183,7 @@ void DeviceSynchronizeImpl(common::ARMArch, void* stream) {
 
 void DeviceSynchronizeImpl(common::NVGPUArch, void* stream) {
 #ifdef CINN_WITH_CUDA
-  VLOG(4) << "-- The value of the used stream: " << stream;  
+  VLOG(4) << "-- The value of the used stream: " << stream;
   if (stream == nullptr) {
     CUDA_CALL(cudaDeviceSynchronize());
   }
@@ -191,9 +191,9 @@ void DeviceSynchronizeImpl(common::NVGPUArch, void* stream) {
 }
 
 void DeviceSynchronize(common::Arch arch, void* stream) {
-  return std::visit([&](const auto& impl) {
-    return DeviceSynchronizeImpl(impl, stream);
-  }, arch.variant());
+  return std::visit(
+      [&](const auto& impl) { return DeviceSynchronizeImpl(impl, stream); },
+      arch.variant());
 }
 
 void Program::Execute(

@@ -90,34 +90,30 @@ std::shared_ptr<OpStrategy> StrategyForMatMul(
 
     std::vector<ir::Tensor> out;
     target.arch.Visit(adt::match{
-      [&](common::UnknownArch) {
-        CINN_NOT_IMPLEMENTED;
-      },
-      [&](common::X86Arch) {
+        [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+        [&](common::X86Arch) {
 #ifdef CINN_WITH_MKL_CBLAS
-        out = pe::MatmulMKL(new_A,
-                            new_B,
-                            trans_a,
-                            trans_b,
-                            alpha,
-                            UniqName("MatmulMKL_output"),
-                            target);
+          out = pe::MatmulMKL(new_A,
+                              new_B,
+                              trans_a,
+                              trans_b,
+                              alpha,
+                              UniqName("MatmulMKL_output"),
+                              target);
 #else
-        out = pe::MatmulV2(new_A,
-                          new_B,
-                          trans_a,
-                          trans_b,
-                          alpha,
-                          UniqName("MatmulV2_output"),
-                          target);
+          out = pe::MatmulV2(new_A,
+                             new_B,
+                             trans_a,
+                             trans_b,
+                             alpha,
+                             UniqName("MatmulV2_output"),
+                             target);
 #endif
-      },
-      [&](common::ARMArch) {
-        CINN_NOT_IMPLEMENTED;
-      },
-      [&](common::NVGPUArch) {
-        out = pe::Matmul(new_A, new_B, trans_a, trans_b, alpha, tensor_name);
-      },
+        },
+        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+        [&](common::NVGPUArch) {
+          out = pe::Matmul(new_A, new_B, trans_a, trans_b, alpha, tensor_name);
+        },
     });
 
     std::vector<CINNValue> res;
@@ -629,24 +625,21 @@ std::shared_ptr<OpStrategy> StrategyForMul(
         std::string tensor_name = pack_args.back().operator std::string();
 
         target.arch.Visit(adt::match{
-          [&](common::UnknownArch) {
-            CINN_NOT_IMPLEMENTED;
-          },
-          [&](common::X86Arch) {
+            [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+            [&](common::X86Arch) {
 #ifdef CINN_WITH_MKL_CBLAS
-            out = pe::MatmulMKL(
-                new_A, new_B, false, is_infer, 1.0f, tensor_name, target);
+              out = pe::MatmulMKL(
+                  new_A, new_B, false, is_infer, 1.0f, tensor_name, target);
 #else
-            out = pe::MatmulV2(
-                new_A, new_B, false, is_infer, 1.0f, tensor_name, target);
+              out = pe::MatmulV2(
+                  new_A, new_B, false, is_infer, 1.0f, tensor_name, target);
 #endif
-          },
-          [&](common::ARMArch) {
-            CINN_NOT_IMPLEMENTED;
-          },
-          [&](common::NVGPUArch) {
-            out = pe::Matmul(new_A, new_B, false, is_infer, 1.0f, tensor_name);
-          },
+            },
+            [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+            [&](common::NVGPUArch) {
+              out =
+                  pe::Matmul(new_A, new_B, false, is_infer, 1.0f, tensor_name);
+            },
         });
 
         std::vector<CINNValue> res;

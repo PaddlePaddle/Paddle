@@ -78,36 +78,37 @@ CINNSchedule GetInjectiveScheduleFunc(
   });
 }
 
-std::string GetExternFuncNameArchPrefixImpl(
-    common::UnknownArch, const std::string& func_name) {
+std::string GetExternFuncNameArchPrefixImpl(common::UnknownArch,
+                                            const std::string& func_name) {
   std::stringstream ss;
   ss << func_name << " only supports X86 and NVGPU! Please Check.\n";
   PADDLE_THROW(phi::errors::Fatal(ss.str()));
 }
 
-
-std::string GetExternFuncNameArchPrefixImpl(
-    common::X86Arch, const std::string& func_name) {
+std::string GetExternFuncNameArchPrefixImpl(common::X86Arch,
+                                            const std::string& func_name) {
   return "host_";
 }
 
-std::string GetExternFuncNameArchPrefixImpl(
-    common::ARMArch, const std::string& func_name) {
+std::string GetExternFuncNameArchPrefixImpl(common::ARMArch,
+                                            const std::string& func_name) {
   std::stringstream ss;
   ss << func_name << " only supports X86 and NVGPU! Please Check.\n";
   PADDLE_THROW(phi::errors::Fatal(ss.str()));
 }
 
-std::string GetExternFuncNameArchPrefixImpl(
-    common::NVGPUArch, const std::string& func_name) {
+std::string GetExternFuncNameArchPrefixImpl(common::NVGPUArch,
+                                            const std::string& func_name) {
   return "nvgpu_";
 }
 
-std::string GetExternFuncNameArchPrefix(
-    common::Arch arch, const std::string& func_name) {
-  return std::visit([&](const auto& impl) {
-    return GetExternFuncNameArchPrefixImpl(impl, func_name);
-  }, arch.variant());
+std::string GetExternFuncNameArchPrefix(common::Arch arch,
+                                        const std::string& func_name) {
+  return std::visit(
+      [&](const auto& impl) {
+        return GetExternFuncNameArchPrefixImpl(impl, func_name);
+      },
+      arch.variant());
 }
 
 std::string GetExternFuncName(const cinn::common::Target& target,

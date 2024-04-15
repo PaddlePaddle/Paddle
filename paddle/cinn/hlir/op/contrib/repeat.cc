@@ -199,18 +199,15 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
                                         std::multiplies<int>());
     if (prod_size > 1) {
       target.arch.Visit(adt::match{
-        [&](common::UnknownArch) {
-          CINN_NOT_IMPLEMENTED;
-        },
-        [&](common::X86Arch) {
-          pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
-        },
-        [&](common::ARMArch) {
-          CINN_NOT_IMPLEMENTED;
-        },
-        [&](common::NVGPUArch) {
-          pe::IRCudaScheduleInjective(ir_sch, output_shapes.front(), target);
-        },
+          [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+          [&](common::X86Arch) {
+            pe::IRScheduleInjectiveCPU(
+                ir_sch, output_shapes.front(), target, true);
+          },
+          [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+          [&](common::NVGPUArch) {
+            pe::IRCudaScheduleInjective(ir_sch, output_shapes.front(), target);
+          },
       });
     }
     std::vector<cinn::common::CINNValue> res{

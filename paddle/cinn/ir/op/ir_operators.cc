@@ -69,48 +69,38 @@ Expr operator>>(Expr a, Expr b) {
   return lang::CallExtern("right_shift", {a, b}, {{"vectorizable", false}});
 }
 
-Expr BitwiseOrCallImpl(
-    common::UnknownArch,
-    const Target& target,
-    Expr a,
-    Expr b) {
+Expr BitwiseOrCallImpl(common::UnknownArch,
+                       const Target& target,
+                       Expr a,
+                       Expr b) {
   std::stringstream ss;
   ss << "Unsupport arch: " << target.arch_str() << " for bitwise_or.";
   PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
 }
 
-Expr BitwiseOrCallImpl(
-    common::X86Arch,
-    const Target& target,
-    Expr a,
-    Expr b) {
+Expr BitwiseOrCallImpl(common::X86Arch, const Target& target, Expr a, Expr b) {
   return lang::CallExtern("bitwise_or", {a, b}, {{"vectorizable", false}});
 }
 
-Expr BitwiseOrCallImpl(
-    common::ARMArch,
-    const Target& target,
-    Expr a,
-    Expr b) {
+Expr BitwiseOrCallImpl(common::ARMArch, const Target& target, Expr a, Expr b) {
   std::stringstream ss;
   ss << "Unsupport arch: " << target.arch_str() << " for bitwise_or.";
   PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
 }
 
-Expr BitwiseOrCallImpl(
-    common::NVGPUArch,
-    const Target& target,
-    Expr a,
-    Expr b) {
+Expr BitwiseOrCallImpl(common::NVGPUArch,
+                       const Target& target,
+                       Expr a,
+                       Expr b) {
   Type t_a = a.type();
   auto func_name = hlir::GetExternFuncName(target, t_a, "bitwise_or");
   return lang::CallExtern(func_name, {a, b}, {{"vectorizable", false}});
 }
 
 Expr BitwiseOrCall(const Target& target, Expr a, Expr b) {
-  return std::visit([&](const auto& arch) {
-    return BitwiseOrCallImpl(arch, target, a, b);
-  }, target.arch.variant());
+  return std::visit(
+      [&](const auto& arch) { return BitwiseOrCallImpl(arch, target, a, b); },
+      target.arch.variant());
 }
 
 Expr operator|(Expr a, Expr b) {
@@ -129,41 +119,38 @@ Expr operator|(Expr a, Expr b) {
   return BitwiseOrCall(target, a, b);
 }
 
-Expr BitwiseAndCallImpl(
-    common::UnknownArch,
-    const Target& target, Expr a, Expr b) {
+Expr BitwiseAndCallImpl(common::UnknownArch,
+                        const Target& target,
+                        Expr a,
+                        Expr b) {
   std::stringstream ss;
   ss << "Unsupport arch: " << target.arch_str() << " for bitwise_and.";
   PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
 }
 
-Expr BitwiseAndCallImpl(
-    common::X86Arch,
-    const Target& target, Expr a, Expr b) {
+Expr BitwiseAndCallImpl(common::X86Arch, const Target& target, Expr a, Expr b) {
   return lang::CallExtern("bitwise_and", {a, b}, {{"vectorizable", false}});
 }
 
-Expr BitwiseAndCallImpl(
-    common::ARMArch,
-    const Target& target, Expr a, Expr b) {
+Expr BitwiseAndCallImpl(common::ARMArch, const Target& target, Expr a, Expr b) {
   std::stringstream ss;
   ss << "Unsupport arch: " << target.arch_str() << " for bitwise_and.";
   PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
 }
 
-Expr BitwiseAndCallImpl(
-    common::NVGPUArch,
-    const Target& target, Expr a, Expr b) {
+Expr BitwiseAndCallImpl(common::NVGPUArch,
+                        const Target& target,
+                        Expr a,
+                        Expr b) {
   Type t_a = a.type();
   auto func_name = hlir::GetExternFuncName(target, t_a, "bitwise_and");
   return lang::CallExtern(func_name, {a, b}, {{"vectorizable", false}});
 }
 
-Expr BitwiseAndCall(
-    const Target& target, Expr a, Expr b) {
-  return std::visit([&](const auto& arch) {
-    return BitwiseAndCallImpl(arch, target, a, b);
-  }, target.arch.variant());
+Expr BitwiseAndCall(const Target& target, Expr a, Expr b) {
+  return std::visit(
+      [&](const auto& arch) { return BitwiseAndCallImpl(arch, target, a, b); },
+      target.arch.variant());
 }
 
 Expr operator&(Expr a, Expr b) {
@@ -182,42 +169,38 @@ Expr operator&(Expr a, Expr b) {
   return BitwiseAndCall(target, a, b);
 }
 
-Expr BitwiseXorCallImpl(
-    common::UnknownArch,
-    const Target& target,
-    Expr a, Expr b) {
+Expr BitwiseXorCallImpl(common::UnknownArch,
+                        const Target& target,
+                        Expr a,
+                        Expr b) {
   std::stringstream ss;
   ss << "Unsupport arch: " << target.arch_str() << " for bitwise_xor.";
   PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
 }
 
-Expr BitwiseXorCallImpl(
-    common::X86Arch,
-    const Target& target, Expr a, Expr b) {
+Expr BitwiseXorCallImpl(common::X86Arch, const Target& target, Expr a, Expr b) {
   return lang::CallExtern("bitwise_xor", {a, b}, {{"vectorizable", false}});
 }
 
-Expr BitwiseXorCallImpl(
-    common::ARMArch,
-    const Target& target, Expr a, Expr b) {
+Expr BitwiseXorCallImpl(common::ARMArch, const Target& target, Expr a, Expr b) {
   std::stringstream ss;
   ss << "Unsupport arch: " << target.arch_str() << " for bitwise_xor.";
   PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
 }
 
-Expr BitwiseXorCallImpl(
-    common::NVGPUArch,
-    const Target& target, Expr a, Expr b) {
+Expr BitwiseXorCallImpl(common::NVGPUArch,
+                        const Target& target,
+                        Expr a,
+                        Expr b) {
   Type t_a = a.type();
   auto func_name = hlir::GetExternFuncName(target, t_a, "bitwise_xor");
   return lang::CallExtern(func_name, {a, b}, {{"vectorizable", false}});
 }
 
-Expr BitwiseXorCall(
-    const Target& target, Expr a, Expr b) {
-  return std::visit([&](const auto& arch) {
-    return BitwiseXorCallImpl(arch, target, a, b);
-  }, target.arch.variant());
+Expr BitwiseXorCall(const Target& target, Expr a, Expr b) {
+  return std::visit(
+      [&](const auto& arch) { return BitwiseXorCallImpl(arch, target, a, b); },
+      target.arch.variant());
 }
 
 Expr operator^(Expr a, Expr b) {
@@ -258,9 +241,9 @@ Expr BitwiseNotCallImpl(common::NVGPUArch, const Target& target, Expr a) {
 }
 
 Expr BitwiseNotCall(const Target& target, Expr a) {
-  return std::visit([&](const auto& arch) {
-    return BitwiseNotCallImpl(arch, target, a);
-  }, target.arch.variant());
+  return std::visit(
+      [&](const auto& arch) { return BitwiseNotCallImpl(arch, target, a); },
+      target.arch.variant());
 }
 
 Expr operator~(Expr a) {

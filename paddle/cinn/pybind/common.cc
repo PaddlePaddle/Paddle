@@ -27,16 +27,16 @@ namespace py = pybind11;
 
 namespace cinn::pybind {
 
+using cinn::common::Arch;
+using cinn::common::ARMArch;
 using cinn::common::bfloat16;
 using cinn::common::CINNValue;
 using cinn::common::float16;
-using cinn::common::UnknownArch;
-using cinn::common::X86Arch;
-using cinn::common::ARMArch;
 using cinn::common::NVGPUArch;
-using cinn::common::Arch;
 using cinn::common::Target;
 using cinn::common::Type;
+using cinn::common::UnknownArch;
+using cinn::common::X86Arch;
 using utils::GetStreamCnt;
 using utils::StringFormat;
 
@@ -49,7 +49,6 @@ void BindCinnValue(py::module *);
 void ResetGlobalNameID() { cinn::common::Context::Global().ResetNameId(); }
 
 void BindTarget(py::module *m) {
-
   py::class_<UnknownArch>(*m, "UnknownArch");
   py::class_<X86Arch>(*m, "X86Arch");
   py::class_<ARMArch>(*m, "ARMArch");
