@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import paddle
 from paddle import _C_ops
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
@@ -244,9 +245,7 @@ def fused_rotary_position_embedding_qkvpacked(
     num_heads_k = qkv.shape[-2]
     num_group = qkv.shape[-3] - 2
     num_heads = num_group * num_heads_k
-    qkv = qkv.reshape(
-        (0, 0, -1, qkv.shape[-1])
-    )  # Flatten [num_heads/num_heads_k+2,num_heads_k] to [num_heads+2*num_heads_k]
+    qkv = paddle.flatten(qkv, 2, 3)
     actual_num_heads = num_heads
     if rotate_kv:
         actual_num_heads += 2 * num_heads_k
