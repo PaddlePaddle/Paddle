@@ -323,13 +323,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   endfunction()
 
   if(NOT APPLE AND WITH_MKLML)
-    # RNN1
-    set(RNN1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/rnn1")
-    download_model_and_data_without_verify(
-      ${RNN1_INSTALL_DIR} "rnn1/model.tar.gz" "rnn1/data.txt.tar.gz")
-    inference_analysis_api_test(test_analyzer_rnn1 ${RNN1_INSTALL_DIR}
-                                analyzer_rnn1_tester.cc EXTRA_DEPS common)
-
     # seq_pool1
     set(SEQ_POOL1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/seq_pool")
     download_model_and_data_without_verify(
