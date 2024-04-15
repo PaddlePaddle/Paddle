@@ -22,7 +22,6 @@ COMPILE_RUN_OP_WHITE_LIST = [
     'sequence_pool',
     'sequence_slice',
     'generate_proposals',
-    'mine_hard_examples',
     'retinanet_detection_output',
     'ctc_align',
     'fusion_seqpool_cvm_concat',
