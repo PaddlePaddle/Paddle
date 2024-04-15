@@ -398,7 +398,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_randn_op',
     'test_randperm_op',
     'test_range',
-    'test_rank_loss_op',
     'test_reader_reset',
     'test_recurrent_op',
     'test_reduce_op',
