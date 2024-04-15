@@ -143,7 +143,12 @@ struct CachedDimExprToValueConverter {
 
   pir::Value ConvertToValueImpl(const symbol::Add<symbol::DimExpr>& dim_expr) {
     const auto& [operands] = dim_expr;
-    CHECK_GT(operands->size(), 0);
+    PADDLE_ENFORCE_GT(operands->size(),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The size of operands is incorrect."
+                          "Expected size is larger than 0, but receive %d.",
+                          operands->size()));
     pir::Value acc = ConvertToValue(operands->at(0));
     for (int i = 1; i < operands->size(); ++i) {
       if (operands->at(i).isa<symbol::Negative<symbol::DimExpr>>()) {
@@ -162,7 +167,12 @@ struct CachedDimExprToValueConverter {
 
   pir::Value ConvertToValueImpl(const symbol::Mul<symbol::DimExpr>& dim_expr) {
     const auto& [operands] = dim_expr;
-    CHECK_GT(operands->size(), 0);
+    PADDLE_ENFORCE_GT(operands->size(),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The size of operands is incorrect."
+                          "Expected size is larger than 0, but receive %d.",
+                          operands->size()));
     pir::Value prod = ConvertToValue(operands->at(0));
     for (int i = 1; i < operands->size(); ++i) {
       if (operands->at(i).isa<symbol::Reciprocal<symbol::DimExpr>>()) {
@@ -182,7 +192,12 @@ struct CachedDimExprToValueConverter {
 
   pir::Value ConvertToValueImpl(const symbol::Max<symbol::DimExpr>& dim_expr) {
     const auto& [operands] = dim_expr;
-    CHECK_GT(operands->size(), 0);
+    PADDLE_ENFORCE_GT(operands->size(),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The size of operands is incorrect."
+                          "Expected size is larger than 0, but receive %d.",
+                          operands->size()));
     pir::Value max = ConvertToValue(operands->at(0));
     for (int i = 1; i < operands->size(); ++i) {
       pir::Value operand_value = ConvertToValue(operands->at(i));
@@ -193,7 +208,12 @@ struct CachedDimExprToValueConverter {
 
   pir::Value ConvertToValueImpl(const symbol::Min<symbol::DimExpr>& dim_expr) {
     const auto& [operands] = dim_expr;
-    CHECK_GT(operands->size(), 0);
+    PADDLE_ENFORCE_GT(operands->size(),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The size of operands is incorrect."
+                          "Expected size is larger than 0, but receive %d.",
+                          operands->size()));
     pir::Value min = ConvertToValue(operands->at(0));
     for (int i = 1; i < operands->size(); ++i) {
       pir::Value operand_value = ConvertToValue(operands->at(i));
@@ -205,7 +225,12 @@ struct CachedDimExprToValueConverter {
   pir::Value ConvertToValueImpl(
       const symbol::Broadcast<symbol::DimExpr>& dim_expr) {
     const auto& [operands] = dim_expr;
-    CHECK_GT(operands->size(), 0);
+    PADDLE_ENFORCE_GT(operands->size(),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The size of operands is incorrect."
+                          "Expected size is larger than 0, but receive %d.",
+                          operands->size()));
     pir::Value broadcasted = ConvertToValue(operands->at(0));
     for (int i = 1; i < operands->size(); ++i) {
       pir::Value operand_value = ConvertToValue(operands->at(i));

@@ -63,6 +63,7 @@ UNARY_PRIM_VJP_OPS = [
     'exp_grad',
     'floor_grad',
     'log_grad',
+    'rsqrt_grad',
     'sin_grad',
     'cos_grad',
     'tanh_grad',

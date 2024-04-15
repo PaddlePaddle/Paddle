@@ -21,9 +21,9 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/float16.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
@@ -154,7 +154,7 @@ class SparseMomentumOp : public framework::OperatorWithKernel {
     auto lr_dims = common::product(ctx->GetInputDim("LearningRate"));
     PADDLE_ENFORCE_EQ(lr_dims != 0 && lr_dims == 1,
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Learning_rate should be a scalar. But Received "
                           "LearningRate's dim [%s]",
                           lr_dims));
@@ -163,7 +163,7 @@ class SparseMomentumOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         param_dim,
         ctx->GetInputDim("Velocity"),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Param and Velocity of SparseMomentumOp should have the same "
             "dimension. But received Param's dim [%s] and Velocity [%s].",
             param_dim,
@@ -384,8 +384,8 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         axis == 0 || axis == 1,
         true,
-        platform::errors::InvalidArgument("The axis of sparse_momentum_op only "
-                                          "support axis=0 or axis=1 now."));
+        phi::errors::InvalidArgument("The axis of sparse_momentum_op only "
+                                     "support axis=0 or axis=1 now."));
 
     auto learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
     auto param = ctx.Input<phi::DenseTensor>("Param");
@@ -400,13 +400,13 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_GT(
           index->dims()[0],
           0,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The index of sparse_momentum_op should not be empty"
               "when the index's rank is 1."));
     } else if (index->dims().size() == 2) {
       PADDLE_ENFORCE_EQ(index->dims()[1],
                         1,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "If the index's rank of sparse_momentum_op is 2,"
                             " the second dimension should be 1."));
     }
@@ -418,7 +418,7 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
           ctx.HasInput("MasterParam") && ctx.HasOutput("MasterParamOut");
       PADDLE_ENFORCE_EQ(has_master,
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The Input(MasterParam) and Output(MasterParamOut) "
                             "should not be null when "
                             "the attr `multi_precision` is true"));
@@ -443,16 +443,16 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
     auto param_dims = param->dims();
     auto grad_dims = grad->dims();
 
-    PADDLE_ENFORCE_EQ(param_dims.size(),
-                      2,
-                      platform::errors::InvalidArgument(
-                          "The Param's rank of sparse_momentum_op"
-                          " must be 2 now."));
-    PADDLE_ENFORCE_EQ(grad_dims.size(),
-                      2,
-                      platform::errors::InvalidArgument(
-                          "The Grad's rank of sparse_momentum_op"
-                          " must be 2 now."));
+    PADDLE_ENFORCE_EQ(
+        param_dims.size(),
+        2,
+        phi::errors::InvalidArgument("The Param's rank of sparse_momentum_op"
+                                     " must be 2 now."));
+    PADDLE_ENFORCE_EQ(
+        grad_dims.size(),
+        2,
+        phi::errors::InvalidArgument("The Grad's rank of sparse_momentum_op"
+                                     " must be 2 now."));
 
     phi::DenseTensor sorted_index, grad_index, sort_value;
     auto sorted_index_ptr =
@@ -511,7 +511,7 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
         grad_index_ptr[i] = vec_tosort[i].second;
       }
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "sparse_momentum %s is not supported.", ctx.GetPlace()));
     }
 
