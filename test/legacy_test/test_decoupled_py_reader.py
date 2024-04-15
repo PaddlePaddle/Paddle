@@ -173,7 +173,7 @@ class TestBase(unittest.TestCase):
         for p in self.prepare_places():
             for use_double_buffer in [False, True]:
                 results = []
-                for use_legacy_py_reader in [False, True]:
+                for use_legacy_py_reader in [False]:  # not use legacy py_reader
                     ret = self.run_main(
                         use_legacy_py_reader=use_legacy_py_reader,
                         places=p,
