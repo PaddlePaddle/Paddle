@@ -19,6 +19,8 @@ from .pipeline_1f1b import Pipeline1F1BPass  # noqa: F401
 from .pipeline_eager_1f1b import PipelineEager1F1BPass  # noqa: F401
 from .pipeline_fthenb import PipelineFThenBPass  # noqa: F401
 from .pipeline_vpp import PipelineVirtualPipelinePass  # noqa: F401
+from .pipeline_zero_bubble import PipelineZeroBubblePipelinePass  # noqa: F401
+
 
 __all__ = []
 
