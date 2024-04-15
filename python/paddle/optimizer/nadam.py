@@ -15,38 +15,34 @@
 import warnings
 
 from paddle import _C_ops
-from paddle import pir
 from paddle.base.libpaddle import DataType
-from paddle.pir import Value
 
 from ..base import core, framework
 from ..base.framework import (
-    Parameter,
-    Variable,
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
-
 from .optimizer import Optimizer
 
 __all__ = []
 
+
 class NAdam(Optimizer):
     """
-                >>> import paddle
+    >>> import paddle
 
-                >>> inp = paddle.rand([10,10], dtype="float32")
-                >>> linear = paddle.nn.Linear(10, 10)
-                >>> out = linear(inp)
-                >>> loss = paddle.mean(out)
+    >>> inp = paddle.rand([10,10], dtype="float32")
+    >>> linear = paddle.nn.Linear(10, 10)
+    >>> out = linear(inp)
+    >>> loss = paddle.mean(out)
 
-                >>> nadam = paddle.optimizer.NAdam(learning_rate=0.1,
-                ...                     parameters=linear.parameters())
-                >>> out.backward()
-                >>> nadam.step()
-                >>> nadam.clear_grad()
+    >>> nadam = paddle.optimizer.NAdam(learning_rate=0.1,
+    ...                     parameters=linear.parameters())
+    >>> out.backward()
+    >>> nadam.step()
+    >>> nadam.clear_grad()
 
-    
+
     """
 
     _momentum_decay_pow_acc_str = "momentum_decay_pow"
@@ -68,18 +64,30 @@ class NAdam(Optimizer):
         grad_clip=None,
         name=None,
     ):
-        if not 0.0 <= learning_rate:
-            raise ValueError(f"Invalid learning rate: {learning_rate}, expect learning_rate >= 0.")
+        if isinstance(learning_rate, (float, int)) and not 0.0 <= learning_rate:
+            raise ValueError(
+                f"Invalid learning rate: {learning_rate}, expect learning_rate >= 0."
+            )
         if not 0.0 <= epsilon:
-            raise ValueError(f"Invalid epsilon value: {epsilon}, expect epsilon >= 0.")
+            raise ValueError(
+                f"Invalid epsilon value: {epsilon}, expect epsilon >= 0."
+            )
         if not 0.0 <= beta1 < 1.0:
-            raise ValueError(f"Invalid beta1: {beta1}, expect 0. <= beta1 < 1.0.")
+            raise ValueError(
+                f"Invalid beta1: {beta1}, expect 0. <= beta1 < 1.0."
+            )
         if not 0.0 <= beta2 < 1.0:
-            raise ValueError(f"Invalid beta2: {beta2}, expect 0. <= beta2 < 1.0.")
+            raise ValueError(
+                f"Invalid beta2: {beta2}, expect 0. <= beta2 < 1.0."
+            )
         if not 0.0 <= momentum_decay:
-            raise ValueError(f"Invalid momentum_decay value: {momentum_decay}, expect momentum_decay >= 0.")
+            raise ValueError(
+                f"Invalid momentum_decay value: {momentum_decay}, expect momentum_decay >= 0."
+            )
         if not 0.0 <= momentum_decay_base:
-            raise ValueError(f"Invalid momentum_decay_base value: {momentum_decay_base}, expect momentum_decay_base >= 0.")
+            raise ValueError(
+                f"Invalid momentum_decay_base value: {momentum_decay_base}, expect momentum_decay_base >= 0."
+            )
 
         super().__init__(
             learning_rate=learning_rate,
@@ -116,7 +124,7 @@ class NAdam(Optimizer):
             name=self._momentum_decay_pow_acc_str,
             param=p,
             dtype=acc_dtype,
-            fill_value=1.,
+            fill_value=1.0,
             shape=[1],
             device='cpu',
         )
@@ -124,7 +132,7 @@ class NAdam(Optimizer):
             name=self._beta2_pow_acc_str,
             param=p,
             dtype=acc_dtype,
-            fill_value=1.,
+            fill_value=1.0,
             shape=[1],
             device='cpu',
         )
@@ -132,7 +140,7 @@ class NAdam(Optimizer):
             name=self._mu_product_acc_str,
             param=p,
             dtype=acc_dtype,
-            fill_value=1.,
+            fill_value=1.0,
             shape=[1],
             device='cpu',
         )
@@ -182,7 +190,7 @@ class NAdam(Optimizer):
         )
         mu_product_acc = self._get_accumulator_master(
             self._mu_product_acc_str, param_and_grad[0]
-        ) 
+        )
         moment1_acc = self._get_accumulator_master(
             self._moment1_acc_str, param_and_grad[0]
         )
