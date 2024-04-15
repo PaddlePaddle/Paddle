@@ -79,11 +79,11 @@ class TestReshardPToRCrossMesh:
                     initializer=paddle.nn.initializer.Uniform(),
                 )
 
-                shard_tensor = paddle._pir_ops.shard_tensor(
-                    w0, self._in_mesh, [-1, -1], [0]
+                input_tensor = dist.shard_tensor(
+                    w0, self._in_mesh, [dist.Partial(dist.ReduceType.kRedSum)]
                 )
                 reshard_tensor = paddle._pir_ops.reshard(
-                    shard_tensor, self._out_mesh, [dist.Replicate()]
+                    input_tensor, self._out_mesh, [dist.Replicate()]
                 )
             dist_program = apply_reshard_pass_v2(main_program)
         np.testing.assert_equal(dist_program.num_ops(), 6)

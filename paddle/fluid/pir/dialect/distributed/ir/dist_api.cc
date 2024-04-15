@@ -31,13 +31,9 @@ namespace dialect {
 pir::Value shard_tensor(const pir::Value& x,
                         const phi::distributed::ProcessMesh& process_mesh,
                         const std::vector<int64_t>& dims_mapping,
-                        const std::vector<int64_t>& partial_dims) {
+                        const flat_hash_map<int64_t, phi::ReduceType>& partial_status) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   // support amp for shard_tensor in the future
-  paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status;
-  for (size_t i = 0; i < partial_dims.size(); ++i) {
-    partial_status[partial_dims[i]] = phi::ReduceType::kRedSum;
-  }
   pir::AttributeMap attribute_map = {
       {"tensor_dist_attr",
        TensorDistAttribute::get(
