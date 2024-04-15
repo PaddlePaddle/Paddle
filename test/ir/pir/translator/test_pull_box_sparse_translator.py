@@ -41,13 +41,6 @@ class TestPullBoxSparseOpTranslator(
             outputs={"Out": [out]},
             attrs=attrs,
         )
-        backward_helper = LayerHelper(self.backward_op_type)
-        backward_helper.append_op(
-            type=self.backward_op_type,
-            inputs={"Ids": [ids]},
-            outputs={"Out": [out]},
-            attrs=attrs,
-        )
 
     def test_translator(self):
         self.check()
