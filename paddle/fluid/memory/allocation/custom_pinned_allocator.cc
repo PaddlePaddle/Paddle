@@ -41,10 +41,10 @@ phi::Allocation* CustomCPUPinnedAllocator::AllocateImpl(size_t size) {
     VLOG(10) << "CustomPinnedAlloc " << size << " " << ptr;
     HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
     platform::RecordMemEvent(ptr,
-                             platform::CUDAPinnedPlace(),
+                             platform::CustomPinnedPlace(),
                              size,
                              platform::TracerMemEventType::ReservedAllocate);
-    return new Allocation(ptr, size, platform::CUDAPinnedPlace());
+    return new Allocation(ptr, size, platform::CustomPinnedPlace());
   }
   PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
       "\n\nOut of memory error on Pinned Memory for %s\n\n", place_));
