@@ -56,8 +56,10 @@ endif()
 
 set(EIGEN_INCLUDE_DIR ${SOURCE_DIR})
 include_directories(${EIGEN_INCLUDE_DIR})
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=maybe-uninitialized")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-error=maybe-uninitialized")
+if(NOT WIN32)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=maybe-uninitialized")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-error=maybe-uninitialized")
+endif()
 ExternalProject_Add(
   extern_eigen3
   ${EXTERNAL_PROJECT_LOG_ARGS}
