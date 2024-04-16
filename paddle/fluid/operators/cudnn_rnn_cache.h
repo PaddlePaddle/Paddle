@@ -267,7 +267,7 @@ class CudnnRNNCache {
     PADDLE_ENFORCE_EQ(
         weights_size_,
         cudnn_size * weight_numel,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The cudnn lstm and setting weight size should be same."));
 
     int dim_w[3];

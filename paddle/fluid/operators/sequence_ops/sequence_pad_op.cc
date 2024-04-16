@@ -26,29 +26,29 @@ class SequencePadOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
-                      true,
-                      platform::errors::NotFound(
-                          "Input(X) of SequencePadOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"),
+        true,
+        phi::errors::NotFound("Input(X) of SequencePadOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("PadValue"),
         true,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "Input(PadValue) of SequencePadOp should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
                       true,
-                      platform::errors::NotFound(
+                      phi::errors::NotFound(
                           "Output(Out) of SequencePadOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("Length"),
         true,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "Output(Length) of SequencePadOp should not be null."));
 
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_GE(x_dims.size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The rank of SequencePadOp Input(X) can't be less "
                           "than 2. But the rank we received is %d",
                           x_dims.size()));
@@ -59,7 +59,7 @@ class SequencePadOp : public framework::OperatorWithKernel {
             pad_value_dims == common::make_ddim({}) ||
             pad_value_dims == time_step_dims,
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The SequencePadOp Input(PadValue) must be a scalar or a tensor "
             "whose shape equals to time steps in sequences"));
 
@@ -73,19 +73,19 @@ class SequencePadOp : public framework::OperatorWithKernel {
       const auto& x_lod = x_var->Get<phi::DenseTensor>().lod();
       PADDLE_ENFORCE_EQ(x_lod.empty(),
                         false,
-                        platform::errors::NotFound(
+                        phi::errors::NotFound(
                             "The SequencePadOp Input(X) must hold lod info."));
       const auto& x_lod_0 = x_lod[0];
       PADDLE_ENFORCE_GE(
           x_lod_0.size(),
           2,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The size of SequencePadOp Input(X)'s lod info can't be less "
               "than 2. But the size we received is %d",
               x_lod_0.size()));
       PADDLE_ENFORCE_EQ(x_dims[0],
                         static_cast<int64_t>(x_lod_0.back()),
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The SequencePadOp Input(X)'s lod info mismatches "
                             "the actual tensor shape. The 1st dimension of "
                             "Input(X)'s lod info is %d, the 1st dimension of "
@@ -102,7 +102,7 @@ class SequencePadOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_GE(
           padded_length,
           max_seq_len,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The SequencePadOp Attr(padded_length) should be greater than or "
               "equal to the "
               "length of the longest original sequence. But the padded_length "
@@ -119,7 +119,7 @@ class SequencePadOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_GT(
           ctx->GetLoDLevel("X"),
           0,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The LoD level of SequencePadOp Input(X) should be "
               "larger than 0. But the LoD level we received is %d",
               ctx->GetLoDLevel("X")));
@@ -233,12 +233,12 @@ class SequencePadGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
                       true,
-                      platform::errors::NotFound(
+                      phi::errors::NotFound(
                           "Input(X) of SequencePadGradOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput(framework::GradVarName("Out")),
         true,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "Input(Out@GRAD) of SequencePadGradOp should not be null."));
 
     if (ctx->HasOutput(framework::GradVarName("X"))) {

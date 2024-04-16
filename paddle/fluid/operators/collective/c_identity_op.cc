@@ -31,7 +31,7 @@ class CIdentityOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(
         ring_id,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The ring_id (%d) for c_identity must be non-negative.", ring_id));
     framework::DDim dim = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", dim);

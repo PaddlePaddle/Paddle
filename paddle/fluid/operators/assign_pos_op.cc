@@ -41,11 +41,11 @@ class AssignPosOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(cum_count_dtype,
                       X_dtype,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dtype of the cum_count and X should be same"));
     PADDLE_ENFORCE_EQ(cum_count_dtype,
                       framework::proto::VarType::INT64,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dtype of the cum_count_dtype, eff_num_len and "
                           "X should be same as int64"));
     return phi::KernelKey(cum_count_dtype, ctx.device_context().GetPlace());

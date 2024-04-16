@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/var_type_inference.h"
-#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/phi/common/bfloat16.h"
 
 namespace paddle {
 namespace operators {
@@ -40,7 +40,7 @@ class LookupTableOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         table_dims.size(),
         2,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "ShapeError: The dimensions of the 'lookup table' must be 2. "
             "But received lookup table's dimensions = %d, "
             "lookup table's shape = [%s].",
@@ -49,7 +49,7 @@ class LookupTableOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ids_dims[ids_rank - 1],
         1,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "ShapeError: The last dimensions of the 'Ids' tensor must be 1. "
             "But received Ids's last dimensions = %d, Ids's shape = [%s].",
             ids_dims[ids_rank - 1],
@@ -239,11 +239,11 @@ REGISTER_OP_CPU_KERNEL(lookup_table,
                        ops::LookupTableKernel<double>,
                        ops::LookupTableKernel<int8_t>,
                        ops::LookupTableKernel<int16_t>,
-                       ops::LookupTableKernel<paddle::platform::bfloat16>);
+                       ops::LookupTableKernel<phi::dtype::bfloat16>);
 REGISTER_OP_CPU_KERNEL(lookup_table_grad,
                        ops::LookupTableGradKernel<float>,
                        ops::LookupTableGradKernel<double>,
-                       ops::LookupTableGradKernel<paddle::platform::bfloat16>);
+                       ops::LookupTableGradKernel<phi::dtype::bfloat16>);
 
 /* ==========================  register checkpoint ===========================*/
 

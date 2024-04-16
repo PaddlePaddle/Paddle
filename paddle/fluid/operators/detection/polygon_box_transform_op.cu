@@ -45,7 +45,7 @@ class PolygonBoxTransformOpCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The polygon_box_transform operator needs to be executed on GPU."));
     auto* in = ctx.Input<phi::DenseTensor>("Input");
     auto in_dims = in->dims();
