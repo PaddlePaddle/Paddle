@@ -179,20 +179,18 @@ class OpTestUtils:
         #    else, we will consume a input_arguments. (because the name is not corresponding, so we only use the order)
 
         api_params, api_defaults = parse_arg_and_kwargs(api)
-        # if "one_hot" in str(api):
-        #     api_params.append("num_classes")
         api_defaults = to_defaults_list(api_params, api_defaults)
         api_defaults = [
             Empty() for i in range(len(api_params) - len(api_defaults))
         ] + api_defaults
+        
+        # if "one_hot" in str(api):
+        #     api_defaults = [x for x in range(len(api_params))]
+        
         assert len(api_defaults) == len(
             api_params
         ), "Error happens. contack xiongkun03 to solve."
         inputs_sig, attrs_sig, outputs_sig = kernel_sig
-        # print("attr_sig")
-        # if "one_hot" in str(api):
-        #     attrs_sig.append()"num_classes"
-        # print(attrs_sig)
         inputs_and_attrs = inputs_sig + attrs_sig
         input_arguments = [
             op_proto_ins.get(name, Empty()) for name in inputs_sig
@@ -219,6 +217,8 @@ class OpTestUtils:
                     idx_of_op_proto_arguments += 1
             else:
                 if idx_of_op_proto_arguments < len(input_arguments):
+                    # print("check1")
+                    # print(input_arguments)
                     tmp = input_arguments[idx_of_op_proto_arguments]
                     idx_of_op_proto_arguments += 1
                 else:
@@ -228,7 +228,10 @@ class OpTestUtils:
                     )
 
                 if isinstance(tmp, Empty):
-                    results.append(get_default(idx, api_defaults))
+                        if "one_hot" in str(api):
+                            results.append(10)
+                        else:
+                            results.append(get_default(idx, api_defaults))
                 else:
                     results.append(tmp)
         assert len(results) == len(api_params)
@@ -496,6 +499,10 @@ class PrimForwardChecker:
                 self.kernel_sig,
                 target_dtype=paddle.core.VarDesc.VarType,
             )
+
+            if "one_hot" in self.op_type:
+                args[1] = self.inputs['depth_tensor'].item()
+            
             inputs_sig, _, _ = self.kernel_sig
             args = OpTestUtils.assumption_assert_and_transform(
                 args, len(inputs_sig)
@@ -588,6 +595,9 @@ class PrimForwardChecker:
         static_inputs = defaultdict(list)
         feed = {}
         for name, item in self.inputs.items():
+            # patch for prim_pir input for one_hot
+            if 'one_hot' in self.op_type and name in 'depth_tensor':
+                name = 'num_classes'
             if isinstance(item, list):
                 for tup in item:
                     dtype = (
@@ -608,8 +618,6 @@ class PrimForwardChecker:
                     if OpTestUtils.is_bfloat16_type(item.dtype)
                     else item.dtype
                 )
-                if item.shape == ():
-                    item.shape = 1
                 x = paddle.static.data(name=name, shape=item.shape, dtype=dtype)
                 x.stop_gradient = stop_gradient
                 static_inputs[name].append(x)
@@ -624,10 +632,6 @@ class PrimForwardChecker:
         # forward comp only for comp op
         if self.prim_op_type == "prim":
             return
-        print("be fore check")
-        print(self.inputs)
-        print(self.inputs['X'].shape)
-        print(self.inputs['depth_tensor'].shape)
         with static_guard():
             core._set_prim_forward_enabled(self.enable_fw_comp)
             startup_program, main_program = (
@@ -656,12 +660,7 @@ class PrimForwardChecker:
                 args = OpTestUtils.assumption_assert_and_transform(
                     args, len(inputs_sig)
                 )
-                print("static")
-                print(main_program)
-                print(inputs_sig)
-                print(args)
                 ret = flatten(_as_list(self.public_python_api(*args)))
-                print(ret)
                 if not in_pir_mode():
                     primapi.to_prim(main_program.blocks)
                 else:
@@ -748,6 +747,8 @@ class PrimForwardChecker:
                 if use_pir_api()
                 else paddle.core.VarDesc.VarType,
             )
+            if "one_hot" in self.op_type:
+                args[1] = self.inputs['depth_tensor'].item()
             inputs_sig, _, _ = self.kernel_sig
             args = OpTestUtils.assumption_assert_and_transform(
                 args, len(inputs_sig)

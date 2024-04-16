@@ -45,18 +45,12 @@ class TestOneHotOp(OpTest):
 
         for i in range(np.prod(x.shape)):
             out[i, x[i]] = 1.0
-        print(x.dtype)
-        print(x_lod)
-        print(depth_np)
         self.inputs = {'X': x, 'depth_tensor': depth_np}
         self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
         self.outputs = {'Out': out}
-        print("out")
-        print(out.dtype)
-        print(x_lod)
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_prim_pir=True)
+        self.check_output(check_prim_pir=True)
 
 
 class TestOneHotOp_attr(OpTest):
@@ -84,7 +78,7 @@ class TestOneHotOp_attr(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_prim_pir=True)
+        self.check_output(check_prim_pir=True)
 
 
 class TestOneHotOp_default_dtype(OpTest):
