@@ -617,6 +617,13 @@ bool MakeGenerateShapeOpAttribute(
                "they are handled by other passes";
     return false;
   }
+  // When minimal_inputs is empty, it means that all of out dim_expr must be
+  // int64.
+  if (minimal_inputs->empty()) {
+    for (const auto& dim_expr : out_dim_exprs) {
+      if (!dim_expr.isa<int64_t>()) return false;
+    }
+  }
   // generate output_dim_expr_attrs
   ConvertDimExprToAttributes(
       ir_context, out_dim_exprs, /*out*/ output_dim_expr_attrs);
@@ -627,6 +634,26 @@ bool MakeGenerateShapeOpAttribute(
                          *minimal_inputs,
                          symbol_names_in_out_dim_exprs,
                          /*out*/ symbol_bindings);
+
+  // check all dim exprs have symbol binding
+  for (const auto& symbol_name : symbol_names_in_out_dim_exprs) {
+    bool has_symbol_binding = false;
+    for (const auto& symbol_binding : *symbol_bindings) {
+      const std::string& symbol_binding_name = std::visit(
+          [&](const auto& symbol_binding) -> const std::string& {
+            return symbol_binding.symbol_name;
+          },
+          symbol_binding);
+      if (symbol_name == symbol_binding_name) {
+        has_symbol_binding = true;
+        break;
+      }
+    }
+    if (!has_symbol_binding) {
+      LOG(WARNING) << "no symbol binding found for dim expr: " << symbol_name;
+      return false;
+    }
+  }
   return true;
 }
 
