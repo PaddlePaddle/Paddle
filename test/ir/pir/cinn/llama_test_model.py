@@ -84,8 +84,12 @@ class LlamaRotaryEmbedding(nn.Layer):
 
     def forward(self, x, seq_len=None):
         # x: [bs, num_attention_heads, seq_len, head_size]
-        cos = self.cos_cached[:, :seq_len, :, :]
-        sin = self.sin_cached[:, :seq_len, :, :]
+        # TODO(phlrain): cinn slice not support end is a DimExpr
+        # WIP for support it
+        # cos = self.cos_cached[:, :seq_len, :, :]
+        # sin = self.sin_cached[:, :seq_len, :, :]
+        cos = self.cos_cached
+        sin = self.sin_cached
         return (
             cos.cast(x.dtype) if cos.dtype != x.dtype else cos,
             sin.cast(x.dtype) if sin.dtype != x.dtype else sin,
@@ -239,7 +243,7 @@ class LlamaRMSNorm(nn.Layer):
         self.weight = paddle.create_parameter(
             shape=[self.hidden_size],
             dtype=paddle.get_default_dtype(),
-            default_initializer=nn.initializer.Constant(1.0),
+            default_initializer=nn.initializer.Constant(0.2),
         )
         self.variance_epsilon = config.rms_norm_eps
         self.config = config

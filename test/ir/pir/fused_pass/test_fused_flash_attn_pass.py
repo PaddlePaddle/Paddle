@@ -103,7 +103,7 @@ class TestFlashAttnPatternQscaleCast(PassTest):
                             with paddle.pir.core.program_guard(
                                 main_prog, start_prog
                             ):
-                                mask_shape = (bs, num_heads, seq_len, seq_len)
+                                mask_shape = (bs, 1, seq_len, seq_len)
                                 Q = paddle.static.data(
                                     name='Q',
                                     shape=[bs, seq_len, num_heads, head_dim],
@@ -145,7 +145,9 @@ class TestFlashAttnPatternQscaleCast(PassTest):
                                     attention_out, [0, 2, 1, 3]
                                 )
                                 out = paddle.assign(attention_out)
-                                self.pass_list = ['fused_flash_attn_pass']
+                                self.pass_attr_list = [
+                                    {'fused_flash_attn_pass': {}}
+                                ]
                                 self.feeds = {
                                     "Q": np.random.random(
                                         (bs, seq_len, num_heads, head_dim)
@@ -156,9 +158,9 @@ class TestFlashAttnPatternQscaleCast(PassTest):
                                     "V": np.random.random(
                                         (bs, seq_len, num_heads, head_dim)
                                     ).astype("float16"),
-                                    "mask": np.random.random(
-                                        (bs, num_heads, seq_len, seq_len)
-                                    ).astype("float16"),
+                                    "mask": np.random.random(mask_shape).astype(
+                                        "float16"
+                                    ),
                                 }
                                 self.fetch_list = [out]
                                 self.valid_op_map = {
@@ -223,7 +225,7 @@ class TestFlashAttnPatternQscaleNoCast(PassTest):
                             with paddle.pir.core.program_guard(
                                 main_prog, start_prog
                             ):
-                                mask_shape = (bs, num_heads, seq_len, seq_len)
+                                mask_shape = (bs, 1, seq_len, seq_len)
                                 Q = paddle.static.data(
                                     name='Q',
                                     shape=[bs, seq_len, num_heads, head_dim],
@@ -261,7 +263,9 @@ class TestFlashAttnPatternQscaleNoCast(PassTest):
                                     attention_out, [0, 2, 1, 3]
                                 )
                                 out = paddle.assign(attention_out)
-                                self.pass_list = ['fused_flash_attn_pass']
+                                self.pass_attr_list = [
+                                    {'fused_flash_attn_pass': {}}
+                                ]
                                 self.feeds = {
                                     "Q": np.random.random(
                                         (bs, seq_len, num_heads, head_dim)
@@ -272,9 +276,9 @@ class TestFlashAttnPatternQscaleNoCast(PassTest):
                                     "V": np.random.random(
                                         (bs, seq_len, num_heads, head_dim)
                                     ).astype("float16"),
-                                    "mask": np.random.random(
-                                        (bs, num_heads, seq_len, seq_len)
-                                    ).astype("float16"),
+                                    "mask": np.random.random(mask_shape).astype(
+                                        "float16"
+                                    ),
                                 }
                                 self.fetch_list = [out]
                                 self.valid_op_map = {
@@ -343,7 +347,7 @@ class TestFlashAttnPatternOutscaleCast(PassTest):
                             with paddle.pir.core.program_guard(
                                 main_prog, start_prog
                             ):
-                                mask_shape = (bs, num_heads, seq_len, seq_len)
+                                mask_shape = (bs, 1, seq_len, seq_len)
                                 Q = paddle.static.data(
                                     name='Q',
                                     shape=[bs, seq_len, num_heads, head_dim],
@@ -386,7 +390,9 @@ class TestFlashAttnPatternOutscaleCast(PassTest):
                                     attention_out, [0, 2, 1, 3]
                                 )
                                 out = paddle.assign(attention_out)
-                                self.pass_list = ['fused_flash_attn_pass']
+                                self.pass_attr_list = [
+                                    {'fused_flash_attn_pass': {}}
+                                ]
                                 self.feeds = {
                                     "Q": np.random.random(
                                         (bs, seq_len, num_heads, head_dim)
@@ -397,9 +403,9 @@ class TestFlashAttnPatternOutscaleCast(PassTest):
                                     "V": np.random.random(
                                         (bs, seq_len, num_heads, head_dim)
                                     ).astype("float16"),
-                                    "mask": np.random.random(
-                                        (bs, num_heads, seq_len, seq_len)
-                                    ).astype("float16"),
+                                    "mask": np.random.random(mask_shape).astype(
+                                        "float16"
+                                    ),
                                 }
                                 self.fetch_list = [out]
                                 self.valid_op_map = {
@@ -466,7 +472,7 @@ class TestFlashAttnPatternOutscaleNoCast(PassTest):
                             with paddle.pir.core.program_guard(
                                 main_prog, start_prog
                             ):
-                                mask_shape = (bs, num_heads, seq_len, seq_len)
+                                mask_shape = (bs, 1, seq_len, seq_len)
                                 Q = paddle.static.data(
                                     name='Q',
                                     shape=[bs, seq_len, num_heads, head_dim],
@@ -505,7 +511,9 @@ class TestFlashAttnPatternOutscaleNoCast(PassTest):
                                     attention_out, [0, 2, 1, 3]
                                 )
                                 out = paddle.assign(attention_out)
-                                self.pass_list = ['fused_flash_attn_pass']
+                                self.pass_attr_list = [
+                                    {'fused_flash_attn_pass': {}}
+                                ]
                                 self.feeds = {
                                     "Q": np.random.random(
                                         (bs, seq_len, num_heads, head_dim)
@@ -516,9 +524,9 @@ class TestFlashAttnPatternOutscaleNoCast(PassTest):
                                     "V": np.random.random(
                                         (bs, seq_len, num_heads, head_dim)
                                     ).astype("float16"),
-                                    "mask": np.random.random(
-                                        (bs, num_heads, seq_len, seq_len)
-                                    ).astype("float16"),
+                                    "mask": np.random.random(mask_shape).astype(
+                                        "float16"
+                                    ),
                                 }
                                 self.fetch_list = [out]
                                 self.valid_op_map = {
@@ -602,7 +610,7 @@ class TestTransposeSliceFlashAttnPattern(PassTest):
                                     shape=[bs, seq_len, 3, num_heads, head_dim],
                                     dtype='float16',
                                 )
-                                mask_shape = (bs, num_heads, seq_len, seq_len)
+                                mask_shape = (bs, 1, seq_len, seq_len)
                                 mask = paddle.static.data(
                                     name='mask',
                                     shape=mask_shape,
@@ -627,14 +635,16 @@ class TestTransposeSliceFlashAttnPattern(PassTest):
                                     attention_out, [0, 2, 1, 3]
                                 )
                                 out = paddle.assign(attention_out)
-                                self.pass_list = ['fused_flash_attn_pass']
+                                self.pass_attr_list = [
+                                    {'fused_flash_attn_pass': {}}
+                                ]
                                 self.feeds = {
                                     "x": np.random.random(
                                         (bs, seq_len, 3, num_heads, head_dim)
                                     ).astype("float16"),
-                                    "mask": np.random.random(
-                                        (bs, num_heads, seq_len, seq_len)
-                                    ).astype("float16"),
+                                    "mask": np.random.random(mask_shape).astype(
+                                        "float16"
+                                    ),
                                 }
                                 self.fetch_list = [out]
                                 self.valid_op_map = {
