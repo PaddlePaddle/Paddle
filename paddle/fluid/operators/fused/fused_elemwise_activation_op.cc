@@ -24,7 +24,7 @@ bool IsUnaryCompound(const std::vector<std::string> &functor_list) {
   PADDLE_ENFORCE_EQ(
       functor_list.size(),
       2,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Invalid functor list size %d, which should be equal to %d.",
           functor_list.size(),
           2));
@@ -39,7 +39,7 @@ bool HasInPlaceUnary(const std::vector<std::string> &functor_list) {
   PADDLE_ENFORCE_EQ(
       functor_list.size(),
       2,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Invalid functor list size %d, which should be equal to %d.",
           functor_list.size(),
           2));
@@ -55,7 +55,7 @@ bool InputXCanBeAbsent(const std::vector<std::string> &functor_list) {
   PADDLE_ENFORCE_EQ(
       functor_list.size(),
       2,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Invalid functor list size %d, which should be equal to %d.",
           functor_list.size(),
           2));
@@ -73,7 +73,7 @@ static bool IsSupportedCompound(const std::vector<std::string> &functors) {
   PADDLE_ENFORCE_EQ(
       functors.size(),
       2UL,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Invalid functor list size %d, which should be equal to %d.",
           functors.size(),
           2));
@@ -89,12 +89,12 @@ static bool IsSupportedCompound(const std::vector<std::string> &functors) {
   } else if (binary_fun.count(functors[1])) {
     unary_fun_str = functors[0];
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "%s and %s are not included in fused_list.", functors[0], functors[1]));
   }
   PADDLE_ENFORCE_EQ(unary_fun.count(unary_fun_str),
                     1,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "%s is not included in fused_list.", unary_fun_str));
   return true;
 }
@@ -107,17 +107,17 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("X"),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(X) of FusedElemwiseActivationOp op should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Y"),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(Y) of FusedElemwiseActivationOp op should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("Out"),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Output(Out) of FusedElemwiseActivationOp op should not be null."));
 
     auto x_dim = ctx->GetInputDim("X");
@@ -134,7 +134,7 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           ctx->HasOutput("IntermediateOut"),
           true,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Output(IntermediateOut) of FusedElemwiseActivationOp "
               "should not be null."));
 
@@ -176,7 +176,7 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(ctx.Input<phi::DenseTensor>("X")->dtype(),
                       ctx.Input<phi::DenseTensor>("Y")->dtype(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The element's type of input should be the same."));
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
@@ -214,7 +214,7 @@ class FusedElemwiseActivationMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE_EQ(
               IsSupportedCompound(functor_list),
               true,
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "the input functors should support compounding."));
         });
 
@@ -317,10 +317,10 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Input(Out@Grad) should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput(framework::GradVarName("Out")),
+        true,
+        phi::errors::InvalidArgument("Input(Out@Grad) should not be null."));
 
     auto functor_list =
         ctx->Attrs().Get<std::vector<std::string>>("functor_list");
@@ -328,14 +328,14 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
     if (ctx->Attrs().Get<bool>("save_intermediate_out")) {
       PADDLE_ENFORCE_EQ(ctx->HasInput("IntermediateOut"),
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Input(IntermediateOut) should not be null."));
     } else {
       if (!InputXCanBeAbsent(functor_list)) {
         PADDLE_ENFORCE_EQ(
             ctx->HasInput("X"),
             true,
-            platform::errors::InvalidArgument("Input(X) should not be null."));
+            phi::errors::InvalidArgument("Input(X) should not be null."));
       }
     }
 
@@ -353,7 +353,7 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             InputXCanBeAbsent(functor_list),
             true,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Only when BinaryFunctor is elementwise_add, the 'X' "
                 "could be absent."));
 
@@ -370,7 +370,7 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           ctx->HasInput("Y"),
           true,
-          platform::errors::InvalidArgument("Input(Y) should not be null."));
+          phi::errors::InvalidArgument("Input(Y) should not be null."));
       ctx->SetOutputDim(y_grad_name, ctx->GetInputDim("Y"));
       ctx->ShareLoD("Y", y_grad_name);
     }
@@ -414,7 +414,7 @@ class FusedElemwiseAddActivationOp : public FusedElemwiseActivationOp {
     PADDLE_ENFORCE_EQ(
         elemntwise_add_detected,
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "When the FusedElemwiseAddActivationOp Is used in fused pass, the "
             "elementwise_add Op must be"
             "detected and used, Please check the fuse pass pattern"));
@@ -439,7 +439,7 @@ class FusedElemwiseAddActivationOpGrad : public FusedElemwiseActivationOpGrad {
     PADDLE_ENFORCE_EQ(
         elemntwise_add_grad_detected,
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "When the FusedElemwiseAddActivationOpGrad Is used in fused pass, "
             "the elementwise_add_grad Op must be"
             "detected and used, Please check the fuse pass pattern"));

@@ -24,7 +24,6 @@ add_subdirectory(optimizers)
 add_subdirectory(reduce_ops)
 add_subdirectory(sequence_ops)
 add_subdirectory(string)
-add_subdirectory(prim_ops)
 
 
 if(WITH_DISTRIBUTE)
@@ -47,10 +46,6 @@ endif()
 
 if (WITH_DLNNE)
     add_subdirectory(dlnne)
-endif()
-
-if (WITH_LITE)
-    add_subdirectory(lite)
 endif()
 
 if(WITH_CINN)

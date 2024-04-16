@@ -27,13 +27,16 @@ class IR_API ConstraintsManager {
 
   bool IsEqual(const DimExpr& lhs, const DimExpr& rhs) const;
 
-  std::vector<std::vector<DimExpr>> GetEqualClusters() const;
-
   void AddGTOneCstr(const DimExpr& dim_expr);
 
   bool IsGTOne(const DimExpr& dim_expr) const;
 
   void AddBroadcastableCstr(const DimExpr& lhs, const DimExpr& rhs);
+
+  bool IsBroadcastable(const DimExpr& lhs, const DimExpr& rhs) const;
+
+  template <typename DoEachClusterT>
+  void VisitEqualClusters(const DoEachClusterT& DoEachCluster) const;
 
   using EqualCallbackFunc = std::function<void(const DimExpr&, const DimExpr&)>;
   void SetEqualCallbackFunc(EqualCallbackFunc equal_callback_func);

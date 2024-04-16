@@ -48,7 +48,7 @@ class TestConv2dAddFusePass(PassTest):
 
                 conv2d_out = conv2d(x)
                 out = paddle.assign(conv2d_out)
-                self.pass_list = ['depthwise_conv_onednn_pass']
+                self.pass_attr_list = [{'depthwise_conv_onednn_pass': {}}]
 
                 self.feeds = {
                     "x": np.random.random((5, 2, 5, 5)).astype("float32"),

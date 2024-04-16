@@ -52,14 +52,14 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
     auto lod = in->lod();
     PADDLE_ENFORCE_EQ(lod.empty(),
                       false,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input(X) Tensor of SequenceSlice operator does not "
                           "contain LoD information."));
 
     PADDLE_ENFORCE_EQ(
         lod.size(),
         1UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "LoD information error. SequenceSlice operator only support one "
             "level sequence now, but received LoD level is %d.",
             lod.size()));
@@ -67,7 +67,7 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         n,
         static_cast<size_t>(length->dims()[0]),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input length shape error. The length of input LoD sequence and "
             "input length-array‘s first dimension should be equal, but the LoD "
             "sequence length is %d, the length-array‘s first dimension is %d.",
@@ -76,7 +76,7 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         n,
         static_cast<size_t>(offset->dims()[0]),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input offset shape error. The length of input LoD sequence and "
             "input offset-array‘s first dimension should be equal, but the LoD "
             "sequence length is %d, the offset-array‘s first dimension is %d.",
@@ -101,14 +101,14 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < n; ++i) {
       PADDLE_ENFORCE_LE(0,
                         offset_data[i],
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The input offset[%d]'s value is negative, its "
                             "value is %d, expect it to be non-negative.",
                             i,
                             offset_data[i]));
       PADDLE_ENFORCE_LE(0,
                         length_data[i],
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The input length[%d]'s value is negative, its "
                             "value is %d, expect it to be non-negative.",
                             i,
@@ -116,7 +116,7 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_LE(
           lod[0][i] + offset_data[i] + length_data[i],
           lod[0][i + 1],
-          platform::errors::OutOfRange(
+          phi::errors::OutOfRange(
               "The slice end index of target tensor is out of range. expect it "
               "less than or equal to %d, but the actual slice end index is %d.",
               lod[0][i + 1],

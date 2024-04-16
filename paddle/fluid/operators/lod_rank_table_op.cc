@@ -72,10 +72,9 @@ output operators.
 class LoDRankTableInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE_EQ(
-        context->HasInput("X"),
-        true,
-        platform::errors::NotFound("LoDRankTable must have input X."));
+    PADDLE_ENFORCE_EQ(context->HasInput("X"),
+                      true,
+                      phi::errors::NotFound("LoDRankTable must have input X."));
   }
 };
 

@@ -170,7 +170,7 @@ void LaunchBiasAddFwKernel(const phi::GPUContext& ctx,
       break;
     }
     default: {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported vectorized size: %d !", vec_size));
       break;
     }
