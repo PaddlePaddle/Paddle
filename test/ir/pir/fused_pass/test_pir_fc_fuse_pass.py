@@ -94,7 +94,7 @@ class TestFcFusePassPattern(PassTest):
     def test_check_output(self):
         self.check_pass_correct(atol=1e-3, rtol=1e-3)
 
-"""
+""" """
 # FcOp does not support reverseAdd pattern
 # so, if config.use_cutlass_ is false, Test with *reverseAdd* should be commented out
 class TestFcFusePassPattern_reverseAdd(PassTest):
@@ -160,7 +160,7 @@ class TestFcFusePassPattern_reverseAdd(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct(atol=2e-3, rtol=2e-3)
-"""
+
 
 class TestFcFusePassPattern_withAct(PassTest):
     r'''
@@ -185,7 +185,7 @@ class TestFcFusePassPattern_withAct(PassTest):
         acts = ["pd_op.relu", "pd_op.gelu"]
         acts_map = {"pd_op.relu": paddle.nn.functional.relu,
                     "pd_op.gelu": paddle.nn.functional.gelu}
-        # 
+        
         # fused_op_name = "pd_op.fc"
         # acts = ["pd_op.relu"]
         # acts_map = {"pd_op.relu": paddle.nn.functional.relu}
@@ -246,7 +246,7 @@ class TestFcFusePassPattern_withAct(PassTest):
     def test_check_output(self):
         self.check_pass_correct(atol=1e-3, rtol=1e-3)
 
-"""
+""" """
 class TestFcFusePassPattern_reverseAdd_withAct(PassTest):
     r'''
       Y     Matmul
@@ -327,7 +327,7 @@ class TestFcFusePassPattern_reverseAdd_withAct(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct(atol=1e-3, rtol=1e-3)
-"""
+
 
 if __name__ == "__main__":
     unittest.main()
