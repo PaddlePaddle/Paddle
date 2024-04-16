@@ -69,13 +69,13 @@ void FileReaderInferShape::operator()(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_NE(
       ctx->IsRuntime(),
       true,
-      platform::errors::PreconditionNotMet("'FileReaderInferShape' should only "
-                                           "be invoked during compile time."));
+      phi::errors::PreconditionNotMet("'FileReaderInferShape' should only "
+                                      "be invoked during compile time."));
 
   PADDLE_ENFORCE_EQ(
       ctx->HasOutput("Out"),
       true,
-      platform::errors::NotFound("The output file reader should not be null."));
+      phi::errors::NotFound("The output file reader should not be null."));
   bool use_data_config = ctx->Attrs().Get<bool>("use_data_config");
   if (use_data_config) {
     const auto shape_concat =
@@ -88,7 +88,7 @@ void FileReaderInferShape::operator()(framework::InferShapeContext* ctx) const {
     PADDLE_ENFORCE_EQ(
         lod_levels.size(),
         shapes.size(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The number of 'lod_levels'(%d) doesn't match the number "
             "of 'shapes'(%d).",
             lod_levels.size(),
@@ -97,16 +97,16 @@ void FileReaderInferShape::operator()(framework::InferShapeContext* ctx) const {
     PADDLE_ENFORCE_EQ(
         dtypes.size(),
         shapes.size(),
-        platform::errors::InvalidArgument("The number of 'dtypes'(%d) doesn't "
-                                          "match the number of 'shapes'(%d).",
-                                          dtypes.size(),
-                                          shapes.size()));
+        phi::errors::InvalidArgument("The number of 'dtypes'(%d) doesn't "
+                                     "match the number of 'shapes'(%d).",
+                                     dtypes.size(),
+                                     shapes.size()));
     const auto need_check_feed =
         ctx->Attrs().Get<std::vector<int>>("need_check_feed");
     PADDLE_ENFORCE_EQ(
         need_check_feed.size(),
         shapes.size(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The number of 'need_check_feed'(%d) doesn't match the "
             "number of 'shapes'(%d).",
             need_check_feed.size(),
@@ -127,18 +127,18 @@ void DecoratedReaderInferShape::operator()(
   PADDLE_ENFORCE_NE(
       ctx->IsRuntime(),
       true,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "'DecoratedReaderInferShape' should only be invoked during "
           "compile time."));
 
-  PADDLE_ENFORCE_EQ(ctx->HasInput("UnderlyingReader"),
-                    true,
-                    platform::errors::NotFound(
-                        "Input(UnderlyingReader) should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
-                    true,
-                    platform::errors::NotFound(
-                        "The output decorated reader should not be null."));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("UnderlyingReader"),
+      true,
+      phi::errors::NotFound("Input(UnderlyingReader) should not be null."));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasOutput("Out"),
+      true,
+      phi::errors::NotFound("The output decorated reader should not be null."));
   ctx->SetReaderDims("Out", ctx->GetReaderDims("UnderlyingReader"));
 
   framework::VarDesc* in_reader = PADDLE_GET(

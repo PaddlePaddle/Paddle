@@ -14,7 +14,6 @@
 
 import os
 import platform
-import re
 import site
 import sys
 import warnings
@@ -194,18 +193,8 @@ def run_shell_command(cmd):
         return out.decode('utf-8').strip()
 
 
-def is_valid_filename(filename):
-    pattern = re.compile(r'^[a-zA-Z0-9_.-]+$')
-    if pattern.match(filename):
-        return True
-    else:
-        return False
-
-
 def get_dso_path(core_so, dso_name):
     if core_so and dso_name:
-        assert is_valid_filename(core_so), 'core_so must be a file name.'
-        assert is_valid_filename(dso_name), 'dso_name must be a file name.'
         return run_shell_command(
             f"ldd {core_so}|grep {dso_name}|awk '{{print $3}}'"
         )
@@ -324,6 +313,7 @@ try:
         _set_fuse_parameter_group_size,
         _set_fuse_parameter_memory_size,
         _set_paddle_lib_path,
+        _set_warmup,
         _switch_tracer,
         _test_enforce_gpu_success,
         _xpu_device_synchronize,
@@ -540,6 +530,14 @@ def _enable_prim_skip_dynamic_shape():
 
 def _enable_prim_dynamic_shape():
     flag = os.getenv("FLAGS_prim_enable_dynamic")
+    if flag and flag.lower() in ("1", "true"):
+        return True
+    else:
+        return False
+
+
+def _enable_auto_recompute():
+    flag = os.getenv("FLAGS_enable_auto_recompute")
     if flag and flag.lower() in ("1", "true"):
         return True
     else:

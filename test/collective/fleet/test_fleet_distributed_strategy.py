@@ -470,11 +470,6 @@ class TestStrategyConfig(unittest.TestCase):
         build_strategy.enable_backward_optimizer_op_deps = True
         build_strategy.trainers_endpoints = ["1", "2"]
         strategy.build_strategy = build_strategy
-        exe_strategy = paddle.base.ExecutionStrategy()
-        exe_strategy.num_threads = 10
-        exe_strategy.num_iteration_per_drop_scope = 10
-        exe_strategy.num_iteration_per_run = 10
-        strategy.execution_strategy = exe_strategy
         strategy.save_to_prototxt("dist_strategy.prototxt")
         strategy2 = paddle.distributed.fleet.DistributedStrategy()
         strategy2.load_from_prototxt("dist_strategy.prototxt")
@@ -500,15 +495,6 @@ class TestStrategyConfig(unittest.TestCase):
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.build_strategy = build_strategy
-
-    def test_execution_strategy(self):
-        exe_strategy = paddle.base.ExecutionStrategy()
-        exe_strategy.num_threads = 10
-        exe_strategy.num_iteration_per_drop_scope = 10
-        exe_strategy.num_iteration_per_run = 10
-
-        strategy = paddle.distributed.fleet.DistributedStrategy()
-        strategy.execution_strategy = exe_strategy
 
     def test_unknown_strategy(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()

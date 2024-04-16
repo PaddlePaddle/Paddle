@@ -118,7 +118,7 @@ struct ArraySetterBase {
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
 
     int8_t* restored = reinterpret_cast<int8_t*>(src);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (use_cuda_graph) {
       restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph<int8_t>(
           restored, num_bytes);

@@ -4273,6 +4273,15 @@ void WeightOnlyLinearInferMeta(const MetaTensor& x,
           "But received Input(X) dim[-1](%s) != Input(Weight) dim[1](%s)",
           x_dims[x_dims.size() - 1],
           w_dims[1]));
+  if (bias.initialized()) {
+    auto bias_dims = bias.dims();
+    PADDLE_ENFORCE_EQ(
+        bias_dims.size(),
+        1UL,
+        errors::InvalidArgument(
+            "The size of Input(Bias)'s dimension should equal to 1UL.",
+            bias_dims.size()));
+  }
 
   // per-channel dequantization
   if (group_size == -1) {
@@ -4554,6 +4563,7 @@ void FusedRopeInferMeta(const MetaTensor& q,
                         const MetaTensor& position_ids,
                         bool use_neox_rotary_style,
                         bool time_major,
+                        float rotary_emb_base,
                         MetaTensor* out_q,
                         MetaTensor* out_k,
                         MetaTensor* out_v) {
@@ -4582,6 +4592,86 @@ void FusedRopeInferMeta(const MetaTensor& q,
       out_v->set_dtype(q.dtype());
     }
   }
+}
+
+void FusedTokenPruneInferMeta(const MetaTensor& attn,
+                              const MetaTensor& x,
+                              const MetaTensor& mask,
+                              const MetaTensor& new_mask,
+                              bool keep_first_token,
+                              bool keep_order,
+                              MetaTensor* slimmed_x,
+                              MetaTensor* cls_inds) {
+  auto mask_dim = mask.dims();
+  auto attn_dim = attn.dims();
+  auto x_dim = x.dims();
+  auto new_mask_dim = new_mask.dims();
+
+  PADDLE_ENFORCE_EQ(
+      mask_dim.size(),
+      4,
+      phi::errors::InvalidArgument("The input mask must be 4-dimension"));
+  PADDLE_ENFORCE_EQ(
+      attn_dim.size(),
+      4,
+      phi::errors::InvalidArgument("The input attn must be 4-dimension"));
+  PADDLE_ENFORCE_EQ(
+      x_dim.size(),
+      3,
+      phi::errors::InvalidArgument("The input x must be 4-dimension"));
+  PADDLE_ENFORCE_EQ(
+      new_mask_dim.size(),
+      4,
+      phi::errors::InvalidArgument("The input attn must be 4-dimension"));
+  PADDLE_ENFORCE_EQ(mask_dim[0],
+                    attn_dim[0],
+                    phi::errors::InvalidArgument(
+                        "The first dim of mask and attn should be the same"
+                        "which is batch size"));
+  PADDLE_ENFORCE_EQ(mask_dim[1],
+                    attn_dim[1],
+                    phi::errors::InvalidArgument(
+                        "The second dim of mask and attn should be the same"
+                        "which is nb_head"));
+  PADDLE_ENFORCE_EQ(mask_dim[0],
+                    x_dim[0],
+                    phi::errors::InvalidArgument(
+                        "The first dim of mask and x should be the same"
+                        "which is batch size"));
+  PADDLE_ENFORCE_EQ(
+      mask_dim[2],
+      mask_dim[3],
+      phi::errors::InvalidArgument(
+          "The third dim and the fourth dim of mask should be the same"
+          "which is max seq len"));
+  PADDLE_ENFORCE_EQ(
+      attn_dim[2],
+      attn_dim[3],
+      phi::errors::InvalidArgument(
+          "The third dim and the fourth dim of mask should be the same"
+          "which is max seq len"));
+  PADDLE_ENFORCE_EQ(attn_dim[2],
+                    mask_dim[2],
+                    phi::errors::InvalidArgument(
+                        "The third dim of mask and attn should be the same"
+                        "which is max seq len"));
+  PADDLE_ENFORCE_EQ(attn_dim[2],
+                    x_dim[1],
+                    phi::errors::InvalidArgument(
+                        "The third dim of mask and the second dim of attn"
+                        "should be the same which is max seq len"));
+
+  auto bsz = mask_dim[0];
+  auto c = x_dim[2];
+  auto slim_seq_len = new_mask_dim[2];
+
+  std::vector<int64_t> slimmed_x_dims({bsz, slim_seq_len, c});
+  slimmed_x->set_dims(common::make_ddim(slimmed_x_dims));
+  slimmed_x->set_dtype(x.dtype());
+
+  std::vector<int64_t> cls_inds_dims({bsz, slim_seq_len});
+  cls_inds->set_dims(common::make_ddim(cls_inds_dims));
+  cls_inds->set_dtype(phi::DataType::INT64);
 }
 
 void MoeInferMeta(const MetaTensor& x,
@@ -4831,10 +4921,10 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
   }
 }
 
-void FullWithTensorInferMeta(const MetaTensor& shape,
+void FullWithTensorInferMeta(const IntArray& shape,
                              DataType dtype,
                              MetaTensor* out) {
-  out->set_dims(common::make_ddim(std::vector<int64_t>(shape.numel(), -1)));
+  out->set_dims(common::make_ddim(shape.GetData()));
   out->set_dtype(dtype);
 }
 

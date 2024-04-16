@@ -51,7 +51,7 @@ class CopyCrossScopeOp : public framework::OperatorBase {
     bool ToM = Attr<bool>("to_main_scope");
     PADDLE_ENFORCE_EQ(num_micro_scopes,
                       num_micro_batches,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "For pipeline, number of micro scopes (%d) should "
                           "be equal to number of micro batches (%d).",
                           num_micro_scopes,
@@ -60,7 +60,7 @@ class CopyCrossScopeOp : public framework::OperatorBase {
     auto* id_var = scope.FindVar(id_name);
     PADDLE_ENFORCE_NOT_NULL(
         id_var,
-        platform::errors::NotFound("No variable with name %s found.", id_name));
+        phi::errors::NotFound("No variable with name %s found.", id_name));
     auto id_tensor = id_var->GetMutable<phi::DenseTensor>();
     auto it = scope.kids().begin();
     phi::DenseTensor cpu_id_tensor;
@@ -77,12 +77,12 @@ class CopyCrossScopeOp : public framework::OperatorBase {
         auto* dst_var = dst_scope->FindVar(x_name);
         PADDLE_ENFORCE_NOT_NULL(
             dst_var,
-            platform::errors::NotFound(
+            phi::errors::NotFound(
                 "No variable with name %s found in source scope.", x_name));
         auto* main_var = scope.FindVar(x_name);
         PADDLE_ENFORCE_NOT_NULL(
             main_var,
-            platform::errors::NotFound(
+            phi::errors::NotFound(
                 "No variable with name %s found in destination scope.",
                 x_name));
         auto dst_tensor = dst_var->GetMutable<phi::DenseTensor>();
@@ -99,12 +99,12 @@ class CopyCrossScopeOp : public framework::OperatorBase {
     auto* source_var = source_scope->FindVar(x_name);
     PADDLE_ENFORCE_NOT_NULL(
         source_var,
-        platform::errors::NotFound(
-            "No variable with name %s found in source scope.", x_name));
+        phi::errors::NotFound("No variable with name %s found in source scope.",
+                              x_name));
     auto* dst_var = dst_scope->FindVar(x_name);
     PADDLE_ENFORCE_NOT_NULL(
         dst_var,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "No variable with name %s found in destination scope.", x_name));
     auto src_tensor = source_var->GetMutable<phi::DenseTensor>();
     auto dst_tensor = dst_var->GetMutable<phi::DenseTensor>();
@@ -115,7 +115,7 @@ class CopyCrossScopeOp : public framework::OperatorBase {
       auto* main_var = scope.FindVar(x_name);
       PADDLE_ENFORCE_NOT_NULL(
           main_var,
-          platform::errors::NotFound(
+          phi::errors::NotFound(
               "No variable with name %s found in destination scope.", x_name));
       auto main_tensor = main_var->GetMutable<phi::DenseTensor>();
       paddle::framework::TensorCopySync(

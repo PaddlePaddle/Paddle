@@ -20,8 +20,9 @@ from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
 import paddle
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import core
 from paddle.nn.functional import interpolate
+from paddle.pir_utils import test_with_pir_api
 
 
 def create_test_case0(self):
@@ -528,9 +529,12 @@ class TestResizeLinearOpUint8(OpTest):
 
 
 class TestLinearInterpOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_error(self):
         with paddle_static_guard():
-            with program_guard(Program(), Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
 
                 def input_shape_error():
                     x1 = paddle.static.data(

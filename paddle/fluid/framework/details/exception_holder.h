@@ -41,7 +41,7 @@ class ExceptionHolder {
     } catch (std::exception& ex) {
       Catch(ex);
     } catch (...) {
-      LOG(FATAL) << "Unknown exception caught.";
+      PADDLE_THROW(phi::errors::Fatal("Unknown exception caught."));
     }
   }
 

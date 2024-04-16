@@ -257,10 +257,18 @@ def _pir_transform(t, dtype):
                 break
     main.set_parameters_from(startup)
     with paddle.static.program_guard(main):
+        paddle.pir.reset_insertion_point_to_start()
         block = main.global_block()
         cast_param = paddle._pir_ops.parameter(t.name)
+        cast_param.trainable = t.trainable
         cast_param.stop_gradient = t.stop_gradient
         cast_param.persistable = t.persistable
+        cast_param.optimize_attr = t.optimize_attr
+        cast_param.regularizer = t.regularizer
+        cast_param.do_model_average = t.do_model_average
+        cast_param.need_clip = t.need_clip
+        cast_param.is_distributed = t.is_distributed
+        cast_param.is_parameter = t.is_parameter
         op = t.get_defining_op()
         t.replace_all_uses_with(cast_param)
         block.remove_op(op)
@@ -315,9 +323,7 @@ def check_models(models):
     for model in models:
         if not isinstance(model, paddle.nn.Layer):
             raise RuntimeError(
-                "Current train mode is pure fp16, models should be paddle.nn.Layer, but receive {}.".format(
-                    type(model)
-                )
+                f"Current train mode is pure fp16, models should be paddle.nn.Layer, but receive {type(model)}."
             )
         if isinstance(model, paddle.DataParallel):
             raise RuntimeError(
@@ -345,9 +351,7 @@ def check_optimizers(optimizers):
     for optimizer in optimizers:
         if not _is_valid_optimizer(optimizer):
             raise RuntimeError(
-                "Current train mode is pure fp16, optimizers should be paddle.optimizer.Optimizer or DygraphShardingOptimizer, but receive {}.".format(
-                    type(optimizer)
-                )
+                f"Current train mode is pure fp16, optimizers should be paddle.optimizer.Optimizer or DygraphShardingOptimizer, but receive {type(optimizer)}."
             )
 
 

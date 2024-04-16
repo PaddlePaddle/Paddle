@@ -28,7 +28,7 @@ class AllToAllBaseOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(
         ring_id,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The ring_id (%d) for alltoall op must be non-negative.", ring_id));
     framework::DDim dim = ctx->GetInputDim("X");
     if (dim[0] < 0) dim[0] = -1;
@@ -79,4 +79,4 @@ PD_REGISTER_STRUCT_KERNEL(alltoall,
                           double,
                           int,
                           int64_t,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

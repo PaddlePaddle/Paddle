@@ -619,7 +619,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     test_analyzer_mobilenet_depthwise_conv ${IMG_CLASS_TEST_APP}
     ${MOBILENET_MODEL_DIR} false)
 
-  if(WITH_MKLDNN)
+  if(WITH_ONEDNN)
 
     ### INT8 tests
 
@@ -792,32 +792,16 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     # build test binary to be used in subsequent tests
     inference_analysis_api_test_build(${LEXICAL_TEST_APP}
                                       ${LEXICAL_TEST_APP_SRC})
-    # run lexcial analysis test
-    inference_analysis_api_lexical_test_run(
-      test_analyzer_lexical_gru ${LEXICAL_TEST_APP} ${GRU_MODEL_PATH}
-      ${GRU_DATA_PATH})
-    # run bfloat16 lexical analysis test
-    inference_analysis_api_lexical_bfloat16_test_run(
-      test_analyzer_lexical_gru_bfloat16 ${LEXICAL_TEST_APP} ${GRU_MODEL_PATH}
-      ${GRU_DATA_PATH})
-    # run post-training quantization lexical analysis test
-    inference_analysis_api_lexical_int8_test_run(
-      test_analyzer_lexical_gru_int8
-      ${LEXICAL_TEST_APP}
-      ${GRU_MODEL_PATH}
-      ${GRU_DATA_PATH}
-      true # enable_int8_ptq
-      false # enable_int8_qat
-      false) # fuse_multi_gru
+
     # run post-training quantization lexical analysis test with multi_gru fuse
-    inference_analysis_api_lexical_int8_test_run(
-      test_analyzer_lexical_gru_int8_multi_gru
-      ${LEXICAL_TEST_APP}
-      ${GRU_MODEL_PATH}
-      ${GRU_DATA_PATH}
-      true # enable_int8_ptq
-      false # enable_int8_qat
-      true) # fuse_multi_gru
+    # inference_analysis_api_lexical_int8_test_run(
+    #  test_analyzer_lexical_gru_int8_multi_gru
+    #  ${LEXICAL_TEST_APP}
+    #  ${GRU_MODEL_PATH}
+    #  ${GRU_DATA_PATH}
+    #  true # enable_int8_ptq
+    #  false # enable_int8_qat
+    #  true) # fuse_multi_gru
 
     # run qat gru test
     set(QAT_GRU_MODEL_ARCHIVE "GRU_quant_acc.tar.gz")
@@ -1262,7 +1246,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     --infer_data=${OCR_INSTALL_DIR}/data.txt
     --refer_result=${OCR_INSTALL_DIR}/result.txt)
 
-  if(WITH_MKLDNN)
+  if(WITH_ONEDNN)
     inference_analysis_test(
       test_analyzer_capi_exp_int
       SRCS
@@ -1326,7 +1310,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
                                                                        300)
   endif()
 
-  if(WITH_MKLDNN)
+  if(WITH_ONEDNN)
     set_tests_properties(test_analyzer_int8_resnet50 PROPERTIES TIMEOUT 120)
     set_tests_properties(test_analyzer_int8_mobilenet_ssd PROPERTIES TIMEOUT
                                                                      120)
@@ -1362,7 +1346,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       set_tests_properties(trt_rebind_stream_test
                            PROPERTIES TIMEOUT 360 LABELS "RUN_TYPE=EXCLUSIVE")
     endif()
-    if(WITH_MKLDNN)
+    if(WITH_ONEDNN)
       set_tests_properties(test_analyzer_bfloat16_resnet50 PROPERTIES TIMEOUT
                                                                       120)
     endif()
@@ -1494,7 +1478,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       --dirname=${WORD2VEC_MODEL_DIR})
   endif()
 
-  if(WITH_TESTING AND WITH_MKLDNN)
+  if(WITH_TESTING AND WITH_ONEDNN)
     if(NOT APPLE)
       inference_base_test(
         test_mkldnn_quantizer

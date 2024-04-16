@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/common/flags.h"
 #include "paddle/phi/core/enforce.h"
 
-PD_DECLARE_bool(enable_host_event_recorder_hook);
+PHI_DECLARE_bool(enable_host_event_recorder_hook);
 
 namespace phi {
 
@@ -834,7 +834,7 @@ uint32_t GetCurSystemThreadId() {
   return id;
 }
 
-void RecoreCurThreadId(uint64_t id) {
+void RecordCurThreadId(uint64_t id) {
   std::lock_guard<std::mutex> lock(system_thread_id_map_mutex);
   auto gid = GetCurSystemThreadId();
   system_thread_id_map[gid] = id;
