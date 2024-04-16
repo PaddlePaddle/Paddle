@@ -1,7 +1,7 @@
 # This file is designed for C++ operators, which manages the
 # generated code for dynamic mode and static mode. If you want
 # to add the new operator configuration, make sure an operator's
-# Python API, dynamic graph API, and static graph Opertaor parameters
+# Python API, dynamic graph API, and static graph Operator parameters
 # are consistent and correspond one-to-one. It's forbidden that the
 # operator configured in this yaml file does not have Python API.
 
@@ -327,6 +327,7 @@
   backward : bicubic_interp_grad
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : bilinear
   args : (Tensor x, Tensor y, Tensor weight, Tensor bias)
@@ -350,6 +351,7 @@
   backward : bilinear_interp_grad
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : bincount
   args: (Tensor x, Tensor weights, Scalar(int) minlength = 0)
@@ -613,6 +615,7 @@
     func : conv3d
     data_type : input
   backward : conv3d_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : conv3d_transpose
   args : (Tensor x, Tensor filter, int[] strides={1, 1, 1}, int[] paddings={0, 0, 0}, int[] output_padding={}, int[] output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1, 1}, str data_format="NCHW")
@@ -1039,6 +1042,7 @@
     func : flash_attn
     data_type : q
   backward : flash_attn_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : flash_attn_unpadded
   args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, Tensor fixed_seed_offset, Tensor attn_mask, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
@@ -1052,6 +1056,18 @@
     data_type : q
   intermediate : softmax_lse, seed_offset
   backward : flash_attn_unpadded_grad
+
+- op : flash_attn_with_sparse_mask
+  args : (Tensor q, Tensor k, Tensor v, Tensor attn_mask_start_row_indices, Tensor fixed_seed_offset, float dropout = 0.0, bool causal = false, int attn_mask_start_row = 0, bool return_softmax = false, bool is_test = false, str rng_name = "")
+  output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
+  optional : fixed_seed_offset
+  infer_meta :
+    func : FlashAttnInferMeta
+    param : [q, k, v]
+  kernel :
+    func : flash_attn_with_sparse_mask
+    data_type : q
+  backward : flash_attn_with_sparse_mask_grad
 
 - op : flatten
   args : (Tensor x, int start_axis = 1, int stop_axis = 1)
@@ -1644,6 +1660,7 @@
   backward : linear_interp_grad
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : llm_int8_linear
   args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, float threshold=6.0)
@@ -2034,13 +2051,12 @@
   backward : mv_grad
 
 - op : nanmedian
-  args : (Tensor x, IntArray axis = {}, bool keepdim = true)
+  args : (Tensor x, IntArray axis = {}, bool keepdim = true, str mode="avg")
   output : Tensor(out), Tensor(medians)
   infer_meta :
     func : NanmedianInferMeta
   kernel :
     func : nanmedian
-  intermediate : medians
   backward : nanmedian_grad
 
 - op : nearest_interp
@@ -2055,6 +2071,7 @@
   backward : nearest_interp_grad
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : nextafter
   args : (Tensor x, Tensor y)
@@ -2302,6 +2319,7 @@
   kernel :
     func : relu6
   backward : relu6_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : renorm
   args : (Tensor x, float p, int axis, float max_norm)
@@ -2419,7 +2437,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : scale
-  args : (Tensor x, Scalar scale=1.0, float bias=0.0, bool bias_after_scale=true)
+  args : (Tensor x, Scalar scale=1.0, Scalar bias=0.0, bool bias_after_scale=true)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -2543,7 +2561,7 @@
   kernel :
     func : shape {dense -> dense},
            shape_sr {selected_rows -> dense}
-  data_transform:
+  data_transform :
     skip_transform : input
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
@@ -2604,7 +2622,7 @@
     spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : sin
-  inplace: (x -> out)
+  inplace : (x -> out)
   backward : sin_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
@@ -2765,10 +2783,10 @@
 - op : swiglu
   args : (Tensor x, Tensor y)
   output : Tensor(out)
-  infer_meta:
-     func: SwiGLUInferMeta
-     spmd_rule: SwiGLUInferSpmd
-  kernel:
+  infer_meta :
+     func : SwiGLUInferMeta
+     spmd_rule : SwiGLUInferSpmd
+  kernel :
      func : swiglu
   optional : y
   backward: swiglu_grad
@@ -2792,7 +2810,7 @@
     func : UnchangedInferMeta
   kernel :
     func : tan
-  inplace: (x -> out)
+  inplace : (x -> out)
   backward : tan_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
@@ -2901,6 +2919,7 @@
   backward : trilinear_interp_grad
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : trunc
   args : (Tensor input)
@@ -3040,9 +3059,9 @@
     func : WarpctcInferMeta
   kernel :
     func : warpctc
-    data_type: logits
-  optional: logits_length, labels_length
-  intermediate: warpctcgrad
+    data_type : logits
+  optional : logits_length, labels_length
+  intermediate : warpctcgrad
   backward : warpctc_grad
 
 - op : warprnnt
@@ -3052,8 +3071,8 @@
     func : WarprnntInferMeta
   kernel :
     func : warprnnt
-    data_type: input
-  intermediate: warprnntgrad
+    data_type : input
+  intermediate : warprnntgrad
   backward : warprnnt_grad
 
 - op : weight_dequantize
@@ -3073,8 +3092,8 @@
   kernel :
     func : weight_only_linear
     data_type : x
-  optional: bias
-  backward: weight_only_linear_grad
+  optional : bias
+  backward : weight_only_linear_grad
 
 - op : weight_quantize
   args : (Tensor x, str algo = "weight_only_int8", int arch = 80, int group_size = -1)
@@ -3083,7 +3102,8 @@
     func : WeightQuantizeInferMeta
   kernel :
     func : weight_quantize
-    data_type: x
+    data_type : x
+    backend : x
 
 - op : weighted_sample_neighbors
   args : (Tensor row, Tensor colptr, Tensor edge_weight, Tensor input_nodes, Tensor eids, int sample_size, bool return_eids)
@@ -3102,7 +3122,7 @@
     spmd_rule: WhereInferSpmd
   kernel :
     func : where
-  inplace: (x -> out)
+  inplace : (x -> out)
   backward : where_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 

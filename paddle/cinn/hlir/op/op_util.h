@@ -128,7 +128,9 @@ std::vector<T> ToPodVector(const std::vector<Expr> &args) {
       shape_v.push_back(static_cast<T>(e.as_double()));
     }
   } else {
-    LOG(FATAL) << "Not support " << type;
+    std::stringstream ss;
+    ss << "Not support " << type;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return shape_v;
 }

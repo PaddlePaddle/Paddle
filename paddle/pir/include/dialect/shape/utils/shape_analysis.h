@@ -20,6 +20,7 @@
 #include "paddle/pir/include/core/dll_decl.h"
 #include "paddle/pir/include/core/utils.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_op.h"
+#include "paddle/pir/include/dialect/shape/utils/constraints_manager.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_builder.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 
@@ -28,8 +29,6 @@ namespace pir {
 // The implementation is based on shape constraint ir.
 class IR_API ShapeConstraintIRAnalysis {
  public:
-  explicit ShapeConstraintIRAnalysis(ModuleOp m);
-
   void Init();
 
   const std::string GetNextSymName();
@@ -41,7 +40,19 @@ class IR_API ShapeConstraintIRAnalysis {
   void SetShapeOrDataForValue(Value val,
                               const symbol::ShapeOrDataDimExprs& shape_or_data);
 
-  symbol::DimExprBuilder CreateDimExprBuilder();
+  void AddEqualCstr(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs);
+
+  bool IsEqual(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) const;
+
+  void AddGreatThanOneCstr(const symbol::DimExpr& dim_expr);
+
+  bool IsGreatThanOne(const symbol::DimExpr& dim_expr) const;
+
+  void AddBroadcastableCstr(const symbol::DimExpr& lhs,
+                            const symbol::DimExpr& rhs);
+
+  bool IsBroadcastable(const symbol::DimExpr& lhs,
+                       const symbol::DimExpr& rhs) const;
 
   // Used to debug
   void PrintShapeOrDatas() const;
@@ -75,6 +86,13 @@ class IR_API ShapeConstraintIRAnalysis {
 
   pir::PrintHooks PrintHook() const;
 
+  symbol::DimExpr GetProductDimExpr(Value lhs,
+                                    const std::vector<int>& lhs_dim_idxs) const;
+
+ private:
+  void SubstituteDimExpr(const symbol::DimExpr& origin,
+                         const symbol::DimExpr& substituted);
+
  private:
   ModuleOp m_;
 
@@ -83,7 +101,7 @@ class IR_API ShapeConstraintIRAnalysis {
   std::unordered_map<Value, symbol::ShapeOrDataDimExprs>
       value_to_shape_or_data_;
 
-  std::vector<symbol::DimExprConstraint> constraints_;
+  symbol::ConstraintsManager constraints_manager_;
 };
 
 class IR_API ShapeAnalysisManager {

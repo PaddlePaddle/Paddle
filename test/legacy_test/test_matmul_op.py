@@ -149,11 +149,7 @@ def generate_compatible_shapes_ndim(dim, transpose_X, transpose_Y):
 for dim in [4]:
     for transpose_X in [False, True]:
         for transpose_Y in [False, True]:
-            test_name = (
-                'TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
-                    dim, dim, transpose_X, transpose_Y
-                )
-            )
+            test_name = f'TestMatMulOp_dimX_{dim}_dim_Y_{dim}_transX_{transpose_X}_transY_{transpose_Y}'
             shape_X, shape_Y = generate_compatible_shapes_ndim(
                 dim, transpose_X, transpose_Y
             )
@@ -190,9 +186,7 @@ class API_TestMm(unittest.TestCase):
                 expected_result,
                 rtol=1e-05,
                 atol=1e-05,
-                err_msg='two value is            {}\n{}, check diff!'.format(
-                    np_res, expected_result
-                ),
+                err_msg=f'two value is            {np_res}\n{expected_result}, check diff!',
             )
 
     def test_dygraph_without_out(self):

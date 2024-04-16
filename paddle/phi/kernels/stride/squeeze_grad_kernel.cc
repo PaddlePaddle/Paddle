@@ -31,5 +31,7 @@ void SqueezeGradStridedKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    squeeze_grad, STRIDED, phi::SqueezeGradStridedKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(squeeze_grad,
+                                         STRIDED,
+                                         phi::SqueezeGradStridedKernel) {}

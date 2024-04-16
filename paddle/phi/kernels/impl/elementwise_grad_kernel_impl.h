@@ -21,10 +21,12 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/elementwise_utils.h"
 
 namespace phi {
 
@@ -65,26 +67,63 @@ void AddDoubleGradImpl(const Context& dev_ctx,
                        DenseTensor* ddout) {
   // ddOut = ddx + ddy
   if (ddout) {
-    DenseTensor ddx_safe, ddy_safe;
-    funcs::GetDoubleGradSafeTensor<Context, T>(
-        dev_ctx, dout, ddx.get_ptr(), &ddx_safe);
-    funcs::GetDoubleGradSafeTensor<Context, T>(
-        dev_ctx, y, ddy.get_ptr(), &ddy_safe);
-
+    auto* ddx_tensor = ddx.get_ptr();
+    auto* ddy_tensor = ddy.get_ptr();
+    auto out_shape = dout.dims();
     dev_ctx.template Alloc<T>(ddout);
-    auto ddx_dims = ddx_safe.dims();
-    auto ddy_dims = ddy_safe.dims();
-    if (ddx_dims.size() >= ddy_dims.size()) {
-      funcs::ElementwiseCompute<funcs::AddFunctor<T>, T>(
-          dev_ctx, ddx_safe, ddy_safe, funcs::AddFunctor<T>(), ddout, axis);
+    if (ddx_tensor == nullptr && ddy_tensor == nullptr) {
+      VLOG(4) << "Special case when ddx and ddy are not needed \n";
+      ddout = nullptr;
+    } else if (ddx_tensor == nullptr && ddy_tensor != nullptr) {
+      if (ddy_tensor->dims() != out_shape) {
+        VLOG(4) << "Special case when ddx is not needed and ddy needs to "
+                   "broadcast\n";
+        std::vector<const DenseTensor*> ins = {ddy_tensor};
+        std::vector<DenseTensor*> outs = {ddout};
+        ExpandKernel<T, Context>(dev_ctx,
+                                 *ddy_tensor,
+                                 IntArray{phi::vectorize<int64_t>(out_shape)},
+                                 ddout);
+      } else {
+        VLOG(4) << "Special case when ddx is not needed and ddy doesn't need "
+                   "to broadcast\n";
+        phi::Copy(dev_ctx, *ddy_tensor, dev_ctx.GetPlace(), false, ddout);
+      }
+    } else if (ddx_tensor != nullptr && ddy_tensor == nullptr) {
+      if (ddx_tensor->dims() != out_shape) {
+        VLOG(4) << "Special case when ddy is not needed and ddx need to "
+                   "broadcast\n";
+        std::vector<const DenseTensor*> ins = {ddx_tensor};
+        std::vector<DenseTensor*> outs = {ddout};
+        ExpandKernel<T, Context>(dev_ctx,
+                                 *ddx_tensor,
+                                 IntArray{phi::vectorize<int64_t>(out_shape)},
+                                 ddout);
+      } else {
+        VLOG(4) << "Special case when ddx is not needed and ddy doesn't need "
+                   "to broadcast\n";
+        phi::Copy(dev_ctx, *ddx_tensor, dev_ctx.GetPlace(), false, ddout);
+      }
     } else {
-      funcs::ElementwiseCompute<funcs::InverseAddFunctor<T>, T>(
-          dev_ctx,
-          ddx_safe,
-          ddy_safe,
-          funcs::InverseAddFunctor<T>(),
-          ddout,
-          axis);
+      auto ddx_dims = ddx_tensor->dims();
+      auto ddy_dims = ddy_tensor->dims();
+      if (ddx_dims.size() >= ddy_dims.size()) {
+        funcs::ElementwiseCompute<funcs::AddFunctor<T>, T>(
+            dev_ctx,
+            *ddx_tensor,
+            *ddy_tensor,
+            funcs::AddFunctor<T>(),
+            ddout,
+            axis);
+      } else {
+        funcs::ElementwiseCompute<funcs::InverseAddFunctor<T>, T>(
+            dev_ctx,
+            *ddx_tensor,
+            *ddy_tensor,
+            funcs::InverseAddFunctor<T>(),
+            ddout,
+            axis);
+      }
     }
   }
 }
@@ -157,42 +196,325 @@ struct DivGradDY<phi::dtype::complex<T>> {
 
 template <typename T>
 struct DivDoubleDY {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    return y * out * dout - x * dout;
+  HOSTDEVICE T operator()(const T& x,
+                          const T& y,
+                          const T& out,
+                          const T& dout) const {
+    return (y * out - x) * dout;
   }
 };
+
+template <typename T>
+struct DivDoubleDY_Only_DDY {
+  HOSTDEVICE T operator()(const T& x,
+                          const T& y,
+                          const T& out,
+                          const T& dout) const {
+    return y * out * dout;
+  }
+};
+
+template <typename T>
+struct DivDoubleDY_Only_DDX {
+  HOSTDEVICE T operator()(const T& x,
+                          const T& y,
+                          const T& out,
+                          const T& dout) const {
+    return -x * dout;
+  }
+};
+
+// ddOut = ddX / Y - Out * ddY / Y = (ddX - Out * ddY) / Y
+template <typename T>
+struct DivDoubleDDOut {
+  HOSTDEVICE T operator()(const T& ddx,
+                          const T& ddy,
+                          const T& y,
+                          const T& out) const {
+    return (ddx - out * ddy) / y;
+  }
+};
+
+template <typename T>
+struct DivDoubleDDOut_Only_DDY {
+  HOSTDEVICE T operator()(const T& ddx,
+                          const T& ddy,
+                          const T& y,
+                          const T& out) const {
+    return -out * ddy / y;
+  }
+};
+
+template <typename T, typename DDout_OP, typename OutType = T>
+void ComputeDDoutWithoutBroadcast(const CPUContext& dev_ctx UNUSED,
+                                  const phi::DenseTensor& ddx,
+                                  const phi::DenseTensor& ddy,
+                                  const phi::DenseTensor& y,
+                                  const phi::DenseTensor& out,
+                                  phi::DenseTensor* ddout,
+                                  DDout_OP dout_op) {
+  auto out_numel = out.numel();
+  auto* ddx_data = ddx.data<T>();
+  auto* ddy_data = ddy.data<T>();
+  auto* y_data = y.data<T>();
+  auto* out_data = out.data<T>();
+  auto* ddout_data = ddout->data<T>();
+  for (int i = 0; i < out_numel; i++) {
+    ddout_data[i] = dout_op(ddx_data[i], ddy_data[i], y_data[i], out_data[i]);
+  }
+}
+
+template <typename T, typename DDout_OP, typename OutType = T>
+void ComputeDDoutWithBroadcast(const CPUContext& dev_ctx UNUSED,
+                               const phi::DenseTensor& ddx,
+                               const phi::DenseTensor& ddy,
+                               const phi::DenseTensor& y,
+                               const phi::DenseTensor& out,
+                               phi::DenseTensor* ddout,
+                               const int* x_dims_array,
+                               const int* y_dims_array,
+                               const int* out_dims_array,
+                               const int max_dim,
+                               DDout_OP dout_op) {
+  auto out_numel = out.numel();
+  auto* ddx_data = ddx.data<T>();
+  auto* ddy_data = ddy.data<T>();
+  auto* y_data = y.data<T>();
+  auto* out_data = out.data<T>();
+  auto* ddout_data = ddout->data<T>();
+  std::vector<int> index_array(max_dim, 0);
+  for (int i = 0; i < out_numel; i++) {
+    int x_index = phi::funcs::GetElementwiseIndex(
+        x_dims_array, max_dim, index_array.data());
+    int y_index = phi::funcs::GetElementwiseIndex(
+        y_dims_array, max_dim, index_array.data());
+    ddout_data[i] = dout_op(
+        ddx_data[x_index], ddy_data[y_index], y_data[y_index], out_data[i]);
+    phi::funcs::UpdateElementwiseIndexArray(
+        out_dims_array, max_dim, index_array.data());
+  }
+}
+
+#if defined(__NVCC__) || defined(__HIPCC__)
+
+template <typename T, typename DDout_OP, typename OutType = T>
+__global__ void ComputeDDoutWithoutBroadcastGPUKernel(const T* ddx_data,
+                                                      const T* ddy_data,
+                                                      const T* y_data,
+                                                      const T* out_data,
+                                                      T* ddout_data,
+                                                      int numel,
+                                                      DDout_OP dout_op) {
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  if (tid >= numel) return;
+  ddout_data[tid] =
+      dout_op(ddx_data[tid], ddy_data[tid], y_data[tid], out_data[tid]);
+}
+template <typename T, typename DDout_OP, typename OutType = T>
+void ComputeDDoutWithoutBroadcast(const GPUContext& dev_ctx UNUSED,
+                                  const phi::DenseTensor& ddx,
+                                  const phi::DenseTensor& ddy,
+                                  const phi::DenseTensor& y,
+                                  const phi::DenseTensor& out,
+                                  phi::DenseTensor* ddout,
+                                  DDout_OP dout_op) {
+  auto out_numel = out.numel();
+  auto* ddx_data = ddx.data<T>();
+  auto* ddy_data = ddy.data<T>();
+  auto* y_data = y.data<T>();
+  auto* out_data = out.data<T>();
+  auto* ddout_data = ddout->data<T>();
+  int block = 512;
+  int64_t grid = (out_numel + block - 1) / block;
+  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+  ComputeDDoutWithoutBroadcastGPUKernel<T, DDout_OP, T>
+      <<<grid, block, 0, stream>>>(
+          ddx_data, ddy_data, y_data, out_data, ddout_data, out_numel, dout_op);
+}
+
+template <typename T, typename DDout_OP, typename OutType = T>
+__global__ void ComputeDDoutWithBroadcastGPUKernel(const T* ddx_data,
+                                                   const T* ddy_data,
+                                                   const T* y_data,
+                                                   const T* out_data,
+                                                   T* ddout_data,
+                                                   int numel,
+                                                   const int* x_dims_array,
+                                                   const int* y_dims_array,
+                                                   const int* out_dims_array,
+                                                   const int max_dim,
+                                                   DDout_OP dout_op) {
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  if (tid >= numel) return;
+  int x_index = 0, y_index = 0, x_index_prod = 1, y_index_prod = 1,
+      out_index = tid, dim_index;
+  for (int64_t i = max_dim - 1; i >= 0; i--) {
+    if (out_index == 0) break;
+    dim_index = out_index % out_dims_array[i];
+    out_index = out_index / out_dims_array[i];
+    if (x_dims_array[i] > 1) {
+      x_index += dim_index * x_index_prod;
+      x_index_prod *= x_dims_array[i];
+    }
+    if (y_dims_array[i] > 1) {
+      y_index += dim_index * y_index_prod;
+      y_index_prod *= y_dims_array[i];
+    }
+  }
+  ddout_data[tid] = dout_op(
+      ddx_data[x_index], ddy_data[y_index], y_data[y_index], out_data[tid]);
+}
+
+template <typename T, typename DDout_OP, typename OutType = T>
+void ComputeDDoutWithBroadcast(const GPUContext& dev_ctx UNUSED,
+                               const phi::DenseTensor& ddx,
+                               const phi::DenseTensor& ddy,
+                               const phi::DenseTensor& y,
+                               const phi::DenseTensor& out,
+                               phi::DenseTensor* ddout,
+                               const int* x_dims_array,
+                               const int* y_dims_array,
+                               const int* out_dims_array,
+                               const int max_dim,
+                               DDout_OP dout_op) {
+  auto out_numel = out.numel();
+  auto* ddx_data = ddx.data<T>();
+  auto* ddy_data = ddy.data<T>();
+  auto* y_data = y.data<T>();
+  auto* out_data = out.data<T>();
+  auto* ddout_data = ddout->data<T>();
+  DenseTensor x_dims_array_gpu;
+  x_dims_array_gpu.Resize({max_dim});
+  int* x_dims_array_gpu_data = dev_ctx.template Alloc<int>(&x_dims_array_gpu);
+#if defined(__NVCC__)
+  cudaMemcpy(x_dims_array_gpu_data,
+             x_dims_array,
+             sizeof(int) * max_dim,
+             cudaMemcpyHostToDevice);
+#else
+  hipMemcpy(x_dims_array_gpu_data,
+            x_dims_array,
+            sizeof(int) * max_dim,
+            hipMemcpyHostToDevice);
+#endif
+  DenseTensor y_dims_array_gpu;
+  y_dims_array_gpu.Resize({max_dim});
+  int* y_dims_array_gpu_data = dev_ctx.template Alloc<int>(&y_dims_array_gpu);
+#if defined(__NVCC__)
+  cudaMemcpy(y_dims_array_gpu_data,
+             y_dims_array,
+             sizeof(int) * max_dim,
+             cudaMemcpyHostToDevice);
+#else
+  hipMemcpy(y_dims_array_gpu_data,
+            y_dims_array,
+            sizeof(int) * max_dim,
+            hipMemcpyHostToDevice);
+#endif
+  DenseTensor out_dims_array_gpu;
+  out_dims_array_gpu.Resize({max_dim});
+  int* out_dims_array_gpu_data =
+      dev_ctx.template Alloc<int>(&out_dims_array_gpu);
+#if defined(__NVCC__)
+  cudaMemcpy(out_dims_array_gpu_data,
+             out_dims_array,
+             sizeof(int) * max_dim,
+             cudaMemcpyHostToDevice);
+#else
+  hipMemcpy(out_dims_array_gpu_data,
+            out_dims_array,
+            sizeof(int) * max_dim,
+            hipMemcpyHostToDevice);
+#endif
+  int block = 512;
+  int64_t grid = (out_numel + block - 1) / block;
+  auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
+  ComputeDDoutWithBroadcastGPUKernel<T, DDout_OP, T>
+      <<<grid, block, 0, stream>>>(ddx_data,
+                                   ddy_data,
+                                   y_data,
+                                   out_data,
+                                   ddout_data,
+                                   out_numel,
+                                   x_dims_array_gpu_data,
+                                   y_dims_array_gpu_data,
+                                   out_dims_array_gpu_data,
+                                   max_dim,
+                                   dout_op);
+}
+
+#endif
+
+template <typename DeviceContext,
+          typename T,
+          typename DDout_OP,
+          typename Tout = T>
+void DivDoubleDDoutCompute(const DeviceContext& dev_ctx,
+                           const phi::DenseTensor& ddx,
+                           const phi::DenseTensor& ddy,
+                           const phi::DenseTensor& y,
+                           const phi::DenseTensor& out,
+                           int axis,
+                           phi::DenseTensor* ddout,
+                           DDout_OP dout_op) {
+  auto x_dims = ddx.dims();
+  auto y_dims = ddy.dims();
+  if (x_dims == y_dims) {
+    ComputeDDoutWithoutBroadcast<T, DDout_OP, T>(
+        dev_ctx, ddx, ddy, y, out, ddout, dout_op);
+  } else {
+    int max_dim = std::max(x_dims.size(), y_dims.size());
+    axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
+    std::vector<int> x_dims_array(max_dim, 0);
+    std::vector<int> y_dims_array(max_dim, 0);
+    std::vector<int> out_dims_array(max_dim, 0);
+    phi::funcs::GetBroadcastDimsArrays(x_dims,
+                                       y_dims,
+                                       x_dims_array.data(),
+                                       y_dims_array.data(),
+                                       out_dims_array.data(),
+                                       max_dim,
+                                       axis);
+    ComputeDDoutWithBroadcast<T, DDout_OP, T>(dev_ctx,
+                                              ddx,
+                                              ddy,
+                                              y,
+                                              out,
+                                              ddout,
+                                              x_dims_array.data(),
+                                              y_dims_array.data(),
+                                              out_dims_array.data(),
+                                              max_dim,
+                                              dout_op);
+  }
+}
 
 template <typename T, typename Context>
 void DivideDoubleGradKernel(const Context& dev_ctx,
                             const DenseTensor& y,
                             const DenseTensor& out,
-                            const DenseTensor& dx,
+                            const DenseTensor& grad_out,
+                            const paddle::optional<DenseTensor>& dx,
                             const paddle::optional<DenseTensor>& ddx,
                             const paddle::optional<DenseTensor>& ddy,
                             int axis,
                             DenseTensor* dy,
                             DenseTensor* dout,
                             DenseTensor* ddout) {
-  if (dy) {
-    dy->Resize(y.dims());
-    dev_ctx.template Alloc<T>(dy);
+  auto* ddx_tensor = ddx.get_ptr();
+  auto* ddy_tensor = ddy.get_ptr();
+  auto* dx_tensor = dx.get_ptr();
+  DenseTensor dz_div_y;
+  if ((dy || dout) && (!dx_tensor || dx_tensor->dims() != out.dims())) {
+    dz_div_y.Resize(out.dims());
+    dev_ctx.template Alloc<T>(&dz_div_y);
+    funcs::DefaultElementwiseOperator<Context,
+                                      T,
+                                      funcs::DivideFunctor<T>,
+                                      funcs::InverseDivideFunctor<T>>(
+        dev_ctx, grad_out, y, &dz_div_y, axis);
+    dx_tensor = &dz_div_y;
   }
-  if (dout) {
-    dout->Resize(out.dims());
-    dev_ctx.template Alloc<T>(dout);
-  }
-  if (ddout) {
-    ddout->Resize(out.dims());
-    dev_ctx.template Alloc<T>(ddout);
-  }
-  // ddX_safe == null ? 0 : ddX
-  // ddY_safe == null ? 0 : ddY
-  DenseTensor ddX_safe, ddY_safe;
-  phi::funcs::GetDoubleGradSafeTensor<Context, T>(
-      dev_ctx, dx, ddx.get_ptr(), &ddX_safe);
-  phi::funcs::GetDoubleGradSafeTensor<Context, T>(
-      dev_ctx, y, ddy.get_ptr(), &ddY_safe);
-
   // ddOut = ddX / Y - Out * ddY / Y = (ddX - Out * ddY) / Y
   // dY = Out * dX * ddY / Y - dX * ddX / Y
   // dOut = - dX * ddY
@@ -200,69 +522,169 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
   // inplace ddx
   DenseTensor tmp;
   if (dout) {
+    dout->Resize(out.dims());
+    dev_ctx.template Alloc<T>(dout);
     tmp = *dout;
   } else {
     tmp.Resize(out.dims());
     dev_ctx.template Alloc<T>(&tmp);
   }
   if (dy) {
-    // dX_div_Y = dX / Y;
-    DenseTensor dX_div_Y = tmp;
-    funcs::DefaultElementwiseOperator<Context,
-                                      T,
-                                      funcs::DivideFunctor<T>,
-                                      funcs::InverseDivideFunctor<T>>(
-        dev_ctx, dx, y, &dX_div_Y, axis);
+    dy->Resize(y.dims());
+    dev_ctx.template Alloc<T>(dy);
+    if (!ddx_tensor && !ddy_tensor) {
+      FullLikeKernel<T, Context>(
+          dev_ctx, y, Scalar(static_cast<T>(0.0)), y.dtype(), dy);
+    } else {
+      // pre-compute 'dX / Y' into 'tmp' for 'ddout' and/or 'dy'
+      funcs::DefaultElementwiseOperator<Context,
+                                        T,
+                                        funcs::DivideFunctor<T>,
+                                        funcs::InverseDivideFunctor<T>>(
+          dev_ctx, *dx_tensor, y, &tmp, axis);
+      if (ddx_tensor && !ddy_tensor) {
+        // dy = -dX * ddX / Y
+        phi::funcs::ElemwiseGradCompute<Context,
+                                        T,
+                                        DivGradDX<T>,
+                                        DivDoubleDY_Only_DDX<T>>(
+            dev_ctx,
+            *ddx_tensor,  // ddx
+            y,
+            out,  // out
+            tmp,  // dX /Y
+            axis,
+            nullptr,
+            dy,
+            DivGradDX<T>(),
+            DivDoubleDY_Only_DDX<T>());
+      } else if (!ddx_tensor && ddy_tensor) {
+        // dY = Out * dX * ddY / Y
+        phi::funcs::ElemwiseGradCompute<Context,
+                                        T,
+                                        DivGradDX<T>,
+                                        DivDoubleDY_Only_DDY<T>>(
+            dev_ctx,
+            *dx_tensor,
+            *ddy_tensor,  // ddy
+            out,          // out
+            tmp,          // dX / Y
+            axis,
+            nullptr,
+            dy,
+            DivGradDX<T>(),
+            DivDoubleDY_Only_DDY<T>());
+      } else {
+        // dY = Out * dX * ddY / Y - dX * ddX / Y
 
-    // NOTE(dengkaipeng): in the following ElemwiseGradCompute, for the
-    // first output tensor is nullptr, the branch to calculate first
-    // output tensor will not be activated, DivGradDx function will not
-    // be called and can be ignored, the first branch has little effect
-    // on running speed.
-
-    // dY = Out * dX * ddY / Y - dX * ddX / Y
-    phi::funcs::ElemwiseGradCompute<Context, T, DivGradDX<T>, DivDoubleDY<T>>(
-        dev_ctx,
-        ddX_safe,
-        ddY_safe,
-        out,
-        dX_div_Y,
-        axis,
-        nullptr,
-        dy,
-        DivGradDX<T>(),
-        DivDoubleDY<T>());
+        // NOTE(dengkaipeng): in the following ElemwiseGradCompute, for the
+        // first output tensor is nullptr, the branch to calculate first
+        // output tensor will not be activated, DivGradDx function will not
+        // be called and can be ignored, the first branch has little effect
+        // on running speed.
+        phi::funcs::
+            ElemwiseGradCompute<Context, T, DivGradDX<T>, DivDoubleDY<T>>(
+                dev_ctx,
+                *ddx_tensor,  // ddx
+                *ddy_tensor,  // ddy
+                out,          // out
+                tmp,          // dX / Y
+                axis,
+                nullptr,
+                dy,
+                DivGradDX<T>(),
+                DivDoubleDY<T>());
+      }
+    }
   }
 
   if (ddout) {
+    ddout->Resize(out.dims());
+    dev_ctx.template Alloc<T>(ddout);
     // ddOut = ddX / Y - Out * ddY / Y = (ddX - Out * ddY) / Y
-    funcs::DefaultElementwiseOperator<Context,
-                                      T,
-                                      funcs::MultiplyFunctor<T>,
-                                      funcs::InverseMultiplyFunctor<T>>(
-        dev_ctx, out, ddY_safe, &tmp, axis);
-    funcs::DefaultElementwiseOperator<Context,
-                                      T,
-                                      funcs::SubtractFunctor<T>,
-                                      funcs::InverseSubtractFunctor<T>>(
-        dev_ctx, ddX_safe, tmp, &tmp, axis);
-    funcs::DefaultElementwiseOperator<Context,
-                                      T,
-                                      funcs::DivideFunctor<T>,
-                                      funcs::InverseDivideFunctor<T>>(
-        dev_ctx, tmp, y, ddout, axis);
+    if (!ddx_tensor && !ddy_tensor) {
+      FullLikeKernel<T, Context>(
+          dev_ctx, out, Scalar(static_cast<T>(0.0)), out.dtype(), ddout);
+    } else if (ddx_tensor != nullptr && ddy_tensor == nullptr) {
+      // ddOut = ddX / Y
+      funcs::DefaultElementwiseOperator<Context,
+                                        T,
+                                        funcs::DivideFunctor<T>,
+                                        funcs::InverseDivideFunctor<T>>(
+          dev_ctx, *ddx_tensor, y, ddout, axis);
+    } else if (!ddx_tensor && ddy_tensor) {
+// ddOut = - Out * ddY / Y
+#if defined(__xpu__)
+      funcs::DefaultElementwiseOperator<Context,
+                                        T,
+                                        funcs::MultiplyFunctor<T>,
+                                        funcs::InverseMultiplyFunctor<T>>(
+          dev_ctx, out, *ddy_tensor, &tmp, axis);
+      funcs::DefaultElementwiseOperator<Context,
+                                        T,
+                                        funcs::DivideFunctor<T>,
+                                        funcs::InverseDivideFunctor<T>>(
+          dev_ctx, tmp, y, ddout, axis);
+      auto& place = *dev_ctx.eigen_device();
+      auto ddout_result = phi::EigenVector<T>::Flatten(*ddout);
+      ddout_result.device(place) = static_cast<T>(-1) * ddout_result;
+#else
+      DivDoubleDDoutCompute<Context, T, DivDoubleDDOut_Only_DDY<T>, T>(
+          dev_ctx,
+          *dx_tensor,
+          *ddy_tensor,
+          y,
+          out,
+          axis,
+          ddout,
+          DivDoubleDDOut_Only_DDY<T>());
+#endif
+    } else {
+#if defined(__xpu__)
+      funcs::DefaultElementwiseOperator<Context,
+                                        T,
+                                        funcs::MultiplyFunctor<T>,
+                                        funcs::InverseMultiplyFunctor<T>>(
+          dev_ctx, out, *ddy_tensor, &tmp, axis);
+      funcs::DefaultElementwiseOperator<Context,
+                                        T,
+                                        funcs::SubtractFunctor<T>,
+                                        funcs::InverseSubtractFunctor<T>>(
+          dev_ctx, *ddx_tensor, tmp, &tmp, axis);
+      funcs::DefaultElementwiseOperator<Context,
+                                        T,
+                                        funcs::DivideFunctor<T>,
+                                        funcs::InverseDivideFunctor<T>>(
+          dev_ctx, tmp, y, ddout, axis);
+#else
+      DivDoubleDDoutCompute<Context, T, DivDoubleDDOut<T>, T>(
+          dev_ctx,
+          *ddx_tensor,
+          *ddy_tensor,
+          y,
+          out,
+          axis,
+          ddout,
+          DivDoubleDDOut<T>());
+#endif
+    }
   }
 
   if (dout) {
-    // dOut = - dX * ddY
-    funcs::DefaultElementwiseOperator<Context,
-                                      T,
-                                      funcs::MultiplyFunctor<T>,
-                                      funcs::InverseMultiplyFunctor<T>>(
-        dev_ctx, dx, ddY_safe, dout, axis);
-    auto& place = *dev_ctx.eigen_device();
-    auto dout_result = phi::EigenVector<T>::Flatten(*dout);
-    dout_result.device(place) = static_cast<T>(-1) * dout_result;
+    if (!ddy_tensor) {
+      FullLikeKernel<T, Context>(
+          dev_ctx, out, Scalar(static_cast<T>(0.0)), out.dtype(), dout);
+    } else {
+      // dOut = - dX * ddY
+      funcs::DefaultElementwiseOperator<Context,
+                                        T,
+                                        funcs::MultiplyFunctor<T>,
+                                        funcs::InverseMultiplyFunctor<T>>(
+          dev_ctx, *dx_tensor, *ddy_tensor, dout, axis);
+      auto& place = *dev_ctx.eigen_device();
+      auto dout_result = phi::EigenVector<T>::Flatten(*dout);
+      dout_result.device(place) = static_cast<T>(-1) * dout_result;
+    }
   }
 }
 template <typename T, typename Context>

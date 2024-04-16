@@ -422,9 +422,7 @@ class LayerList(Layer):
         if isinstance(idx, int):
             if not (-len(self) <= idx < len(self)):
                 raise IndexError(
-                    'index {} is out of range, should be an integer in range [{}, {})'.format(
-                        idx, -len(self), len(self)
-                    )
+                    f'index {idx} is out of range, should be an integer in range [{-len(self)}, {len(self)})'
                 )
             if idx < 0:
                 idx += len(self)
@@ -549,6 +547,9 @@ class Sequential(Layer):
 
     Parameters:
         layers(Layer|list|tuple): Layer or list/tuple of iterable name Layer pair.
+
+    Returns:
+        None.
 
     Examples:
         .. code-block:: python

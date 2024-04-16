@@ -75,16 +75,21 @@ class TensorDistAttribute : public pir::AttrBase<TensorDistAttribute,
 
   const flat_hash_map<int64_t, phi::ReduceType>& partial_status() const;
 
+  // construct a new attribute with new mesh attribute.
+  TensorDistAttribute CopyWithNewMesh(ProcessMeshAttribute mesh) const {
+    return get(ir_context(), mesh, dims_mapping(), partial_status());
+  }
+
   static TensorDistAttribute get(
       pir::IrContext* ctx,
       ProcessMeshAttribute mesh,
       const std::vector<int64_t>& dims_mapping,
-      const flat_hash_map<int64_t, phi::ReduceType>& partial_status);
+      const flat_hash_map<int64_t, phi::ReduceType>& partial_status = {});
   static TensorDistAttribute get(
       pir::IrContext* ctx,
       const phi::distributed::ProcessMesh& mesh,
       const std::vector<int64_t>& dims_mapping,
-      const flat_hash_map<int64_t, phi::ReduceType>& partial_status) {
+      const flat_hash_map<int64_t, phi::ReduceType>& partial_status = {}) {
     return get(ctx,
                ProcessMeshAttribute::get(ctx, mesh),
                dims_mapping,

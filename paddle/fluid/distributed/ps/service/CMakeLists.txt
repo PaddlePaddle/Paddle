@@ -11,6 +11,10 @@ else()
 
 endif()
 
+if(WITH_PSCORE AND NOT WITH_HETERPS)
+  set(BRPC_DEPS ${BRPC_DEPS} ps_service)
+endif()
+
 brpc_library(
   sendrecv_rpc
   SRCS
@@ -20,6 +24,8 @@ brpc_library(
   DEPS
   ps_framework_proto
   ${BRPC_DEPS})
+
+#set_property(GLOBAL PROPERTY RPC_DEPS sendrecv_rpc ${BRPC_DEPS} string_helper)
 
 get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
 

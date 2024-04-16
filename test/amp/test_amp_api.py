@@ -30,13 +30,14 @@ from paddle.static import amp
     "run test when gpu's compute capability is at least 7.0.",
 )
 class TestAutoCast(AmpTestBase):
-    def setUp(self):
+    def init_net(self):
         self._conv = paddle.nn.Conv2D(
             in_channels=1, out_channels=6, kernel_size=3, bias_attr=False
         )
         self._linear = paddle.nn.Linear(in_features=4, out_features=4)
 
     def test_amp_OD_level(self):
+        self.init_net()
         with paddle.amp.auto_cast(level='OD'):
             out1 = self._conv(paddle.rand(shape=[1, 1, 6, 6], dtype='float32'))
             out2 = out1 + paddle.rand(shape=out1.shape, dtype='float16')
@@ -45,6 +46,23 @@ class TestAutoCast(AmpTestBase):
         self.assertEqual(out1.dtype, paddle.float16)
         self.assertEqual(out2.dtype, paddle.float32)
         self.assertEqual(out3.dtype, paddle.float32)
+
+    def test_pir_amp_OD_level(self):
+        with paddle.pir_utils.IrGuard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                self.init_net()
+                with paddle.amp.auto_cast(level='OD'):
+                    out1 = self._conv(
+                        paddle.rand(shape=[1, 1, 6, 6], dtype='float32')
+                    )
+                    out2 = out1 + paddle.rand(shape=out1.shape, dtype='float16')
+                    out3 = self._linear(out2)
+
+                self.assertEqual(out1.dtype, core.DataType.FLOAT16)
+                self.assertEqual(out2.dtype, core.DataType.FLOAT32)
+                self.assertEqual(out3.dtype, core.DataType.FLOAT32)
 
 
 class SimpleConvNet(nn.Layer):
@@ -168,6 +186,49 @@ class TestGradScaler(AmpTestBase):
         self.assertEqual(scaler._use_dynamic_loss_scaling, False)
         self.assertTrue('scale' not in op_list)
         self.assertTrue('check_finite_and_unscale' not in op_list)
+
+    def test_pir_amp_grad_scaler(self):
+        with paddle.pir_utils.IrGuard():
+            startup = paddle.static.Program()
+            main = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                model = paddle.nn.Conv2D(3, 2, 3)
+                optimizer = paddle.optimizer.SGD(
+                    learning_rate=0.01, parameters=model.parameters()
+                )
+                model, optimizer = paddle.amp.decorate(
+                    models=model,
+                    optimizers=optimizer,
+                )
+                scaler = paddle.amp.GradScaler()
+                data = paddle.static.data('data', [1, 3, 8, 8], dtype='float32')
+
+                with paddle.amp.auto_cast(
+                    custom_black_list=['conv2d'], dtype='bfloat16'
+                ):
+                    out = model(data)
+                    loss = out.mean()
+                scaled = scaler.scale(loss)
+                scaler.minimize(optimizer, scaled)
+
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(startup)
+                paddle.amp.debugging.enable_operator_stats_collection()
+                exe.run(
+                    main,
+                    feed={'data': np.random.rand(1, 3, 8, 8).astype('float32')},
+                    fetch_list=[loss],
+                )
+                paddle.amp.debugging.disable_operator_stats_collection()
+                op_list = paddle.base.core.get_low_precision_op_list()
+
+                self.assertEqual(scaler._enable, False)
+                self.assertEqual(scaler._use_dynamic_loss_scaling, False)
+                self.assertTrue('pd_op.scale' not in op_list)
+                self.assertTrue(
+                    'pd_op.check_finite_and_unscale_' not in op_list
+                )
 
 
 @unittest.skipIf(

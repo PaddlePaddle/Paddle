@@ -45,7 +45,7 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(
         ring_id,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The ring_id (%d) for alltoall op must be non-negative.", ring_id));
     auto place = ctx.GetPlace();
 
@@ -59,7 +59,7 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -70,7 +70,7 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
           comm_context_manager.Get(std::to_string(ring_id)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        platform::errors::Unavailable(
+                        phi::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
       stream = comm_ctx->GetStream();
@@ -93,7 +93,7 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         x_dims[0] % nranks,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The first dimension size (%d) of the input tensor must be "
             "divisible by the number of ranks (%d).",
             x_dims[0],
@@ -126,12 +126,11 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
       VLOG(3) << "old NCCLCommContext has rid " << ring_id;
     }
 #else
-    PADDLE_THROW(
-        platform::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
+    PADDLE_THROW(phi::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
 #endif
 #else
     PADDLE_THROW(
-        platform::errors::Unavailable("PaddlePaddle should compile with GPU."));
+        phi::errors::Unavailable("PaddlePaddle should compile with GPU."));
 #endif
   }
 };
@@ -153,5 +152,5 @@ PD_REGISTER_STRUCT_KERNEL(alltoall,
 #endif
                           int,
                           int64_t,
-                          plat::float16) {
+                          phi::dtype::float16) {
 }

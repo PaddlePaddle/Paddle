@@ -37,13 +37,13 @@ class SequenceConvXPUKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(in->lod().empty(),
                       false,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input(X) phi::DenseTensor of SequenceConvOp "
                           "does not contain LoD information."));
     PADDLE_ENFORCE_EQ(
         in->lod().size(),
         1UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Only support input sequence with lod level equal to 1 at "
             "present. But received: lod level %u.",
             in->lod().size()));
@@ -51,19 +51,19 @@ class SequenceConvXPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         padding_trainable,
         false,
-        platform::errors::InvalidArgument("Only support padding_trainable "
-                                          "equal false."));
+        phi::errors::InvalidArgument("Only support padding_trainable "
+                                     "equal false."));
 
     int up_pad = std::max(0, -context_start);
     int down_pad = std::max(0, context_start + context_length - 1);
     PADDLE_ENFORCE_EQ(
         up_pad,
         2,
-        platform::errors::InvalidArgument("Only support up_pad equal 2."));
+        phi::errors::InvalidArgument("Only support up_pad equal 2."));
     PADDLE_ENFORCE_EQ(
         down_pad,
         2,
-        platform::errors::InvalidArgument("Only support down_pad equal 2."));
+        phi::errors::InvalidArgument("Only support down_pad equal 2."));
 
     auto xpu_context =
         context.template device_context<DeviceContext>().x_context();
@@ -73,8 +73,8 @@ class SequenceConvXPUKernel : public framework::OpKernel<T> {
     xpu::ctx_guard RAII_GUARD(xpu_context);
     int col_numel = col_shape[0] * col_shape[1];
     T* col_data = RAII_GUARD.alloc_l3_or_gm<T>(col_numel);
-    PADDLE_ENFORCE_NOT_NULL(
-        col_data, paddle::platform::errors::Fatal("XPU memory is not enough"));
+    PADDLE_ENFORCE_NOT_NULL(col_data,
+                            phi::errors::Fatal("XPU memory is not enough"));
 
     auto lod_level_0 = in->lod()[0];
     int lod_size = lod_level_0.size();
@@ -84,7 +84,7 @@ class SequenceConvXPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_LE(
         lod_size,
         257,
-        platform::errors::InvalidArgument("Only support batch size <= 256."));
+        phi::errors::InvalidArgument("Only support batch size <= 256."));
 
     std::vector<int> cpu_lodx(lod_size);
     for (int i = 0; i < lod_size; i++) {
@@ -113,7 +113,7 @@ class SequenceConvXPUKernel : public framework::OpKernel<T> {
     int n = filter.dims()[1];
     PADDLE_ENFORCE_EQ(k,
                       k1,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The shape of FC in SequenceConvOp is invalid."
                           "The k of matrix A is %d, k1 of matrix B is %d."
                           "But expect k == k1",
@@ -173,13 +173,13 @@ class SequenceConvGradXPUKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(in->lod().empty(),
                       false,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input(X) phi::DenseTensor of SequenceConvOp "
                           "does not contain LoD information."));
     PADDLE_ENFORCE_EQ(
         in->lod().size(),
         1UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Only support input sequence with lod level equal to 1 at "
             "present. But received: lod level %u.",
             in->lod().size()));
@@ -187,26 +187,26 @@ class SequenceConvGradXPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         padding_trainable,
         false,
-        platform::errors::InvalidArgument("Only support padding_trainable "
-                                          "equal false."));
+        phi::errors::InvalidArgument("Only support padding_trainable "
+                                     "equal false."));
 
     int up_pad = std::max(0, -context_start);
     int down_pad = std::max(0, context_start + context_length - 1);
     PADDLE_ENFORCE_EQ(
         up_pad,
         2,
-        platform::errors::InvalidArgument("Only support up_pad equal 2."));
+        phi::errors::InvalidArgument("Only support up_pad equal 2."));
     PADDLE_ENFORCE_EQ(
         down_pad,
         2,
-        platform::errors::InvalidArgument("Only support down_pad equal 2."));
+        phi::errors::InvalidArgument("Only support down_pad equal 2."));
 
     auto lod_level_0 = in->lod()[0];
     int lod_size = lod_level_0.size();
     PADDLE_ENFORCE_LE(
         lod_size,
         257,
-        platform::errors::InvalidArgument("Only support batch size <= 256."));
+        phi::errors::InvalidArgument("Only support batch size <= 256."));
 
     std::vector<int> cpu_lodx(lod_size);
     for (int i = 0; i < lod_size; i++) {
@@ -223,8 +223,8 @@ class SequenceConvGradXPUKernel : public framework::OpKernel<T> {
     xpu::ctx_guard RAII_GUARD(xpu_context);
     int col_numel = col_shape[0] * col_shape[1];
     T* col_data = RAII_GUARD.alloc_l3_or_gm<T>(col_numel);
-    PADDLE_ENFORCE_NOT_NULL(
-        col_data, paddle::platform::errors::Fatal("XPU memory is not enough"));
+    PADDLE_ENFORCE_NOT_NULL(col_data,
+                            phi::errors::Fatal("XPU memory is not enough"));
 
     if (in_g || filter_g) {
       bool trans_a = false;
@@ -235,7 +235,7 @@ class SequenceConvGradXPUKernel : public framework::OpKernel<T> {
       int k1 = filter->dims()[1];
       PADDLE_ENFORCE_EQ(k,
                         k1,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The shape of FC in SequenceConvGradOp is invalid."
                             "The k of matrix A is %d, k1 of matrix B is %d."
                             "But expect k == k1",
@@ -273,10 +273,10 @@ class SequenceConvGradXPUKernel : public framework::OpKernel<T> {
     }
 
     if (in_g) {
-      PADDLE_ENFORCE_LT(sequence_width,
-                        512,
-                        platform::errors::InvalidArgument(
-                            "Only support sequence_width < 512."));
+      PADDLE_ENFORCE_LT(
+          sequence_width,
+          512,
+          phi::errors::InvalidArgument("Only support sequence_width < 512."));
 
       in_g->mutable_data<T>(context.GetPlace());
       in_g->set_lod(in->lod());
@@ -317,7 +317,7 @@ class SequenceConvGradXPUKernel : public framework::OpKernel<T> {
       int n = out_g->dims()[1];
       PADDLE_ENFORCE_EQ(k,
                         k1,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The shape of FC in SequenceConvGradOp is invalid."
                             "The k of matrix A is %d, k1 of matrix B is %d."
                             "But expect k == k1",
