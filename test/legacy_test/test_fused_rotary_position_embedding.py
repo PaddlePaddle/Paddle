@@ -664,6 +664,30 @@ class TestFusedRotaryPositionEmbedding(unittest.TestCase):
             )
         paddle.disable_static()
 
+    def test_errors(self):
+        def test_error1():
+            f_fw, f_bw = self.get_forward_backward(
+                fused_rotary_position_embedding,
+                seed=self.seed,
+                test_time_major=False,
+                with_sin_cos=False,
+                use_neox_rotary_style=False,
+            )
+
+        self.assertRaises(AssertionError, test_error1)
+
+        def test_error2():
+            position_ids = paddle.to_tensor(self.position_ids_list)
+            f_fw, f_bw = self.get_forward_backward(
+                fused_rotary_position_embedding,
+                seed=self.seed,
+                test_time_major=False,
+                with_sin_cos=False,
+                position_ids=position_ids,
+            )
+
+        self.assertRaises(AssertionError, test_error2)
+
 
 if __name__ == "__main__":
     unittest.main()
