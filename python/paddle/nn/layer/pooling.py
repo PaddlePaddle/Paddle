@@ -420,7 +420,6 @@ class LPPool2D(Layer):
             stride=self.stride,
             padding=self.padding,
             ceil_mode=self.ceil_mode,
-            exclusive=True,
             divisor_override=self.divisor,
             data_format=self.data_format,
             name=self.name,
