@@ -28,20 +28,110 @@ __all__ = []
 
 
 class NAdam(Optimizer):
-    """
-    >>> import paddle
+    r"""
+    The NAdam optimizer is implemented based on the Adam Optimization
+    in paper `Incorporating Nesterov Momentum into Adam <https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ>`_.
+    The main improvement is to combine the advantages of Nesterov momentum and Adam adaptive learning rate.
 
-    >>> inp = paddle.rand([10,10], dtype="float32")
-    >>> linear = paddle.nn.Linear(10, 10)
-    >>> out = linear(inp)
-    >>> loss = paddle.mean(out)
+    .. math::
 
-    >>> nadam = paddle.optimizer.NAdam(learning_rate=0.1,
-    ...                     parameters=linear.parameters())
-    >>> out.backward()
-    >>> nadam.step()
-    >>> nadam.clear_grad()
+       \begin{aligned}
+            &\rule{110mm}{0.4pt}                                                                 \\
+            &\textbf{input}      : \gamma_t \text{ (lr)}, \: \beta_1,\beta_2 \text{ (betas)},
+                \: \theta_0 \text{ (params)}, \: f(\theta) \text{ (objective)}                   \\
+            &\hspace{13mm} \: \lambda \text{ (weight decay)}, \:\psi \text{ (momentum decay)}    \\
+            &\hspace{13mm} \: \rho \text{ (momentum decay base) } \\
+            &\textbf{initialize} :  m_0 \leftarrow 0 \text{ ( first moment)},
+                v_0 \leftarrow 0 \text{ ( second moment)}                                 \\[-1.ex]
+            &\rule{110mm}{0.4pt}                                                                 \\
+            &\textbf{for} \: t=1 \: \textbf{to} \: \ldots \: \textbf{do}                         \\
+            &\hspace{5mm}g_t           \leftarrow   \nabla_{\theta} f_t (\theta_{t-1})           \\
+            &\hspace{5mm} \theta_t \leftarrow \theta_{t-1}                                       \\
+            &\hspace{5mm} g_t \leftarrow g_t + \lambda \theta_{t-1}                             \\
+            &\hspace{5mm} \mu_t \leftarrow \beta_1 \big(1 - \frac{1}{2}  \rho ^{t \psi} \big)     \\
+            &\hspace{5mm} \mu_{t+1} \leftarrow \beta_1 \big(1 - \frac{1}{2} \rho ^{(t+1)\psi}\big)\\
+            &\hspace{5mm}m_t           \leftarrow   \beta_1 m_{t-1} + (1 - \beta_1) g_t          \\
+            &\hspace{5mm}v_t           \leftarrow   \beta_2 v_{t-1} + (1-\beta_2) g^2_t          \\
+            &\hspace{5mm}\widehat{m_t} \leftarrow \mu_{t+1} m_t/(1-\prod_{i=1}^{t+1}\mu_i)\\[-1.ex]
+            & \hspace{11mm} + (1-\mu_t) g_t /(1-\prod_{i=1}^{t} \mu_{i})                         \\
+            &\hspace{5mm}\widehat{v_t} \leftarrow   v_t/\big(1-\beta_2^t \big)                   \\
+            &\hspace{5mm}\theta_t \leftarrow \theta_t - \gamma \widehat{m_t}/
+                \big(\sqrt{\widehat{v_t}} + \epsilon \big)                                       \\
+            &\rule{110mm}{0.4pt}                                                          \\[-1.ex]
+            &\bf{return} \:  \theta_t                                                     \\[-1.ex]
+            &\rule{110mm}{0.4pt}                                                          \\[-1.ex]
+       \end{aligned}
 
+    Args:
+        learning_rate (float|LRScheduler): The learning rate used to update ``Parameter``.
+            It can be a float value or a LRScheduler. The default value is 0.001.
+        parameters (list|tuple, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``.
+            This parameter is required in dygraph mode. And you can specify different options for
+            different parameter groups such as the learning rate, weight decay, etc,
+            then the parameters are list of dict. Note that the learning_rate in parameter groups
+            represents the scale of base learning_rate.
+            The default value is None in static graph mode, at this time all parameters will be updated.
+        beta1 (float|Tensor): The exponential decay rate for the 1st moment estimates.
+            It should be a float number or a 0-D Tensor with shape [] and data type as float32.
+            The default value is 0.9.
+        beta2 (float|Tensor): The exponential decay rate for the 2nd moment estimates.
+            It should be a float number or a 0-D Tensor with shape [] and data type as float32.
+            The default value is 0.999.
+        epsilon (float): A small float value for numerical stability.
+            The default value is 1e-08.
+        weight_decay (float|Tensor, optional): The weight decay coefficient, it can be float or Tensor. The default value is 0.01.
+        momentum_decay (float): momentum momentum_decay. The default value is 0.004.
+        momentum_decay_base (float): momentum momentum_decay_base. The default value is 0.96.
+        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three clipping strategies
+            ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
+            :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
+        name (str, optional): Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name`.
+            The default value is None.
+
+    **Notes**:
+        **Currently, NAdam doesn't support sparse parameter optimization.**
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> inp = paddle.rand([10,10], dtype="float32")
+            >>> linear = paddle.nn.Linear(10, 10)
+            >>> out = linear(inp)
+            >>> loss = paddle.mean(out)
+
+            >>> nadam = paddle.optimizer.NAdam(learning_rate=0.1,
+            ...                     parameters=linear.parameters())
+            >>> out.backward()
+            >>> nadam.step()
+            >>> nadam.clear_grad()
+
+            >>> # Note that the learning_rate of linear_2 is 0.01.
+            >>> linear_1 = paddle.nn.Linear(10, 10)
+            >>> linear_2 = paddle.nn.Linear(10, 10)
+            >>> inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
+            >>> out = linear_1(inp)
+            >>> out = linear_2(out)
+            >>> loss = paddle.mean(out)
+            >>> opt = paddle.optimizer.NAdam(
+            ...     learning_rate=0.1,
+            ...     parameters=[{
+            ...         'params': linear_1.parameters()
+            ...     }, {
+            ...         'params': linear_2.parameters(),
+            ...         'weight_decay': 0.001,
+            ...         'learning_rate': 0.1,
+            ...         'beta1': 0.8
+            ...     }],
+            ...     weight_decay=0.01,
+            ...     beta1=0.9
+            ... )
+            >>> loss.backward()
+            >>> opt.step()
+            >>> opt.clear_grad()
 
     """
 
