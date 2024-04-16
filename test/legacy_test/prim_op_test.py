@@ -593,9 +593,6 @@ class PrimForwardChecker:
         static_inputs = defaultdict(list)
         feed = {}
         for name, item in self.inputs.items():
-            # patch for prim_pir input for one_hot
-            if 'one_hot' in self.op_type and name in 'depth_tensor':
-                name = 'num_classes'
             if isinstance(item, list):
                 for tup in item:
                     dtype = (
