@@ -47,5 +47,3 @@ namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(
     pull_box_sparse, KPS, ALL_LAYOUT, ops::PullBoxSparseKernel, float) {}
-PD_REGISTER_STRUCT_KERNEL(
-    push_box_sparse, KPS, ALL_LAYOUT, ops::PushBoxSparseKernel, float) {}
