@@ -332,7 +332,7 @@ Group {
 }
 )ROC";
 #else
-  std::string fused_expected_str = R"ROC(Target<linux,x86,64>
+  std::string fused_expected_str = R"ROC(Target<linux,X86,64>
 
 Group {
   (var_1->float32[32,24]) = elementwise_add(A->float32[32,24], B->float32[32,24])

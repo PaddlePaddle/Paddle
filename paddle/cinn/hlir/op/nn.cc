@@ -1612,8 +1612,8 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
     }
     target.arch.Visit(adt::match{
         [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::X86Arch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+        [&](common::X86Arch) { },
+        [&](common::ARMArch) { },
         [&](common::NVGPUArch) {
           pe::IRPoolScheduleGPU(ir_sch, target, arg_pack_size);
         },
