@@ -22,7 +22,7 @@ execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory
                         "${CMAKE_CURRENT_BINARY_DIR}/generated_tmp")
 
 execute_process(
-  COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/fc_bias_act.py
+  COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/gemm_epilogue_generator.py
           --cuda_arch ${COMPUTE_CAPABILITY}
   WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
 
@@ -34,6 +34,6 @@ set(CUDA_NVCC_FLAGS
 set(CMAKE_BUILD_TYPE "Release")
 file(GLOB all_cutlass_fc_cu
      "${CMAKE_CURRENT_BINARY_DIR}/generated_tmp/*.cu")
-list(APPEND all_cutlass_fc_cu "${CMAKE_CURRENT_SOURCE_DIR}/fc_util.cu")
+list(APPEND all_cutlass_fc_cu "${CMAKE_CURRENT_SOURCE_DIR}/gemm_epilogue_util.cu")
 
 cuda_add_library(CutlassFc SHARED ${all_cutlass_fc_cu})

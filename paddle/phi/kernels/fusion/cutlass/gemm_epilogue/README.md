@@ -17,7 +17,7 @@ python_exe_path="python"
 cuda_root_path="/usr/local/cuda"
 gpu_cc="80"
 ```
-compile.sh 脚本中会下载cutlass，执行CMakeLists.txt脚本，编译生成动态库。
+compile.sh 脚本中会下载（查找）cutlass，执行CMakeLists.txt脚本，编译生成动态库。
 
 
 step2.
@@ -28,4 +28,4 @@ step1执行后，就可以看到在 build 目录生成了 `libCutlassFc.so` ，�
 step3.
 
 默认情况下，在处理fc类算子时，Paddle Inference 会调用cuBLASLt实现；
-基于 cutlass 开发的fc类算子能够融合更多的后处理算子，用户可以通过python API `exp_enable_use_cutlass()` 和 C++ API `Exp_EnableUseCutlass()`来获得一定的速度和显存收益。
+基于 cutlass 开发的gemm_epilogue类算子能够覆盖原FcOp算子的功能并融合更多的后处理算子，用户可以通过python API `exp_enable_use_cutlass()` 和 C++ API `Exp_EnableUseCutlass()`来获得一定的速度和显存收益。
