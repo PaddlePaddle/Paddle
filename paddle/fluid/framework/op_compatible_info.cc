@@ -92,8 +92,6 @@ void OpCompatibleMap::InitOpCompatibleMap() {
                                            OpCompatibleType::definite_not};
   op_compatible_map_["match_matrix_tensor"] = {"1.6.0",
                                                OpCompatibleType::definite_not};
-  op_compatible_map_["multiclass_nms2"] = {"1.6.0",
-                                           OpCompatibleType::definite_not};
   op_compatible_map_["one_hot_v2"] = {"1.6.0", OpCompatibleType::definite_not};
   op_compatible_map_["pull_box_sparse"] = {"1.6.0",
                                            OpCompatibleType::definite_not};
