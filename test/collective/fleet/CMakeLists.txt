@@ -12,11 +12,6 @@ if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
   set_tests_properties(test_fleet_sharding_meta_optimizer
                        PROPERTIES TIMEOUT "350" LABELS "RUN_TYPE=DIST")
 endif()
-if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
-  py_test_modules(
-    test_fleet_static_mp_layers MODULES test_fleet_static_mp_layers ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-endif()
 if(WITH_DGC)
   if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     py_test_modules(
@@ -73,12 +68,6 @@ if((WITH_ROCM) AND LOCAL_ALL_PLAT)
     ENVS
     "PADDLE_DIST_UT_PORT=21204;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
-endif()
-if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
-  py_test_modules(
-    test_fleet_fp16_allreduce_meta_optimizer MODULES
-    test_fleet_fp16_allreduce_meta_optimizer ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
 if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
   bash_test_modules(
@@ -259,13 +248,6 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     "PADDLE_DIST_UT_PORT=21222;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_pipeline PROPERTIES TIMEOUT "160")
-endif()
-if(LOCAL_ALL_ARCH AND (LINUX OR APPLE))
-  py_test_modules(
-    test_fleet_utils MODULES test_fleet_utils ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-  set_tests_properties(test_fleet_utils PROPERTIES TIMEOUT "120" LABELS
-                                                   "RUN_TYPE=DIST")
 endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   bash_test_modules(
@@ -457,11 +439,6 @@ endif()
 if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_amp_init MODULES test_fleet_amp_init ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-endif()
-if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
-  py_test_modules(
-    test_fleet_meta_optimizer_base MODULES test_fleet_meta_optimizer_base ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
 if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)

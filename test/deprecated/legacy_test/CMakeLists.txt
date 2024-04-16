@@ -29,14 +29,8 @@ list(APPEND MIXED_DIST_TEST_OPS test_simple_dist_transpiler)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_async)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_ps_gpu)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_geo)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_ps)
-list(APPEND MIXED_DIST_TEST_OPS test_launch_coverage)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_run_random_port)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_async)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_cloud)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_ascend)
 list(APPEND MIXED_DIST_TEST_OPS test_ascend_group)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_nproc)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
 
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base)
@@ -48,7 +42,6 @@ list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_partitioner_gpt)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_searcher)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_dist_tensor)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_serial)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_mppp)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_dpmppp)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_cost_model)
@@ -63,17 +56,12 @@ endif()
 
 if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_async_read_write)
-  list(REMOVE_ITEM TEST_OPS test_fused_feedforward_op)
-  list(REMOVE_ITEM TEST_OPS test_fused_attention_op)
-  list(REMOVE_ITEM TEST_OPS test_fused_attention_op_api)
   list(REMOVE_ITEM TEST_OPS test_fused_multi_transformer_op)
   list(REMOVE_ITEM TEST_OPS test_fused_transformer_encoder_layer)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
   list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
-  list(REMOVE_ITEM TEST_OPS test_fused_layernorm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_attention_pass)
-  list(REMOVE_ITEM TEST_OPS test_fused_feedforward_pass)
   list(REMOVE_ITEM TEST_OPS test_fused_comm_buffer)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_hapi_model")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_spmt")
@@ -83,9 +71,6 @@ endif()
 
 list(REMOVE_ITEM TEST_OPS test_audio_logmel_feature test_audio_mel_feature)
 list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
-list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
-list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
-list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
 list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_dot_product_attention_pass)
 
@@ -122,9 +107,6 @@ if(WIN32)
 
   # TODO: Fix these unittests failed on Windows
   list(REMOVE_ITEM TEST_OPS test_debugger)
-  if(WITH_GPU)
-    list(REMOVE_ITEM TEST_OPS test_update_loss_scaling_op)
-  endif()
 endif()
 
 if(NOT WITH_DISTRIBUTE OR WIN32)
@@ -149,7 +131,6 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_masked_multihead_attention_op)
   list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
   list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
-  list(REMOVE_ITEM TEST_OPS test_fused_layernorm_op)
   list(REMOVE_ITEM TEST_OPS test_matmul_int8_op)
   list(REMOVE_ITEM TEST_OPS test_variable_length_memory_efficient_attention)
 endif()
@@ -182,7 +163,6 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_searcher)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_dist_tensor)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_serial)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_mppp)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_dpmppp)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_cost_model)
@@ -416,23 +396,13 @@ endfunction()
 
 list(REMOVE_ITEM TEST_OPS test_feed_data_check_shape_type)
 list(REMOVE_ITEM TEST_OPS test_fetch_lod_tensor_array)
-list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_data_norm_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer)
-list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer_auto_growth)
 list(REMOVE_ITEM TEST_OPS test_bilinear_interp_op)
 list(REMOVE_ITEM TEST_OPS test_nearest_interp_op)
-list(REMOVE_ITEM TEST_OPS test_imperative_resnet)
-list(REMOVE_ITEM TEST_OPS test_imperative_resnet_sorted_gradient)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist_sorted_gradient)
-list(REMOVE_ITEM TEST_OPS test_imperative_se_resnext)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist)
-list(REMOVE_ITEM TEST_OPS test_ir_memory_optimize_transformer)
 list(REMOVE_ITEM TEST_OPS test_layers)
-list(REMOVE_ITEM TEST_OPS test_parallel_executor_seresnext_base_cpu)
-list(REMOVE_ITEM TEST_OPS test_parallel_executor_seresnext_with_reduce_cpu)
-list(REMOVE_ITEM TEST_OPS
-     test_parallel_executor_seresnext_with_fuse_all_reduce_cpu)
 list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
 list(REMOVE_ITEM TEST_OPS test_async_ssa_graph_executor_mnist)
 list(REMOVE_ITEM TEST_OPS test_install_check)
@@ -442,8 +412,6 @@ list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_all_reduce_pass)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
-list(REMOVE_ITEM TEST_OPS test_fuse_bn_add_act_pass)
-list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -486,29 +454,17 @@ endif()
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test
 set(TEST_OPS_WITH_GC
     test_affine_channel_op
-    test_concat_op
-    test_elementwise_add_op
-    test_elementwise_sub_op
     test_fill_zeros_like2_op
-    test_gather_op
     test_gather_nd_op
     test_linear_chain_crf_op
     test_lod_reset_op
     test_lookup_table_op
-    test_mean_op
     test_scatter_op
     test_slice_op)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS})
-endforeach()
-
-# Switch some dy2st UT to eager mode
-set(TEST_EAGER_OPS test_jit_save_load test_translated_layer)
-foreach(TEST_OP ${TEST_EAGER_OPS})
-  list(REMOVE_ITEM TEST_OPS ${TEST_OP})
-  py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS FLAGS_enable_eager_mode=1)
 endforeach()
 
 if((NOT WITH_GPU)
@@ -535,36 +491,16 @@ endforeach()
 set_tests_properties(test_logcumsumexp_op PROPERTIES TIMEOUT 30)
 py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS
                 FLAGS_inner_op_parallelism=4)
-if(WITH_GPU
-   OR WITH_XPU
-   OR WITH_ASCEND
-   OR WITH_ASCEND_CL
-   OR APPLE)
-  py_test_modules(test_warpctc_op MODULES test_warpctc_op)
-  set_tests_properties(test_warpctc_op PROPERTIES TIMEOUT 120)
-endif()
+
 py_test_modules(test_bilinear_interp_op MODULES test_bilinear_interp_op ENVS
                 ${GC_ENVS})
 py_test_modules(test_nearest_interp_op MODULES test_nearest_interp_op ENVS
                 ${GC_ENVS})
-py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS
-                FLAGS_cudnn_deterministic=1)
-set_tests_properties(test_imperative_resnet
-                     PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
-py_test_modules(
-  test_imperative_resnet_sorted_gradient MODULES
-  test_imperative_resnet_sorted_gradient ENVS FLAGS_cudnn_deterministic=1)
-set_tests_properties(test_imperative_resnet_sorted_gradient
-                     PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
 py_test_modules(test_imperative_mnist MODULES test_imperative_mnist ENVS
                 FLAGS_cudnn_deterministic=1)
 py_test_modules(
   test_imperative_mnist_sorted_gradient MODULES
   test_imperative_mnist_sorted_gradient ENVS FLAGS_cudnn_deterministic=1)
-py_test_modules(test_imperative_se_resnext MODULES test_imperative_se_resnext
-                ENVS FLAGS_cudnn_deterministic=1)
-set_tests_properties(test_imperative_se_resnext
-                     PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE:NIGHTLY")
 py_test_modules(
   test_imperative_ocr_attention_model MODULES
   test_imperative_ocr_attention_model ENVS FLAGS_cudnn_deterministic=1)
@@ -574,22 +510,6 @@ set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
 py_test_modules(test_install_check_pir MODULES test_install_check ENVS
                 FLAGS_cudnn_deterministic=1 FLAGS_enable_pir_in_executor=1)
 set_tests_properties(test_install_check_pir PROPERTIES LABELS "RUN_TYPE=DIST")
-
-if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
-  py_test_modules(test_fused_gemm_epilogue_op MODULES
-                  test_fused_gemm_epilogue_op)
-  py_test_modules(test_fused_gemm_epilogue_grad_op MODULES
-                  test_fused_gemm_epilogue_grad_op)
-  py_test_modules(
-    test_fused_gemm_epilogue_op_with_es MODULES test_fused_gemm_epilogue_op
-    ENVS FLAGS_cublaslt_exhaustive_search_times=30)
-  py_test_modules(
-    test_fused_gemm_epilogue_grad_op_with_es MODULES
-    test_fused_gemm_epilogue_grad_op ENVS
-    FLAGS_cublaslt_exhaustive_search_times=30)
-  py_test_modules(test_fuse_gemm_epilogue_pass MODULES
-                  test_fuse_gemm_epilogue_pass)
-endif()
 
 if((WITH_GPU) AND (WITH_CUDNN_FRONTEND))
   py_test_modules(test_fuse_dot_product_attention_pass MODULES
@@ -650,8 +570,6 @@ if(WITH_DISTRIBUTE)
                       test_auto_parallel_reshard ENVS ${dist_ENVS})
       py_test_modules(test_auto_parallel_dist_tensor MODULES
                       test_auto_parallel_dist_tensor ENVS ${dist_ENVS})
-      py_test_modules(test_auto_parallel_reshard_serial MODULES
-                      test_auto_parallel_reshard_serial ENVS ${dist_ENVS})
       py_test_modules(test_auto_parallel_reshard_mppp MODULES
                       test_auto_parallel_reshard_mppp ENVS ${dist_ENVS})
       py_test_modules(test_auto_parallel_reshard_dpmppp MODULES
@@ -663,27 +581,7 @@ if(WITH_DISTRIBUTE)
   endif()
 
   if(NOT APPLE)
-    if(WITH_GPU OR WITH_ROCM)
-      py_test_modules(test_launch_coverage MODULES test_launch_coverage)
-    endif()
 
-    if(WITH_GPU
-       OR WITH_XPU
-       OR WITH_ASCEND
-       OR WITH_ASCEND_CL)
-      bash_test_modules(
-        test_fleet_launch_nproc START_BASH test_fleet_launch_nproc.sh ENVS
-        PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
-      bash_test_modules(
-        test_fleet_run_random_port START_BASH test_fleet_run_random_port.sh
-        ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
-      bash_test_modules(
-        test_fleet_launch_async START_BASH test_fleet_launch_async.sh ENVS
-        PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
-      bash_test_modules(
-        test_fleet_launch_cloud START_BASH test_fleet_launch_cloud.sh ENVS
-        PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
-    endif()
     if(WITH_ASCEND OR WITH_ASCEND_CL)
       bash_test_modules(
         test_fleet_launch_ascend START_BASH test_fleet_launch_ascend.sh ENVS
@@ -709,26 +607,12 @@ if(WITH_DISTRIBUTE)
           FATAL_ERROR "available ports have been exhausted:${dist_ut_port}")
       endif()
     endforeach()
-    # solve it later.
-    bash_test_modules(
-      test_fleet_launch_ps
-      START_BASH
-      test_fleet_launch_ps.sh
-      LABELS
-      "RUN_TYPE=EXCLUSIVE"
-      ENVS
-      "PADDLE_DIST_UT_PORT=${dist_ut_port}"
-      PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
   endif()
 endif()
 
 py_test_modules(test_parallel_executor_transformer MODULES
                 test_parallel_executor_transformer)
 if(WIN32)
-  py_test_modules(
-    test_parallel_executor_transformer_auto_growth MODULES
-    test_parallel_executor_transformer_auto_growth ENVS
-    FLAGS_allocator_strategy=auto_growth CUDA_VISIBLE_DEVICES=0)
   py_test_modules(test_fuse_all_reduce_pass MODULES test_fuse_all_reduce_pass
                   ENVS CUDA_VISIBLE_DEVICES=0)
   py_test_modules(test_feed_data_check_shape_type MODULES
@@ -736,10 +620,6 @@ if(WIN32)
   py_test_modules(test_fetch_lod_tensor_array MODULES
                   test_fetch_lod_tensor_array ENVS CUDA_VISIBLE_DEVICES=0)
 else()
-  py_test_modules(
-    test_parallel_executor_transformer_auto_growth MODULES
-    test_parallel_executor_transformer_auto_growth ENVS
-    FLAGS_allocator_strategy=auto_growth)
   py_test_modules(test_fuse_all_reduce_pass MODULES test_fuse_all_reduce_pass)
   py_test_modules(test_feed_data_check_shape_type MODULES
                   test_feed_data_check_shape_type)
@@ -756,47 +636,11 @@ py_test_modules(
   FLAGS_cudnn_deterministic=1
   FLAGS_cudnn_batchnorm_spatial_persistent=1
   FLAGS_conv_workspace_size_limit=1000)
-py_test_modules(
-  test_fuse_bn_add_act_pass
-  MODULES
-  test_fuse_bn_add_act_pass
-  ENVS
-  FLAGS_cudnn_deterministic=1
-  FLAGS_cudnn_batchnorm_spatial_persistent=1
-  FLAGS_conv_workspace_size_limit=1000)
-
-# NOTE: These unittests will appear NaN steadily in windows CI. After analysis,
-# it is found that windows CI will run all the training unittests with the ON_INFER option turned on,
-# which will not appear in other CIs. The calculation behavior of some ops in inference mode is
-# inconsistent with that in non-inference mode.
-if(WITH_PYTHON)
-  py_test_modules(test_parallel_executor_seresnext_base_cpu MODULES
-                  test_parallel_executor_seresnext_base_cpu)
-  py_test_modules(test_parallel_executor_seresnext_with_reduce_cpu MODULES
-                  test_parallel_executor_seresnext_with_reduce_cpu)
-  py_test_modules(
-    test_parallel_executor_seresnext_with_fuse_all_reduce_cpu MODULES
-    test_parallel_executor_seresnext_with_fuse_all_reduce_cpu)
-  set_tests_properties(test_parallel_executor_seresnext_base_cpu
-                       PROPERTIES TIMEOUT 900)
-  set_tests_properties(test_parallel_executor_seresnext_base_cpu
-                       PROPERTIES LABELS "RUN_TYPE=NIGHTLY")
-  set_tests_properties(test_parallel_executor_seresnext_with_reduce_cpu
-                       PROPERTIES TIMEOUT 750)
-  set_tests_properties(test_parallel_executor_seresnext_with_reduce_cpu
-                       PROPERTIES LABELS "RUN_TYPE=NIGHTLY")
-  set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu
-                       PROPERTIES TIMEOUT 750)
-  set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu
-                       PROPERTIES LABELS "RUN_TYPE=NIGHTLY")
-endif()
 
 if(NOT WIN32)
   # TODO: fix these unittests failure on Windows
   py_test_modules(test_layers MODULES test_layers ENVS
                   FLAGS_cudnn_deterministic=1)
-  py_test_modules(test_ir_memory_optimize_transformer MODULES
-                  test_ir_memory_optimize_transformer)
 endif()
 
 if(WITH_HETERPS)
@@ -819,13 +663,6 @@ if(NOT WIN32)
   set_tests_properties(test_multiprocess_reader_exception
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
   set_tests_properties(test_layers PROPERTIES TIMEOUT 120)
-  if(WITH_NV_JETSON)
-    set_tests_properties(test_ir_memory_optimize_transformer PROPERTIES TIMEOUT
-                                                                        1200)
-  else()
-    set_tests_properties(test_ir_memory_optimize_transformer PROPERTIES TIMEOUT
-                                                                        120)
-  endif()
 endif()
 
 # setting timeout value as 15S
@@ -860,7 +697,6 @@ set_tests_properties(test_matmul_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nearest_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_trilinear_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bicubic_interp_v2_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_gather_op PROPERTIES TIMEOUT 180)
 set_tests_properties(test_static_save_load PROPERTIES TIMEOUT 250)
 set_tests_properties(test_paddle_save_load_binary PROPERTIES TIMEOUT 120)
 if(WIN32)
@@ -869,41 +705,24 @@ else()
   set_tests_properties(test_static_save_load_large PROPERTIES TIMEOUT 600)
 endif()
 if(WITH_NV_JETSON)
-  set_tests_properties(test_concat_op PROPERTIES TIMEOUT 1200)
   set_tests_properties(test_conv3d_transpose_part2_op PROPERTIES TIMEOUT 1200)
   set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 1500)
   set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 1500)
 else()
-  set_tests_properties(test_concat_op PROPERTIES TIMEOUT 400)
   set_tests_properties(test_conv3d_transpose_part2_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 250)
   set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 150)
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX))
-  py_test_modules(test_conv3d_transpose_op MODULES test_conv3d_transpose_op
-                  ENVS NVIDIA_TF32_OVERRIDE=0 FLAGS_cudnn_deterministic=1)
-  set_tests_properties(test_conv3d_transpose_op PROPERTIES TIMEOUT 180)
-else()
-  py_test_modules(test_conv3d_transpose_op MODULES test_conv3d_transpose_op)
-  if(WITH_NV_JETSON)
-    set_tests_properties(test_conv3d_transpose_op PROPERTIES TIMEOUT 1200)
-  else()
-    set_tests_properties(test_conv3d_transpose_op PROPERTIES TIMEOUT 120)
-  endif()
-endif()
+
 set_tests_properties(test_imperative_selected_rows_to_lod_tensor
                      PROPERTIES TIMEOUT 200)
 set_tests_properties(test_index_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_index_add_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_argsort_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_gather_nd_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_elementwise_sub_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_row_conv_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nan_inf PROPERTIES TIMEOUT 120)
 set_tests_properties(test_deformable_conv_v1_op PROPERTIES TIMEOUT 300)
-set_tests_properties(test_parallel_executor_transformer_auto_growth
-                     PROPERTIES TIMEOUT 120)
-set_tests_properties(test_elementwise_add_op PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_ptb_rnn_sorted_gradient PROPERTIES TIMEOUT
                                                                         120)
 set_tests_properties(test_crop_tensor_op PROPERTIES TIMEOUT 120)
@@ -939,16 +758,10 @@ set_tests_properties(test_imperative_ocr_attention_model PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_mnist PROPERTIES TIMEOUT 120)
 set_tests_properties(test_gru_op PROPERTIES TIMEOUT 200)
 set_tests_properties(test_regularizer PROPERTIES TIMEOUT 150)
-set_tests_properties(test_imperative_resnet PROPERTIES TIMEOUT 200)
-set_tests_properties(test_imperative_resnet_sorted_gradient PROPERTIES TIMEOUT
-                                                                       200)
-set_tests_properties(test_imperative_se_resnext PROPERTIES TIMEOUT 200)
 set_tests_properties(test_matmul_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_slice_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_translated_layer PROPERTIES TIMEOUT 120)
 set_tests_properties(test_pad3d_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataloader_keep_order PROPERTIES TIMEOUT 120)
-set_tests_properties(test_mean_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataloader_unkeep_order PROPERTIES TIMEOUT 120)
 set_tests_properties(test_reader_reset PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cumprod_op PROPERTIES TIMEOUT 120)
@@ -982,22 +795,17 @@ set(TEST_CINN_OPS
     test_slice_op
     test_full_like_op
     test_index_select_op
-    test_concat_op
     test_top_k_v2_op
-    test_elementwise_add_op
-    test_elementwise_sub_op
     test_elementwise_mul_op
     test_gather_nd_op
     test_squeeze2_op
     test_elementwise_pow_op
     test_transpose_op
     test_reshape_op
-    test_mean_op
     test_unsqueeze2_op
     test_meshgrid_op
     test_scale_op
     test_scatter_op
-    test_gather_op
     test_layer_norm_op
     test_cast_op
     test_roll_op
@@ -1035,62 +843,32 @@ set_tests_properties(test_conditional_block
 
 # These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
 set(STATIC_BUILD_TESTS
-    test_adagrad_op
     test_adamw_op
     test_arg_min_max_op
-    test_assign_pos_op
     test_batch_norm_op
-    test_bucketize_api
     test_bincount_op
     test_c_embedding_op
-    test_decayed_adagrad_op
     test_decoupled_py_reader
-    test_eig_op
     test_eigh_op
-    test_fake_dequantize_op
-    test_fake_quantize_op
     test_fetch_lod_tensor_array
-    test_ftrl_op
-    test_fused_attention_op
-    test_fused_attention_op_api
     test_fuse_bn_act_pass
-    test_fused_feedforward_op
-    test_fused_feedforward_pass
-    test_fused_layernorm_op
-    test_lamb_op
     test_layer_norm_op
-    test_limit_by_capacity_op
     test_lookup_table_bf16_op
     test_lookup_table_v2_op
     test_matmul_op
     test_matmul_v2_op
-    test_merged_adam_op
-    test_momentum_op
     test_nce
-    test_number_count_op
     test_paddle_save_load_binary
-    test_prune_gate_by_capacity_op
-    test_random_routing_op
     test_reduce_op
-    test_searchsorted_op
     test_segment_ops
-    test_sparse_momentum_op
-    test_sgd_op_bf16
     test_shuffle_batch_op
-    test_softmax_mask_fuse_upper_triangle_op
     test_sparse_conv_op
     test_sparse_norm_op
-    test_sparse_pooling_op
     test_tensor_array_to_tensor
     test_unique
-    test_update_loss_scaling_op
-    test_while_op
     test_one_hot_v2_op)
 
 if(NOT WITH_GPU)
-  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op)
-  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op_api)
-  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_feedforward_op)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_feedforward_op_pass)
 endif()
 
@@ -1108,11 +886,7 @@ foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
     FLAGS_new_executor_static_build=true)
 endforeach()
 
-set(PIR_COVERAGE_TESTS test_fused_feedforward_pass
-                       test_fuse_elewise_add_act_pass)
-if(NOT WITH_GPU)
-  list(REMOVE_ITEM PIR_COVERAGE_TESTS test_fused_feedforward_pass)
-endif()
+set(PIR_COVERAGE_TESTS test_fuse_elewise_add_act_pass)
 
 if(APPLE)
   list(REMOVE_ITEM PIR_COVERAGE_TESTS test_fuse_elewise_add_act_pass)
