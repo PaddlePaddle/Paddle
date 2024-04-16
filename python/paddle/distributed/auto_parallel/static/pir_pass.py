@@ -44,7 +44,7 @@ def apply_partition_pass(program):
     return new_program
 
 
-def apply_reshard_pass(program):
+def apply_reshard_pass_deprecated(program):
     new_program = program.clone()
     with paddle.static.program_guard(new_program):
         for op in new_program.global_block().ops:
@@ -88,7 +88,7 @@ def apply_reshard_pass(program):
     return new_program
 
 
-def apply_reshard_pass_v2(program):
+def apply_reshard_pass(program):
     new_program = program.clone()
     with paddle.base.program_guard(new_program):
         for op in new_program.global_block().ops:

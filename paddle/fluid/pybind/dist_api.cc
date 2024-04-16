@@ -115,8 +115,17 @@ TensorDistAttribute CreateTensorDistAttribute(
       pir::IrContext::Instance(), mesh, dims_mapping, partial_status);
 }
 
+OperationDistAttribute CreateOperationDistAttribute(
+    const phi::distributed::ProcessMesh& mesh,
+    const std::vector<TensorDistAttribute>& operand_dist_attrs,
+    const std::vector<TensorDistAttribute>& result_dist_attrs) {
+  return OperationDistAttribute::get(
+      pir::IrContext::Instance(), mesh, operand_dist_attrs, result_dist_attrs);
+}
+
 void BindDistUtils(pybind11::module *m) {
   m->def("create_tensor_dist_attribute", CreateTensorDistAttribute);
+  m->def("create_op_dist_attribute", CreateOperationDistAttribute);
 }
 
 void BindDistPassAPI(pybind11::module *module) {

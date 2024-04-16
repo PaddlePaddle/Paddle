@@ -50,6 +50,7 @@ class PToRReshardFunction(ReshardFunction):
             reduce_mean = True
 
         op_value = op.result(0)
+        op_type = op_value.type()
         if reshard_op:
             paddle.pir.set_insertion_point(op)
             op_value = op.operand_source(0)
@@ -59,7 +60,10 @@ class PToRReshardFunction(ReshardFunction):
         reduced_value = paddle._pir_ops.c_allreduce_sum_(
             op_value, group.id, False, False
         )
-        reduced_value.set_type(op_value.type())
+
+        # set dist type and dist attr
+        reduced_value.set_type(op_type)
+        reduced_value.get_defining_op().dist_attr = paddle.base.libpaddle.pir.create_op_dist_attribute(src_mesh, [src_dist_attr], [dst_dist_attr])
         if reshard_op:
             op.result(0).replace_all_uses_with(reduced_value)
             program.global_block().remove_op(op)
