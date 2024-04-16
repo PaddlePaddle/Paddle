@@ -163,8 +163,7 @@ void gelu_grad(const Tensor& x,
   // Promote to fp32 when the input type is fp16 for keeping consistent with
   // phi kernel
 
-  if (x.dtype() == phi::DataType::FLOAT16 ||
-      x.dtype() == phi::DataType::BFLOAT16) {
+  if (is_half_dtype(x.dtype())) {
     auto promoted_x = cast<T>(x, phi::DataType::FLOAT32);
     auto promoted_out_grad = cast<T>(out_grad, phi::DataType::FLOAT32);
     if (approximate) {
@@ -1522,19 +1521,27 @@ void group_norm_grad(const Tensor& x,
   DataLayout data_layout_ = common::StringToDataLayout(data_layout);
   std::vector<int64_t> x_dims = x.shape();
   int rank = x_dims.size();
+  if (rank < 3 || rank > 5) {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Only support NCHW and NHWC format in rank {3, 4, 5}."));
+  }
   int N = x_dims[0];
   int C;
-  int hw;
+  int hw = 1;
   std::vector<int64_t> reduce_axis;
 
   if (data_layout_ == DataLayout::kNCHW) {
     C = x_dims[1];
-    hw = x_dims[2] * x_dims[3];
-    reduce_axis = {2, 3};
+    for (int i = 2; i < rank; ++i) {
+      hw *= x_dims[i];
+      reduce_axis.push_back(i);
+    }
   } else if (data_layout_ == DataLayout::kNHWC) {
     C = x_dims[rank - 1];
-    hw = x_dims[1] * x_dims[2];
-    reduce_axis = {1, 2};
+    for (int i = 1; i < (rank - 1); ++i) {
+      hw *= x_dims[i];
+      reduce_axis.push_back(i);
+    }
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument("Unsupported storage order: %s",
                                               data_layout));
@@ -1600,25 +1607,27 @@ void group_norm_grad(const Tensor& x,
     } else {
       d1 = (reshape<T>(sum_y_grad_mul_x, shape_group)).sum({2}, dtype, false);
       d2 = (reshape<T>(sum_y_grad, shape_group)).sum({2}, dtype, false);
-      p1 = (reshape<T>(inv_std, {N, groups, 1})).expand(shape_group);
+      p1 = (reshape<T>(inv_std, {N, groups, 1}))
+               .expand(shape_group);  // [n, g, g_n]
     }
 
-    auto p2 = (d2 * mean - d1) * (inv_std_mul_s / var_eps);
+    auto p2 = (d2 * mean - d1) * (inv_std_mul_s / var_eps);  // [n, g]
     auto p3 = -p2 * mean - d2 * inv_std_mul_s;
     std::vector<int64_t> first_shape;
     std::vector<int64_t> second_shape;
     if (data_layout_ == DataLayout::kNCHW) {
-      first_shape = get_unsqueeze_dims(p1, {3});
-      second_shape = get_unsqueeze_dims(p2, {2, 3});
+      first_shape = get_unsqueeze_dims(p1, {3});      // [n, g, g_n, 1]
+      second_shape = get_unsqueeze_dims(p2, {2, 3});  // [n, g, 1, 1]
     } else {
-      first_shape = get_unsqueeze_dims(p1, {1});
-      second_shape = get_unsqueeze_dims(p2, {1, 3});
+      first_shape = get_unsqueeze_dims(p1, {1});      // [n, 1, g, g_n]
+      second_shape = get_unsqueeze_dims(p2, {1, 3});  // [n, 1, g, 1]
     }
 
     p1 = reshape<T>(p1, first_shape);
     p2 = reshape<T>(p2, second_shape);
     p3 = reshape<T>(p3, second_shape);
-    auto tmp_1 = reshape<T>(out_grad_data, whole_group_shape) * p1;
+    auto tmp_1 =
+        reshape<T>(out_grad_data, whole_group_shape) * p1;  // [n, hw, g, g_n]
     auto tmp_2 = reshape<T>(x_data, whole_group_shape) * p2 + p3;
     auto x_grad_data = tmp_1 + tmp_2;
     x_grad_data = reshape<T>(x_grad_data, x.shape());
