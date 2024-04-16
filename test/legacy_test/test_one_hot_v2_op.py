@@ -45,6 +45,7 @@ class TestOneHotOp(OpTest):
 
         for i in range(np.prod(x.shape)):
             out[i, x[i]] = 1.0
+
         self.inputs = {'X': x, 'depth_tensor': depth_np}
         self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
         self.outputs = {'Out': out}

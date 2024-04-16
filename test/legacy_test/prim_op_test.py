@@ -658,6 +658,7 @@ class PrimForwardChecker:
                     args, len(inputs_sig)
                 )
                 ret = flatten(_as_list(self.public_python_api(*args)))
+
                 if not in_pir_mode():
                     primapi.to_prim(main_program.blocks)
                 else:
