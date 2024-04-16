@@ -786,8 +786,11 @@ def _get_backward_op_type(block, op):
     return "backward_w"
 
 
-def _program_for_zero_bubble(program):
-    _insert_sync_for_fthenb_1f1b(program)
+def _program_for_zero_bubble(program, enable_send_recv_overlap=False):
+    if enable_send_recv_overlap:
+        _overlap_send_recv(program)
+    else:
+        _insert_sync_for_fthenb_1f1b(program)
 
     oprole_type = {
         0: "forward",

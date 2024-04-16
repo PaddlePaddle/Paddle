@@ -128,5 +128,6 @@ class PipelineZeroBubblePipelinePass(PipelinePassBase):
     def _partial_programs(self, program):
         dist_context = self.get_attr("dist_context")
         self._split_matmul_grad_ops_to_matmul(program, dist_context)
-        types, sub_program_list = _program_for_zero_bubble(program)
+        enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
+        types, sub_program_list = _program_for_zero_bubble(program, enable_send_recv_overlap)
         return types, sub_program_list
