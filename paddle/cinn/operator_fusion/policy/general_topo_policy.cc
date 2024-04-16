@@ -12,11 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/frontend/group_cluster/cluster_policy/general_topo_policy.h"
+#include "paddle/cinn/operator_fusion/policy/general_topo_policy.h"
+#include "paddle/cinn/operator_fusion/backend/pattern.h"
+#include "paddle/cinn/operator_fusion/backend/pattern_fuser.h"
+#include "paddle/cinn/operator_fusion/frontend/pattern.h"
+#include "paddle/cinn/operator_fusion/frontend/pattern_fuser.h"
 
-namespace cinn::frontend::group_cluster::policy {
+namespace cinn::fusion {
 
-bool IsDownstreamNode(const PatternNodePtr start, const PatternNodePtr target) {
+template <typename T>
+bool IsDownstreamNode(const PatternNodePtr<T> start,
+                      const PatternNodePtr<T> target) {
   if (start == target) return true;
   for (const auto& down_node : start->downstream_) {
     if (IsDownstreamNode(down_node, target)) return true;
@@ -24,8 +30,9 @@ bool IsDownstreamNode(const PatternNodePtr start, const PatternNodePtr target) {
   return false;
 }
 
-bool IsIndirectDownstreamNode(const PatternNodePtr start,
-                              const PatternNodePtr target) {
+template <typename T>
+bool IsIndirectDownstreamNode(const PatternNodePtr<T> start,
+                              const PatternNodePtr<T> target) {
   for (const auto& node : start->downstream_) {
     if (node == target) continue;
     if (IsDownstreamNode(node, target)) return true;
@@ -33,11 +40,15 @@ bool IsIndirectDownstreamNode(const PatternNodePtr start,
   return false;
 }
 
-bool GeneralTopoPolicy::CanFuse(const PatternNodePtr& first,
-                                const PatternNodePtr& second) {
+template <typename T>
+bool GeneralTopoPolicy<T>::CanFuse(const PatternNodePtr<T>& first,
+                                   const PatternNodePtr<T>& second) {
   VLOG(4) << "Start GeneralTopoPolicy";
   return !(IsIndirectDownstreamNode(first, second) ||
            IsIndirectDownstreamNode(second, first));
 }
 
-}  // namespace cinn::frontend::group_cluster::policy
+template class GeneralTopoPolicy<FrontendStage>;
+template class GeneralTopoPolicy<BackendStage>;
+
+}  // namespace cinn::fusion

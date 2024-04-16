@@ -12,12 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/frontend/group_cluster/cluster_policy/relative_judge_policy.h"
+#include "paddle/cinn/operator_fusion/policy/relative_judge_policy.h"
+#include "paddle/cinn/operator_fusion/backend/pattern.h"
+#include "paddle/cinn/operator_fusion/frontend/pattern.h"
 
-namespace cinn::frontend::group_cluster::policy {
+namespace cinn::fusion {
 
-bool RelativeJudgePolicy::IsDownstreamStmtDependReduceOp(
-    pir::Operation* reduce, const StmtPattern& downstream) {
+template <typename T>
+bool RelativeJudgePolicy<T>::IsDownstreamStmtDependReduceOp(
+    pir::Operation* reduce, const StmtPattern<T>& downstream) {
   const auto& values = GetPatternInputValues(downstream);
   for (const auto& value : reduce->results()) {
     if (std::find(values.begin(), values.end(), value) != values.end()) {
@@ -27,9 +30,11 @@ bool RelativeJudgePolicy::IsDownstreamStmtDependReduceOp(
   return false;
 }
 
-std::optional<ReducePattern> RelativeJudgePolicy::GetDownstreamFromCandidate(
-    const ReducePattern& upstream,
-    const std::vector<ReducePattern>& candidates) {
+template <typename T>
+std::optional<ReducePattern<T>>
+RelativeJudgePolicy<T>::GetDownstreamFromCandidate(
+    const ReducePattern<T>& upstream,
+    const std::vector<ReducePattern<T>>& candidates) {
   pir::Operation* reduce = upstream.GetReduceOp();
   for (const auto& candidate : candidates) {
     if (IsDownstreamStmtDependReduceOp(reduce, candidate)) {
@@ -78,7 +83,8 @@ SplitDims SplitReduceOutputDimsIfRelatedWithNonReduceAxis(
   return result;
 }
 
-bool RelativeJudgePolicy::IsBroadcastEdge(
+template <typename T>
+bool RelativeJudgePolicy<T>::IsBroadcastEdge(
     const std::vector<ValueDim>& upstream_out_dims,
     const std::vector<ValueDim>& downstream_reduce_dims) {
   VLOG(4) << "IsBroadcastEdge: upstream_out_dims.size()"
@@ -100,23 +106,24 @@ bool RelativeJudgePolicy::IsBroadcastEdge(
   return true;
 }
 
-bool RelativeJudgePolicy::ReduceTreeGrownCanMerge(
-    const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
+template <typename T>
+bool RelativeJudgePolicy<T>::ReduceTreeGrownCanMerge(
+    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
   const auto& upstream_tree =
-      std::get<ReduceTreePattern>(upstream->stmt_pattern_);
+      std::get<ReduceTreePattern<T>>(upstream->stmt_pattern_);
   VLOG(4) << "upstream->stmt_pattern_:"
-          << OpsDebugStr(GetOpsInPattern(upstream_tree));
+          << OpsDebugStr(GetOpsInPattern<T>(upstream_tree));
   const auto& downstream_tree =
-      std::get<ReduceTreePattern>(downstream->stmt_pattern_);
+      std::get<ReduceTreePattern<T>>(downstream->stmt_pattern_);
   VLOG(4) << "downstream->stmt_pattern_"
-          << OpsDebugStr(GetOpsInPattern(downstream_tree));
+          << OpsDebugStr(GetOpsInPattern<T>(downstream_tree));
   const auto& maybe_downstream_op = GetDownstreamFromCandidate(
-      upstream_tree.GetRootPattern(), downstream_tree.reduce_patterns_);
+      upstream_tree.GetRootPattern(), downstream_tree.FlattenReducePattern());
   int idx = 0;
-  for (const auto& r_pattern : downstream_tree.reduce_patterns_) {
+  for (const auto& r_pattern : downstream_tree.childs()) {
     idx += 1;
     VLOG(4) << "downstream_tree.reduce_patterns_"
-            << "[" << idx << "]" << OpsDebugStr(GetOpsInPattern(r_pattern));
+            << "[" << idx << "]" << OpsDebugStr(GetOpsInPattern<T>(r_pattern));
   }
   if (!maybe_downstream_op.has_value()) {
     VLOG(4) << "can't find candidate from patterns. can fuse return false.";
@@ -137,7 +144,8 @@ bool RelativeJudgePolicy::ReduceTreeGrownCanMerge(
   return res;
 }
 
-SplitDims RelativeJudgePolicy::SplitDimsWithRelationship(
+template <typename T>
+SplitDims RelativeJudgePolicy<T>::SplitDimsWithRelationship(
     const std::vector<ValueDim>& targets,
     const std::vector<ValueDim>& related_with) {
   VLOG(4) << "SplitDimsWithRelationship";
@@ -188,8 +196,9 @@ bool DimsEqual(const std::vector<ValueDim>& first,
   return true;
 }
 
-bool RelativeJudgePolicy::ReducePlusTrivialCanMerge(
-    const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
+template <typename T>
+bool RelativeJudgePolicy<T>::ReducePlusTrivialCanMerge(
+    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
   VLOG(4) << "RT can fuse";
 
   // const auto& split_reduce_dims_result =
@@ -231,8 +240,9 @@ bool RelativeJudgePolicy::ReducePlusTrivialCanMerge(
   return res;
 }
 
-bool RelativeJudgePolicy::IsFlattenDimSmaller(
-    const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
+template <typename T>
+bool RelativeJudgePolicy<T>::IsFlattenDimSmaller(
+    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
   const auto& split_reduce_dims_result =
       SplitReduceInputDimsIfRelatedWithNonReduceAxis(
           axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
@@ -257,20 +267,25 @@ bool RelativeJudgePolicy::IsFlattenDimSmaller(
   return res;
 }
 
-bool RelativeJudgePolicy::CanFuse(const PatternNodePtr& upstream,
-                                  const PatternNodePtr& downstream) {
-  if (upstream->IsReduceTree() && downstream->IsTrivial()) {
+template <typename T>
+bool RelativeJudgePolicy<T>::CanFuse(const PatternNodePtr<T>& upstream,
+                                     const PatternNodePtr<T>& downstream) {
+  if (std::holds_alternative<ReduceTreePattern<T>>(upstream->stmt_pattern_) &&
+      std::holds_alternative<TrivialPattern<T>>(downstream->stmt_pattern_)) {
     return ReducePlusTrivialCanMerge(upstream, downstream);
   }
-  if (upstream->IsReduceTree() && downstream->IsReduceTree()) {
+  if (std::holds_alternative<ReduceTreePattern<T>>(upstream->stmt_pattern_) &&
+      std::holds_alternative<ReduceTreePattern<T>>(downstream->stmt_pattern_)) {
     return ReduceTreeGrownCanMerge(upstream, downstream);
   }
   return true;  // other case.
 }
 
-std::vector<size_t> RelativeJudgePolicy::GetFakeReduceIterIdx(
-    const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
-  if (!upstream->IsReduceTree() || !downstream->IsTrivial()) {
+template <typename T>
+std::vector<size_t> RelativeJudgePolicy<T>::GetFakeReduceIterIdx(
+    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
+  if (!std::holds_alternative<ReduceTreePattern<T>>(upstream->stmt_pattern_) &&
+      !std::holds_alternative<TrivialPattern<T>>(downstream->stmt_pattern_)) {
     PADDLE_THROW("Illegal Call GetFakeReduceIterIdx");
   }
 
@@ -288,7 +303,6 @@ std::vector<size_t> RelativeJudgePolicy::GetFakeReduceIterIdx(
           axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
   VLOG(4) << split_reduce_input_dims_result.DebugStr();
   const auto& upstream_reduce_dims = split_reduce_input_dims_result.non_related;
-
   const auto& split_reduce_output_dims_result =
       SplitReduceOutputDimsIfRelatedWithNonReduceAxis(
           axes_info_.GetSignature(upstream->sink_op_), upstream->sink_op_);
@@ -322,4 +336,7 @@ std::vector<size_t> RelativeJudgePolicy::GetFakeReduceIterIdx(
   return result;
 }
 
-}  // namespace cinn::frontend::group_cluster::policy
+template class RelativeJudgePolicy<FrontendStage>;
+template class RelativeJudgePolicy<BackendStage>;
+
+}  // namespace cinn::fusion
