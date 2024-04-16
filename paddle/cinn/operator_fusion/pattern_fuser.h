@@ -40,17 +40,16 @@ ReducePattern<T> ToReducePattern(const StmtPattern<T>& second) {
 
 template <typename T>
 std::string GetPatternName(const StmtPattern<T>& s) {
-  return std::visit([](const auto& impl) { return impl.name(); }, s);
+  return std::visit([](const auto& impl) { return impl.name(); }, s.variant());
 }
 
 template <typename T>
-StmtPattern<T> ConvertToStmtPattern(const PatternContent<T>& content) {
-  CHECK(false) << "Please specialization!";
-}
+StmtPattern<T> ConvertToStmtPattern(const PatternContent<T>& content);
 
 template <typename T>
 std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern<T>& pattern) {
-  return std::visit([](const auto& impl) { return impl.ops(); }, pattern);
+  return std::visit([](const auto& impl) { return impl.ops(); },
+                    pattern.variant());
 }
 
 template <typename T>
@@ -159,27 +158,19 @@ StmtPattern<T> MergePatternImpl(const ReduceTreePattern<T>& upstream,
 
 template <typename T>
 StmtPattern<T> MergePatternImpl(const ReduceTreePattern<T>& first,
-                                const TrivialPattern<T>& second) {
-  CHECK(false) << "Please specialization!";
-}
+                                const TrivialPattern<T>& second);
 
 template <typename T>
 StmtPattern<T> MergePatternImpl(const TrivialPattern<T>& first,
-                                const ReducePattern<T>& second) {
-  CHECK(false) << "Please specialization!";
-}
+                                const ReducePattern<T>& second);
 
 template <typename T>
 StmtPattern<T> MergePatternImpl(const TrivialPattern<T>& first,
-                                const TrivialPattern<T>& second) {
-  CHECK(false) << "Please specialization!";
-}
+                                const TrivialPattern<T>& second);
 
 template <typename T>
 StmtPattern<T> MergePatternImpl(const HorizontalFusionPattern<T>& first,
-                                const HorizontalFusionPattern<T>& second) {
-  CHECK(false) << "Please specialization!";
-}
+                                const HorizontalFusionPattern<T>& second);
 
 template <typename T>
 StmtPattern<T> MergePattern(const StmtPattern<T>& first,
@@ -208,7 +199,35 @@ StmtPattern<T> MergePattern(const StmtPattern<T>& first,
                      << "X" << GetPatternName(second);
       },
   };
-  return std::visit(PatternMatch, first, second);
+  return std::visit(PatternMatch, first.variant(), second.variant());
+  // return std::make_tuple(first.variant(), second.variant()) >>
+  //        adt::match{
+  //            [&](const ReduceTreePattern<T>& lhs,
+  //                const ReduceTreePattern<T>& rhs) {
+  //              return MergePatternImpl(lhs, rhs);
+  //            },
+  //            [&](const ReduceTreePattern<T>& lhs,
+  //                const TrivialPattern<T>& rhs) {
+  //              return MergePatternImpl(lhs, rhs);
+  //            },
+  //            [&](const TrivialPattern<T>& lhs, const ReducePattern<T>& rhs) {
+  //              return MergePatternImpl(lhs, rhs);
+  //            },
+  //            [&](const TrivialPattern<T>& lhs, const TrivialPattern<T>& rhs)
+  //            {
+  //              return MergePatternImpl(lhs, rhs);
+  //            },
+  //            [&](const HorizontalFusionPattern<T>& lhs,
+  //                const HorizontalFusionPattern<T>& rhs) {
+  //              return MergePatternImpl(lhs, rhs);
+  //            },
+  //            [&](const auto& lhs, const auto& rhs) -> StmtPattern<T> {
+  //              CHECK(false)
+  //                  << "Found not support merge!" << GetPatternName(first) <<
+  //                  "X"
+  //                  << GetPatternName(second);
+  //            },
+  //        };
 }
 
 }  // namespace cinn::fusion
