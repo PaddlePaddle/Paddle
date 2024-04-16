@@ -210,7 +210,7 @@ bool ExpandAsOpInferSymbolicShape(
     std::vector<symbol::DimExpr> output_dims;
     output_dims.reserve(target_shape.size());
     for (int shape : target_shape) {
-      output_dims.push_back(shape_analysis->DimExprBuilder().ConstSize(shape));
+      output_dims.push_back(shape);
     }
     return output_dims;
   }();
