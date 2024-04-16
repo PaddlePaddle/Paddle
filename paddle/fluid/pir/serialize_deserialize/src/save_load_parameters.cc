@@ -43,9 +43,8 @@ const phi::DenseTensor CastTensorType(const phi::DeviceContext* dev_ctx,
     return phi::funcs::TransDataType(
         reinterpret_cast<const phi::GPUContext&>(*dev_ctx), x, out_dtype);
 #endif
-  } else {
-    return x;
   }
+  return x;
 }
 
 void SaveFunction(const phi::DenseTensor& x,
