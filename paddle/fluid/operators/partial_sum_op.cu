@@ -14,7 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/partial_sum_op.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 
 namespace plat = paddle::platform;
 
@@ -80,7 +80,7 @@ class PartialSumOpCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         in_vars[0] != nullptr,
         true,
-        platform::errors::InvalidArgument("The input should not be null."));
+        phi::errors::InvalidArgument("The input should not be null."));
 
     auto place = ctx.GetPlace();  // GPUPlace only now
     auto start_index = ctx.Attr<int>("start_index");
@@ -156,7 +156,7 @@ class PartialSumGradOpCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         ins[0] != nullptr,
         true,
-        platform::errors::InvalidArgument("The input should not be null."));
+        phi::errors::InvalidArgument("The input should not be null."));
     auto start_index = ctx.Attr<int>("start_index");
     auto length = ctx.Attr<int>("length");
     if (length == -1) {

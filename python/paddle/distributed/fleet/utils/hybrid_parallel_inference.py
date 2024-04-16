@@ -491,9 +491,9 @@ class HybridParallelInferenceHelper:
 
         pre_stage_id = None
         for op in block.ops:
-            assert op.has_attr(self._op_role_key), "{} has no {} set .".format(
-                op.type, self._op_role_key
-            )
+            assert op.has_attr(
+                self._op_role_key
+            ), f"{op.type} has no {self._op_role_key} set ."
             op_role = op.attr(self._op_role_key)
             assert op_role == int(
                 self._op_role.Forward
@@ -506,9 +506,9 @@ class HybridParallelInferenceHelper:
                 sub_block_id = op.attr('sub_block').id
                 sub_block = block.program.block(sub_block_id)
                 self._check_validation(sub_block)
-            assert op.has_attr(self._op_device_key), "{} has no {} set.".format(
-                op.type, self._op_device_key
-            )
+            assert op.has_attr(
+                self._op_device_key
+            ), f"{op.type} has no {self._op_device_key} set."
 
             device = op.attr(self._op_device_key)
             assert device, f"{op.type} has no {self._op_device_key} set."

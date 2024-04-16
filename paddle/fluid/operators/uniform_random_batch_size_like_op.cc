@@ -38,7 +38,7 @@ inline void UniformRealDistribution(T *data,
 }
 
 template <>
-inline void UniformRealDistribution(paddle::platform::bfloat16 *data,
+inline void UniformRealDistribution(phi::dtype::bfloat16 *data,
                                     const int64_t &size,
                                     const float &min,
                                     const float &max,
@@ -48,7 +48,7 @@ inline void UniformRealDistribution(paddle::platform::bfloat16 *data,
   auto engine = phi::GetCPURandomEngine(seed);
 
   for (int64_t i = 0; i < size; ++i) {
-    data[i] = static_cast<paddle::platform::bfloat16>(dist(*engine));
+    data[i] = static_cast<phi::dtype::bfloat16>(dist(*engine));
   }
 }
 }  // namespace
@@ -85,7 +85,7 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
       tensor = out_var->GetMutable<phi::DenseTensor>();
       if (!new_shape.empty()) tensor->Resize(common::make_ddim(new_shape));
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Expected type of Output(out) in uniform_random_op must be Tensor, "
           "SelectedRows. But got "
           "unsupport type: %s.",
@@ -110,7 +110,7 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_GT(
           size,
           (diag_num - 1) * (diag_step + 1),
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "ShapeInvalid: the diagonal's elements is equal (num-1) "
               "* (step-1) with num %d, step %d,"
               "It should be smaller than %d, but received %d",

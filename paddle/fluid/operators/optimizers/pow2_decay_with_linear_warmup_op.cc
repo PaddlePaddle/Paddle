@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 
 namespace paddle {
 namespace operators {

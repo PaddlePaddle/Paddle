@@ -202,9 +202,7 @@ class AdamW(Optimizer):
             if isinstance(parameters, (paddle.Tensor, core.eager.Tensor)):
                 raise TypeError(
                     "`parameters` argument given to the optimizer should be "
-                    "an iterable of paddle Tensors, but got argument type is `{}`.".format(
-                        type(parameters)
-                    )
+                    f"an iterable of paddle Tensors, but got argument type is `{type(parameters)}`."
                 )
             if isinstance(parameters, dict):
                 raise TypeError(

@@ -128,6 +128,59 @@ static bool valid_type(const DataType& dtype) {
 }
 
 template <typename T>
+Tensor p_norm_decomp(const Tensor& x,
+                     const float& porder = 2.0,
+                     const int& axis = -1,
+                     const float epsilon = 1.0e-12f,
+                     const bool& keepdim = false,
+                     const bool& asvector = false) {
+  auto org_dtype = x.dtype();
+  auto x_tmp = x;
+
+  bool need_cast = is_half_dtype(org_dtype);
+  if (need_cast) {
+    x_tmp = cast<T>(x, DataType::FLOAT32);
+  }
+
+  Tensor res;
+  if (porder == 0.0) {
+    // 0-norm
+    auto zero = full<T>(empty_shape, 0, x_tmp.dtype());
+    auto none_zero = not_equal<T>(x_tmp, zero);
+    res = cast<T>(none_zero, x_tmp.dtype());
+    res = sum<T>(res, {axis}, x_tmp.dtype(), keepdim);
+  } else if (porder == 1.0) {
+    // 1-norm
+    res = abs<T>(x_tmp);
+    res = sum<T>(res, {axis}, x_tmp.dtype(), keepdim);
+  } else if (porder == 2.0) {
+    // 2-norm
+    res = sqrt<T>(sum<T>(x_tmp * x_tmp, {axis}, x_tmp.dtype(), keepdim));
+  } else if (porder == INFINITY) {
+    // +INF-norm
+    res = abs<T>(x_tmp);
+    res = max<T>(x_tmp, {axis}, keepdim);
+  } else if (porder == -INFINITY) {
+    // -INF-norm
+    res = abs<T>(x_tmp);
+    res = min<T>(x_tmp, {axis}, keepdim);
+  } else {
+    // vanilla p-norm
+    auto porder_tensor = full<T>(empty_shape, porder, x_tmp.dtype());
+    auto inv_porder_tensor = full<T>(empty_shape, 1 / porder, x_tmp.dtype());
+    res = elementwise_pow<T>(x_tmp, porder_tensor);
+    res = sum<T>(res, {axis}, x_tmp.dtype(), keepdim);
+    res = elementwise_pow<T>(res, inv_porder_tensor);
+  }
+
+  if (need_cast) {
+    return cast<T>(res, org_dtype);
+  } else {
+    return res;
+  }
+}
+
+template <typename T>
 Tensor pow_decomp(const Tensor& x, const paddle::Scalar& y) {
   auto org_dtype = x.dtype();
   auto x_cast = x;
@@ -151,6 +204,11 @@ Tensor pow_decomp(const Tensor& x, const paddle::Scalar& y) {
   } else {
     return ans;
   }
+}
+
+template <typename T>
+Tensor reciprocal_decomp(const Tensor& x) {
+  return full<T>(empty_shape, 1.0, x.dtype()) / x;
 }
 
 template <typename T>
@@ -593,24 +651,6 @@ std::tuple<Tensor, Tensor> dropout_decomp(
 }
 
 template <typename T>
-Tensor sqrt_decomp(const Tensor& x) {
-  auto org_dtype = x.dtype();
-  Tensor x_cast = x;
-
-  bool need_cast = is_half_dtype(org_dtype);
-  if (need_cast) {
-    x_cast = cast<T>(x, DataType::FLOAT32);
-  }
-
-  auto ans = 1.0 / rsqrt<T>(x_cast);
-  if (need_cast) {
-    return cast<T>(ans, org_dtype);
-  } else {
-    return ans;
-  }
-}
-
-template <typename T>
 Tensor gelu_decomp(const Tensor& x, bool approximate) {
   const double PM_2_SQRTPI = 1.12837916709551257390; /* 2/sqrt(pi) */
   const double PM_SQRT1_2 = 0.70710678118654752440;  /* 1/sqrt(2) */
@@ -839,10 +879,21 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     const float epsilon,
     const int groups,
     const std::string& data_format) {
-  if (data_format != "NCHW") {
-    // TODO(chengyanfu): support NHWC data format
-    PADDLE_THROW(phi::errors::Unimplemented("Only support NCHW format."));
+  std::vector<int64_t> c_axis;
+  if (data_format == "NCHW") {
+    c_axis = {1};
+  } else if (data_format == "NHWC") {
+    c_axis = {1, 3};
+  } else {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("Only support NCHW and NHWC format."));
   }
+  size_t rank = x.shape().size();
+  if (rank < 3 || rank > 5) {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Only support NCHW and NHWC format in rank {3, 4, 5}."));
+  }
+
   auto org_dtype = x.dtype();
   Tensor x_cast = x;
 
@@ -850,44 +901,64 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
   if (need_cast) {
     x_cast = cast<T>(x, DataType::FLOAT32);
   }
+
+  Tensor x_dim_t;
   Tensor out, mean_, var_;
-  if (has_dynamic_shape(x.shape())) {
-    Tensor x_dim = shape<T>(x);
-    std::vector<int64_t> one_axis(1, 1);
-    Tensor x_shape = get_slice<T>(x_dim, 0) * groups;
-    Tensor dim_1 = full<T>({1}, -1, x_dim.type());
-    x_shape = concat<T>({x_shape, dim_1});
-    x_cast = backend::reshape<T>(x_cast, x_shape);
-    mean_ = mean_decomp<T>(x_cast, IntArray(one_axis), true);
+  if (has_dynamic_shape(x_cast.shape())) {
+    x_dim_t = shape<T>(x_cast);
+    Tensor tar_shape;
+    if (data_format == "NCHW") {
+      tar_shape = get_slice<T>(x_dim_t, 0) * groups;
+      Tensor dim_1 = full<T>({1}, -1, x_dim_t.type());
+      tar_shape = concat<T>({tar_shape, dim_1});
+    } else {
+      Tensor N_shape = get_slice<T>(x_dim_t, 0);
+      Tensor dim_1 = full<T>({1}, -1, x_dim_t.type());
+      Tensor C_shape = get_slice<T>(x_dim_t, rank - 1);
+      Tensor dim_g = full<T>({1}, groups, x_dim_t.type());
+      Tensor dim_c_div_g = cast<T>(C_shape / dim_g, x_dim_t.type());
+      tar_shape = concat<T>({N_shape, dim_1, dim_g, dim_c_div_g});
+    }
+    x_cast = backend::reshape<T>(x_cast, tar_shape);
+    mean_ = mean_decomp<T>(x_cast, c_axis, true);
     Tensor var_tmp_ =
-        mean_decomp<T>(x_cast * x_cast, IntArray(one_axis), true) -
-        mean_ * mean_;
+        mean_decomp<T>(x_cast * x_cast, c_axis, true) - mean_ * mean_;
     var_ = maximum<T>(
         var_tmp_,
         backend::full_with_tensor<T>(shape<T>(var_tmp_), 0, var_tmp_.dtype()));
     Tensor var_inv =
         rsqrt<T>(var_ + full<T>(empty_shape, epsilon, var_.dtype()));
     Tensor res = (x_cast - mean_) * var_inv;
-    out = backend::reshape<T>(res, x_dim);
+    out = backend::reshape<T>(res, x_dim_t);
   } else {
-    auto x_dim = x.shape();
-    std::vector<int64_t> one_axis(1, 1);
-
-    std::vector<int64_t> x_shape{x_dim[0] * groups, -1};
-    x_cast = reshape<T>(x_cast, x_shape);
-    mean_ = mean_decomp<T>(x_cast, IntArray(one_axis), true);
-    auto var_tmp_ = mean_decomp<T>(x_cast * x_cast, IntArray(one_axis), true) -
-                    mean_ * mean_;
+    auto x_dim = x_cast.shape();
+    if (data_format == "NCHW") {
+      x_cast = reshape<T>(x_cast, {x_dim[0] * groups, -1});
+    } else {
+      int c_div_g = x_dim[rank - 1] / groups;
+      x_cast = reshape<T>(x_cast, {x_dim[0], -1, groups, c_div_g});
+    }
+    mean_ = mean_decomp<T>(x_cast, c_axis, true);
+    auto var_tmp_ =
+        mean_decomp<T>(x_cast * x_cast, c_axis, true) - mean_ * mean_;
     var_ = maximum<T>(var_tmp_, full<T>(var_tmp_.shape(), 0, var_tmp_.dtype()));
     auto var_inv = rsqrt<T>(var_ + full<T>(empty_shape, epsilon, var_.dtype()));
     auto res = (x_cast - mean_) * var_inv;
     out = reshape<T>(res, x_dim);
   }
 
-  std::vector<int64_t> slice_bias_shape{-1, 1, 1};
+  std::vector<int64_t> slice_bias_shape;
+  slice_bias_shape = {-1};
+  for (size_t i = 0; i < rank - 2; i++) {
+    slice_bias_shape.push_back(1);
+  }
   Tensor scale_cast;
   if (scale) {
-    scale_cast = reshape<T>(scale.get(), slice_bias_shape);
+    if (data_format == "NCHW") {
+      scale_cast = reshape<T>(scale.get(), slice_bias_shape);
+    } else {
+      scale_cast = scale.get();
+    }
     if (need_cast) {
       scale_cast = cast<T>(scale_cast, DataType::FLOAT32);
     }
@@ -895,23 +966,25 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
   }
   Tensor bias_cast;
   if (bias) {
-    bias_cast = reshape<T>(bias.get(), slice_bias_shape);
+    if (data_format == "NCHW") {
+      bias_cast = reshape<T>(bias.get(), slice_bias_shape);
+    } else {
+      bias_cast = bias.get();
+    }
     if (need_cast) {
       bias_cast = cast<T>(bias_cast, DataType::FLOAT32);
     }
     out = out + bias_cast;
   }
   Tensor mean_out, var_out;
-  if (has_dynamic_shape(x.shape())) {
-    Tensor x_dim = shape<T>(x);
-    Tensor x_shape = get_slice<T>(x_dim, 0);
+  if (has_dynamic_shape(x_cast.shape())) {
+    Tensor x_shape = get_slice<T>(x_dim_t, 0);
     Tensor dim_1 = full<T>({1}, groups, x_shape.type());
     x_shape = concat<T>({x_shape, dim_1});
     mean_out = backend::reshape<T>(mean_, x_shape);
     var_out = backend::reshape<T>(var_, x_shape);
   } else {
-    auto x_dim = x.shape();
-    std::vector<int64_t> res_shape{x_dim[0], groups};
+    std::vector<int64_t> res_shape{x.shape().at(0), groups};
     mean_out = reshape<T>(mean_, res_shape);
     var_out = reshape<T>(var_, res_shape);
   }

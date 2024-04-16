@@ -344,6 +344,22 @@ class TestNanmedianModeMin(unittest.TestCase):
         self.assertEqual(x.grad.shape, [])
         np.testing.assert_allclose(x.grad, np.array(0.0))
 
+    def test_dygraph_cpu(self):
+        paddle.disable_static(place=paddle.CPUPlace())
+        with paddle.base.dygraph.guard():
+            data = np.array(
+                [[1.4907, 1.0593, 1.5696], [1.4907, 1.0593, 1.5696]]
+            )
+            out, index = paddle.nanmedian(
+                paddle.to_tensor(data), axis=1, keepdim=False, mode='min'
+            )
+        np_res = np_nanmedain_axis(data, axis=1)
+        np.testing.assert_allclose(np_res, out, rtol=1e-05, equal_nan=True)
+        np.testing.assert_allclose(
+            np.array([0, 0]), index, rtol=1e-05, equal_nan=True
+        )
+        paddle.enable_static()
+
 
 class TestNanmedianModeMean(unittest.TestCase):
     def setUp(self):
@@ -569,6 +585,19 @@ class TestNanmedianModeMean(unittest.TestCase):
         y.backward()
         self.assertEqual(x.grad.shape, [])
         np.testing.assert_allclose(x.grad, np.array(0.0))
+
+    def test_dygraph_cpu(self):
+        paddle.disable_static(place=paddle.CPUPlace())
+        with paddle.base.dygraph.guard():
+            data = np.array(
+                [[1.4907, 1.0593, 1.5696], [1.4907, 1.0593, 1.5696]]
+            )
+            out = paddle.nanmedian(
+                paddle.to_tensor(data), axis=1, keepdim=False
+            )
+        np_res = np.nanmedian(data, axis=1)
+        np.testing.assert_allclose(np_res, out, rtol=1e-05, equal_nan=True)
+        paddle.enable_static()
 
 
 class TestNanmedianFP16Op(OpTest):

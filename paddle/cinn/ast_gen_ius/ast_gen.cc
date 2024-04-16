@@ -68,8 +68,11 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
   const std::vector<ir::Var>& axis = tensor->axis();
   const std::vector<ir::Expr>& shape = tensor->shape;
   size_t axis_len = axis.size();
-  CHECK_EQ(shape.size(), axis_len) << "Internal Error: Tensor has different "
-                                      "shape and axis length in AstGen";
+  PADDLE_ENFORCE_EQ(
+      shape.size(),
+      axis_len,
+      phi::errors::InvalidArgument("Internal Error: Tensor has different "
+                                   "shape and axis length in AstGen"));
   std::vector<ir::Expr> axis_exprs;
   for (const auto& a : axis) {
     axis_exprs.push_back(a);
