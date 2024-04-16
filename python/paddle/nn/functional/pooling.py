@@ -2408,6 +2408,9 @@ def lp_pool2d(
             >>> print(out.shape)
             [1, 3, 16, 16]
     """
+    if norm_type == 0:
+        raise ValueError("`norm_type` cannot be 0.")
+
     norm_type = float(norm_type)
     kernel_size = convert_to_list(kernel_size, 2, 'pool_size')
     if stride is None:
@@ -2424,7 +2427,7 @@ def lp_pool2d(
     )
 
     if in_dynamic_or_pir_mode():
-        output = _C_ops.pool2d(
+        output = _C_ops.lp_pool2d(
             x,
             kernel_size,
             stride,
@@ -2457,13 +2460,12 @@ def lp_pool2d(
             inputs={"x": x},
             outputs={"out": pool_out},
             attrs={
-                "pooling_type": "avg",
+                "pooling_type": "lp",
                 "kernel_size": kernel_size,
                 "global_pooling": False,
                 "strides": stride,
                 "paddings": padding,
                 "padding_algorithm": padding_algorithm,
-                "use_cudnn": True,
                 "ceil_mode": ceil_mode,
                 "exclusive": True,
                 "data_format": data_format,
