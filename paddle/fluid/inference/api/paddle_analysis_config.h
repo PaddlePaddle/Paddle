@@ -958,7 +958,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \return bool whether the Lite sub-graph engine is used.
   ///
-  bool lite_engine_enabled() const { return use_lite_; }
+  bool lite_engine_enabled() const { return false; }
 
   ///
   /// \brief Control whether to debug IR graph analysis phase.
@@ -1406,7 +1406,6 @@ struct PD_INFER_DECL AnalysisConfig {
 
   mutable std::unique_ptr<PassStrategy> pass_builder_;
 
-  bool use_lite_{false};
   std::vector<std::string> lite_passes_filter_;
   std::vector<std::string> lite_ops_filter_;
   Precision lite_precision_mode_;

@@ -206,7 +206,7 @@ void AnalysisConfig::EnableXpu(int l3_size,
 #else
   PADDLE_THROW(platform::errors::PreconditionNotMet(
       "To use XPU inference, please compile with option 'WITH_XPU' or "
-      "'WITH_LITE & LITE_WITH_XPU' first."));
+      "'LITE_WITH_XPU' first."));
 #endif
 }
 
@@ -522,12 +522,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(max_input_shape_);
   CP_MEMBER(optim_input_shape_);
   CP_MEMBER(disable_trt_plugin_fp16_);
-
-  CP_MEMBER(use_lite_);
-  CP_MEMBER(lite_precision_mode_);
-  CP_MEMBER(lite_passes_filter_);
-  CP_MEMBER(lite_ops_filter_);
-  CP_MEMBER(lite_zero_copy_);
 
   // XPU related.
   CP_MEMBER(use_xpu_);
@@ -1101,21 +1095,6 @@ void AnalysisConfig::Update() {
     pass_builder()->AppendAnalysisPass("memory_optimize_pass");
   }
 
-  if (use_lite_) {
-#ifndef PADDLE_WITH_LITE
-    LOG(WARNING) << "You tried to enable the lite subgraph "
-                    "but did not have the option -DWITH_LITE compiled.";
-#endif
-    pass_builder()->ClearPasses();
-    for (const auto &pass : kLiteSubgraphPasses) {
-      if (std::find(lite_passes_filter_.begin(),
-                    lite_passes_filter_.end(),
-                    pass) == lite_passes_filter_.end()) {
-        pass_builder()->AppendPass(pass);
-      }
-    }
-  }
-
   if (use_xpu_) {
 #if (defined LITE_SUBGRAPH_WITH_XPU) || (defined PADDLE_WITH_XPU)
     PADDLE_ENFORCE_EQ(use_gpu_,
@@ -1217,7 +1196,6 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << specify_input_name_;
   ss << cpu_math_library_num_threads_;
 
-  ss << use_lite_;
   ss << use_xpu_;
   ss << xpu_config_.device_id;
   ss << xpu_config_.l3_size;
@@ -1349,14 +1327,7 @@ void AnalysisConfig::EnableLiteEngine(
     Precision precision_mode,
     bool zero_copy,
     const std::vector<std::string> &passes_filter,
-    const std::vector<std::string> &ops_filter) {
-  use_lite_ = true;
-  lite_precision_mode_ = precision_mode;
-  lite_passes_filter_ = passes_filter;
-  lite_ops_filter_ = ops_filter;
-  lite_zero_copy_ = zero_copy;
-  Update();
-}
+    const std::vector<std::string> &ops_filter) {}
 
 void AnalysisConfig::EnableOpenCL() {
   use_opencl_ = true;
@@ -1526,10 +1497,6 @@ std::string AnalysisConfig::Summary() {
     os.InsertRow(quant_post_dynamic_op_types_info);
   }
   os.InsetDivider();
-
-  if (use_lite_) {
-    os.InsertRow({"use_lite", use_lite_ ? "true" : "false"});
-  }
 
   // cinn compiler
   os.InsertRow({"use_cinn_compiler", use_cinn_ ? "true" : "false"});

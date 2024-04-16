@@ -475,7 +475,7 @@ bool AnalysisPredictor::Init(
   }
 #endif
 #if defined(PADDLE_WITH_XPU)
-  if (config_.use_xpu_ && !config_.use_lite_) {
+  if (config_.use_xpu_) {
     private_context_ = true;
     if (!status_is_cloned_ && config_.external_stream_enabled()) {
       predictor_stream_ = config_.GetExecStream();
@@ -2501,7 +2501,7 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
   }
 #ifdef PADDLE_WITH_XPU
   InferXPUContext *infer_xpu_ctx = nullptr;
-  if (config_.use_xpu_ && !config_.use_lite_) {
+  if (config_.use_xpu_) {
     PADDLE_ENFORCE(
         private_context_,
         paddle::platform::errors::Fatal(
@@ -2532,7 +2532,7 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
   inference::DisplayMemoryInfo(place_, "after run");
 
 #ifdef PADDLE_WITH_XPU
-  if (config_.use_xpu_ && !config_.use_lite_ && infer_xpu_ctx != nullptr) {
+  if (config_.use_xpu_ && infer_xpu_ctx != nullptr) {
     infer_xpu_ctx->L3CacheAutotune();
   }
 #endif
@@ -3053,14 +3053,6 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
   x->Init(scope_, inference_program_);
 #ifdef PADDLE_WITH_TENSORRT
   x->executor_->ResetTrtOps(++AnalysisPredictor::clone_num_);
-#endif
-#ifdef PADDLE_WITH_LITE
-#ifdef LITE_SUBGRAPH_WITH_XPU
-  x->executor_->CloneLiteEngine(++AnalysisPredictor::clone_num_,
-                                config_.xpu_config_.stream);
-#else
-  x->executor_->CloneLiteEngine(++AnalysisPredictor::clone_num_, nullptr);
-#endif
 #endif
   return std::unique_ptr<PaddlePredictor>(x);
 }
