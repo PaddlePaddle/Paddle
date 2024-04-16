@@ -375,7 +375,6 @@ class TestPool2D_API(unittest.TestCase):
             self.check_lp_dygraph_stride_is_none(place)
             self.check_lp_dygraph_ceilmode_results(place)
             self.check_lp_dygraph_nhwc_results(place)
-            self.check_lp_dygraph_results_norm_type_is_zero(place)
             self.check_lp_dygraph_results_norm_type_is_inf(place)
             self.check_lp_dygraph_results_norm_type_is_negative_inf(place)
 
@@ -426,39 +425,6 @@ class TestPool2D_API(unittest.TestCase):
             input_np = np.random.random([2, 3, 32, 32]).astype("float32")
             input = paddle.to_tensor(input_np)
             norm_type = 2
-            result = lp_pool2d(
-                input,
-                norm_type,
-                kernel_size=2,
-                stride=2,
-                ceil_mode=False,
-            )
-
-            result_np = pool2D_forward_naive(
-                input_np,
-                ksize=[2, 2],
-                paddings=[0, 0],
-                strides=[2, 2],
-                ceil_mode=False,
-                norm_type=norm_type,
-                pool_type='lp',
-            )
-            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
-
-            lp_pool2d_dg = paddle.nn.layer.LPPool2D(
-                norm_type=norm_type,
-                kernel_size=2,
-                stride=2,
-                ceil_mode=False,
-            )
-            result = lp_pool2d_dg(input)
-            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
-
-    def check_lp_dygraph_results_norm_type_is_zero(self, place):
-        with base.dygraph.guard(place):
-            input_np = np.random.random([2, 3, 32, 32]).astype("float32")
-            input = paddle.to_tensor(input_np)
-            norm_type = 0
             result = lp_pool2d(
                 input,
                 norm_type,
@@ -910,6 +876,16 @@ class TestPool2DError_API(unittest.TestCase):
                 )
 
         self.assertRaises(ValueError, run_zero_tuple_stride)
+
+        def run_zero_norm_type():
+            with base.dygraph.guard():
+                array = np.array([1], dtype=np.float32)
+                x = paddle.to_tensor(
+                    np.reshape(array, [1, 1, 1, 1]), dtype='float32'
+                )
+                out = lp_pool2d(x, 0, 2)
+
+        self.assertRaises(ValueError, run_zero_norm_type)
 
 
 if __name__ == '__main__':
