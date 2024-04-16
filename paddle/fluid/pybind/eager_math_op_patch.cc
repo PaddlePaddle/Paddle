@@ -166,7 +166,7 @@ void SetDevice(paddle::platform::Place place) {
 // scalar func only support add, radd, sub, rsub, mul, rmul, div, truediv.
 // this function will update gradually.
 paddle::Tensor CallScalarFuction(const paddle::Tensor& self_tensor,
-                                 float other,
+                                 double other,
                                  std::string op_type) {
   paddle::Tensor ret;
   // scale_ad_func need sclar and bias with float type.
@@ -177,9 +177,9 @@ paddle::Tensor CallScalarFuction(const paddle::Tensor& self_tensor,
   } else if (op_type == "rsub") {
     ret = scale_ad_func(self_tensor, phi::Scalar(-1.0), other, true);
   } else if (op_type == "mul") {
-    ret = scale_ad_func(self_tensor, other, 0.0, true);
+    ret = scale_ad_func(self_tensor, phi::Scalar(other), 0.0, true);
   } else if (op_type == "div") {
-    ret = scale_ad_func(self_tensor, 1.0 / other, 0.0, true);
+    ret = scale_ad_func(self_tensor, phi::Scalar(1.0 / other), 0.0, true);
   } else if (op_type == "pow") {
     ret = pow_ad_func(self_tensor, other);
   }
@@ -198,7 +198,6 @@ phi::DataType TypePromotionForZeroDimTensor(std::string func,
   } else {
     // common major types follow with tensor: int32(tensor) + int64(scalar)
     // = int32
-    std::cout << "got common dtype" << std::endl;
     if (self_tensor.shape().size() == 0) {
       return other_tensor.dtype();
     } else {
@@ -240,7 +239,7 @@ static PyObject* tensor__add__method(TensorObject* self,
       self_tensor = cast_ad_func(self_tensor, DataType::INT64);
     }
 
-    float other = CastPyArg2Float(other_obj, "__add__", 0);
+    double other = CastPyArg2Double(other_obj, "__add__", 0);
     {
       eager_gil_scoped_release guard;
       ret = CallScalarFuction(self_tensor, other, "add");
@@ -360,7 +359,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
       self_tensor = cast_ad_func(self_tensor, DataType::INT64);
     }
 
-    float other = CastPyArg2Float(other_obj, "__sub__", 0);
+    double other = CastPyArg2Double(other_obj, "__sub__", 0);
     {
       eager_gil_scoped_release guard;
       ret = CallScalarFuction(self_tensor, other, "sub");
@@ -478,7 +477,7 @@ static PyObject* tensor__rsub__method(TensorObject* self,
       self_tensor = cast_ad_func(self_tensor, DataType::INT64);
     }
 
-    float other = CastPyArg2Float(other_obj, "__rsub__", 0);
+    double other = CastPyArg2Double(other_obj, "__rsub__", 0);
     {
       eager_gil_scoped_release guard;
       ret = CallScalarFuction(self_tensor, other, "rsub");
@@ -596,7 +595,7 @@ static PyObject* tensor__mul__method(TensorObject* self,
       self_tensor = cast_ad_func(self_tensor, DataType::INT64);
     }
 
-    float other = CastPyArg2Float(other_obj, "__mul__", 0);
+    double other = CastPyArg2Double(other_obj, "__mul__", 0);
     {
       eager_gil_scoped_release guard;
       ret = CallScalarFuction(self_tensor, other, "mul");
@@ -718,7 +717,7 @@ static PyObject* tensor__div__method(TensorObject* self,
       self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
     }
 
-    float other = CastPyArg2Float(other_obj, "__div__", 0);
+    double other = CastPyArg2Double(other_obj, "__div__", 0);
     {
       eager_gil_scoped_release guard;
       ret = CallScalarFuction(self_tensor, other, "div");
@@ -1786,7 +1785,7 @@ static PyObject* tensor__pow__method(TensorObject* self,
       eager_gil_scoped_release guard;
       self_tensor = cast_ad_func(self_tensor, DataType::INT64);
     }
-    float other = CastPyArg2Float(other_obj, "__pow__", 0);
+    double other = CastPyArg2Double(other_obj, "__pow__", 0);
     {
       eager_gil_scoped_release guard;
       ret = CallScalarFuction(self_tensor, other, "pow");
@@ -2080,8 +2079,10 @@ static PyObject* tensor__ne__method(TensorObject* self,
             full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
       } else {
         eager_gil_scoped_release guard;
-        other_tensor =
-            full_ad_func({1}, value, self_tensor.dtype(), self_tensor.place());
+        other_tensor = full_ad_func(self_tensor.shape(),
+                                    value,
+                                    self_tensor.dtype(),
+                                    self_tensor.place());
       }
     }
     const phi::distributed::ProcessMesh* mesh = nullptr;
@@ -2193,8 +2194,10 @@ static PyObject* tensor__eq__method(TensorObject* self,
             full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
       } else {
         eager_gil_scoped_release guard;
-        other_tensor =
-            full_ad_func({1}, value, self_tensor.dtype(), self_tensor.place());
+        other_tensor = full_ad_func(self_tensor.shape(),
+                                    value,
+                                    self_tensor.dtype(),
+                                    self_tensor.place());
       }
     }
     const phi::distributed::ProcessMesh* mesh = nullptr;
