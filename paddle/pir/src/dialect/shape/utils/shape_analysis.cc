@@ -268,12 +268,14 @@ namespace {
 
 bool CanSubstituteInShapeAnalysis(const symbol::DimExpr& lhs,
                                   const symbol::DimExpr& rhs) {
-  int lhs_priority = symbol::GetDimExprPriority(lhs);
-  int rhs_priority = symbol::GetDimExprPriority(rhs);
-  if (lhs_priority >= 2 && rhs_priority >= 2) {
-    return 0;
-  }
-  return true;
+  auto CanSubstitutePredictor = symbol::Overloaded{
+      [](std::int64_t lhs, const auto& rhs) { return true; },
+      [](const std::string& lhs, const std::string& rhs) { return true; },
+      [](const std::string& lhs,
+         const symbol::Broadcast<symbol::DimExpr>& rhs) { return true; },
+      [](const auto& lhs, const auto& rhs) { return false; }};
+  return std::visit(CanSubstitutePredictor, lhs.variant(), rhs.variant()) ||
+         std::visit(CanSubstitutePredictor, lhs.variant(), rhs.variant());
 }
 
 }  // namespace
@@ -281,13 +283,19 @@ bool CanSubstituteInShapeAnalysis(const symbol::DimExpr& lhs,
 void ShapeConstraintIRAnalysis::SubstituteDimExpr(
     const symbol::DimExpr& origin, const symbol::DimExpr& substituted) {
   if (!CanSubstituteInShapeAnalysis(origin, substituted)) return;
-  std::unordered_map<symbol::DimExpr, symbol::DimExpr> substitution_pattern;
-  substitution_pattern[origin] = substituted;
+
+  substitution_pattern_[origin] = substituted;
+  for (auto it = substitution_pattern_.begin();
+       it != substitution_pattern_.end();
+       it++) {
+    if (it->second == origin) it->second = substituted;
+  }
+
   for (auto it = value_to_shape_or_data_.begin();
        it != value_to_shape_or_data_.end();
        it++) {
     const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
-        symbol::SubstituteShapeOrData(it->second, substitution_pattern);
+        symbol::SubstituteShapeOrData(it->second, substitution_pattern_);
     SetShapeOrDataForValue(it->first, substituted_shape_or_data);
   }
 }
