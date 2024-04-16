@@ -246,7 +246,11 @@ def fused_rotary_position_embedding_qkvpacked(
     num_heads_k = qkv.shape[-2]
     num_group = qkv.shape[-3] - 2
     num_heads = num_group * num_heads_k
-    qkv = paddle.flatten(qkv, 2, 3)
+    if len(qkv.shape) == 5:
+        qkv = paddle.flatten(qkv, 2, 3)
+    else:
+        assert len(qkv.shape) == 4
+        qkv = paddle.flatten(qkv, 1, 2)
     actual_num_heads = num_heads
     if rotate_kv:
         actual_num_heads += 2 * num_heads_k
