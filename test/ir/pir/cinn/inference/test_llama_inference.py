@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import sys
 import unittest
 from os.path import dirname
 
 import numpy as np
+
+os.environ['FLAGS_prim_forward_blacklist'] = 'pd_op.embedding;pd_op.softmax'
 
 import paddle
 import paddle.nn.functional as F
@@ -186,11 +189,10 @@ class TestLlamaInference(unittest.TestCase):
 
     def test_eval(self):
         dy_out = self.eval(use_cinn=False)
-        if utils.unittest_use_cinn():
-            cinn_out = self.eval(use_cinn=True)
-            np.testing.assert_allclose(
-                cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
-            )
+        cinn_out = self.eval(use_cinn=True)
+        np.testing.assert_allclose(
+            cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
+        )
 
 
 if __name__ == '__main__':
