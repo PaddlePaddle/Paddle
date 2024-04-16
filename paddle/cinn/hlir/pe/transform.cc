@@ -425,8 +425,9 @@ ir::Tensor Concat(const ir::Tensor& A,
 ir::Tensor Concat(const std::vector<ir::Tensor>& input_tensors,
                   int axis,
                   const std::string& name) {
+  // input size 1 is valid for Concat
   int input_size = input_tensors.size();
-  CHECK_GE(input_size, 2U) << "Concat should have at least 2 input tensors";
+  CHECK_GE(input_size, 1U) << "Concat should have at least 1 input tensors";
   std::vector<Expr> output_shape = input_tensors[0]->shape;
   int input_dim = output_shape.size();
   CHECK(axis >= -input_dim && axis < input_dim)
