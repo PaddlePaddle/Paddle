@@ -12,23 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_symbolic_shape.h"
+#include "paddle/pir/include/dialect/shape/interface/infer_symbolic_shape/infer_symbolic_shape.h"
 
 // This file implements the infer_symbolic_shape interface for both paddle and
 // cinn operators.
 
-// Add `interfaces : paddle::dialect::InferSymbolicShapeInterface` in relative
+// Add `interfaces : pir::InferSymbolicShapeInterface` in relative
 // yaml file to conresponding op.
 
 // Since necessary checks have been done in the Op's `InferMeta` and `VeriySig`,
 // no more repetitive work here.
 
-namespace paddle::dialect {
+namespace pir {
 
 bool InferSymbolicShapeInterface::InferSymbolicShape(
     pir::ShapeConstraintIRAnalysis *shape_analysis) {
   return impl_->infer_symbolic_shapes(operation(), shape_analysis);
 }
-}  // namespace paddle::dialect
 
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::InferSymbolicShapeInterface)
+}  // namespace pir
+
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::InferSymbolicShapeInterface)

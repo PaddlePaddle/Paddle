@@ -1,12 +1,7 @@
 add_definitions(-DIR_LIBRARY)
 set_property(GLOBAL PROPERTY IR_TARGETS "")
 
-file(
-  GLOB_RECURSE
-  PIR_CPP_SOURCES
-  "*.cc"
-  ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_symbolic_shape.cc
-)
+file(GLOB_RECURSE PIR_CPP_SOURCES "*.cc")
 
 if(WIN32)
   if(WITH_SHARED_IR)
