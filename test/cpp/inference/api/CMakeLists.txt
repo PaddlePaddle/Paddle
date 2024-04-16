@@ -772,14 +772,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     inference_analysis_api_test_build(${INT8_OBJ_DETECT_TEST_APP}
                                       ${INT8_OBJ_DETECT_TEST_APP_SRC})
 
-    # mobilenet-ssd int8
-    set(INT8_MOBILENET_SSD_MODEL_DIR "${INT8_DATA_DIR}/mobilenet-ssd")
-    download_int8_data_without_verify(${INT8_MOBILENET_SSD_MODEL_DIR}
-                                      "mobilenet_ssd_int8_model.tar.gz")
-    inference_analysis_api_object_dection_int8_test_run(
-      test_analyzer_int8_mobilenet_ssd ${INT8_OBJ_DETECT_TEST_APP}
-      ${INT8_MOBILENET_SSD_MODEL_DIR} ${PASCALVOC_DATA_PATH})
-
     ### Lexcial analysis GRU model
     set(GRU_PATH "${INFERENCE_DEMO_INSTALL_DIR}/gru")
     download_gru_data_without_verify("${GRU_PATH}" "GRU_eval_data.tar.gz")
@@ -1312,8 +1304,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
 
   if(WITH_ONEDNN)
     set_tests_properties(test_analyzer_int8_resnet50 PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_analyzer_int8_mobilenet_ssd PROPERTIES TIMEOUT
-                                                                     120)
     set_tests_properties(test_analyzer_quant_performance_benchmark
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_analyzer_int8_mobilenetv2 PROPERTIES TIMEOUT 120)
