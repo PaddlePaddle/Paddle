@@ -37,6 +37,8 @@ Backend TransToPhiBackend(const phi::Place& place) {
       return Backend::GPU;
     case AllocationType::XPU:
       return Backend::XPU;
+    case AllocationType::XPUPINNED:
+      return Backend::XPU;
     case AllocationType::IPU:
       return Backend::IPU;
     case AllocationType::UNDEFINED:

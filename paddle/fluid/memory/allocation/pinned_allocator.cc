@@ -42,10 +42,9 @@ void CPUPinnedAllocator::FreeImpl(phi::Allocation *allocation) {
 }
 phi::Allocation *CPUPinnedAllocator::AllocateImpl(size_t size) {
   void *ptr;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #if defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_GPU_SUCCESS(hipHostMalloc(&ptr, size, hipHostMallocPortable));
-#elif defined(PADDLE_WITH_XPU)
-  PADDLE_ENFORCE_XPU_SUCCESS(xpu_host_alloc(&ptr, size, 0));
 #else
   PADDLE_ENFORCE_GPU_SUCCESS(cudaHostAlloc(&ptr, size, cudaHostAllocPortable));
 #endif
@@ -56,6 +55,12 @@ phi::Allocation *CPUPinnedAllocator::AllocateImpl(size_t size) {
                            size,
                            platform::TracerMemEventType::ReservedAllocate);
   return new Allocation(ptr, size, platform::CUDAPinnedPlace());
+#endif
+#ifdef PADDLE_WITH_XPU
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_host_alloc(&ptr, size, 0));
+  VLOG(10) << "xpu_host_alloc" << size << " " << ptr;
+  return new Allocation(ptr, size, platform::XPUPinnedPlace());
+#endif
 }
 }  // namespace allocation
 }  // namespace memory

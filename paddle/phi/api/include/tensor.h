@@ -311,6 +311,13 @@ class PADDLE_API Tensor final {
   bool is_xpu() const;
 
   /**
+   * @brief Determine whether the tensor device is XPU_PINNED
+   *
+   * @return bool
+   */
+  bool is_xpu_pinned() const;
+
+  /**
    * @brief Determine whether the tensor device is CustomDevice
    *
    * @return bool

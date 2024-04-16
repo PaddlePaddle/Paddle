@@ -72,9 +72,10 @@ void Copy(const Context& dev_ctx,
         dst, src.dtype(), 0, dst_place.GetType() == AllocationType::GPUPINNED);
 #endif
 #ifdef PADDLE_WITH_XPU
-  } else if (dst_place.GetType() == AllocationType::XPU) {
+  } else if (dst_place.GetType() == AllocationType::XPU ||
+             dst_place.GetType() == AllocationType::XPUPINNED) {
     dst_ptr = dev_ctx.Alloc(
-        dst, src.dtype(), 0, dst_place.GetType() == AllocationType::GPUPINNED);
+        dst, src.dtype(), 0, dst_place.GetType() == AllocationType::XPUPINNED);
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   } else if (dst_place.GetType() == AllocationType::CUSTOM) {
@@ -219,10 +220,17 @@ void Copy(const Context& dev_ctx,
         dst_cuda_pinned_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
 #endif
 #ifdef PADDLE_WITH_XPU
-  } else if (src_place.GetType() == AllocationType::XPU &&  // NOLINT
-             dst_place.GetType() == AllocationType::CPU) {
+  } else if ((src_place.GetType() == AllocationType::CPU ||
+              src_place.GetType() == AllocationType::XPUPINNED) &&
+             (dst_place.GetType() == AllocationType::CPU ||
+              dst_place.GetType() == AllocationType::XPUPINNED)) {
     memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
-  } else if (src_place.GetType() == AllocationType::CPU &&
+  } else if (src_place.GetType() == AllocationType::XPU &&  // NOLINT
+             (dst_place.GetType() == AllocationType::CPU ||
+              dst_place.GetType() == AllocationType::XPUPINNED)) {
+    memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+  } else if ((src_place.GetType() == AllocationType::CPU ||
+              src_place.GetType() == AllocationType::XPUPINNED) &&
              dst_place.GetType() == AllocationType::XPU) {
     memory_utils::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   } else if (src_place.GetType() == AllocationType::XPU &&

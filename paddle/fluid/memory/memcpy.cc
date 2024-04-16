@@ -838,6 +838,20 @@ void Copy<phi::Place, phi::Place>(phi::Place dst_place,
     platform::CPUPlace place_dst, place_src;
     return Copy(place_dst, dst, place_src, src, num);
   } else if (src_place.GetType() == phi::AllocationType::CPU &&
+             dst_place.GetType() == phi::AllocationType::XPUPINNED) {
+    platform::XPUPinnedPlace place_dst;
+    platform::CPUPlace place_src;
+    return Copy(place_dst, dst, place_src, src, num);
+  } else if (src_place.GetType() == phi::AllocationType::XPUPINNED &&
+             dst_place.GetType() == phi::AllocationType::CPU) {
+    platform::CPUPlace place_dst;
+    platform::XPUPinnedPlace place_src;
+    return Copy(place_dst, dst, place_src, src, num);
+  } else if (src_place.GetType() == phi::AllocationType::XPUPINNED &&
+             dst_place.GetType() == phi::AllocationType::XPUPINNED) {
+    platform::XPUPinnedPlace place_dst, place_src;
+    return Copy(place_dst, dst, place_src, src, num);
+  } else if (src_place.GetType() == phi::AllocationType::CPU &&
              dst_place.GetType() == phi::AllocationType::XPU) {
     platform::XPUPlace place_dst(dst_place.GetDeviceId());
     platform::CPUPlace place_src;
@@ -846,6 +860,16 @@ void Copy<phi::Place, phi::Place>(phi::Place dst_place,
              dst_place.GetType() == phi::AllocationType::CPU) {
     platform::XPUPlace place_src(src_place.GetDeviceId());
     platform::CPUPlace place_dst;
+    return Copy(place_dst, dst, place_src, src, num);
+  } else if (src_place.GetType() == phi::AllocationType::XPUPINNED &&
+             dst_place.GetType() == phi::AllocationType::XPU) {
+    platform::XPUPlace place_dst(dst_place.GetDeviceId());
+    platform::XPUPinnedPlace place_src;
+    return Copy(place_dst, dst, place_src, src, num);
+  } else if (src_place.GetType() == phi::AllocationType::XPU &&
+             dst_place.GetType() == phi::AllocationType::XPUPINNED) {
+    platform::XPUPlace place_src(src_place.GetDeviceId());
+    platform::XPUPinnedPlace place_dst;
     return Copy(place_dst, dst, place_src, src, num);
   } else if (src_place.GetType() == phi::AllocationType::XPU &&
              dst_place.GetType() == phi::AllocationType::XPU) {
