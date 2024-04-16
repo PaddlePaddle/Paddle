@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -150,7 +150,7 @@ class RemoveShadowFeedPass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     PADDLE_ENFORCE_EQ(
-        Has(pir::Pass::kBlockAttr),
+        Has("top_block"),
         true,
         phi::errors::InvalidArgument(
             "Pass initialize failed."
@@ -170,7 +170,7 @@ class RemoveShadowFeedPass : public pir::PatternRewritePass {
             "Pass initialize failed."
             "When using RemoveShadowFeedPass, scope attribute is required!"
             "Use Set method to set the scope attribute."));
-    auto block = &Get<const pir::Block>(pir::Pass::kBlockAttr);
+    auto block = &Get<const pir::Block>("top_block");
     auto &place = Get<const phi::Place>(pir::Pass::kPlaceAttr);
     auto scope =
         &Get<const paddle::framework::Scope>(pir::Pass::kParamScopeAttr);

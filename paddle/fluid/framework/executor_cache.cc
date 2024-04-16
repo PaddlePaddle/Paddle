@@ -392,7 +392,7 @@ std::unique_ptr<::pir::Program> ApplyRemoveShadowFeedPass(
     const paddle::framework::Scope *scope) {
   ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
   auto pass = ::pir::CreateRemoveShadowFeedPass();
-  pass->SetNotOwned(pir::Pass::kBlockAttr, block);
+  pass->SetNotOwned("top_block", block);
   pass->SetNotOwned(pir::Pass::kPlaceAttr, &place);
   pass->SetNotOwned(pir::Pass::kParamScopeAttr, scope);
   pm.AddPass(std::move(pass));
