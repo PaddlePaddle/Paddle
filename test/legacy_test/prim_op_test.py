@@ -127,6 +127,10 @@ class OpTestUtils:
             2. if the name in op_inputs, convert the op_inputs to [type of default value]
             3. if the name not in op_attrs ans op_inputs, return Empty. (this will use the default value from python api)
             """
+            # print("parse")
+            # print(name)
+            # print(op_proto_attrs)
+            # print(op_inputs)
             if name in op_proto_attrs:
                 return op_proto_attrs[name]
             elif name in op_inputs:
@@ -175,6 +179,8 @@ class OpTestUtils:
         #    else, we will consume a input_arguments. (because the name is not corresponding, so we only use the order)
 
         api_params, api_defaults = parse_arg_and_kwargs(api)
+        # if "one_hot" in str(api):
+        #     api_params.append("num_classes")
         api_defaults = to_defaults_list(api_params, api_defaults)
         api_defaults = [
             Empty() for i in range(len(api_params) - len(api_defaults))
@@ -183,6 +189,10 @@ class OpTestUtils:
             api_params
         ), "Error happens. contack xiongkun03 to solve."
         inputs_sig, attrs_sig, outputs_sig = kernel_sig
+        # print("attr_sig")
+        # if "one_hot" in str(api):
+        #     attrs_sig.append()"num_classes"
+        # print(attrs_sig)
         inputs_and_attrs = inputs_sig + attrs_sig
         input_arguments = [
             op_proto_ins.get(name, Empty()) for name in inputs_sig
@@ -598,6 +608,8 @@ class PrimForwardChecker:
                     if OpTestUtils.is_bfloat16_type(item.dtype)
                     else item.dtype
                 )
+                if item.shape == ():
+                    item.shape = 1
                 x = paddle.static.data(name=name, shape=item.shape, dtype=dtype)
                 x.stop_gradient = stop_gradient
                 static_inputs[name].append(x)
@@ -612,6 +624,10 @@ class PrimForwardChecker:
         # forward comp only for comp op
         if self.prim_op_type == "prim":
             return
+        print("be fore check")
+        print(self.inputs)
+        print(self.inputs['X'].shape)
+        print(self.inputs['depth_tensor'].shape)
         with static_guard():
             core._set_prim_forward_enabled(self.enable_fw_comp)
             startup_program, main_program = (
@@ -640,8 +656,12 @@ class PrimForwardChecker:
                 args = OpTestUtils.assumption_assert_and_transform(
                     args, len(inputs_sig)
                 )
+                print("static")
+                print(main_program)
+                print(inputs_sig)
+                print(args)
                 ret = flatten(_as_list(self.public_python_api(*args)))
-
+                print(ret)
                 if not in_pir_mode():
                     primapi.to_prim(main_program.blocks)
                 else:

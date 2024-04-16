@@ -208,27 +208,37 @@ Tensor pow_decomp(const Tensor& x, const paddle::Scalar& y) {
 
 template <typename T>
 Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
-  std::vector<Tensor> out_shape_concat;
-  auto x_shape_tensor = shape<T>(x);
+  // std::vector<Tensor> out_shape_concat;
+  // auto x_shape_tensor = shape<T>(x);
 
-  out_shape_concat.push_back(x_shape_tensor);
-  out_shape_concat.push_back(num_classes);
+  // out_shape_concat.push_back(x_shape_tensor);
+  // out_shape_concat.push_back(num_classes);
+  // auto input_shape_tensor = concat<T>(out_shape_concat, 0);
+  // auto input_tensor = backend::full_with_tensor<T>(input_shape_tensor, 0,
+  // x.dtype());
 
-  auto output_shape_tensor = concat<T>(out_shape_concat, 0);
+  std::vector<int64_t> input_dim;
+  auto num_classes_tensor =
+      backend::full_with_tensor<T>(num_classes, 0, x.dtype());
+  input_dim.push_back(x.shape()[0]);
+  input_dim.push_back(num_classes_tensor.shape()[0]);
+  auto input_tensor = full<T>(input_dim, 0, x.dtype());
 
-  auto out_temp =
-      backend::full_with_tensor<T>(out_shape_concat, 0.0, DataType::INT32);
+  auto index_dim = get_slice<T>(shape<T>(x), 0);
+  auto start = full<T>({1}, 0, index_dim.dtype());
+  auto step = full<T>({1}, 1, index_dim.dtype());
+  auto arange_tensor =
+      backend::arange_with_tensor<T>(start, index_dim, step, index_dim.dtype());
+  std::vector<Tensor> index_concat;
+  index_concat.push_back(arange_tensor);
+  index_concat.push_back(x);
+  auto index_tensor = concat<T>(index_concat, 1);
 
-  auto update = full<T>(x.shape(), 1, x.dtype());
-  auto ans = cast<T>(scatter_nd_add<T>(out_temp, update), DataType::FLOAT32);
-
-  // std::vector<int64_t> x_dim = x.shape();
-  // std::vector<int64_t> out_dim;
-  // out_dim.push_back(x_dim[0]);
-  // int* num_pointer = const_cast<int*>(num_classes.data());
-  // out_dim.push_back(num_pointer[0]);
-  // auto ans = full<T>(out_dim, 0.0, DataType::FLOAT32);
-
+  auto update_tensor = full<T>(x.shape(), 1, x.dtype());
+  auto ans =
+      cast<T>(scatter_nd_add<T>(input_tensor, index_tensor, update_tensor),
+              DataType::FLOAT32);
+  // auto ans = cast<T>(input_tensor, DataType::FLOAT32);
   return ans;
 }
 

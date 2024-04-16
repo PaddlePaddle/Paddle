@@ -48,7 +48,7 @@ class TestOneHotOp(OpTest):
         print(x.dtype)
         print(x_lod)
         print(depth_np)
-        self.inputs = {'X': x, 'num_classes': depth_np}
+        self.inputs = {'X': x, 'depth_tensor': depth_np}
         self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
         self.outputs = {'Out': out}
         print("out")
@@ -62,7 +62,9 @@ class TestOneHotOp(OpTest):
 class TestOneHotOp_attr(OpTest):
     def setUp(self):
         self.op_type = 'one_hot_v2'
+        self.prim_op_type = "comp"
         self.python_api = one_hot_wrapper
+        self.public_python_api = one_hot_wrapper
         depth = 10
         depth_np = np.array(10).astype('int32')
         dimension = 12
@@ -77,12 +79,12 @@ class TestOneHotOp_attr(OpTest):
         for i in range(np.prod(x.shape)):
             out[i, 0, x[i]] = 1.0
 
-        self.inputs = {'X': (x, x_lod), 'depth_tensor': depth_np}
+        self.inputs = {'X': x, 'depth_tensor': depth_np}
         self.attrs = {'dtype': int(core.VarDesc.VarType.FP32), 'depth': depth}
-        self.outputs = {'Out': (out, x_lod)}
+        self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_prim_pir=True)
 
 
 class TestOneHotOp_default_dtype(OpTest):
