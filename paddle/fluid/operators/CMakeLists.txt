@@ -48,10 +48,6 @@ if (WITH_DLNNE)
     add_subdirectory(dlnne)
 endif()
 
-if (WITH_LITE)
-    add_subdirectory(lite)
-endif()
-
 if(WITH_CINN)
     add_subdirectory(cinn)
 endif()
