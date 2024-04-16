@@ -50,11 +50,11 @@ class DecompProgram {
       const std::string& op_name,
       const std::vector<pir::Value>& orig_outs,
       const std::vector<std::vector<pir::Value>>& decomp_outs);
-  std::vector<pir::Value> construct_dst_vars(
-      const std::string& op_name,
-      const std::vector<pir::Value>& orig_outs,
-      const std::vector<pir::Value>& decomp_outs,
-      std::unordered_map<pir::Value, int> orig_vars_dict);
+  void construct_dst_vars(const std::string& op_name,
+                          const std::vector<pir::Value>& orig_outs,
+                          const std::vector<pir::Value>& decomp_outs,
+                          std::unordered_map<pir::Value, int> orig_vars_dict,
+                          std::vector<pir::Value>* tar_vars);
   bool enable_decomp_by_filter(const std::string& op_name);
   void set_src_vars(const std::vector<pir::Value>& src_vars) {
     src_vars_ = src_vars;
