@@ -12,10 +12,13 @@
 # see the license for the specific language governing permissions and
 # limitations under the license.
 
+import sys
 import unittest
 
 import numpy as np
 from simple_nets import simple_fc_net
+
+sys.path.append("../../legacy_test")
 from test_imperative_base import new_program_scope
 
 import paddle

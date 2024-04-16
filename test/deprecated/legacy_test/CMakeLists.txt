@@ -774,8 +774,7 @@ if(APPLE)
                        PROPERTIES TIMEOUT 300)
 endif()
 
-set_tests_properties(test_inplace_addto_strategy
-                     PROPERTtest_fuse_resunit_passIES TIMEOUT 120)
+set_tests_properties(test_inplace_addto_strategy PROPERTIES TIMEOUT 120)
 
 set(TEST_CINN_OPS
     test_softmax_op
