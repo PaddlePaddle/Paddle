@@ -1081,7 +1081,6 @@ set(STATIC_BUILD_TESTS
     test_lamb_op
     test_limit_by_capacity_op
     test_merged_adam_op
-    test_momentum_op
     test_number_count_op
     test_prune_gate_by_capacity_op
     test_random_routing_op

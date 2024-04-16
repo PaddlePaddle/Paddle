@@ -58,7 +58,7 @@ if(WIN32)
 endif()
 
 # Only for cpu(mkl + openblas)
-set(TEST_INFERENCE_CPU_UT "test_mul_lstm_fuse_pass" "test_mul_gru_fuse_pass")
+set(TEST_INFERENCE_CPU_UT "test_mul_lstm_fuse_pass")
 
 foreach(CPU_UT ${TEST_INFERENCE_CPU_UT})
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${CPU_UT})
@@ -162,7 +162,6 @@ if(NOT WITH_ONEDNN
   endforeach()
 
   set_tests_properties(test_mul_lstm_fuse_pass PROPERTIES TIMEOUT 1000)
-  set_tests_properties(test_mul_gru_fuse_pass PROPERTIES TIMEOUT 600)
 endif()
 
 if(WITH_GPU AND TENSORRT_FOUND)

@@ -19,8 +19,6 @@ sys.path.insert(0, '.')
 
 import config
 import numpy as np
-
-sys.path.append("../../autograd")
 import utils
 from numpy.random import randint, randn
 

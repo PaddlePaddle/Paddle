@@ -857,6 +857,7 @@ set(STATIC_BUILD_TESTS
     test_lookup_table_v2_op
     test_matmul_op
     test_matmul_v2_op
+    test_momentum_op
     test_nce
     test_paddle_save_load_binary
     test_reduce_op

@@ -19,7 +19,11 @@ from paddle.base import core
 
 os.environ['FLAGS_eager_delete_tensor_gb'] = "0.0"
 
+import sys
+
 from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
+
+sys.path.append("../../legacy_test")
 from test_parallel_executor_transformer import get_feed_data_reader, transformer
 
 
