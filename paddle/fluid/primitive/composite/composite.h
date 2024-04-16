@@ -247,6 +247,11 @@ Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
 }
 
 template <typename T>
+Tensor reciprocal_decomp(const Tensor& x) {
+  return full<T>(empty_shape, 1.0, x.dtype()) / x;
+}
+
+template <typename T>
 std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
     const Tensor& x,
     const Tensor& run_mean,
