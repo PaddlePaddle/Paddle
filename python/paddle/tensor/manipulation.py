@@ -4347,13 +4347,14 @@ def reshape(x, shape, name=None):
 
     The following figure illustrates the first example -- a 3D tensor of shape [2, 4, 6] is transformed into a 2D tensor of shape [6, 8], during which the order and values of the elements in the tensor remain unchanged. The elements in the two subdiagrams correspond to each other, clearly demonstrating how the reshape API works.
 
-    ![illustration of reshape API](https://github.com/PaddlePaddle/docs/blob/develop/docs/images/reshape.png?raw=true "illustration of reshape API")
+    .. image:: ../../../../docs/docs/images/api_legend/reshape.png
+        :alt: legend of reshape API
 
     Args:
-        x (Tensor): A N-D Tensor. The data type is ``float16``, ``float32``, ``float64``, ``int16``, ``int32``, ``int64``, ``int8``, ``uint8``, ``complex64``, ``complex128``, ``bfloat16`` or ``bool``.
+        x (Tensor): An N-D Tensor. The data type is ``float16``, ``float32``, ``float64``, ``int16``, ``int32``, ``int64``, ``int8``, ``uint8``, ``complex64``, ``complex128``, ``bfloat16`` or ``bool``.
         shape (list|tuple|Tensor): Define the target shape. At most one dimension of the target shape can be -1.
                         The data type is ``int32`` . If ``shape`` is a list or tuple, each element of it should be integer or Tensor with shape [].
-                        If ``shape`` is a Tensor, it should be a 1-D Tensor .
+                        If ``shape`` is a Tensor, it should be an 1-D Tensor .
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
