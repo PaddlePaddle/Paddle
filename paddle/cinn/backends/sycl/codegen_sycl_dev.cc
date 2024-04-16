@@ -111,13 +111,26 @@ void CodeGenSYCL_Dev::Visit(const ir::_LoweredFunc_ *op) {
           "[=](sycl::nd_item<3> item) "
           "[[intel::kernel_args_restrict]]";
   if (op->cuda_axis_info.valid()) {
-    str_ += "[[intel::max_work_group_size(";
-    str_ += std::to_string(op->cuda_axis_info.block_dim(2));
-    str_ += ", ";
-    str_ += std::to_string(op->cuda_axis_info.block_dim(1));
-    str_ += ", ";
-    str_ += std::to_string(op->cuda_axis_info.block_dim(0));
-    str_ += ")]]";
+    bool has_symbol_in_thread_num = false;
+    std::string launch_bounds_max_work_group_size =
+        "[[intel::max_work_group_size(";
+    for (int i = 0; i < 3; i++) {
+      ir::Expr block_dim = op->cuda_axis_info.block_dim(i);
+      if (block_dim.is_constant()) {
+        launch_bounds_max_work_group_size +=
+            std::to_string(block_dim.get_constant());
+        if (i < 2) {
+          launch_bounds_max_work_group_size += ", ";
+        }
+      } else {
+        has_symbol_in_thread_num = true;
+        break;
+      }
+    }
+    launch_bounds_max_work_group_size += ")]]";
+    if (!has_symbol_in_thread_num) {
+      str_ += launch_bounds_max_work_group_size;
+    }
   }
   str_ += "\n";
   // function body
