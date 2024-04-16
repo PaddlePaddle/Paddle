@@ -453,11 +453,11 @@ class StraightThroughEstimatorGradKernel : public framework::OpKernel<T> {
         context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto x_grad_name = framework::GradVarName("X");
     auto *d_x = context.Output<phi::DenseTensor>(x_grad_name);
-    PADDLE_ENFORCE_NOT_NULL(d_x,
-                            platform::errors::PreconditionNotMet(
-                                "StraightThroughEstimatorGradKernel "
-                                "doesn't have the output named %s.",
-                                x_grad_name));
+    PADDLE_ENFORCE_NOT_NULL(
+        d_x,
+        phi::errors::PreconditionNotMet("StraightThroughEstimatorGradKernel "
+                                        "doesn't have the output named %s.",
+                                        x_grad_name));
 
     // Initialize dx as same as d_out
     d_x->mutable_data<T>(context.GetPlace());

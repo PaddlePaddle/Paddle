@@ -68,49 +68,49 @@ class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("RpnRois"),
         true,
-        platform::errors::NotFound("Input(RpnRois) shouldn't be null."));
+        phi::errors::NotFound("Input(RpnRois) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("GtClasses"),
         true,
-        platform::errors::NotFound("Input(GtClasses) shouldn't be null."));
+        phi::errors::NotFound("Input(GtClasses) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("IsCrowd"),
         true,
-        platform::errors::NotFound("Input(IsCrowd) shouldn't be null."));
+        phi::errors::NotFound("Input(IsCrowd) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("GtBoxes"),
         true,
-        platform::errors::NotFound("Input(GtBoxes) shouldn't be null."));
+        phi::errors::NotFound("Input(GtBoxes) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("ImInfo"),
         true,
-        platform::errors::NotFound("Input(ImInfo) shouldn't be null."));
+        phi::errors::NotFound("Input(ImInfo) shouldn't be null."));
 
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("Rois"),
         true,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "Output(Rois) of GenerateProposalLabelsOp should not be null"));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("LabelsInt32"),
                       true,
-                      platform::errors::NotFound("Output(LabelsInt32) of "
-                                                 "GenerateProposalLabelsOp "
-                                                 "should not be null"));
+                      phi::errors::NotFound("Output(LabelsInt32) of "
+                                            "GenerateProposalLabelsOp "
+                                            "should not be null"));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("BboxTargets"),
                       true,
-                      platform::errors::NotFound("Output(BboxTargets) of "
-                                                 "GenerateProposalLabelsOp "
-                                                 "should not be null"));
+                      phi::errors::NotFound("Output(BboxTargets) of "
+                                            "GenerateProposalLabelsOp "
+                                            "should not be null"));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("BboxInsideWeights"),
         true,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "Output(BboxInsideWeights) of GenerateProposalLabelsOp "
             "should not be null"));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("BboxOutsideWeights"),
         true,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "Output(BboxOutsideWeights) of GenerateProposalLabelsOp "
             "should not be null"));
 
@@ -120,21 +120,21 @@ class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(rpn_rois_dims.size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dimensions size of Input(RpnRois) must be 2. "
                           "But received dimensions size=[%d], dimensions=[%s].",
                           rpn_rois_dims.size(),
                           rpn_rois_dims));
     PADDLE_ENFORCE_EQ(gt_boxes_dims.size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dimensions size of Input(GtBoxes) must be 2. "
                           "But received dimensions size=[%d], dimensions=[%s].",
                           gt_boxes_dims.size(),
                           gt_boxes_dims));
     PADDLE_ENFORCE_EQ(im_info_dims.size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dimensions size of Input(ImInfo) must be 2. But "
                           "received dimensions size=[%d], dimensions=[%s].",
                           im_info_dims.size(),
@@ -146,7 +146,7 @@ class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           ctx->HasInput("MaxOverlap"),
           true,
-          platform::errors::NotFound(
+          phi::errors::NotFound(
               "Input(MaxOverlap) of GenerateProposalLabelsOp "
               "should not be null when is_cascade_rcnn is True."));
     }
@@ -544,7 +544,7 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         rpn_rois->lod().size(),
         1UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "GenerateProposalLabelsOp rpn_rois needs 1 level of LoD. But "
             "received level of LoD is [%d], LoD is [%s].",
             rpn_rois->lod().size(),
@@ -552,7 +552,7 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         gt_classes->lod().size(),
         1UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "GenerateProposalLabelsOp gt_classes needs 1 level of LoD. But "
             "received level of LoD is [%d], LoD is [%s].",
             gt_classes->lod().size(),
@@ -560,7 +560,7 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         is_crowd->lod().size(),
         1UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "GenerateProposalLabelsOp is_crowd needs 1 level of LoD. But "
             "received level of LoD is [%d], LoD is [%s].",
             is_crowd->lod().size(),
@@ -568,7 +568,7 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         gt_boxes->lod().size(),
         1UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "GenerateProposalLabelsOp gt_boxes needs 1 level of LoD. But "
             "received level of LoD is [%d], LoD is [%s].",
             gt_boxes->lod().size(),

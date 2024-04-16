@@ -16,23 +16,128 @@
 
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/utils/multi_threading.h"
+#include "paddle/common/enforce.h"
+#include "paddle/common/flags.h"
+
+PD_DECLARE_bool(enable_cinn_compile_cache);
 
 namespace cinn::hlir::framework {
 
+class CompilationContextMapper {
+ public:
+  CompilationContextMapper(const Target& target,
+                           const std::vector<pir::OpLoweringGroupPtr>& groups) {
+    Construct(target, groups);
+  }
+  std::vector<GroupCompilationContext>& UniqueCompilationContexts() {
+    return group_compilation_contexts_;
+  }
+  std::vector<std::shared_ptr<pir::CompilationResult>>&
+  MutableCompilationResult() {
+    return compilation_results_;
+  }
+
+  std::vector<pir::CINNKernelInfo> RecoverKernelInfos();
+  void UpdateGlobalCache();
+  void SetFinalize(bool val) { is_finalized_ = val; }
+
+ private:
+  void Construct(const Target& target,
+                 const std::vector<pir::OpLoweringGroupPtr>& groups);
+  std::vector<size_t> mapper_index_;
+  std::vector<pir::FusionInfo> fusion_infos_;
+  std::vector<GroupCompilationContext> group_compilation_contexts_;
+  std::vector<std::shared_ptr<pir::CompilationResult>> compilation_results_;
+
+  bool is_finalized_{false};
+};
+
 std::vector<pir::CINNKernelInfo> PirCompiler::Build(
     const std::vector<pir::OpLoweringGroupPtr>& groups) {
-  std::vector<pir::CINNKernelInfo> kernel_infos(groups.size());
-  for (int i = 0; i < groups.size(); ++i) {
-    group_compilation_contexts_.emplace_back(target_, groups[i]);
+  CompilationContextMapper ctx_mapper(target_, groups);
+  auto& group_compilation_contexts = ctx_mapper.UniqueCompilationContexts();
+  auto& compilation_results = ctx_mapper.MutableCompilationResult();
+
+  const size_t task_size = group_compilation_contexts.size();
+  const size_t thread_size = FLAGS_enable_cinn_compile_cache ? task_size : 1;
+  VLOG(5) << "Found " << task_size << " new groups parsed from "
+          << groups.size();
+  if (task_size > 0) {
+    auto worker_fn = [&](int index) {
+      CompilationTask task(&group_compilation_contexts[index]);
+      compilation_results[index] = task();
+    };
+    utils::parallel_run(worker_fn,
+                        utils::SequenceDispatcher(0, task_size),
+                        /*thread_num=*/thread_size);
   }
-  auto worker_fn = [&](int index) {
-    CompilationTask task(&group_compilation_contexts_[index]);
-    task();
-    kernel_infos[index] = task.GetCINNKernelInfo();
+  ctx_mapper.SetFinalize(true);
+  ctx_mapper.UpdateGlobalCache();
+  return ctx_mapper.RecoverKernelInfos();
+}
+
+void CompilationContextMapper::Construct(
+    const Target& target, const std::vector<pir::OpLoweringGroupPtr>& groups) {
+  std::unordered_set<size_t> unique_infos;
+  const auto IsNewAndUnique =
+      [&unique_infos](const pir::FusionInfo& info) -> bool {
+    const bool is_unique = unique_infos.find(info.hash()) == unique_infos.end();
+    const bool is_new = !CompilationCache::Instance().Has(info);
+    return is_new && is_unique;
   };
-  utils::parallel_run(
-      worker_fn, utils::SequenceDispatcher(0, groups.size()), -1);
+
+  for (size_t i = 0; i < groups.size(); ++i) {
+    fusion_infos_.emplace_back(*groups[i]);
+    // If FLAGS_enable_cinn_compile_cache=False, Cache strategy will not take
+    // effects.
+    if (IsNewAndUnique(fusion_infos_[i]) || !FLAGS_enable_cinn_compile_cache) {
+      mapper_index_.push_back(i);
+      group_compilation_contexts_.emplace_back(target, groups[i]);
+      compilation_results_.push_back(
+          std::make_shared<pir::CompilationResult>(target));
+    }
+    unique_infos.insert(fusion_infos_[i].hash());
+  }
+}
+
+std::vector<pir::CINNKernelInfo>
+CompilationContextMapper::RecoverKernelInfos() {
+  PADDLE_ENFORCE_EQ(
+      is_finalized_,
+      true,
+      ::common::errors::PreconditionNotMet(
+          "Required is_finalized_ = true, please call SetFinalize() firstly."));
+  PADDLE_ENFORCE_EQ(group_compilation_contexts_.size(),
+                    compilation_results_.size(),
+                    ::common::errors::PreconditionNotMet(
+                        "Required group_compilation_contexts_.size() = "
+                        "compilation_results_.size()."));
+
+  std::vector<pir::CINNKernelInfo> kernel_infos(fusion_infos_.size());
+  for (size_t i = 0; i < fusion_infos_.size(); ++i) {
+    kernel_infos[i] =
+        CompilationCache::Instance().GetKernelInfo(fusion_infos_[i]);
+  }
   return kernel_infos;
 }
 
+void CompilationContextMapper::UpdateGlobalCache() {
+  PADDLE_ENFORCE_EQ(
+      is_finalized_,
+      true,
+      ::common::errors::PreconditionNotMet(
+          "Required is_finalized_ = true, please call SetFinalize() firstly."));
+  for (size_t i = 0; i < compilation_results_.size(); ++i) {
+    PADDLE_ENFORCE_LT(mapper_index_[i],
+                      fusion_infos_.size(),
+                      ::common::errors::PreconditionNotMet(
+                          "Required mapper_index < fusion_infos_.size()."));
+    const auto& fusion_info = fusion_infos_[mapper_index_[i]];
+    const auto& int_args_map =
+        compilation_results_[i]->GetBackendResource()->GetIntArgsMap();
+    VLOG(5) << "Insert new compiled result into cache, fusion_info: "
+            << fusion_info << ", int_args_map: " << int_args_map;
+    CompilationCache::Instance().Insert(fusion_info, compilation_results_[i]);
+  }
+}
 }  // namespace cinn::hlir::framework

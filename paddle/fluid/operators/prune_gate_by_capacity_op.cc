@@ -51,7 +51,7 @@ class PruneGateByCapacityOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         expert_count_num_ele,
         n_expert * n_worker,
-        platform::errors::Unavailable(
+        phi::errors::Unavailable(
             "The number of elements for expert_count is ( %ld ) incorrect. "
             "Because the number of expert_count must equal the "
             "product of n_worker ( %ld ) and n_expert ( %ld ). "
@@ -76,11 +76,11 @@ class PruneGateByCapacityOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         gate_idx_data_type,
         expert_count_data_type,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The dtype of the gate_idx and expert_count should be same"));
     PADDLE_ENFORCE_EQ(gate_idx_data_type,
                       framework::proto::VarType::INT64,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dtype of the gate_idx and expert_count should "
                           "be same as int64"));
     return phi::KernelKey(gate_idx_data_type, ctx.GetPlace());

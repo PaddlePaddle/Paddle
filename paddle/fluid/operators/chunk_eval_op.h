@@ -57,7 +57,7 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_LE(
           label[i],
           num_chunk_types * num_tag_types,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The value of Input(Label) should be less than the number of "
               "chunk types times the number of tag types, but received %d "
               "(Label) vs %d (chunk types) * %d (tag types).",
@@ -178,7 +178,7 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
       tag_end = -1;
       tag_single = -1;
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument("Unknown chunk scheme."));
+      PADDLE_THROW(phi::errors::InvalidArgument("Unknown chunk scheme."));
     }
     other_chunk_type = num_chunk_types = context.Attr<int>("num_chunk_types");
     excluded_chunk_types.insert(
@@ -244,13 +244,13 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           lod.size(),
           1UL,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Only support one level LoD sequence now, but received %d.",
               lod.size()));
       PADDLE_ENFORCE_EQ(
           lod,
           inference->lod(),
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Input(Inference) and Input(Label) of Op(chunk_eval) should have "
               "same LoD information."));
       num_sequences = lod[0].size() - 1;

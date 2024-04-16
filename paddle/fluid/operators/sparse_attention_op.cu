@@ -314,7 +314,7 @@ void SparseSoftmaxForward(const phi::GPUContext& ctx,
                            columns_data,
                            num_rows);
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "The head_dim of query in sparse_attention op should less or equal "
         "512"));
   }
@@ -412,7 +412,7 @@ void SparseSoftmaxBackward(const phi::GPUContext& ctx,
                            columns_data,
                            num_rows);
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "The head_dim of query in sparse_attention op should less or equal "
         "512"));
   }
@@ -425,7 +425,7 @@ inline cudaDataType_t GetGpuType(const VarType::Type data_type) {
   } else if (data_type == VarType::FP64) {
     return CUDA_R_64F;
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Not support tensor type in sparse_attention OP: %s",
         framework::DataTypeToString(data_type)));
   }

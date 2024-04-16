@@ -58,7 +58,7 @@ class TestConv2dBnPassPattern(PassTest):
                 )
                 out = bn(conv2d(x))
                 out = paddle.assign(out)
-                self.pass_list = ['conv2d_bn_fuse_pass']
+                self.pass_attr_list = [{'conv2d_bn_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((3, 1, 28, 28)).astype("float32")
                 }

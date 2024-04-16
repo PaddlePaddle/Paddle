@@ -41,7 +41,7 @@ const ::cinn::common::Target& PlaceToCinnTarget(const platform::Place& place) {
     return ::cinn::common::DefaultNVGPUTarget();
   }
 
-  PADDLE_THROW(platform::errors::InvalidArgument(
+  PADDLE_THROW(phi::errors::InvalidArgument(
       "CINN is not supported on current place:%s", place));
   return ::cinn::common::UnkTarget();
 }

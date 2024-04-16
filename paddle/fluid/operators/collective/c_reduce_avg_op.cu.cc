@@ -31,5 +31,5 @@ PD_REGISTER_STRUCT_KERNEL(c_reduce_avg,
                           double,
                           int,
                           int64_t,
-                          plat::float16,
+                          phi::dtype::float16,
                           plat::bfloat16) {}
