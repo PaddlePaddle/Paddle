@@ -31,7 +31,6 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/dynamic_reshape_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fold_manipulation_ops_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fuse_shape_ops_into_generate_shape_op_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/check_infer_symbolic_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_0d_to_1d_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_dynamic_to_static_dim_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_static_dim_to_dynamic_pass.h"
@@ -50,7 +49,6 @@
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 
 COMMON_DECLARE_bool(print_ir);
-COMMON_DECLARE_bool(check_infer_symbolic);
 PD_DECLARE_bool(group_schedule_tiling_first);
 
 namespace cinn::dialect::ir {
@@ -91,11 +89,6 @@ void ApplyCinnPreprocessPass(
         CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   bool has_dynamic_shape = HasDynamicShape(*program);
-
-  if (!has_dynamic_shape && FLAGS_check_infer_symbolic) {
-    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
-    pass_manager->AddPass(cinn::dialect::ir::CreateCheckInferSymbolicPass());
-  }
 
   if (has_dynamic_shape) {
     pass_manager->AddPass(cinn::dialect::ir::CreateConvert0DTo1DPass());
