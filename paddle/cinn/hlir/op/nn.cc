@@ -377,9 +377,6 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
           }
         },
     });
-    std::stringstream ss;
-    ss << "This target [" << target << "] is not supported yet.";
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -1577,8 +1574,8 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
     }
     target.arch.Visit(adt::match{
         [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::X86Arch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+        [&](common::X86Arch) { },
+        [&](common::ARMArch) { },
         [&](common::NVGPUArch) {
           pe::IRPoolScheduleGPU(ir_sch, target, arg_pack_size);
         },
@@ -1592,8 +1589,8 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
   bool use_warp_reduce = false;
   target.arch.Visit(adt::match{
       [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-      [&](common::X86Arch) { CINN_NOT_IMPLEMENTED; },
-      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::X86Arch) {  },
+      [&](common::ARMArch) {  },
       [&](common::NVGPUArch) {
         if (global_pooling && data_format == "NCHW") {
           // TODO(hp03): 32 may not be the exact number, try also 16 or 8 or
@@ -1820,8 +1817,8 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
     }
     target.arch.Visit(adt::match{
         [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::X86Arch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+        [&](common::X86Arch) {  },
+        [&](common::ARMArch) {  },
         [&](common::NVGPUArch) {
           CHECK(!vec_tensor.empty());
           Expr Out = vec_tensor[0];

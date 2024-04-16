@@ -2825,7 +2825,7 @@ void CudaSplitSchedule(cinn::common::CINNValuePack *arg_pack,
   int compute_at_level = 0;
   target.arch.Visit(adt::match{
       [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-      [&](common::X86Arch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::X86Arch) { },
       [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::NVGPUArch) {
         if (fused_shape > target.max_num_threads()) {
