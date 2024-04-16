@@ -522,7 +522,6 @@ set(TEST_OPS_WITH_GC
     test_concat_op
     test_elementwise_add_op
     test_elementwise_sub_op
-    test_fill_zeros_like2_op
     test_gather_op
     test_gather_nd_op
     test_linear_chain_crf_op
