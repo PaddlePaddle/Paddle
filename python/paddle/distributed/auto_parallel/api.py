@@ -28,12 +28,15 @@ from paddle.base.framework import (
     EagerParamBase,
     Variable,
     default_main_program,
+    in_pir_mode,
 )
 from paddle.distributed.auto_parallel import Engine, strategy as auto_strategy
 from paddle.distributed.auto_parallel.interface import (
     shard_tensor as shard_tensor_static,
 )
-from paddle.distributed.auto_parallel.placement_type import to_placements
+from paddle.distributed.auto_parallel.placement_type import (
+    to_placements,
+)
 from paddle.distributed.auto_parallel.static.completion import (
     mark_as_sharding_propagation_skip_op,
 )
@@ -388,6 +391,8 @@ def reshard(dist_tensor, mesh, placements):
             dist_attr._set_partial_dims(partial_dims)
 
         return paddle.base.core.reshard(dist_tensor, dist_attr)
+    elif in_pir_mode():
+        return paddle._C_ops.reshard(dist_tensor, mesh, placements)
     else:
         assert isinstance(
             dist_tensor, Variable
@@ -1924,16 +1929,21 @@ class DistModel:
         inner_strategy.gradient_merge = copy.deepcopy(strategy.gradient_merge)
         inner_strategy.pipeline = copy.deepcopy(strategy.pipeline)
         # The below are template interfaces
-        inner_strategy.recompute = copy.deepcopy(strategy._recompute)
-        inner_strategy.mp_optimization = copy.deepcopy(
-            strategy._mp_optimization
-        )
-        inner_strategy.dp_optimization = copy.deepcopy(
-            strategy._dp_optimization
-        )
-        inner_strategy.sp_optimization = copy.deepcopy(
-            strategy._sp_optimization
-        )
+        if hasattr(strategy, "_recompute"):
+            inner_strategy.recompute = copy.deepcopy(strategy._recompute)
+
+        if hasattr(strategy, "_mp_optimization"):
+            inner_strategy.mp_optimization = copy.deepcopy(
+                strategy._mp_optimization
+            )
+        if hasattr(strategy, "_dp_optimization"):
+            inner_strategy.dp_optimization = copy.deepcopy(
+                strategy._dp_optimization
+            )
+        if hasattr(strategy, "_sp_optimization"):
+            inner_strategy.sp_optimization = copy.deepcopy(
+                strategy._sp_optimization
+            )
 
         return inner_strategy
 

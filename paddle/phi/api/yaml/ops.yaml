@@ -1,7 +1,7 @@
 # This file is designed for C++ operators, which manages the
 # generated code for dynamic mode and static mode. If you want
 # to add the new operator configuration, make sure an operator's
-# Python API, dynamic graph API, and static graph Opertaor parameters
+# Python API, dynamic graph API, and static graph Operator parameters
 # are consistent and correspond one-to-one. It's forbidden that the
 # operator configured in this yaml file does not have Python API.
 

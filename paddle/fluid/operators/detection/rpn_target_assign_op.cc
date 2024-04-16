@@ -66,21 +66,21 @@ class RpnTargetAssignOp : public framework::OperatorWithKernel {
     auto im_info_dims = ctx->GetInputDim("ImInfo");
     PADDLE_ENFORCE_EQ(anchor_dims.size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dimensions size of Input(Anchor) must be 2. But "
                           "received dimensions size=[%d], dimensions=[%s].",
                           anchor_dims.size(),
                           anchor_dims));
     PADDLE_ENFORCE_EQ(gt_boxes_dims.size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dimensions size of Input(GtBoxes) must be 2. "
                           "But received dimensions size=[%d], dimensions=[%s].",
                           gt_boxes_dims.size(),
                           gt_boxes_dims));
     PADDLE_ENFORCE_EQ(im_info_dims.size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dimensions size of Input(ImInfo) must be 2. But "
                           "received dimensions size=[%d], dimensions=[%s].",
                           im_info_dims.size(),
@@ -411,14 +411,14 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(gt_boxes->lod().size(),
                       1UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "RpnTargetAssignOp gt_boxes needs 1 level of LoD. "
                           "But received level of LoD is [%d], LoD is [%s].",
                           gt_boxes->lod().size(),
                           gt_boxes->lod()));
     PADDLE_ENFORCE_EQ(is_crowd->lod().size(),
                       1UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "RpnTargetAssignOp is_crowd needs 1 level of LoD. "
                           "But received level of LoD is [%d], LoD is [%s].",
                           is_crowd->lod().size(),
@@ -567,7 +567,7 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_LE(
         total_loc_num,
         max_num,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The number of sampled bboxes should not be greater than the "
             "number of all anchor boxes(%d), but the number of sampled "
             "bboxes is :%d.",
@@ -576,7 +576,7 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_LE(
         total_score_num,
         max_num,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The number of sampled scores should not be greater than the "
             "number of all anchor boxes(%d), but the number of sampled "
             "scores is :%d.",
@@ -815,7 +815,7 @@ class RetinanetTargetAssignOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         anchor_dims.size(),
         2,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The rank of Input(Anchor) should be 2, but received Anchor "
             "rank is :%d, Anchor shape is:[%s].",
             anchor_dims.size(),
@@ -823,7 +823,7 @@ class RetinanetTargetAssignOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         gt_boxes_dims.size(),
         2,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The rank of Input(GtBoxes) should be 2, but received GtBoxes "
             "rank is :%d, GtBoxes shape is:[%s].",
             gt_boxes_dims.size(),
@@ -831,7 +831,7 @@ class RetinanetTargetAssignOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         gt_labels_dims.size(),
         2,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The rank of Input(GtLabels) should be 2, but received GtLabels "
             "rank is :%d, GtLabels shape is:[%s].",
             gt_labels_dims.size(),
@@ -839,7 +839,7 @@ class RetinanetTargetAssignOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         im_info_dims.size(),
         2,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The rank of Input(ImInfo) should be 2, but received ImInfo "
             "rank is :%d, ImInfo shape is:[%s].",
             im_info_dims.size(),
@@ -1019,21 +1019,21 @@ class RetinanetTargetAssignKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         gt_boxes->lod().size(),
         1UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The LoD level of Input(GtBoxes) should be 1, but received GtBoxes "
             "LoD level is :%d.",
             gt_boxes->lod().size()));
     PADDLE_ENFORCE_EQ(
         gt_labels->lod().size(),
         1UL,
-        platform::errors::InvalidArgument("The LoD level of Input(GtLabels) "
-                                          "should be 1, but received GtLabels "
-                                          "LoD level is :%d.",
-                                          gt_labels->lod().size()));
+        phi::errors::InvalidArgument("The LoD level of Input(GtLabels) "
+                                     "should be 1, but received GtLabels "
+                                     "LoD level is :%d.",
+                                     gt_labels->lod().size()));
     PADDLE_ENFORCE_EQ(
         is_crowd->lod().size(),
         1UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The LoD level of Input(IsCrowd) should be 1, but received IsCrowd "
             "LoD level is :%d.",
             is_crowd->lod().size()));
@@ -1190,7 +1190,7 @@ class RetinanetTargetAssignKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_LE(
         total_loc_num,
         max_num,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The number of sampled bboxes should not be greater than the "
             "number of all anchor boxes(%d), but the number of sampled "
             "bboxes is :%d.",
@@ -1199,7 +1199,7 @@ class RetinanetTargetAssignKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_LE(
         total_score_num,
         max_num,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The number of sampled scores should not be greater than the "
             "number of all anchor boxes(%d), but the number of sampled "
             "scores is :%d.",
@@ -1208,7 +1208,7 @@ class RetinanetTargetAssignKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_LE(
         total_fg_num,
         batch_num,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The number of foreground numbers should not be greater than the "
             "batch size(%d), but the number of foreground numbers is :%d.",
             batch_num,
