@@ -576,6 +576,44 @@ class TestTensorAxis(unittest.TestCase):
             infer_out = output_handle.copy_to_cpu()
             np.testing.assert_allclose(static_out[0], infer_out)
 
+    def test_static(self):
+        paddle.enable_static()
+        np_x = np.random.randn(9, 10, 11).astype('float32')
+        with paddle.pir_utils.IrGuard():
+            main_prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(main_prog, startup_prog):
+                # run static
+                x = paddle.static.data(
+                    shape=np_x.shape, name='x', dtype=np_x.dtype
+                )
+                linear = paddle.nn.Linear(np_x.shape[-1], np_x.shape[-1])
+                linear_out = linear(x)
+                relu_out = paddle.nn.functional.relu(linear_out)
+                axis = paddle.full([1], 2, dtype='int64')
+                out = paddle.cumsum(relu_out, axis=axis)
+                loss = paddle.mean(out)
+                sgd = paddle.optimizer.SGD(learning_rate=0.0)
+                sgd.minimize(paddle.mean(out))
+
+                exe = paddle.static.Executor(self.place)
+                exe.run(startup_prog)
+                static_out = exe.run(feed={'x': np_x}, fetch_list=[out])
+
+                # run infer
+                paddle.static.save_inference_model(
+                    self.save_path, [x], [out], exe, program=main_prog
+                )
+
+                load_program, _, _ = paddle.static.load_inference_model(
+                    self.save_path, exe
+                )
+
+                self.assertEqual(
+                    len(load_program.global_block().ops) + 1,
+                    len(main_prog.global_block().ops),
+                )
+
 
 class TestCumSumOpFp16(unittest.TestCase):
     @test_with_pir_api

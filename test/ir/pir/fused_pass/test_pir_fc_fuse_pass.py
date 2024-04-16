@@ -63,7 +63,7 @@ class TestFcFusePassPattern(PassTest):
                                 else:
                                     out = paddle.add(paddle.matmul(x, w), y)
                                 out = paddle.assign(out)
-                                self.pass_list = ['fc_fuse_pass']
+                                self.pass_attr_list = [{'fc_fuse_pass': {}}]
                                 self.feeds = {
                                     "x": np.random.random(x_shape).astype(
                                         "float32"

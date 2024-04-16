@@ -136,58 +136,13 @@ bool IsShapeOrDataNeedSubstitute(
   return ret;
 }
 
-symbol::TensorShapeOrDataDimExprs SubstituteTensorShapeOrData(
-    const symbol::TensorShapeOrDataDimExprs& shape_or_data,
-    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>& dim_expr_map) {
-  const auto& SimplifyDimExpr =
-      [&](const std::vector<symbol::DimExpr>& original_dim_expr)
-      -> std::vector<symbol::DimExpr> {
-    std::vector<symbol::DimExpr> simplified_dim_expr{};
-    for (const symbol::DimExpr& dim_expr : original_dim_expr) {
-      simplified_dim_expr.push_back(symbol::SimplifyDimExpr(
-          symbol::SubstituteDimExpr(dim_expr, dim_expr_map)));
-    }
-    return simplified_dim_expr;
-  };
-
-  std::vector<symbol::DimExpr> simplified_shape =
-      SimplifyDimExpr(shape_or_data.shape());
-  if (!shape_or_data.data().has_value()) {
-    return symbol::ShapeOrData<symbol::DimExpr>(simplified_shape);
-  }
-  std::vector<symbol::DimExpr> simplified_data =
-      SimplifyDimExpr(shape_or_data.data().value());
-  return symbol::ShapeOrData<symbol::DimExpr>(simplified_shape,
-                                              simplified_data);
-}
-
-symbol::ShapeOrDataDimExprs SubstituteShapeOrData(
-    const symbol::ShapeOrDataDimExprs& shape_or_data,
-    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>& dim_expr_map) {
-  auto lambdas = symbol::Overloaded{
-      [&](const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data) {
-        return symbol::ShapeOrDataDimExprs(
-            SubstituteTensorShapeOrData(tensor_shape_or_data, dim_expr_map));
-      },
-      [&](const symbol::TensorListShapeOrDataDimExprs& tensor_list) {
-        symbol::TensorListShapeOrDataDimExprs simplified_tensor_list;
-        for (symbol::TensorShapeOrDataDimExprs tensor_shape_or_data :
-             tensor_list) {
-          simplified_tensor_list.push_back(
-              SubstituteTensorShapeOrData(tensor_shape_or_data, dim_expr_map));
-        }
-        return symbol::ShapeOrDataDimExprs(simplified_tensor_list);
-      }};
-  return std::visit(lambdas, shape_or_data.variant());
-}
-
 symbol::ShapeOrDataDimExprs TrySubstitute(
     const symbol::ShapeOrDataDimExprs& shape_or_data,
     const std::unordered_map<symbol::DimExpr, symbol::DimExpr>& dim_expr_map) {
   if (!IsShapeOrDataNeedSubstitute(shape_or_data, dim_expr_map)) {
     return shape_or_data;
   }
-  return SubstituteShapeOrData(shape_or_data, dim_expr_map);
+  return symbol::SubstituteShapeOrData(shape_or_data, dim_expr_map);
 }
 
 void InferSymbolicShapeForOperation(
