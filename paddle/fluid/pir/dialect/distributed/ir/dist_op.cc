@@ -283,17 +283,18 @@ ProcessMeshAttribute MergeMeshes(const ProcessMeshAttribute& mesh1,
 
   merged_ids.reserve(ids1.size() + ids2.size());
   merged_ids.insert(merged_ids.end(), ids1.begin(), ids1.end());
-  merged_ids.insert(merged_ids.end(), ids1.begin(), ids1.end());
+  merged_ids.insert(merged_ids.end(), ids2.begin(), ids2.end());
 
   // Remove duplicates
   std::sort(merged_ids.begin(), merged_ids.end());
   auto last = std::unique(merged_ids.begin(), merged_ids.end());
   merged_ids.erase(last, merged_ids.end());
 
-  return ProcessMeshAttribute::get(pir::IrContext::Instance(),
-                                   {1},  // flatten mesh shape
-                                   merged_ids,
-                                   {"merged"});
+  return ProcessMeshAttribute::get(
+      pir::IrContext::Instance(),
+      {static_cast<int64_t>(merged_ids.size())},  // flatten mesh shape
+      merged_ids,
+      {"merged"});
 }
 
 void ReshardOp::Build(pir::Builder& builder,

@@ -21,29 +21,6 @@ def apply_partition_pass(program):
     new_program = program.clone()
     with paddle.static.program_guard(new_program):
         for op in new_program.global_block().ops:
-            # # deal with user reshard
-            # if op.name() == "dist_op.reshard":
-            #     print("encounter dist_op.reshard ")
-            #     reshard_in_dist_attr = op.dist_attr.operand_dist_attr(0)
-            #     reshard_out_dist_attr = op.dist_attr.result_dist_attr(0)
-            #     reshard_out1 = op.result(0)
-            #     reshard_in1 = op.operand(0)
-            #     # cross mesh reshard
-            #     print("reshard_in_dist_attr.process_mesh: ", reshard_in_dist_attr.process_mesh)
-            #     print("reshard_out_dist_attr.process_mesh: ", reshard_out_dist_attr.process_mesh)
-            #     if reshard_in_dist_attr.process_mesh != reshard_out_dist_attr.process_mesh:
-            #         print("copy reshard......")
-            #         paddle.pir.set_insertion_point(op)
-            #         reshard_out0 = paddle._pir_ops.reshard_v2(reshard_in1.source(), reshard_out_dist_attr)
-
-            #         # first reshard: do notthing
-            #         # second reshard: set input operand as null, op's mesh to output's mesh
-            #         new_op_dist_attr = paddle.base.libpaddle.pir.create_operator_dist_attr(reshard_out_dist_attr.process_mesh, op.dist_attr.operand_dist_attrs(), op.dist_attr.result_dist_attrs())
-            #         op.dist_attr = new_op_dist_attr
-            #         reshard_in1.set_source(None)
-
-            #     continue
-
             # assert len(op.operands()) == len(op.dist_attr().operand_dist_attrs()), f'The number of operand and operand_dist_attrs are not equal in op: {op}'
             for var, operand_dist_attr in zip(
                 op.operands(), op.dist_attr.operand_dist_attrs()
@@ -58,6 +35,39 @@ def apply_partition_pass(program):
                         var.source(), operand_dist_attr
                     )
                     var.set_source(reshard_var)
+
+        # pruning op and value not belong to cur rank
+        cur_rank = paddle.distributed.get_rank()
+        for op in new_program.global_block().ops[::-1]:
+            if cur_rank not in op.dist_attr.process_mesh.process_ids:
+                new_program.global_block().remove_op(op)
+            else:
+                # set the operand as null when it is not belong to cur rank
+                if (
+                    op.name() == 'dist_op.reshard'
+                    and cur_rank
+                    not in op.operand(0)
+                    .source()
+                    .dist_attr()
+                    .process_mesh.process_ids
+                ):
+                    op.operand(0).set_source(paddle.pir.fake_value())
+
+        # merge pd.data ops for
+        lr_ops = []
+        for op in new_program.global_block().ops[::-1]:
+            if (
+                op.name() == 'pd_op.data'
+                and "learning_rate" in op.attrs()["name"]
+            ):
+                lr_ops.append(op)
+        if len(lr_ops) > 1:
+            lr_value = lr_ops[0].result(0)
+            for op in lr_ops[1:]:
+                lr = op.result(0)
+                lr.replace_all_uses_with(lr_value)
+                new_program.global_block().remove_op(op)
+
     return new_program
 
 
