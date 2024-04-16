@@ -818,10 +818,12 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
 
     for (size_t i = 0; i < x_dim.size();) {
       if (i == static_cast<size_t>(start_axis)) {
-        Tensor flat =
-            slice<T>(x_shape, {0}, {start_axis}, {end_axis + 1}, {1}, {});
-        flat = prod<T>(flat, {0}, false, false);
-        out_shape.push_back(reshape<T>(flat, {1}));
+        Tensor flat = get_slice<T>(x_shape, i);
+
+        for (auto t = start_axis + 1; t <= end_axis; ++t) {
+          flat = flat * get_slice<T>(x_shape, t);
+        }
+        out_shape.push_back(flat);
         i = end_axis + 1;
       } else {
         out_shape.push_back(get_slice<T>(x_shape, i));
