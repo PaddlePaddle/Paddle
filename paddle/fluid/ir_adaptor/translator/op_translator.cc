@@ -286,7 +286,6 @@ inline std::string GetPrefix(pir::IrContext* ctx, const OpDesc& op_desc) {
 
 pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
                                         const OpDesc& op_desc) {
-  VLOG(6) << "[------]: " << op_desc.Type();
   std::string target_op_name =
       GetPrefix(ctx, op_desc) + OpNameCompatibleMapping(op_desc.Type());
   if (IsInplace(op_desc) && *target_op_name.rbegin() != '_') {
@@ -303,7 +302,6 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
              op_desc.Type(),
              target_op_name);
   }
-  VLOG(6) << "[----294]: " << OpNameCompatibleMapping(op_desc.Type());
   if (!paddle::dialect::HaveOpToMultiKernelsMap(
           OpNameCompatibleMapping(op_desc.Type()))) {
     return op_info;
@@ -361,8 +359,6 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
   }
 
   target_op_name = OpNameCompatibleMapping(op_desc.Type());
-  VLOG(6) << "[------352]:" << target_op_name;
-  VLOG(6) << "[------351]: " << op_desc.Type();
   auto sig_infos = paddle::dialect::LegacyOpToPdOpsMapping(target_op_name);
 
   target_op_name = "";
@@ -385,7 +381,6 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
       }
     }
     if (i == need_inputs_sig.size()) {
-      VLOG(6) << "[------372]:" << target_op_name;
       target_op_name = sig.name;
       break;
     }

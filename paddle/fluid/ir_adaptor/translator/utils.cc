@@ -41,7 +41,6 @@ bool HaveOpToMultiKernelsMap(std::string op_name) {
 }
 
 const std::vector<PdOpSig>& LegacyOpToPdOpsMapping(std::string op_name) {
-  VLOG(6) << "---------:38: " << op_name;
   return op_to_multi_kernels_map[op_name];
 }
 
