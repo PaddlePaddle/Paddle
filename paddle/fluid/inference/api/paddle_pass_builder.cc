@@ -173,11 +173,7 @@ const std::vector<std::string> kDlnneSubgraphPasses({
     "dlnne_subgraph_pass",           //
 });
 
-const std::vector<std::string> kLiteSubgraphPasses({
-#ifdef PADDLE_WITH_LITE
-    "lite_subgraph_pass",
-#endif
-});
+const std::vector<std::string> kLiteSubgraphPasses({});
 
 // TODO(inference): Most of the existing pass fusion operators do not
 // support fp16/bf16 precision, temporarily use low precision pass to prevent
