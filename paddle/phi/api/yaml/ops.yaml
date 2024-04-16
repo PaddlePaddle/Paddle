@@ -2319,6 +2319,7 @@
   kernel :
     func : relu6
   backward : relu6_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : renorm
   args : (Tensor x, float p, int axis, float max_norm)

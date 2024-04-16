@@ -71,6 +71,7 @@
 #ifdef PADDLE_WITH_CINN
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_util.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #endif
 
@@ -1876,23 +1877,35 @@ void BindUtils(pybind11::module *m) {
 
 namespace {
 
+#ifdef PADDLE_WITH_CINN
+std::shared_ptr<pir::PassManager> CreatePassManager() {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+  auto pass_manager = std::make_shared<pir::PassManager>(ctx);
+  if (FLAGS_print_ir) {
+    pass_manager->EnableIRPrinting();
+  }
+  return pass_manager;
+}
+#endif
+
 void ApplyCinnPass(Program &program) {  // NOLINT
 #ifdef PADDLE_WITH_CINN
-  cinn::dialect::ir::ApplyCinnPass(&program, [] {
-    pir::IrContext *ctx = pir::IrContext::Instance();
-    ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-    ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-    ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-    auto pass_manager = std::make_shared<pir::PassManager>(ctx);
-    if (FLAGS_print_ir) {
-      pass_manager->EnableIRPrinting();
-    }
-    return pass_manager;
-  });
+  cinn::dialect::ir::ApplyCinnPass(&program, CreatePassManager);
 #else
   PADDLE_THROW(common::errors::Unimplemented(
       "Currently we only support CINN Pass for Pir under @to_static, please "
       "compile PaddlePaddle with CINN"));
+#endif
+}
+
+void CheckInferSymbolicIfNeed(Program &program) {  // NOLINT
+#ifdef PADDLE_WITH_CINN
+  cinn::dialect::ir::CheckInferSymbolicIfNeed(&program, CreatePassManager);
+#else
+  // Do nothing.
 #endif
 }
 
@@ -1911,6 +1924,7 @@ void InferSymbolicShapePass(
 
 void BindIrPass(pybind11::module *m) {
   m->def("apply_cinn_pass", ApplyCinnPass);
+  m->def("check_infer_symbolic_if_need", CheckInferSymbolicIfNeed);
   m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
 
   py::class_<Pass, std::shared_ptr<Pass>> pass(*m,
