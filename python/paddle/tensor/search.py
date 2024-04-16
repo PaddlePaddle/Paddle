@@ -101,6 +101,26 @@ def argsort(x, axis=-1, descending=False, stable=False, name=None):
              [[2, 0, 2, 0],
               [1, 1, 0, 2],
               [0, 2, 1, 1]]])
+
+            >>> x = paddle.to_tensor([1, 0]*40, dtype='float32')
+            >>> out1 = paddle.argsort(x, stable=False)
+            >>> out2 = paddle.argsort(x, stable=True)
+
+            >>> print(out1)
+            Tensor(shape=[80], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [55, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 1 , 57, 59, 61,
+             63, 65, 67, 69, 71, 73, 75, 77, 79, 17, 11, 13, 25, 7 , 3 , 27, 23, 19,
+             15, 5 , 21, 9 , 10, 64, 62, 68, 60, 58, 8 , 66, 14, 6 , 70, 72, 4 , 74,
+             76, 2 , 78, 0 , 20, 28, 26, 30, 32, 24, 34, 36, 22, 38, 40, 12, 42, 44,
+             18, 46, 48, 16, 50, 52, 54, 56])
+
+            >>> print(out2)
+            Tensor(shape=[80], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [1 , 3 , 5 , 7 , 9 , 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35,
+             37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63, 65, 67, 69, 71,
+             73, 75, 77, 79, 0 , 2 , 4 , 6 , 8 , 10, 12, 14, 16, 18, 20, 22, 24, 26,
+             28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62,
+             64, 66, 68, 70, 72, 74, 76, 78])
     """
     if in_dynamic_or_pir_mode():
         _, ids = _C_ops.argsort(x, axis, descending, stable)
