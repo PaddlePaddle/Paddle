@@ -49,7 +49,6 @@
 #include "paddle/fluid/pir/transforms/shape_optimization_pass.h"
 
 COMMON_DECLARE_bool(print_ir);
-COMMON_DECLARE_bool(check_infer_symbolic);
 COMMON_DECLARE_bool(disable_dyshape_in_train);
 PD_DECLARE_bool(group_schedule_tiling_first);
 
