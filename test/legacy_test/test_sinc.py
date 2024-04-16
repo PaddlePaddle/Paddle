@@ -26,13 +26,12 @@ def np_sinc(x: np.ndarray):
 
 
 class TestSincAPI(unittest.TestCase):
-    def setUp(self) -> None:
+    def setUp(self):
         self.cpu_support_dtypes = [
             'float32',
             'float64',
         ]
         self.cuda_support_dtypes = [
-            'float16',
             'float32',
             'float64',
         ]
@@ -142,6 +141,53 @@ class TestSincAPI(unittest.TestCase):
 
         for place in self.place:
             run_dygraph(place)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_float16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the float16",
+)
+class TestSincAPIFP16(unittest.TestCase):
+    def setUp(self):
+        self.shapes = [[6], [16, 64]]
+        self.dtype = 'float16'
+        self.place = paddle.CUDAPlace(0)
+
+    def test_dtype(self):
+        def run_dygraph(place):
+            paddle.disable_static(place)
+            for shape in self.shapes:
+                x_data = np.random.rand(*shape).astype(self.dtype)
+                x = paddle.to_tensor(x_data)
+                out = paddle.sinc(x)
+                out_expected = np_sinc(x_data)
+                np.testing.assert_allclose(
+                    out.numpy(), out_expected, rtol=1e-6, atol=1e-6
+                )
+
+        def run_static(place):
+            paddle.enable_static()
+            for shape in self.shapes:
+                x_data = np.random.rand(*shape).astype(self.dtype)
+                startup_program = paddle.static.Program()
+                main_program = paddle.static.Program()
+                exe = base.Executor(place)
+                with paddle.static.program_guard(main_program, startup_program):
+                    x = paddle.static.data(
+                        name='x', shape=shape, dtype=self.dtype
+                    )
+                    res = paddle.sinc(x)
+                    static_result = exe.run(
+                        feed={'x': x_data}, fetch_list=[res]
+                    )[0]
+                    out_expected = np_sinc(x_data)
+                np.testing.assert_allclose(
+                    static_result, out_expected, rtol=1e-6, atol=1e-6
+                )
+
+        run_dygraph(self.place)
+        run_static(self.place)
 
 
 if __name__ == "__main__":
