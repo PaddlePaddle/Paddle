@@ -493,8 +493,8 @@ class ColumnSequenceParallelLinear(Layer):
 
     def forward(self, x):
         # sequence parallelism is same as model parallelis, if sequence parallel is true, input shape is [s, b, h],else input shape is [b, s, h]
-        # reuse mp_asyn_allreduce to do sequence parallelism overlap
-        if self.mp_asyn_allreduce:
+        # reuse mp_async_allreduce to do sequence parallelism overlap
+        if self.mp_async_allreduce:
             output = SPInnerOverlapLinear.apply(
                 x,
                 self.weight,
