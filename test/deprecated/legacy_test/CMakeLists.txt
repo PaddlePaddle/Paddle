@@ -447,7 +447,6 @@ if(NOT WITH_CUDNN_FRONTEND)
   list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_relu_conv_bn_op)
   list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_add_relu_op)
   list(REMOVE_ITEM TEST_OPS test_fused_dconv_drelu_dbn_op)
-  list(REMOVE_ITEM TEST_OPS test_fuse_resunit_pass)
 endif()
 
 # Some ops need to check results when gc is enabled
@@ -545,8 +544,6 @@ if(WITH_DISTRIBUTE)
 
   if(NOT WITH_HETERPS)
     list(REMOVE_ITEM DIST_TEST_OPS "test_communicator_ps_gpu")
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps11")
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps12")
   endif()
 
   py_test_modules(test_communicator_async MODULES test_communicator_async ENVS
@@ -641,11 +638,6 @@ if(NOT WIN32)
   # TODO: fix these unittests failure on Windows
   py_test_modules(test_layers MODULES test_layers ENVS
                   FLAGS_cudnn_deterministic=1)
-endif()
-
-if(WITH_HETERPS)
-  set_tests_properties(test_dist_fleet_ps11 PROPERTIES LABELS "RUN_TYPE=GPUPS")
-  set_tests_properties(test_dist_fleet_ps12 PROPERTIES LABELS "RUN_TYPE=GPUPS")
 endif()
 
 set_tests_properties(
@@ -782,11 +774,8 @@ if(APPLE)
                        PROPERTIES TIMEOUT 300)
 endif()
 
-set_tests_properties(test_inplace_addto_strategy PROPERTIES TIMEOUT 120)
-
-if(WITH_CUDNN_FRONTEND)
-  set_tests_properties(test_fuse_resunit_pass PROPERTIES TIMEOUT 300)
-endif()
+set_tests_properties(test_inplace_addto_strategy
+                     PROPERTtest_fuse_resunit_passIES TIMEOUT 120)
 
 set(TEST_CINN_OPS
     test_softmax_op
