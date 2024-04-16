@@ -145,7 +145,9 @@ class TestFlashAttnPatternQscaleCast(PassTest):
                                     attention_out, [0, 2, 1, 3]
                                 )
                                 out = paddle.assign(attention_out)
-                                self.pass_list = ['fused_flash_attn_pass']
+                                self.pass_attr_list = [
+                                    {'fused_flash_attn_pass': {}}
+                                ]
                                 self.feeds = {
                                     "Q": np.random.random(
                                         (bs, seq_len, num_heads, head_dim)
@@ -261,7 +263,9 @@ class TestFlashAttnPatternQscaleNoCast(PassTest):
                                     attention_out, [0, 2, 1, 3]
                                 )
                                 out = paddle.assign(attention_out)
-                                self.pass_list = ['fused_flash_attn_pass']
+                                self.pass_attr_list = [
+                                    {'fused_flash_attn_pass': {}}
+                                ]
                                 self.feeds = {
                                     "Q": np.random.random(
                                         (bs, seq_len, num_heads, head_dim)
@@ -386,7 +390,9 @@ class TestFlashAttnPatternOutscaleCast(PassTest):
                                     attention_out, [0, 2, 1, 3]
                                 )
                                 out = paddle.assign(attention_out)
-                                self.pass_list = ['fused_flash_attn_pass']
+                                self.pass_attr_list = [
+                                    {'fused_flash_attn_pass': {}}
+                                ]
                                 self.feeds = {
                                     "Q": np.random.random(
                                         (bs, seq_len, num_heads, head_dim)
@@ -505,7 +511,9 @@ class TestFlashAttnPatternOutscaleNoCast(PassTest):
                                     attention_out, [0, 2, 1, 3]
                                 )
                                 out = paddle.assign(attention_out)
-                                self.pass_list = ['fused_flash_attn_pass']
+                                self.pass_attr_list = [
+                                    {'fused_flash_attn_pass': {}}
+                                ]
                                 self.feeds = {
                                     "Q": np.random.random(
                                         (bs, seq_len, num_heads, head_dim)
@@ -627,7 +635,9 @@ class TestTransposeSliceFlashAttnPattern(PassTest):
                                     attention_out, [0, 2, 1, 3]
                                 )
                                 out = paddle.assign(attention_out)
-                                self.pass_list = ['fused_flash_attn_pass']
+                                self.pass_attr_list = [
+                                    {'fused_flash_attn_pass': {}}
+                                ]
                                 self.feeds = {
                                     "x": np.random.random(
                                         (bs, seq_len, 3, num_heads, head_dim)
