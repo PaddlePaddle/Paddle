@@ -12,21 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/frontend/group_cluster/cluster_policy/policy_manager.h"
+#include "paddle/cinn/operator_fusion/policy/policy_manager.h"
+#include "paddle/cinn/operator_fusion/backend/pattern.h"
+#include "paddle/cinn/operator_fusion/frontend/pattern.h"
 #include "paddle/common/enforce.h"
 
-namespace cinn::frontend::group_cluster::policy {
+namespace cinn::fusion {
 
-bool PolicyManager::CanFuse(const PatternNodePtr& upstream,
-                            const PatternNodePtr& downstream) const {
+template <typename T>
+bool PolicyManager<T>::CanFuse(const PatternNodePtr<T>& upstream,
+                               const PatternNodePtr<T>& downstream) const {
   for (const auto& policy : policies_) {
     if (!policy->CanFuse(upstream, downstream)) return false;
   }
   return true;
 }
 
-std::vector<size_t> PolicyManager::GetFakeReduceIterIdx(
-    const PatternNodePtr& upstream, const PatternNodePtr& downstream) const {
+template <typename T>
+std::vector<size_t> PolicyManager<T>::GetFakeReduceIterIdx(
+    const PatternNodePtr<T>& upstream,
+    const PatternNodePtr<T>& downstream) const {
   for (const auto& policy : policies_) {
     if (policy->Name() == "RelativeJudgePolicy") {
       return policy->GetFakeReduceIterIdx(upstream, downstream);
@@ -35,4 +40,7 @@ std::vector<size_t> PolicyManager::GetFakeReduceIterIdx(
   return {};
 }
 
-}  // namespace cinn::frontend::group_cluster::policy
+template class PolicyManager<FrontendStage>;
+template class PolicyManager<BackendStage>;
+
+}  // namespace cinn::fusion

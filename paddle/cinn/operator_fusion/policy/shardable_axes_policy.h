@@ -13,29 +13,31 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/cinn/frontend/group_cluster/cluster_policy/policy_manager.h"
-#include "paddle/cinn/frontend/group_cluster/cluster_policy/shardable_axes_policy/shardable_axes_base.h"
+#include "paddle/cinn/operator_fusion/policy/policy_manager.h"
+#include "paddle/cinn/operator_fusion/policy/shardable_axes_base.h"
 
-namespace cinn::frontend::group_cluster::policy {
+namespace cinn::fusion {
 
-class ShardableAxesRRFusePolicy final : public Policy {
+template <typename T>
+class ShardableAxesRRFusePolicy final : public Policy<T> {
  public:
   ShardableAxesRRFusePolicy(
       const std::vector<pir::Operation*>& ops,         // NOLINT
       pir::ShapeConstraintIRAnalysis* shape_analysis)  // NOLINT
       : axes_info_(ops, shape_analysis) {}
-  bool CanFuse(const PatternNodePtr& upstream,
-               const PatternNodePtr& downstream) override;
+  bool CanFuse(const PatternNodePtr<T>& upstream,
+               const PatternNodePtr<T>& downstream) override;
   std::string Name() { return "ShardableAxesRRFusePolicy"; }
 
  private:
-  bool ReduceTreeGrownCanMerge(const PatternNodePtr&, const PatternNodePtr&);
-  std::optional<ReducePattern> GetDownstreamFromCandidate(
-      const ReducePattern& upstream,
-      const std::vector<ReducePattern>& candidates);
+  bool ReduceTreeGrownCanMerge(const PatternNodePtr<T>&,
+                               const PatternNodePtr<T>&);
+  std::optional<ReducePattern<T>> GetDownstreamFromCandidate(
+      const ReducePattern<T>& upstream,
+      const std::vector<ReducePattern<T>>& candidates);
   ShardableAxesInfoManager axes_info_;
   bool IsDownstreamStmtDependReduceOp(pir::Operation* reduce,
-                                      const StmtPattern& downstream);
+                                      const StmtPattern<T>& downstream);
 };
 
-}  // namespace cinn::frontend::group_cluster::policy
+}  // namespace cinn::fusion
