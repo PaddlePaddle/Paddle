@@ -33,12 +33,12 @@ class ShareDataOp : public framework::OperatorWithKernel {
         in_type == framework::proto::VarType::LOD_TENSOR ||
             in_type == framework::proto::VarType::SELECTED_ROWS,
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Type of Variable[X] must be phi::DenseTensor or SelectedRows!"));
     PADDLE_ENFORCE_EQ(
         in_type,
         out_type,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The type of input (X) and output (Out) are inconsistent."));
 
     ctx->ShareDim("X", "Out");
@@ -80,4 +80,4 @@ PD_REGISTER_STRUCT_KERNEL(share_data,
                           int64_t,
                           float,
                           double,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

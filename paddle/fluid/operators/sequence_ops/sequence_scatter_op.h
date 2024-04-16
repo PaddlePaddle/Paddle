@@ -35,7 +35,7 @@ class SequenceScatterOpKernel : public framework::OpKernel<T> {
     auto& ids_lod = ids->lod();
     PADDLE_ENFORCE_EQ(ids_lod.empty(),
                       false,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input(Ids) Tensor of SequenceScatter operator does "
                           "not contain LoD information."));
 
@@ -49,7 +49,7 @@ class SequenceScatterOpKernel : public framework::OpKernel<T> {
     for (int i = 0; i < x_dims.size(); ++i)
       PADDLE_ENFORCE_EQ(x_dims[i],
                         out_dims[i],
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Input(X) and output(Out) shape of SequenceScatter "
                             "operator do not match. Received input(X)'s shape "
                             "is [%s], output(Out)'s shape is [%s].",
@@ -65,12 +65,12 @@ class SequenceScatterOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_LT(
           seg,
           lod_vec.size() - 1,
-          platform::errors::OutOfRange("The segment index is out of bound in "
-                                       "SequenceScatter operator, it must be "
-                                       "less than batch size. The segment "
-                                       "index is %d, the batch size is %d.",
-                                       seg,
-                                       lod_vec.size()));
+          phi::errors::OutOfRange("The segment index is out of bound in "
+                                  "SequenceScatter operator, it must be "
+                                  "less than batch size. The segment "
+                                  "index is %d, the batch size is %d.",
+                                  seg,
+                                  lod_vec.size()));
       int lower_bound = lod_vec[seg];
       int upper_bound = lod_vec[seg + 1];
       if (i >= lower_bound && i < upper_bound) {
@@ -93,9 +93,9 @@ class SequenceScatterGradientOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         platform::is_cpu_place(ctx.GetPlace()),
         true,
-        platform::errors::Unimplemented("Device dose not match. The "
-                                        "SequenceScatterGradientOpKernel can "
-                                        "only run on CPU device."));
+        phi::errors::Unimplemented("Device dose not match. The "
+                                   "SequenceScatterGradientOpKernel can "
+                                   "only run on CPU device."));
     auto* dX = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* dUpdates = ctx.Output<LoDTensor>(framework::GradVarName("Updates"));
     auto* ids = ctx.Input<LoDTensor>("Ids");
@@ -113,7 +113,7 @@ class SequenceScatterGradientOpKernel : public framework::OpKernel<T> {
     for (int i = 0; i < dx_dims.size(); ++i)
       PADDLE_ENFORCE_EQ(dx_dims[i],
                         dout_dims[i],
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Input(Out@GRAD) and output(X@GRAD) shape of "
                             "SequenceScatterGradient operator do not match. "
                             "Received input(Out@GRAD)'s shape is [%s], "
@@ -131,7 +131,7 @@ class SequenceScatterGradientOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_LT(
           seg,
           lod_vec.size() - 1,
-          platform::errors::OutOfRange(
+          phi::errors::OutOfRange(
               "The segment index is out of bound in SequenceScatterGradient "
               "operator, it must be less than batch size. The segment index is "
               "%d, the batch size is %d.",

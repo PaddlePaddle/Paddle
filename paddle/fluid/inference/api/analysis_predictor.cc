@@ -408,7 +408,7 @@ bool AnalysisPredictor::Init(
     root_predictor_id_ = predictor_id_;
   }
 
-  // no matter with or without MKLDNN
+  // no matter with or without OneDNN
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 
   // Use Optimized model to inference
@@ -619,6 +619,9 @@ void AnalysisPredictor::ClearExtraParams() {
                            config_.shape_range_info_path_);
         }
       }
+      if (op_desc->HasAttr("predictor_id")) {
+        op_desc->SetAttr("predictor_id", predictor_id_);
+      }
     }
   }
 
@@ -781,10 +784,18 @@ bool AnalysisPredictor::PrepareProgram(
     executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
 
     // if enable_ir_optim_ is false,
-    // the analysis pass(op fuse, graph analysis, trt subgraph, mkldnn etc) will
+    // the analysis pass(op fuse, graph analysis, trt subgraph, onednn etc) will
     // not be executed.
     model_precision_ =
         paddle::inference::GetModelPrecision(*inference_program_);
+#ifdef PADDLE_WITH_TENSORRT
+    if (config_.tensorrt_engine_enabled()) {
+      inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
+          predictor_id_;
+      VLOG(3) << "thread_local var predictor_id in TensorRTEngine is set to: "
+              << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
+    }
+#endif
     if (config_.use_optimized_model_) {
       LoadParameters();
       ClearExtraParams();
@@ -2011,14 +2022,6 @@ void AnalysisPredictor::PrepareArgument() {
 // NOTE All the members in AnalysisConfig should be copied to Argument.
 void AnalysisPredictor::OptimizeInferenceProgram() {
   PrepareArgument();
-#ifdef PADDLE_WITH_TENSORRT
-  if (config_.tensorrt_engine_enabled()) {
-    inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
-        predictor_id_;
-    VLOG(3) << "thread_local var predictor_id in TensorRTEngine is set to: "
-            << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
-  }
-#endif
   Analyzer().Run(argument_.get());
   PADDLE_ENFORCE_EQ(
       argument_->scope_valid(),

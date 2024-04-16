@@ -252,7 +252,7 @@ class LSTMGradKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         frame_size,
         out_dims[1],
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The second dimension of Input(" +
                 framework::GradVarName("Hidden") +
                 ") should be %d, but received %d in LSTM@Grad operator.",

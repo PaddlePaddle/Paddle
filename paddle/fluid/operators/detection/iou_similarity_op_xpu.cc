@@ -44,7 +44,7 @@ class XPUIOUSimilarityKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         r,
         XPU_SUCCESS,
-        platform::errors::External(
+        phi::errors::External(
             "XPU iou_similarity kernel return wrong value[%d %s].",
             r,
             XPUAPIErrorMsg[r]));

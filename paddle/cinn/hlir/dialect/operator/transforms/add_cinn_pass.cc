@@ -29,6 +29,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/dynamic_reshape_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/fold_manipulation_ops_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fuse_shape_ops_into_generate_shape_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/check_infer_symbolic_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_0d_to_1d_pass.h"
@@ -42,7 +43,6 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/insert_broadcast_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/lower_cinn_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/remove_unchanged_reshape_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/replace_dynamic_expand_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
@@ -118,7 +118,7 @@ void ApplyBuildGroupOpPass(
   if (has_dynamic_shape) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
-  pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateFoldManipulationOpsPass());
 
   pass_manager->AddPass(pir::CreateBuildCinnPass());
 
@@ -145,7 +145,7 @@ void ApplyGroupOpPass(::pir::Program* program,
 
   pass_manager->AddPass(cinn::dialect::ir::CreateDynamicReshapeOpPass());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
-  pass_manager->AddPass(cinn::dialect::ir::CreateRemoveUnchangedReshapePass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateFoldManipulationOpsPass());
 
   pass_manager->Run(program);
 }
