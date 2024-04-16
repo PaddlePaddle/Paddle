@@ -36,7 +36,7 @@ class TestPullGpupsSparseOpTranslator(
         self.op_type = "pull_gpups_sparse"
         ids = paddle.ones(shape=(1,), dtype='int64')
         out = paddle.ones(shape=(1,), dtype='int64')
-        attrs = {'size': [], 'is_sparse': False, 'is_distributed': False}
+        attrs = {'size': [1], 'is_sparse': False, 'is_distributed': False}
         helper = LayerHelper(self.op_type)
         helper.append_op(
             type=self.op_type,

@@ -162,6 +162,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'max_pool2d_v2',
     'partial_sum',
     'pull_gpups_sparse',
+    'pull_gpups_sparse_',
     'random_routing',
     'rank_attention',
     'recv_v2',
