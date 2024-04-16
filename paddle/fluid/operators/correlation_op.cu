@@ -179,10 +179,10 @@ template <typename T, typename DeviceContext>
 class CorrelationCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Correlation only supports GPU now."));
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()),
+        true,
+        phi::errors::InvalidArgument("Correlation only supports GPU now."));
 
     auto *input1 = ctx.Input<phi::DenseTensor>("Input1");
     auto *input2 = ctx.Input<phi::DenseTensor>("Input2");
@@ -447,10 +447,10 @@ template <typename T, typename DeviceContext>
 class CorrelationCUDAGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Correlation only supports GPU now."));
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()),
+        true,
+        phi::errors::InvalidArgument("Correlation only supports GPU now."));
     const auto *input1 = ctx.Input<phi::DenseTensor>("Input1");
     const auto *input2 = ctx.Input<phi::DenseTensor>("Input2");
     const auto *grad_output =

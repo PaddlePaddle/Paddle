@@ -54,9 +54,9 @@ struct FindChannelAbsMaxFunctor<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         quant_axis == 0 || quant_axis == 1,
         true,
-        platform::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
-                                          "the received is %d",
-                                          quant_axis));
+        phi::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                     "the received is %d",
+                                     quant_axis));
     auto *in_data = in_tensor.data<T>();
     auto in_dims = in_tensor.dims();
     const int64_t channel = in_dims[quant_axis];
@@ -167,9 +167,9 @@ struct ChannelClipAndFakeQuantFunctor<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         quant_axis == 0 || quant_axis == 1,
         true,
-        platform::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
-                                          "the received is %d",
-                                          quant_axis));
+        phi::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                     "the received is %d",
+                                     quant_axis));
     auto *scale_data = scale.data<T>();
     auto *in_data = in.data<T>();
     auto *out_data = out->mutable_data<T>(ctx.GetPlace());
@@ -247,9 +247,9 @@ struct ChannelClipFakeQuantDequantFunctor<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         quant_axis == 0 || quant_axis == 1,
         true,
-        platform::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
-                                          "the received is %d",
-                                          quant_axis));
+        phi::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                     "the received is %d",
+                                     quant_axis));
 
     auto *scale_data = scale.data<T>();
     auto *in_data = in.data<T>();
@@ -426,7 +426,7 @@ class FakeQuantOrWithDequantAbsMaxOpMaker
         .AddCustomChecker([](const int &bit_length) {
           PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
                             true,
-                            platform::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "'bit_length' should be between 1 and 16, but "
                                 "the received is %d",
                                 bit_length));
@@ -493,19 +493,19 @@ class FakeChannelWiseQuantizeAbsMaxOpMaker
                  "and mul, the quant_axis is equal to the cout axis.")
         .SetDefault(0)
         .AddCustomChecker([](const int &quant_axis) {
-          PADDLE_ENFORCE_EQ(quant_axis == 0 || quant_axis == 1,
-                            true,
-                            platform::errors::InvalidArgument(
-                                "'quant_axis' should be 0 or 1, but "
-                                "the received is %d",
-                                quant_axis));
+          PADDLE_ENFORCE_EQ(
+              quant_axis == 0 || quant_axis == 1,
+              true,
+              phi::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                           "the received is %d",
+                                           quant_axis));
         });
     AddAttr<int>("bit_length", "(int, default 8)")
         .SetDefault(8)
         .AddCustomChecker([](const int &bit_length) {
           PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
                             true,
-                            platform::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "'bit_length' should be between 1 and 16, but "
                                 "the received is %d",
                                 bit_length));
@@ -574,19 +574,19 @@ class FakeChannelWiseQuantizeDequantizeAbsMaxOpMaker
                  "and mul, the quant_axis is equal to the cout axis.")
         .SetDefault(0)
         .AddCustomChecker([](const int &quant_axis) {
-          PADDLE_ENFORCE_EQ(quant_axis == 0 || quant_axis == 1,
-                            true,
-                            platform::errors::InvalidArgument(
-                                "'quant_axis' should be 0 or 1, but "
-                                "the received is %d",
-                                quant_axis));
+          PADDLE_ENFORCE_EQ(
+              quant_axis == 0 || quant_axis == 1,
+              true,
+              phi::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                           "the received is %d",
+                                           quant_axis));
         });
     AddAttr<int>("bit_length", "(int, default 8)")
         .SetDefault(8)
         .AddCustomChecker([](const int &bit_length) {
           PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
                             true,
-                            platform::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "'bit_length' should be between 1 and 16, but "
                                 "the received is %d",
                                 bit_length));
@@ -654,7 +654,7 @@ class FakeQuantizeRangeAbsMaxOpMaker
         .AddCustomChecker([](const int &bit_length) {
           PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
                             true,
-                            platform::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "'bit_length' should be between 1 and 16, but "
                                 "the received is %d",
                                 bit_length));
@@ -735,7 +735,7 @@ class FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker
         .AddCustomChecker([](const int &bit_length) {
           PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
                             true,
-                            platform::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "'bit_length' should be between 1 and 16, but "
                                 "the received is %d",
                                 bit_length));

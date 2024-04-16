@@ -31,10 +31,10 @@ class SequencePoolOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_GT(
           in_lod_level,
           0,
-          platform::errors::InvalidArgument("The LoD level of Input(X) should "
-                                            "be larger than 0, but received: "
-                                            "lod level %u.",
-                                            in_lod_level));
+          phi::errors::InvalidArgument("The LoD level of Input(X) should "
+                                       "be larger than 0, but received: "
+                                       "lod level %u.",
+                                       in_lod_level));
       ctx->SetLoDLevel("Out", in_lod_level - 1);
     }
 
@@ -126,7 +126,7 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(og_dims.size(),
                       x_dims.size(),
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The rank of output grad must equal to Input(X). But "
                           "received: input rank %u, input shape [%s].",
                           og_dims.size(),
@@ -135,7 +135,7 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           og_dims[i],
           x_dims[i],
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The dimension mismatch between Input(OUT@GRAD) and "
               "Input(X). Received Input(OUT@GRAD): input rank %u, "
               "input shape [%s]; received Input(X): input rank %u, "

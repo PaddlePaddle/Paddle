@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import sys
 import unittest
 from os.path import dirname
@@ -25,18 +24,21 @@ sys.path.append(dirname(dirname(__file__)))
 import utils
 
 
-class TestSubstituteDimExprNet(paddle.nn.Layer):
-    def __init__(self):
-        super().__init__()
+def relu6(x):
+    return paddle.nn.functional.relu6(x)
 
-    def forward(self, x, y1, y2):
-        z1 = paddle.concat([y1, x], 0)
-        z2 = paddle.concat([y1, y2], 0)
-        out = z1 + z2
+
+class CINNSubGraphNet(paddle.nn.Layer):
+    def __init__(self, fn):
+        super().__init__()
+        self.fn = fn
+
+    def forward(self, x):
+        out = self.fn(x)
         return out
 
 
-class TestSubstituteDimExprBasedOnConstraint(unittest.TestCase):
+class TestCinnSubGraprelu6(unittest.TestCase):
     """
     Test Pir API + @to_static + CINN.
     """
@@ -46,39 +48,30 @@ class TestSubstituteDimExprBasedOnConstraint(unittest.TestCase):
         self.prepare_data()
 
     def prepare_data(self):
-        self.shapex = [32, 128]
-        self.x = paddle.randn(self.shapex, dtype="float32")
+        self.x_shape = [32, 32]
+        self.x = paddle.randn(self.x_shape, dtype="float32")
         self.x.stop_gradient = False
-        self.shapey = [32, 128]
-        self.y1 = paddle.randn(self.shapey, dtype="float32")
-        self.y1.stop_gradient = False
-        self.y2 = paddle.randn(self.shapey, dtype="float32")
-        self.y2.stop_gradient = False
 
     def check_jit_kernel_info(self, static_fn):
         utils.check_jit_kernel_number(static_fn, 1)
-        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
 
-    def eval(self, use_cinn):
-        net = TestSubstituteDimExprNet()
+    def eval_symbolic(self, use_cinn):
+        paddle.seed(2022)
+        net = CINNSubGraphNet(relu6)
         input_spec = [
-            InputSpec(shape=[32, 128], dtype="float32"),
-            InputSpec(shape=[32, None], dtype="float32"),
-            InputSpec(shape=[32, None], dtype="float32"),
+            InputSpec(shape=[None, 32], dtype='float32'),
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
-        out = net(self.x, self.y1, self.y2)
+        out = net(self.x)
         if use_cinn:
             self.check_jit_kernel_info(net.forward)
         return out
 
-    def test_eval(self):
-        dy_out = self.eval(use_cinn=False)
-        cinn_out = self.eval(use_cinn=True)
-        np.testing.assert_allclose(
-            cinn_out.numpy(), dy_out.numpy(), atol=1e-6, rtol=1e-6
-        )
+    def test_eval_symbolic(self):
+        cinn_out = self.eval_symbolic(use_cinn=True)
+        dy_out = self.eval_symbolic(use_cinn=False)
+        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
 if __name__ == '__main__':

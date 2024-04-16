@@ -118,7 +118,7 @@ void InvokeTransposeRemovePadding(const phi::GPUContext& dev_ctx,
   PADDLE_ENFORCE_EQ(
       head_dim % PackSize,
       0,
-      platform::errors::PreconditionNotMet(
+      phi::errors::PreconditionNotMet(
           "dim_head=%d must be divisible by vec_size=%d", head_dim, PackSize));
   const int32_t pack_num = elem_cnt / PackSize;
   const int32_t block_size = 128;
@@ -666,7 +666,7 @@ class FMHARef {
                               dev_ctx_,
                               qk_out_grad_tensor);
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "Only used for the backward elementwise_add op when"
             "dy is not needed and dx is not reduce"));
         return;

@@ -39,7 +39,7 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
       PADDLE_ENFORCE_EQ(
           input_axis_dim % num,
           0,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The input's size along the split dimension "
               "must be evenly divisible by Attr(num_or_sections). "
               "But received Attr(num_or_sections) "
@@ -75,7 +75,7 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
         PADDLE_ENFORCE_LE(
             num_of_unk,
             1,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Only one dimension value of Attr(num_or_sections) "
                 "in SplitOp can be -1. "
                 "But received Attr(num_or_sections) = [%s].",
@@ -89,7 +89,7 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
         PADDLE_ENFORCE_LT(
             sum_of_section,
             input_axis_dim,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Sum of Attr(num_or_sections) other than unknown section "
                 "must be less than the input's "
                 "size "
@@ -105,7 +105,7 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
         PADDLE_ENFORCE_EQ(
             sum_of_section,
             input_axis_dim,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Sum of Attr(num_or_sections) must be equal to the input's "
                 "size "
                 "along the split dimension. But received Attr(num_or_sections)"
