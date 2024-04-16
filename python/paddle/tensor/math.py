@@ -7735,7 +7735,7 @@ def isposinf(x, name=None):
     Tests if each element of input is positive infinity or not.
 
     Args:
-        x (Tensor): The input Tensor. Must be one of the following types: float32, float64, int32, int64.
+        x (Tensor): The input Tensor. Must be one of the following types: float16, float32, float64, int8, int16, int32, int64, uint8.
         name (str, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -7781,7 +7781,7 @@ def isneginf(x, name=None):
     Tests if each element of input is negative infinity or not.
 
     Args:
-        x (Tensor): The input Tensor. Must be one of the following types: float32, float64, int32, int64.
+        x (Tensor): The input Tensor. Must be one of the following types: float16, float32, float64, int8, int16, int32, int64, uint8.
         name (str, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
