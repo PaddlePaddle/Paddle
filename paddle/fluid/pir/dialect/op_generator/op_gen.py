@@ -1322,30 +1322,6 @@ def AutoCodeGen(
 
         # If op has inplace info, we will generate inplace op and non-inplace op.
         for op_name in op_info.op_phi_name:
-            # if 'one_hot' in op_name:
-            #     print("get op inputs info")
-            #     print(op_info.input_name_list)
-            #     print(op_info.input_optional_list)
-            #     print(op_info.input_no_need_buffer_list)
-            #     print("get op outputs info")
-            #     print(op_info.output_name_list)
-            #     print(op_info.output_size_list)
-            #     print(op_info.output_optional_list)
-            #     print(op_info.output_intermediate_list)
-            #     print("get op mutable attribute")
-            #     print(op_info.mutable_attribute_name_list)
-            #     print(op_info.mutable_attribute_type_list)
-            #     print("get op attribute")
-            #     # op_info.attribute_name_list = []
-            #     # op_info.attribute_type_list = []
-            #     # op_info.attribute_data_type_list = []
-            #     # op_info.attribute_build_arg_type_list = []
-            #     # op_info.attribute_default_value_list = []
-            #     print(op_info.attribute_name_list)
-            #     print(op_info.attribute_type_list)
-            #     print(op_info.attribute_data_type_list)
-            #     print(op_info.attribute_build_arg_type_list)
-            #     print(op_info.attribute_default_value_list)
             # =================================== #
             #        gen trait list str           #
             # =================================== #
@@ -1474,10 +1450,6 @@ def AutoCodeGen(
                     infer_symbolic_shape_str = infer_symbolic_shape_template
 
                 if op_infer_meta_map is not None:
-                    # if "one_hot" in op_name:
-                    #     print("gen")
-                    #     print(op_attribute_name_list)
-                    #     print(op_non_mutable_attribute_name_list)
                     (
                         build_args_with_muta_attr_not_input_for_declare,
                         build_func_with_muta_attr_not_input,

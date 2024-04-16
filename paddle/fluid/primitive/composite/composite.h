@@ -217,12 +217,11 @@ Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
   auto input_tensor = full<T>(input_dim, 0, x.dtype());
 
   std::vector<int64_t> output_dim;
-  for (int i=0; i<x.shape().size(); i++){
+  for (int i = 0; i < x.shape().size(); i++) {
     output_dim.push_back(x.shape()[i]);
   }
   output_dim.push_back(num_classes_tensor.shape()[0]);
 
-  // auto index_dim = get_slice<T>(shape<T>(x), 0);
   auto end = full<T>({1}, x.shape()[0], x.dtype());
   auto start = full<T>({1}, 0, x.dtype());
   auto step = full<T>({1}, 1, x.dtype());
@@ -239,10 +238,11 @@ Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
   auto index_tensor = concat<T>(index_concat, 1);
 
   auto update_tensor = full<T>({x.shape()[0]}, 1, x.dtype());
-  
-  auto ans =
-      reshape<T>(cast<T>(scatter_nd_add<T>(input_tensor, index_tensor, update_tensor),
-              DataType::FLOAT32), output_dim);
+
+  auto ans = reshape<T>(
+      cast<T>(scatter_nd_add<T>(input_tensor, index_tensor, update_tensor),
+              DataType::FLOAT32),
+      output_dim);
   return ans;
 }
 

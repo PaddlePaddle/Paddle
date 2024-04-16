@@ -70,6 +70,14 @@ def convert_uint16_to_float(in_list):
     return np.reshape(out, in_list.shape)
 
 
+def patch_for_one_hot(inputs, attrs, args):
+    if 'depth_tensor' in inputs.keys():
+        args[1] = inputs['depth_tensor'].item()
+    else:
+        args[1] = attrs['depth']
+    return args
+
+
 # TODO(wanghao107): OpTestUtils will be moved to op_test.py
 class OpTestUtils:
     @classmethod
@@ -127,10 +135,6 @@ class OpTestUtils:
             2. if the name in op_inputs, convert the op_inputs to [type of default value]
             3. if the name not in op_attrs ans op_inputs, return Empty. (this will use the default value from python api)
             """
-            # print("parse")
-            # print(name)
-            # print(op_proto_attrs)
-            # print(op_inputs)
             if name in op_proto_attrs:
                 return op_proto_attrs[name]
             elif name in op_inputs:
@@ -183,10 +187,11 @@ class OpTestUtils:
         api_defaults = [
             Empty() for i in range(len(api_params) - len(api_defaults))
         ] + api_defaults
-        
-        # if "one_hot" in str(api):
-        #     api_defaults = [x for x in range(len(api_params))]
-        
+
+        # patch for one hot -> fill the api params
+        if "one_hot" in str(api):
+            api_defaults = [None for x in range(len(api_params))]
+
         assert len(api_defaults) == len(
             api_params
         ), "Error happens. contack xiongkun03 to solve."
@@ -217,8 +222,6 @@ class OpTestUtils:
                     idx_of_op_proto_arguments += 1
             else:
                 if idx_of_op_proto_arguments < len(input_arguments):
-                    # print("check1")
-                    # print(input_arguments)
                     tmp = input_arguments[idx_of_op_proto_arguments]
                     idx_of_op_proto_arguments += 1
                 else:
@@ -228,10 +231,7 @@ class OpTestUtils:
                     )
 
                 if isinstance(tmp, Empty):
-                        if "one_hot" in str(api):
-                            results.append(10)
-                        else:
-                            results.append(get_default(idx, api_defaults))
+                    results.append(get_default(idx, api_defaults))
                 else:
                     results.append(tmp)
         assert len(results) == len(api_params)
@@ -499,10 +499,8 @@ class PrimForwardChecker:
                 self.kernel_sig,
                 target_dtype=paddle.core.VarDesc.VarType,
             )
-
             if "one_hot" in self.op_type:
-                args[1] = self.inputs['depth_tensor'].item()
-            
+                args = patch_for_one_hot(self.inputs, self.attrs, args)
             inputs_sig, _, _ = self.kernel_sig
             args = OpTestUtils.assumption_assert_and_transform(
                 args, len(inputs_sig)
@@ -656,6 +654,8 @@ class PrimForwardChecker:
                     if in_pir_mode()
                     else paddle.core.VarDesc.VarType,
                 )
+                if "one_hot" in self.op_type:
+                    args = patch_for_one_hot(self.inputs, self.attrs, args)
                 inputs_sig, _, _ = self.kernel_sig
                 args = OpTestUtils.assumption_assert_and_transform(
                     args, len(inputs_sig)
@@ -748,7 +748,7 @@ class PrimForwardChecker:
                 else paddle.core.VarDesc.VarType,
             )
             if "one_hot" in self.op_type:
-                args[1] = self.inputs['depth_tensor'].item()
+                args = patch_for_one_hot(self.inputs, self.attrs, args)
             inputs_sig, _, _ = self.kernel_sig
             args = OpTestUtils.assumption_assert_and_transform(
                 args, len(inputs_sig)
