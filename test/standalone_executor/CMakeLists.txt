@@ -5,11 +5,6 @@ file(
 list(REMOVE_ITEM TEST_INTERP_CASES "test_standalone_custom_event.py")
 string(REPLACE ".py" "" TEST_INTERP_CASES "${TEST_INTERP_CASES}")
 
-# The following unittest is now in deprecated dir, we can delete this code when we move it from deprecated dir to this dir
-###### start ######
-list(REMOVE_ITEM TEST_INTERP_CASES test_standalone_executor)
-###### end ######
-
 foreach(target ${TEST_INTERP_CASES})
   py_test_modules(${target} MODULES ${target})
 endforeach()

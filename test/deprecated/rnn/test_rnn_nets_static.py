@@ -19,10 +19,13 @@ paddle.set_default_dtype("float64")
 
 paddle.enable_static()
 
+import sys
 import unittest
 
 import numpy as np
 from convert import convert_params_for_net_static
+
+sys.path.append("../../rnn")
 from rnn_numpy import GRU, LSTM, SimpleRNN
 
 bidirectional_list = ["bidirectional", "bidirect"]

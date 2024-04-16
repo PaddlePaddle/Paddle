@@ -20,7 +20,7 @@ import tempfile
 import numpy as np
 
 # TODO: remove sys.path.append
-sys.path.append("../legacy_test")
+sys.path.append("../../legacy_test")
 import nets
 
 import paddle

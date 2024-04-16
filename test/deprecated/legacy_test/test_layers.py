@@ -14,8 +14,10 @@
 
 import contextlib
 import inspect
+import sys
 import unittest
 
+sys.path.append("../../legacy_test")
 import nets
 import numpy as np
 from decorator_helper import prog_scope

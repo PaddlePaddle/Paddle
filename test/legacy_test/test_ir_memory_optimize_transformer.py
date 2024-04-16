@@ -23,7 +23,7 @@ import sys
 
 from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
 
-sys.path.append("../../legacy_test")
+sys.path.append("../deprecated/legacy_test")
 from test_parallel_executor_transformer import get_feed_data_reader, transformer
 
 

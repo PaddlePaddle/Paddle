@@ -14,10 +14,13 @@
 
 import logging
 import os
+import sys
 import tempfile
 import unittest
 
 import numpy as np
+
+sys.path.append("../../quantization")
 from imperative_test_utils import ImperativeLenet, fix_model_dict
 
 import paddle

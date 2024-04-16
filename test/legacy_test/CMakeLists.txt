@@ -33,9 +33,7 @@ set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 
 list(APPEND MIXED_DIST_TEST_OPS test_simple_dist_transpiler)
-list(APPEND MIXED_DIST_TEST_OPS test_communicator_async)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_ps_gpu)
-list(APPEND MIXED_DIST_TEST_OPS test_communicator_geo)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_ps)
 list(APPEND MIXED_DIST_TEST_OPS test_launch_coverage)
 list(APPEND MIXED_DIST_TEST_OPS test_fleetrun)
@@ -86,21 +84,6 @@ list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
 list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_dot_product_attention_pass)
-
-# The following unittest is now in deprecated dir, we can delete this code when we move it from deprecated dir to this dir
-###### start ######
-list(REMOVE_ITEM TEST_OPS test_lstm_op)
-list(REMOVE_ITEM TEST_OPS test_softmax_op)
-list(REMOVE_ITEM TEST_OPS test_fc_op)
-list(REMOVE_ITEM TEST_OPS test_imperative_lod_tensor_to_selected_rows)
-list(REMOVE_ITEM TEST_OPS test_pool2d_op)
-list(REMOVE_ITEM TEST_OPS test_pool3d_op)
-list(REMOVE_ITEM TEST_OPS test_static_save_load)
-list(REMOVE_ITEM TEST_OPS test_squared_l2_norm_op)
-list(REMOVE_ITEM TEST_OPS test_attribute_var)
-list(REMOVE_ITEM TEST_OPS test_layer_norm_op)
-list(REMOVE_ITEM TEST_OPS test_gru_op)
-###### end ######
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
@@ -608,10 +591,6 @@ if(WITH_DISTRIBUTE)
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps12")
   endif()
 
-  py_test_modules(test_communicator_async MODULES test_communicator_async ENVS
-                  ${dist_ENVS})
-  py_test_modules(test_communicator_geo MODULES test_communicator_geo ENVS
-                  ${dist_ENVS})
   if(NOT APPLE)
     if(NOT WIN32)
       py_test_modules(test_auto_parallel_reshard_serial MODULES

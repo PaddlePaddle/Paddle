@@ -16,11 +16,14 @@ import paddle
 
 paddle.set_default_dtype("float64")
 import os
+import sys
 import tempfile
 import unittest
 
 import numpy as np
 from convert import convert_params_for_net
+
+sys.path.append("../../rnn")
 from rnn_numpy import GRU, LSTM, SimpleRNN
 
 bidirectional_list = ["bidirectional", "bidirect"]

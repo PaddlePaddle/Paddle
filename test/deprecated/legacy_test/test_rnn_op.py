@@ -26,6 +26,7 @@ from paddle.base import core
 # Add test/rnn to sys.path
 legacy_test_dir = Path(__file__).resolve().parents[1]
 sys.path.append(str(legacy_test_dir / "rnn"))
+sys.path.append("../../rnn")
 from convert import get_params_for_net
 from rnn_numpy import LSTM
 

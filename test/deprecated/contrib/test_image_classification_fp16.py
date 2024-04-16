@@ -23,7 +23,7 @@ import unittest
 import numpy
 
 # TODO: remove sys.path.append
-sys.path.append("../legacy_test")
+sys.path.append("../../legacy_test")
 import nets
 
 import paddle

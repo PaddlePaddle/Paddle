@@ -4,10 +4,6 @@ file(
   "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
-# The following unittest is now in deprecated dir, we can delete this code when we move it from deprecated dir to this dir
-list(REMOVE_ITEM TEST_OPS test_sequence_conv)
-list(REMOVE_ITEM TEST_OPS test_sequence_pool)
-
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()

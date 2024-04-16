@@ -16,6 +16,8 @@ import sys
 import unittest
 
 import numpy as np
+
+sys.path.append("../../legacy_test")
 from test_sparse_attention_op import get_cuda_version
 
 from paddle.base import core

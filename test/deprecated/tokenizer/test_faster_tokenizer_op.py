@@ -13,10 +13,13 @@
 # limitations under the License.
 
 import os
+import sys
 import tempfile
 import unittest
 
 import numpy as np
+
+sys.path.append("../../tokenizer")
 from bert_tokenizer import BertTokenizer
 
 import paddle

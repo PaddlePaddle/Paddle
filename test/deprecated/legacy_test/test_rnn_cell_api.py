@@ -17,7 +17,7 @@ import unittest
 
 import numpy as np
 
-sys.path.append("../../deprecated/rnn")
+sys.path.append("../../rnn")
 from rnn_numpy import (
     LSTMCell,
     rnn as numpy_rnn,

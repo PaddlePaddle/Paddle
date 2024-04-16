@@ -76,7 +76,6 @@ list(REMOVE_ITEM TEST_OPS test_fuse_dot_product_attention_pass)
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
-  list(REMOVE_ITEM TEST_OPS test_c_embedding_op)
   list(REMOVE_ITEM TEST_OPS test_memcpy_op)
   list(REMOVE_ITEM TEST_OPS test_raw_program_optimizer)
   list(REMOVE_ITEM TEST_OPS test_fleet_gradient_scale)
@@ -835,7 +834,6 @@ set(STATIC_BUILD_TESTS
     test_arg_min_max_op
     test_batch_norm_op
     test_bincount_op
-    test_c_embedding_op
     test_decoupled_py_reader
     test_eigh_op
     test_fetch_lod_tensor_array
@@ -863,10 +861,6 @@ endif()
 
 if(WITH_COVERAGE)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_unique)
-endif()
-
-if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
-  list(REMOVE_ITEM STATIC_BUILD_TESTS test_c_embedding_op)
 endif()
 
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})

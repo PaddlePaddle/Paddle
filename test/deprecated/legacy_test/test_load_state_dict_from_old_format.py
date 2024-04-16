@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import os
+import sys
 import tempfile
 import unittest
 
+sys.path.append("../../legacy_test")
 import nets
 import numpy as np
 from test_imperative_base import new_program_scope

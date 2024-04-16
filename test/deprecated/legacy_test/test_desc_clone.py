@@ -14,8 +14,10 @@
 
 import collections
 import functools
+import sys
 import unittest
 
+sys.path.append("../../legacy_test")
 import nets
 
 import paddle

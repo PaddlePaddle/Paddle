@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
+
+sys.path.append("../../legacy_test")
 from test_conv3d_transpose_op import (
     TestConv3DTransposeOp,
     create_test_cudnn_bf16_class,

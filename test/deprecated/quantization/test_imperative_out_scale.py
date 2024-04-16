@@ -13,10 +13,13 @@
 # limitations under the license.
 
 import os
+import sys
 import tempfile
 import unittest
 
 import numpy as np
+
+sys.path.append("../../quantization")
 from imperative_test_utils import fix_model_dict, train_lenet
 
 import paddle

@@ -13,9 +13,12 @@
 # limitations under the license.
 
 import os
+import sys
 import unittest
 
 import numpy as np
+
+sys.path.append("../../quantization")
 from imperative_test_utils import (
     ImperativeLenetWithSkipQuant,
     fix_model_dict,

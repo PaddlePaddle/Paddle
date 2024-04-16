@@ -19,7 +19,11 @@ import numpy as np
 import paddle
 
 paddle.enable_static()
+import sys
+
 from op_test import get_numeric_gradient
+
+sys.path.append("../../legacy_test")
 from test_conv2d_op import (
     TestConv2DOp,
     TestConv2DOp_v2,

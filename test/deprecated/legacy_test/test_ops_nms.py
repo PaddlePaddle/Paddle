@@ -13,10 +13,13 @@
 # limitations under the License.
 
 import os
+import sys
 import tempfile
 import unittest
 
 import numpy as np
+
+sys.path.append("../../legacy_test")
 from test_nms_op import nms
 
 import paddle

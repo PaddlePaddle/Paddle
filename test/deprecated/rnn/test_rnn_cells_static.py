@@ -17,10 +17,13 @@ import paddle
 paddle.framework.set_default_dtype("float64")
 paddle.enable_static()
 
+import sys
 import unittest
 
 import numpy as np
 from convert import convert_params_for_cell_static
+
+sys.path.append("../../rnn")
 from rnn_numpy import GRUCell, LSTMCell, SimpleRNNCell
 
 
