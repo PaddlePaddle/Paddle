@@ -90,6 +90,7 @@ bool InferSymbolicShapeElementWiseBinary(
         symbol::TensorShapeOrDataDimExprs(shapes)};
     shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
   }
+  return true;
 }
 
 #define OP_ELEMENT_WISE_BINARY(name)                                        \
