@@ -345,9 +345,18 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
     target.arch.Visit(adt::match{
-        [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::X86Arch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+        [&](common::UnknownArch) {
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "This target [%s] is not supported yet.", target));
+        },
+        [&](common::X86Arch) {
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "This target [%s] is not supported yet.", target));
+        },
+        [&](common::ARMArch) {
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "This target [%s] is not supported yet.", target));
+        },
         [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDNN
           // If conv_type is backward_filter or backward_data, we built a fake
@@ -377,9 +386,6 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
           }
         },
     });
-    std::stringstream ss;
-    ss << "This target [" << target << "] is not supported yet.";
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -1592,7 +1598,7 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
   bool use_warp_reduce = false;
   target.arch.Visit(adt::match{
       [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-      [&](common::X86Arch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::X86Arch) { use_warp_reduce = false; },
       [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::NVGPUArch) {
         if (global_pooling && data_format == "NCHW") {
@@ -1820,7 +1826,7 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
     }
     target.arch.Visit(adt::match{
         [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::X86Arch) { CINN_NOT_IMPLEMENTED; },
+        [&](common::X86Arch) { /*nothing*/ },
         [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
         [&](common::NVGPUArch) {
           CHECK(!vec_tensor.empty());
