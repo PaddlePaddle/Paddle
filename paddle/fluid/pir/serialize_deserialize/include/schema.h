@@ -62,4 +62,6 @@ namespace pir {
 // type/attr's contents which is json::array.
 #define DATA "D"
 
+// NULL_TYPE
+#define NULL_TYPE "NULL"
 }  // namespace pir

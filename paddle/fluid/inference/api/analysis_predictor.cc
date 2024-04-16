@@ -108,6 +108,7 @@
 #ifdef PADDLE_WITH_CINN
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_util.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
 #endif
 
@@ -908,6 +909,23 @@ bool AnalysisPredictor::PrepareExecutor() {
       };
 
 #ifdef PADDLE_WITH_CINN
+      auto CreatePassMgr = [&] {
+        pir::IrContext *ctx = pir::IrContext::Instance();
+        ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+        ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+        auto pass_manager = std::make_shared<::pir::PassManager>(
+            ::pir::IrContext::Instance(), 2);
+        if (!config_.glog_info_disabled()) {
+          pass_manager->EnablePrintStatistics();
+        }
+        if (config_.ir_debug_) {
+          pass_manager->EnableIRPrinting(
+              std::make_unique<pir::PassManager::IRPrinterOption>(
+                  ir_printing_conditions, ir_printing_conditions));
+        }
+        return pass_manager;
+      };
+
       if (paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
         VLOG(4) << "[Prim] Decomp program in predictor begin.";
         DecompProgram decomp_object(pir_program_.get());
@@ -918,26 +936,14 @@ bool AnalysisPredictor::PrepareExecutor() {
         ::pir::shape::AddShapeOptimizationPass(shape_pm, *pir_program_.get());
         VLOG(4) << "[ShapeDialect] Run AddShapeOptimizationPass";
         shape_pm->Run(pir_program_.get());
+
+        cinn::dialect::ir::CheckInferSymbolicIfNeed(pir_program_.get(),
+                                                    CreatePassMgr);
       }
 
       if (config_.cinn_enabled()) {
         VLOG(4) << "[CINN] Begin ApplyCinnPass";
-        cinn::dialect::ir::ApplyCinnPass(pir_program_.get(), [&] {
-          pir::IrContext *ctx = pir::IrContext::Instance();
-          ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-          ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-          auto pass_manager = std::make_shared<::pir::PassManager>(
-              ::pir::IrContext::Instance(), 2);
-          if (!config_.glog_info_disabled()) {
-            pass_manager->EnablePrintStatistics();
-          }
-          if (config_.ir_debug_) {
-            pass_manager->EnableIRPrinting(
-                std::make_unique<pir::PassManager::IRPrinterOption>(
-                    ir_printing_conditions, ir_printing_conditions));
-          }
-          return pass_manager;
-        });
+        cinn::dialect::ir::ApplyCinnPass(pir_program_.get(), CreatePassMgr);
       }
 #endif
 

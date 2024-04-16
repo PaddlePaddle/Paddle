@@ -71,6 +71,35 @@ std::shared_ptr<OpStrategy> StrategyForRelu(
   return strategy;
 }
 
+std::shared_ptr<OpStrategy> StrategyForRelu6Symbolic(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<ir::Dim>> &output_shapes,
+    const Target &target) {
+  framework::CINNCompute relu6_compute(
+      [](lang::Args args, lang::RetValue *ret) {
+        CHECK(!args.empty())
+            << "The input argument of relu6 compute is empty! Please check.\n";
+        CINNValuePack pack_args = args[0];
+        CHECK(!pack_args.empty())
+            << "at least one input tensor for relu6 compute\n";
+        Expr A = pack_args[0];
+        CHECK(A.as_tensor());
+        CHECK_EQ(pack_args.size(), 2);
+        CHECK(pack_args[1].is_string());
+        std::string tensor_name = pack_args[1].operator std::string();
+        auto out = pe::Relu6(A.as_tensor_ref(), 0.0, tensor_name);
+        auto stages = CreateStages({out});
+        *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
+      });
+
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  CHECK(out_type.size()) << "Out_type of relu6 op is empty! Please check.";
+  strategy->AddImpl(relu6_compute, lang::PackedFunc(), "strategy.relu6.x86", 1);
+  return strategy;
+}
+
 std::shared_ptr<OpStrategy> StrategyForReluSymbolic(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
@@ -2399,6 +2428,8 @@ CINN_REGISTER_HELPER(nn_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForRelu6)
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
+          "CINNStrategySymbolic", cinn::hlir::op::StrategyForRelu6Symbolic)
       .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForRelu))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForRelu))
 #ifndef CINN_WITH_CUDA
