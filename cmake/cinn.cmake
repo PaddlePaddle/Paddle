@@ -289,6 +289,10 @@ function(gen_cinncore LINKTYPE)
     target_link_libraries(${CINNCORE_TARGET} cutlass)
     add_dependencies(${CINNCORE_TARGET} cutlass)
   endif()
+
+  if(CINN_WITH_ROCM)
+    target_link_libraries(${CINNCORE_TARGET} ${ROCM_HIPRTC_LIB})
+  endif()
 endfunction()
 
 gen_cinncore(STATIC)

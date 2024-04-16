@@ -939,6 +939,17 @@ std::vector<ir::Expr> CustomCallArgsForMemcpy(
   return {Expr(count)};
 }
 
+void RegisterCustomCallArgsFuncImpltHIP() {
+  CustomCallArgsFuncRegistry::Global().Register(
+      "cinn_call_hip_memset",
+      cinn::common::DefaultROCMTarget(),
+      CustomCallArgsForMemset);
+  CustomCallArgsFuncRegistry::Global().Register(
+      "cinn_call_hip_memcpy",
+      cinn::common::DefaultROCMTarget(),
+      CustomCallArgsForMemcpy);
+}
+
 bool RegisterCustomCallArgsFunc() {
 #ifdef CINN_WITH_CUDA
   CustomCallArgsFuncRegistry::Global().Register(
@@ -1004,6 +1015,10 @@ bool RegisterCustomCallArgsFunc() {
       "cinn_call_cudnn_pool2d_backward",
       cinn::common::DefaultNVGPUTarget(),
       CustomCallArgsForCudnnPoolBackward);
+#endif
+
+#ifdef CINN_WITH_ROCM
+  RegisterCustomCallArgsFuncImpltHIP();
 #endif
 
 #ifdef CINN_WITH_DNNL

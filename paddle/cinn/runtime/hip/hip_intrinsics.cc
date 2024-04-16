@@ -40,6 +40,27 @@ CINN_REGISTER_HELPER(cinn_hip_host_api) {
       .AddInputType<int>()     // block_z
       .AddInputType<void *>()  // stream
       .End();
+
+  using cinn::runtime::hip::cinn_call_hip_memset;
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_hip_memset,
+                              cinn::common::DefaultHostTarget())
+      .SetRetType<void>()
+      .AddInputType<void *>()  // v_args
+      .AddInputType<int>()     // num_args
+      .AddInputType<int>()     // value
+      .AddInputType<size_t>()  // count
+      .AddInputType<void *>()  // stream
+      .End();
+
+  using cinn::runtime::hip::cinn_call_hip_memcpy;
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_hip_memcpy,
+                              cinn::common::DefaultHostTarget())
+      .SetRetType<void>()
+      .AddInputType<void *>()  // v_args
+      .AddInputType<int>()     // num_args
+      .AddInputType<size_t>()  // count
+      .AddInputType<void *>()  // stream
+      .End();
   GlobalSymbolRegistry::Global().RegisterFn(
       "backend_api.hip", reinterpret_cast<void *>(HIPBackendAPI::Global()));
   return true;

@@ -70,6 +70,17 @@ void cinn_call_hip_kernel(void* kernel_fn,
                           int block_z,
                           void* stream);
 
+void cinn_call_hip_memset(void* v_args,
+                          int num_args,
+                          int value,
+                          size_t count,
+                          void* stream = nullptr);
+
+void cinn_call_hip_memcpy(void* v_args,
+                          int num_args,
+                          size_t count,
+                          void* stream = nullptr);
+
 }  // namespace hip
 }  // namespace runtime
 }  // namespace cinn

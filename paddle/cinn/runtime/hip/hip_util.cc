@@ -16,6 +16,7 @@
 #include <glog/logging.h>
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/utils/profiler.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace runtime {
@@ -67,6 +68,43 @@ void cinn_call_hip_kernel(void *kernel_fn,
                                           kernel_args.data(),
                                           nullptr))
   }
+}
+
+void cinn_call_hip_memset(
+    void *v_args, int num_args, int value, size_t count, void *stream) {
+  PADDLE_ENFORCE_EQ(num_args,
+                    1,
+                    phi::errors::PreconditionNotMet(
+                        "The cinn_call_hip_memset only accept a output."));
+  VLOG(4) << "call cinn_call_hip_memset with value=" << value
+          << ", count=" << count;
+
+  cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
+  void *output = args[0].operator cinn_buffer_t *()->memory;
+
+  hipStream_t custream = static_cast<hipStream_t>(stream);
+
+  HIP_CALL(hipMemsetAsync(output, value, count, custream));
+}
+
+void cinn_call_hip_memcpy(void *v_args,
+                          int num_args,
+                          size_t count,
+                          void *stream) {
+  PADDLE_ENFORCE_EQ(
+      num_args,
+      2,
+      phi::errors::PreconditionNotMet(
+          "The cinn_call_hip_memset only accept a input and a output."));
+  VLOG(4) << "call cinn_call_hip_memcpy with count=" << count;
+
+  cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
+  void *input = args[0].operator cinn_buffer_t *()->memory;
+  void *output = args[1].operator cinn_buffer_t *()->memory;
+
+  hipStream_t hipstream = static_cast<hipStream_t>(stream);
+  HIP_CALL(
+      hipMemcpyAsync(output, input, count, hipMemcpyDeviceToDevice, hipstream));
 }
 
 }  // namespace hip

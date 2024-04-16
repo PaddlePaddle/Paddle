@@ -19,6 +19,7 @@
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/hlir/framework/visualize_helper.h"
+#include "paddle/cinn/runtime/flags.h"
 
 namespace cinn::hlir::pass {
 
@@ -111,6 +112,42 @@ std::vector<std::shared_ptr<Group>> SingleGroupOptimizePass::Apply() {
   return optimized_groups;
 }
 
+void NodeToMemsetCustomCallImpl(Node* node,
+                                cinn::common::Target::Language language) {
+  using cinn::common::Target;
+  switch (language) {
+    case Target::Language::cuda:
+      node->attrs.attr_store["custom_call"] =
+          std::string("cinn_call_cuda_memset");
+      break;
+    case Target::Language::hip:
+      node->attrs.attr_store["custom_call"] =
+          std::string("cinn_call_hip_memset");
+      break;
+    default:
+      PADDLE_THROW(
+          phi::errors::Fatal("%s not support custom call memcpy!", language));
+  }
+}
+
+void NodeToMemcpyCustomCallImpl(Node* node,
+                                cinn::common::Target::Language language) {
+  using cinn::common::Target;
+  switch (language) {
+    case Target::Language::cuda:
+      node->attrs.attr_store["custom_call"] =
+          std::string("cinn_call_cuda_memcpy");
+      break;
+    case Target::Language::hip:
+      node->attrs.attr_store["custom_call"] =
+          std::string("cinn_call_hip_memcpy");
+      break;
+    default:
+      PADDLE_THROW(
+          phi::errors::Fatal("%s not support custom call memset!", language));
+  }
+}
+
 bool SingleGroupOptimizePass::TryReplaceNodeToCustomCall(Node* node) const {
   if (node->is_variable()) {
     // skip variable
@@ -136,12 +173,12 @@ bool SingleGroupOptimizePass::TryReplaceNodeToCustomCall(Node* node) const {
   }
 
   if (can_replace_to_memset) {
-    node->attrs.attr_store["custom_call"] =
-        std::string("cinn_call_cuda_memset");
+    NodeToMemsetCustomCallImpl(
+        node, cinn::runtime::CurrentTarget::GetCurrentTarget().language);
   }
   if (can_replace_to_memcpy) {
-    node->attrs.attr_store["custom_call"] =
-        std::string("cinn_call_cuda_memcpy");
+    NodeToMemcpyCustomCallImpl(
+        node, cinn::runtime::CurrentTarget::GetCurrentTarget().language);
   }
 
   return can_replace;
