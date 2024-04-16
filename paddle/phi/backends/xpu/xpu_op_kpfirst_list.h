@@ -80,7 +80,6 @@ XPUOpMap& get_kp_ops() {
       {"equal", XPUKernelSet({phi::DataType::INT32})},
       {"not_equal", XPUKernelSet({phi::DataType::INT32})},
       {"pull_box_sparse", XPUKernelSet({phi::DataType::FLOAT32})},
-      {"push_box_sparse", XPUKernelSet({phi::DataType::FLOAT32})},
       {"c_sync_calc_stream", XPUKernelSet({phi::DataType::FLOAT32})},
       {"c_sync_comm_stream", XPUKernelSet({phi::DataType::FLOAT32})},
       {"c_allreduce_sum", XPUKernelSet({phi::DataType::FLOAT32})},
