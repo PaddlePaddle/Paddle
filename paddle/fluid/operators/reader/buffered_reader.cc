@@ -317,6 +317,9 @@ void BufferedReader::ReadAsync(size_t i) {
       }
       TensorVec pinned_device{cpu.size()};
       if (pin_memory_) {
+        auto context_ptr = (platform::CustomDeviceContext *)
+                               platform::DeviceContextPool::Instance()
+                                   .Get(place_);
         platform::CustomPinnedPlace pinned_place(place_.GetDeviceType());
         platform::CPUPlace cpu_place;
         std::vector<void *> custom_pinned_ptrs;
@@ -325,8 +328,11 @@ void BufferedReader::ReadAsync(size_t i) {
           if (platform::is_cpu_place(cpu[i].place())) {
             pinned_device[i].Resize(cpu[i].dims());
             pinned_device[i].set_layout(cpu[i].layout());
-            custom_pinned_ptrs[i] =
-                pinned_device[i].mutable_data(pinned_place, cpu[i].dtype());
+            custom_pinned_ptrs[i] = context_ptr->Alloc(&pinned_device[i],
+                                                       cpu[i].dtype(),
+                                                       0 /*request_size*/,
+                                                       true /*pinned*/);
+
             auto size = cpu[i].numel() * phi::SizeOf(cpu[i].dtype());
 
             memory::Copy(cpu_place,
