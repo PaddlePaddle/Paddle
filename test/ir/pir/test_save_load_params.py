@@ -19,7 +19,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import base
 from paddle.optimizer import Adam
 from paddle.pir_utils import IrGuard
 
@@ -61,33 +60,21 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
                 main_program, paddle.static.Program()
             ):
                 x = paddle.static.data(
-                    'x', shape=[-1, 16], dtype='float32', lod_level=1
+                    name="static_x", shape=[None, IMAGE_SIZE], dtype='float32'
                 )
-
-                linear = paddle.nn.Linear(
-                    in_features=x.shape[-1],
-                    out_features=16,
-                    weight_attr=paddle.nn.initializer.UniformInitializer(
-                        low=-0.5,
-                        high=0.5,
-                        seed=10,
-                        diag_num=16,
-                        diag_step=16,
-                        diag_val=1.0,
-                    ),
-                )
-                y = linear(x)
-
-                place = base.CPUPlace()
-                x_tensor = base.create_lod_tensor(
-                    np.random.rand(3, 16).astype("float32"), [[1, 2]], place
-                )
-                exe = base.Executor(place)
+                z = paddle.static.nn.fc(x, 10)
+                z = paddle.static.nn.fc(z, 10, bias_attr=False)
+                loss = paddle.mean(z)
+                opt = Adam(learning_rate=1e-3)
+                opt.minimize(loss)
+                place = paddle.CPUPlace()
+                exe = paddle.static.Executor(place)
                 exe.run(paddle.static.default_startup_program())
-                ret = exe.run(
+                fake_inputs = np.random.randn(2, IMAGE_SIZE).astype('float32')
+                exe.run(
                     main_program,
-                    feed={'x': x_tensor},
-                    fetch_list=[y],
+                    feed={'static_x': fake_inputs},
+                    fetch_list=[loss],
                 )
                 scope = paddle.static.global_scope()
                 params = main_program.global_block().all_parameters()
@@ -137,10 +124,11 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
                 save_dir = os.path.join(self.temp_dir.name, "save_params")
                 for k, v in param_dict.items():
                     path = os.path.join(save_dir, k, '.pdparams')
-                    paddle.base.core.save_func(v, k, path, True, False)
+                    # test fp16
+                    paddle.base.core.save_func(v, k, path, True, True)
                     tensor = param_dict[k]
                     tensor.set(np.zeros_like(np.array(tensor)), place)
-                    paddle.base.core.load_func(path, -1, [], False, tensor)
+                    paddle.base.core.load_func(path, -1, [], True, tensor)
                     np.testing.assert_array_equal(tensor, v)
 
                 for k, v in opt_dict.items():
@@ -171,6 +159,14 @@ class TestSimpleParamSaveLoad(unittest.TestCase):
                 # save to memory
                 paddle.base.core.save_combine_func(
                     param_vec, list(param_dict.keys()), path, True, False, True
+                )
+                # save as fp16
+                paddle.base.core.save_combine_func(
+                    param_vec, list(param_dict.keys()), path, True, True, False
+                )
+                # load as fp16
+                paddle.base.core.load_combine_func(
+                    path, list(param_dict.keys()), param_new, True
                 )
 
                 # test save_vars

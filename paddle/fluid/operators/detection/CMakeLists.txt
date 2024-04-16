@@ -36,15 +36,12 @@ detection_library(anchor_generator_op SRCS anchor_generator_op.cc
                   anchor_generator_op.cu)
 detection_library(polygon_box_transform_op SRCS polygon_box_transform_op.cc
                   polygon_box_transform_op.cu)
-detection_library(rpn_target_assign_op SRCS rpn_target_assign_op.cc)
 detection_library(generate_proposal_labels_op SRCS
                   generate_proposal_labels_op.cc)
 detection_library(multiclass_nms_op SRCS multiclass_nms_op.cc DEPS phi common)
 detection_library(box_clip_op SRCS box_clip_op.cc box_clip_op.cu)
 detection_library(box_decoder_and_assign_op SRCS box_decoder_and_assign_op.cc
                   box_decoder_and_assign_op.cu)
-detection_library(retinanet_detection_output_op SRCS
-                  retinanet_detection_output_op.cc)
 
 if(WITH_GPU OR WITH_ROCM)
   if(WITH_GPU)

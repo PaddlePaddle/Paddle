@@ -837,8 +837,6 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::FLOAT16,
                      phi::DataType::INT32,
                      phi::DataType::INT64})},
-      {"sampling_id",
-       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT64})},
       {"set_value",
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::INT32,
