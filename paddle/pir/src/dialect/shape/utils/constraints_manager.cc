@@ -279,7 +279,7 @@ void ConstraintsManager::GTOneConstraintsVisitor(const DoEachT& DoEach) {
 template <typename DoEachT>
 void ConstraintsManager::BroadcastableConstraintsVisitor(
     const DoEachT& DoEach) {
-  for (auto it = broadcastables_.begin(); it != broadcastables_.end();) {
+  for (auto it = broadcastables_.begin(); it != broadcastables_.end(); it++) {
     DoEach(it);
   }
 }

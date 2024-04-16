@@ -103,10 +103,6 @@ void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
   }
 }
 
-symbol::DimExprBuilder ShapeConstraintIRAnalysis::DimExprBuilder() {
-  return symbol::DimExprBuilder();
-}
-
 void ShapeConstraintIRAnalysis::AddEqualCstr(const symbol::DimExpr& lhs,
                                              const symbol::DimExpr& rhs) {
   constraints_manager_.AddEqCstr(lhs, rhs);
@@ -307,6 +303,9 @@ namespace {
 
 bool CanSubstituteInShapeAnalysis(const symbol::DimExpr& lhs,
                                   const symbol::DimExpr& rhs) {
+  if (lhs.isa<symbol::Broadcast<symbol::DimExpr>>() && rhs.isa<std::string>()) {
+    return true;
+  }
   int lhs_priority = symbol::GetDimExprPriority(lhs);
   int rhs_priority = symbol::GetDimExprPriority(rhs);
   if (lhs_priority >= 2 && rhs_priority >= 2) {

@@ -59,8 +59,6 @@ class IR_API ShapeConstraintIRAnalysis {
   void SetShapeOrDataForValue(Value val,
                               const symbol::ShapeOrDataDimExprs& shape_or_data);
 
-  symbol::DimExprBuilder DimExprBuilder();
-
   void AddEqualCstr(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs);
 
   bool IsEqual(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) const;
