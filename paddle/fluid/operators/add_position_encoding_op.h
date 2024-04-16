@@ -41,7 +41,7 @@ class AddPositionEncodingKernel : public framework::OpKernel<T> {
     if (x_lod.empty()) {
       PADDLE_ENFORCE_EQ(x_dim.size(),
                         3,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The input(X)'s dimension of AddPositionEncodingOp "
                             "should be equal to "
                             "3, but received %d. ",
@@ -52,14 +52,14 @@ class AddPositionEncodingKernel : public framework::OpKernel<T> {
     } else {
       PADDLE_ENFORCE_EQ(x_dim.size(),
                         2,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The input(X)'s dimension of AddPositionEncodingOp "
                             "should be equal to "
                             "2, but received %d. ",
                             x_dim.size()));
       PADDLE_ENFORCE_EQ(x_lod.size(),
                         1,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The input(X)'s lod level of AddPositionEncodingOp "
                             "should be equal to "
                             "1, but received %d. ",
@@ -70,13 +70,13 @@ class AddPositionEncodingKernel : public framework::OpKernel<T> {
       enc_size = x_dim[1];
     }
 
-    PADDLE_ENFORCE_EQ(enc_size % 2,
-                      0,
-                      platform::errors::InvalidArgument(
-                          "The input(X)'s feature size of "
-                          "AddPositionEncodingOp only support even, "
-                          "but received an odd number: %d. ",
-                          enc_size));
+    PADDLE_ENFORCE_EQ(
+        enc_size % 2,
+        0,
+        phi::errors::InvalidArgument("The input(X)'s feature size of "
+                                     "AddPositionEncodingOp only support even, "
+                                     "but received an odd number: %d. ",
+                                     enc_size));
 
     const int half_size = enc_size / 2;
     for (int i = 0; i < batch_size; ++i) {

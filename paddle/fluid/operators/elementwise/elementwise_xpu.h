@@ -39,12 +39,12 @@ void XPUElementwise(const framework::ExecutionContext& ctx,
   PADDLE_ENFORCE_NE(
       x_var,
       nullptr,
-      platform::errors::InvalidArgument("Cannot get input Variable X"));
+      phi::errors::InvalidArgument("Cannot get input Variable X"));
   PADDLE_ENFORCE_EQ(
       x_var->IsType<phi::DenseTensor>(),
       true,
-      platform::errors::InvalidArgument("XPU only support phi::DenseTensor, "
-                                        "Input(X) is not phi::DenseTensor"));
+      phi::errors::InvalidArgument("XPU only support phi::DenseTensor, "
+                                   "Input(X) is not phi::DenseTensor"));
 
   auto x = x_var->Get<phi::DenseTensor>();
   auto* y = ctx.Input<phi::DenseTensor>("Y");

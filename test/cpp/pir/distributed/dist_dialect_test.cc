@@ -345,8 +345,8 @@ TEST(shard_tensor_op_replicate_test, base) {
   auto dst_mesh_attr = ProcessMeshAttribute::get(ctx, dst_process_mesh);
   auto dst_tensor_dist_attr = TensorDistAttribute::get(
       ctx, dst_mesh_attr, dst_dims_mapping, partial_status);
-  paddle::dialect::ReShardOp reshard_op =
-      builder.Build<paddle::dialect::ReShardOp>(shard_op.out(),
+  paddle::dialect::ReshardOp reshard_op =
+      builder.Build<paddle::dialect::ReshardOp>(shard_op.out(),
                                                 dst_tensor_dist_attr);
 
   EXPECT_TRUE(reshard_op.result(0).type().isa<DistDenseTensorType>());
@@ -428,8 +428,8 @@ TEST(shard_tensor_op_shard_row_test, base) {
   auto dst_mesh_attr = ProcessMeshAttribute::get(ctx, dst_process_mesh);
   auto dst_tensor_dist_attr = TensorDistAttribute::get(
       ctx, dst_mesh_attr, dims_mapping, partial_status);
-  paddle::dialect::ReShardOp reshard_op =
-      builder.Build<paddle::dialect::ReShardOp>(shard_op.out(),
+  paddle::dialect::ReshardOp reshard_op =
+      builder.Build<paddle::dialect::ReshardOp>(shard_op.out(),
                                                 dst_tensor_dist_attr);
 
   EXPECT_TRUE(reshard_op.result(0).type().isa<DistDenseTensorType>());
@@ -511,8 +511,8 @@ TEST(shard_tensor_op_shard_col_test, base) {
   auto dst_mesh_attr = ProcessMeshAttribute::get(ctx, dst_process_mesh);
   auto dst_tensor_dist_attr = TensorDistAttribute::get(
       ctx, dst_mesh_attr, dst_dims_mapping, partial_status);
-  paddle::dialect::ReShardOp reshard_op =
-      builder.Build<paddle::dialect::ReShardOp>(shard_op.out(),
+  paddle::dialect::ReshardOp reshard_op =
+      builder.Build<paddle::dialect::ReshardOp>(shard_op.out(),
                                                 dst_tensor_dist_attr);
 
   EXPECT_TRUE(reshard_op.result(0).type().isa<DistDenseTensorType>());
