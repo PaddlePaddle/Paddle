@@ -36,25 +36,25 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
   if (ctx.HasInput("Offsets")) {
     PADDLE_ENFORCE_EQ(ctx.Attr<std::vector<int>>("offsets").empty(),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input 'Offsets' and attribute 'offsets' "
                           "should not be used at the same time for CropOp."));
     const auto* offsets_tensor = ctx.Input<phi::DenseTensor>("Offsets");
     PADDLE_ENFORCE_EQ(offsets_tensor->dims().size(),
                       1,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The number of dimensions of input 'Offsets' for "
                           "CropOp must be 1, but the value received is %d.",
                           offsets_tensor->dims().size()));
     PADDLE_ENFORCE_EQ(
         rank,
         offsets_tensor->dims()[0],
-        platform::errors::InvalidArgument("The number of elements (%d) for "
-                                          "input 'Offsets' must be equal to "
-                                          "the number of dimensions (%d) "
-                                          "of the input tensor.",
-                                          offsets_tensor->dims()[0],
-                                          rank));
+        phi::errors::InvalidArgument("The number of elements (%d) for "
+                                     "input 'Offsets' must be equal to "
+                                     "the number of dimensions (%d) "
+                                     "of the input tensor.",
+                                     offsets_tensor->dims()[0],
+                                     rank));
     const int* offsets_data;
     phi::DenseTensor cpu_tmp_tensor;
     if (platform::is_cpu_place(offsets_tensor->place())) {
@@ -70,12 +70,12 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
     PADDLE_ENFORCE_EQ(
         rank,
         static_cast<int>(res.size()),
-        platform::errors::InvalidArgument("The number of elements (%d) for "
-                                          "input 'Offsets' must be equal to "
-                                          "the number of dimensions (%d) "
-                                          "of the input tensor.",
-                                          res.size(),
-                                          rank));
+        phi::errors::InvalidArgument("The number of elements (%d) for "
+                                     "input 'Offsets' must be equal to "
+                                     "the number of dimensions (%d) "
+                                     "of the input tensor.",
+                                     res.size(),
+                                     rank));
   }
   return res;
 }
@@ -113,14 +113,14 @@ class CropKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(
         rank,
         1,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The number of dimensions of the Input(X) for CropOp must be "
             "greater than or equal to 1, but the value received is %d.",
             rank));
     PADDLE_ENFORCE_LE(
         rank,
         6,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The number of dimensions of the Input(X) for CropOp must be "
             "less than or equal to 6, but the value received is %d.",
             rank));
@@ -181,7 +181,7 @@ class CropGradKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(
         rank,
         1,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The number of dimensions of the input 'Out@GRAD' for "
             "CropGrad must be greater than or equal "
             "to 1, but the value received is %d.",
@@ -189,7 +189,7 @@ class CropGradKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_LE(
         rank,
         6,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The number of dimensions of the input 'Out@GRAD' for "
             "CropGrad must be less than or equal "
             "to 6, but the value received is %d.",

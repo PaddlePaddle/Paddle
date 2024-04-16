@@ -87,6 +87,16 @@ class TestRandomSampler(unittest.TestCase):
             rets.append(i)
             assert i >= 0 and i < 100
 
+    def test_with_num_samples_and_without_replacement(self):
+        dataset = RandomDataset(100, 10)
+        sampler = RandomSampler(dataset, num_samples=80, replacement=False)
+        assert len(sampler) == 80
+
+        rets = []
+        for i in iter(sampler):
+            rets.append(i)
+            assert i >= 0 and i < 100
+
     def test_with_generator(self):
         dataset = RandomDataset(100, 10)
         generator = iter(range(0, 60))
@@ -110,6 +120,10 @@ class TestRandomSampler(unittest.TestCase):
         for i in iter(sampler):
             rets.append(i)
         assert tuple(sorted(rets)) == tuple(range(0, 50))
+
+    def test_with_num_samples_error(self):
+        dataset = RandomDataset(100, 10)
+        self.assertRaises(ValueError, RandomSampler, dataset, False, 120)
 
 
 class TestSubsetRandomSampler(unittest.TestCase):

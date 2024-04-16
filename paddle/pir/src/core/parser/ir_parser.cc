@@ -310,9 +310,11 @@ AttributeMap IrParser::ParseAttributeMap() {
     } else if (token_val == ",") {
       key_token = ConsumeToken();
     } else {
-      IR_ENFORCE((token_val == "}") || (token_val == ","),
-                 "The token value of expectation is } or , , not " + token_val +
-                     "." + GetErrorLocationInfo());
+      PADDLE_ENFORCE_EQ((token_val == "}") || (token_val == ","),
+                        true,
+                        phi::errors::InvalidArgument(
+                            "The token value of expectation is } or , , not " +
+                            token_val + "." + GetErrorLocationInfo()));
     }
   }
   return attribute_map;

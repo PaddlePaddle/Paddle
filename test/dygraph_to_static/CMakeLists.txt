@@ -5,7 +5,6 @@ file(
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 set(SOT_ENVS SOT_LOG_LEVEL=0 COST_MODEL=False MIN_GRAPH_SIZE=0
              STRICT_MODE=False)
-set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0)
 
 if(WIN32 AND NOT WITH_GPU)
   # disable on Windows CPU CI for timeout
@@ -27,7 +26,7 @@ if(NOT WITH_GPU)
 endif()
 
 foreach(TEST_OP ${TEST_OPS})
-  py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS} ${SOT_ENVS})
+  py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${SOT_ENVS})
 endforeach()
 
 set_tests_properties(test_se_resnet PROPERTIES TIMEOUT 900)
@@ -64,11 +63,14 @@ if(WITH_GPU)
 endif()
 
 # Legacy IR only tests for dygraph_to_static
-set(LEGACY_ONLY_TEST_FILES test_legacy_error test_pylayer)
+set(LEGACY_ONLY_TEST_FILES test_legacy_error test_pylayer test_local_cast)
 foreach(ITEST ${LEGACY_ONLY_TEST_FILES})
   if(TEST ${ITEST})
     set_tests_properties(
-      ${ITEST} PROPERTIES ENVIRONMENT "FLAGS_enable_pir_with_pt_in_dy2st=0")
+      ${ITEST}
+      PROPERTIES
+        ENVIRONMENT
+        "FLAGS_enable_pir_with_pt_in_dy2st=0;FLAGS_enable_pir_api=False")
     message(
       STATUS
         "PT Disabled OpTest: set FLAGS_enable_pir_with_pt_in_dy2st to False for ${ITEST}"

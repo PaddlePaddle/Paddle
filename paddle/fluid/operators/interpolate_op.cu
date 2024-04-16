@@ -953,7 +953,7 @@ static void Interpolate1DCUDAFwd(const framework::ExecutionContext& ctx,
   }
   PADDLE_ENFORCE_GT(out_w,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "out_w in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
   framework::DDim dim_out;
@@ -1049,12 +1049,12 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
   }
   PADDLE_ENFORCE_GT(out_h,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "out_h in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
   PADDLE_ENFORCE_GT(out_w,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "out_w in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
 
@@ -1205,17 +1205,17 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
   }
   PADDLE_ENFORCE_GT(out_d,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "out_d in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
   PADDLE_ENFORCE_GT(out_h,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "out_h in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
   PADDLE_ENFORCE_GT(out_w,
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "out_w in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
 
@@ -1648,7 +1648,7 @@ class InterpolateOpCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()),
         true,
-        platform::errors::NotFound("This kernel only runs on GPU device."));
+        phi::errors::NotFound("This kernel only runs on GPU device."));
     auto* input = ctx.Input<phi::DenseTensor>("X");
     auto* output = ctx.Output<phi::DenseTensor>("Out");
 
@@ -1670,7 +1670,7 @@ class InterpolateGradOpCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()),
         true,
-        platform::errors::NotFound("This kernel only runs on GPU device."));
+        phi::errors::NotFound("This kernel only runs on GPU device."));
     auto* input_grad =
         ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* output_grad =

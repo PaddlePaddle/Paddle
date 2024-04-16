@@ -36,7 +36,7 @@ class SequencePadOpKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(x->lod().empty(),
                       false,
-                      platform::errors::NotFound(
+                      phi::errors::NotFound(
                           "Input(X) phi::DenseTensor of SequencePadOp does not "
                           "contain LoD information."));
 
