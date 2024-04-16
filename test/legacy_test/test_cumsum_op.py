@@ -597,7 +597,7 @@ class TestTensorAxis(unittest.TestCase):
 
                 exe = paddle.static.Executor(self.place)
                 exe.run(startup_prog)
-                static_out = exe.run(feed={'x': np_x}, fetch_list=[loss])
+                static_out = exe.run(feed={'x': np_x}, fetch_list=[out])
 
                 # run infer
                 paddle.static.save_inference_model(
