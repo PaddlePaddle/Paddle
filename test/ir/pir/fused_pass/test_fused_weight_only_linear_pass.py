@@ -93,6 +93,7 @@ class TestFusedWeightOnlyLinearPass_WithBias(PassTest):
     def setUp(self):
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
+        self.pass_attr_list = [{'fused_weight_only_linear_pass': {}}]
 
     def sample_program(self):
         for dtype in ['float16', "float32"]:
@@ -128,7 +129,6 @@ class TestFusedWeightOnlyLinearPass_WithBias(PassTest):
                             res1 = paddle.matmul(x=x, y=w)
                             out = paddle.add(res1, bias)
                             out = paddle.assign(out)
-                            self.pass_list = ['fused_weight_only_linear_pass']
                             self.feeds = {
                                 "x": 0.01
                                 * np.random.random((3, 128, 4096)).astype(
@@ -194,6 +194,7 @@ class TestFusedWeightOnlyLinearPass_NoBias(PassTest):
     def setUp(self):
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
+        self.pass_attr_list = [{'fused_weight_only_linear_pass': {}}]
 
     def sample_program(self):
         for dtype in ['float16', "float32"]:
@@ -219,7 +220,6 @@ class TestFusedWeightOnlyLinearPass_NoBias(PassTest):
 
                         out = paddle.matmul(x=x, y=w)
                         out = paddle.assign(out)
-                        self.pass_list = ['fused_weight_only_linear_pass']
                         self.feeds = {
                             "x": 0.01
                             * np.random.random((3, 128, 4096)).astype(dtype),
@@ -230,6 +230,44 @@ class TestFusedWeightOnlyLinearPass_NoBias(PassTest):
 
     def test_check_output(self):
         self.check_pass_correct(1e-3, 1e-3)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
+    "weight_only_linear requires CUDA >= 11.2",
+)
+class TestFusedWeightOnlyLinearPass_Weight_Only_Int8(
+    TestFusedWeightOnlyLinearPass_NoBias
+):
+    def setUp(self):
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+        self.pass_attr_list = [
+            {
+                'fused_weight_only_linear_pass': {
+                    "weight_only_algo": "weight_only_int8"
+                }
+            }
+        ]
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
+    "weight_only_linear requires CUDA >= 11.2",
+)
+class TestFusedWeightOnlyLinearPass_Weight_Only_Int8_WithBias(
+    TestFusedWeightOnlyLinearPass_WithBias
+):
+    def setUp(self):
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+        self.pass_attr_list = [
+            {
+                'fused_weight_only_linear_pass': {
+                    "weight_only_algo": "weight_only_int8",
+                }
+            }
+        ]
 
 
 if __name__ == "__main__":

@@ -17,6 +17,7 @@
 namespace pir {
 void ProgramReader::RecoverProgram(Json* program_json,
                                    pir::Program* recover_program) {
+  id_value_map[0] = pir::Value();
   ReadProgram(program_json, recover_program);
   VLOG(6) << "Finish json to program.";
   return;
