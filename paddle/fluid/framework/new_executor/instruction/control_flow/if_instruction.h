@@ -48,6 +48,10 @@ class IfInstruction : public InstructionBase {
 
   PirInterpreter* FalseBranchInterpreter() const { return false_branch_inter_; }
 
+  void SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs);
+
+  void SetInputHooks(const std::vector<PirHookFunc>& hookfuncs);
+
  private:
   ::pir::Operation* op_;
 

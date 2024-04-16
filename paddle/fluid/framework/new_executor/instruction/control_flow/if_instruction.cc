@@ -38,7 +38,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
 namespace paddle {
@@ -196,6 +196,16 @@ IfInstruction::~IfInstruction() {
   if (false_branch_inter_ != nullptr) {
     delete false_branch_inter_;
   }
+}
+
+void IfInstruction::SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs) {
+  true_branch_inter_->SetOutputHooks(hookfuncs);
+  false_branch_inter_->SetOutputHooks(hookfuncs);
+}
+
+void IfInstruction::SetInputHooks(const std::vector<PirHookFunc>& hookfuncs) {
+  true_branch_inter_->SetInputHooks(hookfuncs);
+  false_branch_inter_->SetInputHooks(hookfuncs);
 }
 
 void IfInstruction::Run() {

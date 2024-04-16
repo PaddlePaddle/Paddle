@@ -16,10 +16,11 @@
 
 import unittest
 
-import cinn
 import numpy as np
-from cinn import Target, ir, lang, runtime, utils
-from cinn.poly import create_stages
+
+from paddle import cinn
+from paddle.cinn import Target, ir, lang, runtime, utils
+from paddle.cinn.poly import create_stages
 
 
 class TestMatmul(unittest.TestCase):

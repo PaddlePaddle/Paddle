@@ -244,7 +244,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_apply_per_channel_scale)
 endif()
 
-if(LINUX AND WITH_MKLDNN)
+if(LINUX AND WITH_ONEDNN)
 
   #### Image classification dataset: ImageNet (small)
   # The dataset should already be downloaded for INT8v2 unit tests
@@ -394,7 +394,7 @@ if(LINUX AND WITH_MKLDNN)
   set(NLP_DATA_ARCHIVE "Ernie_dataset.tar.gz")
   set(NLP_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie_dataset")
   set(NLP_DATA_PATH "${NLP_DATA_DIR}/Ernie_dataset/1.8w.bs1")
-  set(NLP_LABLES_PATH "${NLP_DATA_DIR}/Ernie_dataset/label.xnli.dev")
+  set(NLP_LABELS_PATH "${NLP_DATA_DIR}/Ernie_dataset/label.xnli.dev")
   download_quant_data(${NLP_DATA_DIR} ${NLP_DATA_ARCHIVE}
                       e650ce0cbc1fadbed5cc2c01d4e734dc)
 
@@ -411,7 +411,7 @@ if(LINUX AND WITH_MKLDNN)
   inference_quant2_int8_nlp_test(
     test_quant2_int8_ernie_mkldnn ${QUANT2_ERNIE_MODEL_DIR}/Ernie_qat/float
     ${FP32_ERNIE_MODEL_DIR}/ernie_fp32_model ${NLP_DATA_PATH}
-    ${NLP_LABLES_PATH} ${QUANT2_ERNIE_OPS_TO_QUANTIZE})
+    ${NLP_LABELS_PATH} ${QUANT2_ERNIE_OPS_TO_QUANTIZE})
 
   # Quant2 GRU
   set(QUANT2_GRU_MODEL_DIR "${QUANT_INSTALL_DIR}/GRU_quant2")
@@ -516,7 +516,7 @@ set_tests_properties(test_imperative_qat_user_defined PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_qat_lsq PROPERTIES TIMEOUT 300)
 set_tests_properties(test_imperative_qat_matmul PROPERTIES TIMEOUT 300)
 
-if(LINUX AND WITH_MKLDNN)
+if(LINUX AND WITH_ONEDNN)
   set_tests_properties(test_quant2_int8_mobilenetv1_mkldnn PROPERTIES TIMEOUT
                                                                       120)
   set_tests_properties(convert_model2dot_ernie PROPERTIES TIMEOUT 120)

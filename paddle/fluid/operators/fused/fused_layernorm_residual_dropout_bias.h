@@ -466,12 +466,11 @@ struct FusedLayernormResidualDropoutBiasFunctor {
   }
 };
 
-template struct FusedLayernormResidualDropoutBiasFunctor<
-    paddle::platform::float16,
-    uint8_t,
-    8,
-    float,
-    false>;
+template struct FusedLayernormResidualDropoutBiasFunctor<phi::dtype::float16,
+                                                         uint8_t,
+                                                         8,
+                                                         float,
+                                                         false>;
 
 /*
  * @brief layernorm(residual + dropout(x));
@@ -872,7 +871,7 @@ void LaunchLayernormResidualDropoutBias(
               epsilon,
               cols));
       default:
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "Product from begin_norm_axis to end must be larger than 1"));
         break;
     }
@@ -1037,7 +1036,7 @@ void LaunchLayernormResidualDropoutBias(
       switch (cols) {
         LAUNCH_FUSED_FAST_LN_KERNEL;
         default:
-          PADDLE_THROW(platform::errors::InvalidArgument(
+          PADDLE_THROW(phi::errors::InvalidArgument(
               "Only when column is equal to 768/1024/4096 is supported for "
               "now"));
           break;

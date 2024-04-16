@@ -43,9 +43,9 @@ const std::set<std::string>& GetPrimitiveOpNames() {
       "pd_op.sum",
       "pd_op.abs",
       "pd_op.assign",
+      "pd_op.assign_value",
       "pd_op.concat",
       "pd_op.elementwise_pow",
-      "pd_op.rsqrt",
       "pd_op.floor",
       "pd_op.gather",
       "pd_op.gather_nd",
@@ -58,6 +58,8 @@ const std::set<std::string>& GetPrimitiveOpNames() {
       "pd_op.min",
       "pd_op.maximum",
       "pd_op.minimum",
+      "pd_op.argmax",
+      "pd_op.argmin",
       "pd_op.prod",
       "pd_op.roll",
       "pd_op.scatter",
@@ -88,6 +90,10 @@ const std::set<std::string>& GetPrimitiveOpNames() {
       "pd_op.full_with_tensor",
       "pd_op.if",
       "pd_op.while",
+      /* Considering better performance, such ops are set as primitive ops
+         temporarily*/
+      "pd_op.rsqrt",
+      "pd_op.sqrt",
       /* basic ops by PIR*/
       "builtin.combine",
       "builtin.slice",
@@ -100,11 +106,15 @@ const std::set<std::string>& GetPrimitiveOpNames() {
       "pd_op.data",
       "builtin.shadow_output",
       /* skip some special ops */
+      "pd_op.conv2d",
+      "pd_op.pad3d",
+      "pd_op.nearest_interp",
       "pd_op.squeeze",
       "pd_op.unsqueeze",
       "pd_op.select_input",
       "pd_op.top_p_sampling",
       "pd_op.tril",
+      "pd_op.triu",
       "cf.yield",
       "pd_op.increment_",
   };

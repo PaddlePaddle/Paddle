@@ -75,7 +75,7 @@ static void RuntimeStaticShapeCheck(std::vector<int64_t> runtime_input_shape,
   PADDLE_ENFORCE_EQ(
       model_input_shape == runtime_input_shape,
       true,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Input shapes are inconsistent with the model. Expect [%s] in "
           "model description, but got [%s] in runtime. TRT 5 "
           "or lower version "
@@ -101,7 +101,7 @@ static phi::DataType TRT2FluidDataType(nvinfer1::DataType type) {
       return phi::DataType::BOOL;
 #endif
     default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "unknown fluid datatype in Fluid op converter"));
       return phi::DataType::FLOAT32;
   }
@@ -114,7 +114,7 @@ static void RuntimeDynamicShapeCheck(
     const std::vector<int32_t> &max_input_shape) {
   // PADDLE_ENFORCE_EQ(
   //     runtime_input_shape.size(), min_input_shape.size(),
-  //     platform::errors::InvalidArgument(
+  //     phi::errors::InvalidArgument(
   //         "TRT engine runtime input %s dims size(%d) inconsistent "
   //         "with the dynamic shape size(%d)",
   //         x, runtime_input_shape.size(), min_input_shape.size()));
@@ -139,7 +139,7 @@ static void RuntimeDynamicShapeCheck(
   PADDLE_ENFORCE_EQ(is_input_shape_valid(
                         runtime_input_shape, min_input_shape, max_input_shape),
                     true,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "TRT runtime input shape of %s is invalid. Expect "
                         "runtime input shape to be within min/max input shape "
                         "configured in SetTRTDynamicShapeInfo(),"
@@ -362,12 +362,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
           PADDLE_ENFORCE_EQ(
               min_input_shape.count(x),
               true,
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "Input %s not found in TRT engine min_input_shape.", x));
           PADDLE_ENFORCE_EQ(
               max_input_shape.count(x),
               true,
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "Input %s not found in TRT engine max_input_shape.", x));
           RuntimeDynamicShapeCheck(x,
                                    runtime_input_shape[x],
@@ -560,7 +560,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         PADDLE_ENFORCE_EQ(
             t.numel(),
             1UL,
-            platform::errors::PreconditionNotMet(
+            phi::errors::PreconditionNotMet(
                 "This tensor must have one element, but got %ld.", t.numel()));
         t_shape.push_back(1);
       }
@@ -571,7 +571,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       PADDLE_ENFORCE_LT(
           bind_index,
           num_bindings,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Wrong TRT engine input binding index. Expected The "
               "binding index of TRT engine input to be less than "
               "the number of inputs and outputs. Received binding "
@@ -592,7 +592,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
             PADDLE_ENFORCE_EQ(
                 runtime_batch,
                 t_shape[0],
-                platform::errors::InvalidArgument(
+                phi::errors::InvalidArgument(
                     "Inputs of trt subgraphs has different batchsize. "
                     "It's not allowed in static shape mode. "
                     "Check whether the model you are running has multiple trt "
@@ -693,7 +693,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       auto intrt_type = engine->engine()->getBindingDataType(intrt_index);
       PADDLE_ENFORCE_EQ(indata_type,
                         intrt_type,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The TRT Engine OP's input type [%d] should equal "
                             "to the input data type [%d].",
                             static_cast<int>(intrt_type),
@@ -733,7 +733,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         buffers[bind_index] = static_cast<void *>(t.data<bool>());
 #endif
       } else {
-        PADDLE_THROW(platform::errors::Fatal(
+        PADDLE_THROW(phi::errors::Fatal(
             "The TRT Engine OP only support "
             "float/double/int32_t/int64_t/float16/bool input."));
       }
@@ -787,14 +787,14 @@ class TensorRTEngineOp : public framework::OperatorBase {
       auto *fluid_v = scope.FindVar(y);
       PADDLE_ENFORCE_NOT_NULL(
           fluid_v,
-          platform::errors::NotFound(
+          phi::errors::NotFound(
               "Output variable %s is not found in TensorRT subgraph.", y));
       auto *fluid_t = fluid_v->GetMutable<phi::DenseTensor>();
       fluid_t->Resize(common::make_ddim(ddim));
 
       PADDLE_ENFORCE_LT(bind_index,
                         num_bindings,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The binding index in TRT engine should be less "
                             "than the number of bindings, but got binding "
                             "index = %d, number of bindings = %d.",
@@ -813,7 +813,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       PADDLE_ENFORCE_LE(
           runtime_batch,
           max_batch_size_,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The runtime batch size (%d) is greater than the max batch "
               "size(%d).\n"
               "There are two possible causes for this problem: \n"
@@ -983,7 +983,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     }
     PADDLE_ENFORCE_NOT_NULL(
         trt_engine_,
-        platform::errors::Fatal(
+        phi::errors::Fatal(
             "The pointer to tensorrt engine should not be null."));
     return trt_engine_;
   }
