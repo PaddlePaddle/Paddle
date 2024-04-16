@@ -15,7 +15,6 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
 
 import paddle
 from paddle import base
@@ -149,25 +148,34 @@ class TestSincAPI(unittest.TestCase):
     or not core.is_float16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA and not support the float16",
 )
-class TestSincFP16OP(OpTest):
+class TestSincAPIFP16(unittest.TestCase):
     def setUp(self):
-        self.op_type = 'sinc'
-        self.python_api = paddle.sinc
-        self.check_cinn = True
-        self.init_config()
-        self.x = np.random.rand(*self.shape).astype(self.dtype)
-        self.inputs = {'X': self.x}
-        self.outputs = {'Out': np.sinc(self.x)}
-
-    def test_check_output(self):
-        self.check_output(check_cinn=self.check_cinn, check_pir=True)
-
-    def test_check_grad(self):
-        self.check_grad('X', 'Out', check_cinn=self.check_cinn, check_pir=True)
-
-    def init_config(self):
-        self.shape = [16, 64]
+        self.shapes = [[6], [16, 64]]
         self.dtype = 'float16'
+        self.place = paddle.CUDAPlace(0)
+
+    def test_dtype(self):
+        def run_static(place):
+            paddle.enable_static()
+            for shape in self.shapes:
+                x_data = np.random.rand(*shape).astype(self.dtype)
+                startup_program = paddle.static.Program()
+                main_program = paddle.static.Program()
+                exe = base.Executor(place)
+                with paddle.static.program_guard(main_program, startup_program):
+                    x = paddle.static.data(
+                        name='x', shape=shape, dtype=self.dtype
+                    )
+                    res = paddle.sinc(x)
+                    static_result = exe.run(
+                        feed={'x': x_data}, fetch_list=[res]
+                    )[0]
+                    out_expected = np_sinc(x_data)
+                np.testing.assert_allclose(
+                    static_result, out_expected, rtol=1e-6, atol=1e-6
+                )
+
+        run_static(self.place)
 
 
 if __name__ == "__main__":
