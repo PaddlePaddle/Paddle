@@ -50,7 +50,7 @@ class L1NormGradKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         d_out->numel(),
         1,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(GRAD@Out) of L1NormGradOP should be a scalar."));
     phi::DenseTensor *dx =
         context.Output<phi::DenseTensor>(framework::GradVarName("X"));

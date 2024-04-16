@@ -52,100 +52,21 @@ class OpLoweringGroup {
     fn_name_ = CompatibleInfo::GroupOpsName(ops_);
   }
 
-  struct SharedGroupHasher {
-    size_t operator()(
-        const std::shared_ptr<OpLoweringGroup>& group) const noexcept {
-      return std::hash<std::string>()(group->group_id());
-    }
-  };
-  struct SharedGroupComparator {
-    bool operator()(
-        const std::shared_ptr<OpLoweringGroup>& first,
-        const std::shared_ptr<OpLoweringGroup>& second) const noexcept {
-      return first->group_id() == second->group_id();
-    }
-  };
-
-  std::vector<::pir::Value> GetGroupOutputValues() const {
-    std::unordered_set<::pir::Operation*> group_ops_set(this->ops_.begin(),
-                                                        this->ops_.end());
-
-    std::vector<::pir::Value> output_values;
-    for (auto* op : this->ops_) {
-      for (size_t i = 0; i < op->num_results(); ++i) {
-        auto result = op->result(i);
-        if (!result) {
-          continue;
-        }
-        for (auto use_iter = result.use_begin(); use_iter != result.use_end();
-             ++use_iter) {
-          auto* use_op = use_iter->owner();
-          if (group_ops_set.find(use_op) == group_ops_set.end()) {
-            output_values.push_back(result);
-            break;
-          }
-        }
-      }
-    }
-    return output_values;
-  }
-
-  std::unordered_set<::pir::Value> GetInputOpValues() const {
-    std::unordered_set<::pir::Value> group_inputs;
-    std::unordered_set<::pir::Operation*> ops_set(this->ops_.begin(),
-                                                  this->ops_.end());
-
-    // count all op's input Value
-    for (auto op : ops_set) {
-      for (auto& value : op->operands_source()) {
-        if (!value || !value.type() || ops_set.count(value.defining_op()))
-          continue;
-        // if the input value owner op is not in OpSet, it's the group's input
-        group_inputs.insert(value);
-      }
-    }
-    return group_inputs;
-  }
-
-  std::unordered_set<::pir::Value> GetOutputOpValues() const {
-    std::unordered_set<::pir::Value> group_outputs;
-
-    for (auto op : this->output_ops_) {
-      for (auto& result : op->results()) {
-        if (!result || result.type()) {
-          continue;
-        }
-
-        group_outputs.insert(result);
-      }
-    }
-    return group_outputs;
-  }
-
-  const std::string& FuncName() const { return fn_name_; }
-
+  const std::string& FuncName() const { return this->fn_name_; }
+  ::pir::Block* GetParentBlock() const;
+  ::pir::Program* GetParentProgram() const;
+  std::vector<::pir::Value> GetGroupOutputValues() const;
+  std::unordered_set<::pir::Value> GetInputOpValues() const;
+  std::unordered_set<::pir::Value> GetOutputOpValues() const;
   const symbol::ShapeOrDataDimExprs& GetShapeOrDataExprs(
-      const ::pir::Value& value) const {
-    PADDLE_ENFORCE_EQ(HasShapeOrDataExprs(value),
-                      true,
-                      ::common::errors::NotFound(
-                          "value not found in value_to_shape_or_data_exprs_"));
-    return value_to_shape_or_data_exprs_.at(value);
-  }
+      const ::pir::Value& value) const;
 
   bool HasShapeOrDataExprs(const ::pir::Value& value) const {
     return value_to_shape_or_data_exprs_.count(value);
   }
 
   void SetShapeOrDataExprs(const ::pir::Value& value,
-                           const symbol::ShapeOrDataDimExprs& shape_or_data) {
-    auto iter = value_to_shape_or_data_exprs_.find(value);
-    if (iter == value_to_shape_or_data_exprs_.end()) {
-      value_to_shape_or_data_exprs_.emplace(value, shape_or_data);
-    } else {
-      iter->second = shape_or_data;
-    }
-  }
+                           const symbol::ShapeOrDataDimExprs& shape_or_data);
 
   void WalkOps(const std::function<void(::pir::Operation*)>& VisitOp) const {
     for (const auto& op : ops_) {
@@ -154,23 +75,17 @@ class OpLoweringGroup {
   }
 
   const std::vector<::pir::Operation*>& ops() const { return ops_; }
-
   std::vector<::pir::Operation*>& mut_ops() { return ops_; }
-
   void SetOps(const std::vector<::pir::Operation*>& new_ops) { ops_ = new_ops; }
 
   const std::vector<std::string>& input_names() const {
     return this->input_names_;
   }
-
   std::vector<std::string>& mut_input_names() { return this->input_names_; }
-
   const std::vector<std::string>& output_names() const {
     return this->output_names_;
   }
-
   std::vector<std::string>& mut_output_names() { return this->output_names_; }
-
   const std::vector<::pir::Value>& output_values() const {
     return this->output_values_;
   }
@@ -178,11 +93,9 @@ class OpLoweringGroup {
   std::vector<::pir::Value>& mut_output_values() {
     return this->output_values_;
   }
-
   const std::unordered_set<::pir::Operation*>& output_ops() const {
     return this->output_ops_;
   }
-
   std::unordered_set<::pir::Operation*>& mut_output_ops() {
     return this->output_ops_;
   }
@@ -200,8 +113,6 @@ class OpLoweringGroup {
         ::common::errors::Unavailable("Required map_expr_ctx_ != nullptr."));
     return *map_expr_ctx_;
   }
-
-  ::pir::Program* GetParentProgram() const;
 
   void set_value_to_shape_or_data_exprs(
       const std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>&

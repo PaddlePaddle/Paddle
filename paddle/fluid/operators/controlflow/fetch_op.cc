@@ -76,7 +76,7 @@ class FetchOp : public framework::OperatorBase {
     auto *fetch_var = scope.FindVar(fetch_var_name);
     PADDLE_ENFORCE_NOT_NULL(
         fetch_var,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "Input variable(%s) cannot be found in scope for operator 'Fetch'."
             "Confirm that you have used the fetch `Variable` format "
             "instead of the string literal('%s') in `fetch_list` "
@@ -91,15 +91,15 @@ class FetchOp : public framework::OperatorBase {
     auto *out_var = scope.FindVar(out_name);
     PADDLE_ENFORCE_NOT_NULL(
         out_var,
-        platform::errors::NotFound("Output variable(%s) cannot be found "
-                                   "in scope for operator 'Fetch'.",
-                                   out_name));
+        phi::errors::NotFound("Output variable(%s) cannot be found "
+                              "in scope for operator 'Fetch'.",
+                              out_name));
 
     int col = Attr<int>("col");
     PADDLE_ENFORCE_GE(
         col,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Expected the column index (the attribute 'col' of "
             "operator 'Fetch') of current fetching variable to be "
             "no less than 0. But received column index = %d.",

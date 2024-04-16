@@ -42,7 +42,7 @@ class DequeueOp : public framework::OperatorBase {
     auto* queue_holder_var = scope.FindVar(queue_name);
     PADDLE_ENFORCE_NOT_NULL(
         queue_holder_var,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "No LoDTensorBlockingQueueHolder variable with name %s found.",
             queue_name));
     auto* queue_holder =
@@ -50,17 +50,17 @@ class DequeueOp : public framework::OperatorBase {
     auto& out_names = Outputs("Out");
     PADDLE_ENFORCE_GT(out_names.size(),
                       0,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The output for Op(dequeue) must be set."));
     for (const auto& out_name : out_names) {
       auto out_var = scope.FindVar(out_name);
-      PADDLE_ENFORCE_NOT_NULL(out_var,
-                              platform::errors::NotFound(
-                                  "No variable with name %s found", out_name));
+      PADDLE_ENFORCE_NOT_NULL(
+          out_var,
+          phi::errors::NotFound("No variable with name %s found", out_name));
       auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
       PADDLE_ENFORCE_NOT_NULL(
           out_tensor,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Variable with name %s has not been initialized.", out_name));
 
       paddle::framework::LoDTensorArray lod_tensor_vec;
@@ -68,7 +68,7 @@ class DequeueOp : public framework::OperatorBase {
       lod_tensor_vec = queue_holder->GetQueue()->Pop(&success);
       PADDLE_ENFORCE_EQ(lod_tensor_vec.size(),
                         1,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Expected to pop only one element per Pop call for "
                             "Op(dequeue), but poped %d element.",
                             lod_tensor_vec.size()));

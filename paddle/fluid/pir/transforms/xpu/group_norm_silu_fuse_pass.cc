@@ -60,7 +60,7 @@ class GroupNormSiluPattern : public paddle::drr::DrrPatternBase {
 
     const auto &silu = pat.Op(paddle::dialect::SiluOp::name());
 
-    groupnorm({&pat.Tensor("X"), &pat.Tensor("Bias"), &pat.Tensor("Scale")},
+    groupnorm({&pat.Tensor("X"), &pat.Tensor("Scale"), &pat.Tensor("Bias")},
               {&pat.Tensor("Y"), &pat.Tensor("Mean"), &pat.Tensor("Variance")});
     silu({&pat.Tensor("Y")}, {&pat.Tensor("Out")});
 
@@ -70,7 +70,7 @@ class GroupNormSiluPattern : public paddle::drr::DrrPatternBase {
         paddle::dialect::GroupNormSiluXpuOp::name(),
         {{{"epsilon", pat.Attr("epsilon")}, {"groups", pat.Attr("groups")}}});
     group_norm_silu_xpu(
-        {&res.Tensor("X"), &res.Tensor("Bias"), &res.Tensor("Scale")},
+        {&res.Tensor("X"), &res.Tensor("Scale"), &res.Tensor("Bias")},
         {&res.Tensor("Out")});
   }
 };
