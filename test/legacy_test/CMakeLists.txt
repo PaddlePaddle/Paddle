@@ -19,6 +19,11 @@ if((NOT WITH_GPU) AND (NOT WITH_XPU))
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
+# The following unittest is now in deprecated dir, we can delete this code when we move it from deprecated dir to this dir
+###### start ######
+list(REMOVE_ITEM TEST_OPS test_squared_l2_norm_op)
+###### end ######
+
 if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_unique)
 endif()
