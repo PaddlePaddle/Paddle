@@ -193,8 +193,11 @@ static ValueDimRelation GetSingleOpRelation(pir::Operation* op) {
     return special_result.value();
   }
 
-  CHECK(op->num_results() == 1)
-      << "Now we do not support op with multi outputs: " << op->name();
+  if (op->num_results() != 1) {
+    return CreateOpRelativenessForDefault(op);
+  }
+  // CHECK(op->num_results() == 1)
+  //     << "Now we do not support op with multi outputs: " << op->name();
   const hlir::framework::OpPatternKind kind = GetOpPatternKind(op);
   ValueDimRelation result;
   if (kind == hlir::framework::kReduction) {

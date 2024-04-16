@@ -374,7 +374,6 @@ def reshard(dist_tensor, mesh, placements):
             >>> print(out_d_tensor)
 
     """
-
     if paddle.framework.in_dynamic_mode():
         # TODO(LiYuRio): static logic here, reshard should be changed for dygraph logic
         # when reshard has been changed align dygraph logic, delete it.

@@ -58,6 +58,7 @@ namespace cinn::dialect::ir {
 
 namespace {
 bool HasDynamicShape(const pir::Program& program) {
+  return false;
   if (FLAGS_disable_dyshape_in_train) {
     return false;
   }
@@ -110,6 +111,8 @@ void ApplyCinnPreprocessPass(
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   }
 
+  pass_manager->EnableIRPrinting();
+
   pass_manager->Run(program);
 }
 
@@ -122,7 +125,7 @@ void ApplyBuildGroupOpPass(
   if (has_dynamic_shape) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
-  pass_manager->AddPass(cinn::dialect::ir::CreateFoldManipulationOpsPass());
+  // pass_manager->AddPass(cinn::dialect::ir::CreateFoldManipulationOpsPass());
 
   pass_manager->AddPass(pir::CreateBuildCinnPass());
 
@@ -147,7 +150,7 @@ void ApplyGroupOpPass(::pir::Program* program,
         cinn::dialect::ir::CreateMoveGenerateShapeOpsToProloguePass());
   }
 
-  pass_manager->AddPass(cinn::dialect::ir::CreateDynamicReshapeOpPass());
+  // pass_manager->AddPass(cinn::dialect::ir::CreateDynamicReshapeOpPass());
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateFoldManipulationOpsPass());
 
@@ -186,7 +189,7 @@ void ApplyCinnLowerPass(
     pass_manager->AddPass(std::move(pass.value()));
   }
 
-  pass_manager->AddPass(cinn::dialect::ir::CreateSingleOpFallbackToPhiPass());
+  // pass_manager->AddPass(cinn::dialect::ir::CreateSingleOpFallbackToPhiPass());
   if (has_dynamic_shape && !force_static_shape) {
     pass_manager->AddPass(
         cinn::dialect::ir::CreateLowerCinnDyShapeFusionOpPass());
@@ -196,6 +199,7 @@ void ApplyCinnLowerPass(
   pass_manager->AddPass(
       cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
 
+  pass_manager->EnableIRPrinting();
   pass_manager->Run(program);
 }
 

@@ -220,8 +220,9 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
                &tmp_tensor_info);
 
   // =========== OpFusion ============
-
+  std::cerr << "before fusion\n";
   func_bodies = OperationFusion(ops, func_bodies);
+  std::cerr << "after fusion\n";
   const auto& fusion_group_info = GetFusionGroupInfo(func_bodies);
 
   // =========== CodeGen And Optimizer ================
@@ -279,6 +280,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   std::vector<ir::Tensor> group_func_arg_tensors_copy = group_func_arg_tensors;
   std::vector<ir::Argument> group_func_args;
   std::vector<ir::Tensor> infer_shape_tensor_args;
+  VLOG(4) << "begin post process";
   std::vector<ir::LoweredFunc> funcs = PostProcess(group,
                                                    tensor_map,
                                                    apply_group_schedule,
@@ -286,6 +288,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
                                                    &group_func_arg_tensors_copy,
                                                    &group_func_args,
                                                    &infer_shape_tensor_args);
+  VLOG(4) << "fin post process";
   CHECK_EQ(funcs.size(), cond2func_bodies.size());
   BucketLoweredFuncsWrapper funcs_wrapper;
   for (int i = 0; i < funcs.size(); ++i) {
@@ -727,6 +730,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
 
   group->mut_output_names().clear();
 
+  std::cerr << "11\n";
   // collect all output tensor.
   for (auto op_result : group->GetGroupOutputValues()) {
     if (tensor_map.count(op_result) == 0) {
@@ -760,7 +764,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     (*group_func_args).emplace_back(tensor->buffer, ir::Argument::IO::kOutput);
     arg_name_set.insert(tensor->buffer->name);
   }
-
+  std::cerr << "22\n";
   if (!done_op_schedule) {
     std::unordered_set<std::string> args_set;
     for (auto arg : (*group_func_args)) {
@@ -784,6 +788,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       }
     }
   }
+
+  std::cerr << "33\n";
 
   std::map<int, CINNKernelInfo::ArgDimIdx> mps;
   // update args for dynamic dim
@@ -812,6 +818,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       }
     }
   }
+
+  std::cerr << "55\n";
   std::vector<ir::LoweredFunc> lowered_funcs;
   for (ir::Expr func_body : func_bodies) {
     optim::EliminateDeadScheduleBlock(&(func_body), group->output_names());
@@ -819,6 +827,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     optim::EliminateCommonGlobalMemoryRead(&(func_body));
     optim::OptimizeExprGPU(&(func_body));
 #endif
+
+    std::cerr << "55-1\n";
 
     // 2.Prepare temp buffers
     auto temp_buffers =
@@ -829,10 +839,14 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     if (!done_op_schedule) {
       func->PrepareBufferCastExprs();
     }
+    std::cerr << "55-2\n";
     // 4.Apply low level pass
+    std::cerr << "otp " << Expr(func) << std::endl;
     func = optim::Optimize(Expr(func), target_, false).as_lowered_func_ref();
+    std::cerr << "55-3\n";
     lowered_funcs.push_back(std::move(func));
   }
+  std::cerr << "66\n";
 
   return lowered_funcs;
 }
