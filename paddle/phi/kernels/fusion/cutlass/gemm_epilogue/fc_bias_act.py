@@ -1,4 +1,4 @@
-# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ fba_header = '''
 #include "cutlass/epilogue/thread/linear_combination_bias_relu.h"
 #include "cutlass/epilogue/thread/linear_combination_sigmoid.h"
 #include "cutlass/util/device_memory.h"
-#include "paddle/phi/kernels/fusion/cutlass/fully_connected/fc_util.h"
+#include "paddle/phi/kernels/fusion/cutlass/gemm_epilogue/fc_util.h"
 
 namespace phi{
 namespace fusion{

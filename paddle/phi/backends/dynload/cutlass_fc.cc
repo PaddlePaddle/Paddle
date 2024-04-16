@@ -40,7 +40,7 @@ void* GetCutlassFcHandle() {
             "libCutlassFc.so is needed, "
             "but libCutlassFc.so is not found.\n"
             "  Suggestions:\n"
-            "  1. Refer paddle/phi/kernels/fusion/cutlass/fully_connected/README.md, "
+            "  1. Refer paddle/phi/kernels/fusion/cutlass/gemm_epilogue/README.md, "
             "and compile this library.\n"
             "  2. Configure environment variables as "
             "follows:\n"

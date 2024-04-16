@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,11 +23,11 @@
 
 namespace {
 
-std::set<std::string> act_ops = {{paddle::dialect::GeluOp::name()},
-                                 {paddle::dialect::ReluOp::name()},};
+std::set<std::string> act_ops = {"gelu",
+                                 "relu",};                                 
 std::unordered_map<std::string, std::string> activation_type = {
-    {paddle::dialect::GeluOp::name(), "gelu"},
-    {paddle::dialect::ReluOp::name(), "relu"},};                                 
+    {"gelu", paddle::dialect::GeluOp::name()},
+    {"relu", paddle::dialect::ReluOp::name()},};                                 
 
 class MatmulAddPattern : public paddle::drr::DrrPatternBase {
  private:
@@ -35,7 +35,7 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
  bool reverse_add_;
 
  public:
-  explicit MatmulAddPattern(std::string fused_op_name, bool reverse_add)
+  explicit MatmulAddPattern(const std::string& fused_op_name, const bool reverse_add)
       : fused_op_name_(fused_op_name), reverse_add_(reverse_add) {}
  
   std::string name() const override { return "MatmulAddPattern"; }
@@ -106,14 +106,14 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-// Act supports [Relu, Gelu]
+// Act supports [relu, gelu]
 class FcWithActPattern : public paddle::drr::DrrPatternBase {
  private:
   std::string act_type_;
   std::string fused_op_name_;
 
  public:
-  explicit FcWithActPattern(std::string act_type, std::string fused_op_name)
+  explicit FcWithActPattern(const std::string& act_type, const std::string& fused_op_name)
       : act_type_(act_type), fused_op_name_(fused_op_name) {}
 
   std::string name() const override { return "FcWithActPattern"; }
@@ -127,21 +127,21 @@ class FcWithActPattern : public paddle::drr::DrrPatternBase {
                           {"padding_weights", pat.Attr("padding_weights")},
                       }});
     std::unordered_map<std::string, paddle::drr::Attribute> act_attrs;
-    if (act_type_ == paddle::dialect::GeluOp::name()) {
+    if (act_type_ == "gelu") {
       act_attrs.emplace("approximate", pat.Attr("approximate"));
     }
-    const auto &act = pat.Op(act_type_, act_attrs);
+    const auto &act = pat.Op(activation_type[act_type_], act_attrs);
 
     fc({&pat.Tensor("x"), &pat.Tensor("w"), &pat.Tensor("y")},
        {&pat.Tensor("fc_out")});
     act({&pat.Tensor("fc_out")}, {&pat.Tensor("act_out")});
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
-        bool isEmpty_act = match_ctx.Attr<std::string>("activation_type").empty();
-        if(!isEmpty_act) return false;
-        if (act_type_ == paddle::dialect::GeluOp::name()) {
+        const std::string& act_type = match_ctx.Attr<std::string>("activation_type");
+        if (!act_type.empty())  return false;
+        if (act_type_ == "gelu") {
           bool Attr_approx = match_ctx.Attr<bool>("approximate");
-          if (Attr_approx) return false;    
+          if (Attr_approx)      return false;    
         }  
         return true;
     });
@@ -149,7 +149,7 @@ class FcWithActPattern : public paddle::drr::DrrPatternBase {
     paddle::drr::ResultPattern res = pat.ResultPattern();
     std::unordered_map<std::string, paddle::drr::Attribute> fused_attrs{
       {"in_num_col_dims", pat.Attr("in_num_col_dims")},
-      {"activation_type", res.StrAttr(activation_type[act_type_])},
+      {"activation_type", res.StrAttr(act_type_)},
       {"padding_weights", pat.Attr("padding_weights")},
     };
     const auto &fc_with_act = res.Op(fused_op_name_, fused_attrs);
@@ -182,7 +182,7 @@ class FcFusePass : public pir::PatternRewritePass {
       /// MatmulAddPattern
       ps.Add(paddle::drr::Create<MatmulAddPattern>(context, paddle::dialect::FcOp::name(), false));
       /// FcWithActPattern
-      ps.Add(paddle::drr::Create<FcWithActPattern>(context, paddle::dialect::ReluOp::name(), paddle::dialect::FcOp::name()));
+      ps.Add(paddle::drr::Create<FcWithActPattern>(context, "relu", paddle::dialect::FcOp::name()));
     }
     return ps;
   }

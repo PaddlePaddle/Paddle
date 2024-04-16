@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 #pragma once
 #include <vector>
 
-#include "paddle/phi/kernels/fusion/cutlass/fully_connected/fc_decl.h"
+#include "paddle/phi/kernels/fusion/cutlass/gemm_epilogue/fc_decl.h"
 
 #include "cutlass/cutlass.h"
 #include "cutlass/gemm/device/gemm.h"

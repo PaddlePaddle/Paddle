@@ -1,6 +1,6 @@
-# 如何编译和使用cutlass的fully connected(fc)算子
+# 如何编译和使用cutlass的gemm_epilogue(fc)算子
 
-本文件夹下面对应的是基于cutlass开发的fc算子，此算子被独立编译成so，供paddle内部的phi库调用。
+本文件夹下面对应的是基于cutlass开发的gemm_epilogue算子，此算子被独立编译成so，供paddle内部的phi库调用。
 这样做的好处有两个：
 1. 减少paddle 发版时包的体积，避免把cutlass的代码打包进paddle inference中。
 2. 将框架和算子具体实现完全解耦开，保证paddle框架的通用性的同时，保证具体算子实现的灵活性。
