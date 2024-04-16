@@ -23,7 +23,7 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 
 namespace {
-static std::string GetFusedElement(const std::string elementwise_type) {
+const std::string GetFusedElement(const std::string elementwise_type) {
   const std::map<std::string, std::string> fused_ops = {
       {"pd_op.add", "onednn_op.fused_elementwise_add"},
       {"pd_op.subtract", "onednn_op.fused_elementwise_sub"},
