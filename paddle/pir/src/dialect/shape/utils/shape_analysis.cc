@@ -60,11 +60,13 @@ ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) const {
 
 void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
     Value val, const symbol::ShapeOrDataDimExprs& shape_or_data) {
+  const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
+      symbol::SubstituteShapeOrData(shape_or_data, substitution_pattern_);
   auto iter = value_to_shape_or_data_.find(val);
   if (iter == value_to_shape_or_data_.end()) {
-    value_to_shape_or_data_.emplace(val, shape_or_data);
+    value_to_shape_or_data_.emplace(val, substituted_shape_or_data);
   } else {
-    iter->second = shape_or_data;
+    iter->second = substituted_shape_or_data;
   }
 }
 
@@ -275,7 +277,7 @@ bool CanSubstituteInShapeAnalysis(const symbol::DimExpr& lhs,
          const symbol::Broadcast<symbol::DimExpr>& rhs) { return true; },
       [](const auto& lhs, const auto& rhs) { return false; }};
   return std::visit(CanSubstitutePredictor, lhs.variant(), rhs.variant()) ||
-         std::visit(CanSubstitutePredictor, lhs.variant(), rhs.variant());
+         std::visit(CanSubstitutePredictor, rhs.variant(), lhs.variant());
 }
 
 }  // namespace
