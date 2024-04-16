@@ -20,7 +20,6 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/broadcast_with_cf.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/collect_sym_expr.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/pre_analysis.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/utils.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/refresh_combine_pattern.h"
@@ -39,8 +38,6 @@ pir::Operation* ProcessDyShapeGroup(
   // will be migated into BucketLower later.
   UpdateGroupShapeOrDataExprs(const_cast<OpLoweringGroupPtr&>(group));
   auto group_inputs = GetBlockOutsideInput(group->ops());
-  group->set_value_to_shape_or_data_exprs(
-      CreateGroupShapeOrDataExprs(group, shape_analysis));
   GroupDimExprInfo group_dim_expr_info = GetGroupDimExprInfo(group);
   const auto& leaves = group_dim_expr_info.all_value_dim_exprs;
   // has multiple branch

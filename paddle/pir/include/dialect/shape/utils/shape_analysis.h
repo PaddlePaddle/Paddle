@@ -26,28 +26,9 @@
 
 namespace pir {
 
-class UnionFindSet {
- public:
-  const symbol::DimExpr& Find(const symbol::DimExpr& x);
-
-  void Union(const symbol::DimExpr& p, const symbol::DimExpr& q);
-
-  std::vector<std::vector<symbol::DimExpr>> Clusters();
-
- private:
-  std::unordered_map<symbol::DimExpr, symbol::DimExpr> parent_;
-};
-
 // The implementation is based on shape constraint ir.
 class IR_API ShapeConstraintIRAnalysis {
  public:
-  enum CompareResult {
-    EQUAL,
-    GREATER,
-    LESSER,
-    UNKNOWN,
-  };
-
   void Init();
 
   const std::string GetNextSymName();

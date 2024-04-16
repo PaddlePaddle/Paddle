@@ -99,6 +99,7 @@ void ConstraintsManager::AddEqCstr(const DimExpr& lhs, const DimExpr& rhs) {
   }
   if (CanEqualCStrInsert(lhs, rhs)) {
     equals_.Union(lhs, rhs);
+    VLOG(4) << "add equal constraint: " << lhs << " == " << rhs;
   }
   DimExpr origin, subsutituted;
   auto comp_result = CompareDimExprPriority(lhs, rhs);

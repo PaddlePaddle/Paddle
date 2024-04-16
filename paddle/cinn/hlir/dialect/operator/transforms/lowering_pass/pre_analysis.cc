@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/pre_analysis.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/collect_sym_expr.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/utils.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 
@@ -44,11 +43,7 @@ void FusionOpAnalysis::RunImpl(pir::Operation* op) {
 
 void FusionOpAnalysis::PreCompileGroup() {
   std::vector<OpLoweringGroupPtr> groups;
-  auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
-      group_infos_->begin()->first->GetParentProgram());
   for (auto& group_info : *group_infos_) {
-    group_info.second->set_value_to_shape_or_data_exprs(
-        CreateGroupShapeOrDataExprs(group_info.second, shape_analysis));
     if (is_dy_shape_ && NeedBroadcastWithCF(group_info.second)) continue;
     groups.push_back(group_info.second);
   }

@@ -931,12 +931,6 @@ bool AnalysisPredictor::PrepareExecutor() {
         DecompProgram decomp_object(pir_program_.get());
         decomp_object.decomp_program();
 
-        auto shape_pm = std::make_shared<::pir::PassManager>(
-            ::pir::IrContext::Instance(), 2);
-        ::pir::shape::AddShapeOptimizationPass(shape_pm, *pir_program_.get());
-        VLOG(4) << "[ShapeDialect] Run AddShapeOptimizationPass";
-        shape_pm->Run(pir_program_.get());
-
         cinn::dialect::ir::CheckInferSymbolicIfNeed(pir_program_.get(),
                                                     CreatePassMgr);
       }
