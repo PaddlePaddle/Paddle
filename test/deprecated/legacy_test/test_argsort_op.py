@@ -629,12 +629,15 @@ class TestArgsortImperative4(TestArgsortImperative):
 
 
 class TestStableArgsortImperative(unittest.TestCase):
-    def setUp(self):
+    def init(self):
         self.input_shape = [
             30,
         ]
         self.axis = 0
         self.input_data = np.array([100.0, 50.0, 10.0] * 10)
+
+    def setUp(self):
+        self.init()
 
     def cpu_place(self):
         self.place = core.CPUPlace()
@@ -681,12 +684,18 @@ class TestStableArgsortImperative(unittest.TestCase):
 class TestStableArgsortImperative2(TestStableArgsortImperative):
     def init(self):
         self.input_shape = [30, 1]
+        self.input_data = np.array([100.0, 50.0, 10.0] * 10).reshape(
+            self.input_shape
+        )
         self.axis = 0
 
 
 class TestStableArgsortImperative3(TestStableArgsortImperative):
     def init(self):
         self.input_shape = [1, 30]
+        self.input_data = np.array([100.0, 50.0, 10.0] * 10).reshape(
+            self.input_shape
+        )
         self.axis = 1
 
 
@@ -694,7 +703,7 @@ class TestStableArgsortImperative4(TestStableArgsortImperative):
     def init(self):
         self.input_shape = [40, 3, 4]
         self.axis = 0
-        self.data = np.array(
+        self.input_data = np.array(
             [
                 [
                     [100.0, 50.0, -10.0, 1.0],
