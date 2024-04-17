@@ -71,6 +71,7 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
                         utils::SequenceDispatcher(0, task_size),
                         /*thread_num=*/1);
   }
+  VLOG(5) << "Finished compiling " << task_size << " Cinn Kernel info.";
   ctx_mapper.SetFinalize(true);
   ctx_mapper.UpdateGlobalCache();
   return ctx_mapper.RecoverKernelInfos();
@@ -114,22 +115,20 @@ CompilationContextMapper::RecoverKernelInfos() {
                         "compilation_results_.size()."));
 
   std::vector<pir::CINNKernelInfo> kernel_infos(fusion_infos_.size());
-  if (!FLAGS_enable_cinn_compile_cache) {
-    int i = 0;
-    for (auto& compile_result : compilation_results_) {
-      kernel_infos[i++] = compile_result->GetKernelInfo();
-    }
-  } else {
-    for (size_t i = 0; i < fusion_infos_.size(); ++i) {
-      kernel_infos[i] =
-          CompilationCache::Instance().GetKernelInfo(fusion_infos_[i]);
-    }
+  for (size_t i = 0; i < fusion_infos_.size(); ++i) {
+    const auto& compilation_result =
+        FLAGS_enable_cinn_compile_cache
+            ? CompilationCache::Instance().Get(fusion_infos_[i])
+            : compilation_results_[i];
+    kernel_infos[i] = compilation_result->GetKernelInfo();
   }
   return kernel_infos;
 }
 
 void CompilationContextMapper::UpdateGlobalCache() {
+  // skip updating global cache if FLAGS_enable_cinn_compile_cache=0
   if (!FLAGS_enable_cinn_compile_cache) return;
+
   PADDLE_ENFORCE_EQ(
       is_finalized_,
       true,
