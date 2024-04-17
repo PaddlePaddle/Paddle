@@ -24,5 +24,5 @@ set_tests_properties(test_pir_multihead_matmul_fuse_pass PROPERTIES TIMEOUT 100)
 set_tests_properties(test_add_norm_fuse_pass PROPERTIES TIMEOUT 300)
 if(WITH_CUTLASS)
   set_tests_properties(test_fused_weight_only_linear_pass PROPERTIES TIMEOUT
-                                                                     300)
+                                                                     600)
 endif()

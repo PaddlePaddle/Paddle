@@ -116,7 +116,7 @@ class TestFusedDotProductAttention(unittest.TestCase):
                         fetch_list=[res2, res3_, res4_, res5_],
                     )
                 pm = paddle.pir.PassManager()
-                pm.add_pass('fused_dot_product_attention_pass')
+                pm.add_pass('fused_dot_product_attention_pass', {})
                 pm.run(main_program)
                 op_names = [op.name() for op in main_program.global_block().ops]
 
