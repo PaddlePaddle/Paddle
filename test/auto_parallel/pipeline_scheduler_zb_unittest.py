@@ -41,7 +41,6 @@ def apply_pass(use_zbh1=False, enable_send_recv_overlap=False):
         gradient_merge.enable = True
         gradient_merge.k_steps = 2
         gradient_merge.avg = True
-        pipeline.enable_send_recv_overlap = enable_send_recv_overlap
 
     return strategy
 
@@ -110,7 +109,7 @@ class TestZBH1Pass(unittest.TestCase):
             losses_pp = np.array(history_pp.history["loss"])
             losses_zbh1 = np.array(history_zbh1.history["loss"])
             self.check_results(losses_pp[0], losses_zbh1[0])
-    
+
     def test_pp_pass_enable_send_recv_overlap(self):
         # naive_pp+gradient_merge training
         engine_pp = self.get_engine(enable_send_recv_overlap=True)
