@@ -201,7 +201,7 @@ def register_sequence_parallel_allreduce_hooks(
 
     params = []
     for p in model.parameters():
-        if is_sequence_parallel_parameter(p):
+        if is_sequence_parallel_parameter(p) and not p.stop_gradient:
             params.append(p)
 
     if fuse_sequence_parallel_allreduce:
