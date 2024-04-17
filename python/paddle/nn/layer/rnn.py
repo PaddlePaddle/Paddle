@@ -896,6 +896,7 @@ class LSTMCell(RNNCellBase):
     If `proj_size` is specified, the dimension of hidden state :math:`h_{t}` will be projected to `proj_size`:
 
     .. math::
+
         h_{t} & = h_{t}W_{proj\_size}
 
     where :math:`\sigma` is the sigmoid function, and * is the elementwise
@@ -1907,6 +1908,7 @@ class LSTM(RNNBase):
     If `proj_size` is specified, the dimension of hidden state :math:`h_{t}` will be projected to `proj_size`:
 
     .. math::
+
         h_{t} & = h_{t}W_{proj\_size}
 
     where :math:`\sigma` is the sigmoid function, and * is the elementwise
