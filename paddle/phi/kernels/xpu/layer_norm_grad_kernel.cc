@@ -52,7 +52,9 @@ void LayerNormGradKernel(const Context& ctx,
   if (scale_ptr == nullptr) {
     // no scale, do nothing
   } else if (scale_ptr->dtype() ==
-             phi::CppTypeToDataType<phi::dtype::float16>::Type()) {
+                 phi::CppTypeToDataType<phi::dtype::float16>::Type() ||
+             scale_ptr->dtype() ==
+                 phi::CppTypeToDataType<phi::dtype::bfloat16>::Type()) {
     float* scale_data_temp =
         RAII_GUARD.alloc_l3_or_gm<float>(scale_ptr->numel());
     int r = xpu::cast<XPUType, float>(
@@ -81,7 +83,9 @@ void LayerNormGradKernel(const Context& ctx,
   if (bias_ptr == nullptr) {
     // no bias, do nothing
   } else if (bias_ptr->dtype() ==
-             phi::CppTypeToDataType<phi::dtype::float16>::Type()) {
+                 phi::CppTypeToDataType<phi::dtype::float16>::Type() ||
+             bias_ptr->dtype() ==
+                 phi::CppTypeToDataType<phi::dtype::bfloat16>::Type()) {
     need_cast_bias = true;
     bias_grad_data_fp32 =
         bias_grad == nullptr
@@ -137,8 +141,10 @@ PD_REGISTER_KERNEL(layer_norm_grad,
                    ALL_LAYOUT,
                    phi::LayerNormGradKernel,
                    float,
-                   phi::dtype::float16) {
-  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
+      kernel_key.dtype() == phi::DataType::BFLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
   }
