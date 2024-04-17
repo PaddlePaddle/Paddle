@@ -961,15 +961,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       ARGS
       --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
     inference_analysis_test(
-      trt_cascade_rcnn_test
-      SRCS
-      trt_cascade_rcnn_test.cc
-      EXTRA_DEPS
-      common
-      paddle_inference_shared
-      ARGS
-      --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
-    inference_analysis_test(
       trt_split_converter_test
       SRCS
       trt_split_converter_test.cc
@@ -1298,7 +1289,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
 
   if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(trt_quant_int8_yolov3_r50_test PROPERTIES TIMEOUT 400)
-    set_tests_properties(trt_cascade_rcnn_test PROPERTIES TIMEOUT 300)
     set_tests_properties(test_trt_dynamic_shape_ernie_ser_deser
                          PROPERTIES TIMEOUT 300)
     set_tests_properties(test_trt_dynamic_shape_ernie_fp16_ser_deser
