@@ -30,7 +30,7 @@ class TestPETransform(unittest.TestCase):
         self.k = 16
 
         self.target = Target()
-        self.target.arch = Target.Arch.X86
+        self.target.arch = Target.X86Arch()
         self.target.bits = Target.Bit.k64
         self.target.os = Target.OS.Linux
 
