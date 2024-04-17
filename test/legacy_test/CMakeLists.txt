@@ -427,7 +427,6 @@ list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer_auto_growth)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet_sorted_gradient)
 list(REMOVE_ITEM TEST_OPS test_imperative_se_resnext)
-list(REMOVE_ITEM TEST_OPS test_ir_memory_optimize_transformer)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_seresnext_base_cpu)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_seresnext_with_reduce_cpu)
 list(REMOVE_ITEM TEST_OPS
@@ -698,38 +697,6 @@ py_test_modules(
   FLAGS_cudnn_batchnorm_spatial_persistent=1
   FLAGS_conv_workspace_size_limit=1000)
 
-# NOTE: These unittests will appear NaN steadily in windows CI. After analysis,
-# it is found that windows CI will run all the training unittests with the ON_INFER option turned on,
-# which will not appear in other CIs. The calculation behavior of some ops in inference mode is
-# inconsistent with that in non-inference mode.
-if(WITH_PYTHON)
-  py_test_modules(test_parallel_executor_seresnext_base_cpu MODULES
-                  test_parallel_executor_seresnext_base_cpu)
-  py_test_modules(test_parallel_executor_seresnext_with_reduce_cpu MODULES
-                  test_parallel_executor_seresnext_with_reduce_cpu)
-  py_test_modules(
-    test_parallel_executor_seresnext_with_fuse_all_reduce_cpu MODULES
-    test_parallel_executor_seresnext_with_fuse_all_reduce_cpu)
-  set_tests_properties(test_parallel_executor_seresnext_base_cpu
-                       PROPERTIES TIMEOUT 900)
-  set_tests_properties(test_parallel_executor_seresnext_base_cpu
-                       PROPERTIES LABELS "RUN_TYPE=NIGHTLY")
-  set_tests_properties(test_parallel_executor_seresnext_with_reduce_cpu
-                       PROPERTIES TIMEOUT 750)
-  set_tests_properties(test_parallel_executor_seresnext_with_reduce_cpu
-                       PROPERTIES LABELS "RUN_TYPE=NIGHTLY")
-  set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu
-                       PROPERTIES TIMEOUT 750)
-  set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu
-                       PROPERTIES LABELS "RUN_TYPE=NIGHTLY")
-endif()
-
-if(NOT WIN32)
-  # TODO: fix these unittests failure on Windows
-  py_test_modules(test_ir_memory_optimize_transformer MODULES
-                  test_ir_memory_optimize_transformer)
-endif()
-
 if(WITH_HETERPS)
   set_tests_properties(test_dist_fleet_ps11 PROPERTIES LABELS "RUN_TYPE=GPUPS")
   set_tests_properties(test_dist_fleet_ps12 PROPERTIES LABELS "RUN_TYPE=GPUPS")
@@ -751,11 +718,7 @@ set_tests_properties(
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
   test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(
-  test_sync_batch_norm_op
-  test_parallel_executor_seresnext_base_gpu
-  test_parallel_executor_seresnext_with_reduce_gpu
-  test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
-  test_distributed_fused_lamb_op_with_clip
+  test_sync_batch_norm_op test_distributed_fused_lamb_op_with_clip
   test_distributed_fused_lamb_op_without_clip
   test_distributed_fused_lamb_op_with_gradient_merge
   PROPERTIES LABELS "RUN_TYPE=DIST")
@@ -777,16 +740,6 @@ if(NOT WIN32 AND NOT APPLE)
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
   set_tests_properties(test_multiprocess_dataloader_dataset
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
-endif()
-
-if(NOT WIN32)
-  if(WITH_NV_JETSON)
-    set_tests_properties(test_ir_memory_optimize_transformer PROPERTIES TIMEOUT
-                                                                        1200)
-  else()
-    set_tests_properties(test_ir_memory_optimize_transformer PROPERTIES TIMEOUT
-                                                                        120)
-  endif()
 endif()
 
 if(WITH_DISTRIBUTE)
@@ -856,8 +809,6 @@ endif()
 set_tests_properties(test_tensordot PROPERTIES TIMEOUT 200)
 set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT
                                                                         120)
-set_tests_properties(test_parallel_executor_seresnext_with_reduce_gpu
-                     PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nn_grad PROPERTIES TIMEOUT 180)
 set_tests_properties(test_elementwise_sub_op PROPERTIES TIMEOUT 120)
@@ -1026,15 +977,6 @@ foreach(TEST_CINN_OP ${TEST_CINN_OPS})
 endforeach()
 
 if(WITH_CINN AND WITH_TESTING)
-  set_tests_properties(
-    test_parallel_executor_run_cinn
-    PROPERTIES
-      LABELS
-      "RUN_TYPE=CINN"
-      ENVIRONMENT
-      FLAGS_allow_cinn_ops="conv2d;conv2d_grad;elementwise_add;elementwise_add_grad;relu;relu_grad;sum"
-  )
-
   set_tests_properties(test_tile_op PROPERTIES TIMEOUT 300)
 endif()
 

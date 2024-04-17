@@ -410,39 +410,98 @@ void PaddleModelToProgram::AddOpMapper_relu6() {
     var_model_to_program_map_[out_name] = out->id;
   };
 }
+
+template <typename T>
+Variable AddOpMapperDepthwiseConv2dImpl(common::UnknownArch,
+                                        T* net_builder,
+                                        const paddle::cpp::OpDesc& op_desc,
+                                        const Variable& x,
+                                        const Variable& y) {
+  LOG(FATAL) << "NotImplemented.";
+}
+
+template <typename T>
+Variable AddOpMapperDepthwiseConv2dImpl(common::X86Arch,
+                                        T* net_builder,
+                                        const paddle::cpp::OpDesc& op_desc,
+                                        const Variable& x,
+                                        const Variable& y) {
+  CHECK(op_desc.HasAttr("paddings"));
+  auto paddings = op_desc.GetAttr<std::vector<int>>("paddings");
+  CHECK(op_desc.HasAttr("strides"));
+  auto strides = op_desc.GetAttr<std::vector<int>>("strides");
+  CHECK(op_desc.HasAttr("dilations"));
+  auto dilations = op_desc.GetAttr<std::vector<int>>("dilations");
+  CHECK(op_desc.HasAttr("groups"));
+  auto groups = op_desc.GetAttr<int>("groups");
+  CHECK(op_desc.HasAttr("data_format"));
+  std::string data_format = op_desc.GetAttr<std::string>("data_format");
+  if (data_format == "AnyLayout") {
+    data_format = "NCHW";
+  }
+  return net_builder->Conv2d(
+      x, y, strides, paddings, dilations, groups, data_format);
+}
+
+template <typename T>
+Variable AddOpMapperDepthwiseConv2dImpl(common::ARMArch,
+                                        T* net_builder,
+                                        const paddle::cpp::OpDesc& op_desc,
+                                        const Variable& x,
+                                        const Variable& y) {
+  LOG(FATAL) << "NotImplemented.";
+}
+
+template <typename T>
+Variable AddOpMapperDepthwiseConv2dImpl(common::NVGPUArch,
+                                        T* net_builder,
+                                        const paddle::cpp::OpDesc& op_desc,
+                                        const Variable& x,
+                                        const Variable& y) {
+  CHECK(op_desc.HasAttr("paddings"));
+  auto paddings = op_desc.GetAttr<std::vector<int>>("paddings");
+  CHECK(op_desc.HasAttr("strides"));
+  auto strides = op_desc.GetAttr<std::vector<int>>("strides");
+  CHECK(op_desc.HasAttr("dilations"));
+  auto dilations = op_desc.GetAttr<std::vector<int>>("dilations");
+  CHECK(op_desc.HasAttr("groups"));
+  auto groups = op_desc.GetAttr<int>("groups");
+  CHECK(op_desc.HasAttr("data_format"));
+  std::string data_format = op_desc.GetAttr<std::string>("data_format");
+  if (data_format == "AnyLayout") {
+    data_format = "NCHW";
+  }
+  Variable out;
+  return net_builder->DepthwiseConv2d(
+      x, y, strides, paddings, dilations, groups, data_format);
+}
+
+template <typename T>
+Variable AddOpMapperDepthwiseConv2d(common::Arch arch,
+                                    T* net_builder,
+                                    const paddle::cpp::OpDesc& op_desc,
+                                    const Variable& x,
+                                    const Variable& y) {
+  return std::visit(
+      [&](const auto& impl) {
+        return AddOpMapperDepthwiseConv2dImpl(impl, net_builder, op_desc, x, y);
+      },
+      arch.variant());
+}
+
 void PaddleModelToProgram::AddOpMapper_depthwise_conv2d() {
   op_mappers_["depthwise_conv2d"] = [&](const paddle::cpp::OpDesc& op_desc) {
     CHECK_EQ(op_desc.Input("Input").size(), 1UL);
     auto x_name = op_desc.Input("Input").front();
     CHECK_EQ(op_desc.Input("Filter").size(), 1UL);
     auto y_name = op_desc.Input("Filter").front();
-    CHECK_EQ(op_desc.Output("Output").size(), 1UL);
-    auto out_name = op_desc.Output("Output").front();
-
-    CHECK(op_desc.HasAttr("paddings"));
-    auto paddings = op_desc.GetAttr<std::vector<int>>("paddings");
-    CHECK(op_desc.HasAttr("strides"));
-    auto strides = op_desc.GetAttr<std::vector<int>>("strides");
-    CHECK(op_desc.HasAttr("dilations"));
-    auto dilations = op_desc.GetAttr<std::vector<int>>("dilations");
-    CHECK(op_desc.HasAttr("groups"));
-    auto groups = op_desc.GetAttr<int>("groups");
-    CHECK(op_desc.HasAttr("data_format"));
-    std::string data_format = op_desc.GetAttr<std::string>("data_format");
-    if (data_format == "AnyLayout") {
-      data_format = "NCHW";
-    }
     auto x = GetVar(TransValidVarName(x_name));
     auto y = GetVar(TransValidVarName(y_name));
-    Variable out;
-    if (target_.arch == Target::Arch::X86) {
-      out = net_builder_->Conv2d(
-          x, y, strides, paddings, dilations, groups, data_format);
-    } else {
-      out = net_builder_->DepthwiseConv2d(
-          x, y, strides, paddings, dilations, groups, data_format);
-    }
-
+    auto* net_builder = net_builder_.get();
+    Variable out =
+        AddOpMapperDepthwiseConv2d(target_.arch, net_builder, op_desc, x, y);
+    CHECK_EQ(op_desc.Output("Output").size(), 1UL);
+    auto out_name = op_desc.Output("Output").front();
     AddVar(TransValidVarName(out_name), out);
     var_model_to_program_map_[out_name] = out->id;
   };
@@ -635,13 +694,13 @@ void PaddleModelToProgram::TransposeVar(const std::string& name) {
   auto* var = scope_->FindVar(name);
   if (var) {
     auto& tensor = absl::get<hlir::framework::Tensor>(*var);
-    if (target_.arch == Target::Arch::X86) {
+    if (std::holds_alternative<common::X86Arch>(target_.arch)) {
       float* data = tensor->mutable_data<float>(target_);
       CHECK(tensor->shape().size() == 2)
           << "The y data's shape size of op [mul] is not equal to 2! Please "
              "check.";
       TransposeData(data, tensor->shape().data()[0], tensor->shape().data()[1]);
-    } else if (target_.arch == Target::Arch::NVGPU) {
+    } else if (std::holds_alternative<common::NVGPUArch>(target_.arch)) {
 #ifdef CINN_WITH_CUDA
       // To use cublas mul api, there is no need to transpose data.
 #ifndef CINN_WITH_CUDNN
@@ -691,13 +750,13 @@ void PaddleModelToProgram::ReverseHWVar(const std::string& name) {
   auto* var = scope_->FindVar(name);
   if (var) {
     auto& tensor = absl::get<hlir::framework::Tensor>(*var);
-    if (target_.arch == Target::Arch::X86) {
+    if (std::holds_alternative<common::X86Arch>(target_.arch)) {
       float* data = tensor->mutable_data<float>(target_);
       CHECK(tensor->shape().size() == 4)
           << "The y data's shape size of op [conv2d] is not equal to 4! Please "
              "check.";
       ReverseHWData(data, tensor->shape().data());
-    } else if (target_.arch == Target::Arch::NVGPU) {
+    } else if (std::holds_alternative<common::NVGPUArch>(target_.arch)) {
 #ifdef CINN_WITH_CUDA
       std::vector<float> data(tensor->shape().numel());
       CUDA_CALL(cudaMemcpy(
