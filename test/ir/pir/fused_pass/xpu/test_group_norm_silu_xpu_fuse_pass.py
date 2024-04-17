@@ -58,7 +58,7 @@ class TestGroupNormSiluXpuFusePattern(PassTest):
                 group_norm_out = group_norm(x)
                 out = silu(group_norm_out)
                 out = paddle.assign(out)
-                self.pass_list = ['group_norm_silu_xpu_fuse_pass']
+                self.pass_attr_list = [{'group_norm_silu_xpu_fuse_pass': {}}]
                 self.feeds = {
                     "X": np.random.random((1, channels, 64, 64)).astype(
                         "float32"

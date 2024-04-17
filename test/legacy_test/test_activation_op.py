@@ -3681,6 +3681,8 @@ class TestReciprocal(TestActivation):
     def setUp(self):
         self.op_type = "reciprocal"
         self.python_api = paddle.reciprocal
+        self.public_python_api = paddle.reciprocal
+        self.prim_op_type = "comp"
         self.init_dtype()
         self.init_shape()
 
@@ -3719,7 +3721,9 @@ class TestReciprocal(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_prim_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
 
@@ -3727,10 +3731,22 @@ class TestReciprocal_Complex64(TestReciprocal):
     def init_dtype(self):
         self.dtype = np.complex64
 
+    def test_check_output(self):
+        self.check_output(
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+        )
+
 
 class TestReciprocal_Complex128(TestReciprocal):
     def init_dtype(self):
         self.dtype = np.complex128
+
+    def test_check_output(self):
+        self.check_output(
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+        )
 
 
 class TestReciprocal_ZeroDim(TestReciprocal):
