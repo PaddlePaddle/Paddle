@@ -274,12 +274,11 @@ class ShapeOptimizationPass : public pir::Pass {
 
 static inline bool IsStaticShape(const Value& value) {
   const auto& value_type = value.type();
-  if (!value || !value_type ||
-      !value_type.isa<paddle::dialect::DenseTensorType>()) {
+  if (!value || !value_type || !value_type.isa<pir::DenseTensorType>()) {
     return false;
   }
   return !::common::contain_unknown_dim(
-      value_type.dyn_cast<paddle::dialect::DenseTensorType>().dims());
+      value_type.dyn_cast<pir::DenseTensorType>().dims());
 }
 
 symbol::ShapeOrDataDimExprs CreateShapeOrDataByDDim(const pir::DDim& dims) {
@@ -328,10 +327,7 @@ void InferSymExprForBlock(const Block& block,
           shape_analysis->SetShapeOrDataForValue(
               op.result(i),
               CreateShapeOrDataByDDim(
-                  op.result(i)
-                      .type()
-                      .dyn_cast<paddle::dialect::DenseTensorType>()
-                      .dims()));
+                  op.result(i).type().dyn_cast<pir::DenseTensorType>().dims()));
         }
       } else {
         PADDLE_THROW(phi::errors::Unimplemented(
