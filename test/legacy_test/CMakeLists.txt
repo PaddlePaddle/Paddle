@@ -506,6 +506,7 @@ if(NOT WITH_GPU
    OR WIN32
    OR APPLE)
   list(REMOVE_ITEM TEST_OPS test_build_strategy_fusion_group_pass)
+  list(REMOVE_ITEM TEST_OPS test_sparse_conv_igemm_op)
 endif()
 
 if(NOT WITH_CUDNN_FRONTEND)

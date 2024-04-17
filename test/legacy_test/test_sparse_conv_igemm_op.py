@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import logging
-import sys
 import unittest
 
 import numpy as np
@@ -30,7 +29,6 @@ logger = logging.getLogger(__name__)
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or sys.platform == 'win32'
     or paddle.device.cuda.get_device_capability()[0] * 10
     + paddle.device.cuda.get_device_capability()[1]
     < 75,
