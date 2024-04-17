@@ -514,12 +514,6 @@ class DygraphShardingOptimizerV2:
         self._local_parameter_list = [
             self._create_slice_param(p) for p in optimizer._parameter_list
         ]
-        # print("self._local_parameter_list.name")
-        # for param in self._local_parameter_list:
-        #     print("param.name", param.name)
-        # print("----------------")
-        # for param in self._parameter_list:
-        #     print("param.name", param.name)
 
         # Accessing user defined strategy
         strategy = fleet.fleet._user_defined_strategy
@@ -615,9 +609,6 @@ class DygraphShardingOptimizerV2:
         comm_group = self._hcg.get_sharding_parallel_group()
         var_groups = assign_group_by_size(self._parameter_list, group_size)
         for group_idx, parameters in var_groups.items():
-            print("group_idx", group_idx)
-            for param in parameters:
-                print("param", param.name)
             buffer = FusedCommBuffer(
                 group_idx,
                 parameters,
@@ -701,11 +692,7 @@ class DygraphShardingOptimizerV2:
             if self._all_gather_overlap_forward:
                 param2task = {}
                 for comm_buffer in self._comm_buffer_list:
-                    # print("comm_buffer", comm_buffer)
-                    # for param in comm_buffer.params:
-                    # print("param.name", param.name)
                     comm_buffer.sync_params(sync=False, param2task=param2task)
-                    # print("param2task", param2task)
 
                 for layer in self._layers.sublayers():
                     if len(layer.sublayers()) == 0:
