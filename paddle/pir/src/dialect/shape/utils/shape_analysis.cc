@@ -18,39 +18,6 @@
 
 namespace pir {
 
-const symbol::DimExpr& UnionFindSet::Find(const symbol::DimExpr& x) {
-  if (parent_.find(x) == parent_.end()) {
-    return x;
-  }
-  if (parent_[x] != x) {
-    parent_[x] = Find(parent_[x]);
-  }
-  return parent_[x];
-}
-
-void UnionFindSet::Union(const symbol::DimExpr& p, const symbol::DimExpr& q) {
-  if (parent_.find(p) == parent_.end()) {
-    parent_[p] = p;
-  }
-  if (parent_.find(q) == parent_.end()) {
-    parent_[q] = q;
-  }
-  parent_[Find(q)] = Find(p);
-}
-
-std::vector<std::vector<symbol::DimExpr>> UnionFindSet::Clusters() {
-  std::unordered_map<symbol::DimExpr, std::vector<symbol::DimExpr>>
-      clusters_map;
-  for (auto it = parent_.begin(); it != parent_.end(); it++) {
-    clusters_map[Find(it->first)].emplace_back(it->first);
-  }
-  std::vector<std::vector<symbol::DimExpr>> clusters;
-  for (auto it = clusters_map.begin(); it != clusters_map.end(); it++) {
-    clusters.emplace_back(it->second);
-  }
-  return clusters;
-}
-
 static std::string GetValueId(Value val) {
   auto op_id = val.defining_op()->id();
   auto val_idx = val.dyn_cast<OpResult>().index();

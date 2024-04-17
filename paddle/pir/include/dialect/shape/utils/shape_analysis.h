@@ -71,8 +71,6 @@ class IR_API ShapeConstraintIRAnalysis {
                       Value rhs,
                       const std::vector<int>& rhs_dim_idxs) const;
 
-  void PrintDimExprClusters();
-
   // Returns true if:
   //    lhs.shape[lhs_from] * ... lhs.shape[lhs_to-1] ==
   //    rhs.shape[rhs_from] * ... rhs.shape[rhs_to-1]
