@@ -434,9 +434,7 @@ def _handle_errors(max_time_out=None):
 
                 if time.time() - last_print_time > 30:
                     print(
-                        "hadoop operator timeout:args:{} timeout:{}".format(
-                            args, time.time() - start
-                        )
+                        f"hadoop operator timeout:args:{args} timeout:{time.time() - start}"
                     )
                     last_print_time = time.time()
 

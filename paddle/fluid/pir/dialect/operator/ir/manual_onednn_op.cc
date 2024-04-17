@@ -124,8 +124,8 @@ void ExpandOp::Build(pir::Builder& builder,
                      pir::AttributeMap attributes) {
   VLOG(4) << "Start build ExpandOp";
 
-  PADDLE_ENFORCE_EQ(attributes.find("shape") != attributes.end(),
-                    true,
+  PADDLE_ENFORCE_NE(attributes.find("shape"),
+                    attributes.end(),
                     phi::errors::InvalidArgument(
                         "'shape' Attribute is expected for ExpandOp. "));
   std::vector<int64_t> shape =
@@ -134,9 +134,9 @@ void ExpandOp::Build(pir::Builder& builder,
           .data()
           .GetData();
 
-  PADDLE_ENFORCE_EQ(
-      attributes.find("mkldnn_data_type") != attributes.end(),
-      true,
+  PADDLE_ENFORCE_NE(
+      attributes.find("mkldnn_data_type"),
+      attributes.end(),
       phi::errors::InvalidArgument(
           "'mkldnn_data_type' Attribute is expected for ExpandOp. "));
   std::string mkldnn_data_type = attributes.at("mkldnn_data_type")
@@ -197,7 +197,7 @@ void ExpandOp::VerifySig() {
     auto input_size = num_operands();
     PADDLE_ENFORCE_EQ(
         input_size,
-        2UL,
+        2u,
         phi::errors::InvalidArgument(
             "The size %d of inputs must be equal to 2.", input_size));
     PADDLE_ENFORCE_EQ((*this)
@@ -234,7 +234,7 @@ void ExpandOp::VerifySig() {
     auto& attributes = this->attributes();
     PADDLE_ENFORCE_GT(
         attributes.count("mkldnn_data_type"),
-        0UL,
+        0,
         phi::errors::InvalidArgument("mkldnn_data_type does not exist."));
     PADDLE_ENFORCE_EQ(
         attributes.at("mkldnn_data_type").isa<pir::StrAttribute>(),
@@ -247,7 +247,7 @@ void ExpandOp::VerifySig() {
     auto output_size = num_results();
     PADDLE_ENFORCE_EQ(
         output_size,
-        1UL,
+        1u,
         phi::errors::InvalidArgument(
             "The size %d of outputs must be equal to 1.", output_size));
     PADDLE_ENFORCE_EQ(
@@ -276,6 +276,11 @@ std::vector<pir::Type> ExpandOp::InferMeta(
       p_attributes,
       common::errors::Fatal(
           "AttributeMap pointer in InferMeta function is nullptr."));
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 2 but got %d.",
+                        input_values.size()));
 
   pir::Value x_ = input_values[0];
   pir::Value shape_ = input_values[1];

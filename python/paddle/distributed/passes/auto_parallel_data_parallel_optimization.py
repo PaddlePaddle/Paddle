@@ -157,9 +157,7 @@ class DataParallelOptimizationPass(PassBase):
 
                 assert (
                     group is not None
-                ), "Unexpected: data parallel group of [{}] from op [{}] is None".format(
-                    grad_name, str(op)
-                )
+                ), f"Unexpected: data parallel group of [{grad_name}] from op [{str(op)}] is None"
 
                 self._grad_name_to_group_map[grad_name] = group
 
@@ -186,9 +184,7 @@ class DataParallelOptimizationPass(PassBase):
                 not_synchronized_grads.append(grad_name)
         assert (
             len(not_synchronized_grads) == 0
-        ), "Unexpected: gradients [{}] is scaled BUT NOT synchronized.".format(
-            not_synchronized_grads
-        )
+        ), f"Unexpected: gradients [{not_synchronized_grads}] is scaled BUT NOT synchronized."
 
     def is_data_parallel_applied(self):
         return len(self._group_to_grad_name_map) > 0
@@ -261,9 +257,7 @@ class DataParallelOptimizationPass(PassBase):
 
         assert scaled_grads == set(
             self._grad_name_to_group_map.keys()
-        ), "Unexpected: gradients [{}] are unscaled.".format(
-            set(self._grad_name_to_group_map.keys()) - scaled_grads
-        )
+        ), f"Unexpected: gradients [{set(self._grad_name_to_group_map.keys()) - scaled_grads}] are unscaled."
 
     def _could_be_overlap(self):
         # NOTE current different nccl comm will use different cuda stream
@@ -682,17 +676,13 @@ class DataParallelOptimizationPass(PassBase):
         if len(grad_groups) > 0:
             self._logger.info("Data Parallel Optimization: ")
             self._logger.info(
-                " {} Allreduce ops are fused into {} coalesce allreduce ops.".format(
-                    len(self._grad_name_to_group_map.keys()), len(grad_groups)
-                )
+                f" {len(self._grad_name_to_group_map.keys())} Allreduce ops are fused into {len(grad_groups)} coalesce allreduce ops."
             )
             self._logger.debug("gradient fusing group are following: ")
             fused_grads = set()
             for i, group in enumerate(grad_groups):
                 self._logger.debug(
-                    "coalesce gradient [{}] is composed by: {}".format(
-                        i, [grad.name for grad in group.gradients]
-                    )
+                    f"coalesce gradient [{i}] is composed by: {[grad.name for grad in group.gradients]}"
                 )
                 fused_grads.update([grad.name for grad in group.gradients])
             individual_grads = set(self._grad_name_to_group_map.keys()) - set(

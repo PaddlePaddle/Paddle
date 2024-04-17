@@ -96,7 +96,7 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         gloo->IsInitialized(),
         true,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "You must initialize the gloo environment first to use it."));
     gloo::AllreduceOptions opts(gloo->GetContext());
     opts.setInput(const_cast<T*>(send_buff), send_numel);
@@ -123,14 +123,14 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
                 &gloo::product<T>));
         break;
       default:
-        PADDLE_ENFORCE_EQ(true,
-                          false,
-                          platform::errors::InvalidArgument(
-                              "Invalid reduce type: %d.", red_type));
+        PADDLE_ENFORCE_EQ(
+            true,
+            false,
+            phi::errors::InvalidArgument("Invalid reduce type: %d.", red_type));
     }
     gloo::allreduce(opts);
 #else
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON"));
 #endif
   }
@@ -150,11 +150,11 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
       auto place = cond->place();
       PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
                         true,
-                        platform::errors::PreconditionNotMet(
+                        phi::errors::PreconditionNotMet(
                             "The input `cond` tensor should be on cpu place"));
       PADDLE_ENFORCE_EQ(cond->numel(),
                         1,
-                        platform::errors::PreconditionNotMet(
+                        phi::errors::PreconditionNotMet(
                             "The input `cond` should be shape [1]"));
       if (!cond->data<bool>()[0]) {
         VLOG(4) << "Skip all reduce Op since cond is 0";
@@ -197,8 +197,8 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
           break;
 
         default:
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "Invalid reduce type: %d", red_type));
+          PADDLE_THROW(phi::errors::InvalidArgument("Invalid reduce type: %d",
+                                                    red_type));
       }
 
       auto task = pg->AllReduce(out, *in, opts, false, true);
@@ -215,7 +215,7 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -226,7 +226,7 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
           comm_context_manager.Get(std::to_string(rid)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        platform::errors::Unavailable(
+                        phi::errors::Unavailable(
                             "BKCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
       stream = comm_ctx->GetStream();
@@ -262,8 +262,8 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
         break;
 
       default:
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Invalid reduce type: %d", red_type));
+        PADDLE_THROW(
+            phi::errors::InvalidArgument("Invalid reduce type: %d", red_type));
     }
 
     if (comm_ctx) {
@@ -278,7 +278,7 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
                                                  stream));
     }
 #else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
         "PaddlePaddle should be compiled with XPU."));
 #endif
   }
@@ -297,11 +297,11 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
       auto place = cond->place();
       PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
                         true,
-                        platform::errors::PreconditionNotMet(
+                        phi::errors::PreconditionNotMet(
                             "The input `cond` tensor should be on cpu place"));
       PADDLE_ENFORCE_EQ(cond->numel(),
                         1,
-                        platform::errors::PreconditionNotMet(
+                        phi::errors::PreconditionNotMet(
                             "The input `cond` should be shape [1]"));
       if (!cond->data<bool>()[0]) {
         VLOG(4) << "Skip all reduce Op since cond is 0";
@@ -345,8 +345,8 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
           break;
 
         default:
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "Invalid reduce type: %d", red_type));
+          PADDLE_THROW(phi::errors::InvalidArgument("Invalid reduce type: %d",
+                                                    red_type));
       }
 
       auto task = pg->AllReduce(out, *in, opts, false, true);
@@ -363,7 +363,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -374,7 +374,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
           comm_context_manager.Get(std::to_string(rid)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        platform::errors::Unavailable(
+                        phi::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
       stream = comm_ctx->GetStream();
@@ -420,8 +420,8 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
 #endif
 
       default:
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Invalid reduce type: %d", red_type));
+        PADDLE_THROW(
+            phi::errors::InvalidArgument("Invalid reduce type: %d", red_type));
     }
 
     if (comm_ctx) {
@@ -436,7 +436,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
                                                                   stream));
     }
 #else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
 #endif
   }

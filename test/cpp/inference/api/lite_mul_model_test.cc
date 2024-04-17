@@ -32,7 +32,7 @@ int test_predictor(const AnalysisConfig& config_in,
   std::unique_ptr<PaddlePredictor> predictor;
   {
     std::unique_lock<std::mutex> lock(mutex);
-    predictor = std::move(CreatePaddlePredictor(config));
+    predictor = CreatePaddlePredictor(config);
   }
   if (barrier) {
     barrier->Wait();
@@ -75,7 +75,7 @@ int test_predictor_zero_copy(const AnalysisConfig& config_in,
   std::unique_ptr<PaddlePredictor> predictor;
   {
     std::unique_lock<std::mutex> lock(mutex);
-    predictor = std::move(CreatePaddlePredictor(config));
+    predictor = CreatePaddlePredictor(config);
   }
   if (barrier) {
     barrier->Wait();

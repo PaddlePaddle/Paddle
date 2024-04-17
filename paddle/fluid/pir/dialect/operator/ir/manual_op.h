@@ -734,6 +734,7 @@ class MemcpyD2hMultiIoOp
 
 class IR_API ShapeBroadcastOp
     : public pir::Op<ShapeBroadcastOp,
+                     paddle::dialect::OpYamlInfoInterface,
                      paddle::dialect::InferSymbolicShapeInterface,
                      paddle::dialect::InferMetaInterface> {
  public:
@@ -741,6 +742,7 @@ class IR_API ShapeBroadcastOp
   static const char *name() { return "pd_op.shape_broadcast"; }
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
+  static OpInfoTuple GetOpInfo();
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     pir::Value x_,

@@ -32,7 +32,6 @@
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_dialect.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
-#include "paddle/fluid/pir/dialect/distributed/transforms/mix_to_dist_pass.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
@@ -72,6 +71,7 @@
 #ifdef PADDLE_WITH_CINN
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_util.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #endif
 
@@ -301,6 +301,15 @@ void BindProgram(py::module *m) {
           [](std::shared_ptr<Program> self, int64_t random_seed) {
             SetProgramInt64Attr(self, "random_seed", random_seed);
           })
+      .def_property_readonly(
+          "blocks",
+          [](const std::shared_ptr<Program> &self) {
+            // Note: We only return global block currently.
+            py::list op_list;
+            op_list.append(self->block());
+            return op_list;
+          },
+          return_value_policy::reference)
       .def("get_output_value_by_name",
            [](Program &self, const std::string &name) {
              return GetOutputValueByName(self, name);
@@ -638,6 +647,10 @@ void BindOperation(py::module *m) {
           "callstack",
           [](Operation &self) -> py::list {
             py::list callstack_list;
+            if (!self.HasAttribute(paddle::framework::OpProtoAndCheckerMaker::
+                                       OpCreationCallstackAttrName())) {
+              return callstack_list;
+            }
             pir::Attribute op_callstack = self.attribute<pir::Attribute>(
                 paddle::framework::OpProtoAndCheckerMaker::
                     OpCreationCallstackAttrName());
@@ -675,14 +688,19 @@ void BindOperation(py::module *m) {
                 pir::ArrayAttribute::get(pir::IrContext::Instance(),
                                          op_callstack_infos));
           })
-      .def("dist_attr", [](Operation &self) {
-        if (self.HasAttribute(kAttrOpDistAttr)) {
-          return self.attribute<OperationDistAttribute>(kAttrOpDistAttr);
-        } else {
-          PADDLE_THROW(
-              phi::errors::InvalidArgument("dist_attr is only for dist op."));
-        }
-      });
+      .def_property(
+          "dist_attr",
+          [](Operation &self) {
+            if (self.HasAttribute(kAttrOpDistAttr)) {
+              return self.attribute<OperationDistAttribute>(kAttrOpDistAttr);
+            } else {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "dist_attr is only for dist op."));
+            }
+          },
+          [](Operation &self, OperationDistAttribute op_dist_attr) {
+            self.set_attribute(kAttrOpDistAttr, op_dist_attr);
+          });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
     The Operation_BlockContainer only use to walk all blocks in the operation.
@@ -1072,6 +1090,131 @@ void range_block_do(const Block *block, std::vector<int> range, F fn) {
   }
 }
 
+template <typename K, typename V>
+bool ExistsInMapValues(const std::map<K, V> &m, V value) {
+  for (const auto &[k, v] : m) {
+    if (v == value) {
+      return true;
+    }
+  }
+  return false;
+}
+
+std::map<int, int> GetOpInplaceInfo(const pir::Operation *op) {
+  std::map<int, int> inplace_info;
+  if (!op->HasTrait<paddle::dialect::InplaceTrait>()) {
+    return inplace_info;
+  }
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  std::string op_name = op->name();
+  if (op->attributes().count("op_name")) {
+    op_name =
+        op->attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+  }
+
+  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
+  paddle::dialect::OpYamlInfoParser yaml_parser(
+      op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
+          ->get_op_info_(op_name),
+      paddle::dialect::IsLegacyOp(op_name));
+
+  for (size_t i = 0; i < op->num_results(); ++i) {
+    std::string value_name = yaml_parser.OutputNames()[i];
+    if (yaml_parser.HasInplace(value_name)) {
+      const std::string &inplace_name = yaml_parser.InplaceName(value_name);
+      inplace_info[i] = yaml_parser.InputName2Id().at(inplace_name);
+    }
+    if (yaml_parser.HasView(value_name)) {
+      const std::string &view_name = yaml_parser.ViewName(value_name);
+      inplace_info[i] = yaml_parser.InputName2Id().at(view_name);
+    }
+  }
+
+  return inplace_info;
+}
+
+std::vector<std::vector<pir::Value>> GetOpInplaceChains(const Block *block) {
+  std::vector<std::vector<pir::Value>> inplace_chains;
+  std::map<pir::Value, int> value_to_inplace_chain_index;
+
+  for (auto &op : *block) {
+    pir::Walk(&op, [&](Operation *inner_op) {
+      auto op_inplace_info = GetOpInplaceInfo(inner_op);
+      for (auto &[out_idx, in_idx] : op_inplace_info) {
+        auto target_value = inner_op->results()[out_idx];
+        auto source_value = inner_op->operands()[in_idx].source();
+        VLOG(8) << "Inplace Mapping: " << Value2String(source_value) << " -> "
+                << Value2String(target_value);
+
+        if (value_to_inplace_chain_index.count(source_value) == 0 &&
+            value_to_inplace_chain_index.count(target_value) == 0) {
+          size_t chain_insertion_idx = inplace_chains.size();
+          inplace_chains.push_back({source_value, target_value});
+          value_to_inplace_chain_index.insert(
+              {source_value, chain_insertion_idx});
+          value_to_inplace_chain_index.insert(
+              {target_value, chain_insertion_idx});
+        } else {
+          PADDLE_ENFORCE_NE(
+              value_to_inplace_chain_index.count(source_value),
+              0,
+              phi::errors::Unavailable("source value should be in the chain"));
+          PADDLE_ENFORCE_EQ(value_to_inplace_chain_index.count(target_value),
+                            0,
+                            phi::errors::Unavailable(
+                                "target value should not be in the chain"));
+          size_t chain_insertion_idx =
+              value_to_inplace_chain_index[source_value];
+          inplace_chains[chain_insertion_idx].push_back(target_value);
+          value_to_inplace_chain_index.insert(
+              {target_value, chain_insertion_idx});
+        }
+      }
+    });
+  }
+  return inplace_chains;
+}
+
+std::optional<pir::Value> FindInplaceSource(
+    const std::vector<std::vector<pir::Value>> inplace_chains,
+    pir::Value value) {
+  if (value.impl() == nullptr) {
+    return std::nullopt;
+  }
+  for (auto &chain : inplace_chains) {
+    for (auto &v : chain) {
+      if (v == value) {
+        return chain[0];
+      }
+    }
+  }
+  return std::nullopt;
+}
+
+std::map<pir::Value, pir::Value> ReplaceValueWithInplaceSource(
+    const std::vector<std::vector<pir::Value>> &source_domain,
+    std::vector<pir::Value> *target_values,
+    const std::vector<std::vector<pir::Value>> inplace_chains) {
+  std::map<pir::Value, pir::Value> replacements;
+  for (auto &target_value : *target_values) {
+    auto inplace_source = FindInplaceSource(inplace_chains, target_value);
+    if (!inplace_source.has_value()) {
+      continue;
+    }
+    for (auto &source_values : source_domain) {
+      if (std::find(source_values.begin(),
+                    source_values.end(),
+                    inplace_source.value()) != source_values.end()) {
+        VLOG(4) << "Replace " << Value2String(target_value) << " with "
+                << Value2String(inplace_source.value());
+        replacements.insert({target_value, inplace_source.value()});
+        target_value = inplace_source.value();
+      }
+    }
+  }
+  return replacements;
+}
+
 std::pair<std::vector<pir::Value>, std::unordered_set<pir::Value>>
 AnalysisMiddleVariable(const Program &program,
                        const std::vector<pir::Value> &forward_inputs,
@@ -1145,6 +1288,10 @@ static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
   std::unordered_set<::pir::Value> no_need_buffer_values;
   range_block_do(
       whole_block, range, [&need_buffer_values](::pir::Operation *op) {
+        // NOTE(SigureMo): We should process the CombineOp in it's users.
+        if (op->isa<pir::CombineOp>()) {
+          return;
+        }
         if (op->HasInterface<paddle::dialect::OpYamlInfoInterface>() == false) {
           // not a OpYamlInfoInterface, can't have no_need_buffer.
           for (const auto &operand : op->operands_source()) {
@@ -1155,8 +1302,16 @@ static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
               op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
           int counter = 0;
           for (const auto &op_input_info : std::get<0>(opinfo)) {
+            auto value = op->operand_source(counter);
             if (!op_input_info.no_need_buffer) {
-              need_buffer_values.insert(op->operand_source(counter));
+              need_buffer_values.insert(value);
+              if (!IsFakeValue(value) && value.defining_op() &&
+                  value.defining_op()->isa<pir::CombineOp>()) {
+                for (const auto &combine_value :
+                     value.defining_op()->operands_source()) {
+                  need_buffer_values.insert(combine_value);
+                }
+              }
             }
             counter += 1;
           }
@@ -1255,10 +1410,26 @@ SplitedResult SplitForwardBackward(
   pir::IrContext *ctx = pir::IrContext::Instance();
   auto forward_program = std::make_shared<Program>(ctx);
   auto backward_program = std::make_shared<Program>(ctx);
+  std::vector<pir::Value> forward_outputs_mutable = forward_outputs;
   std::vector<pir::Value> middle_values;
   std::unordered_set<pir::Value> backward_inputs;
+  const auto &inplace_chains = GetOpInplaceChains(program.block());
   std::tie(middle_values, backward_inputs) = AnalysisMiddleVariable(
       program, forward_in_out_values, forward_range, backward_range);
+
+  // Replace inplace value with source value.
+  // NOTE(SigureMo): Why not process inplace value for forward_inputs in
+  // forward?
+  // Because all forward_inputs uses data op, after lower to kernel
+  // pass, the data op will following a non-inplace op shadow_feed, so we don't
+  // need to process inplace for forward_inputs in forward.
+  // Same reason for whole backward program, because all backward inputs are
+  // created by block kwargs, it also add a shadow_feed op after lower to kernel
+  // pass.
+  auto replacement_for_forward_middles = ReplaceValueWithInplaceSource(
+      {forward_params}, &middle_values, inplace_chains);
+  auto replacement_for_forward_outputs = ReplaceValueWithInplaceSource(
+      {forward_params}, &forward_outputs_mutable, inplace_chains);
   pir::Block &backward_block = *backward_program->block();
   bool has_backward = (backward_range[1] > backward_range[0]);
 
@@ -1283,8 +1454,13 @@ SplitedResult SplitForwardBackward(
   auto create_kwarg_fn = [&backward_block,
                           &backward_inputs,
                           &backward_value_map,
+                          &replacement_for_forward_middles,
+                          &replacement_for_forward_outputs,
                           &counter](const pir::Value &v) {
-    if (v && backward_inputs.count(v)) {
+    if (v && !backward_value_map.count(v) &&
+        (backward_inputs.count(v) ||
+         ExistsInMapValues(replacement_for_forward_middles, v) ||
+         ExistsInMapValues(replacement_for_forward_outputs, v))) {
       backward_value_map[v] = backward_block.AddKwarg(
           "input_" + std::to_string(counter++), v.type());
     }
@@ -1293,8 +1469,17 @@ SplitedResult SplitForwardBackward(
   auto create_output_fn_forward = [&ctx,
                                    &forward_value_map,
                                    &counter,
-                                   &forward_program](const pir::Value &v) {
+                                   &forward_program,
+                                   &forward_inputs,
+                                   &forward_params](const pir::Value &v) {
     if (v.impl() == nullptr) {
+      return;
+    }
+    // Skip the value that already in forward_inputs or forward_params.
+    if (std::find(forward_inputs.begin(), forward_inputs.end(), v) !=
+            forward_inputs.end() ||
+        std::find(forward_params.begin(), forward_params.end(), v) !=
+            forward_params.end()) {
       return;
     }
     // NOTE(Aurelius84): we should skip insert ShadowOutputOp repeatedly by
@@ -1350,14 +1535,14 @@ SplitedResult SplitForwardBackward(
     counter += 1;
   };
 
-  // counter = 0;
   if (has_backward) {
     VLOG(4) << "start create backward inputs, creating keyword argument.";
     VLOG(4)
         << "Create keyword argument for backward program: fo, start with input_"
         << counter;
-    std::for_each(
-        forward_outputs.begin(), forward_outputs.end(), create_kwarg_fn);
+    std::for_each(forward_outputs_mutable.begin(),
+                  forward_outputs_mutable.end(),
+                  create_kwarg_fn);
     VLOG(4)
         << "Create keyword argument for backward program: fx, start with input_"
         << counter;
@@ -1380,14 +1565,27 @@ SplitedResult SplitForwardBackward(
                   create_kwarg_fn);
     VLOG(4) << "Create keyword argument for backward program end. input_"
             << counter;
+
+    // Update the value map with inplace source value.
+    VLOG(4) << "start update inplace names";
+    VLOG(4) << "replacement_for_forward_middles size is: "
+            << replacement_for_forward_middles.size();
+    for (auto &[target, source] : replacement_for_forward_middles) {
+      backward_value_map[target] = backward_value_map.at(source);
+    }
+    VLOG(4) << "replacement_for_forward_outputs size is: "
+            << replacement_for_forward_outputs.size();
+    for (auto &[target, source] : replacement_for_forward_outputs) {
+      backward_value_map[target] = backward_value_map.at(source);
+    }
   }
 
-  // counter = 0;
   VLOG(4) << "start create forward outputs, inserting set_parameter ops.";
   std::for_each(
       middle_values.begin(), middle_values.end(), create_output_fn_forward);
-  std::for_each(
-      forward_outputs.begin(), forward_outputs.end(), create_output_fn_forward);
+  std::for_each(forward_outputs_mutable.begin(),
+                forward_outputs_mutable.end(),
+                create_output_fn_forward);
 
   // Step2. copy backward ops .
   VLOG(4) << "start copy backward ops";
@@ -1398,7 +1596,6 @@ SplitedResult SplitForwardBackward(
         auto *cloned_op = op->Clone(backward_mapper, clone_options);
         backward_program->block()->push_back(cloned_op);
       });
-  // counter = 0;
   VLOG(4) << "start create backward outputs, inserting set_parameter ops.";
   if (has_backward) {
     std::for_each(forward_inputs_grads.begin(),
@@ -1423,20 +1620,20 @@ SplitedResult SplitForwardBackward(
 
   // construct all attributes we needed.
 
-  mapping_value(middle_values, forward_value_map, fm);    // write 'fm'
-  mapping_value(middle_values, backward_value_map, bm);   // write 'bm'
-  mapping_value(forward_inputs, forward_value_map, fx);   // write 'fx'
-  mapping_value(forward_inputs, backward_value_map, bx);  // write 'bx'
-  mapping_value(forward_params, forward_value_map, fp);   // write 'fp'
-  mapping_value(forward_params, backward_value_map, bp);  // write 'bp'
-  mapping_value(forward_outputs, forward_value_map, fo);  // write 'fo'
+  mapping_value(middle_values, forward_value_map, fm);            // write 'fm'
+  mapping_value(middle_values, backward_value_map, bm);           // write 'bm'
+  mapping_value(forward_inputs, forward_value_map, fx);           // write 'fx'
+  mapping_value(forward_inputs, backward_value_map, bx);          // write 'bx'
+  mapping_value(forward_params, forward_value_map, fp);           // write 'fp'
+  mapping_value(forward_params, backward_value_map, bp);          // write 'bp'
+  mapping_value(forward_outputs_mutable, forward_value_map, fo);  // write 'fo'
   mapping_value(
       forward_inputs_grads, backward_value_map, bx_g);  // write 'bx_g'
   mapping_value(
       forward_params_grads, backward_value_map, bp_g);  // write 'bp_g'
   mapping_value(
-      forward_outputs_grads, backward_value_map, bo_g);    // write 'bo_g'
-  mapping_value(forward_outputs, backward_value_map, bo);  // write 'bo'
+      forward_outputs_grads, backward_value_map, bo_g);  // write 'bo_g'
+  mapping_value(forward_outputs_mutable, backward_value_map, bo);  // write 'bo'
   mapping_value(GetNoNeedBufferValue(program.block(), backward_range),
                 forward_value_map,
                 no_need_buffer_values);  // write 'no_need_buffers'
@@ -1500,39 +1697,6 @@ void ResetShadowOutputName(pir::Operation *op, const std::string &name) {
   if (op->isa<pir::ShadowOutputOp>()) {
     op->set_attribute("output_name", pir::StrAttribute::get(ctx, name));
   }
-}
-
-std::map<int, int> GetOpInplaceInfo(const pir::Operation *op) {
-  std::map<int, int> inplace_info;
-  if (!op->HasTrait<paddle::dialect::InplaceTrait>()) {
-    return inplace_info;
-  }
-  pir::IrContext *ctx = pir::IrContext::Instance();
-  std::string op_name = op->name();
-  if (op->attributes().count("op_name")) {
-    op_name =
-        op->attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
-  }
-
-  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
-  paddle::dialect::OpYamlInfoParser yaml_parser(
-      op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
-          ->get_op_info_(op_name),
-      paddle::dialect::IsLegacyOp(op_name));
-
-  for (size_t i = 0; i < op->num_results(); ++i) {
-    std::string value_name = yaml_parser.OutputNames()[i];
-    if (yaml_parser.HasInplace(value_name)) {
-      const std::string &inplace_name = yaml_parser.InplaceName(value_name);
-      inplace_info[i] = yaml_parser.InputName2Id().at(inplace_name);
-    }
-    if (yaml_parser.HasView(value_name)) {
-      const std::string &view_name = yaml_parser.ViewName(value_name);
-      inplace_info[i] = yaml_parser.InputName2Id().at(view_name);
-    }
-  }
-
-  return inplace_info;
 }
 
 void BindUtils(pybind11::module *m) {
@@ -1702,37 +1866,46 @@ void BindUtils(pybind11::module *m) {
                 >>> print(mappings)
                 {'matmul_v2_0.tmp_0': [Value(define_op_name=pd_op.matmul, index=0, dtype=builtin.tensor<4x4xf32>)], 'x': [Value(define_op_name=pd_op.data, index=0, dtype=builtin.tensor<4x4xf32>)], 'tanh_0.tmp_0': [Value(define_op_name=pd_op.tanh, index=0, dtype=builtin.tensor<4x4xf32>)], 'elementwise_add_0': [Value(define_op_name=pd_op.add, index=0, dtype=builtin.tensor<4x4xf32>)]}
     )DOC");
-
-  m->def("clear_cinn_compilation_cache",
-         []() {
+  m->def("clear_cinn_compilation_cache", []() {
 #ifdef PADDLE_WITH_CINN
-           pybind11::gil_scoped_release release;
-           VLOG(4) << "clear CINN CompilationCache and free BackendResource.";
-           cinn::hlir::framework::CompilationCache::Instance().Clear();
+    pybind11::gil_scoped_release release;
+    VLOG(4) << "clear CINN CompilationCache and free BackendResource.";
+    cinn::hlir::framework::CompilationCache::Instance().Clear();
 #endif
-         }),
-      m->def("apply_mix2dist_pass", paddle::dialect::MixToDistPass);
+  });
 }
 
 namespace {
 
+#ifdef PADDLE_WITH_CINN
+std::shared_ptr<pir::PassManager> CreatePassManager() {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+  auto pass_manager = std::make_shared<pir::PassManager>(ctx);
+  if (FLAGS_print_ir) {
+    pass_manager->EnableIRPrinting();
+  }
+  return pass_manager;
+}
+#endif
+
 void ApplyCinnPass(Program &program) {  // NOLINT
 #ifdef PADDLE_WITH_CINN
-  cinn::dialect::ir::ApplyCinnPass(&program, [] {
-    pir::IrContext *ctx = pir::IrContext::Instance();
-    ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-    ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-    ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-    auto pass_manager = std::make_shared<pir::PassManager>(ctx);
-    if (FLAGS_print_ir) {
-      pass_manager->EnableIRPrinting();
-    }
-    return pass_manager;
-  });
+  cinn::dialect::ir::ApplyCinnPass(&program, CreatePassManager);
 #else
   PADDLE_THROW(common::errors::Unimplemented(
       "Currently we only support CINN Pass for Pir under @to_static, please "
       "compile PaddlePaddle with CINN"));
+#endif
+}
+
+void CheckInferSymbolicIfNeed(Program &program) {  // NOLINT
+#ifdef PADDLE_WITH_CINN
+  cinn::dialect::ir::CheckInferSymbolicIfNeed(&program, CreatePassManager);
+#else
+  // Do nothing.
 #endif
 }
 
@@ -1751,6 +1924,7 @@ void InferSymbolicShapePass(
 
 void BindIrPass(pybind11::module *m) {
   m->def("apply_cinn_pass", ApplyCinnPass);
+  m->def("check_infer_symbolic_if_need", CheckInferSymbolicIfNeed);
   m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
 
   py::class_<Pass, std::shared_ptr<Pass>> pass(*m,
@@ -1781,8 +1955,26 @@ void BindPassManager(pybind11::module *m) {
            }),
            py::arg("opt_level") = 2)
       .def("add_pass",
-           [](PassManager &self, const std::string &pass_name) {
-             self.AddPass(pir::PassRegistry::Instance().Get(pass_name));
+           [](PassManager &self,
+              const std::string &pass_name,
+              const std::unordered_map<std::string, py::object> attrs = {}) {
+             auto pass = pir::PassRegistry::Instance().Get(pass_name);
+             for (const auto &attr : attrs) {
+               if (py::isinstance<py::str>(attr.second)) {
+                 pass->Set(attr.first,
+                           new std::string(attr.second.cast<std::string>()));
+               } else if (py::isinstance<py::bool_>(attr.second)) {
+                 pass->Set(attr.first, new bool(attr.second.cast<bool>()));
+               } else if (py::isinstance<py::int_>(attr.second)) {
+                 pass->Set(attr.first, new int(attr.second.cast<int>()));
+               } else if (py::isinstance<py::float_>(attr.second)) {
+                 pass->Set(attr.first, new float(attr.second.cast<float>()));
+               } else {
+                 PADDLE_THROW(phi::errors::InvalidArgument(
+                     "The pass attr is not supported this type."));
+               }
+             }
+             self.AddPass(std::move(pass));
            })
       .def("passes",
            [](PassManager &self) {
@@ -1796,7 +1988,9 @@ void BindPassManager(pybind11::module *m) {
       .def("empty", &PassManager::empty)
       .def("clear", &PassManager::clear)
       .def("enable_ir_printing",
-           [](PassManager &self) { self.EnableIRPrinting(); });
+           [](PassManager &self) { self.EnableIRPrinting(); })
+      .def("enable_print_statistics",
+           [](PassManager &self) { self.EnablePrintStatistics(); });
 }
 
 void BindPir(pybind11::module *module) {

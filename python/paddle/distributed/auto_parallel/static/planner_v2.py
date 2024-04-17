@@ -110,14 +110,7 @@ class Planner:
                     or device_count != last_device_count
                 ):
                     logger.info(
-                        "The cluster {} nodes {} {} devices is different from the saved last cluster {} nodes {} {} devices, so we run the planner again.".format(
-                            node_count,
-                            device_count,
-                            gpu_model,
-                            last_node_count,
-                            last_device_count,
-                            last_gpu_model,
-                        )
+                        f"The cluster {node_count} nodes {device_count} {gpu_model} devices is different from the saved last cluster {last_node_count} nodes {last_device_count} {last_gpu_model} devices, so we run the planner again."
                     )
                     need_set_dist_attr = False
                 else:

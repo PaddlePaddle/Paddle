@@ -96,7 +96,7 @@ static void AssignZeroToParentScope(
       PADDLE_ENFORCE_EQ(
           outside_var->IsType<phi::DenseTensor>(),
           true,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Type of outside_var %s is NOT phi::DenseTensor, which "
               "doesn't match input_var %s.",
               outside_grad_name,
@@ -108,7 +108,7 @@ static void AssignZeroToParentScope(
     } else if (input_var->IsType<framework::LoDTensorArray>()) {
       PADDLE_ENFORCE_EQ(outside_var->IsType<framework::LoDTensorArray>(),
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Type of outside_var %s is NOT LoDTensorArray, "
                             "which doesn't match input_var %s.",
                             outside_grad_name,
@@ -121,7 +121,7 @@ static void AssignZeroToParentScope(
       }
       PADDLE_ENFORCE_EQ(input_tensors.size(),
                         outside_tensors->size(),
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "LoDTensorArray outside_var %s doen't have same "
                             "size as input_var %s.",
                             outside_grad_name,
@@ -132,7 +132,7 @@ static void AssignZeroToParentScope(
       }
     } else {
       // TODO(huihuangzheng): add support for SelectedRows
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Conditional block grad op doesn't support non-phi::DenseTensor "
           "output "
           "now."));

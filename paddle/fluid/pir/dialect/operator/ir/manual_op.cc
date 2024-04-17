@@ -149,7 +149,7 @@ std::vector<pir::Type> AddNOp::InferMeta(
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta AddNOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
-                    1UL,
+                    1,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 1 but got %d.",
                         input_values.size()));
@@ -297,7 +297,7 @@ std::vector<pir::Type> AddN_Op::InferMeta(
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta AddN_Op";
   PADDLE_ENFORCE_EQ(input_values.size(),
-                    1UL,
+                    1,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 1 but got %d.",
                         input_values.size()));
@@ -449,7 +449,7 @@ std::vector<pir::Type> AddNArrayOp::InferMeta(
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta AddNArrayOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
-                    1UL,
+                    1,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 1 but got %d.",
                         input_values.size()));
@@ -677,7 +677,7 @@ std::vector<pir::Type> FusedGemmEpilogueOp::InferMeta(
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta FusedGemmEpilogueOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
-                    3UL,
+                    3,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 3 but got %d.",
                         input_values.size()));
@@ -1229,7 +1229,7 @@ std::vector<pir::Type> SplitGradOp::InferMeta(
   VLOG(4) << "Start infermeta SplitGradOp";
 
   PADDLE_ENFORCE_EQ(input_values.size(),
-                    2UL,
+                    2,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 2 but got %d.",
                         input_values.size()));
@@ -1492,7 +1492,7 @@ std::vector<pir::Type> CreateArrayLikeOp::InferMeta(
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta CreateArrayLikeOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
-                    1UL,
+                    1,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 1 but got %d.",
                         input_values.size()));
@@ -1615,7 +1615,7 @@ std::vector<pir::Type> ArrayLengthOp::InferMeta(
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta ArrayLengthOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
-                    1UL,
+                    1,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 1 but got %d.",
                         input_values.size()));
@@ -1773,7 +1773,7 @@ std::vector<pir::Type> ArrayReadOp::InferMeta(
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta ArrayLengthOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
-                    2UL,
+                    2,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 2 but got %d.",
                         input_values.size()));
@@ -1943,7 +1943,7 @@ std::vector<pir::Type> ArrayWrite_Op::InferMeta(
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta ArrayWrite_Op";
   PADDLE_ENFORCE_EQ(input_values.size(),
-                    3UL,
+                    3,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 3 but got %d.",
                         input_values.size()));
@@ -2142,20 +2142,20 @@ std::vector<pir::Type> ArrayToTensorOp::InferMeta(
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta ArrayToTensorOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
-                    1UL,
+                    1,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 1 but got %d.",
                         input_values.size()));
   pir::Value x_ = input_values[0];
 
-  PADDLE_ENFORCE_EQ(attributes.find("axis") != attributes.end(),
-                    true,
+  PADDLE_ENFORCE_NE(attributes.find("axis"),
+                    attributes.end(),
                     phi::errors::InvalidArgument(
                         "'value' Attribute is expected for IncrementOp. "));
   int32_t axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
 
-  PADDLE_ENFORCE_EQ(attributes.find("use_stack") != attributes.end(),
-                    true,
+  PADDLE_ENFORCE_NE(attributes.find("use_stack"),
+                    attributes.end(),
                     phi::errors::InvalidArgument(
                         "'value' Attribute is expected for IncrementOp. "));
   bool use_stack =
@@ -2342,7 +2342,7 @@ std::vector<pir::Type> TensorToArrayOp::InferMeta(
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta TensorToArrayOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
-                    2UL,
+                    2,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 2 but got %d.",
                         input_values.size()));
@@ -2352,14 +2352,14 @@ std::vector<pir::Type> TensorToArrayOp::InferMeta(
   VLOG(4) << "Builder construction attributes";
   pir::AttributeMap argument_attributes = {};
 
-  PADDLE_ENFORCE_EQ(attributes.find("axis") != attributes.end(),
-                    true,
+  PADDLE_ENFORCE_NE(attributes.find("axis"),
+                    attributes.end(),
                     phi::errors::InvalidArgument(
                         "'value' Attribute is expected for IncrementOp. "));
   int32_t axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
 
-  PADDLE_ENFORCE_EQ(attributes.find("use_stack") != attributes.end(),
-                    true,
+  PADDLE_ENFORCE_NE(attributes.find("use_stack"),
+                    attributes.end(),
                     phi::errors::InvalidArgument(
                         "'value' Attribute is expected for IncrementOp. "));
   bool use_stack =
@@ -2462,10 +2462,11 @@ void SliceArrayOp::VerifySig() {
   VLOG(4) << "Verifying inputs:";
   {
     auto input_size = num_operands();
-    PADDLE_ENFORCE_EQ(input_size,
-                      3UL,
-                      "The size %d of inputs must be equal to 3.",
-                      input_size);
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        3u,
+        phi::errors::InvalidArgument(
+            "The size %d of inputs must be equal to 3.", input_size));
     PADDLE_ENFORCE_EQ((*this)
                           ->operand_source(0)
                           .type()
@@ -2474,20 +2475,26 @@ void SliceArrayOp::VerifySig() {
                       phi::errors::InvalidArgument(
                           "Type validation failed for the 0th input, got %s.",
                           (*this)->operand_source(0).type()));
-    IR_ENFORCE((*this)->operand_source(1).type().isa<pir::VectorType>() ||
-                   (*this)
-                       ->operand_source(1)
-                       .type()
-                       .isa<paddle::dialect::DenseTensorType>(),
-               "Type validation failed for the 1st input, got %s.",
-               (*this)->operand_source(1).type());
-    IR_ENFORCE((*this)->operand_source(2).type().isa<pir::VectorType>() ||
-                   (*this)
-                       ->operand_source(2)
-                       .type()
-                       .isa<paddle::dialect::DenseTensorType>(),
-               "Type validation failed for the 1st input, got %s.",
-               (*this)->operand_source(2).type());
+    PADDLE_ENFORCE_EQ(
+        (*this)->operand_source(1).type().isa<pir::VectorType>() ||
+            (*this)
+                ->operand_source(1)
+                .type()
+                .isa<paddle::dialect::DenseTensorType>(),
+        true,
+        phi::errors::InvalidArgument(
+            "Type validation failed for the 1st input, got %s.",
+            (*this)->operand_source(1).type()));
+    PADDLE_ENFORCE_EQ(
+        (*this)->operand_source(2).type().isa<pir::VectorType>() ||
+            (*this)
+                ->operand_source(2)
+                .type()
+                .isa<paddle::dialect::DenseTensorType>(),
+        true,
+        phi::errors::InvalidArgument(
+            "Type validation failed for the 1st input, got %s.",
+            (*this)->operand_source(2).type()));
   }
   VLOG(4) << "Verifying outputs:";
   {
@@ -2567,7 +2574,7 @@ std::vector<pir::Type> SliceArrayOp::InferMeta(
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta SliceArrayOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
-                    3UL,
+                    3,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 3 but got %d.",
                         input_values.size()));
@@ -2665,7 +2672,7 @@ void SliceArrayDenseOp::VerifySig() {
     auto input_size = num_operands();
     PADDLE_ENFORCE_EQ(
         input_size,
-        2UL,
+        2u,
         phi::errors::InvalidArgument(
             "The size %d of inputs must be equal to 2.", input_size));
     PADDLE_ENFORCE_EQ((*this)
@@ -2676,20 +2683,23 @@ void SliceArrayDenseOp::VerifySig() {
                       phi::errors::InvalidArgument(
                           "Type validation failed for the 0th input, got %s.",
                           (*this)->operand_source(0).type()));
-    IR_ENFORCE((*this)->operand_source(1).type().isa<pir::VectorType>() ||
-                   (*this)
-                       ->operand_source(1)
-                       .type()
-                       .isa<paddle::dialect::DenseTensorType>(),
-               "Type validation failed for the 1st input, got %s.",
-               (*this)->operand_source(1).type());
+    PADDLE_ENFORCE_EQ(
+        (*this)->operand_source(1).type().isa<pir::VectorType>() ||
+            (*this)
+                ->operand_source(1)
+                .type()
+                .isa<paddle::dialect::DenseTensorType>(),
+        true,
+        phi::errors::InvalidArgument(
+            "Type validation failed for the 1st input, got %s.",
+            (*this)->operand_source(1).type()));
   }
   VLOG(4) << "Verifying outputs:";
   {
     auto output_size = num_results();
     PADDLE_ENFORCE_EQ(
         output_size,
-        1UL,
+        1u,
         phi::errors::InvalidArgument(
             "The size %d of outputs must be equal to 1.", output_size));
     PADDLE_ENFORCE_EQ(
@@ -2728,7 +2738,7 @@ std::vector<pir::Type> SliceArrayDenseOp::InferMeta(
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta SliceArrayDenseOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
-                    2UL,
+                    2,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 2 but got %d.",
                         input_values.size()));
@@ -2825,7 +2835,7 @@ void AssignArrayOp::VerifySig() {
     auto input_size = num_operands();
     PADDLE_ENFORCE_EQ(
         input_size,
-        1UL,
+        1u,
         phi::errors::InvalidArgument(
             "The size %d of inputs must be equal to 1.", input_size));
     PADDLE_ENFORCE_EQ((*this)
@@ -2846,7 +2856,7 @@ void AssignArrayOp::VerifySig() {
     auto output_size = num_results();
     PADDLE_ENFORCE_EQ(
         output_size,
-        1UL,
+        1u,
         phi::errors::InvalidArgument(
             "The size %d of outputs must be equal to 1.", output_size));
     PADDLE_ENFORCE_EQ(
@@ -2877,7 +2887,7 @@ std::vector<pir::Type> AssignArrayOp::InferMeta(
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta AssignArrayOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
-                    1UL,
+                    1,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 1 but got %d.",
                         input_values.size()));
@@ -2948,7 +2958,7 @@ void AssignArray_Op::VerifySig() {
     auto input_size = num_operands();
     PADDLE_ENFORCE_EQ(
         input_size,
-        1UL,
+        1u,
         phi::errors::InvalidArgument(
             "The size %d of inputs must be equal to 1.", input_size));
     PADDLE_ENFORCE_EQ(
@@ -2967,7 +2977,7 @@ void AssignArray_Op::VerifySig() {
     auto output_size = num_results();
     PADDLE_ENFORCE_EQ(
         output_size,
-        1UL,
+        1u,
         phi::errors::InvalidArgument(
             "The size %d of outputs must be equal to 1.", output_size));
     PADDLE_ENFORCE_EQ(
@@ -2989,7 +2999,7 @@ std::vector<pir::Type> AssignArray_Op::InferMeta(
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta AssignArray_Op";
   PADDLE_ENFORCE_EQ(input_values.size(),
-                    1UL,
+                    1,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 1 but got %d.",
                         input_values.size()));
@@ -3094,8 +3104,8 @@ void ExpandOp::Build(pir::Builder &builder,
                      pir::AttributeMap attributes) {
   VLOG(4) << "Start build ExpandOp";
 
-  PADDLE_ENFORCE_EQ(attributes.find("shape") != attributes.end(),
-                    true,
+  PADDLE_ENFORCE_NE(attributes.find("shape"),
+                    attributes.end(),
                     phi::errors::InvalidArgument(
                         "'shape' Attribute is expected for ExpandOp. "));
   std::vector<int64_t> shape =
@@ -3215,7 +3225,7 @@ void ExpandOp::VerifySig() {
     auto input_size = num_operands();
     PADDLE_ENFORCE_EQ(
         input_size,
-        2UL,
+        2u,
         phi::errors::InvalidArgument(
             "The size %d of inputs must be equal to 2.", input_size));
     PADDLE_ENFORCE_EQ((*this)
@@ -3252,7 +3262,7 @@ void ExpandOp::VerifySig() {
     auto output_size = num_results();
     PADDLE_ENFORCE_EQ(
         output_size,
-        1UL,
+        1u,
         phi::errors::InvalidArgument(
             "The size %d of outputs must be equal to 1.", output_size));
     PADDLE_ENFORCE_EQ(
@@ -3274,7 +3284,7 @@ std::vector<pir::Type> ExpandOp::InferMeta(
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta ExpandOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
-                    2UL,
+                    2,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 2 but got %d.",
                         input_values.size()));
@@ -3432,8 +3442,8 @@ void IncrementOp::Build(pir::Builder &builder,
                         pir::AttributeMap attributes) {
   VLOG(4) << "Start build IncrementOp";
 
-  PADDLE_ENFORCE_EQ(attributes.find("value") != attributes.end(),
-                    true,
+  PADDLE_ENFORCE_NE(attributes.find("value"),
+                    attributes.end(),
                     phi::errors::InvalidArgument(
                         "'value' Attribute is expected for IncrementOp. "));
   float value = attributes.at("value").dyn_cast<pir::FloatAttribute>().data();
@@ -3462,7 +3472,7 @@ void IncrementOp::VerifySig() {
     auto input_size = num_operands();
     PADDLE_ENFORCE_EQ(
         input_size,
-        1UL,
+        1u,
         phi::errors::InvalidArgument(
             "The size %d of inputs must be equal to 1.", input_size));
     PADDLE_ENFORCE_EQ((*this)
@@ -3478,7 +3488,7 @@ void IncrementOp::VerifySig() {
   {
     auto &attributes = this->attributes();
     PADDLE_ENFORCE_GT(attributes.count("value"),
-                      0UL,
+                      0,
                       phi::errors::InvalidArgument("value does not exist."));
     PADDLE_ENFORCE_EQ(
         attributes.at("value").isa<pir::FloatAttribute>(),
@@ -3491,7 +3501,7 @@ void IncrementOp::VerifySig() {
     auto output_size = num_results();
     PADDLE_ENFORCE_EQ(
         output_size,
-        1UL,
+        1u,
         phi::errors::InvalidArgument(
             "The size %d of outputs must be equal to 1.", output_size));
     PADDLE_ENFORCE_EQ(
@@ -3518,16 +3528,16 @@ std::vector<pir::Type> IncrementOp::InferMeta(
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta IncrementOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
-                    1UL,
+                    1,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 1 but got %d.",
                         input_values.size()));
   pir::Value x_ = input_values[0];
 
-  PADDLE_ENFORCE_EQ(attributes.find("value") != attributes.end(),
-                    true,
+  PADDLE_ENFORCE_NE(attributes.find("value"),
+                    attributes.end(),
                     phi::errors::InvalidArgument(
-                        "'value' Attribute is expected for IncrementOp."));
+                        "'value' Attribute is expected for IncrementOp. "));
   float value = attributes.at("value").dyn_cast<pir::FloatAttribute>().data();
 
   VLOG(4) << "Builder construction outputs";
@@ -3636,8 +3646,8 @@ void Increment_Op::Build(pir::Builder &builder,
                          pir::AttributeMap attributes) {
   VLOG(4) << "Start build Increment_Op";
 
-  PADDLE_ENFORCE_EQ(attributes.find("value") != attributes.end(),
-                    true,
+  PADDLE_ENFORCE_NE(attributes.find("value"),
+                    attributes.end(),
                     phi::errors::InvalidArgument(
                         "'value' Attribute is expected for Increment_Op. "));
   float value = attributes.at("value").dyn_cast<pir::FloatAttribute>().data();
@@ -3667,7 +3677,7 @@ void Increment_Op::VerifySig() {
     auto input_size = num_operands();
     PADDLE_ENFORCE_EQ(
         input_size,
-        1UL,
+        1u,
         phi::errors::InvalidArgument(
             "The size %d of inputs must be equal to 1.", input_size));
     PADDLE_ENFORCE_EQ((*this)
@@ -3683,7 +3693,7 @@ void Increment_Op::VerifySig() {
   {
     auto &attributes = this->attributes();
     PADDLE_ENFORCE_GT(attributes.count("value"),
-                      0UL,
+                      0,
                       phi::errors::InvalidArgument("value does not exist."));
     PADDLE_ENFORCE_EQ(
         attributes.at("value").isa<pir::FloatAttribute>(),
@@ -3696,7 +3706,7 @@ void Increment_Op::VerifySig() {
     auto output_size = num_results();
     PADDLE_ENFORCE_EQ(
         output_size,
-        1UL,
+        1u,
         phi::errors::InvalidArgument(
             "The size %d of outputs must be equal to 1.", output_size));
     PADDLE_ENFORCE_EQ(
@@ -3723,14 +3733,14 @@ std::vector<pir::Type> Increment_Op::InferMeta(
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta Increment_Op";
   PADDLE_ENFORCE_EQ(input_values.size(),
-                    1UL,
+                    1,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 1 but got %d.",
                         input_values.size()));
   pir::Value x_ = input_values[0];
 
-  PADDLE_ENFORCE_EQ(attributes.find("value") != attributes.end(),
-                    true,
+  PADDLE_ENFORCE_NE(attributes.find("value"),
+                    attributes.end(),
                     phi::errors::InvalidArgument(
                         "'value' Attribute is expected for Increment_Op. "));
   float value = attributes.at("value").dyn_cast<pir::FloatAttribute>().data();
@@ -3846,7 +3856,7 @@ void AssignOut_Op::VerifySig() {
     auto input_size = num_operands();
     PADDLE_ENFORCE_EQ(
         input_size,
-        2UL,
+        2u,
         phi::errors::InvalidArgument(
             "The size %d of inputs must be equal to 2.", input_size));
     PADDLE_ENFORCE_EQ((*this)
@@ -3875,7 +3885,7 @@ void AssignOut_Op::VerifySig() {
     auto output_size = num_results();
     PADDLE_ENFORCE_EQ(
         output_size,
-        1UL,
+        1u,
         phi::errors::InvalidArgument(
             "The size %d of outputs must be equal to 1.", output_size));
     PADDLE_ENFORCE_EQ(
@@ -3894,9 +3904,9 @@ void AssignOut_Op::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> AssignOut_Op::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap *p_attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
   PADDLE_ENFORCE_EQ(input_values.size(),
-                    2UL,
+                    2,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 2 but got %d.",
                         input_values.size()));
@@ -3949,6 +3959,29 @@ phi::DataType AssignOut_Op::GetKernelTypeForVar(
   return expected_kernel_dtype;
 }
 
+OpInfoTuple ShapeBroadcastOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      paddle::dialect::OpInputInfo(
+          "x", "paddle::dialect::DenseTensorType", false, false, false, true),
+      paddle::dialect::OpInputInfo(
+          "y", "paddle::dialect::DenseTensorType", false, false, false, true)};
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {
+      paddle::dialect::OpOutputInfo(
+          "out", "paddle::dialect::DenseTensorType", false, false)};
+  paddle::dialect::OpRunTimeInfo run_time_info =
+      paddle::dialect::OpRunTimeInfo("ElementwiseInferMeta",
+                                     {"x", "y"},
+                                     "shape_broadcast",
+                                     {"x", "y"},
+                                     {},
+                                     {},
+                                     {},
+                                     {});
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "shape_broadcast");
+}
+
 void ShapeBroadcastOp::Build(pir::Builder &builder,
                              pir::OperationArgument &argument,
                              pir::Value x_,
@@ -3978,7 +4011,7 @@ std::vector<pir::Type> ShapeBroadcastOp::InferMeta(
     pir::AttributeMap *p_attributes) {
   VLOG(4) << "Start infermeta ShapeBroadcastOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
-                    2UL,
+                    2,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 2 but got %d.",
                         input_values.size()));
@@ -4064,9 +4097,9 @@ symbol::DimExpr GetBroadcastDimExpr(const symbol::DimExpr &lhs,
 std::vector<symbol::DimExpr> ComputeBroadcastShape(
     const std::vector<symbol::DimExpr> &large_shape,
     const std::vector<symbol::DimExpr> &small_shape) {
-  PADDLE_ENFORCE_EQ(
-      large_shape.size() >= small_shape.size(),
-      true,
+  PADDLE_ENFORCE_GE(
+      large_shape.size(),
+      small_shape.size(),
       phi::errors::InvalidArgument(
           "Size of large_shape is expected to be greater or equal size of "
           "small_shape, but got [%d] >= [%d].",
@@ -4090,11 +4123,11 @@ bool ShapeBroadcastOp::InferSymbolicShape(
   pir::Value x = operand_source(0);
   pir::Value y = operand_source(1);
 
-  PADDLE_ENFORCE_EQ(shape_analysis->HasShapeOrDataForValue(x) > 0,
-                    true,
+  PADDLE_ENFORCE_GT(shape_analysis->HasShapeOrDataForValue(x),
+                    0,
                     phi::errors::InvalidArgument("Value x does not exist."));
-  PADDLE_ENFORCE_EQ(shape_analysis->HasShapeOrDataForValue(y) > 0,
-                    true,
+  PADDLE_ENFORCE_GT(shape_analysis->HasShapeOrDataForValue(y),
+                    0,
                     phi::errors::InvalidArgument("Value y does not exist."));
   const auto &x_data_shape = shape_analysis->GetShapeOrDataForValue(x);
   const auto &y_data_shape = shape_analysis->GetShapeOrDataForValue(y);
@@ -4159,7 +4192,7 @@ void MemcpyD2hMultiIoOp::VerifySig() {
     auto input_size = num_operands();
     PADDLE_ENFORCE_EQ(
         input_size,
-        1UL,
+        1u,
         phi::errors::InvalidArgument(
             "The size %d of inputs must be equal to 1.", input_size));
     PADDLE_ENFORCE_EQ((*this)
@@ -4174,9 +4207,9 @@ void MemcpyD2hMultiIoOp::VerifySig() {
   VLOG(4) << "Verifying attributes:";
   {
     auto &attributes = this->attributes();
-    PADDLE_ENFORCE_EQ(
-        attributes.count("dst_place_type") > 0UL,
-        true,
+    PADDLE_ENFORCE_GT(
+        attributes.count("dst_place_type"),
+        0,
         phi::errors::InvalidArgument("dst_place_type does not exist."));
     PADDLE_ENFORCE_EQ(
         attributes.at("dst_place_type").isa<pir::Int32Attribute>(),
@@ -4189,7 +4222,7 @@ void MemcpyD2hMultiIoOp::VerifySig() {
     auto output_size = num_results();
     PADDLE_ENFORCE_EQ(
         output_size,
-        1UL,
+        1u,
         phi::errors::InvalidArgument(
             "The size %d of outputs must be equal to 1.", output_size));
     auto output_0_type = (*this)->result(0).type();
@@ -4210,9 +4243,9 @@ void MemcpyD2hMultiIoOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> MemcpyD2hMultiIoOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap *p_attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
   PADDLE_ENFORCE_EQ(input_values.size(),
-                    1UL,
+                    1,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 1 but got %d.",
                         input_values.size()));
@@ -4300,7 +4333,7 @@ void ArrayPopOp::VerifySig() {
     auto input_size = num_operands();
     PADDLE_ENFORCE_EQ(
         input_size,
-        1UL,
+        1u,
         phi::errors::InvalidArgument(
             "The size %d of inputs must be equal to 1.", input_size));
     PADDLE_ENFORCE_EQ((*this)
@@ -4315,9 +4348,9 @@ void ArrayPopOp::VerifySig() {
   VLOG(4) << "Verifying attributes:";
   {
     auto &attributes = this->attributes();
-    PADDLE_ENFORCE_EQ(attributes.count("index") > 0UL,
-                      true,
-                      phi::errors::InvalidArgument("Index does not exist."));
+    PADDLE_ENFORCE_GT(attributes.count("index"),
+                      0,
+                      phi::errors::InvalidArgument("index does not exist."));
     PADDLE_ENFORCE_EQ(
         attributes.at("index").isa<pir::Int32Attribute>(),
         true,
@@ -4329,7 +4362,7 @@ void ArrayPopOp::VerifySig() {
     auto output_size = num_results();
     PADDLE_ENFORCE_EQ(
         output_size,
-        2UL,
+        2u,
         phi::errors::InvalidArgument(
             "The size %d of outputs must be equal to 2.", output_size));
     PADDLE_ENFORCE_EQ(
@@ -4382,7 +4415,7 @@ std::vector<pir::Type> ArrayPopOp::InferMeta(
   auto &attributes = *p_attributes;
   VLOG(4) << "Start infermeta ArrayPopOp";
   PADDLE_ENFORCE_EQ(input_values.size(),
-                    1UL,
+                    1,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 1 but got %d.",
                         input_values.size()));
@@ -4398,8 +4431,8 @@ std::vector<pir::Type> ArrayPopOp::InferMeta(
         "paddle::dialect::AllocatedDenseTensorArrayType"));
   }
 
-  PADDLE_ENFORCE_EQ(attributes.find("index") != attributes.end(),
-                    true,
+  PADDLE_ENFORCE_NE(attributes.find("index"),
+                    attributes.end(),
                     phi::errors::InvalidArgument(
                         "'index' Attribute is expected for ArrayPopOp. "));
   int index = attributes.at("index").dyn_cast<pir::Int32Attribute>().data();

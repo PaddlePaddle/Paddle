@@ -59,10 +59,17 @@ void FcXPUKernelImpl(const Context& ctx,
   auto* scale_max_data = scale_max.get_ptr() == nullptr
                              ? nullptr
                              : scale_max.get_ptr()->data<float>();
-  auto* out_max_data = ctx.template Alloc<float>(out_max);
-  out_max_data = out_max_in.get_ptr() != nullptr
-                     ? const_cast<float*>(out_max_in.get_ptr()->data<float>())
-                     : out_max_data;
+  float* out_max_data = nullptr;
+  // when T_OUT is float and TGEMM is int8_t, out_max_data should better set to
+  // nullptr for better performance
+  if (!(std::is_same<T_OUT, float>::value &&
+        std::is_same<T_GEMM, int8_t>::value)) {
+    out_max_data = ctx.template Alloc<float>(out_max);
+    out_max_data = out_max_in.get_ptr() != nullptr
+                       ? const_cast<float*>(out_max_in.get_ptr()->data<float>())
+                       : out_max_data;
+  }
+
   xpu::Activation_t act(static_cast<xpu::Activation_t::act_enum>(act_type));
   if (act_type == xpu::Activation_t::LEAKY_RELU) {
     act.leaky_alpha = act_alpha;

@@ -350,6 +350,121 @@ def generate_sm80_16816(cutlass_dtype="cutlass::half_t"):
     return sm80_code
 
 
+def generate_sm80_1688(cutlass_dtype="cutlass::tfloat32_t"):
+    kernel_dict = {
+        "conv_kind_name": "Fprop",
+        "element_a": cutlass_dtype,
+        "layout_a": "cutlass::layout::TensorNHWC",
+        "element_b": cutlass_dtype,
+        "layout_b": "cutlass::layout::TensorNHWC",
+        "element_c": cutlass_dtype,
+        "layout_c": "cutlass::layout::TensorNHWC",
+        "opcode_class": "cutlass::arch::OpClassTensorOp",
+        "arch": "cutlass::arch::Sm80",
+        "swizzling_functor": "cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<4>",
+        # alpha is always float!
+        "element_epilogue": "float",
+        "math_operator": "cutlass::arch::OpMultiplyAdd",
+        "element_residul": cutlass_dtype,
+    }
+
+    kernel_dict["stride_support"] = "cutlass::conv::StrideSupport::kStrided"
+
+    # iterate over this loop
+    iterator_algorithms = [
+        "cutlass::conv::IteratorAlgorithm::kOptimized",
+    ]
+
+    math_instructions = [
+        (
+            "16,8,8",
+            cutlass_dtype,
+            cutlass_dtype,
+            "float",
+        ),
+    ]
+
+    alignments = [4]
+
+    kernel_dict["align_a"] = "4"
+    kernel_dict["align_b"] = "4"
+    kernel_dict["epilogue_vector_length"] = "4"
+    kernel_dict["split_k_slices"] = "1"
+
+    sm80_code = ""
+    for epi_res_block in SupportedEpilogue:
+        op_dict = {}
+        op_dict["func_name"] = (
+            UnderScoreName[epi_res_block].lower() + "_sm80_fp32"
+        )
+        op_dict["enum_op_name"] = UnderScoreName[epi_res_block].upper()
+        # for a op, we record all its kernels into a std::vector in C++ code
+        all_kernel_names = ""
+        all_kernel_declares = ""
+        suffix = 0
+        for iterator_algorithm in iterator_algorithms:
+            for alignment in alignments:
+                for math_inst in math_instructions:
+                    tiles = [
+                        TileDesc("128, 128, 16", 4, "32, 64, 16", math_inst),
+                        TileDesc("128, 128, 16", 3, "32, 64, 16", math_inst),
+                        TileDesc("256, 64, 16", 3, "64, 32, 16", math_inst),
+                        TileDesc("64, 256, 16", 3, "32, 64, 16", math_inst),
+                        TileDesc("128, 64, 16", 4, "64, 32, 16", math_inst),
+                        TileDesc("64, 128, 16", 4, "32, 64, 16", math_inst),
+                        TileDesc("64, 64, 16", 3, "32, 32, 16", math_inst),
+                        TileDesc("128, 128, 32", 3, "32, 64, 32", math_inst),
+                        TileDesc("256, 64, 32", 3, "64, 32, 32", math_inst),
+                        TileDesc("64, 256, 32", 3, "32, 64, 32", math_inst),
+                        TileDesc("128, 64, 32", 3, "64, 32, 32", math_inst),
+                        TileDesc("64, 128, 32", 3, "32, 64, 32", math_inst),
+                        TileDesc("64, 64, 32", 3, "32, 32, 32", math_inst),
+                    ]
+
+                    for tile in tiles:
+                        kernel_dict["iterator_algorithm"] = iterator_algorithm
+                        kernel_dict["Tshape"] = tile.Tshape
+                        kernel_dict["Wshape"] = tile.Wshape
+                        kernel_dict["Ishape"] = tile.math_inst[0]
+                        kernel_dict["stages"] = str(tile.stages)
+                        kernel_dict["element_accum"] = tile.math_inst[3]
+                        kernel_dict["kernel_func_name"] = op_dict[
+                            "func_name"
+                        ] + str(suffix)
+                        suffix += 1
+                        kernel_dict["act1"] = ActTag[epi_res_block[0]]
+                        kernel_dict["binary"] = epi_res_block[1]
+                        kernel_dict["act2"] = ActTag[epi_res_block[2]]
+
+                        # sm80_code += SubstituteTemplate(cbr_kernel, kernel_dict)
+                        kernel_str = (
+                            cbr_header
+                            + SubstituteTemplate(cbr_kernel, kernel_dict)
+                            + CommonTail
+                        )
+                        file_name = (
+                            "generated_tmp/"
+                            + kernel_dict["kernel_func_name"]
+                            + ".cu"
+                        )
+                        write_kernel_to_file(kernel_str, file_name)
+
+                        all_kernel_names += (
+                            kernel_dict["kernel_func_name"] + ", \n"
+                        )
+                        all_kernel_declares += (
+                            "cutlass::Status "
+                            + kernel_dict["kernel_func_name"]
+                            + "(const ConvAllParams& params);"
+                        )
+
+        # Generate op code
+        op_dict["kernel_func_declare"] = all_kernel_declares
+        op_dict["all_kernel_func_name"] = all_kernel_names
+        sm80_code += SubstituteTemplate(CommonConvFunction, op_dict)
+    return sm80_code
+
+
 if __name__ == "__main__":
     sm_versions_and_types = []
     args = parse_args()
@@ -361,8 +476,10 @@ if __name__ == "__main__":
     if args.cuda_arch in ["80", "86", "89"]:
         sm_versions_and_types.append(["80", "fp16"])
         sm_versions_and_types.append(["80", "bf16"])
+        sm_versions_and_types.append(["80", "fp32"])
         all_code += generate_sm80_16816()
         all_code += generate_sm80_16816(cutlass_dtype="cutlass::bfloat16_t")
+        all_code += generate_sm80_1688(cutlass_dtype="cutlass::tfloat32_t")
 
     all_code += GenerateFunctionForPhi(
         sm_versions_and_types, SupportedEpilogue, UnderScoreName, CamelName
