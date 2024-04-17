@@ -46,7 +46,14 @@ class PatternGraph {
                               const PatternNodePtr<T>& downstream);
   std::vector<PatternNodePtr<T>> SortByTopoOrder();
 
- public:
+  const PatternNodePtrSet<T>& all_pattern_nodes() const {
+    return all_pattern_nodes_;
+  }
+  const std::vector<pir::Value>& outputs() const { return outputs_; }
+  const PolicyManager<T>& policy_manager() const { return policy_manager_; }
+  const PolicyManager<T>& topo_manager() const { return topo_manager_; }
+
+ private:
   PatternNodePtrSet<T> all_pattern_nodes_;
   std::vector<pir::Value> outputs_;
   PolicyManager<T> policy_manager_;
@@ -79,7 +86,7 @@ struct SearchAlgorithm<NodePattern, Phrase, GraphMatcher, GraphOperation> {
   }
 
   PatternNodePtr<Phrase> FindMatchedNode() {
-    for (PatternNodePtr<Phrase> iter_node : graph_->all_pattern_nodes_) {
+    for (PatternNodePtr<Phrase> iter_node : graph_->all_pattern_nodes()) {
       if (GraphMatcher()(*graph_, iter_node) &&
           !visited_nodes.count(iter_node)) {
         visited_nodes.insert(iter_node);
@@ -113,8 +120,8 @@ struct SearchAlgorithm<NodePairPattern, Phrase, GraphMatcher, GraphOperation> {
   }
   std::optional<std::pair<PatternNodePtr<Phrase>, PatternNodePtr<Phrase>>>
   FindMatchedPair() {
-    for (PatternNodePtr<Phrase> i : graph_->all_pattern_nodes_) {
-      for (PatternNodePtr<Phrase> j : graph_->all_pattern_nodes_) {
+    for (PatternNodePtr<Phrase> i : graph_->all_pattern_nodes()) {
+      for (PatternNodePtr<Phrase> j : graph_->all_pattern_nodes()) {
         if (i == j) continue;
         const auto& pair = std::make_pair(i, j);
         if (GraphMatcher()(*graph_, i, j) && !visited_node_pair.count(pair)) {
@@ -159,7 +166,7 @@ struct MergeReduceTreeAndTrivialOperation {
     CHECK_EQ(node->downstream().size(), 1);
     auto downstream = node->downstream().at(0);
     auto fake_reduce_iter_idx =
-        graph->policy_manager_.GetFakeReduceIterIdx(node, downstream);
+        graph->policy_manager().GetFakeReduceIterIdx(node, downstream);
     PatternNodePtr<Phrase> merged_node = graph->MergeNode(node, downstream);
     std::get<ReduceTreePlusTrivialPattern<Phrase>>(merged_node->stmt_pattern())
         .fake_reduce_iter_idx = fake_reduce_iter_idx;
@@ -175,7 +182,7 @@ struct LiftReduceToReduceTreeOperation {
   template <typename Phrase>
   void operator()(PatternGraph<Phrase>* graph, PatternNodePtr<Phrase> node) {
     const auto& reduce_pattern = ToReducePattern<Phrase>(node->stmt_pattern());
-    node->stmt_pattern() = ReduceTreePattern<Phrase>({}, reduce_pattern);
+    node->set_stmt_pattern(ReduceTreePattern<Phrase>({}, reduce_pattern));
     VLOG(4) << "LiftReduceToReduceTreeOperation: \nnode " << node->DebugStr();
   }
 };
@@ -186,7 +193,7 @@ struct MergeTrivialPatternOperation {
                   PatternNodePtr<Phrase> upstream) {
     std::vector<PatternNodePtr<Phrase>> fusion_candidate =
         upstream->downstream();
-    upstream->downstream().clear();
+    upstream->ClearDownstream();
     for (const auto& downstream : fusion_candidate) {
       if (std::holds_alternative<ReducePattern<Phrase>>(
               downstream->stmt_pattern()) ||
@@ -199,7 +206,7 @@ struct MergeTrivialPatternOperation {
                 << downstream->DebugStr() << "\nmerged "
                 << merged_node->DebugStr();
       } else {
-        upstream->downstream().push_back(downstream);
+        upstream->AddNodeToDownstream(downstream);
       }
     }
     if (upstream->downstream().empty()) {
@@ -210,8 +217,9 @@ struct MergeTrivialPatternOperation {
 
 struct LiftToHorizontalFusionPatternOperation {
   template <typename Phrase>
-  void operator()(PatternGraph<Phrase>* graph, PatternNodePtr<Phrase> i) {
-    i->stmt_pattern() = HorizontalFusionPattern<Phrase>({i->stmt_pattern()});
+  void operator()(PatternGraph<Phrase>* graph, PatternNodePtr<Phrase> node) {
+    node->set_stmt_pattern(
+        HorizontalFusionPattern<Phrase>({node->stmt_pattern()}));
   }
 };
 
@@ -251,7 +259,7 @@ struct CanFuseReduceTreeMatcher {
            !node->downstream().empty() &&
            std::holds_alternative<ReduceTreePattern<T>>(
                node->downstream().at(0)->stmt_pattern()) &&
-           graph.policy_manager_.CanFuse(node, node->downstream().at(0));
+           graph.policy_manager().CanFuse(node, node->downstream().at(0));
   }
 };
 
@@ -262,7 +270,7 @@ struct CanFuseReduceTreeAndTrivialMatcher {
            !node->downstream().empty() &&
            std::holds_alternative<TrivialPattern<T>>(
                node->downstream().at(0)->stmt_pattern()) &&
-           graph.policy_manager_.CanFuse(node, node->downstream().at(0));
+           graph.policy_manager().CanFuse(node, node->downstream().at(0));
   }
 };
 
@@ -287,7 +295,7 @@ struct HorizontalFusionConstrain {
                                  .type()
                                  .template dyn_cast<pir::DenseTensorType>()
                                  .dims();
-    return graph.topo_manager_.CanFuse(first, second) &&
+    return graph.topo_manager().CanFuse(first, second) &&
            first_dim == second_dim;
   }
 };
@@ -317,7 +325,7 @@ struct NonSinkNodeMatcher {
 struct IsOutputNodeMatcher {
   template <typename T>
   bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
-    bool res = IsAnyFirstInSecond(node->sink_op()->results(), graph.outputs_);
+    bool res = IsAnyFirstInSecond(node->sink_op()->results(), graph.outputs());
     return res;
   }
 };

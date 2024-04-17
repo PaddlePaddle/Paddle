@@ -155,7 +155,7 @@ PatternGraph<T>::PatternGraph(const std::vector<PatternContent<T>>& contents,
       ::pir::Operation* input_op = content.op->operand_source(i).defining_op();
       if (op_to_node_map.find(input_op) != op_to_node_map.end()) {
         PatternNodePtr<T> upstream_node = op_to_node_map[input_op];
-        cur_node->upstream().push_back(upstream_node);
+        cur_node->AddNodeToUpstream(upstream_node);
       }
     }
 
@@ -168,7 +168,7 @@ PatternGraph<T>::PatternGraph(const std::vector<PatternContent<T>>& contents,
         ::pir::Operation* output_op = consumer_it->owner();
         if (op_to_node_map.find(output_op) != op_to_node_map.end()) {
           PatternNodePtr<T> downstream_node = op_to_node_map[output_op];
-          cur_node->downstream().push_back(downstream_node);
+          cur_node->AddNodeToDownstream(downstream_node);
         }
       }
     }
@@ -186,13 +186,11 @@ void PatternGraph<T>::RemoveNode(const PatternNodePtr<T>& node) {
     all_pattern_nodes_.erase(node);
   }
 
-  for (PatternNodePtr<T>& upstream : node->upstream()) {
-    // RemoveFromVector(&upstream->downstream(), node);
+  for (const PatternNodePtr<T>& upstream : node->upstream()) {
     upstream->RemoveNodeFromDownstream(node);
   }
 
-  for (PatternNodePtr<T>& downstream : node->downstream()) {
-    // RemoveFromVector(&downstream->upstream(), node);
+  for (const PatternNodePtr<T>& downstream : node->downstream()) {
     downstream->RemoveNodeFromUpstream(node);
   }
 }
@@ -220,26 +218,7 @@ PatternNodePtr<T> PatternGraph<T>::MergeNode(
   PatternNodePtr<T> merged_node =
       std::make_shared<PatternNode<T>>(upstream, downstream);
 
-  // // deal with the reference.
-  // ExtendVector(&merged_node->upstream(), upstream->upstream());
-  // ExtendVector(&merged_node->upstream(), downstream->upstream());
-  // RemoveFromVector(&merged_node->upstream(), upstream);
-
-  // ExtendVector(&merged_node->downstream(), upstream->downstream());
-  // ExtendVector(&merged_node->downstream(), downstream->downstream());
-  // RemoveFromVector(&merged_node->downstream(), downstream);
-
-  // for (const auto& upstream_node : merged_node->upstream()) {
-  //   upstream_node->downstream().push_back(merged_node);
-  //   RemoveFromVector(&upstream_node->downstream(), upstream);
-  //   RemoveFromVector(&upstream_node->downstream(), downstream);
-  // }
-  // for (const auto& downstream_node : merged_node->downstream()) {
-  //   downstream_node->upstream().push_back(merged_node);
-  //   RemoveFromVector(&downstream_node->downstream(), upstream);
-  //   RemoveFromVector(&downstream_node->downstream(), downstream);
-  // }
-
+  // Update upstream and downstream nodes.
   for (const auto& upstream_node : merged_node->upstream()) {
     upstream_node->AddNodeToDownstream(merged_node);
     upstream_node->RemoveNodeFromDownstream(upstream);
