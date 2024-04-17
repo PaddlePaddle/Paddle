@@ -544,6 +544,7 @@ class DygraphShardingOptimizerV2:
         # NOTE(shenliang03): Sort the comm_buffers by dst rank,
         # it will improve the performance in reduce communicate. Default
         # g_shard_sort_reduce_root is True.
+
         self._comm_buffer_list.sort(key=lambda x: x._dst)
 
         self._set_inner_opt_attr('_parameter_list', self._local_parameter_list)
@@ -691,14 +692,19 @@ class DygraphShardingOptimizerV2:
         with framework.no_grad():
             if self._all_gather_overlap_forward:
                 param2task = {}
+                count_param = 0
                 for comm_buffer in self._comm_buffer_list:
+                    for param in comm_buffer.params:
+                        count_param = count_param + 1
                     comm_buffer.sync_params(sync=False, param2task=param2task)
 
+                count_param = 0
                 for layer in self._layers.sublayers():
                     if len(layer.sublayers()) == 0:
                         tasks = []
                         for param in layer.parameters():
                             if param.trainable:
+                                count_param = count_param + 1
                                 if param.name in param2task:
                                     tasks.append(param2task[param.name])
 

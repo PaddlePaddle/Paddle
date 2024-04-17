@@ -334,11 +334,12 @@ class HybridParallelOptimizer:
     def _set_all_gather_overlap_forward(
         self, all_gather_overlap_forward, layers=None
     ):
-        self.all_gather_overlap_forward = all_gather_overlap_forward
-        self._layers = layers
-        self._inner_opt._set_all_gather_overlap_forward(
-            self.all_gather_overlap_forward, self._layers
-        )
+        self._all_gather_overlap_forward = all_gather_overlap_forward
+        if self._all_gather_overlap_forward:
+            self._layers = layers
+            self._inner_opt._set_all_gather_overlap_forward(
+                self._all_gather_overlap_forward, self._layers
+            )
 
     def _insert_sync(self, sync_var, src, mp_group, sync_mode):
         if sync_mode == "broadcast":
