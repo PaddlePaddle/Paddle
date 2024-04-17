@@ -2289,6 +2289,16 @@
   inplace : (x -> out)
   backward : reciprocal_grad
 
+- op : reduce_as
+  args : (Tensor x, Tensor target)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceAsInferMeta
+  kernel :
+    func : reduce_as
+    data_type : x
+  backward : reduce_as_grad
+
 - op : reindex_graph
   args : (Tensor x, Tensor neighbors, Tensor count, Tensor hashtable_value, Tensor hashtable_index)
   output : Tensor(reindex_src), Tensor(reindex_dst), Tensor(out_nodes)

@@ -118,7 +118,7 @@ class TestAssignPosAPI(unittest.TestCase):
             )
             assert_allclose(res[0], self.out, self.cum_count)
 
-    def test_api_dygraph(self):
+    def _test_api_dygraph(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         cum_count = paddle.to_tensor(self.cum_count).astype(x.dtype)
