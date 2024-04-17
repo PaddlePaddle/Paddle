@@ -525,7 +525,6 @@ set(TEST_OPS_WITH_GC
     test_fill_zeros_like2_op
     test_gather_op
     test_gather_nd_op
-    test_linear_chain_crf_op
     test_lod_reset_op
     test_lookup_table_op
     test_mean_op
@@ -1443,3 +1442,4 @@ set_pit_tests_properties()
 
 set_tests_properties(test_fractional_max_pool2d_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fractional_max_pool3d_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_reduce_as_op PROPERTIES TIMEOUT 30)
