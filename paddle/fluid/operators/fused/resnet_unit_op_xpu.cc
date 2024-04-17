@@ -99,7 +99,6 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
         running_var_x->mutable_data<float>(place)};
 
     std::vector<const float *> x_maxlist;
-    int maxptr_size = dev_ctx.x_context()->max_ptr_size();
     if (maxptr_x) {
       const float *tmp = reinterpret_cast<const float *>(maxptr_x->data<int>());
       x_maxlist.push_back(tmp);
@@ -438,7 +437,7 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
       }
     }
 
-    const phi::DenseTensor *bitmask = ctx.Input<phi::DenseTensor>("BitMask");
+    phi::DenseTensor *bitmask = ctx.Input<phi::DenseTensor>("BitMask");
     int r = 0;
     if (std::getenv("XPU_PADDLE_FC_LOCAL_INT16") != nullptr) {
       r = xpu::resnet_unit_grad_fusion<XPUType, XPUType, XPUType, float>(
@@ -469,7 +468,7 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
           is_nchw,
           has_shortcut,
           fuse_add,
-          reinterpret_cast<void *>(const_cast<int *>(bitmask->data<int>())));
+          reinterpret_cast<void *>(bitmask->data<int>()));
     } else {
       r = xpu::resnet_unit_grad_fusion<XPUType, XPUType, XPUType, int16_t>(
           dev_ctx.x_context(),
@@ -499,7 +498,7 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
           is_nchw,
           has_shortcut,
           fuse_add,
-          reinterpret_cast<void *>(const_cast<int *>(bitmask->data<int>())));
+          reinterpret_cast<void *>(bitmask->data<int>()));
     }
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "resnet_unit_grad_fusion");
   }
