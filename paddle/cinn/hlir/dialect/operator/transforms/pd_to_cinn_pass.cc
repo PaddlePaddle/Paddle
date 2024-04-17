@@ -22,6 +22,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/pass/pass.h"
@@ -50,6 +51,17 @@ class SumOpPattern : public paddle::drr::DrrPatternBase {
                                  {{"dtype", pattern.Attr("dtype")},
                                   {"keepdim", pattern.Attr("keep_dim")}});
     pattern.Tensor("ret") = sum(pattern.Tensor("arg0"), full_int_array());
+    //   pattern.RequireNativeCall([&](const paddle::drr::MatchContext
+    //   &match_ctx) { auto x_shape =
+    //   pir::GetShapeFromValue(match_ctx.Tensor("arg0"));
+
+    //   if( x_shape.size() == 1 && x_shape.front() < 4)
+    //   {
+    //     return false;
+    //   }
+
+    //   return true;
+    // });
 
     // Result patterns
     paddle::drr::ResultPattern res = pattern.ResultPattern();

@@ -126,11 +126,11 @@ ShardableAxesSignature CreateSignatureForElementWise(pir::Operation* op) {
   auto same_axes = CreateNewNamesWithRank(rank);
 
   for (int i = 0; i < op->num_operands(); ++i) {
-    CHECK(rank == GetRank(op->operand_source(i)));
+    CHECK(rank == GetRank(op->operand_source(i))) << op->name();
     result.inputs.emplace_back(same_axes);
   }
   for (int i = 0; i < op->num_results(); ++i) {
-    CHECK(rank == GetRank(op->result(i)));
+    CHECK(rank == GetRank(op->result(i))) << op->name();
     result.outputs.emplace_back(same_axes);
   }
   return result;

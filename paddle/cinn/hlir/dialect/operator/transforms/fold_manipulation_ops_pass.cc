@@ -63,6 +63,12 @@ bool RemoveOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
       }
       return false;
     }
+
+    if (GetDims(input).size() == 1 && GetDims(input)[0] == 1u &&
+        GetDims(output).size() == 0) {
+      return true;
+    }
+
     return GetDims(input) == GetDims(output);
   };
 
@@ -121,6 +127,7 @@ class FoldManipulationOpsPass : public pir::PatternRewritePass {
     ps.Add<RemoveUnchangedOpPattern<paddle::dialect::ExpandOp>>(context);
     ps.Add<RemoveUnchangedOpPattern<paddle::dialect::AssignOp>>(context);
     ps.Add<RemoveUnchangedOpPattern<cinn::dialect::ConcatOp>>(context);
+    // ps.Add<RemoveUnchangedOpPattern<cinn::dialect::ReduceSumOp>>(context);
     // merge redundant ops
     ps.Add<MergeRedundantOpPattern<cinn::dialect::ReshapeOp>>(context);
     ps.Add<MergeRedundantOpPattern<paddle::dialect::ReshapeOp>>(context);

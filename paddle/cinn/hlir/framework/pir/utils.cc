@@ -284,7 +284,8 @@ bool IsSmallNumelOp(const ::pir::Operation& op) {
   }();
 
   // max value check
-  return (0 <= max_value_numel && max_value_numel < 4);
+  // return (0 <= max_value_numel && max_value_numel < 4);
+  return max_value_numel == 1;
 }
 
 bool IsShapeComputeOp(const ::pir::Operation& op) {
@@ -338,9 +339,9 @@ bool IsDeniedInCinn(const ::pir::Operation& op) {
     return true;
   }
 
-  if (IsSmallNumelOp(op)) {
-    return true;
-  }
+  // if ( op.name() == "pd_op.sum" && IsSmallNumelOp(op) ) {
+  //   return true;
+  // }
 
   if (!AllInputDenseTensor(op) || UnimplementOps(op)) {
     VLOG(5) << "Found " << op.name()
