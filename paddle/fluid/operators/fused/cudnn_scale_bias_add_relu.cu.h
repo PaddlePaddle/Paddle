@@ -43,7 +43,7 @@ struct ScaleBiasAddReluArgs {
     PADDLE_ENFORCE_EQ(
         data_shape.size(),
         4U,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The size of data_shape is expected to 4. But received "
             "data_shape's size is %d, data_shape is [%s].",
             data_shape.size(),
@@ -51,7 +51,7 @@ struct ScaleBiasAddReluArgs {
     PADDLE_ENFORCE_EQ(
         param_shape.size(),
         4U,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The size of param_shape is expected to 4. But received "
             "param_shape's size is %d, param_shape is [%s].",
             param_shape.size(),
@@ -59,7 +59,7 @@ struct ScaleBiasAddReluArgs {
     PADDLE_ENFORCE_EQ(
         bitmask_shape.size(),
         3U,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The size of bitmask_shape is expected to 3. But received "
             "bitmask_shape's size is %d, bitmask_shape is [%s].",
             bitmask_shape.size(),
@@ -76,7 +76,7 @@ struct ScaleBiasAddReluArgs {
       PADDLE_ENFORCE_EQ(
           act_type,
           "relu",
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Only relu activation supported in normalized convolution."));
       mode = CUDNN_ACTIVATION_RELU;
     }

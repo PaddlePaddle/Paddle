@@ -111,9 +111,7 @@ def get_infermeta_inputs_str(
         # is a vector<Tensor>
         if 'pir::VectorType' in op_input_type_list[idx]:
             if op_input_optional_list[idx] == 'false':
-                infermeta_inputs_str += "  pir::VectorType {name} = {name}_.type().dyn_cast<pir::VectorType>(); (void){name};\n".format(
-                    name=op_input_name_list[idx]
-                )
+                infermeta_inputs_str += f"  pir::VectorType {op_input_name_list[idx]} = {op_input_name_list[idx]}_.type().dyn_cast<pir::VectorType>(); (void){op_input_name_list[idx]};\n"
         # is a Tensor
         else:
             if op_input_optional_list[idx] == 'false':
@@ -611,10 +609,17 @@ def GenDistBranch(args, op_info):
   // Auto Parallel condition
   ProcessMeshAttribute op_mesh;
   if(HasDistInput(input_values, &op_mesh)) {{
+    {}
     CvtAllInputsToDist(input_values, op_mesh);
     auto ctx = pir::IrContext::Instance();
     std::vector<TensorDistAttribute> operand_dist_attrs, result_dist_attrs;"""
-    dist_branch_str = TEMPLATE.format()
+
+    extra_call = ""
+    for name in op_info.spmd_params:
+        if name == "learning_rate":
+            extra_call = "CopyLeafOpToMesh(learning_rate_, op_mesh);"
+            break
+    dist_branch_str = TEMPLATE.format(extra_call)
     infer_spmd_args_list = []
     # Prepare inputs_meta_tensor & attributes for infer spmd
     for name in op_info.spmd_params:

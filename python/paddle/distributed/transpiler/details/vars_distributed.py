@@ -115,31 +115,14 @@ class VarDistributed:
         )
 
     def __str__(self):
-        origin_var_str = (
-            "{name} : base.{type}.shape{shape}.astype({dtype})".format(
-                name=self.origin.name,
-                type=self.origin.type,
-                shape=self.origin.shape,
-                dtype=self.origin.dtype,
-            )
-        )
+        origin_var_str = f"{self.origin.name} : base.{self.origin.type}.shape{self.origin.shape}.astype({self.origin.dtype})"
 
         slice_var_str = (
-            "{name} : base.{type}.shape{shape}.astype({dtype})"
-            ".slice({is_slice}).block({block_id}).offset({offset})".format(
-                name=self.slice.name,
-                type=self.slice.type,
-                shape=self.slice.shape,
-                dtype=self.slice.dtype,
-                is_slice=self.is_slice,
-                block_id=self.block_id,
-                offset=self.offset,
-            )
+            f"{self.slice.name} : base.{self.slice.type}.shape{self.slice.shape}.astype({self.slice.dtype})"
+            f".slice({self.is_slice}).block({self.block_id}).offset({self.offset})"
         )
 
-        return "var owned: {}, origin var: ( {} ), slice var: ( {} ), endpoint: {} ".format(
-            self.vtype, origin_var_str, slice_var_str, self.endpoint
-        )
+        return f"var owned: {self.vtype}, origin var: ( {origin_var_str} ), slice var: ( {slice_var_str} ), endpoint: {self.endpoint} "
 
 
 class VarsDistributed:

@@ -85,9 +85,6 @@ bool ConcatOpInferSymbolicShape(
     return out_dims;
   };
 
-  VLOG(3) << "constraints size:"
-          << shape_analysis->DimExprBuilder().constraints().size();
-
   symbol::ShapeOrDataDimExprs shape_data{
       symbol::TensorShapeOrDataDimExprs(GetOutDimExprs())};
 
@@ -128,6 +125,18 @@ bool ReshapeOpInferSymbolicShape(
     pir::Operation *op, pir::ShapeConstraintIRAnalysis *shape_analysis) {
   std::vector<int> shape =
       paddle::dialect::details::GetVectorAttr<int>(op, "shape");
+
+  const symbol::ShapeOrDataDimExprs &x_dim_expr =
+      shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
+  if (x_dim_expr.data().has_value()) {
+    if (shape.size() == 1 && shape.front() == 1) {
+      shape_analysis->SetShapeOrDataForValue(
+          op->result(0),
+          symbol::TensorShapeOrDataDimExprs(std::vector<symbol::DimExpr>{1},
+                                            x_dim_expr.data().value()));
+      return true;
+    }
+  }
 
   const auto &GetProduct = [&](const auto &dim_exprs, const auto &Filter) {
     symbol::DimExpr product{1};

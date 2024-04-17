@@ -19,12 +19,10 @@ add_subdirectory(controlflow)
 add_subdirectory(detection)
 add_subdirectory(elementwise)
 add_subdirectory(fused)
-add_subdirectory(metrics)
 add_subdirectory(optimizers)
 add_subdirectory(reduce_ops)
 add_subdirectory(sequence_ops)
 add_subdirectory(string)
-add_subdirectory(prim_ops)
 
 
 if(WITH_DISTRIBUTE)
@@ -34,8 +32,6 @@ endif()
 if (WITH_PSCORE)
     add_subdirectory(pscore)
 endif()
-
-add_subdirectory(amp)
 
 add_subdirectory(reader)
 
@@ -49,10 +45,6 @@ endif()
 
 if (WITH_DLNNE)
     add_subdirectory(dlnne)
-endif()
-
-if (WITH_LITE)
-    add_subdirectory(lite)
 endif()
 
 if(WITH_CINN)

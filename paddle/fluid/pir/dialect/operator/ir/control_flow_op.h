@@ -173,7 +173,8 @@ class HasElementsOp : public pir::Op<HasElementsOp> {
 ///      print(summarize number of elements in data)
 ///   }
 ///
-class AssertOp : public pir::Op<AssertOp, OpYamlInfoInterface> {
+class AssertOp
+    : public pir::Op<AssertOp, OpYamlInfoInterface, pir::SideEffectTrait> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.assert"; }
