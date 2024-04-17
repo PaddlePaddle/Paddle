@@ -57,7 +57,7 @@ struct PatternNode {
   }
 
   pir::Operation* sink_op() const { return sink_op_; }
-  StmtPattern<T>& stmt_pattern() const { return stmt_pattern_; }
+  StmtPattern<T>& stmt_pattern() { return stmt_pattern_; }
   void set_stmt_pattern(const StmtPattern<T>& pattern) {
     stmt_pattern_ = pattern;
   }
