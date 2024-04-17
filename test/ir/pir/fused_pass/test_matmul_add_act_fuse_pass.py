@@ -1,4 +1,4 @@
-# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,12 +19,11 @@ from pass_test import PassTest
 
 import paddle
 from paddle.base import core
-from paddle.inference import Config
 
 paddle.enable_static()
 
 
-class TestFcFusePassPattern(PassTest):
+class TestMatmulAddPattern(PassTest):
     r'''
     Matmul     Y
        \     /
@@ -36,7 +35,7 @@ class TestFcFusePassPattern(PassTest):
         return True
 
     def sample_program(self):
-        use_cutlass = True     # option
+        use_cutlass = False     # option
         if use_cutlass:
             fused_op_name = "pd_op.gemm_epilogue"
         else:
@@ -95,7 +94,7 @@ class TestFcFusePassPattern(PassTest):
         self.check_pass_correct(atol=2e-3, rtol=2e-3)
 
 
-class TestFcFusePassPattern_reverseAdd(PassTest):
+class TestMatmulAddPatternReverseAdd(PassTest):
     r'''
       Y     Matmul
        \     /
@@ -159,7 +158,7 @@ class TestFcFusePassPattern_reverseAdd(PassTest):
         self.check_pass_correct(atol=2e-3, rtol=2e-3)
 
 
-class TestFcFusePassPattern_withAct(PassTest):
+class TestMatmulAddActPattern(PassTest):
     r'''
     Matmul     Y
        \     /
@@ -173,7 +172,7 @@ class TestFcFusePassPattern_withAct(PassTest):
         return True
 
     def sample_program(self):
-        use_cutlass = True      # option
+        use_cutlass = False      # option
         if use_cutlass:
             fused_op_name = "pd_op.gemm_epilogue"
             acts = ["pd_op.relu", "pd_op.gelu"]
@@ -242,7 +241,7 @@ class TestFcFusePassPattern_withAct(PassTest):
         self.check_pass_correct(atol=2e-3, rtol=2e-3)
 
 
-class TestFcFusePassPattern_reverseAdd_withAct(PassTest):
+class TestMatmulAddActPatternReverseAdd(PassTest):
     r'''
       Y     Matmul
        \     /

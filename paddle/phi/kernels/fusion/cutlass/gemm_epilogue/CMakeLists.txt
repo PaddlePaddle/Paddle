@@ -32,8 +32,8 @@ set(CUDA_NVCC_FLAGS
     -gencode arch=compute_${COMPUTE_CAPABILITY},code=sm_${COMPUTE_CAPABILITY};)
 #set(CMAKE_CXX_FLAGS -fvisibility=hidden)
 set(CMAKE_BUILD_TYPE "Release")
-file(GLOB all_cutlass_fc_cu
+file(GLOB all_cutlass_gemm_epilogue_cu
      "${CMAKE_CURRENT_BINARY_DIR}/generated_tmp/*.cu")
-list(APPEND all_cutlass_fc_cu "${CMAKE_CURRENT_SOURCE_DIR}/gemm_epilogue_util.cu")
+list(APPEND all_cutlass_gemm_epilogue_cu "${CMAKE_CURRENT_SOURCE_DIR}/gemm_epilogue_util.cu")
 
-cuda_add_library(CutlassFc SHARED ${all_cutlass_fc_cu})
+cuda_add_library(CutlassGemmEpilogue SHARED ${all_cutlass_gemm_epilogue_cu})

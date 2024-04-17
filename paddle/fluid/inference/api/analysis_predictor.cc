@@ -956,7 +956,6 @@ bool AnalysisPredictor::PrepareExecutor() {
             auto pass = pir::PassRegistry::Instance().Get(gpu_pass);
             if(pass->name() == "matmul_add_act_fuse_pass"){
               pass->Set("use_cutlass", new bool(config_.use_cutlass_));
-              VLOG(4) << "[matmul_add_act_fuse_pass] use_cutlass option is set to " << config_.use_cutlass_;
             }
             pass_pm.AddPass(std::move(pass));
           }

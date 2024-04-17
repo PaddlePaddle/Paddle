@@ -45,24 +45,24 @@ namespace cutlass_internal {
   }
 
 typedef enum {
-  FC_BIAS,
-  FC_BIAS_RELU,
-  FC_BIAS_SILU,
-  FC_BIAS_LEAKY_RELU,
-  FC_BIAS_SIGMOID,
-  FC_BIAS_GELU,
+  MATMUL_ADD,
+  MATMUL_ADD_RELU,
+  MATMUL_ADD_SILU,
+  MATMUL_ADD_LEAKY_RELU,
+  MATMUL_ADD_SIGMOID,
+  MATMUL_ADD_GELU,
 } OpType;
 
-// fc_diff_gpu calculate diff of cutlass output and baseline output, you can
+// gemm_epilogue_diff_gpu calculate diff of cutlass output and baseline output, you can
 // use them to debug. return value is the max diff between cutlass and baseline.
 template <typename T>
-float fc_diff_gpu(const FcAllParams& params, OpType op_type);
+float gemm_epilogue_diff_gpu(const GemmEpilogueAllParams& params, OpType op_type);
 
 std::string OpType2String(OpType op_type);
 
 int ProfileToGetBestConfig(
-    const std::vector<std::function<cutlass::Status(FcAllParams)>>& all_func,
-    const FcAllParams& params,
+    const std::vector<std::function<cutlass::Status(GemmEpilogueAllParams)>>& all_func,
+    const GemmEpilogueAllParams& params,
     OpType op_type);
 
 }  // namespace cutlass_internal

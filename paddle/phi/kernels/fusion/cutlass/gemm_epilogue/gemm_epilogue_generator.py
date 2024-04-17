@@ -15,10 +15,10 @@
 import enum
 
 from gemm_epilogue_common import(
-    CommonFcFunction,
-    CommonCutlassFcKernelDeclare,
-    CommonCutlassFcKernelArguments,
-    CommonCutlassFcKernelExecute,
+    CommonGemmEpilogueFunction,
+    CommonCutlassGemmEpilogueKernelDeclare,
+    CommonCutlassGemmEpilogueKernelArguments,
+    CommonCutlassGemmEpilogueKernelExecute,
     CommonTail,
     GenerateFunctionForPhi
 )
@@ -49,9 +49,9 @@ dict_for_declare_part = {
 }
 
 fba_kernel = (
-    SubstituteTemplate(CommonCutlassFcKernelDeclare, dict_for_declare_part) 
-    + CommonCutlassFcKernelArguments
-    + CommonCutlassFcKernelExecute
+    SubstituteTemplate(CommonCutlassGemmEpilogueKernelDeclare, dict_for_declare_part) 
+    + CommonCutlassGemmEpilogueKernelArguments
+    + CommonCutlassGemmEpilogueKernelExecute
 )
 
 fba_kernel_leaky_alpha = fba_kernel.replace(
@@ -85,21 +85,21 @@ ActTag = {
 }
 
 UnderScoreName = {
-    SupportedAct[0]: "fc_bias",
-    SupportedAct[1]: "fc_bias_relu",
-    SupportedAct[2]: "fc_bias_silu",
-    SupportedAct[3]: "fc_bias_leaky_relu",
-    SupportedAct[4]: "fc_bias_sigmoid",
-    SupportedAct[5]: "fc_bias_gelu",
+    SupportedAct[0]: "matmul_add",
+    SupportedAct[1]: "matmul_add_relu",
+    SupportedAct[2]: "matmul_add_silu",
+    SupportedAct[3]: "matmul_add_leaky_relu",
+    SupportedAct[4]: "matmul_add_sigmoid",
+    SupportedAct[5]: "matmul_add_gelu",
 }
 
 CamelName = {
-    SupportedAct[0]: "FcBias",
-    SupportedAct[1]: "FcBiasRelu",
-    SupportedAct[2]: "FcBiasSilu",
-    SupportedAct[3]: "FcBiasLeakyRelu",
-    SupportedAct[4]: "FcBiasSigmoid",
-    SupportedAct[5]: "FcBiasGelu",
+    SupportedAct[0]: "MatmulAdd",
+    SupportedAct[1]: "MatmulAddRelu",
+    SupportedAct[2]: "MatmulAddSilu",
+    SupportedAct[3]: "MatmulAddLeakyRelu",
+    SupportedAct[4]: "MatmulAddSigmoid",
+    SupportedAct[5]: "MatmulAddGelu",
 }
 
 # layouts = [
@@ -202,14 +202,14 @@ def generate_sm75_1688():
                             all_kernel_declares += (
                                 "cutlass::Status "
                                 + kernel_dict["kernel_func_name"]
-                                + "(const FcAllParams& params);"
+                                + "(const GemmEpilogueAllParams& params);"
                                 + "\n"
                             )
 
         # Generate op code
         op_dict["kernel_func_declare"] = all_kernel_declares
         op_dict["all_kernel_func_name"] = all_kernel_names
-        sm75_code += SubstituteTemplate(CommonFcFunction, op_dict)
+        sm75_code += SubstituteTemplate(CommonGemmEpilogueFunction, op_dict)
     return sm75_code     
     
     
@@ -238,7 +238,7 @@ def sm80_16816_forStreamK(op_dict, kernel_dict, suffix, epi_func):
     all_kernel_declares += (
         "cutlass::Status "
         + kernel_dict["kernel_func_name"]
-        + "(const FcAllParams& params);"
+        + "(const GemmEpilogueAllParams& params);"
         + "\n"
     )
     return all_kernel_names, all_kernel_declares, suffix
@@ -270,7 +270,7 @@ def sm80_16816_forUniversal(op_dict, kernel_dict, suffix, epi_func):
         all_kernel_declares += (
             "cutlass::Status "
             + kernel_dict["kernel_func_name"]
-            + "(const FcAllParams& params);"
+            + "(const GemmEpilogueAllParams& params);"
             + "\n"
         )
     return all_kernel_names, all_kernel_declares, suffix
@@ -358,7 +358,7 @@ def generate_sm80_16816(cutlass_dtype="cutlass::half_t"):
         # Generate op code
         op_dict["kernel_func_declare"] = all_kernel_declares
         op_dict["all_kernel_func_name"] = all_kernel_names
-        sm80_code += SubstituteTemplate(CommonFcFunction, op_dict)
+        sm80_code += SubstituteTemplate(CommonGemmEpilogueFunction, op_dict)
     return sm80_code                
 
 
@@ -380,5 +380,5 @@ if __name__ == "__main__":
         sm_versions_and_types, SupportedAct, UnderScoreName, CamelName
     )
     all_code += CommonTail
-    with open(build_dir + "generated_tmp/fc_bias_act.cu", "w") as f:
+    with open(build_dir + "generated_tmp/matmul_add_act.cu", "w") as f:
         f.write(all_code)

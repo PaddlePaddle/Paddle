@@ -1,4 +1,4 @@
-# 如何编译和使用cutlass的gemm_epilogue(fc)算子
+# 如何编译和使用cutlass的gemm_epilogue算子
 
 本文件夹下面对应的是基于cutlass开发的gemm_epilogue算子，此算子被独立编译成so，供paddle内部的phi库调用。
 这样做的好处有两个：
@@ -22,7 +22,7 @@ compile.sh 脚本中会下载（查找）cutlass，执行CMakeLists.txt脚本，
 
 step2.
 
-step1执行后，就可以看到在 build 目录生成了 `libCutlassFc.so` ，并将build目录添加到LD_LIBRARY_PATH中即可使用此库。
+step1执行后，就可以看到在 build 目录生成了 `libCutlassGemmEpilogue.so` ，并将build目录添加到LD_LIBRARY_PATH中即可使用此库。
 
 
 step3.

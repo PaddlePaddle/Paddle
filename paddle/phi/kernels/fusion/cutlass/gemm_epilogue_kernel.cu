@@ -20,17 +20,17 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/fusion/cutlass/gemm_epilogue/gemm_epilogue_decl.h"
 
-#include "paddle/phi/backends/dynload/cutlass_fc.h"
+#include "paddle/phi/backends/dynload/cutlass_gemm_epilogue.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
 namespace fusion {
 namespace cutlass_internal {
 
-typedef void (*func)(phi::fusion::cutlass_internal::FcAllParams);
+typedef void (*func)(phi::fusion::cutlass_internal::GemmEpilogueAllParams);
 
 template <typename T, typename Context>
-void FCKernel(const Context& dev_ctx,
+void GemmEpilogueKernel(const Context& dev_ctx,
               const DenseTensor& input,
               const DenseTensor& w,
               const paddle::optional<DenseTensor>& bias,
@@ -43,11 +43,11 @@ void FCKernel(const Context& dev_ctx,
     return;
   }
   PADDLE_ENFORCE_EQ(padding_weights, false,
-                    phi::errors::PermissionDenied("Weight padding in fc can not be used in GPU scope."));
+                    phi::errors::PermissionDenied("Weight padding in gemm_epilogue can not be used in GPU scope."));
 
   auto weight_dims = w.dims();
   CHECK_EQ(weight_dims.size() == 2UL, true);
-  // fc_out should be reshape when run since can not get lod in infershape
+  // gemm_epilogue_out should be reshape when run since can not get lod in infershape
   std::vector<int64_t> output_dims;
   phi::funcs::FCOutputSize(
       input.dims(), weight_dims, output_dims, in_num_col_dims, padding_weights);
@@ -92,21 +92,21 @@ void FCKernel(const Context& dev_ctx,
   int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
   int sm_version = backends::gpu::GetGPUComputeCapability(device_id);
 
-  auto get_fc_dtype = [&](decltype(input.dtype()) input_type)
-      -> phi::fusion::cutlass_internal::FcDataType {
+  auto get_gemm_epilogue_dtype = [&](decltype(input.dtype()) input_type)
+      -> phi::fusion::cutlass_internal::GemmEpilogueDataType {
     switch (input_type) {
       case phi::DataType::FLOAT32:
-        return FcDataType::fp32;
+        return GemmEpilogueDataType::fp32;
       case phi::DataType::FLOAT16:
-        return FcDataType::fp16;
+        return GemmEpilogueDataType::fp16;
       case phi::DataType::BFLOAT16:
-        return FcDataType::bf16;
+        return GemmEpilogueDataType::bf16;
       default:
-        return FcDataType::fp32;
+        return GemmEpilogueDataType::fp32;
     }
   };
-  auto fc_dtype = get_fc_dtype(input.dtype());
-  if ((fc_dtype != FcDataType::fp16) && (fc_dtype != FcDataType::bf16)) {
+  auto gemm_epilogue_dtype = get_gemm_epilogue_dtype(input.dtype());
+  if ((gemm_epilogue_dtype != GemmEpilogueDataType::fp16) && (gemm_epilogue_dtype != GemmEpilogueDataType::bf16)) {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Gemm_epilogue kernel only supports fp16 and bf16, input dtype error!"));
     return;
@@ -132,7 +132,7 @@ void FCKernel(const Context& dev_ctx,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));  
   workspace = tmp_ptr->ptr();
   
-  FcAllParams params = {
+  GemmEpilogueAllParams params = {
       reinterpret_cast<const void*>(input.data<T>()),
       reinterpret_cast<const void*>(w.data<T>()),
       reinterpret_cast<const void*>(bias->data<T>()),
@@ -144,33 +144,33 @@ void FCKernel(const Context& dev_ctx,
       ldb,
       ldd,
       dev_ctx.stream(),
-      fc_dtype,
+      gemm_epilogue_dtype,
       isVec_bias,
       cutlass_dispatch_sm_version(sm_version),
       0.01,       // for leaky_relu
       workspace,
   };
 
-  void* dlhandler = phi::dynload::GetCutlassFcHandle();
-  func fc_func = NULL;
+  void* dlhandler = phi::dynload::GetCutlassGemmEpilogueHandle();
+  func gemm_epilogue_func = NULL;
   CHECK_EQ(dlhandler == NULL, false);
   if (activation_type == "relu") {
-    fc_func = (func)(dlsym(dlhandler, "FcBiasRelu"));
+    gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddRelu"));
   } else if (activation_type == "swish") {
-    fc_func = (func)(dlsym(dlhandler, "FcBiasSilu"));
+    gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddSilu"));
   } else if (activation_type == "identity" || activation_type == "") {
-    fc_func = (func)(dlsym(dlhandler, "FcBias"));
+    gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAdd"));
   } else if (activation_type == "leaky_relu") {
-    fc_func = (func)(dlsym(dlhandler, "FcBiasLeakyRelu"));
+    gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddLeakyRelu"));
   } else if (activation_type == "sigmoid") {
-    fc_func = (func)(dlsym(dlhandler, "FcBiasSigmoid"));
+    gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddSigmoid"));
   } else if (activation_type == "gelu"){
-    fc_func = (func)(dlsym(dlhandler, "FcBiasGelu"));
+    gemm_epilogue_func = (func)(dlsym(dlhandler, "MatmulAddGelu"));
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Cutlass does not support this activation_type: %s.", activation_type.c_str()));
   }
-  fc_func(params);
+  gemm_epilogue_func(params);
 }
 
 }  // namespace cutlass_internal
@@ -180,7 +180,7 @@ void FCKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(gemm_epilogue,
                    GPU,
                    ALL_LAYOUT,
-                   phi::fusion::cutlass_internal::FCKernel,
+                   phi::fusion::cutlass_internal::GemmEpilogueKernel,
                    float,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}

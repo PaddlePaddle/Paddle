@@ -12,7 +12,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#include "paddle/phi/backends/dynload/cutlass_fc.h"
+#include "paddle/phi/backends/dynload/cutlass_gemm_epilogue.h"
 #include <string>
 #include "paddle/phi/core/enforce.h"
 
@@ -20,10 +20,10 @@ namespace phi {
 namespace dynload {
 
 extern std::once_flag cutlass_dso_flag;
-void *cutlass_fc_dso_handle;
+void *cutlass_gemm_epilogue_dso_handle;
 
-void* GetCutlassFcHandle() {
-  std::string dso_name = "libCutlassFc.so";
+void* GetCutlassGemmEpilogueHandle() {
+  std::string dso_name = "libCutlassGemmEpilogue.so";
 
   std::call_once(cutlass_dso_flag, [&]() {
 #if !defined(_WIN32)
@@ -32,13 +32,13 @@ void* GetCutlassFcHandle() {
   int dynload_flags = 0;
 #endif  // !_WIN32
 
-    cutlass_fc_dso_handle = dlopen(dso_name.c_str(), dynload_flags);
+    cutlass_gemm_epilogue_dso_handle = dlopen(dso_name.c_str(), dynload_flags);
 
     PADDLE_ENFORCE_NOT_NULL(
-        cutlass_fc_dso_handle,
+        cutlass_gemm_epilogue_dso_handle,
         phi::errors::NotFound(
-            "libCutlassFc.so is needed, "
-            "but libCutlassFc.so is not found.\n"
+            "libCutlassGemmEpilogue.so is needed, "
+            "but libCutlassGemmEpilogue.so is not found.\n"
             "  Suggestions:\n"
             "  1. Refer paddle/phi/kernels/fusion/cutlass/gemm_epilogue/README.md, "
             "and compile this library.\n"
@@ -50,7 +50,7 @@ void* GetCutlassFcHandle() {
             "DYLD_LIBRARY_PATH=...`\n"));
   });
 
-  return cutlass_fc_dso_handle;
+  return cutlass_gemm_epilogue_dso_handle;
 }
 
 }  // namespace dynload

@@ -19,9 +19,9 @@ dirname, filename = os.path.split(os.path.abspath(sys.argv[0]))
 sys.path.append(dirname + "/../")
 from util import SubstituteTemplate
 
-CommonCutlassFcKernelDeclare = '''
-cutlass::Status ${kernel_func_name}(const FcAllParams& params) {
-    /// CommonCutlassFcKernelDeclare
+CommonCutlassGemmEpilogueKernelDeclare = '''
+cutlass::Status ${kernel_func_name}(const GemmEpilogueAllParams& params) {
+    /// CommonCutlassGemmEpilogueKernelDeclare
     using DeviceKernalName = cutlass::gemm::device::GemmUniversal<
         ${element_a}, ${layout_a},
         ${element_b}, ${layout_b},
@@ -42,7 +42,7 @@ cutlass::Status ${kernel_func_name}(const FcAllParams& params) {
 
 '''
 
-CommonCutlassFcKernelArguments = '''
+CommonCutlassGemmEpilogueKernelArguments = '''
     /// Arguments
     cutlass::gemm::GemmCoord problem_size{params.m, params.n, params.k};
     cutlass::bfloat16_t *input = (cutlass::bfloat16_t *)(params.input);
@@ -78,9 +78,9 @@ CommonCutlassFcKernelArguments = '''
     };
 '''
 
-CommonCutlassFcKernelExecute = '''
+CommonCutlassGemmEpilogueKernelExecute = '''
 
-    /// CommonCutlassFcKernelExecute
+    /// CommonCutlassGemmEpilogueKernelExecute
     DeviceKernalName device_gemm;
     // size_t workspace_size = DeviceKernalName::get_workspace_size(arguments);
     // cutlass::device_memory::allocation<uint8_t> workspace(workspace_size);
@@ -97,16 +97,16 @@ CommonCutlassFcKernelExecute = '''
 '''
 
 
-CommonFcFunction = '''
+CommonGemmEpilogueFunction = '''
 ${kernel_func_declare}
 
-std::vector<std::function<cutlass::Status(const FcAllParams)>>
+std::vector<std::function<cutlass::Status(const GemmEpilogueAllParams)>>
     ${func_name}_all_func =  {${all_kernel_func_name}};
 
 std::map<std::vector<int>, int> map_problem_${func_name};
 std::mutex ${func_name}_mutex;
 
-void ${func_name}(FcAllParams params) {
+void ${func_name}(GemmEpilogueAllParams params) {
   int m = params.m;
   int n = params.n;
   int k = params.k;
@@ -144,7 +144,7 @@ CommonTail = '''
 
 
 CommonWrapperForPhi = """
-void ${op_name}(FcAllParams params) {
+void ${op_name}(GemmEpilogueAllParams params) {
     ${dispatch_body}
 }
 """
@@ -158,9 +158,9 @@ CommonDispatchTemp = '''
 
 def convert_c_data_type(dtype):
     if dtype == "fp16":
-        return "FcDataType::fp16"
+        return "GemmEpilogueDataType::fp16"
     if dtype == "bf16":
-        return "FcDataType::bf16"
+        return "GemmEpilogueDataType::bf16"
 
 
 def GenerateFunctionForPhi(

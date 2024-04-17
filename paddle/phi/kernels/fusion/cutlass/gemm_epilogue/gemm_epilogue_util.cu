@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #include "paddle/phi/kernels/fusion/cutlass/gemm_epilogue/gemm_epilogue_util.h"
 #include <iostream>
 #include <cmath>
@@ -34,13 +35,13 @@ float diff(const T *C_cutlass, const T *C_naive, int n) {
 
 __device__ inline float naive_tanh(float x){
   if(x > 0)
-      return (1-exp(-2*x))/(1+exp(-2*x));
+    return (1-exp(-2*x))/(1+exp(-2*x));
   else
-      return (exp(2*x)-1)/(1+exp(2*x));
+    return (exp(2*x)-1)/(1+exp(2*x));
 }
 
 template <typename T = half>
-__global__ void naive_fc_kernel(
+__global__ void naive_gemm_epilogue_kernel(
     const T *input,
     const T *weight,
     const T *bias,
@@ -69,32 +70,32 @@ __global__ void naive_fc_kernel(
     }
 
     switch (op_type) {
-        case FC_BIAS:
-            break;
-        case FC_BIAS_RELU:
-            accumulator = accumulator > 0 ? accumulator : 0;
-            break;
-        case FC_BIAS_SILU:
-            accumulator = accumulator * (1.f / (1 + exp(-accumulator)));
-            break;
-        case FC_BIAS_LEAKY_RELU:
-          accumulator = accumulator > 0 ? accumulator : (accumulator * leaky_alpha);
+      case MATMUL_ADD:
           break;
-        case FC_BIAS_SIGMOID:
-          accumulator = 1.f / (1.f + std::exp(-accumulator));
+      case MATMUL_ADD_RELU:
+          accumulator = accumulator > 0 ? accumulator : 0;
           break;
-        case FC_BIAS_GELU:
-          accumulator = 0.5*accumulator*(1+naive_tanh(std::sqrt(2/M_PI)*(accumulator+0.044715*std::pow(accumulator,3))));
+      case MATMUL_ADD_SILU:
+          accumulator = accumulator * (1.f / (1 + exp(-accumulator)));
           break;
-        default:
-            break;
+      case MATMUL_ADD_LEAKY_RELU:
+        accumulator = accumulator > 0 ? accumulator : (accumulator * leaky_alpha);
+        break;
+      case MATMUL_ADD_SIGMOID:
+        accumulator = 1.f / (1.f + std::exp(-accumulator));
+        break;
+      case MATMUL_ADD_GELU:
+        accumulator = 0.5*accumulator*(1+naive_tanh(std::sqrt(2/M_PI)*(accumulator+0.044715*std::pow(accumulator,3))));
+        break;
+      default:
+          break;
     }
     output[i*ldd+j] = (T)accumulator;
   }
 }
 
 template <typename T>
-float fc_diff_gpu(const FcAllParams& params, OpType op_type){
+float gemm_epilogue_diff_gpu(const GemmEpilogueAllParams& params, OpType op_type){
     const T *input = (const T*)params.input;
     const T *weight = (const T*)params.weight;
     const T *bias = (const T*)params.bias;
@@ -109,7 +110,7 @@ float fc_diff_gpu(const FcAllParams& params, OpType op_type){
     CUDA_CHECK(cudaMalloc((void**)&output_naive_D, outSize));
     dim3 block(16, 16);
     dim3 grid((N + block.x - 1) / block.x, (M + block.y - 1) / block.y);
-    naive_fc_kernel<T><<<grid, block>>>(input, weight, bias, output_naive_D,
+    naive_gemm_epilogue_kernel<T><<<grid, block>>>(input, weight, bias, output_naive_D,
                                         M, N, K,lda, ldb, ldd, leaky_alpha, isVec_bias, op_type);
     cudaGetLastError();
     CUDA_CHECK(cudaDeviceSynchronize());
@@ -129,22 +130,18 @@ float fc_diff_gpu(const FcAllParams& params, OpType op_type){
 
 std::string OpType2String(OpType op_type) {
   switch (op_type) {
-    case FC_BIAS:
-      return "fc_bias";
-      break;
-    case FC_BIAS_RELU:
-      return "fc_bias_relu";
-      break;
-    case FC_BIAS_SILU:
-      return "fc_bias_silu";
-      break;
-    case FC_BIAS_SIGMOID:
-      return "fc_bias_sigmoid";
-      break;
-    case FC_BIAS_LEAKY_RELU:
-      return "fc_bias_leaky_relu";
-    case FC_BIAS_GELU:
-      return "fc_bias_gelu";
+    case MATMUL_ADD:
+      return "matmul_add";
+    case MATMUL_ADD_RELU:
+      return "matmul_add_relu";
+    case MATMUL_ADD_SILU:
+      return "matmul_add_silu";
+    case MATMUL_ADD_SIGMOID:
+      return "matmul_add_sigmoid";
+    case MATMUL_ADD_LEAKY_RELU:
+      return "matmul_add_leaky_relu";
+    case MATMUL_ADD_GELU:
+      return "matmul_add_gelu";
     default:
       break;
   }
@@ -153,12 +150,9 @@ std::string OpType2String(OpType op_type) {
 
 
 int ProfileToGetBestConfig(
-    const std::vector<std::function<cutlass::Status(FcAllParams)>> &all_func,
-    const FcAllParams &params,
+    const std::vector<std::function<cutlass::Status(GemmEpilogueAllParams)>> &all_func,
+    const GemmEpilogueAllParams &params,
     OpType op_type) {
-
-    std::cout << "we are tunning for problem: [" << params.m << ", " << params.n << ", " <<  params.k << "]"<< std::endl;
-
     constexpr int WARMUP = 10;
     constexpr int REPEAT = 10;
     float min_time = 100000.f;
@@ -166,8 +160,6 @@ int ProfileToGetBestConfig(
     for (int i = 0; i < all_func.size(); i++) {
       cutlass::Status status;
       auto func = all_func[i];
-      // When func has large diff, we will make it nullptr.
-      if (!func) continue;
       // sizeof(half) attention！！
       CUDA_CHECK(cudaMemset(params.output,
                 0,
@@ -187,7 +179,6 @@ int ProfileToGetBestConfig(
       for (int ii = 0; ii < REPEAT; ii++) {
         status = func(params);
       }
-
       CUDA_CHECK(cudaEventRecord(end));
       CUDA_CHECK(cudaEventSynchronize(end));
       float elapsed_time;
@@ -196,34 +187,6 @@ int ProfileToGetBestConfig(
       if (elapsed_time < min_time && status == cutlass::Status::kSuccess) {
         min_time = elapsed_time;
         min_time_index = i;
-
-        if (params.data_type == FcDataType::fp16) {
-          // debug code
-          std::cout << "fp16_"
-                    << OpType2String(op_type) << ": tactic " << i
-                    << " has max diff "
-                    << fc_diff_gpu<half>(params, op_type)
-                    << " compared with baseline,"
-                    << "cost_time: " << elapsed_time << "ms." << std::endl;
-        } 
-        else if (params.data_type == FcDataType::bf16) {
-          // debug code
-          std::cout << "bf16_"
-                    << OpType2String(op_type) << ": tactic " << i
-                    << " has max diff "
-                    << fc_diff_gpu<__nv_bfloat16>(params, op_type)
-                    << " compared with baseline,"
-                    << "cost_time: " << elapsed_time << "ms." << std::endl;
-        }
-        else if(params.data_type == FcDataType::fp32){
-          // debug code
-          std::cout << "fp32_"
-                    << OpType2String(op_type) << ": tactic " << i
-                    << " has max diff "
-                    << fc_diff_gpu<float>(params, op_type)
-                    << " compared with baseline,"
-                    << "cost_time: " << elapsed_time << "ms." << std::endl;
-        }
       }
     }
 
@@ -234,9 +197,9 @@ int ProfileToGetBestConfig(
     return min_time_index;
 }
 
-template float fc_diff_gpu<float>(const FcAllParams& params, OpType op_type);
-template float fc_diff_gpu<half>(const FcAllParams& params, OpType op_type);
-template float fc_diff_gpu<__nv_bfloat16>(const FcAllParams& params, OpType op_type);
+template float gemm_epilogue_diff_gpu<float>(const GemmEpilogueAllParams& params, OpType op_type);
+template float gemm_epilogue_diff_gpu<half>(const GemmEpilogueAllParams& params, OpType op_type);
+template float gemm_epilogue_diff_gpu<__nv_bfloat16>(const GemmEpilogueAllParams& params, OpType op_type);
 
 }
 }

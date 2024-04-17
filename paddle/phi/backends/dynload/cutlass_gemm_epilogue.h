@@ -24,7 +24,7 @@ limitations under the License. */
 namespace phi {
 namespace dynload {
 
-void* GetCutlassFcHandle();
+void* GetCutlassGemmEpilogueHandle();
 
 }  // namespace dynload
 }  // namespace phi
