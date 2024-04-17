@@ -196,7 +196,7 @@ TEST(test02, basic) {
   } while (false)
 
   cinn::Target target;
-  target.arch = cinn::Target::Arch::X86;
+  target.arch = cinn::common::X86Arch{};
   target.bits = cinn::Target::Bit::k32;
   target.os = cinn::Target::OS::Linux;
 
