@@ -177,20 +177,6 @@ class FakeAbsMaxKernelBase : public framework::OpKernel<T> {
 };
 
 template <typename T, typename DeviceContext>
-class FakeQuantizeAbsMaxKernel : public FakeAbsMaxKernelBase<DeviceContext, T> {
- protected:
-  void RunClipFunctor(const DeviceContext &dev_ctx,
-                      const phi::DenseTensor &in,
-                      const phi::DenseTensor &scale,
-                      int bin_cnt,
-                      int round_type,
-                      phi::DenseTensor *out) const override {
-    ClipAndFakeQuantFunctor<DeviceContext, T>()(
-        dev_ctx, in, scale, bin_cnt, round_type, out);
-  }
-};
-
-template <typename T, typename DeviceContext>
 class FakeQuantizeDequantizeAbsMaxKernel
     : public FakeAbsMaxKernelBase<DeviceContext, T> {
  protected:
