@@ -85,6 +85,7 @@ bool IsSameDim(const phi::DDim& first, const std::vector<int64_t>& second) {
 }
 
 bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
+  std::cerr << "before process\n";
   auto x_dims = op->operand_source(0)
                     .type()
                     .dyn_cast<paddle::dialect::DenseTensorType>()
@@ -106,6 +107,7 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
   }
 
   if (x_dims != y_dims) {
+    std::cerr << "not same \n";
     auto output_shape = GetOutputShape(x_dims, y_dims);
     if (!IsSameDim(x_dims, output_shape)) {
       // add broadcast to input 0
@@ -157,6 +159,7 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
       }
     }
 
+    std::cerr << "fin\n";
     return true;
   }
 

@@ -126,11 +126,11 @@ ShardableAxesSignature CreateSignatureForElementWise(pir::Operation* op) {
   auto same_axes = CreateNewNamesWithRank(rank);
 
   for (int i = 0; i < op->num_operands(); ++i) {
-    CHECK(rank == GetRank(op->operand_source(i)));
+    CHECK(rank == GetRank(op->operand_source(i))) << op->name();
     result.inputs.emplace_back(same_axes);
   }
   for (int i = 0; i < op->num_results(); ++i) {
-    CHECK(rank == GetRank(op->result(i)));
+    CHECK(rank == GetRank(op->result(i))) << op->name();
     result.outputs.emplace_back(same_axes);
   }
   return result;
@@ -185,9 +185,11 @@ ShardableAxesSignature ShardableAxesInfoManager::CreateShardableSignature(
             << op->name() << " : " << special_result.value().DebugStr();
     return special_result.value();
   }
-
-  CHECK(op->num_results() == 1)
-      << "Now we do not support op with multi outputs: " << op->name();
+  if (op->num_results() != 1) {
+    return CreateDefaultSignature(op);
+  }
+  // CHECK(op->num_results() == 1)
+  //     << "Now we do not support op with multi outputs: " << op->name();
   ShardableAxesSignature result;
   const hlir::framework::OpPatternKind kind = GetOpPatternKind(op);
   if (kind == hlir::framework::kReduction) {
@@ -229,32 +231,32 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
     }
   };
 
-  for (const auto& [op, axes_signature] : op_signature_map_) {
-    for (int i = 0; i < op->num_operands(); ++i) {
-      auto value = op->operand_source(i);
-      auto axes = axes_signature.inputs[i];
-      if (value_axes_map_.find(value) == value_axes_map_.end()) {
-        value_axes_map_[value] = axes;
-        for (auto& axis_name : axes.axis_names) {
-          name_union_[axis_name] = axis_name;
-        }
-      } else {
-        CombineAxes(value_axes_map_[value], axes);
-      }
-    }
-    for (int i = 0; i < op->num_results(); ++i) {
-      auto value = op->result(i);
-      auto axes = axes_signature.outputs[i];
-      if (value_axes_map_.find(value) == value_axes_map_.end()) {
-        value_axes_map_[value] = axes;
-        for (auto& axis_name : axes.axis_names) {
-          name_union_[axis_name] = axis_name;
-        }
-      } else {
-        CombineAxes(value_axes_map_[value], axes);
-      }
-    }
-  }
+  // for (const auto& [op, axes_signature] : op_signature_map_) {
+  //   for (int i = 0; i < op->num_operands(); ++i) {
+  //     auto value = op->operand_source(i);
+  //     auto axes = axes_signature.inputs[i];
+  //     if (value_axes_map_.find(value) == value_axes_map_.end()) {
+  //       value_axes_map_[value] = axes;
+  //       for (auto& axis_name : axes.axis_names) {
+  //         name_union_[axis_name] = axis_name;
+  //       }
+  //     } else {
+  //       CombineAxes(value_axes_map_[value], axes);
+  //     }
+  //   }
+  //   for (int i = 0; i < op->num_results(); ++i) {
+  //     auto value = op->result(i);
+  //     auto axes = axes_signature.outputs[i];
+  //     if (value_axes_map_.find(value) == value_axes_map_.end()) {
+  //       value_axes_map_[value] = axes;
+  //       for (auto& axis_name : axes.axis_names) {
+  //         name_union_[axis_name] = axis_name;
+  //       }
+  //     } else {
+  //       CombineAxes(value_axes_map_[value], axes);
+  //     }
+  //   }
+  // }
 
   VLOG(4) << NameUnionDebugStr();
 }

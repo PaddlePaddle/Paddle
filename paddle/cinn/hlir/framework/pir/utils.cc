@@ -284,7 +284,8 @@ bool IsSmallNumelOp(const ::pir::Operation& op) {
   }();
 
   // max value check
-  return (0 <= max_value_numel && max_value_numel < 32);
+  // return (0 <= max_value_numel && max_value_numel < 4);
+  return max_value_numel == 1;
 }
 
 bool IsShapeComputeOp(const ::pir::Operation& op) {
@@ -323,8 +324,8 @@ bool IsShapeComputeOp(const ::pir::Operation& op) {
   return all_input_has_shape_data;
 }
 
-// TODO(zyfncg): This function is a temporary solution, we need to remove it in
-// the future.
+// TODO(zyfncg): This function is a temporary solution, we need to remove it
+// in the future.
 bool IsTempDenySpecialOp(const ::pir::Operation& op) {
   if (op.name() == "cinn_op.generate_shape") {
     return false;
@@ -337,6 +338,11 @@ bool IsDeniedInCinn(const ::pir::Operation& op) {
   if (FLAGS_disable_dyshape_in_train && HaveUnkDim(op)) {
     return true;
   }
+
+  // if ( op.name() == "pd_op.sum" && IsSmallNumelOp(op) ) {
+  //   return true;
+  // }
+
   if (!AllInputDenseTensor(op) || UnimplementOps(op)) {
     VLOG(5) << "Found " << op.name()
             << " UnimplementOps or NotAllInputDenseTensor. "

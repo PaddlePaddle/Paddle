@@ -15,6 +15,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/fold_manipulation_ops_pass.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/refresh_combine_pattern.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
@@ -62,6 +63,12 @@ bool RemoveOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
       }
       return false;
     }
+
+    if (GetDims(input).size() == 1 && GetDims(input)[0] == 1u &&
+        GetDims(output).size() == 0) {
+      return true;
+    }
+
     return GetDims(input) == GetDims(output);
   };
 
@@ -118,6 +125,9 @@ class FoldManipulationOpsPass : public pir::PatternRewritePass {
     ps.Add<RemoveUnchangedOpPattern<paddle::dialect::ReshapeOp>>(context);
     ps.Add<RemoveUnchangedOpPattern<cinn::dialect::BroadcastOp>>(context);
     ps.Add<RemoveUnchangedOpPattern<paddle::dialect::ExpandOp>>(context);
+    ps.Add<RemoveUnchangedOpPattern<paddle::dialect::AssignOp>>(context);
+    ps.Add<RemoveUnchangedOpPattern<cinn::dialect::ConcatOp>>(context);
+    // ps.Add<RemoveUnchangedOpPattern<cinn::dialect::ReduceSumOp>>(context);
     // merge redundant ops
     ps.Add<MergeRedundantOpPattern<cinn::dialect::ReshapeOp>>(context);
     ps.Add<MergeRedundantOpPattern<paddle::dialect::ReshapeOp>>(context);

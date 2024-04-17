@@ -186,6 +186,16 @@ std::ostream& operator<<(std::ostream& os, const OpLoweringGroup& group) {
     PrintSymbolDims(*op);
     os << "\n";
   }
+
+  os << "outputs\n";
+  if (group.output_values().size() > 1) {
+    for (auto val : group.output_values()) {
+      printer.PrintOpOperands(val.defining_op());
+      os << "\n";
+    }
+  }
+
+  os << "\n";
   return os;
 }
 
