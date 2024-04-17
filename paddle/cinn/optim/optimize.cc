@@ -86,7 +86,7 @@ Expr Optimize(Expr e,
   std::cerr << "After Optimize Simplify:" << copied;
 
   // IfFusion(&copied);
-  std::cerr << "After Optimize IfFusion" << copied;
+  // std::cerr << "After Optimize IfFusion" << copied;
 
   if (runtime_debug_info) {
     LOG(WARNING) << "Turn on runtime debug information output";

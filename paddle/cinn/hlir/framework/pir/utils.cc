@@ -165,12 +165,12 @@ bool IsSupportInCinn(const ::pir::Operation& op);
 bool UnimplementOps(const ::pir::Operation& op) {
   // cinn not support uniform, the FullOp of max and min support
   // NOT generate by CINN
-  if (op.isa<paddle::dialect::FullOp>()) {
-    auto out = op.result(0);
-    if (out.use_count() > 0) {
-      return !IsSupportInCinn(*(out.first_use().owner()));
-    }
-  }
+  // if (op.isa<paddle::dialect::FullOp>()) {
+  //   auto out = op.result(0);
+  //   if (out.use_count() > 0) {
+  //     return !IsSupportInCinn(*(out.first_use().owner()));
+  //   }
+  // }
   return false;
 }
 

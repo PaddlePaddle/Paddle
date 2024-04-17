@@ -612,7 +612,7 @@ class PartialProgramLayer:
             def pass_fn(forward_program, backward_program):
                 if cinn_is_enabled(self._build_strategy, self._backend):
                     paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
-                    paddle.base.libpaddle.pir.apply_cinn_pass(backward_program)
+                    # paddle.base.libpaddle.pir.apply_cinn_pass(backward_program)
                 else:
                     paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
                         forward_program

@@ -120,7 +120,10 @@ class CinnJitInstruction::FnPtrImpl {
     VLOG(6) << "End InferShape: " << cinn_kernel_info_.fn_name;
   }
 
-  std::string FnName() const { return cinn_kernel_info_.fn_name; }
+  std::string FnName() const {
+    std::cerr << "fn ptr " << cinn_kernel_info_.fn_ptr << std::endl;
+    return cinn_kernel_info_.fn_name;
+  }
 
  private:
   CINNKernelInfo cinn_kernel_info_;
@@ -199,16 +202,16 @@ void CinnJitInstruction::Run() {
   // 2. exexute kernel
   fn_ptr_impl_->Run(tensor_args_, static_cast<void*>(stream));
 
-  // std::cerr << "fn name " << fn_ptr_impl_->FnName() << std::endl;
-  // for (size_t i = 0; i < tensor_args_.size() - output_tensor_.size(); ++i) {
-  //   std::cerr << "input tensor i " << i << "\n"
-  //             << *(tensor_args_[i]) << std::endl;
-  // }
+  std::cerr << "fn name " << fn_ptr_impl_->FnName() << std::endl;
+  for (size_t i = 0; i < tensor_args_.size() - output_tensor_.size(); ++i) {
+    std::cerr << "input tensor i " << i << "\n"
+              << *(tensor_args_[i]) << std::endl;
+  }
 
-  // for (size_t i = 0; i < output_tensor_.size(); ++i) {
-  //   std::cerr << "output tensor i " << i << "\n"
-  //             << *(output_tensor_[i]) << std::endl;
-  // }
+  for (size_t i = 0; i < output_tensor_.size(); ++i) {
+    std::cerr << "output tensor i " << i << "\n"
+              << *(output_tensor_[i]) << std::endl;
+  }
 #else
   VLOG(0) << "Not Supported: cinn jit instruction currently does not "
              "support non-CUDA kernel";
