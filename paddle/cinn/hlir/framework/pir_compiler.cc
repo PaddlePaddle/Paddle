@@ -114,14 +114,21 @@ CompilationContextMapper::RecoverKernelInfos() {
                         "compilation_results_.size()."));
 
   std::vector<pir::CINNKernelInfo> kernel_infos(fusion_infos_.size());
-  for (size_t i = 0; i < fusion_infos_.size(); ++i) {
-    kernel_infos[i] =
-        CompilationCache::Instance().GetKernelInfo(fusion_infos_[i]);
+  if (!FLAGS_enable_cinn_compile_cache) {
+    for (auto& compile_result : compilation_results_) {
+      kernel_infos[i] = compile_result->GetKernelInfo();
+    }
+  } else {
+    for (size_t i = 0; i < fusion_infos_.size(); ++i) {
+      kernel_infos[i] =
+          CompilationCache::Instance().GetKernelInfo(fusion_infos_[i]);
+    }
   }
   return kernel_infos;
 }
 
 void CompilationContextMapper::UpdateGlobalCache() {
+  if (!FLAGS_enable_cinn_compile_cache) return;
   PADDLE_ENFORCE_EQ(
       is_finalized_,
       true,
