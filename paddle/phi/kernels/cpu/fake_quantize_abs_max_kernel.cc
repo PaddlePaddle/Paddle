@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
 #include "paddle/phi/kernels/fake_quantize_abs_max_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
