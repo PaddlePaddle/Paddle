@@ -1871,8 +1871,6 @@ void AnalysisPredictor::PrepareArgument() {
       config_.xpu_config_.quant_post_dynamic_weight_precision);
   argument_->SetXpuQuantPostDynamicOpTypes(
       config_.xpu_config_.quant_post_dynamic_op_types);
-  argument_->SetXpuLiteL3Locked(config_.xpu_lite_l3_locked_);
-  argument_->SetXpuLiteEnableMultiStream(config_.xpu_lite_enable_multi_stream_);
 
   auto *pass_builder = config_.pass_builder();
   // TODO(inference): Need to reconstruct the pass_builder, pass should be

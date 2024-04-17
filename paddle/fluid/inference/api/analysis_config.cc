@@ -42,7 +42,6 @@ struct MkldnnQuantizerConfig;
 
 extern const std::vector<std::string> kTRTSubgraphPasses;
 extern const std::vector<std::string> kDlnneSubgraphPasses;
-extern const std::vector<std::string> kLiteSubgraphPasses;
 
 AnalysisConfig::AnalysisConfig() {
   // NOTE(liuyuanle): Why put the following code here?
@@ -200,8 +199,6 @@ void AnalysisConfig::EnableXpu(int l3_size,
   }
   xpu_config_.transformer_encoder_adaptive_seqlen =
       transformer_encoder_adaptive_seqlen;
-  xpu_lite_l3_locked_ = l3_locked;
-  xpu_lite_enable_multi_stream_ = enable_multi_stream;
   Update();
 #else
   PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -526,14 +523,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // XPU related.
   CP_MEMBER(use_xpu_);
   CP_MEMBER(xpu_config_);
-  CP_MEMBER(xpu_lite_l3_locked_);
-  CP_MEMBER(xpu_lite_enable_multi_stream_);
 
   // Lite OpenCL Related
   CP_MEMBER(use_opencl_);
-
-  // NPU related.
-  CP_MEMBER(nnadapter_config_);
 
   // profile related.
   CP_MEMBER(with_profile_);
@@ -1217,8 +1209,6 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << xpu_config_.quant_post_dynamic_activation_method;
   ss << xpu_config_.quant_post_dynamic_weight_precision;
   for (auto const &type : xpu_config_.quant_post_dynamic_op_types) ss << type;
-  ss << xpu_lite_l3_locked_;
-  ss << xpu_lite_enable_multi_stream_;
 
   ss << thread_local_stream_;
 
@@ -1509,64 +1499,6 @@ std::string AnalysisConfig::Summary() {
                 collect_shape_range_info_ ? shape_range_info_path_ : "false"});
 
   return os.PrintTable();
-}
-
-LiteNNAdapterConfig &LiteNNAdapterConfig::SetDeviceNames(
-    const std::vector<std::string> &names) {
-  nnadapter_device_names = names;
-  return *this;
-}
-
-LiteNNAdapterConfig &LiteNNAdapterConfig::SetContextProperties(
-    const std::string &properties) {
-  nnadapter_context_properties = properties;
-  return *this;
-}
-
-LiteNNAdapterConfig &LiteNNAdapterConfig::SetModelCacheDir(
-    const std::string &dir) {
-  nnadapter_model_cache_dir = dir;
-  return *this;
-}
-
-LiteNNAdapterConfig &LiteNNAdapterConfig::SetModelCacheBuffers(
-    const std::string &model_cache_token,
-    const std::vector<char> &model_cache_buffer) {
-  PADDLE_ENFORCE_EQ(model_cache_token.empty(),
-                    false,
-                    platform::errors::InvalidArgument(
-                        "model_cache_token should not be empty."));
-  PADDLE_ENFORCE_EQ(model_cache_buffer.empty(),
-                    false,
-                    platform::errors::InvalidArgument(
-                        "model_cache_buffer should not be empty."));
-  PADDLE_ENFORCE_EQ(nnadapter_model_cache_buffers.count(model_cache_token),
-                    false,
-                    platform::errors::InvalidArgument(
-                        "model_cache_token has already been set."));
-
-  nnadapter_model_cache_buffers[model_cache_token] = model_cache_buffer;
-  return *this;
-}
-
-LiteNNAdapterConfig &LiteNNAdapterConfig::SetSubgraphPartitionConfigPath(
-    const std::string &path) {
-  nnadapter_subgraph_partition_config_path = path;
-  return *this;
-}
-
-LiteNNAdapterConfig &LiteNNAdapterConfig::SetSubgraphPartitionConfigBuffer(
-    const std::string &buffer) {
-  nnadapter_subgraph_partition_config_buffer = buffer;
-  return *this;
-}
-LiteNNAdapterConfig &LiteNNAdapterConfig::Enable() {
-  use_nnadapter = true;
-  return *this;
-}
-LiteNNAdapterConfig &LiteNNAdapterConfig::Disable() {
-  use_nnadapter = false;
-  return *this;
 }
 
 void AnalysisConfig::CollectShapeRangeInfo(

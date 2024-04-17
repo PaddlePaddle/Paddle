@@ -107,7 +107,6 @@ void BindPaddlePlace(py::module *m);
 void BindPaddlePredictor(py::module *m);
 void BindNativeConfig(py::module *m);
 void BindNativePredictor(py::module *m);
-void BindLiteNNAdapterConfig(py::module *m);
 void BindXpuConfig(py::module *m);
 void BindAnalysisConfig(py::module *m);
 void BindAnalysisPredictor(py::module *m);
@@ -506,7 +505,6 @@ void BindInferenceApi(py::module *m) {
   BindPaddlePredictor(m);
   BindNativeConfig(m);
   BindNativePredictor(m);
-  BindLiteNNAdapterConfig(m);
   BindXpuConfig(m);
   BindAnalysisConfig(m);
   BindAnalysisPredictor(m);
@@ -1055,24 +1053,6 @@ void BindAnalysisConfig(py::module *m) {
       .def("rank", &DistConfig::rank)
       .def("comm_init_config", &DistConfig::comm_init_config)
       .def("use_dist_model", &DistConfig::use_dist_model);
-}
-
-void BindLiteNNAdapterConfig(py::module *m) {
-  py::class_<LiteNNAdapterConfig> lite_nnadapter_config(*m,
-                                                        "LiteNNAdapterConfig");
-
-  lite_nnadapter_config
-      .def("set_device_names", &LiteNNAdapterConfig::SetDeviceNames)
-      .def("set_context_properties", &LiteNNAdapterConfig::SetContextProperties)
-      .def("set_model_cache_dir", &LiteNNAdapterConfig::SetModelCacheDir)
-      .def("set_model_cache_buffers",
-           &LiteNNAdapterConfig::SetModelCacheBuffers)
-      .def("set_subgraph_partition_config_path",
-           &LiteNNAdapterConfig::SetSubgraphPartitionConfigPath)
-      .def("set_subgraph_partition_config_buffer",
-           &LiteNNAdapterConfig::SetSubgraphPartitionConfigBuffer)
-      .def("enable", &LiteNNAdapterConfig::Enable)
-      .def("disable", &LiteNNAdapterConfig::Disable);
 }
 
 void BindXpuConfig(py::module *m) {

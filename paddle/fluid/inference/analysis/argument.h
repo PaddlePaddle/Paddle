@@ -366,35 +366,8 @@ struct Argument {
   DECL_ARGUMENT_FIELD(xpu_quant_post_dynamic_op_types,
                       XpuQuantPostDynamicOpTypes,
                       std::vector<std::string>);
-  DECL_ARGUMENT_FIELD(xpu_lite_l3_locked, XpuLiteL3Locked, bool);
-  DECL_ARGUMENT_FIELD(xpu_lite_enable_multi_stream,
-                      XpuLiteEnableMultiStream,
-                      bool);
 
   DECL_ARGUMENT_FIELD(use_opencl, UseOpenCL, bool);
-
-  DECL_ARGUMENT_FIELD(use_nnadapter, UseNNAdapter, bool);
-  DECL_ARGUMENT_FIELD(nnadapter_model_cache_dir,
-                      NNAdapterModelCacheDir,
-                      std::string);
-  DECL_ARGUMENT_FIELD(nnadapter_device_names,
-                      NNAdapterDeviceNames,
-                      std::vector<std::string>);
-  DECL_ARGUMENT_FIELD(nnadapter_context_properties,
-                      NNAdapterContextProperties,
-                      std::string);
-  DECL_ARGUMENT_FIELD(nnadapter_subgraph_partition_config_buffer,
-                      NNAdapterSubgraphPartitionConfigBuffer,
-                      std::string);
-  DECL_ARGUMENT_FIELD(nnadapter_subgraph_partition_config_path,
-                      NNAdapterSubgraphPartitionConfigPath,
-                      std::string);
-  DECL_ARGUMENT_FIELD(nnadapter_model_cache_token,
-                      NNAdapterModelCacheToken,
-                      std::vector<std::string>);
-  DECL_ARGUMENT_FIELD(nnadapter_model_cache_buffer,
-                      NNAdapterModelCacheBuffer,
-                      std::vector<std::vector<char>>);
 
   // Memory optimized related.
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);
