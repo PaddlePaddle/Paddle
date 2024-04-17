@@ -4347,7 +4347,7 @@ def reshape(x, shape, name=None):
 
     The following figure illustrates the first example -- a 3D tensor of shape [2, 4, 6] is transformed into a 2D tensor of shape [6, 8], during which the order and values of the elements in the tensor remain unchanged. The elements in the two subdiagrams correspond to each other, clearly demonstrating how the reshape API works.
 
-    .. image:: ../../../../docs/docs/images/api_legend/reshape.png
+    .. image:: https://github.com/PaddlePaddle/docs/blob/develop/docs/images/api_legend/reshape.png
         :alt: legend of reshape API
 
     Args:
