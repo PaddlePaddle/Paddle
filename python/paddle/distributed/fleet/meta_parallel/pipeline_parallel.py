@@ -35,6 +35,7 @@ from .parallel_layers.pp_layers import PipelineLayer
 _use_four_directions = os.environ.get(
     'PADDLE_USE_FOUR_DIRECTIONS_P2P', paddle.base.core.is_compiled_with_xpu()
 )
+_use_four_directions = False  # xpu use the same p2p method as gpu
 if _use_four_directions:
     from .pp_utils import four_directions_p2p_communication as p2p
 else:
