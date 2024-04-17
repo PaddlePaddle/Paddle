@@ -18,6 +18,7 @@
 #include <cuda_runtime.h>
 #endif
 
+#include "paddle/cinn/runtime/backend_api.h"
 #include "paddle/cinn/runtime/custom_function.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/string.h"
@@ -74,9 +75,9 @@ void AssertTrueMsgTool::InitFlagInfo() {
     PADDLE_ENFORCE_EQ(
         flag_arg.size(),
         2UL,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The FLAGS_cinn_check_fusion_accuracy_pass must be the format of "
-            "\"only_warning=false;rtol=1e-5;atol=1e-8;equal_nan=false\"."));
+            "\"only_warning=false;rtol=1e-5;atol=1e-8;equal_nan=false\""));
 
     if (flag_arg[0] == "only_warning" || flag_arg[0] == "equal_nan") {
       // bool type parameter
@@ -120,6 +121,11 @@ bool MemcpyToHost(void* dst,
         "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check."));
     return false;
 #endif
+  } else if (input_target.arch_is_gpu()) {
+    using cinn::runtime::BackendAPI;
+    BackendAPI::get_backend(input_target)
+        ->memcpy(dst, src, bytes, BackendAPI::MemcpyType::DeviceToHost);
+    return true;
   }
   if (input_target == cinn::common::DefaultHostTarget()) {
     memcpy(dst, src, bytes);
@@ -138,36 +144,34 @@ bool MemcpyToDevice(void* dst,
                     size_t bytes,
                     const Target& input_target,
                     void* stream = nullptr) {
+  if (input_target == common::DefaultNVGPUTarget()) {
 #ifdef CINN_WITH_CUDA
-  if (input_target == cinn::common::DefaultNVGPUTarget()) {
     cudaMemcpyAsync(dst,
                     src,
                     bytes,
                     cudaMemcpyDeviceToDevice,
                     static_cast<cudaStream_t>(stream));
     return true;
-  } else if (input_target == cinn::common::DefaultHostTarget()) {
-    cudaMemcpyAsync(dst,
-                    src,
-                    bytes,
-                    cudaMemcpyHostToDevice,
-                    static_cast<cudaStream_t>(stream));
-    return true;
-  } else {
-    std::stringstream ss;
-    ss << "MemcpyToDevice only support cpu or nvgpu -> nvgpu, but here "
-          "the input target is "
-       << input_target << "! Please check.";
-    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
-    return false;
-  }
 #else
-  PADDLE_THROW(phi::errors::InvalidArgument(
-      "MemcpyToDevice only support nvgpu, and NVGPU Target only "
-      "support when flag CINN_WITH_CUDA ON! Please check."));
-  return false;
+    PADDLE_THROW(::common::errors::Fatal(
+        "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check."));
+    return false;
 #endif
+  } else if (input_target.arch_is_gpu()) {
+    using cinn::runtime::BackendAPI;
+    BackendAPI::get_backend(input_target)
+        ->memcpy(dst, src, bytes, BackendAPI::MemcpyType::DeviceToDevice);
+    return true;
+  } else if (input_target == common::DefaultHostTarget()) {
+    memcpy(dst, src, bytes);
+    return true;
+  }
+  PADDLE_THROW(
+      ::common::errors::Fatal("MemcpyToDevice Only support cpu or gpu, but "
+                              "here the input target is %s! Please check.",
+                              input_target));
 }
+
 }  // namespace utils
 
 void CheckAssertTrue(const bool* x,

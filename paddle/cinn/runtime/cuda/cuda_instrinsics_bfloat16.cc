@@ -29,7 +29,7 @@ CINN_REGISTER_HELPER(cuda_intrinsics_bfloat16) {
 // bfloat16
 #define REGISTER_EXTERN_FUNC_2_IN_1_BF16(func__) \
   REGISTER_EXTERN_SOURCE_FUNC_2_IN_1_OUT(        \
-      cinn_nvgpu_##func__##_bf16, target, bfloat16, bfloat16, bfloat16);
+      cinn_cuda_##func__##_bf16, target, bfloat16, bfloat16, bfloat16);
 
   REGISTER_EXTERN_FUNC_2_IN_1_BF16(pow)
   REGISTER_EXTERN_FUNC_2_IN_1_BF16(mod)
@@ -38,7 +38,7 @@ CINN_REGISTER_HELPER(cuda_intrinsics_bfloat16) {
 
 #define REGISTER_EXTERN_FUNC_1_IN_1_BF16(func__) \
   REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(        \
-      cinn_nvgpu_##func__##_bf16, target, bfloat16, bfloat16);
+      cinn_cuda_##func__##_bf16, target, bfloat16, bfloat16);
 
   REGISTER_EXTERN_FUNC_1_IN_1_BF16(ceil)
   REGISTER_EXTERN_FUNC_1_IN_1_BF16(floor)
@@ -71,7 +71,7 @@ CINN_REGISTER_HELPER(cuda_intrinsics_bfloat16) {
 
 #define REGISTER_EXTERN_FUNC_1_IN_1_BF16_OUT_BOOL(func__) \
   REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(                 \
-      cinn_nvgpu_##func__##_bf16, target, bfloat16, bool);
+      cinn_cuda_##func__##_bf16, target, bfloat16, bool);
 
   REGISTER_EXTERN_FUNC_1_IN_1_BF16_OUT_BOOL(isnan)
   REGISTER_EXTERN_FUNC_1_IN_1_BF16_OUT_BOOL(isinf)

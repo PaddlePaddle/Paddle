@@ -69,7 +69,7 @@ void IRElementwiseSchedule(ir::IRSchedule &ir_sch,  // NOLINT
                            const cinn::common::Target &target) {
   VLOG(3) << "Before IRElementwiseSchedule, new ir is : "
           << ir_sch.GetModule().GetExprs().at(0);
-  if (target == cinn::common::DefaultNVGPUTarget()) {
+  if (target.arch_is_gpu()) {
     auto blocks = ir_sch.GetAllBlocks();
     std::vector<ir::Expr> loops = ir_sch.GetLoops(blocks[0]);
     ir::Expr loop = ir_sch.Fuse(loops);
@@ -97,7 +97,7 @@ void IRInjectiveSchedule(ir::IRSchedule &ir_sch,  // NOLINT
                          const cinn::common::Target &target) {
   VLOG(3) << "Before IRInjectiveSchedule, new ir is : "
           << ir_sch.GetModule().GetExprs().at(0);
-  if (target == cinn::common::DefaultNVGPUTarget()) {
+  if (target.arch_is_gpu()) {
     auto blocks = ir_sch.GetAllBlocks();
     std::vector<ir::Expr> loops = ir_sch.GetLoops(blocks[0]);
     ir::Expr loop = ir_sch.Fuse(loops);
@@ -294,7 +294,7 @@ void IRCudaSplitSchedule(ir::IRSchedule &ir_sch,  // NOLINT
     block_names.push_back(get_block_name(block));
   }
   // if output with same shape.
-  if (with_same_shape && target == cinn::common::DefaultNVGPUTarget()) {
+  if (with_same_shape && target.arch_is_gpu()) {
     // flat loops.
     {
       auto tsize = std::accumulate(output_shapes[0].begin(),
@@ -326,7 +326,7 @@ void IRCudaSplitSchedule(ir::IRSchedule &ir_sch,  // NOLINT
                                master_loops[1]);
       }
     }
-  } else if (target == cinn::common::DefaultNVGPUTarget()) {
+  } else if (target.arch_is_gpu()) {
     // flat loops.
     {
       for (int idx = 0; idx < block_names.size(); ++idx) {
@@ -1077,7 +1077,8 @@ void IRPoolScheduleGPU(ir::IRSchedule &ir_sch,  // NOLINT
   // Blocks were changed after Fuse, so we have to get all blocks again.
   all_blocks = ir_sch.GetAllBlocks();
   loops = ir_sch.GetLoops(all_blocks[0]);
-  auto splited = ir_sch.Split(loops[0], {-1, 1024});
+  int tot_extent = loops[0].As<ir::For>()->extent.get_constant();
+  auto splited = ir_sch.Split(loops[0], {-1, std::min(tot_extent, 1024)});
   ir_sch.Bind(splited[0], "blockIdx.x");
   ir_sch.Bind(splited[1], "threadIdx.x");
   VLOG(3) << "End IRPoolScheduleGPU: " << ir_sch.GetModule().GetExprs().at(0);

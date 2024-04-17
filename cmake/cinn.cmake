@@ -63,6 +63,27 @@ if(WITH_ONEDNN)
   add_definitions(-DCINN_WITH_DNNL)
 endif()
 
+if(CINN_WITH_SYCL)
+  message(STATUS "CINN Compile with SYCL support")
+  set(DPCPP_DIR ${PROJECT_SOURCE_DIR}/cmake/cinn)
+  find_package(DPCPP REQUIRED CONFIG)
+  add_definitions(-DCINN_WITH_SYCL)
+endif()
+
+if(CINN_WITH_ROCM)
+  message(STATUS "CINN Compile with ROCM support")
+  if(NOT WITH_ROCM)
+    include(hip)
+    add_definitions(-DCINN_WITH_ROCM)
+  endif()
+endif()
+
+if(WITH_GPU
+   OR CINN_WITH_SYCL
+   OR CINN_WITH_ROCM)
+  add_definitions(-DCINN_WITH_GPU)
+endif()
+
 if(WITH_GPU)
   message(STATUS "Enable CINN CUDA")
   add_definitions(-DCINN_WITH_CUDA)
@@ -198,6 +219,10 @@ if(WITH_GPU)
   endif()
 endif()
 
+if(CINN_WITH_ROCM)
+  target_link_libraries(cinnapi ${ROCM_HIPRTC_LIB})
+endif()
+
 if(WITH_CUTLASS)
   target_link_libraries(cinnapi cutlass)
   add_dependencies(cinnapi cutlass)
@@ -263,6 +288,10 @@ function(gen_cinncore LINKTYPE)
   if(WITH_CUTLASS)
     target_link_libraries(${CINNCORE_TARGET} cutlass)
     add_dependencies(${CINNCORE_TARGET} cutlass)
+  endif()
+
+  if(CINN_WITH_ROCM)
+    target_link_libraries(${CINNCORE_TARGET} ${ROCM_HIPRTC_LIB})
   endif()
 endfunction()
 

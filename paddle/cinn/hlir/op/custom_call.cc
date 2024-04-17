@@ -99,8 +99,8 @@ std::shared_ptr<OpStrategy> StrategyForCustomCall(
     std::vector<ir::Argument> arguments = {
         ir::Argument(kernel_args, ir::Argument::IO::kOutput),
         ir::Argument(kernel_args_num, ir::Argument::IO::kInput)};
-    // if target is nvgpu, add stream.
-    if (target == cinn::common::DefaultNVGPUTarget()) {
+    // if target is gpu, add stream.
+    if (target.arch_is_gpu()) {
       ir::Var kernel_stream(KERNEL_STREAM, type_of<void *>());
 
       host_args.push_back(kernel_stream);
@@ -939,6 +939,17 @@ std::vector<ir::Expr> CustomCallArgsForMemcpy(
   return {Expr(count)};
 }
 
+void RegisterCustomCallArgsFuncImpltHIP() {
+  CustomCallArgsFuncRegistry::Global().Register(
+      "cinn_call_hip_memset",
+      cinn::common::DefaultROCMTarget(),
+      CustomCallArgsForMemset);
+  CustomCallArgsFuncRegistry::Global().Register(
+      "cinn_call_hip_memcpy",
+      cinn::common::DefaultROCMTarget(),
+      CustomCallArgsForMemcpy);
+}
+
 bool RegisterCustomCallArgsFunc() {
 #ifdef CINN_WITH_CUDA
   CustomCallArgsFuncRegistry::Global().Register(
@@ -1004,6 +1015,10 @@ bool RegisterCustomCallArgsFunc() {
       "cinn_call_cudnn_pool2d_backward",
       cinn::common::DefaultNVGPUTarget(),
       CustomCallArgsForCudnnPoolBackward);
+#endif
+
+#ifdef CINN_WITH_ROCM
+  RegisterCustomCallArgsFuncImpltHIP();
 #endif
 
 #ifdef CINN_WITH_DNNL

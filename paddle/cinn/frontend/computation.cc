@@ -77,7 +77,7 @@ std::shared_ptr<ComputationContext> CompileProgram(
   for (auto &out : outputs) {
     fetch_var_ids.insert(out->id);
   }
-
+  ctx->compile_options.target = ctx->target;
   ctx->compile_options.graph = ctx->graph;
   ctx->compile_options.scope = ctx->scope;
   ctx->compile_options.fetch_var_ids = fetch_var_ids;
@@ -200,12 +200,10 @@ void CinnComputation::SetTensorData(hlir::framework::Tensor &t,
                                     size_t size) {
   void *tdata = t->mutable_data(context_->target, t->type());
   CHECK_EQ(size, t->shape().numel() * t->type().bytes());
-  if (context_->target.arch == Target::Arch::NVGPU) {
-#ifdef CINN_WITH_CUDA
-    CUDA_CALL(cudaMemcpy(tdata, data, size, cudaMemcpyHostToDevice));
-#else
-    CINN_NOT_IMPLEMENTED
-#endif
+  if (context_->target.arch_is_gpu()) {
+    using cinn::runtime::BackendAPI;
+    BackendAPI::get_backend(context_->target)
+        ->memcpy(tdata, data, size, BackendAPI::MemcpyType::HostToDevice);
   } else if (context_->target.arch == Target::Arch::X86) {
     memcpy(tdata, data, size);
   } else {
@@ -217,12 +215,10 @@ void CinnComputation::GetTensorData(hlir::framework::Tensor &t,
                                     size_t size) {
   void *tdata = t->mutable_data(context_->target, t->type());
   CHECK_EQ(size, t->shape().numel() * t->type().bytes());
-  if (context_->target.arch == Target::Arch::NVGPU) {
-#ifdef CINN_WITH_CUDA
-    CUDA_CALL(cudaMemcpy(data, tdata, size, cudaMemcpyDeviceToHost));
-#else
-    CINN_NOT_IMPLEMENTED
-#endif
+  if (context_->target.arch_is_gpu()) {
+    using cinn::runtime::BackendAPI;
+    BackendAPI::get_backend(context_->target)
+        ->memcpy(data, tdata, size, BackendAPI::MemcpyType::DeviceToHost);
   } else if (context_->target.arch == Target::Arch::X86) {
     memcpy(data, tdata, size);
   } else {
