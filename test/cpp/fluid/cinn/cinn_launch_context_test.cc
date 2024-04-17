@@ -38,12 +38,6 @@ limitations under the License. */
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
 
-USE_OP_ITSELF(cinn_instruction_run);
-PD_DECLARE_KERNEL(cinn_instruction_run, CPU, ALL_LAYOUT);
-#ifdef PADDLE_WITH_CUDA
-PD_DECLARE_KERNEL(cinn_instruction_run, GPU, ALL_LAYOUT);
-#endif
-
 namespace paddle {
 namespace operators::details {
 

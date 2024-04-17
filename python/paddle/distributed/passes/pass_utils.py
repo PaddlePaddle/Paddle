@@ -303,6 +303,13 @@ def shadow_var_between_sub_programs(sub_programs):
         for op in block.ops:
             for input_arg_name in op.input_arg_names:
                 if var_can_be_deleted(input_arg_name, block):
+                    # NOTE(zhangbo): In pir, transpose_grad op has only one input, Xshape is no longer the input.
+                    if (
+                        op.type == 'transpose2_grad'
+                        and "XShape" in op.input_names
+                    ):
+                        if input_arg_name in op.input("XShape"):
+                            continue
                     input_arg_names.add(input_arg_name)
                     # NOTE(Ruibiao): When translating these codes to pir, we can simplely set
                     # `shadow_arg_names=input_arg_names-output_arg_names` since the program
