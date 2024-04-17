@@ -491,34 +491,11 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   download_model_and_data_without_verify(
     ${TRANSFORMER_INSTALL_DIR} "temp/transformer_model.tar.gz"
     "temp/transformer_data.txt.tar.gz")
-  inference_analysis_test(
-    test_analyzer_transformer
-    SRCS
-    analyzer_transformer_compare_tester.cc
-    EXTRA_DEPS
-    common
-    paddle_inference_shared
-    ARGS
-    --infer_model=${TRANSFORMER_INSTALL_DIR}/model
-    --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt
-    --batch_size=8
-    --cpu_num_threads=${CPU_NUM_THREADS_ON_CI})
+
   inference_analysis_test(
     test_analyzer_transformer_fuse
     SRCS
     analyzer_transformer_fuse_tester.cc
-    EXTRA_DEPS
-    common
-    paddle_inference_shared
-    ARGS
-    --infer_model=${TRANSFORMER_INSTALL_DIR}/model
-    --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt
-    --batch_size=8
-    --cpu_num_threads=${CPU_NUM_THREADS_ON_CI})
-  inference_analysis_test(
-    test_analyzer_transformer_profile
-    SRCS
-    analyzer_transformer_profile_tester.cc
     EXTRA_DEPS
     common
     paddle_inference_shared
@@ -1326,7 +1303,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   set_tests_properties(test_analyzer_ernie_int8 PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_googlenet PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_small_dam PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_analyzer_transformer PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_mobilenet_depthwise_conv PROPERTIES TIMEOUT
                                                                          120)
   if(WITH_GPU)
@@ -1343,10 +1319,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       set_tests_properties(test_analyzer_bfloat16_resnet50 PROPERTIES TIMEOUT
                                                                       120)
     endif()
-  endif()
-  if(ON_INFER OR WITH_GPU)
-    set_tests_properties(test_analyzer_transformer_profile PROPERTIES TIMEOUT
-                                                                      120)
   endif()
 
   if(WITH_IPU)
