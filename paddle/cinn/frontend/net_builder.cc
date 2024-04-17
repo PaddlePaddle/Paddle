@@ -774,9 +774,7 @@ Variable NetBuilder::Pool2d(const Variable& a,
   PADDLE_ENFORCE_EQ(a->shape.size(),
                     4UL,
                     phi::errors::InvalidArgument(
-                        "Input's dim must be 4, but %s's shape is [%s].",
-                        a->id,
-                        cinn::utils::Join(a->shape, ", ")));
+                        "Input's dim must be 4, but got: %d", a->shape.size()));
   // Transform pool_type
   std::string pool_type;
   std::transform(pooling_type.begin(),

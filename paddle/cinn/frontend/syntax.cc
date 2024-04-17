@@ -271,13 +271,13 @@ Variable Program::dropout_infer(
 
 Instruction& Program::operator[](size_t i) {
   PADDLE_ENFORCE_LT(
-      i, instrs_.size(), phi::errors::OutOfRange("Index out of range"));
+      i, instrs_.size(), phi::errors::InvalidArgument("Index out of range"));
   return instrs_[i];
 }
 
 const Instruction& Program::operator[](size_t i) const {
   PADDLE_ENFORCE_LT(
-      i, instrs_.size(), phi::errors::OutOfRange("Index out of range"));
+      i, instrs_.size(), phi::errors::InvalidArgument("Index out of range"));
   return instrs_[i];
 }
 
