@@ -1837,7 +1837,7 @@
 
 - backward_op : push_gpups_sparse
   forward : pull_gpups_sparse (Tensor w, Tensor[] ids, int[] size={}, bool is_sparse=false, bool is_distributed=false) -> Tensor[](out)
-  args : (Tensor[] ids, Tensor[] out, int[] size, bool is_sparse, bool is_distributed)
+  args : (Tensor[] ids, Tensor[] out_grad, int[] size, bool is_sparse, bool is_distributed)
   output : Tensor[](out_grad_grad){out_grad.size()}
   infer_meta :
     func : PushGpupsSparseInferMeta
