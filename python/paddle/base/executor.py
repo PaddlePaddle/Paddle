@@ -1071,6 +1071,7 @@ class _ExecutorCache:
                     )
                     from paddle.base.libpaddle import pir
 
+                    print("all program", pir_program)
                     pir.apply_cinn_pass(pir_program)
 
                     type_to_program = {"default": pir_program}

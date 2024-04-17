@@ -284,7 +284,7 @@ bool IsSmallNumelOp(const ::pir::Operation& op) {
   }();
 
   // max value check
-  return (0 <= max_value_numel && max_value_numel < 32);
+  return (0 <= max_value_numel && max_value_numel < 4);
 }
 
 bool IsShapeComputeOp(const ::pir::Operation& op) {
@@ -335,6 +335,10 @@ bool IsTempDenySpecialOp(const ::pir::Operation& op) {
 // Mainly used for pd_to_cinn_pass and reused in IsSupportInCinn function.
 bool IsDeniedInCinn(const ::pir::Operation& op) {
   if (FLAGS_disable_dyshape_in_train && HaveUnkDim(op)) {
+    return true;
+  }
+
+  if (IsSmallNumelOp(op)) {
     return true;
   }
   if (!AllInputDenseTensor(op) || UnimplementOps(op)) {
