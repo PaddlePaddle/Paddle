@@ -23,7 +23,6 @@
 
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/platform/place.h"
 
 // type declaration forward
