@@ -164,7 +164,7 @@ cinn_cc_library(
   isl
   ginac
   pybind
-  group_cluster
+  op_fusion
   cinn_op_dialect
   ${jitify_deps})
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
@@ -224,7 +224,7 @@ function(gen_cinncore LINKTYPE)
     isl
     ginac
     pybind
-    group_cluster
+    op_fusion
     cinn_op_dialect
     ${jitify_deps})
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
