@@ -14,6 +14,7 @@
 
 import contextlib
 import copy
+import inspect
 import weakref
 
 import paddle
@@ -510,6 +511,12 @@ def recompute(function, *args, **kwargs):
             normal_loss: [0.0018744759727269411, 0.0, 0.035971127450466156, 0.0, 0.0], recompute_loss: [0.0018744759727269411, 0.0, 0.035971127450466156, 0.0, 0.0]
 
     """
+    # Hack to mix *args with **kwargs in a python 2.7-compliant way
+    preserve = kwargs.pop('preserve_rng_state', True)
+
+    # whether to use reentrant method to implement recompute
+    use_reentrant = kwargs.pop('use_reentrant', True)
+
     if not in_dynamic_mode():
         from paddle.distributed.auto_parallel.interface import (
             recompute as static_auto_recompute,
@@ -517,22 +524,23 @@ def recompute(function, *args, **kwargs):
 
         return static_auto_recompute(function)(*args, **kwargs)
 
-    # Hack to mix *args with **kwargs in a python 2.7-compliant way
-    preserve = kwargs.pop('preserve_rng_state', True)
-
-    # whether to use reentrant method to implement recompute
-    use_reentrant = kwargs.pop('use_reentrant', True)
-
-    if kwargs and use_reentrant:
-        raise ValueError(
-            "Error, if you want to send kwargs(dict parameter) to function, please set use_reentrant=False."
-        )
-
     if framework._dygraph_tracer()._has_grad:
-        check_recompute_necessary(args)
+        check_args = list(args)
+        check_args.extend(list(kwargs.values()))
+        check_recompute_necessary(check_args)
 
     if use_reentrant:
-        return RecomputeFunction.apply(function, preserve, *args)
+        input_args = args
+        # rearrange `position-args + keyword-args` into `position-args`
+        if isinstance(function, paddle.nn.Layer):
+            dyfunc_sig = inspect.signature(function.forward)
+        else:
+            dyfunc_sig = inspect.signature(function)
+
+        bound_args = dyfunc_sig.bind(*args, **kwargs)
+        bound_args.apply_defaults()
+        input_args = list(bound_args.arguments.values())
+        return RecomputeFunction.apply(function, preserve, *input_args)
     else:
         return _recompute_without_reentrant(function, preserve, *args, **kwargs)
 
