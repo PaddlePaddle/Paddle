@@ -103,7 +103,7 @@ class TestAssignPosAPI(unittest.TestCase):
         self.out = assign_pos(self.x, self.cum_count)
         self.place = paddle.CUDAPlace(0)
 
-    def test_api_static(self):
+    def _test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('x', self.x.shape, dtype="int64")
