@@ -142,6 +142,7 @@ inline ShapeOrData SliceRawInferSymbolicShape(
   const auto &GetShapeDimExprs = [&]() -> symbol::ShapeOrDataDimExprs {
     const ExprVec &in_dims = in_shapeordata.shape();
     std::vector<int64_t> axes = FormatSliceAxes(axes_raw, in_dims.size());
+
     CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends, &infer_flags);
     ExprVec slice_dims =
         GetSliceDims(in_dims, axes, starts, ends, &infer_flags);

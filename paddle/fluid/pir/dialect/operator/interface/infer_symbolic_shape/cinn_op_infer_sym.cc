@@ -42,24 +42,45 @@ bool ConcatOpInferSymbolicShape(
   const auto input_values = op->operands_source();
   const auto input_size = input_values.size();
 
-  if (shape_analysis->GetShapeOrDataForValue(input_values[0])
-          .data()
-          .has_value()) {
+  std::cerr << "11\n";
+  bool all_have_data = true;
+
+  for (const auto &value : input_values) {
+    const auto &shape_or_data = shape_analysis->GetShapeOrDataForValue(value);
+    if (!shape_or_data.data().has_value()) {
+      all_have_data = false;
+    }
+  }
+  if (all_have_data) {
+    std::cerr << "11-1\n";
     std::vector<symbol::DimExpr> out_data;
+    int index = 0;
     for (const auto &value : input_values) {
+      if (!shape_analysis->HasShapeOrDataForValue(value)) {
+        std::cerr << "input index dont have shape info " << index << std::endl;
+      }
       const auto &shape_or_data = shape_analysis->GetShapeOrDataForValue(value);
+      std::cerr << "11-1-1 " << index << "\t"
+                << shape_or_data.data().has_value() << std::endl;
       for (size_t i = 0; i < shape_or_data.data().value().size(); ++i) {
         out_data.emplace_back(shape_or_data.data().value()[i]);
       }
+
+      ++index;
     }
+    std::cerr << "11-2\n";
     const std::vector<symbol::DimExpr> shape{std::int64_t(out_data.size())};
     symbol::ShapeOrDataDimExprs shape_data{
         symbol::TensorShapeOrDataDimExprs(shape, out_data)};
 
+    std::cerr << "11-3\n";
     pir::Value res = op->result(0);
     shape_analysis->SetShapeOrDataForValue(res, shape_data);
+
+    std::cerr << "11-5\n";
     return true;
   }
+  std::cerr << "22\n";
 
   int axis = op->attributes().at("axis").dyn_cast<pir::Int32Attribute>().data();
 
@@ -84,6 +105,7 @@ bool ConcatOpInferSymbolicShape(
 
     return out_dims;
   };
+  std::cerr << "33\n";
 
   VLOG(3) << "constraints size:"
           << shape_analysis->DimExprBuilder().constraints().size();
@@ -91,6 +113,7 @@ bool ConcatOpInferSymbolicShape(
   symbol::ShapeOrDataDimExprs shape_data{
       symbol::TensorShapeOrDataDimExprs(GetOutDimExprs())};
 
+  std::cerr << "55\n";
   shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
   return true;
 }

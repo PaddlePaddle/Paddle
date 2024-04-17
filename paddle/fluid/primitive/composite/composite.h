@@ -785,7 +785,12 @@ template <typename T>
 std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
                                           int start_axis,
                                           int end_axis) {
+  std::cerr << "flattn decomp " << start_axis << "\t" << end_axis << std::endl;
   auto x_dim = x.shape();
+  for (auto d : x_dim) {
+    std::cerr << " x dim " << d << std::endl;
+  }
+
   if (x_dim.size() == 0) {
     start_axis = 0;
     end_axis = 0;
@@ -813,10 +818,13 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
 
     for (size_t i = 0; i < x_dim.size();) {
       if (i == static_cast<size_t>(start_axis)) {
-        Tensor flat =
-            slice<T>(x_shape, {0}, {start_axis}, {end_axis + 1}, {1}, {});
-        flat = prod<T>(flat, {0}, false, false);
-        out_shape.push_back(reshape<T>(flat, {1}));
+        Tensor flat = get_slice<T>(x_shape, i);
+        // flat = prod<T>(flat, {0}, false, false);
+
+        for (auto t = start_axis + 1; t <= end_axis; ++t) {
+          flat = flat * get_slice<T>(x_shape, t);
+        }
+        out_shape.push_back(flat);
         i = end_axis + 1;
       } else {
         out_shape.push_back(get_slice<T>(x_shape, i));
@@ -852,6 +860,9 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
       out_shape.push_back(x_dim[i]);
     }
 
+    for (auto d : out_shape) {
+      std::cerr << "dd   " << d << std::endl;
+    }
     return std::make_tuple(reshape<T>(x, out_shape), xshape);
   }
 }

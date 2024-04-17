@@ -106,6 +106,8 @@ void ApplyCinnPreprocessPass(
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   }
 
+  // pass_manager->EnableIRPrinting();
+
   pass_manager->Run(program);
 }
 
@@ -192,6 +194,7 @@ void ApplyCinnLowerPass(
   pass_manager->AddPass(
       cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
 
+  pass_manager->EnableIRPrinting();
   pass_manager->Run(program);
 }
 
