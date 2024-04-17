@@ -20,9 +20,9 @@
 namespace phi {
 
 template <typename T, typename Context>
-void DequantizeLogKernelKernel(const Context& dev_ctx,
-                               const DenseTensor& x,
-                               const DenseTensor& dict,
-                               DenseTensor* out);
+void DequantizeLogKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& dict,
+                         DenseTensor* out);
 
 }  // namespace phi

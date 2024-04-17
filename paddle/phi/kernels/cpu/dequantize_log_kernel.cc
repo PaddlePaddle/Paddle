@@ -20,10 +20,10 @@
 namespace phi {
 
 template <typename T, typename Context>
-void DequantizeLogKernelKernel(const Context& dev_ctx,
-                               const DenseTensor& x,
-                               const DenseTensor& dict,
-                               DenseTensor* out) {
+void DequantizeLogKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& dict,
+                         DenseTensor* out) {
   const float* dict_data = dict.data<float>();
   const T* input_data = x.data<T>();
   float* output_data = dev_ctx.template Alloc<float>(out);
@@ -39,4 +39,4 @@ void DequantizeLogKernelKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    dequantize_log, CPU, ALL_LAYOUT, phi::DequantizeLogKernelKernel, int8_t) {}
+    dequantize_log, CPU, ALL_LAYOUT, phi::DequantizeLogKernel, int8_t) {}
