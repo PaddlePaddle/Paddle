@@ -23,7 +23,7 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 
 namespace {
-const std::string GetFusedElement(const std::string elementwise_type) {
+std::string GetFusedElement(const std::string &elementwise_type) {
   const std::map<std::string, std::string> fused_ops = {
       {"pd_op.add", "onednn_op.fused_elementwise_add"},
       {"pd_op.subtract", "onednn_op.fused_elementwise_sub"},
@@ -42,7 +42,7 @@ class ElementwiseActivationFusePattern : public paddle::drr::DrrPatternBase {
   const int level_;
 
  public:
-  ElementwiseActivationFusePattern(const std::string elementwise_type,
+  ElementwiseActivationFusePattern(const std::string &elementwise_type,
                                    const std::string &activation_name,
                                    int level)
       : elementwise_type_(elementwise_type),
@@ -195,7 +195,7 @@ class ElementwiseClipFusePattern : public paddle::drr::DrrPatternBase {
   const int level_;
 
  public:
-  ElementwiseClipFusePattern(const std::string elementwise_type,
+  ElementwiseClipFusePattern(const std::string &elementwise_type,
                              const std::string &activation_name,
                              int level)
       : elementwise_type_(elementwise_type),
@@ -269,13 +269,13 @@ class ElementwiseActFusePass : public pir::PatternRewritePass {
                                                            "leaky_relu",
                                                            "hard_sigmoid"};
     size_t pattern_num = 1;
-    for (auto activation : supported_activations_name) {
+    for (const auto &activation : supported_activations_name) {
       ps.Add(paddle::drr::Create<ElementwiseActivationFusePattern>(
           context, paddle::dialect::AddOp::name(), activation, pattern_num));
       pattern_num++;
     }
 
-    for (auto activation : supported_activations_name) {
+    for (const auto &activation : supported_activations_name) {
       ps.Add(paddle::drr::Create<ElementwiseActivationFusePattern>(
           context,
           paddle::dialect::SubtractOp::name(),
