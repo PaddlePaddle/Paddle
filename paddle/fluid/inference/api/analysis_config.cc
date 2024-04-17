@@ -181,7 +181,7 @@ void AnalysisConfig::EnableXpu(int l3_size,
                                const std::string &transformer_encoder_precision,
                                bool transformer_encoder_adaptive_seqlen,
                                bool enable_multi_stream) {
-#if defined(PADDLE_WITH_XPU) || defined(LITE_SUBGRAPH_WITH_XPU)
+#if defined(PADDLE_WITH_XPU)
   LOG_FIRST_N(WARNING, 1)
       << "Parameters in EnableXpu/enable_xpu is deprecated since version "
          "2.6.1, and will be removed in version 3.0! Please use "
@@ -1096,7 +1096,7 @@ void AnalysisConfig::Update() {
   }
 
   if (use_xpu_) {
-#if (defined LITE_SUBGRAPH_WITH_XPU) || (defined PADDLE_WITH_XPU)
+#if (defined PADDLE_WITH_XPU)
     PADDLE_ENFORCE_EQ(use_gpu_,
                       false,
                       platform::errors::Unavailable(

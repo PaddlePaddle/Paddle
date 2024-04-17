@@ -1386,11 +1386,6 @@ struct PD_INFER_DECL AnalysisConfig {
 
   mutable std::unique_ptr<PassStrategy> pass_builder_;
 
-  std::vector<std::string> lite_passes_filter_;
-  std::vector<std::string> lite_ops_filter_;
-  Precision lite_precision_mode_;
-  bool lite_zero_copy_;
-
   // CINN compiler related.
   bool use_cinn_{false};
 

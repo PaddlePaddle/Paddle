@@ -321,13 +321,6 @@ struct Argument {
                       dlnne_input_shape_type);
   DECL_ARGUMENT_FIELD(dlnne_workspace_size, DlnneWorkspaceSize, int);
 
-  DECL_ARGUMENT_FIELD(lite_passes_filter,
-                      LitePassesFilter,
-                      std::vector<std::string>);
-  DECL_ARGUMENT_FIELD(lite_ops_filter, LiteOpsFilter, std::vector<std::string>);
-  DECL_ARGUMENT_FIELD(lite_precision_mode, LitePrecisionMode, int);
-  DECL_ARGUMENT_FIELD(lite_zero_copy, LiteZeroCopy, bool);
-
   DECL_ARGUMENT_FIELD(use_xpu, UseXpu, bool);
   DECL_ARGUMENT_FIELD(xpu_locked, XpuLocked, bool);
   DECL_ARGUMENT_FIELD(xpu_precision, XpuPrecision, std::string);
