@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
+from os.path import dirname
 
 import numpy as np
 
 import paddle
+
+sys.path.append(dirname(dirname(__file__)))
 
 
 def get_sym_shape_str_for_op(net, input_spec, op_name='builtin.shadow_output'):
@@ -29,17 +33,6 @@ def get_sym_shape_str_for_op(net, input_spec, op_name='builtin.shadow_output'):
             all_sym_shape_str.append(op.attrs()['sym_shape_str'])
 
     return all_sym_shape_str
-
-
-def apply_to_static(net, use_cinn, input_spec=None):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(
-        net,
-        input_spec=input_spec,
-        build_strategy=build_strategy,
-        full_graph=True,
-    )
 
 
 def check_infer_results(net, input_spec, op_name, expecteds):
