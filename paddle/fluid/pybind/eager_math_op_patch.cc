@@ -187,22 +187,31 @@ paddle::Tensor CallScalarFuction(const paddle::Tensor& self_tensor,
   return ret;
 }
 
-phi::DataType TypePromotionForZeroDimTensor(std::string func,
-                                            paddle::Tensor self_tensor,
-                                            paddle::Tensor other_tensor) {
+void TypePromotionForZeroDimTensor(std::string func,
+                                   paddle::Tensor& self_tensor,  // NOLINT
+                                   paddle::Tensor& other_tensor  // NOLINT
+) {
+  phi::DataType promote_type;
   if (!is_common_dtype_for_scalar(self_tensor.dtype(), other_tensor.dtype()) ||
       (self_tensor.shape().size() == 0 && other_tensor.shape().size() == 0)) {
-    phi::DataType promote_type =
+    promote_type =
         GetPromoteDtype(func, self_tensor.dtype(), other_tensor.dtype());
-    return promote_type;
   } else {
     // common major types follow with tensor: int32(tensor) + int64(scalar)
     // = int32
     if (self_tensor.shape().size() == 0) {
-      return other_tensor.dtype();
+      promote_type = other_tensor.dtype();
     } else {
-      return self_tensor.dtype();
+      promote_type = self_tensor.dtype();
     }
+  }
+  if (self_tensor.dtype() != promote_type) {
+    eager_gil_scoped_release guard;
+    self_tensor = cast_ad_func(self_tensor, promote_type);
+  }
+  if (other_tensor.dtype() != promote_type) {
+    eager_gil_scoped_release guard;
+    other_tensor = cast_ad_func(other_tensor, promote_type);
   }
 }
 
@@ -270,23 +279,13 @@ static PyObject* tensor__add__method(TensorObject* self,
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    auto self_tensor_size = self_tensor_ref.shape().size();
-    auto other_tensor_size = other_tensor_ref.shape().size();
-    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
+    if ((self_tensor_ref.shape().size() == 0 ||
+         other_tensor_ref.shape().size() == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
       VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
               << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
       // different major types or both 0-d tensor follow with T+T rule.
-      phi::DataType promote_type = TypePromotionForZeroDimTensor(
-          "add", self_tensor_ref, other_tensor_ref);
-      if (self_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
-      }
-      if (other_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
-      }
+      TypePromotionForZeroDimTensor("add", self_tensor_ref, other_tensor_ref);
     }
 
     self_tensor = self_tensor_ref;
@@ -390,22 +389,14 @@ static PyObject* tensor__sub__method(TensorObject* self,
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    auto self_tensor_size = self_tensor_ref.shape().size();
-    auto other_tensor_size = other_tensor_ref.shape().size();
-    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
+    if ((self_tensor_ref.shape().size() == 0 ||
+         other_tensor_ref.shape().size() == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
       VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
               << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
-      phi::DataType promote_type = TypePromotionForZeroDimTensor(
+      // different major types or both 0-d tensor follow with T+T rule.
+      TypePromotionForZeroDimTensor(
           "subtract", self_tensor_ref, other_tensor_ref);
-      if (self_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
-      }
-      if (other_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
-      }
     }
 
     self_tensor = self_tensor_ref;
@@ -507,22 +498,14 @@ static PyObject* tensor__rsub__method(TensorObject* self,
     auto self_tensor_ref = self->tensor;
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    auto self_tensor_size = self_tensor_ref.shape().size();
-    auto other_tensor_size = other_tensor_ref.shape().size();
-    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
+    if ((self_tensor_ref.shape().size() == 0 ||
+         other_tensor_ref.shape().size() == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
       VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
               << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
-      phi::DataType promote_type = TypePromotionForZeroDimTensor(
+      // different major types or both 0-d tensor follow with T+T rule.
+      TypePromotionForZeroDimTensor(
           "subtract", self_tensor_ref, other_tensor_ref);
-      if (self_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
-      }
-      if (other_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
-      }
     }
 
     self_tensor = self_tensor_ref;
@@ -628,22 +611,14 @@ static PyObject* tensor__mul__method(TensorObject* self,
 
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    auto self_tensor_size = self_tensor_ref.shape().size();
-    auto other_tensor_size = other_tensor_ref.shape().size();
-    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
+    if ((self_tensor_ref.shape().size() == 0 ||
+         other_tensor_ref.shape().size() == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
       VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
               << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
-      phi::DataType promote_type = TypePromotionForZeroDimTensor(
+      // different major types or both 0-d tensor follow with T+T rule.
+      TypePromotionForZeroDimTensor(
           "multiply", self_tensor_ref, other_tensor_ref);
-      if (self_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
-      }
-      if (other_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
-      }
     }
 
     self_tensor = self_tensor_ref;
@@ -747,22 +722,14 @@ static PyObject* tensor__div__method(TensorObject* self,
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    auto self_tensor_size = self_tensor_ref.shape().size();
-    auto other_tensor_size = other_tensor_ref.shape().size();
-    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
+    if ((self_tensor_ref.shape().size() == 0 ||
+         other_tensor_ref.shape().size() == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
       VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
               << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
-      phi::DataType promote_type = TypePromotionForZeroDimTensor(
+      // different major types or both 0-d tensor follow with T+T rule.
+      TypePromotionForZeroDimTensor(
           "divide", self_tensor_ref, other_tensor_ref);
-      if (self_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
-      }
-      if (other_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
-      }
     }
 
     self_tensor = self_tensor_ref;
@@ -869,22 +836,14 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    auto self_tensor_size = self_tensor_ref.shape().size();
-    auto other_tensor_size = other_tensor_ref.shape().size();
-    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
+    if ((self_tensor_ref.shape().size() == 0 ||
+         other_tensor_ref.shape().size() == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
       VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
               << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
-      phi::DataType promote_type = TypePromotionForZeroDimTensor(
+      // different major types or both 0-d tensor follow with T+T rule.
+      TypePromotionForZeroDimTensor(
           "divide", self_tensor_ref, other_tensor_ref);
-      if (self_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
-      }
-      if (other_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
-      }
     }
 
     self_tensor = self_tensor_ref;
@@ -994,22 +953,14 @@ static PyObject* tensor__gt__method(TensorObject* self,
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    auto self_tensor_size = self_tensor_ref.shape().size();
-    auto other_tensor_size = other_tensor_ref.shape().size();
-    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
+    if ((self_tensor_ref.shape().size() == 0 ||
+         other_tensor_ref.shape().size() == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
       VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
               << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
-      phi::DataType promote_type = TypePromotionForZeroDimTensor(
+      // different major types or both 0-d tensor follow with T+T rule.
+      TypePromotionForZeroDimTensor(
           "greater_than", self_tensor_ref, other_tensor_ref);
-      if (self_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
-      }
-      if (other_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
-      }
     }
 
     self_tensor = self_tensor_ref;
@@ -1109,22 +1060,14 @@ static PyObject* tensor__ge__method(TensorObject* self,
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    auto self_tensor_size = self_tensor_ref.shape().size();
-    auto other_tensor_size = other_tensor_ref.shape().size();
-    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
+    if ((self_tensor_ref.shape().size() == 0 ||
+         other_tensor_ref.shape().size() == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
       VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
               << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
-      phi::DataType promote_type = TypePromotionForZeroDimTensor(
+      // different major types or both 0-d tensor follow with T+T rule.
+      TypePromotionForZeroDimTensor(
           "greater_equal", self_tensor_ref, other_tensor_ref);
-      if (self_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
-      }
-      if (other_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
-      }
     }
 
     self_tensor = self_tensor_ref;
@@ -1225,22 +1168,14 @@ static PyObject* tensor__mod__method(TensorObject* self,
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    auto self_tensor_size = self_tensor_ref.shape().size();
-    auto other_tensor_size = other_tensor_ref.shape().size();
-    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
+    if ((self_tensor_ref.shape().size() == 0 ||
+         other_tensor_ref.shape().size() == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
       VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
               << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
-      phi::DataType promote_type = TypePromotionForZeroDimTensor(
+      // different major types or both 0-d tensor follow with T+T rule.
+      TypePromotionForZeroDimTensor(
           "remainder", self_tensor_ref, other_tensor_ref);
-      if (self_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
-      }
-      if (other_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
-      }
     }
 
     self_tensor = self_tensor_ref;
@@ -1465,22 +1400,14 @@ static PyObject* tensor__lt__method(TensorObject* self,
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    auto self_tensor_size = self_tensor_ref.shape().size();
-    auto other_tensor_size = other_tensor_ref.shape().size();
-    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
+    if ((self_tensor_ref.shape().size() == 0 ||
+         other_tensor_ref.shape().size() == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
       VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
               << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
-      phi::DataType promote_type = TypePromotionForZeroDimTensor(
+      // different major types or both 0-d tensor follow with T+T rule.
+      TypePromotionForZeroDimTensor(
           "less_than", self_tensor_ref, other_tensor_ref);
-      if (self_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
-      }
-      if (other_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
-      }
     }
 
     self_tensor = self_tensor_ref;
@@ -1580,22 +1507,14 @@ static PyObject* tensor__le__method(TensorObject* self,
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    auto self_tensor_size = self_tensor_ref.shape().size();
-    auto other_tensor_size = other_tensor_ref.shape().size();
-    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
+    if ((self_tensor_ref.shape().size() == 0 ||
+         other_tensor_ref.shape().size() == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
       VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
               << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
-      phi::DataType promote_type = TypePromotionForZeroDimTensor(
+      // different major types or both 0-d tensor follow with T+T rule.
+      TypePromotionForZeroDimTensor(
           "less_equal", self_tensor_ref, other_tensor_ref);
-      if (self_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
-      }
-      if (other_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
-      }
     }
 
     self_tensor = self_tensor_ref;
@@ -1696,22 +1615,14 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    auto self_tensor_size = self_tensor_ref.shape().size();
-    auto other_tensor_size = other_tensor_ref.shape().size();
-    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
+    if ((self_tensor_ref.shape().size() == 0 ||
+         other_tensor_ref.shape().size() == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
       VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
               << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
-      phi::DataType promote_type = TypePromotionForZeroDimTensor(
+      // different major types or both 0-d tensor follow with T+T rule.
+      TypePromotionForZeroDimTensor(
           "floor_divide", self_tensor_ref, other_tensor_ref);
-      if (self_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
-      }
-      if (other_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
-      }
     }
 
     self_tensor = self_tensor_ref;
@@ -1815,22 +1726,14 @@ static PyObject* tensor__pow__method(TensorObject* self,
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    auto self_tensor_size = self_tensor_ref.shape().size();
-    auto other_tensor_size = other_tensor_ref.shape().size();
-    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
+    if ((self_tensor_ref.shape().size() == 0 ||
+         other_tensor_ref.shape().size() == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
       VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
               << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
-      phi::DataType promote_type = TypePromotionForZeroDimTensor(
+      // different major types or both 0-d tensor follow with T+T rule.
+      TypePromotionForZeroDimTensor(
           "elementwise_pow", self_tensor_ref, other_tensor_ref);
-      if (self_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
-      }
-      if (other_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
-      }
     }
 
     self_tensor = self_tensor_ref;
@@ -1930,22 +1833,14 @@ static PyObject* tensor__rpow__method(TensorObject* self,
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    auto self_tensor_size = self_tensor_ref.shape().size();
-    auto other_tensor_size = other_tensor_ref.shape().size();
-    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
+    if ((self_tensor_ref.shape().size() == 0 ||
+         other_tensor_ref.shape().size() == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
       VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
               << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
-      phi::DataType promote_type = TypePromotionForZeroDimTensor(
+      // different major types or both 0-d tensor follow with T+T rule.
+      TypePromotionForZeroDimTensor(
           "elementwise_pow", self_tensor_ref, other_tensor_ref);
-      if (self_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
-      }
-      if (other_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
-      }
     }
 
     self_tensor = self_tensor_ref;
@@ -2045,22 +1940,14 @@ static PyObject* tensor__ne__method(TensorObject* self,
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    auto self_tensor_size = self_tensor_ref.shape().size();
-    auto other_tensor_size = other_tensor_ref.shape().size();
-    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
+    if ((self_tensor_ref.shape().size() == 0 ||
+         other_tensor_ref.shape().size() == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
       VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
               << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
-      phi::DataType promote_type = TypePromotionForZeroDimTensor(
+      // different major types or both 0-d tensor follow with T+T rule.
+      TypePromotionForZeroDimTensor(
           "not_equal", self_tensor_ref, other_tensor_ref);
-      if (self_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
-      }
-      if (other_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
-      }
     }
 
     self_tensor = self_tensor_ref;
@@ -2160,22 +2047,13 @@ static PyObject* tensor__eq__method(TensorObject* self,
     auto other_tensor_ref = CastPyArg2Tensor(other_obj, 0);
     // got 0-d tensor, and need type promotion. The rules same with Tensor +
     // Scalar.
-    auto self_tensor_size = self_tensor_ref.shape().size();
-    auto other_tensor_size = other_tensor_ref.shape().size();
-    if ((self_tensor_size == 0 || other_tensor_size == 0) &&
+    if ((self_tensor_ref.shape().size() == 0 ||
+         other_tensor_ref.shape().size() == 0) &&
         self_tensor_ref.dtype() != other_tensor_ref.dtype()) {
       VLOG(5) << "got 0-d tensor and need to do type promotion, x: "
               << self_tensor_ref.dtype() << " y: " << other_tensor_ref.dtype();
-      phi::DataType promote_type = TypePromotionForZeroDimTensor(
-          "equal", self_tensor_ref, other_tensor_ref);
-      if (self_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        self_tensor_ref = cast_ad_func(self_tensor_ref, promote_type);
-      }
-      if (other_tensor_ref.dtype() != promote_type) {
-        eager_gil_scoped_release guard;
-        other_tensor_ref = cast_ad_func(other_tensor_ref, promote_type);
-      }
+      // different major types or both 0-d tensor follow with T+T rule.
+      TypePromotionForZeroDimTensor("equal", self_tensor_ref, other_tensor_ref);
     }
 
     self_tensor = self_tensor_ref;
