@@ -341,6 +341,7 @@ bool IsDeniedInCinn(const ::pir::Operation& op) {
   if (IsSmallNumelOp(op)) {
     return true;
   }
+
   if (!AllInputDenseTensor(op) || UnimplementOps(op)) {
     VLOG(5) << "Found " << op.name()
             << " UnimplementOps or NotAllInputDenseTensor. "

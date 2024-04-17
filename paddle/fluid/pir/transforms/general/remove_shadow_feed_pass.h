@@ -14,15 +14,13 @@
 
 #pragma once
 
-#include "paddle/pir/include/pass/pass.h"
+#include <memory>
+#include "paddle/pir/include/core/dll_decl.h"
 
-namespace cinn {
-namespace dialect {
-namespace ir {
+namespace pir {
 
-// This is a helper pass for substituting DimExpr based on the
-// constraints symbol::Equal<symbol::DimExpr>.
-std::unique_ptr<::pir::Pass> CreateSubstituteDimExprBasedOnConstraintsPass();
-}  // namespace ir
-}  // namespace dialect
-}  // namespace cinn
+class Pass;
+
+IR_API std::unique_ptr<Pass> CreateRemoveShadowFeedPass();
+
+}  // namespace pir
