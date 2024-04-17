@@ -1263,7 +1263,7 @@ PHI_DEFINE_EXPORTED_bool(use_autotune, false, "Whether enable autotune.");
 
 /**
  * CINN training related FLAG
- * Name: FLAGS_use_autotune
+ * Name: FLAGS_disable_dyshape_in_train
  * Since Version: 2.7.0
  * Value Range: bool, default=false
  * Example:

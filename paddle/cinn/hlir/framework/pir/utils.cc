@@ -141,8 +141,8 @@ class OpTransInfo {
                                                     "embedding_grad",
                                                     "embedding",
                                                     "arange",
-                                                    "randint",
-                                                    "softmax"};
+                                                    "softmax",
+                                                    "randint"};
 };
 
 std::string OpNameAfterStripDialect(const ::pir::Operation& op) {

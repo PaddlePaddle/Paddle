@@ -30,7 +30,15 @@ namespace pir {
 //===----------------------------------------------------------------------===//
 // Pass
 //===----------------------------------------------------------------------===//
-Pass::~Pass() = default;
+Pass::~Pass() {
+  for (const auto& attr : attrs_) {
+    if (attr_dels_.find(attr.first) != attr_dels_.end()) {
+      attr_dels_[attr.first]();
+    }
+  }
+  attrs_.clear();
+  attr_dels_.clear();
+}
 
 bool Pass::CanApplyOn(Operation* op) const { return op->num_regions() > 0; }
 
