@@ -5479,7 +5479,7 @@ void UnsqueezeInferMeta(const MetaTensor& x,
                         MetaTensor* out,
                         MetaConfig config) {
   const auto& x_dims = x.dims();
-  // Validity Check: input tensor dims (<6).
+  // Validity Check: input tensor dims (<=8).
   PADDLE_ENFORCE_LE(x_dims.size(),
                     6,
                     phi::errors::InvalidArgument(
