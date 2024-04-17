@@ -38,7 +38,9 @@ class TestTranposeUnsqueezeFusePass(PassTest):
                 )
                 out = paddle.unsqueeze(transpose, [1])
                 out = paddle.assign(out)
-                self.pass_list = ['operator_unsqueeze_onednn_fuse_pass']
+                self.pass_attr_list = [
+                    {'operator_unsqueeze_onednn_fuse_pass': {}}
+                ]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                 }
@@ -78,7 +80,9 @@ class TestMulUnsqueezeFusePass(PassTest):
                 matmul = paddle.multiply(x, y)
                 out = paddle.unsqueeze(matmul, [1])
                 out = paddle.assign(out)
-                self.pass_list = ['operator_unsqueeze_onednn_fuse_pass']
+                self.pass_attr_list = [
+                    {'operator_unsqueeze_onednn_fuse_pass': {}}
+                ]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),

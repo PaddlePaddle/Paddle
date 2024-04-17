@@ -46,7 +46,6 @@ class OperatorUnsqueezeFusePattern : public paddle::drr::DrrPatternBase {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
 
     std::unordered_map<std::string, paddle::drr::Attribute> op_attrs;
-    bool has_attr = false;
     if (fusable_ops_ == paddle::onednn::dialect::FusedTransposeOp::name()) {
       op_attrs.emplace("axis", pat.Attr("axis"));
       op_attrs.emplace("fused_squeeze2_axes", pat.Attr("fused_squeeze2_axes"));
@@ -59,10 +58,8 @@ class OperatorUnsqueezeFusePattern : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("output_data_type", pat.Attr("output_data_type"));
       op_attrs.emplace("data_format", pat.Attr("data_format"));
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
-      has_attr = true;
     } else if (fusable_ops_ == paddle::dialect::TransposeOp::name()) {
       op_attrs.emplace("perm", pat.Attr("perm"));
-      has_attr = true;
     } else if (fusable_ops_ ==
                paddle::onednn::dialect::FusedElementwiseMulOp::name()) {
       op_attrs.emplace("axis", pat.Attr("axis"));
@@ -75,11 +72,9 @@ class OperatorUnsqueezeFusePattern : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("scale_x", pat.Attr("scale_x"));
       op_attrs.emplace("scale_y", pat.Attr("scale_y"));
       op_attrs.emplace("scale_out", pat.Attr("scale_out"));
-      has_attr = true;
     }
 
-    const auto &op =
-        has_attr ? pat.Op(fusable_ops_, op_attrs) : pat.Op(fusable_ops_);
+    const auto &op = pat.Op(fusable_ops_, op_attrs);
 
     if (fusable_ops_ == paddle::dialect::TransposeOp::name() ||
         fusable_ops_ == paddle::onednn::dialect::FusedTransposeOp::name()) {
