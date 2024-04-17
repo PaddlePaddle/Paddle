@@ -56,15 +56,15 @@ TEST(Cinn, FuseMatmul) {
   pir::Program program(ctx);
   pir::Builder builder = pir::Builder(ctx, program.block());
   BuildProgram(builder);
-  EXPECT_EQ(program.block()->size(), 10u);
+  ASSERT_EQ((program.block()->size()), 10u);
 
   pir::PassManager pm(ctx);
   pm.AddPass(cinn::dialect::ir::CreateFuseParallelMatmulPass());
   pm.EnablePassTiming();
   pm.EnableIRPrinting();
 
-  CHECK_EQ(pm.Run(&program), true);
-  EXPECT_EQ(program.block()->size(), 20u);
+  ASSERT_EQ((pm.Run(&program)), true);
+  ASSERT_EQ((program.block()->size()), 20u);
 }
 
 // [64, 32] * [16, 32, 32] => [16, 64, 32]
@@ -99,13 +99,13 @@ TEST(Cinn, FuseBatchMatmul) {
   pir::Program program(ctx);
   pir::Builder builder = pir::Builder(ctx, program.block());
   BuildBatchProgram(builder);
-  EXPECT_EQ(program.block()->size(), 10u);
+  ASSERT_EQ((program.block()->size()), 10u);
 
   pir::PassManager pm(ctx);
   pm.AddPass(cinn::dialect::ir::CreateFuseParallelMatmulPass());
   pm.EnablePassTiming();
   pm.EnableIRPrinting();
 
-  CHECK_EQ(pm.Run(&program), true);
-  EXPECT_EQ(program.block()->size(), 20u);
+  ASSERT_EQ((pm.Run(&program)), true);
+  ASSERT_EQ((program.block()->size()), 20u);
 }
