@@ -294,6 +294,9 @@ class PipelineParallel(MetaParallelBase):
         self.global_rank = self._hcg.get_global_rank()
         self.micro_batch_id = 0
 
+        # default loss function index
+        self.loss_fn_idx = 0
+
         self._compute_loss = True
 
         logger.info(
@@ -686,8 +689,18 @@ class PipelineParallel(MetaParallelBase):
         )
         return micro_dataset
 
-    def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
+    def train_batch(
+        self, data, optimizer, lr_scheduler=None, scaler=None, loss_fn_idx=0
+    ):
         data = self._prepare_training(data, optimizer, lr_scheduler)
+
+        # check loss_fn_idx is valid and loss_fn exists
+        assert (
+            loss_fn_idx in range(len(self._layers._loss_fn))
+            and self._layers._loss_fn[loss_fn_idx] is not None
+        ), f"loss function {loss_fn_idx} should exist to compute loss"
+        self.loss_fn_idx = loss_fn_idx
+
         # 1f1b scheduler for pipeline parallel
         train_loss = self.forward_backward_pipeline(data, scaler)
 
@@ -697,7 +710,7 @@ class PipelineParallel(MetaParallelBase):
 
         return train_loss
 
-    def eval_batch(self, data, compute_loss=False):
+    def eval_batch(self, data, compute_loss=False, loss_fn_idx=0):
         # reset the virtual pp rank for each run
         self.set_virtual_pipeline_rank(0)
 
@@ -709,6 +722,13 @@ class PipelineParallel(MetaParallelBase):
 
         # store total loss of entire batch
         self.total_loss = None
+
+        # check loss_fn_idx is valid and loss_fn exists
+        assert (
+            loss_fn_idx in range(len(self._layers._loss_fn))
+            and self._layers._loss_fn[loss_fn_idx] is not None
+        ), f"loss function {loss_fn_idx} should exist to compute loss"
+        self.loss_fn_idx = loss_fn_idx
 
         startup_steps = self.num_stages - self.stage_id - 1
         startup_steps = min(startup_steps, self.accumulate_steps)
@@ -780,29 +800,43 @@ class PipelineParallel(MetaParallelBase):
             # train calculate loss for train
             if self._compute_loss:
                 assert (
-                    self._layers._loss_fn is not None
+                    self._layers._loss_fn[self.loss_fn_idx] is not None
                 ), "loss function should exist to compute loss"
                 labels = next(micro_dataset)[1]
                 self._check_micro_batch_data_valid(labels)
-                output_tensor = self._layers._loss_fn(output_tensor, labels)
-                assert isinstance(
-                    output_tensor, (paddle.Tensor, framework.core.eager.Tensor)
-                ), "Currently, loss_fn should obtain Paddle.Tensor dtype"
+                for idx, loss_fn in enumerate(self._layers._loss_fn):
+                    loss_tensor = loss_fn(output_tensor, labels)
+                    assert isinstance(
+                        loss_tensor,
+                        (paddle.Tensor, framework.core.eager.Tensor),
+                    ), "Currently, loss_fn should obtain Paddle.Tensor dtype"
 
-                with paddle.amp.auto_cast(enable=False):
-                    if self.accumulate_steps > 1 and not self._delay_scale_loss:
-                        output_tensor = output_tensor / self.accumulate_steps
+                    with paddle.amp.auto_cast(enable=False):
+                        if (
+                            self.accumulate_steps > 1
+                            and not self._delay_scale_loss
+                        ):
+                            loss_tensor = loss_tensor / self.accumulate_steps
 
-                    if self.total_loss is None:
-                        self.total_loss = paddle.zeros_like(output_tensor)
-                    self.total_loss += output_tensor.detach()
+                        if self.total_loss is None:
+                            self.total_loss = []
+                        # when self.total_loss length is less than idx, append a new tensor
+                        if len(self.total_loss) <= idx:
+                            self.total_loss.append(
+                                paddle.zeros_like(loss_tensor)
+                            )
+                        self.total_loss[idx] += loss_tensor.detach()
 
+                    if idx == self.loss_fn_idx:
+                        backward_loss_tensor = loss_tensor
         if self.is_pipeline_first_stage() or self.is_pipeline_last_stage():
             # Only increase micro batch id at virtual first/last pp stage.
             # The micro batch id is used to load data, therefore, only increase it when load data.
             self.micro_batch_id += 1
         if self._enable_timer:
             self.timers("forward_step").stop()
+        if self.is_pipeline_last_stage() and self._compute_loss:
+            return backward_loss_tensor
         return output_tensor
 
     def _backward_step(self, input_tensor, output_tensor, output_tensor_grad):
@@ -855,42 +889,52 @@ class PipelineParallel(MetaParallelBase):
             assert (
                 self.total_loss is not None
             ), "train_batch() in last stage should obtain valid loss"
-            loss = (
-                self.total_loss.detach()
+            losses = [
+                self.total_loss[idx].detach()
                 if not self._delay_scale_loss
-                else self.total_loss / self.accumulate_steps
-            )
-            is_fp32 = (
-                paddle.full([], 1, 'int64')
-                if loss.dtype == paddle.float32
-                else paddle.full([], 0, 'int64')
-            )
-            paddle.distributed.broadcast(
-                is_fp32, src=self.global_rank, sync_op=True, group=self.pp_group
-            )
-            paddle.distributed.broadcast(
-                loss, src=self.global_rank, sync_op=True, group=self.pp_group
-            )
+                else self.total_loss[idx] / self.accumulate_steps
+                for idx in range(len(self._layers._loss_fn))
+            ]
+            for idx in range(len(self._layers._loss_fn)):
+                is_fp32 = (
+                    paddle.full([], 1, 'int64')
+                    if losses[idx].dtype == paddle.float32
+                    else paddle.full([], 0, 'int64')
+                )
+                paddle.distributed.broadcast(
+                    is_fp32,
+                    src=self.global_rank,
+                    sync_op=True,
+                    group=self.pp_group,
+                )
+                paddle.distributed.broadcast(
+                    losses[idx],
+                    src=self.global_rank,
+                    sync_op=True,
+                    group=self.pp_group,
+                )
         else:
-            is_fp32 = paddle.full([], 1, 'int64')
-            paddle.distributed.broadcast(
-                is_fp32,
-                src=self._hcg.get_rank_from_stage(self.num_stages - 1),
-                sync_op=True,
-                group=self.pp_group,
-            )
-            loss = (
-                paddle.zeros(shape=[1], dtype="float32")
-                if is_fp32.item()
-                else paddle.zeros(shape=[1], dtype="float16")
-            )
-            paddle.distributed.broadcast(
-                loss,
-                src=self._hcg.get_rank_from_stage(self.num_stages - 1),
-                sync_op=True,
-                group=self.pp_group,
-            )
-        return loss
+            losses = []
+            for idx in range(len(self._layers._loss_fn)):
+                is_fp32 = paddle.full([], 1, 'int64')
+                paddle.distributed.broadcast(
+                    is_fp32,
+                    src=self._hcg.get_rank_from_stage(self.num_stages - 1),
+                    sync_op=True,
+                    group=self.pp_group,
+                )
+                losses.append(
+                    paddle.zeros(shape=[1], dtype="float32")
+                    if is_fp32.item()
+                    else paddle.zeros(shape=[1], dtype="float16")
+                )
+                paddle.distributed.broadcast(
+                    losses[idx],
+                    src=self._hcg.get_rank_from_stage(self.num_stages - 1),
+                    sync_op=True,
+                    group=self.pp_group,
+                )
+        return losses[0] if len(losses) == 1 else losses
 
     def _optimizer_step(self):
         if self._delay_scale_loss:
@@ -1708,8 +1752,18 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self.timer_printer()
         return train_loss
 
-    def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
+    def train_batch(
+        self, data, optimizer, lr_scheduler=None, scaler=None, loss_fn_idx=0
+    ):
         data = self._prepare_training(data, optimizer, lr_scheduler)
+
+        # check loss_fn_idx is valid and loss_fn exists
+        assert (
+            loss_fn_idx in range(len(self._layers._loss_fn))
+            and self._layers._loss_fn[loss_fn_idx] is not None
+        ), f"loss function {loss_fn_idx} should exist to compute loss"
+        self.loss_fn_idx = loss_fn_idx
+
         # interleave scheduler for pipeline parallel
         train_loss = self.forward_backward_pipeline(data, scaler)
 
@@ -1719,12 +1773,19 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         return train_loss
 
-    def eval_batch(self, data, compute_loss=False):
+    def eval_batch(self, data, compute_loss=False, loss_fn_idx=0):
         # reset the virtual pp rank for each run
         self.set_virtual_pipeline_rank(0)
 
         self._layers.eval()
         self._compute_loss = compute_loss
+
+        # check loss_fn_idx is valid and loss_fn exists
+        assert (
+            loss_fn_idx in range(len(self._layers._loss_fn))
+            and self._layers._loss_fn[loss_fn_idx] is not None
+        ), f"loss function {loss_fn_idx} should exist to compute loss"
+        self.loss_fn_idx = loss_fn_idx
 
         return self.forward_backward_pipeline(data, None, forward_only=True)
 

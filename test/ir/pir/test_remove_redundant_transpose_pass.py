@@ -41,7 +41,9 @@ class TestRemoveRedundantTransposePattern(PassTest):
                             paddle.transpose(x, perm1_shape), perm2_shape
                         )
                         out = paddle.assign(out)
-                        self.pass_list = ['remove_redundant_transpose_pass']
+                        self.pass_attr_list = [
+                            {'remove_redundant_transpose_pass': {}}
+                        ]
                         self.feeds = {
                             "x": np.random.random((2, 3, 4)).astype("float32")
                         }
