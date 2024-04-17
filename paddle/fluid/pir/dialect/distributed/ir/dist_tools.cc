@@ -86,5 +86,29 @@ TensorDistAttribute CvtToPirDistAttr(
                                   attr.partial_status());
 }
 
+void CopyLeafOpToMesh(pir::Value value, ProcessMeshAttribute mesh_attr) {
+  if (auto dist_type = value.type().dyn_cast<DistTypeInterface>()) {
+    if (dist_type.process_mesh_attr() == mesh_attr) {
+      return;
+    }
+    if (auto op = value.defining_op()) {
+      if (op->num_operands() != 0u || op->num_results() != 1u) {
+        return;
+      }
+      pir::IrMapping ir_mapping;
+      auto new_op = op->Clone(ir_mapping);
+      op->GetParent()->insert(*op, new_op);
+      value.ReplaceAllUsesWith(new_op->result(0));
+      dist_type = dist_type.CopyWithNewMesh(mesh_attr);
+      value.set_type(dist_type);
+      op->set_attribute(
+          kAttrOpDistAttr,
+          OperationDistAttribute::get(dist_type.ir_context(),
+                                      mesh_attr,
+                                      {},
+                                      {dist_type.tensor_dist_attr()}));
+    }
+  }
+}
 }  // namespace dialect
 }  // namespace paddle
