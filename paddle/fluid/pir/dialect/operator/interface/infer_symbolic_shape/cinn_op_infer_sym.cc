@@ -107,9 +107,6 @@ bool ConcatOpInferSymbolicShape(
   };
   std::cerr << "33\n";
 
-  VLOG(3) << "constraints size:"
-          << shape_analysis->DimExprBuilder().constraints().size();
-
   symbol::ShapeOrDataDimExprs shape_data{
       symbol::TensorShapeOrDataDimExprs(GetOutDimExprs())};
 
