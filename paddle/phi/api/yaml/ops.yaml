@@ -1529,6 +1529,7 @@
   kernel :
     func : isfinite {dense -> dense},
            isfinite_sr {selected_rows -> selected_rows}
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : isinf
   args : (Tensor x)
@@ -1980,6 +1981,7 @@
     func : meshgrid
     data_type : inputs
   backward : meshgrid_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : mode
   args : (Tensor x,  int axis = -1,  bool keepdim = false)
@@ -2319,6 +2321,7 @@
   kernel :
     func : relu6
   backward : relu6_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : renorm
   args : (Tensor x, float p, int axis, float max_norm)

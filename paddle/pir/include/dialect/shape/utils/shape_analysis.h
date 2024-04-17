@@ -40,8 +40,6 @@ class IR_API ShapeConstraintIRAnalysis {
   void SetShapeOrDataForValue(Value val,
                               const symbol::ShapeOrDataDimExprs& shape_or_data);
 
-  symbol::DimExprBuilder DimExprBuilder();
-
   void AddEqualCstr(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs);
 
   bool IsEqual(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) const;
@@ -103,9 +101,11 @@ class IR_API ShapeConstraintIRAnalysis {
   std::unordered_map<Value, symbol::ShapeOrDataDimExprs>
       value_to_shape_or_data_;
 
-  std::vector<symbol::DimExprConstraint> constraints_;
-
   symbol::ConstraintsManager constraints_manager_;
+
+  using DimExprSubstitutionPattern =
+      std::unordered_map<symbol::DimExpr, symbol::DimExpr>;
+  DimExprSubstitutionPattern substitution_pattern_;
 };
 
 class IR_API ShapeAnalysisManager {

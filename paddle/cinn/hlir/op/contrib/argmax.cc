@@ -184,7 +184,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmax(
                                         output_shapes[0].end(),
                                         1,
                                         std::multiplies<int>());
-    if (prod_size > 1 && target.arch == Target::Arch::X86) {
+    if (prod_size > 1 && std::holds_alternative<common::X86Arch>(target.arch)) {
       pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
     }
     std::vector<cinn::common::CINNValue> res{
