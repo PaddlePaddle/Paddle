@@ -897,7 +897,7 @@ class LSTMCell(RNNCellBase):
 
     .. math::
 
-        h_{t} & = h_{t}W_{proj\_size}
+        h_{t} = h_{t}W_{proj\_size}
 
     where :math:`\sigma` is the sigmoid function, and * is the elementwise
     multiplication operator.
@@ -1909,7 +1909,7 @@ class LSTM(RNNBase):
 
     .. math::
 
-        h_{t} & = h_{t}W_{proj\_size}
+        h_{t} = h_{t}W_{proj\_size}
 
     where :math:`\sigma` is the sigmoid function, and * is the elementwise
     multiplication operator.
