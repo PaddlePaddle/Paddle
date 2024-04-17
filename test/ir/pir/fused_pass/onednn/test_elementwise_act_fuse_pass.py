@@ -40,7 +40,7 @@ class TestAddReluFusePass(PassTest):
                 add = paddle.add(x, y)
                 out = act_op(add)
                 out = paddle.assign(out)
-                self.pass_list = [{'elementwise_act_onednn_fuse_pass': {}}]
+                self.pass_attr_list = [{'elementwise_act_onednn_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -82,7 +82,7 @@ class TestSubReluFusePass(PassTest):
                 add = paddle.subtract(x, y)
                 out = act_op(add)
                 out = paddle.assign(out)
-                self.pass_list = [{'elementwise_act_onednn_fuse_pass': {}}]
+                self.pass_attr_list = [{'elementwise_act_onednn_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -124,7 +124,7 @@ class TestMulReluFusePass(PassTest):
                 add = paddle.multiply(x, y)
                 out = act_op(add)
                 out = paddle.assign(out)
-                self.pass_list = [{'elementwise_act_onednn_fuse_pass': {}}]
+                self.pass_attr_list = [{'elementwise_act_onednn_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -165,7 +165,7 @@ class TestAddSwishFusePass(PassTest):
                 add = paddle.add(x, y)
                 out = paddle.nn.functional.swish(add)
                 out = paddle.assign(out)
-                self.pass_list = [{'elementwise_act_onednn_fuse_pass': {}}]
+                self.pass_attr_list = [{'elementwise_act_onednn_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -206,7 +206,7 @@ class TestAddAbsFusePass(PassTest):
                 add = paddle.add(x, y)
                 out = paddle.abs(add)
                 out = paddle.assign(out)
-                self.pass_list = [{'elementwise_act_onednn_fuse_pass': {}}]
+                self.pass_attr_list = [{'elementwise_act_onednn_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -247,7 +247,7 @@ class TestAddClipFusePass(PassTest):
                 add = paddle.add(x, y)
                 out = paddle.clip(add)
                 out = paddle.assign(out)
-                self.pass_list = [{'elementwise_act_onednn_fuse_pass': {}}]
+                self.pass_attr_list = [{'elementwise_act_onednn_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -288,7 +288,7 @@ class TestAddGeluFusePass(PassTest):
                 add = paddle.add(x, y)
                 out = paddle.nn.functional.gelu(add)
                 out = paddle.assign(out)
-                self.pass_list = [{'elementwise_act_onednn_fuse_pass': {}}]
+                self.pass_attr_list = [{'elementwise_act_onednn_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -329,7 +329,7 @@ class TestAddHardsigmoidFusePass(PassTest):
                 add = paddle.add(x, y)
                 out = paddle.nn.functional.hardsigmoid(add)
                 out = paddle.assign(out)
-                self.pass_list = [{'elementwise_act_onednn_fuse_pass': {}}]
+                self.pass_attr_list = [{'elementwise_act_onednn_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -370,7 +370,7 @@ class TestAddHardswishFusePass(PassTest):
                 add = paddle.add(x, y)
                 out = paddle.nn.functional.hardswish(add)
                 out = paddle.assign(out)
-                self.pass_list = [{'elementwise_act_onednn_fuse_pass': {}}]
+                self.pass_attr_list = [{'elementwise_act_onednn_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -411,7 +411,7 @@ class TestAddLeakyReluFusePass(PassTest):
                 add = paddle.add(x, y)
                 out = paddle.nn.functional.leaky_relu(add)
                 out = paddle.assign(out)
-                self.pass_list = [{'elementwise_act_onednn_fuse_pass': {}}]
+                self.pass_attr_list = [{'elementwise_act_onednn_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -452,7 +452,7 @@ class TestAddMishFusePass(PassTest):
                 add = paddle.add(x, y)
                 out = paddle.nn.functional.mish(add)
                 out = paddle.assign(out)
-                self.pass_list = [{'elementwise_act_onednn_fuse_pass': {}}]
+                self.pass_attr_list = [{'elementwise_act_onednn_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -493,7 +493,7 @@ class TestAddRelu6FusePass(PassTest):
                 add = paddle.add(x, y)
                 out = paddle.nn.functional.relu6(add)
                 out = paddle.assign(out)
-                self.pass_list = [{'elementwise_act_onednn_fuse_pass': {}}]
+                self.pass_attr_list = [{'elementwise_act_onednn_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -534,7 +534,7 @@ class TestAddSigmoidFusePass(PassTest):
                 add = paddle.add(x, y)
                 out = paddle.nn.functional.sigmoid(add)
                 out = paddle.assign(out)
-                self.pass_list = [{'elementwise_act_onednn_fuse_pass': {}}]
+                self.pass_attr_list = [{'elementwise_act_onednn_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -575,7 +575,7 @@ class TestAddSqrtFusePass(PassTest):
                 add = paddle.add(x, y)
                 out = paddle.sqrt(add)
                 out = paddle.assign(out)
-                self.pass_list = [{'elementwise_act_onednn_fuse_pass': {}}]
+                self.pass_attr_list = [{'elementwise_act_onednn_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
@@ -616,7 +616,7 @@ class TestAddTanhFusePass(PassTest):
                 add = paddle.add(x, y)
                 out = paddle.nn.functional.tanh(add)
                 out = paddle.assign(out)
-                self.pass_list = [{'elementwise_act_onednn_fuse_pass': {}}]
+                self.pass_attr_list = [{'elementwise_act_onednn_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),
