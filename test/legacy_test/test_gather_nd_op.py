@@ -613,6 +613,7 @@ class TestGatherNdOpRaise(unittest.TestCase):
 
 
 class TestGatherNdError(unittest.TestCase):
+    @test_with_pir_api
     def test_error(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

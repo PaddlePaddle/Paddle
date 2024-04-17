@@ -1546,7 +1546,8 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
             [
                 'bool',
                 'uint16',
-                'float16',
+                'int8',
+                'uint8' 'float16',
                 'float32',
                 'float64',
                 'int16',
