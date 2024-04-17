@@ -27,5 +27,5 @@ step1执行后，就可以看到在 build 目录生成了 `libCutlassGemmEpilogu
 
 step3.
 
-默认情况下，在处理fc类算子时，Paddle Inference 会调用cuBLASLt实现；
+默认情况下，在处理matmul+add+act模式的融合时，Paddle Inference 会调用cuBLASLt实现（FcOp）；
 基于 cutlass 开发的gemm_epilogue类算子能够覆盖原FcOp算子的功能并融合更多的后处理算子，用户可以通过python API `exp_enable_use_cutlass()` 和 C++ API `Exp_EnableUseCutlass()`来获得一定的速度和显存收益。

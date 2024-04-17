@@ -95,13 +95,13 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
           auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
           return static_cast<int>(x_dims.size()) - 1;
         });
-    const auto &fc = res.Op(fused_op_name_,
+    const auto &gemm_epilogue = res.Op(fused_op_name_,
                             {{
                                 {"in_num_col_dims", in_num_col_dims_attr},
                                 {"activation_type", res.StrAttr("")},
                                 {"padding_weights", res.BoolAttr(false)},
                             }});
-    fc({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("y")},
+    gemm_epilogue({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("y")},
        {&res.Tensor("add_out")});
   }
 };
@@ -120,7 +120,7 @@ class MatmulAddActPattern : public paddle::drr::DrrPatternBase {
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &fc = pat.Op(fused_op_name_,
+    const auto &gemm_epilogue = pat.Op(fused_op_name_,
                       {{
                           {"in_num_col_dims", pat.Attr("in_num_col_dims")},
                           {"activation_type", pat.Attr("activation_type")},
@@ -132,9 +132,9 @@ class MatmulAddActPattern : public paddle::drr::DrrPatternBase {
     }
     const auto &act = pat.Op(activation_type[act_type_], act_attrs);
 
-    fc({&pat.Tensor("x"), &pat.Tensor("w"), &pat.Tensor("y")},
-       {&pat.Tensor("fc_out")});
-    act({&pat.Tensor("fc_out")}, {&pat.Tensor("act_out")});
+    gemm_epilogue({&pat.Tensor("x"), &pat.Tensor("w"), &pat.Tensor("y")},
+       {&pat.Tensor("gemm_epilogue_out")});
+    act({&pat.Tensor("gemm_epilogue_out")}, {&pat.Tensor("act_out")});
 
     pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
         const std::string& act_type = match_ctx.Attr<std::string>("activation_type");
@@ -152,8 +152,8 @@ class MatmulAddActPattern : public paddle::drr::DrrPatternBase {
       {"activation_type", res.StrAttr(act_type_)},
       {"padding_weights", pat.Attr("padding_weights")},
     };
-    const auto &fc_with_act = res.Op(fused_op_name_, fused_attrs);
-    fc_with_act({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("y")},
+    const auto &gemm_epilogue_with_act = res.Op(fused_op_name_, fused_attrs);
+    gemm_epilogue_with_act({&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("y")},
                  {&res.Tensor("act_out")});
   }
 };
