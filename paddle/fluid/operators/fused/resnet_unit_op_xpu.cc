@@ -172,7 +172,7 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
 
     phi::DenseTensor *bitmask = ctx.Output<phi::DenseTensor>("BitMask");
     size_t bitmask_size = 0;
-    if (std::getenv("XPU_PADDLE_LOCAL") != nullptr) {
+    if (std::getenv("XPU_PADDLE_FC_LOCAL_INT16") != nullptr) {
       bitmask_size = xpu::resnet_unit_fusion_get_reserve_space_size<XPUType,
                                                                     XPUType,
                                                                     XPUType,
@@ -217,7 +217,7 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
         phi::make_ddim({static_cast<int64_t>(aligned_bitmask_size)}));
     auto *bitmask_ptr = bitmask->mutable_data<int>(place);
     int r = 0;
-    if (std::getenv("XPU_PADDLE_LOCAL") != nullptr) {
+    if (std::getenv("XPU_PADDLE_FC_LOCAL_INT16") != nullptr) {
       r = xpu::resnet_unit_fusion<XPUType, XPUType, XPUType, float>(
           dev_ctx.x_context(),
           x_list,
@@ -440,7 +440,7 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
 
     const phi::DenseTensor *bitmask = ctx.Input<phi::DenseTensor>("BitMask");
     int r = 0;
-    if (std::getenv("XPU_PADDLE_LOCAL_BACKWARD") != nullptr) {
+    if (std::getenv("XPU_PADDLE_FC_LOCAL_INT16") != nullptr) {
       r = xpu::resnet_unit_grad_fusion<XPUType, XPUType, XPUType, float>(
           dev_ctx.x_context(),
           x_list,
