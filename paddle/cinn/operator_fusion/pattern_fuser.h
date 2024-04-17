@@ -31,6 +31,9 @@
 #include "paddle/cinn/operator_fusion/pattern.h"
 #include "paddle/cinn/operator_fusion/utils.h"
 
+// This file is the protocol of the pattern fuser. Please implement
+// ConvertToStmtPattern and MergePatternImpl in the specializations.
+
 namespace cinn::fusion {
 
 template <typename T>
@@ -43,7 +46,6 @@ std::string GetPatternName(const StmtPattern<T>& s) {
   return std::visit([](const auto& impl) { return impl.name(); }, s.variant());
 }
 
-// This is a prototype function. Please implement it in the specializations.
 template <typename T>
 StmtPattern<T> ConvertToStmtPattern(const PatternContent<T>& content);
 
