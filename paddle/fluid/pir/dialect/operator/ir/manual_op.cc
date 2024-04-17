@@ -921,17 +921,17 @@ void FusedGemmEpilogueGradOp::InferMeta(phi::InferMetaContext *infer_meta) {
 
 std::vector<pir::Type> FusedGemmEpilogueGradOp::InferMeta(
     const std::vector<pir::Value> &input_values,
-    pir::AttributeMap *p_attributes) {  // NOLINT
+    pir::AttributeMap *p_attributes) {
+  PADDLE_ENFORCE_NOT_NULL(
+      p_attributes,
+      common::errors::Fatal(
+          "AttrtibueMap pointer in InferMeta function is nullptr."));
+  auto &attributes = *p_attributes;
   PADDLE_ENFORCE_EQ(input_values.size(),
                     4UL,
                     phi::errors::InvalidArgument(
                         "Num of inputs is expected to be 4 but got %d.",
                         input_values.size()));
-  PADDLE_ENFORCE_NOT_NULL(
-      p_attributes,
-      common::errors::Fatal(
-          "AttributeMap pointer in InferMeta function is nullptr."));
-  auto &attributes = *p_attributes;
 
   pir::Value x_ = input_values[0];
   pir::Value y_ = input_values[1];
