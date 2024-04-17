@@ -761,6 +761,15 @@
     data_type : input
   backward : depthwise_conv2d_grad
 
+- op : dequantize_log
+  args: (Tensor x, Tensor dict)
+  output: Tensor(out)
+  infer_meta:
+    func: DequantizeLogInferMeta
+  kernel:
+    func: dequantize_log
+    data_type: dict
+
 - op : det
   args : (Tensor x)
   output : Tensor
