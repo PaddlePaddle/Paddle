@@ -210,7 +210,7 @@ class BlockDimExprsAsserter {
       const std::vector<pir::Value>& inputs,
       pir::Value output,
       const DimExprs4ValueT& OpDimExprs4Value) {
-    const auto& shape_or_data = GraphDimExprs4Value(output);
+    const auto& shape_or_data = OpDimExprs4Value(output);
     const auto& dim_exprs = shape_or_data.shape();
     return BuildShapeTensorFromDimExprs(inputs, dim_exprs, OpDimExprs4Value);
   }
@@ -219,7 +219,7 @@ class BlockDimExprsAsserter {
       const std::vector<pir::Value>& inputs,
       pir::Value output,
       const DimExprs4ValueT& OpDimExprs4Value) {
-    const auto& shape_or_data = GraphDimExprs4Value(output);
+    const auto& shape_or_data = OpDimExprs4Value(output);
     const auto& dim_exprs = shape_or_data.data();
     if (!dim_exprs.has_value()) return std::nullopt;
     return BuildShapeTensorFromDimExprs(
@@ -295,7 +295,9 @@ class BlockDimExprsAsserter {
         builder_.Build<paddle::dialect::EqualOp>(lhs, rhs).out();
     pir::Value all_eq =
         builder_.Build<paddle::dialect::AllOp>(lhs_eq_rhs).out();
-    builder_.Build<paddle::dialect::AssertOp>(all_eq, lhs_eq_rhs, lhs_numel);
+    pir::Value assert_data =
+        builder_.Build<pir::CombineOp>(std::vector<pir::Value>{lhs, rhs}).out();
+    builder_.Build<paddle::dialect::AssertOp>(all_eq, assert_data, lhs_numel);
   }
 
   DimExprs4ValueT GraphDimExprs4Value;
