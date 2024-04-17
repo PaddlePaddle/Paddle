@@ -7,6 +7,11 @@ set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0 FLAGS_fast_eager_deletion_mode=1
             FLAGS_memory_fraction_of_eager_deletion=1.0)
 set(dist_ENVS http_proxy="" https_proxy="")
 
+# The following unittest is now in deprecated dir, we can delete this code when we move it from deprecated dir to this dir
+###### start ######
+list(REMOVE_ITEM TEST_OPS test_imperative_base)
+###### end ######
+
 file(
   GLOB DIST_TEST_OPS
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
