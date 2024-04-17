@@ -614,16 +614,13 @@ class TestGatherNdOpRaise(unittest.TestCase):
 
 class TestGatherNdError(unittest.TestCase):
     @test_with_pir_api
-    def test_error(self):
+    def test_error1(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
             shape = [8, 9, 6]
             x = paddle.static.data(shape=shape, dtype='float32', name='x')
             index = paddle.static.data(shape=shape, dtype='bool', name='index')
-            index_float = paddle.static.data(
-                shape=shape, dtype='float32', name='index_float'
-            )
             np_x = np.random.random(shape).astype('float32')
             np_index = np.array(np.random.randint(2, size=shape, dtype=bool))
 
@@ -636,6 +633,16 @@ class TestGatherNdError(unittest.TestCase):
                 paddle.gather_nd(x, np_index)
 
             self.assertRaises(TypeError, test_index_type)
+
+    def test_error2(self):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            shape = [8, 9, 6]
+            x = paddle.static.data(shape=shape, dtype='float32', name='x')
+            index_float = paddle.static.data(
+                shape=shape, dtype='float32', name='index_float'
+            )
 
             def test_index_dtype():
                 paddle.gather_nd(x, index_float)
