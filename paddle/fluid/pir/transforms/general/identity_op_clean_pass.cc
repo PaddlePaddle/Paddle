@@ -245,39 +245,6 @@ class ReplaceDropoutWithScalePattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class RemoveRedundantTransposePattern : public paddle::drr::DrrPatternBase {
- public:
-  std::string name() const override {
-    return "RemoveRedundantTransposePattern";
-  }
-
-  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
-    paddle::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &transpose1 =
-        pat.Op("pd_op.transpose", {{"perm", pat.Attr("perm_1")}});
-    const auto &transpose2 =
-        pat.Op("pd_op.transpose", {{"perm", pat.Attr("perm_2")}});
-
-    pat.Tensor("ret") = transpose2(transpose1(pat.Tensor("arg_transpose")));
-
-    paddle::drr::ResultPattern res = pat.ResultPattern();
-    const auto &new_perm_attr = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
-          const auto &perm1 = match_ctx.Attr<std::vector<int>>("perm_1");
-          const auto &perm2 = match_ctx.Attr<std::vector<int>>("perm_2");
-          std::vector<int> new_perm;
-          for (int v : perm2) {
-            new_perm.emplace_back(perm1[v]);
-          }
-          return new_perm;
-        });
-    const auto &transpose_continuous =
-        res.Op("pd_op.transpose", {{"perm", new_perm_attr}});
-
-    res.Tensor("ret") = transpose_continuous(res.Tensor("arg_transpose"));
-  }
-};
-
 class IdentityOpCleanPass : public pir::PatternRewritePass {
  public:
   IdentityOpCleanPass()
@@ -292,7 +259,6 @@ class IdentityOpCleanPass : public pir::PatternRewritePass {
     ps.Add(paddle::drr::Create<RemoveRedundantCastPattern>(context));
     ps.Add(paddle::drr::Create<DeleteDropoutOpPattern>(context));
     ps.Add(paddle::drr::Create<ReplaceDropoutWithScalePattern>(context));
-    ps.Add(paddle::drr::Create<RemoveRedundantTransposePattern>(context));
     return ps;
   }
 };

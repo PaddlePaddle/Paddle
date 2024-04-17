@@ -96,4 +96,4 @@ PD_REGISTER_STRUCT_KERNEL(mp_allreduce_sum,
                           double,
                           int,
                           int64_t,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

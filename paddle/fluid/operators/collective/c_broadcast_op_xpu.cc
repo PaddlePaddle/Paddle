@@ -50,7 +50,7 @@ class CBroadcastOpXPUKernel : public framework::OpKernel<T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -61,7 +61,7 @@ class CBroadcastOpXPUKernel : public framework::OpKernel<T> {
           comm_context_manager.Get(std::to_string(ring_id)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        platform::errors::Unavailable(
+                        phi::errors::Unavailable(
                             "BKCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
       stream = comm_ctx->GetStream();
@@ -119,7 +119,7 @@ class CBroadcastOpXPUKernel : public framework::OpKernel<T> {
     out->Resize(x->dims());
     out->set_lod(x->lod());
 #else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
         "PaddlePaddle should be compiled with XPU and BKCL."));
 #endif
   }
@@ -137,6 +137,6 @@ PD_REGISTER_STRUCT_KERNEL(c_broadcast,
                           ops::CBroadcastOpXPUKernel,
                           float,
                           double,
-                          plat::float16,
+                          phi::dtype::float16,
                           int,
                           int64_t) {}

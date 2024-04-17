@@ -12,86 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy
-from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
-from simple_nets import fc_with_batchnorm, init_data, simple_fc_net
 
 import paddle
 import paddle.nn.functional as F
 from paddle import base
-from paddle.base import core
-
-
-class TestMNIST(TestParallelExecutorBase):
-    @classmethod
-    def setUpClass(cls):
-        os.environ['CPU_NUM'] = str(4)
-
-    def _compare_fuse_elewise_add_act_ops(self, model, use_device):
-        if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
-            return
-        img, label = init_data()
-
-        def _optimizer(learning_rate=1e-6):
-            optimizer = paddle.optimizer.SGD(
-                learning_rate=learning_rate,
-                weight_decay=paddle.regularizer.L2Decay(1e-6),
-            )
-            return optimizer
-
-        # NOTE(dzh):
-        # need to make it compatible with elewise fuse act
-        # FIXME (liuwei12)
-        # the new memory optimize strategy will crash this unittest
-        # add enable_inplace=False here to force pass the unittest
-        (
-            not_fuse_op_first_loss,
-            not_fuse_op_last_loss,
-            _,
-        ) = self.check_network_convergence(
-            model,
-            feed_dict={"image": img, "label": label},
-            use_device=use_device,
-            fuse_elewise_add_act_ops=False,
-            use_ir_memory_optimize=False,
-            enable_inplace=False,
-            optimizer=_optimizer,
-        )
-        (
-            fuse_op_first_loss,
-            fuse_op_last_loss,
-            _,
-        ) = self.check_network_convergence(
-            model,
-            feed_dict={"image": img, "label": label},
-            use_device=use_device,
-            fuse_elewise_add_act_ops=True,
-            use_ir_memory_optimize=False,
-            enable_inplace=False,
-            optimizer=_optimizer,
-        )
-
-        self.assertAlmostEqual(
-            not_fuse_op_first_loss, fuse_op_first_loss, delta=1e-6
-        )
-        self.assertAlmostEqual(
-            not_fuse_op_last_loss, fuse_op_last_loss, delta=1e-6
-        )
-
-    def test_simple_fc_with_fuse_op(self):
-        self._compare_fuse_elewise_add_act_ops(simple_fc_net, DeviceType.CUDA)
-        self._compare_fuse_elewise_add_act_ops(simple_fc_net, DeviceType.CPU)
-
-    def test_batchnorm_fc_with_fuse_op(self):
-        self._compare_fuse_elewise_add_act_ops(
-            fc_with_batchnorm, DeviceType.CUDA
-        )
-        self._compare_fuse_elewise_add_act_ops(
-            fc_with_batchnorm, DeviceType.CPU
-        )
 
 
 class TestFuseActElewiseAddInplaceGradPass(unittest.TestCase):

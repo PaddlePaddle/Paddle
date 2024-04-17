@@ -131,7 +131,7 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
   if (op_info) {
     try {
       op_info.VerifySig(op);
-    } catch (const pir::IrNotMetException &e) {
+    } catch (const common::enforce::EnforceNotMet &e) {
       op->Destroy();
       throw e;
     }
@@ -353,7 +353,8 @@ void Operation::SetParent(Block *parent, const Block::Iterator &position) {
 }
 
 void Operation::MoveTo(Block *block, Block::Iterator position) {
-  IR_ENFORCE(parent_, "Operation does not have parent");
+  PADDLE_ENFORCE_NOT_NULL(
+      parent_, phi::errors::InvalidArgument("Operation does not have parent"));
   Operation *op = parent_->Take(this);
   block->insert(position, op);
 }
