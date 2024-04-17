@@ -36,7 +36,7 @@ class TestFcFusePassPattern(PassTest):
         return True
 
     def sample_program(self):
-        use_cutlass = False     # option
+        use_cutlass = True     # option
         if use_cutlass:
             fused_op_name = "pd_op.gemm_epilogue"
         else:
@@ -66,7 +66,7 @@ class TestFcFusePassPattern(PassTest):
                             )
                             out = paddle.add(paddle.matmul(x, w), y)
                             out = paddle.assign(out)
-                            self.pass_attr_list = [{'fc_fuse_pass': {"use_cutlass": use_cutlass}}]
+                            self.pass_attr_list = [{'matmul_add_act_fuse_pass': {"use_cutlass": use_cutlass}}]
                             self.feeds = {
                                 "x": np.random.random(x_shape).astype(
                                     "float16"
@@ -129,7 +129,7 @@ class TestFcFusePassPattern_reverseAdd(PassTest):
                             )
                             out = paddle.add(paddle.matmul(x, w), y)
                             out = paddle.assign(out)
-                            self.pass_attr_list = [{'fc_fuse_pass': {"use_cutlass": True}}]
+                            self.pass_attr_list = [{'matmul_add_act_fuse_pass': {"use_cutlass": True}}]
                             self.feeds = {
                                 "x": np.random.random(x_shape).astype(
                                     "float16"
@@ -173,7 +173,7 @@ class TestFcFusePassPattern_withAct(PassTest):
         return True
 
     def sample_program(self):
-        use_cutlass = False      # option
+        use_cutlass = True      # option
         if use_cutlass:
             fused_op_name = "pd_op.gemm_epilogue"
             acts = ["pd_op.relu", "pd_op.gelu"]
@@ -212,7 +212,7 @@ class TestFcFusePassPattern_withAct(PassTest):
                                 out = acts_map[act](matmul_add_out)
                                 out = paddle.assign(out)
 
-                                self.pass_attr_list = [{'fc_fuse_pass': {"use_cutlass": use_cutlass}}]
+                                self.pass_attr_list = [{'matmul_add_act_fuse_pass': {"use_cutlass": use_cutlass}}]
                                 self.feeds = {
                                     "x": np.random.random(x_shape).astype(
                                         "float16"
@@ -285,7 +285,7 @@ class TestFcFusePassPattern_reverseAdd_withAct(PassTest):
                                 out = acts_map[act](matmul_add_out)
                                 out = paddle.assign(out)
 
-                                self.pass_attr_list = [{'fc_fuse_pass': {"use_cutlass": True}}]
+                                self.pass_attr_list = [{'matmul_add_act_fuse_pass': {"use_cutlass": True}}]
                                 self.feeds = {
                                     "x": np.random.random(x_shape).astype(
                                         "float16"

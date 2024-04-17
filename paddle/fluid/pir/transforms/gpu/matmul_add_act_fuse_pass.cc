@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/gpu/fc_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/matmul_add_act_fuse_pass.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
@@ -107,16 +107,16 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
 };
 
 // Act supports [relu, gelu]
-class FcWithActPattern : public paddle::drr::DrrPatternBase {
+class MatmulAddActPattern : public paddle::drr::DrrPatternBase {
  private:
   std::string act_type_;
   std::string fused_op_name_;
 
  public:
-  explicit FcWithActPattern(const std::string& act_type, const std::string& fused_op_name)
+  explicit MatmulAddActPattern(const std::string& act_type, const std::string& fused_op_name)
       : act_type_(act_type), fused_op_name_(fused_op_name) {}
 
-  std::string name() const override { return "FcWithActPattern"; }
+  std::string name() const override { return "MatmulAddActPattern"; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
@@ -158,9 +158,9 @@ class FcWithActPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class FcFusePass : public pir::PatternRewritePass {
+class MatmulAddActFusePass : public pir::PatternRewritePass {
  public:
-  FcFusePass() : pir::PatternRewritePass("fc_fuse_pass", 2) {}
+  MatmulAddActFusePass() : pir::PatternRewritePass("matmul_add_act_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
@@ -173,16 +173,16 @@ class FcFusePass : public pir::PatternRewritePass {
       /// MatmulAddPattern
       ps.Add(paddle::drr::Create<MatmulAddPattern>(context, paddle::dialect::GemmEpilogueOp::name(), true));
       ps.Add(paddle::drr::Create<MatmulAddPattern>(context, paddle::dialect::GemmEpilogueOp::name(), false));
-      /// FcWithActPattern
+      /// MatmulAddActPattern
       for(const auto& act_op: act_ops){
-        ps.Add(paddle::drr::Create<FcWithActPattern>(context, act_op, paddle::dialect::GemmEpilogueOp::name()));
+        ps.Add(paddle::drr::Create<MatmulAddActPattern>(context, act_op, paddle::dialect::GemmEpilogueOp::name()));
       }
     }
     else{
       /// MatmulAddPattern
       ps.Add(paddle::drr::Create<MatmulAddPattern>(context, paddle::dialect::FcOp::name(), false));
-      /// FcWithActPattern
-      ps.Add(paddle::drr::Create<FcWithActPattern>(context, "relu", paddle::dialect::FcOp::name()));
+      /// MatmulAddActPattern
+      ps.Add(paddle::drr::Create<MatmulAddActPattern>(context, "relu", paddle::dialect::FcOp::name()));
     }
     return ps;
   }
@@ -192,10 +192,10 @@ class FcFusePass : public pir::PatternRewritePass {
 
 namespace pir {
 
-std::unique_ptr<Pass> CreateFcFusePass() {
-  return std::make_unique<FcFusePass>();
+std::unique_ptr<Pass> CreateMatmulAddActFusePass() {
+  return std::make_unique<MatmulAddActFusePass>();
 }
 
 }  // namespace pir
 
-REGISTER_IR_PASS(fc_fuse_pass, FcFusePass);
+REGISTER_IR_PASS(matmul_add_act_fuse_pass, MatmulAddActFusePass);
