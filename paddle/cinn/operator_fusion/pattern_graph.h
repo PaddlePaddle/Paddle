@@ -17,6 +17,7 @@
 #include "paddle/cinn/operator_fusion/policy/policy_manager.h"
 #include "paddle/cinn/operator_fusion/policy/relative_judge_policy.h"
 #include "paddle/cinn/operator_fusion/utils.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn::fusion {
 
@@ -149,7 +150,12 @@ struct SearchAlgorithm<NodePairPattern, Phrase, GraphMatcher, GraphOperation> {
 struct MergeReduceTreeOperation {
   template <typename Phrase>
   void operator()(PatternGraph<Phrase>* graph, PatternNodePtr<Phrase> node) {
-    CHECK_EQ(node->downstream().size(), 1);
+    PADDLE_ENFORCE_EQ(
+        node->downstream().size(),
+        1,
+        phi::errors::PreconditionNotMet(
+            "The downstream of the ReduceTree node should be 1, but got %d.",
+            node->downstream().size()));
     auto downstream = node->downstream().at(0);
     auto merged_node = graph->MergeNode(node, downstream);
     graph->RemoveNode(downstream);
@@ -163,13 +169,21 @@ struct MergeReduceTreeOperation {
 struct MergeReduceTreeAndTrivialOperation {
   template <typename Phrase>
   void operator()(PatternGraph<Phrase>* graph, PatternNodePtr<Phrase> node) {
-    CHECK_EQ(node->downstream().size(), 1);
+    PADDLE_ENFORCE_EQ(
+        node->downstream().size(),
+        1,
+        phi::errors::PreconditionNotMet(
+            "The downstream of the ReduceTree node should be 1, but got %d.",
+            node->downstream().size()));
     auto downstream = node->downstream().at(0);
     auto fake_reduce_iter_idx =
         graph->policy_manager().GetFakeReduceIterIdx(node, downstream);
     PatternNodePtr<Phrase> merged_node = graph->MergeNode(node, downstream);
-    std::get<ReduceTreePlusTrivialPattern<Phrase>>(merged_node->stmt_pattern())
-        .fake_reduce_iter_idx = fake_reduce_iter_idx;
+    auto stmt_pattern = std::get<ReduceTreePlusTrivialPattern<Phrase>>(
+        merged_node->stmt_pattern().variant());
+    stmt_pattern.fake_reduce_iter_idx = fake_reduce_iter_idx;
+    merged_node->set_stmt_pattern(stmt_pattern);
+
     graph->RemoveNode(downstream);
     graph->RemoveNode(node);
     VLOG(4) << "MergeReduceTreeAndTrivialOperation: \nupstream "
@@ -305,10 +319,20 @@ struct HorizontalFusionOperation {
   void operator()(PatternGraph<T>* graph,
                   const PatternNodePtr<T>& i,
                   const PatternNodePtr<T>& j) {
-    CHECK(GetPatternName(i->stmt_pattern()) ==
-          HorizontalFusionPattern<T>::name());
-    CHECK(GetPatternName(j->stmt_pattern()) ==
-          HorizontalFusionPattern<T>::name());
+    PADDLE_ENFORCE_EQ(
+        GetPatternName(i->stmt_pattern()),
+        HorizontalFusionPattern<T>::name(),
+        phi::errors::PreconditionNotMet(
+            "The pattern of the first node should be HorizontalFusionPattern, "
+            "but got %s.",
+            GetPatternName(i->stmt_pattern())));
+    PADDLE_ENFORCE_EQ(
+        GetPatternName(j->stmt_pattern()),
+        HorizontalFusionPattern<T>::name(),
+        phi::errors::PreconditionNotMet(
+            "The pattern of the second node should be HorizontalFusionPattern, "
+            "but got %s.",
+            GetPatternName(j->stmt_pattern())));
     graph->MergeNode(i, j);
     graph->RemoveNode(i);
     graph->RemoveNode(j);

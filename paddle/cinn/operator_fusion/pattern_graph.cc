@@ -235,8 +235,16 @@ PatternNodePtr<T> PatternGraph<T>::MergeNode(
     return set.size() == vec.size();
   };
 
-  CHECK(vec_unique(merged_node->upstream()));
-  CHECK(vec_unique(merged_node->downstream()));
+  PADDLE_ENFORCE_EQ(
+      vec_unique(merged_node->upstream()),
+      true,
+      phi::errors::PreconditionNotMet(
+          "The upstream nodes of the merged node are not unique."));
+  PADDLE_ENFORCE_EQ(
+      vec_unique(merged_node->downstream()),
+      true,
+      phi::errors::PreconditionNotMet(
+          "The downstream nodes of the merged node are not unique."));
 
   // deal with the graph storage.
   AppendNode(merged_node);
