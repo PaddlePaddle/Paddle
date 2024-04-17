@@ -76,4 +76,11 @@ class SameStatusReshardFunction(ReshardFunction):
         recv_value.set_type(op.result(0).type())
         op.result(0).replace_all_uses_with(recv_value)
         program.global_block().remove_op(op)
+
+        for op in program.global_block().ops:
+            if op.name() == "pd_op.send_v2":
+                op.dist_attr = paddle.base.libpaddle.pir.create_op_dist_attribute(src_mesh, [src_dist_attr], [])
+            elif op.name() == "pd_op.recv_v2":
+                op.dist_attr = paddle.base.libpaddle.pir.create_op_dist_attribute(dst_mesh, [], [dst_dist_attr])
+
         return recv_value.get_defining_op(), dst_dist_attr
