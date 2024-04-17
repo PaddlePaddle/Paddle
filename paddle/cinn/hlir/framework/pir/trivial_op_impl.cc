@@ -579,7 +579,7 @@ std::vector<ir::Expr> OperationFusion(
   CHECK(fusion_nodes.size() == 1)
       << "Only support one fusion node in backend now.";
 
-  const auto& output = GetExprFromPattern(fusion_nodes[0]->stmt_pattern_);
+  const auto& output = GetExprFromPattern(fusion_nodes[0]->stmt_pattern());
   VLOG(4) << "Fusion Result: output size is " << output.size();
   for (const auto& expr : output) {
     VLOG(4) << expr;

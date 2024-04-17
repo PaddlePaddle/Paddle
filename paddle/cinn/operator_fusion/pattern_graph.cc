@@ -58,7 +58,7 @@ std::vector<PatternNodePtr<T>> PatternGraph<T>::SortByTopoOrder() {
   std::list<PatternNodePtr<T>> topo_queue;
   std::map<PatternNodePtr<T>, int> degree;
   for (const auto& node : all_pattern_nodes_) {
-    degree[node] = node->upstream_.size();
+    degree[node] = node->upstream().size();
     if (degree[node] == 0) {
       topo_queue.push_back(node);
     }
@@ -67,7 +67,7 @@ std::vector<PatternNodePtr<T>> PatternGraph<T>::SortByTopoOrder() {
     PatternNodePtr<T> node = topo_queue.front();
     topo_queue.pop_front();
     res.push_back(node);
-    for (const auto& downstream_op : node->downstream_) {
+    for (const auto& downstream_op : node->downstream()) {
       degree[downstream_op] = degree[downstream_op] - 1;
       if (degree[downstream_op] == 0) {
         topo_queue.push_back(downstream_op);
@@ -145,7 +145,6 @@ PatternGraph<T>::PatternGraph(const std::vector<PatternContent<T>>& contents,
     PatternNodePtr<T> node = std::make_shared<PatternNode<T>>(content);
     op_to_node_map[content.op] = node;
     all_pattern_nodes_.emplace(node);
-    node->sink_op_ = content.op;
   }
 
   for (const auto& content : contents) {
@@ -156,7 +155,7 @@ PatternGraph<T>::PatternGraph(const std::vector<PatternContent<T>>& contents,
       ::pir::Operation* input_op = content.op->operand_source(i).defining_op();
       if (op_to_node_map.find(input_op) != op_to_node_map.end()) {
         PatternNodePtr<T> upstream_node = op_to_node_map[input_op];
-        cur_node->upstream_.push_back(upstream_node);
+        cur_node->upstream().push_back(upstream_node);
       }
     }
 
@@ -169,7 +168,7 @@ PatternGraph<T>::PatternGraph(const std::vector<PatternContent<T>>& contents,
         ::pir::Operation* output_op = consumer_it->owner();
         if (op_to_node_map.find(output_op) != op_to_node_map.end()) {
           PatternNodePtr<T> downstream_node = op_to_node_map[output_op];
-          cur_node->downstream_.push_back(downstream_node);
+          cur_node->downstream().push_back(downstream_node);
         }
       }
     }
@@ -187,12 +186,14 @@ void PatternGraph<T>::RemoveNode(const PatternNodePtr<T>& node) {
     all_pattern_nodes_.erase(node);
   }
 
-  for (PatternNodePtr<T>& upstream : node->upstream_) {
-    RemoveFromVector(&upstream->downstream_, node);
+  for (PatternNodePtr<T>& upstream : node->upstream()) {
+    // RemoveFromVector(&upstream->downstream(), node);
+    upstream->RemoveNodeFromDownstream(node);
   }
 
-  for (PatternNodePtr<T>& downstream : node->downstream_) {
-    RemoveFromVector(&downstream->upstream_, node);
+  for (PatternNodePtr<T>& downstream : node->downstream()) {
+    // RemoveFromVector(&downstream->upstream(), node);
+    downstream->RemoveNodeFromUpstream(node);
   }
 }
 
@@ -219,24 +220,35 @@ PatternNodePtr<T> PatternGraph<T>::MergeNode(
   PatternNodePtr<T> merged_node =
       std::make_shared<PatternNode<T>>(upstream, downstream);
 
-  // deal with the reference.
-  ExtendVector(&merged_node->upstream_, upstream->upstream_);
-  ExtendVector(&merged_node->upstream_, downstream->upstream_);
-  RemoveFromVector(&merged_node->upstream_, upstream);
+  // // deal with the reference.
+  // ExtendVector(&merged_node->upstream(), upstream->upstream());
+  // ExtendVector(&merged_node->upstream(), downstream->upstream());
+  // RemoveFromVector(&merged_node->upstream(), upstream);
 
-  ExtendVector(&merged_node->downstream_, upstream->downstream_);
-  ExtendVector(&merged_node->downstream_, downstream->downstream_);
-  RemoveFromVector(&merged_node->downstream_, downstream);
+  // ExtendVector(&merged_node->downstream(), upstream->downstream());
+  // ExtendVector(&merged_node->downstream(), downstream->downstream());
+  // RemoveFromVector(&merged_node->downstream(), downstream);
 
-  for (const auto& upstream_node : merged_node->upstream_) {
-    upstream_node->downstream_.push_back(merged_node);
-    RemoveFromVector(&upstream_node->downstream_, upstream);
-    RemoveFromVector(&upstream_node->downstream_, downstream);
+  // for (const auto& upstream_node : merged_node->upstream()) {
+  //   upstream_node->downstream().push_back(merged_node);
+  //   RemoveFromVector(&upstream_node->downstream(), upstream);
+  //   RemoveFromVector(&upstream_node->downstream(), downstream);
+  // }
+  // for (const auto& downstream_node : merged_node->downstream()) {
+  //   downstream_node->upstream().push_back(merged_node);
+  //   RemoveFromVector(&downstream_node->downstream(), upstream);
+  //   RemoveFromVector(&downstream_node->downstream(), downstream);
+  // }
+
+  for (const auto& upstream_node : merged_node->upstream()) {
+    upstream_node->AddNodeToDownstream(merged_node);
+    upstream_node->RemoveNodeFromDownstream(upstream);
+    upstream_node->RemoveNodeFromDownstream(downstream);
   }
-  for (const auto& downstream_node : merged_node->downstream_) {
-    downstream_node->upstream_.push_back(merged_node);
-    RemoveFromVector(&downstream_node->downstream_, upstream);
-    RemoveFromVector(&downstream_node->downstream_, downstream);
+  for (const auto& downstream_node : merged_node->downstream()) {
+    downstream_node->AddNodeToUpstream(merged_node);
+    downstream_node->RemoveNodeFromDownstream(upstream);
+    downstream_node->RemoveNodeFromDownstream(downstream);
   }
 
   const auto vec_unique = [](const std::vector<PatternNodePtr<T>>& vec) {
@@ -244,8 +256,8 @@ PatternNodePtr<T> PatternGraph<T>::MergeNode(
     return set.size() == vec.size();
   };
 
-  CHECK(vec_unique(merged_node->upstream_));
-  CHECK(vec_unique(merged_node->downstream_));
+  CHECK(vec_unique(merged_node->upstream()));
+  CHECK(vec_unique(merged_node->downstream()));
 
   // deal with the graph storage.
   AppendNode(merged_node);

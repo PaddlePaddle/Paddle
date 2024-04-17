@@ -31,7 +31,16 @@ struct PatternNode {
                        PatternNodePtr fused_down_node)
       : sink_op_(fused_down_node->sink_op_),
         stmt_pattern_(MergePattern<T>(fused_up_node->stmt_pattern_,
-                                      fused_down_node->stmt_pattern_)) {}
+                                      fused_down_node->stmt_pattern_)) {
+    // deal with the reference.
+    ExtendVector(&upstream_, fused_up_node->upstream());
+    ExtendVector(&upstream_, fused_down_node->upstream());
+    RemoveFromVector(&upstream_, fused_up_node);
+
+    ExtendVector(&downstream_, fused_up_node->downstream());
+    ExtendVector(&downstream_, fused_down_node->downstream());
+    RemoveFromVector(&downstream_, fused_down_node);
+  }
 
   std::string DebugStr() const {
     std::stringstream ss;
@@ -47,6 +56,20 @@ struct PatternNode {
     return ss.str();
   }
 
+  pir::Operation* sink_op() const { return sink_op_; }
+  StmtPattern<T> stmt_pattern() const { return stmt_pattern_; }
+  std::vector<PatternNodePtr> upstream() const { return upstream_; }
+  std::vector<PatternNodePtr> downstream() const { return downstream_; }
+  void AddNodeToUpstream(PatternNodePtr node) { upstream_.push_back(node); }
+  void AddNodeToDownstream(PatternNodePtr node) { downstream_.push_back(node); }
+  void RemoveNodeFromUpstream(PatternNodePtr node) {
+    RemoveFromVector(&upstream_, node);
+  }
+  void RemoveNodeFromDownstream(PatternNodePtr node) {
+    RemoveFromVector(&downstream_, node);
+  }
+
+ private:
   StmtPattern<T> stmt_pattern_;
   pir::Operation* sink_op_;
 
