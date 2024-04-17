@@ -52,7 +52,7 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
     if (in_tensor->layout() != DataLayout::ONEDNN) {
       PADDLE_ENFORCE_EQ(in_tensor->IsInitialized(),
                         true,
-                        platform::errors::PreconditionNotMet(
+                        phi::errors::PreconditionNotMet(
                             "The tensor of Input(X) is not initialized."));
     }
     auto place =

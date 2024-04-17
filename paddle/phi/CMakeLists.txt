@@ -62,8 +62,8 @@ if(WITH_XBYAK)
   list(APPEND PHI_DEPS xbyak)
 endif()
 
-if(WITH_MKLDNN)
-  list(APPEND PHI_DEPS mkldnn)
+if(WITH_ONEDNN)
+  list(APPEND PHI_DEPS onednn)
 endif()
 
 if(WITH_GLOO)
@@ -119,8 +119,11 @@ if(WITH_AVX
    AND AVX512F_FLAG
    AND WITH_MKL)
   set_source_files_properties(
+    kernels/fusion/cpu/fused_layer_norm_avx_kernel.cc
     kernels/fusion/cpu/self_dp_attention_kernel.cc
-    PROPERTIES COMPILE_FLAGS "-Wno-maybe-uninitialized  -mfma ${AVX512F_FLAG}")
+    kernels/fusion/cpu/rms_norm_avx_kernel.cc
+    PROPERTIES COMPILE_FLAGS
+               "${Wno_Maybe_Uninitialized} ${FMA_FLAG} ${AVX512F_FLAG}")
 endif()
 
 if(WITH_GPU)

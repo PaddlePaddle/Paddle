@@ -27,19 +27,19 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
-                      true,
-                      platform::errors::NotFound(
-                          "The input 'X' of Im2SequenceOp is not found."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"),
+        true,
+        phi::errors::NotFound("The input 'X' of Im2SequenceOp is not found."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
                       true,
-                      platform::errors::NotFound(
+                      phi::errors::NotFound(
                           "The output 'Out' of Im2SequenceOp is not found."));
     auto in_dim = ctx->GetInputDim("X");
 
     PADDLE_ENFORCE_EQ(in_dim.size(),
                       4,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dimensions size of input 'X' in Im2SequenceOp "
                           "should be 4. But "
                           "received dimensions size=[%d], dimensions=[%s].",
@@ -159,13 +159,13 @@ class Im2SequenceGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
                       true,
-                      platform::errors::NotFound(
+                      phi::errors::NotFound(
                           "The input 'X' of Im2SequenceGradOp is not found."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")),
-                      true,
-                      platform::errors::NotFound(
-                          "The input %s of Im2SequenceGradOp is not found.",
-                          framework::GradVarName("Out")));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput(framework::GradVarName("Out")),
+        true,
+        phi::errors::NotFound("The input %s of Im2SequenceGradOp is not found.",
+                              framework::GradVarName("Out")));
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };

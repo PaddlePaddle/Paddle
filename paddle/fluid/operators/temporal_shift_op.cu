@@ -156,10 +156,10 @@ template <typename T, typename DeviceContext>
 class TemporalShiftOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "This kernel only runs on GPU device."));
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()),
+        true,
+        phi::errors::InvalidArgument("This kernel only runs on GPU device."));
     auto* input = ctx.Input<phi::DenseTensor>("X");
     auto* output = ctx.Output<phi::DenseTensor>("Out");
     int t = ctx.Attr<int>("seg_num");
@@ -275,11 +275,11 @@ PD_REGISTER_STRUCT_KERNEL(temporal_shift,
                           ops::TemporalShiftOpCUDAKernel,
                           float,
                           double,
-                          plat::float16) {}
+                          phi::dtype::float16) {}
 PD_REGISTER_STRUCT_KERNEL(temporal_shift_grad,
                           GPU,
                           ALL_LAYOUT,
                           ops::TemporalShiftGradOpCUDAKernel,
                           float,
                           double,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

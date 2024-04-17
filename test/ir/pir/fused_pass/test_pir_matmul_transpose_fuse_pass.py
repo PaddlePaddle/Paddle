@@ -62,7 +62,9 @@ class TestMatmulOutTransposeFusePattern(PassTest):
                             matmul_out = paddle.matmul(x, y, name='matmul_out')
                             out = paddle.transpose(matmul_out, perm=perm)
                             out = paddle.assign(out)
-                            self.pass_list = ['matmul_transpose_fuse_pass']
+                            self.pass_attr_list = [
+                                {'matmul_transpose_fuse_pass': {}}
+                            ]
                             self.feeds = {
                                 "x": np.random.random(x_shape).astype(
                                     "float32"
@@ -124,7 +126,9 @@ class TestMatmulYTransposeFusePattern(PassTest):
                             y_t = paddle.transpose(y, perm)
                             out = paddle.matmul(x, y_t)
                             out = paddle.assign(out)
-                            self.pass_list = ['matmul_transpose_fuse_pass']
+                            self.pass_attr_list = [
+                                {'matmul_transpose_fuse_pass': {}}
+                            ]
                             self.feeds = {
                                 "x": np.random.random(x_shape).astype(
                                     "float32"
@@ -186,7 +190,9 @@ class TestMatmulXTransposeFusePattern(PassTest):
                             x_t = paddle.transpose(x, perm)
                             out = paddle.matmul(x_t, y)
                             out = paddle.assign(out)
-                            self.pass_list = ['matmul_transpose_fuse_pass']
+                            self.pass_attr_list = [
+                                {'matmul_transpose_fuse_pass': {}}
+                            ]
                             self.feeds = {
                                 "x": np.random.random(x_shape).astype(
                                     "float32"

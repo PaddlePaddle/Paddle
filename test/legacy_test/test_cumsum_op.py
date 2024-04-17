@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import tempfile
 import unittest
 
 import numpy as np
@@ -515,8 +513,9 @@ class BadInputTest(unittest.TestCase):
 class TestTensorAxis(unittest.TestCase):
     def setUp(self):
         paddle.seed(2022)
-        self.temp_dir = tempfile.TemporaryDirectory()
-        self.save_path = os.path.join(self.temp_dir.name, 'tensor_axis_cumsum')
+        # self.temp_dir = tempfile.TemporaryDirectory()
+        # self.save_path = os.path.join(self.temp_dir.name, 'tensor_axis_cumsum')
+        self.save_path = "./tensor_axis_cumsum"
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()
@@ -575,6 +574,53 @@ class TestTensorAxis(unittest.TestCase):
             output_handle = predictor.get_output_handle(output_names[0])
             infer_out = output_handle.copy_to_cpu()
             np.testing.assert_allclose(static_out[0], infer_out)
+
+    def test_static(self):
+        paddle.enable_static()
+        np_x = np.random.randn(9, 10, 11).astype('float32')
+        with paddle.pir_utils.IrGuard():
+            main_prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(main_prog, startup_prog):
+                # run static
+                x = paddle.static.data(
+                    shape=np_x.shape, name='x', dtype=np_x.dtype
+                )
+                linear = paddle.nn.Linear(np_x.shape[-1], np_x.shape[-1])
+                linear_out = linear(x)
+                relu_out = paddle.nn.functional.relu(linear_out)
+                axis = paddle.full([1], 2, dtype='int64')
+                out = paddle.cumsum(relu_out, axis=axis)
+                loss = paddle.mean(out)
+                sgd = paddle.optimizer.SGD(learning_rate=0.0)
+                sgd.minimize(paddle.mean(out))
+
+                exe = paddle.static.Executor(self.place)
+                exe.run(startup_prog)
+                static_out = exe.run(feed={'x': np_x}, fetch_list=[out])
+
+                # run infer
+                paddle.static.save_inference_model(
+                    self.save_path, [x], [out], exe, program=main_prog
+                )
+
+                load_program, _, _ = paddle.static.load_inference_model(
+                    self.save_path, exe
+                )
+                self.assertEqual(
+                    len(load_program.global_block().ops) + 1,
+                    len(main_prog.global_block().ops),
+                )
+
+                self.assertEqual(
+                    load_program.global_block().ops[8].name(), 'pd_op.cumsum'
+                )
+                infer_out = exe.run(
+                    program=load_program,
+                    feed={'x': np_x},
+                    fetch_list=[load_program.global_block().ops[8].result(0)],
+                )
+                np.testing.assert_allclose(static_out[0], infer_out[0])
 
 
 class TestCumSumOpFp16(unittest.TestCase):

@@ -1655,9 +1655,7 @@ def rot90(x, k=1, axes=[0, 1], name=None):
 
     if not (axes[0] != axes[1] and abs(axes[0] - axes[1]) != input_total_dims):
         raise ValueError(
-            "expected rotation axes to be different, but got axis0 = {}, and axis1 = {}".format(
-                axes[0], axes[1]
-            )
+            f"expected rotation axes to be different, but got axis0 = {axes[0]}, and axis1 = {axes[1]}"
         )
 
     if not (axes[0] < input_total_dims and axes[0] >= -input_total_dims):
@@ -1909,9 +1907,7 @@ def roll(x, shifts, axis=None, name=None):
         for i in range(len(axis)):
             if axis[i] >= len_origin_shape or axis[i] < -len_origin_shape:
                 raise ValueError(
-                    "axis is out of range, it should be in range [{}, {}), but received {}".format(
-                        -len_origin_shape, len_origin_shape, axis
-                    )
+                    f"axis is out of range, it should be in range [{-len_origin_shape}, {len_origin_shape}), but received {axis}"
                 )
     else:
         axis = []
@@ -5831,17 +5827,13 @@ def take_along_axis(arr, indices, axis, broadcast=True):
         for i in range(len(arr.shape)):
             if i != axis and arr.shape[i] < indices.shape[i]:
                 raise RuntimeError(
-                    "Size does not match at dimension {} expected index {} to be smaller than self {} apart from dimension {}".format(
-                        i, indices.shape, arr.shape, axis
-                    )
+                    f"Size does not match at dimension {i} expected index {indices.shape} to be smaller than self {arr.shape} apart from dimension {axis}"
                 )
 
         axis_max_size = arr.shape[axis]
         if in_dynamic_mode() and not (indices < axis_max_size).all():
             raise RuntimeError(
-                "one of element of indices is out of bounds for dimension {} with size {}".format(
-                    axis, axis_max_size
-                )
+                f"one of element of indices is out of bounds for dimension {axis} with size {axis_max_size}"
             )
     if in_dynamic_or_pir_mode():
         return _C_ops.take_along_axis(arr, indices, axis)
@@ -5981,9 +5973,7 @@ def put_along_axis(
                     i != axis and arr.shape[i] < indices.shape[i]
                 ) or indices.shape[i] > values.shape[i]:
                     raise RuntimeError(
-                        "Size does not match at dimension {} expected index {} to be smaller than self {} apart from dimension {} and to be smaller size than values {}".format(
-                            i, indices.shape, arr.shape, axis, values.shape
-                        )
+                        f"Size does not match at dimension {i} expected index {indices.shape} to be smaller than self {arr.shape} apart from dimension {axis} and to be smaller size than values {values.shape}"
                     )
         else:
             values = paddle.to_tensor(values).astype(arr.dtype)
@@ -5995,16 +5985,12 @@ def put_along_axis(
         axis_max_size = arr.shape[axis]
         if in_dynamic_mode() and not (indices < axis_max_size).all():
             raise RuntimeError(
-                "one of element of indices is out of bounds for dimension {} with size {}".format(
-                    axis, axis_max_size
-                )
+                f"one of element of indices is out of bounds for dimension {axis} with size {axis_max_size}"
             )
     if in_dynamic_or_pir_mode():
         if convert_dtype(indices.dtype) not in ['int32', 'int64']:
             raise TypeError(
-                "The data type of indices should be one of ['int32', 'int64'], but got {}".format(
-                    str(convert_dtype(indices.dtype))
-                )
+                f"The data type of indices should be one of ['int32', 'int64'], but got {str(convert_dtype(indices.dtype))}"
             )
         return _C_ops.put_along_axis(
             arr, indices, values, axis, reduce, include_self
@@ -6331,9 +6317,7 @@ def unflatten(x, axis, shape, name=None):
         )
     else:
         raise TypeError(
-            "The data type of x should be one of ['List', 'Tuple', 'Tensor'], but got {}".format(
-                type(shape)
-            )
+            f"The data type of x should be one of ['List', 'Tuple', 'Tensor'], but got {type(shape)}"
         )
     x = x.reshape(new_shape)
     return x

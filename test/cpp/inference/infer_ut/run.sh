@@ -38,7 +38,7 @@ current_dir=`pwd`
 build_dir=${current_dir}/build
 log_dir=${current_dir}/log
 
-# check mkldnn installation
+# check onednn installation
 if [ $2 == ON ]; then
   # You can export yourself if move the install path
   MKL_LIB=${inference_install_dir}/third_party/install/mklml/lib

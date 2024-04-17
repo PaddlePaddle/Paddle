@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/cross_entropy_op.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 
 namespace plat = paddle::platform;
 namespace ops = paddle::operators;
@@ -24,14 +24,14 @@ PD_REGISTER_STRUCT_KERNEL(cross_entropy,
                           ops::CrossEntropyOpKernel,
                           float,
                           double,
-                          plat::float16) {}
+                          phi::dtype::float16) {}
 PD_REGISTER_STRUCT_KERNEL(cross_entropy_grad,
                           GPU,
                           ALL_LAYOUT,
                           ops::CrossEntropyGradientOpKernel,
                           float,
                           double,
-                          plat::float16) {}
+                          phi::dtype::float16) {}
 
 PD_REGISTER_STRUCT_KERNEL(cross_entropy2,
                           GPU,
@@ -39,11 +39,11 @@ PD_REGISTER_STRUCT_KERNEL(cross_entropy2,
                           ops::CrossEntropyOpKernel2,
                           float,
                           double,
-                          plat::float16) {}
+                          phi::dtype::float16) {}
 PD_REGISTER_STRUCT_KERNEL(cross_entropy_grad2,
                           GPU,
                           ALL_LAYOUT,
                           ops::CrossEntropyGradientOpKernel2,
                           float,
                           double,
-                          plat::float16) {}
+                          phi::dtype::float16) {}
