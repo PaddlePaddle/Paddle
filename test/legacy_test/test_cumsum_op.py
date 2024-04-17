@@ -605,6 +605,7 @@ class TestTensorAxis(unittest.TestCase):
                     self.save_path, [x], [out], exe, program=main_prog
                 )
 
+                exe = paddle.static.Executor(self.place)
                 load_program, _, _ = paddle.static.load_inference_model(
                     self.save_path, exe
                 )
@@ -613,6 +614,12 @@ class TestTensorAxis(unittest.TestCase):
                     len(load_program.global_block().ops) + 1,
                     len(main_prog.global_block().ops),
                 )
+                out = exe.run(
+                    program=load_program,
+                    feed={'x': np_x},
+                    fetch_list=[load_program.global_block().ops[8].result(0)],
+                )
+                np.testing.assert_allclose(static_out, out)
 
 
 class TestCumSumOpFp16(unittest.TestCase):

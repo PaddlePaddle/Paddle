@@ -13,6 +13,8 @@
 // limitations under the License.
 #pragma once
 
+#include <string>
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/pir/include/core/program.h"
 namespace pir {
 /**
@@ -60,4 +62,28 @@ void WriteModule(const pir::Program& program,
 void ReadModule(const std::string& file_path,
                 pir::Program* program,
                 const uint64_t& pir_version);
+
+void SaveFunction(const phi::DenseTensor& x,
+                  const std::string& name,
+                  const std::string& file_path,
+                  bool overwrite,
+                  bool save_as_fp16);
+
+void SaveCombineFunction(const std::vector<const phi::DenseTensor*>& x,
+                         const std::vector<std::string>& names,
+                         const std::string& file_path,
+                         bool overwrite,
+                         bool save_as_fp16,
+                         bool save_to_memory);
+
+void LoadFunction(const std::string& file_path,
+                  int64_t seek,
+                  const std::vector<int64_t>& shape,
+                  bool load_as_fp16,
+                  phi::DenseTensor* out);
+
+void LoadCombineFunction(const std::string& file_path,
+                         const std::vector<std::string>& names,
+                         std::vector<phi::DenseTensor*>* out,
+                         bool load_as_fp16);
 }  // namespace pir
