@@ -68,10 +68,6 @@ void ShapeConstraintIRAnalysis::SetShapeOrDataForValue(
   }
 }
 
-symbol::DimExprBuilder ShapeConstraintIRAnalysis::DimExprBuilder() {
-  return symbol::DimExprBuilder(&constraints_);
-}
-
 void ShapeConstraintIRAnalysis::AddEqualCstr(const symbol::DimExpr& lhs,
                                              const symbol::DimExpr& rhs) {
   constraints_manager_.AddEqCstr(lhs, rhs);
