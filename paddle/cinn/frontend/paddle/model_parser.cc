@@ -23,6 +23,7 @@
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/frontend/paddle/compatible_pb.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn::frontend::paddle {
 
@@ -55,7 +56,8 @@ void TensorFromStream(std::istream &is,
   using Type = framework_proto::VarType::Type;
   uint32_t version;
   is.read(reinterpret_cast<char *>(&version), sizeof(version));
-  CHECK_EQ(version, 0U) << "Only version 0 is supported";
+  PADDLE_ENFORCE_EQ(
+      version, 0U, phi::errors::InvalidArgument("Only version 0 is supported"));
   // read tensor desc
   framework_proto::VarType::TensorDesc desc;
   {
