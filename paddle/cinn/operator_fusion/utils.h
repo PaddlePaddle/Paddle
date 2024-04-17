@@ -49,6 +49,13 @@ static std::vector<int64_t> GetReduceAxisIdx(pir::Operation* reduce_op) {
   const auto& attr_val = reduce_op->attributes().at("dim");
   CHECK(attr_val.isa<::pir::ArrayAttribute>());
   const auto& axis_attr = attr_val.dyn_cast<::pir::ArrayAttribute>();
+  if (axis_attr.empty()) {
+    std::vector<int64_t> all_axis;
+    for (int i = 0; i < input_rank; ++i) {
+      all_axis.push_back(i);
+    }
+    return all_axis;
+  }
   std::vector<int64_t> reduce_axis_idx;
   for (int i = 0; i < axis_attr.size(); ++i) {
     int64_t axis = axis_attr.at(i).dyn_cast<::pir::Int64Attribute>().data();
