@@ -63,8 +63,8 @@ std::size_t GetOutputRankImpl(
 std::size_t GetOutputRankImpl(
     const ScheduleMeshTranspose<ScheduleMesh>& sched_transpose) {
   const auto& [sched_mesh, perm] = sched_transpose.tuple();
-  PADDLE_ENFORCE_EQ(GetOutputRank(sched_mesh),
-                    perm.value()->size(),
+  PADDLE_ENFORCE_EQ(GetOutputRank(sched_mesh) == perm.value()->size(),
+                    true,
                     phi::errors::InvalidArgument(
                         "The size of perm should be equal to the output rank, "
                         "but got perm size = %d, output rank = %d.",
@@ -404,8 +404,8 @@ ScheduleMesh MeshReshape(const ScheduleMesh& sched_mesh,
   List<LoopSize> reshape_to{};
   for (const auto& dim : shape) {
     if (dim < 0) {
-      PADDLE_ENFORCE_EQ(origin_numel % numel,
-                        0UL,
+      PADDLE_ENFORCE_EQ(origin_numel % numel == 0UL,
+                        true,
                         phi::errors::InvalidArgument(
                             "The origin_numel should be divisible by numel"));
       reshape_to->emplace_back(origin_numel / numel);
@@ -437,9 +437,8 @@ ScheduleMesh MeshPadding(const ScheduleMesh& sched_mesh,
   for (std::size_t i = 0; i < input_dims->size(); ++i) {
     if (input_dims->at(i).Has<std::int64_t>() &&
         output_dims->at(i).Has<std::int64_t>()) {
-      PADDLE_ENFORCE_LE(input_dims->at(i).Get<std::int64_t>() ==
-                            output_dims->at(i).Get<std::int64_t>(),
-                        true,
+      PADDLE_ENFORCE_LE(input_dims->at(i).Get<std::int64_t>(),
+                        output_dims->at(i).Get<std::int64_t>(),
                         phi::errors::InvalidArgument(
                             "The input_dims should be equal to output_dims, "
                             "but got input_dims not equal to output_dims = "));

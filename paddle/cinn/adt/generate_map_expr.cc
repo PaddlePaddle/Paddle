@@ -34,6 +34,7 @@
 #include "paddle/pir/include/core/value.h"
 
 #include "glog/logging.h"
+#include "paddle/common/enforce.h"
 
 PD_DECLARE_bool(cinn_enable_map_expr);
 PD_DECLARE_bool(cinn_map_expr_enable_dynamic_shape);
