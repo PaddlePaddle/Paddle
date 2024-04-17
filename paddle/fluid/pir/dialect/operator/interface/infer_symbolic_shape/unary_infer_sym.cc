@@ -333,7 +333,6 @@ bool NonzeroOpInferSymbolicShape(
   const auto &x_shape_or_data =
       shape_analysis->GetShapeOrDataForValue(op->operand_source(0));
   const auto &x_shape = x_shape_or_data.shape();
-  const auto &x_data = x_shape_or_data.data();
 
   PADDLE_ENFORCE_GE(
       x_shape.size(),
