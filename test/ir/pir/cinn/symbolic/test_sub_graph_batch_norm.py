@@ -85,15 +85,7 @@ class TestLayer(unittest.TestCase):
             else:
                 net = paddle.jit.to_static(net, full_graph=True)
 
-        print("param 0 before", net.state_dict()["parameter_0"])
-        print("param 1 before", net.state_dict()["parameter_1"])
-        print("param 2 before", net.state_dict()["parameter_2"])
-        print("param 3 before", net.state_dict()["parameter_3"])
         outs = net(*self.inputs)
-        print("param 0 after", net.state_dict()["parameter_0"])
-        print("param 1 after", net.state_dict()["parameter_1"])
-        print("param 2 after", net.state_dict()["parameter_2"])
-        print("param 3 after", net.state_dict()["parameter_3"])
         return (
             outs,
             net.state_dict()["parameter_0"],
