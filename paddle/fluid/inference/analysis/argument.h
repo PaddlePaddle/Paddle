@@ -367,8 +367,6 @@ struct Argument {
                       XpuQuantPostDynamicOpTypes,
                       std::vector<std::string>);
 
-  DECL_ARGUMENT_FIELD(use_opencl, UseOpenCL, bool);
-
   // Memory optimized related.
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);
   DECL_ARGUMENT_FIELD(trt_engine_memory_sharing, TrtEngineMemorySharing, bool);

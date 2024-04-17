@@ -491,12 +491,6 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool use_onnxruntime() const { return use_onnxruntime_; }
   ///
-  /// \brief A boolean state telling whether the Lite OpenCL is turned on.
-  ///
-  /// \return bool Whether the Lite OpenCL is turned on.
-  ///
-  bool use_opencl() const { return use_opencl_; }
-  ///
   /// \brief A boolean state telling whether the ONNXRuntime Optimization is
   /// turned on.
   ///
@@ -906,11 +900,6 @@ struct PD_INFER_DECL AnalysisConfig {
       Precision precision_mode = Precision::kFloat32);
 
   bool dlnne_enabled() const { return use_dlnne_; }
-
-  ///
-  /// \brief Turn on the usage of Lite sub-graph engine with opencl.
-  ///
-  void EnableOpenCL();
 
   ///
   /// \brief Control whether to debug IR graph analysis phase.
@@ -1362,9 +1351,6 @@ struct PD_INFER_DECL AnalysisConfig {
   // XPU related.
   bool use_xpu_{false};
   XpuConfig xpu_config_;
-
-  // LITE OPENCL SETTINGS
-  bool use_opencl_{false};
 
   // onednn related.
   int mkldnn_cache_capacity_{10};

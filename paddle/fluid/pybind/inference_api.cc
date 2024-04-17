@@ -844,7 +844,6 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_onnxruntime", &AnalysisConfig::EnableONNXRuntime)
       .def("disable_onnxruntime", &AnalysisConfig::DisableONNXRuntime)
       .def("onnxruntime_enabled", &AnalysisConfig::use_onnxruntime)
-      .def("use_opencl", &AnalysisConfig::use_opencl)
       .def("enable_ort_optimization", &AnalysisConfig::EnableORTOptimization)
       .def("use_gpu", &AnalysisConfig::use_gpu)
       .def("use_xpu", &AnalysisConfig::use_xpu)
@@ -969,7 +968,6 @@ void BindAnalysisConfig(py::module *m) {
                std::map<std::string, std::vector<int64_t>>(),
            py::arg("use_calib_mode") = false,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32)
-      .def("enable_opencl", &AnalysisConfig::EnableOpenCL)
       .def("switch_ir_debug",
            &AnalysisConfig::SwitchIrDebug,
            py::arg("x") = true,

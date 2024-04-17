@@ -524,9 +524,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_xpu_);
   CP_MEMBER(xpu_config_);
 
-  // Lite OpenCL Related
-  CP_MEMBER(use_opencl_);
-
   // profile related.
   CP_MEMBER(with_profile_);
 
@@ -1310,11 +1307,6 @@ void AnalysisConfig::EnableProfile() {
 
 void AnalysisConfig::DisableGlogInfo() {
   with_glog_info_ = false;
-  Update();
-}
-
-void AnalysisConfig::EnableOpenCL() {
-  use_opencl_ = true;
   Update();
 }
 
