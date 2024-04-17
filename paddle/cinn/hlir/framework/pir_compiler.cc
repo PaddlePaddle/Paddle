@@ -115,8 +115,8 @@ CompilationContextMapper::RecoverKernelInfos() {
 
   std::vector<pir::CINNKernelInfo> kernel_infos(fusion_infos_.size());
   if (!FLAGS_enable_cinn_compile_cache) {
-    for (auto& compile_result : compilation_results_) {
-      kernel_infos[i] = compile_result->GetKernelInfo();
+    for (size_t i = 0; i < compilation_results_.size(); ++i) {
+      kernel_infos[i] = compilation_results_[i]->GetKernelInfo();
     }
   } else {
     for (size_t i = 0; i < fusion_infos_.size(); ++i) {
