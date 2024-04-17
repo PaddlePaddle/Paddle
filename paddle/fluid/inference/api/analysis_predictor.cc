@@ -3294,7 +3294,6 @@ USE_TRT_CONVERTER(arg_max);
 USE_TRT_CONVERTER(arg_min);
 USE_TRT_CONVERTER(roi_align);
 USE_TRT_CONVERTER(affine_channel);
-USE_TRT_CONVERTER(multiclass_nms);
 USE_TRT_CONVERTER(multiclass_nms3);
 USE_TRT_CONVERTER(nearest_interp);
 USE_TRT_CONVERTER(nearest_interp_v2);
