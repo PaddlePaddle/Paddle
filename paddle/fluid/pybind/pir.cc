@@ -1388,6 +1388,46 @@ int AppendShadowOutputs(Program *forward_program,
   return counter;
 }
 
+std::unordered_map<::pir::Value, std::string> GetNameMap(
+    const ::pir::Block *block) {
+  std::unordered_map<::pir::Value, std::string> value2name;
+  for (auto &kwarg : block->kwargs()) {
+    value2name[kwarg.second] = kwarg.first;
+  }
+  for (auto &op : *block) {
+    std::string name;
+    if (op.name() == "pd_op.data") {
+      name =
+          op.attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
+      value2name[op.results()[0].Value::impl()] = name;
+    } else if (op.name() == "builtin.set_parameter") {
+      name = op.attributes()
+                 .at("parameter_name")
+                 .dyn_cast<pir::StrAttribute>()
+                 .AsString();
+      value2name[op.operand(0).source()] = name;
+    } else if (op.name() == "builtin.shadow_output") {
+      name = op.attributes()
+                 .at("output_name")
+                 .dyn_cast<pir::StrAttribute>()
+                 .AsString();
+      value2name[op.operand(0).source()] = name;
+    } else if (op.name() == "builtin.parameter") {
+      name = op.attributes()
+                 .at("parameter_name")
+                 .dyn_cast<pir::StrAttribute>()
+                 .AsString();
+      value2name[op.result(0).Value::impl()] = name;
+    } else if (op.name() == "builtin.constant") {
+      if (op.isa<pir::ConstantTensorOp>()) {
+        name = op.dyn_cast<pir::ConstantTensorOp>().tensor_name();
+        value2name[op.result(0).Value::impl()] = name;
+      }
+    }
+  }
+  return value2name;
+}
+
 SplitedResult SplitForwardBackward(
     const Program &program,
     const std::vector<pir::Value> &forward_inputs,
@@ -1450,21 +1490,7 @@ SplitedResult SplitForwardBackward(
   // Step1. insert data op for inputs_values and middle_values
   pir::IrMapping backward_mapper;
   auto &backward_value_map = backward_mapper.GetMutableMap<pir::Value>();
-  int counter = 0;
-  auto create_kwarg_fn = [&backward_block,
-                          &backward_inputs,
-                          &backward_value_map,
-                          &replacement_for_forward_middles,
-                          &replacement_for_forward_outputs,
-                          &counter](const pir::Value &v) {
-    if (v && !backward_value_map.count(v) &&
-        (backward_inputs.count(v) ||
-         ExistsInMapValues(replacement_for_forward_middles, v) ||
-         ExistsInMapValues(replacement_for_forward_outputs, v))) {
-      backward_value_map[v] = backward_block.AddKwarg(
-          "input_" + std::to_string(counter++), v.type());
-    }
-  };
+  int counter = forward_outputs.size();
 
   auto create_output_fn_forward = [&ctx,
                                    &forward_value_map,
@@ -1535,6 +1561,43 @@ SplitedResult SplitForwardBackward(
     counter += 1;
   };
 
+  VLOG(4) << "start create forward outputs, inserting shadow_output ops.";
+  std::for_each(
+      middle_values.begin(), middle_values.end(), create_output_fn_forward);
+  std::for_each(forward_outputs_mutable.begin(),
+                forward_outputs_mutable.end(),
+                create_output_fn_forward);
+
+  pir::Block *forward_block = forward_program->block();
+  const auto &forward_name_map = GetNameMap(forward_block);
+  auto create_kwarg_fn = [&backward_block,
+                          &backward_inputs,
+                          &backward_value_map,
+                          &forward_value_map,
+                          &forward_name_map,
+                          &replacement_for_forward_middles,
+                          &replacement_for_forward_outputs,
+                          &counter](const pir::Value &v) {
+    if (v && !backward_value_map.count(v) &&
+        (backward_inputs.count(v) ||
+         ExistsInMapValues(replacement_for_forward_middles, v) ||
+         ExistsInMapValues(replacement_for_forward_outputs, v))) {
+      auto forward_value = forward_value_map[v];
+      std::string name = "input_" + std::to_string(counter++);
+      if (forward_name_map.count(forward_value)) {
+        name = forward_name_map.at(forward_value);
+        VLOG(1) << "contain name: " << name;
+      } else {
+        VLOG(1) << "not contain name: " << name;
+      }
+
+      // v -> fv
+      // get fv name
+
+      backward_value_map[v] = backward_block.AddKwarg(name, v.type());
+    }
+  };
+
   if (has_backward) {
     VLOG(4) << "start create backward inputs, creating keyword argument.";
     VLOG(4)
@@ -1580,13 +1643,6 @@ SplitedResult SplitForwardBackward(
     }
   }
 
-  VLOG(4) << "start create forward outputs, inserting set_parameter ops.";
-  std::for_each(
-      middle_values.begin(), middle_values.end(), create_output_fn_forward);
-  std::for_each(forward_outputs_mutable.begin(),
-                forward_outputs_mutable.end(),
-                create_output_fn_forward);
-
   // Step2. copy backward ops .
   VLOG(4) << "start copy backward ops";
   range_block_do(
@@ -1596,7 +1652,7 @@ SplitedResult SplitForwardBackward(
         auto *cloned_op = op->Clone(backward_mapper, clone_options);
         backward_program->block()->push_back(cloned_op);
       });
-  VLOG(4) << "start create backward outputs, inserting set_parameter ops.";
+  VLOG(4) << "start create backward outputs, inserting shadow_output ops.";
   if (has_backward) {
     std::for_each(forward_inputs_grads.begin(),
                   forward_inputs_grads.end(),
