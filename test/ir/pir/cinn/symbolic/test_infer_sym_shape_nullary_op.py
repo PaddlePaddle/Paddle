@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+import sys
 import unittest
-from sys.path import dirname
+from os.path import dirname
 
 import numpy as np
 from test_infer_sym_shape_utils import (
@@ -25,7 +25,7 @@ from test_infer_sym_shape_utils import (
 import paddle
 from paddle.static import InputSpec
 
-os.path.append(dirname(dirname(__file__)))
+sys.path.append(dirname(dirname(__file__)))
 from utils import apply_to_static
 
 
