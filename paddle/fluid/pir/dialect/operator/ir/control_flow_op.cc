@@ -24,7 +24,7 @@ paddle::dialect::IfOp, paddle::dialect::WhileOp, paddle::dialect::HasElementsOp,
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/pir/include/dialect/shape/ir/shape_optimization_pass.h"
+#include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
 
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/builder.h"

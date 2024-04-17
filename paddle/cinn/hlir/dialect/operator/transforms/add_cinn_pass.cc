@@ -21,7 +21,7 @@
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
-#include "paddle/pir/include/dialect/shape/ir/shape_optimization_pass.h"
+#include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
