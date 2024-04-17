@@ -732,16 +732,6 @@ else:
             shutil.copy('${OPENBLAS_LIB}' + '.0', libs_path)
             package_data['paddle.libs'] += ['libopenblas.so.0']
 
-if '${WITH_LITE}' == 'ON':
-    shutil.copy('${LITE_SHARED_LIB}', libs_path)
-    package_data['paddle.libs']+=['libpaddle_full_api_shared' + ext_name]
-    if '${LITE_WITH_NNADAPTER}' == 'ON':
-        shutil.copy('${LITE_NNADAPTER_LIB}', libs_path)
-        package_data['paddle.libs']+=['libnnadapter' + ext_name]
-        if '${NNADAPTER_WITH_HUAWEI_ASCEND_NPU}' == 'ON':
-            shutil.copy('${LITE_NNADAPTER_NPU_LIB}', libs_path)
-            package_data['paddle.libs']+=['libnnadapter_driver_huawei_ascend_npu' + ext_name]
-
 if '${WITH_CINN}' == 'ON':
     shutil.copy('${CINN_LIB_LOCATION}/${CINN_LIB_NAME}', libs_path)
     shutil.copy('${CINN_INCLUDE_DIR}/paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh', libs_path)

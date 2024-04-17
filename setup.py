@@ -1095,19 +1095,6 @@ def get_package_data_and_package_dir():
                 os.path.basename(env_dict.get("FLASHATTN_LIBRARIES"))
             ]
             shutil.copy(env_dict.get("FLASHATTN_LIBRARIES"), libs_path)
-    if env_dict.get("WITH_LITE") == 'ON':
-        shutil.copy(env_dict.get("LITE_SHARED_LIB"), libs_path)
-        package_data['paddle.libs'] += [
-            'libpaddle_full_api_shared' + ext_suffix
-        ]
-        if env_dict.get("LITE_WITH_NNADAPTER") == 'ON':
-            shutil.copy(env_dict.get("LITE_NNADAPTER_LIB"), libs_path)
-            package_data['paddle.libs'] += ['libnnadapter' + ext_suffix]
-            if env_dict.get("NNADAPTER_WITH_HUAWEI_ASCEND_NPU") == 'ON':
-                shutil.copy(env_dict.get("LITE_NNADAPTER_NPU_LIB"), libs_path)
-                package_data['paddle.libs'] += [
-                    'libnnadapter_driver_huawei_ascend_npu' + ext_suffix
-                ]
     if env_dict.get("WITH_CINN") == 'ON':
         shutil.copy(
             env_dict.get("CINN_LIB_LOCATION")
