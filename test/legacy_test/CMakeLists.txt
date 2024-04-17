@@ -812,8 +812,6 @@ set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT
 set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nn_grad PROPERTIES TIMEOUT 180)
 set_tests_properties(test_elementwise_sub_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
-                     PROPERTIES TIMEOUT 120)
 set_tests_properties(test_distributed_fused_lamb_op_with_clip PROPERTIES TIMEOUT
                                                                          240)
 set_tests_properties(test_distributed_fused_lamb_op_without_clip
@@ -836,8 +834,6 @@ set_tests_properties(test_lstm_cudnn_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_stack_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bilinear_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cond PROPERTIES TIMEOUT 240)
-set_tests_properties(test_parallel_executor_seresnext_base_gpu
-                     PROPERTIES TIMEOUT 120)
 set_tests_properties(test_norm_nn_grad PROPERTIES TIMEOUT 180)
 set_tests_properties(test_matrix_nms_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_softmax_with_cross_entropy_op PROPERTIES TIMEOUT 220)
